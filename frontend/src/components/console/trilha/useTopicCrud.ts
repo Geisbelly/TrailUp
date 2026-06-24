@@ -98,7 +98,7 @@ export function useTopicCrud({
     const updates: { id: number; ordem: number }[] = [];
 
     Object.values(byClass).forEach((list) => {
-      // limpa auto-loops e prÃ³ximos inversos diretos
+      // limpa auto-loops e próximos inversos diretos
       const cleaned = list.map((t) => {
         const cleanedDep = t.depende.filter((d) => d !== t.id && !t.next.includes(d));
         const cleanedNext = t.next.filter((n) => n !== t.id && !list.find((x) => x.id === n)?.next.includes(t.id));
@@ -106,7 +106,7 @@ export function useTopicCrud({
         return { ...t, depende: cleanedDep, next: cleanedNext };
       });
 
-      // constrÃ³i grafo (depende: dep -> t, next: t -> nxt)
+      // constrói grafo (depende: dep -> t, next: t -> nxt)
       const adj = new Map<number, number[]>();
       const indegree = new Map<number, number>();
       cleaned.forEach((t) => {
@@ -176,11 +176,11 @@ export function useTopicCrud({
       const ordem = contents.length + 1;
       const data = await createContent({ topico_id: targetTopicId, ...contentForm, ordem });
       setContents((prev) => [...prev, data]);
-      toast.success("ConteÃºdo criado!");
+      toast.success("Conteúdo criado!");
       return data;
     } catch (error) {
-      console.error("Erro ao criar conteÃºdo:", error);
-      toast.error("NÃ£o foi possÃ­vel criar o conteÃºdo.");
+      console.error("Erro ao criar conteúdo:", error);
+      toast.error("Não foi possível criar o conteúdo.");
       return null;
     }
   };
@@ -190,8 +190,8 @@ export function useTopicCrud({
       await deleteContent(id);
       setContents((prev) => prev.filter((c) => c.id !== id));
     } catch (error) {
-      console.error("Erro ao remover conteÃºdo:", error);
-      toast.error("NÃ£o foi possÃ­vel remover o conteÃºdo.");
+      console.error("Erro ao remover conteúdo:", error);
+      toast.error("Não foi possível remover o conteúdo.");
     }
   };
 
@@ -205,7 +205,7 @@ export function useTopicCrud({
     const topicId = topicoId ?? editingTopic?.id;
     if (!topicId) return;
     if (!activityForm.titulo) {
-      toast.error("Informe o tÃ­tulo da atividade");
+      toast.error("Informe o título da atividade");
       return;
     }
     try {
@@ -227,7 +227,7 @@ export function useTopicCrud({
       return activityId;
     } catch (error) {
       console.error("Erro ao salvar atividade:", error);
-      toast.error("NÃ£o foi possÃ­vel salvar a atividade.");
+      toast.error("Não foi possível salvar a atividade.");
       return;
     }
   };
@@ -235,10 +235,10 @@ export function useTopicCrud({
   const handleDeleteActivityApi = async (id: number) => {
     try {
       await deleteActivity(id);
-      toast.success("Atividade excluÃ­da.");
+      toast.success("Atividade excluída.");
     } catch (error) {
       console.error("Erro ao excluir atividade:", error);
-      toast.error("NÃ£o foi possÃ­vel excluir atividade.");
+      toast.error("Não foi possível excluir atividade.");
     }
   };
 
@@ -277,11 +277,11 @@ export function useTopicCrud({
         nota_estabelecida: scoreParsed.value,
         midia_url: questionForm.midia_url || null,
       });
-      toast.success("QuestÃ£o salva!");
+      toast.success("Questão salva!");
       return id;
     } catch (error) {
-      console.error("Erro ao salvar questÃ£o:", error);
-      toast.error("NÃ£o foi possÃ­vel salvar a questÃ£o.");
+      console.error("Erro ao salvar questão:", error);
+      toast.error("Não foi possível salvar a questão.");
       return;
     }
   };
@@ -289,10 +289,10 @@ export function useTopicCrud({
   const handleDeleteQuestionApi = async (id: number) => {
     try {
       await deleteQuestion(id);
-      toast.success("QuestÃ£o removida.");
+      toast.success("Questão removida.");
     } catch (error) {
-      console.error("Erro ao excluir questÃ£o:", error);
-      toast.error("NÃ£o foi possÃ­vel excluir questÃ£o.");
+      console.error("Erro ao excluir questão:", error);
+      toast.error("Não foi possível excluir questão.");
     }
   };
 
@@ -301,7 +301,7 @@ export function useTopicCrud({
       await toggleActivityLinkApi(conteudoId, atividadeId, link);
     } catch (error) {
       console.error("Erro ao vincular atividade:", error);
-      toast.error("NÃ£o foi possÃ­vel atualizar vinculo.");
+      toast.error("Não foi possível atualizar vinculo.");
       throw error;
     }
   };
@@ -327,7 +327,7 @@ export function useTopicCrud({
       return id;
     } catch (error) {
       console.error("Erro ao salvar card:", error);
-      toast.error("NÃ£o foi possÃ­vel salvar o card.");
+      toast.error("Não foi possível salvar o card.");
       return;
     }
   };
@@ -362,11 +362,11 @@ export function useTopicCrud({
   }) => {
     const topicId = params.topicoId ?? editingTopic?.id;
     if (!topicId) {
-      toast.error("Selecione um tÃ³pico.");
+      toast.error("Selecione um tópico.");
       return;
     }
     if (!params.newActivityForm.titulo) {
-      toast.error("Informe tÃ­tulo da atividade.");
+      toast.error("Informe título da atividade.");
       return;
     }
     try {
@@ -406,8 +406,8 @@ export function useTopicCrud({
       toast.success("Atividade criada!");
       return atividadeId;
     } catch (error) {
-      console.error("Erro ao criar atividade/questÃ£o:", error);
-      toast.error("NÃ£o foi possÃ­vel criar atividade.");
+      console.error("Erro ao criar atividade/questão:", error);
+      toast.error("Não foi possível criar atividade.");
       return;
     }
   };
@@ -432,13 +432,13 @@ export function useTopicCrud({
       return created;
     } catch (error) {
       console.error("Erro ao criar classe:", error);
-      toast.error("NÃ£o foi possÃ­vel criar a classe.");
+      toast.error("Não foi possível criar a classe.");
       return null;
     }
   };
 
   const handleDeleteTopic = async (id: number) => {
-    const confirmDelete = window.confirm("Remover este tÃ³pico? Isso apagarÃ¡ dependÃªncias.");
+    const confirmDelete = window.confirm("Remover este tópico? Isso apagará dependências.");
     if (!confirmDelete) return false;
 
     // primeiro remove referencias de next/depende em outros topicos
@@ -508,11 +508,11 @@ export function useTopicCrud({
         }
       }
 
-      toast.success("TÃ³pico removido.");
+      toast.success("Tópico removido.");
       return true;
     } catch (error) {
-      console.error("Erro ao excluir tÃ³pico:", error);
-      toast.error("NÃ£o foi possÃ­vel excluir tÃ³pico.");
+      console.error("Erro ao excluir tópico:", error);
+      toast.error("Não foi possível excluir tópico.");
       return false;
     }
   };

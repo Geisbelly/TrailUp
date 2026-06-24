@@ -33,7 +33,7 @@ export interface StagedFile {
   id: string;
 }
 
-/** Descritor de arquivo usado para geraÃ§Ã£o de trilha baseada em arquivos */
+/** Descritor de arquivo usado para geração de trilha baseada em arquivos */
 export interface FileDescriptor {
   name: string;
   mime_type: string;
@@ -41,7 +41,7 @@ export interface FileDescriptor {
   file_index: number;
 }
 
-/** Registro para persistÃªncia na tabela fontes_personalizacao */
+/** Registro para persistência na tabela fontes_personalizacao */
 export interface FontePersonalizacao {
   classe_id: number;
   topico_id: number;

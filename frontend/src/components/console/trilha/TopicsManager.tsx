@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type {
   Atividade,
   CardItem,
@@ -165,7 +165,7 @@ export default function TopicsManager() {
     startConnector,
     handleNodeMouseUp,
   } = useTopicGraph(topicos, setTopicos, () =>
-    toast.error("NÃ£o Ã© possÃ­vel vincular tÃ³picos de turmas diferentes.")
+    toast.error("Não é possível vincular tópicos de turmas diferentes.")
   );
 
   const { loadData, loadContents, loadActivities, loadActivityLinks, loadCards, loadQuestions } = useTopicDataLoaders({
@@ -218,7 +218,7 @@ export default function TopicsManager() {
           });
         } catch (error) {
           console.error("[TopicsManager] Falha ao enfileirar class-delta apos salvar ordem:", error);
-          toast.warning("Ordem salva, mas o job de personalizaÃƒÂ§ÃƒÂ£o nÃƒÂ£o foi enfileirado.");
+          toast.warning("Ordem salva, mas o job de personalização não foi enfileirado.");
         }
       }
       if (session?.access_token && selectedClassFilter) {
@@ -232,7 +232,7 @@ export default function TopicsManager() {
           });
         } catch (error) {
           console.error("[TopicsManager] Falha ao enfileirar class-delta apos reordenacao:", error);
-          toast.warning("Ordem atualizada, mas o job de personalizaÃƒÂ§ÃƒÂ£o nÃƒÂ£o foi enfileirado.");
+          toast.warning("Ordem atualizada, mas o job de personalização não foi enfileirado.");
         }
       }
     },
@@ -265,13 +265,13 @@ export default function TopicsManager() {
   useEffect(() => {
     recalcOrder(topicos).catch((err) => {
       console.error("Erro ao recalcular ordem:", err);
-      toast.error("NÃ£o foi possivel recalcular a ordem automaticamente.");
+      toast.error("Não foi possivel recalcular a ordem automaticamente.");
     });
-    // recalcOrder vem do hook e nÃ£Ìƒo muda durante o ciclo; dependemos apenas de topicos
+    // recalcOrder vem do hook e nã̃o muda durante o ciclo; dependemos apenas de topicos
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [topicos]);
 
-  // Recalcula posiÃ§Ãµes iniciais ao trocar de classe (ou quando ainda nÃ£o hÃ¡ layout)
+  // Recalcula posições iniciais ao trocar de classe (ou quando ainda não há layout)
   useEffect(() => {
     const classTopics = selectedClassFilter
       ? topicos.filter((t) => t.classe_id.toString() === selectedClassFilter)
@@ -331,7 +331,7 @@ export default function TopicsManager() {
       classes[0]?.id?.toString() ||
       (editingTopic ? editingTopic.classe_id.toString() : "");
     if (!formData.nome || !targetClasseId) {
-      toast.error("Preencha o nome (e selecione uma classe no topo, se necessÃ¡rio)");
+      toast.error("Preencha o nome (e selecione uma classe no topo, se necessário)");
       return;
     }
     setIsSaving(true);
@@ -349,7 +349,7 @@ export default function TopicsManager() {
           })
           .eq("id", editingTopic.id);
         if (error) throw error;
-        toast.success("TÃ³pico atualizado!");
+        toast.success("Tópico atualizado!");
       } else {
         const { data, error } = await supabase
           .from("topicos")
@@ -365,7 +365,7 @@ export default function TopicsManager() {
           .single();
         if (error) throw error;
         setTopicos((prev) => [...prev, { ...(data as Topico), next: [], depende: [] }]);
-        toast.success("TÃ³pico criado!");
+        toast.success("Tópico criado!");
       }
       if (session?.access_token) {
         try {
@@ -378,7 +378,7 @@ export default function TopicsManager() {
           });
         } catch (error) {
           console.error("[TopicsManager] Falha ao enfileirar class-delta apos salvar topico:", error);
-          toast.warning("Topico salvo, mas o job de personalizaÃ§Ã£o nÃ£o foi enfileirado.");
+          toast.warning("Topico salvo, mas o job de personalização não foi enfileirado.");
         }
       }
       await loadData();
@@ -390,8 +390,8 @@ export default function TopicsManager() {
       setEditingTopic(null);
       setFormData({ nome: "", descricao: "", classe_id: "", ordem: "1" });
     } catch (error) {
-      console.error("Erro ao salvar tÃ³pico:", error);
-      toast.error("NÃ£o foi possÃ­vel salvar o tÃ³pico.");
+      console.error("Erro ao salvar tópico:", error);
+      toast.error("Não foi possível salvar o tópico.");
     } finally {
       setIsSaving(false);
     }
@@ -412,7 +412,7 @@ export default function TopicsManager() {
           });
         } catch (error) {
           console.error("[TopicsManager] Falha ao enfileirar class-delta apos remover topico:", error);
-          toast.warning("TÃƒÂ³pico removido, mas o job de personalizaÃƒÂ§ÃƒÂ£o nÃƒÂ£o foi enfileirado.");
+          toast.warning("Tópico removido, mas o job de personalização não foi enfileirado.");
         }
       }
     }
@@ -420,11 +420,11 @@ export default function TopicsManager() {
 
   const handleDeleteWithConfirm = async (topic: Topico) => {
     const confirmation = window.prompt(
-      `Para excluir o tÃ³pico "${topic.nome}", digite exatamente o nome do tÃ³pico. Esta aÃ§Ã£o nÃ£o pode ser desfeita.`
+      `Para excluir o tópico "${topic.nome}", digite exatamente o nome do tópico. Esta ação não pode ser desfeita.`
     );
     if (!confirmation) return;
     if (confirmation !== topic.nome) {
-      toast.error("O nome digitado nÃ£o confere. O tÃ³pico nÃ£o foi removido.");
+      toast.error("O nome digitado não confere. O tópico não foi removido.");
       return;
     }
     await handleDelete(topic);
@@ -461,13 +461,13 @@ export default function TopicsManager() {
           });
         } catch (error) {
           console.error("[TopicsManager] Falha ao enfileirar class-delta apos salvar dependencias:", error);
-          toast.warning("DependÃƒÂªncias salvas, mas o job de personalizaÃƒÂ§ÃƒÂ£o nÃƒÂ£o foi enfileirado.");
+          toast.warning("Dependências salvas, mas o job de personalização não foi enfileirado.");
         }
       }
       toast.success("Mapa de dependencias salvo!");
     } catch (error) {
       console.error("Erro ao salvar grafo:", error);
-      toast.error("NÃ£o foi possivel salvar as dependÃªncias.");
+      toast.error("Não foi possivel salvar as dependências.");
     } finally {
       setIsSaving(false);
     }
@@ -492,10 +492,10 @@ export default function TopicsManager() {
           toast.warning("Ordem salva, mas o job de personalizacao nao foi enfileirado.");
         }
       }
-      toast.success("Ordem dos tÃ³picos salva!");
+      toast.success("Ordem dos tópicos salva!");
     } catch (error) {
       console.error("Erro ao salvar ordem:", error);
-      toast.error("NÃ£o foi possivel salvar a ordem.");
+      toast.error("Não foi possivel salvar a ordem.");
     } finally {
       setIsSaving(false);
     }
@@ -545,7 +545,7 @@ export default function TopicsManager() {
       const updates = newOrder.map((c, idx) => ({ id: c.id, ordem: idx + 1 }));
       await updateContentOrder(updates);
     } catch {
-      toast.error("Erro ao salvar nova ordem dos conteÃºdos.");
+      toast.error("Erro ao salvar nova ordem dos conteúdos.");
       if (editingTopic) loadContents(editingTopic.id); // revert
     }
   };
@@ -567,7 +567,7 @@ export default function TopicsManager() {
 
   const handleDeleteActivity = async (id: number) => {
     if (!editingTopic) return;
-    const confirmDelete = window.confirm("Remover esta atividade? Isso removera questÃµes vinculadas.");
+    const confirmDelete = window.confirm("Remover esta atividade? Isso removera questões vinculadas.");
     if (!confirmDelete) return;
     await handleDeleteActivityApi(id);
     await loadActivities(editingTopic.id);
@@ -765,15 +765,15 @@ export default function TopicsManager() {
     <div className="h-full flex flex-col gap-3">
       <div className="flex flex-wrap gap-2 justify-between items-center">
         <div>
-          <h3 className="text-lg font-semibold">Trilha de TÃ³picos</h3>
+          <h3 className="text-lg font-semibold">Trilha de Tópicos</h3>
           <p className="text-sm text-muted-foreground">
-            Escolha a classe, cadastre tÃ³picos e defina dependÃªncias/prÃ©-requisitos visualmente.
+            Escolha a classe, cadastre tópicos e defina dependências/pré-requisitos visualmente.
           </p>
         </div>
         <div className="flex flex-wrap gap-2 items-center">
           {runningJobs.length > 0 && (
             <div className="px-2.5 py-1 rounded-full border border-amber-500/30 bg-amber-500/10 text-[11px] font-semibold text-amber-300">
-              {runningJobs.length} job{runningJobs.length > 1 ? "s" : ""} de personalizaÃ§Ã£o em andamento
+              {runningJobs.length} job{runningJobs.length > 1 ? "s" : ""} de personalização em andamento
             </div>
           )}
           <Select
@@ -823,13 +823,13 @@ export default function TopicsManager() {
             selectedClassFilter={selectedClassFilter}
           />
           <Button variant="secondary" size="sm" onClick={saveGraph} disabled={isSaving}>
-            Salvar dependÃªncias
+            Salvar dependências
           </Button>
         </div>
       </div>
 
       {isLoading ? (
-        <div className="text-sm text-muted-foreground">Carregando tÃ³picos...</div>
+        <div className="text-sm text-muted-foreground">Carregando tópicos...</div>
       ) : !selectedClassFilter ? (
         <div className="text-sm text-muted-foreground">Selecione uma classe para visualizar o canvas.</div>
       ) : (
@@ -838,17 +838,17 @@ export default function TopicsManager() {
           <div className="flex flex-wrap items-center gap-4 px-1 text-xs text-muted-foreground">
             <div className="flex items-center gap-1.5">
               <Workflow className="h-3.5 w-3.5" />
-              <span>Arraste o fundo para navegar Â· arraste o nÃ³ para reposicionar</span>
+              <span>Arraste o fundo para navegar · arraste o nó para reposicionar</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded-full bg-info shrink-0" />
-              <span>Conector esquerdo (D) â†’ PrÃ©-requisito</span>
+              <span>Conector esquerdo (D) → Pré-requisito</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded-full bg-success shrink-0" />
-              <span>Conector direito (N) â†’ PrÃ³ximo</span>
+              <span>Conector direito (N) → Próximo</span>
             </div>
-            <span className="opacity-50">Clique numa seta para removÃª-la</span>
+            <span className="opacity-50">Clique numa seta para removê-la</span>
           </div>
 
           {/* Canvas viewport */}
@@ -890,7 +890,7 @@ export default function TopicsManager() {
               <div className="w-px h-4 bg-border mx-0.5" />
               <button
                 className="w-7 h-7 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                title="Resetar visualizaÃ§Ã£o"
+                title="Resetar visualização"
                 onClick={resetView}
               >
                 <Maximize2 className="w-3.5 h-3.5" />
@@ -974,10 +974,10 @@ export default function TopicsManager() {
                     onPointerUp={handleNodePointerUp(topic.id)}
                     onMouseUp={handleNodeMouseUp(topic.id)}
                   >
-                    {/* Left connector â€” depende */}
+                    {/* Left connector — depende */}
                     <button
                       className="absolute -left-2.5 top-[48px] w-5 h-5 rounded-full bg-info border-2 border-background shadow-lg hover:scale-125 transition-transform z-20 cursor-crosshair flex items-center justify-center"
-                      title="Arraste para definir prÃ©-requisito"
+                      title="Arraste para definir pré-requisito"
                       onMouseDown={startConnector(topic.id, "depende")}
                       onPointerDown={(e) => e.stopPropagation()}
                     >
@@ -1012,7 +1012,7 @@ export default function TopicsManager() {
                         <div className="flex items-center gap-0.5 shrink-0">
                           <button
                             className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                            title="Editar tÃ³pico"
+                            title="Editar tópico"
                             onClick={(e) => { e.stopPropagation(); handleEditOpen(topic); }}
                             onPointerDown={(e) => e.stopPropagation()}
                           >
@@ -1020,7 +1020,7 @@ export default function TopicsManager() {
                           </button>
                           <button
                             className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                            title="Excluir tÃ³pico"
+                            title="Excluir tópico"
                             onClick={(e) => { e.stopPropagation(); handleDeleteWithConfirm(topic); }}
                             onPointerDown={(e) => e.stopPropagation()}
                           >
@@ -1034,7 +1034,7 @@ export default function TopicsManager() {
                         <div className="px-3 pb-2.5 space-y-1.5 border-t border-border/50 pt-2">
                           {depNames.length > 0 && (
                             <div className="flex flex-wrap gap-1 items-start">
-                              <span className="text-[9px] font-bold uppercase tracking-wider text-info/70 mt-0.5 shrink-0 leading-tight">â†™ Dep</span>
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-info/70 mt-0.5 shrink-0 leading-tight">? Dep</span>
                               {depNames.map((name) => (
                                 <span
                                   key={name}
@@ -1048,7 +1048,7 @@ export default function TopicsManager() {
                           )}
                           {nextNames.length > 0 && (
                             <div className="flex flex-wrap gap-1 items-start">
-                              <span className="text-[9px] font-bold uppercase tracking-wider text-success/70 mt-0.5 shrink-0 leading-tight">â†’ Next</span>
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-success/70 mt-0.5 shrink-0 leading-tight">? Next</span>
                               {nextNames.map((name) => (
                                 <span
                                   key={name}
@@ -1070,10 +1070,10 @@ export default function TopicsManager() {
                       </div>
                     </div>
 
-                    {/* Right connector â€” next */}
+                    {/* Right connector — next */}
                     <button
                       className="absolute -right-2.5 top-[48px] w-5 h-5 rounded-full bg-success border-2 border-background shadow-lg hover:scale-125 transition-transform z-20 cursor-crosshair flex items-center justify-center"
-                      title="Arraste para definir prÃ³ximo tÃ³pico"
+                      title="Arraste para definir próximo tópico"
                       onMouseDown={startConnector(topic.id, "next")}
                       onPointerDown={(e) => e.stopPropagation()}
                     >

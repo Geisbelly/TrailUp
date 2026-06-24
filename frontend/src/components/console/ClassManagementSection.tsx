@@ -171,7 +171,7 @@ export default function ClassManagementSection({ professorId }: Props) {
 
   // --- Editar turma ---
   const handleUpdate = async () => {
-    if (!editingId || !editForm.descricao) return toast.error("Informe uma descriÃ§Ã£o.");
+    if (!editingId || !editForm.descricao) return toast.error("Informe uma descrição.");
     setIsSaving(true);
     try {
       const materiaId = editForm.materia_id ? Number(editForm.materia_id) : null;
@@ -267,7 +267,7 @@ export default function ClassManagementSection({ professorId }: Props) {
       toast.success("Classe duplicada com estrutura.");
       await loadData();
     } catch {
-      toast.error("NÃ£o foi possÃ­vel duplicar classe.");
+      toast.error("Não foi possível duplicar classe.");
     } finally {
       setIsSaving(false);
     }
@@ -277,7 +277,7 @@ export default function ClassManagementSection({ professorId }: Props) {
   const handleAddStudentToClass = async () => {
     if (!selectedClassForStudents || !studentToAdId) return;
     const classId = selectedClassForStudents.id;
-    if (classStudents[classId]?.includes(studentToAdId)) return toast.error("Aluno jÃ¡ estÃ¡ na turma.");
+    if (classStudents[classId]?.includes(studentToAdId)) return toast.error("Aluno já está na turma.");
     setIsProcessingStudent(true);
     try {
       await supabase.from("classe_aluno").insert({ classe_id: classId, aluno_id: studentToAdId });
@@ -362,11 +362,11 @@ export default function ClassManagementSection({ professorId }: Props) {
               <Input value={editForm.descricao} onChange={(e) => setEditForm({ ...editForm, descricao: e.target.value })} className={darkInputClass} />
             </div>
             <div>
-              <Label className={darkLabelClass}>MatÃ©ria</Label>
+              <Label className={darkLabelClass}>Matéria</Label>
               <Select value={editForm.materia_id || "none"} onValueChange={(v) => setEditForm({ ...editForm, materia_id: v === "none" ? "" : v })}>
                 <SelectTrigger className={darkSelectTrigger}><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent className={darkSelectContent}>
-                  <SelectItem value="none">Geral / Sem MatÃ©ria</SelectItem>
+                  <SelectItem value="none">Geral / Sem Matéria</SelectItem>
                   {materias.map((m) => <SelectItem key={m.id} value={m.id.toString()}>{m.nome}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -443,7 +443,7 @@ export default function ClassManagementSection({ professorId }: Props) {
         })}
       </div>
 
-      {/* â”€â”€ Modal: Criar Turma â”€â”€ */}
+      {/* -- Modal: Criar Turma -- */}
       <ClassManagerDialog
         open={isCreateOpen}
         onOpenChange={(v) => { setIsCreateOpen(v); if (!v) { setClassForm({ descricao: "", materia_id: "" }); setNewMateria({ nome: "", descricao: "" }); } }}
@@ -456,7 +456,7 @@ export default function ClassManagementSection({ professorId }: Props) {
         handleCreateClass={handleCreateClass}
       />
 
-      {/* â”€â”€ Modal: Gerenciar Alunos â”€â”€ */}
+      {/* -- Modal: Gerenciar Alunos -- */}
       <Dialog open={!!selectedClassForStudents} onOpenChange={(open) => !open && setSelectedClassForStudents(null)}>
         <DialogContent className="max-w-2xl max-h-[85vh] p-0 gap-0 bg-[#0F172A] border-slate-800 flex flex-col overflow-hidden sm:rounded-xl shadow-2xl shadow-black">
           <div className="px-6 py-4 bg-[#1E293B] border-b border-slate-800">
@@ -487,7 +487,7 @@ export default function ClassManagementSection({ professorId }: Props) {
                           </SelectItem>
                         ))
                       ) : (
-                        <div className="p-3 text-xs text-slate-500 text-center">Todos os alunos jÃ¡ estÃ£o nesta turma.</div>
+                        <div className="p-3 text-xs text-slate-500 text-center">Todos os alunos já estão nesta turma.</div>
                       )}
                     </SelectContent>
                   </Select>

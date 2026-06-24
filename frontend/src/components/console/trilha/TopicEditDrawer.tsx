@@ -1,4 +1,4 @@
-﻿import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -80,7 +80,7 @@ type TopicEditDrawerProps = {
   handleSubmit: () => void;
   handleEditClose: () => void;
   
-  // ConteÃƒÂºdos
+  // Conteúdos
   contents: Conteudo[];
   selectedContentId: number | null;
   setSelectedContentId: (id: number | null) => void;
@@ -108,12 +108,12 @@ type TopicEditDrawerProps = {
   toggleActivityLink: (conteudoId: number, atividadeId: number, link: boolean) => void;
   activityLinkCount: (atividadeId: number) => number;
   
-  // CriaÃƒÂ§ÃƒÂ£o RÃƒÂ¡pida
+  // Criação Rápida
   newActivityForm: { titulo: string; descricao: string; tipo: string; data_entrega: string; questionEnunciado: string; questionTipo: string; questionResposta: string; questionNota: string; questionOptions: string[]; };
   setNewActivityForm: Dispatch<SetStateAction<{ titulo: string; descricao: string; tipo: string; data_entrega: string; questionEnunciado: string; questionTipo: string; questionResposta: string; questionNota: string; questionOptions: string[]; }>>;
   handleCreateActivityWithQuestion: () => void;
   
-  // QuestÃƒÂµes
+  // Questões
   questions: Questao[];
   questionForm: { id: number; atividade_id: string; enunciado: string; tipo: string; resposta_correta: string; nota_estabelecida: string; midia_url: string };
   setQuestionForm: Dispatch<SetStateAction<{ id: number; atividade_id: string; enunciado: string; tipo: string; resposta_correta: string; nota_estabelecida: string; midia_url: string }>>;
@@ -201,7 +201,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
     return materias.find((materia) => materia.id === selectedClasse.materia_id) ?? null;
   }, [materias, selectedClasse?.materia_id]);
   const contentTitleById = useMemo(
-    () => new Map(contents.map((content) => [content.id, content.titulo || "Sem tÃƒÂ­tulo"])),
+    () => new Map(contents.map((content) => [content.id, content.titulo || "Sem título"])),
     [contents]
   );
   const resolvedCardConteudoId =
@@ -231,7 +231,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
     });
   };
 
-  /** LÃƒÂª conteÃƒÂºdo textual dos arquivos pendentes para enviar como material de referÃƒÂªncia ao AI */
+  /** Lê conteúdo textual dos arquivos pendentes para enviar como material de referência ao AI */
   const readPendingFileContents = async (): Promise<{ fileContents: string; fileNames: string[] }> => {
     if (pendingFiles.length === 0) return { fileContents: "", fileNames: [] };
     const parts: string[] = [];
@@ -242,7 +242,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
           parts.push(`=== ${file.name} ===\n${text.substring(0, 8000)}`);
         } catch { /* skip */ }
       } else {
-        parts.push(`[Arquivo de referÃƒÂªncia: ${file.name}]`);
+        parts.push(`[Arquivo de referência: ${file.name}]`);
       }
     }
     return { fileContents: parts.join("\n\n"), fileNames: pendingFiles.map((f) => f.name) };
@@ -368,7 +368,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
 
   const uploadFile = async (file: File, topicId: number, userId: string): Promise<string | null> => {
     if (!isProfessorUploadFileAllowed(file)) {
-      toast.error("Formato de arquivo nÃ£o permitido para conteÃºdo.");
+      toast.error("Formato de arquivo não permitido para conteúdo.");
       return null;
     }
     const sanitized = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
@@ -379,7 +379,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
     if (error) {
       const raw = error.message ? String(error.message) : String(error);
       const friendly = (raw.includes("security policy") || raw.includes("violates") || raw.includes("403"))
-        ? 'PermissÃƒÂ£o negada. Adicione uma polÃƒÂ­tica INSERT no bucket "conteudos" no painel Supabase Ã¢â€ â€™ Storage Ã¢â€ â€™ Policies.'
+        ? 'Permissão negada. Adicione uma política INSERT no bucket "conteudos" no painel Supabase → Storage → Policies.'
         : raw;
       toast.error(friendly, { duration: 8000 });
       return null;
@@ -402,13 +402,13 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
         }
 
         setPendingFiles([]);
-        // Aguarda criaÃƒÂ§ÃƒÂ£o/atualizaÃƒÂ§ÃƒÂ£o para obter o ID (essencial para novos conteÃƒÂºdos)
+        // Aguarda criação/atualização para obter o ID (essencial para novos conteúdos)
         const created = await props.handleSaveContent(primaryPath);
 
         if (extraPaths.length > 0) {
           const existingExtra = extraFiles.filter((f) => !f.path.startsWith("http"));
           const allExtra = [...existingExtra, ...extraPaths];
-          // Para conteÃƒÂºdo novo: usa o ID retornado; para existente: usa selectedContentId
+          // Para conteúdo novo: usa o ID retornado; para existente: usa selectedContentId
           const contentId = created?.id ?? selectedContentId;
           if (contentId) {
             await updateContentMetadata(contentId, { files: allExtra }).catch(console.error);
@@ -428,7 +428,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
       }
       return;
     }
-    // No pending files Ã¢â‚¬â€ also persist any extra-file removals for existing content
+    // No pending files — also persist any extra-file removals for existing content
     if (selectedContentId && !isCreating) {
       await updateContent(selectedContentId, { metadata: { files: extraFiles } }).catch(console.error);
     }
@@ -442,11 +442,11 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
 
   const handleUploadQuestionMedia = async (file: File) => {
     if (!isQuestionMediaFileAllowed(file)) {
-      toast.error("Formato de mÃ­dia nÃ£o permitido para questÃµes.");
+      toast.error("Formato de mídia não permitido para questões.");
       return;
     }
     if (!editingTopic?.id || !user?.id) {
-      toast.error("Selecione um tÃƒÂ³pico e faÃƒÂ§a login para enviar mÃƒÂ­dia.");
+      toast.error("Selecione um tópico e faça login para enviar mídia.");
       return;
     }
     setIsUploadingQuestionMedia(true);
@@ -456,10 +456,10 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
       const { data } = supabase.storage.from("conteudos").getPublicUrl(uploadedPath);
       const resolvedUrl = data?.publicUrl || uploadedPath;
       setQuestionForm((prev) => ({ ...prev, midia_url: resolvedUrl }));
-      toast.success("MÃƒÂ­dia da questÃƒÂ£o enviada com sucesso.");
+      toast.success("Mídia da questão enviada com sucesso.");
     } catch (error) {
-      console.error("[TopicEditDrawer] Erro ao enviar mÃƒÂ­dia da questÃƒÂ£o:", error);
-      toast.error("NÃƒÂ£o foi possÃƒÂ­vel enviar a mÃƒÂ­dia da questÃƒÂ£o.");
+      console.error("[TopicEditDrawer] Erro ao enviar mídia da questão:", error);
+      toast.error("Não foi possível enviar a mídia da questão.");
     } finally {
       setIsUploadingQuestionMedia(false);
     }
@@ -536,14 +536,14 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
     setAiDialogOpen(true);
   };
 
-  /** BotÃƒÂ£o no formulÃƒÂ¡rio de conteÃƒÂºdo Ã¢â‚¬â€ analisa apenas o conteÃƒÂºdo atual */
+  /** Botão no formulário de conteúdo — analisa apenas o conteúdo atual */
   const handleGenerateForCurrentContent = async () => {
     if (!editingTopic) return;
     setIsGeneratingContentAi(true);
     try {
       const payload = await buildCurrentContentAiPayload();
       if (!payload.topicName) {
-        toast.error("Preencha ou selecione um conteÃƒÆ’Ã‚Âºdo antes de gerar sugestÃƒÆ’Ã‚Âµes.");
+        toast.error("Preencha ou selecione um conteúdo antes de gerar sugestões.");
         return;
       }
       const { data, error } = await supabase.functions.invoke("generate-content-ai", {
@@ -555,13 +555,13 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
       if (error) throw error;
       openAiDialog(data as AiSuggestion);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao gerar sugestÃƒÂµes.");
+      toast.error(e instanceof Error ? e.message : "Erro ao gerar sugestões.");
     } finally {
       setIsGeneratingContentAi(false);
     }
   };
 
-  /** BotÃƒÂ£o ao lado da descriÃƒÂ§ÃƒÂ£o Ã¢â‚¬â€ gera apenas a descriÃƒÂ§ÃƒÂ£o do tÃƒÂ³pico */
+  /** Botão ao lado da descrição — gera apenas a descrição do tópico */
   const handleGenerateDescription = async () => {
     if (!formData.nome) return;
     setIsGeneratingDescription(true);
@@ -580,10 +580,10 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
       const suggestion = data as AiSuggestion;
       if (suggestion.descricao) {
         setFormData({ ...formData, descricao: suggestion.descricao });
-        toast.success("DescriÃƒÂ§ÃƒÂ£o gerada com sucesso!");
+        toast.success("Descrição gerada com sucesso!");
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao gerar descriÃƒÂ§ÃƒÂ£o.");
+      toast.error(e instanceof Error ? e.message : "Erro ao gerar descrição.");
     } finally {
       setIsGeneratingDescription(false);
     }
@@ -647,7 +647,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
     }
   };
 
-  // Inicializa modo de criaÃƒÂ§ÃƒÂ£o se nÃƒÂ£o houver conteÃƒÂºdos
+  // Inicializa modo de criação se não houver conteúdos
   useEffect(() => {
     if (contents.length === 0) {
       setIsCreating(true);
@@ -664,7 +664,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
     return "essay";
   };
 
-  // Efeito para carregar questÃƒÂ£o existente ao selecionar atividade
+  // Efeito para carregar questão existente ao selecionar atividade
   useEffect(() => {
     if (selectedActivityId) {
       if (questions.length > 0) {
@@ -785,7 +785,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
     setDraggedItemIndex(null);
   };
 
-  // FunÃƒÂ§ÃƒÂ£o de renderizaÃƒÂ§ÃƒÂ£o do formulÃƒÂ¡rio para evitar perda de foco
+  // Função de renderização do formulário para evitar perda de foco
   const renderContentForm = (title: string) => (
     <div className={`p-6 rounded-xl space-y-6 shadow-xl ${darkCardClass}`}>
       <div className="flex items-center justify-between border-b border-slate-700 pb-4 mb-4">
@@ -802,12 +802,12 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
 
       <div className="flex flex-col md:flex-row gap-5">
         <div className="flex-1">
-          <Label className={darkLabelClass}>TÃƒÂ­tulo do ConteÃƒÂºdo</Label>
+          <Label className={darkLabelClass}>Título do Conteúdo</Label>
           <Input 
             value={contentForm.titulo || ""} 
             onChange={(e) => setContentForm({...contentForm, titulo: e.target.value})}
             className={`${darkInputClass} text-lg font-medium h-11`}
-            placeholder="Ex: IntroduÃƒÂ§ÃƒÂ£o ÃƒÂ  LÃƒÂ³gica"
+            placeholder="Ex: Introdução à Lógica"
             autoFocus={isCreating}
           />
         </div>
@@ -817,7 +817,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
             <SelectTrigger className={`${darkInputClass} h-11`}><SelectValue/></SelectTrigger>
             <SelectContent className="bg-[#1E293B] border-slate-700 text-slate-200">
               <SelectItem value="texto">Texto / Artigo</SelectItem>
-              <SelectItem value="video">VÃƒÂ­deo (YouTube / Embed)</SelectItem>
+              <SelectItem value="video">Vídeo (YouTube / Embed)</SelectItem>
               <SelectItem value="link">Link Externo</SelectItem>
               <SelectItem value="arquivo">Arquivo / Upload</SelectItem>
             </SelectContent>
@@ -854,7 +854,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
               className="bg-[#111827] border-slate-700 text-slate-300 min-h-[400px] font-mono text-sm leading-relaxed p-4 focus:ring-1 focus:ring-violet-500/50 resize-y rounded-md"
               placeholder={
                 contentForm.tipo === "texto"
-                  ? "# Digite seu conteÃƒÂºdo aqui..."
+                  ? "# Digite seu conteúdo aqui..."
                   : contentForm.tipo === "video"
                   ? "https://www.youtube.com/watch?v=... ou <iframe ...>"
                   : "https://example.com/recurso"
@@ -927,9 +927,9 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                 : "Salvando..."}
             </>
           ) : !isCreating ? (
-            <><Save className="w-4 h-4 mr-2" /> Atualizar ConteÃƒÂºdo</>
+            <><Save className="w-4 h-4 mr-2" /> Atualizar Conteúdo</>
           ) : (
-            <><Plus className="w-4 h-4 mr-2" /> Criar ConteÃƒÂºdo</>
+            <><Plus className="w-4 h-4 mr-2" /> Criar Conteúdo</>
           )}
         </Button>
       </div>
@@ -951,7 +951,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
               {editingTopic ? "Editar Trilha de Conhecimento" : "Nova Trilha"}
             </DialogTitle>
             <DialogDescription className="text-slate-400 text-xs mt-1 pl-11">
-              Gerenciamento avanÃƒÂ§ado de nÃƒÂ³s de conteÃƒÂºdo e avaliaÃƒÂ§ÃƒÂµes.
+              Gerenciamento avançado de nós de conteúdo e avaliações.
             </DialogDescription>
           </div>
           <div className="flex items-center gap-3">
@@ -975,8 +975,8 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                 <div className="space-y-4">
                   <div className="grid gap-4">
                     <div>
-                      <Label className={darkLabelClass}>TÃƒÂ­tulo do TÃƒÂ³pico</Label>
-                      <Input value={formData.nome || ""} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} className={`${darkInputClass} font-medium`} placeholder="Ex: IntroduÃƒÂ§ÃƒÂ£o" />
+                      <Label className={darkLabelClass}>Título do Tópico</Label>
+                      <Input value={formData.nome || ""} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} className={`${darkInputClass} font-medium`} placeholder="Ex: Introdução" />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
@@ -995,7 +995,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                     </div>
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <Label className={darkLabelClass} style={{ marginBottom: 0 }}>DescriÃƒÂ§ÃƒÂ£o RÃƒÂ¡pida</Label>
+                        <Label className={darkLabelClass} style={{ marginBottom: 0 }}>Descrição Rápida</Label>
                         <button
                           type="button"
                           onClick={handleGenerateDescription}
@@ -1016,11 +1016,11 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                 <Separator className="bg-slate-800" />
                 <div className="space-y-4">
                   <div className="flex items-center justify-between sticky top-0 bg-[#0F172A] z-10 py-2">
-                    <h3 className={darkLabelClass}>NÃƒÂ³s de ConteÃƒÂºdo</h3>
+                    <h3 className={darkLabelClass}>Nós de Conteúdo</h3>
                     <Badge variant="outline" className="border-slate-700 text-slate-400 bg-slate-900">{contents.length}</Badge>
                   </div>
                   <Button variant="outline" onClick={startNewContent} className={`w-full border-dashed border-slate-700 bg-slate-900/30 text-slate-400 hover:text-emerald-400 hover:border-emerald-500/50 hover:bg-emerald-950/10 h-11 text-xs uppercase tracking-wide transition-all mb-2 ${isCreating ? "border-emerald-500/50 bg-emerald-950/20 text-emerald-400 ring-1 ring-emerald-500/20" : ""}`}>
-                    <Plus className="w-4 h-4 mr-2" /> {isCreating ? "Preenchendo Novo..." : "Adicionar Novo ConteÃƒÂºdo"}
+                    <Plus className="w-4 h-4 mr-2" /> {isCreating ? "Preenchendo Novo..." : "Adicionar Novo Conteúdo"}
                   </Button>
                   
                   {/* LISTA DRAGGABLE */}
@@ -1041,7 +1041,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                       >
                         <div className="mr-3 text-slate-600 group-hover:text-slate-400 flex flex-col items-center justify-center w-6"><span className="text-[9px] text-slate-600 font-mono mb-1">{idx + 1}</span><GripVertical size={14}/></div>
                         <div className="flex-1 min-w-0 py-1">
-                          <p className={`text-sm font-medium truncate ${selectedContentId === c.id ? "text-violet-200" : "text-slate-300"}`}>{c.titulo || "(Sem tÃƒÂ­tulo)"}</p>
+                          <p className={`text-sm font-medium truncate ${selectedContentId === c.id ? "text-violet-200" : "text-slate-300"}`}>{c.titulo || "(Sem título)"}</p>
                           <div className="flex items-center gap-2 mt-1.5">
                             <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500 bg-[#0F172A] px-1.5 py-0.5 rounded border border-slate-800">{c.tipo}</span>
                             {activityLinks[c.id]?.length > 0 && (<span className="text-[10px] text-emerald-400 flex items-center gap-1 bg-emerald-950/30 px-1.5 py-0.5 rounded border border-emerald-900/50"><CheckSquare size={10} /> {activityLinks[c.id].length}</span>)}
@@ -1051,7 +1051,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-600 opacity-0 group-hover:opacity-100 hover:text-red-400 hover:bg-red-950/30 transition-opacity absolute right-2" onClick={(e) => { e.stopPropagation(); void handleDeleteContentWithSync(c.id); }}><Trash2 size={14} /></Button>
                       </div>
                     ))}
-                    {contents.length === 0 && (<div className="text-center py-10 px-4 border border-dashed border-slate-800 rounded-lg"><p className="text-sm text-slate-500">Nenhum conteÃƒÂºdo criado.</p></div>)}
+                    {contents.length === 0 && (<div className="text-center py-10 px-4 border border-dashed border-slate-800 rounded-lg"><p className="text-sm text-slate-500">Nenhum conteúdo criado.</p></div>)}
                   </div>
                 </div>
               </div>
@@ -1062,17 +1062,17 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
             <ScrollArea className="h-full w-full">
               <div className="p-6 max-w-5xl mx-auto space-y-6 pb-40">
                 
-                {isCreating && renderContentForm("Novo ConteÃƒÂºdo")}
+                {isCreating && renderContentForm("Novo Conteúdo")}
 
                 {!isCreating && selectedContentId && (
                   <Tabs defaultValue="conteudo" className="w-full">
                     <TabsList className="bg-[#1E293B] border border-slate-700/50 p-1 mb-6 h-auto w-full justify-start rounded-lg">
-                      <TabsTrigger value="conteudo" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white flex-1 h-9"><FileText className="w-4 h-4 mr-2"/> ConteÃƒÂºdo</TabsTrigger>
+                      <TabsTrigger value="conteudo" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white flex-1 h-9"><FileText className="w-4 h-4 mr-2"/> Conteúdo</TabsTrigger>
                       <TabsTrigger value="atividades" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white flex-1 h-9"><LayoutList className="w-4 h-4 mr-2"/> Atividades</TabsTrigger>
                       <TabsTrigger value="cards" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white flex-1 h-9"><BrainCircuit className="w-4 h-4 mr-2"/> Cards</TabsTrigger>
                     </TabsList>
 
-                    <TabsContent value="conteudo" className="mt-0 outline-none">{renderContentForm("Editar ConteÃƒÂºdo")}</TabsContent>
+                    <TabsContent value="conteudo" className="mt-0 outline-none">{renderContentForm("Editar Conteúdo")}</TabsContent>
 
                     <TabsContent value="atividades" className="mt-0 outline-none">
                       <div className={`p-6 rounded-xl border space-y-6 shadow-lg ${darkCardClass}`}>
@@ -1117,15 +1117,15 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                           
                           <div className="space-y-3 bg-[#111827] p-4 rounded-lg border border-slate-700">
                             <Label className={darkLabelClass}>Criar Nova Atividade</Label>
-                            <Input placeholder="TÃƒÂ­tulo..." value={newActivityForm.titulo || ""} onChange={(e) => setNewActivityForm({...newActivityForm, titulo: e.target.value})} className={darkInputClass}/>
+                            <Input placeholder="Título..." value={newActivityForm.titulo || ""} onChange={(e) => setNewActivityForm({...newActivityForm, titulo: e.target.value})} className={darkInputClass}/>
                             <div className="grid grid-cols-3 gap-2">
                                 <Select value={newActivityForm.tipo || "quiz"} onValueChange={(v) => setNewActivityForm({...newActivityForm, tipo: v})}>
                                     <SelectTrigger className={darkInputClass}><SelectValue placeholder="Tipo"/></SelectTrigger>
                                     <SelectContent className="bg-[#1E293B] border-slate-700 text-slate-200">
-                                        <SelectItem value="quiz">Quiz (MÃƒÂºltipla)</SelectItem>
+                                        <SelectItem value="quiz">Quiz (Múltipla)</SelectItem>
                                         <SelectItem value="fill_blank">Completar</SelectItem>
                                         <SelectItem value="true_false">V/F</SelectItem>
-                                        <SelectItem value="essay">DissertaÃƒÂ§ÃƒÂ£o</SelectItem>
+                                        <SelectItem value="essay">Dissertação</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 <Input
@@ -1152,32 +1152,32 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                             </div>
                             <div className="grid grid-cols-2 gap-4 mb-4">
                               <div className="space-y-1">
-                                <Label className={darkLabelClass}>TÃƒÂ­tulo</Label>
+                                <Label className={darkLabelClass}>Título</Label>
                                 <Input value={activityForm.titulo || ""} onChange={e => setActivityForm({...activityForm, titulo: e.target.value})} className={darkInputClass} />
                               </div>
                               <div className="space-y-1">
-                                <Label className={darkLabelClass}>Tipo de QuestÃƒÂ£o</Label>
+                                <Label className={darkLabelClass}>Tipo de Questão</Label>
                                 <Select value={activityForm.tipo || "quiz"} onValueChange={(v) => setActivityForm({...activityForm, tipo: v})}>
                                     <SelectTrigger className={darkInputClass}><SelectValue/></SelectTrigger>
                                     <SelectContent className="bg-[#1E293B] border-slate-700 text-slate-200">
-                                        <SelectItem value="quiz">Quiz (MÃƒÂºltipla)</SelectItem>
+                                        <SelectItem value="quiz">Quiz (Múltipla)</SelectItem>
                                         <SelectItem value="fill_blank">Completar</SelectItem>
                                         <SelectItem value="true_false">Verdadeiro/Falso</SelectItem>
-                                        <SelectItem value="essay">DissertaÃƒÂ§ÃƒÂ£o</SelectItem>
+                                        <SelectItem value="essay">Dissertação</SelectItem>
                                     </SelectContent>
                                 </Select>
                               </div>
                               <div className="col-span-2 space-y-1">
-                                <Label className={darkLabelClass}>InstruÃƒÂ§ÃƒÂµes / DescriÃƒÂ§ÃƒÂ£o</Label>
-                                <Textarea value={activityForm.descricao || ""} onChange={e => setActivityForm({...activityForm, descricao: e.target.value})} className={`${darkInputClass} col-span-2`} placeholder="DescriÃƒÂ§ÃƒÂ£o" rows={2}/>
+                                <Label className={darkLabelClass}>Instruções / Descrição</Label>
+                                <Textarea value={activityForm.descricao || ""} onChange={e => setActivityForm({...activityForm, descricao: e.target.value})} className={`${darkInputClass} col-span-2`} placeholder="Descrição" rows={2}/>
                               </div>
                             </div>
                             <Button size="sm" onClick={handleSaveActivityWithSync} className="w-full bg-slate-700 hover:bg-slate-600 mb-4">Salvar Detalhes</Button>
                             
-                            {/* --- RENDERIZAÃƒâ€¡ÃƒÆ’O CONDICIONAL DA QUESTÃƒÆ’O --- */}
+                            {/* --- RENDERIZAÇÃO CONDICIONAL DA QUESTÃO --- */}
                             <div className="space-y-3 pt-4 border-t border-slate-700">
                               <h5 className="text-slate-300 font-semibold text-sm flex items-center gap-2">
-                                <BrainCircuit size={16}/> Configurar QuestÃƒÂ£o ({activityForm.tipo?.toUpperCase()})
+                                <BrainCircuit size={16}/> Configurar Questão ({activityForm.tipo?.toUpperCase()})
                               </h5>
                               
                               <div className="mt-2 space-y-3 bg-[#1E293B]/50 p-4 rounded border border-dashed border-slate-700">
@@ -1194,14 +1194,14 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                         <Label className={darkLabelClass}>Alternativas</Label>
                                         {questionOptions.map((opt, i) => (
                                         <div key={i} className="flex gap-2 items-center">
-                                            <Input value={opt || ""} onChange={e => props.updateQuestionOption(i, e.target.value)} className={`${darkInputClass} h-8 text-xs`} placeholder={`OpÃƒÂ§ÃƒÂ£o ${i+1}`}/>
+                                            <Input value={opt || ""} onChange={e => props.updateQuestionOption(i, e.target.value)} className={`${darkInputClass} h-8 text-xs`} placeholder={`Opção ${i+1}`}/>
                                             <button onClick={() => setQuestionForm({...questionForm, resposta_correta: opt})} className={`w-5 h-5 flex items-center justify-center rounded-full border ${questionForm.resposta_correta === opt && opt !== "" ? "bg-green-500 border-green-500 text-white" : "border-slate-600 text-transparent hover:border-slate-400"}`} title="Marcar Correta">
                                                 <CheckSquare size={12} fill="currentColor" />
                                             </button>
                                             <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-600 hover:text-red-400" onClick={() => props.removeQuestionOption(i)}><X size={12}/></Button>
                                         </div>
                                         ))}
-                                        <Button variant="ghost" size="sm" onClick={props.addQuestionOption} className="text-xs h-7 text-slate-400 hover:text-white w-full mt-1 border border-dashed border-slate-700">+ Adicionar OpÃƒÂ§ÃƒÂ£o</Button>
+                                        <Button variant="ghost" size="sm" onClick={props.addQuestionOption} className="text-xs h-7 text-slate-400 hover:text-white w-full mt-1 border border-dashed border-slate-700">+ Adicionar Opção</Button>
                                     </div>
                                 )}
 
@@ -1236,7 +1236,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                 {/* 4. ESSAY */}
                                 {activityForm.tipo === 'essay' && (
                                     <div className="p-3 bg-slate-800/50 rounded border border-slate-700 text-xs text-slate-400">
-                                        <p>Em atividades dissertativas, o aluno escreverÃƒÂ¡ um texto livre. VocÃƒÂª pode usar o campo abaixo para salvar um gabarito ou guia de correÃƒÂ§ÃƒÂ£o (opcional, nÃƒÂ£o visÃƒÂ­vel ao aluno).</p>
+                                        <p>Em atividades dissertativas, o aluno escreverá um texto livre. Você pode usar o campo abaixo para salvar um gabarito ou guia de correção (opcional, não visível ao aluno).</p>
                                         <Textarea 
                                             value={questionForm.resposta_correta || ""} 
                                             onChange={e => setQuestionForm({...questionForm, resposta_correta: e.target.value})} 
@@ -1247,7 +1247,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                 )}
 
                                 <div>
-                                  <Label className={darkLabelClass}>Nota da QuestÃ£o</Label>
+                                  <Label className={darkLabelClass}>Nota da Questão</Label>
                                   <Input
                                     type="number"
                                     min="0.1"
@@ -1302,7 +1302,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
 
                                 <div className="flex justify-end pt-2">
                                   <Button size="sm" onClick={handleSaveQuestionWithSync} className="bg-violet-600 h-8 text-xs px-4">
-                                    {questionForm.id ? "Atualizar QuestÃƒÂ£o" : "Salvar QuestÃƒÂ£o"}
+                                    {questionForm.id ? "Atualizar Questão" : "Salvar Questão"}
                                   </Button>
                                 </div>
                               </div>
@@ -1328,7 +1328,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                   const isSelected = cardForm.id === c.id;
                                   const linkedLabel = c.conteudo_id
                                     ? `Vinculado a ${contentTitleById.get(c.conteudo_id) ?? `Conteudo ${c.conteudo_id}`}`
-                                    : "ReutilizÃ¡vel do tÃ³pico";
+                                    : "Reutilizável do tópico";
                                   const originLabel =
                                     c.conteudo_origem_id && c.conteudo_origem_id !== c.conteudo_id
                                       ? `Origem: ${contentTitleById.get(c.conteudo_origem_id) ?? `Conteudo ${c.conteudo_origem_id}`}`
@@ -1346,9 +1346,9 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                     >
                                       <div className="flex items-start gap-2 justify-between">
                                         <div className="min-w-0">
-                                          <p className="font-semibold text-sm text-slate-200 truncate">{c.titulo || "(Sem tÃ­tulo)"}</p>
+                                          <p className="font-semibold text-sm text-slate-200 truncate">{c.titulo || "(Sem título)"}</p>
                                           <p className="text-xs text-slate-400 mt-0.5 line-clamp-2">
-                                            {c.descricao || "Sem descriÃ§Ã£o."}
+                                            {c.descricao || "Sem descrição."}
                                           </p>
                                         </div>
                                         <div className="flex gap-1 shrink-0">
@@ -1391,7 +1391,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                 })}
                                 {cards.length === 0 && (
                                   <div className="text-center text-xs text-slate-600 py-10">
-                                    Nenhum card para este tÃ³pico.
+                                    Nenhum card para este tópico.
                                   </div>
                                 )}
                               </div>
@@ -1421,7 +1421,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                 <Badge variant="outline" className="border-emerald-500/40 text-emerald-400 text-[10px] py-0">
                                   {selectedCard.conteudo_id
                                     ? `Vinculado a ${contentTitleById.get(selectedCard.conteudo_id) ?? `Conteudo ${selectedCard.conteudo_id}`}`
-                                    : "ReutilizÃ¡vel do tÃ³pico"}
+                                    : "Reutilizável do tópico"}
                                 </Badge>
                                 {selectedCard.conteudo_origem_id &&
                                   selectedCard.conteudo_origem_id !== selectedCard.conteudo_id && (
@@ -1436,7 +1436,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                             )}
 
                             <div className="space-y-2">
-                              <Label className="text-[11px] uppercase tracking-wider text-slate-400">ConteÃºdo vinculado</Label>
+                              <Label className="text-[11px] uppercase tracking-wider text-slate-400">Conteúdo vinculado</Label>
                               <select
                                 className={`${darkInputClass} h-9`}
                                 value={resolvedCardConteudoId}
@@ -1455,10 +1455,10 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                   }));
                                 }}
                               >
-                                <option value="">Selecione um conteÃºdo</option>
+                                <option value="">Selecione um conteúdo</option>
                                 {contents.map((content) => (
                                   <option key={content.id} value={content.id}>
-                                    {content.titulo || `ConteÃºdo ${content.id}`}
+                                    {content.titulo || `Conteúdo ${content.id}`}
                                   </option>
                                 ))}
                               </select>
@@ -1478,7 +1478,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                     }
 
                                     if (!resolvedCardConteudoId) {
-                                      toast.error("Selecione um conteÃºdo para vincular o card antes de reaproveitar.");
+                                      toast.error("Selecione um conteúdo para vincular o card antes de reaproveitar.");
                                       return;
                                     }
 
@@ -1486,7 +1486,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                       .filter((content) => content.id.toString() !== resolvedCardConteudoId)
                                       .map((content) => content.id.toString());
                                     if (availableOrigins.length === 0) {
-                                      toast.error("NÃ£o hÃ¡ outro conteÃºdo neste tÃ³pico para reaproveitamento.");
+                                      toast.error("Não há outro conteúdo neste tópico para reaproveitamento.");
                                       return;
                                     }
 
@@ -1500,7 +1500,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                     }));
                                   }}
                                 />
-                                Reaproveitar card de outro conteÃºdo
+                                Reaproveitar card de outro conteúdo
                               </label>
                               {isCardReuseEnabled && (
                                 <select
@@ -1510,12 +1510,12 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                     setCardForm((prev) => ({ ...prev, conteudo_origem_id: e.target.value }))
                                   }
                                 >
-                                  <option value="">Selecione o conteÃºdo de origem</option>
+                                  <option value="">Selecione o conteúdo de origem</option>
                                   {contents
                                     .filter((content) => content.id.toString() !== resolvedCardConteudoId)
                                     .map((content) => (
                                       <option key={content.id} value={content.id}>
-                                        {content.titulo || `ConteÃºdo ${content.id}`}
+                                        {content.titulo || `Conteúdo ${content.id}`}
                                       </option>
                                     ))}
                                 </select>
@@ -1524,7 +1524,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
 
                             <Input
                               className={darkInputClass}
-                              placeholder="Frente (TÃ­tulo)"
+                              placeholder="Frente (Título)"
                               value={cardForm.titulo || ""}
                               onChange={(e) => setCardForm({ ...cardForm, titulo: e.target.value })}
                             />
@@ -1580,7 +1580,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
       </DialogContent>
     </Dialog>
 
-    {/* Ã¢â€â‚¬Ã¢â€â‚¬ AI Suggestions Dialog Ã¢â€â‚¬Ã¢â€â‚¬ */}
+    {/* -- AI Suggestions Dialog -- */}
     <Dialog open={aiDialogOpen} onOpenChange={setAiDialogOpen}>
       <DialogContent className="max-w-2xl w-full bg-[#0F172A] border-slate-800 text-slate-200 max-h-[90vh] flex flex-col overflow-hidden">
         <DialogTitle className="text-lg font-bold text-white flex items-center gap-2">
@@ -1588,7 +1588,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
           Cards e Atividades Sugeridas
         </DialogTitle>
         <DialogDescription className="text-slate-400 text-sm">
-          SugestÃƒÂµes para o conteÃƒÂºdo selecionado. Selecione em lote o que deseja criar.
+          Sugestões para o conteúdo selecionado. Selecione em lote o que deseja criar.
         </DialogDescription>
 
         <ScrollArea className="flex-1 pr-2 overflow-y-auto">
