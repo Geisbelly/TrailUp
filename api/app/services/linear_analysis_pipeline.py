@@ -41,6 +41,85 @@ def _count_switches(entries: list[dict[str, Any]]) -> int:
     return max(0, total_visits - 1)
 
 
+# Heuristica de leitura (WPM). Faixas inspiradas em leitura adulta tipica
+# (~200-300 ppm). Abaixo do piso => leitura lenta; acima do teto => skimming.
+_WPM_SLOW_THRESHOLD = 120.0
+_WPM_SKIMMING_THRESHOLD = 400.0
+# Quando o cliente nao envia contagem de palavras, estimamos o tamanho do
+# material a partir do scroll vertical percorrido (px por palavra aproximado).
+_PX_PER_WORD = 6.0
+
+
+def _material_word_count(entry: dict[str, Any]) -> float:
+    """Estima o numero de palavras de um material da telemetria.
+
+    Prioriza contagens explicitas enviadas pelo cliente; se ausentes, estima
+    a partir da profundidade de scroll (proxy aditivo, sem novos campos
+    obrigatorios no contrato de telemetria).
+    """
+    for field in ("word_count", "words", "material_words", "palavras"):
+        valor = _safe_float(entry.get(field), -1.0)
+        if valor > 0:
+            return valor
+    char_count = _safe_float(entry.get("char_count"), 0.0)
+    if char_count > 0:
+        return char_count / 5.0  # ~5 caracteres por palavra
+    depth_px = max(_safe_float(entry.get("max_depth_px")), _safe_float(entry.get("scroll_distance_px")))
+    if depth_px > 0:
+        return depth_px / _PX_PER_WORD
+    return 0.0
+
+
+def _summarize_reading_pace(materials: list[dict[str, Any]]) -> dict[str, Any]:
+    """Calcula palavras-por-minuto por material e sinaliza ritmo de leitura."""
+    per_material: list[dict[str, Any]] = []
+    wpm_values: list[float] = []
+    for entry in materials:
+        dwell_sec = _safe_float(entry.get("dwell_sec"))
+        if dwell_sec <= 0:
+            continue
+        words = _material_word_count(entry)
+        if words <= 0:
+            continue
+        wpm = round(words / (dwell_sec / 60.0), 2)
+        flag = "ritmo_adequado"
+        if wpm < _WPM_SLOW_THRESHOLD:
+            flag = "leitura_lenta"
+        elif wpm > _WPM_SKIMMING_THRESHOLD:
+            flag = "skimming"
+        wpm_values.append(wpm)
+        per_material.append(
+            {
+                "material_key": entry.get("material_key") or entry.get("key"),
+                "conteudo_id": entry.get("conteudo_id"),
+                "dwell_sec": round(dwell_sec, 2),
+                "palavras_estimadas": round(words, 2),
+                "wpm": wpm,
+                "flag": flag,
+            }
+        )
+
+    average_wpm = round(sum(wpm_values) / len(wpm_values), 2) if wpm_values else 0.0
+    leitura_lenta = sum(1 for item in per_material if item["flag"] == "leitura_lenta")
+    skimming = sum(1 for item in per_material if item["flag"] == "skimming")
+    ritmo = "indeterminado"
+    if per_material:
+        if skimming > leitura_lenta and skimming > 0:
+            ritmo = "skimming"
+        elif leitura_lenta > skimming and leitura_lenta > 0:
+            ritmo = "leitura_lenta"
+        else:
+            ritmo = "ritmo_adequado"
+
+    return {
+        "reading_average_wpm": average_wpm,
+        "reading_pace_flag": ritmo,
+        "reading_slow_count": leitura_lenta,
+        "reading_skimming_count": skimming,
+        "reading_material_pace": per_material,
+    }
+
+
 def _summarize_time_metrics(payload: dict[str, Any] | None) -> dict[str, Any]:
     time_metrics = (payload or {}).get("time_metrics") or {}
     general = time_metrics.get("general") or {}
@@ -292,6 +371,8 @@ class IsolationForestReadingAnalyzer:
     ) -> ReadingStageResult:
         payload = telemetry_payload or {}
         time_summary = _summarize_time_metrics(payload)
+        materials = _safe_list((payload.get("time_metrics") or {}).get("materials"))
+        reading_pace = _summarize_reading_pace(materials)
         dwell = max(_safe_float(payload.get("screen_dwell_sec")), 1.0)
         active = max(_safe_float(payload.get("active_sec")), 0.0)
         scroll = max(_safe_float(payload.get("scroll_distance_px")), 0.0)
@@ -334,6 +415,7 @@ class IsolationForestReadingAnalyzer:
                 "material_active_sec": round(_safe_float(time_summary.get("material_active_sec")), 2),
                 "material_focus_ratio": round(material_focus_ratio, 2),
                 "switch_pressure": switch_pressure,
+                **reading_pace,
             },
         )
 

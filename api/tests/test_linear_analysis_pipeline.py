@@ -2,7 +2,42 @@ import pytest
 
 from app.core.settings import Settings
 from app.schemas.common import Evento
-from app.services.linear_analysis_pipeline import build_linear_analysis_orchestrator
+from app.services.linear_analysis_pipeline import (
+    _summarize_reading_pace,
+    build_linear_analysis_orchestrator,
+)
+
+
+def test_summarize_reading_pace_flags_slow_and_skimming() -> None:
+    materials = [
+        # 100 palavras em 120s => 50 wpm => leitura_lenta
+        {"material_key": "m1", "conteudo_id": 1, "dwell_sec": 120, "word_count": 100},
+        # 1000 palavras em 60s => 1000 wpm => skimming
+        {"material_key": "m2", "conteudo_id": 2, "dwell_sec": 60, "word_count": 1000},
+    ]
+
+    pace = _summarize_reading_pace(materials)
+
+    flags = {item["material_key"]: item["flag"] for item in pace["reading_material_pace"]}
+    assert flags["m1"] == "leitura_lenta"
+    assert flags["m2"] == "skimming"
+    assert pace["reading_slow_count"] == 1
+    assert pace["reading_skimming_count"] == 1
+    assert pace["reading_average_wpm"] > 0
+
+
+def test_summarize_reading_pace_estimates_from_scroll_when_no_word_count() -> None:
+    # Sem word_count: estima palavras pelo max_depth_px (px/palavra).
+    materials = [{"material_key": "m1", "dwell_sec": 60, "max_depth_px": 1200}]
+    pace = _summarize_reading_pace(materials)
+    assert pace["reading_material_pace"]
+    assert pace["reading_material_pace"][0]["palavras_estimadas"] > 0
+
+
+def test_summarize_reading_pace_empty() -> None:
+    pace = _summarize_reading_pace([])
+    assert pace["reading_pace_flag"] == "indeterminado"
+    assert pace["reading_material_pace"] == []
 
 
 class DummyGraph:

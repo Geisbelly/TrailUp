@@ -21,6 +21,8 @@ from app.repositories.materiais import MateriaisRepository
 from app.repositories.personalizacao_jobs import PersonalizacaoJobsRepository
 from app.repositories.personalizacao_progresso import PersonalizacaoProgressoRepository
 from app.schemas.personalizacao import (
+    ClassePerfilDistribuicaoItem,
+    ClassePerfilSummaryResponse,
     DesignTokens,
     DesignTokensCores,
     FontePersonalizacaoResponse,
@@ -44,6 +46,7 @@ from app.schemas.personalizacao import (
     PersonalizarPayload,
 )
 from app.services.auth import UserContext
+from app.services.group_analysis import GroupAnalysisService
 from app.services.llm import JsonLLMService, load_prompt
 from app.services.media_agents import disparar_brainhex_async
 from app.services.personalizacao import (
@@ -1385,6 +1388,53 @@ async def listar_personalizacoes_por_perfil(
         topico_id=topico_id,
         total_perfis_com_material=total_com_material,
         perfis=perfis,
+    )
+
+
+@router.get("/grupo/{classe_id}", response_model=ClassePerfilSummaryResponse)
+async def obter_adequacao_grupo(
+    classe_id: int,
+    user: UserContext = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> ClassePerfilSummaryResponse:
+    if not user.is_professor:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Apenas professores podem consultar a adequacao de grupo.",
+        )
+    if not user.professor_liberado:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Professor sem liberacao de acesso.",
+        )
+
+    access_repo = AccessRepository(session)
+    owns_class = await access_repo.professor_owns_classe(user.professor_id or user.user_id, classe_id)
+    if not owns_class:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Professor sem permissao para esta classe.",
+        )
+
+    service = GroupAnalysisService(session)
+    summary = await service.upsert_summary(classe_id)
+    try:
+        await session.commit()
+    except Exception as exc:  # pragma: no cover
+        await session.rollback()
+        logger.warning("Falha ao persistir classe_perfil_summary da classe %s: %s", classe_id, exc)
+
+    distribuicao = {
+        chave: ClassePerfilDistribuicaoItem(**item)
+        for chave, item in (summary.get("distribuicao") or {}).items()
+    }
+    return ClassePerfilSummaryResponse(
+        classe_id=classe_id,
+        distribuicao=distribuicao,
+        perfil_predominante=summary.get("perfil_predominante"),
+        total_alunos=summary.get("total_alunos", 0),
+        media_desempenho=summary.get("media_desempenho", {}),
+        atualizado_em=summary.get("atualizado_em"),
     )
 
 

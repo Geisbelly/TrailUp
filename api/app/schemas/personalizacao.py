@@ -318,3 +318,18 @@ class FontesPersonalizacaoUploadResponse(BaseModel):
     conteudo_id: int | None = None
     total: int
     itens: list[FontePersonalizacaoResponse] = Field(default_factory=list)
+
+
+class ClassePerfilDistribuicaoItem(BaseModel):
+    perfil: str
+    quantidade: int = 0
+    percentual: float = 0.0
+
+
+class ClassePerfilSummaryResponse(BaseModel):
+    classe_id: int
+    distribuicao: dict[str, ClassePerfilDistribuicaoItem] = Field(default_factory=dict)
+    perfil_predominante: str | None = None
+    total_alunos: int = 0
+    media_desempenho: dict[str, float] = Field(default_factory=dict)
+    atualizado_em: datetime | None = None

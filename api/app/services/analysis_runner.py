@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repositories.evento import EventoRepository
 from app.repositories.ia_decision_logs import IADecisionLogRepository
+from app.repositories.mental_state import MentalStateHistoryRepository
 from app.schemas.api import AnalisarPayload, AnalisarResponse
 from app.schemas.common import Evento
 from app.services.linear_analysis_pipeline import build_linear_analysis_orchestrator
@@ -34,6 +35,19 @@ def build_analysis_graph_config(
             "ciclo_id": cycle_id,
         },
     }
+
+
+def extract_mental_state(result: dict) -> dict | None:
+    """Extrai o snapshot de mental-state do aiPatch produzido pelo pipeline/agentes."""
+    if not isinstance(result, dict):
+        return None
+    ai_patch = result.get("ai_patch") or result.get("aiPatch")
+    if not isinstance(ai_patch, dict):
+        return None
+    mental_state = ai_patch.get("mentalState") or ai_patch.get("mental_state")
+    if not isinstance(mental_state, dict) or not mental_state.get("kind"):
+        return None
+    return mental_state
 
 
 def build_analysis_response(result: dict) -> AnalisarResponse:
@@ -120,6 +134,21 @@ async def run_analysis(
         eventos_novos=eventos_novos,
     )
     response = build_analysis_response(result)
+    mental_state = extract_mental_state(result)
+    if mental_state is not None:
+        try:
+            await MentalStateHistoryRepository(session).registrar(
+                aluno_id=aluno_id,
+                ciclo_id=response.ciclo_id or state.get("ciclo_id"),
+                kind=str(mental_state.get("kind")),
+                intensity=mental_state.get("intensity"),
+                confidence=mental_state.get("confidence"),
+                reason=mental_state.get("reason"),
+            )
+            await session.commit()
+        except Exception as exc:  # pragma: no cover
+            await session.rollback()
+            logger.warning("Falha ao persistir aluno_mental_state_history: %s", exc)
     try:
         await IADecisionLogRepository(session).log(
             aluno_id=aluno_id,
