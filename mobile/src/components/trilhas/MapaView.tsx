@@ -161,6 +161,12 @@ ${PIXI_CDNS}
   });
   document.getElementById("app").appendChild(app.view);
 
+  // PIXI v7: sem um stage interativo com hitArea, o EventSystem nao propaga
+  // pointertap aos nos (containers filhos). Isto e o que faz o toque nos nos
+  // do grafo funcionar de forma consistente.
+  app.stage.eventMode = "static";
+  app.stage.hitArea = app.screen;
+
   var viewport = new pixi_viewport.Viewport({
     screenWidth: window.innerWidth,
     screenHeight: window.innerHeight,

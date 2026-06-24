@@ -1435,11 +1435,18 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       if (!topico) throw new Error('Tópico não encontrado');
 
       await topico.marcarConcluido(usuario.id);
+      // Reflete a conclusao no estado local ANTES do sync (igual marcarConteudoVisto):
+      // sem isto, isTopicoConcluido(topico) continua false e buildGraphFromTopicos
+      // nao desbloqueia os proximos nos ate o realtime chegar (~2s depois).
+      topico.status = 'concluido';
+      topico.percentual_concluido = 100;
       syncClasseLocally(cloneClasse(classeAtual, { topicos: [...classeAtual.topicos] }));
       await atualizarProgressoClasse();
-      
+
       // Desbloqueia próximos tópicos
       const desbloqueados = await topico.desbloquearProximos(usuario.id, classeAtual.topicos);
+      // Re-sincroniza o grafo com os proximos ja desbloqueados no estado local.
+      syncClasseLocally(cloneClasse(classeAtual, { topicos: [...classeAtual.topicos] }));
       
       console.log('[TrilhaContext] Tópicos desbloqueados:', desbloqueados.map(t => t.nome));
       

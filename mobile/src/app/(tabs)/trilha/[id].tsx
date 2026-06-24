@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useIsFocused } from "@react-navigation/native";
 import React, {
   useCallback,
   useEffect,
@@ -579,8 +579,12 @@ export default function TrilhaConteudoScreen() {
     if (atualBlock?.kind === "atividade" && currentTimedOutActivityId != null) return false;
     return true;
   }, [atualBlock?.kind, currentOverlayTimerFeature, currentTimedOutActivityId, isCurrentStudyBlockTrackable]);
+  const isScreenFocused = useIsFocused();
   const currentStudyBlockSignature = useMemo(() => {
-    if (!isCurrentStudyBlockTrackable || !topicoId || !atualBlock) return null;
+    // Ao perder o foco (sair do modulo), zera a assinatura. Isso faz o
+    // setInterval de tempo ser limpo e impede que o ref seja recriado no
+    // proximo render, parando o registro de tempo enquanto o aluno esta fora.
+    if (!isScreenFocused || !isCurrentStudyBlockTrackable || !topicoId || !atualBlock) return null;
     if (atualBlock.kind === "conteudo") {
       const isPersonalizedLocal = Boolean(
         (atualBlock.conteudo as any)?.isPersonalizedLocal
@@ -637,7 +641,7 @@ export default function TrilhaConteudoScreen() {
       itemTitle,
       itemKind: "activity" as const,
     };
-  }, [atualBlock, currentContentItemKey, isCurrentStudyBlockTrackable, topicoId]);
+  }, [atualBlock, currentContentItemKey, isCurrentStudyBlockTrackable, isScreenFocused, topicoId]);
   const conteudoComFocoEmArquivo = useMemo(
     () =>
       conteudoBlocks.some((block) =>
@@ -1071,7 +1075,9 @@ export default function TrilhaConteudoScreen() {
           : scoreAwarded != null
           ? scoreAwarded
           : acertou
-          ? baseValor
+          ? // proporcional ao acerto: 60% de acerto => 60% dos pontos (antes
+            // dava sempre a pontuacao maxima, inflando XP em acertos parciais)
+            Math.max(1, Math.round(baseValor * (Math.max(0, Math.min(100, percentual)) / 100)))
           : Math.max(1, Math.round(baseValor * 0.1));
         const valorEvento = Math.max(
           0,
