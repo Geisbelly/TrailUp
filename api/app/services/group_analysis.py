@@ -111,50 +111,72 @@ class GroupAnalysisService:
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+        self._classe_aluno_uses_camel_case: bool | None = None
 
-    async def _fetch_rows(self, classe_id: int) -> list[dict[str, Any]]:
-        """Busca, por aluno da classe, o perfil dominante e o desempenho agregado."""
+    async def _resolve_classe_aluno_casing(self) -> bool:
+        """classe_aluno pode ter colunas em camelCase (com aspas) ou snake_case,
+        dependendo do banco. Detecta uma vez, como ContextRepository faz."""
+        if self._classe_aluno_uses_camel_case is not None:
+            return self._classe_aluno_uses_camel_case
         result = await self.session.execute(
             text(
                 """
-                WITH roster AS (
-                  SELECT DISTINCT ca.aluno_id
-                  FROM classe_aluno ca
-                  WHERE ca.classe_id = :classe_id
-                ),
-                perfil_dominante AS (
-                  SELECT DISTINCT ON (ap.aluno_id)
-                    ap.aluno_id,
-                    p.nome AS perfil,
-                    ap.afinidade
-                  FROM aluno_perfil ap
-                  JOIN perfil p ON p.id = ap.perfil_id
-                  JOIN roster r ON r.aluno_id = ap.aluno_id
-                  ORDER BY ap.aluno_id, ap.afinidade DESC, p.nome ASC
-                ),
-                desempenho AS (
-                  SELECT
-                    ca.aluno_id,
-                    AVG(COALESCE(ca.acertospercentual, 0)) AS media_acertos,
-                    AVG(COALESCE(ca.porcentagemconcluida, 0)) AS percentual_concluido,
-                    AVG(COALESCE(ca.notamedia, 0)) AS nota_media
-                  FROM classe_aluno ca
-                  WHERE ca.classe_id = :classe_id
-                  GROUP BY ca.aluno_id
-                )
-                SELECT
-                  r.aluno_id,
-                  pd.perfil,
-                  d.media_acertos,
-                  d.percentual_concluido,
-                  d.nota_media
-                FROM roster r
-                LEFT JOIN perfil_dominante pd ON pd.aluno_id = r.aluno_id
-                LEFT JOIN desempenho d ON d.aluno_id = r.aluno_id
+                SELECT EXISTS (
+                  SELECT 1 FROM information_schema.columns
+                  WHERE table_schema = 'public'
+                    AND table_name = 'classe_aluno'
+                    AND column_name = 'notaMedia'
+                ) AS uses_camel_case
                 """
-            ),
-            {"classe_id": classe_id},
+            )
         )
+        self._classe_aluno_uses_camel_case = bool(result.scalar())
+        return self._classe_aluno_uses_camel_case
+
+    async def _fetch_rows(self, classe_id: int) -> list[dict[str, Any]]:
+        """Busca, por aluno da classe, o perfil dominante e o desempenho agregado."""
+        camel = await self._resolve_classe_aluno_casing()
+        # Identificadores fixos (nao ha input do usuario) montados conforme o casing.
+        col_acertos = '"acertosPercentual"' if camel else "acertospercentual"
+        col_concl = '"porcentagemConcluida"' if camel else "porcentagemconcluida"
+        col_nota = '"notaMedia"' if camel else "notamedia"
+        query = f"""
+            WITH roster AS (
+              SELECT DISTINCT ca.aluno_id
+              FROM classe_aluno ca
+              WHERE ca.classe_id = :classe_id
+            ),
+            perfil_dominante AS (
+              SELECT DISTINCT ON (ap.aluno_id)
+                ap.aluno_id,
+                p.nome AS perfil,
+                ap.afinidade
+              FROM aluno_perfil ap
+              JOIN perfil p ON p.id = ap.perfil_id
+              JOIN roster r ON r.aluno_id = ap.aluno_id
+              ORDER BY ap.aluno_id, ap.afinidade DESC, p.nome ASC
+            ),
+            desempenho AS (
+              SELECT
+                ca.aluno_id,
+                AVG(COALESCE(ca.{col_acertos}, 0)) AS media_acertos,
+                AVG(COALESCE(ca.{col_concl}, 0)) AS percentual_concluido,
+                AVG(COALESCE(ca.{col_nota}, 0)) AS nota_media
+              FROM classe_aluno ca
+              WHERE ca.classe_id = :classe_id
+              GROUP BY ca.aluno_id
+            )
+            SELECT
+              r.aluno_id,
+              pd.perfil,
+              d.media_acertos,
+              d.percentual_concluido,
+              d.nota_media
+            FROM roster r
+            LEFT JOIN perfil_dominante pd ON pd.aluno_id = r.aluno_id
+            LEFT JOIN desempenho d ON d.aluno_id = r.aluno_id
+        """
+        result = await self.session.execute(text(query), {"classe_id": classe_id})
         return [dict(row) for row in result.mappings()]
 
     async def compute_summary(self, classe_id: int) -> dict[str, Any]:

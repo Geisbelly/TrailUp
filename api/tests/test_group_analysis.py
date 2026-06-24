@@ -18,11 +18,15 @@ class MappingRows:
 
 
 class MappingResult:
-    def __init__(self, rows):
+    def __init__(self, rows, scalar=None):
         self.rows = rows
+        self._scalar = scalar
 
     def mappings(self):
         return MappingRows(self.rows)
+
+    def scalar(self):
+        return self._scalar
 
 
 class RecordingSession:
@@ -77,6 +81,9 @@ def test_compute_distribuicao_empty_class() -> None:
 async def test_group_analysis_service_upsert_persists_summary() -> None:
     session = RecordingSession(
         [
+            # 1) deteccao de casing de classe_aluno (True = camelCase com aspas).
+            MappingResult([], scalar=True),
+            # 2) SELECT de rows (roster + perfil dominante + desempenho).
             MappingResult(
                 [
                     {"aluno_id": "a1", "perfil": "Conqueror", "media_acertos": 75, "percentual_concluido": 60, "nota_media": 7.5},
@@ -84,6 +91,7 @@ async def test_group_analysis_service_upsert_persists_summary() -> None:
                     {"aluno_id": "a3", "perfil": "Mastermind", "media_acertos": 80, "percentual_concluido": 70, "nota_media": 8.0},
                 ]
             ),
+            # 3) INSERT ... ON CONFLICT.
             MappingResult([{"atualizado_em": "2026-06-24T00:00:00Z"}]),
         ]
     )
@@ -95,9 +103,9 @@ async def test_group_analysis_service_upsert_persists_summary() -> None:
     assert summary["total_alunos"] == 3
     assert summary["perfil_predominante"] == "Conqueror"
     assert summary["atualizado_em"] == "2026-06-24T00:00:00Z"
-    # Duas chamadas: SELECT de rows + INSERT ... ON CONFLICT.
-    assert len(session.calls) == 2
-    insert_sql, insert_params = session.calls[1]
+    # Tres chamadas: deteccao de casing + SELECT de rows + INSERT ... ON CONFLICT.
+    assert len(session.calls) == 3
+    insert_sql, insert_params = session.calls[2]
     assert "INSERT INTO classe_perfil_summary" in insert_sql
     assert insert_params["classe_id"] == 7
     assert insert_params["total_alunos"] == 3
