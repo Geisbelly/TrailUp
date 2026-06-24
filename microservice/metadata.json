@@ -1,0 +1,12 @@
+{
+  "name": "TrailUp BrainHex Converter",
+  "description": "Magical media converter personalized by BrainHex player profiles. Convert files to thematic markdown, audio scripts, and playful slides.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "AI Content Generation",
+    "Multimedia Conversion",
+    "Gamified Learning"
+  ]
+}

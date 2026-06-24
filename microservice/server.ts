@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
+import path from "path";
 import { randomUUID } from "crypto";
 import {
   processMediaWithGemini,
@@ -373,6 +374,11 @@ export interface AppOptions {
   jsonLimit?:            string;
   corsOrigin?:           string;
   allowPrivateFonteUrls?: boolean;
+  /**
+   * Quando true, o 404 catch-all não é registrado aqui — o middleware da SPA
+   * (Vite em dev / dist em prod) é montado depois, em startServer (async).
+   */
+  enableSpa?:            boolean;
 }
 
 export function buildApp(opts: AppOptions = {}): express.Application {
@@ -383,6 +389,7 @@ export function buildApp(opts: AppOptions = {}): express.Application {
     jsonLimit           = "50mb",
     corsOrigin,
     allowPrivateFonteUrls = false,
+    enableSpa           = false,
   } = opts;
 
   const corsOpts = corsOrigin
@@ -591,9 +598,11 @@ export function buildApp(opts: AppOptions = {}): express.Application {
     });
   });
 
-  // 404 default para rotas não-/api/* — este é um microsserviço puramente
-  // backend (frontend foi removido, ver commit de cleanup).
-  app.use((_req, res) => res.status(404).json({ error: "rota não encontrada" }));
+  // 404 default para rotas não-/api/* — registrado só quando a SPA não está
+  // montada. Com enableSpa, o catch-all é o middleware da SPA (ver startServer).
+  if (!enableSpa) {
+    app.use((_req, res) => res.status(404).json({ error: "rota não encontrada" }));
+  }
 
   return app;
 }
@@ -604,6 +613,10 @@ async function startServer() {
   const PORT              = Number(process.env.PORT) || 3000;
   const API_SHARED_SECRET = process.env.API_SHARED_SECRET;
 
+  // SPA de demonstração (BrainHex) embutida no mesmo processo. Liga por padrão;
+  // desligue com API_ONLY=true para boot rápido só com endpoints /api/*.
+  const ENABLE_SPA = process.env.API_ONLY !== "true";
+
   const app = buildApp({
     apiSharedSecret:       API_SHARED_SECRET,
     rateLimitWindowMs:     Number(process.env.RATE_WINDOW_MS) || 60_000,
@@ -611,7 +624,26 @@ async function startServer() {
     jsonLimit:             process.env.JSON_LIMIT ?? "50mb",
     corsOrigin:            process.env.CORS_ORIGIN,
     allowPrivateFonteUrls: ALLOW_PRIVATE_FONTE_URLS,
+    enableSpa:             ENABLE_SPA,
   });
+
+  // ── SPA (Vite em dev / dist estático em prod) ──────────────────────────────
+  if (ENABLE_SPA) {
+    if (process.env.NODE_ENV !== "production") {
+      const viteModule = await import("vite");
+      const vite = await viteModule.createServer({
+        server: { middlewareMode: true },
+        appType: "spa",
+      });
+      app.use(vite.middlewares);
+      log.info("SPA de demo montada (Vite middleware) — desative com API_ONLY=true");
+    } else {
+      const distPath = path.join(process.cwd(), "dist");
+      app.use(express.static(distPath));
+      app.get("*", (_req, res) => res.sendFile(path.join(distPath, "index.html")));
+      log.info("SPA de demo servida de dist/", { distPath });
+    }
+  }
 
   if (!API_SHARED_SECRET) {
     if (process.env.NODE_ENV === "production") {
