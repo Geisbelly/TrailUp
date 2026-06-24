@@ -1,0 +1,56 @@
+# Ambiente de desenvolvimento do monorepo TrailUp.
+# Sobe api, microservice e frontend com hot-reload.
+# O mobile (Expo) fica fora do Docker — rode-o nativamente (npm run start:mobile).
+#
+# Pré-requisitos: crie os .env de cada serviço a partir do .env.example
+# (veja docs/MANUAL.md, seção Docker). O banco é externo (Supabase/Postgres),
+# configurado via .env.
+#
+# Uso:
+#   docker compose up --build        # sobe tudo
+#   docker compose up api            # sobe apenas um serviço
+#   docker compose down              # encerra
+
+services:
+  api:
+    build: ./api
+    container_name: trailup-api
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./api/.env
+    environment:
+      # comunicação server-side dentro da rede do compose
+      - BRAINHEX_API_URL=http://microservice:3000
+    volumes:
+      - ./api:/app          # hot-reload do código
+    depends_on:
+      - microservice
+    restart: unless-stopped
+
+  microservice:
+    build: ./microservice
+    container_name: trailup-microservice
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./microservice/.env
+    volumes:
+      - ./microservice:/app
+      - /app/node_modules   # preserva as deps instaladas na imagem
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: trailup-frontend
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./frontend/.env
+    environment:
+      # hot-reload confiável em volumes montados (Windows/WSL/macOS)
+      - CHOKIDAR_USEPOLLING=true
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    restart: unless-stopped

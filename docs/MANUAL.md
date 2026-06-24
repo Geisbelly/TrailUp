@@ -23,12 +23,13 @@ documentação e scripts de orquestração).
 
 ```
 TrailUp/
-├── api/  microservice/  frontend/  mobile/   # serviços
+├── api/  microservice/  frontend/  mobile/   # serviços (cada um com Dockerfile)
 ├── docs/                                      # documentação central
 │   ├── MANUAL.md          (este arquivo)
 │   ├── tcc/  ecossistema/ (docs transversais)
 │   └── api/  frontend/ …  (docs por serviço)
 ├── scripts/               # dev.ps1 / dev.sh
+├── docker-compose.yml     # ambiente de desenvolvimento em containers
 ├── .gitignore  .gitattributes
 ├── package.json           # scripts de conveniência
 └── README.md
@@ -140,6 +141,48 @@ A API roda direto pelo uvicorn (com o `.venv` ativado, dentro de `api/`):
 ```bash
 uvicorn app.main:app --reload --port 8000
 ```
+
+### Com Docker (desenvolvimento)
+
+Há um `docker-compose.yml` na raiz que sobe **api**, **microservice** e
+**frontend** em containers, com hot-reload (o código é montado por volume). O
+**mobile** (Expo) fica fora do Docker — rode-o nativamente com
+`npm run start:mobile`. O banco é **externo** (Supabase/Postgres), configurado
+via `.env`.
+
+Pré-requisitos:
+
+1. [Docker](https://docs.docker.com/get-docker/) + Docker Compose instalados.
+2. Os arquivos `.env` de cada serviço criados (seção 4) — o compose os carrega
+   via `env_file`.
+
+```bash
+npm run docker:up        # docker compose up --build
+npm run docker:logs      # acompanha os logs
+npm run docker:down      # encerra e remove os containers
+```
+
+Ou diretamente:
+
+```bash
+docker compose up --build        # sobe os três serviços
+docker compose up api            # sobe apenas um serviço (e dependências)
+docker compose down              # encerra
+```
+
+| Serviço        | Container               | URL (host)              |
+| -------------- | ----------------------- | ----------------------- |
+| `api`          | `trailup-api`           | http://localhost:8000   |
+| `microservice` | `trailup-microservice`  | http://localhost:3000   |
+| `frontend`     | `trailup-frontend`      | http://localhost:8080   |
+
+> **Comunicação entre serviços:** dentro da rede do compose, os containers se
+> enxergam pelo nome (`api`, `microservice`, `frontend`). Por isso a api usa
+> `BRAINHEX_API_URL=http://microservice:3000` (injetado pelo compose). Já o
+> `frontend` roda no **navegador do host**, então mantém
+> `VITE_APITRAIUP_URL=http://localhost:8000`.
+>
+> A imagem da api instala **ffmpeg** (necessário para `moviepy`/`gTTS`).
 
 ---
 

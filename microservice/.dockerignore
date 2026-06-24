@@ -1,0 +1,10 @@
+node_modules/
+build/
+dist/
+coverage/
+.history/
+.claude/
+.git/
+.env
+*.log
+docs/
