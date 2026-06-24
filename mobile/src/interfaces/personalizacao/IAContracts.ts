@@ -168,6 +168,7 @@ export type IATriggerSignalType =
   | "activity_complete"
   | "timer_warning"
   | "timer_timeout"
+  | "encounter_timeout"
   | "idle_detected";
 
 export type IATriggerSignal = {
@@ -764,6 +765,7 @@ function normalizeTriggerSignal(value: unknown): IATriggerSignalType | null {
     "activity_complete",
     "timer_warning",
     "timer_timeout",
+    "encounter_timeout",
     "idle_detected",
   ];
 

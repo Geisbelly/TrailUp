@@ -6,7 +6,7 @@ import {
 } from "@/interfaces/personalizacao/IAContracts";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 type BattlePanelScope = Extract<IAFeatureSelectorScope, { scope: "topic" | "item" }>;
@@ -130,7 +130,7 @@ function ProgressBar({
 }
 
 export function IABattlePanel({ scope, surface = "inline" }: Props) {
-  const { getBattleState, resolveFeature, setUserFeaturePreference } = useIA();
+  const { getBattleState, resolveFeature, setUserFeaturePreference, emitSignal } = useIA();
   const resolvedBattle = resolveFeature(scope, "battle_mode");
   const battleState = getBattleState(scope);
   const previewState = useMemo(() => {
@@ -165,6 +165,9 @@ export function IABattlePanel({ scope, surface = "inline" }: Props) {
   );
   const palette = mergePalette(visual?.palette);
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+  // Guarda o encounterEndsAt para o qual ja disparamos o contra-ataque,
+  // evitando emitir o sinal repetidamente enquanto o tempo fica em 0.
+  const counterAttackFiredRef = useRef<number | null>(null);
 
   useEffect(() => {
     const encounterEndsAt = battleState?.encounterEndsAt ?? null;
@@ -174,13 +177,27 @@ export function IABattlePanel({ scope, surface = "inline" }: Props) {
     }
 
     const updateTime = () => {
-      setSecondsLeft(Math.max(0, Math.ceil((encounterEndsAt - Date.now()) / 1000)));
+      const restante = Math.max(0, Math.ceil((encounterEndsAt - Date.now()) / 1000));
+      setSecondsLeft(restante);
+      if (
+        restante <= 0 &&
+        !battleState?.defeated &&
+        counterAttackFiredRef.current !== encounterEndsAt
+      ) {
+        // Tempo do encontro esgotou: o boss revida (recupera vida + defesas).
+        counterAttackFiredRef.current = encounterEndsAt;
+        emitSignal({
+          type: "encounter_timeout",
+          topicoId: scope.scope === "topic" ? scope.topicoId : null,
+          itemKey: scope.scope === "item" ? scope.itemKey : null,
+        });
+      }
     };
 
     updateTime();
     const timer = setInterval(updateTime, 1000);
     return () => clearInterval(timer);
-  }, [battleState?.encounterEndsAt]);
+  }, [battleState?.encounterEndsAt, battleState?.defeated, emitSignal, scope]);
 
   if (!resolvedBattle.enabled || !resolvedBattle.battle) return null;
 
