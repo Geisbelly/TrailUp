@@ -208,6 +208,22 @@ API (com o `.venv` ativado):
 cd api && pytest
 ```
 
+### Integração contínua (CI)
+
+A cada `push` na `main` e em cada `pull request`, o GitHub Actions roda os
+checks automaticamente ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)):
+
+| Serviço        | O que o CI executa                    |
+| -------------- | ------------------------------------- |
+| `api`          | `pytest` (com ffmpeg instalado)       |
+| `microservice` | `npm run lint` (tsc) + `npm test`     |
+| `frontend`     | `npm run lint` (eslint) + `npm run build` |
+| `mobile`       | `npm run lint` (expo lint)            |
+
+O workflow detecta **quais serviços mudaram** (via `paths-filter`) e roda apenas
+os jobs afetados — um push que altera só o `frontend` não dispara os testes da
+`api`. O status aparece no badge no topo do [README](../README.md).
+
 ---
 
 ## 7. Banco de dados (API)

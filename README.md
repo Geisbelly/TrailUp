@@ -1,5 +1,7 @@
 # TrailUp — Monorepo
 
+[![CI](https://github.com/Geisbelly/TrailUp/actions/workflows/ci.yml/badge.svg)](https://github.com/Geisbelly/TrailUp/actions/workflows/ci.yml)
+
 Monorepo do projeto **TrailUp**, reunindo os quatro serviços que antes viviam em
 repositórios separados. Cada pasta continua sendo um projeto independente, com o
 seu próprio gerenciador de dependências e ciclo de build.
