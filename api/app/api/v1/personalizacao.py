@@ -234,15 +234,64 @@ def _rgba(color: str, alpha: float) -> str:
     return f"rgba({red}, {green}, {blue}, {max(0.0, min(1.0, alpha)):.2f})"
 
 
+def _lighten(color: str, amount: float) -> str:
+    return _blend(color, "#ffffff", amount)
+
+
+def _relative_luminance(color: str) -> float:
+    """Luminância relativa sRGB (WCAG 2.x)."""
+    def _channel(value: int) -> float:
+        srgb = value / 255.0
+        return srgb / 12.92 if srgb <= 0.03928 else ((srgb + 0.055) / 1.055) ** 2.4
+
+    red, green, blue = _hex_to_rgb(color)
+    return 0.2126 * _channel(red) + 0.7152 * _channel(green) + 0.0722 * _channel(blue)
+
+
+def _contrast_ratio(foreground: str, background: str) -> float:
+    """Razão de contraste WCAG entre duas cores hex (1.0–21.0)."""
+    lighter = max(_relative_luminance(foreground), _relative_luminance(background))
+    darker = min(_relative_luminance(foreground), _relative_luminance(background))
+    return (lighter + 0.05) / (darker + 0.05)
+
+
+def _ensure_min_contrast(
+    color: str,
+    background: str,
+    min_ratio: float,
+    *,
+    step: float = 0.08,
+    max_steps: int = 14,
+) -> str:
+    """Clareia `color` em direção ao branco até atingir `min_ratio` de contraste
+    contra `background`, preservando o matiz da cor-assinatura do perfil."""
+    adjusted = color
+    for _ in range(max_steps):
+        if _contrast_ratio(adjusted, background) >= min_ratio:
+            break
+        nxt = _lighten(adjusted, step)
+        if nxt == adjusted:  # já é branco; não há como clarear mais
+            break
+        adjusted = nxt
+    return adjusted
+
+
 def _build_design_tokens(profile_name: str | None) -> DesignTokens:
     accent_base = _PROFILE_COLOR_MAP.get(
         _normalize_profile_name(profile_name),
         _PROFILE_COLOR_MAP["mastermind"],
     )
-    accent = _blend(accent_base, "#ffffff", 0.06)
     background = _darken(_blend("#0b1220", accent_base, 0.06), 0.05)
     surface = _blend("#131d31", accent_base, 0.10)
     surface_elevated = _blend("#182338", accent_base, 0.14)
+
+    # WCAG AAA: o accent (texto grande, ícones, bordas) precisa ser legível sobre
+    # a superfície MAIS CLARA em que aparece (pior caso = surface_elevated).
+    # Clareamos preservando o matiz da cor-assinatura, garantindo >= 4.5:1
+    # (AAA para texto grande; excede o 3:1 exigido para componentes de UI).
+    accent = _ensure_min_contrast(
+        _blend(accent_base, "#ffffff", 0.06), surface_elevated, 4.5
+    )
 
     return DesignTokens(
         cores=DesignTokensCores(
@@ -250,14 +299,18 @@ def _build_design_tokens(profile_name: str | None) -> DesignTokens:
             surface=surface,
             surface_elevated=surface_elevated,
             primary=accent,
-            primary_glow=_rgba(accent, 0.18),
-            border=_rgba(accent, 0.22),
+            primary_glow=_rgba(accent, 0.30),
+            border=_rgba(accent, 0.40),
             text_primary="#f2f7fa",
-            text_muted="rgba(242, 247, 250, 0.72)",
-            success=accent,
-            locked="#455154",
+            text_muted="rgba(242, 247, 250, 0.80)",
+            # Cores semânticas fixas (não derivadas do accent): evita Survivor
+            # vermelho como "sucesso" e garante contraste AAA consistente.
+            success="#34d399",
+            warning="#fbbf24",
+            info="#60a5fa",
+            locked="#5a676b",
         ),
-        sombra_primary=_rgba(accent, 0.18),
+        sombra_primary=_rgba(accent, 0.30),
     )
 
 

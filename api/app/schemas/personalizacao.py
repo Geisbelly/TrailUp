@@ -12,13 +12,17 @@ class DesignTokensCores(BaseModel):
     background: str = "#09111d"
     surface: str = "#152039"
     surface_elevated: str = "#0f182d"
-    primary: str = "#707c88"
-    primary_glow: str = "rgba(112, 124, 136, 0.18)"
-    border: str = "rgba(112, 124, 136, 0.24)"
+    primary: str = "#9aa6b2"
+    primary_glow: str = "rgba(154, 166, 178, 0.30)"
+    border: str = "rgba(154, 166, 178, 0.40)"
     text_primary: str = "#f2f7fa"
-    text_muted: str = "rgba(242, 247, 250, 0.72)"
-    success: str = "#707c88"
-    locked: str = "#455154"
+    text_muted: str = "rgba(242, 247, 250, 0.80)"
+    # Cores semânticas fixas (não derivadas do accent) — garantem leitura
+    # consistente e contraste AAA independente da cor-assinatura do perfil.
+    success: str = "#34d399"
+    warning: str = "#fbbf24"
+    info: str = "#60a5fa"
+    locked: str = "#5a676b"
 
 
 class DesignTokensTipografia(BaseModel):

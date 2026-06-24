@@ -31,7 +31,7 @@ All colors MUST be HSL.
     --secondary-foreground: 240 10% 95%;
 
     --muted: 235 20% 25%;
-    --muted-foreground: 240 5% 65%;
+    --muted-foreground: 240 6% 74%;
 
     /* Accent - Lighter Purple */
     --accent: 270 60% 70%;
@@ -80,7 +80,7 @@ All colors MUST be HSL.
     --secondary-foreground: 240 10% 95%;
 
     --muted: 235 20% 25%;
-    --muted-foreground: 240 5% 65%;
+    --muted-foreground: 240 6% 74%;
 
     --accent: 270 60% 70%;
     --accent-foreground: 235 25% 15%;
