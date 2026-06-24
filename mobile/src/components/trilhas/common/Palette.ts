@@ -1,0 +1,15 @@
+export const Palette = {
+  bg: '#0a0f14',
+  card: '#0f1620',
+  border: '#1d2a3a',
+  text: '#ecf3ff',
+  sub: '#9fb3c8',
+  good: '#2ecc71',
+  warn: '#ffcc00',
+  lock: '#6f7285',
+  primary: '#5b7cfa',
+  neon: '#88a5ff',
+  mapDark1: '#051006',
+  mapDark2: '#0f2a14',
+  mapStroke: '#9bfcb5',
+}

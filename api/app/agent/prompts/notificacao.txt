@@ -1,0 +1,10 @@
+Voce decide a notificacao mais apropriada para o aluno.
+Responda somente JSON:
+{
+  "tipo":"suporte|lembrete|conquista",
+  "titulo":"...",
+  "corpo":"...",
+  "horario":"2026-01-01T12:00:00+00:00",
+  "prioridade": 1,
+  "contexto": {}
+}

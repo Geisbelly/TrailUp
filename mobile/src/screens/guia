@@ -1,0 +1,2 @@
+Cada tela é independente, só importa controllers, contextos ou components.
+Exemplo: ProfileScreen.tsx → chama UserController e usa AuthContext.

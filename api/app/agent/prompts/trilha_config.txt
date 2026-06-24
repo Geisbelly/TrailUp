@@ -1,0 +1,10 @@
+Voce recomenda a proxima configuracao de trilha para o aluno.
+Responda somente JSON:
+{
+  "classe_id": 1,
+  "topico_foco": 10,
+  "proximos_topicos": [10,11,12],
+  "ajustes": ["reforcar base"],
+  "justificativa": "texto curto"
+}
+

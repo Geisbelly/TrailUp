@@ -1,0 +1,22 @@
+{
+  "name": "trailup-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Monorepo TrailUp: api (Python), frontend (Vite), microservice (Node/TS) e mobile (Expo).",
+  "scripts": {
+    "dev": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev.ps1",
+    "dev:sh": "bash scripts/dev.sh",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build:frontend": "npm --prefix frontend run build",
+    "lint:frontend": "npm --prefix frontend run lint",
+    "dev:microservice": "npm --prefix microservice run dev",
+    "start:microservice": "npm --prefix microservice run start",
+    "test:microservice": "npm --prefix microservice run test",
+    "lint:microservice": "npm --prefix microservice run lint",
+    "start:mobile": "npm --prefix mobile run start",
+    "android:mobile": "npm --prefix mobile run android",
+    "web:mobile": "npm --prefix mobile run web",
+    "lint:mobile": "npm --prefix mobile run lint",
+    "install:all": "npm --prefix frontend install && npm --prefix microservice install && npm --prefix mobile install"
+  }
+}
