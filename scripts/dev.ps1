@@ -25,7 +25,7 @@ $Root = Split-Path -Parent $PSScriptRoot
 
 # nome -> @{ Dir; Cmd; Port; Check }
 $services = [ordered]@{
-  api          = @{ Dir = 'api';          Port = 8000; Check = '.venv';        Cmd = '.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000' }
+  api          = @{ Dir = 'api';          Port = 8000; Check = '.venv';        Cmd = '.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000' }
   microservice = @{ Dir = 'microservice'; Port = 3000; Check = 'node_modules'; Cmd = 'npm run dev' }
   frontend     = @{ Dir = 'frontend';     Port = 8080; Check = 'node_modules'; Cmd = 'npm run dev' }
   mobile       = @{ Dir = 'mobile';       Port = 8081; Check = 'node_modules'; Cmd = 'npm run start' }
