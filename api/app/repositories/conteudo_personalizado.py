@@ -208,7 +208,6 @@ class ConteudoPersonalizadoRepository:
         has_classe_id = await self._table_has_column("classe_id")
         has_status = await self._table_has_column("status")
         has_source_hash = await self._table_has_column("source_hash")
-        has_updated_at = await self._table_has_column("updated_at")
 
         can_upsert = all((has_ai_patch, has_classe_id, has_status, has_source_hash, topico_id is not None))
 

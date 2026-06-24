@@ -4,10 +4,10 @@
   "version": "0.2.0",
   "description": "Microsserviço backend de geração de materiais pedagógicos personalizados por perfil BrainHex (TrailUp).",
   "scripts": {
-    "dev": "node --require tsx/cjs server.ts",
+    "dev": "tsx --watch server.ts",
     "start": "node --require tsx/cjs server.ts",
     "lint": "tsc --noEmit",
-    "test": "node --import tsx --test src/lib/serialQueue.test.ts src/lib/textSanitize.test.ts src/lib/wav.test.ts src/lib/logger.test.ts src/lib/materialsMerge.test.ts src/lib/slideEnricher.test.ts src/lib/validators.test.ts src/lib/rateLimit.test.ts"
+    "test": "node --import tsx --test src/lib/serialQueue.test.ts src/lib/textSanitize.test.ts src/lib/wav.test.ts src/lib/logger.test.ts src/lib/materialsMerge.test.ts src/lib/slideEnricher.test.ts src/lib/validators.test.ts src/lib/rateLimit.test.ts src/server.test.ts"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",

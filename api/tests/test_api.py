@@ -19,9 +19,9 @@ from app.repositories.materiais import MateriaisRepository
 from app.repositories.personalizacao_jobs import PersonalizacaoJobsRepository
 from app.repositories.telemetria import TelemetriaRepository
 from app.schemas.api import AnalisarResponse
+from app.schemas.telemetria import TelemetriaLotePayload
 from app.services.auth import UserContext
 from app.services.storage import SupabaseStorage
-from app.schemas.telemetria import TelemetriaLotePayload
 from tests.conftest import FakeGraph, FakeSession
 
 
@@ -334,7 +334,7 @@ def test_materiais_endpoint_returns_student_materials(app, aluno_user, monkeypat
     assert response.json()["materiais"][0]["tipo"] == "quiz"
 
 
-def test_personalizar_route_returns_ai_patch(app, aluno_user, monkeypatch) -> None:
+def test_personalizar_route_creates_personalizacao_record(app, aluno_user, monkeypatch) -> None:
     fake_session = FakeSession()
 
     async def override_session():
@@ -342,213 +342,69 @@ def test_personalizar_route_returns_ai_patch(app, aluno_user, monkeypatch) -> No
 
     app.dependency_overrides[get_session] = override_session
     app.dependency_overrides[get_current_user] = lambda: aluno_user
+
+    fake_ctx = {
+        "aluno_id": "aluno-1",
+        "classe_id": 1,
+        "topico_id": 5,
+        "conteudo_id": None,
+        "ciclo_id": "ciclo-personalizado",
+        "source_hash": "abc123",
+        "perfil_dominante": "mastermind",
+        "perfil_brainhex": [{"perfil": "mastermind", "afinidade": 1.0}],
+        "conteudo_classe": {"titulo": "Título"},
+        "contexto_aluno": {"nome": "Aluno"},
+        "fontes": [],
+    }
+    fake_record = {
+        "id": 7,
+        "aluno_id": "aluno-1",
+        "classe_id": 1,
+        "conteudo_id": None,
+        "topico_id": 5,
+        "ciclo_id": "ciclo-personalizado",
+        "status": "processando_midias",
+        "materiais": {},
+        "ai_patch": None,
+        "plano": {},
+        "source_hash": "abc123",
+        "formato_prioritario": "cards",
+        "formatos_gerados": ["cards"],
+        "gerado_em": "2026-06-24T12:00:00Z",
+    }
+
+    monkeypatch.setattr(personalizacao_module, "fetch_personalizacao_context", AsyncMock(return_value=fake_ctx))
+    monkeypatch.setattr(personalizacao_module, "gerar_cards_direto", AsyncMock(return_value=[]))
+    monkeypatch.setattr(personalizacao_module, "disparar_brainhex_async", AsyncMock(return_value=None))
     monkeypatch.setattr(
-        personalizacao_module,
-        "build_personalizacao_state",
-        AsyncMock(
-            return_value={
-                "ciclo_id": "ciclo-personalizado",
-                "classe_id": 1,
-                "aluno_id": "aluno-1",
-                "workflow_kind": "personalizar",
-            }
-        ),
+        "app.repositories.artefatos_personalizados.ArtefatosPersonalizadosRepository.marcar_ciclos_anteriores_obsoletos",
+        AsyncMock(return_value=None),
+    )
+    monkeypatch.setattr(
+        "app.repositories.artefatos_personalizados.ArtefatosPersonalizadosRepository.salvar_cards",
+        AsyncMock(return_value=[]),
+    )
+    monkeypatch.setattr(
+        ConteudoPersonalizadoRepository,
+        "salvar",
+        AsyncMock(return_value=7),
+    )
+    monkeypatch.setattr(
+        ConteudoPersonalizadoRepository,
+        "buscar_por_ciclo_id",
+        AsyncMock(return_value=fake_record),
     )
 
     with TestClient(app) as client:
-        client.app.state.graph_personalizacao = FakeGraph(
-            {
-                "personalizacao_record": {
-                    "id": 7,
-                    "aluno_id": "aluno-1",
-                    "conteudo_id": 10,
-                    "topico_id": 5,
-                    "ciclo_id": "ciclo-personalizado",
-                    "formato_prioritario": "cards",
-                    "formatos_gerados": ["cards"],
-                    "plano": {"nivel": "equilibrado"},
-                    "materiais": {"cards": {"payload": [], "item_key": "content:10"}},
-                    "ai_patch": {
-                        "mentalState": {
-                            "kind": "neutral",
-                            "intensity": 0.2,
-                            "confidence": 0.4,
-                            "reason": "fallback",
-                            "source": "ai",
-                            "observedAt": "2026-04-06T12:00:00Z",
-                            "expiresAt": "2026-04-06T12:20:00Z",
-                        },
-                        "session": [],
-                        "topic": [
-                            {
-                                "key": "battle_mode",
-                                "scope": "topic",
-                                "enabled": True,
-                                "mode": "legacy_topic_mirror",
-                                "priority": 20,
-                                "cooldownSec": 0,
-                                "copy": {},
-                                "battle": {
-                                    "topicId": 5,
-                                    "sourceItemKey": "content:10",
-                                    "enemy": {
-                                        "id": "boss:5:10",
-                                        "name": "Boss",
-                                        "archetype": "warbringer",
-                                        "avatarUrl": None,
-                                        "imagePrompt": "prompt",
-                                        "hpMax": 120,
-                                        "shieldMax": 12,
-                                        "introLine": "intro",
-                                        "defeatLine": "fim",
-                                        "contentId": 10,
-                                        "itemKey": "content:10",
-                                        "visual": {
-                                            "preset": "arena",
-                                            "avatarUrl": None,
-                                            "backgroundUrl": None,
-                                            "frameUrl": None,
-                                            "effectUrl": None,
-                                            "badgeLabel": "Boss",
-                                            "palette": {
-                                                "primaryColor": "#d24c33",
-                                                "secondaryColor": "#4f1710",
-                                                "accentColor": "#ffd27d",
-                                                "hpColor": "#ff5d5d",
-                                                "shieldColor": "#94f7c5",
-                                                "textColor": "#fff8f2",
-                                            },
-                                        },
-                                    },
-                                    "timing": {
-                                        "encounterDurationSec": 100,
-                                        "warningAtSec": 70,
-                                        "introDelayMs": 300,
-                                        "defeatDelayMs": 700,
-                                    },
-                                    "damageOnContentComplete": 16,
-                                    "damageOnActivityCorrect": 18,
-                                    "damageOnStreakBonus": 10,
-                                    "damageOnActivityComplete": 24,
-                                    "persistKey": "persist",
-                                    "resetOn": ["topic_complete", "cycle_change"],
-                                },
-                                "cues": [],
-                            }
-                        ],
-                        "items": {
-                            "content:10": [
-                                {
-                                    "key": "reading_timer",
-                                    "scope": "item",
-                                    "itemKey": "content:10",
-                                    "enabled": True,
-                                    "mode": "content_window",
-                                    "priority": 40,
-                                    "cooldownSec": 0,
-                                    "copy": {},
-                                    "timer": {
-                                        "durationSec": 180,
-                                        "warningAtSec": 150,
-                                        "timeoutAction": "suggest_break",
-                                        "urgency": "soft",
-                                        "showProgress": True,
-                                    },
-                                    "cues": [],
-                                },
-                                {
-                                    "key": "battle_mode",
-                                    "scope": "item",
-                                    "itemKey": "content:10",
-                                    "enabled": True,
-                                    "mode": "content_boss_encounter",
-                                    "priority": 60,
-                                    "cooldownSec": 0,
-                                    "copy": {},
-                                    "battle": {
-                                        "topicId": 5,
-                                        "sourceItemKey": "content:10",
-                                        "enemy": {
-                                            "id": "boss:5:10",
-                                            "name": "Boss",
-                                            "archetype": "warbringer",
-                                            "avatarUrl": None,
-                                            "imagePrompt": "prompt",
-                                            "hpMax": 120,
-                                            "shieldMax": 12,
-                                            "introLine": "intro",
-                                            "defeatLine": "fim",
-                                            "contentId": 10,
-                                            "itemKey": "content:10",
-                                            "visual": {
-                                                "preset": "arena",
-                                                "avatarUrl": None,
-                                                "backgroundUrl": None,
-                                                "frameUrl": None,
-                                                "effectUrl": None,
-                                                "badgeLabel": "Boss",
-                                                "palette": {
-                                                    "primaryColor": "#d24c33",
-                                                    "secondaryColor": "#4f1710",
-                                                    "accentColor": "#ffd27d",
-                                                    "hpColor": "#ff5d5d",
-                                                    "shieldColor": "#94f7c5",
-                                                    "textColor": "#fff8f2",
-                                                },
-                                            },
-                                        },
-                                        "timing": {
-                                            "encounterDurationSec": 100,
-                                            "warningAtSec": 70,
-                                            "introDelayMs": 300,
-                                            "defeatDelayMs": 700,
-                                        },
-                                        "damageOnContentComplete": 16,
-                                        "damageOnActivityCorrect": 18,
-                                        "damageOnStreakBonus": 10,
-                                        "damageOnActivityComplete": 24,
-                                        "persistKey": "persist",
-                                        "resetOn": ["topic_complete", "cycle_change"],
-                                    },
-                                    "cues": [],
-                                },
-                            ],
-                            "activity:20": [
-                                {
-                                    "key": "activity_timer",
-                                    "scope": "item",
-                                    "itemKey": "activity:20",
-                                    "enabled": True,
-                                    "mode": "local_attempt_timer",
-                                    "priority": 48,
-                                    "cooldownSec": 0,
-                                    "copy": {},
-                                    "timer": {
-                                        "durationSec": 240,
-                                        "warningAtSec": 180,
-                                        "timeoutAction": "pause",
-                                        "urgency": "steady",
-                                        "showProgress": True,
-                                    },
-                                    "cues": [],
-                                }
-                            ],
-                        },
-                        "triggers": [],
-                    },
-                    "gerado_em": "2026-04-06T12:00:00Z",
-                }
-            }
-        )
         response = client.post("/api/v1/personalizar", json={"classe_id": 1, "topico_id": 5})
 
     assert response.status_code == 201
     body = response.json()
-    assert "aiPatch" in body
-    assert body["aiPatch"]["mentalState"]["kind"] == "neutral"
-    assert body["aiPatch"]["items"]["content:10"][1]["battle"]["sourceItemKey"] == "content:10"
+    assert body["id"] == 7
+    assert body["status"] == "processando_midias"
     assert body["media_status"] == "ready"
     assert body["media_job_id"] is None
+    assert body["aiPatch"] is None
 
 
 def test_personalizacao_media_status_route_returns_pending_media(app, aluno_user, monkeypatch) -> None:

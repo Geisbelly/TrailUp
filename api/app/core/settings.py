@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import AliasChoices, Field
+from pydantic import AliasChoices, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -37,7 +37,7 @@ class Settings(BaseSettings):
             "SUPABASE_SERVICE_ROLE_KEY",
         ),
     )
-    supabase_jwt_secret: str = Field(default="development-secret")
+    supabase_jwt_secret: str
     supabase_jwt_audience: str | None = "authenticated"
 
     llm_provider: str = "openai"  # "openai" | "gemini"
@@ -95,7 +95,16 @@ class Settings(BaseSettings):
     personalizacao_media_review_max_cycles: int = 3
     personalizacao_media_min_quality_score: float = 0.72
     admin_panel_username: str = "admin"
-    admin_panel_password: str = "admin"
+    admin_panel_password: str
+
+    @model_validator(mode="after")
+    def _check_production_safety(self) -> "Settings":
+        if self.app_env == "production" and self.cors_allow_origins == ["*"]:
+            raise ValueError(
+                "cors_allow_origins não pode ser ['*'] em produção. "
+                "Defina CORS_ALLOW_ORIGINS com as origens permitidas."
+            )
+        return self
 
 
 @lru_cache

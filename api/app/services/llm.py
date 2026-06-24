@@ -74,7 +74,7 @@ class JsonLLMService:
         provider: str | None = None,
     ) -> dict[str, Any]:
         if fallback_factory is None:
-            fallback_factory = lambda: {}
+            fallback_factory = dict
         client = self._get_client(model or self._active_default(provider), provider=provider)
         if client is None:
             return fallback_factory()

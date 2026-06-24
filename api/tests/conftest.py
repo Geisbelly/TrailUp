@@ -1,3 +1,10 @@
+import os
+
+# Deve ser definido ANTES dos imports da aplicação, pois módulos como
+# personalizacao.py chamam get_settings() no nível de módulo.
+os.environ.setdefault("SUPABASE_JWT_SECRET", "test-secret")
+os.environ.setdefault("ADMIN_PANEL_PASSWORD", "secret-admin")
+
 from collections.abc import AsyncIterator
 from typing import Any
 

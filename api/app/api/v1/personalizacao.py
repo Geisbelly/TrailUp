@@ -10,16 +10,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import ensure_professor_access, get_current_user, get_session, require_professor
 from app.core.settings import get_settings
 from app.repositories.access import AccessRepository
-from app.repositories.conteudo_classe import ConteudoClasseRepository
 from app.repositories.artefatos_personalizados import ArtefatosPersonalizadosRepository
+from app.repositories.conteudo_classe import ConteudoClasseRepository
 from app.repositories.conteudo_personalizado import ConteudoPersonalizadoRepository
 from app.repositories.context import ContextRepository
+from app.repositories.evento import EventoRepository
 from app.repositories.fontes_personalizacao import FontesPersonalizacaoRepository
+from app.repositories.ia_decision_logs import IADecisionLogRepository
 from app.repositories.materiais import MateriaisRepository
 from app.repositories.personalizacao_jobs import PersonalizacaoJobsRepository
 from app.repositories.personalizacao_progresso import PersonalizacaoProgressoRepository
-from app.repositories.evento import EventoRepository
-from app.repositories.ia_decision_logs import IADecisionLogRepository
 from app.schemas.personalizacao import (
     DesignTokens,
     DesignTokensCores,
@@ -28,28 +28,28 @@ from app.schemas.personalizacao import (
     MentorChatPayload,
     MentorChatResponse,
     PersonalizacaoContextoDocenteResponse,
-    PersonalizacaoJobDetailResponse,
-    PersonalizacaoJobPayload,
-    PersonalizacaoJobListResponse,
-    PersonalizacaoJobResponse,
-    PersonalizacaoJobTargetResponse,
     PersonalizacaoItemProgressoPayload,
     PersonalizacaoItemProgressoResponse,
+    PersonalizacaoJobDetailResponse,
+    PersonalizacaoJobListResponse,
+    PersonalizacaoJobPayload,
+    PersonalizacaoJobResponse,
+    PersonalizacaoJobTargetResponse,
     PersonalizacaoListResponse,
     PersonalizacaoMediaItemStatusResponse,
     PersonalizacaoMediaStatusResponse,
     PersonalizacaoResponse,
     PersonalizarPayload,
 )
-from app.services.llm import JsonLLMService, load_prompt
 from app.services.auth import UserContext
+from app.services.llm import JsonLLMService, load_prompt
+from app.services.media_agents import disparar_brainhex_async
 from app.services.personalizacao import (
     _infer_source_type,
     build_personalizacao_steps,
     fetch_personalizacao_context,
     gerar_cards_direto,
 )
-from app.services.media_agents import disparar_brainhex_async
 from app.services.personalizacao_jobs import (
     JOB_KIND_CLASS_DELTA,
     JOB_KIND_CLASS_THEME,
@@ -60,7 +60,6 @@ from app.services.personalizacao_jobs import (
     get_job_detail,
 )
 from app.services.storage import BUCKET, SupabaseStorage, build_public_storage_url
-
 
 router = APIRouter(prefix="/personalizar", tags=["personalizar"])
 logger = logging.getLogger(__name__)
@@ -75,7 +74,7 @@ _PROFILE_COLOR_MAP = {
     "socialiser": "#7624c4",
     "achiever": "#da7904",
 }
-_MEDIA_TIPOS = ("audio", "apresentacao", "markdown")
+_MEDIA_TIPOS = ("pdf", "audio", "apresentacao", "markdown")
 _MEDIA_STATUS_MAP = {
     "completed": "ready",
     "ready": "ready",
@@ -1526,6 +1525,8 @@ async def obter_personalizacao_media_status(
             detail="Perfil sem acesso a personalizacoes.",
         )
 
+    jobs_repo = PersonalizacaoJobsRepository(session)
+    latest_job = await jobs_repo.get_latest_media_render_job(personalizacao_id=personalizacao_id)
     materiais_repo = MateriaisRepository(session)
     materiais_rows = await materiais_repo.listar_por_personalizacao(personalizacao_id=personalizacao_id)
     materiais_status: list[PersonalizacaoMediaItemStatusResponse] = []
@@ -1604,7 +1605,7 @@ async def obter_personalizacao_media_status(
     return PersonalizacaoMediaStatusResponse(
         personalizacao_id=personalizacao_id,
         status=overall_status,
-        job_id=None,
+        job_id=str(latest_job["id"]) if latest_job and latest_job.get("id") is not None else None,
         materiais=materiais_status,
     )
 

@@ -364,27 +364,38 @@ async function fetchFontesAsFileData(
   return results;
 }
 
-// ─── Server ───────────────────────────────────────────────────────────────────
+// ─── App factory (exported for testing) ──────────────────────────────────────
 
-async function startServer() {
-  const app  = express();
-  const PORT = Number(process.env.PORT) || 3000;
-  const JSON_LIMIT = process.env.JSON_LIMIT ?? "50mb";
-  const CORS_ORIGIN = process.env.CORS_ORIGIN;          // ex: "https://trailup.app,https://admin.trailup.app"
-  const API_SHARED_SECRET = process.env.API_SHARED_SECRET; // opt-in: protege endpoints custosos
+export interface AppOptions {
+  apiSharedSecret?:      string;
+  rateLimitWindowMs?:    number;
+  rateLimitMax?:         number;
+  jsonLimit?:            string;
+  corsOrigin?:           string;
+  allowPrivateFonteUrls?: boolean;
+}
 
-  const corsOpts = CORS_ORIGIN
-    ? { origin: CORS_ORIGIN.split(",").map((o) => o.trim()) }
+export function buildApp(opts: AppOptions = {}): express.Application {
+  const {
+    apiSharedSecret,
+    rateLimitWindowMs   = 60_000,
+    rateLimitMax        = 30,
+    jsonLimit           = "50mb",
+    corsOrigin,
+    allowPrivateFonteUrls = false,
+  } = opts;
+
+  const corsOpts = corsOrigin
+    ? { origin: corsOrigin.split(",").map((o) => o.trim()) }
     : undefined; // sem env → libera tudo (compat)
+  const app = express();
   app.use(cors(corsOpts));
-  app.use(express.json({ limit: JSON_LIMIT }));
+  app.use(express.json({ limit: jsonLimit }));
 
   // Rate limit por IP (sliding window in-process). Aplicado a TUDO exceto
   // /api/health (usado por probes que podem exceder). Protege contra
   // TrailUp comprometido / bug de loop bombardeando Gemini ($$$).
-  const RATE_WINDOW_MS = Number(process.env.RATE_WINDOW_MS) || 60_000;
-  const RATE_MAX       = Number(process.env.RATE_MAX)       || 30;
-  const limiter = createRateLimiter({ windowMs: RATE_WINDOW_MS, max: RATE_MAX });
+  const limiter = createRateLimiter({ windowMs: rateLimitWindowMs, max: rateLimitMax });
 
   app.use((req, res, next) => {
     if (req.path === "/api/health") return next();
@@ -422,19 +433,15 @@ async function startServer() {
     next();
   });
 
-  // Middleware opt-in: só ativo se API_SHARED_SECRET estiver definido.
+  // Middleware opt-in: só ativo se apiSharedSecret estiver definido.
   // Aplicado apenas em endpoints que disparam custo (Gemini), nunca em /api/health.
   function requireSecret(req: express.Request, res: express.Response, next: express.NextFunction) {
-    if (!API_SHARED_SECRET) return next();
+    if (!apiSharedSecret) return next();
     const provided = req.header("x-api-secret") ?? req.header("authorization")?.replace(/^Bearer\s+/i, "");
-    if (provided !== API_SHARED_SECRET) {
+    if (provided !== apiSharedSecret) {
       return res.status(401).json({ error: "auth obrigatória — header x-api-secret ausente ou inválido" });
     }
     return next();
-  }
-
-  if (!API_SHARED_SECRET) {
-    log.warn("API_SHARED_SECRET não configurado — endpoints abertos (defina em produção)");
   }
 
   // ── Health ───────────────────────────────────────────────────────
@@ -443,7 +450,7 @@ async function startServer() {
       status:   "ok",
       message:  "TrailUp Alchemy Microservice is online!",
       supabase: isSupabaseConfigured(),
-      auth:     Boolean(API_SHARED_SECRET),
+      auth:     Boolean(apiSharedSecret),
     });
   });
 
@@ -528,7 +535,7 @@ async function startServer() {
   // processa com Gemini (array) e persiste mídias no Supabase.
   app.post("/api/personalizar", requireSecret, (req, res) => {
     // Validação centralizada — inclui SSRF protection para fontes URLs.
-    const v = validatePersonalizarBody(req.body, { allowPrivateFonteUrls: ALLOW_PRIVATE_FONTE_URLS });
+    const v = validatePersonalizarBody(req.body, { allowPrivateFonteUrls });
     if (v.ok === false) {
       return res.status(400).json({ error: v.error });
     }
@@ -588,6 +595,32 @@ async function startServer() {
   // backend (frontend foi removido, ver commit de cleanup).
   app.use((_req, res) => res.status(404).json({ error: "rota não encontrada" }));
 
+  return app;
+}
+
+// ─── Server entrypoint ────────────────────────────────────────────────────────
+
+async function startServer() {
+  const PORT              = Number(process.env.PORT) || 3000;
+  const API_SHARED_SECRET = process.env.API_SHARED_SECRET;
+
+  const app = buildApp({
+    apiSharedSecret:       API_SHARED_SECRET,
+    rateLimitWindowMs:     Number(process.env.RATE_WINDOW_MS) || 60_000,
+    rateLimitMax:          Number(process.env.RATE_MAX)       || 30,
+    jsonLimit:             process.env.JSON_LIMIT ?? "50mb",
+    corsOrigin:            process.env.CORS_ORIGIN,
+    allowPrivateFonteUrls: ALLOW_PRIVATE_FONTE_URLS,
+  });
+
+  if (!API_SHARED_SECRET) {
+    if (process.env.NODE_ENV === "production") {
+      log.error("API_SHARED_SECRET é obrigatório em produção — defina a variável de ambiente e reinicie");
+      process.exit(1);
+    }
+    log.warn("API_SHARED_SECRET não configurado — endpoints abertos (defina em produção)");
+  }
+
   const server = app.listen(PORT, "0.0.0.0", () => {
     log.info("server up", { port: PORT, supabase: isSupabaseConfigured() });
     if (!isSupabaseConfigured()) {
@@ -639,11 +672,14 @@ async function startServer() {
   process.on("SIGINT",  () => shutdown("SIGINT"));
 }
 
-startServer().catch((err) => {
-  log.error("falha fatal ao iniciar servidor", { err });
-  process.exit(1);
-});
+// Guard: auto-inicia apenas quando executado diretamente (não importado em testes)
+if (require.main === module) {
+  startServer().catch((err) => {
+    log.error("falha fatal ao iniciar servidor", { err });
+    process.exit(1);
+  });
 
-process.on("unhandledRejection", (reason) => {
-  log.error("unhandledRejection", { reason });
-});
+  process.on("unhandledRejection", (reason) => {
+    log.error("unhandledRejection", { reason });
+  });
+}

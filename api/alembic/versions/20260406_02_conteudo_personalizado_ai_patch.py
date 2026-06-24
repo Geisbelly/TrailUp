@@ -1,9 +1,9 @@
 """add ai_patch to conteudo_personalizado"""
 
-from alembic import op
-from sqlalchemy.dialects.postgresql import JSONB
 import sqlalchemy as sa
+from sqlalchemy.dialects.postgresql import JSONB
 
+from alembic import op
 
 revision = "20260406_02"
 down_revision = "20260406_01"

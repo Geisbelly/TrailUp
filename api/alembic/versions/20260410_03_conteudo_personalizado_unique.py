@@ -1,8 +1,8 @@
 """add unique index on conteudo_personalizado (aluno_id, topico_id)"""
 
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 revision = "20260410_03"
 down_revision = "20260410_02"

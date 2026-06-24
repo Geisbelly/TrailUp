@@ -1,8 +1,7 @@
 """adjust personalizacao_job_targets uniqueness to include conteudo_id"""
 
-from alembic import op
-import sqlalchemy as sa
 
+from alembic import op
 
 revision = "20260410_06"
 down_revision = "20260410_05"

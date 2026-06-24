@@ -6,12 +6,12 @@ import pytest
 from app.services import personalizacao_jobs as jobs_module
 from app.services.personalizacao_jobs import (
     _compact_exception_text,
-    _exception_signature,
-    _process_media_render_target,
     _compute_failure_backoff_sec,
+    _exception_signature,
     _is_transient_db_connection_error,
     _mark_pending_media_failed,
     _pending_media_formats,
+    _process_media_render_target,
 )
 
 

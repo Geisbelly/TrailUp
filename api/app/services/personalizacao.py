@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import base64
 import hashlib
 import json
@@ -18,17 +19,17 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.core.settings import Settings
 from app.ingestion.pipeline import ingest_source as _ingest_source
 from app.ingestion.semantic_chunker import chunks_to_plain_text as _chunks_to_plain_text
+from app.repositories.artefatos_personalizados import ArtefatosPersonalizadosRepository
 from app.repositories.conteudo_classe import ConteudoClasseRepository
 from app.repositories.conteudo_personalizado import ConteudoPersonalizadoRepository
 from app.repositories.context import ContextRepository
-from app.repositories.artefatos_personalizados import ArtefatosPersonalizadosRepository
 from app.repositories.fontes_personalizacao import FontesPersonalizacaoRepository
 from app.repositories.materiais import MateriaisRepository
 from app.repositories.personalizacao_jobs import PersonalizacaoJobsRepository
 from app.services.behavioral_personalization import build_behavioral_personalization
 from app.services.llm import JsonLLMService, load_prompt
-from app.services.media_pipeline import MultiOutputPipeline
 from app.services.media_agents import disparar_brainhex_async
+from app.services.media_pipeline import MultiOutputPipeline
 from app.services.storage import SupabaseStorage, build_public_storage_url
 from app.services.text_cleanup import (
     clean_extracted_text,
@@ -839,8 +840,8 @@ def _adaptive_size_targets(complexidade: str | None) -> dict[str, int]:
 def _extract_key_sentences_from_chunks(chunk_texts: list[str], *, limit: int = 8) -> list[str]:
     sentences: list[str] = []
     seen: set[str] = set()
-    for text in chunk_texts:
-        split = [item.strip() for item in re.split(r"(?<=[.!?;])\s+", text) if item.strip()]
+    for chunk in chunk_texts:
+        split = [item.strip() for item in re.split(r"(?<=[.!?;])\s+", chunk) if item.strip()]
         for sentence in split:
             normalized = _normalize_key(sentence)
             if not normalized or normalized in seen:
@@ -882,8 +883,8 @@ def _extract_core_concepts(chunk_texts: list[str], *, limit: int = 10) -> list[s
     }
     concepts: list[str] = []
     seen: set[str] = set()
-    for text in chunk_texts:
-        candidates = re.findall(r"[A-Za-zÀ-ÖØ-öø-ÿ0-9][A-Za-zÀ-ÖØ-öø-ÿ0-9/\-\s]{8,64}", text)
+    for chunk in chunk_texts:
+        candidates = re.findall(r"[A-Za-zÀ-ÖØ-öø-ÿ0-9][A-Za-zÀ-ÖØ-öø-ÿ0-9/\-\s]{8,64}", chunk)
         for raw in candidates:
             compact = re.sub(r"\s+", " ", raw).strip(" -;:,.")
             if len(compact.split()) < 2:
@@ -1619,7 +1620,6 @@ async def _invoke_multistage_materiais_por_formato(
             continue
 
         final_payload = current_payload
-        approved = False
         for cycle in range(review_max_cycles):
             review_quality = _evaluate_media_payload_quality(
                 formato=formato,
@@ -1668,7 +1668,6 @@ async def _invoke_multistage_materiais_por_formato(
                 and review_quality["aprovado"]
                 and (review_status in _QUALITY_REVIEW_STATUS_OK or not review_status)
             ):
-                approved = True
                 break
 
             if cycle >= review_max_cycles - 1:

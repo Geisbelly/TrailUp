@@ -14,15 +14,17 @@ from app.repositories.artefatos_personalizados import ArtefatosPersonalizadosRep
 from app.repositories.conteudo_classe import ConteudoClasseRepository
 from app.repositories.conteudo_personalizado import ConteudoPersonalizadoRepository
 from app.repositories.fontes_personalizacao import FontesPersonalizacaoRepository
+from app.repositories.materiais import MateriaisRepository
 from app.repositories.personalizacao_jobs import PersonalizacaoJobsRepository
 from app.repositories.personalizacao_progresso import PersonalizacaoProgressoRepository
 from app.services.classe_mapa_tema import gerar_classe_mapa_tema
+from app.services.media_agents import disparar_brainhex_async
 from app.services.personalizacao import (
+    _materialize_and_upload_media_assets,
     build_personalizacao_steps,
     fetch_personalizacao_context,
     gerar_cards_direto,
 )
-from app.services.media_agents import disparar_brainhex_async
 from app.services.storage import BUCKET
 
 logger = logging.getLogger(__name__)
@@ -158,6 +160,21 @@ def _compact_exception_text(exc: BaseException) -> str:
 
 def _exception_signature(exc: BaseException) -> str:
     return f"{type(exc).__name__}:{_compact_exception_text(exc).lower()}"
+
+
+def _pending_media_formats(materiais: dict[str, Any]) -> list[str]:
+    return [k for k, v in materiais.items() if (v.get("metadata") or {}).get("status") == "pending"]
+
+
+def _mark_pending_media_failed(materiais: dict[str, Any], *, error: str) -> dict[str, Any]:
+    result = {}
+    for fmt, entry in materiais.items():
+        meta = dict((entry.get("metadata") or {}))
+        if meta.get("status") == "pending":
+            meta["status"] = "failed"
+            meta["error"] = error
+        result[fmt] = {**entry, "metadata": meta}
+    return result
 
 
 async def _build_targets(
@@ -424,7 +441,7 @@ async def _cleanup_target(
 
 
 
-async def _process_target(
+async def _process_media_render_target(
     *,
     app: FastAPI,
     session: AsyncSession,
@@ -450,7 +467,7 @@ async def _process_target(
     )
     target_profile_label = _profile_key_to_label(target_profile_key)
 
-    if job["kind"] == JOB_KIND_CLEANUP:
+    if job.get("kind") == JOB_KIND_CLEANUP:
         return await _cleanup_target(
             session=session,
             classe_id=classe_id,
@@ -460,7 +477,7 @@ async def _process_target(
 
     # Jobs media_render são legados — BrainHex é responsável por gerar as mídias.
     # Redireciona disparando BrainHex para o personalizacao_id já existente.
-    if job["kind"] in _MEDIA_RENDER_KINDS:
+    if job.get("kind") in _MEDIA_RENDER_KINDS:
         personalizacao_id = target.get("personalizacao_id")
         if personalizacao_id is not None:
             repo_cp = ConteudoPersonalizadoRepository(session)
@@ -499,6 +516,81 @@ async def _process_target(
                 )
                 return {"record": record}
         return {"skipped": True}
+
+    # Legacy path: jobs with media_snapshot + personalizacao_id → direct media materialization
+    media_snapshot = job.get("media_snapshot") if isinstance(job.get("media_snapshot"), dict) else {}
+    if target.get("personalizacao_id") is not None and media_snapshot is not None:
+        personalizacao_id = int(target["personalizacao_id"])
+        repo_cp = ConteudoPersonalizadoRepository(session)
+        record = await repo_cp.buscar_por_id(personalizacao_id)
+        if not record:
+            return {"skipped": True}
+
+        pending_formats = _pending_media_formats(record.get("materiais") or {})
+        if not pending_formats:
+            updated = await repo_cp.atualizar_materiais_e_status(
+                record_id=personalizacao_id,
+                materiais=record.get("materiais") or {},
+                status="failed",
+            )
+            return {"record": updated}
+
+        shared_rendered = media_snapshot.get("shared_rendered_media") or {}
+        slow_payload = media_snapshot.get("slow_payload") or {}
+        new_materiais = dict(record.get("materiais") or {})
+        to_materialize: dict[str, Any] = {}
+        for fmt in pending_formats:
+            if fmt in shared_rendered:
+                new_materiais[fmt] = shared_rendered[fmt]
+            elif fmt in slow_payload:
+                to_materialize[fmt] = slow_payload[fmt]
+
+        if to_materialize:
+            materialized, _errors = await _materialize_and_upload_media_assets(
+                state={},
+                settings=app.state.settings,
+                media_materiais=to_materialize,
+            )
+            new_materiais.update(materialized)
+
+        materiais_repo = MateriaisRepository(session)
+        existing_rows = await materiais_repo.listar_por_personalizacao(personalizacao_id=personalizacao_id)
+        existing_ids: dict[str, int] = {
+            str(row.get("tipo")): int(row["id"])
+            for row in existing_rows
+            if row.get("tipo") and row.get("id") is not None
+        }
+        if not existing_ids:
+            resolved = await materiais_repo.resolver_ids_por_tipo_recente(
+                aluno_id=aluno_id,
+                conteudo_id=conteudo_id,
+                tipos=list(new_materiais.keys()),
+                ciclo_id=str(record.get("ciclo_id") or ""),
+            )
+            existing_ids.update(resolved)
+
+        jobs_repo = PersonalizacaoJobsRepository(session)
+        for fmt, mat in new_materiais.items():
+            if not isinstance(mat, dict):
+                continue
+            mat_id = existing_ids.get(fmt)
+            if mat_id:
+                await materiais_repo.patch_materiais_media(
+                    material_id=int(mat_id),
+                    arquivo_url=mat.get("arquivo_url"),
+                    storage_path=mat.get("storage_path"),
+                    metadata_patch=mat.get("metadata") if isinstance(mat.get("metadata"), dict) else None,
+                )
+        await jobs_repo.update_job_media_snapshot(
+            job_id=str(job["id"]),
+            media_snapshot={},
+        )
+        updated = await repo_cp.atualizar_materiais_e_status(
+            record_id=personalizacao_id,
+            materiais=new_materiais,
+            status="pronto",
+        )
+        return {"record": updated}
 
     ctx = await fetch_personalizacao_context(
         aluno_id=aluno_id,
@@ -669,7 +761,7 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
                 continue
 
             try:
-                outcome = await _process_target(app=app, session=session, job=job, target=target)
+                outcome = await _process_media_render_target(app=app, session=session, job=job, target=target)
                 record = outcome.get("record") if isinstance(outcome, dict) else None
                 target_status = "skipped" if outcome.get("skipped") else "completed"
                 target_error: str | None = None

@@ -93,7 +93,6 @@ def gerar_pdf_slides(
         c.drawRightString(W_PT - 18, H_PT - 46, label)
 
         body_top = H_PT - 90
-        col_w = 400
         img_x = 440
         img_w = W_PT - img_x - 18
         img_h = img_w * 0.5625
