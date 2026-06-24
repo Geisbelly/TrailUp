@@ -595,6 +595,107 @@ def test_personalizacao_contexto_route_accepts_cors_preflight(app) -> None:
     assert response.headers["access-control-allow-origin"] == "*"
 
 
+def test_personalizacao_por_perfil_route_groups_seven_brainhex_profiles(app, monkeypatch) -> None:
+    fake_session = FakeSession()
+    professor_user = UserContext(
+        user_id="prof-1",
+        role="professor",
+        roles=("professor",),
+        professor_id="prof-1",
+        professor_liberado=True,
+    )
+
+    async def override_session():
+        yield fake_session
+
+    app.dependency_overrides[get_session] = override_session
+    app.dependency_overrides[get_current_user] = lambda: professor_user
+    monkeypatch.setattr(AccessRepository, "professor_owns_classe", AsyncMock(return_value=True))
+    monkeypatch.setattr(
+        ConteudoClasseRepository,
+        "listar_alunos_classe_com_perfil_dominante",
+        AsyncMock(
+            return_value=[
+                {"aluno_id": "a1", "perfil_dominante": "mastermind", "afinidade": 80.0},
+                {"aluno_id": "a2", "perfil_dominante": "mastermind", "afinidade": 60.0},
+                {"aluno_id": "a3", "perfil_dominante": "seeker", "afinidade": 70.0},
+            ]
+        ),
+    )
+
+    async def buscar_recente_stub(self, *, classe_id, topico_id, brainhex_profile_key, source_hash=None):
+        if brainhex_profile_key == "mastermind":
+            return {
+                "id": 99,
+                "aluno_id": "a1",
+                "classe_id": classe_id,
+                "conteudo_id": None,
+                "topico_id": topico_id,
+                "ciclo_id": "ciclo-x",
+                "status": "pronto",
+                "source_hash": "hash-1",
+                "formato_prioritario": "cards",
+                "formatos_gerados": ["cards"],
+                "plano": {"perfil_dominante": "mastermind", "tom": "analitico"},
+                "materiais": {},
+                "ai_patch": None,
+                "gerado_em": datetime(2026, 4, 8, 12, 0, 0),
+                "updated_at": datetime(2026, 4, 8, 12, 0, 0),
+            }
+        return None
+
+    monkeypatch.setattr(
+        ConteudoPersonalizadoRepository,
+        "buscar_mais_recente_por_perfil",
+        buscar_recente_stub,
+    )
+
+    with TestClient(app) as client:
+        response = client.get("/api/v1/personalizar/perfis/10/55")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["classe_id"] == 10
+    assert body["topico_id"] == 55
+    assert len(body["perfis"]) == 7
+    assert body["total_perfis_com_material"] == 1
+
+    by_key = {item["perfil"]: item for item in body["perfis"]}
+    assert set(by_key) == {
+        "seeker",
+        "survivor",
+        "daredevil",
+        "mastermind",
+        "conqueror",
+        "socializer",
+        "achiever",
+    }
+    assert by_key["mastermind"]["tem_personalizacao"] is True
+    assert by_key["mastermind"]["formato_prioritario"] == "cards"
+    assert by_key["mastermind"]["total_alunos"] == 2
+    assert by_key["seeker"]["tem_personalizacao"] is False
+    assert by_key["seeker"]["total_alunos"] == 1
+    # design_tokens disponiveis mesmo sem personalizacao (preview da paleta)
+    assert by_key["seeker"]["design_tokens"]["cores"]["primary"]
+
+
+def test_personalizacao_por_perfil_route_rejects_unowned_class(app, monkeypatch) -> None:
+    professor_user = UserContext(
+        user_id="prof-1",
+        role="professor",
+        roles=("professor",),
+        professor_id="prof-1",
+        professor_liberado=True,
+    )
+    app.dependency_overrides[get_current_user] = lambda: professor_user
+    monkeypatch.setattr(AccessRepository, "professor_owns_classe", AsyncMock(return_value=False))
+
+    with TestClient(app) as client:
+        response = client.get("/api/v1/personalizar/perfis/10/55")
+
+    assert response.status_code == 403
+
+
 def _telemetria_payload() -> dict:
     return {
         "sessao_id": "7bd1dfbe-58cf-4ab2-b8fd-4f3e63f8d33b",

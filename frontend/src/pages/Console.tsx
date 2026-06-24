@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { LogOut, Settings, Loader2, Route, LayoutDashboard, Trophy, GraduationCap } from "lucide-react";
+import { LogOut, Settings, Loader2, Route, LayoutDashboard, Trophy, GraduationCap, Sparkles } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import TopicsManager from "@/components/console/trilha/TopicsManager";
@@ -11,6 +11,7 @@ import ProfileSection from "@/components/console/ProfileSection";
 import DashboardSection from "@/components/console/DashboardSection";
 import RanksSection from "@/components/console/RanksSection";
 import ClassManagementSection from "@/components/console/ClassManagementSection";
+import PersonalizacoesSection from "@/components/console/personalizacoes/PersonalizacoesSection";
 
 export interface ProfessorUpdateData {
   nome: string;
@@ -31,7 +32,7 @@ export default function Console() {
     descricao: string | null;
   } | null>(null);
   const [isLoadingProfessor, setIsLoadingProfessor] = useState(false);
-  const [view, setView] = useState<"trilha" | "dashboard" | "ranks" | "classes" | "profile">("dashboard");
+  const [view, setView] = useState<"trilha" | "dashboard" | "ranks" | "classes" | "personalizacoes" | "profile">("dashboard");
 
   useEffect(() => {
     const fetchProfessor = async () => {
@@ -170,6 +171,14 @@ export default function Console() {
             Classes
           </Button>
           <Button
+            variant={view === "personalizacoes" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setView("personalizacoes")}
+          >
+            <Sparkles className="h-4 w-4 mr-2" />
+            Personalizações
+          </Button>
+          <Button
             variant={view === "ranks" ? "default" : "outline"}
             size="sm"
             onClick={() => setView("ranks")}
@@ -205,6 +214,8 @@ export default function Console() {
               <DashboardSection />
             ) : view === "ranks" ? (
               <RanksSection />
+            ) : view === "personalizacoes" ? (
+              <PersonalizacoesSection professorId={professorData?.id} />
             ) : (
               <ClassManagementSection professorId={professorData?.id} />
             )}

@@ -38,6 +38,8 @@ from app.schemas.personalizacao import (
     PersonalizacaoListResponse,
     PersonalizacaoMediaItemStatusResponse,
     PersonalizacaoMediaStatusResponse,
+    PersonalizacaoPerfilItem,
+    PersonalizacaoPorPerfilResponse,
     PersonalizacaoResponse,
     PersonalizarPayload,
 )
@@ -73,6 +75,24 @@ _PROFILE_COLOR_MAP = {
     "socializer": "#7624c4",
     "socialiser": "#7624c4",
     "achiever": "#da7904",
+}
+_BRAINHEX_PROFILES = (
+    "seeker",
+    "survivor",
+    "daredevil",
+    "mastermind",
+    "conqueror",
+    "socializer",
+    "achiever",
+)
+_PROFILE_LABEL_MAP = {
+    "seeker": "Explorador",
+    "survivor": "Sobrevivente",
+    "daredevil": "Aventureiro",
+    "mastermind": "Estrategista",
+    "conqueror": "Conquistador",
+    "socializer": "Sociável",
+    "achiever": "Realizador",
 }
 _MEDIA_TIPOS = ("pdf", "audio", "apresentacao", "markdown")
 _MEDIA_STATUS_MAP = {
@@ -1284,6 +1304,88 @@ async def upsert_progresso_personalizado(
         await session.commit()
 
     return _to_progresso_response(saved)
+
+
+@router.get(
+    "/perfis/{classe_id}/{topico_id}",
+    response_model=PersonalizacaoPorPerfilResponse,
+)
+async def listar_personalizacoes_por_perfil(
+    classe_id: int,
+    topico_id: int,
+    user: UserContext = Depends(require_professor),
+    session: AsyncSession = Depends(get_session),
+) -> PersonalizacaoPorPerfilResponse:
+    """Visao docente: personalizacao de um (classe x topico) lado a lado pelos 7 perfis BrainHex.
+
+    Para cada perfil retorna o plano (formato_prioritario, formatos, tom/estilo), os
+    design_tokens (preview da paleta) e os materiais da personalizacao mais recente daquele
+    perfil, alem da contagem de alunos da turma cujo perfil dominante e o perfil em questao.
+    """
+    access_repo = AccessRepository(session)
+    owns_class = await access_repo.professor_owns_classe(
+        user.professor_id or user.user_id, classe_id
+    )
+    if not owns_class:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Professor sem permissao para esta classe.",
+        )
+
+    personalizacao_repo = ConteudoPersonalizadoRepository(session)
+    classe_repo = ConteudoClasseRepository(session)
+
+    alunos = await classe_repo.listar_alunos_classe_com_perfil_dominante(classe_id)
+    contagem_por_perfil: dict[str, int] = {}
+    for aluno in alunos:
+        perfil_key = personalizacao_repo._normalize_profile_key(aluno.get("perfil_dominante"))
+        contagem_por_perfil[perfil_key] = contagem_por_perfil.get(perfil_key, 0) + 1
+
+    perfis: list[PersonalizacaoPerfilItem] = []
+    total_com_material = 0
+    for perfil in _BRAINHEX_PROFILES:
+        record = await personalizacao_repo.buscar_mais_recente_por_perfil(
+            classe_id=classe_id,
+            topico_id=topico_id,
+            brainhex_profile_key=perfil,
+        )
+        personalizacao_response = _to_response(record) if record else None
+        if personalizacao_response is not None:
+            total_com_material += 1
+
+        design_tokens = (
+            personalizacao_response.design_tokens
+            if personalizacao_response is not None
+            else _build_design_tokens(perfil)
+        )
+
+        perfis.append(
+            PersonalizacaoPerfilItem(
+                perfil=perfil,
+                perfil_label=_PROFILE_LABEL_MAP.get(perfil, perfil.capitalize()),
+                cor=_PROFILE_COLOR_MAP.get(perfil, _PROFILE_COLOR_MAP["mastermind"]),
+                design_tokens=design_tokens,
+                tem_personalizacao=personalizacao_response is not None,
+                personalizacao=personalizacao_response,
+                plano=personalizacao_response.plano if personalizacao_response else None,
+                formato_prioritario=(
+                    personalizacao_response.formato_prioritario if personalizacao_response else None
+                ),
+                formatos_gerados=(
+                    personalizacao_response.formatos_gerados if personalizacao_response else []
+                ),
+                materiais=personalizacao_response.materiais if personalizacao_response else None,
+                total_alunos=contagem_por_perfil.get(perfil, 0),
+                gerado_em=personalizacao_response.gerado_em if personalizacao_response else None,
+            )
+        )
+
+    return PersonalizacaoPorPerfilResponse(
+        classe_id=classe_id,
+        topico_id=topico_id,
+        total_perfis_com_material=total_com_material,
+        perfis=perfis,
+    )
 
 
 @router.get("/contexto/{aluno_id}", response_model=PersonalizacaoContextoDocenteResponse)

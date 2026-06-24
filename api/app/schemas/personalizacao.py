@@ -213,6 +213,32 @@ class PersonalizacaoContextoDocenteResponse(BaseModel):
     progresso_itens: list[PersonalizacaoItemProgressoResponse] = Field(default_factory=list)
 
 
+class PersonalizacaoPerfilItem(BaseModel):
+    """Visao por perfil BrainHex de uma personalizacao (classe x topico)."""
+
+    perfil: str
+    perfil_label: str
+    cor: str
+    design_tokens: DesignTokens = Field(default_factory=DesignTokens)
+    tem_personalizacao: bool = False
+    personalizacao: PersonalizacaoResponse | None = None
+    plano: dict[str, Any] | None = None
+    formato_prioritario: str | None = None
+    formatos_gerados: list[str] = Field(default_factory=list)
+    materiais: dict[str, Any] | None = None
+    total_alunos: int = 0
+    gerado_em: datetime | None = None
+
+
+class PersonalizacaoPorPerfilResponse(BaseModel):
+    """Personalizacoes de um (classe x topico) agrupadas pelos 7 perfis BrainHex."""
+
+    classe_id: int
+    topico_id: int
+    total_perfis_com_material: int = 0
+    perfis: list[PersonalizacaoPerfilItem] = Field(default_factory=list)
+
+
 class PersonalizacaoJobPayload(BaseModel):
     classe_id: int
     aluno_id: str | None = None
