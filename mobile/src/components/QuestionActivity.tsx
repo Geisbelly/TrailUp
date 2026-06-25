@@ -656,8 +656,13 @@ export default function QuestionActivity({
   const bloqueioEdicaoPersistida = atividadeConcluidaPersistida && !reResponder;
   const jaTemTentativa =
     respondidaAntes || !!confirmados[questaoIndex] || Number(questao?.ultima_tentativa ?? 0) > 0;
+  // So revela a resposta/gabarito quando: o aluno acabou de confirmar
+  // (confirmados), o modo imediato pediu para mostrar (mostrarResposta), ou a
+  // atividade esta concluida E ESTA questao ja tem uma tentativa real
+  // (revisao). Sem o `jaTemTentativa`, uma atividade marcada como "concluida"
+  // (ex.: personalizada) revelava a resposta de questoes ainda nao respondidas.
   const respostasVisiveis = isImediato
-    ? mostrarResposta || (atividadeConcluidaPersistida || !!confirmados[questaoIndex])
+    ? mostrarResposta || !!confirmados[questaoIndex] || (atividadeConcluidaPersistida && jaTemTentativa)
     : mostrarResposta;
   const mostrarRespostaAluno = respostasVisiveis && (respostaAnterior != null || questao?.resposta_aluno);
   const podeVerGabarito = respostasVisiveis;
