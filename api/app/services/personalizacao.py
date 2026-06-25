@@ -2992,6 +2992,37 @@ def _coerce_dict_list(value: Any) -> list[dict[str, Any]]:
     return [item for item in value if isinstance(item, dict)]
 
 
+# Ordem de preferencia de formato por perfil BrainHex (afinidade cognitiva).
+# Reutilizado para recomendar formatos e para reordenar o plano gerado pelo LLM,
+# de modo que o material mais interessante para o perfil apareca primeiro.
+_PROFILE_FORMAT_PREFERENCES: dict[str, list[str]] = {
+    "Achiever": ["markdown", "apresentacao", "cards", "audio"],
+    "Conqueror": ["apresentacao", "cards", "markdown", "audio"],
+    "Socialiser": ["audio", "cards", "markdown", "apresentacao"],
+    "Daredevil": ["audio", "cards", "apresentacao", "markdown"],
+    "Mastermind": ["markdown", "apresentacao", "audio", "cards"],
+    "Seeker": ["markdown", "apresentacao", "cards", "audio"],
+    "Survivor": ["cards", "markdown", "audio", "apresentacao"],
+}
+
+
+def _ordenar_formatos_por_perfil(formatos: list[str], perfil: str | None) -> list[str]:
+    """Reordena (sem remover) os formatos para que os preferidos do perfil venham
+    primeiro. Formatos fora da preferencia mantem a ordem relativa original."""
+    prefs = _PROFILE_FORMAT_PREFERENCES.get(str(perfil or ""), [])
+    if not prefs:
+        return list(formatos)
+
+    def _chave(par: tuple[int, str]) -> tuple[int, int]:
+        idx, fmt = par
+        try:
+            return (prefs.index(fmt), idx)
+        except ValueError:
+            return (len(prefs), idx)
+
+    return [fmt for _, fmt in sorted(enumerate(formatos), key=_chave)]
+
+
 def _recomendar_formatos(
     *,
     perfil: str,
@@ -3010,16 +3041,9 @@ def _recomendar_formatos(
     if "audio" in entradas:
         ranked.extend(["cards", "markdown"])
 
-    profile_preferences = {
-        "Achiever": ["markdown", "apresentacao", "cards", "audio"],
-        "Conqueror": ["apresentacao", "cards", "markdown", "audio"],
-        "Socialiser": ["audio", "cards", "markdown", "apresentacao"],
-        "Daredevil": ["audio", "cards", "apresentacao", "markdown"],
-        "Mastermind": ["markdown", "apresentacao", "audio", "cards"],
-        "Seeker": ["markdown", "apresentacao", "cards", "audio"],
-        "Survivor": ["cards", "markdown", "audio", "apresentacao"],
-    }
-    ranked.extend(profile_preferences.get(perfil, ["markdown", "cards", "audio", "apresentacao"]))
+    ranked.extend(
+        _PROFILE_FORMAT_PREFERENCES.get(perfil, ["markdown", "cards", "audio", "apresentacao"])
+    )
 
     normalized_mode = (modo_operacao or "").strip().lower()
     if normalized_mode == "imediato":
@@ -4945,12 +4969,12 @@ async def generate_plano_personalizacao(state: dict[str, Any], settings: Setting
     formatos = [f for f in result.get("formatos", fallback_plan["formatos"]) if f in _ALL_FORMATOS]
     if not formatos:
         formatos = fallback_plan["formatos"]
+    # Reordena os formatos gerados para priorizar o que e mais interessante ao
+    # perfil do aluno (o material preferido do perfil aparece primeiro). Nao
+    # remove formatos — apenas ordena por afinidade.
+    formatos = _ordenar_formatos_por_perfil(formatos, perfil_dominante)
     result["formatos"] = formatos
-    result["formato_prioritario"] = (
-        result.get("formato_prioritario")
-        if result.get("formato_prioritario") in formatos
-        else formatos[0]
-    )
+    result["formato_prioritario"] = formatos[0]
     raw_refresh_policy = result.get("refresh_policy")
     if not isinstance(raw_refresh_policy, dict):
         raw_refresh_policy = fallback_plan.get("refresh_policy") or {"mode": "once", "trigger_actions": []}
