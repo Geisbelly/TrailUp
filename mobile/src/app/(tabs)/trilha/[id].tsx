@@ -1614,12 +1614,14 @@ export default function TrilhaConteudoScreen() {
                   },
                   bloqueiaAvanco && styles.buttonDisabled,
                 ]}
-                disabled={bloqueiaAvanco}
+                // Sem `disabled`: o botao precisa receber o toque para mostrar o
+                // dialog de orientacao quando bloqueado. Com `disabled` o onPress
+                // nao dispara e o botao fica "morto" (nao avanca e parece travado).
                 onPress={async () => {
                   if (bloqueiaAvanco) {
                     showDialog({
                       title: "Responda a atividade",
-                      description: "Confirme a resposta para liberar o avanço.",
+                      description: "Confirme a resposta da atividade para liberar o avanço.",
                       tone: "warning",
                     });
                     return;
