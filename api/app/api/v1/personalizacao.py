@@ -919,6 +919,20 @@ async def conversar_com_mentor_personalizacao(
     latest_record = records[0] if records else None
     topico = await classe_repo.buscar_topico(payload.topico_id) if payload.topico_id is not None else None
 
+    # Conteudo da materia do topico para o guia direcionar o estudo. Sem
+    # gabaritos/respostas (buscar_questoes_topico retorna apenas enunciado/tipo,
+    # respeitando os guardrails). Falha aqui nao deve quebrar o chat.
+    conteudos_topico: list = []
+    atividades_topico: list = []
+    questoes_topico: list = []
+    if payload.topico_id is not None:
+        try:
+            conteudos_topico = await classe_repo.buscar_conteudos_topico(payload.topico_id)
+            atividades_topico = await classe_repo.buscar_atividades_topico(payload.topico_id)
+            questoes_topico = await classe_repo.buscar_questoes_topico(payload.topico_id)
+        except Exception as exc:  # pragma: no cover
+            logger.warning("Falha ao carregar conteudo da materia para o guia: %s", exc)
+
     logger.info(
         "personalizacao.chat.input=%s",
         {
@@ -964,6 +978,34 @@ async def conversar_com_mentor_personalizacao(
                 if latest_record
                 else None
             ),
+            # Conteudo completo do topico (da turma) para o guia se especializar
+            # na materia e direcionar o estudo. Sem respostas de questoes.
+            "conteudo_materia": {
+                "conteudos": [
+                    {
+                        "titulo": c.get("titulo"),
+                        "tipo": c.get("tipo"),
+                        "resumo": str(c.get("conteudo") or "")[:600],
+                        "ordem": c.get("ordem"),
+                    }
+                    for c in (conteudos_topico or [])[:12]
+                    if isinstance(c, dict)
+                ],
+                "atividades": [
+                    {
+                        "titulo": a.get("titulo"),
+                        "descricao": a.get("descricao"),
+                        "tipo": a.get("tipo"),
+                    }
+                    for a in (atividades_topico or [])[:12]
+                    if isinstance(a, dict)
+                ],
+                "questoes_temas": [
+                    {"enunciado": q.get("enunciado"), "tipo": q.get("tipo")}
+                    for q in (questoes_topico or [])[:20]
+                    if isinstance(q, dict)
+                ],
+            },
             "guardrails": {
                 "sem_gabarito": True,
                 "sem_resposta_direta_atividade": True,
