@@ -5,6 +5,23 @@ import os
 os.environ.setdefault("SUPABASE_JWT_SECRET", "test-secret")
 os.environ.setdefault("ADMIN_PANEL_PASSWORD", "secret-admin")
 
+# Isolamento de rede: alguns testes constroem Settings(...) diretamente sem
+# passar supabase_url/gemini_api_key/brainhex_api_url, e sem isso esses campos
+# vazam do .env local (credenciais REAIS) — qualquer chamada de geração de
+# mídia não mockada nesses testes acaba subindo arquivo de teste no Supabase
+# de producao de verdade. Sobrescrevemos (nao setdefault) para blindar todo
+# o processo de teste, mesmo que um teste individual esqueça de mockar.
+# Testes que precisam de um valor especifico continuam funcionando: kwargs
+# explicitos em Settings(...) sempre tem prioridade sobre variavel de ambiente.
+os.environ["SUPABASE_URL"] = ""
+os.environ["EXPO_PUBLIC_SUPABASE_URL"] = ""
+os.environ["SUPABASE_SERVICE_KEY"] = ""
+os.environ["SUPABASE_SERVICE_ROLE_KEY"] = ""
+os.environ["SUPABASE_ANON_KEY"] = ""
+os.environ["GEMINI_API_KEY"] = ""
+os.environ["OPENAI_API_KEY"] = ""
+os.environ["BRAINHEX_API_URL"] = ""
+
 from collections.abc import AsyncIterator
 from typing import Any
 
