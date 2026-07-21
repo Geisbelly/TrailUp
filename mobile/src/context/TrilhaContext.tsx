@@ -923,8 +923,10 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
     (record: Record<string, any>, topico: Topico) => {
       if (!usuario?.id || !classeAtual || !personalizacaoProvider.hasApiConfigured()) return;
 
+      // API só usa 'processando_midias' (em andamento) e 'pronto'/'partial'/'failed' (terminais)
+      // para o status do registro — nunca 'pending'/'processing'.
       const status = String(record?.status ?? '').toLowerCase();
-      if (['pending', 'processing'].includes(status)) return;
+      if (status === 'processando_midias') return;
 
       const missingFormats = collectMissingRequestedMediaFormats(record);
       if (!missingFormats.length) return;

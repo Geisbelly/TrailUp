@@ -6554,19 +6554,38 @@ async def _enqueue_media_render_job_if_needed(
 
     # Dispara BrainHex em background: persiste audio + markdown direto no Supabase
     if settings is not None and getattr(settings, "brainhex_api_url", None):
-        _conteudo_estudado = state.get("conteudo_estudado") if isinstance(state.get("conteudo_estudado"), dict) else {}
-        asyncio.create_task(
-            disparar_brainhex_async(
-                settings=settings,
-                perfil=brainhex_profile_key or perfil_dominante or "mastermind",
-                conteudo_estudado=_conteudo_estudado,
-                personalizacao_id=int(record["id"]),
-                aluno_id=aluno_id,
-                classe_id=int(classe_id) if classe_id is not None else None,
-                topico_id=int(topico_id) if topico_id is not None else None,
-                ciclo_id=ciclo_id,
+        materiais_origem = state.get("materiais_origem") if isinstance(state.get("materiais_origem"), list) else []
+        supabase_base = str(getattr(settings, "supabase_url", "") or "").strip()
+        fontes: list[dict[str, Any]] = []
+        for source in materiais_origem:
+            if not isinstance(source, dict):
+                continue
+            public_url = str(source.get("url") or "").strip()
+            if not public_url:
+                storage_path = str(source.get("storage_path") or "").strip()
+                bucket = str(source.get("bucket") or _CONTEUDO_ALUNO_BUCKET).strip()
+                if storage_path and supabase_base:
+                    public_url = build_public_storage_url(supabase_base, bucket, storage_path) or ""
+            if not public_url:
+                continue
+            fontes.append({
+                "url": public_url,
+                "mime_type": str(source.get("mime_type") or "").strip(),
+                "tipo": str(source.get("tipo") or "documento").strip(),
+            })
+        if fontes:
+            asyncio.create_task(
+                disparar_brainhex_async(
+                    settings=settings,
+                    perfil=brainhex_profile_key or perfil_dominante or "mastermind",
+                    fontes=fontes,
+                    personalizacao_id=int(record["id"]),
+                    aluno_id=aluno_id,
+                    classe_id=int(classe_id) if classe_id is not None else None,
+                    topico_id=int(topico_id) if topico_id is not None else None,
+                    ciclo_id=ciclo_id,
+                )
             )
-        )
 
     return job
 

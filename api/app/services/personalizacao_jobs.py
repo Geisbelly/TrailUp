@@ -87,7 +87,7 @@ def _profile_key_to_label(profile_key: str) -> str:
         "daredevil": "Daredevil",
         "mastermind": "Mastermind",
         "conqueror": "Conqueror",
-        "socializer": "Socialiser",
+        "socializer": "Socializer",
         "achiever": "Achiever",
     }
     return labels.get(key, "Mastermind")

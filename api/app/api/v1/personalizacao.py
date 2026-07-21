@@ -97,7 +97,7 @@ _PROFILE_LABEL_MAP = {
     "daredevil": "Aventureiro",
     "mastermind": "Estrategista",
     "conqueror": "Conquistador",
-    "socializer": "Sociável",
+    "socializer": "Socializador",
     "achiever": "Realizador",
 }
 _MEDIA_TIPOS = ("pdf", "audio", "apresentacao", "markdown")

@@ -56,6 +56,9 @@ class Settings(BaseSettings):
     gemini_model_tts: str = "gemini-2.5-flash-preview-tts"
 
     brainhex_api_url: str | None = None
+    # Precisa bater com API_SHARED_SECRET no microservice (api-brainhex) quando
+    # configurado lá — obrigatório em produção; sem ele, /api/personalizar retorna 401.
+    brainhex_api_secret: str | None = None
 
     emotion_model_provider: str = "deepface"
     reading_model_provider: str = "isolation_forest"
