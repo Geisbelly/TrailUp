@@ -29,6 +29,8 @@ export type DesignTokensCores = {
   text_primary: string;
   text_muted: string;
   success: string;
+  warning: string;
+  info: string;
   locked: string;
 };
 

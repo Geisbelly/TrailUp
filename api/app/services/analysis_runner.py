@@ -25,7 +25,11 @@ def build_analysis_graph_config(
 ) -> dict:
     return {
         "configurable": {
-            "thread_id": aluno_id,
+            # thread_id precisa variar por ciclo — completed_nodes usa reducer
+            # operator.add, então reaproveitar o thread_id do aluno entre ciclos
+            # acumula o valor no MemorySaver e trava o supervisor em "finish"
+            # a partir do 2º ciclo (mesmo padrao ja usado em personalizacao.py:346).
+            "thread_id": f"{aluno_id}:{cycle_id}",
             "checkpoint_ns": checkpoint_ns,
         },
         "tags": ["trailup", checkpoint_ns],

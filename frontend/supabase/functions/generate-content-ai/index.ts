@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.86.0";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -1015,6 +1016,22 @@ function jsonResponse(payload: unknown, status = 200): Response {
   });
 }
 
+// verify_jwt do Supabase só recusa token ausente/invalido — a anon key publica
+// (embutida no bundle do front) tambem passa nessa checagem. Exigimos aqui que
+// o token pertença a um usuario de fato logado, nao so a chave publica anon.
+async function requireAuthenticatedUser(req: Request): Promise<boolean> {
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+  if (!authHeader || !supabaseUrl || !supabaseAnonKey) return false;
+
+  const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } },
+  });
+  const { data, error } = await authClient.auth.getUser();
+  return !error && Boolean(data?.user);
+}
+
 function asString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -1424,6 +1441,10 @@ function normalizeAtividades(raw: unknown, topicName: string): { items: AiAtivid
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: CORS });
+  }
+
+  if (!(await requireAuthenticatedUser(req))) {
+    return jsonResponse({ error: "unauthorized" }, 401);
   }
 
   try {

@@ -135,7 +135,10 @@ class PersonalizacaoProgressoRepository:
                     COALESCE(personalizacao_item_progresso.percentual_concluido, 0),
                     COALESCE(EXCLUDED.percentual_concluido, 0)
                   ),
-                  acertos_percentual = COALESCE(EXCLUDED.acertos_percentual, personalizacao_item_progresso.acertos_percentual),
+                  acertos_percentual = GREATEST(
+                    COALESCE(personalizacao_item_progresso.acertos_percentual, 0),
+                    COALESCE(EXCLUDED.acertos_percentual, 0)
+                  ),
                   tempo_gasto_min = COALESCE(personalizacao_item_progresso.tempo_gasto_min, 0) + COALESCE(EXCLUDED.tempo_gasto_min, 0),
                   pontuacao_obtida = GREATEST(
                     COALESCE(personalizacao_item_progresso.pontuacao_obtida, 0),

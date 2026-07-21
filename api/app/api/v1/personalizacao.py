@@ -764,6 +764,31 @@ def _build_storage_path(
     )
 
 
+async def _ensure_topico_conteudo_belongs_to_classe(
+    *,
+    classe_repo: ConteudoClasseRepository,
+    classe_id: int,
+    topico_id: int | None,
+    conteudo_id: int | None,
+) -> None:
+    """Evita que um aluno gere/consulte personalizacao de conteudo de outra classe
+    enviando um topico_id/conteudo_id que nao pertence a classe_id informado."""
+    if topico_id is not None:
+        actual_classe_id = await classe_repo.buscar_classe_id_por_topico(topico_id)
+        if actual_classe_id is not None and actual_classe_id != classe_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Topico nao pertence a classe informada.",
+            )
+    if conteudo_id is not None:
+        actual_classe_id = await classe_repo.buscar_classe_id_por_conteudo(conteudo_id)
+        if actual_classe_id is not None and actual_classe_id != classe_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Conteudo nao pertence a classe informada.",
+            )
+
+
 @router.post("", response_model=PersonalizacaoResponse, status_code=status.HTTP_201_CREATED)
 async def personalizar(
     payload: PersonalizarPayload,
@@ -784,6 +809,19 @@ async def personalizar(
         )
 
     aluno_id = user.aluno_id or user.user_id
+    access_repo = AccessRepository(session)
+    if not await access_repo.aluno_belongs_to_classe(aluno_id=str(aluno_id), classe_id=int(payload.classe_id)):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Aluno sem acesso a esta classe.",
+        )
+    await _ensure_topico_conteudo_belongs_to_classe(
+        classe_repo=ConteudoClasseRepository(session),
+        classe_id=int(payload.classe_id),
+        topico_id=payload.topico_id,
+        conteudo_id=payload.conteudo_id,
+    )
+
     settings = request.app.state.settings
     logger.info(
         "personalizacao.input=%s",
@@ -908,9 +946,21 @@ async def conversar_com_mentor_personalizacao(
         )
 
     aluno_id = user.aluno_id or user.user_id
+    access_repo = AccessRepository(session)
+    if not await access_repo.aluno_belongs_to_classe(aluno_id=str(aluno_id), classe_id=int(payload.classe_id)):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Aluno sem acesso a esta classe.",
+        )
     context_repo = ContextRepository(session)
     personalizacao_repo = ConteudoPersonalizadoRepository(session)
     classe_repo = ConteudoClasseRepository(session)
+    await _ensure_topico_conteudo_belongs_to_classe(
+        classe_repo=classe_repo,
+        classe_id=int(payload.classe_id),
+        topico_id=payload.topico_id,
+        conteudo_id=payload.conteudo_id,
+    )
 
     context = await context_repo.fetch_aluno_context(aluno_id, payload.classe_id)
     records = await personalizacao_repo.buscar_por_aluno(
@@ -1280,6 +1330,11 @@ async def upsert_progresso_personalizado(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Personalizacao nao encontrada.",
+        )
+    if str(personalizacao.get("aluno_id") or "") != str(aluno_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Personalizacao nao pertence a este aluno.",
         )
     personalizacao_classe_id = int(personalizacao.get("classe_id") or 0)
     personalizacao_topico_id = int(personalizacao.get("topico_id") or 0)

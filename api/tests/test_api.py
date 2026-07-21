@@ -376,6 +376,9 @@ def test_personalizar_route_creates_personalizacao_record(app, aluno_user, monke
     monkeypatch.setattr(personalizacao_module, "fetch_personalizacao_context", AsyncMock(return_value=fake_ctx))
     monkeypatch.setattr(personalizacao_module, "gerar_cards_direto", AsyncMock(return_value=[]))
     monkeypatch.setattr(personalizacao_module, "disparar_brainhex_async", AsyncMock(return_value=None))
+    monkeypatch.setattr(AccessRepository, "aluno_belongs_to_classe", AsyncMock(return_value=True))
+    monkeypatch.setattr(ConteudoClasseRepository, "buscar_classe_id_por_topico", AsyncMock(return_value=1))
+    monkeypatch.setattr(ConteudoClasseRepository, "buscar_classe_id_por_conteudo", AsyncMock(return_value=1))
     monkeypatch.setattr(
         "app.repositories.artefatos_personalizados.ArtefatosPersonalizadosRepository.marcar_ciclos_anteriores_obsoletos",
         AsyncMock(return_value=None),
