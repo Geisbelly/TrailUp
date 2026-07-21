@@ -69,15 +69,18 @@ from app.services.storage import BUCKET, SupabaseStorage, build_public_storage_u
 router = APIRouter(prefix="/personalizar", tags=["personalizar"])
 logger = logging.getLogger(__name__)
 
+# Cores-assinatura oficiais por perfil BrainHex (fonte: microservice/src/constants/brainHex.ts,
+# espelhada em mobile/src/constants/profileImages.ts) — mantidas idênticas aqui para consistência
+# visual entre console/API, mobile e microservice.
 _PROFILE_COLOR_MAP = {
-    "seeker": "#bb9c04",
-    "survivor": "#8B0000",
-    "daredevil": "#228B22",
+    "seeker": "#a78c07",
+    "survivor": "#720101",
+    "daredevil": "#1b6b1b",
     "mastermind": "#707c88",
     "conqueror": "#01808b",
-    "socializer": "#7624c4",
-    "socialiser": "#7624c4",
-    "achiever": "#da7904",
+    "socializer": "#6d15be",
+    "socialiser": "#6d15be",
+    "achiever": "#ad6002",
 }
 _BRAINHEX_PROFILES = (
     "seeker",
