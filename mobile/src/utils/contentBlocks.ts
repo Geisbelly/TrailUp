@@ -613,6 +613,12 @@ export function buildContentBlocks(conteudo: any): ContentBlock[] {
         conteudo: conteudo.conteudo,
         metadata: conteudo.metadata,
         titulo: conteudo.titulo,
+        // conteudo.conteudo guarda o path bruto do upload original do professor
+        // (tabela `conteudos`), que vive no bucket "conteudos" — nao no
+        // "conteudo_aluno" (default de normalizeObjectPath, usado pelo material
+        // personalizado por perfil). Sem isto a URL publica aponta pro bucket
+        // errado e retorna 400 ("File not found" no viewer).
+        bucket: "conteudos",
       },
       `c-${conteudo.id ?? "conteudo"}`
     )
