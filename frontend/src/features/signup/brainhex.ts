@@ -209,11 +209,14 @@ export function isAllAnswered(answers: BrainHexAnswers) {
 
 
 // Cores derivadas da cor-assinatura oficial de cada perfil BrainHex
-// (fonte: microservice/src/constants/brainHex.ts). O tom usado aqui já é a
-// variante clareada com contraste WCAG AAA garantido sobre fundos escuros
-// (mesma variante "accent" de src/lib/personalizacao-theme-guide.ts), para
-// que texto, ícone, borda e preenchimento fiquem legíveis sem perder a
-// identidade do perfil.
+// (fonte: microservice/src/constants/brainHex.ts). O tom usado aqui é uma
+// variante clareada, pré-calculada à mão para contraste sobre fundos escuros
+// neste card de signup especificamente — não é o mesmo valor nem o mesmo
+// algoritmo do accent computado em api/app/api/v1/personalizacao.py
+// (_ensure_min_contrast, calculado dinamicamente contra surface_elevated) ou
+// do "accent" estático em src/lib/personalizacao-theme-guide.ts. As três
+// variantes compartilham a cor-assinatura de origem, mas não são
+// intercambiáveis — cada uma serve uma superfície diferente.
 export const PROFILES = {
   seeker: {
     key: "seeker",

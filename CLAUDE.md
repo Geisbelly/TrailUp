@@ -63,14 +63,18 @@ Cada perfil carrega:
   assinatura do perfil, não só o microservice (Fase 1 concluída).
 - **Voz TTS** — `VOICE_MAP` em `microservice/server.ts` (Gemini TTS ativo).
 
-> Paleta unificada entre backend (`_build_design_tokens` em
-> `api/app/api/v1/personalizacao.py`) e frontend
-> (`frontend/src/lib/personalizacao-theme-guide.ts`), ambos derivando da
-> cor-assinatura oficial em `microservice/src/constants/brainHex.ts` (Fase 3
-> concluída). Correções de contraste AAA devem sempre elevar a luminosidade
-> HSL/HLS da cor-assinatura (nunca misturar com branco), para não desaturar o
-> accent do perfil — misturar com branco "apaga" a cor mesmo passando no
-> contraste.
+> Backend (`_build_design_tokens` em `api/app/api/v1/personalizacao.py`) e
+> frontend (`frontend/src/lib/personalizacao-theme-guide.ts`,
+> `frontend/src/features/signup/brainhex.ts`) partem todos da mesma
+> cor-assinatura oficial por perfil em `microservice/src/constants/brainHex.ts`
+> (Fase 3 concluída) — mas **não são a mesma variante calculada**: o backend
+> deriva o accent dinamicamente contra `surface_elevated` via
+> `_ensure_min_contrast`, enquanto os dois arquivos do frontend usam tons
+> clareados fixos, calculados à mão para cada superfície. Não assumir que
+> mudar um dos três atualiza os outros. Correções de contraste AAA devem
+> sempre elevar a luminosidade HSL/HLS da cor-assinatura (nunca misturar com
+> branco), para não desaturar o accent do perfil — misturar com branco "apaga"
+> a cor mesmo passando no contraste.
 
 ## Tabelas Supabase (personalização)
 
