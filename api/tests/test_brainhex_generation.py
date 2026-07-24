@@ -1,10 +1,11 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
-import json
+
+from app.core.settings import Settings
 
 # Imports da função
-from app.services.media_agents import gerar_conteudo_brainhex, gerar_imagem_slide, _BRAINHEX_GUIDE_CONFIG
-from app.core.settings import Settings
+from app.services.media_agents import _BRAINHEX_GUIDE_CONFIG, gerar_conteudo_brainhex, gerar_imagem_slide
 
 
 @pytest.fixture

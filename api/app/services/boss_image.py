@@ -1,5 +1,5 @@
-from app.adapters.gemini_boss_image import GeminiBossImageAdapter
 from app.adapters.base_boss_image import BossImageAdapter
+from app.adapters.gemini_boss_image import GeminiBossImageAdapter
 from app.adapters.placeholder_boss_image import PlaceholderBossImageAdapter
 from app.core.settings import Settings
 from app.schemas.ia_patch import IAEnemySpec, IAEnemyVisualSpec

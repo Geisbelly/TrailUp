@@ -1,13 +1,13 @@
-from datetime import datetime
 import asyncio
 import json
+from datetime import datetime
 from typing import Any
 from uuid import uuid4
 
+from asyncpg.exceptions import QueryCanceledError
 from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
-from asyncpg.exceptions import QueryCanceledError
 
 
 class TelemetriaRepository:

@@ -3,7 +3,6 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-
 TelemetryFlushReason = Literal[
     "interval",
     "screen_blur",

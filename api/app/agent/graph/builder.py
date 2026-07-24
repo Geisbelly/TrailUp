@@ -1,14 +1,13 @@
 from functools import partial
 from typing import Any
 
+from langgraph.graph import END, START, StateGraph
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.adapters.mock_emocao import MockEmocaoAdapter
 from app.agent.graph import nodes, routing
 from app.agent.graph.state import TrailUpState
 from app.core.settings import Settings
-
-from langgraph.graph import END, START, StateGraph
 
 
 def build_graph(

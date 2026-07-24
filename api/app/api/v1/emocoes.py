@@ -5,12 +5,11 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_session, require_aluno
+from app.repositories.evento import EventoRepository
 from app.schemas.api import AnalisarPayload, AnalisarResponse
 from app.services.analysis_runner import build_analysis_graph_config, run_analysis
 from app.services.auth import UserContext
 from app.services.state_builder import build_initial_state
-from app.repositories.evento import EventoRepository
-
 
 router = APIRouter(prefix="/emocoes", tags=["emocoes"])
 

@@ -9,7 +9,6 @@ from app.api.deps import AdminContext, get_session, require_admin
 from app.repositories.access import AccessRepository
 from app.schemas.api import AdminAlunoResumo, AdminDashboardData, AdminProfessorResumo
 
-
 router = APIRouter(tags=["admin"])
 
 

@@ -88,8 +88,8 @@ def _build_fallback_theme(context: dict[str, Any]) -> dict[str, Any]:
     world_name = f"Reinos de {materia_nome}"
     world_subtitle = "Mapa principal da jornada de aprendizagem da turma."
     world_description = (
-        f"Cada territorio representa um topico da classe. "
-        f"Avance pelas rotas para consolidar conceitos e evoluir no percurso."
+        "Cada territorio representa um topico da classe. "
+        "Avance pelas rotas para consolidar conceitos e evoluir no percurso."
     )
     if classe_descricao:
         world_description = f"{_short_text(classe_descricao, 160)} {world_description}"

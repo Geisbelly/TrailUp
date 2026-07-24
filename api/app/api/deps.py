@@ -1,6 +1,6 @@
-﻿from collections.abc import AsyncIterator
+﻿import secrets
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
-import secrets
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBasic, HTTPBasicCredentials, HTTPBearer
@@ -10,7 +10,6 @@ from app.core.settings import Settings
 from app.db.session import session_dependency
 from app.repositories.access import AccessRepository
 from app.services.auth import AuthService, UserContext
-
 
 bearer_scheme = HTTPBearer(auto_error=False)
 basic_scheme = HTTPBasic(auto_error=False)

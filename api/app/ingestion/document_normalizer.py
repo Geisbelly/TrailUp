@@ -8,7 +8,7 @@ from __future__ import annotations
 import re
 import uuid
 
-from app.ingestion.models import Block, BlockKind, FileFamily, NormalizedDocument
+from app.ingestion.models import Block, FileFamily, NormalizedDocument
 
 # Tamanho mínimo de texto para ser um bloco válido
 _MIN_BLOCK_TEXT = 3

@@ -6,7 +6,6 @@ from app.repositories.materiais import MateriaisRepository
 from app.schemas.api import MateriaisAlunoResponse, MaterialGeradoResponse
 from app.services.auth import UserContext
 
-
 router = APIRouter(prefix="/materiais", tags=["materiais"])
 
 
