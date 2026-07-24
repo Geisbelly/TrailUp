@@ -97,6 +97,7 @@ def _summarize_reading_pace(materials: list[dict[str, Any]]) -> dict[str, Any]:
                 "material_key": entry.get("material_key") or entry.get("key"),
                 "conteudo_id": entry.get("conteudo_id"),
                 "dwell_sec": round(dwell_sec, 2),
+                "active_sec": round(active_sec, 2),
                 "palavras_estimadas": round(words, 2),
                 "wpm": wpm,
                 "flag": flag,
