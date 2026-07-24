@@ -8,12 +8,15 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* TrailUp Dark Theme - Mistico Medieval (grimorio + dourado de tocha).
-       Alinhado ao tema base do app ("Real Medieval Magico" — ver
-       mobile/src/utils/profileShellTheme.ts e frontend/src/lib/personalizacao-theme-guide.ts):
-       fundo frio quase-preto, dourado de tocha como cor de acao/CTA, roxo mistico
-       como acento secundario (arcano/magia). Nao usa uma cor de perfil BrainHex
-       especifica para nao favorecer um perfil sobre os outros na pagina publica. */
+    /* TrailUp Dark Theme - Mistico Medieval (grimorio + indigo/violeta arcano).
+       Alinhado a cor-sistema REAL do app: a tela de login/splash do mobile usa
+       buildProfileShellPaletteFromAccent("#6366f1", "magica") — esse indigo/roxo
+       e a identidade-base do produto. Paleta tonal fria (indigo + violeta),
+       sem dourado — o dourado de tocha foi removido do sistema de cores base
+       por pedido direto (nao representa a identidade real do app). Nao usa
+       uma cor de perfil BrainHex especifica como primary para nao favorecer
+       um perfil sobre os outros na pagina publica — os 7 perfis aparecem com
+       suas cores reais na secao "Conheca os 7 perfis". */
     --background: 225 32% 8%;
     --foreground: 40 20% 94%;
 
@@ -23,13 +26,13 @@ All colors MUST be HSL.
     --popover: 225 32% 7%;
     --popover-foreground: 40 20% 94%;
 
-    /* Primary - Dourado de tocha (acao, CTA, brasao) */
-    --primary: 38 85% 55%;
+    /* Primary - Indigo arcano (mesma base #6366f1 do login/splash do app) */
+    --primary: 239 84% 67%;
     --primary-foreground: 226 30% 10%;
 
-    /* Primary variants for gradients */
-    --primary-light: 40 90% 66%;
-    --primary-dark: 34 80% 45%;
+    /* Primary variants for gradients (indigo-400 / indigo-600) */
+    --primary-light: 234 89% 74%;
+    --primary-dark: 243 75% 59%;
 
     /* Secondary - Bronze/cobre escuro */
     --secondary: 25 35% 26%;
@@ -38,16 +41,17 @@ All colors MUST be HSL.
     --muted: 226 20% 20%;
     --muted-foreground: 230 10% 72%;
 
-    /* Accent - Roxo mistico (arcano/magia) */
-    --accent: 265 55% 64%;
-    --accent-foreground: 40 20% 96%;
+    /* Accent - Violeta arcano (sem dourado: gradientes/glow secundario ficam
+       na mesma familia fria do primary, tom sobre tom) */
+    --accent: 258 90% 66%;
+    --accent-foreground: 250 20% 97%;
 
     --destructive: 0 70% 55%;
     --destructive-foreground: 40 20% 94%;
 
     --border: 226 20% 22%;
     --input: 226 22% 16%;
-    --ring: 38 85% 55%;
+    --ring: 239 84% 67%;
 
     --radius: 0.75rem;
 
@@ -57,12 +61,12 @@ All colors MUST be HSL.
     --info: 205 70% 58%;
 
     /* Glow effects */
-    --glow-primary: 38 85% 55%;
-    --glow-secondary: 265 55% 64%;
+    --glow-primary: 239 84% 67%;
+    --glow-secondary: 258 90% 66%;
 
     /* Hexagon badge background */
     --badge-bg: 25 35% 22%;
-    --badge-border: 38 85% 55%;
+    --badge-border: 258 90% 66%;
   }
 
   .dark {
@@ -75,11 +79,11 @@ All colors MUST be HSL.
     --popover: 225 32% 7%;
     --popover-foreground: 40 20% 94%;
 
-    --primary: 38 85% 55%;
+    --primary: 239 84% 67%;
     --primary-foreground: 226 30% 10%;
 
-    --primary-light: 40 90% 66%;
-    --primary-dark: 34 80% 45%;
+    --primary-light: 234 89% 74%;
+    --primary-dark: 243 75% 59%;
 
     --secondary: 25 35% 26%;
     --secondary-foreground: 40 20% 94%;
@@ -87,25 +91,25 @@ All colors MUST be HSL.
     --muted: 226 20% 20%;
     --muted-foreground: 230 10% 72%;
 
-    --accent: 265 55% 64%;
-    --accent-foreground: 40 20% 96%;
+    --accent: 38 85% 55%;
+    --accent-foreground: 226 30% 10%;
 
     --destructive: 0 70% 55%;
     --destructive-foreground: 40 20% 94%;
 
     --border: 226 20% 22%;
     --input: 226 22% 16%;
-    --ring: 38 85% 55%;
+    --ring: 239 84% 67%;
 
     --success: 142 65% 50%;
     --warning: 45 90% 58%;
     --info: 205 70% 58%;
 
-    --glow-primary: 38 85% 55%;
-    --glow-secondary: 265 55% 64%;
+    --glow-primary: 239 84% 67%;
+    --glow-secondary: 258 90% 66%;
 
     --badge-bg: 25 35% 22%;
-    --badge-border: 38 85% 55%;
+    --badge-border: 258 90% 66%;
   }
 }
 
@@ -169,5 +173,37 @@ All colors MUST be HSL.
       box-shadow: 0 0 20px hsl(var(--primary) / 0.6),
                   0 0 40px hsl(var(--primary) / 0.4);
     }
+  }
+
+  /* Brasas flutuantes (Hero) — fagulhas arcanas subindo e apagando, na cor
+     --accent (violeta) sobre o fundo escuro. */
+  .animate-ember {
+    animation: ember linear infinite;
+  }
+
+  @keyframes ember {
+    0% {
+      transform: translateY(0) translateX(0);
+      opacity: 0;
+    }
+    10% {
+      opacity: 0.8;
+    }
+    90% {
+      opacity: 0.4;
+    }
+    100% {
+      transform: translateY(-140px) translateX(var(--ember-drift, 12px));
+      opacity: 0;
+    }
+  }
+
+  .animate-pulse-slow {
+    animation: pulse-slow 6s ease-in-out infinite;
+  }
+
+  @keyframes pulse-slow {
+    0%, 100% { opacity: 0.35; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(1.08); }
   }
 }
