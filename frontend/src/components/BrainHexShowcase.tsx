@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Sun, Moon } from "lucide-react";
 import { PROFILES } from "@/features/signup/brainhex";
 import { useInView } from "@/hooks/useInView";
 
@@ -75,158 +74,112 @@ function extractHex(twClass: string): string {
 }
 
 const BrainHexShowcase = () => {
-  const [mode, setMode] = useState<"dark" | "light">("dark");
   const [activeKey, setActiveKey] = useState(PROFILE_LIST[0].key);
   const active = PROFILE_LIST.find((p) => p.key === activeKey) ?? PROFILE_LIST[0];
   const activeGuide = GUIDES[active.key];
   const activeColor = extractHex(active.textColor);
-  const isDark = mode === "dark";
 
   const header = useInView<HTMLDivElement>(0.4);
 
   return (
     <section
-      className="py-24 px-4 relative overflow-hidden transition-colors duration-700"
+      className="py-24 px-4 relative overflow-hidden"
       style={{
-        background: isDark
-          ? "radial-gradient(ellipse 80% 60% at 50% 0%, hsl(266 40% 14%) 0%, hsl(226 30% 6%) 55%, hsl(226 32% 5%) 100%)"
-          : "radial-gradient(ellipse 80% 60% at 50% 0%, #f7f0e6 0%, #ede0cc 60%, #e6d7bd 100%)",
+        background: "radial-gradient(ellipse 80% 60% at 50% 0%, hsl(266 40% 14%) 0%, hsl(226 30% 6%) 55%, hsl(226 32% 5%) 100%)",
       }}
     >
-      {/* Cenario de fundo — nebulosa + lua/sol + horizonte de castelo, para dar
-          profundidade de cena (em vez de so um gradiente radial liso). Cores e
-          intensidade adaptam ao modo claro/escuro. */}
+      {/* Cenario de fundo — nebulosa + lua + horizonte de castelo, para dar
+          profundidade de cena (em vez de so um gradiente radial liso). */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
-        {/* Nuvens de nebulosa (blobs radiais desfocados, mix-blend screen no
-            escuro para um brilho aditivo tipo aurora) */}
+        {/* Nuvens de nebulosa (blobs radiais desfocados, mix-blend screen para
+            um brilho aditivo tipo aurora) */}
         <div
-          className="absolute -top-24 left-[8%] w-[38rem] h-[26rem] rounded-full blur-3xl transition-opacity duration-700"
+          className="absolute -top-24 left-[8%] w-[38rem] h-[26rem] rounded-full blur-3xl"
           style={{
-            background: isDark
-              ? "radial-gradient(ellipse, hsl(266 85% 45% / 0.5), transparent 70%)"
-              : "radial-gradient(ellipse, hsl(30 70% 80% / 0.6), transparent 70%)",
-            mixBlendMode: isDark ? "screen" : "normal",
+            background: "radial-gradient(ellipse, hsl(266 85% 45% / 0.5), transparent 70%)",
+            mixBlendMode: "screen",
           }}
         />
         <div
-          className="absolute -top-10 right-[6%] w-[34rem] h-[24rem] rounded-full blur-3xl transition-opacity duration-700"
+          className="absolute -top-10 right-[6%] w-[34rem] h-[24rem] rounded-full blur-3xl"
           style={{
-            background: isDark
-              ? "radial-gradient(ellipse, hsl(239 80% 50% / 0.4), transparent 70%)"
-              : "radial-gradient(ellipse, hsl(266 60% 85% / 0.55), transparent 70%)",
-            mixBlendMode: isDark ? "screen" : "normal",
+            background: "radial-gradient(ellipse, hsl(239 80% 50% / 0.4), transparent 70%)",
+            mixBlendMode: "screen",
           }}
         />
         <div
-          className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[44rem] h-[20rem] rounded-full blur-3xl transition-opacity duration-700"
+          className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[44rem] h-[20rem] rounded-full blur-3xl"
           style={{
-            background: isDark
-              ? "radial-gradient(ellipse, hsl(280 60% 30% / 0.35), transparent 75%)"
-              : "radial-gradient(ellipse, hsl(45 80% 88% / 0.5), transparent 75%)",
-            mixBlendMode: isDark ? "screen" : "normal",
+            background: "radial-gradient(ellipse, hsl(280 60% 30% / 0.35), transparent 75%)",
+            mixBlendMode: "screen",
           }}
         />
 
-        {/* Lua (escuro) / sol suave (claro) */}
+        {/* Lua */}
         <div
-          className="absolute rounded-full transition-all duration-700"
+          className="absolute rounded-full"
           style={{
-            top: isDark ? "6%" : "8%",
+            top: "6%",
             right: "14%",
-            width: isDark ? "5rem" : "6rem",
-            height: isDark ? "5rem" : "6rem",
-            background: isDark
-              ? "radial-gradient(circle at 35% 35%, #f5f0ff, #cbb9ff 60%, transparent 100%)"
-              : "radial-gradient(circle at 35% 35%, #fff8e6, #ffe2a8 60%, transparent 100%)",
-            boxShadow: isDark
-              ? "0 0 60px 20px hsl(266 85% 70% / 0.35)"
-              : "0 0 80px 30px hsl(45 90% 80% / 0.5)",
+            width: "5rem",
+            height: "5rem",
+            background: "radial-gradient(circle at 35% 35%, #f5f0ff, #cbb9ff 60%, transparent 100%)",
+            boxShadow: "0 0 60px 20px hsl(266 85% 70% / 0.35)",
           }}
         />
 
-        {/* Estrelas (so no modo escuro) */}
-        {isDark && (
-          <div className="absolute inset-0 opacity-70">
-            {STAR_POSITIONS.map((s, i) => (
-              <span
-                key={i}
-                className="absolute rounded-full bg-white animate-pulse-slow"
-                style={{
-                  left: s.left,
-                  top: s.top,
-                  width: s.size,
-                  height: s.size,
-                  animationDelay: `${s.delay}s`,
-                  animationDuration: `${s.duration}s`,
-                }}
-              />
-            ))}
-          </div>
-        )}
+        {/* Estrelas */}
+        <div className="absolute inset-0 opacity-70">
+          {STAR_POSITIONS.map((s, i) => (
+            <span
+              key={i}
+              className="absolute rounded-full bg-white animate-pulse-slow"
+              style={{
+                left: s.left,
+                top: s.top,
+                width: s.size,
+                height: s.size,
+                animationDelay: `${s.delay}s`,
+                animationDuration: `${s.duration}s`,
+              }}
+            />
+          ))}
+        </div>
 
         {/* Horizonte de castelo, ancorado no rodape da secao, atras do lineup */}
-        <CastleSkyline isDark={isDark} />
+        <CastleSkyline />
       </div>
 
       <div className="container mx-auto relative z-10">
-        {/* Header + toggle claro/escuro */}
-        <div className="flex flex-col items-center text-center max-w-3xl mx-auto mb-6 relative">
-          <button
-            type="button"
-            onClick={() => setMode(isDark ? "light" : "dark")}
-            className="absolute right-0 top-0 flex items-center gap-2 px-3 py-2 rounded-full border transition-colors duration-300 text-xs font-medium"
-            style={{
-              borderColor: isDark ? "rgba(255,255,255,0.2)" : "rgba(38,26,10,0.2)",
-              color: isDark ? "#f5f0ff" : "#3a2a12",
-              backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.5)",
-            }}
-            aria-label={isDark ? "Ver versão clara" : "Ver versão escura"}
-          >
-            {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            {isDark ? "Modo claro" : "Modo escuro"}
-          </button>
-
+        <div className="flex flex-col items-center text-center max-w-3xl mx-auto mb-6">
           <div ref={header.ref} className={`reveal ${header.inView ? "reveal-in" : ""}`}>
-            <p
-              className="text-xs uppercase tracking-[0.3em] font-semibold mb-3"
-              style={{ color: isDark ? "#b9a3ff" : "#8a5a1f" }}
-            >
+            <p className="text-xs uppercase tracking-[0.3em] font-semibold mb-3" style={{ color: "#b9a3ff" }}>
               Os Guardiões da Trilha
             </p>
-            <h2
-              className="text-4xl md:text-5xl font-bold mb-4 transition-colors duration-700"
-              style={{ color: isDark ? "#f5f0ff" : "#241708" }}
-            >
+            <h2 className="text-4xl md:text-5xl font-bold mb-4" style={{ color: "#f5f0ff" }}>
               Cada perfil. Um caminho.{" "}
               <span
                 className="bg-clip-text text-transparent"
-                style={{
-                  backgroundImage: isDark
-                    ? "linear-gradient(90deg, hsl(var(--primary)), hsl(var(--accent)))"
-                    : "linear-gradient(90deg, #8a5a1f, #b8862f)",
-                }}
+                style={{ backgroundImage: "linear-gradient(90deg, hsl(var(--primary)), hsl(var(--accent)))" }}
               >
                 Um guardião.
               </span>
             </h2>
-            <p
-              className="text-lg transition-colors duration-700"
-              style={{ color: isDark ? "rgba(245,240,255,0.7)" : "rgba(36,23,8,0.75)" }}
-            >
+            <p className="text-lg" style={{ color: "rgba(245,240,255,0.7)" }}>
               Sete caminhos, um mesmo destino: sua melhor versão. Escolha um guardião e conheça a
               sua história.
             </p>
           </div>
         </div>
 
-        {/* Lineup dos guardioes */}
+        {/* Lineup dos guardioes — todos com a mesma altura (h-56/h-64), largura
+            livre por personagem para nao distorcer a arte. */}
         <div className="flex flex-wrap justify-center items-end gap-x-2 gap-y-8 mt-14 mb-10">
           {PROFILE_LIST.map((profile, index) => (
             <GuardianButton
               key={profile.key}
               profile={profile}
               isActive={profile.key === activeKey}
-              isDark={isDark}
               delay={index * 0.07}
               onSelect={() => setActiveKey(profile.key)}
             />
@@ -238,19 +191,16 @@ const BrainHexShowcase = () => {
             animation: e uma entrada nova, nao uma transicao cross-fade). */}
         <div
           key={active.key}
-          className="fade-scale-in max-w-xl mx-auto text-center rounded-2xl border px-8 py-6 backdrop-blur-sm transition-colors duration-700"
+          className="fade-scale-in max-w-xl mx-auto text-center rounded-2xl border px-8 py-6 backdrop-blur-sm"
           style={{
             borderColor: `${activeColor}55`,
-            backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.55)",
+            backgroundColor: "rgba(255,255,255,0.04)",
           }}
         >
           <p className="text-xs uppercase tracking-widest font-semibold mb-1" style={{ color: activeColor }}>
             {activeGuide.name} · {activeGuide.title}
           </p>
-          <p
-            className="text-lg italic leading-relaxed mb-4 transition-colors duration-700"
-            style={{ color: isDark ? "#f5f0ff" : "#241708" }}
-          >
+          <p className="text-lg italic leading-relaxed mb-4" style={{ color: "#f5f0ff" }}>
             &ldquo;{activeGuide.quote}&rdquo;
           </p>
           <div className="flex flex-wrap justify-center gap-2">
@@ -273,13 +223,11 @@ const BrainHexShowcase = () => {
 function GuardianButton({
   profile,
   isActive,
-  isDark,
   delay,
   onSelect,
 }: {
   profile: (typeof PROFILE_LIST)[number];
   isActive: boolean;
-  isDark: boolean;
   delay: number;
   onSelect: () => void;
 }) {
@@ -293,7 +241,7 @@ function GuardianButton({
       ref={ref}
       type="button"
       onClick={onSelect}
-      className={`reveal ${inView ? "reveal-in" : ""} relative flex flex-col items-center w-[120px] sm:w-[140px] shrink-0 transition-transform duration-300 hover:-translate-y-2 active:scale-95`}
+      className={`reveal ${inView ? "reveal-in" : ""} relative flex flex-col items-center shrink-0 transition-transform duration-300 hover:-translate-y-2 active:scale-95`}
       style={{
         transitionDelay: inView ? `${delay}s` : "0s",
         filter: isActive ? "none" : "grayscale(0.15) brightness(0.85)",
@@ -308,7 +256,7 @@ function GuardianButton({
       <img
         src={guide.art}
         alt={`${guide.name}, ${guide.title}`}
-        className="relative w-full h-auto drop-shadow-2xl select-none"
+        className="relative h-52 sm:h-60 w-auto max-w-[160px] object-contain drop-shadow-2xl select-none"
         draggable={false}
       />
       <div
@@ -319,7 +267,7 @@ function GuardianButton({
       </div>
       <span
         className="relative mt-2 text-xs sm:text-sm font-bold uppercase tracking-wide transition-colors duration-700"
-        style={{ color: isActive ? color : isDark ? "rgba(245,240,255,0.55)" : "rgba(36,23,8,0.55)" }}
+        style={{ color: isActive ? color : "rgba(245,240,255,0.55)" }}
       >
         {profile.title.split(" ")[0]}
       </span>
@@ -327,26 +275,21 @@ function GuardianButton({
   );
 }
 
-// Horizonte de castelo estilizado (silhueta), a mesma forma nos dois modos —
-// so muda cor/opacidade. preserveAspectRatio="none" para esticar a largura
-// toda sem distorcer demais a leitura (e um recorte decorativo, nao um logo).
+// Horizonte de castelo estilizado (silhueta). preserveAspectRatio="none" para
+// esticar a largura toda sem distorcer demais a leitura (e um recorte
+// decorativo, nao um logo).
 const CASTLE_SKYLINE_PATH =
   "M0,240 L0,205 L0,185 L0,177 L16,177 L16,185 L28,185 L28,177 L44,177 L44,185 L56,185 L56,177 L72,177 L72,185 L84,185 L84,177 L100,177 L100,185 L112,185 L112,177 L128,177 L128,185 L140,185 L140,177 L156,177 L156,185 L168,185 L168,177 L184,177 L184,185 L190,185 L196,185 L196,110 L196,101 L210,101 L210,110 L220,110 L220,101 L234,101 L234,110 L244,110 L244,101 L258,101 L258,110 L264,110 L264,185 L264,177 L280,177 L280,185 L292,185 L292,177 L308,177 L308,185 L320,185 L320,177 L336,177 L336,185 L348,185 L348,177 L364,177 L364,185 L376,185 L376,177 L392,177 L392,185 L404,185 L404,177 L420,177 L420,185 L430,185 L502,185 L502,55 L496,55 L560,9 L624,55 L618,55 L618,185 L618,177 L634,177 L634,185 L646,185 L646,177 L662,177 L662,185 L674,185 L674,177 L690,177 L690,185 L702,185 L702,177 L718,177 L718,185 L730,185 L730,177 L746,177 L746,185 L758,185 L758,177 L774,177 L774,185 L760,185 L820,185 L820,90 L820,81 L834,81 L834,90 L844,90 L844,81 L858,81 L858,90 L868,90 L868,81 L882,81 L882,90 L892,90 L892,81 L906,81 L906,90 L900,90 L900,185 L900,177 L916,177 L916,185 L928,185 L928,177 L944,177 L944,185 L956,185 L956,177 L972,177 L972,185 L984,185 L984,177 L1000,177 L1000,185 L1012,185 L1012,177 L1028,177 L1028,185 L1040,185 L1116,185 L1116,75 L1110,75 L1160,29 L1210,75 L1204,75 L1204,185 L1204,177 L1220,177 L1220,185 L1232,185 L1232,177 L1248,177 L1248,185 L1260,185 L1260,177 L1276,177 L1276,185 L1288,185 L1288,177 L1304,177 L1304,185 L1316,185 L1316,177 L1332,177 L1332,185 L1344,185 L1344,177 L1360,177 L1360,185 L1372,185 L1372,177 L1388,177 L1388,185 L1400,185 L1400,177 L1416,177 L1416,185 L1428,185 L1428,177 L1444,177 L1444,185 L1440,185 L1440,205 L1440,240 Z";
 
-function CastleSkyline({ isDark }: { isDark: boolean }) {
+function CastleSkyline() {
   return (
     <svg
       viewBox="0 0 1440 240"
       preserveAspectRatio="none"
-      className="absolute bottom-0 left-0 w-full h-32 sm:h-44 md:h-52 transition-opacity duration-700"
-      style={{ opacity: isDark ? 0.9 : 0.35 }}
+      className="absolute bottom-0 left-0 w-full h-32 sm:h-44 md:h-52"
+      style={{ opacity: 0.9 }}
     >
-      <path
-        d={CASTLE_SKYLINE_PATH}
-        fill={isDark ? "hsl(258 45% 7%)" : "hsl(30 30% 62%)"}
-        stroke={isDark ? "hsl(266 70% 45% / 0.5)" : "hsl(30 40% 45% / 0.4)"}
-        strokeWidth="1.5"
-      />
+      <path d={CASTLE_SKYLINE_PATH} fill="hsl(258 45% 7%)" stroke="hsl(266 70% 45% / 0.5)" strokeWidth="1.5" />
     </svg>
   );
 }
@@ -369,7 +312,7 @@ function HexBadge({ color, Icon }: { color: string; Icon: (typeof PROFILE_LIST)[
   );
 }
 
-// Posicoes fixas (nao Math.random em cada render) das estrelas do fundo escuro.
+// Posicoes fixas (nao Math.random em cada render) das estrelas do fundo.
 const STAR_POSITIONS = [
   { left: "5%", top: "10%", size: 2, delay: 0, duration: 4 },
   { left: "12%", top: "28%", size: 3, delay: 1.2, duration: 5 },
