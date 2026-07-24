@@ -1028,11 +1028,17 @@ function normalizeMediaBlocks(
 
     const blocks: ContentBlock[] = [];
 
+    // Mesmo preferindo o conteudo inline, nao descartamos a referencia ao
+    // arquivo no Storage quando ele existe: sem isto, o bloco resultante
+    // (tipo "markdown") nao carregava nenhum jeito de abrir o PDF original,
+    // mesmo quando o upload funcionou. MarkdownBlock.tsx ainda nao renderiza
+    // um link a partir de metadata.arquivo_url — fica disponivel para quem
+    // for adicionar essa affordance na UI.
     const resumoBlock = buildMarkdownContentBlock({
       id: `${key}-resumo`,
       title: documentTitle,
       lines: [resumoText ?? ""],
-      metadata,
+      metadata: url ? { ...metadata, arquivo_url: url } : metadata,
     });
     if (resumoBlock) blocks.push(resumoBlock);
 
@@ -1115,13 +1121,16 @@ function normalizeMediaBlocks(
 
     const blocks: ContentBlock[] = [];
 
+    // Mesmo preferindo os slides inline, nao descartamos a referencia ao
+    // arquivo no Storage quando ele existe (ver comentario em "documento"
+    // acima — mesma ressalva: sem UI ainda lendo esse campo).
     const aberturaBlock = buildMarkdownContentBlock({
       id: `${key}-abertura`,
       title: presentationTitle,
       lines: [
         pickString(payload.abertura, rawObject.abertura, payload.resumo, rawObject.resumo) ?? "",
       ],
-      metadata,
+      metadata: url ? { ...metadata, arquivo_url: url } : metadata,
     });
     if (aberturaBlock) blocks.push(aberturaBlock);
 
@@ -1170,11 +1179,14 @@ function normalizeMediaBlocks(
 
     const blocks: ContentBlock[] = [];
 
+    // Mesmo preferindo o conteudo inline, nao descartamos a referencia ao
+    // arquivo no Storage quando ele existe (ver comentario em "documento"
+    // acima — mesma ressalva: sem UI ainda lendo esse campo).
     const resumoBlock = buildMarkdownContentBlock({
       id: `${key}-resumo`,
       title: pdfTitle,
       lines: [resumoText ?? ""],
-      metadata,
+      metadata: url ? { ...metadata, arquivo_url: url } : metadata,
     });
     if (resumoBlock) blocks.push(resumoBlock);
 
