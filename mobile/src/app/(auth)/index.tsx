@@ -1,5 +1,4 @@
 import { app } from "@/constants/definicoes";
-import { bannerImages } from "@/constants/profileImages";
 import { HallBackground, OrnamentDivider } from "@/components/HallTheme";
 import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { buildProfileShellPaletteFromAccent } from "@/utils/profileShellTheme";
@@ -17,8 +16,8 @@ import {
 } from "react-native";
 import tinycolor from "tinycolor2";
 
-// Paleta estática para telas de autenticação — roxo místico
-const AUTH_PALETTE = buildProfileShellPaletteFromAccent("#6366f1", "magica");
+// Paleta estática para telas de autenticação — violeta oficial do logo TrailUp
+const AUTH_PALETTE = buildProfileShellPaletteFromAccent("#a057fd", "magica");
 
 export default function Entrada() {
   const router = useRouter();
@@ -62,8 +61,9 @@ export default function Entrada() {
           <View style={[style.glowOuter, { shadowColor: AUTH_PALETTE.accent }]}>
             <View style={[style.glowMiddle, { shadowColor: AUTH_PALETTE.accent, borderColor: goldDim, backgroundColor: goldFaint }]}>
               <Image
-                source={bannerImages[9]}
+                source={require("@/assets/images/trailup-logo.png")}
                 style={style.compassImage}
+                contentFit="contain"
               />
             </View>
           </View>

@@ -38,8 +38,8 @@ interface LoadingScreenProps {
   forceShow?: boolean;
 }
 
-const defaultPalette = buildProfileShellPaletteFromAccent("#6366f1", "magica");
-const defaultGold = tinycolor(defaultPalette.accent).lighten(12).toHexString();
+const defaultPalette = buildProfileShellPaletteFromAccent("#a057fd", "magica");
+const defaultAccentGlow = tinycolor(defaultPalette.accent).lighten(12).toHexString();
 
 // ─── driver: false em TUDO ────────────────────────────────────────────────────
 const ND = { useNativeDriver: false } as const;
@@ -285,7 +285,7 @@ const LoadingScreen = ({ forceShow = false }: LoadingScreenProps) => {
 
       {/* Ornamento */}
       <View style={styles.ornamentWrap}>
-        <OrnamentDivider color={defaultGold} />
+        <OrnamentDivider color={defaultAccentGlow} />
       </View>
 
       {/* Texto de status */}

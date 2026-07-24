@@ -8,15 +8,17 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* TrailUp Dark Theme - Mistico Medieval (grimorio + indigo/violeta arcano).
-       Alinhado a cor-sistema REAL do app: a tela de login/splash do mobile usa
-       buildProfileShellPaletteFromAccent("#6366f1", "magica") — esse indigo/roxo
-       e a identidade-base do produto. Paleta tonal fria (indigo + violeta),
-       sem dourado — o dourado de tocha foi removido do sistema de cores base
-       por pedido direto (nao representa a identidade real do app). Nao usa
-       uma cor de perfil BrainHex especifica como primary para nao favorecer
-       um perfil sobre os outros na pagina publica — os 7 perfis aparecem com
-       suas cores reais na secao "Conheca os 7 perfis". */
+    /* TrailUp Dark Theme - Mistico Medieval (grimorio + violeta arcano).
+       Primary calibrado por amostragem direta dos pixels do logo oficial
+       (src/assets/trailup-logo.png — faceta clara/estrela ~hsl(266 95% 66%),
+       faceta escura ~hsl(265 65% 50%)), nao mais o indigo do login antigo.
+       Accent fica no indigo (o tom que era primary antes) como par frio
+       complementar, dando o gradiente violeta->indigo usado nos titulos/CTAs.
+       Sem dourado no sistema base — removido por pedido direto (nao
+       representa a identidade real do app). Nao usa uma cor de perfil
+       BrainHex especifica como primary para nao favorecer um perfil sobre
+       os outros na pagina publica — os 7 perfis aparecem com suas cores
+       reais na secao "Conheca os 7 perfis". */
     --background: 225 32% 8%;
     --foreground: 40 20% 94%;
 
@@ -26,13 +28,13 @@ All colors MUST be HSL.
     --popover: 225 32% 7%;
     --popover-foreground: 40 20% 94%;
 
-    /* Primary - Indigo arcano (mesma base #6366f1 do login/splash do app) */
-    --primary: 239 84% 67%;
-    --primary-foreground: 226 30% 10%;
+    /* Primary - Violeta do logo (amostrado direto do PNG oficial) */
+    --primary: 266 95% 66%;
+    --primary-foreground: 266 30% 10%;
 
-    /* Primary variants for gradients (indigo-400 / indigo-600) */
-    --primary-light: 234 89% 74%;
-    --primary-dark: 243 75% 59%;
+    /* Primary variants for gradients (faceta clara / faceta escura do logo) */
+    --primary-light: 266 90% 77%;
+    --primary-dark: 265 65% 50%;
 
     /* Secondary - Bronze/cobre escuro */
     --secondary: 25 35% 26%;
@@ -41,17 +43,17 @@ All colors MUST be HSL.
     --muted: 226 20% 20%;
     --muted-foreground: 230 10% 72%;
 
-    /* Accent - Violeta arcano (sem dourado: gradientes/glow secundario ficam
-       na mesma familia fria do primary, tom sobre tom) */
-    --accent: 258 90% 66%;
-    --accent-foreground: 250 20% 97%;
+    /* Accent - Indigo arcano (par frio complementar ao violeta do logo,
+       sem dourado: gradientes/glow secundario ficam na mesma familia) */
+    --accent: 239 84% 67%;
+    --accent-foreground: 226 30% 10%;
 
     --destructive: 0 70% 55%;
     --destructive-foreground: 40 20% 94%;
 
     --border: 226 20% 22%;
     --input: 226 22% 16%;
-    --ring: 239 84% 67%;
+    --ring: 266 95% 66%;
 
     --radius: 0.75rem;
 
@@ -61,12 +63,12 @@ All colors MUST be HSL.
     --info: 205 70% 58%;
 
     /* Glow effects */
-    --glow-primary: 239 84% 67%;
-    --glow-secondary: 258 90% 66%;
+    --glow-primary: 266 95% 66%;
+    --glow-secondary: 239 84% 67%;
 
     /* Hexagon badge background */
     --badge-bg: 25 35% 22%;
-    --badge-border: 258 90% 66%;
+    --badge-border: 266 95% 66%;
   }
 
   .dark {
@@ -79,11 +81,11 @@ All colors MUST be HSL.
     --popover: 225 32% 7%;
     --popover-foreground: 40 20% 94%;
 
-    --primary: 239 84% 67%;
-    --primary-foreground: 226 30% 10%;
+    --primary: 266 95% 66%;
+    --primary-foreground: 266 30% 10%;
 
-    --primary-light: 234 89% 74%;
-    --primary-dark: 243 75% 59%;
+    --primary-light: 266 90% 77%;
+    --primary-dark: 265 65% 50%;
 
     --secondary: 25 35% 26%;
     --secondary-foreground: 40 20% 94%;
@@ -91,7 +93,7 @@ All colors MUST be HSL.
     --muted: 226 20% 20%;
     --muted-foreground: 230 10% 72%;
 
-    --accent: 38 85% 55%;
+    --accent: 239 84% 67%;
     --accent-foreground: 226 30% 10%;
 
     --destructive: 0 70% 55%;
@@ -99,17 +101,17 @@ All colors MUST be HSL.
 
     --border: 226 20% 22%;
     --input: 226 22% 16%;
-    --ring: 239 84% 67%;
+    --ring: 266 95% 66%;
 
     --success: 142 65% 50%;
     --warning: 45 90% 58%;
     --info: 205 70% 58%;
 
-    --glow-primary: 239 84% 67%;
-    --glow-secondary: 258 90% 66%;
+    --glow-primary: 266 95% 66%;
+    --glow-secondary: 239 84% 67%;
 
     --badge-bg: 25 35% 22%;
-    --badge-border: 258 90% 66%;
+    --badge-border: 266 95% 66%;
   }
 }
 

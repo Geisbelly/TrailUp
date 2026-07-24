@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
-  Hexagon, Menu, X, ChevronDown,
+  Menu, X, ChevronDown,
   Smartphone, BookOpen, LayoutGrid,
   GraduationCap, Users, Rocket, MessageSquare,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import trailupLogo from "@/assets/trailup-logo.png";
 
 const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -82,9 +83,11 @@ const Header = () => {
         
         {/* Brand */}
         <Link to="/" className="flex items-center gap-2 group relative z-50">
-          <div className="relative p-1.5 bg-primary/10 rounded-lg group-hover:bg-primary/20 transition-colors duration-300">
-            <Hexagon className="w-6 h-6 text-primary fill-primary/20 group-hover:rotate-90 transition-transform duration-500" />
-          </div>
+          <img
+            src={trailupLogo}
+            alt="TrailUp"
+            className="w-7 h-7 group-hover:rotate-12 transition-transform duration-500"
+          />
           <span className="text-lg font-bold tracking-tight text-foreground group-hover:text-primary transition-colors">TrailUp</span>
         </Link>
 
