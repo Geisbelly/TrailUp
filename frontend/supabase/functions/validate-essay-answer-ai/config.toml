@@ -1,2 +1,2 @@
 [functions.validate-essay-answer-ai]
-verify_jwt = false
+verify_jwt = true

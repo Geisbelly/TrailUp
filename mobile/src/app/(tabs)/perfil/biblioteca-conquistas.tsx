@@ -91,7 +91,7 @@ export default function BibliotecaConquistasScreen() {
       [
         {
           key: "concluidas",
-          title: `Concluidas (${concluidas.length})`,
+          title: `Concluídas (${concluidas.length})`,
           items: concluidas,
         },
         {
@@ -151,7 +151,7 @@ export default function BibliotecaConquistasScreen() {
                 {concluidas.length}
               </Text>
               <Text style={[styles.summaryLabel, { color: shellPalette.textSubtle }]}>
-                Concluidas
+                Concluídas
               </Text>
             </View>
             <View style={styles.summaryMetric}>
@@ -176,7 +176,8 @@ export default function BibliotecaConquistasScreen() {
         ) : itens.length === 0 ? (
           <CardSemDados
             title="Sem conquistas registradas"
-            description="Conclua atividades e topicos para liberar sua biblioteca."
+            description="Conclua atividades e tópicos para liberar sua biblioteca."
+            accentColor={shellPalette.accent}
           />
         ) : (
           grupos.map((group) => (
@@ -246,7 +247,7 @@ export default function BibliotecaConquistasScreen() {
                         numberOfLines={2}
                       >
                         {item.status === "bloqueada"
-                          ? item.criterioResumo ?? "Cumprir criterios para desbloquear."
+                          ? item.criterioResumo ?? "Cumprir critérios para desbloquear."
                           : item.conquista.descricao ?? "Toque para ver detalhes."}
                       </Text>
 

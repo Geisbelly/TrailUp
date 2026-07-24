@@ -76,6 +76,27 @@ const FILTER_LABELS: Record<RankFilter, string> = {
   outros_perfis: "Outros perfis",
 };
 
+function formatPontuacao(valor: number | null | undefined, criterio: string | null) {
+  const numero = valor ?? 0;
+  if (criterio === "percentual") {
+    return `${numero.toFixed(0)}%`;
+  }
+  if (criterio === "tempo") {
+    const minutos = Math.round(numero);
+    if (minutos < 60) return `${minutos} min`;
+    const horas = Math.floor(minutos / 60);
+    const restoMin = minutos % 60;
+    return restoMin > 0 ? `${horas}h ${restoMin}min` : `${horas}h`;
+  }
+  return numero.toFixed(0);
+}
+
+function getPontuacaoColumnLabel(criterio: string | null) {
+  if (criterio === "percentual") return "%";
+  if (criterio === "tempo") return "Tempo";
+  return "Pts.";
+}
+
 export default function RankDetalheScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const rankId = id ? Number(id) : null;
@@ -155,7 +176,7 @@ export default function RankDetalheScreen() {
         return;
       }
 
-      const rows = (data ?? []) as AlunoPerfilRow[];
+      const rows = (data ?? []) as unknown as AlunoPerfilRow[];
       const dominantes: Record<string, DominantProfileMeta> = {};
 
       rows.forEach((row) => {
@@ -239,7 +260,7 @@ export default function RankDetalheScreen() {
   if (!rank) {
     return (
       <View style={[s.screen, { backgroundColor: palette.background }]}>
-        <CardSemDados title="Indisponível" description="Ranking não encontrado." />
+        <CardSemDados title="Indisponível" description="Ranking não encontrado." accentColor={palette.accent} />
       </View>
     );
   }
@@ -353,7 +374,7 @@ export default function RankDetalheScreen() {
         {/* Pontuação */}
         <View style={s.colPts}>
           <Text style={[s.cellTextBold, { color: isMe ? gold : palette.text }]}>
-            {item.pontuacao?.toFixed(0) ?? "0"}
+            {formatPontuacao(item.pontuacao, rank.info.criterio)}
           </Text>
         </View>
       </View>
@@ -436,7 +457,9 @@ export default function RankDetalheScreen() {
           <Text style={[s.colHeader, s.colPos, { color: gold }]}>Pos.</Text>
           <Text style={[s.colHeader, s.colClass, { color: gold }]}>Rank</Text>
           <Text style={[s.colHeader, s.colNome, { color: gold }]}>Aluno</Text>
-          <Text style={[s.colHeader, s.colPts, { color: gold }]}>Pts.</Text>
+          <Text style={[s.colHeader, s.colPts, { color: gold }]}>
+            {getPontuacaoColumnLabel(rank.info.criterio)}
+          </Text>
         </LinearGradient>
 
         {/* ══════════ LISTA ══════════ */}

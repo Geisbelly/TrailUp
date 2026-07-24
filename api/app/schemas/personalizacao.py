@@ -12,13 +12,17 @@ class DesignTokensCores(BaseModel):
     background: str = "#09111d"
     surface: str = "#152039"
     surface_elevated: str = "#0f182d"
-    primary: str = "#707c88"
-    primary_glow: str = "rgba(112, 124, 136, 0.18)"
-    border: str = "rgba(112, 124, 136, 0.24)"
+    primary: str = "#9aa6b2"
+    primary_glow: str = "rgba(154, 166, 178, 0.30)"
+    border: str = "rgba(154, 166, 178, 0.40)"
     text_primary: str = "#f2f7fa"
-    text_muted: str = "rgba(242, 247, 250, 0.72)"
-    success: str = "#707c88"
-    locked: str = "#455154"
+    text_muted: str = "rgba(242, 247, 250, 0.80)"
+    # Cores semânticas fixas (não derivadas do accent) — garantem leitura
+    # consistente e contraste AAA independente da cor-assinatura do perfil.
+    success: str = "#34d399"
+    warning: str = "#fbbf24"
+    info: str = "#60a5fa"
+    locked: str = "#5a676b"
 
 
 class DesignTokensTipografia(BaseModel):
@@ -209,6 +213,32 @@ class PersonalizacaoContextoDocenteResponse(BaseModel):
     progresso_itens: list[PersonalizacaoItemProgressoResponse] = Field(default_factory=list)
 
 
+class PersonalizacaoPerfilItem(BaseModel):
+    """Visao por perfil BrainHex de uma personalizacao (classe x topico)."""
+
+    perfil: str
+    perfil_label: str
+    cor: str
+    design_tokens: DesignTokens = Field(default_factory=DesignTokens)
+    tem_personalizacao: bool = False
+    personalizacao: PersonalizacaoResponse | None = None
+    plano: dict[str, Any] | None = None
+    formato_prioritario: str | None = None
+    formatos_gerados: list[str] = Field(default_factory=list)
+    materiais: dict[str, Any] | None = None
+    total_alunos: int = 0
+    gerado_em: datetime | None = None
+
+
+class PersonalizacaoPorPerfilResponse(BaseModel):
+    """Personalizacoes de um (classe x topico) agrupadas pelos 7 perfis BrainHex."""
+
+    classe_id: int
+    topico_id: int
+    total_perfis_com_material: int = 0
+    perfis: list[PersonalizacaoPerfilItem] = Field(default_factory=list)
+
+
 class PersonalizacaoJobPayload(BaseModel):
     classe_id: int
     aluno_id: str | None = None
@@ -288,3 +318,18 @@ class FontesPersonalizacaoUploadResponse(BaseModel):
     conteudo_id: int | None = None
     total: int
     itens: list[FontePersonalizacaoResponse] = Field(default_factory=list)
+
+
+class ClassePerfilDistribuicaoItem(BaseModel):
+    perfil: str
+    quantidade: int = 0
+    percentual: float = 0.0
+
+
+class ClassePerfilSummaryResponse(BaseModel):
+    classe_id: int
+    distribuicao: dict[str, ClassePerfilDistribuicaoItem] = Field(default_factory=dict)
+    perfil_predominante: str | None = None
+    total_alunos: int = 0
+    media_desempenho: dict[str, float] = Field(default_factory=dict)
+    atualizado_em: datetime | None = None

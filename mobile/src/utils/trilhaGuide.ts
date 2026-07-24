@@ -236,7 +236,10 @@ function buildModuleSteps(
       hasBrainHexProfileSignal(perfis, "conqueror") ||
       hasBrainHexProfileSignal(perfis, "daredevil"));
   const hasBattle =
-    context.visibleElements?.hasBattle ?? hasBrainHexProfileSignal(perfis, "survivor");
+    context.visibleElements?.hasBattle ??
+    (hasBrainHexProfileSignal(perfis, "survivor") ||
+      hasBrainHexProfileSignal(perfis, "daredevil") ||
+      hasBrainHexProfileSignal(perfis, "conqueror"));
   const hasChat = context.visibleElements?.hasChat ?? true;
 
   const steps: TrilhaGuideTutorialStep[] = [

@@ -111,7 +111,7 @@ function humanizeConfigValue(value: unknown) {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-function uniqueCompact(items: (string | null | undefined)[], limit = 6) {
+function uniqueCompact(items: unknown[], limit = 6) {
   const output: string[] = [];
   const seen = new Set<string>();
 

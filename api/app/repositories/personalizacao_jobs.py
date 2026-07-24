@@ -229,10 +229,10 @@ class PersonalizacaoJobsRepository:
                 text(
                     """
                     UPDATE personalizacao_job_targets
-                    SET status = :status,
-                        attempts = :attempts,
-                        last_error = :last_error,
-                        personalizacao_id = :personalizacao_id,
+                    SET status = CASE WHEN status = 'completed' THEN status ELSE :status END,
+                        attempts = CASE WHEN status = 'completed' THEN attempts ELSE :attempts END,
+                        last_error = CASE WHEN status = 'completed' THEN last_error ELSE :last_error END,
+                        personalizacao_id = COALESCE(personalizacao_id, :personalizacao_id),
                         conteudo_id = COALESCE(:conteudo_id, conteudo_id),
                         updated_at = NOW()
                     WHERE job_id = CAST(:job_id AS UUID)
@@ -543,7 +543,7 @@ class PersonalizacaoJobsRepository:
         )
         return [dict(row) for row in result.mappings()]
 
-    async def claim_next_job(self) -> dict[str, Any] | None:
+    async def claim_next_job(self, *, stale_processing_min: int = 15) -> dict[str, Any] | None:
         if not await self._jobs_exists():
             return None
         media_snapshot_select = self._media_snapshot_select_expr(
@@ -557,6 +557,7 @@ class PersonalizacaoJobsRepository:
                   SELECT id
                   FROM personalizacao_jobs
                   WHERE status IN ('pending', 'partial')
+                     OR (status = 'processing' AND updated_at < NOW() - make_interval(mins => :stale_processing_min))
                   ORDER BY created_at ASC, id ASC
                   FOR UPDATE SKIP LOCKED
                   LIMIT 1
@@ -588,7 +589,8 @@ class PersonalizacaoJobsRepository:
                   pj.started_at,
                   pj.finished_at
                 """
-            )
+            ),
+            {"stale_processing_min": stale_processing_min},
         )
         row = result.mappings().first()
         if not row:

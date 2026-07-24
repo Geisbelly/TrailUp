@@ -272,7 +272,7 @@ export default function StudentTrailVisualization({
         <div className="mt-4">
           <div className="flex justify-between text-sm mb-1">
             <span>Progresso</span>
-            <span>XP {xp}/{xpTotal}</span>
+            <span>XP {Math.round(xp)}/{xpTotal}</span>
           </div>
           <Progress 
             value={xpPercentage} 

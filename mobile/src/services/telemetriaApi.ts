@@ -38,7 +38,7 @@ async function getAuthHeaders() {
   const session = await getSessionSafe();
   const token = session?.access_token;
   if (!token) {
-    throw new Error("Sem sessao ativa para enviar telemetria.");
+    throw new Error("Sem sessão ativa para enviar telemetria.");
   }
 
   return {
@@ -106,7 +106,7 @@ async function parseResponse<T>(response: Response): Promise<T> {
   }
 
   if (!payload && text) {
-    throw new Error("Resposta invalida da API de telemetria.");
+    throw new Error("Resposta inválida da API de telemetria.");
   }
 
   return payload as T;
@@ -284,7 +284,7 @@ async function persistTelemetryBatchDirect(payload: TelemetryBatchPayload) {
   const session = await getSessionSafe();
   const alunoId = session?.user?.id ?? null;
   if (!alunoId) {
-    throw new Error("Sem sessao ativa para persistir telemetria.");
+    throw new Error("Sem sessão ativa para persistir telemetria.");
   }
 
   const nowIso = new Date().toISOString();

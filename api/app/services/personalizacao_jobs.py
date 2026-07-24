@@ -87,7 +87,7 @@ def _profile_key_to_label(profile_key: str) -> str:
         "daredevil": "Daredevil",
         "mastermind": "Mastermind",
         "conqueror": "Conqueror",
-        "socializer": "Socialiser",
+        "socializer": "Socializer",
         "achiever": "Achiever",
     }
     return labels.get(key, "Mastermind")
@@ -691,9 +691,10 @@ async def _process_media_render_target(
 
 async def process_personalizacao_job_once(app: FastAPI) -> bool:
     session_factory = app.state.session_factory
+    stale_min = int(getattr(app.state.settings, "personalizacao_job_stale_processing_min", 15))
     async with session_factory() as session:
         repo = PersonalizacaoJobsRepository(session)
-        job = await repo.claim_next_job()
+        job = await repo.claim_next_job(stale_processing_min=stale_min)
     if not job:
         return False
 

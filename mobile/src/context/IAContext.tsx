@@ -327,7 +327,9 @@ function inferProfileDefaultPatches(
   const profile = String(profileName ?? "").trim().toLowerCase();
   const modo = String(modoNome ?? "").trim().toLowerCase();
   const patches: IAFeaturePatch[] = [];
-  const hasBattleSignal = hasBrainHexProfileSignal(perfis, "survivor");
+  // Boss battle e narrativa de confronto/dominacao: survivor, daredevil e conqueror
+  // (mesmo criterio usado abaixo em hasBattleProfileSignal e em IABattleHeaderChip.tsx).
+  const hasBattleSignal = hasAnyBrainHexProfileSignal(perfis, ["survivor", "daredevil", "conqueror"]);
   const hasSocialSignal = hasBrainHexProfileSignal(perfis, "socializer");
   const hasTimerSignal = hasAnyBrainHexProfileSignal(perfis, [
     "survivor",
@@ -609,7 +611,7 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
   const guideName = getBrainHexGuideName(profileName);
   const modoNome = usuario?.modoOperacao_nome ?? usuario?.modoOperacao_descricao ?? null;
   const hasBattleProfileSignal = useMemo(
-    () => hasBrainHexProfileSignal(perfis, "survivor"),
+    () => hasAnyBrainHexProfileSignal(perfis, ["survivor", "daredevil", "conqueror"]),
     [perfis]
   );
   const hasTimerProfileSignal = useMemo(
@@ -1293,6 +1295,58 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
             cycleId,
             resolvedBattle.battle.persistKey
           );
+
+          if (signal.type === "encounter_timeout") {
+            // Boss revida quando o tempo do encontro esgota (decisao de produto):
+            // recupera parte da vida e ergue as defesas (fica mais dificil) e
+            // reinicia o cronometro do encontro. Nao causa dano ao boss nem cai
+            // na logica normal de acerto do aluno.
+            if (!battleState.defeated) {
+              const hpMax = Math.max(1, Number(battleState.enemy.hpMax ?? 1));
+              const shieldMax = Math.max(0, Number(battleState.enemy.shieldMax ?? 0));
+              const hpRecuperado = Math.min(
+                hpMax,
+                Math.round(battleState.currentHp + hpMax * 0.25)
+              );
+              const escudoBonus = Math.max(
+                1,
+                Math.round((shieldMax > 0 ? shieldMax : hpMax * 0.1) * 0.5)
+              );
+              const duracaoSec = Number(
+                resolvedBattle.battle.timing?.encounterDurationSec ?? 0
+              );
+              setRuntimeStates((prev) => ({
+                ...prev,
+                battleStates: {
+                  ...prev.battleStates,
+                  [battleKey]: {
+                    ...battleState,
+                    currentHp: hpRecuperado,
+                    currentShield: battleState.currentShield + escudoBonus,
+                    warningSent: false,
+                    encounterEndsAt:
+                      duracaoSec > 0
+                        ? getNow() + duracaoSec * 1000
+                        : battleState.encounterEndsAt,
+                    updatedAt: getNow(),
+                  },
+                },
+              }));
+              enqueueCue({
+                message:
+                  "O boss revidou! Recuperou forcas e ergueu as defesas. Acelere para derruba-lo.",
+                title: `${battleState.enemy.name} contra-ataca`,
+                speakerName: battleState.enemy.name,
+                avatarUrl:
+                  battleState.enemy.visual?.avatarUrl ?? battleState.enemy.avatarUrl,
+                topicoId: signal.topicoId,
+                itemKey: battleState.itemKey ?? null,
+                featureKey: "battle_mode",
+              });
+            }
+            return;
+          }
+
           let warningTriggered = false;
           const shouldOpenIntro =
             ((battleScope.scope === "item" && signal.type === "content_open") ||

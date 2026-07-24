@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useIsFocused } from "@react-navigation/native";
 import React, {
   useCallback,
   useEffect,
@@ -42,7 +42,7 @@ import {
   buildIAItemKey,
   resolveIAItemKey,
 } from "@/interfaces/personalizacao/IAContracts";
-import { styles } from "./[id].styles";
+import { styles } from "@/styles/trilhaTopicoStyles";
 import { buildContentBlocks } from "@/utils/contentBlocks";
 import { inferModoApresentacao } from "@/utils/presentationOrder";
 import {
@@ -579,8 +579,12 @@ export default function TrilhaConteudoScreen() {
     if (atualBlock?.kind === "atividade" && currentTimedOutActivityId != null) return false;
     return true;
   }, [atualBlock?.kind, currentOverlayTimerFeature, currentTimedOutActivityId, isCurrentStudyBlockTrackable]);
+  const isScreenFocused = useIsFocused();
   const currentStudyBlockSignature = useMemo(() => {
-    if (!isCurrentStudyBlockTrackable || !topicoId || !atualBlock) return null;
+    // Ao perder o foco (sair do modulo), zera a assinatura. Isso faz o
+    // setInterval de tempo ser limpo e impede que o ref seja recriado no
+    // proximo render, parando o registro de tempo enquanto o aluno esta fora.
+    if (!isScreenFocused || !isCurrentStudyBlockTrackable || !topicoId || !atualBlock) return null;
     if (atualBlock.kind === "conteudo") {
       const isPersonalizedLocal = Boolean(
         (atualBlock.conteudo as any)?.isPersonalizedLocal
@@ -637,7 +641,7 @@ export default function TrilhaConteudoScreen() {
       itemTitle,
       itemKind: "activity" as const,
     };
-  }, [atualBlock, currentContentItemKey, isCurrentStudyBlockTrackable, topicoId]);
+  }, [atualBlock, currentContentItemKey, isCurrentStudyBlockTrackable, isScreenFocused, topicoId]);
   const conteudoComFocoEmArquivo = useMemo(
     () =>
       conteudoBlocks.some((block) =>
@@ -1071,7 +1075,9 @@ export default function TrilhaConteudoScreen() {
           : scoreAwarded != null
           ? scoreAwarded
           : acertou
-          ? baseValor
+          ? // proporcional ao acerto: 60% de acerto => 60% dos pontos (antes
+            // dava sempre a pontuacao maxima, inflando XP em acertos parciais)
+            Math.max(1, Math.round(baseValor * (Math.max(0, Math.min(100, percentual)) / 100)))
           : Math.max(1, Math.round(baseValor * 0.1));
         const valorEvento = Math.max(
           0,
@@ -1114,9 +1120,9 @@ export default function TrilhaConteudoScreen() {
             },
           });
           showDialog({
-            title: "Pontuacao pendente",
+            title: "Pontuação pendente",
             description:
-              "A atividade foi salva, mas nao foi possivel registrar a pontuacao agora. Tente sincronizar novamente em instantes.",
+              "A atividade foi salva, mas não foi possível registrar a pontuação agora. Tente sincronizar novamente em instantes.",
             tone: "warning",
           });
         }
@@ -1414,6 +1420,7 @@ export default function TrilhaConteudoScreen() {
           <CardSemDados
             title="Sem conteúdos"
             description="Esta trilha ainda não possui conteúdos cadastrados."
+            accentColor={profilePalette.accent}
           />
         ) : !mostrarResumo && atualBlock ? (
           <View
@@ -1608,12 +1615,14 @@ export default function TrilhaConteudoScreen() {
                   },
                   bloqueiaAvanco && styles.buttonDisabled,
                 ]}
-                disabled={bloqueiaAvanco}
+                // Sem `disabled`: o botao precisa receber o toque para mostrar o
+                // dialog de orientacao quando bloqueado. Com `disabled` o onPress
+                // nao dispara e o botao fica "morto" (nao avanca e parece travado).
                 onPress={async () => {
                   if (bloqueiaAvanco) {
                     showDialog({
                       title: "Responda a atividade",
-                      description: "Confirme a resposta para liberar o avanço.",
+                      description: "Confirme a resposta da atividade para liberar o avanço.",
                       tone: "warning",
                     });
                     return;

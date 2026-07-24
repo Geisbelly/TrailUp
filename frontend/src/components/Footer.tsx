@@ -19,7 +19,7 @@ const Footer = () => {
             <div className="hidden md:block w-px h-8 bg-border/40" />
             
             <p className="text-sm text-muted-foreground max-w-xs font-medium">
-              Gamificação inteligente para ensino superior.
+              Cada trilha, um grimório sob medida para o seu perfil.
             </p>
           </div>
 

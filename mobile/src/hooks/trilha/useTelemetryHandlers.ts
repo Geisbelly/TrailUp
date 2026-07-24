@@ -97,7 +97,7 @@ export function useTelemetryHandlers(args: {
           ? "Seu ritmo caiu. Vale fazer uma pausa breve e voltar com mais foco."
           : atualBlock?.kind === "atividade"
           ? "O tempo desta atividade terminou. Você ainda pode concluir a resposta, mas a pontuação final recebe penalidade de 20%."
-          : "O tempo terminou. Revise com calma e siga para a proxima acao.";
+          : "O tempo terminou. Revise com calma e siga para a próxima ação.";
 
       showDialog({
         title: titulo,

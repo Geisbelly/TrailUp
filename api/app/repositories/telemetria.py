@@ -51,9 +51,12 @@ class TelemetriaRepository:
         dialect_name = getattr(dialect, "name", None)
         if dialect_name != "postgresql":
             return
+        # SET/SET LOCAL nao aceita bind parameters ($1) via protocolo estendido do
+        # Postgres ("syntax error at or near $1") - o valor precisa ir literal na
+        # string. Seguro aqui pois _STATEMENT_TIMEOUT_MS e uma constante interna,
+        # nunca input do usuario.
         await self.session.execute(
-            text("SET LOCAL statement_timeout = :timeout_ms"),
-            {"timeout_ms": self._STATEMENT_TIMEOUT_MS},
+            text(f"SET LOCAL statement_timeout = {int(self._STATEMENT_TIMEOUT_MS)}")
         )
 
     async def upsert_sessao(

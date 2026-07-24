@@ -77,7 +77,7 @@ const Contato = () => {
         
         {/* Orbes de luz sutis */}
         {/* <div className="absolute top-[-10%] left-[-5%] w-[800px] h-[800px] bg-primary/10 blur-[120px] rounded-full opacity-40 animate-pulse duration-[4000ms]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-purple-600/5 blur-[100px] rounded-full opacity-30 animate-pulse duration-[5000ms] delay-1000" /> */}
+        <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-accent/5 blur-[100px] rounded-full opacity-30 animate-pulse duration-[5000ms] delay-1000" /> */}
       </div>
 
       <Header />
@@ -92,7 +92,7 @@ const Contato = () => {
             Fale Conosco
           </div>
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6 tracking-tight">
-            Entre em <span className="bg-gradient-to-r from-primary via-purple-400 to-primary bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">Contato</span>
+            Entre em <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">Contato</span>
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
             Tem dúvidas, sugestões ou quer saber mais sobre a gamificação no TrailUp? Estamos prontos para te ouvir.
@@ -230,7 +230,7 @@ const Contato = () => {
               </Card>
 
               {/* Decorative Element */}
-              <div className="relative mt-8 p-6 rounded-2xl bg-gradient-to-br from-primary/10 to-purple-600/5 border border-primary/10 overflow-hidden">
+              <div className="relative mt-8 p-6 rounded-2xl bg-gradient-to-br from-primary/10 to-accent/5 border border-primary/10 overflow-hidden">
                 <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:16px_16px]" />
                 <div className="relative z-10 text-center space-y-2">
                   <p className="text-sm font-medium text-primary">Tempo médio de resposta</p>

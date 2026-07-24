@@ -12,6 +12,8 @@ import {
 import { DocumentBlock } from "@/components/DocumentBlock";
 import AudioPlayer from "@/components/funcionais/AudioPlayer";
 import VideoPlayer from "@/components/funcionais/VideoPlayer";
+import { useUsuario } from "@/context/SessaoContext";
+import { getProfileShellPalette } from "@/utils/profileShellTheme";
 
 type StudyCard = {
   id?: string | number;
@@ -82,6 +84,11 @@ function buildCardMediaBlock(card: StudyCard) {
 }
 
 export default function StudyCardsBlock({ payload, WebView }: Props) {
+  const { usuario } = useUsuario();
+  const palette = useMemo(
+    () => getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null),
+    [usuario?.perfis]
+  );
   const cards = useMemo(() => normalizeCards(payload), [payload]);
   const [index, setIndex] = useState(0);
   const [showBack, setShowBack] = useState(false);
@@ -96,8 +103,8 @@ export default function StudyCardsBlock({ payload, WebView }: Props) {
     <View style={styles.wrapper}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.label}>Cards de estudo</Text>
-          <Text style={styles.counter}>
+          <Text style={[styles.label, { color: palette.text }]}>Cards de estudo</Text>
+          <Text style={[styles.counter, { color: palette.textMuted }]}>
             Card {index + 1} de {cards.length}
           </Text>
         </View>
@@ -107,17 +114,25 @@ export default function StudyCardsBlock({ payload, WebView }: Props) {
             setIndex(0);
             setShowBack(false);
           }}
-          style={styles.iconButton}
+          style={[
+            styles.iconButton,
+            { backgroundColor: palette.surface, borderColor: palette.border },
+          ]}
         >
-          <Ionicons name="refresh" size={18} color={Color.colorAliceblue} />
+          <Ionicons name="refresh" size={18} color={palette.text} />
         </Pressable>
       </View>
 
       <Pressable
         onPress={() => setShowBack((value) => !value)}
-        style={styles.card}
+        style={[
+          styles.card,
+          { backgroundColor: palette.surfaceElevated, borderColor: palette.borderStrong },
+        ]}
       >
-        <Text style={styles.faceLabel}>{showBack ? "Verso" : "Frente"}</Text>
+        <Text style={[styles.faceLabel, { backgroundColor: palette.accentMuted, color: palette.accent }]}>
+          {showBack ? "Verso" : "Frente"}
+        </Text>
 
         {card.imagemUrl ? (
           <Image
@@ -127,14 +142,14 @@ export default function StudyCardsBlock({ payload, WebView }: Props) {
           />
         ) : null}
 
-        {card.titulo ? <Text style={styles.title}>{card.titulo}</Text> : null}
+        {card.titulo ? <Text style={[styles.title, { color: palette.text }]}>{card.titulo}</Text> : null}
 
-        <Text style={styles.content}>
+        <Text style={[styles.content, { color: palette.text }]}>
           {showBack ? card.verso : card.frente}
         </Text>
 
         {card.descricao && !showBack ? (
-          <Text style={styles.description}>{card.descricao}</Text>
+          <Text style={[styles.description, { color: palette.textMuted }]}>{card.descricao}</Text>
         ) : null}
 
         {media ? (
@@ -142,7 +157,7 @@ export default function StudyCardsBlock({ payload, WebView }: Props) {
             {media.kind === "audio" ? (
               <AudioPlayer url={media.url} />
             ) : media.kind === "video" ? (
-              <VideoPlayer url={media.url} WebView={WebView} />
+              <VideoPlayer url={media.url} />
             ) : media.kind === "pdf" || media.kind === "documento" || media.kind === "apresentacao" ? (
               <DocumentBlock tipo={media.kind} payload={{ url: media.url }} WebView={WebView} />
             ) : media.kind === "embed" ? (
@@ -151,7 +166,7 @@ export default function StudyCardsBlock({ payload, WebView }: Props) {
           </View>
         ) : null}
 
-        <Text style={styles.hint}>Toque no card para virar.</Text>
+        <Text style={[styles.hint, { color: palette.textMuted }]}>Toque no card para virar.</Text>
       </Pressable>
 
       <View style={styles.footer}>
@@ -161,15 +176,19 @@ export default function StudyCardsBlock({ payload, WebView }: Props) {
             setIndex((value) => Math.max(0, value - 1));
             setShowBack(false);
           }}
-          style={[styles.navButton, index === 0 && styles.navButtonDisabled]}
+          style={[
+            styles.navButton,
+            { borderColor: palette.border, backgroundColor: palette.surface },
+            index === 0 && styles.navButtonDisabled,
+          ]}
         >
-          <Ionicons name="chevron-back" size={18} color={Color.colorAliceblue} />
-          <Text style={styles.navText}>Anterior</Text>
+          <Ionicons name="chevron-back" size={18} color={palette.text} />
+          <Text style={[styles.navText, { color: palette.text }]}>Anterior</Text>
         </Pressable>
 
         <Pressable
           onPress={() => setShowBack((value) => !value)}
-          style={styles.flipButton}
+          style={[styles.flipButton, { backgroundColor: palette.accent }]}
         >
           <Ionicons name="sync" size={18} color={Color.colorWhite} />
           <Text style={styles.flipText}>{showBack ? "Ver frente" : "Virar"}</Text>
@@ -183,11 +202,12 @@ export default function StudyCardsBlock({ payload, WebView }: Props) {
           }}
           style={[
             styles.navButton,
+            { borderColor: palette.border, backgroundColor: palette.surface },
             index >= cards.length - 1 && styles.navButtonDisabled,
           ]}
         >
-          <Text style={styles.navText}>Próximo</Text>
-          <Ionicons name="chevron-forward" size={18} color={Color.colorAliceblue} />
+          <Text style={[styles.navText, { color: palette.text }]}>Próximo</Text>
+          <Ionicons name="chevron-forward" size={18} color={palette.text} />
         </Pressable>
       </View>
     </View>
@@ -205,13 +225,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   label: {
-    color: Color.colorAliceblue,
     fontFamily: FontFamily.inikaBold,
     fontSize: 16,
   },
   counter: {
     marginTop: 2,
-    color: Color.colorSlategray,
     fontFamily: FontFamily.interMedium,
     fontSize: 12,
   },
@@ -221,16 +239,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 999,
-    backgroundColor: "#1d2748",
     borderWidth: 1,
-    borderColor: Color.colorDarkslategray100,
   },
   card: {
     minHeight: 240,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "rgba(164, 141, 255, 0.35)",
-    backgroundColor: "#111a34",
     padding: 18,
     gap: 12,
   },
@@ -239,8 +253,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 999,
-    backgroundColor: "rgba(106,95,253,0.16)",
-    color: Color.colorBlueviolet100,
     fontFamily: FontFamily.interMedium,
     fontSize: 12,
   },
@@ -250,18 +262,15 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   title: {
-    color: Color.colorAliceblue,
     fontFamily: FontFamily.inikaBold,
     fontSize: 18,
   },
   content: {
-    color: Color.colorAliceblue,
     fontFamily: FontFamily.interMedium,
     fontSize: 15,
     lineHeight: 23,
   },
   description: {
-    color: Color.colorSlategray,
     fontFamily: FontFamily.interMedium,
     fontSize: 13,
     lineHeight: 19,
@@ -271,7 +280,6 @@ const styles = StyleSheet.create({
   },
   hint: {
     marginTop: "auto",
-    color: Color.colorSlategray,
     fontFamily: FontFamily.interMedium,
     fontSize: 12,
   },
@@ -284,8 +292,6 @@ const styles = StyleSheet.create({
     minHeight: 44,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: Color.colorDarkslategray100,
-    backgroundColor: "#151f3e",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -295,7 +301,6 @@ const styles = StyleSheet.create({
     opacity: 0.45,
   },
   navText: {
-    color: Color.colorAliceblue,
     fontFamily: FontFamily.interMedium,
     fontSize: 13,
   },
@@ -303,7 +308,6 @@ const styles = StyleSheet.create({
     minWidth: 110,
     minHeight: 44,
     borderRadius: 14,
-    backgroundColor: Color.colorBlueviolet100,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",

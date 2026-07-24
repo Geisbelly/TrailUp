@@ -161,6 +161,12 @@ ${PIXI_CDNS}
   });
   document.getElementById("app").appendChild(app.view);
 
+  // PIXI v7: sem um stage interativo com hitArea, o EventSystem nao propaga
+  // pointertap aos nos (containers filhos). Isto e o que faz o toque nos nos
+  // do grafo funcionar de forma consistente.
+  app.stage.eventMode = "static";
+  app.stage.hitArea = app.screen;
+
   var viewport = new pixi_viewport.Viewport({
     screenWidth: window.innerWidth,
     screenHeight: window.innerHeight,
@@ -885,7 +891,7 @@ export const TrilhaMapaHero: React.FC = () => {
         worldSubtitle: mapTheme?.worldSubtitle ?? "Carta principal da sua jornada",
         worldDescription:
           mapTheme?.worldDescription ??
-          "Cada topico e um reino navegavel em uma malha de rotas e dependencias.",
+          "Cada tópico é um reino navegável em uma malha de rotas e dependências.",
         classLabel: mapTheme?.classLabel ?? classeAtual?.resumo?.materia_nome ?? "Classe",
         palette: {
           ...(mapTheme?.palette ?? {

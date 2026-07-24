@@ -30,27 +30,27 @@ const Hero = () => {
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary mb-4">
             <Sparkles className="w-4 h-4" />
-            <span className="text-sm font-medium">Aprendizado Personalizado e Gamificado</span>
+            <span className="text-sm font-medium">Um grimório vivo, moldado ao seu perfil</span>
           </div>
 
           {/* Title */}
           <h1 className="text-5xl md:text-7xl font-bold leading-tight">
-            Sua jornada de
+            Sua trilha,
             <span className="block bg-gradient-to-r from-primary via-accent to-primary-light bg-clip-text text-transparent">
-              aprendizado começa aqui
+              seu guia, sua lenda
             </span>
           </h1>
 
           {/* Description */}
           <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto">
-            TrailUp adapta seu aprendizado ao seu perfil único. Conquiste missões, desbloqueie conquistas e domine o conhecimento no seu próprio ritmo.
+            O TrailUp reescreve cada tópico como um grimório sob medida para o seu perfil de jogador, narrado por um guia que fala a sua língua. Desbloqueie trilhas, enfrente desafios e domine o conhecimento no seu próprio ritmo.
           </p>
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
             <Link to="/cadastro-aluno">
               <Button size="lg" className="gradient-primary text-lg px-8 py-6 animate-glow">
-                Sou aluno, quero começar!
+                Sou aluno, quero iniciar minha jornada!
               </Button>
             </Link>
             <Link to="/login">
@@ -70,7 +70,7 @@ const Hero = () => {
           <div className="grid grid-cols-3 gap-8 pt-12 max-w-2xl mx-auto">
             <div>
               <div className="text-3xl md:text-4xl font-bold text-primary">7</div>
-              <div className="text-sm text-muted-foreground mt-1">Perfis de Jogador</div>
+              <div className="text-sm text-muted-foreground mt-1">Guias e perfis únicos</div>
             </div>
             <div>
               <div className="text-3xl md:text-4xl font-bold text-accent">100%</div>
@@ -78,7 +78,7 @@ const Hero = () => {
             </div>
             <div>
               <div className="text-3xl md:text-4xl font-bold text-primary">∞</div>
-              <div className="text-sm text-muted-foreground mt-1">Possibilidades</div>
+              <div className="text-sm text-muted-foreground mt-1">Trilhas a explorar</div>
             </div>
           </div>
         </div>

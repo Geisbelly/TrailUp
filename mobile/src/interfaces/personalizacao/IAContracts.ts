@@ -168,6 +168,7 @@ export type IATriggerSignalType =
   | "activity_complete"
   | "timer_warning"
   | "timer_timeout"
+  | "encounter_timeout"
   | "idle_detected";
 
 export type IATriggerSignal = {
@@ -575,6 +576,8 @@ function normalizeBattle(raw: unknown): IABattleConfig | null {
   if (!enemy) return null;
 
   const damageRecord = asRecord(record.damage ?? record.dano);
+  // API envia os campos de dano no formato flat (damageOnContentComplete etc.),
+  // calculados proporcionalmente ao hp_max do inimigo — não em objeto aninhado.
   const damage = damageRecord
     ? {
         contentComplete: pickNumber(
@@ -593,11 +596,17 @@ function normalizeBattle(raw: unknown): IABattleConfig | null {
           damageRecord.atividadeConcluida
         ),
       }
-    : null;
+    : {
+        contentComplete: pickNumber(record.damageOnContentComplete, record.damage_on_content_complete),
+        activityCorrect: pickNumber(record.damageOnActivityCorrect, record.damage_on_activity_correct),
+        activityComplete: pickNumber(record.damageOnActivityComplete, record.damage_on_activity_complete),
+      };
+  const hasDamage =
+    damage.contentComplete != null || damage.activityCorrect != null || damage.activityComplete != null;
 
   return {
     enemy,
-    damage,
+    damage: hasDamage ? damage : null,
     timing: normalizeBattleTiming(record.timing ?? record.tempo ?? record),
     victoryMessage: pickString(record.victoryMessage, record.victory_message, record.mensagemVitoria),
     persistKey: pickString(record.persistKey, record.chavePersistencia),
@@ -730,6 +739,14 @@ export function normalizeIAMentalStateSnapshot(raw: unknown): IAMentalStateSnaps
   };
 }
 
+// API envia cooldown em segundos (cooldownSec/cooldown_sec); o app trabalha em ms.
+function pickCooldownMs(record: LooseRecord): number | null {
+  const ms = pickNumber(record.cooldownMs, record.cooldown, record.cooldown_ms);
+  if (ms != null) return ms;
+  const sec = pickNumber(record.cooldownSec, record.cooldown_sec);
+  return sec != null ? sec * 1000 : null;
+}
+
 export function normalizeIAFeaturePatch(raw: unknown): IAFeaturePatch | null {
   const record = asRecord(raw);
   if (!record) return null;
@@ -742,7 +759,7 @@ export function normalizeIAFeaturePatch(raw: unknown): IAFeaturePatch | null {
     enabled: pickBoolean(record.enabled, record.ativo, record.active),
     mode: pickString(record.mode, record.modo),
     priority: pickNumber(record.priority, record.prioridade),
-    cooldownMs: pickNumber(record.cooldownMs, record.cooldown, record.cooldown_ms),
+    cooldownMs: pickCooldownMs(record),
     copy: normalizeCopy(record.copy ?? record.texto ?? record.mensagem),
     timer: normalizeTimer(record.timer ?? record.temporizador),
     battle: normalizeBattle(record.battle ?? record.batalha),
@@ -764,6 +781,7 @@ function normalizeTriggerSignal(value: unknown): IATriggerSignalType | null {
     "activity_complete",
     "timer_warning",
     "timer_timeout",
+    "encounter_timeout",
     "idle_detected",
   ];
 
@@ -796,7 +814,46 @@ function normalizeCharacterCue(raw: unknown): Omit<IACharacterCue, "id" | "creat
   };
 }
 
-export function normalizeIATriggerRule(raw: unknown, fallbackId: string): IATriggerRule | null {
+type NormalizedFeatureCue = Omit<IACharacterCue, "id" | "createdAt">;
+
+// API manda as falas do mentor dentro de IAFeaturePatch.cues (id/trigger/text/tone/...)
+// e o trigger só carrega uma referência characterCueId — resolvida aqui contra o
+// mapa coletado de todos os feature patches (session/topic/items) antes dos triggers.
+function collectFeaturePatchCues(raw: unknown, cuesById: Map<string, NormalizedFeatureCue>): void {
+  const record = asRecord(raw);
+  if (!record) return;
+
+  const featureKey = normalizeFeatureKey(record.key ?? record.feature ?? record.nome);
+  asArray(record.cues ?? record.falas).forEach((rawCue) => {
+    const cueRecord = asRecord(rawCue);
+    const id = cueRecord ? pickString(cueRecord.id, cueRecord.slug) : null;
+    if (!id) return;
+    const message = cueRecord
+      ? pickString(cueRecord.text, cueRecord.message, cueRecord.body, cueRecord.mensagem, cueRecord.texto)
+      : null;
+    if (!message) return;
+    cuesById.set(id, {
+      speakerName: pickString(cueRecord!.speakerName, cueRecord!.nome, cueRecord!.personagem),
+      avatarUrl: pickString(cueRecord!.avatarUrl, cueRecord!.avatar, cueRecord!.imagemUrl),
+      title: pickString(cueRecord!.title, cueRecord!.titulo),
+      message,
+      tone: pickString(cueRecord!.tone, cueRecord!.tom),
+      topicoId: pickNumber(cueRecord!.topicoId, cueRecord!.topico_id),
+      itemKey: pickString(cueRecord!.itemKey, cueRecord!.item_key),
+      featureKey,
+      action:
+        normalizeTimeoutAction(cueRecord!.action) ??
+        (pickString(cueRecord!.action) === "dismiss" ? "dismiss" : null),
+      actionLabel: pickString(cueRecord!.actionLabel, cueRecord!.cta, cueRecord!.botao),
+    });
+  });
+}
+
+export function normalizeIATriggerRule(
+  raw: unknown,
+  fallbackId: string,
+  cuesById?: Map<string, NormalizedFeatureCue>
+): IATriggerRule | null {
   const record = asRecord(raw);
   if (!record) return null;
 
@@ -810,14 +867,17 @@ export function normalizeIATriggerRule(raw: unknown, fallbackId: string): IATrig
 
   if (!signalList.length) return null;
 
-  const cue = normalizeCharacterCue(record.cue ?? record.message ?? record.mensagem);
+  const characterCueId = pickString(record.characterCueId, record.character_cue_id);
+  const cue =
+    normalizeCharacterCue(record.cue ?? record.message ?? record.mensagem) ??
+    (characterCueId ? cuesById?.get(characterCueId) ?? null : null);
 
   return {
     id: pickString(record.id, record.slug) ?? fallbackId,
     signal: signalList.length === 1 ? signalList[0] : signalList,
     featureKey:
       normalizeFeatureKey(record.featureKey ?? record.feature_key ?? record.feature) ?? null,
-    cooldownMs: pickNumber(record.cooldownMs, record.cooldown, record.cooldown_ms),
+    cooldownMs: pickCooldownMs(record),
     minWrongStreak: pickNumber(record.minWrongStreak, record.wrongStreakAtLeast, record.errosSeguidos),
     mentalStates: [
       ...asArray(record.mentalStates),
@@ -837,16 +897,36 @@ export function normalizeIAPersonalizationPatch(raw: unknown): IAPersonalization
   const record = asRecord(raw);
   if (!record) return null;
 
-  const session = asArray(record.session ?? record.sessionFeatures ?? record.session_features)
+  const rawSession = asArray(record.session ?? record.sessionFeatures ?? record.session_features);
+  const rawTopic = asArray(record.topic ?? record.topicFeatures ?? record.topic_features);
+  const rawItems = record.items ?? record.itemFeatures ?? record.item_features;
+
+  const cuesById = new Map<string, NormalizedFeatureCue>();
+  rawSession.forEach((entry) => collectFeaturePatchCues(entry, cuesById));
+  rawTopic.forEach((entry) => collectFeaturePatchCues(entry, cuesById));
+  if (isRecord(rawItems)) {
+    Object.values(rawItems).forEach((patches) =>
+      asArray(patches).forEach((entry) => collectFeaturePatchCues(entry, cuesById))
+    );
+  } else {
+    asArray(rawItems).forEach((entry) => {
+      const entryRecord = asRecord(entry);
+      if (!entryRecord) return;
+      asArray(entryRecord.features ?? entryRecord.patches ?? entryRecord.config).forEach((f) =>
+        collectFeaturePatchCues(f, cuesById)
+      );
+    });
+  }
+
+  const session = rawSession
     .map(normalizeIAFeaturePatch)
     .filter((item): item is IAFeaturePatch => Boolean(item));
 
-  const topic = asArray(record.topic ?? record.topicFeatures ?? record.topic_features)
+  const topic = rawTopic
     .map(normalizeIAFeaturePatch)
     .filter((item): item is IAFeaturePatch => Boolean(item));
 
   const items: Record<string, IAFeaturePatch[]> = {};
-  const rawItems = record.items ?? record.itemFeatures ?? record.item_features;
 
   if (isRecord(rawItems)) {
     Object.entries(rawItems).forEach(([itemKey, patches]) => {
@@ -872,7 +952,7 @@ export function normalizeIAPersonalizationPatch(raw: unknown): IAPersonalization
   }
 
   const triggers = asArray(record.triggers ?? record.gatilhos)
-    .map((trigger, index) => normalizeIATriggerRule(trigger, `trigger-${index}`))
+    .map((trigger, index) => normalizeIATriggerRule(trigger, `trigger-${index}`, cuesById))
     .filter((item): item is IATriggerRule => Boolean(item));
 
   const mentalState = normalizeIAMentalStateSnapshot(

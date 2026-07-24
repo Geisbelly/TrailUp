@@ -6,6 +6,7 @@ import {
   isPresentationUrl,
 } from "@/utils/contentBlocks";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { resolveSupabaseStorageUrl } from "@/utils/supabaseStorage";
 import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import Markdown from "react-native-markdown-display";
@@ -42,6 +43,16 @@ export function MarkdownBlock({ payload }: Props) {
       : readString(payload, "markdown", "texto", "conteudo", "text");
   const sourceUrl =
     typeof payload === "object" ? readString(payload, "url", "uri", "src") : null;
+  const bucketHint =
+    typeof payload === "object" && payload?.metadata && typeof payload.metadata === "object"
+      ? readString(
+          payload.metadata,
+          "bucket",
+          "bucketName",
+          "storageBucket",
+          "storage_bucket"
+        ) ?? "conteudo_aluno"
+      : "conteudo_aluno";
 
   const [markdown, setMarkdown] = useState<string>(inlineMarkdown ?? "");
   const [carregando, setCarregando] = useState(!inlineMarkdown && !!sourceUrl);
@@ -69,13 +80,14 @@ export function MarkdownBlock({ payload }: Props) {
     if (isPdfUrl(sourceUrl) || isPresentationUrl(sourceUrl) || isDocumentUrl(sourceUrl)) {
       setMarkdown("");
       setCarregando(false);
-      setErro("Este arquivo nao e markdown e deve ser aberto no visualizador de documentos.");
+      setErro("Este arquivo não é markdown e deve ser aberto no visualizador de documentos.");
       return () => { ativo = false; };
     }
 
     setCarregando(true);
     setErro(null);
-    fetch(sourceUrl)
+    resolveSupabaseStorageUrl(sourceUrl, { bucket: bucketHint })
+      .then((resolvedUrl) => fetch(resolvedUrl))
       .then((r) => {
         if (!r.ok) throw new Error("Não foi possível carregar o conteúdo.");
         return r.text();
@@ -84,7 +96,7 @@ export function MarkdownBlock({ payload }: Props) {
       .catch((e) => { if (ativo) setErro(e instanceof Error ? e.message : "Falha ao carregar."); })
       .finally(() => { if (ativo) setCarregando(false); });
     return () => { ativo = false; };
-  }, [inlineMarkdown, sourceUrl]);
+  }, [inlineMarkdown, sourceUrl, bucketHint]);
 
   const pages = useMemo(() => {
     if (!markdown) return [];

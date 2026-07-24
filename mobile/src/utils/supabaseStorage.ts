@@ -168,7 +168,7 @@ export async function resolveSupabaseStorageUrl(
     .createSignedUrl(parsed.objectPath, expiresIn);
 
   if (error || !data?.signedUrl) {
-    throw error ?? new Error("Nao foi possivel assinar a URL do Supabase.");
+    throw error ?? new Error("Não foi possível assinar a URL do Supabase.");
   }
 
   return joinUrl(parsed.origin, data.signedUrl);

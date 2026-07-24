@@ -235,7 +235,7 @@ export default function ClassesManager() {
                   />
                 </div>
                 <div>
-                  <Label>Descricao</Label>
+                  <Label>Descrição</Label>
                   <Textarea
                     value={newMateria.descricao}
                     onChange={(e) => setNewMateria({ ...newMateria, descricao: e.target.value })}
@@ -243,7 +243,7 @@ export default function ClassesManager() {
                   />
                 </div>
                 <Button onClick={handleAddMateria} className="w-full" disabled={isSaving}>
-                  Criar Materia
+                  Criar Matéria
                 </Button>
               </div>
             </DialogContent>
@@ -274,11 +274,11 @@ export default function ClassesManager() {
               </DialogHeader>
               <div className="space-y-4">
                 <div>
-                  <Label>Descricao</Label>
+                  <Label>Descrição</Label>
                   <Input
                     value={formData.descricao}
                     onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
-                    placeholder="Ex: Turma 2025.1 - Manha"
+                    placeholder="Ex: Turma 2025.1 - Manhã"
                   />
                 </div>
                 <div>

@@ -45,7 +45,7 @@ const UserContext = createContext<SessionContextType>({
   autenticado: false,
   carregando: true,
   atualizarUsuario: async () => {
-    console.warn("UserProvider nao montado ou atualizarUsuario chamado no valor default do contexto.");
+    console.warn("UserProvider não montado ou atualizarUsuario chamado no valor padrão do contexto.");
   },
 });
 

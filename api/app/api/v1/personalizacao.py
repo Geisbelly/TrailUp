@@ -1,3 +1,4 @@
+import colorsys
 import json
 import logging
 from pathlib import Path
@@ -21,6 +22,8 @@ from app.repositories.materiais import MateriaisRepository
 from app.repositories.personalizacao_jobs import PersonalizacaoJobsRepository
 from app.repositories.personalizacao_progresso import PersonalizacaoProgressoRepository
 from app.schemas.personalizacao import (
+    ClassePerfilDistribuicaoItem,
+    ClassePerfilSummaryResponse,
     DesignTokens,
     DesignTokensCores,
     FontePersonalizacaoResponse,
@@ -38,10 +41,13 @@ from app.schemas.personalizacao import (
     PersonalizacaoListResponse,
     PersonalizacaoMediaItemStatusResponse,
     PersonalizacaoMediaStatusResponse,
+    PersonalizacaoPerfilItem,
+    PersonalizacaoPorPerfilResponse,
     PersonalizacaoResponse,
     PersonalizarPayload,
 )
 from app.services.auth import UserContext
+from app.services.group_analysis import GroupAnalysisService
 from app.services.llm import JsonLLMService, load_prompt
 from app.services.media_agents import disparar_brainhex_async
 from app.services.personalizacao import (
@@ -64,15 +70,36 @@ from app.services.storage import BUCKET, SupabaseStorage, build_public_storage_u
 router = APIRouter(prefix="/personalizar", tags=["personalizar"])
 logger = logging.getLogger(__name__)
 
+# Cores-assinatura oficiais por perfil BrainHex (fonte: microservice/src/constants/brainHex.ts,
+# espelhada em mobile/src/constants/profileImages.ts) — mantidas idênticas aqui para consistência
+# visual entre console/API, mobile e microservice.
 _PROFILE_COLOR_MAP = {
-    "seeker": "#bb9c04",
-    "survivor": "#8B0000",
-    "daredevil": "#228B22",
+    "seeker": "#a78c07",
+    "survivor": "#720101",
+    "daredevil": "#1b6b1b",
     "mastermind": "#707c88",
     "conqueror": "#01808b",
-    "socializer": "#7624c4",
-    "socialiser": "#7624c4",
-    "achiever": "#da7904",
+    "socializer": "#6d15be",
+    "socialiser": "#6d15be",
+    "achiever": "#ad6002",
+}
+_BRAINHEX_PROFILES = (
+    "seeker",
+    "survivor",
+    "daredevil",
+    "mastermind",
+    "conqueror",
+    "socializer",
+    "achiever",
+)
+_PROFILE_LABEL_MAP = {
+    "seeker": "Explorador",
+    "survivor": "Sobrevivente",
+    "daredevil": "Aventureiro",
+    "mastermind": "Estrategista",
+    "conqueror": "Conquistador",
+    "socializer": "Socializador",
+    "achiever": "Realizador",
 }
 _MEDIA_TIPOS = ("pdf", "audio", "apresentacao", "markdown")
 _MEDIA_STATUS_MAP = {
@@ -234,15 +261,76 @@ def _rgba(color: str, alpha: float) -> str:
     return f"rgba({red}, {green}, {blue}, {max(0.0, min(1.0, alpha)):.2f})"
 
 
+def _lighten(color: str, amount: float) -> str:
+    return _blend(color, "#ffffff", amount)
+
+
+def _set_lightness(color: str, lightness: float) -> str:
+    """Retorna `color` com a luminosidade (HLS) substituida, preservando matiz e saturacao."""
+    r, g, b = _hex_to_rgb(color)
+    h, _l, s = colorsys.rgb_to_hls(r / 255.0, g / 255.0, b / 255.0)
+    nr, ng, nb = colorsys.hls_to_rgb(h, max(0.0, min(1.0, lightness)), s)
+    return _rgb_to_hex((round(nr * 255), round(ng * 255), round(nb * 255)))
+
+
+def _relative_luminance(color: str) -> float:
+    """Luminância relativa sRGB (WCAG 2.x)."""
+    def _channel(value: int) -> float:
+        srgb = value / 255.0
+        return srgb / 12.92 if srgb <= 0.03928 else ((srgb + 0.055) / 1.055) ** 2.4
+
+    red, green, blue = _hex_to_rgb(color)
+    return 0.2126 * _channel(red) + 0.7152 * _channel(green) + 0.0722 * _channel(blue)
+
+
+def _contrast_ratio(foreground: str, background: str) -> float:
+    """Razão de contraste WCAG entre duas cores hex (1.0–21.0)."""
+    lighter = max(_relative_luminance(foreground), _relative_luminance(background))
+    darker = min(_relative_luminance(foreground), _relative_luminance(background))
+    return (lighter + 0.05) / (darker + 0.05)
+
+
+def _ensure_min_contrast(
+    color: str,
+    background: str,
+    min_ratio: float,
+    *,
+    step: float = 0.04,
+    max_steps: int = 20,
+) -> str:
+    """Eleva a luminosidade (HLS) de `color` até atingir `min_ratio` de contraste
+    contra `background`, preservando matiz E saturação da cor-assinatura do perfil.
+    Clarear misturando com branco (abordagem anterior) desatura a cor e deixa o
+    resultado "apagado" mesmo passando no contraste — por isso ajustamos só a
+    luminosidade, mantendo a cor vibrante e reconhecível."""
+    r, g, b = _hex_to_rgb(color)
+    _hue, lightness, _sat = colorsys.rgb_to_hls(r / 255.0, g / 255.0, b / 255.0)
+    adjusted = color
+    for _ in range(max_steps):
+        if _contrast_ratio(adjusted, background) >= min_ratio:
+            break
+        if lightness >= 1.0:
+            break
+        lightness = min(1.0, lightness + step)
+        adjusted = _set_lightness(color, lightness)
+    return adjusted
+
+
 def _build_design_tokens(profile_name: str | None) -> DesignTokens:
     accent_base = _PROFILE_COLOR_MAP.get(
         _normalize_profile_name(profile_name),
         _PROFILE_COLOR_MAP["mastermind"],
     )
-    accent = _blend(accent_base, "#ffffff", 0.06)
     background = _darken(_blend("#0b1220", accent_base, 0.06), 0.05)
     surface = _blend("#131d31", accent_base, 0.10)
     surface_elevated = _blend("#182338", accent_base, 0.14)
+
+    # WCAG AAA: o accent (texto grande, ícones, bordas) precisa ser legível sobre
+    # a superfície MAIS CLARA em que aparece (pior caso = surface_elevated).
+    # Elevamos so a luminosidade (matiz e saturacao intactos), garantindo >= 4.5:1
+    # (AAA para texto grande; excede o 3:1 exigido para componentes de UI) sem
+    # deixar a cor "apagada" como um mix com branco deixaria.
+    accent = _ensure_min_contrast(accent_base, surface_elevated, 4.5)
 
     return DesignTokens(
         cores=DesignTokensCores(
@@ -250,14 +338,18 @@ def _build_design_tokens(profile_name: str | None) -> DesignTokens:
             surface=surface,
             surface_elevated=surface_elevated,
             primary=accent,
-            primary_glow=_rgba(accent, 0.18),
-            border=_rgba(accent, 0.22),
+            primary_glow=_rgba(accent, 0.30),
+            border=_rgba(accent, 0.40),
             text_primary="#f2f7fa",
-            text_muted="rgba(242, 247, 250, 0.72)",
-            success=accent,
-            locked="#455154",
+            text_muted="rgba(242, 247, 250, 0.80)",
+            # Cores semânticas fixas (não derivadas do accent): evita Survivor
+            # vermelho como "sucesso" e garante contraste AAA consistente.
+            success="#34d399",
+            warning="#fbbf24",
+            info="#60a5fa",
+            locked="#5a676b",
         ),
-        sombra_primary=_rgba(accent, 0.18),
+        sombra_primary=_rgba(accent, 0.30),
     )
 
 
@@ -685,6 +777,31 @@ def _build_storage_path(
     )
 
 
+async def _ensure_topico_conteudo_belongs_to_classe(
+    *,
+    classe_repo: ConteudoClasseRepository,
+    classe_id: int,
+    topico_id: int | None,
+    conteudo_id: int | None,
+) -> None:
+    """Evita que um aluno gere/consulte personalizacao de conteudo de outra classe
+    enviando um topico_id/conteudo_id que nao pertence a classe_id informado."""
+    if topico_id is not None:
+        actual_classe_id = await classe_repo.buscar_classe_id_por_topico(topico_id)
+        if actual_classe_id is not None and actual_classe_id != classe_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Topico nao pertence a classe informada.",
+            )
+    if conteudo_id is not None:
+        actual_classe_id = await classe_repo.buscar_classe_id_por_conteudo(conteudo_id)
+        if actual_classe_id is not None and actual_classe_id != classe_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Conteudo nao pertence a classe informada.",
+            )
+
+
 @router.post("", response_model=PersonalizacaoResponse, status_code=status.HTTP_201_CREATED)
 async def personalizar(
     payload: PersonalizarPayload,
@@ -705,6 +822,19 @@ async def personalizar(
         )
 
     aluno_id = user.aluno_id or user.user_id
+    access_repo = AccessRepository(session)
+    if not await access_repo.aluno_belongs_to_classe(aluno_id=str(aluno_id), classe_id=int(payload.classe_id)):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Aluno sem acesso a esta classe.",
+        )
+    await _ensure_topico_conteudo_belongs_to_classe(
+        classe_repo=ConteudoClasseRepository(session),
+        classe_id=int(payload.classe_id),
+        topico_id=payload.topico_id,
+        conteudo_id=payload.conteudo_id,
+    )
+
     settings = request.app.state.settings
     logger.info(
         "personalizacao.input=%s",
@@ -829,9 +959,21 @@ async def conversar_com_mentor_personalizacao(
         )
 
     aluno_id = user.aluno_id or user.user_id
+    access_repo = AccessRepository(session)
+    if not await access_repo.aluno_belongs_to_classe(aluno_id=str(aluno_id), classe_id=int(payload.classe_id)):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Aluno sem acesso a esta classe.",
+        )
     context_repo = ContextRepository(session)
     personalizacao_repo = ConteudoPersonalizadoRepository(session)
     classe_repo = ConteudoClasseRepository(session)
+    await _ensure_topico_conteudo_belongs_to_classe(
+        classe_repo=classe_repo,
+        classe_id=int(payload.classe_id),
+        topico_id=payload.topico_id,
+        conteudo_id=payload.conteudo_id,
+    )
 
     context = await context_repo.fetch_aluno_context(aluno_id, payload.classe_id)
     records = await personalizacao_repo.buscar_por_aluno(
@@ -842,6 +984,20 @@ async def conversar_com_mentor_personalizacao(
     )
     latest_record = records[0] if records else None
     topico = await classe_repo.buscar_topico(payload.topico_id) if payload.topico_id is not None else None
+
+    # Conteudo da materia do topico para o guia direcionar o estudo. Sem
+    # gabaritos/respostas (buscar_questoes_topico retorna apenas enunciado/tipo,
+    # respeitando os guardrails). Falha aqui nao deve quebrar o chat.
+    conteudos_topico: list = []
+    atividades_topico: list = []
+    questoes_topico: list = []
+    if payload.topico_id is not None:
+        try:
+            conteudos_topico = await classe_repo.buscar_conteudos_topico(payload.topico_id)
+            atividades_topico = await classe_repo.buscar_atividades_topico(payload.topico_id)
+            questoes_topico = await classe_repo.buscar_questoes_topico(payload.topico_id)
+        except Exception as exc:  # pragma: no cover
+            logger.warning("Falha ao carregar conteudo da materia para o guia: %s", exc)
 
     logger.info(
         "personalizacao.chat.input=%s",
@@ -888,6 +1044,34 @@ async def conversar_com_mentor_personalizacao(
                 if latest_record
                 else None
             ),
+            # Conteudo completo do topico (da turma) para o guia se especializar
+            # na materia e direcionar o estudo. Sem respostas de questoes.
+            "conteudo_materia": {
+                "conteudos": [
+                    {
+                        "titulo": c.get("titulo"),
+                        "tipo": c.get("tipo"),
+                        "resumo": str(c.get("conteudo") or "")[:600],
+                        "ordem": c.get("ordem"),
+                    }
+                    for c in (conteudos_topico or [])[:12]
+                    if isinstance(c, dict)
+                ],
+                "atividades": [
+                    {
+                        "titulo": a.get("titulo"),
+                        "descricao": a.get("descricao"),
+                        "tipo": a.get("tipo"),
+                    }
+                    for a in (atividades_topico or [])[:12]
+                    if isinstance(a, dict)
+                ],
+                "questoes_temas": [
+                    {"enunciado": q.get("enunciado"), "tipo": q.get("tipo")}
+                    for q in (questoes_topico or [])[:20]
+                    if isinstance(q, dict)
+                ],
+            },
             "guardrails": {
                 "sem_gabarito": True,
                 "sem_resposta_direta_atividade": True,
@@ -1160,6 +1344,11 @@ async def upsert_progresso_personalizado(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Personalizacao nao encontrada.",
         )
+    if str(personalizacao.get("aluno_id") or "") != str(aluno_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Personalizacao nao pertence a este aluno.",
+        )
     personalizacao_classe_id = int(personalizacao.get("classe_id") or 0)
     personalizacao_topico_id = int(personalizacao.get("topico_id") or 0)
     if personalizacao_classe_id and personalizacao_classe_id != int(payload.classe_id):
@@ -1231,6 +1420,135 @@ async def upsert_progresso_personalizado(
         await session.commit()
 
     return _to_progresso_response(saved)
+
+
+@router.get(
+    "/perfis/{classe_id}/{topico_id}",
+    response_model=PersonalizacaoPorPerfilResponse,
+)
+async def listar_personalizacoes_por_perfil(
+    classe_id: int,
+    topico_id: int,
+    user: UserContext = Depends(require_professor),
+    session: AsyncSession = Depends(get_session),
+) -> PersonalizacaoPorPerfilResponse:
+    """Visao docente: personalizacao de um (classe x topico) lado a lado pelos 7 perfis BrainHex.
+
+    Para cada perfil retorna o plano (formato_prioritario, formatos, tom/estilo), os
+    design_tokens (preview da paleta) e os materiais da personalizacao mais recente daquele
+    perfil, alem da contagem de alunos da turma cujo perfil dominante e o perfil em questao.
+    """
+    access_repo = AccessRepository(session)
+    owns_class = await access_repo.professor_owns_classe(
+        user.professor_id or user.user_id, classe_id
+    )
+    if not owns_class:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Professor sem permissao para esta classe.",
+        )
+
+    personalizacao_repo = ConteudoPersonalizadoRepository(session)
+    classe_repo = ConteudoClasseRepository(session)
+
+    alunos = await classe_repo.listar_alunos_classe_com_perfil_dominante(classe_id)
+    contagem_por_perfil: dict[str, int] = {}
+    for aluno in alunos:
+        perfil_key = personalizacao_repo._normalize_profile_key(aluno.get("perfil_dominante"))
+        contagem_por_perfil[perfil_key] = contagem_por_perfil.get(perfil_key, 0) + 1
+
+    perfis: list[PersonalizacaoPerfilItem] = []
+    total_com_material = 0
+    for perfil in _BRAINHEX_PROFILES:
+        record = await personalizacao_repo.buscar_mais_recente_por_perfil(
+            classe_id=classe_id,
+            topico_id=topico_id,
+            brainhex_profile_key=perfil,
+        )
+        personalizacao_response = _to_response(record) if record else None
+        if personalizacao_response is not None:
+            total_com_material += 1
+
+        design_tokens = (
+            personalizacao_response.design_tokens
+            if personalizacao_response is not None
+            else _build_design_tokens(perfil)
+        )
+
+        perfis.append(
+            PersonalizacaoPerfilItem(
+                perfil=perfil,
+                perfil_label=_PROFILE_LABEL_MAP.get(perfil, perfil.capitalize()),
+                cor=_PROFILE_COLOR_MAP.get(perfil, _PROFILE_COLOR_MAP["mastermind"]),
+                design_tokens=design_tokens,
+                tem_personalizacao=personalizacao_response is not None,
+                personalizacao=personalizacao_response,
+                plano=personalizacao_response.plano if personalizacao_response else None,
+                formato_prioritario=(
+                    personalizacao_response.formato_prioritario if personalizacao_response else None
+                ),
+                formatos_gerados=(
+                    personalizacao_response.formatos_gerados if personalizacao_response else []
+                ),
+                materiais=personalizacao_response.materiais if personalizacao_response else None,
+                total_alunos=contagem_por_perfil.get(perfil, 0),
+                gerado_em=personalizacao_response.gerado_em if personalizacao_response else None,
+            )
+        )
+
+    return PersonalizacaoPorPerfilResponse(
+        classe_id=classe_id,
+        topico_id=topico_id,
+        total_perfis_com_material=total_com_material,
+        perfis=perfis,
+    )
+
+
+@router.get("/grupo/{classe_id}", response_model=ClassePerfilSummaryResponse)
+async def obter_adequacao_grupo(
+    classe_id: int,
+    user: UserContext = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> ClassePerfilSummaryResponse:
+    if not user.is_professor:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Apenas professores podem consultar a adequacao de grupo.",
+        )
+    if not user.professor_liberado:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Professor sem liberacao de acesso.",
+        )
+
+    access_repo = AccessRepository(session)
+    owns_class = await access_repo.professor_owns_classe(user.professor_id or user.user_id, classe_id)
+    if not owns_class:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Professor sem permissao para esta classe.",
+        )
+
+    service = GroupAnalysisService(session)
+    summary = await service.upsert_summary(classe_id)
+    try:
+        await session.commit()
+    except Exception as exc:  # pragma: no cover
+        await session.rollback()
+        logger.warning("Falha ao persistir classe_perfil_summary da classe %s: %s", classe_id, exc)
+
+    distribuicao = {
+        chave: ClassePerfilDistribuicaoItem(**item)
+        for chave, item in (summary.get("distribuicao") or {}).items()
+    }
+    return ClassePerfilSummaryResponse(
+        classe_id=classe_id,
+        distribuicao=distribuicao,
+        perfil_predominante=summary.get("perfil_predominante"),
+        total_alunos=summary.get("total_alunos", 0),
+        media_desempenho=summary.get("media_desempenho", {}),
+        atualizado_em=summary.get("atualizado_em"),
+    )
 
 
 @router.get("/contexto/{aluno_id}", response_model=PersonalizacaoContextoDocenteResponse)

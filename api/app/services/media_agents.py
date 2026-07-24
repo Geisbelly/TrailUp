@@ -217,6 +217,8 @@ async def disparar_brainhex_async(
     brainhex_url = str(getattr(settings, "brainhex_api_url", "") or "").strip()
     if not brainhex_url:
         return False
+    brainhex_secret = str(getattr(settings, "brainhex_api_secret", "") or "").strip()
+    headers = {"x-api-secret": brainhex_secret} if brainhex_secret else None
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
             response = await client.post(
@@ -230,6 +232,7 @@ async def disparar_brainhex_async(
                     "topico_id": topico_id,
                     "ciclo_id": ciclo_id,
                 },
+                headers=headers,
             )
             return response.status_code == 202
     except Exception:
@@ -246,11 +249,14 @@ async def gerar_conteudo_brainhex(
     brainhex_url = str(getattr(settings, "brainhex_api_url", "") or "").strip()
     if not brainhex_url:
         return None
+    brainhex_secret = str(getattr(settings, "brainhex_api_secret", "") or "").strip()
+    headers = {"x-api-secret": brainhex_secret} if brainhex_secret else None
     try:
         async with httpx.AsyncClient(timeout=180.0) as client:
             response = await client.post(
                 f"{brainhex_url.rstrip('/')}/api/personalizar",
                 json={"profile": str(perfil or "").strip().lower(), "conteudo_estudado": conteudo_estudado},
+                headers=headers,
             )
             response.raise_for_status()
             return response.json()

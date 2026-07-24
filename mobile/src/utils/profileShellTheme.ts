@@ -65,6 +65,30 @@ export function resolveSystemVisualTheme(profileName?: string | null): SystemVis
   return "real";
 }
 
+/**
+ * Eleva a luminosidade (HSL) de `color` ate atingir `minRatio` de contraste WCAG
+ * contra `background`, mantendo matiz E saturacao intactos — ao contrario de
+ * misturar com branco (que desatura e deixa a cor "apagada"), aqui só a
+ * luminosidade sobe, preservando a identidade/vibração da cor-assinatura do perfil.
+ */
+function ensureMinContrast(
+  color: string,
+  background: tinycolor.Instance | string,
+  minRatio: number,
+  stepL = 0.04,
+  maxSteps = 20
+): string {
+  const hsl = tinycolor(color).toHsl();
+  let adjusted = tinycolor(hsl);
+  for (let i = 0; i < maxSteps; i += 1) {
+    if (tinycolor.readability(adjusted, background) >= minRatio) break;
+    if (hsl.l >= 1) break;
+    hsl.l = Math.min(1, hsl.l + stepL);
+    adjusted = tinycolor(hsl);
+  }
+  return adjusted.toHexString();
+}
+
 export function buildProfileShellPaletteFromAccent(
   accentSource?: string | null,
   theme: SystemVisualTheme = "medieval"
@@ -73,7 +97,6 @@ export function buildProfileShellPaletteFromAccent(
     ? tinycolor(accentSource || "#707c88").toHexString()
     : "#707c88";
   const tone = THEME_TONES[theme];
-  const accent = tinycolor(accentBase).lighten(1).desaturate(10).toHexString();
   const backgroundBase = tinycolor
     .mix(tone.neutralBase, accentBase, tone.backgroundMix)
     .darken(theme === "magica" ? 3 : 5)
@@ -82,6 +105,13 @@ export function buildProfileShellPaletteFromAccent(
   const elevatedBase = tinycolor
     .mix(tone.neutralElevated, accentBase, tone.elevatedMix)
     .toRgbString();
+
+  // WCAG AAA: o accent (usado como texto/icone/borda) precisa ficar legivel sobre a
+  // superficie MAIS CLARA em que aparece (pior caso = elevatedBase). Garantimos >= 4.5:1
+  // (AAA para texto grande, acima do 3:1 minimo de componentes de UI) elevando apenas a
+  // luminosidade (HSL) do accent — matiz e saturacao ficam intactos, entao a cor
+  // continua vibrante/reconhecivel em vez de "apagada" como um mix com branco deixaria.
+  const accent = ensureMinContrast(accentBase, elevatedBase, 4.5);
 
   return {
     theme,

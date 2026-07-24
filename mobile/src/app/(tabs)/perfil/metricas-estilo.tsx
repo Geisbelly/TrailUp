@@ -61,7 +61,7 @@ export default function PerfilMetricasEstilo() {
           { backgroundColor: palette.surfaceElevated, borderColor: palette.border },
         ]}
       >
-        <Text style={[styles.eyebrow, { color: palette.textSubtle }]}>PERSONALIZACAO VISUAL</Text>
+        <Text style={[styles.eyebrow, { color: palette.textSubtle }]}>PERSONALIZAÇÃO VISUAL</Text>
         <Text style={[styles.title, { color: palette.text }]}>
           Escolha como suas métricas aparecem
         </Text>

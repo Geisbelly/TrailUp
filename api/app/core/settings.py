@@ -56,6 +56,9 @@ class Settings(BaseSettings):
     gemini_model_tts: str = "gemini-2.5-flash-preview-tts"
 
     brainhex_api_url: str | None = None
+    # Precisa bater com API_SHARED_SECRET no microservice (api-brainhex) quando
+    # configurado lá — obrigatório em produção; sem ele, /api/personalizar retorna 401.
+    brainhex_api_secret: str | None = None
 
     emotion_model_provider: str = "deepface"
     reading_model_provider: str = "isolation_forest"
@@ -84,6 +87,9 @@ class Settings(BaseSettings):
     personalizacao_job_concurrency: int = 2
     personalizacao_job_poll_sec: int = 5
     personalizacao_job_max_retries: int = 3
+    # Job preso em 'processing' ha mais que isso (ex.: processo caiu no meio) volta
+    # a ser reclamavel pelo worker — evita orfaos permanentes apos crash/restart.
+    personalizacao_job_stale_processing_min: int = 15
     personalizacao_job_db_failure_max_backoff_sec: int = 60
     personalizacao_job_db_failure_log_interval_sec: int = 30
     personalizacao_media_render_concurrency: int = 2

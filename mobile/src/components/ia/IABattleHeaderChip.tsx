@@ -3,7 +3,7 @@ import { useUsuario } from "@/context/SessaoContext";
 import { IAFeatureSelectorScope } from "@/interfaces/personalizacao/IAContracts";
 import { FontFamily } from "@/styles/GlobalStyle";
 import {
-  hasBrainHexProfileSignal,
+  hasAnyBrainHexProfileSignal,
   resolveDominantBrainHexProfile,
 } from "@/utils/brainHex";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
@@ -99,7 +99,12 @@ export function IABattleHeaderChip({ topicoId = null, itemKey = null }: Props) {
   const { getBattleState, resolveFeature } = useIA();
   const { usuario } = useUsuario();
   const profileName = resolveDominantBrainHexProfile(usuario?.perfis ?? null, "seeker");
-  const hasBattleSignal = hasBrainHexProfileSignal(usuario?.perfis ?? null, "survivor");
+  // Boss battle: perfis de narrativa combate/dominacao (mesmo criterio de IAContext.tsx).
+  const hasBattleSignal = hasAnyBrainHexProfileSignal(usuario?.perfis ?? null, [
+    "survivor",
+    "daredevil",
+    "conqueror",
+  ]);
   const palette = useMemo(() => getProfileShellPalette(profileName), [profileName]);
 
   const itemScope = useMemo(
@@ -323,7 +328,7 @@ export function IABattleHeaderChip({ topicoId = null, itemKey = null }: Props) {
                     valueColor={palette.text}
                   />
                   <BattleMetaStat
-                    label="Termino"
+                    label="Término"
                     value={defeatedAtLabel}
                     borderColor={palette.border}
                     backgroundColor={palette.surfaceElevated}
@@ -331,7 +336,7 @@ export function IABattleHeaderChip({ topicoId = null, itemKey = null }: Props) {
                     valueColor={palette.text}
                   />
                   <BattleMetaStat
-                    label="Duracao"
+                    label="Duração"
                     value={durationLabel}
                     borderColor={palette.border}
                     backgroundColor={palette.surfaceElevated}
@@ -347,7 +352,7 @@ export function IABattleHeaderChip({ topicoId = null, itemKey = null }: Props) {
                     valueColor={palette.text}
                   />
                   <BattleMetaStat
-                    label="Ultimo impacto"
+                    label="Último impacto"
                     value={lastDamageAtLabel}
                     borderColor={palette.border}
                     backgroundColor={palette.surfaceElevated}

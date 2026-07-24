@@ -145,7 +145,11 @@ type MetricasBatchContextValue = {
 const IDLE_THRESHOLD_MS = 15_000;
 const MAX_TOUCH_SAMPLES = 25;
 const TOUCH_SAMPLE_THROTTLE_MS = 750;
-const BATCH_INTERVAL_MS = 180_000;
+// Flush periodico da telemetria. Reduzido de 180s -> 60s para capturar
+// sessoes curtas (a maioria nao chega a 3 min numa tela), garantindo analise
+// com mais regularidade. Flushes por evento (screen_blur, activity_complete)
+// continuam complementando.
+const BATCH_INTERVAL_MS = 60_000;
 const FRAME_CAPTURE_INTERVAL_MS = 6_000;
 const MAX_CAMERA_FRAMES_PER_BATCH = 30;
 

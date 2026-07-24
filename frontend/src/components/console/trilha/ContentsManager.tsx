@@ -221,8 +221,8 @@ export default function ContentsManager() {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div>
-          <h3 className="text-lg font-semibold">Conteudos</h3>
-          <p className="text-sm text-muted-foreground">Gerencie textos, videos e materiais de estudo</p>
+          <h3 className="text-lg font-semibold">Conteúdos</h3>
+          <p className="text-sm text-muted-foreground">Gerencie textos, vídeos e materiais de estudo</p>
         </div>
         <div className="flex gap-2">
           <Select value={selectedTopicFilter} onValueChange={setSelectedTopicFilter}>
@@ -346,7 +346,7 @@ export default function ContentsManager() {
       </div>
 
       {isLoading ? (
-        <div className="text-sm text-muted-foreground">Carregando conteudos...</div>
+        <div className="text-sm text-muted-foreground">Carregando conteúdos...</div>
       ) : (
         <>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

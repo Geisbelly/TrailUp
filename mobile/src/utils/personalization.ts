@@ -769,6 +769,18 @@ function normalizeMediaBlocks(
   };
 
   if (tipo === "markdown") {
+    // O texto já vem completo no JSONB (materiais.markdown.payload.texto/markdown);
+    // preferir o conteúdo inline evita depender do upload no Storage, que pode
+    // falhar/atrasar mesmo com o registro já "completed" no banco.
+    const inlineMarkdown = pickString(
+      payload.markdown,
+      payload.texto,
+      payload.conteudo,
+      rawObject.markdown,
+      rawObject.texto,
+      rawObject.conteudo
+    );
+
     const markdownUrlRaw = pickString(
       url,
       payload.markdown_url,
@@ -776,9 +788,29 @@ function normalizeMediaBlocks(
       rawObject.markdown_url,
       rawObject.markdownUrl
     );
-    if (!markdownUrlRaw) return [];
 
-    const markdownUrl = buildSupabasePublicStorageUrl(markdownUrlRaw, {
+    if (!inlineMarkdown && !markdownUrlRaw) return [];
+
+    if (inlineMarkdown) {
+      const block = normalizeContentBlock(
+        {
+          id: key,
+          tipo: "markdown",
+          markdown: inlineMarkdown,
+          url: markdownUrlRaw
+            ? buildSupabasePublicStorageUrl(markdownUrlRaw, {
+                bucket: String(bucketValue ?? "conteudo_aluno"),
+              })
+            : null,
+          title,
+          metadata,
+        },
+        key
+      );
+      return block ? [block] : [];
+    }
+
+    const markdownUrl = buildSupabasePublicStorageUrl(markdownUrlRaw as string, {
       bucket: String(bucketValue ?? "conteudo_aluno"),
     });
 
@@ -863,6 +895,11 @@ function normalizeMediaBlocks(
   }
 
   if (tipo === "audio") {
+    // O roteiro (script do TTS) ja vem completo no JSONB; anexamos como
+    // fallbackText para o player exibir o texto caso o .wav no Storage
+    // esteja indisponivel (upload pode ter falhado mesmo com status "completed").
+    const roteiro = pickString(payload.roteiro, rawObject.roteiro);
+
     if (url && isAudioUrl(url)) {
       const block = normalizeContentBlock(
         {
@@ -870,21 +907,20 @@ function normalizeMediaBlocks(
           tipo,
           url,
           title,
-          metadata,
+          metadata: roteiro ? { ...metadata, fallbackText: roteiro } : metadata,
         },
         key
       );
       return block ? [block] : [];
     }
 
-    const roteiro = pickString(payload.roteiro, rawObject.roteiro);
     return [
       buildMarkdownContentBlock({
         id: `${key}-intro`,
-        title: title ?? "Audio personalizado",
+        title: title ?? "Áudio personalizado",
         lines: [
           payload.duracao_estimada_seg
-            ? `Duracao estimada: ${payload.duracao_estimada_seg}s`
+            ? `Duração estimada: ${payload.duracao_estimada_seg}s`
             : "",
         ],
         metadata,
@@ -899,6 +935,10 @@ function normalizeMediaBlocks(
   }
 
   if (tipo === "video") {
+    // Mesmo raciocinio do audio: anexar o roteiro como fallbackText para o
+    // player exibir o texto caso o arquivo no Storage esteja indisponivel.
+    const roteiro = pickString(payload.roteiro, rawObject.roteiro);
+
     if (url && isVideoUrl(url)) {
       const block = normalizeContentBlock(
         {
@@ -906,20 +946,19 @@ function normalizeMediaBlocks(
           tipo,
           url,
           title,
-          metadata,
+          metadata: roteiro ? { ...metadata, fallbackText: roteiro } : metadata,
         },
         key
       );
       return block ? [block] : [];
     }
 
-    const roteiro = pickString(payload.roteiro, rawObject.roteiro);
     const cenas = asArray<string>(payload.cenas).filter(Boolean);
     const blocks: ContentBlock[] = [];
 
     const roteiroBlock = buildMarkdownContentBlock({
       id: `${key}-roteiro`,
-      title: title ?? "Video personalizado",
+      title: title ?? "Vídeo personalizado",
       lines: [roteiro ?? ""],
       metadata,
     });
@@ -942,7 +981,18 @@ function normalizeMediaBlocks(
   }
 
   if (tipo === "documento") {
-    if (url && isPdfUrl(url)) {
+    // O conteudo estruturado (resumo/secoes) ja vem completo no JSONB;
+    // so recorrer ao arquivo no Storage quando nao ha nada inline (evita
+    // depender de um upload que pode ter falhado mesmo com status "completed").
+    const documentTitle =
+      pickString(payload.titulo, title, "Documento personalizado") ?? "Documento personalizado";
+    const sections = normalizeTextList(
+      payload.secoes ?? payload.blocos ?? rawObject.secoes ?? rawObject.blocos
+    );
+    const resumoText = pickString(payload.resumo, rawObject.resumo);
+    const hasInlineContent = sections.length > 0 || Boolean(resumoText);
+
+    if (!hasInlineContent && url && isPdfUrl(url)) {
       const block = normalizeContentBlock(
         {
           id: key,
@@ -959,7 +1009,7 @@ function normalizeMediaBlocks(
       return block ? [block] : [];
     }
 
-    if (url && isDocumentUrl(url)) {
+    if (!hasInlineContent && url && isDocumentUrl(url)) {
       const block = normalizeContentBlock(
         {
           id: key,
@@ -976,18 +1026,19 @@ function normalizeMediaBlocks(
       return block ? [block] : [];
     }
 
-    const documentTitle =
-      pickString(payload.titulo, title, "Documento personalizado") ?? "Documento personalizado";
-    const sections = normalizeTextList(
-      payload.secoes ?? payload.blocos ?? rawObject.secoes ?? rawObject.blocos
-    );
     const blocks: ContentBlock[] = [];
 
+    // Mesmo preferindo o conteudo inline, nao descartamos a referencia ao
+    // arquivo no Storage quando ele existe: sem isto, o bloco resultante
+    // (tipo "markdown") nao carregava nenhum jeito de abrir o PDF original,
+    // mesmo quando o upload funcionou. MarkdownBlock.tsx ainda nao renderiza
+    // um link a partir de metadata.arquivo_url — fica disponivel para quem
+    // for adicionar essa affordance na UI.
     const resumoBlock = buildMarkdownContentBlock({
       id: `${key}-resumo`,
       title: documentTitle,
-      lines: [pickString(payload.resumo, rawObject.resumo) ?? ""],
-      metadata,
+      lines: [resumoText ?? ""],
+      metadata: url ? { ...metadata, arquivo_url: url } : metadata,
     });
     if (resumoBlock) blocks.push(resumoBlock);
 
@@ -1008,7 +1059,16 @@ function normalizeMediaBlocks(
   }
 
   if (tipo === "apresentacao") {
-    if (url && isPdfUrl(url)) {
+    // Os slides ja vem completos no JSONB (payload.slides); so recorrer ao
+    // arquivo no Storage quando nao ha slides inline (evita depender de um
+    // export que pode ter falhado mesmo com status "completed").
+    const presentationTitle =
+      pickString(payload.titulo, title, "Apresentação personalizada") ??
+      "Apresentação personalizada";
+    const slides = normalizePresentationSlides(payload.slides ?? rawObject.slides);
+    const hasInlineSlides = slides.length > 0;
+
+    if (!hasInlineSlides && url && isPdfUrl(url)) {
       const block = normalizeContentBlock(
         {
           id: key,
@@ -1025,7 +1085,7 @@ function normalizeMediaBlocks(
       return block ? [block] : [];
     }
 
-    if (url && isDocumentUrl(url)) {
+    if (!hasInlineSlides && url && isDocumentUrl(url)) {
       const block = normalizeContentBlock(
         {
           id: key,
@@ -1042,7 +1102,7 @@ function normalizeMediaBlocks(
       return block ? [block] : [];
     }
 
-    if (url && isPresentationUrl(url)) {
+    if (!hasInlineSlides && url && isPresentationUrl(url)) {
       const block = normalizeContentBlock(
         {
           id: key,
@@ -1059,19 +1119,18 @@ function normalizeMediaBlocks(
       return block ? [block] : [];
     }
 
-    const presentationTitle =
-      pickString(payload.titulo, title, "Apresentacao personalizada") ??
-      "Apresentacao personalizada";
-    const slides = normalizePresentationSlides(payload.slides ?? rawObject.slides);
     const blocks: ContentBlock[] = [];
 
+    // Mesmo preferindo os slides inline, nao descartamos a referencia ao
+    // arquivo no Storage quando ele existe (ver comentario em "documento"
+    // acima — mesma ressalva: sem UI ainda lendo esse campo).
     const aberturaBlock = buildMarkdownContentBlock({
       id: `${key}-abertura`,
       title: presentationTitle,
       lines: [
         pickString(payload.abertura, rawObject.abertura, payload.resumo, rawObject.resumo) ?? "",
       ],
-      metadata,
+      metadata: url ? { ...metadata, arquivo_url: url } : metadata,
     });
     if (aberturaBlock) blocks.push(aberturaBlock);
 
@@ -1093,7 +1152,15 @@ function normalizeMediaBlocks(
   }
 
   if (tipo === "pdf") {
-    if (url) {
+    // Idem: preferir resumo/secoes inline quando existirem, e usar o arquivo
+    // no Storage apenas quando nao ha conteudo estruturado ja disponivel.
+    const pdfTitle =
+      pickString(payload.titulo, title, "Resumo personalizado") ?? "Resumo personalizado";
+    const sections = asArray<string>(payload.secoes).filter(Boolean);
+    const resumoText = pickString(payload.resumo);
+    const hasInlineContent = sections.length > 0 || Boolean(resumoText);
+
+    if (!hasInlineContent && url) {
       const block = normalizeContentBlock(
         {
           id: key,
@@ -1110,16 +1177,16 @@ function normalizeMediaBlocks(
       return block ? [block] : [];
     }
 
-    const pdfTitle =
-      pickString(payload.titulo, title, "Resumo personalizado") ?? "Resumo personalizado";
-    const sections = asArray<string>(payload.secoes).filter(Boolean);
     const blocks: ContentBlock[] = [];
 
+    // Mesmo preferindo o conteudo inline, nao descartamos a referencia ao
+    // arquivo no Storage quando ele existe (ver comentario em "documento"
+    // acima — mesma ressalva: sem UI ainda lendo esse campo).
     const resumoBlock = buildMarkdownContentBlock({
       id: `${key}-resumo`,
       title: pdfTitle,
-      lines: [pickString(payload.resumo) ?? ""],
-      metadata,
+      lines: [resumoText ?? ""],
+      metadata: url ? { ...metadata, arquivo_url: url } : metadata,
     });
     if (resumoBlock) blocks.push(resumoBlock);
 

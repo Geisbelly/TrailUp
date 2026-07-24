@@ -31,6 +31,20 @@ import { getProfileShellPalette } from "@/utils/profileShellTheme";
 // Verifique se o caminho da imagem está correto
 const appLogoSource = require("@/assets/ImagensReferencia/rosa_dos_ventos_filter.png");
 
+function formatRankValue(valor: number, criterio: string | null | undefined) {
+  if (criterio === "percentual") {
+    return `${Math.round(valor)}%`;
+  }
+  if (criterio === "tempo") {
+    const minutos = Math.round(valor);
+    if (minutos < 60) return `${minutos} min`;
+    const horas = Math.floor(minutos / 60);
+    const restoMin = minutos % 60;
+    return restoMin > 0 ? `${horas}h ${restoMin}min` : `${horas}h`;
+  }
+  return `${Math.trunc(valor)} pts`;
+}
+
 export default function RelatorioDadosScreen() {
   const { usuario } = useUsuario();
   const { classes } = useTrilha();
@@ -107,7 +121,7 @@ export default function RelatorioDadosScreen() {
       return {
         nome: rank.info?.nome_rank ?? "Ranking",
         posicao: posicaoAluno?.posicao ?? "—",
-        pontos: posicaoAluno?.pontuacao != null ? Math.trunc(posicaoAluno.pontuacao) : "0",
+        pontos: formatRankValue(posicaoAluno?.pontuacao ?? 0, rank.info?.criterio),
       };
     });
   }, [posicoesDoAluno, ranking]);
@@ -243,8 +257,8 @@ export default function RelatorioDadosScreen() {
       `<tr><td>${e.tipo}</td><td>${e.referencia}</td><td>${e.valor} XP</td><td>${e.data}</td></tr>`
     ).join("");
 
-    const rowsRanks = resumoRanks.map(r => 
-      `<tr><td>${r.nome}</td><td># ${r.posicao}</td><td>${r.pontos} pts</td></tr>`
+    const rowsRanks = resumoRanks.map(r =>
+      `<tr><td>${r.nome}</td><td># ${r.posicao}</td><td>${r.pontos}</td></tr>`
     ).join("");
 
     const listConquistas = resumoConquistas.map(c => 
@@ -436,7 +450,7 @@ export default function RelatorioDadosScreen() {
              <Text style={[styles.itemTitle, { color: palette.text }]}>{r.nome}</Text>
              <View style={styles.rowBetween}>
                 <Text style={[styles.detailText, { color: palette.textMuted }]}>Posição: <Text style={{color: palette.text}}>#{r.posicao}</Text></Text>
-                <Text style={[styles.detailText, { color: palette.textMuted }]}>{r.pontos} pts</Text>
+                <Text style={[styles.detailText, { color: palette.textMuted }]}>{r.pontos}</Text>
              </View>
           </View>
         )) : <Text style={[styles.emptyText, { color: palette.textMuted }]}>Sem participação em ranks.</Text>}

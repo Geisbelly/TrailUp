@@ -61,7 +61,7 @@ export function TopicFormDialog({
             />
           </div>
           <div>
-            <Label>Descricao</Label>
+            <Label>Descrição</Label>
             <Textarea
               value={formData.descricao}
               onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}

@@ -613,6 +613,12 @@ export function buildContentBlocks(conteudo: any): ContentBlock[] {
         conteudo: conteudo.conteudo,
         metadata: conteudo.metadata,
         titulo: conteudo.titulo,
+        // conteudo.conteudo guarda o path bruto do upload original do professor
+        // (tabela `conteudos`), que vive no bucket "conteudos" — nao no
+        // "conteudo_aluno" (default de normalizeObjectPath, usado pelo material
+        // personalizado por perfil). Sem isto a URL publica aponta pro bucket
+        // errado e retorna 400 ("File not found" no viewer).
+        bucket: "conteudos",
       },
       `c-${conteudo.id ?? "conteudo"}`
     )
@@ -628,6 +634,12 @@ export function buildContentBlocks(conteudo: any): ContentBlock[] {
       normalizeContentBlock(
         {
           ...midia,
+          // midia.url e o path bruto do upload do professor (tabela `midias`,
+          // sem coluna de bucket) — mesmo caso de conteudo.conteudo acima, vive
+          // no bucket "conteudos". A tabela esta vazia em produção hoje, mas o
+          // bug e identico ao corrigido no bloco base: sem isto a URL publica
+          // cairia no bucket errado ("conteudo_aluno") assim que houver dados.
+          bucket: midia?.bucket ?? "conteudos",
           metadata: {
             ...(metadata ?? {}),
             ...(asObject(midia?.metadata) ?? {}),
