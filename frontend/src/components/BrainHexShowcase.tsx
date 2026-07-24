@@ -156,7 +156,7 @@ const BrainHexShowcase = () => {
             <p className="text-xs uppercase tracking-[0.3em] font-semibold mb-3" style={{ color: "#b9a3ff" }}>
               Os Guardiões da Trilha
             </p>
-            <h2 className="text-4xl md:text-5xl font-bold mb-4" style={{ color: "#f5f0ff" }}>
+            <h2 className="font-display text-4xl md:text-5xl font-bold mb-4 leading-[1.2] pb-1" style={{ color: "#f5f0ff" }}>
               Cada perfil. Um caminho.{" "}
               <span
                 className="bg-clip-text text-transparent"

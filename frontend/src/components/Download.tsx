@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Smartphone, ExternalLink, FileDown, Hexagon, Compass } from "lucide-react";
+import { Smartphone, ExternalLink, FileDown } from "lucide-react";
 import GradientBlobs from "@/components/GradientBlobs";
+import trailupLogo from "@/assets/trailup-logo.png";
 
 // Configurações de download - altere os links conforme necessário
 const DOWNLOAD_CONFIG = {
@@ -31,9 +32,9 @@ const Download = () => {
               <span className="text-sm font-medium">Disponível para Android</span>
             </div>
 
-            <h2 className="text-4xl md:text-5xl font-bold">
+            <h2 className="text-4xl md:text-5xl font-bold leading-[1.2]">
               Leve seu grimório
-              <span className="block bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              <span className="block pb-1 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                 para qualquer lugar
               </span>
             </h2>
@@ -122,13 +123,23 @@ const Download = () => {
             </div>
           </div>
 
-          {/* Right Content - Emblema decorativo (sem mockup fake do app) */}
+          {/* Right Content - Logo TrailUp com glow concentrico (mesma
+              linguagem da tela de login do app: aura em camadas atras do
+              simbolo oficial, em vez de um icone generico sem relacao com a marca) */}
           <div className="relative flex justify-center lg:justify-end">
             <div className="relative w-full max-w-sm aspect-square flex items-center justify-center animate-float">
-              <div className="absolute inset-0 bg-gradient-to-t from-primary/25 to-transparent blur-3xl -z-10" />
-              <Hexagon className="absolute w-full h-full text-primary/10" strokeWidth={0.5} />
-              <Hexagon className="absolute w-3/4 h-3/4 text-primary/20 rotate-[15deg]" strokeWidth={0.5} />
-              <Compass className="w-1/3 h-1/3 text-primary glow-primary rounded-full p-6" />
+              <div
+                className="absolute inset-0 rounded-full blur-3xl"
+                style={{ background: "radial-gradient(circle, hsl(var(--primary) / 0.4), hsl(var(--primary) / 0.1) 55%, transparent 75%)" }}
+              />
+              <div className="absolute w-[88%] h-[88%] rounded-full border border-primary/25 animate-pulse-slow" />
+              <div className="absolute w-[68%] h-[68%] rounded-full border border-accent/30" />
+              <img
+                src={trailupLogo}
+                alt="TrailUp"
+                className="relative w-2/5 h-2/5 object-contain"
+                style={{ filter: "drop-shadow(0 0 40px hsl(var(--primary) / 0.65))" }}
+              />
             </div>
           </div>
         </div>

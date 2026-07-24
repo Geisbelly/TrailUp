@@ -10,6 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
+import GradientBlobs from "@/components/GradientBlobs";
+import { HallBackground } from "@/components/HallOrnaments";
 
 
 
@@ -71,13 +73,11 @@ const Contato = () => {
   return (
     <div className="min-h-screen bg-background text-foreground font-sans flex flex-col overflow-x-hidden selection:bg-primary/30 relative">
       
-      {/* Background Effects (Consistente com Download/Blog/Login) */}
+      {/* Background Effects — piso de losango + vinheta (mesma linguagem do
+          Hero/Sobre) em vez do grid de pontos genérico. */}
       <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:24px_24px]" />
-        
-        {/* Orbes de luz sutis */}
-        {/* <div className="absolute top-[-10%] left-[-5%] w-[800px] h-[800px] bg-primary/10 blur-[120px] rounded-full opacity-40 animate-pulse duration-[4000ms]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-accent/5 blur-[100px] rounded-full opacity-30 animate-pulse duration-[5000ms] delay-1000" /> */}
+        <HallBackground accent="hsl(266 95% 66%)" />
+        <GradientBlobs preset="top-center" />
       </div>
 
       <Header />
@@ -91,7 +91,7 @@ const Contato = () => {
             <Sparkles className="w-3 h-3 mr-2" />
             Fale Conosco
           </div>
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6 tracking-tight">
+          <h1 className="font-display text-5xl md:text-6xl lg:text-7xl font-bold mb-6 tracking-tight leading-[1.15] pb-1">
             Entre em <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">Contato</span>
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">

@@ -209,83 +209,84 @@ export function isAllAnswered(answers: BrainHexAnswers) {
 
 
 // Cores derivadas da cor-assinatura oficial de cada perfil BrainHex
-// (fonte: microservice/src/constants/brainHex.ts). O tom usado aqui é uma
-// variante clareada, pré-calculada à mão para contraste sobre fundos escuros
-// neste card de signup especificamente — não é o mesmo valor nem o mesmo
-// algoritmo do accent computado em api/app/api/v1/personalizacao.py
-// (_ensure_min_contrast, calculado dinamicamente contra surface_elevated) ou
-// do "accent" estático em src/lib/personalizacao-theme-guide.ts. As três
-// variantes compartilham a cor-assinatura de origem, mas não são
-// intercambiáveis — cada uma serve uma superfície diferente.
+// (fonte: microservice/src/constants/brainHex.ts). Diferente da versão
+// anterior (que misturava a cor oficial com branco e "apagava" o tom), aqui
+// só a luminosidade HSL é elevada até ~4.5:1 de contraste contra o fundo
+// escuro do site — matiz e saturação da cor oficial ficam intactos, entao a
+// cor continua vibrante e reconhecivel (mesmo principio de
+// _ensure_min_contrast em api/, documentado no CLAUDE.md). Ainda assim é uma
+// variante própria desta superfície — não é o mesmo valor nem o mesmo
+// algoritmo do accent computado em api/app/api/v1/personalizacao.py ou do
+// "accent" estático em src/lib/personalizacao-theme-guide.ts.
 export const PROFILES = {
   seeker: {
     key: "seeker",
     title: "Seeker (Explorador)",
     icon: Map,
-    color: "text-[#D7CB8F] bg-[#D7CB8F]/10 border-[#D7CB8F]/20",
-    textColor: "text-[#D7CB8F]",
-    bgColor: "bg-[#D7CB8F]",
-    cardStyle: "bg-[#D7CB8F]/10 border-[#D7CB8F]/20",
+    color: "text-[#a78c07] bg-[#a78c07]/10 border-[#a78c07]/20",
+    textColor: "text-[#a78c07]",
+    bgColor: "bg-[#a78c07]",
+    cardStyle: "bg-[#a78c07]/10 border-[#a78c07]/20",
     text: "Motivado pela curiosidade. Gosta de explorar possibilidades, achar conteúdos extras e entender conexões além do básico.",
   },
   survivor: {
     key: "survivor",
     title: "Survivor (Desafiador)",
     icon: Shield,
-    color: "text-[#C08D8D] bg-[#C08D8D]/10 border-[#C08D8D]/20",
-    textColor: "text-[#C08D8D]",
-    bgColor: "bg-[#C08D8D]",
-    cardStyle: "bg-[#C08D8D]/10 border-[#C08D8D]/20",
+    color: "text-[#fb0202] bg-[#fb0202]/10 border-[#fb0202]/20",
+    textColor: "text-[#fb0202]",
+    bgColor: "bg-[#fb0202]",
+    cardStyle: "bg-[#fb0202]/10 border-[#fb0202]/20",
     text: "Prospera sob pressão. Curte prazos, intensidade e a sensação de superar limites difíceis.",
   },
   daredevil: {
     key: "daredevil",
     title: "Daredevil (Aventureiro)",
     icon: Sword,
-    color: "text-[#98BC98] bg-[#98BC98]/10 border-[#98BC98]/20",
-    textColor: "text-[#98BC98]",
-    bgColor: "bg-[#98BC98]",
-    cardStyle: "bg-[#98BC98]/10 border-[#98BC98]/20",
+    color: "text-[#249024] bg-[#249024]/10 border-[#249024]/20",
+    textColor: "text-[#249024]",
+    bgColor: "bg-[#249024]",
+    cardStyle: "bg-[#249024]/10 border-[#249024]/20",
     text: "Gosta de ação e risco. Prefere aprender por tentativa e erro, com exploração rápida e sem medo de falhar.",
   },
   mastermind: {
     key: "mastermind",
     title: "Mastermind (Estrategista)",
     icon: Compass,
-    color: "text-[#BFC4C9] bg-[#BFC4C9]/10 border-[#BFC4C9]/20",
-    textColor: "text-[#BFC4C9]",
-    bgColor: "bg-[#BFC4C9]",
-    cardStyle: "bg-[#BFC4C9]/10 border-[#BFC4C9]/20",
+    color: "text-[#788490] bg-[#788490]/10 border-[#788490]/20",
+    textColor: "text-[#788490]",
+    bgColor: "bg-[#788490]",
+    cardStyle: "bg-[#788490]/10 border-[#788490]/20",
     text: "Curte planejar e entender o porquê. Aprende melhor com estrutura, lógica e visão geral do sistema.",
   },
   conqueror: {
     key: "conqueror",
     title: "Conqueror (Competidor)",
     icon: Crown,
-    color: "text-[#8DC6CB] bg-[#8DC6CB]/10 border-[#8DC6CB]/20",
-    textColor: "text-[#8DC6CB]",
-    bgColor: "bg-[#8DC6CB]",
-    cardStyle: "bg-[#8DC6CB]/10 border-[#8DC6CB]/20",
+    color: "text-[#018e9a] bg-[#018e9a]/10 border-[#018e9a]/20",
+    textColor: "text-[#018e9a]",
+    bgColor: "bg-[#018e9a]",
+    cardStyle: "bg-[#018e9a]/10 border-[#018e9a]/20",
     text: "Motivado por performance. Gosta de rankings, metas claras e superar desafios comparativos.",
   },
   socializer: {
     key: "socializer",
     title: "Socializer (Colaborador)",
     icon: Drama,
-    color: "text-[#BD96E2] bg-[#BD96E2]/10 border-[#BD96E2]/20",
-    textColor: "text-[#BD96E2]",
-    bgColor: "bg-[#BD96E2]",
-    cardStyle: "bg-[#BD96E2]/10 border-[#BD96E2]/20",
+    color: "text-[#aa60ed] bg-[#aa60ed]/10 border-[#aa60ed]/20",
+    textColor: "text-[#aa60ed]",
+    bgColor: "bg-[#aa60ed]",
+    cardStyle: "bg-[#aa60ed]/10 border-[#aa60ed]/20",
     text: "Valoriza interação. Aprende melhor em grupo, com troca de ideias e atividades cooperativas.",
   },
   achiever: {
     key: "achiever",
     title: "Achiever (Completionista)",
     icon: Box,
-    color: "text-[#DAB78D] bg-[#DAB78D]/10 border-[#DAB78D]/20",
-    textColor: "text-[#DAB78D]",
-    bgColor: "bg-[#DAB78D]",
-    cardStyle: "bg-[#DAB78D]/10 border-[#DAB78D]/20",
+    color: "text-[#bc6802] bg-[#bc6802]/10 border-[#bc6802]/20",
+    textColor: "text-[#bc6802]",
+    bgColor: "bg-[#bc6802]",
+    cardStyle: "bg-[#bc6802]/10 border-[#bc6802]/20",
     text: "Focado em completar tudo. Se motiva com checklists, badges e concluir 100% do conteúdo.",
   },
 };
