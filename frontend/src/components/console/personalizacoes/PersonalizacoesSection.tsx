@@ -4,12 +4,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, Layers, Palette, UserSearch, FileText, Music, FileImage, NotebookPen } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Loader2, Layers, Palette, UserSearch, Users, FileText, Music, FileImage, NotebookPen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import {
+  fetchAdequacaoGrupo,
   fetchContextoDocente,
   fetchPersonalizacaoPorPerfil,
+  type ClassePerfilSummaryResponse,
   type PersonalizacaoContextoDocenteResponse,
   type PersonalizacaoPerfilItem,
   type PersonalizacaoPorPerfilResponse,
@@ -62,6 +65,10 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
   const [contextoAluno, setContextoAluno] = useState<PersonalizacaoContextoDocenteResponse | null>(null);
   const [contextoLoading, setContextoLoading] = useState(false);
   const [contextoError, setContextoError] = useState<string | null>(null);
+
+  const [grupoResumo, setGrupoResumo] = useState<ClassePerfilSummaryResponse | null>(null);
+  const [grupoLoading, setGrupoLoading] = useState(false);
+  const [grupoError, setGrupoError] = useState<string | null>(null);
 
   const resolveToken = useCallback(async () => {
     const seed = String(session?.access_token ?? "").trim();
@@ -211,6 +218,31 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
     void loadContexto();
   }, [loadContexto]);
 
+  // Busca adequacao de grupo — distribuicao de perfis BrainHex da turma (visao 4)
+  const loadGrupo = useCallback(async () => {
+    const numericClasse = Number(classeId);
+    if (!Number.isFinite(numericClasse) || numericClasse <= 0) {
+      setGrupoResumo(null);
+      return;
+    }
+    setGrupoLoading(true);
+    setGrupoError(null);
+    try {
+      const token = await resolveToken();
+      const data = await fetchAdequacaoGrupo(token, { classeId: numericClasse });
+      setGrupoResumo(data);
+    } catch (error) {
+      setGrupoResumo(null);
+      setGrupoError(error instanceof Error ? error.message : "Falha ao carregar adequação de grupo.");
+    } finally {
+      setGrupoLoading(false);
+    }
+  }, [classeId, resolveToken]);
+
+  useEffect(() => {
+    void loadGrupo();
+  }, [loadGrupo]);
+
   const alunoSelecionado = useMemo(() => alunos.find((a) => a.id === alunoId) ?? null, [alunos, alunoId]);
 
   const perfilDoAluno = useMemo(() => {
@@ -279,6 +311,10 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
           <TabsTrigger value="por-aluno">
             <UserSearch className="h-4 w-4 mr-2" />
             Por aluno
+          </TabsTrigger>
+          <TabsTrigger value="grupo">
+            <Users className="h-4 w-4 mr-2" />
+            Turma
           </TabsTrigger>
         </TabsList>
 
@@ -377,7 +413,96 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
             />
           )}
         </TabsContent>
+
+        {/* Visao 4: adequacao de grupo — distribuicao de perfis e desempenho medio da turma */}
+        <TabsContent value="grupo" className="space-y-4">
+          {grupoError ? (
+            <Card>
+              <CardContent className="pt-6 text-sm text-destructive">{grupoError}</CardContent>
+            </Card>
+          ) : grupoLoading ? (
+            <Card>
+              <CardContent className="flex items-center gap-2 pt-6 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> Carregando adequação de grupo...
+              </CardContent>
+            </Card>
+          ) : !grupoResumo ? (
+            <Card>
+              <CardContent className="pt-6 text-sm text-muted-foreground">
+                Selecione uma classe para ver a distribuição de perfis da turma.
+              </CardContent>
+            </Card>
+          ) : (
+            <GrupoResumo resumo={grupoResumo} />
+          )}
+        </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+const DESEMPENHO_LABELS: Record<string, string> = {
+  media_acertos: "Média de acertos",
+  percentual_concluido: "Conclusão média",
+  nota_media: "Nota média",
+};
+
+function GrupoResumo({ resumo }: { resumo: ClassePerfilSummaryResponse }) {
+  const perfis = Object.entries(resumo.distribuicao).sort(([, a], [, b]) => b.percentual - a.percentual);
+  const desempenho = Object.entries(resumo.media_desempenho).filter(([key]) => DESEMPENHO_LABELS[key]);
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Alunos na turma</CardDescription>
+            <CardTitle className="text-2xl">{resumo.total_alunos}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Perfil predominante</CardDescription>
+            <CardTitle className="text-2xl capitalize">{resumo.perfil_predominante || "—"}</CardTitle>
+          </CardHeader>
+        </Card>
+        {desempenho.map(([key, value]) => (
+          <Card key={key}>
+            <CardHeader className="pb-2">
+              <CardDescription>{DESEMPENHO_LABELS[key]}</CardDescription>
+              <CardTitle className="text-2xl">{value.toFixed(1)}%</CardTitle>
+            </CardHeader>
+          </Card>
+        ))}
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Distribuição de perfis BrainHex</CardTitle>
+          <CardDescription>
+            Perfil dominante de cada aluno da turma, usado para priorizar os formatos gerados para o grupo.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {perfis.every(([, item]) => item.quantidade === 0) ? (
+            <p className="text-sm text-muted-foreground">
+              Nenhum aluno com perfil BrainHex definido nesta turma ainda.
+            </p>
+          ) : (
+            perfis.map(([chave, item]) => (
+              <div key={chave} className="space-y-1">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium capitalize">{item.perfil}</span>
+                  <span className="text-muted-foreground">
+                    {item.quantidade} aluno(s) · {item.percentual.toFixed(1)}%
+                  </span>
+                </div>
+                <Progress value={item.percentual} />
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

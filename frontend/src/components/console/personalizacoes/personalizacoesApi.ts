@@ -251,3 +251,29 @@ export async function fetchContextoDocente(
     accessToken
   );
 }
+
+export type ClassePerfilDistribuicaoItem = {
+  perfil: string;
+  quantidade: number;
+  percentual: number;
+};
+
+export type ClassePerfilSummaryResponse = {
+  classe_id: number;
+  distribuicao: Record<string, ClassePerfilDistribuicaoItem>;
+  perfil_predominante: string | null;
+  total_alunos: number;
+  media_desempenho: Record<string, number>;
+  atualizado_em?: string | null;
+};
+
+/** Visao 4: adequacao de grupo — distribuicao de perfis BrainHex e desempenho medio da turma. */
+export async function fetchAdequacaoGrupo(
+  accessToken: string,
+  params: { classeId: number }
+): Promise<ClassePerfilSummaryResponse> {
+  return apiRequest<ClassePerfilSummaryResponse>(
+    `/api/v1/personalizar/grupo/${params.classeId}`,
+    accessToken
+  );
+}

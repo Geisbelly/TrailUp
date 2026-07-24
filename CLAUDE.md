@@ -57,13 +57,20 @@ Cada perfil carrega:
 - **Cor-assinatura, ícone, guia/mentor, gradiente** — `microservice/src/constants/brainHex.ts` (fonte oficial); espelhos em mobile/frontend.
 - **Assinatura editorial** (tom de voz, ritmo, abertura, progressão narrativa,
   marcadores linguísticos, proibições) — `api/app/services/personalizacao.py`
-  (`_BRAINHEX_EDITORIAL_SIGNATURES`). ⚠️ Hoje só o microservice aplica perfil de
-  fato; os prompts Python **precisam injetar** essa assinatura (Fase 1).
+  (`_BRAINHEX_EDITORIAL_SIGNATURES`). Injetada via `perfil_editorial` nos prompts
+  Python (`gerador_conteudo.txt`, `pipeline_midia_etapas.txt`) e replicada no
+  prompt do microservice (`geminiService.ts`) — ambos os caminhos aplicam a
+  assinatura do perfil, não só o microservice (Fase 1 concluída).
 - **Voz TTS** — `VOICE_MAP` em `microservice/server.ts` (Gemini TTS ativo).
 
-> Há divergência de paletas: backend (`_build_design_tokens` em
-> `api/app/api/v1/personalizacao.py`) vs frontend
-> (`frontend/src/lib/personalizacao-theme-guide.ts`). Unificar na Fase 3.
+> Paleta unificada entre backend (`_build_design_tokens` em
+> `api/app/api/v1/personalizacao.py`) e frontend
+> (`frontend/src/lib/personalizacao-theme-guide.ts`), ambos derivando da
+> cor-assinatura oficial em `microservice/src/constants/brainHex.ts` (Fase 3
+> concluída). Correções de contraste AAA devem sempre elevar a luminosidade
+> HSL/HLS da cor-assinatura (nunca misturar com branco), para não desaturar o
+> accent do perfil — misturar com branco "apaga" a cor mesmo passando no
+> contraste.
 
 ## Tabelas Supabase (personalização)
 
@@ -87,8 +94,19 @@ análise (`api/app/services/linear_analysis_pipeline.py`: emoção → leitura �
 interação → desempenho → atenção → decisão) → `usePersonalizationRefresh` no
 mobile dispara novo ciclo quando uma ação casa com `refresh_policy.trigger_actions`.
 
-Lacunas (Fase 4): **análise de grupo** (distribuição de perfis na classe),
-histórico longitudinal de mental-state, detecção de leitura (WPM) precisa.
+Fase 4 (`23b38ef`): endpoint `GET /personalizar/grupo/{classe_id}`
+(`app/services/group_analysis.py`) computa e persiste a distribuição de perfis
+BrainHex + desempenho médio da turma em `classe_perfil_summary`, consumido pelo
+console do professor na aba "Turma" de `PersonalizacoesSection.tsx`. Detecção
+de ritmo de leitura (WPM) roda no `linear_analysis_pipeline.py`.
+
+> Lacuna real ainda aberta: `MentalStateHistoryRepository.listar_por_aluno`
+> (`api/app/repositories/mental_state.py`) só é exercitado em teste — o
+> histórico em `aluno_mental_state_history` é **gravado** a cada ciclo
+> (`analysis_runner.py`) mas **nunca lido de volta** por nenhum nó do grafo ou
+> serviço para influenciar decisões (ex.: detectar frustração recorrente ao
+> longo de vários ciclos). É plumbing write-only até alguém decidir o que fazer
+> com a leitura.
 
 ## Convenções
 
