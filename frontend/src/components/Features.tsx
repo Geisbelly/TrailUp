@@ -5,43 +5,43 @@ const FEATURES = [
   {
     icon: Brain,
     title: "Perfil BrainHex",
-    description: "Descubra seu perfil de jogador através de um questionário científico. Seeker, Conqueror, Achiever e mais!",
+    description: "Descubra qual guia fala a sua língua através de um questionário científico. Seeker, Conqueror, Achiever e mais — cada perfil com seu tom, ritmo e narrativa.",
     color: "text-primary",
   },
   {
     icon: Map,
     title: "Trilhas Personalizadas",
-    description: "Seu caminho de aprendizado é único. Desbloqueie tópicos de acordo com seu progresso e preferências.",
+    description: "Cada tópico vira um grimório sob medida para você. Desbloqueie trilhas de acordo com seu progresso e preferências.",
     color: "text-accent",
   },
   {
     icon: Trophy,
     title: "Rankings Dinâmicos",
-    description: "Compete com colegas em rankings de turma, instituição e missões. Mostre sua evolução!",
+    description: "Meça sua evolução contra colegas de turma, instituição e desafios. Prove seu valor na tabela de honra.",
     color: "text-warning",
   },
   {
     icon: Target,
     title: "Missões e Conquistas",
-    description: "Complete desafios, ganhe badges e conquiste recompensas exclusivas ao dominar o conteúdo.",
+    description: "Enfrente desafios, ganhe insígnias e conquiste recompensas exclusivas ao dominar cada conteúdo.",
     color: "text-success",
   },
   {
     icon: Zap,
     title: "Adaptação em Tempo Real",
-    description: "O sistema ajusta a dificuldade e o ritmo baseado no seu desempenho e modo de operação preferido.",
+    description: "Seu guia ajusta a dificuldade e o ritmo da narrativa conforme seu desempenho e modo de estudo preferido.",
     color: "text-primary",
   },
   {
     icon: Star,
     title: "Recompensas Imediatas",
-    description: "Feedback instantâneo e recompensas que te motivam a continuar aprendendo.",
+    description: "Feedback instantâneo e recompensas que te motivam a seguir na jornada.",
     color: "text-accent",
   },
   {
     icon: Users,
     title: "Aprendizado Social",
-    description: "Interaja com colegas, forme grupos de estudo e compartilhe conquistas.",
+    description: "Una-se a colegas, forme grupos de estudo e compartilhe conquistas na sua trilha.",
     color: "text-info",
   },
 ];
@@ -59,7 +59,7 @@ const Features = () => {
             </span>
           </h2>
           <p className="text-xl text-muted-foreground">
-            Uma plataforma completa que transforma aprendizado em uma experiência gamificada e personalizada
+            Uma plataforma que transforma cada tópico em uma jornada narrada sob medida para o seu perfil
           </p>
         </div>
 

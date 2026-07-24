@@ -42,7 +42,7 @@ import {
   buildIAItemKey,
   resolveIAItemKey,
 } from "@/interfaces/personalizacao/IAContracts";
-import { styles } from "./[id].styles";
+import { styles } from "@/styles/trilhaTopicoStyles";
 import { buildContentBlocks } from "@/utils/contentBlocks";
 import { inferModoApresentacao } from "@/utils/presentationOrder";
 import {
@@ -1120,9 +1120,9 @@ export default function TrilhaConteudoScreen() {
             },
           });
           showDialog({
-            title: "Pontuacao pendente",
+            title: "Pontuação pendente",
             description:
-              "A atividade foi salva, mas nao foi possivel registrar a pontuacao agora. Tente sincronizar novamente em instantes.",
+              "A atividade foi salva, mas não foi possível registrar a pontuação agora. Tente sincronizar novamente em instantes.",
             tone: "warning",
           });
         }
@@ -1420,6 +1420,7 @@ export default function TrilhaConteudoScreen() {
           <CardSemDados
             title="Sem conteúdos"
             description="Esta trilha ainda não possui conteúdos cadastrados."
+            accentColor={profilePalette.accent}
           />
         ) : !mostrarResumo && atualBlock ? (
           <View

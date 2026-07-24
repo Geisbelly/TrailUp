@@ -118,6 +118,7 @@ function renderVideo(block: ContentBlock) {
       )
     : null;
   const title = payload ? readString(payload, "title", "legenda") : null;
+  const fallbackText = metadata ? readString(metadata, "fallbackText") : null;
 
   if (!url) return null;
   return (
@@ -126,6 +127,7 @@ function renderVideo(block: ContentBlock) {
       url={url}
       title={title ?? undefined}
       bucketHint={bucketHint}
+      fallbackText={fallbackText ?? undefined}
     />
   );
 }
@@ -152,6 +154,7 @@ function renderAudio(block: ContentBlock) {
       )
     : null;
   const title = payload ? readString(payload, "title", "legenda") : null;
+  const fallbackText = metadata ? readString(metadata, "fallbackText") : null;
 
   if (!url) return null;
 
@@ -161,6 +164,7 @@ function renderAudio(block: ContentBlock) {
       url={url}
       title={title ?? undefined}
       bucketHint={bucketHint}
+      fallbackText={fallbackText ?? undefined}
     />
   );
 }

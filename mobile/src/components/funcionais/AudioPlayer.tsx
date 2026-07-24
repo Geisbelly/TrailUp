@@ -1,3 +1,6 @@
+import { useUsuario } from "@/context/SessaoContext";
+import { FontFamily } from "@/styles/GlobalStyle";
+import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { resolveSupabaseStorageUrl } from "@/utils/supabaseStorage";
 import { Ionicons } from "@expo/vector-icons";
 import { Audio, AVPlaybackStatus } from "expo-av";
@@ -16,6 +19,7 @@ type Props = {
   url: string;
   title?: string;
   bucketHint?: string | null;
+  fallbackText?: string;
 };
 
 type PlaybackState = {
@@ -63,7 +67,13 @@ export default function AudioPlayer({
   url,
   title = "Áudio",
   bucketHint = "conteudo_aluno",
+  fallbackText,
 }: Props) {
+  const { usuario } = useUsuario();
+  const palette = useMemo(
+    () => getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null),
+    [usuario?.perfis]
+  );
   const sourceUrl = String(url ?? "").trim();
   const soundRef = useRef<Audio.Sound | null>(null);
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(
@@ -242,27 +252,32 @@ export default function AudioPlayer({
       <View style={styles.wrapper}>
         <View style={styles.header}>
           <View style={styles.titleRow}>
-            <View style={styles.iconBadge}>
-              <Ionicons name="musical-notes-outline" size={16} color="#6A5FFD" />
+            <View
+              style={[
+                styles.iconBadge,
+                { backgroundColor: palette.accentMuted, borderColor: palette.border },
+              ]}
+            >
+              <Ionicons name="musical-notes-outline" size={16} color={palette.accent} />
             </View>
-            <Text numberOfLines={1} style={styles.title}>
+            <Text numberOfLines={1} style={[styles.title, { color: palette.text }]}>
               {title}
             </Text>
           </View>
 
           <Pressable
             onPress={() => openExternalUrl(playbackUrl)}
-            style={styles.iconButton}
+            style={[styles.iconButton, { borderColor: palette.border, backgroundColor: palette.surface }]}
             accessibilityRole="button"
             accessibilityLabel="Abrir áudio"
           >
-            <Ionicons name="open-outline" size={18} color="#d8d8ff" />
+            <Ionicons name="open-outline" size={18} color={palette.textMuted} />
           </Pressable>
         </View>
 
         {resolveError ? <Text style={styles.warningText}>{resolveError}</Text> : null}
 
-        <View style={styles.audioShell}>
+        <View style={[styles.audioShell, { borderColor: palette.border, backgroundColor: palette.surface }]}>
           <audio
             controls
             preload="metadata"
@@ -278,10 +293,15 @@ export default function AudioPlayer({
     <View style={styles.wrapper}>
       <View style={styles.header}>
         <View style={styles.titleRow}>
-          <View style={styles.iconBadge}>
-            <Ionicons name="musical-notes-outline" size={16} color="#6A5FFD" />
+          <View
+            style={[
+              styles.iconBadge,
+              { backgroundColor: palette.accentMuted, borderColor: palette.border },
+            ]}
+          >
+            <Ionicons name="musical-notes-outline" size={16} color={palette.accent} />
           </View>
-          <Text numberOfLines={1} style={styles.title}>
+          <Text numberOfLines={1} style={[styles.title, { color: palette.text }]}>
             {title}
           </Text>
         </View>
@@ -289,39 +309,43 @@ export default function AudioPlayer({
         {playbackUrl ? (
           <Pressable
             onPress={() => openExternalUrl(playbackUrl)}
-            style={styles.iconButton}
+            style={[styles.iconButton, { borderColor: palette.border, backgroundColor: palette.surface }]}
             accessibilityRole="button"
             accessibilityLabel="Abrir áudio"
           >
-            <Ionicons name="open-outline" size={18} color="#d8d8ff" />
+            <Ionicons name="open-outline" size={18} color={palette.textMuted} />
           </Pressable>
         ) : null}
       </View>
 
       {resolveError ? <Text style={styles.warningText}>{resolveError}</Text> : null}
 
-      <View style={styles.audioShell}>
+      <View style={[styles.audioShell, { borderColor: palette.border, backgroundColor: palette.surface }]}>
         <View style={styles.playerRow}>
           <Pressable
             onPress={() => void handleTogglePlayback()}
-            style={[styles.primaryControl, (resolvingUrl || loadingAudio) && styles.controlDisabled]}
+            style={[
+              styles.primaryControl,
+              { backgroundColor: palette.accent },
+              (resolvingUrl || loadingAudio) && styles.controlDisabled,
+            ]}
             disabled={resolvingUrl || loadingAudio || !playbackUrl}
             accessibilityRole="button"
             accessibilityLabel={playback.isPlaying ? "Pausar áudio" : "Reproduzir áudio"}
           >
             {resolvingUrl || loadingAudio ? (
-              <ActivityIndicator size="small" color="#ffffff" />
+              <ActivityIndicator size="small" color={palette.background} />
             ) : (
               <Ionicons
                 name={playback.isPlaying ? "pause" : "play"}
                 size={20}
-                color="#ffffff"
+                color={palette.background}
               />
             )}
           </Pressable>
 
           <View style={styles.metaColumn}>
-            <Text style={styles.metaTitle}>
+            <Text style={[styles.metaTitle, { color: palette.text }]}>
               {failed
                 ? "Não foi possível reproduzir o áudio."
                 : resolvingUrl
@@ -333,13 +357,20 @@ export default function AudioPlayer({
                 : "Áudio disponível"}
             </Text>
 
-            <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+            <View style={[styles.progressTrack, { backgroundColor: palette.progressTrack }]}>
+              <View
+                style={[
+                  styles.progressFill,
+                  { width: `${progress * 100}%`, backgroundColor: palette.accent },
+                ]}
+              />
             </View>
 
             <View style={styles.timeRow}>
-              <Text style={styles.timeText}>{formatTime(playback.positionMillis)}</Text>
-              <Text style={styles.timeText}>
+              <Text style={[styles.timeText, { color: palette.textSubtle }]}>
+                {formatTime(playback.positionMillis)}
+              </Text>
+              <Text style={[styles.timeText, { color: palette.textSubtle }]}>
                 {playback.durationMillis ? formatTime(playback.durationMillis) : "--:--"}
               </Text>
             </View>
@@ -347,15 +378,33 @@ export default function AudioPlayer({
 
           <Pressable
             onPress={() => void handleRestart()}
-            style={[styles.secondaryControl, !playbackUrl && styles.controlDisabled]}
+            style={[
+              styles.secondaryControl,
+              { borderColor: palette.border, backgroundColor: palette.surfaceElevated },
+              !playbackUrl && styles.controlDisabled,
+            ]}
             disabled={!playbackUrl}
             accessibilityRole="button"
             accessibilityLabel="Reiniciar áudio"
           >
-            <Ionicons name="refresh-outline" size={18} color="#d8d8ff" />
+            <Ionicons name="refresh-outline" size={18} color={palette.textMuted} />
           </Pressable>
         </View>
       </View>
+
+      {failed && fallbackText ? (
+        <View
+          style={[
+            styles.fallbackBox,
+            { borderColor: palette.border, backgroundColor: palette.surface },
+          ]}
+        >
+          <Text style={[styles.fallbackLabel, { color: palette.textMuted }]}>
+            Roteiro do áudio
+          </Text>
+          <Text style={[styles.fallbackText, { color: palette.text }]}>{fallbackText}</Text>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -364,6 +413,23 @@ const styles = StyleSheet.create({
   wrapper: {
     marginTop: 12,
     gap: 8,
+  },
+  fallbackBox: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    gap: 6,
+  },
+  fallbackLabel: {
+    fontFamily: FontFamily.interMedium,
+    fontSize: 12,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
+  fallbackText: {
+    fontFamily: FontFamily.interMedium,
+    fontSize: 14,
+    lineHeight: 21,
   },
   header: {
     flexDirection: "row",
@@ -384,13 +450,10 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(106,95,253,0.14)",
     borderWidth: 1,
-    borderColor: "rgba(106,95,253,0.22)",
   },
   title: {
     flex: 1,
-    color: "#f2f5ff",
     fontSize: 13,
     fontWeight: "700",
   },
@@ -399,8 +462,6 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: "#2f3658",
-    backgroundColor: "#0f1733",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -412,8 +473,6 @@ const styles = StyleSheet.create({
   audioShell: {
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#2f3658",
-    backgroundColor: "#0f1733",
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
@@ -428,20 +487,17 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   metaTitle: {
-    color: "#d8d8ff",
     fontSize: 13,
     fontWeight: "600",
   },
   progressTrack: {
     height: 8,
     borderRadius: 999,
-    backgroundColor: "#1f2b4d",
     overflow: "hidden",
   },
   progressFill: {
     height: "100%",
     borderRadius: 999,
-    backgroundColor: "#6A5FFD",
   },
   timeRow: {
     flexDirection: "row",
@@ -449,7 +505,6 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   timeText: {
-    color: "#98a1c0",
     fontSize: 12,
   },
   primaryControl: {
@@ -458,7 +513,6 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#6A5FFD",
   },
   secondaryControl: {
     width: 38,
@@ -467,8 +521,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#2f3658",
-    backgroundColor: "#11182f",
   },
   controlDisabled: {
     opacity: 0.5,

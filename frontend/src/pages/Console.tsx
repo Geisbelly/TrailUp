@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { LogOut, Settings, Loader2, Route, LayoutDashboard, Trophy, GraduationCap, Sparkles } from "lucide-react";
+import { LogOut, Settings, Loader2, Route, LayoutDashboard, Trophy, GraduationCap, Sparkles, ShieldCheck } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import TopicsManager from "@/components/console/trilha/TopicsManager";
@@ -12,6 +12,11 @@ import DashboardSection from "@/components/console/DashboardSection";
 import RanksSection from "@/components/console/RanksSection";
 import ClassManagementSection from "@/components/console/ClassManagementSection";
 import PersonalizacoesSection from "@/components/console/personalizacoes/PersonalizacoesSection";
+import { ProfessorApprovalSection } from "@/components/console/ProfessorApprovalSection";
+
+// Aba de aprovação de professores só é visível para a dona do projeto (TCC);
+// os demais professores nunca veem nem conseguem acessar essa view.
+const OWNER_EMAIL = "geisbelly19@gmail.com";
 
 export interface ProfessorUpdateData {
   nome: string;
@@ -32,7 +37,8 @@ export default function Console() {
     descricao: string | null;
   } | null>(null);
   const [isLoadingProfessor, setIsLoadingProfessor] = useState(false);
-  const [view, setView] = useState<"trilha" | "dashboard" | "ranks" | "classes" | "personalizacoes" | "profile">("dashboard");
+  const [view, setView] = useState<"trilha" | "dashboard" | "ranks" | "classes" | "personalizacoes" | "profile" | "aprovacoes">("dashboard");
+  const isOwner = professorData?.email?.toLowerCase() === OWNER_EMAIL;
 
   useEffect(() => {
     const fetchProfessor = async () => {
@@ -194,6 +200,16 @@ export default function Console() {
             <Settings className="h-4 w-4 mr-2" />
             Meus Dados
           </Button>
+          {isOwner && (
+            <Button
+              variant={view === "aprovacoes" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setView("aprovacoes")}
+            >
+              <ShieldCheck className="h-4 w-4 mr-2" />
+              Aprovações
+            </Button>
+          )}
           <Button variant="ghost" size="sm" onClick={handleLogout}>
             <LogOut className="h-4 w-4 mr-2" />
             Sair
@@ -216,6 +232,8 @@ export default function Console() {
               <RanksSection />
             ) : view === "personalizacoes" ? (
               <PersonalizacoesSection professorId={professorData?.id} />
+            ) : view === "aprovacoes" ? (
+              isOwner ? <ProfessorApprovalSection /> : null
             ) : (
               <ClassManagementSection professorId={professorData?.id} />
             )}

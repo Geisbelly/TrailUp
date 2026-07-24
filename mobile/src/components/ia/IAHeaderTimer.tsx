@@ -214,7 +214,7 @@ export function IAHeaderTimer({
       warningSentRef.current = true;
       emitSignal({
         type: "timer_warning",
-        topicoId: timerSelection.scope.scope !== "session" ? (timerSelection.scope as any).topicoId ?? null : null,
+        topicoId: timerSelection.scope.topicoId ?? null,
         itemKey: timerSelection.scope.scope === "item" ? timerSelection.scope.itemKey : null,
         meta: { featureKey: timerSelection.featureKey, warningAtSec: warningAt, secondsLeft },
       });
@@ -223,7 +223,7 @@ export function IAHeaderTimer({
       timeoutSentRef.current = true;
       emitSignal({
         type: "timer_timeout",
-        topicoId: timerSelection.scope.scope !== "session" ? (timerSelection.scope as any).topicoId ?? null : null,
+        topicoId: timerSelection.scope.topicoId ?? null,
         itemKey: timerSelection.scope.scope === "item" ? timerSelection.scope.itemKey : null,
         meta: { featureKey: timerSelection.featureKey, timeoutAction: timerSelection.resolved.timer.timeoutAction ?? null },
       });

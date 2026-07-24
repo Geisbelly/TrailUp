@@ -474,7 +474,7 @@ function buildPdfViewerHtml(
         const canvas = document.createElement("canvas");
         const context = canvas.getContext("2d");
         if (!context) {
-          throw new Error("Nao foi possivel inicializar o canvas para renderizar o PDF.");
+          throw new Error("Não foi possível inicializar o canvas para renderizar o PDF.");
         }
         const pixelRatio = Math.max(1, window.devicePixelRatio || 1);
         canvas.width = Math.floor(viewport.width * pixelRatio);
@@ -909,10 +909,16 @@ export function DocumentBlock({ tipo, payload, WebView }: Props) {
       })
       .catch((error) => {
         if (!ativo) return;
+        // Erros da nossa validacao (ex.: extensao incorreta) ja vem em
+        // portugues e sao seguros para exibir; qualquer outro erro (parsing
+        // de zip/xml de bibliotecas externas, rede, etc.) vaza mensagens
+        // tecnicas em ingles, entao trocamos por um texto amigavel.
+        const isKnownMessage =
+          error instanceof Error && error.message.startsWith("O leitor nativo");
         setNativeError(
-          error instanceof Error
-            ? error.message
-            : "Não foi possível montar a visualização nativa do arquivo."
+          isKnownMessage
+            ? (error as Error).message
+            : "Não foi possível abrir este arquivo para visualização nativa."
         );
       })
       .finally(() => {

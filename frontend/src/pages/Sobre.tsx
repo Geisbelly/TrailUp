@@ -20,7 +20,7 @@ const Sobre = () => {
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:24px_24px]" />
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-primary/10 blur-[120px] rounded-full opacity-40 animate-pulse duration-[4000ms]" />
-        <div className="absolute bottom-0 right-0 w-[600px] h-[500px] bg-purple-500/5 blur-[100px] rounded-full opacity-30" />
+        <div className="absolute bottom-0 right-0 w-[600px] h-[500px] bg-accent/5 blur-[100px] rounded-full opacity-30" />
       </div>
 
       <Header />
@@ -35,7 +35,7 @@ const Sobre = () => {
             Nossa Essência
           </div>
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6 tracking-tight text-foreground leading-tight">
-            Sobre o <span className="bg-gradient-to-r from-primary via-purple-400 to-primary bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">TrailUp</span>
+            Sobre o <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">TrailUp</span>
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
             Transformando a educação universitária através de gamificação inteligente, personalização científica e design centrado no aluno.
@@ -45,7 +45,7 @@ const Sobre = () => {
         {/* Mission Section - Featured Card */}
         <section className="container mx-auto max-w-5xl mb-24 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
           <div className="relative group">
-            <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-purple-600/20 rounded-3xl blur opacity-20 group-hover:opacity-40 transition duration-500" />
+            <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-accent/20 rounded-3xl blur opacity-20 group-hover:opacity-40 transition duration-500" />
             <Card className="relative p-8 md:p-12 border-border/50 bg-card/60 backdrop-blur-xl overflow-hidden rounded-2xl">
               <div className="grid md:grid-cols-2 gap-12 items-center">
                 <div className="space-y-6">
@@ -166,11 +166,11 @@ const Sobre = () => {
               </ul>
             </div>
             <div className="flex flex-col justify-center items-end text-right order-1 md:order-2">
-              <div className="inline-flex p-3 rounded-xl bg-purple-500/10 text-purple-500 w-fit mb-4">
+              <div className="inline-flex p-3 rounded-xl bg-accent/10 text-accent w-fit mb-4">
                 <BrainCircuit className="w-6 h-6" />
               </div>
               <h3 className="text-2xl font-bold text-foreground mb-2">Tecnologia e Ciência</h3>
-              <div className="h-1 w-12 bg-purple-500 rounded-full" />
+              <div className="h-1 w-12 bg-accent rounded-full" />
             </div>
           </div>
 

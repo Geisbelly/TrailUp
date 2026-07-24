@@ -434,22 +434,24 @@ const adjustedPositions = useMemo(() => {
   return (
     <View style={[styles.root, { width: winW, height: winH, backgroundColor: palette.background }]}>
       {/* Camada de textura principal */}
-      <Image
-        source={require("@/assets/ImagensReferencia/arte_filter.png")}
-        style={styles.textureLayer}
-        resizeMode="cover"
-        pointerEvents="none"
-      />
+      <View style={styles.textureLayerWrap} pointerEvents="none">
+        <Image
+          source={require("@/assets/ImagensReferencia/arte_filter.png")}
+          style={[styles.textureLayerImage, { opacity: 0.14 }]}
+          resizeMode="cover"
+        />
+      </View>
       {/* Segunda camada espelhada para dar profundidade */}
-      <Image
-        source={require("@/assets/ImagensReferencia/arte_filter.png")}
-        style={[
-          styles.textureLayer,
-          { opacity: 0.07, transform: [{ rotate: "180deg" }] },
-        ]}
-        resizeMode="cover"
-        pointerEvents="none"
-      />
+      <View style={styles.textureLayerWrap} pointerEvents="none">
+        <Image
+          source={require("@/assets/ImagensReferencia/arte_filter.png")}
+          style={[
+            styles.textureLayerImage,
+            { opacity: 0.07, transform: [{ rotate: "180deg" }] },
+          ]}
+          resizeMode="cover"
+        />
+      </View>
       {/* ── Bússola ── */}
       <View style={styles.compassTexture} pointerEvents="none">
         <MaterialCommunityIcons
@@ -811,9 +813,9 @@ const adjustedPositions = useMemo(() => {
                 key={`badge-${n.id}`}
                 style={{
                   position: "absolute",
-                  left: left - 8,
+                  left: left - 8 - 16,
                   top: top - 18,
-                  width: 52,
+                  width: 84,
                   height: 70,
                   alignItems: "center",
                   justifyContent: "space-between",
@@ -823,6 +825,7 @@ const adjustedPositions = useMemo(() => {
                 {badgeLabel ? (
                   <View
                     style={{
+                      flexShrink: 0,
                       paddingHorizontal: 8,
                       paddingVertical: 3,
                       borderRadius: 999,
@@ -832,10 +835,12 @@ const adjustedPositions = useMemo(() => {
                     }}
                   >
                     <Animated.Text
+                      numberOfLines={1}
                       style={{
                         color: palette.text,
                         fontSize: 10,
                         fontFamily: FontFamily.inikaBold,
+                        flexShrink: 0,
                       }}
                     >
                       {badgeLabel}
@@ -901,9 +906,12 @@ const styles = StyleSheet.create({
   root: { backgroundColor: Color.background },
   container: { backgroundColor: Color.background, alignItems: "center" },
   svg: { alignSelf: "center" },
-  textureLayer: {
+  textureLayerWrap: {
     ...StyleSheet.absoluteFillObject,
-    opacity: 0.14,
+  },
+  textureLayerImage: {
+    width: "100%",
+    height: "100%",
   },
   compassTexture: {
     position: "absolute",

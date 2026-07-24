@@ -366,6 +366,7 @@ export default function PerfilHome() {
                     <CardSemDados
                       title="Sem conquistas"
                       description="Você ainda não ganhou emblemas."
+                      accentColor={shellPalette.accent}
                     />
                   </View>
                 ) : (

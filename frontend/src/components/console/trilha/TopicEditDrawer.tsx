@@ -1261,7 +1261,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
 
                                 {/* Midia vinculada a questao */}
                                 <div>
-                                  <Label className={darkLabelClass}>Midia vinculada <span className="normal-case font-normal text-slate-500">(URL de imagem, video ou audio - opcional)</span></Label>
+                                  <Label className={darkLabelClass}>Mídia vinculada <span className="normal-case font-normal text-slate-500">(URL de imagem, vídeo ou áudio - opcional)</span></Label>
                                   <Input
                                     value={questionForm.midia_url || ""}
                                     onChange={e => setQuestionForm({...questionForm, midia_url: e.target.value})}

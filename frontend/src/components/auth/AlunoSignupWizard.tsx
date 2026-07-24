@@ -113,26 +113,33 @@ export function AlunoSignupWizard({
           page={quizPage}
           setPage={setQuizPage}
           perPage={5}
+          onBack={back}
+          onFinish={next}
         />
       )}
 
       {step === "brainhex_result" && <BrainHexResultStep answers={brainhexAnswers} />}
 
-      <div className="flex gap-3 pt-2">
-        <Button variant="outline" onClick={back} disabled={stepIndex === 0 || Boolean(isSaving)}>
-          Voltar
-        </Button>
+      {/* O quiz tem sua própria navegação (Anterior / Próximo página / Finalizar Análise);
+          o rodapé abaixo ficaria duplicado e com "Próximo" fazendo algo diferente do botão
+          interno, então só aparece nas demais etapas. */}
+      {step !== "brainhex_quiz" && (
+        <div className="flex gap-3 pt-2">
+          <Button variant="outline" onClick={back} disabled={stepIndex === 0 || Boolean(isSaving)}>
+            Voltar
+          </Button>
 
-        {step !== "brainhex_result" ? (
-          <Button className="flex-1" onClick={next} disabled={!canNext() || Boolean(isSaving)}>
-            Próximo
-          </Button>
-        ) : (
-          <Button className="flex-1" onClick={confirm} disabled={Boolean(isSaving)}>
-            {isSaving ? "Confirmando..." : "Confirmar conta de aluno"}
-          </Button>
-        )}
-      </div>
+          {step !== "brainhex_result" ? (
+            <Button className="flex-1" onClick={next} disabled={!canNext() || Boolean(isSaving)}>
+              Próximo
+            </Button>
+          ) : (
+            <Button className="flex-1" onClick={confirm} disabled={Boolean(isSaving)}>
+              {isSaving ? "Confirmando..." : "Confirmar conta de aluno"}
+            </Button>
+          )}
+        </div>
+      )}
     </Card>
   );
 }

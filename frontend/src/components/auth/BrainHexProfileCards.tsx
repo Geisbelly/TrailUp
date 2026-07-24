@@ -2,11 +2,10 @@
 
 
 
-export function BrainHexProfileCards(p:{ key: string; title: string; text: string; icon:    React.ComponentType<{ className?: string }> }) {
+export function BrainHexProfileCards(p:{ title: string; text: string; icon: React.ComponentType<{ className?: string }> }) {
     const Icon = p.icon;
   return (
     <div
-              key={p.key}
               className="group relative overflow-hidden rounded-xl border border-border/50 bg-card/50 p-5 transition-all duration-300 hover:border-primary/50 hover:bg-card/80 hover:shadow-lg hover:shadow-primary/5"
             >
               <div className="flex items-start gap-4">
@@ -18,8 +17,8 @@ export function BrainHexProfileCards(p:{ key: string; title: string; text: strin
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <h3 className="font-semibold text-base leading-none tracking-tight group-hover:text-primary transition-colors duration-300">
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <h3 className="font-semibold text-base leading-snug tracking-tight break-words group-hover:text-primary transition-colors duration-300">
                     {p.title}
                   </h3>
                   <p className="text-sm text-muted-foreground leading-relaxed">

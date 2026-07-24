@@ -4,6 +4,20 @@ import { Button } from "@/components/ui/button";
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 
+// Divide o texto em partes normais, negrito (**assim**) e italico (*assim*), sem alterar o markdown de origem.
+function renderInline(text: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return <strong key={i}>{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith("*") && part.endsWith("*")) {
+      return <em key={i}>{part.slice(1, -1)}</em>;
+    }
+    return part;
+  });
+}
+
 const BLOG_CONTENT: Record<string, { title: string; content: string; category: string; date: string }> = {
   brainhex: {
     title: "O que é o BrainHex?",
@@ -33,7 +47,7 @@ Prefere planejar e criar estratégias complexas antes de agir.
 ### 5. Conqueror (Competidor)
 Motivado pela competição e pelo desejo de ser o melhor.
 
-### 6. Socialiser (Colaborador)
+### 6. Socializer (Colaborador)
 Prefere atividades em grupo e interação social.
 
 ### 7. Achiever (Completionista)
@@ -242,22 +256,22 @@ Para alunos com perfil Conqueror dominante, o TrailUp oferece:
 - Torneios e competições especiais
     `,
   },
-  socialiser: {
-    title: "Perfil Socialiser: O Colaborador",
+  socializer: {
+    title: "Perfil Socializer: O Colaborador",
     category: "Perfis BrainHex",
     date: "2025-01-09",
     content: `
-# Perfil Socialiser: O Colaborador
+# Perfil Socializer: O Colaborador
 
 ## Características Principais
 
-O Socialiser prospera na interação. Este perfil:
+O Socializer prospera na interação. Este perfil:
 - Prefere estudar em grupo
 - Adora ajudar colegas
 - Se motiva com atividades colaborativas
 - Valoriza conexões sociais no aprendizado
 
-## Como o Socialiser Aprende Melhor
+## Como o Socializer Aprende Melhor
 
 ### Estratégias Eficazes
 1. **Grupos de Estudo**: Organize sessões colaborativas
@@ -265,7 +279,7 @@ O Socialiser prospera na interação. Este perfil:
 3. **Projetos em Equipe**: Trabalhe em atividades colaborativas
 4. **Fóruns e Discussões**: Participe ativamente de debates
 
-### Dicas para Socialisers
+### Dicas para Socializers
 - Forme grupos de estudo regulares
 - Use plataformas de discussão online
 - Ensine conceitos para solidificar conhecimento
@@ -273,7 +287,7 @@ O Socialiser prospera na interação. Este perfil:
 
 ## No TrailUp
 
-Para alunos com perfil Socialiser dominante, o TrailUp oferece:
+Para alunos com perfil Socializer dominante, o TrailUp oferece:
 - Desafios em equipe
 - Fóruns de discussão por tópico
 - Sistema de ajuda mútua
@@ -430,23 +444,40 @@ const BlogPost = () => {
             </h1>
 
             <div className="prose prose-invert prose-lg max-w-none">
-              {post.content.split('\n').map((paragraph, index) => {
+              {post.content
+                .split('\n')
+                // A primeira linha do conteudo repete o titulo (ja exibido acima); evita duplicar.
+                .filter((paragraph, index) => !(index === 0 && paragraph.trim() === '') && !(paragraph.startsWith('# ') && paragraph.slice(2).trim() === post.title.trim()))
+                .map((paragraph, index) => {
                 if (paragraph.startsWith('# ')) {
-                  return <h1 key={index} className="text-3xl font-bold mt-8 mb-4">{paragraph.slice(2)}</h1>;
+                  return <h1 key={index} className="text-3xl font-bold mt-8 mb-4">{renderInline(paragraph.slice(2))}</h1>;
                 }
                 if (paragraph.startsWith('## ')) {
-                  return <h2 key={index} className="text-2xl font-bold mt-6 mb-3 text-primary">{paragraph.slice(3)}</h2>;
+                  return <h2 key={index} className="text-2xl font-bold mt-6 mb-3 text-primary">{renderInline(paragraph.slice(3))}</h2>;
                 }
                 if (paragraph.startsWith('### ')) {
-                  return <h3 key={index} className="text-xl font-semibold mt-4 mb-2">{paragraph.slice(4)}</h3>;
+                  return <h3 key={index} className="text-xl font-semibold mt-4 mb-2">{renderInline(paragraph.slice(4))}</h3>;
                 }
                 if (paragraph.startsWith('- ')) {
-                  return <li key={index} className="ml-6">{paragraph.slice(2)}</li>;
+                  return <li key={index} className="ml-6 list-disc">{renderInline(paragraph.slice(2))}</li>;
+                }
+                const orderedMatch = paragraph.match(/^(\d+)\.\s+(.*)$/);
+                if (orderedMatch) {
+                  // Numero exibido como texto (nao via CSS list-style) para nao herdar a
+                  // contagem das listas com marcador (bullet) anteriores no mesmo fluxo.
+                  return (
+                    <li key={index} className="ml-6 list-none">
+                      {orderedMatch[1]}. {renderInline(orderedMatch[2])}
+                    </li>
+                  );
+                }
+                if (paragraph.trim() === '---') {
+                  return <hr key={index} className="my-6 border-border" />;
                 }
                 if (paragraph.trim() === '') {
                   return <br key={index} />;
                 }
-                return <p key={index} className="text-muted-foreground leading-relaxed mb-4">{paragraph}</p>;
+                return <p key={index} className="text-muted-foreground leading-relaxed mb-4">{renderInline(paragraph)}</p>;
               })}
             </div>
           </div>

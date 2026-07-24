@@ -31,14 +31,14 @@ const Download = () => {
             </div>
 
             <h2 className="text-4xl md:text-5xl font-bold">
-              Leve seu aprendizado
+              Leve seu grimório
               <span className="block bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                 para qualquer lugar
               </span>
             </h2>
 
             <p className="text-xl text-muted-foreground">
-              Baixe o app TrailUp e tenha acesso completo às suas trilhas de aprendizado, missões e conquistas na palma da sua mão.
+              Baixe o app TrailUp e tenha acesso completo às suas trilhas, seu guia e suas conquistas na palma da sua mão.
             </p>
 
             {/* Features List */}

@@ -53,7 +53,7 @@ export default function TrilhaStack() {
     const hasTimer = ["survivor", "mastermind", "achiever", "conqueror", "daredevil"].includes(
       String(perfil)
     );
-    const hasBattle = String(perfil) === "survivor";
+    const hasBattle = ["survivor", "daredevil", "conqueror"].includes(String(perfil));
 
     return {
       headerTitle: () => (

@@ -5,13 +5,15 @@ import { ImagemFilter } from "./ImageFiltro";
 type Props = {
   title: string;
   description?: string;
+  /** Cor de destaque do perfil BrainHex ativo (ex.: profilePalette.accent). */
+  accentColor?: string;
 };
 
-const CardSemDados: React.FC<Props> = React.memo(({ title, description = "" }) => {
+const CardSemDados: React.FC<Props> = React.memo(({ title, description = "", accentColor }) => {
   return (
     <View style={styles.wrapper}>
       <Text style={styles.emptyTitle}>{title}</Text>
-      <ImagemFilter />
+      <ImagemFilter tintColor={accentColor} />
       <Text style={styles.emptyText}>{description}</Text>
     </View>
   );

@@ -10,12 +10,16 @@ export default function BrainHexQuizStep({
   page,
   setPage,
   perPage = 5,
+  onBack,
+  onFinish,
 }: {
   answers: BrainHexAnswers;
   onChange: (next: BrainHexAnswers) => void;
   page: number;
   setPage: (p: number) => void;
   perPage?: number;
+  onBack?: () => void;
+  onFinish: () => void;
 }) {
   const totalQuestions = BRAINHEX_QUESTIONS.length;
   const totalPages = Math.ceil(totalQuestions / perPage);
@@ -118,10 +122,10 @@ export default function BrainHexQuizStep({
 
       {/* Navegação */}
       <div className="flex justify-between pt-4 border-t border-border/40">
-        <Button 
-          variant="ghost" 
-          disabled={page === 0} 
-          onClick={() => setPage(Math.max(0, page - 1))}
+        <Button
+          variant="ghost"
+          disabled={page === 0 && !onBack}
+          onClick={() => (page === 0 ? onBack?.() : setPage(Math.max(0, page - 1)))}
           className="pl-2 text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -150,7 +154,7 @@ export default function BrainHexQuizStep({
                 toast.error("Por favor, responda todas as perguntas desta página.");
                 return;
               }
-              toast.success("Perfil analisado com sucesso!");
+              onFinish();
             }}
             className="px-6 bg-primary hover:bg-primary/90"
           >

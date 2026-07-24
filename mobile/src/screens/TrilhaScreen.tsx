@@ -97,6 +97,7 @@ export default function TrilhasIndex() {
         <CardSemDados
           title="Sem trilhas"
           description="Nenhuma trilha disponivel no momento."
+          accentColor={palette.accent}
         />
       </SafeAreaView>
     );

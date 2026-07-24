@@ -60,7 +60,7 @@ export function ClassManagerDialog({
           <div>
             <DialogTitle className="text-lg font-bold text-foreground">Nova Classe / Turma</DialogTitle>
             <DialogDescription className="text-muted-foreground text-xs mt-0.5">
-              Crie a turma para gerenciar topicos e conteudos no console.
+              Crie a turma para gerenciar tópicos e conteúdos no console.
             </DialogDescription>
           </div>
         </div>

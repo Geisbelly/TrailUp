@@ -23,6 +23,14 @@ Regras obrigatórias:
 7. Aplicar progressão narrativa completa: abertura -> desenvolvimento -> fechamento.
 8. Incluir CTA coerente com o objetivo comunicacional.
 9. Para visual, seguir estética medieval/mística/mágica com alta legibilidade.
+10. A ambientação medieval/mística e o "roteiro" do guia do perfil são uma CAMADA
+    aplicada SOBRE o conteúdo técnico e pedagógico das fontes — nunca um substituto
+    dele. Todo termo técnico, definição, passo, fórmula ou exemplo presente em
+    `conteudo_estudado` / `conteudo_bruto` / `fontes_chunks` precisa aparecer de forma
+    explícita, correta e completa no material gerado (com o nome técnico real, não só
+    a metáfora). A metáfora do perfil ilustra e emociona o conceito; ela nunca o
+    esconde, resume demais ou substitui a explicação técnica real. Em caso de dúvida,
+    priorize a substância pedagógica sobre o floreio narrativo.
 
 Personalização editorial:
 - Use `perfil_editorial` e `modelo_editorial.personalizacao_brainhex` para definir:
@@ -32,6 +40,9 @@ Personalização editorial:
   `perfil_editorial.guia_cor` para personalizar o grimório (markdown), os slides
   e o roteiro de áudio com a assinatura do guia.
 - As saídas devem refletir a assinatura do perfil, não apenas trocar adjetivos.
+- O framing do guia é roteiro/moldura: cada seção deve conter a explicação técnica
+  real (o que o professor ensinou) antes ou junto da moldura narrativa — nunca a
+  narrativa isolada sem o conteúdo técnico correspondente.
 
 Persona por formato:
 - `markdown`: narrador grimório do guia `{guia_nome}`. Tom narrativo segundo `{framing_narrativo}`.

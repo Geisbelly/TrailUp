@@ -103,7 +103,7 @@ export class TrailupApiProvider implements IPersonalizacaoProvider {
   private async getAuthHeaders(forceRefresh = false): Promise<AuthHeaders> {
     if (!forceRefresh && this.isAuthBlocked()) {
       throw new PersonalizacaoAuthError(
-        "Requisicoes de personalizacao pausadas temporariamente apos falha de autenticacao.",
+        "Requisições de personalização pausadas temporariamente após falha de autenticação.",
         "cooldown"
       );
     }
@@ -122,7 +122,7 @@ export class TrailupApiProvider implements IPersonalizacaoProvider {
     if (!token) {
       this.blockAuthRequests();
       throw new PersonalizacaoAuthError(
-        "Sem sessao ativa para buscar personalizacao.",
+        "Sem sessão ativa para buscar personalização.",
         "no_session"
       );
     }
@@ -168,7 +168,7 @@ export class TrailupApiProvider implements IPersonalizacaoProvider {
     }
 
     if (!payload && text) {
-      throw new Error("Resposta invalida da API de personalizacao.");
+      throw new Error("Resposta inválida da API de personalização.");
     }
 
     return payload as T;
@@ -205,13 +205,13 @@ export class TrailupApiProvider implements IPersonalizacaoProvider {
   private async requestWithAuth<T>(urls: string[], init: RequestInit): Promise<T> {
     if (!urls.length) {
       throw new PersonalizacaoNetworkError(
-        "API de personalizacao indisponivel: URL base nao configurada.",
+        "API de personalização indisponível: URL base não configurada.",
         "no_api_config"
       );
     }
     if (this.isNetworkBlocked()) {
       throw new PersonalizacaoNetworkError(
-        "API de personalizacao temporariamente indisponivel apos falha de rede.",
+        "API de personalização temporariamente indisponível após falha de rede.",
         "network_cooldown"
       );
     }
@@ -250,13 +250,13 @@ export class TrailupApiProvider implements IPersonalizacaoProvider {
     if (lastNetworkError) {
       this.blockNetworkRequests();
       throw new PersonalizacaoNetworkError(
-        "Falha de rede ao comunicar com a API de personalizacao.",
+        "Falha de rede ao comunicar com a API de personalização.",
         "network_unreachable"
       );
     }
 
     throw new PersonalizacaoNetworkError(
-      "Nao foi possivel completar a requisicao de personalizacao.",
+      "Não foi possível completar a requisição de personalização.",
       "network_unreachable"
     );
   }
@@ -428,7 +428,7 @@ export class TrailupApiProvider implements IPersonalizacaoProvider {
           titulo: card.titulo ?? frente,
           descricao: card.descricao ?? verso,
           frente: frente || card.titulo || "Card",
-          verso: verso || card.descricao || frente || "Revisao personalizada",
+          verso: verso || card.descricao || frente || "Revisão personalizada",
           icone: card.icone ?? null,
           dificuldade: card.dificuldade ?? null,
           xp: card.xp ?? null,
@@ -589,7 +589,7 @@ export class TrailupApiProvider implements IPersonalizacaoProvider {
     const itemTitle = String(payload.item_title ?? "").trim();
 
     if (!personalizacaoId || !classeId || !topicoId || !alunoId || !itemKey || !itemKind || !itemTitle) {
-      throw new Error("Payload invalido para salvar progresso personalizado direto no Supabase.");
+      throw new Error("Payload inválido para salvar progresso personalizado direto no Supabase.");
     }
 
     const percentualConcluido = clampPercent(payload.percentual_concluido);

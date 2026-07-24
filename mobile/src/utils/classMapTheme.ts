@@ -66,12 +66,12 @@ const WORLD_TEMPLATES: WorldTemplate[] = [
     keywords: ["matemat", "algebra", "geometr", "calculo", "estat", "fisic", "logica"],
     worldPrefixes: ["Reinos de", "Coroa de", "Cartas de"],
     worldSuffixes: ["Numeria", "Axioma", "Vetoria", "Astraria"],
-    subtitle: "Cartografia de estrategia, padroes e estruturas.",
-    description: "Cada pais guarda um saber central e as estradas reais entre eles seguem a progressao logica da classe.",
-    countryPrefixes: ["Reino de", "Ducado de", "Bastiao de", "Marca de"],
-    capitalPrefixes: ["Torre de", "Castelo de", "Bastiao de", "Observatorio de"],
+    subtitle: "Cartografia de estratégia, padrões e estruturas.",
+    description: "Cada país guarda um saber central e as estradas reais entre eles seguem a progressão lógica da classe.",
+    countryPrefixes: ["Reino de", "Ducado de", "Bastião de", "Marca de"],
+    capitalPrefixes: ["Torre de", "Castelo de", "Bastião de", "Observatório de"],
     emblems: ["compass-rose", "ruler-square", "shield-outline", "orbit"],
-    biomes: ["planicies de pedra-luz", "ilhas de geometria", "vales runicos", "mares de calculo"],
+    biomes: ["planícies de pedra-luz", "ilhas de geometria", "vales rúnicos", "mares de cálculo"],
     palette: {
       skyTop: "#22150d",
       skyBottom: "#5a3a20",
@@ -100,12 +100,12 @@ const WORLD_TEMPLATES: WorldTemplate[] = [
     keywords: ["biolog", "quimic", "ciencias", "ecolog", "saude", "anatom", "celula"],
     worldPrefixes: ["Coroa de", "Bosques de", "Dominios de"],
     worldSuffixes: ["Verdan", "Cromaris", "Floris", "Organia"],
-    subtitle: "Terras vivas de bestiarios, ervas e ciencias naturais.",
-    description: "Os paises deste mapa crescem como reinos vivos, cada qual guardando saberes e criaturas simbolicas da classe.",
-    countryPrefixes: ["Vale de", "Bosque de", "Santuario de", "Marca de"],
-    capitalPrefixes: ["Abadia de", "Santuario de", "Fortaleza de", "Torre de"],
+    subtitle: "Terras vivas de bestiários, ervas e ciências naturais.",
+    description: "Os países deste mapa crescem como reinos vivos, cada qual guardando saberes e criaturas simbólicas da classe.",
+    countryPrefixes: ["Vale de", "Bosque de", "Santuário de", "Marca de"],
+    capitalPrefixes: ["Abadia de", "Santuário de", "Fortaleza de", "Torre de"],
     emblems: ["leaf", "dna", "molecule", "pine-tree"],
-    biomes: ["selvas antigas", "rios de esmeralda", "pantanos de alquimia", "campos de herbario"],
+    biomes: ["selvas antigas", "rios de esmeralda", "pântanos de alquimia", "campos de herbário"],
     palette: {
       skyTop: "#182013",
       skyBottom: "#41512c",
@@ -133,13 +133,13 @@ const WORLD_TEMPLATES: WorldTemplate[] = [
     id: "chronicle-realms",
     keywords: ["hist", "geograf", "filosof", "sociolog", "polit", "human"],
     worldPrefixes: ["Cronicas de", "Reinos de", "Terras de"],
-    worldSuffixes: ["Aurelia", "Cartographia", "Imperium", "Memoria"],
+    worldSuffixes: ["Aurelia", "Cartographia", "Imperium", "Memória"],
     subtitle: "Mapa de eras, cortes e disputas por narrativas.",
-    description: "Cada topico se ergue como um reino com memoria propria, ligado por estradas de campanha e rotas de exploracao historica.",
-    countryPrefixes: ["Imperio de", "Condado de", "Provincia de", "Territorio de"],
+    description: "Cada tópico se ergue como um reino com memória própria, ligado por estradas de campanha e rotas de exploração histórica.",
+    countryPrefixes: ["Império de", "Condado de", "Província de", "Território de"],
     capitalPrefixes: ["Corte de", "Porto de", "Baluarte de", "Fortaleza de"],
     emblems: ["castle", "sword-cross", "shield-crown", "map-legend"],
-    biomes: ["planaltos antigos", "costas imperiais", "rotas caravaneiras", "fronteiras cronicas"],
+    biomes: ["planaltos antigos", "costas imperiais", "rotas caravaneiras", "fronteiras crônicas"],
     palette: {
       skyTop: "#24141d",
       skyBottom: "#5b3240",
@@ -168,12 +168,12 @@ const WORLD_TEMPLATES: WorldTemplate[] = [
     keywords: ["portugues", "liter", "ingles", "espanhol", "lingua", "redacao", "texto"],
     worldPrefixes: ["Scriptoria de", "Coroa de", "Ilhas de"],
     worldSuffixes: ["Lumen", "Versalia", "Lexis", "Cantaria"],
-    subtitle: "Reinos de linguagem, simbolos e cronicas em expansao.",
-    description: "Cada pais guarda um livro, uma voz e uma rota narrativa, como se toda a classe fosse uma carta de escribas e trovadores.",
-    countryPrefixes: ["Cantao de", "Ilha de", "Provincia de", "Ordem de"],
+    subtitle: "Reinos de linguagem, símbolos e crônicas em expansão.",
+    description: "Cada país guarda um livro, uma voz e uma rota narrativa, como se toda a classe fosse uma carta de escribas e trovadores.",
+    countryPrefixes: ["Cantão de", "Ilha de", "Província de", "Ordem de"],
     capitalPrefixes: ["Biblioteca de", "Torre de", "Arquivo de", "Farol de"],
     emblems: ["feather", "book-open-page-variant", "scroll", "fountain-pen-tip"],
-    biomes: ["costas literarias", "ilhas de pergaminho", "planicies verbais", "mares de leitura"],
+    biomes: ["costas literárias", "ilhas de pergaminho", "planícies verbais", "mares de leitura"],
     palette: {
       skyTop: "#20172a",
       skyBottom: "#5a3755",
@@ -202,12 +202,12 @@ const WORLD_TEMPLATES: WorldTemplate[] = [
     keywords: ["program", "comput", "algorit", "dados", "software", "sistema", "rede"],
     worldPrefixes: ["Forja de", "Dominios de", "Reinos de"],
     worldSuffixes: ["Nexis", "Compilaria", "Datara", "Codexia"],
-    subtitle: "Terras de engenho, codices e mecanismos arcanos.",
-    description: "Os topicos deste mapa surgem como feudos de forja e logica, ligados por estradas de cobre e torres de conhecimento.",
-    countryPrefixes: ["Guilde de", "Dominio de", "Feudo de", "Marca de"],
-    capitalPrefixes: ["Torre de", "Forja de", "Nucleo de", "Portal de"],
+    subtitle: "Terras de engenho, códices e mecanismos arcanos.",
+    description: "Os tópicos deste mapa surgem como feudos de forja e lógica, ligados por estradas de cobre e torres de conhecimento.",
+    countryPrefixes: ["Guilde de", "Domínio de", "Feudo de", "Marca de"],
+    capitalPrefixes: ["Torre de", "Forja de", "Núcleo de", "Portal de"],
     emblems: ["anvil", "chip", "server-network", "lan-connect"],
-    biomes: ["ilhas de cobre", "mares de dados", "planicies mecanicas", "zonas de forja"],
+    biomes: ["ilhas de cobre", "mares de dados", "planícies mecânicas", "zonas de forja"],
     palette: {
       skyTop: "#171611",
       skyBottom: "#4b4030",
@@ -308,7 +308,7 @@ function buildWorldName(template: WorldTemplate, classe: Classe) {
 }
 
 function buildCountryTheme(template: WorldTemplate, node: NodeItem): MapCountryTheme {
-  const topicTitle = String(node.titulo ?? `Topico ${node.sequence}`);
+  const topicTitle = String(node.titulo ?? `Tópico ${node.sequence}`);
   const compact = titleCase(compactTitle(topicTitle));
   const prefix = pickByHash(`${template.id}:${node.id}:country`, template.countryPrefixes);
   const capitalPrefix = pickByHash(`${template.id}:${node.id}:capital`, template.capitalPrefixes);
@@ -401,12 +401,12 @@ export function normalizeRemoteMapTheme(raw: any, classe: Classe, nodes: NodeIte
         countries[nodeId] = {
           nodeId,
           topicId: Number.isFinite(Number(entry?.topico_id ?? nodeId)) ? Number(entry?.topico_id ?? nodeId) : base?.topicId ?? null,
-          topicTitle: String(entry?.topicTitle ?? entry?.topic_title ?? base?.topicTitle ?? `Topico ${nodeId}`),
-          countryName: String(entry?.countryName ?? entry?.country_name ?? base?.countryName ?? `Pais ${nodeId}`),
+          topicTitle: String(entry?.topicTitle ?? entry?.topic_title ?? base?.topicTitle ?? `Tópico ${nodeId}`),
+          countryName: String(entry?.countryName ?? entry?.country_name ?? base?.countryName ?? `País ${nodeId}`),
           capitalName: String(entry?.capitalName ?? entry?.capital_name ?? base?.capitalName ?? `Capital ${nodeId}`),
           lore: String(entry?.lore ?? entry?.description ?? base?.lore ?? ""),
           emblem: String(entry?.emblem ?? base?.emblem ?? "map"),
-          biome: String(entry?.biome ?? base?.biome ?? "terras em expansao"),
+          biome: String(entry?.biome ?? base?.biome ?? "terras em expansão"),
         };
       }
     } else {
@@ -418,12 +418,12 @@ export function normalizeRemoteMapTheme(raw: any, classe: Classe, nodes: NodeIte
         countries[nodeId] = {
           nodeId,
           topicId: Number.isFinite(Number(entry?.topico_id ?? nodeId)) ? Number(entry?.topico_id ?? nodeId) : base?.topicId ?? null,
-          topicTitle: String(entry?.topicTitle ?? entry?.topic_title ?? base?.topicTitle ?? `Topico ${nodeId}`),
-          countryName: String(entry?.countryName ?? entry?.country_name ?? base?.countryName ?? `Pais ${nodeId}`),
+          topicTitle: String(entry?.topicTitle ?? entry?.topic_title ?? base?.topicTitle ?? `Tópico ${nodeId}`),
+          countryName: String(entry?.countryName ?? entry?.country_name ?? base?.countryName ?? `País ${nodeId}`),
           capitalName: String(entry?.capitalName ?? entry?.capital_name ?? base?.capitalName ?? `Capital ${nodeId}`),
           lore: String(entry?.lore ?? entry?.description ?? base?.lore ?? ""),
           emblem: String(entry?.emblem ?? base?.emblem ?? "map"),
-          biome: String(entry?.biome ?? base?.biome ?? "terras em expansao"),
+          biome: String(entry?.biome ?? base?.biome ?? "terras em expansão"),
         };
       });
     }

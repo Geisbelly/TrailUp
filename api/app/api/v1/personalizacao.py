@@ -1,3 +1,4 @@
+import colorsys
 import json
 import logging
 from pathlib import Path
@@ -264,6 +265,14 @@ def _lighten(color: str, amount: float) -> str:
     return _blend(color, "#ffffff", amount)
 
 
+def _set_lightness(color: str, lightness: float) -> str:
+    """Retorna `color` com a luminosidade (HLS) substituida, preservando matiz e saturacao."""
+    r, g, b = _hex_to_rgb(color)
+    h, _l, s = colorsys.rgb_to_hls(r / 255.0, g / 255.0, b / 255.0)
+    nr, ng, nb = colorsys.hls_to_rgb(h, max(0.0, min(1.0, lightness)), s)
+    return _rgb_to_hex((round(nr * 255), round(ng * 255), round(nb * 255)))
+
+
 def _relative_luminance(color: str) -> float:
     """Luminância relativa sRGB (WCAG 2.x)."""
     def _channel(value: int) -> float:
@@ -286,19 +295,24 @@ def _ensure_min_contrast(
     background: str,
     min_ratio: float,
     *,
-    step: float = 0.08,
-    max_steps: int = 14,
+    step: float = 0.04,
+    max_steps: int = 20,
 ) -> str:
-    """Clareia `color` em direção ao branco até atingir `min_ratio` de contraste
-    contra `background`, preservando o matiz da cor-assinatura do perfil."""
+    """Eleva a luminosidade (HLS) de `color` até atingir `min_ratio` de contraste
+    contra `background`, preservando matiz E saturação da cor-assinatura do perfil.
+    Clarear misturando com branco (abordagem anterior) desatura a cor e deixa o
+    resultado "apagado" mesmo passando no contraste — por isso ajustamos só a
+    luminosidade, mantendo a cor vibrante e reconhecível."""
+    r, g, b = _hex_to_rgb(color)
+    _hue, lightness, _sat = colorsys.rgb_to_hls(r / 255.0, g / 255.0, b / 255.0)
     adjusted = color
     for _ in range(max_steps):
         if _contrast_ratio(adjusted, background) >= min_ratio:
             break
-        nxt = _lighten(adjusted, step)
-        if nxt == adjusted:  # já é branco; não há como clarear mais
+        if lightness >= 1.0:
             break
-        adjusted = nxt
+        lightness = min(1.0, lightness + step)
+        adjusted = _set_lightness(color, lightness)
     return adjusted
 
 
@@ -313,11 +327,10 @@ def _build_design_tokens(profile_name: str | None) -> DesignTokens:
 
     # WCAG AAA: o accent (texto grande, ícones, bordas) precisa ser legível sobre
     # a superfície MAIS CLARA em que aparece (pior caso = surface_elevated).
-    # Clareamos preservando o matiz da cor-assinatura, garantindo >= 4.5:1
-    # (AAA para texto grande; excede o 3:1 exigido para componentes de UI).
-    accent = _ensure_min_contrast(
-        _blend(accent_base, "#ffffff", 0.06), surface_elevated, 4.5
-    )
+    # Elevamos so a luminosidade (matiz e saturacao intactos), garantindo >= 4.5:1
+    # (AAA para texto grande; excede o 3:1 exigido para componentes de UI) sem
+    # deixar a cor "apagada" como um mix com branco deixaria.
+    accent = _ensure_min_contrast(accent_base, surface_elevated, 4.5)
 
     return DesignTokens(
         cores=DesignTokensCores(

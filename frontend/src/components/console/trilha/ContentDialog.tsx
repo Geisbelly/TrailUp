@@ -48,8 +48,8 @@ export function ContentDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl">
         <DialogHeader>
-          <DialogTitle>Conteudos do topico: {contentTopic?.nome}</DialogTitle>
-          <DialogDescription>Reordene os conteudos, visualize detalhes ou crie novos.</DialogDescription>
+          <DialogTitle>Conteúdos do tópico: {contentTopic?.nome}</DialogTitle>
+          <DialogDescription>Reordene os conteúdos, visualize detalhes ou crie novos.</DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-3">

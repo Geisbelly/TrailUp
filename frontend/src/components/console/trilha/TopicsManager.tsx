@@ -856,7 +856,7 @@ export default function TopicsManager() {
             ref={canvasRef}
             className="relative flex-1 min-h-0 rounded-xl border border-border bg-background overflow-hidden"
             style={{
-              backgroundImage: `radial-gradient(circle at 1px 1px, hsl(263 70% 65% / 0.07) 1px, transparent 0)`,
+              backgroundImage: `radial-gradient(circle at 1px 1px, hsl(var(--primary) / 0.07) 1px, transparent 0)`,
               backgroundSize: `${24 * zoom}px ${24 * zoom}px`,
               backgroundPosition: `${canvasOffset.x % (24 * zoom)}px ${canvasOffset.y % (24 * zoom)}px`,
               cursor: draggingConnector.fromId ? "crosshair" : "grab",

@@ -40,7 +40,7 @@ interface Rank {
 }
 
 interface RankPosicao {
-  id: number;
+  id: string;
   rank_id: number;
   aluno_id: string;
   aluno_nome: string;
@@ -117,9 +117,11 @@ export default function RanksSection() {
 
   const loadPosicoes = async (rankId: number) => {
     try {
+      // vw_rank_posicoes_por_classe calcula posicao/pontuacao/medalha em tempo real
+      // a partir de ranks + eventos_aluno + classe_aluno; nao existe tabela rank_posicoes.
       const { data, error } = await supabase
-        .from("rank_posicoes")
-        .select("id, rank_id, aluno_id, posicao, pontuacao, medalha, alunos:aluno_id ( nome )")
+        .from("vw_rank_posicoes_por_classe")
+        .select("rank_id, id_aluno, nome_aluno, posicao, pontuacao, medalha")
         .eq("rank_id", rankId)
         .order("posicao", { ascending: true });
 
@@ -127,13 +129,13 @@ export default function RanksSection() {
 
       const mapped =
         data?.map((p) => ({
-          id: p.id,
+          id: p.id_aluno,
           rank_id: p.rank_id,
-          aluno_id: p.aluno_id,
+          aluno_id: p.id_aluno,
           posicao: p.posicao,
           pontuacao: p.pontuacao,
           medalha: p.medalha,
-          aluno_nome: (p.alunos as { nome: string } | null)?.nome ?? "",
+          aluno_nome: p.nome_aluno ?? "",
         })) ?? [];
 
       setPosicoes(mapped);

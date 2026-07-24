@@ -4673,6 +4673,18 @@ async def gerar_cards_direto(
             for c in conteudos
             if (c.get("nome") or c.get("titulo") or "").strip()
         ],
+        # Sem isto o LLM so recebia titulos (ex.: "Introducao") e gerava cards
+        # genericos sobre o NOME do topico, sem responder ao que o professor
+        # de fato escreveu — trechos reais do conteudo sao a ancora semantica
+        # que o prompt (gerador_conteudo.txt) exige para nao "inventar fatos".
+        "trechos_fonte": [
+            {
+                "titulo": str(c.get("nome") or c.get("titulo") or "").strip(),
+                "texto": str(c.get("conteudo") or "").strip()[:1500],
+            }
+            for c in conteudos
+            if str(c.get("conteudo") or "").strip()
+        ],
         "atividades": [
             str(a.get("enunciado") or a.get("titulo") or "").strip()
             for a in atividades

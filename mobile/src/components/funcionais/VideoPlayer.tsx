@@ -21,6 +21,7 @@ type Props = {
   url: string;
   title?: string;
   bucketHint?: string | null;
+  fallbackText?: string;
 };
 
 function isHttpUrl(value: unknown): value is string {
@@ -47,6 +48,7 @@ export default function VideoPlayer({
   url,
   title = "Vídeo",
   bucketHint = "conteudo_aluno",
+  fallbackText,
 }: Props) {
   const { usuario } = useUsuario();
   const palette = useMemo(
@@ -197,6 +199,14 @@ export default function VideoPlayer({
               </Text>
             </Pressable>
           ) : null}
+          {failed && fallbackText ? (
+            <Text
+              style={[styles.feedbackText, { color: palette.textMuted }]}
+              numberOfLines={fullscreen ? undefined : 6}
+            >
+              {fallbackText}
+            </Text>
+          ) : null}
         </>
       )}
     </View>
@@ -218,7 +228,6 @@ export default function VideoPlayer({
           ]}
           resizeMode={ResizeMode.CONTAIN}
           useNativeControls={false}
-          allowsExternalPlayback
           shouldPlay={false}
           onPlaybackStatusUpdate={onPlaybackStatusUpdate}
           onError={() => setFailed(true)}

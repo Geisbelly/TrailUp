@@ -839,10 +839,10 @@ export default function DashboardSection() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Progress value={aluno.porcentagemConcluida} className="w-16 h-2" />
-                          <span className="text-xs">{aluno.porcentagemConcluida}%</span>
+                          <span className="text-xs">{aluno.porcentagemConcluida.toFixed(1)}%</span>
                         </div>
                       </TableCell>
-                      <TableCell>{aluno.acertosPercentual}%</TableCell>
+                      <TableCell>{aluno.acertosPercentual.toFixed(1)}%</TableCell>
                       <TableCell>
                         <Button variant="ghost" size="sm" onClick={() => setSelectedAluno(aluno)}>
                           <Eye className="h-4 w-4" />
@@ -873,10 +873,10 @@ export default function DashboardSection() {
           {selectedAluno && (
             <Tabs defaultValue="overview" className="space-y-4">
               <TabsList>
-                <TabsTrigger value="overview">Visao Geral</TabsTrigger>
+                <TabsTrigger value="overview">Visão Geral</TabsTrigger>
                 <TabsTrigger value="perfil">Perfil BrainHex</TabsTrigger>
                 <TabsTrigger value="trilha">Trilha Visual</TabsTrigger>
-                <TabsTrigger value="personalizacao">Personalizacao</TabsTrigger>
+                <TabsTrigger value="personalizacao">Personalização</TabsTrigger>
               </TabsList>
 
               <TabsContent value="overview" className="space-y-6">
@@ -916,7 +916,7 @@ export default function DashboardSection() {
                         <CheckCircle className="h-4 w-4" />
                         <span className="text-xs">Concluído</span>
                       </div>
-                      <p className="text-2xl font-bold">{selectedAluno.porcentagemConcluida}%</p>
+                      <p className="text-2xl font-bold">{selectedAluno.porcentagemConcluida.toFixed(1)}%</p>
                     </CardContent>
                   </Card>
 
@@ -926,7 +926,7 @@ export default function DashboardSection() {
                         <BarChart3 className="h-4 w-4" />
                         <span className="text-xs">Acertos</span>
                       </div>
-                      <p className="text-2xl font-bold">{selectedAluno.acertosPercentual}%</p>
+                      <p className="text-2xl font-bold">{selectedAluno.acertosPercentual.toFixed(1)}%</p>
                     </CardContent>
                   </Card>
 
@@ -1040,7 +1040,7 @@ export default function DashboardSection() {
                 {personalizacaoLoading ? (
                   <Card>
                     <CardContent className="pt-6 text-sm text-muted-foreground">
-                      Carregando historico de personalizacao...
+                      Carregando histórico de personalização...
                     </CardContent>
                   </Card>
                 ) : personalizacaoError ? (
@@ -1148,7 +1148,7 @@ export default function DashboardSection() {
                               <div className="flex flex-wrap items-start justify-between gap-3">
                                 <div>
                                   <p className="font-semibold">
-                                    Personalizacao #{item.id} · Topico {item.topico_id ?? "geral"}
+                                    Personalização #{item.id} · Tópico {item.topico_id ?? "geral"}
                                   </p>
                                   <p className="text-sm text-muted-foreground">
                                     {item.plano?.justificativa || "Sem justificativa registrada."}

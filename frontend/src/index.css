@@ -8,99 +8,104 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* TrailUp Dark Theme - Purple/Violet Gaming Aesthetic */
-    --background: 235 25% 15%;
-    --foreground: 240 10% 95%;
+    /* TrailUp Dark Theme - Mistico Medieval (grimorio + dourado de tocha).
+       Alinhado ao tema base do app ("Real Medieval Magico" — ver
+       mobile/src/utils/profileShellTheme.ts e frontend/src/lib/personalizacao-theme-guide.ts):
+       fundo frio quase-preto, dourado de tocha como cor de acao/CTA, roxo mistico
+       como acento secundario (arcano/magia). Nao usa uma cor de perfil BrainHex
+       especifica para nao favorecer um perfil sobre os outros na pagina publica. */
+    --background: 225 32% 8%;
+    --foreground: 40 20% 94%;
 
-    --card: 235 20% 18%;
-    --card-foreground: 240 10% 95%;
+    --card: 226 28% 12%;
+    --card-foreground: 40 20% 94%;
 
-    --popover: 235 25% 12%;
-    --popover-foreground: 240 10% 95%;
+    --popover: 225 32% 7%;
+    --popover-foreground: 40 20% 94%;
 
-    /* Primary - Vibrant Purple */
-    --primary: 263 70% 65%;
-    --primary-foreground: 240 10% 95%;
-    
+    /* Primary - Dourado de tocha (acao, CTA, brasao) */
+    --primary: 38 85% 55%;
+    --primary-foreground: 226 30% 10%;
+
     /* Primary variants for gradients */
-    --primary-light: 263 70% 75%;
-    --primary-dark: 263 70% 55%;
+    --primary-light: 40 90% 66%;
+    --primary-dark: 34 80% 45%;
 
-    /* Secondary - Deep Blue-Purple */
-    --secondary: 250 30% 35%;
-    --secondary-foreground: 240 10% 95%;
+    /* Secondary - Bronze/cobre escuro */
+    --secondary: 25 35% 26%;
+    --secondary-foreground: 40 20% 94%;
 
-    --muted: 235 20% 25%;
-    --muted-foreground: 240 6% 74%;
+    --muted: 226 20% 20%;
+    --muted-foreground: 230 10% 72%;
 
-    /* Accent - Lighter Purple */
-    --accent: 270 60% 70%;
-    --accent-foreground: 235 25% 15%;
+    /* Accent - Roxo mistico (arcano/magia) */
+    --accent: 265 55% 64%;
+    --accent-foreground: 40 20% 96%;
 
-    --destructive: 0 70% 60%;
-    --destructive-foreground: 240 10% 95%;
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 40 20% 94%;
 
-    --border: 235 20% 25%;
-    --input: 235 20% 20%;
-    --ring: 263 70% 65%;
+    --border: 226 20% 22%;
+    --input: 226 22% 16%;
+    --ring: 38 85% 55%;
 
     --radius: 0.75rem;
 
-    /* Gamification colors */
-    --success: 142 70% 55%;
-    --warning: 45 90% 60%;
-    --info: 200 70% 60%;
-    
+    /* Cores semanticas fixas (nao derivadas do primary/accent) */
+    --success: 142 65% 50%;
+    --warning: 45 90% 58%;
+    --info: 205 70% 58%;
+
     /* Glow effects */
-    --glow-primary: 263 70% 65%;
-    --glow-secondary: 270 60% 70%;
-    
+    --glow-primary: 38 85% 55%;
+    --glow-secondary: 265 55% 64%;
+
     /* Hexagon badge background */
-    --badge-bg: 250 35% 25%;
-    --badge-border: 263 70% 65%;
+    --badge-bg: 25 35% 22%;
+    --badge-border: 38 85% 55%;
   }
 
   .dark {
-    --background: 235 25% 15%;
-    --foreground: 240 10% 95%;
+    --background: 225 32% 8%;
+    --foreground: 40 20% 94%;
 
-    --card: 235 20% 18%;
-    --card-foreground: 240 10% 95%;
+    --card: 226 28% 12%;
+    --card-foreground: 40 20% 94%;
 
-    --popover: 235 25% 12%;
-    --popover-foreground: 240 10% 95%;
+    --popover: 225 32% 7%;
+    --popover-foreground: 40 20% 94%;
 
-    --primary: 263 70% 65%;
-    --primary-foreground: 240 10% 95%;
-    
-    --primary-light: 263 70% 75%;
-    --primary-dark: 263 70% 55%;
+    --primary: 38 85% 55%;
+    --primary-foreground: 226 30% 10%;
 
-    --secondary: 250 30% 35%;
-    --secondary-foreground: 240 10% 95%;
+    --primary-light: 40 90% 66%;
+    --primary-dark: 34 80% 45%;
 
-    --muted: 235 20% 25%;
-    --muted-foreground: 240 6% 74%;
+    --secondary: 25 35% 26%;
+    --secondary-foreground: 40 20% 94%;
 
-    --accent: 270 60% 70%;
-    --accent-foreground: 235 25% 15%;
+    --muted: 226 20% 20%;
+    --muted-foreground: 230 10% 72%;
 
-    --destructive: 0 70% 60%;
-    --destructive-foreground: 240 10% 95%;
+    --accent: 265 55% 64%;
+    --accent-foreground: 40 20% 96%;
 
-    --border: 235 20% 25%;
-    --input: 235 20% 20%;
-    --ring: 263 70% 65%;
-    
-    --success: 142 70% 55%;
-    --warning: 45 90% 60%;
-    --info: 200 70% 60%;
-    
-    --glow-primary: 263 70% 65%;
-    --glow-secondary: 270 60% 70%;
-    
-    --badge-bg: 250 35% 25%;
-    --badge-border: 263 70% 65%;
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 40 20% 94%;
+
+    --border: 226 20% 22%;
+    --input: 226 22% 16%;
+    --ring: 38 85% 55%;
+
+    --success: 142 65% 50%;
+    --warning: 45 90% 58%;
+    --info: 205 70% 58%;
+
+    --glow-primary: 38 85% 55%;
+    --glow-secondary: 265 55% 64%;
+
+    --badge-bg: 25 35% 22%;
+    --badge-border: 38 85% 55%;
   }
 }
 

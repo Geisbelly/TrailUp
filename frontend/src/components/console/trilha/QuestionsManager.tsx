@@ -464,7 +464,7 @@ export default function QuestionsManager() {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div>
-          <h3 className="text-lg font-semibold">Questoes</h3>
+          <h3 className="text-lg font-semibold">Questões</h3>
           <p className="text-sm text-muted-foreground">Cadastre perguntas vinculadas a cada atividade</p>
         </div>
         <div className="flex gap-2">
@@ -670,7 +670,7 @@ export default function QuestionsManager() {
                   </div>
                 )}
                 <div>
-                  <Label>Midia URL (opcional)</Label>
+                  <Label>Mídia URL (opcional)</Label>
                   <Input
                     value={formData.midia_url}
                     onChange={(e) => setFormData({ ...formData, midia_url: e.target.value })}
@@ -724,7 +724,7 @@ export default function QuestionsManager() {
       </div>
 
       {isLoading ? (
-        <div className="text-sm text-muted-foreground">Carregando questoes...</div>
+        <div className="text-sm text-muted-foreground">Carregando questões...</div>
       ) : (
         <>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

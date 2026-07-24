@@ -205,6 +205,7 @@ export default function PerfilHome() {
             <CardSemDados
               title="Sem notificações"
               description="Você ainda não tem notificações por aqui."
+              accentColor={palette.accent}
             />
           }
           ListFooterComponent={

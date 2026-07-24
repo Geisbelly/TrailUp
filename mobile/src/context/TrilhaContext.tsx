@@ -765,6 +765,14 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
   const [unlockedState, setUnlockedState] = useState<NodeId[]>([])
   const [personalizedTopics, setPersonalizedTopics] = useState<Record<number, PersonalizedTopicPayload>>({})
   const [remoteMapThemeState, setRemoteMapThemeState] = useState<Record<string, unknown> | null>(null)
+  // Refs "espelho" para classeAtual/personalizedTopics: permitem que fetchGraphData leia o
+  // estado mais recente sem depender das referencias de objeto (que mudam a cada progresso
+  // salvo) no seu useCallback — caso contrario cada marcacao de progresso recria fetchGraphData
+  // e realimenta o useEffect que o dispara, num loop que nunca deixa o grafo/progresso estabilizar.
+  const classeAtualRef = useRef<Classe | null>(null)
+  const personalizedTopicsRef = useRef<Record<number, PersonalizedTopicPayload>>({})
+  classeAtualRef.current = classeAtual
+  personalizedTopicsRef.current = personalizedTopics
   const personalizationRequestsRef = useRef<Map<string, Promise<EnsurePersonalizationResult>>>(new Map())
   const personalizationAttemptedRef = useRef<Set<string>>(new Set())
   const personalizationRefreshCycleRef = useRef<Map<string, string>>(new Map())
@@ -1111,6 +1119,8 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [personalizedTopics])
 
   const fetchGraphData = useCallback(async () => {
+    const classeAtual = classeAtualRef.current
+    const personalizedTopics = personalizedTopicsRef.current
     if (!classeAtual) return
     setCarregando(true)
     setErro(null)
@@ -1226,7 +1236,10 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
     } finally {
       setCarregando(false)
     }
-  }, [classeAtual, perfil, personalizedTopics, usuario?.id, visual])
+    // Depende só de classe_id/perfil/usuario/visual (nao do objeto classeAtual nem de
+    // personalizedTopics inteiros): esses sao lidos via ref dentro da funcao para nao recriar
+    // fetchGraphData - e retrigger o fetch - a cada progresso local salvo (ver classeAtualRef acima).
+  }, [classeAtual?.classe_id, perfil, usuario?.id, visual])
 
   useEffect(() => {
     fetchGraphData()
@@ -1266,6 +1279,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
     let channel: ReturnType<typeof supabase.channel> | null = null
     ;(async () => {
       const userId = usuario?.id
+      const classeAtual = classeAtualRef.current
       if (!userId || !classeAtual) return
 
       channel = supabase
@@ -1306,7 +1320,9 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       if (rtDebounceRef.current) clearTimeout(rtDebounceRef.current)
       if (channel) supabase.removeChannel(channel)
     }
-  }, [classeAtual, fetchGraphData, usuario?.id])
+    // classe_id (nao o objeto classeAtual) evita recriar o canal realtime a cada progresso
+    // local salvo - so precisa reabrir quando a classe/usuario realmente mudam.
+  }, [classeAtual?.classe_id, fetchGraphData, usuario?.id])
 
   const { width: winW } = useWindowDimensions()
   const grafo = useGraphLayout(nodesState, {

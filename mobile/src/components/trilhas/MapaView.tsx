@@ -891,7 +891,7 @@ export const TrilhaMapaHero: React.FC = () => {
         worldSubtitle: mapTheme?.worldSubtitle ?? "Carta principal da sua jornada",
         worldDescription:
           mapTheme?.worldDescription ??
-          "Cada topico e um reino navegavel em uma malha de rotas e dependencias.",
+          "Cada tópico é um reino navegável em uma malha de rotas e dependências.",
         classLabel: mapTheme?.classLabel ?? classeAtual?.resumo?.materia_nome ?? "Classe",
         palette: {
           ...(mapTheme?.palette ?? {

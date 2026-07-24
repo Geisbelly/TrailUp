@@ -2,6 +2,9 @@ import { GoogleGenAI, Type, Modality } from "@google/genai";
 import mammoth from "mammoth";
 import JSZip from "jszip";
 import * as lamejs from "lamejs";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
 import { BrainHexProfile, BRAIN_HEX_CONFIG } from "../constants/brainHex";
 import { addWavHeader } from "../lib/wav";
 import { 
@@ -184,7 +187,13 @@ export async function processMediaWithGemini(
     
     ARQUITETURA DE RESPOSTA (NARRATIVA POR PERFIL):
     1. Fidelidade Absoluta: Use 100% dos dados fornecidos no Modelo Interno Unificado. NADA deve ser omitido.
-    
+       A ambientação mística/medieval do arquétipo é uma CAMADA aplicada SOBRE o conteúdo técnico e
+       pedagógico original — nunca um substituto dele. Todo termo técnico, definição, passo, fórmula
+       ou exemplo do material original precisa aparecer de forma explícita e correta (com o nome
+       técnico real, não apenas a metáfora) antes ou junto da moldura narrativa do perfil. A metáfora
+       ilustra e emociona o conceito; ela nunca o esconde, resume demais ou substitui a explicação
+       técnica real. Em caso de dúvida, priorize a substância pedagógica sobre o floreio narrativo.
+
     2. Exemplos Visuais da Origem (MUITO CRÍTICO):
        - Se você encontrar imagens, diagramas ou fluxogramas nas partes multimodais enviadas (IMAGENS DE REFERÊNCIA), você DEVE descrevê-los detalhadamente no campo 'visualDescription'.
        - Use essas referências visuais para criar o 'imagePrompt', pedindo uma versão "Alquímica/2D Mágica" baseada exatamente naquela imagem do anexo.
@@ -353,16 +362,21 @@ export async function generateNaturalAudio(
         samples[i] = view.getInt16(i * 2, true);
     }
 
-    // Solução robusta para erro "MPEGMode is not defined" em ambientes ESM/Vite
+    // lamejs@1.2.1 foi escrito para ser concatenado num unico bundle (lame.all.js), onde
+    // Lame.js e BitStream.js referenciam MPEGMode/Lame como globais "soltas" (sem require
+    // proprio). O index.js do pacote so reexporta Mp3Encoder/WavHeader — Lib.MPEGMode e
+    // Lib.Lame sempre foram undefined aqui, por isso o encoder quebrava com
+    // "Cannot read properties of undefined (reading 'NOT_SET')". Corrigido carregando as
+    // classes reais direto dos arquivos-fonte do pacote.
     const Lib = (lamejs as any).default || lamejs;
     if (typeof (globalThis as any).MPEGMode === "undefined") {
-        (globalThis as any).MPEGMode = Lib.MPEGMode;
+        (globalThis as any).MPEGMode = require("lamejs/src/js/MPEGMode.js");
     }
     if (typeof (globalThis as any).Lame === "undefined") {
-        (globalThis as any).Lame = Lib.Lame;
+        (globalThis as any).Lame = require("lamejs/src/js/Lame.js");
     }
     if (typeof (globalThis as any).BitStream === "undefined") {
-        (globalThis as any).BitStream = Lib.BitStream;
+        (globalThis as any).BitStream = require("lamejs/src/js/BitStream.js");
     }
 
     const mp3encoder = new Lib.Mp3Encoder(1, 24000, 128);

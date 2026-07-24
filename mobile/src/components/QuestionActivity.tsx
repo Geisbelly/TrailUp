@@ -701,7 +701,7 @@ export default function QuestionActivity({
   return (
     <ScrollView
       ref={scrollRef}
-      contentContainerStyle={{ padding: 12, paddingBottom: 160, gap: 8, flexGrow: 1 }}
+      contentContainerStyle={{ padding: 12, paddingBottom: 32, gap: 8 }}
       keyboardShouldPersistTaps="handled"
       nestedScrollEnabled
       showsVerticalScrollIndicator={false}

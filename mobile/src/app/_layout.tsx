@@ -81,7 +81,7 @@ export default function RootLayout() {
   if (!sessionChecked) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <LoadingState title="Preparando sessao" message="Validando suas credenciais..." />
+        <LoadingState title="Preparando sessão" message="Validando suas credenciais..." />
       </View>
     );
   }
@@ -98,13 +98,6 @@ export default function RootLayout() {
               <Stack screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="(tabs)" />
                 <Stack.Screen name="(auth)" />
-                <Stack.Screen
-                  name="cadastrarServico"
-                  options={{
-                    headerShown: true,
-                    title: "Oferecer Novo Servico",
-                  }}
-                />
               </Stack>
               <TelemetryConsentGate />
             </DialogProvider>

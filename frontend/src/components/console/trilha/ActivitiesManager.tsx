@@ -456,7 +456,7 @@ export default function ActivitiesManager() {
                   </div>
                 </div>
                 <div>
-                  <Label>Topico Principal *</Label>
+                  <Label>Tópico Principal *</Label>
                   <Select value={formData.topico_id} onValueChange={(v) => setFormData({ ...formData, topico_id: v })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione um tópico" />

@@ -6,6 +6,7 @@ import { Text, View } from "react-native";
 import { ContentRenderer } from "./ContentRenderer";
 import VideoPlayer from "./funcionais/VideoPlayer";
 import { normalizeContentBlock } from "@/utils/contentBlocks";
+import type { ContentBlock } from "@/interfaces/componentes_simples/IContentBlock";
 
 type Props = {
   atividade: any;
@@ -26,7 +27,7 @@ export default function VideoActivity({ atividade }: Props) {
     ...(Array.isArray(atividade?.midias) ? atividade.midias : []),
   ]
     .map((item, index) => normalizeContentBlock(item, `atividade-video-anexo-${index}`))
-    .filter(Boolean);
+    .filter((block): block is ContentBlock => block !== null);
 
   return (
     <View style={{ flex: 1, gap: 12 }}>

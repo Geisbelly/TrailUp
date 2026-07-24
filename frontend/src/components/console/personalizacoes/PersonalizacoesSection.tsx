@@ -419,8 +419,8 @@ function PerfilMaterialCard({ item }: { item: PersonalizacaoPerfilItem }) {
             {item.tem_personalizacao ? "Gerado" : "Sem material"}
           </Badge>
         </div>
-        <CardDescription className="capitalize">
-          {item.perfil} · {item.total_alunos} aluno(s) com este perfil
+        <CardDescription>
+          <span className="capitalize">{item.perfil}</span> · {item.total_alunos} aluno(s) com este perfil
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">

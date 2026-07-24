@@ -327,7 +327,9 @@ function inferProfileDefaultPatches(
   const profile = String(profileName ?? "").trim().toLowerCase();
   const modo = String(modoNome ?? "").trim().toLowerCase();
   const patches: IAFeaturePatch[] = [];
-  const hasBattleSignal = hasBrainHexProfileSignal(perfis, "survivor");
+  // Boss battle e narrativa de confronto/dominacao: survivor, daredevil e conqueror
+  // (mesmo criterio usado abaixo em hasBattleProfileSignal e em IABattleHeaderChip.tsx).
+  const hasBattleSignal = hasAnyBrainHexProfileSignal(perfis, ["survivor", "daredevil", "conqueror"]);
   const hasSocialSignal = hasBrainHexProfileSignal(perfis, "socializer");
   const hasTimerSignal = hasAnyBrainHexProfileSignal(perfis, [
     "survivor",
@@ -609,7 +611,7 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
   const guideName = getBrainHexGuideName(profileName);
   const modoNome = usuario?.modoOperacao_nome ?? usuario?.modoOperacao_descricao ?? null;
   const hasBattleProfileSignal = useMemo(
-    () => hasBrainHexProfileSignal(perfis, "survivor"),
+    () => hasAnyBrainHexProfileSignal(perfis, ["survivor", "daredevil", "conqueror"]),
     [perfis]
   );
   const hasTimerProfileSignal = useMemo(

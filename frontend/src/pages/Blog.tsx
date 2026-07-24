@@ -66,8 +66,8 @@ const BLOG_POSTS = [
     readTime: "5 min",
   },
   {
-    id: "socialiser",
-    title: "Perfil Socialiser: O Colaborador",
+    id: "socializer",
+    title: "Perfil Socializer: O Colaborador",
     excerpt: "Saiba como a interação social potencializa o aprendizado.",
     category: "Perfis BrainHex",
     date: "2025-01-09",
@@ -124,7 +124,7 @@ const Blog = () => {
               <Sparkles className="w-3 h-3 mr-2" />
               Central de Conhecimento
             </div>
-          <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary via-purple-500 to-primary bg-clip-text text-transparent animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent animate-in fade-in slide-in-from-bottom-4 duration-700">
             Blog TrailUp
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10">

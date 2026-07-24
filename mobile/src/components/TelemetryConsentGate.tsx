@@ -117,7 +117,7 @@ export function TelemetryConsentGate() {
             <Text style={styles.sectionTitle}>Informações coletadas</Text>
             <Text style={styles.body}>
               Câmera frontal durante sessões de estudo, com captura de 10 frames por
-              minuto e envio em lote a cada 3 minutos.
+              minuto e envio em lote a cada 1 minuto.
             </Text>
             <Text style={styles.body}>
               Tempo de leitura, tempo ativo/inativo, histórico recente de navegação,
