@@ -1,146 +1,301 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { Sun, Moon } from "lucide-react";
 import { PROFILES } from "@/features/signup/brainhex";
 
-// Nomes de guia oficiais (fonte: api/app/services/personalizacao.py
-// _BRAINHEX_GUIDE_PERSONAS). As citacoes sao autorais, escritas para capturar
-// o tom_voz de cada perfil nas assinaturas editoriais do backend — nao sao
-// geradas por IA, sao um asset fixo da marca.
-const GUIDES: Record<string, { name: string; quote: string }> = {
-  seeker: {
-    name: "Orion, o Explorador",
-    quote: "Todo mapa esconde uma pergunta melhor que a resposta.",
-  },
-  survivor: {
-    name: "Valka, a Sobrevivente",
-    quote: "Sobreviver é ter um plano B. Redundância não é desperdício.",
-  },
-  daredevil: {
-    name: "Rexa, a Aventureira",
-    quote: "Hesitar é a única forma de perder.",
-  },
+import mastermindArt from "@/assets/guardioes/mastermind.webp";
+import achieverArt from "@/assets/guardioes/achiever.webp";
+import seekerArt from "@/assets/guardioes/seeker.webp";
+import survivorArt from "@/assets/guardioes/survivor.webp";
+import conquerorArt from "@/assets/guardioes/conqueror.webp";
+import socializerArt from "@/assets/guardioes/socializer.webp";
+import daredevilArt from "@/assets/guardioes/daredevil.webp";
+
+// Nomes de guia e titulo oficiais (fonte: api/app/services/personalizacao.py
+// _BRAINHEX_GUIDE_PERSONAS). Citacoes e tracos sao autorais, escritos para
+// capturar o tom_voz de cada perfil nas assinaturas editoriais do backend —
+// nao sao gerados por IA, sao um asset fixo da marca. Arte: recorte do
+// poster oficial "Os Guardioes da Trilha" fornecido pelo usuario.
+const GUIDES: Record<string, { name: string; title: string; quote: string; art: string; traits: string[] }> = {
   mastermind: {
-    name: "Atena, a Estrategista",
+    name: "Atena",
+    title: "A Sábia das Constelações",
     quote: "Toda pergunta certa já contém metade da resposta.",
-  },
-  conqueror: {
-    name: "Drako, o Conquistador",
-    quote: "Não existe segundo lugar na sua própria jornada.",
-  },
-  socializer: {
-    name: "Luma, a Socializadora",
-    quote: "Ninguém chega longe sozinho — nem mesmo você.",
+    art: mastermindArt,
+    traits: ["Analítica", "Estratégica", "Profunda"],
   },
   achiever: {
-    name: "Auri, a Realizadora",
+    name: "Auri",
+    title: "O Cavaleiro Solar",
     quote: "Cada marco conquistado abre o próximo caminho.",
+    art: achieverArt,
+    traits: ["Focado", "Disciplinado", "Determinado"],
+  },
+  seeker: {
+    name: "Orion",
+    title: "A Guardiã das Runas",
+    quote: "Todo mapa esconde uma pergunta melhor que a resposta.",
+    art: seekerArt,
+    traits: ["Curiosa", "Exploradora", "Intuitiva"],
+  },
+  survivor: {
+    name: "Valka",
+    title: "O Guardião da Montanha",
+    quote: "Sobreviver é ter um plano B. Redundância não é desperdício.",
+    art: survivorArt,
+    traits: ["Paciente", "Resiliente", "Confiável"],
+  },
+  conqueror: {
+    name: "Drako",
+    title: "A Rainha da Tempestade",
+    quote: "Não existe segundo lugar na sua própria jornada.",
+    art: conquerorArt,
+    traits: ["Líder", "Competitiva", "Determinada"],
+  },
+  socializer: {
+    name: "Luma",
+    title: "O Espírito da Aurora",
+    quote: "Ninguém chega longe sozinho — nem mesmo você.",
+    art: socializerArt,
+    traits: ["Comunicativo", "Empático", "Inspirador"],
+  },
+  daredevil: {
+    name: "Rexa",
+    title: "A Fênix do Caos",
+    quote: "Hesitar é a única forma de perder.",
+    art: daredevilArt,
+    traits: ["Ousada", "Energética", "Impulsiva"],
   },
 };
 
 const PROFILE_LIST = Object.values(PROFILES);
 
+function extractHex(twClass: string): string {
+  return twClass.match(/#[0-9a-fA-F]{6}/)?.[0] ?? "#a78c07";
+}
+
 const BrainHexShowcase = () => {
+  const [mode, setMode] = useState<"dark" | "light">("dark");
   const [activeKey, setActiveKey] = useState(PROFILE_LIST[0].key);
   const active = PROFILE_LIST.find((p) => p.key === activeKey) ?? PROFILE_LIST[0];
   const activeGuide = GUIDES[active.key];
-  const ActiveIcon = active.icon;
-  const activeColor = active.textColor.match(/#[0-9a-fA-F]{6}/)?.[0] ?? "#a78c07";
+  const activeColor = extractHex(active.textColor);
+
+  const isDark = mode === "dark";
 
   return (
-    <section className="py-24 px-4 relative overflow-hidden">
-      <div className="container mx-auto">
-        <motion.div
-          className="text-center max-w-3xl mx-auto mb-16"
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.4 }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
-        >
-          <h2 className="text-4xl md:text-5xl font-bold mb-4">
-            Conheça os{" "}
-            <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              7 perfis
-            </span>
-          </h2>
-          <p className="text-xl text-muted-foreground">
-            Cada aluno encontra um guia que fala a sua língua. Escolha um perfil e veja como a
-            jornada muda de cara.
-          </p>
-        </motion.div>
-
-        <div className="grid lg:grid-cols-[1fr_1fr] gap-10 items-start">
-          {/* Grade de perfis */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            {PROFILE_LIST.map((profile, index) => {
-              const Icon = profile.icon;
-              const isActive = profile.key === activeKey;
-              const color = profile.textColor.match(/#[0-9a-fA-F]{6}/)?.[0] ?? "#a78c07";
-              return (
-                <motion.button
-                  key={profile.key}
-                  type="button"
-                  onClick={() => setActiveKey(profile.key)}
-                  initial={{ opacity: 0, y: 16 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, amount: 0.3 }}
-                  transition={{ duration: 0.4, delay: index * 0.06, ease: "easeOut" }}
-                  whileHover={{ scale: 1.04 }}
-                  whileTap={{ scale: 0.97 }}
-                  className="rounded-xl border p-4 text-left transition-colors duration-300 flex flex-col items-start gap-3"
-                  style={{
-                    borderColor: isActive ? color : "hsl(var(--border))",
-                    backgroundColor: isActive ? `${color}1a` : "hsl(var(--card) / 0.5)",
-                    boxShadow: isActive ? `0 0 24px ${color}40` : "none",
-                  }}
-                >
-                  <div
-                    className="w-10 h-10 rounded-lg flex items-center justify-center transition-colors duration-300"
-                    style={{ backgroundColor: `${color}26` }}
-                  >
-                    <Icon className="w-5 h-5" style={{ color }} />
-                  </div>
-                  <span className="font-semibold text-sm">{profile.title.split(" ")[0]}</span>
-                </motion.button>
-              );
-            })}
-          </div>
-
-          {/* Preview do perfil ativo */}
-          <motion.div
-            key={active.key}
-            initial={{ opacity: 0, scale: 0.97 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.4, ease: "easeOut" }}
-            className="rounded-2xl border p-8 relative overflow-hidden"
-            style={{
-              borderColor: `${activeColor}55`,
-              background: `linear-gradient(160deg, ${activeColor}1f 0%, hsl(var(--card)) 60%)`,
-            }}
-          >
-            <div
-              className="absolute -top-16 -right-16 w-48 h-48 rounded-full blur-3xl opacity-30"
-              style={{ backgroundColor: activeColor }}
+    <section
+      className="py-24 px-4 relative overflow-hidden transition-colors duration-700"
+      style={{
+        background: isDark
+          ? "radial-gradient(ellipse 80% 60% at 50% 0%, hsl(266 40% 14%) 0%, hsl(226 30% 6%) 55%, hsl(226 32% 5%) 100%)"
+          : "radial-gradient(ellipse 80% 60% at 50% 0%, #f7f0e6 0%, #ede0cc 60%, #e6d7bd 100%)",
+      }}
+    >
+      {/* Estrelas (so no modo escuro) */}
+      {isDark && (
+        <div className="absolute inset-0 pointer-events-none opacity-70" aria-hidden="true">
+          {STAR_POSITIONS.map((s, i) => (
+            <span
+              key={i}
+              className="absolute rounded-full bg-white animate-pulse-slow"
+              style={{
+                left: s.left,
+                top: s.top,
+                width: s.size,
+                height: s.size,
+                animationDelay: `${s.delay}s`,
+                animationDuration: `${s.duration}s`,
+              }}
             />
-            <div
-              className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6 relative"
-              style={{ backgroundColor: `${activeColor}26`, boxShadow: `0 0 30px ${activeColor}55` }}
+          ))}
+        </div>
+      )}
+
+      <div className="container mx-auto relative z-10">
+        {/* Header + toggle claro/escuro */}
+        <div className="flex flex-col items-center text-center max-w-3xl mx-auto mb-6 relative">
+          <button
+            type="button"
+            onClick={() => setMode(isDark ? "light" : "dark")}
+            className="absolute right-0 top-0 flex items-center gap-2 px-3 py-2 rounded-full border transition-colors duration-300 text-xs font-medium"
+            style={{
+              borderColor: isDark ? "rgba(255,255,255,0.2)" : "rgba(38,26,10,0.2)",
+              color: isDark ? "#f5f0ff" : "#3a2a12",
+              backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.5)",
+            }}
+            aria-label={isDark ? "Ver versão clara" : "Ver versão escura"}
+          >
+            {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            {isDark ? "Modo claro" : "Modo escuro"}
+          </button>
+
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.4 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          >
+            <p
+              className="text-xs uppercase tracking-[0.3em] font-semibold mb-3"
+              style={{ color: isDark ? "#b9a3ff" : "#8a5a1f" }}
             >
-              <ActiveIcon className="w-8 h-8" style={{ color: activeColor }} />
-            </div>
-            <p className="text-sm uppercase tracking-wide text-muted-foreground mb-1">
-              Seu guia
+              Os Guardiões da Trilha
             </p>
-            <h3 className="text-2xl font-bold mb-4" style={{ color: activeColor }}>
-              {activeGuide.name}
-            </h3>
-            <p className="text-lg italic text-foreground/90 leading-relaxed">
-              &ldquo;{activeGuide.quote}&rdquo;
+            <h2
+              className="text-4xl md:text-5xl font-bold mb-4 transition-colors duration-700"
+              style={{ color: isDark ? "#f5f0ff" : "#241708" }}
+            >
+              Cada perfil. Um caminho.{" "}
+              <span
+                className="bg-clip-text text-transparent"
+                style={{
+                  backgroundImage: isDark
+                    ? "linear-gradient(90deg, hsl(var(--primary)), hsl(var(--accent)))"
+                    : "linear-gradient(90deg, #8a5a1f, #b8862f)",
+                }}
+              >
+                Um guardião.
+              </span>
+            </h2>
+            <p
+              className="text-lg transition-colors duration-700"
+              style={{ color: isDark ? "rgba(245,240,255,0.7)" : "rgba(36,23,8,0.75)" }}
+            >
+              Sete caminhos, um mesmo destino: sua melhor versão. Escolha um guardião e conheça a
+              sua história.
             </p>
           </motion.div>
         </div>
+
+        {/* Lineup dos guardioes */}
+        <div className="flex flex-wrap justify-center items-end gap-x-2 gap-y-8 mt-14 mb-10">
+          {PROFILE_LIST.map((profile, index) => {
+            const color = extractHex(profile.textColor);
+            const guide = GUIDES[profile.key];
+            const isActive = profile.key === activeKey;
+            return (
+              <motion.button
+                key={profile.key}
+                type="button"
+                onClick={() => setActiveKey(profile.key)}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.2 }}
+                transition={{ duration: 0.5, delay: index * 0.07, ease: "easeOut" }}
+                whileHover={{ y: -8 }}
+                className="relative flex flex-col items-center w-[120px] sm:w-[140px] shrink-0 transition-transform duration-300"
+                style={{
+                  filter: isActive ? "none" : "grayscale(0.15) brightness(0.85)",
+                  opacity: isActive ? 1 : 0.8,
+                }}
+                aria-label={`Ver ${profile.title}`}
+              >
+                <div
+                  className="absolute inset-x-0 bottom-16 h-40 rounded-full blur-2xl transition-opacity duration-300"
+                  style={{ backgroundColor: color, opacity: isActive ? 0.35 : 0 }}
+                />
+                <img
+                  src={guide.art}
+                  alt={`${guide.name}, ${guide.title}`}
+                  className="relative w-full h-auto drop-shadow-2xl select-none"
+                  draggable={false}
+                />
+                <div
+                  className="relative -mt-3 w-11 h-11 flex items-center justify-center transition-transform duration-300"
+                  style={{ transform: isActive ? "scale(1.12)" : "scale(1)" }}
+                >
+                  <HexBadge color={color} Icon={profile.icon} />
+                </div>
+                <span
+                  className="relative mt-2 text-xs sm:text-sm font-bold uppercase tracking-wide transition-colors duration-700"
+                  style={{ color: isActive ? color : isDark ? "rgba(245,240,255,0.55)" : "rgba(36,23,8,0.55)" }}
+                >
+                  {profile.title.split(" ")[0]}
+                </span>
+              </motion.button>
+            );
+          })}
+        </div>
+
+        {/* Card do guardiao selecionado */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={active.key}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
+            className="max-w-xl mx-auto text-center rounded-2xl border px-8 py-6 backdrop-blur-sm transition-colors duration-700"
+            style={{
+              borderColor: `${activeColor}55`,
+              backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.55)",
+            }}
+          >
+            <p
+              className="text-xs uppercase tracking-widest font-semibold mb-1"
+              style={{ color: activeColor }}
+            >
+              {activeGuide.name} · {activeGuide.title}
+            </p>
+            <p
+              className="text-lg italic leading-relaxed mb-4 transition-colors duration-700"
+              style={{ color: isDark ? "#f5f0ff" : "#241708" }}
+            >
+              &ldquo;{activeGuide.quote}&rdquo;
+            </p>
+            <div className="flex flex-wrap justify-center gap-2">
+              {activeGuide.traits.map((trait) => (
+                <span
+                  key={trait}
+                  className="text-xs font-medium px-3 py-1 rounded-full border"
+                  style={{ borderColor: `${activeColor}66`, color: activeColor }}
+                >
+                  {trait}
+                </span>
+              ))}
+            </div>
+          </motion.div>
+        </AnimatePresence>
       </div>
     </section>
   );
 };
+
+function HexBadge({ color, Icon }: { color: string; Icon: (typeof PROFILE_LIST)[number]["icon"] }) {
+  return (
+    <div className="relative w-full h-full">
+      <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full">
+        <polygon
+          points="50,3 93,26 93,74 50,97 7,74 7,26"
+          fill={`${color}22`}
+          stroke={color}
+          strokeWidth="4"
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <Icon className="w-4 h-4" style={{ color }} />
+      </div>
+    </div>
+  );
+}
+
+// Posicoes fixas (nao Math.random em cada render) das estrelas do fundo escuro.
+const STAR_POSITIONS = [
+  { left: "5%", top: "10%", size: 2, delay: 0, duration: 4 },
+  { left: "12%", top: "28%", size: 3, delay: 1.2, duration: 5 },
+  { left: "22%", top: "8%", size: 2, delay: 2.1, duration: 4.5 },
+  { left: "30%", top: "35%", size: 2, delay: 0.6, duration: 3.8 },
+  { left: "40%", top: "15%", size: 3, delay: 1.8, duration: 5.2 },
+  { left: "48%", top: "5%", size: 2, delay: 0.3, duration: 4.1 },
+  { left: "58%", top: "22%", size: 2, delay: 2.4, duration: 4.8 },
+  { left: "66%", top: "10%", size: 3, delay: 1.1, duration: 5.5 },
+  { left: "74%", top: "30%", size: 2, delay: 0.8, duration: 4.3 },
+  { left: "82%", top: "12%", size: 2, delay: 1.6, duration: 3.9 },
+  { left: "90%", top: "25%", size: 3, delay: 2.2, duration: 5.1 },
+  { left: "95%", top: "8%", size: 2, delay: 0.4, duration: 4.6 },
+  { left: "15%", top: "45%", size: 2, delay: 1.4, duration: 4.2 },
+  { left: "85%", top: "42%", size: 2, delay: 0.9, duration: 4.9 },
+];
 
 export default BrainHexShowcase;
