@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Hexagon, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import heroBg from "@/assets/hero-bg.jpg";
+import GradientBlobs from "@/components/GradientBlobs";
 
 // Brasas flutuantes: posicao/tamanho/duracao pre-computados (sem estado, sem
 // Math.random em cada render) para o efeito de fagulha subindo no fundo do Hero.
@@ -29,6 +30,8 @@ const Hero = () => {
         />
         <div className="absolute inset-0 bg-gradient-to-b from-background via-background/80 to-background" />
       </div>
+
+      <GradientBlobs preset="corners" />
 
       {/* Glow arcano pulsante atras do titulo */}
       <div
