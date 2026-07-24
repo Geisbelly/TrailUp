@@ -26,6 +26,27 @@ def test_summarize_reading_pace_flags_slow_and_skimming() -> None:
     assert pace["reading_average_wpm"] > 0
 
 
+def test_summarize_reading_pace_uses_active_sec_not_dwell_when_idle_present() -> None:
+    # 400 palavras em 120s ativos => 200 wpm => ritmo_adequado.
+    # dwell_sec = 600s (8min de idle no meio) faria dar 40 wpm => leitura_lenta,
+    # o que seria falso: o aluno leu no ritmo certo, so pausou no meio.
+    materials = [
+        {
+            "material_key": "m1",
+            "conteudo_id": 1,
+            "dwell_sec": 600,
+            "active_sec": 120,
+            "word_count": 400,
+        }
+    ]
+
+    pace = _summarize_reading_pace(materials)
+
+    item = pace["reading_material_pace"][0]
+    assert item["flag"] == "ritmo_adequado"
+    assert item["wpm"] == pytest.approx(200.0)
+
+
 def test_summarize_reading_pace_estimates_from_scroll_when_no_word_count() -> None:
     # Sem word_count: estima palavras pelo max_depth_px (px/palavra).
     materials = [{"material_key": "m1", "dwell_sec": 60, "max_depth_px": 1200}]

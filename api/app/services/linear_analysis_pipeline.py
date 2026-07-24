@@ -75,13 +75,17 @@ def _summarize_reading_pace(materials: list[dict[str, Any]]) -> dict[str, Any]:
     per_material: list[dict[str, Any]] = []
     wpm_values: list[float] = []
     for entry in materials:
+        # active_sec exclui tempo parado com o material aberto (idle); dwell_sec
+        # sozinho conta esse tempo parado e sub-estima o WPM real do aluno.
+        active_sec = _safe_float(entry.get("active_sec"))
         dwell_sec = _safe_float(entry.get("dwell_sec"))
-        if dwell_sec <= 0:
+        reading_sec = active_sec if active_sec > 0 else dwell_sec
+        if reading_sec <= 0:
             continue
         words = _material_word_count(entry)
         if words <= 0:
             continue
-        wpm = round(words / (dwell_sec / 60.0), 2)
+        wpm = round(words / (reading_sec / 60.0), 2)
         flag = "ritmo_adequado"
         if wpm < _WPM_SLOW_THRESHOLD:
             flag = "leitura_lenta"

@@ -98,7 +98,10 @@ Fase 4 (`23b38ef`): endpoint `GET /personalizar/grupo/{classe_id}`
 (`app/services/group_analysis.py`) computa e persiste a distribuição de perfis
 BrainHex + desempenho médio da turma em `classe_perfil_summary`, consumido pelo
 console do professor na aba "Turma" de `PersonalizacoesSection.tsx`. Detecção
-de ritmo de leitura (WPM) roda no `linear_analysis_pipeline.py`.
+de ritmo de leitura (WPM) roda no `linear_analysis_pipeline.py`
+(`_summarize_reading_pace`) usando `active_sec` por material como denominador
+— **não** `dwell_sec`, que inclui tempo parado com o material aberto e sub-
+estimaria o WPM de quem só fez uma pausa no meio da leitura.
 
 > Lacuna real ainda aberta: `MentalStateHistoryRepository.listar_por_aluno`
 > (`api/app/repositories/mental_state.py`) só é exercitado em teste — o
