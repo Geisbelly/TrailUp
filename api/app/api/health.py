@@ -8,7 +8,6 @@ from app.core.settings import Settings
 from app.db.session import ping_database
 from app.schemas.api import HealthResponse
 
-
 router = APIRouter(tags=["health"])
 
 

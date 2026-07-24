@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Smartphone, ExternalLink, FileDown, Hexagon, Compass } from "lucide-react";
+import GradientBlobs from "@/components/GradientBlobs";
 
 // Configurações de download - altere os links conforme necessário
 const DOWNLOAD_CONFIG = {
@@ -19,6 +20,7 @@ const Download = () => {
     <section className="py-24 px-4 relative overflow-hidden">
       {/* Background Gradient */}
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/5 to-transparent" />
+      <GradientBlobs preset="single-left" />
       
       <div className="container mx-auto relative z-10">
         <div className="grid lg:grid-cols-2 gap-12 items-center">

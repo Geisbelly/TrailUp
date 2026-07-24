@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
 
 from app.core.settings import Settings
 from app.services import personalizacao as personalizacao_service

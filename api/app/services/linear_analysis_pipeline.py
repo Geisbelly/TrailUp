@@ -57,8 +57,8 @@ def _material_word_count(entry: dict[str, Any]) -> float:
     a partir da profundidade de scroll (proxy aditivo, sem novos campos
     obrigatorios no contrato de telemetria).
     """
-    for field in ("word_count", "words", "material_words", "palavras"):
-        valor = _safe_float(entry.get(field), -1.0)
+    for field_name in ("word_count", "words", "material_words", "palavras"):
+        valor = _safe_float(entry.get(field_name), -1.0)
         if valor > 0:
             return valor
     char_count = _safe_float(entry.get("char_count"), 0.0)

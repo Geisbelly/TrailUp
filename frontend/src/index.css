@@ -55,7 +55,7 @@ All colors MUST be HSL.
     --input: 226 22% 16%;
     --ring: 266 95% 66%;
 
-    --radius: 0.75rem;
+    --radius: 1.25rem;
 
     /* Cores semanticas fixas (nao derivadas do primary/accent) */
     --success: 142 65% 50%;

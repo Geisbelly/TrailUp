@@ -159,8 +159,8 @@ def _detect_from_magic(raw: bytes) -> FileFamily | None:
     # ZIP-based (docx, pptx, xlsx, odt…)
     if sig[:4] == b"PK\x03\x04":
         # Verificar se é PPTX ou DOCX pelo conteúdo do ZIP
-        import zipfile
         import io
+        import zipfile
         try:
             with zipfile.ZipFile(io.BytesIO(raw)) as zf:
                 names = zf.namelist()

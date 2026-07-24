@@ -1,17 +1,17 @@
-from types import SimpleNamespace
 from datetime import datetime
+from types import SimpleNamespace
 
 import pytest
 
-from app.repositories.context import ContextRepository
-from app.repositories.conteudo_personalizado import ConteudoPersonalizadoRepository
-from app.repositories.evento import EventoRepository
-from app.repositories.ia_descricao import IADescricaoRepository
 from app.repositories.access import AccessRepository
+from app.repositories.conteudo_personalizado import ConteudoPersonalizadoRepository
+from app.repositories.context import ContextRepository
+from app.repositories.evento import EventoRepository
+from app.repositories.fontes_personalizacao import FontesPersonalizacaoRepository
+from app.repositories.ia_descricao import IADescricaoRepository
 from app.repositories.materiais import MateriaisRepository
 from app.repositories.notificacao import NotificacaoRepository
 from app.repositories.perfil import PerfilRepository
-from app.repositories.fontes_personalizacao import FontesPersonalizacaoRepository
 from app.repositories.telemetria import TelemetriaRepository
 from app.repositories.trilha import TrilhaRepository
 from app.schemas.notificacao import NotificacaoPayload

@@ -1,10 +1,10 @@
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, Request
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.exc import DBAPIError
 from asyncpg.exceptions import QueryCanceledError
+from fastapi import APIRouter, Depends, Request
+from sqlalchemy.exc import DBAPIError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_session, require_aluno
 from app.repositories.evento import EventoRepository
@@ -18,7 +18,6 @@ from app.schemas.telemetria import (
 )
 from app.services.analysis_runner import run_analysis
 from app.services.auth import UserContext
-
 
 router = APIRouter(prefix="/telemetria", tags=["telemetria"])
 logger = logging.getLogger(__name__)

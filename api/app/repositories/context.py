@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.common import DesempenhoSummary, Evento
 from app.schemas.perfil import PerfilScore
 
-
 DEFAULT_PROFILES = [
     "Seeker",
     "Conqueror",

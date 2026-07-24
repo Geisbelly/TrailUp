@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Compass, Map, Crown, Sword, Shield, Box, Drama } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
+import GradientBlobs from "@/components/GradientBlobs";
 
 // Icones trocados pelos icones reais dos 7 perfis BrainHex (fonte:
 // microservice/src/constants/brainHex.ts) para refletir a identidade visual
@@ -54,8 +55,9 @@ const Features = () => {
   const header = useInView<HTMLDivElement>(0.4);
 
   return (
-    <section className="py-24 px-4">
-      <div className="container mx-auto">
+    <section className="py-24 px-4 relative overflow-hidden">
+      <GradientBlobs preset="top-center" />
+      <div className="container mx-auto relative z-10">
         {/* Section Header */}
         <div
           ref={header.ref}

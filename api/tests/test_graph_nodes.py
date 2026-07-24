@@ -1,5 +1,6 @@
-import pytest
 from importlib import import_module
+
+import pytest
 
 from app.adapters.mock_emocao import MockEmocaoAdapter
 from app.agent.graph.nodes.agente_boss_visual import agente_boss_visual

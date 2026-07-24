@@ -14,7 +14,6 @@ from app.schemas.api import (
 )
 from app.services.personalizacao import backfill_media_render_jobs
 
-
 router = APIRouter(prefix="/admin", tags=["admin"], include_in_schema=False)
 
 

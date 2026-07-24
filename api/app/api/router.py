@@ -8,7 +8,6 @@ from app.api.v1.materiais import router as materiais_router
 from app.api.v1.personalizacao import router as personalizacao_router
 from app.api.v1.telemetria import router as telemetria_router
 
-
 api_router = APIRouter()
 v1_router = APIRouter(prefix="/api/v1")
 

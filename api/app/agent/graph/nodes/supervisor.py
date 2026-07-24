@@ -4,7 +4,6 @@ from app.agent.graph.routing import build_state_summary, compute_personalizacao_
 from app.core.settings import Settings
 from app.services.llm import JsonLLMService
 
-
 VALID_NEXT = {
     "agente_emocao",
     "agente_perfil",

@@ -4,7 +4,6 @@ from app.core.settings import Settings
 from app.schemas.ui_config import UIConfig
 from app.services.llm import JsonLLMService
 
-
 EMOCAO_TEMA = {
     "frustrado": {"tema": "focus", "ritmo_conteudo": "lento", "tom_feedbacks": "suporte", "tipo_modal": "suporte"},
     "entediado": {"tema": "energetic", "ritmo_conteudo": "acelerado", "tom_feedbacks": "desafiador", "tipo_modal": "desafio"},

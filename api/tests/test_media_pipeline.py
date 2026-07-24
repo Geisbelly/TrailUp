@@ -6,7 +6,6 @@ import pytest
 
 from app.core.settings import Settings
 from app.services.media_pipeline import (
-    AudioPipeline,
     MarkdownPipeline,
     MediaPipeline,
     MediaPipelineContext,

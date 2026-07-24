@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import io
 import re
-import zipfile
 import xml.etree.ElementTree as ET
+import zipfile
 from typing import Any
 
 from app.ingestion.models import Block, BlockKind, FileFamily

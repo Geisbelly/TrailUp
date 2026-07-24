@@ -14,10 +14,10 @@ from app.schemas.ia_patch import (
     IAEnemySpec,
     IAEnemyVisualSpec,
     IAFeaturePatch,
+    IAMentalStateSnapshot,
     IAPersonalizationPatch,
     IATimerConfig,
     IATriggerSignal,
-    IAMentalStateSnapshot,
 )
 from app.services.llm import JsonLLMService
 
