@@ -93,25 +93,80 @@ const BrainHexShowcase = () => {
           : "radial-gradient(ellipse 80% 60% at 50% 0%, #f7f0e6 0%, #ede0cc 60%, #e6d7bd 100%)",
       }}
     >
-      {/* Estrelas (so no modo escuro) */}
-      {isDark && (
-        <div className="absolute inset-0 pointer-events-none opacity-70" aria-hidden="true">
-          {STAR_POSITIONS.map((s, i) => (
-            <span
-              key={i}
-              className="absolute rounded-full bg-white animate-pulse-slow"
-              style={{
-                left: s.left,
-                top: s.top,
-                width: s.size,
-                height: s.size,
-                animationDelay: `${s.delay}s`,
-                animationDuration: `${s.duration}s`,
-              }}
-            />
-          ))}
-        </div>
-      )}
+      {/* Cenario de fundo — nebulosa + lua/sol + horizonte de castelo, para dar
+          profundidade de cena (em vez de so um gradiente radial liso). Cores e
+          intensidade adaptam ao modo claro/escuro. */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
+        {/* Nuvens de nebulosa (blobs radiais desfocados, mix-blend screen no
+            escuro para um brilho aditivo tipo aurora) */}
+        <div
+          className="absolute -top-24 left-[8%] w-[38rem] h-[26rem] rounded-full blur-3xl transition-opacity duration-700"
+          style={{
+            background: isDark
+              ? "radial-gradient(ellipse, hsl(266 85% 45% / 0.5), transparent 70%)"
+              : "radial-gradient(ellipse, hsl(30 70% 80% / 0.6), transparent 70%)",
+            mixBlendMode: isDark ? "screen" : "normal",
+          }}
+        />
+        <div
+          className="absolute -top-10 right-[6%] w-[34rem] h-[24rem] rounded-full blur-3xl transition-opacity duration-700"
+          style={{
+            background: isDark
+              ? "radial-gradient(ellipse, hsl(239 80% 50% / 0.4), transparent 70%)"
+              : "radial-gradient(ellipse, hsl(266 60% 85% / 0.55), transparent 70%)",
+            mixBlendMode: isDark ? "screen" : "normal",
+          }}
+        />
+        <div
+          className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[44rem] h-[20rem] rounded-full blur-3xl transition-opacity duration-700"
+          style={{
+            background: isDark
+              ? "radial-gradient(ellipse, hsl(280 60% 30% / 0.35), transparent 75%)"
+              : "radial-gradient(ellipse, hsl(45 80% 88% / 0.5), transparent 75%)",
+            mixBlendMode: isDark ? "screen" : "normal",
+          }}
+        />
+
+        {/* Lua (escuro) / sol suave (claro) */}
+        <div
+          className="absolute rounded-full transition-all duration-700"
+          style={{
+            top: isDark ? "6%" : "8%",
+            right: "14%",
+            width: isDark ? "5rem" : "6rem",
+            height: isDark ? "5rem" : "6rem",
+            background: isDark
+              ? "radial-gradient(circle at 35% 35%, #f5f0ff, #cbb9ff 60%, transparent 100%)"
+              : "radial-gradient(circle at 35% 35%, #fff8e6, #ffe2a8 60%, transparent 100%)",
+            boxShadow: isDark
+              ? "0 0 60px 20px hsl(266 85% 70% / 0.35)"
+              : "0 0 80px 30px hsl(45 90% 80% / 0.5)",
+          }}
+        />
+
+        {/* Estrelas (so no modo escuro) */}
+        {isDark && (
+          <div className="absolute inset-0 opacity-70">
+            {STAR_POSITIONS.map((s, i) => (
+              <span
+                key={i}
+                className="absolute rounded-full bg-white animate-pulse-slow"
+                style={{
+                  left: s.left,
+                  top: s.top,
+                  width: s.size,
+                  height: s.size,
+                  animationDelay: `${s.delay}s`,
+                  animationDuration: `${s.duration}s`,
+                }}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Horizonte de castelo, ancorado no rodape da secao, atras do lineup */}
+        <CastleSkyline isDark={isDark} />
+      </div>
 
       <div className="container mx-auto relative z-10">
         {/* Header + toggle claro/escuro */}
@@ -269,6 +324,30 @@ function GuardianButton({
         {profile.title.split(" ")[0]}
       </span>
     </button>
+  );
+}
+
+// Horizonte de castelo estilizado (silhueta), a mesma forma nos dois modos —
+// so muda cor/opacidade. preserveAspectRatio="none" para esticar a largura
+// toda sem distorcer demais a leitura (e um recorte decorativo, nao um logo).
+const CASTLE_SKYLINE_PATH =
+  "M0,240 L0,205 L0,185 L0,177 L16,177 L16,185 L28,185 L28,177 L44,177 L44,185 L56,185 L56,177 L72,177 L72,185 L84,185 L84,177 L100,177 L100,185 L112,185 L112,177 L128,177 L128,185 L140,185 L140,177 L156,177 L156,185 L168,185 L168,177 L184,177 L184,185 L190,185 L196,185 L196,110 L196,101 L210,101 L210,110 L220,110 L220,101 L234,101 L234,110 L244,110 L244,101 L258,101 L258,110 L264,110 L264,185 L264,177 L280,177 L280,185 L292,185 L292,177 L308,177 L308,185 L320,185 L320,177 L336,177 L336,185 L348,185 L348,177 L364,177 L364,185 L376,185 L376,177 L392,177 L392,185 L404,185 L404,177 L420,177 L420,185 L430,185 L502,185 L502,55 L496,55 L560,9 L624,55 L618,55 L618,185 L618,177 L634,177 L634,185 L646,185 L646,177 L662,177 L662,185 L674,185 L674,177 L690,177 L690,185 L702,185 L702,177 L718,177 L718,185 L730,185 L730,177 L746,177 L746,185 L758,185 L758,177 L774,177 L774,185 L760,185 L820,185 L820,90 L820,81 L834,81 L834,90 L844,90 L844,81 L858,81 L858,90 L868,90 L868,81 L882,81 L882,90 L892,90 L892,81 L906,81 L906,90 L900,90 L900,185 L900,177 L916,177 L916,185 L928,185 L928,177 L944,177 L944,185 L956,185 L956,177 L972,177 L972,185 L984,185 L984,177 L1000,177 L1000,185 L1012,185 L1012,177 L1028,177 L1028,185 L1040,185 L1116,185 L1116,75 L1110,75 L1160,29 L1210,75 L1204,75 L1204,185 L1204,177 L1220,177 L1220,185 L1232,185 L1232,177 L1248,177 L1248,185 L1260,185 L1260,177 L1276,177 L1276,185 L1288,185 L1288,177 L1304,177 L1304,185 L1316,185 L1316,177 L1332,177 L1332,185 L1344,185 L1344,177 L1360,177 L1360,185 L1372,185 L1372,177 L1388,177 L1388,185 L1400,185 L1400,177 L1416,177 L1416,185 L1428,185 L1428,177 L1444,177 L1444,185 L1440,185 L1440,205 L1440,240 Z";
+
+function CastleSkyline({ isDark }: { isDark: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 1440 240"
+      preserveAspectRatio="none"
+      className="absolute bottom-0 left-0 w-full h-32 sm:h-44 md:h-52 transition-opacity duration-700"
+      style={{ opacity: isDark ? 0.9 : 0.35 }}
+    >
+      <path
+        d={CASTLE_SKYLINE_PATH}
+        fill={isDark ? "hsl(258 45% 7%)" : "hsl(30 30% 62%)"}
+        stroke={isDark ? "hsl(266 70% 45% / 0.5)" : "hsl(30 40% 45% / 0.4)"}
+        strokeWidth="1.5"
+      />
+    </svg>
   );
 }
 
