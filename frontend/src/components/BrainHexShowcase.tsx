@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { Sun, Moon } from "lucide-react";
 import { PROFILES } from "@/features/signup/brainhex";
+import { useInView } from "@/hooks/useInView";
 
 import mastermindArt from "@/assets/guardioes/mastermind.webp";
 import achieverArt from "@/assets/guardioes/achiever.webp";
@@ -80,8 +80,9 @@ const BrainHexShowcase = () => {
   const active = PROFILE_LIST.find((p) => p.key === activeKey) ?? PROFILE_LIST[0];
   const activeGuide = GUIDES[active.key];
   const activeColor = extractHex(active.textColor);
-
   const isDark = mode === "dark";
+
+  const header = useInView<HTMLDivElement>(0.4);
 
   return (
     <section
@@ -130,12 +131,7 @@ const BrainHexShowcase = () => {
             {isDark ? "Modo claro" : "Modo escuro"}
           </button>
 
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.4 }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-          >
+          <div ref={header.ref} className={`reveal ${header.inView ? "reveal-in" : ""}`}>
             <p
               className="text-xs uppercase tracking-[0.3em] font-semibold mb-3"
               style={{ color: isDark ? "#b9a3ff" : "#8a5a1f" }}
@@ -165,102 +161,116 @@ const BrainHexShowcase = () => {
               Sete caminhos, um mesmo destino: sua melhor versão. Escolha um guardião e conheça a
               sua história.
             </p>
-          </motion.div>
+          </div>
         </div>
 
         {/* Lineup dos guardioes */}
         <div className="flex flex-wrap justify-center items-end gap-x-2 gap-y-8 mt-14 mb-10">
-          {PROFILE_LIST.map((profile, index) => {
-            const color = extractHex(profile.textColor);
-            const guide = GUIDES[profile.key];
-            const isActive = profile.key === activeKey;
-            return (
-              <motion.button
-                key={profile.key}
-                type="button"
-                onClick={() => setActiveKey(profile.key)}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.2 }}
-                transition={{ duration: 0.5, delay: index * 0.07, ease: "easeOut" }}
-                whileHover={{ y: -8 }}
-                className="relative flex flex-col items-center w-[120px] sm:w-[140px] shrink-0 transition-transform duration-300"
-                style={{
-                  filter: isActive ? "none" : "grayscale(0.15) brightness(0.85)",
-                  opacity: isActive ? 1 : 0.8,
-                }}
-                aria-label={`Ver ${profile.title}`}
-              >
-                <div
-                  className="absolute inset-x-0 bottom-16 h-40 rounded-full blur-2xl transition-opacity duration-300"
-                  style={{ backgroundColor: color, opacity: isActive ? 0.35 : 0 }}
-                />
-                <img
-                  src={guide.art}
-                  alt={`${guide.name}, ${guide.title}`}
-                  className="relative w-full h-auto drop-shadow-2xl select-none"
-                  draggable={false}
-                />
-                <div
-                  className="relative -mt-3 w-11 h-11 flex items-center justify-center transition-transform duration-300"
-                  style={{ transform: isActive ? "scale(1.12)" : "scale(1)" }}
-                >
-                  <HexBadge color={color} Icon={profile.icon} />
-                </div>
-                <span
-                  className="relative mt-2 text-xs sm:text-sm font-bold uppercase tracking-wide transition-colors duration-700"
-                  style={{ color: isActive ? color : isDark ? "rgba(245,240,255,0.55)" : "rgba(36,23,8,0.55)" }}
-                >
-                  {profile.title.split(" ")[0]}
-                </span>
-              </motion.button>
-            );
-          })}
+          {PROFILE_LIST.map((profile, index) => (
+            <GuardianButton
+              key={profile.key}
+              profile={profile}
+              isActive={profile.key === activeKey}
+              isDark={isDark}
+              delay={index * 0.07}
+              onSelect={() => setActiveKey(profile.key)}
+            />
+          ))}
         </div>
 
-        {/* Card do guardiao selecionado */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={active.key}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.35, ease: "easeOut" }}
-            className="max-w-xl mx-auto text-center rounded-2xl border px-8 py-6 backdrop-blur-sm transition-colors duration-700"
-            style={{
-              borderColor: `${activeColor}55`,
-              backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.55)",
-            }}
+        {/* Card do guardiao selecionado — a key forca remount, o que dispara
+            a animacao .fade-scale-in de novo a cada troca (sem lib de exit
+            animation: e uma entrada nova, nao uma transicao cross-fade). */}
+        <div
+          key={active.key}
+          className="fade-scale-in max-w-xl mx-auto text-center rounded-2xl border px-8 py-6 backdrop-blur-sm transition-colors duration-700"
+          style={{
+            borderColor: `${activeColor}55`,
+            backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.55)",
+          }}
+        >
+          <p className="text-xs uppercase tracking-widest font-semibold mb-1" style={{ color: activeColor }}>
+            {activeGuide.name} · {activeGuide.title}
+          </p>
+          <p
+            className="text-lg italic leading-relaxed mb-4 transition-colors duration-700"
+            style={{ color: isDark ? "#f5f0ff" : "#241708" }}
           >
-            <p
-              className="text-xs uppercase tracking-widest font-semibold mb-1"
-              style={{ color: activeColor }}
-            >
-              {activeGuide.name} · {activeGuide.title}
-            </p>
-            <p
-              className="text-lg italic leading-relaxed mb-4 transition-colors duration-700"
-              style={{ color: isDark ? "#f5f0ff" : "#241708" }}
-            >
-              &ldquo;{activeGuide.quote}&rdquo;
-            </p>
-            <div className="flex flex-wrap justify-center gap-2">
-              {activeGuide.traits.map((trait) => (
-                <span
-                  key={trait}
-                  className="text-xs font-medium px-3 py-1 rounded-full border"
-                  style={{ borderColor: `${activeColor}66`, color: activeColor }}
-                >
-                  {trait}
-                </span>
-              ))}
-            </div>
-          </motion.div>
-        </AnimatePresence>
+            &ldquo;{activeGuide.quote}&rdquo;
+          </p>
+          <div className="flex flex-wrap justify-center gap-2">
+            {activeGuide.traits.map((trait) => (
+              <span
+                key={trait}
+                className="text-xs font-medium px-3 py-1 rounded-full border"
+                style={{ borderColor: `${activeColor}66`, color: activeColor }}
+              >
+                {trait}
+              </span>
+            ))}
+          </div>
+        </div>
       </div>
     </section>
   );
 };
+
+function GuardianButton({
+  profile,
+  isActive,
+  isDark,
+  delay,
+  onSelect,
+}: {
+  profile: (typeof PROFILE_LIST)[number];
+  isActive: boolean;
+  isDark: boolean;
+  delay: number;
+  onSelect: () => void;
+}) {
+  const { ref, inView } = useInView<HTMLButtonElement>(0.2);
+  const color = extractHex(profile.textColor);
+  const guide = GUIDES[profile.key];
+  const Icon = profile.icon;
+
+  return (
+    <button
+      ref={ref}
+      type="button"
+      onClick={onSelect}
+      className={`reveal ${inView ? "reveal-in" : ""} relative flex flex-col items-center w-[120px] sm:w-[140px] shrink-0 transition-transform duration-300 hover:-translate-y-2 active:scale-95`}
+      style={{
+        transitionDelay: inView ? `${delay}s` : "0s",
+        filter: isActive ? "none" : "grayscale(0.15) brightness(0.85)",
+        opacity: isActive ? 1 : 0.8,
+      }}
+      aria-label={`Ver ${profile.title}`}
+    >
+      <div
+        className="absolute inset-x-0 bottom-16 h-40 rounded-full blur-2xl transition-opacity duration-300"
+        style={{ backgroundColor: color, opacity: isActive ? 0.35 : 0 }}
+      />
+      <img
+        src={guide.art}
+        alt={`${guide.name}, ${guide.title}`}
+        className="relative w-full h-auto drop-shadow-2xl select-none"
+        draggable={false}
+      />
+      <div
+        className="relative -mt-3 w-11 h-11 flex items-center justify-center transition-transform duration-300"
+        style={{ transform: isActive ? "scale(1.12)" : "scale(1)" }}
+      >
+        <HexBadge color={color} Icon={Icon} />
+      </div>
+      <span
+        className="relative mt-2 text-xs sm:text-sm font-bold uppercase tracking-wide transition-colors duration-700"
+        style={{ color: isActive ? color : isDark ? "rgba(245,240,255,0.55)" : "rgba(36,23,8,0.55)" }}
+      >
+        {profile.title.split(" ")[0]}
+      </span>
+    </button>
+  );
+}
 
 function HexBadge({ color, Icon }: { color: string; Icon: (typeof PROFILE_LIST)[number]["icon"] }) {
   return (

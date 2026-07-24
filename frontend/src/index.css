@@ -208,4 +208,49 @@ All colors MUST be HSL.
     0%, 100% { opacity: 0.35; transform: scale(1); }
     50% { opacity: 0.6; transform: scale(1.08); }
   }
+
+  /* Entrada fade+slide (substitui framer-motion: initial/whileInView/animate).
+     .reveal comeca invisivel/deslocada; .reveal-in e adicionada via useInView
+     ou no mount direto, disparando a transicao. */
+  .reveal {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+  }
+  .reveal-in {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .reveal-scale {
+    opacity: 0;
+    transform: scale(0.97);
+    transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+  }
+  .reveal-scale-in {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  /* Entrada automatica ao montar (Hero — sempre acima da dobra, sem precisar
+     de scroll/IntersectionObserver). Usar com style={{ animationDelay }}. */
+  .fade-up-in {
+    opacity: 0;
+    animation: fade-up 0.6s ease-out forwards;
+  }
+
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Troca de conteudo chaveado por React key (ex.: card do guardiao
+     selecionado) — a animacao dispara sozinha a cada remount, sem JS. */
+  .fade-scale-in {
+    animation: fade-scale 0.35s ease-out forwards;
+  }
+
+  @keyframes fade-scale {
+    from { opacity: 0; transform: scale(0.97) translateY(8px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
 }

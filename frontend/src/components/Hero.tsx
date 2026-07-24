@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Hexagon, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
 import heroBg from "@/assets/hero-bg.jpg";
 
 // Brasas flutuantes: posicao/tamanho/duracao pre-computados (sem estado, sem
@@ -17,15 +16,6 @@ const EMBERS = [
   { left: "84%", size: 3, duration: 8.6, delay: 2.3, drift: -14 },
   { left: "92%", size: 2, duration: 7.2, delay: 4.1, drift: 6 },
 ];
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 20 },
-  show: (delay = 0) => ({
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.6, delay, ease: "easeOut" as const },
-  }),
-};
 
 const Hero = () => {
   return (
@@ -79,49 +69,37 @@ const Hero = () => {
       <div className="container mx-auto px-4 z-10 text-center">
         <div className="max-w-4xl mx-auto space-y-8">
           {/* Badge */}
-          <motion.div
-            initial="hidden"
-            animate="show"
-            custom={0}
-            variants={fadeUp}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary mb-4"
+          <div
+            className="fade-up-in inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary mb-4"
+            style={{ animationDelay: "0s" }}
           >
             <Sparkles className="w-4 h-4" />
             <span className="text-sm font-medium">Um grimório vivo, moldado ao seu perfil</span>
-          </motion.div>
+          </div>
 
           {/* Title */}
-          <motion.h1
-            initial="hidden"
-            animate="show"
-            custom={0.1}
-            variants={fadeUp}
-            className="text-5xl md:text-7xl font-bold leading-tight"
+          <h1
+            className="fade-up-in text-5xl md:text-7xl font-bold leading-tight"
+            style={{ animationDelay: "0.1s" }}
           >
             Sua trilha,
             <span className="block bg-gradient-to-r from-primary via-accent to-primary-light bg-clip-text text-transparent">
               seu guia, sua lenda
             </span>
-          </motion.h1>
+          </h1>
 
           {/* Description */}
-          <motion.p
-            initial="hidden"
-            animate="show"
-            custom={0.2}
-            variants={fadeUp}
-            className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto"
+          <p
+            className="fade-up-in text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto"
+            style={{ animationDelay: "0.2s" }}
           >
             O TrailUp reescreve cada tópico como um grimório sob medida para o seu perfil de jogador, narrado por um guia que fala a sua língua. Desbloqueie trilhas, enfrente desafios e domine o conhecimento no seu próprio ritmo.
-          </motion.p>
+          </p>
 
           {/* CTA Buttons */}
-          <motion.div
-            initial="hidden"
-            animate="show"
-            custom={0.3}
-            variants={fadeUp}
-            className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4"
+          <div
+            className="fade-up-in flex flex-col sm:flex-row gap-4 justify-center items-center pt-4"
+            style={{ animationDelay: "0.3s" }}
           >
             <Link to="/cadastro-aluno">
               <Button size="lg" className="gradient-primary text-lg px-8 py-6 animate-glow">
@@ -133,27 +111,21 @@ const Hero = () => {
                 Sou professor, já tenho conta
               </Button>
             </Link>
-          </motion.div>
-          <motion.p
-            initial="hidden"
-            animate="show"
-            custom={0.35}
-            variants={fadeUp}
-            className="text-sm text-muted-foreground"
+          </div>
+          <p
+            className="fade-up-in text-sm text-muted-foreground"
+            style={{ animationDelay: "0.35s" }}
           >
             É professor e ainda não tem conta?{" "}
             <Link to="/cadastro-professor" className="text-primary hover:underline">
               Cadastre-se aqui
             </Link>
-          </motion.p>
+          </p>
 
           {/* Stats */}
-          <motion.div
-            initial="hidden"
-            animate="show"
-            custom={0.45}
-            variants={fadeUp}
-            className="grid grid-cols-3 gap-8 pt-12 max-w-2xl mx-auto"
+          <div
+            className="fade-up-in grid grid-cols-3 gap-8 pt-12 max-w-2xl mx-auto"
+            style={{ animationDelay: "0.45s" }}
           >
             <div>
               <div className="text-3xl md:text-4xl font-bold text-primary">7</div>
@@ -167,7 +139,7 @@ const Hero = () => {
               <div className="text-3xl md:text-4xl font-bold text-primary">∞</div>
               <div className="text-sm text-muted-foreground mt-1">Trilhas a explorar</div>
             </div>
-          </motion.div>
+          </div>
         </div>
       </div>
     </section>
