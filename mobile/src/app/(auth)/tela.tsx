@@ -1,5 +1,4 @@
 import { HallBackground } from "@/components/HallTheme";
-import { bannerImages } from "@/constants/profileImages";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { buildProfileShellPaletteFromAccent } from "@/utils/profileShellTheme";
 import { Image } from "expo-image";
@@ -9,8 +8,8 @@ import { useEffect } from "react";
 import { SafeAreaView, StyleSheet, Text, View } from "react-native";
 import tinycolor from "tinycolor2";
 
-// Paleta estática para telas de autenticação — roxo místico
-const AUTH_PALETTE = buildProfileShellPaletteFromAccent("#6366f1", "magica");
+// Paleta estática para telas de autenticação — violeta oficial do logo TrailUp
+const AUTH_PALETTE = buildProfileShellPaletteFromAccent("#a057fd", "magica");
 
 const Tela_De_Rosto = () => {
   const navigation = useRouter();
@@ -55,8 +54,9 @@ const Tela_De_Rosto = () => {
 
           <View style={[styles.imageRing, { borderColor: goldDim }]}>
             <Image
-              source={bannerImages[10]}
+              source={require("@/assets/images/trailup-logo.png")}
               style={styles.image}
+              contentFit="contain"
             />
           </View>
         </View>

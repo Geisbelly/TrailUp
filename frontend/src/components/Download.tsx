@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Smartphone, Download as DownloadIcon, ExternalLink, FileDown } from "lucide-react";
-import appMockup from "@/assets/app-mockup.png";
+import { Smartphone, ExternalLink, FileDown, Hexagon, Compass } from "lucide-react";
 
 // Configurações de download - altere os links conforme necessário
 const DOWNLOAD_CONFIG = {
@@ -121,16 +120,13 @@ const Download = () => {
             </div>
           </div>
 
-          {/* Right Content - App Mockup */}
+          {/* Right Content - Emblema decorativo (sem mockup fake do app) */}
           <div className="relative flex justify-center lg:justify-end">
-            <div className="relative animate-float">
-              <img
-                src={appMockup}
-                alt="TrailUp App Interface"
-                className="w-full max-w-sm drop-shadow-2xl"
-              />
-              {/* Glow Effect */}
-              <div className="absolute inset-0 bg-gradient-to-t from-primary/30 to-transparent blur-3xl -z-10" />
+            <div className="relative w-full max-w-sm aspect-square flex items-center justify-center animate-float">
+              <div className="absolute inset-0 bg-gradient-to-t from-primary/25 to-transparent blur-3xl -z-10" />
+              <Hexagon className="absolute w-full h-full text-primary/10" strokeWidth={0.5} />
+              <Hexagon className="absolute w-3/4 h-3/4 text-primary/20 rotate-[15deg]" strokeWidth={0.5} />
+              <Compass className="w-1/3 h-1/3 text-primary glow-primary rounded-full p-6" />
             </div>
           </div>
         </div>

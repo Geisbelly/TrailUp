@@ -1,17 +1,13 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { 
-  Smartphone, ExternalLink, FileDown, Hexagon, 
+import {
+  Smartphone, ExternalLink, FileDown, Hexagon, Compass,
   CheckCircle2, QrCode, WifiOff, Bell, RefreshCw, Layers, Sparkles,
   Trophy, Ghost, Gamepad2, Rocket, Star
 } from "lucide-react";
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
-
-// PARA SEU PROJETO: Descomente a importação real da imagem e remova a constante abaixo
-// import appMockup from "@/assets/app-mockup.png";
-const appMockup = "https://placehold.co/400x800/18181b/7c3aed?text=TrailUp+App"; // Placeholder para preview
 
 // Configurações de download
 const DOWNLOAD_CONFIG = {
@@ -180,13 +176,10 @@ const Download = () => {
                   {/* Notch */}
                   <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/3 h-7 bg-zinc-900 rounded-b-2xl z-20" />
                   
-                  {/* Screen Content */}
-                  <div className="aspect-[9/19] bg-zinc-900 relative group-hover/scene:scale-105 transition-transform duration-700 origin-center">
-                    <img
-                      src={appMockup}
-                      alt="TrailUp App Interface"
-                      className="w-full h-full object-cover opacity-90 transition-opacity group-hover/scene:opacity-100"
-                    />
+                  {/* Screen Content — emblema decorativo, sem mockup fake do app */}
+                  <div className="aspect-[9/19] bg-zinc-900 relative group-hover/scene:scale-105 transition-transform duration-700 origin-center flex items-center justify-center">
+                    <div className="absolute inset-0 bg-gradient-to-b from-primary/15 via-transparent to-background" />
+                    <Compass className="relative w-20 h-20 text-primary drop-shadow-[0_0_20px_rgba(99,102,241,0.6)]" strokeWidth={1.25} />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
                   </div>
                 </div>
