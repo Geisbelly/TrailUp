@@ -1996,13 +1996,13 @@ def test_guide_persona_campos_presentes_por_perfil() -> None:
     from app.services.personalizacao import _build_profile_editorial_context
 
     casos = [
-        ("Seeker", "Orion", "Puck", "#a78c07", "Crônicas da Exploração"),
-        ("Survivor", "Valka", "Fenrir", "#720101", "Diretrizes de Campo"),
-        ("Daredevil", "Rexa", "Zephyr", "#1b6b1b", "Código de Impacto"),
-        ("Mastermind", "Atena", "Charon", "#707c88", "Arquitetura do Conceito"),
-        ("Conqueror", "Drako", "Kore", "#01808b", "Tratado de Soberania"),
-        ("Socialiser", "Luma", "Kore", "#6d15be", "Elo da Comunidade"),
-        ("Achiever", "Auri", "Puck", "#ad6002", "Caminho da Maestria"),
+        ("Seeker", "Amara", "Puck", "#a78c07", "Crônicas da Exploração"),
+        ("Survivor", "Kenji", "Fenrir", "#720101", "Diretrizes de Campo"),
+        ("Daredevil", "Ember", "Zephyr", "#1b6b1b", "Código de Impacto"),
+        ("Mastermind", "Idris", "Charon", "#707c88", "Arquitetura do Conceito"),
+        ("Conqueror", "Amina", "Kore", "#01808b", "Tratado de Soberania"),
+        ("Socialiser", "Mateo", "Kore", "#6d15be", "Elo da Comunidade"),
+        ("Achiever", "Kwame", "Puck", "#ad6002", "Caminho da Maestria"),
     ]
     for perfil, guia, voz, cor, framing in casos:
         result = _build_profile_editorial_context(perfil, [])

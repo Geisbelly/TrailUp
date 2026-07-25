@@ -17,49 +17,49 @@ import daredevilArt from "@/assets/guardioes/daredevil.webp";
 // poster oficial "Os Guardioes da Trilha" fornecido pelo usuario.
 const GUIDES: Record<string, { name: string; title: string; quote: string; art: string; traits: string[] }> = {
   mastermind: {
-    name: "Atena",
-    title: "A Sábia das Constelações",
+    name: "Idris",
+    title: "O Sábio das Constelações",
     quote: "Toda pergunta certa já contém metade da resposta.",
     art: mastermindArt,
-    traits: ["Analítica", "Estratégica", "Profunda"],
+    traits: ["Analítico", "Estratégico", "Profundo"],
   },
   achiever: {
-    name: "Auri",
+    name: "Kwame",
     title: "O Cavaleiro Solar",
     quote: "Cada marco conquistado abre o próximo caminho.",
     art: achieverArt,
     traits: ["Focado", "Disciplinado", "Determinado"],
   },
   seeker: {
-    name: "Orion",
+    name: "Amara",
     title: "A Guardiã das Runas",
     quote: "Todo mapa esconde uma pergunta melhor que a resposta.",
     art: seekerArt,
     traits: ["Curiosa", "Exploradora", "Intuitiva"],
   },
   survivor: {
-    name: "Valka",
+    name: "Kenji",
     title: "O Guardião da Montanha",
     quote: "Sobreviver é ter um plano B. Redundância não é desperdício.",
     art: survivorArt,
     traits: ["Paciente", "Resiliente", "Confiável"],
   },
   conqueror: {
-    name: "Drako",
+    name: "Amina",
     title: "A Rainha da Tempestade",
     quote: "Não existe segundo lugar na sua própria jornada.",
     art: conquerorArt,
     traits: ["Líder", "Competitiva", "Determinada"],
   },
   socializer: {
-    name: "Luma",
+    name: "Mateo",
     title: "O Espírito da Aurora",
     quote: "Ninguém chega longe sozinho — nem mesmo você.",
     art: socializerArt,
     traits: ["Comunicativo", "Empático", "Inspirador"],
   },
   daredevil: {
-    name: "Rexa",
+    name: "Ember",
     title: "A Fênix do Caos",
     quote: "Hesitar é a única forma de perder.",
     art: daredevilArt,
@@ -71,6 +71,14 @@ const PROFILE_LIST = Object.values(PROFILES);
 
 function extractHex(twClass: string): string {
   return twClass.match(/#[0-9a-fA-F]{6}/)?.[0] ?? "#a78c07";
+}
+
+// "Seeker (Explorador)" -> "EXPLORADOR". A tradução PT-BR fica entre
+// parenteses no title (mesmo texto do campo `label` oficial de
+// microservice/src/constants/brainHex.ts) — usada aqui em vez do nome em
+// ingles para o rotulo do guardiao na secao publica.
+function extractPtLabel(title: string): string {
+  return (title.match(/\(([^)]+)\)/)?.[1] ?? title).toUpperCase();
 }
 
 const BrainHexShowcase = () => {
@@ -269,7 +277,7 @@ function GuardianButton({
         className="relative mt-2 text-xs sm:text-sm font-bold uppercase tracking-wide transition-colors duration-700"
         style={{ color: isActive ? color : "rgba(245,240,255,0.55)" }}
       >
-        {profile.title.split(" ")[0]}
+        {extractPtLabel(profile.title)}
       </span>
     </button>
   );

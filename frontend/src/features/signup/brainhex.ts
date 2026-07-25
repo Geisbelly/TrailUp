@@ -215,12 +215,18 @@ export function isAllAnswered(answers: BrainHexAnswers) {
 // paleta (script com sharp: hue-shift so nos pixels do figurino/manto,
 // identificados por faixa de matiz+saturacao, preservando pele/cabelo/dourado
 // intactos) — nao o contrario. Isso foi feito para seeker, survivor,
-// conqueror e socializer. daredevil ficou de fora: na arte dela o cabelo e a
-// capa usam exatamente o mesmo laranja (mesma faixa de matiz/saturacao), e
-// tentar isolar so a capa por hue tambem pintou a pele e o efeito de fogo de
-// verde — sem uma mascara manual do figurino essa recolorizacao nao e segura
-// de automatizar, entao o badge dela ainda diverge da arte (oficial=verde,
-// arte=laranja) ate a arte ser re-gerada.
+// conqueror, socializer e mastermind (nesse ultimo o matiz ja estava certo,
+// so a saturacao precisou baixar — a arte usava um azul vivido, o oficial e
+// um azul-acinzentado quase neutro).
+//
+// daredevil e a unica excecao: na arte dela o cabelo e a capa usam
+// exatamente a mesma faixa de matiz/saturacao (o tema "fogo laranja" e
+// deliberado nos dois), e qualquer recorte automatico (por matiz, por
+// posicao, ou flood-fill por similaridade local) ou pintou a pele/efeito de
+// fogo de verde ou selecionou o personagem inteiro (a arte tem gradientes
+// suaves demais para o flood-fill parar nas bordas certas). Sem uma mascara
+// manual do figurino isso nao e seguro de automatizar — entao aqui o badge
+// segue a arte (laranja), nao o hex oficial (verde), por pedido direto.
 // Luminosidade HSL elevada apenas o suficiente para ~4.5:1 de contraste
 // contra o fundo escuro do site — matiz e saturação da cor oficial ficam
 // intactos (mesmo principio de _ensure_min_contrast em
@@ -242,7 +248,7 @@ export const PROFILES = {
   },
   survivor: {
     key: "survivor",
-    title: "Survivor (Desafiador)",
+    title: "Survivor (Sobrevivente)",
     icon: Shield,
     color: "text-[#fb0202] bg-[#fb0202]/10 border-[#fb0202]/20",
     textColor: "text-[#fb0202]",
@@ -254,10 +260,12 @@ export const PROFILES = {
     key: "daredevil",
     title: "Daredevil (Aventureiro)",
     icon: Sword,
-    color: "text-[#249024] bg-[#249024]/10 border-[#249024]/20",
-    textColor: "text-[#249024]",
-    bgColor: "bg-[#249024]",
-    cardStyle: "bg-[#249024]/10 border-[#249024]/20",
+    // Excecao: segue a cor da arte (laranja-fogo), nao o hex oficial
+    // (verde) — ver comentario acima do PROFILES.
+    color: "text-[#ec3c04] bg-[#ec3c04]/10 border-[#ec3c04]/20",
+    textColor: "text-[#ec3c04]",
+    bgColor: "bg-[#ec3c04]",
+    cardStyle: "bg-[#ec3c04]/10 border-[#ec3c04]/20",
     text: "Gosta de ação e risco. Prefere aprender por tentativa e erro, com exploração rápida e sem medo de falhar.",
   },
   mastermind: {
@@ -272,7 +280,7 @@ export const PROFILES = {
   },
   conqueror: {
     key: "conqueror",
-    title: "Conqueror (Competidor)",
+    title: "Conqueror (Conquistador)",
     icon: Crown,
     color: "text-[#018e9a] bg-[#018e9a]/10 border-[#018e9a]/20",
     textColor: "text-[#018e9a]",
@@ -282,7 +290,7 @@ export const PROFILES = {
   },
   socializer: {
     key: "socializer",
-    title: "Socializer (Colaborador)",
+    title: "Socializer (Socializador)",
     icon: Drama,
     color: "text-[#aa60ed] bg-[#aa60ed]/10 border-[#aa60ed]/20",
     textColor: "text-[#aa60ed]",
@@ -292,7 +300,7 @@ export const PROFILES = {
   },
   achiever: {
     key: "achiever",
-    title: "Achiever (Completionista)",
+    title: "Achiever (Realizador)",
     icon: Box,
     color: "text-[#ba863f] bg-[#ba863f]/10 border-[#ba863f]/20",
     textColor: "text-[#ba863f]",

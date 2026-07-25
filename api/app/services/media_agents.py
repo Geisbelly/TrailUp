@@ -191,13 +191,13 @@ async def gerar_roteiro_video_llm(
 # ---------------------------------------------------------------------------
 
 _BRAINHEX_GUIDE_CONFIG: dict[str, dict[str, str]] = {
-    "mastermind": {"guia_nome": "Atena",  "guia_voz": "Charon", "guia_cor": "#707c88", "framing": "Arquitetura do Conceito",   "label": "Estrategista"},
-    "seeker":     {"guia_nome": "Orion",  "guia_voz": "Puck",   "guia_cor": "#a78c07", "framing": "Crônicas da Exploração",    "label": "Explorador"},
-    "survivor":   {"guia_nome": "Valka",  "guia_voz": "Fenrir", "guia_cor": "#720101", "framing": "Diretrizes de Campo",       "label": "Sobrevivente"},
-    "daredevil":  {"guia_nome": "Rexa",   "guia_voz": "Zephyr", "guia_cor": "#1b6b1b", "framing": "Código de Impacto",         "label": "Aventureiro"},
-    "conqueror":  {"guia_nome": "Drako",  "guia_voz": "Kore",   "guia_cor": "#01808b", "framing": "Tratado de Soberania",      "label": "Conquistador"},
-    "socializer": {"guia_nome": "Luma",   "guia_voz": "Kore",   "guia_cor": "#6d15be", "framing": "Elo da Comunidade",         "label": "Socializador"},
-    "achiever":   {"guia_nome": "Auri",   "guia_voz": "Puck",   "guia_cor": "#ad6002", "framing": "Caminho da Maestria",       "label": "Realizador"},
+    "mastermind": {"guia_nome": "Idris",  "guia_voz": "Charon", "guia_cor": "#707c88", "framing": "Arquitetura do Conceito",   "label": "Estrategista"},
+    "seeker":     {"guia_nome": "Amara",  "guia_voz": "Puck",   "guia_cor": "#a78c07", "framing": "Crônicas da Exploração",    "label": "Explorador"},
+    "survivor":   {"guia_nome": "Kenji",  "guia_voz": "Fenrir", "guia_cor": "#720101", "framing": "Diretrizes de Campo",       "label": "Sobrevivente"},
+    "daredevil":  {"guia_nome": "Ember",  "guia_voz": "Zephyr", "guia_cor": "#1b6b1b", "framing": "Código de Impacto",         "label": "Aventureiro"},
+    "conqueror":  {"guia_nome": "Amina",  "guia_voz": "Kore",   "guia_cor": "#01808b", "framing": "Tratado de Soberania",      "label": "Conquistador"},
+    "socializer": {"guia_nome": "Mateo",  "guia_voz": "Kore",   "guia_cor": "#6d15be", "framing": "Elo da Comunidade",         "label": "Socializador"},
+    "achiever":   {"guia_nome": "Kwame",  "guia_voz": "Puck",   "guia_cor": "#ad6002", "framing": "Caminho da Maestria",       "label": "Realizador"},
 }
 
 
