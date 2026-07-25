@@ -203,8 +203,28 @@ export async function processMediaWithGemini(
        - Slides e Texto: Você DEVE incluir exemplos escritos explícitos e analogias temáticas para facilitar a compreensão.
        - Marque seções de exemplo com títulos como "CASO DE ESTUDO" ou "NA PRÁTICA".
     
-    4. Grimório (Markdown) & Narrativa Visual:
-       MERGULHO TEMÁTICO: O conteúdo deve respirar o arquétipo ${profile}.
+    4. Grimório (Markdown) — Texto de Estudo Completo:
+       O campo 'markdown' é o material de estudo PRINCIPAL do aluno — não é um
+       resumo de apoio aos slides, é o texto que ele vai ler para aprender o
+       conteúdo do zero. Aplique a regra 1 (Fidelidade Absoluta) com o máximo
+       rigor aqui:
+       - Estruture em seções com headings (## / ###), uma por bloco/tópico do
+         conteúdo original, na mesma ordem em que aparecem no material do
+         professor. Nenhum bloco do Modelo Interno Unificado pode ficar de fora.
+       - Para cada conceito: defina-o, explique o "porquê" (não só o "o quê"),
+         traga pelo menos um exemplo prático ou caso de estudo, e conecte com
+         o conceito anterior/seguinte quando fizer sentido pedagógico.
+       - NÃO resuma o material do professor — expanda-o. Aprofunde cada ponto
+         com contexto adicional, esclarecimentos e informações complementares
+         relevantes ao tema (contanto que não contradigam o material original),
+         como um professor explicando em aula, e não como uma lista resumida
+         de tópicos.
+       - Extensão: o texto tem que ser proporcional (ou maior) ao conteúdo
+         original — nunca mais curto ou mais raso que o material fornecido
+         pelo professor. Isso normalmente significa vários parágrafos por
+         seção, não uma linha por bullet.
+       - MERGULHO TEMÁTICO: mantenha a voz do arquétipo ${profile} do início
+         ao fim, sem sacrificar a densidade técnica.
        - 'mastermind': Lexicografia técnica.
        - 'seeker': Linguagem evocativa.
        - 'survivor': Dialeto pragmático.
