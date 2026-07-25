@@ -70,7 +70,6 @@ import {
 
 type TopicEditDrawerProps = {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
   editingTopic: Topico | null;
   classes: Classe[];
   materias: Materia[];
@@ -163,7 +162,7 @@ function getReferenceName(pathOrUrl: string, fallback = "arquivo"): string {
 
 export function TopicEditDrawer(props: TopicEditDrawerProps) {
   const {
-    open, onOpenChange, handleEditClose, handleSubmit, isSaving,
+    open, handleEditClose, handleSubmit, isSaving,
     formData, setFormData, classes, materias, editingTopic,
     contents, selectedContentId, setSelectedContentId,
     contentForm, setContentForm, isSavingContent, handleSaveContent, handleDeleteContent, onReorderContents,
@@ -177,6 +176,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
 
   const { user, session } = useAuth();
   const [isCreating, setIsCreating] = useState(false);
+  const [activeTab, setActiveTab] = useState<"conteudo" | "atividades" | "cards">("conteudo");
   const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [extraFiles, setExtraFiles] = useState<ConteudoFile[]>([]);
@@ -708,6 +708,16 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
     }
   }, [selectedActivityId, questions, activityForm.tipo, setQuestionForm, setQuestionOptions]);
 
+  // Sem o Dialog do Radix, perdemos o fechamento por Esc de graca — repoe aqui.
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") handleEditClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, handleEditClose]);
+
   // Estilos Dark Theme
   const darkInputClass = "bg-[#111827] border-slate-700 text-slate-100 focus:border-violet-500 placeholder:text-slate-600 hover:border-slate-600 transition-colors";
   const darkLabelClass = "text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-2 block";
@@ -750,6 +760,14 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
       descricao: card.descricao || "",
       imagem_url: card.imagem_url || "",
     });
+  };
+
+  // Pula da lista de cards para a pagina (aba Conteudo) do conteudo vinculado.
+  const goToLinkedContent = (conteudoId: number | null | undefined) => {
+    if (!conteudoId) return;
+    setIsCreating(false);
+    setSelectedContentId(conteudoId);
+    setActiveTab("conteudo");
   };
 
   const selectedCard = cards.find((card) => card.id === cardForm.id) ?? null;
@@ -936,23 +954,27 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
     </div>
   );
 
+  // Pagina propria (nao mais um Dialog): a URL (/console/trilha/:topicoId/editar)
+  // e quem decide se isso deve estar montado, entao so renderizamos quando o
+  // pai sinaliza "aberto" — sem o gating automatico que o Radix Dialog fazia.
+  if (!open) return null;
+
   return (
     <>
-    <Dialog open={open} onOpenChange={(val) => (val ? onOpenChange(true) : handleEditClose())}>
-      <DialogContent className="max-w-[95vw] w-full h-[95vh] p-0 gap-0 bg-[#0F172A] border-slate-800 flex flex-col overflow-hidden sm:rounded-xl shadow-2xl shadow-black/80">
-        
+    <div className="fixed inset-0 z-40 w-screen h-screen p-0 bg-[#0F172A] flex flex-col overflow-hidden">
+
         {/* HEADER */}
         <div className="flex items-center justify-between px-6 py-4 bg-[#1E293B] border-b border-slate-800 shrink-0 z-10 shadow-md">
           <div>
-            <DialogTitle className="text-xl font-bold text-white flex items-center gap-3">
+            <h1 className="text-xl font-bold text-white flex items-center gap-3">
               <div className="w-8 h-8 rounded bg-violet-600/20 flex items-center justify-center text-violet-400">
                 <BrainCircuit size={18} />
               </div>
               {editingTopic ? "Editar Trilha de Conhecimento" : "Nova Trilha"}
-            </DialogTitle>
-            <DialogDescription className="text-slate-400 text-xs mt-1 pl-11">
+            </h1>
+            <p className="text-slate-400 text-xs mt-1 pl-11">
               Gerenciamento avançado de nós de conteúdo e avaliações.
-            </DialogDescription>
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <Button variant="ghost" onClick={handleEditClose} className="text-slate-400 hover:text-white hover:bg-white/5 border border-transparent hover:border-slate-700">
@@ -1065,7 +1087,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                 {isCreating && renderContentForm("Novo Conteúdo")}
 
                 {!isCreating && selectedContentId && (
-                  <Tabs defaultValue="conteudo" className="w-full">
+                  <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "conteudo" | "atividades" | "cards")} className="w-full">
                     <TabsList className="bg-[#1E293B] border border-slate-700/50 p-1 mb-6 h-auto w-full justify-start rounded-lg">
                       <TabsTrigger value="conteudo" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white flex-1 h-9"><FileText className="w-4 h-4 mr-2"/> Conteúdo</TabsTrigger>
                       <TabsTrigger value="atividades" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white flex-1 h-9"><LayoutList className="w-4 h-4 mr-2"/> Atividades</TabsTrigger>
@@ -1314,7 +1336,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
 
                     <TabsContent value="cards" className="mt-0 outline-none">
                       <div className={`p-6 rounded-xl border shadow-lg ${darkCardClass}`}>
-                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
                           <div className="space-y-3">
                             <div className="flex items-center justify-between">
                               <Label className={darkLabelClass}>Cards Existentes</Label>
@@ -1322,7 +1344,10 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                 {cards.length}
                               </Badge>
                             </div>
-                            <ScrollArea className="h-[420px] pr-2">
+                            {/* Sem altura fixa: a pagina inteira ja rola (ScrollArea do <main>),
+                                entao uma caixa de altura fixa aqui so cortava cards e sobrava
+                                espaco vazio ao lado do formulario "Novo Card". */}
+                            <div className="pr-1">
                               <div className="space-y-2">
                                 {cards.map((c) => {
                                   const isSelected = cardForm.id === c.id;
@@ -1377,9 +1402,27 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                         </div>
                                       </div>
                                       <div className="flex flex-wrap gap-1.5 mt-2">
-                                        <Badge variant="outline" className="border-emerald-500/40 text-emerald-400 text-[10px] py-0">
-                                          {linkedLabel}
-                                        </Badge>
+                                        {c.conteudo_id ? (
+                                          <button
+                                            type="button"
+                                            title="Ir para a página deste conteúdo"
+                                            onClick={(event) => {
+                                              event.stopPropagation();
+                                              goToLinkedContent(c.conteudo_id);
+                                            }}
+                                          >
+                                            <Badge
+                                              variant="outline"
+                                              className="border-emerald-500/40 text-emerald-400 text-[10px] py-0 hover:bg-emerald-500/10 hover:border-emerald-400 transition-colors cursor-pointer"
+                                            >
+                                              {linkedLabel} →
+                                            </Badge>
+                                          </button>
+                                        ) : (
+                                          <Badge variant="outline" className="border-emerald-500/40 text-emerald-400 text-[10px] py-0">
+                                            {linkedLabel}
+                                          </Badge>
+                                        )}
                                         {originLabel && (
                                           <Badge variant="outline" className="border-amber-500/40 text-amber-400 text-[10px] py-0">
                                             {originLabel}
@@ -1395,10 +1438,10 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                   </div>
                                 )}
                               </div>
-                            </ScrollArea>
+                            </div>
                           </div>
 
-                          <div className="space-y-4 bg-[#111827] p-4 rounded-lg border border-slate-700">
+                          <div className="space-y-4 bg-[#111827] p-4 rounded-lg border border-slate-700 xl:sticky xl:top-4">
                             <div className="flex items-center justify-between">
                               <Label className={darkLabelClass} style={{ marginBottom: 0 }}>
                                 {cardForm.id ? "Editar Card" : "Novo Card"}
@@ -1577,8 +1620,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
             </ScrollArea>
           </main>
         </div>
-      </DialogContent>
-    </Dialog>
+    </div>
 
     {/* -- AI Suggestions Dialog -- */}
     <Dialog open={aiDialogOpen} onOpenChange={setAiDialogOpen}>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import type {
   Atividade,
   CardItem,
@@ -34,6 +35,8 @@ import { parseOptionalPositiveScore } from "@/lib/question-score";
 export default function TopicsManager() {
   const { user, session } = useAuth();
   const professorId = user?.id;
+  const navigate = useNavigate();
+  const { topicoId: topicoIdParam } = useParams<{ topicoId?: string }>();
 
   const [topicos, setTopicos] = useState<Topico[]>([]);
   const [classes, setClasses] = useState<Classe[]>([]);
@@ -384,6 +387,7 @@ export default function TopicsManager() {
       await loadData();
       if (editingTopic) {
         setEditDrawerOpen(false);
+        navigate("/console/trilha");
       } else {
         setIsDialogOpen(false);
       }
@@ -759,7 +763,27 @@ export default function TopicsManager() {
       questionNota: "",
       questionOptions: [""],
     });
+    navigate("/console/trilha");
   };
+
+  // O editor de topico agora e uma pagina propria (/console/trilha/:topicoId/editar):
+  // a URL e a fonte da verdade sobre qual topico esta aberto. Isso cobre link
+  // direto, refresh e botao voltar do navegador, alem do clique em "Editar".
+  useEffect(() => {
+    if (!topicoIdParam) return;
+    const numericId = Number(topicoIdParam);
+    if (!Number.isFinite(numericId)) return;
+    if (editingTopic?.id === numericId) return;
+    if (topicos.length === 0) return; // ainda carregando a lista de topicos
+    const topic = topicos.find((t) => t.id === numericId);
+    if (topic) {
+      void handleEditOpen(topic);
+    } else {
+      toast.error("Tópico não encontrado.");
+      navigate("/console/trilha", { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topicoIdParam, topicos]);
 
   return (
     <div className="h-full flex flex-col gap-3">
@@ -1013,7 +1037,7 @@ export default function TopicsManager() {
                           <button
                             className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
                             title="Editar tópico"
-                            onClick={(e) => { e.stopPropagation(); handleEditOpen(topic); }}
+                            onClick={(e) => { e.stopPropagation(); navigate(`/console/trilha/${topic.id}/editar`); }}
                             onPointerDown={(e) => e.stopPropagation()}
                           >
                             <Pencil className="w-3 h-3" />
@@ -1102,7 +1126,6 @@ export default function TopicsManager() {
 
       <TopicEditDrawer
         open={editDrawerOpen}
-        onOpenChange={setEditDrawerOpen}
         editingTopic={editingTopic}
         classes={classes}
         materias={materias}

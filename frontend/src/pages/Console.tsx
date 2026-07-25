@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +27,7 @@ export interface ProfessorUpdateData {
 
 export default function Console() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, signOut, isLoading } = useAuth();
   const [professorData, setProfessorData] = useState<{
     id: string;
@@ -39,6 +40,15 @@ export default function Console() {
   const [isLoadingProfessor, setIsLoadingProfessor] = useState(false);
   const [view, setView] = useState<"trilha" | "dashboard" | "ranks" | "classes" | "personalizacoes" | "profile" | "aprovacoes">("dashboard");
   const isOwner = professorData?.email?.toLowerCase() === OWNER_EMAIL;
+
+  // /console/trilha e /console/trilha/:topicoId/editar sao rotas proprias (link
+  // compartilhavel, refresh funciona, botao voltar do navegador funciona) — as
+  // demais abas continuam so com estado local em /console.
+  useEffect(() => {
+    if (location.pathname.startsWith("/console/trilha")) {
+      setView("trilha");
+    }
+  }, [location.pathname]);
 
   useEffect(() => {
     const fetchProfessor = async () => {
@@ -155,7 +165,7 @@ export default function Console() {
           <Button
             variant={view === "dashboard" ? "default" : "outline"}
             size="sm"
-            onClick={() => setView("dashboard")}
+            onClick={() => { setView("dashboard"); navigate("/console"); }}
           >
             <LayoutDashboard className="h-4 w-4 mr-2" />
             Dashboard
@@ -163,7 +173,7 @@ export default function Console() {
           <Button
             variant={view === "trilha" ? "default" : "outline"}
             size="sm"
-            onClick={() => setView("trilha")}
+            onClick={() => { setView("trilha"); navigate("/console/trilha"); }}
           >
             <Route className="h-4 w-4 mr-2" />
             Trilha
@@ -171,7 +181,7 @@ export default function Console() {
           <Button
             variant={view === "classes" ? "default" : "outline"}
             size="sm"
-            onClick={() => setView("classes")}
+            onClick={() => { setView("classes"); navigate("/console"); }}
           >
             <GraduationCap className="h-4 w-4 mr-2" />
             Classes
@@ -179,7 +189,7 @@ export default function Console() {
           <Button
             variant={view === "personalizacoes" ? "default" : "outline"}
             size="sm"
-            onClick={() => setView("personalizacoes")}
+            onClick={() => { setView("personalizacoes"); navigate("/console"); }}
           >
             <Sparkles className="h-4 w-4 mr-2" />
             Personalizações
@@ -187,7 +197,7 @@ export default function Console() {
           <Button
             variant={view === "ranks" ? "default" : "outline"}
             size="sm"
-            onClick={() => setView("ranks")}
+            onClick={() => { setView("ranks"); navigate("/console"); }}
           >
             <Trophy className="h-4 w-4 mr-2" />
             Ranks
@@ -195,7 +205,7 @@ export default function Console() {
           <Button
             variant={view === "profile" ? "default" : "outline"}
             size="sm"
-            onClick={() => setView("profile")}
+            onClick={() => { setView("profile"); navigate("/console"); }}
           >
             <Settings className="h-4 w-4 mr-2" />
             Meus Dados
@@ -204,7 +214,7 @@ export default function Console() {
             <Button
               variant={view === "aprovacoes" ? "default" : "outline"}
               size="sm"
-              onClick={() => setView("aprovacoes")}
+              onClick={() => { setView("aprovacoes"); navigate("/console"); }}
             >
               <ShieldCheck className="h-4 w-4 mr-2" />
               Aprovações
