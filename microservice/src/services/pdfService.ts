@@ -1,6 +1,31 @@
 ﻿import { jsPDF } from "jspdf";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import { BRAIN_HEX_CONFIG, BrainHexProfile } from "../constants/brainHex";
 import { sanitizeLatin1 } from "../lib/textSanitize";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Arte oficial dos guardioes (mesmos PNGs usados no app mobile,
+// mobile/src/assets/guardioes/) — usada no painel esquerdo do slide em vez de
+// uma imagem generica gerada por IA, pra manter a identidade visual real do
+// personagem do perfil BrainHex.
+const guardianImageCache = new Map<BrainHexProfile, string | null>();
+
+function getGuardianImageDataUrl(profile: BrainHexProfile): string | null {
+  if (guardianImageCache.has(profile)) return guardianImageCache.get(profile) ?? null;
+  try {
+    const filePath = path.join(__dirname, "..", "assets", "guardioes", `${profile}.png`);
+    const base64 = fs.readFileSync(filePath).toString("base64");
+    const dataUrl = `data:image/png;base64,${base64}`;
+    guardianImageCache.set(profile, dataUrl);
+    return dataUrl;
+  } catch (e) {
+    guardianImageCache.set(profile, null);
+    return null;
+  }
+}
 
 // 16:9 slide dimensions
 const W = 1280;
@@ -84,6 +109,7 @@ export async function generateSlidesPDF(
   });
 
   const total = slides.length;
+  const guardianImage = getGuardianImageDataUrl(profile);
 
   for (let i = 0; i < total; i++) {
     if (i > 0) doc.addPage([W, H], "landscape");
@@ -93,7 +119,11 @@ export async function generateSlidesPDF(
     const topics     = (s.topics || []).map(ptbr).filter(Boolean);
     const expText    = ptbr(s.explanation || "");
     const quote      = ptbr(s.characterQuote || "");
-    const imgRef     = s.imagem_referencia || "";
+    // imagem_referencia (quando presente) e uma ilustracao generica gerada por
+    // IA a partir de um prompt abstrato — nao e o personagem guardiao real.
+    // Preferimos sempre a arte oficial do guardiao do perfil; a imagem gerada
+    // (se houver) so entra como fallback caso a arte oficial nao carregue.
+    const imgRef = guardianImage || s.imagem_referencia || "";
 
     // ───────────────── LEFT PANEL (imagem + guia) ─────────────────
     doc.setFillColor(...bgDark);

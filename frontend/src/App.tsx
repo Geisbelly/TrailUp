@@ -35,13 +35,29 @@ const App = () => (
             <Route path="/cadastro-professor" element={<CadastroProfessor />} />
             <Route path="/auth/confirmacao" element={<AuthConfirm />} />
             <Route path="/login" element={<Login />} />
-            <Route 
-              path="/console" 
+            <Route
+              path="/console"
               element={
                 <ProtectedRoute allowedRoles={["professor"]} requireLiberado>
                   <Console />
                 </ProtectedRoute>
-              } 
+              }
+            />
+            <Route
+              path="/console/trilha"
+              element={
+                <ProtectedRoute allowedRoles={["professor"]} requireLiberado>
+                  <Console />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/console/trilha/:topicoId/editar"
+              element={
+                <ProtectedRoute allowedRoles={["professor"]} requireLiberado>
+                  <Console />
+                </ProtectedRoute>
+              }
             />
             <Route path="/blog" element={<Blog />} />
             <Route path="/blog/:id" element={<BlogPost />} />

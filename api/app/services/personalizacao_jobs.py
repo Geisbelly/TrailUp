@@ -20,6 +20,7 @@ from app.repositories.personalizacao_progresso import PersonalizacaoProgressoRep
 from app.services.classe_mapa_tema import gerar_classe_mapa_tema
 from app.services.media_agents import disparar_brainhex_async
 from app.services.personalizacao import (
+    _build_profile_editorial_context,
     _materialize_and_upload_media_assets,
     build_personalizacao_steps,
     fetch_personalizacao_context,
@@ -646,6 +647,10 @@ async def _process_media_render_target(
     )
     cards_ids = [c["id"] for c in saved_cards if isinstance(c, dict) and c.get("id")]
 
+    perfil_editorial = _build_profile_editorial_context(
+        ctx["perfil_dominante"], ctx["perfil_brainhex"]
+    )
+
     record_id = await repo.salvar(
         aluno_id=aluno_id,
         classe_id=classe_id,
@@ -659,6 +664,13 @@ async def _process_media_render_target(
             "formatos": ["cards", "audio", "apresentacao", "markdown"],
             "refresh_policy": {"mode": "once", "trigger_actions": []},
             "cards_personalizados_ids": cards_ids,
+            # Tom/estilo vem da assinatura editorial real do perfil (sem LLM) —
+            # essa geracao e a base compartilhada por perfil (sem plano do
+            # planejador_conteudo.txt, que so roda no fluxo por aluno).
+            "tom": perfil_editorial.get("tom_voz") or "neutro",
+            "estilo": perfil_editorial.get("progressao_narrativa") or "direto",
+            "nivel": "equilibrado",
+            "editorial_metadata": {"perfil_editorial": perfil_editorial},
         },
         materiais={},
         ai_patch=None,

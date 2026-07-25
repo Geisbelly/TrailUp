@@ -17,12 +17,15 @@ import {
   type PersonalizacaoPerfilItem,
   type PersonalizacaoPorPerfilResponse,
 } from "./personalizacoesApi";
+import { PerfilConteudoDialog } from "./PerfilConteudoDialog";
 
 type ClasseRow = { id: number; descricao: string | null };
 type TopicoRow = { id: number; classe_id: number; nome: string | null; ordem: number | null };
 type AlunoRow = { id: string; nome: string | null; email: string | null; perfil_dominante: string };
 
-const MATERIAL_TIPOS: Array<{ key: string; label: string; icon: typeof FileText }> = [
+type MaterialTipo = "markdown" | "pdf" | "audio" | "apresentacao";
+
+const MATERIAL_TIPOS: Array<{ key: MaterialTipo; label: string; icon: typeof FileText }> = [
   { key: "markdown", label: "Texto", icon: NotebookPen },
   { key: "pdf", label: "PDF", icon: FileText },
   { key: "audio", label: "Áudio", icon: Music },
@@ -534,6 +537,9 @@ function PaletaPreview({ item }: { item: PersonalizacaoPerfilItem }) {
 }
 
 function PerfilMaterialCard({ item }: { item: PersonalizacaoPerfilItem }) {
+  const [dialogTab, setDialogTab] = useState<MaterialTipo | null>(null);
+  const temAlgumMaterial = MATERIAL_TIPOS.some(({ key }) => getMaterial(item.materiais, key));
+
   return (
     <Card className="overflow-hidden">
       <div className="h-1.5 w-full" style={{ backgroundColor: item.cor }} />
@@ -568,14 +574,13 @@ function PerfilMaterialCard({ item }: { item: PersonalizacaoPerfilItem }) {
                         {label}
                       </span>
                       {url ? (
-                        <a
-                          href={url}
-                          target="_blank"
-                          rel="noreferrer"
+                        <button
+                          type="button"
+                          onClick={() => setDialogTab(key)}
                           className="text-xs text-primary underline underline-offset-2"
                         >
-                          abrir
-                        </a>
+                          ver
+                        </button>
                       ) : material ? (
                         <span className="text-xs text-muted-foreground">processando</span>
                       ) : (
@@ -586,6 +591,11 @@ function PerfilMaterialCard({ item }: { item: PersonalizacaoPerfilItem }) {
                 })}
               </div>
             </div>
+            {temAlgumMaterial && (
+              <Button variant="outline" size="sm" className="w-full" onClick={() => setDialogTab(dialogTab ?? "markdown")}>
+                Ver conteúdo completo
+              </Button>
+            )}
           </>
         ) : (
           <p className="text-sm text-muted-foreground">
@@ -593,6 +603,12 @@ function PerfilMaterialCard({ item }: { item: PersonalizacaoPerfilItem }) {
           </p>
         )}
       </CardContent>
+      <PerfilConteudoDialog
+        item={item}
+        open={dialogTab !== null}
+        onOpenChange={(open) => setDialogTab(open ? dialogTab : null)}
+        initialTab={dialogTab ?? undefined}
+      />
     </Card>
   );
 }
