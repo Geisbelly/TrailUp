@@ -189,6 +189,97 @@ export async function deleteClassTrail(classeId: number) {
   if (e7) throw e7;
 }
 
+async function fetchTopicDependencyIds(topicoId: number) {
+  const { data: conteudoRows, error: conteudoErr } = await supabase
+    .from("conteudos")
+    .select("id")
+    .eq("topico_id", topicoId);
+  if (conteudoErr) throw conteudoErr;
+  const conteudoIds = (conteudoRows ?? []).map((row: IdRow) => row.id);
+
+  const { data: atividadeRows, error: atividadeErr } = await supabase
+    .from("atividades")
+    .select("id")
+    .eq("topico_id", topicoId);
+  if (atividadeErr) throw atividadeErr;
+  const atividadeIds = (atividadeRows ?? []).map((row: IdRow) => row.id);
+
+  let questionIds: number[] = [];
+  if (atividadeIds.length > 0) {
+    const { data: questionRows, error: questionErr } = await supabase
+      .from("questoes")
+      .select("id")
+      .in("atividade_id", atividadeIds);
+    if (questionErr) throw questionErr;
+    questionIds = (questionRows ?? []).map((row: IdRow) => row.id);
+  }
+
+  return { conteudoIds, atividadeIds, questionIds };
+}
+
+/** Remove um unico conteudo e tudo que depende dele (mesma ordem de deleteClassTrail,
+ * so que para 1 id em vez de um lote) — usado ao excluir um item da lista de conteudos
+ * do topico, que antes tentava DELETE direto em `conteudos` e batia em 409 de FK. */
+export async function deleteContentCascade(conteudoId: number) {
+  await tryDeleteEq("conteudo_aluno", "conteudo_id", conteudoId);
+  await tryDeleteEq("materiais_gerados", "conteudo_id", conteudoId);
+  await tryDeleteEq("conteudo_personalizado", "conteudo_id", conteudoId);
+  await tryDeleteEq("fontes_personalizacao", "conteudo_id", conteudoId);
+  await tryDeleteEq("cards", "conteudo_id", conteudoId);
+  await tryDeleteEq("atividade_conteudos", "conteudo_id", conteudoId);
+
+  const { error } = await supabase.from("conteudos").delete().eq("id", conteudoId);
+  if (error) throw error;
+}
+
+/** Remove um unico topico e tudo que depende dele (conteudos, atividades, questoes,
+ * cards, links, personalizacoes, progresso) — mesmo grafo de dependencias de
+ * deleteClassTrail, so que para 1 topico em vez do lote da classe inteira. Antes
+ * tentava DELETE direto em `topicos` e batia em 409 de FK sempre que o topico
+ * tinha qualquer conteudo/atividade cadastrado. */
+export async function deleteTopicCascade(topicoId: number) {
+  const { conteudoIds, atividadeIds, questionIds } = await fetchTopicDependencyIds(topicoId);
+
+  await tryDeleteEq("topico_aluno", "topico_id", topicoId);
+  await tryDeleteEq("conteudo_personalizado", "topico_id", topicoId);
+  await tryDeleteEq("fontes_personalizacao", "topico_id", topicoId);
+  await tryDeleteEq("personalizacao_item_progresso", "topico_id", topicoId);
+
+  await tryDeleteIn("conteudo_aluno", "conteudo_id", conteudoIds);
+  await tryDeleteIn("materiais_gerados", "conteudo_id", conteudoIds);
+  await tryDeleteIn("conteudo_personalizado", "conteudo_id", conteudoIds);
+  await tryDeleteIn("fontes_personalizacao", "conteudo_id", conteudoIds);
+  await tryDeleteIn("atividade_aluno", "atividade_id", atividadeIds);
+  await tryDeleteIn("questao_aluno", "questao_id", questionIds);
+
+  if (atividadeIds.length > 0) {
+    const { error: e1 } = await supabase.from("questoes").delete().in("atividade_id", atividadeIds);
+    if (e1) throw e1;
+    const { error: e2 } = await supabase.from("atividade_conteudos").delete().in("atividade_id", atividadeIds);
+    if (e2) throw e2;
+  }
+
+  if (conteudoIds.length > 0) {
+    const { error: e3 } = await supabase.from("cards").delete().in("conteudo_id", conteudoIds);
+    if (e3) throw e3;
+    const { error: e4 } = await supabase.from("atividade_conteudos").delete().in("conteudo_id", conteudoIds);
+    if (e4) throw e4;
+  }
+
+  if (atividadeIds.length > 0) {
+    const { error: e5 } = await supabase.from("atividades").delete().in("id", atividadeIds);
+    if (e5) throw e5;
+  }
+
+  if (conteudoIds.length > 0) {
+    const { error: e6 } = await supabase.from("conteudos").delete().in("id", conteudoIds);
+    if (e6) throw e6;
+  }
+
+  const { error: e7 } = await supabase.from("topicos").delete().eq("id", topicoId);
+  if (e7) throw e7;
+}
+
 export async function deleteClasseCascade(classeId: number) {
   await deleteClassTrail(classeId);
   await tryDeleteEq("telemetria_lotes", "classe_id", classeId);

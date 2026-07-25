@@ -13,6 +13,7 @@ import {
   createClassWithMateria,
 } from "./topicsApi";
 import { parseOptionalPositiveScore } from "@/lib/question-score";
+import { deleteTopicCascade } from "./classDeletion";
 import type { Atividade, CardItem, Conteudo, Questao, Topico } from "./types";
 
 type CrudDeps = {
@@ -473,8 +474,7 @@ export function useTopicCrud({
         if (err?.error) throw err.error;
       }
 
-      const { error } = await supabase.from("topicos").delete().eq("id", id);
-      if (error) throw error;
+      await deleteTopicCascade(id);
 
       if (setTopicos) {
         setTopicos((prev) =>

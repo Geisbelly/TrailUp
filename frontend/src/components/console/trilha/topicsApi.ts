@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { normalizeOptionalPositiveScore } from "@/lib/question-score";
+import { deleteContentCascade } from "./classDeletion";
 import type { Atividade, AtividadeConteudo, CardItem, Conteudo, Materia, Classe, Topico, Questao } from "./types";
 
 // ===== Fetchers =======================================================
@@ -467,8 +468,7 @@ export async function saveAiSuggestionsBatch(params: {
 }
 
 export async function deleteContent(id: number) {
-  const { error } = await supabase.from("conteudos").delete().eq("id", id);
-  if (error) throw error;
+  await deleteContentCascade(id);
 }
 
 /** Persiste nova ordem dos conteúdos após drag-and-drop */
