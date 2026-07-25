@@ -428,6 +428,22 @@ function extractSlideBackgroundColor(slideJson: any) {
   );
 }
 
+// Chaves de propriedades de formatacao (rPr/pPr/lstStyle etc.) — o parser XML
+// (ignoreAttributes:false, attributeNamePrefix:"") funde atributos e elementos
+// filhos no mesmo objeto, entao um <a:rPr lang="pt-BR"><a:latin typeface="Ubuntu"/></a:rPr>
+// vira objeto com folhas string ("pt-BR", "Ubuntu") indistinguiveis de texto
+// real sem esse filtro. Sem ele, collectTextFragments concatenava esses
+// valores de atributo (tema, fonte, idioma) junto com o <a:t> de verdade,
+// corrompendo o texto exibido no visualizador (ex.: "accent1UbuntuUbuntu...").
+const TEXT_FRAGMENT_SKIP_KEYS = new Set([
+  "rPr",
+  "endParaRPr",
+  "defRPr",
+  "pPr",
+  "lstStyle",
+  "bodyPr",
+]);
+
 function collectTextFragments(node: any): string[] {
   if (!node) return [];
 
@@ -445,6 +461,7 @@ function collectTextFragments(node: any): string[] {
       const text = value.trim();
       return text ? [text] : [];
     }
+    if (TEXT_FRAGMENT_SKIP_KEYS.has(key)) return [];
     return collectTextFragments(value);
   });
 }

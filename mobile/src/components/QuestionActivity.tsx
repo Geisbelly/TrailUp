@@ -9,6 +9,7 @@ import { Color, FontFamily } from '@/styles/GlobalStyle';
 import { normalizeContentBlock } from '@/utils/contentBlocks';
 import { getProfileShellPalette } from '@/utils/profileShellTheme';
 import { QuestaoAluno } from '@/models/QuestaoAluno';
+import { EssayValidationResult, validateEssayAnswerWithAi } from '@/utils/essayValidation';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Image, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -499,6 +500,8 @@ export default function QuestionActivity({
   const [reResponder, setReResponder] = useState(false);
   const [timeoutLocked, setTimeoutLocked] = useState<Record<number, boolean>>({});
   const [mostrarResposta, setMostrarResposta] = useState(false);
+  const [validandoIA, setValidandoIA] = useState(false);
+  const [feedbackIA, setFeedbackIA] = useState<Record<number, EssayValidationResult | null>>({});
   const [modalVisivel, setModalVisivel] = useState(false);
   const [modalInfo, setModalInfo] = useState<{ titulo: string; descricao: string; pontos?: number; acerto?: boolean }>({
     titulo: '',
@@ -993,25 +996,56 @@ export default function QuestionActivity({
       ))}
 
       <TouchableOpacity
-        disabled={!podeConfirmar}
-        onPress={() => {
+        disabled={!podeConfirmar || validandoIA}
+        onPress={async () => {
           const escolhido = selecionados[questaoIndex];
           const respostaDigitada = respostaTextoAtual.trim();
-          if (!podeConfirmar) return;
+          if (!podeConfirmar || validandoIA) return;
 
           const respostaSelecionada = isFillBlankActivity || isDissertativaActivity
             ? respostaDigitada
             : String(alternativas[escolhido ?? -1] ?? '');
-          const acertou = isFillBlankActivity || isDissertativaActivity
-            ? checkResposta(respostaSelecionada, -1)
-            : checkResposta(alternativas[escolhido ?? -1], escolhido ?? -1);
-          const acertosPercent = acertou
-            ? viuRespostaAntes
-              ? 20
-              : reResponder
-              ? 50
-              : 100
-            : 0;
+
+          // Dissertativa: valida por IA (contexto do enunciado + gabarito do
+          // professor) em vez de comparar texto/similaridade — perguntas
+          // abertas nao tem uma unica resposta "certa" pra comparar.
+          // Em erro de rede/funcao fora do ar, cai pro checkResposta local
+          // (comparacao de texto) pra nao travar o fluxo do aluno.
+          let acertou: boolean;
+          let acertosPercentBase = 100;
+          let resultadoIA: EssayValidationResult | null = null;
+          if (isDissertativaActivity && respostaDigitada) {
+            setValidandoIA(true);
+            try {
+              resultadoIA = await validateEssayAnswerWithAi({
+                enunciado: String(questao?.enunciado ?? ''),
+                respostaAluno: respostaDigitada,
+                respostaProfessor: acceptedAnswers[0] ?? questao?.resposta_correta ?? null,
+              });
+              acertou = resultadoIA.correta;
+              acertosPercentBase = resultadoIA.percentual;
+            } catch (err) {
+              console.warn('[QuestionActivity] Falha ao validar resposta dissertativa por IA, usando comparacao local:', err);
+              acertou = checkResposta(respostaSelecionada, -1);
+              acertosPercentBase = acertou ? 100 : 0;
+            } finally {
+              setValidandoIA(false);
+            }
+            setFeedbackIA((prev) => ({ ...prev, [questaoIndex]: resultadoIA }));
+          } else {
+            acertou = isFillBlankActivity
+              ? checkResposta(respostaSelecionada, -1)
+              : checkResposta(alternativas[escolhido ?? -1], escolhido ?? -1);
+            acertosPercentBase = acertou ? 100 : 0;
+          }
+
+          const acertosPercent = acertosPercentBase <= 0
+            ? 0
+            : viuRespostaAntes
+            ? Math.round(acertosPercentBase * 0.2)
+            : reResponder
+            ? Math.round(acertosPercentBase * 0.5)
+            : Math.round(acertosPercentBase);
           setStas((prev) => ({ ...prev, [questaoIndex]: acertou ? 'certo' : 'errado' }));
           setConfirmados((prev) => ({ ...prev, [questaoIndex]: true }));
           if (isFillBlankActivity || isDissertativaActivity) {
@@ -1149,6 +1183,7 @@ export default function QuestionActivity({
             score_penalty_pct: scorePenaltyPct,
           };
           const explicacao =
+            resultadoIA?.feedback ??
             questao?.correcao ??
             questao?.explicacao ??
             questao?.comentario ??
@@ -1156,15 +1191,18 @@ export default function QuestionActivity({
             questao?.feedback ??
             '';
           if (acertou) {
+            const mensagemBase = !atividadeCompleta
+              ? 'Sua resposta foi registrada. Avance para as proximas questoes para concluir a atividade.'
+              : viuRespostaAntes
+              ? `Você já tinha visto o gabarito. Pontuação reduzida para ${pontosGanhos || 0} pontos (20%).`
+              : timedOut
+              ? `Você concluiu a atividade, mas o tempo expirou antes. Pontuação final: ${pontosGanhos || 0} pontos com penalidade de 20%.`
+              : `Você ganhou ${pontosGanhos || 0} pontos. Continue assim!`;
             setModalInfo({
               titulo: atividadeCompleta ? 'Parabéns!' : 'Questão registrada',
-              descricao: !atividadeCompleta
-                ? 'Sua resposta foi registrada. Avance para as proximas questoes para concluir a atividade.'
-                : viuRespostaAntes
-                ? `Você já tinha visto o gabarito. Pontuação reduzida para ${pontosGanhos || 0} pontos (20%).`
-                : timedOut
-                ? `Você concluiu a atividade, mas o tempo expirou antes. Pontuação final: ${pontosGanhos || 0} pontos com penalidade de 20%.`
-                : `Você ganhou ${pontosGanhos || 0} pontos. Continue assim!`,
+              descricao: resultadoIA?.feedback
+                ? `${mensagemBase}\n\n${resultadoIA.feedback}`
+                : mensagemBase,
               pontos: atividadeCompleta ? pontosGanhos : 0,
               acerto: true,
             });
@@ -1262,13 +1300,17 @@ export default function QuestionActivity({
           marginTop: 14,
           padding: 12,
           borderRadius: 10,
-          backgroundColor: podeConfirmar ? profilePalette.accent : profilePalette.inactive,
+          backgroundColor: podeConfirmar && !validandoIA ? profilePalette.accent : profilePalette.inactive,
           alignItems: 'center',
-          opacity: podeConfirmar ? 1 : 0.5,
+          opacity: podeConfirmar && !validandoIA ? 1 : 0.5,
         }}
       >
         <Text style={{ color: '#fff', fontWeight: '700' }}>
-          {blockedByTimeout ? 'Tempo encerrado para esta tentativa' : 'Confirmar resposta'}
+          {validandoIA
+            ? 'Validando resposta com IA...'
+            : blockedByTimeout
+            ? 'Tempo encerrado para esta tentativa'
+            : 'Confirmar resposta'}
         </Text>
       </TouchableOpacity>
 
