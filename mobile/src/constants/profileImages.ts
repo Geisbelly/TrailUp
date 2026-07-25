@@ -233,13 +233,13 @@ export const getBrainHexConfig = (profileName?: string) => {
 };
 
 export const brainHexGuideNames: Record<BrainHexProfile, string> = {
-  seeker: "Orion",
-  survivor: "Valka",
-  daredevil: "Rexa",
-  mastermind: "Atena",
-  conqueror: "Drako",
-  socializer: "Luma",
-  achiever: "Auri",
+  seeker: "Amara",
+  survivor: "Kenji",
+  daredevil: "Ember",
+  mastermind: "Idris",
+  conqueror: "Amina",
+  socializer: "Mateo",
+  achiever: "Kwame",
 };
 
 export const getBrainHexGuideName = (profileName?: string | null): string => {

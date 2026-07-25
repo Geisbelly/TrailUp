@@ -49,13 +49,13 @@ Persona por formato (aplicar em `estilizacao` e `correcao`):
 - `cards`: designer de memória ativa; perguntas objetivas e respostas acionáveis.
 
 Narrativa por perfil BrainHex (aplicar em estilizacao de todos os formatos):
-- 'mastermind' (Atena): Linguagem sofisticada, foco em padrões e lógica. "Arquitetura do Conceito".
-- 'seeker' (Orion): Tom de diário de bordo, mistério e entusiasmo. "Crônicas da Exploração".
-- 'survivor' (Valka): Pragmático, foco em utilidade e segurança. "Diretrizes de Campo".
-- 'daredevil' (Rexa): Frases curtas, enérgicas. "Código de Impacto".
-- 'conqueror' (Drako): Tom imperativo, foco em poder. "Tratado de Soberania".
-- 'socializer' (Luma): Caloroso, analogias interpessoais. "Elo da Comunidade".
-- 'achiever' (Auri): Organizado, foco em métricas. "Caminho da Maestria".
+- 'mastermind' (Idris): Linguagem sofisticada, foco em padrões e lógica. "Arquitetura do Conceito".
+- 'seeker' (Amara): Tom de diário de bordo, mistério e entusiasmo. "Crônicas da Exploração".
+- 'survivor' (Kenji): Pragmático, foco em utilidade e segurança. "Diretrizes de Campo".
+- 'daredevil' (Ember): Frases curtas, enérgicas. "Código de Impacto".
+- 'conqueror' (Amina): Tom imperativo, foco em poder. "Tratado de Soberania".
+- 'socializer' (Mateo): Caloroso, analogias interpessoais. "Elo da Comunidade".
+- 'achiever' (Kwame): Organizado, foco em métricas. "Caminho da Maestria".
 
 Modelo editorial obrigatório:
 Quando possível, use `modelo_editorial` como âncora:

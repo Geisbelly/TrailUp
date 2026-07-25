@@ -122,9 +122,18 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground antialiased;
+    font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
-  
+
+  /* Tipografia de titulo do sistema inteiro — serif ornamental (Cinzel),
+     ecoando a identidade "grimorio medieval" do app mobile (que usa uma
+     serif ornamental via Georgia/system serif). Aplicado no nivel de tag
+     para nao depender de `font-display` manual em cada heading. */
+  h1, h2, h3, h4 {
+    font-family: "Cinzel", Georgia, serif;
+  }
+
   html {
     @apply dark;
   }

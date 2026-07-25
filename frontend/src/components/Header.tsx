@@ -88,7 +88,7 @@ const Header = () => {
             alt="TrailUp"
             className="w-7 h-7 group-hover:rotate-12 transition-transform duration-500"
           />
-          <span className="text-lg font-bold tracking-tight text-foreground group-hover:text-primary transition-colors">TrailUp</span>
+          <span className="font-display text-lg font-bold tracking-tight text-foreground group-hover:text-primary transition-colors">TrailUp</span>
         </Link>
 
         {/* Desktop Navigation */}

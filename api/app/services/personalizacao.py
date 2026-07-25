@@ -222,43 +222,43 @@ _BRAINHEX_EDITORIAL_SIGNATURES: dict[str, dict[str, Any]] = {
 
 _BRAINHEX_GUIDE_PERSONAS: dict[str, dict[str, str]] = {
     "Mastermind": {
-        "guia_nome": "Atena",
+        "guia_nome": "Idris",
         "guia_voz": "Charon",
         "guia_cor": "#707c88",
         "framing_narrativo": "Arquitetura do Conceito",
     },
     "Seeker": {
-        "guia_nome": "Orion",
+        "guia_nome": "Amara",
         "guia_voz": "Puck",
         "guia_cor": "#a78c07",
         "framing_narrativo": "Crônicas da Exploração",
     },
     "Survivor": {
-        "guia_nome": "Valka",
+        "guia_nome": "Kenji",
         "guia_voz": "Fenrir",
         "guia_cor": "#720101",
         "framing_narrativo": "Diretrizes de Campo",
     },
     "Daredevil": {
-        "guia_nome": "Rexa",
+        "guia_nome": "Ember",
         "guia_voz": "Zephyr",
         "guia_cor": "#1b6b1b",
         "framing_narrativo": "Código de Impacto",
     },
     "Conqueror": {
-        "guia_nome": "Drako",
+        "guia_nome": "Amina",
         "guia_voz": "Kore",
         "guia_cor": "#01808b",
         "framing_narrativo": "Tratado de Soberania",
     },
     "Socialiser": {
-        "guia_nome": "Luma",
+        "guia_nome": "Mateo",
         "guia_voz": "Kore",
         "guia_cor": "#6d15be",
         "framing_narrativo": "Elo da Comunidade",
     },
     "Achiever": {
-        "guia_nome": "Auri",
+        "guia_nome": "Kwame",
         "guia_voz": "Puck",
         "guia_cor": "#ad6002",
         "framing_narrativo": "Caminho da Maestria",

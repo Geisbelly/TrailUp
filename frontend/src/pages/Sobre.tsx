@@ -6,9 +6,10 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// PARA SEU PROJETO: Descomente as importações reais
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import GradientBlobs from "@/components/GradientBlobs";
+import { HallBackground, OrnamentDivider } from "@/components/HallOrnaments";
 
 
 
@@ -16,11 +17,12 @@ const Sobre = () => {
   return (
     <div className="min-h-screen bg-background text-foreground font-sans flex flex-col overflow-x-hidden selection:bg-primary/30 relative">
       
-      {/* Background Effects */}
+      {/* Background Effects — mesma linguagem do Hero: piso de losango +
+          vinheta (HallBackground) e blobs de gradiente, em vez do grid de
+          pontos genérico. */}
       <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:24px_24px]" />
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-primary/10 blur-[120px] rounded-full opacity-40 animate-pulse duration-[4000ms]" />
-        <div className="absolute bottom-0 right-0 w-[600px] h-[500px] bg-accent/5 blur-[100px] rounded-full opacity-30" />
+        <HallBackground accent="hsl(266 95% 66%)" />
+        <GradientBlobs preset="top-center" />
       </div>
 
       <Header />
@@ -34,12 +36,15 @@ const Sobre = () => {
             <Sparkles className="w-3 h-3 mr-2" />
             Nossa Essência
           </div>
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6 tracking-tight text-foreground leading-tight">
+          <h1 className="font-display text-5xl md:text-6xl lg:text-7xl font-bold mb-6 tracking-tight text-foreground leading-[1.15] pb-1">
             Sobre o <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">TrailUp</span>
           </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed mb-6">
             Transformando a educação universitária através de gamificação inteligente, personalização científica e design centrado no aluno.
           </p>
+          <div className="max-w-xs mx-auto">
+            <OrnamentDivider color="hsl(var(--primary))" />
+          </div>
         </section>
 
         {/* Mission Section - Featured Card */}
@@ -52,7 +57,7 @@ const Sobre = () => {
                   <div className="inline-flex p-3 rounded-xl bg-primary/10 text-primary mb-2">
                     <Rocket className="w-8 h-8" />
                   </div>
-                  <h2 className="text-3xl font-bold text-foreground">Nossa Missão</h2>
+                  <h2 className="font-display text-3xl font-bold text-foreground">Nossa Missão</h2>
                   <p className="text-muted-foreground text-lg leading-relaxed">
                     O TrailUp nasceu com o objetivo de revolucionar a forma como universitários aprendem. 
                     Acreditamos que cada estudante é único e merece uma experiência de aprendizado personalizada 
@@ -75,32 +80,32 @@ const Sobre = () => {
         {/* Values Grid */}
         <section className="container mx-auto mb-24">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-foreground mb-4">Nossos Valores</h2>
+            <h2 className="font-display text-3xl font-bold text-foreground mb-4">Nossos Valores</h2>
             <p className="text-muted-foreground">Os pilares que sustentam nossa plataforma</p>
           </div>
-          
+
           <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
             {[
-              { 
-                icon: Target, 
-                title: "Personalização", 
+              {
+                icon: Target,
+                title: "Personalização",
                 desc: "Cada aluno recebe uma trilha adaptada ao seu perfil único de aprendizado.",
-                color: "text-emerald-500",
-                bg: "bg-emerald-500/10"
+                color: "text-primary",
+                bg: "bg-primary/10"
               },
-              { 
-                icon: Zap, 
-                title: "Engajamento", 
+              {
+                icon: Zap,
+                title: "Engajamento",
                 desc: "Gamificação inteligente que realmente motiva e mantém o interesse.",
-                color: "text-amber-500",
-                bg: "bg-amber-500/10"
+                color: "text-warning",
+                bg: "bg-warning/10"
               },
-              { 
-                icon: Users, 
-                title: "Comunidade", 
+              {
+                icon: Users,
+                title: "Comunidade",
                 desc: "Construímos uma comunidade de aprendizado colaborativo e suporte mútuo.",
-                color: "text-blue-500",
-                bg: "bg-blue-500/10"
+                color: "text-accent",
+                bg: "bg-accent/10"
               }
             ].map((item, index) => (
               <Card 
@@ -130,7 +135,7 @@ const Sobre = () => {
               <div className="inline-flex p-3 rounded-xl bg-primary/10 text-primary w-fit mb-4">
                 <BookOpen className="w-6 h-6" />
               </div>
-              <h3 className="text-2xl font-bold text-foreground mb-2">Nossa História</h3>
+              <h3 className="font-display text-2xl font-bold text-foreground mb-2">Nossa História</h3>
               <div className="h-1 w-12 bg-primary rounded-full" />
             </div>
             <div className="space-y-4 text-muted-foreground text-lg leading-relaxed">
@@ -169,7 +174,7 @@ const Sobre = () => {
               <div className="inline-flex p-3 rounded-xl bg-accent/10 text-accent w-fit mb-4">
                 <BrainCircuit className="w-6 h-6" />
               </div>
-              <h3 className="text-2xl font-bold text-foreground mb-2">Tecnologia e Ciência</h3>
+              <h3 className="font-display text-2xl font-bold text-foreground mb-2">Tecnologia e Ciência</h3>
               <div className="h-1 w-12 bg-accent rounded-full" />
             </div>
           </div>

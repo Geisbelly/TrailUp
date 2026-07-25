@@ -62,7 +62,7 @@ async def test_gerar_conteudo_brainhex_parses_api_response(settings, conteudo_es
                 "topics": ["Consistência", "Disponibilidade"],
                 "explanation": "Síntese Técnica: O teorema CAP...",
                 "visualDescription": "Diagrama de três engrenagens interligadas.",
-                "characterQuote": "Atena: 'A lógica revela padrões ocultos.'",
+                "characterQuote": "Idris: 'A lógica revela padrões ocultos.'",
                 "characterAction": "explaining",
                 "imagePrompt": "Three gears representing CAP theorem, magical alchemy style",
                 "sourceIds": [],

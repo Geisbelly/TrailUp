@@ -63,7 +63,7 @@ const Features = () => {
           ref={header.ref}
           className={`reveal ${header.inView ? "reveal-in" : ""} text-center max-w-3xl mx-auto mb-16`}
         >
-          <h2 className="text-4xl md:text-5xl font-bold mb-4">
+          <h2 className="font-display text-4xl md:text-5xl font-bold mb-4 leading-[1.2] pb-1">
             Por que escolher o{" "}
             <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               TrailUp?

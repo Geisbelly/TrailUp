@@ -14,7 +14,7 @@ const Footer = () => {
               <div className="p-2 rounded-xl bg-card border border-border/50 group-hover:border-primary/50 group-hover:bg-primary/10 transition-all duration-300 shadow-lg shadow-black/20">
                 <img src={trailupLogo} alt="TrailUp" className="w-6 h-6 group-hover:rotate-12 transition-transform duration-500" />
               </div>
-              <span className="text-xl font-bold text-foreground tracking-tight group-hover:text-primary transition-colors">TrailUp</span>
+              <span className="font-display text-xl font-bold text-foreground tracking-tight group-hover:text-primary transition-colors">TrailUp</span>
             </Link>
             
             <div className="hidden md:block w-px h-8 bg-border/40" />

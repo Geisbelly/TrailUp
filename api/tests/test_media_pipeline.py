@@ -35,7 +35,7 @@ def _context(perfil_dominante: str = "seeker") -> MediaPipelineContext:
     return MediaPipelineContext(
         state={
             "topico_contexto": {"nome": "SPD", "descricao": "Fundamentos de sistemas distribuídos"},
-            "perfil_editorial": {"guia_voz": "Puck", "guia_nome": "Orion"},
+            "perfil_editorial": {"guia_voz": "Puck", "guia_nome": "Amara"},
             "perfil_brainhex": [{"perfil": perfil_dominante, "afinidade": 0.9}],
             "perfil_dominante": perfil_dominante,
         },
@@ -123,7 +123,7 @@ async def test_slides_pipeline_normalize_new_schema() -> None:
                     "topics": ["Pista 1", "Pista 2"],
                     "explanation": "Insight da Jornada sobre o tema",
                     "visualDescription": "Mapa com trilha luminosa",
-                    "characterQuote": "Orion diz: siga a estrela guia",
+                    "characterQuote": "Amara diz: siga a estrela guia",
                     "characterAction": "explaining",
                     "imagePrompt": "2D magical glowing compass in forest",
                     "sourceIds": ["src-1", "src-2"],
@@ -138,7 +138,7 @@ async def test_slides_pipeline_normalize_new_schema() -> None:
     assert slide["titulo"] == "Conceito Central"
     assert slide["topics"] == ["Pista 1", "Pista 2"]
     assert slide["characterAction"] == "explaining"
-    assert slide["characterQuote"] == "Orion diz: siga a estrela guia"
+    assert slide["characterQuote"] == "Amara diz: siga a estrela guia"
     assert slide["imagePrompt"] == "2D magical glowing compass in forest"
     assert slide["sourceIds"] == ["src-1", "src-2"]
     assert "pontos" not in slide
