@@ -208,83 +208,86 @@ export function isAllAnswered(answers: BrainHexAnswers) {
 }
 
 
-// Cores amostradas diretamente da arte de cada guardiao
-// (frontend/src/assets/guardioes/*.webp — poster "Os Guardioes da Trilha"
-// fornecido pela usuaria), nao mais da cor-assinatura oficial abstrata de
-// microservice/src/constants/brainHex.ts. As duas divergem bastante: a arte
-// comissionada usa paleta propria por personagem (ex.: Conqueror de roxo,
-// Survivor de azul) que nao bate com o hex "oficial" do sistema de perfis —
-// e como a arte e o que o usuario realmente ve na secao "Guardioes da
-// Trilha" e no resultado do quiz, a cor da UI segue a arte, nao o hex
-// abstrato. Extraida a cor dominante da roupa/manto (script com sharp,
-// histograma de matiz por contagem de pixel, ignorando pele/cabelo/fundo
-// transparente) e depois só a luminosidade HSL foi elevada até ~4.5:1 de
-// contraste contra o fundo escuro do site — matiz e saturação da cor
-// original ficam intactos (mesmo principio de _ensure_min_contrast em api/,
-// documentado no CLAUDE.md: nunca misturar com branco). Ainda assim é uma
-// variante própria desta superfície — não é o mesmo valor nem o mesmo
-// algoritmo do accent computado em api/app/api/v1/personalizacao.py ou do
-// "accent" estático em src/lib/personalizacao-theme-guide.ts (esses dois
-// continuam na cor-assinatura oficial do brainHex.ts).
+// Cores derivadas da cor-assinatura OFICIAL de cada perfil BrainHex (fonte:
+// microservice/src/constants/brainHex.ts) — a paleta e a fonte da verdade,
+// nao a arte. Quando a arte dos guardioes (frontend/src/assets/guardioes/*.webp)
+// divergia da cor oficial, a correcao foi recolorir a arte para bater com a
+// paleta (script com sharp: hue-shift so nos pixels do figurino/manto,
+// identificados por faixa de matiz+saturacao, preservando pele/cabelo/dourado
+// intactos) — nao o contrario. Isso foi feito para seeker, survivor,
+// conqueror e socializer. daredevil ficou de fora: na arte dela o cabelo e a
+// capa usam exatamente o mesmo laranja (mesma faixa de matiz/saturacao), e
+// tentar isolar so a capa por hue tambem pintou a pele e o efeito de fogo de
+// verde — sem uma mascara manual do figurino essa recolorizacao nao e segura
+// de automatizar, entao o badge dela ainda diverge da arte (oficial=verde,
+// arte=laranja) ate a arte ser re-gerada.
+// Luminosidade HSL elevada apenas o suficiente para ~4.5:1 de contraste
+// contra o fundo escuro do site — matiz e saturação da cor oficial ficam
+// intactos (mesmo principio de _ensure_min_contrast em
+// mobile/src/utils/profileShellTheme.ts, documentado no CLAUDE.md: nunca
+// misturar com branco). Ainda assim é uma variante própria desta
+// superfície — não é o mesmo valor nem o mesmo algoritmo do accent
+// computado em api/app/api/v1/personalizacao.py ou do "accent" estático em
+// src/lib/personalizacao-theme-guide.ts.
 export const PROFILES = {
   seeker: {
     key: "seeker",
     title: "Seeker (Explorador)",
     icon: Map,
-    color: "text-[#3c9428] bg-[#3c9428]/10 border-[#3c9428]/20",
-    textColor: "text-[#3c9428]",
-    bgColor: "bg-[#3c9428]",
-    cardStyle: "bg-[#3c9428]/10 border-[#3c9428]/20",
+    color: "text-[#a78c07] bg-[#a78c07]/10 border-[#a78c07]/20",
+    textColor: "text-[#a78c07]",
+    bgColor: "bg-[#a78c07]",
+    cardStyle: "bg-[#a78c07]/10 border-[#a78c07]/20",
     text: "Motivado pela curiosidade. Gosta de explorar possibilidades, achar conteúdos extras e entender conexões além do básico.",
   },
   survivor: {
     key: "survivor",
     title: "Survivor (Desafiador)",
     icon: Shield,
-    color: "text-[#1286de] bg-[#1286de]/10 border-[#1286de]/20",
-    textColor: "text-[#1286de]",
-    bgColor: "bg-[#1286de]",
-    cardStyle: "bg-[#1286de]/10 border-[#1286de]/20",
+    color: "text-[#fb0202] bg-[#fb0202]/10 border-[#fb0202]/20",
+    textColor: "text-[#fb0202]",
+    bgColor: "bg-[#fb0202]",
+    cardStyle: "bg-[#fb0202]/10 border-[#fb0202]/20",
     text: "Prospera sob pressão. Curte prazos, intensidade e a sensação de superar limites difíceis.",
   },
   daredevil: {
     key: "daredevil",
     title: "Daredevil (Aventureiro)",
     icon: Sword,
-    color: "text-[#ec3c04] bg-[#ec3c04]/10 border-[#ec3c04]/20",
-    textColor: "text-[#ec3c04]",
-    bgColor: "bg-[#ec3c04]",
-    cardStyle: "bg-[#ec3c04]/10 border-[#ec3c04]/20",
+    color: "text-[#249024] bg-[#249024]/10 border-[#249024]/20",
+    textColor: "text-[#249024]",
+    bgColor: "bg-[#249024]",
+    cardStyle: "bg-[#249024]/10 border-[#249024]/20",
     text: "Gosta de ação e risco. Prefere aprender por tentativa e erro, com exploração rápida e sem medo de falhar.",
   },
   mastermind: {
     key: "mastermind",
     title: "Mastermind (Estrategista)",
     icon: Compass,
-    color: "text-[#367af4] bg-[#367af4]/10 border-[#367af4]/20",
-    textColor: "text-[#367af4]",
-    bgColor: "bg-[#367af4]",
-    cardStyle: "bg-[#367af4]/10 border-[#367af4]/20",
+    color: "text-[#788490] bg-[#788490]/10 border-[#788490]/20",
+    textColor: "text-[#788490]",
+    bgColor: "bg-[#788490]",
+    cardStyle: "bg-[#788490]/10 border-[#788490]/20",
     text: "Curte planejar e entender o porquê. Aprende melhor com estrutura, lógica e visão geral do sistema.",
   },
   conqueror: {
     key: "conqueror",
     title: "Conqueror (Competidor)",
     icon: Crown,
-    color: "text-[#ab60df] bg-[#ab60df]/10 border-[#ab60df]/20",
-    textColor: "text-[#ab60df]",
-    bgColor: "bg-[#ab60df]",
-    cardStyle: "bg-[#ab60df]/10 border-[#ab60df]/20",
+    color: "text-[#018e9a] bg-[#018e9a]/10 border-[#018e9a]/20",
+    textColor: "text-[#018e9a]",
+    bgColor: "bg-[#018e9a]",
+    cardStyle: "bg-[#018e9a]/10 border-[#018e9a]/20",
     text: "Motivado por performance. Gosta de rankings, metas claras e superar desafios comparativos.",
   },
   socializer: {
     key: "socializer",
     title: "Socializer (Colaborador)",
     icon: Drama,
-    color: "text-[#d9505c] bg-[#d9505c]/10 border-[#d9505c]/20",
-    textColor: "text-[#d9505c]",
-    bgColor: "bg-[#d9505c]",
-    cardStyle: "bg-[#d9505c]/10 border-[#d9505c]/20",
+    color: "text-[#aa60ed] bg-[#aa60ed]/10 border-[#aa60ed]/20",
+    textColor: "text-[#aa60ed]",
+    bgColor: "bg-[#aa60ed]",
+    cardStyle: "bg-[#aa60ed]/10 border-[#aa60ed]/20",
     text: "Valoriza interação. Aprende melhor em grupo, com troca de ideias e atividades cooperativas.",
   },
   achiever: {
