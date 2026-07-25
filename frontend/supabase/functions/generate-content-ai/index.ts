@@ -7,7 +7,7 @@ const CORS = {
 };
 
 const GEMINI_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent";
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -980,7 +980,7 @@ function withLegacyCompatibility(payload: JsonRecord, mode: RequestBody["mode"])
 }
 
 // ===== Modo description/content: helpers do PR #3 (contexto, tema, essay, best-of-N) =====
-const GEMINI_MODEL = "gemini-2.5-flash-lite";
+const GEMINI_MODEL = "gemini-3.6-flash";
 const MAX_FILE_CONTENT_CHARS = 10000;
 const MAX_CONTENT_SNIPPET = 900;
 const CONTENT_GEN_ATTEMPTS = 3;
@@ -1006,6 +1006,44 @@ const DESCRIPTION_SCHEMA = {
   required: ["descricao"],
   properties: {
     descricao: { type: "STRING" },
+  },
+} as const;
+
+// Sem schema, o Gemini tem liberdade para variar nomes de campo/estrutura
+// (ex.: "pergunta" em vez de "titulo"), o que normalizeCards/normalizeAtividades
+// descarta silenciosamente por nao bater com o formato esperado — resultando em
+// arrays vazios preenchidos so com fallbackCard/fallbackAtividade (conteudo
+// generico, nao baseado no material do professor) sem nenhum erro visivel.
+const CONTENT_SCHEMA = {
+  type: "OBJECT",
+  required: ["cards", "atividades"],
+  properties: {
+    cards: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        required: ["titulo", "descricao"],
+        properties: {
+          titulo: { type: "STRING" },
+          descricao: { type: "STRING" },
+        },
+      },
+    },
+    atividades: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        required: ["titulo", "enunciado", "tipo", "resposta_correta"],
+        properties: {
+          titulo: { type: "STRING" },
+          enunciado: { type: "STRING" },
+          tipo: { type: "STRING", enum: ["quiz", "true_false", "fill_blank", "essay"] },
+          alternativas: { type: "ARRAY", items: { type: "STRING" } },
+          resposta_correta: { type: "STRING" },
+          nota_estabelecida: { type: "NUMBER" },
+        },
+      },
+    },
   },
 } as const;
 
@@ -1573,6 +1611,7 @@ Regras obrigatorias:
         prompt: contentPrompt,
         maxOutputTokens: 9000,
         temperature: Math.min(0.8, 0.35 + attempt * 0.15),
+        responseSchema: CONTENT_SCHEMA as unknown as Record<string, unknown>,
       });
       const parsed = parseGeminiJson(call.text);
       if (!parsed || typeof parsed !== "object") {
@@ -1604,9 +1643,20 @@ Regras obrigatorias:
       }
     }
 
-    if (!bestCards || !bestAtividades) {
-      bestCards = ensureMin([], 10, (index) => fallbackCard(index, topicLabel));
-      bestAtividades = ensureMin([], 10, (index) => fallbackAtividade(index, topicLabel));
+    // bestScore <= 0 significa que NENHUMA tentativa produziu um item real
+    // vindo da IA — sem isso, o endpoint devolvia 200 com cards/atividades
+    // 100% fallbackCard/fallbackAtividade (texto generico tipo "Reconhecimento
+    // conceitual"), indistinguivel de conteudo real gerado a partir do
+    // material do professor.
+    if (!bestCards || !bestAtividades || bestScore <= 0) {
+      return jsonResponse(
+        {
+          error: "ai_generation_empty",
+          message:
+            "Nao foi possivel gerar cards/atividades baseados no material fornecido. Tente novamente.",
+        },
+        502,
+      );
     }
 
     return jsonResponse({

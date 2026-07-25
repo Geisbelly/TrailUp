@@ -6,7 +6,7 @@ const CORS = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const GEMINI_MODEL = "gemini-2.5-flash-lite";
+const GEMINI_MODEL = "gemini-3.6-flash";
 const MAX_CONTENT_CHARS = 12000;
 const MAX_TEXT_CHARS = 5000;
 
