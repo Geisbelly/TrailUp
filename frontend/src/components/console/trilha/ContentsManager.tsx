@@ -23,6 +23,7 @@ import { Plus, Pencil, Trash2, FileText, Video, Image, Link as LinkIcon } from "
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { deleteContentCascade } from "./classDeletion";
 
 interface Conteudo {
   id: number;
@@ -192,8 +193,7 @@ export default function ContentsManager() {
 
   const handleDelete = async (id: number) => {
     try {
-      const { error } = await supabase.from("conteudos").delete().eq("id", id);
-      if (error) throw error;
+      await deleteContentCascade(id);
       setConteudos((prev) => prev.filter((c) => c.id !== id));
       toast.success("Conteúdo excluído!");
     } catch (error) {

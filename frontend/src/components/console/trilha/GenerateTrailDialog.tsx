@@ -13,6 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { Wand2, Loader2, ArrowRight, CheckCircle2, Plus, X, Upload, FileText, AlertTriangle, BrainCircuit, LayoutList, Clapperboard } from "lucide-react";
 import type { Topico, StagedFile } from "./types";
 import { formatFileSize } from "@/lib/utils";
+import { deleteClassTrail as deleteClassTrailCascade } from "./classDeletion";
 
 const ACCEPTED_EXT = ".pdf,.doc,.docx,.ppt,.pptx,.txt,.md,.mp4,.mov,.webm,.mp3,.wav,.m4a";
 type Step = "form" | "confirm-delete" | "preview" | "creating";
@@ -124,27 +125,14 @@ async function deletePrefix(bucket: string, prefix: string) {
   if (files.length > 0) await supabase.storage.from(bucket).remove(files);
 }
 
+// deleteClassTrailCascade (classDeletion.ts) cobre TODAS as tabelas
+// dependentes de conteudos/topicos (conteudo_personalizado, materiais_gerados,
+// conteudo_aluno, atividade_aluno, questao_aluno, etc). Uma versao local
+// incompleta desta funcao existia so aqui e faltava justamente essas tabelas —
+// causava 409 (violacao de FK) sempre que a turma ja tinha alguma
+// personalizacao/progresso gerado para o conteudo antigo.
 async function deleteClassTrail(classeId: number, userId?: string) {
-  const { data: topics, error } = await supabase.from("topicos").select("id").eq("classe_id", classeId);
-  if (error) throw error;
-  const topicIds = (topics ?? []).map((t: { id: number }) => t.id);
-  if (topicIds.length > 0) {
-    const { data: conteudos } = await supabase.from("conteudos").select("id").in("topico_id", topicIds);
-    const { data: atividades } = await supabase.from("atividades").select("id").in("topico_id", topicIds);
-    const conteudoIds = (conteudos ?? []).map((c: { id: number }) => c.id);
-    const atividadeIds = (atividades ?? []).map((a: { id: number }) => a.id);
-    if (atividadeIds.length > 0) {
-      await supabase.from("questoes").delete().in("atividade_id", atividadeIds);
-      await supabase.from("atividade_conteudos").delete().in("atividade_id", atividadeIds);
-    }
-    if (conteudoIds.length > 0) {
-      await supabase.from("cards").delete().in("conteudo_id", conteudoIds);
-      await supabase.from("atividade_conteudos").delete().in("conteudo_id", conteudoIds);
-      await supabase.from("conteudos").delete().in("id", conteudoIds);
-    }
-    if (atividadeIds.length > 0) await supabase.from("atividades").delete().in("id", atividadeIds);
-    await supabase.from("topicos").delete().in("id", topicIds);
-  }
+  await deleteClassTrailCascade(classeId);
   if (userId) await deletePrefix("conteudos", `${userId}/classes/${classeId}/materials`);
 }
 
