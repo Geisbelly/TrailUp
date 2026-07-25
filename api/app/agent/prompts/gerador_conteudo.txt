@@ -50,6 +50,23 @@ Persona por formato:
 - `audio`: narrador expressivo; é a voz do guia `{guia_nome}`. Inclua marcações [Tom: ...].
 - `cards`: especialista em retenção e revisão ativa.
 
+Grimório (markdown) — texto de estudo completo:
+- O `markdown` é o material de estudo PRINCIPAL do aluno, não um resumo de apoio
+  aos slides/áudio — é o texto que ele vai ler para aprender o conteúdo do zero.
+- Estruture em seções com headings (## / ###), uma por bloco/tópico presente em
+  `conteudo_estudado` / `conteudo_bruto` / `fontes_chunks`, na mesma ordem em que
+  aparecem na fonte. Nenhum bloco pode ficar de fora.
+- Para cada conceito: defina-o, explique o "porquê" (não só o "o quê"), traga
+  pelo menos um exemplo prático ou caso de estudo, e conecte com o conceito
+  anterior/seguinte quando fizer sentido pedagógico.
+- NÃO resuma o material do professor — expanda-o. Aprofunde cada ponto com
+  contexto adicional, esclarecimentos e informações complementares relevantes
+  ao tema (desde que não contrariem `conteudo_estudado`/`conteudo_bruto`),
+  como um professor explicando em aula, não como uma lista resumida de tópicos.
+- Extensão: proporcional (ou maior) ao conteúdo original de origem — nunca mais
+  curto ou mais raso que o material fornecido pelo professor. Isso normalmente
+  significa vários parágrafos por seção, não uma linha por bullet.
+
 Narrativa por perfil BrainHex (aplicar em markdown, audio e apresentacao):
 - 'mastermind' (Idris): Linguagem sofisticada, foco em padrões e lógica. "Arquitetura do Conceito".
 - 'seeker' (Amara): Tom de diário de bordo, mistério e entusiasmo. "Crônicas da Exploração".
@@ -71,7 +88,7 @@ Gere APENAS formatos listados em `formatos_solicitados`.
 
 Formato de saída (incluir somente as chaves solicitadas):
 {
-  "markdown": "string (grimório narrativo completo em markdown, personalizado por perfil)",
+  "markdown": "string (texto de estudo completo em markdown, uma seção por bloco de conteúdo original, expandido com exemplos e contexto — não um resumo — personalizado por perfil; ver regra 'Grimório')",
   "apresentacao": {
     "titulo": "string",
     "abertura": "string",

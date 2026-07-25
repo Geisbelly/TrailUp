@@ -546,6 +546,14 @@ def _build_materiais_response_schema(formatos: list[str]) -> dict[str, Any]:
             "items": atividade_item_schema,
         }
 
+    if "markdown" in formatos:
+        # Faltava aqui: os demais formatos tem property explicita no schema,
+        # mas "markdown" so aparecia no exemplo em texto do prompt — sem
+        # "type": "STRING" no responseSchema, o modelo nao tinha garantia
+        # nenhuma de que esse campo precisava ser uma string longa.
+        properties["markdown"] = {"type": "STRING"}
+        required.append("markdown")
+
     for formato in ("pdf", "documento", "apresentacao", "audio", "video", "imagem"):
         if formato in formatos:
             properties[formato] = {"type": "OBJECT"}
@@ -5339,7 +5347,12 @@ async def _invoke_multimodal_materiais(
             "contents": [{"role": "user", "parts": parts}],
             "generationConfig": {
                 "temperature": 0.2,
-                "maxOutputTokens": 8192,
+                # Essa chamada gera markdown + apresentacao + audio + cards no
+                # mesmo JSON, competindo pelo mesmo orcamento de tokens. 8192
+                # forcava o markdown (que deveria ser o texto de estudo
+                # completo, nao um resumo) a ficar curto pra caber junto com
+                # os slides/roteiro/cards.
+                "maxOutputTokens": 16384,
                 "responseMimeType": "application/json",
                 "responseSchema": _build_materiais_response_schema(formatos),
             },
