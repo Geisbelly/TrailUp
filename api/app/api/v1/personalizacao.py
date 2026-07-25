@@ -51,6 +51,7 @@ from app.services.group_analysis import GroupAnalysisService
 from app.services.llm import JsonLLMService, load_prompt
 from app.services.media_agents import disparar_brainhex_async
 from app.services.personalizacao import (
+    _build_profile_editorial_context,
     _infer_source_type,
     build_personalizacao_steps,
     fetch_personalizacao_context,
@@ -551,8 +552,29 @@ def _fallback_mentor_chat_reply(
     }
 
 
+def _fill_plano_editorial_fields(plano: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Preenche tom/estilo/nivel com a assinatura editorial real do perfil
+    quando o plano salvo nao os tem (registros gerados pelo job de base por
+    perfil, que nao passa pelo planejador_conteudo.txt) — evita mostrar "—"
+    no console quando ja existe informacao real derivavel do perfil."""
+    if not isinstance(plano, dict):
+        return plano
+    if plano.get("tom") and plano.get("estilo") and plano.get("nivel"):
+        return plano
+    perfil_dominante = str(plano.get("perfil_dominante") or "").strip()
+    if not perfil_dominante:
+        return plano
+    editorial = _build_profile_editorial_context(perfil_dominante, [])
+    filled = dict(plano)
+    filled.setdefault("tom", editorial.get("tom_voz") or "neutro")
+    filled.setdefault("estilo", editorial.get("progressao_narrativa") or "direto")
+    filled.setdefault("nivel", "equilibrado")
+    return filled
+
+
 def _to_response(record: dict) -> PersonalizacaoResponse:
     design_tokens = record.get("design_tokens")
+    plano = _fill_plano_editorial_fields(record.get("plano"))
     if design_tokens is None:
         dominant_profile = str(
             (record.get("plano") or {}).get("perfil_dominante")
@@ -597,7 +619,7 @@ def _to_response(record: dict) -> PersonalizacaoResponse:
         source_hash=record.get("source_hash"),
         formato_prioritario=record.get("formato_prioritario") or "",
         formatos_gerados=list(record.get("formatos_gerados") or []),
-        plano=record.get("plano"),
+        plano=plano,
         materiais=materiais,
         ai_patch=record.get("ai_patch"),
         design_tokens=design_tokens,
