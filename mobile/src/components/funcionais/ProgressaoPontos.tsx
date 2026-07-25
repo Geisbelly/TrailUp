@@ -15,7 +15,7 @@ const ProgressoPontos = ({ meta, xp, nivel, pontoSize = 50 }: Props) => {
   const [pontos, setPontos] = useState<number>(0);
 
   useEffect(() => {
-    setPontos(Math.min(xp / meta, 1));
+    setPontos(meta > 0 ? Math.min(xp / meta, 1) : 0);
   }, [xp, meta]);
 
   return (

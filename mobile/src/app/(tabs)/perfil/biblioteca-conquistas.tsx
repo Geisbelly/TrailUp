@@ -281,7 +281,7 @@ export default function BibliotecaConquistasScreen() {
         description={selected?.descricao ?? "Detalhes da conquista."}
         date={selected?.data_conquista}
         color={hexConfig.color}
-        imageSource={hexConfig.image}
+        imageSource={selected?.icone_url ? { uri: selected.icone_url } : hexConfig.image}
       />
     </View>
   );
