@@ -332,11 +332,6 @@ export function IABattlePanel({ scope, surface = "inline" }: Props) {
       />
 
       <Text style={[styles.helperText, { color: `${palette.textColor}DD` }]}>{helperText}</Text>
-      {!artUrl && enemy.imagePrompt ? (
-        <Text style={[styles.promptHint, { color: `${palette.textColor}99` }]}>
-          Arte sugerida: {enemy.imagePrompt}
-        </Text>
-      ) : null}
     </View>
   );
 }

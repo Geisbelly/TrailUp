@@ -80,6 +80,38 @@ function loadWebView() {
 
 const WebView = loadWebView();
 
+/* --------------------------
+   Rotulos amigaveis para o tipo de conteudo
+   -------------------------- */
+
+const CONTEUDO_TIPO_LABELS: Record<string, string> = {
+  markdown: "Texto",
+  texto: "Texto",
+  audio: "Áudio",
+  video: "Vídeo",
+  youtube: "Vídeo",
+  imagem: "Imagem",
+  pdf: "PDF",
+  documento: "Documento",
+  apresentacao: "Apresentação",
+  cards: "Cartões de estudo",
+  embed: "Conteúdo incorporado",
+};
+
+function formatConteudoTipo(tipo?: string | null): string | null {
+  if (!tipo) return null;
+  return CONTEUDO_TIPO_LABELS[tipo] ?? null;
+}
+
+// Titulo generico gerado quando o backend nao retornou um titulo real
+// (ex.: "Etapa personalizada 3") — nao tem valor informativo pro aluno,
+// entao a UI cai pro nome do topico em vez de mostrar o placeholder.
+const PLACEHOLDER_TITLE_PATTERN = /^(Etapa personalizada|Conteudo|Atividade)\s+\d+$/i;
+
+function isPlaceholderTitle(title?: string | null): boolean {
+  return !title || PLACEHOLDER_TITLE_PATTERN.test(title.trim());
+}
+
 function normalizeModuleDifficulty(value: unknown): "facil" | "medio" | "dificil" {
   const normalized = String(value ?? "")
     .trim()
@@ -577,8 +609,17 @@ export default function TrilhaConteudoScreen() {
   const isOverlayTimerActive = useMemo(() => {
     if (!currentOverlayTimerFeature || !isCurrentStudyBlockTrackable) return false;
     if (atualBlock?.kind === "atividade" && currentTimedOutActivityId != null) return false;
+    // Ja foi respondida: o timer de atividade (contagem regressiva) nao deve
+    // continuar rodando depois da confirmacao da resposta.
+    if (atualBlock?.kind === "atividade" && atividadeAtualResolvida) return false;
     return true;
-  }, [atualBlock?.kind, currentOverlayTimerFeature, currentTimedOutActivityId, isCurrentStudyBlockTrackable]);
+  }, [
+    atividadeAtualResolvida,
+    atualBlock?.kind,
+    currentOverlayTimerFeature,
+    currentTimedOutActivityId,
+    isCurrentStudyBlockTrackable,
+  ]);
   const isScreenFocused = useIsFocused();
   const currentStudyBlockSignature = useMemo(() => {
     // Ao perder o foco (sair do modulo), zera a assinatura. Isso faz o
@@ -665,7 +706,7 @@ export default function TrilhaConteudoScreen() {
 
   const blocoLabel = atualBlock
     ? atualBlock.kind === "conteudo"
-      ? "Conteudo"
+      ? "Conteúdo"
       : "Atividade"
     : null;
 
@@ -1342,7 +1383,12 @@ export default function TrilhaConteudoScreen() {
         scrollEventThrottle={16}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: 200 },
+          // Antes 200 — com flexGrow:1 (scrollContent) isso deixava um vao
+          // enorme de espaco vazio sempre que o bloco atual tinha pouco
+          // conteudo (um botao, um titulo curto), ja que o container esticava
+          // pra preencher a tela toda. 56 ainda da folga suficiente pro
+          // avatar flutuante do mentor (IAMentorPanel) sem sobrar espaco.
+          { paddingBottom: 56 },
         ]}
       >
         <View style={styles.header}>
@@ -1471,11 +1517,13 @@ export default function TrilhaConteudoScreen() {
               ]}
             >
               {atualBlock.kind === "conteudo"
-                ? atualBlock.conteudo.titulo ?? topico.nome
+                ? isPlaceholderTitle(atualBlock.conteudo.titulo)
+                  ? topico.nome
+                  : atualBlock.conteudo.titulo
                 : atualBlock.atividade.titulo ?? "Atividade"}
             </Text>
 
-            {atualBlock.kind === "conteudo" && atualBlock.conteudo.tipo ? (
+            {atualBlock.kind === "conteudo" && formatConteudoTipo(atualBlock.conteudo.tipo) ? (
               <Text
                 style={[
                   styles.cardType,
@@ -1483,7 +1531,7 @@ export default function TrilhaConteudoScreen() {
                   { color: profilePalette.textMuted },
                 ]}
               >
-                {atualBlock.conteudo.tipo}
+                {formatConteudoTipo(atualBlock.conteudo.tipo)}
               </Text>
             ) : null}
 
