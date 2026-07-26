@@ -1,7 +1,7 @@
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  createContent,
+  saveContent,
   deleteContent,
   saveActivity,
   deleteActivity,
@@ -163,7 +163,10 @@ export function useTopicCrud({
       }
     }
   };
-  const handleCreateContent = async (contentForm: { titulo: string; tipo: string; conteudo: string }) => {
+  const handleCreateContent = async (
+    contentForm: { titulo: string; tipo: string; conteudo: string },
+    id?: number | null
+  ) => {
     const targetTopicId = editingTopic?.id;
     if (!targetTopicId) {
       toast.error("Selecione ou abra um topico para adicionar conteudo.");
@@ -174,14 +177,20 @@ export function useTopicCrud({
       return null;
     }
     try {
+      if (id) {
+        const data = await saveContent({ id, topico_id: targetTopicId, ...contentForm });
+        setContents((prev) => prev.map((c) => (c.id === id ? data : c)));
+        toast.success("Conteúdo atualizado!");
+        return data;
+      }
       const ordem = contents.length + 1;
-      const data = await createContent({ topico_id: targetTopicId, ...contentForm, ordem });
+      const data = await saveContent({ topico_id: targetTopicId, ...contentForm, ordem });
       setContents((prev) => [...prev, data]);
       toast.success("Conteúdo criado!");
       return data;
     } catch (error) {
-      console.error("Erro ao criar conteúdo:", error);
-      toast.error("Não foi possível criar o conteúdo.");
+      console.error("Erro ao salvar conteúdo:", error);
+      toast.error(id ? "Não foi possível atualizar o conteúdo." : "Não foi possível criar o conteúdo.");
       return null;
     }
   };

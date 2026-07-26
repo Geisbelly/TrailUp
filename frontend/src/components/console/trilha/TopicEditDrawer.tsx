@@ -86,7 +86,7 @@ type TopicEditDrawerProps = {
   contentForm: { titulo: string; tipo: string; conteudo: string };
   setContentForm: Dispatch<SetStateAction<{ titulo: string; tipo: string; conteudo: string }>>;
   isSavingContent: boolean;
-  handleSaveContent: (overrideConteudo?: string) => Promise<Conteudo | null>;
+  handleSaveContent: (overrideConteudo?: string, targetId?: number | null) => Promise<Conteudo | null>;
   handleDeleteContent: (id: number) => void;
   onReorderContents: (newOrder: Conteudo[]) => void;
 
@@ -403,7 +403,10 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
 
         setPendingFiles([]);
         // Aguarda criação/atualização para obter o ID (essencial para novos conteúdos)
-        const created = await props.handleSaveContent(primaryPath);
+        const created = await props.handleSaveContent(
+          primaryPath,
+          selectedContentId && !isCreating ? selectedContentId : undefined
+        );
 
         if (extraPaths.length > 0) {
           const existingExtra = extraFiles.filter((f) => !f.path.startsWith("http"));
@@ -432,7 +435,10 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
     if (selectedContentId && !isCreating) {
       await updateContent(selectedContentId, { metadata: { files: extraFiles } }).catch(console.error);
     }
-    const saved = await props.handleSaveContent();
+    const saved = await props.handleSaveContent(
+      undefined,
+      selectedContentId && !isCreating ? selectedContentId : undefined
+    );
     await syncDeltaJob({
       conteudoIds: saved?.id ? [saved.id] : selectedContentId ? [selectedContentId] : undefined,
       topicoIds: editingTopic?.id ? [editingTopic.id] : undefined,

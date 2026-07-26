@@ -525,18 +525,18 @@ export default function TopicsManager() {
     return null;
   };
 
-  const handleCreateContent = async (overrideConteudo?: string) => {
+  const handleCreateContent = async (overrideConteudo?: string, targetId?: number | null) => {
     setIsSavingContent(true);
     try {
       const form =
         overrideConteudo !== undefined
           ? { ...contentForm, conteudo: overrideConteudo }
           : contentForm;
-      const created = await createContentHandler(form);
-      if (created) {
+      const saved = await createContentHandler(form, targetId);
+      if (saved) {
         setContentForm({ titulo: "", tipo: "texto", conteudo: "" });
       }
-      return created ?? null;
+      return saved ?? null;
     } finally {
       setIsSavingContent(false);
     }
