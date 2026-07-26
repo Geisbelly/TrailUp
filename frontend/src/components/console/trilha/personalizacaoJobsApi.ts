@@ -4,10 +4,16 @@ const ENV_API_BASE_URL = String(import.meta.env.VITE_APITRAIUP_URL ?? "")
   .trim()
   .replace(/\/+$/, "");
 
-const FALLBACK_LOCAL_API_BASE_URL =
-  typeof window !== "undefined"
-    ? `${window.location.protocol}//${window.location.hostname}:8000`
-    : "";
+// So faz sentido tentar a porta 8000 do proprio hostname em dev local — em producao
+// (dominio real tipo trailup.vercel.app) essa URL nunca responde, so atrasa o erro
+// real da API (Render) em ~20s e polui a mensagem com um endereco sem sentido.
+const IS_LOCAL_DEV_HOST =
+  typeof window !== "undefined" &&
+  /^(localhost|127\.0\.0\.1|(\d{1,3}\.){3}\d{1,3})$/.test(window.location.hostname);
+
+const FALLBACK_LOCAL_API_BASE_URL = IS_LOCAL_DEV_HOST
+  ? `${window.location.protocol}//${window.location.hostname}:8000`
+  : "";
 
 const API_BASE_URL_CANDIDATES = Array.from(
   new Set([ENV_API_BASE_URL, FALLBACK_LOCAL_API_BASE_URL].filter(Boolean))
