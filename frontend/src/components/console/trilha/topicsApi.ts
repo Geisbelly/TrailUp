@@ -122,10 +122,35 @@ export async function createClassWithMateria(params: {
   return data as { id: number; descricao: string };
 }
 
-export async function createContent(params: { topico_id: number; titulo: string; tipo: string; conteudo: string; ordem: number }) {
+/** Cria conteudo novo (sem id) ou atualiza um existente (com id) — mesmo padrao de saveActivity/saveQuestion/saveCard. */
+export async function saveContent(params: {
+  id?: number;
+  topico_id: number;
+  titulo: string;
+  tipo: string;
+  conteudo: string;
+  ordem?: number;
+}) {
+  if (params.id) {
+    const { data, error } = await supabase
+      .from("conteudos")
+      .update({ titulo: params.titulo, tipo: params.tipo, conteudo: params.conteudo })
+      .eq("id", params.id)
+      .select("id, titulo, tipo, ordem, conteudo")
+      .single();
+    if (error) throw error;
+    return data as Conteudo;
+  }
+
   const { data, error } = await supabase
     .from("conteudos")
-    .insert(params)
+    .insert({
+      topico_id: params.topico_id,
+      titulo: params.titulo,
+      tipo: params.tipo,
+      conteudo: params.conteudo,
+      ordem: params.ordem ?? 1,
+    })
     .select("id, titulo, tipo, ordem, conteudo")
     .single();
   if (error) throw error;
