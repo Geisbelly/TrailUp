@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { formatSupabaseFunctionError } from "@/lib/supabaseFunctionError";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -218,7 +219,7 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
         mode: "trail", topicName: description, topicDescription: description, contents: [], sources: await buildSources(),
         trailDescription: description, numTopics, topicNames, syllabus, fileContents: allFileContents || undefined, fileNames: allFileNames.length ? allFileNames : undefined,
       }});
-      if (error) throw error;
+      if (error) throw new Error(await formatSupabaseFunctionError(error));
       if (!Array.isArray(data?.topicos)) throw new Error("Resposta invalida da IA.");
       setPreview(data.topicos as AiTopico[]);
       setStep("preview");
