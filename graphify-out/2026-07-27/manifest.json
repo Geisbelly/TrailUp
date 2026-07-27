@@ -305,9 +305,9 @@
     "semantic_hash": "ea9fc3046e6bac85cbdbfead8c6ca178"
   },
   "api/app/core/settings.py": {
-    "mtime": 1784659238.6962762,
-    "ast_hash": "e9315a9415eb8fc0e0dbe4691168c7d2",
-    "semantic_hash": "e9315a9415eb8fc0e0dbe4691168c7d2"
+    "mtime": 1785185163.2856765,
+    "ast_hash": "3271ce21940210a213c4609177838d48",
+    "semantic_hash": ""
   },
   "api/app/db/__init__.py": {
     "mtime": 1775428555.8756046,
@@ -385,9 +385,9 @@
     "semantic_hash": "27d211478e6e22872e4ebd6c005dc992"
   },
   "api/app/main.py": {
-    "mtime": 1776063871.864575,
-    "ast_hash": "dc56ae310fd2ba1b5fad48cd4e77840f",
-    "semantic_hash": "dc56ae310fd2ba1b5fad48cd4e77840f"
+    "mtime": 1785185163.2876842,
+    "ast_hash": "d8e70444dfb9206f3ce26fbec2f03b72",
+    "semantic_hash": ""
   },
   "api/app/repositories/__init__.py": {
     "mtime": 1775428645.8138103,
@@ -4067,6 +4067,16 @@
   "frontend/src/lib/supabaseFunctionError.ts": {
     "mtime": 1785183735.8533733,
     "ast_hash": "a14891e8160ca10c3d79d48fedd2270f",
+    "semantic_hash": ""
+  },
+  "api/app/db/migrations.py": {
+    "mtime": 1785185187.8538342,
+    "ast_hash": "37c5cdbdf72f77419c09e6c504e2d9db",
+    "semantic_hash": ""
+  },
+  "api/tests/test_migrations.py": {
+    "mtime": 1785185194.7824,
+    "ast_hash": "b466f1104eece5336f24ab35641747d5",
     "semantic_hash": ""
   }
 }
