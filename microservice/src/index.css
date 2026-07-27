@@ -100,7 +100,7 @@ body {
 }
 
 .logo-gradient {
-  background: linear-gradient(135deg, #fff 0%, #707c88 100%);
+  background: linear-gradient(135deg, #fff 0%, #5b3fd9 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }

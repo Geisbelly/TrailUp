@@ -16,13 +16,13 @@ type PerfilTema = {
 const PERFIS_TEMA: PerfilTema[] = [
   {
     perfil: "Achiever",
-    palette: { primary: "#AD6002", secondary: "#703E01", accent: "#DAB78D", background: "#110A00" },
+    palette: { primary: "#C9A227", secondary: "#836919", accent: "#E7D59E", background: "#141004" },
     tom: "objetivo, progressivo e orientado a metas claras",
     diretrizes: ["Estruturar em checklists.", "Destacar avanco e conclusao.", "Usar linguagem direta."],
   },
   {
     perfil: "Seeker",
-    palette: { primary: "#A78C07", secondary: "#6D5B05", accent: "#D7CB8F", background: "#110E01" },
+    palette: { primary: "#17A398", secondary: "#0F6A63", accent: "#97D6D1", background: "#02100F" },
     tom: "curioso, exploratorio e investigativo",
     diretrizes: [
       "Trazer perguntas de descoberta.",
@@ -32,7 +32,7 @@ const PERFIS_TEMA: PerfilTema[] = [
   },
   {
     perfil: "Mastermind",
-    palette: { primary: "#707C88", secondary: "#495158", accent: "#BFC4C9", background: "#0B0C0E" },
+    palette: { primary: "#5B3FD9", secondary: "#3B298D", accent: "#B5A9EE", background: "#090616" },
     tom: "analitico, logico e estrategico",
     diretrizes: [
       "Priorizar estrutura conceitual.",
@@ -42,25 +42,25 @@ const PERFIS_TEMA: PerfilTema[] = [
   },
   {
     perfil: "Conqueror",
-    palette: { primary: "#01808B", secondary: "#01535A", accent: "#8DC6CB", background: "#000D0E" },
+    palette: { primary: "#1E4FD6", secondary: "#14338B", accent: "#9AB0ED", background: "#030815" },
     tom: "competitivo, desafiador e focado em performance",
     diretrizes: ["Propor metas comparativas.", "Valorizar precisao e velocidade.", "Usar chamadas de superacao."],
   },
   {
     perfil: "Socializer",
-    palette: { primary: "#6D15BE", secondary: "#470E7C", accent: "#BD96E2", background: "#0B0213" },
+    palette: { primary: "#F4623A", secondary: "#9F4026", accent: "#FAB8A6", background: "#180A06" },
     tom: "colaborativo, acolhedor e dialogico",
     diretrizes: ["Incluir colaboracao e troca.", "Usar exemplos de trabalho em grupo.", "Estimular feedback entre pares."],
   },
   {
     perfil: "Daredevil",
-    palette: { primary: "#1B6B1B", secondary: "#124612", accent: "#98BC98", background: "#030B03" },
+    palette: { primary: "#D7263D", secondary: "#8C1928", accent: "#ED9DA8", background: "#160406" },
     tom: "dinamico, energetico e orientado a acao",
     diretrizes: ["Aplicar cenarios praticos.", "Usar linguagem de execucao.", "Evitar excesso de teoria abstrata."],
   },
   {
     perfil: "Survivor",
-    palette: { primary: "#720101", secondary: "#4A0101", accent: "#C08D8D", background: "#0B0000" },
+    palette: { primary: "#4E5A66", secondary: "#333A42", accent: "#AFB5BA", background: "#08090A" },
     tom: "resiliente, encorajador e focado em superacao",
     diretrizes: ["Quebrar desafios em etapas.", "Reforcar progresso incremental.", "Usar mensagens de persistencia."],
   },

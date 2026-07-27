@@ -97,16 +97,16 @@ const Hero = () => {
               style={{ animationDelay: "0s" }}
             >
               <Sparkles className="w-4 h-4" />
-              <span className="text-sm font-medium">Um grimório vivo, moldado ao seu perfil</span>
+              <span className="text-sm font-medium">Toda grande jornada começa com um guia.</span>
             </div>
 
             <h1
               className="fade-up-in font-display text-5xl md:text-6xl xl:text-7xl font-bold leading-[1.15]"
               style={{ animationDelay: "0.1s" }}
             >
-              Sua trilha,
+              Todo herói
               <span className="block pb-2 bg-gradient-to-r from-primary via-accent to-primary-light bg-clip-text text-transparent">
-                seu guia, sua lenda
+                precisa de um guia
               </span>
             </h1>
 
@@ -114,7 +114,13 @@ const Hero = () => {
               className="fade-up-in text-lg md:text-xl text-muted-foreground max-w-xl mx-auto lg:mx-0"
               style={{ animationDelay: "0.2s" }}
             >
-              O TrailUp reescreve cada tópico como um grimório sob medida para o seu perfil de jogador, narrado por um guia que fala a sua língua. Desbloqueie trilhas, enfrente desafios e domine o conhecimento no seu próprio ritmo.
+              Cada pessoa aprende de uma forma diferente.
+
+Por isso, no TrailUp, sua jornada é conduzida por um dos sete Guardiões da Trilha. Cada um representa uma maneira única de pensar, aprender e superar desafios.
+
+Você não recebe apenas conteúdo.
+
+Recebe uma aventura construída para quem você é.
             </p>
 
             <div
@@ -123,12 +129,12 @@ const Hero = () => {
             >
               <Link to="/cadastro-aluno">
                 <Button size="lg" className="gradient-primary text-lg px-8 py-6 animate-glow">
-                  Sou aluno, quero iniciar minha jornada!
+                  Começar minha Jornada
                 </Button>
               </Link>
               <Link to="/login">
                 <Button size="lg" variant="outline" className="text-lg px-8 py-6">
-                  Sou professor, já tenho conta
+                  Entrar como Professor
                 </Button>
               </Link>
             </div>
@@ -156,7 +162,7 @@ const Hero = () => {
             >
               <div>
                 <div className="text-3xl md:text-4xl font-bold text-primary">7</div>
-                <div className="text-sm text-muted-foreground mt-1">Guias e perfis únicos</div>
+                <div className="text-sm text-muted-foreground mt-1">Arquétipos</div>
               </div>
               <div>
                 <div className="text-3xl md:text-4xl font-bold text-accent">100%</div>
@@ -164,7 +170,7 @@ const Hero = () => {
               </div>
               <div>
                 <div className="text-3xl md:text-4xl font-bold text-primary">∞</div>
-                <div className="text-sm text-muted-foreground mt-1">Trilhas a explorar</div>
+                <div className="text-sm text-muted-foreground mt-1">Novos desafios</div>
               </div>
             </div>
           </div>

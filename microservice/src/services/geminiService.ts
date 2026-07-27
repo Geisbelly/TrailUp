@@ -223,6 +223,24 @@ export async function processMediaWithGemini(
          original — nunca mais curto ou mais raso que o material fornecido
          pelo professor. Isso normalmente significa vários parágrafos por
          seção, não uma linha por bullet.
+       - Termos técnicos e siglas: na primeira aparição de cada termo técnico,
+         sigla ou jargão (ex.: RPC, sockets, middleware, DNS, transparência),
+         defina-o explicitamente na mesma frase ou na seguinte — nunca assuma
+         que o aluno já conhece a palavra.
+       - Retomada: quando um conceito se apoiar ou se conectar com algo já
+         apresentado antes na mesma seção/tópico, faça a ponte de forma
+         explícita ("lembra de X? Y é a extensão disso porque..."), reforçando
+         a memória em vez de apresentar fatos isolados.
+       - Uso no contexto: depois de definir e exemplificar cada conceito,
+         mostre COMO ele é usado na prática dentro da narrativa do guia — um
+         mini-cenário, diálogo ou situação concreta ("imagine que...", "quando
+         você digita uma URL, é aqui que...") de forma lúdica e dinâmica, não
+         apenas o conceito isolado.
+       - PROIBIDO transformar uma lista de conceitos (ex.: requisitos, pilares,
+         características) em bullets de uma linha só ("Nome: frase curta.").
+         Cada item de uma lista assim vira sua própria mini-seção com
+         definição, porquê, conexão com o resto do conteúdo e um exemplo de
+         uso no contexto.
        - MERGULHO TEMÁTICO: mantenha a voz do arquétipo ${profile} do início
          ao fim, sem sacrificar a densidade técnica.
        - 'mastermind': Lexicografia técnica.
@@ -234,11 +252,24 @@ export async function processMediaWithGemini(
        - 'achiever': Foco em progressão.
 
     3. Eco da Sabedoria (Script de Áudio):
-       O roteiro deve ser ESCRITO para ser falado pelo guia ${config.guideName}. 
+       ${config.secondaryGuideName ? `
+       O roteiro é um DIÁLOGO entre os dois guardiões ${config.guideName} e ${config.secondaryGuideName} —
+       não uma narração solo. Formato OBRIGATÓRIO (é assim que o motor de voz separa quem fala):
+       - Cada fala é uma linha própria, começando EXATAMENTE com "${config.guideName}: " ou
+         "${config.secondaryGuideName}: " (sem colchetes, sem markdown, sem outros prefixos).
+       - Os dois se revezam naturalmente — perguntas, complementos, reações um ao outro — como
+         uma conversa real entre colegas, não como um monólogo dividido ao meio.
+       - Os dois juntos precisam cobrir 100% do conteúdo (regra 1, Fidelidade Absoluta); nenhum
+         dos dois carrega o conteúdo técnico sozinho enquanto o outro só reage.
+       - NÃO use marcações [Tom: ...] aqui — a emoção vem do próprio texto e da alternância de
+         vozes, não de marcação de tom (essa é só para narração solo).
+       ` : `
+       O roteiro deve ser ESCRITO para ser falado pelo guia ${config.guideName}.
        - Se ${profile} for 'seeker', o narrador deve parecer ofegante e animado.
        - Se 'mastermind', calmo, calculista e pausado.
        - Se 'survivor', firme, grave e protetor.
        - Inclua marcações de [Tom: ...] para guiar a entonação mística.
+       `}
 
     5. Slides (Visual Alchemy): Crie entre 10 e 25 slides (ou mais se necessário para cobrir 100% do conteúdo original). Crie uma estrutura ÚNICA para o perfil ${profile}, garantindo que exemplos e analogias tenham destaque visual:
        - 'mastermind': Estrutura analítica. Use analogias de "Engrenagens" e "Sistemas". Tópicos devem ser lógicos (Passo 1, Passo 2). Destaque o "Diagrama Lógico" como exemplo.
@@ -319,49 +350,13 @@ export async function processMediaWithGemini(
   } as ProcessedContent;
 }
 
-/**
- * Natural Audio Generation using Gemini 3.1 TTS
- */
-export async function generateNaturalAudio(
-  text: string,
-  voice: 'Puck' | 'Charon' | 'Kore' | 'Fenrir' | 'Zephyr' = 'Kore',
-  retries = 3
-): Promise<{ wav: string, mp3: string | null }> {
-  let response;
-  try {
-    response = await getAi().models.generateContent({
-      model: "gemini-3.1-flash-tts-preview",
-      contents: [{ parts: [{ text: `Narre com profunda emoção mística e variações de tom: ${text}` }] }],
-      config: {
-        responseModalities: [Modality.AUDIO],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: voice },
-          },
-        },
-      },
-    });
-  } catch (error: any) {
-    const isRateLimit = error?.message?.includes("429")
-      || error?.message?.includes("quota")
-      || error?.message?.includes("RESOURCE_EXHAUSTED");
-    if (retries > 0 && isRateLimit) {
-      const delay = (4 - retries) * 5000;
-      console.warn(`[brainhex] TTS rate-limit — retry em ${delay/1000}s (${retries} restantes)`);
-      await new Promise((r) => setTimeout(r, delay));
-      return generateNaturalAudio(text, voice, retries - 1);
-    }
-    throw error;
-  }
+export type GeminiTtsVoice = 'Puck' | 'Charon' | 'Kore' | 'Fenrir' | 'Zephyr' | 'Aoede';
 
-  const data = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-  if (!data) throw new Error("A voz mística falhou em se materializar.");
-
-  // Gemini returns raw PCM 24kHz. We need to add a WAV header for the browser to play it in <audio>
-  const pcmBinary = atob(data);
-  const pcmBuffer = new Uint8Array(pcmBinary.length).map((_, i) => pcmBinary.charCodeAt(i));
+/** PCM 24kHz (raw, do Gemini TTS) -> WAV com header + MP3 (lamejs). Compartilhado entre
+ * narração de 1 voz e diálogo multi-voz — a codificação é igual, só a origem do PCM muda. */
+function encodePcmToWavAndMp3(pcmBuffer: Uint8Array): { wav: string; mp3: string | null } {
   const wavWithHeader = addWavHeader(pcmBuffer, 24000);
-  
+
   // Return base64 of the WAV file in chunks to avoid "Maximum call stack size exceeded"
   const CHUNK_SIZE = 8192;
   let binary = "";
@@ -422,6 +417,99 @@ export async function generateNaturalAudio(
   }
 
   return { wav: audioBase64, mp3: mp3Base64 };
+}
+
+/**
+ * Natural Audio Generation using Gemini 3.1 TTS
+ */
+export async function generateNaturalAudio(
+  text: string,
+  voice: GeminiTtsVoice = 'Kore',
+  retries = 3
+): Promise<{ wav: string, mp3: string | null }> {
+  let response;
+  try {
+    response = await getAi().models.generateContent({
+      model: "gemini-3.1-flash-tts-preview",
+      contents: [{ parts: [{ text: `Narre com profunda emoção mística e variações de tom: ${text}` }] }],
+      config: {
+        responseModalities: [Modality.AUDIO],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: { voiceName: voice },
+          },
+        },
+      },
+    });
+  } catch (error: any) {
+    const isRateLimit = error?.message?.includes("429")
+      || error?.message?.includes("quota")
+      || error?.message?.includes("RESOURCE_EXHAUSTED");
+    if (retries > 0 && isRateLimit) {
+      const delay = (4 - retries) * 5000;
+      console.warn(`[brainhex] TTS rate-limit — retry em ${delay/1000}s (${retries} restantes)`);
+      await new Promise((r) => setTimeout(r, delay));
+      return generateNaturalAudio(text, voice, retries - 1);
+    }
+    throw error;
+  }
+
+  const data = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+  if (!data) throw new Error("A voz mística falhou em se materializar.");
+
+  // Gemini returns raw PCM 24kHz. We need to add a WAV header for the browser to play it in <audio>
+  const pcmBinary = atob(data);
+  const pcmBuffer = new Uint8Array(pcmBinary.length).map((_, i) => pcmBinary.charCodeAt(i));
+  return encodePcmToWavAndMp3(pcmBuffer);
+}
+
+/**
+ * Diálogo entre 2 guardiões via Gemini TTS multi-speaker (usado hoje só pelo Socializador:
+ * Mateo + Zuri). O texto precisa vir com cada linha prefixada por "NomeDoSpeaker: " — o Gemini
+ * casa esse prefixo com `speaker` em speakerVoiceConfigs para trocar de voz por fala.
+ */
+export async function generateConversationalAudio(
+  text: string,
+  speakerA: { name: string; voice: GeminiTtsVoice },
+  speakerB: { name: string; voice: GeminiTtsVoice },
+  retries = 3
+): Promise<{ wav: string, mp3: string | null }> {
+  let response;
+  try {
+    response = await getAi().models.generateContent({
+      model: "gemini-3.1-flash-tts-preview",
+      contents: [{ parts: [{ text }] }],
+      config: {
+        responseModalities: [Modality.AUDIO],
+        speechConfig: {
+          multiSpeakerVoiceConfig: {
+            speakerVoiceConfigs: [
+              { speaker: speakerA.name, voiceConfig: { prebuiltVoiceConfig: { voiceName: speakerA.voice } } },
+              { speaker: speakerB.name, voiceConfig: { prebuiltVoiceConfig: { voiceName: speakerB.voice } } },
+            ],
+          },
+        },
+      },
+    });
+  } catch (error: any) {
+    const isRateLimit = error?.message?.includes("429")
+      || error?.message?.includes("quota")
+      || error?.message?.includes("RESOURCE_EXHAUSTED");
+    if (retries > 0 && isRateLimit) {
+      const delay = (4 - retries) * 5000;
+      console.warn(`[brainhex] TTS rate-limit (dialogo) — retry em ${delay/1000}s (${retries} restantes)`);
+      await new Promise((r) => setTimeout(r, delay));
+      return generateConversationalAudio(text, speakerA, speakerB, retries - 1);
+    }
+    throw error;
+  }
+
+  const data = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+  if (!data) throw new Error("A conversa mística falhou em se materializar.");
+
+  const pcmBinary = atob(data);
+  const pcmBuffer = new Uint8Array(pcmBinary.length).map((_, i) => pcmBinary.charCodeAt(i));
+  return encodePcmToWavAndMp3(pcmBuffer);
 }
 
 // addWavHeader extraído para src/lib/wav.ts (testado).

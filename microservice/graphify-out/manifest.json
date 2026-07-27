@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/BrainHexShowcase.tsx": {
-    "mtime": 1784943041.7687528,
-    "ast_hash": "e80ab57e8bdcfbe13ccdad534d8dd8cf",
+    "mtime": 1785111917.7925498,
+    "ast_hash": "62f62f6d2d02c9bf895800da25237cbc",
     "semantic_hash": ""
   },
   "frontend/src/components/Download.tsx": {
@@ -815,8 +815,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/Features.tsx": {
-    "mtime": 1784933066.4961083,
-    "ast_hash": "ffc6bf875156416e04fc0cd2b773ba97",
+    "mtime": 1785112684.9750636,
+    "ast_hash": "106ae326da52b8b0275e6ec6bf366cb3",
     "semantic_hash": ""
   },
   "frontend/src/components/Footer.tsx": {
@@ -840,8 +840,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/Hero.tsx": {
-    "mtime": 1784933755.7852912,
-    "ast_hash": "79f27d86b7a8d2fd8f144ba2cca3518e",
+    "mtime": 1785112535.734058,
+    "ast_hash": "fc11f8d3cce9dc9f9b679a8f865542b5",
     "semantic_hash": ""
   },
   "frontend/src/components/NavLink.tsx": {
@@ -2939,11 +2939,6 @@
     "ast_hash": "d93a27437972d115d035254972b2556b",
     "semantic_hash": ""
   },
-  "docs/api/superpowers/plans/2026-07-26-slides-visuais-tematicos.md": {
-    "mtime": 1785107695.4875183,
-    "ast_hash": "1acac02ec255470bc97cbd4ceb25c9c6",
-    "semantic_hash": ""
-  },
   "docs/api/superpowers/specs/2026-04-18-personalizacao-longa-design.md": {
     "mtime": 1776485848.5511012,
     "ast_hash": "31089cc3c76c39a3862ae5de668f5914",
@@ -2952,11 +2947,6 @@
   "docs/api/superpowers/specs/2026-04-19-brainhex-direto-design.md": {
     "mtime": 1776614391.3329797,
     "ast_hash": "4b74bd51870b0380830a39088991a851",
-    "semantic_hash": ""
-  },
-  "docs/api/superpowers/specs/2026-07-26-slides-visuais-tematicos-design.md": {
-    "mtime": 1785106375.0714931,
-    "ast_hash": "711b06fd4fded7a5c7dd17fc62daad06",
     "semantic_hash": ""
   },
   "docs/ecossistema/README.md": {
@@ -3615,8 +3605,8 @@
     "semantic_hash": ""
   },
   "frontend/src/assets/guardioes/socializer.webp": {
-    "mtime": 1784941162.738,
-    "ast_hash": "757cf1e196bf4883166b0d3385b657ca",
+    "mtime": 1785111204.4428334,
+    "ast_hash": "a51c66b7e17a044d9ab793d5a0ae27d6",
     "semantic_hash": ""
   },
   "frontend/src/assets/guardioes/survivor.webp": {
@@ -3952,6 +3942,41 @@
   "mobile/src/assets/loading.gif": {
     "mtime": 1765156497.265684,
     "ast_hash": "e1c45a0f52592a0e818d5aa64b7dd131",
+    "semantic_hash": ""
+  },
+  "docs/api/superpowers/plans/2026-07-26-slides-visuais-tematicos.md": {
+    "mtime": 1785107695.4875183,
+    "ast_hash": "1acac02ec255470bc97cbd4ceb25c9c6",
+    "semantic_hash": ""
+  },
+  "docs/api/superpowers/specs/2026-07-26-slides-visuais-tematicos-design.md": {
+    "mtime": 1785106375.0714931,
+    "ast_hash": "711b06fd4fded7a5c7dd17fc62daad06",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-07-26-paleta-brainhex-psicologia-cores.md": {
+    "mtime": 1785114759.5452504,
+    "ast_hash": "27b5987e6d070fdd923504dabfb9f643",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-07-26-paleta-brainhex-psicologia-cores-design.md": {
+    "mtime": 1785114422.8417473,
+    "ast_hash": "367987e79286bcd1d815bb8404cc4de2",
+    "semantic_hash": ""
+  },
+  "docs/tcc/12-psicologia-das-cores-perfis.md": {
+    "mtime": 1785113935.521474,
+    "ast_hash": "6d4cf59b5d266d5dbe61df7a4a7a3f03",
+    "semantic_hash": ""
+  },
+  "frontend/src/assets/guardioes/socializer.png": {
+    "mtime": 1785102844.9219627,
+    "ast_hash": "15145ca60b41828da7357255d1729a00",
+    "semantic_hash": ""
+  },
+  "frontend/src/assets/guardioes/socializer2.webp": {
+    "mtime": 1784941162.738,
+    "ast_hash": "757cf1e196bf4883166b0d3385b657ca",
     "semantic_hash": ""
   }
 }

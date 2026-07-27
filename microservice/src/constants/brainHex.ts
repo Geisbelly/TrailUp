@@ -32,70 +32,74 @@ export interface BrainHexConfig {
   guideName: string;
   gradient: string;
   description: string;
+  /** Segundo guardião — só o Socializador tem hoje. Presença deste campo é o gatilho
+   * para o áudio virar diálogo (2 vozes) em vez de narração solo. */
+  secondaryGuideName?: string;
 }
 
 export const BRAIN_HEX_CONFIG: Record<BrainHexProfile, BrainHexConfig> = {
   seeker: {
-    color: "#a78c07",
+    color: "#17a398",
     icon: Map,
     iconFocus: Telescope,
     label: "Explorador",
     guideName: "Amara",
-    gradient: "from-yellow-600/20 to-amber-900/20",
+    gradient: "from-teal-900/40 to-black",
     description: "Ama descobrir novos caminhos e segredos escondidos.",
   },
   survivor: {
-    color: "#720101",
+    color: "#4e5a66",
     icon: Shield,
     iconFocus: Crosshair,
     label: "Sobrevivente",
     guideName: "Kenji",
-    gradient: "from-red-900/40 to-black",
+    gradient: "from-slate-800/40 to-black",
     description: "Foca em superar desafios e proteger o que conquistou.",
   },
   daredevil: {
-    color: "#1b6b1b",
+    color: "#d7263d",
     icon: Sword,
     iconFocus: Skull,
     label: "Aventureiro",
     guideName: "Ember",
-    gradient: "from-green-900/40 to-black",
+    gradient: "from-red-900/40 to-black",
     description: "Vive pela adrenalina e riscos calculados.",
   },
   mastermind: {
-    color: "#707c88",
+    color: "#5b3fd9",
     icon: Compass,
     iconFocus: Brain,
     label: "Estrategista",
     guideName: "Idris",
-    gradient: "from-slate-700/40 to-slate-900/40",
+    gradient: "from-indigo-900/40 to-black",
     description: "Resolve problemas complexos com lógica e sabedoria.",
   },
   conqueror: {
-    color: "#01808b",
+    color: "#1e4fd6",
     icon: Crown,
     iconFocus: ChevronRight,
     label: "Conquistador",
     guideName: "Amina",
-    gradient: "from-teal-900/40 to-black",
+    gradient: "from-blue-900/40 to-black",
     description: "Busca poder, influência e vitórias gloriosas.",
   },
   socializer: {
-    color: "#6d15be",
+    color: "#f4623a",
     icon: Drama,
     iconFocus: Gem,
     label: "Socializador",
     guideName: "Mateo",
-    gradient: "from-purple-900/40 to-black",
+    gradient: "from-orange-900/40 to-black",
     description: "Valoriza conexões e histórias compartilhadas.",
+    secondaryGuideName: "Zuri",
   },
   achiever: {
-    color: "#ad6002",
+    color: "#c9a227",
     icon: Box,
     iconFocus: Gem,
     label: "Realizador",
     guideName: "Kwame",
-    gradient: "from-orange-900/40 to-black",
+    gradient: "from-amber-900/40 to-black",
     description: "Adora completar coleções e atingir metas.",
   },
 };

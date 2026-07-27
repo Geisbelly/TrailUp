@@ -75,14 +75,14 @@ logger = logging.getLogger(__name__)
 # espelhada em mobile/src/constants/profileImages.ts) — mantidas idênticas aqui para consistência
 # visual entre console/API, mobile e microservice.
 _PROFILE_COLOR_MAP = {
-    "seeker": "#a78c07",
-    "survivor": "#720101",
-    "daredevil": "#1b6b1b",
-    "mastermind": "#707c88",
-    "conqueror": "#01808b",
-    "socializer": "#6d15be",
-    "socialiser": "#6d15be",
-    "achiever": "#ad6002",
+    "seeker": "#17a398",
+    "survivor": "#4e5a66",
+    "daredevil": "#d7263d",
+    "mastermind": "#5b3fd9",
+    "conqueror": "#1e4fd6",
+    "socializer": "#f4623a",
+    "socialiser": "#f4623a",
+    "achiever": "#c9a227",
 }
 _BRAINHEX_PROFILES = (
     "seeker",
