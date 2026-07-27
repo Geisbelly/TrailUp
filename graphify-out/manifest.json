@@ -805,9 +805,9 @@
     "semantic_hash": "2ca2eabe0b72bb8fe4b27f7a2f71a03b"
   },
   "frontend/src/components/BrainHexShowcase.tsx": {
-    "mtime": 1784943041.7687528,
-    "ast_hash": "e80ab57e8bdcfbe13ccdad534d8dd8cf",
-    "semantic_hash": "e80ab57e8bdcfbe13ccdad534d8dd8cf"
+    "mtime": 1785111917.7925498,
+    "ast_hash": "62f62f6d2d02c9bf895800da25237cbc",
+    "semantic_hash": ""
   },
   "frontend/src/components/Download.tsx": {
     "mtime": 1784934287.9833486,
@@ -815,9 +815,9 @@
     "semantic_hash": "b5967013dd0666b10697cb7aa8df1ef9"
   },
   "frontend/src/components/Features.tsx": {
-    "mtime": 1784933066.4961083,
-    "ast_hash": "ffc6bf875156416e04fc0cd2b773ba97",
-    "semantic_hash": "ffc6bf875156416e04fc0cd2b773ba97"
+    "mtime": 1785112684.9750636,
+    "ast_hash": "106ae326da52b8b0275e6ec6bf366cb3",
+    "semantic_hash": ""
   },
   "frontend/src/components/Footer.tsx": {
     "mtime": 1784933144.2720733,
@@ -840,9 +840,9 @@
     "semantic_hash": "e61a782502e3b4bd02ecc67d278d5400"
   },
   "frontend/src/components/Hero.tsx": {
-    "mtime": 1784933755.7852912,
-    "ast_hash": "79f27d86b7a8d2fd8f144ba2cca3518e",
-    "semantic_hash": "79f27d86b7a8d2fd8f144ba2cca3518e"
+    "mtime": 1785112535.734058,
+    "ast_hash": "fc11f8d3cce9dc9f9b679a8f865542b5",
+    "semantic_hash": ""
   },
   "frontend/src/components/NavLink.tsx": {
     "mtime": 1765420863.8600562,
@@ -3600,8 +3600,8 @@
     "semantic_hash": ""
   },
   "frontend/src/assets/guardioes/socializer.webp": {
-    "mtime": 1784941162.738,
-    "ast_hash": "757cf1e196bf4883166b0d3385b657ca",
+    "mtime": 1785111204.4428334,
+    "ast_hash": "a51c66b7e17a044d9ab793d5a0ae27d6",
     "semantic_hash": ""
   },
   "frontend/src/assets/guardioes/survivor.webp": {
@@ -3952,6 +3952,31 @@
   "docs/api/superpowers/plans/2026-07-26-slides-visuais-tematicos.md": {
     "mtime": 1785107695.4875183,
     "ast_hash": "1acac02ec255470bc97cbd4ceb25c9c6",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-07-26-paleta-brainhex-psicologia-cores.md": {
+    "mtime": 1785114759.5452504,
+    "ast_hash": "27b5987e6d070fdd923504dabfb9f643",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-07-26-paleta-brainhex-psicologia-cores-design.md": {
+    "mtime": 1785114422.8417473,
+    "ast_hash": "367987e79286bcd1d815bb8404cc4de2",
+    "semantic_hash": ""
+  },
+  "docs/tcc/12-psicologia-das-cores-perfis.md": {
+    "mtime": 1785113935.521474,
+    "ast_hash": "6d4cf59b5d266d5dbe61df7a4a7a3f03",
+    "semantic_hash": ""
+  },
+  "frontend/src/assets/guardioes/socializer.png": {
+    "mtime": 1785102844.9219627,
+    "ast_hash": "15145ca60b41828da7357255d1729a00",
+    "semantic_hash": ""
+  },
+  "frontend/src/assets/guardioes/socializer2.webp": {
+    "mtime": 1784941162.738,
+    "ast_hash": "757cf1e196bf4883166b0d3385b657ca",
     "semantic_hash": ""
   }
 }
