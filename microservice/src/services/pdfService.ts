@@ -29,6 +29,11 @@ export async function generateSlidesPDF(
   });
   try {
     const page = await browser.newPage();
+    // Viewport explicito 1280x720 (bate com o tamanho fixo de .slide em
+    // slideTemplate.ts) — sem isso o Chromium usa o viewport default (800x600)
+    // pra fazer layout e so depois encaixa no tamanho de pagina do PDF, o que
+    // pode cortar/escalar o conteudo de forma inesperada.
+    await page.setViewport({ width: 1280, height: 720 });
     await page.setContent(html, { waitUntil: "load" });
     const pdfBuffer = await page.pdf({
       width: "1280px",
