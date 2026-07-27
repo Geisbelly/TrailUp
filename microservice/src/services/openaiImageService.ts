@@ -16,7 +16,7 @@ function getOpenAi(): OpenAI {
  * cru da imagem (sem prefixo data:), mesmo contrato de generateSlideImage
  * (geminiService.ts) — assim os dois provedores compoem igual no HTML final.
  */
-export async function generateSceneImage(prompt: string, retries = 3): Promise<string | null> {
+export async function generateSceneImage(prompt: string, retries = 3, attempt = 0): Promise<string | null> {
   try {
     const response = await getOpenAi().images.generate({
       model: "gpt-image-1",
@@ -34,10 +34,12 @@ export async function generateSceneImage(prompt: string, retries = 3): Promise<s
       error?.message?.includes("rate_limit") ||
       error?.message?.includes("429");
     if (retries > 0 && isRateLimit) {
-      const delay = (4 - retries) * 5000;
+      // Backoff cresce por tentativa (nao pelo `retries` restante, que pode
+      // partir de qualquer valor passado pelo chamador) — 5s, 10s, 15s...
+      const delay = (attempt + 1) * 5000;
       console.warn(`[openai] rate-limit — retry em ${delay / 1000}s (${retries} restantes)`);
       await new Promise((r) => setTimeout(r, delay));
-      return generateSceneImage(prompt, retries - 1);
+      return generateSceneImage(prompt, retries - 1, attempt + 1);
     }
     throw error;
   }
