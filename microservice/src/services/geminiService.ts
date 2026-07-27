@@ -288,7 +288,13 @@ export async function processMediaWithGemini(
        - characterQuote: Uma fala do guia ${config.guideName} reagindo ou explicando o conteúdo.
        - characterAction: A pose/emoção do guia ("explaining", "celebrating", "thinking", "warning").
        - imagePrompt: Prompt para geração de imagem 2D.
-    
+       - iconPrompts: 2 a 4 prompts curtos, cada um descrevendo UM elemento decorativo
+         especifico do slide (ex.: numa aula de Egito antigo, "hieroglifo dourado
+         estilizado", "escaravelho sagrado"; numa aula de sistemas distribuidos,
+         "engrenagem magica conectada por fios de luz"). Mesmo estilo magico/ilustrado
+         do guardiao ${config.guideName} — nunca icone generico de clipart, nunca
+         texto ou letras dentro da imagem.
+
     Estética: ${config.color} dominante, magia 2D, TrailUp Style.
     
     Traceability: No campo slides.sourceIds, relacione os IDs dos blocos originais que fundamentaram aquele slide.
@@ -327,9 +333,10 @@ export async function processMediaWithGemini(
                   description: "Ação do personagem: explaining, celebrating, thinking, or warning" 
                 },
                 imagePrompt: { type: Type.STRING },
+                iconPrompts: { type: Type.ARRAY, items: { type: Type.STRING } },
                 sourceIds: { type: Type.ARRAY, items: { type: Type.STRING } }
               },
-              required: ["title", "topics", "explanation", "visualDescription", "characterQuote", "characterAction", "imagePrompt", "sourceIds"]
+              required: ["title", "topics", "explanation", "visualDescription", "characterQuote", "characterAction", "imagePrompt", "iconPrompts", "sourceIds"]
             }
           },
           confidence: { type: Type.NUMBER }

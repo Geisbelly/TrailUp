@@ -30,6 +30,7 @@ export interface SlideContent {
   characterQuote: string;
   characterAction: "explaining" | "celebrating" | "thinking" | "warning";
   imagePrompt: string;
+  iconPrompts: string[];
   sourceIds: string[];
 }
 
