@@ -256,6 +256,15 @@ _BRAINHEX_GUIDE_PERSONAS: dict[str, dict[str, str]] = {
         "guia_voz": "Kore",
         "guia_cor": "#6d15be",
         "framing_narrativo": "Elo da Comunidade",
+        # Unico perfil com 2 guardioes: o audio vira dialogo (Mateo + Zuri) em vez de
+        # narracao solo. Ver AudioPipeline.render() em media_pipeline.py.
+        "guia_nome_secundario": "Zuri",
+        "guia_voz_secundario": "Aoede",
+        "guia_relacao_secundaria": (
+            "irma gemea de Mateo — cresceram contando e ouvindo juntos as mesmas "
+            "historias da comunidade, entao conversam com intimidade e cumplicidade "
+            "de quem se conhece a vida toda"
+        ),
     },
     "Achiever": {
         "guia_nome": "Kwame",
@@ -701,6 +710,11 @@ def _build_profile_editorial_context(
         "guia_voz": persona["guia_voz"],
         "guia_cor": persona["guia_cor"],
         "framing_narrativo": persona["framing_narrativo"],
+        # Presentes so quando o perfil tem 2 guardioes (hoje so Socialiser/Mateo+Zuri) —
+        # e o que decide, no AudioPipeline, se o roteiro vira dialogo em vez de narracao solo.
+        "guia_nome_secundario": persona.get("guia_nome_secundario"),
+        "guia_voz_secundario": persona.get("guia_voz_secundario"),
+        "guia_relacao_secundaria": persona.get("guia_relacao_secundaria"),
     }
 
 

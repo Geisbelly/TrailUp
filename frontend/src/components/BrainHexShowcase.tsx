@@ -52,8 +52,8 @@ const GUIDES: Record<string, { name: string; title: string; quote: string; art: 
     traits: ["Líder", "Competitiva", "Determinada"],
   },
   socializer: {
-    name: "Mateo",
-    title: "O Espírito da Aurora",
+    name: "Mateo & Zuri",
+    title: "Os Gemeos Espírito da Aurora",
     quote: "Ninguém chega longe sozinho — nem mesmo você.",
     art: socializerArt,
     traits: ["Comunicativo", "Empático", "Inspirador"],

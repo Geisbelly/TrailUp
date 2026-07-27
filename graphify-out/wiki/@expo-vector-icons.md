@@ -1,0 +1,26 @@
+# @expo/vector-icons
+
+> 2 nodes
+
+## Key Concepts
+
+- **@expo/vector-icons** (2 connections) — `mobile/package.json`
+- **@expo/vector-icons** (1 connections) — `mobile/package.json`
+
+## Relationships
+
+- [dependencies](dependencies.md) (1 shared connections)
+
+## Source Files
+
+- `mobile/package.json`
+
+## Audit Trail
+
+- EXTRACTED: 3 (100%)
+- INFERRED: 0 (0%)
+- AMBIGUOUS: 0 (0%)
+
+---
+
+*Part of the graphify knowledge wiki. See [index](index.md) to navigate.*
