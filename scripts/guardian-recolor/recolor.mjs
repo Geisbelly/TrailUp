@@ -75,7 +75,8 @@ for (let i = 0; i < data.length; i += info.channels) {
   const weight = featherWeight(h);
   if (weight <= 0) continue;
 
-  const newHue = h + (targetHue - h) * weight;
+  const delta = ((targetHue - h + 540) % 360) - 180; // in [-180, 180)
+  const newHue = h + delta * weight;
   const newSat = targetSat !== null ? s + (targetSat - s) * weight : s;
   const [nr, ng, nb] = hslToRgb(newHue, newSat, l);
   data[i] = nr;
