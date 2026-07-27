@@ -4620,9 +4620,20 @@ async def fetch_personalizacao_context(
                 public_url = build_public_storage_url(supabase_base, bucket, storage_path) or ""
         if not public_url:
             continue
+        # Fontes sincronizadas do conteudo (origem=sync_conteudo) costumam nao
+        # ter mime_type gravado (so storage_path) — sem inferir, o microservice
+        # rejeita o POST /api/personalizar com 400 (mime_type ausente/vazio),
+        # e como disparar_brainhex_async e fire-and-forget (so loga a falha,
+        # nao propaga erro pro registro), o conteudo_personalizado fica
+        # travado pra sempre em status=processando_midias, materiais={}.
+        inferred_mime = _infer_mime_type(
+            declared_mime=str(f.get("mime_type") or "").strip() or None,
+            file_name=str(f.get("nome_arquivo") or "").strip() or None,
+            source_url_or_path=str(f.get("storage_path") or "").strip() or public_url,
+        )
         fontes.append({
             "url": public_url,
-            "mime_type": str(f.get("mime_type") or "").strip(),
+            "mime_type": inferred_mime or "application/octet-stream",
             "tipo": str(f.get("tipo") or "documento").strip(),
         })
 
