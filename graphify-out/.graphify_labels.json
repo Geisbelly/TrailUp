@@ -346,6 +346,7 @@
   "344": "expo-splash-screen",
   "345": "express",
   "346": "@radix-ui/react-accordion",
+  "347": "@google/genai",
   "348": "@radix-ui/react-avatar",
   "349": "@radix-ui/react-scroll-area",
   "350": "@radix-ui/react-toggle",

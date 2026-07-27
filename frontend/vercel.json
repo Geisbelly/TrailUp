@@ -1,5 +1,9 @@
 {
   "rewrites": [
+    {
+      "source": "/trailup-api/:path*",
+      "destination": "https://trailup.onrender.com/:path*"
+    },
     { "source": "/(.*)", "destination": "/" }
   ]
 }
