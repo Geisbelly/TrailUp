@@ -1,10 +1,10 @@
 // scripts/guardian-recolor/recolor.mjs
 import sharp from "sharp";
 
-const [, , inputPath, outputPath, hueMinArg, hueMaxArg, satMinArg, targetHueArg, targetSatArg] = process.argv;
+const [, , inputPath, outputPath, hueMinArg, hueMaxArg, satMinArg, targetHueArg, targetSatArg, targetLightnessArg] = process.argv;
 if (!inputPath || !outputPath || !hueMinArg || !hueMaxArg || !satMinArg || !targetHueArg) {
   console.error(
-    "uso: node recolor.mjs <in> <out> <hueMin> <hueMax> <satMin0-1> <targetHue> [targetSat0-1]"
+    "uso: node recolor.mjs <in> <out> <hueMin> <hueMax> <satMin0-1> <targetHue> [targetSat0-1] [targetLightness0-1]"
   );
   process.exit(1);
 }
@@ -14,6 +14,7 @@ const hueMax = Number(hueMaxArg);
 const satMin = Number(satMinArg);
 const targetHue = Number(targetHueArg);
 const targetSat = targetSatArg !== undefined ? Number(targetSatArg) : null;
+const targetLightness = targetLightnessArg !== undefined ? Number(targetLightnessArg) : null;
 const FEATHER_DEG = 5;
 
 function rgbToHsl(r, g, b) {
@@ -78,7 +79,12 @@ for (let i = 0; i < data.length; i += info.channels) {
   const delta = ((targetHue - h + 540) % 360) - 180; // in [-180, 180)
   const newHue = h + delta * weight;
   const newSat = targetSat !== null ? s + (targetSat - s) * weight : s;
-  const [nr, ng, nb] = hslToRgb(newHue, newSat, l);
+  let newLightness = l;
+  if (targetLightness !== null) {
+    newLightness = l + (targetLightness - l) * weight;
+    newLightness = Math.min(1, Math.max(0, newLightness));
+  }
+  const [nr, ng, nb] = hslToRgb(newHue, newSat, newLightness);
   data[i] = nr;
   data[i + 1] = ng;
   data[i + 2] = nb;
