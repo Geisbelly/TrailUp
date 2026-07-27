@@ -21,14 +21,14 @@ def _hex_to_color(hex_val: str) -> colors.Color:
     return colors.Color(r / 255, g / 255, b / 255)
 
 
-_PROFILE_ACCENT: dict[str, str] = {
-    "mastermind": "#707c88",
-    "seeker":     "#a78c07",
-    "survivor":   "#720101",
-    "daredevil":  "#1b6b1b",
-    "conqueror":  "#01808b",
-    "socializer": "#6d15be",
-    "achiever":   "#ad6002",
+_PROFILE_ACCENT = {
+    "mastermind": "#5b3fd9",
+    "seeker":     "#17a398",
+    "survivor":   "#4e5a66",
+    "daredevil":  "#d7263d",
+    "conqueror":  "#1e4fd6",
+    "socializer": "#f4623a",
+    "achiever":   "#c9a227",
 }
 
 
@@ -38,7 +38,7 @@ def _accent_from_tema(tema: dict[str, Any]) -> colors.Color:
     if hex_val:
         return _hex_to_color(hex_val)
     perfil = str(tema.get("perfil") or "").strip().lower()
-    return _hex_to_color(_PROFILE_ACCENT.get(perfil, "#707c88"))
+    return _hex_to_color(_PROFILE_ACCENT.get(perfil, "#5b3fd9"))
 
 
 def gerar_pdf_slides(
