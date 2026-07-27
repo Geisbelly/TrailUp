@@ -268,9 +268,12 @@ interface FonteItem {
 // SSRF: permite fontes apontando para localhost/redes privadas. NUNCA em prod.
 const ALLOW_PRIVATE_FONTE_URLS = process.env.ALLOW_PRIVATE_FONTE_URLS === "true";
 
-// Timeout duro para um job de personalização. Default 15min — cobre o pior
-// caso de PPTX grande + Gemini lento + 6 imagens. Configurável via env.
-const MAX_JOB_DURATION_MS  = Number(process.env.MAX_JOB_DURATION_MS)  || 15 * 60 * 1000;
+// Timeout duro para um job de personalização. Default 30min — cobre o pior
+// caso de PPTX grande + Gemini lento + geracao de assets SEM cap (uma cena
+// OpenAI + N icones Gemini POR slide, serial, sem pool de chaves — ver
+// generateSlideAssets). Configurável via env se um deck muito grande ainda
+// estourar isso.
+const MAX_JOB_DURATION_MS  = Number(process.env.MAX_JOB_DURATION_MS)  || 30 * 60 * 1000;
 // Heartbeat atualiza updated_at periodicamente durante o job, permitindo
 // threshold de recovery agressivo sem matar jobs longos em execução.
 const HEARTBEAT_INTERVAL_MS = Number(process.env.HEARTBEAT_INTERVAL_MS) || 30 * 1000;
