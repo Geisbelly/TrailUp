@@ -25,7 +25,7 @@ _MEDIA_FORMATOS = {"audio", "apresentacao", "markdown"}
 
 _DEFAULT_PROFILE_THEME: dict[str, Any] = {
     "perfil": "Mastermind",
-    "cores": {"primaria": "#707C88", "secundaria": "#1D232B", "destaque": "#B5C0CC"},
+    "cores": {"primaria": "#5B3FD9", "secundaria": "#3B298D", "destaque": "#B5A9EE"},
     "imagem_referencia": "coruja_filter.png",
     "icone_referencia": "coruja",
 }
@@ -33,44 +33,44 @@ _DEFAULT_PROFILE_THEME: dict[str, Any] = {
 _PROFILE_THEME_MAP: dict[str, dict[str, Any]] = {
     "seeker": {
         "perfil": "Seeker",
-        "cores": {"primaria": "#A78C07", "secundaria": "#2A1D0A", "destaque": "#E2C454"},
+        "cores": {"primaria": "#17A398", "secundaria": "#0F6A63", "destaque": "#97D6D1"},
         "imagem_referencia": "rosa_dos_ventos_filter.png",
         "icone_referencia": "rosa_dos_ventos",
     },
     "survivor": {
         "perfil": "Survivor",
-        "cores": {"primaria": "#720101", "secundaria": "#290808", "destaque": "#C96B6B"},
+        "cores": {"primaria": "#4E5A66", "secundaria": "#333A42", "destaque": "#AFB5BA"},
         "imagem_referencia": "cacador_filter.png",
         "icone_referencia": "cacador",
     },
     "daredevil": {
         "perfil": "Daredevil",
-        "cores": {"primaria": "#1B6B1B", "secundaria": "#0F2E12", "destaque": "#72C172"},
+        "cores": {"primaria": "#D7263D", "secundaria": "#8C1928", "destaque": "#ED9DA8"},
         "imagem_referencia": "espada_filter.png",
         "icone_referencia": "espada",
     },
     "mastermind": _DEFAULT_PROFILE_THEME,
     "conqueror": {
         "perfil": "Conqueror",
-        "cores": {"primaria": "#01808B", "secundaria": "#07292E", "destaque": "#66C7CF"},
+        "cores": {"primaria": "#1E4FD6", "secundaria": "#14338B", "destaque": "#9AB0ED"},
         "imagem_referencia": "coroa_filter.png",
         "icone_referencia": "coroa",
     },
     "socializer": {
         "perfil": "Socialiser",
-        "cores": {"primaria": "#6D15BE", "secundaria": "#250B3D", "destaque": "#B68AE0"},
+        "cores": {"primaria": "#F4623A", "secundaria": "#9F4026", "destaque": "#FAB8A6"},
         "imagem_referencia": "coracao_filter.png",
         "icone_referencia": "coracao",
     },
     "socialiser": {
         "perfil": "Socialiser",
-        "cores": {"primaria": "#6D15BE", "secundaria": "#250B3D", "destaque": "#B68AE0"},
+        "cores": {"primaria": "#F4623A", "secundaria": "#9F4026", "destaque": "#FAB8A6"},
         "imagem_referencia": "coracao_filter.png",
         "icone_referencia": "coracao",
     },
     "achiever": {
         "perfil": "Achiever",
-        "cores": {"primaria": "#AD6002", "secundaria": "#3B2207", "destaque": "#E0AE70"},
+        "cores": {"primaria": "#C9A227", "secundaria": "#836919", "destaque": "#E7D59E"},
         "imagem_referencia": "arte_filter.png",
         "icone_referencia": "arte",
     },
