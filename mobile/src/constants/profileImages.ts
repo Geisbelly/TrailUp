@@ -168,7 +168,7 @@ export const brainHexConfig: Record<
   }
 > = {
   seeker: {
-    color: "rgb(167, 140, 7)",
+    color: "rgb(23, 163, 152)",
     icon: "map", // Mapa do tesouro
     icon_focus: "telescope", // Observação/Exploração
     label: "Explorador",
@@ -176,7 +176,7 @@ export const brainHexConfig: Record<
     image: bannerImages[9],
   },
   survivor: {
-    color: "#720101",
+    color: "#4e5a66",
     icon: "shield-outline", // Escudo/Defesa
     icon_focus: "sword-cross", // Luta/Sobrevivência
     label: "Sobrevivente",
@@ -184,7 +184,7 @@ export const brainHexConfig: Record<
     image: bannerImages[2],
   },
   daredevil: {
-    color: "#1b6b1b",
+    color: "#d7263d",
     icon: "sword-cross", // Luta/Ação
     icon_focus: "skull", // Velocidade/Risco
     label: "Aventureiro",
@@ -192,7 +192,7 @@ export const brainHexConfig: Record<
     image: bannerImages[7],
   },
   mastermind: {
-    color: "#707c88ff",
+    color: "#5b3fd9ff",
     icon: "chess-knight", // Estratégia
     icon_focus: "brain", // Intelecto
     label: "Estrategista",
@@ -200,7 +200,7 @@ export const brainHexConfig: Record<
     image: bannerImages[6],
   },
   conqueror: {
-    color: "#01808bff",
+    color: "#1e4fd6ff",
     icon: "crown-outline", // Liderança/Vitória
     icon_focus: "fencing", // Força bruta
     label: "Conquistador",
@@ -208,7 +208,7 @@ export const brainHexConfig: Record<
     image: bannerImages[5],
   },
   socializer: {
-    color: "rgb(109, 21, 190)",
+    color: "rgb(244, 98, 58)",
     icon: "drama-masks", // Comunidade
     icon_focus: "redhat", // Comunicação
     label: "Socializador",
@@ -216,7 +216,7 @@ export const brainHexConfig: Record<
     image: bannerImages[4],
   },
   achiever: {
-    color: "rgb(173, 96, 2)",
+    color: "rgb(201, 162, 39)",
     icon: "cube-outline", // Conquista clássica
     icon_focus: "diamond-stone", // Tesouro/Riqueza
     label: "Realizador",
