@@ -1,10 +1,10 @@
 // scripts/guardian-recolor/recolor.mjs
 import sharp from "sharp";
 
-const [, , inputPath, outputPath, hueMinArg, hueMaxArg, satMinArg, targetHueArg, targetSatArg, targetLightnessArg] = process.argv;
+const [, , inputPath, outputPath, hueMinArg, hueMaxArg, satMinArg, targetHueArg, targetSatArg, targetLightnessArg, alphaThresholdArg] = process.argv;
 if (!inputPath || !outputPath || !hueMinArg || !hueMaxArg || !satMinArg || !targetHueArg) {
   console.error(
-    "uso: node recolor.mjs <in> <out> <hueMin> <hueMax> <satMin0-1> <targetHue> [targetSat0-1] [targetLightness0-1]"
+    "uso: node recolor.mjs <in> <out> <hueMin> <hueMax> <satMin0-1> <targetHue> [targetSat0-1] [targetLightness0-1] [alphaThreshold0-255]"
   );
   process.exit(1);
 }
@@ -13,8 +13,20 @@ const hueMin = Number(hueMinArg);
 const hueMax = Number(hueMaxArg);
 const satMin = Number(satMinArg);
 const targetHue = Number(targetHueArg);
-const targetSat = targetSatArg !== undefined ? Number(targetSatArg) : null;
-const targetLightness = targetLightnessArg !== undefined ? Number(targetLightnessArg) : null;
+// "" ou "null" tambem contam como "nao informado" (permite pular um arg
+// posicional opcional do meio, ex.: targetLightness, para passar o proximo,
+// ex.: alphaThreshold, sem forcar Number("") === 0).
+const isSkipped = (v) => v === undefined || v === "" || v === "null";
+const targetSat = !isSkipped(targetSatArg) ? Number(targetSatArg) : null;
+const targetLightness = !isSkipped(targetLightnessArg) ? Number(targetLightnessArg) : null;
+// Override opcional do piso de alpha (default 250, ver ALPHA_THRESHOLD abaixo).
+// Necessario para o survivor (mobile): o anel de brilho do escudo e um efeito
+// de glow deliberadamente semi-transparente (alpha ~140-249 numa faixa larga,
+// nao so 1-2px de antialiasing de borda) — com o piso padrao, boa parte do
+// anel fica de fora do recolor e permanece vermelho original ao lado do resto
+// do escudo ja convertido para ardosia, um "remendo" vermelho visivel. Baixar
+// o piso so para essa chamada resolve sem afetar as outras (default inalterado).
+const alphaThresholdOverride = !isSkipped(alphaThresholdArg) ? Number(alphaThresholdArg) : null;
 const FEATHER_DEG = 5;
 
 function rgbToHsl(r, g, b) {
@@ -72,7 +84,7 @@ const { data, info } = await image.raw().toBuffer({ resolveWithObject: true });
 // borda (alpha baixo/parcial) ficam de fora: em alpha baixo a RGB armazenada
 // é irrelevante visualmente no original, mas um hue-shift para uma cor
 // saturada os torna visíveis como ruído/vazamento ao longo do contorno.
-const ALPHA_THRESHOLD = 250;
+const ALPHA_THRESHOLD = alphaThresholdOverride !== null ? alphaThresholdOverride : 250;
 
 // Perto de preto (ou de branco) puro, o hue e a saturação calculados via HSL
 // ficam numericamente instáveis: uma diferença de 1-2 em R/G/B entre canais
@@ -150,7 +162,28 @@ for (let i = 0; i < data.length; i += info.channels) {
 // do frontend). quality:95 reduz o ringing o suficiente para ficar
 // imperceptível a olho nu (validado visualmente em zoom) mantendo o
 // arquivo numa faixa de tamanho comparável aos demais assets.
-await sharp(data, { raw: info })
-  .webp({ quality: 95, alphaQuality: 100 })
-  .toFile(outputPath);
+// Assets mobile são .png (RN não usa webp por padrão); assets frontend são
+// .webp. Escolhe o encoder pela extensão do outputPath em vez de fixar webp,
+// para este script servir os dois lados sem duplicar lógica.
+const isPng = /\.png$/i.test(outputPath);
+const pipeline = sharp(data, { raw: info });
+if (isPng) {
+  pipeline.png({ compressionLevel: 9 });
+} else {
+  // WebP lossy (o padrão do sharp, quality:80) usa subsampling de crominância
+  // 4:2:0 + blocos tipo-DCT; isso introduz ringing/vazamento de cor nas bordas
+  // de alto contraste — e o recolor CRIA bordas de alto contraste que não
+  // existiam antes (ex.: contorno quase-preto ao lado de tecido agora
+  // laranja/coral muito saturado, onde antes era um roxo escuro e pouco
+  // saturado — baixo contraste). Isso aparecia como ruído sarapintado
+  // (specks) mesmo em pixels que o loop acima explicitamente pulou (o buffer
+  // bruto ficava correto; o dano entrava só na hora de comprimir). `lossless`
+  // elimina o artefato por completo, mas infla o arquivo ~10x (testado:
+  // ~1.2MB vs ~130-400KB dos outros guardiões, e este webp vai para o bundle
+  // do frontend). quality:95 reduz o ringing o suficiente para ficar
+  // imperceptível a olho nu (validado visualmente em zoom) mantendo o
+  // arquivo numa faixa de tamanho comparável aos demais assets.
+  pipeline.webp({ quality: 95, alphaQuality: 100 });
+}
+await pipeline.toFile(outputPath);
 console.log(`recolorido: ${outputPath}`);
