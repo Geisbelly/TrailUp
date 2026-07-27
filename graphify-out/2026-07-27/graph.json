@@ -3046,8 +3046,8 @@
       "source_location": "L802",
       "_origin": "ast",
       "id": "api_app_api_v1_personalizacao_ensure_topico_conteudo_belongs_to_classe",
-      "community": 259,
-      "community_name": "@react-navigation/bottom-tabs",
+      "community": 9,
+      "community_name": "AccessRepository",
       "norm_label": "_ensure_topico_conteudo_belongs_to_classe()"
     },
     {
@@ -3387,8 +3387,8 @@
       "source_location": "L809",
       "_origin": "ast",
       "id": "api_app_api_v1_personalizacao_rationale_809",
-      "community": 259,
-      "community_name": "@react-navigation/bottom-tabs",
+      "community": 9,
+      "community_name": "AccessRepository",
       "norm_label": "evita que um aluno gere/consulte personalizacao de conteudo de outra classe"
     },
     {
@@ -11461,8 +11461,8 @@
       "source_location": "L464",
       "_origin": "ast",
       "id": "api_app_services_personalizacao_normalize_profile_label",
-      "community": 94,
-      "community_name": "classMapTheme.ts",
+      "community": 61,
+      "community_name": "IAHeaderTimer.tsx",
       "norm_label": "_normalize_profile_label()"
     },
     {
@@ -11483,8 +11483,8 @@
       "source_location": "L488",
       "_origin": "ast",
       "id": "api_app_services_personalizacao_merge_perfil_brainhex",
-      "community": 94,
-      "community_name": "classMapTheme.ts",
+      "community": 61,
+      "community_name": "IAHeaderTimer.tsx",
       "norm_label": "_merge_perfil_brainhex()"
     },
     {
@@ -11505,8 +11505,8 @@
       "source_location": "L619",
       "_origin": "ast",
       "id": "api_app_services_personalizacao_list_visual_assets_catalog",
-      "community": 94,
-      "community_name": "classMapTheme.ts",
+      "community": 3,
+      "community_name": "perfil/index.tsx",
       "norm_label": "_list_visual_assets_catalog()"
     },
     {
@@ -11516,8 +11516,8 @@
       "source_location": "L658",
       "_origin": "ast",
       "id": "api_app_services_personalizacao_build_visual_profile_context",
-      "community": 94,
-      "community_name": "classMapTheme.ts",
+      "community": 3,
+      "community_name": "perfil/index.tsx",
       "norm_label": "_build_visual_profile_context()"
     },
     {
@@ -11527,8 +11527,8 @@
       "source_location": "L693",
       "_origin": "ast",
       "id": "api_app_services_personalizacao_build_tema_visual_for_profile",
-      "community": 94,
-      "community_name": "classMapTheme.ts",
+      "community": 61,
+      "community_name": "IAHeaderTimer.tsx",
       "norm_label": "_build_tema_visual_for_profile()"
     },
     {
@@ -18768,8 +18768,8 @@
       "source_location": "L45",
       "_origin": "ast",
       "id": "frontend_package_dependencies_browserslist",
-      "community": 322,
-      "community_name": "api/estrutura-banco-supabase-executivo.md",
+      "community": 54,
+      "community_name": "dependencies",
       "norm_label": "browserslist"
     },
     {
@@ -18779,8 +18779,8 @@
       "source_location": "L45",
       "_origin": "ast",
       "id": "browserslist",
-      "community": 322,
-      "community_name": "api/estrutura-banco-supabase-executivo.md",
+      "community": 54,
+      "community_name": "dependencies",
       "norm_label": "browserslist"
     },
     {
@@ -18856,8 +18856,8 @@
       "source_location": "L49",
       "_origin": "ast",
       "id": "frontend_package_dependencies_cmdk",
-      "community": 54,
-      "community_name": "dependencies",
+      "community": 322,
+      "community_name": "api/estrutura-banco-supabase-executivo.md",
       "norm_label": "cmdk"
     },
     {
@@ -18867,8 +18867,8 @@
       "source_location": "L49",
       "_origin": "ast",
       "id": "cmdk",
-      "community": 54,
-      "community_name": "dependencies",
+      "community": 322,
+      "community_name": "api/estrutura-banco-supabase-executivo.md",
       "norm_label": "cmdk"
     },
     {
@@ -21229,7 +21229,7 @@
       "label": "API_BASE_URL_CANDIDATES",
       "file_type": "code",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L18",
+      "source_location": "L24",
       "_origin": "ast",
       "id": "frontend_src_components_console_personalizacoes_personalizacoesapi_api_base_url_candidates",
       "community": 16,
@@ -21240,7 +21240,7 @@
       "label": "REQUEST_TIMEOUT_MS",
       "file_type": "code",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L22",
+      "source_location": "L28",
       "_origin": "ast",
       "id": "frontend_src_components_console_personalizacoes_personalizacoesapi_request_timeout_ms",
       "community": 16,
@@ -21251,7 +21251,7 @@
       "label": "DesignTokensCores",
       "file_type": "code",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L28",
+      "source_location": "L34",
       "_origin": "ast",
       "id": "frontend_src_components_console_personalizacoes_personalizacoesapi_designtokenscores",
       "community": 16,
@@ -21262,7 +21262,7 @@
       "label": "DesignTokens",
       "file_type": "code",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L43",
+      "source_location": "L49",
       "_origin": "ast",
       "id": "frontend_src_components_console_personalizacoes_personalizacoesapi_designtokens",
       "community": 16,
@@ -21273,7 +21273,7 @@
       "label": "PlanoPersonalizacao",
       "file_type": "code",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L51",
+      "source_location": "L57",
       "_origin": "ast",
       "id": "frontend_src_components_console_personalizacoes_personalizacoesapi_planopersonalizacao",
       "community": 16,
@@ -21284,7 +21284,7 @@
       "label": "PersonalizacaoResponse",
       "file_type": "code",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L61",
+      "source_location": "L67",
       "_origin": "ast",
       "id": "frontend_src_components_console_personalizacoes_personalizacoesapi_personalizacaoresponse",
       "community": 16,
@@ -21295,7 +21295,7 @@
       "label": "PersonalizacaoPerfilItem",
       "file_type": "code",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L80",
+      "source_location": "L86",
       "_origin": "ast",
       "id": "frontend_src_components_console_personalizacoes_personalizacoesapi_personalizacaoperfilitem",
       "community": 16,
@@ -21306,7 +21306,7 @@
       "label": "PersonalizacaoPorPerfilResponse",
       "file_type": "code",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L95",
+      "source_location": "L101",
       "_origin": "ast",
       "id": "frontend_src_components_console_personalizacoes_personalizacoesapi_personalizacaoporperfilresponse",
       "community": 16,
@@ -21317,7 +21317,7 @@
       "label": "PersonalizacaoContextoDocenteResponse",
       "file_type": "code",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L102",
+      "source_location": "L108",
       "_origin": "ast",
       "id": "frontend_src_components_console_personalizacoes_personalizacoesapi_personalizacaocontextodocenteresponse",
       "community": 16,
@@ -21328,7 +21328,7 @@
       "label": "parseJsonSafe()",
       "file_type": "code",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L123",
+      "source_location": "L129",
       "_origin": "ast",
       "id": "frontend_src_components_console_personalizacoes_personalizacoesapi_parsejsonsafe",
       "community": 16,
@@ -21339,7 +21339,7 @@
       "label": "extractErrorDetail()",
       "file_type": "code",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L132",
+      "source_location": "L138",
       "_origin": "ast",
       "id": "frontend_src_components_console_personalizacoes_personalizacoesapi_extracterrordetail",
       "community": 16,
@@ -21350,7 +21350,7 @@
       "label": "isAuthFailure()",
       "file_type": "code",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L143",
+      "source_location": "L149",
       "_origin": "ast",
       "id": "frontend_src_components_console_personalizacoes_personalizacoesapi_isauthfailure",
       "community": 16,
@@ -21361,7 +21361,7 @@
       "label": "resolveAccessToken()",
       "file_type": "code",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L147",
+      "source_location": "L153",
       "_origin": "ast",
       "id": "frontend_src_components_console_personalizacoes_personalizacoesapi_resolveaccesstoken",
       "community": 16,
@@ -21372,7 +21372,7 @@
       "label": "executeApiFetch()",
       "file_type": "code",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L169",
+      "source_location": "L175",
       "_origin": "ast",
       "id": "frontend_src_components_console_personalizacoes_personalizacoesapi_executeapifetch",
       "community": 16,
@@ -21383,7 +21383,7 @@
       "label": "apiRequest()",
       "file_type": "code",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L188",
+      "source_location": "L194",
       "_origin": "ast",
       "id": "frontend_src_components_console_personalizacoes_personalizacoesapi_apirequest",
       "community": 16,
@@ -21394,7 +21394,7 @@
       "label": "fetchPersonalizacaoPorPerfil()",
       "file_type": "code",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L237",
+      "source_location": "L243",
       "_origin": "ast",
       "id": "frontend_src_components_console_personalizacoes_personalizacoesapi_fetchpersonalizacaoporperfil",
       "community": 16,
@@ -21405,7 +21405,7 @@
       "label": "fetchContextoDocente()",
       "file_type": "code",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L248",
+      "source_location": "L254",
       "_origin": "ast",
       "id": "frontend_src_components_console_personalizacoes_personalizacoesapi_fetchcontextodocente",
       "community": 16,
@@ -21416,7 +21416,7 @@
       "label": "ClassePerfilDistribuicaoItem",
       "file_type": "code",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L261",
+      "source_location": "L267",
       "_origin": "ast",
       "id": "frontend_src_components_console_personalizacoes_personalizacoesapi_classeperfildistribuicaoitem",
       "community": 16,
@@ -21427,7 +21427,7 @@
       "label": "ClassePerfilSummaryResponse",
       "file_type": "code",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L267",
+      "source_location": "L273",
       "_origin": "ast",
       "id": "frontend_src_components_console_personalizacoes_personalizacoesapi_classeperfilsummaryresponse",
       "community": 16,
@@ -21438,7 +21438,7 @@
       "label": "fetchAdequacaoGrupo()",
       "file_type": "code",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L277",
+      "source_location": "L283",
       "_origin": "ast",
       "id": "frontend_src_components_console_personalizacoes_personalizacoesapi_fetchadequacaogrupo",
       "community": 16,
@@ -22736,7 +22736,7 @@
       "label": "API_BASE_URL_CANDIDATES",
       "file_type": "code",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L18",
+      "source_location": "L25",
       "_origin": "ast",
       "id": "frontend_src_components_console_trilha_personalizacaojobsapi_api_base_url_candidates",
       "community": 46,
@@ -22747,7 +22747,7 @@
       "label": "REQUEST_TIMEOUT_MS",
       "file_type": "code",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L22",
+      "source_location": "L29",
       "_origin": "ast",
       "id": "frontend_src_components_console_trilha_personalizacaojobsapi_request_timeout_ms",
       "community": 46,
@@ -22758,7 +22758,7 @@
       "label": "JobPayload",
       "file_type": "code",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L24",
+      "source_location": "L31",
       "_origin": "ast",
       "id": "frontend_src_components_console_trilha_personalizacaojobsapi_jobpayload",
       "community": 46,
@@ -22769,7 +22769,7 @@
       "label": "PersonalizacaoJobStatus",
       "file_type": "code",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L33",
+      "source_location": "L40",
       "_origin": "ast",
       "id": "frontend_src_components_console_trilha_personalizacaojobsapi_personalizacaojobstatus",
       "community": 46,
@@ -22780,7 +22780,7 @@
       "label": "parseJsonSafe()",
       "file_type": "code",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L50",
+      "source_location": "L57",
       "_origin": "ast",
       "id": "frontend_src_components_console_trilha_personalizacaojobsapi_parsejsonsafe",
       "community": 46,
@@ -22791,7 +22791,7 @@
       "label": "extractErrorDetail()",
       "file_type": "code",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L59",
+      "source_location": "L66",
       "_origin": "ast",
       "id": "frontend_src_components_console_trilha_personalizacaojobsapi_extracterrordetail",
       "community": 46,
@@ -22802,7 +22802,7 @@
       "label": "isAuthFailure()",
       "file_type": "code",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L70",
+      "source_location": "L77",
       "_origin": "ast",
       "id": "frontend_src_components_console_trilha_personalizacaojobsapi_isauthfailure",
       "community": 46,
@@ -22813,7 +22813,7 @@
       "label": "resolveAccessToken()",
       "file_type": "code",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L74",
+      "source_location": "L81",
       "_origin": "ast",
       "id": "frontend_src_components_console_trilha_personalizacaojobsapi_resolveaccesstoken",
       "community": 46,
@@ -22824,7 +22824,7 @@
       "label": "executeApiFetch()",
       "file_type": "code",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L96",
+      "source_location": "L103",
       "_origin": "ast",
       "id": "frontend_src_components_console_trilha_personalizacaojobsapi_executeapifetch",
       "community": 46,
@@ -22835,7 +22835,7 @@
       "label": "apiRequest()",
       "file_type": "code",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L116",
+      "source_location": "L123",
       "_origin": "ast",
       "id": "frontend_src_components_console_trilha_personalizacaojobsapi_apirequest",
       "community": 46,
@@ -22846,7 +22846,7 @@
       "label": "enqueueEnrollmentJob()",
       "file_type": "code",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L164",
+      "source_location": "L171",
       "_origin": "ast",
       "id": "frontend_src_components_console_trilha_personalizacaojobsapi_enqueueenrollmentjob",
       "community": 46,
@@ -22857,7 +22857,7 @@
       "label": "enqueueCleanupJob()",
       "file_type": "code",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L171",
+      "source_location": "L178",
       "_origin": "ast",
       "id": "frontend_src_components_console_trilha_personalizacaojobsapi_enqueuecleanupjob",
       "community": 46,
@@ -22868,7 +22868,7 @@
       "label": "enqueueClassDeltaJob()",
       "file_type": "code",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L178",
+      "source_location": "L185",
       "_origin": "ast",
       "id": "frontend_src_components_console_trilha_personalizacaojobsapi_enqueueclassdeltajob",
       "community": 46,
@@ -22879,7 +22879,7 @@
       "label": "enqueueFullSyncJob()",
       "file_type": "code",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L185",
+      "source_location": "L192",
       "_origin": "ast",
       "id": "frontend_src_components_console_trilha_personalizacaojobsapi_enqueuefullsyncjob",
       "community": 46,
@@ -22890,7 +22890,7 @@
       "label": "listPersonalizacaoJobs()",
       "file_type": "code",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L192",
+      "source_location": "L199",
       "_origin": "ast",
       "id": "frontend_src_components_console_trilha_personalizacaojobsapi_listpersonalizacaojobs",
       "community": 46,
@@ -30164,8 +30164,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "microservice_package_dependencies_google_genai",
-      "community": 50,
-      "community_name": "dependencies",
+      "community": 347,
+      "community_name": "@google/genai",
       "norm_label": "@google/genai"
     },
     {
@@ -30175,8 +30175,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "google_genai",
-      "community": 50,
-      "community_name": "dependencies",
+      "community": 347,
+      "community_name": "@google/genai",
       "norm_label": "@google/genai"
     },
     {
@@ -30318,8 +30318,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "microservice_package_dependencies_express",
-      "community": 326,
-      "community_name": "clsx",
+      "community": 50,
+      "community_name": "dependencies",
       "norm_label": "express"
     },
     {
@@ -30329,8 +30329,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "express",
-      "community": 326,
-      "community_name": "clsx",
+      "community": 50,
+      "community_name": "dependencies",
       "norm_label": "express"
     },
     {
@@ -33783,8 +33783,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "mobile_package_dependencies_config_plugins_react_native_pdf",
-      "community": 144,
-      "community_name": "dependencies",
+      "community": 326,
+      "community_name": "clsx",
       "norm_label": "@config-plugins/react-native-pdf"
     },
     {
@@ -33794,8 +33794,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "config_plugins_react_native_pdf",
-      "community": 144,
-      "community_name": "dependencies",
+      "community": 326,
+      "community_name": "clsx",
       "norm_label": "@config-plugins/react-native-pdf"
     },
     {
@@ -34311,8 +34311,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "mobile_package_dependencies_expo_symbols",
-      "community": 111,
-      "community_name": "ArvoreView.tsx",
+      "community": 144,
+      "community_name": "dependencies",
       "norm_label": "expo-symbols"
     },
     {
@@ -34322,8 +34322,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "expo_symbols",
-      "community": 111,
-      "community_name": "ArvoreView.tsx",
+      "community": 144,
+      "community_name": "dependencies",
       "norm_label": "expo-symbols"
     },
     {
@@ -35323,8 +35323,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "mobile_src_app_tabs_notificacoes_index_perfilhome",
-      "community": 117,
-      "community_name": "_normalize_personalized_activities",
+      "community": 296,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "perfilhome()"
     },
     {
@@ -36621,8 +36621,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_components_cardnotificacao",
-      "community": 12,
-      "community_name": "GlobalStyle.ts",
+      "community": 4,
+      "community_name": "getProfileShellPalette",
       "norm_label": "cardnotificacao.tsx"
     },
     {
@@ -36632,8 +36632,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "mobile_src_components_cardnotificacao_props",
-      "community": 12,
-      "community_name": "GlobalStyle.ts",
+      "community": 4,
+      "community_name": "getProfileShellPalette",
       "norm_label": "props"
     },
     {
@@ -36643,8 +36643,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "mobile_src_components_cardnotificacao_notificationitem",
-      "community": 12,
-      "community_name": "GlobalStyle.ts",
+      "community": 4,
+      "community_name": "getProfileShellPalette",
       "norm_label": "notificationitem"
     },
     {
@@ -36654,8 +36654,8 @@
       "source_location": "L128",
       "_origin": "ast",
       "id": "mobile_src_components_cardnotificacao_styles",
-      "community": 12,
-      "community_name": "GlobalStyle.ts",
+      "community": 4,
+      "community_name": "getProfileShellPalette",
       "norm_label": "styles"
     },
     {
@@ -36665,8 +36665,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_components_cardsemdados",
-      "community": 70,
-      "community_name": "Topico",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "cardsemdados.tsx"
     },
     {
@@ -36676,8 +36676,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "mobile_src_components_cardsemdados_props",
-      "community": 70,
-      "community_name": "Topico",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "props"
     },
     {
@@ -36687,8 +36687,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "mobile_src_components_cardsemdados_cardsemdados",
-      "community": 70,
-      "community_name": "Topico",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "cardsemdados"
     },
     {
@@ -36698,8 +36698,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "mobile_src_components_cardsemdados_styles",
-      "community": 70,
-      "community_name": "Topico",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "styles"
     },
     {
@@ -37193,8 +37193,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_components_imagefiltro",
-      "community": 70,
-      "community_name": "Topico",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "imagefiltro.tsx"
     },
     {
@@ -37204,8 +37204,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "mobile_src_components_imagefiltro_props",
-      "community": 70,
-      "community_name": "Topico",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "props"
     },
     {
@@ -37215,8 +37215,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "mobile_src_components_imagefiltro_imagemfilter",
-      "community": 70,
-      "community_name": "Topico",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "imagemfilter()"
     },
     {
@@ -37226,8 +37226,8 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "mobile_src_components_imagefiltro_styles",
-      "community": 70,
-      "community_name": "Topico",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "styles"
     },
     {
@@ -38084,8 +38084,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_components_toastcontainer",
-      "community": 117,
-      "community_name": "_normalize_personalized_activities",
+      "community": 296,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "toastcontainer.tsx"
     },
     {
@@ -38095,8 +38095,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "mobile_src_components_toastcontainer_width",
-      "community": 117,
-      "community_name": "_normalize_personalized_activities",
+      "community": 296,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "{ width }"
     },
     {
@@ -38106,8 +38106,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "mobile_src_components_toastcontainer_rankbanner",
-      "community": 117,
-      "community_name": "_normalize_personalized_activities",
+      "community": 296,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "rankbanner()"
     },
     {
@@ -38117,8 +38117,8 @@
       "source_location": "L83",
       "_origin": "ast",
       "id": "mobile_src_components_toastcontainer_notificationmodal",
-      "community": 117,
-      "community_name": "_normalize_personalized_activities",
+      "community": 296,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "notificationmodal()"
     },
     {
@@ -38128,8 +38128,8 @@
       "source_location": "L230",
       "_origin": "ast",
       "id": "mobile_src_components_toastcontainer_toastcontainer",
-      "community": 117,
-      "community_name": "_normalize_personalized_activities",
+      "community": 296,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "toastcontainer()"
     },
     {
@@ -38139,8 +38139,8 @@
       "source_location": "L266",
       "_origin": "ast",
       "id": "mobile_src_components_toastcontainer_styles",
-      "community": 117,
-      "community_name": "_normalize_personalized_activities",
+      "community": 296,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "styles"
     },
     {
@@ -38238,8 +38238,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_components_videoblock",
-      "community": 37,
-      "community_name": "presentationOrder.ts",
+      "community": 296,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "videoblock.tsx"
     },
     {
@@ -38249,8 +38249,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "mobile_src_components_videoblock_videoblock",
-      "community": 37,
-      "community_name": "presentationOrder.ts",
+      "community": 296,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "videoblock()"
     },
     {
@@ -38326,8 +38326,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_components_external_link",
-      "community": 320,
-      "community_name": "ContentRenderer.tsx",
+      "community": 12,
+      "community_name": "GlobalStyle.ts",
       "norm_label": "external-link.tsx"
     },
     {
@@ -38337,8 +38337,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "mobile_src_components_external_link_props",
-      "community": 320,
-      "community_name": "ContentRenderer.tsx",
+      "community": 12,
+      "community_name": "GlobalStyle.ts",
       "norm_label": "props"
     },
     {
@@ -38348,8 +38348,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "mobile_src_components_external_link_externallink",
-      "community": 320,
-      "community_name": "ContentRenderer.tsx",
+      "community": 12,
+      "community_name": "GlobalStyle.ts",
       "norm_label": "externallink()"
     },
     {
@@ -38359,8 +38359,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_audioplayer",
-      "community": 296,
-      "community_name": "ArvoreView.tsx",
+      "community": 37,
+      "community_name": "presentationOrder.ts",
       "norm_label": "audioplayer.tsx"
     },
     {
@@ -38370,8 +38370,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_audioplayer_props",
-      "community": 296,
-      "community_name": "ArvoreView.tsx",
+      "community": 37,
+      "community_name": "presentationOrder.ts",
       "norm_label": "props"
     },
     {
@@ -38381,8 +38381,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_audioplayer_playbackstate",
-      "community": 296,
-      "community_name": "ArvoreView.tsx",
+      "community": 37,
+      "community_name": "presentationOrder.ts",
       "norm_label": "playbackstate"
     },
     {
@@ -38392,8 +38392,8 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_audioplayer_ishttpurl",
-      "community": 296,
-      "community_name": "ArvoreView.tsx",
+      "community": 37,
+      "community_name": "presentationOrder.ts",
       "norm_label": "ishttpurl()"
     },
     {
@@ -38403,8 +38403,8 @@
       "source_location": "L36",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_audioplayer_formattime",
-      "community": 296,
-      "community_name": "ArvoreView.tsx",
+      "community": 37,
+      "community_name": "presentationOrder.ts",
       "norm_label": "formattime()"
     },
     {
@@ -38414,8 +38414,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_audioplayer_openexternalurl",
-      "community": 296,
-      "community_name": "ArvoreView.tsx",
+      "community": 37,
+      "community_name": "presentationOrder.ts",
       "norm_label": "openexternalurl()"
     },
     {
@@ -38425,8 +38425,8 @@
       "source_location": "L48",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_audioplayer_normalizeplaybackstatus",
-      "community": 296,
-      "community_name": "ArvoreView.tsx",
+      "community": 37,
+      "community_name": "presentationOrder.ts",
       "norm_label": "normalizeplaybackstatus()"
     },
     {
@@ -38436,8 +38436,8 @@
       "source_location": "L66",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_audioplayer_audioplayer",
-      "community": 296,
-      "community_name": "ArvoreView.tsx",
+      "community": 37,
+      "community_name": "presentationOrder.ts",
       "norm_label": "audioplayer()"
     },
     {
@@ -38447,8 +38447,8 @@
       "source_location": "L412",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_audioplayer_styles",
-      "community": 296,
-      "community_name": "ArvoreView.tsx",
+      "community": 37,
+      "community_name": "presentationOrder.ts",
       "norm_label": "styles"
     },
     {
@@ -38623,8 +38623,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_pontonumero",
-      "community": 60,
-      "community_name": "media_agents.py",
+      "community": 12,
+      "community_name": "GlobalStyle.ts",
       "norm_label": "pontonumero.tsx"
     },
     {
@@ -38634,8 +38634,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_pontonumero_props",
-      "community": 60,
-      "community_name": "media_agents.py",
+      "community": 12,
+      "community_name": "GlobalStyle.ts",
       "norm_label": "props"
     },
     {
@@ -38645,8 +38645,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_pontonumero_pontonumero",
-      "community": 60,
-      "community_name": "media_agents.py",
+      "community": 12,
+      "community_name": "GlobalStyle.ts",
       "norm_label": "pontonumero()"
     },
     {
@@ -38656,8 +38656,8 @@
       "source_location": "L36",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_pontonumero_styles",
-      "community": 60,
-      "community_name": "media_agents.py",
+      "community": 12,
+      "community_name": "GlobalStyle.ts",
       "norm_label": "styles"
     },
     {
@@ -38755,8 +38755,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_videoplayer",
-      "community": 37,
-      "community_name": "presentationOrder.ts",
+      "community": 296,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "videoplayer.tsx"
     },
     {
@@ -38766,8 +38766,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_videoplayer_props",
-      "community": 37,
-      "community_name": "presentationOrder.ts",
+      "community": 296,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "props"
     },
     {
@@ -38777,8 +38777,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_videoplayer_ishttpurl",
-      "community": 37,
-      "community_name": "presentationOrder.ts",
+      "community": 296,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "ishttpurl()"
     },
     {
@@ -38788,8 +38788,8 @@
       "source_location": "L31",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_videoplayer_getyoutubeid",
-      "community": 37,
-      "community_name": "presentationOrder.ts",
+      "community": 296,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "getyoutubeid()"
     },
     {
@@ -38799,8 +38799,8 @@
       "source_location": "L42",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_videoplayer_openexternalurl",
-      "community": 37,
-      "community_name": "presentationOrder.ts",
+      "community": 296,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "openexternalurl()"
     },
     {
@@ -38810,8 +38810,8 @@
       "source_location": "L47",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_videoplayer_videoplayer",
-      "community": 37,
-      "community_name": "presentationOrder.ts",
+      "community": 296,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "videoplayer()"
     },
     {
@@ -38821,8 +38821,8 @@
       "source_location": "L510",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_videoplayer_styles",
-      "community": 37,
-      "community_name": "presentationOrder.ts",
+      "community": 296,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "styles"
     },
     {
@@ -38832,8 +38832,8 @@
       "source_location": "L631",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_videoplayer_seekstyles",
-      "community": 37,
-      "community_name": "presentationOrder.ts",
+      "community": 296,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "seekstyles"
     },
     {
@@ -40394,8 +40394,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_components_trilhas_arvoreview",
-      "community": 296,
-      "community_name": "ArvoreView.tsx",
+      "community": 320,
+      "community_name": "ContentRenderer.tsx",
       "norm_label": "arvoreview.tsx"
     },
     {
@@ -40405,8 +40405,8 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "mobile_src_components_trilhas_arvoreview_clamp",
-      "community": 296,
-      "community_name": "ArvoreView.tsx",
+      "community": 320,
+      "community_name": "ContentRenderer.tsx",
       "norm_label": "clamp()"
     },
     {
@@ -40416,8 +40416,8 @@
       "source_location": "L58",
       "_origin": "ast",
       "id": "mobile_src_components_trilhas_arvoreview_hexpoints",
-      "community": 296,
-      "community_name": "ArvoreView.tsx",
+      "community": 320,
+      "community_name": "ContentRenderer.tsx",
       "norm_label": "hexpoints()"
     },
     {
@@ -40427,8 +40427,8 @@
       "source_location": "L68",
       "_origin": "ast",
       "id": "mobile_src_components_trilhas_arvoreview_starpath",
-      "community": 296,
-      "community_name": "ArvoreView.tsx",
+      "community": 320,
+      "community_name": "ContentRenderer.tsx",
       "norm_label": "starpath()"
     },
     {
@@ -40438,8 +40438,8 @@
       "source_location": "L82",
       "_origin": "ast",
       "id": "mobile_src_components_trilhas_arvoreview_straight",
-      "community": 296,
-      "community_name": "ArvoreView.tsx",
+      "community": 320,
+      "community_name": "ContentRenderer.tsx",
       "norm_label": "straight()"
     },
     {
@@ -40449,8 +40449,8 @@
       "source_location": "L85",
       "_origin": "ast",
       "id": "mobile_src_components_trilhas_arvoreview_cliptoradius",
-      "community": 296,
-      "community_name": "ArvoreView.tsx",
+      "community": 320,
+      "community_name": "ContentRenderer.tsx",
       "norm_label": "cliptoradius()"
     },
     {
@@ -40460,8 +40460,8 @@
       "source_location": "L100",
       "_origin": "ast",
       "id": "mobile_src_components_trilhas_arvoreview_intersectsegments",
-      "community": 296,
-      "community_name": "ArvoreView.tsx",
+      "community": 320,
+      "community_name": "ContentRenderer.tsx",
       "norm_label": "intersectsegments()"
     },
     {
@@ -40471,8 +40471,8 @@
       "source_location": "L123",
       "_origin": "ast",
       "id": "mobile_src_components_trilhas_arvoreview_hexvertices",
-      "community": 296,
-      "community_name": "ArvoreView.tsx",
+      "community": 320,
+      "community_name": "ContentRenderer.tsx",
       "norm_label": "hexvertices()"
     },
     {
@@ -40482,8 +40482,8 @@
       "source_location": "L133",
       "_origin": "ast",
       "id": "mobile_src_components_trilhas_arvoreview_cliptohex",
-      "community": 296,
-      "community_name": "ArvoreView.tsx",
+      "community": 320,
+      "community_name": "ContentRenderer.tsx",
       "norm_label": "cliptohex()"
     },
     {
@@ -40493,8 +40493,8 @@
       "source_location": "L151",
       "_origin": "ast",
       "id": "mobile_src_components_trilhas_arvoreview_trilhaarvoresimple",
-      "community": 296,
-      "community_name": "ArvoreView.tsx",
+      "community": 320,
+      "community_name": "ContentRenderer.tsx",
       "norm_label": "trilhaarvoresimple()"
     },
     {
@@ -40504,8 +40504,8 @@
       "source_location": "L905",
       "_origin": "ast",
       "id": "mobile_src_components_trilhas_arvoreview_styles",
-      "community": 296,
-      "community_name": "ArvoreView.tsx",
+      "community": 320,
+      "community_name": "ContentRenderer.tsx",
       "norm_label": "styles"
     },
     {
@@ -40911,8 +40911,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_components_trilhas_common_lockbadge",
-      "community": 296,
-      "community_name": "ArvoreView.tsx",
+      "community": 320,
+      "community_name": "ContentRenderer.tsx",
       "norm_label": "lockbadge.tsx"
     },
     {
@@ -40922,8 +40922,8 @@
       "source_location": "L4",
       "_origin": "ast",
       "id": "mobile_src_components_trilhas_common_lockbadge_lockbadge",
-      "community": 296,
-      "community_name": "ArvoreView.tsx",
+      "community": 320,
+      "community_name": "ContentRenderer.tsx",
       "norm_label": "lockbadge()"
     },
     {
@@ -41384,8 +41384,8 @@
       "source_location": "L228",
       "_origin": "ast",
       "id": "mobile_src_constants_profileimages_getbrainhexconfig",
-      "community": 117,
-      "community_name": "_normalize_personalized_activities",
+      "community": 296,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "getbrainhexconfig()"
     },
     {
@@ -41450,8 +41450,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_context_conquistarankcontext",
-      "community": 104,
-      "community_name": "Settings",
+      "community": 70,
+      "community_name": "Topico",
       "norm_label": "conquistarankcontext.tsx"
     },
     {
@@ -41461,8 +41461,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "mobile_src_context_conquistarankcontext_normalizeclasseid",
-      "community": 104,
-      "community_name": "Settings",
+      "community": 70,
+      "community_name": "Topico",
       "norm_label": "normalizeclasseid()"
     },
     {
@@ -41472,8 +41472,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "mobile_src_context_conquistarankcontext_isinvalidbigintdataerror",
-      "community": 104,
-      "community_name": "Settings",
+      "community": 70,
+      "community_name": "Topico",
       "norm_label": "isinvalidbigintdataerror()"
     },
     {
@@ -41483,8 +41483,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "mobile_src_context_conquistarankcontext_conquistarankstate",
-      "community": 104,
-      "community_name": "Settings",
+      "community": 70,
+      "community_name": "Topico",
       "norm_label": "conquistarankstate"
     },
     {
@@ -41494,8 +41494,8 @@
       "source_location": "L42",
       "_origin": "ast",
       "id": "mobile_src_context_conquistarankcontext_conquistarankcontext",
-      "community": 104,
-      "community_name": "Settings",
+      "community": 70,
+      "community_name": "Topico",
       "norm_label": "conquistarankcontext"
     },
     {
@@ -41505,8 +41505,8 @@
       "source_location": "L55",
       "_origin": "ast",
       "id": "mobile_src_context_conquistarankcontext_conquistarankprovider",
-      "community": 104,
-      "community_name": "Settings",
+      "community": 70,
+      "community_name": "Topico",
       "norm_label": "conquistarankprovider()"
     },
     {
@@ -42506,8 +42506,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_context_notificacaocontext",
-      "community": 117,
-      "community_name": "_normalize_personalized_activities",
+      "community": 104,
+      "community_name": "Settings",
       "norm_label": "notificacaocontext.tsx"
     },
     {
@@ -42517,8 +42517,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "mobile_src_context_notificacaocontext_toasttype",
-      "community": 117,
-      "community_name": "_normalize_personalized_activities",
+      "community": 104,
+      "community_name": "Settings",
       "norm_label": "toasttype"
     },
     {
@@ -42528,8 +42528,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "mobile_src_context_notificacaocontext_toastmessage",
-      "community": 117,
-      "community_name": "_normalize_personalized_activities",
+      "community": 104,
+      "community_name": "Settings",
       "norm_label": "toastmessage"
     },
     {
@@ -42539,8 +42539,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "mobile_src_context_notificacaocontext_statusfiltro",
-      "community": 117,
-      "community_name": "_normalize_personalized_activities",
+      "community": 104,
+      "community_name": "Settings",
       "norm_label": "statusfiltro"
     },
     {
@@ -42550,8 +42550,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "mobile_src_context_notificacaocontext_notificationsstate",
-      "community": 117,
-      "community_name": "_normalize_personalized_activities",
+      "community": 104,
+      "community_name": "Settings",
       "norm_label": "notificationsstate"
     },
     {
@@ -42561,8 +42561,8 @@
       "source_location": "L51",
       "_origin": "ast",
       "id": "mobile_src_context_notificacaocontext_notificationscontext",
-      "community": 117,
-      "community_name": "_normalize_personalized_activities",
+      "community": 104,
+      "community_name": "Settings",
       "norm_label": "notificationscontext"
     },
     {
@@ -42572,8 +42572,8 @@
       "source_location": "L73",
       "_origin": "ast",
       "id": "mobile_src_context_notificacaocontext_notificationsprovider",
-      "community": 117,
-      "community_name": "_normalize_personalized_activities",
+      "community": 104,
+      "community_name": "Settings",
       "norm_label": "notificationsprovider()"
     },
     {
@@ -42583,8 +42583,8 @@
       "source_location": "L405",
       "_origin": "ast",
       "id": "mobile_src_context_notificacaocontext_usenotifications",
-      "community": 117,
-      "community_name": "_normalize_personalized_activities",
+      "community": 296,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "usenotifications()"
     },
     {
@@ -45113,8 +45113,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_models_classe",
-      "community": 21,
-      "community_name": "expo-router",
+      "community": 111,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "classe.ts"
     },
     {
@@ -45124,8 +45124,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "mobile_src_models_classe_safejsonparse",
-      "community": 21,
-      "community_name": "expo-router",
+      "community": 111,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "safejsonparse()"
     },
     {
@@ -45135,8 +45135,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "mobile_src_models_classe_toobjectrecord",
-      "community": 21,
-      "community_name": "expo-router",
+      "community": 111,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "toobjectrecord()"
     },
     {
@@ -45146,8 +45146,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "mobile_src_models_classe_toarrayvalue",
-      "community": 21,
-      "community_name": "expo-router",
+      "community": 111,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "toarrayvalue()"
     },
     {
@@ -45157,8 +45157,8 @@
       "source_location": "L46",
       "_origin": "ast",
       "id": "mobile_src_models_classe_pickfirststring",
-      "community": 21,
-      "community_name": "expo-router",
+      "community": 111,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "pickfirststring()"
     },
     {
@@ -45168,8 +45168,8 @@
       "source_location": "L56",
       "_origin": "ast",
       "id": "mobile_src_models_classe_mergemediacandidates",
-      "community": 21,
-      "community_name": "expo-router",
+      "community": 111,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "mergemediacandidates()"
     },
     {
@@ -45377,8 +45377,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_models_conquista",
-      "community": 104,
-      "community_name": "Settings",
+      "community": 70,
+      "community_name": "Topico",
       "norm_label": "conquista.ts"
     },
     {
@@ -45388,8 +45388,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "mobile_src_models_conquista_conquistabibliotecastatus",
-      "community": 104,
-      "community_name": "Settings",
+      "community": 70,
+      "community_name": "Topico",
       "norm_label": "conquistabibliotecastatus"
     },
     {
@@ -45399,8 +45399,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "mobile_src_models_conquista_conquistabibliotecaitem",
-      "community": 104,
-      "community_name": "Settings",
+      "community": 70,
+      "community_name": "Topico",
       "norm_label": "conquistabibliotecaitem"
     },
     {
@@ -45410,8 +45410,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "mobile_src_models_conquista_clamppercent",
-      "community": 104,
-      "community_name": "Settings",
+      "community": 70,
+      "community_name": "Topico",
       "norm_label": "clamppercent()"
     },
     {
@@ -45421,8 +45421,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "mobile_src_models_conquista_buildcriterioresumo",
-      "community": 104,
-      "community_name": "Settings",
+      "community": 70,
+      "community_name": "Topico",
       "norm_label": "buildcriterioresumo()"
     },
     {
@@ -45432,8 +45432,8 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "mobile_src_models_conquista_conquista",
-      "community": 104,
-      "community_name": "Settings",
+      "community": 70,
+      "community_name": "Topico",
       "norm_label": "conquista"
     },
     {
@@ -45443,8 +45443,8 @@
       "source_location": "L33",
       "_origin": "ast",
       "id": "mobile_src_models_conquista_conquista_constructor",
-      "community": 104,
-      "community_name": "Settings",
+      "community": 70,
+      "community_name": "Topico",
       "norm_label": ".constructor()"
     },
     {
@@ -45454,8 +45454,8 @@
       "source_location": "L48",
       "_origin": "ast",
       "id": "mobile_src_models_conquista_conquista_fromjoinedrow",
-      "community": 104,
-      "community_name": "Settings",
+      "community": 70,
+      "community_name": "Topico",
       "norm_label": ".fromjoinedrow()"
     },
     {
@@ -45465,8 +45465,8 @@
       "source_location": "L66",
       "_origin": "ast",
       "id": "mobile_src_models_conquista_conquista_fetchallforaluno",
-      "community": 104,
-      "community_name": "Settings",
+      "community": 70,
+      "community_name": "Topico",
       "norm_label": ".fetchallforaluno()"
     },
     {
@@ -45476,8 +45476,8 @@
       "source_location": "L93",
       "_origin": "ast",
       "id": "mobile_src_models_conquista_conquista_fetchcatalogo",
-      "community": 104,
-      "community_name": "Settings",
+      "community": 70,
+      "community_name": "Topico",
       "norm_label": ".fetchcatalogo()"
     },
     {
@@ -45487,8 +45487,8 @@
       "source_location": "L119",
       "_origin": "ast",
       "id": "mobile_src_models_conquista_conquista_fetchbibliotecaforaluno",
-      "community": 104,
-      "community_name": "Settings",
+      "community": 70,
+      "community_name": "Topico",
       "norm_label": ".fetchbibliotecaforaluno()"
     },
     {
@@ -45498,8 +45498,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_models_conteudo",
-      "community": 139,
-      "community_name": "wav.test.ts",
+      "community": 111,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "conteudo.ts"
     },
     {
@@ -45509,8 +45509,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "mobile_src_models_conteudo_conteudo",
-      "community": 140,
-      "community_name": "ios",
+      "community": 111,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "conteudo"
     },
     {
@@ -45520,8 +45520,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "mobile_src_models_conteudo_conteudo_constructor",
-      "community": 140,
-      "community_name": "ios",
+      "community": 111,
+      "community_name": "ArvoreView.tsx",
       "norm_label": ".constructor()"
     },
     {
@@ -45531,8 +45531,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "mobile_src_models_conteudo_conteudo_addmidia",
-      "community": 140,
-      "community_name": "ios",
+      "community": 111,
+      "community_name": "ArvoreView.tsx",
       "norm_label": ".addmidia()"
     },
     {
@@ -45542,8 +45542,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "mobile_src_models_conteudo_conteudo_linkatividade",
-      "community": 140,
-      "community_name": "ios",
+      "community": 111,
+      "community_name": "ArvoreView.tsx",
       "norm_label": ".linkatividade()"
     },
     {
@@ -45553,8 +45553,8 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "mobile_src_models_conteudo_conteudo_marcarvisto",
-      "community": 140,
-      "community_name": "ios",
+      "community": 111,
+      "community_name": "ArvoreView.tsx",
       "norm_label": ".marcarvisto()"
     },
     {
@@ -45718,8 +45718,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_models_midia",
-      "community": 140,
-      "community_name": "ios",
+      "community": 111,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "midia.ts"
     },
     {
@@ -45729,8 +45729,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_models_midia_midia",
-      "community": 140,
-      "community_name": "ios",
+      "community": 111,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "midia"
     },
     {
@@ -45740,8 +45740,8 @@
       "source_location": "L2",
       "_origin": "ast",
       "id": "mobile_src_models_midia_midia_constructor",
-      "community": 140,
-      "community_name": "ios",
+      "community": 111,
+      "community_name": "ArvoreView.tsx",
       "norm_label": ".constructor()"
     },
     {
@@ -45850,8 +45850,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "mobile_src_models_notificacoes_notificacao",
-      "community": 117,
-      "community_name": "_normalize_personalized_activities",
+      "community": 104,
+      "community_name": "Settings",
       "norm_label": "notificacao"
     },
     {
@@ -45861,8 +45861,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "mobile_src_models_notificacoes_notificacao_constructor",
-      "community": 117,
-      "community_name": "_normalize_personalized_activities",
+      "community": 104,
+      "community_name": "Settings",
       "norm_label": ".constructor()"
     },
     {
@@ -45872,8 +45872,8 @@
       "source_location": "L41",
       "_origin": "ast",
       "id": "mobile_src_models_notificacoes_notificacao_fromrow",
-      "community": 117,
-      "community_name": "_normalize_personalized_activities",
+      "community": 104,
+      "community_name": "Settings",
       "norm_label": ".fromrow()"
     },
     {
@@ -45883,8 +45883,8 @@
       "source_location": "L56",
       "_origin": "ast",
       "id": "mobile_src_models_notificacoes_notificacao_findbyid",
-      "community": 117,
-      "community_name": "_normalize_personalized_activities",
+      "community": 104,
+      "community_name": "Settings",
       "norm_label": ".findbyid()"
     },
     {
@@ -45894,8 +45894,8 @@
       "source_location": "L68",
       "_origin": "ast",
       "id": "mobile_src_models_notificacoes_notificacao_listbyaluno",
-      "community": 117,
-      "community_name": "_normalize_personalized_activities",
+      "community": 104,
+      "community_name": "Settings",
       "norm_label": ".listbyaluno()"
     },
     {
@@ -45905,8 +45905,8 @@
       "source_location": "L81",
       "_origin": "ast",
       "id": "mobile_src_models_notificacoes_notificacao_create",
-      "community": 117,
-      "community_name": "_normalize_personalized_activities",
+      "community": 104,
+      "community_name": "Settings",
       "norm_label": ".create()"
     },
     {
@@ -45916,8 +45916,8 @@
       "source_location": "L108",
       "_origin": "ast",
       "id": "mobile_src_models_notificacoes_notificacao_updatestatus",
-      "community": 117,
-      "community_name": "_normalize_personalized_activities",
+      "community": 104,
+      "community_name": "Settings",
       "norm_label": ".updatestatus()"
     },
     {
@@ -45927,8 +45927,8 @@
       "source_location": "L118",
       "_origin": "ast",
       "id": "mobile_src_models_notificacoes_notificacao_updateread",
-      "community": 117,
-      "community_name": "_normalize_personalized_activities",
+      "community": 104,
+      "community_name": "Settings",
       "norm_label": ".updateread()"
     },
     {
@@ -45938,8 +45938,8 @@
       "source_location": "L129",
       "_origin": "ast",
       "id": "mobile_src_models_notificacoes_notificacao_delete",
-      "community": 117,
-      "community_name": "_normalize_personalized_activities",
+      "community": 104,
+      "community_name": "Settings",
       "norm_label": ".delete()"
     },
     {
@@ -45949,8 +45949,8 @@
       "source_location": "L139",
       "_origin": "ast",
       "id": "mobile_src_models_notificacoes_notificacao_tojson",
-      "community": 117,
-      "community_name": "_normalize_personalized_activities",
+      "community": 104,
+      "community_name": "Settings",
       "norm_label": ".tojson()"
     },
     {
@@ -46015,8 +46015,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_models_questaoaluno",
-      "community": 21,
-      "community_name": "expo-router",
+      "community": 111,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "questaoaluno.ts"
     },
     {
@@ -46026,8 +46026,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "mobile_src_models_questaoaluno_registrarparams",
-      "community": 21,
-      "community_name": "expo-router",
+      "community": 111,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "registrarparams"
     },
     {
@@ -46037,8 +46037,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "mobile_src_models_questaoaluno_questaoalunorow",
-      "community": 21,
-      "community_name": "expo-router",
+      "community": 111,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "questaoalunorow"
     },
     {
@@ -46048,8 +46048,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "mobile_src_models_questaoaluno_questaoaluno",
-      "community": 21,
-      "community_name": "expo-router",
+      "community": 111,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "questaoaluno"
     },
     {
@@ -46059,8 +46059,8 @@
       "source_location": "L31",
       "_origin": "ast",
       "id": "mobile_src_models_questaoaluno_questaoaluno_registrarresposta",
-      "community": 21,
-      "community_name": "expo-router",
+      "community": 111,
+      "community_name": "ArvoreView.tsx",
       "norm_label": ".registrarresposta()"
     },
     {
@@ -46070,8 +46070,8 @@
       "source_location": "L82",
       "_origin": "ast",
       "id": "mobile_src_models_questaoaluno_questaoaluno_buscarultimasporquestoes",
-      "community": 21,
-      "community_name": "expo-router",
+      "community": 111,
+      "community_name": "ArvoreView.tsx",
       "norm_label": ".buscarultimasporquestoes()"
     },
     {
@@ -46455,8 +46455,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_models_topico",
-      "community": 139,
-      "community_name": "wav.test.ts",
+      "community": 111,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "topico.ts"
     },
     {
@@ -46488,8 +46488,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "mobile_src_models_topico_topico_addconteudo",
-      "community": 140,
-      "community_name": "ios",
+      "community": 111,
+      "community_name": "ArvoreView.tsx",
       "norm_label": ".addconteudo()"
     },
     {
@@ -128934,7 +128934,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L18",
+      "source_location": "L24",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi",
@@ -128945,7 +128945,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L188",
+      "source_location": "L194",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi",
@@ -128956,7 +128956,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L261",
+      "source_location": "L267",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi",
@@ -128967,7 +128967,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L267",
+      "source_location": "L273",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi",
@@ -128978,7 +128978,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L43",
+      "source_location": "L49",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi",
@@ -128989,7 +128989,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L28",
+      "source_location": "L34",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi",
@@ -129011,7 +129011,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L169",
+      "source_location": "L175",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi",
@@ -129022,7 +129022,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L132",
+      "source_location": "L138",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi",
@@ -129033,7 +129033,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L277",
+      "source_location": "L283",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi",
@@ -129044,7 +129044,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L248",
+      "source_location": "L254",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi",
@@ -129055,7 +129055,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L237",
+      "source_location": "L243",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi",
@@ -129066,7 +129066,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L143",
+      "source_location": "L149",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi",
@@ -129077,7 +129077,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L123",
+      "source_location": "L129",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi",
@@ -129088,7 +129088,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L102",
+      "source_location": "L108",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi",
@@ -129099,7 +129099,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L80",
+      "source_location": "L86",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi",
@@ -129110,7 +129110,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L95",
+      "source_location": "L101",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi",
@@ -129121,7 +129121,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L61",
+      "source_location": "L67",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi",
@@ -129132,7 +129132,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L51",
+      "source_location": "L57",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi",
@@ -129143,7 +129143,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L22",
+      "source_location": "L28",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi",
@@ -129154,7 +129154,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L147",
+      "source_location": "L153",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi",
@@ -129190,7 +129190,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L185",
+      "source_location": "L191",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi_executeapifetch",
@@ -129202,7 +129202,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L205",
+      "source_location": "L211",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi_apirequest",
@@ -129214,7 +129214,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L206",
+      "source_location": "L212",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi_apirequest",
@@ -129226,7 +129226,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L194",
+      "source_location": "L200",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi_apirequest",
@@ -129238,7 +129238,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L202",
+      "source_location": "L208",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi_apirequest",
@@ -129250,7 +129250,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L281",
+      "source_location": "L287",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi_fetchadequacaogrupo",
@@ -129262,7 +129262,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L255",
+      "source_location": "L261",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi_fetchcontextodocente",
@@ -129274,7 +129274,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L241",
+      "source_location": "L247",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi_fetchpersonalizacaoporperfil",
@@ -136243,7 +136243,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L18",
+      "source_location": "L25",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_trilha_personalizacaojobsapi",
@@ -136254,7 +136254,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L116",
+      "source_location": "L123",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_trilha_personalizacaojobsapi",
@@ -136265,7 +136265,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L178",
+      "source_location": "L185",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_trilha_personalizacaojobsapi",
@@ -136276,7 +136276,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L171",
+      "source_location": "L178",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_trilha_personalizacaojobsapi",
@@ -136287,7 +136287,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L164",
+      "source_location": "L171",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_trilha_personalizacaojobsapi",
@@ -136298,7 +136298,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L185",
+      "source_location": "L192",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_trilha_personalizacaojobsapi",
@@ -136320,7 +136320,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L96",
+      "source_location": "L103",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_trilha_personalizacaojobsapi",
@@ -136331,7 +136331,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L59",
+      "source_location": "L66",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_trilha_personalizacaojobsapi",
@@ -136342,7 +136342,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L70",
+      "source_location": "L77",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_trilha_personalizacaojobsapi",
@@ -136353,7 +136353,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L24",
+      "source_location": "L31",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_trilha_personalizacaojobsapi",
@@ -136364,7 +136364,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L192",
+      "source_location": "L199",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_trilha_personalizacaojobsapi",
@@ -136375,7 +136375,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L50",
+      "source_location": "L57",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_trilha_personalizacaojobsapi",
@@ -136386,7 +136386,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L33",
+      "source_location": "L40",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_trilha_personalizacaojobsapi",
@@ -136397,7 +136397,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L22",
+      "source_location": "L29",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_trilha_personalizacaojobsapi",
@@ -136408,7 +136408,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L74",
+      "source_location": "L81",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_trilha_personalizacaojobsapi",
@@ -136444,7 +136444,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L113",
+      "source_location": "L120",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_trilha_personalizacaojobsapi_executeapifetch",
@@ -136456,7 +136456,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L133",
+      "source_location": "L140",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_trilha_personalizacaojobsapi_apirequest",
@@ -136468,7 +136468,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L134",
+      "source_location": "L141",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_trilha_personalizacaojobsapi_apirequest",
@@ -136480,7 +136480,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L122",
+      "source_location": "L129",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_trilha_personalizacaojobsapi_apirequest",
@@ -136492,7 +136492,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L130",
+      "source_location": "L137",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_trilha_personalizacaojobsapi_apirequest",
@@ -136504,7 +136504,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L179",
+      "source_location": "L186",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_trilha_personalizacaojobsapi_enqueueclassdeltajob",
@@ -136516,7 +136516,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L172",
+      "source_location": "L179",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_trilha_personalizacaojobsapi_enqueuecleanupjob",
@@ -136528,7 +136528,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L165",
+      "source_location": "L172",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_trilha_personalizacaojobsapi_enqueueenrollmentjob",
@@ -136540,7 +136540,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L186",
+      "source_location": "L193",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_trilha_personalizacaojobsapi_enqueuefullsyncjob",
@@ -136552,7 +136552,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/trilha/personalizacaoJobsApi.ts",
-      "source_location": "L203",
+      "source_location": "L210",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_trilha_personalizacaojobsapi_listpersonalizacaojobs",
@@ -217005,5 +217005,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "8155f0010bb294c8f35aa73be0ed4b6a50b38abe"
+  "built_at_commit": "1316e9529afa68036de97d76c2f716b56dd845da"
 }

@@ -12,6 +12,7 @@ from app.agent.graph.checkpointer import (
 )
 from app.api.router import api_router
 from app.core.settings import Settings, get_settings
+from app.db.migrations import upgrade_database_to_head
 from app.db.session import build_session_factory
 from app.services.checkpoint_retention import checkpoint_retention_loop, run_checkpoint_retention_once
 from app.services.personalizacao_jobs import personalizacao_jobs_loop
@@ -27,6 +28,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
+        database_url = (app_settings.database_url or "").lower()
+        if app_settings.database_migrations_on_startup and database_url.startswith("postgres"):
+            await asyncio.to_thread(upgrade_database_to_head)
+
         engine, session_factory = build_session_factory(app_settings)
         personalizacao_checkpointer, personalizacao_backend, personalizacao_manager = await get_persistent_checkpointer(app_settings)
         ephemeral_checkpointer, ephemeral_backend, ephemeral_manager = await get_ephemeral_checkpointer()
@@ -66,7 +71,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 )
             )
         app.state.checkpoint_retention_task = retention_task
-        database_url = (app_settings.database_url or "").lower()
         if database_url.startswith("postgres"):
             personalizacao_jobs_task = asyncio.create_task(personalizacao_jobs_loop(app))
         app.state.personalizacao_jobs_task = personalizacao_jobs_task
