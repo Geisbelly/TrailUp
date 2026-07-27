@@ -42,17 +42,24 @@ test("usa a imagem_referencia (cena de fundo) e os icones quando presentes, sem 
   assert.equal(buf.subarray(0, 4).toString("ascii"), "%PDF");
 });
 
-test("multiplos slides geram multiplas paginas (verificado abrindo o PDF de volta no Puppeteer)", async () => {
+test("multiplos slides geram multiplas paginas (contagem real + PDF valido no Puppeteer)", async () => {
   const buf = await generateSlidesPDF(
     [{ titulo: "S1" }, { titulo: "S2" }, { titulo: "S3" }],
     "achiever"
   );
+  // Contagem real de paginas via objeto /Type /Page (exclui /Type /Pages, o
+  // no-pai da arvore de paginas) — verificado contra a saida real do
+  // Puppeteer, nao so contra jsPDF (regex funciona igual nos dois motores).
+  const text = buf.toString("latin1");
+  const pageCountMatch = text.match(/\/Type\s*\/Page[^s]/g) || [];
+  assert.equal(pageCountMatch.length, 3);
+
+  // Smoke test: um browser real consegue abrir o PDF gerado sem travar/rejeitar
+  // (pega PDF malformado/truncado que o Chromium recusaria a carregar).
   const browser = await puppeteer.launch({ headless: true, args: ["--no-sandbox", "--disable-setuid-sandbox"] });
   try {
     const page = await browser.newPage();
     await page.goto(`data:application/pdf;base64,${buf.toString("base64")}`, { waitUntil: "load" });
-    const single = await generateSlidesPDF([{ titulo: "S1" }], "achiever");
-    assert.ok(buf.length > single.length, "PDF com 3 slides deveria ser maior que PDF com 1 slide");
   } finally {
     await browser.close();
   }
