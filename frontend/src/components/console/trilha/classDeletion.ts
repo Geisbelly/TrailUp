@@ -149,6 +149,7 @@ export async function deleteClassTrail(classeId: number) {
   await tryDeleteEq("trilha_checkpoint_navegacao", "classe_id", classeId);
   await tryDeleteEq("ranks", "classe_id", classeId);
   await tryDeleteEq("classe_aluno", "classe_id", classeId);
+  await tryDeleteEq("cards_personalizados", "classe_id", classeId);
 
   await tryDeleteIn("topico_aluno", "topico_id", topicIds);
   await tryDeleteIn("conteudo_aluno", "conteudo_id", conteudoIds);
@@ -159,6 +160,8 @@ export async function deleteClassTrail(classeId: number) {
   await tryDeleteIn("conteudo_personalizado", "topico_id", topicIds);
   await tryDeleteIn("fontes_personalizacao", "topico_id", topicIds);
   await tryDeleteIn("fontes_personalizacao", "conteudo_id", conteudoIds);
+  await tryDeleteIn("cards_personalizados", "topico_id", topicIds);
+  await tryDeleteIn("cards_personalizados", "conteudo_id", conteudoIds);
   await tryDeleteIn("personalizacao_item_progresso", "topico_id", topicIds);
 
   if (atividadeIds.length > 0) {
@@ -225,6 +228,7 @@ export async function deleteContentCascade(conteudoId: number) {
   await tryDeleteEq("materiais_gerados", "conteudo_id", conteudoId);
   await tryDeleteEq("conteudo_personalizado", "conteudo_id", conteudoId);
   await tryDeleteEq("fontes_personalizacao", "conteudo_id", conteudoId);
+  await tryDeleteEq("cards_personalizados", "conteudo_id", conteudoId);
   await tryDeleteEq("cards", "conteudo_id", conteudoId);
   await tryDeleteEq("atividade_conteudos", "conteudo_id", conteudoId);
 
@@ -243,12 +247,14 @@ export async function deleteTopicCascade(topicoId: number) {
   await tryDeleteEq("topico_aluno", "topico_id", topicoId);
   await tryDeleteEq("conteudo_personalizado", "topico_id", topicoId);
   await tryDeleteEq("fontes_personalizacao", "topico_id", topicoId);
+  await tryDeleteEq("cards_personalizados", "topico_id", topicoId);
   await tryDeleteEq("personalizacao_item_progresso", "topico_id", topicoId);
 
   await tryDeleteIn("conteudo_aluno", "conteudo_id", conteudoIds);
   await tryDeleteIn("materiais_gerados", "conteudo_id", conteudoIds);
   await tryDeleteIn("conteudo_personalizado", "conteudo_id", conteudoIds);
   await tryDeleteIn("fontes_personalizacao", "conteudo_id", conteudoIds);
+  await tryDeleteIn("cards_personalizados", "conteudo_id", conteudoIds);
   await tryDeleteIn("atividade_aluno", "atividade_id", atividadeIds);
   await tryDeleteIn("questao_aluno", "questao_id", questionIds);
 
@@ -287,6 +293,7 @@ export async function deleteClasseCascade(classeId: number) {
   await tryDeleteEq("personalizacao_item_progresso", "classe_id", classeId);
   await tryDeleteEq("fontes_personalizacao", "classe_id", classeId);
   await tryDeleteEq("trilha_checkpoint_navegacao", "classe_id", classeId);
+  await tryDeleteEq("classe_perfil_summary", "classe_id", classeId);
 
   const { error: rankError } = await dynamicSupabase.from("ranks").delete().eq("classe_id", classeId);
   if (rankError) throw rankError;

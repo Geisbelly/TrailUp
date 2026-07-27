@@ -9,45 +9,52 @@ import GradientBlobs from "@/components/GradientBlobs";
 const FEATURES = [
   {
     icon: Compass,
-    title: "Perfil BrainHex",
-    description: "Descubra qual guia fala a sua língua através de um questionário científico. Seeker, Conqueror, Achiever e mais — cada perfil com seu tom, ritmo e narrativa.",
-    color: "text-primary",
+    title: "Desperte seu Guardião",
+    description:
+      "Antes da jornada começar, o TrailUp identifica seu perfil BrainHex e desperta um dos sete Guardiões da Trilha. Cada mentor possui uma personalidade, uma forma única de ensinar e uma maneira própria de desafiar você.",
+    color: "primary",
   },
   {
     icon: Map,
-    title: "Trilhas Personalizadas",
-    description: "Cada tópico vira um grimório sob medida para você. Desbloqueie trilhas de acordo com seu progresso e preferências.",
-    color: "text-accent",
-  },
-  {
-    icon: Crown,
-    title: "Rankings Dinâmicos",
-    description: "Meça sua evolução contra colegas de turma, instituição e desafios. Prove seu valor na tabela de honra.",
-    color: "text-warning",
+    title: "Trilhas que Evoluem",
+    description:
+      "Os conteúdos deixam de ser capítulos soltos e passam a formar uma aventura contínua. Cada conquista desbloqueia novos caminhos, desafios e conhecimentos.",
+    color: "accent",
   },
   {
     icon: Sword,
-    title: "Missões e Conquistas",
-    description: "Enfrente desafios, ganhe insígnias e conquiste recompensas exclusivas ao dominar cada conteúdo.",
-    color: "text-success",
+    title: "Missões e Relíquias",
+    description:
+      "Aprender rende recompensas. Complete desafios, conquiste insígnias lendárias e monte sua coleção de conquistas ao longo da jornada.",
+    color: "warning",
   },
   {
     icon: Shield,
-    title: "Adaptação em Tempo Real",
-    description: "Seu guia ajusta a dificuldade e o ritmo da narrativa conforme seu desempenho e modo de estudo preferido.",
-    color: "text-primary",
+    title: "Um Grimório Vivo",
+    description:
+      "Seu guia adapta a narrativa, a dificuldade e o ritmo conforme você evolui. O conhecimento cresce junto com você.",
+    color: "success",
   },
   {
-    icon: Box,
-    title: "Recompensas Imediatas",
-    description: "Feedback instantâneo e recompensas que te motivam a seguir na jornada.",
-    color: "text-accent",
+    icon: Crown,
+    title: "Arena dos Estudantes",
+    description:
+      "Compare sua evolução com colegas, dispute posições nos rankings e mostre que sua dedicação merece um lugar entre os maiores aventureiros.",
+    color: "primary",
   },
   {
     icon: Drama,
-    title: "Aprendizado Social",
-    description: "Una-se a colegas, forme grupos de estudo e compartilhe conquistas na sua trilha.",
-    color: "text-info",
+    title: "Guildas e Companheiros",
+    description:
+      "Nenhuma grande aventura acontece sozinho. Forme grupos, compartilhe descobertas e avance lado a lado com outros exploradores.",
+    color: "accent",
+  },
+  {
+    icon: Box,
+    title: "Uma Jornada Infinita",
+    description:
+      "Sempre existe uma nova trilha para explorar, uma missão para cumprir e um desafio esperando pelo próximo passo da sua história.",
+    color: "info",
   },
 ];
 
