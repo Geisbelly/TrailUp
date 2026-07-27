@@ -68,11 +68,58 @@ function featherWeight(h) {
 const image = sharp(inputPath).ensureAlpha();
 const { data, info } = await image.raw().toBuffer({ resolveWithObject: true });
 
+// Só pixels essencialmente opacos são recoloridos. Pixels de antialiasing/
+// borda (alpha baixo/parcial) ficam de fora: em alpha baixo a RGB armazenada
+// é irrelevante visualmente no original, mas um hue-shift para uma cor
+// saturada os torna visíveis como ruído/vazamento ao longo do contorno.
+const ALPHA_THRESHOLD = 250;
+
+// Perto de preto (ou de branco) puro, o hue e a saturação calculados via HSL
+// ficam numericamente instáveis: uma diferença de 1-2 em R/G/B entre canais
+// muito próximos de 0 (ou de 255) já basta para o hue "pular" para qualquer
+// valor e a saturação parecer alta, mesmo sendo apenas ruído de compressão/
+// contorno preto do cel-shading. Sem esse piso, esses pixels de contorno
+// caem "por sorte" dentro da faixa de hue alvo e viram ruído sarapintado
+// (specks vermelhos/laranja) espalhado pelo tecido. Preto/branco de contorno
+// deve ficar de fora do recolor de qualquer forma.
+const MIN_LIGHTNESS_FOR_MATCH = 0.04;
+const MAX_LIGHTNESS_FOR_MATCH = 0.96;
+
+// targetLightness NÃO deve sobrescrever a luminosidade de cada pixel para um
+// valor fixo — isso achataria todo o sombreamento (dobras, luz e sombra) da
+// peça num único bloco de cor sólida (o bug do commit anterior: manto virou
+// blob laranja chapado, sem volume). Em vez disso, calculamos o quanto a
+// luminosidade MÉDIA da região que bate no hue/sat precisa se mover para
+// chegar em targetLightness, e aplicamos esse mesmo deslocamento (delta) a
+// cada pixel, preservando a variação relativa (sombra continua mais escura
+// que luz, só o tom médio muda).
+let lightnessDelta = 0;
+if (targetLightness !== null) {
+  let weightedSum = 0;
+  let weightTotal = 0;
+  for (let i = 0; i < data.length; i += info.channels) {
+    const a = data[i + 3];
+    if (a < ALPHA_THRESHOLD) continue;
+    const [h, s, l] = rgbToHsl(data[i], data[i + 1], data[i + 2]);
+    if (s < satMin) continue;
+    if (l < MIN_LIGHTNESS_FOR_MATCH || l > MAX_LIGHTNESS_FOR_MATCH) continue;
+    const weight = featherWeight(h);
+    if (weight <= 0) continue;
+    weightedSum += l * weight;
+    weightTotal += weight;
+  }
+  if (weightTotal > 0) {
+    const meanLightness = weightedSum / weightTotal;
+    lightnessDelta = targetLightness - meanLightness;
+  }
+}
+
 for (let i = 0; i < data.length; i += info.channels) {
   const [r, g, b, a] = [data[i], data[i + 1], data[i + 2], data[i + 3]];
-  if (a < 5) continue;
+  if (a < ALPHA_THRESHOLD) continue;
   const [h, s, l] = rgbToHsl(r, g, b);
   if (s < satMin) continue;
+  if (l < MIN_LIGHTNESS_FOR_MATCH || l > MAX_LIGHTNESS_FOR_MATCH) continue;
   const weight = featherWeight(h);
   if (weight <= 0) continue;
 
@@ -81,7 +128,7 @@ for (let i = 0; i < data.length; i += info.channels) {
   const newSat = targetSat !== null ? s + (targetSat - s) * weight : s;
   let newLightness = l;
   if (targetLightness !== null) {
-    newLightness = l + (targetLightness - l) * weight;
+    newLightness = l + lightnessDelta * weight;
     newLightness = Math.min(1, Math.max(0, newLightness));
   }
   const [nr, ng, nb] = hslToRgb(newHue, newSat, newLightness);
@@ -90,5 +137,20 @@ for (let i = 0; i < data.length; i += info.channels) {
   data[i + 2] = nb;
 }
 
-await sharp(data, { raw: info }).toFile(outputPath);
+// WebP lossy (o padrão do sharp, quality:80) usa subsampling de crominância
+// 4:2:0 + blocos tipo-DCT; isso introduz ringing/vazamento de cor nas bordas
+// de alto contraste — e o recolor CRIA bordas de alto contraste que não
+// existiam antes (ex.: contorno quase-preto ao lado de tecido agora
+// laranja/coral muito saturado, onde antes era um roxo escuro e pouco
+// saturado — baixo contraste). Isso aparecia como ruído sarapintado
+// (specks) mesmo em pixels que o loop acima explicitamente pulou (o buffer
+// bruto ficava correto; o dano entrava só na hora de comprimir). `lossless`
+// elimina o artefato por completo, mas infla o arquivo ~10x (testado:
+// ~1.2MB vs ~130-400KB dos outros guardiões, e este webp vai para o bundle
+// do frontend). quality:95 reduz o ringing o suficiente para ficar
+// imperceptível a olho nu (validado visualmente em zoom) mantendo o
+// arquivo numa faixa de tamanho comparável aos demais assets.
+await sharp(data, { raw: info })
+  .webp({ quality: 95, alphaQuality: 100 })
+  .toFile(outputPath);
 console.log(`recolorido: ${outputPath}`);
