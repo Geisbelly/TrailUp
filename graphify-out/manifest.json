@@ -3968,5 +3968,15 @@
     "mtime": 1784941162.738,
     "ast_hash": "757cf1e196bf4883166b0d3385b657ca",
     "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-07-26-paleta-brainhex-psicologia-cores.md": {
+    "mtime": 1785114759.5452504,
+    "ast_hash": "27b5987e6d070fdd923504dabfb9f643",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-07-26-paleta-brainhex-psicologia-cores-design.md": {
+    "mtime": 1785114422.8417473,
+    "ast_hash": "367987e79286bcd1d815bb8404cc4de2",
+    "semantic_hash": ""
   }
 }
