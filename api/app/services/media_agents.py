@@ -98,7 +98,17 @@ async def gerar_audio_gemini_tts(
     settings: Settings,
     texto: str,
     voz: str = "Kore",
+    nome_speaker_principal: str | None = None,
+    speaker_secundario: tuple[str, str] | None = None,
 ) -> bytes | None:
+    """Narracao solo (1 voz) ou dialogo (2 vozes, quando `speaker_secundario` e passado).
+
+    Modo dialogo exige `nome_speaker_principal` (nome do 1o guardiao, ex. "Mateo") junto com
+    `speaker_secundario` = `(nome_speaker_2, voz_speaker_2)` (ex. `("Zuri", "Aoede")`). Nesse
+    modo o `texto` precisa vir com cada fala em uma linha comecando exatamente com
+    "NomeDoSpeaker: " — o Gemini casa esse prefixo com `speaker` em `speakerVoiceConfigs` pra
+    trocar de voz por fala. `voz` e sempre a voz do speaker principal, nos dois modos.
+    """
     cleaned = str(texto or "").strip()
     if not cleaned:
         return None
@@ -109,17 +119,29 @@ async def gerar_audio_gemini_tts(
             "https://generativelanguage.googleapis.com/v1beta/models/"
             f"{model_name}:generateContent?key={settings.gemini_api_key}"
         )
+        if speaker_secundario and nome_speaker_principal:
+            nome_secundario, voz_secundaria = speaker_secundario
+            speech_config = {
+                "multiSpeakerVoiceConfig": {
+                    "speakerVoiceConfigs": [
+                        {
+                            "speaker": nome_speaker_principal,
+                            "voiceConfig": {"prebuiltVoiceConfig": {"voiceName": voz}},
+                        },
+                        {
+                            "speaker": nome_secundario,
+                            "voiceConfig": {"prebuiltVoiceConfig": {"voiceName": voz_secundaria}},
+                        },
+                    ]
+                }
+            }
+        else:
+            speech_config = {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": voz}}}
         body = {
             "contents": [{"role": "user", "parts": [{"text": cleaned}]}],
             "generationConfig": {
                 "responseModalities": ["AUDIO"],
-                "speechConfig": {
-                    "voiceConfig": {
-                        "prebuiltVoiceConfig": {
-                            "voiceName": voz,
-                        }
-                    }
-                },
+                "speechConfig": speech_config,
             },
         }
 
@@ -196,7 +218,7 @@ _BRAINHEX_GUIDE_CONFIG: dict[str, dict[str, str]] = {
     "survivor":   {"guia_nome": "Kenji",  "guia_voz": "Fenrir", "guia_cor": "#720101", "framing": "Diretrizes de Campo",       "label": "Sobrevivente"},
     "daredevil":  {"guia_nome": "Ember",  "guia_voz": "Zephyr", "guia_cor": "#1b6b1b", "framing": "Código de Impacto",         "label": "Aventureiro"},
     "conqueror":  {"guia_nome": "Amina",  "guia_voz": "Kore",   "guia_cor": "#01808b", "framing": "Tratado de Soberania",      "label": "Conquistador"},
-    "socializer": {"guia_nome": "Mateo",  "guia_voz": "Kore",   "guia_cor": "#6d15be", "framing": "Elo da Comunidade",         "label": "Socializador"},
+    "socializer": {"guia_nome": "Mateo",  "guia_voz": "Kore",   "guia_cor": "#6d15be", "framing": "Elo da Comunidade",         "label": "Socializador", "guia_nome_secundario": "Zuri", "guia_voz_secundario": "Aoede"},
     "achiever":   {"guia_nome": "Kwame",  "guia_voz": "Puck",   "guia_cor": "#ad6002", "framing": "Caminho da Maestria",       "label": "Realizador"},
 }
 

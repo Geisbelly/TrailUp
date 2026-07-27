@@ -6,9 +6,11 @@ import { randomUUID } from "crypto";
 import {
   processMediaWithGemini,
   generateNaturalAudio,
+  generateConversationalAudio,
   generateSlideImage,
+  type GeminiTtsVoice,
 } from "./src/services/geminiService";
-import { BrainHexProfile } from "./src/constants/brainHex";
+import { BrainHexProfile, BRAIN_HEX_CONFIG } from "./src/constants/brainHex";
 import {
   isSupabaseConfigured,
   uploadBuffer,
@@ -39,14 +41,21 @@ const VALID_PROFILES: BrainHexProfile[] = [
   "mastermind", "seeker", "survivor", "daredevil", "conqueror", "socializer", "achiever",
 ];
 
-const VOICE_MAP: Record<BrainHexProfile, "Puck" | "Charon" | "Kore" | "Fenrir" | "Zephyr"> = {
+const VOICE_MAP: Record<BrainHexProfile, GeminiTtsVoice> = {
   mastermind: "Charon",
   seeker:     "Puck",
   survivor:   "Fenrir",
   daredevil:  "Zephyr",
   conqueror:  "Kore",
-  socializer: "Kore",
+  socializer: "Kore", // Mateo — guardiao principal do dialogo (ver SECONDARY_VOICE_MAP)
   achiever:   "Puck",
+};
+
+// Segundo guardiao do dialogo — hoje so o Socializador tem (Mateo + Zuri). A presenca de
+// `secondaryGuideName` em BRAIN_HEX_CONFIG e o que decide, na hora de gerar o audio, se o
+// roteiro vira narracao solo (generateNaturalAudio) ou dialogo (generateConversationalAudio).
+const SECONDARY_VOICE_MAP: Partial<Record<BrainHexProfile, GeminiTtsVoice>> = {
+  socializer: "Aoede", // Zuri
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -56,13 +65,22 @@ function now() {
 }
 
 /** Gera até 6 imagens para os slides (com intervalo para respeitar rate-limit) */
-async function generateSlidesImages(slides: any[]): Promise<string[]> {
+async function generateSlidesImages(slides: any[], profile: BrainHexProfile): Promise<string[]> {
   const images: string[] = [];
   const max = Math.min(slides.length, 6);
+  const cfg = BRAIN_HEX_CONFIG[profile];
+  // O imagePrompt por slide (escrito pelo LLM) descreve a CENA; o guardiao, a
+  // paleta e a atmosfera do perfil precisam ser reforcados aqui pra imagem
+  // gerada realmente combinar com o guia/perfil, e nao so ficar "generica
+  // estilo magico" igual pra todo mundo.
+  const styleSuffix =
+    `. Guardiao/guia do perfil: ${cfg.guideName} (${cfg.label}). ` +
+    `Paleta de cor dominante: ${cfg.color}. Atmosfera: ${cfg.description}`;
   for (let i = 0; i < max; i++) {
     try {
       if (i > 0) await new Promise((r) => setTimeout(r, 3000));
-      images.push((await generateSlideImage(slides[i].imagePrompt)) ?? "");
+      const prompt = `${slides[i].imagePrompt}${styleSuffix}`;
+      images.push((await generateSlideImage(prompt)) ?? "");
     } catch (e) {
       log.error("imagem slide falhou", { slide: i, err: e });
       images.push("");
@@ -269,10 +287,18 @@ async function runPipeline(
 
   // 3. Áudio (wav + mp3) — falha isolada não interrompe o job
   const voice = VOICE_MAP[profile] ?? "Kore";
+  const secondaryGuideName = BRAIN_HEX_CONFIG[profile]?.secondaryGuideName;
+  const secondaryVoice = SECONDARY_VOICE_MAP[profile];
   let wavBase64: string | null = null;
   let mp3Base64: string | null = null;
   try {
-    const a = await generateNaturalAudio(resultado.audioScript, voice);
+    const a = secondaryGuideName && secondaryVoice
+      ? await generateConversationalAudio(
+          resultado.audioScript,
+          { name: BRAIN_HEX_CONFIG[profile].guideName, voice },
+          { name: secondaryGuideName, voice: secondaryVoice },
+        )
+      : await generateNaturalAudio(resultado.audioScript, voice);
     wavBase64 = a.wav ?? null;
     mp3Base64 = a.mp3 ?? null;
   } catch (e) {
@@ -280,7 +306,7 @@ async function runPipeline(
   }
 
   // 4. Imagens dos slides
-  const images           = await generateSlidesImages(resultado.slides);
+  const images           = await generateSlidesImages(resultado.slides, profile);
   const slidesComImagens = enrichSlidesWithImages(resultado.slides, images);
 
   // 5. Persiste tudo no Supabase
@@ -501,7 +527,7 @@ export function buildApp(opts: AppOptions = {}): express.Application {
         images = clientImages;
       } else {
         req.log.info("gerando imagens dos slides server-side");
-        images = await generateSlidesImages(processed.slides || []);
+        images = await generateSlidesImages(processed.slides || [], profile as BrainHexProfile);
       }
 
       const slidesComImagens = enrichSlidesWithImages(processed.slides || [], images);

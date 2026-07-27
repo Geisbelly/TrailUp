@@ -320,12 +320,26 @@ class AudioPipeline(MediaPipeline):
         roteiro = str(payload.get("roteiro") or "")
         perfil_editorial = context.state.get("perfil_editorial") if isinstance(context.state.get("perfil_editorial"), dict) else {}
         voz = str(perfil_editorial.get("guia_voz") or "Kore")
-        texto_narrado = f"Narre com profunda emoção mística e variações de tom: {roteiro[:1500]}"
-        rendered = await gerar_audio_gemini_tts(
-            settings=context.settings,
-            texto=texto_narrado,
-            voz=voz,
-        )
+        nome_secundario = perfil_editorial.get("guia_nome_secundario")
+        voz_secundaria = perfil_editorial.get("guia_voz_secundario")
+        if nome_secundario and voz_secundaria:
+            # Dialogo (hoje so Socializador): sem o prefixo de "narre com emoção mística" —
+            # o texto já vem como "Nome: fala" por linha e precisa começar assim, sem
+            # texto solto na frente, pro Gemini casar speaker por speaker.
+            rendered = await gerar_audio_gemini_tts(
+                settings=context.settings,
+                texto=roteiro[:1500],
+                voz=voz,
+                nome_speaker_principal=str(perfil_editorial.get("guia_nome") or ""),
+                speaker_secundario=(str(nome_secundario), str(voz_secundaria)),
+            )
+        else:
+            texto_narrado = f"Narre com profunda emoção mística e variações de tom: {roteiro[:1500]}"
+            rendered = await gerar_audio_gemini_tts(
+                settings=context.settings,
+                texto=texto_narrado,
+                voz=voz,
+            )
         if not rendered:
             raise RuntimeError("audio_generation_failed")
         return rendered

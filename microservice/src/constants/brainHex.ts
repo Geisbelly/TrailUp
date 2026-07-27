@@ -32,6 +32,9 @@ export interface BrainHexConfig {
   guideName: string;
   gradient: string;
   description: string;
+  /** Segundo guardião — só o Socializador tem hoje. Presença deste campo é o gatilho
+   * para o áudio virar diálogo (2 vozes) em vez de narração solo. */
+  secondaryGuideName?: string;
 }
 
 export const BRAIN_HEX_CONFIG: Record<BrainHexProfile, BrainHexConfig> = {
@@ -88,6 +91,7 @@ export const BRAIN_HEX_CONFIG: Record<BrainHexProfile, BrainHexConfig> = {
     guideName: "Mateo",
     gradient: "from-purple-900/40 to-black",
     description: "Valoriza conexões e histórias compartilhadas.",
+    secondaryGuideName: "Zuri",
   },
   achiever: {
     color: "#ad6002",
