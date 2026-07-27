@@ -104,37 +104,37 @@ _ADAPTIVE_SIZE_TARGETS: dict[str, dict[str, int]] = {
 
 _PROFILE_VISUAL_REFERENCES: dict[str, dict[str, Any]] = {
     "Seeker": {
-        "cores": {"primaria": "#A78C07", "secundaria": "#2A1D0A", "destaque": "#E2C454"},
+        "cores": {"primaria": "#17A398", "secundaria": "#0F6A63", "destaque": "#97D6D1"},
         "icone": "rosa_dos_ventos",
         "imagem": "rosa_dos_ventos_filter.png",
     },
     "Survivor": {
-        "cores": {"primaria": "#720101", "secundaria": "#290808", "destaque": "#C96B6B"},
+        "cores": {"primaria": "#4E5A66", "secundaria": "#333A42", "destaque": "#AFB5BA"},
         "icone": "cacador",
         "imagem": "cacador_filter.png",
     },
     "Daredevil": {
-        "cores": {"primaria": "#1B6B1B", "secundaria": "#0F2E12", "destaque": "#72C172"},
+        "cores": {"primaria": "#D7263D", "secundaria": "#8C1928", "destaque": "#ED9DA8"},
         "icone": "espada",
         "imagem": "espada_filter.png",
     },
     "Mastermind": {
-        "cores": {"primaria": "#707C88", "secundaria": "#1D232B", "destaque": "#B5C0CC"},
+        "cores": {"primaria": "#5B3FD9", "secundaria": "#3B298D", "destaque": "#B5A9EE"},
         "icone": "coruja",
         "imagem": "coruja_filter.png",
     },
     "Conqueror": {
-        "cores": {"primaria": "#01808B", "secundaria": "#07292E", "destaque": "#66C7CF"},
+        "cores": {"primaria": "#1E4FD6", "secundaria": "#14338B", "destaque": "#9AB0ED"},
         "icone": "coroa",
         "imagem": "coroa_filter.png",
     },
     "Socialiser": {
-        "cores": {"primaria": "#6D15BE", "secundaria": "#250B3D", "destaque": "#B68AE0"},
+        "cores": {"primaria": "#F4623A", "secundaria": "#9F4026", "destaque": "#FAB8A6"},
         "icone": "coracao",
         "imagem": "coracao_filter.png",
     },
     "Achiever": {
-        "cores": {"primaria": "#AD6002", "secundaria": "#3B2207", "destaque": "#E0AE70"},
+        "cores": {"primaria": "#C9A227", "secundaria": "#836919", "destaque": "#E7D59E"},
         "icone": "arte",
         "imagem": "arte_filter.png",
     },
@@ -224,37 +224,37 @@ _BRAINHEX_GUIDE_PERSONAS: dict[str, dict[str, str]] = {
     "Mastermind": {
         "guia_nome": "Idris",
         "guia_voz": "Charon",
-        "guia_cor": "#707c88",
+        "guia_cor": "#5b3fd9",
         "framing_narrativo": "Arquitetura do Conceito",
     },
     "Seeker": {
         "guia_nome": "Amara",
         "guia_voz": "Puck",
-        "guia_cor": "#a78c07",
+        "guia_cor": "#17a398",
         "framing_narrativo": "Crônicas da Exploração",
     },
     "Survivor": {
         "guia_nome": "Kenji",
         "guia_voz": "Fenrir",
-        "guia_cor": "#720101",
+        "guia_cor": "#4e5a66",
         "framing_narrativo": "Diretrizes de Campo",
     },
     "Daredevil": {
         "guia_nome": "Ember",
         "guia_voz": "Zephyr",
-        "guia_cor": "#1b6b1b",
+        "guia_cor": "#d7263d",
         "framing_narrativo": "Código de Impacto",
     },
     "Conqueror": {
         "guia_nome": "Amina",
         "guia_voz": "Kore",
-        "guia_cor": "#01808b",
+        "guia_cor": "#1e4fd6",
         "framing_narrativo": "Tratado de Soberania",
     },
     "Socialiser": {
         "guia_nome": "Mateo",
         "guia_voz": "Kore",
-        "guia_cor": "#6d15be",
+        "guia_cor": "#f4623a",
         "framing_narrativo": "Elo da Comunidade",
         # Unico perfil com 2 guardioes: o audio vira dialogo (Mateo + Zuri) em vez de
         # narracao solo. Ver AudioPipeline.render() em media_pipeline.py.
@@ -269,7 +269,7 @@ _BRAINHEX_GUIDE_PERSONAS: dict[str, dict[str, str]] = {
     "Achiever": {
         "guia_nome": "Kwame",
         "guia_voz": "Puck",
-        "guia_cor": "#ad6002",
+        "guia_cor": "#c9a227",
         "framing_narrativo": "Caminho da Maestria",
     },
 }
@@ -4139,7 +4139,7 @@ def _normalize_materiais(raw: dict[str, Any], state: dict[str, Any]) -> dict[str
         if not prompt_imagem:
             prompt_imagem = (
                 f"Ilustra\u00e7\u00e3o educacional medieval e m\u00edstica sobre {topico_nome}, "
-                f"com paleta {perfil_visual.get('cores', {}).get('primaria', '#A78C07')}."
+                f"com paleta {perfil_visual.get('cores', {}).get('primaria', '#17A398')}."
             )
         imagem_url = _pick_string(
             imagem_raw.get("arquivo_url"),
