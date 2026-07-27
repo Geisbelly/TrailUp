@@ -220,6 +220,10 @@ class PersonalizacaoJobsRepository:
                 "aluno_id": target["aluno_id"],
                 "topico_id": int(target["topico_id"]),
                 "conteudo_id": target.get("conteudo_id"),
+                "brainhex_profile_key": str(
+                    target.get("brainhex_profile_key") or "mastermind"
+                ).strip().lower(),
+                "is_profile_template": bool(target.get("is_profile_template", False)),
                 "status": target.get("status", "pending"),
                 "attempts": int(target.get("attempts", 0)),
                 "last_error": target.get("last_error"),
@@ -234,11 +238,13 @@ class PersonalizacaoJobsRepository:
                         last_error = CASE WHEN status = 'completed' THEN last_error ELSE :last_error END,
                         personalizacao_id = COALESCE(personalizacao_id, :personalizacao_id),
                         conteudo_id = COALESCE(:conteudo_id, conteudo_id),
+                        is_profile_template = :is_profile_template,
                         updated_at = NOW()
                     WHERE job_id = CAST(:job_id AS UUID)
                       AND aluno_id = CAST(:aluno_id AS UUID)
                       AND topico_id = :topico_id
                       AND conteudo_id IS NOT DISTINCT FROM :conteudo_id
+                      AND brainhex_profile_key = :brainhex_profile_key
                     """
                 ),
                 params,
@@ -254,6 +260,8 @@ class PersonalizacaoJobsRepository:
                       aluno_id,
                       topico_id,
                       conteudo_id,
+                      brainhex_profile_key,
+                      is_profile_template,
                       status,
                       attempts,
                       last_error,
@@ -266,6 +274,8 @@ class PersonalizacaoJobsRepository:
                       CAST(:aluno_id AS UUID),
                       :topico_id,
                       :conteudo_id,
+                      :brainhex_profile_key,
+                      :is_profile_template,
                       :status,
                       :attempts,
                       :last_error,
@@ -528,6 +538,8 @@ class PersonalizacaoJobsRepository:
                   aluno_id,
                   topico_id,
                   conteudo_id,
+                  brainhex_profile_key,
+                  is_profile_template,
                   status,
                   attempts,
                   last_error,

@@ -48,6 +48,20 @@ export interface ProcessedContent {
   audioMp3Base64?: string | null;
 }
 
+export interface EnrichedContentBlock {
+  id: string;
+  ordem: number;
+  tema: string;
+  topico: string;
+  objetivos: string[];
+  conteudo_base: string;
+  conteudo_aprofundado: string;
+  conceitos_chave: string[];
+  exemplos_contextos: string[];
+  ponte_proximo_bloco: string;
+  source_ids: string[];
+}
+
 /**
  * --- INTERFACES DE SERVIÇO (ENDPOINTS FUNCIONAIS) ---
  */
@@ -62,7 +76,7 @@ export interface TransmutationRequest {
 
 export interface AudioRequest {
   text: string;
-  voice?: 'Puck' | 'Charon' | 'Kore' | 'Fenrir' | 'Zephyr';
+  voice?: 'Puck' | 'Charon' | 'Kore' | 'Fenrir' | 'Zephyr' | 'Aoede' | 'Leda' | 'Schedar' | 'Achird' | 'Sulafat' | 'Orus';
 }
 
 export interface ImageRequest {

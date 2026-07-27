@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import copy
 import logging
 import socket
 from typing import Any
@@ -18,6 +19,7 @@ from app.repositories.materiais import MateriaisRepository
 from app.repositories.personalizacao_jobs import PersonalizacaoJobsRepository
 from app.repositories.personalizacao_progresso import PersonalizacaoProgressoRepository
 from app.services.classe_mapa_tema import gerar_classe_mapa_tema
+from app.services.content_enrichment import enrich_content_blocks
 from app.services.media_agents import disparar_brainhex_async
 from app.services.personalizacao import (
     _build_profile_editorial_context,
@@ -228,6 +230,10 @@ async def _build_targets(
             "aluno_id": owner_aluno_id,
             "topico_id": topico_id,
             "conteudo_id": conteudo_id,
+            "brainhex_profile_key": _normalize_profile_key(profile_key),
+            "is_profile_template": (
+                profile_by_aluno.get(owner_aluno_id) != _normalize_profile_key(profile_key)
+            ),
             "status": "pending",
         }
         targets.append(target)
@@ -239,7 +245,7 @@ async def _build_targets(
             )
         ] = _normalize_profile_key(profile_key)
 
-    if kind in {JOB_KIND_ENROLLMENT, JOB_KIND_CLEANUP}:
+    if kind == JOB_KIND_CLEANUP:
         selected_aluno_id = str(aluno_id) if aluno_id else None
         if not selected_aluno_id:
             return [], resolved_topicos, {}
@@ -263,28 +269,29 @@ async def _build_targets(
             )
         return targets, resolved_topicos, target_profile_map
 
-    if kind in {JOB_KIND_CLASS_DELTA, JOB_KIND_FULL_SYNC, JOB_KIND_MANUAL_RETRY}:
+    if kind in {
+        JOB_KIND_ENROLLMENT,
+        JOB_KIND_CLASS_DELTA,
+        JOB_KIND_FULL_SYNC,
+        JOB_KIND_MANUAL_RETRY,
+    }:
         if not alunos:
             return [], resolved_topicos, {}
 
         representative_by_profile: dict[str, str] = {}
-        used_alunos: set[str] = set()
 
         for profile_key in _BRAINHEX_PROFILE_KEYS:
             candidate = next(
                 (
                     aluno
                     for aluno in alunos
-                    if profile_by_aluno.get(aluno) == profile_key and aluno not in used_alunos
+                    if profile_by_aluno.get(aluno) == profile_key
                 ),
                 None,
             )
             if candidate is None:
-                candidate = next((aluno for aluno in alunos if aluno not in used_alunos), None)
-            if candidate is None:
-                continue
+                candidate = str(aluno_id) if aluno_id and str(aluno_id) in alunos else alunos[0]
             representative_by_profile[profile_key] = candidate
-            used_alunos.add(candidate)
 
         for current_topico_id in resolved_topicos:
             conteudos_topico = conteudos_por_topico.get(current_topico_id, [])
@@ -460,7 +467,8 @@ async def _process_media_render_target(
         else {}
     )
     target_profile_key = _normalize_profile_key(
-        target_profile_map.get(
+        target.get("brainhex_profile_key")
+        or target_profile_map.get(
             _target_profile_map_key(aluno_id=aluno_id, topico_id=topico_id, conteudo_id=conteudo_id)
         )
         or job_payload.get("brainhex_profile_key")
@@ -504,11 +512,18 @@ async def _process_media_render_target(
                     if public_url:
                         fontes.append({"url": public_url, "mime_type": str(f.get("mime_type") or ""), "tipo": str(f.get("tipo") or "documento")})
                 perfil = target_profile_key
+                record_plan = record.get("plano") if isinstance(record.get("plano"), dict) else {}
+                stored_enrichment = (
+                    record_plan.get("content_enrichment")
+                    if isinstance(record_plan.get("content_enrichment"), dict)
+                    else {}
+                )
                 asyncio.create_task(
                     disparar_brainhex_async(
                         settings=app.state.settings,
                         perfil=perfil,
                         fontes=fontes,
+                        content_blocks=stored_enrichment.get("blocos") or [],
                         personalizacao_id=int(personalizacao_id),
                         aluno_id=aluno_id,
                         classe_id=classe_id,
@@ -593,14 +608,21 @@ async def _process_media_render_target(
         )
         return {"record": updated}
 
-    ctx = await fetch_personalizacao_context(
-        aluno_id=aluno_id,
-        classe_id=classe_id,
-        topico_id=topico_id,
-        conteudo_id=conteudo_id,
-        settings=app.state.settings,
-        session=session,
-    )
+    context_cache = job.setdefault("_runtime_personalizacao_context", {})
+    context_cache_key = f"{topico_id}:{conteudo_id or 0}"
+    cached_context = context_cache.get(context_cache_key)
+    if not isinstance(cached_context, dict):
+        cached_context = await fetch_personalizacao_context(
+            aluno_id=aluno_id,
+            classe_id=classe_id,
+            topico_id=topico_id,
+            conteudo_id=conteudo_id,
+            settings=app.state.settings,
+            session=session,
+            include_student_sources=False,
+        )
+        context_cache[context_cache_key] = cached_context
+    ctx = copy.deepcopy(cached_context)
 
     ctx["perfil_dominante"] = target_profile_label
     ctx["perfil_brainhex"] = [{"perfil": target_profile_label, "afinidade": 1.0}]
@@ -636,6 +658,16 @@ async def _process_media_render_target(
         if not bool(stuck_check.scalar()):
             return {"skipped": True, "record": existing}
 
+        runtime_cache = job.setdefault("_runtime_content_enrichment", {})
+        cache_key = f"{topico_id}:{conteudo_id or 0}:{ctx.get('source_hash') or ''}"
+        content_enrichment = runtime_cache.get(cache_key)
+        if not isinstance(content_enrichment, dict):
+            content_enrichment = await enrich_content_blocks(
+                context=ctx,
+                settings=app.state.settings,
+            )
+            runtime_cache[cache_key] = content_enrichment
+
         # Registro travado ha mais de `stale_min` minutos: reaproveita o MESMO
         # id e redispara a geracao (nao cria um registro novo duplicado, nao
         # deixa travado para sempre).
@@ -648,6 +680,7 @@ async def _process_media_render_target(
                 settings=app.state.settings,
                 perfil=ctx["perfil_dominante"],
                 fontes=ctx["fontes"],
+                content_blocks=content_enrichment.get("blocos") or [],
                 personalizacao_id=int(existing["id"]),
                 aluno_id=aluno_id,
                 classe_id=classe_id,
@@ -656,6 +689,16 @@ async def _process_media_render_target(
             )
         )
         return {"record": existing, "retried_stuck": True}
+
+    runtime_cache = job.setdefault("_runtime_content_enrichment", {})
+    cache_key = f"{topico_id}:{conteudo_id or 0}:{ctx.get('source_hash') or ''}"
+    content_enrichment = runtime_cache.get(cache_key)
+    if not isinstance(content_enrichment, dict):
+        content_enrichment = await enrich_content_blocks(
+            context=ctx,
+            settings=app.state.settings,
+        )
+        runtime_cache[cache_key] = content_enrichment
 
     cards_payload = await gerar_cards_direto(
         perfil=ctx["perfil_dominante"],
@@ -713,6 +756,8 @@ async def _process_media_render_target(
             "estilo": perfil_editorial.get("progressao_narrativa") or "direto",
             "nivel": "equilibrado",
             "editorial_metadata": {"perfil_editorial": perfil_editorial},
+            "content_enrichment": content_enrichment,
+            "profile_template": bool(target.get("is_profile_template")),
         },
         materiais={},
         ai_patch=None,
@@ -720,18 +765,21 @@ async def _process_media_render_target(
         source_hash=ctx["source_hash"],
         formato_prioritario="cards",
         formatos_gerados=["cards"],
+        brainhex_profile_key=target_profile_key,
     )
 
     record = await repo.buscar_por_id(int(record_id)) or {}
     if not record:
         raise RuntimeError("Personalizacao nao retornou registro persistido apos salvar.")
-    await _seed_progress(session=session, record=record)
+    if not bool(target.get("is_profile_template")):
+        await _seed_progress(session=session, record=record)
 
     asyncio.create_task(
         disparar_brainhex_async(
             settings=app.state.settings,
             perfil=ctx["perfil_dominante"],
             fontes=ctx["fontes"],
+            content_blocks=content_enrichment.get("blocos") or [],
             personalizacao_id=int(record_id),
             aluno_id=aluno_id,
             classe_id=classe_id,

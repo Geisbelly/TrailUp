@@ -6,6 +6,7 @@ import pytest
 
 from app.services import personalizacao_jobs as jobs_module
 from app.services.personalizacao_jobs import (
+    _build_targets,
     _compact_exception_text,
     _compute_failure_backoff_sec,
     _exception_signature,
@@ -74,6 +75,38 @@ def test_mark_pending_media_failed_updates_only_pending_media() -> None:
     assert updated["markdown"]["metadata"]["status"] == "failed"
     assert updated["apresentacao"]["metadata"]["status"] == "failed"
     assert updated["audio"]["metadata"]["error"] == "timeout:1800s"
+
+
+@pytest.mark.asyncio
+async def test_build_targets_generates_all_seven_profiles_with_one_student(monkeypatch) -> None:
+    student_id = "b49f2e21-a6f9-4c8d-9533-5a32bb219754"
+    monkeypatch.setattr(
+        "app.repositories.conteudo_classe.ConteudoClasseRepository.listar_alunos_classe_com_perfil_dominante",
+        AsyncMock(return_value=[{"aluno_id": student_id, "perfil_dominante": "seeker"}]),
+    )
+
+    targets, topics, profile_map = await _build_targets(
+        session=object(),
+        kind="full_class_sync",
+        classe_id=32,
+        topico_ids=[117],
+    )
+
+    assert topics == [117]
+    assert len(targets) == 7
+    assert {item["brainhex_profile_key"] for item in targets} == {
+        "seeker",
+        "survivor",
+        "daredevil",
+        "mastermind",
+        "conqueror",
+        "socializer",
+        "achiever",
+    }
+    assert {item["aluno_id"] for item in targets} == {student_id}
+    assert sum(not item["is_profile_template"] for item in targets) == 1
+    assert sum(item["is_profile_template"] for item in targets) == 6
+    assert len(profile_map) == 1
 
 
 @pytest.mark.asyncio
@@ -345,6 +378,11 @@ async def test_process_media_render_target_skips_when_existing_record_is_fresh(m
     )
     dispatch_mock = AsyncMock(return_value=True)
     monkeypatch.setattr(jobs_module, "disparar_brainhex_async", dispatch_mock)
+    monkeypatch.setattr(
+        jobs_module,
+        "enrich_content_blocks",
+        AsyncMock(return_value={"blocos": [{"id": "bloco-01"}]}),
+    )
 
     app = SimpleNamespace(
         state=SimpleNamespace(settings=SimpleNamespace(personalizacao_job_stale_processing_min=15))
@@ -377,6 +415,11 @@ async def test_process_media_render_target_retries_when_existing_record_is_stuck
     )
     dispatch_mock = AsyncMock(return_value=True)
     monkeypatch.setattr(jobs_module, "disparar_brainhex_async", dispatch_mock)
+    monkeypatch.setattr(
+        jobs_module,
+        "enrich_content_blocks",
+        AsyncMock(return_value={"blocos": [{"id": "bloco-01"}]}),
+    )
 
     app = SimpleNamespace(
         state=SimpleNamespace(settings=SimpleNamespace(personalizacao_job_stale_processing_min=15))
@@ -393,3 +436,4 @@ async def test_process_media_render_target_retries_when_existing_record_is_stuck
     assert result["record"] == existing
     assert dispatch_mock.await_count == 1
     assert dispatch_mock.await_args.kwargs["personalizacao_id"] == existing["id"]
+    assert dispatch_mock.await_args.kwargs["content_blocks"] == [{"id": "bloco-01"}]

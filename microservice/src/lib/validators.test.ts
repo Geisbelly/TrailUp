@@ -88,6 +88,39 @@ test("body válido passa", () => {
   }
 });
 
+test("content_blocks enriquecidos são normalizados e preservados", () => {
+  const r = validatePersonalizarBody({
+    ...validBody(),
+    content_blocks: [{
+      id: "bloco-01",
+      ordem: 1,
+      tema: "Redes",
+      topico: "DNS",
+      objetivos: ["Compreender resolução de nomes"],
+      conteudo_base: "DNS resolve nomes.",
+      conteudo_aprofundado: "DNS conecta nomes legíveis a endereços.",
+      conceitos_chave: ["DNS"],
+      exemplos_contextos: ["Abrir um site"],
+      ponte_proximo_bloco: "Agora veremos HTTP.",
+      source_ids: ["conteudo:1"],
+    }],
+  });
+  assert.equal(r.ok, true);
+  if (r.ok) {
+    assert.equal(r.value.content_blocks.length, 1);
+    assert.equal(r.value.content_blocks[0].id, "bloco-01");
+  }
+});
+
+test("content_blocks sem conteúdo aprofundado são rejeitados", () => {
+  const r = validatePersonalizarBody({
+    ...validBody(),
+    content_blocks: [{ id: "bloco-01" }],
+  });
+  assert.equal(r.ok, false);
+  if (!r.ok) assert.match(r.error, /conteudo_aprofundado/);
+});
+
 test("body não-objeto rejeitado", () => {
   for (const v of [null, undefined, "string", 42, [], true]) {
     const r = validatePersonalizarBody(v);

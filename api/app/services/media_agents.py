@@ -96,13 +96,45 @@ def _normalize_video_payload(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _build_guardian_tts_prompt(
+    *,
+    texto: str,
+    direcao_voz: str = "",
+    nome_speaker_principal: str | None = None,
+    nome_speaker_secundario: str | None = None,
+    direcao_voz_secundaria: str = "",
+) -> str:
+    if nome_speaker_principal and nome_speaker_secundario:
+        return (
+            "Sintetize somente o dialogo depois de TRANSCRICAO. "
+            "Nao leia estas instrucoes em voz alta.\n"
+            f"DIRECAO DE {nome_speaker_principal}: "
+            f"{direcao_voz or 'voz natural e expressiva em portugues brasileiro'}\n"
+            f"DIRECAO DE {nome_speaker_secundario}: "
+            f"{direcao_voz_secundaria or 'voz natural e expressiva em portugues brasileiro'}\n"
+            "CENA: conversa calorosa entre mentores durante uma jornada educacional fantastica.\n"
+            f"TRANSCRICAO:\n{texto}"
+        )
+
+    return (
+        "Sintetize somente o conteudo depois de TRANSCRICAO. "
+        "Nao leia estas instrucoes em voz alta.\n"
+        f"DIRECAO DE VOZ: "
+        f"{direcao_voz or 'voz natural, didatica e expressiva em portugues brasileiro'}\n"
+        "CENA: mentoria educacional em uma jornada fantastica, com naturalidade e emocao controlada.\n"
+        f"TRANSCRICAO:\n{texto}"
+    )
+
+
 async def gerar_audio_gemini_tts(
     *,
     settings: Settings,
     texto: str,
     voz: str = "Kore",
+    direcao_voz: str = "",
     nome_speaker_principal: str | None = None,
     speaker_secundario: tuple[str, str] | None = None,
+    direcao_voz_secundaria: str = "",
 ) -> bytes | None:
     """Narracao solo (1 voz) ou dialogo (2 vozes, quando `speaker_secundario` e passado).
 
@@ -115,6 +147,14 @@ async def gerar_audio_gemini_tts(
     cleaned = str(texto or "").strip()
     if not cleaned:
         return None
+
+    tts_prompt = _build_guardian_tts_prompt(
+        texto=cleaned,
+        direcao_voz=direcao_voz,
+        nome_speaker_principal=nome_speaker_principal,
+        nome_speaker_secundario=speaker_secundario[0] if speaker_secundario else None,
+        direcao_voz_secundaria=direcao_voz_secundaria,
+    )
 
     if settings.gemini_api_key:
         model_name = str(getattr(settings, "gemini_model_tts", "") or "").strip() or "gemini-2.5-flash-preview-tts"
@@ -141,7 +181,7 @@ async def gerar_audio_gemini_tts(
         else:
             speech_config = {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": voz}}}
         body = {
-            "contents": [{"role": "user", "parts": [{"text": cleaned}]}],
+            "contents": [{"role": "user", "parts": [{"text": tts_prompt}]}],
             "generationConfig": {
                 "responseModalities": ["AUDIO"],
                 "speechConfig": speech_config,
@@ -217,12 +257,12 @@ async def gerar_roteiro_video_llm(
 
 _BRAINHEX_GUIDE_CONFIG: dict[str, dict[str, str]] = {
     "mastermind": {"guia_nome": "Idris",  "guia_voz": "Charon", "guia_cor": "#5b3fd9", "framing": "Arquitetura do Conceito",   "label": "Estrategista"},
-    "seeker":     {"guia_nome": "Amara",  "guia_voz": "Puck",   "guia_cor": "#17a398", "framing": "Crônicas da Exploração",    "label": "Explorador"},
-    "survivor":   {"guia_nome": "Kenji",  "guia_voz": "Fenrir", "guia_cor": "#4e5a66", "framing": "Diretrizes de Campo",       "label": "Sobrevivente"},
+    "seeker":     {"guia_nome": "Amara",  "guia_voz": "Leda",   "guia_cor": "#17a398", "framing": "Crônicas da Exploração",    "label": "Explorador"},
+    "survivor":   {"guia_nome": "Kenji",  "guia_voz": "Schedar", "guia_cor": "#4e5a66", "framing": "Diretrizes de Campo",       "label": "Sobrevivente"},
     "daredevil":  {"guia_nome": "Ember",  "guia_voz": "Zephyr", "guia_cor": "#d7263d", "framing": "Código de Impacto",         "label": "Aventureiro"},
     "conqueror":  {"guia_nome": "Amina",  "guia_voz": "Kore",   "guia_cor": "#1e4fd6", "framing": "Tratado de Soberania",      "label": "Conquistador"},
-    "socializer": {"guia_nome": "Mateo",  "guia_voz": "Kore",   "guia_cor": "#f4623a", "framing": "Elo da Comunidade",         "label": "Socializador", "guia_nome_secundario": "Zuri", "guia_voz_secundario": "Aoede"},
-    "achiever":   {"guia_nome": "Kwame",  "guia_voz": "Puck",   "guia_cor": "#c9a227", "framing": "Caminho da Maestria",       "label": "Realizador"},
+    "socializer": {"guia_nome": "Mateo",  "guia_voz": "Achird", "guia_cor": "#f4623a", "framing": "Elo da Comunidade",         "label": "Socializador", "guia_nome_secundario": "Zuri", "guia_voz_secundario": "Sulafat"},
+    "achiever":   {"guia_nome": "Kwame",  "guia_voz": "Orus",   "guia_cor": "#c9a227", "framing": "Caminho da Maestria",       "label": "Realizador"},
 }
 
 
@@ -232,6 +272,7 @@ async def disparar_brainhex_async(
     perfil: str,
     fontes: list[dict[str, Any]],
     personalizacao_id: int,
+    content_blocks: list[dict[str, Any]] | None = None,
     aluno_id: str = "",
     classe_id: int | None = None,
     topico_id: int | None = None,
@@ -250,6 +291,7 @@ async def disparar_brainhex_async(
                 json={
                     "profile": str(perfil or "").strip().lower(),
                     "fontes": fontes,
+                    "content_blocks": content_blocks or [],
                     "personalizacao_id": personalizacao_id,
                     "aluno_id": aluno_id,
                     "classe_id": classe_id,

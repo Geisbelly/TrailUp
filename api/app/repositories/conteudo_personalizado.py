@@ -19,6 +19,7 @@ class ConteudoPersonalizadoRepository:
             "status",
             "source_hash",
             "updated_at",
+            "brainhex_profile_key",
         }
 
     @staticmethod
@@ -203,15 +204,66 @@ class ConteudoPersonalizadoRepository:
         source_hash: str | None = None,
         formato_prioritario: str,
         formatos_gerados: list[str],
+        brainhex_profile_key: str | None = None,
     ) -> int:
         has_ai_patch = await self._table_has_column("ai_patch")
         has_classe_id = await self._table_has_column("classe_id")
         has_status = await self._table_has_column("status")
         has_source_hash = await self._table_has_column("source_hash")
+        has_profile_key = await self._table_has_column("brainhex_profile_key")
+        plano_payload = plano if isinstance(plano, dict) else {}
+        normalized_profile_key = self._normalize_profile_key(
+            brainhex_profile_key
+            or plano_payload.get("brainhex_profile_key")
+            or plano_payload.get("perfil_dominante")
+        )
 
         can_upsert = all((has_ai_patch, has_classe_id, has_status, has_source_hash, topico_id is not None))
 
-        if can_upsert:
+        if can_upsert and has_profile_key:
+            statement = text(
+                """
+                INSERT INTO conteudo_personalizado (
+                  aluno_id, classe_id, conteudo_id, topico_id, ciclo_id,
+                  brainhex_profile_key, plano, materiais, ai_patch, status,
+                  source_hash, formato_prioritario, formatos_gerados, updated_at
+                )
+                VALUES (
+                  :aluno_id,
+                  COALESCE(
+                    :classe_id,
+                    (SELECT t.classe_id FROM topicos t WHERE t.id = :topico_id),
+                    (
+                      SELECT t.classe_id
+                      FROM conteudos c
+                      JOIN topicos t ON t.id = c.topico_id
+                      WHERE c.id = :conteudo_id
+                    )
+                  ),
+                  :conteudo_id, :topico_id, :ciclo_id, :brainhex_profile_key,
+                  CAST(:plano AS JSONB), CAST(:materiais AS JSONB),
+                  CAST(:ai_patch AS JSONB), :status, :source_hash,
+                  :formato_prioritario, :formatos_gerados, NOW()
+                )
+                ON CONFLICT (aluno_id, topico_id, brainhex_profile_key)
+                  WHERE topico_id IS NOT NULL
+                DO UPDATE SET
+                  classe_id = EXCLUDED.classe_id,
+                  conteudo_id = EXCLUDED.conteudo_id,
+                  ciclo_id = EXCLUDED.ciclo_id,
+                  plano = EXCLUDED.plano,
+                  materiais = EXCLUDED.materiais,
+                  ai_patch = EXCLUDED.ai_patch,
+                  status = EXCLUDED.status,
+                  source_hash = EXCLUDED.source_hash,
+                  formato_prioritario = EXCLUDED.formato_prioritario,
+                  formatos_gerados = EXCLUDED.formatos_gerados,
+                  gerado_em = NOW(),
+                  updated_at = NOW()
+                RETURNING id
+                """
+            )
+        elif can_upsert:
             statement = text(
                 """
                 INSERT INTO conteudo_personalizado (
@@ -308,6 +360,7 @@ class ConteudoPersonalizadoRepository:
                 "ai_patch": json.dumps(ai_patch, ensure_ascii=False, default=str) if ai_patch is not None else None,
                 "status": status,
                 "source_hash": source_hash,
+                "brainhex_profile_key": normalized_profile_key,
                 "formato_prioritario": formato_prioritario,
                 "formatos_gerados": formatos_gerados,
             },
@@ -331,14 +384,24 @@ class ConteudoPersonalizadoRepository:
         has_status = await self._table_has_column("status")
         has_source_hash = await self._table_has_column("source_hash")
         has_updated_at = await self._table_has_column("updated_at")
+        has_profile_key = await self._table_has_column("brainhex_profile_key")
 
         ai_patch_sql = "ai_patch" if has_ai_patch else "NULL::jsonb AS ai_patch"
         classe_sql = "classe_id" if has_classe_id else "NULL::bigint AS classe_id"
         status_sql = "status" if has_status else "'pronto'::text AS status"
         source_hash_sql = "source_hash" if has_source_hash else "NULL::text AS source_hash"
         updated_at_sql = "updated_at" if has_updated_at else "gerado_em AS updated_at"
+        profile_key_sql = (
+            "brainhex_profile_key"
+            if has_profile_key
+            else "NULL::text AS brainhex_profile_key"
+        )
 
         filters = "WHERE aluno_id = :aluno_id"
+        filters += (
+            " AND COALESCE(LOWER(plano ->> 'profile_template'), 'false') "
+            "NOT IN ('true', '1', 'yes')"
+        )
         params: dict[str, Any] = {"aluno_id": aluno_id, "limit": limit}
         if classe_id is not None and has_classe_id:
             filters += " AND classe_id = :classe_id"
@@ -357,6 +420,7 @@ class ConteudoPersonalizadoRepository:
             text(
                 f"""
                 SELECT id, aluno_id, {classe_sql}, conteudo_id, topico_id, ciclo_id,
+                       {profile_key_sql},
                        plano, materiais, {ai_patch_sql}, {status_sql}, {source_hash_sql},
                        formato_prioritario, formatos_gerados, gerado_em, {updated_at_sql}
                 FROM conteudo_personalizado
@@ -385,12 +449,18 @@ class ConteudoPersonalizadoRepository:
         has_status = await self._table_has_column("status")
         has_source_hash = await self._table_has_column("source_hash")
         has_updated_at = await self._table_has_column("updated_at")
+        has_profile_key = await self._table_has_column("brainhex_profile_key")
 
         ai_patch_sql = "ai_patch" if has_ai_patch else "NULL::jsonb AS ai_patch"
         classe_sql = "classe_id" if has_classe_id else "NULL::bigint AS classe_id"
         status_sql = "status" if has_status else "'pronto'::text AS status"
         source_hash_sql = "source_hash" if has_source_hash else "NULL::text AS source_hash"
         updated_at_sql = "updated_at" if has_updated_at else "gerado_em AS updated_at"
+        profile_key_sql = (
+            "brainhex_profile_key"
+            if has_profile_key
+            else "NULL::text AS brainhex_profile_key"
+        )
 
         filters = "WHERE classe_id = :classe_id" if has_classe_id else "WHERE 1 = 1"
         params: dict[str, Any] = {"classe_id": classe_id, "limit": max(1, min(limit, 200))}
@@ -406,11 +476,15 @@ class ConteudoPersonalizadoRepository:
         if source_hash and has_source_hash:
             filters += " AND source_hash = :source_hash"
             params["source_hash"] = source_hash
+        if has_profile_key:
+            filters += " AND brainhex_profile_key = :brainhex_profile_key"
+            params["brainhex_profile_key"] = self._normalize_profile_key(brainhex_profile_key)
 
         result = await self.session.execute(
             text(
                 f"""
                 SELECT id, aluno_id, {classe_sql}, conteudo_id, topico_id, ciclo_id,
+                       {profile_key_sql},
                        plano, materiais, {ai_patch_sql}, {status_sql}, {source_hash_sql},
                        formato_prioritario, formatos_gerados, gerado_em, {updated_at_sql}
                 FROM conteudo_personalizado
@@ -469,17 +543,24 @@ class ConteudoPersonalizadoRepository:
         has_status = await self._table_has_column("status")
         has_source_hash = await self._table_has_column("source_hash")
         has_updated_at = await self._table_has_column("updated_at")
+        has_profile_key = await self._table_has_column("brainhex_profile_key")
 
         ai_patch_sql = "ai_patch" if has_ai_patch else "NULL::jsonb AS ai_patch"
         classe_sql = "classe_id" if has_classe_id else "NULL::bigint AS classe_id"
         status_sql = "status" if has_status else "'pronto'::text AS status"
         source_hash_sql = "source_hash" if has_source_hash else "NULL::text AS source_hash"
         updated_at_sql = "updated_at" if has_updated_at else "gerado_em AS updated_at"
+        profile_key_sql = (
+            "brainhex_profile_key"
+            if has_profile_key
+            else "NULL::text AS brainhex_profile_key"
+        )
 
         result = await self.session.execute(
             text(
                 f"""
                 SELECT id, aluno_id, {classe_sql}, conteudo_id, topico_id, ciclo_id,
+                       {profile_key_sql},
                        plano, materiais, {ai_patch_sql}, {status_sql}, {source_hash_sql},
                        formato_prioritario, formatos_gerados, gerado_em, {updated_at_sql}
                 FROM conteudo_personalizado
@@ -497,17 +578,24 @@ class ConteudoPersonalizadoRepository:
         has_status = await self._table_has_column("status")
         has_source_hash = await self._table_has_column("source_hash")
         has_updated_at = await self._table_has_column("updated_at")
+        has_profile_key = await self._table_has_column("brainhex_profile_key")
 
         ai_patch_sql = "ai_patch" if has_ai_patch else "NULL::jsonb AS ai_patch"
         classe_sql = "classe_id" if has_classe_id else "NULL::bigint AS classe_id"
         status_sql = "status" if has_status else "'pronto'::text AS status"
         source_hash_sql = "source_hash" if has_source_hash else "NULL::text AS source_hash"
         updated_at_sql = "updated_at" if has_updated_at else "gerado_em AS updated_at"
+        profile_key_sql = (
+            "brainhex_profile_key"
+            if has_profile_key
+            else "NULL::text AS brainhex_profile_key"
+        )
 
         result = await self.session.execute(
             text(
                 f"""
                 SELECT id, aluno_id, {classe_sql}, conteudo_id, topico_id, ciclo_id,
+                       {profile_key_sql},
                        plano, materiais, {ai_patch_sql}, {status_sql}, {source_hash_sql},
                        formato_prioritario, formatos_gerados, gerado_em, {updated_at_sql}
                 FROM conteudo_personalizado

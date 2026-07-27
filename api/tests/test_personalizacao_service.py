@@ -75,7 +75,7 @@ def test_fallback_materiais_gera_documento_apresentacao_e_imagem() -> None:
     assert "imagem" in materiais
     assert materiais["apresentacao"]["slides"]
     assert materiais["imagem"]["prompt_imagem"]
-    assert materiais["documento"]["tema_visual"]["cores"]["primaria"] == "#C9A227"
+    assert materiais["documento"]["tema_visual"]["cores"]["primaria"] == "#AD6002"
     assert materiais["apresentacao"]["tema_visual"]["perfil"] == "Achiever"
 
 
@@ -121,7 +121,7 @@ def test_normalize_materiais_preserva_novos_artefatos() -> None:
     assert materiais["apresentacao"]["payload"]["slides"][0]["titulo"] == "Slide 1"
     assert materiais["imagem"]["payload"]["prompt_imagem"] == "Prompt"
     assert materiais["documento"]["payload"]["tema_visual"]["perfil"] == "Seeker"
-    assert materiais["imagem"]["payload"]["tema_visual"]["cores"]["primaria"] == "#17A398"
+    assert materiais["imagem"]["payload"]["tema_visual"]["cores"]["primaria"] == "#A78C07"
     assert materiais["imagem"]["item_key"] == "content:44"
 
 
@@ -1996,18 +1996,19 @@ def test_guide_persona_campos_presentes_por_perfil() -> None:
     from app.services.personalizacao import _build_profile_editorial_context
 
     casos = [
-        ("Seeker", "Amara", "Puck", "#17a398", "Crônicas da Exploração"),
-        ("Survivor", "Kenji", "Fenrir", "#4e5a66", "Diretrizes de Campo"),
+        ("Seeker", "Amara", "Leda", "#17a398", "Crônicas da Exploração"),
+        ("Survivor", "Kenji", "Schedar", "#4e5a66", "Diretrizes de Campo"),
         ("Daredevil", "Ember", "Zephyr", "#d7263d", "Código de Impacto"),
         ("Mastermind", "Idris", "Charon", "#5b3fd9", "Arquitetura do Conceito"),
         ("Conqueror", "Amina", "Kore", "#1e4fd6", "Tratado de Soberania"),
-        ("Socialiser", "Mateo", "Kore", "#f4623a", "Elo da Comunidade"),
-        ("Achiever", "Kwame", "Puck", "#c9a227", "Caminho da Maestria"),
+        ("Socialiser", "Mateo", "Achird", "#f4623a", "Elo da Comunidade"),
+        ("Achiever", "Kwame", "Orus", "#c9a227", "Caminho da Maestria"),
     ]
     for perfil, guia, voz, cor, framing in casos:
         result = _build_profile_editorial_context(perfil, [])
         assert result["guia_nome"] == guia, f"{perfil}: guia_nome errado"
         assert result["guia_voz"] == voz, f"{perfil}: guia_voz errado"
+        assert "jovem adult" in result["guia_direcao_voz"], f"{perfil}: idade ausente"
+        assert "sem caricatura" in result["guia_direcao_voz"], f"{perfil}: direcao cultural insegura"
         assert result["guia_cor"] == cor, f"{perfil}: guia_cor errado"
         assert result["framing_narrativo"] == framing, f"{perfil}: framing_narrativo errado"
-

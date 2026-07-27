@@ -8,6 +8,7 @@ const require = createRequire(import.meta.url);
 import { BrainHexProfile, BRAIN_HEX_CONFIG } from "../constants/brainHex";
 import { addWavHeader } from "../lib/wav";
 import { 
+  EnrichedContentBlock,
   InternalBlock, 
   ProcessedContent, 
   SlideContent, 
@@ -111,12 +112,13 @@ const SUPPORTED_NATIVE_MIMES = [
 
 export async function processMediaWithGemini(
   filesData: { data: string; mimeType: string; name: string }[],
-  profile: BrainHexProfile
+  profile: BrainHexProfile,
+  contentBlocks: EnrichedContentBlock[] = [],
 ): Promise<ProcessedContent> {
   const config = BRAIN_HEX_CONFIG[profile];
 
-  if (!filesData || filesData.length === 0) {
-    throw new Error("processMediaWithGemini: filesData vazio — chamador deve filtrar antes.");
+  if ((!filesData || filesData.length === 0) && contentBlocks.length === 0) {
+    throw new Error("processMediaWithGemini: fontes e contentBlocks vazios.");
   }
 
   // Use first non-empty file to detect family
@@ -131,6 +133,19 @@ export async function processMediaWithGemini(
   // Build contentsParts for all files
   let blocksCount = 0;
   const contentsParts: any[] = [];
+
+  if (contentBlocks.length > 0) {
+    contentsParts.push({
+      text:
+        "### BLOCOS PEDAGÓGICOS ENRIQUECIDOS PELA API (ORDEM OBRIGATÓRIA)\n\n"
+        + JSON.stringify(
+          [...contentBlocks].sort((a, b) => a.ordem - b.ordem),
+          null,
+          2,
+        ),
+    });
+    blocksCount += contentBlocks.length;
+  }
 
   for (const fileData of filesData) {
     const isNative = SUPPORTED_NATIVE_MIMES.includes(fileData.mimeType);
@@ -193,6 +208,10 @@ export async function processMediaWithGemini(
        técnico real, não apenas a metáfora) antes ou junto da moldura narrativa do perfil. A metáfora
        ilustra e emociona o conceito; ela nunca o esconde, resume demais ou substitui a explicação
        técnica real. Em caso de dúvida, priorize a substância pedagógica sobre o floreio narrativo.
+       Quando existirem BLOCOS PEDAGÓGICOS ENRIQUECIDOS PELA API, eles são o roteiro
+       curricular obrigatório: preserve a ordem, crie uma seção ou capítulo identificável
+       para CADA bloco nos três formatos e use o conteúdo aprofundado integralmente.
+       Não funda blocos a ponto de perder tópicos e não reduza cada bloco a um bullet.
 
     2. Exemplos Visuais da Origem (MUITO CRÍTICO):
        - Se você encontrar imagens, diagramas ou fluxogramas nas partes multimodais enviadas (IMAGENS DE REFERÊNCIA), você DEVE descrevê-los detalhadamente no campo 'visualDescription'.
@@ -252,6 +271,11 @@ export async function processMediaWithGemini(
        - 'achiever': Foco em progressão.
 
     3. Eco da Sabedoria (Script de Áudio):
+       O áudio é uma aula completa em capítulos, não uma sinopse do markdown.
+       Para cada bloco pedagógico, explique o conteúdo-base e o aprofundamento,
+       verbalize ao menos um exemplo ou contexto e faça a ponte para o próximo bloco.
+       Use transições faláveis ("agora", "em seguida", "isso nos leva a...") em vez
+       de títulos secos. A cobertura deve ser equivalente à do texto de estudo.
        ${config.secondaryGuideName ? `
        O roteiro é um DIÁLOGO entre os dois guardiões ${config.guideName} e ${config.secondaryGuideName} —
        não uma narração solo. Formato OBRIGATÓRIO (é assim que o motor de voz separa quem fala):
@@ -357,7 +381,18 @@ export async function processMediaWithGemini(
   } as ProcessedContent;
 }
 
-export type GeminiTtsVoice = 'Puck' | 'Charon' | 'Kore' | 'Fenrir' | 'Zephyr' | 'Aoede';
+export type GeminiTtsVoice =
+  | 'Puck'
+  | 'Charon'
+  | 'Kore'
+  | 'Fenrir'
+  | 'Zephyr'
+  | 'Aoede'
+  | 'Leda'
+  | 'Schedar'
+  | 'Achird'
+  | 'Sulafat'
+  | 'Orus';
 
 /** PCM 24kHz (raw, do Gemini TTS) -> WAV com header + MP3 (lamejs). Compartilhado entre
  * narração de 1 voz e diálogo multi-voz — a codificação é igual, só a origem do PCM muda. */
@@ -432,13 +467,22 @@ function encodePcmToWavAndMp3(pcmBuffer: Uint8Array): { wav: string; mp3: string
 export async function generateNaturalAudio(
   text: string,
   voice: GeminiTtsVoice = 'Kore',
+  direction = "Voz natural, didática e expressiva em português brasileiro.",
   retries = 3
 ): Promise<{ wav: string, mp3: string | null }> {
   let response;
   try {
     response = await getAi().models.generateContent({
       model: "gemini-3.1-flash-tts-preview",
-      contents: [{ parts: [{ text: `Narre com profunda emoção mística e variações de tom: ${text}` }] }],
+      contents: [{
+        parts: [{
+          text:
+            "Sintetize somente o conteúdo depois de TRANSCRIÇÃO. Não leia estas instruções em voz alta.\n" +
+            `DIREÇÃO DE VOZ: ${direction}\n` +
+            "CENA: mentoria educacional em uma jornada fantástica, com naturalidade e emoção controlada.\n" +
+            `TRANSCRIÇÃO:\n${text}`,
+        }],
+      }],
       config: {
         responseModalities: [Modality.AUDIO],
         speechConfig: {
@@ -456,7 +500,7 @@ export async function generateNaturalAudio(
       const delay = (4 - retries) * 5000;
       console.warn(`[brainhex] TTS rate-limit — retry em ${delay/1000}s (${retries} restantes)`);
       await new Promise((r) => setTimeout(r, delay));
-      return generateNaturalAudio(text, voice, retries - 1);
+      return generateNaturalAudio(text, voice, direction, retries - 1);
     }
     throw error;
   }
@@ -470,6 +514,75 @@ export async function generateNaturalAudio(
   return encodePcmToWavAndMp3(pcmBuffer);
 }
 
+function splitTtsChapters(text: string, maxChars = 6_000): string[] {
+  const paragraphs = String(text || "")
+    .split(/\n+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const chapters: string[] = [];
+  let current = "";
+  for (const paragraph of paragraphs) {
+    if (paragraph.length > maxChars) {
+      if (current) chapters.push(current);
+      const speakerPrefix = paragraph.match(/^([^:\n]{1,40}: )/)?.[1] ?? "";
+      const body = speakerPrefix ? paragraph.slice(speakerPrefix.length) : paragraph;
+      const sliceSize = Math.max(1, maxChars - speakerPrefix.length);
+      for (let start = 0; start < body.length; start += sliceSize) {
+        chapters.push(`${speakerPrefix}${body.slice(start, start + sliceSize)}`);
+      }
+      current = "";
+      continue;
+    }
+    const next = current ? `${current}\n\n${paragraph}` : paragraph;
+    if (next.length > maxChars) {
+      chapters.push(current);
+      current = paragraph;
+    } else {
+      current = next;
+    }
+  }
+  if (current) chapters.push(current);
+  return chapters.length > 0 ? chapters : [String(text || "")];
+}
+
+function wavBase64ToPcm(wavBase64: string): Uint8Array {
+  const binary = atob(wavBase64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.length > 44 ? bytes.slice(44) : bytes;
+}
+
+async function joinAudioChapters(
+  chapters: string[],
+  synthesize: (chapter: string) => Promise<{ wav: string; mp3: string | null }>,
+): Promise<{ wav: string; mp3: string | null }> {
+  if (chapters.length === 1) return synthesize(chapters[0]);
+  const pcmParts: Uint8Array[] = [];
+  for (const chapter of chapters) {
+    const rendered = await synthesize(chapter);
+    pcmParts.push(wavBase64ToPcm(rendered.wav));
+  }
+  const total = pcmParts.reduce((sum, part) => sum + part.length, 0);
+  const pcm = new Uint8Array(total);
+  let offset = 0;
+  for (const part of pcmParts) {
+    pcm.set(part, offset);
+    offset += part.length;
+  }
+  return encodePcmToWavAndMp3(pcm);
+}
+
+export async function generateLongNaturalAudio(
+  text: string,
+  voice: GeminiTtsVoice = "Kore",
+  direction = "Voz natural, didática e expressiva em português brasileiro.",
+): Promise<{ wav: string; mp3: string | null }> {
+  return joinAudioChapters(
+    splitTtsChapters(text),
+    (chapter) => generateNaturalAudio(chapter, voice, direction),
+  );
+}
+
 /**
  * Diálogo entre 2 guardiões via Gemini TTS multi-speaker (usado hoje só pelo Socializador:
  * Mateo + Zuri). O texto precisa vir com cada linha prefixada por "NomeDoSpeaker: " — o Gemini
@@ -477,15 +590,24 @@ export async function generateNaturalAudio(
  */
 export async function generateConversationalAudio(
   text: string,
-  speakerA: { name: string; voice: GeminiTtsVoice },
-  speakerB: { name: string; voice: GeminiTtsVoice },
+  speakerA: { name: string; voice: GeminiTtsVoice; direction?: string },
+  speakerB: { name: string; voice: GeminiTtsVoice; direction?: string },
   retries = 3
 ): Promise<{ wav: string, mp3: string | null }> {
   let response;
   try {
     response = await getAi().models.generateContent({
       model: "gemini-3.1-flash-tts-preview",
-      contents: [{ parts: [{ text }] }],
+      contents: [{
+        parts: [{
+          text:
+            "Sintetize somente o diálogo depois de TRANSCRIÇÃO. Não leia estas instruções em voz alta.\n" +
+            `DIREÇÃO DE ${speakerA.name}: ${speakerA.direction ?? "voz natural e expressiva"}\n` +
+            `DIREÇÃO DE ${speakerB.name}: ${speakerB.direction ?? "voz natural e expressiva"}\n` +
+            "CENA: conversa calorosa entre mentores durante uma jornada educacional fantástica.\n" +
+            `TRANSCRIÇÃO:\n${text}`,
+        }],
+      }],
       config: {
         responseModalities: [Modality.AUDIO],
         speechConfig: {
@@ -517,6 +639,17 @@ export async function generateConversationalAudio(
   const pcmBinary = atob(data);
   const pcmBuffer = new Uint8Array(pcmBinary.length).map((_, i) => pcmBinary.charCodeAt(i));
   return encodePcmToWavAndMp3(pcmBuffer);
+}
+
+export async function generateLongConversationalAudio(
+  text: string,
+  speakerA: { name: string; voice: GeminiTtsVoice; direction?: string },
+  speakerB: { name: string; voice: GeminiTtsVoice; direction?: string },
+): Promise<{ wav: string; mp3: string | null }> {
+  return joinAudioChapters(
+    splitTtsChapters(text),
+    (chapter) => generateConversationalAudio(chapter, speakerA, speakerB),
+  );
 }
 
 // addWavHeader extraído para src/lib/wav.ts (testado).
