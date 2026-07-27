@@ -1996,18 +1996,19 @@ def test_guide_persona_campos_presentes_por_perfil() -> None:
     from app.services.personalizacao import _build_profile_editorial_context
 
     casos = [
-        ("Seeker", "Amara", "Puck", "#a78c07", "Crônicas da Exploração"),
-        ("Survivor", "Kenji", "Fenrir", "#720101", "Diretrizes de Campo"),
+        ("Seeker", "Amara", "Leda", "#a78c07", "Crônicas da Exploração"),
+        ("Survivor", "Kenji", "Schedar", "#720101", "Diretrizes de Campo"),
         ("Daredevil", "Ember", "Zephyr", "#1b6b1b", "Código de Impacto"),
         ("Mastermind", "Idris", "Charon", "#707c88", "Arquitetura do Conceito"),
         ("Conqueror", "Amina", "Kore", "#01808b", "Tratado de Soberania"),
-        ("Socialiser", "Mateo", "Kore", "#6d15be", "Elo da Comunidade"),
-        ("Achiever", "Kwame", "Puck", "#ad6002", "Caminho da Maestria"),
+        ("Socialiser", "Mateo", "Achird", "#6d15be", "Elo da Comunidade"),
+        ("Achiever", "Kwame", "Orus", "#ad6002", "Caminho da Maestria"),
     ]
     for perfil, guia, voz, cor, framing in casos:
         result = _build_profile_editorial_context(perfil, [])
         assert result["guia_nome"] == guia, f"{perfil}: guia_nome errado"
         assert result["guia_voz"] == voz, f"{perfil}: guia_voz errado"
+        assert "jovem adult" in result["guia_direcao_voz"], f"{perfil}: idade ausente"
+        assert "sem caricatura" in result["guia_direcao_voz"], f"{perfil}: direcao cultural insegura"
         assert result["guia_cor"] == cor, f"{perfil}: guia_cor errado"
         assert result["framing_narrativo"] == framing, f"{perfil}: framing_narrativo errado"
-

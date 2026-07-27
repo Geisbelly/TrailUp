@@ -224,42 +224,77 @@ _BRAINHEX_GUIDE_PERSONAS: dict[str, dict[str, str]] = {
     "Mastermind": {
         "guia_nome": "Idris",
         "guia_voz": "Charon",
+        "guia_direcao_voz": (
+            "Idris e um homem jovem adulto, norte-africano, de fala informativa e serena. "
+            "Use portugues brasileiro claro, voz masculina jovem, raciocinio preciso, ritmo "
+            "medio e musicalidade magrebina muito sutil, sem caricatura."
+        ),
         "guia_cor": "#707c88",
         "framing_narrativo": "Arquitetura do Conceito",
     },
     "Seeker": {
         "guia_nome": "Amara",
-        "guia_voz": "Puck",
+        "guia_voz": "Leda",
+        "guia_direcao_voz": (
+            "Amara e uma mulher jovem adulta negra, de origem africana oriental. Use portugues "
+            "brasileiro claro, voz feminina jovem, curiosa e luminosa, ritmo medio e musicalidade "
+            "cultural muito sutil, sem caricatura."
+        ),
         "guia_cor": "#a78c07",
         "framing_narrativo": "Crônicas da Exploração",
     },
     "Survivor": {
         "guia_nome": "Kenji",
-        "guia_voz": "Fenrir",
+        "guia_voz": "Schedar",
+        "guia_direcao_voz": (
+            "Kenji e um homem jovem adulto japones. Use portugues brasileiro claro, voz masculina "
+            "jovem, estavel e paciente, ritmo medio-lento, diccao contida e musicalidade japonesa "
+            "sutil, sem caricatura."
+        ),
         "guia_cor": "#720101",
         "framing_narrativo": "Diretrizes de Campo",
     },
     "Daredevil": {
         "guia_nome": "Ember",
         "guia_voz": "Zephyr",
+        "guia_direcao_voz": (
+            "Ember e uma mulher jovem adulta branca, de origem europeia setentrional. Use portugues "
+            "brasileiro claro, voz feminina jovem, brilhante e energetica, ritmo dinamico e atitude "
+            "ousada, sem caricatura de sotaque."
+        ),
         "guia_cor": "#1b6b1b",
         "framing_narrativo": "Código de Impacto",
     },
     "Conqueror": {
         "guia_nome": "Amina",
         "guia_voz": "Kore",
+        "guia_direcao_voz": (
+            "Amina e uma mulher jovem adulta negra, de origem africana oriental. Use portugues "
+            "brasileiro claro, voz feminina jovem, firme e regia, ritmo dinamico, presenca de "
+            "lideranca e musicalidade cultural muito sutil, sem caricatura."
+        ),
         "guia_cor": "#01808b",
         "framing_narrativo": "Tratado de Soberania",
     },
     "Socialiser": {
         "guia_nome": "Mateo",
-        "guia_voz": "Kore",
+        "guia_voz": "Achird",
+        "guia_direcao_voz": (
+            "Mateo e um homem jovem adulto afro-latino. Use portugues brasileiro claro, voz "
+            "masculina jovem, amigavel e comunicativa, ritmo medio e calor humano, com musicalidade "
+            "latino-americana sutil, sem caricatura."
+        ),
         "guia_cor": "#6d15be",
         "framing_narrativo": "Elo da Comunidade",
         # Unico perfil com 2 guardioes: o audio vira dialogo (Mateo + Zuri) em vez de
         # narracao solo. Ver AudioPipeline.render() em media_pipeline.py.
         "guia_nome_secundario": "Zuri",
-        "guia_voz_secundario": "Aoede",
+        "guia_voz_secundario": "Sulafat",
+        "guia_direcao_voz_secundaria": (
+            "Zuri e uma mulher jovem adulta afro-latina e irma gemea de Mateo. Use portugues "
+            "brasileiro claro, voz feminina jovem, calorosa e empatica, ritmo medio e musicalidade "
+            "latino-americana sutil, sem caricatura."
+        ),
         "guia_relacao_secundaria": (
             "irma gemea de Mateo — cresceram contando e ouvindo juntos as mesmas "
             "historias da comunidade, entao conversam com intimidade e cumplicidade "
@@ -268,7 +303,12 @@ _BRAINHEX_GUIDE_PERSONAS: dict[str, dict[str, str]] = {
     },
     "Achiever": {
         "guia_nome": "Kwame",
-        "guia_voz": "Puck",
+        "guia_voz": "Orus",
+        "guia_direcao_voz": (
+            "Kwame e um homem jovem adulto negro, ganes de origem Akan. Use portugues brasileiro "
+            "claro, voz masculina jovem, firme e confiante, ritmo medio, disciplina e progressao "
+            "clara, com musicalidade cultural muito sutil, sem caricatura."
+        ),
         "guia_cor": "#ad6002",
         "framing_narrativo": "Caminho da Maestria",
     },
@@ -708,12 +748,14 @@ def _build_profile_editorial_context(
         "top_perfis": top_profiles,
         "guia_nome": persona["guia_nome"],
         "guia_voz": persona["guia_voz"],
+        "guia_direcao_voz": persona.get("guia_direcao_voz"),
         "guia_cor": persona["guia_cor"],
         "framing_narrativo": persona["framing_narrativo"],
         # Presentes so quando o perfil tem 2 guardioes (hoje so Socialiser/Mateo+Zuri) —
         # e o que decide, no AudioPipeline, se o roteiro vira dialogo em vez de narracao solo.
         "guia_nome_secundario": persona.get("guia_nome_secundario"),
         "guia_voz_secundario": persona.get("guia_voz_secundario"),
+        "guia_direcao_voz_secundaria": persona.get("guia_direcao_voz_secundaria"),
         "guia_relacao_secundaria": persona.get("guia_relacao_secundaria"),
     }
 
@@ -4574,6 +4616,7 @@ async def fetch_personalizacao_context(
     conteudo_id: int | None,
     settings: Settings,
     session: AsyncSession,
+    include_student_sources: bool = True,
 ) -> dict[str, Any]:
     from uuid import uuid4
 
@@ -4607,6 +4650,21 @@ async def fetch_personalizacao_context(
         topico_id=topico_id,
         conteudo_id=conteudo_id,
         aluno_id=aluno_id,
+    )
+    if not include_student_sources:
+        fontes_raw = [
+            item
+            for item in fontes_raw
+            if str(item.get("visibilidade") or "").strip().lower() != "aluno"
+        ]
+    fontes_enriquecidas = await _hydrate_source_materials_content(
+        materiais_origem=fontes_raw,
+        settings=settings,
+    )
+    await _persist_hydrated_sources_into_fontes(
+        fontes_repo=fontes_repo,
+        materiais_origem=fontes_enriquecidas,
+        settings=settings,
     )
     supabase_base = str(getattr(settings, "supabase_url", "") or "").strip()
     fontes = []
@@ -4647,7 +4705,7 @@ async def fetch_personalizacao_context(
         classe_id=classe_id,
         topico_id=topico_id,
         conteudo_id=conteudo_id,
-        materiais_origem=[],
+        materiais_origem=fontes_enriquecidas,
         cards_topico=cards_topico,
         atividades_topico=atividades,
         questoes_topico=questoes,
@@ -4665,6 +4723,7 @@ async def fetch_personalizacao_context(
         "perfil_dominante": perfil_dominante,
         "perfil_brainhex": perfil_brainhex,
         "fontes": fontes,
+        "fontes_contexto": fontes_enriquecidas,
         "topico_id": topico_id,
         "conteudo_id": conteudo_id,
         "conteudo_classe": {
@@ -6963,8 +7022,4 @@ async def backfill_media_render_jobs(
             )
 
     return counters
-
-
-
-
 

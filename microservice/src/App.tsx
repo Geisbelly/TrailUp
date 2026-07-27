@@ -30,6 +30,7 @@ import { cn } from "./lib/utils";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import { PROFILES, BRAIN_HEX_CONFIG, BrainHexProfile } from "./constants/brainHex";
+import { GUARDIAN_VOICE_PROFILES } from "./constants/guardianVoices";
 import { processMediaWithGemini, generateNaturalAudio, generateSlideImage } from "./services/geminiService";
 import { ProcessedContent } from "./types";
 
@@ -129,11 +130,12 @@ export default function App() {
       // Step 2: Assets (SLOW - TTS & Images)
       // Generate Audio
       try {
-        const voices: Record<BrainHexProfile, any> = {
-          mastermind: 'Zephyr', seeker: 'Puck', survivor: 'Charon',
-          daredevil: 'Fenrir', conqueror: 'Charon', socializer: 'Kore', achiever: 'Zephyr'
-        };
-        const { wav, mp3 } = await generateNaturalAudio(textResult.audioScript, voices[profile] || 'Kore');
+        const voiceProfile = GUARDIAN_VOICE_PROFILES[profile];
+        const { wav, mp3 } = await generateNaturalAudio(
+          textResult.audioScript,
+          voiceProfile.voice,
+          voiceProfile.direction,
+        );
         
         setResult((prev: any) => ({ ...prev, audioBase64: wav, audioMp3Base64: mp3 }));
         
@@ -280,19 +282,12 @@ export default function App() {
     
     setIsGeneratingAudio(true);
     try {
-      // Map profiles to voices for variety
-      const voices: Record<BrainHexProfile, any> = {
-        mastermind: 'Zephyr',
-        seeker: 'Puck',
-        survivor: 'Charon',
-        daredevil: 'Fenrir',
-        conqueror: 'Charon',
-        socializer: 'Kore',
-        achiever: 'Zephyr'
-      };
-      
-      const voice = voices[selectedProfile] || 'Kore';
-      const { wav, mp3 } = await generateNaturalAudio(result.audioScript, voice);
+      const voiceProfile = GUARDIAN_VOICE_PROFILES[selectedProfile];
+      const { wav, mp3 } = await generateNaturalAudio(
+        result.audioScript,
+        voiceProfile.voice,
+        voiceProfile.direction,
+      );
       
       setResult((prev: any) => ({ ...prev, audioBase64: wav, audioMp3Base64: mp3 }));
 
@@ -1010,6 +1005,5 @@ export default function App() {
     </div>
   );
 }
-
 
 

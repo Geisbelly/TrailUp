@@ -39,6 +39,12 @@ def test_brainhex_guide_config_has_all_profiles():
         assert "guia_cor" in cfg
         assert "framing" in cfg
 
+    assert _BRAINHEX_GUIDE_CONFIG["seeker"]["guia_voz"] == "Leda"
+    assert _BRAINHEX_GUIDE_CONFIG["survivor"]["guia_voz"] == "Schedar"
+    assert _BRAINHEX_GUIDE_CONFIG["socializer"]["guia_voz"] == "Achird"
+    assert _BRAINHEX_GUIDE_CONFIG["socializer"]["guia_voz_secundario"] == "Sulafat"
+    assert _BRAINHEX_GUIDE_CONFIG["achiever"]["guia_voz"] == "Orus"
+
 
 @pytest.mark.asyncio
 async def test_gerar_conteudo_brainhex_returns_none_without_api_url(settings, conteudo_estudado):

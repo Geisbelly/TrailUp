@@ -18,6 +18,7 @@ import {
   type PersonalizacaoPorPerfilResponse,
 } from "./personalizacoesApi";
 import { PerfilConteudoDialog } from "./PerfilConteudoDialog";
+import { getPersonalizacaoStatusBadge } from "./statusBadge";
 
 type ClasseRow = { id: number; descricao: string | null };
 type TopicoRow = { id: number; classe_id: number; nome: string | null; ordem: number | null };
@@ -539,6 +540,12 @@ function PaletaPreview({ item }: { item: PersonalizacaoPerfilItem }) {
 function PerfilMaterialCard({ item }: { item: PersonalizacaoPerfilItem }) {
   const [dialogTab, setDialogTab] = useState<MaterialTipo | null>(null);
   const temAlgumMaterial = MATERIAL_TIPOS.some(({ key }) => getMaterial(item.materiais, key));
+  const statusBadge = getPersonalizacaoStatusBadge({
+    temPersonalizacao: item.tem_personalizacao,
+    status: item.personalizacao?.status,
+    updatedAt: item.personalizacao?.updated_at,
+    geradoEm: item.personalizacao?.gerado_em ?? item.gerado_em,
+  });
 
   return (
     <Card className="overflow-hidden">
@@ -546,8 +553,12 @@ function PerfilMaterialCard({ item }: { item: PersonalizacaoPerfilItem }) {
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="text-base capitalize">{item.perfil_label}</CardTitle>
-          <Badge variant={item.tem_personalizacao ? "default" : "outline"}>
-            {item.tem_personalizacao ? "Gerado" : "Sem material"}
+          <Badge
+            variant={statusBadge.variant}
+            className={statusBadge.label === "Gerando..." ? "gap-1 bg-blue-100 text-blue-700 hover:bg-blue-100" : undefined}
+          >
+            {statusBadge.label === "Gerando..." && <Loader2 className="h-3 w-3 animate-spin" />}
+            {statusBadge.label}
           </Badge>
         </div>
         <CardDescription>
@@ -670,6 +681,14 @@ function AlunoPreview({
 }) {
   const personalizacoes = contexto?.personalizacoes ?? [];
   const efetiva = personalizacoes[0] ?? null;
+  const statusBadge = efetiva
+    ? getPersonalizacaoStatusBadge({
+        temPersonalizacao: true,
+        status: efetiva.status,
+        updatedAt: efetiva.updated_at,
+        geradoEm: efetiva.gerado_em,
+      })
+    : null;
   return (
     <div className="space-y-4">
       <Card className="overflow-hidden">
@@ -711,6 +730,15 @@ function AlunoPreview({
                 <Badge variant="outline" className="capitalize">
                   {efetiva.formato_prioritario || "misto"}
                 </Badge>
+                {statusBadge && (
+                  <Badge
+                    variant={statusBadge.variant}
+                    className={statusBadge.label === "Gerando..." ? "gap-1 bg-blue-100 text-blue-700 hover:bg-blue-100" : undefined}
+                  >
+                    {statusBadge.label === "Gerando..." && <Loader2 className="h-3 w-3 animate-spin" />}
+                    {statusBadge.label}
+                  </Badge>
+                )}
                 {(efetiva.formatos_gerados ?? []).map((f) => (
                   <Badge key={f} variant="secondary" className="capitalize">
                     {f}

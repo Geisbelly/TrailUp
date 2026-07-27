@@ -61,7 +61,11 @@ Cada perfil carrega:
   Python (`gerador_conteudo.txt`, `pipeline_midia_etapas.txt`) e replicada no
   prompt do microservice (`geminiService.ts`) — ambos os caminhos aplicam a
   assinatura do perfil, não só o microservice (Fase 1 concluída).
-- **Voz TTS** — `VOICE_MAP` em `microservice/server.ts` (Gemini TTS ativo).
+- **Voz TTS** — `GUARDIAN_VOICE_PROFILES` em
+  `microservice/src/constants/guardianVoices.ts` (Gemini TTS ativo). Além do
+  preset, cada Guardião possui direção de idade, sexo, origem cultural e
+  interpretação; o fallback Python espelha esses campos em
+  `_BRAINHEX_GUIDE_PERSONAS`.
 
 > Backend (`_build_design_tokens` em `api/app/api/v1/personalizacao.py`) e
 > frontend (`frontend/src/lib/personalizacao-theme-guide.ts`,

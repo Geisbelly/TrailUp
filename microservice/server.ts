@@ -5,12 +5,12 @@ import path from "path";
 import { randomUUID } from "crypto";
 import {
   processMediaWithGemini,
-  generateNaturalAudio,
-  generateConversationalAudio,
+  generateLongNaturalAudio,
+  generateLongConversationalAudio,
   generateSlideImage,
-  type GeminiTtsVoice,
 } from "./src/services/geminiService";
 import { BrainHexProfile, BRAIN_HEX_CONFIG } from "./src/constants/brainHex";
+import { GUARDIAN_VOICE_PROFILES } from "./src/constants/guardianVoices";
 import {
   isSupabaseConfigured,
   uploadBuffer,
@@ -25,6 +25,7 @@ import { generateSlidesPDF } from "./src/services/pdfService";
 import { createLogger, type Logger } from "./src/lib/logger";
 import { enrichSlidesWithImages } from "./src/lib/slideEnricher";
 import { validatePersonalizarBody } from "./src/lib/validators";
+import type { ContentBlock } from "./src/lib/validators";
 import { createRateLimiter } from "./src/lib/rateLimit";
 
 const log = createLogger({ ctx: "brainhex" });
@@ -40,23 +41,6 @@ declare module "express-serve-static-core" {
 const VALID_PROFILES: BrainHexProfile[] = [
   "mastermind", "seeker", "survivor", "daredevil", "conqueror", "socializer", "achiever",
 ];
-
-const VOICE_MAP: Record<BrainHexProfile, GeminiTtsVoice> = {
-  mastermind: "Charon",
-  seeker:     "Puck",
-  survivor:   "Fenrir",
-  daredevil:  "Zephyr",
-  conqueror:  "Kore",
-  socializer: "Kore", // Mateo — guardiao principal do dialogo (ver SECONDARY_VOICE_MAP)
-  achiever:   "Puck",
-};
-
-// Segundo guardiao do dialogo — hoje so o Socializador tem (Mateo + Zuri). A presenca de
-// `secondaryGuideName` em BRAIN_HEX_CONFIG e o que decide, na hora de gerar o audio, se o
-// roteiro vira narracao solo (generateNaturalAudio) ou dialogo (generateConversationalAudio).
-const SECONDARY_VOICE_MAP: Partial<Record<BrainHexProfile, GeminiTtsVoice>> = {
-  socializer: "Aoede", // Zuri
-};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -232,12 +216,22 @@ async function runPersonalizacaoJob(params: {
   profile:          BrainHexProfile;
   personalizacaoId: number;
   fontes:           FonteItem[];
+  contentBlocks:    ContentBlock[];
   storagePath:      string;
   bucket:           string;
   refId:            string;
   log:              Logger;
 }): Promise<void> {
-  const { profile, personalizacaoId, fontes, storagePath, bucket, refId, log: jobLog } = params;
+  const {
+    profile,
+    personalizacaoId,
+    fontes,
+    contentBlocks,
+    storagePath,
+    bucket,
+    refId,
+    log: jobLog,
+  } = params;
 
   if (!isSupabaseConfigured()) {
     const msg = "SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY não configurados no servidor";
@@ -246,8 +240,8 @@ async function runPersonalizacaoJob(params: {
     return;
   }
 
-  if (fontes.length === 0) {
-    const msg = "fontes vazias — nenhum arquivo enviado para processar";
+  if (fontes.length === 0 && contentBlocks.length === 0) {
+    const msg = "fontes e blocos vazios — nenhum conteúdo enviado para processar";
     jobLog.warn(msg);
     await markPersonalizacaoFailed(personalizacaoId, msg);
     return;
@@ -258,7 +252,16 @@ async function runPersonalizacaoJob(params: {
   const stopHeartbeat = startJobHeartbeat(personalizacaoId, HEARTBEAT_INTERVAL_MS);
 
   try {
-    await runPipeline(personalizacaoId, profile, fontes, storagePath, bucket, refId, jobLog);
+    await runPipeline(
+      personalizacaoId,
+      profile,
+      fontes,
+      contentBlocks,
+      storagePath,
+      bucket,
+      refId,
+      jobLog,
+    );
   } finally {
     stopHeartbeat();
   }
@@ -268,6 +271,7 @@ async function runPipeline(
   personalizacaoId: number,
   profile: BrainHexProfile,
   fontes: FonteItem[],
+  contentBlocks: ContentBlock[],
   storagePath: string,
   bucket: string,
   refId: string,
@@ -275,7 +279,7 @@ async function runPipeline(
 ): Promise<void> {
   // 1. Download das fontes
   const filesData = await fetchFontesAsFileData(fontes);
-  if (filesData.length === 0) {
+  if (filesData.length === 0 && contentBlocks.length === 0) {
     const msg = "todas as fontes falharam no download (verifique as URLs e permissões)";
     jobLog.warn(msg);
     await markPersonalizacaoFailed(personalizacaoId, msg);
@@ -283,22 +287,31 @@ async function runPipeline(
   }
 
   // 2. Texto + slides via Gemini (multi-arquivo)
-  const resultado = await processMediaWithGemini(filesData, profile);
+  const resultado = await processMediaWithGemini(filesData, profile, contentBlocks);
 
   // 3. Áudio (wav + mp3) — falha isolada não interrompe o job
-  const voice = VOICE_MAP[profile] ?? "Kore";
+  const voiceProfile = GUARDIAN_VOICE_PROFILES[profile];
+  const voice = voiceProfile.voice;
   const secondaryGuideName = BRAIN_HEX_CONFIG[profile]?.secondaryGuideName;
-  const secondaryVoice = SECONDARY_VOICE_MAP[profile];
+  const secondaryVoice = voiceProfile.secondaryVoice;
   let wavBase64: string | null = null;
   let mp3Base64: string | null = null;
   try {
     const a = secondaryGuideName && secondaryVoice
-      ? await generateConversationalAudio(
+      ? await generateLongConversationalAudio(
           resultado.audioScript,
-          { name: BRAIN_HEX_CONFIG[profile].guideName, voice },
-          { name: secondaryGuideName, voice: secondaryVoice },
+          {
+            name: BRAIN_HEX_CONFIG[profile].guideName,
+            voice,
+            direction: voiceProfile.direction,
+          },
+          {
+            name: secondaryGuideName,
+            voice: secondaryVoice,
+            direction: voiceProfile.secondaryDirection,
+          },
         )
-      : await generateNaturalAudio(resultado.audioScript, voice);
+      : await generateLongNaturalAudio(resultado.audioScript, voice, voiceProfile.direction);
     wavBase64 = a.wav ?? null;
     mp3Base64 = a.mp3 ?? null;
   } catch (e) {
@@ -572,7 +585,15 @@ export function buildApp(opts: AppOptions = {}): express.Application {
     if (v.ok === false) {
       return res.status(400).json({ error: v.error });
     }
-    const { profile, personalizacao_id: personalizacaoId, fontes, classe_id, topico_id, ciclo_id } = v.value;
+    const {
+      profile,
+      personalizacao_id: personalizacaoId,
+      fontes,
+      content_blocks: contentBlocks,
+      classe_id,
+      topico_id,
+      ciclo_id,
+    } = v.value;
 
     const classeId    = String(classe_id ?? 0);
     const topicoId    = String(topico_id ?? 0);
@@ -594,6 +615,7 @@ export function buildApp(opts: AppOptions = {}): express.Application {
       try {
         jobLog.info("personalizar start", {
           fontes:           fontes.length,
+          contentBlocks:    contentBlocks.length,
           supabase:         isSupabaseConfigured(),
           timeoutMs:        MAX_JOB_DURATION_MS,
         });
@@ -606,6 +628,7 @@ export function buildApp(opts: AppOptions = {}): express.Application {
           profile: profile as BrainHexProfile,
           personalizacaoId,
           fontes:  fontes as FonteItem[],
+          contentBlocks,
           storagePath,
           bucket,
           refId,

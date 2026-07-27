@@ -320,8 +320,10 @@ class AudioPipeline(MediaPipeline):
         roteiro = str(payload.get("roteiro") or "")
         perfil_editorial = context.state.get("perfil_editorial") if isinstance(context.state.get("perfil_editorial"), dict) else {}
         voz = str(perfil_editorial.get("guia_voz") or "Kore")
+        direcao_voz = str(perfil_editorial.get("guia_direcao_voz") or "")
         nome_secundario = perfil_editorial.get("guia_nome_secundario")
         voz_secundaria = perfil_editorial.get("guia_voz_secundario")
+        direcao_voz_secundaria = str(perfil_editorial.get("guia_direcao_voz_secundaria") or "")
         if nome_secundario and voz_secundaria:
             # Dialogo (hoje so Socializador): sem o prefixo de "narre com emoção mística" —
             # o texto já vem como "Nome: fala" por linha e precisa começar assim, sem
@@ -330,15 +332,17 @@ class AudioPipeline(MediaPipeline):
                 settings=context.settings,
                 texto=roteiro[:1500],
                 voz=voz,
+                direcao_voz=direcao_voz,
                 nome_speaker_principal=str(perfil_editorial.get("guia_nome") or ""),
                 speaker_secundario=(str(nome_secundario), str(voz_secundaria)),
+                direcao_voz_secundaria=direcao_voz_secundaria,
             )
         else:
-            texto_narrado = f"Narre com profunda emoção mística e variações de tom: {roteiro[:1500]}"
             rendered = await gerar_audio_gemini_tts(
                 settings=context.settings,
-                texto=texto_narrado,
+                texto=roteiro[:1500],
                 voz=voz,
+                direcao_voz=direcao_voz,
             )
         if not rendered:
             raise RuntimeError("audio_generation_failed")
@@ -488,6 +492,5 @@ class MultiOutputPipeline:
             if error:
                 errors.append(f"{kind}:{error}")
         return rendered, errors
-
 
 

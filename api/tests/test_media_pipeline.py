@@ -164,3 +164,32 @@ async def test_audio_pipeline_uses_guia_voz_from_state() -> None:
     )
     voz = (ctx.state.get("perfil_editorial") or {}).get("guia_voz")
     assert voz == "Puck"
+
+
+def test_guardian_tts_prompt_separa_direcao_da_transcricao() -> None:
+    from app.services.media_agents import _build_guardian_tts_prompt
+
+    prompt = _build_guardian_tts_prompt(
+        texto="O mapa começa aqui.",
+        direcao_voz="Amara: voz feminina jovem e curiosa.",
+    )
+
+    assert "DIRECAO DE VOZ: Amara: voz feminina jovem e curiosa." in prompt
+    assert prompt.endswith("TRANSCRICAO:\nO mapa começa aqui.")
+    assert "Nao leia estas instrucoes em voz alta" in prompt
+
+
+def test_guardian_tts_prompt_dirige_mateo_e_zuri_separadamente() -> None:
+    from app.services.media_agents import _build_guardian_tts_prompt
+
+    prompt = _build_guardian_tts_prompt(
+        texto="Mateo: Vamos juntos.\nZuri: Sempre.",
+        direcao_voz="voz masculina jovem e amigavel",
+        nome_speaker_principal="Mateo",
+        nome_speaker_secundario="Zuri",
+        direcao_voz_secundaria="voz feminina jovem e calorosa",
+    )
+
+    assert "DIRECAO DE Mateo: voz masculina jovem e amigavel" in prompt
+    assert "DIRECAO DE Zuri: voz feminina jovem e calorosa" in prompt
+    assert prompt.endswith("TRANSCRICAO:\nMateo: Vamos juntos.\nZuri: Sempre.")

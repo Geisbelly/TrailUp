@@ -20,10 +20,25 @@ export interface FonteItem {
   tipo:       string;
 }
 
+export interface ContentBlock {
+  id: string;
+  ordem: number;
+  tema: string;
+  topico: string;
+  objetivos: string[];
+  conteudo_base: string;
+  conteudo_aprofundado: string;
+  conceitos_chave: string[];
+  exemplos_contextos: string[];
+  ponte_proximo_bloco: string;
+  source_ids: string[];
+}
+
 export interface PersonalizarRequest {
   profile:            BrainHexProfile;
   personalizacao_id:  number;
   fontes:             FonteItem[];
+  content_blocks:     ContentBlock[];
   classe_id?:         string | number;
   topico_id?:         string | number;
   ciclo_id?:          string;
@@ -144,12 +159,51 @@ export function validatePersonalizarBody(
     fontes.push({ url: f.url, mime_type: f.mime_type, tipo: f.tipo });
   }
 
+  const contentBlocks: ContentBlock[] = [];
+  if (body.content_blocks !== undefined) {
+    if (!Array.isArray(body.content_blocks)) {
+      return { ok: false, error: "content_blocks deve ser um array" };
+    }
+    if (body.content_blocks.length > 24) {
+      return { ok: false, error: "content_blocks excede o limite de 24 blocos" };
+    }
+    for (let i = 0; i < body.content_blocks.length; i++) {
+      const block = body.content_blocks[i];
+      if (!isObject(block)) {
+        return { ok: false, error: `content_blocks[${i}] deve ser um objeto` };
+      }
+      if (typeof block.id !== "string" || block.id.trim().length === 0) {
+        return { ok: false, error: `content_blocks[${i}].id ausente` };
+      }
+      if (
+        typeof block.conteudo_aprofundado !== "string"
+        || block.conteudo_aprofundado.trim().length === 0
+      ) {
+        return { ok: false, error: `content_blocks[${i}].conteudo_aprofundado ausente` };
+      }
+      contentBlocks.push({
+        id: block.id.trim(),
+        ordem: Number.isFinite(Number(block.ordem)) ? Number(block.ordem) : i + 1,
+        tema: typeof block.tema === "string" ? block.tema : "",
+        topico: typeof block.topico === "string" ? block.topico : `Bloco ${i + 1}`,
+        objetivos: Array.isArray(block.objetivos) ? block.objetivos.map(String) : [],
+        conteudo_base: typeof block.conteudo_base === "string" ? block.conteudo_base : "",
+        conteudo_aprofundado: block.conteudo_aprofundado,
+        conceitos_chave: Array.isArray(block.conceitos_chave) ? block.conceitos_chave.map(String) : [],
+        exemplos_contextos: Array.isArray(block.exemplos_contextos) ? block.exemplos_contextos.map(String) : [],
+        ponte_proximo_bloco: typeof block.ponte_proximo_bloco === "string" ? block.ponte_proximo_bloco : "",
+        source_ids: Array.isArray(block.source_ids) ? block.source_ids.map(String) : [],
+      });
+    }
+  }
+
   return {
     ok: true,
     value: {
       profile:           profile as BrainHexProfile,
       personalizacao_id,
       fontes,
+      content_blocks:     contentBlocks,
       classe_id:         body.classe_id as string | number | undefined,
       topico_id:         body.topico_id as string | number | undefined,
       ciclo_id:          typeof body.ciclo_id === "string" ? body.ciclo_id : undefined,
