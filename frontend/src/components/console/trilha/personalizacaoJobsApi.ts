@@ -15,8 +15,15 @@ const FALLBACK_LOCAL_API_BASE_URL = IS_LOCAL_DEV_HOST
   ? `${window.location.protocol}//${window.location.hostname}:8000`
   : "";
 
+// Em producao, passa pela propria origem da Vercel. Assim respostas de
+// infraestrutura do Render (cold start, gateway/timeout) nao viram um falso
+// erro de CORS no navegador e o corpo/status real continua observavel.
+const SAME_ORIGIN_API_PROXY = typeof window !== "undefined" && !IS_LOCAL_DEV_HOST
+  ? `${window.location.origin}/trailup-api`
+  : "";
+
 const API_BASE_URL_CANDIDATES = Array.from(
-  new Set([ENV_API_BASE_URL, FALLBACK_LOCAL_API_BASE_URL].filter(Boolean))
+  new Set([SAME_ORIGIN_API_PROXY, ENV_API_BASE_URL, FALLBACK_LOCAL_API_BASE_URL].filter(Boolean))
 );
 
 const REQUEST_TIMEOUT_MS = Number(import.meta.env.VITE_APITRAIUP_TIMEOUT_MS ?? 20000);

@@ -990,9 +990,9 @@
     "semantic_hash": "40d8849ad0a71caa5a1791e5c29d6e73"
   },
   "frontend/src/components/console/trilha/GenerateTrailDialog.tsx": {
-    "mtime": 1784983920.9090455,
-    "ast_hash": "975327c7494ef3ca9848fe7283f18b24",
-    "semantic_hash": "975327c7494ef3ca9848fe7283f18b24"
+    "mtime": 1785183735.8570986,
+    "ast_hash": "dc1ef39a4d343dcfa12f1bf5dbcd69dd",
+    "semantic_hash": ""
   },
   "frontend/src/components/console/trilha/QuestionsManager.tsx": {
     "mtime": 1784900116.3862782,
@@ -1000,8 +1000,8 @@
     "semantic_hash": "9175970a4b1501355710908f5d1f7c2a"
   },
   "frontend/src/components/console/trilha/TopicEditDrawer.tsx": {
-    "mtime": 1785100637.6493006,
-    "ast_hash": "c4a74e40b38a7d4f25c49bf4f2b2def9",
+    "mtime": 1785183735.8555305,
+    "ast_hash": "9b0c74d19c1bec20be0a4e4bd67b125b",
     "semantic_hash": ""
   },
   "frontend/src/components/console/trilha/TopicFormDialog.tsx": {
@@ -1475,8 +1475,8 @@
     "semantic_hash": "0352474ba2918efe13895edbc3780d94"
   },
   "frontend/supabase/functions/generate-content-ai/index.ts": {
-    "mtime": 1785168157.4681964,
-    "ast_hash": "e17ec309124596318387451ba9db7986",
+    "mtime": 1785183716.4571257,
+    "ast_hash": "f503e0eaf92527e91e1bbe520a268e28",
     "semantic_hash": ""
   },
   "frontend/supabase/functions/validate-essay-answer-ai/index.ts": {
@@ -4062,6 +4062,11 @@
   "scripts/guardian-recolor/sample-hue.mjs": {
     "mtime": 1785183047.2723951,
     "ast_hash": "c7d0750cc86d0887e662de80b61b79fe",
+    "semantic_hash": ""
+  },
+  "frontend/src/lib/supabaseFunctionError.ts": {
+    "mtime": 1785183735.8533733,
+    "ast_hash": "a14891e8160ca10c3d79d48fedd2270f",
     "semantic_hash": ""
   }
 }

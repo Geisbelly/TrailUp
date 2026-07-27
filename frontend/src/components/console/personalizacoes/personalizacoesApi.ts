@@ -15,8 +15,14 @@ const FALLBACK_LOCAL_API_BASE_URL = IS_LOCAL_DEV_HOST
   ? `${window.location.protocol}//${window.location.hostname}:8000`
   : "";
 
+// Em producao, usa a Vercel como proxy reverso para que respostas geradas pela
+// infraestrutura do Render tambem sejam entregues ao browser na mesma origem.
+const SAME_ORIGIN_API_PROXY = typeof window !== "undefined" && !IS_LOCAL_DEV_HOST
+  ? `${window.location.origin}/trailup-api`
+  : "";
+
 const API_BASE_URL_CANDIDATES = Array.from(
-  new Set([ENV_API_BASE_URL, FALLBACK_LOCAL_API_BASE_URL].filter(Boolean))
+  new Set([SAME_ORIGIN_API_PROXY, ENV_API_BASE_URL, FALLBACK_LOCAL_API_BASE_URL].filter(Boolean))
 );
 
 const REQUEST_TIMEOUT_MS = Number(import.meta.env.VITE_APITRAIUP_TIMEOUT_MS ?? 20000);

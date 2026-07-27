@@ -1,16 +1,16 @@
 # Graph Report - TrailUp  (2026-07-27)
 
 ## Corpus Check
-- 662 files · ~2,354,010 words
+- 662 files · ~2,354,105 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 5935 nodes · 13092 edges · 376 communities (265 shown, 111 thin omitted)
+- 5935 nodes · 13092 edges · 377 communities (265 shown, 112 thin omitted)
 - Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 435 edges (avg confidence: 0.56)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `8155f001`
+- Built from commit: `1316e952`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -320,6 +320,7 @@
 - expo-splash-screen
 - express
 - @radix-ui/react-accordion
+- @google/genai
 - @radix-ui/react-avatar
 - @radix-ui/react-scroll-area
 - @radix-ui/react-toggle
@@ -376,7 +377,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (376 total, 111 thin omitted)
+## Communities (377 total, 112 thin omitted)
 
 ### Community 0 - "cn"
 Cohesion: 0.02
@@ -391,12 +392,12 @@ Cohesion: 0.06
 Nodes (90): Props, Aluno, AlunoPerfil, API_BASE_URL, EvolucaoAluno, PersonalizacaoDocenteResponse, TurmaDistribuicao, TurmaGeralMetricas (+82 more)
 
 ### Community 3 - "perfil/index.tsx"
-Cohesion: 0.16
-Nodes (28): _build_anchor_pool(), _contains_blank_marker(), _dedupe_by(), _enriquecer_cards(), _enriquecer_questao(), _ensure_card_answer_text(), _ensure_card_question_title(), _ensure_fill_blank_text() (+20 more)
+Cohesion: 0.14
+Nodes (30): _build_anchor_pool(), _build_visual_profile_context(), _contains_blank_marker(), _dedupe_by(), _enriquecer_cards(), _enriquecer_questao(), _ensure_card_answer_text(), _ensure_card_question_title() (+22 more)
 
 ### Community 4 - "getProfileShellPalette"
-Cohesion: 0.11
-Nodes (21): LoadingOverlay(), RootLayout(), unstable_settings, VerificacaoDeRota(), NotificacaoDetalhe(), s, LoadingState(), Props (+13 more)
+Cohesion: 0.09
+Nodes (24): LoadingOverlay(), RootLayout(), unstable_settings, VerificacaoDeRota(), NotificacaoDetalhe(), s, NotificationItem, Props (+16 more)
 
 ### Community 5 - "ClassManagementSection.tsx"
 Cohesion: 0.17
@@ -416,7 +417,7 @@ Nodes (50): build_graph(), Any, async_sessionmaker, AsyncSession, close_checkpoi
 
 ### Community 9 - "AccessRepository"
 Cohesion: 0.07
-Nodes (54): ensure_professor_access(), _aggregate_media_status(), _build_storage_path(), criar_job_class_delta(), criar_job_class_theme(), criar_job_enrollment(), criar_job_full_sync(), criar_job_student_cleanup() (+46 more)
+Nodes (56): ensure_professor_access(), _aggregate_media_status(), _build_storage_path(), criar_job_class_delta(), criar_job_class_theme(), criar_job_enrollment(), criar_job_full_sync(), criar_job_student_cleanup() (+48 more)
 
 ### Community 10 - "button.tsx"
 Cohesion: 0.07
@@ -461,10 +462,6 @@ Nodes (71): CONTEUDO_TIPO_LABELS, formatConteudoTipo(), isPlaceholderTitle(), no
 ### Community 20 - "MetricasContext.tsx"
 Cohesion: 0.07
 Nodes (48): accumulateContextTime(), accumulateEntryTime(), BatchAccumulator, buildDisabledUsageTimeMetrics(), buildEmptyBatch(), buildTimeMetricEntry(), buildTimeMetricsSnapshot(), buildUuid() (+40 more)
-
-### Community 21 - "expo-router"
-Cohesion: 0.13
-Nodes (10): Classe, mergeMediaCandidates(), pickFirstString(), safeJsonParse(), toArrayValue(), toObjectRecord(), ClasseResumo, QuestaoAluno (+2 more)
 
 ### Community 22 - "test_api.py"
 Cohesion: 0.10
@@ -528,7 +525,7 @@ Nodes (29): asObject(), buildBlocksFromArray(), buildContentBlocks(), buildPaylo
 
 ### Community 37 - "presentationOrder.ts"
 Cohesion: 0.07
-Nodes (35): ActivityCompletePayload, ActivityRenderer(), normalizeActivityType(), Props, summaryStyles, ContentRenderer(), DefaultWebView, Props (+27 more)
+Nodes (36): ActivityCompletePayload, ActivityRenderer(), normalizeActivityType(), Props, summaryStyles, ContentRenderer(), DefaultWebView, Props (+28 more)
 
 ### Community 38 - "docs/README.md"
 Cohesion: 0.03
@@ -580,7 +577,7 @@ Nodes (40): 10.1 Job agregado, 10.2 Target individual, 10. Estados de processame
 
 ### Community 50 - "dependencies"
 Cohesion: 0.11
-Nodes (19): cors, dotenv, @google/genai, html2canvas, lamejs, dependencies, cors, dotenv (+11 more)
+Nodes (19): cors, dotenv, express, html2canvas, lamejs, dependencies, cors, dotenv (+11 more)
 
 ### Community 51 - "clampPercent"
 Cohesion: 0.08
@@ -596,7 +593,7 @@ Nodes (25): _analysis_from_result(), _is_activity_signal(), _normalize_eventos_l
 
 ### Community 54 - "dependencies"
 Cohesion: 0.06
-Nodes (35): cmdk, embla-carousel-react, dependencies, clsx, cmdk, embla-carousel-react, input-otp, @radix-ui/react-aspect-ratio (+27 more)
+Nodes (35): browserslist, embla-carousel-react, dependencies, browserslist, clsx, embla-carousel-react, input-otp, @radix-ui/react-aspect-ratio (+27 more)
 
 ### Community 55 - "ContentFileUpload.tsx"
 Cohesion: 0.14
@@ -619,12 +616,12 @@ Cohesion: 0.12
 Nodes (17): styles, ParallaxScrollView(), Props, styles, styles, ThemedText(), ThemedTextProps, ThemedView() (+9 more)
 
 ### Community 60 - "media_agents.py"
-Cohesion: 0.13
-Nodes (9): Props, styles, MetaXp(), Props, styles, Props, styles, Props (+1 more)
+Cohesion: 0.18
+Nodes (7): Props, styles, MetaXp(), Props, styles, Props, styles
 
 ### Community 61 - "IAHeaderTimer.tsx"
-Cohesion: 0.14
-Nodes (33): _apply_media_job_metadata(), backfill_media_render_jobs(), _brainhex_profile_key(), _build_failed_quality_material(), _collect_fontes_midias_relevantes(), _collect_quality_rejected_formatos(), _enqueue_media_render_job_if_needed(), _ensure_min_media_formatos() (+25 more)
+Cohesion: 0.13
+Nodes (36): _apply_media_job_metadata(), backfill_media_render_jobs(), _brainhex_profile_key(), _build_failed_quality_material(), _build_tema_visual_for_profile(), _collect_fontes_midias_relevantes(), _collect_quality_rejected_formatos(), _enqueue_media_render_job_if_needed() (+28 more)
 
 ### Community 62 - "DashboardSection.tsx"
 Cohesion: 0.38
@@ -655,8 +652,8 @@ Cohesion: 0.14
 Nodes (17): analisar(), analisar_stream(), AsyncSession, post, UserContext, EventoRepository, AsyncSession, IADecisionLogRepository (+9 more)
 
 ### Community 70 - "Topico"
-Cohesion: 0.08
-Nodes (27): AlunoPerfilRow, DominantProfileMeta, FILTER_LABELS, formatPontuacao(), getDominantProfileLabel(), getMedalImage(), getPontuacaoColumnLabel(), { height: SCREEN_H } (+19 more)
+Cohesion: 0.07
+Nodes (31): AlunoPerfilRow, DominantProfileMeta, FILTER_LABELS, formatPontuacao(), getDominantProfileLabel(), getMedalImage(), getPontuacaoColumnLabel(), { height: SCREEN_H } (+23 more)
 
 ### Community 71 - "_build_design_tokens"
 Cohesion: 0.14
@@ -679,8 +676,8 @@ Cohesion: 0.09
 Nodes (22): description, name, private, scripts, android:mobile, build:frontend, dev, dev:frontend (+14 more)
 
 ### Community 76 - "DocumentBlock.tsx"
-Cohesion: 0.14
-Nodes (21): PerfilHome(), styles, { width }, PerfilMetricasEstilo(), MenuAction, MenuItem, pkg, Settings() (+13 more)
+Cohesion: 0.10
+Nodes (27): PerfilHome(), styles, { width }, PerfilMetricasEstilo(), MenuAction, MenuItem, pkg, Settings() (+19 more)
 
 ### Community 78 - "mobile/funcionamento-api-arquitetura-fluxos.md"
 Cohesion: 0.05
@@ -743,8 +740,8 @@ Cohesion: 0.16
 Nodes (12): Calcula palavras-por-minuto por material e sinaliza ritmo de leitura., _summarize_reading_pace(), DummyApp, DummyGraph, DummyRequest, DummyState, asyncio, test_linear_analysis_orchestrator_runs_all_stages_and_enriches_state() (+4 more)
 
 ### Community 94 - "classMapTheme.ts"
-Cohesion: 0.18
-Nodes (11): build_personalizacao_state(), _build_tema_visual_for_profile(), _build_visual_profile_context(), _coerce_dict_list(), _list_visual_assets_catalog(), _merge_perfil_brainhex(), _merge_source_materials(), _normalize_profile_label() (+3 more)
+Cohesion: 0.33
+Nodes (6): build_personalizacao_state(), _coerce_dict_list(), _merge_source_materials(), _summarize_sources_debug(), test_merge_source_materials_preserva_uploads_sem_duplicar_fontes(), test_summarize_sources_debug_reports_text_length_without_name_error()
 
 ### Community 95 - "ArtefatosPersonalizadosRepository"
 Cohesion: 0.27
@@ -784,7 +781,7 @@ Nodes (33): admin_professores_page(), _dashboard_html(), _load_dashboard(), Asyn
 
 ### Community 104 - "Settings"
 Cohesion: 0.06
-Nodes (31): TabLayout(), ConquistaRankContext, ConquistaRankProvider(), ConquistaRankState, isInvalidBigintDataError(), normalizeClasseId(), AlunoBaseRow, AlunoPerfilRow (+23 more)
+Nodes (28): TabLayout(), NotificationsContext, NotificationsProvider(), NotificationsState, StatusFiltro, ToastMessage, ToastType, AlunoBaseRow (+20 more)
 
 ### Community 105 - "PersonalizacaoProgressoRepository"
 Cohesion: 0.30
@@ -810,6 +807,10 @@ Nodes (45): backgroundColor, foregroundImage, adaptiveIcon, edgeToEdgeEnabled, p
 Cohesion: 0.25
 Nodes (9): _collect_source_chunks(), _fallback_materiais(), _score_chunk(), _split_text_chunks(), _strip_path_to_label(), _target_items_count(), test_fallback_materiais_gera_documento_apresentacao_e_imagem(), test_fallback_materiais_nao_gera_texto_com_mojibake() (+1 more)
 
+### Community 111 - "ArvoreView.tsx"
+Cohesion: 0.13
+Nodes (10): mergeMediaCandidates(), pickFirstString(), safeJsonParse(), toArrayValue(), toObjectRecord(), Conteudo, Midia, QuestaoAluno (+2 more)
+
 ### Community 112 - "Classe.ts"
 Cohesion: 0.14
 Nodes (12): Carousel, CarouselApi, CarouselContent, CarouselContext, CarouselContextProps, CarouselItem, CarouselNext, CarouselOptions (+4 more)
@@ -827,8 +828,8 @@ Cohesion: 0.17
 Nodes (11): name, private, scripts, build, build:dev, dev, lint, preview (+3 more)
 
 ### Community 117 - "_normalize_personalized_activities"
-Cohesion: 0.06
-Nodes (36): TabLayout(), PerfilHome(), Infor(), styles, defaultAccentGlow, defaultPalette, LoadingScreen(), LoadingScreenProps (+28 more)
+Cohesion: 0.11
+Nodes (22): TabLayout(), Infor(), styles, defaultAccentGlow, defaultPalette, LoadingScreen(), LoadingScreenProps, ND (+14 more)
 
 ### Community 118 - "compilerOptions"
 Cohesion: 0.17
@@ -910,10 +911,6 @@ Nodes (25): 10. Indicadores de operação e aprendizagem, 11. Antipadrões a evi
 Cohesion: 0.14
 Nodes (14): Atividade, AtividadeTipo, Questao, registrarAtividadeProgresso(), registrarConteudoProgresso(), registrarEventoPontos(), registrarTopicoProgresso(), resolveStatusByPercentual() (+6 more)
 
-### Community 140 - "ios"
-Cohesion: 0.13
-Nodes (3): Conteudo, Midia, Topico
-
 ### Community 141 - "NodeBadge.tsx"
 Cohesion: 0.40
 Nodes (3): NodeBadgeProps, s, Palette
@@ -928,7 +925,7 @@ Nodes (20): BattlePanelScope, buildFallbackVisual(), formatCountdown(), IABattle
 
 ### Community 144 - "dependencies"
 Cohesion: 0.09
-Nodes (23): @config-plugins/react-native-pdf, expo, expo-camera, expo-dev-client, expo-status-bar, dependencies, @config-plugins/react-native-pdf, expo (+15 more)
+Nodes (23): expo, expo-camera, expo-dev-client, expo-status-bar, expo-symbols, dependencies, expo, expo-camera (+15 more)
 
 ### Community 145 - "IAContracts.ts"
 Cohesion: 0.23
@@ -1063,8 +1060,8 @@ Cohesion: 0.14
 Nodes (13): 10. Objetivos operacionais, 1. Objetivo, 2. Escopo, 3. Diagrama de componentes, 4. Endpoints e responsabilidade, 5. Pipeline detalhado, 6. Modelagem de artefatos, 7. Segurança e governança (+5 more)
 
 ### Community 259 - "@react-navigation/bottom-tabs"
-Cohesion: 0.21
-Nodes (13): _build_student_metrics_summary(), _build_student_reading_summary(), conversar_com_mentor_personalizacao(), _ensure_topico_conteudo_belongs_to_classe(), _fallback_mentor_chat_reply(), _format_minutes(), _format_percent(), _looks_like_answer_request() (+5 more)
+Cohesion: 0.25
+Nodes (11): _build_student_metrics_summary(), _build_student_reading_summary(), conversar_com_mentor_personalizacao(), _fallback_mentor_chat_reply(), _format_minutes(), _format_percent(), _looks_like_answer_request(), _mentor_tone_intro() (+3 more)
 
 ### Community 260 - "microservice/funcionamento-personalizacao-gamificacao-recursos-pedagogicos-detalhado.md"
 Cohesion: 0.14
@@ -1111,8 +1108,8 @@ Cohesion: 0.17
 Nodes (11): Comandos, Diagnostico rapido, Documentacao, Documentacao detalhada (arquitetura separada), Documentos novos, Estado atual (2026-04-19), Estrutura, Pacote TCC (+3 more)
 
 ### Community 296 - "ArvoreView.tsx"
-Cohesion: 0.05
-Nodes (63): PerfilStack(), Aparen(), BibliotecaConquistasScreen(), clamp(), ColetaDadosScreen(), styles, TOGGLE_ITEMS, ToggleItem (+55 more)
+Cohesion: 0.06
+Nodes (58): PerfilHome(), PerfilStack(), Aparen(), BibliotecaConquistasScreen(), clamp(), ColetaDadosScreen(), styles, TOGGLE_ITEMS (+50 more)
 
 ### Community 298 - "02-fundamentacao-teorica-e-modelo-adaptativo.md"
 Cohesion: 0.18
@@ -1202,6 +1199,10 @@ Nodes (7): Arquivo afetado, Design: Chat no Módulo — Remoção de Preview Aut
 Cohesion: 0.25
 Nodes (8): [`api/`](./api/) — Backend (Python · FastAPI), Começando, Documentação — TrailUp, Documentos transversais, [`frontend/`](./frontend/) — Web (Vite · React), [`microservice/`](./microservice/) — Microsserviço (Node · TS), [`mobile/`](./mobile/) — App (Expo · React Native), Índice por projeto
 
+### Community 320 - "ContentRenderer.tsx"
+Cohesion: 0.27
+Nodes (11): clamp(), clipToHex(), clipToRadius(), hexPoints(), hexVertices(), intersectSegments(), starPath(), straight() (+3 more)
+
 ### Community 321 - "3.1.1 Diagrama por camada"
 Cohesion: 0.18
 Nodes (9): compositeOps, featherWeight(), hueInRange(), hueMax, hueMin, isPng, pipeline, satMin (+1 more)
@@ -1269,16 +1270,16 @@ Nodes (3): DOUBLE_QUOTE, sanitizeLatin1(), SINGLE_QUOTE
 ## Knowledge Gaps
 - **2047 isolated node(s):** `trailup-api`, `$schema`, `style`, `rsc`, `tsx` (+2042 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **111 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **112 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `Alert` connect `QuestionsManager.tsx` to `ArvoreView.tsx`, `_normalize_personalized_activities`?**
   _High betweenness centrality (0.034) - this node is a cross-community bridge._
-- **Why does `useUsuario()` connect `ArvoreView.tsx` to `getProfileShellPalette`, `presentationOrder.ts`, `Topico`, `Settings`, `QuestionActivity.tsx`, `TrilhaContext.tsx`, `supabaseStorage.ts`, `GlobalStyle.ts`, `DocumentBlock.tsx`, `nativeContentCache.ts`, `trilha/[id].tsx`, `_normalize_personalized_activities`, `IAContext.tsx`, `android`?**
+- **Why does `useUsuario()` connect `ArvoreView.tsx` to `ContentRenderer.tsx`, `getProfileShellPalette`, `presentationOrder.ts`, `Topico`, `Settings`, `QuestionActivity.tsx`, `TrilhaContext.tsx`, `supabaseStorage.ts`, `GlobalStyle.ts`, `DocumentBlock.tsx`, `nativeContentCache.ts`, `trilha/[id].tsx`, `_normalize_personalized_activities`, `IAContext.tsx`, `android`?**
   _High betweenness centrality (0.029) - this node is a cross-community bridge._
-- **Why does `dependencies` connect `dependencies` to `react-native-webview`, `react-native-worklets`, `tinycolor2`, `react-dom`, `@supabase/supabase-js`, `@react-navigation/native`, `DOCS_API.md`, `expo-av`, `expo-constants`, `expo-font`, `expo-haptics`, `expo-linear-gradient`, `expo-sharing`, `api/estrutura-banco-supabase.md`, `expo-system-ui`, `@expo/vector-icons`, `expo-web-browser`, `fast-xml-parser`, `expo-router`, `expo-splash-screen`, `react-native-safe-area-context`, `14. Edge Functions, RPCs, Functions e Triggers`, `react-native`, `react-native-pdf`, `react-native-svg`, `ArvoreView.tsx`, `@react-navigation/elements`, `expo-image`, `react`, `mammoth`, `node-html-parser`, `pg`, `mobile/package.json`, `@react-native-async-storage/async-storage`, `react-native-gesture-handler`, `react-native-reanimated`, `expo-image-picker`, `react-native-screens`?**
+- **Why does `dependencies` connect `dependencies` to `react-native-webview`, `react-native-worklets`, `tinycolor2`, `react-dom`, `@supabase/supabase-js`, `@react-navigation/native`, `DOCS_API.md`, `expo-av`, `clsx`, `expo-constants`, `expo-font`, `expo-haptics`, `expo-linear-gradient`, `expo-sharing`, `api/estrutura-banco-supabase.md`, `expo-system-ui`, `@expo/vector-icons`, `expo-web-browser`, `fast-xml-parser`, `expo-router`, `expo-splash-screen`, `react-native-safe-area-context`, `14. Edge Functions, RPCs, Functions e Triggers`, `react-native`, `react-native-pdf`, `react-native-svg`, `@react-navigation/elements`, `expo-image`, `react`, `mammoth`, `node-html-parser`, `pg`, `mobile/package.json`, `@react-native-async-storage/async-storage`, `react-native-gesture-handler`, `react-native-reanimated`, `expo-image-picker`, `react-native-screens`?**
   _High betweenness centrality (0.025) - this node is a cross-community bridge._
 - **Are the 55 inferred relationships involving `Settings` (e.g. with `GeminiBossImageAdapter` and `AdminContext`) actually correct?**
   _`Settings` has 55 INFERRED edges - model-reasoned connections that need verification._
