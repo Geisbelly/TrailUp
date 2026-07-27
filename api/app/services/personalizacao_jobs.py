@@ -613,7 +613,49 @@ async def _process_media_render_target(
         source_hash=str(ctx["source_hash"] or ""),
     )
     if existing:
-        return {"skipped": True, "record": existing}
+        # "Existe" nao e o mesmo que "pronto": um registro pode ter ficado
+        # travado em processando_midias/materiais={} porque
+        # disparar_brainhex_async falhou (fire-and-forget, sem retry) — sem
+        # esta checagem, toda nova tentativa so encontrava esse registro e
+        # pulava para sempre, mesmo o job reportando "completed".
+        stale_min = int(getattr(app.state.settings, "personalizacao_job_stale_processing_min", 15))
+        stuck_check = await session.execute(
+            text(
+                """
+                SELECT (
+                    status = 'processando_midias'
+                    AND COALESCE(materiais, '{}'::jsonb) = '{}'::jsonb
+                    AND COALESCE(updated_at, gerado_em) < NOW() - make_interval(mins => :stale_min)
+                ) AS is_stuck
+                FROM conteudo_personalizado
+                WHERE id = :id
+                """
+            ),
+            {"id": int(existing["id"]), "stale_min": stale_min},
+        )
+        if not bool(stuck_check.scalar()):
+            return {"skipped": True, "record": existing}
+
+        # Registro travado ha mais de `stale_min` minutos: reaproveita o MESMO
+        # id e redispara a geracao (nao cria um registro novo duplicado, nao
+        # deixa travado para sempre).
+        logger.warning(
+            "personalizacao travada detectada, redisparando geracao: personalizacao_id=%s topico=%s aluno=%s",
+            existing["id"], topico_id, aluno_id,
+        )
+        asyncio.create_task(
+            disparar_brainhex_async(
+                settings=app.state.settings,
+                perfil=ctx["perfil_dominante"],
+                fontes=ctx["fontes"],
+                personalizacao_id=int(existing["id"]),
+                aluno_id=aluno_id,
+                classe_id=classe_id,
+                topico_id=topico_id,
+                ciclo_id=str(existing.get("ciclo_id") or ""),
+            )
+        )
+        return {"record": existing, "retried_stuck": True}
 
     cards_payload = await gerar_cards_direto(
         perfil=ctx["perfil_dominante"],

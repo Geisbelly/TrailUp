@@ -1,3 +1,4 @@
+import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -292,3 +293,103 @@ async def test_process_media_render_target_reuses_shared_rendered_media_without_
     assert materialize_mock.await_count == 0
     assert patch_mock.await_count == 1
     assert patch_mock.await_args.kwargs["arquivo_url"] == shared_pdf["arquivo_url"]
+
+
+class _FakeScalarResult:
+    def __init__(self, value: bool) -> None:
+        self._value = value
+
+    def scalar(self) -> bool:
+        return self._value
+
+
+class _FakeSession:
+    """Sessao minima: so precisa responder ao SELECT de staleness (session.execute)."""
+
+    def __init__(self, is_stuck: bool) -> None:
+        self._is_stuck = is_stuck
+        self.executed_params: list[dict] = []
+
+    async def execute(self, _stmt, params=None):
+        self.executed_params.append(params or {})
+        return _FakeScalarResult(self._is_stuck)
+
+
+def _existing_record(status: str = "processando_midias") -> dict:
+    return {
+        "id": 249,
+        "aluno_id": "b49f2e21-a6f9-4c8d-9533-5a32bb219754",
+        "classe_id": 32,
+        "topico_id": 117,
+        "conteudo_id": 117,
+        "ciclo_id": "ciclo-249",
+        "status": status,
+        "materiais": {},
+        "source_hash": "hash-249",
+    }
+
+
+@pytest.mark.asyncio
+async def test_process_media_render_target_skips_when_existing_record_is_fresh(monkeypatch) -> None:
+    """Registro existente e recente (nao travado) -> so pula, nao redispara nada."""
+    existing = _existing_record()
+
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.buscar_mais_recente_por_perfil",
+        AsyncMock(return_value=existing),
+    )
+    monkeypatch.setattr(
+        jobs_module,
+        "fetch_personalizacao_context",
+        AsyncMock(return_value={"source_hash": "hash-249", "fontes": []}),
+    )
+    dispatch_mock = AsyncMock(return_value=True)
+    monkeypatch.setattr(jobs_module, "disparar_brainhex_async", dispatch_mock)
+
+    app = SimpleNamespace(
+        state=SimpleNamespace(settings=SimpleNamespace(personalizacao_job_stale_processing_min=15))
+    )
+    job = {"id": "job-1", "classe_id": 32, "kind": "class_delta_sync", "payload": {}}
+    target = {"id": 579, "aluno_id": existing["aluno_id"], "topico_id": 117, "conteudo_id": None}
+
+    result = await _process_media_render_target(
+        app=app, session=_FakeSession(is_stuck=False), job=job, target=target
+    )
+
+    assert result == {"skipped": True, "record": existing}
+    assert dispatch_mock.await_count == 0
+
+
+@pytest.mark.asyncio
+async def test_process_media_render_target_retries_when_existing_record_is_stuck(monkeypatch) -> None:
+    """Registro existente travado ha muito tempo em processando_midias/materiais={} ->
+    redispara a geracao reaproveitando o MESMO id, em vez de so pular pra sempre."""
+    existing = _existing_record()
+
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.buscar_mais_recente_por_perfil",
+        AsyncMock(return_value=existing),
+    )
+    monkeypatch.setattr(
+        jobs_module,
+        "fetch_personalizacao_context",
+        AsyncMock(return_value={"source_hash": "hash-249", "fontes": [{"url": "https://x/y.pptx", "mime_type": "application/vnd.openxmlformats-officedocument.presentationml.presentation", "tipo": "documento"}]}),
+    )
+    dispatch_mock = AsyncMock(return_value=True)
+    monkeypatch.setattr(jobs_module, "disparar_brainhex_async", dispatch_mock)
+
+    app = SimpleNamespace(
+        state=SimpleNamespace(settings=SimpleNamespace(personalizacao_job_stale_processing_min=15))
+    )
+    job = {"id": "job-2", "classe_id": 32, "kind": "class_delta_sync", "payload": {}}
+    target = {"id": 582, "aluno_id": existing["aluno_id"], "topico_id": 117, "conteudo_id": None}
+
+    result = await _process_media_render_target(
+        app=app, session=_FakeSession(is_stuck=True), job=job, target=target
+    )
+    await asyncio.sleep(0)  # deixa o asyncio.create_task(disparar_brainhex_async(...)) rodar
+
+    assert result["retried_stuck"] is True
+    assert result["record"] == existing
+    assert dispatch_mock.await_count == 1
+    assert dispatch_mock.await_args.kwargs["personalizacao_id"] == existing["id"]

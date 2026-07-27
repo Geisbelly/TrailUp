@@ -2,6 +2,7 @@
 
 import asyncio
 import base64
+import logging
 import re
 from typing import Any
 
@@ -10,6 +11,8 @@ import httpx
 from app.core.settings import Settings
 from app.services.audio import gerar_mp3_gtts
 from app.services.llm import JsonLLMService
+
+logger = logging.getLogger(__name__)
 
 
 def _extract_inline_audio_parts(payload: dict[str, Any]) -> list[tuple[str, bytes]]:
@@ -255,8 +258,24 @@ async def disparar_brainhex_async(
                 },
                 headers=headers,
             )
+            if response.status_code != 202:
+                # Fire-and-forget (asyncio.create_task, sem await no caller) —
+                # sem este log, uma rejeicao do microservice (ex.: 400 de
+                # validacao) fica invisivel e o conteudo_personalizado trava
+                # para sempre em status=processando_midias, materiais={}.
+                logger.warning(
+                    "disparar_brainhex_async: microservice recusou o POST /api/personalizar "
+                    "(personalizacao_id=%s, status=%s, body=%s)",
+                    personalizacao_id,
+                    response.status_code,
+                    response.text[:500],
+                )
             return response.status_code == 202
     except Exception:
+        logger.exception(
+            "disparar_brainhex_async: falha ao chamar o microservice (personalizacao_id=%s)",
+            personalizacao_id,
+        )
         return False
 
 
