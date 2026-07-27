@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     langgraph_db_url: str | None = None
     database_connect_timeout_sec: int = 20
     database_command_timeout_sec: int = 60
+    database_migrations_on_startup: bool = True
 
     supabase_url: str | None = Field(
         default=None,

@@ -945,8 +945,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/console/personalizacoes/personalizacoesApi.ts": {
-    "mtime": 1785099325.5302777,
-    "ast_hash": "0631894ef3ff80e8c0d96defb0e6089e",
+    "mtime": 1785184482.943374,
+    "ast_hash": "ff91185823782814f1604739c47f1972",
     "semantic_hash": ""
   },
   "frontend/src/components/console/trilha/ActivitiesManager.tsx": {
@@ -1025,8 +1025,8 @@
     "semantic_hash": "005408f824485b26710482ea1ad8586d"
   },
   "frontend/src/components/console/trilha/personalizacaoJobsApi.ts": {
-    "mtime": 1785099328.2543046,
-    "ast_hash": "6a29eda2a44f90f55a2106cc3410bed5",
+    "mtime": 1785184482.9423742,
+    "ast_hash": "6d8b02120066b515186168763699600c",
     "semantic_hash": ""
   },
   "frontend/src/components/console/trilha/topicsApi.ts": {
@@ -1525,9 +1525,9 @@
     "semantic_hash": "1417fb05378a1d1102f085e60b20db0e"
   },
   "frontend/vercel.json": {
-    "mtime": 1782271382.287613,
-    "ast_hash": "5eb85bafbc898dddc5527f9f3f5f119c",
-    "semantic_hash": "5eb85bafbc898dddc5527f9f3f5f119c"
+    "mtime": 1785184482.940375,
+    "ast_hash": "818a6c51861c6d90d17abc481bdf9a6f",
+    "semantic_hash": ""
   },
   "frontend/vite.config.ts": {
     "mtime": 1765420863.885388,
