@@ -58,3 +58,31 @@ test("imagens extras (mais imagens que slides) são ignoradas", () => {
   assert.equal(out.length, 1);
   assert.equal(out[0].imagem_referencia, "data:image/png;base64,a");
 });
+
+test("icones: adiciona array de data URLs quando presente no indice", () => {
+  const out = enrichSlidesWithImages([{ title: "A" }], [], [["icon1", "icon2"]]);
+  assert.deepEqual(out[0].icones, [
+    "data:image/png;base64,icon1",
+    "data:image/png;base64,icon2",
+  ]);
+});
+
+test("icones: filtra entradas vazias (icone que falhou na geracao)", () => {
+  const out = enrichSlidesWithImages([{ title: "A" }], [], [["icon1", "", "icon3"]]);
+  assert.deepEqual(out[0].icones, [
+    "data:image/png;base64,icon1",
+    "data:image/png;base64,icon3",
+  ]);
+});
+
+test("icones: indice sem entrada em iconImagesPerSlide = array vazio", () => {
+  const out = enrichSlidesWithImages([{ title: "A" }, { title: "B" }], [], [["icon1"]]);
+  assert.deepEqual(out[0].icones, ["data:image/png;base64,icon1"]);
+  assert.deepEqual(out[1].icones, []);
+});
+
+test("icones: parametro omitido nao quebra chamadas existentes", () => {
+  const out = enrichSlidesWithImages([{ title: "A" }], ["bg1"]);
+  assert.equal(out[0].imagem_referencia, "data:image/png;base64,bg1");
+  assert.deepEqual(out[0].icones, []);
+});

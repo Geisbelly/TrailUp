@@ -90,7 +90,7 @@ const GUIDES: Record<string, { name: string; title: string; quote: string; descr
 const PROFILE_LIST = Object.values(PROFILES);
 
 function extractHex(twClass: string): string {
-  return twClass.match(/#[0-9a-fA-F]{6}/)?.[0] ?? "#a78c07";
+  return twClass.match(/#[0-9a-fA-F]{6}/)?.[0] ?? "#33ccb7";
 }
 
 // "Seeker (Explorador)" -> "EXPLORADOR". A tradução PT-BR fica entre

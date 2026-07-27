@@ -630,13 +630,13 @@
     "semantic_hash": "3436ee696254f46c2a41f4219a35a17e"
   },
   "api/app/services/personalizacao.py": {
-    "mtime": 1785182345.6836905,
-    "ast_hash": "4d3fe4316cadbe5fc94a6d52500c3ff6",
+    "mtime": 1785182576.6291485,
+    "ast_hash": "e721ee79a10cd7cb8d539fc9da2704ab",
     "semantic_hash": ""
   },
   "api/app/services/personalizacao_jobs.py": {
-    "mtime": 1785182483.940591,
-    "ast_hash": "42f04fa0be1e0d632bed0ac7d6b145d5",
+    "mtime": 1785182587.3045554,
+    "ast_hash": "5428b67a54e2732e387bb7a4586baf22",
     "semantic_hash": ""
   },
   "api/app/services/pptx.py": {
@@ -1670,8 +1670,8 @@
     "semantic_hash": "5c3fa32c39a443dc9df415d9e6e725f1"
   },
   "microservice/src/services/geminiService.ts": {
-    "mtime": 1785182375.197577,
-    "ast_hash": "6aacea1220f6fc2fc2790e80d44c89a0",
+    "mtime": 1785182576.6311467,
+    "ast_hash": "af51b8acef47f24ca890a121991b28a5",
     "semantic_hash": ""
   },
   "microservice/src/services/pdfService.ts": {
@@ -4010,8 +4010,8 @@
     "semantic_hash": ""
   },
   "api/app/services/content_enrichment.py": {
-    "mtime": 1785182032.1664693,
-    "ast_hash": "6b8d5ddabeb075e2ed6cff36ffb198cf",
+    "mtime": 1785182601.4397507,
+    "ast_hash": "4c1d85908a390c25c5b120fcc18b82cb",
     "semantic_hash": ""
   },
   "api/tests/test_content_enrichment.py": {

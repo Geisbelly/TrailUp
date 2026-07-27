@@ -1,11 +1,11 @@
 # Graph Report - TrailUp  (2026-07-27)
 
 ## Corpus Check
-- 653 files · ~2,367,447 words
+- 653 files · ~2,367,470 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 5882 nodes · 13031 edges · 367 communities (264 shown, 103 thin omitted)
+- 5882 nodes · 13031 edges · 367 communities (263 shown, 104 thin omitted)
 - Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 432 edges (avg confidence: 0.56)
 - Token cost: 0 input · 0 output
 
@@ -299,9 +299,11 @@
 - _fallback_materiais
 - DOCS_API.md
 - integracao-apitraiup.md
+- clsx
 - mobile/guia-uso-app.md
 - Métricas — Correções de Cálculo + Novas Seções de UI
 - tcc/README.md
+- @supabase/supabase-js
 - GUIA_USO.md
 - microservice/arquitetura-app-detalhada.md
 - docs/microservice/README.md
@@ -337,8 +339,6 @@
 - react
 - mammoth
 - plugins
-- sonner
-- jszip
 - @google/genai
 
 ## God Nodes (most connected - your core abstractions)
@@ -368,7 +368,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (367 total, 103 thin omitted)
+## Communities (367 total, 104 thin omitted)
 
 ### Community 0 - "cn"
 Cohesion: 0.02
@@ -455,8 +455,8 @@ Cohesion: 0.06
 Nodes (51): accumulateContextTime(), accumulateEntryTime(), BatchAccumulator, buildDisabledUsageTimeMetrics(), buildEmptyBatch(), buildTimeMetricEntry(), buildTimeMetricsSnapshot(), buildUuid() (+43 more)
 
 ### Community 21 - "expo-router"
-Cohesion: 0.23
-Nodes (3): Classe, pickFirstString(), ClasseResumo
+Cohesion: 0.17
+Nodes (7): Classe, mergeMediaCandidates(), pickFirstString(), safeJsonParse(), toArrayValue(), toObjectRecord(), ClasseResumo
 
 ### Community 22 - "test_api.py"
 Cohesion: 0.10
@@ -572,7 +572,7 @@ Nodes (40): 10.1 Job agregado, 10.2 Target individual, 10. Estados de processame
 
 ### Community 50 - "dependencies"
 Cohesion: 0.11
-Nodes (19): cors, dotenv, lamejs, dependencies, clsx, cors, dotenv, lamejs (+11 more)
+Nodes (19): cors, dotenv, lamejs, dependencies, cors, dotenv, jszip, lamejs (+11 more)
 
 ### Community 51 - "clampPercent"
 Cohesion: 0.08
@@ -588,7 +588,7 @@ Nodes (24): _analysis_from_result(), _is_activity_signal(), _normalize_eventos_l
 
 ### Community 54 - "dependencies"
 Cohesion: 0.06
-Nodes (35): caniuse-lite, embla-carousel-react, dependencies, caniuse-lite, clsx, embla-carousel-react, input-otp, @radix-ui/react-aspect-ratio (+27 more)
+Nodes (35): embla-carousel-react, dependencies, clsx, embla-carousel-react, input-otp, @radix-ui/react-aspect-ratio, @radix-ui/react-context-menu, @radix-ui/react-hover-card (+27 more)
 
 ### Community 55 - "ContentFileUpload.tsx"
 Cohesion: 0.14
@@ -599,8 +599,8 @@ Cohesion: 0.11
 Nodes (25): Toast, ToastAction, ToastActionElement, ToastClose, ToastDescription, ToastProps, ToastTitle, toastVariants (+17 more)
 
 ### Community 57 - "geminiService.ts"
-Cohesion: 0.09
-Nodes (35): App(), BRAIN_HEX_CONFIG, BrainHexConfig, BrainHexProfile, PROFILES, GUARDIAN_VOICE_PROFILES, GuardianVoiceProfile, cn() (+27 more)
+Cohesion: 0.11
+Nodes (34): App(), BRAIN_HEX_CONFIG, BrainHexConfig, BrainHexProfile, PROFILES, GUARDIAN_VOICE_PROFILES, GuardianVoiceProfile, cn() (+26 more)
 
 ### Community 58 - "nativeDocumentParsers.ts"
 Cohesion: 0.05
@@ -625,10 +625,6 @@ Nodes (34): ColetaDadosScreen(), styles, TOGGLE_ITEMS, ToggleItem, BattleScope, 
 ### Community 63 - "MentalStateHistoryRepository"
 Cohesion: 0.13
 Nodes (14): MentalStateHistoryRepository, Any, AsyncSession, Persistencia e leitura do historico de mental-state inferido pela IA., extract_mental_state(), Extrai o snapshot de mental-state do aiPatch produzido pelo pipeline/agentes., MappingResult, MappingRows (+6 more)
-
-### Community 64 - "IABattlePanel.tsx"
-Cohesion: 0.19
-Nodes (8): AtividadeTipo, mergeMediaCandidates(), safeJsonParse(), toArrayValue(), toObjectRecord(), Conteudo, Midia, Questao
 
 ### Community 65 - "settings.py"
 Cohesion: 0.09
@@ -691,8 +687,8 @@ Cohesion: 0.10
 Nodes (19): Aluno, AlunoPerfil, AppConfig, AppRole, Atividade, AtividadeModulo, BRAINHEX_PROFILES, BrainHexProfile (+11 more)
 
 ### Community 80 - "profileMetricsViewModel.ts"
-Cohesion: 0.19
-Nodes (17): buildAnalysisView(), BuildMetricsViewModelParams, buildMissionSummary(), buildNextMilestone(), buildPresenceSummary(), buildProfileMetricsViewModel(), clampPercent(), collectStringValues() (+9 more)
+Cohesion: 0.18
+Nodes (18): buildAnalysisView(), BuildMetricsViewModelParams, buildMissionSummary(), buildNextMilestone(), buildPresenceSummary(), buildProfileMetricsViewModel(), clampPercent(), collectStringValues() (+10 more)
 
 ### Community 81 - "pptx_extractor.py"
 Cohesion: 0.29
@@ -915,8 +911,8 @@ Cohesion: 0.08
 Nodes (25): 10. Indicadores de operação e aprendizagem, 11. Antipadrões a evitar, 12. Evolução sugerida, 1. Objetivo do documento, 2.1 Entrada de contexto, 2.2 Decisão de execução, 2.3 Geração e persistência, 2. Personalização - visão funcional (+17 more)
 
 ### Community 139 - "wav.test.ts"
-Cohesion: 0.12
-Nodes (3): Atividade, Topico, clampPercent()
+Cohesion: 0.09
+Nodes (7): Atividade, AtividadeTipo, Conteudo, Midia, Questao, Topico, clampPercent()
 
 ### Community 140 - "ios"
 Cohesion: 0.33
@@ -936,11 +932,11 @@ Nodes (21): BattlePanelScope, buildFallbackVisual(), formatCountdown(), IABattle
 
 ### Community 144 - "dependencies"
 Cohesion: 0.09
-Nodes (23): @config-plugins/react-native-blob-util, expo, expo-camera, expo-dev-client, expo-status-bar, dependencies, @config-plugins/react-native-blob-util, expo (+15 more)
+Nodes (23): expo, expo-camera, expo-dev-client, expo-image-picker, expo-status-bar, dependencies, expo, expo-camera (+15 more)
 
 ### Community 145 - "IAContracts.ts"
-Cohesion: 0.22
-Nodes (13): AtividadeLike, buildClasseAcademicMetrics(), buildClasseResumoFallback(), clampPercent(), ClasseAcademicMetrics, ConteudoLike, isDoing(), isDone() (+5 more)
+Cohesion: 0.23
+Nodes (12): AtividadeLike, buildClasseAcademicMetrics(), clampPercent(), ClasseAcademicMetrics, ConteudoLike, isDoing(), isDone(), QuestaoLike (+4 more)
 
 ### Community 149 - "Refatoração de `src/app/(tabs)/trilha/[id].tsx`"
 Cohesion: 0.08
@@ -1261,7 +1257,7 @@ Nodes (3): plugins, @config-plugins/react-native-blob-util, @config-plugins/reac
 ## Knowledge Gaps
 - **2024 isolated node(s):** `trailup-api`, `$schema`, `style`, `rsc`, `tsx` (+2019 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **103 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **104 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
@@ -1270,7 +1266,7 @@ _Questions this graph is uniquely positioned to answer:_
   _High betweenness centrality (0.038) - this node is a cross-community bridge._
 - **Why does `useUsuario()` connect `presentationOrder.ts` to `supabase.ts`, `getProfileShellPalette`, `ContentRenderer.tsx`, `Settings`, `QuestionActivity.tsx`, `ArvoreView.tsx`, `TrilhaContext.tsx`, `DocumentBlock.tsx`, `GlobalStyle.ts`, `HallTheme.tsx`, `trilha/[id].tsx`, `_normalize_personalized_activities`, `IAContext.tsx`, `nativeDocumentParsers.ts`, `DashboardSection.tsx`?**
   _High betweenness centrality (0.032) - this node is a cross-community bridge._
-- **Why does `dependencies` connect `dependencies` to `react-native-webview`, `react-native-worklets`, `tinycolor2`, `react-dom`, `@supabase/supabase-js`, `@react-navigation/native`, `expo-av`, `expo-constants`, `expo-font`, `expo-haptics`, `expo-image-picker`, `expo-linear-gradient`, `expo-sharing`, `api/estrutura-banco-supabase.md`, `expo-system-ui`, `@expo/vector-icons`, `expo-web-browser`, `fast-xml-parser`, `expo-router`, `expo-splash-screen`, `14. Edge Functions, RPCs, Functions e Triggers`, `@config-plugins/react-native-pdf`, `react-native`, `react-native-pdf`, `react-native-svg`, `ArvoreView.tsx`, `@react-navigation/elements`, `expo-image`, `react`, `mammoth`, `node-html-parser`, `pg`, `mobile/package.json`, `@react-native-async-storage/async-storage`, `react-native-gesture-handler`, `react-native-reanimated`, `react-native-safe-area-context`, `react-native-screens`?**
+- **Why does `dependencies` connect `dependencies` to `react-native-webview`, `react-native-worklets`, `tinycolor2`, `react-dom`, `@supabase/supabase-js`, `@react-navigation/native`, `3.1.1 Diagrama por camada`, `expo-av`, `expo-constants`, `expo-font`, `expo-haptics`, `expo-linear-gradient`, `expo-sharing`, `api/estrutura-banco-supabase.md`, `expo-system-ui`, `@expo/vector-icons`, `expo-web-browser`, `fast-xml-parser`, `expo-router`, `expo-splash-screen`, `14. Edge Functions, RPCs, Functions e Triggers`, `@config-plugins/react-native-pdf`, `react-native`, `react-native-pdf`, `react-native-svg`, `ArvoreView.tsx`, `@react-navigation/elements`, `expo-image`, `react`, `mammoth`, `node-html-parser`, `pg`, `mobile/package.json`, `@react-native-async-storage/async-storage`, `react-native-gesture-handler`, `react-native-reanimated`, `react-native-safe-area-context`, `react-native-screens`?**
   _High betweenness centrality (0.025) - this node is a cross-community bridge._
 - **Are the 55 inferred relationships involving `Settings` (e.g. with `GeminiBossImageAdapter` and `AdminContext`) actually correct?**
   _`Settings` has 55 INFERRED edges - model-reasoned connections that need verification._

@@ -9,6 +9,7 @@ import {
   generateLongConversationalAudio,
   generateSlideImage,
 } from "./src/services/geminiService";
+import { generateSceneImage } from "./src/services/openaiImageService";
 import { BrainHexProfile, BRAIN_HEX_CONFIG } from "./src/constants/brainHex";
 import { GUARDIAN_VOICE_PROFILES } from "./src/constants/guardianVoices";
 import {
@@ -48,29 +49,80 @@ function now() {
   return new Date().toISOString();
 }
 
-/** Gera até 6 imagens para os slides (com intervalo para respeitar rate-limit) */
-async function generateSlidesImages(slides: any[], profile: BrainHexProfile): Promise<string[]> {
-  const images: string[] = [];
-  const max = Math.min(slides.length, 6);
+type SlideAssetInput = { imagePrompt: string; iconPrompts?: string[] };
+type SlideAssets = { imagem_referencia: string[]; icones: string[][] };
+
+// O imagePrompt/iconPrompt (escrito pelo LLM) descreve a CENA/elemento; o
+// guardiao, a paleta e a atmosfera do perfil precisam ser reforcados aqui pra
+// imagem gerada realmente combinar com o guia/perfil.
+function buildImageStyleSuffix(profile: BrainHexProfile): string {
   const cfg = BRAIN_HEX_CONFIG[profile];
-  // O imagePrompt por slide (escrito pelo LLM) descreve a CENA; o guardiao, a
-  // paleta e a atmosfera do perfil precisam ser reforcados aqui pra imagem
-  // gerada realmente combinar com o guia/perfil, e nao so ficar "generica
-  // estilo magico" igual pra todo mundo.
-  const styleSuffix =
+  return (
     `. Guardiao/guia do perfil: ${cfg.guideName} (${cfg.label}). ` +
-    `Paleta de cor dominante: ${cfg.color}. Atmosfera: ${cfg.description}`;
-  for (let i = 0; i < max; i++) {
+    `Paleta de cor dominante: ${cfg.color}. Atmosfera: ${cfg.description}`
+  );
+}
+
+/** 1 cena de fundo por slide, via OpenAI. Serial (1 chave, sem pool). */
+async function generateSceneImages(
+  slides: { imagePrompt: string }[],
+  styleSuffix: string
+): Promise<string[]> {
+  const scenes: string[] = [];
+  for (let i = 0; i < slides.length; i++) {
     try {
-      if (i > 0) await new Promise((r) => setTimeout(r, 3000));
+      if (i > 0) await new Promise((r) => setTimeout(r, 2000));
       const prompt = `${slides[i].imagePrompt}${styleSuffix}`;
-      images.push((await generateSlideImage(prompt)) ?? "");
+      scenes.push((await generateSceneImage(prompt)) ?? "");
     } catch (e) {
-      log.error("imagem slide falhou", { slide: i, err: e });
-      images.push("");
+      log.error("cena de fundo falhou (openai)", { slide: i, err: e });
+      scenes.push("");
     }
   }
-  return images;
+  return scenes;
+}
+
+/** Icones decorativos de cada slide (iconPrompts), via Gemini. Serial (1 chave, sem pool). */
+async function generateSlideIcons(
+  slides: { iconPrompts?: string[] }[],
+  styleSuffix: string
+): Promise<string[][]> {
+  const iconsPerSlide: string[][] = [];
+  let calls = 0;
+  for (let i = 0; i < slides.length; i++) {
+    const prompts = slides[i].iconPrompts ?? [];
+    const icons: string[] = [];
+    for (const iconPrompt of prompts) {
+      try {
+        if (calls > 0) await new Promise((r) => setTimeout(r, 3000));
+        calls++;
+        icons.push((await generateSlideImage(`${iconPrompt}${styleSuffix}`)) ?? "");
+      } catch (e) {
+        log.error("icone falhou (gemini)", { slide: i, err: e });
+        icons.push("");
+      }
+    }
+    iconsPerSlide.push(icons);
+  }
+  return iconsPerSlide;
+}
+
+/**
+ * Gera, para TODOS os slides: 1 cena de fundo por slide (OpenAI) + os icones
+ * decorativos daquele slide (Gemini). As duas trilhas rodam em paralelo entre
+ * si (provedores/chaves diferentes); dentro de cada trilha a geracao e serial
+ * (1 chave cada, sem pool de chaves).
+ */
+async function generateSlideAssets(
+  slides: SlideAssetInput[],
+  profile: BrainHexProfile
+): Promise<SlideAssets> {
+  const styleSuffix = buildImageStyleSuffix(profile);
+  const [scenes, iconsPerSlide] = await Promise.all([
+    generateSceneImages(slides, styleSuffix),
+    generateSlideIcons(slides, styleSuffix),
+  ]);
+  return { imagem_referencia: scenes, icones: iconsPerSlide };
 }
 
 // enrichSlidesWithImages extraído para src/lib/slideEnricher.ts (testado).
@@ -200,9 +252,12 @@ interface FonteItem {
 // SSRF: permite fontes apontando para localhost/redes privadas. NUNCA em prod.
 const ALLOW_PRIVATE_FONTE_URLS = process.env.ALLOW_PRIVATE_FONTE_URLS === "true";
 
-// Timeout duro para um job de personalização. Default 15min — cobre o pior
-// caso de PPTX grande + Gemini lento + 6 imagens. Configurável via env.
-const MAX_JOB_DURATION_MS  = Number(process.env.MAX_JOB_DURATION_MS)  || 15 * 60 * 1000;
+// Timeout duro para um job de personalização. Default 30min — cobre o pior
+// caso de PPTX grande + Gemini lento + geracao de assets SEM cap (uma cena
+// OpenAI + N icones Gemini POR slide, serial, sem pool de chaves — ver
+// generateSlideAssets). Configurável via env se um deck muito grande ainda
+// estourar isso.
+const MAX_JOB_DURATION_MS  = Number(process.env.MAX_JOB_DURATION_MS)  || 30 * 60 * 1000;
 // Heartbeat atualiza updated_at periodicamente durante o job, permitindo
 // threshold de recovery agressivo sem matar jobs longos em execução.
 const HEARTBEAT_INTERVAL_MS = Number(process.env.HEARTBEAT_INTERVAL_MS) || 30 * 1000;
@@ -318,9 +373,9 @@ async function runPipeline(
     jobLog.error("falha no áudio", { err: e });
   }
 
-  // 4. Imagens dos slides
-  const images           = await generateSlidesImages(resultado.slides, profile);
-  const slidesComImagens = enrichSlidesWithImages(resultado.slides, images);
+  // 4. Assets dos slides — cena de fundo (OpenAI) + icones (Gemini), todos os slides
+  const assets            = await generateSlideAssets(resultado.slides, profile);
+  const slidesComImagens  = enrichSlidesWithImages(resultado.slides, assets.imagem_referencia, assets.icones);
 
   // 5. Persiste tudo no Supabase
   await archiveToSupabase({
@@ -532,18 +587,28 @@ export function buildApp(opts: AppOptions = {}): express.Application {
       const storagePath   = `brainhex/${profile}/classe-${safeClassName}`;
       const bucket        = "conteudo_aluno";
 
-      // Imagens dos slides:
-      // - Se o frontend enviou (slideImages array de base64), usa diretamente.
-      // - Caso contrário, gera server-side usando os imagePrompts dos slides.
-      let images: string[];
+      // Assets dos slides:
+      // - Se o frontend enviou cenas de fundo prontas (slideImages), usa direto e so
+      //   gera os icones (Gemini) server-side (generateSlideIcons sozinho — sem
+      //   desperdicar uma chamada OpenAI gerando cena de prompt vazio).
+      // - Caso contrario, gera cena (OpenAI) + icones (Gemini) server-side, tudo.
+      let sceneImages: string[];
+      let iconImages: string[][];
       if (Array.isArray(clientImages) && clientImages.length > 0) {
-        images = clientImages;
+        sceneImages = clientImages;
+        req.log.info("gerando icones dos slides server-side (cena veio do cliente)");
+        iconImages = await generateSlideIcons(
+          processed.slides || [],
+          buildImageStyleSuffix(profile as BrainHexProfile)
+        );
       } else {
-        req.log.info("gerando imagens dos slides server-side");
-        images = await generateSlidesImages(processed.slides || [], profile as BrainHexProfile);
+        req.log.info("gerando cena + icones dos slides server-side");
+        const assets = await generateSlideAssets(processed.slides || [], profile as BrainHexProfile);
+        sceneImages = assets.imagem_referencia;
+        iconImages  = assets.icones;
       }
 
-      const slidesComImagens = enrichSlidesWithImages(processed.slides || [], images);
+      const slidesComImagens = enrichSlidesWithImages(processed.slides || [], sceneImages, iconImages);
 
       const result = await archiveToSupabase({
         profile:          profile as BrainHexProfile,

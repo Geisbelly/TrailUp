@@ -141,6 +141,7 @@ Formato de saída (incluir somente as chaves solicitadas):
         "characterQuote": "string (fala do guia reagindo ao conteúdo)",
         "characterAction": "explaining | celebrating | thinking | warning",
         "imagePrompt": "string (prompt para geração de imagem 2D estilo mágico)",
+        "iconPrompts": ["string (2 a 4 prompts curtos, um elemento decorativo cada, mesmo estilo mágico do guia — nunca clipart genérico, nunca texto na imagem)"],
         "sourceIds": ["string"]
       }
     ]

@@ -229,7 +229,7 @@ _BRAINHEX_GUIDE_PERSONAS: dict[str, dict[str, str]] = {
             "Use portugues brasileiro claro, voz masculina jovem, raciocinio preciso, ritmo "
             "medio e musicalidade magrebina muito sutil, sem caricatura."
         ),
-        "guia_cor": "#707c88",
+        "guia_cor": "#5b3fd9",
         "framing_narrativo": "Arquitetura do Conceito",
     },
     "Seeker": {
@@ -240,7 +240,7 @@ _BRAINHEX_GUIDE_PERSONAS: dict[str, dict[str, str]] = {
             "brasileiro claro, voz feminina jovem, curiosa e luminosa, ritmo medio e musicalidade "
             "cultural muito sutil, sem caricatura."
         ),
-        "guia_cor": "#a78c07",
+        "guia_cor": "#17a398",
         "framing_narrativo": "Crônicas da Exploração",
     },
     "Survivor": {
@@ -251,7 +251,7 @@ _BRAINHEX_GUIDE_PERSONAS: dict[str, dict[str, str]] = {
             "jovem, estavel e paciente, ritmo medio-lento, diccao contida e musicalidade japonesa "
             "sutil, sem caricatura."
         ),
-        "guia_cor": "#720101",
+        "guia_cor": "#4e5a66",
         "framing_narrativo": "Diretrizes de Campo",
     },
     "Daredevil": {
@@ -262,7 +262,7 @@ _BRAINHEX_GUIDE_PERSONAS: dict[str, dict[str, str]] = {
             "brasileiro claro, voz feminina jovem, brilhante e energetica, ritmo dinamico e atitude "
             "ousada, sem caricatura de sotaque."
         ),
-        "guia_cor": "#1b6b1b",
+        "guia_cor": "#d7263d",
         "framing_narrativo": "Código de Impacto",
     },
     "Conqueror": {
@@ -273,7 +273,7 @@ _BRAINHEX_GUIDE_PERSONAS: dict[str, dict[str, str]] = {
             "brasileiro claro, voz feminina jovem, firme e regia, ritmo dinamico, presenca de "
             "lideranca e musicalidade cultural muito sutil, sem caricatura."
         ),
-        "guia_cor": "#01808b",
+        "guia_cor": "#1e4fd6",
         "framing_narrativo": "Tratado de Soberania",
     },
     "Socialiser": {
@@ -284,7 +284,7 @@ _BRAINHEX_GUIDE_PERSONAS: dict[str, dict[str, str]] = {
             "masculina jovem, amigavel e comunicativa, ritmo medio e calor humano, com musicalidade "
             "latino-americana sutil, sem caricatura."
         ),
-        "guia_cor": "#6d15be",
+        "guia_cor": "#f4623a",
         "framing_narrativo": "Elo da Comunidade",
         # Unico perfil com 2 guardioes: o audio vira dialogo (Mateo + Zuri) em vez de
         # narracao solo. Ver AudioPipeline.render() em media_pipeline.py.
@@ -309,7 +309,7 @@ _BRAINHEX_GUIDE_PERSONAS: dict[str, dict[str, str]] = {
             "claro, voz masculina jovem, firme e confiante, ritmo medio, disciplina e progressao "
             "clara, com musicalidade cultural muito sutil, sem caricatura."
         ),
-        "guia_cor": "#ad6002",
+        "guia_cor": "#c9a227",
         "framing_narrativo": "Caminho da Maestria",
     },
 }
@@ -7022,4 +7022,3 @@ async def backfill_media_render_jobs(
             )
 
     return counters
-

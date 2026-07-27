@@ -197,7 +197,7 @@ Payload esperado por formato:
       "titulo": "...", "topics": ["..."], "explanation": "...",
       "visualDescription": "...", "characterQuote": "...",
       "characterAction": "explaining|celebrating|thinking|warning",
-      "imagePrompt": "...", "sourceIds": ["..."]
+      "imagePrompt": "...", "iconPrompts": ["..."], "sourceIds": ["..."]
     }]
   }
 - `audio`: { "roteiro": "narração solo com [Tom: ...] OU diálogo 'Nome: fala' por linha (ver regra 'Áudio')", "texto": "...", "duracao_estimada_seg": 60 }

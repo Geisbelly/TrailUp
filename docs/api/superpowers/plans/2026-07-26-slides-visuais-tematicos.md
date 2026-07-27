@@ -1114,32 +1114,37 @@ Anotar o problema específico observado (ex.: "ícone cobrindo o card de tópico
 
 ---
 
-## Task 12: Remover `jspdf` (dependência não usada mais)
+## Task 12: Remover `jspdf` (dependência não usada mais) — **CANCELADA, ver nota**
 
 **Files:**
 - Modify: `microservice/package.json`
 
-- [ ] **Step 1: Confirmar que não há mais nenhuma referência a `jspdf` no código**
+- [x] **Step 1: Confirmar que não há mais nenhuma referência a `jspdf` no código**
 
 Run: `grep -rn "jspdf" --include=*.ts --include=*.tsx -i .` (a partir de `microservice/`)
-Expected: nenhuma ocorrência fora de `node_modules` e `package-lock.json`.
+Expected (na época em que a task foi escrita): nenhuma ocorrência fora de `node_modules` e `package-lock.json`.
 
-- [ ] **Step 2: Remover a dependência**
+**Nota (descoberta na implementação, 2026-07-27):** essa premissa estava errada. `microservice/src/App.tsx`
+(a SPA de demonstração embutida, montada em `src/main.tsx`, buildada por `vite build`) tem sua PRÓPRIA
+feature de exportar PDF client-side (`downloadSlidesAsPDF`, captura o slide em tela via `html2canvas` +
+`jsPDF`) — completamente independente do pipeline server-side (`server.ts` → `pdfService.ts` → Puppeteer)
+que esta plan reescreveu. Esse arquivo não existia (ou não foi cruzado) quando a task foi escrita; ele
+chegou nessa branch via merge de `main` (commit `76e651f`, anterior a esta plan) e usa `jspdf` de verdade,
+não é código morto.
 
-Run: `npm uninstall jspdf`
-Expected: `package.json`/`package-lock.json` sem `jspdf`.
+**Decisão:** `jspdf` continua como dependência — é usada pelo bundle client-side, não pelo server-side.
+Steps 2 e 4 (remover a dependência, commitar) **não foram executados**. Steps 1 e 3 foram cumpridos
+(confirmação de uso real ao inves de "nenhuma referência", e verificação de typecheck+suite abaixo).
 
-- [ ] **Step 3: Typecheck + suíte completa**
+- [x] **Step 2: ~~Remover a dependência~~ — pulado, `jspdf` ainda em uso real (App.tsx)**
+
+- [x] **Step 3: Typecheck + suíte completa**
 
 Run: `npx tsc --noEmit -p . && npm test`
-Expected: sem erros novos.
+Resultado: limpo, 118/118 passando (nenhum uninstall foi feito, então nenhuma mudança esperada aqui —
+rodado apenas como confirmação final de que a branch inteira está saudável).
 
-- [ ] **Step 4: Commit**
-
-```bash
-git add package.json package-lock.json
-git commit -m "chore(microservice): remove jspdf (substituido por Puppeteer)"
-```
+- [x] **Step 4: ~~Commit~~ — pulado (nada a commitar; só esta nota na plan)**
 
 ---
 

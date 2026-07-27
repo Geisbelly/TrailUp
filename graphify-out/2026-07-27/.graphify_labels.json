@@ -325,9 +325,11 @@
   "323": "_fallback_materiais",
   "324": "DOCS_API.md",
   "325": "integracao-apitraiup.md",
+  "326": "clsx",
   "327": "mobile/guia-uso-app.md",
   "328": "Métricas — Correções de Cálculo + Novas Seções de UI",
   "329": "tcc/README.md",
+  "330": "@supabase/supabase-js",
   "332": "GUIA_USO.md",
   "333": "microservice/arquitetura-app-detalhada.md",
   "334": "docs/microservice/README.md",
@@ -363,7 +365,5 @@
   "372": "react",
   "373": "mammoth",
   "375": "plugins",
-  "376": "sonner",
-  "377": "jszip",
   "378": "@google/genai"
 }
