@@ -293,6 +293,7 @@ export async function deleteClasseCascade(classeId: number) {
   await tryDeleteEq("personalizacao_item_progresso", "classe_id", classeId);
   await tryDeleteEq("fontes_personalizacao", "classe_id", classeId);
   await tryDeleteEq("trilha_checkpoint_navegacao", "classe_id", classeId);
+  await tryDeleteEq("classe_perfil_summary", "classe_id", classeId);
 
   const { error: rankError } = await dynamicSupabase.from("ranks").delete().eq("classe_id", classeId);
   if (rankError) throw rankError;
