@@ -72,7 +72,6 @@ type GeminiCallOptions = {
   prompt: string;
   maxOutputTokens: number;
   responseSchema?: JsonRecord;
-  temperature?: number;
 };
 
 const textDecoder = new TextDecoder("utf-8");
@@ -378,21 +377,30 @@ async function callGeminiJson(options: GeminiCallOptions): Promise<{ parsed: unk
   let lastError: AiStructuredError | null = null;
 
   for (const attempt of attemptConfigs) {
-    const res = await fetch(`${GEMINI_URL}?key=${options.key}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: options.prompt }] }],
-        generationConfig: {
-          temperature: options.temperature ?? 0.25,
-          maxOutputTokens: options.maxOutputTokens,
-          responseMimeType: "application/json",
-          ...(attempt.useSchema && options.responseSchema ? { responseSchema: options.responseSchema } : {}),
-        },
-      }),
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${GEMINI_URL}?key=${options.key}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: options.prompt }] }],
+          generationConfig: {
+            maxOutputTokens: options.maxOutputTokens,
+            responseMimeType: "application/json",
+            ...(attempt.useSchema && options.responseSchema ? { responseSchema: options.responseSchema } : {}),
+          },
+        }),
+      });
+    } catch (error) {
+      throw new AiStructuredError(
+        "Nao foi possivel conectar ao Gemini.",
+        "gemini_network_error",
+        502,
+        { cause: error instanceof Error ? error.message : String(error) },
+      );
+    }
 
-    const apiData = await res.json();
+    const apiData = await res.json().catch(() => ({ error: { message: "Resposta nao JSON do Gemini." } }));
     if (!res.ok) {
       const reason = String((apiData as JsonRecord)?.error ? JSON.stringify((apiData as JsonRecord).error) : "");
       const schemaIssue =
@@ -401,7 +409,12 @@ async function callGeminiJson(options: GeminiCallOptions): Promise<{ parsed: unk
           reason.toLowerCase().includes("schema") ||
           reason.toLowerCase().includes("generationconfig"));
 
-      const err = new AiStructuredError("Gemini API error", "gemini_error", 502, apiData);
+      const err = new AiStructuredError(
+        res.status === 429 ? "Limite temporario do Gemini atingido. Tente novamente em instantes." : "Gemini API error",
+        res.status === 429 ? "gemini_rate_limit" : "gemini_error",
+        res.status === 429 ? 429 : 502,
+        { upstream_status: res.status, response: apiData },
+      );
       lastError = err;
       if (schemaIssue) continue;
       throw err;
@@ -726,7 +739,6 @@ Regras:
     prompt: skeletonPrompt,
     maxOutputTokens: 4096,
     responseSchema: TRAIL_SKELETON_SCHEMA,
-    temperature: 0.2,
   });
 
   const skeleton = normalizeTrailSkeleton(skeletonResult.parsed, desiredTopics, topicNames);
@@ -818,7 +830,6 @@ Regras obrigatorias:
           prompt: detailPrompt,
           maxOutputTokens: 4096,
           responseSchema: TRAIL_DETAIL_SCHEMA,
-          temperature: 0.3,
         });
         detailPayload = detailResult.parsed;
         break;
@@ -1187,26 +1198,43 @@ async function callGemini(params: {
   key: string;
   prompt: string;
   maxOutputTokens: number;
-  temperature: number;
   responseSchema?: Record<string, unknown>;
 }) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${params.key}`;
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: params.prompt }] }],
-      generationConfig: {
-        temperature: params.temperature,
-        maxOutputTokens: params.maxOutputTokens,
-        responseMimeType: "application/json",
-        ...(params.responseSchema ? { responseSchema: params.responseSchema } : {}),
-      },
-    }),
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: params.prompt }] }],
+        generationConfig: {
+          maxOutputTokens: params.maxOutputTokens,
+          responseMimeType: "application/json",
+          ...(params.responseSchema ? { responseSchema: params.responseSchema } : {}),
+        },
+      }),
+    });
+  } catch (error) {
+    throw new AiStructuredError(
+      "Nao foi possivel conectar ao Gemini.",
+      "gemini_network_error",
+      502,
+      { cause: error instanceof Error ? error.message : String(error) },
+    );
+  }
 
-  const apiData = (await response.json()) as JsonObject;
-  if (!response.ok) throw new Error(`gemini_http_error:${JSON.stringify(apiData)}`);
+  const apiData = (await response.json().catch(() => ({
+    error: { message: "Resposta nao JSON do Gemini." },
+  }))) as JsonObject;
+  if (!response.ok) {
+    throw new AiStructuredError(
+      response.status === 429 ? "Limite temporario do Gemini atingido. Tente novamente em instantes." : "Gemini API error",
+      response.status === 429 ? "gemini_rate_limit" : "gemini_error",
+      response.status === 429 ? 429 : 502,
+      { upstream_status: response.status, response: apiData },
+    );
+  }
 
   const candidate = Array.isArray((apiData as { candidates?: unknown }).candidates)
     ? ((apiData as { candidates: Array<Record<string, unknown>> }).candidates[0] ?? null)
@@ -1491,7 +1519,14 @@ serve(async (req) => {
     const key = Deno.env.get("GEMINI_API_KEY");
 
     if (!key) {
-      return jsonResponse({ error: "GEMINI_API_KEY not set" }, 500);
+      return jsonResponse(
+        {
+          error: "GEMINI_API_KEY not set",
+          code: "gemini_not_configured",
+          message: "A geracao por IA esta temporariamente indisponivel.",
+        },
+        503,
+      );
     }
 
     // Geracao de trilha completa em duas etapas (esqueleto + detalhes + midias)
@@ -1555,7 +1590,6 @@ Retorne JSON valido:
         // antes do texto visivel, cortando a descricao no meio (finish_reason
         // MAX_TOKENS) e quebrando o parse de JSON (visto em producao).
         maxOutputTokens: 2048,
-        temperature: 0.3,
         responseSchema: DESCRIPTION_SCHEMA as unknown as Record<string, unknown>,
       });
       const parsed = parseGeminiJson(call.text);
@@ -1566,7 +1600,7 @@ Retorne JSON valido:
             finish_reason: call.finishReason,
             raw: call.text,
           },
-          500,
+          502,
         );
       }
       return jsonResponse(normalizeDescription(parsed));
@@ -1614,7 +1648,6 @@ Regras obrigatorias:
         key,
         prompt: contentPrompt,
         maxOutputTokens: 9000,
-        temperature: Math.min(0.8, 0.35 + attempt * 0.15),
         responseSchema: CONTENT_SCHEMA as unknown as Record<string, unknown>,
       });
       const parsed = parseGeminiJson(call.text);
@@ -1626,7 +1659,7 @@ Regras obrigatorias:
               finish_reason: call.finishReason,
               raw: call.text,
             },
-            500,
+            502,
           );
         }
         continue;
@@ -1676,7 +1709,6 @@ Regras obrigatorias:
       key,
       prompt,
       maxOutputTokens: 4096,
-      temperature: 0.3,
     });
 
     const parsed = callResult.parsed;

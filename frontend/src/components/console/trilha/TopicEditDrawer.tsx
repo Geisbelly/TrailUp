@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { formatSupabaseFunctionError } from "@/lib/supabaseFunctionError";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -558,7 +559,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
           ...payload,
         },
       });
-      if (error) throw error;
+      if (error) throw new Error(await formatSupabaseFunctionError(error));
       openAiDialog(data as AiSuggestion);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao gerar sugestões.");
@@ -582,7 +583,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
           ...(fileContents && { fileContents, fileNames }),
         },
       });
-      if (error) throw error;
+      if (error) throw new Error(await formatSupabaseFunctionError(error));
       const suggestion = data as AiSuggestion;
       if (suggestion.descricao) {
         setFormData({ ...formData, descricao: suggestion.descricao });
