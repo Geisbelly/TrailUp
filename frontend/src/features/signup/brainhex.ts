@@ -235,6 +235,13 @@ export function isAllAnswered(answers: BrainHexAnswers) {
 // superfície — não é o mesmo valor nem o mesmo algoritmo do accent
 // computado em api/app/api/v1/personalizacao.py ou do "accent" estático em
 // src/lib/personalizacao-theme-guide.ts.
+//
+// Atualizacao 2026-07-26: a paleta oficial do Daredevil mudou de verde para
+// vermelho escarlate (#D7263D), mas a arte continua laranja-fogo pelo mesmo
+// motivo documentado acima (cabelo, saia/manto e efeito de chama compartilham
+// a faixa de matiz+saturacao do tema "fogo laranja" — nao foi possivel isolar
+// so a saia com seguranca, mesmo com mascara espacial). O badge desta secao
+// de signup segue a arte (laranja), nao o hex oficial.
 export const PROFILES = {
   seeker: {
     key: "seeker",
