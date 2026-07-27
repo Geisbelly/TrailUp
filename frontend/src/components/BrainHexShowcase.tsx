@@ -15,57 +15,77 @@ import daredevilArt from "@/assets/guardioes/daredevil.webp";
 // capturar o tom_voz de cada perfil nas assinaturas editoriais do backend —
 // nao sao gerados por IA, sao um asset fixo da marca. Arte: recorte do
 // poster oficial "Os Guardioes da Trilha" fornecido pelo usuario.
-const GUIDES: Record<string, { name: string; title: string; quote: string; art: string; traits: string[] }> = {
+const GUIDES: Record<string, { name: string; title: string; quote: string; description: string; art: string; traits: string[] }> = {
   mastermind: {
     name: "Idris",
     title: "O Sábio das Constelações",
     quote: "Toda pergunta certa já contém metade da resposta.",
+    description:
+      "Dizem que Idris nasceu sob uma chuva de estrelas. Enquanto outros procuram respostas, ele busca padrões ocultos que conectam todas as as coisas. Para ele, conhecimento não é acumular informações, mas enxergar além do óbvio. Cada decisão começa com uma pergunta, e cada estratégia nasce da compreensão do cenário antes do primeiro passo.",
     art: mastermindArt,
     traits: ["Analítico", "Estratégico", "Profundo"],
   },
+
   achiever: {
     name: "Kwame",
     title: "O Cavaleiro Solar",
     quote: "Cada marco conquistado abre o próximo caminho.",
+    description:
+      "Kwame nunca acreditou em atalhos. Cada cicatriz em sua armadura representa uma promessa cumprida, uma meta alcançada e um dia em que escolheu continuar quando seria mais fácil desistir. Para ele, o sucesso não pertence aos mais talentosos, mas aos que seguem avançando mesmo quando ninguém está olhando.",
     art: achieverArt,
     traits: ["Focado", "Disciplinado", "Determinado"],
   },
+
   seeker: {
     name: "Amara",
     title: "A Guardiã das Runas",
     quote: "Todo mapa esconde uma pergunta melhor que a resposta.",
+    description:
+      "Amara percorre ruínas esquecidas em busca de conhecimentos que o tempo tentou apagar. Ela acredita que cada descoberta revela um novo mistério, tornando a jornada mais valiosa que o destino. Sua maior habilidade não é encontrar respostas, mas nunca perder a curiosidade que a impulsiona a seguir em frente.",
     art: seekerArt,
     traits: ["Curiosa", "Exploradora", "Intuitiva"],
   },
+
   survivor: {
     name: "Kenji",
     title: "O Guardião da Montanha",
     quote: "Sobreviver é ter um plano B. Redundância não é desperdício.",
+    description:
+      "Durante anos, Kenji protegeu sozinho uma antiga passagem entre montanhas, onde um único erro podia custar tudo. Ele aprendeu que coragem não é ignorar os riscos, mas estar preparado para eles. Enquanto outros apostam tudo em uma única chance, Kenji sempre constrói uma segunda saída.",
     art: survivorArt,
     traits: ["Paciente", "Resiliente", "Confiável"],
   },
+
   conqueror: {
     name: "Amina",
     title: "A Rainha da Tempestade",
     quote: "Não existe segundo lugar na sua própria jornada.",
+    description:
+      "Amina lidera como a própria tempestade: intensa, determinada e impossível de ignorar. Ela acredita que o maior adversário nunca é quem está ao lado, mas a versão de ontem de si mesma. Sua liderança inspira outros a enfrentarem desafios que pareciam inalcançáveis e a nunca aceitarem menos do que seu verdadeiro potencial.",
     art: conquerorArt,
     traits: ["Líder", "Competitiva", "Determinada"],
   },
+
   socializer: {
     name: "Mateo & Zuri",
-    title: "Os Gemeos Espírito da Aurora",
-    quote: "Ninguém chega longe sozinho — nem mesmo você.",
+    title: "Os Gêmeos Espíritos da Aurora",
+    quote: "Ninguém chega longe sozinho... nem mesmo você.",
+    description:
+      "Mateo conquista pessoas com histórias que despertam esperança, enquanto Zuri enxerga sentimentos escondidos até mesmo no silêncio. Juntos, unem pessoas, constroem alianças e transformam desconhecidos em companheiros de jornada. Eles sabem que os maiores feitos sempre começam com uma boa conexão.",
     art: socializerArt,
     traits: ["Comunicativo", "Empático", "Inspirador"],
   },
+
   daredevil: {
     name: "Ember",
     title: "A Fênix do Caos",
     quote: "Hesitar é a única forma de perder.",
+    description:
+      "Ember nunca espera o momento perfeito, porque acredita que ele simplesmente não existe. Ela mergulha no desconhecido, aprende com cada desafio e transforma cada queda em impulso para voar ainda mais alto. Para ela, o medo não é um obstáculo, mas a prova de que vale a pena seguir em frente.",
     art: daredevilArt,
     traits: ["Ousada", "Energética", "Impulsiva"],
-  },
-};
+  }}
+
 
 const PROFILE_LIST = Object.values(PROFILES);
 
@@ -208,8 +228,11 @@ const BrainHexShowcase = () => {
           <p className="text-xs uppercase tracking-widest font-semibold mb-1" style={{ color: activeColor }}>
             {activeGuide.name} · {activeGuide.title}
           </p>
-          <p className="text-lg italic leading-relaxed mb-4" style={{ color: "#f5f0ff" }}>
+          <p className="text-lg italic leading-relaxed mb-1" style={{ color: "#f5f0ff" }}>
             &ldquo;{activeGuide.quote}&rdquo;
+          </p>
+          <p className="text-xs  leading-relaxed mb-4" style={{ color: "#f5f0ff" }}>
+            {activeGuide.description}
           </p>
           <div className="flex flex-wrap justify-center gap-2">
             {activeGuide.traits.map((trait) => (
