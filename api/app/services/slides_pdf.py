@@ -21,7 +21,7 @@ def _hex_to_color(hex_val: str) -> colors.Color:
     return colors.Color(r / 255, g / 255, b / 255)
 
 
-_PROFILE_ACCENT = {
+_PROFILE_ACCENT: dict[str, str] = {
     "mastermind": "#5b3fd9",
     "seeker":     "#17a398",
     "survivor":   "#4e5a66",
