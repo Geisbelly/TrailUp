@@ -1550,7 +1550,11 @@ Retorne JSON valido:
       const call = await callGemini({
         key,
         prompt,
-        maxOutputTokens: 700,
+        // 700 nao era suficiente: com o guia de tema (buildThemeGuideBlock)
+        // no prompt, o modelo as vezes gasta parte do orcamento de saida
+        // antes do texto visivel, cortando a descricao no meio (finish_reason
+        // MAX_TOKENS) e quebrando o parse de JSON (visto em producao).
+        maxOutputTokens: 2048,
         temperature: 0.3,
         responseSchema: DESCRIPTION_SCHEMA as unknown as Record<string, unknown>,
       });
