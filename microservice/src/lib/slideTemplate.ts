@@ -148,8 +148,8 @@ const BASE_CSS = `
   .topic-card::before { content: ""; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
   .explanation-label { font-size: 8px; font-weight: bold; color: var(--accent); text-transform: uppercase; margin-top: 14px; letter-spacing: .05em; }
   .explanation-text { font-style: italic; font-size: 12px; color: #bcbcca; margin-top: 4px; }
-  .guide-badge { position: absolute; left: 24px; bottom: 78px; width: 86px; border: 2px solid var(--accent); border-radius: 12px; overflow: hidden; background: #0e0e16; }
-  .guide-badge img { width: 100%; display: block; }
+  .guide-badge { position: absolute; left: 24px; bottom: 78px; width: 86px; border: 2px solid var(--accent); border-radius: 12px; background: #0e0e16; }
+  .guide-badge img { width: 100%; display: block; border-radius: 10px; }
   .guide-badge .tag { position: absolute; left: 50%; bottom: -13px; transform: translateX(-50%); background: var(--accent); color: #10101a; font-weight: bold; font-size: 11px; padding: 6px 14px; border-radius: 7px; white-space: nowrap; }
   .quote-bubble { position: absolute; left: 24px; bottom: 270px; background: rgba(24,24,40,.92); border: 1.2px solid var(--accent); border-radius: 10px; padding: 10px; width: 250px; font-size: 10px; font-style: italic; }
   .quote-bubble .who { font-weight: bold; text-transform: uppercase; color: var(--accent); font-size: 8px; display: block; margin-bottom: 4px; font-style: normal; }
