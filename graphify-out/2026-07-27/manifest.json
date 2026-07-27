@@ -4005,8 +4005,8 @@
     "semantic_hash": ""
   },
   "api/alembic/versions/20260727_01_brainhex_profile_targets.py": {
-    "mtime": 1785182483.938591,
-    "ast_hash": "9a05aadbea4c91ac5f766c476c9a2d7b",
+    "mtime": 1785186046.157292,
+    "ast_hash": "0a4f0cab2690f75fc6339aa5096ece9d",
     "semantic_hash": ""
   },
   "api/app/services/content_enrichment.py": {
@@ -4077,6 +4077,11 @@
   "api/tests/test_migrations.py": {
     "mtime": 1785185194.7824,
     "ast_hash": "b466f1104eece5336f24ab35641747d5",
+    "semantic_hash": ""
+  },
+  "api/alembic/versions/20260411_02_production_schema_baseline.py": {
+    "mtime": 1785186046.156291,
+    "ast_hash": "06f2d99b0304731d82e77da34fc20b7a",
     "semantic_hash": ""
   }
 }
