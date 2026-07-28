@@ -110,6 +110,45 @@ async def test_build_targets_generates_all_seven_profiles_with_one_student(monke
 
 
 @pytest.mark.asyncio
+async def test_enqueue_job_creates_job_and_targets_atomically(monkeypatch) -> None:
+    target = {
+        "aluno_id": "b49f2e21-a6f9-4c8d-9533-5a32bb219754",
+        "topico_id": 117,
+        "conteudo_id": None,
+        "brainhex_profile_key": "seeker",
+        "is_profile_template": False,
+    }
+    create_mock = AsyncMock(return_value={"id": "job-atomic"})
+    monkeypatch.setattr(
+        jobs_module,
+        "_build_targets",
+        AsyncMock(return_value=([target], [117], {target["aluno_id"]: "seeker"})),
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.criar_job_com_targets",
+        create_mock,
+    )
+    monkeypatch.setattr(
+        jobs_module,
+        "get_job_detail",
+        AsyncMock(return_value={"job": {"id": "job-atomic"}, "targets": [target]}),
+    )
+
+    result = await jobs_module.enqueue_personalizacao_job(
+        session=object(),
+        kind="full_class_sync",
+        classe_id=32,
+        trigger_source="test",
+        topico_ids=[117],
+    )
+
+    assert result["job"]["id"] == "job-atomic"
+    assert create_mock.await_count == 1
+    assert create_mock.await_args.kwargs["targets"] == [target]
+    assert create_mock.await_args.kwargs["topico_id"] == 117
+
+
+@pytest.mark.asyncio
 async def test_process_media_render_target_reconciles_material_ids_fallback(monkeypatch) -> None:
     record = {
         "id": 106,

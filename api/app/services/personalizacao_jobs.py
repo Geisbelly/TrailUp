@@ -366,17 +366,16 @@ async def enqueue_personalizacao_job(
         "conteudo_ids": [int(item) for item in (conteudo_ids or [])],
         "target_profile_map": target_profile_map,
     }
-    job = await repo.criar_job(
+    job = await repo.criar_job_com_targets(
         kind=kind,
         classe_id=classe_id,
         trigger_source=trigger_source,
+        targets=targets,
         payload=job_payload,
         aluno_id=aluno_id if kind in {JOB_KIND_ENROLLMENT, JOB_KIND_CLEANUP} else None,
         topico_id=resolved_topicos[0] if len(resolved_topicos) == 1 else None,
         conteudo_id=conteudo_ids[0] if conteudo_ids and len(conteudo_ids) == 1 else None,
-        total_targets=len(targets),
     )
-    await repo.inserir_targets(job_id=str(job["id"]), targets=targets)
     detail = await get_job_detail(session=session, job_id=str(job["id"]))
     return detail or {"job": job, "targets": targets}
 

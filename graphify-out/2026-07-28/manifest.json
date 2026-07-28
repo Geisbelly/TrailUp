@@ -750,8 +750,8 @@
     "semantic_hash": "6752798714ae0165218c1b0560046a8f"
   },
   "api/tests/test_personalizacao_jobs_loop.py": {
-    "mtime": 1785210595.1933403,
-    "ast_hash": "a2c2ccfb57632c8efd3c9903ca4c7579",
+    "mtime": 1785182495.0963655,
+    "ast_hash": "d9022683fd6f9ec57a2a7af7533f8119",
     "semantic_hash": ""
   },
   "api/tests/test_personalizacao_service.py": {
