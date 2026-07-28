@@ -587,45 +587,59 @@ async function runPipeline(
     presentationPlan,
   );
 
-  // 3. Áudio (wav + mp3) — a etapa continua para preservar texto/slides
-  // parciais; a validacao final solicita retry se o audio nao for produzido.
+  // 3. Áudio e assets consomem o mesmo resultado consolidado e são
+  // independentes. Executá-los juntos reduz a duração sem repetir o trabalho
+  // semântico dos blocos. allSettled garante que uma falha aguarde a outra
+  // trilha e preserve a regra existente de sucesso parcial do áudio.
   const voiceProfile = GUARDIAN_VOICE_PROFILES[profile];
   const voice = voiceProfile.voice;
   const secondaryGuideName = BRAIN_HEX_CONFIG[profile]?.secondaryGuideName;
   const secondaryVoice = voiceProfile.secondaryVoice;
-  let wavBase64: string | null = null;
-  let mp3Base64: string | null = null;
-  try {
-    const a = secondaryGuideName && secondaryVoice
-      ? await generateLongConversationalAudio(
-          resultado.audioScript,
-          {
-            name: BRAIN_HEX_CONFIG[profile].guideName,
-            voice,
-            direction: voiceProfile.direction,
-          },
-          {
-            name: secondaryGuideName,
-            voice: secondaryVoice,
-            direction: voiceProfile.secondaryDirection,
-          },
-        )
-      : await generateLongNaturalAudio(resultado.audioScript, voice, voiceProfile.direction);
-    wavBase64 = a.wav ?? null;
-    mp3Base64 = a.mp3 ?? null;
-  } catch (e) {
-    jobLog.error("falha no áudio", { err: e });
-  }
-
-  // 4. Assets dos slides — cena de fundo (OpenAI) + icones (Gemini), todos os slides
-  const assets = await generateSlideAssets(
+  const audioPromise = secondaryGuideName && secondaryVoice
+    ? generateLongConversationalAudio(
+        resultado.audioScript,
+        {
+          name: BRAIN_HEX_CONFIG[profile].guideName,
+          voice,
+          direction: voiceProfile.direction,
+        },
+        {
+          name: secondaryGuideName,
+          voice: secondaryVoice,
+          direction: voiceProfile.secondaryDirection,
+        },
+      )
+    : generateLongNaturalAudio(
+        resultado.audioScript,
+        voice,
+        voiceProfile.direction,
+      );
+  const assetsPromise = generateSlideAssets(
     resultado.slides,
     profile,
     presentationPlan,
   );
+  const [audioResult, assetsResult] = await Promise.allSettled([
+    audioPromise,
+    assetsPromise,
+  ]);
+
+  let wavBase64: string | null = null;
+  let mp3Base64: string | null = null;
+  if (audioResult.status === "fulfilled") {
+    wavBase64 = audioResult.value.wav ?? null;
+    mp3Base64 = audioResult.value.mp3 ?? null;
+  } else {
+    jobLog.error("falha no áudio", { err: audioResult.reason });
+  }
+
+  if (assetsResult.status === "rejected") {
+    throw assetsResult.reason;
+  }
+  const assets = assetsResult.value;
   const slidesComImagens  = enrichSlidesWithImages(resultado.slides, assets.imagem_referencia, assets.icones);
 
-  // 5. Persiste tudo no Supabase
+  // 4. Persiste tudo no Supabase
   const archived = await archiveToSupabase({
     profile,
     storagePath,

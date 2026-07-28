@@ -51,6 +51,8 @@ Microservico de geracao de materiais personalizados por perfil BrainHex.
 - `GEMINI_API_KEY`
 - `CONTENT_GENERATION_MODEL` (Gemini principal; padrao: `gemini-3.6-flash`)
 - `CONTENT_GENERATION_BLOCK_BATCH_SIZE` (padrao e maximo: `1`; cada bloco e personalizado e gerado isoladamente)
+- `CONTENT_GENERATION_BLOCK_CONCURRENCY` (padrao: `2`, maximo: `4`; processa
+  blocos unitarios em paralelo e consolida os resultados na ordem pedagogica)
 - `CONTENT_GENERATION_OPENAI_MAX_ATTEMPTS` (padrao: `3`, repete respostas da OpenAI recusadas pela validacao de qualidade)
 - `OPENAI_CONTENT_GENERATION_FALLBACK_MODEL` (padrao: `gpt-5.4-mini`, modelo
   elegivel para a faixa compartilhada de alto volume)

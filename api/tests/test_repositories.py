@@ -673,6 +673,10 @@ async def test_materiais_repository_saves_and_reads_materials() -> None:
     listed = await repo.listar_por_aluno("aluno-1")
 
     assert any("INSERT INTO materiais_gerados" in sql for sql, _ in session.calls)
+    assert any(
+        "ON CONFLICT (personalizacao_id, tipo, generation_key)" in sql
+        for sql, _ in session.calls
+    )
     assert cached is not None
     assert "pdf" in cached
     assert listed[0]["tipo"] == "pdf"

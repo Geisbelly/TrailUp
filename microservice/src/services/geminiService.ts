@@ -11,6 +11,7 @@ import {
   presentationImageDirection,
   type PresentationDesignPlan,
 } from "../constants/presentationThemes";
+import { mapWithConcurrency } from "../lib/boundedConcurrency";
 import { addWavHeader } from "../lib/wav";
 import {
   generateStructuredContentWithFallback,
@@ -123,6 +124,8 @@ const SUPPORTED_NATIVE_MIMES = [
 
 const DEFAULT_CONTENT_BLOCK_BATCH_SIZE = 1;
 const MAX_CONTENT_BLOCK_BATCH_SIZE = 1;
+const DEFAULT_CONTENT_BLOCK_CONCURRENCY = 2;
+const MAX_CONTENT_BLOCK_CONCURRENCY = 4;
 const GEMINI_CONTENT_GENERATION_RESPONSE_SCHEMA = {
   type: Type.OBJECT,
   properties: {
@@ -216,6 +219,14 @@ export function resolveContentBlockBatchSize(value: unknown): number {
     return DEFAULT_CONTENT_BLOCK_BATCH_SIZE;
   }
   return Math.min(parsed, MAX_CONTENT_BLOCK_BATCH_SIZE);
+}
+
+export function resolveContentBlockConcurrency(value: unknown): number {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    return DEFAULT_CONTENT_BLOCK_CONCURRENCY;
+  }
+  return Math.min(parsed, MAX_CONTENT_BLOCK_CONCURRENCY);
 }
 
 export function partitionContentBlocks(
@@ -406,6 +417,7 @@ export function consolidateBlockBatchGenerations(
   batchResults: GeneratedBlockBatch[],
   options: {
     batchSize: number;
+    concurrency: number;
     family: string;
     filesCount: number;
   },
@@ -496,6 +508,9 @@ export function consolidateBlockBatchGenerations(
       content_blocks_total: expectedIds.length,
       content_block_batches: orderedBatches.length,
       content_block_batch_size: effectiveBatchSize,
+      content_block_concurrency: resolveContentBlockConcurrency(
+        options.concurrency,
+      ),
       batch_block_ids: orderedBatches.map((batch) => [...batch.blockIds]),
       content_generation_provider: generationProviders.length === 1
         ? generationProviders[0]
@@ -753,7 +768,9 @@ export async function processMediaWithGemini(
       process.env.CONTENT_GENERATION_BLOCK_BATCH_SIZE,
     );
     const batches = partitionContentBlocks(contentBlocks, batchSize);
-    const batchResults: GeneratedBlockBatch[] = [];
+    const concurrency = resolveContentBlockConcurrency(
+      process.env.CONTENT_GENERATION_BLOCK_CONCURRENCY,
+    );
     const geminiModel = resolveGeminiContentGenerationModel();
     const openaiModel = resolveOpenAIContentGenerationFallbackModel();
     const maxOutputTokens = Math.max(
@@ -761,72 +778,77 @@ export async function processMediaWithGemini(
       Number(process.env.CONTENT_GENERATION_BATCH_MAX_OUTPUT_TOKENS) || 16_384,
     );
 
-    // Sequencial por intenção: mantém ordem determinística, limita pressão na
-    // cota do Gemini e impede uma chamada agregada de resumir os demais blocos.
-    for (let index = 0; index < batches.length; index++) {
-      const batch = batches[index];
-      const expectedIds = batch.map((block) => block.id);
-      const batchInput =
-        `LOTE ${index + 1} DE ${batches.length}.\n`
-        + `IDS OBRIGATORIOS, NESTA ORDEM: ${JSON.stringify(expectedIds)}\n`
-        + "Gere um capitulo completo e independente para CADA bloco abaixo. "
-        + "Nao responda com resumo global.\n\n"
-        + JSON.stringify(batch, null, 2);
-      const generation = await generateStructuredContentWithFallback(
-        {
-          instructions: systemInstruction,
-          input: batchInput,
-          maxOutputTokens,
-          geminiModel,
-          openaiModel,
-        },
-        {
-          generateWithGemini: async (call) => {
-            const response = await getAi().models.generateContent({
-              model: call.geminiModel,
-              contents: [{
-                parts: [{ text: call.input }],
-              }],
-              config: {
-                systemInstruction: call.instructions,
-                maxOutputTokens: call.maxOutputTokens,
-                responseMimeType: "application/json",
-                responseSchema: GEMINI_CONTENT_GENERATION_RESPONSE_SCHEMA,
-              },
-            });
-            const responseText = String(response.text ?? "").trim();
-            if (!responseText) {
-              throw new Error(`Gemini retornou vazio no lote ${index + 1}.`);
-            }
-            let rawBatch: unknown;
-            try {
-              rawBatch = JSON.parse(responseText);
-            } catch (error) {
-              throw new Error(
-                `Gemini retornou JSON inválido no lote ${index + 1}.`,
-                { cause: error },
-              );
-            }
-            return rawBatch;
+    // Cada chamada continua atômica (um único bloco), mas um pool pequeno
+    // aproveita os provedores sem multiplicar trabalho. O helper devolve os
+    // resultados na ordem pedagógica, independentemente da ordem de conclusão.
+    const batchResults = await mapWithConcurrency(
+      batches,
+      concurrency,
+      async (batch, index): Promise<GeneratedBlockBatch> => {
+        const expectedIds = batch.map((block) => block.id);
+        const batchInput =
+          `LOTE ${index + 1} DE ${batches.length}.\n`
+          + `IDS OBRIGATORIOS, NESTA ORDEM: ${JSON.stringify(expectedIds)}\n`
+          + "Gere um capitulo completo e independente para CADA bloco abaixo. "
+          + "Nao responda com resumo global.\n\n"
+          + JSON.stringify(batch, null, 2);
+        const generation = await generateStructuredContentWithFallback(
+          {
+            instructions: systemInstruction,
+            input: batchInput,
+            maxOutputTokens,
+            geminiModel,
+            openaiModel,
           },
-          validateResult: (value) => {
-            validateBlockBatchGeneration(batch, value, index + 1);
+          {
+            generateWithGemini: async (call) => {
+              const response = await getAi().models.generateContent({
+                model: call.geminiModel,
+                contents: [{
+                  parts: [{ text: call.input }],
+                }],
+                config: {
+                  systemInstruction: call.instructions,
+                  maxOutputTokens: call.maxOutputTokens,
+                  responseMimeType: "application/json",
+                  responseSchema: GEMINI_CONTENT_GENERATION_RESPONSE_SCHEMA,
+                },
+              });
+              const responseText = String(response.text ?? "").trim();
+              if (!responseText) {
+                throw new Error(`Gemini retornou vazio no lote ${index + 1}.`);
+              }
+              let rawBatch: unknown;
+              try {
+                rawBatch = JSON.parse(responseText);
+              } catch (error) {
+                throw new Error(
+                  `Gemini retornou JSON inválido no lote ${index + 1}.`,
+                  { cause: error },
+                );
+              }
+              return rawBatch;
+            },
+            validateResult: (value) => {
+              validateBlockBatchGeneration(batch, value, index + 1);
+            },
           },
-        },
-      );
-      const validated = validateBlockBatchGeneration(
-        batch,
-        generation.value,
-        index + 1,
-      );
-      validated.generationProvider = generation.provider;
-      validated.generationModel = generation.model;
-      validated.fallbackFrom = generation.fallbackFrom;
-      batchResults.push(validated);
-    }
+        );
+        const validated = validateBlockBatchGeneration(
+          batch,
+          generation.value,
+          index + 1,
+        );
+        validated.generationProvider = generation.provider;
+        validated.generationModel = generation.model;
+        validated.fallbackFrom = generation.fallbackFrom;
+        return validated;
+      },
+    );
 
     return consolidateBlockBatchGenerations(contentBlocks, batchResults, {
       batchSize,
+      concurrency,
       family,
       filesCount: filesData.length,
     });

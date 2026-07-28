@@ -359,9 +359,16 @@ export async function saveMateriaisGerados(
       metadata:          e.metadata,
     }));
 
-    const { error: insertError } = await client.from("materiais_gerados").insert(rows);
-    if (insertError) {
-      log.error("saveMateriaisGerados insert error", { personalizacaoId, msg: insertError.message });
+    const { error: upsertError } = await client
+      .from("materiais_gerados")
+      .upsert(rows, {
+        onConflict: "personalizacao_id,tipo,generation_key",
+      });
+    if (upsertError) {
+      log.error("saveMateriaisGerados upsert error", {
+        personalizacaoId,
+        msg: upsertError.message,
+      });
       return false;
     }
     return true;

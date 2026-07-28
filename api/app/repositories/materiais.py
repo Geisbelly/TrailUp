@@ -56,6 +56,9 @@ class MateriaisRepository:
     async def _supports_metadata(self) -> bool:
         return await self._column_exists("metadata")
 
+    async def _supports_generation_key(self) -> bool:
+        return await self._column_exists("generation_key")
+
     @staticmethod
     def _normalize_json_field(value: Any) -> Any:
         if isinstance(value, str):
@@ -178,6 +181,7 @@ class MateriaisRepository:
         supports_personalizacao_id = await self._supports_personalizacao_id()
         supports_storage_path = await self._supports_storage_path()
         supports_metadata = await self._supports_metadata()
+        supports_generation_key = await self._supports_generation_key()
         saved_ids_by_tipo: dict[str, int] = {}
         for tipo, valor in materiais.items():
             payload = valor
@@ -221,6 +225,27 @@ class MateriaisRepository:
                 insert_columns.append("metadata")
                 insert_values.append("CAST(:metadata AS JSONB)")
 
+            conflict_clause = ""
+            if (
+                supports_personalizacao_id
+                and supports_metadata
+                and supports_generation_key
+            ):
+                update_assignments = [
+                    "aluno_id = EXCLUDED.aluno_id",
+                    "conteudo_id = EXCLUDED.conteudo_id",
+                    "payload = EXCLUDED.payload",
+                    "arquivo_url = EXCLUDED.arquivo_url",
+                    "metadata = EXCLUDED.metadata",
+                    "criado_em = NOW()",
+                ]
+                if supports_storage_path:
+                    update_assignments.append("storage_path = EXCLUDED.storage_path")
+                conflict_clause = f"""
+                    ON CONFLICT (personalizacao_id, tipo, generation_key)
+                    DO UPDATE SET {", ".join(update_assignments)}
+                """
+
             result = await self.session.execute(
                 text(
                     f"""
@@ -230,6 +255,7 @@ class MateriaisRepository:
                     VALUES (
                       {", ".join(insert_values)}
                     )
+                    {conflict_clause}
                     RETURNING id
                     """
                 ),

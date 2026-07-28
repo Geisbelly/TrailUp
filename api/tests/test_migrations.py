@@ -49,13 +49,13 @@ def test_normalize_database_url_preserves_real_password() -> None:
     assert "***" not in normalized
 
 
-def test_content_scoped_personalization_is_the_only_alembic_head() -> None:
+def test_idempotent_generated_materials_is_the_only_alembic_head() -> None:
     scripts = ScriptDirectory.from_config(_offline_alembic_config())
 
-    assert scripts.get_heads() == ["20260728_04"]
-    revision = scripts.get_revision("20260728_04")
+    assert scripts.get_heads() == ["20260728_06"]
+    revision = scripts.get_revision("20260728_06")
     assert revision is not None
-    assert revision.down_revision == "20260728_03"
+    assert revision.down_revision == "20260728_05"
 
 
 def test_content_scoped_personalization_indexes_render_offline_sql() -> None:
@@ -121,3 +121,55 @@ def test_generation_fencing_rpc_repair_renders_complete_idempotent_offline_sql()
     assert "UPDATE alembic_version SET version_num='20260728_03'" in rendered
     assert "DROP FUNCTION" not in rendered
     assert "%%" not in rendered
+
+
+def test_dynamic_generation_fencing_has_no_hardcoded_pipeline_version() -> None:
+    output = StringIO()
+    config = _offline_alembic_config(output)
+
+    migrations.command.upgrade(
+        config,
+        "20260728_04:20260728_05",
+        sql=True,
+    )
+    rendered = output.getvalue()
+
+    assert (
+        rendered.count(
+            "CREATE OR REPLACE FUNCTION public.merge_personalizacao_materiais_v2"
+        )
+        == 1
+    )
+    assert (
+        rendered.count(
+            "CREATE OR REPLACE FUNCTION public.mark_personalizacao_failed_v2"
+        )
+        == 1
+    )
+    assert "pg_advisory_xact_lock(p_id)" in rendered
+    assert "stale_generation para personalizacao" in rendered
+    assert "IS NOT DISTINCT FROM" in rendered
+    assert "media_pipeline_version" in rendered
+    assert "design_system" in rendered
+    assert "puppeteer-html-v2" not in rendered
+    assert "2026-07-28.3" not in rendered
+    assert "UPDATE alembic_version SET version_num='20260728_05'" in rendered
+
+
+def test_generated_material_history_is_idempotent_per_generation() -> None:
+    output = StringIO()
+    config = _offline_alembic_config(output)
+
+    migrations.command.upgrade(
+        config,
+        "20260728_05:20260728_06",
+        sql=True,
+    )
+    rendered = output.getvalue()
+
+    assert "ADD COLUMN IF NOT EXISTS generation_key TEXT" in rendered
+    assert "GENERATED ALWAYS AS" in rendered
+    assert "ROW_NUMBER() OVER" in rendered
+    assert "uq_materiais_gerados_personalizacao_tipo_generation" in rendered
+    assert "personalizacao_id,\n          tipo,\n          generation_key" in rendered
+    assert "UPDATE alembic_version SET version_num='20260728_06'" in rendered

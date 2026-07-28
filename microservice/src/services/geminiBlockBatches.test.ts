@@ -4,6 +4,7 @@ import {
   consolidateBlockBatchGenerations,
   partitionContentBlocks,
   resolveContentBlockBatchSize,
+  resolveContentBlockConcurrency,
   validateBlockBatchGeneration,
 } from "./geminiService";
 import type { EnrichedContentBlock } from "../types";
@@ -89,6 +90,14 @@ test("limita cada lote a um bloco para preservar cobertura integral", () => {
   assert.equal(resolveContentBlockBatchSize(25), 1);
 });
 
+test("usa concorrência pequena e aplica um teto seguro", () => {
+  assert.equal(resolveContentBlockConcurrency(undefined), 2);
+  assert.equal(resolveContentBlockConcurrency("3"), 3);
+  assert.equal(resolveContentBlockConcurrency(4), 4);
+  assert.equal(resolveContentBlockConcurrency(12), 4);
+  assert.equal(resolveContentBlockConcurrency(0), 2);
+});
+
 test("valida cobertura exata do lote e reordena capítulos pelos ids esperados", () => {
   const batch = [block(1), block(2), block(3)];
   const result = validateBlockBatchGeneration(
@@ -159,7 +168,7 @@ test("consolida markdown, áudio e slides na ordem global com metadados dos lote
   const result = consolidateBlockBatchGenerations(
     blocks,
     [generated[3], generated[1], generated[0], generated[2]],
-    { batchSize: 1, family: "presentation", filesCount: 2 },
+    { batchSize: 1, concurrency: 2, family: "presentation", filesCount: 2 },
   );
 
   assert.ok(result.markdown.indexOf("PRIMEIRO") < result.markdown.indexOf("SEGUNDO"));
@@ -173,6 +182,7 @@ test("consolida markdown, áudio e slides na ordem global com metadados dos lote
   assert.equal(result.metadata.content_blocks_total, 4);
   assert.equal(result.metadata.content_block_batches, 4);
   assert.equal(result.metadata.content_block_batch_size, 1);
+  assert.equal(result.metadata.content_block_concurrency, 2);
   assert.equal(result.metadata.content_generation_provider, "mixed");
   assert.deepEqual(result.metadata.content_generation_models, [
     "gemini-3-flash-preview",
@@ -200,7 +210,7 @@ test("consolidação recusa conjunto de lotes sem cobertura global", () => {
     () => consolidateBlockBatchGenerations(
       blocks,
       [firstOnly],
-      { batchSize: 1, family: "text", filesCount: 0 },
+      { batchSize: 1, concurrency: 2, family: "text", filesCount: 0 },
     ),
     /quantidade de lotes/,
   );

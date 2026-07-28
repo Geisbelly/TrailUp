@@ -305,8 +305,8 @@
     "semantic_hash": "ea9fc3046e6bac85cbdbfead8c6ca178"
   },
   "api/app/core/settings.py": {
-    "mtime": 1785280333.2746134,
-    "ast_hash": "aa5540e19ffbe55a29323e11e363fee7",
+    "mtime": 1785280692.7331085,
+    "ast_hash": "0d07c3ef4782718e3f47369b3306233d",
     "semantic_hash": ""
   },
   "api/app/db/__init__.py": {
@@ -445,9 +445,9 @@
     "semantic_hash": "a2dc84fc874fccf78f87f5f830c6dc16"
   },
   "api/app/repositories/materiais.py": {
-    "mtime": 1776268148.7056258,
-    "ast_hash": "6babb37586b80ea0f96cb1911235efc8",
-    "semantic_hash": "6babb37586b80ea0f96cb1911235efc8"
+    "mtime": 1785281014.6102152,
+    "ast_hash": "ad0de2722a74322ba5e0b02c40f5b1a6",
+    "semantic_hash": ""
   },
   "api/app/repositories/mental_state.py": {
     "mtime": 1782321864.3465593,
@@ -635,8 +635,8 @@
     "semantic_hash": ""
   },
   "api/app/services/personalizacao_jobs.py": {
-    "mtime": 1785260120.5286736,
-    "ast_hash": "997241f95693cf2019391442051ab31d",
+    "mtime": 1785280779.444705,
+    "ast_hash": "65770d61fb57eb930c5f01057b7dd1c9",
     "semantic_hash": ""
   },
   "api/app/services/pptx.py": {
@@ -750,8 +750,8 @@
     "semantic_hash": "6752798714ae0165218c1b0560046a8f"
   },
   "api/tests/test_personalizacao_jobs_loop.py": {
-    "mtime": 1785260120.5306737,
-    "ast_hash": "1e5908d1d3c9145c1484e8f9a0ca4df7",
+    "mtime": 1785280752.8836977,
+    "ast_hash": "d7a5fea470dd8499a00a63f4961e9321",
     "semantic_hash": ""
   },
   "api/tests/test_personalizacao_service.py": {
@@ -760,8 +760,8 @@
     "semantic_hash": ""
   },
   "api/tests/test_repositories.py": {
-    "mtime": 1785273974.1838243,
-    "ast_hash": "cbbba65f3dce90fe49efe4c9e87520ca",
+    "mtime": 1785280974.0456073,
+    "ast_hash": "f16bf1672c3b227f1ff3431983dc0573",
     "semantic_hash": ""
   },
   "api/tests/test_startup.py": {
@@ -1545,13 +1545,13 @@
     "semantic_hash": "0af88aabf1f61ddf07652e71f37a6648"
   },
   "microservice/package.json": {
-    "mtime": 1785273855.7875333,
-    "ast_hash": "6372211fa26b924b9442448d1e5effc9",
+    "mtime": 1785280673.0599363,
+    "ast_hash": "3545856a617f78c388a6c3a2ebf19b05",
     "semantic_hash": ""
   },
   "microservice/server.ts": {
-    "mtime": 1785277467.0822272,
-    "ast_hash": "7446a7c707f69b3d8ed3f7ff0dba0835",
+    "mtime": 1785280744.8093107,
+    "ast_hash": "aab8bfada8717695ec3eb81254f80e47",
     "semantic_hash": ""
   },
   "microservice/sql/migrations/0001_merge_personalizacao_materiais_rpc.sql": {
@@ -1670,8 +1670,8 @@
     "semantic_hash": ""
   },
   "microservice/src/services/geminiService.ts": {
-    "mtime": 1785280333.2640934,
-    "ast_hash": "b21db428eb87f38254aec1f80f938fe2",
+    "mtime": 1785280861.9443848,
+    "ast_hash": "77933ec0eef28cee46397f04830998d3",
     "semantic_hash": ""
   },
   "microservice/src/services/pdfService.ts": {
@@ -1680,13 +1680,13 @@
     "semantic_hash": ""
   },
   "microservice/src/services/supabaseService.ts": {
-    "mtime": 1785260119.2340486,
-    "ast_hash": "ab812d82381cba5e027a8db28e9dc147",
+    "mtime": 1785280960.081096,
+    "ast_hash": "89fb182a9c6e5cb894f21097940af9fb",
     "semantic_hash": ""
   },
   "microservice/src/types/index.ts": {
-    "mtime": 1785273855.814782,
-    "ast_hash": "83c467f38c3f1aba42c7ede5ba254d15",
+    "mtime": 1785280727.6988764,
+    "ast_hash": "5efe73e3f2d9bbd6b18b9574c7f6e675",
     "semantic_hash": ""
   },
   "microservice/tsconfig.json": {
@@ -2755,8 +2755,8 @@
     "semantic_hash": ""
   },
   "api/README.md": {
-    "mtime": 1785280333.2776146,
-    "ast_hash": "78558e0382f62ac2e88054fa0f2ab03d",
+    "mtime": 1785280933.4590697,
+    "ast_hash": "63e9a74ad6790cb716b4899f5b875559",
     "semantic_hash": ""
   },
   "api/app/agent/prompts/classe_mapa_tema.txt": {
@@ -3280,8 +3280,8 @@
     "semantic_hash": ""
   },
   "microservice/README.md": {
-    "mtime": 1785280333.269096,
-    "ast_hash": "8bcc843693c1199af82e6841a2c3d455",
+    "mtime": 1785280752.7248838,
+    "ast_hash": "9b966b5d143bb1411a2db11e90f47330",
     "semantic_hash": ""
   },
   "microservice/index.html": {
@@ -4075,8 +4075,8 @@
     "semantic_hash": ""
   },
   "api/tests/test_migrations.py": {
-    "mtime": 1785260118.9705956,
-    "ast_hash": "2aaebec58939b5da0191123c0b8a000c",
+    "mtime": 1785280960.081096,
+    "ast_hash": "35b567f6c2b85abde823353ea0fbbb6f",
     "semantic_hash": ""
   },
   "api/alembic/versions/20260411_02_production_schema_baseline.py": {
@@ -4110,8 +4110,8 @@
     "semantic_hash": ""
   },
   "api/app/services/media_contract.py": {
-    "mtime": 1785280333.2861383,
-    "ast_hash": "ee9d686a667f4a7e51316b8260a399be",
+    "mtime": 1785280924.1987534,
+    "ast_hash": "0f3b2d6afe5a252c42146c793183f309",
     "semantic_hash": ""
   },
   "frontend/src/components/console/personalizacoes/materialPreview.test.ts": {
@@ -4125,8 +4125,8 @@
     "semantic_hash": ""
   },
   "microservice/src/constants/pipelineVersions.ts": {
-    "mtime": 1785280333.2951672,
-    "ast_hash": "bafc71ce2af6b79224426d6d09143fc5",
+    "mtime": 1785280924.1997502,
+    "ast_hash": "8eec33e53f91014a807eab9eb51d4476",
     "semantic_hash": ""
   },
   "api/alembic/versions/20260728_04_scope_personalization_by_content.py": {
@@ -4145,8 +4145,8 @@
     "semantic_hash": ""
   },
   "microservice/src/services/geminiBlockBatches.test.ts": {
-    "mtime": 1785280361.7330272,
-    "ast_hash": "09238ba4c100f16336223999c018443d",
+    "mtime": 1785280861.9453855,
+    "ast_hash": "cc5455970e1bb213bd789d9fc5f7b770",
     "semantic_hash": ""
   },
   "mobile/src/utils/personalization.multicontent.test.ts": {
@@ -4197,6 +4197,26 @@
   "microservice/src/services/contentGenerationService.ts": {
     "mtime": 1785280333.2650945,
     "ast_hash": "dfef9b6aeda9540a820ba91fe7207bba",
+    "semantic_hash": ""
+  },
+  "api/alembic/versions/20260728_05_dynamic_generation_fencing.py": {
+    "mtime": 1785280727.3142312,
+    "ast_hash": "7ea4225e5fd6aae1f0774010349a05a7",
+    "semantic_hash": ""
+  },
+  "microservice/src/lib/boundedConcurrency.test.ts": {
+    "mtime": 1785280777.1401346,
+    "ast_hash": "44e8f1b56d08a4474a89234d67c6e099",
+    "semantic_hash": ""
+  },
+  "microservice/src/lib/boundedConcurrency.ts": {
+    "mtime": 1785280777.1391332,
+    "ast_hash": "bf3c6e5bdee813301b60725763fa0121",
+    "semantic_hash": ""
+  },
+  "api/alembic/versions/20260728_06_idempotent_generated_materials.py": {
+    "mtime": 1785281014.6092143,
+    "ast_hash": "fa37214833a580c3e84605e3434ab4a6",
     "semantic_hash": ""
   }
 }

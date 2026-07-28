@@ -105,6 +105,11 @@ class Settings(BaseSettings):
     personalizacao_job_stale_processing_min: int = 40
     personalizacao_job_db_failure_max_backoff_sec: int = 60
     personalizacao_job_db_failure_log_interval_sec: int = 30
+    # A preparação curricular é neutra e compartilhada entre os sete perfis.
+    # Mantê-la separada da concorrência de mídia evita gastar slots de geração
+    # com targets apenas aguardando o mesmo enriquecimento.
+    personalizacao_content_enrichment_concurrency: int = 1
+    personalizacao_content_enrichment_cache_max_entries: int = 128
     personalizacao_media_render_concurrency: int = 2
     personalizacao_media_render_timeout_sec: int = 240
     media_render_timeout_seconds: int = 1800

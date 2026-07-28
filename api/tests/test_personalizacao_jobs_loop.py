@@ -13,12 +13,15 @@ from app.services.personalizacao_jobs import (
     _content_enrichment_cache_key,
     _effective_stale_processing_min,
     _exception_signature,
+    _get_app_shared_content_enrichment,
+    _get_job_content_enrichment,
     _get_runtime_cached_dict,
     _has_completed_current_generation,
     _is_transient_db_connection_error,
     _mark_failed_unless_generation_completed,
     _mark_pending_media_failed,
     _pending_media_formats,
+    _prewarm_shared_content_enrichments,
     _process_media_render_target,
     process_personalizacao_job_once,
 )
@@ -226,6 +229,160 @@ async def test_runtime_cache_shares_failure_without_provider_storm() -> None:
         and str(result) == "enriquecimento indisponivel"
         for result in results
     )
+
+
+@pytest.mark.asyncio
+async def test_app_content_enrichment_cache_is_shared_across_jobs() -> None:
+    calls = 0
+
+    async def factory() -> dict:
+        nonlocal calls
+        calls += 1
+        await asyncio.sleep(0.01)
+        return {"blocos": [{"id": "bloco-01"}]}
+
+    app = SimpleNamespace(
+        state=SimpleNamespace(
+            settings=SimpleNamespace(
+                personalizacao_content_enrichment_concurrency=1,
+                personalizacao_content_enrichment_cache_max_entries=8,
+            )
+        )
+    )
+    results = await asyncio.gather(
+        *(
+            _get_job_content_enrichment(
+                app=app,
+                job={},
+                key="121:125:hash-1",
+                factory=factory,
+            )
+            for _ in range(7)
+        )
+    )
+
+    assert calls == 1
+    assert all(result == {"blocos": [{"id": "bloco-01"}]} for result in results)
+    results[0]["blocos"][0]["id"] = "alterado"
+    cached = await _get_app_shared_content_enrichment(
+        app=app,
+        key="121:125:hash-1",
+        factory=factory,
+    )
+    assert cached["blocos"][0]["id"] == "bloco-01"
+    assert calls == 1
+
+
+@pytest.mark.asyncio
+async def test_app_content_enrichment_does_not_cache_failures_between_jobs() -> None:
+    calls = 0
+
+    async def factory() -> dict:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise RuntimeError("falha temporaria")
+        return {"blocos": [{"id": "bloco-01"}]}
+
+    app = SimpleNamespace(
+        state=SimpleNamespace(
+            settings=SimpleNamespace(
+                personalizacao_content_enrichment_concurrency=1,
+                personalizacao_content_enrichment_cache_max_entries=8,
+            )
+        )
+    )
+
+    with pytest.raises(RuntimeError, match="falha temporaria"):
+        await _get_job_content_enrichment(
+            app=app,
+            job={},
+            key="121:125:hash-1",
+            factory=factory,
+        )
+    recovered = await _get_job_content_enrichment(
+        app=app,
+        job={},
+        key="121:125:hash-1",
+        factory=factory,
+    )
+
+    assert recovered == {"blocos": [{"id": "bloco-01"}]}
+    assert calls == 2
+
+
+@pytest.mark.asyncio
+async def test_prewarm_completes_shared_enrichment_before_profile_fanout(
+    monkeypatch,
+) -> None:
+    calls = 0
+
+    class Session:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, _exc_type, _exc, _tb):
+            return None
+
+        async def commit(self):
+            return None
+
+    async def fetch_context(**_kwargs):
+        return {"source_hash": "hash-1", "conteudo_classe": {}, "fontes": []}
+
+    async def enrich(*, context, settings):
+        del settings
+        nonlocal calls
+        calls += 1
+        assert context["source_hash"] == "hash-1"
+        return {"source_hash": "hash-1", "blocos": [{"id": "bloco-01"}]}
+
+    monkeypatch.setattr(jobs_module, "fetch_personalizacao_context", fetch_context)
+    monkeypatch.setattr(jobs_module, "enrich_content_blocks", enrich)
+
+    app = SimpleNamespace(
+        state=SimpleNamespace(
+            session_factory=Session,
+            settings=SimpleNamespace(
+                personalizacao_content_enrichment_concurrency=1,
+                personalizacao_content_enrichment_cache_max_entries=8,
+            ),
+        )
+    )
+    job = {"id": "job-1", "kind": "class_delta_sync", "classe_id": 32}
+    targets = [
+        {
+            "id": index,
+            "aluno_id": f"aluno-{index}",
+            "topico_id": 121,
+            "conteudo_id": 125,
+            "brainhex_profile_key": profile,
+            "status": "pending",
+        }
+        for index, profile in enumerate(
+            (
+                "seeker",
+                "survivor",
+                "daredevil",
+                "mastermind",
+                "conqueror",
+                "socializer",
+                "achiever",
+            ),
+            start=1,
+        )
+    ]
+
+    await _prewarm_shared_content_enrichments(
+        app=app,
+        job=job,
+        targets=targets,
+    )
+
+    assert calls == 1
+    assert job["_runtime_content_enrichment"]["121:125:hash-1"]["blocos"] == [
+        {"id": "bloco-01"}
+    ]
 
 
 def test_content_enrichment_cache_is_shared_across_profiles_for_same_content() -> None:

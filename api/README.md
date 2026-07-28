@@ -46,6 +46,8 @@ Variaveis base (ver `app/core/settings.py`):
 - `OPENAI_CONTENT_ENRICHMENT_MODEL`
 - `CONTENT_ENRICHMENT_BATCH_SIZE` (fixado efetivamente em `1`: enriquece e valida um bloco por vez)
 - `CONTENT_ENRICHMENT_MAX_ATTEMPTS`
+- `PERSONALIZACAO_CONTENT_ENRICHMENT_CONCURRENCY` (padrao: `1`; limita a etapa compartilhada anterior ao fan-out)
+- `PERSONALIZACAO_CONTENT_ENRICHMENT_CACHE_MAX_ENTRIES` (padrao: `128`; snapshots imutaveis reutilizados entre jobs)
 - `BRAINHEX_API_URL` (microserviço usado somente para gerar materiais)
 - `GEMINI_API_KEY`
 - `PERSONALIZACAO_JOB_CONCURRENCY`

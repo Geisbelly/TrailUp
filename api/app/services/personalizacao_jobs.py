@@ -4,6 +4,7 @@ import asyncio
 import copy
 import logging
 import socket
+from collections import OrderedDict
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -306,6 +307,133 @@ async def _get_runtime_cached_dict(
         errors.pop(key, None)
         cache[key] = generated
         return generated
+
+
+def _app_state_runtime(app: FastAPI, name: str, factory: Callable[[], Any]) -> Any:
+    value = getattr(app.state, name, None)
+    if value is None:
+        value = factory()
+        setattr(app.state, name, value)
+    return value
+
+
+async def _get_app_shared_content_enrichment(
+    *,
+    app: FastAPI,
+    key: str,
+    factory: Callable[[], Awaitable[dict[str, Any]]],
+) -> dict[str, Any]:
+    """Single-flight de enriquecimento reutilizável por todos os jobs do processo.
+
+    A chave inclui o ``source_hash`` versionado. Resultados concluídos ficam em
+    um cache LRU limitado; chamadas simultâneas aguardam a mesma Task. Falhas
+    não são mantidas no cache global, permitindo uma nova tentativa em outro
+    job, enquanto o cache local do job evita sete tentativas redundantes.
+    """
+
+    cache: OrderedDict[str, dict[str, Any]] = _app_state_runtime(
+        app,
+        "personalizacao_content_enrichment_cache",
+        OrderedDict,
+    )
+    inflight: dict[str, asyncio.Task[dict[str, Any]]] = _app_state_runtime(
+        app,
+        "personalizacao_content_enrichment_inflight",
+        dict,
+    )
+    state_lock: asyncio.Lock = _app_state_runtime(
+        app,
+        "personalizacao_content_enrichment_state_lock",
+        asyncio.Lock,
+    )
+    concurrency = max(
+        1,
+        int(
+            getattr(
+                app.state.settings,
+                "personalizacao_content_enrichment_concurrency",
+                1,
+            )
+            or 1
+        ),
+    )
+    enrichment_semaphore: asyncio.Semaphore = _app_state_runtime(
+        app,
+        "personalizacao_content_enrichment_semaphore",
+        lambda: asyncio.Semaphore(concurrency),
+    )
+    max_entries = max(
+        1,
+        int(
+            getattr(
+                app.state.settings,
+                "personalizacao_content_enrichment_cache_max_entries",
+                128,
+            )
+            or 128
+        ),
+    )
+
+    async with state_lock:
+        cached = cache.get(key)
+        if isinstance(cached, dict):
+            cache.move_to_end(key)
+            return copy.deepcopy(cached)
+
+        task = inflight.get(key)
+        if task is None:
+
+            async def _generate() -> dict[str, Any]:
+                async with enrichment_semaphore:
+                    generated = await factory()
+                if not isinstance(generated, dict):
+                    raise RuntimeError(
+                        "Cache compartilhado de enriquecimento recebeu valor invalido."
+                    )
+                return generated
+
+            task = asyncio.create_task(
+                _generate(),
+                name=f"personalizacao-content-enrichment:{key}",
+            )
+            inflight[key] = task
+
+    try:
+        generated = await asyncio.shield(task)
+    except BaseException:
+        async with state_lock:
+            if inflight.get(key) is task and task.done():
+                inflight.pop(key, None)
+        raise
+
+    async with state_lock:
+        if inflight.get(key) is task:
+            inflight.pop(key, None)
+        cache[key] = copy.deepcopy(generated)
+        cache.move_to_end(key)
+        while len(cache) > max_entries:
+            cache.popitem(last=False)
+    return copy.deepcopy(generated)
+
+
+async def _get_job_content_enrichment(
+    *,
+    app: FastAPI,
+    job: dict[str, Any],
+    key: str,
+    factory: Callable[[], Awaitable[dict[str, Any]]],
+) -> dict[str, Any]:
+    return await _get_runtime_cached_dict(
+        job=job,
+        cache_name="_runtime_content_enrichment",
+        locks_name="_runtime_content_enrichment_locks",
+        key=key,
+        factory=lambda: _get_app_shared_content_enrichment(
+            app=app,
+            key=key,
+            factory=factory,
+        ),
+    )
 
 
 def _content_enrichment_cache_key(
@@ -998,10 +1126,9 @@ async def _process_media_render_target(
                 settings=app.state.settings,
             )
 
-        content_enrichment = await _get_runtime_cached_dict(
+        content_enrichment = await _get_job_content_enrichment(
+            app=app,
             job=job,
-            cache_name="_runtime_content_enrichment",
-            locks_name="_runtime_content_enrichment_locks",
             key=cache_key,
             factory=_enrich_existing,
         )
@@ -1093,10 +1220,9 @@ async def _process_media_render_target(
             settings=app.state.settings,
         )
 
-    content_enrichment = await _get_runtime_cached_dict(
+    content_enrichment = await _get_job_content_enrichment(
+        app=app,
         job=job,
-        cache_name="_runtime_content_enrichment",
-        locks_name="_runtime_content_enrichment_locks",
         key=cache_key,
         factory=_enrich_fresh,
     )
@@ -1235,6 +1361,114 @@ async def _process_media_render_target(
     return {"record": completed_record}
 
 
+async def _prewarm_shared_content_enrichments(
+    *,
+    app: FastAPI,
+    job: dict[str, Any],
+    targets: list[dict[str, Any]],
+) -> None:
+    """Prepara cada conteúdo antes do fan-out dos perfis.
+
+    Esta fase não usa o semáforo de geração. O enriquecimento propriamente dito
+    é limitado pelo semáforo exclusivo do app e publicado como snapshot apenas
+    depois de completamente validado.
+    """
+
+    if job.get("kind") == JOB_KIND_CLEANUP or job.get("kind") in _MEDIA_RENDER_KINDS:
+        return
+
+    grouped: dict[tuple[int, int | None], list[dict[str, Any]]] = {}
+    for target in targets:
+        if target.get("status") in TARGET_DONE_STATES:
+            continue
+        group_key = (
+            int(target["topico_id"]),
+            int(target["conteudo_id"])
+            if target.get("conteudo_id") is not None
+            else None,
+        )
+        grouped.setdefault(group_key, []).append(target)
+
+    # A barreira só traz benefício quando mais de um perfil consumirá a mesma
+    # preparação. Retry isolado segue pelo caminho normal do próprio target.
+    representatives = [
+        grouped_targets[0]
+        for grouped_targets in grouped.values()
+        if len(grouped_targets) > 1
+    ]
+    if not representatives:
+        return
+
+    session_factory = app.state.session_factory
+    classe_id = int(job["classe_id"])
+
+    async def _prepare(target: dict[str, Any]) -> None:
+        aluno_id = str(target["aluno_id"])
+        topico_id = int(target["topico_id"])
+        conteudo_id = (
+            int(target["conteudo_id"])
+            if target.get("conteudo_id") is not None
+            else None
+        )
+        context_key = f"{aluno_id}:{topico_id}:{conteudo_id or 0}"
+
+        async with session_factory() as session:
+
+            async def _fetch_context() -> dict[str, Any]:
+                return await fetch_personalizacao_context(
+                    aluno_id=aluno_id,
+                    classe_id=classe_id,
+                    topico_id=topico_id,
+                    conteudo_id=conteudo_id,
+                    settings=app.state.settings,
+                    session=session,
+                    include_student_sources=False,
+                )
+
+            context = await _get_runtime_cached_dict(
+                job=job,
+                cache_name="_runtime_personalizacao_context",
+                locks_name="_runtime_personalizacao_context_locks",
+                key=context_key,
+                factory=_fetch_context,
+            )
+            await session.commit()
+
+        cache_key = _content_enrichment_cache_key(
+            topico_id=topico_id,
+            conteudo_id=conteudo_id,
+            source_hash=context.get("source_hash"),
+        )
+
+        async def _enrich() -> dict[str, Any]:
+            return await enrich_content_blocks(
+                context=copy.deepcopy(context),
+                settings=app.state.settings,
+            )
+
+        await _get_job_content_enrichment(
+            app=app,
+            job=job,
+            key=cache_key,
+            factory=_enrich,
+        )
+
+    results = await asyncio.gather(
+        *(_prepare(target) for target in representatives),
+        return_exceptions=True,
+    )
+    for target, result in zip(representatives, results, strict=True):
+        if isinstance(result, BaseException):
+            logger.warning(
+                "Falha na preparacao compartilhada; targets reutilizarao a "
+                "mesma falha sem repetir o provedor neste job: topico=%s "
+                "conteudo=%s erro=%s",
+                target.get("topico_id"),
+                target.get("conteudo_id"),
+                _compact_exception_text(result),
+            )
+
+
 async def process_personalizacao_job_once(app: FastAPI) -> bool:
     session_factory = app.state.session_factory
     stale_min = _effective_stale_processing_min(app.state.settings)
@@ -1301,6 +1535,15 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
             return True
 
     max_retries = int(app.state.settings.personalizacao_job_max_retries)
+    pending_targets = [
+        target for target in targets if target.get("status") not in TARGET_DONE_STATES
+    ]
+    await _prewarm_shared_content_enrichments(
+        app=app,
+        job=job,
+        targets=pending_targets,
+    )
+
     target_concurrency = max(
         1,
         int(getattr(app.state.settings, "personalizacao_media_render_concurrency", 2) or 2),
@@ -1386,9 +1629,6 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
                 )
                 return 1
 
-    pending_targets = [
-        target for target in targets if target.get("status") not in TARGET_DONE_STATES
-    ]
     errors = (
         sum(await asyncio.gather(*(_process_target(target) for target in pending_targets)))
         if pending_targets
@@ -1458,13 +1698,16 @@ async def personalizacao_jobs_loop(app: FastAPI) -> None:
     while True:
         processed_any = False
         loop_error: Exception | None = None
-        for _ in range(concurrency):
-            processed, current_error = await _run_once()
+        # Cada chamada faz claim atômico com SKIP LOCKED. Criá-las juntas torna
+        # PERSONALIZACAO_JOB_CONCURRENCY uma concorrência real entre jobs, em
+        # vez de apenas repetir o processamento sequencialmente.
+        batch_results = await asyncio.gather(
+            *(asyncio.create_task(_run_once()) for _ in range(concurrency))
+        )
+        for processed, current_error in batch_results:
             processed_any = processed_any or processed
             if current_error is not None:
                 loop_error = current_error
-                break
-            if not processed:
                 break
         if loop_error is not None:
             if _is_transient_db_connection_error(loop_error):

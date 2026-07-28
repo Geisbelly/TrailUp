@@ -46,6 +46,7 @@ export interface ProcessedContent {
     content_blocks_total?: number;
     content_block_batches?: number;
     content_block_batch_size?: number;
+    content_block_concurrency?: number;
     batch_block_ids?: string[][];
     content_generation_provider?: "gemini" | "openai" | "mixed";
     content_generation_models?: string[];
