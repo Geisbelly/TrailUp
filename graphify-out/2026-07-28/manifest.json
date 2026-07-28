@@ -445,9 +445,9 @@
     "semantic_hash": "a2dc84fc874fccf78f87f5f830c6dc16"
   },
   "api/app/repositories/materiais.py": {
-    "mtime": 1776268148.7056258,
-    "ast_hash": "6babb37586b80ea0f96cb1911235efc8",
-    "semantic_hash": "6babb37586b80ea0f96cb1911235efc8"
+    "mtime": 1785281014.6102152,
+    "ast_hash": "ad0de2722a74322ba5e0b02c40f5b1a6",
+    "semantic_hash": ""
   },
   "api/app/repositories/mental_state.py": {
     "mtime": 1782321864.3465593,
@@ -760,8 +760,8 @@
     "semantic_hash": ""
   },
   "api/tests/test_repositories.py": {
-    "mtime": 1785273974.1838243,
-    "ast_hash": "cbbba65f3dce90fe49efe4c9e87520ca",
+    "mtime": 1785280974.0456073,
+    "ast_hash": "f16bf1672c3b227f1ff3431983dc0573",
     "semantic_hash": ""
   },
   "api/tests/test_startup.py": {
@@ -1670,8 +1670,8 @@
     "semantic_hash": ""
   },
   "microservice/src/services/geminiService.ts": {
-    "mtime": 1785280727.6998768,
-    "ast_hash": "c106ea995cffa830820a923e8b98bbbf",
+    "mtime": 1785280861.9443848,
+    "ast_hash": "77933ec0eef28cee46397f04830998d3",
     "semantic_hash": ""
   },
   "microservice/src/services/pdfService.ts": {
@@ -1680,8 +1680,8 @@
     "semantic_hash": ""
   },
   "microservice/src/services/supabaseService.ts": {
-    "mtime": 1785260119.2340486,
-    "ast_hash": "ab812d82381cba5e027a8db28e9dc147",
+    "mtime": 1785280960.081096,
+    "ast_hash": "89fb182a9c6e5cb894f21097940af9fb",
     "semantic_hash": ""
   },
   "microservice/src/types/index.ts": {
@@ -2755,8 +2755,8 @@
     "semantic_hash": ""
   },
   "api/README.md": {
-    "mtime": 1785280333.2776146,
-    "ast_hash": "78558e0382f62ac2e88054fa0f2ab03d",
+    "mtime": 1785280933.4590697,
+    "ast_hash": "63e9a74ad6790cb716b4899f5b875559",
     "semantic_hash": ""
   },
   "api/app/agent/prompts/classe_mapa_tema.txt": {
@@ -4075,8 +4075,8 @@
     "semantic_hash": ""
   },
   "api/tests/test_migrations.py": {
-    "mtime": 1785280711.117326,
-    "ast_hash": "35c175e8c4cf45adeeb4b6658dc25f35",
+    "mtime": 1785280960.081096,
+    "ast_hash": "35b567f6c2b85abde823353ea0fbbb6f",
     "semantic_hash": ""
   },
   "api/alembic/versions/20260411_02_production_schema_baseline.py": {
@@ -4110,8 +4110,8 @@
     "semantic_hash": ""
   },
   "api/app/services/media_contract.py": {
-    "mtime": 1785280333.2861383,
-    "ast_hash": "ee9d686a667f4a7e51316b8260a399be",
+    "mtime": 1785280924.1987534,
+    "ast_hash": "0f3b2d6afe5a252c42146c793183f309",
     "semantic_hash": ""
   },
   "frontend/src/components/console/personalizacoes/materialPreview.test.ts": {
@@ -4125,8 +4125,8 @@
     "semantic_hash": ""
   },
   "microservice/src/constants/pipelineVersions.ts": {
-    "mtime": 1785280333.2951672,
-    "ast_hash": "bafc71ce2af6b79224426d6d09143fc5",
+    "mtime": 1785280924.1997502,
+    "ast_hash": "8eec33e53f91014a807eab9eb51d4476",
     "semantic_hash": ""
   },
   "api/alembic/versions/20260728_04_scope_personalization_by_content.py": {
@@ -4145,8 +4145,8 @@
     "semantic_hash": ""
   },
   "microservice/src/services/geminiBlockBatches.test.ts": {
-    "mtime": 1785280727.702397,
-    "ast_hash": "a9b12d7da645acd220ed12ee4b5fc0c8",
+    "mtime": 1785280861.9453855,
+    "ast_hash": "cc5455970e1bb213bd789d9fc5f7b770",
     "semantic_hash": ""
   },
   "mobile/src/utils/personalization.multicontent.test.ts": {
@@ -4212,6 +4212,11 @@
   "microservice/src/lib/boundedConcurrency.ts": {
     "mtime": 1785280777.1391332,
     "ast_hash": "bf3c6e5bdee813301b60725763fa0121",
+    "semantic_hash": ""
+  },
+  "api/alembic/versions/20260728_06_idempotent_generated_materials.py": {
+    "mtime": 1785281014.6092143,
+    "ast_hash": "fa37214833a580c3e84605e3434ab4a6",
     "semantic_hash": ""
   }
 }

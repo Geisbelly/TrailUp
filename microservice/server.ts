@@ -7,9 +7,9 @@ import {
   processMediaWithGemini,
   generateLongNaturalAudio,
   generateLongConversationalAudio,
-  generateSlideImage,
 } from "./src/services/geminiService";
 import { generateSceneImage } from "./src/services/openaiImageService";
+import { generateSlideIconWithFallback } from "./src/services/slideIconService";
 import { BrainHexProfile, BRAIN_HEX_CONFIG } from "./src/constants/brainHex";
 import {
   buildPresentationDesignPlan,
@@ -123,7 +123,7 @@ async function generateSceneImages(
   return scenes;
 }
 
-/** Icones decorativos de cada slide (iconPrompts), via Gemini. Serial (1 chave, sem pool). */
+/** Ícones: Gemini primário com circuito e contingência OpenAI. */
 async function generateSlideIcons(
   slides: { iconPrompts?: string[] }[],
   styleSuffix: string
@@ -135,11 +135,24 @@ async function generateSlideIcons(
     const icons: string[] = [];
     for (const iconPrompt of prompts) {
       try {
-        if (calls > 0) await new Promise((r) => setTimeout(r, 3000));
+        if (calls > 0) await new Promise((r) => setTimeout(r, 1000));
         calls++;
-        icons.push((await generateSlideImage(`${iconPrompt}${styleSuffix}`)) ?? "");
+        const generated = await generateSlideIconWithFallback(
+          `${iconPrompt}${styleSuffix}`,
+        );
+        if (generated.fallbackReason) {
+          log.warn("icone gerado pela contingencia OpenAI", {
+            slide: i,
+            reason: generated.fallbackReason,
+          });
+        }
+        icons.push(generated.image ?? "");
+        // A contingência de imagem OpenAI é mais cara e já existe uma cena
+        // OpenAI por slide. Um ícone de contingência por slide preserva o
+        // acabamento sem multiplicar custo quando a cota Gemini está zerada.
+        if (generated.provider === "openai") break;
       } catch (e) {
-        log.error("icone falhou (gemini)", { slide: i, err: e });
+        log.error("icone falhou nos dois provedores", { slide: i, err: e });
         icons.push("");
       }
     }

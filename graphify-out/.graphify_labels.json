@@ -358,7 +358,6 @@
   "356": "zod",
   "357": "expo-symbols",
   "358": "express",
-  "359": "caniuse-lite",
   "360": "guardian-recolor/package.json",
   "361": "react-markdown",
   "362": "chart.tsx",
@@ -396,6 +395,5 @@
   "405": "_brainhex_contract_is_ready",
   "406": "next-themes",
   "407": "expo-symbols",
-  "408": "vite",
-  "410": "@supabase/supabase-js"
+  "408": "vite"
 }

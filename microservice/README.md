@@ -56,6 +56,9 @@ Microservico de geracao de materiais personalizados por perfil BrainHex.
 - `CONTENT_GENERATION_OPENAI_MAX_ATTEMPTS` (padrao: `3`, repete respostas da OpenAI recusadas pela validacao de qualidade)
 - `OPENAI_CONTENT_GENERATION_FALLBACK_MODEL` (padrao: `gpt-5.4-mini`, modelo
   elegivel para a faixa compartilhada de alto volume)
+- `CONTENT_GENERATION_GEMINI_IMAGE_COOLDOWN_MS` (padrao: `3600000`; após cota
+  indisponível, ícones usam OpenAI sem repetir chamadas Gemini durante uma hora)
+- `OPENAI_IMAGE_MODEL` (padrao: `gpt-image-1`; cenas e contingência de ícones)
 - `CONTENT_GENERATION_GEMINI_COOLDOWN_MS` (padrao: `300000`)
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`

@@ -11,41 +11,83 @@ function getOpenAi(): OpenAI {
   return _openai;
 }
 
+async function generateImageBase64(params: {
+  prompt: string;
+  prefix: string;
+  size: "1024x1024" | "1536x1024";
+  retries: number;
+  attempt: number;
+}): Promise<string> {
+  try {
+    const response = await getOpenAi().images.generate({
+      model: String(process.env.OPENAI_IMAGE_MODEL ?? "").trim() || "gpt-image-1",
+      prompt: `${params.prefix}${params.prompt}`,
+      size: params.size,
+      n: 1,
+    });
+    const b64 = response.data?.[0]?.b64_json;
+    if (!b64) {
+      throw new Error("OpenAI não retornou a imagem solicitada.");
+    }
+    return b64;
+  } catch (error: any) {
+    if (error?.message?.includes("OPENAI_API_KEY")) throw error;
+    const isRateLimit =
+      error?.status === 429
+      || error?.message?.includes("rate_limit")
+      || error?.message?.includes("429");
+    if (params.retries > 0 && isRateLimit) {
+      const delay = (params.attempt + 1) * 5000;
+      console.warn(
+        `[openai] rate-limit — retry em ${delay / 1000}s `
+        + `(${params.retries} restantes)`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      return generateImageBase64({
+        ...params,
+        retries: params.retries - 1,
+        attempt: params.attempt + 1,
+      });
+    }
+    throw error;
+  }
+}
+
 /**
  * Gera a cena de fundo de um slide via OpenAI (gpt-image-1). Retorna o base64
  * cru da imagem (sem prefixo data:), mesmo contrato de generateSlideImage
  * (geminiService.ts) — assim os dois provedores compoem igual no HTML final.
  */
 export async function generateSceneImage(prompt: string, retries = 3, attempt = 0): Promise<string | null> {
-  try {
-    const response = await getOpenAi().images.generate({
-      model: "gpt-image-1",
-      prompt:
+  return generateImageBase64({
+    prompt,
+    prefix:
         "Premium editorial background illustration for a professional 16:9 "
         + "presentation template. Cohesive art direction, sophisticated shapes, "
         + "clear focal hierarchy, clean negative space for overlaid content. "
         + "No words, no letters, no labels, no watermark, no interface, no "
-        + `prebuilt slide border. Scene brief: ${prompt}`,
-      size: "1536x1024",
-      n: 1,
-    });
-    const b64 = response.data?.[0]?.b64_json;
-    if (!b64) throw new Error("A cena mística falhou em se materializar (OpenAI não retornou imagem).");
-    return b64;
-  } catch (error: any) {
-    if (error?.message?.includes("OPENAI_API_KEY")) throw error;
-    const isRateLimit =
-      error?.status === 429 ||
-      error?.message?.includes("rate_limit") ||
-      error?.message?.includes("429");
-    if (retries > 0 && isRateLimit) {
-      // Backoff cresce por tentativa (nao pelo `retries` restante, que pode
-      // partir de qualquer valor passado pelo chamador) — 5s, 10s, 15s...
-      const delay = (attempt + 1) * 5000;
-      console.warn(`[openai] rate-limit — retry em ${delay / 1000}s (${retries} restantes)`);
-      await new Promise((r) => setTimeout(r, delay));
-      return generateSceneImage(prompt, retries - 1, attempt + 1);
-    }
-    throw error;
-  }
+        + "prebuilt slide border. Scene brief: ",
+    size: "1536x1024",
+    retries,
+    attempt,
+  });
+}
+
+/** Gera um ícone editorial isolado quando o provedor Gemini está indisponível. */
+export async function generateDecorativeIconImage(
+  prompt: string,
+  retries = 3,
+  attempt = 0,
+): Promise<string> {
+  return generateImageBase64({
+    prompt,
+    prefix:
+      "Single premium editorial decorative icon for a professional presentation. "
+      + "Centered isolated object, clean silhouette, cohesive vector-like concept "
+      + "art, simple background, no words, no letters, no labels, no watermark. "
+      + "Icon brief: ",
+    size: "1024x1024",
+    retries,
+    attempt,
+  });
 }
