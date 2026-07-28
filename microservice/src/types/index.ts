@@ -42,6 +42,11 @@ export interface ProcessedContent {
     blocks_processed: number;
     confidence: number;
     parser_used: string;
+    generation_mode?: "legacy_aggregate" | "block_batches";
+    content_blocks_total?: number;
+    content_block_batches?: number;
+    content_block_batch_size?: number;
+    batch_block_ids?: string[][];
   };
   slideImages?: string[];
   audioBase64?: string | null;

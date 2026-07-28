@@ -118,18 +118,60 @@ class ConteudoClasseRepository:
         )
         return [int(row._mapping["topico_id"]) for row in result if row._mapping.get("topico_id") is not None]
 
-    async def mapear_conteudos_por_topico(self, conteudo_ids: list[int]) -> dict[int, list[int]]:
+    async def mapear_conteudos_por_topico(
+        self,
+        conteudo_ids: list[int],
+        *,
+        classe_id: int | None = None,
+    ) -> dict[int, list[int]]:
         if not conteudo_ids:
             return {}
         result = await self.session.execute(
             text(
                 """
-                SELECT id, topico_id
-                FROM conteudos
-                WHERE id = ANY(:conteudo_ids)
+                SELECT c.id, c.topico_id
+                FROM conteudos c
+                JOIN topicos t ON t.id = c.topico_id
+                WHERE c.id = ANY(:conteudo_ids)
+                  AND (
+                    CAST(:classe_id AS BIGINT) IS NULL
+                    OR t.classe_id = CAST(:classe_id AS BIGINT)
+                  )
                 """
             ),
-            {"conteudo_ids": conteudo_ids},
+            {"conteudo_ids": conteudo_ids, "classe_id": classe_id},
+        )
+        mapping: dict[int, list[int]] = {}
+        for row in result:
+            conteudo_id = row._mapping.get("id")
+            topico_id = row._mapping.get("topico_id")
+            if conteudo_id is None or topico_id is None:
+                continue
+            mapping.setdefault(int(topico_id), []).append(int(conteudo_id))
+        return mapping
+
+    async def mapear_todos_conteudos_por_topicos(
+        self,
+        topico_ids: list[int],
+        *,
+        classe_id: int,
+    ) -> dict[int, list[int]]:
+        """Retorna todos os conteúdos dos tópicos, preservando a ordem docente."""
+        normalized = sorted({int(item) for item in topico_ids if item is not None})
+        if not normalized:
+            return {}
+        result = await self.session.execute(
+            text(
+                """
+                SELECT c.id, c.topico_id
+                FROM conteudos c
+                JOIN topicos t ON t.id = c.topico_id
+                WHERE c.topico_id = ANY(:topico_ids)
+                  AND t.classe_id = :classe_id
+                ORDER BY c.topico_id, c.ordem NULLS LAST, c.id
+                """
+            ),
+            {"topico_ids": normalized, "classe_id": classe_id},
         )
         mapping: dict[int, list[int]] = {}
         for row in result:

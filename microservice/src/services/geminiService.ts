@@ -110,6 +110,308 @@ const SUPPORTED_NATIVE_MIMES = [
   "video/mp4", "video/mpeg"
 ];
 
+const DEFAULT_CONTENT_BLOCK_BATCH_SIZE = 3;
+const MAX_CONTENT_BLOCK_BATCH_SIZE = 6;
+
+export interface GeneratedBlockChapter {
+  blockId: string;
+  markdown: string;
+  audioScript: string;
+  slides: SlideContent[];
+}
+
+export interface GeneratedBlockBatch {
+  batchIndex: number;
+  blockIds: string[];
+  chapters: GeneratedBlockChapter[];
+  confidence: number;
+}
+
+function normalizedText(value: unknown): string {
+  return String(value ?? "").replace(/\s+/g, " ").trim();
+}
+
+function normalizedStringList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.map(normalizedText).filter(Boolean))];
+}
+
+export function resolveContentBlockBatchSize(value: unknown): number {
+  const parsed = Number(value);
+  if (
+    !Number.isInteger(parsed)
+    || parsed < 1
+    || parsed > MAX_CONTENT_BLOCK_BATCH_SIZE
+  ) {
+    return DEFAULT_CONTENT_BLOCK_BATCH_SIZE;
+  }
+  return parsed;
+}
+
+export function partitionContentBlocks(
+  contentBlocks: EnrichedContentBlock[],
+  batchSize = DEFAULT_CONTENT_BLOCK_BATCH_SIZE,
+): EnrichedContentBlock[][] {
+  if (!Array.isArray(contentBlocks) || contentBlocks.length === 0) return [];
+  const size = resolveContentBlockBatchSize(batchSize);
+  const ids = new Set<string>();
+  const ordered = contentBlocks
+    .map((block, inputIndex) => ({ block, inputIndex }))
+    .sort((a, b) => (a.block.ordem - b.block.ordem) || (a.inputIndex - b.inputIndex))
+    .map(({ block }) => {
+      const id = normalizedText(block.id);
+      if (!id || ids.has(id)) {
+        throw new Error("contentBlocks contém id ausente ou duplicado.");
+      }
+      if (!Number.isFinite(block.ordem)) {
+        throw new Error(`contentBlocks contém ordem inválida no bloco ${id}.`);
+      }
+      ids.add(id);
+      return block;
+    });
+
+  const batches: EnrichedContentBlock[][] = [];
+  for (let index = 0; index < ordered.length; index += size) {
+    batches.push(ordered.slice(index, index + size));
+  }
+  return batches;
+}
+
+function validateSlideForBlock(
+  raw: unknown,
+  options: {
+    blockId: string;
+    batchIds: Set<string>;
+    slideIndex: number;
+  },
+): SlideContent {
+  const { blockId, batchIds, slideIndex } = options;
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    throw new Error(`Slide ${slideIndex + 1} inválido no capítulo ${blockId}.`);
+  }
+  const slide = raw as Record<string, unknown>;
+  const sourceIds = normalizedStringList(slide.sourceIds);
+  if (!sourceIds.includes(blockId)) {
+    throw new Error(
+      `Slide ${slideIndex + 1} não referencia seu bloco ${blockId}.`,
+    );
+  }
+  if (sourceIds.some((sourceId) => !batchIds.has(sourceId))) {
+    throw new Error(
+      `Slide ${slideIndex + 1} referencia bloco fora do lote.`,
+    );
+  }
+  const action = normalizedText(slide.characterAction);
+  if (!["explaining", "celebrating", "thinking", "warning"].includes(action)) {
+    throw new Error(
+      `Slide ${slideIndex + 1} contém characterAction inválida.`,
+    );
+  }
+  const requiredStrings = [
+    "title",
+    "explanation",
+    "visualDescription",
+    "characterQuote",
+    "imagePrompt",
+  ] as const;
+  for (const field of requiredStrings) {
+    if (!normalizedText(slide[field])) {
+      throw new Error(
+        `Slide ${slideIndex + 1} não contém ${field} no capítulo ${blockId}.`,
+      );
+    }
+  }
+  const topics = normalizedStringList(slide.topics);
+  const iconPrompts = normalizedStringList(slide.iconPrompts);
+  if (topics.length === 0 || iconPrompts.length === 0) {
+    throw new Error(
+      `Slide ${slideIndex + 1} não contém tópicos ou ícones no capítulo ${blockId}.`,
+    );
+  }
+  return {
+    title: normalizedText(slide.title),
+    topics,
+    explanation: normalizedText(slide.explanation),
+    visualDescription: normalizedText(slide.visualDescription),
+    characterQuote: normalizedText(slide.characterQuote),
+    characterAction: action as SlideContent["characterAction"],
+    imagePrompt: normalizedText(slide.imagePrompt),
+    iconPrompts,
+    sourceIds,
+  };
+}
+
+export function validateBlockBatchGeneration(
+  batch: EnrichedContentBlock[],
+  raw: unknown,
+  batchIndex: number,
+): GeneratedBlockBatch {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    throw new Error(`Gemini retornou lote ${batchIndex} fora do formato JSON.`);
+  }
+  const rawObject = raw as Record<string, unknown>;
+  if (!Array.isArray(rawObject.chapters) || rawObject.chapters.length !== batch.length) {
+    throw new Error(
+      `Gemini omitiu ou acrescentou capítulos no lote ${batchIndex}.`,
+    );
+  }
+  const batchIds = batch.map((block) => normalizedText(block.id));
+  const batchIdSet = new Set(batchIds);
+  const chapterMap = new Map<string, Record<string, unknown>>();
+  for (const rawChapter of rawObject.chapters) {
+    if (
+      typeof rawChapter !== "object"
+      || rawChapter === null
+      || Array.isArray(rawChapter)
+    ) {
+      throw new Error(`Gemini retornou capítulo inválido no lote ${batchIndex}.`);
+    }
+    const chapter = rawChapter as Record<string, unknown>;
+    const blockId = normalizedText(chapter.blockId);
+    if (!batchIdSet.has(blockId) || chapterMap.has(blockId)) {
+      throw new Error(
+        `Gemini retornou identidade ausente, duplicada ou externa no lote ${batchIndex}.`,
+      );
+    }
+    chapterMap.set(blockId, chapter);
+  }
+
+  const chapters = batch.map((block): GeneratedBlockChapter => {
+    const blockId = normalizedText(block.id);
+    const chapter = chapterMap.get(blockId);
+    if (!chapter) {
+      throw new Error(`Gemini omitiu o capítulo do bloco ${blockId}.`);
+    }
+    const markdown = String(chapter.markdown ?? "").trim();
+    const audioScript = String(chapter.audioScript ?? "").trim();
+    const minimumMarkdownLength = Math.max(
+      200,
+      Math.floor(normalizedText(block.conteudo_aprofundado).length * 0.75),
+    );
+    const minimumAudioLength = Math.max(
+      160,
+      Math.floor(normalizedText(block.conteudo_aprofundado).length * 0.5),
+    );
+    if (normalizedText(markdown).length < minimumMarkdownLength) {
+      throw new Error(
+        `Markdown do bloco ${blockId} foi resumido abaixo do mínimo de cobertura.`,
+      );
+    }
+    if (normalizedText(audioScript).length < minimumAudioLength) {
+      throw new Error(
+        `Áudio do bloco ${blockId} foi resumido abaixo do mínimo de cobertura.`,
+      );
+    }
+    if (!Array.isArray(chapter.slides) || chapter.slides.length === 0) {
+      throw new Error(`Gemini não gerou slides para o bloco ${blockId}.`);
+    }
+    return {
+      blockId,
+      markdown,
+      audioScript,
+      slides: chapter.slides.map((slide, slideIndex) =>
+        validateSlideForBlock(slide, {
+          blockId,
+          batchIds: batchIdSet,
+          slideIndex,
+        })
+      ),
+    };
+  });
+
+  const confidence = Number(rawObject.confidence);
+  if (!Number.isFinite(confidence)) {
+    throw new Error(`Gemini não informou confiança válida no lote ${batchIndex}.`);
+  }
+  return {
+    batchIndex,
+    blockIds: batchIds,
+    chapters,
+    confidence: Math.max(0, Math.min(1, confidence)),
+  };
+}
+
+export function consolidateBlockBatchGenerations(
+  contentBlocks: EnrichedContentBlock[],
+  batchResults: GeneratedBlockBatch[],
+  options: {
+    batchSize: number;
+    family: string;
+    filesCount: number;
+  },
+): ProcessedContent {
+  const effectiveBatchSize = resolveContentBlockBatchSize(options.batchSize);
+  const expectedBatches = partitionContentBlocks(contentBlocks, effectiveBatchSize);
+  const expectedIds = expectedBatches
+    .flat()
+    .map((block) => normalizedText(block.id));
+  const orderedBatches = [...batchResults].sort(
+    (a, b) => a.batchIndex - b.batchIndex,
+  );
+  if (orderedBatches.length !== expectedBatches.length) {
+    throw new Error(
+      "Consolidação recusada: quantidade de lotes diferente da planejada.",
+    );
+  }
+  for (let index = 0; index < expectedBatches.length; index++) {
+    const expectedBatchIds = expectedBatches[index].map((block) =>
+      normalizedText(block.id)
+    );
+    const returnedBatch = orderedBatches[index];
+    if (
+      returnedBatch.batchIndex !== index + 1
+      || returnedBatch.blockIds.length !== expectedBatchIds.length
+      || returnedBatch.blockIds.some(
+        (blockId, blockIndex) => blockId !== expectedBatchIds[blockIndex],
+      )
+    ) {
+      throw new Error(
+        `Consolidação recusada: cobertura incorreta no lote ${index + 1}.`,
+      );
+    }
+  }
+  const returnedIds = orderedBatches.flatMap((batch) => batch.blockIds);
+  if (
+    returnedIds.length !== expectedIds.length
+    || returnedIds.some((id, index) => id !== expectedIds[index])
+  ) {
+    throw new Error(
+      "Consolidação recusada: os lotes não cobrem todos os blocos na ordem.",
+    );
+  }
+  const chapters = orderedBatches.flatMap((batch) => batch.chapters);
+  if (
+    chapters.length !== expectedIds.length
+    || chapters.some((chapter, index) => chapter.blockId !== expectedIds[index])
+  ) {
+    throw new Error(
+      "Consolidação recusada: capítulos ausentes, duplicados ou fora de ordem.",
+    );
+  }
+  const confidence = orderedBatches.length > 0
+    ? orderedBatches.reduce((sum, batch) => sum + batch.confidence, 0)
+      / orderedBatches.length
+    : 0;
+
+  return {
+    markdown: chapters.map((chapter) => chapter.markdown).join("\n\n---\n\n"),
+    audioScript: chapters.map((chapter) => chapter.audioScript).join("\n\n"),
+    slides: chapters.flatMap((chapter) => chapter.slides),
+    metadata: {
+      blocks_processed: expectedIds.length,
+      confidence,
+      parser_used:
+        `TrailUp ${options.family} Block Batch Generator `
+        + `(${options.filesCount} fonte(s) de referência não reenviadas)`,
+      generation_mode: "block_batches",
+      content_blocks_total: expectedIds.length,
+      content_block_batches: orderedBatches.length,
+      content_block_batch_size: effectiveBatchSize,
+      batch_block_ids: orderedBatches.map((batch) => [...batch.blockIds]),
+    },
+  };
+}
+
 export async function processMediaWithGemini(
   filesData: { data: string; mimeType: string; name: string }[],
   profile: BrainHexProfile,
@@ -135,60 +437,55 @@ export async function processMediaWithGemini(
   const contentsParts: any[] = [];
 
   if (contentBlocks.length > 0) {
-    contentsParts.push({
-      text:
-        "### BLOCOS PEDAGÓGICOS ENRIQUECIDOS PELA API (ORDEM OBRIGATÓRIA)\n\n"
-        + JSON.stringify(
-          [...contentBlocks].sort((a, b) => a.ordem - b.ordem),
-          null,
-          2,
-        ),
-    });
     blocksCount += contentBlocks.length;
   }
 
-  for (const fileData of filesData) {
-    const isNative = SUPPORTED_NATIVE_MIMES.includes(fileData.mimeType);
+  // Com blocos enriquecidos, eles já são a fonte curricular validada. Arquivos
+  // binários não são reenviados em cada lote; ficam apenas no caminho legado.
+  if (contentBlocks.length === 0) {
+    for (const fileData of filesData) {
+      const isNative = SUPPORTED_NATIVE_MIMES.includes(fileData.mimeType);
 
-    if (isNative) {
-      contentsParts.push({
-        inlineData: {
-          data: fileData.data,
-          mimeType: fileData.mimeType,
-        },
-      });
-      blocksCount += 1;
-    } else {
-      const binaryString = atob(fileData.data);
-      const bytes = new Uint8Array(binaryString.length).map((_, i) => binaryString.charCodeAt(i));
-      let extractionResult: { blocks: InternalBlock[], media: any[] } = { blocks: [], media: [] };
-
-      const fileMime = fileData.mimeType;
-      if (fileMime.includes("presentation")) {
-        extractionResult = await extractRawFromPPTX(bytes.buffer);
-      } else if (fileMime.includes("wordprocessingml")) {
-        extractionResult = await extractRawFromDOCX(bytes.buffer);
+      if (isNative) {
+        contentsParts.push({
+          inlineData: {
+            data: fileData.data,
+            mimeType: fileData.mimeType,
+          },
+        });
+        blocksCount += 1;
       } else {
-        const text = new TextDecoder().decode(bytes);
-        extractionResult.blocks = text.split("\n").filter(t => t.trim()).map((t, i) => ({
-          id: `txt-${i}`,
-          kind: "paragraph" as const,
-          text: t.trim(),
-          source_ref: { line: i + 1 }
-        }));
+        const binaryString = atob(fileData.data);
+        const bytes = new Uint8Array(binaryString.length).map((_, i) => binaryString.charCodeAt(i));
+        let extractionResult: { blocks: InternalBlock[], media: any[] } = { blocks: [], media: [] };
+
+        const fileMime = fileData.mimeType;
+        if (fileMime.includes("presentation")) {
+          extractionResult = await extractRawFromPPTX(bytes.buffer);
+        } else if (fileMime.includes("wordprocessingml")) {
+          extractionResult = await extractRawFromDOCX(bytes.buffer);
+        } else {
+          const text = new TextDecoder().decode(bytes);
+          extractionResult.blocks = text.split("\n").filter(t => t.trim()).map((t, i) => ({
+            id: `txt-${i}`,
+            kind: "paragraph" as const,
+            text: t.trim(),
+            source_ref: { line: i + 1 }
+          }));
+        }
+
+        blocksCount += extractionResult.blocks.length;
+
+        contentsParts.push({
+          text: `### MODELO INTERNO UNIFICADO (DOC: ${fileData.name})\n\n` +
+                JSON.stringify(extractionResult.blocks, null, 2)
+        });
+
+        extractionResult.media.slice(0, 8).forEach((m, i) => {
+          contentsParts.push({ inlineData: { data: m.data, mimeType: m.mimeType } });
+          contentsParts.push({ text: `[IMAGEM DE REFERÊNCIA ${i+1}: ENCONTRADA NO CONTEÚDO ORIGINAL]` });
+        });
       }
-
-      blocksCount += extractionResult.blocks.length;
-
-      contentsParts.push({
-        text: `### MODELO INTERNO UNIFICADO (DOC: ${fileData.name})\n\n` +
-              JSON.stringify(extractionResult.blocks, null, 2)
-      });
-
-      extractionResult.media.slice(0, 8).forEach((m, i) => {
-        contentsParts.push({ inlineData: { data: m.data, mimeType: m.mimeType } });
-        contentsParts.push({ text: `[IMAGEM DE REFERÊNCIA ${i+1}: ENCONTRADA NO CONTEÚDO ORIGINAL]` });
-      });
     }
   }
 
@@ -295,7 +592,10 @@ export async function processMediaWithGemini(
        - Inclua marcações de [Tom: ...] para guiar a entonação mística.
        `}
 
-    5. Slides (Visual Alchemy): Crie entre 10 e 25 slides (ou mais se necessário para cobrir 100% do conteúdo original). Crie uma estrutura ÚNICA para o perfil ${profile}, garantindo que exemplos e analogias tenham destaque visual:
+    5. Slides (Visual Alchemy): ${contentBlocks.length > 0
+      ? "Para CADA bloco deste lote, crie ao menos um slide próprio e slides adicionais quando necessários para cobrir integralmente o capítulo."
+      : "Crie entre 10 e 25 slides (ou mais se necessário para cobrir 100% do conteúdo original)."
+    } Crie uma estrutura ÚNICA para o perfil ${profile}, garantindo que exemplos e analogias tenham destaque visual:
        - 'mastermind': Estrutura analítica. Use analogias de "Engrenagens" e "Sistemas". Tópicos devem ser lógicos (Passo 1, Passo 2). Destaque o "Diagrama Lógico" como exemplo.
        - 'seeker': Estrutura de jornada. Tópicos como "Pista", "Rastro" ou "Horizonte". Use analogias de "Bússolas" e "Mapas". Destaque "Encontros" como exemplos.
        - 'survivor': Estrutura de alerta. Tópicos de "Atenção". Analogias de "Escudos" e "Abrigos". Destaque "Simulações de Campo" como exemplos.
@@ -319,10 +619,146 @@ export async function processMediaWithGemini(
          do guardiao ${config.guideName} — nunca icone generico de clipart, nunca
          texto ou letras dentro da imagem.
 
+    ${contentBlocks.length > 0 ? `
+    MODO DE GERAÇÃO POR BLOCOS:
+    - A resposta contém "chapters", exatamente um capítulo para cada bloco recebido.
+    - Preserve o id do bloco exatamente em "blockId"; não crie, funda ou omita ids.
+    - Cada markdown e audioScript cobre somente seu bloco, usando integralmente
+      conteudo_base, conteudo_aprofundado, objetivos, conceitos e exemplos.
+    - Cada capítulo deve ter ao menos um slide e TODO slide deve incluir o blockId
+      do capítulo em sourceIds. Use somente ids de bloco deste lote em sourceIds.
+    - Não escreva introdução ou conclusão global que substitua capítulos.
+    ` : ""}
+
     Estética: ${config.color} dominante, magia 2D, TrailUp Style.
     
     Traceability: No campo slides.sourceIds, relacione os IDs dos blocos originais que fundamentaram aquele slide.
   `;
+
+  if (contentBlocks.length > 0) {
+    const batchSize = resolveContentBlockBatchSize(
+      process.env.CONTENT_GENERATION_BLOCK_BATCH_SIZE,
+    );
+    const batches = partitionContentBlocks(contentBlocks, batchSize);
+    const batchResults: GeneratedBlockBatch[] = [];
+    const model = process.env.CONTENT_GENERATION_MODEL ?? "gemini-3-flash-preview";
+    const maxOutputTokens = Math.max(
+      8_192,
+      Number(process.env.CONTENT_GENERATION_BATCH_MAX_OUTPUT_TOKENS) || 32_768,
+    );
+
+    // Sequencial por intenção: mantém ordem determinística, limita pressão na
+    // cota do Gemini e impede uma chamada agregada de resumir os demais blocos.
+    for (let index = 0; index < batches.length; index++) {
+      const batch = batches[index];
+      const expectedIds = batch.map((block) => block.id);
+      const response = await getAi().models.generateContent({
+        model,
+        contents: [{
+          parts: [{
+            text:
+              `LOTE ${index + 1} DE ${batches.length}.\n`
+              + `IDS OBRIGATÓRIOS, NESTA ORDEM: ${JSON.stringify(expectedIds)}\n`
+              + "Gere um capítulo completo e independente para CADA bloco abaixo. "
+              + "Não responda com resumo global.\n\n"
+              + JSON.stringify(batch, null, 2),
+          }],
+        }],
+        config: {
+          systemInstruction,
+          temperature: 0.45,
+          maxOutputTokens,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              chapters: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    blockId: { type: Type.STRING },
+                    markdown: { type: Type.STRING },
+                    audioScript: { type: Type.STRING },
+                    slides: {
+                      type: Type.ARRAY,
+                      items: {
+                        type: Type.OBJECT,
+                        properties: {
+                          title: { type: Type.STRING },
+                          topics: {
+                            type: Type.ARRAY,
+                            items: { type: Type.STRING },
+                          },
+                          explanation: { type: Type.STRING },
+                          visualDescription: { type: Type.STRING },
+                          characterQuote: { type: Type.STRING },
+                          characterAction: {
+                            type: Type.STRING,
+                            description:
+                              "Ação: explaining, celebrating, thinking ou warning",
+                          },
+                          imagePrompt: { type: Type.STRING },
+                          iconPrompts: {
+                            type: Type.ARRAY,
+                            items: { type: Type.STRING },
+                          },
+                          sourceIds: {
+                            type: Type.ARRAY,
+                            items: { type: Type.STRING },
+                          },
+                        },
+                        required: [
+                          "title",
+                          "topics",
+                          "explanation",
+                          "visualDescription",
+                          "characterQuote",
+                          "characterAction",
+                          "imagePrompt",
+                          "iconPrompts",
+                          "sourceIds",
+                        ],
+                      },
+                    },
+                  },
+                  required: [
+                    "blockId",
+                    "markdown",
+                    "audioScript",
+                    "slides",
+                  ],
+                },
+              },
+              confidence: { type: Type.NUMBER },
+            },
+            required: ["chapters", "confidence"],
+          },
+        },
+      });
+      const responseText = String(response.text ?? "").trim();
+      if (!responseText) {
+        throw new Error(`Gemini retornou vazio no lote ${index + 1}.`);
+      }
+      let rawBatch: unknown;
+      try {
+        rawBatch = JSON.parse(responseText);
+      } catch (error) {
+        throw new Error(`Gemini retornou JSON inválido no lote ${index + 1}.`, {
+          cause: error,
+        });
+      }
+      batchResults.push(
+        validateBlockBatchGeneration(batch, rawBatch, index + 1),
+      );
+    }
+
+    return consolidateBlockBatchGenerations(contentBlocks, batchResults, {
+      batchSize,
+      family,
+      filesCount: filesData.length,
+    });
+  }
 
   const response = await getAi().models.generateContent({
     model: "gemini-3-flash-preview",
@@ -376,7 +812,8 @@ export async function processMediaWithGemini(
     metadata: {
       blocks_processed: blocksCount,
       confidence: rawResult.confidence || 0.9,
-      parser_used: `TrailUp ${family} Extractor (${filesData.length} fonte(s))`
+      parser_used: `TrailUp ${family} Extractor (${filesData.length} fonte(s))`,
+      generation_mode: "legacy_aggregate",
     }
   } as ProcessedContent;
 }

@@ -125,6 +125,58 @@ def _job_target():
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("conteudo_id", "expected_conflict", "expected_predicate"),
+    [
+        (
+            125,
+            "ON CONFLICT (aluno_id, topico_id, conteudo_id, brainhex_profile_key)",
+            "topico_id IS NOT NULL AND conteudo_id IS NOT NULL",
+        ),
+        (
+            None,
+            "ON CONFLICT (aluno_id, topico_id, brainhex_profile_key)",
+            "topico_id IS NOT NULL AND conteudo_id IS NULL",
+        ),
+    ],
+)
+async def test_personalizacao_upsert_is_scoped_by_content(
+    conteudo_id,
+    expected_conflict,
+    expected_predicate,
+) -> None:
+    session = RecordingSession([ScalarResult(901)])
+    repo = ConteudoPersonalizadoRepository(session)
+    repo._column_cache = {
+        "__loaded__": True,
+        **{column: True for column in repo._known_columns},
+    }
+
+    record_id = await repo.salvar(
+        aluno_id="22222222-2222-2222-2222-222222222222",
+        classe_id=32,
+        conteudo_id=conteudo_id,
+        topico_id=121,
+        ciclo_id="cycle-1",
+        plano={"brainhex_profile_key": "seeker"},
+        materiais={},
+        ai_patch=None,
+        status="processando_midias",
+        source_hash="hash-1",
+        formato_prioritario="cards",
+        formatos_gerados=["cards"],
+        brainhex_profile_key="seeker",
+    )
+
+    assert record_id == 901
+    sql, params = session.calls[0]
+    assert expected_conflict in sql
+    assert expected_predicate in sql
+    assert params["conteudo_id"] == conteudo_id
+    assert session.commits == 1
+
+
+@pytest.mark.asyncio
 async def test_personalizacao_job_and_targets_commit_atomically() -> None:
     session = RecordingSession(
         [

@@ -6,6 +6,8 @@ import {
   MEDIA_PIPELINE_VERSION,
   PRESENTATION_ENGINE_VERSION,
   PRESENTATION_SCHEMA_VERSION,
+  buildPresentationMaterialMetadata,
+  renderAndUploadPresentation,
 } from "../server";
 import {
   buildPresentationVersionMetadata,
@@ -15,7 +17,14 @@ import {
 
 // Starts an Express app on a random port and returns base URL + close function.
 async function startTestServer(opts: Parameters<typeof buildApp>[0] = {}) {
-  const app = buildApp(opts);
+  const app = buildApp({
+    presentationRendererReadiness: async () => ({
+      ready: true,
+      checked_at: "2026-07-28T00:00:00.000Z",
+      browser: "Chrome/Test",
+    }),
+    ...opts,
+  });
   const server = http.createServer(app);
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const addr = server.address() as { port: number };
@@ -23,6 +32,43 @@ async function startTestServer(opts: Parameters<typeof buildApp>[0] = {}) {
   const close = () => new Promise<void>((res, rej) => server.close((e) => (e ? rej(e) : res())));
   return { base, close };
 }
+
+const enrichedContentBlock = () => ({
+  id: "bloco-01",
+  ordem: 1,
+  tema: "Redes",
+  topico: "DNS",
+  objetivos: ["Compreender e aplicar a resolução de nomes."],
+  conteudo_base: "DNS resolve nomes.",
+  conteudo_aprofundado:
+    "DNS resolve nomes e conecta endereços legíveis aos servidores corretos. "
+    + "O processo consulta uma hierarquia distribuída, mantém respostas em cache "
+    + "e permite que o navegador encontre uma aplicação sem memorizar números.",
+  conceitos_chave: ["DNS", "resolução distribuída"],
+  exemplos_contextos: ["Abrir um endereço no navegador."],
+  ponte_proximo_bloco: "A resposta permite iniciar a requisição HTTP.",
+  source_ids: ["conteudo:1"],
+});
+
+const contentEnrichmentRequest = () => ({
+  schema_version: "trailup.content-blocks.v2",
+  source_hash: "hash-1",
+  tema: {
+    titulo: "Redes",
+    descricao: "Comunicação distribuída.",
+    objetivo: "Compreender DNS.",
+  },
+  blocos_base: [{
+    id: "bloco-01",
+    ordem: 1,
+    tema: "Redes",
+    topico: "DNS",
+    objetivos: ["Compreender DNS."],
+    conteudo_base: "DNS resolve nomes.",
+    source_ids: ["conteudo:1"],
+    segment_ids: ["segmento-0001"],
+  }],
+});
 
 // ─── GET /api/health ─────────────────────────────────────────────────────────
 
@@ -36,9 +82,14 @@ describe("GET /api/health", () => {
   it("retorna 200 com status ok", async () => {
     const res = await fetch(`${base}/api/health`);
     assert.equal(res.status, 200);
-    const body = await res.json() as { status: string; auth: boolean };
+    const body = await res.json() as {
+      status: string;
+      auth: boolean;
+      presentation_renderer: { ready: boolean };
+    };
     assert.equal(body.status, "ok");
     assert.equal(body.auth, false); // sem secret
+    assert.equal(body.presentation_renderer.ready, true);
   });
 
   it("auth=true quando apiSharedSecret configurado", async () => {
@@ -68,6 +119,29 @@ describe("GET /api/health", () => {
       assert.equal(body.presentation_engine_version, PRESENTATION_ENGINE_VERSION);
       assert.equal(body.presentation_schema, PRESENTATION_SCHEMA_VERSION);
       assert.equal(body.render_git_commit, "abc123render");
+    } finally {
+      await c();
+    }
+  });
+
+  it("retorna 503 quando o Chromium nao consegue gerar o PDF de probe", async () => {
+    const { base: b, close: c } = await startTestServer({
+      presentationRendererReadiness: async () => ({
+        ready: false,
+        checked_at: "2026-07-28T00:00:00.000Z",
+        error: "Chrome do Puppeteer nao encontrado",
+      }),
+    });
+    try {
+      const res = await fetch(`${b}/api/health`);
+      assert.equal(res.status, 503);
+      const body = await res.json() as {
+        status: string;
+        presentation_renderer: { ready: boolean; error?: string };
+      };
+      assert.equal(body.status, "degraded");
+      assert.equal(body.presentation_renderer.ready, false);
+      assert.match(body.presentation_renderer.error ?? "", /Chrome do Puppeteer/);
     } finally {
       await c();
     }
@@ -119,6 +193,99 @@ describe("auth middleware", () => {
       body: JSON.stringify({}),
     });
     assert.equal(res.status, 400); // auth OK, mas body inválido
+  });
+});
+
+describe("POST /api/enrich-content", () => {
+  it("exige o mesmo segredo dos demais endpoints de custo", async () => {
+    const { base, close } = await startTestServer({
+      apiSharedSecret: "shared-secret",
+    });
+    try {
+      const res = await fetch(`${base}/api/enrich-content`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(contentEnrichmentRequest()),
+      });
+      assert.equal(res.status, 401);
+    } finally {
+      await close();
+    }
+  });
+
+  it("valida, aprofunda e devolve os blocos antes da geração", async () => {
+    const calls: unknown[] = [];
+    const { base, close } = await startTestServer({
+      apiSharedSecret: "shared-secret",
+      contentEnrichmentRunner: async (request) => {
+        calls.push(request);
+        return {
+          schema_version: "trailup.content-blocks.v2" as const,
+          source_hash: request.source_hash,
+          tema: request.tema.titulo,
+          blocos: request.blocos_base.map((block) => ({
+            id: block.id,
+            ordem: block.ordem,
+            tema: block.tema,
+            topico: block.topico,
+            objetivos: ["Explicar e aplicar o conceito."],
+            conteudo_base: block.conteudo_base,
+            conteudo_aprofundado: enrichedContentBlock().conteudo_aprofundado,
+            conceitos_chave: ["DNS", "resolução distribuída"],
+            exemplos_contextos: ["Abrir um endereço no navegador."],
+            ponte_proximo_bloco: "Em seguida, HTTP.",
+            source_ids: block.source_ids,
+          })),
+          metadata: {
+            provider: "gemini" as const,
+            model: "gemini-test",
+            fallback: false as const,
+            blocos_recebidos: request.blocos_base.length,
+            blocos_gerados: request.blocos_base.length,
+          },
+        };
+      },
+    });
+    try {
+      const res = await fetch(`${base}/api/enrich-content`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-secret": "shared-secret",
+        },
+        body: JSON.stringify(contentEnrichmentRequest()),
+      });
+      assert.equal(res.status, 200);
+      const body = await res.json() as {
+        schema_version: string;
+        metadata: { fallback: boolean };
+      };
+      assert.equal(body.schema_version, "trailup.content-blocks.v2");
+      assert.equal(body.metadata.fallback, false);
+      assert.equal(calls.length, 1);
+    } finally {
+      await close();
+    }
+  });
+
+  it("retorna falha explícita quando o aprofundamento falha", async () => {
+    const { base, close } = await startTestServer({
+      contentEnrichmentRunner: async () => {
+        throw new Error("resposta rasa");
+      },
+    });
+    try {
+      const res = await fetch(`${base}/api/enrich-content`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(contentEnrichmentRequest()),
+      });
+      assert.equal(res.status, 502);
+      const body = await res.json() as { detail: string };
+      assert.match(body.detail, /resposta rasa/);
+    } finally {
+      await close();
+    }
   });
 });
 
@@ -190,11 +357,7 @@ describe("POST /api/personalizar validação", () => {
       profile: "seeker",
       personalizacao_id: 257,
       fontes: [],
-      content_blocks: [{
-        id: "bloco-01",
-        ordem: 1,
-        conteudo_aprofundado: "Conteudo suficiente para o teste.",
-      }],
+      content_blocks: [enrichedContentBlock()],
     });
     assert.equal(res.status, 409);
   });
@@ -214,11 +377,10 @@ describe("POST /api/personalizar validação", () => {
           profile: "seeker",
           personalizacao_id: 257,
           fontes: [],
-          content_blocks: [{
-            id: "bloco-01",
-            ordem: 1,
-            conteudo_aprofundado: "Conteudo suficiente para o teste.",
-          }],
+          content_blocks: [enrichedContentBlock()],
+          classe_id: 32,
+          topico_id: 121,
+          conteudo_id: 126,
           ciclo_id: "ciclo-257",
           source_hash: "hash-257",
           generation_key: "ciclo-257:hash-257",
@@ -244,12 +406,49 @@ describe("POST /api/personalizar validação", () => {
       assert.equal(
         call.storagePath,
         versionStoragePath(
-          "brainhex/seeker/classe-0/topico-0",
+          "brainhex/seeker/classe-32/topico-121/conteudo-126",
           "ciclo-257:hash-257",
         ),
       );
     } finally {
       await closeSync();
+    }
+  });
+
+  it("nao inicia o job quando o renderer de apresentacao esta indisponivel", async () => {
+    const calls: unknown[] = [];
+    const { base: guardedBase, close: closeGuarded } = await startTestServer({
+      personalizacaoJobRunner: async (params) => {
+        calls.push(params);
+      },
+      presentationRendererReadiness: async () => ({
+        ready: false,
+        checked_at: "2026-07-28T00:00:00.000Z",
+        error: "browser launch failed",
+      }),
+    });
+    try {
+      const res = await fetch(`${guardedBase}/api/personalizar`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          profile: "seeker",
+          personalizacao_id: 257,
+          fontes: [],
+          content_blocks: [enrichedContentBlock()],
+          ciclo_id: "ciclo-257",
+          source_hash: "hash-257",
+          generation_key: "ciclo-257:hash-257",
+        }),
+      });
+
+      assert.equal(res.status, 503);
+      const body = await res.json() as { status: string; error: string };
+      assert.equal(body.status, "renderer_unavailable");
+      assert.match(body.error, /browser launch failed/);
+      assert.equal(calls.length, 0);
+    } finally {
+      await closeGuarded();
     }
   });
 
@@ -267,11 +466,7 @@ describe("POST /api/personalizar validação", () => {
           profile: "seeker",
           personalizacao_id: 257,
           fontes: [],
-          content_blocks: [{
-            id: "bloco-01",
-            ordem: 1,
-            conteudo_aprofundado: "Conteudo suficiente para o teste.",
-          }],
+          content_blocks: [enrichedContentBlock()],
           ciclo_id: "ciclo-257",
           source_hash: "hash-257",
           generation_key: "ciclo-257:hash-257",
@@ -299,11 +494,7 @@ describe("POST /api/personalizar validação", () => {
       profile: "seeker",
       personalizacao_id: 257,
       fontes: [],
-      content_blocks: [{
-        id: "bloco-01",
-        ordem: 1,
-        conteudo_aprofundado: "Conteudo suficiente para o teste.",
-      }],
+      content_blocks: [enrichedContentBlock()],
       ciclo_id: "ciclo-257",
       source_hash: "hash-257",
       generation_key: "ciclo-257:hash-257",
@@ -349,10 +540,7 @@ describe("POST /api/personalizar validação", () => {
           profile: "seeker",
           personalizacao_id: 258,
           fontes: [],
-          content_blocks: [{
-            id: "bloco-01",
-            conteudo_aprofundado: "Conteudo suficiente para o teste.",
-          }],
+          content_blocks: [enrichedContentBlock()],
           ciclo_id: "ciclo-258",
           source_hash: "hash-258",
           generation_key: "ciclo-258:hash-258",
@@ -368,6 +556,73 @@ describe("POST /api/personalizar validação", () => {
     } finally {
       await closeAsync();
     }
+  });
+});
+
+describe("diagnostico da apresentacao", () => {
+  it("classifica falha de render e nao tenta upload", async () => {
+    let uploadCalls = 0;
+    const result = await renderAndUploadPresentation({
+      slides: [{ titulo: "Teste" }],
+      profile: "seeker",
+      bucket: "conteudo_aluno",
+      pdfPath: "brainhex/seeker/apresentacao/teste.pdf",
+      renderPdf: async () => {
+        throw new Error("Chrome\nnao iniciou");
+      },
+      uploadPdf: async () => {
+        uploadCalls += 1;
+        return "https://example.test/nao-deveria-subir.pdf";
+      },
+    });
+
+    assert.equal(result.pdfUrl, null);
+    assert.deepEqual(result.failure, {
+      stage: "render",
+      error: "Chrome nao iniciou",
+    });
+    assert.equal(uploadCalls, 0);
+  });
+
+  it("classifica falha de upload separadamente", async () => {
+    const result = await renderAndUploadPresentation({
+      slides: [{ titulo: "Teste" }],
+      profile: "seeker",
+      bucket: "conteudo_aluno",
+      pdfPath: "brainhex/seeker/apresentacao/teste.pdf",
+      renderPdf: async () => Buffer.from("%PDF-1.7"),
+      uploadPdf: async () => {
+        throw new Error("limite do bucket excedido");
+      },
+    });
+
+    assert.equal(result.pdfUrl, null);
+    assert.deepEqual(result.failure, {
+      stage: "upload",
+      error: "limite do bucket excedido",
+    });
+  });
+
+  it("persiste engine e causa real sem anunciar URL legada", () => {
+    const metadata = buildPresentationMaterialMetadata({
+      generationKey: "ciclo-1:hash-a",
+      pdfUrl: null,
+      bucket: "conteudo_aluno",
+      failure: {
+        stage: "render",
+        error: "Chrome do Puppeteer nao encontrado",
+      },
+      updatedAt: "2026-07-28T00:00:00.000Z",
+    });
+
+    assert.equal(metadata.status, "failed");
+    assert.equal(metadata.engine, PRESENTATION_ENGINE_VERSION);
+    assert.equal(metadata.schema, PRESENTATION_SCHEMA_VERSION);
+    assert.equal(metadata.media_pipeline_version, MEDIA_PIPELINE_VERSION);
+    assert.equal(metadata.generation_key, "ciclo-1:hash-a");
+    assert.equal(metadata.error_stage, "render");
+    assert.equal(metadata.error, "Chrome do Puppeteer nao encontrado");
+    assert.equal(metadata.bucket, undefined);
   });
 });
 

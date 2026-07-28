@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { deleteContentCascade } from "./classDeletion";
+import { enqueueClassDeltaJob } from "./personalizacaoJobsApi";
 
 interface Conteudo {
   id: number;
@@ -48,8 +49,23 @@ const tiposConteudo = [
   { value: "link", label: "Link Externo", icon: LinkIcon },
 ];
 
+// eslint-disable-next-line react-refresh/only-export-components
+export function buildContentDeltaPayload(params: {
+  classeId: number;
+  topicoId: number;
+  conteudoId?: number;
+  reason: string;
+}) {
+  return {
+    classe_id: params.classeId,
+    topico_ids: [params.topicoId],
+    ...(params.conteudoId == null ? {} : { conteudo_ids: [params.conteudoId] }),
+    reason: params.reason,
+  };
+}
+
 export default function ContentsManager() {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const professorId = user?.id;
 
   const [conteudos, setConteudos] = useState<Conteudo[]>([]);
@@ -123,6 +139,26 @@ export default function ContentsManager() {
       ? conteudos
       : conteudos.filter((c) => c.topico_id.toString() === selectedTopicFilter);
 
+  const enqueueDeltaSafely = async (params: {
+    classeId: number;
+    topicoId: number;
+    conteudoId?: number;
+    reason: string;
+    successContext: string;
+  }) => {
+    try {
+      await enqueueClassDeltaJob(
+        String(session?.access_token ?? ""),
+        buildContentDeltaPayload(params)
+      );
+    } catch (error) {
+      console.error("[ContentsManager] Falha ao enfileirar class-delta:", error);
+      toast.warning(
+        `${params.successContext}, mas o job de personalizacao nao foi enfileirado. Tente novamente.`
+      );
+    }
+  };
+
   const handleSubmit = async () => {
     if (!formData.titulo || !formData.topico_id) {
       toast.error("Preencha o título e selecione um tópico");
@@ -132,8 +168,11 @@ export default function ContentsManager() {
     setIsSaving(true);
 
     try {
+      let savedContent: Conteudo;
+      const previousTopicId = editingContent?.topico_id;
+
       if (editingContent) {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from("conteudos")
           .update({
             titulo: formData.titulo,
@@ -143,9 +182,15 @@ export default function ContentsManager() {
             ordem: parseInt(formData.ordem, 10),
             metadata: formData.metadata ? JSON.parse(formData.metadata) : null,
           })
-          .eq("id", editingContent.id);
+          .eq("id", editingContent.id)
+          .select("id, topico_id, titulo, tipo, conteudo, ordem, metadata")
+          .single();
 
         if (error) throw error;
+        savedContent = data as Conteudo;
+        setConteudos((prev) =>
+          prev.map((content) => content.id === savedContent.id ? savedContent : content)
+        );
         toast.success("Conteúdo atualizado!");
       } else {
         const { data, error } = await supabase
@@ -162,8 +207,34 @@ export default function ContentsManager() {
           .single();
 
         if (error) throw error;
-        setConteudos((prev) => [...prev, data as Conteudo]);
+        savedContent = data as Conteudo;
+        setConteudos((prev) => [...prev, savedContent]);
         toast.success("Conteúdo criado!");
+      }
+
+      const savedTopic = topicos.find((topic) => topic.id === savedContent.topico_id);
+      if (savedTopic) {
+        await enqueueDeltaSafely({
+          classeId: savedTopic.classe_id,
+          topicoId: savedContent.topico_id,
+          conteudoId: savedContent.id,
+          reason: editingContent ? "edicao_conteudo_console" : "novo_conteudo_console",
+          successContext: editingContent ? "Conteúdo atualizado" : "Conteúdo criado",
+        });
+      } else {
+        toast.warning("Conteúdo salvo, mas não foi possível identificar a classe para gerar a personalização.");
+      }
+
+      if (previousTopicId != null && previousTopicId !== savedContent.topico_id) {
+        const previousTopic = topicos.find((topic) => topic.id === previousTopicId);
+        if (previousTopic) {
+          await enqueueDeltaSafely({
+            classeId: previousTopic.classe_id,
+            topicoId: previousTopic.id,
+            reason: "conteudo_movido_de_topico_console",
+            successContext: "Conteúdo movido",
+          });
+        }
       }
 
       await loadData();
@@ -192,10 +263,23 @@ export default function ContentsManager() {
   };
 
   const handleDelete = async (id: number) => {
+    const content = conteudos.find((item) => item.id === id);
+    const topic = content ? topicos.find((item) => item.id === content.topico_id) : undefined;
+
     try {
       await deleteContentCascade(id);
       setConteudos((prev) => prev.filter((c) => c.id !== id));
       toast.success("Conteúdo excluído!");
+      if (topic) {
+        await enqueueDeltaSafely({
+          classeId: topic.classe_id,
+          topicoId: topic.id,
+          reason: "remocao_conteudo_console",
+          successContext: "Conteúdo excluído",
+        });
+      } else {
+        toast.warning("Conteúdo excluído, mas não foi possível identificar o tópico para atualizar a personalização.");
+      }
     } catch (error) {
       console.error("Erro ao excluir conteúdo:", error);
       toast.error("Não foi possível excluir o conteúdo.");

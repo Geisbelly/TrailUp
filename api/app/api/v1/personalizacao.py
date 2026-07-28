@@ -47,6 +47,7 @@ from app.schemas.personalizacao import (
     PersonalizarPayload,
 )
 from app.services.auth import UserContext
+from app.services.content_enrichment import ContentEnrichmentError, enrich_content_blocks
 from app.services.group_analysis import GroupAnalysisService
 from app.services.llm import JsonLLMService, load_prompt
 from app.services.media_agents import disparar_brainhex_async
@@ -878,6 +879,21 @@ async def personalizar(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
+    # O currículo-base é decomposto e aprofundado antes de qualquer adaptação
+    # BrainHex. Falha de enriquecimento interrompe a geração em vez de aceitar
+    # conteúdo raso como fallback.
+    await session.commit()
+    try:
+        content_enrichment = await enrich_content_blocks(
+            context=ctx,
+            settings=settings,
+        )
+    except ContentEnrichmentError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+
     cards_payload = await gerar_cards_direto(
         perfil=ctx["perfil_dominante"],
         conteudo_classe=ctx["conteudo_classe"],
@@ -897,6 +913,11 @@ async def personalizar(
         aluno_id=aluno_id,
         classe_id=payload.classe_id,
         topico_id=int(resolved_topico_id or 0),
+        conteudo_id=(
+            int(resolved_conteudo_id)
+            if resolved_conteudo_id is not None
+            else None
+        ),
         ciclo_id=ctx["ciclo_id"],
         brainhex_profile_key=brainhex_profile_key,
     )
@@ -920,13 +941,22 @@ async def personalizar(
     record_id = await repo.salvar(
         aluno_id=aluno_id,
         classe_id=payload.classe_id,
-        topico_id=payload.topico_id,
-        conteudo_id=payload.conteudo_id,
+        topico_id=(
+            int(resolved_topico_id)
+            if resolved_topico_id is not None
+            else None
+        ),
+        conteudo_id=(
+            int(resolved_conteudo_id)
+            if resolved_conteudo_id is not None
+            else None
+        ),
         ciclo_id=ctx["ciclo_id"],
         plano={
             "perfil_dominante": ctx.get("perfil_dominante"),
             "brainhex_profile_key": brainhex_profile_key,
             "cards_personalizados_ids": cards_ids,
+            "content_enrichment": content_enrichment,
         },
         materiais={},
         ai_patch=None,
@@ -950,10 +980,16 @@ async def personalizar(
             settings=settings,
             perfil=ctx["perfil_dominante"],
             fontes=ctx["fontes"],
+            content_blocks=content_enrichment.get("blocos") or [],
             personalizacao_id=int(record_id),
             aluno_id=aluno_id,
             classe_id=payload.classe_id,
-            topico_id=payload.topico_id,
+            topico_id=(
+                int(resolved_topico_id)
+                if resolved_topico_id is not None
+                else None
+            ),
+            conteudo_id=resolved_conteudo_id,
             ciclo_id=ctx["ciclo_id"],
             source_hash=ctx["source_hash"],
             generation_key=generation_key,
@@ -1454,6 +1490,7 @@ async def upsert_progresso_personalizado(
 async def listar_personalizacoes_por_perfil(
     classe_id: int,
     topico_id: int,
+    conteudo_id: int | None = Query(default=None, gt=0),
     user: UserContext = Depends(require_professor),
     session: AsyncSession = Depends(get_session),
 ) -> PersonalizacaoPorPerfilResponse:
@@ -1475,6 +1512,31 @@ async def listar_personalizacoes_por_perfil(
 
     personalizacao_repo = ConteudoPersonalizadoRepository(session)
     classe_repo = ConteudoClasseRepository(session)
+    topic_class_id = await classe_repo.buscar_classe_id_por_topico(topico_id)
+    if topic_class_id != classe_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Topico nao encontrado nesta classe.",
+        )
+
+    conteudo_titulo: str | None = None
+    if conteudo_id is not None:
+        scoped_content = next(
+            (
+                item
+                for item in await classe_repo.buscar_conteudos_topico(topico_id)
+                if int(item.get("id") or 0) == conteudo_id
+            ),
+            None,
+        )
+        if scoped_content is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Conteudo nao encontrado neste topico.",
+            )
+        conteudo_titulo = str(
+            scoped_content.get("titulo") or f"Conteudo {conteudo_id}"
+        )
 
     alunos = await classe_repo.listar_alunos_classe_com_perfil_dominante(classe_id)
     contagem_por_perfil: dict[str, int] = {}
@@ -1488,6 +1550,7 @@ async def listar_personalizacoes_por_perfil(
         record = await personalizacao_repo.buscar_mais_recente_por_perfil(
             classe_id=classe_id,
             topico_id=topico_id,
+            conteudo_id=conteudo_id,
             brainhex_profile_key=perfil,
         )
         personalizacao_response = _to_response(record) if record else None
@@ -1524,6 +1587,8 @@ async def listar_personalizacoes_por_perfil(
     return PersonalizacaoPorPerfilResponse(
         classe_id=classe_id,
         topico_id=topico_id,
+        conteudo_id=conteudo_id,
+        conteudo_titulo=conteudo_titulo,
         total_perfis_com_material=total_com_material,
         perfis=perfis,
     )

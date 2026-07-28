@@ -235,6 +235,8 @@ class PersonalizacaoPorPerfilResponse(BaseModel):
 
     classe_id: int
     topico_id: int
+    conteudo_id: int | None = None
+    conteudo_titulo: str | None = None
     total_perfis_com_material: int = 0
     perfis: list[PersonalizacaoPerfilItem] = Field(default_factory=list)
 

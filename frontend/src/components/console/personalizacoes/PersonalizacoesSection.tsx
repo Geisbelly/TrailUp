@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -22,6 +22,7 @@ import { getPersonalizacaoStatusBadge } from "./statusBadge";
 
 type ClasseRow = { id: number; descricao: string | null };
 type TopicoRow = { id: number; classe_id: number; nome: string | null; ordem: number | null };
+type ConteudoRow = { id: number; topico_id: number; titulo: string | null; ordem: number | null };
 type AlunoRow = { id: string; nome: string | null; email: string | null; perfil_dominante: string };
 
 type MaterialTipo = "markdown" | "pdf" | "audio" | "apresentacao";
@@ -57,14 +58,19 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
 
   const [classes, setClasses] = useState<ClasseRow[]>([]);
   const [topicos, setTopicos] = useState<TopicoRow[]>([]);
+  const [conteudos, setConteudos] = useState<ConteudoRow[]>([]);
   const [alunos, setAlunos] = useState<AlunoRow[]>([]);
   const [classeId, setClasseId] = useState<string>("");
   const [topicoId, setTopicoId] = useState<string>("");
+  const [conteudoId, setConteudoId] = useState<string>("");
   const [alunoId, setAlunoId] = useState<string>("");
+  const [conteudosLoading, setConteudosLoading] = useState(false);
+  const [conteudosError, setConteudosError] = useState<string | null>(null);
 
   const [porPerfil, setPorPerfil] = useState<PersonalizacaoPorPerfilResponse | null>(null);
   const [porPerfilLoading, setPorPerfilLoading] = useState(false);
   const [porPerfilError, setPorPerfilError] = useState<string | null>(null);
+  const porPerfilRequestId = useRef(0);
 
   const [contextoAluno, setContextoAluno] = useState<PersonalizacaoContextoDocenteResponse | null>(null);
   const [contextoLoading, setContextoLoading] = useState(false);
@@ -106,7 +112,11 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
     const numericClasse = Number(classeId);
     if (!Number.isFinite(numericClasse) || numericClasse <= 0) {
       setTopicos([]);
+      setTopicoId("");
+      setConteudos([]);
+      setConteudoId("");
       setAlunos([]);
+      setAlunoId("");
       return;
     }
     let active = true;
@@ -122,7 +132,12 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
       if (!active) return;
       const topicoRows = (topicosData ?? []) as TopicoRow[];
       setTopicos(topicoRows);
-      setTopicoId((prev) => prev || (topicoRows.length > 0 ? String(topicoRows[0].id) : ""));
+      const nextTopicoId = topicoRows.length > 0 ? String(topicoRows[0].id) : "";
+      setTopicoId(nextTopicoId);
+      setConteudos([]);
+      setConteudoId("");
+      setConteudosError(null);
+      setConteudosLoading(Boolean(nextTopicoId));
 
       const alunoIds = Array.from(
         new Set(((classeAlunoData ?? []) as Array<{ aluno_id: string | null }>).map((r) => r.aluno_id).filter(Boolean))
@@ -130,6 +145,7 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
 
       if (alunoIds.length === 0) {
         setAlunos([]);
+        setAlunoId("");
         return;
       }
 
@@ -159,34 +175,127 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
         })
       );
       setAlunos(alunoRows);
-      setAlunoId((prev) => prev || (alunoRows.length > 0 ? alunoRows[0].id : ""));
+      setAlunoId(alunoRows.length > 0 ? alunoRows[0].id : "");
     })();
     return () => {
       active = false;
     };
   }, [classeId]);
 
+  const handleClasseChange = useCallback((value: string) => {
+    porPerfilRequestId.current += 1;
+    setClasseId(value);
+    setTopicos([]);
+    setTopicoId("");
+    setConteudos([]);
+    setConteudoId("");
+    setConteudosError(null);
+    setConteudosLoading(false);
+    setAlunos([]);
+    setAlunoId("");
+    setPorPerfil(null);
+    setPorPerfilLoading(false);
+    setPorPerfilError(null);
+  }, []);
+
+  const handleTopicoChange = useCallback((value: string) => {
+    porPerfilRequestId.current += 1;
+    setTopicoId(value);
+    setConteudos([]);
+    setConteudoId("");
+    setConteudosError(null);
+    setConteudosLoading(Boolean(value));
+    setPorPerfil(null);
+    setPorPerfilLoading(false);
+    setPorPerfilError(null);
+  }, []);
+
+  // Cada conteudo do topico possui sete variacoes BrainHex independentes.
+  useEffect(() => {
+    const numericTopico = Number(topicoId);
+    if (!Number.isFinite(numericTopico) || numericTopico <= 0) {
+      setConteudos([]);
+      setConteudoId("");
+      setConteudosLoading(false);
+      setConteudosError(null);
+      return;
+    }
+
+    let active = true;
+    setConteudosLoading(true);
+    setConteudosError(null);
+    void (async () => {
+      const { data, error } = await supabase
+        .from("conteudos")
+        .select("id, topico_id, titulo, ordem")
+        .eq("topico_id", numericTopico)
+        .order("ordem", { ascending: true })
+        .order("id", { ascending: true });
+
+      if (!active) return;
+      if (error) {
+        setConteudos([]);
+        setConteudoId("");
+        setConteudosError("Nao foi possivel carregar os conteudos deste topico.");
+        setConteudosLoading(false);
+        return;
+      }
+
+      const rows = (data ?? []) as ConteudoRow[];
+      setConteudos(rows);
+      setConteudoId((current) =>
+        rows.some((item) => String(item.id) === current)
+          ? current
+          : rows.length > 0
+            ? String(rows[0].id)
+            : ""
+      );
+      setConteudosLoading(false);
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [topicoId]);
+
   // Busca personalizacao por perfil (visoes 1 e 2)
   const loadPorPerfil = useCallback(async () => {
+    const requestId = ++porPerfilRequestId.current;
     const numericClasse = Number(classeId);
     const numericTopico = Number(topicoId);
-    if (!Number.isFinite(numericClasse) || !Number.isFinite(numericTopico) || numericTopico <= 0) {
+    const numericConteudo = Number(conteudoId);
+    if (
+      conteudosLoading ||
+      conteudosError ||
+      !Number.isFinite(numericClasse) ||
+      !Number.isFinite(numericTopico) ||
+      numericTopico <= 0 ||
+      (conteudos.length > 0 && (!Number.isFinite(numericConteudo) || numericConteudo <= 0))
+    ) {
       setPorPerfil(null);
+      setPorPerfilLoading(false);
+      setPorPerfilError(null);
       return;
     }
     setPorPerfilLoading(true);
     setPorPerfilError(null);
     try {
       const token = await resolveToken();
-      const data = await fetchPersonalizacaoPorPerfil(token, { classeId: numericClasse, topicoId: numericTopico });
-      setPorPerfil(data);
+      const data = await fetchPersonalizacaoPorPerfil(token, {
+        classeId: numericClasse,
+        topicoId: numericTopico,
+        conteudoId: Number.isFinite(numericConteudo) && numericConteudo > 0 ? numericConteudo : undefined,
+      });
+      if (requestId === porPerfilRequestId.current) setPorPerfil(data);
     } catch (error) {
-      setPorPerfil(null);
-      setPorPerfilError(error instanceof Error ? error.message : "Falha ao carregar personalizações por perfil.");
+      if (requestId === porPerfilRequestId.current) {
+        setPorPerfil(null);
+        setPorPerfilError(error instanceof Error ? error.message : "Falha ao carregar personalizações por perfil.");
+      }
     } finally {
-      setPorPerfilLoading(false);
+      if (requestId === porPerfilRequestId.current) setPorPerfilLoading(false);
     }
-  }, [classeId, topicoId, resolveToken]);
+  }, [classeId, conteudoId, conteudos.length, conteudosError, conteudosLoading, topicoId, resolveToken]);
 
   useEffect(() => {
     void loadPorPerfil();
@@ -248,6 +357,10 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
   }, [loadGrupo]);
 
   const alunoSelecionado = useMemo(() => alunos.find((a) => a.id === alunoId) ?? null, [alunos, alunoId]);
+  const conteudoSelecionado = useMemo(
+    () => conteudos.find((item) => String(item.id) === conteudoId) ?? null,
+    [conteudoId, conteudos]
+  );
 
   const perfilDoAluno = useMemo(() => {
     if (!alunoSelecionado || !porPerfil) return null;
@@ -268,7 +381,7 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
         <CardContent className="flex flex-wrap items-end gap-4 pt-6">
           <div className="space-y-1">
             <p className="text-xs font-medium text-muted-foreground">Classe</p>
-            <Select value={classeId} onValueChange={setClasseId}>
+            <Select value={classeId} onValueChange={handleClasseChange}>
               <SelectTrigger className="w-56">
                 <SelectValue placeholder="Selecione a classe" />
               </SelectTrigger>
@@ -283,7 +396,7 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
           </div>
           <div className="space-y-1">
             <p className="text-xs font-medium text-muted-foreground">Tópico</p>
-            <Select value={topicoId} onValueChange={setTopicoId} disabled={topicos.length === 0}>
+            <Select value={topicoId} onValueChange={handleTopicoChange} disabled={topicos.length === 0}>
               <SelectTrigger className="w-56">
                 <SelectValue placeholder="Selecione o tópico" />
               </SelectTrigger>
@@ -296,7 +409,40 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
               </SelectContent>
             </Select>
           </div>
-          <Button variant="outline" size="sm" onClick={() => void loadPorPerfil()} disabled={porPerfilLoading}>
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-muted-foreground">Conteúdo</p>
+            <Select
+              value={conteudoId}
+              onValueChange={(value) => {
+                porPerfilRequestId.current += 1;
+                setConteudoId(value);
+                setPorPerfil(null);
+                setPorPerfilLoading(false);
+                setPorPerfilError(null);
+              }}
+              disabled={conteudosLoading || conteudos.length === 0}
+            >
+              <SelectTrigger className="w-64">
+                <SelectValue
+                  placeholder={conteudosLoading ? "Carregando conteúdos..." : "Nenhum conteúdo neste tópico"}
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {conteudos.map((conteudo) => (
+                  <SelectItem key={conteudo.id} value={String(conteudo.id)}>
+                    {conteudo.titulo || `Conteúdo ${conteudo.id}`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {conteudosError && <p className="text-xs text-destructive">{conteudosError}</p>}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void loadPorPerfil()}
+            disabled={porPerfilLoading || conteudosLoading || Boolean(conteudosError)}
+          >
             {porPerfilLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Atualizar"}
           </Button>
         </CardContent>
@@ -343,7 +489,8 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
           ) : (
             <>
               <p className="text-sm text-muted-foreground">
-                {porPerfil.total_perfis_com_material} de 7 perfis com material gerado para este tópico.
+                {porPerfil.total_perfis_com_material} de 7 perfis com material gerado
+                {conteudoSelecionado ? ` para "${conteudoSelecionado.titulo || `Conteúdo ${conteudoSelecionado.id}`}"` : " para este tópico"}.
               </p>
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {porPerfil.perfis.map((item) => (
@@ -359,7 +506,7 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
           {!porPerfil ? (
             <Card>
               <CardContent className="pt-6 text-sm text-muted-foreground">
-                Selecione uma classe e um tópico para ver a estrutura de apresentação por perfil.
+                Selecione uma classe, um tópico e um conteúdo para ver a estrutura de apresentação por perfil.
               </CardContent>
             </Card>
           ) : (
@@ -414,6 +561,7 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
               aluno={alunoSelecionado}
               contexto={contextoAluno}
               perfilDoAluno={perfilDoAluno}
+              conteudoId={conteudoSelecionado?.id}
             />
           )}
         </TabsContent>
@@ -610,7 +758,7 @@ function PerfilMaterialCard({ item }: { item: PersonalizacaoPerfilItem }) {
           </>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Ainda não há personalização gerada para este perfil neste tópico.
+            Ainda não há personalização gerada para este perfil no conteúdo selecionado.
           </p>
         )}
       </CardContent>
@@ -674,13 +822,19 @@ function AlunoPreview({
   aluno,
   contexto,
   perfilDoAluno,
+  conteudoId,
 }: {
   aluno: AlunoRow;
   contexto: PersonalizacaoContextoDocenteResponse | null;
   perfilDoAluno: PersonalizacaoPerfilItem | null;
+  conteudoId?: number;
 }) {
   const personalizacoes = contexto?.personalizacoes ?? [];
-  const efetiva = personalizacoes[0] ?? null;
+  const efetiva = (
+    conteudoId == null
+      ? personalizacoes[0]
+      : personalizacoes.find((item) => item.conteudo_id === conteudoId)
+  ) ?? null;
   const statusBadge = efetiva
     ? getPersonalizacaoStatusBadge({
         temPersonalizacao: true,

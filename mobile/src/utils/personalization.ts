@@ -49,6 +49,11 @@ type NormalizeInput = {
   source?: "cache" | "remote" | "fallback";
 };
 
+type TeacherContentOrder = {
+  id?: number | string | null;
+  ordem?: number | string | null;
+};
+
 function normalizeDisplayText(value: unknown) {
   return String(value ?? "").trim();
 }
@@ -103,6 +108,116 @@ function pickPositiveInt(...values: unknown[]) {
     }
   }
   return null;
+}
+
+export function buildPersonalizationContentScopeKey(
+  topicoId: number,
+  conteudoId?: number | null
+) {
+  const normalizedTopicoId = pickPositiveInt(topicoId) ?? 0;
+  const normalizedConteudoId = pickPositiveInt(conteudoId);
+  return `${normalizedTopicoId}:${normalizedConteudoId ?? "topico"}`;
+}
+
+export function buildContentScopedPersonalizationItemKey(params: {
+  itemKey: string;
+  conteudoId?: number | null;
+  personalizacaoId?: number | null;
+}) {
+  const itemKey = normalizeDisplayText(params.itemKey);
+  const conteudoId = pickPositiveInt(params.conteudoId);
+  if (!conteudoId) return itemKey;
+
+  const personalizacaoId = pickPositiveInt(params.personalizacaoId);
+  const prefix = `content:${conteudoId}:personalization:${personalizacaoId ?? "current"}`;
+  if (itemKey === prefix || itemKey.startsWith(`${prefix}:`)) return itemKey;
+  return `${prefix}:${itemKey || "item"}`;
+}
+
+export function groupPersonalizedItemsByContent<
+  T extends { topico_id?: number | null; conteudo_id?: number | null }
+>(items: T[]) {
+  const grouped = new Map<string, T[]>();
+  for (const item of items) {
+    const topicoId = pickPositiveInt(item?.topico_id);
+    if (!topicoId) continue;
+    const key = buildPersonalizationContentScopeKey(
+      topicoId,
+      pickPositiveInt(item?.conteudo_id)
+    );
+    const scopedItems = grouped.get(key) ?? [];
+    scopedItems.push(item);
+    grouped.set(key, scopedItems);
+  }
+  return grouped;
+}
+
+export function orderPersonalizationRecordsByTeacherContent<
+  T extends {
+    id?: number | null;
+    conteudo_id?: number | null;
+    updated_at?: string | null;
+    gerado_em?: string | null;
+  }
+>(records: T[], teacherContents: TeacherContentOrder[]) {
+  const timestamp = (record: T) => {
+    const parsed = new Date(record.updated_at ?? record.gerado_em ?? 0).getTime();
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+  const newestFirst = (left: T, right: T) => {
+    const byTime = timestamp(right) - timestamp(left);
+    if (byTime !== 0) return byTime;
+    return Number(right.id ?? 0) - Number(left.id ?? 0);
+  };
+
+  const scopedRecords = records.filter((record) =>
+    Boolean(pickPositiveInt(record?.conteudo_id))
+  );
+  if (scopedRecords.length === 0) {
+    return records.slice().sort(newestFirst).slice(0, 1);
+  }
+
+  const latestByContent = new Map<number, T>();
+  for (const record of scopedRecords.slice().sort(newestFirst)) {
+    const conteudoId = pickPositiveInt(record.conteudo_id);
+    if (conteudoId && !latestByContent.has(conteudoId)) {
+      latestByContent.set(conteudoId, record);
+    }
+  }
+
+  const teacherOrder = new Map<number, number>();
+  teacherContents
+    .map((content, originalIndex) => ({
+      id: pickPositiveInt(content?.id),
+      ordem:
+        content?.ordem == null || content.ordem === ""
+          ? Number.NaN
+          : Number(content.ordem),
+      originalIndex,
+    }))
+    .filter((content): content is { id: number; ordem: number; originalIndex: number } =>
+      Boolean(content.id)
+    )
+    .sort((left, right) => {
+      const leftOrder = Number.isFinite(left.ordem)
+        ? left.ordem
+        : Number.MAX_SAFE_INTEGER;
+      const rightOrder = Number.isFinite(right.ordem)
+        ? right.ordem
+        : Number.MAX_SAFE_INTEGER;
+      if (leftOrder !== rightOrder) return leftOrder - rightOrder;
+      return left.originalIndex - right.originalIndex;
+    })
+    .forEach((content, index) => teacherOrder.set(content.id, index));
+
+  return Array.from(latestByContent.entries())
+    .sort(([leftId], [rightId]) => {
+      const leftOrder = teacherOrder.get(leftId) ?? Number.MAX_SAFE_INTEGER;
+      const rightOrder = teacherOrder.get(rightId) ?? Number.MAX_SAFE_INTEGER;
+      if (leftOrder !== rightOrder) return leftOrder - rightOrder;
+      return leftId - rightId;
+    })
+    .map(([, record]) => record);
 }
 
 function normalizeQuestionType(value: unknown, fallback: "quiz" | "true_false" | "fill_blank" | "essay" = "quiz") {
@@ -326,6 +441,10 @@ function resolveStorageDefaults(
       "mastermind"
     )
   );
+  const conteudoId = pickPositiveInt(record.conteudo_id, record.conteudoId);
+  const storageBasePath =
+    `brainhex/${profileKey}/classe-${classeId}/topico-${topicoId}` +
+    (conteudoId ? `/conteudo-${conteudoId}` : "");
 
   return {
     bucket: "conteudo_aluno",
@@ -337,7 +456,9 @@ function resolveStorageDefaults(
     perfil_dominante: profileKey,
     classe_id: classeId,
     topico_id: topicoId,
-    storage_base_path: `brainhex/${profileKey}/classe-${classeId}/topico-${topicoId}`,
+    conteudo_id: conteudoId,
+    contentId: conteudoId,
+    storage_base_path: storageBasePath,
   } satisfies LooseRecord;
 }
 
@@ -1534,6 +1655,82 @@ function normalizeRemotePersonalizedSteps(
     .sort((left, right) => left.ordem - right.ordem);
 }
 
+function scopePersonalizedStepsToContent(params: {
+  steps: PersonalizedTopicStep[];
+  conteudoId?: number | null;
+  personalizacaoId?: number | null;
+}) {
+  const conteudoId = pickPositiveInt(params.conteudoId);
+  const personalizacaoId = pickPositiveInt(params.personalizacaoId);
+
+  return params.steps.map((step) => {
+    const sourceItemKey = normalizeDisplayText(step.item_key);
+    const itemKey = buildContentScopedPersonalizationItemKey({
+      itemKey: sourceItemKey,
+      conteudoId,
+      personalizacaoId,
+    });
+    const identityMetadata = {
+      itemKey,
+      item_key: itemKey,
+      sourceItemKey,
+      source_item_key: sourceItemKey,
+      ...(conteudoId
+        ? {
+            contentId: conteudoId,
+            conteudo_id: conteudoId,
+          }
+        : {}),
+      ...(personalizacaoId
+        ? {
+            personalizationId: personalizacaoId,
+            personalizacao_id: personalizacaoId,
+          }
+        : {}),
+    };
+    const blocks = (step.blocks ?? []).map((block) => {
+      if (!block.payload || typeof block.payload !== "object") return block;
+      const payload = block.payload as Exclude<ContentBlock["payload"], string>;
+      const metadata =
+        payload.metadata && typeof payload.metadata === "object"
+          ? (payload.metadata as LooseRecord)
+          : {};
+      return {
+        ...block,
+        payload: {
+          ...payload,
+          metadata: {
+            ...metadata,
+            ...identityMetadata,
+          },
+        },
+      };
+    });
+    const activity = step.activity
+      ? {
+          ...step.activity,
+          personalizationKey: itemKey,
+          conteudo_ids: conteudoId
+            ? Array.from(new Set([...(step.activity.conteudo_ids ?? []), conteudoId]))
+            : step.activity.conteudo_ids,
+        }
+      : step.activity;
+
+    return {
+      ...step,
+      item_key: itemKey,
+      blocks,
+      activity,
+      metadata: {
+        ...((step.metadata && typeof step.metadata === "object"
+          ? step.metadata
+          : {}) as Record<string, unknown>),
+        ...identityMetadata,
+      },
+    };
+  });
+}
+
 export function normalizePersonalizedTopicPayload({
   record,
   classeId,
@@ -1543,13 +1740,15 @@ export function normalizePersonalizedTopicPayload({
   presentationMode = "conteudo_primeiro",
   source = "remote",
 }: NormalizeInput): PersonalizedTopicPayload {
+  const recordId = pickPositiveInt(record.id);
+  const conteudoId = pickPositiveInt(record.conteudo_id, record.conteudoId);
   const materiais = asLooseRecord(record.materiais);
   const storageDefaults = resolveStorageDefaults(record, materiais, classeId, topicoId);
   const plano = asLooseRecord(record.plano);
   const remoteSteps = normalizeRemotePersonalizedSteps(
     parseJsonIfString(record.steps),
     topicoId,
-    Number(record.id ?? 0)
+    recordId ?? 0
   );
   const planSummary = summarizePlan(record);
   const aiPatch = extractAIPatch(record);
@@ -1696,19 +1895,17 @@ export function normalizePersonalizedTopicPayload({
         ]
       : []),
   ];
-  const primaryBlocks =
-    remoteSteps.length > 0
-      ? remoteSteps.flatMap((step) => (step.kind === "content" ? step.blocks ?? [] : []))
-      : derivedPrimaryBlocks;
-  const primaryActivities =
-    remoteSteps.length > 0
-      ? remoteSteps.flatMap((step) =>
-          step.kind === "activity" && step.activity ? [step.activity] : []
-        )
-      : quizActivity
-      ? [quizActivity]
-      : [];
-  const steps = remoteSteps.length > 0 ? remoteSteps : derivedSteps;
+  const steps = scopePersonalizedStepsToContent({
+    steps: remoteSteps.length > 0 ? remoteSteps : derivedSteps,
+    conteudoId,
+    personalizacaoId: recordId,
+  });
+  const primaryBlocks = steps.flatMap((step) =>
+    step.kind === "content" ? step.blocks ?? [] : []
+  );
+  const primaryActivities = steps.flatMap((step) =>
+    step.kind === "activity" && step.activity ? [step.activity] : []
+  );
 
   return {
     topicoId,
@@ -1839,7 +2036,7 @@ export function normalizePersonalizedTopicPayload({
         : null,
     ].filter(Boolean) as any[],
     planMeta: {
-      recordId: Number(record.id ?? 0) || null,
+      recordId,
       cycleId: pickString(record.ciclo_id) ?? null,
       heroFormat: planSummary.heroFormat,
       presentationMode,
@@ -1859,5 +2056,89 @@ export function normalizePersonalizedTopicPayload({
       summary: summaryText,
     }),
     aiPatch,
+  };
+}
+
+export function aggregatePersonalizedTopicPayloads(
+  payloads: PersonalizedTopicPayload[]
+): PersonalizedTopicPayload | null {
+  if (payloads.length === 0) return null;
+  if (payloads.length === 1) return payloads[0];
+
+  const base = payloads[0];
+  const uniqueStrings = (values: (string | null | undefined)[]) =>
+    Array.from(new Set(values.map((value) => normalizeDisplayText(value)).filter(Boolean)));
+  const steps = payloads.flatMap((payload) =>
+    [...(payload.steps ?? [])]
+      .sort((left, right) => Number(left.ordem ?? 0) - Number(right.ordem ?? 0))
+  ).map((step, index) => ({ ...step, ordem: index }));
+  const primaryBlocks = steps.flatMap((step) =>
+    step.kind === "content" ? step.blocks ?? [] : []
+  );
+  const primaryActivities = steps.flatMap((step) =>
+    step.kind === "activity" && step.activity ? [step.activity] : []
+  );
+  const formatosGerados = uniqueStrings(
+    payloads.flatMap((payload) => payload.planMeta.formatosGerados ?? [])
+  );
+  const nodeFormats = uniqueStrings(
+    payloads.flatMap((payload) => payload.nodeHint.formatos ?? [])
+  );
+  const cycleIds = uniqueStrings(payloads.map((payload) => payload.planMeta.cycleId));
+  const triggerActions = uniqueStrings(
+    payloads.flatMap((payload) => payload.planMeta.refreshPolicy.triggerActions ?? [])
+  );
+  const source: PersonalizedTopicPayload["planMeta"]["source"] =
+    payloads.some((payload) => payload.planMeta.source === "remote")
+      ? "remote"
+      : payloads.some((payload) => payload.planMeta.source === "cache")
+      ? "cache"
+      : "fallback";
+
+  return {
+    ...base,
+    heroFormat:
+      payloads.find((payload) => payload.heroFormat != null)?.heroFormat ??
+      base.heroFormat,
+    steps,
+    primaryBlocks,
+    primaryActivities,
+    studyCards: payloads.flatMap((payload) => payload.studyCards ?? []),
+    fallbackBlocks: payloads.flatMap((payload) => payload.fallbackBlocks ?? []),
+    fallbackActivities: base.fallbackActivities,
+    materialSummaries: payloads.flatMap((payload) => payload.materialSummaries ?? []),
+    planMeta: {
+      ...base.planMeta,
+      cycleId: cycleIds.length > 0 ? cycleIds.join("|") : null,
+      heroFormat:
+        payloads.find((payload) => payload.planMeta.heroFormat != null)?.planMeta
+          .heroFormat ?? base.planMeta.heroFormat,
+      formatosGerados,
+      source,
+      refreshPolicy: {
+        mode: payloads.some(
+          (payload) => payload.planMeta.refreshPolicy.mode === "analysis"
+        )
+          ? "analysis"
+          : "once",
+        triggerActions,
+      },
+    },
+    nodeHint: {
+      ...base.nodeHint,
+      hasPersonalizedContent: payloads.some(
+        (payload) => payload.nodeHint.hasPersonalizedContent
+      ),
+      recommended: payloads.some((payload) => payload.nodeHint.recommended),
+      isFocus: payloads.some((payload) => payload.nodeHint.isFocus),
+      formatos: nodeFormats,
+      summary:
+        payloads.find((payload) => normalizeDisplayText(payload.nodeHint.summary))
+          ?.nodeHint.summary ?? base.nodeHint.summary,
+      title:
+        payloads.find((payload) => normalizeDisplayText(payload.nodeHint.title))
+          ?.nodeHint.title ?? base.nodeHint.title,
+    },
+    aiPatch: payloads.find((payload) => payload.aiPatch != null)?.aiPatch ?? base.aiPatch,
   };
 }

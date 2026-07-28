@@ -101,6 +101,8 @@ export type PersonalizacaoPerfilItem = {
 export type PersonalizacaoPorPerfilResponse = {
   classe_id: number;
   topico_id: number;
+  conteudo_id?: number | null;
+  conteudo_titulo?: string | null;
   total_perfis_com_material: number;
   perfis: PersonalizacaoPerfilItem[];
 };
@@ -239,13 +241,26 @@ async function apiRequest<T>(path: string, accessToken: string, init?: RequestIn
   );
 }
 
-/** Visoes 1 e 2: personalizacao de um (classe x topico) agrupada pelos 7 perfis BrainHex. */
+export function buildPersonalizacaoPorPerfilPath(params: {
+  classeId: number;
+  topicoId: number;
+  conteudoId?: number;
+}): string {
+  const path = `/api/v1/personalizar/perfis/${params.classeId}/${params.topicoId}`;
+  if (params.conteudoId == null) return path;
+
+  const search = new URLSearchParams();
+  search.set("conteudo_id", String(params.conteudoId));
+  return `${path}?${search.toString()}`;
+}
+
+/** Visoes 1 e 2: personalizacao de um conteudo agrupada pelos 7 perfis BrainHex. */
 export async function fetchPersonalizacaoPorPerfil(
   accessToken: string,
-  params: { classeId: number; topicoId: number }
+  params: { classeId: number; topicoId: number; conteudoId?: number }
 ): Promise<PersonalizacaoPorPerfilResponse> {
   return apiRequest<PersonalizacaoPorPerfilResponse>(
-    `/api/v1/personalizar/perfis/${params.classeId}/${params.topicoId}`,
+    buildPersonalizacaoPorPerfilPath(params),
     accessToken
   );
 }

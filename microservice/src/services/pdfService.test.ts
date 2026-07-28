@@ -1,7 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import puppeteer from "puppeteer";
-import { generateSlidesPDF } from "./pdfService";
+import {
+  generateSlidesPDF,
+  getPresentationRendererReadiness,
+  launchPresentationBrowser,
+  presentationBrowserLaunchOptions,
+  resolvePresentationExecutablePath,
+} from "./pdfService";
 import type { BrainHexProfile } from "../constants/brainHex";
 
 const PROFILES: BrainHexProfile[] = [
@@ -56,11 +61,32 @@ test("multiplos slides geram multiplas paginas (contagem real + PDF valido no Pu
 
   // Smoke test: um browser real consegue abrir o PDF gerado sem travar/rejeitar
   // (pega PDF malformado/truncado que o Chromium recusaria a carregar).
-  const browser = await puppeteer.launch({ headless: true, args: ["--no-sandbox", "--disable-setuid-sandbox"] });
+  const browser = await launchPresentationBrowser();
   try {
     const page = await browser.newPage();
     await page.goto(`data:application/pdf;base64,${buf.toString("base64")}`, { waitUntil: "load" });
   } finally {
     await browser.close();
   }
+});
+
+test("readiness abre o Chromium real e gera um PDF minimo", async () => {
+  const readiness = await getPresentationRendererReadiness(true);
+  assert.equal(readiness.ready, true, readiness.error);
+  assert.match(readiness.browser ?? "", /Chrome|Chromium|Headless/i);
+});
+
+test("nao aceita caminho de Chrome configurado que nao existe", () => {
+  assert.throws(
+    () => resolvePresentationExecutablePath({
+      PUPPETEER_EXECUTABLE_PATH: "__trailup_missing_chrome__",
+    }),
+    /executavel inexistente/,
+  );
+});
+
+test("configuracao do browser inclui protecao para memoria compartilhada do Render", () => {
+  const options = presentationBrowserLaunchOptions();
+  assert.ok(options.executablePath);
+  assert.ok(options.args?.includes("--disable-dev-shm-usage"));
 });

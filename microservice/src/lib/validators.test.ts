@@ -1,6 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { isSafeFonteUrl, validatePersonalizarBody } from "./validators";
+import {
+  isSafeFonteUrl,
+  validateContentEnrichmentBody,
+  validatePersonalizarBody,
+} from "./validators";
 
 // ───────────── isSafeFonteUrl ─────────────
 
@@ -66,6 +70,23 @@ test("SSRF: allowPrivate=true libera tudo (dev)", () => {
 
 // ───────────── validatePersonalizarBody ─────────────
 
+const validContentBlock = () => ({
+  id: "bloco-01",
+  ordem: 1,
+  tema: "Redes",
+  topico: "DNS",
+  objetivos: ["Compreender resolucao de nomes"],
+  conteudo_base: "DNS resolve nomes.",
+  conteudo_aprofundado:
+    "DNS resolve nomes e conecta enderecos legiveis aos servidores corretos. "
+    + "O processo consulta uma hierarquia distribuida, mantem respostas em cache "
+    + "e permite que o navegador encontre uma aplicacao sem memorizar numeros.",
+  conceitos_chave: ["DNS", "resolucao distribuida"],
+  exemplos_contextos: ["Abrir um site"],
+  ponte_proximo_bloco: "A seguir, veremos o transporte.",
+  source_ids: ["conteudo:125"],
+});
+
 const validBody = () => ({
   profile: "mastermind",
   personalizacao_id: 42,
@@ -74,10 +95,12 @@ const validBody = () => ({
   ],
   classe_id: 30,
   topico_id: 114,
+  conteudo_id: 125,
   ciclo_id:  "uuid-here",
   source_hash: "hash-here",
   generation_key: "uuid-here:hash-here",
   aluno_id:  "aluno-uuid",
+  content_blocks: [validContentBlock()],
 });
 
 test("body válido passa", () => {
@@ -90,6 +113,21 @@ test("body válido passa", () => {
     assert.equal(r.value.generation_key, "uuid-here:hash-here");
     assert.equal(r.value.wait_for_completion, false);
   }
+});
+
+test("content_blocks enriquecidos sao obrigatorios", () => {
+  const missing = validatePersonalizarBody({
+    ...validBody(),
+    content_blocks: undefined,
+  });
+  const empty = validatePersonalizarBody({
+    ...validBody(),
+    content_blocks: [],
+  });
+
+  assert.equal(missing.ok, false);
+  assert.equal(empty.ok, false);
+  if (!missing.ok) assert.match(missing.error, /obrigatorios/);
 });
 
 test("wait_for_completion so e ativado pelo booleano true", () => {
@@ -112,8 +150,11 @@ test("content_blocks enriquecidos são normalizados e preservados", () => {
       topico: "DNS",
       objetivos: ["Compreender resolução de nomes"],
       conteudo_base: "DNS resolve nomes.",
-      conteudo_aprofundado: "DNS conecta nomes legíveis a endereços.",
-      conceitos_chave: ["DNS"],
+      conteudo_aprofundado:
+        "DNS resolve nomes e conecta endereços legíveis aos servidores corretos. "
+        + "O processo consulta uma hierarquia distribuída, mantém respostas em cache "
+        + "e permite que o navegador encontre uma aplicação sem memorizar números.",
+      conceitos_chave: ["DNS", "resolução distribuída"],
       exemplos_contextos: ["Abrir um site"],
       ponte_proximo_bloco: "Agora veremos HTTP.",
       source_ids: ["conteudo:1"],
@@ -133,6 +174,78 @@ test("content_blocks sem conteúdo aprofundado são rejeitados", () => {
   });
   assert.equal(r.ok, false);
   if (!r.ok) assert.match(r.error, /conteudo_aprofundado/);
+});
+
+test("content_blocks que apenas repetem o original são rejeitados", () => {
+  const r = validatePersonalizarBody({
+    ...validBody(),
+    content_blocks: [{
+      id: "bloco-01",
+      objetivos: ["Compreender DNS"],
+      conteudo_base: "DNS resolve nomes.",
+      conteudo_aprofundado: "DNS resolve nomes.",
+      conceitos_chave: ["DNS", "nomes"],
+      exemplos_contextos: ["Abrir um site"],
+      source_ids: ["conteudo:1"],
+    }],
+  });
+  assert.equal(r.ok, false);
+  if (r.ok === false) assert.match(r.error, /aprofundamento real/);
+});
+
+test("payload de enriquecimento preserva blocos e rastreabilidade", () => {
+  const r = validateContentEnrichmentBody({
+    schema_version: "trailup.content-blocks.v2",
+    source_hash: "hash-1",
+    tema: {
+      titulo: "Redes",
+      descricao: "Comunicação distribuída.",
+      objetivo: "Compreender DNS.",
+    },
+    blocos_base: [{
+      id: "bloco-01",
+      ordem: 1,
+      tema: "Redes",
+      topico: "DNS",
+      objetivos: ["Compreender DNS."],
+      conteudo_base: "DNS resolve nomes.",
+      source_ids: ["conteudo:1"],
+      segment_ids: ["segmento-0001"],
+    }],
+  });
+  assert.equal(r.ok, true);
+  if (r.ok) {
+    assert.equal(r.value.blocos_base.length, 1);
+    assert.deepEqual(r.value.blocos_base[0].segment_ids, ["segmento-0001"]);
+  }
+});
+
+test("payload de enriquecimento sem rastreabilidade é rejeitado", () => {
+  const r = validateContentEnrichmentBody({
+    schema_version: "trailup.content-blocks.v2",
+    source_hash: "hash-1",
+    tema: {},
+    blocos_base: [{
+      id: "bloco-01",
+      conteudo_base: "DNS resolve nomes.",
+      source_ids: [],
+      segment_ids: [],
+    }],
+  });
+  assert.equal(r.ok, false);
+  if (r.ok === false) assert.match(r.error, /source_ids e segment_ids/);
+});
+
+test("conteudo_id é normalizado e precisa ser inteiro positivo", () => {
+  const valid = validatePersonalizarBody({ ...validBody(), conteudo_id: "125" });
+  assert.equal(valid.ok, true);
+  if (valid.ok) assert.equal(valid.value.conteudo_id, 125);
+
+  for (const conteudo_id of [0, -1, 1.5, "inválido"]) {
+    const invalid = validatePersonalizarBody({ ...validBody(), conteudo_id });
+    assert.equal(invalid.ok, false);
+    if (invalid.ok === false) assert.match(invalid.error, /conteudo_id/);
+  }
 });
 
 test("body não-objeto rejeitado", () => {

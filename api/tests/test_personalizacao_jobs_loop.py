@@ -141,7 +141,7 @@ def test_effective_stale_processing_exceeds_wait_timeout() -> None:
         brainhex_api_wait_timeout_sec=1980,
     )
 
-    assert _effective_stale_processing_min(settings) == 38
+    assert _effective_stale_processing_min(settings) == 53
 
 
 @pytest.mark.asyncio
@@ -195,23 +195,56 @@ async def test_runtime_cache_is_single_flight() -> None:
     assert all(result == {"blocos": [1]} for result in results)
 
 
-def test_content_enrichment_cache_isolated_by_profile() -> None:
+@pytest.mark.asyncio
+async def test_runtime_cache_shares_failure_without_provider_storm() -> None:
+    calls = 0
+
+    async def factory() -> dict:
+        nonlocal calls
+        calls += 1
+        raise RuntimeError("enriquecimento indisponivel")
+
+    job: dict = {}
+    results = await asyncio.gather(
+        *(
+            _get_runtime_cached_dict(
+                job=job,
+                cache_name="_cache",
+                locks_name="_locks",
+                key="conteudo-125",
+                factory=factory,
+            )
+            for _ in range(7)
+        ),
+        return_exceptions=True,
+    )
+
+    assert calls == 1
+    assert all(
+        isinstance(result, RuntimeError)
+        and str(result) == "enriquecimento indisponivel"
+        for result in results
+    )
+
+
+def test_content_enrichment_cache_is_shared_across_profiles_for_same_content() -> None:
     seeker_key = _content_enrichment_cache_key(
-        aluno_id="aluno-template",
-        profile_key="seeker",
         topico_id=121,
         conteudo_id=125,
         source_hash="hash-1",
     )
     survivor_key = _content_enrichment_cache_key(
-        aluno_id="aluno-template",
-        profile_key="survivor",
         topico_id=121,
         conteudo_id=125,
         source_hash="hash-1",
     )
 
-    assert seeker_key != survivor_key
+    assert seeker_key == survivor_key
+    assert seeker_key != _content_enrichment_cache_key(
+        topico_id=121,
+        conteudo_id=126,
+        source_hash="hash-1",
+    )
 
 
 def test_is_transient_db_connection_error_detects_connection_reset() -> None:
@@ -281,6 +314,10 @@ async def test_build_targets_generates_all_seven_profiles_with_one_student(monke
         "app.repositories.conteudo_classe.ConteudoClasseRepository.listar_alunos_classe_com_perfil_dominante",
         AsyncMock(return_value=[{"aluno_id": student_id, "perfil_dominante": "seeker"}]),
     )
+    monkeypatch.setattr(
+        "app.repositories.conteudo_classe.ConteudoClasseRepository.mapear_todos_conteudos_por_topicos",
+        AsyncMock(return_value={117: [125]}),
+    )
 
     targets, topics, profile_map = await _build_targets(
         session=object(),
@@ -301,6 +338,7 @@ async def test_build_targets_generates_all_seven_profiles_with_one_student(monke
         "achiever",
     }
     assert {item["aluno_id"] for item in targets} == {student_id}
+    assert {item["conteudo_id"] for item in targets} == {125}
     assert sum(not item["is_profile_template"] for item in targets) == 1
     assert sum(item["is_profile_template"] for item in targets) == 6
     assert len(profile_map) == 1
@@ -308,7 +346,7 @@ async def test_build_targets_generates_all_seven_profiles_with_one_student(monke
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("conteudo_ids", [[125], [125, 126]])
-async def test_build_targets_uses_one_topic_scoped_target_per_profile(
+async def test_build_targets_generates_seven_profiles_for_each_content(
     monkeypatch,
     conteudo_ids,
 ) -> None:
@@ -318,8 +356,8 @@ async def test_build_targets_uses_one_topic_scoped_target_per_profile(
         AsyncMock(return_value=[{"aluno_id": student_id, "perfil_dominante": "seeker"}]),
     )
     monkeypatch.setattr(
-        "app.repositories.conteudo_classe.ConteudoClasseRepository.resolve_topico_ids_por_conteudos",
-        AsyncMock(return_value=[117]),
+        "app.repositories.conteudo_classe.ConteudoClasseRepository.mapear_conteudos_por_topico",
+        AsyncMock(return_value={117: conteudo_ids}),
     )
 
     targets, topics, _profile_map = await _build_targets(
@@ -331,18 +369,19 @@ async def test_build_targets_uses_one_topic_scoped_target_per_profile(
     )
 
     assert topics == [117]
-    assert len(targets) == 7
-    assert all(target["conteudo_id"] is None for target in targets)
+    assert len(targets) == 7 * len(conteudo_ids)
+    assert {target["conteudo_id"] for target in targets} == set(conteudo_ids)
     assert len(
         {
             (
                 target["aluno_id"],
                 target["topico_id"],
+                target["conteudo_id"],
                 target["brainhex_profile_key"],
             )
             for target in targets
         }
-    ) == 7
+    ) == 7 * len(conteudo_ids)
 
 
 @pytest.mark.asyncio
@@ -867,7 +906,7 @@ async def test_process_media_render_target_retries_when_existing_record_is_stuck
     assert dispatch_mock.await_args.kwargs["personalizacao_id"] == existing["id"]
     assert dispatch_mock.await_args.kwargs["content_blocks"] == [{"id": "bloco-01"}]
     assert dispatch_mock.await_args.kwargs["wait_for_completion"] is True
-    assert claim_mock.await_args.kwargs["stale_processing_min"] >= 38
+    assert claim_mock.await_args.kwargs["stale_processing_min"] >= 53
 
 
 @pytest.mark.asyncio
@@ -1007,7 +1046,7 @@ async def test_process_media_render_target_retries_incomplete_terminal_record_wi
         "ciclo_id": "ciclo-249",
         "source_hash": "hash-249",
         "generation_key": "ciclo-249:hash-249",
-        "stale_processing_min": 38,
+        "stale_processing_min": 53,
     }
     assert dispatch_mock.await_args.kwargs["wait_for_completion"] is True
 
@@ -1071,7 +1110,7 @@ async def test_job_processes_targets_with_bounded_concurrency_and_distinct_sessi
         partial_retry_delay_sec,
     ):
         nonlocal claimed
-        assert stale_processing_min >= 38
+        assert stale_processing_min >= 53
         assert partial_retry_delay_sec == 15
         if claimed:
             return None
@@ -1189,7 +1228,7 @@ async def test_job_keeps_deferred_target_pending_without_consuming_retry(
         stale_processing_min,
         partial_retry_delay_sec,
     ):
-        assert stale_processing_min >= 38
+        assert stale_processing_min >= 53
         assert partial_retry_delay_sec == 15
         return job
 

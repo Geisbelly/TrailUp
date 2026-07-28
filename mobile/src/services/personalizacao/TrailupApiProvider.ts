@@ -29,6 +29,11 @@ import {
   normalizeNullableNonNegativeNumber,
   normalizePositiveInteger,
 } from "@/utils/dataValidation";
+import {
+  buildContentScopedPersonalizationItemKey,
+  buildPersonalizationContentScopeKey,
+  groupPersonalizedItemsByContent,
+} from "@/utils/personalization";
 
 const AUTH_COOLDOWN_MS = 60_000;
 const NETWORK_COOLDOWN_MS = 45_000;
@@ -392,8 +397,15 @@ export class TrailupApiProvider implements IPersonalizacaoProvider {
   ) {
     if (!records.length || !cards.length) return records;
 
+    const orderedCards = cards.slice().sort((left, right) => {
+      const leftOrder = Number(left.ordem ?? Number.MAX_SAFE_INTEGER);
+      const rightOrder = Number(right.ordem ?? Number.MAX_SAFE_INTEGER);
+      if (leftOrder !== rightOrder) return leftOrder - rightOrder;
+      return Number(left.id ?? 0) - Number(right.id ?? 0);
+    });
+    const cardsByContent = groupPersonalizedItemsByContent(orderedCards);
     const cardsByTopico = new Map<number, CardPersonalizadoRecord[]>();
-    cards.forEach((card) => {
+    orderedCards.forEach((card) => {
       const topicoId = Number(card.topico_id ?? 0);
       if (!topicoId) return;
       const list = cardsByTopico.get(topicoId) ?? [];
@@ -401,22 +413,18 @@ export class TrailupApiProvider implements IPersonalizacaoProvider {
       cardsByTopico.set(topicoId, list);
     });
 
-    cardsByTopico.forEach((items) => {
-      items.sort((left, right) => {
-        const leftOrder = Number(left.ordem ?? Number.MAX_SAFE_INTEGER);
-        const rightOrder = Number(right.ordem ?? Number.MAX_SAFE_INTEGER);
-        if (leftOrder !== rightOrder) return leftOrder - rightOrder;
-        return Number(left.id ?? 0) - Number(right.id ?? 0);
-      });
-    });
-
     return records.map((record) => {
       const topicoId = Number(record.topico_id ?? 0);
       if (!topicoId) return record;
-      const cardsForTopico = cardsByTopico.get(topicoId) ?? [];
-      if (!cardsForTopico.length) return record;
+      const conteudoId = normalizePositiveInteger(record.conteudo_id);
+      const cardsForRecord = conteudoId
+        ? cardsByContent.get(
+            buildPersonalizationContentScopeKey(topicoId, conteudoId)
+          ) ?? []
+        : cardsByTopico.get(topicoId) ?? [];
+      if (!cardsForRecord.length) return record;
 
-      const normalizedCardsPayload = cardsForTopico.map((card) => {
+      const normalizedCardsPayload = cardsForRecord.map((card) => {
         const metadata =
           card?.metadata && typeof card.metadata === "object"
             ? (card.metadata as Record<string, any>)
@@ -472,6 +480,7 @@ export class TrailupApiProvider implements IPersonalizacaoProvider {
   private async listarCardsPersonalizadosPersistidosPerfil(params: {
     classeId: number;
     topicoId?: number | null;
+    conteudoId?: number | null;
     brainhexProfileKey: string;
     limit?: number;
   }) {
@@ -488,6 +497,9 @@ export class TrailupApiProvider implements IPersonalizacaoProvider {
 
     if (params.topicoId != null) {
       query = query.eq("topico_id", params.topicoId);
+    }
+    if (params.conteudoId != null) {
+      query = query.eq("conteudo_id", params.conteudoId);
     }
 
     const { data, error } = await query;
@@ -518,6 +530,10 @@ export class TrailupApiProvider implements IPersonalizacaoProvider {
     params: ListarPersonalizacoesPerfilParams
   ): Promise<PersonalizacaoListResponse> {
     const normalizedProfile = this.normalizeBrainhexProfileKey(params.brainhexProfileKey);
+    const requestedLimit = Math.max(1, Number(params.limit ?? 60));
+    // O perfil ainda e validado no cliente para manter compatibilidade com
+    // registros legados. Buscamos a janela dos sete perfis antes de aplicar o limite.
+    const fetchLimit = Math.min(1000, requestedLimit * 7);
 
     let query = this.deps.supabase
       .from("conteudo_personalizado")
@@ -527,7 +543,7 @@ export class TrailupApiProvider implements IPersonalizacaoProvider {
       .eq("classe_id", params.classeId)
       .order("updated_at", { ascending: false })
       .order("gerado_em", { ascending: false })
-      .limit(params.limit ?? 60);
+      .limit(fetchLimit);
 
     if (params.topicoId != null) {
       query = query.eq("topico_id", params.topicoId);
@@ -540,12 +556,16 @@ export class TrailupApiProvider implements IPersonalizacaoProvider {
     if (error) throw error;
 
     const allRecords = (data ?? []) as PersonalizacaoRecord[];
-    const profileRecords = allRecords.filter(
-      (record) => this.extractProfileKeyFromPersonalizacaoRecord(record) === normalizedProfile
-    );
+    const profileRecords = allRecords
+      .filter(
+        (record) =>
+          this.extractProfileKeyFromPersonalizacaoRecord(record) === normalizedProfile
+      )
+      .slice(0, requestedLimit);
     const cards = await this.listarCardsPersonalizadosPersistidosPerfil({
       classeId: params.classeId,
       topicoId: params.topicoId,
+      conteudoId: params.conteudoId,
       brainhexProfileKey: normalizedProfile,
       limit: 500,
     });
@@ -584,7 +604,20 @@ export class TrailupApiProvider implements IPersonalizacaoProvider {
     const classeId = normalizePositiveInteger(payload.classe_id);
     const topicoId = normalizePositiveInteger(payload.topico_id);
     const alunoId = String(payload.aluno_id ?? "").trim();
-    const itemKey = String(payload.item_key ?? "").trim();
+    const payloadMetadata =
+      payload.metadata && typeof payload.metadata === "object"
+        ? (payload.metadata as Record<string, any>)
+        : {};
+    const conteudoId = normalizePositiveInteger(
+      payloadMetadata.conteudo_id ??
+        payloadMetadata.contentId ??
+        payloadMetadata.content_id
+    );
+    const itemKey = buildContentScopedPersonalizationItemKey({
+      itemKey: String(payload.item_key ?? "").trim(),
+      conteudoId,
+      personalizacaoId,
+    });
     const itemKind = String(payload.item_kind ?? "").trim();
     const itemTitle = String(payload.item_title ?? "").trim();
 
@@ -668,7 +701,15 @@ export class TrailupApiProvider implements IPersonalizacaoProvider {
         : Math.max(existingPontuacaoMaxima, pontuacaoMaxima);
     const mergedMetadata = {
       ...existingMetadata,
-      ...(payload.metadata ?? {}),
+      ...payloadMetadata,
+      ...(conteudoId
+        ? {
+            conteudo_id: conteudoId,
+            contentId: conteudoId,
+          }
+        : {}),
+      personalizacao_id: personalizacaoId,
+      personalizationId: personalizacaoId,
     };
     const completedAt =
       mergedStatus === "concluido"
