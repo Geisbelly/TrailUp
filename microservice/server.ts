@@ -11,6 +11,13 @@ import {
 } from "./src/services/geminiService";
 import { generateSceneImage } from "./src/services/openaiImageService";
 import { BrainHexProfile, BRAIN_HEX_CONFIG } from "./src/constants/brainHex";
+import {
+  buildPresentationDesignPlan,
+  presentationImageDirection,
+  presentationLayoutForSlide,
+  type PresentationDesignPlan,
+  type PresentationThemeInput,
+} from "./src/constants/presentationThemes";
 import { GUARDIAN_VOICE_PROFILES } from "./src/constants/guardianVoices";
 import {
   isSupabaseConfigured,
@@ -45,6 +52,7 @@ import {
 } from "./src/services/contentEnrichmentService";
 import {
   MEDIA_PIPELINE_VERSION,
+  PRESENTATION_DESIGN_VERSION,
   PRESENTATION_ENGINE_VERSION,
   PRESENTATION_SCHEMA_VERSION,
   buildPresentationVersionMetadata,
@@ -54,6 +62,7 @@ import {
 
 export {
   MEDIA_PIPELINE_VERSION,
+  PRESENTATION_DESIGN_VERSION,
   PRESENTATION_ENGINE_VERSION,
   PRESENTATION_SCHEMA_VERSION,
 } from "./src/constants/pipelineVersions";
@@ -84,24 +93,33 @@ type SlideAssets = { imagem_referencia: string[]; icones: string[][] };
 // O imagePrompt/iconPrompt (escrito pelo LLM) descreve a CENA/elemento; o
 // guardiao, a paleta e a atmosfera do perfil precisam ser reforcados aqui pra
 // imagem gerada realmente combinar com o guia/perfil.
-function buildImageStyleSuffix(profile: BrainHexProfile): string {
+function buildImageStyleSuffix(
+  profile: BrainHexProfile,
+  plan: PresentationDesignPlan,
+): string {
   const cfg = BRAIN_HEX_CONFIG[profile];
   return (
-    `. Guardiao/guia do perfil: ${cfg.guideName} (${cfg.label}). ` +
-    `Paleta de cor dominante: ${cfg.color}. Atmosfera: ${cfg.description}`
+    `. Identidade do perfil: ${cfg.label}, guiado por ${cfg.guideName}. `
+    + `Cor de assinatura: ${cfg.color}. ${presentationImageDirection(plan)}`
   );
 }
 
 /** 1 cena de fundo por slide, via OpenAI. Serial (1 chave, sem pool). */
 async function generateSceneImages(
   slides: { imagePrompt: string }[],
-  styleSuffix: string
+  styleSuffix: string,
+  plan: PresentationDesignPlan,
 ): Promise<string[]> {
   const scenes: string[] = [];
   for (let i = 0; i < slides.length; i++) {
     try {
       if (i > 0) await new Promise((r) => setTimeout(r, 2000));
-      const prompt = `${slides[i].imagePrompt}${styleSuffix}`;
+      const layout = presentationLayoutForSlide(plan, i, slides.length);
+      const prompt = (
+        `${slides[i].imagePrompt}${styleSuffix}. `
+        + `A composição será usada em um slide editorial do tipo ${layout}; `
+        + "preserve áreas de respiro e contraste para títulos e cartões."
+      );
       scenes.push((await generateSceneImage(prompt)) ?? "");
     } catch (e) {
       log.error("cena de fundo falhou (openai)", { slide: i, err: e });
@@ -144,11 +162,12 @@ async function generateSlideIcons(
  */
 async function generateSlideAssets(
   slides: SlideAssetInput[],
-  profile: BrainHexProfile
+  profile: BrainHexProfile,
+  plan: PresentationDesignPlan,
 ): Promise<SlideAssets> {
-  const styleSuffix = buildImageStyleSuffix(profile);
+  const styleSuffix = buildImageStyleSuffix(profile, plan);
   const [scenes, iconsPerSlide] = await Promise.all([
-    generateSceneImages(slides, styleSuffix),
+    generateSceneImages(slides, styleSuffix, plan),
     generateSlideIcons(slides, styleSuffix),
   ]);
   return { imagem_referencia: scenes, icones: iconsPerSlide };
@@ -168,6 +187,7 @@ export interface PresentationFailure {
 export async function renderAndUploadPresentation(params: {
   slides: any[];
   profile: BrainHexProfile;
+  presentationTheme?: PresentationDesignPlan;
   bucket: string;
   pdfPath: string;
   renderPdf?: typeof generateSlidesPDF;
@@ -178,7 +198,11 @@ export async function renderAndUploadPresentation(params: {
 
   let pdfBytes: Buffer;
   try {
-    pdfBytes = await renderPdf(params.slides, params.profile);
+    pdfBytes = await renderPdf(
+      params.slides,
+      params.profile,
+      { theme: params.presentationTheme },
+    );
   } catch (error) {
     return {
       pdfUrl: null,
@@ -241,6 +265,7 @@ async function archiveToSupabase(params: {
   markdown:        string;
   audioScript:     string;
   slides:          any[];             // slides COM imagem_referencia
+  presentationTheme: PresentationDesignPlan;
   mp3Base64:       string | null;
   wavBase64:       string | null;
   personalizacaoId: number | null;
@@ -261,6 +286,7 @@ async function archiveToSupabase(params: {
     markdown,
     audioScript,
     slides,
+    presentationTheme,
     mp3Base64,
     wavBase64,
     personalizacaoId,
@@ -302,11 +328,12 @@ async function archiveToSupabase(params: {
     }
   }
 
-  // PDF dos slides (layout 2 painéis: imagem esquerda, conteúdo direita)
+  // PDF dos slides: sistema editorial temático com múltiplas composições.
   const pdfPath = `${storagePath}/apresentacao/material-${refId}.pdf`;
   const presentationResult = await renderAndUploadPresentation({
     slides,
     profile,
+    presentationTheme,
     bucket,
     pdfPath,
   });
@@ -329,7 +356,11 @@ async function archiveToSupabase(params: {
     const mdStatus     = markdownUrl  ? "completed" : "failed";
     const audioPayloadObj = { roteiro: audioScript, texto: audioScript };
     const mdPayloadObj    = { texto: markdown, markdown };
-    const pdfPayloadObj   = { slides, abertura: markdown.split("\n").find((l) => l.trim()) ?? "" };
+    const pdfPayloadObj   = {
+      slides,
+      abertura: markdown.split("\n").find((l) => l.trim()) ?? "",
+      tema_visual: presentationTheme,
+    };
 
     const updates: Record<string, MaterialEntry> = {
       audio: {
@@ -418,6 +449,7 @@ async function runPersonalizacaoJob(params: {
   personalizacaoId: number;
   fontes:           FonteItem[];
   contentBlocks:    ContentBlock[];
+  presentationTheme: PresentationThemeInput;
   storagePath:      string;
   bucket:           string;
   refId:            string;
@@ -429,6 +461,7 @@ async function runPersonalizacaoJob(params: {
     personalizacaoId,
     fontes,
     contentBlocks,
+    presentationTheme,
     storagePath,
     bucket,
     refId,
@@ -462,6 +495,7 @@ async function runPersonalizacaoJob(params: {
       profile,
       fontes,
       contentBlocks,
+      presentationTheme,
       storagePath,
       bucket,
       refId,
@@ -526,12 +560,23 @@ async function runPipeline(
   profile: BrainHexProfile,
   fontes: FonteItem[],
   contentBlocks: ContentBlock[],
+  presentationTheme: PresentationThemeInput,
   storagePath: string,
   bucket: string,
   refId: string,
   fence: GenerationFence,
   jobLog: Logger,
 ): Promise<void> {
+  const fallbackSubject =
+    contentBlocks.find((block) => block.tema.trim())?.tema
+    || contentBlocks.find((block) => block.topico.trim())?.topico
+    || "Conteúdo de estudo";
+  const presentationPlan = buildPresentationDesignPlan(
+    profile,
+    presentationTheme,
+    fallbackSubject,
+  );
+
   // 1. Download das fontes
   const filesData = await fetchFontesAsFileData(fontes);
   if (filesData.length === 0 && contentBlocks.length === 0) {
@@ -541,7 +586,12 @@ async function runPipeline(
   }
 
   // 2. Texto + slides via Gemini (multi-arquivo)
-  const resultado = await processMediaWithGemini(filesData, profile, contentBlocks);
+  const resultado = await processMediaWithGemini(
+    filesData,
+    profile,
+    contentBlocks,
+    presentationPlan,
+  );
 
   // 3. Áudio (wav + mp3) — a etapa continua para preservar texto/slides
   // parciais; a validacao final solicita retry se o audio nao for produzido.
@@ -574,7 +624,11 @@ async function runPipeline(
   }
 
   // 4. Assets dos slides — cena de fundo (OpenAI) + icones (Gemini), todos os slides
-  const assets            = await generateSlideAssets(resultado.slides, profile);
+  const assets = await generateSlideAssets(
+    resultado.slides,
+    profile,
+    presentationPlan,
+  );
   const slidesComImagens  = enrichSlidesWithImages(resultado.slides, assets.imagem_referencia, assets.icones);
 
   // 5. Persiste tudo no Supabase
@@ -586,6 +640,7 @@ async function runPipeline(
     markdown:         resultado.markdown,
     audioScript:      resultado.audioScript,
     slides:           slidesComImagens,
+    presentationTheme: presentationPlan,
     mp3Base64,
     wavBase64,
     personalizacaoId,
@@ -800,6 +855,7 @@ export function buildApp(opts: AppOptions = {}): express.Application {
       media_pipeline_version: MEDIA_PIPELINE_VERSION,
       presentation_engine_version: PRESENTATION_ENGINE_VERSION,
       presentation_schema: PRESENTATION_SCHEMA_VERSION,
+      presentation_design_version: PRESENTATION_DESIGN_VERSION,
       content_enrichment_schema: CONTENT_ENRICHMENT_SCHEMA_VERSION,
       content_enrichment_provider: enrichment.provider,
       content_enrichment_model: enrichment.model,
@@ -842,7 +898,15 @@ export function buildApp(opts: AppOptions = {}): express.Application {
     req.log.info("archive request received");
 
     try {
-      const { profile, class_name, processed, mp3Base64, wavBase64, slideImages: clientImages } = req.body;
+      const {
+        profile,
+        class_name,
+        processed,
+        mp3Base64,
+        wavBase64,
+        slideImages: clientImages,
+        presentation_theme: requestedPresentationTheme,
+      } = req.body;
 
       if (!profile || !class_name || !processed) {
         return res.status(400).json({ error: "profile, class_name e processed são obrigatórios." });
@@ -867,6 +931,15 @@ export function buildApp(opts: AppOptions = {}): express.Application {
       const refId         = String(Date.now());
       const storagePath   = `brainhex/${profile}/classe-${safeClassName}`;
       const bucket        = "conteudo_aluno";
+      const presentationPlan = buildPresentationDesignPlan(
+        profile as BrainHexProfile,
+        requestedPresentationTheme
+          ?? processed.presentation_theme
+          ?? {},
+        processed.slides?.[0]?.title
+          ?? processed.slides?.[0]?.titulo
+          ?? class_name,
+      );
 
       // Assets dos slides:
       // - Se o frontend enviou cenas de fundo prontas (slideImages), usa direto e so
@@ -880,11 +953,18 @@ export function buildApp(opts: AppOptions = {}): express.Application {
         req.log.info("gerando icones dos slides server-side (cena veio do cliente)");
         iconImages = await generateSlideIcons(
           processed.slides || [],
-          buildImageStyleSuffix(profile as BrainHexProfile)
+          buildImageStyleSuffix(
+            profile as BrainHexProfile,
+            presentationPlan,
+          ),
         );
       } else {
         req.log.info("gerando cena + icones dos slides server-side");
-        const assets = await generateSlideAssets(processed.slides || [], profile as BrainHexProfile);
+        const assets = await generateSlideAssets(
+          processed.slides || [],
+          profile as BrainHexProfile,
+          presentationPlan,
+        );
         sceneImages = assets.imagem_referencia;
         iconImages  = assets.icones;
       }
@@ -899,6 +979,7 @@ export function buildApp(opts: AppOptions = {}): express.Application {
         markdown:         processed.markdown ?? "",
         audioScript:      processed.audioScript ?? "",
         slides:           slidesComImagens,
+        presentationTheme: presentationPlan,
         mp3Base64:        mp3Base64 ?? null,
         wavBase64:        wavBase64 ?? null,
         personalizacaoId: null,
@@ -955,11 +1036,16 @@ export function buildApp(opts: AppOptions = {}): express.Application {
       generation_key,
       required_media_pipeline_version: requiredMediaPipelineVersion,
       required_presentation_engine_version: requiredPresentationEngineVersion,
+      required_presentation_design_version: requiredPresentationDesignVersion,
+      presentation_theme: presentationTheme,
       wait_for_completion: waitForCompletion,
     } = v.value;
 
     const incompatibleVersions: Array<{
-      component: "media_pipeline" | "presentation_engine";
+      component:
+        | "media_pipeline"
+        | "presentation_engine"
+        | "presentation_design";
       required: string;
       actual: string;
     }> = [];
@@ -983,6 +1069,16 @@ export function buildApp(opts: AppOptions = {}): express.Application {
         actual: PRESENTATION_ENGINE_VERSION,
       });
     }
+    if (
+      requiredPresentationDesignVersion
+      && requiredPresentationDesignVersion !== PRESENTATION_DESIGN_VERSION
+    ) {
+      incompatibleVersions.push({
+        component: "presentation_design",
+        required: requiredPresentationDesignVersion,
+        actual: PRESENTATION_DESIGN_VERSION,
+      });
+    }
     if (incompatibleVersions.length > 0) {
       return res.status(409).json({
         status: "incompatible_version",
@@ -990,6 +1086,7 @@ export function buildApp(opts: AppOptions = {}): express.Application {
         incompatible_versions: incompatibleVersions,
         media_pipeline_version: MEDIA_PIPELINE_VERSION,
         presentation_engine_version: PRESENTATION_ENGINE_VERSION,
+        presentation_design_version: PRESENTATION_DESIGN_VERSION,
       });
     }
 
@@ -1001,6 +1098,7 @@ export function buildApp(opts: AppOptions = {}): express.Application {
         presentation_renderer: renderer,
         media_pipeline_version: MEDIA_PIPELINE_VERSION,
         presentation_engine_version: PRESENTATION_ENGINE_VERSION,
+        presentation_design_version: PRESENTATION_DESIGN_VERSION,
       });
     }
 
@@ -1057,6 +1155,7 @@ export function buildApp(opts: AppOptions = {}): express.Application {
           personalizacaoId,
           fontes:  fontes as FonteItem[],
           contentBlocks,
+          presentationTheme,
           storagePath,
           bucket,
           refId,
@@ -1083,6 +1182,7 @@ export function buildApp(opts: AppOptions = {}): express.Application {
           personalizacao_id: personalizacaoId,
           media_pipeline_version: MEDIA_PIPELINE_VERSION,
           presentation_engine_version: PRESENTATION_ENGINE_VERSION,
+          presentation_design_version: PRESENTATION_DESIGN_VERSION,
         });
       } catch (err: any) {
         return res.status(500).json({
@@ -1098,6 +1198,7 @@ export function buildApp(opts: AppOptions = {}): express.Application {
       personalizacao_id: personalizacaoId,
       media_pipeline_version: MEDIA_PIPELINE_VERSION,
       presentation_engine_version: PRESENTATION_ENGINE_VERSION,
+      presentation_design_version: PRESENTATION_DESIGN_VERSION,
     });
     setImmediate(() => {
       void executeJob().catch(() => undefined);

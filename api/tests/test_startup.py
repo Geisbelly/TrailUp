@@ -3,6 +3,8 @@ from fastapi.testclient import TestClient
 from app.services.media_contract import (
     CONTENT_ENRICHMENT_PROVIDER,
     MEDIA_PIPELINE_VERSION,
+    PRESENTATION_DESIGN_VERSION,
+    PRESENTATION_ENGINE_VERSION,
 )
 
 
@@ -24,7 +26,11 @@ def test_app_startup_compiles_default_graph(app) -> None:
     )
     assert (
         health.json()["details"]["presentation_engine_version"]
-        == "puppeteer-html-v2"
+        == PRESENTATION_ENGINE_VERSION
+    )
+    assert (
+        health.json()["details"]["presentation_design_version"]
+        == PRESENTATION_DESIGN_VERSION
     )
     assert (
         health.json()["details"]["content_enrichment_provider"]

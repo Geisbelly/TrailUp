@@ -6,6 +6,8 @@ from app.core.settings import Settings
 from app.services.media_agents import (
     _BRAINHEX_GUIDE_CONFIG,
     _brainhex_contract_matches,
+    _build_brainhex_presentation_theme,
+    brainhex_contract_ready,
     disparar_brainhex_async,
     gerar_conteudo_brainhex,
     gerar_imagem_slide,
@@ -13,6 +15,7 @@ from app.services.media_agents import (
 from app.services.media_contract import (
     CONTENT_ENRICHMENT_PROVIDER,
     MEDIA_PIPELINE_VERSION,
+    PRESENTATION_DESIGN_VERSION,
     PRESENTATION_ENGINE_VERSION,
 )
 
@@ -53,6 +56,7 @@ def test_brainhex_contract_requires_openai_content_enrichment():
     valid = {
         "media_pipeline_version": MEDIA_PIPELINE_VERSION,
         "presentation_engine_version": PRESENTATION_ENGINE_VERSION,
+        "presentation_design_version": PRESENTATION_DESIGN_VERSION,
         "content_enrichment_provider": CONTENT_ENRICHMENT_PROVIDER,
     }
 
@@ -66,6 +70,80 @@ def test_brainhex_contract_requires_openai_content_enrichment():
     assert _BRAINHEX_GUIDE_CONFIG["socializer"]["guia_voz"] == "Achird"
     assert _BRAINHEX_GUIDE_CONFIG["socializer"]["guia_voz_secundario"] == "Sulafat"
     assert _BRAINHEX_GUIDE_CONFIG["achiever"]["guia_voz"] == "Orus"
+
+
+def test_presentation_theme_combines_profile_and_content_subject():
+    seeker = _build_brainhex_presentation_theme(
+        perfil="seeker",
+        content_blocks=[
+            {
+                "id": "bloco-01",
+                "tema": "Civilização Maia",
+                "topico": "Calendários",
+            }
+        ],
+    )
+    mastermind = _build_brainhex_presentation_theme(
+        perfil="mastermind",
+        content_blocks=[{"id": "bloco-01", "tema": "Civilização Maia"}],
+    )
+
+    assert seeker["version"] == PRESENTATION_DESIGN_VERSION
+    assert seeker["subject"] == "Civilização Maia"
+    assert seeker["style_name"] == "Atlas das Descobertas"
+    assert seeker["layout_sequence"][0] == "cover"
+    assert seeker["layout_sequence"][-1] == "finale"
+    assert mastermind["style_name"] == "Blueprint Estratégico"
+    assert mastermind["art_direction"] != seeker["art_direction"]
+
+
+@pytest.mark.asyncio
+async def test_brainhex_contract_ready_retries_transient_render_502(settings):
+    settings.brainhex_health_retry_delay_sec = 0
+    contract = {
+        "media_pipeline_version": MEDIA_PIPELINE_VERSION,
+        "presentation_engine_version": PRESENTATION_ENGINE_VERSION,
+        "presentation_design_version": PRESENTATION_DESIGN_VERSION,
+        "content_enrichment_provider": CONTENT_ENRICHMENT_PROVIDER,
+    }
+    unavailable = MagicMock(status_code=502, text="Bad Gateway")
+    healthy = MagicMock(status_code=200)
+    healthy.json.return_value = {"status": "ok", **contract}
+
+    with patch("httpx.AsyncClient") as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+        mock_client.get = AsyncMock(side_effect=[unavailable, healthy])
+        mock_client_cls.return_value = mock_client
+
+        ready = await brainhex_contract_ready(settings=settings)
+
+    assert ready is True
+    assert mock_client.get.await_count == 2
+    assert all(call.kwargs["timeout"] == 90.0 for call in mock_client_cls.call_args_list)
+
+
+@pytest.mark.asyncio
+async def test_brainhex_contract_ready_does_not_retry_real_contract_mismatch(settings):
+    settings.brainhex_health_retry_delay_sec = 0
+    legacy = MagicMock(status_code=200)
+    legacy.json.return_value = {
+        "status": "ok",
+        "media_pipeline_version": "legacy",
+    }
+
+    with patch("httpx.AsyncClient") as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+        mock_client.get = AsyncMock(return_value=legacy)
+        mock_client_cls.return_value = mock_client
+
+        ready = await brainhex_contract_ready(settings=settings)
+
+    assert ready is False
+    mock_client.get.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -154,6 +232,7 @@ async def test_disparar_brainhex_waits_for_completion(settings):
     contract = {
         "media_pipeline_version": MEDIA_PIPELINE_VERSION,
         "presentation_engine_version": PRESENTATION_ENGINE_VERSION,
+        "presentation_design_version": PRESENTATION_DESIGN_VERSION,
         "content_enrichment_provider": CONTENT_ENRICHMENT_PROVIDER,
     }
     mock_health = MagicMock(status_code=200)
@@ -196,7 +275,13 @@ async def test_disparar_brainhex_waits_for_completion(settings):
     assert mock_client.post.await_args.kwargs["json"][
         "required_presentation_engine_version"
     ] == PRESENTATION_ENGINE_VERSION
-    assert mock_client_cls.call_args_list[0].kwargs["timeout"] == 30.0
+    assert mock_client.post.await_args.kwargs["json"][
+        "required_presentation_design_version"
+    ] == PRESENTATION_DESIGN_VERSION
+    assert mock_client.post.await_args.kwargs["json"]["presentation_theme"][
+        "style_name"
+    ] == "Atlas das Descobertas"
+    assert mock_client_cls.call_args_list[0].kwargs["timeout"] == 90.0
     configured_timeout = mock_client_cls.call_args.kwargs["timeout"]
     assert configured_timeout.read == 300
     assert configured_timeout.connect == 60
@@ -207,6 +292,7 @@ async def test_disparar_brainhex_does_not_treat_legacy_202_as_completed(settings
     contract = {
         "media_pipeline_version": MEDIA_PIPELINE_VERSION,
         "presentation_engine_version": PRESENTATION_ENGINE_VERSION,
+        "presentation_design_version": PRESENTATION_DESIGN_VERSION,
         "content_enrichment_provider": CONTENT_ENRICHMENT_PROVIDER,
     }
     mock_health = MagicMock(status_code=200)
@@ -267,6 +353,43 @@ async def test_disparar_brainhex_does_not_start_job_on_legacy_microservice(setti
 
     assert dispatched is False
     mock_client.post.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_disparar_brainhex_reuses_prechecked_contract(settings):
+    contract = {
+        "media_pipeline_version": MEDIA_PIPELINE_VERSION,
+        "presentation_engine_version": PRESENTATION_ENGINE_VERSION,
+        "presentation_design_version": PRESENTATION_DESIGN_VERSION,
+        "content_enrichment_provider": CONTENT_ENRICHMENT_PROVIDER,
+    }
+    completed = MagicMock(status_code=200, text='{"status":"completed"}')
+    completed.json.return_value = {"status": "completed", **contract}
+
+    with patch("httpx.AsyncClient") as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+        mock_client.get = AsyncMock()
+        mock_client.post = AsyncMock(return_value=completed)
+        mock_client_cls.return_value = mock_client
+
+        dispatched = await disparar_brainhex_async(
+            settings=settings,
+            perfil="seeker",
+            fontes=[],
+            content_blocks=[{"id": "bloco-01"}],
+            personalizacao_id=257,
+            ciclo_id="ciclo-257",
+            source_hash="hash-257",
+            generation_key="ciclo-257:hash-257",
+            wait_for_completion=True,
+            contract_prechecked=True,
+        )
+
+    assert dispatched is True
+    mock_client.get.assert_not_awaited()
+    mock_client.post.assert_awaited_once()
 
 
 @pytest.mark.asyncio

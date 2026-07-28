@@ -6,9 +6,10 @@ import { createHash } from "crypto";
  * Alterações incompatíveis no pipeline ou no renderizador de apresentações
  * devem incrementar estas versões antes do deploy.
  */
-export const MEDIA_PIPELINE_VERSION = "2026-07-28.4" as const;
-export const PRESENTATION_ENGINE_VERSION = "puppeteer-html-v2" as const;
-export const PRESENTATION_SCHEMA_VERSION = "presentation-material-v2" as const;
+export const MEDIA_PIPELINE_VERSION = "2026-07-28.5" as const;
+export const PRESENTATION_ENGINE_VERSION = "puppeteer-html-v3" as const;
+export const PRESENTATION_SCHEMA_VERSION = "presentation-material-v3" as const;
+export const PRESENTATION_DESIGN_VERSION = "slidesgo-editorial-v3" as const;
 
 export function getRenderGitCommit(
   environment: NodeJS.ProcessEnv = process.env,
@@ -38,6 +39,7 @@ export function buildPresentationVersionMetadata(generationKey: string) {
   return {
     engine: PRESENTATION_ENGINE_VERSION,
     schema: PRESENTATION_SCHEMA_VERSION,
+    design_system: PRESENTATION_DESIGN_VERSION,
     media_pipeline_version: MEDIA_PIPELINE_VERSION,
     generation_key: generationKey,
   };

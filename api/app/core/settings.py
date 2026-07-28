@@ -62,6 +62,11 @@ class Settings(BaseSettings):
     brainhex_api_secret: str | None = None
     # Deve ser maior que o timeout maximo do pipeline no microservico.
     brainhex_api_wait_timeout_sec: int = 1980
+    # O Render pode levar dezenas de segundos para acordar o microservico e
+    # validar o Chromium. O health precisa tolerar esse cold start.
+    brainhex_health_timeout_sec: float = 90.0
+    brainhex_health_max_attempts: int = 3
+    brainhex_health_retry_delay_sec: float = 2.0
 
     emotion_model_provider: str = "deepface"
     reading_model_provider: str = "isolation_forest"

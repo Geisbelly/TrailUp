@@ -24,6 +24,7 @@ from app.services.content_enrichment import enrich_content_blocks
 from app.services.media_agents import brainhex_contract_ready, disparar_brainhex_async
 from app.services.media_contract import (
     MEDIA_PIPELINE_VERSION,
+    PRESENTATION_DESIGN_VERSION,
     PRESENTATION_ENGINE_VERSION,
 )
 from app.services.personalizacao import (
@@ -169,6 +170,7 @@ def _incomplete_brainhex_media_for_generation(
                 media_kind == "apresentacao"
                 and (
                     metadata.get("engine") != PRESENTATION_ENGINE_VERSION
+                    or metadata.get("design_system") != PRESENTATION_DESIGN_VERSION
                     or metadata.get("media_pipeline_version") != MEDIA_PIPELINE_VERSION
                 )
             )
@@ -766,6 +768,7 @@ async def _process_media_render_target(
                     source_hash=record_source_hash,
                     generation_key=generation_key,
                     wait_for_completion=True,
+                    contract_prechecked=True,
                 )
                 if not dispatched:
                     recovered = await _mark_failed_unless_generation_completed(
@@ -1025,6 +1028,7 @@ async def _process_media_render_target(
             source_hash=existing_source_hash,
             generation_key=generation_key,
             wait_for_completion=True,
+            contract_prechecked=True,
         )
         if not dispatched:
             recovered = await _mark_failed_unless_generation_completed(
@@ -1193,6 +1197,7 @@ async def _process_media_render_target(
         source_hash=record_source_hash,
         generation_key=generation_key,
         wait_for_completion=True,
+        contract_prechecked=True,
     )
     if not dispatched:
         recovered = await _mark_failed_unless_generation_completed(

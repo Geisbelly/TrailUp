@@ -101,6 +101,15 @@ const validBody = () => ({
   generation_key: "uuid-here:hash-here",
   aluno_id:  "aluno-uuid",
   content_blocks: [validContentBlock()],
+  presentation_theme: {
+    version: "slidesgo-editorial-v3",
+    subject: "Redes de computadores",
+    style_name: "Blueprint Estratégico",
+    art_direction: "grade editorial e diagramas conectados",
+    mood: "analítico",
+    motifs: ["nós", "grade", "conexões"],
+    layout_sequence: ["cover", "timeline", "cards", "finale"],
+  },
 });
 
 test("body válido passa", () => {
@@ -112,6 +121,14 @@ test("body válido passa", () => {
     assert.equal(r.value.fontes.length, 1);
     assert.equal(r.value.generation_key, "uuid-here:hash-here");
     assert.equal(r.value.wait_for_completion, false);
+    assert.equal(
+      r.value.presentation_theme.style_name,
+      "Blueprint Estratégico",
+    );
+    assert.deepEqual(
+      r.value.presentation_theme.layout_sequence,
+      ["cover", "timeline", "cards", "finale"],
+    );
   }
 });
 

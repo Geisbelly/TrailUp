@@ -11,6 +11,7 @@ from app.schemas.api import HealthResponse
 from app.services.media_contract import (
     CONTENT_ENRICHMENT_PROVIDER,
     MEDIA_PIPELINE_VERSION,
+    PRESENTATION_DESIGN_VERSION,
     PRESENTATION_ENGINE_VERSION,
 )
 
@@ -39,6 +40,7 @@ async def healthcheck(
             "personalizacao_jobs_worker": "running" if request.app.state.personalizacao_jobs_task else "disabled",
             "media_pipeline_version": MEDIA_PIPELINE_VERSION,
             "presentation_engine_version": PRESENTATION_ENGINE_VERSION,
+            "presentation_design_version": PRESENTATION_DESIGN_VERSION,
             "content_enrichment_provider": CONTENT_ENRICHMENT_PROVIDER,
             "render_git_commit": os.getenv("RENDER_GIT_COMMIT") or None,
         },

@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildDeckHtml } from "./slideTemplate";
+import { buildPresentationDesignPlan } from "../constants/presentationThemes";
 
 const FAKE_SLIDE = {
   titulo: "Título de Teste",
@@ -41,11 +42,57 @@ test("slide sem cena de fundo nao lanca excecao e nao inclui tag de cena vazia",
 
 test("gera 1 <section class=\"slide\"> por slide", () => {
   const html = buildDeckHtml([FAKE_SLIDE, FAKE_SLIDE, FAKE_SLIDE], "achiever");
-  const count = (html.match(/class="slide"/g) || []).length;
+  const count = (html.match(/<section\s+class="slide /g) || []).length;
   assert.equal(count, 3);
 });
 
 test("cor de acento no CSS reflete a cor-assinatura do perfil (nao mais tabela dessincronizada)", () => {
   const html = buildDeckHtml([FAKE_SLIDE], "seeker");
   assert.ok(html.includes("#17a398")); // cor oficial ATUAL do Seeker em brainHex.ts (paleta migrada)
+});
+
+test("aplica direção temática recebida e identifica o design system", () => {
+  const theme = buildPresentationDesignPlan("seeker", {
+    subject: "Civilização Maia",
+    style_name: "Atlas Maia Editorial",
+    motifs: ["glifo maia", "pirâmide escalonada", "mapa da Mesoamérica"],
+  });
+  const html = buildDeckHtml([FAKE_SLIDE], "seeker", theme);
+
+  assert.ok(html.includes("Civilização Maia"));
+  assert.ok(html.includes("Atlas Maia Editorial"));
+  assert.ok(html.includes('data-design-system="slidesgo-editorial-v3"'));
+});
+
+test("varia a composição entre capa, miolo e encerramento", () => {
+  const slides = Array.from({ length: 6 }, (_, index) => ({
+    ...FAKE_SLIDE,
+    titulo: `Slide ${index + 1}`,
+  }));
+  const html = buildDeckHtml(slides, "mastermind");
+  const layouts = [...html.matchAll(/data-layout="([^"]+)"/g)]
+    .map((match) => match[1]);
+
+  assert.equal(layouts[0], "cover");
+  assert.equal(layouts.at(-1), "finale");
+  assert.ok(new Set(layouts).size >= 5);
+  assert.ok(html.includes("layout-timeline"));
+  assert.ok(html.includes("layout-cards"));
+});
+
+test("cada perfil recebe uma assinatura CSS própria", () => {
+  const profiles = [
+    "seeker",
+    "survivor",
+    "daredevil",
+    "mastermind",
+    "conqueror",
+    "socializer",
+    "achiever",
+  ] as const;
+  for (const profile of profiles) {
+    const html = buildDeckHtml([FAKE_SLIDE], profile);
+    assert.ok(html.includes(`profile-${profile}`));
+    assert.ok(html.includes(buildPresentationDesignPlan(profile).styleName));
+  }
 });

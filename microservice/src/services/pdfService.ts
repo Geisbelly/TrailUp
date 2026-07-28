@@ -1,18 +1,22 @@
 import { existsSync } from "node:fs";
 import puppeteer, { type Browser, type LaunchOptions } from "puppeteer";
 import { BrainHexProfile } from "../constants/brainHex";
-import { buildDeckHtml } from "../lib/slideTemplate";
+import type {
+  PresentationDesignPlan,
+  PresentationThemeInput,
+} from "../constants/presentationThemes";
+import {
+  buildDeckHtml,
+  type SlideForTemplate,
+} from "../lib/slideTemplate";
 
-interface SlideData {
-  titulo?: string;
-  title?: string;
-  topics?: string[];
-  explanation?: string;
-  characterQuote?: string;
-  characterAction?: string;
-  imagem_referencia?: string;
-  icones?: string[];
+interface SlideData extends SlideForTemplate {
   sourceIds?: string[];
+}
+
+export interface PresentationRenderOptions {
+  title?: string;
+  theme?: PresentationDesignPlan | PresentationThemeInput;
 }
 
 export interface PresentationRendererReadiness {
@@ -165,9 +169,12 @@ export async function getPresentationRendererReadiness(
 export async function generateSlidesPDF(
   slides: SlideData[],
   profile: BrainHexProfile,
-  _titulo: string = "Apresentação",
+  options: PresentationRenderOptions | string = {},
 ): Promise<Buffer> {
-  const html = buildDeckHtml(slides, profile);
+  const normalizedOptions = typeof options === "string"
+    ? { title: options }
+    : options;
+  const html = buildDeckHtml(slides, profile, normalizedOptions.theme);
 
   let browser: Browser | undefined;
   try {

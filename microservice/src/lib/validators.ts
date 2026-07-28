@@ -5,6 +5,10 @@
 // discriminated union ({ ok: true; value } | { ok: false; error }).
 
 import type { BrainHexProfile } from "../constants/brainHex";
+import type {
+  PresentationLayout,
+  PresentationThemeInput,
+} from "../constants/presentationThemes";
 
 export type ValidationResult<T> =
   | { ok: true;  value: T }
@@ -68,8 +72,10 @@ export interface PersonalizarRequest {
   source_hash?:       string;
   generation_key?:    string;
   aluno_id?:          string;
+  presentation_theme: PresentationThemeInput;
   required_media_pipeline_version?: string;
   required_presentation_engine_version?: string;
+  required_presentation_design_version?: string;
   wait_for_completion: boolean;
 }
 
@@ -144,6 +150,35 @@ function normalizedText(value: unknown): string {
 function normalizedStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return [...new Set(value.map(normalizedText).filter(Boolean))];
+}
+
+const VALID_PRESENTATION_LAYOUTS = new Set<PresentationLayout>([
+  "cover",
+  "split",
+  "cards",
+  "spotlight",
+  "timeline",
+  "finale",
+]);
+
+function normalizePresentationTheme(value: unknown): PresentationThemeInput {
+  if (!isObject(value)) return {};
+  const layouts = normalizedStringArray(value.layout_sequence).filter(
+    (layout): layout is PresentationLayout =>
+      VALID_PRESENTATION_LAYOUTS.has(layout as PresentationLayout),
+  );
+  return {
+    version: normalizedText(value.version).slice(0, 80) || undefined,
+    subject: normalizedText(value.subject).slice(0, 180) || undefined,
+    style_name: normalizedText(value.style_name).slice(0, 100) || undefined,
+    art_direction:
+      normalizedText(value.art_direction).slice(0, 700) || undefined,
+    mood: normalizedText(value.mood).slice(0, 220) || undefined,
+    texture: normalizedText(value.texture).slice(0, 220) || undefined,
+    narrative: normalizedText(value.narrative).slice(0, 420) || undefined,
+    motifs: normalizedStringArray(value.motifs).slice(0, 6),
+    layout_sequence: layouts.slice(0, 10),
+  };
 }
 
 export function hasMeaningfulContentExpansion(
@@ -372,6 +407,20 @@ export function validatePersonalizarBody(
     };
   }
 
+  const requiredPresentationDesignVersion = body.required_presentation_design_version;
+  if (
+    requiredPresentationDesignVersion !== undefined
+    && (
+      typeof requiredPresentationDesignVersion !== "string"
+      || requiredPresentationDesignVersion.trim().length === 0
+    )
+  ) {
+    return {
+      ok: false,
+      error: "required_presentation_design_version deve ser uma string nao vazia",
+    };
+  }
+
   let conteudoId: number | undefined;
   if (body.conteudo_id !== undefined && body.conteudo_id !== null) {
     conteudoId = Number(body.conteudo_id);
@@ -401,6 +450,7 @@ export function validatePersonalizarBody(
       source_hash:       typeof body.source_hash === "string" ? body.source_hash : undefined,
       generation_key:    typeof body.generation_key === "string" ? body.generation_key : undefined,
       aluno_id:          typeof body.aluno_id === "string" ? body.aluno_id : undefined,
+      presentation_theme: normalizePresentationTheme(body.presentation_theme),
       required_media_pipeline_version:
         typeof requiredMediaPipelineVersion === "string"
           ? requiredMediaPipelineVersion.trim()
@@ -408,6 +458,10 @@ export function validatePersonalizarBody(
       required_presentation_engine_version:
         typeof requiredPresentationEngineVersion === "string"
           ? requiredPresentationEngineVersion.trim()
+          : undefined,
+      required_presentation_design_version:
+        typeof requiredPresentationDesignVersion === "string"
+          ? requiredPresentationDesignVersion.trim()
           : undefined,
       wait_for_completion: body.wait_for_completion === true,
     },
