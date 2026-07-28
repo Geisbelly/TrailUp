@@ -608,52 +608,56 @@ async function generateEnrichmentWithFallback(
 ): Promise<EnrichmentGeneration> {
   const generateWithGemini = async (
     callsBeforeGemini: number,
+    preferEmergency = false,
   ): Promise<EnrichmentGeneration> => {
-    if (options.now() < geminiFallbackUnavailableUntil) {
-      return {
-        value: await options.generateFallback({
-          ...call,
-          model: options.emergencyModel,
-        }),
-        provider: "gemini",
-        model: options.emergencyModel,
-        fallback: true,
-        calls: callsBeforeGemini + 1,
-      };
-    }
+    const fallbackUnavailable = options.now() < geminiFallbackUnavailableUntil;
+    const primaryModel = preferEmergency || fallbackUnavailable
+      ? options.emergencyModel
+      : options.fallbackModel;
+    const alternateModel = primaryModel === options.fallbackModel
+      ? options.emergencyModel
+      : options.fallbackModel;
 
     try {
       return {
         value: await options.generateFallback({
           ...call,
-          model: options.fallbackModel,
+          model: primaryModel,
         }),
         provider: "gemini",
-        model: options.fallbackModel,
+        model: primaryModel,
         fallback: true,
         calls: callsBeforeGemini + 1,
       };
     } catch (error) {
       if (!isGeminiAvailabilityError(error)) throw error;
-      const cooldownMs = boundedInteger(
-        options.environment.CONTENT_ENRICHMENT_GEMINI_COOLDOWN_MS,
-        DEFAULT_GEMINI_UNAVAILABLE_COOLDOWN_MS,
-        1_000,
-        60 * 60 * 1_000,
-      );
-      geminiFallbackUnavailableUntil = options.now() + cooldownMs;
+      if (primaryModel === options.fallbackModel) {
+        const cooldownMs = boundedInteger(
+          options.environment.CONTENT_ENRICHMENT_GEMINI_COOLDOWN_MS,
+          DEFAULT_GEMINI_UNAVAILABLE_COOLDOWN_MS,
+          1_000,
+          60 * 60 * 1_000,
+        );
+        geminiFallbackUnavailableUntil = options.now() + cooldownMs;
+      }
       return {
         value: await options.generateFallback({
           ...call,
-          model: options.emergencyModel,
+          model: alternateModel,
         }),
         provider: "gemini",
-        model: options.emergencyModel,
+        model: alternateModel,
         fallback: true,
         calls: callsBeforeGemini + 2,
       };
     }
   };
+
+  // No retry de qualidade, troca o modelo para não repetir a mesma resposta
+  // rasa que já foi rejeitada para o bloco isolado.
+  if (call.attempt > 1) {
+    return generateWithGemini(0, true);
+  }
 
   if (options.now() < openaiUnavailableUntil) {
     return generateWithGemini(0);
@@ -708,6 +712,28 @@ function batchInput(
     `TEMA:\n${JSON.stringify(request.tema, null, 2)}\n\n`
     + `BLOCOS-BASE DESTE LOTE:\n${JSON.stringify(blocks, null, 2)}`
     + correction
+  );
+}
+
+function qualityRetryFeedback(
+  block: BaseContentBlock,
+  candidate: RawEnrichedBlock | undefined,
+  message: string,
+): string {
+  const baseLength = normalizedText(block.conteudo_base).length;
+  const receivedLength = normalizedText(
+    candidate?.conteudo_aprofundado,
+  ).length;
+  const minimumLength = Math.max(
+    baseLength + 200,
+    Math.ceil(baseLength * 1.3),
+  );
+  return (
+    `${block.id}: ${message} O conteúdo-base tem ${baseLength} caracteres e `
+    + `a resposta rejeitada tem ${receivedLength}. Reescreva apenas este bloco `
+    + `com no mínimo ${minimumLength} caracteres em conteudo_aprofundado, `
+    + "incluindo definições, relações de causa e consequência, contexto aplicado "
+    + "e vocabulário novo, sem repetir frases para atingir o tamanho."
   );
 }
 
@@ -816,11 +842,11 @@ export async function enrichContentBlocksWithOpenAI(
 
       const failures: Array<{ block: BaseContentBlock; message: string }> = [];
       for (const baseBlock of pending) {
+        const candidate = indexed.candidates.get(baseBlock.id);
         try {
           if (indexed.duplicates.has(baseBlock.id)) {
             throw new Error(`Gerador duplicou o bloco ${baseBlock.id}.`);
           }
-          const candidate = indexed.candidates.get(baseBlock.id);
           if (!candidate) {
             throw new Error(`Gerador omitiu o bloco ${baseBlock.id}.`);
           }
@@ -838,13 +864,20 @@ export async function enrichContentBlocksWithOpenAI(
             ordem: originalOrder.get(baseBlock.id) ?? validated.ordem,
           });
         } catch (error) {
-          failures.push({ block: baseBlock, message: errorMessage(error) });
+          failures.push({
+            block: baseBlock,
+            message: qualityRetryFeedback(
+              baseBlock,
+              candidate,
+              errorMessage(error),
+            ),
+          });
         }
       }
 
       pending = failures.map((failure) => failure.block);
       feedback = failures
-        .map((failure) => `${failure.block.id}: ${failure.message}`)
+        .map((failure) => failure.message)
         .join("\n");
       if (pending.length > 0 && attempt === maxAttempts) {
         throw new Error(

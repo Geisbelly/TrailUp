@@ -377,7 +377,6 @@
   "391": "openaiImageService.test.ts",
   "392": "@vitejs/plugin-react",
   "394": ".puppeteerrc.cjs",
-  "395": "@google/genai",
   "396": "express",
   "397": "mammoth",
   "401": "@radix-ui/react-accordion"

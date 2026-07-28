@@ -4145,13 +4145,13 @@
     "semantic_hash": ""
   },
   "microservice/src/services/contentEnrichmentService.test.ts": {
-    "mtime": 1785269141.071971,
-    "ast_hash": "a104ce1ca6f34f893e669de31f7899d1",
+    "mtime": 1785269259.1310198,
+    "ast_hash": "53bb21473247cc30963ed2ffe2d5e710",
     "semantic_hash": ""
   },
   "microservice/src/services/contentEnrichmentService.ts": {
-    "mtime": 1785269097.3058178,
-    "ast_hash": "9fda31c1a8c98ed8a644dda6b88abc91",
+    "mtime": 1785269259.129018,
+    "ast_hash": "ac10bc5a44bbd5e833d8dd68505a88d6",
     "semantic_hash": ""
   },
   "microservice/src/services/geminiBlockBatches.test.ts": {
@@ -4200,13 +4200,13 @@
     "semantic_hash": ""
   },
   "microservice/src/services/contentGenerationService.test.ts": {
-    "mtime": 1785269122.8550994,
-    "ast_hash": "de7b12f0b1473fd86c2494f33c0179af",
+    "mtime": 1785269259.1320212,
+    "ast_hash": "9f68894bd063fbabcf036a0e54e9b43a",
     "semantic_hash": ""
   },
   "microservice/src/services/contentGenerationService.ts": {
-    "mtime": 1785269097.306818,
-    "ast_hash": "fefa2a8e59e956bdd490051ac741aed6",
+    "mtime": 1785269259.1300175,
+    "ast_hash": "65bae31deeea56b81abc102379e5bed2",
     "semantic_hash": ""
   }
 }

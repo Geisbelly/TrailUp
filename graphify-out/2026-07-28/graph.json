@@ -20605,8 +20605,8 @@
       "source_location": "L45",
       "_origin": "ast",
       "id": "frontend_package_dependencies_browserslist",
-      "community": 54,
-      "community_name": "dependencies",
+      "community": 84,
+      "community_name": "extractors/__init__.py",
       "norm_label": "browserslist"
     },
     {
@@ -20616,8 +20616,8 @@
       "source_location": "L45",
       "_origin": "ast",
       "id": "browserslist",
-      "community": 54,
-      "community_name": "dependencies",
+      "community": 84,
+      "community_name": "extractors/__init__.py",
       "norm_label": "browserslist"
     },
     {
@@ -20803,8 +20803,8 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "frontend_package_dependencies_next_themes",
-      "community": 395,
-      "community_name": "@google/genai",
+      "community": 54,
+      "community_name": "dependencies",
       "norm_label": "next-themes"
     },
     {
@@ -20814,8 +20814,8 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "next_themes",
-      "community": 395,
-      "community_name": "@google/genai",
+      "community": 54,
+      "community_name": "dependencies",
       "norm_label": "next-themes"
     },
     {
@@ -32573,8 +32573,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "microservice_package_dependencies_google_genai",
-      "community": 50,
-      "community_name": "dependencies",
+      "community": 112,
+      "community_name": "Classe.ts",
       "norm_label": "@google/genai"
     },
     {
@@ -32584,8 +32584,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "google_genai",
-      "community": 50,
-      "community_name": "dependencies",
+      "community": 112,
+      "community_name": "Classe.ts",
       "norm_label": "@google/genai"
     },
     {
@@ -32595,8 +32595,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "microservice_package_dependencies_supabase_supabase_js",
-      "community": 50,
-      "community_name": "dependencies",
+      "community": 296,
+      "community_name": "@config-plugins/react-native-blob-util",
       "norm_label": "@supabase/supabase-js"
     },
     {
@@ -32606,8 +32606,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "microservice_package_json_supabase_supabase_js",
-      "community": 50,
-      "community_name": "dependencies",
+      "community": 296,
+      "community_name": "@config-plugins/react-native-blob-util",
       "norm_label": "@supabase/supabase-js"
     },
     {
@@ -32705,8 +32705,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "microservice_package_dependencies_dotenv",
-      "community": 84,
-      "community_name": "extractors/__init__.py",
+      "community": 50,
+      "community_name": "dependencies",
       "norm_label": "dotenv"
     },
     {
@@ -32716,8 +32716,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "dotenv",
-      "community": 84,
-      "community_name": "extractors/__init__.py",
+      "community": 50,
+      "community_name": "dependencies",
       "norm_label": "dotenv"
     },
     {
@@ -32793,8 +32793,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "microservice_package_dependencies_jszip",
-      "community": 50,
-      "community_name": "dependencies",
+      "community": 128,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "jszip"
     },
     {
@@ -32804,8 +32804,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "microservice_package_json_jszip",
-      "community": 50,
-      "community_name": "dependencies",
+      "community": 128,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "jszip"
     },
     {
@@ -32969,8 +32969,8 @@
       "source_location": "L34",
       "_origin": "ast",
       "id": "microservice_package_dependencies_react_dom",
-      "community": 110,
-      "community_name": "classeMetrics.ts",
+      "community": 50,
+      "community_name": "dependencies",
       "norm_label": "react-dom"
     },
     {
@@ -32980,8 +32980,8 @@
       "source_location": "L34",
       "_origin": "ast",
       "id": "microservice_package_json_react_dom",
-      "community": 110,
-      "community_name": "classeMetrics.ts",
+      "community": 50,
+      "community_name": "dependencies",
       "norm_label": "react-dom"
     },
     {
@@ -33035,8 +33035,8 @@
       "source_location": "L37",
       "_origin": "ast",
       "id": "microservice_package_dependencies_vite",
-      "community": 112,
-      "community_name": "Classe.ts",
+      "community": 50,
+      "community_name": "dependencies",
       "norm_label": "vite"
     },
     {
@@ -33046,8 +33046,8 @@
       "source_location": "L37",
       "_origin": "ast",
       "id": "microservice_package_json_vite",
-      "community": 112,
-      "community_name": "Classe.ts",
+      "community": 50,
+      "community_name": "dependencies",
       "norm_label": "vite"
     },
     {
@@ -35573,7 +35573,7 @@
       "label": "resolveContentEnrichmentEmergencyModel()",
       "file_type": "code",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L341",
+      "source_location": "L344",
       "_origin": "ast",
       "id": "microservice_src_services_contentenrichmentservice_resolvecontentenrichmentemergencymodel",
       "community": 11,
@@ -35584,7 +35584,7 @@
       "label": "ContentEnrichmentReadiness",
       "file_type": "code",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L350",
+      "source_location": "L360",
       "_origin": "ast",
       "id": "microservice_src_services_contentenrichmentservice_contentenrichmentreadiness",
       "community": 11,
@@ -35595,7 +35595,7 @@
       "label": "getContentEnrichmentReadiness()",
       "file_type": "code",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L360",
+      "source_location": "L370",
       "_origin": "ast",
       "id": "microservice_src_services_contentenrichmentservice_getcontentenrichmentreadiness",
       "community": 11,
@@ -35606,7 +35606,7 @@
       "label": "partitionBlocks()",
       "file_type": "code",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L382",
+      "source_location": "L392",
       "_origin": "ast",
       "id": "microservice_src_services_contentenrichmentservice_partitionblocks",
       "community": 11,
@@ -35617,7 +35617,7 @@
       "label": "errorMessage()",
       "file_type": "code",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L393",
+      "source_location": "L403",
       "_origin": "ast",
       "id": "microservice_src_services_contentenrichmentservice_errormessage",
       "community": 11,
@@ -35628,7 +35628,7 @@
       "label": "candidateIndex()",
       "file_type": "code",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L399",
+      "source_location": "L409",
       "_origin": "ast",
       "id": "microservice_src_services_contentenrichmentservice_candidateindex",
       "community": 11,
@@ -35639,7 +35639,7 @@
       "label": "generateStructuredWithOpenAI()",
       "file_type": "code",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L426",
+      "source_location": "L436",
       "_origin": "ast",
       "id": "microservice_src_services_contentenrichmentservice_generatestructuredwithopenai",
       "community": 11,
@@ -35650,7 +35650,7 @@
       "label": "GEMINI_ENRICHMENT_RESPONSE_SCHEMA",
       "file_type": "code",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L464",
+      "source_location": "L474",
       "_origin": "ast",
       "id": "microservice_src_services_contentenrichmentservice_gemini_enrichment_response_schema",
       "community": 11,
@@ -35661,7 +35661,7 @@
       "label": "generateStructuredWithGemini()",
       "file_type": "code",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L506",
+      "source_location": "L516",
       "_origin": "ast",
       "id": "microservice_src_services_contentenrichmentservice_generatestructuredwithgemini",
       "community": 11,
@@ -35672,7 +35672,7 @@
       "label": "errorDetails()",
       "file_type": "code",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L534",
+      "source_location": "L544",
       "_origin": "ast",
       "id": "microservice_src_services_contentenrichmentservice_errordetails",
       "community": 11,
@@ -35683,7 +35683,7 @@
       "label": "isOpenAIAvailabilityError()",
       "file_type": "code",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L549",
+      "source_location": "L559",
       "_origin": "ast",
       "id": "microservice_src_services_contentenrichmentservice_isopenaiavailabilityerror",
       "community": 11,
@@ -35694,7 +35694,7 @@
       "label": "resetOpenAIContentEnrichmentCircuit()",
       "file_type": "code",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L575",
+      "source_location": "L585",
       "_origin": "ast",
       "id": "microservice_src_services_contentenrichmentservice_resetopenaicontentenrichmentcircuit",
       "community": 11,
@@ -35705,7 +35705,7 @@
       "label": "EnrichmentGeneration",
       "file_type": "code",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L580",
+      "source_location": "L590",
       "_origin": "ast",
       "id": "microservice_src_services_contentenrichmentservice_enrichmentgeneration",
       "community": 11,
@@ -35716,7 +35716,7 @@
       "label": "generateEnrichmentWithFallback()",
       "file_type": "code",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L588",
+      "source_location": "L598",
       "_origin": "ast",
       "id": "microservice_src_services_contentenrichmentservice_generateenrichmentwithfallback",
       "community": 11,
@@ -35727,7 +35727,7 @@
       "label": "batchInput()",
       "file_type": "code",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L689",
+      "source_location": "L699",
       "_origin": "ast",
       "id": "microservice_src_services_contentenrichmentservice_batchinput",
       "community": 11,
@@ -35738,7 +35738,7 @@
       "label": "enrichContentBlocksWithOpenAI()",
       "file_type": "code",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L704",
+      "source_location": "L714",
       "_origin": "ast",
       "id": "microservice_src_services_contentenrichmentservice_enrichcontentblockswithopenai",
       "community": 11,
@@ -35914,7 +35914,7 @@
       "label": "resolveOpenAIContentGenerationFallbackModel()",
       "file_type": "code",
       "source_file": "microservice/src/services/contentGenerationService.ts",
-      "source_location": "L142",
+      "source_location": "L145",
       "_origin": "ast",
       "id": "microservice_src_services_contentgenerationservice_resolveopenaicontentgenerationfallbackmodel",
       "community": 57,
@@ -35925,7 +35925,7 @@
       "label": "resolveGeminiContentGenerationEmergencyModel()",
       "file_type": "code",
       "source_file": "microservice/src/services/contentGenerationService.ts",
-      "source_location": "L152",
+      "source_location": "L155",
       "_origin": "ast",
       "id": "microservice_src_services_contentgenerationservice_resolvegeminicontentgenerationemergencymodel",
       "community": 57,
@@ -35936,7 +35936,7 @@
       "label": "errorDetails()",
       "file_type": "code",
       "source_file": "microservice/src/services/contentGenerationService.ts",
-      "source_location": "L160",
+      "source_location": "L171",
       "_origin": "ast",
       "id": "microservice_src_services_contentgenerationservice_errordetails",
       "community": 107,
@@ -35947,7 +35947,7 @@
       "label": "isGeminiAvailabilityError()",
       "file_type": "code",
       "source_file": "microservice/src/services/contentGenerationService.ts",
-      "source_location": "L175",
+      "source_location": "L186",
       "_origin": "ast",
       "id": "microservice_src_services_contentgenerationservice_isgeminiavailabilityerror",
       "community": 107,
@@ -35958,7 +35958,7 @@
       "label": "isOpenAIContentGenerationAvailabilityError()",
       "file_type": "code",
       "source_file": "microservice/src/services/contentGenerationService.ts",
-      "source_location": "L208",
+      "source_location": "L219",
       "_origin": "ast",
       "id": "microservice_src_services_contentgenerationservice_isopenaicontentgenerationavailabilityerror",
       "community": 107,
@@ -35969,7 +35969,7 @@
       "label": "generateStructuredWithOpenAI()",
       "file_type": "code",
       "source_file": "microservice/src/services/contentGenerationService.ts",
-      "source_location": "L235",
+      "source_location": "L246",
       "_origin": "ast",
       "id": "microservice_src_services_contentgenerationservice_generatestructuredwithopenai",
       "community": 107,
@@ -35980,7 +35980,7 @@
       "label": "resetGeminiContentGenerationCircuit()",
       "file_type": "code",
       "source_file": "microservice/src/services/contentGenerationService.ts",
-      "source_location": "L279",
+      "source_location": "L290",
       "_origin": "ast",
       "id": "microservice_src_services_contentgenerationservice_resetgeminicontentgenerationcircuit",
       "community": 107,
@@ -35991,7 +35991,7 @@
       "label": "generateAfterPrimaryGeminiFailure()",
       "file_type": "code",
       "source_file": "microservice/src/services/contentGenerationService.ts",
-      "source_location": "L284",
+      "source_location": "L295",
       "_origin": "ast",
       "id": "microservice_src_services_contentgenerationservice_generateafterprimarygeminifailure",
       "community": 107,
@@ -36002,7 +36002,7 @@
       "label": "generateStructuredContentWithFallback()",
       "file_type": "code",
       "source_file": "microservice/src/services/contentGenerationService.ts",
-      "source_location": "L355",
+      "source_location": "L366",
       "_origin": "ast",
       "id": "microservice_src_services_contentgenerationservice_generatestructuredcontentwithfallback",
       "community": 107,
@@ -37820,8 +37820,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "mobile_package_dependencies_config_plugins_react_native_blob_util",
-      "community": 296,
-      "community_name": "@config-plugins/react-native-blob-util",
+      "community": 144,
+      "community_name": "dependencies",
       "norm_label": "@config-plugins/react-native-blob-util"
     },
     {
@@ -37831,8 +37831,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "config_plugins_react_native_blob_util",
-      "community": 296,
-      "community_name": "@config-plugins/react-native-blob-util",
+      "community": 144,
+      "community_name": "dependencies",
       "norm_label": "@config-plugins/react-native-blob-util"
     },
     {
@@ -37842,8 +37842,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "mobile_package_dependencies_config_plugins_react_native_pdf",
-      "community": 144,
-      "community_name": "dependencies",
+      "community": 110,
+      "community_name": "classeMetrics.ts",
       "norm_label": "@config-plugins/react-native-pdf"
     },
     {
@@ -37853,8 +37853,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "config_plugins_react_native_pdf",
-      "community": 144,
-      "community_name": "dependencies",
+      "community": 110,
+      "community_name": "classeMetrics.ts",
       "norm_label": "@config-plugins/react-native-pdf"
     },
     {
@@ -40405,8 +40405,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_app_tabs_trilha_layout",
-      "community": 140,
-      "community_name": "ios",
+      "community": 100,
+      "community_name": "FontesPersonalizacaoRepository",
       "norm_label": "trilha/_layout.tsx"
     },
     {
@@ -40416,8 +40416,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "mobile_src_app_tabs_trilha_layout_counttopicblocks",
-      "community": 140,
-      "community_name": "ios",
+      "community": 100,
+      "community_name": "FontesPersonalizacaoRepository",
       "norm_label": "counttopicblocks()"
     },
     {
@@ -40427,8 +40427,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "mobile_src_app_tabs_trilha_layout_countcompletedtopicblocks",
-      "community": 140,
-      "community_name": "ios",
+      "community": 100,
+      "community_name": "FontesPersonalizacaoRepository",
       "norm_label": "countcompletedtopicblocks()"
     },
     {
@@ -40438,8 +40438,8 @@
       "source_location": "L37",
       "_origin": "ast",
       "id": "mobile_src_app_tabs_trilha_layout_trilhastack",
-      "community": 140,
-      "community_name": "ios",
+      "community": 100,
+      "community_name": "FontesPersonalizacaoRepository",
       "norm_label": "trilhastack()"
     },
     {
@@ -42044,8 +42044,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_components_textblock",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "textblock.tsx"
     },
     {
@@ -42055,8 +42055,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "mobile_src_components_textblock_textoblock",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "textoblock()"
     },
     {
@@ -42066,8 +42066,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "mobile_src_components_textblock_styles",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "styles"
     },
     {
@@ -42517,8 +42517,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_barraprogresso",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "barraprogresso.tsx"
     },
     {
@@ -42528,8 +42528,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_barraprogresso_props",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "props"
     },
     {
@@ -42539,8 +42539,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_barraprogresso_barraprogresso",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "barraprogresso()"
     },
     {
@@ -42550,8 +42550,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_barraprogresso_styles",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "styles"
     },
     {
@@ -42638,8 +42638,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_metaxp",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "metaxp.tsx"
     },
     {
@@ -42649,8 +42649,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_metaxp_props",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "props"
     },
     {
@@ -42660,8 +42660,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_metaxp_metaxp",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "metaxp()"
     },
     {
@@ -42671,8 +42671,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_metaxp_styles",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "styles"
     },
     {
@@ -42682,8 +42682,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_pontonumero",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "pontonumero.tsx"
     },
     {
@@ -42693,8 +42693,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_pontonumero_props",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "props"
     },
     {
@@ -42704,8 +42704,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_pontonumero_pontonumero",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "pontonumero()"
     },
     {
@@ -42715,8 +42715,8 @@
       "source_location": "L36",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_pontonumero_styles",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "styles"
     },
     {
@@ -42726,8 +42726,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_progressaopontos",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "progressaopontos.tsx"
     },
     {
@@ -42737,8 +42737,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_progressaopontos_props",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "props"
     },
     {
@@ -42748,8 +42748,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_progressaopontos_progressopontos",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "progressopontos()"
     },
     {
@@ -42759,8 +42759,8 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_progressaopontos_styles",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "styles"
     },
     {
@@ -42770,8 +42770,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_progressoclasse",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "progressoclasse.tsx"
     },
     {
@@ -42781,8 +42781,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_progressoclasse_props",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "props"
     },
     {
@@ -42792,8 +42792,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_progressoclasse_progressoclasse",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "progressoclasse()"
     },
     {
@@ -42803,8 +42803,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "mobile_src_components_funcionais_progressoclasse_styles",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "styles"
     },
     {
@@ -43463,8 +43463,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_components_native_nativedocxviewer",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "nativedocxviewer.tsx"
     },
     {
@@ -43474,8 +43474,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "mobile_src_components_native_nativedocxviewer_props",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "props"
     },
     {
@@ -43485,8 +43485,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "mobile_src_components_native_nativedocxviewer_fallbackpalette",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "fallbackpalette"
     },
     {
@@ -43496,8 +43496,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "mobile_src_components_native_nativedocxviewer_estimateblockunits",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "estimateblockunits()"
     },
     {
@@ -43507,8 +43507,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "mobile_src_components_native_nativedocxviewer_paginateblocks",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "paginateblocks()"
     },
     {
@@ -43518,8 +43518,8 @@
       "source_location": "L69",
       "_origin": "ast",
       "id": "mobile_src_components_native_nativedocxviewer_renderblock",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "renderblock()"
     },
     {
@@ -43529,8 +43529,8 @@
       "source_location": "L175",
       "_origin": "ast",
       "id": "mobile_src_components_native_nativedocxviewer_nativedocxviewer",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "nativedocxviewer()"
     },
     {
@@ -43540,8 +43540,8 @@
       "source_location": "L229",
       "_origin": "ast",
       "id": "mobile_src_components_native_nativedocxviewer_styles",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "styles"
     },
     {
@@ -44453,8 +44453,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_components_trilhas_arvoreview",
-      "community": 128,
-      "community_name": "ArvoreView.tsx",
+      "community": 100,
+      "community_name": "FontesPersonalizacaoRepository",
       "norm_label": "arvoreview.tsx"
     },
     {
@@ -44464,8 +44464,8 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "mobile_src_components_trilhas_arvoreview_clamp",
-      "community": 128,
-      "community_name": "ArvoreView.tsx",
+      "community": 100,
+      "community_name": "FontesPersonalizacaoRepository",
       "norm_label": "clamp()"
     },
     {
@@ -44475,8 +44475,8 @@
       "source_location": "L58",
       "_origin": "ast",
       "id": "mobile_src_components_trilhas_arvoreview_hexpoints",
-      "community": 128,
-      "community_name": "ArvoreView.tsx",
+      "community": 100,
+      "community_name": "FontesPersonalizacaoRepository",
       "norm_label": "hexpoints()"
     },
     {
@@ -44486,8 +44486,8 @@
       "source_location": "L68",
       "_origin": "ast",
       "id": "mobile_src_components_trilhas_arvoreview_starpath",
-      "community": 128,
-      "community_name": "ArvoreView.tsx",
+      "community": 100,
+      "community_name": "FontesPersonalizacaoRepository",
       "norm_label": "starpath()"
     },
     {
@@ -44497,8 +44497,8 @@
       "source_location": "L82",
       "_origin": "ast",
       "id": "mobile_src_components_trilhas_arvoreview_straight",
-      "community": 128,
-      "community_name": "ArvoreView.tsx",
+      "community": 100,
+      "community_name": "FontesPersonalizacaoRepository",
       "norm_label": "straight()"
     },
     {
@@ -44508,8 +44508,8 @@
       "source_location": "L85",
       "_origin": "ast",
       "id": "mobile_src_components_trilhas_arvoreview_cliptoradius",
-      "community": 128,
-      "community_name": "ArvoreView.tsx",
+      "community": 100,
+      "community_name": "FontesPersonalizacaoRepository",
       "norm_label": "cliptoradius()"
     },
     {
@@ -44519,8 +44519,8 @@
       "source_location": "L100",
       "_origin": "ast",
       "id": "mobile_src_components_trilhas_arvoreview_intersectsegments",
-      "community": 128,
-      "community_name": "ArvoreView.tsx",
+      "community": 100,
+      "community_name": "FontesPersonalizacaoRepository",
       "norm_label": "intersectsegments()"
     },
     {
@@ -44530,8 +44530,8 @@
       "source_location": "L123",
       "_origin": "ast",
       "id": "mobile_src_components_trilhas_arvoreview_hexvertices",
-      "community": 128,
-      "community_name": "ArvoreView.tsx",
+      "community": 100,
+      "community_name": "FontesPersonalizacaoRepository",
       "norm_label": "hexvertices()"
     },
     {
@@ -44541,8 +44541,8 @@
       "source_location": "L133",
       "_origin": "ast",
       "id": "mobile_src_components_trilhas_arvoreview_cliptohex",
-      "community": 128,
-      "community_name": "ArvoreView.tsx",
+      "community": 100,
+      "community_name": "FontesPersonalizacaoRepository",
       "norm_label": "cliptohex()"
     },
     {
@@ -44552,8 +44552,8 @@
       "source_location": "L151",
       "_origin": "ast",
       "id": "mobile_src_components_trilhas_arvoreview_trilhaarvoresimple",
-      "community": 128,
-      "community_name": "ArvoreView.tsx",
+      "community": 100,
+      "community_name": "FontesPersonalizacaoRepository",
       "norm_label": "trilhaarvoresimple()"
     },
     {
@@ -44563,8 +44563,8 @@
       "source_location": "L905",
       "_origin": "ast",
       "id": "mobile_src_components_trilhas_arvoreview_styles",
-      "community": 128,
-      "community_name": "ArvoreView.tsx",
+      "community": 100,
+      "community_name": "FontesPersonalizacaoRepository",
       "norm_label": "styles"
     },
     {
@@ -44761,8 +44761,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_components_trilhas_moduleheadertitle",
-      "community": 140,
-      "community_name": "ios",
+      "community": 100,
+      "community_name": "FontesPersonalizacaoRepository",
       "norm_label": "moduleheadertitle.tsx"
     },
     {
@@ -44772,8 +44772,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "mobile_src_components_trilhas_moduleheadertitle_guidevisibleelements",
-      "community": 140,
-      "community_name": "ios",
+      "community": 100,
+      "community_name": "FontesPersonalizacaoRepository",
       "norm_label": "guidevisibleelements"
     },
     {
@@ -44783,8 +44783,8 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "mobile_src_components_trilhas_moduleheadertitle_props",
-      "community": 140,
-      "community_name": "ios",
+      "community": 100,
+      "community_name": "FontesPersonalizacaoRepository",
       "norm_label": "props"
     },
     {
@@ -44794,8 +44794,8 @@
       "source_location": "L47",
       "_origin": "ast",
       "id": "mobile_src_components_trilhas_moduleheadertitle_resolvespotlightstyle",
-      "community": 140,
-      "community_name": "ios",
+      "community": 100,
+      "community_name": "FontesPersonalizacaoRepository",
       "norm_label": "resolvespotlightstyle()"
     },
     {
@@ -44805,8 +44805,8 @@
       "source_location": "L100",
       "_origin": "ast",
       "id": "mobile_src_components_trilhas_moduleheadertitle_moduleheadertitle",
-      "community": 140,
-      "community_name": "ios",
+      "community": 100,
+      "community_name": "FontesPersonalizacaoRepository",
       "norm_label": "moduleheadertitle()"
     },
     {
@@ -44816,8 +44816,8 @@
       "source_location": "L203",
       "_origin": "ast",
       "id": "mobile_src_components_trilhas_moduleheadertitle_moduleheaderguidebutton",
-      "community": 140,
-      "community_name": "ios",
+      "community": 100,
+      "community_name": "FontesPersonalizacaoRepository",
       "norm_label": "moduleheaderguidebutton()"
     },
     {
@@ -44827,8 +44827,8 @@
       "source_location": "L315",
       "_origin": "ast",
       "id": "mobile_src_components_trilhas_moduleheadertitle_guidemodalcontent",
-      "community": 140,
-      "community_name": "ios",
+      "community": 100,
+      "community_name": "FontesPersonalizacaoRepository",
       "norm_label": "guidemodalcontent()"
     },
     {
@@ -44838,8 +44838,8 @@
       "source_location": "L789",
       "_origin": "ast",
       "id": "mobile_src_components_trilhas_moduleheadertitle_styles",
-      "community": 140,
-      "community_name": "ios",
+      "community": 100,
+      "community_name": "FontesPersonalizacaoRepository",
       "norm_label": "styles"
     },
     {
@@ -44970,8 +44970,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_components_trilhas_common_lockbadge",
-      "community": 128,
-      "community_name": "ArvoreView.tsx",
+      "community": 100,
+      "community_name": "FontesPersonalizacaoRepository",
       "norm_label": "lockbadge.tsx"
     },
     {
@@ -44981,8 +44981,8 @@
       "source_location": "L4",
       "_origin": "ast",
       "id": "mobile_src_components_trilhas_common_lockbadge_lockbadge",
-      "community": 128,
-      "community_name": "ArvoreView.tsx",
+      "community": 100,
+      "community_name": "FontesPersonalizacaoRepository",
       "norm_label": "lockbadge()"
     },
     {
@@ -45201,8 +45201,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_components_ui_versao_beta_button_g",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "button-g.tsx"
     },
     {
@@ -45212,8 +45212,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "mobile_src_components_ui_versao_beta_button_g_buttong",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "buttong()"
     },
     {
@@ -45223,8 +45223,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "mobile_src_components_ui_versao_beta_button_g_styles",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "styles"
     },
     {
@@ -45234,8 +45234,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_components_ui_versao_beta_button_inicial",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "button-inicial.tsx"
     },
     {
@@ -45245,8 +45245,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "mobile_src_components_ui_versao_beta_button_inicial_buttoninicial",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "buttoninicial()"
     },
     {
@@ -45256,8 +45256,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "mobile_src_components_ui_versao_beta_button_inicial_styles",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "styles"
     },
     {
@@ -45344,8 +45344,8 @@
       "source_location": "L69",
       "_origin": "ast",
       "id": "mobile_src_constants_profileimages_normalizebrainhexprofile",
-      "community": 140,
-      "community_name": "ios",
+      "community": 100,
+      "community_name": "FontesPersonalizacaoRepository",
       "norm_label": "normalizebrainhexprofile()"
     },
     {
@@ -45465,8 +45465,8 @@
       "source_location": "L245",
       "_origin": "ast",
       "id": "mobile_src_constants_profileimages_getbrainhexguidename",
-      "community": 140,
-      "community_name": "ios",
+      "community": 42,
+      "community_name": "v1/personalizacao.py",
       "norm_label": "getbrainhexguidename()"
     },
     {
@@ -47753,8 +47753,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_interfaces_componentes_simples_ibutton",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "ibutton.ts"
     },
     {
@@ -47764,8 +47764,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_interfaces_componentes_simples_ibutton_ibutton",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "ibutton"
     },
     {
@@ -52087,8 +52087,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_styles_globalstyle",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "globalstyle.ts"
     },
     {
@@ -52098,8 +52098,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "mobile_src_styles_globalstyle_fontfamily",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "fontfamily"
     },
     {
@@ -52109,8 +52109,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "mobile_src_styles_globalstyle_fontsize",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "fontsize"
     },
     {
@@ -52131,8 +52131,8 @@
       "source_location": "L56",
       "_origin": "ast",
       "id": "mobile_src_styles_globalstyle_border",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "border"
     },
     {
@@ -52142,8 +52142,8 @@
       "source_location": "L60",
       "_origin": "ast",
       "id": "mobile_src_styles_globalstyle_boxshadow",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "boxshadow"
     },
     {
@@ -52153,8 +52153,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_styles_trilhatopicostyles",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "trilhatopicostyles.ts"
     },
     {
@@ -52164,8 +52164,8 @@
       "source_location": "L4",
       "_origin": "ast",
       "id": "mobile_src_styles_trilhatopicostyles_styles",
-      "community": 100,
-      "community_name": "FontesPersonalizacaoRepository",
+      "community": 76,
+      "community_name": "DocumentBlock.tsx",
       "norm_label": "styles"
     },
     {
@@ -54859,8 +54859,8 @@
       "source_location": "L135",
       "_origin": "ast",
       "id": "mobile_src_utils_profileshelltheme_getprofileshellpalette",
-      "community": 140,
-      "community_name": "ios",
+      "community": 100,
+      "community_name": "FontesPersonalizacaoRepository",
       "norm_label": "getprofileshellpalette()"
     },
     {
@@ -64126,8 +64126,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "docs_mobile_estrutura_banco_supabase_executivo",
-      "community": 76,
-      "community_name": "DocumentBlock.tsx",
+      "community": 38,
+      "community_name": "docs/README.md",
       "norm_label": "mobile/estrutura-banco-supabase-executivo.md"
     },
     {
@@ -64137,8 +64137,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "docs_mobile_estrutura_banco_supabase_executivo_objetivo",
-      "community": 76,
-      "community_name": "DocumentBlock.tsx",
+      "community": 38,
+      "community_name": "docs/README.md",
       "norm_label": "objetivo"
     },
     {
@@ -64148,8 +64148,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "docs_mobile_estrutura_banco_supabase_executivo_essencial",
-      "community": 76,
-      "community_name": "DocumentBlock.tsx",
+      "community": 38,
+      "community_name": "docs/README.md",
       "norm_label": "essencial"
     },
     {
@@ -64159,8 +64159,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "docs_mobile_estrutura_banco_supabase_executivo_regra",
-      "community": 76,
-      "community_name": "DocumentBlock.tsx",
+      "community": 38,
+      "community_name": "docs/README.md",
       "norm_label": "regra"
     },
     {
@@ -165416,7 +165416,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L776",
+      "source_location": "L786",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice_enrichcontentblockswithopenai",
@@ -165428,7 +165428,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L627",
+      "source_location": "L637",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice_generateenrichmentwithfallback",
@@ -165440,7 +165440,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L529",
+      "source_location": "L539",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice_generatestructuredwithgemini",
@@ -165452,7 +165452,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L459",
+      "source_location": "L469",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice_generatestructuredwithopenai",
@@ -165464,7 +165464,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "microservice/src/services/contentGenerationService.ts",
-      "source_location": "L384",
+      "source_location": "L395",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentgenerationservice_generatestructuredcontentwithfallback",
@@ -165476,7 +165476,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "microservice/src/services/contentGenerationService.ts",
-      "source_location": "L274",
+      "source_location": "L285",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentgenerationservice_generatestructuredwithopenai",
@@ -167821,7 +167821,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L689",
+      "source_location": "L699",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice",
@@ -167854,7 +167854,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L399",
+      "source_location": "L409",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice",
@@ -167909,7 +167909,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L350",
+      "source_location": "L360",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice",
@@ -167964,7 +167964,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L704",
+      "source_location": "L714",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice",
@@ -167997,7 +167997,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L580",
+      "source_location": "L590",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice",
@@ -168008,7 +168008,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L534",
+      "source_location": "L544",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice",
@@ -168019,7 +168019,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L393",
+      "source_location": "L403",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice",
@@ -168030,7 +168030,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L464",
+      "source_location": "L474",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice",
@@ -168041,7 +168041,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L588",
+      "source_location": "L598",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice",
@@ -168052,7 +168052,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L506",
+      "source_location": "L516",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice",
@@ -168063,7 +168063,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L426",
+      "source_location": "L436",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice",
@@ -168074,7 +168074,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L360",
+      "source_location": "L370",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice",
@@ -168118,7 +168118,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L549",
+      "source_location": "L559",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice",
@@ -168162,7 +168162,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L382",
+      "source_location": "L392",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice",
@@ -168184,7 +168184,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L575",
+      "source_location": "L585",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice",
@@ -168195,7 +168195,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L341",
+      "source_location": "L344",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice",
@@ -168276,7 +168276,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L602",
+      "source_location": "L612",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice_generateenrichmentwithfallback",
@@ -168287,7 +168287,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L429",
+      "source_location": "L439",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice_generatestructuredwithopenai",
@@ -168299,7 +168299,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L509",
+      "source_location": "L519",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice_generatestructuredwithgemini",
@@ -168323,7 +168323,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L418",
+      "source_location": "L428",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice_candidateindex",
@@ -168395,7 +168395,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L821",
+      "source_location": "L831",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice_enrichcontentblockswithopenai",
@@ -168407,7 +168407,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L716",
+      "source_location": "L726",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice_enrichcontentblockswithopenai",
@@ -168419,7 +168419,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L628",
+      "source_location": "L638",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice_generateenrichmentwithfallback",
@@ -168431,7 +168431,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L711",
+      "source_location": "L721",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice_enrichcontentblockswithopenai",
@@ -168443,7 +168443,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L369",
+      "source_location": "L379",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice_getcontentenrichmentreadiness",
@@ -168455,7 +168455,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L713",
+      "source_location": "L723",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice_enrichcontentblockswithopenai",
@@ -168467,7 +168467,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L371",
+      "source_location": "L381",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice_getcontentenrichmentreadiness",
@@ -168479,7 +168479,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L715",
+      "source_location": "L725",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice_enrichcontentblockswithopenai",
@@ -168491,7 +168491,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L740",
+      "source_location": "L750",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice_enrichcontentblockswithopenai",
@@ -168503,7 +168503,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L776",
+      "source_location": "L786",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice_enrichcontentblockswithopenai",
@@ -168515,7 +168515,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L795",
+      "source_location": "L805",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice_enrichcontentblockswithopenai",
@@ -168527,7 +168527,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L673",
+      "source_location": "L683",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice_generateenrichmentwithfallback",
@@ -168539,7 +168539,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L556",
+      "source_location": "L566",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice_isopenaiavailabilityerror",
@@ -168551,7 +168551,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L661",
+      "source_location": "L671",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice_generateenrichmentwithfallback",
@@ -168563,7 +168563,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L757",
+      "source_location": "L767",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice_enrichcontentblockswithopenai",
@@ -168575,7 +168575,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L627",
+      "source_location": "L637",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice_generateenrichmentwithfallback",
@@ -168587,7 +168587,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentEnrichmentService.ts",
-      "source_location": "L761",
+      "source_location": "L771",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentenrichmentservice_enrichcontentblockswithopenai",
@@ -168772,7 +168772,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentGenerationService.ts",
-      "source_location": "L160",
+      "source_location": "L171",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentgenerationservice",
@@ -168783,7 +168783,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentGenerationService.ts",
-      "source_location": "L284",
+      "source_location": "L295",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentgenerationservice",
@@ -168794,7 +168794,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentGenerationService.ts",
-      "source_location": "L355",
+      "source_location": "L366",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentgenerationservice",
@@ -168805,7 +168805,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentGenerationService.ts",
-      "source_location": "L235",
+      "source_location": "L246",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentgenerationservice",
@@ -168827,7 +168827,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentGenerationService.ts",
-      "source_location": "L175",
+      "source_location": "L186",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentgenerationservice",
@@ -168838,7 +168838,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentGenerationService.ts",
-      "source_location": "L208",
+      "source_location": "L219",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentgenerationservice",
@@ -168860,7 +168860,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentGenerationService.ts",
-      "source_location": "L279",
+      "source_location": "L290",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentgenerationservice",
@@ -168871,7 +168871,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentGenerationService.ts",
-      "source_location": "L152",
+      "source_location": "L155",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentgenerationservice",
@@ -168893,7 +168893,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentGenerationService.ts",
-      "source_location": "L142",
+      "source_location": "L145",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentgenerationservice",
@@ -168986,7 +168986,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "microservice/src/services/contentGenerationService.ts",
-      "source_location": "L294",
+      "source_location": "L305",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentgenerationservice_generateafterprimarygeminifailure",
@@ -168998,7 +168998,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "microservice/src/services/contentGenerationService.ts",
-      "source_location": "L379",
+      "source_location": "L390",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentgenerationservice_generatestructuredcontentwithfallback",
@@ -169009,7 +169009,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentGenerationService.ts",
-      "source_location": "L244",
+      "source_location": "L255",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentgenerationservice_generatestructuredwithopenai",
@@ -169021,7 +169021,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentGenerationService.ts",
-      "source_location": "L319",
+      "source_location": "L330",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentgenerationservice_generateafterprimarygeminifailure",
@@ -169033,7 +169033,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentGenerationService.ts",
-      "source_location": "L386",
+      "source_location": "L397",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentgenerationservice_generatestructuredcontentwithfallback",
@@ -169045,7 +169045,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentGenerationService.ts",
-      "source_location": "L238",
+      "source_location": "L249",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentgenerationservice_generatestructuredwithopenai",
@@ -169129,7 +169129,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentGenerationService.ts",
-      "source_location": "L326",
+      "source_location": "L337",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentgenerationservice_generateafterprimarygeminifailure",
@@ -169141,7 +169141,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentGenerationService.ts",
-      "source_location": "L393",
+      "source_location": "L404",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentgenerationservice_generatestructuredcontentwithfallback",
@@ -169153,7 +169153,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentGenerationService.ts",
-      "source_location": "L184",
+      "source_location": "L195",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentgenerationservice_isgeminiavailabilityerror",
@@ -169165,7 +169165,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentGenerationService.ts",
-      "source_location": "L216",
+      "source_location": "L227",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentgenerationservice_isopenaicontentgenerationavailabilityerror",
@@ -169177,7 +169177,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentGenerationService.ts",
-      "source_location": "L384",
+      "source_location": "L395",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentgenerationservice_generatestructuredcontentwithfallback",
@@ -169189,7 +169189,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentGenerationService.ts",
-      "source_location": "L316",
+      "source_location": "L327",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentgenerationservice_generateafterprimarygeminifailure",
@@ -169201,7 +169201,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "microservice/src/services/contentGenerationService.ts",
-      "source_location": "L365",
+      "source_location": "L376",
       "weight": 1.0,
       "_origin": "ast",
       "source": "microservice_src_services_contentgenerationservice_generatestructuredcontentwithfallback",

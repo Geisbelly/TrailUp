@@ -178,13 +178,16 @@ test("reprocessa somente o bloco raso e preserva os blocos já validados", async
     multiRequest.blocos_base.map((block) => [block.id, block]),
   );
   const callIds: string[][] = [];
+  const callModels: string[] = [];
 
   const result = await enrichContentBlocksWithOpenAI(multiRequest, {
     model: "gpt-5.6-sol",
+    emergencyModel: "gemini-3.6-flash",
     batchSize: 2,
     maxAttempts: 2,
     generateStructured: async (call) => {
       callIds.push(call.blockIds);
+      callModels.push(call.model);
       return {
         blocos: call.blockIds.map((id) => {
           const base = baseById.get(id)!;
@@ -208,17 +211,41 @@ test("reprocessa somente o bloco raso e preserva os blocos já validados", async
         }),
       };
     },
+    generateStructuredFallback: async (call) => {
+      callIds.push(call.blockIds);
+      callModels.push(call.model);
+      const base = baseById.get(call.blockIds[0])!;
+      assert.match(call.input, /no mínimo \d+ caracteres/);
+      return {
+        blocos: [{
+          id: base.id,
+          tema: base.tema,
+          topico: base.topico,
+          objetivos: ["Explicar o conceito e aplicá-lo em situação real."],
+          conteudo_aprofundado:
+            `${base.conteudo_base} Esse mecanismo participa de um fluxo `
+            + "distribuído, com regras explícitas, consequências práticas e "
+            + "pontos de verificação. Em uma aplicação real, o estudante pode "
+            + "acompanhar cada etapa, comparar resultados e relacionar o conceito "
+            + "à comunicação confiável entre sistemas.",
+          conceitos_chave: ["comunicação distribuída", "fluxo de aplicação"],
+          exemplos_contextos: ["Abertura de uma página em um navegador."],
+          ponte_proximo_bloco: "O resultado prepara o próximo conceito.",
+        }],
+      };
+    },
   });
 
   assert.deepEqual(callIds, [
     ["bloco-01", "bloco-02"],
     ["bloco-02"],
   ]);
+  assert.deepEqual(callModels, ["gpt-5.6-sol", "gemini-3.6-flash"]);
   assert.deepEqual(result.blocos.map((block) => block.id), [
     "bloco-01",
     "bloco-02",
   ]);
-  assert.equal(result.metadata.provider, "openai");
+  assert.equal(result.metadata.provider, "mixed");
   assert.equal(result.metadata.lotes_gerados, 1);
   assert.equal(result.metadata.chamadas_realizadas, 2);
 });

@@ -4110,8 +4110,8 @@
     "semantic_hash": ""
   },
   "api/app/services/media_contract.py": {
-    "mtime": 1785269097.3118856,
-    "ast_hash": "73af63ce3cc4b509687ad4f5d46741d9",
+    "mtime": 1785271264.0207164,
+    "ast_hash": "f36969e78b9e45a01d2ab475a7a0aa08",
     "semantic_hash": ""
   },
   "frontend/src/components/console/personalizacoes/materialPreview.test.ts": {
@@ -4125,8 +4125,8 @@
     "semantic_hash": ""
   },
   "microservice/src/constants/pipelineVersions.ts": {
-    "mtime": 1785269097.3108852,
-    "ast_hash": "cd18540ba1efd922a33ec80d9c67ab57",
+    "mtime": 1785271264.0197146,
+    "ast_hash": "faa6f0e7201e8201d97194dd3d9107d8",
     "semantic_hash": ""
   },
   "api/alembic/versions/20260728_04_scope_personalization_by_content.py": {
@@ -4145,13 +4145,13 @@
     "semantic_hash": ""
   },
   "microservice/src/services/contentEnrichmentService.test.ts": {
-    "mtime": 1785269259.1310198,
-    "ast_hash": "53bb21473247cc30963ed2ffe2d5e710",
+    "mtime": 1785271275.2565997,
+    "ast_hash": "2bf8c45aa27bcfd4673e24415d895de0",
     "semantic_hash": ""
   },
   "microservice/src/services/contentEnrichmentService.ts": {
-    "mtime": 1785269259.129018,
-    "ast_hash": "ac10bc5a44bbd5e833d8dd68505a88d6",
+    "mtime": 1785271264.0187147,
+    "ast_hash": "ec46260dae7d8592c9141098b823237d",
     "semantic_hash": ""
   },
   "microservice/src/services/geminiBlockBatches.test.ts": {

@@ -1,11 +1,11 @@
 # Graph Report - TrailUp  (2026-07-28)
 
 ## Corpus Check
-- 690 files · ~2,390,001 words
+- 690 files · ~2,390,082 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 6315 nodes · 14186 edges · 382 communities (269 shown, 113 thin omitted)
+- 6315 nodes · 14186 edges · 381 communities (268 shown, 113 thin omitted)
 - Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 524 edges (avg confidence: 0.59)
 - Token cost: 0 input · 0 output
 
@@ -345,7 +345,6 @@
 - puppeteer
 - @vitejs/plugin-react
 - .puppeteerrc.cjs
-- @google/genai
 - express
 - mammoth
 - @radix-ui/react-accordion
@@ -377,7 +376,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (382 total, 113 thin omitted)
+## Communities (381 total, 113 thin omitted)
 
 ### Community 0 - "cn"
 Cohesion: 0.02
@@ -529,7 +528,7 @@ Nodes (9): FormControl, FormDescription, FormFieldContext, FormFieldContextValue
 
 ### Community 38 - "docs/README.md"
 Cohesion: 0.04
-Nodes (39): Camadas, Regra de dependencia, Componentes, Fluxo macro, Princípios atuais, Fluxos para validar, Passos, Entidades centrais (+31 more)
+Nodes (42): Camadas, Regra de dependencia, Componentes, Fluxo macro, Princípios atuais, Fluxos para validar, Passos, Entidades centrais (+34 more)
 
 ### Community 39 - "server.ts"
 Cohesion: 0.08
@@ -545,7 +544,7 @@ Nodes (35): ColetaDadosScreen(), styles, TOGGLE_ITEMS, ToggleItem, buildBlockSig
 
 ### Community 42 - "v1/personalizacao.py"
 Cohesion: 0.09
-Nodes (33): BattleScope, formatBattleDate(), formatBattleDuration(), formatEncounterLimit(), IABattleHeaderChip(), Props, styles, BattleScope (+25 more)
+Nodes (34): BattleScope, formatBattleDate(), formatBattleDuration(), formatEncounterLimit(), IABattleHeaderChip(), Props, styles, BattleScope (+26 more)
 
 ### Community 43 - "GroupAnalysisService"
 Cohesion: 0.10
@@ -577,7 +576,7 @@ Nodes (40): 10.1 Job agregado, 10.2 Target individual, 10. Estados de processame
 
 ### Community 50 - "dependencies"
 Cohesion: 0.10
-Nodes (21): cors, @google/genai, html2canvas, jspdf, dependencies, clsx, cors, @google/genai (+13 more)
+Nodes (21): cors, dotenv, html2canvas, jspdf, dependencies, clsx, cors, dotenv (+13 more)
 
 ### Community 51 - "clampPercent"
 Cohesion: 0.08
@@ -593,7 +592,7 @@ Nodes (24): _analysis_from_result(), _is_activity_signal(), _normalize_eventos_l
 
 ### Community 54 - "dependencies"
 Cohesion: 0.06
-Nodes (35): browserslist, embla-carousel-react, dependencies, browserslist, clsx, embla-carousel-react, input-otp, @radix-ui/react-aspect-ratio (+27 more)
+Nodes (35): embla-carousel-react, dependencies, clsx, embla-carousel-react, input-otp, next-themes, @radix-ui/react-aspect-ratio, @radix-ui/react-context-menu (+27 more)
 
 ### Community 55 - "ContentFileUpload.tsx"
 Cohesion: 0.07
@@ -676,8 +675,8 @@ Cohesion: 0.09
 Nodes (22): description, name, private, scripts, android:mobile, build:frontend, dev, dev:frontend (+14 more)
 
 ### Community 76 - "DocumentBlock.tsx"
-Cohesion: 0.50
-Nodes (3): Essencial, Objetivo, Regra
+Cohesion: 0.06
+Nodes (27): Props, styles, MetaXp(), Props, styles, Props, styles, Props (+19 more)
 
 ### Community 77 - "ConteudoPersonalizadoRepository"
 Cohesion: 0.21
@@ -768,8 +767,8 @@ Cohesion: 0.06
 Nodes (34): 10.1 Tabela canônica, 10.2 Campo de materiais, 10.3 Garantias, 10. Persistência e contratos centrais, 11.1 Entrada, 11.2 Papel, 11.3 Não objetivos, 11. Telemetria (+26 more)
 
 ### Community 100 - "FontesPersonalizacaoRepository"
-Cohesion: 0.04
-Nodes (63): Props, styles, MetaXp(), Props, styles, Props, styles, Props (+55 more)
+Cohesion: 0.06
+Nodes (59): countCompletedTopicBlocks(), countTopicBlocks(), TrilhaStack(), LoadingState(), Props, styles, clamp(), clipToHex() (+51 more)
 
 ### Community 102 - "BrainHexShowcase.tsx"
 Cohesion: 0.23
@@ -855,10 +854,6 @@ Nodes (26): _aggregate_media_status(), _build_generation_status(), _content_bloc
 Cohesion: 0.36
 Nodes (9): _empty(), extract(), _from_json(), _from_plaintext(), _from_xml(), Extrator de texto plano (.txt, .csv, .json, .xml) → lista de Block., Trata JSON como estrutura textual., Remove tags XML e extrai texto. (+1 more)
 
-### Community 128 - "ArvoreView.tsx"
-Cohesion: 0.27
-Nodes (11): clamp(), clipToHex(), clipToRadius(), hexPoints(), hexVertices(), intersectSegments(), starPath(), straight() (+3 more)
-
 ### Community 129 - "video.py"
 Cohesion: 0.40
 Nodes (9): _build_slide_image(), _clip_with_audio(), _clip_with_duration(), gerar_video_mp4(), _hex_to_rgb(), Any, _wrap_text(), _write_video_file() (+1 more)
@@ -901,7 +896,7 @@ Nodes (21): Atividade, AtividadeTipo, mergeMediaCandidates(), pickFirstString(),
 
 ### Community 140 - "ios"
 Cohesion: 0.07
-Nodes (52): TabLayout(), countCompletedTopicBlocks(), countTopicBlocks(), TrilhaStack(), defaultAccentGlow, defaultPalette, LoadingScreen(), LoadingScreenProps (+44 more)
+Nodes (39): TabLayout(), defaultAccentGlow, defaultPalette, LoadingScreen(), LoadingScreenProps, ND, styles, HapticTab() (+31 more)
 
 ### Community 141 - "NodeBadge.tsx"
 Cohesion: 0.40
@@ -917,7 +912,7 @@ Nodes (9): _as_datetime(), _build_generation_summary(), _datetime_rank(), _lates
 
 ### Community 144 - "dependencies"
 Cohesion: 0.09
-Nodes (23): @config-plugins/react-native-pdf, expo, expo-camera, expo-dev-client, expo-status-bar, dependencies, @config-plugins/react-native-pdf, expo (+15 more)
+Nodes (23): @config-plugins/react-native-blob-util, expo, expo-camera, expo-dev-client, expo-status-bar, dependencies, @config-plugins/react-native-blob-util, expo (+15 more)
 
 ### Community 145 - "RankDaClasse"
 Cohesion: 0.25
@@ -1271,7 +1266,7 @@ Nodes (27): PendingProfessor, ProfessorApprovalSection(), ProfileSectionProps, R
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `useUsuario()` connect `getProfileShellPalette` to `ArvoreView.tsx`, `FontesPersonalizacaoRepository`, `main.py`, `QuestionActivity.tsx`, `v1/personalizacao.py`, `form.tsx`, `ios`, `TrilhaContext.tsx`, `tailwind-merge`, `trilha/[id].tsx`, `ContentFileUpload.tsx`, `IAContext.tsx`, `test_repositories.py`, `media_agents.py`, `EventoAluno`?**
+- **Why does `useUsuario()` connect `getProfileShellPalette` to `FontesPersonalizacaoRepository`, `main.py`, `QuestionActivity.tsx`, `v1/personalizacao.py`, `form.tsx`, `ios`, `TrilhaContext.tsx`, `tailwind-merge`, `trilha/[id].tsx`, `ContentFileUpload.tsx`, `IAContext.tsx`, `test_repositories.py`, `media_agents.py`, `EventoAluno`?**
   _High betweenness centrality (0.021) - this node is a cross-community bridge._
 - **Why does `Settings` connect `test_personalizacao_service.py` to `@radix-ui/react-menubar`, `services/personalizacao.py`, `services/classe_mapa_tema.py`, `perfil/index.tsx`, `Evento`, `Settings`, `GlobalStyle.ts`, `behavioral_personalization.py`, `api.py`, `ArvoreView.tsx`, `contentBlocks.ts`, `test_api.py`, `test_graph_nodes.py`, `UserContext`, `mobile/guia-uso-app.md`, `SupabaseStorage`, `AlunoSignupWizard.tsx`?**
   _High betweenness centrality (0.019) - this node is a cross-community bridge._
