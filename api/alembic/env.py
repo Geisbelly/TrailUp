@@ -9,7 +9,7 @@ from app.core.settings import get_settings
 config = context.config
 
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = None
 
@@ -27,7 +27,9 @@ def _normalize_alembic_url(raw_url: str) -> str:
 
 def _configure_database_url() -> str:
     settings = get_settings()
-    raw_url = settings.alembic_database_url or settings.database_url
+    raw_url = config.attributes.get("database_url_override")
+    if not isinstance(raw_url, str) or not raw_url.strip():
+        raw_url = settings.alembic_database_url or settings.database_url
     url = _normalize_alembic_url(raw_url)
     config.set_main_option("sqlalchemy.url", url.replace("%", "%%"))
     return url
