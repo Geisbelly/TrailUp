@@ -386,6 +386,7 @@
   "384": "testSetup.ts",
   "385": "next-themes",
   "386": "lucide-react",
+  "387": "caniuse-lite",
   "388": "puppeteer",
   "389": "MultiOutputPipeline",
   "390": "pptx.py",
@@ -402,5 +403,7 @@
   "401": "mobile/arquitetura-funcionamento-geral-sistema.md",
   "402": "mobile/estrutura-banco-supabase-executivo.md",
   "403": "expo-symbols",
-  "404": "@radix-ui/react-accordion"
+  "404": "@radix-ui/react-accordion",
+  "405": "expo-symbols",
+  "406": "next-themes"
 }

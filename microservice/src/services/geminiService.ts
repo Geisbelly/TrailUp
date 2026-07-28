@@ -15,7 +15,6 @@ import { addWavHeader } from "../lib/wav";
 import {
   generateStructuredContentWithFallback,
   resolveGeminiContentGenerationModel,
-  resolveGeminiContentGenerationEmergencyModel,
   resolveOpenAIContentGenerationFallbackModel,
   type ContentGenerationProvider,
 } from "./contentGenerationService";
@@ -761,8 +760,6 @@ export async function processMediaWithGemini(
     const batchResults: GeneratedBlockBatch[] = [];
     const geminiModel = resolveGeminiContentGenerationModel();
     const openaiModel = resolveOpenAIContentGenerationFallbackModel();
-    const geminiEmergencyModel =
-      resolveGeminiContentGenerationEmergencyModel();
     const maxOutputTokens = Math.max(
       8_192,
       Number(process.env.CONTENT_GENERATION_BATCH_MAX_OUTPUT_TOKENS) || 32_768,
@@ -786,7 +783,6 @@ export async function processMediaWithGemini(
           maxOutputTokens,
           geminiModel,
           openaiModel,
-          geminiEmergencyModel,
         },
         {
           generateWithGemini: async (call) => {

@@ -1670,8 +1670,8 @@
     "semantic_hash": ""
   },
   "microservice/src/services/geminiService.ts": {
-    "mtime": 1785271719.3885937,
-    "ast_hash": "c73f939129f993087c703374fffeae61",
+    "mtime": 1785272914.5867944,
+    "ast_hash": "ec1ffc15dc20afd2d290b97a62a28efd",
     "semantic_hash": ""
   },
   "microservice/src/services/pdfService.ts": {
@@ -3280,8 +3280,8 @@
     "semantic_hash": ""
   },
   "microservice/README.md": {
-    "mtime": 1785271907.3191066,
-    "ast_hash": "c08ce8c3e65f6536e26820d4aa404290",
+    "mtime": 1785272914.5889077,
+    "ast_hash": "ab65562fd91740b2ec35d2236c966304",
     "semantic_hash": ""
   },
   "microservice/index.html": {
@@ -4010,13 +4010,13 @@
     "semantic_hash": ""
   },
   "api/app/services/content_enrichment.py": {
-    "mtime": 1785271916.4927278,
-    "ast_hash": "b3aa9930a2b64b89588d40b3c31d0417",
+    "mtime": 1785272053.4010775,
+    "ast_hash": "8bd23d8aaa65381de6cb84ba088b1b60",
     "semantic_hash": ""
   },
   "api/tests/test_content_enrichment.py": {
-    "mtime": 1785271920.1845374,
-    "ast_hash": "b9ac920189a59362fa148202982e02b9",
+    "mtime": 1785272053.4020803,
+    "ast_hash": "573b4e1aff47ee4c950db473a3522bd0",
     "semantic_hash": ""
   },
   "api/app/agent/prompts/enriquecedor_blocos_conteudo.txt": {
@@ -4110,8 +4110,8 @@
     "semantic_hash": ""
   },
   "api/app/services/media_contract.py": {
-    "mtime": 1785271729.146914,
-    "ast_hash": "d84af159c27ccb530ebc76f796c1fe6d",
+    "mtime": 1785272939.3047154,
+    "ast_hash": "fa6d48a3ba0985a2e8e90df5000994fb",
     "semantic_hash": ""
   },
   "frontend/src/components/console/personalizacoes/materialPreview.test.ts": {
@@ -4125,8 +4125,8 @@
     "semantic_hash": ""
   },
   "microservice/src/constants/pipelineVersions.ts": {
-    "mtime": 1785271729.145409,
-    "ast_hash": "bf7447f0ab9aa8f27b58fef2851037f2",
+    "mtime": 1785272939.3037155,
+    "ast_hash": "e13e8ac1f1f3c624fce6963d57732b40",
     "semantic_hash": ""
   },
   "api/alembic/versions/20260728_04_scope_personalization_by_content.py": {
@@ -4190,13 +4190,13 @@
     "semantic_hash": ""
   },
   "microservice/src/services/contentGenerationService.test.ts": {
-    "mtime": 1785271725.038048,
-    "ast_hash": "13656ace6dc0cbc419a3da9074fdcf65",
+    "mtime": 1785272931.196796,
+    "ast_hash": "406ef0f1f119f0fb794b5917d68c8135",
     "semantic_hash": ""
   },
   "microservice/src/services/contentGenerationService.ts": {
-    "mtime": 1785271785.5709064,
-    "ast_hash": "67224cb1afd7faa8390f8778053660ec",
+    "mtime": 1785272970.2515807,
+    "ast_hash": "58fea8cc26acdf13fe028f2ba5694bfc",
     "semantic_hash": ""
   }
 }

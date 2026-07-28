@@ -4,8 +4,6 @@ export const DEFAULT_GEMINI_CONTENT_GENERATION_MODEL =
   "gemini-3.6-flash" as const;
 export const DEFAULT_OPENAI_CONTENT_GENERATION_FALLBACK_MODEL =
   "gpt-5.6-sol" as const;
-export const DEFAULT_GEMINI_CONTENT_GENERATION_EMERGENCY_MODEL =
-  "gemini-3.5-flash-lite" as const;
 
 const DEFAULT_GEMINI_UNAVAILABLE_COOLDOWN_MS = 5 * 60 * 1_000;
 const DEFAULT_OPENAI_MAX_OUTPUT_TOKENS = 65_536;
@@ -18,7 +16,6 @@ export interface StructuredContentGenerationCall {
   maxOutputTokens: number;
   geminiModel: string;
   openaiModel: string;
-  geminiEmergencyModel: string;
 }
 
 export type StructuredContentGenerator = (
@@ -109,7 +106,6 @@ export const CONTENT_GENERATION_RESPONSE_SCHEMA = {
 
 let openai: OpenAI | null = null;
 let geminiUnavailableUntil = 0;
-let openaiUnavailableUntil = 0;
 
 class ContentGenerationQualityError extends Error {
   constructor(provider: ContentGenerationProvider, cause: unknown) {
@@ -164,22 +160,6 @@ export function resolveOpenAIContentGenerationFallbackModel(
   ).trim() || DEFAULT_OPENAI_CONTENT_GENERATION_FALLBACK_MODEL;
 }
 
-export function resolveGeminiContentGenerationEmergencyModel(
-  environment: Record<string, string | undefined> = process.env,
-): string {
-  const configured = String(
-    environment.GEMINI_CONTENT_GENERATION_EMERGENCY_MODEL ?? "",
-  ).trim();
-  if (
-    !configured
-    || configured === "gemini-2.5-flash"
-    || configured === "gemini-2.5-flash-lite"
-  ) {
-    return DEFAULT_GEMINI_CONTENT_GENERATION_EMERGENCY_MODEL;
-  }
-  return configured;
-}
-
 function errorDetails(error: unknown): string {
   if (error instanceof Error) {
     const cause = "cause" in error ? String(error.cause ?? "") : "";
@@ -225,33 +205,6 @@ export function isGeminiAvailabilityError(error: unknown): boolean {
     "connection reset",
     "fetch failed",
     "gemini_api_key ausente",
-  ].some((marker) => details.includes(marker));
-}
-
-export function isOpenAIContentGenerationAvailabilityError(
-  error: unknown,
-): boolean {
-  const record = typeof error === "object" && error !== null
-    ? error as Record<string, unknown>
-    : {};
-  const status = Number(record.status ?? record.statusCode ?? record.code);
-  if (status === 408 || status === 429 || status >= 500) return true;
-  const details = errorDetails(error).toLowerCase();
-  return [
-    "429",
-    "current quota",
-    "insufficient_quota",
-    "rate limit",
-    "too many requests",
-    "service unavailable",
-    "temporarily unavailable",
-    "timeout",
-    "timed out",
-    "etimedout",
-    "econnreset",
-    "connection reset",
-    "fetch failed",
-    "openai_api_key ausente",
   ].some((marker) => details.includes(marker));
 }
 
@@ -301,17 +254,13 @@ async function generateStructuredWithOpenAI(
 
 export function resetGeminiContentGenerationCircuit(): void {
   geminiUnavailableUntil = 0;
-  openaiUnavailableUntil = 0;
 }
 
 async function generateAfterPrimaryGeminiFailure(
   call: StructuredContentGenerationCall,
   reason: string,
   options: {
-    generateWithGemini: StructuredContentGenerator;
     generateWithOpenAI: StructuredContentGenerator;
-    environment: Record<string, string | undefined>;
-    now: () => number;
     validateResult?: StructuredContentGenerationOptions["validateResult"];
   },
 ): Promise<StructuredContentGenerationResult> {
@@ -329,23 +278,6 @@ async function generateAfterPrimaryGeminiFailure(
     return value;
   };
 
-  if (options.now() < openaiUnavailableUntil) {
-    return {
-      value: await generateAndValidate(
-        options.generateWithGemini,
-        {
-          ...call,
-          geminiModel: call.geminiEmergencyModel,
-        },
-        "gemini",
-      ),
-      provider: "gemini",
-      model: call.geminiEmergencyModel,
-      fallbackFrom: "gemini",
-      fallbackReason:
-        `${reason}. Circuito temporário de indisponibilidade da OpenAI.`,
-    };
-  }
   try {
     return {
       value: await generateAndValidate(
@@ -359,46 +291,17 @@ async function generateAfterPrimaryGeminiFailure(
       fallbackReason: reason,
     };
   } catch (openaiError) {
-    if (!isOpenAIContentGenerationAvailabilityError(openaiError)) {
-      throw openaiError;
-    }
-    const cooldownMs = positiveInteger(
-      options.environment.CONTENT_GENERATION_OPENAI_COOLDOWN_MS,
-      DEFAULT_GEMINI_UNAVAILABLE_COOLDOWN_MS,
-      1_000,
-      60 * 60 * 1_000,
-    );
-    openaiUnavailableUntil = options.now() + cooldownMs;
     const openaiReason = errorDetails(openaiError).slice(0, 500);
-    try {
-      return {
-        value: await generateAndValidate(
-          options.generateWithGemini,
-          {
-            ...call,
-            geminiModel: call.geminiEmergencyModel,
-          },
-          "gemini",
-        ),
-        provider: "gemini",
-        model: call.geminiEmergencyModel,
-        fallbackFrom: "gemini",
-        fallbackReason:
-          `Gemini principal: ${reason}. OpenAI: ${openaiReason}.`,
-      };
-    } catch (emergencyError) {
-      throw new Error(
-        "Gemini principal e OpenAI estão indisponíveis, e o modelo Gemini "
-          + "alternativo também falhou.",
-        {
-          cause: {
-            gemini_primary: reason,
-            openai: openaiReason,
-            gemini_emergency: errorDetails(emergencyError).slice(0, 500),
-          },
+    throw new Error(
+      "A geração falhou no Gemini e a tentativa obrigatória pela OpenAI "
+        + `também falhou. OpenAI: ${openaiReason}`,
+      {
+        cause: {
+          gemini: reason,
+          openai: openaiReason,
         },
-      );
-    }
+      },
+    );
   }
 }
 
@@ -416,10 +319,7 @@ export async function generateStructuredContentWithFallback(
       call,
       "circuito temporário de indisponibilidade do Gemini principal",
       {
-        generateWithGemini: options.generateWithGemini,
         generateWithOpenAI,
-        environment,
-        now,
         validateResult: options.validateResult,
       },
     );
@@ -439,26 +339,21 @@ export async function generateStructuredContentWithFallback(
     };
   } catch (error) {
     if (
-      !(error instanceof ContentGenerationQualityError)
-      && !isGeminiAvailabilityError(error)
+      error instanceof ContentGenerationQualityError
+      || isGeminiAvailabilityError(error)
     ) {
-      throw error;
+      const cooldownMs = positiveInteger(
+        environment.CONTENT_GENERATION_GEMINI_COOLDOWN_MS,
+        DEFAULT_GEMINI_UNAVAILABLE_COOLDOWN_MS,
+        1_000,
+        60 * 60 * 1_000,
+      );
+      geminiUnavailableUntil = now() + cooldownMs;
     }
-
-    const cooldownMs = positiveInteger(
-      environment.CONTENT_GENERATION_GEMINI_COOLDOWN_MS,
-      DEFAULT_GEMINI_UNAVAILABLE_COOLDOWN_MS,
-      1_000,
-      60 * 60 * 1_000,
-    );
-    geminiUnavailableUntil = now() + cooldownMs;
     const reason = errorDetails(error).slice(0, 500);
 
     return generateAfterPrimaryGeminiFailure(call, reason, {
-      generateWithGemini: options.generateWithGemini,
       generateWithOpenAI,
-      environment,
-      now,
       validateResult: options.validateResult,
     });
   }

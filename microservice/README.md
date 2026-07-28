@@ -52,10 +52,7 @@ Microservico de geracao de materiais personalizados por perfil BrainHex.
 - `CONTENT_GENERATION_MODEL` (Gemini principal; padrao: `gemini-3.6-flash`)
 - `CONTENT_GENERATION_BLOCK_BATCH_SIZE` (padrao: `12`, maximo: `24`)
 - `OPENAI_CONTENT_GENERATION_FALLBACK_MODEL` (padrao: `gpt-5.6-sol`)
-- `GEMINI_CONTENT_GENERATION_EMERGENCY_MODEL` (ultima contingencia; padrao:
-  `gemini-3.5-flash-lite`)
 - `CONTENT_GENERATION_GEMINI_COOLDOWN_MS` (padrao: `300000`)
-- `CONTENT_GENERATION_OPENAI_COOLDOWN_MS` (padrao: `300000`)
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
 
