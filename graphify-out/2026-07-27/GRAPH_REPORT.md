@@ -1,16 +1,16 @@
 # Graph Report - TrailUp  (2026-07-27)
 
 ## Corpus Check
-- 665 files · ~2,354,446 words
+- 665 files · ~2,354,505 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 5943 nodes · 13104 edges · 393 communities (278 shown, 115 thin omitted)
+- 5943 nodes · 13104 edges · 393 communities (279 shown, 114 thin omitted)
 - Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 437 edges (avg confidence: 0.57)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `4a5ebc76`
+- Built from commit: `d0092528`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -309,6 +309,7 @@
 - microservice/arquitetura-app-detalhada.md
 - docs/microservice/README.md
 - microservice/package.json
+- clsx
 - upload_fontes_personalizacao
 - api/estrutura-banco-supabase.md
 - Chat no Módulo — Remoção de Preview Automático e Botão de Descarte
@@ -335,7 +336,6 @@
 - guardian-recolor/package.json
 - react-markdown
 - chart.tsx
-- @tailwindcss/vite
 - vite
 - react-native-pdf
 - react-native-svg
@@ -392,7 +392,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (393 total, 115 thin omitted)
+## Communities (393 total, 114 thin omitted)
 
 ### Community 0 - "cn"
 Cohesion: 0.02
@@ -419,16 +419,16 @@ Cohesion: 0.08
 Nodes (34): LoadingOverlay(), unstable_settings, NotificacaoDetalhe(), s, NotificationItem, Props, styles, Props (+26 more)
 
 ### Community 6 - "Evento"
-Cohesion: 0.08
-Nodes (47): Evento, AdaptiveContentGenerator, AttentionAnalyzer, AttentionStageResult, build_linear_analysis_orchestrator(), _count_switches(), DecisionEngine, DecisionStageResult (+39 more)
+Cohesion: 0.10
+Nodes (37): Evento, Any, AdaptiveContentGenerator, AttentionAnalyzer, AttentionStageResult, build_linear_analysis_orchestrator(), _count_switches(), DecisionEngine (+29 more)
 
 ### Community 7 - "TopicEditDrawer.tsx"
 Cohesion: 0.08
 Nodes (60): extractYouTubeId(), getReferenceName(), isDirectUrl(), isFileReference(), TopicEditDrawer(), TopicEditDrawerProps, TopicFormDialog(), createClassWithMateria() (+52 more)
 
 ### Community 8 - "main.py"
-Cohesion: 0.29
-Nodes (12): close_checkpointer(), ainvoke_personalizacao_graph(), _compact_exception_text(), _get_recovery_lock(), _is_checkpointer_connection_error(), Any, BaseException, Exception (+4 more)
+Cohesion: 0.23
+Nodes (16): close_checkpointer(), get_checkpointer(), get_ephemeral_checkpointer(), get_persistent_checkpointer(), Any, ainvoke_personalizacao_graph(), _compact_exception_text(), _get_recovery_lock() (+8 more)
 
 ### Community 9 - "AccessRepository"
 Cohesion: 0.20
@@ -592,7 +592,7 @@ Nodes (40): 10.1 Job agregado, 10.2 Target individual, 10. Estados de processame
 
 ### Community 50 - "dependencies"
 Cohesion: 0.11
-Nodes (19): cors, express, jspdf, dependencies, clsx, cors, express, jspdf (+11 more)
+Nodes (19): cors, express, jspdf, dependencies, cors, express, jspdf, mammoth (+11 more)
 
 ### Community 51 - "clampPercent"
 Cohesion: 0.08
@@ -910,6 +910,10 @@ Nodes (7): detect(), _detect_from_magic(), _guess_mime(), Any, Detecta o tipo e 
 Cohesion: 0.09
 Nodes (21): ProgressoItemPersonalizado, StudyBlockSignature, StudyBlockSnapshot, StudySessionParams, ContentBlock, ContentBlockPayload, ContentBlockType, ContentDisplayMode (+13 more)
 
+### Community 136 - "test_graph_invocation.py"
+Cohesion: 0.16
+Nodes (12): Calcula palavras-por-minuto por material e sinaliza ritmo de leitura., _summarize_reading_pace(), DummyApp, DummyGraph, DummyRequest, DummyState, asyncio, test_linear_analysis_orchestrator_runs_all_stages_and_enriches_state() (+4 more)
+
 ### Community 138 - "api/funcionamento-personalizacao-gamificacao-recursos-pedagogicos-detalhado.md"
 Cohesion: 0.08
 Nodes (25): 10. Indicadores de operação e aprendizagem, 11. Antipadrões a evitar, 12. Evolução sugerida, 1. Objetivo do documento, 2.1 Entrada de contexto, 2.2 Decisão de execução, 2.3 Geração e persistência, 2. Personalização - visão funcional (+17 more)
@@ -932,7 +936,7 @@ Nodes (12): BattleScope, IAFloatingOverlay(), pickTimerFeatureOrder(), Props, st
 
 ### Community 144 - "dependencies"
 Cohesion: 0.09
-Nodes (23): @config-plugins/react-native-blob-util, expo, expo-camera, expo-dev-client, expo-status-bar, dependencies, @config-plugins/react-native-blob-util, expo (+15 more)
+Nodes (23): @config-plugins/react-native-pdf, expo, expo-camera, expo-dev-client, expo-status-bar, dependencies, @config-plugins/react-native-pdf, expo (+15 more)
 
 ### Community 145 - "IAContracts.ts"
 Cohesion: 0.23
@@ -1247,8 +1251,8 @@ Cohesion: 0.38
 Nodes (10): buildSupabasePublicStorageUrl(), encodeObjectPath(), getSupabaseOrigin(), joinUrl(), looksLikeStorageObjectPath(), normalizeObjectPath(), ParsedStorageUrl, parseSupabaseStorageUrl() (+2 more)
 
 ### Community 332 - "GUIA_USO.md"
-Cohesion: 0.35
-Nodes (9): get_checkpointer(), get_ephemeral_checkpointer(), get_persistent_checkpointer(), Any, create_app(), FastAPI, checkpoint_retention_loop(), Any (+1 more)
+Cohesion: 0.30
+Nodes (9): create_app(), FastAPI, checkpoint_retention_loop(), CheckpointCleanupResult, cleanup_persisted_checkpoints(), Any, run_checkpoint_retention_once(), asyncio (+1 more)
 
 ### Community 333 - "microservice/arquitetura-app-detalhada.md"
 Cohesion: 0.25
@@ -1263,8 +1267,8 @@ Cohesion: 0.50
 Nodes (4): 8.1 Unicidade/deduplicacao, 8.2 Performance, 8.3 Integridade semÃ¢ntica, 8. Constraints e indexes crÃ­ticos
 
 ### Community 337 - "upload_fontes_personalizacao"
-Cohesion: 0.15
-Nodes (8): CheckpointCleanupResult, cleanup_persisted_checkpoints(), _FakeCheckpointer, _FakeCursor, _FakeCursorContext, _FakeResult, asyncio, test_cleanup_persisted_checkpoints_deletes_in_expected_order()
+Cohesion: 0.17
+Nodes (4): _FakeCheckpointer, _FakeCursor, _FakeCursorContext, _FakeResult
 
 ### Community 340 - "docs/api/README.md"
 Cohesion: 0.29
@@ -1333,7 +1337,7 @@ Nodes (3): Escrita, Leitura, Regra de negocio
 ## Knowledge Gaps
 - **2047 isolated node(s):** `trailup-api`, `$schema`, `style`, `rsc`, `tsx` (+2042 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **115 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **114 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
