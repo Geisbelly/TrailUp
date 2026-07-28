@@ -305,8 +305,8 @@
     "semantic_hash": "ea9fc3046e6bac85cbdbfead8c6ca178"
   },
   "api/app/core/settings.py": {
-    "mtime": 1785279103.5202496,
-    "ast_hash": "7c45c6cafc5dd021c14e64c4b25757c1",
+    "mtime": 1785280333.2746134,
+    "ast_hash": "aa5540e19ffbe55a29323e11e363fee7",
     "semantic_hash": ""
   },
   "api/app/db/__init__.py": {
@@ -1670,8 +1670,8 @@
     "semantic_hash": ""
   },
   "microservice/src/services/geminiService.ts": {
-    "mtime": 1785273855.8077817,
-    "ast_hash": "ec1ffc15dc20afd2d290b97a62a28efd",
+    "mtime": 1785280333.2640934,
+    "ast_hash": "b21db428eb87f38254aec1f80f938fe2",
     "semantic_hash": ""
   },
   "microservice/src/services/pdfService.ts": {
@@ -2755,8 +2755,8 @@
     "semantic_hash": ""
   },
   "api/README.md": {
-    "mtime": 1785273855.6031191,
-    "ast_hash": "be3a1520369093caabc3901c24ed0368",
+    "mtime": 1785280333.2776146,
+    "ast_hash": "78558e0382f62ac2e88054fa0f2ab03d",
     "semantic_hash": ""
   },
   "api/app/agent/prompts/classe_mapa_tema.txt": {
@@ -3280,8 +3280,8 @@
     "semantic_hash": ""
   },
   "microservice/README.md": {
-    "mtime": 1785279103.5233598,
-    "ast_hash": "68715266ff747c94185879a908cb8c17",
+    "mtime": 1785280333.269096,
+    "ast_hash": "8bcc843693c1199af82e6841a2c3d455",
     "semantic_hash": ""
   },
   "microservice/index.html": {
@@ -4010,13 +4010,13 @@
     "semantic_hash": ""
   },
   "api/app/services/content_enrichment.py": {
-    "mtime": 1785279103.521248,
-    "ast_hash": "f438116acc243caa5a7d40378d1a8043",
+    "mtime": 1785280447.012638,
+    "ast_hash": "aa273efd20e2cd367d1d87cd93c0ed2a",
     "semantic_hash": ""
   },
   "api/tests/test_content_enrichment.py": {
-    "mtime": 1785279103.52736,
-    "ast_hash": "fb97d461bf494b0fe9eaad974953f236",
+    "mtime": 1785280383.4914029,
+    "ast_hash": "4f3526e9dd8dc711a8cde9d34b68bb39",
     "semantic_hash": ""
   },
   "api/app/agent/prompts/enriquecedor_blocos_conteudo.txt": {
@@ -4110,8 +4110,8 @@
     "semantic_hash": ""
   },
   "api/app/services/media_contract.py": {
-    "mtime": 1785279103.5263584,
-    "ast_hash": "b9e6e622e663d1f34765da81cffd1d6c",
+    "mtime": 1785280333.2861383,
+    "ast_hash": "ee9d686a667f4a7e51316b8260a399be",
     "semantic_hash": ""
   },
   "frontend/src/components/console/personalizacoes/materialPreview.test.ts": {
@@ -4125,8 +4125,8 @@
     "semantic_hash": ""
   },
   "microservice/src/constants/pipelineVersions.ts": {
-    "mtime": 1785279103.5253575,
-    "ast_hash": "7a62150ce9bb355629b6753bedc66022",
+    "mtime": 1785280333.2951672,
+    "ast_hash": "bafc71ce2af6b79224426d6d09143fc5",
     "semantic_hash": ""
   },
   "api/alembic/versions/20260728_04_scope_personalization_by_content.py": {
@@ -4145,8 +4145,8 @@
     "semantic_hash": ""
   },
   "microservice/src/services/geminiBlockBatches.test.ts": {
-    "mtime": 1785279103.5292268,
-    "ast_hash": "e5ec70ed587ee0b817ffea7f7a72b572",
+    "mtime": 1785280361.7330272,
+    "ast_hash": "09238ba4c100f16336223999c018443d",
     "semantic_hash": ""
   },
   "mobile/src/utils/personalization.multicontent.test.ts": {
@@ -4190,13 +4190,13 @@
     "semantic_hash": ""
   },
   "microservice/src/services/contentGenerationService.test.ts": {
-    "mtime": 1785279103.52872,
-    "ast_hash": "be30ac3402d9c6fd8c241434fb9c3a8c",
+    "mtime": 1785280234.2791266,
+    "ast_hash": "8c9d1745595d8e64d5b0b15fcc611e44",
     "semantic_hash": ""
   },
   "microservice/src/services/contentGenerationService.ts": {
-    "mtime": 1785279103.524358,
-    "ast_hash": "aaaaf52416f61d9848e61aab8e6e0a80",
+    "mtime": 1785280333.2650945,
+    "ast_hash": "dfef9b6aeda9540a820ba91fe7207bba",
     "semantic_hash": ""
   }
 }

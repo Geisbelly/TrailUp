@@ -6,7 +6,8 @@ export const DEFAULT_OPENAI_CONTENT_GENERATION_FALLBACK_MODEL =
   "gpt-5.4-mini" as const;
 
 const DEFAULT_GEMINI_UNAVAILABLE_COOLDOWN_MS = 5 * 60 * 1_000;
-const DEFAULT_OPENAI_MAX_OUTPUT_TOKENS = 65_536;
+const DEFAULT_OPENAI_MAX_OUTPUT_TOKENS = 16_384;
+const DEFAULT_OPENAI_QUALITY_MAX_ATTEMPTS = 3;
 
 export type ContentGenerationProvider = "gemini" | "openai";
 
@@ -211,11 +212,15 @@ export function isGeminiAvailabilityError(error: unknown): boolean {
 async function generateStructuredWithOpenAI(
   call: StructuredContentGenerationCall,
 ): Promise<unknown> {
-  const maxOutputTokens = positiveInteger(
+  const configuredMaxOutputTokens = positiveInteger(
     process.env.OPENAI_CONTENT_GENERATION_MAX_OUTPUT_TOKENS,
-    Math.max(call.maxOutputTokens, DEFAULT_OPENAI_MAX_OUTPUT_TOKENS),
+    DEFAULT_OPENAI_MAX_OUTPUT_TOKENS,
     8_192,
-    128_000,
+    32_768,
+  );
+  const maxOutputTokens = Math.min(
+    Math.max(call.maxOutputTokens, 8_192),
+    configuredMaxOutputTokens,
   );
   const response = await getOpenAI().responses.create({
     model: call.openaiModel,
@@ -262,6 +267,7 @@ async function generateAfterPrimaryGeminiFailure(
   options: {
     generateWithOpenAI: StructuredContentGenerator;
     validateResult?: StructuredContentGenerationOptions["validateResult"];
+    environment: Record<string, string | undefined>;
   },
 ): Promise<StructuredContentGenerationResult> {
   const generateAndValidate = async (
@@ -278,31 +284,61 @@ async function generateAfterPrimaryGeminiFailure(
     return value;
   };
 
-  try {
-    return {
-      value: await generateAndValidate(
-        options.generateWithOpenAI,
-        call,
-        "openai",
-      ),
-      provider: "openai",
-      model: call.openaiModel,
-      fallbackFrom: "gemini",
-      fallbackReason: reason,
-    };
-  } catch (openaiError) {
-    const openaiReason = errorDetails(openaiError).slice(0, 500);
-    throw new Error(
-      "A geração falhou no Gemini e a tentativa obrigatória pela OpenAI "
-        + `também falhou. OpenAI: ${openaiReason}`,
-      {
-        cause: {
-          gemini: reason,
-          openai: openaiReason,
-        },
-      },
-    );
+  const maxAttempts = positiveInteger(
+    options.environment.CONTENT_GENERATION_OPENAI_MAX_ATTEMPTS,
+    DEFAULT_OPENAI_QUALITY_MAX_ATTEMPTS,
+    1,
+    4,
+  );
+  let lastOpenAIError: unknown;
+  let previousQualityReason = "";
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const currentCall = attempt === 1
+      ? call
+      : {
+        ...call,
+        instructions:
+          `${call.instructions}\n\nCORREÇÃO OBRIGATÓRIA DA TENTATIVA ${attempt}: `
+          + "a resposta anterior foi recusada pela validação de qualidade. "
+          + "Devolva exatamente um capítulo completo para cada blockId recebido, "
+          + "sem omitir, fundir, acrescentar ou resumir blocos. Preserve toda a "
+          + "cobertura do conteúdo aprofundado no texto e no roteiro de áudio. "
+          + `Motivo da recusa anterior: ${previousQualityReason}`,
+      };
+
+    try {
+      return {
+        value: await generateAndValidate(
+          options.generateWithOpenAI,
+          currentCall,
+          "openai",
+        ),
+        provider: "openai",
+        model: call.openaiModel,
+        fallbackFrom: "gemini",
+        fallbackReason: reason,
+      };
+    } catch (openaiError) {
+      lastOpenAIError = openaiError;
+      if (!(openaiError instanceof ContentGenerationQualityError)) {
+        break;
+      }
+      previousQualityReason = errorDetails(openaiError).slice(0, 500);
+    }
   }
+
+  const openaiReason = errorDetails(lastOpenAIError).slice(0, 500);
+  throw new Error(
+    "A geração falhou no Gemini e as tentativas obrigatórias pela OpenAI "
+      + `também falharam. OpenAI: ${openaiReason}`,
+    {
+      cause: {
+        gemini: reason,
+        openai: openaiReason,
+      },
+    },
+  );
 }
 
 export async function generateStructuredContentWithFallback(
@@ -321,6 +357,7 @@ export async function generateStructuredContentWithFallback(
       {
         generateWithOpenAI,
         validateResult: options.validateResult,
+        environment,
       },
     );
   }
@@ -355,6 +392,7 @@ export async function generateStructuredContentWithFallback(
     return generateAfterPrimaryGeminiFailure(call, reason, {
       generateWithOpenAI,
       validateResult: options.validateResult,
+      environment,
     });
   }
 }

@@ -121,8 +121,8 @@ const SUPPORTED_NATIVE_MIMES = [
   "video/mp4", "video/mpeg"
 ];
 
-const DEFAULT_CONTENT_BLOCK_BATCH_SIZE = 12;
-const MAX_CONTENT_BLOCK_BATCH_SIZE = 24;
+const DEFAULT_CONTENT_BLOCK_BATCH_SIZE = 1;
+const MAX_CONTENT_BLOCK_BATCH_SIZE = 1;
 const GEMINI_CONTENT_GENERATION_RESPONSE_SCHEMA = {
   type: Type.OBJECT,
   properties: {
@@ -212,14 +212,10 @@ function normalizedStringList(value: unknown): string[] {
 
 export function resolveContentBlockBatchSize(value: unknown): number {
   const parsed = Number(value);
-  if (
-    !Number.isInteger(parsed)
-    || parsed < 1
-    || parsed > MAX_CONTENT_BLOCK_BATCH_SIZE
-  ) {
+  if (!Number.isInteger(parsed) || parsed < 1) {
     return DEFAULT_CONTENT_BLOCK_BATCH_SIZE;
   }
-  return parsed;
+  return Math.min(parsed, MAX_CONTENT_BLOCK_BATCH_SIZE);
 }
 
 export function partitionContentBlocks(
@@ -762,7 +758,7 @@ export async function processMediaWithGemini(
     const openaiModel = resolveOpenAIContentGenerationFallbackModel();
     const maxOutputTokens = Math.max(
       8_192,
-      Number(process.env.CONTENT_GENERATION_BATCH_MAX_OUTPUT_TOKENS) || 32_768,
+      Number(process.env.CONTENT_GENERATION_BATCH_MAX_OUTPUT_TOKENS) || 16_384,
     );
 
     // Sequencial por intenção: mantém ordem determinística, limita pressão na

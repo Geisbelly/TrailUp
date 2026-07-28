@@ -373,7 +373,6 @@
   "371": "20260728_02_drop_legacy_content_unique.py",
   "372": "react",
   "373": "mammoth",
-  "374": "@config-plugins/react-native-blob-util",
   "375": "expo-symbols",
   "376": "dotenv",
   "377": "supabase/types.ts",
@@ -395,7 +394,6 @@
   "393": "wav.test.ts",
   "394": ".puppeteerrc.cjs",
   "395": "require_admin",
-  "396": "express",
   "397": "mammoth",
   "398": "conteudo_personalizado.py",
   "399": "docs/mobile/README.md",
@@ -406,5 +404,8 @@
   "404": "@radix-ui/react-accordion",
   "405": "_brainhex_contract_is_ready",
   "406": "next-themes",
-  "407": "expo-symbols"
+  "407": "expo-symbols",
+  "408": "vite",
+  "409": "jszip",
+  "410": "@supabase/supabase-js"
 }

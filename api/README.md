@@ -44,7 +44,7 @@ Variaveis base (ver `app/core/settings.py`):
 - `SUPABASE_JWT_AUDIENCE`
 - `OPENAI_API_KEY` (obrigatória para divisão e enriquecimento)
 - `OPENAI_CONTENT_ENRICHMENT_MODEL`
-- `CONTENT_ENRICHMENT_BATCH_SIZE`
+- `CONTENT_ENRICHMENT_BATCH_SIZE` (fixado efetivamente em `1`: enriquece e valida um bloco por vez)
 - `CONTENT_ENRICHMENT_MAX_ATTEMPTS`
 - `BRAINHEX_API_URL` (microserviço usado somente para gerar materiais)
 - `GEMINI_API_KEY`

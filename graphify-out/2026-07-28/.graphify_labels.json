@@ -406,5 +406,8 @@
   "404": "@radix-ui/react-accordion",
   "405": "_brainhex_contract_is_ready",
   "406": "next-themes",
-  "407": "expo-symbols"
+  "407": "expo-symbols",
+  "408": "vite",
+  "409": "jszip",
+  "410": "@supabase/supabase-js"
 }

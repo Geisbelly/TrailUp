@@ -132,8 +132,11 @@ async def test_enrichment_groups_every_source_segment_without_truncation(
         "brainhex_personalization",
     ]
     assert result["metadata"]["provider_model"] == "gpt-5.4-mini"
-    assert result["metadata"]["lotes_gerados"] == 3
-    assert result["metadata"]["chamadas_realizadas"] == 3
+    assert result["metadata"]["lotes_gerados"] == 24
+    assert result["metadata"]["chamadas_realizadas"] == 24
+    assert all(
+        len(payload["blocos_base"]) == 1 for payload in captured["payloads"]
+    )
     assert all(call["model"] == "gpt-5.4-mini" for call in captured["calls"])
     assert "brainhex" not in json.dumps(captured["payloads"]).lower()
 
@@ -211,10 +214,17 @@ async def test_enrichment_retries_only_the_rejected_block(
 
     result = await enrich_content_blocks(context=_context(), settings=_settings())
 
-    assert len(captured["payloads"][0]["blocos_base"]) > 1
+    assert len(captured["payloads"][0]["blocos_base"]) == 1
     assert len(captured["payloads"][1]["blocos_base"]) == 1
-    assert len(result["blocos"]) == len(captured["payloads"][0]["blocos_base"])
-    assert result["metadata"]["chamadas_realizadas"] == 2
+    assert (
+        captured["payloads"][0]["blocos_base"][0]["id"]
+        == captured["payloads"][1]["blocos_base"][0]["id"]
+    )
+    assert len(result["blocos"]) == result["metadata"]["blocos_gerados"]
+    assert (
+        result["metadata"]["chamadas_realizadas"]
+        == result["metadata"]["blocos_gerados"] + 1
+    )
 
 
 @pytest.mark.asyncio

@@ -47,9 +47,9 @@ class Settings(BaseSettings):
     openai_model_supervisor: str = "gpt-4o-mini"
     openai_model_default: str = "gpt-4o-mini"
     openai_content_enrichment_model: str = "gpt-5.4-mini"
-    content_enrichment_batch_size: int = 8
+    content_enrichment_batch_size: int = 1
     content_enrichment_max_attempts: int = 3
-    openai_content_enrichment_max_output_tokens: int = 32768
+    openai_content_enrichment_max_output_tokens: int = 8192
 
     gemini_api_key: str | None = None
     gemini_model_supervisor: str = "gemini-1.5-pro"

@@ -154,6 +154,68 @@ test("conteúdo Gemini inválido aciona a geração OpenAI", async () => {
   resetGeminiContentGenerationCircuit();
 });
 
+test("repete a OpenAI com instrução corretiva quando a cobertura vem incompleta", async () => {
+  resetGeminiContentGenerationCircuit();
+  let openaiCalls = 0;
+  const receivedInstructions: string[] = [];
+
+  const result = await generateStructuredContentWithFallback(call, {
+    environment: {
+      CONTENT_GENERATION_OPENAI_MAX_ATTEMPTS: "3",
+    },
+    generateWithGemini: async () => {
+      throw new Error("Gemini omitiu capítulos no lote.");
+    },
+    generateWithOpenAI: async (currentCall) => {
+      openaiCalls += 1;
+      receivedInstructions.push(currentCall.instructions);
+      return openaiCalls === 1
+        ? { chapters: [] }
+        : { chapters: [{ blockId: "bloco-01" }] };
+    },
+    validateResult: (value) => {
+      const chapters = (value as { chapters?: unknown[] }).chapters ?? [];
+      if (chapters.length === 0) {
+        throw new Error("Gerador omitiu capítulos.");
+      }
+    },
+  });
+
+  assert.equal(result.provider, "openai");
+  assert.equal(openaiCalls, 2);
+  assert.doesNotMatch(receivedInstructions[0], /CORREÇÃO OBRIGATÓRIA/);
+  assert.match(receivedInstructions[1], /CORREÇÃO OBRIGATÓRIA DA TENTATIVA 2/);
+  assert.match(receivedInstructions[1], /omitiu capítulos/);
+  resetGeminiContentGenerationCircuit();
+});
+
+test("limita a três as tentativas da OpenAI recusadas por qualidade", async () => {
+  resetGeminiContentGenerationCircuit();
+  let openaiCalls = 0;
+
+  await assert.rejects(
+    generateStructuredContentWithFallback(call, {
+      environment: {
+        CONTENT_GENERATION_OPENAI_MAX_ATTEMPTS: "3",
+      },
+      generateWithGemini: async () => {
+        throw new Error("Gemini resumiu o lote.");
+      },
+      generateWithOpenAI: async () => {
+        openaiCalls += 1;
+        return { chapters: [] };
+      },
+      validateResult: () => {
+        throw new Error("Áudio abaixo do mínimo de cobertura.");
+      },
+    }),
+    /tentativas obrigatórias pela OpenAI/,
+  );
+
+  assert.equal(openaiCalls, 3);
+  resetGeminiContentGenerationCircuit();
+});
+
 test("não volta ao Gemini quando a tentativa obrigatória da OpenAI falha", async () => {
   resetGeminiContentGenerationCircuit();
   let geminiCalls = 0;
@@ -172,7 +234,7 @@ test("não volta ao Gemini quando a tentativa obrigatória da OpenAI falha", asy
         throw new Error("OPENAI_API_KEY ausente");
       },
     }),
-    /tentativa obrigatória pela OpenAI/,
+    /tentativas? obrigatórias? pela OpenAI/,
   );
 
   assert.equal(geminiCalls, 1);

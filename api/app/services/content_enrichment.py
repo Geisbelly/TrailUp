@@ -15,9 +15,9 @@ _MAX_SEGMENT_CHARS = 4_000
 _MIN_EXPANSION_CHARS = 80
 _MIN_EXPANSION_RATIO = 0.15
 _SCHEMA_VERSION = "trailup.content-blocks.v2"
-_DEFAULT_BATCH_SIZE = 8
+_DEFAULT_BATCH_SIZE = 1
 _DEFAULT_MAX_ATTEMPTS = 3
-_DEFAULT_MAX_OUTPUT_TOKENS = 32_768
+_DEFAULT_MAX_OUTPUT_TOKENS = 8_192
 
 _ENRICHMENT_INSTRUCTIONS = """
 Você é o professor-editor responsável pela etapa obrigatória de enriquecimento
@@ -509,12 +509,15 @@ async def _enrich_base_blocks_with_openai(
         str(getattr(settings, "openai_content_enrichment_model", "") or "").strip()
         or "gpt-5.4-mini"
     )
-    batch_size = _bounded_int(
+    # Um bloco por chamada reduz omissões, permite correção localizada e evita
+    # gastar tokens regenerando blocos que já passaram pela validação.
+    configured_batch_size = _bounded_int(
         getattr(settings, "content_enrichment_batch_size", _DEFAULT_BATCH_SIZE),
         _DEFAULT_BATCH_SIZE,
         1,
         8,
     )
+    batch_size = min(configured_batch_size, _DEFAULT_BATCH_SIZE)
     max_attempts = _bounded_int(
         getattr(settings, "content_enrichment_max_attempts", _DEFAULT_MAX_ATTEMPTS),
         _DEFAULT_MAX_ATTEMPTS,
@@ -529,7 +532,7 @@ async def _enrich_base_blocks_with_openai(
         ),
         _DEFAULT_MAX_OUTPUT_TOKENS,
         8_192,
-        65_536,
+        16_384,
     )
     client = _openai_client(api_key)
     enriched_by_id: dict[str, dict[str, Any]] = {}
