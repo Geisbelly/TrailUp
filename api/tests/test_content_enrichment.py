@@ -97,7 +97,13 @@ def _rich_response(payload: dict[str, Any]) -> dict[str, Any]:
         "source_hash": payload["source_hash"],
         "tema": payload["tema"]["titulo"],
         "blocos": blocks,
-        "metadata": {"provider": "gemini", "fallback": False},
+        "metadata": {
+            "provider": "openai",
+            "model": "gpt-5.6-sol",
+            "fallback": False,
+            "lotes_gerados": 6,
+            "chamadas_realizadas": 7,
+        },
     }
 
 
@@ -121,6 +127,10 @@ async def test_enrichment_groups_every_source_segment_without_truncation(
     assert result["source_hash"] == "hash-9"
     assert len(result["blocos"]) == 24
     assert result["metadata"]["fallback"] is False
+    assert result["metadata"]["provider"] == "brainhex-openai"
+    assert result["metadata"]["provider_model"] == "gpt-5.6-sol"
+    assert result["metadata"]["lotes_gerados"] == 6
+    assert result["metadata"]["chamadas_realizadas"] == 7
     assert captured["url"] == "https://brainhex.example/api/enrich-content"
     assert captured["headers"] == {"x-api-secret": "shared-secret"}
 
@@ -165,6 +175,25 @@ async def test_enrichment_rejects_shallow_response_and_never_uses_fallback(
     )
 
     with pytest.raises(ContentEnrichmentError, match="apenas repetiu"):
+        await enrich_content_blocks(context=_context(), settings=_settings())
+
+
+@pytest.mark.asyncio
+async def test_enrichment_rejects_provider_other_than_openai(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def gemini_response(payload: dict[str, Any]) -> dict[str, Any]:
+        response = _rich_response(payload)
+        response["metadata"]["provider"] = "gemini"
+        return response
+
+    monkeypatch.setattr(
+        enrichment_module.httpx,
+        "AsyncClient",
+        lambda **_kwargs: _Client(gemini_response, {}),
+    )
+
+    with pytest.raises(ContentEnrichmentError, match="esperado o provedor OpenAI"):
         await enrich_content_blocks(context=_context(), settings=_settings())
 
 

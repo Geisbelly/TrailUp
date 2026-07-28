@@ -14,6 +14,14 @@ import {
   generationStorageSegment,
   versionStoragePath,
 } from "./constants/pipelineVersions";
+import {
+  CONTENT_ENRICHMENT_PROVIDER,
+  DEFAULT_CONTENT_ENRICHMENT_MODEL,
+} from "./services/contentEnrichmentService";
+
+if (!process.env.OPENAI_API_KEY?.trim()) {
+  process.env.OPENAI_API_KEY = "test-openai-key";
+}
 
 // Starts an Express app on a random port and returns base URL + close function.
 async function startTestServer(opts: Parameters<typeof buildApp>[0] = {}) {
@@ -86,10 +94,13 @@ describe("GET /api/health", () => {
       status: string;
       auth: boolean;
       presentation_renderer: { ready: boolean };
+      content_enrichment: { ready: boolean; provider: string };
     };
     assert.equal(body.status, "ok");
     assert.equal(body.auth, false); // sem secret
     assert.equal(body.presentation_renderer.ready, true);
+    assert.equal(body.content_enrichment.ready, true);
+    assert.equal(body.content_enrichment.provider, "openai");
   });
 
   it("auth=true quando apiSharedSecret configurado", async () => {
@@ -113,11 +124,15 @@ describe("GET /api/health", () => {
         media_pipeline_version: string;
         presentation_engine_version: string;
         presentation_schema: string;
+        content_enrichment_provider: string;
+        content_enrichment_model: string;
         render_git_commit: string;
       };
       assert.equal(body.media_pipeline_version, MEDIA_PIPELINE_VERSION);
       assert.equal(body.presentation_engine_version, PRESENTATION_ENGINE_VERSION);
       assert.equal(body.presentation_schema, PRESENTATION_SCHEMA_VERSION);
+      assert.equal(body.content_enrichment_provider, CONTENT_ENRICHMENT_PROVIDER);
+      assert.equal(body.content_enrichment_model, DEFAULT_CONTENT_ENRICHMENT_MODEL);
       assert.equal(body.render_git_commit, "abc123render");
     } finally {
       await c();
@@ -142,6 +157,30 @@ describe("GET /api/health", () => {
       assert.equal(body.status, "degraded");
       assert.equal(body.presentation_renderer.ready, false);
       assert.match(body.presentation_renderer.error ?? "", /Chrome do Puppeteer/);
+    } finally {
+      await c();
+    }
+  });
+
+  it("retorna 503 quando a OpenAI nao esta configurada para enriquecimento", async () => {
+    const { base: b, close: c } = await startTestServer({
+      contentEnrichmentReadiness: () => ({
+        ready: false,
+        provider: CONTENT_ENRICHMENT_PROVIDER,
+        model: DEFAULT_CONTENT_ENRICHMENT_MODEL,
+        error: "OPENAI_API_KEY ausente para o enriquecimento curricular.",
+      }),
+    });
+    try {
+      const res = await fetch(`${b}/api/health`);
+      assert.equal(res.status, 503);
+      const body = await res.json() as {
+        status: string;
+        content_enrichment: { ready: boolean; error?: string };
+      };
+      assert.equal(body.status, "degraded");
+      assert.equal(body.content_enrichment.ready, false);
+      assert.match(body.content_enrichment.error ?? "", /OPENAI_API_KEY/);
     } finally {
       await c();
     }
@@ -237,11 +276,13 @@ describe("POST /api/enrich-content", () => {
             source_ids: block.source_ids,
           })),
           metadata: {
-            provider: "gemini" as const,
-            model: "gemini-test",
+            provider: "openai" as const,
+            model: "gpt-5.6-sol",
             fallback: false as const,
             blocos_recebidos: request.blocos_base.length,
             blocos_gerados: request.blocos_base.length,
+            lotes_gerados: 1,
+            chamadas_realizadas: 1,
           },
         };
       },
@@ -258,10 +299,11 @@ describe("POST /api/enrich-content", () => {
       assert.equal(res.status, 200);
       const body = await res.json() as {
         schema_version: string;
-        metadata: { fallback: boolean };
+        metadata: { fallback: boolean; provider: string };
       };
       assert.equal(body.schema_version, "trailup.content-blocks.v2");
       assert.equal(body.metadata.fallback, false);
+      assert.equal(body.metadata.provider, "openai");
       assert.equal(calls.length, 1);
     } finally {
       await close();

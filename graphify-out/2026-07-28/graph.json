@@ -2793,8 +2793,8 @@
       "source_location": "L269",
       "_origin": "ast",
       "id": "api_app_api_v1_personalizacao_as_datetime",
-      "community": 126,
-      "community_name": "supabaseStorage.ts",
+      "community": 337,
+      "community_name": "listar_personalizacoes_por_perfil",
       "norm_label": "_as_datetime()"
     },
     {
@@ -2804,8 +2804,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "api_app_api_v1_personalizacao_py_datetime",
-      "community": 126,
-      "community_name": "supabaseStorage.ts",
+      "community": 337,
+      "community_name": "listar_personalizacoes_por_perfil",
       "norm_label": "datetime"
     },
     {
@@ -2815,8 +2815,8 @@
       "source_location": "L280",
       "_origin": "ast",
       "id": "api_app_api_v1_personalizacao_datetime_rank",
-      "community": 126,
-      "community_name": "supabaseStorage.ts",
+      "community": 337,
+      "community_name": "listar_personalizacoes_por_perfil",
       "norm_label": "_datetime_rank()"
     },
     {
@@ -2826,8 +2826,8 @@
       "source_location": "L289",
       "_origin": "ast",
       "id": "api_app_api_v1_personalizacao_latest_datetime",
-      "community": 126,
-      "community_name": "supabaseStorage.ts",
+      "community": 337,
+      "community_name": "listar_personalizacoes_por_perfil",
       "norm_label": "_latest_datetime()"
     },
     {
@@ -2925,8 +2925,8 @@
       "source_location": "L615",
       "_origin": "ast",
       "id": "api_app_api_v1_personalizacao_build_generation_summary",
-      "community": 126,
-      "community_name": "supabaseStorage.ts",
+      "community": 337,
+      "community_name": "listar_personalizacoes_por_perfil",
       "norm_label": "_build_generation_summary()"
     },
     {
@@ -2936,8 +2936,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "personalizacaoperfilitem",
-      "community": 126,
-      "community_name": "supabaseStorage.ts",
+      "community": 337,
+      "community_name": "listar_personalizacoes_por_perfil",
       "norm_label": "personalizacaoperfilitem"
     },
     {
@@ -3464,8 +3464,8 @@
       "source_location": "L1906",
       "_origin": "ast",
       "id": "api_app_api_v1_personalizacao_listar_personalizacoes_por_perfil",
-      "community": 126,
-      "community_name": "supabaseStorage.ts",
+      "community": 337,
+      "community_name": "listar_personalizacoes_por_perfil",
       "norm_label": "listar_personalizacoes_por_perfil()"
     },
     {
@@ -3475,8 +3475,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "personalizacaoporperfilresponse",
-      "community": 126,
-      "community_name": "supabaseStorage.ts",
+      "community": 337,
+      "community_name": "listar_personalizacoes_por_perfil",
       "norm_label": "personalizacaoporperfilresponse"
     },
     {
@@ -3717,8 +3717,8 @@
       "source_location": "L1913",
       "_origin": "ast",
       "id": "api_app_api_v1_personalizacao_rationale_1913",
-      "community": 126,
-      "community_name": "supabaseStorage.ts",
+      "community": 337,
+      "community_name": "listar_personalizacoes_por_perfil",
       "norm_label": "visao docente: personalizacao de um (classe x topico) lado a lado pelos 7 perfis"
     },
     {
@@ -5576,8 +5576,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "api_app_repositories_artefatos_personalizados",
-      "community": 62,
-      "community_name": "DashboardSection.tsx",
+      "community": 95,
+      "community_name": "ArtefatosPersonalizadosRepository",
       "norm_label": "artefatos_personalizados.py"
     },
     {
@@ -23363,7 +23363,7 @@
       "label": "GeracaoConteudoResumo",
       "file_type": "code",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L124",
+      "source_location": "L125",
       "_origin": "ast",
       "id": "frontend_src_components_console_personalizacoes_personalizacoesapi_geracaoconteudoresumo",
       "community": 16,
@@ -23374,7 +23374,7 @@
       "label": "PersonalizacaoPerfilItem",
       "file_type": "code",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L138",
+      "source_location": "L139",
       "_origin": "ast",
       "id": "frontend_src_components_console_personalizacoes_personalizacoesapi_personalizacaoperfilitem",
       "community": 16,
@@ -23385,7 +23385,7 @@
       "label": "PersonalizacaoPorPerfilResponse",
       "file_type": "code",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L158",
+      "source_location": "L159",
       "_origin": "ast",
       "id": "frontend_src_components_console_personalizacoes_personalizacoesapi_personalizacaoporperfilresponse",
       "community": 16,
@@ -23396,7 +23396,7 @@
       "label": "PersonalizacaoContextoDocenteResponse",
       "file_type": "code",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L168",
+      "source_location": "L169",
       "_origin": "ast",
       "id": "frontend_src_components_console_personalizacoes_personalizacoesapi_personalizacaocontextodocenteresponse",
       "community": 16,
@@ -23407,7 +23407,7 @@
       "label": "parseJsonSafe()",
       "file_type": "code",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L189",
+      "source_location": "L190",
       "_origin": "ast",
       "id": "frontend_src_components_console_personalizacoes_personalizacoesapi_parsejsonsafe",
       "community": 16,
@@ -23418,7 +23418,7 @@
       "label": "extractErrorDetail()",
       "file_type": "code",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L198",
+      "source_location": "L199",
       "_origin": "ast",
       "id": "frontend_src_components_console_personalizacoes_personalizacoesapi_extracterrordetail",
       "community": 16,
@@ -23429,7 +23429,7 @@
       "label": "isAuthFailure()",
       "file_type": "code",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L209",
+      "source_location": "L210",
       "_origin": "ast",
       "id": "frontend_src_components_console_personalizacoes_personalizacoesapi_isauthfailure",
       "community": 16,
@@ -23440,7 +23440,7 @@
       "label": "resolveAccessToken()",
       "file_type": "code",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L213",
+      "source_location": "L214",
       "_origin": "ast",
       "id": "frontend_src_components_console_personalizacoes_personalizacoesapi_resolveaccesstoken",
       "community": 16,
@@ -23451,7 +23451,7 @@
       "label": "executeApiFetch()",
       "file_type": "code",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L235",
+      "source_location": "L236",
       "_origin": "ast",
       "id": "frontend_src_components_console_personalizacoes_personalizacoesapi_executeapifetch",
       "community": 16,
@@ -23462,7 +23462,7 @@
       "label": "apiRequest()",
       "file_type": "code",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L254",
+      "source_location": "L255",
       "_origin": "ast",
       "id": "frontend_src_components_console_personalizacoes_personalizacoesapi_apirequest",
       "community": 16,
@@ -23473,7 +23473,7 @@
       "label": "buildPersonalizacaoPorPerfilPath()",
       "file_type": "code",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L302",
+      "source_location": "L303",
       "_origin": "ast",
       "id": "frontend_src_components_console_personalizacoes_personalizacoesapi_buildpersonalizacaoporperfilpath",
       "community": 16,
@@ -23484,7 +23484,7 @@
       "label": "fetchPersonalizacaoPorPerfil()",
       "file_type": "code",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L316",
+      "source_location": "L317",
       "_origin": "ast",
       "id": "frontend_src_components_console_personalizacoes_personalizacoesapi_fetchpersonalizacaoporperfil",
       "community": 16,
@@ -23495,7 +23495,7 @@
       "label": "fetchContextoDocente()",
       "file_type": "code",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L327",
+      "source_location": "L328",
       "_origin": "ast",
       "id": "frontend_src_components_console_personalizacoes_personalizacoesapi_fetchcontextodocente",
       "community": 16,
@@ -23506,7 +23506,7 @@
       "label": "ClassePerfilDistribuicaoItem",
       "file_type": "code",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L340",
+      "source_location": "L341",
       "_origin": "ast",
       "id": "frontend_src_components_console_personalizacoes_personalizacoesapi_classeperfildistribuicaoitem",
       "community": 16,
@@ -23517,7 +23517,7 @@
       "label": "ClassePerfilSummaryResponse",
       "file_type": "code",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L346",
+      "source_location": "L347",
       "_origin": "ast",
       "id": "frontend_src_components_console_personalizacoes_personalizacoesapi_classeperfilsummaryresponse",
       "community": 16,
@@ -23528,7 +23528,7 @@
       "label": "fetchAdequacaoGrupo()",
       "file_type": "code",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L356",
+      "source_location": "L357",
       "_origin": "ast",
       "id": "frontend_src_components_console_personalizacoes_personalizacoesapi_fetchadequacaogrupo",
       "community": 16,
@@ -32485,8 +32485,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "microservice_package_dependencies_google_genai",
-      "community": 332,
-      "community_name": "GUIA_USO.md",
+      "community": 50,
+      "community_name": "dependencies",
       "norm_label": "@google/genai"
     },
     {
@@ -32496,8 +32496,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "google_genai",
-      "community": 332,
-      "community_name": "GUIA_USO.md",
+      "community": 50,
+      "community_name": "dependencies",
       "norm_label": "@google/genai"
     },
     {
@@ -32617,8 +32617,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "microservice_package_dependencies_dotenv",
-      "community": 50,
-      "community_name": "dependencies",
+      "community": 359,
+      "community_name": "dotenv",
       "norm_label": "dotenv"
     },
     {
@@ -32628,8 +32628,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "dotenv",
-      "community": 50,
-      "community_name": "dependencies",
+      "community": 359,
+      "community_name": "dotenv",
       "norm_label": "dotenv"
     },
     {
@@ -33453,8 +33453,8 @@
       "source_location": "L680",
       "_origin": "ast",
       "id": "microservice_server_appoptions",
-      "community": 71,
-      "community_name": "_build_design_tokens",
+      "community": 39,
+      "community_name": "server.ts",
       "norm_label": "appoptions"
     },
     {
@@ -33508,8 +33508,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "microservice_src_constants_brainhex",
-      "community": 57,
-      "community_name": "geminiService.ts",
+      "community": 71,
+      "community_name": "_build_design_tokens",
       "norm_label": "constants/brainhex.ts"
     },
     {
@@ -33519,8 +33519,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "microservice_src_constants_brainhex_brainhexprofile",
-      "community": 57,
-      "community_name": "geminiService.ts",
+      "community": 71,
+      "community_name": "_build_design_tokens",
       "norm_label": "brainhexprofile"
     },
     {
@@ -33530,8 +33530,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "microservice_src_constants_brainhex_brainhexconfig",
-      "community": 57,
-      "community_name": "geminiService.ts",
+      "community": 71,
+      "community_name": "_build_design_tokens",
       "norm_label": "brainhexconfig"
     },
     {
@@ -33541,8 +33541,8 @@
       "source_location": "L40",
       "_origin": "ast",
       "id": "microservice_src_constants_brainhex_brain_hex_config",
-      "community": 57,
-      "community_name": "geminiService.ts",
+      "community": 71,
+      "community_name": "_build_design_tokens",
       "norm_label": "brain_hex_config"
     },
     {
@@ -33552,8 +33552,8 @@
       "source_location": "L107",
       "_origin": "ast",
       "id": "microservice_src_constants_brainhex_profiles",
-      "community": 57,
-      "community_name": "geminiService.ts",
+      "community": 71,
+      "community_name": "_build_design_tokens",
       "norm_label": "profiles"
     },
     {
@@ -33563,8 +33563,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "microservice_src_constants_guardianvoices_test",
-      "community": 57,
-      "community_name": "geminiService.ts",
+      "community": 71,
+      "community_name": "_build_design_tokens",
       "norm_label": "guardianvoices.test.ts"
     },
     {
@@ -33574,8 +33574,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "microservice_src_constants_guardianvoices",
-      "community": 57,
-      "community_name": "geminiService.ts",
+      "community": 71,
+      "community_name": "_build_design_tokens",
       "norm_label": "guardianvoices.ts"
     },
     {
@@ -33585,8 +33585,8 @@
       "source_location": "L4",
       "_origin": "ast",
       "id": "microservice_src_constants_guardianvoices_guardianvoiceprofile",
-      "community": 57,
-      "community_name": "geminiService.ts",
+      "community": 71,
+      "community_name": "_build_design_tokens",
       "norm_label": "guardianvoiceprofile"
     },
     {
@@ -33596,8 +33596,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "microservice_src_constants_guardianvoices_guardian_voice_profiles",
-      "community": 57,
-      "community_name": "geminiService.ts",
+      "community": 71,
+      "community_name": "_build_design_tokens",
       "norm_label": "guardian_voice_profiles"
     },
     {
@@ -34630,8 +34630,8 @@
       "source_location": "L59",
       "_origin": "ast",
       "id": "microservice_src_lib_validators_personalizarrequest",
-      "community": 57,
-      "community_name": "geminiService.ts",
+      "community": 71,
+      "community_name": "_build_design_tokens",
       "norm_label": "personalizarrequest"
     },
     {
@@ -35279,8 +35279,8 @@
       "source_location": "L821",
       "_origin": "ast",
       "id": "microservice_src_services_geminiservice_geminittsvoice",
-      "community": 57,
-      "community_name": "geminiService.ts",
+      "community": 71,
+      "community_name": "_build_design_tokens",
       "norm_label": "geminittsvoice"
     },
     {
@@ -35477,8 +35477,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "microservice_src_services_pdfservice_presentationrendererreadiness",
-      "community": 71,
-      "community_name": "_build_design_tokens",
+      "community": 39,
+      "community_name": "server.ts",
       "norm_label": "presentationrendererreadiness"
     },
     {
@@ -35917,8 +35917,8 @@
       "source_location": "L73",
       "_origin": "ast",
       "id": "microservice_src_types_index_transmutationrequest",
-      "community": 57,
-      "community_name": "geminiService.ts",
+      "community": 71,
+      "community_name": "_build_design_tokens",
       "norm_label": "transmutationrequest"
     },
     {
@@ -36841,8 +36841,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "mobile_package_dependencies_config_plugins_react_native_blob_util",
-      "community": 144,
-      "community_name": "dependencies",
+      "community": 347,
+      "community_name": "@config-plugins/react-native-blob-util",
       "norm_label": "@config-plugins/react-native-blob-util"
     },
     {
@@ -36852,8 +36852,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "config_plugins_react_native_blob_util",
-      "community": 144,
-      "community_name": "dependencies",
+      "community": 347,
+      "community_name": "@config-plugins/react-native-blob-util",
       "norm_label": "@config-plugins/react-native-blob-util"
     },
     {
@@ -37391,8 +37391,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "mobile_package_dependencies_expo_symbols",
-      "community": 387,
-      "community_name": "expo-symbols",
+      "community": 144,
+      "community_name": "dependencies",
       "norm_label": "expo-symbols"
     },
     {
@@ -37402,8 +37402,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "expo_symbols",
-      "community": 387,
-      "community_name": "expo-symbols",
+      "community": 144,
+      "community_name": "dependencies",
       "norm_label": "expo-symbols"
     },
     {
@@ -48633,8 +48633,8 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "mobile_src_models_conteudo_conteudo_marcarvisto",
-      "community": 139,
-      "community_name": "wav.test.ts",
+      "community": 332,
+      "community_name": "GUIA_USO.md",
       "norm_label": ".marcarvisto()"
     },
     {
@@ -48644,8 +48644,8 @@
       "source_location": "L70",
       "_origin": "ast",
       "id": "mobile_src_models_conteudo_conteudo_atualizartempogasto",
-      "community": 139,
-      "community_name": "wav.test.ts",
+      "community": 332,
+      "community_name": "GUIA_USO.md",
       "norm_label": ".atualizartempogasto()"
     },
     {
@@ -48655,8 +48655,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_models_evento",
-      "community": 139,
-      "community_name": "wav.test.ts",
+      "community": 332,
+      "community_name": "GUIA_USO.md",
       "norm_label": "evento.ts"
     },
     {
@@ -48754,8 +48754,8 @@
       "source_location": "L127",
       "_origin": "ast",
       "id": "mobile_src_models_evento_eventoaluno_create",
-      "community": 239,
-      "community_name": "EventoAluno",
+      "community": 332,
+      "community_name": "GUIA_USO.md",
       "norm_label": ".create()"
     },
     {
@@ -50547,8 +50547,8 @@
       "source_location": "L594",
       "_origin": "ast",
       "id": "mobile_src_services_personalizacao_trailupapiprovider_trailupapiprovider_salvarprogressopersonalizadodiretosupabase",
-      "community": 139,
-      "community_name": "wav.test.ts",
+      "community": 332,
+      "community_name": "GUIA_USO.md",
       "norm_label": ".salvarprogressopersonalizadodiretosupabase()"
     },
     {
@@ -50844,8 +50844,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_services_progressotrilha",
-      "community": 139,
-      "community_name": "wav.test.ts",
+      "community": 332,
+      "community_name": "GUIA_USO.md",
       "norm_label": "progressotrilha.ts"
     },
     {
@@ -50855,8 +50855,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "mobile_src_services_progressotrilha_statusatividade",
-      "community": 139,
-      "community_name": "wav.test.ts",
+      "community": 332,
+      "community_name": "GUIA_USO.md",
       "norm_label": "statusatividade"
     },
     {
@@ -50866,8 +50866,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "mobile_src_services_progressotrilha_resolvestatusbypercentual",
-      "community": 139,
-      "community_name": "wav.test.ts",
+      "community": 332,
+      "community_name": "GUIA_USO.md",
       "norm_label": "resolvestatusbypercentual()"
     },
     {
@@ -50877,8 +50877,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "mobile_src_services_progressotrilha_registrarconteudoprogresso",
-      "community": 139,
-      "community_name": "wav.test.ts",
+      "community": 332,
+      "community_name": "GUIA_USO.md",
       "norm_label": "registrarconteudoprogresso()"
     },
     {
@@ -50888,8 +50888,8 @@
       "source_location": "L48",
       "_origin": "ast",
       "id": "mobile_src_services_progressotrilha_registraratividadeprogresso",
-      "community": 139,
-      "community_name": "wav.test.ts",
+      "community": 332,
+      "community_name": "GUIA_USO.md",
       "norm_label": "registraratividadeprogresso()"
     },
     {
@@ -50899,8 +50899,8 @@
       "source_location": "L78",
       "_origin": "ast",
       "id": "mobile_src_services_progressotrilha_registrartopicoprogresso",
-      "community": 139,
-      "community_name": "wav.test.ts",
+      "community": 332,
+      "community_name": "GUIA_USO.md",
       "norm_label": "registrartopicoprogresso()"
     },
     {
@@ -50910,8 +50910,8 @@
       "source_location": "L106",
       "_origin": "ast",
       "id": "mobile_src_services_progressotrilha_registrareventopontos",
-      "community": 139,
-      "community_name": "wav.test.ts",
+      "community": 332,
+      "community_name": "GUIA_USO.md",
       "norm_label": "registrareventopontos()"
     },
     {
@@ -52065,8 +52065,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mobile_src_utils_datavalidation",
-      "community": 139,
-      "community_name": "wav.test.ts",
+      "community": 332,
+      "community_name": "GUIA_USO.md",
       "norm_label": "datavalidation.ts"
     },
     {
@@ -52087,8 +52087,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "mobile_src_utils_datavalidation_normalizenonnegativenumber",
-      "community": 139,
-      "community_name": "wav.test.ts",
+      "community": 332,
+      "community_name": "GUIA_USO.md",
       "norm_label": "normalizenonnegativenumber()"
     },
     {
@@ -52098,8 +52098,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "mobile_src_utils_datavalidation_normalizenullablenonnegativenumber",
-      "community": 139,
-      "community_name": "wav.test.ts",
+      "community": 332,
+      "community_name": "GUIA_USO.md",
       "norm_label": "normalizenullablenonnegativenumber()"
     },
     {
@@ -52109,8 +52109,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "mobile_src_utils_datavalidation_clamppercent",
-      "community": 139,
-      "community_name": "wav.test.ts",
+      "community": 332,
+      "community_name": "GUIA_USO.md",
       "norm_label": "clamppercent()"
     },
     {
@@ -52120,8 +52120,8 @@
       "source_location": "L34",
       "_origin": "ast",
       "id": "mobile_src_utils_datavalidation_normalizeeventtype",
-      "community": 139,
-      "community_name": "wav.test.ts",
+      "community": 332,
+      "community_name": "GUIA_USO.md",
       "norm_label": "normalizeeventtype()"
     },
     {
@@ -52131,8 +52131,8 @@
       "source_location": "L45",
       "_origin": "ast",
       "id": "mobile_src_utils_datavalidation_normalizereferencia",
-      "community": 139,
-      "community_name": "wav.test.ts",
+      "community": 332,
+      "community_name": "GUIA_USO.md",
       "norm_label": "normalizereferencia()"
     },
     {
@@ -138626,7 +138626,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L254",
+      "source_location": "L255",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi",
@@ -138637,7 +138637,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L302",
+      "source_location": "L303",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi",
@@ -138648,7 +138648,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L340",
+      "source_location": "L341",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi",
@@ -138659,7 +138659,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L346",
+      "source_location": "L347",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi",
@@ -138703,7 +138703,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L235",
+      "source_location": "L236",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi",
@@ -138714,7 +138714,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L198",
+      "source_location": "L199",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi",
@@ -138725,7 +138725,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L356",
+      "source_location": "L357",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi",
@@ -138736,7 +138736,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L327",
+      "source_location": "L328",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi",
@@ -138747,7 +138747,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L316",
+      "source_location": "L317",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi",
@@ -138758,7 +138758,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L124",
+      "source_location": "L125",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi",
@@ -138813,7 +138813,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L209",
+      "source_location": "L210",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi",
@@ -138824,7 +138824,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L189",
+      "source_location": "L190",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi",
@@ -138835,7 +138835,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L168",
+      "source_location": "L169",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi",
@@ -138846,7 +138846,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L138",
+      "source_location": "L139",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi",
@@ -138857,7 +138857,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L158",
+      "source_location": "L159",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi",
@@ -138901,7 +138901,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L213",
+      "source_location": "L214",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi",
@@ -138973,7 +138973,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L251",
+      "source_location": "L252",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi_executeapifetch",
@@ -138985,7 +138985,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L271",
+      "source_location": "L272",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi_apirequest",
@@ -138997,7 +138997,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L272",
+      "source_location": "L273",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi_apirequest",
@@ -139009,7 +139009,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L260",
+      "source_location": "L261",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi_apirequest",
@@ -139021,7 +139021,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L268",
+      "source_location": "L269",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi_apirequest",
@@ -139033,7 +139033,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L360",
+      "source_location": "L361",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi_fetchadequacaogrupo",
@@ -139045,7 +139045,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L334",
+      "source_location": "L335",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi_fetchcontextodocente",
@@ -139057,7 +139057,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L320",
+      "source_location": "L321",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi_fetchpersonalizacaoporperfil",
@@ -139069,7 +139069,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/console/personalizacoes/personalizacoesApi.ts",
-      "source_location": "L321",
+      "source_location": "L322",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_console_personalizacoes_personalizacoesapi_fetchpersonalizacaoporperfil",

@@ -945,8 +945,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/console/personalizacoes/personalizacoesApi.ts": {
-    "mtime": 1785250015.6848183,
-    "ast_hash": "01872489e585c2b5525e27dd290f1ba1",
+    "mtime": 1785250604.396268,
+    "ast_hash": "ece9711c2ef2e98b2afed8c3fcecefb6",
     "semantic_hash": ""
   },
   "frontend/src/components/console/trilha/ActivitiesManager.tsx": {
