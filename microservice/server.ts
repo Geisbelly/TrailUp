@@ -21,6 +21,8 @@ import {
   recoverStaleJobs,
   startJobHeartbeat,
   MaterialEntry,
+  type GenerationFence,
+  type PersistedMaterialsMerge,
 } from "./src/services/supabaseService";
 import { generateSlidesPDF } from "./src/services/pdfService";
 import { createLogger, type Logger } from "./src/lib/logger";
@@ -140,10 +142,29 @@ async function archiveToSupabase(params: {
   mp3Base64:       string | null;
   wavBase64:       string | null;
   personalizacaoId: number | null;
+  fence?:           GenerationFence;
   log?:            Logger;
-}): Promise<{ audioMp3Url: string | null; markdownUrl: string | null; pdfUrl: string | null }> {
-  const { profile, storagePath, bucket, refId, markdown, audioScript, slides, mp3Base64, wavBase64, personalizacaoId } = params;
+}): Promise<{
+  audioMp3Url: string | null;
+  markdownUrl: string | null;
+  pdfUrl: string | null;
+  persisted: PersistedMaterialsMerge | null;
+}> {
+  const {
+    profile,
+    storagePath,
+    bucket,
+    refId,
+    markdown,
+    audioScript,
+    slides,
+    mp3Base64,
+    wavBase64,
+    personalizacaoId,
+    fence,
+  } = params;
   const lg = params.log ?? log;
+  let persisted: PersistedMaterialsMerge | null = null;
 
   // Cada upload é isolado: uma falha não impede os demais nem o merge final.
   // Isso evita órfãos no Storage (arquivo subiu mas banco não sabe) e permite
@@ -191,6 +212,9 @@ async function archiveToSupabase(params: {
 
   // Persiste metadados no banco (somente quando chamado pelo ApiTraiUp)
   if (personalizacaoId !== null) {
+    if (!fence) {
+      throw new Error("generation fence ausente para persistir personalizacao");
+    }
     const audioStatus  = audioMp3Url  ? "completed" : "failed";
     const mdStatus     = markdownUrl  ? "completed" : "failed";
     const pdfStatus    = pdfUrl       ? "completed" : "failed";
@@ -201,44 +225,46 @@ async function archiveToSupabase(params: {
     const updates: Record<string, MaterialEntry> = {
       audio: {
         payload:      audioPayloadObj,
-        metadata:     { status: audioStatus, media_kind: "audio",        updated_at: now(), ...(audioMp3Url ? { bucket } : {}) },
+        metadata:     { status: audioStatus, media_kind: "audio", generation_key: fence.generationKey, updated_at: now(), ...(audioMp3Url ? { bucket } : {}) },
         arquivo_url:  audioMp3Url,
         storage_path: audioMp3Url ? audioPath : null,
         bucket, mime_type: audioMime,
       },
       markdown: {
         payload:      mdPayloadObj,
-        metadata:     { status: mdStatus, media_kind: "markdown",        updated_at: now(), ...(markdownUrl ? { bucket } : {}) },
+        metadata:     { status: mdStatus, media_kind: "markdown", generation_key: fence.generationKey, updated_at: now(), ...(markdownUrl ? { bucket } : {}) },
         arquivo_url:  markdownUrl,
         storage_path: markdownUrl ? mdPath : null,
         bucket, mime_type: "text/markdown; charset=utf-8",
       },
       apresentacao: {
         payload:      pdfPayloadObj,
-        metadata:     { status: pdfStatus, media_kind: "apresentacao",   updated_at: now(), ...(pdfUrl ? { bucket } : {}) },
+        metadata:     { status: pdfStatus, media_kind: "apresentacao", generation_key: fence.generationKey, updated_at: now(), ...(pdfUrl ? { bucket } : {}) },
         arquivo_url:  pdfUrl,
         storage_path: pdfUrl ? pdfPath : null,
         ...(pdfUrl ? { bucket, mime_type: "application/pdf" } : {}),
       },
     };
 
-    await mergePersonalizacaoMateriais(personalizacaoId, updates);
+    persisted = await mergePersonalizacaoMateriais(personalizacaoId, updates, fence);
 
-    await saveMateriaisGerados(
+    const historySaved = await saveMateriaisGerados(
       personalizacaoId,
-      Object.entries(updates).map(([tipo, entry]) => ({
-        tipo,
-        payload:      entry.payload ?? null,
-        arquivo_url:  entry.arquivo_url,
-        storage_path: entry.storage_path,
-        metadata:     { ...entry.metadata },
-      }))
+      persisted,
+      fence,
+      Object.keys(updates),
     );
 
-    lg.info("materiais persistidos");
+    if (historySaved) {
+      lg.info("materiais persistidos", { generationKey: fence.generationKey });
+    } else {
+      lg.warn("historico materiais_gerados nao persistido", {
+        generationKey: fence.generationKey,
+      });
+    }
   }
 
-  return { audioMp3Url, markdownUrl, pdfUrl };
+  return { audioMp3Url, markdownUrl, pdfUrl, persisted };
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -275,6 +301,7 @@ async function runPersonalizacaoJob(params: {
   storagePath:      string;
   bucket:           string;
   refId:            string;
+  fence:            GenerationFence;
   log:              Logger;
 }): Promise<void> {
   const {
@@ -285,26 +312,29 @@ async function runPersonalizacaoJob(params: {
     storagePath,
     bucket,
     refId,
+    fence,
     log: jobLog,
   } = params;
 
   if (!isSupabaseConfigured()) {
     const msg = "SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY não configurados no servidor";
     jobLog.error(msg);
-    await markPersonalizacaoFailed(personalizacaoId, msg);
-    return;
+    throw new Error(msg);
   }
 
   if (fontes.length === 0 && contentBlocks.length === 0) {
     const msg = "fontes e blocos vazios — nenhum conteúdo enviado para processar";
     jobLog.warn(msg);
-    await markPersonalizacaoFailed(personalizacaoId, msg);
-    return;
+    throw new Error(msg);
   }
 
   // Heartbeat ativo durante todo o pipeline — garante que recoverStaleJobs
   // não vai matar este job por inatividade aparente em updated_at.
-  const stopHeartbeat = startJobHeartbeat(personalizacaoId, HEARTBEAT_INTERVAL_MS);
+  const stopHeartbeat = startJobHeartbeat(
+    personalizacaoId,
+    HEARTBEAT_INTERVAL_MS,
+    fence,
+  );
 
   try {
     await runPipeline(
@@ -315,10 +345,59 @@ async function runPersonalizacaoJob(params: {
       storagePath,
       bucket,
       refId,
+      fence,
       jobLog,
     );
   } finally {
     stopHeartbeat();
+  }
+}
+
+const activePersonalizacaoJobs = new Map<string, Promise<void>>();
+
+function getOrStartPersonalizacaoJob(
+  params: Parameters<typeof runPersonalizacaoJob>[0],
+): Promise<void> {
+  const activeKey = `${params.personalizacaoId}:${params.fence.generationKey}`;
+  const active = activePersonalizacaoJobs.get(activeKey);
+  if (active) {
+    params.log.warn("personalizar reutilizando execucao ainda ativa");
+    return active;
+  }
+
+  const work = runPersonalizacaoJob(params);
+  activePersonalizacaoJobs.set(activeKey, work);
+  void work.then(
+    () => {
+      if (activePersonalizacaoJobs.get(activeKey) === work) {
+        activePersonalizacaoJobs.delete(activeKey);
+      }
+    },
+    () => {
+      if (activePersonalizacaoJobs.get(activeKey) === work) {
+        activePersonalizacaoJobs.delete(activeKey);
+      }
+    },
+  );
+  return work;
+}
+
+async function runPersonalizacaoJobWithTimeout(
+  params: Parameters<typeof runPersonalizacaoJob>[0],
+): Promise<void> {
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutHandle = setTimeout(
+      () => reject(new Error(`job timeout apos ${MAX_JOB_DURATION_MS}ms`)),
+      MAX_JOB_DURATION_MS,
+    );
+    timeoutHandle.unref();
+  });
+
+  try {
+    await Promise.race([getOrStartPersonalizacaoJob(params), timeout]);
+  } finally {
+    if (timeoutHandle) clearTimeout(timeoutHandle);
   }
 }
 
@@ -330,6 +409,7 @@ async function runPipeline(
   storagePath: string,
   bucket: string,
   refId: string,
+  fence: GenerationFence,
   jobLog: Logger,
 ): Promise<void> {
   // 1. Download das fontes
@@ -337,14 +417,14 @@ async function runPipeline(
   if (filesData.length === 0 && contentBlocks.length === 0) {
     const msg = "todas as fontes falharam no download (verifique as URLs e permissões)";
     jobLog.warn(msg);
-    await markPersonalizacaoFailed(personalizacaoId, msg);
-    return;
+    throw new Error(msg);
   }
 
   // 2. Texto + slides via Gemini (multi-arquivo)
   const resultado = await processMediaWithGemini(filesData, profile, contentBlocks);
 
-  // 3. Áudio (wav + mp3) — falha isolada não interrompe o job
+  // 3. Áudio (wav + mp3) — a etapa continua para preservar texto/slides
+  // parciais; a validacao final solicita retry se o audio nao for produzido.
   const voiceProfile = GUARDIAN_VOICE_PROFILES[profile];
   const voice = voiceProfile.voice;
   const secondaryGuideName = BRAIN_HEX_CONFIG[profile]?.secondaryGuideName;
@@ -378,7 +458,7 @@ async function runPipeline(
   const slidesComImagens  = enrichSlidesWithImages(resultado.slides, assets.imagem_referencia, assets.icones);
 
   // 5. Persiste tudo no Supabase
-  await archiveToSupabase({
+  const archived = await archiveToSupabase({
     profile,
     storagePath,
     bucket,
@@ -389,8 +469,25 @@ async function runPipeline(
     mp3Base64,
     wavBase64,
     personalizacaoId,
+    fence,
     log:              jobLog,
   });
+  if (!archived.persisted) {
+    throw new Error("merge persistido ausente para a personalizacao");
+  }
+  const failedFormats = ["audio", "markdown", "apresentacao"].filter((mediaKind) => {
+    const metadata = archived.persisted?.materiais?.[mediaKind]?.metadata;
+    return (
+      metadata?.status !== "completed"
+      || metadata?.generation_key !== fence.generationKey
+    );
+  });
+  if (failedFormats.length > 0) {
+    throw new Error(`midias obrigatorias nao geradas: ${failedFormats.join(", ")}`);
+  }
+  if (archived.persisted.status !== "pronto") {
+    throw new Error(`status persistido inesperado: ${archived.persisted.status}`);
+  }
 }
 
 // Limite de tamanho por fonte: protege contra URL pública servindo conteúdo
@@ -468,6 +565,7 @@ export interface AppOptions {
   jsonLimit?:            string;
   corsOrigin?:           string;
   allowPrivateFonteUrls?: boolean;
+  personalizacaoJobRunner?: typeof runPersonalizacaoJobWithTimeout;
   /**
    * Quando true, o 404 catch-all não é registrado aqui — o middleware da SPA
    * (Vite em dev / dist em prod) é montado depois, em startServer (async).
@@ -483,6 +581,7 @@ export function buildApp(opts: AppOptions = {}): express.Application {
     jsonLimit           = "50mb",
     corsOrigin,
     allowPrivateFonteUrls = false,
+    personalizacaoJobRunner = runPersonalizacaoJobWithTimeout,
     enableSpa           = false,
   } = opts;
 
@@ -640,11 +739,11 @@ export function buildApp(opts: AppOptions = {}): express.Application {
     }
   });
 
-  // ── POST /api/personalizar — ApiTraiUp (fire-and-forget, 202) ───
+  // ── POST /api/personalizar — ApiTraiUp ─────────────────────────
   //
   // ApiTraiUp envia URLs brutas de fontes. O servidor baixa os arquivos,
   // processa com Gemini (array) e persiste mídias no Supabase.
-  app.post("/api/personalizar", requireSecret, (req, res) => {
+  app.post("/api/personalizar", requireSecret, async (req, res) => {
     // Validação centralizada — inclui SSRF protection para fontes URLs.
     const v = validatePersonalizarBody(req.body, { allowPrivateFonteUrls });
     if (v.ok === false) {
@@ -658,24 +757,40 @@ export function buildApp(opts: AppOptions = {}): express.Application {
       classe_id,
       topico_id,
       ciclo_id,
+      source_hash,
+      generation_key,
+      wait_for_completion: waitForCompletion,
     } = v.value;
 
     const classeId    = String(classe_id ?? 0);
     const topicoId    = String(topico_id ?? 0);
-    const cicloStr    = String(ciclo_id ?? "");
+    const cicloStr    = String(ciclo_id ?? "").trim();
+    const sourceHash  = String(source_hash ?? "").trim();
+    const generationKey = String(generation_key ?? "").trim();
+    if (!cicloStr || !sourceHash || !generationKey) {
+      return res.status(409).json({
+        error: "ciclo_id, source_hash e generation_key sao obrigatorios para gerar midias",
+      });
+    }
+    if (generationKey !== `${cicloStr}:${sourceHash}`) {
+      return res.status(400).json({
+        error: "generation_key inconsistente com ciclo_id/source_hash",
+      });
+    }
+    const fence: GenerationFence = {
+      cicloId: cicloStr,
+      sourceHash,
+      generationKey,
+    };
     const refId       = `${personalizacaoId}_${cicloStr.slice(0, 8)}`;
     const storagePath = `brainhex/${profile}/classe-${classeId}/topico-${topicoId}`;
     const bucket      = "conteudo_aluno";
 
-    // 202 imediato — processa em background
-    res.status(202).json({ status: "processing", personalizacao_id: personalizacaoId });
-
-    // Logger por job: herda requestId/method/path do req.log e adiciona
-    // contexto do job (personalizacaoId, profile). Permite correlacionar
-    // a request 202 com toda a execução async via grep requestId=...
+    // No modo confiavel a conexao fica aberta ate a persistencia terminar.
+    // Isso evita que a hospedagem suspenda o processo no meio do background.
     const jobLog = req.log.child({ personalizacaoId, profile });
 
-    setImmediate(async () => {
+    const executeJob = async () => {
       const startedAt = Date.now();
       try {
         jobLog.info("personalizar start", {
@@ -683,13 +798,14 @@ export function buildApp(opts: AppOptions = {}): express.Application {
           contentBlocks:    contentBlocks.length,
           supabase:         isSupabaseConfigured(),
           timeoutMs:        MAX_JOB_DURATION_MS,
+          generationKey,
         });
 
         // Timeout duro — protege contra Gemini/upload travados que rodariam
         // para sempre. Nota: Promise.race não cancela o trabalho de fato (o
         // SDK Gemini não expõe AbortSignal aqui), apenas para de esperar e
         // marca falha. Memória é recuperada quando o processo for reciclado.
-        const work = runPersonalizacaoJob({
+        await personalizacaoJobRunner({
           profile: profile as BrainHexProfile,
           personalizacaoId,
           fontes:  fontes as FonteItem[],
@@ -697,18 +813,40 @@ export function buildApp(opts: AppOptions = {}): express.Application {
           storagePath,
           bucket,
           refId,
+          fence,
           log:     jobLog,
         });
-        const timeout = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error(`job timeout após ${MAX_JOB_DURATION_MS}ms`)), MAX_JOB_DURATION_MS).unref()
-        );
-        await Promise.race([work, timeout]);
-
         jobLog.info("personalizar concluído", { durationMs: Date.now() - startedAt });
       } catch (err: any) {
         jobLog.error("personalizar erro", { durationMs: Date.now() - startedAt, err });
-        await markPersonalizacaoFailed(personalizacaoId, err?.message ?? String(err));
+        await markPersonalizacaoFailed(
+          personalizacaoId,
+          err?.message ?? String(err),
+          fence,
+        );
+        throw err;
       }
+    };
+
+    if (waitForCompletion) {
+      try {
+        await executeJob();
+        return res.status(200).json({
+          status: "completed",
+          personalizacao_id: personalizacaoId,
+        });
+      } catch (err: any) {
+        return res.status(500).json({
+          status: "failed",
+          personalizacao_id: personalizacaoId,
+          error: err?.message ?? String(err),
+        });
+      }
+    }
+
+    res.status(202).json({ status: "processing", personalizacao_id: personalizacaoId });
+    setImmediate(() => {
+      void executeJob().catch(() => undefined);
     });
   });
 

@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { createKeyedQueue } from "../lib/serialQueue";
 import { createLogger } from "../lib/logger";
-import { computeMergedMaterials, type MaterialsMap } from "../lib/materialsMerge";
+import type { MaterialEntryLike } from "../lib/materialsMerge";
 
 const log = createLogger({ ctx: "supabase" });
 
@@ -49,12 +49,41 @@ export interface MaterialEntry {
     status: string;
     media_kind: string;
     updated_at: string;
+    generation_key?: string;
     bucket?: string;
   };
   arquivo_url: string | null;
   storage_path: string | null;
   bucket?: string;
   mime_type?: string;
+}
+
+export interface GenerationFence {
+  cicloId: string;
+  sourceHash: string;
+  generationKey: string;
+}
+
+export interface PersistedMaterialEntry extends MaterialEntryLike {
+  payload?: Record<string, unknown>;
+  arquivo_url?: string | null;
+  storage_path?: string | null;
+  bucket?: string;
+  mime_type?: string;
+}
+
+export interface PersistedMaterialsMerge {
+  status: string;
+  materiais: Record<string, PersistedMaterialEntry>;
+  generation_key: string;
+}
+
+export interface MaterialGeradoSnapshot {
+  tipo: string;
+  payload: Record<string, unknown> | null;
+  arquivo_url: string | null;
+  storage_path: string | null;
+  metadata: Record<string, unknown>;
 }
 
 // Serialização in-process por personalizacao_id. Ver src/lib/serialQueue.ts.
@@ -75,18 +104,23 @@ const withPersonalizacaoLock = <T>(id: number, fn: () => Promise<T>) =>
  */
 export function startJobHeartbeat(
   personalizacaoId: number,
-  intervalMs: number
+  intervalMs: number,
+  fence?: GenerationFence,
 ): () => void {
   let stopped = false;
   const tick = async () => {
     if (stopped) return;
     try {
       const client = getClient();
-      await client
+      let query = client
         .from("conteudo_personalizado")
         .update({ updated_at: new Date().toISOString() })
         .eq("id", personalizacaoId)
         .eq("status", "processando_midias"); // só bate em jobs ativos
+      if (fence) {
+        query = query.eq("ciclo_id", fence.cicloId).eq("source_hash", fence.sourceHash);
+      }
+      await query;
     } catch (err) {
       log.error("heartbeat erro", { personalizacaoId, err });
     }
@@ -118,7 +152,7 @@ export async function recoverStaleJobs(olderThanMs: number): Promise<number> {
 
     const { data, error } = await client
       .from("conteudo_personalizado")
-      .select("id, updated_at")
+      .select("id, updated_at, ciclo_id, source_hash")
       .eq("status", "processando_midias")
       .lt("updated_at", threshold);
 
@@ -131,11 +165,24 @@ export async function recoverStaleJobs(olderThanMs: number): Promise<number> {
     let count = 0;
     for (const row of data) {
       const age = Date.now() - new Date(row.updated_at).getTime();
-      await markPersonalizacaoFailed(
+      const cicloId = row.ciclo_id == null ? "" : String(row.ciclo_id);
+      const sourceHash = row.source_hash == null ? "" : String(row.source_hash);
+      if (!cicloId || !sourceHash) {
+        log.warn("recoverStaleJobs ignorou registro sem fence", {
+          personalizacaoId: row.id,
+        });
+        continue;
+      }
+      const marked = await markPersonalizacaoFailed(
         row.id as number,
-        `job órfão recuperado no startup (idade ${Math.round(age / 1000)}s; provavelmente processo crashou)`
+        `job órfão recuperado no startup (idade ${Math.round(age / 1000)}s; provavelmente processo crashou)`,
+        {
+          cicloId,
+          sourceHash,
+          generationKey: `${cicloId}:${sourceHash}`,
+        },
       );
-      count++;
+      if (marked) count++;
     }
     return count;
   } catch (err) {
@@ -146,8 +193,33 @@ export async function recoverStaleJobs(olderThanMs: number): Promise<number> {
 
 export async function markPersonalizacaoFailed(
   personalizacaoId: number,
-  errorMessage: string
-): Promise<void> {
+  errorMessage: string,
+  fence?: GenerationFence,
+): Promise<boolean> {
+  if (fence) {
+    try {
+      const result = await tryRpc<boolean>(
+        "mark_personalizacao_failed_v2",
+        {
+          p_id: personalizacaoId,
+          p_error_message: errorMessage,
+          p_ciclo_id: fence.cicloId,
+          p_source_hash: fence.sourceHash,
+        },
+        "api/alembic/versions/20260728_02_drop_legacy_content_unique.py",
+        false,
+      );
+      if (!result.ok) {
+        log.error("mark_personalizacao_failed_v2 ausente", { personalizacaoId });
+        return false;
+      }
+      return result.data === true;
+    } catch (err) {
+      log.error("markPersonalizacaoFailed v2", { personalizacaoId, err });
+      return false;
+    }
+  }
+
   // Tenta primeiro o RPC atômico (cross-instance safe).
   try {
     const result = await tryRpc<null>(
@@ -155,10 +227,10 @@ export async function markPersonalizacaoFailed(
       { p_id: personalizacaoId, p_error_message: errorMessage },
       "sql/migrations/0002_mark_personalizacao_failed_rpc.sql"
     );
-    if (result.ok) return;
+    if (result.ok) return true;
   } catch (err) {
     log.error("markPersonalizacaoFailed via RPC", { personalizacaoId, err });
-    return;
+    return false;
   }
 
   // Fallback JS — protegido pelo lock in-process (não cross-instance).
@@ -174,6 +246,7 @@ export async function markPersonalizacaoFailed(
 
       if (error) {
         log.error("markPersonalizacaoFailed fetch error", { personalizacaoId, msg: error.message });
+        return false;
       }
 
       const current = (data?.materiais ?? {}) as Record<string, unknown>;
@@ -182,30 +255,74 @@ export async function markPersonalizacaoFailed(
         erro: { mensagem: errorMessage, updated_at: new Date().toISOString() },
       };
 
-      await client
+      const { error: updateError } = await client
         .from("conteudo_personalizado")
         .update({
-          status: "falha",
+          status: "failed",
           materiais: merged,
           updated_at: new Date().toISOString(),
         })
         .eq("id", personalizacaoId);
+      if (updateError) {
+        log.error("markPersonalizacaoFailed update error", {
+          personalizacaoId,
+          msg: updateError.message,
+        });
+        return false;
+      }
+      return true;
     } catch (err) {
       log.error("markPersonalizacaoFailed exception", { personalizacaoId, err });
+      return false;
     }
+  });
+}
+
+/**
+ * Extrai do retorno canônico do RPC apenas os formatos desta geração.
+ *
+ * Em retries, um upload recém-tentado pode falhar enquanto o RPC preserva um
+ * artefato `completed` anterior da mesma geração. Por isso esta função nunca
+ * recebe os updates tentados: o histórico deve espelhar o agregado persistido.
+ */
+export function buildMateriaisGeradosSnapshot(
+  persisted: PersistedMaterialsMerge,
+  fence: GenerationFence,
+  tipos: string[],
+): MaterialGeradoSnapshot[] {
+  if (
+    fence.generationKey !== `${fence.cicloId}:${fence.sourceHash}`
+    || persisted.generation_key !== fence.generationKey
+  ) {
+    throw new Error("aggregate persistido pertence a outra generation_key");
+  }
+
+  return [...new Set(tipos)].map((tipo) => {
+    const entry = persisted.materiais?.[tipo];
+    if (!entry || entry.metadata?.generation_key !== fence.generationKey) {
+      throw new Error(
+        `material persistido ${tipo} ausente ou pertence a outra generation_key`
+      );
+    }
+
+    return {
+      tipo,
+      payload: entry.payload ?? null,
+      arquivo_url: entry.arquivo_url ?? null,
+      storage_path: entry.storage_path ?? null,
+      metadata: { ...entry.metadata },
+    };
   });
 }
 
 export async function saveMateriaisGerados(
   personalizacaoId: number,
-  entries: Array<{
-    tipo: string;
-    payload: Record<string, unknown> | null;
-    arquivo_url: string | null;
-    storage_path: string | null;
-    metadata: Record<string, unknown>;
-  }>
-): Promise<void> {
+  persisted: PersistedMaterialsMerge,
+  fence: GenerationFence,
+  tipos: string[],
+): Promise<boolean> {
+  const entries = buildMateriaisGeradosSnapshot(persisted, fence, tipos);
+
   try {
     const client = getClient();
 
@@ -213,11 +330,17 @@ export async function saveMateriaisGerados(
       .from("conteudo_personalizado")
       .select("aluno_id, conteudo_id")
       .eq("id", personalizacaoId)
-      .single();
+      .eq("ciclo_id", fence.cicloId)
+      .eq("source_hash", fence.sourceHash)
+      .maybeSingle();
 
     if (error || !data) {
-      log.error("saveMateriaisGerados fetch error", { personalizacaoId, msg: error?.message });
-      return;
+      log.warn("saveMateriaisGerados ignorou generation stale", {
+        personalizacaoId,
+        generationKey: fence.generationKey,
+        msg: error?.message,
+      });
+      return false;
     }
 
     const rows = entries.map((e) => ({
@@ -234,9 +357,12 @@ export async function saveMateriaisGerados(
     const { error: insertError } = await client.from("materiais_gerados").insert(rows);
     if (insertError) {
       log.error("saveMateriaisGerados insert error", { personalizacaoId, msg: insertError.message });
+      return false;
     }
+    return true;
   } catch (err) {
     log.error("saveMateriaisGerados exception", { personalizacaoId, err });
+    return false;
   }
 }
 
@@ -253,9 +379,10 @@ const _rpcAvailability = new Map<string, boolean>();
 async function tryRpc<T = unknown>(
   rpcName: string,
   args: Record<string, unknown>,
-  migrationHint: string
+  migrationHint: string,
+  cacheMissing = true,
 ): Promise<{ ok: true; data: T } | { ok: false }> {
-  if (_rpcAvailability.get(rpcName) === false) return { ok: false };
+  if (cacheMissing && _rpcAvailability.get(rpcName) === false) return { ok: false };
 
   const client = getClient();
   const { data, error } = await client.rpc(rpcName, args);
@@ -265,10 +392,10 @@ async function tryRpc<T = unknown>(
       error.code === "42883" ||
       /function .* does not exist|could not find the function/i.test(error.message ?? "");
     if (isMissingFn) {
-      if (!_rpcAvailability.has(rpcName)) {
+      if (!cacheMissing || !_rpcAvailability.has(rpcName)) {
         log.warn("RPC ausente — fallback JS", { rpcName, migrationHint });
       }
-      _rpcAvailability.set(rpcName, false);
+      if (cacheMissing) _rpcAvailability.set(rpcName, false);
       return { ok: false };
     }
     throw new Error(`[supabase] RPC ${rpcName} falhou: ${error.message}`);
@@ -280,63 +407,31 @@ async function tryRpc<T = unknown>(
 
 export async function mergePersonalizacaoMateriais(
   personalizacaoId: number,
-  updates: Record<string, MaterialEntry>
-): Promise<void> {
-  // Tenta primeiro o RPC atômico (cross-instance safe via pg_advisory_xact_lock).
-  // Se não disponível, cai no fallback JS protegido pelo lock in-process
-  // (cross-instance NÃO safe — limitação documentada em serialQueue.ts).
-  try {
-    const result = await tryRpc<string>(
-      "merge_personalizacao_materiais",
-      { p_id: personalizacaoId, p_updates: updates },
-      "sql/migrations/0001_merge_personalizacao_materiais_rpc.sql"
-    );
-    if (result.ok) return;
-  } catch (err) {
-    log.error("mergePersonalizacaoMateriais via RPC", { personalizacaoId, err });
-    return; // erro real do RPC — não cair pra JS pra evitar duplicar trabalho
+  updates: Record<string, MaterialEntry>,
+  fence: GenerationFence,
+): Promise<PersistedMaterialsMerge> {
+  if (fence.generationKey !== `${fence.cicloId}:${fence.sourceHash}`) {
+    throw new Error("generation_key inconsistente com ciclo_id/source_hash");
   }
 
-  // Fallback JS — mantém a impl original, agora dentro do lock in-process.
-  return withPersonalizacaoLock(personalizacaoId, async () => {
-    try {
-      const client = getClient();
-
-      const { data, error } = await client
-        .from("conteudo_personalizado")
-        .select("materiais, status")
-        .eq("id", personalizacaoId)
-        .single();
-
-      if (error || !data) {
-        log.error("fetch personalizacao error", { personalizacaoId, msg: error?.message });
-        return;
-      }
-
-      // Toda a lógica de filtro + cálculo de status agregado vive em
-      // src/lib/materialsMerge.ts (testado). A função SQL em
-      // sql/migrations/0001_*.sql replica este comportamento — mantenha
-      // os dois em sincronia se mudar a lógica aqui.
-      const { merged, newStatus } = computeMergedMaterials(
-        data.materiais as MaterialsMap | null,
-        updates as MaterialsMap,
-        data.status as string
-      );
-
-      const { error: updateError } = await client
-        .from("conteudo_personalizado")
-        .update({
-          materiais:  merged,
-          status:     newStatus,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", personalizacaoId);
-
-      if (updateError) {
-        log.error("update materiais error", { personalizacaoId, msg: updateError.message });
-      }
-    } catch (err) {
-      log.error("mergePersonalizacaoMateriais exception", { personalizacaoId, err });
-    }
-  });
+  const result = await tryRpc<PersistedMaterialsMerge>(
+    "merge_personalizacao_materiais_v2",
+    {
+      p_id: personalizacaoId,
+      p_updates: updates,
+      p_ciclo_id: fence.cicloId,
+      p_source_hash: fence.sourceHash,
+    },
+    "api/alembic/versions/20260728_02_drop_legacy_content_unique.py",
+    false,
+  );
+  if (!result.ok) {
+    throw new Error(
+      "RPC merge_personalizacao_materiais_v2 ausente; aplique a migration 20260728_02."
+    );
+  }
+  if (!result.data || typeof result.data !== "object") {
+    throw new Error("RPC merge_personalizacao_materiais_v2 retornou payload invalido.");
+  }
+  return result.data;
 }

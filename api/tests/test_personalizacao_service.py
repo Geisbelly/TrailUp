@@ -43,6 +43,159 @@ def test_recomendar_formatos_deriva_multiformato_a_partir_de_pdfs() -> None:
     assert len(formatos) >= 2
 
 
+def test_source_hash_changes_when_pipeline_version_changes(monkeypatch) -> None:
+    kwargs = {
+        "classe_id": 32,
+        "topico_id": 121,
+        "conteudo_id": 125,
+        "materiais_origem": [{"source_id": "fonte:45", "texto_base": "Conteudo base"}],
+    }
+    current_hash = personalizacao_service._build_source_hash(**kwargs)
+
+    monkeypatch.setattr(
+        personalizacao_service,
+        "_PERSONALIZACAO_PIPELINE_VERSION",
+        "2026-07-28.3",
+    )
+
+    assert personalizacao_service._build_source_hash(**kwargs) != current_hash
+
+
+@pytest.mark.asyncio
+async def test_fetch_context_keeps_topic_scope_for_sources_and_source_hash(monkeypatch) -> None:
+    aluno_id = "b49f2e21-a6f9-4c8d-9533-5a32bb219754"
+    base_sources = [
+        {
+            "id": 45,
+            "source_id": "fonte:45",
+            "visibilidade": "classe",
+            "tipo": "texto",
+            "url": "https://cdn.example.com/conteudo-125.txt",
+            "mime_type": "text/plain",
+            "texto_base": "Conceitos iniciais",
+        },
+        {
+            "id": 46,
+            "source_id": "fonte:46",
+            "visibilidade": "classe",
+            "tipo": "texto",
+            "url": "https://cdn.example.com/conteudo-126.txt",
+            "mime_type": "text/plain",
+            "texto_base": "Contexto aprofundado",
+        },
+    ]
+    changed_sources = [
+        dict(base_sources[0]),
+        {**base_sources[1], "texto_base": "Contexto aprofundado e atualizado"},
+    ]
+    listar_fontes = AsyncMock(side_effect=[base_sources, changed_sources])
+
+    monkeypatch.setattr(
+        "app.repositories.context.ContextRepository.fetch_aluno_context",
+        AsyncMock(
+            return_value={
+                "aluno": {},
+                "perfil_brainhex": [{"perfil": "Seeker", "afinidade": 1.0}],
+                "historico_eventos": [],
+                "desempenho_recente": {},
+            }
+        ),
+    )
+    monkeypatch.setattr(
+        "app.repositories.context.ContextRepository.resolve_conteudo_foco_id",
+        AsyncMock(return_value=125),
+    )
+    monkeypatch.setattr(
+        "app.repositories.fontes_personalizacao.FontesPersonalizacaoRepository.seed_from_class_content",
+        AsyncMock(return_value={"total": 2}),
+    )
+    monkeypatch.setattr(
+        "app.repositories.fontes_personalizacao.FontesPersonalizacaoRepository.listar_para_contexto",
+        listar_fontes,
+    )
+    monkeypatch.setattr(
+        "app.repositories.conteudo_classe.ConteudoClasseRepository.buscar_topico",
+        AsyncMock(return_value={"id": 117, "nome": "Sistemas Distribuídos"}),
+    )
+    conteudos = [
+        {"id": 125, "titulo": "Conceitos", "conteudo": "Conceitos iniciais"},
+        {"id": 126, "titulo": "Aplicações", "conteudo": "Contexto aprofundado"},
+    ]
+    monkeypatch.setattr(
+        "app.repositories.conteudo_classe.ConteudoClasseRepository.buscar_conteudos_topico",
+        AsyncMock(return_value=conteudos),
+    )
+    monkeypatch.setattr(
+        "app.repositories.conteudo_classe.ConteudoClasseRepository.buscar_atividades_topico",
+        AsyncMock(return_value=[]),
+    )
+    monkeypatch.setattr(
+        "app.repositories.conteudo_classe.ConteudoClasseRepository.buscar_questoes_topico",
+        AsyncMock(return_value=[]),
+    )
+    monkeypatch.setattr(
+        "app.repositories.conteudo_classe.ConteudoClasseRepository.buscar_cards_topico",
+        AsyncMock(return_value=[]),
+    )
+
+    async def hydrate_sources(*, materiais_origem, settings):
+        del settings
+        return materiais_origem
+
+    monkeypatch.setattr(
+        personalizacao_service,
+        "_hydrate_source_materials_content",
+        hydrate_sources,
+    )
+    monkeypatch.setattr(
+        personalizacao_service,
+        "_persist_hydrated_sources_into_fontes",
+        AsyncMock(return_value=None),
+    )
+
+    settings = Settings(
+        openai_api_key=None,
+        gemini_api_key=None,
+        supabase_url=None,
+    )
+    first = await personalizacao_service.fetch_personalizacao_context(
+        aluno_id=aluno_id,
+        classe_id=32,
+        topico_id=117,
+        conteudo_id=None,
+        settings=settings,
+        session=object(),
+        include_student_sources=False,
+    )
+    second = await personalizacao_service.fetch_personalizacao_context(
+        aluno_id=aluno_id,
+        classe_id=32,
+        topico_id=117,
+        conteudo_id=None,
+        settings=settings,
+        session=object(),
+        include_student_sources=False,
+    )
+
+    assert all(
+        call.kwargs["conteudo_id"] is None
+        for call in listar_fontes.await_args_list
+    )
+    assert first["conteudo_id"] == 125
+    assert first["conteudo_classe"]["conteudos"] == conteudos
+    assert {item["source_id"] for item in first["fontes_contexto"]} == {
+        "fonte:45",
+        "fonte:46",
+    }
+    assert first["source_hash"] == personalizacao_service._build_source_hash(
+        classe_id=32,
+        topico_id=117,
+        conteudo_id=None,
+        materiais_origem=base_sources,
+    )
+    assert first["source_hash"] != second["source_hash"]
+
+
 def test_fallback_plano_for_state_usa_fontes_originais_no_plano() -> None:
     plano = _fallback_plano_for_state(
         {

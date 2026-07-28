@@ -20,6 +20,19 @@ test("filter: sobrescreve formato com status != completed", () => {
   assert.deepEqual(merged.audio, completed("audio"));
 });
 
+test("filter: nova generation_key substitui formato completed antigo", () => {
+  const current = {
+    audio: { metadata: { status: "completed", generation_key: "ciclo-1:hash-1" } },
+  };
+  const updates = {
+    audio: { metadata: { status: "completed", generation_key: "ciclo-2:hash-2" } },
+  };
+
+  const { merged } = computeMergedMaterials(current, updates, "processando_midias");
+
+  assert.deepEqual(merged.audio, updates.audio);
+});
+
 test("merge: adiciona novos formatos sem afetar existentes", () => {
   const current = { audio: completed("audio") };
   const updates = { markdown: completed("markdown") };

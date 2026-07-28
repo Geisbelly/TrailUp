@@ -337,7 +337,7 @@ flowchart TD
 
 | Chave | Onde | Objetivo |
 |---|---|---|
-| `uq_conteudo_personalizado_aluno_topico_ativo` | `conteudo_personalizado` | garantir 1 registro ativo por aluno/tÃ³pico |
+| `uq_conteudo_personalizado_aluno_topico_perfil` | `conteudo_personalizado` | garantir 1 registro por aluno/tópico/perfil BrainHex |
 | `UNIQUE(job_id, aluno_id, topico_id)` | `personalizacao_job_targets` | evitar duplicidade de alvo no mesmo job |
 | `uq_personalizacao_item_progresso` | `personalizacao_item_progresso` | evitar item duplicado por aluno/personalizaÃ§Ã£o |
 | `uq_telemetria_lotes_sessao_captured_at_flush_reason` | `telemetria_lotes` | dedupe de lote |

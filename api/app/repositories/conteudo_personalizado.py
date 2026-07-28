@@ -77,7 +77,8 @@ class ConteudoPersonalizadoRepository:
             else {}
         )
         perfil = (
-            item.get("perfil_dominante")
+            item.get("brainhex_profile_key")
+            or item.get("perfil_dominante")
             or perfil_editorial.get("perfil_dominante")
             or personalizacao_brainhex.get("perfil_dominante")
             or plano.get("perfil_dominante")
@@ -516,7 +517,14 @@ class ConteudoPersonalizadoRepository:
             topico_id=topico_id,
             brainhex_profile_key=brainhex_profile_key,
             source_hash=source_hash,
-            statuses=["pronto", "processando_midias", "failed_quality", "partial"],
+            statuses=[
+                "pronto",
+                "processando_midias",
+                "failed",
+                "falha",
+                "failed_quality",
+                "partial",
+            ],
             limit=25,
         )
         return records[0] if records else None
@@ -652,6 +660,159 @@ class ConteudoPersonalizadoRepository:
         if row_id is None:
             return None
         return await self.buscar_por_id(int(row_id))
+
+    async def atualizar_status(
+        self,
+        *,
+        record_id: int,
+        status: str,
+        ciclo_id: str | None = None,
+        source_hash: str | None = None,
+        preserve_completed_generation_key: str | None = None,
+    ) -> bool:
+        """Atualiza somente o estado, preservando materiais parciais e diagnosticos."""
+        if not await self._table_has_column("status"):
+            return False
+        has_updated_at = await self._table_has_column("updated_at")
+        set_clauses = ["status = :status", "gerado_em = NOW()"]
+        if has_updated_at:
+            set_clauses.append("updated_at = NOW()")
+
+        where_clauses = ["id = :id"]
+        params: dict[str, Any] = {"id": record_id, "status": status}
+        if ciclo_id:
+            where_clauses.append("ciclo_id::text = :ciclo_id")
+            params["ciclo_id"] = ciclo_id
+        if source_hash is not None:
+            where_clauses.append("COALESCE(source_hash, '') = :source_hash")
+            params["source_hash"] = source_hash
+        if preserve_completed_generation_key:
+            where_clauses.append(
+                """
+                NOT (
+                  COALESCE(materiais -> 'audio' -> 'metadata' ->> 'status', '') = 'completed'
+                  AND COALESCE(
+                    materiais -> 'audio' -> 'metadata' ->> 'generation_key',
+                    ''
+                  ) = :completed_generation_key
+                  AND COALESCE(
+                    materiais -> 'markdown' -> 'metadata' ->> 'status',
+                    ''
+                  ) = 'completed'
+                  AND COALESCE(
+                    materiais -> 'markdown' -> 'metadata' ->> 'generation_key',
+                    ''
+                  ) = :completed_generation_key
+                  AND COALESCE(
+                    materiais -> 'apresentacao' -> 'metadata' ->> 'status',
+                    ''
+                  ) = 'completed'
+                  AND COALESCE(
+                    materiais -> 'apresentacao' -> 'metadata' ->> 'generation_key',
+                    ''
+                  ) = :completed_generation_key
+                )
+                """
+            )
+            params["completed_generation_key"] = preserve_completed_generation_key
+
+        result = await self.session.execute(
+            text(
+                f"""
+                UPDATE conteudo_personalizado
+                SET {', '.join(set_clauses)}
+                WHERE {' AND '.join(where_clauses)}
+                RETURNING id
+                """
+            ),
+            params,
+        )
+        updated = result.scalar_one_or_none() is not None
+        await self.session.commit()
+        return updated
+
+    async def claim_retry_incomplete_generation(
+        self,
+        *,
+        record_id: int,
+        ciclo_id: str,
+        source_hash: str,
+        generation_key: str,
+        stale_processing_min: int,
+    ) -> dict[str, Any] | None:
+        """Reserva atomicamente uma geracao incompleta para nova tentativa.
+
+        O UPDATE funciona como compare-and-swap: preserva ``materiais`` e so
+        vence se ciclo/fonte ainda forem os mesmos, a geracao continuar
+        incompleta e nenhum outro worker tiver reservado a tentativa.
+        """
+        if not await self._table_has_column("status"):
+            return None
+        has_updated_at = await self._table_has_column("updated_at")
+        set_clauses = ["status = 'processando_midias'", "gerado_em = NOW()"]
+        if has_updated_at:
+            set_clauses.append("updated_at = NOW()")
+        freshness_column = "COALESCE(updated_at, gerado_em)" if has_updated_at else "gerado_em"
+
+        result = await self.session.execute(
+            text(
+                f"""
+                UPDATE conteudo_personalizado
+                SET {', '.join(set_clauses)}
+                WHERE id = :id
+                  AND ciclo_id::text = :ciclo_id
+                  AND COALESCE(source_hash, '') = :source_hash
+                  AND NOT (
+                    COALESCE(
+                      materiais -> 'audio' -> 'metadata' ->> 'status',
+                      ''
+                    ) = 'completed'
+                    AND COALESCE(
+                      materiais -> 'audio' -> 'metadata' ->> 'generation_key',
+                      ''
+                    ) = :generation_key
+                    AND COALESCE(
+                      materiais -> 'markdown' -> 'metadata' ->> 'status',
+                      ''
+                    ) = 'completed'
+                    AND COALESCE(
+                      materiais -> 'markdown' -> 'metadata' ->> 'generation_key',
+                      ''
+                    ) = :generation_key
+                    AND COALESCE(
+                      materiais -> 'apresentacao' -> 'metadata' ->> 'status',
+                      ''
+                    ) = 'completed'
+                    AND COALESCE(
+                      materiais -> 'apresentacao' -> 'metadata' ->> 'generation_key',
+                      ''
+                    ) = :generation_key
+                  )
+                  AND (
+                    status IN ('failed', 'falha', 'failed_quality', 'partial', 'pronto')
+                    OR (
+                      status = 'processando_midias'
+                      AND {freshness_column}
+                        < NOW() - make_interval(mins => :stale_processing_min)
+                    )
+                  )
+                RETURNING id
+                """
+            ),
+            {
+                "id": record_id,
+                "ciclo_id": ciclo_id,
+                "source_hash": source_hash,
+                "generation_key": generation_key,
+                "stale_processing_min": max(1, int(stale_processing_min)),
+            },
+        )
+        claimed_id = result.scalar_one_or_none()
+        if claimed_id is None:
+            await self.session.rollback()
+            return None
+        await self.session.commit()
+        return await self.buscar_por_id(int(claimed_id))
 
     async def remover_por_aluno_classe(
         self,

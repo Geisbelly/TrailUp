@@ -40,7 +40,9 @@ Estas decisões são **fixas**; sigam-nas ao corrigir/estender.
 
 3. **Geração por `tópico × perfil`.** O conteúdo cadastrado pelo professor é
    dividido por **tópico**; para **cada tópico** geram-se **texto e áudio** para
-   **cada um dos 7 perfis** e persiste-se no Supabase.
+   **cada um dos 7 perfis** e persiste-se no Supabase. O `source_hash` inclui
+   `_PERSONALIZACAO_PIPELINE_VERSION`; incremente essa versão quando prompts,
+   enriquecimento, áudio ou apresentações precisarem ser regenerados.
 
 4. **Contraste WCAG AAA por ajuste cirúrgico.** Mantém a cor-assinatura de cada
    perfil, mas garante AAA: eleva o accent quando muito escuro, alpha mínimo em
@@ -84,7 +86,8 @@ Cada perfil carrega:
 
 - `conteudo_personalizado` — registro por aluno: `plano` (JSONB), `materiais`
   (JSONB: `audio`/`apresentacao`/`markdown`/`cards`), `ai_patch` (JSONB),
-  `formato_prioritario`, `formatos_gerados`, `ciclo_id`. Unique por `(aluno, tópico)`.
+  `formato_prioritario`, `formatos_gerados`, `ciclo_id`. Unique por
+  `(aluno, tópico, perfil BrainHex)`.
 - `cards_personalizados`, `atividades_personalizadas`, `questoes_personalizadas` — artefatos desnormalizados (com `ativo`/`obsoleto_em`).
 - `fontes_personalizacao` — fontes do professor (upload/link), `visibilidade` `classe|aluno`.
 - `personalizacao_jobs` + `personalizacao_job_targets` — fila assíncrona

@@ -31,6 +31,9 @@ class ScalarResult:
     def scalar_one(self):
         return self.value
 
+    def scalar_one_or_none(self):
+        return self.value
+
 
 class DummyResult:
     def scalar(self):
@@ -185,6 +188,162 @@ async def test_personalizacao_job_without_targets_is_still_committed() -> None:
     assert session.commits == 1
     assert session.rollbacks == 0
     assert not any("INSERT INTO personalizacao_job_targets" in sql for sql, _ in session.calls)
+
+
+@pytest.mark.asyncio
+async def test_claim_partial_job_requires_non_terminal_target() -> None:
+    session = RecordingSession(
+        [
+            ScalarResult(True),
+            MappingResult([_job_row()]),
+        ]
+    )
+    repo = PersonalizacaoJobsRepository(session)
+
+    await repo.claim_next_job(stale_processing_min=15)
+
+    claim_sql = next(sql for sql, _ in session.calls if "WITH next_job AS" in sql)
+    assert "candidate.status = 'partial'" in claim_sql
+    assert "make_interval(secs => :partial_retry_delay_sec)" in claim_sql
+    assert "FROM personalizacao_job_targets target" in claim_sql
+    assert "target.status NOT IN ('completed', 'failed', 'skipped')" in claim_sql
+
+
+def test_content_hydration_prefers_persisted_brainhex_profile_column() -> None:
+    repo = ConteudoPersonalizadoRepository(RecordingSession([]))
+
+    hydrated = repo._hydrate_record(
+        {
+            "brainhex_profile_key": "survivor",
+            "plano": {"perfil_dominante": "Seeker"},
+            "materiais": {},
+            "ai_patch": None,
+        }
+    )
+
+    assert hydrated["brainhex_profile_key"] == "survivor"
+
+
+@pytest.mark.asyncio
+async def test_content_status_update_preserves_materials() -> None:
+    session = RecordingSession([ScalarResult(True), ScalarResult(249)])
+    repo = ConteudoPersonalizadoRepository(session)
+
+    updated = await repo.atualizar_status(
+        record_id=249,
+        status="failed",
+        ciclo_id="ciclo-249",
+        source_hash="hash-249",
+        preserve_completed_generation_key="ciclo-249:hash-249",
+    )
+
+    assert updated is True
+    assert session.commits == 1
+    update_sql, params = next(
+        (sql, params) for sql, params in session.calls if "UPDATE conteudo_personalizado" in sql
+    )
+    assert "SET status = :status" in update_sql
+    assert "materiais" not in update_sql.split("WHERE", maxsplit=1)[0]
+    assert "ciclo_id::text = :ciclo_id" in update_sql
+    assert "COALESCE(source_hash, '') = :source_hash" in update_sql
+    assert "materiais -> 'audio'" in update_sql
+    assert params == {
+        "id": 249,
+        "status": "failed",
+        "ciclo_id": "ciclo-249",
+        "source_hash": "hash-249",
+        "completed_generation_key": "ciclo-249:hash-249",
+    }
+
+
+@pytest.mark.asyncio
+async def test_claim_incomplete_generation_retry_is_atomic_and_preserves_partial_materials() -> None:
+    partial_materials = {
+        "audio": {
+            "metadata": {
+                "status": "completed",
+                "generation_key": "ciclo-249:hash-249",
+            }
+        }
+    }
+    session = RecordingSession(
+        [
+            ScalarResult(True),
+            ScalarResult(249),
+            MappingResult(
+                [
+                    {
+                        "id": 249,
+                        "aluno_id": "aluno-1",
+                        "classe_id": 32,
+                        "conteudo_id": 125,
+                        "topico_id": 121,
+                        "ciclo_id": "ciclo-249",
+                        "brainhex_profile_key": "seeker",
+                        "plano": {},
+                        "materiais": partial_materials,
+                        "ai_patch": None,
+                        "status": "processando_midias",
+                        "source_hash": "hash-249",
+                        "formato_prioritario": "cards",
+                        "formatos_gerados": ["cards"],
+                        "gerado_em": datetime.now(),
+                        "updated_at": datetime.now(),
+                    }
+                ]
+            ),
+        ]
+    )
+    repo = ConteudoPersonalizadoRepository(session)
+
+    claimed = await repo.claim_retry_incomplete_generation(
+        record_id=249,
+        ciclo_id="ciclo-249",
+        source_hash="hash-249",
+        generation_key="ciclo-249:hash-249",
+        stale_processing_min=38,
+    )
+
+    assert claimed is not None
+    assert claimed["materiais"]["audio"]["metadata"] == partial_materials["audio"]["metadata"]
+    assert session.commits == 1
+    update_sql, params = next(
+        (sql, params) for sql, params in session.calls if "UPDATE conteudo_personalizado" in sql
+    )
+    assert "SET status = 'processando_midias'" in update_sql
+    assert "materiais" not in update_sql.split("WHERE", maxsplit=1)[0]
+    assert "ciclo_id::text = :ciclo_id" in update_sql
+    assert "COALESCE(source_hash, '') = :source_hash" in update_sql
+    assert "status IN ('failed', 'falha', 'failed_quality', 'partial', 'pronto')" in update_sql
+    assert "status = 'processando_midias'" in update_sql
+    assert "make_interval(mins => :stale_processing_min)" in update_sql
+    assert "= '{}'::jsonb" not in update_sql
+    assert "materiais -> 'apresentacao'" in update_sql
+    assert params == {
+        "id": 249,
+        "ciclo_id": "ciclo-249",
+        "source_hash": "hash-249",
+        "generation_key": "ciclo-249:hash-249",
+        "stale_processing_min": 38,
+    }
+
+
+@pytest.mark.asyncio
+async def test_claim_incomplete_generation_retry_loses_cas_without_overwriting() -> None:
+    session = RecordingSession([ScalarResult(True), ScalarResult(None)])
+    repo = ConteudoPersonalizadoRepository(session)
+
+    claimed = await repo.claim_retry_incomplete_generation(
+        record_id=249,
+        ciclo_id="ciclo-249",
+        source_hash="hash-249",
+        generation_key="ciclo-249:hash-249",
+        stale_processing_min=38,
+    )
+
+    assert claimed is None
+    assert session.commits == 0
+    assert session.rollbacks == 1
 
 
 @pytest.mark.asyncio
@@ -788,6 +947,35 @@ async def test_fontes_personalizacao_repository_casts_optional_context_filters()
     assert "NULLIF(BTRIM(c.conteudo), '')" in sql
     assert "NULLIF(BTRIM(fp.descricao), '') ~ '[/\\\\]'" in sql
     assert params["conteudo_id"] == 47
+    assert params["topico_id"] == 20
+
+
+@pytest.mark.asyncio
+async def test_fontes_personalizacao_repository_aggregates_content_sources_for_topic_scope() -> None:
+    session = RecordingSession(
+        [
+            ScalarResult(True),
+            ScalarResult(False),
+            MappingResult([]),
+        ]
+    )
+
+    await FontesPersonalizacaoRepository(session).listar_para_contexto(
+        classe_id=10,
+        topico_id=20,
+        conteudo_id=None,
+        aluno_id="b49f2e21-a6f9-4c8d-9533-5a32bb219754",
+        limit=40,
+    )
+
+    query_calls = [call for call in session.calls if "FROM fontes_personalizacao fp" in call[0]]
+    assert query_calls
+    sql, params = query_calls[-1]
+
+    assert "params.conteudo_id IS NULL" in sql
+    assert "fp.topico_id = params.topico_id" in sql
+    assert "c.topico_id = params.topico_id" in sql
+    assert params["conteudo_id"] is None
     assert params["topico_id"] == 20
 
 

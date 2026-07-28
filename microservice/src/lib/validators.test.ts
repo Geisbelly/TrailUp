@@ -75,6 +75,8 @@ const validBody = () => ({
   classe_id: 30,
   topico_id: 114,
   ciclo_id:  "uuid-here",
+  source_hash: "hash-here",
+  generation_key: "uuid-here:hash-here",
   aluno_id:  "aluno-uuid",
 });
 
@@ -85,7 +87,19 @@ test("body válido passa", () => {
     assert.equal(r.value.profile, "mastermind");
     assert.equal(r.value.personalizacao_id, 42);
     assert.equal(r.value.fontes.length, 1);
+    assert.equal(r.value.generation_key, "uuid-here:hash-here");
+    assert.equal(r.value.wait_for_completion, false);
   }
+});
+
+test("wait_for_completion so e ativado pelo booleano true", () => {
+  const enabled = validatePersonalizarBody({ ...validBody(), wait_for_completion: true });
+  const stringValue = validatePersonalizarBody({ ...validBody(), wait_for_completion: "true" });
+
+  assert.equal(enabled.ok, true);
+  if (enabled.ok) assert.equal(enabled.value.wait_for_completion, true);
+  assert.equal(stringValue.ok, true);
+  if (stringValue.ok) assert.equal(stringValue.value.wait_for_completion, false);
 });
 
 test("content_blocks enriquecidos são normalizados e preservados", () => {

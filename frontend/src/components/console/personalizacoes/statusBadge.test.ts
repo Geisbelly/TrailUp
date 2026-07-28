@@ -81,6 +81,12 @@ describe("getPersonalizacaoStatusBadge", () => {
     ).toEqual({ label: "Falhou", variant: "destructive" });
   });
 
+  it("status falha legado -> Falhou", () => {
+    expect(
+      getPersonalizacaoStatusBadge({ temPersonalizacao: true, status: "falha", now: NOW })
+    ).toEqual({ label: "Falhou", variant: "destructive" });
+  });
+
   it("status failed_quality -> Falhou", () => {
     expect(
       getPersonalizacaoStatusBadge({ temPersonalizacao: true, status: "failed_quality", now: NOW })
