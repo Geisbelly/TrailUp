@@ -36,6 +36,10 @@ export interface StructuredContentGenerationResult {
 export interface StructuredContentGenerationOptions {
   generateWithGemini: StructuredContentGenerator;
   generateWithOpenAI?: StructuredContentGenerator;
+  validateResult?: (
+    value: unknown,
+    provider: ContentGenerationProvider,
+  ) => void;
   environment?: Record<string, string | undefined>;
   now?: () => number;
 }
@@ -107,6 +111,16 @@ let openai: OpenAI | null = null;
 let geminiUnavailableUntil = 0;
 let openaiUnavailableUntil = 0;
 
+class ContentGenerationQualityError extends Error {
+  constructor(provider: ContentGenerationProvider, cause: unknown) {
+    super(
+      `${provider} retornou conteúdo que não atende ao contrato de geração.`,
+      { cause },
+    );
+    this.name = "ContentGenerationQualityError";
+  }
+}
+
 function getOpenAI(): OpenAI {
   if (openai) return openai;
   const apiKey = String(process.env.OPENAI_API_KEY ?? "").trim();
@@ -146,9 +160,7 @@ export function resolveOpenAIContentGenerationFallbackModel(
   environment: Record<string, string | undefined> = process.env,
 ): string {
   return String(
-    environment.OPENAI_CONTENT_GENERATION_FALLBACK_MODEL
-      ?? environment.OPENAI_CONTENT_ENRICHMENT_MODEL
-      ?? "",
+    environment.OPENAI_CONTENT_GENERATION_FALLBACK_MODEL ?? "",
   ).trim() || DEFAULT_OPENAI_CONTENT_GENERATION_FALLBACK_MODEL;
 }
 
@@ -300,14 +312,33 @@ async function generateAfterPrimaryGeminiFailure(
     generateWithOpenAI: StructuredContentGenerator;
     environment: Record<string, string | undefined>;
     now: () => number;
+    validateResult?: StructuredContentGenerationOptions["validateResult"];
   },
 ): Promise<StructuredContentGenerationResult> {
+  const generateAndValidate = async (
+    generator: StructuredContentGenerator,
+    currentCall: StructuredContentGenerationCall,
+    provider: ContentGenerationProvider,
+  ): Promise<unknown> => {
+    const value = await generator(currentCall);
+    try {
+      options.validateResult?.(value, provider);
+    } catch (error) {
+      throw new ContentGenerationQualityError(provider, error);
+    }
+    return value;
+  };
+
   if (options.now() < openaiUnavailableUntil) {
     return {
-      value: await options.generateWithGemini({
-        ...call,
-        geminiModel: call.geminiEmergencyModel,
-      }),
+      value: await generateAndValidate(
+        options.generateWithGemini,
+        {
+          ...call,
+          geminiModel: call.geminiEmergencyModel,
+        },
+        "gemini",
+      ),
       provider: "gemini",
       model: call.geminiEmergencyModel,
       fallbackFrom: "gemini",
@@ -317,7 +348,11 @@ async function generateAfterPrimaryGeminiFailure(
   }
   try {
     return {
-      value: await options.generateWithOpenAI(call),
+      value: await generateAndValidate(
+        options.generateWithOpenAI,
+        call,
+        "openai",
+      ),
       provider: "openai",
       model: call.openaiModel,
       fallbackFrom: "gemini",
@@ -337,10 +372,14 @@ async function generateAfterPrimaryGeminiFailure(
     const openaiReason = errorDetails(openaiError).slice(0, 500);
     try {
       return {
-        value: await options.generateWithGemini({
-          ...call,
-          geminiModel: call.geminiEmergencyModel,
-        }),
+        value: await generateAndValidate(
+          options.generateWithGemini,
+          {
+            ...call,
+            geminiModel: call.geminiEmergencyModel,
+          },
+          "gemini",
+        ),
         provider: "gemini",
         model: call.geminiEmergencyModel,
         fallbackFrom: "gemini",
@@ -381,18 +420,30 @@ export async function generateStructuredContentWithFallback(
         generateWithOpenAI,
         environment,
         now,
+        validateResult: options.validateResult,
       },
     );
   }
 
   try {
+    const value = await options.generateWithGemini(call);
+    try {
+      options.validateResult?.(value, "gemini");
+    } catch (error) {
+      throw new ContentGenerationQualityError("gemini", error);
+    }
     return {
-      value: await options.generateWithGemini(call),
+      value,
       provider: "gemini",
       model: call.geminiModel,
     };
   } catch (error) {
-    if (!isGeminiAvailabilityError(error)) throw error;
+    if (
+      !(error instanceof ContentGenerationQualityError)
+      && !isGeminiAvailabilityError(error)
+    ) {
+      throw error;
+    }
 
     const cooldownMs = positiveInteger(
       environment.CONTENT_GENERATION_GEMINI_COOLDOWN_MS,
@@ -408,6 +459,7 @@ export async function generateStructuredContentWithFallback(
       generateWithOpenAI,
       environment,
       now,
+      validateResult: options.validateResult,
     });
   }
 }

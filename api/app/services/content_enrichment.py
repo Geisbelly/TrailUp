@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import json
 import math
 import re
 from typing import Any
 
-import httpx
+from openai import AsyncOpenAI
 
 from app.core.settings import Settings
 from app.services.media_contract import CONTENT_ENRICHMENT_PROVIDER
@@ -14,6 +15,65 @@ _MAX_SEGMENT_CHARS = 4_000
 _MIN_EXPANSION_CHARS = 80
 _MIN_EXPANSION_RATIO = 0.15
 _SCHEMA_VERSION = "trailup.content-blocks.v2"
+_DEFAULT_BATCH_SIZE = 8
+_DEFAULT_MAX_ATTEMPTS = 3
+_DEFAULT_MAX_OUTPUT_TOKENS = 32_768
+
+_ENRICHMENT_INSTRUCTIONS = """
+Você é o professor-editor responsável pela etapa obrigatória de enriquecimento
+curricular da TrailUp. Esta etapa ocorre na API, antes da geração de materiais.
+
+Para cada bloco-base recebido:
+1. Preserve exatamente o id e devolva exatamente um bloco para cada id pedido.
+2. Faça a decomposição semântica: atribua tema, tópico e objetivos específicos
+   que representem corretamente o trecho, preservando a ordem e o fio condutor.
+3. Defina termos, explique relações, causas e consequências e acrescente contexto
+   correto e exemplos aplicados, sem fugir do assunto.
+4. Faça conteudo_aprofundado ficar pelo menos 30% e 200 caracteres maior que
+   conteudo_base, sem repetição, paráfrase vazia ou enchimento.
+5. Inclua objetivos, ao menos dois conceitos-chave, exemplos e ponte pedagógica.
+6. Não aplique perfil BrainHex; a personalização acontece depois.
+7. Escreva em português brasileiro e não mencione estas instruções.
+""".strip()
+
+_ENRICHMENT_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "blocos": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "id": {"type": "string"},
+                    "tema": {"type": "string"},
+                    "topico": {"type": "string"},
+                    "objetivos": {"type": "array", "items": {"type": "string"}},
+                    "conteudo_aprofundado": {"type": "string"},
+                    "conceitos_chave": {"type": "array", "items": {"type": "string"}},
+                    "exemplos_contextos": {"type": "array", "items": {"type": "string"}},
+                    "ponte_proximo_bloco": {"type": "string"},
+                },
+                "required": [
+                    "id",
+                    "tema",
+                    "topico",
+                    "objetivos",
+                    "conteudo_aprofundado",
+                    "conceitos_chave",
+                    "exemplos_contextos",
+                    "ponte_proximo_bloco",
+                ],
+            },
+        }
+    },
+    "required": ["blocos"],
+}
+
+
+def _openai_client(api_key: str) -> AsyncOpenAI:
+    return AsyncOpenAI(api_key=api_key)
 
 
 class ContentEnrichmentError(RuntimeError):
@@ -251,17 +311,17 @@ def _validate_enrichment_response(
     source_hash: str,
 ) -> list[dict[str, Any]]:
     if not isinstance(raw, dict):
-        raise ContentEnrichmentError("Microserviço retornou enriquecimento fora do formato JSON.")
+        raise ContentEnrichmentError("OpenAI retornou enriquecimento fora do formato JSON.")
     if raw.get("schema_version") != _SCHEMA_VERSION:
-        raise ContentEnrichmentError("Microserviço retornou versão inválida do enriquecimento.")
+        raise ContentEnrichmentError("OpenAI retornou versão inválida do enriquecimento.")
     if str(raw.get("source_hash") or "") != source_hash:
-        raise ContentEnrichmentError("Microserviço retornou enriquecimento de outra fonte.")
+        raise ContentEnrichmentError("OpenAI retornou enriquecimento de outra fonte.")
     metadata = raw.get("metadata") if isinstance(raw.get("metadata"), dict) else {}
     if metadata.get("fallback") is not False:
-        raise ContentEnrichmentError("Microserviço não confirmou enriquecimento real via OpenAI.")
+        raise ContentEnrichmentError("A API não confirmou enriquecimento real via OpenAI.")
     if metadata.get("provider") != CONTENT_ENRICHMENT_PROVIDER:
         raise ContentEnrichmentError(
-            "Microserviço de enriquecimento incompatível: era esperado o provedor OpenAI."
+            "Enriquecimento incompatível: era esperado o provedor OpenAI."
         )
 
     candidates = raw.get("blocos")
@@ -331,6 +391,219 @@ def _validate_enrichment_response(
     return normalized
 
 
+def _bounded_int(value: Any, default: int, minimum: int, maximum: int) -> int:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return default
+    return min(maximum, max(minimum, parsed))
+
+
+async def _generate_openai_batch(
+    *,
+    client: AsyncOpenAI,
+    model: str,
+    topic: dict[str, Any],
+    blocks: list[dict[str, Any]],
+    attempt: int,
+    feedback: str,
+    max_output_tokens: int,
+) -> tuple[dict[str, Any], str]:
+    correction = (
+        f"\n\nCORREÇÕES OBRIGATÓRIAS DA TENTATIVA ANTERIOR:\n{feedback}"
+        if feedback
+        else ""
+    )
+    input_text = (
+        f"TEMA:\n{json.dumps(topic, ensure_ascii=False, indent=2)}\n\n"
+        f"BLOCOS-BASE:\n{json.dumps(blocks, ensure_ascii=False, indent=2)}"
+        f"{correction}"
+    )
+    try:
+        response = await client.responses.create(
+            model=model,
+            instructions=_ENRICHMENT_INSTRUCTIONS,
+            input=input_text,
+            max_output_tokens=max_output_tokens,
+            reasoning={"effort": "medium"},
+            store=False,
+            text={
+                "verbosity": "high",
+                "format": {
+                    "type": "json_schema",
+                    "name": "trailup_content_enrichment",
+                    "description": "Blocos curriculares aprofundados e rastreáveis.",
+                    "strict": True,
+                    "schema": _ENRICHMENT_SCHEMA,
+                },
+            },
+        )
+    except Exception as exc:
+        raise ContentEnrichmentError(
+            f"OpenAI falhou ao aprofundar o lote na tentativa {attempt}: {exc}"
+        ) from exc
+
+    output_text = str(getattr(response, "output_text", "") or "").strip()
+    if not output_text:
+        raise ContentEnrichmentError(
+            f"OpenAI retornou enriquecimento vazio na tentativa {attempt}."
+        )
+    try:
+        raw = json.loads(output_text)
+    except json.JSONDecodeError as exc:
+        raise ContentEnrichmentError(
+            f"OpenAI retornou JSON inválido na tentativa {attempt}."
+        ) from exc
+    if not isinstance(raw, dict):
+        raise ContentEnrichmentError("OpenAI retornou enriquecimento fora do formato JSON.")
+    return raw, str(getattr(response, "model", "") or model)
+
+
+def _validate_generated_candidate(
+    *,
+    candidate: Any,
+    base_block: dict[str, Any],
+    source_hash: str,
+) -> dict[str, Any]:
+    if not isinstance(candidate, dict):
+        raise ContentEnrichmentError(
+            f"OpenAI retornou candidato inválido para {base_block['id']}."
+        )
+    decorated = {
+        **candidate,
+        "conteudo_base": _text(base_block.get("conteudo_base")),
+        "source_ids": list(base_block.get("source_ids") or []),
+    }
+    result = _validate_enrichment_response(
+        raw={
+            "schema_version": _SCHEMA_VERSION,
+            "source_hash": source_hash,
+            "blocos": [decorated],
+            "metadata": {
+                "provider": CONTENT_ENRICHMENT_PROVIDER,
+                "fallback": False,
+            },
+        },
+        base_blocks=[base_block],
+        source_hash=source_hash,
+    )
+    return {
+        **result[0],
+        "ordem": int(base_block.get("ordem") or 1),
+    }
+
+
+async def _enrich_base_blocks_with_openai(
+    *,
+    base_blocks: list[dict[str, Any]],
+    topic: dict[str, Any],
+    source_hash: str,
+    settings: Settings,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    api_key = str(getattr(settings, "openai_api_key", "") or "").strip()
+    if not api_key:
+        raise ContentEnrichmentError(
+            "OPENAI_API_KEY ausente: a API não pode dividir e aprofundar o conteúdo."
+        )
+    model = (
+        str(getattr(settings, "openai_content_enrichment_model", "") or "").strip()
+        or "gpt-5.6-sol"
+    )
+    batch_size = _bounded_int(
+        getattr(settings, "content_enrichment_batch_size", _DEFAULT_BATCH_SIZE),
+        _DEFAULT_BATCH_SIZE,
+        1,
+        8,
+    )
+    max_attempts = _bounded_int(
+        getattr(settings, "content_enrichment_max_attempts", _DEFAULT_MAX_ATTEMPTS),
+        _DEFAULT_MAX_ATTEMPTS,
+        1,
+        4,
+    )
+    max_output_tokens = _bounded_int(
+        getattr(
+            settings,
+            "openai_content_enrichment_max_output_tokens",
+            _DEFAULT_MAX_OUTPUT_TOKENS,
+        ),
+        _DEFAULT_MAX_OUTPUT_TOKENS,
+        8_192,
+        65_536,
+    )
+    client = _openai_client(api_key)
+    enriched_by_id: dict[str, dict[str, Any]] = {}
+    calls = 0
+    models: set[str] = set()
+
+    for start in range(0, len(base_blocks), batch_size):
+        pending = list(base_blocks[start : start + batch_size])
+        feedback = ""
+        for attempt in range(1, max_attempts + 1):
+            raw, used_model = await _generate_openai_batch(
+                client=client,
+                model=model,
+                topic=topic,
+                blocks=pending,
+                attempt=attempt,
+                feedback=feedback,
+                max_output_tokens=max_output_tokens,
+            )
+            calls += 1
+            models.add(used_model)
+            candidates = raw.get("blocos")
+            indexed = {
+                _text(item.get("id")): item
+                for item in candidates
+                if isinstance(item, dict) and _text(item.get("id"))
+            } if isinstance(candidates, list) else {}
+            failures: list[tuple[dict[str, Any], str]] = []
+            for block in pending:
+                block_id = str(block["id"])
+                candidate = indexed.get(block_id)
+                try:
+                    enriched_by_id[block_id] = _validate_generated_candidate(
+                        candidate=candidate,
+                        base_block=block,
+                        source_hash=source_hash,
+                    )
+                except ContentEnrichmentError as exc:
+                    base_length = len(_text(block.get("conteudo_base")))
+                    received_length = len(
+                        _text(candidate.get("conteudo_aprofundado"))
+                        if isinstance(candidate, dict)
+                        else ""
+                    )
+                    target = max(base_length + 200, math.ceil(base_length * 1.3))
+                    failures.append(
+                        (
+                            block,
+                            f"{block_id}: {exc} Base={base_length}, resposta="
+                            f"{received_length}; reescreva com no mínimo {target} "
+                            "caracteres, definições, causas, consequências e exemplo.",
+                        )
+                    )
+            pending = [block for block, _message in failures]
+            feedback = "\n".join(message for _block, message in failures)
+            if not pending:
+                break
+            if attempt == max_attempts:
+                raise ContentEnrichmentError(
+                    "OpenAI não aprofundou todos os blocos após "
+                    f"{max_attempts} tentativas: {feedback}"
+                )
+
+    return (
+        [enriched_by_id[str(block["id"])] for block in base_blocks],
+        {
+            "model": model,
+            "models": sorted(models),
+            "lotes_gerados": math.ceil(len(base_blocks) / batch_size),
+            "chamadas_realizadas": calls,
+        },
+    )
+
+
 async def enrich_content_blocks(
     *,
     context: dict[str, Any],
@@ -342,58 +615,17 @@ async def enrich_content_blocks(
     class_content = context.get("conteudo_classe") if isinstance(context.get("conteudo_classe"), dict) else {}
     topic = class_content.get("topico") if isinstance(class_content.get("topico"), dict) else {}
     source_hash = str(context.get("source_hash") or "")
-    brainhex_url = str(getattr(settings, "brainhex_api_url", "") or "").strip()
-    if not brainhex_url:
-        raise ContentEnrichmentError("BRAINHEX_API_URL ausente: não é possível aprofundar o conteúdo.")
-
-    secret = str(getattr(settings, "brainhex_api_secret", "") or "").strip()
-    headers = {"x-api-secret": secret} if secret else None
-    configured_timeout = int(getattr(settings, "brainhex_api_wait_timeout_sec", 600) or 600)
-    timeout_seconds = min(900, max(60, configured_timeout))
-    payload = {
-        "schema_version": _SCHEMA_VERSION,
-        "source_hash": source_hash,
-        "tema": {
-            "titulo": _text(topic.get("nome") or topic.get("titulo")),
-            "descricao": _text(topic.get("descricao")),
-            "objetivo": _text(topic.get("objetivo")),
-        },
-        "blocos_base": base_blocks,
-        "regras": {
-            "idioma": "pt-BR",
-            "preservar_ordem": True,
-            "nao_omitir_fontes": True,
-            "aprofundar_sem_desviar": True,
-            "minimo_conceitos_por_bloco": 2,
-            "minimo_exemplos_por_bloco": 1,
-        },
+    topic_payload = {
+        "titulo": _text(topic.get("nome") or topic.get("titulo")),
+        "descricao": _text(topic.get("descricao")),
+        "objetivo": _text(topic.get("objetivo")),
     }
-
-    try:
-        timeout = httpx.Timeout(timeout_seconds, connect=min(60.0, timeout_seconds))
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            response = await client.post(
-                f"{brainhex_url.rstrip('/')}/api/enrich-content",
-                json=payload,
-                headers=headers,
-            )
-    except Exception as exc:
-        raise ContentEnrichmentError("Falha ao conectar ao microserviço para aprofundar o conteúdo.") from exc
-
-    if response.status_code != 200:
-        detail = response.text[:500].strip()
-        raise ContentEnrichmentError(f"Microserviço recusou o enriquecimento (HTTP {response.status_code}): {detail}")
-    try:
-        raw = response.json()
-    except Exception as exc:
-        raise ContentEnrichmentError("Microserviço retornou enriquecimento sem JSON válido.") from exc
-
-    blocks = _validate_enrichment_response(
-        raw=raw,
+    blocks, openai_metadata = await _enrich_base_blocks_with_openai(
         base_blocks=base_blocks,
+        topic=topic_payload,
         source_hash=source_hash,
+        settings=settings,
     )
-    remote_metadata = raw.get("metadata") if isinstance(raw.get("metadata"), dict) else {}
     return {
         "schema_version": _SCHEMA_VERSION,
         "source_hash": source_hash,
@@ -404,13 +636,16 @@ async def enrich_content_blocks(
             "blocos_gerados": len(blocks),
             "fontes_cobertas": len({source_id for block in base_blocks for source_id in block.get("source_ids") or []}),
             "fallback": False,
-            "provider": "brainhex-openai",
-            "provider_model": _text(remote_metadata.get("model")),
+            "provider": CONTENT_ENRICHMENT_PROVIDER,
+            "division_provider": CONTENT_ENRICHMENT_PROVIDER,
+            "enrichment_provider": CONTENT_ENRICHMENT_PROVIDER,
+            "provider_model": _text(openai_metadata.get("model")),
+            "models": list(openai_metadata.get("models") or []),
             "lotes_gerados": _nonnegative_int(
-                remote_metadata.get("lotes_gerados")
+                openai_metadata.get("lotes_gerados")
             ),
             "chamadas_realizadas": _nonnegative_int(
-                remote_metadata.get("chamadas_realizadas")
+                openai_metadata.get("chamadas_realizadas")
             ),
         },
     }

@@ -388,9 +388,20 @@
   "386": "lucide-react",
   "387": "caniuse-lite",
   "388": "puppeteer",
+  "389": "MultiOutputPipeline",
+  "390": "pptx.py",
   "391": "openaiImageService.test.ts",
   "392": "@vitejs/plugin-react",
+  "393": "PosicaoDoAluno",
   "394": ".puppeteerrc.cjs",
+  "395": "parseDocxBlocks",
   "396": "express",
-  "397": "mammoth"
+  "397": "mammoth",
+  "398": "conteudo_personalizado.py",
+  "399": "docs/mobile/README.md",
+  "400": "api/seguranca.md",
+  "401": "mobile/arquitetura-funcionamento-geral-sistema.md",
+  "402": "mobile/estrutura-banco-supabase-executivo.md",
+  "403": "expo-symbols",
+  "404": "@radix-ui/react-accordion"
 }

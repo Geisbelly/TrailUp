@@ -143,6 +143,29 @@ test("não esconde erro de resposta inválida do Gemini como indisponibilidade",
   assert.equal(openaiCalls, 0);
 });
 
+test("conteúdo Gemini inválido aciona a geração OpenAI", async () => {
+  resetGeminiContentGenerationCircuit();
+  let openaiCalls = 0;
+  const result = await generateStructuredContentWithFallback(call, {
+    generateWithGemini: async () => ({ chapters: [] }),
+    generateWithOpenAI: async () => {
+      openaiCalls += 1;
+      return { chapters: [{ blockId: "bloco-01" }] };
+    },
+    validateResult: (value, provider) => {
+      const chapters = (value as { chapters?: unknown[] }).chapters ?? [];
+      if (chapters.length === 0) {
+        throw new Error(`${provider} omitiu os capítulos obrigatórios.`);
+      }
+    },
+  });
+
+  assert.equal(result.provider, "openai");
+  assert.equal(result.fallbackFrom, "gemini");
+  assert.equal(openaiCalls, 1);
+  resetGeminiContentGenerationCircuit();
+});
+
 test("usa Gemini alternativo quando Gemini principal e OpenAI estão sem quota", async () => {
   resetGeminiContentGenerationCircuit();
   const geminiModels: string[] = [];

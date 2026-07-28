@@ -25,7 +25,6 @@ Microservico de geracao de materiais personalizados por perfil BrainHex.
 
 ## Endpoints
 - `GET /api/health`
-- `POST /api/enrich-content` (OpenAI Responses API, em lotes validados)
 - `POST /api/v1/archive` (uso via frontend)
 - `POST /api/personalizar` (integracao com ApiTraiUp)
 
@@ -48,16 +47,7 @@ Microservico de geracao de materiais personalizados por perfil BrainHex.
 - App mobile consome personalizacao direto no Supabase; ApiBrainHex permanece backend-only via API TrailUp.
 
 ## Variaveis de ambiente
-- `OPENAI_API_KEY` (principal no enriquecimento; usada tambem em imagens e na
-  contingencia da geracao)
-- `OPENAI_CONTENT_ENRICHMENT_MODEL` (padrao: `gpt-5.6-sol`)
-- `CONTENT_ENRICHMENT_BATCH_SIZE` (padrao: `8`)
-- `CONTENT_ENRICHMENT_MAX_ATTEMPTS` (padrao: `3`)
-- `GEMINI_CONTENT_ENRICHMENT_FALLBACK_MODEL` (padrao: `gemini-3.5-flash-lite`)
-- `GEMINI_CONTENT_ENRICHMENT_EMERGENCY_MODEL` (ultima contingencia; padrao:
-  `gemini-3.6-flash`)
-- `CONTENT_ENRICHMENT_OPENAI_COOLDOWN_MS` (padrao: `300000`)
-- `CONTENT_ENRICHMENT_GEMINI_COOLDOWN_MS` (padrao: `300000`)
+- `OPENAI_API_KEY` (imagens e contingencia da geracao)
 - `GEMINI_API_KEY`
 - `CONTENT_GENERATION_MODEL` (Gemini principal; padrao: `gemini-3.6-flash`)
 - `CONTENT_GENERATION_BLOCK_BATCH_SIZE` (padrao: `12`, maximo: `24`)
@@ -88,8 +78,7 @@ src/
     textSanitize.ts       # Latin-1 sanitizer para jsPDF (testado)
     wav.ts                # header WAV para PCM Gemini TTS (testado)
   services/
-    contentEnrichmentService.ts # aprofundamento curricular via OpenAI
-    contentGenerationService.ts # contingencia OpenAI para indisponibilidade Gemini
+    contentGenerationService.ts # Gemini principal com contingencia OpenAI
     geminiService.ts      # texto/slides via Gemini principal e áudio TTS
     openaiImageService.ts # fundos editoriais temáticos via OpenAI
     pdfService.ts         # deck HTML 16:9 renderizado pelo Puppeteer

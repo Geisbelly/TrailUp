@@ -42,7 +42,11 @@ Variaveis base (ver `app/core/settings.py`):
 - `SUPABASE_SERVICE_KEY`
 - `SUPABASE_JWT_SECRET`
 - `SUPABASE_JWT_AUDIENCE`
-- `brainhex_api_url`
+- `OPENAI_API_KEY` (obrigatória para divisão e enriquecimento)
+- `OPENAI_CONTENT_ENRICHMENT_MODEL`
+- `CONTENT_ENRICHMENT_BATCH_SIZE`
+- `CONTENT_ENRICHMENT_MAX_ATTEMPTS`
+- `BRAINHEX_API_URL` (microserviço usado somente para gerar materiais)
 - `GEMINI_API_KEY`
 - `PERSONALIZACAO_JOB_CONCURRENCY`
 - `PERSONALIZACAO_JOB_POLL_SEC`

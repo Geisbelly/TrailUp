@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from types import SimpleNamespace
 from typing import Any
 
@@ -14,9 +15,11 @@ from app.services.content_enrichment import (
 
 def _settings() -> SimpleNamespace:
     return SimpleNamespace(
-        brainhex_api_url="https://brainhex.example",
-        brainhex_api_secret="shared-secret",
-        brainhex_api_wait_timeout_sec=120,
+        openai_api_key="openai-secret",
+        openai_content_enrichment_model="gpt-5.6-sol",
+        content_enrichment_batch_size=8,
+        content_enrichment_max_attempts=3,
+        openai_content_enrichment_max_output_tokens=32768,
     )
 
 
@@ -42,30 +45,33 @@ def _context(*, paragraphs: int = 2) -> dict[str, Any]:
     }
 
 
-class _Response:
-    def __init__(self, status_code: int, payload: Any) -> None:
-        self.status_code = status_code
-        self._payload = payload
-        self.text = str(payload)
-
-    def json(self) -> Any:
-        return self._payload
+class _OpenAIResponse:
+    def __init__(self, payload: Any) -> None:
+        self.output_text = json.dumps(payload, ensure_ascii=False)
+        self.model = "gpt-5.6-sol"
 
 
-class _Client:
+class _Responses:
     def __init__(self, response_factory: Any, captured: dict[str, Any]) -> None:
         self._response_factory = response_factory
         self._captured = captured
 
-    async def __aenter__(self) -> "_Client":
-        return self
+    async def create(self, **kwargs: Any) -> _OpenAIResponse:
+        input_text = str(kwargs["input"])
+        blocks_json = input_text.split("BLOCOS-BASE:\n", 1)[1].split(
+            "\n\nCORREÇÕES OBRIGATÓRIAS",
+            1,
+        )[0]
+        payload = {"blocos_base": json.loads(blocks_json)}
+        self._captured.setdefault("calls", []).append(kwargs)
+        self._captured.setdefault("payloads", []).append(payload)
+        self._captured["payload"] = payload
+        return _OpenAIResponse(self._response_factory(payload))
 
-    async def __aexit__(self, *_args: Any) -> None:
-        return None
 
-    async def post(self, url: str, *, json: Any, headers: Any) -> _Response:
-        self._captured.update({"url": url, "json": json, "headers": headers})
-        return _Response(200, self._response_factory(json))
+class _Client:
+    def __init__(self, response_factory: Any, captured: dict[str, Any]) -> None:
+        self.responses = _Responses(response_factory, captured)
 
 
 def _rich_response(payload: dict[str, Any]) -> dict[str, Any]:
@@ -92,19 +98,7 @@ def _rich_response(payload: dict[str, Any]) -> dict[str, Any]:
                 "source_ids": base["source_ids"],
             }
         )
-    return {
-        "schema_version": "trailup.content-blocks.v2",
-        "source_hash": payload["source_hash"],
-        "tema": payload["tema"]["titulo"],
-        "blocos": blocks,
-        "metadata": {
-            "provider": "openai",
-            "model": "gpt-5.6-sol",
-            "fallback": False,
-            "lotes_gerados": 6,
-            "chamadas_realizadas": 7,
-        },
-    }
+    return {"blocos": blocks}
 
 
 @pytest.mark.asyncio
@@ -113,9 +107,9 @@ async def test_enrichment_groups_every_source_segment_without_truncation(
 ) -> None:
     captured: dict[str, Any] = {}
     monkeypatch.setattr(
-        enrichment_module.httpx,
-        "AsyncClient",
-        lambda **_kwargs: _Client(_rich_response, captured),
+        enrichment_module,
+        "_openai_client",
+        lambda _api_key: _Client(_rich_response, captured),
     )
 
     result = await enrich_content_blocks(
@@ -126,19 +120,26 @@ async def test_enrichment_groups_every_source_segment_without_truncation(
     assert result["schema_version"] == "trailup.content-blocks.v2"
     assert result["source_hash"] == "hash-9"
     assert len(result["blocos"]) == 24
+    assert [block["ordem"] for block in result["blocos"]] == list(range(1, 25))
     assert result["metadata"]["fallback"] is False
-    assert result["metadata"]["provider"] == "brainhex-openai"
+    assert result["metadata"]["provider"] == "openai"
+    assert result["metadata"]["division_provider"] == "openai"
+    assert result["metadata"]["enrichment_provider"] == "openai"
     assert result["metadata"]["provider_model"] == "gpt-5.6-sol"
-    assert result["metadata"]["lotes_gerados"] == 6
-    assert result["metadata"]["chamadas_realizadas"] == 7
-    assert captured["url"] == "https://brainhex.example/api/enrich-content"
-    assert captured["headers"] == {"x-api-secret": "shared-secret"}
+    assert result["metadata"]["lotes_gerados"] == 3
+    assert result["metadata"]["chamadas_realizadas"] == 3
+    assert all(call["model"] == "gpt-5.6-sol" for call in captured["calls"])
 
-    submitted_base = "\n".join(block["conteudo_base"] for block in captured["json"]["blocos_base"])
+    submitted_blocks = [
+        block
+        for payload in captured["payloads"]
+        for block in payload["blocos_base"]
+    ]
+    submitted_base = "\n".join(block["conteudo_base"] for block in submitted_blocks)
     for index in range(1, 31):
         assert f"MARCADOR-{index:02d}" in submitted_base
     submitted_segments = {
-        segment_id for block in captured["json"]["blocos_base"] for segment_id in block["segment_ids"]
+        segment_id for block in submitted_blocks for segment_id in block["segment_ids"]
     }
     assert len(submitted_segments) == result["metadata"]["segmentos_origem"]
 
@@ -169,9 +170,9 @@ async def test_enrichment_rejects_shallow_response_and_never_uses_fallback(
         return response
 
     monkeypatch.setattr(
-        enrichment_module.httpx,
-        "AsyncClient",
-        lambda **_kwargs: _Client(shallow, {}),
+        enrichment_module,
+        "_openai_client",
+        lambda _api_key: _Client(shallow, {}),
     )
 
     with pytest.raises(ContentEnrichmentError, match="apenas repetiu"):
@@ -179,31 +180,59 @@ async def test_enrichment_rejects_shallow_response_and_never_uses_fallback(
 
 
 @pytest.mark.asyncio
-async def test_enrichment_rejects_provider_other_than_openai(
+async def test_enrichment_retries_only_the_rejected_block(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def gemini_response(payload: dict[str, Any]) -> dict[str, Any]:
+    captured: dict[str, Any] = {}
+    response_calls = 0
+
+    def shallow_once(payload: dict[str, Any]) -> dict[str, Any]:
+        nonlocal response_calls
+        response_calls += 1
         response = _rich_response(payload)
-        response["metadata"]["provider"] = "gemini"
+        if response_calls == 1:
+            response["blocos"][-1]["conteudo_aprofundado"] = response["blocos"][-1][
+                "conteudo_base"
+            ]
         return response
 
     monkeypatch.setattr(
-        enrichment_module.httpx,
-        "AsyncClient",
-        lambda **_kwargs: _Client(gemini_response, {}),
+        enrichment_module,
+        "_openai_client",
+        lambda _api_key: _Client(shallow_once, captured),
     )
 
-    with pytest.raises(ContentEnrichmentError, match="esperado o provedor OpenAI"):
-        await enrich_content_blocks(context=_context(), settings=_settings())
+    result = await enrich_content_blocks(context=_context(), settings=_settings())
+
+    assert len(captured["payloads"][0]["blocos_base"]) > 1
+    assert len(captured["payloads"][1]["blocos_base"]) == 1
+    assert len(result["blocos"]) == len(captured["payloads"][0]["blocos_base"])
+    assert result["metadata"]["chamadas_realizadas"] == 2
 
 
 @pytest.mark.asyncio
-async def test_enrichment_fails_explicitly_when_microservice_is_not_configured() -> None:
-    settings = SimpleNamespace(
-        brainhex_api_url="",
-        brainhex_api_secret="",
-        brainhex_api_wait_timeout_sec=120,
+async def test_enrichment_ignores_global_provider_and_always_uses_openai(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, Any] = {}
+    monkeypatch.setattr(
+        enrichment_module,
+        "_openai_client",
+        lambda api_key: captured.update({"api_key": api_key})
+        or _Client(_rich_response, captured),
     )
 
-    with pytest.raises(ContentEnrichmentError, match="BRAINHEX_API_URL"):
+    result = await enrich_content_blocks(context=_context(), settings=_settings())
+
+    assert captured["api_key"] == "openai-secret"
+    assert result["metadata"]["provider"] == "openai"
+
+
+@pytest.mark.asyncio
+async def test_enrichment_fails_explicitly_when_openai_is_not_configured() -> None:
+    settings = SimpleNamespace(
+        openai_api_key="",
+    )
+
+    with pytest.raises(ContentEnrichmentError, match="OPENAI_API_KEY"):
         await enrich_content_blocks(context=_context(), settings=settings)

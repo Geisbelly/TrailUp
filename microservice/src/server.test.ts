@@ -15,11 +15,6 @@ import {
   generationStorageSegment,
   versionStoragePath,
 } from "./constants/pipelineVersions";
-import {
-  CONTENT_ENRICHMENT_PROVIDER,
-  DEFAULT_CONTENT_ENRICHMENT_MODEL,
-} from "./services/contentEnrichmentService";
-
 if (!process.env.OPENAI_API_KEY?.trim()) {
   process.env.OPENAI_API_KEY = "test-openai-key";
 }
@@ -59,26 +54,6 @@ const enrichedContentBlock = () => ({
   source_ids: ["conteudo:1"],
 });
 
-const contentEnrichmentRequest = () => ({
-  schema_version: "trailup.content-blocks.v2",
-  source_hash: "hash-1",
-  tema: {
-    titulo: "Redes",
-    descricao: "Comunicação distribuída.",
-    objetivo: "Compreender DNS.",
-  },
-  blocos_base: [{
-    id: "bloco-01",
-    ordem: 1,
-    tema: "Redes",
-    topico: "DNS",
-    objetivos: ["Compreender DNS."],
-    conteudo_base: "DNS resolve nomes.",
-    source_ids: ["conteudo:1"],
-    segment_ids: ["segmento-0001"],
-  }],
-});
-
 // ─── GET /api/health ─────────────────────────────────────────────────────────
 
 describe("GET /api/health", () => {
@@ -95,13 +70,10 @@ describe("GET /api/health", () => {
       status: string;
       auth: boolean;
       presentation_renderer: { ready: boolean };
-      content_enrichment: { ready: boolean; provider: string };
     };
     assert.equal(body.status, "ok");
     assert.equal(body.auth, false); // sem secret
     assert.equal(body.presentation_renderer.ready, true);
-    assert.equal(body.content_enrichment.ready, true);
-    assert.equal(body.content_enrichment.provider, "openai");
   });
 
   it("auth=true quando apiSharedSecret configurado", async () => {
@@ -126,8 +98,6 @@ describe("GET /api/health", () => {
         presentation_engine_version: string;
         presentation_schema: string;
         presentation_design_version: string;
-        content_enrichment_provider: string;
-        content_enrichment_model: string;
         render_git_commit: string;
       };
       assert.equal(body.media_pipeline_version, MEDIA_PIPELINE_VERSION);
@@ -137,8 +107,6 @@ describe("GET /api/health", () => {
         body.presentation_design_version,
         PRESENTATION_DESIGN_VERSION,
       );
-      assert.equal(body.content_enrichment_provider, CONTENT_ENRICHMENT_PROVIDER);
-      assert.equal(body.content_enrichment_model, DEFAULT_CONTENT_ENRICHMENT_MODEL);
       assert.equal(body.render_git_commit, "abc123render");
     } finally {
       await c();
@@ -168,29 +136,6 @@ describe("GET /api/health", () => {
     }
   });
 
-  it("retorna 503 quando a OpenAI nao esta configurada para enriquecimento", async () => {
-    const { base: b, close: c } = await startTestServer({
-      contentEnrichmentReadiness: () => ({
-        ready: false,
-        provider: CONTENT_ENRICHMENT_PROVIDER,
-        model: DEFAULT_CONTENT_ENRICHMENT_MODEL,
-        error: "OPENAI_API_KEY ausente para o enriquecimento curricular.",
-      }),
-    });
-    try {
-      const res = await fetch(`${b}/api/health`);
-      assert.equal(res.status, 503);
-      const body = await res.json() as {
-        status: string;
-        content_enrichment: { ready: boolean; error?: string };
-      };
-      assert.equal(body.status, "degraded");
-      assert.equal(body.content_enrichment.ready, false);
-      assert.match(body.content_enrichment.error ?? "", /OPENAI_API_KEY/);
-    } finally {
-      await c();
-    }
-  });
 });
 
 // ─── Rota desconhecida → 404 ─────────────────────────────────────────────────
@@ -238,102 +183,6 @@ describe("auth middleware", () => {
       body: JSON.stringify({}),
     });
     assert.equal(res.status, 400); // auth OK, mas body inválido
-  });
-});
-
-describe("POST /api/enrich-content", () => {
-  it("exige o mesmo segredo dos demais endpoints de custo", async () => {
-    const { base, close } = await startTestServer({
-      apiSharedSecret: "shared-secret",
-    });
-    try {
-      const res = await fetch(`${base}/api/enrich-content`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(contentEnrichmentRequest()),
-      });
-      assert.equal(res.status, 401);
-    } finally {
-      await close();
-    }
-  });
-
-  it("valida, aprofunda e devolve os blocos antes da geração", async () => {
-    const calls: unknown[] = [];
-    const { base, close } = await startTestServer({
-      apiSharedSecret: "shared-secret",
-      contentEnrichmentRunner: async (request) => {
-        calls.push(request);
-        return {
-          schema_version: "trailup.content-blocks.v2" as const,
-          source_hash: request.source_hash,
-          tema: request.tema.titulo,
-          blocos: request.blocos_base.map((block) => ({
-            id: block.id,
-            ordem: block.ordem,
-            tema: block.tema,
-            topico: block.topico,
-            objetivos: ["Explicar e aplicar o conceito."],
-            conteudo_base: block.conteudo_base,
-            conteudo_aprofundado: enrichedContentBlock().conteudo_aprofundado,
-            conceitos_chave: ["DNS", "resolução distribuída"],
-            exemplos_contextos: ["Abrir um endereço no navegador."],
-            ponte_proximo_bloco: "Em seguida, HTTP.",
-            source_ids: block.source_ids,
-          })),
-          metadata: {
-            provider: "openai" as const,
-            model: "gpt-5.6-sol",
-            fallback: false as const,
-            blocos_recebidos: request.blocos_base.length,
-            blocos_gerados: request.blocos_base.length,
-            lotes_gerados: 1,
-            chamadas_realizadas: 1,
-          },
-        };
-      },
-    });
-    try {
-      const res = await fetch(`${base}/api/enrich-content`, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-api-secret": "shared-secret",
-        },
-        body: JSON.stringify(contentEnrichmentRequest()),
-      });
-      assert.equal(res.status, 200);
-      const body = await res.json() as {
-        schema_version: string;
-        metadata: { fallback: boolean; provider: string };
-      };
-      assert.equal(body.schema_version, "trailup.content-blocks.v2");
-      assert.equal(body.metadata.fallback, false);
-      assert.equal(body.metadata.provider, "openai");
-      assert.equal(calls.length, 1);
-    } finally {
-      await close();
-    }
-  });
-
-  it("retorna falha explícita quando o aprofundamento falha", async () => {
-    const { base, close } = await startTestServer({
-      contentEnrichmentRunner: async () => {
-        throw new Error("resposta rasa");
-      },
-    });
-    try {
-      const res = await fetch(`${base}/api/enrich-content`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(contentEnrichmentRequest()),
-      });
-      assert.equal(res.status, 502);
-      const body = await res.json() as { detail: string };
-      assert.match(body.detail, /resposta rasa/);
-    } finally {
-      await close();
-    }
   });
 });
 

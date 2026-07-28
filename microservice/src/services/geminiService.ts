@@ -817,6 +817,9 @@ export async function processMediaWithGemini(
             }
             return rawBatch;
           },
+          validateResult: (value) => {
+            validateBlockBatchGeneration(batch, value, index + 1);
+          },
         },
       );
       const validated = validateBlockBatchGeneration(
