@@ -41,6 +41,7 @@ def test_assert_brainhex_media_completed_requires_all_formats() -> None:
             "status": "completed",
             "generation_key": generation_key,
             "engine": jobs_module.PRESENTATION_ENGINE_VERSION,
+            "design_system": jobs_module.PRESENTATION_DESIGN_VERSION,
             "media_pipeline_version": jobs_module.MEDIA_PIPELINE_VERSION,
         }
     }
@@ -735,6 +736,7 @@ def _completed_record(existing: dict) -> dict:
         "metadata": {
             **completed_material["metadata"],
             "engine": jobs_module.PRESENTATION_ENGINE_VERSION,
+            "design_system": jobs_module.PRESENTATION_DESIGN_VERSION,
             "media_pipeline_version": jobs_module.MEDIA_PIPELINE_VERSION,
         }
     }
@@ -916,6 +918,7 @@ async def test_process_media_render_target_replaces_legacy_presentation_metadata
     """Um PDF legado completed da mesma geracao deve ser reservado e regenerado."""
     existing = _completed_record(_existing_record(status="pronto"))
     existing["materiais"]["apresentacao"]["metadata"].pop("engine")
+    existing["materiais"]["apresentacao"]["metadata"].pop("design_system")
     existing["materiais"]["apresentacao"]["metadata"].pop("media_pipeline_version")
     claimed = {**existing, "status": "processando_midias"}
     completed = _completed_record(claimed)

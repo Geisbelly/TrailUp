@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.settings import get_settings
 from app.services.media_contract import (
     MEDIA_PIPELINE_VERSION,
+    PRESENTATION_DESIGN_VERSION,
     PRESENTATION_ENGINE_VERSION,
 )
 from app.services.storage import BUCKET, build_public_storage_url
@@ -734,12 +735,17 @@ class ConteudoPersonalizadoRepository:
                       ->> 'media_pipeline_version',
                     ''
                   ) = :completed_media_pipeline_version
+                  AND COALESCE(
+                    materiais -> 'apresentacao' -> 'metadata' ->> 'design_system',
+                    ''
+                  ) = :completed_presentation_design
                 )
                 """
             )
             params["completed_generation_key"] = preserve_completed_generation_key
             params["completed_presentation_engine"] = PRESENTATION_ENGINE_VERSION
             params["completed_media_pipeline_version"] = MEDIA_PIPELINE_VERSION
+            params["completed_presentation_design"] = PRESENTATION_DESIGN_VERSION
 
         result = await self.session.execute(
             text(
@@ -821,6 +827,10 @@ class ConteudoPersonalizadoRepository:
                         ->> 'media_pipeline_version',
                       ''
                     ) = :media_pipeline_version
+                    AND COALESCE(
+                      materiais -> 'apresentacao' -> 'metadata' ->> 'design_system',
+                      ''
+                    ) = :presentation_design
                   )
                   AND (
                     status IN ('failed', 'falha', 'failed_quality', 'partial', 'pronto')
@@ -840,6 +850,7 @@ class ConteudoPersonalizadoRepository:
                 "generation_key": generation_key,
                 "presentation_engine": PRESENTATION_ENGINE_VERSION,
                 "media_pipeline_version": MEDIA_PIPELINE_VERSION,
+                "presentation_design": PRESENTATION_DESIGN_VERSION,
                 "stale_processing_min": max(1, int(stale_processing_min)),
             },
         )

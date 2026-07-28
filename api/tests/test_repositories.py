@@ -24,6 +24,7 @@ from app.schemas.texto_gerado import TextoGerado
 from app.schemas.trilha_config import TrilhaConfig
 from app.services.media_contract import (
     MEDIA_PIPELINE_VERSION,
+    PRESENTATION_DESIGN_VERSION,
     PRESENTATION_ENGINE_VERSION,
 )
 
@@ -352,6 +353,7 @@ async def test_content_status_update_preserves_materials() -> None:
     assert "COALESCE(source_hash, '') = :source_hash" in update_sql
     assert "materiais -> 'audio'" in update_sql
     assert "materiais -> 'apresentacao' -> 'metadata' ->> 'engine'" in update_sql
+    assert "materiais -> 'apresentacao' -> 'metadata' ->> 'design_system'" in update_sql
     assert "media_pipeline_version" in update_sql
     assert params == {
         "id": 249,
@@ -361,6 +363,7 @@ async def test_content_status_update_preserves_materials() -> None:
         "completed_generation_key": "ciclo-249:hash-249",
         "completed_presentation_engine": PRESENTATION_ENGINE_VERSION,
         "completed_media_pipeline_version": MEDIA_PIPELINE_VERSION,
+        "completed_presentation_design": PRESENTATION_DESIGN_VERSION,
     }
 
 
@@ -428,6 +431,7 @@ async def test_claim_incomplete_generation_retry_is_atomic_and_preserves_partial
     assert "= '{}'::jsonb" not in update_sql
     assert "materiais -> 'apresentacao'" in update_sql
     assert "materiais -> 'apresentacao' -> 'metadata' ->> 'engine'" in update_sql
+    assert "materiais -> 'apresentacao' -> 'metadata' ->> 'design_system'" in update_sql
     assert "media_pipeline_version" in update_sql
     assert params == {
         "id": 249,
@@ -436,6 +440,7 @@ async def test_claim_incomplete_generation_retry_is_atomic_and_preserves_partial
         "generation_key": "ciclo-249:hash-249",
         "presentation_engine": PRESENTATION_ENGINE_VERSION,
         "media_pipeline_version": MEDIA_PIPELINE_VERSION,
+        "presentation_design": PRESENTATION_DESIGN_VERSION,
         "stale_processing_min": 38,
     }
 

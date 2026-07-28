@@ -20,7 +20,12 @@ export async function generateSceneImage(prompt: string, retries = 3, attempt = 
   try {
     const response = await getOpenAi().images.generate({
       model: "gpt-image-1",
-      prompt: `Professional 2D concept art, sticker style, clean lines, vibrant colors, magical alchemy theme, wide cinematic composition: ${prompt}`,
+      prompt:
+        "Premium editorial background illustration for a professional 16:9 "
+        + "presentation template. Cohesive art direction, sophisticated shapes, "
+        + "clear focal hierarchy, clean negative space for overlaid content. "
+        + "No words, no letters, no labels, no watermark, no interface, no "
+        + `prebuilt slide border. Scene brief: ${prompt}`,
       size: "1536x1024",
       n: 1,
     });

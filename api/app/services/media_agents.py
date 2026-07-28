@@ -14,6 +14,7 @@ from app.services.llm import JsonLLMService
 from app.services.media_contract import (
     CONTENT_ENRICHMENT_PROVIDER,
     MEDIA_PIPELINE_VERSION,
+    PRESENTATION_DESIGN_VERSION,
     PRESENTATION_ENGINE_VERSION,
 )
 
@@ -270,12 +271,104 @@ _BRAINHEX_GUIDE_CONFIG: dict[str, dict[str, str]] = {
     "achiever":   {"guia_nome": "Kwame",  "guia_voz": "Orus",   "guia_cor": "#c9a227", "framing": "Caminho da Maestria",       "label": "Realizador"},
 }
 
+_BRAINHEX_PRESENTATION_THEMES: dict[str, dict[str, Any]] = {
+    "seeker": {
+        "style_name": "Atlas das Descobertas",
+        "art_direction": "editorial cartográfico contemporâneo, mapas em camadas, rotas luminosas, recortes orgânicos e amplo espaço de respiro",
+        "mood": "curioso, luminoso e exploratório",
+        "texture": "papel cartográfico sutil com linhas topográficas",
+        "narrative": "uma expedição que revela pistas e amplia o horizonte a cada etapa",
+        "motifs": ["rosa dos ventos", "rota pontilhada", "marcador de mapa", "horizonte"],
+        "layout_sequence": ["cover", "split", "cards", "timeline", "spotlight", "split", "finale"],
+    },
+    "survivor": {
+        "style_name": "Manual de Campo",
+        "art_direction": "manual de sobrevivência editorial, placas técnicas, recortes robustos, coordenadas e sinalização de segurança",
+        "mood": "firme, protetor e pragmático",
+        "texture": "fibra escura, grade tática e marcas discretas de desgaste",
+        "narrative": "um protocolo de campo que identifica riscos e transforma conhecimento em proteção",
+        "motifs": ["escudo modular", "coordenadas", "faixa de alerta", "selo de proteção"],
+        "layout_sequence": ["cover", "cards", "split", "spotlight", "timeline", "cards", "finale"],
+    },
+    "daredevil": {
+        "style_name": "Código de Impacto",
+        "art_direction": "revista esportiva cinética, diagonais fortes, cortes assimétricos, faíscas e sensação controlada de velocidade",
+        "mood": "elétrico, ousado e focado",
+        "texture": "granulado energético com linhas de velocidade",
+        "narrative": "uma sequência de desafios crescentes que converte risco em domínio",
+        "motifs": ["raio angular", "trilha de velocidade", "marcador de desafio", "faísca"],
+        "layout_sequence": ["cover", "spotlight", "split", "cards", "timeline", "spotlight", "finale"],
+    },
+    "mastermind": {
+        "style_name": "Blueprint Estratégico",
+        "art_direction": "blueprint editorial premium, diagramas de sistema, grade modular, nós conectados e precisão arquitetônica",
+        "mood": "analítico, elegante e calculado",
+        "texture": "grade técnica fina com constelações de dados",
+        "narrative": "uma arquitetura lógica que conecta peças isoladas até revelar o sistema completo",
+        "motifs": ["nó conectado", "grade blueprint", "engrenagem abstrata", "coordenada lógica"],
+        "layout_sequence": ["cover", "timeline", "cards", "split", "spotlight", "cards", "finale"],
+    },
+    "conqueror": {
+        "style_name": "Tratado de Soberania",
+        "art_direction": "editorial monumental contemporâneo, arcos geométricos, estandartes, blocos de autoridade e composição régia sem excesso ornamental",
+        "mood": "decisivo, imponente e progressivo",
+        "texture": "pedra polida com linhas metálicas discretas",
+        "narrative": "um mapa de conquista intelectual que transforma fundamentos em domínio responsável",
+        "motifs": ["estandarte", "arco monumental", "coroa geométrica", "território em expansão"],
+        "layout_sequence": ["cover", "split", "spotlight", "cards", "timeline", "split", "finale"],
+    },
+    "socializer": {
+        "style_name": "Mosaico de Conexões",
+        "art_direction": "editorial humano em colagem, círculos sobrepostos, fios de conversa, cartões calorosos e ritmo de comunidade",
+        "mood": "acolhedor, expressivo e colaborativo",
+        "texture": "papel recortado com tramas suaves de conversa",
+        "narrative": "uma conversa guiada em que cada conceito ganha força quando se conecta aos demais",
+        "motifs": ["balão de diálogo", "elos circulares", "fogueira abstrata", "mosaico humano"],
+        "layout_sequence": ["cover", "cards", "split", "spotlight", "cards", "timeline", "finale"],
+    },
+    "achiever": {
+        "style_name": "Portfólio de Maestria",
+        "art_direction": "portfólio editorial de alto acabamento, marcos de progresso, medalhas geométricas, vitrines e composição de conquista",
+        "mood": "aspiracional, organizado e recompensador",
+        "texture": "papel premium escuro com brilho metálico pontual",
+        "narrative": "uma trilha de metas verificáveis que torna o progresso visível e culmina em maestria",
+        "motifs": ["medalha geométrica", "trilha de progresso", "gema lapidada", "selo de conclusão"],
+        "layout_sequence": ["cover", "timeline", "cards", "spotlight", "split", "cards", "finale"],
+    },
+}
+
+
+def _build_brainhex_presentation_theme(
+    *,
+    perfil: str,
+    content_blocks: list[dict[str, Any]],
+) -> dict[str, Any]:
+    profile_key = str(perfil or "").strip().lower()
+    theme = _BRAINHEX_PRESENTATION_THEMES.get(
+        profile_key,
+        _BRAINHEX_PRESENTATION_THEMES["mastermind"],
+    )
+    subject = ""
+    for block in content_blocks:
+        if not isinstance(block, dict):
+            continue
+        subject = str(block.get("tema") or block.get("topico") or "").strip()
+        if subject:
+            break
+    return {
+        "version": PRESENTATION_DESIGN_VERSION,
+        "subject": subject or "Conteúdo de estudo",
+        **theme,
+    }
+
 
 def _brainhex_contract_matches(payload: Any) -> bool:
     return (
         isinstance(payload, dict)
         and payload.get("media_pipeline_version") == MEDIA_PIPELINE_VERSION
         and payload.get("presentation_engine_version") == PRESENTATION_ENGINE_VERSION
+        and payload.get("presentation_design_version")
+        == PRESENTATION_DESIGN_VERSION
         and payload.get("content_enrichment_provider")
         == CONTENT_ENRICHMENT_PROVIDER
     )
@@ -299,10 +392,11 @@ async def brainhex_contract_ready(*, settings: Settings) -> bool:
             return True
         logger.warning(
             "brainhex_contract_ready: microservice com contrato de midia "
-            "incompativel (status=%s, esperado=%s/%s/%s, recebido=%s)",
+            "incompativel (status=%s, esperado=%s/%s/%s/%s, recebido=%s)",
             response.status_code,
             MEDIA_PIPELINE_VERSION,
             PRESENTATION_ENGINE_VERSION,
+            PRESENTATION_DESIGN_VERSION,
             CONTENT_ENRICHMENT_PROVIDER,
             payload,
         )
@@ -355,6 +449,10 @@ async def disparar_brainhex_async(
                     "profile": str(perfil or "").strip().lower(),
                     "fontes": fontes,
                     "content_blocks": content_blocks or [],
+                    "presentation_theme": _build_brainhex_presentation_theme(
+                        perfil=perfil,
+                        content_blocks=content_blocks or [],
+                    ),
                     "personalizacao_id": personalizacao_id,
                     "aluno_id": aluno_id,
                     "classe_id": classe_id,
@@ -366,6 +464,7 @@ async def disparar_brainhex_async(
                     "wait_for_completion": wait_for_completion,
                     "required_media_pipeline_version": MEDIA_PIPELINE_VERSION,
                     "required_presentation_engine_version": PRESENTATION_ENGINE_VERSION,
+                    "required_presentation_design_version": PRESENTATION_DESIGN_VERSION,
                 },
                 headers=headers,
             )

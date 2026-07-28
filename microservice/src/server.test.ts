@@ -4,6 +4,7 @@ import http from "node:http";
 import {
   buildApp,
   MEDIA_PIPELINE_VERSION,
+  PRESENTATION_DESIGN_VERSION,
   PRESENTATION_ENGINE_VERSION,
   PRESENTATION_SCHEMA_VERSION,
   buildPresentationMaterialMetadata,
@@ -124,6 +125,7 @@ describe("GET /api/health", () => {
         media_pipeline_version: string;
         presentation_engine_version: string;
         presentation_schema: string;
+        presentation_design_version: string;
         content_enrichment_provider: string;
         content_enrichment_model: string;
         render_git_commit: string;
@@ -131,6 +133,10 @@ describe("GET /api/health", () => {
       assert.equal(body.media_pipeline_version, MEDIA_PIPELINE_VERSION);
       assert.equal(body.presentation_engine_version, PRESENTATION_ENGINE_VERSION);
       assert.equal(body.presentation_schema, PRESENTATION_SCHEMA_VERSION);
+      assert.equal(
+        body.presentation_design_version,
+        PRESENTATION_DESIGN_VERSION,
+      );
       assert.equal(body.content_enrichment_provider, CONTENT_ENRICHMENT_PROVIDER);
       assert.equal(body.content_enrichment_model, DEFAULT_CONTENT_ENRICHMENT_MODEL);
       assert.equal(body.render_git_commit, "abc123render");
@@ -428,6 +434,12 @@ describe("POST /api/personalizar validação", () => {
           generation_key: "ciclo-257:hash-257",
           required_media_pipeline_version: MEDIA_PIPELINE_VERSION,
           required_presentation_engine_version: PRESENTATION_ENGINE_VERSION,
+          required_presentation_design_version: PRESENTATION_DESIGN_VERSION,
+          presentation_theme: {
+            subject: "Sistemas distribuídos",
+            style_name: "Atlas Técnico",
+            layout_sequence: ["cover", "split", "cards", "finale"],
+          },
           wait_for_completion: true,
         }),
       });
@@ -444,7 +456,10 @@ describe("POST /api/personalizar validação", () => {
       assert.equal(body.media_pipeline_version, MEDIA_PIPELINE_VERSION);
       assert.equal(body.presentation_engine_version, PRESENTATION_ENGINE_VERSION);
       assert.equal(calls.length, 1);
-      const call = calls[0] as { storagePath: string };
+      const call = calls[0] as {
+        storagePath: string;
+        presentationTheme: { style_name?: string };
+      };
       assert.equal(
         call.storagePath,
         versionStoragePath(
@@ -452,6 +467,7 @@ describe("POST /api/personalizar validação", () => {
           "ciclo-257:hash-257",
         ),
       );
+      assert.equal(call.presentationTheme.style_name, "Atlas Técnico");
     } finally {
       await closeSync();
     }
@@ -546,6 +562,7 @@ describe("POST /api/personalizar validação", () => {
       for (const required of [
         { required_media_pipeline_version: "2026-07-27.1" },
         { required_presentation_engine_version: "legacy-pdf-v1" },
+        { required_presentation_design_version: "legacy-theme-v1" },
       ]) {
         const res = await fetch(`${guardedBase}/api/personalizar`, {
           method: "POST",
@@ -683,6 +700,7 @@ describe("identidade e Storage do pipeline de apresentacao", () => {
     assert.deepEqual(buildPresentationVersionMetadata("ciclo-1:hash-a"), {
       engine: PRESENTATION_ENGINE_VERSION,
       schema: PRESENTATION_SCHEMA_VERSION,
+      design_system: PRESENTATION_DESIGN_VERSION,
       media_pipeline_version: MEDIA_PIPELINE_VERSION,
       generation_key: "ciclo-1:hash-a",
     });

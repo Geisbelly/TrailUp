@@ -260,8 +260,8 @@
     "semantic_hash": "0ff6fb78f65fa867474379c616c6411d"
   },
   "api/app/api/health.py": {
-    "mtime": 1785243141.5918586,
-    "ast_hash": "1c95c1ec40bd1153779ef68adb8a2635",
+    "mtime": 1785253285.3683658,
+    "ast_hash": "7ff9eb91d9244ed4ce645e6efc1bafd2",
     "semantic_hash": ""
   },
   "api/app/api/router.py": {
@@ -615,8 +615,8 @@
     "semantic_hash": "70fd5cbf143d9b215c36c93b46bee73d"
   },
   "api/app/services/media_agents.py": {
-    "mtime": 1785246857.0220673,
-    "ast_hash": "38bbe1a18a6030aea368321fafba93b7",
+    "mtime": 1785253214.4780083,
+    "ast_hash": "285eb68bc6cd5ea82054b2153581c842",
     "semantic_hash": ""
   },
   "api/app/services/media_pipeline.py": {
@@ -700,8 +700,8 @@
     "semantic_hash": "76010d4c52a440b1d811e2cd97a8dfdc"
   },
   "api/tests/test_brainhex_generation.py": {
-    "mtime": 1785243441.6375153,
-    "ast_hash": "c2c7e563ecc4832546091c13f66a7c73",
+    "mtime": 1785253488.5802686,
+    "ast_hash": "39fb5c958b1b21c79ab64a02a7b58dbc",
     "semantic_hash": ""
   },
   "api/tests/test_checkpoint_retention.py": {
@@ -765,8 +765,8 @@
     "semantic_hash": ""
   },
   "api/tests/test_startup.py": {
-    "mtime": 1785243141.5928547,
-    "ast_hash": "d19c3ec35517672f02cadbcea0e192e2",
+    "mtime": 1785253291.7622244,
+    "ast_hash": "d06276fe9831b1b5f7c69ebc255a4f9e",
     "semantic_hash": ""
   },
   "api/tests/test_storage_service.py": {
@@ -1550,8 +1550,8 @@
     "semantic_hash": ""
   },
   "microservice/server.ts": {
-    "mtime": 1785247167.4497392,
-    "ast_hash": "782b88b46253938c86391e30b489550a",
+    "mtime": 1785253426.8708293,
+    "ast_hash": "19a8fdeadf8b5577c684466f6cf9d706",
     "semantic_hash": ""
   },
   "microservice/sql/migrations/0001_merge_personalizacao_materiais_rpc.sql": {
@@ -1665,8 +1665,8 @@
     "semantic_hash": "2b36426d5ad7e08ef79746aa524f4fb7"
   },
   "microservice/src/server.test.ts": {
-    "mtime": 1785247181.4940724,
-    "ast_hash": "218fd52a28ad907189af03a96d914d6c",
+    "mtime": 1785253439.387141,
+    "ast_hash": "d38e233081e280455b96ff483a197b92",
     "semantic_hash": ""
   },
   "microservice/src/services/geminiService.ts": {
@@ -3280,8 +3280,8 @@
     "semantic_hash": ""
   },
   "microservice/README.md": {
-    "mtime": 1782269048.861049,
-    "ast_hash": "6741b8a263fb5672cf2d17267cd503eb",
+    "mtime": 1785253462.5385776,
+    "ast_hash": "cd0db5d04065141444b144ab78c8e9ec",
     "semantic_hash": ""
   },
   "microservice/index.html": {
@@ -4010,13 +4010,13 @@
     "semantic_hash": ""
   },
   "api/app/services/content_enrichment.py": {
-    "mtime": 1785247236.9195316,
-    "ast_hash": "47406d7812222b3cbd48a1deb48dc049",
+    "mtime": 1785253204.762843,
+    "ast_hash": "e119ffebac3c55017559a389689f0334",
     "semantic_hash": ""
   },
   "api/tests/test_content_enrichment.py": {
-    "mtime": 1785247283.0278685,
-    "ast_hash": "b77edfb89b33bfee97b3070179529b9e",
+    "mtime": 1785253227.1111677,
+    "ast_hash": "34448a4080dc0f903e29d89613c3d6d8",
     "semantic_hash": ""
   },
   "api/app/agent/prompts/enriquecedor_blocos_conteudo.txt": {
@@ -4110,8 +4110,8 @@
     "semantic_hash": ""
   },
   "api/app/services/media_contract.py": {
-    "mtime": 1785242904.5109148,
-    "ast_hash": "42e5e995874e73e58626b2601fa4fd02",
+    "mtime": 1785253177.580308,
+    "ast_hash": "b557f6f9d0db18ff8f8c15bd14999a0f",
     "semantic_hash": ""
   },
   "frontend/src/components/console/personalizacoes/materialPreview.test.ts": {
@@ -4125,8 +4125,8 @@
     "semantic_hash": ""
   },
   "microservice/src/constants/pipelineVersions.ts": {
-    "mtime": 1785242999.141335,
-    "ast_hash": "e553e85590aea7a1741a48a0a326f01c",
+    "mtime": 1785253182.5412457,
+    "ast_hash": "f7c35732b38577ebd8b4683acc617c67",
     "semantic_hash": ""
   },
   "api/alembic/versions/20260728_04_scope_personalization_by_content.py": {
@@ -4145,13 +4145,13 @@
     "semantic_hash": ""
   },
   "microservice/src/services/contentEnrichmentService.test.ts": {
-    "mtime": 1785247032.113069,
-    "ast_hash": "411b5e158415ad860c3000b8c9cf3c5e",
+    "mtime": 1785253446.2353702,
+    "ast_hash": "6151843d6da67521b4a8ae5eac22effa",
     "semantic_hash": ""
   },
   "microservice/src/services/contentEnrichmentService.ts": {
-    "mtime": 1785247249.2283978,
-    "ast_hash": "05cabba1be9e1ac22b5be3f11ba9e6ff",
+    "mtime": 1785253386.5108593,
+    "ast_hash": "c0de7453f14f55266e79ce7f546ac36b",
     "semantic_hash": ""
   },
   "microservice/src/services/geminiBlockBatches.test.ts": {

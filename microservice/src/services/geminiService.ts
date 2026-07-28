@@ -6,6 +6,11 @@ import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
 import { BrainHexProfile, BRAIN_HEX_CONFIG } from "../constants/brainHex";
+import {
+  buildPresentationDesignPlan,
+  presentationImageDirection,
+  type PresentationDesignPlan,
+} from "../constants/presentationThemes";
 import { addWavHeader } from "../lib/wav";
 import { 
   EnrichedContentBlock,
@@ -416,8 +421,17 @@ export async function processMediaWithGemini(
   filesData: { data: string; mimeType: string; name: string }[],
   profile: BrainHexProfile,
   contentBlocks: EnrichedContentBlock[] = [],
+  requestedPresentationPlan?: PresentationDesignPlan,
 ): Promise<ProcessedContent> {
   const config = BRAIN_HEX_CONFIG[profile];
+  const presentationPlan = requestedPresentationPlan
+    ?? buildPresentationDesignPlan(
+      profile,
+      {},
+      contentBlocks[0]?.tema
+        || contentBlocks[0]?.topico
+        || "Conteúdo de estudo",
+    );
 
   if ((!filesData || filesData.length === 0) && contentBlocks.length === 0) {
     throw new Error("processMediaWithGemini: fontes e contentBlocks vazios.");
@@ -618,6 +632,13 @@ export async function processMediaWithGemini(
          "engrenagem magica conectada por fios de luz"). Mesmo estilo magico/ilustrado
          do guardiao ${config.guideName} — nunca icone generico de clipart, nunca
          texto ou letras dentro da imagem.
+       - DIREÇÃO DE ARTE GLOBAL OBRIGATÓRIA: ${presentationImageDirection(presentationPlan)}
+       - Todos os imagePrompt e iconPrompts precisam parecer parte do MESMO template
+         editorial "${presentationPlan.styleName}", não uma coleção de artes independentes.
+       - imagePrompt deve pedir composição horizontal 16:9, sem texto dentro da imagem,
+         sem moldura pronta, com área de respiro para o conteúdo editorial do slide.
+       - A temática visual vem de "${presentationPlan.subject}"; a identidade BrainHex
+         funciona como assinatura, sem substituir o assunto real da aula por fantasia genérica.
 
     ${contentBlocks.length > 0 ? `
     MODO DE GERAÇÃO POR BLOCOS:
@@ -630,7 +651,8 @@ export async function processMediaWithGemini(
     - Não escreva introdução ou conclusão global que substitua capítulos.
     ` : ""}
 
-    Estética: ${config.color} dominante, magia 2D, TrailUp Style.
+    Estética: cor de assinatura ${config.color}, sistema ${presentationPlan.styleName},
+    acabamento de template editorial profissional e coerente entre todos os slides.
     
     Traceability: No campo slides.sourceIds, relacione os IDs dos blocos originais que fundamentaram aquele slide.
   `;

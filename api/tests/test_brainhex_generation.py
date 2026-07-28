@@ -6,6 +6,7 @@ from app.core.settings import Settings
 from app.services.media_agents import (
     _BRAINHEX_GUIDE_CONFIG,
     _brainhex_contract_matches,
+    _build_brainhex_presentation_theme,
     disparar_brainhex_async,
     gerar_conteudo_brainhex,
     gerar_imagem_slide,
@@ -13,6 +14,7 @@ from app.services.media_agents import (
 from app.services.media_contract import (
     CONTENT_ENRICHMENT_PROVIDER,
     MEDIA_PIPELINE_VERSION,
+    PRESENTATION_DESIGN_VERSION,
     PRESENTATION_ENGINE_VERSION,
 )
 
@@ -53,6 +55,7 @@ def test_brainhex_contract_requires_openai_content_enrichment():
     valid = {
         "media_pipeline_version": MEDIA_PIPELINE_VERSION,
         "presentation_engine_version": PRESENTATION_ENGINE_VERSION,
+        "presentation_design_version": PRESENTATION_DESIGN_VERSION,
         "content_enrichment_provider": CONTENT_ENRICHMENT_PROVIDER,
     }
 
@@ -66,6 +69,31 @@ def test_brainhex_contract_requires_openai_content_enrichment():
     assert _BRAINHEX_GUIDE_CONFIG["socializer"]["guia_voz"] == "Achird"
     assert _BRAINHEX_GUIDE_CONFIG["socializer"]["guia_voz_secundario"] == "Sulafat"
     assert _BRAINHEX_GUIDE_CONFIG["achiever"]["guia_voz"] == "Orus"
+
+
+def test_presentation_theme_combines_profile_and_content_subject():
+    seeker = _build_brainhex_presentation_theme(
+        perfil="seeker",
+        content_blocks=[
+            {
+                "id": "bloco-01",
+                "tema": "Civilização Maia",
+                "topico": "Calendários",
+            }
+        ],
+    )
+    mastermind = _build_brainhex_presentation_theme(
+        perfil="mastermind",
+        content_blocks=[{"id": "bloco-01", "tema": "Civilização Maia"}],
+    )
+
+    assert seeker["version"] == PRESENTATION_DESIGN_VERSION
+    assert seeker["subject"] == "Civilização Maia"
+    assert seeker["style_name"] == "Atlas das Descobertas"
+    assert seeker["layout_sequence"][0] == "cover"
+    assert seeker["layout_sequence"][-1] == "finale"
+    assert mastermind["style_name"] == "Blueprint Estratégico"
+    assert mastermind["art_direction"] != seeker["art_direction"]
 
 
 @pytest.mark.asyncio
@@ -154,6 +182,7 @@ async def test_disparar_brainhex_waits_for_completion(settings):
     contract = {
         "media_pipeline_version": MEDIA_PIPELINE_VERSION,
         "presentation_engine_version": PRESENTATION_ENGINE_VERSION,
+        "presentation_design_version": PRESENTATION_DESIGN_VERSION,
         "content_enrichment_provider": CONTENT_ENRICHMENT_PROVIDER,
     }
     mock_health = MagicMock(status_code=200)
@@ -196,6 +225,12 @@ async def test_disparar_brainhex_waits_for_completion(settings):
     assert mock_client.post.await_args.kwargs["json"][
         "required_presentation_engine_version"
     ] == PRESENTATION_ENGINE_VERSION
+    assert mock_client.post.await_args.kwargs["json"][
+        "required_presentation_design_version"
+    ] == PRESENTATION_DESIGN_VERSION
+    assert mock_client.post.await_args.kwargs["json"]["presentation_theme"][
+        "style_name"
+    ] == "Atlas das Descobertas"
     assert mock_client_cls.call_args_list[0].kwargs["timeout"] == 30.0
     configured_timeout = mock_client_cls.call_args.kwargs["timeout"]
     assert configured_timeout.read == 300
@@ -207,6 +242,7 @@ async def test_disparar_brainhex_does_not_treat_legacy_202_as_completed(settings
     contract = {
         "media_pipeline_version": MEDIA_PIPELINE_VERSION,
         "presentation_engine_version": PRESENTATION_ENGINE_VERSION,
+        "presentation_design_version": PRESENTATION_DESIGN_VERSION,
         "content_enrichment_provider": CONTENT_ENRICHMENT_PROVIDER,
     }
     mock_health = MagicMock(status_code=200)
