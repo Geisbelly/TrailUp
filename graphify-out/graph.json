@@ -40,7 +40,7 @@
       "label": "run_migrations_offline()",
       "file_type": "code",
       "source_file": "api/alembic/env.py",
-      "source_location": "L36",
+      "source_location": "L38",
       "_origin": "ast",
       "id": "api_alembic_env_run_migrations_offline",
       "community": 60,
@@ -51,7 +51,7 @@
       "label": "run_migrations_online()",
       "file_type": "code",
       "source_file": "api/alembic/env.py",
-      "source_location": "L49",
+      "source_location": "L51",
       "_origin": "ast",
       "id": "api_alembic_env_run_migrations_online",
       "community": 60,
@@ -1176,8 +1176,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "api_app_agent_graph_checkpointer",
-      "community": 332,
-      "community_name": "GUIA_USO.md",
+      "community": 8,
+      "community_name": "main.py",
       "norm_label": "checkpointer.py"
     },
     {
@@ -1187,8 +1187,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "api_app_agent_graph_checkpointer_get_checkpointer",
-      "community": 332,
-      "community_name": "GUIA_USO.md",
+      "community": 8,
+      "community_name": "main.py",
       "norm_label": "get_checkpointer()"
     },
     {
@@ -1198,8 +1198,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "api_app_agent_graph_checkpointer_py_any",
-      "community": 332,
-      "community_name": "GUIA_USO.md",
+      "community": 8,
+      "community_name": "main.py",
       "norm_label": "any"
     },
     {
@@ -1209,8 +1209,8 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "api_app_agent_graph_checkpointer_get_persistent_checkpointer",
-      "community": 332,
-      "community_name": "GUIA_USO.md",
+      "community": 8,
+      "community_name": "main.py",
       "norm_label": "get_persistent_checkpointer()"
     },
     {
@@ -1220,8 +1220,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "api_app_agent_graph_checkpointer_get_ephemeral_checkpointer",
-      "community": 332,
-      "community_name": "GUIA_USO.md",
+      "community": 8,
+      "community_name": "main.py",
       "norm_label": "get_ephemeral_checkpointer()"
     },
     {
@@ -7952,8 +7952,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "field_validator",
-      "community": 136,
-      "community_name": "test_graph_invocation.py",
+      "community": 6,
+      "community_name": "Evento",
       "norm_label": "field_validator"
     },
     {
@@ -7963,8 +7963,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "api_app_schemas_common_evento_coerce_referencia",
-      "community": 136,
-      "community_name": "test_graph_invocation.py",
+      "community": 6,
+      "community_name": "Evento",
       "norm_label": ".coerce_referencia()"
     },
     {
@@ -7974,8 +7974,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "api_app_schemas_common_py_any",
-      "community": 136,
-      "community_name": "test_graph_invocation.py",
+      "community": 6,
+      "community_name": "Evento",
       "norm_label": "any"
     },
     {
@@ -9470,8 +9470,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "api_app_services_checkpoint_retention",
-      "community": 337,
-      "community_name": "upload_fontes_personalizacao",
+      "community": 332,
+      "community_name": "GUIA_USO.md",
       "norm_label": "checkpoint_retention.py"
     },
     {
@@ -9481,8 +9481,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "api_app_services_checkpoint_retention_checkpointcleanupresult",
-      "community": 337,
-      "community_name": "upload_fontes_personalizacao",
+      "community": 332,
+      "community_name": "GUIA_USO.md",
       "norm_label": "checkpointcleanupresult"
     },
     {
@@ -9492,8 +9492,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "api_app_services_checkpoint_retention_checkpointcleanupresult_as_dict",
-      "community": 337,
-      "community_name": "upload_fontes_personalizacao",
+      "community": 332,
+      "community_name": "GUIA_USO.md",
       "norm_label": ".as_dict()"
     },
     {
@@ -9503,8 +9503,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "api_app_services_checkpoint_retention_cleanup_persisted_checkpoints",
-      "community": 337,
-      "community_name": "upload_fontes_personalizacao",
+      "community": 332,
+      "community_name": "GUIA_USO.md",
       "norm_label": "cleanup_persisted_checkpoints()"
     },
     {
@@ -10229,8 +10229,8 @@
       "source_location": "L73",
       "_origin": "ast",
       "id": "api_app_services_linear_analysis_pipeline_summarize_reading_pace",
-      "community": 6,
-      "community_name": "Evento",
+      "community": 136,
+      "community_name": "test_graph_invocation.py",
       "norm_label": "_summarize_reading_pace()"
     },
     {
@@ -10713,8 +10713,8 @@
       "source_location": "L74",
       "_origin": "ast",
       "id": "api_app_services_linear_analysis_pipeline_rationale_74",
-      "community": 6,
-      "community_name": "Evento",
+      "community": 136,
+      "community_name": "test_graph_invocation.py",
       "norm_label": "calcula palavras-por-minuto por material e sinaliza ritmo de leitura."
     },
     {
@@ -14929,8 +14929,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "api_tests_test_checkpoint_retention",
-      "community": 337,
-      "community_name": "upload_fontes_personalizacao",
+      "community": 332,
+      "community_name": "GUIA_USO.md",
       "norm_label": "test_checkpoint_retention.py"
     },
     {
@@ -15083,8 +15083,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "api_tests_test_checkpoint_retention_py_asyncio",
-      "community": 337,
-      "community_name": "upload_fontes_personalizacao",
+      "community": 332,
+      "community_name": "GUIA_USO.md",
       "norm_label": "asyncio"
     },
     {
@@ -15094,8 +15094,8 @@
       "source_location": "L58",
       "_origin": "ast",
       "id": "api_tests_test_checkpoint_retention_test_cleanup_persisted_checkpoints_deletes_in_expected_order",
-      "community": 337,
-      "community_name": "upload_fontes_personalizacao",
+      "community": 332,
+      "community_name": "GUIA_USO.md",
       "norm_label": "test_cleanup_persisted_checkpoints_deletes_in_expected_order()"
     },
     {
@@ -15809,8 +15809,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "api_tests_test_linear_analysis_pipeline",
-      "community": 6,
-      "community_name": "Evento",
+      "community": 136,
+      "community_name": "test_graph_invocation.py",
       "norm_label": "test_linear_analysis_pipeline.py"
     },
     {
@@ -15820,8 +15820,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "api_tests_test_linear_analysis_pipeline_test_summarize_reading_pace_flags_slow_and_skimming",
-      "community": 6,
-      "community_name": "Evento",
+      "community": 136,
+      "community_name": "test_graph_invocation.py",
       "norm_label": "test_summarize_reading_pace_flags_slow_and_skimming()"
     },
     {
@@ -15831,8 +15831,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "api_tests_test_linear_analysis_pipeline_test_summarize_reading_pace_uses_active_sec_not_dwell_when_idle_present",
-      "community": 6,
-      "community_name": "Evento",
+      "community": 136,
+      "community_name": "test_graph_invocation.py",
       "norm_label": "test_summarize_reading_pace_uses_active_sec_not_dwell_when_idle_present()"
     },
     {
@@ -15842,8 +15842,8 @@
       "source_location": "L50",
       "_origin": "ast",
       "id": "api_tests_test_linear_analysis_pipeline_test_summarize_reading_pace_estimates_from_scroll_when_no_word_count",
-      "community": 6,
-      "community_name": "Evento",
+      "community": 136,
+      "community_name": "test_graph_invocation.py",
       "norm_label": "test_summarize_reading_pace_estimates_from_scroll_when_no_word_count()"
     },
     {
@@ -15853,8 +15853,8 @@
       "source_location": "L58",
       "_origin": "ast",
       "id": "api_tests_test_linear_analysis_pipeline_test_summarize_reading_pace_empty",
-      "community": 6,
-      "community_name": "Evento",
+      "community": 136,
+      "community_name": "test_graph_invocation.py",
       "norm_label": "test_summarize_reading_pace_empty()"
     },
     {
@@ -15864,8 +15864,8 @@
       "source_location": "L64",
       "_origin": "ast",
       "id": "api_tests_test_linear_analysis_pipeline_dummygraph",
-      "community": 6,
-      "community_name": "Evento",
+      "community": 136,
+      "community_name": "test_graph_invocation.py",
       "norm_label": "dummygraph"
     },
     {
@@ -15875,8 +15875,8 @@
       "source_location": "L65",
       "_origin": "ast",
       "id": "api_tests_test_linear_analysis_pipeline_dummygraph_init",
-      "community": 6,
-      "community_name": "Evento",
+      "community": 136,
+      "community_name": "test_graph_invocation.py",
       "norm_label": ".__init__()"
     },
     {
@@ -15886,8 +15886,8 @@
       "source_location": "L68",
       "_origin": "ast",
       "id": "api_tests_test_linear_analysis_pipeline_dummygraph_ainvoke",
-      "community": 6,
-      "community_name": "Evento",
+      "community": 136,
+      "community_name": "test_graph_invocation.py",
       "norm_label": ".ainvoke()"
     },
     {
@@ -15897,8 +15897,8 @@
       "source_location": "L77",
       "_origin": "ast",
       "id": "api_tests_test_linear_analysis_pipeline_dummystate",
-      "community": 6,
-      "community_name": "Evento",
+      "community": 136,
+      "community_name": "test_graph_invocation.py",
       "norm_label": "dummystate"
     },
     {
@@ -15908,8 +15908,8 @@
       "source_location": "L78",
       "_origin": "ast",
       "id": "api_tests_test_linear_analysis_pipeline_dummystate_init",
-      "community": 6,
-      "community_name": "Evento",
+      "community": 136,
+      "community_name": "test_graph_invocation.py",
       "norm_label": ".__init__()"
     },
     {
@@ -15919,8 +15919,8 @@
       "source_location": "L82",
       "_origin": "ast",
       "id": "api_tests_test_linear_analysis_pipeline_dummyapp",
-      "community": 6,
-      "community_name": "Evento",
+      "community": 136,
+      "community_name": "test_graph_invocation.py",
       "norm_label": "dummyapp"
     },
     {
@@ -15930,8 +15930,8 @@
       "source_location": "L83",
       "_origin": "ast",
       "id": "api_tests_test_linear_analysis_pipeline_dummyapp_init",
-      "community": 6,
-      "community_name": "Evento",
+      "community": 136,
+      "community_name": "test_graph_invocation.py",
       "norm_label": ".__init__()"
     },
     {
@@ -15941,8 +15941,8 @@
       "source_location": "L87",
       "_origin": "ast",
       "id": "api_tests_test_linear_analysis_pipeline_dummyrequest",
-      "community": 6,
-      "community_name": "Evento",
+      "community": 136,
+      "community_name": "test_graph_invocation.py",
       "norm_label": "dummyrequest"
     },
     {
@@ -15952,8 +15952,8 @@
       "source_location": "L88",
       "_origin": "ast",
       "id": "api_tests_test_linear_analysis_pipeline_dummyrequest_init",
-      "community": 6,
-      "community_name": "Evento",
+      "community": 136,
+      "community_name": "test_graph_invocation.py",
       "norm_label": ".__init__()"
     },
     {
@@ -15963,8 +15963,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "api_tests_test_linear_analysis_pipeline_py_asyncio",
-      "community": 6,
-      "community_name": "Evento",
+      "community": 136,
+      "community_name": "test_graph_invocation.py",
       "norm_label": "asyncio"
     },
     {
@@ -15974,8 +15974,8 @@
       "source_location": "L93",
       "_origin": "ast",
       "id": "api_tests_test_linear_analysis_pipeline_test_linear_analysis_orchestrator_runs_all_stages_and_enriches_state",
-      "community": 6,
-      "community_name": "Evento",
+      "community": 136,
+      "community_name": "test_graph_invocation.py",
       "norm_label": "test_linear_analysis_orchestrator_runs_all_stages_and_enriches_state()"
     },
     {
@@ -30296,8 +30296,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "microservice_package_dependencies_tailwindcss_vite",
-      "community": 363,
-      "community_name": "@tailwindcss/vite",
+      "community": 50,
+      "community_name": "dependencies",
       "norm_label": "@tailwindcss/vite"
     },
     {
@@ -30307,8 +30307,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "tailwindcss_vite",
-      "community": 363,
-      "community_name": "@tailwindcss/vite",
+      "community": 50,
+      "community_name": "dependencies",
       "norm_label": "@tailwindcss/vite"
     },
     {
@@ -30340,8 +30340,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "microservice_package_dependencies_clsx",
-      "community": 50,
-      "community_name": "dependencies",
+      "community": 336,
+      "community_name": "clsx",
       "norm_label": "clsx"
     },
     {
@@ -30351,8 +30351,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "microservice_package_json_clsx",
-      "community": 50,
-      "community_name": "dependencies",
+      "community": 336,
+      "community_name": "clsx",
       "norm_label": "clsx"
     },
     {
@@ -33849,8 +33849,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "mobile_package_dependencies_config_plugins_react_native_blob_util",
-      "community": 144,
-      "community_name": "dependencies",
+      "community": 326,
+      "community_name": "clsx",
       "norm_label": "@config-plugins/react-native-blob-util"
     },
     {
@@ -33860,8 +33860,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "config_plugins_react_native_blob_util",
-      "community": 144,
-      "community_name": "dependencies",
+      "community": 326,
+      "community_name": "clsx",
       "norm_label": "@config-plugins/react-native-blob-util"
     },
     {
@@ -33871,8 +33871,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "mobile_package_dependencies_config_plugins_react_native_pdf",
-      "community": 326,
-      "community_name": "clsx",
+      "community": 144,
+      "community_name": "dependencies",
       "norm_label": "@config-plugins/react-native-pdf"
     },
     {
@@ -33882,8 +33882,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "config_plugins_react_native_pdf",
-      "community": 326,
-      "community_name": "clsx",
+      "community": 144,
+      "community_name": "dependencies",
       "norm_label": "@config-plugins/react-native-pdf"
     },
     {
@@ -65423,7 +65423,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "api/alembic/env.py",
-      "source_location": "L36",
+      "source_location": "L38",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_alembic_env",
@@ -65434,7 +65434,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "api/alembic/env.py",
-      "source_location": "L49",
+      "source_location": "L51",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_alembic_env",
@@ -65470,7 +65470,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "api/alembic/env.py",
-      "source_location": "L31",
+      "source_location": "L33",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_alembic_env_configure_database_url",
@@ -65494,7 +65494,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "api/alembic/env.py",
-      "source_location": "L37",
+      "source_location": "L39",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_alembic_env_run_migrations_offline",
@@ -65506,7 +65506,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "api/alembic/env.py",
-      "source_location": "L50",
+      "source_location": "L52",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_alembic_env_run_migrations_online",
@@ -67229,7 +67229,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "api/app/main.py",
-      "source_location": "L48",
+      "source_location": "L51",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_app_main_create_app",
@@ -67453,7 +67453,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "api/app/main.py",
-      "source_location": "L36",
+      "source_location": "L39",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_app_main_create_app",
@@ -67501,7 +67501,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "api/app/main.py",
-      "source_location": "L37",
+      "source_location": "L40",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_app_main_create_app",
@@ -67525,7 +67525,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "api/app/main.py",
-      "source_location": "L93",
+      "source_location": "L96",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_app_main_create_app",
@@ -81442,7 +81442,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "api/tests/test_migrations.py",
-      "source_location": "L15",
+      "source_location": "L16",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_tests_test_migrations_test_upgrade_database_to_head_uses_project_alembic_config",
@@ -81581,7 +81581,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "api/app/main.py",
-      "source_location": "L35",
+      "source_location": "L38",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_app_main_create_app",
@@ -84623,7 +84623,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "api/app/main.py",
-      "source_location": "L67",
+      "source_location": "L70",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_app_main_create_app",
@@ -84635,7 +84635,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "api/app/main.py",
-      "source_location": "L61",
+      "source_location": "L64",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_app_main_create_app",
@@ -84647,7 +84647,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "api/app/main.py",
-      "source_location": "L75",
+      "source_location": "L78",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_app_main_create_app",
@@ -113176,7 +113176,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "api/tests/test_migrations.py",
-      "source_location": "L19",
+      "source_location": "L20",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_tests_test_migrations_test_upgrade_database_to_head_uses_project_alembic_config",
@@ -217232,5 +217232,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "4a5ebc7624f17b92dbe6d4c6bf2fc72f313daab2"
+  "built_at_commit": "d009252844cb3b5370a57704fd05bcb1e75c7d58"
 }

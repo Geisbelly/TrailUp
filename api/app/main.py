@@ -30,7 +30,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def lifespan(app: FastAPI):
         database_url = (app_settings.database_url or "").lower()
         if app_settings.database_migrations_on_startup and database_url.startswith("postgres"):
-            await asyncio.to_thread(upgrade_database_to_head)
+            await asyncio.to_thread(
+                upgrade_database_to_head,
+                app_settings.database_url,
+            )
 
         engine, session_factory = build_session_factory(app_settings)
         personalizacao_checkpointer, personalizacao_backend, personalizacao_manager = await get_persistent_checkpointer(app_settings)
