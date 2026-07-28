@@ -1,49 +1,24 @@
-"""drop legacy uniqueness and fence BrainHex media generations
+"""repair missing BrainHex generation fencing RPCs
 
-Revision ID: 20260728_02
-Revises: 20260728_01
+Revision ID: 20260728_03
+Revises: 20260728_02
+
+Some environments reached ``20260728_02`` without retaining the RPCs added
+to that revision. A new revision is required because Alembic never reruns a
+revision that is already recorded in ``alembic_version``.
 """
 
 from alembic import op
 
-revision = "20260728_02"
-down_revision = "20260728_01"
+revision = "20260728_03"
+down_revision = "20260728_02"
 branch_labels = None
 depends_on = None
 
 
 def upgrade() -> None:
-    # Indice historico criado fora do Alembic. A unicidade por aluno/topico
-    # impede que o mesmo conteudo tenha uma variante para cada perfil BrainHex.
-    op.execute(
-        """
-        ALTER TABLE conteudo_personalizado
-        DROP CONSTRAINT IF EXISTS uq_conteudo_personalizado_aluno_topico_ativo
-        """
-    )
-    op.execute(
-        """
-        DROP INDEX IF EXISTS uq_conteudo_personalizado_aluno_topico_ativo
-        """
-    )
-    op.execute(
-        """
-        ALTER TABLE conteudo_personalizado
-        DROP CONSTRAINT IF EXISTS conteudo_personalizado_aluno_id_topico_id_key
-        """
-    )
-    op.execute(
-        """
-        DROP INDEX IF EXISTS conteudo_personalizado_aluno_id_topico_id_key
-        """
-    )
-    op.execute(
-        """
-        CREATE UNIQUE INDEX IF NOT EXISTS uq_conteudo_personalizado_aluno_topico_perfil
-        ON conteudo_personalizado (aluno_id, topico_id, brainhex_profile_key)
-        WHERE topico_id IS NOT NULL
-        """
-    )
+    # CREATE OR REPLACE makes this repair safe both for drifted databases and
+    # for databases where 20260728_02 was applied completely.
     op.execute(
         """
         CREATE OR REPLACE FUNCTION public.merge_personalizacao_materiais_v2(
@@ -85,13 +60,14 @@ def upgrade() -> None:
           FOR UPDATE;
 
           IF NOT FOUND THEN
-            RAISE EXCEPTION 'personalizacao % nao encontrada', p_id;
+            RAISE EXCEPTION USING MESSAGE =
+              'personalizacao ' || p_id::text || ' nao encontrada';
           END IF;
           IF v_current_ciclo_id IS DISTINCT FROM COALESCE(p_ciclo_id, '')
              OR v_current_source_hash IS DISTINCT FROM COALESCE(p_source_hash, '') THEN
-            RAISE EXCEPTION
-              'stale_generation para personalizacao % (ciclo/source alterados)',
-              p_id;
+            RAISE EXCEPTION USING MESSAGE =
+              'stale_generation para personalizacao ' || p_id::text
+              || ' (ciclo/source alterados)';
           END IF;
 
           v_generation_key := p_ciclo_id || ':' || p_source_hash;
@@ -277,7 +253,7 @@ def upgrade() -> None:
             ) TO service_role;
           END IF;
         END;
-        $$;
+        $$
         """
     )
     op.execute(
@@ -290,26 +266,15 @@ def upgrade() -> None:
             ) TO service_role;
           END IF;
         END;
-        $$;
+        $$
         """
     )
+    # Supabase/PostgREST may otherwise keep the old routine cache briefly
+    # after the transactional DDL commits.
+    op.execute("NOTIFY pgrst, 'reload schema'")
 
 
 def downgrade() -> None:
-    op.execute(
-        """
-        DROP FUNCTION IF EXISTS public.mark_personalizacao_failed_v2(
-          BIGINT, TEXT, TEXT, TEXT
-        )
-        """
-    )
-    op.execute(
-        """
-        DROP FUNCTION IF EXISTS public.merge_personalizacao_materiais_v2(
-          BIGINT, JSONB, TEXT, TEXT
-        )
-        """
-    )
-    # Restaurar a regra antiga voltaria a bloquear as sete variantes e pode
-    # falhar assim que houver mais de um perfil para o mesmo aluno/topico.
+    # 20260728_02 already declares these RPCs as part of its target schema.
+    # Removing them here would make a downgrade to that revision inconsistent.
     pass

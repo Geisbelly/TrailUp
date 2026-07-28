@@ -7,7 +7,10 @@ from app.repositories.access import AccessRepository
 from app.repositories.conteudo_personalizado import ConteudoPersonalizadoRepository
 from app.repositories.context import ContextRepository
 from app.repositories.evento import EventoRepository
-from app.repositories.fontes_personalizacao import FontesPersonalizacaoRepository
+from app.repositories.fontes_personalizacao import (
+    FontesContextLimitExceeded,
+    FontesPersonalizacaoRepository,
+)
 from app.repositories.ia_descricao import IADescricaoRepository
 from app.repositories.materiais import MateriaisRepository
 from app.repositories.notificacao import NotificacaoRepository
@@ -19,6 +22,10 @@ from app.schemas.notificacao import NotificacaoPayload
 from app.schemas.perfil import PerfilScore, PerfilUpdate
 from app.schemas.texto_gerado import TextoGerado
 from app.schemas.trilha_config import TrilhaConfig
+from app.services.media_contract import (
+    MEDIA_PIPELINE_VERSION,
+    PRESENTATION_ENGINE_VERSION,
+)
 
 
 class ScalarResult:
@@ -247,12 +254,16 @@ async def test_content_status_update_preserves_materials() -> None:
     assert "ciclo_id::text = :ciclo_id" in update_sql
     assert "COALESCE(source_hash, '') = :source_hash" in update_sql
     assert "materiais -> 'audio'" in update_sql
+    assert "materiais -> 'apresentacao' -> 'metadata' ->> 'engine'" in update_sql
+    assert "media_pipeline_version" in update_sql
     assert params == {
         "id": 249,
         "status": "failed",
         "ciclo_id": "ciclo-249",
         "source_hash": "hash-249",
         "completed_generation_key": "ciclo-249:hash-249",
+        "completed_presentation_engine": PRESENTATION_ENGINE_VERSION,
+        "completed_media_pipeline_version": MEDIA_PIPELINE_VERSION,
     }
 
 
@@ -319,11 +330,15 @@ async def test_claim_incomplete_generation_retry_is_atomic_and_preserves_partial
     assert "make_interval(mins => :stale_processing_min)" in update_sql
     assert "= '{}'::jsonb" not in update_sql
     assert "materiais -> 'apresentacao'" in update_sql
+    assert "materiais -> 'apresentacao' -> 'metadata' ->> 'engine'" in update_sql
+    assert "media_pipeline_version" in update_sql
     assert params == {
         "id": 249,
         "ciclo_id": "ciclo-249",
         "source_hash": "hash-249",
         "generation_key": "ciclo-249:hash-249",
+        "presentation_engine": PRESENTATION_ENGINE_VERSION,
+        "media_pipeline_version": MEDIA_PIPELINE_VERSION,
         "stale_processing_min": 38,
     }
 
@@ -977,6 +992,73 @@ async def test_fontes_personalizacao_repository_aggregates_content_sources_for_t
     assert "c.topico_id = params.topico_id" in sql
     assert params["conteudo_id"] is None
     assert params["topico_id"] == 20
+
+
+@pytest.mark.asyncio
+async def test_fontes_personalizacao_repository_paginates_complete_context() -> None:
+    rows = [
+        {
+            "id": index,
+            "metadata": {},
+            "_total_count": 120,
+        }
+        for index in range(1, 121)
+    ]
+    session = RecordingSession(
+        [
+            ScalarResult(True),
+            ScalarResult(False),
+            MappingResult(rows[:50]),
+            MappingResult(rows[50:100]),
+            MappingResult(rows[100:]),
+        ]
+    )
+
+    result = await FontesPersonalizacaoRepository(session).listar_para_contexto(
+        classe_id=10,
+        topico_id=20,
+        conteudo_id=None,
+        aluno_id="b49f2e21-a6f9-4c8d-9533-5a32bb219754",
+        page_size=50,
+        max_items=200,
+    )
+
+    assert len(result) == 120
+    assert [item["id"] for item in result] == list(range(1, 121))
+    query_calls = [
+        call for call in session.calls if "FROM fontes_personalizacao fp" in call[0]
+    ]
+    assert [call[1]["offset"] for call in query_calls] == [0, 50, 100]
+    assert all(call[1]["limit"] == 50 for call in query_calls[:2])
+
+
+@pytest.mark.asyncio
+async def test_fontes_personalizacao_repository_fails_explicitly_above_safety_cap() -> None:
+    session = RecordingSession(
+        [
+            ScalarResult(True),
+            ScalarResult(False),
+            MappingResult(
+                [
+                    {
+                        "id": 1,
+                        "metadata": {},
+                        "_total_count": 401,
+                    }
+                ]
+            ),
+        ]
+    )
+
+    with pytest.raises(FontesContextLimitExceeded, match=r"limite explicito de 400"):
+        await FontesPersonalizacaoRepository(session).listar_para_contexto(
+            classe_id=10,
+            topico_id=20,
+            conteudo_id=None,
+            aluno_id="b49f2e21-a6f9-4c8d-9533-5a32bb219754",
+            page_size=100,
+            max_items=400,
+        )
 
 
 @pytest.mark.asyncio

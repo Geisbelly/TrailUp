@@ -102,6 +102,10 @@ class Settings(BaseSettings):
     personalizacao_media_job_timeout_sec: int = 1800
     personalizacao_force_all_media_formats: bool = True
     personalizacao_max_inline_source_bytes: int = 18_000_000
+    # Fontes do contexto são lidas em páginas. Acima do teto total o job falha
+    # explicitamente, em vez de gerar material a partir de um subconjunto.
+    personalizacao_source_page_size: int = 100
+    personalizacao_max_context_sources: int = 400
     personalizacao_media_review_max_cycles: int = 3
     personalizacao_media_min_quality_score: float = 0.72
     admin_panel_username: str = "admin"

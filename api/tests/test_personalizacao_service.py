@@ -55,7 +55,7 @@ def test_source_hash_changes_when_pipeline_version_changes(monkeypatch) -> None:
     monkeypatch.setattr(
         personalizacao_service,
         "_PERSONALIZACAO_PIPELINE_VERSION",
-        "2026-07-28.3",
+        "2026-07-28.4-test",
     )
 
     assert personalizacao_service._build_source_hash(**kwargs) != current_hash

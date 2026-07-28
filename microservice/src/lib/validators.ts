@@ -45,6 +45,8 @@ export interface PersonalizarRequest {
   source_hash?:       string;
   generation_key?:    string;
   aluno_id?:          string;
+  required_media_pipeline_version?: string;
+  required_presentation_engine_version?: string;
   wait_for_completion: boolean;
 }
 
@@ -200,6 +202,34 @@ export function validatePersonalizarBody(
     }
   }
 
+  const requiredMediaPipelineVersion = body.required_media_pipeline_version;
+  if (
+    requiredMediaPipelineVersion !== undefined
+    && (
+      typeof requiredMediaPipelineVersion !== "string"
+      || requiredMediaPipelineVersion.trim().length === 0
+    )
+  ) {
+    return {
+      ok: false,
+      error: "required_media_pipeline_version deve ser uma string nao vazia",
+    };
+  }
+
+  const requiredPresentationEngineVersion = body.required_presentation_engine_version;
+  if (
+    requiredPresentationEngineVersion !== undefined
+    && (
+      typeof requiredPresentationEngineVersion !== "string"
+      || requiredPresentationEngineVersion.trim().length === 0
+    )
+  ) {
+    return {
+      ok: false,
+      error: "required_presentation_engine_version deve ser uma string nao vazia",
+    };
+  }
+
   return {
     ok: true,
     value: {
@@ -213,6 +243,14 @@ export function validatePersonalizarBody(
       source_hash:       typeof body.source_hash === "string" ? body.source_hash : undefined,
       generation_key:    typeof body.generation_key === "string" ? body.generation_key : undefined,
       aluno_id:          typeof body.aluno_id === "string" ? body.aluno_id : undefined,
+      required_media_pipeline_version:
+        typeof requiredMediaPipelineVersion === "string"
+          ? requiredMediaPipelineVersion.trim()
+          : undefined,
+      required_presentation_engine_version:
+        typeof requiredPresentationEngineVersion === "string"
+          ? requiredPresentationEngineVersion.trim()
+          : undefined,
       wait_for_completion: body.wait_for_completion === true,
     },
   };

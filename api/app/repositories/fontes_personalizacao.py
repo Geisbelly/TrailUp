@@ -6,6 +6,10 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
+class FontesContextLimitExceeded(RuntimeError):
+    """Impede gerar conteúdo a partir de um subconjunto silencioso das fontes."""
+
+
 class FontesPersonalizacaoRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
@@ -291,18 +295,37 @@ class FontesPersonalizacaoRepository:
         topico_id: int | None,
         conteudo_id: int | None,
         aluno_id: str,
-        limit: int = 40,
+        limit: int | None = None,
+        page_size: int = 100,
+        max_items: int = 400,
     ) -> list[dict[str, Any]]:
         if not await self._fontes_table_exists():
             return []
 
+        normalized_page_size = max(1, min(int(page_size), 250))
+        explicit_limit = limit is not None
+        normalized_max_items = max(1, min(int(limit if explicit_limit else max_items), 2_000))
         has_conteudos_url = await self._conteudos_table_has_url_column()
         conteudo_asset_ref_sql = self._conteudo_asset_ref_sql(has_conteudos_url=has_conteudos_url)
         legacy_descricao_storage_path_sql = self._legacy_descricao_storage_path_sql()
+        collected: list[dict[str, Any]] = []
+        seen_ids: set[int] = set()
+        offset = 0
 
-        result = await self.session.execute(
-            text(
-                f"""
+        while True:
+            # Quando o limite é de segurança (não um limit explícito do caller),
+            # busca uma linha adicional caso o COUNT não esteja disponível.
+            remaining = normalized_max_items - len(collected)
+            query_limit = min(
+                normalized_page_size,
+                remaining if explicit_limit else remaining + 1,
+            )
+            if query_limit <= 0:
+                break
+
+            result = await self.session.execute(
+                text(
+                    f"""
                 WITH params AS (
                   SELECT
                     CAST(:classe_id AS BIGINT) AS classe_id,
@@ -370,7 +393,8 @@ class FontesPersonalizacaoRepository:
                       THEN COALESCE(NULLIF(BTRIM(fp.titulo), ''), NULLIF(BTRIM(c.titulo), ''))
                     ELSE COALESCE(NULLIF(BTRIM(fp.descricao), ''), NULLIF(BTRIM(fp.titulo), ''), NULLIF(BTRIM(c.titulo), ''))
                   END AS texto_base,
-                  fp.criado_em
+                  fp.criado_em,
+                  COUNT(*) OVER() AS _total_count
                 FROM fontes_personalizacao fp
                 LEFT JOIN conteudos c ON c.id = fp.conteudo_id
                 CROSS JOIN params
@@ -413,17 +437,61 @@ class FontesPersonalizacaoRepository:
                   fp.criado_em DESC,
                   fp.id DESC
                 LIMIT CAST(:limit AS INTEGER)
+                OFFSET CAST(:offset AS INTEGER)
                 """
-            ),
-            {
-                "classe_id": classe_id,
-                "topico_id": topico_id,
-                "conteudo_id": conteudo_id,
-                "aluno_id": aluno_id,
-                "limit": limit,
-            },
-        )
-        return [self._hydrate_record(dict(row)) for row in result.mappings()]
+                ),
+                {
+                    "classe_id": classe_id,
+                    "topico_id": topico_id,
+                    "conteudo_id": conteudo_id,
+                    "aluno_id": aluno_id,
+                    "limit": query_limit,
+                    "offset": offset,
+                },
+            )
+            page = [dict(row) for row in result.mappings()]
+            if not page:
+                break
+
+            total_count_raw = page[0].get("_total_count")
+            try:
+                total_count = int(total_count_raw)
+            except (TypeError, ValueError):
+                total_count = None
+            if (
+                not explicit_limit
+                and total_count is not None
+                and total_count > normalized_max_items
+            ):
+                raise FontesContextLimitExceeded(
+                    "Quantidade de fontes do contexto excede o limite explicito "
+                    f"de {normalized_max_items} (total={total_count})."
+                )
+
+            for raw in page:
+                raw.pop("_total_count", None)
+                try:
+                    row_id = int(raw.get("id"))
+                except (TypeError, ValueError):
+                    row_id = -1
+                if row_id >= 0 and row_id in seen_ids:
+                    continue
+                if row_id >= 0:
+                    seen_ids.add(row_id)
+                collected.append(self._hydrate_record(raw))
+
+            offset += len(page)
+            if explicit_limit and len(collected) >= normalized_max_items:
+                return collected[:normalized_max_items]
+            if not explicit_limit and len(collected) > normalized_max_items:
+                raise FontesContextLimitExceeded(
+                    "Quantidade de fontes do contexto excede o limite explicito "
+                    f"de {normalized_max_items}."
+                )
+            if len(page) < query_limit:
+                break
+
+        return collected
 
     async def seed_from_class_content(
         self,

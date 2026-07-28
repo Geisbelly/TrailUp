@@ -1,3 +1,4 @@
+import os
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Request
@@ -7,6 +8,10 @@ from app.api.deps import get_session, get_settings
 from app.core.settings import Settings
 from app.db.session import ping_database
 from app.schemas.api import HealthResponse
+from app.services.media_contract import (
+    MEDIA_PIPELINE_VERSION,
+    PRESENTATION_ENGINE_VERSION,
+)
 
 router = APIRouter(tags=["health"])
 
@@ -31,6 +36,9 @@ async def healthcheck(
             "personalizacao_job_concurrency": settings.personalizacao_job_concurrency,
             "personalizacao_job_poll_sec": settings.personalizacao_job_poll_sec,
             "personalizacao_jobs_worker": "running" if request.app.state.personalizacao_jobs_task else "disabled",
+            "media_pipeline_version": MEDIA_PIPELINE_VERSION,
+            "presentation_engine_version": PRESENTATION_ENGINE_VERSION,
+            "render_git_commit": os.getenv("RENDER_GIT_COMMIT") or None,
         },
         checked_at=datetime.now(UTC),
     )
