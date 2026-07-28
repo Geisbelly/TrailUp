@@ -290,8 +290,8 @@
     "semantic_hash": "41cb38f399ae47714da91e3814c7e4c8"
   },
   "api/app/api/v1/personalizacao.py": {
-    "mtime": 1785247669.533667,
-    "ast_hash": "7c90c3dc9da19b0dca6adaee8e6d4ace",
+    "mtime": 1785250338.3850157,
+    "ast_hash": "960b69363b0c780b67882a49dd2ab2e0",
     "semantic_hash": ""
   },
   "api/app/api/v1/telemetria.py": {
@@ -465,8 +465,8 @@
     "semantic_hash": "8c94277383daae150c457a03d8337643"
   },
   "api/app/repositories/personalizacao_jobs.py": {
-    "mtime": 1785216233.548874,
-    "ast_hash": "6ea14f8d1d1aa33a12a2dbb3d609c47b",
+    "mtime": 1785250294.8261797,
+    "ast_hash": "2910862a64f5a71e6829ae8e718231e6",
     "semantic_hash": ""
   },
   "api/app/repositories/personalizacao_progresso.py": {
@@ -525,8 +525,8 @@
     "semantic_hash": "73a385d9198ea411d128d44637a5e4f3"
   },
   "api/app/schemas/personalizacao.py": {
-    "mtime": 1785246823.5590003,
-    "ast_hash": "72526adc778a284456e7786950360476",
+    "mtime": 1785250333.0641463,
+    "ast_hash": "0961e201084b400d12937cbdd55dbdd8",
     "semantic_hash": ""
   },
   "api/app/schemas/telemetria.py": {
@@ -685,8 +685,8 @@
     "semantic_hash": "366917f8966180b9f16c3fb3b91aa046"
   },
   "api/tests/test_api.py": {
-    "mtime": 1785247301.3857381,
-    "ast_hash": "e8fb9c95216814543a13d333a4a9c17c",
+    "mtime": 1785250333.067276,
+    "ast_hash": "eefa9057430828fbbad67c93d0ccd8e0",
     "semantic_hash": ""
   },
   "api/tests/test_auth.py": {
@@ -760,8 +760,8 @@
     "semantic_hash": ""
   },
   "api/tests/test_repositories.py": {
-    "mtime": 1785247113.1357002,
-    "ast_hash": "d659a6d95f5d1feba554f211d409f1c1",
+    "mtime": 1785250294.8277807,
+    "ast_hash": "3fb8b5427eba5d7b1e9c3bd86f653b27",
     "semantic_hash": ""
   },
   "api/tests/test_startup.py": {
@@ -940,13 +940,13 @@
     "semantic_hash": ""
   },
   "frontend/src/components/console/personalizacoes/PersonalizacoesSection.tsx": {
-    "mtime": 1785246806.765249,
-    "ast_hash": "6554f5e2dfa911ea9691468c40c4907e",
+    "mtime": 1785250114.7291803,
+    "ast_hash": "81c5964ff7169a106b68332c485dbc77",
     "semantic_hash": ""
   },
   "frontend/src/components/console/personalizacoes/personalizacoesApi.ts": {
-    "mtime": 1785246683.2125828,
-    "ast_hash": "6650009a98f7e2b91737febcf73714ab",
+    "mtime": 1785250604.396268,
+    "ast_hash": "ece9711c2ef2e98b2afed8c3fcecefb6",
     "semantic_hash": ""
   },
   "frontend/src/components/console/trilha/ActivitiesManager.tsx": {
@@ -1010,8 +1010,8 @@
     "semantic_hash": "e666f37727aa7ae9b882272d990ac699"
   },
   "frontend/src/components/console/trilha/TopicsManager.tsx": {
-    "mtime": 1785100618.2996113,
-    "ast_hash": "f599466fb337db9a578880b25817c1ea",
+    "mtime": 1785249833.3554032,
+    "ast_hash": "ca2bfee69c311a00360ea5fb4077a510",
     "semantic_hash": ""
   },
   "frontend/src/components/console/trilha/classDeletion.ts": {
@@ -1025,8 +1025,8 @@
     "semantic_hash": "005408f824485b26710482ea1ad8586d"
   },
   "frontend/src/components/console/trilha/personalizacaoJobsApi.ts": {
-    "mtime": 1785184482.9423742,
-    "ast_hash": "6d8b02120066b515186168763699600c",
+    "mtime": 1785249752.8113458,
+    "ast_hash": "2bbe42a555732253574170c95e57ff4b",
     "semantic_hash": ""
   },
   "frontend/src/components/console/trilha/topicsApi.ts": {
@@ -3940,8 +3940,8 @@
     "semantic_hash": ""
   },
   "microservice/src/services/pdfService.test.ts": {
-    "mtime": 1785246968.448063,
-    "ast_hash": "c2149f9ff49b1ed4bda0e608e76d5d39",
+    "mtime": 1785250122.901941,
+    "ast_hash": "5c060db77eba302e6f6dfbbcdf3ec0d0",
     "semantic_hash": ""
   },
   "docs/api/superpowers/specs/2026-07-26-slides-visuais-tematicos-design.md": {
@@ -3980,13 +3980,13 @@
     "semantic_hash": ""
   },
   "frontend/src/components/console/personalizacoes/statusBadge.test.ts": {
-    "mtime": 1785213609.1982014,
-    "ast_hash": "b3005fcabade6264aca09bcb1502703b",
+    "mtime": 1785249747.7390223,
+    "ast_hash": "fe8e1a3d37b13f4567792536f8622295",
     "semantic_hash": ""
   },
   "frontend/src/components/console/personalizacoes/statusBadge.ts": {
-    "mtime": 1785213420.6903043,
-    "ast_hash": "8b111ef00caa39842cb11eb212f58b1d",
+    "mtime": 1785249701.4392903,
+    "ast_hash": "a97364af7d03c50fbb67d83920bc49c0",
     "semantic_hash": ""
   },
   "microservice/src/constants/guardianVoices.test.ts": {
@@ -4162,6 +4162,26 @@
   "mobile/src/utils/personalization.multicontent.test.ts": {
     "mtime": 1785247776.5243163,
     "ast_hash": "bcaa0405dec49e12d29289b171430107",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/console/personalizacoes/generationStatus.test.ts": {
+    "mtime": 1785250164.8980234,
+    "ast_hash": "5db4110ade6c4dadb098e4da33166c09",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/console/personalizacoes/generationStatus.ts": {
+    "mtime": 1785250159.7152379,
+    "ast_hash": "1fff23ae9c98581c02fa009fca69e49d",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/console/trilha/personalizacaoJobsApi.test.ts": {
+    "mtime": 1785249849.9042907,
+    "ast_hash": "c7e860d66e75ddfca74a41c50f9ecd26",
+    "semantic_hash": ""
+  },
+  "microservice/.puppeteerrc.cjs": {
+    "mtime": 1785249940.4209716,
+    "ast_hash": "a1cb0de45a2953c82d03abad00fd31a0",
     "semantic_hash": ""
   }
 }

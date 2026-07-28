@@ -596,6 +596,79 @@ class PersonalizacaoJobsRepository:
         )
         return [dict(row) for row in result.mappings()]
 
+    async def buscar_targets_mais_recentes_por_perfil(
+        self,
+        *,
+        classe_id: int,
+        topico_id: int,
+        conteudo_id: int | None,
+    ) -> dict[str, dict[str, Any]]:
+        """Retorna o target da geração mais recente de cada perfil.
+
+        O escopo de conteúdo é deliberadamente exato, inclusive para ``NULL``.
+        Isso impede que o status de outro conteúdo do mesmo tópico seja exibido
+        enquanto o professor acompanha uma geração específica.
+        """
+
+        if not await self._jobs_exists() or not await self._targets_exists():
+            return {}
+
+        result = await self.session.execute(
+            text(
+                """
+                SELECT DISTINCT ON (LOWER(BTRIM(target.brainhex_profile_key)))
+                  target.id,
+                  target.job_id,
+                  target.aluno_id,
+                  target.topico_id,
+                  target.conteudo_id,
+                  target.brainhex_profile_key,
+                  target.is_profile_template,
+                  target.status,
+                  target.attempts,
+                  target.last_error,
+                  target.personalizacao_id,
+                  target.created_at,
+                  target.updated_at,
+                  job.status AS job_status,
+                  job.last_error AS job_last_error,
+                  job.created_at AS job_created_at,
+                  job.updated_at AS job_updated_at
+                FROM personalizacao_job_targets target
+                JOIN personalizacao_jobs job ON job.id = target.job_id
+                WHERE job.classe_id = CAST(:classe_id AS BIGINT)
+                  AND job.kind IN (
+                    'student_enrollment',
+                    'class_delta_sync',
+                    'full_class_sync',
+                    'manual_retry'
+                  )
+                  AND target.topico_id = CAST(:topico_id AS BIGINT)
+                  AND target.conteudo_id
+                        IS NOT DISTINCT FROM CAST(:conteudo_id AS BIGINT)
+                  AND NULLIF(BTRIM(target.brainhex_profile_key), '') IS NOT NULL
+                ORDER BY
+                  LOWER(BTRIM(target.brainhex_profile_key)),
+                  job.created_at DESC,
+                  target.created_at DESC,
+                  target.id DESC
+                """
+            ),
+            {
+                "classe_id": classe_id,
+                "topico_id": topico_id,
+                "conteudo_id": conteudo_id,
+            },
+        )
+
+        latest_by_profile: dict[str, dict[str, Any]] = {}
+        for row in result.mappings():
+            item = dict(row)
+            profile_key = str(item.get("brainhex_profile_key") or "").strip().lower()
+            if profile_key:
+                latest_by_profile[profile_key] = item
+        return latest_by_profile
+
     async def claim_next_job(
         self,
         *,

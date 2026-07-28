@@ -681,6 +681,26 @@ def test_personalizacao_por_perfil_route_groups_seven_brainhex_profiles(app, mon
         "buscar_mais_recente_por_perfil",
         buscar_recente_stub,
     )
+    monkeypatch.setattr(
+        PersonalizacaoJobsRepository,
+        "buscar_targets_mais_recentes_por_perfil",
+        AsyncMock(
+            return_value={
+                "mastermind": {
+                    "id": 501,
+                    "job_id": "11111111-1111-1111-1111-111111111111",
+                    "status": "pending",
+                    "updated_at": datetime(2026, 4, 8, 13, 0, 0),
+                },
+                "seeker": {
+                    "id": 502,
+                    "job_id": "11111111-1111-1111-1111-111111111111",
+                    "status": "processing",
+                    "updated_at": datetime(2026, 4, 8, 13, 0, 0),
+                },
+            }
+        ),
+    )
 
     with TestClient(app) as client:
         response = client.get("/api/v1/personalizar/perfis/10/55")
@@ -707,6 +727,11 @@ def test_personalizacao_por_perfil_route_groups_seven_brainhex_profiles(app, mon
     assert by_key["mastermind"]["total_alunos"] == 2
     assert by_key["seeker"]["tem_personalizacao"] is False
     assert by_key["seeker"]["total_alunos"] == 1
+    assert by_key["mastermind"]["geracao"]["status"] == "na_fila"
+    assert by_key["seeker"]["geracao"]["status"] == "enriquecendo"
+    assert body["geracao_resumo"]["total_perfis"] == 7
+    assert body["geracao_resumo"]["perfis_ativos"] == 2
+    assert body["geracao_resumo"]["perfis_sem_material"] == 5
     # design_tokens disponiveis mesmo sem personalizacao (preview da paleta)
     assert by_key["seeker"]["design_tokens"]["cores"]["primary"]
 
@@ -756,6 +781,12 @@ def test_personalizacao_por_perfil_route_filters_exact_content(app, monkeypatch)
         "buscar_mais_recente_por_perfil",
         lookup,
     )
+    target_lookup = AsyncMock(return_value={})
+    monkeypatch.setattr(
+        PersonalizacaoJobsRepository,
+        "buscar_targets_mais_recentes_por_perfil",
+        target_lookup,
+    )
 
     with TestClient(app) as client:
         response = client.get(
@@ -770,6 +801,118 @@ def test_personalizacao_por_perfil_route_filters_exact_content(app, monkeypatch)
         call.kwargs["conteudo_id"] == 125
         for call in lookup.await_args_list
     )
+    target_lookup.assert_awaited_once_with(
+        classe_id=10,
+        topico_id=55,
+        conteudo_id=125,
+    )
+
+
+def test_generation_status_active_target_precedes_old_material() -> None:
+    record = {
+        "id": 99,
+        "status": "pronto",
+        "updated_at": datetime(2026, 7, 28, 10, 0, 0),
+        "formatos_gerados": ["cards", "markdown", "audio", "apresentacao"],
+        "plano": {
+            "formatos": ["cards", "markdown", "audio", "apresentacao"],
+            "content_enrichment": {
+                "blocos": [{"id": "bloco-01"}, {"id": "bloco-02"}],
+            },
+        },
+        "materiais": {
+            media: {
+                "arquivo_url": f"https://example.test/{media}",
+                "metadata": {"status": "completed"},
+            }
+            for media in ("markdown", "audio", "apresentacao")
+        },
+    }
+    target = {
+        "id": 701,
+        "job_id": "11111111-1111-1111-1111-111111111111",
+        "status": "pending",
+        "updated_at": datetime(2026, 7, 28, 11, 0, 0),
+        "last_error": "microservice_midia_incompativel_ou_indisponivel",
+    }
+
+    generation = personalizacao_module._build_generation_status(
+        record=record,
+        target=target,
+    )
+
+    assert generation.status == "na_fila"
+    assert generation.etapa == "fila"
+    assert generation.progresso_percentual == 10
+    assert generation.job_id == target["job_id"]
+    assert generation.target_id == 701
+    assert generation.erro == (
+        "Serviço de mídia temporariamente indisponível; "
+        "a geração será tentada novamente."
+    )
+    assert generation.erro_codigo == "microservice_midia_incompativel_ou_indisponivel"
+    assert generation.blocos_total == 2
+    assert generation.blocos_concluidos == 0
+    assert {
+        item.status for item in generation.formatos.values()
+    } == {"na_fila"}
+
+
+def test_generation_status_processing_without_record_is_enriching() -> None:
+    generation = personalizacao_module._build_generation_status(
+        record=None,
+        target={
+            "id": 702,
+            "job_id": "22222222-2222-2222-2222-222222222222",
+            "status": "processing",
+            "updated_at": datetime(2026, 7, 28, 11, 0, 0),
+        },
+    )
+
+    assert generation.status == "enriquecendo"
+    assert generation.etapa == "enriquecimento"
+    assert generation.etapa_label == "Dividindo e ampliando o conteúdo"
+    assert generation.blocos_total == 0
+    assert generation.blocos_concluidos == 0
+
+
+def test_generation_status_current_record_reports_media_and_blocks() -> None:
+    target = {
+        "id": 703,
+        "job_id": "33333333-3333-3333-3333-333333333333",
+        "status": "processing",
+        "updated_at": datetime(2026, 7, 28, 11, 0, 0),
+    }
+    record = {
+        "id": 100,
+        "status": "processando_midias",
+        "updated_at": datetime(2026, 7, 28, 11, 1, 0),
+        "formatos_gerados": ["cards"],
+        "plano": {
+            "formatos": ["cards", "markdown", "audio", "apresentacao"],
+            "content_enrichment": {
+                "blocos": [{"id": "bloco-01"}, {"id": "bloco-02"}],
+            },
+        },
+        "materiais": {
+            "audio": {"metadata": {"status": "pending"}},
+            "markdown": {"metadata": {"status": "pending"}},
+            "apresentacao": {"metadata": {"status": "pending"}},
+        },
+    }
+
+    generation = personalizacao_module._build_generation_status(
+        record=record,
+        target=target,
+    )
+
+    assert generation.status == "gerando_midias"
+    assert generation.etapa == "midias"
+    assert generation.formatos["cards"].status == "pronto"
+    assert generation.formatos["audio"].status == "gerando"
+    assert generation.blocos_total == 2
+    assert generation.blocos_concluidos == 2
+    assert 60 < generation.progresso_percentual < 100
 
 
 def test_personalizacao_por_perfil_route_rejects_unowned_class(app, monkeypatch) -> None:

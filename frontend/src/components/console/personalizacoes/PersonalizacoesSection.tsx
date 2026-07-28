@@ -18,7 +18,18 @@ import {
   type PersonalizacaoPorPerfilResponse,
 } from "./personalizacoesApi";
 import { PerfilConteudoDialog } from "./PerfilConteudoDialog";
-import { getPersonalizacaoStatusBadge } from "./statusBadge";
+import {
+  getFormatoStatusBadge,
+  getPersonalizacaoStatusBadge,
+  isGeracaoStatusAtivo,
+} from "./statusBadge";
+import {
+  limitarPercentual,
+  resolverGeracaoFormato,
+  resumirGeracaoConteudo,
+  statusGeracaoDoPerfil,
+  temGeracaoAtiva,
+} from "./generationStatus";
 
 type ClasseRow = { id: number; descricao: string | null };
 type TopicoRow = { id: number; classe_id: number; nome: string | null; ordem: number | null };
@@ -33,6 +44,8 @@ const MATERIAL_TIPOS: Array<{ key: MaterialTipo; label: string; icon: typeof Fil
   { key: "audio", label: "Áudio", icon: Music },
   { key: "apresentacao", label: "Apresentação", icon: FileImage },
 ];
+
+const POR_PERFIL_POLL_INTERVAL_MS = 4_000;
 
 function getMaterial(materiais: Record<string, unknown> | null | undefined, tipo: string): Record<string, unknown> | null {
   if (!materiais || typeof materiais !== "object") return null;
@@ -71,6 +84,12 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
   const [porPerfilLoading, setPorPerfilLoading] = useState(false);
   const [porPerfilError, setPorPerfilError] = useState<string | null>(null);
   const porPerfilRequestId = useRef(0);
+  const porPerfilRequestInFlight = useRef(false);
+  const porPerfilRefreshPendente = useRef(false);
+  const porPerfilSelectionKey = useRef("");
+  const loadPorPerfilLatest = useRef<
+    (options?: { silent?: boolean; queueIfBusy?: boolean }) => Promise<void>
+  >(async () => undefined);
 
   const [contextoAluno, setContextoAluno] = useState<PersonalizacaoContextoDocenteResponse | null>(null);
   const [contextoLoading, setContextoLoading] = useState(false);
@@ -258,12 +277,19 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
     };
   }, [topicoId]);
 
-  // Busca personalizacao por perfil (visoes 1 e 2)
-  const loadPorPerfil = useCallback(async () => {
-    const requestId = ++porPerfilRequestId.current;
+  porPerfilSelectionKey.current = `${classeId}:${topicoId}:${conteudoId}`;
+
+  // Busca personalizacao por perfil (visoes 1 e 2). Uma nova selecao aguarda a
+  // requisicao corrente terminar; o requestId e a chave impedem resposta antiga
+  // de sobrescrever o conteudo atualmente selecionado.
+  const loadPorPerfil = useCallback(async (
+    options: { silent?: boolean; queueIfBusy?: boolean } = {}
+  ) => {
+    const { silent = false, queueIfBusy = true } = options;
     const numericClasse = Number(classeId);
     const numericTopico = Number(topicoId);
     const numericConteudo = Number(conteudoId);
+    const selectionKey = `${classeId}:${topicoId}:${conteudoId}`;
     if (
       conteudosLoading ||
       conteudosError ||
@@ -272,12 +298,21 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
       numericTopico <= 0 ||
       (conteudos.length > 0 && (!Number.isFinite(numericConteudo) || numericConteudo <= 0))
     ) {
+      porPerfilRequestId.current += 1;
       setPorPerfil(null);
       setPorPerfilLoading(false);
       setPorPerfilError(null);
       return;
     }
-    setPorPerfilLoading(true);
+
+    if (porPerfilRequestInFlight.current) {
+      if (queueIfBusy) porPerfilRefreshPendente.current = true;
+      return;
+    }
+
+    const requestId = ++porPerfilRequestId.current;
+    porPerfilRequestInFlight.current = true;
+    if (!silent) setPorPerfilLoading(true);
     setPorPerfilError(null);
     try {
       const token = await resolveToken();
@@ -286,20 +321,61 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
         topicoId: numericTopico,
         conteudoId: Number.isFinite(numericConteudo) && numericConteudo > 0 ? numericConteudo : undefined,
       });
-      if (requestId === porPerfilRequestId.current) setPorPerfil(data);
+      if (
+        requestId === porPerfilRequestId.current &&
+        selectionKey === porPerfilSelectionKey.current
+      ) {
+        setPorPerfil(data);
+      }
     } catch (error) {
-      if (requestId === porPerfilRequestId.current) {
-        setPorPerfil(null);
+      if (
+        requestId === porPerfilRequestId.current &&
+        selectionKey === porPerfilSelectionKey.current
+      ) {
+        if (!silent) setPorPerfil(null);
         setPorPerfilError(error instanceof Error ? error.message : "Falha ao carregar personalizações por perfil.");
       }
     } finally {
-      if (requestId === porPerfilRequestId.current) setPorPerfilLoading(false);
+      porPerfilRequestInFlight.current = false;
+      if (
+        requestId === porPerfilRequestId.current &&
+        selectionKey === porPerfilSelectionKey.current &&
+        !silent
+      ) {
+        setPorPerfilLoading(false);
+      }
+      if (porPerfilRefreshPendente.current) {
+        porPerfilRefreshPendente.current = false;
+        window.setTimeout(() => {
+          void loadPorPerfilLatest.current({ queueIfBusy: true });
+        }, 0);
+      }
     }
   }, [classeId, conteudoId, conteudos.length, conteudosError, conteudosLoading, topicoId, resolveToken]);
 
+  loadPorPerfilLatest.current = loadPorPerfil;
+
   useEffect(() => {
-    void loadPorPerfil();
+    void loadPorPerfil({ queueIfBusy: true });
   }, [loadPorPerfil]);
+
+  const geracaoPorPerfilAtiva = useMemo(
+    () => temGeracaoAtiva(porPerfil?.perfis ?? []),
+    [porPerfil]
+  );
+
+  useEffect(() => {
+    if (!geracaoPorPerfilAtiva) return;
+    const pollId = window.setInterval(() => {
+      void loadPorPerfilLatest.current({ silent: true, queueIfBusy: false });
+    }, POR_PERFIL_POLL_INTERVAL_MS);
+    return () => window.clearInterval(pollId);
+  }, [geracaoPorPerfilAtiva, classeId, conteudoId, topicoId]);
+
+  useEffect(() => () => {
+    porPerfilRequestId.current += 1;
+    porPerfilRefreshPendente.current = false;
+  }, []);
 
   // Busca contexto do aluno (visao 3)
   const loadContexto = useCallback(async () => {
@@ -470,11 +546,11 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
 
         {/* Visao 1: material lado a lado pelos 7 perfis */}
         <TabsContent value="por-perfil" className="space-y-4">
-          {porPerfilError ? (
+          {porPerfilError && !porPerfil ? (
             <Card>
               <CardContent className="pt-6 text-sm text-destructive">{porPerfilError}</CardContent>
             </Card>
-          ) : porPerfilLoading ? (
+          ) : porPerfilLoading && !porPerfil ? (
             <Card>
               <CardContent className="flex items-center gap-2 pt-6 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" /> Carregando personalizações...
@@ -488,10 +564,21 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
             </Card>
           ) : (
             <>
-              <p className="text-sm text-muted-foreground">
-                {porPerfil.total_perfis_com_material} de 7 perfis com material gerado
-                {conteudoSelecionado ? ` para "${conteudoSelecionado.titulo || `Conteúdo ${conteudoSelecionado.id}`}"` : " para este tópico"}.
-              </p>
+              {porPerfilError && (
+                <Card>
+                  <CardContent className="pt-6 text-sm text-destructive" role="alert">
+                    A atualização automática falhou. Os últimos dados recebidos continuam visíveis. {porPerfilError}
+                  </CardContent>
+                </Card>
+              )}
+              <ConteudoGeracaoResumo
+                response={porPerfil}
+                tituloFallback={
+                  conteudoSelecionado?.titulo ||
+                  (conteudoSelecionado ? `Conteúdo ${conteudoSelecionado.id}` : "Conteúdo selecionado")
+                }
+                atualizando={geracaoPorPerfilAtiva}
+              />
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {porPerfil.perfis.map((item) => (
                   <PerfilMaterialCard key={item.perfil} item={item} />
@@ -659,6 +746,90 @@ function GrupoResumo({ resumo }: { resumo: ClassePerfilSummaryResponse }) {
   );
 }
 
+function ConteudoGeracaoResumo({
+  response,
+  tituloFallback,
+  atualizando,
+}: {
+  response: PersonalizacaoPorPerfilResponse;
+  tituloFallback: string;
+  atualizando: boolean;
+}) {
+  const calculado = resumirGeracaoConteudo(response.perfis);
+  const recebido =
+    Number(response.geracao_resumo?.total_perfis ?? 0) > 0
+      ? response.geracao_resumo
+      : null;
+  const totalPerfis = recebido?.total_perfis ?? calculado.totalPerfis;
+  const perfisProntos = recebido?.perfis_prontos ?? calculado.perfisProntos;
+  const perfisAtivos =
+    recebido?.perfis_em_andamento ??
+    recebido?.perfis_ativos ??
+    calculado.perfisAtivos;
+  const perfisParciais = recebido?.perfis_parciais ?? calculado.perfisParciais;
+  const perfisFalhos =
+    recebido?.perfis_com_falha ??
+    recebido?.perfis_falhos ??
+    calculado.perfisFalhos;
+  const perfisSemMaterial =
+    recebido?.perfis_sem_material ?? calculado.perfisSemMaterial;
+  const progresso = limitarPercentual(
+    recebido?.progresso_percentual ?? calculado.progressoPercentual
+  );
+  const atualizadoEm = recebido?.updated_at;
+
+  return (
+    <Card aria-labelledby="resumo-geracao-conteudo">
+      <CardHeader className="pb-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="space-y-1">
+            <CardTitle id="resumo-geracao-conteudo" className="text-base">
+              {response.conteudo_titulo || tituloFallback}
+            </CardTitle>
+            <CardDescription>Conteúdo ampliado e gerado por blocos</CardDescription>
+          </div>
+          {atualizando && (
+            <Badge
+              variant="secondary"
+              className="gap-1 bg-blue-100 text-blue-800 hover:bg-blue-100 dark:bg-blue-950 dark:text-blue-200"
+              role="status"
+              aria-live="polite"
+            >
+              <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+              Atualizando automaticamente
+            </Badge>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex items-center justify-between gap-4 text-sm">
+          <span className="font-medium">Progresso dos perfis</span>
+          <span className="tabular-nums text-muted-foreground">{progresso}%</span>
+        </div>
+        <Progress
+          value={progresso}
+          className="h-2"
+          aria-label={`Progresso geral da geração: ${progresso}%`}
+        />
+        <div className="flex flex-wrap gap-2 text-xs">
+          <Badge variant="default">
+            {perfisProntos} de {totalPerfis} pronto(s)
+          </Badge>
+          {perfisAtivos > 0 && <Badge variant="secondary">{perfisAtivos} em andamento</Badge>}
+          {perfisParciais > 0 && <Badge variant="secondary">{perfisParciais} parcial(is)</Badge>}
+          {perfisFalhos > 0 && <Badge variant="destructive">{perfisFalhos} com falha</Badge>}
+          {perfisSemMaterial > 0 && <Badge variant="outline">{perfisSemMaterial} sem material</Badge>}
+        </div>
+        {atualizadoEm && (
+          <p className="text-xs text-muted-foreground">
+            Atualizado em {new Date(atualizadoEm).toLocaleString("pt-BR")}
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function PaletaPreview({ item }: { item: PersonalizacaoPerfilItem }) {
   const cores = item.design_tokens?.cores;
   if (!cores) return null;
@@ -688,24 +859,41 @@ function PaletaPreview({ item }: { item: PersonalizacaoPerfilItem }) {
 function PerfilMaterialCard({ item }: { item: PersonalizacaoPerfilItem }) {
   const [dialogTab, setDialogTab] = useState<MaterialTipo | null>(null);
   const temAlgumMaterial = MATERIAL_TIPOS.some(({ key }) => getMaterial(item.materiais, key));
+  const geracaoStatus = statusGeracaoDoPerfil(item);
+  const geracaoAtiva = isGeracaoStatusAtivo(geracaoStatus);
+  const geracao = item.geracao;
   const statusBadge = getPersonalizacaoStatusBadge({
     temPersonalizacao: item.tem_personalizacao,
+    geracaoStatus: geracao?.status,
     status: item.personalizacao?.status,
     updatedAt: item.personalizacao?.updated_at,
     geradoEm: item.personalizacao?.gerado_em ?? item.gerado_em,
   });
+  const progresso = limitarPercentual(geracao?.progresso_percentual);
+  const blocosTotal = Math.max(0, Number(geracao?.blocos_total ?? 0));
+  const blocosPreparados = Math.min(
+    blocosTotal,
+    Math.max(0, Number(geracao?.blocos_concluidos ?? 0))
+  );
+  const etapaLabel =
+    String(geracao?.etapa_label || geracao?.label || "").trim() ||
+    statusBadge.label;
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden" aria-label={`Geração para o perfil ${item.perfil_label}`}>
       <div className="h-1.5 w-full" style={{ backgroundColor: item.cor }} />
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="text-base capitalize">{item.perfil_label}</CardTitle>
           <Badge
             variant={statusBadge.variant}
-            className={statusBadge.label === "Gerando..." ? "gap-1 bg-blue-100 text-blue-700 hover:bg-blue-100" : undefined}
+            className={
+              geracaoAtiva
+                ? "gap-1 bg-blue-100 text-blue-800 hover:bg-blue-100 dark:bg-blue-950 dark:text-blue-200"
+                : undefined
+            }
           >
-            {statusBadge.label === "Gerando..." && <Loader2 className="h-3 w-3 animate-spin" />}
+            {geracaoAtiva && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}
             {statusBadge.label}
           </Badge>
         </div>
@@ -714,52 +902,125 @@ function PerfilMaterialCard({ item }: { item: PersonalizacaoPerfilItem }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        {item.tem_personalizacao ? (
-          <>
-            <div>
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Formato prioritário</p>
-              <p className="font-medium capitalize">{item.formato_prioritario || "misto"}</p>
+        {geracao && (
+          <div
+            className="space-y-2 rounded-md border bg-muted/30 p-3"
+            role={geracaoAtiva ? "status" : undefined}
+            aria-live={geracaoAtiva ? "polite" : undefined}
+          >
+            <div className="flex items-start justify-between gap-3 text-sm">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Etapa atual</p>
+                <p className="font-medium">{etapaLabel}</p>
+              </div>
+              <span className="tabular-nums text-muted-foreground">{progresso}%</span>
             </div>
-            <div className="space-y-2">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Materiais</p>
-              <div className="flex flex-col gap-1">
-                {MATERIAL_TIPOS.map(({ key, label, icon: Icon }) => {
-                  const material = getMaterial(item.materiais, key);
-                  const url = materialUrl(material);
-                  return (
-                    <div key={key} className="flex items-center justify-between gap-2 text-sm">
-                      <span className="flex items-center gap-2">
-                        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-                        {label}
-                      </span>
-                      {url ? (
+            <Progress
+              value={progresso}
+              className="h-2"
+              aria-label={`Progresso de ${item.perfil_label}: ${progresso}%`}
+            />
+            {blocosTotal > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {blocosPreparados} de {blocosTotal} blocos preparados
+              </p>
+            )}
+            {geracao.erro && (
+              <p className="text-xs text-destructive" role="alert">
+                {geracao.erro}
+              </p>
+            )}
+          </div>
+        )}
+
+        {(item.tem_personalizacao || item.formato_prioritario) && (
+          <div>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Formato prioritário</p>
+            <p className="font-medium capitalize">{item.formato_prioritario || "misto"}</p>
+          </div>
+        )}
+
+        <div className="space-y-2">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Materiais</p>
+          <div className="flex flex-col gap-2">
+            {MATERIAL_TIPOS.map(({ key, label, icon: Icon }) => {
+              const material = getMaterial(item.materiais, key);
+              const formato = resolverGeracaoFormato(item, key, Boolean(material));
+              const formatoBadge = getFormatoStatusBadge(formato.status, formato.label);
+              const formatoAtivo = formato.status === "na_fila" || formato.status === "gerando";
+              const url =
+                materialUrl(material) ||
+                (typeof formato.arquivo_url === "string" && formato.arquivo_url.trim()
+                  ? formato.arquivo_url.trim()
+                  : null);
+              return (
+                <div key={key} className="space-y-1">
+                  <div className="flex items-center justify-between gap-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Icon className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+                      {label}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant={formatoBadge.variant}
+                        className={formatoAtivo ? "gap-1" : undefined}
+                      >
+                        {formatoAtivo && (
+                          <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                        )}
+                        {formatoBadge.label}
+                      </Badge>
+                      {material ? (
                         <button
                           type="button"
                           onClick={() => setDialogTab(key)}
                           className="text-xs text-primary underline underline-offset-2"
                         >
-                          ver
+                          {formato.status === "pronto" ? "ver" : "ver anterior"}
                         </button>
-                      ) : material ? (
-                        <span className="text-xs text-muted-foreground">processando</span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
+                      ) : url ? (
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs text-primary underline underline-offset-2"
+                        >
+                          abrir
+                        </a>
+                      ) : null}
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-            {temAlgumMaterial && (
-              <Button variant="outline" size="sm" className="w-full" onClick={() => setDialogTab(dialogTab ?? "markdown")}>
-                Ver conteúdo completo
-              </Button>
-            )}
-          </>
-        ) : (
+                  </div>
+                  {formato.erro && (
+                    <p className="text-right text-xs text-destructive" role="alert">
+                      {formato.erro}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {geracaoStatus === "sem_material" && !temAlgumMaterial && (
           <p className="text-sm text-muted-foreground">
             Ainda não há personalização gerada para este perfil no conteúdo selecionado.
           </p>
+        )}
+
+        {temAlgumMaterial && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full"
+            onClick={() => {
+              const primeiraDisponivel =
+                MATERIAL_TIPOS.find(({ key }) => getMaterial(item.materiais, key))?.key ??
+                "markdown";
+              setDialogTab(dialogTab ?? primeiraDisponivel);
+            }}
+          >
+            Ver conteúdo completo
+          </Button>
         )}
       </CardContent>
       <PerfilConteudoDialog

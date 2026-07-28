@@ -268,6 +268,51 @@ async def test_claim_partial_job_requires_non_terminal_target() -> None:
     assert "target.status NOT IN ('completed', 'failed', 'skipped')" in claim_sql
 
 
+@pytest.mark.asyncio
+async def test_latest_personalization_targets_are_scoped_exactly_by_content() -> None:
+    session = RecordingSession(
+        [
+            ScalarResult(True),
+            ScalarResult(True),
+            MappingResult(
+                [
+                    {
+                        "id": 701,
+                        "job_id": "11111111-1111-1111-1111-111111111111",
+                        "brainhex_profile_key": "Seeker",
+                        "status": "processing",
+                    },
+                    {
+                        "id": 702,
+                        "job_id": "11111111-1111-1111-1111-111111111111",
+                        "brainhex_profile_key": "mastermind",
+                        "status": "pending",
+                    },
+                ]
+            ),
+        ]
+    )
+    repo = PersonalizacaoJobsRepository(session)
+
+    latest = await repo.buscar_targets_mais_recentes_por_perfil(
+        classe_id=32,
+        topico_id=121,
+        conteudo_id=125,
+    )
+
+    assert set(latest) == {"seeker", "mastermind"}
+    assert latest["seeker"]["id"] == 701
+    query, params = session.calls[-1]
+    assert "DISTINCT ON (LOWER(BTRIM(target.brainhex_profile_key)))" in query
+    assert "IS NOT DISTINCT FROM CAST(:conteudo_id AS BIGINT)" in query
+    assert "job.created_at DESC" in query
+    assert params == {
+        "classe_id": 32,
+        "topico_id": 121,
+        "conteudo_id": 125,
+    }
+
+
 def test_content_hydration_prefers_persisted_brainhex_profile_column() -> None:
     repo = ConteudoPersonalizadoRepository(RecordingSession([]))
 
