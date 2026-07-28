@@ -6,18 +6,22 @@ import {
   type ContentBlock,
   type ContentEnrichmentRequest,
 } from "../lib/validators";
+import { isGeminiAvailabilityError } from "./contentGenerationService";
 
 export const CONTENT_ENRICHMENT_SCHEMA_VERSION = "trailup.content-blocks.v2" as const;
 export const CONTENT_ENRICHMENT_PROVIDER = "openai" as const;
 export const DEFAULT_CONTENT_ENRICHMENT_MODEL = "gpt-5.6-sol" as const;
 export const CONTENT_ENRICHMENT_FALLBACK_PROVIDER = "gemini" as const;
 export const DEFAULT_CONTENT_ENRICHMENT_FALLBACK_MODEL =
-  "gemini-2.5-flash-lite" as const;
+  "gemini-3.5-flash-lite" as const;
+export const DEFAULT_CONTENT_ENRICHMENT_EMERGENCY_MODEL =
+  "gemini-3.6-flash" as const;
 
 const DEFAULT_BATCH_SIZE = 8;
 const DEFAULT_MAX_ATTEMPTS = 3;
 const DEFAULT_MAX_OUTPUT_TOKENS = 32_768;
 const DEFAULT_OPENAI_UNAVAILABLE_COOLDOWN_MS = 5 * 60 * 1_000;
+const DEFAULT_GEMINI_UNAVAILABLE_COOLDOWN_MS = 5 * 60 * 1_000;
 
 export interface ContentEnrichmentResult {
   schema_version: typeof CONTENT_ENRICHMENT_SCHEMA_VERSION;
@@ -56,6 +60,7 @@ export interface ContentEnrichmentOptions {
   generateStructuredFallback?: StructuredEnrichmentGenerator;
   model?: string;
   fallbackModel?: string;
+  emergencyModel?: string;
   batchSize?: number;
   maxAttempts?: number;
   maxOutputTokens?: number;
@@ -77,6 +82,7 @@ interface RawEnrichedBlock {
 let openai: OpenAI | null = null;
 let gemini: GoogleGenAI | null = null;
 let openaiUnavailableUntil = 0;
+let geminiFallbackUnavailableUntil = 0;
 
 function getOpenAI(): OpenAI {
   if (openai) return openai;
@@ -326,10 +332,29 @@ export function resolveContentEnrichmentModel(
 export function resolveContentEnrichmentFallbackModel(
   environment: Record<string, string | undefined> = process.env,
 ): string {
-  return (
-    String(environment.GEMINI_CONTENT_ENRICHMENT_FALLBACK_MODEL ?? "").trim()
-    || DEFAULT_CONTENT_ENRICHMENT_FALLBACK_MODEL
-  );
+  const configured = String(
+    environment.GEMINI_CONTENT_ENRICHMENT_FALLBACK_MODEL ?? "",
+  ).trim();
+  if (!configured || configured === "gemini-2.5-flash-lite") {
+    return DEFAULT_CONTENT_ENRICHMENT_FALLBACK_MODEL;
+  }
+  return configured;
+}
+
+export function resolveContentEnrichmentEmergencyModel(
+  environment: Record<string, string | undefined> = process.env,
+): string {
+  const configured = String(
+    environment.GEMINI_CONTENT_ENRICHMENT_EMERGENCY_MODEL ?? "",
+  ).trim();
+  if (
+    !configured
+    || configured === "gemini-2.5-flash"
+    || configured === "gemini-3-flash-preview"
+  ) {
+    return DEFAULT_CONTENT_ENRICHMENT_EMERGENCY_MODEL;
+  }
+  return configured;
 }
 
 export interface ContentEnrichmentReadiness {
@@ -498,7 +523,6 @@ async function generateStructuredWithGemini(
     }],
     config: {
       systemInstruction: call.instructions,
-      temperature: 0.35,
       maxOutputTokens: call.maxOutputTokens,
       responseMimeType: "application/json",
       responseSchema: GEMINI_ENRICHMENT_RESPONSE_SCHEMA,
@@ -560,6 +584,7 @@ export function isOpenAIAvailabilityError(error: unknown): boolean {
 
 export function resetOpenAIContentEnrichmentCircuit(): void {
   openaiUnavailableUntil = 0;
+  geminiFallbackUnavailableUntil = 0;
 }
 
 interface EnrichmentGeneration {
@@ -576,21 +601,62 @@ async function generateEnrichmentWithFallback(
     generatePrimary: StructuredEnrichmentGenerator;
     generateFallback: StructuredEnrichmentGenerator;
     fallbackModel: string;
+    emergencyModel: string;
     environment: Record<string, string | undefined>;
     now: () => number;
   },
 ): Promise<EnrichmentGeneration> {
-  if (options.now() < openaiUnavailableUntil) {
-    return {
-      value: await options.generateFallback({
-        ...call,
+  const generateWithGemini = async (
+    callsBeforeGemini: number,
+  ): Promise<EnrichmentGeneration> => {
+    if (options.now() < geminiFallbackUnavailableUntil) {
+      return {
+        value: await options.generateFallback({
+          ...call,
+          model: options.emergencyModel,
+        }),
+        provider: "gemini",
+        model: options.emergencyModel,
+        fallback: true,
+        calls: callsBeforeGemini + 1,
+      };
+    }
+
+    try {
+      return {
+        value: await options.generateFallback({
+          ...call,
+          model: options.fallbackModel,
+        }),
+        provider: "gemini",
         model: options.fallbackModel,
-      }),
-      provider: "gemini",
-      model: options.fallbackModel,
-      fallback: true,
-      calls: 1,
-    };
+        fallback: true,
+        calls: callsBeforeGemini + 1,
+      };
+    } catch (error) {
+      if (!isGeminiAvailabilityError(error)) throw error;
+      const cooldownMs = boundedInteger(
+        options.environment.CONTENT_ENRICHMENT_GEMINI_COOLDOWN_MS,
+        DEFAULT_GEMINI_UNAVAILABLE_COOLDOWN_MS,
+        1_000,
+        60 * 60 * 1_000,
+      );
+      geminiFallbackUnavailableUntil = options.now() + cooldownMs;
+      return {
+        value: await options.generateFallback({
+          ...call,
+          model: options.emergencyModel,
+        }),
+        provider: "gemini",
+        model: options.emergencyModel,
+        fallback: true,
+        calls: callsBeforeGemini + 2,
+      };
+    }
+  };
+
+  if (options.now() < openaiUnavailableUntil) {
+    return generateWithGemini(0);
   }
 
   try {
@@ -612,16 +678,7 @@ async function generateEnrichmentWithFallback(
     );
     openaiUnavailableUntil = options.now() + cooldownMs;
     try {
-      return {
-        value: await options.generateFallback({
-          ...call,
-          model: options.fallbackModel,
-        }),
-        provider: "gemini",
-        model: options.fallbackModel,
-        fallback: true,
-        calls: 2,
-      };
+      return await generateWithGemini(1);
     } catch (fallbackError) {
       const openaiDetails = errorDetails(error).slice(0, 500);
       const geminiDetails = errorDetails(fallbackError).slice(0, 500);
@@ -664,6 +721,8 @@ export async function enrichContentBlocksWithOpenAI(
     || resolveContentEnrichmentModel(environment);
   const fallbackModel = String(options.fallbackModel ?? "").trim()
     || resolveContentEnrichmentFallbackModel(environment);
+  const emergencyModel = String(options.emergencyModel ?? "").trim()
+    || resolveContentEnrichmentEmergencyModel(environment);
   const batchSize = boundedInteger(
     options.batchSize ?? environment.CONTENT_ENRICHMENT_BATCH_SIZE,
     DEFAULT_BATCH_SIZE,
@@ -718,6 +777,7 @@ export async function enrichContentBlocksWithOpenAI(
             generatePrimary: generateStructured,
             generateFallback: generateStructuredFallback,
             fallbackModel,
+            emergencyModel,
             environment,
             now,
           },

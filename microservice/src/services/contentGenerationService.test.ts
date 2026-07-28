@@ -21,7 +21,13 @@ const call: StructuredContentGenerationCall = {
 };
 
 test("mantém Gemini como modelo primário e resolve OpenAI apenas para contingência", () => {
-  assert.equal(resolveGeminiContentGenerationModel({}), "gemini-3-flash-preview");
+  assert.equal(resolveGeminiContentGenerationModel({}), "gemini-3.6-flash");
+  assert.equal(
+    resolveGeminiContentGenerationModel({
+      CONTENT_GENERATION_MODEL: "gemini-3-flash-preview",
+    }),
+    "gemini-3.6-flash",
+  );
   assert.equal(
     resolveOpenAIContentGenerationFallbackModel({}),
     "gpt-5.6-sol",
@@ -40,7 +46,13 @@ test("mantém Gemini como modelo primário e resolve OpenAI apenas para conting�
   );
   assert.equal(
     resolveGeminiContentGenerationEmergencyModel({}),
-    "gemini-2.5-flash",
+    "gemini-3.5-flash-lite",
+  );
+  assert.equal(
+    resolveGeminiContentGenerationEmergencyModel({
+      GEMINI_CONTENT_GENERATION_EMERGENCY_MODEL: "gemini-2.5-flash",
+    }),
+    "gemini-3.5-flash-lite",
   );
 });
 
@@ -179,6 +191,13 @@ test("usa Gemini alternativo quando Gemini principal e OpenAI estão sem quota",
 
 test("reconhece indisponibilidade transitória e não confunde validação de conteúdo", () => {
   assert.equal(isGeminiAvailabilityError({ status: 503 }), true);
+  assert.equal(isGeminiAvailabilityError({ status: 404 }), true);
+  assert.equal(
+    isGeminiAvailabilityError(
+      new Error("This model is no longer available to new users."),
+    ),
+    true,
+  );
   assert.equal(
     isGeminiAvailabilityError(new Error("connection reset by peer")),
     true,

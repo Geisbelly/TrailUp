@@ -1,11 +1,11 @@
 import OpenAI from "openai";
 
 export const DEFAULT_GEMINI_CONTENT_GENERATION_MODEL =
-  "gemini-3-flash-preview" as const;
+  "gemini-3.6-flash" as const;
 export const DEFAULT_OPENAI_CONTENT_GENERATION_FALLBACK_MODEL =
   "gpt-5.6-sol" as const;
 export const DEFAULT_GEMINI_CONTENT_GENERATION_EMERGENCY_MODEL =
-  "gemini-2.5-flash" as const;
+  "gemini-3.5-flash-lite" as const;
 
 const DEFAULT_GEMINI_UNAVAILABLE_COOLDOWN_MS = 5 * 60 * 1_000;
 const DEFAULT_OPENAI_MAX_OUTPUT_TOKENS = 65_536;
@@ -135,8 +135,11 @@ function positiveInteger(
 export function resolveGeminiContentGenerationModel(
   environment: Record<string, string | undefined> = process.env,
 ): string {
-  return String(environment.CONTENT_GENERATION_MODEL ?? "").trim()
-    || DEFAULT_GEMINI_CONTENT_GENERATION_MODEL;
+  const configured = String(environment.CONTENT_GENERATION_MODEL ?? "").trim();
+  if (!configured || configured === "gemini-3-flash-preview") {
+    return DEFAULT_GEMINI_CONTENT_GENERATION_MODEL;
+  }
+  return configured;
 }
 
 export function resolveOpenAIContentGenerationFallbackModel(
@@ -152,9 +155,17 @@ export function resolveOpenAIContentGenerationFallbackModel(
 export function resolveGeminiContentGenerationEmergencyModel(
   environment: Record<string, string | undefined> = process.env,
 ): string {
-  return String(
+  const configured = String(
     environment.GEMINI_CONTENT_GENERATION_EMERGENCY_MODEL ?? "",
-  ).trim() || DEFAULT_GEMINI_CONTENT_GENERATION_EMERGENCY_MODEL;
+  ).trim();
+  if (
+    !configured
+    || configured === "gemini-2.5-flash"
+    || configured === "gemini-2.5-flash-lite"
+  ) {
+    return DEFAULT_GEMINI_CONTENT_GENERATION_EMERGENCY_MODEL;
+  }
+  return configured;
 }
 
 function errorDetails(error: unknown): string {
@@ -177,11 +188,18 @@ export function isGeminiAvailabilityError(error: unknown): boolean {
     ? error as Record<string, unknown>
     : {};
   const status = Number(record.status ?? record.statusCode ?? record.code);
-  if (status === 408 || status === 429 || status >= 500) return true;
+  if (status === 404 || status === 408 || status === 429 || status >= 500) {
+    return true;
+  }
 
   const details = errorDetails(error).toLowerCase();
   return [
     "429",
+    "404",
+    "not_found",
+    "model not found",
+    "no longer available",
+    "model is not available",
     "resource_exhausted",
     "quota",
     "rate limit",

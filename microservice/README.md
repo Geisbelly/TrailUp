@@ -53,14 +53,17 @@ Microservico de geracao de materiais personalizados por perfil BrainHex.
 - `OPENAI_CONTENT_ENRICHMENT_MODEL` (padrao: `gpt-5.6-sol`)
 - `CONTENT_ENRICHMENT_BATCH_SIZE` (padrao: `8`)
 - `CONTENT_ENRICHMENT_MAX_ATTEMPTS` (padrao: `3`)
-- `GEMINI_CONTENT_ENRICHMENT_FALLBACK_MODEL` (padrao: `gemini-2.5-flash-lite`)
+- `GEMINI_CONTENT_ENRICHMENT_FALLBACK_MODEL` (padrao: `gemini-3.5-flash-lite`)
+- `GEMINI_CONTENT_ENRICHMENT_EMERGENCY_MODEL` (ultima contingencia; padrao:
+  `gemini-3.6-flash`)
 - `CONTENT_ENRICHMENT_OPENAI_COOLDOWN_MS` (padrao: `300000`)
+- `CONTENT_ENRICHMENT_GEMINI_COOLDOWN_MS` (padrao: `300000`)
 - `GEMINI_API_KEY`
-- `CONTENT_GENERATION_MODEL` (Gemini principal; padrao: `gemini-3-flash-preview`)
+- `CONTENT_GENERATION_MODEL` (Gemini principal; padrao: `gemini-3.6-flash`)
 - `CONTENT_GENERATION_BLOCK_BATCH_SIZE` (padrao: `12`, maximo: `24`)
 - `OPENAI_CONTENT_GENERATION_FALLBACK_MODEL` (padrao: `gpt-5.6-sol`)
 - `GEMINI_CONTENT_GENERATION_EMERGENCY_MODEL` (ultima contingencia; padrao:
-  `gemini-2.5-flash`)
+  `gemini-3.5-flash-lite`)
 - `CONTENT_GENERATION_GEMINI_COOLDOWN_MS` (padrao: `300000`)
 - `CONTENT_GENERATION_OPENAI_COOLDOWN_MS` (padrao: `300000`)
 - `SUPABASE_URL`

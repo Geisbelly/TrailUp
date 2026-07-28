@@ -797,7 +797,6 @@ export async function processMediaWithGemini(
               }],
               config: {
                 systemInstruction: call.instructions,
-                temperature: 0.45,
                 maxOutputTokens: call.maxOutputTokens,
                 responseMimeType: "application/json",
                 responseSchema: GEMINI_CONTENT_GENERATION_RESPONSE_SCHEMA,
@@ -839,7 +838,7 @@ export async function processMediaWithGemini(
   }
 
   const response = await getAi().models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: resolveGeminiContentGenerationModel(),
     contents: [
       {
         parts: [

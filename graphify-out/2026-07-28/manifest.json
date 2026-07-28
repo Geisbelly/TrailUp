@@ -1670,8 +1670,8 @@
     "semantic_hash": ""
   },
   "microservice/src/services/geminiService.ts": {
-    "mtime": 1785265925.9196165,
-    "ast_hash": "79434f7cd2345767bcd94622706d51d2",
+    "mtime": 1785269097.307878,
+    "ast_hash": "864d7167b2f8b8e664deba449d1c1578",
     "semantic_hash": ""
   },
   "microservice/src/services/pdfService.ts": {
@@ -3280,8 +3280,8 @@
     "semantic_hash": ""
   },
   "microservice/README.md": {
-    "mtime": 1785267417.18885,
-    "ast_hash": "1721ad2ef1bdedd0e086f12c80e9d350",
+    "mtime": 1785269097.3098836,
+    "ast_hash": "e163588d25decab0eccdd3c821c99820",
     "semantic_hash": ""
   },
   "microservice/index.html": {
@@ -4110,8 +4110,8 @@
     "semantic_hash": ""
   },
   "api/app/services/media_contract.py": {
-    "mtime": 1785267221.4221952,
-    "ast_hash": "5d2d5df950ee535f8cae4cdd5794910e",
+    "mtime": 1785269097.3118856,
+    "ast_hash": "73af63ce3cc4b509687ad4f5d46741d9",
     "semantic_hash": ""
   },
   "frontend/src/components/console/personalizacoes/materialPreview.test.ts": {
@@ -4125,8 +4125,8 @@
     "semantic_hash": ""
   },
   "microservice/src/constants/pipelineVersions.ts": {
-    "mtime": 1785267221.4232454,
-    "ast_hash": "e8f47375cf3198fdb4edcf92d535f3a9",
+    "mtime": 1785269097.3108852,
+    "ast_hash": "cd18540ba1efd922a33ec80d9c67ab57",
     "semantic_hash": ""
   },
   "api/alembic/versions/20260728_04_scope_personalization_by_content.py": {
@@ -4145,13 +4145,13 @@
     "semantic_hash": ""
   },
   "microservice/src/services/contentEnrichmentService.test.ts": {
-    "mtime": 1785267291.4008157,
-    "ast_hash": "28746e81a82769f5408cb9ec24e28e24",
+    "mtime": 1785269141.071971,
+    "ast_hash": "a104ce1ca6f34f893e669de31f7899d1",
     "semantic_hash": ""
   },
   "microservice/src/services/contentEnrichmentService.ts": {
-    "mtime": 1785267417.1878493,
-    "ast_hash": "8cf4683b71145c31df7b6949a10f72f9",
+    "mtime": 1785269097.3058178,
+    "ast_hash": "9fda31c1a8c98ed8a644dda6b88abc91",
     "semantic_hash": ""
   },
   "microservice/src/services/geminiBlockBatches.test.ts": {
@@ -4200,13 +4200,13 @@
     "semantic_hash": ""
   },
   "microservice/src/services/contentGenerationService.test.ts": {
-    "mtime": 1785265725.193645,
-    "ast_hash": "8880ec990e344cecb512b0d21c78510e",
+    "mtime": 1785269122.8550994,
+    "ast_hash": "de7b12f0b1473fd86c2494f33c0179af",
     "semantic_hash": ""
   },
   "microservice/src/services/contentGenerationService.ts": {
-    "mtime": 1785265617.2119064,
-    "ast_hash": "3197f86a6a1f4c7495da8f293f38caed",
+    "mtime": 1785269097.306818,
+    "ast_hash": "fefa2a8e59e956bdd490051ac741aed6",
     "semantic_hash": ""
   }
 }

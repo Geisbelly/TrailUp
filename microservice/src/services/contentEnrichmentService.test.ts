@@ -4,12 +4,14 @@ import {
   buildValidatedEnrichmentResult,
   CONTENT_ENRICHMENT_PROVIDER,
   CONTENT_ENRICHMENT_SCHEMA_VERSION,
+  DEFAULT_CONTENT_ENRICHMENT_EMERGENCY_MODEL,
   DEFAULT_CONTENT_ENRICHMENT_MODEL,
   DEFAULT_CONTENT_ENRICHMENT_FALLBACK_MODEL,
   enrichContentBlocksWithOpenAI,
   getContentEnrichmentReadiness,
   isOpenAIAvailabilityError,
   resetOpenAIContentEnrichmentCircuit,
+  resolveContentEnrichmentEmergencyModel,
   resolveContentEnrichmentModel,
   resolveContentEnrichmentFallbackModel,
 } from "./contentEnrichmentService";
@@ -104,6 +106,16 @@ test("usa modelo OpenAI próprio e ignora configuração legada do Gemini", () =
   assert.equal(
     resolveContentEnrichmentFallbackModel({}),
     DEFAULT_CONTENT_ENRICHMENT_FALLBACK_MODEL,
+  );
+  assert.equal(
+    resolveContentEnrichmentFallbackModel({
+      GEMINI_CONTENT_ENRICHMENT_FALLBACK_MODEL: "gemini-2.5-flash-lite",
+    }),
+    DEFAULT_CONTENT_ENRICHMENT_FALLBACK_MODEL,
+  );
+  assert.equal(
+    resolveContentEnrichmentEmergencyModel({}),
+    DEFAULT_CONTENT_ENRICHMENT_EMERGENCY_MODEL,
   );
 });
 
@@ -251,6 +263,43 @@ test("quota da OpenAI aciona Gemini e circuito evita novas tentativas inúteis",
   assert.equal(second.metadata.chamadas_realizadas, 1);
   assert.equal(openaiCalls, 1);
   assert.equal(geminiCalls, 2);
+  resetOpenAIContentEnrichmentCircuit();
+});
+
+test("modelo Gemini aposentado avança para a contingência estável", async () => {
+  resetOpenAIContentEnrichmentCircuit();
+  const geminiModels: string[] = [];
+  const result = await enrichContentBlocksWithOpenAI(request(), {
+    model: "gpt-primary",
+    fallbackModel: "gemini-retired",
+    emergencyModel: "gemini-stable",
+    maxAttempts: 1,
+    environment: {
+      CONTENT_ENRICHMENT_OPENAI_COOLDOWN_MS: "60000",
+      CONTENT_ENRICHMENT_GEMINI_COOLDOWN_MS: "60000",
+    },
+    generateStructured: async () => {
+      const error = new Error("429 insufficient_quota");
+      Object.assign(error, { status: 429 });
+      throw error;
+    },
+    generateStructuredFallback: async (call) => {
+      geminiModels.push(call.model);
+      if (call.model === "gemini-retired") {
+        const error = new Error(
+          "This model is no longer available to new users.",
+        );
+        Object.assign(error, { status: 404 });
+        throw error;
+      }
+      return richRaw();
+    },
+  });
+
+  assert.deepEqual(geminiModels, ["gemini-retired", "gemini-stable"]);
+  assert.equal(result.metadata.provider, "gemini");
+  assert.equal(result.metadata.model, "gemini-stable");
+  assert.equal(result.metadata.chamadas_realizadas, 3);
   resetOpenAIContentEnrichmentCircuit();
 });
 
