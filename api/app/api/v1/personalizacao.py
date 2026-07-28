@@ -1,6 +1,7 @@
 import colorsys
 import json
 import logging
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -31,6 +32,9 @@ from app.schemas.personalizacao import (
     MentorChatPayload,
     MentorChatResponse,
     PersonalizacaoContextoDocenteResponse,
+    PersonalizacaoGeracaoFormatoStatus,
+    PersonalizacaoGeracaoResumo,
+    PersonalizacaoGeracaoStatus,
     PersonalizacaoItemProgressoPayload,
     PersonalizacaoItemProgressoResponse,
     PersonalizacaoJobDetailResponse,
@@ -227,6 +231,416 @@ def _materials_media_status(materiais: dict[str, object] | None) -> str:
         if tipo in _MEDIA_TIPOS and isinstance(material, dict)
     ]
     return _aggregate_media_status(statuses)
+
+
+_GENERATION_REQUIRED_FORMATS = ("cards", "markdown", "audio", "apresentacao")
+_GENERATION_FORMAT_STATUS_LABELS = {
+    "sem_material": "Sem material",
+    "na_fila": "Na fila",
+    "gerando": "Gerando",
+    "pronto": "Pronto",
+    "falhou": "Falhou",
+}
+_GENERATION_STATE_DETAILS = {
+    "sem_material": ("nao_iniciada", "Sem material"),
+    "na_fila": ("fila", "Na fila para geração"),
+    "enriquecendo": ("enriquecimento", "Dividindo e ampliando o conteúdo"),
+    "gerando_midias": ("midias", "Gerando texto, áudio e apresentação"),
+    "pronto": ("concluida", "Conteúdo personalizado pronto"),
+    "parcial": ("midias", "Geração concluída parcialmente"),
+    "falhou": ("erro", "Falha na geração"),
+}
+_GENERATION_RECORD_READY = {"pronto", "ready", "completed", "succeeded"}
+_GENERATION_RECORD_PROCESSING = {
+    "pending",
+    "processing",
+    "processando",
+    "processando_midias",
+}
+_GENERATION_RECORD_FAILED = {"failed", "falha", "failed_quality", "error"}
+_GENERATION_ERROR_MESSAGES = {
+    "microservice_midia_incompativel_ou_indisponivel": (
+        "Serviço de mídia temporariamente indisponível; "
+        "a geração será tentada novamente."
+    ),
+}
+
+
+def _as_datetime(value: object) -> datetime | None:
+    if isinstance(value, datetime):
+        return value
+    if not isinstance(value, str) or not value.strip():
+        return None
+    try:
+        return datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def _datetime_rank(value: object) -> float:
+    parsed = _as_datetime(value)
+    if parsed is None:
+        return float("-inf")
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc).timestamp()
+    return parsed.timestamp()
+
+
+def _latest_datetime(*values: object) -> datetime | None:
+    parsed = [item for item in (_as_datetime(value) for value in values) if item is not None]
+    return max(parsed, key=_datetime_rank) if parsed else None
+
+
+def _content_blocks_total(record: dict[str, Any] | None) -> int:
+    if not isinstance(record, dict):
+        return 0
+    plano = record.get("plano") if isinstance(record.get("plano"), dict) else {}
+    enrichment = (
+        plano.get("content_enrichment")
+        if isinstance(plano.get("content_enrichment"), dict)
+        else {}
+    )
+    blocks = enrichment.get("blocos")
+    if isinstance(blocks, list):
+        return len(blocks)
+    metadata = enrichment.get("metadata") if isinstance(enrichment.get("metadata"), dict) else {}
+    try:
+        return max(0, int(metadata.get("blocos_gerados") or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _material_error(material: dict[str, Any] | None) -> str | None:
+    if not isinstance(material, dict):
+        return None
+    metadata = material.get("metadata") if isinstance(material.get("metadata"), dict) else {}
+    return _pick_string(
+        material.get("erro"),
+        material.get("error"),
+        metadata.get("erro"),
+        metadata.get("error"),
+        metadata.get("failure_reason"),
+    )
+
+
+def _record_error(record: dict[str, Any] | None) -> str | None:
+    if not isinstance(record, dict):
+        return None
+    materiais = record.get("materiais") if isinstance(record.get("materiais"), dict) else {}
+    raw_error = materiais.get("erro")
+    if isinstance(raw_error, dict):
+        message = _pick_string(raw_error.get("mensagem"), raw_error.get("message"))
+        if message:
+            return message
+    elif isinstance(raw_error, str) and raw_error.strip():
+        return raw_error.strip()
+    for material in materiais.values():
+        error = _material_error(material if isinstance(material, dict) else None)
+        if error:
+            return error
+    return None
+
+
+def _normalize_generation_error(*values: object) -> tuple[str | None, str | None]:
+    raw_error = _pick_string(*values)
+    if raw_error is None:
+        return None, None
+    friendly = _GENERATION_ERROR_MESSAGES.get(raw_error)
+    return (friendly or raw_error), (raw_error if friendly else None)
+
+
+def _generation_format(
+    *,
+    status: str,
+    arquivo_url: str | None = None,
+    erro: str | None = None,
+) -> PersonalizacaoGeracaoFormatoStatus:
+    return PersonalizacaoGeracaoFormatoStatus(
+        status=status,
+        label=_GENERATION_FORMAT_STATUS_LABELS[status],
+        arquivo_url=arquivo_url,
+        erro=erro,
+    )
+
+
+def _record_generation_formats(
+    record: dict[str, Any] | None,
+) -> dict[str, PersonalizacaoGeracaoFormatoStatus]:
+    materiais = (
+        record.get("materiais")
+        if isinstance(record, dict) and isinstance(record.get("materiais"), dict)
+        else {}
+    )
+    plano = (
+        record.get("plano")
+        if isinstance(record, dict) and isinstance(record.get("plano"), dict)
+        else {}
+    )
+    record_status = (
+        str(record.get("status") or "").strip().lower() if isinstance(record, dict) else ""
+    )
+    raw_generated = (
+        record.get("formatos_gerados")
+        if isinstance(record, dict) and isinstance(record.get("formatos_gerados"), list)
+        else []
+    )
+    generated = {
+        str(item).strip().lower()
+        for item in raw_generated
+        if isinstance(item, str) and item.strip()
+    }
+    raw_planned = plano.get("formatos") if isinstance(plano.get("formatos"), list) else []
+    planned = {
+        str(item).strip().lower()
+        for item in raw_planned
+        if isinstance(item, str) and item.strip()
+    }
+    cards_ids = plano.get("cards_personalizados_ids")
+    if isinstance(cards_ids, list) and cards_ids:
+        generated.add("cards")
+
+    names = list(_GENERATION_REQUIRED_FORMATS)
+    if isinstance(materiais.get("pdf"), dict):
+        names.append("pdf")
+
+    result: dict[str, PersonalizacaoGeracaoFormatoStatus] = {}
+    for name in names:
+        material = materiais.get(name)
+        if isinstance(material, dict):
+            normalized = _normalize_media_status(material)
+            format_status = {
+                "ready": "pronto",
+                "pending": "gerando",
+                "partial": "falhou",
+                "failed": "falhou",
+            }[normalized]
+            result[name] = _generation_format(
+                status=format_status,
+                arquivo_url=_pick_string(material.get("arquivo_url")),
+                erro=_material_error(material),
+            )
+            continue
+
+        if name in generated:
+            result[name] = _generation_format(status="pronto")
+        elif record_status in _GENERATION_RECORD_PROCESSING and (
+            name in planned or name in _GENERATION_REQUIRED_FORMATS
+        ):
+            result[name] = _generation_format(status="gerando")
+        elif record_status in _GENERATION_RECORD_FAILED and (
+            name in planned or name in _GENERATION_REQUIRED_FORMATS
+        ):
+            result[name] = _generation_format(
+                status="falhou",
+                erro=_record_error(record),
+            )
+        elif record_status in _GENERATION_RECORD_READY and name in _GENERATION_REQUIRED_FORMATS:
+            # O novo contrato exige os quatro formatos. Um registro marcado
+            # pronto sem um deles é parcial, não um sucesso silencioso.
+            result[name] = _generation_format(
+                status="falhou",
+                erro="Formato obrigatório não foi persistido.",
+            )
+        else:
+            result[name] = _generation_format(status="sem_material")
+    return result
+
+
+def _record_is_current_for_target(
+    record: dict[str, Any] | None,
+    target: dict[str, Any] | None,
+) -> bool:
+    if not isinstance(record, dict):
+        return False
+    if not isinstance(target, dict):
+        return True
+    if target.get("personalizacao_id") is not None:
+        return str(target.get("personalizacao_id")) == str(record.get("id"))
+    return _datetime_rank(record.get("updated_at") or record.get("gerado_em")) >= _datetime_rank(
+        target.get("updated_at") or target.get("created_at")
+    )
+
+
+def _build_generation_status(
+    *,
+    record: dict[str, Any] | None,
+    target: dict[str, Any] | None,
+) -> PersonalizacaoGeracaoStatus:
+    target_status = (
+        str(target.get("status") or "").strip().lower() if isinstance(target, dict) else ""
+    )
+    record_status = (
+        str(record.get("status") or "").strip().lower() if isinstance(record, dict) else ""
+    )
+    record_is_current = _record_is_current_for_target(record, target)
+    formatos = _record_generation_formats(record)
+
+    state = "sem_material"
+    if target_status == "pending":
+        state = "na_fila"
+    elif target_status == "processing":
+        state = (
+            "gerando_midias"
+            if record_is_current and isinstance(record, dict)
+            else "enriquecendo"
+        )
+    elif target_status == "failed":
+        state = "falhou"
+    elif isinstance(record, dict):
+        ready_count = sum(
+            formatos[name].status == "pronto"
+            for name in _GENERATION_REQUIRED_FORMATS
+        )
+        failed_count = sum(
+            formatos[name].status == "falhou"
+            for name in _GENERATION_REQUIRED_FORMATS
+        )
+        generating_count = sum(
+            formatos[name].status in {"na_fila", "gerando"}
+            for name in _GENERATION_REQUIRED_FORMATS
+        )
+        if record_status in _GENERATION_RECORD_PROCESSING or generating_count:
+            state = "gerando_midias"
+        elif record_status in _GENERATION_RECORD_FAILED:
+            state = "parcial" if ready_count else "falhou"
+        elif record_status == "partial" or failed_count:
+            state = "parcial"
+        elif record_status in _GENERATION_RECORD_READY:
+            state = "pronto"
+        elif ready_count:
+            state = "parcial" if ready_count < len(_GENERATION_REQUIRED_FORMATS) else "pronto"
+
+    if state in {"na_fila", "enriquecendo"}:
+        override_status = "na_fila" if state == "na_fila" else "gerando"
+        formatos = {
+            name: _generation_format(
+                status=override_status,
+                arquivo_url=current.arquivo_url,
+                erro=current.erro,
+            )
+            for name, current in formatos.items()
+        }
+    elif state == "falhou" and not record_is_current:
+        formatos = {
+            name: (
+                current
+                if current.status == "pronto"
+                else _generation_format(
+                    status="falhou",
+                    arquivo_url=current.arquivo_url,
+                    erro=_pick_string(
+                        target.get("last_error") if isinstance(target, dict) else None,
+                        target.get("job_last_error") if isinstance(target, dict) else None,
+                        current.erro,
+                    ),
+                )
+            )
+            for name, current in formatos.items()
+        }
+
+    ready_formats = sum(
+        formatos[name].status == "pronto"
+        for name in _GENERATION_REQUIRED_FORMATS
+    )
+    total_formats = len(_GENERATION_REQUIRED_FORMATS)
+    if state == "sem_material":
+        progress = 0
+    elif state == "na_fila":
+        progress = 10
+    elif state == "enriquecendo":
+        progress = 35
+    elif state == "gerando_midias":
+        progress = min(95, 60 + round((ready_formats / total_formats) * 35))
+    elif state == "pronto":
+        progress = 100
+    elif state == "parcial":
+        progress = min(95, max(60, round((ready_formats / total_formats) * 100)))
+    else:
+        progress = (
+            min(95, round((ready_formats / total_formats) * 100))
+            if record_is_current
+            else 0
+        )
+
+    blocks_total = _content_blocks_total(record)
+    has_persisted_media = bool(
+        isinstance(record, dict)
+        and isinstance(record.get("materiais"), dict)
+        and any(
+            isinstance(value, dict)
+            for key, value in record["materiais"].items()
+            if key in _MEDIA_TIPOS
+        )
+    )
+    blocks_completed = (
+        blocks_total
+        if state in {"pronto", "parcial"}
+        or (state == "gerando_midias" and record_is_current)
+        or (state == "falhou" and record_is_current and has_persisted_media)
+        else 0
+    )
+
+    etapa, label = _GENERATION_STATE_DETAILS[state]
+    error, error_code = _normalize_generation_error(
+        target.get("last_error") if isinstance(target, dict) else None,
+        target.get("job_last_error") if isinstance(target, dict) else None,
+        _record_error(record),
+    )
+    return PersonalizacaoGeracaoStatus(
+        status=state,
+        etapa=etapa,
+        label=label,
+        etapa_label=label,
+        progresso_percentual=progress,
+        job_id=str(target["job_id"]) if isinstance(target, dict) and target.get("job_id") else None,
+        target_id=(
+            int(target["id"])
+            if isinstance(target, dict) and target.get("id") is not None
+            else None
+        ),
+        erro=error,
+        erro_codigo=error_code,
+        blocos_total=blocks_total,
+        blocos_concluidos=blocks_completed,
+        formatos=formatos,
+        updated_at=_latest_datetime(
+            target.get("updated_at") if isinstance(target, dict) else None,
+            target.get("job_updated_at") if isinstance(target, dict) else None,
+            record.get("updated_at") if isinstance(record, dict) else None,
+            record.get("gerado_em") if isinstance(record, dict) else None,
+        ),
+    )
+
+
+def _build_generation_summary(
+    perfis: list[PersonalizacaoPerfilItem],
+) -> PersonalizacaoGeracaoResumo:
+    statuses = [item.geracao for item in perfis]
+    counts: dict[str, int] = {}
+    for generation in statuses:
+        counts[generation.status] = counts.get(generation.status, 0) + 1
+    active = sum(
+        counts.get(status, 0)
+        for status in ("na_fila", "enriquecendo", "gerando_midias")
+    )
+    failed = counts.get("falhou", 0)
+    return PersonalizacaoGeracaoResumo(
+        total_perfis=len(statuses),
+        perfis_prontos=counts.get("pronto", 0),
+        perfis_ativos=active,
+        perfis_parciais=counts.get("parcial", 0),
+        perfis_falhos=failed,
+        perfis_sem_material=counts.get("sem_material", 0),
+        perfis_em_andamento=active,
+        perfis_com_falha=failed,
+        progresso_percentual=(
+            round(sum(item.progresso_percentual for item in statuses) / len(statuses))
+            if statuses
+            else 0
+        ),
+        estados=counts,
+        updated_at=_latest_datetime(*(item.updated_at for item in statuses)),
+    )
 
 
 def _normalize_profile_name(value: str | None) -> str:
@@ -723,6 +1137,8 @@ def _to_job_target_response(record: dict) -> PersonalizacaoJobTargetResponse:
         aluno_id=str(record["aluno_id"]),
         topico_id=int(record["topico_id"]),
         conteudo_id=record.get("conteudo_id"),
+        brainhex_profile_key=record.get("brainhex_profile_key"),
+        is_profile_template=bool(record.get("is_profile_template", False)),
         status=str(record["status"]),
         attempts=int(record.get("attempts") or 0),
         last_error=record.get("last_error"),
@@ -1497,8 +1913,9 @@ async def listar_personalizacoes_por_perfil(
     """Visao docente: personalizacao de um (classe x topico) lado a lado pelos 7 perfis BrainHex.
 
     Para cada perfil retorna o plano (formato_prioritario, formatos, tom/estilo), os
-    design_tokens (preview da paleta) e os materiais da personalizacao mais recente daquele
-    perfil, alem da contagem de alunos da turma cujo perfil dominante e o perfil em questao.
+    design_tokens (preview da paleta), os materiais e o andamento do pipeline da
+    personalizacao mais recente daquele perfil, alem da contagem de alunos da
+    turma cujo perfil dominante e o perfil em questao.
     """
     access_repo = AccessRepository(session)
     owns_class = await access_repo.professor_owns_classe(
@@ -1511,6 +1928,7 @@ async def listar_personalizacoes_por_perfil(
         )
 
     personalizacao_repo = ConteudoPersonalizadoRepository(session)
+    jobs_repo = PersonalizacaoJobsRepository(session)
     classe_repo = ConteudoClasseRepository(session)
     topic_class_id = await classe_repo.buscar_classe_id_por_topico(topico_id)
     if topic_class_id != classe_id:
@@ -1544,6 +1962,11 @@ async def listar_personalizacoes_por_perfil(
         perfil_key = personalizacao_repo._normalize_profile_key(aluno.get("perfil_dominante"))
         contagem_por_perfil[perfil_key] = contagem_por_perfil.get(perfil_key, 0) + 1
 
+    latest_targets = await jobs_repo.buscar_targets_mais_recentes_por_perfil(
+        classe_id=classe_id,
+        topico_id=topico_id,
+        conteudo_id=conteudo_id,
+    )
     perfis: list[PersonalizacaoPerfilItem] = []
     total_com_material = 0
     for perfil in _BRAINHEX_PROFILES:
@@ -1561,6 +1984,20 @@ async def listar_personalizacoes_por_perfil(
             personalizacao_response.design_tokens
             if personalizacao_response is not None
             else _build_design_tokens(perfil)
+        )
+        generation_record = (
+            {
+                **record,
+                "materiais": personalizacao_response.materiais,
+                "plano": personalizacao_response.plano,
+                "formatos_gerados": personalizacao_response.formatos_gerados,
+            }
+            if record and personalizacao_response
+            else record
+        )
+        generation = _build_generation_status(
+            record=generation_record,
+            target=latest_targets.get(perfil),
         )
 
         perfis.append(
@@ -1581,6 +2018,7 @@ async def listar_personalizacoes_por_perfil(
                 materiais=personalizacao_response.materiais if personalizacao_response else None,
                 total_alunos=contagem_por_perfil.get(perfil, 0),
                 gerado_em=personalizacao_response.gerado_em if personalizacao_response else None,
+                geracao=generation,
             )
         )
 
@@ -1591,6 +2029,7 @@ async def listar_personalizacoes_por_perfil(
         conteudo_titulo=conteudo_titulo,
         total_perfis_com_material=total_com_material,
         perfis=perfis,
+        geracao_resumo=_build_generation_summary(perfis),
     )
 
 

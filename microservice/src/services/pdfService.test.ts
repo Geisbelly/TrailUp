@@ -85,6 +85,14 @@ test("nao aceita caminho de Chrome configurado que nao existe", () => {
   );
 });
 
+test("resolve o Chrome instalado dentro do artefato do microservico", () => {
+  const executablePath = resolvePresentationExecutablePath({});
+  assert.match(
+    executablePath,
+    /node_modules[\\/]\.puppeteer_cache[\\/]/,
+  );
+});
+
 test("configuracao do browser inclui protecao para memoria compartilhada do Render", () => {
   const options = presentationBrowserLaunchOptions();
   assert.ok(options.executablePath);

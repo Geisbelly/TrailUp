@@ -28,7 +28,7 @@ const API_BASE_URL_CANDIDATES = Array.from(
 
 const REQUEST_TIMEOUT_MS = Number(import.meta.env.VITE_APITRAIUP_TIMEOUT_MS ?? 20000);
 
-type JobPayload = {
+export type PersonalizacaoJobPayload = {
   classe_id: number;
   aluno_id?: string;
   topico_ids?: number[];
@@ -37,19 +37,124 @@ type JobPayload = {
   trigger_source?: string;
 };
 
+export type PersonalizacaoJobMetadata = {
+  conteudo_ids?: unknown;
+  topico_ids?: unknown;
+  reason?: unknown;
+  [key: string]: unknown;
+};
+
 export type PersonalizacaoJobStatus = {
   id: string;
   kind: string;
   status: string;
   classe_id: number;
   aluno_id?: string | null;
+  topico_id?: number | null;
+  conteudo_id?: number | null;
+  trigger_source?: string;
+  payload: PersonalizacaoJobMetadata;
   total_targets: number;
   processed_targets: number;
   error_count: number;
   created_at: string;
   updated_at: string;
   last_error?: string | null;
+  started_at?: string | null;
+  finished_at?: string | null;
 };
+
+export type PersonalizacaoJobTargetStatus = {
+  id: number;
+  job_id: string;
+  aluno_id: string;
+  topico_id: number;
+  conteudo_id?: number | null;
+  status: string;
+  attempts: number;
+  last_error?: string | null;
+  personalizacao_id?: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PersonalizacaoJobDetail = PersonalizacaoJobStatus & {
+  targets?: PersonalizacaoJobTargetStatus[];
+};
+
+const ACTIVE_JOB_STATUSES = new Set(["pending", "processing", "partial"]);
+
+export function isPersonalizacaoJobActive(job: Pick<PersonalizacaoJobStatus, "status">): boolean {
+  return ACTIVE_JOB_STATUSES.has(String(job.status).trim().toLowerCase());
+}
+
+function parsePositiveInteger(value: unknown): number | null {
+  const parsed = typeof value === "number" ? value : Number(String(value ?? "").trim());
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+export function getPersonalizacaoJobContentIds(
+  job: Pick<PersonalizacaoJobStatus, "conteudo_id" | "payload">
+): number[] {
+  const ids = new Set<number>();
+  const directId = parsePositiveInteger(job.conteudo_id);
+  if (directId != null) ids.add(directId);
+
+  const payloadIds = job.payload?.conteudo_ids;
+  if (Array.isArray(payloadIds)) {
+    for (const value of payloadIds) {
+      const id = parsePositiveInteger(value);
+      if (id != null) ids.add(id);
+    }
+  }
+
+  return [...ids];
+}
+
+export type PersonalizacaoJobsSummary = {
+  activeCount: number;
+  processedTargets: number;
+  totalTargets: number;
+  errorCount: number;
+  contentIds: number[];
+  lastError: string | null;
+};
+
+export function summarizePersonalizacaoJobs(
+  jobs: PersonalizacaoJobStatus[]
+): PersonalizacaoJobsSummary {
+  const activeJobs = jobs.filter(isPersonalizacaoJobActive);
+  const scopedJobs = activeJobs.length > 0
+    ? activeJobs
+    : jobs.slice(0, 1);
+
+  return {
+    activeCount: activeJobs.length,
+    processedTargets: scopedJobs.reduce(
+      (total, job) => total + Math.max(0, Number(job.processed_targets) || 0),
+      0
+    ),
+    totalTargets: scopedJobs.reduce(
+      (total, job) => total + Math.max(0, Number(job.total_targets) || 0),
+      0
+    ),
+    errorCount: scopedJobs.reduce(
+      (total, job) =>
+        total +
+        Math.max(
+          0,
+          Number(job.error_count) || 0,
+          job.last_error || job.status === "failed" ? 1 : 0
+        ),
+      0
+    ),
+    contentIds: [
+      ...new Set(scopedJobs.flatMap((job) => getPersonalizacaoJobContentIds(job))),
+    ],
+    lastError:
+      scopedJobs.find((job) => String(job.last_error ?? "").trim())?.last_error?.trim() ?? null,
+  };
+}
 
 const AUTH_ERROR_PATTERN =
   /token invalido|token inv[aá]lido|token expirado|audience do token|assinatura do token|formato de token|authorization bearer token obrigatorio|token ausente/i;
@@ -168,29 +273,41 @@ async function apiRequest<T>(path: string, accessToken: string, init?: RequestIn
   );
 }
 
-export async function enqueueEnrollmentJob(accessToken: string, payload: JobPayload) {
-  return apiRequest("/api/v1/personalizar/jobs/enrollment", accessToken, {
+export async function enqueueEnrollmentJob(
+  accessToken: string,
+  payload: PersonalizacaoJobPayload
+): Promise<PersonalizacaoJobDetail> {
+  return apiRequest<PersonalizacaoJobDetail>("/api/v1/personalizar/jobs/enrollment", accessToken, {
     method: "POST",
     body: JSON.stringify({ trigger_source: "web_console", ...payload }),
   });
 }
 
-export async function enqueueCleanupJob(accessToken: string, payload: JobPayload) {
-  return apiRequest("/api/v1/personalizar/jobs/student-cleanup", accessToken, {
+export async function enqueueCleanupJob(
+  accessToken: string,
+  payload: PersonalizacaoJobPayload
+): Promise<PersonalizacaoJobDetail> {
+  return apiRequest<PersonalizacaoJobDetail>("/api/v1/personalizar/jobs/student-cleanup", accessToken, {
     method: "POST",
     body: JSON.stringify({ trigger_source: "web_console", ...payload }),
   });
 }
 
-export async function enqueueClassDeltaJob(accessToken: string, payload: JobPayload) {
-  return apiRequest("/api/v1/personalizar/jobs/class-delta", accessToken, {
+export async function enqueueClassDeltaJob(
+  accessToken: string,
+  payload: PersonalizacaoJobPayload
+): Promise<PersonalizacaoJobDetail> {
+  return apiRequest<PersonalizacaoJobDetail>("/api/v1/personalizar/jobs/class-delta", accessToken, {
     method: "POST",
     body: JSON.stringify({ trigger_source: "web_console", ...payload }),
   });
 }
 
-export async function enqueueFullSyncJob(accessToken: string, payload: JobPayload) {
-  return apiRequest("/api/v1/personalizar/jobs/full-sync", accessToken, {
+export async function enqueueFullSyncJob(
+  accessToken: string,
+  payload: PersonalizacaoJobPayload
+): Promise<PersonalizacaoJobDetail> {
+  return apiRequest<PersonalizacaoJobDetail>("/api/v1/personalizar/jobs/full-sync", accessToken, {
     method: "POST",
     body: JSON.stringify({ trigger_source: "web_console", ...payload }),
   });

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type {
   Atividade,
@@ -18,7 +18,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, FileText, Workflow, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  FileText,
+  LoaderCircle,
+  Maximize2,
+  Pencil,
+  Plus,
+  Trash2,
+  Workflow,
+  ZoomIn,
+  ZoomOut,
+} from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -29,7 +41,13 @@ import { useTopicGraph } from "./useTopicGraph";
 import { useTopicDataLoaders } from "./useTopicDataLoaders";
 import { useTopicCrud } from "./useTopicCrud";
 import { updateContentOrder } from "./topicsApi";
-import { enqueueClassDeltaJob, listPersonalizacaoJobs, type PersonalizacaoJobStatus } from "./personalizacaoJobsApi";
+import {
+  enqueueClassDeltaJob,
+  isPersonalizacaoJobActive,
+  listPersonalizacaoJobs,
+  summarizePersonalizacaoJobs,
+  type PersonalizacaoJobStatus,
+} from "./personalizacaoJobsApi";
 import { parseOptionalPositiveScore } from "@/lib/question-score";
 
 export default function TopicsManager() {
@@ -49,6 +67,9 @@ export default function TopicsManager() {
   const [isSaving, setIsSaving] = useState(false);
   const [isClassDialogOpen, setIsClassDialogOpen] = useState(false);
   const [recentJobs, setRecentJobs] = useState<PersonalizacaoJobStatus[]>([]);
+  const [jobsRefreshRevision, setJobsRefreshRevision] = useState(0);
+  const [jobsStatusError, setJobsStatusError] = useState<string | null>(null);
+  const hasActiveJobsRef = useRef(false);
   const [formData, setFormData] = useState({
     nome: "",
     descricao: "",
@@ -184,6 +205,21 @@ export default function TopicsManager() {
     setQuestions,
   });
 
+  const rememberEnqueuedJob = useCallback(
+    (job: PersonalizacaoJobStatus) => {
+      if (String(job.classe_id) !== selectedClassFilter) return;
+      hasActiveJobsRef.current =
+        isPersonalizacaoJobActive(job) || hasActiveJobsRef.current;
+      setRecentJobs((current) => [
+        job,
+        ...current.filter((item) => item.id !== job.id),
+      ].slice(0, 6));
+      setJobsStatusError(null);
+      setJobsRefreshRevision((revision) => revision + 1);
+    },
+    [selectedClassFilter]
+  );
+
   const {
     handleCreateContent: createContentHandler,
     handleDeleteContent: deleteContentHandler,
@@ -213,12 +249,13 @@ export default function TopicsManager() {
       if (session?.access_token && selectedClassFilter && updates.length < 0) {
         try {
           const { topico_ids, conteudo_ids } = await fetchClassContextIds(Number(selectedClassFilter));
-          await enqueueClassDeltaJob(session.access_token, {
+          const job = await enqueueClassDeltaJob(session.access_token, {
             classe_id: Number(selectedClassFilter),
             topico_ids,
             conteudo_ids,
             reason: "reordenacao_topicos_console",
           });
+          rememberEnqueuedJob(job);
         } catch (error) {
           console.error("[TopicsManager] Falha ao enfileirar class-delta apos salvar ordem:", error);
           toast.warning("Ordem salva, mas o job de personalização não foi enfileirado.");
@@ -227,12 +264,13 @@ export default function TopicsManager() {
       if (session?.access_token && selectedClassFilter) {
         try {
           const { topico_ids, conteudo_ids } = await fetchClassContextIds(Number(selectedClassFilter));
-          await enqueueClassDeltaJob(session.access_token, {
+          const job = await enqueueClassDeltaJob(session.access_token, {
             classe_id: Number(selectedClassFilter),
             topico_ids,
             conteudo_ids,
             reason: "reordenacao_topicos_console",
           });
+          rememberEnqueuedJob(job);
         } catch (error) {
           console.error("[TopicsManager] Falha ao enfileirar class-delta apos reordenacao:", error);
           toast.warning("Ordem atualizada, mas o job de personalização não foi enfileirado.");
@@ -246,23 +284,64 @@ export default function TopicsManager() {
   }, [loadData]);
 
   useEffect(() => {
+    let cancelled = false;
+    let pollTimer: number | undefined;
+
+    const scheduleNextLoad = (delayMs: number) => {
+      if (cancelled) return;
+      const hiddenTabDelay =
+        typeof document !== "undefined" && document.visibilityState === "hidden"
+          ? Math.max(delayMs, 30_000)
+          : delayMs;
+      pollTimer = window.setTimeout(() => {
+        void loadJobs();
+      }, hiddenTabDelay);
+    };
+
     const loadJobs = async () => {
       if (!session?.access_token || !selectedClassFilter) {
+        hasActiveJobsRef.current = false;
         setRecentJobs([]);
+        setJobsStatusError(null);
         return;
       }
+
+      let requestFailed = false;
       try {
         const response = await listPersonalizacaoJobs(session.access_token, {
           classeId: Number(selectedClassFilter),
           limit: 6,
         });
-        setRecentJobs(response.itens ?? []);
-      } catch {
-        setRecentJobs([]);
+        if (cancelled) return;
+        const jobs = response.itens ?? [];
+        hasActiveJobsRef.current = jobs.some(isPersonalizacaoJobActive);
+        setRecentJobs(jobs);
+        setJobsStatusError(null);
+      } catch (error) {
+        if (cancelled) return;
+        requestFailed = true;
+        setJobsStatusError(
+          error instanceof Error ? error.message : "Não foi possível atualizar o status."
+        );
+      }
+
+      if (cancelled) return;
+      if (requestFailed) {
+        scheduleNextLoad(hasActiveJobsRef.current ? 10_000 : 30_000);
+      } else {
+        // Jobs em execucao mudam rapido; o polling ocioso descobre geracoes
+        // disparadas pelo editor de conteudos sem manter uma consulta agressiva.
+        scheduleNextLoad(hasActiveJobsRef.current ? 3_000 : 15_000);
       }
     };
+
     void loadJobs();
-  }, [selectedClassFilter, session?.access_token]);
+
+    return () => {
+      cancelled = true;
+      if (pollTimer != null) window.clearTimeout(pollTimer);
+    };
+  }, [jobsRefreshRevision, selectedClassFilter, session?.access_token]);
 
   // Reordena automaticamente os topicos de cada classe com base nas dependencias (depende -> prerequisito)
   useEffect(() => {
@@ -373,12 +452,13 @@ export default function TopicsManager() {
       if (session?.access_token) {
         try {
           const { topico_ids, conteudo_ids } = await fetchClassContextIds(parseInt(targetClasseId, 10));
-          await enqueueClassDeltaJob(session.access_token, {
+          const job = await enqueueClassDeltaJob(session.access_token, {
             classe_id: parseInt(targetClasseId, 10),
             topico_ids,
             conteudo_ids,
             reason: editingTopic ? "edicao_topico_console" : "novo_topico_console",
           });
+          rememberEnqueuedJob(job);
         } catch (error) {
           console.error("[TopicsManager] Falha ao enfileirar class-delta apos salvar topico:", error);
           toast.warning("Topico salvo, mas o job de personalização não foi enfileirado.");
@@ -408,12 +488,13 @@ export default function TopicsManager() {
       if (session?.access_token) {
         try {
           const { topico_ids, conteudo_ids } = await fetchClassContextIds(topic.classe_id);
-          await enqueueClassDeltaJob(session.access_token, {
+          const job = await enqueueClassDeltaJob(session.access_token, {
             classe_id: topic.classe_id,
             topico_ids,
             conteudo_ids,
             reason: "remocao_topico_console",
           });
+          rememberEnqueuedJob(job);
         } catch (error) {
           console.error("[TopicsManager] Falha ao enfileirar class-delta apos remover topico:", error);
           toast.warning("Tópico removido, mas o job de personalização não foi enfileirado.");
@@ -457,12 +538,13 @@ export default function TopicsManager() {
       if (session?.access_token && selectedClassFilter) {
         try {
           const { topico_ids, conteudo_ids } = await fetchClassContextIds(Number(selectedClassFilter));
-          await enqueueClassDeltaJob(session.access_token, {
+          const job = await enqueueClassDeltaJob(session.access_token, {
             classe_id: Number(selectedClassFilter),
             topico_ids,
             conteudo_ids,
             reason: "edicao_dependencias_topicos_console",
           });
+          rememberEnqueuedJob(job);
         } catch (error) {
           console.error("[TopicsManager] Falha ao enfileirar class-delta apos salvar dependencias:", error);
           toast.warning("Dependências salvas, mas o job de personalização não foi enfileirado.");
@@ -485,12 +567,13 @@ export default function TopicsManager() {
       if (session?.access_token && selectedClassFilter) {
         try {
           const { topico_ids, conteudo_ids } = await fetchClassContextIds(Number(selectedClassFilter));
-          await enqueueClassDeltaJob(session.access_token, {
+          const job = await enqueueClassDeltaJob(session.access_token, {
             classe_id: Number(selectedClassFilter),
             topico_ids,
             conteudo_ids,
             reason: "reordenacao_topicos_console",
           });
+          rememberEnqueuedJob(job);
         } catch (error) {
           console.error("[TopicsManager] Falha ao enfileirar class-delta apos salvar ordem:", error);
           toast.warning("Ordem salva, mas o job de personalizacao nao foi enfileirado.");
@@ -709,10 +792,29 @@ export default function TopicsManager() {
   };
 
   const hasData = useMemo(() => topicos.length > 0, [topicos.length]);
-  const runningJobs = useMemo(
-    () => recentJobs.filter((job) => ["pending", "processing", "partial"].includes(job.status)),
-    [recentJobs]
-  );
+  const jobsSummary = useMemo(() => summarizePersonalizacaoJobs(recentJobs), [recentJobs]);
+  const latestJobStatus = recentJobs[0]?.status?.trim().toLowerCase() ?? "";
+  const jobsStatusTitle = [jobsSummary.lastError, jobsStatusError].filter(Boolean).join("\n");
+  const jobsStatusLabel =
+    jobsSummary.activeCount > 0
+      ? `${jobsSummary.activeCount} ${
+          jobsSummary.activeCount === 1 ? "geração" : "gerações"
+        } em andamento`
+      : latestJobStatus === "completed"
+        ? "Personalização concluída"
+        : latestJobStatus === "failed"
+          ? "Personalização com falha"
+          : latestJobStatus === "cancelled"
+            ? "Personalização cancelada"
+            : recentJobs.length > 0
+              ? `Personalização: ${latestJobStatus || "aguardando"}`
+              : "Status temporariamente indisponível";
+  const jobsStatusTone =
+    jobsSummary.activeCount > 0
+      ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
+      : latestJobStatus === "completed" && jobsSummary.errorCount === 0
+        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+        : "border-destructive/30 bg-destructive/10 text-destructive";
 
   const activeConnectorStart = useMemo(() => {
     if (!draggingConnector.fromId || !draggingConnector.type) return null;
@@ -795,9 +897,54 @@ export default function TopicsManager() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2 items-center">
-          {runningJobs.length > 0 && (
-            <div className="px-2.5 py-1 rounded-full border border-amber-500/30 bg-amber-500/10 text-[11px] font-semibold text-amber-300">
-              {runningJobs.length} job{runningJobs.length > 1 ? "s" : ""} de personalização em andamento
+          {(recentJobs.length > 0 || jobsStatusError) && (
+            <div
+              role="status"
+              aria-live="polite"
+              title={jobsStatusTitle || undefined}
+              className={`flex max-w-full flex-wrap items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${jobsStatusTone}`}
+            >
+              {jobsSummary.activeCount > 0 ? (
+                <LoaderCircle className="h-3 w-3 shrink-0 animate-spin" aria-hidden="true" />
+              ) : latestJobStatus === "completed" && jobsSummary.errorCount === 0 ? (
+                <CheckCircle2 className="h-3 w-3 shrink-0" aria-hidden="true" />
+              ) : (
+                <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden="true" />
+              )}
+              <span>{jobsStatusLabel}</span>
+              {jobsSummary.totalTargets > 0 && (
+                <>
+                  <span aria-hidden="true">•</span>
+                  <span>
+                    {jobsSummary.processedTargets}/{jobsSummary.totalTargets} alvos
+                  </span>
+                </>
+              )}
+              {jobsSummary.contentIds.length > 0 && (
+                <>
+                  <span aria-hidden="true">•</span>
+                  <span>
+                    {jobsSummary.contentIds.length}{" "}
+                    {jobsSummary.contentIds.length === 1 ? "conteúdo" : "conteúdos"}
+                  </span>
+                </>
+              )}
+              {jobsSummary.errorCount > 0 && (
+                <>
+                  <span aria-hidden="true">•</span>
+                  <span>
+                    {jobsSummary.errorCount}{" "}
+                    {jobsSummary.errorCount === 1 ? "erro" : "erros"}
+                  </span>
+                </>
+              )}
+              {jobsStatusError && recentJobs.length > 0 && (
+                <>
+                  <span aria-hidden="true">•</span>
+                  <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  <span>atualização pendente</span>
+                </>
+              )}
             </div>
           )}
           <Select
@@ -1183,4 +1330,3 @@ export default function TopicsManager() {
     </div>
   );
 }
-

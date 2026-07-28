@@ -83,6 +83,59 @@ export type PersonalizacaoResponse = {
   updated_at?: string | null;
 };
 
+export type GeracaoConteudoStatus =
+  | "sem_material"
+  | "na_fila"
+  | "enriquecendo"
+  | "gerando_midias"
+  | "pronto"
+  | "parcial"
+  | "falhou";
+
+export type GeracaoFormatoStatus =
+  | "sem_material"
+  | "na_fila"
+  | "gerando"
+  | "pronto"
+  | "falhou";
+
+export type GeracaoFormato = {
+  status: GeracaoFormatoStatus;
+  label?: string | null;
+  arquivo_url?: string | null;
+  erro?: string | null;
+};
+
+export type GeracaoPersonalizacao = {
+  status: GeracaoConteudoStatus;
+  label?: string | null;
+  etapa?: string | null;
+  etapa_label?: string | null;
+  progresso_percentual: number;
+  job_id?: string | null;
+  target_id?: number | string | null;
+  erro?: string | null;
+  erro_codigo?: string | null;
+  blocos_total: number;
+  blocos_concluidos: number;
+  formatos: Partial<Record<"cards" | "markdown" | "pdf" | "audio" | "apresentacao", GeracaoFormato>>;
+  updated_at?: string | null;
+};
+
+export type GeracaoConteudoResumo = {
+  total_perfis?: number;
+  perfis_prontos?: number;
+  perfis_ativos?: number;
+  perfis_em_andamento?: number;
+  perfis_parciais?: number;
+  perfis_falhos?: number;
+  perfis_com_falha?: number;
+  perfis_sem_material?: number;
+  progresso_percentual?: number;
+  estados?: Partial<Record<GeracaoConteudoStatus, number>>;
+  updated_at?: string | null;
+};
+
 export type PersonalizacaoPerfilItem = {
   perfil: string;
   perfil_label: string;
@@ -96,6 +149,11 @@ export type PersonalizacaoPerfilItem = {
   materiais?: Record<string, unknown> | null;
   total_alunos: number;
   gerado_em?: string | null;
+  /**
+   * Ausente apenas enquanto o console conversa com uma versão antiga da API.
+   * O endpoint novo sempre devolve o estado, inclusive `sem_material`.
+   */
+  geracao?: GeracaoPersonalizacao | null;
 };
 
 export type PersonalizacaoPorPerfilResponse = {
@@ -104,6 +162,7 @@ export type PersonalizacaoPorPerfilResponse = {
   conteudo_id?: number | null;
   conteudo_titulo?: string | null;
   total_perfis_com_material: number;
+  geracao_resumo?: GeracaoConteudoResumo | null;
   perfis: PersonalizacaoPerfilItem[];
 };
 

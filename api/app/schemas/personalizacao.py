@@ -213,6 +213,64 @@ class PersonalizacaoContextoDocenteResponse(BaseModel):
     progresso_itens: list[PersonalizacaoItemProgressoResponse] = Field(default_factory=list)
 
 
+class PersonalizacaoGeracaoFormatoStatus(BaseModel):
+    """Estado de uma mídia dentro da geração personalizada mais recente."""
+
+    status: Literal["sem_material", "na_fila", "gerando", "pronto", "falhou"] = (
+        "sem_material"
+    )
+    label: str = "Sem material"
+    arquivo_url: str | None = None
+    erro: str | None = None
+
+
+class PersonalizacaoGeracaoStatus(BaseModel):
+    """Andamento do pipeline conteúdo -> enriquecimento -> mídias."""
+
+    status: Literal[
+        "sem_material",
+        "na_fila",
+        "enriquecendo",
+        "gerando_midias",
+        "pronto",
+        "parcial",
+        "falhou",
+    ] = "sem_material"
+    etapa: Literal[
+        "nao_iniciada",
+        "fila",
+        "enriquecimento",
+        "midias",
+        "concluida",
+        "erro",
+    ] = "nao_iniciada"
+    label: str = "Sem material"
+    etapa_label: str = "Sem material"
+    progresso_percentual: int = Field(default=0, ge=0, le=100)
+    job_id: str | None = None
+    target_id: int | None = None
+    erro: str | None = None
+    erro_codigo: str | None = None
+    blocos_total: int = Field(default=0, ge=0)
+    blocos_concluidos: int = Field(default=0, ge=0)
+    formatos: dict[str, PersonalizacaoGeracaoFormatoStatus] = Field(default_factory=dict)
+    updated_at: datetime | None = None
+
+
+class PersonalizacaoGeracaoResumo(BaseModel):
+    total_perfis: int = 0
+    perfis_prontos: int = 0
+    perfis_ativos: int = 0
+    perfis_parciais: int = 0
+    perfis_falhos: int = 0
+    perfis_sem_material: int = 0
+    perfis_em_andamento: int = 0
+    perfis_com_falha: int = 0
+    progresso_percentual: int = Field(default=0, ge=0, le=100)
+    estados: dict[str, int] = Field(default_factory=dict)
+    updated_at: datetime | None = None
+
+
 class PersonalizacaoPerfilItem(BaseModel):
     """Visao por perfil BrainHex de uma personalizacao (classe x topico)."""
 
@@ -228,6 +286,7 @@ class PersonalizacaoPerfilItem(BaseModel):
     materiais: dict[str, Any] | None = None
     total_alunos: int = 0
     gerado_em: datetime | None = None
+    geracao: PersonalizacaoGeracaoStatus = Field(default_factory=PersonalizacaoGeracaoStatus)
 
 
 class PersonalizacaoPorPerfilResponse(BaseModel):
@@ -239,6 +298,9 @@ class PersonalizacaoPorPerfilResponse(BaseModel):
     conteudo_titulo: str | None = None
     total_perfis_com_material: int = 0
     perfis: list[PersonalizacaoPerfilItem] = Field(default_factory=list)
+    geracao_resumo: PersonalizacaoGeracaoResumo = Field(
+        default_factory=PersonalizacaoGeracaoResumo
+    )
 
 
 class PersonalizacaoJobPayload(BaseModel):
@@ -256,6 +318,8 @@ class PersonalizacaoJobTargetResponse(BaseModel):
     aluno_id: str
     topico_id: int
     conteudo_id: int | None = None
+    brainhex_profile_key: str | None = None
+    is_profile_template: bool = False
     status: str
     attempts: int
     last_error: str | None = None

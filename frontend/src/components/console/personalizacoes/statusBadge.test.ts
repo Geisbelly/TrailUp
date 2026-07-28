@@ -1,9 +1,32 @@
 import { describe, it, expect } from "vitest";
-import { getPersonalizacaoStatusBadge } from "./statusBadge";
+import {
+  getFormatoStatusBadge,
+  getPersonalizacaoStatusBadge,
+  isGeracaoStatusAtivo,
+} from "./statusBadge";
 
 const NOW = new Date("2026-07-27T12:00:00.000Z");
 
 describe("getPersonalizacaoStatusBadge", () => {
+  it.each([
+    ["sem_material", "Sem material", "outline"],
+    ["na_fila", "Na fila", "secondary"],
+    ["enriquecendo", "Enriquecendo", "secondary"],
+    ["gerando_midias", "Gerando mídias", "secondary"],
+    ["pronto", "Pronto", "default"],
+    ["parcial", "Parcial", "secondary"],
+    ["falhou", "Falhou", "destructive"],
+  ] as const)("prioriza o novo status %s", (geracaoStatus, label, variant) => {
+    expect(
+      getPersonalizacaoStatusBadge({
+        temPersonalizacao: false,
+        geracaoStatus,
+        status: "pronto",
+        now: NOW,
+      })
+    ).toEqual({ label, variant });
+  });
+
   it("sem personalizacao -> Sem material", () => {
     expect(getPersonalizacaoStatusBadge({ temPersonalizacao: false, now: NOW })).toEqual({
       label: "Sem material",
@@ -109,6 +132,27 @@ describe("getPersonalizacaoStatusBadge", () => {
     expect(getPersonalizacaoStatusBadge({ temPersonalizacao: true, now: NOW })).toEqual({
       label: "Pronto",
       variant: "default",
+    });
+  });
+});
+
+describe("status operacional da geração", () => {
+  it("ativa polling apenas para fila, enriquecimento e geração de mídias", () => {
+    expect(isGeracaoStatusAtivo("na_fila")).toBe(true);
+    expect(isGeracaoStatusAtivo("enriquecendo")).toBe(true);
+    expect(isGeracaoStatusAtivo("gerando_midias")).toBe(true);
+    expect(isGeracaoStatusAtivo("pronto")).toBe(false);
+    expect(isGeracaoStatusAtivo("falhou")).toBe(false);
+  });
+
+  it("usa o label específico devolvido para a mídia", () => {
+    expect(getFormatoStatusBadge("gerando", "Sintetizando áudio")).toEqual({
+      label: "Sintetizando áudio",
+      variant: "secondary",
+    });
+    expect(getFormatoStatusBadge("falhou")).toEqual({
+      label: "Falhou",
+      variant: "destructive",
     });
   });
 });
