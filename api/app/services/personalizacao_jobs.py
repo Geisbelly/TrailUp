@@ -21,7 +21,11 @@ from app.repositories.personalizacao_jobs import PersonalizacaoJobsRepository
 from app.repositories.personalizacao_progresso import PersonalizacaoProgressoRepository
 from app.services.classe_mapa_tema import gerar_classe_mapa_tema
 from app.services.content_enrichment import enrich_content_blocks
-from app.services.media_agents import disparar_brainhex_async
+from app.services.media_agents import brainhex_contract_ready, disparar_brainhex_async
+from app.services.media_contract import (
+    MEDIA_PIPELINE_VERSION,
+    PRESENTATION_ENGINE_VERSION,
+)
 from app.services.personalizacao import (
     _build_profile_editorial_context,
     _materialize_and_upload_media_assets,
@@ -158,6 +162,13 @@ def _incomplete_brainhex_media_for_generation(
             not isinstance(metadata, dict)
             or metadata.get("status") != "completed"
             or metadata.get("generation_key") != generation_key
+            or (
+                media_kind == "apresentacao"
+                and (
+                    metadata.get("engine") != PRESENTATION_ENGINE_VERSION
+                    or metadata.get("media_pipeline_version") != MEDIA_PIPELINE_VERSION
+                )
+            )
         ):
             incomplete.append(media_kind)
     return incomplete
@@ -646,6 +657,12 @@ async def _process_media_render_target(
 
     # Jobs media_render são legados — BrainHex é responsável por gerar as mídias.
     # Redireciona disparando BrainHex para o personalizacao_id já existente.
+    if not await brainhex_contract_ready(settings=app.state.settings):
+        return {
+            "deferred": True,
+            "reason": "microservice_midia_incompativel_ou_indisponivel",
+        }
+
     if job.get("kind") in _MEDIA_RENDER_KINDS:
         personalizacao_id = target.get("personalizacao_id")
         if personalizacao_id is not None:
@@ -659,6 +676,22 @@ async def _process_media_render_target(
                     topico_id=topico_id,
                     conteudo_id=conteudo_id,
                     aluno_id=aluno_id,
+                    page_size=int(
+                        getattr(
+                            app.state.settings,
+                            "personalizacao_source_page_size",
+                            100,
+                        )
+                        or 100
+                    ),
+                    max_items=int(
+                        getattr(
+                            app.state.settings,
+                            "personalizacao_max_context_sources",
+                            400,
+                        )
+                        or 400
+                    ),
                 )
                 supabase_base = str(getattr(app.state.settings, "supabase_url", "") or "").strip()
                 fontes = []

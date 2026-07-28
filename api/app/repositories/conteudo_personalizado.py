@@ -5,6 +5,10 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.settings import get_settings
+from app.services.media_contract import (
+    MEDIA_PIPELINE_VERSION,
+    PRESENTATION_ENGINE_VERSION,
+)
 from app.services.storage import BUCKET, build_public_storage_url
 
 
@@ -711,10 +715,21 @@ class ConteudoPersonalizadoRepository:
                     materiais -> 'apresentacao' -> 'metadata' ->> 'generation_key',
                     ''
                   ) = :completed_generation_key
+                  AND COALESCE(
+                    materiais -> 'apresentacao' -> 'metadata' ->> 'engine',
+                    ''
+                  ) = :completed_presentation_engine
+                  AND COALESCE(
+                    materiais -> 'apresentacao' -> 'metadata'
+                      ->> 'media_pipeline_version',
+                    ''
+                  ) = :completed_media_pipeline_version
                 )
                 """
             )
             params["completed_generation_key"] = preserve_completed_generation_key
+            params["completed_presentation_engine"] = PRESENTATION_ENGINE_VERSION
+            params["completed_media_pipeline_version"] = MEDIA_PIPELINE_VERSION
 
         result = await self.session.execute(
             text(
@@ -787,6 +802,15 @@ class ConteudoPersonalizadoRepository:
                       materiais -> 'apresentacao' -> 'metadata' ->> 'generation_key',
                       ''
                     ) = :generation_key
+                    AND COALESCE(
+                      materiais -> 'apresentacao' -> 'metadata' ->> 'engine',
+                      ''
+                    ) = :presentation_engine
+                    AND COALESCE(
+                      materiais -> 'apresentacao' -> 'metadata'
+                        ->> 'media_pipeline_version',
+                      ''
+                    ) = :media_pipeline_version
                   )
                   AND (
                     status IN ('failed', 'falha', 'failed_quality', 'partial', 'pronto')
@@ -804,6 +828,8 @@ class ConteudoPersonalizadoRepository:
                 "ciclo_id": ciclo_id,
                 "source_hash": source_hash,
                 "generation_key": generation_key,
+                "presentation_engine": PRESENTATION_ENGINE_VERSION,
+                "media_pipeline_version": MEDIA_PIPELINE_VERSION,
                 "stale_processing_min": max(1, int(stale_processing_min)),
             },
         )

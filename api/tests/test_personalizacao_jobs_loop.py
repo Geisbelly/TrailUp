@@ -24,9 +24,26 @@ from app.services.personalizacao_jobs import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _brainhex_contract_is_ready(monkeypatch):
+    monkeypatch.setattr(
+        jobs_module,
+        "brainhex_contract_ready",
+        AsyncMock(return_value=True),
+    )
+
+
 def test_assert_brainhex_media_completed_requires_all_formats() -> None:
     generation_key = "ciclo-1:hash-1"
     completed = {"metadata": {"status": "completed", "generation_key": generation_key}}
+    completed_presentation = {
+        "metadata": {
+            "status": "completed",
+            "generation_key": generation_key,
+            "engine": jobs_module.PRESENTATION_ENGINE_VERSION,
+            "media_pipeline_version": jobs_module.MEDIA_PIPELINE_VERSION,
+        }
+    }
     _assert_brainhex_media_completed(
         {
             "ciclo_id": "ciclo-1",
@@ -35,7 +52,7 @@ def test_assert_brainhex_media_completed_requires_all_formats() -> None:
             "materiais": {
                 "audio": completed,
                 "markdown": completed,
-                "apresentacao": completed,
+                "apresentacao": completed_presentation,
             },
         },
         ciclo_id="ciclo-1",
@@ -89,6 +106,32 @@ def test_current_generation_completion_ignores_materials_from_old_generation() -
             generation_key="ciclo-2:hash-2",
         )
         is False
+    )
+
+
+def test_current_generation_completion_rejects_legacy_presentation_engine() -> None:
+    generation_key = "ciclo-2:hash-2"
+    completed = {
+        "metadata": {
+            "status": "completed",
+            "generation_key": generation_key,
+        }
+    }
+    record = {
+        "ciclo_id": "ciclo-2",
+        "source_hash": "hash-2",
+        "materiais": {
+            "audio": completed,
+            "markdown": completed,
+            "apresentacao": completed,
+        },
+    }
+
+    assert not _has_completed_current_generation(
+        record,
+        ciclo_id="ciclo-2",
+        source_hash="hash-2",
+        generation_key=generation_key,
     )
 
 
@@ -597,6 +640,50 @@ def _existing_record(status: str = "processando_midias") -> dict:
     }
 
 
+@pytest.mark.asyncio
+async def test_target_defers_before_db_mutation_when_media_contract_is_unavailable(
+    monkeypatch,
+) -> None:
+    readiness = AsyncMock(return_value=False)
+    lookup = AsyncMock()
+    dispatch = AsyncMock()
+    monkeypatch.setattr(jobs_module, "brainhex_contract_ready", readiness)
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.buscar_mais_recente_por_perfil",
+        lookup,
+    )
+    monkeypatch.setattr(jobs_module, "disparar_brainhex_async", dispatch)
+
+    app = SimpleNamespace(state=SimpleNamespace(settings=SimpleNamespace()))
+    job = {
+        "id": "job-contract",
+        "classe_id": 32,
+        "kind": "class_delta_sync",
+        "payload": {},
+    }
+    target = {
+        "id": 590,
+        "aluno_id": "b49f2e21-a6f9-4c8d-9533-5a32bb219754",
+        "topico_id": 121,
+        "conteudo_id": None,
+    }
+
+    result = await _process_media_render_target(
+        app=app,
+        session=_FakeSession(is_stuck=False),
+        job=job,
+        target=target,
+    )
+
+    assert result == {
+        "deferred": True,
+        "reason": "microservice_midia_incompativel_ou_indisponivel",
+    }
+    readiness.assert_awaited_once_with(settings=app.state.settings)
+    lookup.assert_not_awaited()
+    dispatch.assert_not_awaited()
+
+
 def _completed_record(existing: dict) -> dict:
     generation_key = f"{existing['ciclo_id']}:{existing['source_hash']}"
     completed_material = {
@@ -605,13 +692,20 @@ def _completed_record(existing: dict) -> dict:
             "generation_key": generation_key,
         }
     }
+    completed_presentation = {
+        "metadata": {
+            **completed_material["metadata"],
+            "engine": jobs_module.PRESENTATION_ENGINE_VERSION,
+            "media_pipeline_version": jobs_module.MEDIA_PIPELINE_VERSION,
+        }
+    }
     return {
         **existing,
         "status": "pronto",
         "materiais": {
             "audio": completed_material,
             "markdown": completed_material,
-            "apresentacao": completed_material,
+            "apresentacao": completed_presentation,
         },
     }
 
@@ -774,6 +868,73 @@ async def test_process_media_render_target_retries_when_existing_record_is_stuck
     assert dispatch_mock.await_args.kwargs["content_blocks"] == [{"id": "bloco-01"}]
     assert dispatch_mock.await_args.kwargs["wait_for_completion"] is True
     assert claim_mock.await_args.kwargs["stale_processing_min"] >= 38
+
+
+@pytest.mark.asyncio
+async def test_process_media_render_target_replaces_legacy_presentation_metadata(
+    monkeypatch,
+) -> None:
+    """Um PDF legado completed da mesma geracao deve ser reservado e regenerado."""
+    existing = _completed_record(_existing_record(status="pronto"))
+    existing["materiais"]["apresentacao"]["metadata"].pop("engine")
+    existing["materiais"]["apresentacao"]["metadata"].pop("media_pipeline_version")
+    claimed = {**existing, "status": "processando_midias"}
+    completed = _completed_record(claimed)
+
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.buscar_mais_recente_por_perfil",
+        AsyncMock(return_value=existing),
+    )
+    claim_mock = AsyncMock(return_value=claimed)
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.claim_retry_incomplete_generation",
+        claim_mock,
+    )
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.buscar_por_id",
+        AsyncMock(return_value=completed),
+    )
+    monkeypatch.setattr(
+        jobs_module,
+        "fetch_personalizacao_context",
+        AsyncMock(return_value={"source_hash": "hash-249", "fontes": []}),
+    )
+    monkeypatch.setattr(
+        jobs_module,
+        "enrich_content_blocks",
+        AsyncMock(return_value={"blocos": [{"id": "bloco-01"}]}),
+    )
+    dispatch_mock = AsyncMock(return_value=True)
+    monkeypatch.setattr(jobs_module, "disparar_brainhex_async", dispatch_mock)
+
+    app = SimpleNamespace(
+        state=SimpleNamespace(settings=SimpleNamespace(personalizacao_job_stale_processing_min=15))
+    )
+    job = {
+        "id": "job-legacy-presentation",
+        "classe_id": 32,
+        "kind": "class_delta_sync",
+        "payload": {},
+    }
+    target = {
+        "id": 583,
+        "aluno_id": existing["aluno_id"],
+        "topico_id": 117,
+        "conteudo_id": None,
+    }
+
+    result = await _process_media_render_target(
+        app=app,
+        session=_FakeSession(is_stuck=False),
+        job=job,
+        target=target,
+    )
+
+    assert result["record"] == completed
+    assert result["retried_stuck"] is False
+    assert result["retried_failed"] is False
+    claim_mock.assert_awaited_once()
+    dispatch_mock.assert_awaited_once()
 
 
 @pytest.mark.asyncio

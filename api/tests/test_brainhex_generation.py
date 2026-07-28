@@ -134,12 +134,20 @@ async def test_gerar_conteudo_brainhex_returns_json_for_any_profile(settings, co
 @pytest.mark.asyncio
 async def test_disparar_brainhex_waits_for_completion(settings):
     settings.brainhex_api_wait_timeout_sec = 300
+    contract = {
+        "media_pipeline_version": "2026-07-28.3",
+        "presentation_engine_version": "puppeteer-html-v2",
+    }
+    mock_health = MagicMock(status_code=200)
+    mock_health.json.return_value = {"status": "ok", **contract}
     mock_response = MagicMock(status_code=200, text='{"status":"completed"}')
+    mock_response.json.return_value = {"status": "completed", **contract}
 
     with patch("httpx.AsyncClient") as mock_client_cls:
         mock_client = AsyncMock()
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
+        mock_client.get = AsyncMock(return_value=mock_health)
         mock_client.post = AsyncMock(return_value=mock_response)
         mock_client_cls.return_value = mock_client
 
@@ -164,6 +172,13 @@ async def test_disparar_brainhex_waits_for_completion(settings):
         mock_client.post.await_args.kwargs["json"]["generation_key"]
         == "ciclo-257:hash-257"
     )
+    assert mock_client.post.await_args.kwargs["json"][
+        "required_media_pipeline_version"
+    ] == "2026-07-28.3"
+    assert mock_client.post.await_args.kwargs["json"][
+        "required_presentation_engine_version"
+    ] == "puppeteer-html-v2"
+    assert mock_client_cls.call_args_list[0].kwargs["timeout"] == 30.0
     configured_timeout = mock_client_cls.call_args.kwargs["timeout"]
     assert configured_timeout.read == 300
     assert configured_timeout.connect == 60
@@ -171,12 +186,20 @@ async def test_disparar_brainhex_waits_for_completion(settings):
 
 @pytest.mark.asyncio
 async def test_disparar_brainhex_does_not_treat_legacy_202_as_completed(settings):
+    contract = {
+        "media_pipeline_version": "2026-07-28.3",
+        "presentation_engine_version": "puppeteer-html-v2",
+    }
+    mock_health = MagicMock(status_code=200)
+    mock_health.json.return_value = {"status": "ok", **contract}
     mock_response = MagicMock(status_code=202, text='{"status":"processing"}')
+    mock_response.json.return_value = {"status": "processing", **contract}
 
     with patch("httpx.AsyncClient") as mock_client_cls:
         mock_client = AsyncMock()
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
+        mock_client.get = AsyncMock(return_value=mock_health)
         mock_client.post = AsyncMock(return_value=mock_response)
         mock_client_cls.return_value = mock_client
 
@@ -193,6 +216,38 @@ async def test_disparar_brainhex_does_not_treat_legacy_202_as_completed(settings
         )
 
     assert dispatched is False
+
+
+@pytest.mark.asyncio
+async def test_disparar_brainhex_does_not_start_job_on_legacy_microservice(settings):
+    mock_health = MagicMock(status_code=200)
+    mock_health.json.return_value = {
+        "status": "ok",
+        "message": "TrailUp Alchemy Microservice is online!",
+    }
+
+    with patch("httpx.AsyncClient") as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+        mock_client.get = AsyncMock(return_value=mock_health)
+        mock_client.post = AsyncMock()
+        mock_client_cls.return_value = mock_client
+
+        dispatched = await disparar_brainhex_async(
+            settings=settings,
+            perfil="seeker",
+            fontes=[],
+            content_blocks=[{"id": "bloco-01"}],
+            personalizacao_id=257,
+            ciclo_id="ciclo-257",
+            source_hash="hash-257",
+            generation_key="ciclo-257:hash-257",
+            wait_for_completion=True,
+        )
+
+    assert dispatched is False
+    mock_client.post.assert_not_awaited()
 
 
 @pytest.mark.asyncio

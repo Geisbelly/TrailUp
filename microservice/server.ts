@@ -30,6 +30,20 @@ import { enrichSlidesWithImages } from "./src/lib/slideEnricher";
 import { validatePersonalizarBody } from "./src/lib/validators";
 import type { ContentBlock } from "./src/lib/validators";
 import { createRateLimiter } from "./src/lib/rateLimit";
+import {
+  MEDIA_PIPELINE_VERSION,
+  PRESENTATION_ENGINE_VERSION,
+  PRESENTATION_SCHEMA_VERSION,
+  buildPresentationVersionMetadata,
+  getRenderGitCommit,
+  versionStoragePath,
+} from "./src/constants/pipelineVersions";
+
+export {
+  MEDIA_PIPELINE_VERSION,
+  PRESENTATION_ENGINE_VERSION,
+  PRESENTATION_SCHEMA_VERSION,
+} from "./src/constants/pipelineVersions";
 
 const log = createLogger({ ctx: "brainhex" });
 
@@ -239,7 +253,13 @@ async function archiveToSupabase(params: {
       },
       apresentacao: {
         payload:      pdfPayloadObj,
-        metadata:     { status: pdfStatus, media_kind: "apresentacao", generation_key: fence.generationKey, updated_at: now(), ...(pdfUrl ? { bucket } : {}) },
+        metadata:     {
+          status: pdfStatus,
+          media_kind: "apresentacao",
+          ...buildPresentationVersionMetadata(fence.generationKey),
+          updated_at: now(),
+          ...(pdfUrl ? { bucket } : {}),
+        },
         arquivo_url:  pdfUrl,
         storage_path: pdfUrl ? pdfPath : null,
         ...(pdfUrl ? { bucket, mime_type: "application/pdf" } : {}),
@@ -566,6 +586,7 @@ export interface AppOptions {
   corsOrigin?:           string;
   allowPrivateFonteUrls?: boolean;
   personalizacaoJobRunner?: typeof runPersonalizacaoJobWithTimeout;
+  renderGitCommit?:       string | null;
   /**
    * Quando true, o 404 catch-all não é registrado aqui — o middleware da SPA
    * (Vite em dev / dist em prod) é montado depois, em startServer (async).
@@ -582,6 +603,7 @@ export function buildApp(opts: AppOptions = {}): express.Application {
     corsOrigin,
     allowPrivateFonteUrls = false,
     personalizacaoJobRunner = runPersonalizacaoJobWithTimeout,
+    renderGitCommit = getRenderGitCommit(),
     enableSpa           = false,
   } = opts;
 
@@ -651,6 +673,10 @@ export function buildApp(opts: AppOptions = {}): express.Application {
       message:  "TrailUp Alchemy Microservice is online!",
       supabase: isSupabaseConfigured(),
       auth:     Boolean(apiSharedSecret),
+      media_pipeline_version: MEDIA_PIPELINE_VERSION,
+      presentation_engine_version: PRESENTATION_ENGINE_VERSION,
+      presentation_schema: PRESENTATION_SCHEMA_VERSION,
+      render_git_commit: renderGitCommit,
     });
   });
 
@@ -759,8 +785,45 @@ export function buildApp(opts: AppOptions = {}): express.Application {
       ciclo_id,
       source_hash,
       generation_key,
+      required_media_pipeline_version: requiredMediaPipelineVersion,
+      required_presentation_engine_version: requiredPresentationEngineVersion,
       wait_for_completion: waitForCompletion,
     } = v.value;
+
+    const incompatibleVersions: Array<{
+      component: "media_pipeline" | "presentation_engine";
+      required: string;
+      actual: string;
+    }> = [];
+    if (
+      requiredMediaPipelineVersion
+      && requiredMediaPipelineVersion !== MEDIA_PIPELINE_VERSION
+    ) {
+      incompatibleVersions.push({
+        component: "media_pipeline",
+        required: requiredMediaPipelineVersion,
+        actual: MEDIA_PIPELINE_VERSION,
+      });
+    }
+    if (
+      requiredPresentationEngineVersion
+      && requiredPresentationEngineVersion !== PRESENTATION_ENGINE_VERSION
+    ) {
+      incompatibleVersions.push({
+        component: "presentation_engine",
+        required: requiredPresentationEngineVersion,
+        actual: PRESENTATION_ENGINE_VERSION,
+      });
+    }
+    if (incompatibleVersions.length > 0) {
+      return res.status(409).json({
+        status: "incompatible_version",
+        error: "versao requerida incompativel com o pipeline implantado",
+        incompatible_versions: incompatibleVersions,
+        media_pipeline_version: MEDIA_PIPELINE_VERSION,
+        presentation_engine_version: PRESENTATION_ENGINE_VERSION,
+      });
+    }
 
     const classeId    = String(classe_id ?? 0);
     const topicoId    = String(topico_id ?? 0);
@@ -783,7 +846,10 @@ export function buildApp(opts: AppOptions = {}): express.Application {
       generationKey,
     };
     const refId       = `${personalizacaoId}_${cicloStr.slice(0, 8)}`;
-    const storagePath = `brainhex/${profile}/classe-${classeId}/topico-${topicoId}`;
+    const storagePath = versionStoragePath(
+      `brainhex/${profile}/classe-${classeId}/topico-${topicoId}`,
+      generationKey,
+    );
     const bucket      = "conteudo_aluno";
 
     // No modo confiavel a conexao fica aberta ate a persistencia terminar.
@@ -834,6 +900,8 @@ export function buildApp(opts: AppOptions = {}): express.Application {
         return res.status(200).json({
           status: "completed",
           personalizacao_id: personalizacaoId,
+          media_pipeline_version: MEDIA_PIPELINE_VERSION,
+          presentation_engine_version: PRESENTATION_ENGINE_VERSION,
         });
       } catch (err: any) {
         return res.status(500).json({
@@ -844,7 +912,12 @@ export function buildApp(opts: AppOptions = {}): express.Application {
       }
     }
 
-    res.status(202).json({ status: "processing", personalizacao_id: personalizacaoId });
+    res.status(202).json({
+      status: "processing",
+      personalizacao_id: personalizacaoId,
+      media_pipeline_version: MEDIA_PIPELINE_VERSION,
+      presentation_engine_version: PRESENTATION_ENGINE_VERSION,
+    });
     setImmediate(() => {
       void executeJob().catch(() => undefined);
     });

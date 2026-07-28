@@ -10,6 +10,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Loader2, ExternalLink, FileText, Music, FileImage, NotebookPen } from "lucide-react";
 import type { PersonalizacaoPerfilItem } from "./personalizacoesApi";
+import {
+  resolveDocumentPreviewMode,
+  versionedMaterialUrl,
+  type DocumentPreviewMode,
+} from "./materialPreview";
 
 type MaterialTipo = "markdown" | "pdf" | "audio" | "apresentacao";
 
@@ -162,17 +167,14 @@ function AudioMaterialContent({ url }: { url: string }) {
   );
 }
 
-// Apresentacao (.pptx) e PDF nao renderizam nativamente no navegador. Para
-// .pptx usamos o visualizador embutido do Office (precisa de URL publica,
-// ja garantido pelo bucket publico do Supabase); para PDF o navegador exibe
-// nativamente via iframe. Se o embed falhar, o fallback "abrir em nova aba"
-// sempre funciona.
-function EmbedMaterialContent({ url, kind }: { url: string; kind: "apresentacao" | "pdf" }) {
+// PDFs sao exibidos diretamente pelo navegador. Arquivos PowerPoint legados
+// continuam usando o Office Viewer, conforme MIME/extensao do material.
+function EmbedMaterialContent({ url, mode }: { url: string; mode: DocumentPreviewMode }) {
   const [embedFailed, setEmbedFailed] = useState(false);
   const embedSrc = useMemo(() => {
-    if (kind === "pdf") return url;
+    if (mode === "pdf") return url;
     return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
-  }, [url, kind]);
+  }, [url, mode]);
 
   if (embedFailed) {
     return (
@@ -191,7 +193,7 @@ function EmbedMaterialContent({ url, kind }: { url: string; kind: "apresentacao"
     <div className="space-y-2">
       <iframe
         src={embedSrc}
-        title={kind === "pdf" ? "Pré-visualização do PDF" : "Pré-visualização da apresentação"}
+        title={mode === "pdf" ? "Pré-visualização do PDF" : "Pré-visualização da apresentação"}
         className="w-full h-[55vh] rounded-md border"
         onError={() => setEmbedFailed(true)}
       />
@@ -206,13 +208,31 @@ function EmbedMaterialContent({ url, kind }: { url: string; kind: "apresentacao"
   );
 }
 
-function MaterialTabContent({ tipo, url }: { tipo: MaterialTipo; url: string | null }) {
+function MaterialTabContent({
+  tipo,
+  material,
+  fallbackUpdatedAt,
+}: {
+  tipo: MaterialTipo;
+  material: Record<string, unknown> | null;
+  fallbackUpdatedAt?: string | null;
+}) {
+  const rawUrl = materialUrl(material);
+  const url = rawUrl
+    ? versionedMaterialUrl(rawUrl, material, fallbackUpdatedAt)
+    : null;
+
   if (!url) {
     return <p className="text-sm text-muted-foreground py-8 text-center">Este material ainda não está disponível.</p>;
   }
   if (tipo === "markdown") return <TextoMaterialContent url={url} />;
   if (tipo === "audio") return <AudioMaterialContent url={url} />;
-  return <EmbedMaterialContent url={url} kind={tipo} />;
+  return (
+    <EmbedMaterialContent
+      url={url}
+      mode={resolveDocumentPreviewMode(material, tipo)}
+    />
+  );
 }
 
 export function PerfilConteudoDialog({
@@ -264,7 +284,11 @@ export function PerfilConteudoDialog({
             </TabsList>
             {disponiveis.map(({ key }) => (
               <TabsContent key={key} value={key}>
-                <MaterialTabContent tipo={key} url={materialUrl(getMaterial(item.materiais, key))} />
+                <MaterialTabContent
+                  tipo={key}
+                  material={getMaterial(item.materiais, key)}
+                  fallbackUpdatedAt={item.personalizacao?.updated_at ?? item.gerado_em}
+                />
               </TabsContent>
             ))}
           </Tabs>

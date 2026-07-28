@@ -1,8 +1,22 @@
+from io import StringIO
 from pathlib import Path
 
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 from sqlalchemy.engine import make_url
 
 from app.db import migrations
+
+API_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _offline_alembic_config(output_buffer: StringIO | None = None) -> Config:
+    config = Config(str(API_ROOT / "alembic.ini"), output_buffer=output_buffer)
+    config.set_main_option("script_location", str(API_ROOT / "alembic"))
+    config.attributes["database_url_override"] = (
+        "postgresql://user:password@localhost:5432/trailup"
+    )
+    return config
 
 
 def test_upgrade_database_to_head_uses_project_alembic_config(monkeypatch) -> None:
@@ -33,3 +47,57 @@ def test_normalize_database_url_preserves_real_password() -> None:
     assert parsed.drivername == "postgresql+psycopg"
     assert parsed.password == "p@ss*word"
     assert "***" not in normalized
+
+
+def test_generation_fencing_rpc_repair_is_the_only_alembic_head() -> None:
+    scripts = ScriptDirectory.from_config(_offline_alembic_config())
+
+    assert scripts.get_heads() == ["20260728_03"]
+    repair = scripts.get_revision("20260728_03")
+    assert repair is not None
+    assert repair.down_revision == "20260728_02"
+
+
+def test_generation_fencing_rpc_repair_renders_complete_idempotent_offline_sql() -> None:
+    output = StringIO()
+    config = _offline_alembic_config(output)
+
+    migrations.command.upgrade(
+        config,
+        "20260728_02:20260728_03",
+        sql=True,
+    )
+    rendered = output.getvalue()
+
+    assert (
+        rendered.count(
+            "CREATE OR REPLACE FUNCTION public.merge_personalizacao_materiais_v2"
+        )
+        == 1
+    )
+    assert (
+        rendered.count(
+            "CREATE OR REPLACE FUNCTION public.mark_personalizacao_failed_v2"
+        )
+        == 1
+    )
+    assert "pg_advisory_xact_lock(p_id)" in rendered
+    assert "stale_generation para personalizacao" in rendered
+    assert "ARRAY['audio', 'markdown', 'apresentacao']" in rendered
+    assert "'generation_key', v_generation_key" in rendered
+    assert "k <> 'apresentacao'" in rendered
+    assert rendered.count("media_kind <> 'apresentacao'") == 2
+    assert rendered.count("'puppeteer-html-v2'") == 3
+    assert rendered.count("'2026-07-28.3'") == 3
+    assert (
+        "GRANT EXECUTE ON FUNCTION public.merge_personalizacao_materiais_v2"
+        in rendered
+    )
+    assert (
+        "GRANT EXECUTE ON FUNCTION public.mark_personalizacao_failed_v2"
+        in rendered
+    )
+    assert "NOTIFY pgrst, 'reload schema'" in rendered
+    assert "UPDATE alembic_version SET version_num='20260728_03'" in rendered
+    assert "DROP FUNCTION" not in rendered
+    assert "%%" not in rendered

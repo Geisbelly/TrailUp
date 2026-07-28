@@ -1,7 +1,17 @@
 import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
 import http from "node:http";
-import { buildApp } from "../server";
+import {
+  buildApp,
+  MEDIA_PIPELINE_VERSION,
+  PRESENTATION_ENGINE_VERSION,
+  PRESENTATION_SCHEMA_VERSION,
+} from "../server";
+import {
+  buildPresentationVersionMetadata,
+  generationStorageSegment,
+  versionStoragePath,
+} from "./constants/pipelineVersions";
 
 // Starts an Express app on a random port and returns base URL + close function.
 async function startTestServer(opts: Parameters<typeof buildApp>[0] = {}) {
@@ -37,6 +47,27 @@ describe("GET /api/health", () => {
       const res = await fetch(`${b}/api/health`);
       const body = await res.json() as { auth: boolean };
       assert.equal(body.auth, true);
+    } finally {
+      await c();
+    }
+  });
+
+  it("expõe as versoes do pipeline e o commit implantado no Render", async () => {
+    const { base: b, close: c } = await startTestServer({
+      renderGitCommit: "abc123render",
+    });
+    try {
+      const res = await fetch(`${b}/api/health`);
+      const body = await res.json() as {
+        media_pipeline_version: string;
+        presentation_engine_version: string;
+        presentation_schema: string;
+        render_git_commit: string;
+      };
+      assert.equal(body.media_pipeline_version, MEDIA_PIPELINE_VERSION);
+      assert.equal(body.presentation_engine_version, PRESENTATION_ENGINE_VERSION);
+      assert.equal(body.presentation_schema, PRESENTATION_SCHEMA_VERSION);
+      assert.equal(body.render_git_commit, "abc123render");
     } finally {
       await c();
     }
@@ -191,15 +222,32 @@ describe("POST /api/personalizar validação", () => {
           ciclo_id: "ciclo-257",
           source_hash: "hash-257",
           generation_key: "ciclo-257:hash-257",
+          required_media_pipeline_version: MEDIA_PIPELINE_VERSION,
+          required_presentation_engine_version: PRESENTATION_ENGINE_VERSION,
           wait_for_completion: true,
         }),
       });
 
       assert.equal(res.status, 200);
-      const body = await res.json() as { status: string; personalizacao_id: number };
+      const body = await res.json() as {
+        status: string;
+        personalizacao_id: number;
+        media_pipeline_version: string;
+        presentation_engine_version: string;
+      };
       assert.equal(body.status, "completed");
       assert.equal(body.personalizacao_id, 257);
+      assert.equal(body.media_pipeline_version, MEDIA_PIPELINE_VERSION);
+      assert.equal(body.presentation_engine_version, PRESENTATION_ENGINE_VERSION);
       assert.equal(calls.length, 1);
+      const call = calls[0] as { storagePath: string };
+      assert.equal(
+        call.storagePath,
+        versionStoragePath(
+          "brainhex/seeker/classe-0/topico-0",
+          "ciclo-257:hash-257",
+        ),
+      );
     } finally {
       await closeSync();
     }
@@ -238,6 +286,109 @@ describe("POST /api/personalizar validação", () => {
     } finally {
       await closeSync();
     }
+  });
+
+  it("rejeita versoes obrigatorias incompativeis antes de iniciar o job", async () => {
+    const calls: unknown[] = [];
+    const { base: guardedBase, close: closeGuarded } = await startTestServer({
+      personalizacaoJobRunner: async (params) => {
+        calls.push(params);
+      },
+    });
+    const basePayload = {
+      profile: "seeker",
+      personalizacao_id: 257,
+      fontes: [],
+      content_blocks: [{
+        id: "bloco-01",
+        ordem: 1,
+        conteudo_aprofundado: "Conteudo suficiente para o teste.",
+      }],
+      ciclo_id: "ciclo-257",
+      source_hash: "hash-257",
+      generation_key: "ciclo-257:hash-257",
+      wait_for_completion: true,
+    };
+    try {
+      for (const required of [
+        { required_media_pipeline_version: "2026-07-27.1" },
+        { required_presentation_engine_version: "legacy-pdf-v1" },
+      ]) {
+        const res = await fetch(`${guardedBase}/api/personalizar`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ ...basePayload, ...required }),
+        });
+        assert.equal(res.status, 409);
+        const body = await res.json() as {
+          status: string;
+          incompatible_versions: unknown[];
+          media_pipeline_version: string;
+          presentation_engine_version: string;
+        };
+        assert.equal(body.status, "incompatible_version");
+        assert.equal(body.incompatible_versions.length, 1);
+        assert.equal(body.media_pipeline_version, MEDIA_PIPELINE_VERSION);
+        assert.equal(body.presentation_engine_version, PRESENTATION_ENGINE_VERSION);
+      }
+      assert.equal(calls.length, 0);
+    } finally {
+      await closeGuarded();
+    }
+  });
+
+  it("inclui as versoes do pipeline na resposta 202", async () => {
+    const { base: asyncBase, close: closeAsync } = await startTestServer({
+      personalizacaoJobRunner: async () => undefined,
+    });
+    try {
+      const res = await fetch(`${asyncBase}/api/personalizar`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          profile: "seeker",
+          personalizacao_id: 258,
+          fontes: [],
+          content_blocks: [{
+            id: "bloco-01",
+            conteudo_aprofundado: "Conteudo suficiente para o teste.",
+          }],
+          ciclo_id: "ciclo-258",
+          source_hash: "hash-258",
+          generation_key: "ciclo-258:hash-258",
+        }),
+      });
+      assert.equal(res.status, 202);
+      const body = await res.json() as {
+        media_pipeline_version: string;
+        presentation_engine_version: string;
+      };
+      assert.equal(body.media_pipeline_version, MEDIA_PIPELINE_VERSION);
+      assert.equal(body.presentation_engine_version, PRESENTATION_ENGINE_VERSION);
+    } finally {
+      await closeAsync();
+    }
+  });
+});
+
+describe("identidade e Storage do pipeline de apresentacao", () => {
+  it("deriva caminho deterministico e distinto a partir da generation_key", () => {
+    const first = versionStoragePath("brainhex/seeker/topico-1/", "ciclo-1:hash-a");
+    const same = versionStoragePath("brainhex/seeker/topico-1", "ciclo-1:hash-a");
+    const second = versionStoragePath("brainhex/seeker/topico-1", "ciclo-2:hash-b");
+
+    assert.equal(first, same);
+    assert.notEqual(first, second);
+    assert.match(generationStorageSegment("ciclo-1:hash-a"), /^generation-[a-f0-9]{64}$/);
+  });
+
+  it("identifica engine, schema, pipeline e geracao nos metadados", () => {
+    assert.deepEqual(buildPresentationVersionMetadata("ciclo-1:hash-a"), {
+      engine: PRESENTATION_ENGINE_VERSION,
+      schema: PRESENTATION_SCHEMA_VERSION,
+      media_pipeline_version: MEDIA_PIPELINE_VERSION,
+      generation_key: "ciclo-1:hash-a",
+    });
   });
 });
 

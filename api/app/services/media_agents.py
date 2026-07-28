@@ -11,6 +11,10 @@ import httpx
 from app.core.settings import Settings
 from app.services.audio import gerar_mp3_gtts
 from app.services.llm import JsonLLMService
+from app.services.media_contract import (
+    MEDIA_PIPELINE_VERSION,
+    PRESENTATION_ENGINE_VERSION,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -266,6 +270,43 @@ _BRAINHEX_GUIDE_CONFIG: dict[str, dict[str, str]] = {
 }
 
 
+def _brainhex_contract_matches(payload: Any) -> bool:
+    return (
+        isinstance(payload, dict)
+        and payload.get("media_pipeline_version") == MEDIA_PIPELINE_VERSION
+        and payload.get("presentation_engine_version") == PRESENTATION_ENGINE_VERSION
+    )
+
+
+async def brainhex_contract_ready(*, settings: Settings) -> bool:
+    """Confirma o contrato do gerador antes de iniciar qualquer trabalho caro."""
+    brainhex_url = str(getattr(settings, "brainhex_api_url", "") or "").strip()
+    if not brainhex_url:
+        return False
+    brainhex_secret = str(getattr(settings, "brainhex_api_secret", "") or "").strip()
+    headers = {"x-api-secret": brainhex_secret} if brainhex_secret else None
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(
+                f"{brainhex_url.rstrip('/')}/api/health",
+                headers=headers,
+            )
+        payload = response.json() if response.status_code == 200 else None
+        if _brainhex_contract_matches(payload):
+            return True
+        logger.warning(
+            "brainhex_contract_ready: microservice com contrato de midia "
+            "incompativel (status=%s, esperado=%s/%s, recebido=%s)",
+            response.status_code,
+            MEDIA_PIPELINE_VERSION,
+            PRESENTATION_ENGINE_VERSION,
+            payload,
+        )
+    except Exception:
+        logger.exception("brainhex_contract_ready: falha ao consultar /api/health")
+    return False
+
+
 async def disparar_brainhex_async(
     *,
     settings: Settings,
@@ -288,6 +329,14 @@ async def disparar_brainhex_async(
     brainhex_secret = str(getattr(settings, "brainhex_api_secret", "") or "").strip()
     headers = {"x-api-secret": brainhex_secret} if brainhex_secret else None
     try:
+        if not await brainhex_contract_ready(settings=settings):
+            logger.warning(
+                "disparar_brainhex_async: geracao nao iniciada por contrato "
+                "incompativel (personalizacao_id=%s)",
+                personalizacao_id,
+            )
+            return False
+
         timeout_sec = (
             max(30, int(getattr(settings, "brainhex_api_wait_timeout_sec", 1980) or 1980))
             if wait_for_completion
@@ -309,6 +358,8 @@ async def disparar_brainhex_async(
                     "source_hash": source_hash,
                     "generation_key": generation_key,
                     "wait_for_completion": wait_for_completion,
+                    "required_media_pipeline_version": MEDIA_PIPELINE_VERSION,
+                    "required_presentation_engine_version": PRESENTATION_ENGINE_VERSION,
                 },
                 headers=headers,
             )
@@ -328,6 +379,22 @@ async def disparar_brainhex_async(
                     "(personalizacao_id=%s)",
                     personalizacao_id,
                 )
+            try:
+                response_payload = response.json()
+            except Exception:
+                response_payload = None
+            if response.status_code == expected_status and not _brainhex_contract_matches(
+                response_payload
+            ):
+                logger.warning(
+                    "disparar_brainhex_async: resposta sem confirmacao do contrato "
+                    "de midia; geracao nao confirmada "
+                    "(personalizacao_id=%s, status=%s, body=%s)",
+                    personalizacao_id,
+                    response.status_code,
+                    response.text[:500],
+                )
+                return False
             return response.status_code == expected_status
     except Exception:
         logger.exception(

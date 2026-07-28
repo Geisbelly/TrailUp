@@ -27,6 +27,10 @@ from app.repositories.materiais import MateriaisRepository
 from app.repositories.personalizacao_jobs import PersonalizacaoJobsRepository
 from app.services.behavioral_personalization import build_behavioral_personalization
 from app.services.llm import JsonLLMService, load_prompt
+from app.services.media_contract import (
+    MEDIA_PIPELINE_VERSION,
+    PRESENTATION_ENGINE_VERSION,
+)
 from app.services.media_pipeline import MultiOutputPipeline
 from app.services.storage import SupabaseStorage, build_public_storage_url
 from app.services.text_cleanup import (
@@ -59,7 +63,7 @@ _DEFAULT_GEMINI_MULTIMODAL_PRIMARY = "gemini-2.5-flash"
 _DEFAULT_GEMINI_MULTIMODAL_FALLBACK = "gemini-2.5-flash-lite"
 # Incremente sempre que prompts, enriquecimento ou geracao BrainHex mudarem de
 # forma que exija regenerar artefatos ja marcados como prontos.
-_PERSONALIZACAO_PIPELINE_VERSION = "2026-07-28.2"
+_PERSONALIZACAO_PIPELINE_VERSION = MEDIA_PIPELINE_VERSION
 _PERSONALIZACAO_MEDIA_RENDER_JOB_KIND = "media_render"
 _PERSONALIZACAO_MEDIA_RENDER_JOB_LEGACY_KIND = "personalizacao_media_render"
 _CHUNK_WINDOW = 1_000
@@ -2087,6 +2091,7 @@ def _build_source_hash(
 ) -> str:
     payload = {
         "pipeline_version": _PERSONALIZACAO_PIPELINE_VERSION,
+        "presentation_engine_version": PRESENTATION_ENGINE_VERSION,
         "classe_id": classe_id,
         "topico_id": topico_id,
         "conteudo_id": conteudo_id,
@@ -4656,6 +4661,12 @@ async def fetch_personalizacao_context(
         topico_id=topico_id,
         conteudo_id=conteudo_escopo_id,
         aluno_id=aluno_id,
+        page_size=int(
+            getattr(settings, "personalizacao_source_page_size", 100) or 100
+        ),
+        max_items=int(
+            getattr(settings, "personalizacao_max_context_sources", 400) or 400
+        ),
     )
     if not include_student_sources:
         fontes_raw = [
@@ -4906,6 +4917,12 @@ async def build_personalizacao_state(
         topico_id=resolved_topico_id,
         conteudo_id=resolved_conteudo_id,
         aluno_id=aluno_id,
+        page_size=int(
+            getattr(settings, "personalizacao_source_page_size", 100) or 100
+        ),
+        max_items=int(
+            getattr(settings, "personalizacao_max_context_sources", 400) or 400
+        ),
     )
     logger.info(
         "fontes_personalizacao.seeded=%s",
