@@ -780,7 +780,74 @@ class ConteudoPersonalizadoRepository:
         if not await self._table_has_column("status"):
             return None
         has_updated_at = await self._table_has_column("updated_at")
-        set_clauses = ["status = 'processando_midias'", "gerado_em = NOW()"]
+        set_clauses = [
+            "status = 'processando_midias'",
+            "gerado_em = NOW()",
+            """
+            materiais = COALESCE(
+              (
+                SELECT jsonb_object_agg(
+                  item.key,
+                  CASE
+                    WHEN item.key IN ('audio', 'markdown', 'apresentacao')
+                      AND NOT (
+                        COALESCE(
+                          item.value -> 'metadata' ->> 'status',
+                          ''
+                        ) = 'completed'
+                        AND COALESCE(
+                          item.value -> 'metadata' ->> 'generation_key',
+                          ''
+                        ) = :generation_key
+                        AND (
+                          item.key <> 'apresentacao'
+                          OR (
+                            COALESCE(
+                              item.value -> 'metadata' ->> 'engine',
+                              ''
+                            ) = :presentation_engine
+                            AND COALESCE(
+                              item.value -> 'metadata'
+                                ->> 'media_pipeline_version',
+                              ''
+                            ) = :media_pipeline_version
+                            AND COALESCE(
+                              item.value -> 'metadata' ->> 'design_system',
+                              ''
+                            ) = :presentation_design
+                          )
+                        )
+                      )
+                    THEN jsonb_set(
+                      item.value - 'erro' - 'error',
+                      '{metadata}',
+                      (
+                        COALESCE(
+                          item.value -> 'metadata',
+                          '{}'::jsonb
+                        )
+                        - 'erro'
+                        - 'error'
+                        - 'failure_reason'
+                        - 'error_stage'
+                      ) || jsonb_build_object(
+                        'status',
+                        'pending',
+                        'generation_key',
+                        :generation_key
+                      ),
+                      true
+                    )
+                    ELSE item.value
+                  END
+                )
+                FROM jsonb_each(COALESCE(materiais, '{}'::jsonb)) AS item
+                WHERE item.key NOT IN ('erro', 'error')
+              ),
+              '{}'::jsonb
+            )
+            """,
+        ]
         if has_updated_at:
             set_clauses.append("updated_at = NOW()")
         freshness_column = "COALESCE(updated_at, gerado_em)" if has_updated_at else "gerado_em"

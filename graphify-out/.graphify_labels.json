@@ -295,7 +295,6 @@
   "293": "10-metricas-e-analise-de-resultados.md",
   "294": "Design: nova paleta BrainHex baseada em psicologia das cores",
   "295": "mobile/README.md",
-  "296": "@config-plugins/react-native-blob-util",
   "297": "nativeContentCache.ts",
   "298": "02-fundamentacao-teorica-e-modelo-adaptativo.md",
   "299": "05-logica-e-automacoes-do-banco.md",
@@ -396,6 +395,5 @@
   "401": "mobile/arquitetura-funcionamento-geral-sistema.md",
   "403": "expo-symbols",
   "404": "@radix-ui/react-accordion",
-  "405": "expo-symbols",
   "406": "next-themes"
 }

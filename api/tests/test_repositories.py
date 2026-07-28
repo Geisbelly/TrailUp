@@ -368,7 +368,7 @@ async def test_content_status_update_preserves_materials() -> None:
 
 
 @pytest.mark.asyncio
-async def test_claim_incomplete_generation_retry_is_atomic_and_preserves_partial_materials() -> None:
+async def test_claim_incomplete_generation_retry_is_atomic_and_clears_stale_errors() -> None:
     partial_materials = {
         "audio": {
             "metadata": {
@@ -422,7 +422,14 @@ async def test_claim_incomplete_generation_retry_is_atomic_and_preserves_partial
         (sql, params) for sql, params in session.calls if "UPDATE conteudo_personalizado" in sql
     )
     assert "SET status = 'processando_midias'" in update_sql
-    assert "materiais" not in update_sql.split("WHERE", maxsplit=1)[0]
+    update_set_sql = update_sql.split("WHERE id = :id", maxsplit=1)[0]
+    assert "jsonb_object_agg" in update_set_sql
+    assert "item.key IN ('audio', 'markdown', 'apresentacao')" in update_set_sql
+    assert "item.key NOT IN ('erro', 'error')" in update_set_sql
+    assert "'failure_reason'" in update_set_sql
+    assert "'status'," in update_set_sql
+    assert "'pending'" in update_set_sql
+    assert "item.value -> 'metadata' ->> 'generation_key'" in update_set_sql
     assert "ciclo_id::text = :ciclo_id" in update_sql
     assert "COALESCE(source_hash, '') = :source_hash" in update_sql
     assert "status IN ('failed', 'falha', 'failed_quality', 'partial', 'pronto')" in update_sql
