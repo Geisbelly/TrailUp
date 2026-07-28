@@ -12,7 +12,7 @@ export const CONTENT_ENRICHMENT_PROVIDER = "openai" as const;
 export const DEFAULT_CONTENT_ENRICHMENT_MODEL = "gpt-5.6-sol" as const;
 export const CONTENT_ENRICHMENT_FALLBACK_PROVIDER = "gemini" as const;
 export const DEFAULT_CONTENT_ENRICHMENT_FALLBACK_MODEL =
-  "gemini-3-flash-preview" as const;
+  "gemini-2.5-flash-lite" as const;
 
 const DEFAULT_BATCH_SIZE = 8;
 const DEFAULT_MAX_ATTEMPTS = 3;

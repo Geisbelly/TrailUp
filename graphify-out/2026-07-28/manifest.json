@@ -3280,8 +3280,8 @@
     "semantic_hash": ""
   },
   "microservice/README.md": {
-    "mtime": 1785267239.3080242,
-    "ast_hash": "942dc78f646499be7e3175e8616ec2d4",
+    "mtime": 1785267417.18885,
+    "ast_hash": "1721ad2ef1bdedd0e086f12c80e9d350",
     "semantic_hash": ""
   },
   "microservice/index.html": {
@@ -4150,8 +4150,8 @@
     "semantic_hash": ""
   },
   "microservice/src/services/contentEnrichmentService.ts": {
-    "mtime": 1785267276.6626177,
-    "ast_hash": "9c03e0c141dacdec6e511440e8f3135e",
+    "mtime": 1785267417.1878493,
+    "ast_hash": "8cf4683b71145c31df7b6949a10f72f9",
     "semantic_hash": ""
   },
   "microservice/src/services/geminiBlockBatches.test.ts": {

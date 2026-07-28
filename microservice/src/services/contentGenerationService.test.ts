@@ -5,6 +5,7 @@ import {
   generateStructuredContentWithFallback,
   isGeminiAvailabilityError,
   resetGeminiContentGenerationCircuit,
+  resolveGeminiContentGenerationEmergencyModel,
   resolveGeminiContentGenerationModel,
   resolveOpenAIContentGenerationFallbackModel,
   type StructuredContentGenerationCall,
@@ -16,6 +17,7 @@ const call: StructuredContentGenerationCall = {
   maxOutputTokens: 32_768,
   geminiModel: "gemini-primary",
   openaiModel: "openai-fallback",
+  geminiEmergencyModel: "gemini-emergency",
 };
 
 test("mantém Gemini como modelo primário e resolve OpenAI apenas para contingência", () => {
@@ -35,6 +37,10 @@ test("mantém Gemini como modelo primário e resolve OpenAI apenas para conting�
       OPENAI_CONTENT_GENERATION_FALLBACK_MODEL: "openai-custom",
     }),
     "openai-custom",
+  );
+  assert.equal(
+    resolveGeminiContentGenerationEmergencyModel({}),
+    "gemini-2.5-flash",
   );
 });
 
@@ -123,6 +129,52 @@ test("não esconde erro de resposta inválida do Gemini como indisponibilidade",
     /JSON inválido/,
   );
   assert.equal(openaiCalls, 0);
+});
+
+test("usa Gemini alternativo quando Gemini principal e OpenAI estão sem quota", async () => {
+  resetGeminiContentGenerationCircuit();
+  const geminiModels: string[] = [];
+  let openaiCalls = 0;
+  const result = await generateStructuredContentWithFallback(call, {
+    generateWithGemini: async (currentCall) => {
+      geminiModels.push(currentCall.geminiModel);
+      if (currentCall.geminiModel === "gemini-primary") {
+        const error = new Error("RESOURCE_EXHAUSTED");
+        Object.assign(error, { status: 429 });
+        throw error;
+      }
+      return { source: "gemini-emergency" };
+    },
+    generateWithOpenAI: async () => {
+      openaiCalls += 1;
+      const error = new Error("insufficient_quota");
+      Object.assign(error, { status: 429 });
+      throw error;
+    },
+  });
+  const second = await generateStructuredContentWithFallback(call, {
+    generateWithGemini: async (currentCall) => {
+      geminiModels.push(currentCall.geminiModel);
+      return { source: "gemini-emergency-second" };
+    },
+    generateWithOpenAI: async () => {
+      openaiCalls += 1;
+      throw new Error("OpenAI não deveria ser chamada com o circuito aberto.");
+    },
+  });
+
+  assert.equal(result.provider, "gemini");
+  assert.equal(result.model, "gemini-emergency");
+  assert.deepEqual(result.value, { source: "gemini-emergency" });
+  assert.equal(second.model, "gemini-emergency");
+  assert.deepEqual(second.value, { source: "gemini-emergency-second" });
+  assert.deepEqual(geminiModels, [
+    "gemini-primary",
+    "gemini-emergency",
+    "gemini-emergency",
+  ]);
+  assert.equal(openaiCalls, 1);
+  resetGeminiContentGenerationCircuit();
 });
 
 test("reconhece indisponibilidade transitória e não confunde validação de conteúdo", () => {

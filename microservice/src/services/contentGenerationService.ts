@@ -4,6 +4,8 @@ export const DEFAULT_GEMINI_CONTENT_GENERATION_MODEL =
   "gemini-3-flash-preview" as const;
 export const DEFAULT_OPENAI_CONTENT_GENERATION_FALLBACK_MODEL =
   "gpt-5.6-sol" as const;
+export const DEFAULT_GEMINI_CONTENT_GENERATION_EMERGENCY_MODEL =
+  "gemini-2.5-flash" as const;
 
 const DEFAULT_GEMINI_UNAVAILABLE_COOLDOWN_MS = 5 * 60 * 1_000;
 const DEFAULT_OPENAI_MAX_OUTPUT_TOKENS = 65_536;
@@ -16,6 +18,7 @@ export interface StructuredContentGenerationCall {
   maxOutputTokens: number;
   geminiModel: string;
   openaiModel: string;
+  geminiEmergencyModel: string;
 }
 
 export type StructuredContentGenerator = (
@@ -102,6 +105,7 @@ export const CONTENT_GENERATION_RESPONSE_SCHEMA = {
 
 let openai: OpenAI | null = null;
 let geminiUnavailableUntil = 0;
+let openaiUnavailableUntil = 0;
 
 function getOpenAI(): OpenAI {
   if (openai) return openai;
@@ -145,6 +149,14 @@ export function resolveOpenAIContentGenerationFallbackModel(
   ).trim() || DEFAULT_OPENAI_CONTENT_GENERATION_FALLBACK_MODEL;
 }
 
+export function resolveGeminiContentGenerationEmergencyModel(
+  environment: Record<string, string | undefined> = process.env,
+): string {
+  return String(
+    environment.GEMINI_CONTENT_GENERATION_EMERGENCY_MODEL ?? "",
+  ).trim() || DEFAULT_GEMINI_CONTENT_GENERATION_EMERGENCY_MODEL;
+}
+
 function errorDetails(error: unknown): string {
   if (error instanceof Error) {
     const cause = "cause" in error ? String(error.cause ?? "") : "";
@@ -183,6 +195,33 @@ export function isGeminiAvailabilityError(error: unknown): boolean {
     "connection reset",
     "fetch failed",
     "gemini_api_key ausente",
+  ].some((marker) => details.includes(marker));
+}
+
+export function isOpenAIContentGenerationAvailabilityError(
+  error: unknown,
+): boolean {
+  const record = typeof error === "object" && error !== null
+    ? error as Record<string, unknown>
+    : {};
+  const status = Number(record.status ?? record.statusCode ?? record.code);
+  if (status === 408 || status === 429 || status >= 500) return true;
+  const details = errorDetails(error).toLowerCase();
+  return [
+    "429",
+    "current quota",
+    "insufficient_quota",
+    "rate limit",
+    "too many requests",
+    "service unavailable",
+    "temporarily unavailable",
+    "timeout",
+    "timed out",
+    "etimedout",
+    "econnreset",
+    "connection reset",
+    "fetch failed",
+    "openai_api_key ausente",
   ].some((marker) => details.includes(marker));
 }
 
@@ -232,6 +271,78 @@ async function generateStructuredWithOpenAI(
 
 export function resetGeminiContentGenerationCircuit(): void {
   geminiUnavailableUntil = 0;
+  openaiUnavailableUntil = 0;
+}
+
+async function generateAfterPrimaryGeminiFailure(
+  call: StructuredContentGenerationCall,
+  reason: string,
+  options: {
+    generateWithGemini: StructuredContentGenerator;
+    generateWithOpenAI: StructuredContentGenerator;
+    environment: Record<string, string | undefined>;
+    now: () => number;
+  },
+): Promise<StructuredContentGenerationResult> {
+  if (options.now() < openaiUnavailableUntil) {
+    return {
+      value: await options.generateWithGemini({
+        ...call,
+        geminiModel: call.geminiEmergencyModel,
+      }),
+      provider: "gemini",
+      model: call.geminiEmergencyModel,
+      fallbackFrom: "gemini",
+      fallbackReason:
+        `${reason}. Circuito temporário de indisponibilidade da OpenAI.`,
+    };
+  }
+  try {
+    return {
+      value: await options.generateWithOpenAI(call),
+      provider: "openai",
+      model: call.openaiModel,
+      fallbackFrom: "gemini",
+      fallbackReason: reason,
+    };
+  } catch (openaiError) {
+    if (!isOpenAIContentGenerationAvailabilityError(openaiError)) {
+      throw openaiError;
+    }
+    const cooldownMs = positiveInteger(
+      options.environment.CONTENT_GENERATION_OPENAI_COOLDOWN_MS,
+      DEFAULT_GEMINI_UNAVAILABLE_COOLDOWN_MS,
+      1_000,
+      60 * 60 * 1_000,
+    );
+    openaiUnavailableUntil = options.now() + cooldownMs;
+    const openaiReason = errorDetails(openaiError).slice(0, 500);
+    try {
+      return {
+        value: await options.generateWithGemini({
+          ...call,
+          geminiModel: call.geminiEmergencyModel,
+        }),
+        provider: "gemini",
+        model: call.geminiEmergencyModel,
+        fallbackFrom: "gemini",
+        fallbackReason:
+          `Gemini principal: ${reason}. OpenAI: ${openaiReason}.`,
+      };
+    } catch (emergencyError) {
+      throw new Error(
+        "Gemini principal e OpenAI estão indisponíveis, e o modelo Gemini "
+          + "alternativo também falhou.",
+        {
+          cause: {
+            gemini_primary: reason,
+            openai: openaiReason,
+            gemini_emergency: errorDetails(emergencyError).slice(0, 500),
+          },
+        },
+      );
+    }
+  }
 }
 
 export async function generateStructuredContentWithFallback(
@@ -244,13 +355,16 @@ export async function generateStructuredContentWithFallback(
     options.generateWithOpenAI ?? generateStructuredWithOpenAI;
 
   if (now() < geminiUnavailableUntil) {
-    return {
-      value: await generateWithOpenAI(call),
-      provider: "openai",
-      model: call.openaiModel,
-      fallbackFrom: "gemini",
-      fallbackReason: "circuito temporário de indisponibilidade do Gemini",
-    };
+    return generateAfterPrimaryGeminiFailure(
+      call,
+      "circuito temporário de indisponibilidade do Gemini principal",
+      {
+        generateWithGemini: options.generateWithGemini,
+        generateWithOpenAI,
+        environment,
+        now,
+      },
+    );
   }
 
   try {
@@ -271,24 +385,11 @@ export async function generateStructuredContentWithFallback(
     geminiUnavailableUntil = now() + cooldownMs;
     const reason = errorDetails(error).slice(0, 500);
 
-    try {
-      return {
-        value: await generateWithOpenAI(call),
-        provider: "openai",
-        model: call.openaiModel,
-        fallbackFrom: "gemini",
-        fallbackReason: reason,
-      };
-    } catch (fallbackError) {
-      throw new Error(
-        "Gemini está indisponível e a contingência OpenAI também falhou.",
-        {
-          cause: {
-            gemini: reason,
-            openai: errorDetails(fallbackError),
-          },
-        },
-      );
-    }
+    return generateAfterPrimaryGeminiFailure(call, reason, {
+      generateWithGemini: options.generateWithGemini,
+      generateWithOpenAI,
+      environment,
+      now,
+    });
   }
 }
