@@ -3,7 +3,7 @@ import OpenAI from "openai";
 export const DEFAULT_GEMINI_CONTENT_GENERATION_MODEL =
   "gemini-3.6-flash" as const;
 export const DEFAULT_OPENAI_CONTENT_GENERATION_FALLBACK_MODEL =
-  "gpt-5.6-sol" as const;
+  "gpt-5.4-mini" as const;
 
 const DEFAULT_GEMINI_UNAVAILABLE_COOLDOWN_MS = 5 * 60 * 1_000;
 const DEFAULT_OPENAI_MAX_OUTPUT_TOKENS = 65_536;

@@ -507,7 +507,7 @@ async def _enrich_base_blocks_with_openai(
         )
     model = (
         str(getattr(settings, "openai_content_enrichment_model", "") or "").strip()
-        or "gpt-5.6-sol"
+        or "gpt-5.4-mini"
     )
     batch_size = _bounded_int(
         getattr(settings, "content_enrichment_batch_size", _DEFAULT_BATCH_SIZE),

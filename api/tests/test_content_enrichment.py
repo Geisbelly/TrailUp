@@ -16,7 +16,7 @@ from app.services.content_enrichment import (
 def _settings() -> SimpleNamespace:
     return SimpleNamespace(
         openai_api_key="openai-secret",
-        openai_content_enrichment_model="gpt-5.6-sol",
+        openai_content_enrichment_model="gpt-5.4-mini",
         content_enrichment_batch_size=8,
         content_enrichment_max_attempts=3,
         openai_content_enrichment_max_output_tokens=32768,
@@ -48,7 +48,7 @@ def _context(*, paragraphs: int = 2) -> dict[str, Any]:
 class _OpenAIResponse:
     def __init__(self, payload: Any) -> None:
         self.output_text = json.dumps(payload, ensure_ascii=False)
-        self.model = "gpt-5.6-sol"
+        self.model = "gpt-5.4-mini"
 
 
 class _Responses:
@@ -131,10 +131,10 @@ async def test_enrichment_groups_every_source_segment_without_truncation(
         "openai_enrichment",
         "brainhex_personalization",
     ]
-    assert result["metadata"]["provider_model"] == "gpt-5.6-sol"
+    assert result["metadata"]["provider_model"] == "gpt-5.4-mini"
     assert result["metadata"]["lotes_gerados"] == 3
     assert result["metadata"]["chamadas_realizadas"] == 3
-    assert all(call["model"] == "gpt-5.6-sol" for call in captured["calls"])
+    assert all(call["model"] == "gpt-5.4-mini" for call in captured["calls"])
     assert "brainhex" not in json.dumps(captured["payloads"]).lower()
 
     submitted_blocks = [

@@ -158,7 +158,7 @@ test("consolida markdown, áudio e slides na ordem global com metadados dos lote
   first.generationProvider = "gemini";
   first.generationModel = "gemini-3-flash-preview";
   second.generationProvider = "openai";
-  second.generationModel = "gpt-5.6-sol";
+  second.generationModel = "gpt-5.4-mini";
   second.fallbackFrom = "gemini";
 
   const result = consolidateBlockBatchGenerations(
@@ -181,7 +181,7 @@ test("consolida markdown, áudio e slides na ordem global com metadados dos lote
   assert.equal(result.metadata.content_generation_provider, "mixed");
   assert.deepEqual(result.metadata.content_generation_models, [
     "gemini-3-flash-preview",
-    "gpt-5.6-sol",
+    "gpt-5.4-mini",
   ]);
   assert.equal(result.metadata.content_generation_fallback_count, 1);
   assert.deepEqual(result.metadata.batch_block_ids, [

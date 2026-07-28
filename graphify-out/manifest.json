@@ -305,8 +305,8 @@
     "semantic_hash": "ea9fc3046e6bac85cbdbfead8c6ca178"
   },
   "api/app/core/settings.py": {
-    "mtime": 1785273855.609638,
-    "ast_hash": "d8abe7ec400e473e3d6a6792ddb7665c",
+    "mtime": 1785279103.5202496,
+    "ast_hash": "7c45c6cafc5dd021c14e64c4b25757c1",
     "semantic_hash": ""
   },
   "api/app/db/__init__.py": {
@@ -3280,8 +3280,8 @@
     "semantic_hash": ""
   },
   "microservice/README.md": {
-    "mtime": 1785273855.781023,
-    "ast_hash": "ab65562fd91740b2ec35d2236c966304",
+    "mtime": 1785279103.5233598,
+    "ast_hash": "68715266ff747c94185879a908cb8c17",
     "semantic_hash": ""
   },
   "microservice/index.html": {
@@ -4010,13 +4010,13 @@
     "semantic_hash": ""
   },
   "api/app/services/content_enrichment.py": {
-    "mtime": 1785277614.0090299,
-    "ast_hash": "0509bdaa6700a0dfa509bcb5ad7958ce",
+    "mtime": 1785279103.521248,
+    "ast_hash": "f438116acc243caa5a7d40378d1a8043",
     "semantic_hash": ""
   },
   "api/tests/test_content_enrichment.py": {
-    "mtime": 1785277614.010028,
-    "ast_hash": "acf406cc21000594ba60b9488d85cebf",
+    "mtime": 1785279103.52736,
+    "ast_hash": "fb97d461bf494b0fe9eaad974953f236",
     "semantic_hash": ""
   },
   "api/app/agent/prompts/enriquecedor_blocos_conteudo.txt": {
@@ -4110,8 +4110,8 @@
     "semantic_hash": ""
   },
   "api/app/services/media_contract.py": {
-    "mtime": 1785277467.0807123,
-    "ast_hash": "e95b25e1b7eab938f7249be8ca1ca47a",
+    "mtime": 1785279103.5263584,
+    "ast_hash": "b9e6e622e663d1f34765da81cffd1d6c",
     "semantic_hash": ""
   },
   "frontend/src/components/console/personalizacoes/materialPreview.test.ts": {
@@ -4125,8 +4125,8 @@
     "semantic_hash": ""
   },
   "microservice/src/constants/pipelineVersions.ts": {
-    "mtime": 1785277467.0797143,
-    "ast_hash": "f7dd6e73edf7041bb99366c882eece0d",
+    "mtime": 1785279103.5253575,
+    "ast_hash": "7a62150ce9bb355629b6753bedc66022",
     "semantic_hash": ""
   },
   "api/alembic/versions/20260728_04_scope_personalization_by_content.py": {
@@ -4145,8 +4145,8 @@
     "semantic_hash": ""
   },
   "microservice/src/services/geminiBlockBatches.test.ts": {
-    "mtime": 1785273855.8067777,
-    "ast_hash": "22fea2c54105788285d2aba3ae694885",
+    "mtime": 1785279103.5292268,
+    "ast_hash": "e5ec70ed587ee0b817ffea7f7a72b572",
     "semantic_hash": ""
   },
   "mobile/src/utils/personalization.multicontent.test.ts": {
@@ -4190,13 +4190,13 @@
     "semantic_hash": ""
   },
   "microservice/src/services/contentGenerationService.test.ts": {
-    "mtime": 1785273855.801047,
-    "ast_hash": "406ef0f1f119f0fb794b5917d68c8135",
+    "mtime": 1785279103.52872,
+    "ast_hash": "be30ac3402d9c6fd8c241434fb9c3a8c",
     "semantic_hash": ""
   },
   "microservice/src/services/contentGenerationService.ts": {
-    "mtime": 1785273855.8020446,
-    "ast_hash": "c706cd74270ff4d84b63c063a58fc648",
+    "mtime": 1785279103.524358,
+    "ast_hash": "aaaaf52416f61d9848e61aab8e6e0a80",
     "semantic_hash": ""
   }
 }

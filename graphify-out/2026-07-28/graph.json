@@ -1253,8 +1253,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "api_app_agent_graph_builder_build_graph",
-      "community": 88,
-      "community_name": "pdfService.ts",
+      "community": 326,
+      "community_name": "5. Fluxos operacionais (sequencias)",
       "norm_label": "build_graph()"
     },
     {
@@ -1264,8 +1264,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "api_app_agent_graph_builder_py_async_sessionmaker",
-      "community": 88,
-      "community_name": "pdfService.ts",
+      "community": 326,
+      "community_name": "5. Fluxos operacionais (sequencias)",
       "norm_label": "async_sessionmaker"
     },
     {
@@ -1275,8 +1275,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "api_app_agent_graph_builder_py_asyncsession",
-      "community": 88,
-      "community_name": "pdfService.ts",
+      "community": 326,
+      "community_name": "5. Fluxos operacionais (sequencias)",
       "norm_label": "asyncsession"
     },
     {
@@ -1286,8 +1286,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "api_app_agent_graph_builder_py_any",
-      "community": 88,
-      "community_name": "pdfService.ts",
+      "community": 326,
+      "community_name": "5. Fluxos operacionais (sequencias)",
       "norm_label": "any"
     },
     {
@@ -1297,8 +1297,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "api_app_agent_graph_checkpointer",
-      "community": 326,
-      "community_name": "5. Fluxos operacionais (sequencias)",
+      "community": 88,
+      "community_name": "pdfService.ts",
       "norm_label": "checkpointer.py"
     },
     {
@@ -1308,8 +1308,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "api_app_agent_graph_checkpointer_get_checkpointer",
-      "community": 326,
-      "community_name": "5. Fluxos operacionais (sequencias)",
+      "community": 88,
+      "community_name": "pdfService.ts",
       "norm_label": "get_checkpointer()"
     },
     {
@@ -1319,8 +1319,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "api_app_agent_graph_checkpointer_py_any",
-      "community": 326,
-      "community_name": "5. Fluxos operacionais (sequencias)",
+      "community": 88,
+      "community_name": "pdfService.ts",
       "norm_label": "any"
     },
     {
@@ -1330,8 +1330,8 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "api_app_agent_graph_checkpointer_get_persistent_checkpointer",
-      "community": 326,
-      "community_name": "5. Fluxos operacionais (sequencias)",
+      "community": 88,
+      "community_name": "pdfService.ts",
       "norm_label": "get_persistent_checkpointer()"
     },
     {
@@ -1341,8 +1341,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "api_app_agent_graph_checkpointer_get_ephemeral_checkpointer",
-      "community": 326,
-      "community_name": "5. Fluxos operacionais (sequencias)",
+      "community": 88,
+      "community_name": "pdfService.ts",
       "norm_label": "get_ephemeral_checkpointer()"
     },
     {
@@ -2408,8 +2408,8 @@
       "source_location": "L93",
       "_origin": "ast",
       "id": "api_app_api_deps_ensure_professor_access",
-      "community": 126,
-      "community_name": "supabaseStorage.ts",
+      "community": 46,
+      "community_name": "PersonalizedTopicView.tsx",
       "norm_label": "ensure_professor_access()"
     },
     {
@@ -2793,8 +2793,8 @@
       "source_location": "L269",
       "_origin": "ast",
       "id": "api_app_api_v1_personalizacao_as_datetime",
-      "community": 126,
-      "community_name": "supabaseStorage.ts",
+      "community": 336,
+      "community_name": "build_behavioral_personalization",
       "norm_label": "_as_datetime()"
     },
     {
@@ -2804,8 +2804,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "api_app_api_v1_personalizacao_py_datetime",
-      "community": 126,
-      "community_name": "supabaseStorage.ts",
+      "community": 336,
+      "community_name": "build_behavioral_personalization",
       "norm_label": "datetime"
     },
     {
@@ -2815,8 +2815,8 @@
       "source_location": "L280",
       "_origin": "ast",
       "id": "api_app_api_v1_personalizacao_datetime_rank",
-      "community": 126,
-      "community_name": "supabaseStorage.ts",
+      "community": 336,
+      "community_name": "build_behavioral_personalization",
       "norm_label": "_datetime_rank()"
     },
     {
@@ -2826,8 +2826,8 @@
       "source_location": "L289",
       "_origin": "ast",
       "id": "api_app_api_v1_personalizacao_latest_datetime",
-      "community": 126,
-      "community_name": "supabaseStorage.ts",
+      "community": 336,
+      "community_name": "build_behavioral_personalization",
       "norm_label": "_latest_datetime()"
     },
     {
@@ -2925,8 +2925,8 @@
       "source_location": "L619",
       "_origin": "ast",
       "id": "api_app_api_v1_personalizacao_build_generation_summary",
-      "community": 126,
-      "community_name": "supabaseStorage.ts",
+      "community": 336,
+      "community_name": "build_behavioral_personalization",
       "norm_label": "_build_generation_summary()"
     },
     {
@@ -2936,8 +2936,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "personalizacaoperfilitem",
-      "community": 126,
-      "community_name": "supabaseStorage.ts",
+      "community": 336,
+      "community_name": "build_behavioral_personalization",
       "norm_label": "personalizacaoperfilitem"
     },
     {
@@ -3255,8 +3255,8 @@
       "source_location": "L1051",
       "_origin": "ast",
       "id": "api_app_api_v1_personalizacao_to_progresso_response",
-      "community": 126,
-      "community_name": "supabaseStorage.ts",
+      "community": 46,
+      "community_name": "PersonalizedTopicView.tsx",
       "norm_label": "_to_progresso_response()"
     },
     {
@@ -3464,8 +3464,8 @@
       "source_location": "L1910",
       "_origin": "ast",
       "id": "api_app_api_v1_personalizacao_listar_personalizacoes_por_perfil",
-      "community": 126,
-      "community_name": "supabaseStorage.ts",
+      "community": 336,
+      "community_name": "build_behavioral_personalization",
       "norm_label": "listar_personalizacoes_por_perfil()"
     },
     {
@@ -3475,8 +3475,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "personalizacaoporperfilresponse",
-      "community": 126,
-      "community_name": "supabaseStorage.ts",
+      "community": 336,
+      "community_name": "build_behavioral_personalization",
       "norm_label": "personalizacaoporperfilresponse"
     },
     {
@@ -3508,8 +3508,8 @@
       "source_location": "L2088",
       "_origin": "ast",
       "id": "api_app_api_v1_personalizacao_obter_contexto_personalizacao_docente",
-      "community": 126,
-      "community_name": "supabaseStorage.ts",
+      "community": 46,
+      "community_name": "PersonalizedTopicView.tsx",
       "norm_label": "obter_contexto_personalizacao_docente()"
     },
     {
@@ -3519,8 +3519,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "personalizacaocontextodocenteresponse",
-      "community": 126,
-      "community_name": "supabaseStorage.ts",
+      "community": 46,
+      "community_name": "PersonalizedTopicView.tsx",
       "norm_label": "personalizacaocontextodocenteresponse"
     },
     {
@@ -3629,8 +3629,8 @@
       "source_location": "L2465",
       "_origin": "ast",
       "id": "api_app_api_v1_personalizacao_listar_personalizacoes",
-      "community": 126,
-      "community_name": "supabaseStorage.ts",
+      "community": 46,
+      "community_name": "PersonalizedTopicView.tsx",
       "norm_label": "listar_personalizacoes()"
     },
     {
@@ -3640,8 +3640,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "personalizacaolistresponse",
-      "community": 126,
-      "community_name": "supabaseStorage.ts",
+      "community": 46,
+      "community_name": "PersonalizedTopicView.tsx",
       "norm_label": "personalizacaolistresponse"
     },
     {
@@ -3717,8 +3717,8 @@
       "source_location": "L1917",
       "_origin": "ast",
       "id": "api_app_api_v1_personalizacao_rationale_1917",
-      "community": 126,
-      "community_name": "supabaseStorage.ts",
+      "community": 336,
+      "community_name": "build_behavioral_personalization",
       "norm_label": "visao docente: personalizacao de um (classe x topico) lado a lado pelos 7 perfis"
     },
     {
@@ -5378,8 +5378,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "api_app_repositories_access_accessrepository",
-      "community": 46,
-      "community_name": "PersonalizedTopicView.tsx",
+      "community": 128,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "accessrepository"
     },
     {
@@ -5389,8 +5389,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "api_app_repositories_access_accessrepository_init",
-      "community": 46,
-      "community_name": "PersonalizedTopicView.tsx",
+      "community": 128,
+      "community_name": "ArvoreView.tsx",
       "norm_label": ".__init__()"
     },
     {
@@ -5400,8 +5400,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "api_app_repositories_access_py_asyncsession",
-      "community": 46,
-      "community_name": "PersonalizedTopicView.tsx",
+      "community": 128,
+      "community_name": "ArvoreView.tsx",
       "norm_label": "asyncsession"
     },
     {
@@ -5411,8 +5411,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "api_app_repositories_access_accessrepository_resolve_user_identity",
-      "community": 46,
-      "community_name": "PersonalizedTopicView.tsx",
+      "community": 128,
+      "community_name": "ArvoreView.tsx",
       "norm_label": ".resolve_user_identity()"
     },
     {
@@ -5422,8 +5422,8 @@
       "source_location": "L34",
       "_origin": "ast",
       "id": "api_app_repositories_access_accessrepository_resolve_user_role",
-      "community": 46,
-      "community_name": "PersonalizedTopicView.tsx",
+      "community": 128,
+      "community_name": "ArvoreView.tsx",
       "norm_label": ".resolve_user_role()"
     },
     {
@@ -5433,8 +5433,8 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "api_app_repositories_access_accessrepository_professor_can_access",
-      "community": 46,
-      "community_name": "PersonalizedTopicView.tsx",
+      "community": 128,
+      "community_name": "ArvoreView.tsx",
       "norm_label": ".professor_can_access()"
     },
     {
@@ -5444,8 +5444,8 @@
       "source_location": "L72",
       "_origin": "ast",
       "id": "api_app_repositories_access_accessrepository_professor_owns_classe",
-      "community": 46,
-      "community_name": "PersonalizedTopicView.tsx",
+      "community": 128,
+      "community_name": "ArvoreView.tsx",
       "norm_label": ".professor_owns_classe()"
     },
     {
@@ -5455,8 +5455,8 @@
       "source_location": "L88",
       "_origin": "ast",
       "id": "api_app_repositories_access_accessrepository_aluno_belongs_to_classe",
-      "community": 46,
-      "community_name": "PersonalizedTopicView.tsx",
+      "community": 128,
+      "community_name": "ArvoreView.tsx",
       "norm_label": ".aluno_belongs_to_classe()"
     },
     {
@@ -5466,8 +5466,8 @@
       "source_location": "L104",
       "_origin": "ast",
       "id": "api_app_repositories_access_accessrepository_get_professor_profile",
-      "community": 46,
-      "community_name": "PersonalizedTopicView.tsx",
+      "community": 128,
+      "community_name": "ArvoreView.tsx",
       "norm_label": ".get_professor_profile()"
     },
     {
@@ -5477,8 +5477,8 @@
       "source_location": "L118",
       "_origin": "ast",
       "id": "api_app_repositories_access_accessrepository_get_professor_access",
-      "community": 46,
-      "community_name": "PersonalizedTopicView.tsx",
+      "community": 128,
+      "community_name": "ArvoreView.tsx",
       "norm_label": ".get_professor_access()"
     },
     {
@@ -5488,8 +5488,8 @@
       "source_location": "L154",
       "_origin": "ast",
       "id": "api_app_repositories_access_accessrepository_list_accessible_students",
-      "community": 46,
-      "community_name": "PersonalizedTopicView.tsx",
+      "community": 128,
+      "community_name": "ArvoreView.tsx",
       "norm_label": ".list_accessible_students()"
     },
     {
@@ -5499,8 +5499,8 @@
       "source_location": "L204",
       "_origin": "ast",
       "id": "api_app_repositories_access_accessrepository_list_admin_professors",
-      "community": 46,
-      "community_name": "PersonalizedTopicView.tsx",
+      "community": 128,
+      "community_name": "ArvoreView.tsx",
       "norm_label": ".list_admin_professors()"
     },
     {
@@ -5510,8 +5510,8 @@
       "source_location": "L216",
       "_origin": "ast",
       "id": "api_app_repositories_access_accessrepository_list_admin_students",
-      "community": 46,
-      "community_name": "PersonalizedTopicView.tsx",
+      "community": 128,
+      "community_name": "ArvoreView.tsx",
       "norm_label": ".list_admin_students()"
     },
     {
@@ -5521,8 +5521,8 @@
       "source_location": "L228",
       "_origin": "ast",
       "id": "api_app_repositories_access_accessrepository_list_direct_professor_assignments",
-      "community": 46,
-      "community_name": "PersonalizedTopicView.tsx",
+      "community": 128,
+      "community_name": "ArvoreView.tsx",
       "norm_label": ".list_direct_professor_assignments()"
     },
     {
@@ -5532,8 +5532,8 @@
       "source_location": "L246",
       "_origin": "ast",
       "id": "api_app_repositories_access_accessrepository_professor_exists",
-      "community": 46,
-      "community_name": "PersonalizedTopicView.tsx",
+      "community": 128,
+      "community_name": "ArvoreView.tsx",
       "norm_label": ".professor_exists()"
     },
     {
@@ -5543,8 +5543,8 @@
       "source_location": "L261",
       "_origin": "ast",
       "id": "api_app_repositories_access_accessrepository_aluno_exists",
-      "community": 46,
-      "community_name": "PersonalizedTopicView.tsx",
+      "community": 128,
+      "community_name": "ArvoreView.tsx",
       "norm_label": ".aluno_exists()"
     },
     {
@@ -5554,8 +5554,8 @@
       "source_location": "L276",
       "_origin": "ast",
       "id": "api_app_repositories_access_accessrepository_set_professor_liberado",
-      "community": 46,
-      "community_name": "PersonalizedTopicView.tsx",
+      "community": 128,
+      "community_name": "ArvoreView.tsx",
       "norm_label": ".set_professor_liberado()"
     },
     {
@@ -5565,8 +5565,8 @@
       "source_location": "L288",
       "_origin": "ast",
       "id": "api_app_repositories_access_accessrepository_set_professor_student_access",
-      "community": 46,
-      "community_name": "PersonalizedTopicView.tsx",
+      "community": 128,
+      "community_name": "ArvoreView.tsx",
       "norm_label": ".set_professor_student_access()"
     },
     {
@@ -8205,8 +8205,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "api_app_schemas_api_analisarresponse",
-      "community": 151,
-      "community_name": "extra",
+      "community": 15,
+      "community_name": "api.py",
       "norm_label": "analisarresponse"
     },
     {
@@ -9954,8 +9954,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "api_app_services_checkpoint_retention",
-      "community": 88,
-      "community_name": "pdfService.ts",
+      "community": 259,
+      "community_name": "mobile/modelagem-dados-banco.md",
       "norm_label": "checkpoint_retention.py"
     },
     {
@@ -9965,8 +9965,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "api_app_services_checkpoint_retention_checkpointcleanupresult",
-      "community": 88,
-      "community_name": "pdfService.ts",
+      "community": 259,
+      "community_name": "mobile/modelagem-dados-banco.md",
       "norm_label": "checkpointcleanupresult"
     },
     {
@@ -9976,8 +9976,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "api_app_services_checkpoint_retention_checkpointcleanupresult_as_dict",
-      "community": 88,
-      "community_name": "pdfService.ts",
+      "community": 259,
+      "community_name": "mobile/modelagem-dados-banco.md",
       "norm_label": ".as_dict()"
     },
     {
@@ -9987,8 +9987,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "api_app_services_checkpoint_retention_cleanup_persisted_checkpoints",
-      "community": 88,
-      "community_name": "pdfService.ts",
+      "community": 259,
+      "community_name": "mobile/modelagem-dados-banco.md",
       "norm_label": "cleanup_persisted_checkpoints()"
     },
     {
@@ -10454,7 +10454,7 @@
       "norm_label": "agrupa sequencialmente em no maximo 24 blocos, mantendo todos os segmentos."
     },
     {
-      "label": "Decomp\u00f5e toda a origem e exige aprofundamento remoto antes de qualquer m\u00eddia.",
+      "label": "Separa, aprofunda e s\u00f3 ent\u00e3o libera blocos neutros para personaliza\u00e7\u00e3o.",
       "file_type": "rationale",
       "source_file": "api/app/services/content_enrichment.py",
       "source_location": "L612",
@@ -10462,7 +10462,7 @@
       "id": "api_app_services_content_enrichment_rationale_612",
       "community": 1,
       "community_name": "services/personalizacao.py",
-      "norm_label": "decompoe toda a origem e exige aprofundamento remoto antes de qualquer midia."
+      "norm_label": "separa, aprofunda e so entao libera blocos neutros para personalizacao."
     },
     {
       "label": "docx.py",
@@ -15908,8 +15908,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "api_tests_test_checkpoint_retention",
-      "community": 88,
-      "community_name": "pdfService.ts",
+      "community": 259,
+      "community_name": "mobile/modelagem-dados-banco.md",
       "norm_label": "test_checkpoint_retention.py"
     },
     {
@@ -16062,8 +16062,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "api_tests_test_checkpoint_retention_py_asyncio",
-      "community": 88,
-      "community_name": "pdfService.ts",
+      "community": 259,
+      "community_name": "mobile/modelagem-dados-banco.md",
       "norm_label": "asyncio"
     },
     {
@@ -16073,8 +16073,8 @@
       "source_location": "L58",
       "_origin": "ast",
       "id": "api_tests_test_checkpoint_retention_test_cleanup_persisted_checkpoints_deletes_in_expected_order",
-      "community": 88,
-      "community_name": "pdfService.ts",
+      "community": 259,
+      "community_name": "mobile/modelagem-dados-banco.md",
       "norm_label": "test_cleanup_persisted_checkpoints_deletes_in_expected_order()"
     },
     {
@@ -16257,7 +16257,7 @@
       "label": "test_source_segmentation_splits_large_text_without_losing_its_tail()",
       "file_type": "code",
       "source_file": "api/tests/test_content_enrichment.py",
-      "source_location": "L147",
+      "source_location": "L154",
       "_origin": "ast",
       "id": "api_tests_test_content_enrichment_test_source_segmentation_splits_large_text_without_losing_its_tail",
       "community": 1,
@@ -16268,7 +16268,7 @@
       "label": "test_enrichment_rejects_shallow_response_and_never_uses_fallback()",
       "file_type": "code",
       "source_file": "api/tests/test_content_enrichment.py",
-      "source_location": "L163",
+      "source_location": "L170",
       "_origin": "ast",
       "id": "api_tests_test_content_enrichment_test_enrichment_rejects_shallow_response_and_never_uses_fallback",
       "community": 1,
@@ -16279,7 +16279,7 @@
       "label": "test_enrichment_retries_only_the_rejected_block()",
       "file_type": "code",
       "source_file": "api/tests/test_content_enrichment.py",
-      "source_location": "L183",
+      "source_location": "L190",
       "_origin": "ast",
       "id": "api_tests_test_content_enrichment_test_enrichment_retries_only_the_rejected_block",
       "community": 1,
@@ -16290,7 +16290,7 @@
       "label": "test_enrichment_ignores_global_provider_and_always_uses_openai()",
       "file_type": "code",
       "source_file": "api/tests/test_content_enrichment.py",
-      "source_location": "L214",
+      "source_location": "L221",
       "_origin": "ast",
       "id": "api_tests_test_content_enrichment_test_enrichment_ignores_global_provider_and_always_uses_openai",
       "community": 1,
@@ -16301,7 +16301,7 @@
       "label": "test_enrichment_fails_explicitly_when_openai_is_not_configured()",
       "file_type": "code",
       "source_file": "api/tests/test_content_enrichment.py",
-      "source_location": "L232",
+      "source_location": "L239",
       "_origin": "ast",
       "id": "api_tests_test_content_enrichment_test_enrichment_fails_explicitly_when_openai_is_not_configured",
       "community": 1,
@@ -17635,8 +17635,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "api_tests_test_personalizacao_jobs_loop_py_fixture",
-      "community": 405,
-      "community_name": "_brainhex_contract_is_ready",
+      "community": 17,
+      "community_name": "HallTheme.tsx",
       "norm_label": "fixture"
     },
     {
@@ -17646,8 +17646,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "api_tests_test_personalizacao_jobs_loop_brainhex_contract_is_ready",
-      "community": 405,
-      "community_name": "_brainhex_contract_is_ready",
+      "community": 17,
+      "community_name": "HallTheme.tsx",
       "norm_label": "_brainhex_contract_is_ready()"
     },
     {
@@ -17921,8 +17921,8 @@
       "source_location": "L646",
       "_origin": "ast",
       "id": "api_tests_test_personalizacao_jobs_loop_fakescalarresult",
-      "community": 24,
-      "community_name": "services/personalizacao_jobs.py",
+      "community": 393,
+      "community_name": "wav.test.ts",
       "norm_label": "_fakescalarresult"
     },
     {
@@ -17932,8 +17932,8 @@
       "source_location": "L647",
       "_origin": "ast",
       "id": "api_tests_test_personalizacao_jobs_loop_fakescalarresult_init",
-      "community": 24,
-      "community_name": "services/personalizacao_jobs.py",
+      "community": 393,
+      "community_name": "wav.test.ts",
       "norm_label": ".__init__()"
     },
     {
@@ -17943,8 +17943,8 @@
       "source_location": "L650",
       "_origin": "ast",
       "id": "api_tests_test_personalizacao_jobs_loop_fakescalarresult_scalar",
-      "community": 24,
-      "community_name": "services/personalizacao_jobs.py",
+      "community": 393,
+      "community_name": "wav.test.ts",
       "norm_label": ".scalar()"
     },
     {
@@ -17976,8 +17976,8 @@
       "source_location": "L661",
       "_origin": "ast",
       "id": "api_tests_test_personalizacao_jobs_loop_fakesession_execute",
-      "community": 24,
-      "community_name": "services/personalizacao_jobs.py",
+      "community": 393,
+      "community_name": "wav.test.ts",
       "norm_label": ".execute()"
     },
     {
@@ -35224,8 +35224,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "microservice_src_lib_wav_test",
-      "community": 393,
-      "community_name": "wav.test.ts",
+      "community": 57,
+      "community_name": "geminiService.ts",
       "norm_label": "wav.test.ts"
     },
     {
@@ -35235,8 +35235,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "microservice_src_lib_wav_test_readuint32le",
-      "community": 393,
-      "community_name": "wav.test.ts",
+      "community": 57,
+      "community_name": "geminiService.ts",
       "norm_label": "readuint32le()"
     },
     {
@@ -35246,8 +35246,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "microservice_src_lib_wav_test_readuint16le",
-      "community": 393,
-      "community_name": "wav.test.ts",
+      "community": 57,
+      "community_name": "geminiService.ts",
       "norm_label": "readuint16le()"
     },
     {
@@ -35257,8 +35257,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "microservice_src_lib_wav_test_readascii",
-      "community": 393,
-      "community_name": "wav.test.ts",
+      "community": 57,
+      "community_name": "geminiService.ts",
       "norm_label": "readascii()"
     },
     {
@@ -35268,8 +35268,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "microservice_src_lib_wav",
-      "community": 393,
-      "community_name": "wav.test.ts",
+      "community": 57,
+      "community_name": "geminiService.ts",
       "norm_label": "wav.ts"
     },
     {
@@ -35279,8 +35279,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "microservice_src_lib_wav_addwavheader",
-      "community": 393,
-      "community_name": "wav.test.ts",
+      "community": 57,
+      "community_name": "geminiService.ts",
       "norm_label": "addwavheader()"
     },
     {
@@ -37391,8 +37391,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "mobile_package_dependencies_config_plugins_react_native_blob_util",
-      "community": 144,
-      "community_name": "dependencies",
+      "community": 405,
+      "community_name": "_brainhex_contract_is_ready",
       "norm_label": "@config-plugins/react-native-blob-util"
     },
     {
@@ -37402,8 +37402,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "config_plugins_react_native_blob_util",
-      "community": 144,
-      "community_name": "dependencies",
+      "community": 405,
+      "community_name": "_brainhex_contract_is_ready",
       "norm_label": "@config-plugins/react-native-blob-util"
     },
     {
@@ -37655,8 +37655,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "mobile_package_dependencies_expo_constants",
-      "community": 336,
-      "community_name": "build_behavioral_personalization",
+      "community": 144,
+      "community_name": "dependencies",
       "norm_label": "expo-constants"
     },
     {
@@ -37666,8 +37666,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "expo_constants",
-      "community": 336,
-      "community_name": "build_behavioral_personalization",
+      "community": 144,
+      "community_name": "dependencies",
       "norm_label": "expo-constants"
     },
     {
@@ -60804,8 +60804,8 @@
       "source_location": "L334",
       "_origin": "ast",
       "id": "docs_frontend_estrutura_banco_supabase_8_constraints_e_indexes_cr\u00e3_ticos",
-      "community": 128,
-      "community_name": "ArvoreView.tsx",
+      "community": 142,
+      "community_name": "frontend/estrutura-banco-supabase.md",
       "norm_label": "8. constraints e indexes cra\u00adticos"
     },
     {
@@ -60815,8 +60815,8 @@
       "source_location": "L336",
       "_origin": "ast",
       "id": "docs_frontend_estrutura_banco_supabase_8_1_unicidade_deduplicacao",
-      "community": 128,
-      "community_name": "ArvoreView.tsx",
+      "community": 142,
+      "community_name": "frontend/estrutura-banco-supabase.md",
       "norm_label": "8.1 unicidade/deduplicacao"
     },
     {
@@ -60826,8 +60826,8 @@
       "source_location": "L346",
       "_origin": "ast",
       "id": "docs_frontend_estrutura_banco_supabase_8_2_performance",
-      "community": 128,
-      "community_name": "ArvoreView.tsx",
+      "community": 142,
+      "community_name": "frontend/estrutura-banco-supabase.md",
       "norm_label": "8.2 performance"
     },
     {
@@ -60837,8 +60837,8 @@
       "source_location": "L356",
       "_origin": "ast",
       "id": "docs_frontend_estrutura_banco_supabase_8_3_integridade_sem\u00e3_ntica",
-      "community": 128,
-      "community_name": "ArvoreView.tsx",
+      "community": 142,
+      "community_name": "frontend/estrutura-banco-supabase.md",
       "norm_label": "8.3 integridade sema\u00a2ntica"
     },
     {
@@ -105819,7 +105819,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "api/app/services/content_enrichment.py",
-      "source_location": "L619",
+      "source_location": "L621",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_app_services_content_enrichment_enrich_content_blocks",
@@ -106129,7 +106129,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "api/app/services/content_enrichment.py",
-      "source_location": "L613",
+      "source_location": "L615",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_app_services_content_enrichment_enrich_content_blocks",
@@ -106142,7 +106142,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "api/tests/test_content_enrichment.py",
-      "source_location": "L153",
+      "source_location": "L160",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_tests_test_content_enrichment_test_source_segmentation_splits_large_text_without_losing_its_tail",
@@ -106177,7 +106177,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "api/app/services/content_enrichment.py",
-      "source_location": "L614",
+      "source_location": "L616",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_app_services_content_enrichment_enrich_content_blocks",
@@ -106212,7 +106212,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "api/app/services/content_enrichment.py",
-      "source_location": "L644",
+      "source_location": "L654",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_app_services_content_enrichment_enrich_content_blocks",
@@ -106284,7 +106284,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "api/app/services/content_enrichment.py",
-      "source_location": "L623",
+      "source_location": "L627",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_app_services_content_enrichment_enrich_content_blocks",
@@ -106344,7 +106344,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "api/tests/test_content_enrichment.py",
-      "source_location": "L238",
+      "source_location": "L245",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_tests_test_content_enrichment_test_enrichment_fails_explicitly_when_openai_is_not_configured",
@@ -106368,7 +106368,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "api/tests/test_content_enrichment.py",
-      "source_location": "L225",
+      "source_location": "L232",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_tests_test_content_enrichment_test_enrichment_ignores_global_provider_and_always_uses_openai",
@@ -106380,7 +106380,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "api/tests/test_content_enrichment.py",
-      "source_location": "L179",
+      "source_location": "L186",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_tests_test_content_enrichment_test_enrichment_rejects_shallow_response_and_never_uses_fallback",
@@ -106392,7 +106392,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "api/tests/test_content_enrichment.py",
-      "source_location": "L205",
+      "source_location": "L212",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_tests_test_content_enrichment_test_enrichment_retries_only_the_rejected_block",
@@ -124122,7 +124122,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "api/tests/test_content_enrichment.py",
-      "source_location": "L232",
+      "source_location": "L239",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_tests_test_content_enrichment",
@@ -124144,7 +124144,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "api/tests/test_content_enrichment.py",
-      "source_location": "L214",
+      "source_location": "L221",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_tests_test_content_enrichment",
@@ -124155,7 +124155,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "api/tests/test_content_enrichment.py",
-      "source_location": "L163",
+      "source_location": "L170",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_tests_test_content_enrichment",
@@ -124166,7 +124166,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "api/tests/test_content_enrichment.py",
-      "source_location": "L183",
+      "source_location": "L190",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_tests_test_content_enrichment",
@@ -124177,7 +124177,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "api/tests/test_content_enrichment.py",
-      "source_location": "L147",
+      "source_location": "L154",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_tests_test_content_enrichment",
@@ -124213,7 +124213,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "api/tests/test_content_enrichment.py",
-      "source_location": "L225",
+      "source_location": "L232",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_tests_test_content_enrichment_test_enrichment_ignores_global_provider_and_always_uses_openai",
@@ -124225,7 +124225,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "api/tests/test_content_enrichment.py",
-      "source_location": "L179",
+      "source_location": "L186",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_tests_test_content_enrichment_test_enrichment_rejects_shallow_response_and_never_uses_fallback",
@@ -124237,7 +124237,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "api/tests/test_content_enrichment.py",
-      "source_location": "L205",
+      "source_location": "L212",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_tests_test_content_enrichment_test_enrichment_retries_only_the_rejected_block",
@@ -124249,7 +124249,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "api/tests/test_content_enrichment.py",
-      "source_location": "L233",
+      "source_location": "L240",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_tests_test_content_enrichment_test_enrichment_fails_explicitly_when_openai_is_not_configured",
@@ -124501,7 +124501,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "api/tests/test_content_enrichment.py",
-      "source_location": "L238",
+      "source_location": "L245",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_tests_test_content_enrichment_test_enrichment_fails_explicitly_when_openai_is_not_configured",
@@ -124525,7 +124525,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "api/tests/test_content_enrichment.py",
-      "source_location": "L225",
+      "source_location": "L232",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_tests_test_content_enrichment_test_enrichment_ignores_global_provider_and_always_uses_openai",
@@ -124537,7 +124537,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "api/tests/test_content_enrichment.py",
-      "source_location": "L179",
+      "source_location": "L186",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_tests_test_content_enrichment_test_enrichment_rejects_shallow_response_and_never_uses_fallback",
@@ -124549,7 +124549,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "api/tests/test_content_enrichment.py",
-      "source_location": "L205",
+      "source_location": "L212",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_tests_test_content_enrichment_test_enrichment_retries_only_the_rejected_block",
@@ -124561,7 +124561,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "api/tests/test_content_enrichment.py",
-      "source_location": "L148",
+      "source_location": "L155",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_tests_test_content_enrichment_test_source_segmentation_splits_large_text_without_losing_its_tail",
@@ -124713,7 +124713,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "api/tests/test_content_enrichment.py",
-      "source_location": "L222",
+      "source_location": "L229",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_tests_test_content_enrichment_test_enrichment_ignores_global_provider_and_always_uses_openai",
@@ -124725,7 +124725,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "api/tests/test_content_enrichment.py",
-      "source_location": "L175",
+      "source_location": "L182",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_tests_test_content_enrichment_test_enrichment_rejects_shallow_response_and_never_uses_fallback",
@@ -124737,7 +124737,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "api/tests/test_content_enrichment.py",
-      "source_location": "L202",
+      "source_location": "L209",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_tests_test_content_enrichment_test_enrichment_retries_only_the_rejected_block",
@@ -124761,7 +124761,7 @@
       "context": "argument",
       "confidence": "INFERRED",
       "source_file": "api/tests/test_content_enrichment.py",
-      "source_location": "L222",
+      "source_location": "L229",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_tests_test_content_enrichment_test_enrichment_ignores_global_provider_and_always_uses_openai",
@@ -124772,7 +124772,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "api/tests/test_content_enrichment.py",
-      "source_location": "L231",
+      "source_location": "L238",
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
@@ -124796,7 +124796,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "api/tests/test_content_enrichment.py",
-      "source_location": "L213",
+      "source_location": "L220",
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
@@ -124808,7 +124808,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "api/tests/test_content_enrichment.py",
-      "source_location": "L162",
+      "source_location": "L169",
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
@@ -124820,7 +124820,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "api/tests/test_content_enrichment.py",
-      "source_location": "L182",
+      "source_location": "L189",
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
@@ -124845,7 +124845,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "api/tests/test_content_enrichment.py",
-      "source_location": "L214",
+      "source_location": "L221",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_tests_test_content_enrichment_test_enrichment_ignores_global_provider_and_always_uses_openai",
@@ -124857,7 +124857,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "api/tests/test_content_enrichment.py",
-      "source_location": "L163",
+      "source_location": "L170",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_tests_test_content_enrichment_test_enrichment_rejects_shallow_response_and_never_uses_fallback",
@@ -124869,7 +124869,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "api/tests/test_content_enrichment.py",
-      "source_location": "L183",
+      "source_location": "L190",
       "weight": 1.0,
       "_origin": "ast",
       "source": "api_tests_test_content_enrichment_test_enrichment_retries_only_the_rejected_block",
