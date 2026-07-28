@@ -596,7 +596,12 @@ class PersonalizacaoJobsRepository:
         )
         return [dict(row) for row in result.mappings()]
 
-    async def claim_next_job(self, *, stale_processing_min: int = 15) -> dict[str, Any] | None:
+    async def claim_next_job(
+        self,
+        *,
+        stale_processing_min: int = 15,
+        partial_retry_delay_sec: int = 15,
+    ) -> dict[str, Any] | None:
         if not await self._jobs_exists():
             return None
         media_snapshot_select = self._media_snapshot_select_expr(
@@ -607,11 +612,25 @@ class PersonalizacaoJobsRepository:
             text(
                 f"""
                 WITH next_job AS (
-                  SELECT id
-                  FROM personalizacao_jobs
-                  WHERE status IN ('pending', 'partial')
-                     OR (status = 'processing' AND updated_at < NOW() - make_interval(mins => :stale_processing_min))
-                  ORDER BY created_at ASC, id ASC
+                  SELECT candidate.id
+                  FROM personalizacao_jobs candidate
+                  WHERE candidate.status = 'pending'
+                      OR (
+                        candidate.status = 'partial'
+                        AND candidate.updated_at
+                          < NOW() - make_interval(secs => :partial_retry_delay_sec)
+                        AND EXISTS (
+                         SELECT 1
+                         FROM personalizacao_job_targets target
+                         WHERE target.job_id = candidate.id
+                           AND target.status NOT IN ('completed', 'failed', 'skipped')
+                       )
+                     )
+                     OR (
+                       candidate.status = 'processing'
+                       AND candidate.updated_at < NOW() - make_interval(mins => :stale_processing_min)
+                     )
+                  ORDER BY candidate.created_at ASC, candidate.id ASC
                   FOR UPDATE SKIP LOCKED
                   LIMIT 1
                 )
@@ -643,7 +662,10 @@ class PersonalizacaoJobsRepository:
                   pj.finished_at
                 """
             ),
-            {"stale_processing_min": stale_processing_min},
+            {
+                "stale_processing_min": stale_processing_min,
+                "partial_retry_delay_sec": max(1, int(partial_retry_delay_sec)),
+            },
         )
         row = result.mappings().first()
         if not row:
@@ -682,6 +704,20 @@ class PersonalizacaoJobsRepository:
                 "last_error": last_error,
                 "personalizacao_id": personalizacao_id,
             },
+        )
+        await self.session.execute(
+            text(
+                """
+                UPDATE personalizacao_jobs
+                SET updated_at = NOW()
+                WHERE id = (
+                  SELECT job_id
+                  FROM personalizacao_job_targets
+                  WHERE id = :target_id
+                )
+                """
+            ),
+            {"target_id": target_id},
         )
         await self.session.commit()
 

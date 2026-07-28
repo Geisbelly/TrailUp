@@ -5,7 +5,12 @@ import pytest
 from app.core.settings import Settings
 
 # Imports da função
-from app.services.media_agents import _BRAINHEX_GUIDE_CONFIG, gerar_conteudo_brainhex, gerar_imagem_slide
+from app.services.media_agents import (
+    _BRAINHEX_GUIDE_CONFIG,
+    disparar_brainhex_async,
+    gerar_conteudo_brainhex,
+    gerar_imagem_slide,
+)
 
 
 @pytest.fixture
@@ -124,6 +129,70 @@ async def test_gerar_conteudo_brainhex_returns_json_for_any_profile(settings, co
         )
 
     assert result is not None
+
+
+@pytest.mark.asyncio
+async def test_disparar_brainhex_waits_for_completion(settings):
+    settings.brainhex_api_wait_timeout_sec = 300
+    mock_response = MagicMock(status_code=200, text='{"status":"completed"}')
+
+    with patch("httpx.AsyncClient") as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client_cls.return_value = mock_client
+
+        dispatched = await disparar_brainhex_async(
+            settings=settings,
+            perfil="seeker",
+            fontes=[],
+            content_blocks=[{"id": "bloco-01"}],
+            personalizacao_id=257,
+            aluno_id="aluno-1",
+            classe_id=32,
+            topico_id=121,
+            ciclo_id="ciclo-257",
+            source_hash="hash-257",
+            generation_key="ciclo-257:hash-257",
+            wait_for_completion=True,
+        )
+
+    assert dispatched is True
+    assert mock_client.post.await_args.kwargs["json"]["wait_for_completion"] is True
+    assert (
+        mock_client.post.await_args.kwargs["json"]["generation_key"]
+        == "ciclo-257:hash-257"
+    )
+    configured_timeout = mock_client_cls.call_args.kwargs["timeout"]
+    assert configured_timeout.read == 300
+    assert configured_timeout.connect == 60
+
+
+@pytest.mark.asyncio
+async def test_disparar_brainhex_does_not_treat_legacy_202_as_completed(settings):
+    mock_response = MagicMock(status_code=202, text='{"status":"processing"}')
+
+    with patch("httpx.AsyncClient") as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client_cls.return_value = mock_client
+
+        dispatched = await disparar_brainhex_async(
+            settings=settings,
+            perfil="seeker",
+            fontes=[],
+            content_blocks=[{"id": "bloco-01"}],
+            personalizacao_id=257,
+            ciclo_id="ciclo-257",
+            source_hash="hash-257",
+            generation_key="ciclo-257:hash-257",
+            wait_for_completion=True,
+        )
+
+    assert dispatched is False
 
 
 @pytest.mark.asyncio

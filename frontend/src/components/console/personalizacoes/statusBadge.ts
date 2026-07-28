@@ -42,7 +42,7 @@ export function getPersonalizacaoStatusBadge({
       : { label: "Gerando...", variant: "secondary" };
   }
 
-  if (status === "failed" || status === "failed_quality") {
+  if (status === "failed" || status === "falha" || status === "failed_quality") {
     return { label: "Falhou", variant: "destructive" };
   }
 

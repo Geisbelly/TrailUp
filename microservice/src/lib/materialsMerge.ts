@@ -6,7 +6,7 @@
 // produzir o MESMO resultado. Se a lógica mudar aqui, atualize a SQL.
 
 export interface MaterialEntryLike {
-  metadata?: { status?: string };
+  metadata?: { status?: string; generation_key?: string };
 }
 
 export type MaterialsMap = Record<string, MaterialEntryLike>;
@@ -38,7 +38,14 @@ export function computeMergedMaterials(
 
   const filteredUpdates: MaterialsMap = {};
   for (const [fmt, entry] of Object.entries(updates)) {
-    if (base[fmt]?.metadata?.status === "completed") continue;
+    const currentMetadata = base[fmt]?.metadata;
+    const incomingGeneration = entry?.metadata?.generation_key;
+    if (
+      currentMetadata?.status === "completed"
+      && currentMetadata.generation_key === incomingGeneration
+    ) {
+      continue;
+    }
     filteredUpdates[fmt] = entry;
   }
 

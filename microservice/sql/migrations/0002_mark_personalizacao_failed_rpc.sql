@@ -49,7 +49,7 @@ BEGIN
   );
 
   UPDATE public.conteudo_personalizado
-     SET status     = 'falha',
+     SET status     = 'failed',
          materiais  = v_merged,
          updated_at = NOW()
    WHERE id = p_id;

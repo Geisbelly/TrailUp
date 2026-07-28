@@ -277,15 +277,24 @@ async def disparar_brainhex_async(
     classe_id: int | None = None,
     topico_id: int | None = None,
     ciclo_id: str = "",
+    source_hash: str = "",
+    generation_key: str = "",
+    wait_for_completion: bool = False,
 ) -> bool:
-    """Dispara BrainHex fire-and-forget com URLs brutas de fontes. Retorna True se 202."""
+    """Dispara BrainHex e, opcionalmente, aguarda o pipeline terminar."""
     brainhex_url = str(getattr(settings, "brainhex_api_url", "") or "").strip()
     if not brainhex_url:
         return False
     brainhex_secret = str(getattr(settings, "brainhex_api_secret", "") or "").strip()
     headers = {"x-api-secret": brainhex_secret} if brainhex_secret else None
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        timeout_sec = (
+            max(30, int(getattr(settings, "brainhex_api_wait_timeout_sec", 1980) or 1980))
+            if wait_for_completion
+            else 15.0
+        )
+        timeout = httpx.Timeout(timeout_sec, connect=min(60.0, float(timeout_sec)))
+        async with httpx.AsyncClient(timeout=timeout) as client:
             response = await client.post(
                 f"{brainhex_url.rstrip('/')}/api/personalizar",
                 json={
@@ -297,14 +306,14 @@ async def disparar_brainhex_async(
                     "classe_id": classe_id,
                     "topico_id": topico_id,
                     "ciclo_id": ciclo_id,
+                    "source_hash": source_hash,
+                    "generation_key": generation_key,
+                    "wait_for_completion": wait_for_completion,
                 },
                 headers=headers,
             )
-            if response.status_code != 202:
-                # Fire-and-forget (asyncio.create_task, sem await no caller) —
-                # sem este log, uma rejeicao do microservice (ex.: 400 de
-                # validacao) fica invisivel e o conteudo_personalizado trava
-                # para sempre em status=processando_midias, materiais={}.
+            expected_status = 200 if wait_for_completion else 202
+            if response.status_code != expected_status:
                 logger.warning(
                     "disparar_brainhex_async: microservice recusou o POST /api/personalizar "
                     "(personalizacao_id=%s, status=%s, body=%s)",
@@ -312,7 +321,14 @@ async def disparar_brainhex_async(
                     response.status_code,
                     response.text[:500],
                 )
-            return response.status_code == 202
+            if wait_for_completion and response.status_code == 202:
+                logger.warning(
+                    "disparar_brainhex_async: microservice antigo respondeu de forma assincrona; "
+                    "o target sera repetido ate haver confirmacao de conclusao "
+                    "(personalizacao_id=%s)",
+                    personalizacao_id,
+                )
+            return response.status_code == expected_status
     except Exception:
         logger.exception(
             "disparar_brainhex_async: falha ao chamar o microservice (personalizacao_id=%s)",

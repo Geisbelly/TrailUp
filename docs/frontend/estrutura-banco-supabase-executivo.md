@@ -252,7 +252,7 @@ flowchart TD
 | Controle | Objetivo |
 |---|---|
 | `UNIQUE(job_id, aluno_id, topico_id)` em targets | evita duplicidade de processamento |
-| `uq_conteudo_personalizado_aluno_topico_ativo` | 1 payload ativo por aluno/tópico |
+| `uq_conteudo_personalizado_aluno_topico_perfil` | 1 payload por aluno/tópico/perfil BrainHex |
 | `uq_telemetria_eventos_app(sessao_id, client_event_id)` | dedupe de eventos mobile |
 | RLS em tabelas de personalização | aluno le somente dados próprios |
 

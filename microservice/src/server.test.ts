@@ -153,6 +153,92 @@ describe("POST /api/personalizar validação", () => {
     });
     assert.equal(res.status, 400);
   });
+
+  it("409 quando a chave de geracao esta ausente", async () => {
+    const res = await post({
+      profile: "seeker",
+      personalizacao_id: 257,
+      fontes: [],
+      content_blocks: [{
+        id: "bloco-01",
+        ordem: 1,
+        conteudo_aprofundado: "Conteudo suficiente para o teste.",
+      }],
+    });
+    assert.equal(res.status, 409);
+  });
+
+  it("aguarda o runner quando wait_for_completion=true", async () => {
+    const calls: unknown[] = [];
+    const { base: syncBase, close: closeSync } = await startTestServer({
+      personalizacaoJobRunner: async (params) => {
+        calls.push(params);
+      },
+    });
+    try {
+      const res = await fetch(`${syncBase}/api/personalizar`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          profile: "seeker",
+          personalizacao_id: 257,
+          fontes: [],
+          content_blocks: [{
+            id: "bloco-01",
+            ordem: 1,
+            conteudo_aprofundado: "Conteudo suficiente para o teste.",
+          }],
+          ciclo_id: "ciclo-257",
+          source_hash: "hash-257",
+          generation_key: "ciclo-257:hash-257",
+          wait_for_completion: true,
+        }),
+      });
+
+      assert.equal(res.status, 200);
+      const body = await res.json() as { status: string; personalizacao_id: number };
+      assert.equal(body.status, "completed");
+      assert.equal(body.personalizacao_id, 257);
+      assert.equal(calls.length, 1);
+    } finally {
+      await closeSync();
+    }
+  });
+
+  it("propaga falha do runner no modo wait_for_completion", async () => {
+    const { base: syncBase, close: closeSync } = await startTestServer({
+      personalizacaoJobRunner: async () => {
+        throw new Error("persistencia indisponivel");
+      },
+    });
+    try {
+      const res = await fetch(`${syncBase}/api/personalizar`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          profile: "seeker",
+          personalizacao_id: 257,
+          fontes: [],
+          content_blocks: [{
+            id: "bloco-01",
+            ordem: 1,
+            conteudo_aprofundado: "Conteudo suficiente para o teste.",
+          }],
+          ciclo_id: "ciclo-257",
+          source_hash: "hash-257",
+          generation_key: "ciclo-257:hash-257",
+          wait_for_completion: true,
+        }),
+      });
+
+      assert.equal(res.status, 500);
+      const body = await res.json() as { status: string; error: string };
+      assert.equal(body.status, "failed");
+      assert.match(body.error, /persistencia indisponivel/);
+    } finally {
+      await closeSync();
+    }
+  });
 });
 
 // ─── Rate limiter ─────────────────────────────────────────────────────────────

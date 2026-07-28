@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import base64
 import hashlib
 import json
@@ -28,7 +27,6 @@ from app.repositories.materiais import MateriaisRepository
 from app.repositories.personalizacao_jobs import PersonalizacaoJobsRepository
 from app.services.behavioral_personalization import build_behavioral_personalization
 from app.services.llm import JsonLLMService, load_prompt
-from app.services.media_agents import disparar_brainhex_async
 from app.services.media_pipeline import MultiOutputPipeline
 from app.services.storage import SupabaseStorage, build_public_storage_url
 from app.services.text_cleanup import (
@@ -59,6 +57,9 @@ _MIN_PERSONALIZED_ITEMS = 5
 _MAX_PERSONALIZED_ITEMS = 15
 _DEFAULT_GEMINI_MULTIMODAL_PRIMARY = "gemini-2.5-flash"
 _DEFAULT_GEMINI_MULTIMODAL_FALLBACK = "gemini-2.5-flash-lite"
+# Incremente sempre que prompts, enriquecimento ou geracao BrainHex mudarem de
+# forma que exija regenerar artefatos ja marcados como prontos.
+_PERSONALIZACAO_PIPELINE_VERSION = "2026-07-28.2"
 _PERSONALIZACAO_MEDIA_RENDER_JOB_KIND = "media_render"
 _PERSONALIZACAO_MEDIA_RENDER_JOB_LEGACY_KIND = "personalizacao_media_render"
 _CHUNK_WINDOW = 1_000
@@ -2085,6 +2086,7 @@ def _build_source_hash(
     questoes_topico: list[dict[str, Any]] | None = None,
 ) -> str:
     payload = {
+        "pipeline_version": _PERSONALIZACAO_PIPELINE_VERSION,
         "classe_id": classe_id,
         "topico_id": topico_id,
         "conteudo_id": conteudo_id,
@@ -4623,6 +4625,10 @@ async def fetch_personalizacao_context(
     if topico_id is None and conteudo_id is None:
         raise ValueError("topico_id ou conteudo_id é obrigatório para personalização.")
 
+    # Preserva o escopo solicitado antes de resolver um conteúdo apenas como
+    # foco de compatibilidade. Quando o caller informa somente o tópico, as
+    # fontes e o source_hash precisam representar todos os conteúdos dele.
+    conteudo_escopo_id = conteudo_id
     ciclo_id = str(uuid4())
     context_repo = ContextRepository(session)
     classe_repo = ConteudoClasseRepository(session)
@@ -4648,7 +4654,7 @@ async def fetch_personalizacao_context(
     fontes_raw = await fontes_repo.listar_para_contexto(
         classe_id=classe_id,
         topico_id=topico_id,
-        conteudo_id=conteudo_id,
+        conteudo_id=conteudo_escopo_id,
         aluno_id=aluno_id,
     )
     if not include_student_sources:
@@ -4704,7 +4710,7 @@ async def fetch_personalizacao_context(
     source_hash = _build_source_hash(
         classe_id=classe_id,
         topico_id=topico_id,
-        conteudo_id=conteudo_id,
+        conteudo_id=conteudo_escopo_id,
         materiais_origem=fontes_enriquecidas,
         cards_topico=cards_topico,
         atividades_topico=atividades,
@@ -6657,41 +6663,6 @@ async def _enqueue_media_render_job_if_needed(
         topico_id=int(topico_id),
         conteudo_id=int(conteudo_id) if conteudo_id is not None else None,
     )
-
-    # Dispara BrainHex em background: persiste audio + markdown direto no Supabase
-    if settings is not None and getattr(settings, "brainhex_api_url", None):
-        materiais_origem = state.get("materiais_origem") if isinstance(state.get("materiais_origem"), list) else []
-        supabase_base = str(getattr(settings, "supabase_url", "") or "").strip()
-        fontes: list[dict[str, Any]] = []
-        for source in materiais_origem:
-            if not isinstance(source, dict):
-                continue
-            public_url = str(source.get("url") or "").strip()
-            if not public_url:
-                storage_path = str(source.get("storage_path") or "").strip()
-                bucket = str(source.get("bucket") or _CONTEUDO_ALUNO_BUCKET).strip()
-                if storage_path and supabase_base:
-                    public_url = build_public_storage_url(supabase_base, bucket, storage_path) or ""
-            if not public_url:
-                continue
-            fontes.append({
-                "url": public_url,
-                "mime_type": str(source.get("mime_type") or "").strip(),
-                "tipo": str(source.get("tipo") or "documento").strip(),
-            })
-        if fontes:
-            asyncio.create_task(
-                disparar_brainhex_async(
-                    settings=settings,
-                    perfil=brainhex_profile_key or perfil_dominante or "mastermind",
-                    fontes=fontes,
-                    personalizacao_id=int(record["id"]),
-                    aluno_id=aluno_id,
-                    classe_id=int(classe_id) if classe_id is not None else None,
-                    topico_id=int(topico_id) if topico_id is not None else None,
-                    ciclo_id=ciclo_id,
-                )
-            )
 
     return job
 

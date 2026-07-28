@@ -42,7 +42,10 @@ export interface PersonalizarRequest {
   classe_id?:         string | number;
   topico_id?:         string | number;
   ciclo_id?:          string;
+  source_hash?:       string;
+  generation_key?:    string;
   aluno_id?:          string;
+  wait_for_completion: boolean;
 }
 
 // ── SSRF protection ────────────────────────────────────────────────────────
@@ -207,7 +210,10 @@ export function validatePersonalizarBody(
       classe_id:         body.classe_id as string | number | undefined,
       topico_id:         body.topico_id as string | number | undefined,
       ciclo_id:          typeof body.ciclo_id === "string" ? body.ciclo_id : undefined,
+      source_hash:       typeof body.source_hash === "string" ? body.source_hash : undefined,
+      generation_key:    typeof body.generation_key === "string" ? body.generation_key : undefined,
       aluno_id:          typeof body.aluno_id === "string" ? body.aluno_id : undefined,
+      wait_for_completion: body.wait_for_completion === true,
     },
   };
 }

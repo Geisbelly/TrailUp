@@ -944,6 +944,7 @@ async def personalizar(
         )
 
     import asyncio as _asyncio
+    generation_key = f"{ctx['ciclo_id']}:{ctx['source_hash']}"
     _asyncio.create_task(
         disparar_brainhex_async(
             settings=settings,
@@ -954,6 +955,8 @@ async def personalizar(
             classe_id=payload.classe_id,
             topico_id=payload.topico_id,
             ciclo_id=ctx["ciclo_id"],
+            source_hash=ctx["source_hash"],
+            generation_key=generation_key,
         )
     )
 

@@ -4,6 +4,7 @@ import asyncio
 import copy
 import logging
 import socket
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from fastapi import FastAPI
@@ -53,6 +54,7 @@ _BRAINHEX_PROFILE_KEYS = (
 
 TARGET_DONE_STATES = {"completed", "failed", "skipped"}
 _MEDIA_FORMATOS = {"audio", "apresentacao", "markdown"}
+_REQUIRED_BRAINHEX_MEDIA = ("audio", "markdown", "apresentacao")
 MAX_DB_FAILURE_BACKOFF_SEC = 60
 DB_FAILURE_BACKOFF_FACTOR = 2
 DB_FAILURE_LOG_INTERVAL_SEC = 30
@@ -94,6 +96,199 @@ def _profile_key_to_label(profile_key: str) -> str:
         "achiever": "Achiever",
     }
     return labels.get(key, "Mastermind")
+
+
+def _effective_stale_processing_min(settings: Any) -> int:
+    configured = max(
+        1,
+        int(getattr(settings, "personalizacao_job_stale_processing_min", 40) or 40),
+    )
+    wait_timeout_sec = max(
+        30,
+        int(getattr(settings, "brainhex_api_wait_timeout_sec", 1980) or 1980),
+    )
+    # A reclamacao deve acontecer somente depois que a chamada sincrona ja
+    # teria expirado, com cinco minutos de margem operacional.
+    return max(configured, ((wait_timeout_sec + 59) // 60) + 5)
+
+
+def _build_generation_key(*, ciclo_id: Any, source_hash: Any) -> str:
+    cycle = str(ciclo_id or "").strip()
+    source = str(source_hash or "").strip()
+    if not cycle or not source:
+        raise RuntimeError("Personalizacao sem ciclo_id/source_hash para proteger a geracao.")
+    return f"{cycle}:{source}"
+
+
+def _assert_brainhex_media_completed(
+    record: dict[str, Any],
+    *,
+    ciclo_id: str,
+    source_hash: str,
+    generation_key: str,
+) -> None:
+    record_cycle_id = str(record.get("ciclo_id") or "")
+    record_source_hash = str(record.get("source_hash") or "")
+    if record_cycle_id != ciclo_id:
+        raise RuntimeError("Resultado descartado: o ciclo da personalizacao mudou durante a geracao.")
+    if record_source_hash != source_hash:
+        raise RuntimeError("Resultado descartado: a fonte da personalizacao mudou durante a geracao.")
+    incomplete = _incomplete_brainhex_media_for_generation(
+        record,
+        generation_key=generation_key,
+    )
+    if str(record.get("status") or "").strip().lower() != "pronto" or incomplete:
+        missing = ", ".join(incomplete) if incomplete else "status pronto"
+        raise RuntimeError(
+            f"Microservico respondeu sem persistir todas as midias obrigatorias: {missing}."
+        )
+
+
+def _incomplete_brainhex_media_for_generation(
+    record: dict[str, Any],
+    *,
+    generation_key: str,
+) -> list[str]:
+    materiais = record.get("materiais") if isinstance(record.get("materiais"), dict) else {}
+    incomplete: list[str] = []
+    for media_kind in _REQUIRED_BRAINHEX_MEDIA:
+        material = materiais.get(media_kind)
+        metadata = material.get("metadata") if isinstance(material, dict) else {}
+        if (
+            not isinstance(metadata, dict)
+            or metadata.get("status") != "completed"
+            or metadata.get("generation_key") != generation_key
+        ):
+            incomplete.append(media_kind)
+    return incomplete
+
+
+def _has_completed_current_generation(
+    record: dict[str, Any],
+    *,
+    ciclo_id: str,
+    source_hash: str,
+    generation_key: str,
+) -> bool:
+    return (
+        str(record.get("ciclo_id") or "") == ciclo_id
+        and str(record.get("source_hash") or "") == source_hash
+        and not _incomplete_brainhex_media_for_generation(
+            record,
+            generation_key=generation_key,
+        )
+    )
+
+
+async def _normalize_completed_generation_status(
+    *,
+    repo: ConteudoPersonalizadoRepository,
+    record: dict[str, Any],
+    ciclo_id: str,
+    source_hash: str,
+    generation_key: str,
+) -> dict[str, Any] | None:
+    if not _has_completed_current_generation(
+        record,
+        ciclo_id=ciclo_id,
+        source_hash=source_hash,
+        generation_key=generation_key,
+    ):
+        return None
+    if str(record.get("status") or "").strip().lower() == "pronto":
+        return record
+
+    normalized = await repo.atualizar_status(
+        record_id=int(record["id"]),
+        status="pronto",
+        ciclo_id=ciclo_id,
+        source_hash=source_hash,
+    )
+    if not normalized:
+        return None
+    current = await repo.buscar_por_id(int(record["id"]))
+    if (
+        current
+        and str(current.get("status") or "").strip().lower() == "pronto"
+        and _has_completed_current_generation(
+            current,
+            ciclo_id=ciclo_id,
+            source_hash=source_hash,
+            generation_key=generation_key,
+        )
+    ):
+        return current
+    return None
+
+
+async def _mark_failed_unless_generation_completed(
+    *,
+    repo: ConteudoPersonalizadoRepository,
+    record_id: int,
+    ciclo_id: str,
+    source_hash: str,
+    generation_key: str,
+) -> dict[str, Any] | None:
+    marked = await repo.atualizar_status(
+        record_id=record_id,
+        status="failed",
+        ciclo_id=ciclo_id,
+        source_hash=source_hash,
+        preserve_completed_generation_key=generation_key,
+    )
+    if marked:
+        return None
+
+    current = await repo.buscar_por_id(record_id)
+    if not current:
+        return None
+    return await _normalize_completed_generation_status(
+        repo=repo,
+        record=current,
+        ciclo_id=ciclo_id,
+        source_hash=source_hash,
+        generation_key=generation_key,
+    )
+
+
+async def _get_runtime_cached_dict(
+    *,
+    job: dict[str, Any],
+    cache_name: str,
+    locks_name: str,
+    key: str,
+    factory: Callable[[], Awaitable[dict[str, Any]]],
+) -> dict[str, Any]:
+    cache = job.setdefault(cache_name, {})
+    cached = cache.get(key)
+    if isinstance(cached, dict):
+        return cached
+
+    locks = job.setdefault(locks_name, {})
+    lock = locks.setdefault(key, asyncio.Lock())
+    async with lock:
+        cached = cache.get(key)
+        if isinstance(cached, dict):
+            return cached
+        generated = await factory()
+        if not isinstance(generated, dict):
+            raise RuntimeError(f"Cache runtime {cache_name} recebeu valor invalido.")
+        cache[key] = generated
+        return generated
+
+
+def _content_enrichment_cache_key(
+    *,
+    aluno_id: str,
+    profile_key: str,
+    topico_id: int,
+    conteudo_id: int | None,
+    source_hash: Any,
+) -> str:
+    return (
+        f"{aluno_id}:{profile_key}:{topico_id}:{conteudo_id or 0}:"
+        f"{str(source_hash or '').strip()}"
+    )
 
 
 def _iter_exception_chain(exc: BaseException | None) -> list[BaseException]:
@@ -194,11 +389,7 @@ async def _build_targets(
 
     classe_repo = ConteudoClasseRepository(session)
     resolved_topicos = sorted({int(item) for item in (topico_ids or []) if item is not None})
-    conteudos_por_topico: dict[int, list[int]] = {}
     if conteudo_ids:
-        conteudos_por_topico = await classe_repo.mapear_conteudos_por_topico(
-            [int(item) for item in conteudo_ids]
-        )
         resolved_topicos = sorted(
             {
                 *resolved_topicos,
@@ -251,16 +442,6 @@ async def _build_targets(
             return [], resolved_topicos, {}
         selected_profile = profile_by_aluno.get(selected_aluno_id, "mastermind")
         for current_topico_id in resolved_topicos:
-            conteudos_topico = conteudos_por_topico.get(current_topico_id, [])
-            if conteudos_topico:
-                for conteudo_id in conteudos_topico:
-                    _append_target(
-                        owner_aluno_id=selected_aluno_id,
-                        topico_id=current_topico_id,
-                        conteudo_id=conteudo_id,
-                        profile_key=selected_profile,
-                    )
-                continue
             _append_target(
                 owner_aluno_id=selected_aluno_id,
                 topico_id=current_topico_id,
@@ -294,19 +475,9 @@ async def _build_targets(
             representative_by_profile[profile_key] = candidate
 
         for current_topico_id in resolved_topicos:
-            conteudos_topico = conteudos_por_topico.get(current_topico_id, [])
             for profile_key in _BRAINHEX_PROFILE_KEYS:
                 owner_aluno_id = representative_by_profile.get(profile_key)
                 if not owner_aluno_id:
-                    continue
-                if conteudos_topico:
-                    for conteudo_id in conteudos_topico:
-                        _append_target(
-                            owner_aluno_id=owner_aluno_id,
-                            topico_id=current_topico_id,
-                            conteudo_id=conteudo_id,
-                            profile_key=profile_key,
-                        )
                     continue
                 _append_target(
                     owner_aluno_id=owner_aluno_id,
@@ -319,16 +490,6 @@ async def _build_targets(
     for current_aluno_id in alunos:
         current_profile = profile_by_aluno.get(current_aluno_id, "mastermind")
         for current_topico_id in resolved_topicos:
-            conteudos_topico = conteudos_por_topico.get(current_topico_id, [])
-            if conteudos_topico:
-                for conteudo_id in conteudos_topico:
-                    _append_target(
-                        owner_aluno_id=current_aluno_id,
-                        topico_id=current_topico_id,
-                        conteudo_id=conteudo_id,
-                        profile_key=current_profile,
-                    )
-                continue
             _append_target(
                 owner_aluno_id=current_aluno_id,
                 topico_id=current_topico_id,
@@ -517,19 +678,62 @@ async def _process_media_render_target(
                     if isinstance(record_plan.get("content_enrichment"), dict)
                     else {}
                 )
-                asyncio.create_task(
-                    disparar_brainhex_async(
-                        settings=app.state.settings,
-                        perfil=perfil,
-                        fontes=fontes,
-                        content_blocks=stored_enrichment.get("blocos") or [],
-                        personalizacao_id=int(personalizacao_id),
-                        aluno_id=aluno_id,
-                        classe_id=classe_id,
-                        topico_id=topico_id,
-                    )
+                record_cycle_id = str(record.get("ciclo_id") or "")
+                record_source_hash = str(record.get("source_hash") or "")
+                generation_key = _build_generation_key(
+                    ciclo_id=record_cycle_id,
+                    source_hash=record_source_hash,
                 )
-                return {"record": record}
+                # Nao manter transacao/conexao PostgreSQL aberta durante uma
+                # geracao que pode levar dezenas de minutos.
+                await session.commit()
+                dispatched = await disparar_brainhex_async(
+                    settings=app.state.settings,
+                    perfil=perfil,
+                    fontes=fontes,
+                    content_blocks=stored_enrichment.get("blocos") or [],
+                    personalizacao_id=int(personalizacao_id),
+                    aluno_id=aluno_id,
+                    classe_id=classe_id,
+                    topico_id=topico_id,
+                    ciclo_id=record_cycle_id,
+                    source_hash=record_source_hash,
+                    generation_key=generation_key,
+                    wait_for_completion=True,
+                )
+                if not dispatched:
+                    recovered = await _mark_failed_unless_generation_completed(
+                        repo=repo_cp,
+                        record_id=int(personalizacao_id),
+                        ciclo_id=record_cycle_id,
+                        source_hash=record_source_hash,
+                        generation_key=generation_key,
+                    )
+                    if recovered:
+                        return {"record": recovered}
+                    raise RuntimeError("Microservico BrainHex nao concluiu a geracao.")
+                completed_record = await repo_cp.buscar_por_id(int(personalizacao_id))
+                if not completed_record:
+                    raise RuntimeError("Personalizacao desapareceu apos a geracao BrainHex.")
+                try:
+                    _assert_brainhex_media_completed(
+                        completed_record,
+                        ciclo_id=record_cycle_id,
+                        source_hash=record_source_hash,
+                        generation_key=generation_key,
+                    )
+                except RuntimeError:
+                    recovered = await _mark_failed_unless_generation_completed(
+                        repo=repo_cp,
+                        record_id=int(personalizacao_id),
+                        ciclo_id=record_cycle_id,
+                        source_hash=record_source_hash,
+                        generation_key=generation_key,
+                    )
+                    if recovered:
+                        return {"record": recovered}
+                    raise
+                return {"record": completed_record}
         return {"skipped": True}
 
     # Legacy path: jobs with media_snapshot + personalizacao_id → direct media materialization
@@ -607,11 +811,10 @@ async def _process_media_render_target(
         )
         return {"record": updated}
 
-    context_cache = job.setdefault("_runtime_personalizacao_context", {})
-    context_cache_key = f"{topico_id}:{conteudo_id or 0}"
-    cached_context = context_cache.get(context_cache_key)
-    if not isinstance(cached_context, dict):
-        cached_context = await fetch_personalizacao_context(
+    context_cache_key = f"{aluno_id}:{topico_id}:{conteudo_id or 0}"
+
+    async def _fetch_context() -> dict[str, Any]:
+        return await fetch_personalizacao_context(
             aluno_id=aluno_id,
             classe_id=classe_id,
             topico_id=topico_id,
@@ -620,7 +823,14 @@ async def _process_media_render_target(
             session=session,
             include_student_sources=False,
         )
-        context_cache[context_cache_key] = cached_context
+
+    cached_context = await _get_runtime_cached_dict(
+        job=job,
+        cache_name="_runtime_personalizacao_context",
+        locks_name="_runtime_personalizacao_context_locks",
+        key=context_cache_key,
+        factory=_fetch_context,
+    )
     ctx = copy.deepcopy(cached_context)
 
     ctx["perfil_dominante"] = target_profile_label
@@ -634,70 +844,194 @@ async def _process_media_render_target(
         source_hash=str(ctx["source_hash"] or ""),
     )
     if existing:
-        # "Existe" nao e o mesmo que "pronto": um registro pode ter ficado
-        # travado em processando_midias/materiais={} porque
-        # disparar_brainhex_async falhou (fire-and-forget, sem retry) — sem
-        # esta checagem, toda nova tentativa so encontrava esse registro e
-        # pulava para sempre, mesmo o job reportando "completed".
-        stale_min = int(getattr(app.state.settings, "personalizacao_job_stale_processing_min", 15))
-        stuck_check = await session.execute(
-            text(
-                """
-                SELECT (
-                    status = 'processando_midias'
-                    AND COALESCE(materiais, '{}'::jsonb) = '{}'::jsonb
-                    AND COALESCE(updated_at, gerado_em) < NOW() - make_interval(mins => :stale_min)
-                ) AS is_stuck
-                FROM conteudo_personalizado
-                WHERE id = :id
-                """
-            ),
-            {"id": int(existing["id"]), "stale_min": stale_min},
+        existing_status = str(existing.get("status") or "").strip().lower()
+        retry_failed = existing_status in {"failed", "falha"}
+        existing_cycle_id = str(existing.get("ciclo_id") or "")
+        existing_source_hash = str(existing.get("source_hash") or ctx.get("source_hash") or "")
+        generation_key = _build_generation_key(
+            ciclo_id=existing_cycle_id,
+            source_hash=existing_source_hash,
         )
-        if not bool(stuck_check.scalar()):
-            return {"skipped": True, "record": existing}
+        completed_existing = await _normalize_completed_generation_status(
+            repo=repo,
+            record=existing,
+            ciclo_id=existing_cycle_id,
+            source_hash=existing_source_hash,
+            generation_key=generation_key,
+        )
+        if completed_existing:
+            return {"skipped": True, "record": completed_existing}
 
-        runtime_cache = job.setdefault("_runtime_content_enrichment", {})
-        cache_key = f"{topico_id}:{conteudo_id or 0}:{ctx.get('source_hash') or ''}"
-        content_enrichment = runtime_cache.get(cache_key)
-        if not isinstance(content_enrichment, dict):
-            content_enrichment = await enrich_content_blocks(
+        stale_min = _effective_stale_processing_min(app.state.settings)
+        claimed = await repo.claim_retry_incomplete_generation(
+            record_id=int(existing["id"]),
+            ciclo_id=existing_cycle_id,
+            source_hash=existing_source_hash,
+            generation_key=generation_key,
+            stale_processing_min=stale_min,
+        )
+        retry_stuck = existing_status == "processando_midias" and claimed is not None
+        if claimed is None:
+            current = await repo.buscar_por_id(int(existing["id"]))
+            completed_current = (
+                await _normalize_completed_generation_status(
+                    repo=repo,
+                    record=current,
+                    ciclo_id=existing_cycle_id,
+                    source_hash=existing_source_hash,
+                    generation_key=generation_key,
+                )
+                if current
+                else None
+            )
+            if completed_current:
+                return {"skipped": True, "record": completed_current}
+            # Outro worker ainda esta processando esta mesma geracao, ou a
+            # geracao mudou entre a leitura e o CAS. O target permanece
+            # pendente sem consumir uma tentativa nem virar terminal.
+            return {
+                "deferred": True,
+                "record": current or existing,
+                "reason": "geracao_atual_em_processamento",
+            }
+        existing = claimed
+        completed_claimed = await _normalize_completed_generation_status(
+            repo=repo,
+            record=existing,
+            ciclo_id=existing_cycle_id,
+            source_hash=existing_source_hash,
+            generation_key=generation_key,
+        )
+        if completed_claimed:
+            return {"skipped": True, "record": completed_claimed}
+
+        if retry_failed:
+            logger.info(
+                "retry de personalizacao preservou materiais parciais via CAS: "
+                "personalizacao_id=%s ciclo_id=%s",
+                existing["id"],
+                existing_cycle_id,
+            )
+
+        # Enriquecimento e geracao sao chamadas externas longas. Libera a
+        # transacao iniciada pelas leituras acima antes de aguarda-las.
+        await session.commit()
+        cache_key = _content_enrichment_cache_key(
+            aluno_id=aluno_id,
+            profile_key=target_profile_key,
+            topico_id=topico_id,
+            conteudo_id=conteudo_id,
+            source_hash=ctx.get("source_hash"),
+        )
+
+        async def _enrich_existing() -> dict[str, Any]:
+            return await enrich_content_blocks(
                 context=ctx,
                 settings=app.state.settings,
             )
-            runtime_cache[cache_key] = content_enrichment
 
-        # Registro travado ha mais de `stale_min` minutos: reaproveita o MESMO
-        # id e redispara a geracao (nao cria um registro novo duplicado, nao
-        # deixa travado para sempre).
+        content_enrichment = await _get_runtime_cached_dict(
+            job=job,
+            cache_name="_runtime_content_enrichment",
+            locks_name="_runtime_content_enrichment_locks",
+            key=cache_key,
+            factory=_enrich_existing,
+        )
+
         logger.warning(
-            "personalizacao travada detectada, redisparando geracao: personalizacao_id=%s topico=%s aluno=%s",
-            existing["id"], topico_id, aluno_id,
+            "personalizacao incompleta detectada, redisparando geracao: "
+            "personalizacao_id=%s topico=%s aluno=%s status=%s",
+            existing["id"],
+            topico_id,
+            aluno_id,
+            existing_status,
         )
-        asyncio.create_task(
-            disparar_brainhex_async(
-                settings=app.state.settings,
-                perfil=ctx["perfil_dominante"],
-                fontes=ctx["fontes"],
-                content_blocks=content_enrichment.get("blocos") or [],
-                personalizacao_id=int(existing["id"]),
-                aluno_id=aluno_id,
-                classe_id=classe_id,
-                topico_id=topico_id,
-                ciclo_id=str(existing.get("ciclo_id") or ""),
+        dispatched = await disparar_brainhex_async(
+            settings=app.state.settings,
+            perfil=ctx["perfil_dominante"],
+            fontes=ctx["fontes"],
+            content_blocks=content_enrichment.get("blocos") or [],
+            personalizacao_id=int(existing["id"]),
+            aluno_id=aluno_id,
+            classe_id=classe_id,
+            topico_id=topico_id,
+            ciclo_id=existing_cycle_id,
+            source_hash=existing_source_hash,
+            generation_key=generation_key,
+            wait_for_completion=True,
+        )
+        if not dispatched:
+            recovered = await _mark_failed_unless_generation_completed(
+                repo=repo,
+                record_id=int(existing["id"]),
+                ciclo_id=existing_cycle_id,
+                source_hash=existing_source_hash,
+                generation_key=generation_key,
             )
-        )
-        return {"record": existing, "retried_stuck": True}
+            if recovered:
+                return {
+                    "record": recovered,
+                    "retried_stuck": retry_stuck,
+                    "retried_failed": retry_failed,
+                }
+            raise RuntimeError("Microservico BrainHex nao concluiu a geracao.")
 
-    runtime_cache = job.setdefault("_runtime_content_enrichment", {})
-    cache_key = f"{topico_id}:{conteudo_id or 0}:{ctx.get('source_hash') or ''}"
-    content_enrichment = runtime_cache.get(cache_key)
-    if not isinstance(content_enrichment, dict):
-        content_enrichment = await enrich_content_blocks(
+        completed_record = await repo.buscar_por_id(int(existing["id"]))
+        if not completed_record:
+            raise RuntimeError("Personalizacao desapareceu apos a geracao BrainHex.")
+        try:
+            _assert_brainhex_media_completed(
+                completed_record,
+                ciclo_id=existing_cycle_id,
+                source_hash=existing_source_hash,
+                generation_key=generation_key,
+            )
+        except RuntimeError:
+            recovered = await _mark_failed_unless_generation_completed(
+                repo=repo,
+                record_id=int(existing["id"]),
+                ciclo_id=existing_cycle_id,
+                source_hash=existing_source_hash,
+                generation_key=generation_key,
+            )
+            if recovered:
+                return {
+                    "record": recovered,
+                    "retried_stuck": retry_stuck,
+                    "retried_failed": retry_failed,
+                }
+            raise
+        return {
+            "record": completed_record,
+            "retried_stuck": retry_stuck,
+            "retried_failed": retry_failed,
+        }
+
+    # fetch_personalizacao_context e a busca de registro iniciam transacao.
+    # Enriquecimento/cards chamam provedores externos e nao devem reter a
+    # conexao do pool enquanto aguardam.
+    await session.commit()
+    cache_key = _content_enrichment_cache_key(
+        aluno_id=aluno_id,
+        profile_key=target_profile_key,
+        topico_id=topico_id,
+        conteudo_id=conteudo_id,
+        source_hash=ctx.get("source_hash"),
+    )
+
+    async def _enrich_fresh() -> dict[str, Any]:
+        return await enrich_content_blocks(
             context=ctx,
             settings=app.state.settings,
         )
-        runtime_cache[cache_key] = content_enrichment
+
+    content_enrichment = await _get_runtime_cached_dict(
+        job=job,
+        cache_name="_runtime_content_enrichment",
+        locks_name="_runtime_content_enrichment_locks",
+        key=cache_key,
+        factory=_enrich_fresh,
+    )
 
     cards_payload = await gerar_cards_direto(
         perfil=ctx["perfil_dominante"],
@@ -773,35 +1107,89 @@ async def _process_media_render_target(
     if not bool(target.get("is_profile_template")):
         await _seed_progress(session=session, record=record)
 
-    asyncio.create_task(
-        disparar_brainhex_async(
-            settings=app.state.settings,
-            perfil=ctx["perfil_dominante"],
-            fontes=ctx["fontes"],
-            content_blocks=content_enrichment.get("blocos") or [],
-            personalizacao_id=int(record_id),
-            aluno_id=aluno_id,
-            classe_id=classe_id,
-            topico_id=topico_id,
-            ciclo_id=ctx["ciclo_id"],
-        )
+    record_cycle_id = str(record.get("ciclo_id") or ctx["ciclo_id"])
+    record_source_hash = str(record.get("source_hash") or ctx["source_hash"] or "")
+    generation_key = _build_generation_key(
+        ciclo_id=record_cycle_id,
+        source_hash=record_source_hash,
     )
+    await session.commit()
+    dispatched = await disparar_brainhex_async(
+        settings=app.state.settings,
+        perfil=ctx["perfil_dominante"],
+        fontes=ctx["fontes"],
+        content_blocks=content_enrichment.get("blocos") or [],
+        personalizacao_id=int(record_id),
+        aluno_id=aluno_id,
+        classe_id=classe_id,
+        topico_id=topico_id,
+        ciclo_id=record_cycle_id,
+        source_hash=record_source_hash,
+        generation_key=generation_key,
+        wait_for_completion=True,
+    )
+    if not dispatched:
+        recovered = await _mark_failed_unless_generation_completed(
+            repo=repo,
+            record_id=int(record_id),
+            ciclo_id=record_cycle_id,
+            source_hash=record_source_hash,
+            generation_key=generation_key,
+        )
+        if recovered:
+            return {"record": recovered}
+        raise RuntimeError("Microservico BrainHex nao concluiu a geracao.")
 
-    return {"record": record}
+    completed_record = await repo.buscar_por_id(int(record_id))
+    if not completed_record:
+        raise RuntimeError("Personalizacao desapareceu apos a geracao BrainHex.")
+    try:
+        _assert_brainhex_media_completed(
+            completed_record,
+            ciclo_id=record_cycle_id,
+            source_hash=record_source_hash,
+            generation_key=generation_key,
+        )
+    except RuntimeError:
+        recovered = await _mark_failed_unless_generation_completed(
+            repo=repo,
+            record_id=int(record_id),
+            ciclo_id=record_cycle_id,
+            source_hash=record_source_hash,
+            generation_key=generation_key,
+        )
+        if recovered:
+            return {"record": recovered}
+        raise
+    return {"record": completed_record}
 
 
 async def process_personalizacao_job_once(app: FastAPI) -> bool:
     session_factory = app.state.session_factory
-    stale_min = int(getattr(app.state.settings, "personalizacao_job_stale_processing_min", 15))
+    stale_min = _effective_stale_processing_min(app.state.settings)
+    partial_retry_delay_sec = max(
+        1,
+        int(
+            getattr(
+                app.state.settings,
+                "personalizacao_job_partial_retry_delay_sec",
+                15,
+            )
+            or 15
+        ),
+    )
     async with session_factory() as session:
         repo = PersonalizacaoJobsRepository(session)
-        job = await repo.claim_next_job(stale_processing_min=stale_min)
+        job = await repo.claim_next_job(
+            stale_processing_min=stale_min,
+            partial_retry_delay_sec=partial_retry_delay_sec,
+        )
     if not job:
         return False
 
-    async with session_factory() as session:
-        repo = PersonalizacaoJobsRepository(session)
-        if job["kind"] == JOB_KIND_CLASS_THEME:
+    if job["kind"] == JOB_KIND_CLASS_THEME:
+        async with session_factory() as session:
+            repo = PersonalizacaoJobsRepository(session)
             try:
                 await gerar_classe_mapa_tema(
                     session=session,
@@ -825,8 +1213,10 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
                     status="failed",
                     last_error=str(exc),
                 )
-            return True
+        return True
 
+    async with session_factory() as session:
+        repo = PersonalizacaoJobsRepository(session)
         try:
             targets = await repo.get_targets(str(job["id"]))
         except Exception:
@@ -839,16 +1229,21 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
             )
             return True
 
-        max_retries = int(app.state.settings.personalizacao_job_max_retries)
-        errors = 0
+    max_retries = int(app.state.settings.personalizacao_job_max_retries)
+    target_concurrency = max(
+        1,
+        int(getattr(app.state.settings, "personalizacao_media_render_concurrency", 2) or 2),
+    )
+    target_semaphore = asyncio.Semaphore(target_concurrency)
 
-        for target in targets:
-            if target.get("status") in TARGET_DONE_STATES:
-                continue
-
+    async def _process_target(target: dict[str, Any]) -> int:
+        if target.get("status") in TARGET_DONE_STATES:
+            return 0
+        async with target_semaphore, session_factory() as target_session:
+            target_repo = PersonalizacaoJobsRepository(target_session)
             attempts = int(target.get("attempts") or 0) + 1
             try:
-                await repo.update_target_status(
+                await target_repo.update_target_status(
                     target_id=int(target["id"]),
                     status="processing",
                     attempts=attempts,
@@ -859,27 +1254,45 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
                     "Falha ao marcar target como processing",
                     extra={"job_id": str(job["id"]), "target_id": target.get("id")},
                 )
-                await session.rollback()
-                continue
+                await target_session.rollback()
+                return 1
 
             try:
-                outcome = await _process_media_render_target(app=app, session=session, job=job, target=target)
+                outcome = await _process_media_render_target(
+                    app=app,
+                    session=target_session,
+                    job=job,
+                    target=target,
+                )
                 record = outcome.get("record") if isinstance(outcome, dict) else None
+                if outcome.get("deferred"):
+                    await target_repo.update_target_status(
+                        target_id=int(target["id"]),
+                        status="pending",
+                        attempts=int(target.get("attempts") or 0),
+                        last_error=str(
+                            outcome.get("reason") or "geracao atual ainda em processamento"
+                        ),
+                        personalizacao_id=(
+                            record.get("id") if isinstance(record, dict) else None
+                        ),
+                    )
+                    return 0
                 target_status = "skipped" if outcome.get("skipped") else "completed"
                 target_error: str | None = None
-                await repo.update_target_status(
+                await target_repo.update_target_status(
                     target_id=int(target["id"]),
                     status=target_status,
                     attempts=attempts,
                     last_error=target_error,
                     personalizacao_id=record.get("id") if isinstance(record, dict) else None,
                 )
+                return 0
             except Exception as exc:
-                errors += 1
-                await session.rollback()
+                await target_session.rollback()
                 failed_status = "pending" if attempts < max_retries else "failed"
                 try:
-                    await repo.update_target_status(
+                    await target_repo.update_target_status(
                         target_id=int(target["id"]),
                         status=failed_status,
                         attempts=attempts,
@@ -890,7 +1303,7 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
                         "Falha ao atualizar status apos erro do target",
                         extra={"job_id": str(job["id"]), "target_id": target.get("id")},
                     )
-                    await session.rollback()
+                    await target_session.rollback()
                 logger.exception(
                     "Falha ao processar target de personalizacao",
                     extra={
@@ -900,7 +1313,19 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
                         "topico_id": target.get("topico_id"),
                     },
                 )
+                return 1
 
+    pending_targets = [
+        target for target in targets if target.get("status") not in TARGET_DONE_STATES
+    ]
+    errors = (
+        sum(await asyncio.gather(*(_process_target(target) for target in pending_targets)))
+        if pending_targets
+        else 0
+    )
+
+    async with session_factory() as session:
+        repo = PersonalizacaoJobsRepository(session)
         try:
             refreshed = await repo.refresh_job_counters(str(job["id"]))
             targets = await repo.get_targets(str(job["id"]))
@@ -909,7 +1334,12 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
             final_status = "completed"
             if has_failed and refreshed and int(refreshed.get("processed_targets") or 0) > 0:
                 final_status = "partial"
-            if has_failed and refreshed and int(refreshed.get("processed_targets") or 0) == int(refreshed.get("error_count") or 0):
+            if (
+                has_failed
+                and refreshed
+                and int(refreshed.get("processed_targets") or 0)
+                == int(refreshed.get("error_count") or 0)
+            ):
                 final_status = "failed"
             if has_pending:
                 final_status = "partial"
@@ -920,7 +1350,10 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
                 last_error=f"{errors} target(s) com falha" if errors else None,
             )
         except Exception:
-            logger.exception("Falha ao finalizar job de personalizacao", extra={"job_id": str(job["id"])})
+            logger.exception(
+                "Falha ao finalizar job de personalizacao",
+                extra={"job_id": str(job["id"])},
+            )
             await session.rollback()
     return True
 

@@ -381,12 +381,32 @@ class FontesPersonalizacaoRepository:
                   )
                   AND (
                     (params.conteudo_id IS NOT NULL AND fp.conteudo_id = params.conteudo_id)
-                    OR (params.topico_id IS NOT NULL AND fp.conteudo_id IS NULL AND fp.topico_id = params.topico_id)
+                    OR (
+                      params.conteudo_id IS NULL
+                      AND params.topico_id IS NOT NULL
+                      AND (
+                        fp.topico_id = params.topico_id
+                        OR c.topico_id = params.topico_id
+                      )
+                    )
+                    OR (
+                      params.conteudo_id IS NOT NULL
+                      AND params.topico_id IS NOT NULL
+                      AND fp.conteudo_id IS NULL
+                      AND fp.topico_id = params.topico_id
+                    )
                     OR (fp.conteudo_id IS NULL AND fp.topico_id IS NULL)
                   )
                 ORDER BY
                   CASE
                     WHEN params.conteudo_id IS NOT NULL AND fp.conteudo_id = params.conteudo_id THEN 0
+                    WHEN params.conteudo_id IS NULL
+                      AND params.topico_id IS NOT NULL
+                      AND (
+                        fp.topico_id = params.topico_id
+                        OR c.topico_id = params.topico_id
+                      )
+                      THEN 0
                     WHEN params.topico_id IS NOT NULL AND fp.conteudo_id IS NULL AND fp.topico_id = params.topico_id THEN 1
                     ELSE 2
                   END,

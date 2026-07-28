@@ -60,6 +60,8 @@ class Settings(BaseSettings):
     # Precisa bater com API_SHARED_SECRET no microservice (api-brainhex) quando
     # configurado lá — obrigatório em produção; sem ele, /api/personalizar retorna 401.
     brainhex_api_secret: str | None = None
+    # Deve ser maior que o timeout maximo do pipeline no microservico.
+    brainhex_api_wait_timeout_sec: int = 1980
 
     emotion_model_provider: str = "deepface"
     reading_model_provider: str = "isolation_forest"
@@ -88,9 +90,10 @@ class Settings(BaseSettings):
     personalizacao_job_concurrency: int = 2
     personalizacao_job_poll_sec: int = 5
     personalizacao_job_max_retries: int = 3
+    personalizacao_job_partial_retry_delay_sec: int = 15
     # Job preso em 'processing' ha mais que isso (ex.: processo caiu no meio) volta
     # a ser reclamavel pelo worker — evita orfaos permanentes apos crash/restart.
-    personalizacao_job_stale_processing_min: int = 15
+    personalizacao_job_stale_processing_min: int = 40
     personalizacao_job_db_failure_max_backoff_sec: int = 60
     personalizacao_job_db_failure_log_interval_sec: int = 30
     personalizacao_media_render_concurrency: int = 2
