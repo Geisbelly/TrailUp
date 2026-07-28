@@ -856,6 +856,7 @@ def test_generation_status_active_target_precedes_old_material() -> None:
     assert {
         item.status for item in generation.formatos.values()
     } == {"na_fila"}
+    assert all(item.erro is None for item in generation.formatos.values())
 
 
 def test_generation_status_processing_without_record_is_enriching() -> None:

@@ -23,10 +23,10 @@ _ENRICHMENT_INSTRUCTIONS = """
 Você é o professor-editor responsável pela etapa obrigatória de enriquecimento
 curricular da TrailUp. Esta etapa ocorre na API, antes da geração de materiais.
 
-Para cada bloco-base recebido:
+Os blocos-base já foram separados pela API antes desta chamada. Para cada bloco:
 1. Preserve exatamente o id e devolva exatamente um bloco para cada id pedido.
-2. Faça a decomposição semântica: atribua tema, tópico e objetivos específicos
-   que representem corretamente o trecho, preservando a ordem e o fio condutor.
+2. Não funda, divida, remova nem reordene blocos. Classifique cada um com tema,
+   tópico e objetivos específicos, preservando o fio condutor entre eles.
 3. Defina termos, explique relações, causas e consequências e acrescente contexto
    correto e exemplos aplicados, sem fugir do assunto.
 4. Faça conteudo_aprofundado ficar pelo menos 30% e 200 caracteres maior que
@@ -609,7 +609,9 @@ async def enrich_content_blocks(
     context: dict[str, Any],
     settings: Settings,
 ) -> dict[str, Any]:
-    """Decompõe toda a origem e exige aprofundamento remoto antes de qualquer mídia."""
+    """Separa, aprofunda e só então libera blocos neutros para personalização."""
+    # Etapa 1: separação neutra e rastreável. Nenhum perfil BrainHex participa
+    # do agrupamento; assim os mesmos blocos-base atendem aos sete perfis.
     segments = _source_segments(context)
     base_blocks = _group_segments(context, segments)
     class_content = context.get("conteudo_classe") if isinstance(context.get("conteudo_classe"), dict) else {}
@@ -620,6 +622,8 @@ async def enrich_content_blocks(
         "descricao": _text(topic.get("descricao")),
         "objetivo": _text(topic.get("objetivo")),
     }
+    # Etapa 2: aprofundamento curricular neutro via OpenAI. A personalização
+    # editorial acontece somente depois, ao enviar estes blocos ao microserviço.
     blocks, openai_metadata = await _enrich_base_blocks_with_openai(
         base_blocks=base_blocks,
         topic=topic_payload,
@@ -637,8 +641,14 @@ async def enrich_content_blocks(
             "fontes_cobertas": len({source_id for block in base_blocks for source_id in block.get("source_ids") or []}),
             "fallback": False,
             "provider": CONTENT_ENRICHMENT_PROVIDER,
-            "division_provider": CONTENT_ENRICHMENT_PROVIDER,
+            "division_provider": "api-deterministic",
             "enrichment_provider": CONTENT_ENRICHMENT_PROVIDER,
+            "personalization_applied": False,
+            "pipeline_order": [
+                "content_decomposition",
+                "openai_enrichment",
+                "brainhex_personalization",
+            ],
             "provider_model": _text(openai_metadata.get("model")),
             "models": list(openai_metadata.get("models") or []),
             "lotes_gerados": _nonnegative_int(

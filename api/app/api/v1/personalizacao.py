@@ -516,7 +516,10 @@ def _build_generation_status(
             name: _generation_format(
                 status=override_status,
                 arquivo_url=current.arquivo_url,
-                erro=current.erro,
+                # O erro do material pertence à tentativa anterior. Enquanto
+                # o target atual está ativo, exibi-lo faz parecer que a nova
+                # chamada já falhou no mesmo provedor.
+                erro=None,
             )
             for name, current in formatos.items()
         }
@@ -581,10 +584,11 @@ def _build_generation_status(
     )
 
     etapa, label = _GENERATION_STATE_DETAILS[state]
+    active_target = state in {"na_fila", "enriquecendo"}
     error, error_code = _normalize_generation_error(
         target.get("last_error") if isinstance(target, dict) else None,
         target.get("job_last_error") if isinstance(target, dict) else None,
-        _record_error(record),
+        None if active_target else _record_error(record),
     )
     return PersonalizacaoGeracaoStatus(
         status=state,

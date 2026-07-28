@@ -43,6 +43,7 @@ import { validatePersonalizarBody } from "./src/lib/validators";
 import type { ContentBlock } from "./src/lib/validators";
 import { createRateLimiter } from "./src/lib/rateLimit";
 import {
+  CONTENT_ENRICHMENT_PROVIDER,
   MEDIA_PIPELINE_VERSION,
   PRESENTATION_DESIGN_VERSION,
   PRESENTATION_ENGINE_VERSION,
@@ -53,6 +54,7 @@ import {
 } from "./src/constants/pipelineVersions";
 
 export {
+  CONTENT_ENRICHMENT_PROVIDER,
   MEDIA_PIPELINE_VERSION,
   PRESENTATION_DESIGN_VERSION,
   PRESENTATION_ENGINE_VERSION,
@@ -835,6 +837,7 @@ export function buildApp(opts: AppOptions = {}): express.Application {
       presentation_engine_version: PRESENTATION_ENGINE_VERSION,
       presentation_schema: PRESENTATION_SCHEMA_VERSION,
       presentation_design_version: PRESENTATION_DESIGN_VERSION,
+      content_enrichment_provider: CONTENT_ENRICHMENT_PROVIDER,
       render_git_commit: renderGitCommit,
     });
   });
@@ -1139,6 +1142,7 @@ export function buildApp(opts: AppOptions = {}): express.Application {
           media_pipeline_version: MEDIA_PIPELINE_VERSION,
           presentation_engine_version: PRESENTATION_ENGINE_VERSION,
           presentation_design_version: PRESENTATION_DESIGN_VERSION,
+          content_enrichment_provider: CONTENT_ENRICHMENT_PROVIDER,
         });
       } catch (err: any) {
         return res.status(500).json({
@@ -1155,6 +1159,7 @@ export function buildApp(opts: AppOptions = {}): express.Application {
       media_pipeline_version: MEDIA_PIPELINE_VERSION,
       presentation_engine_version: PRESENTATION_ENGINE_VERSION,
       presentation_design_version: PRESENTATION_DESIGN_VERSION,
+      content_enrichment_provider: CONTENT_ENRICHMENT_PROVIDER,
     });
     setImmediate(() => {
       void executeJob().catch(() => undefined);

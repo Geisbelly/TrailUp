@@ -98,6 +98,7 @@ describe("GET /api/health", () => {
         presentation_engine_version: string;
         presentation_schema: string;
         presentation_design_version: string;
+        content_enrichment_provider: string;
         render_git_commit: string;
       };
       assert.equal(body.media_pipeline_version, MEDIA_PIPELINE_VERSION);
@@ -107,6 +108,7 @@ describe("GET /api/health", () => {
         body.presentation_design_version,
         PRESENTATION_DESIGN_VERSION,
       );
+      assert.equal(body.content_enrichment_provider, "openai");
       assert.equal(body.render_git_commit, "abc123render");
     } finally {
       await c();

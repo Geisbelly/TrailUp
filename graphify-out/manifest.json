@@ -290,8 +290,8 @@
     "semantic_hash": "41cb38f399ae47714da91e3814c7e4c8"
   },
   "api/app/api/v1/personalizacao.py": {
-    "mtime": 1785260118.940001,
-    "ast_hash": "960b69363b0c780b67882a49dd2ab2e0",
+    "mtime": 1785277467.0842354,
+    "ast_hash": "b6a6d4e7cdae6e7cd36afc26caa5cdcb",
     "semantic_hash": ""
   },
   "api/app/api/v1/telemetria.py": {
@@ -685,8 +685,8 @@
     "semantic_hash": "366917f8966180b9f16c3fb3b91aa046"
   },
   "api/tests/test_api.py": {
-    "mtime": 1785260118.967554,
-    "ast_hash": "eefa9057430828fbbad67c93d0ccd8e0",
+    "mtime": 1785277467.0927505,
+    "ast_hash": "1c3f08878632bd2cfbb6c86d42898863",
     "semantic_hash": ""
   },
   "api/tests/test_auth.py": {
@@ -1550,8 +1550,8 @@
     "semantic_hash": ""
   },
   "microservice/server.ts": {
-    "mtime": 1785273855.7925327,
-    "ast_hash": "9b8bed76a3956965d13f0dcbd2702a81",
+    "mtime": 1785277467.0822272,
+    "ast_hash": "7446a7c707f69b3d8ed3f7ff0dba0835",
     "semantic_hash": ""
   },
   "microservice/sql/migrations/0001_merge_personalizacao_materiais_rpc.sql": {
@@ -1665,8 +1665,8 @@
     "semantic_hash": "2b36426d5ad7e08ef79746aa524f4fb7"
   },
   "microservice/src/server.test.ts": {
-    "mtime": 1785273855.8000486,
-    "ast_hash": "8157164cdcda4bb96afcc3cfe00fccda",
+    "mtime": 1785277467.0892332,
+    "ast_hash": "7411b899b4f9606eee54763ad380baff",
     "semantic_hash": ""
   },
   "microservice/src/services/geminiService.ts": {
@@ -4010,13 +4010,13 @@
     "semantic_hash": ""
   },
   "api/app/services/content_enrichment.py": {
-    "mtime": 1785273855.6156375,
-    "ast_hash": "8bd23d8aaa65381de6cb84ba088b1b60",
+    "mtime": 1785277614.0090299,
+    "ast_hash": "0509bdaa6700a0dfa509bcb5ad7958ce",
     "semantic_hash": ""
   },
   "api/tests/test_content_enrichment.py": {
-    "mtime": 1785273855.6336565,
-    "ast_hash": "573b4e1aff47ee4c950db473a3522bd0",
+    "mtime": 1785277614.010028,
+    "ast_hash": "acf406cc21000594ba60b9488d85cebf",
     "semantic_hash": ""
   },
   "api/app/agent/prompts/enriquecedor_blocos_conteudo.txt": {
@@ -4110,8 +4110,8 @@
     "semantic_hash": ""
   },
   "api/app/services/media_contract.py": {
-    "mtime": 1785273974.184826,
-    "ast_hash": "ef809679d93478513a0f849d40834432",
+    "mtime": 1785277467.0807123,
+    "ast_hash": "e95b25e1b7eab938f7249be8ca1ca47a",
     "semantic_hash": ""
   },
   "frontend/src/components/console/personalizacoes/materialPreview.test.ts": {
@@ -4125,8 +4125,8 @@
     "semantic_hash": ""
   },
   "microservice/src/constants/pipelineVersions.ts": {
-    "mtime": 1785273974.1838243,
-    "ast_hash": "2f8801f25fe9941d89e8f9a8d842646a",
+    "mtime": 1785277467.0797143,
+    "ast_hash": "f7dd6e73edf7041bb99366c882eece0d",
     "semantic_hash": ""
   },
   "api/alembic/versions/20260728_04_scope_personalization_by_content.py": {

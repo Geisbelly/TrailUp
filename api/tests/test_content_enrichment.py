@@ -123,12 +123,19 @@ async def test_enrichment_groups_every_source_segment_without_truncation(
     assert [block["ordem"] for block in result["blocos"]] == list(range(1, 25))
     assert result["metadata"]["fallback"] is False
     assert result["metadata"]["provider"] == "openai"
-    assert result["metadata"]["division_provider"] == "openai"
+    assert result["metadata"]["division_provider"] == "api-deterministic"
     assert result["metadata"]["enrichment_provider"] == "openai"
+    assert result["metadata"]["personalization_applied"] is False
+    assert result["metadata"]["pipeline_order"] == [
+        "content_decomposition",
+        "openai_enrichment",
+        "brainhex_personalization",
+    ]
     assert result["metadata"]["provider_model"] == "gpt-5.6-sol"
     assert result["metadata"]["lotes_gerados"] == 3
     assert result["metadata"]["chamadas_realizadas"] == 3
     assert all(call["model"] == "gpt-5.6-sol" for call in captured["calls"])
+    assert "brainhex" not in json.dumps(captured["payloads"]).lower()
 
     submitted_blocks = [
         block

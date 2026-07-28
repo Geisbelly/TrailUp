@@ -290,8 +290,8 @@
     "semantic_hash": "41cb38f399ae47714da91e3814c7e4c8"
   },
   "api/app/api/v1/personalizacao.py": {
-    "mtime": 1785260118.940001,
-    "ast_hash": "960b69363b0c780b67882a49dd2ab2e0",
+    "mtime": 1785277467.0842354,
+    "ast_hash": "b6a6d4e7cdae6e7cd36afc26caa5cdcb",
     "semantic_hash": ""
   },
   "api/app/api/v1/telemetria.py": {
@@ -305,7 +305,7 @@
     "semantic_hash": "ea9fc3046e6bac85cbdbfead8c6ca178"
   },
   "api/app/core/settings.py": {
-    "mtime": 1785271531.3940864,
+    "mtime": 1785273855.609638,
     "ast_hash": "d8abe7ec400e473e3d6a6792ddb7665c",
     "semantic_hash": ""
   },
@@ -415,8 +415,8 @@
     "semantic_hash": ""
   },
   "api/app/repositories/conteudo_personalizado.py": {
-    "mtime": 1785260120.520444,
-    "ast_hash": "dddfbc69bdf631682349c8716ee969ea",
+    "mtime": 1785273974.182825,
+    "ast_hash": "0270b5bb435b9da95279f74db950ca91",
     "semantic_hash": ""
   },
   "api/app/repositories/context.py": {
@@ -670,7 +670,7 @@
     "semantic_hash": "6d6d44ff38a445389725eb4dd7f1c495"
   },
   "api/pyproject.toml": {
-    "mtime": 1785271531.3976045,
+    "mtime": 1785273855.6221447,
     "ast_hash": "bd6b797e496d7e395d6d719be27e48cf",
     "semantic_hash": ""
   },
@@ -685,8 +685,8 @@
     "semantic_hash": "366917f8966180b9f16c3fb3b91aa046"
   },
   "api/tests/test_api.py": {
-    "mtime": 1785260118.967554,
-    "ast_hash": "eefa9057430828fbbad67c93d0ccd8e0",
+    "mtime": 1785277467.0927505,
+    "ast_hash": "1c3f08878632bd2cfbb6c86d42898863",
     "semantic_hash": ""
   },
   "api/tests/test_auth.py": {
@@ -760,8 +760,8 @@
     "semantic_hash": ""
   },
   "api/tests/test_repositories.py": {
-    "mtime": 1785260120.5326736,
-    "ast_hash": "6c69d68a47d7929c1a85223e35e1a1db",
+    "mtime": 1785273974.1838243,
+    "ast_hash": "cbbba65f3dce90fe49efe4c9e87520ca",
     "semantic_hash": ""
   },
   "api/tests/test_startup.py": {
@@ -1545,13 +1545,13 @@
     "semantic_hash": "0af88aabf1f61ddf07652e71f37a6648"
   },
   "microservice/package.json": {
-    "mtime": 1785271656.690104,
+    "mtime": 1785273855.7875333,
     "ast_hash": "6372211fa26b924b9442448d1e5effc9",
     "semantic_hash": ""
   },
   "microservice/server.ts": {
-    "mtime": 1785271626.0072443,
-    "ast_hash": "9b8bed76a3956965d13f0dcbd2702a81",
+    "mtime": 1785277467.0822272,
+    "ast_hash": "7446a7c707f69b3d8ed3f7ff0dba0835",
     "semantic_hash": ""
   },
   "microservice/sql/migrations/0001_merge_personalizacao_materiais_rpc.sql": {
@@ -1665,12 +1665,12 @@
     "semantic_hash": "2b36426d5ad7e08ef79746aa524f4fb7"
   },
   "microservice/src/server.test.ts": {
-    "mtime": 1785271649.0845096,
-    "ast_hash": "8157164cdcda4bb96afcc3cfe00fccda",
+    "mtime": 1785277467.0892332,
+    "ast_hash": "7411b899b4f9606eee54763ad380baff",
     "semantic_hash": ""
   },
   "microservice/src/services/geminiService.ts": {
-    "mtime": 1785272914.5867944,
+    "mtime": 1785273855.8077817,
     "ast_hash": "ec1ffc15dc20afd2d290b97a62a28efd",
     "semantic_hash": ""
   },
@@ -1685,7 +1685,7 @@
     "semantic_hash": ""
   },
   "microservice/src/types/index.ts": {
-    "mtime": 1785265690.0794873,
+    "mtime": 1785273855.814782,
     "ast_hash": "83c467f38c3f1aba42c7ede5ba254d15",
     "semantic_hash": ""
   },
@@ -2755,8 +2755,8 @@
     "semantic_hash": ""
   },
   "api/README.md": {
-    "mtime": 1785271798.55051,
-    "ast_hash": "242ed6f2b71fe63af897e9461811c5a4",
+    "mtime": 1785273855.6031191,
+    "ast_hash": "be3a1520369093caabc3901c24ed0368",
     "semantic_hash": ""
   },
   "api/app/agent/prompts/classe_mapa_tema.txt": {
@@ -2830,7 +2830,7 @@
     "semantic_hash": ""
   },
   "api/requirements.txt": {
-    "mtime": 1785271531.39509,
+    "mtime": 1785273855.627659,
     "ast_hash": "202e4970c54df576f4d73fe5178f91ff",
     "semantic_hash": ""
   },
@@ -3280,7 +3280,7 @@
     "semantic_hash": ""
   },
   "microservice/README.md": {
-    "mtime": 1785272914.5889077,
+    "mtime": 1785273855.781023,
     "ast_hash": "ab65562fd91740b2ec35d2236c966304",
     "semantic_hash": ""
   },
@@ -4010,12 +4010,12 @@
     "semantic_hash": ""
   },
   "api/app/services/content_enrichment.py": {
-    "mtime": 1785272053.4010775,
+    "mtime": 1785273855.6156375,
     "ast_hash": "8bd23d8aaa65381de6cb84ba088b1b60",
     "semantic_hash": ""
   },
   "api/tests/test_content_enrichment.py": {
-    "mtime": 1785272053.4020803,
+    "mtime": 1785273855.6336565,
     "ast_hash": "573b4e1aff47ee4c950db473a3522bd0",
     "semantic_hash": ""
   },
@@ -4110,8 +4110,8 @@
     "semantic_hash": ""
   },
   "api/app/services/media_contract.py": {
-    "mtime": 1785272939.3047154,
-    "ast_hash": "fa6d48a3ba0985a2e8e90df5000994fb",
+    "mtime": 1785277467.0807123,
+    "ast_hash": "e95b25e1b7eab938f7249be8ca1ca47a",
     "semantic_hash": ""
   },
   "frontend/src/components/console/personalizacoes/materialPreview.test.ts": {
@@ -4125,8 +4125,8 @@
     "semantic_hash": ""
   },
   "microservice/src/constants/pipelineVersions.ts": {
-    "mtime": 1785272939.3037155,
-    "ast_hash": "e13e8ac1f1f3c624fce6963d57732b40",
+    "mtime": 1785277467.0797143,
+    "ast_hash": "f7dd6e73edf7041bb99366c882eece0d",
     "semantic_hash": ""
   },
   "api/alembic/versions/20260728_04_scope_personalization_by_content.py": {
@@ -4145,7 +4145,7 @@
     "semantic_hash": ""
   },
   "microservice/src/services/geminiBlockBatches.test.ts": {
-    "mtime": 1785265731.9139395,
+    "mtime": 1785273855.8067777,
     "ast_hash": "22fea2c54105788285d2aba3ae694885",
     "semantic_hash": ""
   },
@@ -4190,12 +4190,12 @@
     "semantic_hash": ""
   },
   "microservice/src/services/contentGenerationService.test.ts": {
-    "mtime": 1785272931.196796,
+    "mtime": 1785273855.801047,
     "ast_hash": "406ef0f1f119f0fb794b5917d68c8135",
     "semantic_hash": ""
   },
   "microservice/src/services/contentGenerationService.ts": {
-    "mtime": 1785273037.5880697,
+    "mtime": 1785273855.8020446,
     "ast_hash": "c706cd74270ff4d84b63c063a58fc648",
     "semantic_hash": ""
   }
