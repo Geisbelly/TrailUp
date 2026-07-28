@@ -111,6 +111,7 @@ class PersonalizacaoJobsRepository:
         topico_id: int | None = None,
         conteudo_id: int | None = None,
         total_targets: int = 0,
+        commit: bool = True,
     ) -> dict[str, Any]:
         if not await self._jobs_exists():
             raise RuntimeError("Tabela personalizacao_jobs indisponivel.")
@@ -200,14 +201,53 @@ class PersonalizacaoJobsRepository:
                 "total_targets": total_targets,
             },
         )
-        await self.session.commit()
+        if commit:
+            await self.session.commit()
         return self._hydrate_job(dict(result.mappings().one()))
+
+    async def criar_job_com_targets(
+        self,
+        *,
+        kind: str,
+        classe_id: int,
+        trigger_source: str,
+        targets: list[dict[str, Any]],
+        payload: dict[str, Any] | None = None,
+        media_snapshot: dict[str, Any] | None = None,
+        aluno_id: str | None = None,
+        topico_id: int | None = None,
+        conteudo_id: int | None = None,
+    ) -> dict[str, Any]:
+        try:
+            job = await self.criar_job(
+                kind=kind,
+                classe_id=classe_id,
+                trigger_source=trigger_source,
+                payload=payload,
+                media_snapshot=media_snapshot,
+                aluno_id=aluno_id,
+                topico_id=topico_id,
+                conteudo_id=conteudo_id,
+                total_targets=len(targets),
+                commit=False,
+            )
+            await self.inserir_targets(
+                job_id=str(job["id"]),
+                targets=targets,
+                commit=False,
+            )
+            await self.session.commit()
+            return job
+        except Exception:
+            await self.session.rollback()
+            raise
 
     async def inserir_targets(
         self,
         *,
         job_id: str,
         targets: list[dict[str, Any]],
+        commit: bool = True,
     ) -> None:
         if not targets:
             return
@@ -303,7 +343,8 @@ class PersonalizacaoJobsRepository:
             ),
             {"job_id": job_id},
         )
-        await self.session.commit()
+        if commit:
+            await self.session.commit()
 
     async def list_jobs(
         self,

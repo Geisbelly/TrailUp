@@ -1159,7 +1159,7 @@ async def test_enqueue_media_render_job_reuses_open_job_with_same_profile_and_ad
         refresh_counters_mock,
     )
     monkeypatch.setattr(
-        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.criar_job",
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.criar_job_com_targets",
         create_job_mock,
     )
 
@@ -1211,7 +1211,7 @@ async def test_enqueue_media_render_job_creates_new_job_when_profile_key_differs
         find_open_mock,
     )
     monkeypatch.setattr(
-        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.criar_job",
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.criar_job_com_targets",
         create_job_mock,
     )
     monkeypatch.setattr(
@@ -1228,7 +1228,8 @@ async def test_enqueue_media_render_job_creates_new_job_when_profile_key_differs
     assert result["id"] == "job-new"
     assert create_job_mock.await_count == 1
     assert create_job_mock.await_args.kwargs["payload"]["brainhex_profile_key"] == "survivor"
-    assert insert_targets_mock.await_count == 1
+    assert len(create_job_mock.await_args.kwargs["targets"]) == 1
+    assert insert_targets_mock.await_count == 0
 
 
 class _BackfillResult:

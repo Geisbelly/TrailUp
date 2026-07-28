@@ -6635,30 +6635,27 @@ async def _enqueue_media_render_job_if_needed(
             if isinstance(material, dict)
         }
 
-    job = await jobs_repo.criar_job(
+    media_job_targets = [
+        {
+            "aluno_id": aluno_id,
+            "topico_id": int(topico_id),
+            "conteudo_id": int(conteudo_id) if conteudo_id is not None else None,
+            "status": "pending",
+            "attempts": 0,
+            "last_error": None,
+            "personalizacao_id": int(record["id"]),
+        }
+    ]
+    job = await jobs_repo.criar_job_com_targets(
         kind=_PERSONALIZACAO_MEDIA_RENDER_JOB_KIND,
         classe_id=int(classe_id),
         trigger_source="personalizacao_api",
+        targets=media_job_targets,
         payload=payload,
         media_snapshot=media_snapshot,
         aluno_id=aluno_id,
         topico_id=int(topico_id),
         conteudo_id=int(conteudo_id) if conteudo_id is not None else None,
-        total_targets=1,
-    )
-    await jobs_repo.inserir_targets(
-        job_id=str(job["id"]),
-        targets=[
-            {
-                "aluno_id": aluno_id,
-                "topico_id": int(topico_id),
-                "conteudo_id": int(conteudo_id) if conteudo_id is not None else None,
-                "status": "pending",
-                "attempts": 0,
-                "last_error": None,
-                "personalizacao_id": int(record["id"]),
-            }
-        ],
     )
 
     # Dispara BrainHex em background: persiste audio + markdown direto no Supabase

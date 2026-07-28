@@ -12,6 +12,7 @@ from app.repositories.ia_descricao import IADescricaoRepository
 from app.repositories.materiais import MateriaisRepository
 from app.repositories.notificacao import NotificacaoRepository
 from app.repositories.perfil import PerfilRepository
+from app.repositories.personalizacao_jobs import PersonalizacaoJobsRepository
 from app.repositories.telemetria import TelemetriaRepository
 from app.repositories.trilha import TrilhaRepository
 from app.schemas.notificacao import NotificacaoPayload
@@ -77,15 +78,113 @@ class RecordingSession:
         self.responses = list(responses)
         self.calls = []
         self.commits = 0
+        self.rollbacks = 0
 
     async def execute(self, statement, params=None):
         self.calls.append((str(statement), params))
         if self.responses:
-            return self.responses.pop(0)
+            response = self.responses.pop(0)
+            if isinstance(response, Exception):
+                raise response
+            return response
         return DummyResult()
 
     async def commit(self):
         self.commits += 1
+
+    async def rollback(self):
+        self.rollbacks += 1
+
+
+def _job_row(job_id: str = "11111111-1111-1111-1111-111111111111"):
+    return {
+        "id": job_id,
+        "payload": {},
+        "media_snapshot": {},
+    }
+
+
+def _job_target():
+    return {
+        "aluno_id": "22222222-2222-2222-2222-222222222222",
+        "topico_id": 117,
+        "conteudo_id": None,
+        "brainhex_profile_key": "seeker",
+        "is_profile_template": False,
+    }
+
+
+@pytest.mark.asyncio
+async def test_personalizacao_job_and_targets_commit_atomically() -> None:
+    session = RecordingSession(
+        [
+            ScalarResult(True),
+            MappingResult([_job_row()]),
+            ScalarResult(True),
+            SimpleNamespace(rowcount=0),
+        ]
+    )
+    repo = PersonalizacaoJobsRepository(session)
+
+    job = await repo.criar_job_com_targets(
+        kind="full_class_sync",
+        classe_id=32,
+        trigger_source="test",
+        targets=[_job_target()],
+    )
+
+    assert str(job["id"]) == "11111111-1111-1111-1111-111111111111"
+    assert session.commits == 1
+    assert session.rollbacks == 0
+    assert any("INSERT INTO personalizacao_jobs" in sql for sql, _ in session.calls)
+    assert any("INSERT INTO personalizacao_job_targets" in sql for sql, _ in session.calls)
+
+
+@pytest.mark.asyncio
+async def test_personalizacao_job_rolls_back_when_target_insert_fails() -> None:
+    session = RecordingSession(
+        [
+            ScalarResult(True),
+            MappingResult([_job_row()]),
+            ScalarResult(True),
+            SimpleNamespace(rowcount=0),
+            RuntimeError("target insert failed"),
+        ]
+    )
+    repo = PersonalizacaoJobsRepository(session)
+
+    with pytest.raises(RuntimeError, match="target insert failed"):
+        await repo.criar_job_com_targets(
+            kind="full_class_sync",
+            classe_id=32,
+            trigger_source="test",
+            targets=[_job_target()],
+        )
+
+    assert session.commits == 0
+    assert session.rollbacks == 1
+
+
+@pytest.mark.asyncio
+async def test_personalizacao_job_without_targets_is_still_committed() -> None:
+    session = RecordingSession(
+        [
+            ScalarResult(True),
+            MappingResult([_job_row()]),
+        ]
+    )
+    repo = PersonalizacaoJobsRepository(session)
+
+    await repo.criar_job_com_targets(
+        kind="full_class_sync",
+        classe_id=32,
+        trigger_source="test",
+        targets=[],
+    )
+
+    assert session.commits == 1
+    assert session.rollbacks == 0
+    assert not any("INSERT INTO personalizacao_job_targets" in sql for sql, _ in session.calls)
 
 
 @pytest.mark.asyncio
