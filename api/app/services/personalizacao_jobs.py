@@ -768,6 +768,7 @@ async def _process_media_render_target(
                     source_hash=record_source_hash,
                     generation_key=generation_key,
                     wait_for_completion=True,
+                    contract_prechecked=True,
                 )
                 if not dispatched:
                     recovered = await _mark_failed_unless_generation_completed(
@@ -1027,6 +1028,7 @@ async def _process_media_render_target(
             source_hash=existing_source_hash,
             generation_key=generation_key,
             wait_for_completion=True,
+            contract_prechecked=True,
         )
         if not dispatched:
             recovered = await _mark_failed_unless_generation_completed(
@@ -1195,6 +1197,7 @@ async def _process_media_render_target(
         source_hash=record_source_hash,
         generation_key=generation_key,
         wait_for_completion=True,
+        contract_prechecked=True,
     )
     if not dispatched:
         recovered = await _mark_failed_unless_generation_completed(

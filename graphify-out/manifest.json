@@ -305,8 +305,8 @@
     "semantic_hash": "ea9fc3046e6bac85cbdbfead8c6ca178"
   },
   "api/app/core/settings.py": {
-    "mtime": 1785244142.5828483,
-    "ast_hash": "9dda4a86a74afa35caa555b2a3dae195",
+    "mtime": 1785258661.035998,
+    "ast_hash": "7bf43e72e96af1a86d3d1d2825844b96",
     "semantic_hash": ""
   },
   "api/app/db/__init__.py": {
@@ -615,8 +615,8 @@
     "semantic_hash": "70fd5cbf143d9b215c36c93b46bee73d"
   },
   "api/app/services/media_agents.py": {
-    "mtime": 1785254618.516738,
-    "ast_hash": "855efcd1f6097d8de30b1b7564ff6aa5",
+    "mtime": 1785258781.220189,
+    "ast_hash": "b9fc1cc0433e5dc7107201891c224b71",
     "semantic_hash": ""
   },
   "api/app/services/media_pipeline.py": {
@@ -635,8 +635,8 @@
     "semantic_hash": ""
   },
   "api/app/services/personalizacao_jobs.py": {
-    "mtime": 1785255303.955225,
-    "ast_hash": "80558c42fe9036426adbed3fdfc58646",
+    "mtime": 1785258661.041001,
+    "ast_hash": "997241f95693cf2019391442051ab31d",
     "semantic_hash": ""
   },
   "api/app/services/pptx.py": {
@@ -700,8 +700,8 @@
     "semantic_hash": "76010d4c52a440b1d811e2cd97a8dfdc"
   },
   "api/tests/test_brainhex_generation.py": {
-    "mtime": 1785255212.7227895,
-    "ast_hash": "8f9eecbd886fcf8a1bd21ae18a01057c",
+    "mtime": 1785258680.5609522,
+    "ast_hash": "bafa227d75be70b18d42a27f4106e70d",
     "semantic_hash": ""
   },
   "api/tests/test_checkpoint_retention.py": {
@@ -750,8 +750,8 @@
     "semantic_hash": "6752798714ae0165218c1b0560046a8f"
   },
   "api/tests/test_personalizacao_jobs_loop.py": {
-    "mtime": 1785255303.959236,
-    "ast_hash": "3c337c82709bd1643cd8e979e3f8d24b",
+    "mtime": 1785258680.5629537,
+    "ast_hash": "1e5908d1d3c9145c1484e8f9a0ca4df7",
     "semantic_hash": ""
   },
   "api/tests/test_personalizacao_service.py": {

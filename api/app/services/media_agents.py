@@ -381,13 +381,81 @@ async def brainhex_contract_ready(*, settings: Settings) -> bool:
         return False
     brainhex_secret = str(getattr(settings, "brainhex_api_secret", "") or "").strip()
     headers = {"x-api-secret": brainhex_secret} if brainhex_secret else None
-    try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.get(
-                f"{brainhex_url.rstrip('/')}/api/health",
-                headers=headers,
+    timeout_sec = max(
+        5.0,
+        min(180.0, float(getattr(settings, "brainhex_health_timeout_sec", 90.0) or 90.0)),
+    )
+    max_attempts = max(
+        1,
+        min(5, int(getattr(settings, "brainhex_health_max_attempts", 3) or 3)),
+    )
+    retry_delay_sec = max(
+        0.0,
+        min(
+            15.0,
+            float(getattr(settings, "brainhex_health_retry_delay_sec", 2.0) or 0.0),
+        ),
+    )
+    transient_statuses = {429, 500, 502, 503, 504}
+    health_url = f"{brainhex_url.rstrip('/')}/api/health"
+
+    for attempt in range(1, max_attempts + 1):
+        try:
+            async with httpx.AsyncClient(timeout=timeout_sec) as client:
+                response = await client.get(health_url, headers=headers)
+        except Exception as exc:
+            if attempt < max_attempts:
+                logger.warning(
+                    "brainhex_contract_ready: health temporariamente indisponivel "
+                    "(tentativa=%s/%s, erro=%s)",
+                    attempt,
+                    max_attempts,
+                    exc,
+                )
+                if retry_delay_sec:
+                    await asyncio.sleep(retry_delay_sec * attempt)
+                continue
+            logger.exception(
+                "brainhex_contract_ready: falha ao consultar /api/health "
+                "apos %s tentativa(s)",
+                max_attempts,
             )
-        payload = response.json() if response.status_code == 200 else None
+            return False
+
+        if response.status_code != 200:
+            response_text = str(getattr(response, "text", "") or "").strip()[:500]
+            if response.status_code in transient_statuses and attempt < max_attempts:
+                logger.warning(
+                    "brainhex_contract_ready: microservice temporariamente indisponivel "
+                    "(status=%s, tentativa=%s/%s, resposta=%s)",
+                    response.status_code,
+                    attempt,
+                    max_attempts,
+                    response_text or "<vazia>",
+                )
+                if retry_delay_sec:
+                    await asyncio.sleep(retry_delay_sec * attempt)
+                continue
+            logger.warning(
+                "brainhex_contract_ready: microservice indisponivel "
+                "(status=%s, tentativa=%s/%s, resposta=%s)",
+                response.status_code,
+                attempt,
+                max_attempts,
+                response_text or "<vazia>",
+            )
+            return False
+
+        try:
+            payload = response.json()
+        except Exception:
+            logger.warning(
+                "brainhex_contract_ready: /api/health retornou JSON invalido "
+                "(status=%s)",
+                response.status_code,
+            )
+            return False
+
         if _brainhex_contract_matches(payload):
             return True
         logger.warning(
@@ -400,8 +468,7 @@ async def brainhex_contract_ready(*, settings: Settings) -> bool:
             CONTENT_ENRICHMENT_PROVIDER,
             payload,
         )
-    except Exception:
-        logger.exception("brainhex_contract_ready: falha ao consultar /api/health")
+        return False
     return False
 
 
@@ -420,6 +487,7 @@ async def disparar_brainhex_async(
     source_hash: str = "",
     generation_key: str = "",
     wait_for_completion: bool = False,
+    contract_prechecked: bool = False,
 ) -> bool:
     """Dispara BrainHex e, opcionalmente, aguarda o pipeline terminar."""
     brainhex_url = str(getattr(settings, "brainhex_api_url", "") or "").strip()
@@ -428,10 +496,10 @@ async def disparar_brainhex_async(
     brainhex_secret = str(getattr(settings, "brainhex_api_secret", "") or "").strip()
     headers = {"x-api-secret": brainhex_secret} if brainhex_secret else None
     try:
-        if not await brainhex_contract_ready(settings=settings):
+        if not contract_prechecked and not await brainhex_contract_ready(settings=settings):
             logger.warning(
-                "disparar_brainhex_async: geracao nao iniciada por contrato "
-                "incompativel (personalizacao_id=%s)",
+                "disparar_brainhex_async: geracao nao iniciada; microservico "
+                "indisponivel ou com contrato incompativel (personalizacao_id=%s)",
                 personalizacao_id,
             )
             return False

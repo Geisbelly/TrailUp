@@ -908,6 +908,7 @@ async def test_process_media_render_target_retries_when_existing_record_is_stuck
     assert dispatch_mock.await_args.kwargs["personalizacao_id"] == existing["id"]
     assert dispatch_mock.await_args.kwargs["content_blocks"] == [{"id": "bloco-01"}]
     assert dispatch_mock.await_args.kwargs["wait_for_completion"] is True
+    assert dispatch_mock.await_args.kwargs["contract_prechecked"] is True
     assert claim_mock.await_args.kwargs["stale_processing_min"] >= 53
 
 
