@@ -196,6 +196,109 @@ async def test_fetch_context_keeps_topic_scope_for_sources_and_source_hash(monke
     assert first["source_hash"] != second["source_hash"]
 
 
+@pytest.mark.asyncio
+async def test_fetch_context_with_content_scope_excludes_other_topic_contents(
+    monkeypatch,
+) -> None:
+    selected_sources = [
+        {
+            "id": 45,
+            "source_id": "fonte:45",
+            "visibilidade": "classe",
+            "tipo": "texto",
+            "texto_base": "Somente a parte introdutoria.",
+        }
+    ]
+    monkeypatch.setattr(
+        "app.repositories.context.ContextRepository.fetch_aluno_context",
+        AsyncMock(
+            return_value={
+                "aluno": {},
+                "perfil_brainhex": [{"perfil": "Seeker", "afinidade": 1.0}],
+            }
+        ),
+    )
+    monkeypatch.setattr(
+        "app.repositories.fontes_personalizacao.FontesPersonalizacaoRepository.seed_from_class_content",
+        AsyncMock(return_value={"total": 2}),
+    )
+    listar_fontes = AsyncMock(return_value=selected_sources)
+    monkeypatch.setattr(
+        "app.repositories.fontes_personalizacao.FontesPersonalizacaoRepository.listar_para_contexto",
+        listar_fontes,
+    )
+    monkeypatch.setattr(
+        "app.repositories.conteudo_classe.ConteudoClasseRepository.buscar_topico",
+        AsyncMock(return_value={"id": 117, "nome": "Sistemas Distribuidos"}),
+    )
+    monkeypatch.setattr(
+        "app.repositories.conteudo_classe.ConteudoClasseRepository.buscar_conteudos_topico",
+        AsyncMock(
+            return_value=[
+                {"id": 125, "titulo": "Introducao", "conteudo": "Parte um"},
+                {"id": 126, "titulo": "Parte 2", "conteudo": "Parte dois"},
+            ]
+        ),
+    )
+    monkeypatch.setattr(
+        "app.repositories.conteudo_classe.ConteudoClasseRepository.buscar_atividades_topico",
+        AsyncMock(return_value=[]),
+    )
+    monkeypatch.setattr(
+        "app.repositories.conteudo_classe.ConteudoClasseRepository.buscar_questoes_topico",
+        AsyncMock(return_value=[]),
+    )
+    cards_mock = AsyncMock(
+        return_value=[
+            {
+                "id": 9,
+                "conteudo_id": 125,
+                "titulo": "Card introdutorio",
+                "descricao": "Base",
+            }
+        ]
+    )
+    monkeypatch.setattr(
+        "app.repositories.conteudo_classe.ConteudoClasseRepository.buscar_cards_conteudo",
+        cards_mock,
+    )
+
+    async def hydrate_sources(*, materiais_origem, settings):
+        del settings
+        return materiais_origem
+
+    monkeypatch.setattr(
+        personalizacao_service,
+        "_hydrate_source_materials_content",
+        hydrate_sources,
+    )
+    monkeypatch.setattr(
+        personalizacao_service,
+        "_persist_hydrated_sources_into_fontes",
+        AsyncMock(return_value=None),
+    )
+
+    context = await personalizacao_service.fetch_personalizacao_context(
+        aluno_id="b49f2e21-a6f9-4c8d-9533-5a32bb219754",
+        classe_id=32,
+        topico_id=117,
+        conteudo_id=125,
+        settings=Settings(
+            openai_api_key=None,
+            gemini_api_key=None,
+            supabase_url=None,
+        ),
+        session=object(),
+        include_student_sources=False,
+    )
+
+    assert listar_fontes.await_args.kwargs["conteudo_id"] == 125
+    assert context["conteudo_id"] == 125
+    assert [item["id"] for item in context["conteudo_classe"]["conteudos"]] == [125]
+    cards_mock.assert_awaited_once_with(125)
+    assert "conteudo:126" not in str(context)
+
+
 def test_fallback_plano_for_state_usa_fontes_originais_no_plano() -> None:
     plano = _fallback_plano_for_state(
         {

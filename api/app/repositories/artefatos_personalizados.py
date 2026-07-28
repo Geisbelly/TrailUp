@@ -95,6 +95,7 @@ class ArtefatosPersonalizadosRepository:
         aluno_id: str,
         classe_id: int,
         topico_id: int,
+        conteudo_id: int | None,
         ciclo_id: str,
         brainhex_profile_key: str | None = None,
     ) -> None:
@@ -102,6 +103,7 @@ class ArtefatosPersonalizadosRepository:
         normalized_profile = self._normalize_profile_key(brainhex_profile_key)
         params = {
             "topico_id": int(topico_id),
+            "conteudo_id": int(conteudo_id) if conteudo_id is not None else None,
             "aluno_id": str(aluno_id),
             "classe_id": int(classe_id),
             "ciclo_id": str(ciclo_id),
@@ -118,6 +120,7 @@ class ArtefatosPersonalizadosRepository:
                         atualizado_em = NOW()
                     WHERE classe_id = CAST(:classe_id AS BIGINT)
                       AND topico_id = CAST(:topico_id AS BIGINT)
+                      AND conteudo_id IS NOT DISTINCT FROM CAST(:conteudo_id AS BIGINT)
                       AND (
                         COALESCE(metadata ->> 'brainhex_profile_key', '') = :brainhex_profile_key
                         OR (
@@ -156,6 +159,7 @@ class ArtefatosPersonalizadosRepository:
                 DELETE FROM cards_personalizados
                 WHERE classe_id = CAST(:classe_id AS BIGINT)
                   AND topico_id = CAST(:topico_id AS BIGINT)
+                  AND conteudo_id IS NOT DISTINCT FROM CAST(:conteudo_id AS BIGINT)
                   AND ciclo_id = :ciclo_id
                   AND COALESCE(metadata ->> 'brainhex_profile_key', '') = :brainhex_profile_key
                 """
@@ -163,6 +167,7 @@ class ArtefatosPersonalizadosRepository:
             {
                 "classe_id": int(classe_id),
                 "topico_id": int(topico_id),
+                "conteudo_id": int(conteudo_id) if conteudo_id is not None else None,
                 "ciclo_id": str(ciclo_id),
                 "brainhex_profile_key": normalized_profile,
             },

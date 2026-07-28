@@ -374,6 +374,22 @@ def test_personalizar_route_creates_personalizacao_record(app, aluno_user, monke
     }
 
     monkeypatch.setattr(personalizacao_module, "fetch_personalizacao_context", AsyncMock(return_value=fake_ctx))
+    monkeypatch.setattr(
+        personalizacao_module,
+        "enrich_content_blocks",
+        AsyncMock(
+            return_value={
+                "schema_version": "trailup.content-blocks.v2",
+                "blocos": [
+                    {
+                        "id": "bloco-01",
+                        "conteudo_aprofundado": "Conteudo realmente aprofundado.",
+                    }
+                ],
+                "metadata": {"fallback": False},
+            }
+        ),
+    )
     monkeypatch.setattr(personalizacao_module, "gerar_cards_direto", AsyncMock(return_value=[]))
     monkeypatch.setattr(personalizacao_module, "disparar_brainhex_async", AsyncMock(return_value=None))
     monkeypatch.setattr(AccessRepository, "aluno_belongs_to_classe", AsyncMock(return_value=True))
@@ -616,6 +632,11 @@ def test_personalizacao_por_perfil_route_groups_seven_brainhex_profiles(app, mon
     monkeypatch.setattr(AccessRepository, "professor_owns_classe", AsyncMock(return_value=True))
     monkeypatch.setattr(
         ConteudoClasseRepository,
+        "buscar_classe_id_por_topico",
+        AsyncMock(return_value=10),
+    )
+    monkeypatch.setattr(
+        ConteudoClasseRepository,
         "listar_alunos_classe_com_perfil_dominante",
         AsyncMock(
             return_value=[
@@ -626,7 +647,15 @@ def test_personalizacao_por_perfil_route_groups_seven_brainhex_profiles(app, mon
         ),
     )
 
-    async def buscar_recente_stub(self, *, classe_id, topico_id, brainhex_profile_key, source_hash=None):
+    async def buscar_recente_stub(
+        self,
+        *,
+        classe_id,
+        topico_id,
+        brainhex_profile_key,
+        conteudo_id=None,
+        source_hash=None,
+    ):
         if brainhex_profile_key == "mastermind":
             return {
                 "id": 99,
@@ -680,6 +709,67 @@ def test_personalizacao_por_perfil_route_groups_seven_brainhex_profiles(app, mon
     assert by_key["seeker"]["total_alunos"] == 1
     # design_tokens disponiveis mesmo sem personalizacao (preview da paleta)
     assert by_key["seeker"]["design_tokens"]["cores"]["primary"]
+
+
+def test_personalizacao_por_perfil_route_filters_exact_content(app, monkeypatch) -> None:
+    fake_session = FakeSession()
+    professor_user = UserContext(
+        user_id="prof-1",
+        role="professor",
+        roles=("professor",),
+        professor_id="prof-1",
+        professor_liberado=True,
+    )
+
+    async def override_session():
+        yield fake_session
+
+    app.dependency_overrides[get_session] = override_session
+    app.dependency_overrides[get_current_user] = lambda: professor_user
+    monkeypatch.setattr(
+        AccessRepository,
+        "professor_owns_classe",
+        AsyncMock(return_value=True),
+    )
+    monkeypatch.setattr(
+        ConteudoClasseRepository,
+        "buscar_classe_id_por_topico",
+        AsyncMock(return_value=10),
+    )
+    monkeypatch.setattr(
+        ConteudoClasseRepository,
+        "buscar_conteudos_topico",
+        AsyncMock(
+            return_value=[
+                {"id": 125, "titulo": "Introducao", "conteudo": "Parte um"}
+            ]
+        ),
+    )
+    monkeypatch.setattr(
+        ConteudoClasseRepository,
+        "listar_alunos_classe_com_perfil_dominante",
+        AsyncMock(return_value=[]),
+    )
+    lookup = AsyncMock(return_value=None)
+    monkeypatch.setattr(
+        ConteudoPersonalizadoRepository,
+        "buscar_mais_recente_por_perfil",
+        lookup,
+    )
+
+    with TestClient(app) as client:
+        response = client.get(
+            "/api/v1/personalizar/perfis/10/55?conteudo_id=125"
+        )
+
+    assert response.status_code == 200
+    assert response.json()["conteudo_id"] == 125
+    assert response.json()["conteudo_titulo"] == "Introducao"
+    assert lookup.await_count == 7
+    assert all(
+        call.kwargs["conteudo_id"] == 125
+        for call in lookup.await_args_list
+    )
 
 
 def test_personalizacao_por_perfil_route_rejects_unowned_class(app, monkeypatch) -> None:
@@ -1100,4 +1190,3 @@ def test_telemetria_route_ignores_legacy_event_log_failures(app, aluno_user, mon
     assert body["persisted"] is True
     assert body["analysis"]["ciclo_id"] == "ciclo-telemetria-ok"
     assert fake_session.rollbacks >= 1
-

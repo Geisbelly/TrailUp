@@ -51,6 +51,11 @@ export interface MaterialEntry {
     updated_at: string;
     generation_key?: string;
     bucket?: string;
+    engine?: string;
+    schema?: string;
+    media_pipeline_version?: string;
+    error_stage?: "render" | "upload";
+    error?: string;
   };
   arquivo_url: string | null;
   storage_path: string | null;

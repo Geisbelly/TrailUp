@@ -49,13 +49,33 @@ def test_normalize_database_url_preserves_real_password() -> None:
     assert "***" not in normalized
 
 
-def test_generation_fencing_rpc_repair_is_the_only_alembic_head() -> None:
+def test_content_scoped_personalization_is_the_only_alembic_head() -> None:
     scripts = ScriptDirectory.from_config(_offline_alembic_config())
 
-    assert scripts.get_heads() == ["20260728_03"]
-    repair = scripts.get_revision("20260728_03")
-    assert repair is not None
-    assert repair.down_revision == "20260728_02"
+    assert scripts.get_heads() == ["20260728_04"]
+    revision = scripts.get_revision("20260728_04")
+    assert revision is not None
+    assert revision.down_revision == "20260728_03"
+
+
+def test_content_scoped_personalization_indexes_render_offline_sql() -> None:
+    output = StringIO()
+    config = _offline_alembic_config(output)
+
+    migrations.command.upgrade(
+        config,
+        "20260728_03:20260728_04",
+        sql=True,
+    )
+    rendered = output.getvalue()
+
+    assert "uq_conteudo_personalizado_aluno_topico_conteudo_perfil" in rendered
+    assert "aluno_id,\n          topico_id,\n          conteudo_id" in rendered
+    assert "conteudo_id IS NOT NULL" in rendered
+    assert "uq_conteudo_personalizado_aluno_topico_perfil_sem_conteudo" in rendered
+    assert "conteudo_id IS NULL" in rendered
+    assert "DROP INDEX IF EXISTS uq_conteudo_personalizado_aluno_topico_perfil" in rendered
+    assert "UPDATE alembic_version SET version_num='20260728_04'" in rendered
 
 
 def test_generation_fencing_rpc_repair_renders_complete_idempotent_offline_sql() -> None:

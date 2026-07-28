@@ -24,12 +24,24 @@ import {
   type GenerationFence,
   type PersistedMaterialsMerge,
 } from "./src/services/supabaseService";
-import { generateSlidesPDF } from "./src/services/pdfService";
+import {
+  generateSlidesPDF,
+  getPresentationRendererReadiness,
+  presentationRendererError,
+  type PresentationRendererReadiness,
+} from "./src/services/pdfService";
 import { createLogger, type Logger } from "./src/lib/logger";
 import { enrichSlidesWithImages } from "./src/lib/slideEnricher";
-import { validatePersonalizarBody } from "./src/lib/validators";
+import {
+  validateContentEnrichmentBody,
+  validatePersonalizarBody,
+} from "./src/lib/validators";
 import type { ContentBlock } from "./src/lib/validators";
 import { createRateLimiter } from "./src/lib/rateLimit";
+import {
+  CONTENT_ENRICHMENT_SCHEMA_VERSION,
+  enrichContentBlocksWithGemini,
+} from "./src/services/contentEnrichmentService";
 import {
   MEDIA_PIPELINE_VERSION,
   PRESENTATION_ENGINE_VERSION,
@@ -145,6 +157,81 @@ async function generateSlideAssets(
 
 // ─── Core: archive to Supabase ────────────────────────────────────────────────
 
+export type PresentationFailureStage = "render" | "upload";
+
+export interface PresentationFailure {
+  stage: PresentationFailureStage;
+  error: string;
+}
+
+export async function renderAndUploadPresentation(params: {
+  slides: any[];
+  profile: BrainHexProfile;
+  bucket: string;
+  pdfPath: string;
+  renderPdf?: typeof generateSlidesPDF;
+  uploadPdf?: typeof uploadBuffer;
+}): Promise<{ pdfUrl: string | null; failure: PresentationFailure | null }> {
+  const renderPdf = params.renderPdf ?? generateSlidesPDF;
+  const uploadPdf = params.uploadPdf ?? uploadBuffer;
+
+  let pdfBytes: Buffer;
+  try {
+    pdfBytes = await renderPdf(params.slides, params.profile);
+  } catch (error) {
+    return {
+      pdfUrl: null,
+      failure: { stage: "render", error: presentationRendererError(error) },
+    };
+  }
+
+  try {
+    const pdfUrl = await uploadPdf(
+      params.bucket,
+      params.pdfPath,
+      pdfBytes,
+      "application/pdf",
+    );
+    if (!pdfUrl) {
+      return {
+        pdfUrl: null,
+        failure: {
+          stage: "upload",
+          error: "upload da apresentacao nao retornou URL publica",
+        },
+      };
+    }
+    return { pdfUrl, failure: null };
+  } catch (error) {
+    return {
+      pdfUrl: null,
+      failure: { stage: "upload", error: presentationRendererError(error) },
+    };
+  }
+}
+
+export function buildPresentationMaterialMetadata(params: {
+  generationKey: string;
+  pdfUrl: string | null;
+  bucket: string;
+  failure: PresentationFailure | null;
+  updatedAt?: string;
+}): MaterialEntry["metadata"] {
+  return {
+    status: params.pdfUrl ? "completed" : "failed",
+    media_kind: "apresentacao",
+    ...buildPresentationVersionMetadata(params.generationKey),
+    updated_at: params.updatedAt ?? now(),
+    ...(params.pdfUrl ? { bucket: params.bucket } : {}),
+    ...(params.failure
+      ? {
+          error_stage: params.failure.stage,
+          error: params.failure.error,
+        }
+      : {}),
+  };
+}
+
 async function archiveToSupabase(params: {
   profile:         BrainHexProfile;
   storagePath:     string;
@@ -162,6 +249,7 @@ async function archiveToSupabase(params: {
   audioMp3Url: string | null;
   markdownUrl: string | null;
   pdfUrl: string | null;
+  presentationFailure: PresentationFailure | null;
   persisted: PersistedMaterialsMerge | null;
 }> {
   const {
@@ -215,13 +303,20 @@ async function archiveToSupabase(params: {
 
   // PDF dos slides (layout 2 painéis: imagem esquerda, conteúdo direita)
   const pdfPath = `${storagePath}/apresentacao/material-${refId}.pdf`;
-  let pdfUrl: string | null = null;
-  try {
-    const pdfBytes = await generateSlidesPDF(slides, profile);
-    pdfUrl         = await uploadBuffer(bucket, pdfPath, pdfBytes, "application/pdf");
-    lg.info("pdf upload", { status: pdfUrl ? "ok" : "falhou" });
-  } catch (e) {
-    lg.error("falha ao gerar/enviar PDF", { err: e });
+  const presentationResult = await renderAndUploadPresentation({
+    slides,
+    profile,
+    bucket,
+    pdfPath,
+  });
+  const pdfUrl = presentationResult.pdfUrl;
+  if (presentationResult.failure) {
+    lg.error("falha na apresentacao", {
+      stage: presentationResult.failure.stage,
+      error: presentationResult.failure.error,
+    });
+  } else {
+    lg.info("pdf upload", { status: "ok" });
   }
 
   // Persiste metadados no banco (somente quando chamado pelo ApiTraiUp)
@@ -231,7 +326,6 @@ async function archiveToSupabase(params: {
     }
     const audioStatus  = audioMp3Url  ? "completed" : "failed";
     const mdStatus     = markdownUrl  ? "completed" : "failed";
-    const pdfStatus    = pdfUrl       ? "completed" : "failed";
     const audioPayloadObj = { roteiro: audioScript, texto: audioScript };
     const mdPayloadObj    = { texto: markdown, markdown };
     const pdfPayloadObj   = { slides, abertura: markdown.split("\n").find((l) => l.trim()) ?? "" };
@@ -253,13 +347,12 @@ async function archiveToSupabase(params: {
       },
       apresentacao: {
         payload:      pdfPayloadObj,
-        metadata:     {
-          status: pdfStatus,
-          media_kind: "apresentacao",
-          ...buildPresentationVersionMetadata(fence.generationKey),
-          updated_at: now(),
-          ...(pdfUrl ? { bucket } : {}),
-        },
+        metadata: buildPresentationMaterialMetadata({
+          generationKey: fence.generationKey,
+          pdfUrl,
+          bucket,
+          failure: presentationResult.failure,
+        }),
         arquivo_url:  pdfUrl,
         storage_path: pdfUrl ? pdfPath : null,
         ...(pdfUrl ? { bucket, mime_type: "application/pdf" } : {}),
@@ -284,7 +377,13 @@ async function archiveToSupabase(params: {
     }
   }
 
-  return { audioMp3Url, markdownUrl, pdfUrl, persisted };
+  return {
+    audioMp3Url,
+    markdownUrl,
+    pdfUrl,
+    presentationFailure: presentationResult.failure,
+    persisted,
+  };
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -586,6 +685,8 @@ export interface AppOptions {
   corsOrigin?:           string;
   allowPrivateFonteUrls?: boolean;
   personalizacaoJobRunner?: typeof runPersonalizacaoJobWithTimeout;
+  contentEnrichmentRunner?: typeof enrichContentBlocksWithGemini;
+  presentationRendererReadiness?: () => Promise<PresentationRendererReadiness>;
   renderGitCommit?:       string | null;
   /**
    * Quando true, o 404 catch-all não é registrado aqui — o middleware da SPA
@@ -603,6 +704,8 @@ export function buildApp(opts: AppOptions = {}): express.Application {
     corsOrigin,
     allowPrivateFonteUrls = false,
     personalizacaoJobRunner = runPersonalizacaoJobWithTimeout,
+    contentEnrichmentRunner = enrichContentBlocksWithGemini,
+    presentationRendererReadiness = getPresentationRendererReadiness,
     renderGitCommit = getRenderGitCommit(),
     enableSpa           = false,
   } = opts;
@@ -667,17 +770,46 @@ export function buildApp(opts: AppOptions = {}): express.Application {
   }
 
   // ── Health ───────────────────────────────────────────────────────
-  app.get("/api/health", (_req, res) => {
-    res.json({
-      status:   "ok",
+  app.get("/api/health", async (req, res) => {
+    const renderer = await presentationRendererReadiness();
+    if (!renderer.ready) {
+      req.log.error("renderer de apresentacao indisponivel", {
+        error: renderer.error,
+        checkedAt: renderer.checked_at,
+      });
+    }
+    res.status(renderer.ready ? 200 : 503).json({
+      status:   renderer.ready ? "ok" : "degraded",
       message:  "TrailUp Alchemy Microservice is online!",
       supabase: isSupabaseConfigured(),
       auth:     Boolean(apiSharedSecret),
+      presentation_renderer: renderer,
       media_pipeline_version: MEDIA_PIPELINE_VERSION,
       presentation_engine_version: PRESENTATION_ENGINE_VERSION,
       presentation_schema: PRESENTATION_SCHEMA_VERSION,
+      content_enrichment_schema: CONTENT_ENRICHMENT_SCHEMA_VERSION,
       render_git_commit: renderGitCommit,
     });
+  });
+
+  // A API principal decompõe todas as fontes em até 24 blocos-base. O Gemini
+  // aprofunda esses blocos aqui, antes de qualquer adaptação BrainHex ou mídia.
+  app.post("/api/enrich-content", requireSecret, async (req, res) => {
+    const validation = validateContentEnrichmentBody(req.body);
+    if (validation.ok === false) {
+      return res.status(400).json({ error: validation.error });
+    }
+    try {
+      const result = await contentEnrichmentRunner(validation.value);
+      return res.status(200).json(result);
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      req.log.error("enriquecimento obrigatório falhou", { err: error });
+      return res.status(502).json({
+        error: "Não foi possível aprofundar o conteúdo com qualidade.",
+        detail,
+      });
+    }
   });
 
   // ── POST /api/v1/archive — Frontend (JSON body) ──────────────────
@@ -705,6 +837,15 @@ export function buildApp(opts: AppOptions = {}): express.Application {
       }
       if (!isSupabaseConfigured()) {
         return res.status(503).json({ error: "Supabase não configurado no servidor." });
+      }
+
+      const renderer = await presentationRendererReadiness();
+      if (!renderer.ready) {
+        return res.status(503).json({
+          status: "renderer_unavailable",
+          error: renderer.error ?? "renderer de apresentacao indisponivel",
+          presentation_renderer: renderer,
+        });
       }
 
       const safeClassName = String(class_name).replace(/[^a-z0-9_\-]/gi, "-").toLowerCase();
@@ -748,6 +889,17 @@ export function buildApp(opts: AppOptions = {}): express.Application {
         personalizacaoId: null,
       });
 
+      if (result.presentationFailure) {
+        return res.status(502).json({
+          success: false,
+          error: result.presentationFailure.error,
+          error_stage: result.presentationFailure.stage,
+          audioMp3Url: result.audioMp3Url,
+          markdownUrl: result.markdownUrl,
+          pdfUrl: null,
+        });
+      }
+
       return res.json({
         success:     true,
         audioMp3Url: result.audioMp3Url,
@@ -782,6 +934,7 @@ export function buildApp(opts: AppOptions = {}): express.Application {
       content_blocks: contentBlocks,
       classe_id,
       topico_id,
+      conteudo_id,
       ciclo_id,
       source_hash,
       generation_key,
@@ -825,8 +978,20 @@ export function buildApp(opts: AppOptions = {}): express.Application {
       });
     }
 
+    const renderer = await presentationRendererReadiness();
+    if (!renderer.ready) {
+      return res.status(503).json({
+        status: "renderer_unavailable",
+        error: renderer.error ?? "renderer de apresentacao indisponivel",
+        presentation_renderer: renderer,
+        media_pipeline_version: MEDIA_PIPELINE_VERSION,
+        presentation_engine_version: PRESENTATION_ENGINE_VERSION,
+      });
+    }
+
     const classeId    = String(classe_id ?? 0);
     const topicoId    = String(topico_id ?? 0);
+    const conteudoId  = conteudo_id === undefined ? null : String(conteudo_id);
     const cicloStr    = String(ciclo_id ?? "").trim();
     const sourceHash  = String(source_hash ?? "").trim();
     const generationKey = String(generation_key ?? "").trim();
@@ -846,8 +1011,9 @@ export function buildApp(opts: AppOptions = {}): express.Application {
       generationKey,
     };
     const refId       = `${personalizacaoId}_${cicloStr.slice(0, 8)}`;
+    const contentStorageSegment = conteudoId ? `/conteudo-${conteudoId}` : "";
     const storagePath = versionStoragePath(
-      `brainhex/${profile}/classe-${classeId}/topico-${topicoId}`,
+      `brainhex/${profile}/classe-${classeId}/topico-${topicoId}${contentStorageSegment}`,
       generationKey,
     );
     const bucket      = "conteudo_aluno";

@@ -37,7 +37,12 @@ import {
 import { buildClasseAcademicMetrics, buildClasseResumoFallback } from '@/utils/classeMetrics';
 import { buildContentBlocks, isUrl } from '@/utils/contentBlocks';
 import { ensureCachedNativeContent } from '@/utils/nativeContentCache';
-import { normalizePersonalizedTopicPayload } from '@/utils/personalization';
+import {
+  aggregatePersonalizedTopicPayloads,
+  buildContentScopedPersonalizationItemKey,
+  normalizePersonalizedTopicPayload,
+  orderPersonalizationRecordsByTeacherContent,
+} from '@/utils/personalization';
 import { inferModoApresentacao } from '@/utils/presentationOrder';
 import { resolveDominantBrainHexProfile } from '@/utils/brainHex';
 import { looksLikeStorageObjectPath } from '@/utils/supabaseStorage';
@@ -65,7 +70,7 @@ function pickVisual(perfil: BrainHexProfile): Visual {
 }
 
 function buildPersonalizacaoCacheKey(alunoId: string, classeId: number) {
-  return `@trailup/personalizacao/${alunoId}/${classeId}`
+  return `@trailup/personalizacao-v2/${alunoId}/${classeId}`
 }
 
 const PREFETCHABLE_TYPES = new Set([
@@ -907,12 +912,28 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
         ordem: usuario?.modoOperacao_ordem,
         classeResumo: classeAtual?.resumo?.modoOperacao ?? null,
       })
+      const recordContentId = Number(record?.conteudo_id ?? Number.NaN)
+      const orderedTeacherContents = [...(topico.conteudos ?? [])].sort(
+        (left: any, right: any) => {
+          const leftOrder = Number(left?.ordem ?? Number.MAX_SAFE_INTEGER)
+          const rightOrder = Number(right?.ordem ?? Number.MAX_SAFE_INTEGER)
+          if (leftOrder !== rightOrder) return leftOrder - rightOrder
+          return Number(left?.id ?? 0) - Number(right?.id ?? 0)
+        }
+      )
+      const fallbackContents = Number.isFinite(recordContentId) && recordContentId > 0
+        ? orderedTeacherContents.filter(
+            (conteudo: any) => Number(conteudo?.id) === recordContentId
+          )
+        : orderedTeacherContents
 
       return normalizePersonalizedTopicPayload({
         record,
         classeId: classeAtual?.classe_id ?? topico.classe_id,
         topicoId: topico.id,
-        fallbackBlocks: topico.conteudos.flatMap((conteudo: any) => buildContentBlocks(conteudo)),
+        fallbackBlocks: fallbackContents.flatMap((conteudo: any) =>
+          buildContentBlocks(conteudo)
+        ),
         fallbackActivities: topico.atividades ?? [],
         presentationMode,
         source,
@@ -939,14 +960,18 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       const missingFormats = collectMissingRequestedMediaFormats(record);
       if (!missingFormats.length) return;
 
-      const retryKey = `${usuario.id}:${classeAtual.classe_id}:${dominantProfileKey}:${topico.id}:${Number(record?.id ?? 0)}:${missingFormats.join(',')}`;
+      const recordContentId = Number(record?.conteudo_id ?? Number.NaN);
+      const focusedContentId =
+        Number.isFinite(recordContentId) && recordContentId > 0
+          ? recordContentId
+          : topico?.conteudos?.length === 1
+          ? Number(topico.conteudos[0]?.id ?? Number.NaN) || null
+          : null;
+      const retryKey = `${usuario.id}:${classeAtual.classe_id}:${dominantProfileKey}:${topico.id}:${focusedContentId ?? "topico"}:${Number(record?.id ?? 0)}:${missingFormats.join(',')}`;
       const now = Date.now();
       const lastAttempt = mediaGenerationRetryRef.current.get(retryKey) ?? 0;
       if (now - lastAttempt < MEDIA_GENERATION_COOLDOWN_MS) return;
       mediaGenerationRetryRef.current.set(retryKey, now);
-
-      const focusedContentId =
-        Number(record?.conteudo_id ?? topico?.conteudos?.[0]?.id ?? Number.NaN) || null;
 
       void personalizacaoProvider.solicitarPersonalizacao({
         classe_id: classeAtual.classe_id,
@@ -957,7 +982,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
         .then(() => {
           console.log(
             '[TrilhaContext] Retentativa de personalizacao disparada para midias faltantes:',
-            { topicoId: topico.id, missingFormats }
+            { topicoId: topico.id, conteudoId: focusedContentId, missingFormats }
           );
         })
         .catch((err) => {
@@ -978,24 +1003,46 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
     personalizationHydratedClassRef.current = hydrationKey
 
     try {
+      const expectedContentCount = classeAtual.topicos.reduce(
+        (total, topico) => total + Math.max(1, topico.conteudos?.length ?? 0),
+        0
+      )
       const response = await personalizacaoProvider.listarPersonalizacoesPersistidasPerfil({
         classeId: classeAtual.classe_id,
         brainhexProfileKey: dominantProfileKey,
-        limit: Math.max(20, classeAtual.topicos.length * 3),
+        limit: Math.max(20, expectedContentCount * 2),
       })
 
       const byTopico: Record<number, PersonalizedTopicPayload> = {}
       const topicosById = new Map(classeAtual.topicos.map((topico) => [topico.id, topico] as const))
+      const recordsByTopico = new Map<number, Record<string, any>[]>()
 
       for (const item of response?.itens ?? []) {
         const topicoId = Number(item?.topico_id)
-        if (!topicoId || byTopico[topicoId]) continue
+        if (!topicoId) continue
         const topico = topicosById.get(topicoId)
         if (!topico) continue
-        maybeRequestMissingMediaForRecord(item, topico)
-        personalizationAttemptedRef.current.add(`${usuario.id}:${classeAtual.classe_id}:${dominantProfileKey}:${topicoId}`)
-        const payload = buildPayloadForTopico(item, topico, "remote")
-        byTopico[topicoId] = payload
+        const records = recordsByTopico.get(topicoId) ?? []
+        records.push(item)
+        recordsByTopico.set(topicoId, records)
+      }
+
+      for (const topico of classeAtual.topicos) {
+        const records = orderPersonalizationRecordsByTeacherContent(
+          recordsByTopico.get(topico.id) ?? [],
+          topico.conteudos ?? []
+        )
+        if (!records.length) continue
+
+        const payloads = records.map((item) => {
+          maybeRequestMissingMediaForRecord(item, topico)
+          return buildPayloadForTopico(item, topico, "remote")
+        })
+        const payload = aggregatePersonalizedTopicPayloads(payloads)
+        if (!payload) continue
+
+        personalizationAttemptedRef.current.add(`${usuario.id}:${classeAtual.classe_id}:${dominantProfileKey}:${topico.id}`)
+        byTopico[topico.id] = payload
         void prefetchPersonalizedPayload(payload)
       }
 
@@ -1053,22 +1100,26 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
           classeId: classeAtual.classe_id,
           topicoId,
           brainhexProfileKey: dominantProfileKey,
-          limit: 5,
+          limit: Math.max(10, (topico.conteudos?.length ?? 0) * 2),
         })
 
-        const record =
-          (listResponse?.itens ?? [])
-            .slice()
-            .sort((a, b) => {
-              const aTime = new Date(a?.updated_at ?? a?.gerado_em ?? 0).getTime()
-              const bTime = new Date(b?.updated_at ?? b?.gerado_em ?? 0).getTime()
-              return bTime - aTime
-            })[0] ?? null
+        const records = orderPersonalizationRecordsByTeacherContent(
+          listResponse?.itens ?? [],
+          topico.conteudos ?? []
+        )
+        if (!records.length) return null
 
-        if (!record) return null
+        const payloads = records.map((record) => {
+          maybeRequestMissingMediaForRecord(record, topico)
+          return buildPayloadForTopico(
+            record,
+            topico,
+            forceRefresh ? "remote" : "cache"
+          )
+        })
+        const payload = aggregatePersonalizedTopicPayloads(payloads)
+        if (!payload) return null
 
-        maybeRequestMissingMediaForRecord(record, topico)
-        const payload = buildPayloadForTopico(record, topico, forceRefresh ? "remote" : "cache")
         setPersonalizedTopics((prev) => ({ ...prev, [topicoId]: payload }))
         await persistPersonalizedTopicsCache(usuario.id, classeAtual.classe_id, {
           [topicoId]: payload,
@@ -1672,8 +1723,37 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
     if (!classeAtual || !usuario?.id) return
 
     const payload = personalizedTopics[topicoId]
-    const personalizacaoId = Number(payload?.planMeta?.recordId ?? 0)
+    const matchingStep = payload?.steps?.find((step) => {
+      if (String(step.item_key ?? "").trim() === String(itemKey).trim()) return true
+      return (
+        step.activity?.personalizationKey != null &&
+        String(step.activity.personalizationKey).trim() === String(itemKey).trim()
+      )
+    })
+    const stepMetadata =
+      matchingStep?.metadata && typeof matchingStep.metadata === "object"
+        ? (matchingStep.metadata as Record<string, unknown>)
+        : {}
+    const keyContentId = String(itemKey).startsWith("content:")
+      ? Number(String(itemKey).split(":")[1])
+      : Number.NaN
+    const conteudoId = Number(
+      stepMetadata.conteudo_id ??
+        stepMetadata.contentId ??
+        (Number.isFinite(keyContentId) ? keyContentId : Number.NaN)
+    )
+    const personalizacaoId = Number(
+      stepMetadata.personalizacao_id ??
+        stepMetadata.personalizationId ??
+        payload?.planMeta?.recordId ??
+        0
+    )
     if (!payload || !personalizacaoId) return
+    const progressItemKey = buildContentScopedPersonalizationItemKey({
+      itemKey,
+      conteudoId: Number.isFinite(conteudoId) && conteudoId > 0 ? conteudoId : null,
+      personalizacaoId,
+    })
 
     const percentualNormalizado = clampPercent(percentualConcluido ?? 0)
     const acertosNormalizado =
@@ -1686,7 +1766,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       personalizacao_id: personalizacaoId,
       classe_id: classeAtual.classe_id,
       topico_id: topicoId,
-      item_key: itemKey,
+      item_key: progressItemKey,
       item_kind: itemKind,
       item_title: itemTitle,
       status,
@@ -1695,7 +1775,18 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       tempo_gasto_min: tempoNormalizado,
       pontuacao_obtida: pontuacaoObtidaNormalizada,
       pontuacao_maxima: pontuacaoMaximaNormalizada,
-      metadata: metadata ?? {},
+      metadata: {
+        ...stepMetadata,
+        ...(metadata ?? {}),
+        ...(Number.isFinite(conteudoId) && conteudoId > 0
+          ? {
+              conteudo_id: conteudoId,
+              contentId: conteudoId,
+            }
+          : {}),
+        personalizacao_id: personalizacaoId,
+        personalizationId: personalizacaoId,
+      },
     }
 
     try {
@@ -1705,7 +1796,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       })
       return
     } catch (directErr) {
-      const warnKey = `${usuario.id}:${classeAtual.classe_id}:${topicoId}:${itemKey}`
+      const warnKey = `${usuario.id}:${classeAtual.classe_id}:${topicoId}:${progressItemKey}`
       const now = Date.now()
       const lastWarnAt = progressSaveWarnRef.current.get(warnKey) ?? 0
       if (now - lastWarnAt > 60_000) {

@@ -61,6 +61,7 @@ _MIN_PERSONALIZED_ITEMS = 5
 _MAX_PERSONALIZED_ITEMS = 15
 _DEFAULT_GEMINI_MULTIMODAL_PRIMARY = "gemini-2.5-flash"
 _DEFAULT_GEMINI_MULTIMODAL_FALLBACK = "gemini-2.5-flash-lite"
+_CONTENT_ENRICHMENT_SCHEMA_VERSION = "trailup.content-blocks.v2"
 # Incremente sempre que prompts, enriquecimento ou geracao BrainHex mudarem de
 # forma que exija regenerar artefatos ja marcados como prontos.
 _PERSONALIZACAO_PIPELINE_VERSION = MEDIA_PIPELINE_VERSION
@@ -2091,6 +2092,7 @@ def _build_source_hash(
 ) -> str:
     payload = {
         "pipeline_version": _PERSONALIZACAO_PIPELINE_VERSION,
+        "content_enrichment_schema": _CONTENT_ENRICHMENT_SCHEMA_VERSION,
         "presentation_engine_version": PRESENTATION_ENGINE_VERSION,
         "classe_id": classe_id,
         "topico_id": topico_id,
@@ -4716,7 +4718,47 @@ async def fetch_personalizacao_context(
     conteudos = await classe_repo.buscar_conteudos_topico(topico_id)
     atividades = await classe_repo.buscar_atividades_topico(topico_id)
     questoes = await classe_repo.buscar_questoes_topico(topico_id)
-    cards_topico = await classe_repo.buscar_cards_topico(topico_id)
+    if conteudo_escopo_id is not None:
+        conteudos = [
+            item
+            for item in conteudos
+            if int(item.get("id") or 0) == int(conteudo_escopo_id)
+        ]
+        if not conteudos:
+            raise ValueError(
+                f"Conteudo {conteudo_escopo_id} nao pertence ao topico {topico_id}."
+            )
+
+        def _atividade_do_escopo(item: dict[str, Any]) -> bool:
+            metadata = item.get("metadata") if isinstance(item.get("metadata"), dict) else {}
+            related_id = (
+                metadata.get("conteudo_id")
+                or metadata.get("conteudoId")
+                or metadata.get("content_id")
+                or metadata.get("contentId")
+            )
+            if related_id is None:
+                return True
+            try:
+                return int(related_id) == int(conteudo_escopo_id)
+            except (TypeError, ValueError):
+                return False
+
+        atividades = [item for item in atividades if _atividade_do_escopo(item)]
+        atividade_ids = {
+            int(item["id"])
+            for item in atividades
+            if item.get("id") is not None
+        }
+        questoes = [
+            item
+            for item in questoes
+            if item.get("atividade_id") is None
+            or int(item["atividade_id"]) in atividade_ids
+        ]
+        cards_topico = await classe_repo.buscar_cards_conteudo(conteudo_escopo_id)
+    else:
+        cards_topico = await classe_repo.buscar_cards_topico(topico_id)
 
     source_hash = _build_source_hash(
         classe_id=classe_id,
@@ -6257,6 +6299,11 @@ async def generate_materiais_personalizados(
                     aluno_id=state["aluno_id"],
                     classe_id=int(classe_id),
                     topico_id=int(topico_id),
+                    conteudo_id=(
+                        int(conteudo_id)
+                        if conteudo_id is not None
+                        else None
+                    ),
                     ciclo_id=ciclo_id,
                     brainhex_profile_key=profile_key,
                 )

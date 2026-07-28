@@ -34,6 +34,28 @@ export interface ContentBlock {
   source_ids: string[];
 }
 
+export interface BaseContentBlock {
+  id: string;
+  ordem: number;
+  tema: string;
+  topico: string;
+  objetivos: string[];
+  conteudo_base: string;
+  source_ids: string[];
+  segment_ids: string[];
+}
+
+export interface ContentEnrichmentRequest {
+  schema_version: "trailup.content-blocks.v2";
+  source_hash: string;
+  tema: {
+    titulo: string;
+    descricao: string;
+    objetivo: string;
+  };
+  blocos_base: BaseContentBlock[];
+}
+
 export interface PersonalizarRequest {
   profile:            BrainHexProfile;
   personalizacao_id:  number;
@@ -41,6 +63,7 @@ export interface PersonalizarRequest {
   content_blocks:     ContentBlock[];
   classe_id?:         string | number;
   topico_id?:         string | number;
+  conteudo_id?:       number;
   ciclo_id?:          string;
   source_hash?:       string;
   generation_key?:    string;
@@ -114,6 +137,101 @@ function isObject(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 
+function normalizedText(value: unknown): string {
+  return String(value ?? "").replace(/\s+/g, " ").trim();
+}
+
+function normalizedStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.map(normalizedText).filter(Boolean))];
+}
+
+export function hasMeaningfulContentExpansion(
+  baseValue: unknown,
+  expandedValue: unknown,
+): boolean {
+  const base = normalizedText(baseValue);
+  const expanded = normalizedText(expandedValue);
+  if (!base || !expanded || base.localeCompare(expanded, undefined, { sensitivity: "accent" }) === 0) {
+    return false;
+  }
+  const minimumAdded = Math.max(80, Math.ceil(base.length * 0.15));
+  return expanded.length >= base.length + minimumAdded;
+}
+
+export function validateContentEnrichmentBody(
+  body: unknown,
+): ValidationResult<ContentEnrichmentRequest> {
+  if (!isObject(body)) return { ok: false, error: "body deve ser um objeto JSON" };
+  if (body.schema_version !== "trailup.content-blocks.v2") {
+    return { ok: false, error: "schema_version de enriquecimento inválida" };
+  }
+  if (typeof body.source_hash !== "string") {
+    return { ok: false, error: "source_hash deve ser uma string" };
+  }
+  if (!isObject(body.tema)) {
+    return { ok: false, error: "tema deve ser um objeto" };
+  }
+  if (!Array.isArray(body.blocos_base) || body.blocos_base.length === 0) {
+    return { ok: false, error: "blocos_base deve conter ao menos um bloco" };
+  }
+  if (body.blocos_base.length > 24) {
+    return { ok: false, error: "blocos_base excede o limite de 24 blocos" };
+  }
+
+  const ids = new Set<string>();
+  const blocosBase: BaseContentBlock[] = [];
+  for (let index = 0; index < body.blocos_base.length; index++) {
+    const raw = body.blocos_base[index];
+    if (!isObject(raw)) {
+      return { ok: false, error: `blocos_base[${index}] deve ser um objeto` };
+    }
+    const id = normalizedText(raw.id);
+    const rawConteudoBase =
+      typeof raw.conteudo_base === "string" ? raw.conteudo_base.trim() : "";
+    const conteudoBase = normalizedText(rawConteudoBase);
+    const sourceIds = normalizedStringArray(raw.source_ids);
+    const segmentIds = normalizedStringArray(raw.segment_ids);
+    if (!id || ids.has(id)) {
+      return { ok: false, error: `blocos_base[${index}].id ausente ou duplicado` };
+    }
+    if (!conteudoBase) {
+      return { ok: false, error: `blocos_base[${index}].conteudo_base ausente` };
+    }
+    if (sourceIds.length === 0 || segmentIds.length === 0) {
+      return {
+        ok: false,
+        error: `blocos_base[${index}] deve preservar source_ids e segment_ids`,
+      };
+    }
+    ids.add(id);
+    blocosBase.push({
+      id,
+      ordem: index + 1,
+      tema: normalizedText(raw.tema),
+      topico: normalizedText(raw.topico) || `Bloco ${index + 1}`,
+      objetivos: normalizedStringArray(raw.objetivos),
+      conteudo_base: rawConteudoBase,
+      source_ids: sourceIds,
+      segment_ids: segmentIds,
+    });
+  }
+
+  return {
+    ok: true,
+    value: {
+      schema_version: "trailup.content-blocks.v2",
+      source_hash: body.source_hash,
+      tema: {
+        titulo: normalizedText(body.tema.titulo),
+        descricao: normalizedText(body.tema.descricao),
+        objetivo: normalizedText(body.tema.objetivo),
+      },
+      blocos_base: blocosBase,
+    },
+  };
+}
+
 export interface ValidatePersonalizarOptions {
   allowPrivateFonteUrls?: boolean; // default false (segurança em prod)
 }
@@ -165,10 +283,13 @@ export function validatePersonalizarBody(
   }
 
   const contentBlocks: ContentBlock[] = [];
-  if (body.content_blocks !== undefined) {
-    if (!Array.isArray(body.content_blocks)) {
-      return { ok: false, error: "content_blocks deve ser um array" };
-    }
+  if (!Array.isArray(body.content_blocks) || body.content_blocks.length === 0) {
+    return {
+      ok: false,
+      error: "content_blocks enriquecidos sao obrigatorios antes da geracao",
+    };
+  }
+  {
     if (body.content_blocks.length > 24) {
       return { ok: false, error: "content_blocks excede o limite de 24 blocos" };
     }
@@ -186,18 +307,39 @@ export function validatePersonalizarBody(
       ) {
         return { ok: false, error: `content_blocks[${i}].conteudo_aprofundado ausente` };
       }
+      if (!hasMeaningfulContentExpansion(block.conteudo_base, block.conteudo_aprofundado)) {
+        return {
+          ok: false,
+          error: `content_blocks[${i}] não contém aprofundamento real`,
+        };
+      }
+      const conceitosChave = normalizedStringArray(block.conceitos_chave);
+      const exemplosContextos = normalizedStringArray(block.exemplos_contextos);
+      const objetivos = normalizedStringArray(block.objetivos);
+      const sourceIds = normalizedStringArray(block.source_ids);
+      if (
+        conceitosChave.length < 2
+        || exemplosContextos.length === 0
+        || objetivos.length === 0
+        || sourceIds.length === 0
+      ) {
+        return {
+          ok: false,
+          error: `content_blocks[${i}] deve conter objetivos, conceitos, exemplos e source_ids`,
+        };
+      }
       contentBlocks.push({
         id: block.id.trim(),
         ordem: Number.isFinite(Number(block.ordem)) ? Number(block.ordem) : i + 1,
         tema: typeof block.tema === "string" ? block.tema : "",
         topico: typeof block.topico === "string" ? block.topico : `Bloco ${i + 1}`,
-        objetivos: Array.isArray(block.objetivos) ? block.objetivos.map(String) : [],
+        objetivos,
         conteudo_base: typeof block.conteudo_base === "string" ? block.conteudo_base : "",
         conteudo_aprofundado: block.conteudo_aprofundado,
-        conceitos_chave: Array.isArray(block.conceitos_chave) ? block.conceitos_chave.map(String) : [],
-        exemplos_contextos: Array.isArray(block.exemplos_contextos) ? block.exemplos_contextos.map(String) : [],
+        conceitos_chave: conceitosChave,
+        exemplos_contextos: exemplosContextos,
         ponte_proximo_bloco: typeof block.ponte_proximo_bloco === "string" ? block.ponte_proximo_bloco : "",
-        source_ids: Array.isArray(block.source_ids) ? block.source_ids.map(String) : [],
+        source_ids: sourceIds,
       });
     }
   }
@@ -230,6 +372,21 @@ export function validatePersonalizarBody(
     };
   }
 
+  let conteudoId: number | undefined;
+  if (body.conteudo_id !== undefined && body.conteudo_id !== null) {
+    conteudoId = Number(body.conteudo_id);
+    if (
+      !Number.isFinite(conteudoId)
+      || !Number.isInteger(conteudoId)
+      || conteudoId <= 0
+    ) {
+      return {
+        ok: false,
+        error: "conteudo_id deve ser número inteiro positivo",
+      };
+    }
+  }
+
   return {
     ok: true,
     value: {
@@ -239,6 +396,7 @@ export function validatePersonalizarBody(
       content_blocks:     contentBlocks,
       classe_id:         body.classe_id as string | number | undefined,
       topico_id:         body.topico_id as string | number | undefined,
+      conteudo_id:       conteudoId,
       ciclo_id:          typeof body.ciclo_id === "string" ? body.ciclo_id : undefined,
       source_hash:       typeof body.source_hash === "string" ? body.source_hash : undefined,
       generation_key:    typeof body.generation_key === "string" ? body.generation_key : undefined,

@@ -111,9 +111,12 @@ def _effective_stale_processing_min(settings: Any) -> int:
         30,
         int(getattr(settings, "brainhex_api_wait_timeout_sec", 1980) or 1980),
     )
-    # A reclamacao deve acontecer somente depois que a chamada sincrona ja
-    # teria expirado, com cinco minutos de margem operacional.
-    return max(configured, ((wait_timeout_sec + 59) // 60) + 5)
+    enrichment_timeout_sec = min(900, max(60, wait_timeout_sec))
+    # O target primeiro aprofunda o conteúdo e depois aguarda a geração de
+    # mídia. Só pode ser reclamado após as duas janelas, mais cinco minutos de
+    # margem operacional.
+    total_external_timeout_sec = enrichment_timeout_sec + wait_timeout_sec
+    return max(configured, ((total_external_timeout_sec + 59) // 60) + 5)
 
 
 def _build_generation_key(*, ciclo_id: Any, source_hash: Any) -> str:
@@ -271,9 +274,13 @@ async def _get_runtime_cached_dict(
     factory: Callable[[], Awaitable[dict[str, Any]]],
 ) -> dict[str, Any]:
     cache = job.setdefault(cache_name, {})
+    errors = job.setdefault(f"{cache_name}_errors", {})
     cached = cache.get(key)
     if isinstance(cached, dict):
         return cached
+    cached_error = errors.get(key)
+    if isinstance(cached_error, Exception):
+        raise cached_error
 
     locks = job.setdefault(locks_name, {})
     lock = locks.setdefault(key, asyncio.Lock())
@@ -281,25 +288,33 @@ async def _get_runtime_cached_dict(
         cached = cache.get(key)
         if isinstance(cached, dict):
             return cached
-        generated = await factory()
+        cached_error = errors.get(key)
+        if isinstance(cached_error, Exception):
+            raise cached_error
+        try:
+            generated = await factory()
+        except Exception as exc:
+            # Os sete perfis compartilham o mesmo enriquecimento-base. Se a
+            # chamada falhar, todos recebem a mesma falha nesta tentativa do
+            # job, em vez de bombardear o provedor sete vezes em sequência.
+            errors[key] = exc
+            raise
         if not isinstance(generated, dict):
             raise RuntimeError(f"Cache runtime {cache_name} recebeu valor invalido.")
+        errors.pop(key, None)
         cache[key] = generated
         return generated
 
 
 def _content_enrichment_cache_key(
     *,
-    aluno_id: str,
-    profile_key: str,
     topico_id: int,
     conteudo_id: int | None,
     source_hash: Any,
 ) -> str:
-    return (
-        f"{aluno_id}:{profile_key}:{topico_id}:{conteudo_id or 0}:"
-        f"{str(source_hash or '').strip()}"
-    )
+    # O enriquecimento descreve o currículo-base e é deliberadamente
+    # independente do aluno/perfil. A adaptação BrainHex acontece depois.
+    return f"{topico_id}:{conteudo_id or 0}:{str(source_hash or '').strip()}"
 
 
 def _iter_exception_chain(exc: BaseException | None) -> list[BaseException]:
@@ -400,13 +415,21 @@ async def _build_targets(
 
     classe_repo = ConteudoClasseRepository(session)
     resolved_topicos = sorted({int(item) for item in (topico_ids or []) if item is not None})
-    if conteudo_ids:
-        resolved_topicos = sorted(
-            {
-                *resolved_topicos,
-                *await classe_repo.resolve_topico_ids_por_conteudos([int(item) for item in conteudo_ids]),
-            }
+    conteudos_por_topico: dict[int, list[int]] = {}
+    has_explicit_conteudos = bool(conteudo_ids)
+    if has_explicit_conteudos:
+        normalized_conteudo_ids = sorted(
+            {int(item) for item in conteudo_ids if item is not None}
         )
+        conteudos_por_topico = await classe_repo.mapear_conteudos_por_topico(
+            normalized_conteudo_ids,
+            classe_id=classe_id,
+        )
+        # Quando o caller informa conteúdos, esse é o escopo exato. Não
+        # convertemos IDs inválidos em uma geração agregada do tópico.
+        resolved_topicos = sorted(conteudos_por_topico)
+        if not resolved_topicos:
+            return [], [], {}
 
     alunos_da_classe = await classe_repo.listar_alunos_classe_com_perfil_dominante(classe_id)
     alunos = [item["aluno_id"] for item in alunos_da_classe]
@@ -417,6 +440,11 @@ async def _build_targets(
 
     if not resolved_topicos:
         resolved_topicos = [int(item["id"]) for item in await classe_repo.listar_topicos_classe(classe_id)]
+    if not has_explicit_conteudos:
+        conteudos_por_topico = await classe_repo.mapear_todos_conteudos_por_topicos(
+            resolved_topicos,
+            classe_id=classe_id,
+        )
 
     targets: list[dict[str, Any]] = []
     target_profile_map: dict[str, str] = {}
@@ -486,16 +514,20 @@ async def _build_targets(
             representative_by_profile[profile_key] = candidate
 
         for current_topico_id in resolved_topicos:
-            for profile_key in _BRAINHEX_PROFILE_KEYS:
-                owner_aluno_id = representative_by_profile.get(profile_key)
-                if not owner_aluno_id:
-                    continue
-                _append_target(
-                    owner_aluno_id=owner_aluno_id,
-                    topico_id=current_topico_id,
-                    conteudo_id=None,
-                    profile_key=profile_key,
-                )
+            scoped_conteudo_ids: list[int | None] = list(
+                conteudos_por_topico.get(current_topico_id) or [None]
+            )
+            for current_conteudo_id in scoped_conteudo_ids:
+                for profile_key in _BRAINHEX_PROFILE_KEYS:
+                    owner_aluno_id = representative_by_profile.get(profile_key)
+                    if not owner_aluno_id:
+                        continue
+                    _append_target(
+                        owner_aluno_id=owner_aluno_id,
+                        topico_id=current_topico_id,
+                        conteudo_id=current_conteudo_id,
+                        profile_key=profile_key,
+                    )
         return targets, resolved_topicos, target_profile_map
 
     for current_aluno_id in alunos:
@@ -729,6 +761,7 @@ async def _process_media_render_target(
                     aluno_id=aluno_id,
                     classe_id=classe_id,
                     topico_id=topico_id,
+                    conteudo_id=conteudo_id,
                     ciclo_id=record_cycle_id,
                     source_hash=record_source_hash,
                     generation_key=generation_key,
@@ -873,6 +906,7 @@ async def _process_media_render_target(
     existing = await repo.buscar_mais_recente_por_perfil(
         classe_id=classe_id,
         topico_id=topico_id,
+        conteudo_id=conteudo_id,
         brainhex_profile_key=target_profile_key,
         source_hash=str(ctx["source_hash"] or ""),
     )
@@ -950,8 +984,6 @@ async def _process_media_render_target(
         # transacao iniciada pelas leituras acima antes de aguarda-las.
         await session.commit()
         cache_key = _content_enrichment_cache_key(
-            aluno_id=aluno_id,
-            profile_key=target_profile_key,
             topico_id=topico_id,
             conteudo_id=conteudo_id,
             source_hash=ctx.get("source_hash"),
@@ -988,6 +1020,7 @@ async def _process_media_render_target(
             aluno_id=aluno_id,
             classe_id=classe_id,
             topico_id=topico_id,
+            conteudo_id=conteudo_id,
             ciclo_id=existing_cycle_id,
             source_hash=existing_source_hash,
             generation_key=generation_key,
@@ -1045,8 +1078,6 @@ async def _process_media_render_target(
     # conexao do pool enquanto aguardam.
     await session.commit()
     cache_key = _content_enrichment_cache_key(
-        aluno_id=aluno_id,
-        profile_key=target_profile_key,
         topico_id=topico_id,
         conteudo_id=conteudo_id,
         source_hash=ctx.get("source_hash"),
@@ -1079,6 +1110,7 @@ async def _process_media_render_target(
         aluno_id=aluno_id,
         classe_id=classe_id,
         topico_id=topico_id,
+        conteudo_id=conteudo_id,
         ciclo_id=ctx["ciclo_id"],
         brainhex_profile_key=target_profile_key,
     )
@@ -1156,6 +1188,7 @@ async def _process_media_render_target(
         aluno_id=aluno_id,
         classe_id=classe_id,
         topico_id=topico_id,
+        conteudo_id=conteudo_id,
         ciclo_id=record_cycle_id,
         source_hash=record_source_hash,
         generation_key=generation_key,
