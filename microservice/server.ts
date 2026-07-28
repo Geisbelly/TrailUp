@@ -839,10 +839,12 @@ export function buildApp(opts: AppOptions = {}): express.Application {
       });
     }
     if (!enrichment.ready) {
-      req.log.error("enriquecimento OpenAI indisponivel", {
+      req.log.error("provedores de enriquecimento indisponiveis", {
         error: enrichment.error,
         provider: enrichment.provider,
         model: enrichment.model,
+        fallbackProvider: enrichment.fallback_provider,
+        fallbackModel: enrichment.fallback_model,
       });
     }
     res.status(ready ? 200 : 503).json({

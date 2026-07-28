@@ -397,5 +397,9 @@
   "395": "@google/genai",
   "396": "express",
   "397": "mammoth",
-  "398": "2. Leitura rapida (mapa geral)"
+  "398": "2. Leitura rapida (mapa geral)",
+  "399": "mobile/modelagem-dados-banco.md",
+  "400": "@config-plugins/react-native-blob-util",
+  "401": "@radix-ui/react-accordion",
+  "402": "@supabase/supabase-js"
 }

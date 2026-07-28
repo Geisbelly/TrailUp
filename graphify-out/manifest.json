@@ -1550,8 +1550,8 @@
     "semantic_hash": ""
   },
   "microservice/server.ts": {
-    "mtime": 1785260120.6179385,
-    "ast_hash": "b9622d34b72876a7de0a927580cd8a7b",
+    "mtime": 1785267154.7252817,
+    "ast_hash": "5a2460ca56b22db34f3c42c06172f390",
     "semantic_hash": ""
   },
   "microservice/sql/migrations/0001_merge_personalizacao_materiais_rpc.sql": {
@@ -3280,8 +3280,8 @@
     "semantic_hash": ""
   },
   "microservice/README.md": {
-    "mtime": 1785265765.5357265,
-    "ast_hash": "3a7dd8db3666e2b05f01aff6391742df",
+    "mtime": 1785267417.18885,
+    "ast_hash": "1721ad2ef1bdedd0e086f12c80e9d350",
     "semantic_hash": ""
   },
   "microservice/index.html": {
@@ -4110,8 +4110,8 @@
     "semantic_hash": ""
   },
   "api/app/services/media_contract.py": {
-    "mtime": 1785265765.536255,
-    "ast_hash": "252d83f26402688d1a9a8597a7b60090",
+    "mtime": 1785267221.4221952,
+    "ast_hash": "5d2d5df950ee535f8cae4cdd5794910e",
     "semantic_hash": ""
   },
   "frontend/src/components/console/personalizacoes/materialPreview.test.ts": {
@@ -4125,8 +4125,8 @@
     "semantic_hash": ""
   },
   "microservice/src/constants/pipelineVersions.ts": {
-    "mtime": 1785265765.5372627,
-    "ast_hash": "8c57fc36329e49aca1c23fb6dff25a5f",
+    "mtime": 1785267221.4232454,
+    "ast_hash": "e8f47375cf3198fdb4edcf92d535f3a9",
     "semantic_hash": ""
   },
   "api/alembic/versions/20260728_04_scope_personalization_by_content.py": {
@@ -4145,13 +4145,13 @@
     "semantic_hash": ""
   },
   "microservice/src/services/contentEnrichmentService.test.ts": {
-    "mtime": 1785260119.223535,
-    "ast_hash": "6151843d6da67521b4a8ae5eac22effa",
+    "mtime": 1785267291.4008157,
+    "ast_hash": "28746e81a82769f5408cb9ec24e28e24",
     "semantic_hash": ""
   },
   "microservice/src/services/contentEnrichmentService.ts": {
-    "mtime": 1785260119.2270565,
-    "ast_hash": "c0de7453f14f55266e79ce7f546ac36b",
+    "mtime": 1785267417.1878493,
+    "ast_hash": "8cf4683b71145c31df7b6949a10f72f9",
     "semantic_hash": ""
   },
   "microservice/src/services/geminiBlockBatches.test.ts": {

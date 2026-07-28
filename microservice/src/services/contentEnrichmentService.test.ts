@@ -5,9 +5,13 @@ import {
   CONTENT_ENRICHMENT_PROVIDER,
   CONTENT_ENRICHMENT_SCHEMA_VERSION,
   DEFAULT_CONTENT_ENRICHMENT_MODEL,
+  DEFAULT_CONTENT_ENRICHMENT_FALLBACK_MODEL,
   enrichContentBlocksWithOpenAI,
   getContentEnrichmentReadiness,
+  isOpenAIAvailabilityError,
+  resetOpenAIContentEnrichmentCircuit,
   resolveContentEnrichmentModel,
+  resolveContentEnrichmentFallbackModel,
 } from "./contentEnrichmentService";
 import type { ContentEnrichmentRequest } from "../lib/validators";
 
@@ -97,14 +101,21 @@ test("usa modelo OpenAI próprio e ignora configuração legada do Gemini", () =
     }),
     "gpt-5.6-terra",
   );
+  assert.equal(
+    resolveContentEnrichmentFallbackModel({}),
+    DEFAULT_CONTENT_ENRICHMENT_FALLBACK_MODEL,
+  );
 });
 
-test("readiness exige OPENAI_API_KEY sem expor a chave", () => {
+test("readiness aceita OpenAI principal ou Gemini de contingência sem expor chaves", () => {
   assert.deepEqual(getContentEnrichmentReadiness({}), {
     ready: false,
     provider: "openai",
     model: DEFAULT_CONTENT_ENRICHMENT_MODEL,
-    error: "OPENAI_API_KEY ausente para o enriquecimento curricular.",
+    fallback_provider: "gemini",
+    fallback_model: DEFAULT_CONTENT_ENRICHMENT_FALLBACK_MODEL,
+    error:
+      "OPENAI_API_KEY e GEMINI_API_KEY ausentes para o enriquecimento curricular.",
   });
   assert.deepEqual(
     getContentEnrichmentReadiness({
@@ -115,6 +126,22 @@ test("readiness exige OPENAI_API_KEY sem expor a chave", () => {
       ready: true,
       provider: "openai",
       model: "gpt-5.6-terra",
+      fallback_provider: "gemini",
+      fallback_model: DEFAULT_CONTENT_ENRICHMENT_FALLBACK_MODEL,
+    },
+  );
+  assert.deepEqual(
+    getContentEnrichmentReadiness({
+      GEMINI_API_KEY: "secret",
+      GEMINI_CONTENT_ENRICHMENT_FALLBACK_MODEL: "gemini-custom",
+    }),
+    {
+      ready: true,
+      provider: "openai",
+      model: DEFAULT_CONTENT_ENRICHMENT_MODEL,
+      fallback_provider: "gemini",
+      fallback_model: "gemini-custom",
+      degraded: true,
     },
   );
 });
@@ -182,4 +209,147 @@ test("reprocessa somente o bloco raso e preserva os blocos já validados", async
   assert.equal(result.metadata.provider, "openai");
   assert.equal(result.metadata.lotes_gerados, 1);
   assert.equal(result.metadata.chamadas_realizadas, 2);
+});
+
+test("quota da OpenAI aciona Gemini e circuito evita novas tentativas inúteis", async () => {
+  resetOpenAIContentEnrichmentCircuit();
+  let openaiCalls = 0;
+  let geminiCalls = 0;
+  let now = 20_000;
+  const options = {
+    model: "gpt-5.6-sol",
+    fallbackModel: "gemini-3-flash-preview",
+    maxAttempts: 1,
+    environment: {
+      CONTENT_ENRICHMENT_OPENAI_COOLDOWN_MS: "60000",
+    },
+    now: () => now,
+    generateStructured: async () => {
+      openaiCalls += 1;
+      const error = new Error(
+        "429 You exceeded your current quota, please check your plan and billing details.",
+      );
+      Object.assign(error, { status: 429 });
+      throw error;
+    },
+    generateStructuredFallback: async () => {
+      geminiCalls += 1;
+      return richRaw();
+    },
+  };
+
+  const first = await enrichContentBlocksWithOpenAI(request(), options);
+  now += 1_000;
+  const second = await enrichContentBlocksWithOpenAI(request(), options);
+
+  assert.equal(first.metadata.provider, "gemini");
+  assert.equal(first.metadata.model, "gemini-3-flash-preview");
+  assert.equal(first.metadata.fallback, true);
+  assert.equal(first.metadata.fallback_from, "openai");
+  assert.equal(first.metadata.fallback_calls, 1);
+  assert.equal(first.metadata.chamadas_realizadas, 2);
+  assert.equal(second.metadata.chamadas_realizadas, 1);
+  assert.equal(openaiCalls, 1);
+  assert.equal(geminiCalls, 2);
+  resetOpenAIContentEnrichmentCircuit();
+});
+
+test("24 blocos usam somente 3 lotes de contingência por padrão", async () => {
+  resetOpenAIContentEnrichmentCircuit();
+  const template = request().blocos_base[0];
+  const blocks = Array.from({ length: 24 }, (_, index) => ({
+    ...template,
+    id: `bloco-${String(index + 1).padStart(2, "0")}`,
+    ordem: index + 1,
+    topico: `Tópico ${index + 1}`,
+    conteudo_base:
+      `O conceito ${index + 1} participa do funcionamento de redes distribuídas.`,
+    source_ids: [`conteudo:${index + 1}`],
+    segment_ids: [`segmento-${String(index + 1).padStart(4, "0")}`],
+  }));
+  const baseById = new Map(blocks.map((block) => [block.id, block]));
+  let openaiCalls = 0;
+  let geminiCalls = 0;
+
+  const result = await enrichContentBlocksWithOpenAI(
+    { ...request(), blocos_base: blocks },
+    {
+      maxAttempts: 1,
+      now: () => 30_000,
+      environment: {
+        CONTENT_ENRICHMENT_OPENAI_COOLDOWN_MS: "60000",
+      },
+      generateStructured: async () => {
+        openaiCalls += 1;
+        const error = new Error("429 insufficient_quota");
+        Object.assign(error, { status: 429 });
+        throw error;
+      },
+      generateStructuredFallback: async (call) => {
+        geminiCalls += 1;
+        return {
+          blocos: call.blockIds.map((id) => {
+            const base = baseById.get(id)!;
+            return {
+              id,
+              tema: base.tema,
+              topico: base.topico,
+              objetivos: ["Compreender o conceito e aplicá-lo em redes."],
+              conteudo_aprofundado:
+                `${base.conteudo_base} Esse mecanismo se conecta a componentes `
+                + "que trocam mensagens segundo regras verificáveis. A relação "
+                + "entre causa, processamento e resultado ajuda o estudante a "
+                + "identificar falhas, comparar alternativas e compreender o impacto "
+                + "prático de cada decisão. Em uma aplicação real, é possível "
+                + "acompanhar a requisição entre cliente e servidor, observar a "
+                + "resposta e validar o comportamento esperado.",
+              conceitos_chave: ["comunicação distribuída", "validação do fluxo"],
+              exemplos_contextos: ["Análise de uma requisição entre sistemas."],
+              ponte_proximo_bloco: "O resultado prepara o conceito seguinte.",
+            };
+          }),
+        };
+      },
+    },
+  );
+
+  assert.equal(result.metadata.lotes_gerados, 3);
+  assert.equal(result.metadata.chamadas_realizadas, 4);
+  assert.equal(openaiCalls, 1);
+  assert.equal(geminiCalls, 3);
+  assert.equal(result.blocos.length, 24);
+  resetOpenAIContentEnrichmentCircuit();
+});
+
+test("não usa contingência para resposta rasa ou inválida", async () => {
+  resetOpenAIContentEnrichmentCircuit();
+  let fallbackCalls = 0;
+  const shallow = richRaw();
+  shallow.blocos[0].conteudo_aprofundado =
+    request().blocos_base[0].conteudo_base;
+
+  await assert.rejects(
+    enrichContentBlocksWithOpenAI(request(), {
+      maxAttempts: 1,
+      generateStructured: async () => shallow,
+      generateStructuredFallback: async () => {
+        fallbackCalls += 1;
+        return richRaw();
+      },
+    }),
+    /não aprofundou/,
+  );
+  assert.equal(fallbackCalls, 0);
+});
+
+test("classifica quota e indisponibilidade sem mascarar erro de qualidade", () => {
+  assert.equal(isOpenAIAvailabilityError({ status: 503 }), true);
+  assert.equal(
+    isOpenAIAvailabilityError(new Error("insufficient_quota")),
+    true,
+  );
+  assert.equal(
+    isOpenAIAvailabilityError(new Error("conteúdo não aprofundado")),
+    false,
+  );
 });

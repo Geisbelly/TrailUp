@@ -4,7 +4,8 @@ Microservico de geracao de materiais personalizados por perfil BrainHex.
 
 ## O que este servico faz
 - Recebe contexto pedagogico de personalizacao.
-- Aprofunda o conteudo-base com OpenAI antes de qualquer adaptacao BrainHex.
+- Aprofunda o conteudo-base com OpenAI antes de qualquer adaptacao BrainHex,
+  usando Gemini somente como contingencia para quota ou indisponibilidade.
 - Gera markdown, roteiro de audio e estrutura de slides com Gemini como
   provedor principal, usando OpenAI automaticamente quando o Gemini estiver
   temporariamente indisponivel ou sem cota.
@@ -47,10 +48,13 @@ Microservico de geracao de materiais personalizados por perfil BrainHex.
 - App mobile consome personalizacao direto no Supabase; ApiBrainHex permanece backend-only via API TrailUp.
 
 ## Variaveis de ambiente
-- `OPENAI_API_KEY` (obrigatoria para enriquecimento, imagens e contingencia da geracao)
+- `OPENAI_API_KEY` (principal no enriquecimento; usada tambem em imagens e na
+  contingencia da geracao)
 - `OPENAI_CONTENT_ENRICHMENT_MODEL` (padrao: `gpt-5.6-sol`)
-- `CONTENT_ENRICHMENT_BATCH_SIZE` (padrao: `4`)
+- `CONTENT_ENRICHMENT_BATCH_SIZE` (padrao: `8`)
 - `CONTENT_ENRICHMENT_MAX_ATTEMPTS` (padrao: `3`)
+- `GEMINI_CONTENT_ENRICHMENT_FALLBACK_MODEL` (padrao: `gemini-3-flash-preview`)
+- `CONTENT_ENRICHMENT_OPENAI_COOLDOWN_MS` (padrao: `300000`)
 - `GEMINI_API_KEY`
 - `CONTENT_GENERATION_MODEL` (Gemini principal; padrao: `gemini-3-flash-preview`)
 - `CONTENT_GENERATION_BLOCK_BATCH_SIZE` (padrao: `12`, maximo: `24`)

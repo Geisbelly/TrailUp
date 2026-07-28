@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { GoogleGenAI, Type } from "@google/genai";
 import {
   hasMeaningfulContentExpansion,
   type BaseContentBlock,
@@ -9,10 +10,14 @@ import {
 export const CONTENT_ENRICHMENT_SCHEMA_VERSION = "trailup.content-blocks.v2" as const;
 export const CONTENT_ENRICHMENT_PROVIDER = "openai" as const;
 export const DEFAULT_CONTENT_ENRICHMENT_MODEL = "gpt-5.6-sol" as const;
+export const CONTENT_ENRICHMENT_FALLBACK_PROVIDER = "gemini" as const;
+export const DEFAULT_CONTENT_ENRICHMENT_FALLBACK_MODEL =
+  "gemini-3-flash-preview" as const;
 
-const DEFAULT_BATCH_SIZE = 4;
+const DEFAULT_BATCH_SIZE = 8;
 const DEFAULT_MAX_ATTEMPTS = 3;
 const DEFAULT_MAX_OUTPUT_TOKENS = 32_768;
+const DEFAULT_OPENAI_UNAVAILABLE_COOLDOWN_MS = 5 * 60 * 1_000;
 
 export interface ContentEnrichmentResult {
   schema_version: typeof CONTENT_ENRICHMENT_SCHEMA_VERSION;
@@ -20,9 +25,12 @@ export interface ContentEnrichmentResult {
   tema: string;
   blocos: ContentBlock[];
   metadata: {
-    provider: typeof CONTENT_ENRICHMENT_PROVIDER;
+    provider: "openai" | "gemini" | "mixed";
     model: string;
-    fallback: false;
+    models?: string[];
+    fallback: boolean;
+    fallback_from?: "openai";
+    fallback_calls?: number;
     blocos_recebidos: number;
     blocos_gerados: number;
     lotes_gerados: number;
@@ -45,10 +53,14 @@ export type StructuredEnrichmentGenerator = (
 
 export interface ContentEnrichmentOptions {
   generateStructured?: StructuredEnrichmentGenerator;
+  generateStructuredFallback?: StructuredEnrichmentGenerator;
   model?: string;
+  fallbackModel?: string;
   batchSize?: number;
   maxAttempts?: number;
   maxOutputTokens?: number;
+  environment?: Record<string, string | undefined>;
+  now?: () => number;
 }
 
 interface RawEnrichedBlock {
@@ -63,6 +75,8 @@ interface RawEnrichedBlock {
 }
 
 let openai: OpenAI | null = null;
+let gemini: GoogleGenAI | null = null;
+let openaiUnavailableUntil = 0;
 
 function getOpenAI(): OpenAI {
   if (openai) return openai;
@@ -74,6 +88,18 @@ function getOpenAI(): OpenAI {
   }
   openai = new OpenAI({ apiKey });
   return openai;
+}
+
+function getGemini(): GoogleGenAI {
+  if (gemini) return gemini;
+  const apiKey = String(process.env.GEMINI_API_KEY ?? "").trim();
+  if (!apiKey) {
+    throw new Error(
+      "GEMINI_API_KEY ausente: a contingência do enriquecimento não está disponível.",
+    );
+  }
+  gemini = new GoogleGenAI({ apiKey });
+  return gemini;
 }
 
 function normalizedText(value: unknown): string {
@@ -117,7 +143,7 @@ function assertStringList(
   const normalized = normalizedList(value);
   if (normalized.length < minimum) {
     throw new Error(
-      `OpenAI retornou ${field} insuficiente no bloco ${blockId}.`,
+      `Gerador retornou ${field} insuficiente no bloco ${blockId}.`,
     );
   }
   return normalized;
@@ -129,22 +155,22 @@ export function buildValidatedEnrichmentResult(
   model: string,
 ): ContentEnrichmentResult {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
-    throw new Error("OpenAI retornou enriquecimento fora do formato JSON.");
+    throw new Error("Gerador retornou enriquecimento fora do formato JSON.");
   }
   const rawBlocks = (raw as { blocos?: unknown }).blocos;
   if (!Array.isArray(rawBlocks) || rawBlocks.length !== request.blocos_base.length) {
-    throw new Error("OpenAI omitiu ou acrescentou blocos durante o enriquecimento.");
+    throw new Error("Gerador omitiu ou acrescentou blocos durante o enriquecimento.");
   }
 
   const candidates = new Map<string, RawEnrichedBlock>();
   for (const rawBlock of rawBlocks) {
     if (typeof rawBlock !== "object" || rawBlock === null || Array.isArray(rawBlock)) {
-      throw new Error("OpenAI retornou bloco de enriquecimento inválido.");
+      throw new Error("Gerador retornou bloco de enriquecimento inválido.");
     }
     const candidate = rawBlock as RawEnrichedBlock;
     const id = normalizedText(candidate.id);
     if (!id || candidates.has(id)) {
-      throw new Error("OpenAI retornou bloco sem identidade única.");
+      throw new Error("Gerador retornou bloco sem identidade única.");
     }
     candidates.set(id, candidate);
   }
@@ -152,17 +178,17 @@ export function buildValidatedEnrichmentResult(
   const blocos = request.blocos_base.map((baseBlock, index): ContentBlock => {
     const candidate = candidates.get(baseBlock.id);
     if (!candidate) {
-      throw new Error(`OpenAI omitiu o bloco ${baseBlock.id}.`);
+      throw new Error(`Gerador omitiu o bloco ${baseBlock.id}.`);
     }
     const expanded = normalizedText(candidate.conteudo_aprofundado);
     if (!hasMeaningfulContentExpansion(baseBlock.conteudo_base, expanded)) {
       throw new Error(
-        `OpenAI não aprofundou de verdade o bloco ${baseBlock.id}.`,
+        `Gerador não aprofundou de verdade o bloco ${baseBlock.id}.`,
       );
     }
     if (!hasNewVocabulary(baseBlock.conteudo_base, expanded)) {
       throw new Error(
-        `OpenAI não acrescentou contexto ou vocabulário ao bloco ${baseBlock.id}.`,
+        `Gerador não acrescentou contexto ou vocabulário ao bloco ${baseBlock.id}.`,
       );
     }
 
@@ -297,23 +323,43 @@ export function resolveContentEnrichmentModel(
   );
 }
 
+export function resolveContentEnrichmentFallbackModel(
+  environment: Record<string, string | undefined> = process.env,
+): string {
+  return (
+    String(environment.GEMINI_CONTENT_ENRICHMENT_FALLBACK_MODEL ?? "").trim()
+    || DEFAULT_CONTENT_ENRICHMENT_FALLBACK_MODEL
+  );
+}
+
 export interface ContentEnrichmentReadiness {
   ready: boolean;
   provider: typeof CONTENT_ENRICHMENT_PROVIDER;
   model: string;
+  fallback_provider?: typeof CONTENT_ENRICHMENT_FALLBACK_PROVIDER;
+  fallback_model?: string;
+  degraded?: boolean;
   error?: string;
 }
 
 export function getContentEnrichmentReadiness(
   environment: Record<string, string | undefined> = process.env,
 ): ContentEnrichmentReadiness {
-  const ready = Boolean(String(environment.OPENAI_API_KEY ?? "").trim());
+  const openaiReady = Boolean(String(environment.OPENAI_API_KEY ?? "").trim());
+  const geminiReady = Boolean(String(environment.GEMINI_API_KEY ?? "").trim());
+  const ready = openaiReady || geminiReady;
   return {
     ready,
     provider: CONTENT_ENRICHMENT_PROVIDER,
     model: resolveContentEnrichmentModel(environment),
+    fallback_provider: CONTENT_ENRICHMENT_FALLBACK_PROVIDER,
+    fallback_model: resolveContentEnrichmentFallbackModel(environment),
+    ...(!openaiReady && geminiReady ? { degraded: true } : {}),
     ...(!ready
-      ? { error: "OPENAI_API_KEY ausente para o enriquecimento curricular." }
+      ? {
+          error:
+            "OPENAI_API_KEY e GEMINI_API_KEY ausentes para o enriquecimento curricular.",
+        }
       : {}),
   };
 }
@@ -340,11 +386,11 @@ function candidateIndex(raw: unknown): {
   duplicates: Set<string>;
 } {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
-    throw new Error("OpenAI retornou enriquecimento fora do formato JSON.");
+    throw new Error("Gerador retornou enriquecimento fora do formato JSON.");
   }
   const rawBlocks = (raw as { blocos?: unknown }).blocos;
   if (!Array.isArray(rawBlocks)) {
-    throw new Error("OpenAI não retornou a lista de blocos enriquecidos.");
+    throw new Error("Gerador não retornou a lista de blocos enriquecidos.");
   }
 
   const candidates = new Map<string, RawEnrichedBlock>();
@@ -400,6 +446,199 @@ async function generateStructuredWithOpenAI(
   }
 }
 
+const GEMINI_ENRICHMENT_RESPONSE_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    blocos: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          id: { type: Type.STRING },
+          tema: { type: Type.STRING },
+          topico: { type: Type.STRING },
+          objetivos: {
+            type: Type.ARRAY,
+            items: { type: Type.STRING },
+          },
+          conteudo_aprofundado: { type: Type.STRING },
+          conceitos_chave: {
+            type: Type.ARRAY,
+            items: { type: Type.STRING },
+          },
+          exemplos_contextos: {
+            type: Type.ARRAY,
+            items: { type: Type.STRING },
+          },
+          ponte_proximo_bloco: { type: Type.STRING },
+        },
+        required: [
+          "id",
+          "tema",
+          "topico",
+          "objetivos",
+          "conteudo_aprofundado",
+          "conceitos_chave",
+          "exemplos_contextos",
+          "ponte_proximo_bloco",
+        ],
+      },
+    },
+  },
+  required: ["blocos"],
+};
+
+async function generateStructuredWithGemini(
+  call: StructuredEnrichmentCall,
+): Promise<unknown> {
+  const response = await getGemini().models.generateContent({
+    model: call.model,
+    contents: [{
+      parts: [{ text: call.input }],
+    }],
+    config: {
+      systemInstruction: call.instructions,
+      temperature: 0.35,
+      maxOutputTokens: call.maxOutputTokens,
+      responseMimeType: "application/json",
+      responseSchema: GEMINI_ENRICHMENT_RESPONSE_SCHEMA,
+    },
+  });
+  const responseText = String(response.text ?? "").trim();
+  if (!responseText) {
+    throw new Error("Gemini retornou enriquecimento vazio na contingência.");
+  }
+  try {
+    return JSON.parse(responseText);
+  } catch (error) {
+    throw new Error("Gemini retornou JSON inválido na contingência.", {
+      cause: error,
+    });
+  }
+}
+
+function errorDetails(error: unknown): string {
+  if (error instanceof Error) {
+    const cause = "cause" in error ? String(error.cause ?? "") : "";
+    return `${error.name} ${error.message} ${cause}`.trim();
+  }
+  if (typeof error === "object" && error !== null) {
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return String(error);
+    }
+  }
+  return String(error ?? "");
+}
+
+export function isOpenAIAvailabilityError(error: unknown): boolean {
+  const record = typeof error === "object" && error !== null
+    ? error as Record<string, unknown>
+    : {};
+  const status = Number(record.status ?? record.statusCode ?? record.code);
+  if (status === 408 || status === 429 || status >= 500) return true;
+
+  const details = errorDetails(error).toLowerCase();
+  return [
+    "429",
+    "current quota",
+    "insufficient_quota",
+    "rate limit",
+    "too many requests",
+    "service unavailable",
+    "temporarily unavailable",
+    "timeout",
+    "timed out",
+    "etimedout",
+    "econnreset",
+    "connection reset",
+    "fetch failed",
+    "openai_api_key ausente",
+  ].some((marker) => details.includes(marker));
+}
+
+export function resetOpenAIContentEnrichmentCircuit(): void {
+  openaiUnavailableUntil = 0;
+}
+
+interface EnrichmentGeneration {
+  value: unknown;
+  provider: "openai" | "gemini";
+  model: string;
+  fallback: boolean;
+  calls: number;
+}
+
+async function generateEnrichmentWithFallback(
+  call: StructuredEnrichmentCall,
+  options: {
+    generatePrimary: StructuredEnrichmentGenerator;
+    generateFallback: StructuredEnrichmentGenerator;
+    fallbackModel: string;
+    environment: Record<string, string | undefined>;
+    now: () => number;
+  },
+): Promise<EnrichmentGeneration> {
+  if (options.now() < openaiUnavailableUntil) {
+    return {
+      value: await options.generateFallback({
+        ...call,
+        model: options.fallbackModel,
+      }),
+      provider: "gemini",
+      model: options.fallbackModel,
+      fallback: true,
+      calls: 1,
+    };
+  }
+
+  try {
+    return {
+      value: await options.generatePrimary(call),
+      provider: "openai",
+      model: call.model,
+      fallback: false,
+      calls: 1,
+    };
+  } catch (error) {
+    if (!isOpenAIAvailabilityError(error)) throw error;
+
+    const cooldownMs = boundedInteger(
+      options.environment.CONTENT_ENRICHMENT_OPENAI_COOLDOWN_MS,
+      DEFAULT_OPENAI_UNAVAILABLE_COOLDOWN_MS,
+      1_000,
+      60 * 60 * 1_000,
+    );
+    openaiUnavailableUntil = options.now() + cooldownMs;
+    try {
+      return {
+        value: await options.generateFallback({
+          ...call,
+          model: options.fallbackModel,
+        }),
+        provider: "gemini",
+        model: options.fallbackModel,
+        fallback: true,
+        calls: 2,
+      };
+    } catch (fallbackError) {
+      const openaiDetails = errorDetails(error).slice(0, 500);
+      const geminiDetails = errorDetails(fallbackError).slice(0, 500);
+      throw new Error(
+        "OpenAI está indisponível e a contingência Gemini também falhou. "
+          + `OpenAI: ${openaiDetails}. Gemini: ${geminiDetails}.`,
+        {
+          cause: {
+            openai: openaiDetails,
+            gemini: geminiDetails,
+          },
+        },
+      );
+    }
+  }
+}
+
 function batchInput(
   request: ContentEnrichmentRequest,
   blocks: BaseContentBlock[],
@@ -419,57 +658,75 @@ export async function enrichContentBlocksWithOpenAI(
   request: ContentEnrichmentRequest,
   options: ContentEnrichmentOptions = {},
 ): Promise<ContentEnrichmentResult> {
-  const model = String(options.model ?? "").trim() || resolveContentEnrichmentModel();
+  const environment = options.environment ?? process.env;
+  const now = options.now ?? Date.now;
+  const model = String(options.model ?? "").trim()
+    || resolveContentEnrichmentModel(environment);
+  const fallbackModel = String(options.fallbackModel ?? "").trim()
+    || resolveContentEnrichmentFallbackModel(environment);
   const batchSize = boundedInteger(
-    options.batchSize ?? process.env.CONTENT_ENRICHMENT_BATCH_SIZE,
+    options.batchSize ?? environment.CONTENT_ENRICHMENT_BATCH_SIZE,
     DEFAULT_BATCH_SIZE,
     1,
     8,
   );
   const maxAttempts = boundedInteger(
-    options.maxAttempts ?? process.env.CONTENT_ENRICHMENT_MAX_ATTEMPTS,
+    options.maxAttempts ?? environment.CONTENT_ENRICHMENT_MAX_ATTEMPTS,
     DEFAULT_MAX_ATTEMPTS,
     1,
     4,
   );
   const maxOutputTokens = boundedInteger(
     options.maxOutputTokens
-      ?? process.env.OPENAI_CONTENT_ENRICHMENT_MAX_OUTPUT_TOKENS
-      ?? process.env.CONTENT_ENRICHMENT_MAX_OUTPUT_TOKENS,
+      ?? environment.OPENAI_CONTENT_ENRICHMENT_MAX_OUTPUT_TOKENS
+      ?? environment.CONTENT_ENRICHMENT_MAX_OUTPUT_TOKENS,
     DEFAULT_MAX_OUTPUT_TOKENS,
     8_192,
     65_536,
   );
   const generateStructured =
     options.generateStructured ?? generateStructuredWithOpenAI;
+  const generateStructuredFallback =
+    options.generateStructuredFallback ?? generateStructuredWithGemini;
   const batches = partitionBlocks(request.blocos_base, batchSize);
   const enrichedById = new Map<string, ContentBlock>();
   const originalOrder = new Map(
     request.blocos_base.map((block, index) => [block.id, index + 1]),
   );
   let callsMade = 0;
+  let fallbackCalls = 0;
+  const providersUsed = new Set<"openai" | "gemini">();
+  const modelsUsed = new Set<string>();
 
   for (const batch of batches) {
     let pending = [...batch];
     let feedback = "";
 
     for (let attempt = 1; attempt <= maxAttempts && pending.length > 0; attempt += 1) {
-      let raw: unknown;
-      callsMade += 1;
+      let generation: EnrichmentGeneration;
       try {
-        raw = await generateStructured({
-          model,
-          instructions: ENRICHMENT_INSTRUCTIONS,
-          input: batchInput(request, pending, feedback),
-          maxOutputTokens,
-          blockIds: pending.map((block) => block.id),
-          attempt,
-        });
+        generation = await generateEnrichmentWithFallback(
+          {
+            model,
+            instructions: ENRICHMENT_INSTRUCTIONS,
+            input: batchInput(request, pending, feedback),
+            maxOutputTokens,
+            blockIds: pending.map((block) => block.id),
+            attempt,
+          },
+          {
+            generatePrimary: generateStructured,
+            generateFallback: generateStructuredFallback,
+            fallbackModel,
+            environment,
+            now,
+          },
+        );
       } catch (error) {
         feedback = errorMessage(error);
         if (attempt === maxAttempts) {
           throw new Error(
-            `OpenAI falhou ao aprofundar os blocos ${pending
+            `Os provedores falharam ao aprofundar os blocos ${pending
               .map((block) => block.id)
               .join(", ")} após ${maxAttempts} tentativas: ${feedback}`,
             { cause: error },
@@ -477,6 +734,11 @@ export async function enrichContentBlocksWithOpenAI(
         }
         continue;
       }
+      callsMade += generation.calls;
+      providersUsed.add(generation.provider);
+      modelsUsed.add(generation.model);
+      if (generation.fallback) fallbackCalls += 1;
+      const raw = generation.value;
 
       let indexed: ReturnType<typeof candidateIndex>;
       try {
@@ -485,7 +747,7 @@ export async function enrichContentBlocksWithOpenAI(
         feedback = errorMessage(error);
         if (attempt === maxAttempts) {
           throw new Error(
-            `OpenAI não devolveu blocos válidos após ${maxAttempts} tentativas: ${feedback}`,
+            `O gerador não devolveu blocos válidos após ${maxAttempts} tentativas: ${feedback}`,
             { cause: error },
           );
         }
@@ -496,11 +758,11 @@ export async function enrichContentBlocksWithOpenAI(
       for (const baseBlock of pending) {
         try {
           if (indexed.duplicates.has(baseBlock.id)) {
-            throw new Error(`OpenAI duplicou o bloco ${baseBlock.id}.`);
+            throw new Error(`Gerador duplicou o bloco ${baseBlock.id}.`);
           }
           const candidate = indexed.candidates.get(baseBlock.id);
           if (!candidate) {
-            throw new Error(`OpenAI omitiu o bloco ${baseBlock.id}.`);
+            throw new Error(`Gerador omitiu o bloco ${baseBlock.id}.`);
           }
           const singleRequest: ContentEnrichmentRequest = {
             ...request,
@@ -509,7 +771,7 @@ export async function enrichContentBlocksWithOpenAI(
           const validated = buildValidatedEnrichmentResult(
             singleRequest,
             { blocos: [candidate] },
-            model,
+            generation.model,
           ).blocos[0];
           enrichedById.set(baseBlock.id, {
             ...validated,
@@ -526,7 +788,7 @@ export async function enrichContentBlocksWithOpenAI(
         .join("\n");
       if (pending.length > 0 && attempt === maxAttempts) {
         throw new Error(
-          `OpenAI não aprofundou todos os blocos após ${maxAttempts} tentativas: ${feedback}`,
+          `O gerador não aprofundou todos os blocos após ${maxAttempts} tentativas: ${feedback}`,
         );
       }
     }
@@ -535,10 +797,16 @@ export async function enrichContentBlocksWithOpenAI(
   const blocos = request.blocos_base.map((block) => {
     const enriched = enrichedById.get(block.id);
     if (!enriched) {
-      throw new Error(`OpenAI não produziu o bloco obrigatório ${block.id}.`);
+      throw new Error(`O gerador não produziu o bloco obrigatório ${block.id}.`);
     }
     return enriched;
   });
+  const provider = providersUsed.size > 1
+    ? "mixed"
+    : providersUsed.has("gemini")
+    ? "gemini"
+    : "openai";
+  const models = [...modelsUsed];
 
   return {
     schema_version: CONTENT_ENRICHMENT_SCHEMA_VERSION,
@@ -546,9 +814,12 @@ export async function enrichContentBlocksWithOpenAI(
     tema: request.tema.titulo || request.blocos_base[0]?.tema || "Conteúdo de estudo",
     blocos,
     metadata: {
-      provider: CONTENT_ENRICHMENT_PROVIDER,
-      model,
-      fallback: false,
+      provider,
+      model: models[0] ?? model,
+      models,
+      fallback: fallbackCalls > 0,
+      ...(fallbackCalls > 0 ? { fallback_from: "openai" as const } : {}),
+      fallback_calls: fallbackCalls,
       blocos_recebidos: request.blocos_base.length,
       blocos_gerados: blocos.length,
       lotes_gerados: batches.length,
