@@ -1,10 +1,10 @@
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
-from sqlalchemy.engine import make_url
 
 from alembic import context
 from app.core.settings import get_settings
+from app.db.migrations import normalize_database_url_for_alembic
 
 config = context.config
 
@@ -14,23 +14,12 @@ if config.config_file_name is not None:
 target_metadata = None
 
 
-def _normalize_alembic_url(raw_url: str) -> str:
-    url = make_url(raw_url)
-    if url.drivername == "postgresql+asyncpg":
-        url = url.set(drivername="postgresql+psycopg")
-    elif url.drivername == "postgresql":
-        url = url.set(drivername="postgresql+psycopg")
-    elif url.drivername == "sqlite+aiosqlite":
-        url = url.set(drivername="sqlite")
-    return str(url)
-
-
 def _configure_database_url() -> str:
     settings = get_settings()
     raw_url = config.attributes.get("database_url_override")
     if not isinstance(raw_url, str) or not raw_url.strip():
         raw_url = settings.alembic_database_url or settings.database_url
-    url = _normalize_alembic_url(raw_url)
+    url = normalize_database_url_for_alembic(raw_url)
     config.set_main_option("sqlalchemy.url", url.replace("%", "%%"))
     return url
 

@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from sqlalchemy.engine import make_url
+
 from app.db import migrations
 
 
@@ -20,3 +22,14 @@ def test_upgrade_database_to_head_uses_project_alembic_config(monkeypatch) -> No
     assert Path(config.config_file_name).name == "alembic.ini"
     assert Path(config.get_main_option("script_location")).name == "alembic"
     assert config.attributes["database_url_override"] == database_url
+
+
+def test_normalize_database_url_preserves_real_password() -> None:
+    normalized = migrations.normalize_database_url_for_alembic(
+        "postgresql+asyncpg://postgres.project:p%40ss%2Aword@db.example.test:6543/postgres"
+    )
+
+    parsed = make_url(normalized)
+    assert parsed.drivername == "postgresql+psycopg"
+    assert parsed.password == "p@ss*word"
+    assert "***" not in normalized
