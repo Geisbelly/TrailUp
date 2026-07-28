@@ -4,6 +4,7 @@ Microservico de geracao de materiais personalizados por perfil BrainHex.
 
 ## O que este servico faz
 - Recebe contexto pedagogico de personalizacao.
+- Aprofunda o conteudo-base com OpenAI antes de qualquer adaptacao BrainHex.
 - Gera markdown, audio e apresentacao com Gemini.
 - Faz upload dos artefatos no Supabase Storage.
 - Atualiza `conteudo_personalizado.materiais` com status por artefato.
@@ -19,6 +20,7 @@ Microservico de geracao de materiais personalizados por perfil BrainHex.
 
 ## Endpoints
 - `GET /api/health`
+- `POST /api/enrich-content` (OpenAI Responses API, em lotes validados)
 - `POST /api/v1/archive` (uso via frontend)
 - `POST /api/personalizar` (integracao com ApiTraiUp)
 
@@ -29,6 +31,10 @@ Microservico de geracao de materiais personalizados por perfil BrainHex.
 - App mobile consome personalizacao direto no Supabase; ApiBrainHex permanece backend-only via API TrailUp.
 
 ## Variaveis de ambiente
+- `OPENAI_API_KEY` (obrigatoria para enriquecimento e imagens)
+- `OPENAI_CONTENT_ENRICHMENT_MODEL` (padrao: `gpt-5.6-sol`)
+- `CONTENT_ENRICHMENT_BATCH_SIZE` (padrao: `4`)
+- `CONTENT_ENRICHMENT_MAX_ATTEMPTS` (padrao: `3`)
 - `GEMINI_API_KEY`
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
@@ -52,6 +58,7 @@ src/
     textSanitize.ts       # Latin-1 sanitizer para jsPDF (testado)
     wav.ts                # header WAV para PCM Gemini TTS (testado)
   services/
+    contentEnrichmentService.ts # aprofundamento curricular via OpenAI
     geminiService.ts      # texto/slides/áudio/imagens via Gemini
     pdfService.ts         # PDF 2-painéis dos slides (jsPDF)
     supabaseService.ts    # storage + merge defensivo + heartbeat + recovery

@@ -7,6 +7,7 @@ from typing import Any
 import httpx
 
 from app.core.settings import Settings
+from app.services.media_contract import CONTENT_ENRICHMENT_PROVIDER
 
 _MAX_BLOCKS = 24
 _MAX_SEGMENT_CHARS = 4_000
@@ -229,6 +230,13 @@ def _normalize_string_list(value: Any) -> list[str]:
     return _unique_texts(value)
 
 
+def _nonnegative_int(value: Any) -> int:
+    try:
+        return max(0, int(value or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
 def _minimum_expanded_length(base: str) -> int:
     return len(base) + max(
         _MIN_EXPANSION_CHARS,
@@ -250,7 +258,11 @@ def _validate_enrichment_response(
         raise ContentEnrichmentError("Microserviço retornou enriquecimento de outra fonte.")
     metadata = raw.get("metadata") if isinstance(raw.get("metadata"), dict) else {}
     if metadata.get("fallback") is not False:
-        raise ContentEnrichmentError("Microserviço não confirmou enriquecimento real via Gemini.")
+        raise ContentEnrichmentError("Microserviço não confirmou enriquecimento real via OpenAI.")
+    if metadata.get("provider") != CONTENT_ENRICHMENT_PROVIDER:
+        raise ContentEnrichmentError(
+            "Microserviço de enriquecimento incompatível: era esperado o provedor OpenAI."
+        )
 
     candidates = raw.get("blocos")
     if not isinstance(candidates, list) or len(candidates) != len(base_blocks):
@@ -381,6 +393,7 @@ async def enrich_content_blocks(
         base_blocks=base_blocks,
         source_hash=source_hash,
     )
+    remote_metadata = raw.get("metadata") if isinstance(raw.get("metadata"), dict) else {}
     return {
         "schema_version": _SCHEMA_VERSION,
         "source_hash": source_hash,
@@ -391,6 +404,13 @@ async def enrich_content_blocks(
             "blocos_gerados": len(blocks),
             "fontes_cobertas": len({source_id for block in base_blocks for source_id in block.get("source_ids") or []}),
             "fallback": False,
-            "provider": "brainhex-gemini",
+            "provider": "brainhex-openai",
+            "provider_model": _text(remote_metadata.get("model")),
+            "lotes_gerados": _nonnegative_int(
+                remote_metadata.get("lotes_gerados")
+            ),
+            "chamadas_realizadas": _nonnegative_int(
+                remote_metadata.get("chamadas_realizadas")
+            ),
         },
     }

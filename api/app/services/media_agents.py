@@ -12,6 +12,7 @@ from app.core.settings import Settings
 from app.services.audio import gerar_mp3_gtts
 from app.services.llm import JsonLLMService
 from app.services.media_contract import (
+    CONTENT_ENRICHMENT_PROVIDER,
     MEDIA_PIPELINE_VERSION,
     PRESENTATION_ENGINE_VERSION,
 )
@@ -275,6 +276,8 @@ def _brainhex_contract_matches(payload: Any) -> bool:
         isinstance(payload, dict)
         and payload.get("media_pipeline_version") == MEDIA_PIPELINE_VERSION
         and payload.get("presentation_engine_version") == PRESENTATION_ENGINE_VERSION
+        and payload.get("content_enrichment_provider")
+        == CONTENT_ENRICHMENT_PROVIDER
     )
 
 
@@ -296,10 +299,11 @@ async def brainhex_contract_ready(*, settings: Settings) -> bool:
             return True
         logger.warning(
             "brainhex_contract_ready: microservice com contrato de midia "
-            "incompativel (status=%s, esperado=%s/%s, recebido=%s)",
+            "incompativel (status=%s, esperado=%s/%s/%s, recebido=%s)",
             response.status_code,
             MEDIA_PIPELINE_VERSION,
             PRESENTATION_ENGINE_VERSION,
+            CONTENT_ENRICHMENT_PROVIDER,
             payload,
         )
     except Exception:

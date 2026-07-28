@@ -40,7 +40,8 @@ import type { ContentBlock } from "./src/lib/validators";
 import { createRateLimiter } from "./src/lib/rateLimit";
 import {
   CONTENT_ENRICHMENT_SCHEMA_VERSION,
-  enrichContentBlocksWithGemini,
+  enrichContentBlocksWithOpenAI,
+  getContentEnrichmentReadiness,
 } from "./src/services/contentEnrichmentService";
 import {
   MEDIA_PIPELINE_VERSION,
@@ -685,7 +686,8 @@ export interface AppOptions {
   corsOrigin?:           string;
   allowPrivateFonteUrls?: boolean;
   personalizacaoJobRunner?: typeof runPersonalizacaoJobWithTimeout;
-  contentEnrichmentRunner?: typeof enrichContentBlocksWithGemini;
+  contentEnrichmentRunner?: typeof enrichContentBlocksWithOpenAI;
+  contentEnrichmentReadiness?: typeof getContentEnrichmentReadiness;
   presentationRendererReadiness?: () => Promise<PresentationRendererReadiness>;
   renderGitCommit?:       string | null;
   /**
@@ -704,7 +706,8 @@ export function buildApp(opts: AppOptions = {}): express.Application {
     corsOrigin,
     allowPrivateFonteUrls = false,
     personalizacaoJobRunner = runPersonalizacaoJobWithTimeout,
-    contentEnrichmentRunner = enrichContentBlocksWithGemini,
+    contentEnrichmentRunner = enrichContentBlocksWithOpenAI,
+    contentEnrichmentReadiness = getContentEnrichmentReadiness,
     presentationRendererReadiness = getPresentationRendererReadiness,
     renderGitCommit = getRenderGitCommit(),
     enableSpa           = false,
@@ -772,27 +775,39 @@ export function buildApp(opts: AppOptions = {}): express.Application {
   // ── Health ───────────────────────────────────────────────────────
   app.get("/api/health", async (req, res) => {
     const renderer = await presentationRendererReadiness();
+    const enrichment = contentEnrichmentReadiness();
+    const ready = renderer.ready && enrichment.ready;
     if (!renderer.ready) {
       req.log.error("renderer de apresentacao indisponivel", {
         error: renderer.error,
         checkedAt: renderer.checked_at,
       });
     }
-    res.status(renderer.ready ? 200 : 503).json({
-      status:   renderer.ready ? "ok" : "degraded",
+    if (!enrichment.ready) {
+      req.log.error("enriquecimento OpenAI indisponivel", {
+        error: enrichment.error,
+        provider: enrichment.provider,
+        model: enrichment.model,
+      });
+    }
+    res.status(ready ? 200 : 503).json({
+      status:   ready ? "ok" : "degraded",
       message:  "TrailUp Alchemy Microservice is online!",
       supabase: isSupabaseConfigured(),
       auth:     Boolean(apiSharedSecret),
       presentation_renderer: renderer,
+      content_enrichment: enrichment,
       media_pipeline_version: MEDIA_PIPELINE_VERSION,
       presentation_engine_version: PRESENTATION_ENGINE_VERSION,
       presentation_schema: PRESENTATION_SCHEMA_VERSION,
       content_enrichment_schema: CONTENT_ENRICHMENT_SCHEMA_VERSION,
+      content_enrichment_provider: enrichment.provider,
+      content_enrichment_model: enrichment.model,
       render_git_commit: renderGitCommit,
     });
   });
 
-  // A API principal decompõe todas as fontes em até 24 blocos-base. O Gemini
+  // A API principal decompõe todas as fontes em até 24 blocos-base. A OpenAI
   // aprofunda esses blocos aqui, antes de qualquer adaptação BrainHex ou mídia.
   app.post("/api/enrich-content", requireSecret, async (req, res) => {
     const validation = validateContentEnrichmentBody(req.body);

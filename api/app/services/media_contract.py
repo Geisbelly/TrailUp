@@ -6,5 +6,6 @@ de apresentação também é validada antes de disparar qualquer geração, evit
 que um deploy antigo produza e persista novamente o layout legado.
 """
 
-MEDIA_PIPELINE_VERSION = "2026-07-28.3"
+MEDIA_PIPELINE_VERSION = "2026-07-28.4"
 PRESENTATION_ENGINE_VERSION = "puppeteer-html-v2"
+CONTENT_ENRICHMENT_PROVIDER = "openai"

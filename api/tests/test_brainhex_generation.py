@@ -3,13 +3,17 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.core.settings import Settings
-
-# Imports da função
 from app.services.media_agents import (
     _BRAINHEX_GUIDE_CONFIG,
+    _brainhex_contract_matches,
     disparar_brainhex_async,
     gerar_conteudo_brainhex,
     gerar_imagem_slide,
+)
+from app.services.media_contract import (
+    CONTENT_ENRICHMENT_PROVIDER,
+    MEDIA_PIPELINE_VERSION,
+    PRESENTATION_ENGINE_VERSION,
 )
 
 
@@ -43,6 +47,19 @@ def test_brainhex_guide_config_has_all_profiles():
         assert "guia_voz" in cfg
         assert "guia_cor" in cfg
         assert "framing" in cfg
+
+
+def test_brainhex_contract_requires_openai_content_enrichment():
+    valid = {
+        "media_pipeline_version": MEDIA_PIPELINE_VERSION,
+        "presentation_engine_version": PRESENTATION_ENGINE_VERSION,
+        "content_enrichment_provider": CONTENT_ENRICHMENT_PROVIDER,
+    }
+
+    assert _brainhex_contract_matches(valid) is True
+    assert _brainhex_contract_matches(
+        {**valid, "content_enrichment_provider": "gemini"}
+    ) is False
 
     assert _BRAINHEX_GUIDE_CONFIG["seeker"]["guia_voz"] == "Leda"
     assert _BRAINHEX_GUIDE_CONFIG["survivor"]["guia_voz"] == "Schedar"
@@ -135,8 +152,9 @@ async def test_gerar_conteudo_brainhex_returns_json_for_any_profile(settings, co
 async def test_disparar_brainhex_waits_for_completion(settings):
     settings.brainhex_api_wait_timeout_sec = 300
     contract = {
-        "media_pipeline_version": "2026-07-28.3",
-        "presentation_engine_version": "puppeteer-html-v2",
+        "media_pipeline_version": MEDIA_PIPELINE_VERSION,
+        "presentation_engine_version": PRESENTATION_ENGINE_VERSION,
+        "content_enrichment_provider": CONTENT_ENRICHMENT_PROVIDER,
     }
     mock_health = MagicMock(status_code=200)
     mock_health.json.return_value = {"status": "ok", **contract}
@@ -174,10 +192,10 @@ async def test_disparar_brainhex_waits_for_completion(settings):
     )
     assert mock_client.post.await_args.kwargs["json"][
         "required_media_pipeline_version"
-    ] == "2026-07-28.3"
+    ] == MEDIA_PIPELINE_VERSION
     assert mock_client.post.await_args.kwargs["json"][
         "required_presentation_engine_version"
-    ] == "puppeteer-html-v2"
+    ] == PRESENTATION_ENGINE_VERSION
     assert mock_client_cls.call_args_list[0].kwargs["timeout"] == 30.0
     configured_timeout = mock_client_cls.call_args.kwargs["timeout"]
     assert configured_timeout.read == 300
@@ -187,8 +205,9 @@ async def test_disparar_brainhex_waits_for_completion(settings):
 @pytest.mark.asyncio
 async def test_disparar_brainhex_does_not_treat_legacy_202_as_completed(settings):
     contract = {
-        "media_pipeline_version": "2026-07-28.3",
-        "presentation_engine_version": "puppeteer-html-v2",
+        "media_pipeline_version": MEDIA_PIPELINE_VERSION,
+        "presentation_engine_version": PRESENTATION_ENGINE_VERSION,
+        "content_enrichment_provider": CONTENT_ENRICHMENT_PROVIDER,
     }
     mock_health = MagicMock(status_code=200)
     mock_health.json.return_value = {"status": "ok", **contract}
