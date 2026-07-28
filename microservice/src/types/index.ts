@@ -47,6 +47,9 @@ export interface ProcessedContent {
     content_block_batches?: number;
     content_block_batch_size?: number;
     batch_block_ids?: string[][];
+    content_generation_provider?: "gemini" | "openai" | "mixed";
+    content_generation_models?: string[];
+    content_generation_fallback_count?: number;
   };
   slideImages?: string[];
   audioBase64?: string | null;

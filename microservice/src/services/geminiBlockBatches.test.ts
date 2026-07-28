@@ -77,12 +77,12 @@ test("particiona todos os blocos em lotes pequenos e preserva a ordem pedagógic
   assert.equal(batches.flat().length, unordered.length);
 });
 
-test("tamanho de lote é configurável dentro do limite e usa 3 como padrão seguro", () => {
-  assert.equal(resolveContentBlockBatchSize(undefined), 3);
+test("tamanho de lote reduz chamadas e aceita até 24 blocos", () => {
+  assert.equal(resolveContentBlockBatchSize(undefined), 12);
   assert.equal(resolveContentBlockBatchSize("4"), 4);
-  assert.equal(resolveContentBlockBatchSize(6), 6);
-  assert.equal(resolveContentBlockBatchSize(0), 3);
-  assert.equal(resolveContentBlockBatchSize(7), 3);
+  assert.equal(resolveContentBlockBatchSize(24), 24);
+  assert.equal(resolveContentBlockBatchSize(0), 12);
+  assert.equal(resolveContentBlockBatchSize(25), 12);
 });
 
 test("valida cobertura exata do lote e reordena capítulos pelos ids esperados", () => {
@@ -155,6 +155,11 @@ test("consolida markdown, áudio e slides na ordem global com metadados dos lote
     },
     2,
   );
+  first.generationProvider = "gemini";
+  first.generationModel = "gemini-3-flash-preview";
+  second.generationProvider = "openai";
+  second.generationModel = "gpt-5.6-sol";
+  second.fallbackFrom = "gemini";
 
   const result = consolidateBlockBatchGenerations(
     blocks,
@@ -173,6 +178,12 @@ test("consolida markdown, áudio e slides na ordem global com metadados dos lote
   assert.equal(result.metadata.content_blocks_total, 4);
   assert.equal(result.metadata.content_block_batches, 2);
   assert.equal(result.metadata.content_block_batch_size, 2);
+  assert.equal(result.metadata.content_generation_provider, "mixed");
+  assert.deepEqual(result.metadata.content_generation_models, [
+    "gemini-3-flash-preview",
+    "gpt-5.6-sol",
+  ]);
+  assert.equal(result.metadata.content_generation_fallback_count, 1);
   assert.deepEqual(result.metadata.batch_block_ids, [
     ["bloco-01", "bloco-02"],
     ["bloco-03", "bloco-04"],

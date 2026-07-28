@@ -12,6 +12,12 @@ import {
   type PresentationDesignPlan,
 } from "../constants/presentationThemes";
 import { addWavHeader } from "../lib/wav";
+import {
+  generateStructuredContentWithFallback,
+  resolveGeminiContentGenerationModel,
+  resolveOpenAIContentGenerationFallbackModel,
+  type ContentGenerationProvider,
+} from "./contentGenerationService";
 import { 
   EnrichedContentBlock,
   InternalBlock, 
@@ -115,8 +121,68 @@ const SUPPORTED_NATIVE_MIMES = [
   "video/mp4", "video/mpeg"
 ];
 
-const DEFAULT_CONTENT_BLOCK_BATCH_SIZE = 3;
-const MAX_CONTENT_BLOCK_BATCH_SIZE = 6;
+const DEFAULT_CONTENT_BLOCK_BATCH_SIZE = 12;
+const MAX_CONTENT_BLOCK_BATCH_SIZE = 24;
+const GEMINI_CONTENT_GENERATION_RESPONSE_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    chapters: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          blockId: { type: Type.STRING },
+          markdown: { type: Type.STRING },
+          audioScript: { type: Type.STRING },
+          slides: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                title: { type: Type.STRING },
+                topics: {
+                  type: Type.ARRAY,
+                  items: { type: Type.STRING },
+                },
+                explanation: { type: Type.STRING },
+                visualDescription: { type: Type.STRING },
+                characterQuote: { type: Type.STRING },
+                characterAction: {
+                  type: Type.STRING,
+                  description:
+                    "Ação: explaining, celebrating, thinking ou warning",
+                },
+                imagePrompt: { type: Type.STRING },
+                iconPrompts: {
+                  type: Type.ARRAY,
+                  items: { type: Type.STRING },
+                },
+                sourceIds: {
+                  type: Type.ARRAY,
+                  items: { type: Type.STRING },
+                },
+              },
+              required: [
+                "title",
+                "topics",
+                "explanation",
+                "visualDescription",
+                "characterQuote",
+                "characterAction",
+                "imagePrompt",
+                "iconPrompts",
+                "sourceIds",
+              ],
+            },
+          },
+        },
+        required: ["blockId", "markdown", "audioScript", "slides"],
+      },
+    },
+    confidence: { type: Type.NUMBER },
+  },
+  required: ["chapters", "confidence"],
+};
 
 export interface GeneratedBlockChapter {
   blockId: string;
@@ -130,6 +196,9 @@ export interface GeneratedBlockBatch {
   blockIds: string[];
   chapters: GeneratedBlockChapter[];
   confidence: number;
+  generationProvider?: ContentGenerationProvider;
+  generationModel?: string;
+  fallbackFrom?: "gemini";
 }
 
 function normalizedText(value: unknown): string {
@@ -252,12 +321,12 @@ export function validateBlockBatchGeneration(
   batchIndex: number,
 ): GeneratedBlockBatch {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
-    throw new Error(`Gemini retornou lote ${batchIndex} fora do formato JSON.`);
+    throw new Error(`Gerador retornou lote ${batchIndex} fora do formato JSON.`);
   }
   const rawObject = raw as Record<string, unknown>;
   if (!Array.isArray(rawObject.chapters) || rawObject.chapters.length !== batch.length) {
     throw new Error(
-      `Gemini omitiu ou acrescentou capítulos no lote ${batchIndex}.`,
+      `Gerador omitiu ou acrescentou capítulos no lote ${batchIndex}.`,
     );
   }
   const batchIds = batch.map((block) => normalizedText(block.id));
@@ -269,13 +338,13 @@ export function validateBlockBatchGeneration(
       || rawChapter === null
       || Array.isArray(rawChapter)
     ) {
-      throw new Error(`Gemini retornou capítulo inválido no lote ${batchIndex}.`);
+      throw new Error(`Gerador retornou capítulo inválido no lote ${batchIndex}.`);
     }
     const chapter = rawChapter as Record<string, unknown>;
     const blockId = normalizedText(chapter.blockId);
     if (!batchIdSet.has(blockId) || chapterMap.has(blockId)) {
       throw new Error(
-        `Gemini retornou identidade ausente, duplicada ou externa no lote ${batchIndex}.`,
+        `Gerador retornou identidade ausente, duplicada ou externa no lote ${batchIndex}.`,
       );
     }
     chapterMap.set(blockId, chapter);
@@ -285,7 +354,7 @@ export function validateBlockBatchGeneration(
     const blockId = normalizedText(block.id);
     const chapter = chapterMap.get(blockId);
     if (!chapter) {
-      throw new Error(`Gemini omitiu o capítulo do bloco ${blockId}.`);
+      throw new Error(`Gerador omitiu o capítulo do bloco ${blockId}.`);
     }
     const markdown = String(chapter.markdown ?? "").trim();
     const audioScript = String(chapter.audioScript ?? "").trim();
@@ -308,7 +377,7 @@ export function validateBlockBatchGeneration(
       );
     }
     if (!Array.isArray(chapter.slides) || chapter.slides.length === 0) {
-      throw new Error(`Gemini não gerou slides para o bloco ${blockId}.`);
+      throw new Error(`Gerador não produziu slides para o bloco ${blockId}.`);
     }
     return {
       blockId,
@@ -326,7 +395,7 @@ export function validateBlockBatchGeneration(
 
   const confidence = Number(rawObject.confidence);
   if (!Number.isFinite(confidence)) {
-    throw new Error(`Gemini não informou confiança válida no lote ${batchIndex}.`);
+    throw new Error(`Gerador não informou confiança válida no lote ${batchIndex}.`);
   }
   return {
     batchIndex,
@@ -397,6 +466,25 @@ export function consolidateBlockBatchGenerations(
     ? orderedBatches.reduce((sum, batch) => sum + batch.confidence, 0)
       / orderedBatches.length
     : 0;
+  const generationProviders = [
+    ...new Set(
+      orderedBatches
+        .map((batch) => batch.generationProvider)
+        .filter((provider): provider is ContentGenerationProvider =>
+          Boolean(provider)
+        ),
+    ),
+  ];
+  const generationModels = [
+    ...new Set(
+      orderedBatches
+        .map((batch) => batch.generationModel)
+        .filter((model): model is string => Boolean(model)),
+    ),
+  ];
+  const fallbackCount = orderedBatches.filter(
+    (batch) => batch.fallbackFrom === "gemini",
+  ).length;
 
   return {
     markdown: chapters.map((chapter) => chapter.markdown).join("\n\n---\n\n"),
@@ -413,6 +501,13 @@ export function consolidateBlockBatchGenerations(
       content_block_batches: orderedBatches.length,
       content_block_batch_size: effectiveBatchSize,
       batch_block_ids: orderedBatches.map((batch) => [...batch.blockIds]),
+      content_generation_provider: generationProviders.length === 1
+        ? generationProviders[0]
+        : generationProviders.length > 1
+        ? "mixed"
+        : undefined,
+      content_generation_models: generationModels,
+      content_generation_fallback_count: fallbackCount,
     },
   };
 }
@@ -663,7 +758,8 @@ export async function processMediaWithGemini(
     );
     const batches = partitionContentBlocks(contentBlocks, batchSize);
     const batchResults: GeneratedBlockBatch[] = [];
-    const model = process.env.CONTENT_GENERATION_MODEL ?? "gemini-3-flash-preview";
+    const geminiModel = resolveGeminiContentGenerationModel();
+    const openaiModel = resolveOpenAIContentGenerationFallbackModel();
     const maxOutputTokens = Math.max(
       8_192,
       Number(process.env.CONTENT_GENERATION_BATCH_MAX_OUTPUT_TOKENS) || 32_768,
@@ -674,105 +770,61 @@ export async function processMediaWithGemini(
     for (let index = 0; index < batches.length; index++) {
       const batch = batches[index];
       const expectedIds = batch.map((block) => block.id);
-      const response = await getAi().models.generateContent({
-        model,
-        contents: [{
-          parts: [{
-            text:
-              `LOTE ${index + 1} DE ${batches.length}.\n`
-              + `IDS OBRIGATÓRIOS, NESTA ORDEM: ${JSON.stringify(expectedIds)}\n`
-              + "Gere um capítulo completo e independente para CADA bloco abaixo. "
-              + "Não responda com resumo global.\n\n"
-              + JSON.stringify(batch, null, 2),
-          }],
-        }],
-        config: {
-          systemInstruction,
-          temperature: 0.45,
+      const batchInput =
+        `LOTE ${index + 1} DE ${batches.length}.\n`
+        + `IDS OBRIGATORIOS, NESTA ORDEM: ${JSON.stringify(expectedIds)}\n`
+        + "Gere um capitulo completo e independente para CADA bloco abaixo. "
+        + "Nao responda com resumo global.\n\n"
+        + JSON.stringify(batch, null, 2);
+      const generation = await generateStructuredContentWithFallback(
+        {
+          instructions: systemInstruction,
+          input: batchInput,
           maxOutputTokens,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              chapters: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    blockId: { type: Type.STRING },
-                    markdown: { type: Type.STRING },
-                    audioScript: { type: Type.STRING },
-                    slides: {
-                      type: Type.ARRAY,
-                      items: {
-                        type: Type.OBJECT,
-                        properties: {
-                          title: { type: Type.STRING },
-                          topics: {
-                            type: Type.ARRAY,
-                            items: { type: Type.STRING },
-                          },
-                          explanation: { type: Type.STRING },
-                          visualDescription: { type: Type.STRING },
-                          characterQuote: { type: Type.STRING },
-                          characterAction: {
-                            type: Type.STRING,
-                            description:
-                              "Ação: explaining, celebrating, thinking ou warning",
-                          },
-                          imagePrompt: { type: Type.STRING },
-                          iconPrompts: {
-                            type: Type.ARRAY,
-                            items: { type: Type.STRING },
-                          },
-                          sourceIds: {
-                            type: Type.ARRAY,
-                            items: { type: Type.STRING },
-                          },
-                        },
-                        required: [
-                          "title",
-                          "topics",
-                          "explanation",
-                          "visualDescription",
-                          "characterQuote",
-                          "characterAction",
-                          "imagePrompt",
-                          "iconPrompts",
-                          "sourceIds",
-                        ],
-                      },
-                    },
-                  },
-                  required: [
-                    "blockId",
-                    "markdown",
-                    "audioScript",
-                    "slides",
-                  ],
-                },
+          geminiModel,
+          openaiModel,
+        },
+        {
+          generateWithGemini: async (call) => {
+            const response = await getAi().models.generateContent({
+              model: call.geminiModel,
+              contents: [{
+                parts: [{ text: call.input }],
+              }],
+              config: {
+                systemInstruction: call.instructions,
+                temperature: 0.45,
+                maxOutputTokens: call.maxOutputTokens,
+                responseMimeType: "application/json",
+                responseSchema: GEMINI_CONTENT_GENERATION_RESPONSE_SCHEMA,
               },
-              confidence: { type: Type.NUMBER },
-            },
-            required: ["chapters", "confidence"],
+            });
+            const responseText = String(response.text ?? "").trim();
+            if (!responseText) {
+              throw new Error(`Gemini retornou vazio no lote ${index + 1}.`);
+            }
+            let rawBatch: unknown;
+            try {
+              rawBatch = JSON.parse(responseText);
+            } catch (error) {
+              throw new Error(
+                `Gemini retornou JSON inválido no lote ${index + 1}.`,
+                { cause: error },
+              );
+            }
+            return rawBatch;
           },
         },
-      });
-      const responseText = String(response.text ?? "").trim();
-      if (!responseText) {
-        throw new Error(`Gemini retornou vazio no lote ${index + 1}.`);
-      }
-      let rawBatch: unknown;
-      try {
-        rawBatch = JSON.parse(responseText);
-      } catch (error) {
-        throw new Error(`Gemini retornou JSON inválido no lote ${index + 1}.`, {
-          cause: error,
-        });
-      }
-      batchResults.push(
-        validateBlockBatchGeneration(batch, rawBatch, index + 1),
       );
+      const validated = validateBlockBatchGeneration(
+        batch,
+        generation.value,
+        index + 1,
+      );
+      validated.generationProvider = generation.provider;
+      validated.generationModel = generation.model;
+      validated.fallbackFrom = generation.fallbackFrom;
+      batchResults.push(validated);
     }
 
     return consolidateBlockBatchGenerations(contentBlocks, batchResults, {

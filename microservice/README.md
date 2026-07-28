@@ -5,7 +5,9 @@ Microservico de geracao de materiais personalizados por perfil BrainHex.
 ## O que este servico faz
 - Recebe contexto pedagogico de personalizacao.
 - Aprofunda o conteudo-base com OpenAI antes de qualquer adaptacao BrainHex.
-- Gera markdown e audio com Gemini.
+- Gera markdown, roteiro de audio e estrutura de slides com Gemini como
+  provedor principal, usando OpenAI automaticamente quando o Gemini estiver
+  temporariamente indisponivel ou sem cota.
 - Renderiza apresentacoes editoriais 16:9 em um sistema visual tematico por perfil,
   com layouts variados no estilo Slidesgo e imagens sem texto geradas pela OpenAI.
 - Faz upload dos artefatos no Supabase Storage.
@@ -45,11 +47,15 @@ Microservico de geracao de materiais personalizados por perfil BrainHex.
 - App mobile consome personalizacao direto no Supabase; ApiBrainHex permanece backend-only via API TrailUp.
 
 ## Variaveis de ambiente
-- `OPENAI_API_KEY` (obrigatoria para enriquecimento e imagens)
+- `OPENAI_API_KEY` (obrigatoria para enriquecimento, imagens e contingencia da geracao)
 - `OPENAI_CONTENT_ENRICHMENT_MODEL` (padrao: `gpt-5.6-sol`)
 - `CONTENT_ENRICHMENT_BATCH_SIZE` (padrao: `4`)
 - `CONTENT_ENRICHMENT_MAX_ATTEMPTS` (padrao: `3`)
 - `GEMINI_API_KEY`
+- `CONTENT_GENERATION_MODEL` (Gemini principal; padrao: `gemini-3-flash-preview`)
+- `CONTENT_GENERATION_BLOCK_BATCH_SIZE` (padrao: `12`, maximo: `24`)
+- `OPENAI_CONTENT_GENERATION_FALLBACK_MODEL` (padrao: `gpt-5.6-sol`)
+- `CONTENT_GENERATION_GEMINI_COOLDOWN_MS` (padrao: `300000`)
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
 
@@ -73,7 +79,8 @@ src/
     wav.ts                # header WAV para PCM Gemini TTS (testado)
   services/
     contentEnrichmentService.ts # aprofundamento curricular via OpenAI
-    geminiService.ts      # texto/slides/áudio via Gemini
+    contentGenerationService.ts # contingencia OpenAI para indisponibilidade Gemini
+    geminiService.ts      # texto/slides via Gemini principal e áudio TTS
     openaiImageService.ts # fundos editoriais temáticos via OpenAI
     pdfService.ts         # deck HTML 16:9 renderizado pelo Puppeteer
     supabaseService.ts    # storage + merge defensivo + heartbeat + recovery
