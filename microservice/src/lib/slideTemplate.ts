@@ -105,6 +105,8 @@ function resolvePlan(
   );
 }
 
+// Espelhada por slideTopicsForPrompt em src/lib/slideAssetGenerator.ts —
+// mantenha os dois em sincronia se esta lógica de extração mudar.
 function slideTopics(slide: SlideForTemplate): string[] {
   const values = Array.isArray(slide.topics)
     ? slide.topics

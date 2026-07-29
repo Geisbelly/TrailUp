@@ -137,6 +137,8 @@ async function generateSlideIcons(
         // A contingência de imagem OpenAI é mais cara e já existe uma cena
         // OpenAI por slide. Um ícone de contingência por slide preserva o
         // acabamento sem multiplicar custo quando a cota Gemini está zerada.
+        // Esta mesma política de corte está espelhada em generateOneLegacySlide
+        // (src/lib/slideAssetGenerator.ts) — atualize os dois lugares juntos.
         if (generated.provider === "openai") break;
       } catch (e) {
         log.error("icone falhou nos dois provedores", { slide: i, err: e });
