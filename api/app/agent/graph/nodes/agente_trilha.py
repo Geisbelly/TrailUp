@@ -19,7 +19,7 @@ def _fallback_trilha(state: dict[str, Any]) -> dict[str, Any]:
         "classe_id": state["classe_id"],
         "topico_foco": foco,
         "proximos_topicos": proximos,
-        "ajustes": ["reforcar fundamentos"] if float(state.get("desempenho_recente", {}).get("media_acertos", 1)) < 0.5 else ["manter progressao"],
+        "ajustes": ["reforcar fundamentos"] if float(state.get("desempenho_recente", {}).get("media_acertos", 100)) < 50 else ["manter progressao"],
         "justificativa": "reorganizacao baseada em progresso e perfil atualizado",
     }
 

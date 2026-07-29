@@ -9,7 +9,7 @@ def _fallback_conteudo(state: dict[str, Any]) -> dict[str, Any]:
     desempenho = state.get("desempenho_recente", {})
     media_acertos = float(desempenho.get("media_acertos", 0))
     topico_id = state.get("payload_topico_id") or desempenho.get("topico_recente_id") or 0
-    nivel = "reforco" if media_acertos < 0.5 else "equilibrado"
+    nivel = "reforco" if media_acertos < 50 else "equilibrado"
     return {
         "topico_id": int(topico_id),
         "conteudo_id": state.get("conteudo_foco_id"),

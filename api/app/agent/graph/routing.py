@@ -47,7 +47,7 @@ def _needs_conteudo(state: dict[str, Any], completed: set[str]) -> bool:
     return bool(
         state.get("payload_topico_id")
         or desempenho.get("topico_concluido")
-        or float(desempenho.get("media_acertos", 1)) < 0.5
+        or float(desempenho.get("media_acertos", 100)) < 50
     )
 
 

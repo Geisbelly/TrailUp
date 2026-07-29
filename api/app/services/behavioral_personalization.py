@@ -239,27 +239,27 @@ def _infer_mental_state(context: dict[str, Any], plano: dict[str, Any]) -> IAMen
     confidence = 0.42
     reason = "fallback neutro por baixa evidência comportamental."
 
-    if media >= 0.85 and percentual >= 70:
+    if media >= 85 and percentual >= 70:
         kind = "confident"
         intensity = 0.74
         confidence = 0.71
         reason = "Bom desempenho recente e alta conclusão sugerem confiança."
-    elif media >= 0.7:
+    elif media >= 70:
         kind = "focused"
         intensity = 0.58
         confidence = 0.62
         reason = "A média recente indica foco sustentado."
-    elif media >= 0.55 and nivel in {"reforco", "revisao"}:
+    elif media >= 55 and nivel in {"reforco", "revisao"}:
         kind = "motivated"
         intensity = 0.46
         confidence = 0.51
         reason = "Mesmo com reforço, há indícios de engajamento."
-    elif media < 0.45 and percentual < 40:
+    elif media < 45 and percentual < 40:
         kind = "anxious"
         intensity = 0.81
         confidence = 0.74
         reason = "Baixo acerto e progresso reduzido sugerem ansiedade."
-    elif media < 0.55 and tempo_medio >= 12:
+    elif media < 55 and tempo_medio >= 12:
         kind = "frustrated"
         intensity = 0.67
         confidence = 0.63

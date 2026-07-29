@@ -3,6 +3,7 @@ import pytest
 from app.core.settings import Settings
 from app.schemas.common import Evento
 from app.services.linear_analysis_pipeline import (
+    DeepKnowledgeTracingAnalyzer,
     _summarize_reading_pace,
     build_linear_analysis_orchestrator,
 )
@@ -61,6 +62,18 @@ def test_summarize_reading_pace_empty() -> None:
     assert pace["reading_material_pace"] == []
 
 
+@pytest.mark.asyncio
+async def test_deep_knowledge_tracing_normalizes_media_acertos_percentage_to_fraction() -> None:
+    analyzer = DeepKnowledgeTracingAnalyzer()
+
+    result = await analyzer.analyze(
+        eventos_novos=[],
+        state={"desempenho_recente": {"media_acertos": 72}},
+    )
+
+    assert result.dominio_estimado == pytest.approx(0.72)
+
+
 class DummyGraph:
     def __init__(self) -> None:
         self.calls = []
@@ -95,7 +108,7 @@ async def test_linear_analysis_orchestrator_runs_all_stages_and_enriches_state()
     request = DummyRequest()
     state = {
         "ciclo_id": "ciclo-linear",
-        "desempenho_recente": {"media_acertos": 0.35},
+        "desempenho_recente": {"media_acertos": 35},
         "acoes_aplicadas": [],
         "erros": [],
     }

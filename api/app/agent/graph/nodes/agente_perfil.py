@@ -13,7 +13,7 @@ def _fallback_perfil(state: dict[str, Any]) -> dict[str, Any]:
     desempenho = state.get("desempenho_recente", {})
     eventos = {evento.get("tipo", "").lower() for evento in state.get("eventos_novos", [])}
 
-    if float(desempenho.get("media_acertos", 0)) < 0.5:
+    if float(desempenho.get("media_acertos", 0)) < 50:
         existing["Survivor"] += 20
         existing["Mastermind"] += 10
     if "atividade_concluida" in eventos:

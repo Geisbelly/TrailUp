@@ -23,7 +23,7 @@ async def build_initial_state(
     )
     gerar_materiais = bool(
         payload.modo == "prova"
-        or float(desempenho.get("media_acertos", 1)) < 0.5
+        or float(desempenho.get("media_acertos", 100)) < 50
         or bool(desempenho.get("topico_concluido"))
     )
 

@@ -4,11 +4,13 @@ import pytest
 
 from app.adapters.mock_emocao import MockEmocaoAdapter
 from app.agent.graph.nodes.agente_boss_visual import agente_boss_visual
+from app.agent.graph.nodes.agente_conteudo import _fallback_conteudo
 from app.agent.graph.nodes.agente_emocao import agente_emocao
 from app.agent.graph.nodes.agente_geracao_midia import agente_geracao_midia
 from app.agent.graph.nodes.agente_midias_personalizadas import agente_midias_personalizadas
-from app.agent.graph.nodes.agente_perfil import agente_perfil
-from app.agent.graph.routing import compute_personalizacao_next, compute_supervisor_next
+from app.agent.graph.nodes.agente_perfil import _fallback_perfil, agente_perfil
+from app.agent.graph.nodes.agente_trilha import _fallback_trilha
+from app.agent.graph.routing import _needs_conteudo, compute_personalizacao_next, compute_supervisor_next
 from app.core.settings import Settings
 
 
@@ -17,7 +19,7 @@ def test_compute_supervisor_next_routes_parallel_steps() -> None:
         "frame_b64": "abc123",
         "eventos_novos": [{"tipo": "atividade_concluida"}],
         "historico_eventos": [],
-        "desempenho_recente": {"media_acertos": 0.4, "topico_concluido": True},
+        "desempenho_recente": {"media_acertos": 40, "topico_concluido": True},
         "completed_nodes": [],
         "perfil_update": None,
         "emocao_atual": None,
@@ -49,7 +51,7 @@ def test_compute_supervisor_next_routes_material_generation_after_content() -> N
         "trilha_config": None,
         "notificacao_payload": None,
         "textos_gerados": [],
-        "desempenho_recente": {"media_acertos": 0.8, "topico_concluido": False},
+        "desempenho_recente": {"media_acertos": 80, "topico_concluido": False},
     }
 
     next_nodes = compute_supervisor_next(state)
@@ -185,7 +187,7 @@ async def test_agente_perfil_falls_back_without_openai() -> None:
             "perfil_brainhex": [{"perfil": "Achiever", "afinidade": 50}],
             "historico_eventos": [],
             "eventos_novos": [{"tipo": "atividade_concluida"}],
-            "desempenho_recente": {"media_acertos": 0.8},
+            "desempenho_recente": {"media_acertos": 80},
         },
         settings=settings,
     )
@@ -450,3 +452,52 @@ async def test_agente_boss_visual_keeps_contract_and_sets_avatar_when_generated(
     assert content_battle["enemy"]["avatarUrl"] == "https://cdn.example.com/boss.png"
     assert content_battle["enemy"]["visual"]["avatarUrl"] == "https://cdn.example.com/boss.png"
     assert topic_battle["enemy"]["avatarUrl"] == "https://cdn.example.com/boss.png"
+
+
+def test_needs_conteudo_treats_media_acertos_as_percentage_not_fraction() -> None:
+    state = {
+        "desempenho_recente": {"media_acertos": 20, "topico_concluido": False},
+    }
+
+    assert _needs_conteudo(state, completed=set()) is True
+
+
+def test_needs_conteudo_does_not_reinforce_for_good_media_acertos_percentage() -> None:
+    state = {
+        "desempenho_recente": {"media_acertos": 80, "topico_concluido": False},
+    }
+
+    assert _needs_conteudo(state, completed=set()) is False
+
+
+def test_fallback_conteudo_reinforces_for_low_media_acertos_percentage() -> None:
+    state = {"desempenho_recente": {"media_acertos": 20}}
+
+    result = _fallback_conteudo(state)
+
+    assert result["nivel"] == "reforco"
+
+
+def test_fallback_perfil_boosts_survivor_for_low_media_acertos_percentage() -> None:
+    state = {
+        "perfil_brainhex": [{"perfil": "Achiever", "afinidade": 50}],
+        "desempenho_recente": {"media_acertos": 20},
+        "eventos_novos": [],
+    }
+
+    result = _fallback_perfil(state)
+
+    survivor = next(item for item in result["perfis"] if item["perfil"] == "Survivor")
+    assert survivor["afinidade"] == 30.0
+
+
+def test_fallback_trilha_reinforces_for_low_media_acertos_percentage() -> None:
+    state = {
+        "classe_id": 1,
+        "progresso_trilha": {},
+        "desempenho_recente": {"media_acertos": 20},
+    }
+
+    result = _fallback_trilha(state)
+
+    assert result["ajustes"] == ["reforcar fundamentos"]

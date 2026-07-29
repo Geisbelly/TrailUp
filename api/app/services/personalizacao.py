@@ -5101,7 +5101,7 @@ async def generate_plano_personalizacao(state: dict[str, Any], settings: Setting
             },
             "emocao": None,
             "desempenho": {
-                "media_acertos": float(desempenho.get("media_acertos", 0.5)),
+                "media_acertos": float(desempenho.get("media_acertos", 50)),
                 "percentual_concluido": float(desempenho.get("percentual_concluido", 0)),
             },
             "conteudos_disponiveis": [

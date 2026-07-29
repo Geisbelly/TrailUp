@@ -496,7 +496,7 @@ class DeepKnowledgeTracingAnalyzer:
     ) -> PerformanceStageResult:
         counts = Counter(evento.tipo for evento in eventos_novos)
         desempenho = state.get("desempenho_recente", {}) or {}
-        base_mastery = _safe_float(desempenho.get("media_acertos"), 0.5)
+        base_mastery = _safe_float(desempenho.get("media_acertos"), 50.0) / 100.0
         correct = counts.get("atividade_acertada", 0)
         wrong = counts.get("atividade_errada", 0)
         delta = (correct * 0.08) - (wrong * 0.07)

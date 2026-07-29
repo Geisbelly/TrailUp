@@ -12,7 +12,7 @@ def _base_context(**overrides):
         },
         "perfil_brainhex": [{"perfil": "Achiever", "afinidade": 80}],
         "desempenho_recente": {
-            "media_acertos": 0.84,
+            "media_acertos": 84,
             "percentual_concluido": 72,
             "tempo_medio_min": 11,
             "atividade_recente_id": 201,
@@ -96,7 +96,7 @@ async def test_behavioral_personalization_softens_timers_and_disables_content_ba
         context=_base_context(
             perfil_brainhex=[{"perfil": "Achiever", "afinidade": 88}],
             desempenho_recente={
-                "media_acertos": 0.42,
+                "media_acertos": 42,
                 "percentual_concluido": 34,
                 "tempo_medio_min": 14,
                 "atividade_recente_id": 201,
@@ -120,6 +120,32 @@ async def test_behavioral_personalization_softens_timers_and_disables_content_ba
     assert activity_timer.timer.urgency == "soft"
     assert activity_timer.timer.timeout_action == "suggest_break"
     assert battle.enabled is False
+
+
+@pytest.mark.asyncio
+async def test_behavioral_personalization_treats_media_acertos_as_percentage_not_fraction() -> None:
+    patch = await build_behavioral_personalization(
+        aluno_id="aluno-1",
+        ciclo_id="ciclo-4",
+        context=_base_context(
+            desempenho_recente={
+                "media_acertos": 20,
+                "percentual_concluido": 15,
+                "tempo_medio_min": 5,
+                "atividade_recente_id": 201,
+                "topico_recente_id": 9,
+            },
+        ),
+        plano={"nivel": "equilibrado"},
+        topico={"id": 9, "nome": "Equacoes"},
+        conteudos=[],
+        atividades=[],
+        questoes=[],
+        cards=[],
+        settings=Settings(openai_api_key=None, gemini_api_key=None),
+    )
+
+    assert patch.mental_state.kind == "anxious"
 
 
 @pytest.mark.asyncio
