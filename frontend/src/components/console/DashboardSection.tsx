@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -27,6 +27,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import StudentTrailVisualization from "./StudentTrailVisualization";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { createRequestGuard, type RequestToken } from "@/lib/requestGuard";
 import {
   Bar,
   BarChart,
@@ -196,6 +197,7 @@ export default function DashboardSection() {
   const [turmaMetricas, setTurmaMetricas] = useState<TurmaGeralMetricas[]>([]);
   const [perfilMetricas, setPerfilMetricas] = useState<TurmaPerfilMetricas[]>([]);
   const [distribuicaoMetricas, setDistribuicaoMetricas] = useState<TurmaDistribuicao[]>([]);
+  const alunoRequestGuard = useRef(createRequestGuard());
   const [alunoEvolucao, setAlunoEvolucao] = useState<EvolucaoAluno[]>([]);
 
   const mapStatus = (status?: string | null): "concluido" | "disponivel" | "bloqueado" => {
@@ -205,8 +207,9 @@ export default function DashboardSection() {
     return "disponivel";
   };
 
-  const loadPersonalizacaoContexto = useCallback(async (aluno: Aluno) => {
+  const loadPersonalizacaoContexto = useCallback(async (aluno: Aluno, request: RequestToken) => {
     if (!API_BASE_URL) {
+      if (!request.isCurrent()) return;
       setPersonalizacaoData(null);
       setPersonalizacaoError("Defina VITE_APITRAIUP_URL para consultar a personalizacao.");
       return;
@@ -264,8 +267,10 @@ export default function DashboardSection() {
         throw new Error(result.detail);
       }
 
+      if (!request.isCurrent()) return;
       setPersonalizacaoData(result.payload as PersonalizacaoDocenteResponse);
     } catch (error) {
+      if (!request.isCurrent()) return;
       console.error("Erro ao carregar contexto de personalizacao:", error);
       setPersonalizacaoData(null);
       setPersonalizacaoError(
@@ -274,16 +279,17 @@ export default function DashboardSection() {
           : "Nao foi possivel carregar o contexto de personalizacao."
       );
     } finally {
-      setPersonalizacaoLoading(false);
+      if (request.isCurrent()) setPersonalizacaoLoading(false);
     }
   }, [session?.access_token]);
 
-  const loadAlunoEvolucao = useCallback(async (aluno: Aluno) => {
+  const loadAlunoEvolucao = useCallback(async (aluno: Aluno, request: RequestToken) => {
     const { data } = await selectView("vw_metricas_evolucao_desempenho_aluno_dia")
       .eq("classe_id", aluno.classe_id)
       .eq("aluno_id", aluno.id)
       .order("dia", { ascending: true });
 
+    if (!request.isCurrent()) return;
     setAlunoEvolucao((data ?? []) as EvolucaoAluno[]);
   }, []);
 
@@ -471,26 +477,20 @@ export default function DashboardSection() {
   }, [professorId]);
 
   useEffect(() => {
-    let active = true;
+    const request = alunoRequestGuard.current.next();
 
     if (!selectedAluno) {
       setPersonalizacaoData(null);
       setPersonalizacaoError(null);
       setPersonalizacaoLoading(false);
       setAlunoEvolucao([]);
-      return () => {
-        active = false;
-      };
+      return;
     }
 
-    void (async () => {
-      await Promise.all([loadPersonalizacaoContexto(selectedAluno), loadAlunoEvolucao(selectedAluno)]);
-      if (!active) return;
-    })();
-
-    return () => {
-      active = false;
-    };
+    void Promise.all([
+      loadPersonalizacaoContexto(selectedAluno, request),
+      loadAlunoEvolucao(selectedAluno, request),
+    ]);
   }, [loadAlunoEvolucao, loadPersonalizacaoContexto, selectedAluno, session?.access_token]);
 
   const filteredAlunos = useMemo(
