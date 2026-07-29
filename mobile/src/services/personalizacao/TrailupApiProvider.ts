@@ -54,6 +54,15 @@ export class TrailupApiProvider implements IPersonalizacaoProvider {
   private readonly apiBaseCandidates: string[];
   private authBlockedUntil = 0;
   private networkBlockedUntil = 0;
+  // Serializa o merge de progresso por linha (mesmo item): o flush periodico
+  // de useStudyTimeTracking e a conclusao de um item podem chamar
+  // salvarProgressoPersonalizadoDiretoSupabase quase ao mesmo tempo para o
+  // mesmo item_key. Sem isso, ambos leem o mesmo snapshot antes de qualquer
+  // um escrever, e o merge do que escrever por ultimo sobrescreve o do outro
+  // (select-entao-write nao e atomico). So protege contra corrida DENTRO
+  // desta mesma sessao do app — nao substitui um UPSERT atomico no banco
+  // para corridas entre dispositivos/sessoes diferentes.
+  private readonly progressWriteQueues = new Map<string, Promise<unknown>>();
 
   constructor(deps: TrailupApiProviderDeps) {
     this.deps = deps;
@@ -598,12 +607,6 @@ export class TrailupApiProvider implements IPersonalizacaoProvider {
   async salvarProgressoPersonalizadoDiretoSupabase(
     payload: PersonalizacaoProgressDirectPayload
   ): Promise<{ id: number | null; mode: "insert" | "update" }> {
-    const isRlsDeniedError = (error: unknown) => {
-      const code = String((error as any)?.code ?? "");
-      const message = String((error as any)?.message ?? "");
-      return code === "42501" || /row-level security policy/i.test(message);
-    };
-
     const personalizacaoId = normalizePositiveInteger(payload.personalizacao_id);
     const classeId = normalizePositiveInteger(payload.classe_id);
     const topicoId = normalizePositiveInteger(payload.topico_id);
@@ -628,6 +631,70 @@ export class TrailupApiProvider implements IPersonalizacaoProvider {
     if (!personalizacaoId || !classeId || !topicoId || !alunoId || !itemKey || !itemKind || !itemTitle) {
       throw new Error("Payload inválido para salvar progresso personalizado direto no Supabase.");
     }
+
+    // Mesma chave usada para identificar a linha no banco (aluno+personalizacao+item)
+    // — serializa exatamente as chamadas que disputariam o mesmo merge, sem
+    // atrasar chamadas para itens diferentes.
+    const queueKey = `${alunoId}:${personalizacaoId}:${itemKey}`;
+    const prevInQueue = this.progressWriteQueues.get(queueKey) ?? Promise.resolve();
+    const run = prevInQueue.then(
+      () =>
+        this._mergeAndWriteProgress(payload, {
+          personalizacaoId,
+          classeId,
+          topicoId,
+          alunoId,
+          conteudoId,
+          itemKey,
+          itemKind,
+          itemTitle,
+        }),
+      () =>
+        this._mergeAndWriteProgress(payload, {
+          personalizacaoId,
+          classeId,
+          topicoId,
+          alunoId,
+          conteudoId,
+          itemKey,
+          itemKind,
+          itemTitle,
+        })
+    );
+    this.progressWriteQueues.set(queueKey, run);
+    const cleanup = () => {
+      if (this.progressWriteQueues.get(queueKey) === run) {
+        this.progressWriteQueues.delete(queueKey);
+      }
+    };
+    void run.then(cleanup, cleanup);
+    return run;
+  }
+
+  private async _mergeAndWriteProgress(
+    payload: PersonalizacaoProgressDirectPayload,
+    ids: {
+      personalizacaoId: number;
+      classeId: number;
+      topicoId: number;
+      alunoId: string;
+      conteudoId: number | null;
+      itemKey: string;
+      itemKind: string;
+      itemTitle: string;
+    }
+  ): Promise<{ id: number | null; mode: "insert" | "update" }> {
+    const isRlsDeniedError = (error: unknown) => {
+      const code = String((error as any)?.code ?? "");
+      const message = String((error as any)?.message ?? "");
+      return code === "42501" || /row-level security policy/i.test(message);
+    };
+
+    const { personalizacaoId, classeId, topicoId, alunoId, conteudoId, itemKey, itemKind, itemTitle } = ids;
+    const payloadMetadata =
+      payload.metadata && typeof payload.metadata === "object"
+        ? (payload.metadata as Record<string, any>)
+        : {};
 
     const percentualConcluido = clampPercent(payload.percentual_concluido);
     const acertosPercentual =
