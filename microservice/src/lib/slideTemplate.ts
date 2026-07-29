@@ -368,9 +368,9 @@ function slideHtml(
   portraitDataUrl: string | null,
 ): string {
   if (slide.renderMode === "full-image" && slide.imagem_referencia) {
-    const title = slide.titulo || slide.title || "";
+    const title = slide.titulo || slide.title || `Etapa ${index + 1}`;
     const explanation = slide.explanation || slide.visualDescription || "";
-    const alt = escapeHtml(`${title}. ${explanation}`.trim());
+    const alt = escapeHtml([title, explanation].filter(Boolean).join(". "));
     return `
     <section
       class="slide profile-${profile} slide-full-image"
@@ -454,7 +454,6 @@ const BASE_CSS = `
     background-size: cover;
     background-position: center;
   }
-  .slide-full-image { padding: 0; }
   .full-slide-image {
     position: absolute;
     inset: 0;
