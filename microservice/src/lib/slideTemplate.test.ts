@@ -96,3 +96,33 @@ test("cada perfil recebe uma assinatura CSS própria", () => {
     assert.ok(html.includes(buildPresentationDesignPlan(profile).styleName));
   }
 });
+
+test("slide com renderMode full-image renderiza somente a imagem, sem titulo/badge/footer em HTML", () => {
+  const fullImageSlide = {
+    ...FAKE_SLIDE,
+    renderMode: "full-image" as const,
+    imagem_referencia: "data:image/png;base64,ZZZZ",
+  };
+  const html = buildDeckHtml([fullImageSlide], "seeker");
+  assert.ok(html.includes("data:image/png;base64,ZZZZ"));
+  assert.ok(html.includes('class="full-slide-image"'));
+  assert.ok(!html.includes("guide-badge"));
+  assert.ok(!html.includes("<footer>"));
+  assert.ok(!html.includes("<h1>"));
+});
+
+test("slide com renderMode full-image usa titulo+explicacao como alt da imagem", () => {
+  const fullImageSlide = {
+    ...FAKE_SLIDE,
+    renderMode: "full-image" as const,
+    imagem_referencia: "data:image/png;base64,ZZZZ",
+  };
+  const html = buildDeckHtml([fullImageSlide], "seeker");
+  assert.ok(html.includes('alt="Título de Teste. Explicação de teste."'));
+});
+
+test("slide sem renderMode (undefined) mantem o comportamento legacy inalterado", () => {
+  const html = buildDeckHtml([FAKE_SLIDE], "seeker");
+  assert.ok(html.includes("guide-badge"));
+  assert.ok(html.includes("<footer>"));
+});

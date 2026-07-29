@@ -26,6 +26,7 @@ export interface SlideForTemplate {
   characterAction?: string;
   imagem_referencia?: string;
   icones?: string[];
+  renderMode?: "full-image" | "legacy";
 }
 
 const SYNTHESIS_LABELS: Record<BrainHexProfile, string> = {
@@ -366,6 +367,21 @@ function slideHtml(
   plan: PresentationDesignPlan,
   portraitDataUrl: string | null,
 ): string {
+  if (slide.renderMode === "full-image" && slide.imagem_referencia) {
+    const title = slide.titulo || slide.title || "";
+    const explanation = slide.explanation || slide.visualDescription || "";
+    const alt = escapeHtml(`${title}. ${explanation}`.trim());
+    return `
+    <section
+      class="slide profile-${profile} slide-full-image"
+      data-layout="full-image"
+      data-design-system="${plan.version}"
+    >
+      <img class="full-slide-image" src="${slide.imagem_referencia}" alt="${alt}" />
+    </section>
+  `;
+  }
+
   const layout = presentationLayoutForSlide(plan, index, total);
   const progress = Math.max(7, Math.round(((index + 1) / total) * 100));
   return `
@@ -437,6 +453,14 @@ const BASE_CSS = `
     inset: 0;
     background-size: cover;
     background-position: center;
+  }
+  .slide-full-image { padding: 0; }
+  .full-slide-image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
   .slide-kicker {
     display: flex;
@@ -877,6 +901,37 @@ const BASE_CSS = `
   }
 `;
 
+// CSS mínimo para decks onde TODOS os slides são full-image: evita embutir
+// as regras do layout legado (ex.: `.guide-badge`) quando elas não são usadas
+// por nenhum slide do deck. Decks com pelo menos um slide legado continuam
+// usando `fontFaceCss() + BASE_CSS` sem nenhuma alteração.
+const FULL_IMAGE_ONLY_CSS = `
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #080a0d; }
+  body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .slide {
+    width: 1280px;
+    height: 720px;
+    position: relative;
+    overflow: hidden;
+    page-break-after: always;
+    background: #080a0d;
+  }
+  .slide:last-child { page-break-after: auto; }
+  .slide-full-image { padding: 0; }
+  .full-slide-image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+`;
+
+function isFullImageSlide(slide: SlideForTemplate): boolean {
+  return slide.renderMode === "full-image" && Boolean(slide.imagem_referencia);
+}
+
 /** Monta um deck editorial 16:9 com direção temática e layouts variados. */
 export function buildDeckHtml(
   slides: SlideForTemplate[],
@@ -902,13 +957,18 @@ export function buildDeckHtml(
       portraitDataUrl,
     ))
     .join("\n");
+  const allFullImage = sourceSlides.length > 0
+    && sourceSlides.every(isFullImageSlide);
+  const styleTag = allFullImage
+    ? FULL_IMAGE_ONLY_CSS
+    : `${fontFaceCss()}${BASE_CSS}`;
 
   return `<!doctype html>
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=1280, initial-scale=1" />
-  <style>${fontFaceCss()}${BASE_CSS}</style>
+  <style>${styleTag}</style>
 </head>
 <body data-design-system="${plan.version}" data-theme="${escapeHtml(plan.styleName)}">
 ${sections}
