@@ -253,3 +253,77 @@ async def test_enrichment_fails_explicitly_when_openai_is_not_configured() -> No
 
     with pytest.raises(ContentEnrichmentError, match="OPENAI_API_KEY"):
         await enrich_content_blocks(context=_context(), settings=settings)
+
+
+class _QuotaExhaustedResponses:
+    def __init__(self, captured: dict[str, Any]) -> None:
+        self._captured = captured
+
+    async def create(self, **kwargs: Any) -> Any:
+        self._captured["calls"] = self._captured.get("calls", 0) + 1
+        raise Exception(
+            "Error code: 429 - {'error': {'message': 'You exceeded your current "
+            "quota, please check your plan and billing details.', 'type': "
+            "'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}"
+        )
+
+
+class _QuotaExhaustedClient:
+    def __init__(self, captured: dict[str, Any]) -> None:
+        self.responses = _QuotaExhaustedResponses(captured)
+
+
+@pytest.mark.asyncio
+async def test_enrichment_opens_circuit_on_insufficient_quota_and_fails_fast(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    enrichment_module.reset_openai_enrichment_circuit()
+    captured: dict[str, Any] = {}
+    monkeypatch.setattr(
+        enrichment_module,
+        "_openai_client",
+        lambda _api_key: _QuotaExhaustedClient(captured),
+    )
+
+    with pytest.raises(ContentEnrichmentError, match="insufficient_quota"):
+        await enrich_content_blocks(context=_context(), settings=_settings())
+    assert captured["calls"] == 1
+
+    with pytest.raises(ContentEnrichmentError, match="circuito"):
+        await enrich_content_blocks(context=_context(), settings=_settings())
+    assert captured["calls"] == 1
+
+    enrichment_module.reset_openai_enrichment_circuit()
+
+
+@pytest.mark.asyncio
+async def test_enrichment_circuit_does_not_open_for_other_errors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    enrichment_module.reset_openai_enrichment_circuit()
+    captured: dict[str, Any] = {}
+
+    class _TimeoutResponses:
+        async def create(self, **kwargs: Any) -> Any:
+            captured["calls"] = captured.get("calls", 0) + 1
+            raise Exception("Connection timed out")
+
+    class _TimeoutClient:
+        def __init__(self) -> None:
+            self.responses = _TimeoutResponses()
+
+    monkeypatch.setattr(
+        enrichment_module,
+        "_openai_client",
+        lambda _api_key: _TimeoutClient(),
+    )
+
+    with pytest.raises(ContentEnrichmentError, match="Connection timed out"):
+        await enrich_content_blocks(context=_context(), settings=_settings())
+    assert captured["calls"] == 1
+
+    with pytest.raises(ContentEnrichmentError, match="Connection timed out"):
+        await enrich_content_blocks(context=_context(), settings=_settings())
+    assert captured["calls"] == 2
+
+    enrichment_module.reset_openai_enrichment_circuit()

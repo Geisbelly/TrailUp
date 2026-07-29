@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import math
 import re
+import time
 from typing import Any
 
 from openai import AsyncOpenAI
@@ -18,6 +19,13 @@ _SCHEMA_VERSION = "trailup.content-blocks.v2"
 _DEFAULT_BATCH_SIZE = 1
 _DEFAULT_MAX_ATTEMPTS = 3
 _DEFAULT_MAX_OUTPUT_TOKENS = 8_192
+_DEFAULT_QUOTA_COOLDOWN_SEC = 300
+
+# Circuito de indisponibilidade: "insufficient_quota" e um erro permanente (a
+# conta ficou sem credito), nao transitorio — retry imediato so desperdica
+# chamadas identicas a cada poll do worker de jobs. Espelha o circuito de
+# billing hard-limit do microservice (openaiImageService.ts).
+_openai_enrichment_unavailable_until: float = 0.0
 
 _ENRICHMENT_INSTRUCTIONS = """
 Você é o professor-editor responsável pela etapa obrigatória de enriquecimento
@@ -74,6 +82,19 @@ _ENRICHMENT_SCHEMA: dict[str, Any] = {
 
 def _openai_client(api_key: str) -> AsyncOpenAI:
     return AsyncOpenAI(api_key=api_key)
+
+
+def _is_insufficient_quota_error(exc: BaseException) -> bool:
+    code = str(getattr(exc, "code", "") or "").strip().lower()
+    error_type = str(getattr(exc, "type", "") or "").strip().lower()
+    if code == "insufficient_quota" or error_type == "insufficient_quota":
+        return True
+    return "insufficient_quota" in str(exc).lower()
+
+
+def reset_openai_enrichment_circuit() -> None:
+    global _openai_enrichment_unavailable_until
+    _openai_enrichment_unavailable_until = 0.0
 
 
 class ContentEnrichmentError(RuntimeError):
@@ -408,7 +429,15 @@ async def _generate_openai_batch(
     attempt: int,
     feedback: str,
     max_output_tokens: int,
+    quota_cooldown_sec: int,
 ) -> tuple[dict[str, Any], str]:
+    global _openai_enrichment_unavailable_until
+    if time.time() < _openai_enrichment_unavailable_until:
+        raise ContentEnrichmentError(
+            "OpenAI em circuito de indisponibilidade: cota insuficiente "
+            "detectada recentemente, aguardando cooldown antes de tentar "
+            "novamente."
+        )
     correction = (
         f"\n\nCORREÇÕES OBRIGATÓRIAS DA TENTATIVA ANTERIOR:\n{feedback}"
         if feedback
@@ -439,6 +468,8 @@ async def _generate_openai_batch(
             },
         )
     except Exception as exc:
+        if _is_insufficient_quota_error(exc):
+            _openai_enrichment_unavailable_until = time.time() + quota_cooldown_sec
         raise ContentEnrichmentError(
             f"OpenAI falhou ao aprofundar o lote na tentativa {attempt}: {exc}"
         ) from exc
@@ -534,6 +565,16 @@ async def _enrich_base_blocks_with_openai(
         8_192,
         16_384,
     )
+    quota_cooldown_sec = _bounded_int(
+        getattr(
+            settings,
+            "content_enrichment_quota_cooldown_sec",
+            _DEFAULT_QUOTA_COOLDOWN_SEC,
+        ),
+        _DEFAULT_QUOTA_COOLDOWN_SEC,
+        1,
+        3_600,
+    )
     client = _openai_client(api_key)
     enriched_by_id: dict[str, dict[str, Any]] = {}
     calls = 0
@@ -551,6 +592,7 @@ async def _enrich_base_blocks_with_openai(
                 attempt=attempt,
                 feedback=feedback,
                 max_output_tokens=max_output_tokens,
+                quota_cooldown_sec=quota_cooldown_sec,
             )
             calls += 1
             models.add(used_model)
