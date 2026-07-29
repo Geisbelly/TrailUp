@@ -70,6 +70,19 @@ def test_compute_distribuicao_normalizes_socialiser_alias() -> None:
     assert summary["perfil_predominante"] == "Socializer"
 
 
+def test_compute_distribuicao_no_predominante_on_tie() -> None:
+    rows = (
+        [{"perfil": "Achiever"} for _ in range(3)]
+        + [{"perfil": "Survivor"} for _ in range(3)]
+    )
+
+    summary = compute_distribuicao(rows)
+
+    assert summary["distribuicao"]["achiever"]["quantidade"] == 3
+    assert summary["distribuicao"]["survivor"]["quantidade"] == 3
+    assert summary["perfil_predominante"] is None
+
+
 def test_compute_distribuicao_empty_class() -> None:
     summary = compute_distribuicao([])
     assert summary["total_alunos"] == 0

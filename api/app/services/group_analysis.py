@@ -81,11 +81,16 @@ def compute_distribuicao(rows: list[dict[str, Any]]) -> dict[str, Any]:
             "percentual": percentual,
         }
 
+    # Em empate de contagem entre perfis, nao ha um perfil realmente
+    # predominante — resolver por ordem alfabetica da chave interna daria
+    # uma resposta arbitraria e instavel a mudanca de nomenclatura, sem
+    # nenhum criterio pedagogico por tras. Melhor nao afirmar predominancia.
     perfil_predominante: str | None = None
     if com_perfil:
-        chave_top = max(BRAINHEX_PROFILES, key=lambda c: (contagem[c], c))
-        if contagem[chave_top] > 0:
-            perfil_predominante = BRAINHEX_PROFILES[chave_top]
+        top_count = max(contagem.values())
+        empatados = [chave for chave, quantidade in contagem.items() if quantidade == top_count]
+        if top_count > 0 and len(empatados) == 1:
+            perfil_predominante = BRAINHEX_PROFILES[empatados[0]]
 
     if desempenhos:
         media_desempenho = {
