@@ -14,7 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { Wand2, Loader2, ArrowRight, CheckCircle2, Plus, X, Upload, FileText, AlertTriangle, BrainCircuit, LayoutList, Clapperboard } from "lucide-react";
 import type { Topico, StagedFile } from "./types";
 import { formatFileSize } from "@/lib/utils";
-import { deleteClassTrail as deleteClassTrailCascade } from "./classDeletion";
+import { deleteClassTrail as deleteClassTrailCascade, deleteTopicCascade } from "./classDeletion";
 
 const ACCEPTED_EXT = ".pdf,.doc,.docx,.ppt,.pptx,.txt,.md,.mp4,.mov,.webm,.mp3,.wav,.m4a";
 type Step = "form" | "confirm-delete" | "preview" | "creating";
@@ -239,10 +239,15 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
   const handleCreate = async () => {
     if (preview.length === 0) return;
     setStep("creating");
+    // Declarado fora do try para o catch poder reverter os topicos ja
+    // inseridos: sem isso, uma falha no meio do loop (rede, validacao de um
+    // bloco especifico etc.) deixava topicos/conteudos/cards orfaos, e
+    // clicar em "Criar trilha" de novo reprocessava o mesmo preview do
+    // zero, duplicando tudo que ja tinha sido criado com sucesso.
+    const created: Array<{ ai: number; real: number }> = [];
     try {
       setCreatingStatus("Enviando arquivos...");
       const uploadedFiles = await uploadStagedFiles();
-      const created: Array<{ ai: number; real: number }> = [];
       setCreatingStatus("Criando topicos...");
       for (const t of preview) {
         const { data, error } = await supabase.from("topicos").insert({ classe_id: classeId, nome: t.nome, descricao: t.descricao, ordem: t.ordem, next: [], depende: [] }).select("id").single();
@@ -318,6 +323,14 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
       onCreated(out);
       close();
     } catch (e) {
+      if (created.length > 0) {
+        setCreatingStatus("Revertendo criação parcial...");
+        try {
+          await Promise.all(created.map((c) => deleteTopicCascade(c.real)));
+        } catch (rollbackError) {
+          console.error("Falha ao reverter trilha criada parcialmente:", rollbackError);
+        }
+      }
       toast.error(e instanceof Error ? e.message : "Erro ao criar trilha.");
       setStep("preview");
     }
