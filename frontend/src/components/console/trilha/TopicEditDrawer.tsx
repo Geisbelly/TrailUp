@@ -179,6 +179,12 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [activeTab, setActiveTab] = useState<"conteudo" | "atividades" | "cards">("conteudo");
   const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
+  // Preview local da reordenacao durante o arrasto — so persiste (setContents
+  // do pai + updateContentOrder no banco) no onDragEnd/drop. Sem isso, cada
+  // dragover intermediario disparava uma escrita no banco por conta propria;
+  // como sao chamadas concorrentes sem sequenciamento, a ordem persistida
+  // podia ficar diferente da ordem exibida na tela ao soltar o item.
+  const [dragPreviewOrder, setDragPreviewOrder] = useState<Conteudo[] | null>(null);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [extraFiles, setExtraFiles] = useState<ConteudoFile[]>([]);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
@@ -796,18 +802,22 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
   const onDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault();
     if (draggedItemIndex === null || draggedItemIndex === index) return;
-    
-    const newItems = [...contents];
+
+    const newItems = [...(dragPreviewOrder ?? contents)];
     const draggedItem = newItems[draggedItemIndex];
     newItems.splice(draggedItemIndex, 1);
     newItems.splice(index, 0, draggedItem);
-    
+
     setDraggedItemIndex(index);
-    onReorderContents(newItems);
+    setDragPreviewOrder(newItems);
   };
 
   const onDragEnd = () => {
     setDraggedItemIndex(null);
+    if (dragPreviewOrder) {
+      onReorderContents(dragPreviewOrder);
+      setDragPreviewOrder(null);
+    }
   };
 
   // Função de renderização do formulário para evitar perda de foco
@@ -1054,7 +1064,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                   
                   {/* LISTA DRAGGABLE */}
                   <div className="space-y-2">
-                    {contents.map((c, idx) => (
+                    {(dragPreviewOrder ?? contents).map((c, idx) => (
                       <div 
                         key={c.id}
                         draggable
