@@ -183,7 +183,19 @@ export function useTopicCrud({
         toast.success("Conteúdo atualizado!");
         return data;
       }
-      const ordem = contents.length + 1;
+      // Busca o maior `ordem` direto do banco em vez de usar `contents.length`
+      // (estado local, que pode estar desatualizado se outra aba/sessão criou
+      // conteudo no mesmo topico nesse meio-tempo) — reduz bastante a janela
+      // de duas criacoes calcularem a mesma ordem, embora nao seja atomico
+      // (isso exigiria constraint unica + retry no banco).
+      const { data: maxOrdemRow } = await supabase
+        .from("conteudos")
+        .select("ordem")
+        .eq("topico_id", targetTopicId)
+        .order("ordem", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const ordem = (maxOrdemRow?.ordem ?? contents.length) + 1;
       const data = await saveContent({ topico_id: targetTopicId, ...contentForm, ordem });
       setContents((prev) => [...prev, data]);
       toast.success("Conteúdo criado!");
