@@ -9,12 +9,36 @@ import {
   type PresentationLayout,
 } from "../constants/presentationThemes";
 import type { SlideForTemplate } from "./slideTemplate";
-import {
-  generateFullSlideImage,
-  generateSceneImage,
-} from "../services/openaiImageService";
+import { generateFullSlideImage } from "../services/openaiImageService";
+import { generateSlideImage } from "../services/geminiService";
 import { generateSlideIconWithFallback } from "../services/slideIconService";
 import { createLogger } from "./logger";
+
+// gpt-image-1 (usado por generateFullSlideImage) nao esta disponivel em
+// todos os tiers da OpenAI — quando indisponivel, cada tentativa desperdica
+// tempo e pode ativar o circuito de billing a toa. Desligado por padrao;
+// habilite so se a conta suportar o modelo.
+const OPENAI_FULL_SLIDE_IMAGES_ENABLED =
+  String(process.env.ENABLE_OPENAI_FULL_SLIDE_IMAGES ?? "").trim().toLowerCase() === "true";
+
+function fullSlideImagesDisabled(): Promise<string> {
+  return Promise.reject(
+    new Error(
+      "Geração de slide cheio via OpenAI (gpt-image-1) desabilitada — modelo "
+      + "indisponível neste tier. Habilite via ENABLE_OPENAI_FULL_SLIDE_IMAGES=true "
+      + "se a conta suportar o modelo.",
+    ),
+  );
+}
+
+type SceneImageGenerator = (prompt: string) => Promise<string | null>;
+
+// Cena de fundo via Gemini (gemini-2.5-flash-image, já usado pelos ícones) —
+// gpt-image-1 não é suportado em todos os tiers da OpenAI, então o Gemini é
+// o provedor principal aqui, não contingência.
+function generateSceneImageViaGemini(prompt: string): Promise<string | null> {
+  return generateSlideImage(prompt);
+}
 
 export interface FullSlideInput extends SlideForTemplate {
   imagePrompt: string;
@@ -87,8 +111,10 @@ export interface SlideAssets {
 
 export interface SlideAssetGeneratorOverrides {
   generateFullSlideImage?: typeof generateFullSlideImage;
-  generateSceneImage?: typeof generateSceneImage;
+  generateSceneImage?: SceneImageGenerator;
   generateSlideIconWithFallback?: typeof generateSlideIconWithFallback;
+  /** Default: ENABLE_OPENAI_FULL_SLIDE_IMAGES (env). Exposto pra teste. */
+  enableOpenAiFullSlideImages?: boolean;
 }
 
 /**
@@ -104,7 +130,7 @@ async function generateOneLegacySlide(
   plan: PresentationDesignPlan,
   index: number,
   total: number,
-  doGenerateScene: typeof generateSceneImage,
+  doGenerateScene: SceneImageGenerator,
   doGenerateIcon: typeof generateSlideIconWithFallback,
 ): Promise<{ scene: string; icons: string[] }> {
   let scene = "";
@@ -117,7 +143,7 @@ async function generateOneLegacySlide(
     );
     scene = (await doGenerateScene(prompt)) ?? "";
   } catch (e) {
-    log.error("cena de fundo falhou (openai)", { slide: index, err: e });
+    log.error("cena de fundo falhou (gemini)", { slide: index, err: e });
   }
 
   const icons: string[] = [];
@@ -148,8 +174,10 @@ export async function generateFullSlideImages(
   plan: PresentationDesignPlan,
   overrides: SlideAssetGeneratorOverrides = {},
 ): Promise<SlideAssets> {
-  const doGenerateFull = overrides.generateFullSlideImage ?? generateFullSlideImage;
-  const doGenerateScene = overrides.generateSceneImage ?? generateSceneImage;
+  const fullSlideImagesEnabled = overrides.enableOpenAiFullSlideImages ?? OPENAI_FULL_SLIDE_IMAGES_ENABLED;
+  const doGenerateFull = overrides.generateFullSlideImage
+    ?? (fullSlideImagesEnabled ? generateFullSlideImage : fullSlideImagesDisabled);
+  const doGenerateScene = overrides.generateSceneImage ?? generateSceneImageViaGemini;
   const doGenerateIcon = overrides.generateSlideIconWithFallback ?? generateSlideIconWithFallback;
   const styleSuffix = buildImageStyleSuffix(profile, plan);
 

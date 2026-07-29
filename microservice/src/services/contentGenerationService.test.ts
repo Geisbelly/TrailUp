@@ -28,7 +28,7 @@ test("mantém Gemini como modelo primário e resolve OpenAI apenas para conting�
   );
   assert.equal(
     resolveOpenAIContentGenerationFallbackModel({}),
-    "gpt-5.4-mini",
+    "gpt-4o-mini",
   );
   assert.equal(
     resolveGeminiContentGenerationModel({

@@ -7,8 +7,8 @@ import {
   processMediaWithGemini,
   generateLongNaturalAudio,
   generateLongConversationalAudio,
+  generateSlideImage,
 } from "./src/services/geminiService";
-import { generateSceneImage } from "./src/services/openaiImageService";
 import { generateFullSlideImages, buildImageStyleSuffix } from "./src/lib/slideAssetGenerator";
 import { generateSlideIconWithFallback } from "./src/services/slideIconService";
 import { BrainHexProfile, BRAIN_HEX_CONFIG } from "./src/constants/brainHex";
@@ -86,7 +86,11 @@ function now() {
 type SlideAssetInput = { imagePrompt: string; iconPrompts?: string[] };
 type SlideAssets = { imagem_referencia: string[]; icones: string[][] };
 
-/** 1 cena de fundo por slide, via OpenAI. Serial (1 chave, sem pool). */
+/**
+ * 1 cena de fundo por slide, via Gemini (gemini-2.5-flash-image). Serial (1
+ * chave, sem pool). gpt-image-1 (OpenAI) não é suportado em todos os tiers —
+ * Gemini é o provedor principal aqui, não contingência.
+ */
 async function generateSceneImages(
   slides: { imagePrompt: string }[],
   styleSuffix: string,
@@ -102,9 +106,9 @@ async function generateSceneImages(
         + `A composição será usada em um slide editorial do tipo ${layout}; `
         + "preserve áreas de respiro e contraste para títulos e cartões."
       );
-      scenes.push((await generateSceneImage(prompt)) ?? "");
+      scenes.push((await generateSlideImage(prompt)) ?? "");
     } catch (e) {
-      log.error("cena de fundo falhou (openai)", { slide: i, err: e });
+      log.error("cena de fundo falhou (gemini)", { slide: i, err: e });
       scenes.push("");
     }
   }

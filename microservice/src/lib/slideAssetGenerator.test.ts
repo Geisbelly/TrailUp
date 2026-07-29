@@ -89,6 +89,34 @@ test("fallback legacy nao lanca excecao mesmo se cena e icone tambem falharem", 
   assert.deepEqual(result.icones[0], [""]);
 });
 
+test("com enableOpenAiFullSlideImages=false, pula direto pro legacy sem tentar a OpenAI", async () => {
+  const slides = [
+    { titulo: "Slide 1", imagePrompt: "cena 1", iconPrompts: ["icone 1"] },
+  ];
+  const result = await generateFullSlideImages(slides, "seeker", PLAN, {
+    enableOpenAiFullSlideImages: false,
+    // Sem override de generateFullSlideImage — se a flag nao bloqueasse por
+    // padrao, isso tentaria a OpenAI real (gpt-image-1) e falharia de um
+    // jeito diferente (erro de rede/API, nao "desabilitada").
+    generateSceneImage: async () => "legacy-scene",
+    generateSlideIconWithFallback: async () => ({ image: "legacy-icon", provider: "gemini" as const }),
+  });
+  assert.deepEqual(result.renderMode, ["legacy"]);
+  assert.equal(result.imagem_referencia[0], "legacy-scene");
+});
+
+test("com enableOpenAiFullSlideImages=true mas sem override, usa generateFullSlideImage real (gpt-image-1)", async () => {
+  const slides = [{ titulo: "Slide 1", imagePrompt: "cena 1" }];
+  // So confirma que a flag *habilita* o caminho real — nao mocka a OpenAI,
+  // entao sem OPENAI_API_KEY isso cai (com erro) no pipeline legacy, que e
+  // o comportamento correto (fallback por slide sempre disponivel).
+  const result = await generateFullSlideImages(slides, "seeker", PLAN, {
+    enableOpenAiFullSlideImages: true,
+    generateSceneImage: async () => "legacy-scene",
+  });
+  assert.equal(result.renderMode[0], "legacy");
+});
+
 test("fallback legacy interrompe icones apos o primeiro vir da contingencia OpenAI", async () => {
   const slides = [{
     titulo: "Slide 1",
