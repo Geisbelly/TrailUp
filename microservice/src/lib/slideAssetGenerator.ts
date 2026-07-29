@@ -5,6 +5,7 @@ import {
 import {
   presentationImageDirection,
   type PresentationDesignPlan,
+  type PresentationLayout,
 } from "../constants/presentationThemes";
 import type { SlideForTemplate } from "./slideTemplate";
 
@@ -32,6 +33,8 @@ export function buildImageStyleSuffix(
   );
 }
 
+// Duplicata intencional de slideTopics em slideTemplate.ts (nao tocamos esse
+// arquivo nesta task) — reconciliar quando slideTemplate.ts for revisitado.
 function slideTopicsForPrompt(slide: FullSlideInput): string[] {
   const values = Array.isArray(slide.topics)
     ? slide.topics
@@ -49,7 +52,7 @@ export function buildFullSlidePrompt(
   slide: FullSlideInput,
   profile: BrainHexProfile,
   plan: PresentationDesignPlan,
-  layout: string,
+  layout: PresentationLayout,
 ): string {
   const title = slide.titulo || slide.title || "";
   const topics = slideTopicsForPrompt(slide);
