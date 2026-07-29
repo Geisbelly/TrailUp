@@ -516,6 +516,11 @@ export default function QuestionsManager() {
               <div className="space-y-4">
                 <div>
                   <Label>Atividades *</Label>
+                  {editingQuestion && (
+                    <p className="text-xs text-muted-foreground mb-1">
+                      Uma questão pertence a uma única atividade — marcar outra move a questão para ela.
+                    </p>
+                  )}
                   <div className="border rounded p-2 max-h-40 overflow-y-auto space-y-2">
                     {atividades.map((a) => (
                       <label key={a.id} className="flex items-center gap-2 text-sm">
@@ -524,6 +529,17 @@ export default function QuestionsManager() {
                           checked={formData.atividade_ids.includes(a.id.toString())}
                           onChange={(e) => {
                             const checked = e.target.checked;
+                            if (editingQuestion) {
+                              // Editar so move a questao para UMA atividade
+                              // (atividade_id e coluna unica no banco) — marcar
+                              // mais de uma no mesmo checklist usado na criacao
+                              // seria enganoso, ja que as extras seriam
+                              // descartadas silenciosamente ao salvar.
+                              if (checked) {
+                                setFormData((prev) => ({ ...prev, atividade_ids: [a.id.toString()] }));
+                              }
+                              return;
+                            }
                             setFormData((prev) => ({
                               ...prev,
                               atividade_ids: checked
