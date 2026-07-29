@@ -558,6 +558,10 @@ async def test_enqueue_job_creates_job_and_targets_atomically(monkeypatch) -> No
         AsyncMock(return_value=([target], [117], {target["aluno_id"]: "seeker"})),
     )
     monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.find_open_job_by_payload",
+        AsyncMock(return_value=None),
+    )
+    monkeypatch.setattr(
         "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.criar_job_com_targets",
         create_mock,
     )
@@ -579,6 +583,87 @@ async def test_enqueue_job_creates_job_and_targets_atomically(monkeypatch) -> No
     assert create_mock.await_count == 1
     assert create_mock.await_args.kwargs["targets"] == [target]
     assert create_mock.await_args.kwargs["topico_id"] == 117
+
+
+@pytest.mark.asyncio
+async def test_enqueue_job_reuses_existing_open_job_instead_of_duplicating(
+    monkeypatch,
+) -> None:
+    """Reproduz o bug real: duplo-clique no console criava 2 jobs class_delta_sync
+    identicos para a mesma classe, cada um martelando a OpenAI de forma independente."""
+    build_targets_mock = AsyncMock()
+    create_mock = AsyncMock()
+    monkeypatch.setattr(jobs_module, "_build_targets", build_targets_mock)
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.find_open_job_by_payload",
+        AsyncMock(
+            return_value={
+                "id": "job-existing",
+                "kind": "class_delta_sync",
+                "status": "processing",
+            }
+        ),
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.criar_job_com_targets",
+        create_mock,
+    )
+    monkeypatch.setattr(
+        jobs_module,
+        "get_job_detail",
+        AsyncMock(return_value={"job": {"id": "job-existing"}, "targets": []}),
+    )
+
+    result = await jobs_module.enqueue_personalizacao_job(
+        session=object(),
+        kind="class_delta_sync",
+        classe_id=32,
+        trigger_source="web_console",
+        topico_ids=[122],
+    )
+
+    assert result["job"]["id"] == "job-existing"
+    assert create_mock.await_count == 0
+    assert build_targets_mock.await_count == 0
+
+
+@pytest.mark.asyncio
+async def test_enqueue_job_dedup_scopes_by_aluno_id_for_cleanup_kind(
+    monkeypatch,
+) -> None:
+    """Cleanup e por aluno: um job aberto para outro aluno na mesma classe
+    nao deve impedir a criacao de um novo job para este aluno."""
+    find_open_mock = AsyncMock(return_value=None)
+    create_mock = AsyncMock(return_value={"id": "job-new"})
+    monkeypatch.setattr(
+        jobs_module,
+        "_build_targets",
+        AsyncMock(return_value=([], [], {})),
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.find_open_job_by_payload",
+        find_open_mock,
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.criar_job_com_targets",
+        create_mock,
+    )
+    monkeypatch.setattr(
+        jobs_module,
+        "get_job_detail",
+        AsyncMock(return_value={"job": {"id": "job-new"}, "targets": []}),
+    )
+
+    await jobs_module.enqueue_personalizacao_job(
+        session=object(),
+        kind="student_cleanup",
+        classe_id=32,
+        aluno_id="aluno-2",
+        trigger_source="web_console",
+    )
+
+    assert find_open_mock.await_args.kwargs["aluno_id"] == "aluno-2"
+    assert create_mock.await_count == 1
 
 
 @pytest.mark.asyncio

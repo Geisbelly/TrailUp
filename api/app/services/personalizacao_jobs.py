@@ -685,6 +685,22 @@ async def enqueue_personalizacao_job(
     payload: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     repo = PersonalizacaoJobsRepository(session)
+    scoped_aluno_id = aluno_id if kind in {JOB_KIND_ENROLLMENT, JOB_KIND_CLEANUP} else None
+
+    # Evita jobs duplicados quando o mesmo pedido chega mais de uma vez (ex.:
+    # duplo-clique num botao do console) enquanto um job equivalente ainda
+    # esta aberto. Sem isso, cada duplicata martela a OpenAI de forma
+    # independente ate esgotar suas proprias tentativas.
+    open_job = await repo.find_open_job_by_payload(
+        kind=kind,
+        aluno_id=scoped_aluno_id,
+        classe_id=classe_id,
+    )
+    if open_job:
+        detail = await get_job_detail(session=session, job_id=str(open_job["id"]))
+        if detail:
+            return detail
+
     targets, resolved_topicos, target_profile_map = await _build_targets(
         session=session,
         kind=kind,
@@ -706,7 +722,7 @@ async def enqueue_personalizacao_job(
         trigger_source=trigger_source,
         targets=targets,
         payload=job_payload,
-        aluno_id=aluno_id if kind in {JOB_KIND_ENROLLMENT, JOB_KIND_CLEANUP} else None,
+        aluno_id=scoped_aluno_id,
         topico_id=resolved_topicos[0] if len(resolved_topicos) == 1 else None,
         conteudo_id=conteudo_ids[0] if conteudo_ids and len(conteudo_ids) == 1 else None,
     )
