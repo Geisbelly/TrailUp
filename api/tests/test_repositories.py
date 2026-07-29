@@ -471,6 +471,80 @@ async def test_claim_incomplete_generation_retry_loses_cas_without_overwriting()
 
 
 @pytest.mark.asyncio
+async def test_claim_new_generation_succeeds_when_target_does_not_exist_yet() -> None:
+    session = RecordingSession([ScalarResult(True), MappingResult([{"id": 501}])])
+    repo = ConteudoPersonalizadoRepository(session)
+
+    claimed = await repo.claim_new_generation(
+        aluno_id="aluno-1",
+        classe_id=32,
+        topico_id=121,
+        conteudo_id=125,
+        brainhex_profile_key="seeker",
+        ciclo_id="ciclo-501",
+        source_hash="hash-501",
+    )
+
+    assert claimed is True
+    assert session.commits == 1
+    insert_sql, params = session.calls[-1]
+    assert "ON CONFLICT (aluno_id, topico_id, conteudo_id, brainhex_profile_key)" in insert_sql
+    assert "DO NOTHING" in insert_sql
+    assert params["ciclo_id"] == "ciclo-501"
+    assert params["brainhex_profile_key"] == "seeker"
+
+
+@pytest.mark.asyncio
+async def test_claim_new_generation_loses_race_when_another_worker_already_claimed() -> None:
+    session = RecordingSession([ScalarResult(True), MappingResult([])])
+    repo = ConteudoPersonalizadoRepository(session)
+
+    claimed = await repo.claim_new_generation(
+        aluno_id="aluno-1",
+        classe_id=32,
+        topico_id=121,
+        conteudo_id=125,
+        brainhex_profile_key="seeker",
+        ciclo_id="ciclo-501",
+        source_hash="hash-501",
+    )
+
+    assert claimed is False
+    assert session.commits == 1
+
+
+@pytest.mark.asyncio
+async def test_claim_new_generation_returns_none_when_schema_lacks_profile_key_column() -> None:
+    session = RecordingSession(
+        [
+            MappingResult(
+                [
+                    {"column_name": "ai_patch"},
+                    {"column_name": "classe_id"},
+                    {"column_name": "status"},
+                    {"column_name": "source_hash"},
+                ]
+            ),
+        ]
+    )
+    repo = ConteudoPersonalizadoRepository(session)
+
+    claimed = await repo.claim_new_generation(
+        aluno_id="aluno-1",
+        classe_id=32,
+        topico_id=121,
+        conteudo_id=125,
+        brainhex_profile_key="seeker",
+        ciclo_id="ciclo-501",
+        source_hash="hash-501",
+    )
+
+    assert claimed is None
+    # Nenhuma tentativa de INSERT deve ter sido feita — so a query do cache de colunas.
+    assert len(session.calls) == 1
+
+
+@pytest.mark.asyncio
 async def test_context_repository_builds_initial_state_context() -> None:
     session = RecordingSession(
         [

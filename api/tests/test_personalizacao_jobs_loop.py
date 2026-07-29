@@ -956,6 +956,70 @@ async def test_process_media_render_target_defers_fresh_incomplete_generation(mo
 
 
 @pytest.mark.asyncio
+async def test_process_media_render_target_defers_when_new_generation_race_lost(monkeypatch) -> None:
+    """Quando nao existe registro ainda e outro worker ja reservou o mesmo
+    alvo (ex.: class-delta e full-sync quase simultaneos), o target fica
+    pendente/deferido sem gerar conteudo duplicado nem gravar por cima."""
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.buscar_mais_recente_por_perfil",
+        AsyncMock(return_value=None),
+    )
+    claim_new_mock = AsyncMock(return_value=False)
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.claim_new_generation",
+        claim_new_mock,
+    )
+    monkeypatch.setattr(
+        jobs_module,
+        "fetch_personalizacao_context",
+        AsyncMock(
+            return_value={
+                "source_hash": "hash-579",
+                "ciclo_id": "ciclo-579",
+                "fontes": [],
+                "perfil_dominante": "Seeker",
+                "perfil_brainhex": [],
+            }
+        ),
+    )
+    enrich_mock = AsyncMock(return_value={"blocos": []})
+    monkeypatch.setattr(jobs_module, "enrich_content_blocks", enrich_mock)
+    cards_mock = AsyncMock(return_value=[])
+    monkeypatch.setattr(jobs_module, "gerar_cards_direto", cards_mock)
+    dispatch_mock = AsyncMock(return_value=True)
+    monkeypatch.setattr(jobs_module, "disparar_brainhex_async", dispatch_mock)
+    salvar_mock = AsyncMock(return_value=999)
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.salvar",
+        salvar_mock,
+    )
+
+    app = SimpleNamespace(
+        state=SimpleNamespace(settings=SimpleNamespace(personalizacao_job_stale_processing_min=15))
+    )
+    job = {"id": "job-1", "classe_id": 32, "kind": "class_delta_sync", "payload": {}}
+    target = {
+        "id": 579,
+        "aluno_id": "b49f2e21-a6f9-4c8d-9533-5a32bb219754",
+        "topico_id": 117,
+        "conteudo_id": None,
+        "brainhex_profile_key": "seeker",
+    }
+
+    result = await _process_media_render_target(
+        app=app, session=_FakeSession(is_stuck=False), job=job, target=target
+    )
+
+    assert result["deferred"] is True
+    assert claim_new_mock.await_count == 1
+    assert claim_new_mock.await_args.kwargs["ciclo_id"] == "ciclo-579"
+    assert enrich_mock.await_count == 0
+    assert cards_mock.await_count == 0
+    assert dispatch_mock.await_count == 0
+    assert salvar_mock.await_count == 0
+
+
+@pytest.mark.asyncio
 async def test_process_media_render_target_skips_only_completed_current_generation(
     monkeypatch,
 ) -> None:

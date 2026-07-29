@@ -383,6 +383,92 @@ class ConteudoPersonalizadoRepository:
         await self.session.commit()
         return row_id
 
+    async def claim_new_generation(
+        self,
+        *,
+        aluno_id: str,
+        classe_id: int | None,
+        topico_id: int | None,
+        conteudo_id: int | None,
+        brainhex_profile_key: str | None,
+        ciclo_id: str,
+        source_hash: str,
+    ) -> bool | None:
+        """Reserva atomicamente a primeira geracao de um alvo ainda inexistente.
+
+        Chamado quando ``buscar_mais_recente_por_perfil`` nao encontrou registro
+        para (aluno, topico, conteudo, perfil) — sem isso, dois jobs concorrentes
+        (ex.: class-delta e full-sync quase simultaneos para a mesma classe)
+        podem ambos ver "nao existe" e gerar/gravar o mesmo alvo em paralelo,
+        com o ultimo a commitar sobrescrevendo silenciosamente o outro via
+        ``ON CONFLICT DO UPDATE`` do `salvar`.
+
+        Retorna True se este worker reservou o alvo (deve prosseguir com a
+        geracao e depois chamar `salvar` normalmente), False se outro worker
+        ja reservou o mesmo alvo entre a leitura anterior e esta tentativa
+        (o chamador deve tratar como pendente/deferido, sem gerar), ou None
+        se o schema ainda nao suporta a reserva atomica (chamador deve
+        prosseguir sem protecao, como antes da introducao deste metodo).
+        """
+        has_ai_patch = await self._table_has_column("ai_patch")
+        has_classe_id = await self._table_has_column("classe_id")
+        has_status = await self._table_has_column("status")
+        has_source_hash = await self._table_has_column("source_hash")
+        has_profile_key = await self._table_has_column("brainhex_profile_key")
+        if not (has_ai_patch and has_classe_id and has_status and has_source_hash and has_profile_key):
+            return None
+        if topico_id is None or conteudo_id is None:
+            return None
+
+        normalized_profile_key = self._normalize_profile_key(brainhex_profile_key)
+        statement = text(
+            """
+            INSERT INTO conteudo_personalizado (
+              aluno_id, classe_id, conteudo_id, topico_id, ciclo_id,
+              brainhex_profile_key, plano, materiais, ai_patch, status,
+              source_hash, formato_prioritario, formatos_gerados, updated_at
+            )
+            VALUES (
+              :aluno_id,
+              COALESCE(
+                :classe_id,
+                (SELECT t.classe_id FROM topicos t WHERE t.id = :topico_id),
+                (
+                  SELECT t.classe_id
+                  FROM conteudos c
+                  JOIN topicos t ON t.id = c.topico_id
+                  WHERE c.id = :conteudo_id
+                )
+              ),
+              :conteudo_id, :topico_id, :ciclo_id, :brainhex_profile_key,
+              CAST(:plano AS JSONB), CAST(:materiais AS JSONB), NULL,
+              'processando_midias', :source_hash, '', :formatos_gerados, NOW()
+            )
+            ON CONFLICT (aluno_id, topico_id, conteudo_id, brainhex_profile_key)
+              WHERE topico_id IS NOT NULL AND conteudo_id IS NOT NULL
+            DO NOTHING
+            RETURNING id
+            """
+        )
+        result = await self.session.execute(
+            statement,
+            {
+                "aluno_id": aluno_id,
+                "classe_id": classe_id,
+                "topico_id": topico_id,
+                "conteudo_id": conteudo_id,
+                "ciclo_id": ciclo_id,
+                "brainhex_profile_key": normalized_profile_key,
+                "plano": json.dumps({"reserva": "geracao_em_andamento"}, ensure_ascii=False),
+                "materiais": json.dumps({}, ensure_ascii=False),
+                "source_hash": source_hash,
+                "formatos_gerados": [],
+            },
+        )
+        claimed_id = result.mappings().first()
+        await self.session.commit()
+        return claimed_id is not None
+
     async def buscar_por_aluno(
         self,
         aluno_id: str,

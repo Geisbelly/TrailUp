@@ -1204,6 +1204,27 @@ async def _process_media_render_target(
             "retried_failed": retry_failed,
         }
 
+    # Reserva atomica do alvo antes de qualquer chamada externa cara. Sem
+    # isso, dois jobs concorrentes (ex.: class-delta e full-sync quase
+    # simultaneos para a mesma classe) poderiam ambos ver "nao existe" acima
+    # e gerar/gravar o mesmo alvo em paralelo, com o ultimo a commitar
+    # sobrescrevendo silenciosamente o outro via ON CONFLICT DO UPDATE.
+    claimed_new = await repo.claim_new_generation(
+        aluno_id=aluno_id,
+        classe_id=classe_id,
+        topico_id=topico_id,
+        conteudo_id=conteudo_id,
+        brainhex_profile_key=target_profile_key,
+        ciclo_id=str(ctx["ciclo_id"]),
+        source_hash=str(ctx.get("source_hash") or ""),
+    )
+    if claimed_new is False:
+        return {
+            "deferred": True,
+            "record": None,
+            "reason": "geracao_atual_em_processamento",
+        }
+
     # fetch_personalizacao_context e a busca de registro iniciam transacao.
     # Enriquecimento/cards chamam provedores externos e nao devem reter a
     # conexao do pool enquanto aguardam.
