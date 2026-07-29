@@ -23,6 +23,7 @@ type OpenAiImageGenerateResult = { data?: Array<{ b64_json?: string }> };
 export interface OpenAiImageOverrides {
   now?: () => number;
   generate?: (args: OpenAiImageGenerateArgs) => Promise<OpenAiImageGenerateResult>;
+  quality?: OpenAiImageGenerateArgs["quality"];
 }
 
 const DEFAULT_OPENAI_IMAGE_COOLDOWN_MS = 30 * 60 * 1_000;
@@ -68,6 +69,7 @@ async function generateImageBase64(params: {
   attempt: number;
   now?: () => number;
   generate?: (args: OpenAiImageGenerateArgs) => Promise<OpenAiImageGenerateResult>;
+  quality?: OpenAiImageGenerateArgs["quality"];
 }): Promise<string> {
   const now = params.now ?? Date.now;
   if (now() < openaiImageUnavailableUntil) {
@@ -78,7 +80,8 @@ async function generateImageBase64(params: {
   }
 
   const generate = params.generate ?? ((args) => getOpenAi().images.generate(args));
-  const quality = (String(process.env.OPENAI_IMAGE_QUALITY ?? "").trim() || "medium") as OpenAiImageGenerateArgs["quality"];
+  const quality = params.quality
+    ?? (String(process.env.OPENAI_IMAGE_QUALITY ?? "").trim() || "medium") as OpenAiImageGenerateArgs["quality"];
 
   try {
     const response = await generate({
@@ -167,5 +170,35 @@ export async function generateDecorativeIconImage(
     retries,
     attempt,
     ...overrides,
+  });
+}
+
+/**
+ * Gera o slide inteiro (fundo + titulo + corpo + identidade do perfil ja
+ * embutidos no prompt) via OpenAI (gpt-image-1). Qualidade default mais alta
+ * que cena/icone (OPENAI_SLIDE_IMAGE_QUALITY, nao OPENAI_IMAGE_QUALITY), ja
+ * que aqui o texto renderizado depende de nitidez.
+ */
+export async function generateFullSlideImage(
+  prompt: string,
+  retries = 3,
+  attempt = 0,
+  overrides: OpenAiImageOverrides = {},
+): Promise<string> {
+  const quality = overrides.quality
+    ?? (String(process.env.OPENAI_SLIDE_IMAGE_QUALITY ?? "").trim() || "high") as OpenAiImageGenerateArgs["quality"];
+  return generateImageBase64({
+    prompt,
+    prefix:
+      "Premium editorial presentation slide, complete and ready to use, for a "
+      + "professional 16:9 template. Cohesive art direction, sophisticated "
+      + "shapes, clear focal hierarchy, legible high-contrast typography "
+      + "rendering the text below exactly as written (no spelling changes, "
+      + "no extra words). Slide brief: ",
+    size: "1536x1024",
+    retries,
+    attempt,
+    ...overrides,
+    quality,
   });
 }

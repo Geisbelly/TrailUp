@@ -86,3 +86,24 @@ test("icones: parametro omitido nao quebra chamadas existentes", () => {
   assert.equal(out[0].imagem_referencia, "data:image/png;base64,bg1");
   assert.deepEqual(out[0].icones, []);
 });
+
+test("renderMode: usa o valor informado no indice", () => {
+  const out = enrichSlidesWithImages([{ title: "A" }], ["img"], [], ["full-image"]);
+  assert.equal(out[0].renderMode, "full-image");
+});
+
+test("renderMode: default 'legacy' quando parametro omitido", () => {
+  const out = enrichSlidesWithImages([{ title: "A" }], ["img"]);
+  assert.equal(out[0].renderMode, "legacy");
+});
+
+test("renderMode: default 'legacy' quando indice fora do array informado", () => {
+  const out = enrichSlidesWithImages(
+    [{ title: "A" }, { title: "B" }],
+    ["img", "img2"],
+    [],
+    ["full-image"],
+  );
+  assert.equal(out[0].renderMode, "full-image");
+  assert.equal(out[1].renderMode, "legacy");
+});

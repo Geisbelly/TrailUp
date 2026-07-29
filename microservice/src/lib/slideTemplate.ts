@@ -26,6 +26,7 @@ export interface SlideForTemplate {
   characterAction?: string;
   imagem_referencia?: string;
   icones?: string[];
+  renderMode?: "full-image" | "legacy";
 }
 
 const SYNTHESIS_LABELS: Record<BrainHexProfile, string> = {
@@ -104,6 +105,8 @@ function resolvePlan(
   );
 }
 
+// Espelhada por slideTopicsForPrompt em src/lib/slideAssetGenerator.ts —
+// mantenha os dois em sincronia se esta lógica de extração mudar.
 function slideTopics(slide: SlideForTemplate): string[] {
   const values = Array.isArray(slide.topics)
     ? slide.topics
@@ -366,6 +369,21 @@ function slideHtml(
   plan: PresentationDesignPlan,
   portraitDataUrl: string | null,
 ): string {
+  if (slide.renderMode === "full-image" && slide.imagem_referencia) {
+    const title = slide.titulo || slide.title || `Etapa ${index + 1}`;
+    const explanation = slide.explanation || slide.visualDescription || "";
+    const alt = escapeHtml([title, explanation].filter(Boolean).join(". "));
+    return `
+    <section
+      class="slide profile-${profile} slide-full-image"
+      data-layout="full-image"
+      data-design-system="${plan.version}"
+    >
+      <img class="full-slide-image" src="${slide.imagem_referencia}" alt="${alt}" />
+    </section>
+  `;
+  }
+
   const layout = presentationLayoutForSlide(plan, index, total);
   const progress = Math.max(7, Math.round(((index + 1) / total) * 100));
   return `
@@ -437,6 +455,13 @@ const BASE_CSS = `
     inset: 0;
     background-size: cover;
     background-position: center;
+  }
+  .full-slide-image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
   .slide-kicker {
     display: flex;

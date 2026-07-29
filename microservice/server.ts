@@ -9,11 +9,11 @@ import {
   generateLongConversationalAudio,
 } from "./src/services/geminiService";
 import { generateSceneImage } from "./src/services/openaiImageService";
+import { generateFullSlideImages, buildImageStyleSuffix } from "./src/lib/slideAssetGenerator";
 import { generateSlideIconWithFallback } from "./src/services/slideIconService";
 import { BrainHexProfile, BRAIN_HEX_CONFIG } from "./src/constants/brainHex";
 import {
   buildPresentationDesignPlan,
-  presentationImageDirection,
   presentationLayoutForSlide,
   type PresentationDesignPlan,
   type PresentationThemeInput,
@@ -85,20 +85,6 @@ function now() {
 type SlideAssetInput = { imagePrompt: string; iconPrompts?: string[] };
 type SlideAssets = { imagem_referencia: string[]; icones: string[][] };
 
-// O imagePrompt/iconPrompt (escrito pelo LLM) descreve a CENA/elemento; o
-// guardiao, a paleta e a atmosfera do perfil precisam ser reforcados aqui pra
-// imagem gerada realmente combinar com o guia/perfil.
-function buildImageStyleSuffix(
-  profile: BrainHexProfile,
-  plan: PresentationDesignPlan,
-): string {
-  const cfg = BRAIN_HEX_CONFIG[profile];
-  return (
-    `. Identidade do perfil: ${cfg.label}, guiado por ${cfg.guideName}. `
-    + `Cor de assinatura: ${cfg.color}. ${presentationImageDirection(plan)}`
-  );
-}
-
 /** 1 cena de fundo por slide, via OpenAI. Serial (1 chave, sem pool). */
 async function generateSceneImages(
   slides: { imagePrompt: string }[],
@@ -151,6 +137,8 @@ async function generateSlideIcons(
         // A contingência de imagem OpenAI é mais cara e já existe uma cena
         // OpenAI por slide. Um ícone de contingência por slide preserva o
         // acabamento sem multiplicar custo quando a cota Gemini está zerada.
+        // Esta mesma política de corte está espelhada em generateOneLegacySlide
+        // (src/lib/slideAssetGenerator.ts) — atualize os dois lugares juntos.
         if (generated.provider === "openai") break;
       } catch (e) {
         log.error("icone falhou nos dois provedores", { slide: i, err: e });
@@ -596,7 +584,7 @@ async function runPipeline(
         voice,
         voiceProfile.direction,
       );
-  const assetsPromise = generateSlideAssets(
+  const assetsPromise = generateFullSlideImages(
     resultado.slides,
     profile,
     presentationPlan,
@@ -619,7 +607,7 @@ async function runPipeline(
     throw assetsResult.reason;
   }
   const assets = assetsResult.value;
-  const slidesComImagens  = enrichSlidesWithImages(resultado.slides, assets.imagem_referencia, assets.icones);
+  const slidesComImagens  = enrichSlidesWithImages(resultado.slides, assets.imagem_referencia, assets.icones, assets.renderMode);
 
   // 4. Persiste tudo no Supabase
   const archived = await archiveToSupabase({
