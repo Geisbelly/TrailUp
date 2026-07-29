@@ -42,6 +42,7 @@ import { enrichSlidesWithImages } from "./src/lib/slideEnricher";
 import { validatePersonalizarBody } from "./src/lib/validators";
 import type { ContentBlock } from "./src/lib/validators";
 import { createRateLimiter } from "./src/lib/rateLimit";
+import { createDedupedTimeoutRunner } from "./src/lib/dedupedTimeoutRunner";
 import {
   CONTENT_ENRICHMENT_PROVIDER,
   MEDIA_PIPELINE_VERSION,
@@ -514,52 +515,20 @@ async function runPersonalizacaoJob(params: {
   }
 }
 
-const activePersonalizacaoJobs = new Map<string, Promise<void>>();
-
-function getOrStartPersonalizacaoJob(
-  params: Parameters<typeof runPersonalizacaoJob>[0],
-): Promise<void> {
-  const activeKey = `${params.personalizacaoId}:${params.fence.generationKey}`;
-  const active = activePersonalizacaoJobs.get(activeKey);
-  if (active) {
-    params.log.warn("personalizar reutilizando execucao ainda ativa");
-    return active;
-  }
-
-  const work = runPersonalizacaoJob(params);
-  activePersonalizacaoJobs.set(activeKey, work);
-  void work.then(
-    () => {
-      if (activePersonalizacaoJobs.get(activeKey) === work) {
-        activePersonalizacaoJobs.delete(activeKey);
-      }
-    },
-    () => {
-      if (activePersonalizacaoJobs.get(activeKey) === work) {
-        activePersonalizacaoJobs.delete(activeKey);
-      }
-    },
-  );
-  return work;
-}
+const personalizacaoJobRunnerInternal = createDedupedTimeoutRunner<string, void>();
 
 async function runPersonalizacaoJobWithTimeout(
   params: Parameters<typeof runPersonalizacaoJob>[0],
 ): Promise<void> {
-  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
-  const timeout = new Promise<never>((_, reject) => {
-    timeoutHandle = setTimeout(
-      () => reject(new Error(`job timeout apos ${MAX_JOB_DURATION_MS}ms`)),
-      MAX_JOB_DURATION_MS,
-    );
-    timeoutHandle.unref();
-  });
-
-  try {
-    await Promise.race([getOrStartPersonalizacaoJob(params), timeout]);
-  } finally {
-    if (timeoutHandle) clearTimeout(timeoutHandle);
-  }
+  const activeKey = `${params.personalizacaoId}:${params.fence.generationKey}`;
+  return personalizacaoJobRunnerInternal.run(
+    activeKey,
+    () => runPersonalizacaoJob(params),
+    {
+      timeoutMs: MAX_JOB_DURATION_MS,
+      onReuse: () => params.log.warn("personalizar reutilizando execucao ainda ativa"),
+    },
+  );
 }
 
 async function runPipeline(
