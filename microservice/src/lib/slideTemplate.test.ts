@@ -106,7 +106,7 @@ test("slide com renderMode full-image renderiza somente a imagem, sem titulo/bad
   const html = buildDeckHtml([fullImageSlide], "seeker");
   assert.ok(html.includes("data:image/png;base64,ZZZZ"));
   assert.ok(html.includes('class="full-slide-image"'));
-  assert.ok(!html.includes("guide-badge"));
+  assert.ok(!html.includes('<div class="guide-badge'));
   assert.ok(!html.includes("<footer>"));
   assert.ok(!html.includes("<h1>"));
 });

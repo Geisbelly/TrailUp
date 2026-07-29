@@ -901,37 +901,6 @@ const BASE_CSS = `
   }
 `;
 
-// CSS mínimo para decks onde TODOS os slides são full-image: evita embutir
-// as regras do layout legado (ex.: `.guide-badge`) quando elas não são usadas
-// por nenhum slide do deck. Decks com pelo menos um slide legado continuam
-// usando `fontFaceCss() + BASE_CSS` sem nenhuma alteração.
-const FULL_IMAGE_ONLY_CSS = `
-  * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; background: #080a0d; }
-  body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-  .slide {
-    width: 1280px;
-    height: 720px;
-    position: relative;
-    overflow: hidden;
-    page-break-after: always;
-    background: #080a0d;
-  }
-  .slide:last-child { page-break-after: auto; }
-  .slide-full-image { padding: 0; }
-  .full-slide-image {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-`;
-
-function isFullImageSlide(slide: SlideForTemplate): boolean {
-  return slide.renderMode === "full-image" && Boolean(slide.imagem_referencia);
-}
-
 /** Monta um deck editorial 16:9 com direção temática e layouts variados. */
 export function buildDeckHtml(
   slides: SlideForTemplate[],
@@ -957,18 +926,13 @@ export function buildDeckHtml(
       portraitDataUrl,
     ))
     .join("\n");
-  const allFullImage = sourceSlides.length > 0
-    && sourceSlides.every(isFullImageSlide);
-  const styleTag = allFullImage
-    ? FULL_IMAGE_ONLY_CSS
-    : `${fontFaceCss()}${BASE_CSS}`;
 
   return `<!doctype html>
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=1280, initial-scale=1" />
-  <style>${styleTag}</style>
+  <style>${fontFaceCss()}${BASE_CSS}</style>
 </head>
 <body data-design-system="${plan.version}" data-theme="${escapeHtml(plan.styleName)}">
 ${sections}
