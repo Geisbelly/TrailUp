@@ -11,19 +11,82 @@ function getOpenAi(): OpenAI {
   return _openai;
 }
 
+type OpenAiImageGenerateArgs = {
+  model: string;
+  prompt: string;
+  size: "1024x1024" | "1536x1024";
+  n: 1;
+  quality: "low" | "medium" | "high" | "auto";
+};
+type OpenAiImageGenerateResult = { data?: Array<{ b64_json?: string }> };
+
+export interface OpenAiImageOverrides {
+  now?: () => number;
+  generate?: (args: OpenAiImageGenerateArgs) => Promise<OpenAiImageGenerateResult>;
+}
+
+const DEFAULT_OPENAI_IMAGE_COOLDOWN_MS = 30 * 60 * 1_000;
+let openaiImageUnavailableUntil = 0;
+
+function errorText(error: unknown): string {
+  if (error instanceof Error) return `${error.name} ${error.message}`.trim();
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error ?? "");
+  }
+}
+
+function positiveInteger(value: unknown, fallback: number): number {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 24 * 60 * 60 * 1_000) {
+    return fallback;
+  }
+  return parsed;
+}
+
+/** 400 "Billing hard limit has been reached" — teto de gasto da conta, não um rate-limit transitório: retry não ajuda. */
+export function isOpenAiBillingHardLimitError(error: unknown): boolean {
+  const record = typeof error === "object" && error !== null
+    ? error as Record<string, unknown>
+    : {};
+  const status = Number(record.status ?? record.statusCode ?? record.code);
+  const text = errorText(error).toLowerCase();
+  if (status === 400 && text.includes("billing")) return true;
+  return ["billing hard limit", "billing_hard_limit"].some((marker) => text.includes(marker));
+}
+
+export function resetOpenAiImageCircuit(): void {
+  openaiImageUnavailableUntil = 0;
+}
+
 async function generateImageBase64(params: {
   prompt: string;
   prefix: string;
   size: "1024x1024" | "1536x1024";
   retries: number;
   attempt: number;
+  now?: () => number;
+  generate?: (args: OpenAiImageGenerateArgs) => Promise<OpenAiImageGenerateResult>;
 }): Promise<string> {
+  const now = params.now ?? Date.now;
+  if (now() < openaiImageUnavailableUntil) {
+    throw new Error(
+      "Geração de imagem via OpenAI em circuito de indisponibilidade: limite de billing "
+      + "foi atingido recentemente, aguardando cooldown antes de tentar novamente.",
+    );
+  }
+
+  const generate = params.generate ?? ((args) => getOpenAi().images.generate(args));
+  const quality = (String(process.env.OPENAI_IMAGE_QUALITY ?? "").trim() || "medium") as OpenAiImageGenerateArgs["quality"];
+
   try {
-    const response = await getOpenAi().images.generate({
+    const response = await generate({
       model: String(process.env.OPENAI_IMAGE_MODEL ?? "").trim() || "gpt-image-1",
       prompt: `${params.prefix}${params.prompt}`,
       size: params.size,
       n: 1,
+      quality,
     });
     const b64 = response.data?.[0]?.b64_json;
     if (!b64) {
@@ -32,6 +95,13 @@ async function generateImageBase64(params: {
     return b64;
   } catch (error: any) {
     if (error?.message?.includes("OPENAI_API_KEY")) throw error;
+    if (isOpenAiBillingHardLimitError(error)) {
+      openaiImageUnavailableUntil = now() + positiveInteger(
+        process.env.CONTENT_GENERATION_OPENAI_IMAGE_COOLDOWN_MS,
+        DEFAULT_OPENAI_IMAGE_COOLDOWN_MS,
+      );
+      throw error;
+    }
     const isRateLimit =
       error?.status === 429
       || error?.message?.includes("rate_limit")
@@ -58,7 +128,12 @@ async function generateImageBase64(params: {
  * cru da imagem (sem prefixo data:), mesmo contrato de generateSlideImage
  * (geminiService.ts) — assim os dois provedores compoem igual no HTML final.
  */
-export async function generateSceneImage(prompt: string, retries = 3, attempt = 0): Promise<string | null> {
+export async function generateSceneImage(
+  prompt: string,
+  retries = 3,
+  attempt = 0,
+  overrides: OpenAiImageOverrides = {},
+): Promise<string | null> {
   return generateImageBase64({
     prompt,
     prefix:
@@ -70,6 +145,7 @@ export async function generateSceneImage(prompt: string, retries = 3, attempt = 
     size: "1536x1024",
     retries,
     attempt,
+    ...overrides,
   });
 }
 
@@ -78,6 +154,7 @@ export async function generateDecorativeIconImage(
   prompt: string,
   retries = 3,
   attempt = 0,
+  overrides: OpenAiImageOverrides = {},
 ): Promise<string> {
   return generateImageBase64({
     prompt,
@@ -89,5 +166,6 @@ export async function generateDecorativeIconImage(
     size: "1024x1024",
     retries,
     attempt,
+    ...overrides,
   });
 }
