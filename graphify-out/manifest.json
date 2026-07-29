@@ -305,8 +305,8 @@
     "semantic_hash": "ea9fc3046e6bac85cbdbfead8c6ca178"
   },
   "api/app/core/settings.py": {
-    "mtime": 1785364023.2410264,
-    "ast_hash": "5504680be9079a3af3e41f5f5917ba6a",
+    "mtime": 1785366917.319514,
+    "ast_hash": "3efd7642916ef9ef7596151cff49a461",
     "semantic_hash": ""
   },
   "api/app/db/__init__.py": {
@@ -1550,8 +1550,8 @@
     "semantic_hash": ""
   },
   "microservice/server.ts": {
-    "mtime": 1785363988.2336874,
-    "ast_hash": "533220d4e5985dda8dc6b9b160336a1f",
+    "mtime": 1785366652.8392937,
+    "ast_hash": "6f58bc89163f67ee984aa7f003ca1eb6",
     "semantic_hash": ""
   },
   "microservice/sql/migrations/0001_merge_personalizacao_materiais_rpc.sql": {
@@ -4010,13 +4010,13 @@
     "semantic_hash": ""
   },
   "api/app/services/content_enrichment.py": {
-    "mtime": 1785364190.6907382,
-    "ast_hash": "ac75536f2a900e56113e240c6c10433b",
+    "mtime": 1785366210.1738167,
+    "ast_hash": "e0a6356ff2d9460ab1eed6c42bbfc4cd",
     "semantic_hash": ""
   },
   "api/tests/test_content_enrichment.py": {
-    "mtime": 1785364280.666115,
-    "ast_hash": "949f84b8e9ad45f2a60a25c73049fa2c",
+    "mtime": 1785366937.2890315,
+    "ast_hash": "a7bc3b2183fb356ec77e8cd1b299006e",
     "semantic_hash": ""
   },
   "api/app/agent/prompts/enriquecedor_blocos_conteudo.txt": {
@@ -4190,13 +4190,13 @@
     "semantic_hash": ""
   },
   "microservice/src/services/contentGenerationService.test.ts": {
-    "mtime": 1785363988.3203292,
-    "ast_hash": "eff961bdedc2e0cc7e99cf626bf2f17f",
+    "mtime": 1785366694.7689288,
+    "ast_hash": "ca5452fbf9a5d0ea8af60bb17dc007c7",
     "semantic_hash": ""
   },
   "microservice/src/services/contentGenerationService.ts": {
-    "mtime": 1785363988.3209276,
-    "ast_hash": "ffc1ab5fe146fd824d2be59ce6eccb01",
+    "mtime": 1785366685.1430626,
+    "ast_hash": "8f99a7a1852a6e46fcbba4507ddaa8ab",
     "semantic_hash": ""
   },
   "api/alembic/versions/20260728_05_dynamic_generation_fencing.py": {
@@ -4295,13 +4295,13 @@
     "semantic_hash": ""
   },
   "microservice/src/lib/slideAssetGenerator.test.ts": {
-    "mtime": 1785363988.3087246,
-    "ast_hash": "5c4203656ef991f605155c588d6a7d45",
+    "mtime": 1785366762.3653357,
+    "ast_hash": "25b4cc1682ba3fafc55bc260dcafcdea",
     "semantic_hash": ""
   },
   "microservice/src/lib/slideAssetGenerator.ts": {
-    "mtime": 1785363988.3087246,
-    "ast_hash": "04a64bbffd08d8500c41b0fea1fc4874",
+    "mtime": 1785366748.2469182,
+    "ast_hash": "47179fc2814b973b230eb99a682df960",
     "semantic_hash": ""
   }
 }

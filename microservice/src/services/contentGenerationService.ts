@@ -2,8 +2,11 @@ import OpenAI from "openai";
 
 export const DEFAULT_GEMINI_CONTENT_GENERATION_MODEL =
   "gemini-3.6-flash" as const;
+// gpt-5.4-mini tem tier de 10 RPM / 50 RPD — inviável como contingência real.
+// gpt-4o-mini (500 RPM / 10.000 RPD) é bem mais utilizável quando o Gemini
+// (provedor principal) falhar.
 export const DEFAULT_OPENAI_CONTENT_GENERATION_FALLBACK_MODEL =
-  "gpt-5.4-mini" as const;
+  "gpt-4o-mini" as const;
 
 const DEFAULT_GEMINI_UNAVAILABLE_COOLDOWN_MS = 5 * 60 * 1_000;
 const DEFAULT_OPENAI_MAX_OUTPUT_TOKENS = 16_384;

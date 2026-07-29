@@ -46,21 +46,33 @@ class Settings(BaseSettings):
     openai_api_key: str | None = None
     openai_model_supervisor: str = "gpt-4o-mini"
     openai_model_default: str = "gpt-4o-mini"
-    openai_content_enrichment_model: str = "gpt-5.4-mini"
+    # gpt-5.4-mini tem limite de tier de 10 RPM / 50 RPD — inviavel como
+    # provedor de enriquecimento (ate 24 blocos x 3 tentativas por topico).
+    # gpt-4o-mini (500 RPM / 10.000 RPD) e usado so como reserva secundaria,
+    # com Gemini como principal (ver content_enrichment.py).
+    openai_content_enrichment_model: str = "gpt-4o-mini"
     content_enrichment_batch_size: int = 1
     content_enrichment_max_attempts: int = 3
     openai_content_enrichment_max_output_tokens: int = 8192
     content_enrichment_quota_cooldown_sec: int = 300
+    # Trava de gasto estimado (best-effort, em memoria — reseta se o processo
+    # reiniciar). A garantia real e o hard limit configurado no dashboard da
+    # OpenAI; isso e so uma camada extra de defesa.
+    openai_spend_cap_usd: float = 1.0
 
     gemini_api_key: str | None = None
     gemini_model_supervisor: str = "gemini-1.5-pro"
     gemini_model_default: str = "gemini-1.5-flash"
-    gemini_materiais_model: str = "gemini-2.5-flash"
-    gemini_model_multimodal_primary: str = "gemini-2.5-flash"
+    # gemini-2.5-flash retornou 404 NOT_FOUND em producao ("no longer
+    # available to new users") — gemini-3.6-flash e o modelo confirmado
+    # funcionando no mesmo tier (ja usado como default no microservice,
+    # DEFAULT_GEMINI_CONTENT_GENERATION_MODEL em contentGenerationService.ts).
+    gemini_materiais_model: str = "gemini-3.6-flash"
+    gemini_model_multimodal_primary: str = "gemini-3.6-flash"
     gemini_model_multimodal_fallback: str = "gemini-2.5-flash-lite"
     gemini_model_image: str = "gemini-2.0-flash-preview-image-generation"
     gemini_model_tts: str = "gemini-2.5-flash-preview-tts"
-    content_enrichment_gemini_model: str = "gemini-2.5-flash"
+    content_enrichment_gemini_model: str = "gemini-3.6-flash"
     content_enrichment_gemini_quota_cooldown_sec: int = 300
 
     brainhex_api_url: str | None = None
