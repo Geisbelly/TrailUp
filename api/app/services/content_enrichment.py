@@ -11,6 +11,14 @@ from openai import AsyncOpenAI
 from app.core.settings import Settings
 from app.services.media_contract import CONTENT_ENRICHMENT_PROVIDER
 
+try:
+    from langchain_core.messages import HumanMessage, SystemMessage
+    from langchain_google_genai import ChatGoogleGenerativeAI
+except ImportError:  # pragma: no cover
+    ChatGoogleGenerativeAI = None
+    HumanMessage = None
+    SystemMessage = None
+
 _MAX_BLOCKS = 24
 _MAX_SEGMENT_CHARS = 4_000
 _MIN_EXPANSION_CHARS = 80
@@ -20,12 +28,18 @@ _DEFAULT_BATCH_SIZE = 1
 _DEFAULT_MAX_ATTEMPTS = 3
 _DEFAULT_MAX_OUTPUT_TOKENS = 8_192
 _DEFAULT_QUOTA_COOLDOWN_SEC = 300
+_DEFAULT_GEMINI_QUOTA_COOLDOWN_SEC = 300
 
 # Circuito de indisponibilidade: "insufficient_quota" e um erro permanente (a
 # conta ficou sem credito), nao transitorio — retry imediato so desperdica
 # chamadas identicas a cada poll do worker de jobs. Espelha o circuito de
 # billing hard-limit do microservice (openaiImageService.ts).
 _openai_enrichment_unavailable_until: float = 0.0
+
+# Mesmo circuito, espelhado pro Gemini: usado como fallback quando a OpenAI
+# falha (nao so cota — qualquer falha apos esgotar as tentativas da OpenAI),
+# entao tambem precisa de fail-fast se a cota do Gemini estiver esgotada.
+_gemini_enrichment_unavailable_until: float = 0.0
 
 _ENRICHMENT_INSTRUCTIONS = """
 Você é o professor-editor responsável pela etapa obrigatória de enriquecimento
@@ -95,6 +109,25 @@ def _is_insufficient_quota_error(exc: BaseException) -> bool:
 def reset_openai_enrichment_circuit() -> None:
     global _openai_enrichment_unavailable_until
     _openai_enrichment_unavailable_until = 0.0
+
+
+def _gemini_client(api_key: str, model: str) -> Any:
+    if ChatGoogleGenerativeAI is None:
+        return None
+    return ChatGoogleGenerativeAI(model=model, temperature=0, google_api_key=api_key)
+
+
+def _is_gemini_quota_error(exc: BaseException) -> bool:
+    status = str(getattr(exc, "status_code", "") or getattr(exc, "code", "") or "").strip()
+    text = str(exc).lower()
+    if status in {"429", "RESOURCE_EXHAUSTED"}:
+        return True
+    return "resource_exhausted" in text or "quota" in text
+
+
+def reset_gemini_enrichment_circuit() -> None:
+    global _gemini_enrichment_unavailable_until
+    _gemini_enrichment_unavailable_until = 0.0
 
 
 class ContentEnrichmentError(RuntimeError):
@@ -649,6 +682,178 @@ async def _enrich_base_blocks_with_openai(
     )
 
 
+async def _generate_gemini_batch(
+    *,
+    client: Any,
+    model: str,
+    topic: dict[str, Any],
+    blocks: list[dict[str, Any]],
+    attempt: int,
+    feedback: str,
+    quota_cooldown_sec: int,
+) -> tuple[dict[str, Any], str]:
+    global _gemini_enrichment_unavailable_until
+    if time.time() < _gemini_enrichment_unavailable_until:
+        raise ContentEnrichmentError(
+            "Gemini em circuito de indisponibilidade: cota insuficiente "
+            "detectada recentemente, aguardando cooldown antes de tentar "
+            "novamente."
+        )
+    correction = (
+        f"\n\nCORREÇÕES OBRIGATÓRIAS DA TENTATIVA ANTERIOR:\n{feedback}"
+        if feedback
+        else ""
+    )
+    input_text = (
+        f"TEMA:\n{json.dumps(topic, ensure_ascii=False, indent=2)}\n\n"
+        f"BLOCOS-BASE:\n{json.dumps(blocks, ensure_ascii=False, indent=2)}"
+        f"{correction}"
+    )
+    try:
+        # with_structured_output aceita o mesmo JSON Schema usado pela OpenAI
+        # (text.format.json_schema) e devolve o dict ja parseado — sem
+        # output_text/json.loads manual como no caminho OpenAI.
+        structured_client = client.with_structured_output(_ENRICHMENT_SCHEMA)
+        raw = await structured_client.ainvoke(
+            [
+                SystemMessage(content=_ENRICHMENT_INSTRUCTIONS),
+                HumanMessage(content=input_text),
+            ]
+        )
+    except Exception as exc:
+        if _is_gemini_quota_error(exc):
+            _gemini_enrichment_unavailable_until = time.time() + quota_cooldown_sec
+        raise ContentEnrichmentError(
+            f"Gemini falhou ao aprofundar o lote na tentativa {attempt}: {exc}"
+        ) from exc
+
+    if not isinstance(raw, dict):
+        raise ContentEnrichmentError(
+            f"Gemini retornou enriquecimento fora do formato JSON na tentativa {attempt}."
+        )
+    return raw, model
+
+
+async def _enrich_base_blocks_with_gemini(
+    *,
+    base_blocks: list[dict[str, Any]],
+    topic: dict[str, Any],
+    source_hash: str,
+    settings: Settings,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    api_key = str(getattr(settings, "gemini_api_key", "") or "").strip()
+    if not api_key:
+        raise ContentEnrichmentError(
+            "GEMINI_API_KEY ausente: a API não pode aprofundar o conteúdo via Gemini."
+        )
+    model = (
+        str(getattr(settings, "content_enrichment_gemini_model", "") or "").strip()
+        or "gemini-2.5-flash"
+    )
+    configured_batch_size = _bounded_int(
+        getattr(settings, "content_enrichment_batch_size", _DEFAULT_BATCH_SIZE),
+        _DEFAULT_BATCH_SIZE,
+        1,
+        8,
+    )
+    batch_size = min(configured_batch_size, _DEFAULT_BATCH_SIZE)
+    max_attempts = _bounded_int(
+        getattr(settings, "content_enrichment_max_attempts", _DEFAULT_MAX_ATTEMPTS),
+        _DEFAULT_MAX_ATTEMPTS,
+        1,
+        4,
+    )
+    quota_cooldown_sec = _bounded_int(
+        getattr(
+            settings,
+            "content_enrichment_gemini_quota_cooldown_sec",
+            _DEFAULT_GEMINI_QUOTA_COOLDOWN_SEC,
+        ),
+        _DEFAULT_GEMINI_QUOTA_COOLDOWN_SEC,
+        1,
+        3_600,
+    )
+    client = _gemini_client(api_key, model)
+    if client is None:
+        raise ContentEnrichmentError(
+            "langchain-google-genai não está instalado: a API não pode "
+            "aprofundar o conteúdo via Gemini."
+        )
+    enriched_by_id: dict[str, dict[str, Any]] = {}
+    calls = 0
+    models: set[str] = set()
+
+    # Duplica deliberadamente o loop de lotes/retry de _enrich_base_blocks_with_openai
+    # (mesma logica, provedor diferente) — evita acoplar os dois caminhos, ja
+    # bem cobertos por teste, a uma abstracao compartilhada e mais fragil.
+    for start in range(0, len(base_blocks), batch_size):
+        pending = list(base_blocks[start : start + batch_size])
+        feedback = ""
+        for attempt in range(1, max_attempts + 1):
+            raw, used_model = await _generate_gemini_batch(
+                client=client,
+                model=model,
+                topic=topic,
+                blocks=pending,
+                attempt=attempt,
+                feedback=feedback,
+                quota_cooldown_sec=quota_cooldown_sec,
+            )
+            calls += 1
+            models.add(used_model)
+            candidates = raw.get("blocos")
+            indexed = {
+                _text(item.get("id")): item
+                for item in candidates
+                if isinstance(item, dict) and _text(item.get("id"))
+            } if isinstance(candidates, list) else {}
+            failures: list[tuple[dict[str, Any], str]] = []
+            for block in pending:
+                block_id = str(block["id"])
+                candidate = indexed.get(block_id)
+                try:
+                    enriched_by_id[block_id] = _validate_generated_candidate(
+                        candidate=candidate,
+                        base_block=block,
+                        source_hash=source_hash,
+                    )
+                except ContentEnrichmentError as exc:
+                    base_length = len(_text(block.get("conteudo_base")))
+                    received_length = len(
+                        _text(candidate.get("conteudo_aprofundado"))
+                        if isinstance(candidate, dict)
+                        else ""
+                    )
+                    target = max(base_length + 200, math.ceil(base_length * 1.3))
+                    failures.append(
+                        (
+                            block,
+                            f"{block_id}: {exc} Base={base_length}, resposta="
+                            f"{received_length}; reescreva com no mínimo {target} "
+                            "caracteres, definições, causas, consequências e exemplo.",
+                        )
+                    )
+            pending = [block for block, _message in failures]
+            feedback = "\n".join(message for _block, message in failures)
+            if not pending:
+                break
+            if attempt == max_attempts:
+                raise ContentEnrichmentError(
+                    "Gemini não aprofundou todos os blocos após "
+                    f"{max_attempts} tentativas: {feedback}"
+                )
+
+    return (
+        [enriched_by_id[str(block["id"])] for block in base_blocks],
+        {
+            "model": model,
+            "models": sorted(models),
+            "lotes_gerados": math.ceil(len(base_blocks) / batch_size),
+            "chamadas_realizadas": calls,
+        },
+    )
+
+
 async def enrich_content_blocks(
     *,
     context: dict[str, Any],
@@ -667,14 +872,55 @@ async def enrich_content_blocks(
         "descricao": _text(topic.get("descricao")),
         "objetivo": _text(topic.get("objetivo")),
     }
-    # Etapa 2: aprofundamento curricular neutro via OpenAI. A personalização
-    # editorial acontece somente depois, ao enviar estes blocos ao microserviço.
-    blocks, openai_metadata = await _enrich_base_blocks_with_openai(
-        base_blocks=base_blocks,
-        topic=topic_payload,
-        source_hash=source_hash,
-        settings=settings,
-    )
+    # Etapa 2: aprofundamento curricular neutro via OpenAI (principal) com
+    # fallback automático pro Gemini quando a OpenAI falhar (cota, circuito
+    # de indisponibilidade ou qualquer outro erro após esgotar as tentativas).
+    # A personalização editorial acontece somente depois, ao enviar estes
+    # blocos ao microserviço.
+    openai_key = str(getattr(settings, "openai_api_key", "") or "").strip()
+    gemini_key = str(getattr(settings, "gemini_api_key", "") or "").strip()
+    if not openai_key and not gemini_key:
+        raise ContentEnrichmentError(
+            "OPENAI_API_KEY ausente: a API não pode dividir e aprofundar o conteúdo."
+        )
+
+    llm_provider = "openai"
+    openai_error: ContentEnrichmentError | None = None
+    blocks: list[dict[str, Any]] | None = None
+    provider_metadata: dict[str, Any] = {}
+
+    if openai_key:
+        try:
+            blocks, provider_metadata = await _enrich_base_blocks_with_openai(
+                base_blocks=base_blocks,
+                topic=topic_payload,
+                source_hash=source_hash,
+                settings=settings,
+            )
+        except ContentEnrichmentError as exc:
+            openai_error = exc
+            if not gemini_key:
+                raise
+    else:
+        openai_error = ContentEnrichmentError(
+            "OPENAI_API_KEY ausente: usando Gemini como único provedor configurado."
+        )
+
+    if blocks is None:
+        try:
+            blocks, provider_metadata = await _enrich_base_blocks_with_gemini(
+                base_blocks=base_blocks,
+                topic=topic_payload,
+                source_hash=source_hash,
+                settings=settings,
+            )
+            llm_provider = "gemini"
+        except ContentEnrichmentError as gemini_error:
+            raise ContentEnrichmentError(
+                "OpenAI e Gemini falharam ao aprofundar o conteúdo. "
+                f"OpenAI: {openai_error}. Gemini: {gemini_error}"
+            ) from gemini_error
+
     return {
         "schema_version": _SCHEMA_VERSION,
         "source_hash": source_hash,
@@ -688,19 +934,27 @@ async def enrich_content_blocks(
             "provider": CONTENT_ENRICHMENT_PROVIDER,
             "division_provider": "api-deterministic",
             "enrichment_provider": CONTENT_ENRICHMENT_PROVIDER,
+            # Provedor de LLM que efetivamente respondeu esta chamada — "provider"/
+            # "enrichment_provider" acima são o contrato de versão fixo (sempre
+            # "openai", ver media_contract.py), não quem gerou o texto de fato.
+            "enrichment_llm_provider": llm_provider,
+            "openai_fallback_used": llm_provider == "gemini",
+            "openai_fallback_reason": (
+                _text(str(openai_error)) if llm_provider == "gemini" and openai_error else ""
+            ),
             "personalization_applied": False,
             "pipeline_order": [
                 "content_decomposition",
-                "openai_enrichment",
+                "openai_enrichment" if llm_provider == "openai" else "gemini_enrichment",
                 "brainhex_personalization",
             ],
-            "provider_model": _text(openai_metadata.get("model")),
-            "models": list(openai_metadata.get("models") or []),
+            "provider_model": _text(provider_metadata.get("model")),
+            "models": list(provider_metadata.get("models") or []),
             "lotes_gerados": _nonnegative_int(
-                openai_metadata.get("lotes_gerados")
+                provider_metadata.get("lotes_gerados")
             ),
             "chamadas_realizadas": _nonnegative_int(
-                openai_metadata.get("chamadas_realizadas")
+                provider_metadata.get("chamadas_realizadas")
             ),
         },
     }

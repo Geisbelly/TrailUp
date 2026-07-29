@@ -60,6 +60,8 @@ class Settings(BaseSettings):
     gemini_model_multimodal_fallback: str = "gemini-2.5-flash-lite"
     gemini_model_image: str = "gemini-2.0-flash-preview-image-generation"
     gemini_model_tts: str = "gemini-2.5-flash-preview-tts"
+    content_enrichment_gemini_model: str = "gemini-2.5-flash"
+    content_enrichment_gemini_quota_cooldown_sec: int = 300
 
     brainhex_api_url: str | None = None
     # Precisa bater com API_SHARED_SECRET no microservice (api-brainhex) quando
