@@ -86,7 +86,7 @@ test("override de quality por chamada tem precedencia sobre OPENAI_IMAGE_QUALITY
   }
 });
 
-test("generateFullSlideImage usa OPENAI_SLIDE_IMAGE_QUALITY (padrao high) e tamanho 1536x1024", async () => {
+test("generateFullSlideImage usa OPENAI_SLIDE_IMAGE_QUALITY (padrao medium) e tamanho 1536x1024", async () => {
   resetOpenAiImageCircuit();
   let receivedArgs: any;
   const generate = async (args: any) => {
@@ -95,9 +95,20 @@ test("generateFullSlideImage usa OPENAI_SLIDE_IMAGE_QUALITY (padrao high) e tama
   };
   const image = await generateFullSlideImage("titulo e corpo do slide", 0, 0, { generate });
   assert.equal(image, "slide-abc");
-  assert.equal(receivedArgs.quality, "high");
+  assert.equal(receivedArgs.quality, "medium");
   assert.equal(receivedArgs.size, "1536x1024");
   assert.ok(receivedArgs.prompt.includes("titulo e corpo do slide"));
+});
+
+test("generateFullSlideImage aceita override explicito de quality", async () => {
+  resetOpenAiImageCircuit();
+  let receivedArgs: any;
+  const generate = async (args: any) => {
+    receivedArgs = args;
+    return { data: [{ b64_json: "slide-abc" }] };
+  };
+  await generateFullSlideImage("titulo", 0, 0, { generate, quality: "high" });
+  assert.equal(receivedArgs.quality, "high");
 });
 
 test("generateFullSlideImage reaproveita o circuito de billing existente", async () => {

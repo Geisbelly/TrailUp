@@ -175,9 +175,12 @@ export async function generateDecorativeIconImage(
 
 /**
  * Gera o slide inteiro (fundo + titulo + corpo + identidade do perfil ja
- * embutidos no prompt) via OpenAI (gpt-image-1). Qualidade default mais alta
- * que cena/icone (OPENAI_SLIDE_IMAGE_QUALITY, nao OPENAI_IMAGE_QUALITY), ja
- * que aqui o texto renderizado depende de nitidez.
+ * embutidos no prompt) via OpenAI (gpt-image-1). Qualidade default "medium"
+ * (OPENAI_SLIDE_IMAGE_QUALITY, nao OPENAI_IMAGE_QUALITY) — "high" gera um
+ * payload base64 bem maior por slide, o que pressiona a memoria do processo
+ * quando varios decks sao gerados ao mesmo tempo (ja causou crash-loop no
+ * Render em produção); suba para "high" via env var só se a nitidez do texto
+ * embutido não for suficiente em "medium".
  */
 export async function generateFullSlideImage(
   prompt: string,
@@ -186,7 +189,7 @@ export async function generateFullSlideImage(
   overrides: OpenAiImageOverrides = {},
 ): Promise<string> {
   const quality = overrides.quality
-    ?? (String(process.env.OPENAI_SLIDE_IMAGE_QUALITY ?? "").trim() || "high") as OpenAiImageGenerateArgs["quality"];
+    ?? (String(process.env.OPENAI_SLIDE_IMAGE_QUALITY ?? "").trim() || "medium") as OpenAiImageGenerateArgs["quality"];
   return generateImageBase64({
     prompt,
     prefix:
