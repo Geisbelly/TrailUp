@@ -172,3 +172,33 @@ export async function generateDecorativeIconImage(
     ...overrides,
   });
 }
+
+/**
+ * Gera o slide inteiro (fundo + titulo + corpo + identidade do perfil ja
+ * embutidos no prompt) via OpenAI (gpt-image-1). Qualidade default mais alta
+ * que cena/icone (OPENAI_SLIDE_IMAGE_QUALITY, nao OPENAI_IMAGE_QUALITY), ja
+ * que aqui o texto renderizado depende de nitidez.
+ */
+export async function generateFullSlideImage(
+  prompt: string,
+  retries = 3,
+  attempt = 0,
+  overrides: OpenAiImageOverrides = {},
+): Promise<string> {
+  const quality = overrides.quality
+    ?? (String(process.env.OPENAI_SLIDE_IMAGE_QUALITY ?? "").trim() || "high") as OpenAiImageGenerateArgs["quality"];
+  return generateImageBase64({
+    prompt,
+    prefix:
+      "Premium editorial presentation slide, complete and ready to use, for a "
+      + "professional 16:9 template. Cohesive art direction, sophisticated "
+      + "shapes, clear focal hierarchy, legible high-contrast typography "
+      + "rendering the text below exactly as written (no spelling changes, "
+      + "no extra words). Slide brief: ",
+    size: "1536x1024",
+    retries,
+    attempt,
+    ...overrides,
+    quality,
+  });
+}

@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   generateDecorativeIconImage,
+  generateFullSlideImage,
   generateSceneImage,
   isOpenAiBillingHardLimitError,
   resetOpenAiImageCircuit,
@@ -83,4 +84,38 @@ test("override de quality por chamada tem precedencia sobre OPENAI_IMAGE_QUALITY
     if (original !== undefined) process.env.OPENAI_IMAGE_QUALITY = original;
     else delete process.env.OPENAI_IMAGE_QUALITY;
   }
+});
+
+test("generateFullSlideImage usa OPENAI_SLIDE_IMAGE_QUALITY (padrao high) e tamanho 1536x1024", async () => {
+  resetOpenAiImageCircuit();
+  let receivedArgs: any;
+  const generate = async (args: any) => {
+    receivedArgs = args;
+    return { data: [{ b64_json: "slide-abc" }] };
+  };
+  const image = await generateFullSlideImage("titulo e corpo do slide", 0, 0, { generate });
+  assert.equal(image, "slide-abc");
+  assert.equal(receivedArgs.quality, "high");
+  assert.equal(receivedArgs.size, "1536x1024");
+  assert.ok(receivedArgs.prompt.includes("titulo e corpo do slide"));
+});
+
+test("generateFullSlideImage reaproveita o circuito de billing existente", async () => {
+  resetOpenAiImageCircuit();
+  let calls = 0;
+  let now = 10_000;
+  const generate = async () => {
+    calls += 1;
+    const error = new Error("400 Billing hard limit has been reached.");
+    Object.assign(error, { status: 400 });
+    throw error;
+  };
+  await assert.rejects(() => generateFullSlideImage("slide 1", 0, 0, { now: () => now, generate }));
+  now += 1_000;
+  await assert.rejects(
+    () => generateFullSlideImage("slide 2", 0, 0, { now: () => now, generate }),
+    /circuito/i,
+  );
+  assert.equal(calls, 1);
+  resetOpenAiImageCircuit();
 });
