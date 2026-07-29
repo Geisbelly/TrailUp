@@ -78,7 +78,27 @@ async function fileExists(uri: string) {
   return info.exists;
 }
 
-export async function cleanupUnusedCachedContent(staleMs = DEFAULT_STALE_MS) {
+// Toda leitura-modificacao-escrita do mapa de cache (um unico blob JSON sob
+// uma chave do AsyncStorage) precisa ser serializada: chamadas concorrentes
+// para cache keys DIFERENTES (ex.: prefetch de um PDF em segundo plano +
+// abertura de um audio visivel) cada uma le o mapa inteiro, muta sua propria
+// entrada e reescreve o mapa inteiro — sem serializacao, a escrita que
+// terminar por ultimo sobrescreve o mapa completo sem a entrada que a outra
+// chamada acabou de adicionar. O arquivo baixado por essa chamada perdida
+// fica orfao (nunca mais rastreado, nunca limpo) e o mesmo cacheKey e
+// baixado de novo toda vez que for solicitado, ja que o lookup no mapa falha.
+let cacheLock: Promise<unknown> = Promise.resolve();
+
+function withCacheLock<T>(fn: () => Promise<T>): Promise<T> {
+  const run = cacheLock.then(fn, fn);
+  cacheLock = run.then(
+    () => undefined,
+    () => undefined
+  );
+  return run;
+}
+
+async function cleanupUnusedCachedContentLocked(staleMs: number) {
   await ensureCacheDirectory();
 
   const now = Date.now();
@@ -102,45 +122,55 @@ export async function cleanupUnusedCachedContent(staleMs = DEFAULT_STALE_MS) {
   await writeCacheMap(nextRecords);
 }
 
+export async function cleanupUnusedCachedContent(staleMs = DEFAULT_STALE_MS) {
+  return withCacheLock(() => cleanupUnusedCachedContentLocked(staleMs));
+}
+
 export async function ensureCachedNativeContent(
   cacheKey: string,
   downloadUrl: string,
   options: EnsureCachedContentOptions = {}
 ): Promise<CachedNativeContentFile> {
-  await cleanupUnusedCachedContent(options.staleMs ?? DEFAULT_STALE_MS);
-  await ensureCacheDirectory();
+  return withCacheLock(async () => {
+    // Chama a versao sem lock proprio — cleanupUnusedCachedContent (exportada)
+    // ja adquire o lock, e chama-la aqui causaria deadlock (a fila so libera
+    // a proxima tarefa quando a atual termina, e esta tarefa esperaria por
+    // uma proxima tarefa que so comecaria depois dela mesma terminar).
+    await cleanupUnusedCachedContentLocked(options.staleMs ?? DEFAULT_STALE_MS);
+    await ensureCacheDirectory();
 
-  const id = hashString(cacheKey);
-  const extension = inferExtension(downloadUrl, options.extensionHint);
-  const localUri = `${CACHE_ROOT}${id}.${extension}`;
-  const records = await readCacheMap();
-  const existing = records[id];
-  const now = Date.now();
+    const id = hashString(cacheKey);
+    const extension = inferExtension(downloadUrl, options.extensionHint);
+    const localUri = `${CACHE_ROOT}${id}.${extension}`;
+    const records = await readCacheMap();
+    const existing = records[id];
+    const now = Date.now();
 
-  if (existing?.localUri && (await fileExists(existing.localUri))) {
-    const updatedRecord = {
-      ...existing,
+    if (existing?.localUri && (await fileExists(existing.localUri))) {
+      const updatedRecord = {
+        ...existing,
+        lastAccessedAt: now,
+      };
+
+      records[id] = updatedRecord;
+      await writeCacheMap(records);
+      return updatedRecord;
+    }
+
+    await FileSystem.deleteAsync(localUri, { idempotent: true });
+    await FileSystem.downloadAsync(downloadUrl, localUri);
+
+    const nextRecord: CacheRecord = {
+      cacheKey,
+      localUri,
+      extension,
       lastAccessedAt: now,
+      createdAt: now,
     };
 
-    records[id] = updatedRecord;
+    records[id] = nextRecord;
     await writeCacheMap(records);
-    return updatedRecord;
-  }
-
-  await FileSystem.deleteAsync(localUri, { idempotent: true });
-  await FileSystem.downloadAsync(downloadUrl, localUri);
-
-  const nextRecord: CacheRecord = {
-    cacheKey,
-    localUri,
-    extension,
-    lastAccessedAt: now,
-    createdAt: now,
-  };
-
-  records[id] = nextRecord;
-  await writeCacheMap(records);
-  return nextRecord;
+    return nextRecord;
+  });
 }
 
