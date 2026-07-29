@@ -291,6 +291,13 @@ export default function ClassManagementSection({ professorId }: Props) {
           conteudo_ids,
           reason: "matricula_aluno_console",
         });
+      } else {
+        // Matricula ja foi persistida acima; sem sessao valida so a
+        // geracao de personalizacao fica pendente — o professor precisa
+        // saber disso, senao o aluno fica sem material sem nenhum aviso.
+        toast.error(
+          "Aluno matriculado, mas a personalização não pôde ser agendada (sessão expirada). Atualize a página e tente novamente."
+        );
       }
       setClassStudents((prev) => ({ ...prev, [classId]: [...(prev[classId] || []), studentToAdId] }));
       setStudentToAddId("");
@@ -317,6 +324,10 @@ export default function ClassManagementSection({ professorId }: Props) {
           conteudo_ids,
           reason: "remocao_aluno_console",
         });
+      } else {
+        toast.error(
+          "Aluno removido, mas a limpeza de personalização não pôde ser agendada (sessão expirada)."
+        );
       }
       setClassStudents((prev) => ({ ...prev, [classId]: (prev[classId] || []).filter((id) => id !== alunoId) }));
       toast.success("Aluno removido.");
