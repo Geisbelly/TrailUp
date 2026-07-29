@@ -29,6 +29,9 @@ const SAFE_ZONE_INSTRUCTION =
 // O imagePrompt/iconPrompt (escrito pelo LLM) descreve a CENA/elemento; o
 // guardiao, a paleta e a atmosfera do perfil precisam ser reforcados aqui pra
 // imagem gerada realmente combinar com o guia/perfil.
+//
+// Duplicata intencional de buildImageStyleSuffix em server.ts — reconciliar
+// quando server.ts for revisitado (task de religacao, nao esta task).
 export function buildImageStyleSuffix(
   profile: BrainHexProfile,
   plan: PresentationDesignPlan,
@@ -88,6 +91,13 @@ export interface SlideAssetGeneratorOverrides {
   generateSlideIconWithFallback?: typeof generateSlideIconWithFallback;
 }
 
+/**
+ * Espelha, para um unico slide, a logica que generateSceneImages/
+ * generateSlideIcons (server.ts) fazem em lote para todos os slides — aqui e
+ * sob demanda, so quando o slide cheio falha. Se a politica de corte de
+ * custo dos icones mudar (breakar apos o primeiro vindo da contingencia
+ * OpenAI), atualize os dois lugares.
+ */
 async function generateOneLegacySlide(
   slide: FullSlideInput,
   styleSuffix: string,
@@ -148,8 +158,8 @@ export async function generateFullSlideImages(
   const renderMode: ("full-image" | "legacy")[] = [];
 
   for (let i = 0; i < slides.length; i++) {
-    const layout = presentationLayoutForSlide(plan, i, slides.length);
     try {
+      const layout = presentationLayoutForSlide(plan, i, slides.length);
       const prompt = buildFullSlidePrompt(slides[i], profile, plan, layout);
       const image = await doGenerateFull(prompt);
       imagem_referencia.push(image);
