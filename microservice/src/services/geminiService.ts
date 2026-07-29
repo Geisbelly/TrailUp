@@ -12,6 +12,7 @@ import {
   type PresentationDesignPlan,
 } from "../constants/presentationThemes";
 import { mapWithConcurrency } from "../lib/boundedConcurrency";
+import { resolveRealSlideOrder } from "../lib/pptxSlideOrder";
 import { addWavHeader } from "../lib/wav";
 import {
   generateStructuredContentWithFallback,
@@ -48,20 +49,32 @@ async function extractFromZip(arrayBuffer: ArrayBuffer, mediaPath: string): Prom
   const mediaFiles = Object.keys(zip.files)
     .filter(name => name.startsWith(mediaPath) && /\.(png|jpe?g|webp)$/i.test(name))
     .slice(0, MAX_EXTRACTED_MEDIA);
-  const slideFiles = Object.keys(zip.files)
-    .filter(name => name.startsWith("ppt/slides/slide") && name.endsWith(".xml"))
-    .slice(0, MAX_PPTX_SLIDES);
+  const allSlideFiles = Object.keys(zip.files)
+    .filter(name => name.startsWith("ppt/slides/slide") && name.endsWith(".xml"));
 
   const blocks: InternalBlock[] = [];
   const media: { data: string, mimeType: string, name: string }[] = [];
 
   // Extract Text (PPTX specific logic if slideFiles exist)
-  if (slideFiles.length > 0) {
-    slideFiles.sort((a, b) => {
-      const numA = parseInt(a.replace(/\D/g, ""));
-      const numB = parseInt(b.replace(/\D/g, ""));
-      return numA - numB;
-    });
+  if (allSlideFiles.length > 0) {
+    // Resolve a ordem real ANTES de cortar em MAX_PPTX_SLIDES — cortar antes
+    // manteria os primeiros 200 na ordem arbitraria de Object.keys() (ordem
+    // fisica do zip), nao os primeiros 200 slides de fato da apresentacao.
+    const orderedAllSlideFiles = await (async () => {
+      const presentationFile = zip.files["ppt/presentation.xml"];
+      const relsFile = zip.files["ppt/_rels/presentation.xml.rels"];
+      if (!presentationFile || !relsFile) return allSlideFiles;
+      try {
+        const [presentationXml, relsXml] = await Promise.all([
+          presentationFile.async("string"),
+          relsFile.async("string"),
+        ]);
+        return resolveRealSlideOrder(presentationXml, relsXml, allSlideFiles);
+      } catch {
+        return allSlideFiles;
+      }
+    })();
+    const slideFiles = orderedAllSlideFiles.slice(0, MAX_PPTX_SLIDES);
 
     for (const [index, slideFile] of slideFiles.entries()) {
       const content = await zip.files[slideFile].async("string");
