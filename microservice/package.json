@@ -10,7 +10,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
-    "test": "node --import tsx --import ./src/testSetup.ts --test src/lib/boundedConcurrency.test.ts src/lib/serialQueue.test.ts src/lib/textSanitize.test.ts src/lib/wav.test.ts src/lib/logger.test.ts src/lib/materialsMerge.test.ts src/lib/slideEnricher.test.ts src/lib/validators.test.ts src/lib/rateLimit.test.ts src/lib/dedupedTimeoutRunner.test.ts src/lib/slideAssetGenerator.test.ts src/lib/pptxSlideOrder.test.ts src/server.test.ts src/services/contentGenerationService.test.ts src/services/geminiBlockBatches.test.ts src/services/openaiImageService.test.ts src/services/slideIconService.test.ts src/services/pdfService.test.ts src/services/supabaseService.test.ts src/lib/slideTemplate.test.ts src/constants/guardianVoices.test.ts src/constants/presentationThemes.test.ts"
+    "test": "node --import tsx --import ./src/testSetup.ts --test src/lib/boundedConcurrency.test.ts src/lib/concurrencyGate.test.ts src/lib/serialQueue.test.ts src/lib/textSanitize.test.ts src/lib/wav.test.ts src/lib/logger.test.ts src/lib/materialsMerge.test.ts src/lib/slideEnricher.test.ts src/lib/validators.test.ts src/lib/rateLimit.test.ts src/lib/dedupedTimeoutRunner.test.ts src/lib/slideAssetGenerator.test.ts src/lib/pptxSlideOrder.test.ts src/server.test.ts src/services/contentGenerationService.test.ts src/services/geminiBlockBatches.test.ts src/services/openaiImageService.test.ts src/services/slideIconService.test.ts src/services/pdfService.test.ts src/services/supabaseService.test.ts src/lib/slideTemplate.test.ts src/constants/guardianVoices.test.ts src/constants/presentationThemes.test.ts"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",

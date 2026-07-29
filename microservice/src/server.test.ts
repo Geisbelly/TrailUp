@@ -469,6 +469,71 @@ describe("POST /api/personalizar validação", () => {
   });
 });
 
+// ─── POST /api/personalizar — limite de concorrencia ─────────────────────────
+
+describe("POST /api/personalizar concorrencia", () => {
+  it("nao roda mais que maxConcurrentPersonalizacaoJobs jobs ao mesmo tempo neste processo", { timeout: 10_000 }, async () => {
+    let active = 0;
+    let peak = 0;
+    const releases: Array<() => void> = [];
+    const { base, close } = await startTestServer({
+      maxConcurrentPersonalizacaoJobs: 1,
+      personalizacaoJobRunner: () => new Promise<void>((resolve) => {
+        active += 1;
+        peak = Math.max(peak, active);
+        releases.push(() => {
+          active -= 1;
+          resolve();
+        });
+      }),
+    });
+
+    const post = (personalizacaoId: number) =>
+      fetch(`${base}/api/personalizar`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          profile: "seeker",
+          personalizacao_id: personalizacaoId,
+          fontes: [],
+          content_blocks: [enrichedContentBlock()],
+          ciclo_id: `ciclo-${personalizacaoId}`,
+          source_hash: `hash-${personalizacaoId}`,
+          generation_key: `ciclo-${personalizacaoId}:hash-${personalizacaoId}`,
+          wait_for_completion: true,
+        }),
+      });
+
+    let requests: Promise<Response>[] = [];
+    try {
+      requests = [post(1), post(2), post(3)];
+      // Da tempo das 3 requisicoes chegarem na rota antes de liberar qualquer job.
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      assert.equal(active, 1);
+      assert.equal(peak, 1);
+
+      releases.shift()!();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      assert.equal(active, 1);
+      assert.equal(peak, 1);
+
+      releases.shift()!();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      releases.shift()!();
+
+      const responses = await Promise.all(requests);
+      for (const res of responses) assert.equal(res.status, 200);
+      assert.equal(peak, 1);
+    } finally {
+      // Garante que nenhuma requisicao fique presa esperando o runner mockado
+      // (senao server.close() nunca resolve, mesmo com a falha ja reportada).
+      while (releases.length) releases.shift()!();
+      await Promise.allSettled(requests);
+      await close();
+    }
+  });
+});
+
 describe("diagnostico da apresentacao", () => {
   it("classifica falha de render e nao tenta upload", async () => {
     let uploadCalls = 0;

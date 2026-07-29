@@ -43,6 +43,7 @@ import { validatePersonalizarBody } from "./src/lib/validators";
 import type { ContentBlock } from "./src/lib/validators";
 import { createRateLimiter } from "./src/lib/rateLimit";
 import { createDedupedTimeoutRunner } from "./src/lib/dedupedTimeoutRunner";
+import { createConcurrencyGate } from "./src/lib/concurrencyGate";
 import {
   CONTENT_ENRICHMENT_PROVIDER,
   MEDIA_PIPELINE_VERSION,
@@ -722,6 +723,14 @@ export interface AppOptions {
   presentationRendererReadiness?: () => Promise<PresentationRendererReadiness>;
   renderGitCommit?:       string | null;
   /**
+   * Teto de jobs de /api/personalizar rodando ao mesmo tempo neste processo
+   * (geracao de imagem full-slide + Puppeteer sao pesados o suficiente pra
+   * derrubar o processo por memoria se varios decks forem gerados juntos —
+   * ja causou crash-loop em producao). Excesso fica na fila (FIFO) do gate,
+   * nao é rejeitado.
+   */
+  maxConcurrentPersonalizacaoJobs?: number;
+  /**
    * Quando true, o 404 catch-all não é registrado aqui — o middleware da SPA
    * (Vite em dev / dist em prod) é montado depois, em startServer (async).
    */
@@ -740,7 +749,10 @@ export function buildApp(opts: AppOptions = {}): express.Application {
     presentationRendererReadiness = getPresentationRendererReadiness,
     renderGitCommit = getRenderGitCommit(),
     enableSpa           = false,
+    maxConcurrentPersonalizacaoJobs = Number(process.env.PERSONALIZACAO_MAX_CONCURRENT_JOBS) || 2,
   } = opts;
+
+  const personalizacaoJobGate = createConcurrencyGate(maxConcurrentPersonalizacaoJobs);
 
   const corsOpts = corsOrigin
     ? { origin: corsOrigin.split(",").map((o) => o.trim()) }
@@ -1119,7 +1131,7 @@ export function buildApp(opts: AppOptions = {}): express.Application {
 
     if (waitForCompletion) {
       try {
-        await executeJob();
+        await personalizacaoJobGate.run(executeJob);
         return res.status(200).json({
           status: "completed",
           personalizacao_id: personalizacaoId,
@@ -1146,7 +1158,7 @@ export function buildApp(opts: AppOptions = {}): express.Application {
       content_enrichment_provider: CONTENT_ENRICHMENT_PROVIDER,
     });
     setImmediate(() => {
-      void executeJob().catch(() => undefined);
+      void personalizacaoJobGate.run(executeJob).catch(() => undefined);
     });
   });
 
