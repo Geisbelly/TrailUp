@@ -28,6 +28,7 @@ import StudentTrailVisualization from "./StudentTrailVisualization";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { createRequestGuard, type RequestToken } from "@/lib/requestGuard";
+import { computeTurmaResumo } from "@/lib/turmaResumo";
 import {
   Bar,
   BarChart,
@@ -536,47 +537,10 @@ export default function DashboardSection() {
     () => distribuicaoMetricas.filter((row) => classScopeIds.includes(Number(row.classe_id))),
     [classScopeIds, distribuicaoMetricas]
   );
-  const turmaResumo = useMemo(() => {
-    if (!turmaMetricasEscopo.length) {
-      return {
-        taxa_media_abandono_pct: 0,
-        taxa_media_conclusao_pct: 0,
-        media_nota_turma: 0,
-        taxa_media_acertos_pct: 0,
-        tempo_medio_uso_seg: 0,
-        uso_chat_apos_erro_pct: 0,
-      };
-    }
-    const sum = turmaMetricasEscopo.reduce(
-      (acc, row) => ({
-        taxa_media_abandono_pct: acc.taxa_media_abandono_pct + Number(row.taxa_media_abandono_pct ?? 0),
-        taxa_media_conclusao_pct:
-          acc.taxa_media_conclusao_pct + Number(row.taxa_media_conclusao_pct ?? 0),
-        media_nota_turma: acc.media_nota_turma + Number(row.media_nota_turma ?? 0),
-        taxa_media_acertos_pct: acc.taxa_media_acertos_pct + Number(row.taxa_media_acertos_pct ?? 0),
-        tempo_medio_uso_seg: acc.tempo_medio_uso_seg + Number(row.tempo_medio_uso_seg ?? 0),
-        uso_chat_apos_erro_pct:
-          acc.uso_chat_apos_erro_pct + Number(row.uso_chat_apos_erro_pct ?? 0),
-      }),
-      {
-        taxa_media_abandono_pct: 0,
-        taxa_media_conclusao_pct: 0,
-        media_nota_turma: 0,
-        taxa_media_acertos_pct: 0,
-        tempo_medio_uso_seg: 0,
-        uso_chat_apos_erro_pct: 0,
-      }
-    );
-    const total = turmaMetricasEscopo.length;
-    return {
-      taxa_media_abandono_pct: sum.taxa_media_abandono_pct / total,
-      taxa_media_conclusao_pct: sum.taxa_media_conclusao_pct / total,
-      media_nota_turma: sum.media_nota_turma / total,
-      taxa_media_acertos_pct: sum.taxa_media_acertos_pct / total,
-      tempo_medio_uso_seg: sum.tempo_medio_uso_seg / total,
-      uso_chat_apos_erro_pct: sum.uso_chat_apos_erro_pct / total,
-    };
-  }, [turmaMetricasEscopo]);
+  const turmaResumo = useMemo(
+    () => computeTurmaResumo(turmaMetricasEscopo),
+    [turmaMetricasEscopo]
+  );
   const abandonoPorPerfilData = useMemo(
     () =>
       perfilMetricasEscopo
