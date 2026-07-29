@@ -505,6 +505,15 @@ def _bounded_float(value: Any, default: float, minimum: float, maximum: float) -
     return min(maximum, max(minimum, parsed))
 
 
+def _supports_reasoning_effort(model: str) -> bool:
+    """gpt-4o-mini (e a familia gpt-4o/gpt-4.1 em geral) rejeita o parametro
+    reasoning.effort com 400 — so os modelos de raciocinio (o-series, gpt-5.x)
+    aceitam. gpt-5.4-mini era o default anterior (aceitava); gpt-4o-mini e o
+    novo default (nao aceita) — sem essa checagem, toda chamada quebraria."""
+    normalized = model.strip().lower()
+    return normalized.startswith("o1") or normalized.startswith("o3") or normalized.startswith("gpt-5")
+
+
 async def _generate_openai_batch(
     *,
     client: AsyncOpenAI,
@@ -541,14 +550,17 @@ async def _generate_openai_batch(
         f"BLOCOS-BASE:\n{json.dumps(blocks, ensure_ascii=False, indent=2)}"
         f"{correction}"
     )
+    reasoning_kwargs = (
+        {"reasoning": {"effort": "medium"}} if _supports_reasoning_effort(model) else {}
+    )
     try:
         response = await client.responses.create(
             model=model,
             instructions=_ENRICHMENT_INSTRUCTIONS,
             input=input_text,
             max_output_tokens=max_output_tokens,
-            reasoning={"effort": "medium"},
             store=False,
+            **reasoning_kwargs,
             text={
                 "verbosity": "high",
                 "format": {
