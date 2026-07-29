@@ -23,6 +23,7 @@ type OpenAiImageGenerateResult = { data?: Array<{ b64_json?: string }> };
 export interface OpenAiImageOverrides {
   now?: () => number;
   generate?: (args: OpenAiImageGenerateArgs) => Promise<OpenAiImageGenerateResult>;
+  quality?: OpenAiImageGenerateArgs["quality"];
 }
 
 const DEFAULT_OPENAI_IMAGE_COOLDOWN_MS = 30 * 60 * 1_000;
@@ -68,6 +69,7 @@ async function generateImageBase64(params: {
   attempt: number;
   now?: () => number;
   generate?: (args: OpenAiImageGenerateArgs) => Promise<OpenAiImageGenerateResult>;
+  quality?: OpenAiImageGenerateArgs["quality"];
 }): Promise<string> {
   const now = params.now ?? Date.now;
   if (now() < openaiImageUnavailableUntil) {
@@ -78,7 +80,8 @@ async function generateImageBase64(params: {
   }
 
   const generate = params.generate ?? ((args) => getOpenAi().images.generate(args));
-  const quality = (String(process.env.OPENAI_IMAGE_QUALITY ?? "").trim() || "medium") as OpenAiImageGenerateArgs["quality"];
+  const quality = params.quality
+    ?? (String(process.env.OPENAI_IMAGE_QUALITY ?? "").trim() || "medium") as OpenAiImageGenerateArgs["quality"];
 
   try {
     const response = await generate({

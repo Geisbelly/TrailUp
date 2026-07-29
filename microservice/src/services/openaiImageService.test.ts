@@ -66,3 +66,21 @@ test("gera icone via OpenAI usando OPENAI_IMAGE_QUALITY (padrao medium)", async 
   assert.equal(image, "abc");
   assert.equal(receivedQuality, "medium");
 });
+
+test("override de quality por chamada tem precedencia sobre OPENAI_IMAGE_QUALITY", async () => {
+  resetOpenAiImageCircuit();
+  const original = process.env.OPENAI_IMAGE_QUALITY;
+  process.env.OPENAI_IMAGE_QUALITY = "low";
+  try {
+    let receivedQuality: unknown;
+    const generate = async (args: { quality?: string }) => {
+      receivedQuality = args.quality;
+      return { data: [{ b64_json: "abc" }] };
+    };
+    await generateDecorativeIconImage("icone", 0, 0, { generate, quality: "high" });
+    assert.equal(receivedQuality, "high");
+  } finally {
+    if (original !== undefined) process.env.OPENAI_IMAGE_QUALITY = original;
+    else delete process.env.OPENAI_IMAGE_QUALITY;
+  }
+});
