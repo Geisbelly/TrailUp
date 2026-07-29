@@ -27,6 +27,20 @@ export function usePersonalizationRefresh(args: {
   const analysisRefreshBaselineRef = useRef<string | null>(null);
   const analysisRefreshAppliedRef = useRef<Set<string>>(new Set());
 
+  // `personalizedTopic`/`topico` mudam de referencia como CONSEQUENCIA do
+  // proprio ensureTopicoPersonalizado em andamento (setPersonalizedTopics no
+  // TrilhaContext roda antes da promise resolver). Isso reexecuta o efeito
+  // abaixo e o React roda o cleanup antigo antes do .finally() original
+  // disparar — um `ativo` local ficaria false e o spinner travaria ligado
+  // para sempre. So o desmonte real do componente deve invalidar a chamada.
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   useEffect(() => {
     latestAnalysisCycleIdRef.current = lastAnalysis?.ciclo_id ?? null;
   }, [lastAnalysis?.ciclo_id]);
@@ -58,7 +72,6 @@ export function usePersonalizationRefresh(args: {
     if (analysisRefreshAppliedRef.current.has(refreshKey)) return;
     analysisRefreshAppliedRef.current.add(refreshKey);
 
-    let ativo = true;
     setPersonalizacaoCarregando(true);
 
     ensureTopicoPersonalizado(topicoId, {
@@ -69,11 +82,7 @@ export function usePersonalizationRefresh(args: {
         console.warn("[TrilhaConteudo] Falha ao atualizar personalizacao apos analise:", err);
       })
       .finally(() => {
-        if (ativo) setPersonalizacaoCarregando(false);
+        if (isMountedRef.current) setPersonalizacaoCarregando(false);
       });
-
-    return () => {
-      ativo = false;
-    };
   }, [ensureTopicoPersonalizado, lastAnalysis, personalizedTopic, setPersonalizacaoCarregando, topico, topicoId]);
 }

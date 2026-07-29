@@ -1305,6 +1305,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
 
     const channel = personalizacaoProvider.subscribePersonalizacoesPersistidasClasse({
       classeId: classeAtual.classe_id,
+      alunoId: usuario.id,
       onChange: () => {
         personalizationHydratedClassRef.current = null
         void hydratePersonalizedTopics()

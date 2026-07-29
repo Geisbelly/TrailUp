@@ -125,5 +125,6 @@ export type ListarJobsParams = {
 
 export type SubscribePersonalizacoesClasseParams = {
   classeId: number;
+  alunoId: string;
   onChange: () => void;
 };

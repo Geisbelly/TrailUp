@@ -1,4 +1,8 @@
-import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
+import type {
+  RealtimeChannel,
+  RealtimePostgresChangesPayload,
+  SupabaseClient,
+} from "@supabase/supabase-js";
 
 import { supabase } from "@/database/supabase";
 import {
@@ -789,7 +793,23 @@ export class TrailupApiProvider implements IPersonalizacaoProvider {
         table: "conteudo_personalizado",
         filter: `classe_id=eq.${params.classeId}`,
       },
-      () => params.onChange()
+      (payload: RealtimePostgresChangesPayload<{ aluno_id?: string }>) => {
+        // O filtro do canal so restringe por classe_id — sem isso, qualquer
+        // mudanca em conteudo_personalizado de QUALQUER aluno da turma
+        // dispara hydratePersonalizedTopics() para todos os alunos
+        // conectados, recriando objetos e causando trabalho/re-render
+        // desnecessarios (e amplificando o bug de spinner travado quando
+        // acontece durante um refresh proprio em andamento).
+        const newAlunoId = "aluno_id" in payload.new ? payload.new.aluno_id : undefined;
+        const oldAlunoId = "aluno_id" in payload.old ? payload.old.aluno_id : undefined;
+        // Sem REPLICA IDENTITY FULL na tabela, DELETE nao traz aluno_id em
+        // `old` — nesse caso preferimos notificar (falso positivo raro) a
+        // perder silenciosamente um evento relevante (falso negativo).
+        const isDeleteWithoutIdentity = payload.eventType === "DELETE" && oldAlunoId === undefined;
+        if (isDeleteWithoutIdentity || newAlunoId === params.alunoId || oldAlunoId === params.alunoId) {
+          params.onChange();
+        }
+      }
     );
     return channel.subscribe();
   }

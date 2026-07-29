@@ -228,6 +228,20 @@ export default function TrilhaConteudoScreen() {
   const autoViewedContentRef = useRef<string | null>(null);
   const moduleSessionStartedAtRef = useRef<number | null>(null);
 
+  // `personalizedTopic`/`topico` mudam de referencia como CONSEQUENCIA do
+  // proprio ensureTopicoPersonalizado em andamento (setPersonalizedTopics no
+  // TrilhaContext roda antes da promise resolver). Um `ativo` local preso ao
+  // cleanup do efeito seria invalidado por esse reexecucao antes do
+  // .finally() original disparar, travando o spinner ligado para sempre. So
+  // o desmonte real do componente deve invalidar a chamada.
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   const modo = useMemo(
     () =>
       inferModoApresentacao({
@@ -275,7 +289,6 @@ export default function TrilhaConteudoScreen() {
   useEffect(() => {
     if (!topicoId || !topico || personalizedTopic) return;
 
-    let ativo = true;
     setPersonalizacaoCarregando(true);
 
     ensureTopicoPersonalizado(topicoId)
@@ -283,12 +296,8 @@ export default function TrilhaConteudoScreen() {
         console.warn("[TrilhaConteudo] Falha ao carregar personalização:", err);
       })
       .finally(() => {
-        if (ativo) setPersonalizacaoCarregando(false);
+        if (isMountedRef.current) setPersonalizacaoCarregando(false);
       });
-
-    return () => {
-      ativo = false;
-    };
   }, [ensureTopicoPersonalizado, personalizedTopic, topico, topicoId]);
 
   usePersonalizationRefresh({
@@ -312,6 +321,15 @@ export default function TrilhaConteudoScreen() {
     Record<number, AtividadeResolvida>
   >({});
   const [pulouConteudos, setPulouConteudos] = useState(false);
+
+  // So reseta "pulou trilha" quando o TOPICO muda, nao a cada vez que
+  // conteudos/atividades trocam de referencia (ex.: um refresh de
+  // personalizacao em segundo plano, ate de outro aluno da turma via
+  // realtime) — senao a escolha do aluno de pular seria desfeita sem aviso.
+  useEffect(() => {
+    setPulouConteudos(false);
+  }, [topicoId]);
+
   const [activityTimeoutMap, setActivityTimeoutMap] = useState<Record<number, boolean>>({});
   const [modalProximos, setModalProximos] = useState<{ visivel: boolean; opcoes: any[] }>({
     visivel: false,
@@ -451,8 +469,6 @@ export default function TrilhaConteudoScreen() {
       });
       return next;
     });
-
-    setPulouConteudos(false);
   }, [conteudos, atividades, topicoId]);
 
   useEffect(() => {
