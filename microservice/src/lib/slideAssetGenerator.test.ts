@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildFullSlidePrompt, buildImageStyleSuffix } from "./slideAssetGenerator";
+import { buildFullSlidePrompt, buildImageStyleSuffix, generateFullSlideImages } from "./slideAssetGenerator";
 import { buildPresentationDesignPlan } from "../constants/presentationThemes";
 
 const PLAN = buildPresentationDesignPlan("seeker", undefined, "Civilização Maia");
@@ -40,4 +40,70 @@ test("buildFullSlidePrompt funciona sem topicos/explicacao (campos opcionais)", 
   );
   assert.ok(prompt.includes("Slide simples"));
   assert.ok(prompt.includes("cena qualquer"));
+});
+
+test("todos os slides geram com sucesso via imagem cheia", async () => {
+  const slides = [
+    { titulo: "Slide 1", imagePrompt: "cena 1" },
+    { titulo: "Slide 2", imagePrompt: "cena 2" },
+  ];
+  const result = await generateFullSlideImages(slides, "seeker", PLAN, {
+    generateFullSlideImage: async (prompt) => `full-${prompt.length}`,
+  });
+  assert.deepEqual(result.renderMode, ["full-image", "full-image"]);
+  assert.equal(result.icones[0].length, 0);
+  assert.equal(result.icones[1].length, 0);
+  assert.equal(result.imagem_referencia.length, 2);
+});
+
+test("slide cheio falha e cai para o pipeline legacy so naquele indice", async () => {
+  const slides = [
+    { titulo: "Slide 1", imagePrompt: "cena 1", iconPrompts: ["icone 1"] },
+    { titulo: "Slide 2", imagePrompt: "cena 2", iconPrompts: ["icone 2"] },
+  ];
+  let fullCalls = 0;
+  const result = await generateFullSlideImages(slides, "seeker", PLAN, {
+    generateFullSlideImage: async () => {
+      fullCalls += 1;
+      if (fullCalls === 1) throw new Error("erro qualquer");
+      return "full-ok";
+    },
+    generateSceneImage: async () => "legacy-scene",
+    generateSlideIconWithFallback: async () => ({ image: "legacy-icon", provider: "gemini" as const }),
+  });
+  assert.deepEqual(result.renderMode, ["legacy", "full-image"]);
+  assert.equal(result.imagem_referencia[0], "legacy-scene");
+  assert.deepEqual(result.icones[0], ["legacy-icon"]);
+  assert.equal(result.imagem_referencia[1], "full-ok");
+});
+
+test("fallback legacy nao lanca excecao mesmo se cena e icone tambem falharem", async () => {
+  const slides = [{ titulo: "Slide 1", imagePrompt: "cena 1", iconPrompts: ["icone 1"] }];
+  const result = await generateFullSlideImages(slides, "seeker", PLAN, {
+    generateFullSlideImage: async () => { throw new Error("full falhou"); },
+    generateSceneImage: async () => { throw new Error("cena falhou"); },
+    generateSlideIconWithFallback: async () => { throw new Error("icone falhou"); },
+  });
+  assert.equal(result.renderMode[0], "legacy");
+  assert.equal(result.imagem_referencia[0], "");
+  assert.deepEqual(result.icones[0], [""]);
+});
+
+test("fallback legacy interrompe icones apos o primeiro vir da contingencia OpenAI", async () => {
+  const slides = [{
+    titulo: "Slide 1",
+    imagePrompt: "cena 1",
+    iconPrompts: ["icone 1", "icone 2", "icone 3"],
+  }];
+  let iconCalls = 0;
+  const result = await generateFullSlideImages(slides, "seeker", PLAN, {
+    generateFullSlideImage: async () => { throw new Error("full falhou"); },
+    generateSceneImage: async () => "legacy-scene",
+    generateSlideIconWithFallback: async () => {
+      iconCalls += 1;
+      return { image: `icon-${iconCalls}`, provider: "openai" as const };
+    },
+  });
+  assert.equal(iconCalls, 1);
+  assert.deepEqual(result.icones[0], ["icon-1"]);
 });

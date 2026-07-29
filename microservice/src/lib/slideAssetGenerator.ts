@@ -4,10 +4,17 @@ import {
 } from "../constants/brainHex";
 import {
   presentationImageDirection,
+  presentationLayoutForSlide,
   type PresentationDesignPlan,
   type PresentationLayout,
 } from "../constants/presentationThemes";
 import type { SlideForTemplate } from "./slideTemplate";
+import {
+  generateFullSlideImage,
+  generateSceneImage,
+} from "../services/openaiImageService";
+import { generateSlideIconWithFallback } from "../services/slideIconService";
+import { createLogger } from "./logger";
 
 export interface FullSlideInput extends SlideForTemplate {
   imagePrompt: string;
@@ -65,4 +72,105 @@ export function buildFullSlidePrompt(
     + (explanation ? `Texto de apoio: "${explanation}". ` : "")
     + `${slide.imagePrompt}${styleSuffix}. ${SAFE_ZONE_INSTRUCTION}`
   );
+}
+
+const log = createLogger({ ctx: "brainhex" });
+
+export interface SlideAssets {
+  imagem_referencia: string[];
+  icones: string[][];
+  renderMode: ("full-image" | "legacy")[];
+}
+
+export interface SlideAssetGeneratorOverrides {
+  generateFullSlideImage?: typeof generateFullSlideImage;
+  generateSceneImage?: typeof generateSceneImage;
+  generateSlideIconWithFallback?: typeof generateSlideIconWithFallback;
+}
+
+async function generateOneLegacySlide(
+  slide: FullSlideInput,
+  styleSuffix: string,
+  plan: PresentationDesignPlan,
+  index: number,
+  total: number,
+  doGenerateScene: typeof generateSceneImage,
+  doGenerateIcon: typeof generateSlideIconWithFallback,
+): Promise<{ scene: string; icons: string[] }> {
+  let scene = "";
+  try {
+    const layout = presentationLayoutForSlide(plan, index, total);
+    const prompt = (
+      `${slide.imagePrompt}${styleSuffix}. `
+      + `A composição será usada em um slide editorial do tipo ${layout}; `
+      + "preserve áreas de respiro e contraste para títulos e cartões."
+    );
+    scene = (await doGenerateScene(prompt)) ?? "";
+  } catch (e) {
+    log.error("cena de fundo falhou (openai)", { slide: index, err: e });
+  }
+
+  const icons: string[] = [];
+  for (const iconPrompt of slide.iconPrompts ?? []) {
+    try {
+      const generated = await doGenerateIcon(`${iconPrompt}${styleSuffix}`);
+      icons.push(generated.image ?? "");
+      // A contingência de imagem OpenAI é mais cara e já existe uma cena
+      // OpenAI por slide. Um ícone de contingência por slide preserva o
+      // acabamento sem multiplicar custo quando a cota Gemini está zerada.
+      if (generated.provider === "openai") break;
+    } catch (e) {
+      log.error("icone falhou nos dois provedores", { slide: index, err: e });
+      icons.push("");
+    }
+  }
+  return { scene, icons };
+}
+
+/**
+ * Gera, para cada slide, uma unica imagem com titulo+corpo+visual embutidos
+ * (gpt-image-1). Quando falha, cai para o pipeline legacy (cena + icones) so
+ * para aquele slide — o deck sempre sai completo, misto se necessario.
+ */
+export async function generateFullSlideImages(
+  slides: FullSlideInput[],
+  profile: BrainHexProfile,
+  plan: PresentationDesignPlan,
+  overrides: SlideAssetGeneratorOverrides = {},
+): Promise<SlideAssets> {
+  const doGenerateFull = overrides.generateFullSlideImage ?? generateFullSlideImage;
+  const doGenerateScene = overrides.generateSceneImage ?? generateSceneImage;
+  const doGenerateIcon = overrides.generateSlideIconWithFallback ?? generateSlideIconWithFallback;
+  const styleSuffix = buildImageStyleSuffix(profile, plan);
+
+  const imagem_referencia: string[] = [];
+  const icones: string[][] = [];
+  const renderMode: ("full-image" | "legacy")[] = [];
+
+  for (let i = 0; i < slides.length; i++) {
+    const layout = presentationLayoutForSlide(plan, i, slides.length);
+    try {
+      const prompt = buildFullSlidePrompt(slides[i], profile, plan, layout);
+      const image = await doGenerateFull(prompt);
+      imagem_referencia.push(image);
+      icones.push([]);
+      renderMode.push("full-image");
+    } catch (e) {
+      log.warn("slide cheio falhou, caindo pro pipeline legacy", { slide: i, err: e });
+      const legacy = await generateOneLegacySlide(
+        slides[i],
+        styleSuffix,
+        plan,
+        i,
+        slides.length,
+        doGenerateScene,
+        doGenerateIcon,
+      );
+      imagem_referencia.push(legacy.scene);
+      icones.push(legacy.icons);
+      renderMode.push("legacy");
+    }
+  }
+
+  return { imagem_referencia, icones, renderMode };
 }
