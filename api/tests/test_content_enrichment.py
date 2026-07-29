@@ -477,6 +477,33 @@ async def test_openai_fallback_used_when_gemini_fails_and_openai_configured(
         "brainhex_personalization",
     ]
     assert len(captured["calls"]) == len(result["blocos"])
+    # gpt-4o-mini rejeita reasoning.effort com 400 — regressao real que
+    # aconteceu em producao ao trocar o default de gpt-5.4-mini pra gpt-4o-mini.
+    assert "reasoning" not in captured["calls"][0]
+
+
+@pytest.mark.asyncio
+async def test_openai_inclui_reasoning_effort_so_para_modelos_de_raciocinio(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        enrichment_module,
+        "_gemini_client",
+        _failing_gemini_factory("Gemini fora do ar"),
+    )
+    captured: dict[str, Any] = {}
+    monkeypatch.setattr(
+        enrichment_module,
+        "_openai_client",
+        _openai_factory(_rich_response, captured),
+    )
+
+    await enrich_content_blocks(
+        context=_context(),
+        settings=_settings_with_openai(openai_content_enrichment_model="gpt-5.4-mini"),
+    )
+
+    assert captured["calls"][0]["reasoning"] == {"effort": "medium"}
 
 
 @pytest.mark.asyncio

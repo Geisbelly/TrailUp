@@ -12,6 +12,17 @@ const DEFAULT_GEMINI_UNAVAILABLE_COOLDOWN_MS = 5 * 60 * 1_000;
 const DEFAULT_OPENAI_MAX_OUTPUT_TOKENS = 16_384;
 const DEFAULT_OPENAI_QUALITY_MAX_ATTEMPTS = 3;
 
+/**
+ * gpt-4o-mini (e a familia gpt-4o/gpt-4.1 em geral) rejeita o parametro
+ * reasoning.effort com 400 — so os modelos de raciocinio (o-series, gpt-5.x)
+ * aceitam. gpt-5.4-mini era o default anterior (aceitava); gpt-4o-mini e o
+ * novo default (nao aceita) — sem essa checagem, toda chamada quebraria.
+ */
+export function supportsReasoningEffort(model: string): boolean {
+  const normalized = model.trim().toLowerCase();
+  return /^(o1|o3|gpt-5)/.test(normalized);
+}
+
 export type ContentGenerationProvider = "gemini" | "openai";
 
 export interface StructuredContentGenerationCall {
@@ -230,7 +241,7 @@ async function generateStructuredWithOpenAI(
     instructions: call.instructions,
     input: call.input,
     max_output_tokens: maxOutputTokens,
-    reasoning: { effort: "medium" },
+    ...(supportsReasoningEffort(call.openaiModel) ? { reasoning: { effort: "medium" as const } } : {}),
     store: false,
     text: {
       verbosity: "high",

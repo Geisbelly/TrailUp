@@ -7,8 +7,22 @@ import {
   resetGeminiContentGenerationCircuit,
   resolveGeminiContentGenerationModel,
   resolveOpenAIContentGenerationFallbackModel,
+  supportsReasoningEffort,
   type StructuredContentGenerationCall,
 } from "./contentGenerationService";
+
+test("supportsReasoningEffort: gpt-4o-mini (e familia gpt-4o/gpt-4.1) rejeita reasoning.effort", () => {
+  assert.equal(supportsReasoningEffort("gpt-4o-mini"), false);
+  assert.equal(supportsReasoningEffort("gpt-4o"), false);
+  assert.equal(supportsReasoningEffort("gpt-4.1-mini"), false);
+});
+
+test("supportsReasoningEffort: modelos de raciocinio (o-series, gpt-5.x) aceitam reasoning.effort", () => {
+  assert.equal(supportsReasoningEffort("gpt-5.4-mini"), true);
+  assert.equal(supportsReasoningEffort("gpt-5.6-sol"), true);
+  assert.equal(supportsReasoningEffort("o3"), true);
+  assert.equal(supportsReasoningEffort("O1-preview"), true);
+});
 
 const call: StructuredContentGenerationCall = {
   instructions: "Gere conteúdo pedagógico completo.",
