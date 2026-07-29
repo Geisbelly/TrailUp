@@ -3,6 +3,9 @@
 //  - imagem_referencia como data URL (apenas se houver imagem para o índice)
 //  - icones como array de data URLs (cena de fundo é OpenAI, ícones são Gemini —
 //    ver generateSlideAssets em server.ts; aqui só empacota o que já foi gerado)
+//  - renderMode: "full-image" quando o slide inteiro veio de uma unica imagem
+//    (ver generateFullSlideImages em slideAssetGenerator.ts), "legacy" (default)
+//    quando veio do pipeline cena+icone+HTML de sempre.
 
 export interface SlideLike {
   title?:               string;
@@ -13,8 +16,14 @@ export interface SlideLike {
 export function enrichSlidesWithImages<T extends SlideLike>(
   slides: T[],
   images: string[],
-  iconImagesPerSlide: string[][] = []
-): (T & { titulo: string; imagem_referencia?: string; icones: string[] })[] {
+  iconImagesPerSlide: string[][] = [],
+  renderModes: ("full-image" | "legacy")[] = [],
+): (T & {
+  titulo: string;
+  imagem_referencia?: string;
+  icones: string[];
+  renderMode: "full-image" | "legacy";
+})[] {
   return slides.map((s, i) => {
     const img = i < images.length ? images[i] : "";
     const icons = (i < iconImagesPerSlide.length ? iconImagesPerSlide[i] : [])
@@ -25,6 +34,7 @@ export function enrichSlidesWithImages<T extends SlideLike>(
       titulo: s.title ?? s.titulo ?? "",
       ...(img ? { imagem_referencia: `data:image/png;base64,${img}` } : {}),
       icones: icons,
+      renderMode: renderModes[i] ?? "legacy",
     };
   });
 }
