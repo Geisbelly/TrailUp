@@ -13,25 +13,44 @@ from app.services.content_enrichment import (
 )
 
 
+def _reset_circuits() -> None:
+    enrichment_module.reset_openai_enrichment_circuit()
+    enrichment_module.reset_gemini_enrichment_circuit()
+    enrichment_module.reset_openai_spend_guard()
+
+
+@pytest.fixture(autouse=True)
+def _clean_circuits():
+    _reset_circuits()
+    yield
+    _reset_circuits()
+
+
 def _settings(**overrides: Any) -> SimpleNamespace:
+    # Gemini e o provedor PRINCIPAL (gratuito no tier atual) — configurado por
+    # padrao em todo teste. OpenAI so entra quando o teste adiciona
+    # openai_api_key explicitamente (via _settings_with_openai).
     base = dict(
-        openai_api_key="openai-secret",
-        openai_content_enrichment_model="gpt-5.4-mini",
+        gemini_api_key="gemini-secret",
+        content_enrichment_gemini_model="gemini-3.6-flash",
+        content_enrichment_gemini_quota_cooldown_sec=300,
         content_enrichment_batch_size=8,
         content_enrichment_max_attempts=3,
-        openai_content_enrichment_max_output_tokens=32768,
     )
     base.update(overrides)
     return SimpleNamespace(**base)
 
 
-def _settings_with_gemini(**overrides: Any) -> SimpleNamespace:
-    return _settings(
-        gemini_api_key="gemini-secret",
-        content_enrichment_gemini_model="gemini-2.5-flash",
-        content_enrichment_gemini_quota_cooldown_sec=300,
-        **overrides,
+def _settings_with_openai(**overrides: Any) -> SimpleNamespace:
+    base = dict(
+        openai_api_key="openai-secret",
+        openai_content_enrichment_model="gpt-4o-mini",
+        openai_content_enrichment_max_output_tokens=32768,
+        content_enrichment_quota_cooldown_sec=300,
+        openai_spend_cap_usd=1.0,
     )
+    base.update(overrides)
+    return _settings(**base)
 
 
 def _context(*, paragraphs: int = 2) -> dict[str, Any]:
@@ -54,35 +73,6 @@ def _context(*, paragraphs: int = 2) -> dict[str, Any]:
         },
         "fontes_contexto": [],
     }
-
-
-class _OpenAIResponse:
-    def __init__(self, payload: Any) -> None:
-        self.output_text = json.dumps(payload, ensure_ascii=False)
-        self.model = "gpt-5.4-mini"
-
-
-class _Responses:
-    def __init__(self, response_factory: Any, captured: dict[str, Any]) -> None:
-        self._response_factory = response_factory
-        self._captured = captured
-
-    async def create(self, **kwargs: Any) -> _OpenAIResponse:
-        input_text = str(kwargs["input"])
-        blocks_json = input_text.split("BLOCOS-BASE:\n", 1)[1].split(
-            "\n\nCORREÇÕES OBRIGATÓRIAS",
-            1,
-        )[0]
-        payload = {"blocos_base": json.loads(blocks_json)}
-        self._captured.setdefault("calls", []).append(kwargs)
-        self._captured.setdefault("payloads", []).append(payload)
-        self._captured["payload"] = payload
-        return _OpenAIResponse(self._response_factory(payload))
-
-
-class _Client:
-    def __init__(self, response_factory: Any, captured: dict[str, Any]) -> None:
-        self.responses = _Responses(response_factory, captured)
 
 
 def _rich_response(payload: dict[str, Any]) -> dict[str, Any]:
@@ -112,6 +102,145 @@ def _rich_response(payload: dict[str, Any]) -> dict[str, Any]:
     return {"blocos": blocks}
 
 
+def _extract_blocks_payload(input_text: str) -> dict[str, Any]:
+    blocks_json = input_text.split("BLOCOS-BASE:\n", 1)[1].split(
+        "\n\nCORREÇÕES OBRIGATÓRIAS",
+        1,
+    )[0]
+    return {"blocos_base": json.loads(blocks_json)}
+
+
+# ─── Fakes: Gemini (provedor principal) ───────────────────────────────────────
+
+
+class _GeminiStructuredClient:
+    def __init__(self, response_factory: Any, captured: dict[str, Any]) -> None:
+        self._response_factory = response_factory
+        self._captured = captured
+
+    async def ainvoke(self, messages: list[Any]) -> Any:
+        payload = _extract_blocks_payload(str(messages[1].content))
+        self._captured.setdefault("calls", []).append(messages)
+        self._captured.setdefault("payloads", []).append(payload)
+        return self._response_factory(payload)
+
+
+class _GeminiClient:
+    def __init__(self, response_factory: Any, captured: dict[str, Any]) -> None:
+        self._response_factory = response_factory
+        self._captured = captured
+
+    def with_structured_output(self, _schema: Any) -> _GeminiStructuredClient:
+        return _GeminiStructuredClient(self._response_factory, self._captured)
+
+
+def _gemini_factory(response_factory: Any, captured: dict[str, Any]):
+    def factory(api_key: str, model: str) -> _GeminiClient:
+        captured["api_key"] = api_key
+        captured["model"] = model
+        return _GeminiClient(response_factory, captured)
+
+    return factory
+
+
+class _FailingGeminiStructuredClient:
+    def __init__(self, message: str, captured: dict[str, Any]) -> None:
+        self._message = message
+        self._captured = captured
+
+    async def ainvoke(self, _messages: list[Any]) -> Any:
+        self._captured["calls"] = self._captured.get("calls", 0) + 1
+        raise Exception(self._message)
+
+
+class _FailingGeminiClient:
+    def __init__(self, message: str, captured: dict[str, Any]) -> None:
+        self._message = message
+        self._captured = captured
+
+    def with_structured_output(self, _schema: Any) -> Any:
+        return _FailingGeminiStructuredClient(self._message, self._captured)
+
+
+def _failing_gemini_factory(message: str, captured: dict[str, Any] | None = None):
+    shared = captured if captured is not None else {}
+
+    def factory(_api_key: str, _model: str) -> _FailingGeminiClient:
+        return _FailingGeminiClient(message, shared)
+
+    return factory
+
+
+# ─── Fakes: OpenAI (reserva secundária) ────────────────────────────────────────
+
+
+class _Usage:
+    def __init__(self, input_tokens: int, output_tokens: int) -> None:
+        self.input_tokens = input_tokens
+        self.output_tokens = output_tokens
+
+
+class _OpenAIResponse:
+    def __init__(self, payload: Any, *, usage: _Usage | None = None) -> None:
+        self.output_text = json.dumps(payload, ensure_ascii=False)
+        self.model = "gpt-4o-mini"
+        self.usage = usage
+
+
+class _Responses:
+    def __init__(self, response_factory: Any, captured: dict[str, Any], *, usage: _Usage | None = None) -> None:
+        self._response_factory = response_factory
+        self._captured = captured
+        self._usage = usage
+
+    async def create(self, **kwargs: Any) -> _OpenAIResponse:
+        payload = _extract_blocks_payload(str(kwargs["input"]))
+        self._captured.setdefault("calls", []).append(kwargs)
+        self._captured.setdefault("payloads", []).append(payload)
+        self._captured["payload"] = payload
+        return _OpenAIResponse(self._response_factory(payload), usage=self._usage)
+
+
+class _Client:
+    def __init__(self, response_factory: Any, captured: dict[str, Any], *, usage: _Usage | None = None) -> None:
+        self.responses = _Responses(response_factory, captured, usage=usage)
+
+
+def _openai_factory(response_factory: Any, captured: dict[str, Any], *, usage: _Usage | None = None):
+    def factory(api_key: str) -> _Client:
+        captured["api_key"] = api_key
+        return _Client(response_factory, captured, usage=usage)
+
+    return factory
+
+
+class _FailingOpenAIResponses:
+    def __init__(self, message: str, captured: dict[str, Any]) -> None:
+        self._message = message
+        self._captured = captured
+
+    async def create(self, **_kwargs: Any) -> Any:
+        self._captured["calls"] = self._captured.get("calls", 0) + 1
+        raise Exception(self._message)
+
+
+class _FailingOpenAIClient:
+    def __init__(self, message: str, captured: dict[str, Any]) -> None:
+        self.responses = _FailingOpenAIResponses(message, captured)
+
+
+def _failing_openai_factory(message: str, captured: dict[str, Any] | None = None):
+    shared = captured if captured is not None else {}
+
+    def factory(_api_key: str) -> _FailingOpenAIClient:
+        return _FailingOpenAIClient(message, shared)
+
+    return factory
+
+
+# ─── Gemini como provedor principal — comportamento núcleo ────────────────────
+
+
 @pytest.mark.asyncio
 async def test_enrichment_groups_every_source_segment_without_truncation(
     monkeypatch: pytest.MonkeyPatch,
@@ -119,8 +248,8 @@ async def test_enrichment_groups_every_source_segment_without_truncation(
     captured: dict[str, Any] = {}
     monkeypatch.setattr(
         enrichment_module,
-        "_openai_client",
-        lambda _api_key: _Client(_rich_response, captured),
+        "_gemini_client",
+        _gemini_factory(_rich_response, captured),
     )
 
     result = await enrich_content_blocks(
@@ -133,22 +262,23 @@ async def test_enrichment_groups_every_source_segment_without_truncation(
     assert len(result["blocos"]) == 24
     assert [block["ordem"] for block in result["blocos"]] == list(range(1, 25))
     assert result["metadata"]["fallback"] is False
-    assert result["metadata"]["provider"] == "openai"
+    assert result["metadata"]["provider"] == "openai"  # contrato de versão fixo
     assert result["metadata"]["division_provider"] == "api-deterministic"
-    assert result["metadata"]["enrichment_provider"] == "openai"
+    assert result["metadata"]["enrichment_provider"] == "openai"  # idem
+    assert result["metadata"]["enrichment_llm_provider"] == "gemini"
+    assert result["metadata"]["openai_fallback_used"] is False
     assert result["metadata"]["personalization_applied"] is False
     assert result["metadata"]["pipeline_order"] == [
         "content_decomposition",
-        "openai_enrichment",
+        "gemini_enrichment",
         "brainhex_personalization",
     ]
-    assert result["metadata"]["provider_model"] == "gpt-5.4-mini"
+    assert result["metadata"]["provider_model"] == "gemini-3.6-flash"
     assert result["metadata"]["lotes_gerados"] == 24
     assert result["metadata"]["chamadas_realizadas"] == 24
     assert all(
         len(payload["blocos_base"]) == 1 for payload in captured["payloads"]
     )
-    assert all(call["model"] == "gpt-5.4-mini" for call in captured["calls"])
     assert "brainhex" not in json.dumps(captured["payloads"]).lower()
 
     submitted_blocks = [
@@ -181,7 +311,7 @@ def test_source_segmentation_splits_large_text_without_losing_its_tail() -> None
 
 
 @pytest.mark.asyncio
-async def test_enrichment_rejects_shallow_response_and_never_uses_fallback(
+async def test_enrichment_rejects_shallow_response_and_reraises_when_no_openai_configured(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def shallow(payload: dict[str, Any]) -> dict[str, Any]:
@@ -192,8 +322,8 @@ async def test_enrichment_rejects_shallow_response_and_never_uses_fallback(
 
     monkeypatch.setattr(
         enrichment_module,
-        "_openai_client",
-        lambda _api_key: _Client(shallow, {}),
+        "_gemini_client",
+        _gemini_factory(shallow, {}),
     )
 
     with pytest.raises(ContentEnrichmentError, match="apenas repetiu"):
@@ -219,8 +349,8 @@ async def test_enrichment_retries_only_the_rejected_block(
 
     monkeypatch.setattr(
         enrichment_module,
-        "_openai_client",
-        lambda _api_key: _Client(shallow_once, captured),
+        "_gemini_client",
+        _gemini_factory(shallow_once, captured),
     )
 
     result = await enrich_content_blocks(context=_context(), settings=_settings())
@@ -239,305 +369,262 @@ async def test_enrichment_retries_only_the_rejected_block(
 
 
 @pytest.mark.asyncio
-async def test_enrichment_ignores_global_provider_and_always_uses_openai(
+async def test_enrichment_ignores_global_llm_provider_and_uses_gemini(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    captured: dict[str, Any] = {}
-    monkeypatch.setattr(
-        enrichment_module,
-        "_openai_client",
-        lambda api_key: captured.update({"api_key": api_key})
-        or _Client(_rich_response, captured),
-    )
-
-    result = await enrich_content_blocks(context=_context(), settings=_settings())
-
-    assert captured["api_key"] == "openai-secret"
-    assert result["metadata"]["provider"] == "openai"
-
-
-@pytest.mark.asyncio
-async def test_enrichment_fails_explicitly_when_openai_is_not_configured() -> None:
-    settings = SimpleNamespace(
-        openai_api_key="",
-    )
-
-    with pytest.raises(ContentEnrichmentError, match="OPENAI_API_KEY"):
-        await enrich_content_blocks(context=_context(), settings=settings)
-
-
-class _QuotaExhaustedResponses:
-    def __init__(self, captured: dict[str, Any]) -> None:
-        self._captured = captured
-
-    async def create(self, **kwargs: Any) -> Any:
-        self._captured["calls"] = self._captured.get("calls", 0) + 1
-        raise Exception(
-            "Error code: 429 - {'error': {'message': 'You exceeded your current "
-            "quota, please check your plan and billing details.', 'type': "
-            "'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}"
-        )
-
-
-class _QuotaExhaustedClient:
-    def __init__(self, captured: dict[str, Any]) -> None:
-        self.responses = _QuotaExhaustedResponses(captured)
-
-
-@pytest.mark.asyncio
-async def test_enrichment_opens_circuit_on_insufficient_quota_and_fails_fast(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    enrichment_module.reset_openai_enrichment_circuit()
-    captured: dict[str, Any] = {}
-    monkeypatch.setattr(
-        enrichment_module,
-        "_openai_client",
-        lambda _api_key: _QuotaExhaustedClient(captured),
-    )
-
-    with pytest.raises(ContentEnrichmentError, match="insufficient_quota"):
-        await enrich_content_blocks(context=_context(), settings=_settings())
-    assert captured["calls"] == 1
-
-    with pytest.raises(ContentEnrichmentError, match="circuito"):
-        await enrich_content_blocks(context=_context(), settings=_settings())
-    assert captured["calls"] == 1
-
-    enrichment_module.reset_openai_enrichment_circuit()
-
-
-@pytest.mark.asyncio
-async def test_enrichment_circuit_does_not_open_for_other_errors(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    enrichment_module.reset_openai_enrichment_circuit()
-    captured: dict[str, Any] = {}
-
-    class _TimeoutResponses:
-        async def create(self, **kwargs: Any) -> Any:
-            captured["calls"] = captured.get("calls", 0) + 1
-            raise Exception("Connection timed out")
-
-    class _TimeoutClient:
-        def __init__(self) -> None:
-            self.responses = _TimeoutResponses()
-
-    monkeypatch.setattr(
-        enrichment_module,
-        "_openai_client",
-        lambda _api_key: _TimeoutClient(),
-    )
-
-    with pytest.raises(ContentEnrichmentError, match="Connection timed out"):
-        await enrich_content_blocks(context=_context(), settings=_settings())
-    assert captured["calls"] == 1
-
-    with pytest.raises(ContentEnrichmentError, match="Connection timed out"):
-        await enrich_content_blocks(context=_context(), settings=_settings())
-    assert captured["calls"] == 2
-
-    enrichment_module.reset_openai_enrichment_circuit()
-
-
-# ─── Fallback para Gemini quando a OpenAI falha ───────────────────────────────
-
-
-class _GeminiStructuredClient:
-    def __init__(self, response_factory: Any, captured: dict[str, Any]) -> None:
-        self._response_factory = response_factory
-        self._captured = captured
-
-    async def ainvoke(self, messages: list[Any]) -> Any:
-        input_text = str(messages[1].content)
-        blocks_json = input_text.split("BLOCOS-BASE:\n", 1)[1].split(
-            "\n\nCORREÇÕES OBRIGATÓRIAS",
-            1,
-        )[0]
-        payload = {"blocos_base": json.loads(blocks_json)}
-        self._captured.setdefault("calls", []).append(messages)
-        self._captured.setdefault("payloads", []).append(payload)
-        return self._response_factory(payload)
-
-
-class _GeminiClient:
-    def __init__(self, response_factory: Any, captured: dict[str, Any]) -> None:
-        self._response_factory = response_factory
-        self._captured = captured
-
-    def with_structured_output(self, _schema: Any) -> _GeminiStructuredClient:
-        return _GeminiStructuredClient(self._response_factory, self._captured)
-
-
-class _FailingOpenAIResponses:
-    def __init__(self, message: str) -> None:
-        self._message = message
-
-    async def create(self, **_kwargs: Any) -> Any:
-        raise Exception(self._message)
-
-
-class _FailingOpenAIClient:
-    def __init__(self, message: str) -> None:
-        self.responses = _FailingOpenAIResponses(message)
-
-
-@pytest.mark.asyncio
-async def test_gemini_fallback_used_when_openai_fails_and_gemini_configured(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    enrichment_module.reset_openai_enrichment_circuit()
-    enrichment_module.reset_gemini_enrichment_circuit()
-    monkeypatch.setattr(
-        enrichment_module,
-        "_openai_client",
-        lambda _api_key: _FailingOpenAIClient("OpenAI fora do ar"),
-    )
     captured: dict[str, Any] = {}
     monkeypatch.setattr(
         enrichment_module,
         "_gemini_client",
-        lambda _api_key, _model: _GeminiClient(_rich_response, captured),
+        _gemini_factory(_rich_response, captured),
     )
 
     result = await enrich_content_blocks(
         context=_context(),
-        settings=_settings_with_gemini(),
+        settings=_settings(llm_provider="openai"),
     )
 
-    assert len(result["blocos"]) > 0
-    assert result["metadata"]["provider"] == "openai"  # contrato de versão, inalterado
-    assert result["metadata"]["enrichment_provider"] == "openai"
-    assert result["metadata"]["enrichment_llm_provider"] == "gemini"
-    assert result["metadata"]["openai_fallback_used"] is True
-    assert "OpenAI fora do ar" in result["metadata"]["openai_fallback_reason"]
-    assert result["metadata"]["provider_model"] == "gemini-2.5-flash"
-    assert result["metadata"]["pipeline_order"] == [
-        "content_decomposition",
-        "gemini_enrichment",
-        "brainhex_personalization",
-    ]
-    # batch_size do Gemini tambem e travado em 1 bloco por chamada (mesma
-    # regra da OpenAI): uma chamada por bloco gerado.
-    assert len(captured["calls"]) == len(result["blocos"])
-
-    enrichment_module.reset_openai_enrichment_circuit()
-    enrichment_module.reset_gemini_enrichment_circuit()
-
-
-@pytest.mark.asyncio
-async def test_gemini_nao_e_tentado_quando_nao_configurado(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    enrichment_module.reset_openai_enrichment_circuit()
-    monkeypatch.setattr(
-        enrichment_module,
-        "_openai_client",
-        lambda _api_key: _FailingOpenAIClient("OpenAI fora do ar"),
-    )
-
-    with pytest.raises(ContentEnrichmentError, match="OpenAI fora do ar"):
-        await enrich_content_blocks(context=_context(), settings=_settings())
-
-    enrichment_module.reset_openai_enrichment_circuit()
-
-
-@pytest.mark.asyncio
-async def test_openai_indisponivel_pula_direto_pro_gemini_quando_openai_sem_chave(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    called_openai = False
-
-    def _fail_if_called(_api_key: str) -> Any:
-        nonlocal called_openai
-        called_openai = True
-        raise AssertionError("nao deveria chamar a OpenAI sem chave configurada")
-
-    monkeypatch.setattr(enrichment_module, "_openai_client", _fail_if_called)
-    captured: dict[str, Any] = {}
-    monkeypatch.setattr(
-        enrichment_module,
-        "_gemini_client",
-        lambda _api_key, _model: _GeminiClient(_rich_response, captured),
-    )
-
-    settings = _settings_with_gemini(openai_api_key="")
-    result = await enrich_content_blocks(context=_context(), settings=settings)
-
-    assert called_openai is False
+    assert captured["api_key"] == "gemini-secret"
     assert result["metadata"]["enrichment_llm_provider"] == "gemini"
 
 
 @pytest.mark.asyncio
-async def test_ambos_provedores_falham_gera_erro_combinado(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    enrichment_module.reset_openai_enrichment_circuit()
-    enrichment_module.reset_gemini_enrichment_circuit()
-    monkeypatch.setattr(
-        enrichment_module,
-        "_openai_client",
-        lambda _api_key: _FailingOpenAIClient("OpenAI fora do ar"),
-    )
+async def test_enrichment_fails_explicitly_when_no_provider_is_configured() -> None:
+    settings = SimpleNamespace(gemini_api_key="", openai_api_key="")
 
-    class _FailingGeminiStructuredClient:
-        async def ainvoke(self, _messages: list[Any]) -> Any:
-            raise Exception("Gemini tambem fora do ar")
+    with pytest.raises(ContentEnrichmentError, match="GEMINI_API_KEY"):
+        await enrich_content_blocks(context=_context(), settings=settings)
 
-    class _FailingGeminiClient:
-        def with_structured_output(self, _schema: Any) -> Any:
-            return _FailingGeminiStructuredClient()
 
-    monkeypatch.setattr(
-        enrichment_module,
-        "_gemini_client",
-        lambda _api_key, _model: _FailingGeminiClient(),
-    )
-
-    with pytest.raises(ContentEnrichmentError) as exc_info:
-        await enrich_content_blocks(context=_context(), settings=_settings_with_gemini())
-    assert "OpenAI fora do ar" in str(exc_info.value)
-    assert "Gemini tambem fora do ar" in str(exc_info.value)
-
-    enrichment_module.reset_openai_enrichment_circuit()
-    enrichment_module.reset_gemini_enrichment_circuit()
+# ─── Circuito de indisponibilidade do Gemini ──────────────────────────────────
 
 
 @pytest.mark.asyncio
 async def test_gemini_abre_circuito_em_erro_de_cota_e_falha_rapido(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    enrichment_module.reset_openai_enrichment_circuit()
-    enrichment_module.reset_gemini_enrichment_circuit()
+    calls: dict[str, Any] = {}
+    monkeypatch.setattr(
+        enrichment_module,
+        "_gemini_client",
+        _failing_gemini_factory("429 RESOURCE_EXHAUSTED: quota exceeded", calls),
+    )
+
+    with pytest.raises(ContentEnrichmentError, match="RESOURCE_EXHAUSTED"):
+        await enrich_content_blocks(context=_context(), settings=_settings())
+    assert calls["calls"] == 1
+
+    with pytest.raises(ContentEnrichmentError, match="circuito"):
+        await enrich_content_blocks(context=_context(), settings=_settings())
+    # o circuito bloqueia antes de instanciar o client de novo
+    assert calls["calls"] == 1
+
+
+@pytest.mark.asyncio
+async def test_gemini_circuito_nao_abre_para_erros_genericos(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: dict[str, Any] = {}
+    monkeypatch.setattr(
+        enrichment_module,
+        "_gemini_client",
+        _failing_gemini_factory("Connection timed out", calls),
+    )
+
+    with pytest.raises(ContentEnrichmentError, match="Connection timed out"):
+        await enrich_content_blocks(context=_context(), settings=_settings())
+    assert calls["calls"] == 1
+
+    with pytest.raises(ContentEnrichmentError, match="Connection timed out"):
+        await enrich_content_blocks(context=_context(), settings=_settings())
+    assert calls["calls"] == 2
+
+
+# ─── OpenAI como reserva secundária (só quando o Gemini falha) ────────────────
+
+
+@pytest.mark.asyncio
+async def test_openai_fallback_used_when_gemini_fails_and_openai_configured(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        enrichment_module,
+        "_gemini_client",
+        _failing_gemini_factory("Gemini fora do ar"),
+    )
+    captured: dict[str, Any] = {}
     monkeypatch.setattr(
         enrichment_module,
         "_openai_client",
-        lambda _api_key: _FailingOpenAIClient("OpenAI fora do ar"),
+        _openai_factory(_rich_response, captured),
     )
-    gemini_calls = {"count": 0}
 
-    class _QuotaExhaustedGeminiStructuredClient:
-        async def ainvoke(self, _messages: list[Any]) -> Any:
-            gemini_calls["count"] += 1
-            raise Exception("429 RESOURCE_EXHAUSTED: quota exceeded")
+    result = await enrich_content_blocks(
+        context=_context(),
+        settings=_settings_with_openai(),
+    )
 
-    class _QuotaExhaustedGeminiClient:
-        def with_structured_output(self, _schema: Any) -> Any:
-            return _QuotaExhaustedGeminiStructuredClient()
+    assert len(result["blocos"]) > 0
+    assert result["metadata"]["provider"] == "openai"  # contrato de versão, inalterado
+    assert result["metadata"]["enrichment_provider"] == "openai"
+    assert result["metadata"]["enrichment_llm_provider"] == "openai"
+    assert result["metadata"]["openai_fallback_used"] is True
+    assert "Gemini fora do ar" in result["metadata"]["gemini_failure_reason"]
+    assert result["metadata"]["provider_model"] == "gpt-4o-mini"
+    assert result["metadata"]["pipeline_order"] == [
+        "content_decomposition",
+        "openai_enrichment",
+        "brainhex_personalization",
+    ]
+    assert len(captured["calls"]) == len(result["blocos"])
+
+
+@pytest.mark.asyncio
+async def test_openai_nao_e_tentado_quando_nao_configurado(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        enrichment_module,
+        "_gemini_client",
+        _failing_gemini_factory("Gemini fora do ar"),
+    )
+
+    with pytest.raises(ContentEnrichmentError, match="Gemini fora do ar"):
+        await enrich_content_blocks(context=_context(), settings=_settings())
+
+
+@pytest.mark.asyncio
+async def test_gemini_indisponivel_pula_direto_pro_openai_quando_gemini_sem_chave(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    called_gemini = False
+
+    def _fail_if_called(_api_key: str, _model: str) -> Any:
+        nonlocal called_gemini
+        called_gemini = True
+        raise AssertionError("nao deveria chamar o Gemini sem chave configurada")
+
+    monkeypatch.setattr(enrichment_module, "_gemini_client", _fail_if_called)
+    captured: dict[str, Any] = {}
+    monkeypatch.setattr(
+        enrichment_module,
+        "_openai_client",
+        _openai_factory(_rich_response, captured),
+    )
+
+    settings = _settings_with_openai(gemini_api_key="")
+    result = await enrich_content_blocks(context=_context(), settings=settings)
+
+    assert called_gemini is False
+    assert result["metadata"]["enrichment_llm_provider"] == "openai"
+
+
+@pytest.mark.asyncio
+async def test_ambos_provedores_falham_gera_erro_combinado(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        enrichment_module,
+        "_gemini_client",
+        _failing_gemini_factory("Gemini fora do ar"),
+    )
+    monkeypatch.setattr(
+        enrichment_module,
+        "_openai_client",
+        _failing_openai_factory("OpenAI tambem fora do ar"),
+    )
+
+    with pytest.raises(ContentEnrichmentError) as exc_info:
+        await enrich_content_blocks(context=_context(), settings=_settings_with_openai())
+    assert "Gemini fora do ar" in str(exc_info.value)
+    assert "OpenAI tambem fora do ar" in str(exc_info.value)
+
+
+# ─── Circuito de indisponibilidade da OpenAI (reserva) ────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_openai_abre_circuito_em_insufficient_quota_e_falha_rapido(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Gemini nao configurado: OpenAI e o unico provedor, exercitando o
+    # circuito dela diretamente atraves do enrich_content_blocks.
+    calls: dict[str, Any] = {}
+    monkeypatch.setattr(
+        enrichment_module,
+        "_openai_client",
+        _failing_openai_factory(
+            "Error code: 429 - {'error': {'message': 'You exceeded your current "
+            "quota, please check your plan and billing details.', 'type': "
+            "'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}",
+            calls,
+        ),
+    )
+    settings = _settings_with_openai(gemini_api_key="")
+
+    with pytest.raises(ContentEnrichmentError, match="insufficient_quota"):
+        await enrich_content_blocks(context=_context(), settings=settings)
+    assert calls["calls"] == 1
+
+    with pytest.raises(ContentEnrichmentError, match="circuito"):
+        await enrich_content_blocks(context=_context(), settings=settings)
+    assert calls["calls"] == 1
+
+
+# ─── Trava de gasto estimado da OpenAI (defesa extra — não substitui o hard
+# limit de billing configurado no dashboard da OpenAI) ────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_openai_spend_guard_acumula_estimativa_a_partir_do_usage(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        enrichment_module,
+        "_gemini_client",
+        _failing_gemini_factory("Gemini fora do ar"),
+    )
+    captured: dict[str, Any] = {}
+    monkeypatch.setattr(
+        enrichment_module,
+        "_openai_client",
+        _openai_factory(
+            _rich_response,
+            captured,
+            usage=_Usage(input_tokens=1_000, output_tokens=500),
+        ),
+    )
+
+    assert enrichment_module.openai_estimated_spend_usd() == 0.0
+    await enrich_content_blocks(context=_context(), settings=_settings_with_openai())
+    assert enrichment_module.openai_estimated_spend_usd() > 0.0
+
+
+@pytest.mark.asyncio
+async def test_openai_spend_guard_bloqueia_chamadas_acima_do_teto(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Simula gasto ja acumulado (ex.: de chamadas anteriores neste processo)
+    # acima do teto configurado, isolando o teste da contagem de blocos que
+    # o contexto de teste padrao produz.
+    enrichment_module._record_openai_spend(
+        _Usage(input_tokens=1_000_000, output_tokens=1_000_000)
+    )
+    assert enrichment_module.openai_estimated_spend_usd() >= 0.01
 
     monkeypatch.setattr(
         enrichment_module,
         "_gemini_client",
-        lambda _api_key, _model: _QuotaExhaustedGeminiClient(),
+        _failing_gemini_factory("Gemini fora do ar"),
     )
+    calls: dict[str, Any] = {}
+    monkeypatch.setattr(
+        enrichment_module,
+        "_openai_client",
+        _openai_factory(_rich_response, calls),
+    )
+    settings = _settings_with_openai(openai_spend_cap_usd=0.01)
 
-    with pytest.raises(ContentEnrichmentError, match="RESOURCE_EXHAUSTED"):
-        await enrich_content_blocks(context=_context(), settings=_settings_with_gemini())
-    assert gemini_calls["count"] == 1
-
-    with pytest.raises(ContentEnrichmentError, match="circuito"):
-        await enrich_content_blocks(context=_context(), settings=_settings_with_gemini())
-    assert gemini_calls["count"] == 1
-
-    enrichment_module.reset_openai_enrichment_circuit()
-    enrichment_module.reset_gemini_enrichment_circuit()
+    with pytest.raises(ContentEnrichmentError, match="teto"):
+        await enrich_content_blocks(context=_context(), settings=settings)
+    assert calls.get("calls") is None
