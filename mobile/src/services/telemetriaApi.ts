@@ -47,6 +47,21 @@ async function getAuthHeaders() {
   };
 }
 
+// Diferente do TrailupApiProvider, este servico nao tinha retry com refresh
+// de token em 401 — um token expirado momentaneamente durante uma sessao de
+// estudo caia direto no fallback (ciclo_id sempre null), quebrando o
+// gatilho de refresh de personalizacao sem nenhum erro visivel.
+async function refreshAuthHeaders() {
+  const { data, error } = await supabase.auth.refreshSession();
+  const token = data.session?.access_token;
+  if (error || !token) return null;
+
+  return {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  };
+}
+
 function formatApiErrorDetail(detail: unknown) {
   if (Array.isArray(detail)) {
     const messages = detail
@@ -417,6 +432,18 @@ export async function enviarLoteTelemetria(payload: TelemetryBatchPayload) {
         body: JSON.stringify(safePayload),
       });
 
+      if (response.status === 401) {
+        const refreshedHeaders = await refreshAuthHeaders();
+        if (refreshedHeaders) {
+          const retryResponse = await fetch(url, {
+            method: "POST",
+            headers: refreshedHeaders,
+            body: JSON.stringify(safePayload),
+          });
+          return await parseResponse<TelemetryBatchResponse>(retryResponse);
+        }
+      }
+
       return await parseResponse<TelemetryBatchResponse>(response);
     } catch (error) {
       if (isNetworkRequestFailedError(error)) {
@@ -424,8 +451,13 @@ export async function enviarLoteTelemetria(payload: TelemetryBatchPayload) {
         continue;
       }
 
+      // `persistTelemetryBatchDirect` e async — sem o `await` aqui, este
+      // catch nunca capturava a rejeicao dela (a funcao ja tinha retornado
+      // a promise antes de ela rejeitar), entao o `throw error` abaixo era
+      // morto: o erro que de fato propagava era sempre o da propria
+      // persistTelemetryBatchDirect, nao o erro original mais informativo.
       try {
-        return persistTelemetryBatchDirect(safePayload);
+        return await persistTelemetryBatchDirect(safePayload);
       } catch {
         throw error;
       }
@@ -433,7 +465,7 @@ export async function enviarLoteTelemetria(payload: TelemetryBatchPayload) {
   }
 
   try {
-    return persistTelemetryBatchDirect(safePayload);
+    return await persistTelemetryBatchDirect(safePayload);
   } catch (persistError) {
     if (!lastNetworkError) {
       throw persistError;
