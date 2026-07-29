@@ -50,6 +50,7 @@ class Settings(BaseSettings):
     content_enrichment_batch_size: int = 1
     content_enrichment_max_attempts: int = 3
     openai_content_enrichment_max_output_tokens: int = 8192
+    content_enrichment_quota_cooldown_sec: int = 300
 
     gemini_api_key: str | None = None
     gemini_model_supervisor: str = "gemini-1.5-pro"
