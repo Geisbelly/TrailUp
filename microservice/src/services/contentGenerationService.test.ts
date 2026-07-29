@@ -154,6 +154,52 @@ test("conteúdo Gemini inválido aciona a geração OpenAI", async () => {
   resetGeminiContentGenerationCircuit();
 });
 
+test("erro de qualidade de conteúdo não abre o circuito do Gemini para outras gerações", async () => {
+  resetGeminiContentGenerationCircuit();
+  let geminiCalls = 0;
+  let openaiCalls = 0;
+
+  const first = await generateStructuredContentWithFallback(call, {
+    generateWithGemini: async () => {
+      geminiCalls += 1;
+      return { chapters: [] };
+    },
+    generateWithOpenAI: async () => {
+      openaiCalls += 1;
+      return { chapters: [{ blockId: "bloco-01" }] };
+    },
+    validateResult: (value) => {
+      const chapters = (value as { chapters?: unknown[] }).chapters ?? [];
+      if (chapters.length === 0) {
+        throw new Error("Markdown abaixo do mínimo de cobertura.");
+      }
+    },
+  });
+
+  assert.equal(first.provider, "openai");
+  assert.equal(first.fallbackFrom, "gemini");
+
+  // Geração seguinte (outro bloco/aluno): o Gemini está saudável e deve ser
+  // tentado de novo, não pulado por causa de um "circuito" aberto por uma
+  // falha de qualidade de conteúdo (não de indisponibilidade) da chamada anterior.
+  const second = await generateStructuredContentWithFallback(call, {
+    generateWithGemini: async () => {
+      geminiCalls += 1;
+      return { chapters: [{ blockId: "bloco-02" }] };
+    },
+    generateWithOpenAI: async () => {
+      openaiCalls += 1;
+      return { chapters: [{ blockId: "bloco-02" }] };
+    },
+    validateResult: () => {},
+  });
+
+  assert.equal(second.provider, "gemini");
+  assert.equal(geminiCalls, 2);
+  assert.equal(openaiCalls, 1);
+  resetGeminiContentGenerationCircuit();
+});
+
 test("repete a OpenAI com instrução corretiva quando a cobertura vem incompleta", async () => {
   resetGeminiContentGenerationCircuit();
   let openaiCalls = 0;

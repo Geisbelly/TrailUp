@@ -375,10 +375,12 @@ export async function generateStructuredContentWithFallback(
       model: call.geminiModel,
     };
   } catch (error) {
-    if (
-      error instanceof ContentGenerationQualityError
-      || isGeminiAvailabilityError(error)
-    ) {
+    // Só indisponibilidade real do Gemini abre o circuito. Um
+    // ContentGenerationQualityError é sobre a saída de UM lote (ex.: markdown
+    // curto demais para aquele bloco específico); tratá-lo como indisponibilidade
+    // contaminaria gerações concorrentes não relacionadas, que pulariam o
+    // Gemini saudável sem necessidade.
+    if (isGeminiAvailabilityError(error)) {
       const cooldownMs = positiveInteger(
         environment.CONTENT_GENERATION_GEMINI_COOLDOWN_MS,
         DEFAULT_GEMINI_UNAVAILABLE_COOLDOWN_MS,
