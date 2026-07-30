@@ -25,7 +25,6 @@ const MODE_BASE_PRIORITY: Record<ModoApresentacao, ContentBlockType[]> = {
     "imagem",
     "youtube",
     "apresentacao",
-    "apresentacao-slides",
     "embed",
     "pdf",
     "documento",
@@ -38,7 +37,6 @@ const MODE_BASE_PRIORITY: Record<ModoApresentacao, ContentBlockType[]> = {
     "pdf",
     "documento",
     "apresentacao",
-    "apresentacao-slides",
     "imagem",
     "cards",
     "audio",
@@ -52,7 +50,6 @@ const MODE_BASE_PRIORITY: Record<ModoApresentacao, ContentBlockType[]> = {
     "pdf",
     "documento",
     "apresentacao",
-    "apresentacao-slides",
     "imagem",
     "audio",
     "video",
@@ -67,7 +64,6 @@ const MODE_BASE_PRIORITY: Record<ModoApresentacao, ContentBlockType[]> = {
     "audio",
     "imagem",
     "apresentacao",
-    "apresentacao-slides",
     "documento",
     "markdown",
     "texto",
@@ -85,6 +81,11 @@ function normalizeComparisonText(raw?: string | null) {
 
 function normalizeBlockType(tipo: ContentBlockType) {
   if (tipo === "youtube") return "video";
+  // apresentacao-slides é a mesma apresentação, só com render nativo em vez
+  // de bullet de texto — heroFormat (vem do servidor) só conhece
+  // "apresentacao"; sem essa normalização, heroMatchesType nunca bate no
+  // caso comum (slides inline) e o bônus de priorização hero se perde.
+  if (tipo === "apresentacao-slides") return "apresentacao";
   return tipo;
 }
 
