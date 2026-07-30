@@ -23,7 +23,7 @@ Durante o planejamento da troca de PDF por HTML no `microservice` (spec irmã ac
 | Decisão | Escolha |
 |---|---|
 | Escopo da troca | Só o **desenho** do material "apresentação" muda. O texto (título, tópicos, explicação, fala do guia) continua todo presente, só passa a aparecer num visual com cor/imagem/ícone do perfil em vez de bullet cru. O material "markdown" (outro tipo de conteúdo, gerado separadamente) **não é tocado** |
-| Interação | **Tela cheia / imersivo** — preview compacto inline, toque abre um visualizador full-screen com navegação por toque/swipe entre slides |
+| Interação | **Tela cheia / imersivo** — preview compacto inline, toque abre um visualizador full-screen com navegação por botões anterior/próximo no rodapé (sem swipe/áreas de toque nas laterais — decidido durante a implementação: exigiria biblioteca de gestos ou empilhamento de views que eu não teria como verificar interativamente sem rodar num device de verdade; botões são acessíveis e testáveis) |
 | Riqueza visual | Subconjunto mobile-first (decisão do assistente, ver Seção 2) — não tenta replicar cada elemento decorativo do template HTML desktop |
 | Dados antigos (sem `imagem_referencia`/`icones`) | Degrada bem sozinho — cai pra cor sólida do perfil, nunca trava |
 
@@ -49,7 +49,7 @@ mobile/src/components/ContentRenderer.tsx
 
 mobile/src/components/PresentationSlidesBlock.tsx    [NOVO]
   → card de prévia inline (capa do slide 1 + botão "Ver apresentação")
-  → toque abre <Modal> tela cheia: navegação por toque/swipe entre slides,
+  → toque abre <Modal> tela cheia: navegação por botões anterior/próximo,
     usa getProfileShellPalette()/getBrainHexConfig() (já existentes, AAA)
 ```
 
@@ -101,7 +101,7 @@ type RichPresentationSlide = {
 **`PresentationSlidesBlock.tsx`** (novo componente):
 - Estado: `index` (slide atual), `modalVisible` (boolean).
 - Preview inline (sempre visível): título do material + `abertura` (quando presente) como subtítulo/gancho + botão "Ver apresentação" estilizado na cor do perfil (`palette.accent`). `abertura` vem do payload (ver Seção 1) — no caminho microservice costuma ser só a 1ª linha do markdown (baixo valor), mas no fallback Python é uma abertura narrativa própria gerada pela IA; preservado nos dois casos em vez de descartado.
-- `<Modal visible={modalVisible} animationType="fade">`: tela cheia, `LinearGradient` de fundo (imagem ou cor sólida conforme Seção 2), conteúdo do slide atual sobreposto, áreas de toque nas laterais (esquerda = slide anterior, direita = próximo) + indicador "slide X de N" + botão fechar.
+- `<Modal visible={modalVisible} animationType="fade">`: tela cheia, `LinearGradient` de fundo (imagem ou cor sólida conforme Seção 2), conteúdo do slide atual sobreposto, rodapé com botões anterior/próximo (desabilitados nas pontas) + indicador "slide X de N" + botão fechar.
 - Sem `imagem_referencia` no slide atual: `LinearGradient` usa só as cores do perfil (`palette.background`/`palette.surfaceElevated`), sem tentar carregar `<Image>` vazia.
 
 ---
