@@ -21,14 +21,7 @@ if (!process.env.OPENAI_API_KEY?.trim()) {
 
 // Starts an Express app on a random port and returns base URL + close function.
 async function startTestServer(opts: Parameters<typeof buildApp>[0] = {}) {
-  const app = buildApp({
-    presentationRendererReadiness: async () => ({
-      ready: true,
-      checked_at: "2026-07-28T00:00:00.000Z",
-      browser: "Chrome/Test",
-    }),
-    ...opts,
-  });
+  const app = buildApp(opts);
   const server = http.createServer(app);
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const addr = server.address() as { port: number };
@@ -69,11 +62,9 @@ describe("GET /api/health", () => {
     const body = await res.json() as {
       status: string;
       auth: boolean;
-      presentation_renderer: { ready: boolean };
     };
     assert.equal(body.status, "ok");
     assert.equal(body.auth, false); // sem secret
-    assert.equal(body.presentation_renderer.ready, true);
   });
 
   it("auth=true quando apiSharedSecret configurado", async () => {
@@ -87,7 +78,7 @@ describe("GET /api/health", () => {
     }
   });
 
-  it("expõe as versoes do pipeline e o commit implantado no Render", async () => {
+  it("expõe as versoes do pipeline e o commit implantado", async () => {
     const { base: b, close: c } = await startTestServer({
       renderGitCommit: "abc123render",
     });
@@ -114,30 +105,6 @@ describe("GET /api/health", () => {
       await c();
     }
   });
-
-  it("retorna 503 quando o Chromium nao consegue gerar o PDF de probe", async () => {
-    const { base: b, close: c } = await startTestServer({
-      presentationRendererReadiness: async () => ({
-        ready: false,
-        checked_at: "2026-07-28T00:00:00.000Z",
-        error: "Chrome do Puppeteer nao encontrado",
-      }),
-    });
-    try {
-      const res = await fetch(`${b}/api/health`);
-      assert.equal(res.status, 503);
-      const body = await res.json() as {
-        status: string;
-        presentation_renderer: { ready: boolean; error?: string };
-      };
-      assert.equal(body.status, "degraded");
-      assert.equal(body.presentation_renderer.ready, false);
-      assert.match(body.presentation_renderer.error ?? "", /Chrome do Puppeteer/);
-    } finally {
-      await c();
-    }
-  });
-
 });
 
 // ─── Rota desconhecida → 404 ─────────────────────────────────────────────────

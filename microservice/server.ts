@@ -720,11 +720,10 @@ export interface AppOptions {
   corsOrigin?:           string;
   allowPrivateFonteUrls?: boolean;
   personalizacaoJobRunner?: typeof runPersonalizacaoJobWithTimeout;
-  presentationRendererReadiness?: () => Promise<PresentationRendererReadiness>;
   renderGitCommit?:       string | null;
   /**
    * Teto de jobs de /api/personalizar rodando ao mesmo tempo neste processo
-   * (geracao de imagem full-slide + Puppeteer sao pesados o suficiente pra
+   * (geracao de imagem full-slide por slide e pesada o suficiente pra
    * derrubar o processo por memoria se varios decks forem gerados juntos —
    * ja causou crash-loop em producao). Excesso fica na fila (FIFO) do gate,
    * nao é rejeitado.
@@ -746,7 +745,6 @@ export function buildApp(opts: AppOptions = {}): express.Application {
     corsOrigin,
     allowPrivateFonteUrls = false,
     personalizacaoJobRunner = runPersonalizacaoJobWithTimeout,
-    presentationRendererReadiness = getPresentationRendererReadiness,
     renderGitCommit = getRenderGitCommit(),
     enableSpa           = false,
     maxConcurrentPersonalizacaoJobs = Number(process.env.PERSONALIZACAO_MAX_CONCURRENT_JOBS) || 2,
@@ -815,20 +813,11 @@ export function buildApp(opts: AppOptions = {}): express.Application {
 
   // ── Health ───────────────────────────────────────────────────────
   app.get("/api/health", async (req, res) => {
-    const renderer = await presentationRendererReadiness();
-    const ready = renderer.ready;
-    if (!renderer.ready) {
-      req.log.error("renderer de apresentacao indisponivel", {
-        error: renderer.error,
-        checkedAt: renderer.checked_at,
-      });
-    }
-    res.status(ready ? 200 : 503).json({
-      status:   ready ? "ok" : "degraded",
+    res.status(200).json({
+      status:   "ok",
       message:  "TrailUp Alchemy Microservice is online!",
       supabase: isSupabaseConfigured(),
       auth:     Boolean(apiSharedSecret),
-      presentation_renderer: renderer,
       media_pipeline_version: MEDIA_PIPELINE_VERSION,
       presentation_engine_version: PRESENTATION_ENGINE_VERSION,
       presentation_schema: PRESENTATION_SCHEMA_VERSION,
