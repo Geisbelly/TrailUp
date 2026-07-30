@@ -236,15 +236,19 @@ async function generateStructuredWithOpenAI(
     Math.max(call.maxOutputTokens, 8_192),
     configuredMaxOutputTokens,
   );
+  const isReasoningModel = supportsReasoningEffort(call.openaiModel);
   const response = await getOpenAI().responses.create({
     model: call.openaiModel,
     instructions: call.instructions,
     input: call.input,
     max_output_tokens: maxOutputTokens,
-    ...(supportsReasoningEffort(call.openaiModel) ? { reasoning: { effort: "medium" as const } } : {}),
+    ...(isReasoningModel ? { reasoning: { effort: "medium" as const } } : {}),
     store: false,
     text: {
-      verbosity: "high",
+      // gpt-4o-mini (e familia gpt-4o/gpt-4.1) so aceita "medium" — "high"
+      // retorna 400 unsupported_value. Mesma familia de modelos de
+      // raciocinio que aceita reasoning.effort.
+      verbosity: isReasoningModel ? "high" : "medium",
       format: {
         type: "json_schema",
         name: "trailup_personalized_content_batch",
