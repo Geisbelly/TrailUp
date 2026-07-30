@@ -3,10 +3,6 @@ import path from "node:path";
 import { PROFILES, BRAIN_HEX_CONFIG } from "../src/constants/brainHex";
 import { buildPresentationDesignPlan } from "../src/constants/presentationThemes";
 import { buildDeckHtml } from "../src/lib/slideTemplate";
-import {
-  generateSlidesPDF,
-  launchPresentationBrowser,
-} from "../src/services/pdfService";
 
 const outputDir = path.resolve(
   process.argv[2] || path.join(process.cwd(), "qa-presentation-output"),
@@ -43,53 +39,30 @@ const slideTitles = [
 ];
 
 async function main(): Promise<void> {
-  const browser = await launchPresentationBrowser();
-  try {
-    for (const profile of PROFILES) {
-      const config = BRAIN_HEX_CONFIG[profile];
-      const theme = buildPresentationDesignPlan(profile, {
-        subject: "Sistemas distribuídos",
-      });
-      const slides = slideTitles.map((title, index) => ({
-        titulo: title,
-        subtitulo: index === 0
-          ? "Como serviços independentes trabalham como um sistema"
-          : "Sistemas distribuídos",
-        topics: [
-          "Coordenação entre serviços",
-          "Tolerância a falhas",
-          "Consistência dos dados",
-          "Observabilidade do fluxo",
-        ].slice(0, index % 2 === 0 ? 4 : 3),
-        explanation:
-          "Cada decisão arquitetural equilibra disponibilidade, consistência e resposta a falhas sem perder o objetivo pedagógico central.",
-        characterQuote:
-          "Observe como cada parte muda o comportamento do sistema inteiro.",
-        imagem_referencia: sceneDataUrl(config.color, index),
-      }));
-      const page = await browser.newPage();
-      await page.setViewport({ width: 1280, height: 720 });
-      await page.setContent(buildDeckHtml(slides, profile, theme), {
-        waitUntil: "load",
-      });
-      await page.evaluate(() => document.fonts.ready);
-      const sections = await page.$$("section.slide");
-      for (let index = 0; index < sections.length; index += 1) {
-        await sections[index].screenshot({
-          path: path.join(
-            outputDir,
-            `${profile}-${String(index + 1).padStart(2, "0")}.png`,
-          ),
-        });
-      }
-      await page.close();
-      if (profile === "seeker") {
-        const pdf = await generateSlidesPDF(slides, profile, { theme });
-        fs.writeFileSync(path.join(outputDir, "seeker-deck.pdf"), pdf);
-      }
-    }
-  } finally {
-    await browser.close();
+  for (const profile of PROFILES) {
+    const config = BRAIN_HEX_CONFIG[profile];
+    const theme = buildPresentationDesignPlan(profile, {
+      subject: "Sistemas distribuídos",
+    });
+    const slides = slideTitles.map((title, index) => ({
+      titulo: title,
+      subtitulo: index === 0
+        ? "Como serviços independentes trabalham como um sistema"
+        : "Sistemas distribuídos",
+      topics: [
+        "Coordenação entre serviços",
+        "Tolerância a falhas",
+        "Consistência dos dados",
+        "Observabilidade do fluxo",
+      ].slice(0, index % 2 === 0 ? 4 : 3),
+      explanation:
+        "Cada decisão arquitetural equilibra disponibilidade, consistência e resposta a falhas sem perder o objetivo pedagógico central.",
+      characterQuote:
+        "Observe como cada parte muda o comportamento do sistema inteiro.",
+      imagem_referencia: sceneDataUrl(config.color, index),
+    }));
+    const html = buildDeckHtml(slides, profile, theme);
+    fs.writeFileSync(path.join(outputDir, `${profile}.html`), html, "utf-8");
   }
   process.stdout.write(`${outputDir}\n`);
 }
