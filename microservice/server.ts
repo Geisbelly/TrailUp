@@ -873,15 +873,6 @@ export function buildApp(opts: AppOptions = {}): express.Application {
         return res.status(503).json({ error: "Supabase não configurado no servidor." });
       }
 
-      const renderer = await presentationRendererReadiness();
-      if (!renderer.ready) {
-        return res.status(503).json({
-          status: "renderer_unavailable",
-          error: renderer.error ?? "renderer de apresentacao indisponivel",
-          presentation_renderer: renderer,
-        });
-      }
-
       const safeClassName = String(class_name).replace(/[^a-z0-9_\-]/gi, "-").toLowerCase();
       const refId         = String(Date.now());
       const storagePath   = `brainhex/${profile}/classe-${safeClassName}`;
@@ -947,7 +938,7 @@ export function buildApp(opts: AppOptions = {}): express.Application {
           error_stage: result.presentationFailure.stage,
           audioMp3Url: result.audioMp3Url,
           markdownUrl: result.markdownUrl,
-          pdfUrl: null,
+          presentationUrl: null,
         });
       }
 
@@ -955,11 +946,11 @@ export function buildApp(opts: AppOptions = {}): express.Application {
         success:     true,
         audioMp3Url: result.audioMp3Url,
         markdownUrl: result.markdownUrl,
-        pdfUrl:      result.pdfUrl,
+        presentationUrl: result.presentationUrl,
         supabase_paths: {
-          markdown:     result.markdownUrl  ? `${storagePath}/markdown/material-${refId}.md`          : null,
-          audio:        result.audioMp3Url  ? `${storagePath}/audio/material-${refId}.mp3`           : null,
-          apresentacao: result.pdfUrl       ? `${storagePath}/apresentacao/material-${refId}.pdf`    : null,
+          markdown:     result.markdownUrl      ? `${storagePath}/markdown/material-${refId}.md`      : null,
+          audio:        result.audioMp3Url      ? `${storagePath}/audio/material-${refId}.mp3`        : null,
+          apresentacao: result.presentationUrl  ? `${storagePath}/apresentacao/material-${refId}.html` : null,
         },
       });
     } catch (err: any) {
