@@ -35,6 +35,7 @@ export type ContentBlockPayload =
       legenda?: string | null;
       mimeType?: string | null;
       title?: string | null;
+      abertura?: string | null;
       defaultDisplayMode?: ContentDisplayMode;
       cards?: {
         id?: string | number;

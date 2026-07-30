@@ -1281,6 +1281,12 @@ function normalizeMediaBlocks(
         tipo: "apresentacao-slides",
         payload: {
           title: presentationTitle,
+          abertura: pickString(
+            payload.abertura,
+            rawObject.abertura,
+            payload.resumo,
+            rawObject.resumo
+          ),
           slides: richSlides,
         },
       },
