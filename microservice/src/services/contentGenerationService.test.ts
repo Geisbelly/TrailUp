@@ -328,6 +328,35 @@ test("isGeminiContentGenerationUnavailable reflete o mesmo circuito usado intern
   assert.equal(isGeminiContentGenerationUnavailable(() => now), false);
 });
 
+test("não duplica a mensagem da causa quando ela já está embutida no erro rotulado (tagSubCallError)", async () => {
+  resetGeminiContentGenerationCircuit();
+
+  await assert.rejects(
+    generateStructuredContentWithFallback(call, {
+      generateWithGemini: async () => {
+        throw new Error("Gemini indisponível.");
+      },
+      generateWithOpenAI: async () => {
+        // Mesmo padrão usado por tagSubCallError em geminiService.ts: rotula
+        // o erro original com um prefixo, mantendo o erro original como cause.
+        const original = new Error(
+          "Gemini indisponível (circuito de cooldown aberto) no lote 2 "
+          + "— audioScript não é gerado pela OpenAI, aguardando o Gemini se recuperar.",
+        );
+        throw new Error(`audioScript/Gemini: ${original.message}`, { cause: original });
+      },
+    }),
+    (error: Error) => {
+      const occurrences =
+        error.message.split("audioScript não é gerado pela OpenAI").length - 1;
+      assert.equal(occurrences, 1, `mensagem duplicada: ${error.message}`);
+      return true;
+    },
+  );
+
+  resetGeminiContentGenerationCircuit();
+});
+
 test("reconhece indisponibilidade transitória e não confunde validação de conteúdo", () => {
   assert.equal(isGeminiAvailabilityError({ status: 503 }), true);
   assert.equal(isGeminiAvailabilityError({ status: 404 }), true);

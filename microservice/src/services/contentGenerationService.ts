@@ -230,7 +230,15 @@ export function resolveOpenAIContentGenerationFallbackModel(
 
 function errorDetails(error: unknown): string {
   if (error instanceof Error) {
-    const cause = "cause" in error ? String(error.cause ?? "") : "";
+    // tagSubCallError (geminiService.ts) rotula o erro original com um prefixo
+    // e o mantém como cause — nesse caso a mensagem da cause já está embutida
+    // em error.message, e repeti-la aqui só duplicaria o texto no log.
+    const causeMessage = error.cause instanceof Error
+      ? error.cause.message
+      : "cause" in error ? String(error.cause ?? "") : "";
+    const cause = causeMessage && !error.message.includes(causeMessage)
+      ? causeMessage
+      : "";
     return `${error.name} ${error.message} ${cause}`.trim();
   }
   if (typeof error === "object" && error !== null) {
