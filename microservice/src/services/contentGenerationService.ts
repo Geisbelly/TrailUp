@@ -56,6 +56,45 @@ export interface StructuredContentGenerationOptions {
   now?: () => number;
 }
 
+const SLIDE_ITEM_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    title: { type: "string" },
+    topics: {
+      type: "array",
+      items: { type: "string" },
+    },
+    explanation: { type: "string" },
+    visualDescription: { type: "string" },
+    characterQuote: { type: "string" },
+    characterAction: {
+      type: "string",
+      enum: ["explaining", "celebrating", "thinking", "warning"],
+    },
+    imagePrompt: { type: "string" },
+    iconPrompts: {
+      type: "array",
+      items: { type: "string" },
+    },
+    sourceIds: {
+      type: "array",
+      items: { type: "string" },
+    },
+  },
+  required: [
+    "title",
+    "topics",
+    "explanation",
+    "visualDescription",
+    "characterQuote",
+    "characterAction",
+    "imagePrompt",
+    "iconPrompts",
+    "sourceIds",
+  ],
+} as const;
+
 export const CONTENT_GENERATION_RESPONSE_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -71,47 +110,61 @@ export const CONTENT_GENERATION_RESPONSE_SCHEMA = {
           audioScript: { type: "string" },
           slides: {
             type: "array",
-            items: {
-              type: "object",
-              additionalProperties: false,
-              properties: {
-                title: { type: "string" },
-                topics: {
-                  type: "array",
-                  items: { type: "string" },
-                },
-                explanation: { type: "string" },
-                visualDescription: { type: "string" },
-                characterQuote: { type: "string" },
-                characterAction: {
-                  type: "string",
-                  enum: ["explaining", "celebrating", "thinking", "warning"],
-                },
-                imagePrompt: { type: "string" },
-                iconPrompts: {
-                  type: "array",
-                  items: { type: "string" },
-                },
-                sourceIds: {
-                  type: "array",
-                  items: { type: "string" },
-                },
-              },
-              required: [
-                "title",
-                "topics",
-                "explanation",
-                "visualDescription",
-                "characterQuote",
-                "characterAction",
-                "imagePrompt",
-                "iconPrompts",
-                "sourceIds",
-              ],
-            },
+            items: SLIDE_ITEM_SCHEMA,
           },
         },
         required: ["blockId", "markdown", "audioScript", "slides"],
+      },
+    },
+    confidence: { type: "number" },
+  },
+  required: ["chapters", "confidence"],
+} as const;
+
+// gpt-4o-mini tem teto rígido de 16384 tokens de saída na API da OpenAI — não
+// dá pra "aumentar" além disso (confirmado: o modelo simplesmente não aceita
+// mais que isso em max_output_tokens). Por isso a contingência OpenAI nunca
+// pede tudo numa chamada só: markdown e slides vão em chamadas separadas
+// (menores schemas abaixo), e o audioScript nem passa pela OpenAI — continua
+// saindo do Gemini mesmo quando ele falhou pro resto do bloco.
+export const CONTENT_GENERATION_TEXT_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    chapters: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          blockId: { type: "string" },
+          markdown: { type: "string" },
+        },
+        required: ["blockId", "markdown"],
+      },
+    },
+    confidence: { type: "number" },
+  },
+  required: ["chapters", "confidence"],
+} as const;
+
+export const CONTENT_GENERATION_SLIDES_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    chapters: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          blockId: { type: "string" },
+          slides: {
+            type: "array",
+            items: SLIDE_ITEM_SCHEMA,
+          },
+        },
+        required: ["blockId", "slides"],
       },
     },
     confidence: { type: "number" },
@@ -223,8 +276,11 @@ export function isGeminiAvailabilityError(error: unknown): boolean {
   ].some((marker) => details.includes(marker));
 }
 
-async function generateStructuredWithOpenAI(
+async function callOpenAIStructured(
   call: StructuredContentGenerationCall,
+  schema: Record<string, unknown>,
+  schemaName: string,
+  schemaDescription: string,
 ): Promise<unknown> {
   const configuredMaxOutputTokens = positiveInteger(
     process.env.OPENAI_CONTENT_GENERATION_MAX_OUTPUT_TOKENS,
@@ -251,20 +307,24 @@ async function generateStructuredWithOpenAI(
       verbosity: isReasoningModel ? "high" : "medium",
       format: {
         type: "json_schema",
-        name: "trailup_personalized_content_batch",
-        description:
-          "Capítulos personalizados completos, com roteiro de áudio e slides rastreáveis.",
+        name: schemaName,
+        description: schemaDescription,
         strict: true,
-        schema: CONTENT_GENERATION_RESPONSE_SCHEMA,
+        schema,
       },
     },
   });
 
   if (response.status === "incomplete") {
     const reason = response.incomplete_details?.reason ?? "motivo desconhecido";
+    // gpt-4o-mini tem teto rigido de 16384 tokens de saida na API da OpenAI —
+    // nao ha env var que resolva isso alem desse teto. A unica saida real e
+    // pedir menos por chamada (dividir o escopo), nao subir um limite.
     throw new Error(
-      `OpenAI retornou resposta incompleta na contingência (motivo: ${reason}). `
-      + "Reduza o escopo por chamada ou aumente OPENAI_CONTENT_GENERATION_MAX_OUTPUT_TOKENS.",
+      `OpenAI retornou resposta incompleta (motivo: ${reason}). Reduza o `
+      + "escopo pedido nesta chamada — gpt-4o-mini tem teto de 16384 tokens "
+      + "de saída, subir OPENAI_CONTENT_GENERATION_MAX_OUTPUT_TOKENS acima "
+      + "disso não tem efeito.",
     );
   }
 
@@ -281,6 +341,39 @@ async function generateStructuredWithOpenAI(
       cause: error,
     });
   }
+}
+
+async function generateStructuredWithOpenAI(
+  call: StructuredContentGenerationCall,
+): Promise<unknown> {
+  return callOpenAIStructured(
+    call,
+    CONTENT_GENERATION_RESPONSE_SCHEMA,
+    "trailup_personalized_content_batch",
+    "Capítulos personalizados completos, com roteiro de áudio e slides rastreáveis.",
+  );
+}
+
+export async function generateOpenAITextOnly(
+  call: StructuredContentGenerationCall,
+): Promise<unknown> {
+  return callOpenAIStructured(
+    call,
+    CONTENT_GENERATION_TEXT_SCHEMA,
+    "trailup_personalized_content_text",
+    "Markdown personalizado por bloco, sem roteiro de áudio nem slides.",
+  );
+}
+
+export async function generateOpenAISlidesOnly(
+  call: StructuredContentGenerationCall,
+): Promise<unknown> {
+  return callOpenAIStructured(
+    call,
+    CONTENT_GENERATION_SLIDES_SCHEMA,
+    "trailup_personalized_content_slides",
+    "Slides rastreáveis por bloco, sem markdown nem roteiro de áudio.",
+  );
 }
 
 export function resetGeminiContentGenerationCircuit(): void {

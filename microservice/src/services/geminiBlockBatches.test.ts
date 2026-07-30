@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   consolidateBlockBatchGenerations,
+  mergeSplitFallbackChapters,
   partitionContentBlocks,
   resolveContentBlockBatchSize,
   resolveContentBlockConcurrency,
@@ -196,6 +197,64 @@ test("consolida markdown, áudio e slides na ordem global com metadados dos lote
     ["bloco-04"],
   ]);
   assert.equal(result.metadata.confidence, 0.9);
+});
+
+test("mergeSplitFallbackChapters combina áudio (Gemini), texto e slides (OpenAI) por blockId", () => {
+  const merged = mergeSplitFallbackChapters(
+    ["bloco-01", "bloco-02"],
+    {
+      chapters: [
+        { blockId: "bloco-01", audioScript: "Narração do bloco 1." },
+        { blockId: "bloco-02", audioScript: "Narração do bloco 2." },
+      ],
+      confidence: 0.9,
+    },
+    {
+      chapters: [
+        { blockId: "bloco-02", markdown: "## Bloco 2" },
+        { blockId: "bloco-01", markdown: "## Bloco 1" },
+      ],
+      confidence: 0.8,
+    },
+    {
+      chapters: [
+        { blockId: "bloco-01", slides: [{ title: "Slide 1" }] },
+        { blockId: "bloco-02", slides: [{ title: "Slide 2" }] },
+      ],
+      confidence: 0.7,
+    },
+  );
+
+  assert.deepEqual(merged.chapters, [
+    {
+      blockId: "bloco-01",
+      markdown: "## Bloco 1",
+      audioScript: "Narração do bloco 1.",
+      slides: [{ title: "Slide 1" }],
+    },
+    {
+      blockId: "bloco-02",
+      markdown: "## Bloco 2",
+      audioScript: "Narração do bloco 2.",
+      slides: [{ title: "Slide 2" }],
+    },
+  ]);
+  // Confiança final é a mais conservadora das três chamadas independentes.
+  assert.equal(merged.confidence, 0.7);
+});
+
+test("mergeSplitFallbackChapters preenche campos ausentes em vez de omitir o blockId", () => {
+  const merged = mergeSplitFallbackChapters(
+    ["bloco-01"],
+    { chapters: [], confidence: 0.9 },
+    { chapters: [{ blockId: "bloco-01", markdown: "## Bloco 1" }], confidence: 0.8 },
+    null,
+  );
+
+  assert.deepEqual(merged.chapters, [
+    { blockId: "bloco-01", markdown: "## Bloco 1", audioScript: "", slides: [] },
+  ]);
+  assert.equal(merged.confidence, 0);
 });
 
 test("consolidação recusa conjunto de lotes sem cobertura global", () => {

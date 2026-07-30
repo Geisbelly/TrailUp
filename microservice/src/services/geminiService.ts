@@ -15,10 +15,13 @@ import { mapWithConcurrency } from "../lib/boundedConcurrency";
 import { resolveRealSlideOrder } from "../lib/pptxSlideOrder";
 import { addWavHeader } from "../lib/wav";
 import {
+  generateOpenAISlidesOnly,
+  generateOpenAITextOnly,
   generateStructuredContentWithFallback,
   resolveGeminiContentGenerationModel,
   resolveOpenAIContentGenerationFallbackModel,
   type ContentGenerationProvider,
+  type StructuredContentGenerationCall,
 } from "./contentGenerationService";
 import { 
   EnrichedContentBlock,
@@ -193,6 +196,28 @@ const GEMINI_CONTENT_GENERATION_RESPONSE_SCHEMA = {
           },
         },
         required: ["blockId", "markdown", "audioScript", "slides"],
+      },
+    },
+    confidence: { type: Type.NUMBER },
+  },
+  required: ["chapters", "confidence"],
+};
+
+// Usado só na contingência: quando o Gemini falha pro bloco inteiro, markdown
+// e slides vão pra OpenAI (teto de 16384 tokens de saída obriga a dividir),
+// mas o audioScript continua exclusivamente Gemini — nunca gerado pela OpenAI.
+const GEMINI_AUDIO_SCRIPT_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    chapters: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          blockId: { type: Type.STRING },
+          audioScript: { type: Type.STRING },
+        },
+        required: ["blockId", "audioScript"],
       },
     },
     confidence: { type: Type.NUMBER },
@@ -422,6 +447,58 @@ export function validateBlockBatchGeneration(
     blockIds: batchIds,
     chapters,
     confidence: Math.max(0, Math.min(1, confidence)),
+  };
+}
+
+/**
+ * Combina os três pedaços da contingência dividida (áudio sempre via Gemini,
+ * markdown e slides via OpenAI) num único objeto no formato que
+ * validateBlockBatchGeneration já sabe validar. blockId ausente em algum
+ * pedaço vira campo vazio em vez de capítulo omitido — a validação existente
+ * já recusa markdown/audioScript curto demais ou slides vazios com uma
+ * mensagem específica, que realimenta o loop de correção da OpenAI.
+ */
+export function mergeSplitFallbackChapters(
+  expectedIds: string[],
+  audio: unknown,
+  text: unknown,
+  slides: unknown,
+): { chapters: unknown[]; confidence: number } {
+  const chaptersById = (value: unknown): Map<string, Record<string, unknown>> => {
+    const map = new Map<string, Record<string, unknown>>();
+    const chapters = value && typeof value === "object"
+      ? (value as Record<string, unknown>).chapters
+      : null;
+    if (!Array.isArray(chapters)) return map;
+    for (const rawChapter of chapters) {
+      if (typeof rawChapter !== "object" || rawChapter === null) continue;
+      const chapter = rawChapter as Record<string, unknown>;
+      const blockId = normalizedText(chapter.blockId);
+      if (blockId) map.set(blockId, chapter);
+    }
+    return map;
+  };
+  const confidenceOf = (value: unknown): number => {
+    const confidence = value && typeof value === "object"
+      ? Number((value as Record<string, unknown>).confidence)
+      : NaN;
+    return Number.isFinite(confidence) ? confidence : 0;
+  };
+
+  const audioById = chaptersById(audio);
+  const textById = chaptersById(text);
+  const slidesById = chaptersById(slides);
+
+  const chapters = expectedIds.map((blockId) => ({
+    blockId,
+    markdown: String(textById.get(blockId)?.markdown ?? ""),
+    audioScript: String(audioById.get(blockId)?.audioScript ?? ""),
+    slides: slidesById.get(blockId)?.slides ?? [],
+  }));
+
+  return {
+    chapters,
+    confidence: Math.min(confidenceOf(audio), confidenceOf(text), confidenceOf(slides)),
   };
 }
 
@@ -841,6 +918,46 @@ export async function processMediaWithGemini(
                 );
               }
               return rawBatch;
+            },
+            generateWithOpenAI: async (currentCall: StructuredContentGenerationCall) => {
+              const generateAudioScriptWithGemini = async () => {
+                const response = await getAi().models.generateContent({
+                  model: currentCall.geminiModel,
+                  contents: [{
+                    parts: [{ text: currentCall.input }],
+                  }],
+                  config: {
+                    systemInstruction: currentCall.instructions,
+                    maxOutputTokens: currentCall.maxOutputTokens,
+                    responseMimeType: "application/json",
+                    responseSchema: GEMINI_AUDIO_SCRIPT_SCHEMA,
+                  },
+                });
+                const responseText = String(response.text ?? "").trim();
+                if (!responseText) {
+                  throw new Error(
+                    `Gemini retornou audioScript vazio no lote ${index + 1}.`,
+                  );
+                }
+                try {
+                  return JSON.parse(responseText);
+                } catch (error) {
+                  throw new Error(
+                    `Gemini retornou JSON inválido no audioScript do lote ${index + 1}.`,
+                    { cause: error },
+                  );
+                }
+              };
+
+              // audioScript nunca sai da OpenAI — só markdown e slides, cada
+              // um em chamada própria pra caber no teto de 16384 tokens de
+              // saída do gpt-4o-mini.
+              const [audio, text, slides] = await Promise.all([
+                generateAudioScriptWithGemini(),
+                generateOpenAITextOnly(currentCall),
+                generateOpenAISlidesOnly(currentCall),
+              ]);
+              return mergeSplitFallbackChapters(expectedIds, audio, text, slides);
             },
             validateResult: (value) => {
               validateBlockBatchGeneration(batch, value, index + 1);
