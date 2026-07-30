@@ -1036,18 +1036,6 @@ export function buildApp(opts: AppOptions = {}): express.Application {
       });
     }
 
-    const renderer = await presentationRendererReadiness();
-    if (!renderer.ready) {
-      return res.status(503).json({
-        status: "renderer_unavailable",
-        error: renderer.error ?? "renderer de apresentacao indisponivel",
-        presentation_renderer: renderer,
-        media_pipeline_version: MEDIA_PIPELINE_VERSION,
-        presentation_engine_version: PRESENTATION_ENGINE_VERSION,
-        presentation_design_version: PRESENTATION_DESIGN_VERSION,
-      });
-    }
-
     const classeId    = String(classe_id ?? 0);
     const topicoId    = String(topico_id ?? 0);
     const conteudoId  = conteudo_id === undefined ? null : String(conteudo_id);
