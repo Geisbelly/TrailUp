@@ -535,26 +535,26 @@ describe("POST /api/personalizar concorrencia", () => {
 });
 
 describe("diagnostico da apresentacao", () => {
-  it("classifica falha de render e nao tenta upload", async () => {
+  it("classifica falha ao montar o HTML e nao tenta upload", async () => {
     let uploadCalls = 0;
     const result = await renderAndUploadPresentation({
       slides: [{ titulo: "Teste" }],
       profile: "seeker",
       bucket: "conteudo_aluno",
-      pdfPath: "brainhex/seeker/apresentacao/teste.pdf",
-      renderPdf: async () => {
-        throw new Error("Chrome\nnao iniciou");
+      presentationPath: "brainhex/seeker/apresentacao/teste.html",
+      buildHtml: () => {
+        throw new Error("slide invalido\ncom quebra de linha");
       },
-      uploadPdf: async () => {
+      uploadHtml: async () => {
         uploadCalls += 1;
-        return "https://example.test/nao-deveria-subir.pdf";
+        return "https://example.test/nao-deveria-subir.html";
       },
     });
 
-    assert.equal(result.pdfUrl, null);
+    assert.equal(result.presentationUrl, null);
     assert.deepEqual(result.failure, {
       stage: "render",
-      error: "Chrome nao iniciou",
+      error: "slide invalido com quebra de linha",
     });
     assert.equal(uploadCalls, 0);
   });
@@ -564,14 +564,14 @@ describe("diagnostico da apresentacao", () => {
       slides: [{ titulo: "Teste" }],
       profile: "seeker",
       bucket: "conteudo_aluno",
-      pdfPath: "brainhex/seeker/apresentacao/teste.pdf",
-      renderPdf: async () => Buffer.from("%PDF-1.7"),
-      uploadPdf: async () => {
+      presentationPath: "brainhex/seeker/apresentacao/teste.html",
+      buildHtml: () => "<html></html>",
+      uploadHtml: async () => {
         throw new Error("limite do bucket excedido");
       },
     });
 
-    assert.equal(result.pdfUrl, null);
+    assert.equal(result.presentationUrl, null);
     assert.deepEqual(result.failure, {
       stage: "upload",
       error: "limite do bucket excedido",
@@ -581,11 +581,11 @@ describe("diagnostico da apresentacao", () => {
   it("persiste engine e causa real sem anunciar URL legada", () => {
     const metadata = buildPresentationMaterialMetadata({
       generationKey: "ciclo-1:hash-a",
-      pdfUrl: null,
+      presentationUrl: null,
       bucket: "conteudo_aluno",
       failure: {
         stage: "render",
-        error: "Chrome do Puppeteer nao encontrado",
+        error: "slide invalido",
       },
       updatedAt: "2026-07-28T00:00:00.000Z",
     });
@@ -596,8 +596,7 @@ describe("diagnostico da apresentacao", () => {
     assert.equal(metadata.media_pipeline_version, MEDIA_PIPELINE_VERSION);
     assert.equal(metadata.generation_key, "ciclo-1:hash-a");
     assert.equal(metadata.error_stage, "render");
-    assert.equal(metadata.error, "Chrome do Puppeteer nao encontrado");
-    assert.equal(metadata.bucket, undefined);
+    assert.equal(metadata.error, "slide invalido");
   });
 });
 

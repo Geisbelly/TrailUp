@@ -31,12 +31,7 @@ import {
   type GenerationFence,
   type PersistedMaterialsMerge,
 } from "./src/services/supabaseService";
-import {
-  generateSlidesPDF,
-  getPresentationRendererReadiness,
-  presentationRendererError,
-  type PresentationRendererReadiness,
-} from "./src/services/pdfService";
+import { buildDeckHtml } from "./src/lib/slideTemplate";
 import { createLogger, type Logger } from "./src/lib/logger";
 import { enrichSlidesWithImages } from "./src/lib/slideEnricher";
 import { validatePersonalizarBody } from "./src/lib/validators";
@@ -185,52 +180,53 @@ export interface PresentationFailure {
   error: string;
 }
 
+function presentationRendererError(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error);
+  return raw.replace(/\s+/g, " ").trim().slice(0, 1200) || "renderer_error";
+}
+
 export async function renderAndUploadPresentation(params: {
   slides: any[];
   profile: BrainHexProfile;
   presentationTheme?: PresentationDesignPlan;
   bucket: string;
-  pdfPath: string;
-  renderPdf?: typeof generateSlidesPDF;
-  uploadPdf?: typeof uploadBuffer;
-}): Promise<{ pdfUrl: string | null; failure: PresentationFailure | null }> {
-  const renderPdf = params.renderPdf ?? generateSlidesPDF;
-  const uploadPdf = params.uploadPdf ?? uploadBuffer;
+  presentationPath: string;
+  buildHtml?: typeof buildDeckHtml;
+  uploadHtml?: typeof uploadBuffer;
+}): Promise<{ presentationUrl: string | null; failure: PresentationFailure | null }> {
+  const buildHtml = params.buildHtml ?? buildDeckHtml;
+  const uploadHtml = params.uploadHtml ?? uploadBuffer;
 
-  let pdfBytes: Buffer;
+  let html: string;
   try {
-    pdfBytes = await renderPdf(
-      params.slides,
-      params.profile,
-      { theme: params.presentationTheme },
-    );
+    html = buildHtml(params.slides, params.profile, params.presentationTheme);
   } catch (error) {
     return {
-      pdfUrl: null,
+      presentationUrl: null,
       failure: { stage: "render", error: presentationRendererError(error) },
     };
   }
 
   try {
-    const pdfUrl = await uploadPdf(
+    const presentationUrl = await uploadHtml(
       params.bucket,
-      params.pdfPath,
-      pdfBytes,
-      "application/pdf",
+      params.presentationPath,
+      Buffer.from(html, "utf-8"),
+      "text/html; charset=utf-8",
     );
-    if (!pdfUrl) {
+    if (!presentationUrl) {
       return {
-        pdfUrl: null,
+        presentationUrl: null,
         failure: {
           stage: "upload",
           error: "upload da apresentacao nao retornou URL publica",
         },
       };
     }
-    return { pdfUrl, failure: null };
+    return { presentationUrl, failure: null };
   } catch (error) {
     return {
-      pdfUrl: null,
+      presentationUrl: null,
       failure: { stage: "upload", error: presentationRendererError(error) },
     };
   }
@@ -238,17 +234,17 @@ export async function renderAndUploadPresentation(params: {
 
 export function buildPresentationMaterialMetadata(params: {
   generationKey: string;
-  pdfUrl: string | null;
+  presentationUrl: string | null;
   bucket: string;
   failure: PresentationFailure | null;
   updatedAt?: string;
 }): MaterialEntry["metadata"] {
   return {
-    status: params.pdfUrl ? "completed" : "failed",
+    status: params.presentationUrl ? "completed" : "failed",
     media_kind: "apresentacao",
     ...buildPresentationVersionMetadata(params.generationKey),
     updated_at: params.updatedAt ?? now(),
-    ...(params.pdfUrl ? { bucket: params.bucket } : {}),
+    ...(params.presentationUrl ? { bucket: params.bucket } : {}),
     ...(params.failure
       ? {
           error_stage: params.failure.stage,
