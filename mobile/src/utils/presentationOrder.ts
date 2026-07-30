@@ -25,6 +25,7 @@ const MODE_BASE_PRIORITY: Record<ModoApresentacao, ContentBlockType[]> = {
     "imagem",
     "youtube",
     "apresentacao",
+    "apresentacao-slides",
     "embed",
     "pdf",
     "documento",
@@ -37,6 +38,7 @@ const MODE_BASE_PRIORITY: Record<ModoApresentacao, ContentBlockType[]> = {
     "pdf",
     "documento",
     "apresentacao",
+    "apresentacao-slides",
     "imagem",
     "cards",
     "audio",
@@ -50,6 +52,7 @@ const MODE_BASE_PRIORITY: Record<ModoApresentacao, ContentBlockType[]> = {
     "pdf",
     "documento",
     "apresentacao",
+    "apresentacao-slides",
     "imagem",
     "audio",
     "video",
@@ -64,6 +67,7 @@ const MODE_BASE_PRIORITY: Record<ModoApresentacao, ContentBlockType[]> = {
     "audio",
     "imagem",
     "apresentacao",
+    "apresentacao-slides",
     "documento",
     "markdown",
     "texto",
@@ -89,7 +93,7 @@ function isTextualType(tipo: ContentBlockType) {
 }
 
 function isDocumentType(tipo: ContentBlockType) {
-  return ["pdf", "documento", "apresentacao"].includes(tipo);
+  return ["pdf", "documento", "apresentacao", "apresentacao-slides"].includes(tipo);
 }
 
 function isIntroBlock(block: ContentBlock) {
