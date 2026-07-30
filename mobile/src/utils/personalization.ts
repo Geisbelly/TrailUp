@@ -1,6 +1,7 @@
 import {
   ContentBlock,
   ContentBlockType,
+  RichPresentationSlide,
 } from "@/interfaces/componentes_simples/IContentBlock";
 import { normalizeIAPersonalizationPatch } from "@/interfaces/personalizacao/IAContracts";
 import {
@@ -597,6 +598,38 @@ function normalizePresentationSlides(value: unknown) {
     );
 }
 
+function normalizeRichPresentationSlides(value: unknown): RichPresentationSlide[] {
+  return asArray<any>(value)
+    .map((slide, index) => {
+      if (typeof slide === "string" && slide.trim()) {
+        return {
+          title: `Slide ${index + 1}`,
+          points: [slide.trim()],
+          explanation: null,
+          characterQuote: null,
+          imagemReferencia: null,
+          icones: [],
+        };
+      }
+
+      if (!slide || typeof slide !== "object") return null;
+
+      const title = pickString(slide.titulo, slide.title, `Slide ${index + 1}`);
+      const points = normalizeTextList(slide.pontos ?? slide.points ?? slide.bullets ?? slide.topics);
+      if (!title && !points.length) return null;
+
+      return {
+        title: title ?? `Slide ${index + 1}`,
+        points,
+        explanation: pickString(slide.explanation, slide.explicacao),
+        characterQuote: pickString(slide.characterQuote, slide.fala_guia),
+        imagemReferencia: pickString(slide.imagem_referencia, slide.imagemReferencia),
+        icones: normalizeTextList(slide.icones ?? slide.icons),
+      };
+    })
+    .filter((slide): slide is RichPresentationSlide => Boolean(slide));
+}
+
 function normalizeStudyCards(rawCards: unknown, prefix: string) {
   return asArray<any>(rawCards)
     .map((card, index): PersonalizedStudyCard | null => {
@@ -1186,8 +1219,8 @@ function normalizeMediaBlocks(
     const presentationTitle =
       pickString(payload.titulo, title, "Apresentação personalizada") ??
       "Apresentação personalizada";
-    const slides = normalizePresentationSlides(payload.slides ?? rawObject.slides);
-    const hasInlineSlides = slides.length > 0;
+    const richSlides = normalizeRichPresentationSlides(payload.slides ?? rawObject.slides);
+    const hasInlineSlides = richSlides.length > 0;
 
     if (!hasInlineSlides && url && isPdfUrl(url)) {
       const block = normalizeContentBlock(
@@ -1240,36 +1273,18 @@ function normalizeMediaBlocks(
       return block ? [block] : [];
     }
 
-    const blocks: ContentBlock[] = [];
+    if (!hasInlineSlides) return [];
 
-    // Mesmo preferindo os slides inline, nao descartamos a referencia ao
-    // arquivo no Storage quando ele existe (ver comentario em "documento"
-    // acima — mesma ressalva: sem UI ainda lendo esse campo).
-    const aberturaBlock = buildMarkdownContentBlock({
-      id: `${key}-abertura`,
-      title: presentationTitle,
-      lines: [
-        pickString(payload.abertura, rawObject.abertura, payload.resumo, rawObject.resumo) ?? "",
-      ],
-      metadata: url ? { ...metadata, arquivo_url: url } : metadata,
-    });
-    if (aberturaBlock) blocks.push(aberturaBlock);
-
-    slides.forEach((slide, index) => {
-      const slideBlock = buildMarkdownContentBlock({
-        id: `${key}-slide-${index + 1}`,
-        title: slide.title,
-        lines: slide.points,
-        metadata: {
-          ...metadata,
-          sequence: index + 1,
-          slideTitle: slide.title,
+    return [
+      {
+        id: key,
+        tipo: "apresentacao-slides",
+        payload: {
+          title: presentationTitle,
+          slides: richSlides,
         },
-      });
-      if (slideBlock) blocks.push(slideBlock);
-    });
-
-    return blocks;
+      },
+    ];
   }
 
   if (tipo === "pdf") {
