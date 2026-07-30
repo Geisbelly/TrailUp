@@ -953,3 +953,7 @@ Sem ação de código — só lembrete: como das outras vezes hoje, esse push n�
 - **Cobertura da spec:** Seção 1 (arquitetura) → Tasks 2-3. Seção 2 (contrato/storage/versionamento) → Tasks 1, 3, 4, 9. Seção 3 (erros) → coberto pelos testes reescritos no Task 2 (falha de render vs upload continuam distintas). Seção 4 (testes) → Tasks 2, 6 (health), 7 (deleção de pdfService.test.ts + ajuste do QA script). Item "fora de escopo" sobre `isPresentationUrl`/render nativo mobile → Task 9 cobre só o ajuste defensivo da extensão (não o render nativo, que fica pra outro brainstorm, como decidido).
 - **Placeholders:** nenhum "TBD"/"implementar depois" — todo código de todo step está completo e copiável.
 - **Consistência de tipos:** `presentationUrl`/`presentationPath` usados com o mesmo nome em `renderAndUploadPresentation` (Task 2), `archiveToSupabase` (Task 3) e nos handlers (Tasks 4-5) — sem mistura com `pdfUrl`/`pdfPath` remanescente.
+
+## Retrospectiva (achado durante a execução)
+
+Task 5 tinha uma lacuna: `microservice/src/server.test.ts` tinha um teste (`"nao inicia o job quando o renderer de apresentacao esta indisponivel"`, ~linha 327) que fazia stub de `presentationRendererReadiness` e esperava 503 de `/api/personalizar` — comportamento que deixou de existir ao remover o gate. O plano não previu esse teste (só cobriu explicitamente os testes de `/api/health` na Task 6). Corrigido durante a execução (deletado o teste, commit separado). Registrado aqui pra quem reler este plano depois não estranhar o commit extra fora dos steps originais da Task 5.
