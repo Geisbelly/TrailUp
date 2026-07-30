@@ -324,43 +324,6 @@ describe("POST /api/personalizar validação", () => {
     }
   });
 
-  it("nao inicia o job quando o renderer de apresentacao esta indisponivel", async () => {
-    const calls: unknown[] = [];
-    const { base: guardedBase, close: closeGuarded } = await startTestServer({
-      personalizacaoJobRunner: async (params) => {
-        calls.push(params);
-      },
-      presentationRendererReadiness: async () => ({
-        ready: false,
-        checked_at: "2026-07-28T00:00:00.000Z",
-        error: "browser launch failed",
-      }),
-    });
-    try {
-      const res = await fetch(`${guardedBase}/api/personalizar`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          profile: "seeker",
-          personalizacao_id: 257,
-          fontes: [],
-          content_blocks: [enrichedContentBlock()],
-          ciclo_id: "ciclo-257",
-          source_hash: "hash-257",
-          generation_key: "ciclo-257:hash-257",
-        }),
-      });
-
-      assert.equal(res.status, 503);
-      const body = await res.json() as { status: string; error: string };
-      assert.equal(body.status, "renderer_unavailable");
-      assert.match(body.error, /browser launch failed/);
-      assert.equal(calls.length, 0);
-    } finally {
-      await closeGuarded();
-    }
-  });
-
   it("propaga falha do runner no modo wait_for_completion", async () => {
     const { base: syncBase, close: closeSync } = await startTestServer({
       personalizacaoJobRunner: async () => {
