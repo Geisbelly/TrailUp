@@ -85,7 +85,6 @@ src/
     contentGenerationService.ts # Gemini principal com contingencia OpenAI
     geminiService.ts      # texto/slides via Gemini principal e áudio TTS
     openaiImageService.ts # fundos editoriais temáticos via OpenAI
-    pdfService.ts         # deck HTML 16:9 renderizado pelo Puppeteer
     supabaseService.ts    # storage + merge defensivo + heartbeat + recovery
   types/index.ts
 ```
