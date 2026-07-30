@@ -2,8 +2,11 @@
   "rewrites": [
     {
       "source": "/trailup-api/:path*",
-      "destination": "https://trailup.onrender.com/:path*"
+      "destination": "https://__SET_API_PROXY_TARGET_ENV_VAR__/:path*"
     },
-    { "source": "/(.*)", "destination": "/" }
+    {
+      "source": "/(.*)",
+      "destination": "/"
+    }
   ]
 }
