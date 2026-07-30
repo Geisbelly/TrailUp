@@ -848,7 +848,7 @@ export function buildApp(opts: AppOptions = {}): express.Application {
   //         slideImages? (opcional — se o frontend já os gerou) }
   //
   // O servidor gera imagens dos slides via Gemini (se não foram enviadas),
-  // monta o PDF com layout 2-painéis e persiste markdown + mp3 + pdf no Storage.
+  // monta o HTML da apresentação e persiste markdown + mp3 + apresentação no Storage.
   app.post("/api/v1/archive", requireSecret, async (req, res) => {
     req.log.info("archive request received");
 
