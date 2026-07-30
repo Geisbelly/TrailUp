@@ -514,6 +514,7 @@ import {
 type Props = {
   payload: {
     title?: string | null;
+    abertura?: string | null;
     slides?: RichPresentationSlide[];
   };
 };
@@ -566,6 +567,11 @@ export default function PresentationSlidesBlock({ payload }: Props) {
         <Text style={[styles.previewTitle, { color: palette.text }]} numberOfLines={2}>
           {payload.title ?? "Apresentação personalizada"}
         </Text>
+        {payload.abertura ? (
+          <Text style={[styles.previewSubtitle, { color: palette.textMuted }]} numberOfLines={3}>
+            {payload.abertura}
+          </Text>
+        ) : null}
         <View style={[styles.previewButton, { backgroundColor: palette.accent }]}>
           <Ionicons name="play" size={16} color={Color.colorWhite} />
           <Text style={styles.previewButtonText}>Ver apresentação</Text>
@@ -703,6 +709,11 @@ const styles = StyleSheet.create({
   previewTitle: {
     fontFamily: FontFamily.inikaBold,
     fontSize: 18,
+  },
+  previewSubtitle: {
+    fontFamily: FontFamily.interMedium,
+    fontSize: 13,
+    lineHeight: 19,
   },
   previewButton: {
     flexDirection: "row",
@@ -891,3 +902,8 @@ git push origin main
 - **Placeholders:** nenhum "TBD"/"implementar depois" — todo código de todo step está completo e copiável, incluindo o componente inteiro na Task 4.
 - **Consistência de tipos:** `RichPresentationSlide` definido uma vez (Task 1, `IContentBlock.ts`), usado sem alteração de forma em `normalizeRichPresentationSlides` (Task 2) e `PresentationSlidesBlock` (Task 4) — mesmos nomes de campo (`imagemReferencia`, não `imagem_referencia`, em todo lugar depois da normalização).
 - **Reaproveitamento confirmado:** `getProfileShellPalette`, `getBrainHexConfig`, `getBrainHexGuideName`, `useUsuario`, `Color`/`FontFamily` de `GlobalStyle.ts`, `expo-linear-gradient`, `Modal`/`SafeAreaView` — todos já existentes e usados em outros componentes do mobile (`StudyCardsBlock.tsx`, `QuestionActivity.tsx`, telas de auth), confirmado por leitura direta antes de escrever este plano.
+
+## Retrospectiva (achados durante a execução)
+
+- **Task 1** expôs dois mapeamentos exaustivos que dependiam do union `ContentBlockType` e não foram previstos no plano original: `telemetryMetrics.ts` (`Record<ContentBlockType, number>`, erro de compilação) e `presentationOrder.ts` (`MODE_BASE_PRIORITY` × 4 + `isDocumentType()`, sem erro de compilação mas quebrava a ordenação/priorização em runtime). Corrigidos em commits separados (`6b8f07d`, `f39cfd6`). Uma segunda rodada de revisão achou ainda um terceiro problema mais sutil: `heroFormat` (tipo separado, vem do servidor, nunca contém `"apresentacao-slides"`) precisa de normalização pra continuar batendo com o bloco novo — corrigido em `d828018` (`normalizeBlockType` ganhou o case, e as entradas redundantes adicionadas nos 4 arrays em `f39cfd6` foram removidas, já que a normalização cobre o lookup).
+- **Task 2** removeu o campo `abertura`/`resumo` sem substituto — a justificativa original do plano ("artefato do formato antigo, sem perda real") só é verdadeira pro caminho microservice; no fallback Python (`MultiOutputPipeline`) é conteúdo narrativo próprio gerado pela IA. Corrigido em `1e2d7b0`: `abertura?: string | null` adicionado a `ContentBlockPayload` (Task 1) e populado no bloco `apresentacao-slides` (Task 2). O código da Task 4 abaixo já reflete isso (mostrado como subtítulo/gancho no card de prévia).

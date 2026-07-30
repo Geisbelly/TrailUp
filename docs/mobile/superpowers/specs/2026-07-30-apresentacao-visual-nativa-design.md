@@ -41,7 +41,7 @@ mobile/src/utils/personalization.ts
     └─ [NOVO] normalizeRichPresentationSlides() → title, points, explanation,
               characterQuote, imagem_referencia, icones (mantido no dado,
               não desenhado nesta versão — ver Seção 2)
-              → 1 bloco tipo "apresentacao-slides", payload = { title, slides[] }
+              → 1 bloco tipo "apresentacao-slides", payload = { title, abertura, slides[] }
 
 mobile/src/components/ContentRenderer.tsx
   block.tipo === "apresentacao-slides"          [NOVO — mesmo padrão de "cards" → StudyCardsBlock]
@@ -100,7 +100,7 @@ type RichPresentationSlide = {
 
 **`PresentationSlidesBlock.tsx`** (novo componente):
 - Estado: `index` (slide atual), `modalVisible` (boolean).
-- Preview inline (sempre visível): título do material + botão "Ver apresentação" estilizado na cor do perfil (`palette.accent`).
+- Preview inline (sempre visível): título do material + `abertura` (quando presente) como subtítulo/gancho + botão "Ver apresentação" estilizado na cor do perfil (`palette.accent`). `abertura` vem do payload (ver Seção 1) — no caminho microservice costuma ser só a 1ª linha do markdown (baixo valor), mas no fallback Python é uma abertura narrativa própria gerada pela IA; preservado nos dois casos em vez de descartado.
 - `<Modal visible={modalVisible} animationType="fade">`: tela cheia, `LinearGradient` de fundo (imagem ou cor sólida conforme Seção 2), conteúdo do slide atual sobreposto, áreas de toque nas laterais (esquerda = slide anterior, direita = próximo) + indicador "slide X de N" + botão fechar.
 - Sem `imagem_referencia` no slide atual: `LinearGradient` usa só as cores do perfil (`palette.background`/`palette.surfaceElevated`), sem tentar carregar `<Image>` vazia.
 
