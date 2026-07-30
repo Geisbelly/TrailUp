@@ -15,6 +15,7 @@ import { Image, Platform, StyleSheet, Text, View } from "react-native";
 import { DocumentBlock } from "./DocumentBlock";
 import { MarkdownBlock } from "./MarkdownBlock";
 import StudyCardsBlock from "./StudyCardsBlock";
+import PresentationSlidesBlock from "./PresentationSlidesBlock";
 import AudioPlayer from "./funcionais/AudioPlayer";
 import VideoPlayer from "./funcionais/VideoPlayer";
 
@@ -263,6 +264,14 @@ export function ContentRenderer({ blocks, WebView }: Props) {
           return (
             <View key={block.id}>
               <StudyCardsBlock payload={block.payload} WebView={resolvedWebView} />
+            </View>
+          );
+        }
+
+        if (block.tipo === "apresentacao-slides") {
+          return (
+            <View key={block.id}>
+              <PresentationSlidesBlock payload={block.payload} />
             </View>
           );
         }
