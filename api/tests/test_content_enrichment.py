@@ -238,6 +238,39 @@ def _failing_openai_factory(message: str, captured: dict[str, Any] | None = None
     return factory
 
 
+class _IncompleteDetails:
+    def __init__(self, reason: str) -> None:
+        self.reason = reason
+
+
+class _IncompleteOpenAIResponse:
+    def __init__(self, reason: str) -> None:
+        self.status = "incomplete"
+        self.incomplete_details = _IncompleteDetails(reason)
+        self.output_text = ""
+        self.usage = None
+
+
+class _IncompleteOpenAIResponses:
+    def __init__(self, reason: str) -> None:
+        self._reason = reason
+
+    async def create(self, **_kwargs: Any) -> Any:
+        return _IncompleteOpenAIResponse(self._reason)
+
+
+class _IncompleteOpenAIClient:
+    def __init__(self, reason: str) -> None:
+        self.responses = _IncompleteOpenAIResponses(reason)
+
+
+def _incomplete_openai_factory(reason: str):
+    def factory(_api_key: str) -> _IncompleteOpenAIClient:
+        return _IncompleteOpenAIClient(reason)
+
+    return factory
+
+
 # ─── Gemini como provedor principal — comportamento núcleo ────────────────────
 
 
@@ -568,6 +601,25 @@ async def test_ambos_provedores_falham_gera_erro_combinado(
         await enrich_content_blocks(context=_context(), settings=_settings_with_openai())
     assert "Gemini fora do ar" in str(exc_info.value)
     assert "OpenAI tambem fora do ar" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_openai_resposta_incompleta_gera_erro_diagnosticavel(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        enrichment_module,
+        "_gemini_client",
+        _failing_gemini_factory("Gemini fora do ar"),
+    )
+    monkeypatch.setattr(
+        enrichment_module,
+        "_openai_client",
+        _incomplete_openai_factory("max_output_tokens"),
+    )
+
+    with pytest.raises(ContentEnrichmentError, match="incompleta.*max_output_tokens"):
+        await enrich_content_blocks(context=_context(), settings=_settings_with_openai())
 
 
 # ─── Circuito de indisponibilidade da OpenAI (reserva) ────────────────────────

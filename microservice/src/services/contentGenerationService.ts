@@ -260,6 +260,14 @@ async function generateStructuredWithOpenAI(
     },
   });
 
+  if (response.status === "incomplete") {
+    const reason = response.incomplete_details?.reason ?? "motivo desconhecido";
+    throw new Error(
+      `OpenAI retornou resposta incompleta na contingência (motivo: ${reason}). `
+      + "Reduza o escopo por chamada ou aumente OPENAI_CONTENT_GENERATION_MAX_OUTPUT_TOKENS.",
+    );
+  }
+
   const responseText = String(response.output_text ?? "").trim();
   if (!responseText) {
     throw new Error(
