@@ -583,6 +583,17 @@ async def _generate_openai_batch(
 
     _record_openai_spend(getattr(response, "usage", None))
 
+    if getattr(response, "status", None) == "incomplete":
+        reason = (
+            getattr(getattr(response, "incomplete_details", None), "reason", None)
+            or "motivo desconhecido"
+        )
+        raise ContentEnrichmentError(
+            f"OpenAI retornou resposta incompleta na tentativa {attempt} "
+            f"(motivo: {reason}). Reduza o escopo por chamada ou aumente "
+            "OPENAI_CONTENT_ENRICHMENT_MAX_OUTPUT_TOKENS."
+        )
+
     output_text = str(getattr(response, "output_text", "") or "").strip()
     if not output_text:
         raise ContentEnrichmentError(
