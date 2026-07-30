@@ -118,6 +118,12 @@ class Settings(BaseSettings):
     # Job preso em 'processing' ha mais que isso (ex.: processo caiu no meio) volta
     # a ser reclamavel pelo worker — evita orfaos permanentes apos crash/restart.
     personalizacao_job_stale_processing_min: int = 40
+    # Tentativas de redisparo por geracao (mesmo ciclo_id/source_hash) antes de
+    # parar de reclamar/regerar automaticamente. Sem isso, uma geracao que
+    # falha sempre do mesmo jeito (ex.: contrato de conteudo incompativel com
+    # o provedor) e redisparada para sempre a cada stale_processing_min,
+    # queimando cota de IA sem chance real de sucesso.
+    personalizacao_falha_streak_max: int = 3
     personalizacao_job_db_failure_max_backoff_sec: int = 60
     personalizacao_job_db_failure_log_interval_sec: int = 30
     # A preparação curricular é neutra e compartilhada entre os sete perfis.

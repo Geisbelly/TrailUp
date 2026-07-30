@@ -13,6 +13,7 @@ from app.services.personalizacao_jobs import (
     _content_enrichment_cache_key,
     _effective_stale_processing_min,
     _exception_signature,
+    _falha_streak_excedido,
     _get_app_shared_content_enrichment,
     _get_job_content_enrichment,
     _get_runtime_cached_dict,
@@ -1154,6 +1155,128 @@ async def test_process_media_render_target_skips_only_completed_current_generati
     assert normalize_mock.await_args.kwargs["status"] == "pronto"
     claim_mock.assert_not_awaited()
     dispatch_mock.assert_not_awaited()
+
+
+def test_falha_streak_excedido() -> None:
+    record = {"materiais": {"_geracao_falhas": {"generation_key": "ciclo-1:hash-1", "streak": 3}}}
+    assert _falha_streak_excedido(record, generation_key="ciclo-1:hash-1", max_streak=3) is True
+    assert _falha_streak_excedido(record, generation_key="ciclo-1:hash-1", max_streak=4) is False
+    # generation_key diferente (professor editou o conteudo) zera o efeito do streak antigo.
+    assert _falha_streak_excedido(record, generation_key="ciclo-2:hash-2", max_streak=1) is False
+    assert _falha_streak_excedido({"materiais": {}}, generation_key="ciclo-1:hash-1", max_streak=1) is False
+    assert _falha_streak_excedido({}, generation_key="ciclo-1:hash-1", max_streak=1) is False
+
+
+@pytest.mark.asyncio
+async def test_process_media_render_target_stops_redispatch_after_falha_streak_excedido(
+    monkeypatch,
+) -> None:
+    """Mesma geracao (mesmo ciclo_id/source_hash) ja falhou o maximo de vezes
+    configurado: para de reclamar/redisparar em vez de queimar cota de IA
+    infinitamente na mesma geracao quebrada."""
+    existing = _existing_record()
+    existing["materiais"] = {
+        "_geracao_falhas": {"generation_key": "ciclo-249:hash-249", "streak": 2}
+    }
+
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.buscar_mais_recente_por_perfil",
+        AsyncMock(return_value=existing),
+    )
+    claim_mock = AsyncMock()
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.claim_retry_incomplete_generation",
+        claim_mock,
+    )
+    monkeypatch.setattr(
+        jobs_module,
+        "fetch_personalizacao_context",
+        AsyncMock(return_value={"source_hash": "hash-249", "fontes": []}),
+    )
+    dispatch_mock = AsyncMock(return_value=True)
+    monkeypatch.setattr(jobs_module, "disparar_brainhex_async", dispatch_mock)
+
+    app = SimpleNamespace(
+        state=SimpleNamespace(
+            settings=SimpleNamespace(
+                personalizacao_job_stale_processing_min=15,
+                personalizacao_falha_streak_max=2,
+            )
+        )
+    )
+    job = {"id": "job-1", "classe_id": 32, "kind": "class_delta_sync", "payload": {}}
+    target = {"id": 579, "aluno_id": existing["aluno_id"], "topico_id": 117, "conteudo_id": None}
+
+    result = await _process_media_render_target(
+        app=app, session=_FakeSession(is_stuck=False), job=job, target=target
+    )
+
+    assert result == {
+        "skipped": True,
+        "record": existing,
+        "reason": "falha_streak_excedido",
+    }
+    claim_mock.assert_not_awaited()
+    dispatch_mock.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_process_media_render_target_increments_falha_streak_when_dispatch_fails(
+    monkeypatch,
+) -> None:
+    existing = _existing_record()
+
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.buscar_mais_recente_por_perfil",
+        AsyncMock(return_value=existing),
+    )
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.claim_retry_incomplete_generation",
+        AsyncMock(return_value=existing),
+    )
+    incrementar_mock = AsyncMock(return_value=1)
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.incrementar_falha_streak",
+        incrementar_mock,
+    )
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.atualizar_status",
+        AsyncMock(return_value=False),
+    )
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.buscar_por_id",
+        AsyncMock(return_value=None),
+    )
+    monkeypatch.setattr(
+        jobs_module,
+        "fetch_personalizacao_context",
+        AsyncMock(return_value={"source_hash": "hash-249", "fontes": []}),
+    )
+    monkeypatch.setattr(
+        jobs_module,
+        "enrich_content_blocks",
+        AsyncMock(return_value={"blocos": [{"id": "bloco-01"}]}),
+    )
+    dispatch_mock = AsyncMock(return_value=False)
+    monkeypatch.setattr(jobs_module, "disparar_brainhex_async", dispatch_mock)
+
+    app = SimpleNamespace(
+        state=SimpleNamespace(
+            settings=SimpleNamespace(
+                personalizacao_job_stale_processing_min=15,
+                personalizacao_falha_streak_max=3,
+            )
+        )
+    )
+    job = {"id": "job-1", "classe_id": 32, "kind": "class_delta_sync", "payload": {}}
+    target = {"id": 579, "aluno_id": existing["aluno_id"], "topico_id": 117, "conteudo_id": None}
+
+    with pytest.raises(RuntimeError, match="Microservico BrainHex nao concluiu a geracao."):
+        await _process_media_render_target(
+            app=app, session=_FakeSession(is_stuck=False), job=job, target=target
+        )
+
+    assert incrementar_mock.await_args.kwargs["generation_key"] == "ciclo-249:hash-249"
 
 
 @pytest.mark.asyncio

@@ -848,6 +848,56 @@ class ConteudoPersonalizadoRepository:
         await self.session.commit()
         return updated
 
+    async def incrementar_falha_streak(
+        self,
+        *,
+        record_id: int,
+        ciclo_id: str,
+        source_hash: str,
+        generation_key: str,
+    ) -> int:
+        """Incrementa (ou reinicia) o contador de falhas consecutivas da mesma
+        geracao (mesmo ciclo_id/source_hash). Guardado em materiais._geracao_falhas
+        para nao exigir migration — reseta sozinho quando o professor edita o
+        conteudo (source_hash muda) ou o ciclo muda.
+        """
+        result = await self.session.execute(
+            text(
+                """
+                UPDATE conteudo_personalizado
+                SET materiais = jsonb_set(
+                  COALESCE(materiais, '{}'::jsonb),
+                  '{_geracao_falhas}',
+                  jsonb_build_object(
+                    'generation_key', :generation_key,
+                    'streak',
+                    CASE
+                      WHEN COALESCE(materiais -> '_geracao_falhas' ->> 'generation_key', '')
+                           = :generation_key
+                      THEN COALESCE(
+                        (materiais -> '_geracao_falhas' ->> 'streak')::int, 0
+                      ) + 1
+                      ELSE 1
+                    END
+                  )
+                )
+                WHERE id = :id
+                  AND ciclo_id::text = :ciclo_id
+                  AND COALESCE(source_hash, '') = :source_hash
+                RETURNING materiais -> '_geracao_falhas' ->> 'streak'
+                """
+            ),
+            {
+                "id": record_id,
+                "ciclo_id": ciclo_id,
+                "source_hash": source_hash,
+                "generation_key": generation_key,
+            },
+        )
+        streak = result.scalar_one_or_none()
+        await self.session.commit()
+        return int(streak) if streak is not None else 0
+
     async def claim_retry_incomplete_generation(
         self,
         *,

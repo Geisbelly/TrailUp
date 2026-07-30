@@ -268,6 +268,29 @@ async def _mark_failed_unless_generation_completed(
     )
 
 
+def _falha_streak_excedido(
+    record: dict[str, Any],
+    *,
+    generation_key: str,
+    max_streak: int,
+) -> bool:
+    """Verifica se essa MESMA geracao (mesmo generation_key) ja falhou
+    max_streak vezes seguidas, sem sequer redisparar de novo. Uma geracao
+    nova (ciclo_id/source_hash diferente, ex.: professor editou o conteudo)
+    zera o contador naturalmente porque o generation_key muda.
+    """
+    streak_info = (record.get("materiais") or {}).get("_geracao_falhas") or {}
+    if not isinstance(streak_info, dict):
+        return False
+    if str(streak_info.get("generation_key") or "") != generation_key:
+        return False
+    try:
+        streak = int(streak_info.get("streak") or 0)
+    except (TypeError, ValueError):
+        return False
+    return streak >= max_streak
+
+
 async def _get_runtime_cached_dict(
     *,
     job: dict[str, Any],
@@ -1076,6 +1099,24 @@ async def _process_media_render_target(
         if completed_existing:
             return {"skipped": True, "record": completed_existing}
 
+        falha_streak_max = int(
+            getattr(app.state.settings, "personalizacao_falha_streak_max", 3) or 3
+        )
+        if _falha_streak_excedido(
+            existing, generation_key=generation_key, max_streak=falha_streak_max
+        ):
+            logger.warning(
+                "geracao com falha_streak esgotado, redisparo suspenso: "
+                "personalizacao_id=%s generation_key=%s",
+                existing["id"],
+                generation_key,
+            )
+            return {
+                "skipped": True,
+                "record": existing,
+                "reason": "falha_streak_excedido",
+            }
+
         stale_min = _effective_stale_processing_min(app.state.settings)
         claimed = await repo.claim_retry_incomplete_generation(
             record_id=int(existing["id"]),
@@ -1174,6 +1215,12 @@ async def _process_media_render_target(
             contract_prechecked=True,
         )
         if not dispatched:
+            await repo.incrementar_falha_streak(
+                record_id=int(existing["id"]),
+                ciclo_id=existing_cycle_id,
+                source_hash=existing_source_hash,
+                generation_key=generation_key,
+            )
             recovered = await _mark_failed_unless_generation_completed(
                 repo=repo,
                 record_id=int(existing["id"]),
