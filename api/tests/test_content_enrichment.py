@@ -477,9 +477,11 @@ async def test_openai_fallback_used_when_gemini_fails_and_openai_configured(
         "brainhex_personalization",
     ]
     assert len(captured["calls"]) == len(result["blocos"])
-    # gpt-4o-mini rejeita reasoning.effort com 400 — regressao real que
-    # aconteceu em producao ao trocar o default de gpt-5.4-mini pra gpt-4o-mini.
+    # gpt-4o-mini rejeita reasoning.effort e verbosity="high" com 400 —
+    # regressao real que aconteceu em producao ao trocar o default de
+    # gpt-5.4-mini pra gpt-4o-mini.
     assert "reasoning" not in captured["calls"][0]
+    assert captured["calls"][0]["text"]["verbosity"] == "medium"
 
 
 @pytest.mark.asyncio
@@ -504,6 +506,7 @@ async def test_openai_inclui_reasoning_effort_so_para_modelos_de_raciocinio(
     )
 
     assert captured["calls"][0]["reasoning"] == {"effort": "medium"}
+    assert captured["calls"][0]["text"]["verbosity"] == "high"
 
 
 @pytest.mark.asyncio

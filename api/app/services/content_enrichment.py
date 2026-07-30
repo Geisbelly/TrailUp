@@ -550,9 +550,8 @@ async def _generate_openai_batch(
         f"BLOCOS-BASE:\n{json.dumps(blocks, ensure_ascii=False, indent=2)}"
         f"{correction}"
     )
-    reasoning_kwargs = (
-        {"reasoning": {"effort": "medium"}} if _supports_reasoning_effort(model) else {}
-    )
+    is_reasoning_model = _supports_reasoning_effort(model)
+    reasoning_kwargs = {"reasoning": {"effort": "medium"}} if is_reasoning_model else {}
     try:
         response = await client.responses.create(
             model=model,
@@ -562,7 +561,10 @@ async def _generate_openai_batch(
             store=False,
             **reasoning_kwargs,
             text={
-                "verbosity": "high",
+                # gpt-4o-mini (e familia gpt-4o/gpt-4.1) so aceita "medium" —
+                # "high" retorna 400 unsupported_value. Mesma familia de
+                # modelos de raciocinio que aceita reasoning.effort.
+                "verbosity": "high" if is_reasoning_model else "medium",
                 "format": {
                     "type": "json_schema",
                     "name": "trailup_content_enrichment",
