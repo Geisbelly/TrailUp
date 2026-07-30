@@ -6,7 +6,10 @@ WORKDIR /app
 ENV NODE_ENV=development
 
 # instala dependências primeiro (camada cacheada)
-COPY package*.json ./
+# .puppeteerrc.cjs precisa chegar antes do npm install: é o postinstall
+# (puppeteer browsers install chrome) que le esse arquivo pra saber onde
+# baixar o Chrome (node_modules/.puppeteer_cache em vez do ~/.cache padrao)
+COPY package*.json .puppeteerrc.cjs ./
 RUN npm install
 
 # código (em dev é sobreposto pelo volume do compose)
