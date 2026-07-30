@@ -271,7 +271,7 @@ async function archiveToSupabase(params: {
 }): Promise<{
   audioMp3Url: string | null;
   markdownUrl: string | null;
-  pdfUrl: string | null;
+  presentationUrl: string | null;
   presentationFailure: PresentationFailure | null;
   persisted: PersistedMaterialsMerge | null;
 }> {
@@ -325,23 +325,23 @@ async function archiveToSupabase(params: {
     }
   }
 
-  // PDF dos slides: sistema editorial temático com múltiplas composições.
-  const pdfPath = `${storagePath}/apresentacao/material-${refId}.pdf`;
+  // Apresentacao: HTML com a identidade do guardiao + tema da aula, sem rasterizar.
+  const presentationPath = `${storagePath}/apresentacao/material-${refId}.html`;
   const presentationResult = await renderAndUploadPresentation({
     slides,
     profile,
     presentationTheme,
     bucket,
-    pdfPath,
+    presentationPath,
   });
-  const pdfUrl = presentationResult.pdfUrl;
+  const presentationUrl = presentationResult.presentationUrl;
   if (presentationResult.failure) {
     lg.error("falha na apresentacao", {
       stage: presentationResult.failure.stage,
       error: presentationResult.failure.error,
     });
   } else {
-    lg.info("pdf upload", { status: "ok" });
+    lg.info("apresentacao upload", { status: "ok" });
   }
 
   // Persiste metadados no banco (somente quando chamado pelo ApiTraiUp)
@@ -378,13 +378,13 @@ async function archiveToSupabase(params: {
         payload:      pdfPayloadObj,
         metadata: buildPresentationMaterialMetadata({
           generationKey: fence.generationKey,
-          pdfUrl,
+          presentationUrl,
           bucket,
           failure: presentationResult.failure,
         }),
-        arquivo_url:  pdfUrl,
-        storage_path: pdfUrl ? pdfPath : null,
-        ...(pdfUrl ? { bucket, mime_type: "application/pdf" } : {}),
+        arquivo_url:  presentationUrl,
+        storage_path: presentationUrl ? presentationPath : null,
+        ...(presentationUrl ? { bucket, mime_type: "text/html; charset=utf-8" } : {}),
       },
     };
 
@@ -409,7 +409,7 @@ async function archiveToSupabase(params: {
   return {
     audioMp3Url,
     markdownUrl,
-    pdfUrl,
+    presentationUrl,
     presentationFailure: presentationResult.failure,
     persisted,
   };
