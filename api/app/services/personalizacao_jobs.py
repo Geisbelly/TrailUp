@@ -6,6 +6,7 @@ import logging
 import socket
 from collections import OrderedDict
 from collections.abc import Awaitable, Callable
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import FastAPI
@@ -289,6 +290,47 @@ def _falha_streak_excedido(
     except (TypeError, ValueError):
         return False
     return streak >= max_streak
+
+
+def _profile_render_targets_ready_now(
+    targets: list[dict[str, Any]],
+    *,
+    pace_sec: int,
+    now: datetime,
+) -> list[dict[str, Any]]:
+    """Libera no maximo 1 perfil por vez, com um intervalo minimo entre eles.
+
+    O gargalo real e a cota do Gemini (poucas requisicoes por minuto no tier
+    gratuito): gerar varios perfis do mesmo topico em paralelo faz um 429
+    isolado abrir o circuito de indisponibilidade de 5 minutos e travar TODOS
+    os perfis simultaneos (o audioScript so sai do Gemini). Espacando os
+    disparos, cada perfil roda sozinho e tem chance real de completar antes
+    do proximo comecar. Os alvos ja pendentes ficam parados no worker ate a
+    proxima rodada de poll — nenhuma tentativa e consumida por isso.
+    """
+    pending = [
+        target for target in targets if target.get("status") not in TARGET_DONE_STATES
+    ]
+    if not pending or pace_sec <= 0:
+        return pending
+
+    last_touch: datetime | None = None
+    for target in targets:
+        if int(target.get("attempts") or 0) <= 0:
+            continue
+        updated_at = target.get("updated_at")
+        if updated_at is None:
+            continue
+        if last_touch is None or updated_at > last_touch:
+            last_touch = updated_at
+
+    if last_touch is None:
+        return pending[:1]
+
+    elapsed = (now - last_touch).total_seconds()
+    if elapsed < pace_sec:
+        return []
+    return pending[:1]
 
 
 async def _get_runtime_cached_dict(
@@ -1619,9 +1661,12 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
             return True
 
     max_retries = int(app.state.settings.personalizacao_job_max_retries)
-    pending_targets = [
-        target for target in targets if target.get("status") not in TARGET_DONE_STATES
-    ]
+    profile_pace_sec = int(
+        getattr(app.state.settings, "personalizacao_media_render_profile_pace_sec", 300) or 0
+    )
+    pending_targets = _profile_render_targets_ready_now(
+        targets, pace_sec=profile_pace_sec, now=datetime.now(timezone.utc)
+    )
     await _prewarm_shared_content_enrichments(
         app=app,
         job=job,

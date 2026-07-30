@@ -124,6 +124,12 @@ class Settings(BaseSettings):
     # o provedor) e redisparada para sempre a cada stale_processing_min,
     # queimando cota de IA sem chance real de sucesso.
     personalizacao_falha_streak_max: int = 3
+    # Gargalo real: o tier gratuito do Gemini tem poucas requisicoes por
+    # minuto. Gerar varios perfis do mesmo topico em paralelo faz um 429
+    # isolado abrir o circuito de indisponibilidade de 5 minutos do Gemini e
+    # travar TODOS os perfis simultaneos (o audioScript so sai do Gemini,
+    # nunca da OpenAI). Espacando os disparos, cada perfil roda sozinho.
+    personalizacao_media_render_profile_pace_sec: int = 300
     personalizacao_job_db_failure_max_backoff_sec: int = 60
     personalizacao_job_db_failure_log_interval_sec: int = 30
     # A preparação curricular é neutra e compartilhada entre os sete perfis.

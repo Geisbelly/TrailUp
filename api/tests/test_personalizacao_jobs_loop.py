@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -24,6 +25,7 @@ from app.services.personalizacao_jobs import (
     _pending_media_formats,
     _prewarm_shared_content_enrichments,
     _process_media_render_target,
+    _profile_render_targets_ready_now,
     process_personalizacao_job_once,
 )
 
@@ -1157,6 +1159,76 @@ async def test_process_media_render_target_skips_only_completed_current_generati
     dispatch_mock.assert_not_awaited()
 
 
+def _target(
+    id_: int,
+    *,
+    status: str = "pending",
+    attempts: int = 0,
+    updated_at: datetime | None = None,
+) -> dict:
+    return {
+        "id": id_,
+        "status": status,
+        "attempts": attempts,
+        "updated_at": updated_at,
+    }
+
+
+def test_profile_render_targets_ready_now_primeira_rodada_libera_so_um_perfil() -> None:
+    now = datetime(2026, 7, 30, 12, 0, 0, tzinfo=timezone.utc)
+    targets = [_target(1), _target(2), _target(3)]
+
+    ready = _profile_render_targets_ready_now(targets, pace_sec=300, now=now)
+
+    assert [t["id"] for t in ready] == [1]
+
+
+def test_profile_render_targets_ready_now_aguarda_intervalo_entre_perfis() -> None:
+    now = datetime(2026, 7, 30, 12, 0, 0, tzinfo=timezone.utc)
+    targets = [
+        _target(1, status="completed", attempts=1, updated_at=now - timedelta(seconds=60)),
+        _target(2),
+        _target(3),
+    ]
+
+    ready = _profile_render_targets_ready_now(targets, pace_sec=300, now=now)
+
+    assert ready == []
+
+
+def test_profile_render_targets_ready_now_libera_proximo_apos_intervalo() -> None:
+    now = datetime(2026, 7, 30, 12, 0, 0, tzinfo=timezone.utc)
+    targets = [
+        _target(1, status="completed", attempts=1, updated_at=now - timedelta(seconds=301)),
+        _target(2),
+        _target(3),
+    ]
+
+    ready = _profile_render_targets_ready_now(targets, pace_sec=300, now=now)
+
+    assert [t["id"] for t in ready] == [2]
+
+
+def test_profile_render_targets_ready_now_pace_zero_desativa_o_espacamento() -> None:
+    now = datetime(2026, 7, 30, 12, 0, 0, tzinfo=timezone.utc)
+    targets = [
+        _target(1, status="completed", attempts=1, updated_at=now - timedelta(seconds=1)),
+        _target(2),
+        _target(3),
+    ]
+
+    ready = _profile_render_targets_ready_now(targets, pace_sec=0, now=now)
+
+    assert [t["id"] for t in ready] == [2, 3]
+
+
+def test_profile_render_targets_ready_now_sem_pendentes() -> None:
+    now = datetime(2026, 7, 30, 12, 0, 0, tzinfo=timezone.utc)
+    targets = [_target(1, status="completed", attempts=1, updated_at=now)]
+
+    assert _profile_render_targets_ready_now(targets, pace_sec=300, now=now) == []
+
+
 def test_falha_streak_excedido() -> None:
     record = {"materiais": {"_geracao_falhas": {"generation_key": "ciclo-1:hash-1", "streak": 3}}}
     assert _falha_streak_excedido(record, generation_key="ciclo-1:hash-1", max_streak=3) is True
@@ -1621,6 +1693,10 @@ async def test_job_processes_targets_with_bounded_concurrency_and_distinct_sessi
                 brainhex_api_wait_timeout_sec=1980,
                 personalizacao_job_max_retries=3,
                 personalizacao_media_render_concurrency=2,
+                # Este teste cobre concorrencia/sessoes distintas isoladamente;
+                # o espacamento entre perfis (_profile_render_targets_ready_now)
+                # tem cobertura propria e por padrao so libera 1 alvo por vez.
+                personalizacao_media_render_profile_pace_sec=0,
             ),
         )
     )
@@ -1632,6 +1708,100 @@ async def test_job_processes_targets_with_bounded_concurrency_and_distinct_sessi
     assert len(target_session_ids) == 7
     assert all(target["status"] == "completed" for target in by_id.values())
     assert finalized == ["completed"]
+
+
+@pytest.mark.asyncio
+async def test_job_processes_one_profile_per_tick_by_default(monkeypatch) -> None:
+    """Sem pace_sec explicito (default 300s), uma rodada fresca so libera 1
+    dos N perfis pendentes — os outros ficam pendentes pro proximo poll."""
+    job = {"id": "job-paced", "classe_id": 32, "kind": "class_delta_sync", "payload": {}}
+    targets = [
+        {
+            "id": index,
+            "aluno_id": f"aluno-{index}",
+            "topico_id": 121,
+            "conteudo_id": 125,
+            "status": "pending",
+            "attempts": 0,
+            "updated_at": None,
+        }
+        for index in range(1, 4)
+    ]
+    by_id = {target["id"]: dict(target) for target in targets}
+    claimed = False
+    processed_ids: list[int] = []
+
+    async def claim_next_job(_self, *, stale_processing_min, partial_retry_delay_sec):
+        nonlocal claimed
+        if claimed:
+            return None
+        claimed = True
+        return job
+
+    async def get_targets(_self, _job_id):
+        return [dict(target) for target in by_id.values()]
+
+    async def update_target_status(
+        _self, *, target_id, status, attempts, last_error, personalizacao_id=None,
+    ):
+        by_id[target_id].update({"status": status, "attempts": attempts, "last_error": last_error})
+
+    async def process_target(*, app, session, job, target):
+        del app, session, job
+        processed_ids.append(target["id"])
+        return {"record": {"id": target["id"]}}
+
+    async def refresh_job_counters(_self, _job_id):
+        completed = sum(1 for target in by_id.values() if target["status"] == "completed")
+        return {"processed_targets": completed, "error_count": 0}
+
+    finalized: list[str] = []
+
+    async def finalize_job(_self, *, job_id, status, last_error):
+        del job_id, last_error
+        finalized.append(status)
+
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.claim_next_job",
+        claim_next_job,
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.get_targets",
+        get_targets,
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.update_target_status",
+        update_target_status,
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.refresh_job_counters",
+        refresh_job_counters,
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.finalize_job",
+        finalize_job,
+    )
+    monkeypatch.setattr(jobs_module, "_process_media_render_target", process_target)
+
+    app = SimpleNamespace(
+        state=SimpleNamespace(
+            session_factory=_WorkerSessionFactory(),
+            settings=SimpleNamespace(
+                personalizacao_job_stale_processing_min=40,
+                personalizacao_job_max_retries=3,
+                personalizacao_media_render_concurrency=2,
+            ),
+        )
+    )
+
+    processed = await process_personalizacao_job_once(app)
+
+    assert processed is True
+    assert processed_ids == [1]
+    assert by_id[1]["status"] == "completed"
+    assert by_id[2]["status"] == "pending"
+    assert by_id[3]["status"] == "pending"
+    assert finalized == ["partial"]
 
 
 @pytest.mark.asyncio
