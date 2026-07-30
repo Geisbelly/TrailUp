@@ -571,33 +571,6 @@ function normalizeTextList(value: unknown) {
     .filter(Boolean);
 }
 
-function normalizePresentationSlides(value: unknown) {
-  return asArray<any>(value)
-    .map((slide, index) => {
-      if (typeof slide === "string" && slide.trim()) {
-        return {
-          title: `Slide ${index + 1}`,
-          points: [slide.trim()],
-        };
-      }
-
-      if (!slide || typeof slide !== "object") return null;
-
-      const title = pickString(slide.titulo, slide.title, `Slide ${index + 1}`);
-      const points = normalizeTextList(slide.pontos ?? slide.points ?? slide.bullets ?? slide.topics);
-      return title || points.length
-        ? {
-            title: title ?? `Slide ${index + 1}`,
-            points,
-          }
-        : null;
-    })
-    .filter(
-      (slide): slide is { title: string; points: string[] } =>
-        Boolean(slide)
-    );
-}
-
 function normalizeRichPresentationSlides(value: unknown): RichPresentationSlide[] {
   return asArray<any>(value)
     .map((slide, index) => {
