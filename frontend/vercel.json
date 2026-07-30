@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/trailup-api/:path*",
-      "destination": "https://__SET_API_PROXY_TARGET_ENV_VAR__/:path*"
+      "destination": "https://trailup-frontend-8nw9al-20f5c1-87-99-146-75.traefik.me/:path*"
     },
     {
       "source": "/(.*)",
