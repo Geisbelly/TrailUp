@@ -4,6 +4,7 @@ import {
   CONTENT_GENERATION_RESPONSE_SCHEMA,
   generateStructuredContentWithFallback,
   isGeminiAvailabilityError,
+  isGeminiContentGenerationUnavailable,
   resetGeminiContentGenerationCircuit,
   resolveGeminiContentGenerationModel,
   resolveOpenAIContentGenerationFallbackModel,
@@ -300,6 +301,31 @@ test("não volta ao Gemini quando a tentativa obrigatória da OpenAI falha", asy
   assert.equal(geminiCalls, 1);
   assert.equal(openaiCalls, 1);
   resetGeminiContentGenerationCircuit();
+});
+
+test("isGeminiContentGenerationUnavailable reflete o mesmo circuito usado internamente", async () => {
+  resetGeminiContentGenerationCircuit();
+  assert.equal(isGeminiContentGenerationUnavailable(), false);
+
+  let now = 10_000;
+  await generateStructuredContentWithFallback(call, {
+    environment: { CONTENT_GENERATION_GEMINI_COOLDOWN_MS: "60000" },
+    now: () => now,
+    generateWithGemini: async () => {
+      const error = new Error("RESOURCE_EXHAUSTED: free tier quota limit");
+      Object.assign(error, { status: 429 });
+      throw error;
+    },
+    generateWithOpenAI: async () => ({ source: "openai" }),
+  });
+
+  // O circuito usa Date.now() de verdade internamente para chamadas externas
+  // (ex.: audioScript via Gemini na contingência) — aqui só confirmamos que
+  // ele abriu; o timer real decorre em milissegundos, não no `now` fake do teste.
+  assert.equal(isGeminiContentGenerationUnavailable(() => now), true);
+  assert.equal(isGeminiContentGenerationUnavailable(() => now + 61_000), false);
+  resetGeminiContentGenerationCircuit();
+  assert.equal(isGeminiContentGenerationUnavailable(() => now), false);
 });
 
 test("reconhece indisponibilidade transitória e não confunde validação de conteúdo", () => {

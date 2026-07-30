@@ -18,6 +18,7 @@ import {
   generateOpenAISlidesOnly,
   generateOpenAITextOnly,
   generateStructuredContentWithFallback,
+  isGeminiContentGenerationUnavailable,
   resolveGeminiContentGenerationModel,
   resolveOpenAIContentGenerationFallbackModel,
   type ContentGenerationProvider,
@@ -921,6 +922,18 @@ export async function processMediaWithGemini(
             },
             generateWithOpenAI: async (currentCall: StructuredContentGenerationCall) => {
               const generateAudioScriptWithGemini = async () => {
+                // O circuito de indisponibilidade do Gemini é aberto pela
+                // tentativa principal (ex.: 429 de rate limit). Sem essa
+                // checagem, essa chamada martelaria o Gemini de novo na
+                // mesma janela de cooldown, quase sempre repetindo a mesma
+                // falha em vez de aguardar a recuperação.
+                if (isGeminiContentGenerationUnavailable()) {
+                  throw new Error(
+                    `Gemini indisponível (circuito de cooldown aberto) no lote `
+                    + `${index + 1} — audioScript não é gerado pela OpenAI, `
+                    + "aguardando o Gemini se recuperar.",
+                  );
+                }
                 const response = await getAi().models.generateContent({
                   model: currentCall.geminiModel,
                   contents: [{
@@ -949,13 +962,27 @@ export async function processMediaWithGemini(
                 }
               };
 
+              // Rotula cada sub-chamada antes do Promise.all: sem isso, uma
+              // falha do Gemini (audioScript) sobe rotulada genericamente
+              // como "OpenAI" pelo wrapper de fallback, escondendo qual dos
+              // três pedaços (áudio/Gemini, markdown/OpenAI, slides/OpenAI)
+              // realmente falhou.
+              const tagSubCallError = (
+                label: string,
+                promise: Promise<unknown>,
+              ): Promise<unknown> =>
+                promise.catch((error) => {
+                  const message = error instanceof Error ? error.message : String(error);
+                  throw new Error(`${label}: ${message}`, { cause: error });
+                });
+
               // audioScript nunca sai da OpenAI — só markdown e slides, cada
               // um em chamada própria pra caber no teto de 16384 tokens de
               // saída do gpt-4o-mini.
               const [audio, text, slides] = await Promise.all([
-                generateAudioScriptWithGemini(),
-                generateOpenAITextOnly(currentCall),
-                generateOpenAISlidesOnly(currentCall),
+                tagSubCallError("audioScript/Gemini", generateAudioScriptWithGemini()),
+                tagSubCallError("markdown/OpenAI", generateOpenAITextOnly(currentCall)),
+                tagSubCallError("slides/OpenAI", generateOpenAISlidesOnly(currentCall)),
               ]);
               return mergeSplitFallbackChapters(expectedIds, audio, text, slides);
             },

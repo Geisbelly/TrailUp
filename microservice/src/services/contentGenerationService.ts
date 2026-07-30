@@ -380,6 +380,18 @@ export function resetGeminiContentGenerationCircuit(): void {
   geminiUnavailableUntil = 0;
 }
 
+/**
+ * Permite que chamadas de Gemini feitas FORA deste módulo (ex.: o audioScript
+ * da contingência, que continua exclusivamente Gemini) respeitem o mesmo
+ * circuito de indisponibilidade — sem isso, elas martelariam o Gemini de novo
+ * na mesma janela de cooldown que a tentativa principal acabou de abrir.
+ */
+export function isGeminiContentGenerationUnavailable(
+  now: () => number = Date.now,
+): boolean {
+  return now() < geminiUnavailableUntil;
+}
+
 async function generateAfterPrimaryGeminiFailure(
   call: StructuredContentGenerationCall,
   reason: string,
