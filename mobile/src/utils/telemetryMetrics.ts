@@ -4,6 +4,7 @@ const MATERIAL_PRIORITY: Record<ContentBlock["tipo"], number> = {
   pdf: 90,
   documento: 85,
   apresentacao: 85,
+  "apresentacao-slides": 85,
   embed: 80,
   video: 75,
   youtube: 75,
