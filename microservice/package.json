@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx --watch server.ts",
     "start": "node --require tsx/cjs server.ts",
-    "postinstall": "puppeteer browsers install chrome",
+    "postinstall": "puppeteer browsers install chrome --install-deps",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
