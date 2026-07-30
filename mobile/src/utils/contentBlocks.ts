@@ -201,7 +201,7 @@ export function isDocumentUrl(url: string) {
 export function isPresentationUrl(url: string) {
   const normalized = cleanUrl(url);
   return (
-    /\.(ppt|pptx|pps|ppsx|odp|key)$/i.test(normalized) ||
+    /\.(html?|ppt|pptx|pps|ppsx|odp|key)$/i.test(normalized) ||
     normalized.includes("docs.google.com/presentation") ||
     normalized.includes("view.officeapps.live.com/op/embed.aspx") ||
     normalized.includes("powerpoint.live.com") ||
