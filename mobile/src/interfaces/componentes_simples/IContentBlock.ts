@@ -10,8 +10,18 @@ export type ContentBlockType =
   | "pdf"
   | "documento"
   | "apresentacao"
+  | "apresentacao-slides"
   | "embed"
   | "youtube";
+
+export type RichPresentationSlide = {
+  title: string;
+  points: string[];
+  explanation: string | null;
+  characterQuote: string | null;
+  imagemReferencia: string | null;
+  icones: string[];
+};
 
 export type ContentBlockPayload =
   | string
@@ -34,6 +44,7 @@ export type ContentBlockPayload =
         descricao?: string | null;
         imagemUrl?: string | null;
       }[];
+      slides?: RichPresentationSlide[];
       metadata?: unknown;
     };
 
