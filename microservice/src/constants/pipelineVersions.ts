@@ -6,8 +6,8 @@ import { createHash } from "crypto";
  * Alterações incompatíveis no pipeline ou no renderizador de apresentações
  * devem incrementar estas versões antes do deploy.
  */
-export const MEDIA_PIPELINE_VERSION = "2026-07-28.19" as const;
-export const PRESENTATION_ENGINE_VERSION = "puppeteer-html-v3" as const;
+export const MEDIA_PIPELINE_VERSION = "2026-07-30.1" as const;
+export const PRESENTATION_ENGINE_VERSION = "html-direct-v1" as const;
 export const PRESENTATION_SCHEMA_VERSION = "presentation-material-v3" as const;
 export const PRESENTATION_DESIGN_VERSION = "slidesgo-editorial-v3" as const;
 export const CONTENT_ENRICHMENT_PROVIDER = "openai" as const;
