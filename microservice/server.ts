@@ -353,7 +353,7 @@ async function archiveToSupabase(params: {
     const mdStatus     = markdownUrl  ? "completed" : "failed";
     const audioPayloadObj = { roteiro: audioScript, texto: audioScript };
     const mdPayloadObj    = { texto: markdown, markdown };
-    const pdfPayloadObj   = {
+    const apresentacaoPayloadObj = {
       slides,
       abertura: markdown.split("\n").find((l) => l.trim()) ?? "",
       tema_visual: presentationTheme,
@@ -375,7 +375,7 @@ async function archiveToSupabase(params: {
         bucket, mime_type: "text/markdown; charset=utf-8",
       },
       apresentacao: {
-        payload:      pdfPayloadObj,
+        payload:      apresentacaoPayloadObj,
         metadata: buildPresentationMaterialMetadata({
           generationKey: fence.generationKey,
           presentationUrl,
