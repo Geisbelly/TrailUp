@@ -8,6 +8,8 @@ import {
   generateLongNaturalAudio,
   generateLongConversationalAudio,
   generateSlideImage,
+  splitProcessedContentIntoParts,
+  type ContentPart,
 } from "./src/services/geminiService";
 import { generateFullSlideImages, buildImageStyleSuffix } from "./src/lib/slideAssetGenerator";
 import { generateSlideIconWithFallback } from "./src/services/slideIconService";
@@ -29,6 +31,7 @@ import {
   startJobHeartbeat,
   MaterialEntry,
   type GenerationFence,
+  type MaterialPart,
   type PersistedMaterialsMerge,
 } from "./src/services/supabaseService";
 import { buildDeckHtml } from "./src/lib/slideTemplate";
@@ -420,6 +423,210 @@ async function archiveToSupabase(params: {
   };
 }
 
+/**
+ * Versao multi-parte de archiveToSupabase, usada pelo pipeline de
+ * personalizacao (runPipeline). A sintese continua sendo UMA so (sem
+ * duplicar topicos - ver mergeContentBlocksIntoOne), mas a ENTREGA vira N
+ * arquivos sequenciais por midia (splitProcessedContentIntoParts), porque
+ * um unico arquivo monolitico ja estourou o limite de upload do Supabase
+ * Storage numa apresentacao grande. Cada media_kind fica "completed" so se
+ * TODAS as suas partes subiram - mesma semantica de tudo-ou-nada de antes,
+ * so que agregada entre partes em vez de um arquivo so.
+ *
+ * O endpoint /api/v1/archive (uso avulso, sem personalizacao) continua na
+ * versao single-file (archiveToSupabase) - nao precisa dessa divisao.
+ */
+async function archiveMultiPartToSupabase(params: {
+  profile:         BrainHexProfile;
+  storagePath:     string;
+  bucket:          string;
+  refId:           string;
+  parts:           Array<ContentPart & { mp3Base64: string | null; wavBase64: string | null }>;
+  presentationTheme: PresentationDesignPlan;
+  personalizacaoId: number | null;
+  fence?:           GenerationFence;
+  log?:            Logger;
+}): Promise<{
+  audioMp3Url: string | null;
+  markdownUrl: string | null;
+  presentationUrl: string | null;
+  presentationFailure: PresentationFailure | null;
+  persisted: PersistedMaterialsMerge | null;
+}> {
+  const { profile, storagePath, bucket, refId, parts, presentationTheme, personalizacaoId, fence } = params;
+  const lg = params.log ?? log;
+  const multiPart = parts.length > 1;
+
+  const audioParts: MaterialPart[] = [];
+  const markdownParts: MaterialPart[] = [];
+  const presentationParts: MaterialPart[] = [];
+  let firstPresentationFailure: PresentationFailure | null = null;
+  let anyAudioIsMp3 = false;
+
+  for (const part of parts) {
+    const suffix = multiPart ? `-parte-${String(part.ordem).padStart(2, "0")}` : "";
+
+    const audioPayload = part.mp3Base64 ?? part.wavBase64;
+    const audioExt = part.mp3Base64 ? "mp3" : "wav";
+    const audioMime = part.mp3Base64 ? "audio/mpeg" : "audio/wav";
+    if (part.mp3Base64) anyAudioIsMp3 = true;
+    const audioPath = `${storagePath}/audio/material-${refId}${suffix}.${audioExt}`;
+    let audioUrl: string | null = null;
+    if (audioPayload) {
+      try {
+        const audioBytes = Buffer.from(audioPayload, "base64");
+        audioUrl = await uploadBuffer(bucket, audioPath, audioBytes, audioMime);
+        lg.info("áudio upload", { status: audioUrl ? "ok" : "falhou", ext: audioExt, parte: part.ordem });
+      } catch (e) {
+        lg.error("falha no upload de áudio", { err: e, parte: part.ordem });
+      }
+    }
+    audioParts.push({
+      ordem: part.ordem,
+      titulo: part.titulo,
+      arquivo_url: audioUrl,
+      storage_path: audioUrl ? audioPath : null,
+    });
+
+    const mdPath = `${storagePath}/markdown/material-${refId}${suffix}.md`;
+    let mdUrl: string | null = null;
+    if (part.markdown) {
+      try {
+        const mdBytes = Buffer.from(part.markdown, "utf-8");
+        mdUrl = await uploadBuffer(bucket, mdPath, mdBytes, "text/markdown; charset=utf-8");
+        lg.info("markdown upload", { status: mdUrl ? "ok" : "falhou", parte: part.ordem });
+      } catch (e) {
+        lg.error("falha no upload de markdown", { err: e, parte: part.ordem });
+      }
+    }
+    markdownParts.push({
+      ordem: part.ordem,
+      titulo: part.titulo,
+      arquivo_url: mdUrl,
+      storage_path: mdUrl ? mdPath : null,
+    });
+
+    const presentationPath = `${storagePath}/apresentacao/material-${refId}${suffix}.html`;
+    const presentationResult = await renderAndUploadPresentation({
+      slides: part.slides,
+      profile,
+      presentationTheme,
+      bucket,
+      presentationPath,
+    });
+    if (presentationResult.failure) {
+      firstPresentationFailure = firstPresentationFailure ?? presentationResult.failure;
+      lg.error("falha na apresentacao", {
+        stage: presentationResult.failure.stage,
+        error: presentationResult.failure.error,
+        parte: part.ordem,
+      });
+    } else {
+      lg.info("apresentacao upload", { status: "ok", parte: part.ordem });
+    }
+    presentationParts.push({
+      ordem: part.ordem,
+      titulo: part.titulo,
+      arquivo_url: presentationResult.presentationUrl,
+      storage_path: presentationResult.presentationUrl ? presentationPath : null,
+    });
+  }
+
+  const audioMp3Url = audioParts[0]?.arquivo_url ?? null;
+  const markdownUrl = markdownParts[0]?.arquivo_url ?? null;
+  const presentationUrl = presentationParts[0]?.arquivo_url ?? null;
+  let persisted: PersistedMaterialsMerge | null = null;
+
+  if (personalizacaoId !== null) {
+    if (!fence) {
+      throw new Error("generation fence ausente para persistir personalizacao");
+    }
+    const allAudioOk = audioParts.every((p) => p.arquivo_url !== null);
+    const allMdOk = markdownParts.every((p) => p.arquivo_url !== null);
+    // So a parte 1 vai inline no payload (evita depender do upload no
+    // Storage estar disponivel pra exibir algo de imediato - mesma logica
+    // de antes). Concatenar TODAS as partes aqui inflaria de novo o JSONB
+    // que quase estourou o timeout do merge; partes 2+ o mobile busca sob
+    // demanda pelo arquivo_url de "partes" conforme o aluno navega.
+    const firstMarkdown = parts[0]?.markdown ?? "";
+    const firstAudioScript = parts[0]?.audioScript ?? "";
+
+    const updates: Record<string, MaterialEntry> = {
+      audio: {
+        payload: { roteiro: firstAudioScript },
+        metadata: {
+          status: allAudioOk ? "completed" : "failed",
+          media_kind: "audio",
+          generation_key: fence.generationKey,
+          updated_at: now(),
+          ...(audioMp3Url ? { bucket } : {}),
+        },
+        arquivo_url: audioMp3Url,
+        storage_path: audioParts[0]?.storage_path ?? null,
+        bucket,
+        mime_type: anyAudioIsMp3 ? "audio/mpeg" : "audio/wav",
+        partes: audioParts,
+      },
+      markdown: {
+        payload: { markdown: firstMarkdown },
+        metadata: {
+          status: allMdOk ? "completed" : "failed",
+          media_kind: "markdown",
+          generation_key: fence.generationKey,
+          updated_at: now(),
+          ...(markdownUrl ? { bucket } : {}),
+        },
+        arquivo_url: markdownUrl,
+        storage_path: markdownParts[0]?.storage_path ?? null,
+        bucket,
+        mime_type: "text/markdown; charset=utf-8",
+        partes: markdownParts,
+      },
+      apresentacao: {
+        payload: {
+          slides: parts.flatMap((p) => p.slides),
+          tema_visual: presentationTheme,
+        },
+        metadata: buildPresentationMaterialMetadata({
+          generationKey: fence.generationKey,
+          presentationUrl,
+          bucket,
+          failure: firstPresentationFailure,
+        }),
+        arquivo_url: presentationUrl,
+        storage_path: presentationParts[0]?.storage_path ?? null,
+        ...(presentationUrl ? { bucket, mime_type: "text/html; charset=utf-8" } : {}),
+        partes: presentationParts,
+      },
+    };
+
+    persisted = await mergePersonalizacaoMateriais(personalizacaoId, updates, fence);
+
+    const historySaved = await saveMateriaisGerados(
+      personalizacaoId,
+      persisted,
+      fence,
+      Object.keys(updates),
+    );
+
+    if (historySaved) {
+      lg.info("materiais persistidos", { generationKey: fence.generationKey });
+    } else {
+      lg.warn("historico materiais_gerados nao persistido", {
+        generationKey: fence.generationKey,
+      });
+    }
+  }
+
+  return {
+    audioMp3Url,
+    markdownUrl,
+    presentationUrl,
+    presentationFailure: firstPresentationFailure,
+    persisted,
+  };
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 interface FonteItem {
@@ -563,57 +770,64 @@ async function runPipeline(
     presentationPlan,
   );
 
-  // 3. Áudio e assets consomem o mesmo resultado consolidado e são
-  // independentes. Executá-los juntos reduz a duração sem repetir o trabalho
-  // semântico dos blocos. allSettled garante que uma falha aguarde a outra
-  // trilha e preserve a regra existente de sucesso parcial do áudio.
+  // 3. Divide o resultado JA sintetizado (uma so vez, sem duplicar topicos -
+  // ver mergeContentBlocksIntoOne) em partes entregaveis. As fronteiras vem
+  // so de markdown/audioScript/contagem de slides, entao podem ser
+  // calculadas antes do enriquecimento de imagem terminar - o audio de cada
+  // parte ja sai gerando em paralelo com as imagens, sem esperar por elas.
+  const partsForAudio = splitProcessedContentIntoParts({
+    markdown: resultado.markdown,
+    audioScript: resultado.audioScript,
+    slides: resultado.slides,
+  });
+
   const voiceProfile = GUARDIAN_VOICE_PROFILES[profile];
   const voice = voiceProfile.voice;
   const secondaryGuideName = BRAIN_HEX_CONFIG[profile]?.secondaryGuideName;
   const secondaryVoice = voiceProfile.secondaryVoice;
-  const audioPromise = secondaryGuideName && secondaryVoice
-    ? generateLongConversationalAudio(
-        resultado.audioScript,
-        {
-          name: BRAIN_HEX_CONFIG[profile].guideName,
-          voice,
-          direction: voiceProfile.direction,
-        },
-        {
-          name: secondaryGuideName,
-          voice: secondaryVoice,
-          direction: voiceProfile.secondaryDirection,
-        },
-      )
-    : generateLongNaturalAudio(
-        resultado.audioScript,
-        voice,
-        voiceProfile.direction,
-      );
+  const generatePartAudio = (audioScript: string) =>
+    secondaryGuideName && secondaryVoice
+      ? generateLongConversationalAudio(
+          audioScript,
+          {
+            name: BRAIN_HEX_CONFIG[profile].guideName,
+            voice,
+            direction: voiceProfile.direction,
+          },
+          {
+            name: secondaryGuideName,
+            voice: secondaryVoice,
+            direction: voiceProfile.secondaryDirection,
+          },
+        )
+      : generateLongNaturalAudio(audioScript, voice, voiceProfile.direction);
+
+  // allSettled em cada trilha (audio por parte + assets) preserva a regra
+  // existente de sucesso parcial - uma parte de audio falhando nao derruba
+  // as outras, e imagens falhando nao derrubam audio/markdown.
   const assetsPromise = generateFullSlideImages(
     resultado.slides,
     profile,
     presentationPlan,
   );
-  const [audioResult, assetsResult] = await Promise.allSettled([
-    audioPromise,
-    assetsPromise,
+  const [audioSettled, [assetsResult]] = await Promise.all([
+    Promise.allSettled(partsForAudio.map((part) => generatePartAudio(part.audioScript))),
+    Promise.allSettled([assetsPromise]),
   ]);
 
-  let wavBase64: string | null = null;
-  let mp3Base64: string | null = null;
-  if (audioResult.status === "fulfilled") {
-    wavBase64 = audioResult.value.wav ?? null;
-    mp3Base64 = audioResult.value.mp3 ?? null;
-  } else {
-    jobLog.error("falha no áudio", { err: audioResult.reason });
-  }
+  const audioByPart = audioSettled.map((result, index) => {
+    if (result.status === "fulfilled") {
+      return { mp3Base64: result.value.mp3 ?? null, wavBase64: result.value.wav ?? null };
+    }
+    jobLog.error("falha no áudio de uma parte", { parte: index + 1, err: result.reason });
+    return { mp3Base64: null, wavBase64: null };
+  });
 
   // Assets de slide (imagens/icones) sao tratados como o audio: uma falha
   // aqui nao pode descartar markdown/audio, que ja podem ter sido gerados
   // com sucesso. Sem isso, um throw aqui abortava a funcao ANTES de chamar
-  // archiveToSupabase, perdendo midias ja prontas que deveriam ser
-  // persistidas independentemente (ver comentario de archiveToSupabase).
+  // archiveMultiPartToSupabase, perdendo midias ja prontas que deveriam ser
+  // persistidas independentemente (ver comentario de archiveMultiPartToSupabase).
   let slidesComImagens = resultado.slides;
   if (assetsResult.status === "fulfilled") {
     const assets = assetsResult.value;
@@ -622,18 +836,28 @@ async function runPipeline(
     jobLog.error("falha nos assets de slide", { err: assetsResult.reason });
   }
 
+  // Recalcula as mesmas fronteiras de parte (deterministicas a partir do
+  // mesmo markdown/audioScript) agora com as slides ja enriquecidas com
+  // imagem, para a apresentacao de cada parte sair completa.
+  const finalParts = splitProcessedContentIntoParts({
+    markdown: resultado.markdown,
+    audioScript: resultado.audioScript,
+    slides: slidesComImagens,
+  });
+  const partsWithAudio = finalParts.map((part, index) => ({
+    ...part,
+    mp3Base64: audioByPart[index]?.mp3Base64 ?? null,
+    wavBase64: audioByPart[index]?.wavBase64 ?? null,
+  }));
+
   // 4. Persiste tudo no Supabase
-  const archived = await archiveToSupabase({
+  const archived = await archiveMultiPartToSupabase({
     profile,
     storagePath,
     bucket,
     refId,
-    markdown:         resultado.markdown,
-    audioScript:      resultado.audioScript,
-    slides:           slidesComImagens,
+    parts: partsWithAudio,
     presentationTheme: presentationPlan,
-    mp3Base64,
-    wavBase64,
     personalizacaoId,
     fence,
     log:              jobLog,

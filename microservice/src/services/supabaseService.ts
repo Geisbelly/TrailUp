@@ -43,6 +43,17 @@ export async function uploadBuffer(
   return urlData?.publicUrl ?? null;
 }
 
+// Uma parte entregavel de uma midia (ver splitProcessedContentIntoParts) -
+// arquivo_url/storage_path no nivel do MaterialEntry continuam apontando
+// pra parte 1, por compatibilidade com qualquer consumidor que ainda so
+// conheca um arquivo por midia; "partes" e o jeito novo, multi-arquivo.
+export interface MaterialPart {
+  ordem: number;
+  titulo: string;
+  arquivo_url: string | null;
+  storage_path: string | null;
+}
+
 export interface MaterialEntry {
   payload?: Record<string, unknown>;
   metadata: {
@@ -61,6 +72,7 @@ export interface MaterialEntry {
   storage_path: string | null;
   bucket?: string;
   mime_type?: string;
+  partes?: MaterialPart[];
 }
 
 export interface GenerationFence {
