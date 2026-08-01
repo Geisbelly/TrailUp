@@ -11,7 +11,12 @@ import {
 import type { SlideForTemplate } from "./slideTemplate";
 import { generateFullSlideImage } from "../services/openaiImageService";
 import { generateSlideImage } from "../services/geminiService";
-import { generateSlideIconWithFallback } from "../services/slideIconService";
+import {
+  generateSlideIconWithFallback,
+  isGeminiImageAvailabilityError,
+  isGeminiImageCircuitOpen,
+  markGeminiImageUnavailable,
+} from "../services/slideIconService";
 import { createLogger } from "./logger";
 
 // gpt-image-1 (usado por generateFullSlideImage) nao esta disponivel em
@@ -35,9 +40,31 @@ type SceneImageGenerator = (prompt: string) => Promise<string | null>;
 
 // Cena de fundo via Gemini (gemini-2.5-flash-image, já usado pelos ícones) —
 // gpt-image-1 não é suportado em todos os tiers da OpenAI, então o Gemini é
-// o provedor principal aqui, não contingência.
-function generateSceneImageViaGemini(prompt: string): Promise<string | null> {
-  return generateSlideImage(prompt);
+// o provedor principal aqui, não contingência. O circuito e compartilhado com
+// os icones (slideIconService.ts): sem isso, um deck com N slides repetia os
+// 3 retries com backoff (ate 30s) POR SLIDE mesmo sabendo, desde a primeira
+// falha, que a cota do dia inteiro esta zerada - o HTML da apresentacao (o
+// formato real, ver PRESENTATION_ENGINE_VERSION) nao precisa dessas imagens
+// para renderizar, entao esperar por elas so atrasa markdown/audio/slides
+// sem necessidade quando a cota ja esta esgotada.
+export function generateSceneImageViaGemini(
+  prompt: string,
+  options: {
+    now?: () => number;
+    generateWithGemini?: (prompt: string) => Promise<string>;
+  } = {},
+): Promise<string | null> {
+  const now = options.now ?? Date.now;
+  const generateWithGemini = options.generateWithGemini ?? generateSlideImage;
+  if (isGeminiImageCircuitOpen(now)) {
+    return Promise.resolve(null);
+  }
+  return generateWithGemini(prompt).catch((error) => {
+    if (isGeminiImageAvailabilityError(error)) {
+      markGeminiImageUnavailable({ now });
+    }
+    throw error;
+  });
 }
 
 export interface FullSlideInput extends SlideForTemplate {

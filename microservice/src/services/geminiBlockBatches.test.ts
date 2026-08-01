@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   consolidateBlockBatchGenerations,
+  generateOpenAIFallbackChapters,
   mergeSplitFallbackChapters,
   partitionContentBlocks,
   resolveContentBlockBatchSize,
@@ -144,6 +145,29 @@ test("recusa lote que omite bloco ou devolve texto resumido", () => {
   );
 });
 
+test("recusa audioScript curto quando requireAudio nao e passado (default preserva o comportamento atual)", () => {
+  const shortAudio = chapter("bloco-01", "UM");
+  shortAudio.audioScript = "curto";
+  assert.throws(
+    () => validateBlockBatchGeneration([block(1)], { chapters: [shortAudio], confidence: 0.9 }, 1),
+    /Áudio.*resumido/,
+  );
+});
+
+test("aceita audioScript vazio quando requireAudio=false - fallback OpenAI nao tem audio do Gemini", () => {
+  const noAudio = chapter("bloco-01", "UM");
+  noAudio.audioScript = "";
+  const result = validateBlockBatchGeneration(
+    [block(1)],
+    { chapters: [noAudio], confidence: 0.9 },
+    1,
+    { requireAudio: false },
+  );
+
+  assert.equal(result.chapters[0].audioScript, "");
+  assert.ok(result.chapters[0].markdown.length > 0);
+});
+
 test("consolida markdown, áudio e slides na ordem global com metadados dos lotes", () => {
   const blocks = [block(1), block(2), block(3), block(4)];
   const batches = partitionContentBlocks(blocks, 2);
@@ -255,6 +279,39 @@ test("mergeSplitFallbackChapters preenche campos ausentes em vez de omitir o blo
     { blockId: "bloco-01", markdown: "## Bloco 1", audioScript: "", slides: [] },
   ]);
   assert.equal(merged.confidence, 0);
+});
+
+test("generateOpenAIFallbackChapters mantém markdown/slides mesmo quando o audioScript (Gemini) falha", async () => {
+  const result = await generateOpenAIFallbackChapters(["bloco-01"], {
+    generateAudioScript: async () => {
+      throw new Error("Gemini indisponível (circuito de cooldown aberto)");
+    },
+    generateMarkdown: async () => ({
+      chapters: [{ blockId: "bloco-01", markdown: "## Bloco 1" }],
+      confidence: 0.8,
+    }),
+    generateSlides: async () => ({
+      chapters: [{ blockId: "bloco-01", slides: [{ title: "Slide 1" }] }],
+      confidence: 0.7,
+    }),
+  });
+
+  assert.deepEqual(result.chapters, [
+    { blockId: "bloco-01", markdown: "## Bloco 1", audioScript: "", slides: [{ title: "Slide 1" }] },
+  ]);
+});
+
+test("generateOpenAIFallbackChapters propaga a falha quando markdown (OpenAI) falha - sem outro fallback", async () => {
+  await assert.rejects(
+    () => generateOpenAIFallbackChapters(["bloco-01"], {
+      generateAudioScript: async () => ({ chapters: [], confidence: 0.9 }),
+      generateMarkdown: async () => {
+        throw new Error("OpenAI indisponível");
+      },
+      generateSlides: async () => ({ chapters: [], confidence: 0.7 }),
+    }),
+    /OpenAI indisponível/,
+  );
 });
 
 test("consolidação recusa conjunto de lotes sem cobertura global", () => {

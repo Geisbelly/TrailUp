@@ -604,11 +604,18 @@ async function runPipeline(
     jobLog.error("falha no áudio", { err: audioResult.reason });
   }
 
-  if (assetsResult.status === "rejected") {
-    throw assetsResult.reason;
+  // Assets de slide (imagens/icones) sao tratados como o audio: uma falha
+  // aqui nao pode descartar markdown/audio, que ja podem ter sido gerados
+  // com sucesso. Sem isso, um throw aqui abortava a funcao ANTES de chamar
+  // archiveToSupabase, perdendo midias ja prontas que deveriam ser
+  // persistidas independentemente (ver comentario de archiveToSupabase).
+  let slidesComImagens = resultado.slides;
+  if (assetsResult.status === "fulfilled") {
+    const assets = assetsResult.value;
+    slidesComImagens = enrichSlidesWithImages(resultado.slides, assets.imagem_referencia, assets.icones, assets.renderMode);
+  } else {
+    jobLog.error("falha nos assets de slide", { err: assetsResult.reason });
   }
-  const assets = assetsResult.value;
-  const slidesComImagens  = enrichSlidesWithImages(resultado.slides, assets.imagem_referencia, assets.icones, assets.renderMode);
 
   // 4. Persiste tudo no Supabase
   const archived = await archiveToSupabase({

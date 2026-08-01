@@ -43,6 +43,26 @@ export function resetGeminiImageCircuit(): void {
   geminiImageUnavailableUntil = 0;
 }
 
+// Compartilhado entre icones (aqui) e cena de fundo do slide cheio
+// (slideAssetGenerator.ts) - as duas chamadas usam o mesmo modelo
+// (gemini-2.5-flash-image) e a mesma cota. Sem compartilhar o circuito, cada
+// slide de um deck grande repete os 3 retries com backoff (ate 30s) sabendo
+// que a cota ja esta zerada para o dia inteiro.
+export function isGeminiImageCircuitOpen(now: () => number = Date.now): boolean {
+  return now() < geminiImageUnavailableUntil;
+}
+
+export function markGeminiImageUnavailable(
+  options: { now?: () => number; environment?: Record<string, string | undefined> } = {},
+): void {
+  const now = options.now ?? Date.now;
+  const environment = options.environment ?? process.env;
+  geminiImageUnavailableUntil = now() + positiveInteger(
+    environment.CONTENT_GENERATION_GEMINI_IMAGE_COOLDOWN_MS,
+    DEFAULT_GEMINI_IMAGE_COOLDOWN_MS,
+  );
+}
+
 export async function generateSlideIconWithFallback(
   prompt: string,
   options: {
@@ -75,10 +95,7 @@ export async function generateSlideIconWithFallback(
   } catch (geminiError) {
     const reason = errorText(geminiError).slice(0, 500);
     if (isGeminiImageAvailabilityError(geminiError)) {
-      geminiImageUnavailableUntil = now() + positiveInteger(
-        environment.CONTENT_GENERATION_GEMINI_IMAGE_COOLDOWN_MS,
-        DEFAULT_GEMINI_IMAGE_COOLDOWN_MS,
-      );
+      markGeminiImageUnavailable({ now, environment });
     }
     try {
       return {

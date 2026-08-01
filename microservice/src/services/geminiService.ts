@@ -365,7 +365,9 @@ export function validateBlockBatchGeneration(
   batch: EnrichedContentBlock[],
   raw: unknown,
   batchIndex: number,
+  options: { requireAudio?: boolean } = {},
 ): GeneratedBlockBatch {
+  const requireAudio = options.requireAudio ?? true;
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
     throw new Error(`Gerador retornou lote ${batchIndex} fora do formato JSON.`);
   }
@@ -417,7 +419,12 @@ export function validateBlockBatchGeneration(
         `Markdown do bloco ${blockId} foi resumido abaixo do mínimo de cobertura.`,
       );
     }
-    if (normalizedText(audioScript).length < minimumAudioLength) {
+    // audioScript so sai do Gemini, sem fallback proprio - quando a cota do
+    // Gemini esta esgotada (fallback OpenAI para markdown/slides), audio
+    // vazio e esperado e nao pode reprovar um lote que ja tem markdown e
+    // slides bons. So exige cobertura de audio quando a chamada principal
+    // (Gemini) e a origem, onde audio curto de fato indica baixa qualidade.
+    if (requireAudio && normalizedText(audioScript).length < minimumAudioLength) {
       throw new Error(
         `Áudio do bloco ${blockId} foi resumido abaixo do mínimo de cobertura.`,
       );
@@ -459,6 +466,40 @@ export function validateBlockBatchGeneration(
  * já recusa markdown/audioScript curto demais ou slides vazios com uma
  * mensagem específica, que realimenta o loop de correção da OpenAI.
  */
+export async function generateOpenAIFallbackChapters(
+  expectedIds: string[],
+  generators: {
+    generateAudioScript: () => Promise<unknown>;
+    generateMarkdown: () => Promise<unknown>;
+    generateSlides: () => Promise<unknown>;
+  },
+): Promise<{ chapters: unknown[]; confidence: number }> {
+  const tagSubCallError = (
+    label: string,
+    promise: Promise<unknown>,
+  ): Promise<unknown> =>
+    promise.catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`${label}: ${message}`, { cause: error });
+    });
+
+  // markdown/slides nao tem outro fallback depois da OpenAI - se falharem, a
+  // geracao do lote falhou de fato. audioScript so sai do Gemini (sem
+  // fallback proprio) e ja e tratado como opcional no resto do pipeline
+  // (materiais.audio pode ficar "failed" independente de markdown/
+  // apresentacao) - por isso sua falha nao pode derrubar markdown/slides que
+  // ja tenham sido gerados com sucesso.
+  const [audioResult, textResult, slidesResult] = await Promise.allSettled([
+    tagSubCallError("audioScript/Gemini", generators.generateAudioScript()),
+    tagSubCallError("markdown/OpenAI", generators.generateMarkdown()),
+    tagSubCallError("slides/OpenAI", generators.generateSlides()),
+  ]);
+  if (textResult.status === "rejected") throw textResult.reason;
+  if (slidesResult.status === "rejected") throw slidesResult.reason;
+  const audio = audioResult.status === "fulfilled" ? audioResult.value : null;
+  return mergeSplitFallbackChapters(expectedIds, audio, textResult.value, slidesResult.value);
+}
+
 export function mergeSplitFallbackChapters(
   expectedIds: string[],
   audio: unknown,
@@ -741,15 +782,18 @@ export async function processMediaWithGemini(
        - Para cada conceito: defina-o, explique o "porquê" (não só o "o quê"),
          traga pelo menos um exemplo prático ou caso de estudo, e conecte com
          o conceito anterior/seguinte quando fizer sentido pedagógico.
-       - NÃO resuma o material do professor — expanda-o. Aprofunde cada ponto
-         com contexto adicional, esclarecimentos e informações complementares
-         relevantes ao tema (contanto que não contradigam o material original),
-         como um professor explicando em aula, e não como uma lista resumida
-         de tópicos.
-       - Extensão: o texto tem que ser proporcional (ou maior) ao conteúdo
-         original — nunca mais curto ou mais raso que o material fornecido
-         pelo professor. Isso normalmente significa vários parágrafos por
-         seção, não uma linha por bullet.
+       - NÃO resuma o material fornecido — use-o integralmente, sem cortar
+         nem achatar em bullets de uma linha. A expansão e o aprofundamento do
+         conteúdo (exemplos, contexto adicional, esclarecimentos) já são feitos
+         pela API antes de chegar aqui — quando o bloco vier enriquecido, esse
+         aprofundamento já está no texto recebido; sua tarefa é reaproveitá-lo
+         por completo, não inventar exemplos, contexto ou explicações NOVAS
+         além do que foi fornecido.
+       - Extensão: o texto tem que ser proporcional ao conteúdo recebido —
+         nunca mais curto ou mais raso que o material fornecido. Isso
+         normalmente significa vários parágrafos por seção, não uma linha por
+         bullet, mas não é licença para adicionar conteúdo que não veio no
+         material de origem.
        - Termos técnicos e siglas: na primeira aparição de cada termo técnico,
          sigla ou jargão (ex.: RPC, sockets, middleware, DNS, transparência),
          defina-o explicitamente na mesma frase ou na seguinte — nunca assuma
@@ -780,10 +824,12 @@ export async function processMediaWithGemini(
 
     3. Eco da Sabedoria (Script de Áudio):
        O áudio é uma aula completa em capítulos, não uma sinopse do markdown.
-       Para cada bloco pedagógico, explique o conteúdo-base e o aprofundamento,
-       verbalize ao menos um exemplo ou contexto e faça a ponte para o próximo bloco.
-       Use transições faláveis ("agora", "em seguida", "isso nos leva a...") em vez
-       de títulos secos. A cobertura deve ser equivalente à do texto de estudo.
+       Narre o mesmo conteúdo do bloco (base e aprofundamento já recebidos) em
+       voz alta, verbalizando os exemplos e contextos que já estão no material
+       — não invente exemplos ou contexto novos que não estejam no bloco — e
+       faça a ponte para o próximo bloco. Use transições faláveis ("agora", "em
+       seguida", "isso nos leva a...") em vez de títulos secos. A cobertura
+       deve ser equivalente à do texto de estudo.
        ${config.secondaryGuideName ? `
        O roteiro é um DIÁLOGO entre os dois guardiões ${config.guideName} e ${config.secondaryGuideName} —
        não uma narração solo. Formato OBRIGATÓRIO (é assim que o motor de voz separa quem fala):
@@ -962,32 +1008,25 @@ export async function processMediaWithGemini(
                 }
               };
 
-              // Rotula cada sub-chamada antes do Promise.all: sem isso, uma
-              // falha do Gemini (audioScript) sobe rotulada genericamente
-              // como "OpenAI" pelo wrapper de fallback, escondendo qual dos
-              // três pedaços (áudio/Gemini, markdown/OpenAI, slides/OpenAI)
-              // realmente falhou.
-              const tagSubCallError = (
-                label: string,
-                promise: Promise<unknown>,
-              ): Promise<unknown> =>
-                promise.catch((error) => {
-                  const message = error instanceof Error ? error.message : String(error);
-                  throw new Error(`${label}: ${message}`, { cause: error });
-                });
-
               // audioScript nunca sai da OpenAI — só markdown e slides, cada
               // um em chamada própria pra caber no teto de 16384 tokens de
-              // saída do gpt-4o-mini.
-              const [audio, text, slides] = await Promise.all([
-                tagSubCallError("audioScript/Gemini", generateAudioScriptWithGemini()),
-                tagSubCallError("markdown/OpenAI", generateOpenAITextOnly(currentCall)),
-                tagSubCallError("slides/OpenAI", generateOpenAISlidesOnly(currentCall)),
-              ]);
-              return mergeSplitFallbackChapters(expectedIds, audio, text, slides);
+              // saída do gpt-4o-mini. audioScript falhar (cota do Gemini
+              // esgotada) não pode derrubar markdown/slides, que não têm
+              // outro fallback e já podem ter sido gerados com sucesso.
+              return generateOpenAIFallbackChapters(expectedIds, {
+                generateAudioScript: generateAudioScriptWithGemini,
+                generateMarkdown: () => generateOpenAITextOnly(currentCall),
+                generateSlides: () => generateOpenAISlidesOnly(currentCall),
+              });
             },
-            validateResult: (value) => {
-              validateBlockBatchGeneration(batch, value, index + 1);
+            validateResult: (value, provider) => {
+              // audioScript so sai do Gemini (sem fallback proprio) - quando
+              // a origem e o fallback OpenAI, audio vazio e esperado e nao
+              // pode reprovar markdown/slides que ja foram gerados com
+              // sucesso (ver generateOpenAIFallbackChapters).
+              validateBlockBatchGeneration(batch, value, index + 1, {
+                requireAudio: provider !== "openai",
+              });
             },
           },
         );
@@ -995,6 +1034,7 @@ export async function processMediaWithGemini(
           batch,
           generation.value,
           index + 1,
+          { requireAudio: generation.provider !== "openai" },
         );
         validated.generationProvider = generation.provider;
         validated.generationModel = generation.model;

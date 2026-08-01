@@ -1,9 +1,61 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildFullSlidePrompt, buildImageStyleSuffix, generateFullSlideImages } from "./slideAssetGenerator";
+import {
+  buildFullSlidePrompt,
+  buildImageStyleSuffix,
+  generateFullSlideImages,
+  generateSceneImageViaGemini,
+} from "./slideAssetGenerator";
 import { buildPresentationDesignPlan } from "../constants/presentationThemes";
+import { markGeminiImageUnavailable, resetGeminiImageCircuit } from "../services/slideIconService";
 
 const PLAN = buildPresentationDesignPlan("seeker", undefined, "Civilização Maia");
+
+test("generateSceneImageViaGemini pula direto pro null quando o circuito de imagem Gemini esta aberto", async () => {
+  resetGeminiImageCircuit();
+  const now = () => 1_000;
+  markGeminiImageUnavailable({ now });
+  let calledGemini = false;
+
+  const result = await generateSceneImageViaGemini("cena de teste", {
+    now,
+    generateWithGemini: async () => {
+      calledGemini = true;
+      return "base64-imagem";
+    },
+  });
+
+  assert.equal(result, null);
+  assert.equal(calledGemini, false);
+  resetGeminiImageCircuit();
+});
+
+test("generateSceneImageViaGemini chama o Gemini normalmente quando o circuito esta fechado e abre o circuito se a cota estourar", async () => {
+  resetGeminiImageCircuit();
+  const now = () => 2_000;
+
+  await assert.rejects(
+    () => generateSceneImageViaGemini("cena de teste", {
+      now,
+      generateWithGemini: async () => {
+        throw new Error("429 RESOURCE_EXHAUSTED quota");
+      },
+    }),
+  );
+
+  let calledAgain = false;
+  const second = await generateSceneImageViaGemini("outra cena", {
+    now,
+    generateWithGemini: async () => {
+      calledAgain = true;
+      return "base64-imagem";
+    },
+  });
+
+  assert.equal(second, null);
+  assert.equal(calledAgain, false);
+  resetGeminiImageCircuit();
+});
 
 test("buildImageStyleSuffix inclui label, guia e cor-assinatura do perfil", () => {
   const suffix = buildImageStyleSuffix("seeker", PLAN);
