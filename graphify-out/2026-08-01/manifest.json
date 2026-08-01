@@ -290,8 +290,8 @@
     "semantic_hash": ""
   },
   "api/app/api/v1/personalizacao.py": {
-    "mtime": 1785277467.0842354,
-    "ast_hash": "b6a6d4e7cdae6e7cd36afc26caa5cdcb",
+    "mtime": 1785562043.0603287,
+    "ast_hash": "3b8480661b80ea5722ed5ee8460a38ac",
     "semantic_hash": ""
   },
   "api/app/api/v1/telemetria.py": {
@@ -400,8 +400,8 @@
     "semantic_hash": ""
   },
   "api/app/repositories/artefatos_personalizados.py": {
-    "mtime": 1785260118.945507,
-    "ast_hash": "dbcda09b7fccc39bcb4374cb00c18909",
+    "mtime": 1785601124.840304,
+    "ast_hash": "0de8b14fbb91103102a48b665db9adf0",
     "semantic_hash": ""
   },
   "api/app/repositories/classe_mapa_tema.py": {
@@ -415,8 +415,8 @@
     "semantic_hash": ""
   },
   "api/app/repositories/conteudo_personalizado.py": {
-    "mtime": 1785542224.300785,
-    "ast_hash": "be41118b1584dd064f4754b8962cfe3b",
+    "mtime": 1785604862.0834017,
+    "ast_hash": "5af04ca07909c3fdb116a12677f21aa5",
     "semantic_hash": ""
   },
   "api/app/repositories/context.py": {
@@ -630,13 +630,13 @@
     "semantic_hash": "3436ee696254f46c2a41f4219a35a17e"
   },
   "api/app/services/personalizacao.py": {
-    "mtime": 1785285992.313912,
-    "ast_hash": "c71adf059a40ecc72ac5542097615528",
+    "mtime": 1785600861.553117,
+    "ast_hash": "e7125756b493d2b2ef4f7497f1c97079",
     "semantic_hash": ""
   },
   "api/app/services/personalizacao_jobs.py": {
-    "mtime": 1785386773.1710165,
-    "ast_hash": "910f493d9504242f04e4cb09d88e3c2d",
+    "mtime": 1785603364.9902835,
+    "ast_hash": "16573bed7e95942c9c30e032c5007f7e",
     "semantic_hash": ""
   },
   "api/app/services/pptx.py": {
@@ -685,8 +685,8 @@
     "semantic_hash": "366917f8966180b9f16c3fb3b91aa046"
   },
   "api/tests/test_api.py": {
-    "mtime": 1785277467.0927505,
-    "ast_hash": "1c3f08878632bd2cfbb6c86d42898863",
+    "mtime": 1785562258.4309945,
+    "ast_hash": "4ab5042c627d1659ece64af7195beb7f",
     "semantic_hash": ""
   },
   "api/tests/test_auth.py": {
@@ -750,18 +750,18 @@
     "semantic_hash": "6752798714ae0165218c1b0560046a8f"
   },
   "api/tests/test_personalizacao_jobs_loop.py": {
-    "mtime": 1785386874.211758,
-    "ast_hash": "8598476063ab88c64c10d9b880913297",
+    "mtime": 1785602359.1491735,
+    "ast_hash": "b8829cf57b64d818f3e6744e7f8f2dd4",
     "semantic_hash": ""
   },
   "api/tests/test_personalizacao_service.py": {
-    "mtime": 1785260118.9735954,
-    "ast_hash": "27d824d1533025cafca948721501adcd",
+    "mtime": 1785600833.3246703,
+    "ast_hash": "2f804d557c787c6b0459c6d701ab3f1b",
     "semantic_hash": ""
   },
   "api/tests/test_repositories.py": {
-    "mtime": 1785542163.3176858,
-    "ast_hash": "bdf95a440d39b7ef55b24cd28ff0f634",
+    "mtime": 1785604830.792847,
+    "ast_hash": "72bc3e0978cc7ca2683880217c7e3953",
     "semantic_hash": ""
   },
   "api/tests/test_startup.py": {
@@ -1550,8 +1550,8 @@
     "semantic_hash": ""
   },
   "microservice/server.ts": {
-    "mtime": 1785438110.5443032,
-    "ast_hash": "8c67bc770a71e9f56d1c5589cc2459ed",
+    "mtime": 1785601780.9002206,
+    "ast_hash": "62a3fde0c96f94118f59aaed74e4f19b",
     "semantic_hash": ""
   },
   "microservice/sql/migrations/0001_merge_personalizacao_materiais_rpc.sql": {
@@ -1670,8 +1670,8 @@
     "semantic_hash": ""
   },
   "microservice/src/services/geminiService.ts": {
-    "mtime": 1785385890.1006753,
-    "ast_hash": "41c3773e0e4c2b1b15edb31cc2ae8bea",
+    "mtime": 1785606206.6193898,
+    "ast_hash": "135dd63f40905856d1f1633b710fc641",
     "semantic_hash": ""
   },
   "microservice/src/services/supabaseService.ts": {
@@ -4135,8 +4135,8 @@
     "semantic_hash": ""
   },
   "microservice/src/services/geminiBlockBatches.test.ts": {
-    "mtime": 1785383543.2281325,
-    "ast_hash": "66678b886c4822eb071a792a07329adf",
+    "mtime": 1785606139.757653,
+    "ast_hash": "dbd6b9e11ba1a42aa26287efb4751077",
     "semantic_hash": ""
   },
   "mobile/src/utils/personalization.multicontent.test.ts": {
@@ -4210,8 +4210,8 @@
     "semantic_hash": ""
   },
   "microservice/src/services/slideIconService.ts": {
-    "mtime": 1785281865.0678487,
-    "ast_hash": "2c2ab26e093c2978dbd2de2af1130e2f",
+    "mtime": 1785607965.5005152,
+    "ast_hash": "7b8fb8b43aefccc7c11a040f9ddc0483",
     "semantic_hash": ""
   },
   "api/tests/test_state_builder.py": {
@@ -4280,13 +4280,13 @@
     "semantic_hash": ""
   },
   "microservice/src/lib/slideAssetGenerator.test.ts": {
-    "mtime": 1785372712.090761,
-    "ast_hash": "25b4cc1682ba3fafc55bc260dcafcdea",
+    "mtime": 1785608007.542315,
+    "ast_hash": "d9412a33faafb2ca0b9eff9af59cfd76",
     "semantic_hash": ""
   },
   "microservice/src/lib/slideAssetGenerator.ts": {
-    "mtime": 1785372712.101267,
-    "ast_hash": "47179fc2814b973b230eb99a682df960",
+    "mtime": 1785608059.0693645,
+    "ast_hash": "7897f5c65089d8e76b2280e9a45f0cb2",
     "semantic_hash": ""
   },
   "docs/api/superpowers/specs/2026-07-30-apresentacao-html-direto-design.md": {
