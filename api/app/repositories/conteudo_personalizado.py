@@ -438,7 +438,23 @@ class ConteudoPersonalizadoRepository:
             )
             ON CONFLICT (aluno_id, topico_id, conteudo_id, brainhex_profile_key)
               WHERE topico_id IS NOT NULL AND conteudo_id IS NOT NULL
-            DO NOTHING
+            DO UPDATE SET
+              classe_id = EXCLUDED.classe_id,
+              ciclo_id = EXCLUDED.ciclo_id,
+              plano = EXCLUDED.plano,
+              materiais = EXCLUDED.materiais,
+              ai_patch = EXCLUDED.ai_patch,
+              status = EXCLUDED.status,
+              source_hash = EXCLUDED.source_hash,
+              formato_prioritario = EXCLUDED.formato_prioritario,
+              formatos_gerados = EXCLUDED.formatos_gerados,
+              updated_at = NOW()
+            -- So reclama a linha existente quando o source_hash mudou de
+            -- verdade (geracao anterior obsoleta, ex.: professor editou o
+            -- conteudo). Quando o hash e o MESMO, e uma corrida real com
+            -- outro worker reservando a mesma geracao agora - continua sem
+            -- efeito (equivalente a DO NOTHING) para nao sobrescrever.
+            WHERE conteudo_personalizado.source_hash IS DISTINCT FROM EXCLUDED.source_hash
             RETURNING id
             """
         )
@@ -861,11 +877,11 @@ class ConteudoPersonalizadoRepository:
                   COALESCE(materiais, '{}'::jsonb),
                   '{_geracao_falhas}',
                   jsonb_build_object(
-                    'generation_key', :generation_key,
+                    'generation_key', CAST(:generation_key AS TEXT),
                     'streak',
                     CASE
                       WHEN COALESCE(materiais -> '_geracao_falhas' ->> 'generation_key', '')
-                           = :generation_key
+                           = CAST(:generation_key AS TEXT)
                       THEN COALESCE(
                         (materiais -> '_geracao_falhas' ->> 'streak')::int, 0
                       ) + 1

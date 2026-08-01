@@ -135,6 +135,45 @@ class ArtefatosPersonalizadosRepository:
                 params,
             )
 
+    async def buscar_cards_ativos(
+        self,
+        *,
+        aluno_id: str,
+        topico_id: int,
+        conteudo_id: int | None,
+    ) -> list[dict[str, Any]]:
+        """Cards ja gerados e ativos para (aluno, topico, conteudo).
+
+        Cards nao variam por perfil BrainHex (ao contrario de audio/markdown/
+        apresentacao, que sao adaptados ao tom de cada perfil) - o mesmo
+        conjunto deve ser reaproveitado por todos os perfis do mesmo aluno em
+        vez de regerado a cada um. Regerar a cada perfil, alem de custar
+        chamadas de LLM redundantes, faz o "id" de cada card mudar a cada
+        tentativa, o que quebrava o source_hash (ver _build_source_hash).
+        """
+        if not await self._table_exists("cards_personalizados"):
+            return []
+
+        result = await self.session.execute(
+            text(
+                """
+                SELECT id, ordem, titulo, descricao, icone, dificuldade, xp, metadata
+                FROM cards_personalizados
+                WHERE aluno_id = CAST(:aluno_id AS UUID)
+                  AND topico_id = CAST(:topico_id AS BIGINT)
+                  AND conteudo_id IS NOT DISTINCT FROM CAST(:conteudo_id AS BIGINT)
+                  AND ativo = TRUE
+                ORDER BY ordem ASC, id ASC
+                """
+            ),
+            {
+                "aluno_id": str(aluno_id),
+                "topico_id": int(topico_id),
+                "conteudo_id": int(conteudo_id) if conteudo_id is not None else None,
+            },
+        )
+        return [dict(row) for row in result.mappings()]
+
     async def salvar_cards(
         self,
         *,

@@ -969,6 +969,125 @@ async def test_target_defers_before_db_mutation_when_media_contract_is_unavailab
     dispatch.assert_not_awaited()
 
 
+@pytest.mark.asyncio
+async def test_process_media_render_target_reuses_existing_cards_instead_of_regenerating(
+    monkeypatch,
+) -> None:
+    """Cards nao variam por perfil BrainHex (ao contrario de audio/markdown/
+    apresentacao) - devem ser reaproveitados entre os 7 perfis do mesmo
+    aluno, nunca regerados por perfil. Regerar troca o "id" dos cards a
+    cada tentativa e quebra o source_hash (ver _build_source_hash)."""
+    ciclo_id = "ciclo-777"
+    source_hash = "hash-777"
+    aluno_id = "b49f2e21-a6f9-4c8d-9533-5a32bb219754"
+
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.buscar_mais_recente_por_perfil",
+        AsyncMock(return_value=None),
+    )
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.claim_new_generation",
+        AsyncMock(return_value=True),
+    )
+    monkeypatch.setattr(
+        jobs_module,
+        "fetch_personalizacao_context",
+        AsyncMock(
+            return_value={
+                "source_hash": source_hash,
+                "ciclo_id": ciclo_id,
+                "fontes": [],
+                "perfil_dominante": "Mastermind",
+                "perfil_brainhex": [],
+                "conteudo_classe": {},
+                "contexto_aluno": {},
+            }
+        ),
+    )
+    monkeypatch.setattr(jobs_module, "enrich_content_blocks", AsyncMock(return_value={"blocos": []}))
+
+    cards_mock = AsyncMock(return_value=[])
+    monkeypatch.setattr(jobs_module, "gerar_cards_direto", cards_mock)
+
+    existing_cards = [{"id": 2054, "ordem": 1, "titulo": "Card 1", "descricao": "Frente/verso"}]
+    buscar_cards_ativos_mock = AsyncMock(return_value=existing_cards)
+    monkeypatch.setattr(
+        "app.repositories.artefatos_personalizados.ArtefatosPersonalizadosRepository.buscar_cards_ativos",
+        buscar_cards_ativos_mock,
+    )
+    marcar_obsoletos_mock = AsyncMock()
+    monkeypatch.setattr(
+        "app.repositories.artefatos_personalizados.ArtefatosPersonalizadosRepository.marcar_ciclos_anteriores_obsoletos",
+        marcar_obsoletos_mock,
+    )
+    salvar_cards_mock = AsyncMock()
+    monkeypatch.setattr(
+        "app.repositories.artefatos_personalizados.ArtefatosPersonalizadosRepository.salvar_cards",
+        salvar_cards_mock,
+    )
+
+    salvar_mock = AsyncMock(return_value=999)
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.salvar",
+        salvar_mock,
+    )
+    completed_record = {
+        "id": 999,
+        "aluno_id": aluno_id,
+        "ciclo_id": ciclo_id,
+        "source_hash": source_hash,
+        "status": "pronto",
+        "materiais": {
+            kind: {
+                "metadata": {
+                    "status": "completed",
+                    "generation_key": f"{ciclo_id}:{source_hash}",
+                    **(
+                        {
+                            "engine": jobs_module.PRESENTATION_ENGINE_VERSION,
+                            "design_system": jobs_module.PRESENTATION_DESIGN_VERSION,
+                            "media_pipeline_version": jobs_module.MEDIA_PIPELINE_VERSION,
+                        }
+                        if kind == "apresentacao"
+                        else {}
+                    ),
+                }
+            }
+            for kind in ("audio", "markdown", "apresentacao")
+        },
+    }
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.buscar_por_id",
+        AsyncMock(return_value=completed_record),
+    )
+    monkeypatch.setattr(jobs_module, "disparar_brainhex_async", AsyncMock(return_value=True))
+
+    app = SimpleNamespace(
+        state=SimpleNamespace(settings=SimpleNamespace(personalizacao_job_stale_processing_min=15))
+    )
+    job = {"id": "job-1", "classe_id": 32, "kind": "class_delta_sync", "payload": {}}
+    target = {
+        "id": 777,
+        "aluno_id": aluno_id,
+        "topico_id": 122,
+        "conteudo_id": 150,
+        "brainhex_profile_key": "mastermind",
+        "is_profile_template": True,
+    }
+
+    result = await _process_media_render_target(
+        app=app, session=_FakeSession(is_stuck=False), job=job, target=target
+    )
+
+    assert result["record"] == completed_record
+    buscar_cards_ativos_mock.assert_awaited_once()
+    assert cards_mock.await_count == 0
+    assert marcar_obsoletos_mock.await_count == 0
+    assert salvar_cards_mock.await_count == 0
+    saved_plano = salvar_mock.await_args.kwargs["plano"]
+    assert saved_plano["cards_personalizados_ids"] == [2054]
+
+
 def _completed_record(existing: dict) -> dict:
     generation_key = f"{existing['ciclo_id']}:{existing['source_hash']}"
     completed_material = {
@@ -1227,6 +1346,25 @@ def test_profile_render_targets_ready_now_sem_pendentes() -> None:
     targets = [_target(1, status="completed", attempts=1, updated_at=now)]
 
     assert _profile_render_targets_ready_now(targets, pace_sec=300, now=now) == []
+
+
+def test_profile_render_targets_ready_now_nao_pausa_apos_falha_so_apos_sucesso() -> None:
+    """O intervalo entre perfis existe para nao estourar a cota do provedor
+    apos uma geracao BEM-SUCEDIDA (que faz varias chamadas caras). Uma
+    tentativa que FALHOU (ex.: hiccup transitorio do microservico) nao deve
+    forcar a mesma espera de 20min antes do proximo perfil - so sucesso
+    (status "completed") deve pausar o proximo disparo.
+    """
+    now = datetime(2026, 7, 30, 12, 0, 0, tzinfo=timezone.utc)
+    targets = [
+        _target(1, status="failed", attempts=3, updated_at=now - timedelta(seconds=5)),
+        _target(2),
+        _target(3),
+    ]
+
+    ready = _profile_render_targets_ready_now(targets, pace_sec=1200, now=now)
+
+    assert [t["id"] for t in ready] == [2]
 
 
 def test_profile_render_targets_ready_now_pula_alvo_deferido_repetidamente() -> None:
@@ -1670,7 +1808,7 @@ async def test_job_processes_targets_with_bounded_concurrency_and_distinct_sessi
         peak = max(peak, running)
         await asyncio.sleep(0.01)
         running -= 1
-        return {"record": {"id": target["id"]}}
+        return {"record": {"id": target["id"], "status": "pronto"}}
 
     async def refresh_job_counters(_self, _job_id):
         completed = sum(1 for target in by_id.values() if target["status"] == "completed")
@@ -1768,7 +1906,7 @@ async def test_job_processes_one_profile_per_tick_by_default(monkeypatch) -> Non
     async def process_target(*, app, session, job, target):
         del app, session, job
         processed_ids.append(target["id"])
-        return {"record": {"id": target["id"]}}
+        return {"record": {"id": target["id"], "status": "pronto"}}
 
     async def refresh_job_counters(_self, _job_id):
         completed = sum(1 for target in by_id.values() if target["status"] == "completed")
@@ -1821,6 +1959,90 @@ async def test_job_processes_one_profile_per_tick_by_default(monkeypatch) -> Non
     assert by_id[2]["status"] == "pending"
     assert by_id[3]["status"] == "pending"
     assert finalized == ["partial"]
+
+
+@pytest.mark.asyncio
+async def test_job_does_not_mark_target_completed_when_record_is_not_pronto(monkeypatch) -> None:
+    """_process_media_render_target pode devolver {"record": <registro nao
+    "pronto">} sem "skipped"/"deferred" (ex.: o ramo "recovered" quando o
+    dispatch falha mas atualizar_status(failed) nao aplicou). Sem checar o
+    status real do registro, o target era marcado "completed" mesmo quando a
+    geracao de fato falhou - foi observado ao vivo com um job orfao do
+    microservice recuperado como "failed" mas o target virando "completed"."""
+    job = {"id": "job-notpronto", "classe_id": 32, "kind": "class_delta_sync", "payload": {}}
+    target = {
+        "id": 42,
+        "aluno_id": "aluno-1",
+        "topico_id": 121,
+        "conteudo_id": 125,
+        "status": "pending",
+        "attempts": 0,
+        "updated_at": None,
+    }
+    by_id = {target["id"]: dict(target)}
+    claimed = False
+
+    async def _claim_next_job(_self, *, stale_processing_min, partial_retry_delay_sec):
+        nonlocal claimed
+        if claimed:
+            return None
+        claimed = True
+        return job
+
+    async def get_targets(_self, _job_id):
+        return [dict(t) for t in by_id.values()]
+
+    async def update_target_status(
+        _self, *, target_id, status, attempts, last_error, personalizacao_id=None,
+    ):
+        by_id[target_id].update({"status": status, "attempts": attempts, "last_error": last_error})
+
+    async def process_target(*, app, session, job, target):
+        del app, session, job, target
+        return {"record": {"id": 999, "status": "failed"}}
+
+    async def refresh_job_counters(_self, _job_id):
+        return {"processed_targets": 0, "error_count": 0}
+
+    async def finalize_job(_self, *, job_id, status, last_error):
+        del job_id, status, last_error
+
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.claim_next_job",
+        _claim_next_job,
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.get_targets",
+        get_targets,
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.update_target_status",
+        update_target_status,
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.refresh_job_counters",
+        refresh_job_counters,
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.finalize_job",
+        finalize_job,
+    )
+    monkeypatch.setattr(jobs_module, "_process_media_render_target", process_target)
+
+    app = SimpleNamespace(
+        state=SimpleNamespace(
+            session_factory=_WorkerSessionFactory(),
+            settings=SimpleNamespace(
+                personalizacao_job_stale_processing_min=40,
+                personalizacao_job_max_retries=3,
+                personalizacao_media_render_concurrency=2,
+            ),
+        )
+    )
+
+    await process_personalizacao_job_once(app)
+
+    assert by_id[42]["status"] != "completed"
 
 
 @pytest.mark.asyncio

@@ -4,6 +4,7 @@ from types import SimpleNamespace
 import pytest
 
 from app.repositories.access import AccessRepository
+from app.repositories.artefatos_personalizados import ArtefatosPersonalizadosRepository
 from app.repositories.conteudo_personalizado import ConteudoPersonalizadoRepository
 from app.repositories.context import ContextRepository
 from app.repositories.evento import EventoRepository
@@ -525,13 +526,15 @@ async def test_claim_new_generation_succeeds_when_target_does_not_exist_yet() ->
     assert session.commits == 1
     insert_sql, params = session.calls[-1]
     assert "ON CONFLICT (aluno_id, topico_id, conteudo_id, brainhex_profile_key)" in insert_sql
-    assert "DO NOTHING" in insert_sql
+    assert "DO UPDATE" in insert_sql
     assert params["ciclo_id"] == "ciclo-501"
     assert params["brainhex_profile_key"] == "seeker"
 
 
 @pytest.mark.asyncio
 async def test_claim_new_generation_loses_race_when_another_worker_already_claimed() -> None:
+    """Conflito com uma linha do MESMO source_hash e uma corrida real (outro
+    worker ja reservou esta MESMA geracao) - deve continuar deferindo."""
     session = RecordingSession([ScalarResult(True), MappingResult([])])
     repo = ConteudoPersonalizadoRepository(session)
 
@@ -547,6 +550,31 @@ async def test_claim_new_generation_loses_race_when_another_worker_already_claim
 
     assert claimed is False
     assert session.commits == 1
+
+
+@pytest.mark.asyncio
+async def test_claim_new_generation_reclaims_row_with_stale_source_hash() -> None:
+    """Conflito com uma linha de source_hash DIFERENTE nao e uma corrida real
+    - e uma geracao antiga (obsoleta, de antes do conteudo mudar) que nunca
+    completou. Sem reclamar essa linha, o slot (aluno,topico,conteudo,perfil)
+    fica bloqueado para sempre por ON CONFLICT DO NOTHING, mesmo quando o
+    conteudo mudou de verdade e precisa gerar de novo."""
+    session = RecordingSession([ScalarResult(True), MappingResult([{"id": 501}])])
+    repo = ConteudoPersonalizadoRepository(session)
+
+    claimed = await repo.claim_new_generation(
+        aluno_id="aluno-1",
+        classe_id=32,
+        topico_id=121,
+        conteudo_id=125,
+        brainhex_profile_key="seeker",
+        ciclo_id="ciclo-novo",
+        source_hash="hash-novo",
+    )
+
+    assert claimed is True
+    insert_sql, _params = session.calls[-1]
+    assert "IS DISTINCT FROM EXCLUDED.source_hash" in insert_sql
 
 
 @pytest.mark.asyncio
@@ -1342,3 +1370,57 @@ async def test_fontes_personalizacao_atualizar_enriquecimento_updates_fields_and
     assert "metadata = CASE" in sql
     assert params["fonte_id"] == 16
     assert params["metadata_patch"]["bucket"] == "conteudos"
+
+
+@pytest.mark.asyncio
+async def test_incrementar_falha_streak_casts_generation_key_for_asyncpg() -> None:
+    """generation_key so aparece dentro de jsonb_build_object (contexto
+    polimorfico "any") antes de qualquer uso em contexto text - o asyncpg
+    nao consegue inferir o tipo do parametro e falha com
+    AmbiguousParameterError em producao (confirmado ao vivo). Precisa de
+    CAST(:generation_key AS TEXT) para fixar o tipo."""
+    session = RecordingSession([ScalarResult("1")])
+    repo = ConteudoPersonalizadoRepository(session)
+
+    await repo.incrementar_falha_streak(
+        record_id=3127,
+        ciclo_id="ciclo-1",
+        source_hash="hash-1",
+        generation_key="ciclo-1:hash-1",
+    )
+
+    sql, _params = session.calls[-1]
+    assert "CAST(:generation_key AS TEXT)" in sql
+
+
+@pytest.mark.asyncio
+async def test_buscar_cards_ativos_ignora_perfil_e_filtra_por_ativo() -> None:
+    """Cards nao variam por perfil BrainHex - a busca deve trazer o conjunto
+    ativo do aluno/topico/conteudo sem filtrar por brainhex_profile_key, para
+    que todos os perfis do mesmo aluno reaproveitem o mesmo lote em vez de
+    regerar (o que muda o "id" a cada vez e quebra o source_hash)."""
+    session = RecordingSession(
+        [
+            MappingResult(
+                [
+                    {"id": 2054, "ordem": 1, "titulo": "Card 1", "descricao": "Frente/verso",
+                     "icone": None, "dificuldade": None, "xp": None, "metadata": {}},
+                ]
+            ),
+        ]
+    )
+    repo = ArtefatosPersonalizadosRepository(session)
+
+    cards = await repo.buscar_cards_ativos(
+        aluno_id="b49f2e21-a6f9-4c8d-9533-5a32bb219754",
+        topico_id=122,
+        conteudo_id=150,
+    )
+
+    assert [c["id"] for c in cards] == [2054]
+    sql, params = session.calls[-1]
+    assert "brainhex_profile_key" not in sql
+    assert "ativo = TRUE" in sql
+    assert params["aluno_id"] == "b49f2e21-a6f9-4c8d-9533-5a32bb219754"
+    assert params["topico_id"] == 122
+    assert params["conteudo_id"] == 150

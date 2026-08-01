@@ -327,9 +327,13 @@ def _profile_render_targets_ready_now(
         key=lambda target: target.get("updated_at") or datetime.min.replace(tzinfo=timezone.utc),
     )
 
+    # O intervalo so existe para nao empilhar chamadas caras de geracoes
+    # BEM-SUCEDIDAS (que estouram a cota do provedor no tier gratuito). Uma
+    # tentativa que falhou nao deve custar a mesma espera de 20min ao
+    # proximo perfil - so "completed" (sucesso real) pausa o proximo disparo.
     last_touch: datetime | None = None
     for target in targets:
-        if int(target.get("attempts") or 0) <= 0:
+        if target.get("status") != "completed":
             continue
         updated_at = target.get("updated_at")
         if updated_at is None:
@@ -1366,37 +1370,48 @@ async def _process_media_render_target(
         factory=_enrich_fresh,
     )
 
-    cards_payload = await gerar_cards_direto(
-        perfil=ctx["perfil_dominante"],
-        conteudo_classe=ctx["conteudo_classe"],
-        contexto_aluno=ctx["contexto_aluno"],
-        perfil_brainhex=ctx["perfil_brainhex"],
-        settings=app.state.settings,
-    )
-
     repo_artefatos = ArtefatosPersonalizadosRepository(session)
-    await repo_artefatos.marcar_ciclos_anteriores_obsoletos(
+    # Cards nao variam por perfil BrainHex (ao contrario de audio/markdown/
+    # apresentacao, que sao adaptados ao tom de cada perfil) - reaproveita o
+    # lote ja ativo do aluno/topico/conteudo em vez de reger a-lo a cada um
+    # dos 7 perfis. Regerar troca o "id" de cada card a cada tentativa, o que
+    # muda o source_hash (ver _build_source_hash) e orfaniza geracoes
+    # anteriores que dependiam dele para serem reencontradas.
+    saved_cards = await repo_artefatos.buscar_cards_ativos(
         aluno_id=aluno_id,
-        classe_id=classe_id,
         topico_id=topico_id,
         conteudo_id=conteudo_id,
-        ciclo_id=ctx["ciclo_id"],
-        brainhex_profile_key=target_profile_key,
     )
-    cards_list = (
-        cards_payload if isinstance(cards_payload, list)
-        else (cards_payload.get("cards") if isinstance(cards_payload, dict) else [])
-    )
-    saved_cards = await repo_artefatos.salvar_cards(
-        aluno_id=aluno_id,
-        classe_id=classe_id,
-        topico_id=topico_id,
-        conteudo_id=conteudo_id,
-        ciclo_id=ctx["ciclo_id"],
-        brainhex_profile_key=target_profile_key,
-        source_hash=str(ctx.get("source_hash") or ""),
-        cards=cards_list if isinstance(cards_list, list) else [],
-    )
+    if not saved_cards:
+        cards_payload = await gerar_cards_direto(
+            perfil=ctx["perfil_dominante"],
+            conteudo_classe=ctx["conteudo_classe"],
+            contexto_aluno=ctx["contexto_aluno"],
+            perfil_brainhex=ctx["perfil_brainhex"],
+            settings=app.state.settings,
+        )
+        await repo_artefatos.marcar_ciclos_anteriores_obsoletos(
+            aluno_id=aluno_id,
+            classe_id=classe_id,
+            topico_id=topico_id,
+            conteudo_id=conteudo_id,
+            ciclo_id=ctx["ciclo_id"],
+            brainhex_profile_key=target_profile_key,
+        )
+        cards_list = (
+            cards_payload if isinstance(cards_payload, list)
+            else (cards_payload.get("cards") if isinstance(cards_payload, dict) else [])
+        )
+        saved_cards = await repo_artefatos.salvar_cards(
+            aluno_id=aluno_id,
+            classe_id=classe_id,
+            topico_id=topico_id,
+            conteudo_id=conteudo_id,
+            ciclo_id=ctx["ciclo_id"],
+            brainhex_profile_key=target_profile_key,
+            source_hash=str(ctx.get("source_hash") or ""),
+            cards=cards_list if isinstance(cards_list, list) else [],
+        )
     cards_ids = [c["id"] for c in saved_cards if isinstance(c, dict) and c.get("id")]
 
     perfil_editorial = _build_profile_editorial_context(
@@ -1734,8 +1749,23 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
                         ),
                     )
                     return 0
-                target_status = "skipped" if outcome.get("skipped") else "completed"
-                target_error: str | None = None
+                record_status = str(record.get("status") or "").strip().lower() if isinstance(record, dict) else ""
+                is_error = False
+                if outcome.get("skipped"):
+                    target_status = "skipped"
+                    target_error = None
+                elif record_status == "pronto":
+                    target_status = "completed"
+                    target_error = None
+                else:
+                    # _process_media_render_target pode devolver um registro
+                    # nao "pronto" sem sinalizar "skipped"/"deferred" (ex.: o
+                    # ramo "recovered" quando o dispatch falha mas o CAS de
+                    # marcar failed nao aplicou). Sem este check, o target
+                    # virava "completed" mesmo com a geracao de fato falhada.
+                    target_status = "pending" if attempts < max_retries else "failed"
+                    target_error = f"geracao nao concluida (status={record_status or 'desconhecido'})"
+                    is_error = True
                 await target_repo.update_target_status(
                     target_id=int(target["id"]),
                     status=target_status,
@@ -1743,7 +1773,7 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
                     last_error=target_error,
                     personalizacao_id=record.get("id") if isinstance(record, dict) else None,
                 )
-                return 0
+                return 1 if is_error else 0
             except Exception as exc:
                 await target_session.rollback()
                 failed_status = "pending" if attempts < max_retries else "failed"

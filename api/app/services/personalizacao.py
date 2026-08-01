@@ -2118,7 +2118,14 @@ def _build_source_hash(
         "sinais_topico": {
             "cards": [
                 {
-                    "id": item.get("id"),
+                    # "id" fica de fora de proposito: cards_personalizados e
+                    # regerado (novo id sequencial, batch antigo marcado
+                    # obsoleto) a cada tentativa de QUALQUER perfil do mesmo
+                    # topico, mesmo quando o conteudo nao mudou. Incluir o id
+                    # faz o source_hash mudar a cada tentativa, quebrando o
+                    # cache de enriquecimento compartilhado entre perfis e
+                    # orfanizando qualquer registro existente que dependa
+                    # deste hash para ser reencontrado.
                     "conteudo_id": item.get("conteudo_id"),
                     "titulo": item.get("titulo"),
                     "descricao": item.get("descricao"),

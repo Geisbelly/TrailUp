@@ -61,6 +61,36 @@ def test_source_hash_changes_when_pipeline_version_changes(monkeypatch) -> None:
     assert personalizacao_service._build_source_hash(**kwargs) != current_hash
 
 
+def test_source_hash_ignores_card_id_churn_from_regeneration() -> None:
+    """cards_personalizados e regerado (novos ids sequenciais, batch antigo
+    marcado obsoleto) a cada tentativa de geracao de QUALQUER perfil do
+    mesmo topico - mesmo quando o conteudo do card nao mudou. Se o "id" do
+    card entrar no hash, cada tentativa produz um source_hash diferente,
+    quebrando tanto o cache de enriquecimento compartilhado entre perfis
+    (_content_enrichment_cache_key inclui source_hash) quanto a busca do
+    registro existente (buscar_mais_recente_por_perfil filtra por
+    source_hash), orfanizando permanentemente qualquer geracao anterior.
+    """
+    kwargs = {
+        "classe_id": 32,
+        "topico_id": 121,
+        "conteudo_id": 125,
+        "materiais_origem": [{"source_id": "fonte:45", "texto_base": "Conteudo base"}],
+        "cards_topico": [
+            {"id": 2054, "conteudo_id": 125, "titulo": "Card 1", "descricao": "Frente/verso", "ordem": 1},
+        ],
+    }
+    hash_batch_1 = personalizacao_service._build_source_hash(**kwargs)
+
+    kwargs_regenerado = dict(kwargs)
+    kwargs_regenerado["cards_topico"] = [
+        {"id": 2266, "conteudo_id": 125, "titulo": "Card 1", "descricao": "Frente/verso", "ordem": 1},
+    ]
+    hash_batch_2 = personalizacao_service._build_source_hash(**kwargs_regenerado)
+
+    assert hash_batch_1 == hash_batch_2
+
+
 @pytest.mark.asyncio
 async def test_fetch_context_keeps_topic_scope_for_sources_and_source_hash(monkeypatch) -> None:
     aluno_id = "b49f2e21-a6f9-4c8d-9533-5a32bb219754"
