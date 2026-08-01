@@ -178,6 +178,42 @@ async def test_personalizacao_upsert_is_scoped_by_content(
 
 
 @pytest.mark.asyncio
+async def test_personalizacao_upsert_without_profile_column_skips_broken_conflict_target() -> None:
+    # A unicidade em (aluno_id, topico_id) sem perfil foi removida das migrations
+    # (20260727_01/20260728_02); se brainhex_profile_key nao for detectada nessa
+    # tabela, nenhum ON CONFLICT (aluno_id, topico_id) tem constraint para casar
+    # e o INSERT falharia com InvalidColumnReferenceError. O salvar() deve gravar
+    # sem ON CONFLICT nesse caso, em vez de montar uma clausula garantidamente quebrada.
+    session = RecordingSession([ScalarResult(902)])
+    repo = ConteudoPersonalizadoRepository(session)
+    repo._column_cache = {
+        "__loaded__": True,
+        **{column: True for column in repo._known_columns},
+        "brainhex_profile_key": False,
+    }
+
+    record_id = await repo.salvar(
+        aluno_id="22222222-2222-2222-2222-222222222222",
+        classe_id=32,
+        conteudo_id=122,
+        topico_id=150,
+        ciclo_id="cycle-1",
+        plano={},
+        materiais={},
+        ai_patch=None,
+        status="processando_midias",
+        source_hash="hash-1",
+        formato_prioritario="documento",
+        formatos_gerados=["documento"],
+    )
+
+    assert record_id == 902
+    sql, _params = session.calls[0]
+    assert "ON CONFLICT" not in sql
+    assert session.commits == 1
+
+
+@pytest.mark.asyncio
 async def test_personalizacao_job_and_targets_commit_atomically() -> None:
     session = RecordingSession(
         [

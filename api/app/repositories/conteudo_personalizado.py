@@ -278,6 +278,12 @@ class ConteudoPersonalizadoRepository:
                 """
             )
         elif can_upsert:
+            # brainhex_profile_key nao foi detectada nesta tabela: as migrations
+            # 20260727_01/20260728_02 removeram a unicidade legada em
+            # (aluno_id, topico_id) e so criam indices unicos com perfil incluso,
+            # entao nenhum ON CONFLICT (aluno_id, topico_id) tem constraint para
+            # casar aqui. Grava sem upsert em vez de montar uma clausula que o
+            # Postgres sempre rejeitaria com InvalidColumnReferenceError.
             statement = text(
                 """
                 INSERT INTO conteudo_personalizado (
@@ -319,20 +325,6 @@ class ConteudoPersonalizadoRepository:
                   :formatos_gerados,
                   NOW()
                 )
-                ON CONFLICT (aluno_id, topico_id) DO UPDATE
-                SET
-                  classe_id = EXCLUDED.classe_id,
-                  conteudo_id = EXCLUDED.conteudo_id,
-                  ciclo_id = EXCLUDED.ciclo_id,
-                  plano = EXCLUDED.plano,
-                  materiais = EXCLUDED.materiais,
-                  ai_patch = EXCLUDED.ai_patch,
-                  status = EXCLUDED.status,
-                  source_hash = EXCLUDED.source_hash,
-                  formato_prioritario = EXCLUDED.formato_prioritario,
-                  formatos_gerados = EXCLUDED.formatos_gerados,
-                  gerado_em = NOW(),
-                  updated_at = NOW()
                 RETURNING id
                 """
             )
