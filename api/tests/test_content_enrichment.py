@@ -328,6 +328,35 @@ async def test_enrichment_groups_every_source_segment_without_truncation(
     assert len(submitted_segments) == result["metadata"]["segmentos_origem"]
 
 
+def test_group_segments_scales_block_count_for_large_source_content() -> None:
+    # 40 segmentos de ~3.7k chars cada (~150k chars no total) nao cabem em
+    # 24 blocos sem que cada bloco fique grande demais - depois do
+    # enriquecimento (que so tem piso minimo de expansao, sem teto), um
+    # bloco assim reproduziu estouro de max_output_tokens no fallback OpenAI
+    # em producao. _group_segments deve abrir mao do teto fixo de 24 quando
+    # o conteudo de origem exige mais granularidade.
+    context = {"conteudo_classe": {"topico": {"nome": "Redes"}}}
+    segments = [
+        {
+            "segment_id": f"segmento-{index:04d}",
+            "source_id": "conteudo:1",
+            "source_title": "Aula",
+            "source_order": index,
+            "text": f"MARCADOR-{index:03d}: " + ("conteudo tecnico denso. " * 150),
+        }
+        for index in range(1, 41)
+    ]
+
+    groups = enrichment_module._group_segments(context, segments)
+
+    assert len(groups) > 24
+    assert sum(len(block["segment_ids"]) for block in groups) == len(segments)
+    all_segment_ids = {
+        segment_id for block in groups for segment_id in block["segment_ids"]
+    }
+    assert all_segment_ids == {segment["segment_id"] for segment in segments}
+
+
 def test_source_segmentation_splits_large_text_without_losing_its_tail() -> None:
     context = _context(paragraphs=1)
     long_text = "INICIO-" + ("x" * 9_000) + "-FIM"

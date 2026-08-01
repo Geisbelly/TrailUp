@@ -20,6 +20,11 @@ except ImportError:  # pragma: no cover
     SystemMessage = None
 
 _MAX_BLOCKS = 24
+# Teto de seguranca: documentos gigantes nao podem gerar centenas de blocos
+# (cada bloco = uma chamada de LLM na geracao do microservice). Acima disso,
+# blocos voltam a ficar maiores que o orcamento seguro - melhor que estourar
+# o processo com centenas de chamadas.
+_MAX_BLOCKS_CEILING = 60
 _MAX_SEGMENT_CHARS = 4_000
 _MIN_EXPANSION_CHARS = 80
 _MIN_EXPANSION_RATIO = 0.15
@@ -321,11 +326,29 @@ def _group_segments(
     context: dict[str, Any],
     segments: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    """Agrupa sequencialmente em no máximo 24 blocos, mantendo todos os segmentos."""
+    """Agrupa sequencialmente mantendo todos os segmentos.
+
+    A contagem de grupos parte de min(_MAX_BLOCKS, len(segments)) (o piso de
+    sempre) mas cresce quando o material de origem e grande o bastante pra
+    que blocos do piso ficassem maiores que _MAX_SEGMENT_CHARS por grupo -
+    um bloco grande demais, apos o enriquecimento (que so tem piso minimo de
+    expansao, nao teto), pode gerar mais texto do que o teto de tokens de
+    saida do fallback OpenAI aguenta numa unica chamada (ver
+    generateOpenAITextOnly no microservice). Documentos pequenos com muitos
+    segmentos curtos (ex.: teste com 30 paragrafos minusculos) continuam
+    caindo no piso de sempre, sem gerar blocos artificialmente numerosos.
+    """
     if not segments:
         raise ContentEnrichmentError("Nenhum texto-base foi encontrado para decompor e aprofundar.")
 
-    group_count = min(_MAX_BLOCKS, len(segments))
+    total_chars = sum(len(str(item.get("text") or "")) for item in segments)
+    size_based_groups = math.ceil(total_chars / _MAX_SEGMENT_CHARS) if total_chars else 1
+    baseline_groups = min(_MAX_BLOCKS, len(segments))
+    group_count = min(
+        len(segments),
+        _MAX_BLOCKS_CEILING,
+        max(baseline_groups, size_based_groups),
+    )
     groups: list[list[dict[str, Any]]] = []
     cursor = 0
     for group_index in range(group_count):
