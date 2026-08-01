@@ -777,6 +777,41 @@ function normalizeQuizActivity(rawQuiz: unknown, topicoId: number, prefix: strin
   return activity;
 }
 
+interface MediaParte {
+  ordem: number;
+  titulo: string;
+  url: string | null;
+}
+
+// materiais.{markdown,audio,apresentacao}.partes: array novo e opcional -
+// quando presente, a midia foi dividida em varios arquivos sequenciais em
+// vez de um so (ver splitProcessedContentIntoParts no microservice). O
+// campo singular arquivo_url/storage_path continua existindo e aponta pra
+// parte 1, por compatibilidade com qualquer coisa que ainda so conheca um
+// arquivo por midia.
+function extractMediaPartes(
+  rawObject: LooseRecord,
+  bucketValue: unknown
+): MediaParte[] {
+  const partesRaw = rawObject.partes;
+  if (!Array.isArray(partesRaw) || partesRaw.length <= 1) return [];
+
+  return partesRaw
+    .map((parte, index) => {
+      const parteObj = asLooseRecord(parte);
+      const ordem = Number(parteObj.ordem) || index + 1;
+      const titulo = pickString(parteObj.titulo) ?? `Parte ${ordem}`;
+      const parteUrlRaw = pickString(parteObj.arquivo_url, parteObj.storage_path);
+      const parteUrl = parteUrlRaw
+        ? buildSupabasePublicStorageUrl(parteUrlRaw, {
+            bucket: String(bucketValue ?? "conteudo_aluno"),
+          })
+        : null;
+      return { ordem, titulo, url: parteUrl };
+    })
+    .sort((a, b) => a.ordem - b.ordem);
+}
+
 function normalizeMediaBlocks(
   tipo: ContentBlockType,
   raw: unknown,
@@ -916,6 +951,34 @@ function normalizeMediaBlocks(
       rawObject.markdownUrl
     );
 
+    const markdownPartes = extractMediaPartes(rawObject, bucketValue);
+    if (markdownPartes.length > 0) {
+      const blocks = markdownPartes
+        .map((parte) => {
+          // Parte 1 tem o texto inline no JSONB (nao depende do Storage);
+          // as demais so tem url e sao buscadas sob demanda pelo leitor.
+          const markdownInline = parte.ordem === 1 ? inlineMarkdown : null;
+          return normalizeContentBlock(
+            {
+              id: `${key}-parte-${parte.ordem}`,
+              tipo: "markdown",
+              markdown: markdownInline,
+              url: markdownInline ? null : parte.url,
+              title: `Parte ${parte.ordem} de ${markdownPartes.length}: ${parte.titulo}`,
+              metadata: {
+                ...metadata,
+                parteAtual: parte.ordem,
+                totalPartes: markdownPartes.length,
+                tituloParte: parte.titulo,
+              },
+            },
+            `${key}-parte-${parte.ordem}`
+          );
+        })
+        .filter((block): block is ContentBlock => Boolean(block));
+      if (blocks.length > 0) return blocks;
+    }
+
     if (!inlineMarkdown && !markdownUrlRaw) return [];
 
     if (inlineMarkdown) {
@@ -1026,6 +1089,35 @@ function normalizeMediaBlocks(
     // fallbackText para o player exibir o texto caso o .wav no Storage
     // esteja indisponivel (upload pode ter falhado mesmo com status "completed").
     const roteiro = pickString(payload.roteiro, rawObject.roteiro);
+
+    const audioPartes = extractMediaPartes(rawObject, bucketValue);
+    if (audioPartes.length > 0) {
+      const blocks = audioPartes
+        .map((parte) => {
+          if (!parte.url || !isAudioUrl(parte.url)) return null;
+          // Parte 1 tem o roteiro inline no JSONB (payload.roteiro); as
+          // demais nao tem fallbackText de texto, so o audio em si.
+          const fallbackText = parte.ordem === 1 ? roteiro : undefined;
+          return normalizeContentBlock(
+            {
+              id: `${key}-parte-${parte.ordem}`,
+              tipo,
+              url: parte.url,
+              title: `Parte ${parte.ordem} de ${audioPartes.length}: ${parte.titulo}`,
+              metadata: {
+                ...metadata,
+                ...(fallbackText ? { fallbackText } : {}),
+                parteAtual: parte.ordem,
+                totalPartes: audioPartes.length,
+                tituloParte: parte.titulo,
+              },
+            },
+            `${key}-parte-${parte.ordem}`
+          );
+        })
+        .filter((block): block is ContentBlock => Boolean(block));
+      if (blocks.length > 0) return blocks;
+    }
 
     if (url && isAudioUrl(url)) {
       const block = normalizeContentBlock(
@@ -1194,6 +1286,32 @@ function normalizeMediaBlocks(
       "Apresentação personalizada";
     const richSlides = normalizeRichPresentationSlides(payload.slides ?? rawObject.slides);
     const hasInlineSlides = richSlides.length > 0;
+
+    const apresentacaoPartes = extractMediaPartes(rawObject, bucketValue);
+    if (!hasInlineSlides && apresentacaoPartes.length > 0) {
+      const blocks = apresentacaoPartes
+        .map((parte) => {
+          if (!parte.url || !isPresentationUrl(parte.url)) return null;
+          return normalizeContentBlock(
+            {
+              id: `${key}-parte-${parte.ordem}`,
+              tipo,
+              url: parte.url,
+              title: `Parte ${parte.ordem} de ${apresentacaoPartes.length}: ${parte.titulo}`,
+              metadata: {
+                ...metadata,
+                defaultDisplayMode: "pagina",
+                parteAtual: parte.ordem,
+                totalPartes: apresentacaoPartes.length,
+                tituloParte: parte.titulo,
+              },
+            },
+            `${key}-parte-${parte.ordem}`
+          );
+        })
+        .filter((block): block is ContentBlock => Boolean(block));
+      if (blocks.length > 0) return blocks;
+    }
 
     if (!hasInlineSlides && url && isPdfUrl(url)) {
       const block = normalizeContentBlock(
