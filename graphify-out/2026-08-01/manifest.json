@@ -1550,8 +1550,8 @@
     "semantic_hash": ""
   },
   "microservice/server.ts": {
-    "mtime": 1785601780.9002206,
-    "ast_hash": "62a3fde0c96f94118f59aaed74e4f19b",
+    "mtime": 1785615650.106556,
+    "ast_hash": "e53eba9feb23dedb2f0028d487dc1b47",
     "semantic_hash": ""
   },
   "microservice/sql/migrations/0001_merge_personalizacao_materiais_rpc.sql": {
@@ -4065,8 +4065,8 @@
     "semantic_hash": ""
   },
   "api/tests/test_migrations.py": {
-    "mtime": 1785280960.081096,
-    "ast_hash": "35b567f6c2b85abde823353ea0fbbb6f",
+    "mtime": 1785615703.9515245,
+    "ast_hash": "d91a90cca6f8f50134697b1f2b670ae9",
     "semantic_hash": ""
   },
   "api/alembic/versions/20260411_02_production_schema_baseline.py": {
@@ -4312,6 +4312,11 @@
   "docs/mobile/superpowers/plans/2026-07-30-apresentacao-visual-nativa.md": {
     "mtime": 1785442867.513225,
     "ast_hash": "375926f3b02a594b2ce15d7e7753f31f",
+    "semantic_hash": ""
+  },
+  "api/alembic/versions/20260801_01_bump_merge_materiais_timeout.py": {
+    "mtime": 1785615642.8773613,
+    "ast_hash": "3cb04d492889febceecef5f8823fffdc",
     "semantic_hash": ""
   }
 }
