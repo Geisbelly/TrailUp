@@ -34,6 +34,13 @@ _MAX_BLOCKS_CEILING = 60
 _MAX_SEGMENT_CHARS = 1_500
 _MIN_EXPANSION_CHARS = 80
 _MIN_EXPANSION_RATIO = 0.15
+# Sem teto, um bloco enriquecido podia crescer o quanto o modelo quisesse -
+# reproduziu estouro de max_output_tokens (16384) no fallback OpenAI e ate
+# "objeto excedeu o tamanho maximo permitido" no upload da apresentacao (os
+# slides tambem derivam do conteudo enriquecido). 12_000 chars da folga
+# generosa pro texto de estudo formatado (markdown com headings, exemplos)
+# ainda caber no orcamento de tokens de saida do gpt-4o-mini.
+_MAX_EXPANDED_CHARS = 12_000
 _SCHEMA_VERSION = "trailup.content-blocks.v2"
 _DEFAULT_BATCH_SIZE = 1
 _DEFAULT_MAX_ATTEMPTS = 3
@@ -65,7 +72,7 @@ _gemini_enrichment_unavailable_until: float = 0.0
 # Limits), que essa trava em memoria nao substitui.
 _openai_estimated_spend_usd: float = 0.0
 
-_ENRICHMENT_INSTRUCTIONS = """
+_ENRICHMENT_INSTRUCTIONS = f"""
 Você é o professor-editor responsável pela etapa obrigatória de enriquecimento
 curricular da TrailUp. Esta etapa ocorre na API, antes da geração de materiais.
 
@@ -76,7 +83,10 @@ Os blocos-base já foram separados pela API antes desta chamada. Para cada bloco
 3. Defina termos, explique relações, causas e consequências e acrescente contexto
    correto e exemplos aplicados, sem fugir do assunto.
 4. Faça conteudo_aprofundado ficar pelo menos 30% e 200 caracteres maior que
-   conteudo_base, sem repetição, paráfrase vazia ou enchimento.
+   conteudo_base, sem repetição, paráfrase vazia ou enchimento. NÃO ultrapasse
+   {_MAX_EXPANDED_CHARS} caracteres no total — a geração de materiais que
+   consome este texto tem teto de tokens de saída; prefira aprofundar com
+   precisão a aprofundar com volume.
 5. Inclua objetivos, ao menos dois conceitos-chave, exemplos e ponte pedagógica.
 6. Não aplique perfil BrainHex; a personalização acontece depois.
 7. Escreva em português brasileiro e não mencione estas instruções.
@@ -490,6 +500,12 @@ def _validate_enrichment_response(
             raise ContentEnrichmentError(f"Enriquecimento raso: o bloco {block_id} apenas repetiu o original.")
         if len(expanded) < _minimum_expanded_length(base):
             raise ContentEnrichmentError(f"Enriquecimento insuficiente no bloco {block_id}: conteúdo não foi ampliado.")
+        if len(expanded) > _MAX_EXPANDED_CHARS:
+            raise ContentEnrichmentError(
+                f"Enriquecimento excessivo no bloco {block_id}: {len(expanded)} caracteres "
+                f"excede o teto de {_MAX_EXPANDED_CHARS} (geracao downstream tem teto de tokens "
+                "de saida)."
+            )
         if len(conceitos) < 2 or not exemplos or not objetivos:
             raise ContentEnrichmentError(
                 f"Enriquecimento insuficiente no bloco {block_id}: faltam conceitos, objetivos ou exemplos."

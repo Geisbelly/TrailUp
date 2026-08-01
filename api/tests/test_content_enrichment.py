@@ -393,6 +393,30 @@ async def test_enrichment_rejects_shallow_response_and_reraises_when_no_openai_c
 
 
 @pytest.mark.asyncio
+async def test_enrichment_rejects_response_that_exceeds_the_size_ceiling(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Sem teto, um bloco enriquecido podia crescer o quanto o modelo quisesse -
+    # reproduziu estouro de max_output_tokens no fallback OpenAI em producao
+    # (ver _MAX_EXPANDED_CHARS). Um bloco que devolve conteudo_aprofundado
+    # maior que o teto deve ser rejeitado, mesmo cumprindo o piso minimo.
+    def verbose(payload: dict[str, Any]) -> dict[str, Any]:
+        response = _rich_response(payload)
+        block = response["blocos"][0]
+        block["conteudo_aprofundado"] = block["conteudo_aprofundado"] + ("x" * 12_500)
+        return response
+
+    monkeypatch.setattr(
+        enrichment_module,
+        "_gemini_client",
+        _gemini_factory(verbose, {}),
+    )
+
+    with pytest.raises(ContentEnrichmentError, match="excede o teto"):
+        await enrich_content_blocks(context=_context(), settings=_settings())
+
+
+@pytest.mark.asyncio
 async def test_enrichment_retries_only_the_rejected_block(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
