@@ -95,14 +95,15 @@ configuração específica de ambiente fora do código e em um único lugar.
 
 1. **Suite Setup (API):** via `ApiSetup.resource` (`RequestsLibrary` + o
    `access_token` do professor de teste obtido via Supabase Auth), cria uma
-   classe, um tópico e um conteúdo novos diretamente via **Supabase REST**
-   (`POST {SUPABASE_URL}/rest/v1/classe`, `/rest/v1/topicos`,
-   `/rest/v1/conteudos`) — **não existe endpoint na API Python para criar
+   classe e um tópico novos (**sem conteúdo ainda**) diretamente via
+   **Supabase REST** (`POST {SUPABASE_URL}/rest/v1/classe`,
+   `/rest/v1/topicos`) — **não existe endpoint na API Python para criar
    classe/tópico/conteúdo**; o próprio console do professor cria esses
    registros direto via Supabase PostgREST, então o setup do teste segue o
-   mesmo caminho. Cada execução parte de dados isolados — não reaproveita
-   classe/tópico de execuções anteriores, evitando acúmulo de materiais de
-   perfis de rodadas passadas.
+   mesmo caminho. O conteúdo em si é criado no passo 3, pela UI — é
+   justamente o comportamento sendo testado. Cada execução parte de dados
+   isolados — não reaproveita classe/tópico de execuções anteriores,
+   evitando acúmulo de materiais de perfis de rodadas passadas.
 2. **Login (UI — Browser/Playwright):** preenche o formulário de login do
    frontend com o e-mail/senha do professor de teste.
 3. **Cadastro e disparo (UI):** navega até o tópico criado no setup
