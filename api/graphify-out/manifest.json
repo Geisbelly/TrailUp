@@ -460,8 +460,8 @@
     "semantic_hash": ""
   },
   "api/app/repositories/conteudo_personalizado.py": {
-    "mtime": 1785601440.4435747,
-    "ast_hash": "6e82bfc681733f0d4974591d2c08fe5d",
+    "mtime": 1785604862.0834017,
+    "ast_hash": "5af04ca07909c3fdb116a12677f21aa5",
     "semantic_hash": ""
   },
   "api/app/repositories/context.py": {
@@ -825,8 +825,8 @@
     "semantic_hash": ""
   },
   "api/tests/test_repositories.py": {
-    "mtime": 1785601421.6477563,
-    "ast_hash": "904edf299e4f8fa47112ed238ec040e8",
+    "mtime": 1785604830.792847,
+    "ast_hash": "72bc3e0978cc7ca2683880217c7e3953",
     "semantic_hash": ""
   },
   "api/tests/test_startup.py": {
@@ -1825,13 +1825,13 @@
     "semantic_hash": ""
   },
   "microservice/src/lib/slideAssetGenerator.test.ts": {
-    "mtime": 1785372712.090761,
-    "ast_hash": "25b4cc1682ba3fafc55bc260dcafcdea",
+    "mtime": 1785608007.542315,
+    "ast_hash": "d9412a33faafb2ca0b9eff9af59cfd76",
     "semantic_hash": ""
   },
   "microservice/src/lib/slideAssetGenerator.ts": {
-    "mtime": 1785372712.101267,
-    "ast_hash": "47179fc2814b973b230eb99a682df960",
+    "mtime": 1785608059.0693645,
+    "ast_hash": "7897f5c65089d8e76b2280e9a45f0cb2",
     "semantic_hash": ""
   },
   "microservice/src/lib/slideEnricher.test.ts": {
@@ -1910,13 +1910,13 @@
     "semantic_hash": ""
   },
   "microservice/src/services/geminiBlockBatches.test.ts": {
-    "mtime": 1785383543.2281325,
-    "ast_hash": "66678b886c4822eb071a792a07329adf",
+    "mtime": 1785606139.757653,
+    "ast_hash": "dbd6b9e11ba1a42aa26287efb4751077",
     "semantic_hash": ""
   },
   "microservice/src/services/geminiService.ts": {
-    "mtime": 1785385890.1006753,
-    "ast_hash": "41c3773e0e4c2b1b15edb31cc2ae8bea",
+    "mtime": 1785612713.8920274,
+    "ast_hash": "8471dd95b3e87e98dc552927af33ebdd",
     "semantic_hash": ""
   },
   "microservice/src/services/openaiImageService.test.ts": {
@@ -1935,8 +1935,8 @@
     "semantic_hash": ""
   },
   "microservice/src/services/slideIconService.ts": {
-    "mtime": 1785281865.0678487,
-    "ast_hash": "2c2ab26e093c2978dbd2de2af1130e2f",
+    "mtime": 1785607965.5005152,
+    "ast_hash": "7b8fb8b43aefccc7c11a040f9ddc0483",
     "semantic_hash": ""
   },
   "microservice/src/services/supabaseService.test.ts": {
