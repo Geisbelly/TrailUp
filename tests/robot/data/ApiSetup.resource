@@ -3,6 +3,10 @@ Library    RequestsLibrary
 Library    Collections
 Variables    ../variables/staging.py
 
+*** Variables ***
+${CLASSE_ID}    ${EMPTY}
+${TOPICO_ID}    ${EMPTY}
+
 *** Keywords ***
 Obter Token Do Professor De Teste
     Create Session    supabase    ${SUPABASE_URL}
