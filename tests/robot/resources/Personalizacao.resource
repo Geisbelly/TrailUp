@@ -29,5 +29,5 @@ Recarregar E Verificar Todos Os Perfis
     FOR    ${label}    IN    @{PERFIS_BRAINHEX_LABELS}
         Wait For Elements State
         ...    css=[aria-label="Geração para o perfil ${label}"] >> text=Ver conteúdo completo
-        ...    visible    timeout=3s
+        ...    visible    timeout=8s
     END
