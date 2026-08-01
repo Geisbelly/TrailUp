@@ -1,16 +1,16 @@
 # Graph Report - TrailUp  (2026-08-01)
 
 ## Corpus Check
-- 712 files · ~2,423,293 words
+- 712 files · ~2,423,358 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 6567 nodes · 14830 edges · 398 communities (285 shown, 113 thin omitted)
+- 6567 nodes · 14830 edges · 397 communities (285 shown, 112 thin omitted)
 - Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 578 edges (avg confidence: 0.59)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `bd60dfac`
+- Built from commit: `b413e2dd`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -294,7 +294,6 @@
 - api/funcionamento-api-arquitetura-fluxos.md
 - mobile/guia-uso-app.md
 - 3.1.1 Diagrama por camada
-- .to_dict
 - Chat no Módulo — Remoção de Preview Automático e Botão de Descarte
 - agent/__init__.py
 - api/__init__.py
@@ -391,7 +390,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (398 total, 113 thin omitted)
+## Communities (397 total, 112 thin omitted)
 
 ### Community 0 - "cn"
 Cohesion: 0.02
@@ -439,7 +438,7 @@ Nodes (27): EssayQuestionRenderer(), EssayQuestionRendererProps, asNumber(), asS
 
 ### Community 11 - "MediaPipelineContext"
 Cohesion: 0.07
-Nodes (23): TabLayout(), NotificationsContext, NotificationsProvider(), NotificationsState, StatusFiltro, ToastMessage, ToastType, SessionProvider() (+15 more)
+Nodes (24): TabLayout(), styles, NotificationsContext, NotificationsProvider(), NotificationsState, StatusFiltro, ToastMessage, ToastType (+16 more)
 
 ### Community 12 - "GlobalStyle.ts"
 Cohesion: 0.14
@@ -467,11 +466,11 @@ Nodes (105): MarkdownBlock(), readString(), splitByH2(), ContentBlockType, IAPer
 
 ### Community 18 - "test_personalizacao_service.py"
 Cohesion: 0.12
-Nodes (21): BattleScope, formatBattleDate(), formatBattleDuration(), formatEncounterLimit(), IABattleHeaderChip(), Props, styles, BattleScope (+13 more)
+Nodes (22): BattleScope, formatBattleDate(), formatBattleDuration(), formatEncounterLimit(), IABattleHeaderChip(), Props, styles, BattleScope (+14 more)
 
 ### Community 19 - "trilha/[id].tsx"
-Cohesion: 0.07
-Nodes (50): CONTEUDO_TIPO_LABELS, formatConteudoTipo(), isPlaceholderTitle(), normalizeModuleDifficulty(), TrilhaConteudoScreen(), WebView, Props, ProgressoItemPersonalizado (+42 more)
+Cohesion: 0.05
+Nodes (75): CONTEUDO_TIPO_LABELS, formatConteudoTipo(), isPlaceholderTitle(), normalizeModuleDifficulty(), TrilhaConteudoScreen(), WebView, ActivityCompletePayload, ActivityRenderer() (+67 more)
 
 ### Community 20 - "MetricasContext.tsx"
 Cohesion: 0.06
@@ -487,7 +486,7 @@ Nodes (51): queryClient, ProfessorSignupForm(), ActivityRow, CardRow, Classe, Co
 
 ### Community 24 - "services/personalizacao_jobs.py"
 Cohesion: 0.12
-Nodes (36): _adaptive_size_targets(), _build_editorial_format_adaptation(), _build_editorial_model(), _build_fallback_content_study(), _build_materiais_response_schema(), _build_profile_editorial_context(), _build_tema_visual_for_profile(), _build_visual_profile_context() (+28 more)
+Nodes (35): _adaptive_size_targets(), _build_editorial_format_adaptation(), _build_editorial_model(), _build_fallback_content_study(), _build_materiais_response_schema(), _build_profile_editorial_context(), _build_tema_visual_for_profile(), _build_visual_profile_context() (+27 more)
 
 ### Community 25 - "IAContext.tsx"
 Cohesion: 0.07
@@ -495,7 +494,7 @@ Nodes (46): applyDamageToBattleState(), BATTLE_DIFFICULTY_RULES, BattleDifficult
 
 ### Community 26 - "UserContext"
 Cohesion: 0.06
-Nodes (46): get_current_user(), get_session(), get_settings(), AsyncSession, UserContext, require_admin(), require_aluno(), require_professor() (+38 more)
+Nodes (47): get_current_user(), get_session(), get_settings(), AsyncSession, UserContext, require_admin(), require_aluno(), require_professor() (+39 more)
 
 ### Community 27 - "test_repositories.py"
 Cohesion: 0.12
@@ -511,7 +510,7 @@ Nodes (24): compilerOptions, allowImportingTsExtensions, baseUrl, isolatedModule
 
 ### Community 30 - "SupabaseStorage"
 Cohesion: 0.05
-Nodes (66): chunks_to_plain_text(), Converte chunks em texto corrido sem metadados de fonte.     Evita poluir payloa, build_personalizacao_state(), build_personalizacao_steps(), _build_source_hash(), _coerce_dict_list(), _fallback_materiais(), fetch_personalizacao_context() (+58 more)
+Nodes (67): chunks_to_plain_text(), Converte chunks em texto corrido sem metadados de fonte.     Evita poluir payloa, build_personalizacao_state(), build_personalizacao_steps(), _build_source_hash(), _coerce_dict_list(), _fallback_materiais(), fetch_personalizacao_context() (+59 more)
 
 ### Community 31 - "AlunoSignupWizard.tsx"
 Cohesion: 0.05
@@ -535,23 +534,23 @@ Nodes (38): Rotas versionadas da API., AnalisarResponse, aluno_user(), app(), cl
 
 ### Community 36 - "ContentRenderer.tsx"
 Cohesion: 0.15
-Nodes (36): IAPersonalizationPatch, CardItem, ClassePerfilDistribuicaoItem, ClassePerfilSummaryResponse, DesignTokens, DesignTokensCores, DesignTokensTipografia, FontePersonalizacaoResponse (+28 more)
+Nodes (39): _generation_format(), IAPersonalizationPatch, CardItem, ClassePerfilDistribuicaoItem, ClassePerfilSummaryResponse, DesignTokens, DesignTokensCores, DesignTokensTipografia (+31 more)
 
 ### Community 38 - "docs/README.md"
 Cohesion: 0.11
 Nodes (21): BattlePanelScope, buildFallbackVisual(), formatCountdown(), IABattlePanel(), mergePalette(), Props, styles, BattleScope (+13 more)
 
 ### Community 39 - "server.ts"
-Cohesion: 0.06
-Nodes (48): AppOptions, archiveToSupabase(), buildApp(), buildPresentationMaterialMetadata(), downloadFonteStreamed(), express-serve-static-core, fetchFontesAsFileData(), FonteItem (+40 more)
+Cohesion: 0.07
+Nodes (44): AppOptions, archiveToSupabase(), buildApp(), buildPresentationMaterialMetadata(), downloadFonteStreamed(), express-serve-static-core, fetchFontesAsFileData(), FonteItem (+36 more)
 
 ### Community 40 - "TrilhaContext.tsx"
 Cohesion: 0.10
 Nodes (39): asLooseArray(), asLooseRecord(), buildGraphFromTopicos(), buildPersonalizacaoCacheKey(), cloneClasse(), collectMissingRequestedMediaFormats(), collectPrefetchEntries(), decorateNodesWithPersonalization() (+31 more)
 
 ### Community 41 - "QuestionActivity.tsx"
-Cohesion: 0.12
-Nodes (30): buildBlockSignature(), buildMediaBlocks(), clampPenalty(), collectMediaCandidates(), formatFillBlankStatement(), formatTrueFalseLabel(), getAcceptedAnswers(), GradingRules (+22 more)
+Cohesion: 0.10
+Nodes (35): ColetaDadosScreen(), styles, TOGGLE_ITEMS, ToggleItem, buildBlockSignature(), buildMediaBlocks(), clampPenalty(), collectMediaCandidates() (+27 more)
 
 ### Community 42 - "v1/personalizacao.py"
 Cohesion: 0.15
@@ -562,8 +561,8 @@ Cohesion: 0.25
 Nodes (16): buildClassMapTheme(), buildCountries(), buildCountryTheme(), buildWorldName(), compactTitle(), hashString(), MapCountryTheme, MapWorldPalette (+8 more)
 
 ### Community 44 - "use-grafo-trilha.ts"
-Cohesion: 0.09
-Nodes (41): _as_datetime(), _blend(), _build_design_tokens(), _build_student_metrics_summary(), _build_student_reading_summary(), _contrast_ratio(), conversar_com_mentor_personalizacao(), _darken() (+33 more)
+Cohesion: 0.14
+Nodes (22): _blend(), _build_design_tokens(), _contrast_ratio(), _darken(), _ensure_min_contrast(), _hex_to_rgb(), _lighten(), _normalize_profile_name() (+14 more)
 
 ### Community 45 - "Rank.ts"
 Cohesion: 0.10
@@ -618,8 +617,8 @@ Cohesion: 0.08
 Nodes (50): runPipeline(), App(), GUARDIAN_VOICE_PROFILES, GuardianVoiceProfile, presentationImageDirection(), mapWithConcurrency(), cn(), ContentGenerationProvider (+42 more)
 
 ### Community 58 - "nativeDocumentParsers.ts"
-Cohesion: 0.04
-Nodes (74): LoadingOverlay(), unstable_settings, VerificacaoDeRota(), FilterTab, PerfilHome(), styles, PerfilStack(), Aparen() (+66 more)
+Cohesion: 0.05
+Nodes (67): LoadingOverlay(), unstable_settings, VerificacaoDeRota(), PerfilStack(), Aparen(), ITEMS, styles, InfoAppScreen() (+59 more)
 
 ### Community 59 - "mobile/src/components/ui/collapsible.tsx"
 Cohesion: 0.12
@@ -650,16 +649,16 @@ Cohesion: 0.14
 Nodes (13): Apresentação: entrega direta em HTML (substitui PDF/Puppeteer) Implementation Plan, Retrospectiva (achado durante a execução), Self-review desta plan, Task 10: Verificação final e push, Task 1: Bump das versões de contrato, Task 2: `renderAndUploadPresentation` monta e sobe HTML em vez de PDF, Task 3: `archiveToSupabase` sobe `.html` em vez de `.pdf`, Task 4: Handler `/api/v1/archive` — remove gate de renderer, renomeia campos (+5 more)
 
 ### Community 66 - "models.py"
-Cohesion: 0.10
-Nodes (22): AlunoPerfilRow, DominantProfileMeta, FILTER_LABELS, formatPontuacao(), getDominantProfileLabel(), getMedalImage(), getPontuacaoColumnLabel(), { height: SCREEN_H } (+14 more)
+Cohesion: 0.15
+Nodes (14): _build_student_metrics_summary(), _build_student_reading_summary(), conversar_com_mentor_personalizacao(), _fallback_mentor_chat_reply(), _format_minutes(), _format_percent(), _looks_like_answer_request(), _mentor_tone_intro() (+6 more)
 
 ### Community 67 - "services/classe_mapa_tema.py"
-Cohesion: 0.06
-Nodes (33): Props, styles, MetaXp(), Props, styles, Props, styles, Props (+25 more)
+Cohesion: 0.05
+Nodes (42): Props, styles, MetaXp(), Props, styles, Props, styles, Props (+34 more)
 
 ### Community 68 - "PersonalizacaoJobsRepository"
-Cohesion: 0.08
-Nodes (32): agente_ai_patch(), agente_conteudo(), _fallback_conteudo(), Any, agente_notificacao(), _fallback_notificacao(), Any, agente_perfil() (+24 more)
+Cohesion: 0.05
+Nodes (67): agente_ai_patch(), agente_boss_visual(), agente_conteudo(), _fallback_conteudo(), Any, agente_geracao_midia(), Any, async_sessionmaker (+59 more)
 
 ### Community 69 - "settings.tsx"
 Cohesion: 0.24
@@ -674,8 +673,8 @@ Cohesion: 0.11
 Nodes (35): main(), outputDir, sceneDataUrl(), slideTitles, BRAIN_HEX_CONFIG, BrainHexConfig, BrainHexProfile, PROFILES (+27 more)
 
 ### Community 72 - "ConteudoClasseRepository"
-Cohesion: 0.14
-Nodes (31): ensure_professor_access(), _aggregate_media_status(), _build_generation_status(), _content_blocks_total(), _fill_plano_editorial_fields(), _generation_format(), _hydrate_materiais_public_urls(), listar_personalizacoes() (+23 more)
+Cohesion: 0.16
+Nodes (29): ensure_professor_access(), _aggregate_media_status(), _build_generation_status(), _content_blocks_total(), _fill_plano_editorial_fields(), _hydrate_materiais_public_urls(), listar_personalizacoes(), _material_error() (+21 more)
 
 ### Community 73 - "devDependencies"
 Cohesion: 0.08
@@ -714,8 +713,8 @@ Cohesion: 0.17
 Nodes (7): ConteudoPersonalizadoRepository, Any, AsyncSession, Reserva atomicamente a primeira geracao de um alvo ainda inexistente.          C, Atualiza somente o estado, preservando materiais parciais e diagnosticos., Incrementa (ou reinicia) o contador de falhas consecutivas da mesma         gera, Reserva atomicamente uma geracao incompleta para nova tentativa.          O UPDA
 
 ### Community 82 - "_normalize_personalized_activities"
-Cohesion: 0.16
-Nodes (13): BibliotecaConquistasScreen(), clamp(), styles, ConquistaRankContext, ConquistaRankProvider(), ConquistaRankState, isInvalidBigintDataError(), normalizeClasseId() (+5 more)
+Cohesion: 0.09
+Nodes (21): FilterTab, styles, BibliotecaConquistasScreen(), clamp(), styles, CardSemDados, Props, styles (+13 more)
 
 ### Community 83 - "validate-essay-answer-ai/index.ts"
 Cohesion: 0.15
@@ -762,8 +761,8 @@ Cohesion: 0.08
 Nodes (23): Convenção de imports, Critérios de aceitação, Custom hooks, Decisões de design, Estrutura de arquivos resultante, Helpers extraídos para `src/utils/personalizedFlow.ts`, Helpers extraídos para `src/utils/trilhaBlocks.ts`, Motivação (+15 more)
 
 ### Community 94 - "classMapTheme.ts"
-Cohesion: 0.22
-Nodes (6): EmocaoAdapter, Protocol, agente_emocao(), Any, DesempenhoSummary, BaseModel
+Cohesion: 0.11
+Nodes (9): EmocaoAdapter, Protocol, MockEmocaoAdapter, agente_emocao(), Any, DesempenhoSummary, BaseModel, _FakeSession (+1 more)
 
 ### Community 95 - "ArtefatosPersonalizadosRepository"
 Cohesion: 0.09
@@ -838,24 +837,24 @@ Cohesion: 0.43
 Nodes (5): computeTurmaResumo(), EMPTY_RESUMO, row(), TurmaResumo, TurmaResumoRow
 
 ### Community 113 - "nativeContentCache.ts"
-Cohesion: 0.08
-Nodes (39): MockEmocaoAdapter, agente_boss_visual(), agente_geracao_midia(), Any, async_sessionmaker, AsyncSession, agente_midias_personalizadas(), async_sessionmaker (+31 more)
+Cohesion: 0.30
+Nodes (12): _basename_from_locator(), _infer_bucket(), ingest_source(), _looks_like_filename(), _pick(), Any, Ponto de entrada do pipeline de ingestão.  Fluxo:   bytes → format_detector → ex, Processa um registro de fonte (dict de fontes_personalizacao) e retorna chunks. (+4 more)
 
 ### Community 114 - "Nova Paleta BrainHex (Psicologia das Cores) Implementation Plan"
-Cohesion: 0.14
-Nodes (19): extract(), Factory: escolhe o extrator correto com base na família do arquivo., Roteia para o extrator específico e retorna dict com:       - family, title, blo, _empty(), extract(), Extrator de Markdown: parse estrutural → lista de Block., Extrai blocos estruturados de um arquivo Markdown., Remove markdown inline: bold, italic, code, links. (+11 more)
+Cohesion: 0.12
+Nodes (25): extract(), Factory: escolhe o extrator correto com base na família do arquivo., Roteia para o extrator específico e retorna dict com:       - family, title, blo, _empty(), extract(), Extrator de DOCX: python-docx → lista de Block., Extrai blocos estruturados de um DOCX.      Retorna dict com:       - family, ti, Extratores de conteudo por familia de arquivo. (+17 more)
 
 ### Community 115 - "expo-image"
 Cohesion: 0.18
 Nodes (9): 1. Objetivo, 2. Tipos de dados tratados, 3. Bases legais e consentimento, 4. Retenção e descarte, 5. Compartilhamento, 6. Direitos do titular, 7. Segurança e confidencialidade, 8. Observações (+1 more)
 
 ### Community 116 - "frontend/package.json"
-Cohesion: 0.06
-Nodes (51): block(), appendQuery(), buildEmbeddedOfficeViewerUrl(), buildGoogleSlidesUrl(), buildGoogleViewerUrl(), buildOfficeViewerUrl(), buildOfficeViewUrl(), buildPdfViewerHtml() (+43 more)
+Cohesion: 0.07
+Nodes (42): block(), appendQuery(), buildEmbeddedOfficeViewerUrl(), buildGoogleSlidesUrl(), buildGoogleViewerUrl(), buildOfficeViewerUrl(), buildOfficeViewUrl(), buildPdfViewerHtml() (+34 more)
 
 ### Community 117 - "_normalize_personalized_activities"
-Cohesion: 0.17
-Nodes (21): Módulo de ingestão de arquivos do TrailUp.  Pipeline:   arquivo (bytes + mime) →, Chunk, NormalizedDocument, Modelos internos unificados do pipeline de ingestão., _basename_from_locator(), _infer_bucket(), ingest_bytes(), ingest_source() (+13 more)
+Cohesion: 0.18
+Nodes (12): Módulo de ingestão de arquivos do TrailUp.  Pipeline:   arquivo (bytes + mime) →, Chunk, NormalizedDocument, Any, ingest_bytes(), Processa bytes de um arquivo e retorna (NormalizedDocument, list[Chunk]).      A, chunk(), chunks_to_context_text() (+4 more)
 
 ### Community 118 - "compilerOptions"
 Cohesion: 0.11
@@ -910,8 +909,8 @@ Cohesion: 0.12
 Nodes (16): Abstração do Provider de Personalização Implementation Plan, Estrutura de arquivos resultante, Métodos da interface (consumo real), Notas finais, Task 0: Preparação, Task 10: Montar `<PersonalizacaoProviderProvider>` no root, Task 11: Validação final e PR, Task 1: Criar tipos compartilhados (+8 more)
 
 ### Community 132 - "rateLimit.ts"
-Cohesion: 0.50
-Nodes (5): _build_generation_summary(), listar_personalizacoes_por_perfil(), Visao docente: personalizacao de um (classe x topico) lado a lado pelos 7 perfis, PersonalizacaoPerfilItem, PersonalizacaoPorPerfilResponse
+Cohesion: 0.31
+Nodes (9): _as_datetime(), _build_generation_summary(), _datetime_rank(), _latest_datetime(), listar_personalizacoes_por_perfil(), datetime, Visao docente: personalizacao de um (classe x topico) lado a lado pelos 7 perfis, PersonalizacaoPerfilItem (+1 more)
 
 ### Community 133 - "reset-project.js"
 Cohesion: 0.22
@@ -926,8 +925,8 @@ Cohesion: 0.50
 Nodes (3): Componentes, Fluxo macro, Princípios atuais
 
 ### Community 136 - "test_graph_invocation.py"
-Cohesion: 0.06
-Nodes (55): ActivityCompletePayload, ActivityRenderer(), normalizeActivityType(), Props, summaryStyles, ContentRenderer(), DefaultWebView, Props (+47 more)
+Cohesion: 0.05
+Nodes (49): ContentRenderer(), DefaultWebView, Props, readString(), renderAudio(), renderImage(), renderText(), renderVideo() (+41 more)
 
 ### Community 137 - "serialQueue.ts"
 Cohesion: 0.24
@@ -1022,8 +1021,8 @@ Cohesion: 0.22
 Nodes (8): Apresentação: visual nativo no mobile Implementation Plan, Retrospectiva (achados durante a execução), Self-review desta plan, Task 1: Tipos — `ContentBlockType`, payload e `RichPresentationSlide`, Task 2: `normalizeRichPresentationSlides` + emitir 1 bloco em vez de N, Task 3: `ContentRenderer.tsx` roteia `apresentacao-slides`, Task 4: `PresentationSlidesBlock.tsx` — componente novo, Task 5: Verificação manual
 
 ### Community 169 - "nativeContentCache.ts"
-Cohesion: 0.08
-Nodes (40): TabLayout(), countCompletedTopicBlocks(), countTopicBlocks(), TrilhaStack(), LoadingScreen(), HapticTab(), GuideModalContent(), GuideVisibleElements (+32 more)
+Cohesion: 0.06
+Nodes (55): TabLayout(), PerfilHome(), Infor(), countCompletedTopicBlocks(), countTopicBlocks(), TrilhaStack(), LoadingScreen(), HapticTab() (+47 more)
 
 ### Community 170 - "FontesPersonalizacaoRepository"
 Cohesion: 0.33
@@ -1074,16 +1073,16 @@ Cohesion: 0.18
 Nodes (10): Contexto — o que está quebrado hoje, Decisões (resultado das perguntas de esclarecimento), Fora de escopo, Seção 1: Arquitetura e fluxo, Seção 2: Schema de conteúdo gerado (mudança de contrato), Seção 3: Geração de imagens por slide, Seção 4: Template HTML/CSS e renderização, Seção 5: Tratamento de erros (+2 more)
 
 ### Community 192 - "IAMentorPanel.tsx"
-Cohesion: 0.08
-Nodes (33): buildDefaultGuideMessage(), buildTutorialTips(), ChatMessage, IAMentorPanel(), normalizeMentorReplyTone(), Props, styles, TutorialTip (+25 more)
+Cohesion: 0.25
+Nodes (4): createRateLimiter(), RateCheckResult, RateLimiter, RateLimiterOptions
 
 ### Community 193 - "normalizeNonNegativeNumber"
 Cohesion: 0.25
 Nodes (15): CachedNativeContentFile, cacheLock, CacheRecord, cleanupUnusedCachedContent(), cleanupUnusedCachedContentLocked(), EnsureCachedContentOptions, ensureCacheDirectory(), ensureCachedNativeContent() (+7 more)
 
 ### Community 194 - "cmdk"
-Cohesion: 0.21
-Nodes (14): _empty(), extract(), Extrator de DOCX: python-docx → lista de Block., Extrai blocos estruturados de um DOCX.      Retorna dict com:       - family, ti, Extratores de conteudo por familia de arquivo., _empty(), extract(), _from_json() (+6 more)
+Cohesion: 0.36
+Nodes (9): _empty(), extract(), _from_json(), _from_plaintext(), _from_xml(), Extrator de texto plano (.txt, .csv, .json, .xml) → lista de Block., Trata JSON como estrutura textual., Remove tags XML e extrai texto. (+1 more)
 
 ### Community 196 - "CLAUDE.md — TrailUp"
 Cohesion: 0.20
@@ -1110,8 +1109,8 @@ Cohesion: 0.20
 Nodes (9): Checklist Final, Mapa de Arquivos, Progresso, Persistência, Mídias e Atividades — Implementation Plan, Task 1: TrilhaContext — Local-first + debounce RT, Task 2: MarkdownBlock — renderização nativa + paginação, Task 3: QuestionActivity + ActivityRenderer — reviewMode e fluxo de atividades concluídas, Task 4: Cards — ordem + renderização de mídia no verso, Task 5: VideoPlayer — seek bar e controles ±10s (+1 more)
 
 ### Community 202 - "PosicaoDoAluno"
-Cohesion: 0.25
-Nodes (12): NotificacaoDetalhe(), s, NotificationItem, Props, styles, formatAbsolute(), formatAbsoluteFrom(), formatSmartTime() (+4 more)
+Cohesion: 0.07
+Nodes (41): AUTH_PALETTE, Login(), styles, AUTH_PALETTE, RecuperarSenhaScreen(), styles, NotificacaoDetalhe(), s (+33 more)
 
 ### Community 203 - "openaiImageService.ts"
 Cohesion: 0.27
@@ -1178,8 +1177,8 @@ Cohesion: 0.70
 Nodes (4): _accent_from_tema(), gerar_pdf_slides(), _hex_to_color(), Any
 
 ### Community 230 - "3.1.1 Diagrama por camada"
-Cohesion: 0.04
-Nodes (61): AUTH_PALETTE, style, AUTH_PALETTE, Login(), styles, AUTH_PALETTE, RecuperarSenhaScreen(), styles (+53 more)
+Cohesion: 0.05
+Nodes (45): AUTH_PALETTE, style, AUTH_PALETTE, styles, appLogoSource, formatRankValue(), RelatorioDadosScreen(), styles (+37 more)
 
 ### Community 231 - "@radix-ui/react-slot"
 Cohesion: 0.22
@@ -1318,8 +1317,8 @@ Cohesion: 0.33
 Nodes (5): 1. GET /api/health, 2. POST /api/v1/archive, 3. POST /api/personalizar, 4. Contrato de persistencia, 5. Regras importantes
 
 ### Community 390 - "14. Edge Functions, RPCs, Functions e Triggers"
-Cohesion: 0.22
-Nodes (17): _dedupe_preserve_order(), extract(), _extract_notes_text(), _extract_with_python_pptx(), _extract_with_xml_fallback(), _join_lines(), _normalize_title(), Any (+9 more)
+Cohesion: 0.29
+Nodes (14): _dedupe_preserve_order(), extract(), _extract_notes_text(), _extract_with_python_pptx(), _extract_with_xml_fallback(), _join_lines(), _normalize_title(), Any (+6 more)
 
 ### Community 391 - "formatSeconds"
 Cohesion: 0.50
@@ -1336,7 +1335,7 @@ Nodes (37): @eslint/js, eslint-plugin-react-hooks, eslint-plugin-react-refresh, 
 ## Knowledge Gaps
 - **2141 isolated node(s):** `trailup-api`, `$schema`, `style`, `rsc`, `tsx` (+2136 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **113 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **112 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_

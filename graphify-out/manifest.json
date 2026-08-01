@@ -4000,13 +4000,13 @@
     "semantic_hash": ""
   },
   "api/app/services/content_enrichment.py": {
-    "mtime": 1785617278.6156077,
-    "ast_hash": "19d6c5e30ee3019bec908fcb9364ba48",
+    "mtime": 1785619911.625892,
+    "ast_hash": "1d702f2c3ec7db5d2347cb0f8a1b307c",
     "semantic_hash": ""
   },
   "api/tests/test_content_enrichment.py": {
-    "mtime": 1785617378.0195873,
-    "ast_hash": "6e9e6b372734d366da07d758c4d8e1ef",
+    "mtime": 1785619935.0822568,
+    "ast_hash": "826f2c67de2c1126609ca106fd9bc0e0",
     "semantic_hash": ""
   },
   "api/app/agent/prompts/enriquecedor_blocos_conteudo.txt": {
