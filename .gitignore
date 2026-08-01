@@ -71,3 +71,6 @@ mobile/android/
 
 # --- Git worktrees isolados (superpowers:using-git-worktrees) ---
 .worktrees/
+
+# --- Robot Framework: saida de execucao ---
+tests/robot/results/
