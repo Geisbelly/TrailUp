@@ -3284,34 +3284,6 @@ def _dedupe_by(items: list[dict[str, Any]], key_factory: Any) -> list[dict[str, 
     return out
 
 
-def _fallback_card(index: int, topic_name: str) -> dict[str, Any]:
-    label = topic_name or "este t\u00f3pico"
-    perguntas = [
-        f"Qual \u00e9 o conceito central de {label}",
-        f"Como aplicar {label} em um exemplo pr\u00e1tico",
-        f"Qual erro comum deve ser evitado em {label}",
-        f"Qual diferen\u00e7a-chave aparece em {label}",
-        f"Qual etapa inicial \u00e9 essencial em {label}",
-        f"Como validar o entendimento de {label}",
-        f"Qual evid\u00eancia mostra dom\u00ednio de {label}",
-        f"Como explicar {label} para iniciantes",
-    ]
-    respostas = [
-        "A resposta correta destaca defini\u00e7\u00e3o, objetivo e contexto de aplica\u00e7\u00e3o.",
-        "A aplica\u00e7\u00e3o correta conecta conceito, decis\u00e3o e resultado observ\u00e1vel.",
-        "O erro comum \u00e9 usar termos sem justificar com base na fonte.",
-        "A diferen\u00e7a principal aparece no prop\u00f3sito e no crit\u00e9rio de uso.",
-        "A etapa inicial \u00e9 revisar os fundamentos antes de executar.",
-        "A valida\u00e7\u00e3o acontece ao resolver um caso com justificativa t\u00e9cnica.",
-        "A evid\u00eancia \u00e9 explicar o conceito e aplicar sem contradi\u00e7\u00f5es.",
-        "A explica\u00e7\u00e3o para iniciantes deve ser simples e progressiva.",
-    ]
-    return {
-        "frente": _ensure_card_question_title(perguntas[index % len(perguntas)]),
-        "verso": respostas[index % len(respostas)],
-    }
-
-
 def _build_anchor_pool(
     *,
     topic_name: str | None,

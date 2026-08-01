@@ -1299,10 +1299,45 @@ async def personalizar(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
+    await session.commit()
+
+    resolved_topico_id = ctx.get("topico_id") or payload.topico_id
+    resolved_conteudo_id = ctx.get("conteudo_id") or payload.conteudo_id
+    brainhex_profile_key = str(ctx.get("perfil_dominante") or "mastermind").strip().lower()
+    if brainhex_profile_key == "socialiser":
+        brainhex_profile_key = "socializer"
+
+    # Evita reprocessar do zero (novo ciclo_id, novo enrich, novas cards) quando
+    # já existe uma personalização pronta ou em andamento para o mesmo
+    # conteudo/perfil com o mesmo source_hash. Sem essa checagem, chamadas
+    # repetidas do usePersonalizationRefresh (mobile) disparavam um ciclo novo
+    # a cada poucos segundos, marcando o ciclo anterior (bom) como obsoleto e
+    # reprocessando do zero com o gerador mais simples.
+    personalizacao_repo = ConteudoPersonalizadoRepository(session)
+    existing_ciclo = await personalizacao_repo.buscar_mais_recente_por_perfil(
+        classe_id=payload.classe_id,
+        topico_id=int(resolved_topico_id) if resolved_topico_id is not None else 0,
+        conteudo_id=int(resolved_conteudo_id) if resolved_conteudo_id is not None else None,
+        brainhex_profile_key=brainhex_profile_key,
+        source_hash=str(ctx.get("source_hash") or ""),
+    )
+    if existing_ciclo and str(existing_ciclo.get("status") or "").strip().lower() in {
+        "pronto",
+        "processando_midias",
+    }:
+        logger.info(
+            "personalizacao.reuse_ciclo_existente=%s",
+            {
+                "aluno_id": aluno_id,
+                "ciclo_id": existing_ciclo.get("ciclo_id"),
+                "status": existing_ciclo.get("status"),
+            },
+        )
+        return _to_response(existing_ciclo)
+
     # O currículo-base é decomposto e aprofundado antes de qualquer adaptação
     # BrainHex. Falha de enriquecimento interrompe a geração em vez de aceitar
     # conteúdo raso como fallback.
-    await session.commit()
     try:
         content_enrichment = await enrich_content_blocks(
             context=ctx,
@@ -1321,12 +1356,6 @@ async def personalizar(
         perfil_brainhex=ctx["perfil_brainhex"],
         settings=settings,
     )
-
-    resolved_topico_id = ctx.get("topico_id") or payload.topico_id
-    resolved_conteudo_id = ctx.get("conteudo_id") or payload.conteudo_id
-    brainhex_profile_key = str(ctx.get("perfil_dominante") or "mastermind").strip().lower()
-    if brainhex_profile_key == "socialiser":
-        brainhex_profile_key = "socializer"
 
     repo_artefatos = ArtefatosPersonalizadosRepository(session)
     await repo_artefatos.marcar_ciclos_anteriores_obsoletos(

@@ -405,6 +405,11 @@ def test_personalizar_route_creates_personalizacao_record(app, aluno_user, monke
     )
     monkeypatch.setattr(
         ConteudoPersonalizadoRepository,
+        "buscar_mais_recente_por_perfil",
+        AsyncMock(return_value=None),
+    )
+    monkeypatch.setattr(
+        ConteudoPersonalizadoRepository,
         "salvar",
         AsyncMock(return_value=7),
     )
@@ -424,6 +429,80 @@ def test_personalizar_route_creates_personalizacao_record(app, aluno_user, monke
     assert body["media_status"] == "ready"
     assert body["media_job_id"] is None
     assert body["aiPatch"] is None
+
+
+def test_personalizar_route_reusa_ciclo_existente_sem_regenerar(app, aluno_user, monkeypatch) -> None:
+    """Se ja existe uma personalizacao pronta/em andamento com o mesmo source_hash
+    para o mesmo aluno/conteudo/perfil, o endpoint deve reaproveitar o ciclo em vez
+    de disparar um novo (novo ciclo_id, novo enrich, novas cards, ciclo anterior
+    marcado obsoleto)."""
+    fake_session = FakeSession()
+
+    async def override_session():
+        yield fake_session
+
+    app.dependency_overrides[get_session] = override_session
+    app.dependency_overrides[get_current_user] = lambda: aluno_user
+
+    fake_ctx = {
+        "aluno_id": "aluno-1",
+        "classe_id": 1,
+        "topico_id": 5,
+        "conteudo_id": None,
+        "ciclo_id": "ciclo-novo",
+        "source_hash": "abc123",
+        "perfil_dominante": "mastermind",
+        "perfil_brainhex": [{"perfil": "mastermind", "afinidade": 1.0}],
+        "conteudo_classe": {"titulo": "Título"},
+        "contexto_aluno": {"nome": "Aluno"},
+        "fontes": [],
+    }
+    existing_record = {
+        "id": 7,
+        "aluno_id": "aluno-1",
+        "classe_id": 1,
+        "conteudo_id": None,
+        "topico_id": 5,
+        "ciclo_id": "ciclo-existente",
+        "status": "pronto",
+        "materiais": {},
+        "ai_patch": None,
+        "plano": {},
+        "source_hash": "abc123",
+        "formato_prioritario": "cards",
+        "formatos_gerados": ["cards"],
+        "gerado_em": "2026-06-24T12:00:00Z",
+    }
+
+    monkeypatch.setattr(personalizacao_module, "fetch_personalizacao_context", AsyncMock(return_value=fake_ctx))
+    enrich_mock = AsyncMock()
+    cards_mock = AsyncMock()
+    monkeypatch.setattr(personalizacao_module, "enrich_content_blocks", enrich_mock)
+    monkeypatch.setattr(personalizacao_module, "gerar_cards_direto", cards_mock)
+    monkeypatch.setattr(AccessRepository, "aluno_belongs_to_classe", AsyncMock(return_value=True))
+    monkeypatch.setattr(ConteudoClasseRepository, "buscar_classe_id_por_topico", AsyncMock(return_value=1))
+    monkeypatch.setattr(ConteudoClasseRepository, "buscar_classe_id_por_conteudo", AsyncMock(return_value=1))
+    marcar_obsoletos_mock = AsyncMock(return_value=None)
+    monkeypatch.setattr(
+        "app.repositories.artefatos_personalizados.ArtefatosPersonalizadosRepository.marcar_ciclos_anteriores_obsoletos",
+        marcar_obsoletos_mock,
+    )
+    monkeypatch.setattr(
+        ConteudoPersonalizadoRepository,
+        "buscar_mais_recente_por_perfil",
+        AsyncMock(return_value=existing_record),
+    )
+
+    with TestClient(app) as client:
+        response = client.post("/api/v1/personalizar", json={"classe_id": 1, "topico_id": 5})
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["id"] == 7
+    assert body["ciclo_id"] == "ciclo-existente"
+    enrich_mock.assert_not_called()
+    cards_mock.assert_not_called()
+    marcar_obsoletos_mock.assert_not_called()
 
 
 def test_personalizacao_media_status_route_returns_pending_media(app, aluno_user, monkeypatch) -> None:
