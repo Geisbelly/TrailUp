@@ -1670,8 +1670,8 @@
     "semantic_hash": ""
   },
   "microservice/src/services/geminiService.ts": {
-    "mtime": 1785618552.2474468,
-    "ast_hash": "5ceedea83490e99fa08931dbf88f02ce",
+    "mtime": 1785622668.8849685,
+    "ast_hash": "84c6b7999164030c5afd97d36936349a",
     "semantic_hash": ""
   },
   "microservice/src/services/supabaseService.ts": {
@@ -4000,13 +4000,13 @@
     "semantic_hash": ""
   },
   "api/app/services/content_enrichment.py": {
-    "mtime": 1785619911.625892,
-    "ast_hash": "1d702f2c3ec7db5d2347cb0f8a1b307c",
+    "mtime": 1785621857.4273405,
+    "ast_hash": "64f1d61b42835d3ae3d51f762cde8e17",
     "semantic_hash": ""
   },
   "api/tests/test_content_enrichment.py": {
-    "mtime": 1785619935.0822568,
-    "ast_hash": "826f2c67de2c1126609ca106fd9bc0e0",
+    "mtime": 1785621903.1827648,
+    "ast_hash": "b378df0fc6310b57e529c9e6fe4673e8",
     "semantic_hash": ""
   },
   "api/app/agent/prompts/enriquecedor_blocos_conteudo.txt": {
@@ -4135,8 +4135,8 @@
     "semantic_hash": ""
   },
   "microservice/src/services/geminiBlockBatches.test.ts": {
-    "mtime": 1785618611.9076574,
-    "ast_hash": "0dd30c6ad2de384599f2e5ee11b04509",
+    "mtime": 1785622700.563172,
+    "ast_hash": "d494fe4320693877493f8054422da17f",
     "semantic_hash": ""
   },
   "mobile/src/utils/personalization.multicontent.test.ts": {
@@ -4317,6 +4317,16 @@
   "api/alembic/versions/20260801_01_bump_merge_materiais_timeout.py": {
     "mtime": 1785615642.8773613,
     "ast_hash": "3cb04d492889febceecef5f8823fffdc",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-08-01-robot-framework-personalizacao-console-design.md": {
+    "mtime": 1785622479.9497125,
+    "ast_hash": "71cab239861a1b9d9aa38f62ab7592fb",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-08-01-robot-framework-personalizacao-console.md": {
+    "mtime": 1785622585.968196,
+    "ast_hash": "25a1250ff0a3960aaef6b47f6493b7e2",
     "semantic_hash": ""
   }
 }

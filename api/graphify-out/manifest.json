@@ -635,8 +635,8 @@
     "semantic_hash": ""
   },
   "api/app/services/content_enrichment.py": {
-    "mtime": 1785617278.6156077,
-    "ast_hash": "19d6c5e30ee3019bec908fcb9364ba48",
+    "mtime": 1785619911.625892,
+    "ast_hash": "1d702f2c3ec7db5d2347cb0f8a1b307c",
     "semantic_hash": ""
   },
   "api/app/services/docx.py": {
@@ -765,8 +765,8 @@
     "semantic_hash": ""
   },
   "api/tests/test_content_enrichment.py": {
-    "mtime": 1785617378.0195873,
-    "ast_hash": "6e9e6b372734d366da07d758c4d8e1ef",
+    "mtime": 1785619935.0822568,
+    "ast_hash": "826f2c67de2c1126609ca106fd9bc0e0",
     "semantic_hash": ""
   },
   "api/tests/test_design_tokens_aaa.py": {
@@ -1910,13 +1910,13 @@
     "semantic_hash": ""
   },
   "microservice/src/services/geminiBlockBatches.test.ts": {
-    "mtime": 1785606139.757653,
-    "ast_hash": "dbd6b9e11ba1a42aa26287efb4751077",
+    "mtime": 1785618611.9076574,
+    "ast_hash": "0dd30c6ad2de384599f2e5ee11b04509",
     "semantic_hash": ""
   },
   "microservice/src/services/geminiService.ts": {
-    "mtime": 1785612713.8920274,
-    "ast_hash": "8471dd95b3e87e98dc552927af33ebdd",
+    "mtime": 1785618552.2474468,
+    "ast_hash": "5ceedea83490e99fa08931dbf88f02ce",
     "semantic_hash": ""
   },
   "microservice/src/services/openaiImageService.test.ts": {
@@ -4317,6 +4317,11 @@
   "api/alembic/versions/20260801_01_bump_merge_materiais_timeout.py": {
     "mtime": 1785615642.8773613,
     "ast_hash": "3cb04d492889febceecef5f8823fffdc",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-08-01-robot-framework-personalizacao-console-design.md": {
+    "mtime": 1785621455.040434,
+    "ast_hash": "7f15f6643929d927f6313a9c2878457c",
     "semantic_hash": ""
   }
 }
