@@ -393,7 +393,9 @@
   "391": "build_behavioral_personalization",
   "392": "dotenv",
   "393": "expo-symbols",
+  "394": "buildTimeMetricsSnapshot",
   "395": "20260801_01_bump_merge_materiais_timeout.py",
+  "396": "class-variance-authority",
   "397": "builder.py",
   "398": "@radix-ui/react-accordion",
   "399": "pptx.py",
@@ -403,12 +405,9 @@
   "404": "mammoth",
   "405": "_brainhex_contract_is_ready",
   "407": "@config-plugins/react-native-blob-util",
-  "409": "wav.test.ts",
-  "411": "generate_plano_personalizacao",
   "412": "GUIA_USO.md",
   "413": "expo-av",
   "414": "@hookform/resolvers",
-  "418": ".coerce_referencia",
   "421": "motion",
   "439": "devDependencies"
 }

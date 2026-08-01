@@ -1550,8 +1550,8 @@
     "semantic_hash": ""
   },
   "microservice/server.ts": {
-    "mtime": 1785624563.4796479,
-    "ast_hash": "a6a7663064a7f3d8296bc25edccea22b",
+    "mtime": 1785625021.381488,
+    "ast_hash": "c498d4ba82fdee603a04a2788934c0bc",
     "semantic_hash": ""
   },
   "microservice/sql/migrations/0001_merge_personalizacao_materiais_rpc.sql": {
@@ -2650,8 +2650,8 @@
     "semantic_hash": "dce050f262854010792c57862ee44dba"
   },
   "mobile/src/utils/personalization.ts": {
-    "mtime": 1785443341.9086452,
-    "ast_hash": "a77f0399ca703dcded8a2c6f2a6364a6",
+    "mtime": 1785626050.9410253,
+    "ast_hash": "9e0312c888b5e80af9bc5fee04df9bea",
     "semantic_hash": ""
   },
   "mobile/src/utils/personalizedFlow.ts": {
