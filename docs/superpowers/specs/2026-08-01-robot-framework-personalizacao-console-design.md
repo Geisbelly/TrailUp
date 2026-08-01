@@ -48,11 +48,16 @@ lacuna.
 - **Autenticação na UI:** login real preenchendo o formulário do frontend com
   o usuário professor de teste — cobre o fluxo de auth real (Supabase JWT),
   em vez de injetar sessão/cookie diretamente.
-- **Autenticação para chamadas de setup/teardown via API:** as chamadas
-  `RequestsLibrary` para criar/remover classe e tópico de teste usam um JWT do
-  mesmo professor de teste, obtido antes da suite rodar (mesmo mecanismo usado
-  pelos testes pytest existentes em `api/tests/conftest.py`, que já validam o
-  formato de payload esperado por `api/app/api/v1/personalizacao.py`).
+- **Autenticação para chamadas de setup/teardown via API:** obtida via login
+  real contra o Supabase Auth (`POST {SUPABASE_URL}/auth/v1/token?grant_type=password`
+  com o e-mail/senha do mesmo professor de teste), retornando um `access_token`
+  genuíno assinado pelo Supabase. Esse token é reusado tanto para as chamadas
+  Supabase REST (criação/remoção de classe/tópico/conteúdo) quanto para as
+  chamadas à API Python (`/api/v1/personalizar/jobs/...`). **Correção em
+  relação à primeira versão deste spec:** os testes pytest existentes
+  (`api/tests/conftest.py`) não geram JWT real — eles fazem *dependency
+  override* direto no FastAPI (`app.dependency_overrides[get_current_user]`),
+  o que não serve de referência para uma suite que bate na API real por HTTP.
 
 ## Estrutura de arquivos
 
@@ -63,7 +68,8 @@ tests/robot/
 │   ├── Topico.resource         # keywords de cadastro/edição de conteúdo do tópico
 │   └── Personalizacao.resource # keywords da aba/lista de personalização por perfil
 ├── data/
-│   └── ApiSetup.resource       # cria/remove classe e tópico de teste via RequestsLibrary
+│   └── ApiSetup.resource       # cria/remove classe/tópico/conteúdo via Supabase REST
+│                                # (PostgREST) e dispara o job de personalização via API Python
 ├── suites/
 │   └── personalizacao_topico.robot
 ├── variables/
@@ -87,27 +93,52 @@ configuração específica de ambiente fora do código e em um único lugar.
 
 ## Fluxo do teste
 
-1. **Suite Setup (API):** via `ApiSetup.resource` (`RequestsLibrary` + JWT do
-   professor de teste), cria uma classe e um tópico novos chamando os
-   endpoints existentes em `api/app/api/v1/personalizacao.py`. Cada execução
-   parte de dados isolados — não reaproveita classe/tópico de execuções
-   anteriores, evitando acúmulo de materiais de perfis de rodadas passadas.
+1. **Suite Setup (API):** via `ApiSetup.resource` (`RequestsLibrary` + o
+   `access_token` do professor de teste obtido via Supabase Auth), cria uma
+   classe, um tópico e um conteúdo novos diretamente via **Supabase REST**
+   (`POST {SUPABASE_URL}/rest/v1/classe`, `/rest/v1/topicos`,
+   `/rest/v1/conteudos`) — **não existe endpoint na API Python para criar
+   classe/tópico/conteúdo**; o próprio console do professor cria esses
+   registros direto via Supabase PostgREST, então o setup do teste segue o
+   mesmo caminho. Cada execução parte de dados isolados — não reaproveita
+   classe/tópico de execuções anteriores, evitando acúmulo de materiais de
+   perfis de rodadas passadas.
 2. **Login (UI — Browser/Playwright):** preenche o formulário de login do
    frontend com o e-mail/senha do professor de teste.
-3. **Cadastro e disparo (UI):** navega até o tópico criado no setup, cadastra
-   o conteúdo pela interface do console do professor e dispara a geração da
-   personalização.
+3. **Cadastro e disparo (UI):** navega até o tópico criado no setup
+   (`/console/trilha/{topico_id}/editar`), cadastra o conteúdo pela interface
+   do console do professor e salva. **Não existe um botão explícito de
+   "Gerar personalização"** — ao salvar o conteúdo, o próprio console
+   já dispara automaticamente o job `class-delta`
+   (`POST /api/v1/personalizar/jobs/class-delta`) que gera os materiais dos
+   7 perfis; salvar o conteúdo *é* o disparo.
 4. **Espera (polling na UI):** aguarda, com timeout configurável
    (`TIMEOUT_GERACAO`), até a tela exibir os 7 perfis BrainHex com material
    associado. O polling é feito na própria UI (recarregando/observando o
    componente), não consultando `personalizacao_jobs`/`personalizacao_job_targets`
    diretamente — a suite fica fiel ao que o usuário real vê e não se acopla à
    estrutura interna do backend.
-5. **Asserção:** confirma que os 7 perfis — `Seeker`, `Survivor`, `Daredevil`,
-   `Mastermind`, `Conqueror`, `Socializer`, `Achiever` — aparecem na tela,
-   cada um com pelo menos um material (texto e/ou áudio) associado.
-6. **Suite Teardown (API):** via `ApiSetup.resource`, remove/desativa a classe
-   e o tópico de teste criados no passo 1.
+5. **Asserção:** confirma que os 7 perfis aparecem na aba "Por perfil" da tela
+   de Personalizações, cada um com pelo menos um material associado. A tela
+   exibe o rótulo em português (`perfil_label`), não a chave BrainHex em
+   inglês:
+
+   | chave (`perfil`) | rótulo exibido (`perfil_label`) |
+   |---|---|
+   | seeker | Explorador |
+   | survivor | Sobrevivente |
+   | daredevil | Aventureiro |
+   | mastermind | Estrategista |
+   | conqueror | Conquistador |
+   | socializer | Socializador |
+   | achiever | Realizador |
+6. **Suite Teardown (API):** via `ApiSetup.resource`, remove via Supabase REST
+   (`DELETE`, na ordem conteúdo → tópico → classe, por causa de FKs) os
+   registros de teste criados no passo 1. **Não existe endpoint de
+   desativação (`ativo=false`) para classe/tópico na API Python** — a única
+   forma de limpeza é o `DELETE` direto no Supabase, sujeito às policies RLS
+   do professor de teste (que já permitem essa operação, pois é o mesmo
+   caminho usado pelo console ao excluir tópicos/classes).
 
 ## Dependências
 
