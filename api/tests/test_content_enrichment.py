@@ -366,7 +366,7 @@ def test_source_segmentation_splits_large_text_without_losing_its_tail() -> None
         segment for segment in enrichment_module._source_segments(context) if segment["source_id"] == "conteudo:1"
     ]
 
-    assert len(segments) == 3
+    assert len(segments) == 7
     rebuilt = "".join(segment["text"] for segment in segments)
     assert rebuilt.endswith(long_text)
     assert rebuilt.count("x") == 9_000

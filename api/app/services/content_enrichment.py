@@ -25,7 +25,13 @@ _MAX_BLOCKS = 24
 # blocos voltam a ficar maiores que o orcamento seguro - melhor que estourar
 # o processo com centenas de chamadas.
 _MAX_BLOCKS_CEILING = 60
-_MAX_SEGMENT_CHARS = 4_000
+# Era 4_000: reproduziu estouro de max_output_tokens (16384) no fallback
+# OpenAI em producao - o enriquecimento so garante expansao MINIMA (>=30%),
+# sem teto, entao um segmento de 4k chars podia virar um bloco grande
+# demais pra caber numa unica chamada de geracao de markdown. Reduzido pra
+# dar mais margem, ao custo de mais segmentos/blocos (mais chamadas de LLM
+# por geracao).
+_MAX_SEGMENT_CHARS = 1_500
 _MIN_EXPANSION_CHARS = 80
 _MIN_EXPANSION_RATIO = 0.15
 _SCHEMA_VERSION = "trailup.content-blocks.v2"
