@@ -314,6 +314,19 @@ def _profile_render_targets_ready_now(
     if not pending or pace_sec <= 0:
         return pending
 
+    # Alvos "deferidos" (outra geracao com a mesma chave ja em andamento)
+    # voltam para pending sem consumir tentativa - de propósito, para nao
+    # gastar o orcamento de retries de um target que nem chegou a rodar.
+    # Por isso a selecao NAO pode se basear em "primeiro pendente por id":
+    # um alvo que fica sendo deferido a cada rodada teria sempre o menor id
+    # e monopolizaria pending[0] para sempre, matando de fome os demais
+    # perfis do job (nunca chegam a ser tentados). Escolhe-se o pendente
+    # menos recentemente tocado (updated_at), nao o de menor id.
+    least_recently_touched = min(
+        pending,
+        key=lambda target: target.get("updated_at") or datetime.min.replace(tzinfo=timezone.utc),
+    )
+
     last_touch: datetime | None = None
     for target in targets:
         if int(target.get("attempts") or 0) <= 0:
@@ -325,12 +338,12 @@ def _profile_render_targets_ready_now(
             last_touch = updated_at
 
     if last_touch is None:
-        return pending[:1]
+        return [least_recently_touched]
 
     elapsed = (now - last_touch).total_seconds()
     if elapsed < pace_sec:
         return []
-    return pending[:1]
+    return [least_recently_touched]
 
 
 async def _get_runtime_cached_dict(

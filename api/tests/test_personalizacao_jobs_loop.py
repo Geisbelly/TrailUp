@@ -1229,6 +1229,25 @@ def test_profile_render_targets_ready_now_sem_pendentes() -> None:
     assert _profile_render_targets_ready_now(targets, pace_sec=300, now=now) == []
 
 
+def test_profile_render_targets_ready_now_pula_alvo_deferido_repetidamente() -> None:
+    """Um alvo "deferido" (geracao_atual_em_processamento) volta a pending sem
+    consumir tentativa (attempts continua 0) e so tem seu updated_at tocado.
+    Sem isso, esse mesmo alvo (menor id) seria escolhido para sempre, e os
+    demais perfis do job nunca chegariam a ser tentados.
+    """
+    created_at = datetime(2026, 8, 1, 1, 22, 45, tzinfo=timezone.utc)
+    now = datetime(2026, 8, 1, 11, 52, 44, tzinfo=timezone.utc)
+    targets = [
+        _target(1, attempts=0, updated_at=now - timedelta(seconds=9)),
+        _target(2, attempts=0, updated_at=created_at),
+        _target(3, attempts=0, updated_at=created_at),
+    ]
+
+    ready = _profile_render_targets_ready_now(targets, pace_sec=300, now=now)
+
+    assert [t["id"] for t in ready] == [2]
+
+
 def test_falha_streak_excedido() -> None:
     record = {"materiais": {"_geracao_falhas": {"generation_key": "ciclo-1:hash-1", "streak": 3}}}
     assert _falha_streak_excedido(record, generation_key="ciclo-1:hash-1", max_streak=3) is True
