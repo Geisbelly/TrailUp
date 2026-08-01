@@ -351,8 +351,13 @@ async function archiveToSupabase(params: {
     }
     const audioStatus  = audioMp3Url  ? "completed" : "failed";
     const mdStatus     = markdownUrl  ? "completed" : "failed";
-    const audioPayloadObj = { roteiro: audioScript, texto: audioScript };
-    const mdPayloadObj    = { texto: markdown, markdown };
+    // "texto" era um duplicata de roteiro/markdown no payload - ninguem le
+    // payload.texto pro audio (mobile so le payload.roteiro) e pro markdown
+    // e so um fallback que nunca dispara (payload.markdown sempre vem
+    // junto). Payload menor ajuda o merge_personalizacao_materiais_v2 a
+    // caber no teto de statement_timeout em topicos com muitos blocos.
+    const audioPayloadObj = { roteiro: audioScript };
+    const mdPayloadObj    = { markdown };
     const apresentacaoPayloadObj = {
       slides,
       abertura: markdown.split("\n").find((l) => l.trim()) ?? "",
