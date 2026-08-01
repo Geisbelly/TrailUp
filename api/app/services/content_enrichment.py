@@ -42,7 +42,10 @@ _MIN_EXPANSION_RATIO = 0.15
 # ainda caber no orcamento de tokens de saida do gpt-4o-mini.
 _MAX_EXPANDED_CHARS = 12_000
 _SCHEMA_VERSION = "trailup.content-blocks.v2"
-_DEFAULT_BATCH_SIZE = 1
+# Fallback usado quando a settings nao traz o valor - ver
+# content_enrichment_batch_size em core/settings.py pro motivo de 6 (era 1,
+# estourava a cota gratuita do Gemini num topico so).
+_DEFAULT_BATCH_SIZE = 6
 _DEFAULT_MAX_ATTEMPTS = 3
 _DEFAULT_MAX_OUTPUT_TOKENS = 8_192
 _DEFAULT_QUOTA_COOLDOWN_SEC = 300
@@ -705,15 +708,16 @@ async def _enrich_base_blocks_with_openai(
         str(getattr(settings, "openai_content_enrichment_model", "") or "").strip()
         or "gpt-4o-mini"
     )
-    # Um bloco por chamada reduz omissões, permite correção localizada e evita
-    # gastar tokens regenerando blocos que já passaram pela validação.
-    configured_batch_size = _bounded_int(
+    # Lotes maiores custam granularidade de retry (1 bloco rejeitado pode
+    # exigir re-tentar o lote inteiro) mas reduzem o numero de chamadas -
+    # critico pro free tier do Gemini (20 requisicoes/dia), que um topico de
+    # ~24 blocos sozinho ja estourava com 1 bloco por chamada.
+    batch_size = _bounded_int(
         getattr(settings, "content_enrichment_batch_size", _DEFAULT_BATCH_SIZE),
         _DEFAULT_BATCH_SIZE,
         1,
         8,
     )
-    batch_size = min(configured_batch_size, _DEFAULT_BATCH_SIZE)
     max_attempts = _bounded_int(
         getattr(settings, "content_enrichment_max_attempts", _DEFAULT_MAX_ATTEMPTS),
         _DEFAULT_MAX_ATTEMPTS,
@@ -889,13 +893,16 @@ async def _enrich_base_blocks_with_gemini(
         str(getattr(settings, "content_enrichment_gemini_model", "") or "").strip()
         or "gemini-2.5-flash"
     )
-    configured_batch_size = _bounded_int(
+    # Lotes maiores custam granularidade de retry (1 bloco rejeitado pode
+    # exigir re-tentar o lote inteiro) mas reduzem o numero de chamadas -
+    # critico pro free tier do Gemini (20 requisicoes/dia), que um topico de
+    # ~24 blocos sozinho ja estourava com 1 bloco por chamada.
+    batch_size = _bounded_int(
         getattr(settings, "content_enrichment_batch_size", _DEFAULT_BATCH_SIZE),
         _DEFAULT_BATCH_SIZE,
         1,
         8,
     )
-    batch_size = min(configured_batch_size, _DEFAULT_BATCH_SIZE)
     max_attempts = _bounded_int(
         getattr(settings, "content_enrichment_max_attempts", _DEFAULT_MAX_ATTEMPTS),
         _DEFAULT_MAX_ATTEMPTS,

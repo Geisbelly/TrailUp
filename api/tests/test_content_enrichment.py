@@ -307,10 +307,12 @@ async def test_enrichment_groups_every_source_segment_without_truncation(
         "brainhex_personalization",
     ]
     assert result["metadata"]["provider_model"] == "gemini-3.6-flash"
-    assert result["metadata"]["lotes_gerados"] == 24
-    assert result["metadata"]["chamadas_realizadas"] == 24
+    # batch_size=8 (ver _settings()): 24 blocos / 8 = 3 lotes, exatamente
+    # divisivel - sem retries (_rich_response sempre passa na validacao).
+    assert result["metadata"]["lotes_gerados"] == 3
+    assert result["metadata"]["chamadas_realizadas"] == 3
     assert all(
-        len(payload["blocos_base"]) == 1 for payload in captured["payloads"]
+        len(payload["blocos_base"]) == 8 for payload in captured["payloads"]
     )
     assert "brainhex" not in json.dumps(captured["payloads"]).lower()
 
@@ -441,17 +443,18 @@ async def test_enrichment_retries_only_the_rejected_block(
 
     result = await enrich_content_blocks(context=_context(), settings=_settings())
 
-    assert len(captured["payloads"][0]["blocos_base"]) == 1
+    # batch_size=8 (ver _settings()) cabe todos os 4 blocos numa chamada so;
+    # o retry (chamada 2) so reenvia o bloco que falhou na validacao, nao o
+    # lote inteiro - "correcao localizada" vem do afunilamento de `pending`
+    # a cada tentativa (ver enrich_content_blocks), nao do tamanho do lote.
+    assert len(captured["payloads"][0]["blocos_base"]) == 4
     assert len(captured["payloads"][1]["blocos_base"]) == 1
     assert (
-        captured["payloads"][0]["blocos_base"][0]["id"]
-        == captured["payloads"][1]["blocos_base"][0]["id"]
+        captured["payloads"][1]["blocos_base"][0]["id"]
+        == captured["payloads"][0]["blocos_base"][-1]["id"]
     )
     assert len(result["blocos"]) == result["metadata"]["blocos_gerados"]
-    assert (
-        result["metadata"]["chamadas_realizadas"]
-        == result["metadata"]["blocos_gerados"] + 1
-    )
+    assert result["metadata"]["chamadas_realizadas"] == 2
 
 
 @pytest.mark.asyncio
@@ -562,7 +565,9 @@ async def test_openai_fallback_used_when_gemini_fails_and_openai_configured(
         "openai_enrichment",
         "brainhex_personalization",
     ]
-    assert len(captured["calls"]) == len(result["blocos"])
+    # batch_size=8 (ver _settings_with_openai) cabe os 4 blocos de _context()
+    # numa chamada so.
+    assert len(captured["calls"]) == 1
     # gpt-4o-mini rejeita reasoning.effort e verbosity="high" com 400 —
     # regressao real que aconteceu em producao ao trocar o default de
     # gpt-5.4-mini pra gpt-4o-mini.

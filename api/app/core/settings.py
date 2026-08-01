@@ -51,7 +51,13 @@ class Settings(BaseSettings):
     # gpt-4o-mini (500 RPM / 10.000 RPD) e usado so como reserva secundaria,
     # com Gemini como principal (ver content_enrichment.py).
     openai_content_enrichment_model: str = "gpt-4o-mini"
-    content_enrichment_batch_size: int = 1
+    # Era 1: um topico com ~24 blocos precisava de ~24 chamadas de
+    # enriquecimento, e o free tier do Gemini tem cota de so 20
+    # requisicoes/dia (gemini-3.6-flash) - um unico topico ja estourava a
+    # cota gratuita sozinho. Subido pra 6 (24 blocos ~= 4 chamadas/topico)
+    # as custas de granularidade de retry mais grossa: se a validacao
+    # rejeitar 1 bloco do lote, o lote inteiro pode precisar ser re-tentado.
+    content_enrichment_batch_size: int = 6
     content_enrichment_max_attempts: int = 3
     openai_content_enrichment_max_output_tokens: int = 8192
     content_enrichment_quota_cooldown_sec: int = 300
