@@ -707,6 +707,162 @@ export function mergeContentBlocksIntoOne(
   };
 }
 
+export interface ContentPart {
+  ordem: number;
+  titulo: string;
+  markdown: string;
+  audioScript: string;
+  slides: SlideContent[];
+}
+
+const DEFAULT_PART_TARGET_CHARS = 4_500;
+
+// So reconhece heading de NIVEL 2 ("## Titulo") como fronteira de parte -
+// "### " (nivel 3) fica dentro do corpo da secao pai, senao qualquer
+// subsecao interna viraria sua propria "parte" entregavel.
+const LEVEL_2_HEADING_RE = /^##[ \t]+(.+?)[ \t]*$/gm;
+
+function splitMarkdownByLevel2Headings(
+  markdown: string,
+): { title: string; body: string }[] {
+  const matches = [...markdown.matchAll(LEVEL_2_HEADING_RE)];
+  if (matches.length === 0) return [];
+
+  const sections: { title: string; body: string }[] = [];
+  for (let i = 0; i < matches.length; i++) {
+    const match = matches[i];
+    const title = normalizedText(match[1]);
+    const start = (match.index ?? 0) + match[0].length;
+    const end = i + 1 < matches.length ? (matches[i + 1].index ?? markdown.length) : markdown.length;
+    sections.push({ title, body: markdown.slice(start, end).trim() });
+  }
+  return sections;
+}
+
+// O audioScript so tem os marcadores "## <titulo>" (nunca falados) quando o
+// modelo segue a instrucao a risca. Quando algum titulo nao e encontrado
+// (ou vem fora de ordem), cai no fallback proporcional em vez de perder
+// audio ou travar a divisao - alinhamento aproximado e melhor que nenhum.
+function splitAudioByMarkdownTitles(
+  audioScript: string,
+  titles: string[],
+): string[] | null {
+  const positions: number[] = [];
+  let cursor = 0;
+  for (const title of titles) {
+    const marker = `## ${title}`;
+    const index = audioScript.indexOf(marker, cursor);
+    if (index === -1) return null;
+    positions.push(index);
+    cursor = index + marker.length;
+  }
+
+  return titles.map((_, i) => {
+    const markerEnd = positions[i] + `## ${titles[i]}`.length;
+    const sectionEnd = i + 1 < positions.length ? positions[i + 1] : audioScript.length;
+    return audioScript.slice(markerEnd, sectionEnd).trim();
+  });
+}
+
+function stripSectionMarkers(audioScript: string): string {
+  return audioScript.replace(LEVEL_2_HEADING_RE, "").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+function splitAudioByCharRatio(
+  audioScript: string,
+  sectionChars: number[],
+): string[] {
+  const totalChars = sectionChars.reduce((sum, chars) => sum + chars, 0);
+  const clean = stripSectionMarkers(audioScript);
+  if (totalChars === 0 || clean.length === 0) {
+    return sectionChars.map(() => "");
+  }
+
+  let cursor = 0;
+  const parts = sectionChars.map((chars) => {
+    const share = Math.round((chars / totalChars) * clean.length);
+    const slice = clean.slice(cursor, cursor + share);
+    cursor += share;
+    return slice.trim();
+  });
+  parts[parts.length - 1] = (parts[parts.length - 1] + " " + clean.slice(cursor)).trim();
+  return parts;
+}
+
+// Distribui `total` itens em `parts` grupos o mais equilibrado possivel
+// (ex.: 10 slides em 3 partes -> [4, 3, 3]), sem depender de o modelo saber
+// quantos slides "pertencem" a cada parte.
+function distributeEvenly(total: number, parts: number): number[] {
+  if (parts <= 0) return [];
+  const base = Math.floor(total / parts);
+  const remainder = total % parts;
+  return Array.from({ length: parts }, (_, i) => base + (i < remainder ? 1 : 0));
+}
+
+/**
+ * Divide o resultado JA sintetizado (mergeContentBlocksIntoOne + geracao)
+ * em partes sequenciais entregaveis (arquivos separados de markdown/audio/
+ * apresentacao) - a sintese continua sem duplicar topicos entre partes,
+ * so a ENTREGA vira multiplos arquivos por tamanho em vez de um arquivo
+ * monolitico (que ja estourou o limite de upload do Supabase Storage numa
+ * apresentacao grande). Agrupa headings de nivel 2 consecutivos ate
+ * atingir targetPartChars por parte; nunca quebra uma secao ao meio.
+ */
+export function splitProcessedContentIntoParts(
+  content: { markdown: string; audioScript: string; slides: SlideContent[] },
+  options: { targetPartChars?: number } = {},
+): ContentPart[] {
+  const targetPartChars = options.targetPartChars ?? DEFAULT_PART_TARGET_CHARS;
+  const sections = splitMarkdownByLevel2Headings(content.markdown);
+
+  if (sections.length === 0) {
+    return [{
+      ordem: 1,
+      titulo: "Conteúdo completo",
+      markdown: content.markdown.trim(),
+      audioScript: stripSectionMarkers(content.audioScript),
+      slides: content.slides,
+    }];
+  }
+
+  const titles = sections.map((section) => section.title);
+  const audioBySection =
+    splitAudioByMarkdownTitles(content.audioScript, titles)
+    ?? splitAudioByCharRatio(content.audioScript, sections.map((section) => section.body.length));
+
+  const groups: number[][] = [];
+  let current: number[] = [];
+  let currentChars = 0;
+  sections.forEach((section, index) => {
+    if (current.length > 0 && currentChars + section.body.length > targetPartChars) {
+      groups.push(current);
+      current = [];
+      currentChars = 0;
+    }
+    current.push(index);
+    currentChars += section.body.length;
+  });
+  if (current.length > 0) groups.push(current);
+
+  const slidesPerPart = distributeEvenly(content.slides.length, groups.length);
+  let slideCursor = 0;
+
+  return groups.map((indices, partIndex) => {
+    const slideCount = slidesPerPart[partIndex];
+    const slidesPart = content.slides.slice(slideCursor, slideCursor + slideCount);
+    slideCursor += slideCount;
+    return {
+      ordem: partIndex + 1,
+      titulo: sections[indices[0]].title,
+      markdown: indices
+        .map((i) => `## ${sections[i].title}\n\n${sections[i].body}`)
+        .join("\n\n"),
+      audioScript: indices.map((i) => audioBySection[i]).join("\n\n"),
+      slides: slidesPart,
+    };
+  });
+}
+
 export async function processMediaWithGemini(
   filesData: { data: string; mimeType: string; name: string }[],
   profile: BrainHexProfile,
@@ -839,6 +995,9 @@ export async function processMediaWithGemini(
        - Estruture em seções com headings (## / ###), uma por bloco/tópico do
          conteúdo original, na mesma ordem em que aparecem no material do
          professor. Nenhum bloco do Modelo Interno Unificado pode ficar de fora.
+       - Cada heading de nível 2 (##) é o ponto onde o material é dividido em
+         partes/arquivos sequenciais para entrega ao aluno — use títulos
+         curtos e descritivos (3 a 8 palavras), nunca repetidos.
        - Para cada conceito: defina-o, explique o "porquê" (não só o "o quê"),
          traga pelo menos um exemplo prático ou caso de estudo, e conecte com
          o conceito anterior/seguinte quando fizer sentido pedagógico.
@@ -890,6 +1049,13 @@ export async function processMediaWithGemini(
        faça a ponte para o próximo bloco. Use transições faláveis ("agora", "em
        seguida", "isso nos leva a...") em vez de títulos secos. A cobertura
        deve ser equivalente à do texto de estudo.
+       MARCAÇÃO OBRIGATÓRIA de seção: imediatamente antes de narrar o trecho
+       correspondente a cada heading de nível 2 (##) do markdown, insira uma
+       linha própria EXATAMENTE "## <mesmo título da seção em markdown>"
+       (idêntico, incluindo acentos e pontuação). Essa linha é só um marcador
+       de corte para dividir o áudio em arquivos — não é falada pelo
+       narrador nem pelos guardiões, e não conta como título "seco" proibido
+       acima (a proibição é sobre o texto FALADO, não sobre este marcador).
        ${config.secondaryGuideName ? `
        O roteiro é um DIÁLOGO entre os dois guardiões ${config.guideName} e ${config.secondaryGuideName} —
        não uma narração solo. Formato OBRIGATÓRIO (é assim que o motor de voz separa quem fala):

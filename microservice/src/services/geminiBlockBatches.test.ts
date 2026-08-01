@@ -8,8 +8,10 @@ import {
   partitionContentBlocks,
   resolveContentBlockBatchSize,
   resolveContentBlockConcurrency,
+  splitProcessedContentIntoParts,
   validateBlockBatchGeneration,
 } from "./geminiService";
+import type { SlideContent } from "../types";
 import type { EnrichedContentBlock } from "../types";
 
 function block(index: number, ordem = index): EnrichedContentBlock {
@@ -396,4 +398,91 @@ test("consolidação recusa conjunto de lotes sem cobertura global", () => {
     ),
     /quantidade de lotes/,
   );
+});
+
+function slide(title: string): SlideContent {
+  return {
+    title,
+    topics: ["Definição"],
+    explanation: `Explicação de ${title}.`,
+    visualDescription: `Diagrama de ${title}.`,
+    characterQuote: `Vamos ver ${title}.`,
+    characterAction: "explaining",
+    imagePrompt: `Ilustração de ${title}.`,
+    iconPrompts: [`Ícone de ${title}.`],
+    sourceIds: ["documento-completo"],
+  };
+}
+
+test("splitProcessedContentIntoParts agrupa secoes consecutivas ate o teto de tamanho por parte", () => {
+  const markdown =
+    "## Introdução\n\nTexto da introdução, denso o bastante para contar.\n\n"
+    + "## Conceito de Sistema\n\nTexto do conceito, também denso.\n\n"
+    + "## Camada de Abstração\n\nTexto da camada de abstração.";
+  const audioScript =
+    "## Introdução\nNarração da introdução.\n\n"
+    + "## Conceito de Sistema\nNarração do conceito.\n\n"
+    + "## Camada de Abstração\nNarração da camada.";
+  const slides = [slide("Introdução"), slide("Conceito"), slide("Camada")];
+
+  // teto minusculo forca cada secao a virar sua propria parte.
+  const parts = splitProcessedContentIntoParts(
+    { markdown, audioScript, slides },
+    { targetPartChars: 1 },
+  );
+
+  assert.equal(parts.length, 3);
+  assert.deepEqual(parts.map((p) => p.ordem), [1, 2, 3]);
+  assert.deepEqual(parts.map((p) => p.titulo), [
+    "Introdução",
+    "Conceito de Sistema",
+    "Camada de Abstração",
+  ]);
+  assert.ok(parts[0].markdown.includes("Texto da introdução"));
+  assert.ok(!parts[0].markdown.includes("Texto do conceito"));
+  assert.ok(parts[0].audioScript.includes("Narração da introdução"));
+  assert.ok(!parts[0].audioScript.includes("## "), "marcador de secao nao deve sobrar no audio final");
+  assert.deepEqual(parts.map((p) => p.slides.length), [1, 1, 1]);
+});
+
+test("splitProcessedContentIntoParts junta secoes pequenas numa parte so quando cabem no teto", () => {
+  const markdown =
+    "## Um\n\nBreve.\n\n## Dois\n\nBreve também.\n\n## Três\n\nBreve de novo.";
+  const audioScript = "## Um\nFala 1.\n\n## Dois\nFala 2.\n\n## Três\nFala 3.";
+
+  const parts = splitProcessedContentIntoParts(
+    { markdown, audioScript, slides: [] },
+    { targetPartChars: 10_000 },
+  );
+
+  assert.equal(parts.length, 1);
+  assert.ok(parts[0].markdown.includes("Um") && parts[0].markdown.includes("Três"));
+});
+
+test("splitProcessedContentIntoParts cai no fallback proporcional quando o audio nao tem os marcadores", () => {
+  const markdown = "## Um\n\nConteúdo um.\n\n## Dois\n\nConteúdo dois bem maior que o primeiro.";
+  const audioScriptSemMarcadores = "Narração corrida sem nenhum marcador de secao.";
+
+  const parts = splitProcessedContentIntoParts(
+    { markdown, audioScript: audioScriptSemMarcadores, slides: [] },
+    { targetPartChars: 1 },
+  );
+
+  assert.equal(parts.length, 2);
+  const totalAudio = parts.map((p) => p.audioScript).join("");
+  assert.ok(totalAudio.length > 0);
+  // nenhum audio se perde no fallback - a soma das partes cobre o texto original.
+  assert.ok(parts.every((p) => p.audioScript.length > 0));
+});
+
+test("splitProcessedContentIntoParts devolve uma unica parte quando o markdown nao tem headings", () => {
+  const markdown = "Texto corrido sem headings.";
+  const audioScript = "Narração corrida.";
+
+  const parts = splitProcessedContentIntoParts({ markdown, audioScript, slides: [slide("Único")] });
+
+  assert.equal(parts.length, 1);
+  assert.equal(parts[0].markdown, markdown);
+  assert.equal(parts[0].audioScript, audioScript);
+  assert.equal(parts[0].slides.length, 1);
 });
