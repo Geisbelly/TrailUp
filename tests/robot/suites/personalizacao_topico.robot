@@ -1,4 +1,5 @@
 *** Settings ***
+Library    String
 Resource    ../resources/Login.resource
 Resource    ../resources/Topico.resource
 Resource    ../resources/Personalizacao.resource
@@ -9,16 +10,19 @@ Suite Setup       Preparar Dados De Teste
 Suite Teardown    Limpar Dados De Teste
 
 *** Variables ***
-${NOME_CLASSE}          RF Teste Personalizacao
-${NOME_TOPICO}          Topico RF Teste
+${NOME_CLASSE}          ${EMPTY}
+${NOME_TOPICO}          ${EMPTY}
 ${TITULO_CONTEUDO}      Conteúdo RF Teste Automatizado
 ${CORPO_CONTEUDO}       Conteudo de teste gerado automaticamente pela suite Robot Framework de personalizacao.
 
 *** Keywords ***
 Preparar Dados De Teste
+    ${sufixo}=    Generate Random String    8    [LETTERS][NUMBERS]
+    Set Suite Variable    ${NOME_CLASSE}    RF Teste Personalizacao ${sufixo}
+    Set Suite Variable    ${NOME_TOPICO}    Topico RF Teste ${sufixo}
     Obter Token Do Professor De Teste
-    Criar Classe De Teste
-    Criar Topico De Teste
+    Criar Classe De Teste    ${NOME_CLASSE}
+    Criar Topico De Teste    ${NOME_TOPICO}
 
 Limpar Dados De Teste
     Remover Dados De Teste

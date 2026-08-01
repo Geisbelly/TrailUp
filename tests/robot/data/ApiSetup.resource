@@ -22,13 +22,14 @@ Obter Token Do Professor De Teste
     Set Suite Variable    ${PROFESSOR_UUID}    ${response.json()}[user][id]
 
 Criar Classe De Teste
+    [Arguments]    ${descricao}=RF Teste Personalizacao
     ${headers}=    Create Dictionary
     ...    apikey=${SUPABASE_ANON_KEY}
     ...    Authorization=Bearer ${ACCESS_TOKEN}
     ...    Content-Type=application/json
     ...    Prefer=return=representation
     ${body}=    Create Dictionary
-    ...    descricao=RF Teste Personalizacao
+    ...    descricao=${descricao}
     ...    materia_id=${None}
     ...    professor_id=${PROFESSOR_UUID}
     ${response}=    POST On Session    supabase    /rest/v1/classe
@@ -37,6 +38,7 @@ Criar Classe De Teste
     Set Suite Variable    ${CLASSE_ID}    ${criada}[id]
 
 Criar Topico De Teste
+    [Arguments]    ${nome}=Topico RF Teste
     ${headers}=    Create Dictionary
     ...    apikey=${SUPABASE_ANON_KEY}
     ...    Authorization=Bearer ${ACCESS_TOKEN}
@@ -44,7 +46,7 @@ Criar Topico De Teste
     ...    Prefer=return=representation
     @{vazio}=    Create List
     ${body}=    Create Dictionary
-    ...    nome=Topico RF Teste
+    ...    nome=${nome}
     ...    classe_id=${CLASSE_ID}
     ...    ordem=${1}
     ...    next=${vazio}
