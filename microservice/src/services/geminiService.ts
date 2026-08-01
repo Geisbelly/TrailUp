@@ -668,12 +668,59 @@ export function consolidateBlockBatchGenerations(
   };
 }
 
+/**
+ * Junta todos os blocos enriquecidos pela API num único bloco sintético
+ * antes da geração de áudio/markdown. A API continua dividindo o material
+ * em blocos (cada um já enriquecido e com teto de tamanho — ver
+ * content_enrichment.py), mas a geração deixa de tratar cada bloco como um
+ * capítulo isolado: o modelo volta a ver o tópico inteiro de uma vez, como
+ * na versão original do gerador, e sintetiza um guia único e coeso — sem
+ * isso, cada segmento de origem virava sua própria seção mesmo quando o
+ * material do professor reintroduzia o mesmo conceito em mais de um slide,
+ * duplicando o mesmo assunto com palavras diferentes no material final.
+ */
+export function mergeContentBlocksIntoOne(
+  contentBlocks: EnrichedContentBlock[],
+): EnrichedContentBlock {
+  const ordered = [...contentBlocks].sort((a, b) => a.ordem - b.ordem);
+  const label = (block: EnrichedContentBlock) =>
+    normalizedText(block.topico) || normalizedText(block.tema) || block.id;
+
+  const joinSections = (pick: (block: EnrichedContentBlock) => string) =>
+    ordered
+      .map((block) => `[${label(block)}]\n${pick(block).trim()}`)
+      .filter((section) => section.length > 0)
+      .join("\n\n---\n\n");
+
+  return {
+    id: "documento-completo",
+    ordem: 1,
+    tema: ordered[0]?.tema ?? "",
+    topico: normalizedStringList(ordered.map((block) => block.topico)).join(" | "),
+    objetivos: normalizedStringList(ordered.flatMap((block) => block.objetivos)),
+    conteudo_base: joinSections((block) => block.conteudo_base),
+    conteudo_aprofundado: joinSections((block) => block.conteudo_aprofundado),
+    conceitos_chave: normalizedStringList(ordered.flatMap((block) => block.conceitos_chave)),
+    exemplos_contextos: normalizedStringList(ordered.flatMap((block) => block.exemplos_contextos)),
+    ponte_proximo_bloco: "",
+    source_ids: normalizedStringList(ordered.flatMap((block) => block.source_ids)),
+  };
+}
+
 export async function processMediaWithGemini(
   filesData: { data: string; mimeType: string; name: string }[],
   profile: BrainHexProfile,
   contentBlocks: EnrichedContentBlock[] = [],
   requestedPresentationPlan?: PresentationDesignPlan,
 ): Promise<ProcessedContent> {
+  // API continua dividindo o material em blocos (ver content_enrichment.py),
+  // mas a partir daqui a geracao volta a tratar o topico inteiro como uma
+  // unidade so, em vez de um capitulo por bloco (ver mergeContentBlocksIntoOne).
+  const originalBlocksCount = contentBlocks.length;
+  if (contentBlocks.length > 1) {
+    contentBlocks = [mergeContentBlocksIntoOne(contentBlocks)];
+  }
+
   const config = BRAIN_HEX_CONFIG[profile];
   const presentationPlan = requestedPresentationPlan
     ?? buildPresentationDesignPlan(
@@ -702,7 +749,7 @@ export async function processMediaWithGemini(
   const contentsParts: any[] = [];
 
   if (contentBlocks.length > 0) {
-    blocksCount += contentBlocks.length;
+    blocksCount += originalBlocksCount;
   }
 
   // Com blocos enriquecidos, eles já são a fonte curricular validada. Arquivos
@@ -897,14 +944,24 @@ export async function processMediaWithGemini(
          funciona como assinatura, sem substituir o assunto real da aula por fantasia genérica.
 
     ${contentBlocks.length > 0 ? `
-    MODO DE GERAÇÃO POR BLOCOS:
-    - A resposta contém "chapters", exatamente um capítulo para cada bloco recebido.
-    - Preserve o id do bloco exatamente em "blockId"; não crie, funda ou omita ids.
-    - Cada markdown e audioScript cobre somente seu bloco, usando integralmente
-      conteudo_base, conteudo_aprofundado, objetivos, conceitos e exemplos.
-    - Cada capítulo deve ter ao menos um slide e TODO slide deve incluir o blockId
-      do capítulo em sourceIds. Use somente ids de bloco deste lote em sourceIds.
-    - Não escreva introdução ou conclusão global que substitua capítulos.
+    SÍNTESE DE DOCUMENTO ÚNICO:
+    - O bloco recebido contém o material COMPLETO do tópico. Internamente ele
+      pode conter vários segmentos de origem concatenados (separados por
+      "---" e identificados entre colchetes), porque o professor organizou o
+      material original em partes — mas isso é só rastreabilidade interna.
+    - Escreva o markdown e o audioScript como um ÚNICO guia coeso, do início
+      ao fim, como um professor explicando o tema inteiro numa aula só — não
+      crie uma seção ou capítulo por segmento de origem.
+    - Se o mesmo conceito aparecer em mais de um segmento de origem (o
+      material do professor às vezes reintroduz o mesmo tema em slides
+      diferentes), escreva-o UMA ÚNICA VEZ, na melhor posição lógica dentro
+      do guia — nunca repita a mesma seção ou ideia com palavras diferentes
+      só porque a fonte a repetiu.
+    - Isso não é licença para omitir conteúdo: a regra 1 (Fidelidade
+      Absoluta) continua valendo — cubra 100% dos conceitos técnicos
+      presentes no material, só sem duplicá-los.
+    - Ainda assim, gere ao menos um slide por assunto principal abordado.
+      Todo slide deve incluir o blockId do capítulo em sourceIds.
     ` : ""}
 
     Estética: cor de assinatura ${config.color}, sistema ${presentationPlan.styleName},
@@ -937,10 +994,10 @@ export async function processMediaWithGemini(
       async (batch, index): Promise<GeneratedBlockBatch> => {
         const expectedIds = batch.map((block) => block.id);
         const batchInput =
-          `LOTE ${index + 1} DE ${batches.length}.\n`
-          + `IDS OBRIGATORIOS, NESTA ORDEM: ${JSON.stringify(expectedIds)}\n`
-          + "Gere um capitulo completo e independente para CADA bloco abaixo. "
-          + "Nao responda com resumo global.\n\n"
+          `IDS OBRIGATORIOS, NESTA ORDEM: ${JSON.stringify(expectedIds)}\n`
+          + "Sintetize o material abaixo num unico capitulo coeso, cobrindo "
+          + "100% dos conceitos sem repetir o mesmo assunto em secoes "
+          + "diferentes.\n\n"
           + JSON.stringify(batch, null, 2);
         const generation = await generateStructuredContentWithFallback(
           {

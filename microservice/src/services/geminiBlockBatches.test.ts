@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   consolidateBlockBatchGenerations,
   generateOpenAIFallbackChapters,
+  mergeContentBlocksIntoOne,
   mergeSplitFallbackChapters,
   partitionContentBlocks,
   resolveContentBlockBatchSize,
@@ -55,6 +56,30 @@ function chapter(blockId: string, marker: string) {
     }],
   };
 }
+
+test("mergeContentBlocksIntoOne junta todos os blocos num unico bloco sintetico, na ordem certa", () => {
+  const unordered = [block(3, 3), block(1, 1), block(2, 2)];
+
+  const merged = mergeContentBlocksIntoOne(unordered);
+
+  assert.equal(merged.id, "documento-completo");
+  assert.equal(merged.ordem, 1);
+  // conteudo_base concatena na ordem pedagogica (1, 2, 3), nao na ordem de entrada.
+  const base1Index = merged.conteudo_base.indexOf("Base técnica 1.");
+  const base2Index = merged.conteudo_base.indexOf("Base técnica 2.");
+  const base3Index = merged.conteudo_base.indexOf("Base técnica 3.");
+  assert.ok(base1Index >= 0 && base2Index > base1Index && base3Index > base2Index);
+  // conteudo_aprofundado de cada bloco original continua presente por inteiro.
+  for (const original of unordered) {
+    assert.ok(merged.conteudo_aprofundado.includes(original.conteudo_aprofundado));
+  }
+  // listas agregadas sem duplicatas.
+  assert.deepEqual(
+    merged.conceitos_chave,
+    ["conceito técnico", "aplicação prática"],
+  );
+  assert.deepEqual(merged.source_ids, ["conteudo:1", "conteudo:2", "conteudo:3"]);
+});
 
 test("particiona todos os blocos em lotes pequenos e preserva a ordem pedagógica", () => {
   const unordered = [
