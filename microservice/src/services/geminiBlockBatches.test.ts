@@ -168,6 +168,47 @@ test("aceita audioScript vazio quando requireAudio=false - fallback OpenAI nao t
   assert.ok(result.chapters[0].markdown.length > 0);
 });
 
+test("corrige sourceIds do slide quando o lote tem um unico bloco valido, em vez de recusar a tentativa", () => {
+  // Lote sempre tem 1 bloco hoje (batch size = 1) - com um unico id valido,
+  // sourceIds ausente/errado nao e ambiguo: so pode ser [blockId]. Reprovar
+  // a tentativa inteira por isso descarta markdown/audio bons que vieram
+  // corretos no mesmo capitulo, so por um campo de rastreabilidade que o
+  // fallback OpenAI as vezes esquece de preencher.
+  const missingSourceIds = chapter("bloco-01", "UM");
+  missingSourceIds.slides[0].sourceIds = [];
+  const result = validateBlockBatchGeneration(
+    [block(1)],
+    { chapters: [missingSourceIds], confidence: 0.9 },
+    1,
+  );
+  assert.deepEqual(result.chapters[0].slides[0].sourceIds, ["bloco-01"]);
+
+  const wrongSourceIds = chapter("bloco-01", "UM");
+  wrongSourceIds.slides[0].sourceIds = ["bloco-99"];
+  const corrected = validateBlockBatchGeneration(
+    [block(1)],
+    { chapters: [wrongSourceIds], confidence: 0.9 },
+    1,
+  );
+  assert.deepEqual(corrected.chapters[0].slides[0].sourceIds, ["bloco-01"]);
+});
+
+test("recusa slide fora do lote quando ha mais de um bloco valido (preserva a checagem multi-bloco)", () => {
+  const outOfBatch = chapter("bloco-01", "UM");
+  outOfBatch.slides[0].sourceIds = ["bloco-99"];
+  assert.throws(
+    () => validateBlockBatchGeneration(
+      [block(1), block(2)],
+      {
+        chapters: [outOfBatch, chapter("bloco-02", "DOIS")],
+        confidence: 0.9,
+      },
+      1,
+    ),
+    /não referencia seu bloco/,
+  );
+});
+
 test("consolida markdown, áudio e slides na ordem global com metadados dos lotes", () => {
   const blocks = [block(1), block(2), block(3), block(4)];
   const batches = partitionContentBlocks(blocks, 2);

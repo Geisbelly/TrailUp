@@ -310,11 +310,24 @@ function validateSlideForBlock(
     throw new Error(`Slide ${slideIndex + 1} inválido no capítulo ${blockId}.`);
   }
   const slide = raw as Record<string, unknown>;
-  const sourceIds = normalizedStringList(slide.sourceIds);
+  let sourceIds = normalizedStringList(slide.sourceIds);
   if (!sourceIds.includes(blockId)) {
-    throw new Error(
-      `Slide ${slideIndex + 1} não referencia seu bloco ${blockId}.`,
-    );
+    // Lotes sempre tem exatamente 1 bloco hoje (DEFAULT/MAX_CONTENT_BLOCK_BATCH_SIZE
+    // = 1) - com um unico id valido no lote nao ha ambiguidade sobre qual
+    // deveria ser o sourceIds. O modelo (sobretudo a contingencia OpenAI)
+    // as vezes esquece de preencher esse campo de rastreabilidade mesmo
+    // gerando o resto do slide corretamente; reprovar a tentativa inteira
+    // por isso descarta conteudo bom por um campo com resposta unica
+    // possivel neste caso. So reprova de verdade quando o lote tiver mais
+    // de um bloco valido (nao acontece hoje, mas preserva a checagem se o
+    // batch size voltar a ser >1 no futuro).
+    if (batchIds.size === 1) {
+      sourceIds = [blockId];
+    } else {
+      throw new Error(
+        `Slide ${slideIndex + 1} não referencia seu bloco ${blockId}.`,
+      );
+    }
   }
   if (sourceIds.some((sourceId) => !batchIds.has(sourceId))) {
     throw new Error(
