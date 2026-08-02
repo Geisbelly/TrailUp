@@ -54,9 +54,30 @@ function geminiApiKeys(): string[] {
 }
 
 const _geminiClients = new Map<string, GoogleGenAI>();
+// Cota do free tier e por (chave, modelo) — nao só por chave (ver tabela de
+// cotas do AI Studio: gemini-3.6-flash tem teto diário baixo, gemini-2.5-
+// flash-lite não). Chavear o cooldown só por API key faria uma chave
+// esgotada num modelo parecer indisponível pra TODOS os modelos, inclusive
+// os com cota livre.
 const _geminiKeyCooldownUntil = new Map<string, number>();
 let _geminiKeyIndex = 0;
 const GEMINI_KEY_QUOTA_COOLDOWN_MS = 5 * 60 * 1_000;
+// gemini-2.5-flash-lite aparece com cota diária muito maior (ou ilimitada)
+// que gemini-3.6-flash nas tabelas do AI Studio — usado como 2a tentativa
+// quando TODAS as chaves esgotam a cota do modelo principal, antes de cair
+// pro fallback pago da OpenAI.
+const DEFAULT_GEMINI_TEXT_FALLBACK_MODEL = "gemini-2.5-flash-lite";
+
+function resolveGeminiTextFallbackModel(
+  environment: Record<string, string | undefined> = process.env,
+): string {
+  return String(environment.GEMINI_TEXT_FALLBACK_MODEL ?? "").trim()
+    || DEFAULT_GEMINI_TEXT_FALLBACK_MODEL;
+}
+
+function cooldownKey(apiKey: string, model: string): string {
+  return `${apiKey}::${model}`;
+}
 
 function clientForGeminiKey(key: string): GoogleGenAI {
   let client = _geminiClients.get(key);
@@ -67,14 +88,14 @@ function clientForGeminiKey(key: string): GoogleGenAI {
   return client;
 }
 
-// Round-robin entre as chaves que nao estao em cooldown de cota; null se
-// todas estiverem indisponiveis no momento.
-export function pickAvailableGeminiKey(keys: string[]): string | null {
+// Round-robin entre as chaves que nao estao em cooldown de cota PRA ESSE
+// MODELO; null se todas estiverem indisponiveis no momento.
+export function pickAvailableGeminiKey(keys: string[], model: string): string | null {
   const now = Date.now();
   for (let offset = 0; offset < keys.length; offset += 1) {
     const index = (_geminiKeyIndex + offset) % keys.length;
     const key = keys[index];
-    if (now >= (_geminiKeyCooldownUntil.get(key) ?? 0)) {
+    if (now >= (_geminiKeyCooldownUntil.get(cooldownKey(key, model)) ?? 0)) {
       _geminiKeyIndex = index;
       return key;
     }
@@ -88,12 +109,12 @@ export function resetGeminiKeyRotationForTests(): void {
   _geminiKeyCooldownUntil.clear();
 }
 
-function getAi(): GoogleGenAI {
+function getAi(model: string): GoogleGenAI {
   const keys = geminiApiKeys();
   if (keys.length === 0) {
     throw new Error("GEMINI_API_KEY ausente — configure no .env antes de chamar o serviço Gemini.");
   }
-  const key = pickAvailableGeminiKey(keys) ?? keys[_geminiKeyIndex % keys.length];
+  const key = pickAvailableGeminiKey(keys, model) ?? keys[_geminiKeyIndex % keys.length];
   return clientForGeminiKey(key);
 }
 
@@ -105,34 +126,56 @@ function isGeminiQuotaOrRateLimitError(error: unknown): boolean {
 }
 
 /**
- * Marca a chave Gemini atualmente selecionada como esgotada e avança o
- * round-robin pra próxima. Retorna true quando havia outra chave disponível
- * pra tentar imediatamente (sem cooldown de espera).
+ * Marca a chave Gemini atualmente selecionada como esgotada PRA ESSE MODELO
+ * e avança o round-robin pra próxima. Retorna true quando havia outra chave
+ * disponível pra tentar imediatamente (sem cooldown de espera) nesse mesmo
+ * modelo.
  */
-export function rotateGeminiKeyAfterFailure(error: unknown): boolean {
+export function rotateGeminiKeyAfterFailure(error: unknown, model: string): boolean {
+  if (!isGeminiQuotaOrRateLimitError(error)) return false;
   const keys = geminiApiKeys();
-  if (keys.length <= 1 || !isGeminiQuotaOrRateLimitError(error)) return false;
+  if (keys.length === 0) return false;
+  // Registra o cooldown mesmo com 1 chave so: mesmo sem outra chave pra
+  // tentar AGORA, essa marca evita que uma proxima chamada nesse mesmo
+  // modelo bata de novo numa cota ja sabidamente esgotada — ela cai direto
+  // pro modelo alternativo (ver generateGeminiContent) sem gastar uma
+  // chamada real.
   const exhaustedKey = keys[_geminiKeyIndex % keys.length];
-  _geminiKeyCooldownUntil.set(exhaustedKey, Date.now() + GEMINI_KEY_QUOTA_COOLDOWN_MS);
-  return pickAvailableGeminiKey(keys) !== null;
+  _geminiKeyCooldownUntil.set(cooldownKey(exhaustedKey, model), Date.now() + GEMINI_KEY_QUOTA_COOLDOWN_MS);
+  return keys.length > 1 && pickAvailableGeminiKey(keys, model) !== null;
 }
 
 /**
  * Ponto único de chamada ao Gemini generateContent: se a chave atual esgotou
- * a cota, tenta uma vez com a próxima chave disponível antes de propagar o
- * erro — que então aciona o circuito de indisponibilidade / fallback pago já
- * existente em contentGenerationService.ts e nos retries ad hoc de TTS/imagem.
+ * a cota do modelo pedido, tenta uma vez com a próxima chave disponível pra
+ * esse modelo. Se TODAS as chaves esgotarem a cota do modelo principal,
+ * tenta o modelo alternativo (cota separada) antes de propagar o erro — que
+ * então aciona o circuito de indisponibilidade / fallback pago já existente
+ * em contentGenerationService.ts e nos retries ad hoc de TTS/imagem.
  */
 async function generateGeminiContent(
   params: Parameters<GoogleGenAI["models"]["generateContent"]>[0],
 ): ReturnType<GoogleGenAI["models"]["generateContent"]> {
+  const model = String(params.model ?? "");
   try {
-    return await getAi().models.generateContent(params);
+    return await getAi(model).models.generateContent(params);
   } catch (error) {
-    if (rotateGeminiKeyAfterFailure(error)) {
-      return await getAi().models.generateContent(params);
+    if (rotateGeminiKeyAfterFailure(error, model)) {
+      return await getAi(model).models.generateContent(params);
     }
-    throw error;
+    const fallbackModel = resolveGeminiTextFallbackModel();
+    if (!isGeminiQuotaOrRateLimitError(error) || !fallbackModel || fallbackModel === model) {
+      throw error;
+    }
+    const fallbackParams = { ...params, model: fallbackModel };
+    try {
+      return await getAi(fallbackModel).models.generateContent(fallbackParams);
+    } catch (fallbackError) {
+      if (rotateGeminiKeyAfterFailure(fallbackError, fallbackModel)) {
+        return await getAi(fallbackModel).models.generateContent(fallbackParams);
+      }
+      throw fallbackError;
+    }
   }
 }
 

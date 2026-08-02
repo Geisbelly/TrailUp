@@ -578,6 +578,48 @@ async def test_gemini_alterna_para_a_proxima_chave_quando_uma_esgota_a_cota(
     assert captured["keys_used"] == ["key-1", "key-2"]
 
 
+@pytest.mark.asyncio
+async def test_gemini_usa_modelo_alternativo_quando_todas_as_chaves_esgotam_o_modelo_principal(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A cota do free tier e por (chave, modelo): gemini-2.5-flash-lite tem
+    teto bem maior que gemini-3.6-flash. Com uma unica chave configurada, se
+    ela esgotar a cota do modelo principal em TODAS as tentativas, a proxima
+    tentativa deve trocar pro modelo alternativo (mesma chave) antes de
+    precisar do fallback pago da OpenAI."""
+    captured: dict[str, Any] = {}
+
+    class _QuotaExhaustedClient:
+        def with_structured_output(self, _schema: Any) -> Any:
+            class _Structured:
+                async def ainvoke(self, _messages: list[Any]) -> Any:
+                    raise Exception("429 RESOURCE_EXHAUSTED: quota exceeded")
+
+            return _Structured()
+
+    def factory(api_key: str, model: str) -> Any:
+        captured.setdefault("models_used", []).append(model)
+        if model == "gemini-3.6-flash":
+            return _QuotaExhaustedClient()
+        return _GeminiClient(_rich_response, captured)
+
+    monkeypatch.setattr(enrichment_module, "_gemini_client", factory)
+
+    result = await enrich_content_blocks(
+        context=_context(),
+        settings=_settings(
+            gemini_api_key="key-1",
+            content_enrichment_gemini_model="gemini-3.6-flash",
+            content_enrichment_gemini_fallback_model="gemini-2.5-flash-lite",
+        ),
+    )
+
+    assert result["metadata"]["enrichment_llm_provider"] == "gemini"
+    # a 1a tentativa esgota a cota do modelo principal na unica chave; a 2a
+    # tentativa ja roda com o modelo alternativo, sem precisar da OpenAI.
+    assert captured["models_used"] == ["gemini-3.6-flash", "gemini-2.5-flash-lite"]
+
+
 # ─── OpenAI como reserva secundária (só quando o Gemini falha) ────────────────
 
 
