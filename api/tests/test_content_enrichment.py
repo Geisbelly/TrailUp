@@ -529,6 +529,55 @@ async def test_gemini_circuito_nao_abre_para_erros_genericos(
     assert calls["calls"] == 2
 
 
+def test_parse_gemini_keys_aceita_multiplas_chaves_separadas_por_virgula() -> None:
+    assert enrichment_module._parse_gemini_keys("key-1, key-2 ;key-3") == [
+        "key-1",
+        "key-2",
+        "key-3",
+    ]
+    assert enrichment_module._parse_gemini_keys("key-1, key-1, key-2") == [
+        "key-1",
+        "key-2",
+    ]
+    assert enrichment_module._parse_gemini_keys("") == []
+
+
+@pytest.mark.asyncio
+async def test_gemini_alterna_para_a_proxima_chave_quando_uma_esgota_a_cota(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Com 2+ chaves configuradas, uma chave esgotada nao deve derrubar o
+    enriquecimento pro fallback pago da OpenAI — a proxima tentativa ja roda
+    com a proxima chave disponivel."""
+    captured: dict[str, Any] = {}
+
+    class _QuotaExhaustedClient:
+        def with_structured_output(self, _schema: Any) -> Any:
+            class _Structured:
+                async def ainvoke(self, _messages: list[Any]) -> Any:
+                    raise Exception("429 RESOURCE_EXHAUSTED: quota exceeded")
+
+            return _Structured()
+
+    def factory(api_key: str, model: str) -> Any:
+        captured.setdefault("keys_used", []).append(api_key)
+        if api_key == "key-1":
+            return _QuotaExhaustedClient()
+        return _GeminiClient(_rich_response, captured)
+
+    monkeypatch.setattr(enrichment_module, "_gemini_client", factory)
+
+    result = await enrich_content_blocks(
+        context=_context(),
+        settings=_settings(gemini_api_key="key-1,key-2"),
+    )
+
+    assert result["metadata"]["enrichment_llm_provider"] == "gemini"
+    # a 1a tentativa esgota a cota de key-1; a 2a tentativa ja roda com key-2,
+    # sem precisar do fallback pago da OpenAI.
+    assert captured["keys_used"] == ["key-1", "key-2"]
+
+
 # ─── OpenAI como reserva secundária (só quando o Gemini falha) ────────────────
 
 

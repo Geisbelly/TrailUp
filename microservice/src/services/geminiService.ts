@@ -32,15 +32,108 @@ import {
   SourceRef 
 } from "../types";
 
-let _ai: GoogleGenAI | null = null;
+// Suporta multiplas chaves Gemini na mesma GEMINI_API_KEY (separadas por
+// virgula/ponto-e-virgula). Cada chave tem sua propria cota diaria gratuita —
+// alternar entre elas multiplica o limite efetivo (ex.: 3 chaves x 20 req/dia
+// = 60 req/dia) sem custo adicional.
+export function parseGeminiApiKeys(raw: string | undefined): string[] {
+  const seen = new Set<string>();
+  const keys: string[] = [];
+  for (const part of String(raw ?? "").split(/[,;]/)) {
+    const key = part.trim();
+    if (key && !seen.has(key)) {
+      seen.add(key);
+      keys.push(key);
+    }
+  }
+  return keys;
+}
+
+function geminiApiKeys(): string[] {
+  return parseGeminiApiKeys(process.env.GEMINI_API_KEY);
+}
+
+const _geminiClients = new Map<string, GoogleGenAI>();
+const _geminiKeyCooldownUntil = new Map<string, number>();
+let _geminiKeyIndex = 0;
+const GEMINI_KEY_QUOTA_COOLDOWN_MS = 5 * 60 * 1_000;
+
+function clientForGeminiKey(key: string): GoogleGenAI {
+  let client = _geminiClients.get(key);
+  if (!client) {
+    client = new GoogleGenAI({ apiKey: key });
+    _geminiClients.set(key, client);
+  }
+  return client;
+}
+
+// Round-robin entre as chaves que nao estao em cooldown de cota; null se
+// todas estiverem indisponiveis no momento.
+export function pickAvailableGeminiKey(keys: string[]): string | null {
+  const now = Date.now();
+  for (let offset = 0; offset < keys.length; offset += 1) {
+    const index = (_geminiKeyIndex + offset) % keys.length;
+    const key = keys[index];
+    if (now >= (_geminiKeyCooldownUntil.get(key) ?? 0)) {
+      _geminiKeyIndex = index;
+      return key;
+    }
+  }
+  return null;
+}
+
+/** Só pra isolar testes entre si — reseta o round-robin e os cooldowns de chave. */
+export function resetGeminiKeyRotationForTests(): void {
+  _geminiKeyIndex = 0;
+  _geminiKeyCooldownUntil.clear();
+}
+
 function getAi(): GoogleGenAI {
-  if (_ai) return _ai;
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
+  const keys = geminiApiKeys();
+  if (keys.length === 0) {
     throw new Error("GEMINI_API_KEY ausente — configure no .env antes de chamar o serviço Gemini.");
   }
-  _ai = new GoogleGenAI({ apiKey });
-  return _ai;
+  const key = pickAvailableGeminiKey(keys) ?? keys[_geminiKeyIndex % keys.length];
+  return clientForGeminiKey(key);
+}
+
+function isGeminiQuotaOrRateLimitError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return message.includes("429")
+    || message.includes("quota")
+    || message.includes("RESOURCE_EXHAUSTED");
+}
+
+/**
+ * Marca a chave Gemini atualmente selecionada como esgotada e avança o
+ * round-robin pra próxima. Retorna true quando havia outra chave disponível
+ * pra tentar imediatamente (sem cooldown de espera).
+ */
+export function rotateGeminiKeyAfterFailure(error: unknown): boolean {
+  const keys = geminiApiKeys();
+  if (keys.length <= 1 || !isGeminiQuotaOrRateLimitError(error)) return false;
+  const exhaustedKey = keys[_geminiKeyIndex % keys.length];
+  _geminiKeyCooldownUntil.set(exhaustedKey, Date.now() + GEMINI_KEY_QUOTA_COOLDOWN_MS);
+  return pickAvailableGeminiKey(keys) !== null;
+}
+
+/**
+ * Ponto único de chamada ao Gemini generateContent: se a chave atual esgotou
+ * a cota, tenta uma vez com a próxima chave disponível antes de propagar o
+ * erro — que então aciona o circuito de indisponibilidade / fallback pago já
+ * existente em contentGenerationService.ts e nos retries ad hoc de TTS/imagem.
+ */
+async function generateGeminiContent(
+  params: Parameters<GoogleGenAI["models"]["generateContent"]>[0],
+): ReturnType<GoogleGenAI["models"]["generateContent"]> {
+  try {
+    return await getAi().models.generateContent(params);
+  } catch (error) {
+    if (rotateGeminiKeyAfterFailure(error)) {
+      return await getAi().models.generateContent(params);
+    }
+    throw error;
+  }
 }
 
 // --- 1. Ingestion & Extraction Modules ---
@@ -1175,7 +1268,7 @@ export async function processMediaWithGemini(
           },
           {
             generateWithGemini: async (call) => {
-              const response = await getAi().models.generateContent({
+              const response = await generateGeminiContent({
                 model: call.geminiModel,
                 contents: [{
                   parts: [{ text: call.input }],
@@ -1216,7 +1309,7 @@ export async function processMediaWithGemini(
                     + "aguardando o Gemini se recuperar.",
                   );
                 }
-                const response = await getAi().models.generateContent({
+                const response = await generateGeminiContent({
                   model: currentCall.geminiModel,
                   contents: [{
                     parts: [{ text: currentCall.input }],
@@ -1287,7 +1380,7 @@ export async function processMediaWithGemini(
     });
   }
 
-  const response = await getAi().models.generateContent({
+  const response = await generateGeminiContent({
     model: resolveGeminiContentGenerationModel(),
     contents: [
       {
@@ -1436,7 +1529,7 @@ export async function generateNaturalAudio(
 ): Promise<{ wav: string, mp3: string | null }> {
   let response;
   try {
-    response = await getAi().models.generateContent({
+    response = await generateGeminiContent({
       model: "gemini-3.1-flash-tts-preview",
       contents: [{
         parts: [{
@@ -1560,7 +1653,7 @@ export async function generateConversationalAudio(
 ): Promise<{ wav: string, mp3: string | null }> {
   let response;
   try {
-    response = await getAi().models.generateContent({
+    response = await generateGeminiContent({
       model: "gemini-3.1-flash-tts-preview",
       contents: [{
         parts: [{
@@ -1624,7 +1717,7 @@ export async function generateLongConversationalAudio(
  */
 export async function generateSlideImage(prompt: string, retries = 3): Promise<string> {
   try {
-    const response = await getAi().models.generateContent({
+    const response = await generateGeminiContent({
       model: 'gemini-2.5-flash-image',
       contents: {
         parts: [

@@ -65,8 +65,12 @@ _openai_enrichment_unavailable_until: float = 0.0
 
 # Gemini e o provedor PRINCIPAL de enriquecimento (gratuito, sem cobranca —
 # ver enrich_content_blocks). Este circuito protege contra rate-limit do
-# proprio Gemini, nao contra falha da OpenAI.
-_gemini_enrichment_unavailable_until: float = 0.0
+# proprio Gemini, nao contra falha da OpenAI. Uma entrada por chave
+# configurada (ver _parse_gemini_keys) — cota esgotada numa chave nao pode
+# bloquear as outras, cada uma tem sua propria cota diaria gratuita.
+_gemini_enrichment_unavailable_until: dict[str, float] = {}
+# Indice do round-robin entre chaves Gemini disponiveis (ver _pick_available_gemini_key).
+_gemini_key_rotation_index: int = 0
 
 # Gasto estimado acumulado da OpenAI (reserva secundaria) neste processo, em
 # USD. Best-effort: baseado nos tokens que a propria OpenAI reporta em cada
@@ -193,9 +197,39 @@ def _is_gemini_quota_error(exc: BaseException) -> bool:
     return "resource_exhausted" in text or "quota" in text
 
 
+def _parse_gemini_keys(raw: str) -> list[str]:
+    """Suporta múltiplas chaves Gemini separadas por vírgula/ponto-e-vírgula na
+    mesma variável GEMINI_API_KEY. Cada chave tem sua própria cota diária
+    gratuita — alternar entre elas multiplica o limite efetivo (ex.: 3 chaves
+    x 20 req/dia = 60 req/dia), sem custo adicional."""
+    seen: set[str] = set()
+    keys: list[str] = []
+    for part in re.split(r"[,;]", raw or ""):
+        key = part.strip()
+        if key and key not in seen:
+            seen.add(key)
+            keys.append(key)
+    return keys
+
+
+def _pick_available_gemini_key(api_keys: list[str]) -> str | None:
+    """Round-robin entre as chaves que não estão em cooldown de cota; None se
+    todas estiverem indisponíveis no momento."""
+    global _gemini_key_rotation_index
+    now = time.time()
+    for offset in range(len(api_keys)):
+        index = (_gemini_key_rotation_index + offset) % len(api_keys)
+        key = api_keys[index]
+        if now >= _gemini_enrichment_unavailable_until.get(key, 0.0):
+            _gemini_key_rotation_index = index
+            return key
+    return None
+
+
 def reset_gemini_enrichment_circuit() -> None:
-    global _gemini_enrichment_unavailable_until
-    _gemini_enrichment_unavailable_until = 0.0
+    global _gemini_enrichment_unavailable_until, _gemini_key_rotation_index
+    _gemini_enrichment_unavailable_until = {}
+    _gemini_key_rotation_index = 0
 
 
 class ContentEnrichmentError(RuntimeError):
@@ -827,7 +861,7 @@ async def _enrich_base_blocks_with_openai(
 
 async def _generate_gemini_batch(
     *,
-    client: Any,
+    api_keys: list[str],
     model: str,
     topic: dict[str, Any],
     blocks: list[dict[str, Any]],
@@ -835,13 +869,6 @@ async def _generate_gemini_batch(
     feedback: str,
     quota_cooldown_sec: int,
 ) -> tuple[dict[str, Any], str]:
-    global _gemini_enrichment_unavailable_until
-    if time.time() < _gemini_enrichment_unavailable_until:
-        raise ContentEnrichmentError(
-            "Gemini em circuito de indisponibilidade: cota insuficiente "
-            "detectada recentemente, aguardando cooldown antes de tentar "
-            "novamente."
-        )
     correction = (
         f"\n\nCORREÇÕES OBRIGATÓRIAS DA TENTATIVA ANTERIOR:\n{feedback}"
         if feedback
@@ -852,29 +879,54 @@ async def _generate_gemini_batch(
         f"BLOCOS-BASE:\n{json.dumps(blocks, ensure_ascii=False, indent=2)}"
         f"{correction}"
     )
-    try:
-        # with_structured_output aceita o mesmo JSON Schema usado pela OpenAI
-        # (text.format.json_schema) e devolve o dict ja parseado — sem
-        # output_text/json.loads manual como no caminho OpenAI.
-        structured_client = client.with_structured_output(_ENRICHMENT_SCHEMA)
-        raw = await structured_client.ainvoke(
-            [
-                SystemMessage(content=_ENRICHMENT_INSTRUCTIONS),
-                HumanMessage(content=input_text),
-            ]
-        )
-    except Exception as exc:
-        if _is_gemini_quota_error(exc):
-            _gemini_enrichment_unavailable_until = time.time() + quota_cooldown_sec
-        raise ContentEnrichmentError(
-            f"Gemini falhou ao aprofundar o lote na tentativa {attempt}: {exc}"
-        ) from exc
+    # Tenta cada chave disponivel dentro da MESMA tentativa: uma chave que
+    # esgota a cota nao deve consumir uma tentativa inteira nem cair pro
+    # fallback pago da OpenAI enquanto outra chave configurada ainda tiver
+    # cota livre. So desiste (e abre o circuito) quando todas estiverem em
+    # cooldown ou o erro nao for de cota.
+    last_exc: Exception | None = None
+    tried_any_key = False
+    for _ in range(len(api_keys)):
+        key = _pick_available_gemini_key(api_keys)
+        if key is None:
+            break
+        tried_any_key = True
+        client = _gemini_client(key, model)
+        try:
+            # with_structured_output aceita o mesmo JSON Schema usado pela OpenAI
+            # (text.format.json_schema) e devolve o dict ja parseado — sem
+            # output_text/json.loads manual como no caminho OpenAI.
+            structured_client = client.with_structured_output(_ENRICHMENT_SCHEMA)
+            raw = await structured_client.ainvoke(
+                [
+                    SystemMessage(content=_ENRICHMENT_INSTRUCTIONS),
+                    HumanMessage(content=input_text),
+                ]
+            )
+        except Exception as exc:
+            last_exc = exc
+            if _is_gemini_quota_error(exc):
+                _gemini_enrichment_unavailable_until[key] = time.time() + quota_cooldown_sec
+                continue
+            raise ContentEnrichmentError(
+                f"Gemini falhou ao aprofundar o lote na tentativa {attempt}: {exc}"
+            ) from exc
 
-    if not isinstance(raw, dict):
+        if not isinstance(raw, dict):
+            raise ContentEnrichmentError(
+                f"Gemini retornou enriquecimento fora do formato JSON na tentativa {attempt}."
+            )
+        return raw, model
+
+    if not tried_any_key:
         raise ContentEnrichmentError(
-            f"Gemini retornou enriquecimento fora do formato JSON na tentativa {attempt}."
+            "Gemini em circuito de indisponibilidade: cota insuficiente "
+            "detectada recentemente em todas as chaves configuradas, "
+            "aguardando cooldown antes de tentar novamente."
         )
-    return raw, model
+    raise ContentEnrichmentError(
+        f"Gemini falhou ao aprofundar o lote na tentativa {attempt}: {last_exc}"
+    ) from last_exc
 
 
 async def _enrich_base_blocks_with_gemini(
@@ -884,8 +936,8 @@ async def _enrich_base_blocks_with_gemini(
     source_hash: str,
     settings: Settings,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    api_key = str(getattr(settings, "gemini_api_key", "") or "").strip()
-    if not api_key:
+    api_keys = _parse_gemini_keys(str(getattr(settings, "gemini_api_key", "") or ""))
+    if not api_keys:
         raise ContentEnrichmentError(
             "GEMINI_API_KEY ausente: a API não pode aprofundar o conteúdo via Gemini."
         )
@@ -919,8 +971,7 @@ async def _enrich_base_blocks_with_gemini(
         1,
         3_600,
     )
-    client = _gemini_client(api_key, model)
-    if client is None:
+    if ChatGoogleGenerativeAI is None:
         raise ContentEnrichmentError(
             "langchain-google-genai não está instalado: a API não pode "
             "aprofundar o conteúdo via Gemini."
@@ -937,7 +988,7 @@ async def _enrich_base_blocks_with_gemini(
         feedback = ""
         for attempt in range(1, max_attempts + 1):
             raw, used_model = await _generate_gemini_batch(
-                client=client,
+                api_keys=api_keys,
                 model=model,
                 topic=topic,
                 blocks=pending,
