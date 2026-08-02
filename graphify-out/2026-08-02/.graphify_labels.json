@@ -420,5 +420,6 @@
   "418": "clsx",
   "419": "openai",
   "420": "@vitejs/plugin-react",
+  "421": "react-markdown",
   "439": "devDependencies"
 }

@@ -421,5 +421,7 @@
   "419": "openai",
   "420": "@vitejs/plugin-react",
   "421": "react-markdown",
+  "422": "@tailwindcss/vite",
+  "423": "vite",
   "439": "devDependencies"
 }

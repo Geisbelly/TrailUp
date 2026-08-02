@@ -345,8 +345,8 @@
     "semantic_hash": ""
   },
   "api/app/core/settings.py": {
-    "mtime": 1785627645.4597895,
-    "ast_hash": "59eb681efeed049610b860d01dc55bf7",
+    "mtime": 1785685836.6408384,
+    "ast_hash": "5f6c882f47cde2b56f9a2ab24428b183",
     "semantic_hash": ""
   },
   "api/app/db/__init__.py": {
@@ -510,8 +510,8 @@
     "semantic_hash": ""
   },
   "api/app/repositories/personalizacao_jobs.py": {
-    "mtime": 1785260118.9535196,
-    "ast_hash": "2910862a64f5a71e6829ae8e718231e6",
+    "mtime": 1785685829.1221025,
+    "ast_hash": "0de47e2be8214307b4bf816ef40b026a",
     "semantic_hash": ""
   },
   "api/app/repositories/personalizacao_progresso.py": {
@@ -635,8 +635,8 @@
     "semantic_hash": ""
   },
   "api/app/services/content_enrichment.py": {
-    "mtime": 1785627719.1724386,
-    "ast_hash": "aff0b063528233f1b5c879f27c537fcc",
+    "mtime": 1785678153.1306367,
+    "ast_hash": "f7886c313b45f00c80240ef35a328c7a",
     "semantic_hash": ""
   },
   "api/app/services/docx.py": {
@@ -660,13 +660,13 @@
     "semantic_hash": ""
   },
   "api/app/services/llm.py": {
-    "mtime": 1782305016.283054,
-    "ast_hash": "70fd5cbf143d9b215c36c93b46bee73d",
+    "mtime": 1785678183.129058,
+    "ast_hash": "892bcaeca02c92c2e00e6e644bc5b2f1",
     "semantic_hash": ""
   },
   "api/app/services/media_agents.py": {
-    "mtime": 1785260120.522018,
-    "ast_hash": "b9fc1cc0433e5dc7107201891c224b71",
+    "mtime": 1785687015.0620506,
+    "ast_hash": "6e6732a94400b54efb68c8f0d23c3f7b",
     "semantic_hash": ""
   },
   "api/app/services/media_contract.py": {
@@ -685,13 +685,13 @@
     "semantic_hash": ""
   },
   "api/app/services/personalizacao.py": {
-    "mtime": 1785600861.553117,
-    "ast_hash": "e7125756b493d2b2ef4f7497f1c97079",
+    "mtime": 1785640498.935998,
+    "ast_hash": "6a41dc1b60d5b915424fe2017533c891",
     "semantic_hash": ""
   },
   "api/app/services/personalizacao_jobs.py": {
-    "mtime": 1785603364.9902835,
-    "ast_hash": "16573bed7e95942c9c30e032c5007f7e",
+    "mtime": 1785687081.077988,
+    "ast_hash": "4262fcb7581f7044a67b50e46fd3eb55",
     "semantic_hash": ""
   },
   "api/app/services/pptx.py": {
@@ -755,8 +755,8 @@
     "semantic_hash": ""
   },
   "api/tests/test_brainhex_generation.py": {
-    "mtime": 1785260120.5296733,
-    "ast_hash": "bafa227d75be70b18d42a27f4106e70d",
+    "mtime": 1785687103.0375743,
+    "ast_hash": "902cee1d1a67b777ee26eecb4bc8e9e1",
     "semantic_hash": ""
   },
   "api/tests/test_checkpoint_retention.py": {
@@ -765,8 +765,8 @@
     "semantic_hash": ""
   },
   "api/tests/test_content_enrichment.py": {
-    "mtime": 1785627886.7861023,
-    "ast_hash": "298ba24f9d03949f6deca57bd0c5ac68",
+    "mtime": 1785678224.1804671,
+    "ast_hash": "c0408c8d6456820861de922ff49f9c21",
     "semantic_hash": ""
   },
   "api/tests/test_design_tokens_aaa.py": {
@@ -815,8 +815,8 @@
     "semantic_hash": ""
   },
   "api/tests/test_personalizacao_jobs_loop.py": {
-    "mtime": 1785602359.1491735,
-    "ast_hash": "b8829cf57b64d818f3e6744e7f8f2dd4",
+    "mtime": 1785687139.994238,
+    "ast_hash": "014e3c8a95e330a8f6f79c95abb81360",
     "semantic_hash": ""
   },
   "api/tests/test_personalizacao_service.py": {
@@ -825,8 +825,8 @@
     "semantic_hash": ""
   },
   "api/tests/test_repositories.py": {
-    "mtime": 1785604830.792847,
-    "ast_hash": "72bc3e0978cc7ca2683880217c7e3953",
+    "mtime": 1785685855.2280092,
+    "ast_hash": "df04ebfea8b6967ebe56d39ca7584280",
     "semantic_hash": ""
   },
   "api/tests/test_startup.py": {
@@ -1685,8 +1685,8 @@
     "semantic_hash": ""
   },
   "microservice/package.json": {
-    "mtime": 1785436961.2756479,
-    "ast_hash": "34c86c54ddd130dead912a6008c9149e",
+    "mtime": 1785633566.5480313,
+    "ast_hash": "f51c58471d07307fe3dc9c09d9fd943b",
     "semantic_hash": ""
   },
   "microservice/scripts/renderPresentationQa.ts": {
@@ -1775,13 +1775,13 @@
     "semantic_hash": ""
   },
   "microservice/src/lib/logger.test.ts": {
-    "mtime": 1782269049.0079305,
-    "ast_hash": "372f09633b5bdb82023458483dc75ae0",
+    "mtime": 1785635843.4142425,
+    "ast_hash": "c09fcd55e380806591a48b66ab6e7498",
     "semantic_hash": ""
   },
   "microservice/src/lib/logger.ts": {
-    "mtime": 1782269049.014991,
-    "ast_hash": "76fa3bb14015c1bd513da7ab17af19f9",
+    "mtime": 1785635835.5656254,
+    "ast_hash": "8ce17bdb7812d51cffb325d320d6654e",
     "semantic_hash": ""
   },
   "microservice/src/lib/materialsMerge.test.ts": {
@@ -1900,23 +1900,23 @@
     "semantic_hash": ""
   },
   "microservice/src/services/contentGenerationService.test.ts": {
-    "mtime": 1785439592.9458034,
-    "ast_hash": "af8de01cc6fb79140261495a81e775ef",
+    "mtime": 1785682151.0223274,
+    "ast_hash": "84661087bcf28a0c0af5f994c615b893",
     "semantic_hash": ""
   },
   "microservice/src/services/contentGenerationService.ts": {
-    "mtime": 1785439623.7372956,
-    "ast_hash": "967fd9db8dbc8a47e99e69fe478aaffa",
+    "mtime": 1785682077.947206,
+    "ast_hash": "6d6505ecf0f66be38f05d0a102d547c3",
     "semantic_hash": ""
   },
   "microservice/src/services/geminiBlockBatches.test.ts": {
-    "mtime": 1785624234.011101,
-    "ast_hash": "274b3a7fa0335a29defbfae3d5f80eb4",
+    "mtime": 1785689542.0078263,
+    "ast_hash": "ff2b0187988bf4ff37a88259c8f1755e",
     "semantic_hash": ""
   },
   "microservice/src/services/geminiService.ts": {
-    "mtime": 1785624065.5423167,
-    "ast_hash": "746d8e2d1b0d5b7156835474cdc5839f",
+    "mtime": 1785689520.0577824,
+    "ast_hash": "6c61409315ef235331186f4d27da530e",
     "semantic_hash": ""
   },
   "microservice/src/services/openaiImageService.test.ts": {
@@ -3135,8 +3135,8 @@
     "semantic_hash": ""
   },
   "docker-compose.yml": {
-    "mtime": 1782305016.344224,
-    "ast_hash": "be310980b636c04b4deadaefa11bb006",
+    "mtime": 1785646759.2833529,
+    "ast_hash": "a9b8d8ffc960e55c37ca23ecdbc8f91b",
     "semantic_hash": ""
   },
   "docs/MANUAL.md": {
@@ -4327,6 +4327,16 @@
   "docs/superpowers/plans/2026-08-01-robot-framework-personalizacao-console.md": {
     "mtime": 1785622585.968196,
     "ast_hash": "25a1250ff0a3960aaef6b47f6493b7e2",
+    "semantic_hash": ""
+  },
+  "api/tests/test_llm_service.py": {
+    "mtime": 1785678243.2278538,
+    "ast_hash": "418f131548f8e98b8171eeb71fe16dc2",
+    "semantic_hash": ""
+  },
+  "microservice/src/services/geminiKeyRotation.test.ts": {
+    "mtime": 1785678398.0809152,
+    "ast_hash": "33d0220f814c9e0f624cc1102ea5c2f1",
     "semantic_hash": ""
   }
 }
