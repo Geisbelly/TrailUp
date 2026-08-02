@@ -27,3 +27,16 @@ def test_get_client_uses_gemini_by_default_when_only_gemini_key_is_configured() 
     client = service._get_client(settings.active_model_default)
 
     assert client is not None
+
+
+def test_gemini_model_defaults_are_not_the_retired_1x_models() -> None:
+    """gemini-1.5-pro/gemini-1.5-flash foram aposentados e retornam 401
+    UNAUTHENTICATED via chave de API simples (exigem OAuth) - reproduzido em
+    producao assim que llm_provider passou a defaultar pra "gemini" (o
+    supervisor do LangGraph e gerar_cards_direto usam active_model_supervisor/
+    active_model_default quando nao fixam um model= proprio)."""
+    settings = _settings()
+    assert settings.gemini_model_supervisor == "gemini-3.6-flash"
+    assert settings.gemini_model_default == "gemini-3.6-flash"
+    assert settings.active_model_supervisor == "gemini-3.6-flash"
+    assert settings.active_model_default == "gemini-3.6-flash"

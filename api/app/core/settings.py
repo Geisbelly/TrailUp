@@ -74,8 +74,15 @@ class Settings(BaseSettings):
     openai_spend_cap_usd: float = 1.0
 
     gemini_api_key: str | None = None
-    gemini_model_supervisor: str = "gemini-1.5-pro"
-    gemini_model_default: str = "gemini-1.5-flash"
+    # Eram "gemini-1.5-pro"/"gemini-1.5-flash": modelos 1.x aposentados pela
+    # API do Gemini, que agora retornam 401 UNAUTHENTICATED via chave de API
+    # simples (exigem OAuth) — reproduzido em producao assim que llm_provider
+    # passou a defaultar pra "gemini" (supervisor do LangGraph e
+    # gerar_cards_direto usam esses defaults quando nao fixam um model=
+    # proprio). gemini-3.6-flash e o modelo confirmado funcionando no mesmo
+    # tier gratuito (ver gemini_materiais_model abaixo).
+    gemini_model_supervisor: str = "gemini-3.6-flash"
+    gemini_model_default: str = "gemini-3.6-flash"
     # gemini-2.5-flash retornou 404 NOT_FOUND em producao ("no longer
     # available to new users") — gemini-3.6-flash e o modelo confirmado
     # funcionando no mesmo tier (ja usado como default no microservice,
