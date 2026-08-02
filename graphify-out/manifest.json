@@ -305,8 +305,8 @@
     "semantic_hash": "ea9fc3046e6bac85cbdbfead8c6ca178"
   },
   "api/app/core/settings.py": {
-    "mtime": 1785676991.5101504,
-    "ast_hash": "4fa89e8b36818df947b04603904f52b6",
+    "mtime": 1785685836.6408384,
+    "ast_hash": "5f6c882f47cde2b56f9a2ab24428b183",
     "semantic_hash": ""
   },
   "api/app/db/__init__.py": {
@@ -465,8 +465,8 @@
     "semantic_hash": ""
   },
   "api/app/repositories/personalizacao_jobs.py": {
-    "mtime": 1785260118.9535196,
-    "ast_hash": "2910862a64f5a71e6829ae8e718231e6",
+    "mtime": 1785685829.1221025,
+    "ast_hash": "0de47e2be8214307b4bf816ef40b026a",
     "semantic_hash": ""
   },
   "api/app/repositories/personalizacao_progresso.py": {
@@ -760,8 +760,8 @@
     "semantic_hash": ""
   },
   "api/tests/test_repositories.py": {
-    "mtime": 1785604830.792847,
-    "ast_hash": "72bc3e0978cc7ca2683880217c7e3953",
+    "mtime": 1785685855.2280092,
+    "ast_hash": "df04ebfea8b6967ebe56d39ca7584280",
     "semantic_hash": ""
   },
   "api/tests/test_startup.py": {
@@ -1670,8 +1670,8 @@
     "semantic_hash": ""
   },
   "microservice/src/services/geminiService.ts": {
-    "mtime": 1785678332.3432295,
-    "ast_hash": "888e7dcf74be6c5ca36071cb2bff2857",
+    "mtime": 1785686054.7989933,
+    "ast_hash": "b01280464f609744d7805a8188395652",
     "semantic_hash": ""
   },
   "microservice/src/services/supabaseService.ts": {
@@ -4135,8 +4135,8 @@
     "semantic_hash": ""
   },
   "microservice/src/services/geminiBlockBatches.test.ts": {
-    "mtime": 1785624234.011101,
-    "ast_hash": "274b3a7fa0335a29defbfae3d5f80eb4",
+    "mtime": 1785686336.1440518,
+    "ast_hash": "5ec1bcbe7180eaf5b3ed47536c63777b",
     "semantic_hash": ""
   },
   "mobile/src/utils/personalization.multicontent.test.ts": {
