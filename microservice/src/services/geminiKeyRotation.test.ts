@@ -6,6 +6,8 @@ import {
   rotateGeminiKeyAfterFailure,
   resetGeminiKeyRotationForTests,
   resolveGeminiTextFallbackModels,
+  resolveGeminiTtsFallbackModels,
+  resolveGeminiImageFallbackModels,
 } from "./geminiService";
 
 const PRIMARY_MODEL = "gemini-3.6-flash";
@@ -112,5 +114,20 @@ test("resolveGeminiTextFallbackModels respeita a lista configurada via env, sepa
   assert.deepEqual(
     resolveGeminiTextFallbackModels({ GEMINI_TEXT_FALLBACK_MODELS: "model-a, model-b ;model-c" }),
     ["model-a", "model-b", "model-c"],
+  );
+});
+
+test("resolveGeminiTtsFallbackModels/resolveGeminiImageFallbackModels tem defaults proprios, sem depender do texto", () => {
+  assert.deepEqual(resolveGeminiTtsFallbackModels({}), ["gemini-2.5-flash-preview-tts"]);
+  assert.deepEqual(resolveGeminiImageFallbackModels({}), [
+    "gemini-2.0-flash-preview-image-generation",
+  ]);
+  assert.deepEqual(
+    resolveGeminiTtsFallbackModels({ GEMINI_TTS_FALLBACK_MODELS: "tts-a,tts-b" }),
+    ["tts-a", "tts-b"],
+  );
+  assert.deepEqual(
+    resolveGeminiImageFallbackModels({ GEMINI_IMAGE_FALLBACK_MODELS: "img-a,img-b" }),
+    ["img-a", "img-b"],
   );
 });

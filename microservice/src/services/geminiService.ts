@@ -81,6 +81,30 @@ export function resolveGeminiTextFallbackModels(
   return configured.length > 0 ? configured : DEFAULT_GEMINI_TEXT_FALLBACK_MODELS;
 }
 
+// Familia de modelo diferente do texto (TTS) — nao dá pra reusar a lista
+// acima. gemini-2.5-flash-preview-tts é o mesmo modelo já referenciado como
+// GEMINI_MODEL_TTS no lado da API (settings.py); confirmadamente válido no
+// mesmo tier, ao contrário de nomes de modelo de imagem/TTS não testados.
+const DEFAULT_GEMINI_TTS_FALLBACK_MODELS = ["gemini-2.5-flash-preview-tts"];
+
+export function resolveGeminiTtsFallbackModels(
+  environment: Record<string, string | undefined> = process.env,
+): string[] {
+  const configured = parseGeminiApiKeys(environment.GEMINI_TTS_FALLBACK_MODELS);
+  return configured.length > 0 ? configured : DEFAULT_GEMINI_TTS_FALLBACK_MODELS;
+}
+
+// Idem para imagem de slide — gemini-2.0-flash-preview-image-generation é o
+// mesmo modelo já referenciado como GEMINI_MODEL_IMAGE no lado da API.
+const DEFAULT_GEMINI_IMAGE_FALLBACK_MODELS = ["gemini-2.0-flash-preview-image-generation"];
+
+export function resolveGeminiImageFallbackModels(
+  environment: Record<string, string | undefined> = process.env,
+): string[] {
+  const configured = parseGeminiApiKeys(environment.GEMINI_IMAGE_FALLBACK_MODELS);
+  return configured.length > 0 ? configured : DEFAULT_GEMINI_IMAGE_FALLBACK_MODELS;
+}
+
 function cooldownKey(apiKey: string, model: string): string {
   return `${apiKey}::${model}`;
 }
@@ -132,6 +156,22 @@ function isGeminiQuotaOrRateLimitError(error: unknown): boolean {
 }
 
 /**
+ * Erros de modelo indisponível (401 de modelo aposentado, 404 not found) não
+ * são erros de cota — não faz sentido rotacionar chave pra eles (todas as
+ * chaves falhariam igual), mas ainda justificam pular pro próximo modelo
+ * candidato em vez de propagar o erro imediatamente.
+ */
+function isGeminiModelUnavailableError(error: unknown): boolean {
+  const message = (error instanceof Error ? error.message : String(error ?? "")).toLowerCase();
+  return message.includes("401")
+    || message.includes("unauthenticated")
+    || message.includes("404")
+    || message.includes("not_found")
+    || message.includes("not found")
+    || message.includes("no longer available");
+}
+
+/**
  * Marca a chave Gemini atualmente selecionada como esgotada PRA ESSE MODELO
  * e avança o round-robin pra próxima. Retorna true quando havia outra chave
  * disponível pra tentar imediatamente (sem cooldown de espera) nesse mesmo
@@ -153,20 +193,25 @@ export function rotateGeminiKeyAfterFailure(error: unknown, model: string): bool
 
 /**
  * Ponto único de chamada ao Gemini generateContent: tenta o modelo pedido em
- * todas as chaves configuradas (round-robin); se TODAS esgotarem a cota
- * desse modelo, passa pro próximo modelo candidato (ver
- * resolveGeminiTextFallbackModels), de novo em todas as chaves, e assim por
+ * todas as chaves configuradas (round-robin); se TODAS esgotarem a cota (ou
+ * o modelo estiver indisponível/aposentado) passa pro próximo modelo
+ * candidato em `fallbackModels`, de novo em todas as chaves, e assim por
  * diante. Só propaga o erro depois de esgotar todo mundo — o que então
  * aciona o circuito de indisponibilidade / fallback pago já existente em
  * contentGenerationService.ts e nos retries ad hoc de TTS/imagem.
+ *
+ * `fallbackModels` é passado pelo chamador porque a lista depende da
+ * FAMÍLIA do modelo (texto/TTS/imagem não são intercambiáveis) — default pro
+ * texto pois é o caminho de maior volume (markdown/audioScript/slides).
  */
 async function generateGeminiContent(
   params: Parameters<GoogleGenAI["models"]["generateContent"]>[0],
+  fallbackModels: string[] = resolveGeminiTextFallbackModels(),
 ): ReturnType<GoogleGenAI["models"]["generateContent"]> {
   const primaryModel = String(params.model ?? "");
   const candidateModels = [
     primaryModel,
-    ...resolveGeminiTextFallbackModels().filter((model) => model !== primaryModel),
+    ...fallbackModels.filter((model) => model !== primaryModel),
   ];
   const maxAttemptsPerModel = Math.max(geminiApiKeys().length, 1);
 
@@ -181,8 +226,8 @@ async function generateGeminiContent(
         if (rotateGeminiKeyAfterFailure(error, model)) {
           continue; // outra chave disponivel pra esse mesmo modelo
         }
-        if (!isGeminiQuotaOrRateLimitError(error)) {
-          throw error; // erro nao relacionado a cota: nao adianta trocar de modelo
+        if (!isGeminiQuotaOrRateLimitError(error) && !isGeminiModelUnavailableError(error)) {
+          throw error; // erro nao relacionado a cota/disponibilidade: nao adianta trocar de modelo
         }
         break; // esgotou todas as chaves desse modelo -> tenta o proximo modelo candidato
       }
@@ -1603,7 +1648,7 @@ export async function generateNaturalAudio(
           },
         },
       },
-    });
+    }, resolveGeminiTtsFallbackModels());
   } catch (error: any) {
     const isRateLimit = error?.message?.includes("429")
       || error?.message?.includes("quota")
@@ -1731,7 +1776,7 @@ export async function generateConversationalAudio(
           },
         },
       },
-    });
+    }, resolveGeminiTtsFallbackModels());
   } catch (error: any) {
     const isRateLimit = error?.message?.includes("429")
       || error?.message?.includes("quota")
@@ -1786,7 +1831,7 @@ export async function generateSlideImage(prompt: string, retries = 3): Promise<s
           aspectRatio: "16:9",
         },
       },
-    });
+    }, resolveGeminiImageFallbackModels());
 
     for (const part of response.candidates?.[0]?.content?.parts || []) {
       if (part.inlineData) {
