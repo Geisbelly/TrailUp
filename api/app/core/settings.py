@@ -163,8 +163,13 @@ class Settings(BaseSettings):
     personalizacao_job_poll_sec: int = 5
     personalizacao_job_max_retries: int = 3
     personalizacao_job_partial_retry_delay_sec: int = 15
-    # Job preso em 'processing' ha mais que isso (ex.: processo caiu no meio) volta
-    # a ser reclamavel pelo worker — evita orfaos permanentes apos crash/restart.
+    # Job preso em 'processing' com targets ainda pendentes (nao terminais) e
+    # reclamado usando a mesma janela rapida de partial_retry_delay_sec — um
+    # restart/crash no meio do ciclo (antes do finalize_job rebaixar o status
+    # para 'partial') nao deve travar o job por ate 40min so por causa disso.
+    # Esta janela (stale_processing_min) so entra como rede de seguranca para
+    # jobs sem targets pendentes obvios (orfaos de verdade, sem sinal claro de
+    # trabalho restante).
     personalizacao_job_stale_processing_min: int = 40
     # Tentativas de redisparo por geracao (mesmo ciclo_id/source_hash) antes de
     # parar de reclamar/regerar automaticamente. Sem isso, uma geracao que

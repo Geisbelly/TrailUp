@@ -701,7 +701,20 @@ class PersonalizacaoJobsRepository:
                      )
                      OR (
                        candidate.status = 'processing'
-                       AND candidate.updated_at < NOW() - make_interval(mins => :stale_processing_min)
+                       AND (
+                         (
+                           candidate.updated_at
+                             < NOW() - make_interval(secs => :partial_retry_delay_sec)
+                           AND EXISTS (
+                             SELECT 1
+                             FROM personalizacao_job_targets target
+                             WHERE target.job_id = candidate.id
+                               AND target.status NOT IN ('completed', 'failed', 'skipped')
+                           )
+                         )
+                         OR candidate.updated_at
+                           < NOW() - make_interval(mins => :stale_processing_min)
+                       )
                      )
                   ORDER BY candidate.created_at ASC, candidate.id ASC
                   FOR UPDATE SKIP LOCKED

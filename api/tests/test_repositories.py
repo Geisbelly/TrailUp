@@ -307,6 +307,30 @@ async def test_claim_partial_job_requires_non_terminal_target() -> None:
 
 
 @pytest.mark.asyncio
+async def test_claim_processing_job_with_pending_targets_uses_fast_partial_window() -> None:
+    # Um restart/crash no meio do ciclo mata o worker ANTES do finalize_job
+    # rebaixar o status de 'processing' para 'partial'. Sem esta clausula, um
+    # job com targets claramente pendentes ficava travado ate os 40min de
+    # stale_processing_min em vez dos 15s normais de partial_retry_delay_sec.
+    session = RecordingSession(
+        [
+            ScalarResult(True),
+            MappingResult([_job_row()]),
+        ]
+    )
+    repo = PersonalizacaoJobsRepository(session)
+
+    await repo.claim_next_job(stale_processing_min=40, partial_retry_delay_sec=15)
+
+    claim_sql = next(sql for sql, _ in session.calls if "WITH next_job AS" in sql)
+    assert "candidate.status = 'processing'" in claim_sql
+    processing_clause = claim_sql.split("candidate.status = 'processing'", 1)[1]
+    assert "make_interval(secs => :partial_retry_delay_sec)" in processing_clause
+    assert "target.status NOT IN ('completed', 'failed', 'skipped')" in processing_clause
+    assert "make_interval(mins => :stale_processing_min)" in processing_clause
+
+
+@pytest.mark.asyncio
 async def test_latest_personalization_targets_are_scoped_exactly_by_content() -> None:
     session = RecordingSession(
         [
