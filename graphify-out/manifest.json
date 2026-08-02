@@ -305,8 +305,8 @@
     "semantic_hash": "ea9fc3046e6bac85cbdbfead8c6ca178"
   },
   "api/app/core/settings.py": {
-    "mtime": 1785627645.4597895,
-    "ast_hash": "59eb681efeed049610b860d01dc55bf7",
+    "mtime": 1785635167.110154,
+    "ast_hash": "99ce899fe133545c7f5cf17d83f7f6c5",
     "semantic_hash": ""
   },
   "api/app/db/__init__.py": {
@@ -4332,6 +4332,11 @@
   "microservice/src/services/geminiKeyRotation.test.ts": {
     "mtime": 1785633609.5373325,
     "ast_hash": "43e8c4ffd6cddebe2ef5301c3ca0f3b1",
+    "semantic_hash": ""
+  },
+  "api/tests/test_llm_service.py": {
+    "mtime": 1785635239.4956825,
+    "ast_hash": "a9a3f8d0cf569730f5c22404e74b77e9",
     "semantic_hash": ""
   }
 }
