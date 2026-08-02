@@ -615,8 +615,8 @@
     "semantic_hash": ""
   },
   "api/app/services/media_agents.py": {
-    "mtime": 1785260120.522018,
-    "ast_hash": "b9fc1cc0433e5dc7107201891c224b71",
+    "mtime": 1785687015.0620506,
+    "ast_hash": "6e6732a94400b54efb68c8f0d23c3f7b",
     "semantic_hash": ""
   },
   "api/app/services/media_pipeline.py": {
@@ -635,8 +635,8 @@
     "semantic_hash": ""
   },
   "api/app/services/personalizacao_jobs.py": {
-    "mtime": 1785641516.935595,
-    "ast_hash": "3fb95ccf2c16d53cdc5aeb02b42145dd",
+    "mtime": 1785687081.077988,
+    "ast_hash": "4262fcb7581f7044a67b50e46fd3eb55",
     "semantic_hash": ""
   },
   "api/app/services/pptx.py": {
@@ -700,8 +700,8 @@
     "semantic_hash": ""
   },
   "api/tests/test_brainhex_generation.py": {
-    "mtime": 1785260120.5296733,
-    "ast_hash": "bafa227d75be70b18d42a27f4106e70d",
+    "mtime": 1785687103.0375743,
+    "ast_hash": "902cee1d1a67b777ee26eecb4bc8e9e1",
     "semantic_hash": ""
   },
   "api/tests/test_checkpoint_retention.py": {
@@ -750,8 +750,8 @@
     "semantic_hash": "6752798714ae0165218c1b0560046a8f"
   },
   "api/tests/test_personalizacao_jobs_loop.py": {
-    "mtime": 1785641602.4784975,
-    "ast_hash": "c16713aba7dbfa2939db54bd174f0436",
+    "mtime": 1785687139.994238,
+    "ast_hash": "014e3c8a95e330a8f6f79c95abb81360",
     "semantic_hash": ""
   },
   "api/tests/test_personalizacao_service.py": {
@@ -1670,8 +1670,8 @@
     "semantic_hash": ""
   },
   "microservice/src/services/geminiService.ts": {
-    "mtime": 1785686054.7989933,
-    "ast_hash": "b01280464f609744d7805a8188395652",
+    "mtime": 1785686933.563527,
+    "ast_hash": "0cbca0942cbe778443421df65fb5376a",
     "semantic_hash": ""
   },
   "microservice/src/services/supabaseService.ts": {
