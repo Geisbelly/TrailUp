@@ -360,6 +360,31 @@ const DEFAULT_CONTENT_BLOCK_BATCH_SIZE = 1;
 const MAX_CONTENT_BLOCK_BATCH_SIZE = 1;
 const DEFAULT_CONTENT_BLOCK_CONCURRENCY = 2;
 const MAX_CONTENT_BLOCK_CONCURRENCY = 4;
+const DEFAULT_CONTENT_GENERATION_MAX_OUTPUT_TOKENS = 16_384;
+// O documento mesclado (mergeContentBlocksIntoOne) sintetiza TODOS os blocos
+// do topico numa unica chamada — markdown, audioScript e slides saem juntos,
+// no mesmo orcamento. 16384 tokens foi calibrado para o caso de 1 bloco
+// pequeno (e para casar com o teto real do fallback OpenAI, ver
+// contentGenerationService.ts); no documento mesclado isso e curto demais e o
+// Gemini devolve markdown bem abaixo do minimo de cobertura, mesmo repetindo
+// a geracao. So o Gemini usa este teto maior — o fallback OpenAI aplica seu
+// proprio Math.min contra o teto real de 16384 tokens do gpt-4o-mini
+// (ver callOpenAIStructured), entao passar um valor maior aqui nao quebra a
+// contingencia paga, so da mais espaco pro provedor principal.
+const DEFAULT_CONTENT_GENERATION_MERGED_MAX_OUTPUT_TOKENS = 65_536;
+
+export function resolveContentGenerationMaxOutputTokens(
+  isMergedDocument: boolean,
+  environment: Record<string, string | undefined> = process.env,
+): number {
+  const envValue = isMergedDocument
+    ? environment.CONTENT_GENERATION_MERGED_MAX_OUTPUT_TOKENS
+    : environment.CONTENT_GENERATION_BATCH_MAX_OUTPUT_TOKENS;
+  const fallback = isMergedDocument
+    ? DEFAULT_CONTENT_GENERATION_MERGED_MAX_OUTPUT_TOKENS
+    : DEFAULT_CONTENT_GENERATION_MAX_OUTPUT_TOKENS;
+  return Math.max(8_192, Number(envValue) || fallback);
+}
 const GEMINI_CONTENT_GENERATION_RESPONSE_SCHEMA = {
   type: Type.OBJECT,
   properties: {
@@ -1391,9 +1416,8 @@ export async function processMediaWithGemini(
     );
     const geminiModel = resolveGeminiContentGenerationModel();
     const openaiModel = resolveOpenAIContentGenerationFallbackModel();
-    const maxOutputTokens = Math.max(
-      8_192,
-      Number(process.env.CONTENT_GENERATION_BATCH_MAX_OUTPUT_TOKENS) || 16_384,
+    const maxOutputTokens = resolveContentGenerationMaxOutputTokens(
+      originalBlocksCount > 1,
     );
 
     // Cada chamada continua atômica (um único bloco), mas um pool pequeno

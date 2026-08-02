@@ -8,6 +8,7 @@ import {
   partitionContentBlocks,
   resolveContentBlockBatchSize,
   resolveContentBlockConcurrency,
+  resolveContentGenerationMaxOutputTokens,
   splitProcessedContentIntoParts,
   validateBlockBatchGeneration,
 } from "./geminiService";
@@ -125,6 +126,40 @@ test("usa concorrência pequena e aplica um teto seguro", () => {
   assert.equal(resolveContentBlockConcurrency(4), 4);
   assert.equal(resolveContentBlockConcurrency(12), 4);
   assert.equal(resolveContentBlockConcurrency(0), 2);
+});
+
+test("da ao documento mesclado um orcamento de saida maior que o lote normal", () => {
+  // O documento mesclado sintetiza TODOS os blocos do topico numa unica
+  // chamada (markdown + audioScript + slides); 16384 tokens (calibrado pro
+  // fallback OpenAI, que tem teto rigido) e curto demais pra essa sintese e
+  // o Gemini devolve markdown abaixo do minimo de cobertura mesmo tentando
+  // de novo. O lote normal (1 bloco pequeno) continua no teto de sempre.
+  assert.equal(resolveContentGenerationMaxOutputTokens(false, {}), 16_384);
+  assert.equal(resolveContentGenerationMaxOutputTokens(true, {}), 65_536);
+});
+
+test("respeita override por env var, com o mesmo teto minimo de 8192 dos dois casos", () => {
+  assert.equal(
+    resolveContentGenerationMaxOutputTokens(false, {
+      CONTENT_GENERATION_BATCH_MAX_OUTPUT_TOKENS: "24000",
+    }),
+    24_000,
+  );
+  assert.equal(
+    resolveContentGenerationMaxOutputTokens(true, {
+      CONTENT_GENERATION_MERGED_MAX_OUTPUT_TOKENS: "100000",
+    }),
+    100_000,
+  );
+  // Env invalida (nao numerica ou zero) cai pro default do caso certo, nunca
+  // pro default do outro caso.
+  assert.equal(
+    resolveContentGenerationMaxOutputTokens(true, {
+      CONTENT_GENERATION_MERGED_MAX_OUTPUT_TOKENS: "abc",
+    }),
+    65_536,
+  );
+  assert.equal(resolveContentGenerationMaxOutputTokens(true, { CONTENT_GENERATION_BATCH_MAX_OUTPUT_TOKENS: "24000" }), 65_536);
 });
 
 test("valida cobertura exata do lote e reordena capítulos pelos ids esperados", () => {
