@@ -175,6 +175,10 @@ test("erro de qualidade de conteúdo não abre o circuito do Gemini para outras 
   let openaiCalls = 0;
 
   const first = await generateStructuredContentWithFallback(call, {
+    // Isola este teste do retry-com-o-proprio-Gemini (testado em separado
+    // abaixo): com 1 tentativa so, o comportamento continua "1 chamada
+    // Gemini, falha de qualidade, cai pra OpenAI".
+    environment: { CONTENT_GENERATION_GEMINI_QUALITY_MAX_ATTEMPTS: "1" },
     generateWithGemini: async () => {
       geminiCalls += 1;
       return { chapters: [] };
@@ -211,6 +215,96 @@ test("erro de qualidade de conteúdo não abre o circuito do Gemini para outras 
 
   assert.equal(second.provider, "gemini");
   assert.equal(geminiCalls, 2);
+  assert.equal(openaiCalls, 1);
+  resetGeminiContentGenerationCircuit();
+});
+
+test("repete com o proprio Gemini (feedback corretivo) antes de exigir a OpenAI numa falha de qualidade", async () => {
+  // Reproduz o bug real: a conta OpenAI ficou sem credito (insufficient_
+  // quota) e uma unica falha de qualidade do Gemini (cobertura insuficiente)
+  // virava uma falha permanente da geracao inteira, mesmo o Gemini estando
+  // saudavel — repetir com o proprio Gemini (gratuito) resolve a maioria
+  // dos casos sem nem precisar da OpenAI.
+  resetGeminiContentGenerationCircuit();
+  let geminiCalls = 0;
+  const receivedInstructions: string[] = [];
+
+  const result = await generateStructuredContentWithFallback(call, {
+    generateWithGemini: async (currentCall) => {
+      geminiCalls += 1;
+      receivedInstructions.push(currentCall.instructions);
+      return geminiCalls < 2
+        ? { chapters: [] }
+        : { chapters: [{ blockId: "bloco-01" }] };
+    },
+    generateWithOpenAI: async () => {
+      throw new Error("nao deveria ser chamado — Gemini deve resolver na 2a tentativa");
+    },
+    validateResult: (value) => {
+      const chapters = (value as { chapters?: unknown[] }).chapters ?? [];
+      if (chapters.length === 0) {
+        throw new Error("Markdown abaixo do mínimo de cobertura.");
+      }
+    },
+  });
+
+  assert.equal(result.provider, "gemini");
+  assert.equal(geminiCalls, 2);
+  assert.doesNotMatch(receivedInstructions[0], /CORREÇÃO OBRIGATÓRIA/);
+  assert.match(receivedInstructions[1], /CORREÇÃO OBRIGATÓRIA DA TENTATIVA 2/);
+  assert.match(receivedInstructions[1], /Markdown abaixo do mínimo de cobertura/);
+  resetGeminiContentGenerationCircuit();
+});
+
+test("so recorre a OpenAI quando o proprio Gemini esgota as tentativas de qualidade", async () => {
+  resetGeminiContentGenerationCircuit();
+  let geminiCalls = 0;
+  let openaiCalls = 0;
+
+  const result = await generateStructuredContentWithFallback(call, {
+    environment: { CONTENT_GENERATION_GEMINI_QUALITY_MAX_ATTEMPTS: "2" },
+    generateWithGemini: async () => {
+      geminiCalls += 1;
+      return { chapters: [] }; // sempre invalido, nunca melhora
+    },
+    generateWithOpenAI: async () => {
+      openaiCalls += 1;
+      return { chapters: [{ blockId: "bloco-01" }] };
+    },
+    validateResult: (value) => {
+      const chapters = (value as { chapters?: unknown[] }).chapters ?? [];
+      if (chapters.length === 0) {
+        throw new Error("Markdown abaixo do mínimo de cobertura.");
+      }
+    },
+  });
+
+  assert.equal(result.provider, "openai");
+  assert.equal(result.fallbackFrom, "gemini");
+  assert.equal(geminiCalls, 2);
+  assert.equal(openaiCalls, 1);
+  resetGeminiContentGenerationCircuit();
+});
+
+test("erro de disponibilidade do Gemini nao repete com o proprio Gemini — vai direto pra OpenAI", async () => {
+  resetGeminiContentGenerationCircuit();
+  let geminiCalls = 0;
+  let openaiCalls = 0;
+
+  await generateStructuredContentWithFallback(call, {
+    generateWithGemini: async () => {
+      geminiCalls += 1;
+      const error = new Error("503 UNAVAILABLE: sobrecarregado");
+      Object.assign(error, { status: 503 });
+      throw error;
+    },
+    generateWithOpenAI: async () => {
+      openaiCalls += 1;
+      return { chapters: [{ blockId: "bloco-01" }] };
+    },
+  });
+
+  assert.equal(geminiCalls, 1);
   assert.equal(openaiCalls, 1);
   resetGeminiContentGenerationCircuit();
 });

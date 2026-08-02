@@ -11,6 +11,13 @@ export const DEFAULT_OPENAI_CONTENT_GENERATION_FALLBACK_MODEL =
 const DEFAULT_GEMINI_UNAVAILABLE_COOLDOWN_MS = 5 * 60 * 1_000;
 const DEFAULT_OPENAI_MAX_OUTPUT_TOKENS = 16_384;
 const DEFAULT_OPENAI_QUALITY_MAX_ATTEMPTS = 3;
+// Um ContentGenerationQualityError do Gemini (cobertura insuficiente etc.) e
+// sobre a saida de UMA tentativa, nao indisponibilidade — vale repetir com o
+// proprio Gemini (gratuito, com feedback corretivo) antes de exigir a OpenAI
+// como recuperacao obrigatoria. Sem isso, com a conta OpenAI sem credito
+// (insufficient_quota), QUALQUER falha de qualidade do Gemini virava uma
+// falha permanente da geracao inteira, mesmo o Gemini estando saudavel.
+const DEFAULT_GEMINI_QUALITY_MAX_ATTEMPTS = 3;
 
 /**
  * gpt-4o-mini (e a familia gpt-4o/gpt-4.1 em geral) rejeita o parametro
@@ -501,39 +508,81 @@ export async function generateStructuredContentWithFallback(
     );
   }
 
-  try {
-    const value = await options.generateWithGemini(call);
-    try {
-      options.validateResult?.(value, "gemini");
-    } catch (error) {
-      throw new ContentGenerationQualityError("gemini", error);
-    }
-    return {
-      value,
-      provider: "gemini",
-      model: call.geminiModel,
-    };
-  } catch (error) {
-    // Só indisponibilidade real do Gemini abre o circuito. Um
-    // ContentGenerationQualityError é sobre a saída de UM lote (ex.: markdown
-    // curto demais para aquele bloco específico); tratá-lo como indisponibilidade
-    // contaminaria gerações concorrentes não relacionadas, que pulariam o
-    // Gemini saudável sem necessidade.
-    if (isGeminiAvailabilityError(error)) {
-      const cooldownMs = positiveInteger(
-        environment.CONTENT_GENERATION_GEMINI_COOLDOWN_MS,
-        DEFAULT_GEMINI_UNAVAILABLE_COOLDOWN_MS,
-        1_000,
-        60 * 60 * 1_000,
-      );
-      geminiUnavailableUntil = now() + cooldownMs;
-    }
-    const reason = errorDetails(error).slice(0, 500);
+  const maxQualityAttempts = positiveInteger(
+    environment.CONTENT_GENERATION_GEMINI_QUALITY_MAX_ATTEMPTS,
+    DEFAULT_GEMINI_QUALITY_MAX_ATTEMPTS,
+    1,
+    4,
+  );
+  let lastQualityError: unknown;
+  let previousQualityReason = "";
 
-    return generateAfterPrimaryGeminiFailure(call, reason, {
-      generateWithOpenAI,
-      validateResult: options.validateResult,
-      environment,
-    });
+  for (let attempt = 1; attempt <= maxQualityAttempts; attempt += 1) {
+    const currentCall = attempt === 1
+      ? call
+      : {
+        ...call,
+        instructions:
+          `${call.instructions}\n\nCORREÇÃO OBRIGATÓRIA DA TENTATIVA ${attempt}: `
+          + "a resposta anterior foi recusada pela validação de qualidade. "
+          + "Devolva exatamente um capítulo completo para cada blockId recebido, "
+          + "sem omitir, fundir, acrescentar ou resumir blocos. Preserve toda a "
+          + "cobertura do conteúdo aprofundado no texto e no roteiro de áudio. "
+          + `Motivo da recusa anterior: ${previousQualityReason}`,
+      };
+
+    try {
+      const value = await options.generateWithGemini(currentCall);
+      try {
+        options.validateResult?.(value, "gemini");
+      } catch (error) {
+        throw new ContentGenerationQualityError("gemini", error);
+      }
+      return {
+        value,
+        provider: "gemini",
+        model: call.geminiModel,
+      };
+    } catch (error) {
+      // Só indisponibilidade real do Gemini abre o circuito e vai direto pro
+      // fallback obrigatório da OpenAI, sem repetir o Gemini (não adianta —
+      // ele está fora do ar). Um ContentGenerationQualityError é sobre a
+      // saída de UMA tentativa (ex.: markdown curto demais) — tratá-lo como
+      // indisponibilidade contaminaria gerações concorrentes não relacionadas,
+      // que pulariam o Gemini saudável sem necessidade; em vez disso, repete
+      // com o próprio Gemini (gratuito) antes de exigir a OpenAI.
+      if (isGeminiAvailabilityError(error)) {
+        const cooldownMs = positiveInteger(
+          environment.CONTENT_GENERATION_GEMINI_COOLDOWN_MS,
+          DEFAULT_GEMINI_UNAVAILABLE_COOLDOWN_MS,
+          1_000,
+          60 * 60 * 1_000,
+        );
+        geminiUnavailableUntil = now() + cooldownMs;
+        const reason = errorDetails(error).slice(0, 500);
+        return generateAfterPrimaryGeminiFailure(call, reason, {
+          generateWithOpenAI,
+          validateResult: options.validateResult,
+          environment,
+        });
+      }
+      if (!(error instanceof ContentGenerationQualityError)) {
+        const reason = errorDetails(error).slice(0, 500);
+        return generateAfterPrimaryGeminiFailure(call, reason, {
+          generateWithOpenAI,
+          validateResult: options.validateResult,
+          environment,
+        });
+      }
+      lastQualityError = error;
+      previousQualityReason = errorDetails(error).slice(0, 500);
+    }
   }
+
+  const reason = errorDetails(lastQualityError).slice(0, 500);
+  return generateAfterPrimaryGeminiFailure(call, reason, {
+    generateWithOpenAI,
+    validateResult: options.validateResult,
+    environment,
+  });
 }
