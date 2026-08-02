@@ -635,8 +635,8 @@
     "semantic_hash": ""
   },
   "api/app/services/personalizacao_jobs.py": {
-    "mtime": 1785634444.0020194,
-    "ast_hash": "eb2312d01ecee5026dd2bd12edb44c18",
+    "mtime": 1785641516.935595,
+    "ast_hash": "3fb95ccf2c16d53cdc5aeb02b42145dd",
     "semantic_hash": ""
   },
   "api/app/services/pptx.py": {
@@ -750,8 +750,8 @@
     "semantic_hash": "6752798714ae0165218c1b0560046a8f"
   },
   "api/tests/test_personalizacao_jobs_loop.py": {
-    "mtime": 1785634485.0373592,
-    "ast_hash": "35ea944ffe8935024531d14c78cc6331",
+    "mtime": 1785641602.4784975,
+    "ast_hash": "c16713aba7dbfa2939db54bd174f0436",
     "semantic_hash": ""
   },
   "api/tests/test_personalizacao_service.py": {
