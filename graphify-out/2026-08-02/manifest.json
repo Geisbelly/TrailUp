@@ -610,8 +610,8 @@
     "semantic_hash": ""
   },
   "api/app/services/llm.py": {
-    "mtime": 1785677740.3169687,
-    "ast_hash": "2b3dcfd7f862425cebbb92d852c5fa27",
+    "mtime": 1785678183.129058,
+    "ast_hash": "892bcaeca02c92c2e00e6e644bc5b2f1",
     "semantic_hash": ""
   },
   "api/app/services/media_agents.py": {
@@ -1670,8 +1670,8 @@
     "semantic_hash": ""
   },
   "microservice/src/services/geminiService.ts": {
-    "mtime": 1785640632.4835098,
-    "ast_hash": "e2bec74d8305eb6911242ad0743369a8",
+    "mtime": 1785678332.3432295,
+    "ast_hash": "888e7dcf74be6c5ca36071cb2bff2857",
     "semantic_hash": ""
   },
   "microservice/src/services/supabaseService.ts": {
@@ -4000,13 +4000,13 @@
     "semantic_hash": ""
   },
   "api/app/services/content_enrichment.py": {
-    "mtime": 1785640393.8873646,
-    "ast_hash": "2983be4eb5ddd2c4e664aed10a8b90ef",
+    "mtime": 1785678153.1306367,
+    "ast_hash": "f7886c313b45f00c80240ef35a328c7a",
     "semantic_hash": ""
   },
   "api/tests/test_content_enrichment.py": {
-    "mtime": 1785640583.3982103,
-    "ast_hash": "041604dd2cc9e32c7a657eddc088ca76",
+    "mtime": 1785678224.1804671,
+    "ast_hash": "c0408c8d6456820861de922ff49f9c21",
     "semantic_hash": ""
   },
   "api/app/agent/prompts/enriquecedor_blocos_conteudo.txt": {
@@ -4330,13 +4330,13 @@
     "semantic_hash": ""
   },
   "microservice/src/services/geminiKeyRotation.test.ts": {
-    "mtime": 1785640669.4926155,
-    "ast_hash": "b53a906f7b5611653c90ed489e942e92",
+    "mtime": 1785678398.0809152,
+    "ast_hash": "33d0220f814c9e0f624cc1102ea5c2f1",
     "semantic_hash": ""
   },
   "api/tests/test_llm_service.py": {
-    "mtime": 1785677775.7036629,
-    "ast_hash": "8503cb1035a557d9ffbe4e5bbe6d483a",
+    "mtime": 1785678243.2278538,
+    "ast_hash": "418f131548f8e98b8171eeb71fe16dc2",
     "semantic_hash": ""
   }
 }
