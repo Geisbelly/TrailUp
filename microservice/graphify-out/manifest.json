@@ -20,8 +20,8 @@
     "semantic_hash": ""
   },
   "server.ts": {
-    "mtime": 1785625021.381488,
-    "ast_hash": "c498d4ba82fdee603a04a2788934c0bc",
+    "mtime": 1785713627.065102,
+    "ast_hash": "ea5c6847ebf485b21aff84eb1b1845d4",
     "semantic_hash": ""
   },
   "sql/migrations/0001_merge_personalizacao_materiais_rpc.sql": {
@@ -200,8 +200,8 @@
     "semantic_hash": ""
   },
   "src/lib/validators.ts": {
-    "mtime": 1785260120.6275408,
-    "ast_hash": "f7458ed5012b45ed289c397b7d49cd11",
+    "mtime": 1785713582.131627,
+    "ast_hash": "2850bffc1bfb84a94ee564a99b53b237",
     "semantic_hash": ""
   },
   "src/lib/wav.test.ts": {
@@ -245,8 +245,8 @@
     "semantic_hash": ""
   },
   "src/services/geminiService.ts": {
-    "mtime": 1785696251.4098656,
-    "ast_hash": "32ddf9009c1a26de0b6bf631bf4a0d98",
+    "mtime": 1785713540.6952503,
+    "ast_hash": "9c80ed59051d217346c9b43742f4ce64",
     "semantic_hash": ""
   },
   "src/services/openaiImageService.test.ts": {
@@ -285,8 +285,8 @@
     "semantic_hash": ""
   },
   "src/types/index.ts": {
-    "mtime": 1785280727.6988764,
-    "ast_hash": "5efe73e3f2d9bbd6b18b9574c7f6e675",
+    "mtime": 1785713272.0017955,
+    "ast_hash": "8977301fa277cd8dd3b2b3ceab6c6979",
     "semantic_hash": ""
   },
   "tsconfig.json": {
