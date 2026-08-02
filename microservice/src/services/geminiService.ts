@@ -1456,6 +1456,18 @@ export async function processMediaWithGemini(
                   responseSchema: GEMINI_CONTENT_GENERATION_RESPONSE_SCHEMA,
                 },
               });
+              // Diagnostico temporario: recebido=chars ficou curto mesmo com
+              // maxOutputTokens alto - precisamos saber se o Gemini foi
+              // truncado (finishReason=MAX_TOKENS, ai thoughtsTokenCount
+              // consumiu o orcamento) ou se ele parou sozinho (STOP) antes de
+              // cobrir o material, o que aponta pra um problema de prompt/
+              // comportamento em vez de orcamento. Remover apos diagnosticar.
+              console.error("[gemini-diag] lote", index + 1, JSON.stringify({
+                finishReason: response.candidates?.[0]?.finishReason,
+                usageMetadata: response.usageMetadata,
+                maxOutputTokens: call.maxOutputTokens,
+                textLength: String(response.text ?? "").length,
+              }));
               const responseText = String(response.text ?? "").trim();
               if (!responseText) {
                 throw new Error(`Gemini retornou vazio no lote ${index + 1}.`);
