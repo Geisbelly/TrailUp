@@ -22,6 +22,12 @@ services:
     environment:
       # comunicação server-side dentro da rede do compose
       - BRAINHEX_API_URL=http://microservice:3000
+      # watchfiles (usado pelo --reload do uvicorn) depende de eventos nativos
+      # de sistema de arquivos, que nao propagam de forma confiavel de um bind
+      # mount do Windows/WSL2 pro container — sem isso, o --reload fica
+      # silenciosamente parado e o container serve codigo desatualizado
+      # indefinidamente mesmo apos editar o arquivo no host.
+      - WATCHFILES_FORCE_POLLING=true
     volumes:
       - ./api:/app          # hot-reload do código
     depends_on:
@@ -36,6 +42,11 @@ services:
       - "3000:3000"
     env_file:
       - ./microservice/.env
+    environment:
+      # tsx --watch (via chokidar) tem o mesmo problema de propagacao de
+      # eventos de bind mount do Windows/WSL2 que o --reload do uvicorn —
+      # sem polling, o watch pode parar de detectar mudancas silenciosamente.
+      - CHOKIDAR_USEPOLLING=true
     volumes:
       - ./microservice:/app
       - /app/node_modules   # preserva as deps instaladas na imagem
