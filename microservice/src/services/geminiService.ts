@@ -65,13 +65,17 @@ const GEMINI_KEY_QUOTA_COOLDOWN_MS = 5 * 60 * 1_000;
 // Varios desses modelos aparecem com cota diária muito maior (ou ilimitada)
 // que gemini-3.6-flash nas tabelas do AI Studio — tentados em ordem, cada um
 // em todas as chaves configuradas, quando o modelo anterior esgota a cota em
-// todas elas, antes de cair pro fallback pago da OpenAI.
+// todas elas, antes de cair pro fallback pago da OpenAI. Ordem prioriza a
+// série 3.x: gemini-2.5-flash-lite (e outros modelos 2.x) retornaram 404
+// "no longer available to new users" em produção — contas novas parecem só
+// ter acesso à série 3.x. Os 2.x ficam no fim como tentativa residual, caso
+// algum outro tier ainda os aceite.
 const DEFAULT_GEMINI_TEXT_FALLBACK_MODELS = [
+  "gemini-3.1-flash-lite",
+  "gemini-3.5-flash-lite",
   "gemini-2.5-flash-lite",
   "gemini-2.0-flash",
   "gemini-2.0-flash-lite",
-  "gemini-3.1-flash-lite",
-  "gemini-3.5-flash-lite",
 ];
 
 export function resolveGeminiTextFallbackModels(

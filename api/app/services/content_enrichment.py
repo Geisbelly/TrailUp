@@ -199,6 +199,23 @@ def _is_gemini_quota_error(exc: BaseException) -> bool:
     return "resource_exhausted" in text or "quota" in text
 
 
+def _is_gemini_model_unavailable_error(exc: BaseException) -> bool:
+    """404/401 de modelo aposentado ou indisponivel pra novos usuarios — nao e
+    erro de cota (rotacionar chave nao ajuda, todas falhariam igual), mas
+    ainda justifica pular pro proximo modelo candidato em vez de abortar a
+    cadeia inteira (reproduzido em producao: gemini-2.5-flash-lite retornou
+    404 'no longer available to new users')."""
+    status = str(getattr(exc, "status_code", "") or getattr(exc, "code", "") or "").strip()
+    text = str(exc).lower()
+    if status in {"404", "401", "NOT_FOUND", "UNAUTHENTICATED"}:
+        return True
+    return (
+        "not_found" in text
+        or "unauthenticated" in text
+        or "no longer available" in text
+    )
+
+
 def _parse_gemini_keys(raw: str) -> list[str]:
     """Suporta múltiplas chaves Gemini separadas por vírgula/ponto-e-vírgula na
     mesma variável GEMINI_API_KEY. Cada chave tem sua própria cota diária
@@ -910,7 +927,7 @@ async def _generate_gemini_batch(
                 )
             except Exception as exc:
                 last_exc = exc
-                if _is_gemini_quota_error(exc):
+                if _is_gemini_quota_error(exc) or _is_gemini_model_unavailable_error(exc):
                     _gemini_enrichment_unavailable_until[(key, model)] = time.time() + quota_cooldown_sec
                     continue
                 raise ContentEnrichmentError(

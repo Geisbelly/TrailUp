@@ -89,7 +89,12 @@ class Settings(BaseSettings):
     # DEFAULT_GEMINI_CONTENT_GENERATION_MODEL em contentGenerationService.ts).
     gemini_materiais_model: str = "gemini-3.6-flash"
     gemini_model_multimodal_primary: str = "gemini-3.6-flash"
-    gemini_model_multimodal_fallback: str = "gemini-2.5-flash-lite"
+    # Era "gemini-2.5-flash-lite": retornou 404 NOT_FOUND em producao ("no
+    # longer available to new users"), mesmo motivo do gemini-2.5-flash ja
+    # documentado abaixo — contas novas parecem so ter acesso a serie 3.x.
+    # gemini-3.1-flash-lite e da mesma geracao confirmada funcionando
+    # (gemini-3.6-flash), sem o mesmo risco de aposentadoria.
+    gemini_model_multimodal_fallback: str = "gemini-3.1-flash-lite"
     gemini_model_image: str = "gemini-2.0-flash-preview-image-generation"
     gemini_model_tts: str = "gemini-2.5-flash-preview-tts"
     content_enrichment_gemini_model: str = "gemini-3.6-flash"
@@ -99,9 +104,13 @@ class Settings(BaseSettings):
     # (mesmo parser de GEMINI_API_KEY): cada modelo e tentado em todas as
     # chaves configuradas, na ordem, so quando o anterior esgota a cota em
     # todas elas — antes de cair pro fallback pago da OpenAI.
+    # Ordem prioriza a serie 3.x: gemini-2.5-flash-lite tambem retornou 404
+    # "no longer available to new users" em producao (contas novas parecem
+    # so ter acesso a modelos 3.x) — os 2.x ficam no fim da lista como
+    # tentativa residual, caso algum outro tier ainda os aceite.
     content_enrichment_gemini_fallback_models: str = (
-        "gemini-2.5-flash-lite,gemini-2.0-flash,gemini-2.0-flash-lite,"
-        "gemini-3.1-flash-lite,gemini-3.5-flash-lite"
+        "gemini-3.1-flash-lite,gemini-3.5-flash-lite,"
+        "gemini-2.5-flash-lite,gemini-2.0-flash,gemini-2.0-flash-lite"
     )
     content_enrichment_gemini_quota_cooldown_sec: int = 300
 

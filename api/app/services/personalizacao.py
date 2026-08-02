@@ -60,8 +60,13 @@ _MEDIA_FORMATOS = {"audio", "apresentacao", "markdown"}
 _PIPELINE_CORE_FORMATOS = ("cards", "apresentacao", "audio", "markdown")
 _MIN_PERSONALIZED_ITEMS = 5
 _MAX_PERSONALIZED_ITEMS = 15
-_DEFAULT_GEMINI_MULTIMODAL_PRIMARY = "gemini-2.5-flash"
-_DEFAULT_GEMINI_MULTIMODAL_FALLBACK = "gemini-2.5-flash-lite"
+# Eram "gemini-2.5-flash"/"gemini-2.5-flash-lite": ambos retornaram 404
+# NOT_FOUND em producao ("no longer available to new users") — contas novas
+# parecem so ter acesso a serie 3.x. gemini-3.6-flash/gemini-3.1-flash-lite
+# sao os mesmos usados como default de gemini_materiais_model/gemini_model_
+# multimodal_fallback em core/settings.py.
+_DEFAULT_GEMINI_MULTIMODAL_PRIMARY = "gemini-3.6-flash"
+_DEFAULT_GEMINI_MULTIMODAL_FALLBACK = "gemini-3.1-flash-lite"
 _CONTENT_ENRICHMENT_SCHEMA_VERSION = "trailup.content-blocks.v2"
 # Incremente sempre que prompts, enriquecimento ou geracao BrainHex mudarem de
 # forma que exija regenerar artefatos ja marcados como prontos.

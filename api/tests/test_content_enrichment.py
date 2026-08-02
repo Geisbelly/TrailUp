@@ -667,6 +667,48 @@ async def test_gemini_percorre_toda_a_cadeia_de_modelos_alternativos_ate_um_func
     ]
 
 
+@pytest.mark.asyncio
+async def test_gemini_pula_pro_proximo_modelo_quando_o_atual_esta_aposentado(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Reproduz o bug real: gemini-2.5-flash-lite retornou 404 NOT_FOUND ("no
+    longer available to new users") em producao. Um 404 nao e erro de cota,
+    mas ainda assim deve pular pro proximo modelo candidato — antes dessa
+    correcao, um 404 abortava a cadeia inteira na primeira tentativa."""
+    captured: dict[str, Any] = {}
+
+    class _NotFoundClient:
+        def with_structured_output(self, _schema: Any) -> Any:
+            class _Structured:
+                async def ainvoke(self, _messages: list[Any]) -> Any:
+                    raise Exception(
+                        "404 NOT_FOUND. This model models/gemini-2.5-flash-lite is "
+                        "no longer available to new users."
+                    )
+
+            return _Structured()
+
+    def factory(api_key: str, model: str) -> Any:
+        captured.setdefault("models_used", []).append(model)
+        if model == "gemini-2.5-flash-lite":
+            return _NotFoundClient()
+        return _GeminiClient(_rich_response, captured)
+
+    monkeypatch.setattr(enrichment_module, "_gemini_client", factory)
+
+    result = await enrich_content_blocks(
+        context=_context(),
+        settings=_settings(
+            gemini_api_key="key-1",
+            content_enrichment_gemini_model="gemini-2.5-flash-lite",
+            content_enrichment_gemini_fallback_models="gemini-2.0-flash",
+        ),
+    )
+
+    assert result["metadata"]["enrichment_llm_provider"] == "gemini"
+    assert captured["models_used"] == ["gemini-2.5-flash-lite", "gemini-2.0-flash"]
+
+
 # ─── OpenAI como reserva secundária (só quando o Gemini falha) ────────────────
 
 
