@@ -172,6 +172,48 @@ test("recusa lote que omite bloco ou devolve texto resumido", () => {
   );
 });
 
+test("teto de cobertura por orcamento de output evita exigir mais markdown do que uma unica chamada consegue conter", () => {
+  // Reproduz o bug real: mergeContentBlocksIntoOne junta N blocos originais
+  // num so ("documento-completo"), cujo conteudo_aprofundado bruto cresce
+  // com N — mas markdown/audioScript/slides saem de UMA UNICA chamada com
+  // orcamento de output fixo (maxOutputTokens). Sem teto, a exigencia de 75%
+  // do texto-fonte supera o que a resposta consegue fisicamente conter, e o
+  // lote reprova sempre, nao importa quantas vezes o Gemini tente de novo.
+  const bigBlock = (index: number): EnrichedContentBlock => ({
+    ...block(index),
+    conteudo_aprofundado: `Conteudo aprofundado do bloco ${index}. `.repeat(120),
+  });
+  const merged = mergeContentBlocksIntoOne(
+    Array.from({ length: 10 }, (_, i) => bigBlock(i + 1)),
+  );
+  const maxOutputTokens = 16_384;
+  const markdownUnit =
+    "Síntese coesa cobrindo os conceitos dos blocos mesclados, sem repetir "
+    + "o mesmo assunto em seções diferentes. ";
+  const achievableMarkdown = `## Documento completo\n\n${markdownUnit.repeat(400)}`;
+  const rawResponse = {
+    chapters: [{
+      blockId: "documento-completo",
+      markdown: achievableMarkdown,
+      audioScript: "Narração completa do documento. ".repeat(450),
+      slides: [chapter("documento-completo", "UM").slides[0]],
+    }],
+    confidence: 0.9,
+  };
+
+  // Sem o teto (maxOutputTokens omitido), a exigencia bruta de 50%/75% do
+  // texto-fonte mesclado ultrapassa uma resposta ja "razoavelmente boa"
+  // (aqui, o áudio é o primeiro a esbarrar nisso).
+  assert.throws(
+    () => validateBlockBatchGeneration([merged], rawResponse, 1),
+    /resumido abaixo do mínimo de cobertura/,
+  );
+
+  // Com o teto (orcamento real da chamada), a MESMA resposta passa.
+  const result = validateBlockBatchGeneration([merged], rawResponse, 1, { maxOutputTokens });
+  assert.equal(result.chapters[0].blockId, "documento-completo");
+});
+
 test("recusa audioScript curto quando requireAudio nao e passado (default preserva o comportamento atual)", () => {
   const shortAudio = chapter("bloco-01", "UM");
   shortAudio.audioScript = "curto";

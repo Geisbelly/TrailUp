@@ -595,7 +595,7 @@ export function validateBlockBatchGeneration(
   batch: EnrichedContentBlock[],
   raw: unknown,
   batchIndex: number,
-  options: { requireAudio?: boolean } = {},
+  options: { requireAudio?: boolean; maxOutputTokens?: number } = {},
 ): GeneratedBlockBatch {
   const requireAudio = options.requireAudio ?? true;
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
@@ -636,14 +636,34 @@ export function validateBlockBatchGeneration(
     }
     const markdown = String(chapter.markdown ?? "").trim();
     const audioScript = String(chapter.audioScript ?? "").trim();
-    const minimumMarkdownLength = Math.max(
+    let minimumMarkdownLength = Math.max(
       200,
       Math.floor(normalizedText(block.conteudo_aprofundado).length * 0.75),
     );
-    const minimumAudioLength = Math.max(
+    let minimumAudioLength = Math.max(
       160,
       Math.floor(normalizedText(block.conteudo_aprofundado).length * 0.5),
     );
+    // markdown, audioScript e slides saem da MESMA chamada e dividem o mesmo
+    // orcamento de output. Quando varios blocos sao mesclados num so (ver
+    // mergeContentBlocksIntoOne), o texto-fonte cresce com a quantidade de
+    // blocos mas o orcamento de output nao — sem este teto, a cobertura
+    // minima exigida (% do texto-fonte) supera o que a resposta consegue
+    // fisicamente conter, e o lote nunca passa por mais que se repita a
+    // geracao. O teto usa uma estimativa conservadora de chars/token para
+    // nao travar o caso normal de um bloco so (onde raramente se aplica).
+    if (options.maxOutputTokens) {
+      const CHARS_PER_TOKEN_ESTIMATE = 3;
+      const outputCharBudget = options.maxOutputTokens * CHARS_PER_TOKEN_ESTIMATE;
+      minimumMarkdownLength = Math.min(
+        minimumMarkdownLength,
+        Math.max(200, Math.floor(outputCharBudget * 0.5)),
+      );
+      minimumAudioLength = Math.min(
+        minimumAudioLength,
+        Math.max(160, Math.floor(outputCharBudget * 0.25)),
+      );
+    }
     if (normalizedText(markdown).length < minimumMarkdownLength) {
       throw new Error(
         `Markdown do bloco ${blockId} foi resumido abaixo do mínimo de cobertura.`,
@@ -1479,6 +1499,7 @@ export async function processMediaWithGemini(
               // sucesso (ver generateOpenAIFallbackChapters).
               validateBlockBatchGeneration(batch, value, index + 1, {
                 requireAudio: provider !== "openai",
+                maxOutputTokens,
               });
             },
           },
@@ -1487,7 +1508,7 @@ export async function processMediaWithGemini(
           batch,
           generation.value,
           index + 1,
-          { requireAudio: generation.provider !== "openai" },
+          { requireAudio: generation.provider !== "openai", maxOutputTokens },
         );
         validated.generationProvider = generation.provider;
         validated.generationModel = generation.model;
