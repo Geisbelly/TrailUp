@@ -666,7 +666,11 @@ export function validateBlockBatchGeneration(
     }
     if (normalizedText(markdown).length < minimumMarkdownLength) {
       throw new Error(
-        `Markdown do bloco ${blockId} foi resumido abaixo do mínimo de cobertura.`,
+        `Markdown do bloco ${blockId} foi resumido abaixo do mínimo de cobertura `
+        + `(recebido=${normalizedText(markdown).length} chars, `
+        + `minimo=${minimumMarkdownLength} chars, `
+        + `fonte=${normalizedText(block.conteudo_aprofundado).length} chars, `
+        + `maxOutputTokens=${options.maxOutputTokens ?? "n/d"}).`,
       );
     }
     // audioScript so sai do Gemini, sem fallback proprio - quando a cota do
@@ -676,7 +680,11 @@ export function validateBlockBatchGeneration(
     // (Gemini) e a origem, onde audio curto de fato indica baixa qualidade.
     if (requireAudio && normalizedText(audioScript).length < minimumAudioLength) {
       throw new Error(
-        `Áudio do bloco ${blockId} foi resumido abaixo do mínimo de cobertura.`,
+        `Áudio do bloco ${blockId} foi resumido abaixo do mínimo de cobertura `
+        + `(recebido=${normalizedText(audioScript).length} chars, `
+        + `minimo=${minimumAudioLength} chars, `
+        + `fonte=${normalizedText(block.conteudo_aprofundado).length} chars, `
+        + `maxOutputTokens=${options.maxOutputTokens ?? "n/d"}).`,
       );
     }
     if (!Array.isArray(chapter.slides) || chapter.slides.length === 0) {
