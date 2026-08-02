@@ -1545,8 +1545,8 @@
     "semantic_hash": "0af88aabf1f61ddf07652e71f37a6648"
   },
   "microservice/package.json": {
-    "mtime": 1785436961.2756479,
-    "ast_hash": "34c86c54ddd130dead912a6008c9149e",
+    "mtime": 1785633566.5480313,
+    "ast_hash": "f51c58471d07307fe3dc9c09d9fd943b",
     "semantic_hash": ""
   },
   "microservice/server.ts": {
@@ -1670,8 +1670,8 @@
     "semantic_hash": ""
   },
   "microservice/src/services/geminiService.ts": {
-    "mtime": 1785624065.5423167,
-    "ast_hash": "746d8e2d1b0d5b7156835474cdc5839f",
+    "mtime": 1785633523.4383771,
+    "ast_hash": "c604022d22ed7dcb33ebc581e279f99f",
     "semantic_hash": ""
   },
   "microservice/src/services/supabaseService.ts": {
@@ -4000,13 +4000,13 @@
     "semantic_hash": ""
   },
   "api/app/services/content_enrichment.py": {
-    "mtime": 1785627719.1724386,
-    "ast_hash": "aff0b063528233f1b5c879f27c537fcc",
+    "mtime": 1785633305.943133,
+    "ast_hash": "9063adf31b5af71b196ecce31bc6955c",
     "semantic_hash": ""
   },
   "api/tests/test_content_enrichment.py": {
-    "mtime": 1785627886.7861023,
-    "ast_hash": "298ba24f9d03949f6deca57bd0c5ac68",
+    "mtime": 1785633246.8002586,
+    "ast_hash": "de6a2036b01cba838cdf2bbac1babe98",
     "semantic_hash": ""
   },
   "api/app/agent/prompts/enriquecedor_blocos_conteudo.txt": {
@@ -4327,6 +4327,11 @@
   "docs/superpowers/plans/2026-08-01-robot-framework-personalizacao-console.md": {
     "mtime": 1785622585.968196,
     "ast_hash": "25a1250ff0a3960aaef6b47f6493b7e2",
+    "semantic_hash": ""
+  },
+  "microservice/src/services/geminiKeyRotation.test.ts": {
+    "mtime": 1785633609.5373325,
+    "ast_hash": "43e8c4ffd6cddebe2ef5301c3ca0f3b1",
     "semantic_hash": ""
   }
 }
