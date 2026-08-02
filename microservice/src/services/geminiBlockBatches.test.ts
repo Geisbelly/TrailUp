@@ -100,24 +100,20 @@ test("particiona todos os blocos em lotes pequenos e preserva a ordem pedagógic
   assert.deepEqual(
     batches.map((batch) => batch.map((item) => item.id)),
     [
-      ["bloco-01"],
-      ["bloco-02"],
-      ["bloco-03"],
-      ["bloco-04"],
-      ["bloco-05"],
-      ["bloco-06"],
+      ["bloco-01", "bloco-02", "bloco-03"],
+      ["bloco-04", "bloco-05", "bloco-06"],
       ["bloco-07"],
     ],
   );
   assert.equal(batches.flat().length, unordered.length);
 });
 
-test("limita cada lote a um bloco para preservar cobertura integral", () => {
-  assert.equal(resolveContentBlockBatchSize(undefined), 1);
-  assert.equal(resolveContentBlockBatchSize("4"), 1);
-  assert.equal(resolveContentBlockBatchSize(24), 1);
-  assert.equal(resolveContentBlockBatchSize(0), 1);
-  assert.equal(resolveContentBlockBatchSize(25), 1);
+test("usa um teto moderado de blocos por lote - nem 1 (martela a cota por bloco) nem o topico inteiro (Gemini resume demais)", () => {
+  assert.equal(resolveContentBlockBatchSize(undefined), 6);
+  assert.equal(resolveContentBlockBatchSize("4"), 4);
+  assert.equal(resolveContentBlockBatchSize(24), 8);
+  assert.equal(resolveContentBlockBatchSize(0), 6);
+  assert.equal(resolveContentBlockBatchSize(25), 8);
 });
 
 test("usa concorrência pequena e aplica um teto seguro", () => {
@@ -314,6 +310,9 @@ test("recusa slide fora do lote quando ha mais de um bloco valido (preserva a ch
 });
 
 test("consolida markdown, áudio e slides na ordem global com metadados dos lotes", () => {
+  // batchSize=2: cada lote agora cobre MAIS de um bloco (ver comentario em
+  // DEFAULT_CONTENT_BLOCK_BATCH_SIZE) - cada bloco do lote ainda precisa do
+  // seu proprio capitulo (validateBlockBatchGeneration exige 1 por blockId).
   const blocks = [block(1), block(2), block(3), block(4)];
   const batches = partitionContentBlocks(blocks, 2);
   const markers = ["PRIMEIRO", "SEGUNDO", "TERCEIRO", "QUARTO"];
@@ -321,8 +320,10 @@ test("consolida markdown, áudio e slides na ordem global com metadados dos lote
     validateBlockBatchGeneration(
       batch,
       {
-        chapters: [chapter(batch[0].id, markers[index])],
-        confidence: index === 0 ? 0.6 : 1,
+        chapters: batch.map((b, blockIndex) =>
+          chapter(b.id, markers[index * 2 + blockIndex])
+        ),
+        confidence: index === 0 ? 0.8 : 1,
       },
       index + 1,
     )
@@ -331,14 +332,14 @@ test("consolida markdown, áudio e slides na ordem global com metadados dos lote
     result.generationProvider = "gemini";
     result.generationModel = "gemini-3-flash-preview";
   }
-  generated[3].generationProvider = "openai";
-  generated[3].generationModel = "gpt-5.4-mini";
-  generated[3].fallbackFrom = "gemini";
+  generated[1].generationProvider = "openai";
+  generated[1].generationModel = "gpt-5.4-mini";
+  generated[1].fallbackFrom = "gemini";
 
   const result = consolidateBlockBatchGenerations(
     blocks,
-    [generated[3], generated[1], generated[0], generated[2]],
-    { batchSize: 1, concurrency: 2, family: "presentation", filesCount: 2 },
+    [generated[1], generated[0]],
+    { batchSize: 2, concurrency: 2, family: "presentation", filesCount: 2 },
   );
 
   assert.ok(result.markdown.indexOf("PRIMEIRO") < result.markdown.indexOf("SEGUNDO"));
@@ -350,8 +351,8 @@ test("consolida markdown, áudio e slides na ordem global com metadados dos lote
   );
   assert.equal(result.metadata.generation_mode, "block_batches");
   assert.equal(result.metadata.content_blocks_total, 4);
-  assert.equal(result.metadata.content_block_batches, 4);
-  assert.equal(result.metadata.content_block_batch_size, 1);
+  assert.equal(result.metadata.content_block_batches, 2);
+  assert.equal(result.metadata.content_block_batch_size, 2);
   assert.equal(result.metadata.content_block_concurrency, 2);
   assert.equal(result.metadata.content_generation_provider, "mixed");
   assert.deepEqual(result.metadata.content_generation_models, [
@@ -360,10 +361,8 @@ test("consolida markdown, áudio e slides na ordem global com metadados dos lote
   ]);
   assert.equal(result.metadata.content_generation_fallback_count, 1);
   assert.deepEqual(result.metadata.batch_block_ids, [
-    ["bloco-01"],
-    ["bloco-02"],
-    ["bloco-03"],
-    ["bloco-04"],
+    ["bloco-01", "bloco-02"],
+    ["bloco-03", "bloco-04"],
   ]);
   assert.equal(result.metadata.confidence, 0.9);
 });

@@ -356,21 +356,29 @@ const SUPPORTED_NATIVE_MIMES = [
   "video/mp4", "video/mpeg"
 ];
 
-const DEFAULT_CONTENT_BLOCK_BATCH_SIZE = 1;
-const MAX_CONTENT_BLOCK_BATCH_SIZE = 1;
+// Antes fixo em 1 (cada bloco virava sua propria chamada) e depois substituido
+// por um merge forcado de TODOS os blocos numa unica chamada gigante — essa
+// segunda abordagem provou (via diagnostico de finishReason/usageMetadata)
+// que o Gemini para sozinho (STOP) bem antes de cobrir 24 blocos concatenados,
+// nao importa o orcamento de tokens ou instrucoes explicitas de tamanho no
+// prompt. Lotes de tamanho intermediario evitam as duas pontas: pequenos o
+// bastante pra nao disparar o comportamento de resumo do modelo, grandes o
+// bastante pra nao multiplicar chamadas (e cota diaria) por 1-bloco-por-vez.
+const DEFAULT_CONTENT_BLOCK_BATCH_SIZE = 6;
+const MAX_CONTENT_BLOCK_BATCH_SIZE = 8;
 const DEFAULT_CONTENT_BLOCK_CONCURRENCY = 2;
 const MAX_CONTENT_BLOCK_CONCURRENCY = 4;
 const DEFAULT_CONTENT_GENERATION_MAX_OUTPUT_TOKENS = 16_384;
-// O documento mesclado (mergeContentBlocksIntoOne) sintetiza TODOS os blocos
-// do topico numa unica chamada — markdown, audioScript e slides saem juntos,
-// no mesmo orcamento. 16384 tokens foi calibrado para o caso de 1 bloco
-// pequeno (e para casar com o teto real do fallback OpenAI, ver
-// contentGenerationService.ts); no documento mesclado isso e curto demais e o
-// Gemini devolve markdown bem abaixo do minimo de cobertura, mesmo repetindo
-// a geracao. So o Gemini usa este teto maior — o fallback OpenAI aplica seu
-// proprio Math.min contra o teto real de 16384 tokens do gpt-4o-mini
-// (ver callOpenAIStructured), entao passar um valor maior aqui nao quebra a
-// contingencia paga, so da mais espaco pro provedor principal.
+// Historico: quando processMediaWithGemini ainda mesclava TODOS os blocos do
+// topico numa unica chamada (mergeContentBlocksIntoOne), esse teto maior foi
+// adicionado na tentativa de dar mais espaco de saida ao Gemini. Diagnostico
+// via finishReason/usageMetadata provou que nao era o gargalo (o Gemini parava
+// sozinho - STOP - usando uma fracao minima do orcamento, nao MAX_TOKENS) —
+// o problema real era o modelo tratando 24 blocos concatenados como material
+// a resumir. A mesclagem foi removida (ver comentario em
+// DEFAULT_CONTENT_BLOCK_BATCH_SIZE); nenhum chamador passa isMergedDocument
+// como true hoje. A branch fica aqui, testada e pronta, caso outro caminho de
+// geracao precise de mais orcamento de saida no futuro.
 const DEFAULT_CONTENT_GENERATION_MERGED_MAX_OUTPUT_TOKENS = 65_536;
 
 export function resolveContentGenerationMaxOutputTokens(
@@ -1139,24 +1147,15 @@ export async function processMediaWithGemini(
   contentBlocks: EnrichedContentBlock[] = [],
   requestedPresentationPlan?: PresentationDesignPlan,
 ): Promise<ProcessedContent> {
-  // API continua dividindo o material em blocos (ver content_enrichment.py),
-  // mas a partir daqui a geracao volta a tratar o topico inteiro como uma
-  // unidade so, em vez de um capitulo por bloco (ver mergeContentBlocksIntoOne).
+  // API continua dividindo o material em blocos (ver content_enrichment.py).
+  // A geracao processa os blocos em lotes de tamanho moderado (ver
+  // DEFAULT_CONTENT_BLOCK_BATCH_SIZE) — cada bloco do lote vira seu proprio
+  // capitulo (ver validateBlockBatchGeneration), nunca mesclando todos os
+  // blocos do topico numa unica chamada (ver mergeContentBlocksIntoOne, que
+  // permanece exportada e testada mas nao e mais chamada aqui: mesclar tudo
+  // fazia o Gemini resumir agressivamente o material em vez de expandi-lo).
   const originalBlocksCount = contentBlocks.length;
-  if (contentBlocks.length > 1) {
-    contentBlocks = [mergeContentBlocksIntoOne(contentBlocks)];
-  }
-  // Mesmo calculo de validateBlockBatchGeneration (minimumMarkdownLength) —
-  // dar ao modelo o numero-alvo explicito em vez de so "nao resuma" o ajuda a
-  // perceber, ANTES de finalizar a resposta, que uma sintese curta nao atende
-  // (ver comentario na SINTESE DE DOCUMENTO UNICO abaixo: o finishReason
-  // observado era STOP bem abaixo do teto de tokens, nao truncamento).
-  const mergedDocumentTargetChars = originalBlocksCount > 1
-    ? Math.max(200, Math.floor(normalizedText(contentBlocks[0]?.conteudo_aprofundado).length * 0.75))
-    : 0;
-  const maxOutputTokens = resolveContentGenerationMaxOutputTokens(
-    originalBlocksCount > 1,
-  );
+  const maxOutputTokens = resolveContentGenerationMaxOutputTokens(false);
 
   const config = BRAIN_HEX_CONFIG[profile];
   const presentationPlan = requestedPresentationPlan
@@ -1391,42 +1390,18 @@ export async function processMediaWithGemini(
          funciona como assinatura, sem substituir o assunto real da aula por fantasia genérica.
 
     ${contentBlocks.length > 0 ? `
-    SÍNTESE DE DOCUMENTO ÚNICO:
-    - O bloco recebido contém o material COMPLETO do tópico. Internamente ele
-      pode conter vários segmentos de origem concatenados (separados por
-      "---" e identificados entre colchetes), porque o professor organizou o
-      material original em partes — mas isso é só rastreabilidade interna.
-    - EXTENSÃO MÍNIMA OBRIGATÓRIA: seu campo 'markdown' final precisa ter pelo
-      menos ${mergedDocumentTargetChars} caracteres — este número já é ~75% do
-      material-fonte que você recebeu, ou seja, o mínimo fisicamente
-      necessário para cobrir 100% dos conceitos com explicação real (não é um
-      teto, é o piso). Você tem até ${maxOutputTokens} tokens de saída
-      disponíveis nesta chamada — use o espaço necessário. Antes de encerrar
-      sua resposta, verifique mentalmente se o markdown que você escreveu
-      chega perto dessa contagem de caracteres; se você perceber que está
-      terminando com um texto muito mais curto que isso, PARE — isso é sinal
-      de que você resumiu/condensou o material em vez de expandi-lo, e você
-      deve voltar e desenvolver cada seção com a explicação, os exemplos e o
-      aprofundamento completos que a regra 1 (Fidelidade Absoluta) exige.
-    - Escreva o markdown e o audioScript como um ÚNICO guia coeso, do início
-      ao fim, como um professor explicando o tema inteiro numa aula só — não
-      crie uma seção ou capítulo por segmento de origem.
-    - "Único guia coeso" descreve a NARRATIVA (uma introdução, uma conclusão,
-      transições entre seções), não o tamanho — um guia coeso sobre um tópico
-      grande é naturalmente longo. Consolidar a estrutura não é licença para
-      encurtar o conteúdo.
-    - Se o mesmo conceito aparecer em mais de um segmento de origem (o
-      material do professor às vezes reintroduz o mesmo tema em slides
-      diferentes), escreva-o UMA ÚNICA VEZ, na melhor posição lógica dentro
-      do guia, mas com a MESMA profundidade que teria se explicado em cada
-      ocorrência separadamente — nunca repita a mesma seção ou ideia com
-      palavras diferentes só porque a fonte a repetiu, e nunca aproveite a
-      deduplicação para escrever menos do que o material tecnicamente exige.
-    - Isso não é licença para omitir conteúdo: a regra 1 (Fidelidade
-      Absoluta) continua valendo — cubra 100% dos conceitos técnicos
-      presentes no material, só sem duplicá-los.
-    - Ainda assim, gere ao menos um slide por assunto principal abordado.
-      Todo slide deve incluir o blockId do capítulo em sourceIds.
+    LOTE DE BLOCOS PEDAGÓGICOS:
+    - Este lote contém ${contentBlocks.length > 1 ? "vários blocos distintos" : "um bloco"}
+      do tópico (o professor organizou o material em blocos maiores — ver
+      content_enrichment.py; este lote é uma fatia deles, não o tópico
+      inteiro). Cada blockId listado em "IDS OBRIGATORIOS" precisa virar seu
+      PRÓPRIO capítulo completo (markdown + audioScript + slides), com
+      extensão proporcional ao conteúdo aprofundado DAQUELE bloco especificamente
+      — nunca condense um bloco achando que outro bloco do lote (ou de fora
+      dele) já cobriu um conceito parecido; cada capítulo é validado sozinho
+      e precisa se sustentar sem depender de nenhum outro.
+    - Ainda assim, gere ao menos um slide por assunto principal de cada
+      bloco. Todo slide deve incluir o blockId do capítulo em sourceIds.
     ` : ""}
 
     Estética: cor de assinatura ${config.color}, sistema ${presentationPlan.styleName},
@@ -1456,9 +1431,11 @@ export async function processMediaWithGemini(
         const expectedIds = batch.map((block) => block.id);
         const batchInput =
           `IDS OBRIGATORIOS, NESTA ORDEM: ${JSON.stringify(expectedIds)}\n`
-          + "Sintetize o material abaixo num unico capitulo coeso, cobrindo "
-          + "100% dos conceitos sem repetir o mesmo assunto em secoes "
-          + "diferentes.\n\n"
+          + `Gere um capitulo PROPRIO para CADA um dos ${batch.length} `
+          + "bloco(s) abaixo (um markdown, um audioScript e slides por "
+          + "blockId) - cubra 100% dos conceitos de cada bloco individualmente, "
+          + "com extensao proporcional ao conteudo_aprofundado daquele bloco "
+          + "especifico.\n\n"
           + JSON.stringify(batch, null, 2);
         const generation = await generateStructuredContentWithFallback(
           {
