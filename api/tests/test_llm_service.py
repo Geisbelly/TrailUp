@@ -158,3 +158,33 @@ def test_ainvoke_json_gemini_falls_back_to_next_model_when_current_is_retired(
 
     assert result == {"cards": [1]}
     assert captured["models_used"] == ["gemini-3.6-flash", "gemini-3.1-flash-lite"]
+
+
+def test_extract_json_handles_content_as_list_of_parts() -> None:
+    """langchain_google_genai as vezes devolve response.content como uma
+    lista de partes (str ou dict com chave "text") em vez de string simples
+    - reproduzido em producao: 'list' object has no attribute 'strip'."""
+    from app.services.llm import extract_json
+
+    assert extract_json('{"cards": [1]}') == {"cards": [1]}
+    assert extract_json(["{\"cards\": ", "[1]}"]) == {"cards": [1]}
+    assert extract_json([{"text": '{"cards": [1]}'}]) == {"cards": [1]}
+
+
+def test_ainvoke_json_gemini_handles_response_content_as_list_of_parts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def factory(*, model: str, temperature: float, google_api_key: str):
+        return _FakeGeminiClient(lambda: [{"text": '{"cards": [1]}'}])
+
+    monkeypatch.setattr(llm_module, "ChatGoogleGenerativeAI", factory)
+    monkeypatch.setattr(llm_module, "load_prompt", lambda _name: "instrucoes")
+
+    settings = _settings(gemini_api_key="key-1", openai_api_key="")
+    service = JsonLLMService(settings)
+
+    result = asyncio.run(
+        service.ainvoke_json(prompt_name="gerador_conteudo.txt", payload={})
+    )
+
+    assert result == {"cards": [1]}

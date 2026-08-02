@@ -91,8 +91,26 @@ def load_prompt(filename: str) -> str:
     return (PROMPTS_DIR / filename).read_text(encoding="utf-8")
 
 
-def extract_json(content: str) -> dict[str, Any]:
-    normalized = content.strip()
+def _coerce_text_content(content: Any) -> str:
+    """langchain_google_genai as vezes devolve response.content como uma
+    lista de partes (str ou dict com chave "text") em vez de uma string
+    simples — reproduzido em producao: content.strip() falhava com
+    'list' object has no attribute 'strip'."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts: list[str] = []
+        for item in content:
+            if isinstance(item, str):
+                parts.append(item)
+            elif isinstance(item, dict):
+                parts.append(str(item.get("text") or ""))
+        return "".join(parts)
+    return str(content or "")
+
+
+def extract_json(content: Any) -> dict[str, Any]:
+    normalized = _coerce_text_content(content).strip()
     if normalized.startswith("```"):
         normalized = normalized.split("\n", 1)[-1]
         normalized = normalized.rsplit("```", 1)[0]
