@@ -1,7 +1,7 @@
 # Graph Report - TrailUp  (2026-08-01)
 
 ## Corpus Check
-- 714 files · ~2,430,828 words
+- 714 files · ~2,431,080 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `e4f17957`
+- Built from commit: `d80f2038`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -367,14 +367,14 @@
 - pptx.py
 - next-themes
 - 5. Fluxos operacionais (sequencias)
+- dotenv
 - apiBaseUrl.ts
 - mammoth
 - _brainhex_contract_is_ready
+- expo-symbols
 - @config-plugins/react-native-blob-util
 - GUIA_USO.md
-- expo-av
 - @hookform/resolvers
-- motion
 - devDependencies
 
 ## God Nodes (most connected - your core abstractions)
@@ -443,8 +443,8 @@ Cohesion: 0.17
 Nodes (28): clampOpacity(), clampPercent(), collectParagraphText(), collectTextFragments(), extensionToMimeType(), extractPictureElement(), extractRunOptions(), extractShapeDecorationElement() (+20 more)
 
 ### Community 9 - "AccessRepository"
-Cohesion: 0.15
-Nodes (16): get_session(), get_settings(), healthcheck(), AsyncSession, get, listar_materiais(), AsyncSession, get (+8 more)
+Cohesion: 0.25
+Nodes (9): _clean_text(), _detect_language(), _is_noise(), normalize(), Recebe a saída de um extractor e retorna NormalizedDocument., Remove espaços extras e caracteres de controle., Verifica se um bloco é ruído (número de página, rodapé, etc.)., Detecta idioma com base em stopwords comuns.     Retorna 'pt-BR' ou 'en'. (+1 more)
 
 ### Community 10 - "button.tsx"
 Cohesion: 0.08
@@ -539,8 +539,8 @@ Cohesion: 0.08
 Nodes (39): collectMetadataFilePaths(), ConteudoSourceRow, deleteClasseCascade(), deleteClassTrail(), deleteContentCascade(), deleteStoragePaths(), deleteTopicCascade(), DynamicDeleteQuery (+31 more)
 
 ### Community 33 - "supabase.ts"
-Cohesion: 0.09
-Nodes (54): FontesContextLimitExceeded, Impede gerar conteúdo a partir de um subconjunto silencioso das fontes., IADescricaoRepository, AsyncSession, PerfilRepository, AsyncSession, FakeRow, _job_row() (+46 more)
+Cohesion: 0.07
+Nodes (60): FontesContextLimitExceeded, Impede gerar conteúdo a partir de um subconjunto silencioso das fontes., IADescricaoRepository, AsyncSession, NotificacaoRepository, AsyncSession, PerfilRepository, AsyncSession (+52 more)
 
 ### Community 34 - "ProfileMetricsViews.tsx"
 Cohesion: 0.08
@@ -604,7 +604,7 @@ Nodes (40): 10.1 Job agregado, 10.2 Target individual, 10. Estados de processame
 
 ### Community 50 - "dependencies"
 Cohesion: 0.11
-Nodes (19): cors, dotenv, express, @google/genai, lamejs, dependencies, clsx, cors (+11 more)
+Nodes (19): cors, express, @google/genai, lamejs, dependencies, clsx, cors, express (+11 more)
 
 ### Community 51 - "clampPercent"
 Cohesion: 0.08
@@ -620,7 +620,7 @@ Nodes (20): compute_distribuicao(), GroupAnalysisService, _normalize_profile(), 
 
 ### Community 54 - "dependencies"
 Cohesion: 0.06
-Nodes (35): caniuse-lite, embla-carousel-react, dependencies, caniuse-lite, clsx, embla-carousel-react, input-otp, @radix-ui/react-aspect-ratio (+27 more)
+Nodes (35): browserslist, embla-carousel-react, dependencies, browserslist, clsx, embla-carousel-react, input-otp, @radix-ui/react-aspect-ratio (+27 more)
 
 ### Community 55 - "ContentFileUpload.tsx"
 Cohesion: 0.05
@@ -808,7 +808,7 @@ Nodes (21): 10. Telemetria, 11. Segurança, 12. Riscos e mitigação, 13. Objeti
 
 ### Community 101 - "TelemetriaRepository"
 Cohesion: 0.09
-Nodes (23): expo, expo-camera, expo-dev-client, expo-status-bar, expo-symbols, dependencies, expo, expo-camera (+15 more)
+Nodes (23): expo, expo-av, expo-camera, expo-dev-client, expo-status-bar, dependencies, expo, expo-av (+15 more)
 
 ### Community 102 - "BrainHexShowcase.tsx"
 Cohesion: 0.10
@@ -859,8 +859,8 @@ Cohesion: 0.26
 Nodes (14): Módulo de ingestão de arquivos do TrailUp.  Pipeline:   arquivo (bytes + mime) →, Chunk, NormalizedDocument, _basename_from_locator(), _infer_bucket(), ingest_bytes(), ingest_source(), _looks_like_filename() (+6 more)
 
 ### Community 114 - "Nova Paleta BrainHex (Psicologia das Cores) Implementation Plan"
-Cohesion: 0.13
-Nodes (21): _clean_text(), _detect_language(), _is_noise(), normalize(), Normaliza o resultado bruto dos extratores para um NormalizedDocument. Limpa ruí, Recebe a saída de um extractor e retorna NormalizedDocument., Remove espaços extras e caracteres de controle., Verifica se um bloco é ruído (número de página, rodapé, etc.). (+13 more)
+Cohesion: 0.18
+Nodes (15): Normaliza o resultado bruto dos extratores para um NormalizedDocument. Limpa ruí, extract(), Factory: escolhe o extrator correto com base na família do arquivo., Roteia para o extrator específico e retorna dict com:       - family, title, blo, _classify_line(), _empty(), extract(), Extrator de PDF: pypdf → lista de Block. (+7 more)
 
 ### Community 115 - "expo-image"
 Cohesion: 0.05
@@ -895,8 +895,8 @@ Cohesion: 0.14
 Nodes (17): accumulateContextTime(), accumulateEntryTime(), buildDisabledUsageTimeMetrics(), buildEmptyBatch(), buildTimeMetricEntry(), buildUuid(), clamp01(), getOrCreateTimeMetricEntry() (+9 more)
 
 ### Community 123 - "chart.tsx"
-Cohesion: 0.10
-Nodes (46): executor(), Any, async_sessionmaker, AsyncSession, admin_professores_page(), _dashboard_html(), _load_dashboard(), AsyncSession (+38 more)
+Cohesion: 0.08
+Nodes (58): executor(), Any, async_sessionmaker, AsyncSession, admin_professores_page(), _dashboard_html(), _load_dashboard(), AsyncSession (+50 more)
 
 ### Community 124 - "android"
 Cohesion: 0.23
@@ -1007,8 +1007,8 @@ Cohesion: 0.30
 Nodes (3): PersonalizacaoProgressoRepository, Any, AsyncSession
 
 ### Community 156 - "20260405_02_materiais_gerados.py"
-Cohesion: 0.13
-Nodes (6): FontesPersonalizacaoRepository, Any, AsyncSession, RuntimeError, DummyResult, MappingRows
+Cohesion: 0.29
+Nodes (4): FontesPersonalizacaoRepository, Any, AsyncSession, RuntimeError
 
 ### Community 157 - "20260406_01_conteudo_personalizado.py"
 Cohesion: 0.14
@@ -1103,8 +1103,8 @@ Cohesion: 0.25
 Nodes (15): CachedNativeContentFile, cacheLock, CacheRecord, cleanupUnusedCachedContent(), cleanupUnusedCachedContentLocked(), EnsureCachedContentOptions, ensureCacheDirectory(), ensureCachedNativeContent() (+7 more)
 
 ### Community 194 - "cmdk"
-Cohesion: 0.36
-Nodes (9): _empty(), extract(), _from_json(), _from_plaintext(), _from_xml(), Extrator de texto plano (.txt, .csv, .json, .xml) → lista de Block., Trata JSON como estrutura textual., Remove tags XML e extrai texto. (+1 more)
+Cohesion: 0.21
+Nodes (14): _empty(), extract(), Extrator de DOCX: python-docx → lista de Block., Extrai blocos estruturados de um DOCX.      Retorna dict com:       - family, ti, Extratores de conteudo por familia de arquivo., _empty(), extract(), _from_json() (+6 more)
 
 ### Community 196 - "CLAUDE.md — TrailUp"
 Cohesion: 0.20
@@ -1303,8 +1303,8 @@ Cohesion: 0.33
 Nodes (6): fallbackPalette, loadNativePdfComponent(), NativePdfComponent, NativePdfViewer(), Props, styles
 
 ### Community 333 - "@config-plugins/react-native-blob-util"
-Cohesion: 0.16
-Nodes (14): extract(), Factory: escolhe o extrator correto com base na família do arquivo., Roteia para o extrator específico e retorna dict com:       - family, title, blo, _empty(), extract(), Extrator de DOCX: python-docx → lista de Block., Extrai blocos estruturados de um DOCX.      Retorna dict com:       - family, ti, Extratores de conteudo por familia de arquivo. (+6 more)
+Cohesion: 0.38
+Nodes (6): _empty(), extract(), Extrator de Markdown: parse estrutural → lista de Block., Extrai blocos estruturados de um arquivo Markdown., Remove markdown inline: bold, italic, code, links., _strip_inline_md()
 
 ### Community 336 - "api/estrutura-banco-supabase.md"
 Cohesion: 0.17
@@ -1402,7 +1402,7 @@ Nodes (37): @eslint/js, eslint-plugin-react-hooks, eslint-plugin-react-refresh, 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `dependencies` to `_profile_render_targets_ready_now`, `@radix-ui/react-menubar`, `motion`, `5. Fluxos operacionais (sequencias)`, `lucide-react`, `dotenv`, `react-markdown`, `formatSeconds`, `@tailwindcss/vite`, `20260421_01_telemetria_eventos_app_and_time_metrics.py`, `3.1.1 Diagrama por camada`, `mammoth`, `lamejs`?**
+- **Why does `dependencies` connect `dependencies` to `_profile_render_targets_ready_now`, `@radix-ui/react-menubar`, `5. Fluxos operacionais (sequencias)`, `lucide-react`, `dotenv`, `react-markdown`, `formatSeconds`, `@tailwindcss/vite`, `20260421_01_telemetria_eventos_app_and_time_metrics.py`, `3.1.1 Diagrama por camada`, `dotenv`, `mammoth`, `lamejs`?**
   _High betweenness centrality (0.268) - this node is a cross-community bridge._
 - **Why does `jspdf` connect `5. Fluxos operacionais (sequencias)` to `dependencies`, `EventoRepository`?**
   _High betweenness centrality (0.264) - this node is a cross-community bridge._

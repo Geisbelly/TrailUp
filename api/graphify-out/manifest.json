@@ -345,8 +345,8 @@
     "semantic_hash": ""
   },
   "api/app/core/settings.py": {
-    "mtime": 1785386694.9456606,
-    "ast_hash": "4fc981419db06123c838603190e54fb1",
+    "mtime": 1785627645.4597895,
+    "ast_hash": "59eb681efeed049610b860d01dc55bf7",
     "semantic_hash": ""
   },
   "api/app/db/__init__.py": {
@@ -635,8 +635,8 @@
     "semantic_hash": ""
   },
   "api/app/services/content_enrichment.py": {
-    "mtime": 1785619911.625892,
-    "ast_hash": "1d702f2c3ec7db5d2347cb0f8a1b307c",
+    "mtime": 1785627719.1724386,
+    "ast_hash": "aff0b063528233f1b5c879f27c537fcc",
     "semantic_hash": ""
   },
   "api/app/services/docx.py": {
@@ -765,8 +765,8 @@
     "semantic_hash": ""
   },
   "api/tests/test_content_enrichment.py": {
-    "mtime": 1785619935.0822568,
-    "ast_hash": "826f2c67de2c1126609ca106fd9bc0e0",
+    "mtime": 1785627886.7861023,
+    "ast_hash": "298ba24f9d03949f6deca57bd0c5ac68",
     "semantic_hash": ""
   },
   "api/tests/test_design_tokens_aaa.py": {
@@ -1695,8 +1695,8 @@
     "semantic_hash": ""
   },
   "microservice/server.ts": {
-    "mtime": 1785615650.106556,
-    "ast_hash": "e53eba9feb23dedb2f0028d487dc1b47",
+    "mtime": 1785625021.381488,
+    "ast_hash": "c498d4ba82fdee603a04a2788934c0bc",
     "semantic_hash": ""
   },
   "microservice/sql/migrations/0001_merge_personalizacao_materiais_rpc.sql": {
@@ -1910,13 +1910,13 @@
     "semantic_hash": ""
   },
   "microservice/src/services/geminiBlockBatches.test.ts": {
-    "mtime": 1785618611.9076574,
-    "ast_hash": "0dd30c6ad2de384599f2e5ee11b04509",
+    "mtime": 1785624234.011101,
+    "ast_hash": "274b3a7fa0335a29defbfae3d5f80eb4",
     "semantic_hash": ""
   },
   "microservice/src/services/geminiService.ts": {
-    "mtime": 1785618552.2474468,
-    "ast_hash": "5ceedea83490e99fa08931dbf88f02ce",
+    "mtime": 1785624065.5423167,
+    "ast_hash": "746d8e2d1b0d5b7156835474cdc5839f",
     "semantic_hash": ""
   },
   "microservice/src/services/openaiImageService.test.ts": {
@@ -1945,8 +1945,8 @@
     "semantic_hash": ""
   },
   "microservice/src/services/supabaseService.ts": {
-    "mtime": 1785280960.081096,
-    "ast_hash": "89fb182a9c6e5cb894f21097940af9fb",
+    "mtime": 1785624473.9412014,
+    "ast_hash": "2426091425bbc08974683828af1b9a5f",
     "semantic_hash": ""
   },
   "microservice/src/testSetup.ts": {
@@ -2930,8 +2930,8 @@
     "semantic_hash": ""
   },
   "mobile/src/utils/personalization.ts": {
-    "mtime": 1785443341.9086452,
-    "ast_hash": "a77f0399ca703dcded8a2c6f2a6364a6",
+    "mtime": 1785626050.9410253,
+    "ast_hash": "9e0312c888b5e80af9bc5fee04df9bea",
     "semantic_hash": ""
   },
   "mobile/src/utils/personalizedFlow.ts": {
@@ -4320,8 +4320,13 @@
     "semantic_hash": ""
   },
   "docs/superpowers/specs/2026-08-01-robot-framework-personalizacao-console-design.md": {
-    "mtime": 1785621455.040434,
-    "ast_hash": "7f15f6643929d927f6313a9c2878457c",
+    "mtime": 1785622479.9497125,
+    "ast_hash": "71cab239861a1b9d9aa38f62ab7592fb",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-08-01-robot-framework-personalizacao-console.md": {
+    "mtime": 1785622585.968196,
+    "ast_hash": "25a1250ff0a3960aaef6b47f6493b7e2",
     "semantic_hash": ""
   }
 }

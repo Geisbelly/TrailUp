@@ -305,8 +305,8 @@
     "semantic_hash": "ea9fc3046e6bac85cbdbfead8c6ca178"
   },
   "api/app/core/settings.py": {
-    "mtime": 1785386694.9456606,
-    "ast_hash": "4fc981419db06123c838603190e54fb1",
+    "mtime": 1785627645.4597895,
+    "ast_hash": "59eb681efeed049610b860d01dc55bf7",
     "semantic_hash": ""
   },
   "api/app/db/__init__.py": {
@@ -4000,13 +4000,13 @@
     "semantic_hash": ""
   },
   "api/app/services/content_enrichment.py": {
-    "mtime": 1785621857.4273405,
-    "ast_hash": "64f1d61b42835d3ae3d51f762cde8e17",
+    "mtime": 1785627719.1724386,
+    "ast_hash": "aff0b063528233f1b5c879f27c537fcc",
     "semantic_hash": ""
   },
   "api/tests/test_content_enrichment.py": {
-    "mtime": 1785621903.1827648,
-    "ast_hash": "b378df0fc6310b57e529c9e6fe4673e8",
+    "mtime": 1785627886.7861023,
+    "ast_hash": "298ba24f9d03949f6deca57bd0c5ac68",
     "semantic_hash": ""
   },
   "api/app/agent/prompts/enriquecedor_blocos_conteudo.txt": {
