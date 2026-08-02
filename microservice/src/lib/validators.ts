@@ -77,7 +77,10 @@ export interface PersonalizarRequest {
   required_presentation_engine_version?: string;
   required_presentation_design_version?: string;
   wait_for_completion: boolean;
+  guidance_prompt?: string;
 }
+
+const MAX_GUIDANCE_PROMPT_CHARS = 4_000;
 
 // ── SSRF protection ────────────────────────────────────────────────────────
 //
@@ -421,6 +424,21 @@ export function validatePersonalizarBody(
     };
   }
 
+  let guidancePrompt: string | undefined;
+  if (body.guidance_prompt !== undefined && body.guidance_prompt !== null) {
+    if (typeof body.guidance_prompt !== "string") {
+      return { ok: false, error: "guidance_prompt deve ser uma string" };
+    }
+    const trimmed = body.guidance_prompt.trim();
+    if (trimmed.length > MAX_GUIDANCE_PROMPT_CHARS) {
+      return {
+        ok: false,
+        error: `guidance_prompt excede o limite de ${MAX_GUIDANCE_PROMPT_CHARS} caracteres`,
+      };
+    }
+    if (trimmed.length > 0) guidancePrompt = trimmed;
+  }
+
   let conteudoId: number | undefined;
   if (body.conteudo_id !== undefined && body.conteudo_id !== null) {
     conteudoId = Number(body.conteudo_id);
@@ -464,6 +482,7 @@ export function validatePersonalizarBody(
           ? requiredPresentationDesignVersion.trim()
           : undefined,
       wait_for_completion: body.wait_for_completion === true,
+      guidance_prompt: guidancePrompt,
     },
   };
 }

@@ -92,3 +92,14 @@ export interface ImageRequest {
   prompt: string;
   retries?: number;
 }
+
+/**
+ * Chaves customizadas por chamada, usadas pelos endpoints de regeneracao
+ * (ver executeWithModelFallback em geminiService.ts) - alternativa as
+ * variaveis de ambiente (GEMINI_API_KEY, OPENAI_API_KEY) quando o chamador
+ * quer usar um conjunto de chaves proprio nessa chamada especifica.
+ */
+export interface ApiKeysConfig {
+  geminiKeys?: string[];
+  openAIKey?: string;
+}

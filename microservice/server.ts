@@ -9,8 +9,12 @@ import {
   generateLongConversationalAudio,
   generateSlideImage,
   splitProcessedContentIntoParts,
+  regenerateChapterContent,
+  regenerateSlideContent,
+  regenerateDocumentMarkdown,
   type ContentPart,
 } from "./src/services/geminiService";
+import type { ApiKeysConfig, SlideContent } from "./src/types";
 import { generateFullSlideImages, buildImageStyleSuffix } from "./src/lib/slideAssetGenerator";
 import { generateSlideIconWithFallback } from "./src/services/slideIconService";
 import { BrainHexProfile, BRAIN_HEX_CONFIG } from "./src/constants/brainHex";
@@ -659,6 +663,7 @@ async function runPersonalizacaoJob(params: {
   fontes:           FonteItem[];
   contentBlocks:    ContentBlock[];
   presentationTheme: PresentationThemeInput;
+  guidancePrompt?:  string;
   storagePath:      string;
   bucket:           string;
   refId:            string;
@@ -671,6 +676,7 @@ async function runPersonalizacaoJob(params: {
     fontes,
     contentBlocks,
     presentationTheme,
+    guidancePrompt,
     storagePath,
     bucket,
     refId,
@@ -710,6 +716,7 @@ async function runPersonalizacaoJob(params: {
       refId,
       fence,
       jobLog,
+      guidancePrompt,
     );
   } finally {
     stopHeartbeat();
@@ -743,6 +750,7 @@ async function runPipeline(
   refId: string,
   fence: GenerationFence,
   jobLog: Logger,
+  guidancePrompt?: string,
 ): Promise<void> {
   const fallbackSubject =
     contentBlocks.find((block) => block.tema.trim())?.tema
@@ -768,6 +776,7 @@ async function runPipeline(
     profile,
     contentBlocks,
     presentationPlan,
+    guidancePrompt,
   );
 
   // 3. Divide o resultado JA sintetizado (uma so vez, sem duplicar topicos -
@@ -1063,6 +1072,99 @@ export function buildApp(opts: AppOptions = {}): express.Application {
     });
   });
 
+  // ── POST /api/v1/regenerate/* — regeneração com prompt de melhoria ──
+  //
+  // Usados pelo console do professor para corrigir/expandir um material já
+  // gerado (capítulo, slide ou documento completo) a partir de um prompt de
+  // melhoria livre, opcionalmente combinado com uma diretriz de expansão
+  // geral (expansion_prompt). keys_config permite usar chaves proprias da
+  // chamada em vez das variaveis de ambiente do servidor.
+  function parseKeysConfig(raw: unknown): ApiKeysConfig | undefined {
+    if (!raw || typeof raw !== "object") return undefined;
+    const obj = raw as Record<string, unknown>;
+    const geminiKeys = Array.isArray(obj.geminiKeys)
+      ? obj.geminiKeys.filter((k): k is string => typeof k === "string")
+      : undefined;
+    const openAIKey = typeof obj.openAIKey === "string" ? obj.openAIKey : undefined;
+    if (!geminiKeys && !openAIKey) return undefined;
+    return { geminiKeys, openAIKey };
+  }
+
+  app.post("/api/v1/regenerate/chapter", requireSecret, async (req, res) => {
+    try {
+      const { chapter, improvement_prompt: improvementPrompt, profile, expansion_prompt: expansionPrompt, keys_config } = req.body ?? {};
+      if (!chapter || typeof chapter.markdown !== "string" || typeof chapter.audioScript !== "string") {
+        return res.status(400).json({ error: "chapter.markdown e chapter.audioScript são obrigatórios" });
+      }
+      if (typeof improvementPrompt !== "string" || !improvementPrompt.trim()) {
+        return res.status(400).json({ error: "improvement_prompt é obrigatório" });
+      }
+      if (typeof profile !== "string") {
+        return res.status(400).json({ error: "profile é obrigatório" });
+      }
+      const result = await regenerateChapterContent(
+        { markdown: chapter.markdown, audioScript: chapter.audioScript },
+        improvementPrompt,
+        profile as BrainHexProfile,
+        { expansionPrompt, keysConfig: parseKeysConfig(keys_config) },
+      );
+      res.json(result);
+    } catch (error: any) {
+      req.log.error("regenerate chapter erro", { err: error });
+      res.status(500).json({ error: error?.message || "Falha ao regenerar capítulo" });
+    }
+  });
+
+  app.post("/api/v1/regenerate/slide", requireSecret, async (req, res) => {
+    try {
+      const { slide, improvement_prompt: improvementPrompt, profile, expansion_prompt: expansionPrompt, keys_config } = req.body ?? {};
+      if (!slide || typeof slide !== "object") {
+        return res.status(400).json({ error: "slide é obrigatório" });
+      }
+      if (typeof improvementPrompt !== "string" || !improvementPrompt.trim()) {
+        return res.status(400).json({ error: "improvement_prompt é obrigatório" });
+      }
+      if (typeof profile !== "string") {
+        return res.status(400).json({ error: "profile é obrigatório" });
+      }
+      const result = await regenerateSlideContent(
+        slide as SlideContent,
+        improvementPrompt,
+        profile as BrainHexProfile,
+        { expansionPrompt, keysConfig: parseKeysConfig(keys_config) },
+      );
+      res.json(result);
+    } catch (error: any) {
+      req.log.error("regenerate slide erro", { err: error });
+      res.status(500).json({ error: error?.message || "Falha ao regenerar slide" });
+    }
+  });
+
+  app.post("/api/v1/regenerate/document", requireSecret, async (req, res) => {
+    try {
+      const { markdown, improvement_prompt: improvementPrompt, profile, expansion_prompt: expansionPrompt, keys_config } = req.body ?? {};
+      if (typeof markdown !== "string" || !markdown.trim()) {
+        return res.status(400).json({ error: "markdown é obrigatório" });
+      }
+      if (typeof improvementPrompt !== "string" || !improvementPrompt.trim()) {
+        return res.status(400).json({ error: "improvement_prompt é obrigatório" });
+      }
+      if (typeof profile !== "string") {
+        return res.status(400).json({ error: "profile é obrigatório" });
+      }
+      const result = await regenerateDocumentMarkdown(
+        markdown,
+        improvementPrompt,
+        profile as BrainHexProfile,
+        { expansionPrompt, keysConfig: parseKeysConfig(keys_config) },
+      );
+      res.json(result);
+    } catch (error: any) {
+      req.log.error("regenerate document erro", { err: error });
+      res.status(500).json({ error: error?.message || "Falha ao regenerar documento" });
+    }
+  });
+
   // ── POST /api/v1/archive — Frontend (JSON body) ──────────────────
   //
   // Chamado pelo frontend depois de:
@@ -1210,6 +1312,7 @@ export function buildApp(opts: AppOptions = {}): express.Application {
       required_presentation_design_version: requiredPresentationDesignVersion,
       presentation_theme: presentationTheme,
       wait_for_completion: waitForCompletion,
+      guidance_prompt: guidancePrompt,
     } = v.value;
 
     const incompatibleVersions: Array<{
@@ -1315,6 +1418,7 @@ export function buildApp(opts: AppOptions = {}): express.Application {
           fontes:  fontes as FonteItem[],
           contentBlocks,
           presentationTheme,
+          guidancePrompt,
           storagePath,
           bucket,
           refId,

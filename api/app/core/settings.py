@@ -177,12 +177,16 @@ class Settings(BaseSettings):
     # o provedor) e redisparada para sempre a cada stale_processing_min,
     # queimando cota de IA sem chance real de sucesso.
     personalizacao_falha_streak_max: int = 3
-    # Gargalo real: o tier gratuito do Gemini tem poucas requisicoes por
-    # minuto. Gerar varios perfis do mesmo topico em paralelo faz um 429
-    # isolado abrir o circuito de indisponibilidade de 5 minutos do Gemini e
-    # travar TODOS os perfis simultaneos (o audioScript so sai do Gemini,
-    # nunca da OpenAI). Espacando os disparos, cada perfil roda sozinho.
-    personalizacao_media_render_profile_pace_sec: int = 300
+    # Historico: gargalo era o tier gratuito do Gemini ter poucas requisicoes
+    # por minuto - gerar varios perfis do mesmo topico em paralelo fazia um
+    # 429 isolado abrir o circuito de indisponibilidade de 5 minutos do
+    # Gemini e travar TODOS os perfis simultaneos (o audioScript so sai do
+    # Gemini, nunca da OpenAI). Zerado deliberadamente: aceito o risco desse
+    # circuito global continuar existindo (nao foi removido) em troca de
+    # rodar os 7 perfis de um topico em paralelo, ver
+    # personalizacao_media_render_concurrency. Se voltar a acontecer webs de
+    # 429 travando todos os perfis de uma vez, suba este valor de novo.
+    personalizacao_media_render_profile_pace_sec: int = 0
     personalizacao_job_db_failure_max_backoff_sec: int = 60
     personalizacao_job_db_failure_log_interval_sec: int = 30
     # A preparação curricular é neutra e compartilhada entre os sete perfis.
@@ -190,7 +194,9 @@ class Settings(BaseSettings):
     # com targets apenas aguardando o mesmo enriquecimento.
     personalizacao_content_enrichment_concurrency: int = 1
     personalizacao_content_enrichment_cache_max_entries: int = 128
-    personalizacao_media_render_concurrency: int = 2
+    # Sobe de 2 para 7 (um slot por perfil BrainHex) junto com o pacing
+    # zerado acima - roda os 7 perfis de um mesmo topico em paralelo.
+    personalizacao_media_render_concurrency: int = 7
     personalizacao_media_render_timeout_sec: int = 240
     media_render_timeout_seconds: int = 1800
     personalizacao_media_job_timeout_sec: int = 1800

@@ -6,6 +6,7 @@ import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
 import { BrainHexProfile, BRAIN_HEX_CONFIG } from "../constants/brainHex";
+import { GUARDIAN_VOICE_PROFILES } from "../constants/guardianVoices";
 import {
   buildPresentationDesignPlan,
   presentationImageDirection,
@@ -24,12 +25,13 @@ import {
   type ContentGenerationProvider,
   type StructuredContentGenerationCall,
 } from "./contentGenerationService";
-import { 
+import {
+  ApiKeysConfig,
   EnrichedContentBlock,
-  InternalBlock, 
-  ProcessedContent, 
-  SlideContent, 
-  SourceRef 
+  InternalBlock,
+  ProcessedContent,
+  SlideContent,
+  SourceRef
 } from "../types";
 
 // Suporta multiplas chaves Gemini na mesma GEMINI_API_KEY (separadas por
@@ -51,6 +53,140 @@ export function parseGeminiApiKeys(raw: string | undefined): string[] {
 
 function geminiApiKeys(): string[] {
   return parseGeminiApiKeys(process.env.GEMINI_API_KEY);
+}
+
+// --- MOTOR DE REGENERACAO COM PROMPT (multi-chave/multi-modelo) ---
+// Portado do protótipo gerado no AI Studio (remix-trailup-brainhex-converter)
+// especificamente para os endpoints de regeneração/expansão com prompt do
+// professor (ver server.ts, /api/v1/regenerate/*). Independente da rotação
+// de chaves com cooldown por (chave,modelo) usada pelo resto do arquivo
+// (_geminiKeyCooldownUntil) — aqui cada chamada tenta sua própria cascata do
+// zero, sem estado compartilhado entre chamadas concorrentes.
+export function getActiveKeys(
+  customConfig?: ApiKeysConfig,
+): { geminiKeys: string[]; openAIKey: string } {
+  const geminiSet = new Set<string>();
+  (customConfig?.geminiKeys ?? []).forEach((k) => {
+    if (k && k.trim()) geminiSet.add(k.trim());
+  });
+  parseGeminiApiKeys(process.env.GEMINI_API_KEY).forEach((k) => geminiSet.add(k));
+  [
+    process.env.GEMINI_API_KEY_1,
+    process.env.GEMINI_API_KEY_2,
+    process.env.GEMINI_API_KEY_3,
+    process.env.GEMINI_API_KEY_4,
+  ].forEach((k) => {
+    if (k && k.trim()) geminiSet.add(k.trim());
+  });
+  if (process.env.GEMINI_API_KEYS) {
+    parseGeminiApiKeys(process.env.GEMINI_API_KEYS).forEach((k) => geminiSet.add(k));
+  }
+  const openAIKey = customConfig?.openAIKey?.trim() || process.env.OPENAI_API_KEY?.trim() || "";
+  return { geminiKeys: Array.from(geminiSet), openAIKey };
+}
+
+const REGENERATION_GEMINI_MODELS = [
+  "gemini-3.6-flash",
+  "gemini-2.5-flash",
+  "gemini-2.5-pro",
+  "gemini-1.5-flash",
+  "gemini-1.5-pro",
+];
+const REGENERATION_OPENAI_MODELS = ["gpt-4o-mini", "gpt-3.5-turbo"];
+
+/**
+ * Executa uma geracao estruturada percorrendo uma cascata de modelos Gemini
+ * (ate 4 chaves) e, por ultimo, modelos OpenAI - pensado para os fluxos de
+ * regeneracao/expansao com prompt do professor, onde uma resposta unica e
+ * pequena (nao um lote de blocos) torna aceitavel tentar tudo em serie numa
+ * so chamada de usuario.
+ */
+export async function executeWithModelFallback<T>(params: {
+  contentsParts: any[];
+  systemInstruction: string;
+  responseSchema?: any;
+  customKeys?: ApiKeysConfig;
+  temperature?: number;
+  maxOutputTokens?: number;
+}): Promise<T> {
+  const { geminiKeys, openAIKey } = getActiveKeys(params.customKeys);
+  let lastError: unknown = null;
+
+  const keysToTry = geminiKeys.length > 0 ? geminiKeys : [];
+  for (const apiKey of keysToTry) {
+    const aiInstance = new GoogleGenAI({ apiKey });
+    for (const modelName of REGENERATION_GEMINI_MODELS) {
+      try {
+        const configObj: Record<string, unknown> = {
+          systemInstruction: params.systemInstruction,
+          maxOutputTokens: params.maxOutputTokens || 16_384,
+          temperature: params.temperature ?? 0.5,
+          responseMimeType: "application/json",
+        };
+        if (params.responseSchema) configObj.responseSchema = params.responseSchema;
+
+        const response = await aiInstance.models.generateContent({
+          model: modelName,
+          contents: [{ parts: params.contentsParts }],
+          config: configObj,
+        });
+        if (response.text) {
+          return JSON.parse(response.text) as T;
+        }
+      } catch (err) {
+        lastError = err;
+        console.warn(
+          `[regenerate-engine] modelo '${modelName}' com chave ...${apiKey.slice(-4)} falhou:`,
+          err instanceof Error ? err.message : err,
+        );
+      }
+    }
+  }
+
+  if (openAIKey) {
+    for (const openAiModel of REGENERATION_OPENAI_MODELS) {
+      try {
+        const userPrompt = params.contentsParts
+          .map((p) => (typeof p === "string" ? p : p?.text || ""))
+          .filter(Boolean)
+          .join("\n\n");
+        const openAiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${openAIKey}`,
+          },
+          body: JSON.stringify({
+            model: openAiModel,
+            messages: [
+              {
+                role: "system",
+                content: `${params.systemInstruction}\n\nResponda ESTRITAMENTE em formato JSON válido.`,
+              },
+              { role: "user", content: userPrompt },
+            ],
+            response_format: { type: "json_object" },
+            temperature: params.temperature ?? 0.5,
+          }),
+        });
+        if (openAiRes.ok) {
+          const data = await openAiRes.json();
+          const contentStr = data.choices?.[0]?.message?.content || "";
+          if (contentStr) return JSON.parse(contentStr) as T;
+        } else {
+          console.warn(`[regenerate-engine] OpenAI '${openAiModel}' HTTP ${openAiRes.status}`);
+        }
+      } catch (err) {
+        lastError = err;
+        console.warn("[regenerate-engine] erro OpenAI:", err instanceof Error ? err.message : err);
+      }
+    }
+  }
+
+  throw new Error(
+    "Todos os modelos e chaves ativas atingiram limite de cota (429) ou falharam. "
+    + `${lastError instanceof Error ? lastError.message : ""} Aguarde alguns instantes ou verifique as chaves fornecidas.`,
+  );
 }
 
 const _geminiClients = new Map<string, GoogleGenAI>();
@@ -1146,6 +1282,7 @@ export async function processMediaWithGemini(
   profile: BrainHexProfile,
   contentBlocks: EnrichedContentBlock[] = [],
   requestedPresentationPlan?: PresentationDesignPlan,
+  guidancePrompt?: string,
 ): Promise<ProcessedContent> {
   // API continua dividindo o material em blocos (ver content_enrichment.py).
   // A geracao processa os blocos em lotes de tamanho moderado (ver
@@ -1402,6 +1539,13 @@ export async function processMediaWithGemini(
       e precisa se sustentar sem depender de nenhum outro.
     - Ainda assim, gere ao menos um slide por assunto principal de cada
       bloco. Todo slide deve incluir o blockId do capítulo em sourceIds.
+    ` : ""}
+
+    ${guidancePrompt ? `
+    ORIENTAÇÃO DO PROFESSOR PARA ESTA GERAÇÃO (siga com prioridade sobre o
+    resto deste prompt, mas sem contradizer a regra 1 de Fidelidade Absoluta
+    nem omitir conteúdo do material original):
+    "${guidancePrompt}"
     ` : ""}
 
     Estética: cor de assinatura ${config.color}, sistema ${presentationPlan.styleName},
@@ -1946,4 +2090,189 @@ export async function generateSlideImage(prompt: string, retries = 3): Promise<s
     }
     throw error;
   }
+}
+
+// --- REGENERAÇÃO/EXPANSÃO COM PROMPT DO PROFESSOR ---
+// Usa executeWithModelFallback (motor portado acima) para regenerar UM
+// capítulo, UM slide ou o documento completo com um prompt de melhoria livre
+// — reaproveita a geração de áudio/imagem já existentes (generateNaturalAudio,
+// generateSlideImage), não duplica esse pipeline.
+
+export interface RegenerateOptions {
+  expansionPrompt?: string;
+  keysConfig?: ApiKeysConfig;
+}
+
+export interface RegeneratedChapterContent {
+  markdown: string;
+  audioScript: string;
+  audioWavBase64: string | null;
+  audioMp3Base64: string | null;
+}
+
+/**
+ * Regenera markdown + audioScript de um capítulo já gerado, a partir de um
+ * prompt de melhoria do professor. Não mexe nos slides do capítulo — quem
+ * quiser regenerar um slide específico usa regenerateSlideContent.
+ */
+export async function regenerateChapterContent(
+  chapter: { markdown: string; audioScript: string },
+  improvementPrompt: string,
+  profile: BrainHexProfile,
+  options: RegenerateOptions = {},
+): Promise<RegeneratedChapterContent> {
+  const config = BRAIN_HEX_CONFIG[profile];
+  const systemInstruction = `
+    Você é o Guia Alquímico ${config.guideName} (perfil ${profile}).
+    Sua missão é APRIMORAR E REGERAR ESTE CAPÍTULO COMPLETO com base no prompt de
+    melhoria do professor. O prompt orienta COMO apresentar/aprofundar o
+    conteúdo - ele nunca autoriza omitir conceitos técnicos que já estavam
+    corretos no capítulo atual (Fidelidade Absoluta continua valendo).
+    ${options.expansionPrompt ? `DIRETRIZ DE EXPANSÃO GERAL (aplique também): "${options.expansionPrompt}"` : ""}
+  `;
+  const contentsParts = [{
+    text: `CAPÍTULO ATUAL:\n${JSON.stringify({ markdown: chapter.markdown, audioScript: chapter.audioScript }, null, 2)}\n\n`
+      + `PROMPT DE MELHORIA DO PROFESSOR:\n"${improvementPrompt}"\n\n`
+      + "Gere uma versão aprimorada dos campos 'markdown' e 'audioScript'.",
+  }];
+  const responseSchema = {
+    type: Type.OBJECT,
+    properties: {
+      markdown: { type: Type.STRING },
+      audioScript: { type: Type.STRING },
+    },
+    required: ["markdown", "audioScript"],
+  };
+  const updated = await executeWithModelFallback<{ markdown: string; audioScript: string }>({
+    contentsParts,
+    systemInstruction,
+    responseSchema,
+    customKeys: options.keysConfig,
+    temperature: 0.6,
+  });
+  const voiceProfile = GUARDIAN_VOICE_PROFILES[profile];
+  const audio = await generateNaturalAudio(updated.audioScript, voiceProfile.voice, voiceProfile.direction);
+  return {
+    markdown: updated.markdown,
+    audioScript: updated.audioScript,
+    audioWavBase64: audio.wav,
+    audioMp3Base64: audio.mp3,
+  };
+}
+
+/**
+ * Regenera um slide específico a partir de um prompt de melhoria do
+ * professor, incluindo uma nova imagem quando o slide regenerado produz um
+ * imagePrompt/visualDescription. Preserva o formato de SlideContent atual
+ * (iconPrompts, não audioScript por slide).
+ */
+export async function regenerateSlideContent(
+  slide: SlideContent,
+  improvementPrompt: string,
+  profile: BrainHexProfile,
+  options: RegenerateOptions = {},
+): Promise<{ slide: SlideContent; imageBase64: string | null }> {
+  const config = BRAIN_HEX_CONFIG[profile];
+  const systemInstruction = `
+    Você é o Guia Alquímico ${config.guideName} (perfil ${profile}).
+    Sua missão é APRIMORAR E REGERAR UM SLIDE ESPECÍFICO conforme o prompt de
+    melhoria do professor. Mantenha a riqueza conceitual e o tom do guia;
+    preserve os sourceIds originais do slide.
+    ${options.expansionPrompt ? `DIRETRIZ DE EXPANSÃO GERAL (aplique também): "${options.expansionPrompt}"` : ""}
+  `;
+  const contentsParts = [{
+    text: `SLIDE ATUAL:\n${JSON.stringify(slide, null, 2)}\n\n`
+      + `PROMPT DE MELHORIA DO PROFESSOR:\n"${improvementPrompt}"\n\n`
+      + "Reescreva e aprimore todos os campos do slide (title, topics, "
+      + "explanation, visualDescription, characterQuote, characterAction, "
+      + "imagePrompt, iconPrompts, sourceIds) atendendo ao pedido do professor.",
+  }];
+  const responseSchema = {
+    type: Type.OBJECT,
+    properties: {
+      title: { type: Type.STRING },
+      topics: { type: Type.ARRAY, items: { type: Type.STRING } },
+      explanation: { type: Type.STRING },
+      visualDescription: { type: Type.STRING },
+      characterQuote: { type: Type.STRING },
+      characterAction: { type: Type.STRING },
+      imagePrompt: { type: Type.STRING },
+      iconPrompts: { type: Type.ARRAY, items: { type: Type.STRING } },
+      sourceIds: { type: Type.ARRAY, items: { type: Type.STRING } },
+    },
+    required: [
+      "title", "topics", "explanation", "visualDescription", "characterQuote",
+      "characterAction", "imagePrompt", "iconPrompts", "sourceIds",
+    ],
+  };
+  const updatedSlide = await executeWithModelFallback<SlideContent>({
+    contentsParts,
+    systemInstruction,
+    responseSchema,
+    customKeys: options.keysConfig,
+    temperature: 0.6,
+  });
+
+  let imageBase64: string | null = null;
+  const promptForImage = updatedSlide.imagePrompt || updatedSlide.visualDescription || updatedSlide.title;
+  if (promptForImage) {
+    try {
+      imageBase64 = await generateSlideImage(promptForImage, 2);
+    } catch (err) {
+      console.warn(
+        "[regenerate-engine] falha ao gerar imagem do slide regenerado:",
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
+  return { slide: updatedSlide, imageBase64 };
+}
+
+const REGENERATE_DOCUMENT_MAX_INPUT_CHARS = 16_000;
+
+/**
+ * Regenera o documento de estudo completo (markdown + audioScript) a partir
+ * de um prompt de melhoria do professor. Trunca o documento de entrada em
+ * REGENERATE_DOCUMENT_MAX_INPUT_CHARS para manter a chamada dentro de um
+ * orçamento de prompt razoável em documentos muito grandes.
+ */
+export async function regenerateDocumentMarkdown(
+  currentMarkdown: string,
+  improvementPrompt: string,
+  profile: BrainHexProfile,
+  options: RegenerateOptions = {},
+): Promise<{ markdown: string; audioScript: string }> {
+  const config = BRAIN_HEX_CONFIG[profile];
+  const truncated = currentMarkdown.length > REGENERATE_DOCUMENT_MAX_INPUT_CHARS;
+  const documentForPrompt = truncated
+    ? `${currentMarkdown.slice(0, REGENERATE_DOCUMENT_MAX_INPUT_CHARS)}\n\n[...documento truncado para a chamada de regeneração...]`
+    : currentMarkdown;
+
+  const systemInstruction = `
+    Você é o Guia Alquímico ${config.guideName} (perfil ${profile}).
+    Reescreva e aprimore o documento de estudo completo abaixo de acordo com o
+    prompt de melhoria do professor, preservando a Fidelidade Absoluta ao
+    conteúdo técnico original.
+    ${options.expansionPrompt ? `DIRETRIZ DE EXPANSÃO GERAL (aplique também): "${options.expansionPrompt}"` : ""}
+  `;
+  const contentsParts = [{
+    text: `DOCUMENTO ATUAL:\n${documentForPrompt}\n\n`
+      + `PROMPT DE MELHORIA DO PROFESSOR:\n"${improvementPrompt}"\n\n`
+      + "Gere a versão aprimorada dos campos 'markdown' e 'audioScript'.",
+  }];
+  const responseSchema = {
+    type: Type.OBJECT,
+    properties: {
+      markdown: { type: Type.STRING },
+      audioScript: { type: Type.STRING },
+    },
+    required: ["markdown", "audioScript"],
+  };
+  return executeWithModelFallback<{ markdown: string; audioScript: string }>({
+    contentsParts,
+    systemInstruction,
+    responseSchema,
+    customKeys: options.keysConfig,
+    temperature: 0.6,
+  });
 }
