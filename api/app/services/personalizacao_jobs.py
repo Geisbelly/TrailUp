@@ -798,6 +798,15 @@ async def enqueue_personalizacao_job(
         "conteudo_ids": [int(item) for item in (conteudo_ids or [])],
         "target_profile_map": target_profile_map,
     }
+    # conteudo_id e so um hint informativo (coluna com FK pra conteudos) — tem
+    # que vir de um conteudo que _build_targets confirmou existir (via
+    # targets), nao do conteudo_ids bruto da requisicao. Uma remocao de
+    # conteudo no console dispara class-delta DEPOIS de ja ter apagado a linha
+    # em `conteudos`; usar o id cru aqui quebra a FK e derruba a criacao do
+    # job inteiro, mesmo quando a limpeza em si nao depende dessa coluna.
+    validated_conteudo_ids = {
+        target["conteudo_id"] for target in targets if target.get("conteudo_id") is not None
+    }
     job = await repo.criar_job_com_targets(
         kind=kind,
         classe_id=classe_id,
@@ -806,7 +815,7 @@ async def enqueue_personalizacao_job(
         payload=job_payload,
         aluno_id=scoped_aluno_id,
         topico_id=resolved_topicos[0] if len(resolved_topicos) == 1 else None,
-        conteudo_id=conteudo_ids[0] if conteudo_ids and len(conteudo_ids) == 1 else None,
+        conteudo_id=next(iter(validated_conteudo_ids)) if len(validated_conteudo_ids) == 1 else None,
     )
     detail = await get_job_detail(session=session, job_id=str(job["id"]))
     return detail or {"job": job, "targets": targets}

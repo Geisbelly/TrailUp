@@ -589,6 +589,48 @@ async def test_enqueue_job_creates_job_and_targets_atomically(monkeypatch) -> No
 
 
 @pytest.mark.asyncio
+async def test_enqueue_job_never_passes_stale_conteudo_id_to_scalar_fk_column(
+    monkeypatch,
+) -> None:
+    """Reproduz o bug real: remover um conteudo no console apaga a linha em
+    `conteudos` e so depois dispara class_delta_sync com conteudo_ids=[id
+    apagado]. _build_targets ja detecta que o conteudo nao existe mais e
+    devolve targets/topicos vazios - mas o conteudo_id BRUTO da requisicao nao
+    pode ser repassado pra coluna com FK em criar_job_com_targets, senao o
+    INSERT quebra com ForeignKeyViolationError e o job nunca chega a existir."""
+    create_mock = AsyncMock(return_value={"id": "job-delta"})
+    monkeypatch.setattr(
+        jobs_module,
+        "_build_targets",
+        AsyncMock(return_value=([], [], {})),
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.find_open_job_by_payload",
+        AsyncMock(return_value=None),
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.criar_job_com_targets",
+        create_mock,
+    )
+    monkeypatch.setattr(
+        jobs_module,
+        "get_job_detail",
+        AsyncMock(return_value={"job": {"id": "job-delta"}, "targets": []}),
+    )
+
+    await jobs_module.enqueue_personalizacao_job(
+        session=object(),
+        kind="class_delta_sync",
+        classe_id=32,
+        trigger_source="web_console",
+        conteudo_ids=[153],
+        reason="remocao_conteudo_console",
+    )
+
+    assert create_mock.await_args.kwargs["conteudo_id"] is None
+
+
+@pytest.mark.asyncio
 async def test_enqueue_job_reuses_existing_open_job_instead_of_duplicating(
     monkeypatch,
 ) -> None:
