@@ -410,9 +410,17 @@
   "408": ".__init__",
   "409": ".to_dict",
   "410": "motion",
+  "411": "supabaseStorage.ts",
+  "412": "_fallback_materiais",
   "413": "jszip",
   "414": "@hookform/resolvers",
   "415": "expo-av",
   "416": "@radix-ui/react-scroll-area",
+  "417": "RankDaClasse",
+  "418": "turmaResumo.ts",
+  "419": "markdown.ts",
+  "420": "PosicaoDoAluno",
+  "421": "browserslist",
+  "422": "dotenv",
   "439": "devDependencies"
 }

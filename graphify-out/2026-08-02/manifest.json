@@ -1670,8 +1670,8 @@
     "semantic_hash": ""
   },
   "microservice/src/services/geminiService.ts": {
-    "mtime": 1785638580.8381953,
-    "ast_hash": "650ddc7480f8c963e37639a7f4d41b0e",
+    "mtime": 1785639507.4338222,
+    "ast_hash": "5a39df4b98e305c30ea30caf32fcad38",
     "semantic_hash": ""
   },
   "microservice/src/services/supabaseService.ts": {
@@ -4330,8 +4330,8 @@
     "semantic_hash": ""
   },
   "microservice/src/services/geminiKeyRotation.test.ts": {
-    "mtime": 1785638635.6649249,
-    "ast_hash": "6d463b5c98bb797c6dd0a5d5fd684e06",
+    "mtime": 1785639568.5771453,
+    "ast_hash": "2706bf1c748dfc0d4f6029a2b2324aa5",
     "semantic_hash": ""
   },
   "api/tests/test_llm_service.py": {

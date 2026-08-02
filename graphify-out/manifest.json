@@ -305,8 +305,8 @@
     "semantic_hash": "ea9fc3046e6bac85cbdbfead8c6ca178"
   },
   "api/app/core/settings.py": {
-    "mtime": 1785638659.3099568,
-    "ast_hash": "f4171ee3c2f2d384003c3b4928153ea9",
+    "mtime": 1785640486.731152,
+    "ast_hash": "508155f3060748b1c75a63c83bb9d491",
     "semantic_hash": ""
   },
   "api/app/db/__init__.py": {
@@ -630,8 +630,8 @@
     "semantic_hash": "3436ee696254f46c2a41f4219a35a17e"
   },
   "api/app/services/personalizacao.py": {
-    "mtime": 1785600861.553117,
-    "ast_hash": "e7125756b493d2b2ef4f7497f1c97079",
+    "mtime": 1785640498.935998,
+    "ast_hash": "6a41dc1b60d5b915424fe2017533c891",
     "semantic_hash": ""
   },
   "api/app/services/personalizacao_jobs.py": {
@@ -1670,8 +1670,8 @@
     "semantic_hash": ""
   },
   "microservice/src/services/geminiService.ts": {
-    "mtime": 1785639507.4338222,
-    "ast_hash": "5a39df4b98e305c30ea30caf32fcad38",
+    "mtime": 1785640632.4835098,
+    "ast_hash": "e2bec74d8305eb6911242ad0743369a8",
     "semantic_hash": ""
   },
   "microservice/src/services/supabaseService.ts": {
@@ -4000,13 +4000,13 @@
     "semantic_hash": ""
   },
   "api/app/services/content_enrichment.py": {
-    "mtime": 1785638675.1113338,
-    "ast_hash": "59d2236a43f64815cbc68d0a55fe8c5b",
+    "mtime": 1785640393.8873646,
+    "ast_hash": "2983be4eb5ddd2c4e664aed10a8b90ef",
     "semantic_hash": ""
   },
   "api/tests/test_content_enrichment.py": {
-    "mtime": 1785638746.6572914,
-    "ast_hash": "cb0547ca080b0c72ce48f57460b3e820",
+    "mtime": 1785640583.3982103,
+    "ast_hash": "041604dd2cc9e32c7a657eddc088ca76",
     "semantic_hash": ""
   },
   "api/app/agent/prompts/enriquecedor_blocos_conteudo.txt": {
@@ -4330,8 +4330,8 @@
     "semantic_hash": ""
   },
   "microservice/src/services/geminiKeyRotation.test.ts": {
-    "mtime": 1785639568.5771453,
-    "ast_hash": "2706bf1c748dfc0d4f6029a2b2324aa5",
+    "mtime": 1785640669.4926155,
+    "ast_hash": "b53a906f7b5611653c90ed489e942e92",
     "semantic_hash": ""
   },
   "api/tests/test_llm_service.py": {
