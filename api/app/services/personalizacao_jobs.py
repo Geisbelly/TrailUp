@@ -105,6 +105,16 @@ def _profile_key_to_label(profile_key: str) -> str:
     return labels.get(key, "Mastermind")
 
 
+def _microservico_falha_message(error_sink: list[str]) -> str:
+    # disparar_brainhex_async loga a causa real via logger.warning/exception,
+    # mas so um RuntimeError generico chegava ate o last_error do target e o
+    # console do professor. error_sink carrega o motivo real ja capturado.
+    base = "Microservico BrainHex nao concluiu a geracao."
+    if error_sink:
+        return f"{base} Motivo: {error_sink[-1]}"
+    return base
+
+
 def _effective_stale_processing_min(settings: Any) -> int:
     configured = max(
         1,
@@ -989,6 +999,7 @@ async def _process_media_render_target(
                 # Nao manter transacao/conexao PostgreSQL aberta durante uma
                 # geracao que pode levar dezenas de minutos.
                 await session.commit()
+                error_sink: list[str] = []
                 dispatched = await disparar_brainhex_async(
                     settings=app.state.settings,
                     perfil=perfil,
@@ -1004,6 +1015,7 @@ async def _process_media_render_target(
                     generation_key=generation_key,
                     wait_for_completion=True,
                     contract_prechecked=True,
+                    error_sink=error_sink,
                 )
                 if not dispatched:
                     recovered = await _mark_failed_unless_generation_completed(
@@ -1015,7 +1027,7 @@ async def _process_media_render_target(
                     )
                     if recovered:
                         return {"record": recovered}
-                    raise RuntimeError("Microservico BrainHex nao concluiu a geracao.")
+                    raise RuntimeError(_microservico_falha_message(error_sink))
                 completed_record = await repo_cp.buscar_por_id(int(personalizacao_id))
                 if not completed_record:
                     raise RuntimeError("Personalizacao desapareceu apos a geracao BrainHex.")
@@ -1266,6 +1278,7 @@ async def _process_media_render_target(
             aluno_id,
             existing_status,
         )
+        error_sink: list[str] = []
         dispatched = await disparar_brainhex_async(
             settings=app.state.settings,
             perfil=ctx["perfil_dominante"],
@@ -1281,6 +1294,7 @@ async def _process_media_render_target(
             generation_key=generation_key,
             wait_for_completion=True,
             contract_prechecked=True,
+            error_sink=error_sink,
         )
         if not dispatched:
             await repo.incrementar_falha_streak(
@@ -1302,7 +1316,7 @@ async def _process_media_render_target(
                     "retried_stuck": retry_stuck,
                     "retried_failed": retry_failed,
                 }
-            raise RuntimeError("Microservico BrainHex nao concluiu a geracao.")
+            raise RuntimeError(_microservico_falha_message(error_sink))
 
         completed_record = await repo.buscar_por_id(int(existing["id"]))
         if not completed_record:
@@ -1472,6 +1486,7 @@ async def _process_media_render_target(
         source_hash=record_source_hash,
     )
     await session.commit()
+    error_sink: list[str] = []
     dispatched = await disparar_brainhex_async(
         settings=app.state.settings,
         perfil=ctx["perfil_dominante"],
@@ -1487,6 +1502,7 @@ async def _process_media_render_target(
         generation_key=generation_key,
         wait_for_completion=True,
         contract_prechecked=True,
+        error_sink=error_sink,
     )
     if not dispatched:
         recovered = await _mark_failed_unless_generation_completed(
@@ -1498,7 +1514,7 @@ async def _process_media_render_target(
         )
         if recovered:
             return {"record": recovered}
-        raise RuntimeError("Microservico BrainHex nao concluiu a geracao.")
+        raise RuntimeError(_microservico_falha_message(error_sink))
 
     completed_record = await repo.buscar_por_id(int(record_id))
     if not completed_record:

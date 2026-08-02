@@ -362,6 +362,20 @@ def _build_brainhex_presentation_theme(
     }
 
 
+def _extract_brainhex_error_detail(payload: Any) -> str | None:
+    """Extrai a mensagem de erro real do corpo JSON de falha do microservico.
+
+    O microservico devolve ``{"status":"failed","error":"..."}`` quando a
+    geracao falha (ex.: Gemini + OpenAI ambos sem sucesso) — sem isso, o
+    chamador so enxerga "status=500" e perde a causa real.
+    """
+    if isinstance(payload, dict):
+        error = payload.get("error")
+        if isinstance(error, str) and error.strip():
+            return error.strip()
+    return None
+
+
 def _brainhex_contract_matches(payload: Any) -> bool:
     return (
         isinstance(payload, dict)
@@ -488,8 +502,17 @@ async def disparar_brainhex_async(
     generation_key: str = "",
     wait_for_completion: bool = False,
     contract_prechecked: bool = False,
+    error_sink: list[str] | None = None,
 ) -> bool:
-    """Dispara BrainHex e, opcionalmente, aguarda o pipeline terminar."""
+    """Dispara BrainHex e, opcionalmente, aguarda o pipeline terminar.
+
+    ``error_sink``, quando informado, recebe o motivo real da falha (a mesma
+    informacao ja logada via logger.warning/logger.exception aqui dentro) —
+    sem isso, o chamador so via um RuntimeError generico e a causa real
+    (ex.: erro especifico do Gemini/OpenAI devolvido pelo microservico) ficava
+    presa nos logs do servidor, sem aparecer no last_error do target nem no
+    console do professor.
+    """
     brainhex_url = str(getattr(settings, "brainhex_api_url", "") or "").strip()
     if not brainhex_url:
         return False
@@ -497,11 +520,14 @@ async def disparar_brainhex_async(
     headers = {"x-api-secret": brainhex_secret} if brainhex_secret else None
     try:
         if not contract_prechecked and not await brainhex_contract_ready(settings=settings):
+            detail = "microservico indisponivel ou com contrato incompativel"
             logger.warning(
-                "disparar_brainhex_async: geracao nao iniciada; microservico "
-                "indisponivel ou com contrato incompativel (personalizacao_id=%s)",
+                "disparar_brainhex_async: geracao nao iniciada; %s (personalizacao_id=%s)",
+                detail,
                 personalizacao_id,
             )
+            if error_sink is not None:
+                error_sink.append(detail)
             return False
 
         timeout_sec = (
@@ -537,7 +563,12 @@ async def disparar_brainhex_async(
                 headers=headers,
             )
             expected_status = 200 if wait_for_completion else 202
+            try:
+                response_payload = response.json()
+            except Exception:
+                response_payload = None
             if response.status_code != expected_status:
+                detail = _extract_brainhex_error_detail(response_payload) or response.text[:500]
                 logger.warning(
                     "disparar_brainhex_async: microservice recusou o POST /api/personalizar "
                     "(personalizacao_id=%s, status=%s, body=%s)",
@@ -545,35 +576,41 @@ async def disparar_brainhex_async(
                     response.status_code,
                     response.text[:500],
                 )
+                if error_sink is not None:
+                    error_sink.append(detail)
             if wait_for_completion and response.status_code == 202:
+                detail = "microservice antigo respondeu de forma assincrona"
                 logger.warning(
-                    "disparar_brainhex_async: microservice antigo respondeu de forma assincrona; "
-                    "o target sera repetido ate haver confirmacao de conclusao "
-                    "(personalizacao_id=%s)",
+                    "disparar_brainhex_async: %s; o target sera repetido ate haver "
+                    "confirmacao de conclusao (personalizacao_id=%s)",
+                    detail,
                     personalizacao_id,
                 )
-            try:
-                response_payload = response.json()
-            except Exception:
-                response_payload = None
+                if error_sink is not None:
+                    error_sink.append(detail)
             if response.status_code == expected_status and not _brainhex_contract_matches(
                 response_payload
             ):
+                detail = "resposta sem confirmacao do contrato de midia; geracao nao confirmada"
                 logger.warning(
-                    "disparar_brainhex_async: resposta sem confirmacao do contrato "
-                    "de midia; geracao nao confirmada "
+                    "disparar_brainhex_async: %s "
                     "(personalizacao_id=%s, status=%s, body=%s)",
+                    detail,
                     personalizacao_id,
                     response.status_code,
                     response.text[:500],
                 )
+                if error_sink is not None:
+                    error_sink.append(detail)
                 return False
             return response.status_code == expected_status
-    except Exception:
+    except Exception as exc:
         logger.exception(
             "disparar_brainhex_async: falha ao chamar o microservice (personalizacao_id=%s)",
             personalizacao_id,
         )
+        if error_sink is not None:
+            error_sink.append(str(exc))
         return False
 
 

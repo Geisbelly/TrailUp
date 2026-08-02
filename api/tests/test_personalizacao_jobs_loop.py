@@ -22,6 +22,7 @@ from app.services.personalizacao_jobs import (
     _is_transient_db_connection_error,
     _mark_failed_unless_generation_completed,
     _mark_pending_media_failed,
+    _microservico_falha_message,
     _pending_media_formats,
     _prewarm_shared_content_enrichments,
     _process_media_render_target,
@@ -527,6 +528,23 @@ def test_compute_failure_backoff_sec_grows_and_caps() -> None:
 def test_compact_exception_text_uses_first_line_only() -> None:
     exc = RuntimeError("getaddrinfo failed\nextra detail line")
     assert _compact_exception_text(exc) == "getaddrinfo failed"
+
+
+def test_microservico_falha_message_inclui_motivo_real_quando_capturado() -> None:
+    # disparar_brainhex_async loga a causa real mas so devolvia um bool -
+    # sem o motivo, o target ficava com o RuntimeError generico no
+    # last_error, escondendo a causa real que ja aparecia no corpo da
+    # resposta do microservico.
+    assert _microservico_falha_message([]) == (
+        "Microservico BrainHex nao concluiu a geracao."
+    )
+    assert _microservico_falha_message(
+        ["A geração falhou no Gemini e as tentativas obrigatórias pela OpenAI também falharam."]
+    ) == (
+        "Microservico BrainHex nao concluiu a geracao. Motivo: A geração "
+        "falhou no Gemini e as tentativas obrigatórias pela OpenAI também "
+        "falharam."
+    )
 
 
 def test_exception_signature_is_stable_for_same_error() -> None:

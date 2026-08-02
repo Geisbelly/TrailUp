@@ -324,6 +324,60 @@ async def test_disparar_brainhex_does_not_treat_legacy_202_as_completed(settings
 
 
 @pytest.mark.asyncio
+async def test_disparar_brainhex_captures_real_error_in_error_sink(settings):
+    # Reproduz o bug real: o target so via um RuntimeError generico
+    # ("Microservico BrainHex nao concluiu a geracao.") mesmo quando o
+    # microservico devolvia a causa real no corpo JSON (ex.: Gemini e OpenAI
+    # falharam). error_sink deve carregar essa causa para o chamador.
+    contract = {
+        "media_pipeline_version": MEDIA_PIPELINE_VERSION,
+        "presentation_engine_version": PRESENTATION_ENGINE_VERSION,
+        "presentation_design_version": PRESENTATION_DESIGN_VERSION,
+        "content_enrichment_provider": CONTENT_ENRICHMENT_PROVIDER,
+    }
+    mock_health = MagicMock(status_code=200)
+    mock_health.json.return_value = {"status": "ok", **contract}
+    error_body = (
+        '{"status":"failed","personalizacao_id":3326,"error":'
+        '"A geração falhou no Gemini e as tentativas obrigatórias pela '
+        'OpenAI também falharam."}'
+    )
+    mock_response = MagicMock(status_code=500, text=error_body)
+    mock_response.json.return_value = {
+        "status": "failed",
+        "personalizacao_id": 3326,
+        "error": "A geração falhou no Gemini e as tentativas obrigatórias pela OpenAI também falharam.",
+    }
+
+    with patch("httpx.AsyncClient") as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+        mock_client.get = AsyncMock(return_value=mock_health)
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client_cls.return_value = mock_client
+
+        error_sink: list[str] = []
+        dispatched = await disparar_brainhex_async(
+            settings=settings,
+            perfil="achiever",
+            fontes=[],
+            content_blocks=[{"id": "bloco-01"}],
+            personalizacao_id=3326,
+            ciclo_id="ciclo-3326",
+            source_hash="hash-3326",
+            generation_key="ciclo-3326:hash-3326",
+            wait_for_completion=True,
+            error_sink=error_sink,
+        )
+
+    assert dispatched is False
+    assert error_sink == [
+        "A geração falhou no Gemini e as tentativas obrigatórias pela OpenAI também falharam."
+    ]
+
+
+@pytest.mark.asyncio
 async def test_disparar_brainhex_does_not_start_job_on_legacy_microservice(settings):
     mock_health = MagicMock(status_code=200)
     mock_health.json.return_value = {
