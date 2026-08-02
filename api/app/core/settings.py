@@ -113,6 +113,15 @@ class Settings(BaseSettings):
         "gemini-2.5-flash-lite,gemini-2.0-flash,gemini-2.0-flash-lite"
     )
     content_enrichment_gemini_quota_cooldown_sec: int = 300
+    # Mesma ideia de content_enrichment_gemini_fallback_models, mas pro
+    # caminho generico de LLM (JsonLLMService/llm.py) usado pelo supervisor
+    # do LangGraph, gerar_cards_direto, generate_plano_personalizacao etc. —
+    # aparecia sem NENHUM fallback de modelo antes, so com a chave/modelo
+    # unico configurado.
+    gemini_text_fallback_models: str = (
+        "gemini-3.1-flash-lite,gemini-3.5-flash-lite,"
+        "gemini-2.5-flash-lite,gemini-2.0-flash,gemini-2.0-flash-lite"
+    )
 
     brainhex_api_url: str | None = None
     # Precisa bater com API_SHARED_SECRET no microservice (api-brainhex) quando
