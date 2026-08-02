@@ -1670,8 +1670,8 @@
     "semantic_hash": ""
   },
   "microservice/src/services/geminiService.ts": {
-    "mtime": 1785686933.563527,
-    "ast_hash": "0cbca0942cbe778443421df65fb5376a",
+    "mtime": 1785691470.7552483,
+    "ast_hash": "4720edbe267da5b03d69998d0b265136",
     "semantic_hash": ""
   },
   "microservice/src/services/supabaseService.ts": {
@@ -4135,8 +4135,8 @@
     "semantic_hash": ""
   },
   "microservice/src/services/geminiBlockBatches.test.ts": {
-    "mtime": 1785686336.1440518,
-    "ast_hash": "5ec1bcbe7180eaf5b3ed47536c63777b",
+    "mtime": 1785689542.0078263,
+    "ast_hash": "ff2b0187988bf4ff37a88259c8f1755e",
     "semantic_hash": ""
   },
   "mobile/src/utils/personalization.multicontent.test.ts": {
