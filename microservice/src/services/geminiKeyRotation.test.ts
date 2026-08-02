@@ -5,6 +5,7 @@ import {
   pickAvailableGeminiKey,
   rotateGeminiKeyAfterFailure,
   resetGeminiKeyRotationForTests,
+  resolveGeminiTextFallbackModels,
 } from "./geminiService";
 
 const PRIMARY_MODEL = "gemini-3.6-flash";
@@ -95,4 +96,21 @@ test("cooldown de cota e por (chave, modelo) - uma chave esgotada no modelo prin
     assert.equal(pickAvailableGeminiKey(["key-1"], PRIMARY_MODEL), null);
     assert.equal(pickAvailableGeminiKey(["key-1"], FALLBACK_MODEL), "key-1");
   });
+});
+
+test("resolveGeminiTextFallbackModels devolve os 5 modelos default quando a env nao configura nada", () => {
+  assert.deepEqual(resolveGeminiTextFallbackModels({}), [
+    "gemini-2.5-flash-lite",
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-lite",
+    "gemini-3.1-flash-lite",
+    "gemini-3.5-flash-lite",
+  ]);
+});
+
+test("resolveGeminiTextFallbackModels respeita a lista configurada via env, separada por virgula", () => {
+  assert.deepEqual(
+    resolveGeminiTextFallbackModels({ GEMINI_TEXT_FALLBACK_MODELS: "model-a, model-b ;model-c" }),
+    ["model-a", "model-b", "model-c"],
+  );
 });

@@ -610,7 +610,7 @@ async def test_gemini_usa_modelo_alternativo_quando_todas_as_chaves_esgotam_o_mo
         settings=_settings(
             gemini_api_key="key-1",
             content_enrichment_gemini_model="gemini-3.6-flash",
-            content_enrichment_gemini_fallback_model="gemini-2.5-flash-lite",
+            content_enrichment_gemini_fallback_models="gemini-2.5-flash-lite,gemini-2.0-flash",
         ),
     )
 
@@ -618,6 +618,53 @@ async def test_gemini_usa_modelo_alternativo_quando_todas_as_chaves_esgotam_o_mo
     # a 1a tentativa esgota a cota do modelo principal na unica chave; a 2a
     # tentativa ja roda com o modelo alternativo, sem precisar da OpenAI.
     assert captured["models_used"] == ["gemini-3.6-flash", "gemini-2.5-flash-lite"]
+
+
+@pytest.mark.asyncio
+async def test_gemini_percorre_toda_a_cadeia_de_modelos_alternativos_ate_um_funcionar(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Com 5 modelos alternativos configurados, se os 3 primeiros esgotarem a
+    cota na unica chave, o codigo deve continuar tentando ate o 4o (nao
+    desistir no primeiro fallback) antes de precisar da OpenAI."""
+    captured: dict[str, Any] = {}
+    exhausted_models = {"gemini-3.6-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"}
+
+    class _QuotaExhaustedClient:
+        def with_structured_output(self, _schema: Any) -> Any:
+            class _Structured:
+                async def ainvoke(self, _messages: list[Any]) -> Any:
+                    raise Exception("429 RESOURCE_EXHAUSTED: quota exceeded")
+
+            return _Structured()
+
+    def factory(api_key: str, model: str) -> Any:
+        captured.setdefault("models_used", []).append(model)
+        if model in exhausted_models:
+            return _QuotaExhaustedClient()
+        return _GeminiClient(_rich_response, captured)
+
+    monkeypatch.setattr(enrichment_module, "_gemini_client", factory)
+
+    result = await enrich_content_blocks(
+        context=_context(),
+        settings=_settings(
+            gemini_api_key="key-1",
+            content_enrichment_gemini_model="gemini-3.6-flash",
+            content_enrichment_gemini_fallback_models=(
+                "gemini-2.5-flash-lite,gemini-2.0-flash,gemini-2.0-flash-lite,"
+                "gemini-3.1-flash-lite"
+            ),
+        ),
+    )
+
+    assert result["metadata"]["enrichment_llm_provider"] == "gemini"
+    assert captured["models_used"] == [
+        "gemini-3.6-flash",
+        "gemini-2.5-flash-lite",
+        "gemini-2.0-flash",
+        "gemini-2.0-flash-lite",
+    ]
 
 
 # ─── OpenAI como reserva secundária (só quando o Gemini falha) ────────────────

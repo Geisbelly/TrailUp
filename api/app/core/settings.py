@@ -93,11 +93,16 @@ class Settings(BaseSettings):
     gemini_model_image: str = "gemini-2.0-flash-preview-image-generation"
     gemini_model_tts: str = "gemini-2.5-flash-preview-tts"
     content_enrichment_gemini_model: str = "gemini-3.6-flash"
-    # Cota diaria do free tier e por (chave, modelo) — gemini-2.5-flash-lite
-    # aparece com teto muito maior (ou ilimitado) que gemini-3.6-flash nas
-    # tabelas do AI Studio. Usado como 2a tentativa (mesmas chaves) so quando
-    # TODAS as chaves do GEMINI_API_KEY esgotam a cota do modelo principal.
-    content_enrichment_gemini_fallback_model: str = "gemini-2.5-flash-lite"
+    # Cota diaria do free tier e por (chave, modelo) — varios desses modelos
+    # aparecem com teto muito maior (ou ilimitado) que gemini-3.6-flash nas
+    # tabelas do AI Studio. Lista separada por virgula/ponto-e-virgula
+    # (mesmo parser de GEMINI_API_KEY): cada modelo e tentado em todas as
+    # chaves configuradas, na ordem, so quando o anterior esgota a cota em
+    # todas elas — antes de cair pro fallback pago da OpenAI.
+    content_enrichment_gemini_fallback_models: str = (
+        "gemini-2.5-flash-lite,gemini-2.0-flash,gemini-2.0-flash-lite,"
+        "gemini-3.1-flash-lite,gemini-3.5-flash-lite"
+    )
     content_enrichment_gemini_quota_cooldown_sec: int = 300
 
     brainhex_api_url: str | None = None

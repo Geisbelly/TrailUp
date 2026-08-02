@@ -950,17 +950,14 @@ async def _enrich_base_blocks_with_gemini(
         str(getattr(settings, "content_enrichment_gemini_model", "") or "").strip()
         or "gemini-2.5-flash"
     )
-    # gemini-2.5-flash-lite aparece com cota diaria muito maior (ou
-    # ilimitada) que o modelo principal nas tabelas do AI Studio — usado como
-    # 2a tentativa (mesmas chaves, cota separada) quando TODAS as chaves
-    # esgotam a cota do modelo principal, antes de cair pro fallback pago da
-    # OpenAI.
-    fallback_model = str(
-        getattr(settings, "content_enrichment_gemini_fallback_model", "") or ""
-    ).strip()
-    candidate_models = (
-        [model] if not fallback_model or fallback_model == model else [model, fallback_model]
+    # Varios desses modelos aparecem com cota diaria muito maior (ou
+    # ilimitada) que o modelo principal nas tabelas do AI Studio — cada um e
+    # tentado em todas as chaves (cota separada), na ordem, quando o anterior
+    # esgota a cota em todas elas, antes de cair pro fallback pago da OpenAI.
+    fallback_models = _parse_gemini_keys(
+        str(getattr(settings, "content_enrichment_gemini_fallback_models", "") or "")
     )
+    candidate_models = [model] + [item for item in fallback_models if item != model]
     # Lotes maiores custam granularidade de retry (1 bloco rejeitado pode
     # exigir re-tentar o lote inteiro) mas reduzem o numero de chamadas -
     # critico pro free tier do Gemini (20 requisicoes/dia), que um topico de

@@ -62,17 +62,23 @@ const _geminiClients = new Map<string, GoogleGenAI>();
 const _geminiKeyCooldownUntil = new Map<string, number>();
 let _geminiKeyIndex = 0;
 const GEMINI_KEY_QUOTA_COOLDOWN_MS = 5 * 60 * 1_000;
-// gemini-2.5-flash-lite aparece com cota diária muito maior (ou ilimitada)
-// que gemini-3.6-flash nas tabelas do AI Studio — usado como 2a tentativa
-// quando TODAS as chaves esgotam a cota do modelo principal, antes de cair
-// pro fallback pago da OpenAI.
-const DEFAULT_GEMINI_TEXT_FALLBACK_MODEL = "gemini-2.5-flash-lite";
+// Varios desses modelos aparecem com cota diária muito maior (ou ilimitada)
+// que gemini-3.6-flash nas tabelas do AI Studio — tentados em ordem, cada um
+// em todas as chaves configuradas, quando o modelo anterior esgota a cota em
+// todas elas, antes de cair pro fallback pago da OpenAI.
+const DEFAULT_GEMINI_TEXT_FALLBACK_MODELS = [
+  "gemini-2.5-flash-lite",
+  "gemini-2.0-flash",
+  "gemini-2.0-flash-lite",
+  "gemini-3.1-flash-lite",
+  "gemini-3.5-flash-lite",
+];
 
-function resolveGeminiTextFallbackModel(
+export function resolveGeminiTextFallbackModels(
   environment: Record<string, string | undefined> = process.env,
-): string {
-  return String(environment.GEMINI_TEXT_FALLBACK_MODEL ?? "").trim()
-    || DEFAULT_GEMINI_TEXT_FALLBACK_MODEL;
+): string[] {
+  const configured = parseGeminiApiKeys(environment.GEMINI_TEXT_FALLBACK_MODELS);
+  return configured.length > 0 ? configured : DEFAULT_GEMINI_TEXT_FALLBACK_MODELS;
 }
 
 function cooldownKey(apiKey: string, model: string): string {
@@ -146,37 +152,43 @@ export function rotateGeminiKeyAfterFailure(error: unknown, model: string): bool
 }
 
 /**
- * Ponto único de chamada ao Gemini generateContent: se a chave atual esgotou
- * a cota do modelo pedido, tenta uma vez com a próxima chave disponível pra
- * esse modelo. Se TODAS as chaves esgotarem a cota do modelo principal,
- * tenta o modelo alternativo (cota separada) antes de propagar o erro — que
- * então aciona o circuito de indisponibilidade / fallback pago já existente
- * em contentGenerationService.ts e nos retries ad hoc de TTS/imagem.
+ * Ponto único de chamada ao Gemini generateContent: tenta o modelo pedido em
+ * todas as chaves configuradas (round-robin); se TODAS esgotarem a cota
+ * desse modelo, passa pro próximo modelo candidato (ver
+ * resolveGeminiTextFallbackModels), de novo em todas as chaves, e assim por
+ * diante. Só propaga o erro depois de esgotar todo mundo — o que então
+ * aciona o circuito de indisponibilidade / fallback pago já existente em
+ * contentGenerationService.ts e nos retries ad hoc de TTS/imagem.
  */
 async function generateGeminiContent(
   params: Parameters<GoogleGenAI["models"]["generateContent"]>[0],
 ): ReturnType<GoogleGenAI["models"]["generateContent"]> {
-  const model = String(params.model ?? "");
-  try {
-    return await getAi(model).models.generateContent(params);
-  } catch (error) {
-    if (rotateGeminiKeyAfterFailure(error, model)) {
-      return await getAi(model).models.generateContent(params);
-    }
-    const fallbackModel = resolveGeminiTextFallbackModel();
-    if (!isGeminiQuotaOrRateLimitError(error) || !fallbackModel || fallbackModel === model) {
-      throw error;
-    }
-    const fallbackParams = { ...params, model: fallbackModel };
-    try {
-      return await getAi(fallbackModel).models.generateContent(fallbackParams);
-    } catch (fallbackError) {
-      if (rotateGeminiKeyAfterFailure(fallbackError, fallbackModel)) {
-        return await getAi(fallbackModel).models.generateContent(fallbackParams);
+  const primaryModel = String(params.model ?? "");
+  const candidateModels = [
+    primaryModel,
+    ...resolveGeminiTextFallbackModels().filter((model) => model !== primaryModel),
+  ];
+  const maxAttemptsPerModel = Math.max(geminiApiKeys().length, 1);
+
+  let lastError: unknown;
+  for (const model of candidateModels) {
+    const currentParams = model === primaryModel ? params : { ...params, model };
+    for (let attempt = 0; attempt < maxAttemptsPerModel; attempt += 1) {
+      try {
+        return await getAi(model).models.generateContent(currentParams);
+      } catch (error) {
+        lastError = error;
+        if (rotateGeminiKeyAfterFailure(error, model)) {
+          continue; // outra chave disponivel pra esse mesmo modelo
+        }
+        if (!isGeminiQuotaOrRateLimitError(error)) {
+          throw error; // erro nao relacionado a cota: nao adianta trocar de modelo
+        }
+        break; // esgotou todas as chaves desse modelo -> tenta o proximo modelo candidato
       }
-      throw fallbackError;
     }
   }
+  throw lastError;
 }
 
 // --- 1. Ingestion & Extraction Modules ---
