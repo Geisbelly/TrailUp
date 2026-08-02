@@ -709,6 +709,46 @@ async def test_gemini_pula_pro_proximo_modelo_quando_o_atual_esta_aposentado(
     assert captured["models_used"] == ["gemini-2.5-flash-lite", "gemini-2.0-flash"]
 
 
+@pytest.mark.asyncio
+async def test_gemini_tenta_proxima_chave_quando_servidor_retorna_503_sobrecarregado(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Reproduz o bug real: 503 UNAVAILABLE ('This model is currently
+    experiencing high demand') e sobrecarga transitoria do servidor, nao um
+    problema da chave/conta — antes dessa correcao, abortava a cadeia
+    inteira na primeira tentativa em vez de tentar a proxima chave."""
+    captured: dict[str, Any] = {}
+
+    class _OverloadedClient:
+        def with_structured_output(self, _schema: Any) -> Any:
+            class _Structured:
+                async def ainvoke(self, _messages: list[Any]) -> Any:
+                    raise Exception(
+                        "503 UNAVAILABLE. {'error': {'code': 503, 'message': "
+                        "'This model is currently experiencing high demand. "
+                        "Spikes in demand are usually temporary. Please try "
+                        "again later.', 'status': 'UNAVAILABLE'}}"
+                    )
+
+            return _Structured()
+
+    def factory(api_key: str, model: str) -> Any:
+        captured.setdefault("keys_used", []).append(api_key)
+        if api_key == "key-1":
+            return _OverloadedClient()
+        return _GeminiClient(_rich_response, captured)
+
+    monkeypatch.setattr(enrichment_module, "_gemini_client", factory)
+
+    result = await enrich_content_blocks(
+        context=_context(),
+        settings=_settings(gemini_api_key="key-1,key-2"),
+    )
+
+    assert result["metadata"]["enrichment_llm_provider"] == "gemini"
+    assert captured["keys_used"] == ["key-1", "key-2"]
+
+
 # ─── OpenAI como reserva secundária (só quando o Gemini falha) ────────────────
 
 

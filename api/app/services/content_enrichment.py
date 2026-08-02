@@ -216,6 +216,24 @@ def _is_gemini_model_unavailable_error(exc: BaseException) -> bool:
     )
 
 
+def _is_gemini_transient_error(exc: BaseException) -> bool:
+    """503 UNAVAILABLE ('high demand') e 5xx em geral sao sobrecarga
+    transitoria do servidor do Gemini, nao um problema da conta/chave — vale
+    tentar a proxima chave ou modelo em vez de abortar a cadeia inteira
+    (reproduzido em producao: 'This model is currently experiencing high
+    demand. Spikes in demand are usually temporary.')."""
+    status = str(getattr(exc, "status_code", "") or getattr(exc, "code", "") or "").strip()
+    text = str(exc).lower()
+    if status in {"500", "502", "503", "504", "UNAVAILABLE"}:
+        return True
+    return (
+        "unavailable" in text
+        or "overloaded" in text
+        or "high demand" in text
+        or "try again later" in text
+    )
+
+
 def _parse_gemini_keys(raw: str) -> list[str]:
     """Suporta múltiplas chaves Gemini separadas por vírgula/ponto-e-vírgula na
     mesma variável GEMINI_API_KEY. Cada chave tem sua própria cota diária
@@ -927,7 +945,11 @@ async def _generate_gemini_batch(
                 )
             except Exception as exc:
                 last_exc = exc
-                if _is_gemini_quota_error(exc) or _is_gemini_model_unavailable_error(exc):
+                if (
+                    _is_gemini_quota_error(exc)
+                    or _is_gemini_model_unavailable_error(exc)
+                    or _is_gemini_transient_error(exc)
+                ):
                     _gemini_enrichment_unavailable_until[(key, model)] = time.time() + quota_cooldown_sec
                     continue
                 raise ContentEnrichmentError(

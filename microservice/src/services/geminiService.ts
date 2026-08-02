@@ -176,13 +176,29 @@ function isGeminiModelUnavailableError(error: unknown): boolean {
 }
 
 /**
+ * 503 UNAVAILABLE ("high demand") e 5xx em geral sao sobrecarga transitoria
+ * do servidor do Gemini, nao um problema da conta/chave — vale tentar a
+ * proxima chave ou modelo em vez de propagar o erro imediatamente.
+ */
+function isGeminiTransientUnavailableError(error: unknown): boolean {
+  const message = (error instanceof Error ? error.message : String(error ?? "")).toLowerCase();
+  return message.includes("503")
+    || message.includes("unavailable")
+    || message.includes("overloaded")
+    || message.includes("high demand")
+    || message.includes("try again later");
+}
+
+/**
  * Marca a chave Gemini atualmente selecionada como esgotada PRA ESSE MODELO
  * e avança o round-robin pra próxima. Retorna true quando havia outra chave
  * disponível pra tentar imediatamente (sem cooldown de espera) nesse mesmo
  * modelo.
  */
 export function rotateGeminiKeyAfterFailure(error: unknown, model: string): boolean {
-  if (!isGeminiQuotaOrRateLimitError(error)) return false;
+  if (!isGeminiQuotaOrRateLimitError(error) && !isGeminiTransientUnavailableError(error)) {
+    return false;
+  }
   const keys = geminiApiKeys();
   if (keys.length === 0) return false;
   // Registra o cooldown mesmo com 1 chave so: mesmo sem outra chave pra
@@ -230,7 +246,11 @@ async function generateGeminiContent(
         if (rotateGeminiKeyAfterFailure(error, model)) {
           continue; // outra chave disponivel pra esse mesmo modelo
         }
-        if (!isGeminiQuotaOrRateLimitError(error) && !isGeminiModelUnavailableError(error)) {
+        if (
+          !isGeminiQuotaOrRateLimitError(error)
+          && !isGeminiModelUnavailableError(error)
+          && !isGeminiTransientUnavailableError(error)
+        ) {
           throw error; // erro nao relacionado a cota/disponibilidade: nao adianta trocar de modelo
         }
         break; // esgotou todas as chaves desse modelo -> tenta o proximo modelo candidato

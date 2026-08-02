@@ -67,6 +67,22 @@ def _is_gemini_model_unavailable_error(exc: BaseException) -> bool:
     )
 
 
+def _is_gemini_transient_error(exc: BaseException) -> bool:
+    """503 UNAVAILABLE ('high demand') e 5xx em geral sao sobrecarga
+    transitoria do servidor do Gemini, nao um problema da conta/chave — ver
+    mesma checagem em content_enrichment.py e no microservice."""
+    status = str(getattr(exc, "status_code", "") or getattr(exc, "code", "") or "").strip()
+    text = str(exc).lower()
+    if status in {"500", "502", "503", "504", "UNAVAILABLE"}:
+        return True
+    return (
+        "unavailable" in text
+        or "overloaded" in text
+        or "high demand" in text
+        or "try again later" in text
+    )
+
+
 def _pick_available_gemini_key(api_keys: list[str], model: str) -> str | None:
     """Round-robin entre as chaves que nao estao em cooldown de cota PARA ESSE
     MODELO; None se todas estiverem indisponiveis no momento."""
@@ -189,7 +205,11 @@ class JsonLLMService:
                     return await client.ainvoke(messages)
                 except Exception as exc:
                     last_exc = exc
-                    if _is_gemini_quota_error(exc) or _is_gemini_model_unavailable_error(exc):
+                    if (
+                        _is_gemini_quota_error(exc)
+                        or _is_gemini_model_unavailable_error(exc)
+                        or _is_gemini_transient_error(exc)
+                    ):
                         _gemini_key_unavailable_until[(key, model)] = time.time() + _GEMINI_KEY_QUOTA_COOLDOWN_SEC
                         continue
                     raise

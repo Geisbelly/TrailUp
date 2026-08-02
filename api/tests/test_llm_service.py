@@ -160,6 +160,39 @@ def test_ainvoke_json_gemini_falls_back_to_next_model_when_current_is_retired(
     assert captured["models_used"] == ["gemini-3.6-flash", "gemini-3.1-flash-lite"]
 
 
+def test_ainvoke_json_gemini_rotates_key_when_server_returns_503_overloaded(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Reproduz o 503 real ('This model is currently experiencing high
+    demand'): e sobrecarga transitoria do servidor, nao um problema da
+    chave/conta — deve tentar a proxima chave, nao abortar a chamada."""
+    captured: dict[str, list[str]] = {"keys_used": []}
+
+    def factory(*, model: str, temperature: float, google_api_key: str):
+        captured["keys_used"].append(google_api_key)
+        if google_api_key == "key-1":
+            return _FakeGeminiClient(
+                lambda: Exception(
+                    "503 UNAVAILABLE. This model is currently experiencing "
+                    "high demand. Please try again later."
+                )
+            )
+        return _FakeGeminiClient(lambda: '{"cards": [1]}')
+
+    monkeypatch.setattr(llm_module, "ChatGoogleGenerativeAI", factory)
+    monkeypatch.setattr(llm_module, "load_prompt", lambda _name: "instrucoes")
+
+    settings = _settings(gemini_api_key="key-1;key-2", openai_api_key="")
+    service = JsonLLMService(settings)
+
+    result = asyncio.run(
+        service.ainvoke_json(prompt_name="gerador_conteudo.txt", payload={})
+    )
+
+    assert result == {"cards": [1]}
+    assert captured["keys_used"] == ["key-1", "key-2"]
+
+
 def test_extract_json_handles_content_as_list_of_parts() -> None:
     """langchain_google_genai as vezes devolve response.content como uma
     lista de partes (str ou dict com chave "text") em vez de string simples

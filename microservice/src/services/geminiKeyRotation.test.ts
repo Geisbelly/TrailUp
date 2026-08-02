@@ -73,6 +73,24 @@ test("rotateGeminiKeyAfterFailure alterna pra próxima chave disponível quando 
   });
 });
 
+test("rotateGeminiKeyAfterFailure tambem alterna chave pra 503 UNAVAILABLE (sobrecarga transitoria)", () => {
+  // Reproduz o bug real: "This model is currently experiencing high demand"
+  // e sobrecarga transitoria do servidor, nao um problema da chave - vale
+  // tentar a proxima chave em vez de propagar o erro imediatamente.
+  withGeminiApiKeys("key-1,key-2", () => {
+    const keys = ["key-1", "key-2"];
+    assert.equal(pickAvailableGeminiKey(keys, PRIMARY_MODEL), "key-1");
+
+    const hadAnotherKey = rotateGeminiKeyAfterFailure(
+      new Error("503 UNAVAILABLE. This model is currently experiencing high demand."),
+      PRIMARY_MODEL,
+    );
+
+    assert.equal(hadAnotherKey, true);
+    assert.equal(pickAvailableGeminiKey(keys, PRIMARY_MODEL), "key-2");
+  });
+});
+
 test("rotateGeminiKeyAfterFailure devolve false quando todas as chaves já esgotaram a cota do modelo", () => {
   withGeminiApiKeys("key-1,key-2", () => {
     assert.equal(
