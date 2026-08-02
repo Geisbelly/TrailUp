@@ -1146,6 +1146,17 @@ export async function processMediaWithGemini(
   if (contentBlocks.length > 1) {
     contentBlocks = [mergeContentBlocksIntoOne(contentBlocks)];
   }
+  // Mesmo calculo de validateBlockBatchGeneration (minimumMarkdownLength) —
+  // dar ao modelo o numero-alvo explicito em vez de so "nao resuma" o ajuda a
+  // perceber, ANTES de finalizar a resposta, que uma sintese curta nao atende
+  // (ver comentario na SINTESE DE DOCUMENTO UNICO abaixo: o finishReason
+  // observado era STOP bem abaixo do teto de tokens, nao truncamento).
+  const mergedDocumentTargetChars = originalBlocksCount > 1
+    ? Math.max(200, Math.floor(normalizedText(contentBlocks[0]?.conteudo_aprofundado).length * 0.75))
+    : 0;
+  const maxOutputTokens = resolveContentGenerationMaxOutputTokens(
+    originalBlocksCount > 1,
+  );
 
   const config = BRAIN_HEX_CONFIG[profile];
   const presentationPlan = requestedPresentationPlan
@@ -1385,14 +1396,32 @@ export async function processMediaWithGemini(
       pode conter vários segmentos de origem concatenados (separados por
       "---" e identificados entre colchetes), porque o professor organizou o
       material original em partes — mas isso é só rastreabilidade interna.
+    - EXTENSÃO MÍNIMA OBRIGATÓRIA: seu campo 'markdown' final precisa ter pelo
+      menos ${mergedDocumentTargetChars} caracteres — este número já é ~75% do
+      material-fonte que você recebeu, ou seja, o mínimo fisicamente
+      necessário para cobrir 100% dos conceitos com explicação real (não é um
+      teto, é o piso). Você tem até ${maxOutputTokens} tokens de saída
+      disponíveis nesta chamada — use o espaço necessário. Antes de encerrar
+      sua resposta, verifique mentalmente se o markdown que você escreveu
+      chega perto dessa contagem de caracteres; se você perceber que está
+      terminando com um texto muito mais curto que isso, PARE — isso é sinal
+      de que você resumiu/condensou o material em vez de expandi-lo, e você
+      deve voltar e desenvolver cada seção com a explicação, os exemplos e o
+      aprofundamento completos que a regra 1 (Fidelidade Absoluta) exige.
     - Escreva o markdown e o audioScript como um ÚNICO guia coeso, do início
       ao fim, como um professor explicando o tema inteiro numa aula só — não
       crie uma seção ou capítulo por segmento de origem.
+    - "Único guia coeso" descreve a NARRATIVA (uma introdução, uma conclusão,
+      transições entre seções), não o tamanho — um guia coeso sobre um tópico
+      grande é naturalmente longo. Consolidar a estrutura não é licença para
+      encurtar o conteúdo.
     - Se o mesmo conceito aparecer em mais de um segmento de origem (o
       material do professor às vezes reintroduz o mesmo tema em slides
       diferentes), escreva-o UMA ÚNICA VEZ, na melhor posição lógica dentro
-      do guia — nunca repita a mesma seção ou ideia com palavras diferentes
-      só porque a fonte a repetiu.
+      do guia, mas com a MESMA profundidade que teria se explicado em cada
+      ocorrência separadamente — nunca repita a mesma seção ou ideia com
+      palavras diferentes só porque a fonte a repetiu, e nunca aproveite a
+      deduplicação para escrever menos do que o material tecnicamente exige.
     - Isso não é licença para omitir conteúdo: a regra 1 (Fidelidade
       Absoluta) continua valendo — cubra 100% dos conceitos técnicos
       presentes no material, só sem duplicá-los.
@@ -1416,9 +1445,6 @@ export async function processMediaWithGemini(
     );
     const geminiModel = resolveGeminiContentGenerationModel();
     const openaiModel = resolveOpenAIContentGenerationFallbackModel();
-    const maxOutputTokens = resolveContentGenerationMaxOutputTokens(
-      originalBlocksCount > 1,
-    );
 
     // Cada chamada continua atômica (um único bloco), mas um pool pequeno
     // aproveita os provedores sem multiplicar trabalho. O helper devolve os
