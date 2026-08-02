@@ -1575,14 +1575,14 @@
     "semantic_hash": ""
   },
   "microservice/src/lib/logger.test.ts": {
-    "mtime": 1782269049.0079305,
-    "ast_hash": "372f09633b5bdb82023458483dc75ae0",
-    "semantic_hash": "372f09633b5bdb82023458483dc75ae0"
+    "mtime": 1785635843.4142425,
+    "ast_hash": "c09fcd55e380806591a48b66ab6e7498",
+    "semantic_hash": ""
   },
   "microservice/src/lib/logger.ts": {
-    "mtime": 1782269049.014991,
-    "ast_hash": "76fa3bb14015c1bd513da7ab17af19f9",
-    "semantic_hash": "76fa3bb14015c1bd513da7ab17af19f9"
+    "mtime": 1785635835.5656254,
+    "ast_hash": "8ce17bdb7812d51cffb325d320d6654e",
+    "semantic_hash": ""
   },
   "microservice/src/lib/materialsMerge.test.ts": {
     "mtime": 1785214817.034799,
