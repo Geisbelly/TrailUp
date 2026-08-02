@@ -407,9 +407,14 @@
   "405": "_brainhex_contract_is_ready",
   "406": "expo-symbols",
   "407": "@config-plugins/react-native-blob-util",
+  "408": "operacao-e-observabilidade.md",
+  "409": ".to_dict",
+  "410": "usePersonalizationRefresh.ts",
   "411": "browserslist",
   "412": "GUIA_USO.md",
   "413": "jszip",
   "414": "@hookform/resolvers",
+  "415": "expo-av",
+  "416": "@radix-ui/react-scroll-area",
   "439": "devDependencies"
 }
