@@ -1704,10 +1704,20 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
     pending_targets = _profile_render_targets_ready_now(
         targets, pace_sec=profile_pace_sec, now=datetime.now(timezone.utc)
     )
+    # Usa a lista COMPLETA (nao pending_targets): o espacamento de perfil
+    # (pace_sec) ja reduz pending_targets a no maximo 1 alvo por
+    # topico/conteudo a cada poll, entao o agrupamento interno do prewarm
+    # ("mais de 1 alvo no mesmo grupo") nunca disparava - o enriquecimento
+    # nunca era preparado com antecedencia e cada perfil acabava reprocessando
+    # o mesmo enriquecimento (o cache compartilhado e LRU e podia ser
+    # evictado antes do proximo perfil pausado ter sua vez). Rodar o prewarm
+    # a cada poll com a lista completa tambem mantem a entrada "quente" no
+    # LRU (move_to_end em cache hit) enquanto qualquer perfil do mesmo
+    # topico/conteudo ainda estiver pendente.
     await _prewarm_shared_content_enrichments(
         app=app,
         job=job,
-        targets=pending_targets,
+        targets=targets,
     )
 
     target_concurrency = max(

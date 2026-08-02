@@ -388,6 +388,99 @@ async def test_prewarm_completes_shared_enrichment_before_profile_fanout(
     ]
 
 
+@pytest.mark.asyncio
+async def test_prewarm_receives_full_targets_not_the_pace_filtered_subset(
+    monkeypatch,
+) -> None:
+    """Reproduz o bug real: o espacamento de perfil (personalizacao_media_
+    render_profile_pace_sec) libera no maximo 1 alvo pronto por vez -
+    _profile_render_targets_ready_now(targets, ...) devolve so 1 dos 7. Se o
+    prewarm for chamado com ESSA lista filtrada (em vez da lista completa de
+    targets pendentes), o agrupamento por (topico, conteudo) nunca encontra
+    mais de 1 alvo no mesmo grupo e o prewarm vira um no-op estrutural - o
+    enriquecimento nunca e preparado com antecedencia e cada perfil, ao ser
+    processado em polls separados minutos depois, acaba reprocessando o
+    mesmo enriquecimento."""
+    calls = 0
+
+    class Session:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, _exc_type, _exc, _tb):
+            return None
+
+        async def commit(self):
+            return None
+
+    async def fetch_context(**_kwargs):
+        return {"source_hash": "hash-1", "conteudo_classe": {}, "fontes": []}
+
+    async def enrich(*, context, settings):
+        del settings
+        nonlocal calls
+        calls += 1
+        return {"source_hash": "hash-1", "blocos": [{"id": "bloco-01"}]}
+
+    monkeypatch.setattr(jobs_module, "fetch_personalizacao_context", fetch_context)
+    monkeypatch.setattr(jobs_module, "enrich_content_blocks", enrich)
+
+    app = SimpleNamespace(
+        state=SimpleNamespace(
+            session_factory=Session,
+            settings=SimpleNamespace(
+                personalizacao_content_enrichment_concurrency=1,
+                personalizacao_content_enrichment_cache_max_entries=8,
+            ),
+        )
+    )
+    job = {"id": "job-1", "kind": "class_delta_sync", "classe_id": 32}
+    targets = [
+        {
+            "id": index,
+            "aluno_id": f"aluno-{index}",
+            "topico_id": 121,
+            "conteudo_id": 125,
+            "brainhex_profile_key": profile,
+            "status": "pending",
+            "updated_at": None,
+        }
+        for index, profile in enumerate(
+            ("seeker", "survivor", "daredevil", "mastermind", "conqueror", "socializer", "achiever"),
+            start=1,
+        )
+    ]
+
+    # A pacing real (ver _profile_render_targets_ready_now) libera so 1 alvo
+    # por vez quando nenhum perfil ainda completou.
+    pending_targets = _profile_render_targets_ready_now(
+        targets, pace_sec=300, now=datetime.now(timezone.utc)
+    )
+    assert len(pending_targets) == 1
+
+    # O fix: prewarm precisa receber a lista COMPLETA de targets pendentes
+    # (nao a subst filtrada pela pacing), senao o agrupamento por
+    # topico/conteudo nunca ve mais de 1 alvo e nunca prepara nada.
+    await _prewarm_shared_content_enrichments(app=app, job=job, targets=targets)
+
+    assert calls == 1
+
+    # Um poll seguinte pra outro perfil do MESMO topico/conteudo, com um job
+    # dict novo (como process_personalizacao_job_once cria a cada poll via
+    # claim_next_job), deve reaproveitar o cache compartilhado do app.state
+    # sem reprocessar o enriquecimento.
+    next_poll_job: dict = {}
+    reused = await _get_job_content_enrichment(
+        app=app,
+        job=next_poll_job,
+        key=_content_enrichment_cache_key(topico_id=121, conteudo_id=125, source_hash="hash-1"),
+        factory=lambda: enrich(context={}, settings=None),
+    )
+
+    assert calls == 1
+    assert reused == {"source_hash": "hash-1", "blocos": [{"id": "bloco-01"}]}
+
+
 def test_content_enrichment_cache_is_shared_across_profiles_for_same_content() -> None:
     seeker_key = _content_enrichment_cache_key(
         topico_id=121,
