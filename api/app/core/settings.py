@@ -41,7 +41,14 @@ class Settings(BaseSettings):
     supabase_jwt_secret: str
     supabase_jwt_audience: str | None = "authenticated"
 
-    llm_provider: str = "openai"  # "openai" | "gemini"
+    # Gemini e gratuito (varias chaves com rotacao, ver GEMINI_API_KEY) e e o
+    # provedor principal em todo o resto do sistema (content_enrichment.py,
+    # microservice) — esse default so controla os caminhos que usam
+    # JsonLLMService.ainvoke_json sem fixar `provider=` explicitamente
+    # (supervisor, gerar_cards_direto, generate_plano_personalizacao etc.).
+    # Era "openai": com a conta da OpenAI de proposito sem credito, esses
+    # caminhos falhavam sempre (fallback_factory), sem nem tentar o Gemini.
+    llm_provider: str = "gemini"  # "openai" | "gemini"
 
     openai_api_key: str | None = None
     openai_model_supervisor: str = "gpt-4o-mini"
