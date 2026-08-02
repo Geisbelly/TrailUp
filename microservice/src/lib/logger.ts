@@ -34,11 +34,24 @@ function resolveFormat(): "pretty" | "json" {
   return process.env.NODE_ENV === "production" ? "json" : "pretty";
 }
 
-// Serialização segura — Error vira { message, stack }, demais valores via JSON.
+// error.cause costuma carregar o motivo real por trás de um fallback (ex.:
+// generateAfterPrimaryGeminiFailure em contentGenerationService.ts guarda o
+// motivo da falha do Gemini em cause.gemini, separado do erro final da
+// OpenAI) — sem isso, logar só { message, stack } esconde exatamente a causa
+// que mais importa pra depurar uma falha em cascata entre provedores.
+function serializeError(v: Error): Record<string, unknown> {
+  const out: Record<string, unknown> = { message: v.message, stack: v.stack };
+  if (v.cause !== undefined) {
+    out.cause = v.cause instanceof Error ? serializeError(v.cause) : v.cause;
+  }
+  return out;
+}
+
+// Serialização segura — Error vira { message, stack, cause? }, demais valores via JSON.
 function formatValue(v: unknown): string {
   if (v === null) return "null";
   if (v === undefined) return "undefined";
-  if (v instanceof Error) return JSON.stringify({ message: v.message, stack: v.stack });
+  if (v instanceof Error) return JSON.stringify(serializeError(v));
   if (typeof v === "string") {
     // sem espaços ou caractere especial: imprime cru; senão JSON.stringify
     return /^[\w.\-:/]+$/.test(v) ? v : JSON.stringify(v);
@@ -48,7 +61,7 @@ function formatValue(v: unknown): string {
 }
 
 function serializeForJson(v: unknown): unknown {
-  if (v instanceof Error) return { message: v.message, stack: v.stack };
+  if (v instanceof Error) return serializeError(v);
   return v;
 }
 

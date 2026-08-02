@@ -78,6 +78,29 @@ test("Error é serializado como { message, stack } em JSON", () => {
   assert.match(parsed.err.stack, /Error: boom/);
 });
 
+test("Error com cause inclui cause serializado em JSON (motivo real da falha em cascata)", () => {
+  const c = captured();
+  const log = createLogger({}, { format: "json", out: c.out, errOut: c.errOut, now: fixedNow });
+  const err = new Error("fallback obrigatorio falhou", {
+    cause: { gemini: "429 RESOURCE_EXHAUSTED", openai: "insufficient_quota" },
+  });
+  log.error("falhou", { err });
+  const parsed = JSON.parse(c.stderr[0]);
+  assert.equal(parsed.err.message, "fallback obrigatorio falhou");
+  assert.deepEqual(parsed.err.cause, {
+    gemini: "429 RESOURCE_EXHAUSTED",
+    openai: "insufficient_quota",
+  });
+});
+
+test("Error sem cause nao ganha campo cause (compatibilidade com o formato antigo)", () => {
+  const c = captured();
+  const log = createLogger({}, { format: "json", out: c.out, errOut: c.errOut, now: fixedNow });
+  log.error("falhou", { err: new Error("boom") });
+  const parsed = JSON.parse(c.stderr[0]);
+  assert.ok(!("cause" in parsed.err));
+});
+
 test("pretty: strings sem espaço imprimem cru; com espaço viram JSON quoted", () => {
   const c = captured();
   const log = createLogger({}, { format: "pretty", out: c.out, errOut: c.errOut, now: fixedNow });
