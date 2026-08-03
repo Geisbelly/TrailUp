@@ -252,7 +252,12 @@ async function executeApiFetch(
   return { response, payload: parseJsonSafe(rawText), rawText };
 }
 
-async function apiRequest<T>(path: string, accessToken: string, init?: RequestInit): Promise<T> {
+async function apiRequest<T>(
+  path: string,
+  accessToken: string,
+  init?: RequestInit,
+  timeoutMs: number = REQUEST_TIMEOUT_MS
+): Promise<T> {
   if (API_BASE_URL_CANDIDATES.length === 0) {
     throw new Error("Defina VITE_APITRAIUP_URL para consultar as personalizacoes.");
   }
@@ -262,7 +267,7 @@ async function apiRequest<T>(path: string, accessToken: string, init?: RequestIn
 
   for (const baseUrl of API_BASE_URL_CANDIDATES) {
     const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
 
     try {
       const url = `${baseUrl}${path}`;
@@ -361,5 +366,71 @@ export async function fetchAdequacaoGrupo(
   return apiRequest<ClassePerfilSummaryResponse>(
     `/api/v1/personalizar/grupo/${params.classeId}`,
     accessToken
+  );
+}
+
+// ── Regeneracao de material via prompt livre (professor) ───────────────────────
+//
+// Uma unica chamada Gemini (+ eventual asset) no microservice — mais demorada
+// que os GETs desta API, por isso o timeout proprio, bem acima do
+// REQUEST_TIMEOUT_MS padrao (20s) e alinhado ao timeout do client Python
+// (BRAINHEX_API_REGENERATE_TIMEOUT_SEC, 120s).
+const REGENERATE_TIMEOUT_MS = 130_000;
+
+export type RegenerarDocumentoPayload = {
+  brainhex_profile_key: string;
+  conteudo_id?: number | null;
+  improvement_prompt: string;
+  expansion_prompt?: string | null;
+};
+
+export type RegenerarSlidePayload = {
+  brainhex_profile_key: string;
+  conteudo_id?: number | null;
+  slide_index: number;
+  improvement_prompt: string;
+  expansion_prompt?: string | null;
+};
+
+export type RegenerarSlideResponse = {
+  personalizacao: PersonalizacaoResponse;
+  slide_index: number;
+  slide: Record<string, unknown>;
+  image_base64_preview?: string | null;
+};
+
+/** Regenera markdown+roteiro de audio da base por perfil via prompt livre do professor. */
+export async function regenerarDocumentoPersonalizacao(
+  accessToken: string,
+  params: { classeId: number; topicoId: number } & RegenerarDocumentoPayload
+): Promise<PersonalizacaoResponse> {
+  const { classeId, topicoId, ...payload } = params;
+  return apiRequest<PersonalizacaoResponse>(
+    `/api/v1/personalizar/perfis/${classeId}/${topicoId}/regenerar/documento`,
+    accessToken,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    },
+    REGENERATE_TIMEOUT_MS
+  );
+}
+
+/** Regenera um slide especifico da apresentacao via prompt livre do professor. */
+export async function regenerarSlidePersonalizacao(
+  accessToken: string,
+  params: { classeId: number; topicoId: number } & RegenerarSlidePayload
+): Promise<RegenerarSlideResponse> {
+  const { classeId, topicoId, ...payload } = params;
+  return apiRequest<RegenerarSlideResponse>(
+    `/api/v1/personalizar/perfis/${classeId}/${topicoId}/regenerar/slide`,
+    accessToken,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    },
+    REGENERATE_TIMEOUT_MS
   );
 }

@@ -581,7 +581,14 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
               />
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {porPerfil.perfis.map((item) => (
-                  <PerfilMaterialCard key={item.perfil} item={item} />
+                  <PerfilMaterialCard
+                    key={item.perfil}
+                    item={item}
+                    classeId={Number(classeId)}
+                    topicoId={Number(topicoId)}
+                    resolveToken={resolveToken}
+                    onRegenerated={() => void loadPorPerfil({ silent: true, queueIfBusy: true })}
+                  />
                 ))}
               </div>
             </>
@@ -856,7 +863,19 @@ function PaletaPreview({ item }: { item: PersonalizacaoPerfilItem }) {
   );
 }
 
-function PerfilMaterialCard({ item }: { item: PersonalizacaoPerfilItem }) {
+function PerfilMaterialCard({
+  item,
+  classeId,
+  topicoId,
+  resolveToken,
+  onRegenerated,
+}: {
+  item: PersonalizacaoPerfilItem;
+  classeId: number;
+  topicoId: number;
+  resolveToken: () => Promise<string>;
+  onRegenerated: () => void;
+}) {
   const [dialogTab, setDialogTab] = useState<MaterialTipo | null>(null);
   const temAlgumMaterial = MATERIAL_TIPOS.some(({ key }) => getMaterial(item.materiais, key));
   const geracaoStatus = statusGeracaoDoPerfil(item);
@@ -1028,6 +1047,10 @@ function PerfilMaterialCard({ item }: { item: PersonalizacaoPerfilItem }) {
         open={dialogTab !== null}
         onOpenChange={(open) => setDialogTab(open ? dialogTab : null)}
         initialTab={dialogTab ?? undefined}
+        classeId={classeId}
+        topicoId={topicoId}
+        resolveToken={resolveToken}
+        onRegenerated={onRegenerated}
       />
     </Card>
   );
