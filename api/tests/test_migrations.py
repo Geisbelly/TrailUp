@@ -52,10 +52,27 @@ def test_normalize_database_url_preserves_real_password() -> None:
 def test_idempotent_generated_materials_is_the_only_alembic_head() -> None:
     scripts = ScriptDirectory.from_config(_offline_alembic_config())
 
-    assert scripts.get_heads() == ["20260801_01"]
-    revision = scripts.get_revision("20260801_01")
+    assert scripts.get_heads() == ["20260803_01"]
+    revision = scripts.get_revision("20260803_01")
     assert revision is not None
-    assert revision.down_revision == "20260728_06"
+    assert revision.down_revision == "20260801_01"
+
+
+def test_personalizacao_jobs_conteudo_fk_renders_idempotent_offline_sql() -> None:
+    output = StringIO()
+    config = _offline_alembic_config(output)
+
+    migrations.command.upgrade(
+        config,
+        "20260801_01:20260803_01",
+        sql=True,
+    )
+    rendered = output.getvalue()
+
+    assert "fk_personalizacao_jobs_conteudo" in rendered
+    assert "pg_constraint WHERE conname = 'fk_personalizacao_jobs_conteudo'" in rendered
+    assert "FOREIGN KEY (conteudo_id) REFERENCES conteudos(id)" in rendered
+    assert "UPDATE alembic_version SET version_num='20260803_01'" in rendered
 
 
 def test_content_scoped_personalization_indexes_render_offline_sql() -> None:
