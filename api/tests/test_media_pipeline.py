@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from typing import Any
 
 import pytest
@@ -86,6 +87,24 @@ def test_multi_output_context_uses_brainhex_profile_prefix() -> None:
     )
     ctx = pipeline._context()
     assert "seeker" in ctx.base_prefix
+
+
+def test_multi_output_context_ref_id_uses_full_sha256_of_ciclo_id() -> None:
+    ciclo_id = "ciclo-ação-üñíçø-2026"
+    pipeline = MultiOutputPipeline(
+        settings=Settings(openai_api_key=None),
+        state={
+            "aluno_id": "a",
+            "classe_id": 1,
+            "payload_topico_id": 2,
+            "ciclo_id": ciclo_id,
+            "perfil_brainhex": [{"perfil": "seeker", "afinidade": 0.9}],
+        },
+    )
+    ctx = pipeline._context()
+    expected_digest = hashlib.sha256(ciclo_id.encode("utf-8")).hexdigest()
+    assert ctx.ref_id.endswith(expected_digest)
+    assert len(expected_digest) == 64
 
 
 @pytest.mark.asyncio

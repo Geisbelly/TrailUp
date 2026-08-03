@@ -1249,6 +1249,45 @@ def test_regenerar_slide_route_rejeita_indice_invalido(app, monkeypatch) -> None
     assert response.status_code == 422
 
 
+def test_regenerar_slide_route_rejeita_material_imersivo(app, monkeypatch) -> None:
+    fake_session = FakeSession()
+
+    async def override_session():
+        yield fake_session
+
+    app.dependency_overrides[get_session] = override_session
+    app.dependency_overrides[get_current_user] = lambda: _regenerar_professor_user()
+    monkeypatch.setattr(AccessRepository, "professor_owns_classe", AsyncMock(return_value=True))
+    monkeypatch.setattr(ConteudoClasseRepository, "buscar_classe_id_por_topico", AsyncMock(return_value=10))
+    monkeypatch.setattr(
+        ConteudoPersonalizadoRepository,
+        "buscar_mais_recente_por_perfil",
+        AsyncMock(
+            return_value=_stored_record_com_materiais(
+                {
+                    "apresentacao": {
+                        "payload": {"slides": [{"index": 0, "html": "<section>a</section>"}]},
+                        "metadata": {"engine_variant": "immersive"},
+                    }
+                }
+            )
+        ),
+    )
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/personalizar/perfis/10/55/regenerar/slide",
+            json={
+                "brainhex_profile_key": "mastermind",
+                "slide_index": 0,
+                "improvement_prompt": "deixe mais visual",
+            },
+        )
+
+    assert response.status_code == 409
+    assert "imersivo" in response.json()["detail"].lower()
+
+
 def _telemetria_payload() -> dict:
     return {
         "sessao_id": "7bd1dfbe-58cf-4ab2-b8fd-4f3e63f8d33b",
