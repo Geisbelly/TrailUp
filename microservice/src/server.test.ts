@@ -9,12 +9,16 @@ import {
   PRESENTATION_SCHEMA_VERSION,
   buildPresentationMaterialMetadata,
   renderAndUploadPresentation,
+  resolvePresentationRendering,
 } from "../server";
 import {
   buildPresentationVersionMetadata,
   generationStorageSegment,
   versionStoragePath,
 } from "./constants/pipelineVersions";
+import { buildPresentationDesignPlan } from "./constants/presentationThemes";
+import type { Logger } from "./lib/logger";
+import type { SlideContent } from "./types";
 if (!process.env.OPENAI_API_KEY?.trim()) {
   process.env.OPENAI_API_KEY = "test-openai-key";
 }
@@ -599,5 +603,136 @@ describe("x-request-id header", () => {
     const res = await fetch(`${base}/api/health`);
     const header = res.headers.get("x-request-id");
     assert.ok(header && header.length > 0, "deve gerar x-request-id");
+  });
+});
+
+// ─── resolvePresentationRendering (motor imersivo com fallback) ─────────────
+
+describe("resolvePresentationRendering", () => {
+  const noopLogger: Logger = {
+    debug() {},
+    info() {},
+    warn() {},
+    error() {},
+    child() {
+      return noopLogger;
+    },
+  };
+
+  const plan = buildPresentationDesignPlan("seeker", undefined, "Redes de computadores");
+
+  const slides: SlideContent[] = [
+    {
+      title: "Slide 1",
+      topics: ["DNS"],
+      explanation: "exp1",
+      visualDescription: "vd1",
+      characterQuote: "q1",
+      characterAction: "explaining",
+      imagePrompt: "prompt1",
+      iconPrompts: [],
+      sourceIds: [],
+    },
+  ];
+
+  it("usa o motor imersivo quando useImmersiveEngine e true", async () => {
+    let generateAssetsCalls = 0;
+    const fakeRenderImmersive = async () => "<html>deck imersivo</html>";
+    const fakeGenerateAssets = async () => {
+      generateAssetsCalls += 1;
+      throw new Error("nao deveria ser chamado");
+    };
+
+    const result = await resolvePresentationRendering(
+      slides,
+      "seeker",
+      plan,
+      true,
+      noopLogger,
+      { renderImmersive: fakeRenderImmersive, generateAssets: fakeGenerateAssets },
+    );
+
+    assert.equal(result.immersiveDeckHtml, "<html>deck imersivo</html>");
+    assert.equal(result.slidesComImagens, slides);
+    assert.equal(generateAssetsCalls, 0);
+  });
+
+  it("cai pro pipeline de imagem quando useImmersiveEngine e false", async () => {
+    let renderImmersiveCalls = 0;
+    const fakeRenderImmersive = async () => {
+      renderImmersiveCalls += 1;
+      throw new Error("nao deveria ser chamado");
+    };
+    const fakeGenerateAssets = async () => ({
+      imagem_referencia: ["cena-1"],
+      icones: [["icone-1"]],
+      renderMode: ["full-image" as const],
+    });
+
+    const result = await resolvePresentationRendering(
+      slides,
+      "seeker",
+      plan,
+      false,
+      noopLogger,
+      { renderImmersive: fakeRenderImmersive, generateAssets: fakeGenerateAssets },
+    );
+
+    assert.equal(result.immersiveDeckHtml, null);
+    assert.equal(renderImmersiveCalls, 0);
+    // slidesComImagens reflete o enriquecimento com os assets do fake.
+    assert.equal(result.slidesComImagens.length, 1);
+    assert.notEqual(result.slidesComImagens, slides);
+  });
+
+  it("cai pro pipeline de imagem se o motor imersivo falhar", async () => {
+    let generateAssetsCalls = 0;
+    const fakeRenderImmersive = async () => {
+      throw new Error("motor imersivo indisponivel");
+    };
+    const fakeGenerateAssets = async () => {
+      generateAssetsCalls += 1;
+      return {
+        imagem_referencia: ["cena-1"],
+        icones: [["icone-1"]],
+        renderMode: ["full-image" as const],
+      };
+    };
+
+    const result = await resolvePresentationRendering(
+      slides,
+      "seeker",
+      plan,
+      true,
+      noopLogger,
+      { renderImmersive: fakeRenderImmersive, generateAssets: fakeGenerateAssets },
+    );
+
+    assert.equal(result.immersiveDeckHtml, null);
+    assert.equal(generateAssetsCalls, 1);
+    assert.equal(result.slidesComImagens.length, 1);
+  });
+});
+
+// ─── buildPresentationMaterialMetadata — engine_variant ──────────────────────
+
+describe("buildPresentationMaterialMetadata engine_variant", () => {
+  it("inclui engine_variant quando informado, omite quando ausente", () => {
+    const withVariant = buildPresentationMaterialMetadata({
+      generationKey: "g1",
+      presentationUrl: "https://x/y.html",
+      bucket: "b",
+      failure: null,
+      engineVariant: "immersive",
+    });
+    assert.equal(withVariant.engine_variant, "immersive");
+
+    const withoutVariant = buildPresentationMaterialMetadata({
+      generationKey: "g1",
+      presentationUrl: "https://x/y.html",
+      bucket: "b",
+      failure: null,
+    });
+    assert.equal(withoutVariant.engine_variant, undefined);
   });
 });

@@ -65,6 +65,7 @@ export interface MaterialEntry {
     engine?: string;
     schema?: string;
     media_pipeline_version?: string;
+    engine_variant?: "immersive";
     error_stage?: "render" | "upload";
     error?: string;
   };
