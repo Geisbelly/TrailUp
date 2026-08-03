@@ -305,8 +305,8 @@
     "semantic_hash": "ea9fc3046e6bac85cbdbfead8c6ca178"
   },
   "api/app/core/settings.py": {
-    "mtime": 1785685836.6408384,
-    "ast_hash": "5f6c882f47cde2b56f9a2ab24428b183",
+    "mtime": 1785713716.0577111,
+    "ast_hash": "cc71feadbff074a1e28b84597b4060a1",
     "semantic_hash": ""
   },
   "api/app/db/__init__.py": {
@@ -1550,8 +1550,8 @@
     "semantic_hash": ""
   },
   "microservice/server.ts": {
-    "mtime": 1785625021.381488,
-    "ast_hash": "c498d4ba82fdee603a04a2788934c0bc",
+    "mtime": 1785713627.065102,
+    "ast_hash": "ea5c6847ebf485b21aff84eb1b1845d4",
     "semantic_hash": ""
   },
   "microservice/sql/migrations/0001_merge_personalizacao_materiais_rpc.sql": {
@@ -1645,8 +1645,8 @@
     "semantic_hash": ""
   },
   "microservice/src/lib/validators.ts": {
-    "mtime": 1785260120.6275408,
-    "ast_hash": "f7458ed5012b45ed289c397b7d49cd11",
+    "mtime": 1785713582.131627,
+    "ast_hash": "2850bffc1bfb84a94ee564a99b53b237",
     "semantic_hash": ""
   },
   "microservice/src/lib/wav.test.ts": {
@@ -1670,8 +1670,8 @@
     "semantic_hash": ""
   },
   "microservice/src/services/geminiService.ts": {
-    "mtime": 1785695223.8596022,
-    "ast_hash": "761bfa985db6a9980122d878c014b988",
+    "mtime": 1785713540.6952503,
+    "ast_hash": "9c80ed59051d217346c9b43742f4ce64",
     "semantic_hash": ""
   },
   "microservice/src/services/supabaseService.ts": {
@@ -1680,8 +1680,8 @@
     "semantic_hash": ""
   },
   "microservice/src/types/index.ts": {
-    "mtime": 1785280727.6988764,
-    "ast_hash": "5efe73e3f2d9bbd6b18b9574c7f6e675",
+    "mtime": 1785713272.0017955,
+    "ast_hash": "8977301fa277cd8dd3b2b3ceab6c6979",
     "semantic_hash": ""
   },
   "microservice/tsconfig.json": {
@@ -4135,8 +4135,8 @@
     "semantic_hash": ""
   },
   "microservice/src/services/geminiBlockBatches.test.ts": {
-    "mtime": 1785689542.0078263,
-    "ast_hash": "ff2b0187988bf4ff37a88259c8f1755e",
+    "mtime": 1785696189.0488963,
+    "ast_hash": "41c2df58fb2dcdaa4a139dafd5c0eb14",
     "semantic_hash": ""
   },
   "mobile/src/utils/personalization.multicontent.test.ts": {
