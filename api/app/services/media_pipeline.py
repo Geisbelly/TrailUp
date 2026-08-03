@@ -419,6 +419,9 @@ class MultiOutputPipeline:
 
     def _context(self) -> MediaPipelineContext:
         ref_base = self.state.get("conteudo_boss_foco_id") or self.state.get("payload_topico_id") or "sem-ref"
+        # Hash completo (256 bits) em vez de ciclo_id[:8] (32 bits) para reduzir
+        # colisao de ref_id; espelha generationStorageSegment() em
+        # microservice/src/constants/pipelineVersions.ts.
         ciclo_id_raw = str(self.state.get("ciclo_id") or "")
         digest = hashlib.sha256(ciclo_id_raw.encode("utf-8")).hexdigest()
         ref_id = f"{ref_base}_{digest}"
