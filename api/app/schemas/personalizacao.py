@@ -56,6 +56,7 @@ class PersonalizarPayload(BaseModel):
     perfis: list[PerfilBrainHexPayload] = Field(default_factory=list)
     topico_snapshot: dict[str, Any] | None = None
     materiais_origem_cliente: list[dict[str, Any]] = Field(default_factory=list)
+    guidance_prompt: str | None = Field(default=None, max_length=4000)
 
 
 class PersonalizacaoStep(BaseModel):

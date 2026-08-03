@@ -134,6 +134,10 @@ class Settings(BaseSettings):
     brainhex_health_timeout_sec: float = 90.0
     brainhex_health_max_attempts: int = 3
     brainhex_health_retry_delay_sec: float = 2.0
+    # Regeneracao (capitulo/slide/documento) e uma unica chamada Gemini + no
+    # maximo um asset (audio ou imagem) — bem mais rapido que o pipeline
+    # completo de brainhex_api_wait_timeout_sec.
+    brainhex_api_regenerate_timeout_sec: int = 120
 
     emotion_model_provider: str = "deepface"
     reading_model_provider: str = "isolation_forest"

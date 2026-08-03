@@ -503,6 +503,7 @@ async def disparar_brainhex_async(
     wait_for_completion: bool = False,
     contract_prechecked: bool = False,
     error_sink: list[str] | None = None,
+    guidance_prompt: str = "",
 ) -> bool:
     """Dispara BrainHex e, opcionalmente, aguarda o pipeline terminar.
 
@@ -559,6 +560,7 @@ async def disparar_brainhex_async(
                     "required_media_pipeline_version": MEDIA_PIPELINE_VERSION,
                     "required_presentation_engine_version": PRESENTATION_ENGINE_VERSION,
                     "required_presentation_design_version": PRESENTATION_DESIGN_VERSION,
+                    "guidance_prompt": guidance_prompt.strip() or None,
                 },
                 headers=headers,
             )
@@ -612,6 +614,133 @@ async def disparar_brainhex_async(
         if error_sink is not None:
             error_sink.append(str(exc))
         return False
+
+
+async def _regenerar_via_brainhex(
+    *,
+    settings: Settings,
+    endpoint: str,
+    json_payload: dict[str, Any],
+    error_sink: list[str] | None = None,
+) -> dict[str, Any] | None:
+    """Motor comum dos 3 clients de regeneracao (capitulo/slide/documento).
+
+    Espelha o padrao de auth/timeout de disparar_brainhex_async, mas contra
+    /api/v1/regenerate/* — uma unica chamada Gemini + no maximo um asset, por
+    isso o timeout proprio (brainhex_api_regenerate_timeout_sec), bem menor
+    que o do pipeline completo.
+    """
+    brainhex_url = str(getattr(settings, "brainhex_api_url", "") or "").strip()
+    if not brainhex_url:
+        return None
+    brainhex_secret = str(getattr(settings, "brainhex_api_secret", "") or "").strip()
+    headers = {"x-api-secret": brainhex_secret} if brainhex_secret else None
+    timeout_sec = max(30, int(getattr(settings, "brainhex_api_regenerate_timeout_sec", 120) or 120))
+    try:
+        async with httpx.AsyncClient(timeout=timeout_sec) as client:
+            response = await client.post(
+                f"{brainhex_url.rstrip('/')}{endpoint}",
+                json=json_payload,
+                headers=headers,
+            )
+            if response.status_code != 200:
+                detail = response.text[:500]
+                logger.warning(
+                    "_regenerar_via_brainhex: microservice recusou o POST %s (status=%s, body=%s)",
+                    endpoint,
+                    response.status_code,
+                    detail,
+                )
+                if error_sink is not None:
+                    error_sink.append(detail)
+                return None
+            return response.json()
+    except Exception as exc:
+        logger.exception("_regenerar_via_brainhex: falha ao chamar %s", endpoint)
+        if error_sink is not None:
+            error_sink.append(str(exc))
+        return None
+
+
+async def regenerar_capitulo_brainhex(
+    *,
+    settings: Settings,
+    chapter: dict[str, str],
+    improvement_prompt: str,
+    profile: str,
+    expansion_prompt: str | None = None,
+    error_sink: list[str] | None = None,
+) -> dict[str, Any] | None:
+    """Regenera markdown+audioScript de um capitulo via POST /api/v1/regenerate/chapter.
+
+    Retorna {markdown, audioScript, audioWavBase64, audioMp3Base64} ou None
+    em caso de falha (detalhe real em error_sink, quando informado).
+    """
+    return await _regenerar_via_brainhex(
+        settings=settings,
+        endpoint="/api/v1/regenerate/chapter",
+        json_payload={
+            "chapter": chapter,
+            "improvement_prompt": improvement_prompt,
+            "profile": str(profile or "").strip().lower(),
+            "expansion_prompt": expansion_prompt,
+        },
+        error_sink=error_sink,
+    )
+
+
+async def regenerar_slide_brainhex(
+    *,
+    settings: Settings,
+    slide: dict[str, Any],
+    improvement_prompt: str,
+    profile: str,
+    expansion_prompt: str | None = None,
+    error_sink: list[str] | None = None,
+) -> dict[str, Any] | None:
+    """Regenera um slide via POST /api/v1/regenerate/slide.
+
+    Retorna {slide, imageBase64} ou None em caso de falha (detalhe real em
+    error_sink, quando informado).
+    """
+    return await _regenerar_via_brainhex(
+        settings=settings,
+        endpoint="/api/v1/regenerate/slide",
+        json_payload={
+            "slide": slide,
+            "improvement_prompt": improvement_prompt,
+            "profile": str(profile or "").strip().lower(),
+            "expansion_prompt": expansion_prompt,
+        },
+        error_sink=error_sink,
+    )
+
+
+async def regenerar_documento_brainhex(
+    *,
+    settings: Settings,
+    markdown: str,
+    improvement_prompt: str,
+    profile: str,
+    expansion_prompt: str | None = None,
+    error_sink: list[str] | None = None,
+) -> dict[str, Any] | None:
+    """Regenera o documento de estudo completo via POST /api/v1/regenerate/document.
+
+    Retorna {markdown, audioScript} ou None em caso de falha (detalhe real em
+    error_sink, quando informado).
+    """
+    return await _regenerar_via_brainhex(
+        settings=settings,
+        endpoint="/api/v1/regenerate/document",
+        json_payload={
+            "markdown": markdown,
+            "improvement_prompt": improvement_prompt,
+            "profile": str(profile or "").strip().lower(),
+            "expansion_prompt": expansion_prompt,
+        },
+        error_sink=error_sink,
+    )
 
 
 async def gerar_conteudo_brainhex(

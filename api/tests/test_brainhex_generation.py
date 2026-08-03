@@ -11,6 +11,9 @@ from app.services.media_agents import (
     disparar_brainhex_async,
     gerar_conteudo_brainhex,
     gerar_imagem_slide,
+    regenerar_capitulo_brainhex,
+    regenerar_documento_brainhex,
+    regenerar_slide_brainhex,
 )
 from app.services.media_contract import (
     CONTENT_ENRICHMENT_PROVIDER,
@@ -490,3 +493,203 @@ async def test_gerar_imagem_slide_returns_none_on_error(settings):
         result = await gerar_imagem_slide(settings=settings, prompt="test")
 
     assert result is None
+
+
+@pytest.mark.asyncio
+async def test_disparar_brainhex_propagates_guidance_prompt(settings):
+    contract = {
+        "media_pipeline_version": MEDIA_PIPELINE_VERSION,
+        "presentation_engine_version": PRESENTATION_ENGINE_VERSION,
+        "presentation_design_version": PRESENTATION_DESIGN_VERSION,
+        "content_enrichment_provider": CONTENT_ENRICHMENT_PROVIDER,
+    }
+    mock_health = MagicMock(status_code=200)
+    mock_health.json.return_value = {"status": "ok", **contract}
+    mock_response = MagicMock(status_code=202, text='{"status":"accepted"}')
+    mock_response.json.return_value = {"status": "accepted", **contract}
+
+    with patch("httpx.AsyncClient") as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+        mock_client.get = AsyncMock(return_value=mock_health)
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client_cls.return_value = mock_client
+
+        await disparar_brainhex_async(
+            settings=settings,
+            perfil="seeker",
+            fontes=[],
+            content_blocks=[{"id": "bloco-01"}],
+            personalizacao_id=257,
+            ciclo_id="ciclo-257",
+            source_hash="hash-257",
+            generation_key="ciclo-257:hash-257",
+            guidance_prompt="  foque em exemplos praticos de docas do porto  ",
+        )
+
+    assert (
+        mock_client.post.await_args.kwargs["json"]["guidance_prompt"]
+        == "foque em exemplos praticos de docas do porto"
+    )
+
+
+@pytest.mark.asyncio
+async def test_disparar_brainhex_omits_empty_guidance_prompt(settings):
+    contract = {
+        "media_pipeline_version": MEDIA_PIPELINE_VERSION,
+        "presentation_engine_version": PRESENTATION_ENGINE_VERSION,
+        "presentation_design_version": PRESENTATION_DESIGN_VERSION,
+        "content_enrichment_provider": CONTENT_ENRICHMENT_PROVIDER,
+    }
+    mock_health = MagicMock(status_code=200)
+    mock_health.json.return_value = {"status": "ok", **contract}
+    mock_response = MagicMock(status_code=202, text='{"status":"accepted"}')
+    mock_response.json.return_value = {"status": "accepted", **contract}
+
+    with patch("httpx.AsyncClient") as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+        mock_client.get = AsyncMock(return_value=mock_health)
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client_cls.return_value = mock_client
+
+        await disparar_brainhex_async(
+            settings=settings,
+            perfil="seeker",
+            fontes=[],
+            content_blocks=[{"id": "bloco-01"}],
+            personalizacao_id=257,
+            ciclo_id="ciclo-257",
+            source_hash="hash-257",
+            generation_key="ciclo-257:hash-257",
+        )
+
+    assert mock_client.post.await_args.kwargs["json"]["guidance_prompt"] is None
+
+
+@pytest.mark.asyncio
+async def test_regenerar_capitulo_brainhex_returns_none_without_url(settings):
+    settings.brainhex_api_url = None
+    result = await regenerar_capitulo_brainhex(
+        settings=settings,
+        chapter={"markdown": "m", "audioScript": "a"},
+        improvement_prompt="mais exemplos",
+        profile="seeker",
+    )
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_regenerar_capitulo_brainhex_posts_expected_payload(settings):
+    fake_output = {
+        "markdown": "novo markdown",
+        "audioScript": "novo audio script",
+        "audioWavBase64": None,
+        "audioMp3Base64": "base64==",
+    }
+    mock_response = MagicMock(status_code=200)
+    mock_response.json.return_value = fake_output
+
+    with patch("httpx.AsyncClient") as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client_cls.return_value = mock_client
+
+        result = await regenerar_capitulo_brainhex(
+            settings=settings,
+            chapter={"markdown": "m", "audioScript": "a"},
+            improvement_prompt="mais exemplos praticos",
+            profile="Seeker",
+            expansion_prompt="aprofunde em docas",
+        )
+
+    assert result == fake_output
+    call = mock_client.post.await_args
+    assert call.args[0] == "http://brainhex.local/api/v1/regenerate/chapter"
+    assert call.kwargs["json"] == {
+        "chapter": {"markdown": "m", "audioScript": "a"},
+        "improvement_prompt": "mais exemplos praticos",
+        "profile": "seeker",
+        "expansion_prompt": "aprofunde em docas",
+    }
+
+
+@pytest.mark.asyncio
+async def test_regenerar_capitulo_brainhex_returns_none_and_fills_error_sink_on_failure(settings):
+    mock_response = MagicMock(status_code=500, text="Falha ao regenerar capítulo")
+
+    with patch("httpx.AsyncClient") as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client_cls.return_value = mock_client
+
+        error_sink: list[str] = []
+        result = await regenerar_capitulo_brainhex(
+            settings=settings,
+            chapter={"markdown": "m", "audioScript": "a"},
+            improvement_prompt="mais exemplos",
+            profile="seeker",
+            error_sink=error_sink,
+        )
+
+    assert result is None
+    assert error_sink == ["Falha ao regenerar capítulo"]
+
+
+@pytest.mark.asyncio
+async def test_regenerar_slide_brainhex_posts_expected_payload(settings):
+    fake_output = {"slide": {"title": "novo titulo"}, "imageBase64": "base64=="}
+    mock_response = MagicMock(status_code=200)
+    mock_response.json.return_value = fake_output
+
+    with patch("httpx.AsyncClient") as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client_cls.return_value = mock_client
+
+        result = await regenerar_slide_brainhex(
+            settings=settings,
+            slide={"title": "titulo antigo"},
+            improvement_prompt="deixe mais visual",
+            profile="mastermind",
+        )
+
+    assert result == fake_output
+    call = mock_client.post.await_args
+    assert call.args[0] == "http://brainhex.local/api/v1/regenerate/slide"
+    assert call.kwargs["json"]["slide"] == {"title": "titulo antigo"}
+    assert call.kwargs["json"]["profile"] == "mastermind"
+
+
+@pytest.mark.asyncio
+async def test_regenerar_documento_brainhex_posts_expected_payload(settings):
+    fake_output = {"markdown": "doc novo", "audioScript": "script novo"}
+    mock_response = MagicMock(status_code=200)
+    mock_response.json.return_value = fake_output
+
+    with patch("httpx.AsyncClient") as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client_cls.return_value = mock_client
+
+        result = await regenerar_documento_brainhex(
+            settings=settings,
+            markdown="doc antigo",
+            improvement_prompt="resuma mais",
+            profile="achiever",
+        )
+
+    assert result == fake_output
+    call = mock_client.post.await_args
+    assert call.args[0] == "http://brainhex.local/api/v1/regenerate/document"
+    assert call.kwargs["json"]["markdown"] == "doc antigo"

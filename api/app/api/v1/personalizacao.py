@@ -1442,6 +1442,7 @@ async def personalizar(
             ciclo_id=ctx["ciclo_id"],
             source_hash=ctx["source_hash"],
             generation_key=generation_key,
+            guidance_prompt=payload.guidance_prompt or "",
         )
     )
 
