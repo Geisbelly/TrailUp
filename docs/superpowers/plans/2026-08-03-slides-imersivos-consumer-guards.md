@@ -32,7 +32,7 @@ const hasInlineSlides = richSlides.length > 0;
 
 `hasInlineSlides` decide um `if/else` mutuamente exclusivo: quando `true`, o material vira um bloco `apresentacao-slides` (renderizado nativamente por `PresentationSlidesBlock`, linha 1369-1384); quando `false`, cai nos ramos que usam `arquivo_url`/Storage (WebView, linhas 1291-1364) — **nunca os dois ao mesmo tempo**. Como o formato imersivo (`{index, html}`) não tem nenhum dos campos que `normalizeRichPresentationSlides` lê (`titulo`/`title`, `pontos`/`points`/`bullets`/`topics`, etc.), cada slide vira `{title: "Slide N", points: [], explanation: null, ...}` — passa pelo guard de descarte (que nunca dispara, porque o fallback de título é sempre truthy) e produz `hasInlineSlides = true`, sintetizando um bloco nativo **totalmente vazio de conteúdo real**, em vez de cair no caminho WebView que já existe e já serve exatamente este propósito.
 
-- [ ] **Step 1: Escrever o teste que falha**
+- [x] **Step 1: Escrever o teste que falha**
 
 Abra `mobile/src/utils/personalization.multicontent.test.ts` e leia o topo do arquivo pra confirmar o padrão de import/mock já usado (mock de `@/database/supabase` via `require.cache`, import de funções de `@/utils/personalization` — mantenha esse mesmo padrão). Adicione ao final do arquivo:
 
@@ -79,12 +79,12 @@ test("normalizeMediaBlocks continua sintetizando apresentacao-slides sem engine_
 
 Ajuste os nomes exatos importados (`normalizeMediaBlocks` pode não estar exportado diretamente — se não estiver, confira como os testes existentes neste arquivo chegam até essa lógica, ex.: via uma função pública de nível mais alto como `normalizePersonalizedTopicPayload`, e adapte os 2 testes acima pra chamar através dessa função pública em vez de `normalizeMediaBlocks` direto. Não exporte `normalizeMediaBlocks` só para o teste se ele não é hoje exportado — use o caminho público já testado pelos outros testes deste arquivo).
 
-- [ ] **Step 2: Rodar o teste e confirmar que falha**
+- [x] **Step 2: Rodar o teste e confirmar que falha**
 
 Run: `cd mobile && npx tsx --test src/utils/personalization.multicontent.test.ts`
 Expected: o novo teste "nao sintetiza apresentacao-slides quando engine_variant e immersive" FALHA (o código atual ainda produz `tipo: "apresentacao-slides"`); o segundo teste (formato antigo) já passa mesmo sem nenhuma mudança de código (serve de guarda de regressão).
 
-- [ ] **Step 3: Implementar a correção em `personalization.ts`**
+- [x] **Step 3: Implementar a correção em `personalization.ts`**
 
 Troque:
 ```typescript
@@ -108,12 +108,12 @@ por:
     const hasInlineSlides = richSlides.length > 0;
 ```
 
-- [ ] **Step 4: Rodar o teste e confirmar que passa**
+- [x] **Step 4: Rodar o teste e confirmar que passa**
 
 Run: `cd mobile && npx tsx --test src/utils/personalization.multicontent.test.ts`
 Expected: PASS (os 3 testes já existentes + os 2 novos = 5 testes)
 
-- [ ] **Step 5: Defesa em profundidade em `PresentationSlidesBlock.tsx`**
+- [x] **Step 5: Defesa em profundidade em `PresentationSlidesBlock.tsx`**
 
 Mesmo com o Step 3 corrigindo a causa raiz, adicione um filtro que descarta slides sem nenhum conteúdo substantivo — protege contra qualquer outro caminho (atual ou futuro) que produza um `RichPresentationSlide` vazio, não só este bug específico.
 
@@ -160,7 +160,7 @@ Troque o `return` final por:
 }
 ```
 
-- [ ] **Step 6: Escrever um teste rápido pra esse filtro**
+- [x] **Step 6: Escrever um teste rápido pra esse filtro**
 
 Se este arquivo já tem algum teste (`PresentationSlidesBlock.test.tsx` ou similar) — verifique antes de criar um novo. Se não houver nenhum teste de componente React Native já configurado neste projeto (Testing Library, etc.), NÃO crie a infraestrutura de teste de componente do zero só para isto — extraia `normalizePayload` como uma função exportada e teste-a isoladamente com `node:test`, no mesmo padrão do Step 1:
 
@@ -188,7 +188,7 @@ Exporte `normalizePayload` de `PresentationSlidesBlock.tsx` (adicione `export` n
 Run: `cd mobile && npx tsx --test src/components/PresentationSlidesBlock.test.ts`
 Expected: PASS
 
-- [ ] **Step 7: Rodar os 2 arquivos de teste modificados/criados e commitar**
+- [x] **Step 7: Rodar os 2 arquivos de teste modificados/criados e commitar**
 
 Run: `cd mobile && npx tsx --test src/utils/personalization.multicontent.test.ts src/components/PresentationSlidesBlock.test.ts`
 Expected: todos passam.
@@ -226,7 +226,7 @@ if not isinstance(slides_atuais, list) or not slides_atuais:
 
 nunca lê `materiais["apresentacao"]["metadata"]` — não sabe distinguir o formato antigo (`SlideContent[]`) do novo (`[{index, html}]`, gravado quando `metadata.engine_variant == "immersive"`). Se o material for imersivo, o código segue adiante, indexa `slides_atuais[payload.slide_index]` (um dict `{index, html}`), manda pro microservice via `regenerar_slide_brainhex` (que espera um `SlideContent` e não teria como aproveitar isso) e depois faz `slide_atualizado = {**slide_atual, **(resultado.get("slide") or {})}` — misturando os dois formatos no material persistido. Regenerar slide individual em formato imersivo ainda não é suportado (fica para um plano futuro); até lá, este endpoint deve rejeitar com uma mensagem clara em vez de corromper o dado.
 
-- [ ] **Step 1: Escrever o teste que falha**
+- [x] **Step 1: Escrever o teste que falha**
 
 Abra `api/tests/test_api.py`, localize os testes existentes de `regenerar_slide_route_*` (ex.: `test_regenerar_slide_route_rejeita_indice_invalido`) pra seguir exatamente o mesmo padrão de fixture/mock (`FakeSession`, `professor_user`, `monkeypatch.setattr(AccessRepository, "professor_owns_classe", ...)`, `monkeypatch.setattr(ConteudoClasseRepository, "buscar_classe_id_por_topico", ...)`, `monkeypatch.setattr(ConteudoPersonalizadoRepository, "buscar_mais_recente_por_perfil", ...)`). Adicione, próximo aos outros testes de `regenerar_slide`:
 
@@ -272,12 +272,12 @@ def test_regenerar_slide_route_rejeita_material_imersivo(app, monkeypatch) -> No
 
 (Reaproveite os helpers já existentes neste arquivo `_regenerar_professor_user()` e `_stored_record_com_materiais(materiais)` — não os redefina.)
 
-- [ ] **Step 2: Rodar o teste e confirmar que falha**
+- [x] **Step 2: Rodar o teste e confirmar que falha**
 
 Run: `cd api && python -m pytest tests/test_api.py -q -k test_regenerar_slide_route_rejeita_material_imersivo`
 Expected: FAIL (hoje o código não rejeita isso — provavelmente falha mais adiante, ex.: tentando chamar o microservice, ou passa e devolve algo diferente de 409; a asserção de status/detail não bate).
 
-- [ ] **Step 3: Implementar a checagem**
+- [x] **Step 3: Implementar a checagem**
 
 Em `api/app/api/v1/personalizacao.py`, dentro de `regenerar_slide_personalizacao`, logo depois da linha que monta `materiais` e ANTES da checagem de `slides_atuais`:
 
@@ -304,12 +304,12 @@ Em `api/app/api/v1/personalizacao.py`, dentro de `regenerar_slide_personalizacao
 
 (A linha `slides_atuais = ...` já existe — só adicione a checagem nova ANTES dela, sem duplicar a linha existente.)
 
-- [ ] **Step 4: Rodar o teste novo e confirmar que passa**
+- [x] **Step 4: Rodar o teste novo e confirmar que passa**
 
 Run: `cd api && python -m pytest tests/test_api.py -q -k test_regenerar_slide_route_rejeita_material_imersivo`
 Expected: PASS
 
-- [ ] **Step 5: Rodar a suíte inteira da API e commitar**
+- [x] **Step 5: Rodar a suíte inteira da API e commitar**
 
 Run: `cd api && python -m pytest -q`
 Expected: todos os testes passam (nenhuma regressão nos outros testes de `regenerar_slide`/`regenerar_documento`, que não têm `engine_variant` no metadata e continuam seguindo o fluxo normal).
