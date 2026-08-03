@@ -14,6 +14,7 @@ import {
 } from "../constants/presentationThemes";
 import { mapWithConcurrency } from "../lib/boundedConcurrency";
 import { resolveRealSlideOrder } from "../lib/pptxSlideOrder";
+import { buildImmersiveDeckHtml } from "../lib/slideShell";
 import { MAX_SLIDE_HTML_CHARS, validateSlideHtml } from "../lib/slideValidation";
 import { addWavHeader } from "../lib/wav";
 import {
@@ -2239,6 +2240,61 @@ export async function generateImmersiveSlideHtml(
     `Falha ao gerar slide imersivo (slide ${input.index + 1}, perfil ${input.profile}) `
     + `após ${maxAttempts} tentativa(s): ${lastReason}`,
   );
+}
+
+const DEFAULT_IMMERSIVE_SLIDE_CONCURRENCY = 3;
+const MAX_IMMERSIVE_SLIDE_CONCURRENCY = 6;
+
+function resolveImmersiveSlideConcurrency(
+  environment: Record<string, string | undefined> = process.env,
+): number {
+  const parsed = Number(environment.PRESENTATION_IMMERSIVE_SLIDE_CONCURRENCY);
+  if (!Number.isInteger(parsed) || parsed < 1) return DEFAULT_IMMERSIVE_SLIDE_CONCURRENCY;
+  return Math.min(parsed, MAX_IMMERSIVE_SLIDE_CONCURRENCY);
+}
+
+function slideContentSummary(slide: SlideContent): string {
+  return [
+    slide.title,
+    (slide.topics ?? []).join("; "),
+    slide.explanation,
+    slide.visualDescription,
+    slide.characterQuote,
+  ].filter(Boolean).join("\n");
+}
+
+export interface RenderImmersiveSlidesOptions {
+  concurrency?: number;
+  keysConfig?: ApiKeysConfig;
+  generateSlideFn?: (input: ImmersiveSlideInput) => Promise<string>;
+}
+
+/**
+ * Gera o deck imersivo completo a partir do array de SlideContent já
+ * decidido pelo pipeline existente (lotes por bloco, inalterado) — uma
+ * chamada Gemini por slide, concorrente com limite (não sequencial: a
+ * consistência visual vem do brief de design compartilhado por perfil, não
+ * de encadeamento slide-a-slide). Se QUALQUER slide falhar após esgotar as
+ * tentativas internas de generateImmersiveSlideHtml, propaga o erro — não
+ * existe "deck parcialmente imersivo"; o chamador decide o fallback.
+ */
+export async function renderImmersiveSlides(
+  slides: SlideContent[],
+  profile: BrainHexProfile,
+  options: RenderImmersiveSlidesOptions = {},
+): Promise<string> {
+  const generateSlide = options.generateSlideFn ?? generateImmersiveSlideHtml;
+  const concurrency = Math.max(1, options.concurrency ?? resolveImmersiveSlideConcurrency());
+
+  const htmls = await mapWithConcurrency(slides, concurrency, async (slide, index) =>
+    generateSlide({
+      index,
+      total: slides.length,
+      contentSummary: slideContentSummary(slide),
+      profile,
+    }));
+
+  return buildImmersiveDeckHtml(htmls, profile);
 }
 
 /**

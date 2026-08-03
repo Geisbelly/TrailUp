@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { generateImmersiveSlideHtml } from "./geminiService";
+import { renderImmersiveSlides } from "./geminiService";
+import type { ImmersiveSlideInput } from "./geminiService";
 
 test("chama o executor com o design token do perfil e o conteúdo do slide no prompt", async () => {
   let capturedSystemInstruction = "";
@@ -117,4 +119,63 @@ test("realimenta o motivo da rejeição na tentativa seguinte, em vez de repetir
   assert.equal(calls, 2);
   assert.doesNotMatch(capturedUserTextByAttempt[0], /tentativa anterior foi rejeitada/);
   assert.match(capturedUserTextByAttempt[1], /tentativa anterior foi rejeitada por:.*fetch/i);
+});
+
+test("renderImmersiveSlides gera 1 chamada por slide, na ordem, e monta o deck", async () => {
+  const slides = [
+    { title: "Slide 1", topics: ["a"], explanation: "exp1", visualDescription: "vd1", characterQuote: "q1", characterAction: "explaining" as const, imagePrompt: "", iconPrompts: [], sourceIds: [] },
+    { title: "Slide 2", topics: ["b"], explanation: "exp2", visualDescription: "vd2", characterQuote: "q2", characterAction: "explaining" as const, imagePrompt: "", iconPrompts: [], sourceIds: [] },
+  ];
+  const calls: Array<{ index: number; contentSummary: string }> = [];
+  const fakeGenerate = async (input: ImmersiveSlideInput) => {
+    calls.push({ index: input.index, contentSummary: input.contentSummary });
+    return `<section>slide ${input.index}</section>`;
+  };
+
+  const deckHtml = await renderImmersiveSlides(slides, "mastermind", { generateSlideFn: fakeGenerate });
+
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].index, 0);
+  assert.equal(calls[1].index, 1);
+  assert.match(calls[0].contentSummary, /Slide 1/);
+  assert.match(calls[0].contentSummary, /exp1/);
+  assert.match(deckHtml, /<iframe/);
+});
+
+test("renderImmersiveSlides propaga o erro se qualquer slide falhar (sem deck parcial)", async () => {
+  let calls = 0;
+  const fakeGenerate = async (input: ImmersiveSlideInput) => {
+    calls += 1;
+    if (input.index === 1) throw new Error("falha simulada no slide 2");
+    return `<section>slide ${input.index}</section>`;
+  };
+  const slides = [
+    { title: "Slide 1", topics: [], explanation: "", visualDescription: "", characterQuote: "", characterAction: "explaining" as const, imagePrompt: "", iconPrompts: [], sourceIds: [] },
+    { title: "Slide 2", topics: [], explanation: "", visualDescription: "", characterQuote: "", characterAction: "explaining" as const, imagePrompt: "", iconPrompts: [], sourceIds: [] },
+  ];
+
+  await assert.rejects(
+    () => renderImmersiveSlides(slides, "seeker", { generateSlideFn: fakeGenerate }),
+    /falha simulada no slide 2/,
+  );
+});
+
+test("renderImmersiveSlides respeita o limite de concorrência informado", async () => {
+  let inFlight = 0;
+  let maxInFlight = 0;
+  const fakeGenerate = async (input: ImmersiveSlideInput) => {
+    inFlight += 1;
+    maxInFlight = Math.max(maxInFlight, inFlight);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    inFlight -= 1;
+    return `<section>${input.index}</section>`;
+  };
+  const slides = Array.from({ length: 6 }, (_, i) => ({
+    title: `Slide ${i}`, topics: [], explanation: "", visualDescription: "",
+    characterQuote: "", characterAction: "explaining" as const, imagePrompt: "", iconPrompts: [], sourceIds: [],
+  }));
+
+  await renderImmersiveSlides(slides, "achiever", { generateSlideFn: fakeGenerate, concurrency: 2 });
+
+  assert.ok(maxInFlight <= 2, `esperava no maximo 2 chamadas simultaneas, teve ${maxInFlight}`);
 });
