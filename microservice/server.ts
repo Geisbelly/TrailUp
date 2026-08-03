@@ -12,6 +12,7 @@ import {
   regenerateChapterContent,
   regenerateSlideContent,
   regenerateDocumentMarkdown,
+  renderImmersiveSlides,
   type ContentPart,
 } from "./src/services/geminiService";
 import type { ApiKeysConfig, SlideContent } from "./src/types";
@@ -178,6 +179,16 @@ async function generateSlideAssets(
 
 // enrichSlidesWithImages extraído para src/lib/slideEnricher.ts (testado).
 
+// Flag desligado por padrao (mesmo padrao de ENABLE_OPENAI_FULL_SLIDE_IMAGES
+// em src/lib/slideAssetGenerator.ts). Quando ligado, decks de 1 parte usam o
+// motor imersivo (IA gera HTML/CSS/JS por slide) em vez de imagem de
+// cena/icone + template. Decks que precisaram ser divididos em multiplas
+// partes (parts.length > 1) sempre usam o pipeline atual, independente do
+// flag - o motor imersivo produz 1 documento autocontido, incompativel com
+// a paginacao multi-parte sem uma mudanca maior (fora de escopo aqui).
+const PRESENTATION_ENGINE_IMMERSIVE_ENABLED =
+  process.env.PRESENTATION_ENGINE_IMMERSIVE_ENABLED === "true";
+
 // ─── Core: archive to Supabase ────────────────────────────────────────────────
 
 export type PresentationFailureStage = "render" | "upload";
@@ -245,6 +256,7 @@ export function buildPresentationMaterialMetadata(params: {
   bucket: string;
   failure: PresentationFailure | null;
   updatedAt?: string;
+  engineVariant?: "immersive";
 }): MaterialEntry["metadata"] {
   return {
     status: params.presentationUrl ? "completed" : "failed",
@@ -252,6 +264,7 @@ export function buildPresentationMaterialMetadata(params: {
     ...buildPresentationVersionMetadata(params.generationKey),
     updated_at: params.updatedAt ?? now(),
     ...(params.presentationUrl ? { bucket: params.bucket } : {}),
+    ...(params.engineVariant ? { engine_variant: params.engineVariant } : {}),
     ...(params.failure
       ? {
           error_stage: params.failure.stage,
@@ -440,6 +453,21 @@ async function archiveToSupabase(params: {
  * O endpoint /api/v1/archive (uso avulso, sem personalizacao) continua na
  * versao single-file (archiveToSupabase) - nao precisa dessa divisao.
  */
+// Extraida como funcao pura pra ser testavel sem mockar Supabase: decide se
+// o payload.slides persistido e o array de fragmentos HTML por slide do
+// motor imersivo ([{index, html}]) ou a estrutura SlideContent[] antiga
+// (title/topics/explanation/etc.), flatten das partes do pipeline de
+// imagem+template.
+export function buildApresentacaoSlidesPayload(
+  parts: Array<{ slides: SlideContent[] }>,
+  prebuiltImmersiveSlideHtmls?: string[] | null,
+): SlideContent[] | Array<{ index: number; html: string }> {
+  if (prebuiltImmersiveSlideHtmls) {
+    return prebuiltImmersiveSlideHtmls.map((html, index) => ({ index, html }));
+  }
+  return parts.flatMap((p) => p.slides);
+}
+
 async function archiveMultiPartToSupabase(params: {
   profile:         BrainHexProfile;
   storagePath:     string;
@@ -450,6 +478,8 @@ async function archiveMultiPartToSupabase(params: {
   personalizacaoId: number | null;
   fence?:           GenerationFence;
   log?:            Logger;
+  prebuiltPresentationHtml?: string | null;
+  prebuiltImmersiveSlideHtmls?: string[] | null;
 }): Promise<{
   audioMp3Url: string | null;
   markdownUrl: string | null;
@@ -517,6 +547,9 @@ async function archiveMultiPartToSupabase(params: {
       presentationTheme,
       bucket,
       presentationPath,
+      ...(params.prebuiltPresentationHtml
+        ? { buildHtml: () => params.prebuiltPresentationHtml as string }
+        : {}),
     });
     if (presentationResult.failure) {
       firstPresentationFailure = firstPresentationFailure ?? presentationResult.failure;
@@ -587,8 +620,11 @@ async function archiveMultiPartToSupabase(params: {
         partes: markdownParts,
       },
       apresentacao: {
+        // qualquer consumidor de payload.slides precisa checar
+        // metadata.engine_variant === "immersive" antes de assumir o formato
+        // SlideContent — ver docs/superpowers/specs/2026-08-03-slides-imersivos-html-ia-design.md.
         payload: {
-          slides: parts.flatMap((p) => p.slides),
+          slides: buildApresentacaoSlidesPayload(parts, params.prebuiltImmersiveSlideHtmls),
           tema_visual: presentationTheme,
         },
         metadata: buildPresentationMaterialMetadata({
@@ -596,6 +632,7 @@ async function archiveMultiPartToSupabase(params: {
           presentationUrl,
           bucket,
           failure: firstPresentationFailure,
+          ...(params.prebuiltPresentationHtml ? { engineVariant: "immersive" as const } : {}),
         }),
         arquivo_url: presentationUrl,
         storage_path: presentationParts[0]?.storage_path ?? null,
@@ -739,6 +776,56 @@ async function runPersonalizacaoJobWithTimeout(
   );
 }
 
+interface PresentationRenderingResult {
+  immersiveDeckHtml: string | null;
+  immersiveSlideHtmls: string[] | null;
+  slidesComImagens: SlideContent[];
+}
+
+interface ResolvePresentationRenderingDeps {
+  renderImmersive?: typeof renderImmersiveSlides;
+  generateAssets?: typeof generateFullSlideImages;
+}
+
+/**
+ * Decide como a apresentacao deve ser renderizada: motor imersivo (quando
+ * useImmersiveEngine) ou o pipeline atual de imagem de cena/icone. Qualquer
+ * falha do motor imersivo cai automaticamente pro pipeline atual - nunca
+ * propaga o erro pra runPipeline. Extraida como funcao propria (em vez de
+ * inline em runPipeline) especificamente pra ser testavel sem depender de
+ * Supabase/audio/rede - so recebe os slides ja decididos e as 2 chamadas
+ * que pode fazer, ambas com override injetavel pra teste.
+ */
+export async function resolvePresentationRendering(
+  slides: SlideContent[],
+  profile: BrainHexProfile,
+  presentationPlan: PresentationDesignPlan,
+  useImmersiveEngine: boolean,
+  jobLog: Logger,
+  deps: ResolvePresentationRenderingDeps = {},
+): Promise<PresentationRenderingResult> {
+  const renderImmersive = deps.renderImmersive ?? renderImmersiveSlides;
+  const generateAssets = deps.generateAssets ?? generateFullSlideImages;
+
+  if (useImmersiveEngine) {
+    try {
+      const { deckHtml, slideHtmls } = await renderImmersive(slides, profile);
+      return { immersiveDeckHtml: deckHtml, immersiveSlideHtmls: slideHtmls, slidesComImagens: slides };
+    } catch (error) {
+      jobLog.error("falha no motor imersivo; caindo para o pipeline de imagem+template", { err: error });
+    }
+  }
+
+  const assets = await generateAssets(slides, profile, presentationPlan).catch((err) => {
+    jobLog.error("falha nos assets de slide", { err });
+    return null;
+  });
+  const slidesComImagens = assets
+    ? enrichSlidesWithImages(slides, assets.imagem_referencia, assets.icones, assets.renderMode)
+    : slides;
+  return { immersiveDeckHtml: null, immersiveSlideHtmls: null, slidesComImagens };
+}
+
 async function runPipeline(
   personalizacaoId: number,
   profile: BrainHexProfile,
@@ -811,17 +898,19 @@ async function runPipeline(
         )
       : generateLongNaturalAudio(audioScript, voice, voiceProfile.direction);
 
-  // allSettled em cada trilha (audio por parte + assets) preserva a regra
-  // existente de sucesso parcial - uma parte de audio falhando nao derruba
-  // as outras, e imagens falhando nao derrubam audio/markdown.
-  const assetsPromise = generateFullSlideImages(
-    resultado.slides,
-    profile,
-    presentationPlan,
-  );
-  const [audioSettled, [assetsResult]] = await Promise.all([
+  // So decks de 1 parte usam o motor imersivo - ver decisao 6 no plano
+  // desta task (paginacao multi-parte do mobile e incompativel com o
+  // documento autocontido do motor imersivo).
+  const useImmersiveEngine = PRESENTATION_ENGINE_IMMERSIVE_ENABLED && partsForAudio.length === 1;
+
+  // allSettled no audio preserva a regra existente de sucesso parcial - uma
+  // parte de audio falhando nao derruba as outras. resolvePresentationRendering
+  // ja encapsula sua propria queda pro pipeline de imagem+template em caso de
+  // falha (motor imersivo ou assets), sem propagar erro pra runPipeline - ver
+  // comentario na funcao.
+  const [audioSettled, { immersiveDeckHtml, immersiveSlideHtmls, slidesComImagens }] = await Promise.all([
     Promise.allSettled(partsForAudio.map((part) => generatePartAudio(part.audioScript))),
-    Promise.allSettled([assetsPromise]),
+    resolvePresentationRendering(resultado.slides, profile, presentationPlan, useImmersiveEngine, jobLog),
   ]);
 
   const audioByPart = audioSettled.map((result, index) => {
@@ -831,19 +920,6 @@ async function runPipeline(
     jobLog.error("falha no áudio de uma parte", { parte: index + 1, err: result.reason });
     return { mp3Base64: null, wavBase64: null };
   });
-
-  // Assets de slide (imagens/icones) sao tratados como o audio: uma falha
-  // aqui nao pode descartar markdown/audio, que ja podem ter sido gerados
-  // com sucesso. Sem isso, um throw aqui abortava a funcao ANTES de chamar
-  // archiveMultiPartToSupabase, perdendo midias ja prontas que deveriam ser
-  // persistidas independentemente (ver comentario de archiveMultiPartToSupabase).
-  let slidesComImagens = resultado.slides;
-  if (assetsResult.status === "fulfilled") {
-    const assets = assetsResult.value;
-    slidesComImagens = enrichSlidesWithImages(resultado.slides, assets.imagem_referencia, assets.icones, assets.renderMode);
-  } else {
-    jobLog.error("falha nos assets de slide", { err: assetsResult.reason });
-  }
 
   // Recalcula as mesmas fronteiras de parte (deterministicas a partir do
   // mesmo markdown/audioScript) agora com as slides ja enriquecidas com
@@ -870,6 +946,8 @@ async function runPipeline(
     personalizacaoId,
     fence,
     log:              jobLog,
+    prebuiltPresentationHtml: immersiveDeckHtml,
+    prebuiltImmersiveSlideHtmls: immersiveSlideHtmls,
   });
   if (!archived.persisted) {
     throw new Error("merge persistido ausente para a personalizacao");

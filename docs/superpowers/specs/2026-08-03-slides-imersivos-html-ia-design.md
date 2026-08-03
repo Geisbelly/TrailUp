@@ -245,3 +245,37 @@ antes de assumir o formato `SlideContent`** (implementado em
   perfis sem lock global, documentado no commit `74f84e1`).
 - Nenhuma automação garante "qualidade estética" — depende de QA visual
   humana por perfil após cada mudança relevante de prompt.
+
+## Pré-requisito antes de ligar o flag em produção
+
+`materiais.apresentacao.payload.slides` agora pode assumir 2 formatos
+incompatíveis, sinalizados por `metadata.engine_variant`:
+
+- **motor imersivo** (`engine_variant === "immersive"`) — array de
+  `{index, html}` (fragmento HTML por slide, sem estrutura de
+  título/tópicos/etc.).
+- **pipeline de imagem+template** (`engine_variant` ausente) — array de
+  `SlideContent` estruturado (`title`/`topics`/`explanation`/`visualDescription`/
+  `characterQuote`/etc.), como sempre foi antes desta mudança.
+
+Todo consumidor de `payload.slides` fora do `microservice/` foi rastreado e
+**nenhum deles** hoje verifica `metadata.engine_variant` antes de tratar cada
+item como `SlideContent`. Se `PRESENTATION_ENGINE_IMMERSIVE_ENABLED` for
+ligado em qualquer ambiente que esses consumidores alcancem, eles vão ler
+`{index, html}` como se fosse `SlideContent` silenciosamente — sem erro, sem
+fallback — produzindo UI garantida quebrada (campos `title`/`topics`
+`undefined`) ou, no caso da rota de regeneração de slide individual, corrupção
+de escrita no material persistido. Não é uma falha graciosa; é corrupção
+silenciosa de dado.
+
+**Antes de ligar o flag em qualquer ambiente compartilhado (staging/produção),
+os 3 pontos abaixo precisam checar `metadata.engine_variant === "immersive"`
+antes de assumir o formato `SlideContent`:**
+
+- `mobile/src/utils/personalization.ts:1287` (`normalizeRichPresentationSlides`)
+- `mobile/src/components/PresentationSlidesBlock.tsx:26-38,55` (`normalizePayload`)
+- `api/app/api/v1/personalizacao.py:2227-2263` (`regenerar_slide_personalizacao`
+  — lê/escreve um slide por índice sem nenhuma guarda de formato)
+
+Até que os 3 sejam corrigidos, o flag deve permanecer desligado (ou só ativo
+em ambientes que nenhum desses 3 caminhos alcança).
