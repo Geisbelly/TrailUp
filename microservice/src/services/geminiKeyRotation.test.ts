@@ -118,16 +118,25 @@ test("cooldown de cota e por (chave, modelo) - uma chave esgotada no modelo prin
   });
 });
 
-test("resolveGeminiTextFallbackModels devolve os 5 modelos default, priorizando a serie 3.x", () => {
+test("resolveGeminiTextFallbackModels devolve os 11 modelos default, priorizando a serie 3.x", () => {
   // gemini-2.5-flash-lite (e outros 2.x) retornaram 404 "no longer available
   // to new users" em producao — 3.x vem primeiro por ter mais chance de
-  // funcionar de fato numa conta nova.
+  // funcionar de fato numa conta nova. Variantes nao-lite da mesma geracao
+  // geralmente vem depois da lite — exceto gemini-2.0-flash/-lite, que ja
+  // estava na ordem inversa antes desta ampliacao e nao foi reordenado.
+  // gemini-1.5-* fica por ultimo, mais residual ainda que a serie 2.x.
   assert.deepEqual(resolveGeminiTextFallbackModels({}), [
     "gemini-3.1-flash-lite",
+    "gemini-3.1-flash",
     "gemini-3.5-flash-lite",
+    "gemini-3.6-flash-lite",
     "gemini-2.5-flash-lite",
+    "gemini-2.5-flash",
+    "gemini-2.5-pro",
     "gemini-2.0-flash",
     "gemini-2.0-flash-lite",
+    "gemini-1.5-flash",
+    "gemini-1.5-pro",
   ]);
 });
 

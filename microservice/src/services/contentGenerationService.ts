@@ -61,6 +61,7 @@ export interface StructuredContentGenerationOptions {
   ) => void;
   environment?: Record<string, string | undefined>;
   now?: () => number;
+  geminiFallbackModels?: string[];
 }
 
 const SLIDE_ITEM_SCHEMA = {
@@ -190,6 +191,21 @@ class ContentGenerationQualityError extends Error {
     );
     this.name = "ContentGenerationQualityError";
   }
+}
+
+async function generateAndValidateContent(
+  generator: StructuredContentGenerator,
+  call: StructuredContentGenerationCall,
+  provider: ContentGenerationProvider,
+  validateResult?: StructuredContentGenerationOptions["validateResult"],
+): Promise<unknown> {
+  const value = await generator(call);
+  try {
+    validateResult?.(value, provider);
+  } catch (error) {
+    throw new ContentGenerationQualityError(provider, error);
+  }
+  return value;
 }
 
 function getOpenAI(): OpenAI {
@@ -416,20 +432,6 @@ async function generateAfterPrimaryGeminiFailure(
     environment: Record<string, string | undefined>;
   },
 ): Promise<StructuredContentGenerationResult> {
-  const generateAndValidate = async (
-    generator: StructuredContentGenerator,
-    currentCall: StructuredContentGenerationCall,
-    provider: ContentGenerationProvider,
-  ): Promise<unknown> => {
-    const value = await generator(currentCall);
-    try {
-      options.validateResult?.(value, provider);
-    } catch (error) {
-      throw new ContentGenerationQualityError(provider, error);
-    }
-    return value;
-  };
-
   const maxAttempts = positiveInteger(
     options.environment.CONTENT_GENERATION_OPENAI_MAX_ATTEMPTS,
     DEFAULT_OPENAI_QUALITY_MAX_ATTEMPTS,
@@ -455,10 +457,11 @@ async function generateAfterPrimaryGeminiFailure(
 
     try {
       return {
-        value: await generateAndValidate(
+        value: await generateAndValidateContent(
           options.generateWithOpenAI,
           currentCall,
           "openai",
+          options.validateResult,
         ),
         provider: "openai",
         model: call.openaiModel,
@@ -532,12 +535,12 @@ export async function generateStructuredContentWithFallback(
       };
 
     try {
-      const value = await options.generateWithGemini(currentCall);
-      try {
-        options.validateResult?.(value, "gemini");
-      } catch (error) {
-        throw new ContentGenerationQualityError("gemini", error);
-      }
+      const value = await generateAndValidateContent(
+        options.generateWithGemini,
+        currentCall,
+        "gemini",
+        options.validateResult,
+      );
       return {
         value,
         provider: "gemini",
@@ -579,7 +582,64 @@ export async function generateStructuredContentWithFallback(
     }
   }
 
-  const reason = errorDetails(lastQualityError).slice(0, 500);
+  let triedModelsCount = 1; // o modelo primario, ja tentado no laço acima
+
+  // O modelo primario esgotou as tentativas de qualidade (nunca disponibilidade
+  // — esse caso ja retornou mais acima). Antes de exigir a OpenAI, testa os
+  // demais modelos do mesmo tier free 1 vez cada: uma falha de qualidade e
+  // sobre o CONTEUDO de uma resposta, nao sobre o modelo estar fora do ar, e
+  // um modelo diferente pode simplesmente produzir uma cobertura melhor.
+  const fallbackModels = (options.geminiFallbackModels ?? []).filter(
+    (model) => model !== call.geminiModel,
+  );
+  for (const fallbackModel of fallbackModels) {
+    triedModelsCount += 1;
+    const fallbackCall = { ...call, geminiModel: fallbackModel };
+    try {
+      const value = await generateAndValidateContent(
+        options.generateWithGemini,
+        fallbackCall,
+        "gemini",
+        options.validateResult,
+      );
+      return {
+        value,
+        provider: "gemini",
+        model: fallbackModel,
+      };
+    } catch (error) {
+      if (!(error instanceof ContentGenerationQualityError)) {
+        // Disponibilidade ou outro erro real: no nivel de transporte esse
+        // modelo ja esgotou toda a cascata de chaves+fallback antes de
+        // propagar (ver generateGeminiContent em geminiService.ts) —
+        // continuar tentando os proximos candidatos aqui nao ajudaria.
+        //
+        // Nao abrimos geminiUnavailableUntil aqui (diferente do laço do
+        // modelo primario, que abre via isGeminiAvailabilityError antes de
+        // ir pra OpenAI). geminiUnavailableUntil e um circuito GLOBAL — toda
+        // geracao futura, de qualquer topico/perfil, pula o Gemini inteiro
+        // enquanto ele estiver aberto. Abri-lo por causa de UM modelo
+        // fallback especifico estar indisponivel bloquearia incorretamente
+        // o modelo PRIMARIO (que, nesta mesma chamada, ja provou estar
+        // saudavel — so falhou por qualidade, nao disponibilidade) para
+        // chamadas futuras nao relacionadas. O cooldown por (chave, modelo)
+        // que ja existe em geminiService.ts (_geminiKeyCooldownUntil,
+        // GEMINI_KEY_QUOTA_COOLDOWN_MS) ja evita martelar de novo esse
+        // candidato especifico, sem precisar do circuito global.
+        const reason = errorDetails(error).slice(0, 500);
+        return generateAfterPrimaryGeminiFailure(call, reason, {
+          generateWithOpenAI,
+          validateResult: options.validateResult,
+          environment,
+        });
+      }
+      lastQualityError = error;
+    }
+  }
+
+  const reason = triedModelsCount > 1
+    ? `${errorDetails(lastQualityError).slice(0, 400)} (${triedModelsCount} modelos Gemini tentados)`
+    : errorDetails(lastQualityError).slice(0, 500);
   return generateAfterPrimaryGeminiFailure(call, reason, {
     generateWithOpenAI,
     validateResult: options.validateResult,

@@ -451,6 +451,167 @@ test("não duplica a mensagem da causa quando ela já está embutida no erro rot
   resetGeminiContentGenerationCircuit();
 });
 
+test("tenta os modelos fallback (1x cada) antes de exigir a OpenAI quando o primario esgota a qualidade", async () => {
+  resetGeminiContentGenerationCircuit();
+  const attemptedModels: string[] = [];
+  let openaiCalls = 0;
+
+  const result = await generateStructuredContentWithFallback(call, {
+    environment: { CONTENT_GENERATION_GEMINI_QUALITY_MAX_ATTEMPTS: "1" },
+    geminiFallbackModels: ["gemini-fallback-1", "gemini-fallback-2"],
+    generateWithGemini: async (currentCall) => {
+      attemptedModels.push(currentCall.geminiModel);
+      return currentCall.geminiModel === "gemini-fallback-2"
+        ? { chapters: [{ blockId: "bloco-01" }] }
+        : { chapters: [] };
+    },
+    generateWithOpenAI: async () => {
+      openaiCalls += 1;
+      throw new Error("nao deveria ser chamado — fallback-2 deveria resolver");
+    },
+    validateResult: (value) => {
+      const chapters = (value as { chapters?: unknown[] }).chapters ?? [];
+      if (chapters.length === 0) {
+        throw new Error("Markdown abaixo do mínimo de cobertura.");
+      }
+    },
+  });
+
+  assert.equal(result.provider, "gemini");
+  assert.equal(result.model, "gemini-fallback-2");
+  assert.deepEqual(attemptedModels, [
+    "gemini-primary",
+    "gemini-fallback-1",
+    "gemini-fallback-2",
+  ]);
+  assert.equal(openaiCalls, 0);
+  resetGeminiContentGenerationCircuit();
+});
+
+test("recorre a OpenAI so depois que o primario E todos os modelos fallback esgotam a qualidade", async () => {
+  resetGeminiContentGenerationCircuit();
+  let geminiCalls = 0;
+  let openaiCalls = 0;
+
+  const result = await generateStructuredContentWithFallback(call, {
+    environment: { CONTENT_GENERATION_GEMINI_QUALITY_MAX_ATTEMPTS: "1" },
+    geminiFallbackModels: ["gemini-fallback-1", "gemini-fallback-2"],
+    generateWithGemini: async () => {
+      geminiCalls += 1;
+      return { chapters: [] }; // sempre invalido, em qualquer modelo
+    },
+    generateWithOpenAI: async () => {
+      openaiCalls += 1;
+      return { chapters: [{ blockId: "bloco-01" }] };
+    },
+    validateResult: (value) => {
+      const chapters = (value as { chapters?: unknown[] }).chapters ?? [];
+      if (chapters.length === 0) {
+        throw new Error("Markdown abaixo do mínimo de cobertura.");
+      }
+    },
+  });
+
+  assert.equal(result.provider, "openai");
+  assert.equal(geminiCalls, 3); // primario + 2 fallbacks, 1 tentativa cada
+  assert.equal(openaiCalls, 1);
+  resetGeminiContentGenerationCircuit();
+});
+
+test("erro de disponibilidade num modelo fallback aborta direto pra OpenAI, sem tentar os candidatos restantes", async () => {
+  resetGeminiContentGenerationCircuit();
+  const attemptedModels: string[] = [];
+  let openaiCalls = 0;
+
+  const result = await generateStructuredContentWithFallback(call, {
+    environment: { CONTENT_GENERATION_GEMINI_QUALITY_MAX_ATTEMPTS: "1" },
+    geminiFallbackModels: ["gemini-fallback-1", "gemini-fallback-2"],
+    generateWithGemini: async (currentCall) => {
+      attemptedModels.push(currentCall.geminiModel);
+      if (currentCall.geminiModel === "gemini-fallback-1") {
+        const error = new Error("503 UNAVAILABLE: sobrecarregado");
+        Object.assign(error, { status: 503 });
+        throw error;
+      }
+      return { chapters: [] }; // primario: invalido (qualidade)
+    },
+    generateWithOpenAI: async () => {
+      openaiCalls += 1;
+      return { chapters: [{ blockId: "bloco-01" }] };
+    },
+    validateResult: (value) => {
+      const chapters = (value as { chapters?: unknown[] }).chapters ?? [];
+      if (chapters.length === 0) {
+        throw new Error("Markdown abaixo do mínimo de cobertura.");
+      }
+    },
+  });
+
+  assert.equal(result.provider, "openai");
+  assert.deepEqual(attemptedModels, ["gemini-primary", "gemini-fallback-1"]);
+  assert.equal(openaiCalls, 1);
+  resetGeminiContentGenerationCircuit();
+});
+
+test("geminiFallbackModels que repete o modelo primario nao tenta esse modelo de novo", async () => {
+  resetGeminiContentGenerationCircuit();
+  const attemptedModels: string[] = [];
+
+  const result = await generateStructuredContentWithFallback(call, {
+    environment: { CONTENT_GENERATION_GEMINI_QUALITY_MAX_ATTEMPTS: "1" },
+    geminiFallbackModels: ["gemini-primary", "gemini-fallback-1"],
+    generateWithGemini: async (currentCall) => {
+      attemptedModels.push(currentCall.geminiModel);
+      return currentCall.geminiModel === "gemini-fallback-1"
+        ? { chapters: [{ blockId: "bloco-01" }] }
+        : { chapters: [] };
+    },
+    generateWithOpenAI: async () => {
+      throw new Error("nao deveria ser chamado");
+    },
+    validateResult: (value) => {
+      const chapters = (value as { chapters?: unknown[] }).chapters ?? [];
+      if (chapters.length === 0) {
+        throw new Error("Markdown abaixo do mínimo de cobertura.");
+      }
+    },
+  });
+
+  assert.equal(result.model, "gemini-fallback-1");
+  assert.deepEqual(attemptedModels, ["gemini-primary", "gemini-fallback-1"]);
+  resetGeminiContentGenerationCircuit();
+});
+
+test("mensagem final de falha total menciona quantos modelos Gemini foram tentados", async () => {
+  resetGeminiContentGenerationCircuit();
+
+  await assert.rejects(
+    generateStructuredContentWithFallback(call, {
+      environment: {
+        CONTENT_GENERATION_GEMINI_QUALITY_MAX_ATTEMPTS: "1",
+        CONTENT_GENERATION_OPENAI_MAX_ATTEMPTS: "1",
+      },
+      geminiFallbackModels: ["gemini-fallback-1"],
+      generateWithGemini: async () => ({ chapters: [] }),
+      generateWithOpenAI: async () => {
+        throw new Error("insufficient_quota");
+      },
+      validateResult: (value) => {
+        const chapters = (value as { chapters?: unknown[] }).chapters ?? [];
+        if (chapters.length === 0) {
+          throw new Error("Markdown abaixo do mínimo de cobertura.");
+        }
+      },
+    }),
+    (error: Error & { cause?: { gemini?: string } }) => {
+      assert.match(error.cause?.gemini ?? "", /2 modelos Gemini tentados/);
+      return true;
+    },
+  );
+
+  resetGeminiContentGenerationCircuit();
+});
+
 test("reconhece indisponibilidade transitória e não confunde validação de conteúdo", () => {
   assert.equal(isGeminiAvailabilityError({ status: 503 }), true);
   assert.equal(isGeminiAvailabilityError({ status: 404 }), true);
