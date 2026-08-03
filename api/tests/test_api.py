@@ -1012,6 +1012,243 @@ def test_personalizacao_por_perfil_route_rejects_unowned_class(app, monkeypatch)
     assert response.status_code == 403
 
 
+def _regenerar_professor_user() -> UserContext:
+    return UserContext(
+        user_id="prof-1",
+        role="professor",
+        roles=("professor",),
+        professor_id="prof-1",
+        professor_liberado=True,
+    )
+
+
+def _stored_record_com_materiais(materiais: dict) -> dict:
+    return {
+        "id": 321,
+        "aluno_id": "a1",
+        "classe_id": 10,
+        "conteudo_id": None,
+        "topico_id": 55,
+        "ciclo_id": "ciclo-x",
+        "status": "pronto",
+        "source_hash": "hash-1",
+        "formato_prioritario": "cards",
+        "formatos_gerados": ["cards"],
+        "plano": {"perfil_dominante": "mastermind"},
+        "materiais": materiais,
+        "ai_patch": None,
+        "gerado_em": datetime(2026, 4, 8, 12, 0, 0),
+        "updated_at": datetime(2026, 4, 8, 12, 0, 0),
+    }
+
+
+def test_regenerar_documento_route_updates_markdown_e_roteiro(app, monkeypatch) -> None:
+    fake_session = FakeSession()
+
+    async def override_session():
+        yield fake_session
+
+    app.dependency_overrides[get_session] = override_session
+    app.dependency_overrides[get_current_user] = lambda: _regenerar_professor_user()
+    monkeypatch.setattr(AccessRepository, "professor_owns_classe", AsyncMock(return_value=True))
+    monkeypatch.setattr(ConteudoClasseRepository, "buscar_classe_id_por_topico", AsyncMock(return_value=10))
+
+    stored_record = _stored_record_com_materiais({
+        "markdown": {"payload": {"markdown": "texto antigo"}, "metadata": {"status": "completed"}},
+        "audio": {"payload": {"roteiro": "roteiro antigo"}, "metadata": {"status": "completed"}},
+    })
+    monkeypatch.setattr(
+        ConteudoPersonalizadoRepository,
+        "buscar_mais_recente_por_perfil",
+        AsyncMock(return_value=stored_record),
+    )
+
+    captured: dict = {}
+
+    async def atualizar_stub(self, *, record_id, materiais, status=None, formatos_gerados=None):
+        captured["record_id"] = record_id
+        captured["materiais"] = materiais
+        return {**stored_record, "materiais": materiais}
+
+    monkeypatch.setattr(ConteudoPersonalizadoRepository, "atualizar_materiais_e_status", atualizar_stub)
+    monkeypatch.setattr(
+        personalizacao_module,
+        "regenerar_documento_brainhex",
+        AsyncMock(return_value={"markdown": "texto novo", "audioScript": "roteiro novo"}),
+    )
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/personalizar/perfis/10/55/regenerar/documento",
+            json={"brainhex_profile_key": "mastermind", "improvement_prompt": "torne mais didatico"},
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["materiais"]["markdown"]["payload"]["markdown"] == "texto novo"
+    assert body["materiais"]["audio"]["payload"]["roteiro"] == "roteiro novo"
+    assert captured["record_id"] == 321
+    assert captured["materiais"]["markdown"]["payload"]["markdown"] == "texto novo"
+
+
+def test_regenerar_documento_route_rejeita_sem_markdown(app, monkeypatch) -> None:
+    fake_session = FakeSession()
+
+    async def override_session():
+        yield fake_session
+
+    app.dependency_overrides[get_session] = override_session
+    app.dependency_overrides[get_current_user] = lambda: _regenerar_professor_user()
+    monkeypatch.setattr(AccessRepository, "professor_owns_classe", AsyncMock(return_value=True))
+    monkeypatch.setattr(ConteudoClasseRepository, "buscar_classe_id_por_topico", AsyncMock(return_value=10))
+    monkeypatch.setattr(
+        ConteudoPersonalizadoRepository,
+        "buscar_mais_recente_por_perfil",
+        AsyncMock(return_value=_stored_record_com_materiais({})),
+    )
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/personalizar/perfis/10/55/regenerar/documento",
+            json={"brainhex_profile_key": "mastermind", "improvement_prompt": "torne mais didatico"},
+        )
+
+    assert response.status_code == 409
+
+
+def test_regenerar_documento_route_propaga_falha_do_microservice(app, monkeypatch) -> None:
+    fake_session = FakeSession()
+
+    async def override_session():
+        yield fake_session
+
+    app.dependency_overrides[get_session] = override_session
+    app.dependency_overrides[get_current_user] = lambda: _regenerar_professor_user()
+    monkeypatch.setattr(AccessRepository, "professor_owns_classe", AsyncMock(return_value=True))
+    monkeypatch.setattr(ConteudoClasseRepository, "buscar_classe_id_por_topico", AsyncMock(return_value=10))
+    monkeypatch.setattr(
+        ConteudoPersonalizadoRepository,
+        "buscar_mais_recente_por_perfil",
+        AsyncMock(
+            return_value=_stored_record_com_materiais(
+                {"markdown": {"payload": {"markdown": "texto antigo"}}}
+            )
+        ),
+    )
+
+    async def falha_regenerar(**kwargs):
+        error_sink = kwargs.get("error_sink")
+        if error_sink is not None:
+            error_sink.append("Gemini indisponivel")
+        return None
+
+    monkeypatch.setattr(personalizacao_module, "regenerar_documento_brainhex", falha_regenerar)
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/personalizar/perfis/10/55/regenerar/documento",
+            json={"brainhex_profile_key": "mastermind", "improvement_prompt": "torne mais didatico"},
+        )
+
+    assert response.status_code == 502
+    assert response.json()["detail"] == "Gemini indisponivel"
+
+
+def test_regenerar_slide_route_atualiza_slide_preservando_imagem_atual(app, monkeypatch) -> None:
+    fake_session = FakeSession()
+
+    async def override_session():
+        yield fake_session
+
+    app.dependency_overrides[get_session] = override_session
+    app.dependency_overrides[get_current_user] = lambda: _regenerar_professor_user()
+    monkeypatch.setattr(AccessRepository, "professor_owns_classe", AsyncMock(return_value=True))
+    monkeypatch.setattr(ConteudoClasseRepository, "buscar_classe_id_por_topico", AsyncMock(return_value=10))
+
+    stored_record = _stored_record_com_materiais({
+        "apresentacao": {
+            "payload": {
+                "slides": [
+                    {"title": "slide 0", "imagem_referencia": "https://cdn/slide-0.png"},
+                    {"title": "slide 1 antigo", "imagem_referencia": "https://cdn/slide-1.png"},
+                ],
+            },
+        },
+    })
+    monkeypatch.setattr(
+        ConteudoPersonalizadoRepository,
+        "buscar_mais_recente_por_perfil",
+        AsyncMock(return_value=stored_record),
+    )
+
+    captured: dict = {}
+
+    async def atualizar_stub(self, *, record_id, materiais, status=None, formatos_gerados=None):
+        captured["materiais"] = materiais
+        return {**stored_record, "materiais": materiais}
+
+    monkeypatch.setattr(ConteudoPersonalizadoRepository, "atualizar_materiais_e_status", atualizar_stub)
+    monkeypatch.setattr(
+        personalizacao_module,
+        "regenerar_slide_brainhex",
+        AsyncMock(return_value={"slide": {"title": "slide 1 novo"}, "imageBase64": "aGVsbG8="}),
+    )
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/personalizar/perfis/10/55/regenerar/slide",
+            json={
+                "brainhex_profile_key": "mastermind",
+                "slide_index": 1,
+                "improvement_prompt": "deixe mais visual",
+            },
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["slide_index"] == 1
+    assert body["slide"]["title"] == "slide 1 novo"
+    # imagem atual (Storage) preservada - regeneracao de slide nao reconstroi o deck
+    assert body["slide"]["imagem_referencia"] == "https://cdn/slide-1.png"
+    assert body["image_base64_preview"] == "aGVsbG8="
+    slides_persistidos = captured["materiais"]["apresentacao"]["payload"]["slides"]
+    assert slides_persistidos[0]["title"] == "slide 0"
+    assert slides_persistidos[1]["title"] == "slide 1 novo"
+
+
+def test_regenerar_slide_route_rejeita_indice_invalido(app, monkeypatch) -> None:
+    fake_session = FakeSession()
+
+    async def override_session():
+        yield fake_session
+
+    app.dependency_overrides[get_session] = override_session
+    app.dependency_overrides[get_current_user] = lambda: _regenerar_professor_user()
+    monkeypatch.setattr(AccessRepository, "professor_owns_classe", AsyncMock(return_value=True))
+    monkeypatch.setattr(ConteudoClasseRepository, "buscar_classe_id_por_topico", AsyncMock(return_value=10))
+    monkeypatch.setattr(
+        ConteudoPersonalizadoRepository,
+        "buscar_mais_recente_por_perfil",
+        AsyncMock(
+            return_value=_stored_record_com_materiais(
+                {"apresentacao": {"payload": {"slides": [{"title": "unico slide"}]}}}
+            )
+        ),
+    )
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/personalizar/perfis/10/55/regenerar/slide",
+            json={
+                "brainhex_profile_key": "mastermind",
+                "slide_index": 5,
+                "improvement_prompt": "deixe mais visual",
+            },
+        )
+
+    assert response.status_code == 422
+
+
 def _telemetria_payload() -> dict:
     return {
         "sessao_id": "7bd1dfbe-58cf-4ab2-b8fd-4f3e63f8d33b",

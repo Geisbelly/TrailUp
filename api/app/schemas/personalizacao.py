@@ -399,4 +399,27 @@ class ClassePerfilSummaryResponse(BaseModel):
     perfil_predominante: str | None = None
     total_alunos: int = 0
     media_desempenho: dict[str, float] = Field(default_factory=dict)
+
+
+# ── Regeneracao de material (professor) ────────────────────────────────────────
+class RegenerarDocumentoPayload(BaseModel):
+    brainhex_profile_key: str
+    conteudo_id: int | None = None
+    improvement_prompt: str = Field(min_length=1, max_length=4000)
+    expansion_prompt: str | None = Field(default=None, max_length=4000)
+
+
+class RegenerarSlidePayload(BaseModel):
+    brainhex_profile_key: str
+    conteudo_id: int | None = None
+    slide_index: int = Field(ge=0)
+    improvement_prompt: str = Field(min_length=1, max_length=4000)
+    expansion_prompt: str | None = Field(default=None, max_length=4000)
+
+
+class RegenerarSlideResponse(BaseModel):
+    personalizacao: PersonalizacaoResponse
+    slide_index: int
+    slide: dict[str, Any]
+    image_base64_preview: str | None = None
     atualizado_em: datetime | None = None

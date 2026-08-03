@@ -1,4 +1,5 @@
 import colorsys
+import copy
 import json
 import logging
 from datetime import datetime, timezone
@@ -49,12 +50,19 @@ from app.schemas.personalizacao import (
     PersonalizacaoPorPerfilResponse,
     PersonalizacaoResponse,
     PersonalizarPayload,
+    RegenerarDocumentoPayload,
+    RegenerarSlidePayload,
+    RegenerarSlideResponse,
 )
 from app.services.auth import UserContext
 from app.services.content_enrichment import ContentEnrichmentError, enrich_content_blocks
 from app.services.group_analysis import GroupAnalysisService
 from app.services.llm import JsonLLMService, load_prompt
-from app.services.media_agents import disparar_brainhex_async
+from app.services.media_agents import (
+    disparar_brainhex_async,
+    regenerar_documento_brainhex,
+    regenerar_slide_brainhex,
+)
 from app.services.personalizacao import (
     _build_profile_editorial_context,
     _infer_source_type,
@@ -2064,6 +2072,213 @@ async def listar_personalizacoes_por_perfil(
         total_perfis_com_material=total_com_material,
         perfis=perfis,
         geracao_resumo=_build_generation_summary(perfis),
+    )
+
+
+async def _carregar_registro_para_regeneracao(
+    *,
+    classe_id: int,
+    topico_id: int,
+    conteudo_id: int | None,
+    brainhex_profile_key: str,
+    user: UserContext,
+    session: AsyncSession,
+) -> dict[str, Any]:
+    """Valida posse da classe + tópico e resolve o registro base-por-perfil.
+
+    Compartilhado pelos endpoints de regeneracao: a "base por perfil" e o
+    registro achado por (classe_id, topico_id, conteudo_id, perfil) via
+    buscar_mais_recente_por_perfil — nao um registro por aluno (ver
+    CLAUDE.md "Duas camadas de personalizacao").
+    """
+    access_repo = AccessRepository(session)
+    owns_class = await access_repo.professor_owns_classe(
+        user.professor_id or user.user_id, classe_id
+    )
+    if not owns_class:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Professor sem permissao para esta classe.",
+        )
+
+    classe_repo = ConteudoClasseRepository(session)
+    topic_class_id = await classe_repo.buscar_classe_id_por_topico(topico_id)
+    if topic_class_id != classe_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Topico nao encontrado nesta classe.",
+        )
+
+    personalizacao_repo = ConteudoPersonalizadoRepository(session)
+    record = await personalizacao_repo.buscar_mais_recente_por_perfil(
+        classe_id=classe_id,
+        topico_id=topico_id,
+        conteudo_id=conteudo_id,
+        brainhex_profile_key=brainhex_profile_key,
+    )
+    if record is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Nenhum material gerado para este perfil ainda.",
+        )
+    return record
+
+
+@router.post(
+    "/perfis/{classe_id}/{topico_id}/regenerar/documento",
+    response_model=PersonalizacaoResponse,
+)
+async def regenerar_documento_personalizacao(
+    classe_id: int,
+    topico_id: int,
+    payload: RegenerarDocumentoPayload,
+    user: UserContext = Depends(require_professor),
+    session: AsyncSession = Depends(get_session),
+) -> PersonalizacaoResponse:
+    """Regenera o markdown+roteiro de audio da base por perfil via prompt livre.
+
+    Nao regenera o audio narrado (arquivo_url de materiais.audio) - so o
+    texto do roteiro, mesma limitacao do endpoint /api/v1/regenerate/document
+    do microservice que este endpoint consome.
+    """
+    record = await _carregar_registro_para_regeneracao(
+        classe_id=classe_id,
+        topico_id=topico_id,
+        conteudo_id=payload.conteudo_id,
+        brainhex_profile_key=payload.brainhex_profile_key,
+        user=user,
+        session=session,
+    )
+    materiais = record.get("materiais") if isinstance(record.get("materiais"), dict) else {}
+    markdown_atual = (
+        (materiais.get("markdown") or {}).get("payload") or {}
+    ).get("markdown")
+    if not isinstance(markdown_atual, str) or not markdown_atual.strip():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Este perfil ainda nao possui documento gerado para regenerar.",
+        )
+
+    settings = get_settings()
+    error_sink: list[str] = []
+    resultado = await regenerar_documento_brainhex(
+        settings=settings,
+        markdown=markdown_atual,
+        improvement_prompt=payload.improvement_prompt,
+        profile=payload.brainhex_profile_key,
+        expansion_prompt=payload.expansion_prompt,
+        error_sink=error_sink,
+    )
+    if resultado is None:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=error_sink[0] if error_sink else "Falha ao regenerar documento no microservice.",
+        )
+
+    materiais_atualizados = copy.deepcopy(materiais)
+    materiais_atualizados.setdefault("markdown", {}).setdefault("payload", {})["markdown"] = (
+        resultado.get("markdown", markdown_atual)
+    )
+    audio_atual = materiais_atualizados.get("audio")
+    if isinstance(audio_atual, dict) and isinstance(resultado.get("audioScript"), str):
+        audio_atual.setdefault("payload", {})["roteiro"] = resultado["audioScript"]
+
+    personalizacao_repo = ConteudoPersonalizadoRepository(session)
+    updated_record = await personalizacao_repo.atualizar_materiais_e_status(
+        record_id=record["id"],
+        materiais=materiais_atualizados,
+        status=record.get("status"),
+    )
+    if updated_record is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Falha ao persistir o documento regenerado.",
+        )
+    return _to_response(updated_record)
+
+
+@router.post(
+    "/perfis/{classe_id}/{topico_id}/regenerar/slide",
+    response_model=RegenerarSlideResponse,
+)
+async def regenerar_slide_personalizacao(
+    classe_id: int,
+    topico_id: int,
+    payload: RegenerarSlidePayload,
+    user: UserContext = Depends(require_professor),
+    session: AsyncSession = Depends(get_session),
+) -> RegenerarSlideResponse:
+    """Regenera um slide especifico da base por perfil via prompt livre.
+
+    Atualiza os campos de conteudo do slide (title/topics/explanation/etc) em
+    materiais.apresentacao.payload.slides[slide_index]. Nao reconstroi o HTML
+    do deck ja publicado (materiais.apresentacao.arquivo_url) - a imagem nova
+    volta em image_base64_preview so para preview imediato do professor; um
+    proximo passo decide como/quando re-renderizar o deck com ela.
+    """
+    record = await _carregar_registro_para_regeneracao(
+        classe_id=classe_id,
+        topico_id=topico_id,
+        conteudo_id=payload.conteudo_id,
+        brainhex_profile_key=payload.brainhex_profile_key,
+        user=user,
+        session=session,
+    )
+    materiais = record.get("materiais") if isinstance(record.get("materiais"), dict) else {}
+    slides_atuais = (
+        (materiais.get("apresentacao") or {}).get("payload") or {}
+    ).get("slides")
+    if not isinstance(slides_atuais, list) or not slides_atuais:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Este perfil ainda nao possui apresentacao gerada para regenerar.",
+        )
+    if payload.slide_index >= len(slides_atuais):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"slide_index invalido: apresentacao tem {len(slides_atuais)} slide(s).",
+        )
+    slide_atual = slides_atuais[payload.slide_index]
+
+    settings = get_settings()
+    error_sink: list[str] = []
+    resultado = await regenerar_slide_brainhex(
+        settings=settings,
+        slide=slide_atual,
+        improvement_prompt=payload.improvement_prompt,
+        profile=payload.brainhex_profile_key,
+        expansion_prompt=payload.expansion_prompt,
+        error_sink=error_sink,
+    )
+    if resultado is None:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=error_sink[0] if error_sink else "Falha ao regenerar slide no microservice.",
+        )
+
+    slide_atualizado = {**slide_atual, **(resultado.get("slide") or {})}
+    materiais_atualizados = copy.deepcopy(materiais)
+    slides_atualizados = list(materiais_atualizados["apresentacao"]["payload"]["slides"])
+    slides_atualizados[payload.slide_index] = slide_atualizado
+    materiais_atualizados["apresentacao"]["payload"]["slides"] = slides_atualizados
+
+    personalizacao_repo = ConteudoPersonalizadoRepository(session)
+    updated_record = await personalizacao_repo.atualizar_materiais_e_status(
+        record_id=record["id"],
+        materiais=materiais_atualizados,
+        status=record.get("status"),
+    )
+    if updated_record is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Falha ao persistir o slide regenerado.",
+        )
+
+    return RegenerarSlideResponse(
+        personalizacao=_to_response(updated_record),
+        slide_index=payload.slide_index,
+        slide=slide_atualizado,
+        image_base64_preview=resultado.get("imageBase64"),
     )
 
 
