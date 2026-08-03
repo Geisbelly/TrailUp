@@ -23,7 +23,7 @@ type Props = {
   payload: ContentBlockPayload;
 };
 
-function normalizePayload(payload: ContentBlockPayload): {
+export function normalizePayload(payload: ContentBlockPayload): {
   title?: string | null;
   abertura?: string | null;
   slides: RichPresentationSlide[];
@@ -31,10 +31,23 @@ function normalizePayload(payload: ContentBlockPayload): {
   if (!payload || typeof payload !== "object") {
     return { title: null, abertura: null, slides: [] };
   }
+  const rawSlides: RichPresentationSlide[] = Array.isArray(payload.slides) ? payload.slides : [];
+  // Descarta slides sem nenhum conteudo substantivo (titulo generico
+  // "Slide N" sozinho nao conta - ver comentario em personalization.ts
+  // sobre por que isso pode acontecer). Protege a UI de mostrar cards
+  // vazios mesmo se algum caminho upstream produzir um RichPresentationSlide
+  // degenerado.
+  const slides = rawSlides.filter(
+    (slide) =>
+      (slide.points?.length ?? 0) > 0 ||
+      Boolean(slide.explanation) ||
+      Boolean(slide.characterQuote) ||
+      Boolean(slide.imagemReferencia)
+  );
   return {
     title: payload.title ?? null,
     abertura: payload.abertura ?? null,
-    slides: Array.isArray(payload.slides) ? payload.slides : [],
+    slides,
   };
 }
 
