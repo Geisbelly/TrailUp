@@ -1693,6 +1693,7 @@ export async function processMediaWithGemini(
                 maxOutputTokens,
               });
             },
+            geminiFallbackModels: resolveGeminiTextFallbackModels(),
           },
         );
         const validated = validateBlockBatchGeneration(
