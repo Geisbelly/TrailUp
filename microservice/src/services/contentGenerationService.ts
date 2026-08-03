@@ -61,6 +61,7 @@ export interface StructuredContentGenerationOptions {
   ) => void;
   environment?: Record<string, string | undefined>;
   now?: () => number;
+  geminiFallbackModels?: string[];
 }
 
 const SLIDE_ITEM_SCHEMA = {
@@ -581,7 +582,52 @@ export async function generateStructuredContentWithFallback(
     }
   }
 
-  const reason = errorDetails(lastQualityError).slice(0, 500);
+  let triedModelsCount = 1; // o modelo primario, ja tentado no laço acima
+
+  // O modelo primario esgotou as tentativas de qualidade (nunca disponibilidade
+  // — esse caso ja retornou mais acima). Antes de exigir a OpenAI, testa os
+  // demais modelos do mesmo tier free 1 vez cada: uma falha de qualidade e
+  // sobre o CONTEUDO de uma resposta, nao sobre o modelo estar fora do ar, e
+  // um modelo diferente pode simplesmente produzir uma cobertura melhor.
+  const fallbackModels = (options.geminiFallbackModels ?? []).filter(
+    (model) => model !== call.geminiModel,
+  );
+  for (const fallbackModel of fallbackModels) {
+    triedModelsCount += 1;
+    const fallbackCall = { ...call, geminiModel: fallbackModel };
+    try {
+      const value = await generateAndValidateContent(
+        options.generateWithGemini,
+        fallbackCall,
+        "gemini",
+        options.validateResult,
+      );
+      return {
+        value,
+        provider: "gemini",
+        model: fallbackModel,
+      };
+    } catch (error) {
+      if (!(error instanceof ContentGenerationQualityError)) {
+        // Disponibilidade ou outro erro real: no nivel de transporte esse
+        // modelo ja esgotou toda a cascata de chaves+fallback antes de
+        // propagar (ver generateGeminiContent em geminiService.ts) —
+        // continuar tentando os proximos candidatos aqui nao ajudaria.
+        const reason = errorDetails(error).slice(0, 500);
+        return generateAfterPrimaryGeminiFailure(call, reason, {
+          generateWithOpenAI,
+          validateResult: options.validateResult,
+          environment,
+        });
+      }
+      lastQualityError = error;
+      previousQualityReason = errorDetails(error).slice(0, 500);
+    }
+  }
+
+  const reason = triedModelsCount > 1
+    ? `${errorDetails(lastQualityError).slice(0, 400)} (${triedModelsCount} modelos Gemini tentados)`
+    : errorDetails(lastQualityError).slice(0, 500);
   return generateAfterPrimaryGeminiFailure(call, reason, {
     generateWithOpenAI,
     validateResult: options.validateResult,
