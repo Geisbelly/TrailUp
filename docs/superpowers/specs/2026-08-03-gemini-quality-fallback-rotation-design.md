@@ -138,6 +138,56 @@ disponibilidade (inalterada) e a nova rotação por qualidade (item 2).
 `geminiKeyRotation.test.ts` (asserção da lista default) precisam refletir a
 lista ampliada.
 
+## Adendo — relaxar o gate de cobertura mínima em `validateBlockBatchGeneration`
+
+Investigando um projeto de referência externo que "nunca falha" nesse
+cenário, ficou claro o motivo: ele não valida tamanho/cobertura da resposta
+do Gemini, só aceita qualquer JSON parseável no formato esperado. A rotação
+de modelos acima ajuda (tenta mais modelos antes de exigir OpenAI), mas
+enquanto o gate de cobertura mínima existir, é sempre possível que TODOS os
+modelos (mesmo com a lista ampliada de 11) produzam conteúdo tecnicamente
+válido porém abaixo do mínimo exigido — e nesse caso ainda cairíamos na
+exigência de OpenAI.
+
+`microservice/src/services/geminiService.ts`, função
+`validateBlockBatchGeneration` (linha ~776), tem duas checagens de
+**tamanho** que lançam erro hoje:
+- `minimumMarkdownLength` (linhas 849-857): markdown abaixo de ~75% do
+  tamanho da fonte (mínimo 200 chars) → `throw`.
+- `minimumAudioLength` (linhas 863-871): áudio abaixo de ~50% do tamanho da
+  fonte (mínimo 160 chars) → `throw`, só quando `requireAudio`.
+
+As demais checagens da mesma função são **estruturais**, não de qualidade
+de conteúdo, e continuam como estão: formato JSON válido, `chapters.length`
+batendo com o batch, `blockId` presente/não-duplicado/pertencente ao batch,
+`slides` não-vazio por capítulo, `confidence` numérico presente. Essas
+garantem que o resto do pipeline (que espera `markdown: string`,
+`audioScript: string`, `slides: Slide[]` sempre presentes) não quebre — não
+são "gate de qualidade" no sentido que motivou a investigação, e não são
+tocadas.
+
+### Mudança
+
+As duas checagens de tamanho passam de `throw new Error(...)` para
+`console.warn("[content-coverage]", ...)` — mesmo padrão de log já usado
+no arquivo (`console.warn`/`console.error` com tag entre colchetes, ex.
+`[brainhex]`, `[gemini-diag]`, `[regenerate-engine]`). O conteúdo é aceito
+normalmente (markdown/audioScript retornados como vieram, sem truncar nem
+alterar), só fica visível nos logs do servidor que aquele bloco específico
+veio abaixo do mínimo esperado — sem bloquear a geração nem acionar a
+cascata de fallback (nem a rotação de modelos, nem a OpenAI).
+
+### Fora deste adendo
+
+- Nenhuma checagem estrutural é removida ou relaxada.
+- Nenhuma mudança em `contentGenerationService.ts` (a rotação de modelos já
+  implementada continua existindo e ainda é útil para falhas estruturais —
+  ex.: um modelo especificamente devolver JSON malformado).
+- Nenhum campo novo de metadata (ex.: uma flag "cobertura_baixa" persistida
+  no banco) — só log de servidor. Se isso vier a ser necessário (ex.: o
+  professor querendo ver quais materiais ficaram resumidos), é uma extensão
+  futura, não parte desta mudança.
+
 ## Fora de escopo
 
 - Erros de disponibilidade do modelo primário continuam indo direto pro
