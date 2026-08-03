@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   buildMateriaisGeradosSnapshot,
   setSupabaseClientForTesting,
@@ -47,8 +48,7 @@ function createFakeSupabaseClient(options?: {
         };
       },
     },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } as any;
+  } as unknown as SupabaseClient;
   return { client, calls };
 }
 
