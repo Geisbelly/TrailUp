@@ -700,6 +700,79 @@ async def test_enqueue_job_creates_job_and_targets_atomically(monkeypatch) -> No
 
 
 @pytest.mark.asyncio
+async def test_enqueue_job_falls_back_to_get_targets_when_get_job_detail_returns_none(
+    monkeypatch,
+) -> None:
+    """Reproduz o bug real: get_job_detail as vezes nao encontra o job
+    recem-commitado (solucao transiente de leitura) e o fallback antigo
+    devolvia o array pre-persistencia de _build_targets, que nao tem
+    id/job_id/status/created_at/updated_at - _to_job_target_response
+    quebrava com KeyError('id') em producao (criar_job_class_delta). O
+    fallback agora releia os targets de verdade via get_targets em vez de
+    reusar o array pre-persistencia."""
+    pre_persistence_target = {
+        "aluno_id": "b49f2e21-a6f9-4c8d-9533-5a32bb219754",
+        "topico_id": 117,
+        "conteudo_id": None,
+        "brainhex_profile_key": "seeker",
+        "is_profile_template": False,
+    }
+    persisted_target = {
+        "id": 501,
+        "job_id": "job-fallback",
+        "aluno_id": pre_persistence_target["aluno_id"],
+        "topico_id": 117,
+        "conteudo_id": None,
+        "brainhex_profile_key": "seeker",
+        "is_profile_template": False,
+        "status": "pending",
+        "attempts": 0,
+        "last_error": None,
+        "personalizacao_id": None,
+        "created_at": "2026-08-03T00:00:00Z",
+        "updated_at": "2026-08-03T00:00:00Z",
+    }
+    monkeypatch.setattr(
+        jobs_module,
+        "_build_targets",
+        AsyncMock(
+            return_value=(
+                [pre_persistence_target],
+                [117],
+                {pre_persistence_target["aluno_id"]: "seeker"},
+            )
+        ),
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.find_open_job_by_payload",
+        AsyncMock(return_value=None),
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.criar_job_com_targets",
+        AsyncMock(return_value={"id": "job-fallback"}),
+    )
+    monkeypatch.setattr(jobs_module, "get_job_detail", AsyncMock(return_value=None))
+    get_targets_mock = AsyncMock(return_value=[persisted_target])
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.get_targets",
+        get_targets_mock,
+    )
+
+    result = await jobs_module.enqueue_personalizacao_job(
+        session=object(),
+        kind="class_delta_sync",
+        classe_id=32,
+        trigger_source="test",
+        topico_ids=[117],
+    )
+
+    assert result["job"]["id"] == "job-fallback"
+    assert result["targets"] == [persisted_target]
+    assert "id" in result["targets"][0]
+    get_targets_mock.assert_awaited_once_with("job-fallback")
+
+
+@pytest.mark.asyncio
 async def test_enqueue_job_never_passes_stale_conteudo_id_to_scalar_fk_column(
     monkeypatch,
 ) -> None:
