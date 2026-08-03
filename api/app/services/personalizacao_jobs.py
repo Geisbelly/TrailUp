@@ -828,7 +828,17 @@ async def enqueue_personalizacao_job(
         conteudo_id=next(iter(validated_conteudo_ids)) if len(validated_conteudo_ids) == 1 else None,
     )
     detail = await get_job_detail(session=session, job_id=str(job["id"]))
-    return detail or {"job": job, "targets": targets}
+    if detail:
+        return detail
+    # get_job_detail as vezes nao encontra o job recem-commitado (solucao
+    # transiente de leitura) - releitura direta dos targets persistidos em
+    # vez de reusar `targets`, que e o array PRE-persistencia de
+    # _build_targets e nao tem id/job_id/status/created_at/updated_at que
+    # _to_job_target_response exige (KeyError('id') reproduzido em
+    # producao via criar_job_class_delta). `job` em si ja e seguro de usar
+    # direto - veio do RETURNING de criar_job_com_targets.
+    persisted_targets = await repo.get_targets(str(job["id"]))
+    return {"job": job, "targets": persisted_targets}
 
 
 async def get_job_detail(*, session: AsyncSession, job_id: str) -> dict[str, Any] | None:
