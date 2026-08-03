@@ -204,8 +204,14 @@ const GEMINI_KEY_QUOTA_COOLDOWN_MS = 5 * 60 * 1_000;
 // todas elas, antes de cair pro fallback pago da OpenAI. Ordem prioriza a
 // série 3.x: gemini-2.5-flash-lite (e outros modelos 2.x) retornaram 404
 // "no longer available to new users" em produção — contas novas parecem só
-// ter acesso à série 3.x. Os 2.x ficam no fim como tentativa residual, caso
-// algum outro tier ainda os aceite.
+// ter acesso à série 3.x. Dentro de cada geração (3.x, depois 2.x), a
+// variante "-lite" vem primeiro (cota mais generosa/mais barata), seguida da
+// variante base "-flash" e, por fim, "-pro" — a ordem dentro da geração vai
+// de "mais generoso/simples" pra "mais capaz/restrito" (não está confirmado
+// que "-pro" tenha cota maior que as demais, só que é o mais capaz). A
+// família gemini-1.5-* fica anexada no fim como tentativa residual mais
+// antiga, ainda mais incerta que a série 2.x quanto à disponibilidade pra
+// contas novas.
 const DEFAULT_GEMINI_TEXT_FALLBACK_MODELS = [
   "gemini-3.1-flash-lite",
   "gemini-3.1-flash",

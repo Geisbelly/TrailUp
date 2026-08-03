@@ -121,8 +121,9 @@ test("cooldown de cota e por (chave, modelo) - uma chave esgotada no modelo prin
 test("resolveGeminiTextFallbackModels devolve os 11 modelos default, priorizando a serie 3.x", () => {
   // gemini-2.5-flash-lite (e outros 2.x) retornaram 404 "no longer available
   // to new users" em producao — 3.x vem primeiro por ter mais chance de
-  // funcionar de fato numa conta nova. 2.5/1.5 nao-lite ficam no fim: mesma
-  // familia dos ja testados, mas nao confirmados contra o mesmo bloqueio.
+  // funcionar de fato numa conta nova. Variantes nao-lite da mesma geracao
+  // vem depois da lite; gemini-1.5-* fica por ultimo, mais residual ainda
+  // que a serie 2.x.
   assert.deepEqual(resolveGeminiTextFallbackModels({}), [
     "gemini-3.1-flash-lite",
     "gemini-3.1-flash",
