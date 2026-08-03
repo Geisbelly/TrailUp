@@ -274,7 +274,7 @@ export function buildPresentationMaterialMetadata(params: {
   };
 }
 
-async function archiveToSupabase(params: {
+export async function archiveToSupabase(params: {
   profile:         BrainHexProfile;
   storagePath:     string;
   bucket:          string;
@@ -468,7 +468,7 @@ export function buildApresentacaoSlidesPayload(
   return parts.flatMap((p) => p.slides);
 }
 
-async function archiveMultiPartToSupabase(params: {
+export async function archiveMultiPartToSupabase(params: {
   profile:         BrainHexProfile;
   storagePath:     string;
   bucket:          string;

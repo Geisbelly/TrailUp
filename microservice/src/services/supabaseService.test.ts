@@ -1,10 +1,95 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   buildMateriaisGeradosSnapshot,
+  setSupabaseClientForTesting,
+  uploadBuffer,
   type GenerationFence,
   type PersistedMaterialsMerge,
 } from "./supabaseService";
+
+type FakeUploadCall = {
+  bucket: string;
+  path: string;
+  data: Buffer;
+  contentType: string;
+  upsert: boolean;
+};
+
+function createFakeSupabaseClient(options?: {
+  uploadError?: { message: string } | null;
+  publicUrl?: string;
+}) {
+  const calls: FakeUploadCall[] = [];
+  const client = {
+    storage: {
+      from(bucket: string) {
+        return {
+          upload: async (
+            path: string,
+            data: Buffer,
+            opts: { contentType: string; upsert: boolean },
+          ) => {
+            calls.push({
+              bucket,
+              path,
+              data,
+              contentType: opts.contentType,
+              upsert: opts.upsert,
+            });
+            return { error: options?.uploadError ?? null };
+          },
+          getPublicUrl: (path: string) => ({
+            data: {
+              publicUrl: options?.publicUrl ?? `https://fake.supabase/${bucket}/${path}`,
+            },
+          }),
+        };
+      },
+    },
+  } as unknown as SupabaseClient;
+  return { client, calls };
+}
+
+test("uploadBuffer usa o client injetado via setSupabaseClientForTesting, sem tocar process.env", async () => {
+  const { client, calls } = createFakeSupabaseClient({
+    publicUrl: "https://fake.supabase/meu-bucket/caminho/arquivo.mp3",
+  });
+  setSupabaseClientForTesting(client);
+  try {
+    const url = await uploadBuffer(
+      "meu-bucket",
+      "caminho/arquivo.mp3",
+      Buffer.from("dados de audio"),
+      "audio/mpeg",
+    );
+
+    assert.equal(url, "https://fake.supabase/meu-bucket/caminho/arquivo.mp3");
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].bucket, "meu-bucket");
+    assert.equal(calls[0].path, "caminho/arquivo.mp3");
+    assert.equal(calls[0].contentType, "audio/mpeg");
+    assert.equal(calls[0].upsert, true);
+  } finally {
+    setSupabaseClientForTesting(null);
+  }
+});
+
+test("uploadBuffer lanca com o storagePath na mensagem quando o client retorna erro", async () => {
+  const { client } = createFakeSupabaseClient({
+    uploadError: { message: "bucket não encontrado" },
+  });
+  setSupabaseClientForTesting(client);
+  try {
+    await assert.rejects(
+      uploadBuffer("meu-bucket", "caminho/quebrado.mp3", Buffer.from("x"), "audio/mpeg"),
+      /caminho\/quebrado\.mp3.*bucket não encontrado/,
+    );
+  } finally {
+    setSupabaseClientForTesting(null);
+  }
+});
 
 const fence: GenerationFence = {
   cicloId: "ciclo-2",
