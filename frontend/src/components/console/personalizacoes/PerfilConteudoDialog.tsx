@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -8,8 +9,12 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Loader2, ExternalLink, FileText, Music, FileImage, NotebookPen } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Loader2, ExternalLink, FileText, Music, FileImage, NotebookPen, Wand2 } from "lucide-react";
 import type { PersonalizacaoPerfilItem } from "./personalizacoesApi";
+import { regenerarDocumentoPersonalizacao, regenerarSlidePersonalizacao } from "./personalizacoesApi";
 import {
   resolveDocumentPreviewMode,
   versionedMaterialUrl,
@@ -208,30 +213,198 @@ function EmbedMaterialContent({ url, mode }: { url: string; mode: DocumentPrevie
   );
 }
 
+type RegenerarContext = {
+  classeId: number;
+  topicoId: number;
+  conteudoId?: number | null;
+  brainhexProfileKey: string;
+  resolveToken: () => Promise<string>;
+  onRegenerated: () => void;
+};
+
+// Painel inline de "Regenerar com IA" — compartilhado pelas 2 acoes hoje
+// disponiveis (documento: texto+roteiro; slide: um slide especifico). Nao
+// reconstroi a apresentacao renderizada (arquivo_url) quando kind="slide" —
+// so atualiza o conteudo do slide no JSON e devolve uma imagem de preview.
+function RegenerarConteudoPainel({
+  kind,
+  context,
+  totalSlides,
+}: {
+  kind: "documento" | "slide";
+  context: RegenerarContext;
+  totalSlides?: number;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [prompt, setPrompt] = useState("");
+  const [slideNumeroInput, setSlideNumeroInput] = useState("1");
+  const [loading, setLoading] = useState(false);
+  const [preview, setPreview] = useState<string | null>(null);
+
+  const handleSubmit = async () => {
+    const improvementPrompt = prompt.trim();
+    if (!improvementPrompt) {
+      toast.error("Descreva o que deve mudar antes de regenerar.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const token = await context.resolveToken();
+      if (kind === "documento") {
+        await regenerarDocumentoPersonalizacao(token, {
+          classeId: context.classeId,
+          topicoId: context.topicoId,
+          conteudo_id: context.conteudoId ?? null,
+          brainhex_profile_key: context.brainhexProfileKey,
+          improvement_prompt: improvementPrompt,
+        });
+        toast.success("Documento regenerado — texto e roteiro de áudio atualizados.");
+      } else {
+        const slideIndex = Math.max(0, Math.trunc(Number(slideNumeroInput) || 1) - 1);
+        const resultado = await regenerarSlidePersonalizacao(token, {
+          classeId: context.classeId,
+          topicoId: context.topicoId,
+          conteudo_id: context.conteudoId ?? null,
+          brainhex_profile_key: context.brainhexProfileKey,
+          slide_index: slideIndex,
+          improvement_prompt: improvementPrompt,
+        });
+        setPreview(resultado.image_base64_preview ?? null);
+        toast.success(`Slide ${slideIndex + 1} regenerado.`);
+      }
+      setPrompt("");
+      setExpanded(false);
+      context.onRegenerated();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Falha ao regenerar conteúdo.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!expanded) {
+    return (
+      <div className="flex justify-end pt-3 mt-3 border-t">
+        <Button variant="outline" size="sm" onClick={() => setExpanded(true)}>
+          <Wand2 className="h-3.5 w-3.5 mr-2" /> Regenerar com IA
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2 pt-3 mt-3 border-t">
+      {kind === "slide" && (
+        <div className="flex items-center gap-2">
+          <Label htmlFor="regenerar-slide-numero" className="text-xs shrink-0 text-muted-foreground">
+            Nº do slide
+          </Label>
+          <Input
+            id="regenerar-slide-numero"
+            type="number"
+            min={1}
+            max={totalSlides}
+            value={slideNumeroInput}
+            onChange={(event) => setSlideNumeroInput(event.target.value)}
+            className="h-8 w-20"
+            disabled={loading}
+          />
+          {totalSlides ? <span className="text-xs text-muted-foreground">de {totalSlides}</span> : null}
+        </div>
+      )}
+      <Textarea
+        placeholder={
+          kind === "documento"
+            ? "Ex.: aprofunde o exemplo de docas do porto e reduza o tom formal."
+            : "Ex.: deixe este slide mais visual e direto."
+        }
+        value={prompt}
+        onChange={(event) => setPrompt(event.target.value)}
+        rows={3}
+        disabled={loading}
+      />
+      {kind === "slide" && (
+        <p className="text-xs text-muted-foreground">
+          Atualiza o conteúdo do slide; a apresentação já publicada não é reconstruída automaticamente.
+        </p>
+      )}
+      {preview && (
+        <div className="rounded-md border p-2">
+          <p className="text-xs text-muted-foreground mb-1">Preview da imagem regerada:</p>
+          <img
+            src={`data:image/png;base64,${preview}`}
+            alt="Preview do slide regenerado"
+            className="max-h-40 rounded"
+          />
+        </div>
+      )}
+      <div className="flex justify-end gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            setExpanded(false);
+            setPrompt("");
+            setPreview(null);
+          }}
+          disabled={loading}
+        >
+          Cancelar
+        </Button>
+        <Button size="sm" onClick={handleSubmit} disabled={loading}>
+          {loading ? (
+            <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
+          ) : (
+            <Wand2 className="h-3.5 w-3.5 mr-2" />
+          )}
+          Regenerar
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function MaterialTabContent({
   tipo,
   material,
   fallbackUpdatedAt,
+  regenerarContext,
 }: {
   tipo: MaterialTipo;
   material: Record<string, unknown> | null;
   fallbackUpdatedAt?: string | null;
+  regenerarContext?: RegenerarContext;
 }) {
   const rawUrl = materialUrl(material);
   const url = rawUrl
     ? versionedMaterialUrl(rawUrl, material, fallbackUpdatedAt)
     : null;
 
+  const payload = material && typeof material.payload === "object" ? (material.payload as Record<string, unknown>) : null;
+  const slides = Array.isArray(payload?.slides) ? (payload.slides as unknown[]) : null;
+
   if (!url) {
     return <p className="text-sm text-muted-foreground py-8 text-center">Este material ainda não está disponível.</p>;
   }
-  if (tipo === "markdown") return <TextoMaterialContent url={url} />;
+  if (tipo === "markdown") {
+    return (
+      <div>
+        <TextoMaterialContent url={url} />
+        {regenerarContext && <RegenerarConteudoPainel kind="documento" context={regenerarContext} />}
+      </div>
+    );
+  }
   if (tipo === "audio") return <AudioMaterialContent url={url} />;
   return (
-    <EmbedMaterialContent
-      url={url}
-      mode={resolveDocumentPreviewMode(material, tipo)}
-    />
+    <div>
+      <EmbedMaterialContent
+        url={url}
+        mode={resolveDocumentPreviewMode(material, tipo)}
+      />
+      {tipo === "apresentacao" && regenerarContext && (
+        <RegenerarConteudoPainel kind="slide" context={regenerarContext} totalSlides={slides?.length} />
+      )}
+    </div>
   );
 }
 
@@ -240,13 +413,32 @@ export function PerfilConteudoDialog({
   open,
   onOpenChange,
   initialTab,
+  classeId,
+  topicoId,
+  resolveToken,
+  onRegenerated,
 }: {
   item: PersonalizacaoPerfilItem;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialTab?: MaterialTipo;
+  classeId?: number;
+  topicoId?: number;
+  resolveToken?: () => Promise<string>;
+  onRegenerated?: () => void;
 }) {
   const disponiveis = TABS.filter((tab) => getMaterial(item.materiais, tab.key));
+  const regenerarContext: RegenerarContext | undefined =
+    classeId != null && topicoId != null && resolveToken && onRegenerated
+      ? {
+          classeId,
+          topicoId,
+          conteudoId: item.personalizacao?.conteudo_id,
+          brainhexProfileKey: item.perfil,
+          resolveToken,
+          onRegenerated,
+        }
+      : undefined;
   const [activeTab, setActiveTab] = useState<MaterialTipo>(initialTab ?? disponiveis[0]?.key ?? "markdown");
 
   useEffect(() => {
@@ -288,6 +480,7 @@ export function PerfilConteudoDialog({
                   tipo={key}
                   material={getMaterial(item.materiais, key)}
                   fallbackUpdatedAt={item.personalizacao?.updated_at ?? item.gerado_em}
+                  regenerarContext={regenerarContext}
                 />
               </TabsContent>
             ))}

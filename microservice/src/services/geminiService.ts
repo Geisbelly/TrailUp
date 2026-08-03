@@ -14,6 +14,7 @@ import {
 } from "../constants/presentationThemes";
 import { mapWithConcurrency } from "../lib/boundedConcurrency";
 import { resolveRealSlideOrder } from "../lib/pptxSlideOrder";
+import { MAX_SLIDE_HTML_CHARS, validateSlideHtml } from "../lib/slideValidation";
 import { addWavHeader } from "../lib/wav";
 import {
   generateOpenAISlidesOnly,
@@ -2108,6 +2109,136 @@ export interface RegeneratedChapterContent {
   audioScript: string;
   audioWavBase64: string | null;
   audioMp3Base64: string | null;
+}
+
+export interface ImmersiveSlideInput {
+  index: number;
+  total: number;
+  contentSummary: string;
+  profile: BrainHexProfile;
+  previousSlideHtml?: string;
+}
+
+/**
+ * Assinatura mínima exigida pelo executor de `generateImmersiveSlideHtml` —
+ * mais estreita que `typeof executeWithModelFallback` (que é genérica sobre
+ * T) para que os fakes injetados em teste satisfaçam o tipo estruturalmente,
+ * sem precisar de `as any`.
+ */
+type ImmersiveSlideExecutor = (params: {
+  contentsParts: any[];
+  systemInstruction: string;
+  responseSchema: any;
+  customKeys?: ApiKeysConfig;
+  temperature?: number;
+  maxOutputTokens?: number;
+}) => Promise<{ html: string }>;
+
+export interface ImmersiveSlideOptions {
+  keysConfig?: ApiKeysConfig;
+  maxAttempts?: number;
+  executor?: ImmersiveSlideExecutor;
+}
+
+// ~3 chars/token (estimativa conservadora já usada em validateBlockBatchGeneration)
+// mais uma folga de 2000 tokens para o overhead de escapar o HTML como string
+// JSON — sem isso o teto de 16384 tokens do default silencioso de
+// executeWithModelFallback pode cortar um slide grande antes da validação.
+const IMMERSIVE_SLIDE_MAX_OUTPUT_TOKENS = Math.ceil(MAX_SLIDE_HTML_CHARS / 3) + 2_000;
+
+/**
+ * Gera o HTML/CSS/JS livre de UM slide (não o deck inteiro numa chamada —
+ * mesmo motivo documentado em geminiBlockBatches.ts para o texto: uma
+ * chamada grande estoura orçamento de output e perde qualidade). Cada slide
+ * recebe o brief de design completo do perfil (mood, direção de arte,
+ * motivos e paleta de `buildPresentationDesignPlan`, não só o accent) e,
+ * quando houver, o HTML do slide anterior só como referência de
+ * continuidade visual.
+ */
+export async function generateImmersiveSlideHtml(
+  input: ImmersiveSlideInput,
+  options: ImmersiveSlideOptions = {},
+): Promise<string> {
+  const executor = options.executor ?? executeWithModelFallback;
+  const maxAttempts = Math.max(1, options.maxAttempts ?? 3);
+  const config = BRAIN_HEX_CONFIG[input.profile];
+  // fallbackSubject só entra se o plano não tiver "subject" próprio — aqui
+  // não temos um assunto de deck separado, então usamos um recorte do
+  // próprio resumo do slide como pista de contexto para o brief.
+  const plan = buildPresentationDesignPlan(
+    input.profile,
+    {},
+    input.contentSummary.slice(0, 80),
+  );
+
+  const systemInstruction = `
+    Você é um designer/desenvolvedor front-end de elite criando UM slide de
+    uma apresentação educacional imersiva, para o perfil BrainHex ${input.profile}
+    (Guia Alquímico ${config.guideName}, arquétipo ${config.label}).
+    Brief de design deste deck — siga-o à risca; a identidade visual do
+    perfil vem do conjunto abaixo, não só da cor de acento:
+    - Clima (mood): ${plan.mood}
+    - Direção de arte: ${plan.artDirection}
+    - Motivos visuais recorrentes: ${plan.motifs.join(", ")}
+    - Paleta oficial (hex): accent=${plan.palette.accent}, accentSoft=${plan.palette.accentSoft},
+      highlight=${plan.palette.highlight}, background=${plan.palette.background},
+      surface=${plan.palette.surface}, ink=${plan.palette.ink}
+    Gere APENAS o fragmento HTML deste slide (uma tag <section> raiz, com
+    <style> e <script> internos, escopados a essa seção — nunca toque em
+    elementos fora dela).
+    Construa toda a paleta do slide a partir das cores acima; eleve a
+    luminosidade HSL do accent quando precisar de contraste AAA contra um
+    fundo escuro (nunca misture com branco, isso dessatura a cor).
+    Layout mobile-first: unidades relativas (%, vw, vh, rem), sem largura
+    fixa, sem scroll horizontal. Este é o slide ${input.index + 1} de
+    ${input.total} do deck.
+    Pode incluir interatividade leve dentro da própria seção (toque para
+    revelar/expandir, transições de entrada, pequenas animações CSS/JS) —
+    mas o script não pode acessar rede, cookies, localStorage/sessionStorage,
+    nem tentar sair da própria seção (sem window.top/window.parent).
+  `;
+
+  const responseSchema = {
+    type: Type.OBJECT,
+    properties: { html: { type: Type.STRING } },
+    required: ["html"],
+  };
+
+  // Reconstrói contentsParts a cada tentativa (em vez de reusar uma
+  // referência congelada) para poder injetar o motivo da rejeição anterior
+  // como realimentação — sem isso, uma tentativa que falhou na validação
+  // estática é simplesmente repetida verbatim, com boa chance de repetir o
+  // mesmo padrão rejeitado.
+  const buildContentsParts = (previousRejectionReason: string | null) => [{
+    text: `Conteúdo deste slide:\n${input.contentSummary}\n\n`
+      + (input.previousSlideHtml
+        ? `Slide anterior deste deck (só para referência de estilo, não copie o conteúdo): ${input.previousSlideHtml}\n\n`
+        : "")
+      + (previousRejectionReason
+        ? `A tentativa anterior foi rejeitada por: ${previousRejectionReason}. Não repita esse padrão.\n\n`
+        : "")
+      + "Gere o HTML/CSS/JS completo deste slide agora.",
+  }];
+
+  let lastReason = "motivo desconhecido";
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const contentsParts = buildContentsParts(attempt > 1 ? lastReason : null);
+    const result = await executor({
+      contentsParts,
+      systemInstruction,
+      responseSchema,
+      customKeys: options.keysConfig,
+      temperature: 0.7,
+      maxOutputTokens: IMMERSIVE_SLIDE_MAX_OUTPUT_TOKENS,
+    });
+    const validation = validateSlideHtml(result.html);
+    if (validation.valid) return result.html;
+    lastReason = validation.reason ?? lastReason;
+  }
+  throw new Error(
+    `Falha ao gerar slide imersivo (slide ${input.index + 1}, perfil ${input.profile}) `
+    + `após ${maxAttempts} tentativa(s): ${lastReason}`,
+  );
 }
 
 /**
