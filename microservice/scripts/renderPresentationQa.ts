@@ -3,6 +3,7 @@ import path from "node:path";
 import { PROFILES, BRAIN_HEX_CONFIG } from "../src/constants/brainHex";
 import { buildPresentationDesignPlan } from "../src/constants/presentationThemes";
 import { buildDeckHtml } from "../src/lib/slideTemplate";
+import { buildImmersiveDeckHtml } from "../src/lib/slideShell";
 
 const outputDir = path.resolve(
   process.argv[2] || path.join(process.cwd(), "qa-presentation-output"),
@@ -63,6 +64,23 @@ async function main(): Promise<void> {
     }));
     const html = buildDeckHtml(slides, profile, theme);
     fs.writeFileSync(path.join(outputDir, `${profile}.html`), html, "utf-8");
+
+    const immersiveFixtureSlides = [
+      `<section style="height:100%;display:flex;flex-direction:column;justify-content:center;padding:8vw;background:linear-gradient(160deg,#0a0716,#14102b);color:#f7f4ff;font-family:system-ui,sans-serif;">
+        <h1 style="font-size:7vw;margin:0 0 3vw;">${config.label}: abertura imersiva</h1>
+        <p style="font-size:4vw;opacity:.8;">Slide de amostra — fixture fixo, sem chamada ao Gemini.</p>
+      </section>`,
+      `<section style="height:100%;display:flex;align-items:center;justify-content:center;padding:8vw;background:#0a0716;color:${config.color};font-family:system-ui,sans-serif;">
+        <button class="reveal" style="font-size:4vw;padding:3vw 6vw;border-radius:99px;border:1px solid currentColor;background:transparent;color:inherit;">Toque para revelar</button>
+        <script>
+          document.querySelectorAll(".reveal").forEach(function (el) {
+            el.addEventListener("click", function () { el.textContent = "Revelado!"; });
+          });
+        </script>
+      </section>`,
+    ];
+    const immersiveHtml = buildImmersiveDeckHtml(immersiveFixtureSlides, profile);
+    fs.writeFileSync(path.join(outputDir, `${profile}-imersivo.html`), immersiveHtml, "utf-8");
   }
   process.stdout.write(`${outputDir}\n`);
 }

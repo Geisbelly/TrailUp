@@ -1453,6 +1453,57 @@ async def test_process_media_render_target_defers_when_new_generation_race_lost(
 
 
 @pytest.mark.asyncio
+async def test_process_media_render_target_skips_stale_conteudo_id_without_fk_violation(
+    monkeypatch,
+) -> None:
+    """Reproduz o bug real: o professor remove/substitui um conteudo depois
+    que o target ja foi enfileirado. buscar_mais_recente_por_perfil nao acha
+    mais o registro (linha removida junto com o conteudo), e sem esta guarda
+    o codigo cairia em claim_new_generation tentando inserir um conteudo_id
+    que nao existe mais em `conteudos` -- estourando ForeignKeyViolationError
+    a cada ciclo do job loop, indefinidamente."""
+    buscar_existing_mock = AsyncMock(return_value=None)
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.buscar_mais_recente_por_perfil",
+        buscar_existing_mock,
+    )
+    topico_lookup_mock = AsyncMock(return_value=None)
+    monkeypatch.setattr(
+        "app.repositories.conteudo_classe.ConteudoClasseRepository.buscar_topico_id_por_conteudo",
+        topico_lookup_mock,
+    )
+    claim_new_mock = AsyncMock()
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.claim_new_generation",
+        claim_new_mock,
+    )
+    fetch_context_mock = AsyncMock()
+    monkeypatch.setattr(jobs_module, "fetch_personalizacao_context", fetch_context_mock)
+
+    app = SimpleNamespace(
+        state=SimpleNamespace(settings=SimpleNamespace(personalizacao_job_stale_processing_min=15))
+    )
+    job = {"id": "job-1", "classe_id": 32, "kind": "class_delta_sync", "payload": {}}
+    target = {
+        "id": 890,
+        "aluno_id": "b49f2e21-a6f9-4c8d-9533-5a32bb219754",
+        "topico_id": 122,
+        "conteudo_id": 167,
+        "brainhex_profile_key": "conqueror",
+    }
+
+    result = await _process_media_render_target(
+        app=app, session=_FakeSession(is_stuck=False), job=job, target=target
+    )
+
+    assert result == {"skipped": True, "reason": "conteudo_removido"}
+    topico_lookup_mock.assert_awaited_once_with(167)
+    assert fetch_context_mock.await_count == 0
+    assert buscar_existing_mock.await_count == 0
+    assert claim_new_mock.await_count == 0
+
+
+@pytest.mark.asyncio
 async def test_process_media_render_target_skips_only_completed_current_generation(
     monkeypatch,
 ) -> None:

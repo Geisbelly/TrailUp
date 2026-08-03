@@ -124,3 +124,60 @@ test("agrupa cards pela combinacao de topico e conteudo", () => {
     [2]
   );
 });
+
+test("normalizePersonalizedTopicPayload nao sintetiza apresentacao-slides quando engine_variant e immersive", () => {
+  const payload = normalizePersonalizedTopicPayload({
+    record: {
+      id: 30,
+      conteudo_id: 130,
+      plano: {},
+      materiais: {
+        apresentacao: {
+          arquivo_url: "https://cdn.exemplo/deck.html",
+          metadata: { engine_variant: "immersive", status: "completed" },
+          payload: {
+            slides: [
+              { index: 0, html: "<section>slide 0</section>" },
+              { index: 1, html: "<section>slide 1</section>" },
+            ],
+          },
+        },
+      },
+    },
+    classeId: 32,
+    topicoId: 121,
+    fallbackBlocks: [],
+    fallbackActivities: [],
+    source: "remote",
+  });
+
+  assert.equal(payload.primaryBlocks.length, 1);
+  assert.equal(payload.primaryBlocks[0].tipo, "apresentacao");
+  assert.notEqual(payload.primaryBlocks[0].tipo, "apresentacao-slides");
+});
+
+test("normalizePersonalizedTopicPayload continua sintetizando apresentacao-slides sem engine_variant (formato antigo)", () => {
+  const payload = normalizePersonalizedTopicPayload({
+    record: {
+      id: 31,
+      conteudo_id: 131,
+      plano: {},
+      materiais: {
+        apresentacao: {
+          metadata: { status: "completed" },
+          payload: {
+            slides: [{ titulo: "Slide 1", pontos: ["a", "b"] }],
+          },
+        },
+      },
+    },
+    classeId: 32,
+    topicoId: 121,
+    fallbackBlocks: [],
+    fallbackActivities: [],
+    source: "remote",
+  });
+
+  assert.equal(payload.primaryBlocks.length, 1);
+  assert.equal(payload.primaryBlocks[0].tipo, "apresentacao-slides");
+});

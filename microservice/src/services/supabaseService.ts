@@ -1,11 +1,26 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { createKeyedQueue } from "../lib/serialQueue";
 import { createLogger } from "../lib/logger";
 import type { MaterialEntryLike } from "../lib/materialsMerge";
 
 const log = createLogger({ ctx: "supabase" });
 
-function getClient() {
+let clientOverride: SupabaseClient | null = null;
+
+/**
+ * Escape hatch só para testes: injeta um client fake, ignorando process.env.
+ * Chame com `null` para restaurar o comportamento normal (ler process.env).
+ *
+ * NUNCA chamar em código de produção — o override é global e não expira por
+ * conta própria, todo getClient() do processo passa a usar o client fake até
+ * alguém chamar com null.
+ */
+export function setSupabaseClientForTesting(client: SupabaseClient | null): void {
+  clientOverride = client;
+}
+
+function getClient(): SupabaseClient {
+  if (clientOverride) return clientOverride;
   const url = process.env.SUPABASE_URL ?? "";
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
   if (!url || !key) {
@@ -65,6 +80,7 @@ export interface MaterialEntry {
     engine?: string;
     schema?: string;
     media_pipeline_version?: string;
+    engine_variant?: "immersive";
     error_stage?: "render" | "upload";
     error?: string;
   };

@@ -196,6 +196,46 @@ estratégia de teste muda de forma:
 5. QA visual manual multi-perfil (script de QA estendido) + verificação de
    contraste/acessibilidade antes de liberar.
 
+## Pré-requisito antes de ligar o flag em produção
+
+> **Status: resolvido nesta branch** (`fix/slides-imersivos-consumer-guards`),
+> retroportado aqui porque esta branch foi criada a partir de `main` e não
+> depende de `feature/slides-imersivos-wiring` — a seção original vive
+> naquela branch (commit `de75cc8`); esta cópia mantém o histórico desta
+> branch autocontido.
+
+`materiais.apresentacao.payload.slides` agora pode assumir 2 formatos
+incompatíveis, sinalizados por `metadata.engine_variant`:
+
+- **motor imersivo** (`engine_variant === "immersive"`) — array de
+  `{index, html}` (fragmento HTML por slide, sem estrutura de
+  título/tópicos/etc.).
+- **pipeline de imagem+template** (`engine_variant` ausente) — array de
+  `SlideContent` estruturado (`title`/`topics`/`explanation`/`visualDescription`/
+  `characterQuote`/etc.), como sempre foi antes desta mudança.
+
+Todo consumidor de `payload.slides` fora do `microservice/` foi rastreado e
+**nenhum deles** verificava `metadata.engine_variant` antes de tratar cada
+item como `SlideContent`. Se `PRESENTATION_ENGINE_IMMERSIVE_ENABLED` fosse
+ligado em qualquer ambiente que esses consumidores alcançam, eles leriam
+`{index, html}` como se fosse `SlideContent` silenciosamente — sem erro, sem
+fallback — produzindo UI garantida quebrada (campos `title`/`topics`
+`undefined`) ou, no caso da rota de regeneração de slide individual, corrupção
+de escrita no material persistido. Não era uma falha graciosa; era corrupção
+silenciosa de dado.
+
+**Os 3 pontos abaixo agora checam `metadata.engine_variant === "immersive"`
+antes de assumir o formato `SlideContent`** (implementado em
+`docs/superpowers/plans/2026-08-03-slides-imersivos-consumer-guards.md`):
+
+- `mobile/src/utils/personalization.ts` (`normalizeMediaBlocks`) — pula a
+  síntese do bloco nativo `apresentacao-slides` quando imersivo, caindo no
+  caminho WebView (`arquivo_url`) já existente.
+- `mobile/src/components/PresentationSlidesBlock.tsx` (`normalizePayload`) —
+  defesa em profundidade: descarta slides sem conteúdo substantivo.
+- `api/app/api/v1/personalizacao.py` (`regenerar_slide_personalizacao`) —
+  rejeita com 409 em vez de misturar formatos na escrita.
+
 ## Riscos aceitos
 
 - Geração por slide independente pode gerar leve deriva visual entre slides
@@ -205,3 +245,37 @@ estratégia de teste muda de forma:
   perfis sem lock global, documentado no commit `74f84e1`).
 - Nenhuma automação garante "qualidade estética" — depende de QA visual
   humana por perfil após cada mudança relevante de prompt.
+
+## Pré-requisito antes de ligar o flag em produção
+
+`materiais.apresentacao.payload.slides` agora pode assumir 2 formatos
+incompatíveis, sinalizados por `metadata.engine_variant`:
+
+- **motor imersivo** (`engine_variant === "immersive"`) — array de
+  `{index, html}` (fragmento HTML por slide, sem estrutura de
+  título/tópicos/etc.).
+- **pipeline de imagem+template** (`engine_variant` ausente) — array de
+  `SlideContent` estruturado (`title`/`topics`/`explanation`/`visualDescription`/
+  `characterQuote`/etc.), como sempre foi antes desta mudança.
+
+Todo consumidor de `payload.slides` fora do `microservice/` foi rastreado e
+**nenhum deles** hoje verifica `metadata.engine_variant` antes de tratar cada
+item como `SlideContent`. Se `PRESENTATION_ENGINE_IMMERSIVE_ENABLED` for
+ligado em qualquer ambiente que esses consumidores alcancem, eles vão ler
+`{index, html}` como se fosse `SlideContent` silenciosamente — sem erro, sem
+fallback — produzindo UI garantida quebrada (campos `title`/`topics`
+`undefined`) ou, no caso da rota de regeneração de slide individual, corrupção
+de escrita no material persistido. Não é uma falha graciosa; é corrupção
+silenciosa de dado.
+
+**Antes de ligar o flag em qualquer ambiente compartilhado (staging/produção),
+os 3 pontos abaixo precisam checar `metadata.engine_variant === "immersive"`
+antes de assumir o formato `SlideContent`:**
+
+- `mobile/src/utils/personalization.ts:1287` (`normalizeRichPresentationSlides`)
+- `mobile/src/components/PresentationSlidesBlock.tsx:26-38,55` (`normalizePayload`)
+- `api/app/api/v1/personalizacao.py:2227-2263` (`regenerar_slide_personalizacao`
+  — lê/escreve um slide por índice sem nenhuma guarda de formato)
+
+Até que os 3 sejam corrigidos, o flag deve permanecer desligado (ou só ativo
+em ambientes que nenhum desses 3 caminhos alcança).
