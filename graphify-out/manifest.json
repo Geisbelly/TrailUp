@@ -935,18 +935,18 @@
     "semantic_hash": "0254354b897a8bcaa2974dd21feb0b84"
   },
   "frontend/src/components/console/personalizacoes/PerfilConteudoDialog.tsx": {
-    "mtime": 1785260118.9821086,
-    "ast_hash": "995f9d73a3134bee13f9617d707a812c",
+    "mtime": 1785728404.2626178,
+    "ast_hash": "044674abb3c8f49c31350ec6e391d049",
     "semantic_hash": ""
   },
   "frontend/src/components/console/personalizacoes/PersonalizacoesSection.tsx": {
-    "mtime": 1785260118.9841075,
-    "ast_hash": "81c5964ff7169a106b68332c485dbc77",
+    "mtime": 1785728378.628702,
+    "ast_hash": "2ba5246373c82319cda95ae69858f074",
     "semantic_hash": ""
   },
   "frontend/src/components/console/personalizacoes/personalizacoesApi.ts": {
-    "mtime": 1785260118.9932053,
-    "ast_hash": "ece9711c2ef2e98b2afed8c3fcecefb6",
+    "mtime": 1785728378.6297033,
+    "ast_hash": "98af3ce9f83bc1b6c5b8bf01a477be21",
     "semantic_hash": ""
   },
   "frontend/src/components/console/trilha/ActivitiesManager.tsx": {
