@@ -14,6 +14,7 @@ import {
 } from "../constants/presentationThemes";
 import { mapWithConcurrency } from "../lib/boundedConcurrency";
 import { resolveRealSlideOrder } from "../lib/pptxSlideOrder";
+import { validateSlideHtml } from "../lib/slideValidation";
 import { addWavHeader } from "../lib/wav";
 import {
   generateOpenAISlidesOnly,
@@ -2108,6 +2109,86 @@ export interface RegeneratedChapterContent {
   audioScript: string;
   audioWavBase64: string | null;
   audioMp3Base64: string | null;
+}
+
+export interface ImmersiveSlideInput {
+  index: number;
+  total: number;
+  contentSummary: string;
+  profile: BrainHexProfile;
+  previousSlideHtml?: string;
+}
+
+export interface ImmersiveSlideOptions {
+  keysConfig?: ApiKeysConfig;
+  maxAttempts?: number;
+  executor?: typeof executeWithModelFallback;
+}
+
+/**
+ * Gera o HTML/CSS/JS livre de UM slide (não o deck inteiro numa chamada —
+ * mesmo motivo documentado em geminiBlockBatches.ts para o texto: uma
+ * chamada grande estoura orçamento de output e perde qualidade). Cada slide
+ * recebe os design tokens do perfil e, quando houver, o HTML do slide
+ * anterior só como referência de continuidade visual.
+ */
+export async function generateImmersiveSlideHtml(
+  input: ImmersiveSlideInput,
+  options: ImmersiveSlideOptions = {},
+): Promise<string> {
+  const executor = options.executor ?? executeWithModelFallback;
+  const maxAttempts = Math.max(1, options.maxAttempts ?? 3);
+  const config = BRAIN_HEX_CONFIG[input.profile];
+
+  const systemInstruction = `
+    Você é um designer/desenvolvedor front-end de elite criando UM slide de
+    uma apresentação educacional imersiva, para o perfil BrainHex ${input.profile}
+    (Guia Alquímico ${config.guideName}).
+    Gere APENAS o fragmento HTML deste slide (uma tag <section> raiz, com
+    <style> e <script> internos, escopados a essa seção — nunca toque em
+    elementos fora dela).
+    Cor-assinatura oficial do perfil: ${config.color}. Use-a como acento
+    principal; eleve a luminosidade HSL quando precisar de contraste AAA
+    contra um fundo escuro (nunca misture com branco, isso dessatura a cor).
+    Layout mobile-first: unidades relativas (%, vw, vh, rem), sem largura
+    fixa, sem scroll horizontal. Este é o slide ${input.index + 1} de
+    ${input.total} do deck.
+    Pode incluir interatividade leve dentro da própria seção (toque para
+    revelar/expandir, transições de entrada, pequenas animações CSS/JS) —
+    mas o script não pode acessar rede, cookies, localStorage/sessionStorage,
+    nem tentar sair da própria seção (sem window.top/window.parent).
+  `;
+
+  const contentsParts = [{
+    text: `Conteúdo deste slide:\n${input.contentSummary}\n\n`
+      + (input.previousSlideHtml
+        ? `Slide anterior deste deck (só para referência de estilo, não copie o conteúdo): ${input.previousSlideHtml}\n\n`
+        : "")
+      + "Gere o HTML/CSS/JS completo deste slide agora.",
+  }];
+
+  const responseSchema = {
+    type: Type.OBJECT,
+    properties: { html: { type: Type.STRING } },
+    required: ["html"],
+  };
+
+  let lastReason = "motivo desconhecido";
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const result = await executor<{ html: string }>({
+      contentsParts,
+      systemInstruction,
+      responseSchema,
+      customKeys: options.keysConfig,
+      temperature: 0.7,
+    });
+    const validation = validateSlideHtml(result.html);
+    if (validation.valid) return result.html;
+    lastReason = validation.reason ?? lastReason;
+  }
+  throw new Error(
+    `Falha ao gerar slide imersivo após ${maxAttempts} tentativa(s): ${lastReason}`,
+  );
 }
 
 /**
