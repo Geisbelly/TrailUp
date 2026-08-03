@@ -290,8 +290,8 @@
     "semantic_hash": ""
   },
   "api/app/api/v1/personalizacao.py": {
-    "mtime": 1785727350.4963338,
-    "ast_hash": "0d9419f68e4563053dac32f47f96ebec",
+    "mtime": 1785725721.6614425,
+    "ast_hash": "cc4c26de74847ec28ce0799002ecc1ad",
     "semantic_hash": ""
   },
   "api/app/api/v1/telemetria.py": {
@@ -525,8 +525,8 @@
     "semantic_hash": "73a385d9198ea411d128d44637a5e4f3"
   },
   "api/app/schemas/personalizacao.py": {
-    "mtime": 1785727302.7301934,
-    "ast_hash": "3f66d8c0ab4e59393a4d16f9310ebd4f",
+    "mtime": 1785725714.2988806,
+    "ast_hash": "f51ce2cdda925e7360fc4e95ed3c1820",
     "semantic_hash": ""
   },
   "api/app/schemas/telemetria.py": {
@@ -685,8 +685,8 @@
     "semantic_hash": "366917f8966180b9f16c3fb3b91aa046"
   },
   "api/tests/test_api.py": {
-    "mtime": 1785727495.4492662,
-    "ast_hash": "fec5650cd9e7dd6075470ddb9d72b33f",
+    "mtime": 1785562258.4309945,
+    "ast_hash": "4ab5042c627d1659ece64af7195beb7f",
     "semantic_hash": ""
   },
   "api/tests/test_auth.py": {
