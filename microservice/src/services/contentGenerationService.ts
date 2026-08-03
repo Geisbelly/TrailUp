@@ -613,6 +613,19 @@ export async function generateStructuredContentWithFallback(
         // modelo ja esgotou toda a cascata de chaves+fallback antes de
         // propagar (ver generateGeminiContent em geminiService.ts) —
         // continuar tentando os proximos candidatos aqui nao ajudaria.
+        //
+        // Nao abrimos geminiUnavailableUntil aqui (diferente do laço do
+        // modelo primario, que abre via isGeminiAvailabilityError antes de
+        // ir pra OpenAI). geminiUnavailableUntil e um circuito GLOBAL — toda
+        // geracao futura, de qualquer topico/perfil, pula o Gemini inteiro
+        // enquanto ele estiver aberto. Abri-lo por causa de UM modelo
+        // fallback especifico estar indisponivel bloquearia incorretamente
+        // o modelo PRIMARIO (que, nesta mesma chamada, ja provou estar
+        // saudavel — so falhou por qualidade, nao disponibilidade) para
+        // chamadas futuras nao relacionadas. O cooldown por (chave, modelo)
+        // que ja existe em geminiService.ts (_geminiKeyCooldownUntil,
+        // GEMINI_KEY_QUOTA_COOLDOWN_MS) ja evita martelar de novo esse
+        // candidato especifico, sem precisar do circuito global.
         const reason = errorDetails(error).slice(0, 500);
         return generateAfterPrimaryGeminiFailure(call, reason, {
           generateWithOpenAI,
@@ -621,7 +634,6 @@ export async function generateStructuredContentWithFallback(
         });
       }
       lastQualityError = error;
-      previousQualityReason = errorDetails(error).slice(0, 500);
     }
   }
 
