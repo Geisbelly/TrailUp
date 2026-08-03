@@ -208,10 +208,16 @@ const GEMINI_KEY_QUOTA_COOLDOWN_MS = 5 * 60 * 1_000;
 // algum outro tier ainda os aceite.
 const DEFAULT_GEMINI_TEXT_FALLBACK_MODELS = [
   "gemini-3.1-flash-lite",
+  "gemini-3.1-flash",
   "gemini-3.5-flash-lite",
+  "gemini-3.6-flash-lite",
   "gemini-2.5-flash-lite",
+  "gemini-2.5-flash",
+  "gemini-2.5-pro",
   "gemini-2.0-flash",
   "gemini-2.0-flash-lite",
+  "gemini-1.5-flash",
+  "gemini-1.5-pro",
 ];
 
 export function resolveGeminiTextFallbackModels(
