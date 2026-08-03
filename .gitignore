@@ -71,3 +71,4 @@ mobile/android/
 
 # --- Git worktrees isolados (superpowers:using-git-worktrees) ---
 .worktrees/
+.superpowers/
