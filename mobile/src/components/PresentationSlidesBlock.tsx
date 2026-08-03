@@ -177,7 +177,7 @@ export default function PresentationSlidesBlock({ payload: rawPayload }: Props) 
                   ]}
                 >
                   <Text style={[styles.quoteText, { color: palette.text }]}>
-                    "{current.characterQuote}"
+                    &quot;{current.characterQuote}&quot;
                   </Text>
                   <Text style={[styles.quoteAuthor, { color: palette.accent }]}>
                     — {guideName}
