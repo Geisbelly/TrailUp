@@ -361,7 +361,7 @@ def test_fallback_materiais_gera_documento_apresentacao_e_imagem() -> None:
     assert "imagem" in materiais
     assert materiais["apresentacao"]["slides"]
     assert materiais["imagem"]["prompt_imagem"]
-    assert materiais["documento"]["tema_visual"]["cores"]["primaria"] == "#AD6002"
+    assert materiais["documento"]["tema_visual"]["cores"]["primaria"] == "#C9A227"
     assert materiais["apresentacao"]["tema_visual"]["perfil"] == "Achiever"
 
 
@@ -407,7 +407,7 @@ def test_normalize_materiais_preserva_novos_artefatos() -> None:
     assert materiais["apresentacao"]["payload"]["slides"][0]["titulo"] == "Slide 1"
     assert materiais["imagem"]["payload"]["prompt_imagem"] == "Prompt"
     assert materiais["documento"]["payload"]["tema_visual"]["perfil"] == "Seeker"
-    assert materiais["imagem"]["payload"]["tema_visual"]["cores"]["primaria"] == "#A78C07"
+    assert materiais["imagem"]["payload"]["tema_visual"]["cores"]["primaria"] == "#17A398"
     assert materiais["imagem"]["item_key"] == "content:44"
 
 
