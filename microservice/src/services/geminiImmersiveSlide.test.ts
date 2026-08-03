@@ -179,3 +179,12 @@ test("renderImmersiveSlides respeita o limite de concorrência informado", async
 
   assert.ok(maxInFlight <= 2, `esperava no maximo 2 chamadas simultaneas, teve ${maxInFlight}`);
 });
+
+test("renderImmersiveSlides com array vazio rejeita (sem deck sem slides)", async () => {
+  const fakeGenerate = async (input: ImmersiveSlideInput) => `<section>${input.index}</section>`;
+
+  await assert.rejects(
+    () => renderImmersiveSlides([], "seeker", { generateSlideFn: fakeGenerate }),
+    /pelo menos 1 slide/,
+  );
+});

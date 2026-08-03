@@ -2265,6 +2265,9 @@ function slideContentSummary(slide: SlideContent): string {
 
 export interface RenderImmersiveSlidesOptions {
   concurrency?: number;
+  // Atualmente inerte: generateSlideFn (DI) so aceita um argumento, sem
+  // espaco pra repassar options.keysConfig pro generateImmersiveSlideHtml
+  // real.
   keysConfig?: ApiKeysConfig;
   generateSlideFn?: (input: ImmersiveSlideInput) => Promise<string>;
 }
