@@ -2225,6 +2225,19 @@ async def regenerar_slide_personalizacao(
         session=session,
     )
     materiais = record.get("materiais") if isinstance(record.get("materiais"), dict) else {}
+    raw_apresentacao = materiais.get("apresentacao")
+    apresentacao = raw_apresentacao if isinstance(raw_apresentacao, dict) else {}
+    raw_metadata = apresentacao.get("metadata")
+    apresentacao_metadata = raw_metadata if isinstance(raw_metadata, dict) else {}
+    if apresentacao_metadata.get("engine_variant") == "immersive":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "Este material usa o motor imersivo de slides; regeneracao de "
+                "slide individual via este endpoint ainda nao e suportada "
+                "para este formato."
+            ),
+        )
     slides_atuais = (
         (materiais.get("apresentacao") or {}).get("payload") or {}
     ).get("slides")

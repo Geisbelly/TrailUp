@@ -1284,7 +1284,18 @@ function normalizeMediaBlocks(
     const presentationTitle =
       pickString(payload.titulo, title, "Apresentação personalizada") ??
       "Apresentação personalizada";
-    const richSlides = normalizeRichPresentationSlides(payload.slides ?? rawObject.slides);
+    // materiais.apresentacao.payload.slides pode vir em 2 formatos, segundo
+    // metadata.engine_variant: SlideContent estruturado (formato antigo,
+    // ausente/undefined) ou [{index, html}] (motor imersivo). O segundo
+    // formato nao tem nenhum campo que normalizeRichPresentationSlides
+    // entenda - sintetizar um bloco nativo a partir dele produziria slides
+    // "vazios" (titulo generico, sem pontos/explicacao/imagem). Quando
+    // imersivo, pula a sintese e deixa cair nos ramos abaixo que usam
+    // arquivo_url/WebView - que ja sabem renderizar o deck completo.
+    const isImmersiveEngine = (metadata as LooseRecord).engine_variant === "immersive";
+    const richSlides = isImmersiveEngine
+      ? []
+      : normalizeRichPresentationSlides(payload.slides ?? rawObject.slides);
     const hasInlineSlides = richSlides.length > 0;
 
     const apresentacaoPartes = extractMediaPartes(rawObject, bucketValue);
