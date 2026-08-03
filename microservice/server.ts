@@ -461,7 +461,7 @@ async function archiveToSupabase(params: {
 export function buildApresentacaoSlidesPayload(
   parts: Array<{ slides: SlideContent[] }>,
   prebuiltImmersiveSlideHtmls?: string[] | null,
-): Array<SlideContent | { index: number; html: string }> {
+): SlideContent[] | Array<{ index: number; html: string }> {
   if (prebuiltImmersiveSlideHtmls) {
     return prebuiltImmersiveSlideHtmls.map((html, index) => ({ index, html }));
   }
@@ -620,6 +620,9 @@ async function archiveMultiPartToSupabase(params: {
         partes: markdownParts,
       },
       apresentacao: {
+        // qualquer consumidor de payload.slides precisa checar
+        // metadata.engine_variant === "immersive" antes de assumir o formato
+        // SlideContent — ver docs/superpowers/specs/2026-08-03-slides-imersivos-html-ia-design.md.
         payload: {
           slides: buildApresentacaoSlidesPayload(parts, params.prebuiltImmersiveSlideHtmls),
           tema_visual: presentationTheme,
