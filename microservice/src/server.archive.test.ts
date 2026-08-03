@@ -1,8 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { archiveToSupabase, archiveMultiPartToSupabase } from "../server";
 import { setSupabaseClientForTesting } from "./services/supabaseService";
-import { BRAIN_HEX_CONFIG } from "./constants/brainHex";
+import { buildPresentationDesignPlan } from "./constants/presentationThemes";
 
 type FakeUploadCall = { bucket: string; path: string; contentType: string };
 
@@ -29,15 +30,12 @@ function createFakeSupabaseClient(failingPaths: string[] = []) {
         };
       },
     },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } as any;
+  } as unknown as SupabaseClient;
   return { client, calls };
 }
 
 const profile = "socializer" as const;
-const presentationTheme = {
-  accent: BRAIN_HEX_CONFIG.socializer.color,
-} as any;
+const presentationTheme = buildPresentationDesignPlan(profile);
 
 test("archiveToSupabase monta os 3 paths (audio/markdown/apresentacao) sem sufixo de parte", async () => {
   const { client, calls } = createFakeSupabaseClient();
