@@ -1137,6 +1137,24 @@ async def _process_media_render_target(
         )
         return {"record": updated}
 
+    if conteudo_id is not None:
+        conteudo_classe_repo = ConteudoClasseRepository(session)
+        if await conteudo_classe_repo.buscar_topico_id_por_conteudo(conteudo_id) is None:
+            # Target enfileirado antes do professor remover/substituir o
+            # conteudo. buscar_mais_recente_por_perfil pode nao achar mais o
+            # registro (removido junto com o conteudo), e sem esta guarda o
+            # fluxo cairia em claim_new_generation tentando inserir um
+            # conteudo_id que nao existe mais em `conteudos` -- estourando
+            # ForeignKeyViolationError a cada ciclo do job loop, pra sempre.
+            logger.warning(
+                "conteudo_id removido detectado, pulando target obsoleto: "
+                "conteudo_id=%s topico_id=%s aluno_id=%s",
+                conteudo_id,
+                topico_id,
+                aluno_id,
+            )
+            return {"skipped": True, "reason": "conteudo_removido"}
+
     context_cache_key = f"{aluno_id}:{topico_id}:{conteudo_id or 0}"
 
     async def _fetch_context() -> dict[str, Any]:
