@@ -261,7 +261,7 @@ export function buildPresentationMaterialMetadata(params: {
   };
 }
 
-async function archiveToSupabase(params: {
+export async function archiveToSupabase(params: {
   profile:         BrainHexProfile;
   storagePath:     string;
   bucket:          string;
@@ -440,7 +440,7 @@ async function archiveToSupabase(params: {
  * O endpoint /api/v1/archive (uso avulso, sem personalizacao) continua na
  * versao single-file (archiveToSupabase) - nao precisa dessa divisao.
  */
-async function archiveMultiPartToSupabase(params: {
+export async function archiveMultiPartToSupabase(params: {
   profile:         BrainHexProfile;
   storagePath:     string;
   bucket:          string;
