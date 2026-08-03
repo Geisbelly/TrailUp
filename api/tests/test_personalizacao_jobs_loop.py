@@ -815,6 +815,72 @@ async def test_enqueue_job_never_passes_stale_conteudo_id_to_scalar_fk_column(
 
 
 @pytest.mark.asyncio
+async def test_enqueue_job_rechecks_conteudo_id_right_before_insert_to_close_race_window(
+    monkeypatch,
+) -> None:
+    """Reproduz o bug real: _build_targets confirma que o conteudo existe (a
+    leitura acontece no INICIO do enqueue), mas o professor remove esse
+    mesmo conteudo no console ANTES do INSERT em personalizacao_jobs
+    efetivamente rodar - mesma janela de corrida que ja existia entre
+    _build_targets e criar_job_com_targets, so que desta vez o conteudo
+    passa na validacao de _build_targets e so e removido depois. Sem uma
+    revalidacao logo antes do INSERT, o conteudo_id (so um hint informativo,
+    coluna com FK) ainda quebra o INSERT inteiro com ForeignKeyViolationError."""
+    create_mock = AsyncMock(return_value={"id": "job-delta"})
+    monkeypatch.setattr(
+        jobs_module,
+        "_build_targets",
+        AsyncMock(
+            return_value=(
+                [
+                    {
+                        "aluno_id": "b49f2e21-a6f9-4c8d-9533-5a32bb219754",
+                        "topico_id": 122,
+                        "conteudo_id": 169,
+                        "brainhex_profile_key": "achiever",
+                        "is_profile_template": False,
+                        "status": "pending",
+                    }
+                ],
+                [122],
+                {"b49f2e21-a6f9-4c8d-9533-5a32bb219754:122:169": "achiever"},
+            )
+        ),
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.find_open_job_by_payload",
+        AsyncMock(return_value=None),
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.criar_job_com_targets",
+        create_mock,
+    )
+    monkeypatch.setattr(
+        jobs_module,
+        "get_job_detail",
+        AsyncMock(return_value={"job": {"id": "job-delta"}, "targets": []}),
+    )
+    # O conteudo existia quando _build_targets rodou (linha acima), mas foi
+    # removido antes do recheck logo antes do INSERT - simula a corrida.
+    monkeypatch.setattr(
+        "app.repositories.conteudo_classe.ConteudoClasseRepository.buscar_topico_id_por_conteudo",
+        AsyncMock(return_value=None),
+    )
+
+    await jobs_module.enqueue_personalizacao_job(
+        session=object(),
+        kind="class_delta_sync",
+        classe_id=32,
+        trigger_source="web_console",
+        conteudo_ids=[169],
+        topico_ids=[122],
+        reason="remocao_conteudo_console",
+    )
+
+    assert create_mock.await_args.kwargs["conteudo_id"] is None
+
+
+@pytest.mark.asyncio
 async def test_enqueue_job_reuses_existing_open_job_instead_of_duplicating(
     monkeypatch,
 ) -> None:

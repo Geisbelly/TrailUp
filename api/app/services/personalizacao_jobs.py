@@ -817,6 +817,20 @@ async def enqueue_personalizacao_job(
     validated_conteudo_ids = {
         target["conteudo_id"] for target in targets if target.get("conteudo_id") is not None
     }
+    final_conteudo_id = (
+        next(iter(validated_conteudo_ids)) if len(validated_conteudo_ids) == 1 else None
+    )
+    # Ainda existe uma janela de corrida entre a leitura acima (via
+    # _build_targets, no INICIO desta funcao) e o INSERT logo abaixo: o
+    # professor pode remover o conteudo NESSE meio-tempo, o que apaga a
+    # linha em `conteudos` e quebra a FK do mesmo jeito que o caso ja
+    # tratado acima. Revalida bem em cima do uso (mesmo padrao ja usado em
+    # _process_media_render_target antes de claim_new_generation) pra
+    # fechar a maior parte dessa janela.
+    if final_conteudo_id is not None:
+        classe_repo_recheck = ConteudoClasseRepository(session)
+        if await classe_repo_recheck.buscar_topico_id_por_conteudo(final_conteudo_id) is None:
+            final_conteudo_id = None
     job = await repo.criar_job_com_targets(
         kind=kind,
         classe_id=classe_id,
@@ -825,7 +839,7 @@ async def enqueue_personalizacao_job(
         payload=job_payload,
         aluno_id=scoped_aluno_id,
         topico_id=resolved_topicos[0] if len(resolved_topicos) == 1 else None,
-        conteudo_id=next(iter(validated_conteudo_ids)) if len(validated_conteudo_ids) == 1 else None,
+        conteudo_id=final_conteudo_id,
     )
     detail = await get_job_detail(session=session, job_id=str(job["id"]))
     if detail:
