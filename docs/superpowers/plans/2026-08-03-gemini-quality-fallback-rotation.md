@@ -606,7 +606,338 @@ git commit -m "feat(microservice): amplia lista de modelos Gemini fallback de 5 
 
 ---
 
-### Task 5: Revisão final da branch
+### Task 5: Relaxar o gate de cobertura mínima em `validateBlockBatchGeneration`
+
+Investigando um projeto de referência externo que "nunca falha" nesse
+cenário, a causa é que ele não valida tamanho/cobertura da resposta do
+Gemini — só aceita qualquer JSON parseável no formato esperado. Mesmo com a
+rotação de 11 modelos (Tasks 1-4), é possível que TODOS produzam conteúdo
+tecnicamente válido porém abaixo do mínimo de cobertura exigido — e nesse
+caso ainda cairíamos na exigência de OpenAI. Esta task troca as duas
+checagens de TAMANHO (markdown/áudio) de `throw` pra `console.warn`,
+mantendo intactas todas as checagens ESTRUTURAIS (JSON válido, `chapters`
+batendo com o batch, `blockId` presente/não-duplicado, `slides` não-vazio,
+`confidence` numérico) — essas continuam rejeitando por completo, pois uma
+resposta malformada quebraria o resto do pipeline.
+
+**Files:**
+- Modify: `microservice/src/services/geminiService.ts:849-871` (`validateBlockBatchGeneration`)
+- Test: `microservice/src/services/geminiBlockBatches.test.ts`
+
+- [ ] **Step 1: Atualizar os testes que hoje esperam `throw` por cobertura curta**
+
+Em `microservice/src/services/geminiBlockBatches.test.ts`, trocar o teste
+(linhas 183-204):
+
+```ts
+test("recusa lote que omite bloco ou devolve texto resumido", () => {
+  const batch = [block(1), block(2)];
+  assert.throws(
+    () => validateBlockBatchGeneration(
+      batch,
+      { chapters: [chapter("bloco-01", "UM")], confidence: 0.9 },
+      1,
+    ),
+    /omitiu ou acrescentou capítulos/,
+  );
+
+  const summarized = chapter("bloco-01", "UM");
+  summarized.markdown = "Resumo curto.";
+  assert.throws(
+    () => validateBlockBatchGeneration(
+      [block(1)],
+      { chapters: [summarized], confidence: 0.9 },
+      1,
+    ),
+    /Markdown.*resumido/,
+  );
+});
+```
+
+por dois testes:
+
+```ts
+test("recusa lote que omite bloco (checagem estrutural, nao afetada pelo relaxamento de cobertura)", () => {
+  const batch = [block(1), block(2)];
+  assert.throws(
+    () => validateBlockBatchGeneration(
+      batch,
+      { chapters: [chapter("bloco-01", "UM")], confidence: 0.9 },
+      1,
+    ),
+    /omitiu ou acrescentou capítulos/,
+  );
+});
+
+test("aceita markdown resumido com um warning em vez de recusar o lote", () => {
+  const summarized = chapter("bloco-01", "UM");
+  summarized.markdown = "Resumo curto.";
+
+  const warnings: unknown[][] = [];
+  const originalWarn = console.warn;
+  console.warn = (...args: unknown[]) => { warnings.push(args); };
+  let result;
+  try {
+    result = validateBlockBatchGeneration(
+      [block(1)],
+      { chapters: [summarized], confidence: 0.9 },
+      1,
+    );
+  } finally {
+    console.warn = originalWarn;
+  }
+
+  assert.equal(result.chapters[0].markdown, "Resumo curto.");
+  assert.equal(warnings.length, 1);
+  assert.equal(warnings[0][0], "[content-coverage]");
+  assert.match(String(warnings[0][1]), /Markdown.*abaixo do mínimo de cobertura/);
+});
+```
+
+Trocar (linhas 206-246):
+
+```ts
+test("teto de cobertura por orcamento de output evita exigir mais markdown do que uma unica chamada consegue conter", () => {
+  // Reproduz o bug real: mergeContentBlocksIntoOne junta N blocos originais
+  // num so ("documento-completo"), cujo conteudo_aprofundado bruto cresce
+  // com N — mas markdown/audioScript/slides saem de UMA UNICA chamada com
+  // orcamento de output fixo (maxOutputTokens). Sem teto, a exigencia de 75%
+  // do texto-fonte supera o que a resposta consegue fisicamente conter, e o
+  // lote reprova sempre, nao importa quantas vezes o Gemini tente de novo.
+  const bigBlock = (index: number): EnrichedContentBlock => ({
+    ...block(index),
+    conteudo_aprofundado: `Conteudo aprofundado do bloco ${index}. `.repeat(120),
+  });
+  const merged = mergeContentBlocksIntoOne(
+    Array.from({ length: 10 }, (_, i) => bigBlock(i + 1)),
+  );
+  const maxOutputTokens = 16_384;
+  const markdownUnit =
+    "Síntese coesa cobrindo os conceitos dos blocos mesclados, sem repetir "
+    + "o mesmo assunto em seções diferentes. ";
+  const achievableMarkdown = `## Documento completo\n\n${markdownUnit.repeat(400)}`;
+  const rawResponse = {
+    chapters: [{
+      blockId: "documento-completo",
+      markdown: achievableMarkdown,
+      audioScript: "Narração completa do documento. ".repeat(450),
+      slides: [chapter("documento-completo", "UM").slides[0]],
+    }],
+    confidence: 0.9,
+  };
+
+  // Sem o teto (maxOutputTokens omitido), a exigencia bruta de 50%/75% do
+  // texto-fonte mesclado ultrapassa uma resposta ja "razoavelmente boa"
+  // (aqui, o áudio é o primeiro a esbarrar nisso).
+  assert.throws(
+    () => validateBlockBatchGeneration([merged], rawResponse, 1),
+    /resumido abaixo do mínimo de cobertura/,
+  );
+
+  // Com o teto (orcamento real da chamada), a MESMA resposta passa.
+  const result = validateBlockBatchGeneration([merged], rawResponse, 1, { maxOutputTokens });
+  assert.equal(result.chapters[0].blockId, "documento-completo");
+});
+```
+
+por:
+
+```ts
+test("teto de cobertura por orcamento de output evita um warning desnecessario quando o orcamento real da chamada limita o texto-fonte", () => {
+  // Reproduz o bug real: mergeContentBlocksIntoOne junta N blocos originais
+  // num so ("documento-completo"), cujo conteudo_aprofundado bruto cresce
+  // com N — mas markdown/audioScript/slides saem de UMA UNICA chamada com
+  // orcamento de output fixo (maxOutputTokens). Sem teto, a exigencia de 75%
+  // do texto-fonte supera o que a resposta consegue fisicamente conter, e o
+  // lote sempre dispara um warning de cobertura baixa, mesmo quando a
+  // resposta ja e razoavelmente boa pro orcamento real disponivel.
+  const bigBlock = (index: number): EnrichedContentBlock => ({
+    ...block(index),
+    conteudo_aprofundado: `Conteudo aprofundado do bloco ${index}. `.repeat(120),
+  });
+  const merged = mergeContentBlocksIntoOne(
+    Array.from({ length: 10 }, (_, i) => bigBlock(i + 1)),
+  );
+  const maxOutputTokens = 16_384;
+  const markdownUnit =
+    "Síntese coesa cobrindo os conceitos dos blocos mesclados, sem repetir "
+    + "o mesmo assunto em seções diferentes. ";
+  const achievableMarkdown = `## Documento completo\n\n${markdownUnit.repeat(400)}`;
+  const rawResponse = {
+    chapters: [{
+      blockId: "documento-completo",
+      markdown: achievableMarkdown,
+      audioScript: "Narração completa do documento. ".repeat(450),
+      slides: [chapter("documento-completo", "UM").slides[0]],
+    }],
+    confidence: 0.9,
+  };
+
+  const originalWarn = console.warn;
+
+  // Sem o teto (maxOutputTokens omitido), a exigencia bruta de 50%/75% do
+  // texto-fonte mesclado ultrapassa uma resposta ja "razoavelmente boa"
+  // (aqui, o áudio é o primeiro a esbarrar nisso) -> dispara warning, mas
+  // NAO lanca erro.
+  const warningsWithoutCap: unknown[][] = [];
+  console.warn = (...args: unknown[]) => { warningsWithoutCap.push(args); };
+  let withoutCap;
+  try {
+    withoutCap = validateBlockBatchGeneration([merged], rawResponse, 1);
+  } finally {
+    console.warn = originalWarn;
+  }
+
+  // Com o teto (orcamento real da chamada), a MESMA resposta passa sem
+  // sequer disparar o warning.
+  const warningsWithCap: unknown[][] = [];
+  console.warn = (...args: unknown[]) => { warningsWithCap.push(args); };
+  let withCap;
+  try {
+    withCap = validateBlockBatchGeneration([merged], rawResponse, 1, { maxOutputTokens });
+  } finally {
+    console.warn = originalWarn;
+  }
+
+  assert.equal(withoutCap.chapters[0].blockId, "documento-completo");
+  assert.equal(withCap.chapters[0].blockId, "documento-completo");
+  assert.ok(warningsWithoutCap.length > 0, "esperava warning sem o teto de orcamento");
+  assert.equal(warningsWithCap.length, 0);
+});
+```
+
+Trocar (linhas 248-255):
+
+```ts
+test("recusa audioScript curto quando requireAudio nao e passado (default preserva o comportamento atual)", () => {
+  const shortAudio = chapter("bloco-01", "UM");
+  shortAudio.audioScript = "curto";
+  assert.throws(
+    () => validateBlockBatchGeneration([block(1)], { chapters: [shortAudio], confidence: 0.9 }, 1),
+    /Áudio.*resumido/,
+  );
+});
+```
+
+por:
+
+```ts
+test("aceita audioScript curto com um warning quando requireAudio nao e passado (default so avisa, nao bloqueia)", () => {
+  const shortAudio = chapter("bloco-01", "UM");
+  shortAudio.audioScript = "curto";
+
+  const warnings: unknown[][] = [];
+  const originalWarn = console.warn;
+  console.warn = (...args: unknown[]) => { warnings.push(args); };
+  let result;
+  try {
+    result = validateBlockBatchGeneration([block(1)], { chapters: [shortAudio], confidence: 0.9 }, 1);
+  } finally {
+    console.warn = originalWarn;
+  }
+
+  assert.equal(result.chapters[0].audioScript, "curto");
+  assert.equal(warnings.length, 1);
+  assert.equal(warnings[0][0], "[content-coverage]");
+  assert.match(String(warnings[0][1]), /Áudio.*abaixo do mínimo de cobertura/);
+});
+```
+
+- [ ] **Step 2: Rodar os testes e confirmar que falham**
+
+Run: `cd microservice && npx tsx --test src/services/geminiBlockBatches.test.ts`
+Expected: os testes atualizados falham (o código de produção ainda lança
+`throw`, não `console.warn`) — os demais testes do arquivo continuam
+passando.
+
+- [ ] **Step 3: Trocar `throw` por `console.warn` nas duas checagens de tamanho**
+
+Em `microservice/src/services/geminiService.ts`, dentro de
+`validateBlockBatchGeneration`, trocar:
+
+```ts
+    if (normalizedText(markdown).length < minimumMarkdownLength) {
+      throw new Error(
+        `Markdown do bloco ${blockId} foi resumido abaixo do mínimo de cobertura `
+        + `(recebido=${normalizedText(markdown).length} chars, `
+        + `minimo=${minimumMarkdownLength} chars, `
+        + `fonte=${normalizedText(block.conteudo_aprofundado).length} chars, `
+        + `maxOutputTokens=${options.maxOutputTokens ?? "n/d"}).`,
+      );
+    }
+```
+
+por:
+
+```ts
+    if (normalizedText(markdown).length < minimumMarkdownLength) {
+      // Nao bloqueia a geracao: so registra em log. Um projeto de referencia
+      // investigado nao tem esse tipo de checagem e "nunca falha" por causa
+      // disso — preferimos aceitar conteudo resumido a exigir a OpenAI como
+      // recuperacao obrigatoria (ver adendo na spec desta feature).
+      console.warn(
+        "[content-coverage]",
+        `Markdown do bloco ${blockId} veio abaixo do mínimo de cobertura esperado `
+        + `(recebido=${normalizedText(markdown).length} chars, `
+        + `minimo=${minimumMarkdownLength} chars, `
+        + `fonte=${normalizedText(block.conteudo_aprofundado).length} chars, `
+        + `maxOutputTokens=${options.maxOutputTokens ?? "n/d"}).`,
+      );
+    }
+```
+
+E trocar:
+
+```ts
+    if (requireAudio && normalizedText(audioScript).length < minimumAudioLength) {
+      throw new Error(
+        `Áudio do bloco ${blockId} foi resumido abaixo do mínimo de cobertura `
+        + `(recebido=${normalizedText(audioScript).length} chars, `
+        + `minimo=${minimumAudioLength} chars, `
+        + `fonte=${normalizedText(block.conteudo_aprofundado).length} chars, `
+        + `maxOutputTokens=${options.maxOutputTokens ?? "n/d"}).`,
+      );
+    }
+```
+
+por:
+
+```ts
+    if (requireAudio && normalizedText(audioScript).length < minimumAudioLength) {
+      console.warn(
+        "[content-coverage]",
+        `Áudio do bloco ${blockId} veio abaixo do mínimo de cobertura esperado `
+        + `(recebido=${normalizedText(audioScript).length} chars, `
+        + `minimo=${minimumAudioLength} chars, `
+        + `fonte=${normalizedText(block.conteudo_aprofundado).length} chars, `
+        + `maxOutputTokens=${options.maxOutputTokens ?? "n/d"}).`,
+      );
+    }
+```
+
+- [ ] **Step 4: Rodar os testes e confirmar que passam**
+
+Run: `cd microservice && npx tsx --test src/services/geminiBlockBatches.test.ts`
+Expected: todos os testes do arquivo passam.
+
+- [ ] **Step 5: Rodar a suíte completa do microservice**
+
+Run: `cd microservice && npx tsc --noEmit && npm test`
+Expected: sem erros de tipo; suíte completa passa (nenhum outro teste
+depende do `throw` removido — `contentGenerationService.test.ts` usa
+funções `validateResult` mockadas próprias, não a `validateBlockBatchGeneration`
+real).
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add microservice/src/services/geminiService.ts microservice/src/services/geminiBlockBatches.test.ts
+git commit -m "fix(microservice): relaxa gate de cobertura minima pra warning, sem bloquear a geracao"
+```
+
+---
+
+### Task 6: Revisão final da branch
 
 - [ ] **Step 1: Rodar a suíte completa do microservice uma última vez**
 
@@ -618,6 +949,7 @@ usada nas tasks anteriores.
 - [ ] **Step 2: Revisar o diff completo da branch contra `main`**
 
 Run: `git diff main --stat` e `git log main..HEAD --oneline`
-Expected: 4 commits (Tasks 1-4), tocando exatamente
+Expected: commits das Tasks 1-5, tocando exatamente
 `contentGenerationService.ts`, `contentGenerationService.test.ts`,
-`geminiService.ts`, `geminiKeyRotation.test.ts`, `.env.example`.
+`geminiService.ts`, `geminiBlockBatches.test.ts`, `geminiKeyRotation.test.ts`,
+`.env.example`, `README.md`.
