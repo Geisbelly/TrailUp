@@ -10,6 +10,7 @@ import {
   buildPresentationMaterialMetadata,
   renderAndUploadPresentation,
   resolvePresentationRendering,
+  buildApresentacaoSlidesPayload,
 } from "../server";
 import {
   buildPresentationVersionMetadata,
@@ -637,7 +638,10 @@ describe("resolvePresentationRendering", () => {
 
   it("usa o motor imersivo quando useImmersiveEngine e true", async () => {
     let generateAssetsCalls = 0;
-    const fakeRenderImmersive = async () => "<html>deck imersivo</html>";
+    const fakeRenderImmersive = async () => ({
+      deckHtml: "<html>deck imersivo</html>",
+      slideHtmls: ["<section>a</section>"],
+    });
     const fakeGenerateAssets = async () => {
       generateAssetsCalls += 1;
       throw new Error("nao deveria ser chamado");
@@ -653,6 +657,7 @@ describe("resolvePresentationRendering", () => {
     );
 
     assert.equal(result.immersiveDeckHtml, "<html>deck imersivo</html>");
+    assert.deepEqual(result.immersiveSlideHtmls, ["<section>a</section>"]);
     assert.equal(result.slidesComImagens, slides);
     assert.equal(generateAssetsCalls, 0);
   });
@@ -679,6 +684,7 @@ describe("resolvePresentationRendering", () => {
     );
 
     assert.equal(result.immersiveDeckHtml, null);
+    assert.equal(result.immersiveSlideHtmls, null);
     assert.equal(renderImmersiveCalls, 0);
     // slidesComImagens reflete o enriquecimento com os assets do fake.
     assert.equal(result.slidesComImagens.length, 1);
@@ -709,8 +715,46 @@ describe("resolvePresentationRendering", () => {
     );
 
     assert.equal(result.immersiveDeckHtml, null);
+    assert.equal(result.immersiveSlideHtmls, null);
     assert.equal(generateAssetsCalls, 1);
     assert.equal(result.slidesComImagens.length, 1);
+  });
+});
+
+// ─── buildApresentacaoSlidesPayload (payload.slides: imersivo vs estruturado) ─
+
+describe("buildApresentacaoSlidesPayload", () => {
+  const slide: SlideContent = {
+    title: "Slide 1",
+    topics: ["DNS"],
+    explanation: "exp1",
+    visualDescription: "vd1",
+    characterQuote: "q1",
+    characterAction: "explaining",
+    imagePrompt: "prompt1",
+    iconPrompts: [],
+    sourceIds: [],
+  };
+  const parts = [
+    { slides: [slide] },
+    { slides: [{ ...slide, title: "Slide 2" }] },
+  ];
+
+  it("usa os fragmentos HTML por slide do motor imersivo quando presentes", () => {
+    const result = buildApresentacaoSlidesPayload(parts, ["<section>s0</section>", "<section>s1</section>"]);
+
+    assert.deepEqual(result, [
+      { index: 0, html: "<section>s0</section>" },
+      { index: 1, html: "<section>s1</section>" },
+    ]);
+  });
+
+  it("cai pro flatten das partes estruturadas quando nao ha HTML imersivo", () => {
+    const withoutImmersive = buildApresentacaoSlidesPayload(parts, null);
+    const withUndefined = buildApresentacaoSlidesPayload(parts);
+
+    assert.deepEqual(withoutImmersive, [parts[0].slides[0], parts[1].slides[0]]);
+    assert.deepEqual(withUndefined, [parts[0].slides[0], parts[1].slides[0]]);
   });
 });
 

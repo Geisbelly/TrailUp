@@ -132,14 +132,15 @@ test("renderImmersiveSlides gera 1 chamada por slide, na ordem, e monta o deck",
     return `<section>slide ${input.index}</section>`;
   };
 
-  const deckHtml = await renderImmersiveSlides(slides, "mastermind", { generateSlideFn: fakeGenerate });
+  const result = await renderImmersiveSlides(slides, "mastermind", { generateSlideFn: fakeGenerate });
 
   assert.equal(calls.length, 2);
   assert.equal(calls[0].index, 0);
   assert.equal(calls[1].index, 1);
   assert.match(calls[0].contentSummary, /Slide 1/);
   assert.match(calls[0].contentSummary, /exp1/);
-  assert.match(deckHtml, /<iframe/);
+  assert.deepEqual(result.slideHtmls, ["<section>slide 0</section>", "<section>slide 1</section>"]);
+  assert.match(result.deckHtml, /<iframe/);
 });
 
 test("renderImmersiveSlides propaga o erro se qualquer slide falhar (sem deck parcial)", async () => {

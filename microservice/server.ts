@@ -453,6 +453,21 @@ async function archiveToSupabase(params: {
  * O endpoint /api/v1/archive (uso avulso, sem personalizacao) continua na
  * versao single-file (archiveToSupabase) - nao precisa dessa divisao.
  */
+// Extraida como funcao pura pra ser testavel sem mockar Supabase: decide se
+// o payload.slides persistido e o array de fragmentos HTML por slide do
+// motor imersivo ([{index, html}]) ou a estrutura SlideContent[] antiga
+// (title/topics/explanation/etc.), flatten das partes do pipeline de
+// imagem+template.
+export function buildApresentacaoSlidesPayload(
+  parts: Array<{ slides: SlideContent[] }>,
+  prebuiltImmersiveSlideHtmls?: string[] | null,
+): Array<SlideContent | { index: number; html: string }> {
+  if (prebuiltImmersiveSlideHtmls) {
+    return prebuiltImmersiveSlideHtmls.map((html, index) => ({ index, html }));
+  }
+  return parts.flatMap((p) => p.slides);
+}
+
 async function archiveMultiPartToSupabase(params: {
   profile:         BrainHexProfile;
   storagePath:     string;
@@ -464,6 +479,7 @@ async function archiveMultiPartToSupabase(params: {
   fence?:           GenerationFence;
   log?:            Logger;
   prebuiltPresentationHtml?: string | null;
+  prebuiltImmersiveSlideHtmls?: string[] | null;
 }): Promise<{
   audioMp3Url: string | null;
   markdownUrl: string | null;
@@ -605,7 +621,7 @@ async function archiveMultiPartToSupabase(params: {
       },
       apresentacao: {
         payload: {
-          slides: parts.flatMap((p) => p.slides),
+          slides: buildApresentacaoSlidesPayload(parts, params.prebuiltImmersiveSlideHtmls),
           tema_visual: presentationTheme,
         },
         metadata: buildPresentationMaterialMetadata({
@@ -759,6 +775,7 @@ async function runPersonalizacaoJobWithTimeout(
 
 interface PresentationRenderingResult {
   immersiveDeckHtml: string | null;
+  immersiveSlideHtmls: string[] | null;
   slidesComImagens: SlideContent[];
 }
 
@@ -789,8 +806,8 @@ export async function resolvePresentationRendering(
 
   if (useImmersiveEngine) {
     try {
-      const immersiveDeckHtml = await renderImmersive(slides, profile);
-      return { immersiveDeckHtml, slidesComImagens: slides };
+      const { deckHtml, slideHtmls } = await renderImmersive(slides, profile);
+      return { immersiveDeckHtml: deckHtml, immersiveSlideHtmls: slideHtmls, slidesComImagens: slides };
     } catch (error) {
       jobLog.error("falha no motor imersivo; caindo para o pipeline de imagem+template", { err: error });
     }
@@ -803,7 +820,7 @@ export async function resolvePresentationRendering(
   const slidesComImagens = assets
     ? enrichSlidesWithImages(slides, assets.imagem_referencia, assets.icones, assets.renderMode)
     : slides;
-  return { immersiveDeckHtml: null, slidesComImagens };
+  return { immersiveDeckHtml: null, immersiveSlideHtmls: null, slidesComImagens };
 }
 
 async function runPipeline(
@@ -888,7 +905,7 @@ async function runPipeline(
   // ja encapsula sua propria queda pro pipeline de imagem+template em caso de
   // falha (motor imersivo ou assets), sem propagar erro pra runPipeline - ver
   // comentario na funcao.
-  const [audioSettled, { immersiveDeckHtml, slidesComImagens }] = await Promise.all([
+  const [audioSettled, { immersiveDeckHtml, immersiveSlideHtmls, slidesComImagens }] = await Promise.all([
     Promise.allSettled(partsForAudio.map((part) => generatePartAudio(part.audioScript))),
     resolvePresentationRendering(resultado.slides, profile, presentationPlan, useImmersiveEngine, jobLog),
   ]);
@@ -927,6 +944,7 @@ async function runPipeline(
     fence,
     log:              jobLog,
     prebuiltPresentationHtml: immersiveDeckHtml,
+    prebuiltImmersiveSlideHtmls: immersiveSlideHtmls,
   });
   if (!archived.persisted) {
     throw new Error("merge persistido ausente para a personalizacao");

@@ -2272,6 +2272,11 @@ export interface RenderImmersiveSlidesOptions {
   generateSlideFn?: (input: ImmersiveSlideInput) => Promise<string>;
 }
 
+export interface ImmersiveDeckResult {
+  deckHtml: string;
+  slideHtmls: string[];
+}
+
 /**
  * Gera o deck imersivo completo a partir do array de SlideContent já
  * decidido pelo pipeline existente (lotes por bloco, inalterado) — uma
@@ -2280,12 +2285,17 @@ export interface RenderImmersiveSlidesOptions {
  * de encadeamento slide-a-slide). Se QUALQUER slide falhar após esgotar as
  * tentativas internas de generateImmersiveSlideHtml, propaga o erro — não
  * existe "deck parcialmente imersivo"; o chamador decide o fallback.
+ *
+ * Retorna tanto o deck já montado (`deckHtml`) quanto os fragmentos HTML
+ * individuais de cada slide, na ordem original (`slideHtmls`) — necessário
+ * para persistir/regenerar slides individuais depois, sem precisar re-parsear
+ * o HTML de volta a partir do documento já montado.
  */
 export async function renderImmersiveSlides(
   slides: SlideContent[],
   profile: BrainHexProfile,
   options: RenderImmersiveSlidesOptions = {},
-): Promise<string> {
+): Promise<ImmersiveDeckResult> {
   const generateSlide = options.generateSlideFn ?? generateImmersiveSlideHtml;
   const concurrency = Math.max(1, options.concurrency ?? resolveImmersiveSlideConcurrency());
 
@@ -2297,7 +2307,8 @@ export async function renderImmersiveSlides(
       profile,
     }));
 
-  return buildImmersiveDeckHtml(htmls, profile);
+  const deckHtml = buildImmersiveDeckHtml(htmls, profile);
+  return { deckHtml, slideHtmls: htmls };
 }
 
 /**
