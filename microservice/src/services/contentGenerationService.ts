@@ -192,6 +192,21 @@ class ContentGenerationQualityError extends Error {
   }
 }
 
+async function generateAndValidateContent(
+  generator: StructuredContentGenerator,
+  call: StructuredContentGenerationCall,
+  provider: ContentGenerationProvider,
+  validateResult?: StructuredContentGenerationOptions["validateResult"],
+): Promise<unknown> {
+  const value = await generator(call);
+  try {
+    validateResult?.(value, provider);
+  } catch (error) {
+    throw new ContentGenerationQualityError(provider, error);
+  }
+  return value;
+}
+
 function getOpenAI(): OpenAI {
   if (openai) return openai;
   const apiKey = String(process.env.OPENAI_API_KEY ?? "").trim();
@@ -416,20 +431,6 @@ async function generateAfterPrimaryGeminiFailure(
     environment: Record<string, string | undefined>;
   },
 ): Promise<StructuredContentGenerationResult> {
-  const generateAndValidate = async (
-    generator: StructuredContentGenerator,
-    currentCall: StructuredContentGenerationCall,
-    provider: ContentGenerationProvider,
-  ): Promise<unknown> => {
-    const value = await generator(currentCall);
-    try {
-      options.validateResult?.(value, provider);
-    } catch (error) {
-      throw new ContentGenerationQualityError(provider, error);
-    }
-    return value;
-  };
-
   const maxAttempts = positiveInteger(
     options.environment.CONTENT_GENERATION_OPENAI_MAX_ATTEMPTS,
     DEFAULT_OPENAI_QUALITY_MAX_ATTEMPTS,
@@ -455,10 +456,11 @@ async function generateAfterPrimaryGeminiFailure(
 
     try {
       return {
-        value: await generateAndValidate(
+        value: await generateAndValidateContent(
           options.generateWithOpenAI,
           currentCall,
           "openai",
+          options.validateResult,
         ),
         provider: "openai",
         model: call.openaiModel,
@@ -532,12 +534,12 @@ export async function generateStructuredContentWithFallback(
       };
 
     try {
-      const value = await options.generateWithGemini(currentCall);
-      try {
-        options.validateResult?.(value, "gemini");
-      } catch (error) {
-        throw new ContentGenerationQualityError("gemini", error);
-      }
+      const value = await generateAndValidateContent(
+        options.generateWithGemini,
+        currentCall,
+        "gemini",
+        options.validateResult,
+      );
       return {
         value,
         provider: "gemini",
