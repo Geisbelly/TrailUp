@@ -42,8 +42,9 @@ export function buildImmersiveDeckHtml(
     .map((fragment, index) => {
       const srcdoc = escapeForSrcdocAttribute(wrapSlideFragment(fragment));
       const activeClass = index === 0 ? " active" : "";
+      const tabindex = index === 0 ? "0" : "-1";
       return `<iframe class="slide-frame${activeClass}" data-index="${index}" `
-        + `sandbox="allow-scripts" srcdoc="${srcdoc}"></iframe>`;
+        + `tabindex="${tabindex}" sandbox="allow-scripts" srcdoc="${srcdoc}"></iframe>`;
     })
     .join("\n");
 
@@ -75,32 +76,51 @@ export function buildImmersiveDeckHtml(
   }
   .dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.25); }
   .dot.active { background: var(--accent); width: 18px; border-radius: 4px; }
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip: rect(0 0 0 0); white-space: nowrap;
+  }
 </style>
 </head>
 <body>
   <div class="deck" id="deck">
 ${frames}
-    <div class="nav-zone prev" data-dir="-1"></div>
-    <div class="nav-zone next" data-dir="1"></div>
+    <div class="nav-zone prev" data-dir="-1" role="button" tabindex="0" aria-label="Slide anterior"></div>
+    <div class="nav-zone next" data-dir="1" role="button" tabindex="0" aria-label="Próximo slide"></div>
     <div class="dots">${dots}</div>
+    <div id="sr-status" class="sr-only" aria-live="polite">Slide 1 de ${slidesHtml.length}</div>
   </div>
   <script>
     (function () {
       var frames = Array.prototype.slice.call(document.querySelectorAll(".slide-frame"));
       var dots = Array.prototype.slice.call(document.querySelectorAll(".dot"));
+      var srStatus = document.getElementById("sr-status");
       var current = 0;
       function show(index) {
         if (index < 0 || index >= frames.length) return;
         frames[current].classList.remove("active");
+        frames[current].setAttribute("tabindex", "-1");
         dots[current].classList.remove("active");
         current = index;
         frames[current].classList.add("active");
+        frames[current].setAttribute("tabindex", "0");
         dots[current].classList.add("active");
+        srStatus.textContent = "Slide " + (current + 1) + " de " + frames.length;
       }
       Array.prototype.slice.call(document.querySelectorAll(".nav-zone")).forEach(function (zone) {
         zone.addEventListener("click", function () {
           show(current + Number(zone.getAttribute("data-dir")));
         });
+        zone.addEventListener("keydown", function (e) {
+          if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") {
+            e.preventDefault();
+            show(current + Number(zone.getAttribute("data-dir")));
+          }
+        });
+      });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "ArrowLeft") show(current - 1);
+        else if (e.key === "ArrowRight") show(current + 1);
       });
       var touchStartX = null;
       var deckEl = document.getElementById("deck");

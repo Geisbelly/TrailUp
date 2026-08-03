@@ -50,3 +50,66 @@ test("viewport é responsivo (largura do dispositivo, não fixa)", () => {
   assert.match(html, /width=device-width/);
   assert.doesNotMatch(html, /width=1280/);
 });
+
+function unescapeSrcdocAttribute(value: string): string {
+  // ordem inversa de escapeForSrcdocAttribute: lt/gt/quot primeiro, &amp; por
+  // último — assim um &amp;quot; (produzido quando a ordem de escape original
+  // está errada, isto é, quando " é escapado antes de &) não é confundido
+  // com um &quot; legítimo.
+  return value
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, "&");
+}
+
+test("escapa & antes de \"/</> no srcdoc, sem corromper a CSP do mini-documento", () => {
+  const fragment = `<section data-note="A & B">referência</section>`;
+  const html = buildImmersiveDeckHtml([fragment], "seeker");
+
+  const match = html.match(/srcdoc="([^]*?)"><\/iframe>/);
+  assert.ok(match, "atributo srcdoc não encontrado no iframe");
+  const miniDocument = unescapeSrcdocAttribute(match![1]);
+
+  // se a ordem de escape estivesse errada (" antes de &), o & inserido pelo
+  // escape de aspas seria re-escapado, sobrando "&amp;quot;" em vez de um
+  // "&quot;" limpo — o que, uma vez desfeito aqui, deixaria "&quot;" residual
+  // em vez das aspas literais abaixo.
+  assert.doesNotMatch(miniDocument, /&quot;/);
+  assert.doesNotMatch(miniDocument, /&amp;quot;/);
+  assert.match(
+    miniDocument,
+    /content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; font-src data:"/,
+  );
+  assert.match(miniDocument, /data-note="A & B"/);
+});
+
+test("região aria-live anuncia o slide atual", () => {
+  const html = buildImmersiveDeckHtml(
+    ["<section>A</section>", "<section>B</section>"],
+    "seeker",
+  );
+  assert.match(html, /aria-live="polite"/);
+  assert.match(html, /Slide 1 de 2/);
+});
+
+test("zonas de navegação são acessíveis por teclado e leitor de tela", () => {
+  const html = buildImmersiveDeckHtml(["<section>A</section>"], "seeker");
+  assert.match(html, /aria-label="Slide anterior"/);
+  assert.match(html, /aria-label="Próximo slide"/);
+
+  const prevZoneTag = html.match(/<div class="nav-zone prev"[^>]*>/)?.[0];
+  const nextZoneTag = html.match(/<div class="nav-zone next"[^>]*>/)?.[0];
+  assert.ok(prevZoneTag);
+  assert.ok(nextZoneTag);
+  assert.match(prevZoneTag!, /role="button"/);
+  assert.match(prevZoneTag!, /tabindex="0"/);
+  assert.match(nextZoneTag!, /role="button"/);
+  assert.match(nextZoneTag!, /tabindex="0"/);
+});
+
+test("script embutido conecta as setas do teclado à navegação", () => {
+  const html = buildImmersiveDeckHtml(["<section>A</section>"], "seeker");
+  assert.match(html, /ArrowLeft/);
+  assert.match(html, /ArrowRight/);
+});
