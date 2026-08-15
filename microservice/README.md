@@ -4,7 +4,7 @@ Microservico de geracao de materiais personalizados por perfil BrainHex.
 
 ## O que este servico faz
 - Recebe contexto pedagogico de personalizacao.
-- Gera markdown, audio e apresentacao com Gemini.
+- Gera markdown e audio com Gemini; dispara o BrainHexPDF (repo externo) para gerar a apresentacao HTML interativa.
 - Faz upload dos artefatos no Supabase Storage.
 - Atualiza `conteudo_personalizado.materiais` com status por artefato.
 
@@ -32,6 +32,9 @@ Microservico de geracao de materiais personalizados por perfil BrainHex.
 - `GEMINI_API_KEY`
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
+- `BRAINHEXPDF_URL` (opcional — sem ela, materiais.apresentacao fica "failed")
+- `BRAINHEXPDF_SHARED_SECRET` (opcional)
+- `BRAINHEXPDF_TIMEOUT_MS` (opcional, default 120000)
 
 ## Comandos
 ```bash
@@ -52,8 +55,8 @@ src/
     textSanitize.ts       # Latin-1 sanitizer para jsPDF (testado)
     wav.ts                # header WAV para PCM Gemini TTS (testado)
   services/
-    geminiService.ts      # texto/slides/áudio/imagens via Gemini
-    pdfService.ts         # PDF 2-painéis dos slides (jsPDF)
+    geminiService.ts      # texto/slides/áudio via Gemini
+    brainhexPdfClient.ts  # cliente HTTP do BrainHexPDF (apresentação HTML)
     supabaseService.ts    # storage + merge defensivo + heartbeat + recovery
   types/index.ts
 ```
