@@ -7,6 +7,6 @@ geração, evitando que um deploy antigo produza ou preserve o layout legado.
 """
 
 MEDIA_PIPELINE_VERSION = "2026-07-30.1"
-PRESENTATION_ENGINE_VERSION = "html-direct-v1"
+PRESENTATION_ENGINE_VERSION = "brainhexpdf-v1"
 PRESENTATION_DESIGN_VERSION = "slidesgo-editorial-v3"
 CONTENT_ENRICHMENT_PROVIDER = "openai"
