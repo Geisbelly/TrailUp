@@ -5,7 +5,6 @@ import { randomUUID } from "crypto";
 import {
   processMediaWithGemini,
   generateNaturalAudio,
-  generateSlideImage,
 } from "./src/services/geminiService";
 import { BrainHexProfile } from "./src/constants/brainHex";
 import {
@@ -20,7 +19,6 @@ import {
 } from "./src/services/supabaseService";
 import { renderAndStore, type RenderAndStoreResult } from "./src/services/brainhexPdfClient";
 import { createLogger, type Logger } from "./src/lib/logger";
-import { enrichSlidesWithImages } from "./src/lib/slideEnricher";
 import { validatePersonalizarBody } from "./src/lib/validators";
 import { createRateLimiter } from "./src/lib/rateLimit";
 
