@@ -97,9 +97,37 @@ function isIntroBlock(block: ContentBlock) {
   return id.startsWith("intro-");
 }
 
-function heroMatchesType(tipo: ContentBlockType, heroFormat?: PersonalizedHeroFormat | null) {
+/**
+ * Computes the "effective" tipo used for ordering/scoring purposes only.
+ *
+ * A block whose real `tipo` is "embed" (e.g. an HTML presentation routed
+ * through the embed/WebView rendering path) can carry
+ * `payload.metadata.origem === "apresentacao"` to signal that, for ordering
+ * purposes, it should be treated as if it were `tipo: "apresentacao"`.
+ *
+ * This never changes `block.tipo` itself — rendering and every other code
+ * path keep using the real tipo.
+ */
+function effectiveOrderingTipo(block: ContentBlock): ContentBlockType {
+  if (block.tipo === "embed") {
+    const payload = block.payload;
+    const metadata =
+      payload && typeof payload === "object" && "metadata" in payload
+        ? (payload as { metadata?: unknown }).metadata
+        : undefined;
+    if (
+      metadata &&
+      typeof metadata === "object" &&
+      (metadata as Record<string, unknown>).origem === "apresentacao"
+    ) {
+      return "apresentacao";
+    }
+  }
+  return normalizeBlockType(block.tipo);
+}
+
+function heroMatchesType(normalizedTipo: ContentBlockType, heroFormat?: PersonalizedHeroFormat | null) {
   if (!heroFormat) return false;
-  const normalizedTipo = normalizeBlockType(tipo);
   if (heroFormat === "texto" && normalizedTipo === "texto") return true;
   return normalizedTipo === heroFormat;
 }
@@ -110,12 +138,12 @@ function blockPriorityScore(
   options: OrderContentBlockOptions
 ) {
   const priority = MODE_BASE_PRIORITY[options.modo];
-  const normalizedTipo = normalizeBlockType(block.tipo);
+  const normalizedTipo = effectiveOrderingTipo(block);
   const baseIndex = priority.indexOf(normalizedTipo);
   let score = baseIndex === -1 ? 999 : baseIndex * 10;
 
   if (isIntroBlock(block)) score -= 120;
-  if (heroMatchesType(block.tipo, options.heroFormat)) score -= 80;
+  if (heroMatchesType(normalizedTipo, options.heroFormat)) score -= 80;
 
   if (options.uiConfig?.precisa_texto && isTextualType(block.tipo)) {
     score -= 22;
@@ -123,11 +151,11 @@ function blockPriorityScore(
 
   if (options.uiConfig?.ritmo_conteudo === "acelerado") {
     if (["audio", "video", "cards", "imagem"].includes(normalizedTipo)) score -= 16;
-    if (isTextualType(block.tipo) || isDocumentType(block.tipo)) score += 6;
+    if (isTextualType(block.tipo) || isDocumentType(normalizedTipo)) score += 6;
   }
 
   if (options.uiConfig?.ritmo_conteudo === "lento") {
-    if (isTextualType(block.tipo) || isDocumentType(block.tipo)) score -= 14;
+    if (isTextualType(block.tipo) || isDocumentType(normalizedTipo)) score -= 14;
     if (["audio", "video", "cards"].includes(normalizedTipo)) score += 8;
   }
 

@@ -1070,6 +1070,7 @@ function normalizeMediaBlocks(
           metadata: {
             ...metadata,
             defaultDisplayMode: "rolagem",
+            origem: "apresentacao",
           },
         },
         key
