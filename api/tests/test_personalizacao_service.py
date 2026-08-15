@@ -61,6 +61,109 @@ def test_source_hash_changes_when_pipeline_version_changes(monkeypatch) -> None:
     assert personalizacao_service._build_source_hash(**kwargs) != current_hash
 
 
+def test_source_hash_ignores_card_content_edits() -> None:
+    """gerar_cards_direto/o prompt de geracao nunca le a tabela `cards` (so
+    le topico/conteudos/atividades.titulo|descricao) - editar titulo,
+    descricao ou ordem de um card no console do professor nao deveria mudar
+    o source_hash nem forcar regeneracao pra turma toda, ja que o conteudo
+    gerado seria identico (o card editado nunca influenciou o prompt).
+    """
+    kwargs = {
+        "classe_id": 32,
+        "topico_id": 121,
+        "conteudo_id": 125,
+        "materiais_origem": [{"source_id": "fonte:45", "texto_base": "Conteudo base"}],
+        "cards_topico": [
+            {"id": 2054, "conteudo_id": 125, "titulo": "Card 1", "descricao": "Frente/verso", "ordem": 1},
+        ],
+    }
+    hash_antes = personalizacao_service._build_source_hash(**kwargs)
+
+    kwargs_editado = dict(kwargs)
+    kwargs_editado["cards_topico"] = [
+        {"id": 2054, "conteudo_id": 125, "titulo": "Card 1 (editado)", "descricao": "Verso novo", "ordem": 2},
+    ]
+    hash_depois = personalizacao_service._build_source_hash(**kwargs_editado)
+
+    assert hash_antes == hash_depois
+
+
+def test_source_hash_ignores_questao_content_edits() -> None:
+    """Mesmo raciocinio de test_source_hash_ignores_card_content_edits: a
+    tabela `questoes` nunca chega no prompt de geracao (fetch_personalizacao_context
+    nao inclui `questoes` no conteudo_classe retornado) - editar o enunciado
+    ou tipo de uma questao nao deveria invalidar o cache de personalizacao.
+    """
+    kwargs = {
+        "classe_id": 32,
+        "topico_id": 121,
+        "conteudo_id": 125,
+        "materiais_origem": [{"source_id": "fonte:45", "texto_base": "Conteudo base"}],
+        "questoes_topico": [
+            {"id": 900, "atividade_id": 50, "enunciado": "Qual a capital?", "tipo": "multipla_escolha"},
+        ],
+    }
+    hash_antes = personalizacao_service._build_source_hash(**kwargs)
+
+    kwargs_editado = dict(kwargs)
+    kwargs_editado["questoes_topico"] = [
+        {"id": 900, "atividade_id": 50, "enunciado": "Enunciado totalmente diferente", "tipo": "dissertativa"},
+    ]
+    hash_depois = personalizacao_service._build_source_hash(**kwargs_editado)
+
+    assert hash_antes == hash_depois
+
+
+def test_source_hash_changes_when_atividade_titulo_muda() -> None:
+    """`atividades.titulo`/`descricao` SAO lidos por gerar_cards_direto
+    (conteudo_estudado["atividades"]) - editar esses campos deve continuar
+    invalidando o source_hash, diferente de cards/questoes.
+    """
+    kwargs = {
+        "classe_id": 32,
+        "topico_id": 121,
+        "conteudo_id": 125,
+        "materiais_origem": [{"source_id": "fonte:45", "texto_base": "Conteudo base"}],
+        "atividades_topico": [
+            {"id": 50, "titulo": "Quiz 1", "descricao": "Descricao", "tipo": "quiz", "pontuacao_maxima": 10},
+        ],
+    }
+    hash_antes = personalizacao_service._build_source_hash(**kwargs)
+
+    kwargs_editado = dict(kwargs)
+    kwargs_editado["atividades_topico"] = [
+        {"id": 50, "titulo": "Quiz 1 (titulo mudou)", "descricao": "Descricao", "tipo": "quiz", "pontuacao_maxima": 10},
+    ]
+    hash_depois = personalizacao_service._build_source_hash(**kwargs_editado)
+
+    assert hash_antes != hash_depois
+
+
+def test_source_hash_ignores_atividade_fields_not_used_by_prompt() -> None:
+    """`atividades.tipo`/`pontuacao_maxima`/`metadata` nunca chegam no prompt
+    (gerar_cards_direto so le titulo/descricao/enunciado) - mudar so esses
+    campos nao deveria invalidar o source_hash.
+    """
+    kwargs = {
+        "classe_id": 32,
+        "topico_id": 121,
+        "conteudo_id": 125,
+        "materiais_origem": [{"source_id": "fonte:45", "texto_base": "Conteudo base"}],
+        "atividades_topico": [
+            {"id": 50, "titulo": "Quiz 1", "descricao": "Descricao", "tipo": "quiz", "pontuacao_maxima": 10, "metadata": {"a": 1}},
+        ],
+    }
+    hash_antes = personalizacao_service._build_source_hash(**kwargs)
+
+    kwargs_editado = dict(kwargs)
+    kwargs_editado["atividades_topico"] = [
+        {"id": 50, "titulo": "Quiz 1", "descricao": "Descricao", "tipo": "dissertativa", "pontuacao_maxima": 20, "metadata": {"a": 2}},
+    ]
+    hash_depois = personalizacao_service._build_source_hash(**kwargs_editado)
+
+    assert hash_antes == hash_depois
+
+
 def test_source_hash_ignores_card_id_churn_from_regeneration() -> None:
     """cards_personalizados e regerado (novos ids sequenciais, batch antigo
     marcado obsoleto) a cada tentativa de geracao de QUALQUER perfil do

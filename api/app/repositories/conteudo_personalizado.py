@@ -906,6 +906,47 @@ class ConteudoPersonalizadoRepository:
         await self.session.commit()
         return int(streak) if streak is not None else 0
 
+    async def resetar_falha_streak(
+        self,
+        *,
+        record_id: int,
+        ciclo_id: str,
+        source_hash: str,
+        generation_key: str,
+    ) -> None:
+        """Zera o contador de falhas consecutivas da mesma geracao, mantendo
+        o generation_key. Usado pelo retry manual do professor (botao
+        "tentar novamente" no console) para destravar uma geracao cujo
+        circuit breaker automatico (_falha_streak_excedido) ja parou de
+        redisparar sozinho - sem isso, o retry manual bateria no mesmo freio
+        e seria ignorado silenciosamente.
+        """
+        await self.session.execute(
+            text(
+                """
+                UPDATE conteudo_personalizado
+                SET materiais = jsonb_set(
+                  COALESCE(materiais, '{}'::jsonb),
+                  '{_geracao_falhas}',
+                  jsonb_build_object(
+                    'generation_key', CAST(:generation_key AS TEXT),
+                    'streak', 0
+                  )
+                )
+                WHERE id = :id
+                  AND ciclo_id::text = :ciclo_id
+                  AND COALESCE(source_hash, '') = :source_hash
+                """
+            ),
+            {
+                "id": record_id,
+                "ciclo_id": ciclo_id,
+                "source_hash": source_hash,
+                "generation_key": generation_key,
+            },
+        )
+        await self.session.commit()
+
     async def claim_retry_incomplete_generation(
         self,
         *,

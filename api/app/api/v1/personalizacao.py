@@ -76,6 +76,7 @@ from app.services.personalizacao_jobs import (
     JOB_KIND_CLEANUP,
     JOB_KIND_ENROLLMENT,
     JOB_KIND_FULL_SYNC,
+    JOB_KIND_MANUAL_RETRY,
     enqueue_personalizacao_job,
     get_job_detail,
 )
@@ -2440,6 +2441,42 @@ async def criar_job_class_delta(
     detail = await enqueue_personalizacao_job(
         session=session,
         kind=JOB_KIND_CLASS_DELTA,
+        classe_id=payload.classe_id,
+        trigger_source=payload.trigger_source,
+        topico_ids=payload.topico_ids,
+        conteudo_ids=payload.conteudo_ids,
+        reason=payload.reason,
+    )
+    return PersonalizacaoJobDetailResponse(
+        **_to_job_response(detail["job"]).model_dump(),
+        targets=[_to_job_target_response(item) for item in detail["targets"]],
+    )
+
+
+@router.post("/jobs/manual-retry", response_model=PersonalizacaoJobDetailResponse, status_code=status.HTTP_201_CREATED)
+async def criar_job_manual_retry(
+    payload: PersonalizacaoJobPayload,
+    user: UserContext = Depends(require_professor),
+    session: AsyncSession = Depends(get_session),
+) -> PersonalizacaoJobDetailResponse:
+    """Botao 'tentar novamente' do console, pra personalizacoes com status de
+    erro. Diferente de class-delta: kind=manual_retry reseta o circuit
+    breaker de falhas consecutivas (_falha_streak_excedido em
+    personalizacao_jobs.py) em vez de so pular quando ja esgotado - sem
+    isso, uma geracao que ja falhou 3x seguidas (default) nunca mais
+    redispara sozinha, mesmo que o professor peca explicitamente pra tentar
+    de novo.
+    """
+    access_repo = AccessRepository(session)
+    owns_class = await access_repo.professor_owns_classe(user.professor_id or user.user_id, payload.classe_id)
+    if not owns_class:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Professor sem permissao para esta classe.",
+        )
+    detail = await enqueue_personalizacao_job(
+        session=session,
+        kind=JOB_KIND_MANUAL_RETRY,
         classe_id=payload.classe_id,
         trigger_source=payload.trigger_source,
         topico_ids=payload.topico_ids,
