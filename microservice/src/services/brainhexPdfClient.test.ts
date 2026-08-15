@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { renderAndStore } from "./brainhexPdfClient";
+import { renderAndStore, getConfig } from "./brainhexPdfClient";
 
 const noopLog = {
   debug() {},
@@ -105,6 +105,21 @@ test("renderAndStore: success:false -> null", async () => {
     } finally {
       globalThis.fetch = originalFetch;
     }
+  });
+});
+
+test("getConfig: BRAINHEXPDF_TIMEOUT_MS negativo ou zero cai no default (120000)", async () => {
+  await withEnv({ BRAINHEXPDF_TIMEOUT_MS: "-1" }, async () => {
+    assert.equal(getConfig().timeoutMs, 120_000);
+  });
+  await withEnv({ BRAINHEXPDF_TIMEOUT_MS: "0" }, async () => {
+    assert.equal(getConfig().timeoutMs, 120_000);
+  });
+  await withEnv({ BRAINHEXPDF_TIMEOUT_MS: "abc" }, async () => {
+    assert.equal(getConfig().timeoutMs, 120_000);
+  });
+  await withEnv({ BRAINHEXPDF_TIMEOUT_MS: "5000" }, async () => {
+    assert.equal(getConfig().timeoutMs, 5000);
   });
 });
 

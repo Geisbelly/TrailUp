@@ -30,11 +30,15 @@ export interface RenderAndStoreParams {
   log:         Logger;
 }
 
-function getConfig() {
+export function getConfig() {
+  // Number(...) || default deixaria valores negativos (ex.: "-1") passar,
+  // pois são truthy — o setTimeout dispararia quase instantaneamente e
+  // abortaria toda chamada. Exige finito e estritamente positivo.
+  const parsedTimeout = Number(process.env.BRAINHEXPDF_TIMEOUT_MS);
   return {
     baseUrl:   (process.env.BRAINHEXPDF_URL ?? "").trim().replace(/\/+$/, ""),
     secret:    (process.env.BRAINHEXPDF_SHARED_SECRET ?? "").trim(),
-    timeoutMs: Number(process.env.BRAINHEXPDF_TIMEOUT_MS) || 120_000,
+    timeoutMs: (Number.isFinite(parsedTimeout) && parsedTimeout > 0) ? parsedTimeout : 120_000,
   };
 }
 
