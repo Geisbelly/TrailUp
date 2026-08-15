@@ -503,10 +503,9 @@ interface FonteItem {
 const ALLOW_PRIVATE_FONTE_URLS = process.env.ALLOW_PRIVATE_FONTE_URLS === "true";
 
 // Timeout duro para um job de personalização. Default 30min — cobre o pior
-// caso de PPTX grande + Gemini lento + geracao de assets SEM cap (uma cena
-// OpenAI + N icones Gemini POR slide, serial, sem pool de chaves — ver
-// generateSlideAssets). Configurável via env se um deck muito grande ainda
-// estourar isso.
+// caso de PPTX grande + Gemini lento + a chamada HTTP ao BrainHexPDF (gera o
+// deck + renderiza o HTML + sobe no Storage) demorando por parte.
+// Configurável via env se um deck muito grande ainda estourar isso.
 const MAX_JOB_DURATION_MS  = Number(process.env.MAX_JOB_DURATION_MS)  || 30 * 60 * 1000;
 // Heartbeat atualiza updated_at periodicamente durante o job, permitindo
 // threshold de recovery agressivo sem matar jobs longos em execução.
@@ -803,10 +802,10 @@ export interface AppOptions {
   renderGitCommit?:       string | null;
   /**
    * Teto de jobs de /api/personalizar rodando ao mesmo tempo neste processo
-   * (geracao de imagem full-slide por slide e pesada o suficiente pra
-   * derrubar o processo por memoria se varios decks forem gerados juntos —
-   * ja causou crash-loop em producao). Excesso fica na fila (FIFO) do gate,
-   * nao é rejeitado.
+   * (varias chamadas concorrentes ao BrainHexPDF por deck, somadas ao
+   * processamento de fontes/audio em memoria, ja causaram crash-loop em
+   * producao quando varios decks eram gerados juntos). Excesso fica na fila
+   * (FIFO) do gate, nao é rejeitado.
    */
   maxConcurrentPersonalizacaoJobs?: number;
   /**
