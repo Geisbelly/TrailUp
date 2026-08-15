@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createKeyedQueue } from "../lib/serialQueue";
 import { createLogger } from "../lib/logger";
 import { computeMergedMaterials, type MaterialsMap } from "../lib/materialsMerge";
+import type { RenderAndStoreResult } from "./brainhexPdfClient";
 
 const log = createLogger({ ctx: "supabase" });
 
@@ -55,6 +56,64 @@ export interface MaterialEntry {
   storage_path: string | null;
   bucket?: string;
   mime_type?: string;
+}
+
+/**
+ * Constrói o objeto `updates` (entradas de materiais: audio, markdown,
+ * apresentacao) consumido por `mergePersonalizacaoMateriais`. Extraído de
+ * `archiveToSupabase` (server.ts) para ser testável isoladamente — este é
+ * o contrato exato que outros consumidores (ex.: app mobile) leem direto
+ * do banco em `conteudo_personalizado.materiais`.
+ *
+ * Função pura: não faz I/O, não recebe `log`. Toda a lógica de branching
+ * (populado vs. `null`/falha) vive aqui.
+ */
+export function buildMaterialEntries(params: {
+  markdown:     string;
+  audioScript:  string;
+  apresentacao: RenderAndStoreResult | null;
+  audioMp3Url:  string | null;
+  markdownUrl:  string | null;
+  audioMime:    string;
+  audioPath:    string;
+  mdPath:       string;
+  bucket:       string;
+}): Record<string, MaterialEntry> {
+  const {
+    markdown, audioScript, apresentacao, audioMp3Url, markdownUrl,
+    audioMime, audioPath, mdPath, bucket,
+  } = params;
+
+  const audioStatus        = audioMp3Url ? "completed" : "failed";
+  const mdStatus            = markdownUrl ? "completed" : "failed";
+  const apresentacaoStatus  = apresentacao ? "completed" : "failed";
+  const audioPayloadObj     = { roteiro: audioScript, texto: audioScript };
+  const mdPayloadObj        = { texto: markdown, markdown };
+  const updatedAt           = new Date().toISOString();
+
+  return {
+    audio: {
+      payload:      audioPayloadObj,
+      metadata:     { status: audioStatus, media_kind: "audio", updated_at: updatedAt, ...(audioMp3Url ? { bucket } : {}) },
+      arquivo_url:  audioMp3Url,
+      storage_path: audioMp3Url ? audioPath : null,
+      bucket, mime_type: audioMime,
+    },
+    markdown: {
+      payload:      mdPayloadObj,
+      metadata:     { status: mdStatus, media_kind: "markdown", updated_at: updatedAt, ...(markdownUrl ? { bucket } : {}) },
+      arquivo_url:  markdownUrl,
+      storage_path: markdownUrl ? mdPath : null,
+      bucket, mime_type: "text/markdown; charset=utf-8",
+    },
+    apresentacao: {
+      payload:      apresentacao ? { url: apresentacao.url, slide_count: apresentacao.slideCount } : null,
+      metadata:     { status: apresentacaoStatus, media_kind: "apresentacao", updated_at: updatedAt, ...(apresentacao ? { bucket: apresentacao.bucket } : {}) },
+      arquivo_url:  apresentacao?.url ?? null,
+      storage_path: apresentacao?.storagePath ?? null,
+      ...(apresentacao ? { bucket: apresentacao.bucket, mime_type: "text/html; charset=utf-8" } : {}),
+    },
+  };
 }
 
 // Serialização in-process por personalizacao_id. Ver src/lib/serialQueue.ts.

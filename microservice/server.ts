@@ -15,7 +15,7 @@ import {
   markPersonalizacaoFailed,
   recoverStaleJobs,
   startJobHeartbeat,
-  MaterialEntry,
+  buildMaterialEntries,
 } from "./src/services/supabaseService";
 import { renderAndStore, type RenderAndStoreResult } from "./src/services/brainhexPdfClient";
 import { createLogger, type Logger } from "./src/lib/logger";
@@ -46,16 +46,9 @@ const VOICE_MAP: Record<BrainHexProfile, "Puck" | "Charon" | "Kore" | "Fenrir" |
   achiever:   "Puck",
 };
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function now() {
-  return new Date().toISOString();
-}
-
 // ─── Core: archive to Supabase ────────────────────────────────────────────────
 
 async function archiveToSupabase(params: {
-  profile:         BrainHexProfile;
   storagePath:     string;
   bucket:          string;
   refId:           string;
@@ -67,7 +60,7 @@ async function archiveToSupabase(params: {
   personalizacaoId: number | null;
   log?:            Logger;
 }): Promise<{ audioMp3Url: string | null; markdownUrl: string | null; apresentacaoUrl: string | null }> {
-  const { profile, storagePath, bucket, refId, markdown, audioScript, apresentacao, mp3Base64, wavBase64, personalizacaoId } = params;
+  const { storagePath, bucket, refId, markdown, audioScript, apresentacao, mp3Base64, wavBase64, personalizacaoId } = params;
   const lg = params.log ?? log;
 
   // Cada upload é isolado: uma falha não impede os demais nem o merge final.
@@ -105,35 +98,10 @@ async function archiveToSupabase(params: {
 
   // Persiste metadados no banco (somente quando chamado pelo ApiTraiUp)
   if (personalizacaoId !== null) {
-    const audioStatus  = audioMp3Url  ? "completed" : "failed";
-    const mdStatus     = markdownUrl  ? "completed" : "failed";
-    const apresentacaoStatus = apresentacao ? "completed" : "failed";
-    const audioPayloadObj = { roteiro: audioScript, texto: audioScript };
-    const mdPayloadObj    = { texto: markdown, markdown };
-
-    const updates: Record<string, MaterialEntry> = {
-      audio: {
-        payload:      audioPayloadObj,
-        metadata:     { status: audioStatus, media_kind: "audio",        updated_at: now(), ...(audioMp3Url ? { bucket } : {}) },
-        arquivo_url:  audioMp3Url,
-        storage_path: audioMp3Url ? audioPath : null,
-        bucket, mime_type: audioMime,
-      },
-      markdown: {
-        payload:      mdPayloadObj,
-        metadata:     { status: mdStatus, media_kind: "markdown",        updated_at: now(), ...(markdownUrl ? { bucket } : {}) },
-        arquivo_url:  markdownUrl,
-        storage_path: markdownUrl ? mdPath : null,
-        bucket, mime_type: "text/markdown; charset=utf-8",
-      },
-      apresentacao: {
-        payload:      apresentacao ? { url: apresentacao.url, slide_count: apresentacao.slideCount } : null,
-        metadata:     { status: apresentacaoStatus, media_kind: "apresentacao", updated_at: now(), ...(apresentacao ? { bucket: apresentacao.bucket } : {}) },
-        arquivo_url:  apresentacao?.url ?? null,
-        storage_path: apresentacao?.storagePath ?? null,
-        ...(apresentacao ? { bucket: apresentacao.bucket, mime_type: "text/html; charset=utf-8" } : {}),
-      },
-    };
+    const updates = buildMaterialEntries({
+      markdown, audioScript, apresentacao, audioMp3Url, markdownUrl,
+      audioMime, audioPath, mdPath, bucket,
+    });
 
     await mergePersonalizacaoMateriais(personalizacaoId, updates);
 
@@ -258,7 +226,6 @@ async function runPipeline(
 
   // 5. Persiste tudo no Supabase
   await archiveToSupabase({
-    profile,
     storagePath,
     bucket,
     refId,
@@ -411,6 +378,10 @@ async function startServer() {
     log.warn("API_SHARED_SECRET não configurado — endpoints abertos (defina em produção)");
   }
 
+  if (!process.env.BRAINHEXPDF_URL) {
+    log.warn("BRAINHEXPDF_URL não configurado — material apresentacao sempre falhará (defina em produção)");
+  }
+
   // ── Health ───────────────────────────────────────────────────────
   app.get("/api/health", (_req, res) => {
     res.json({
@@ -427,16 +398,18 @@ async function startServer() {
   //   1. processMediaWithGemini (texto + slides)
   //   2. generateNaturalAudio (wav + mp3)
   //
-  // Body: { profile, class_name, processed, mp3Base64, wavBase64?,
-  //         slideImages? (opcional — se o frontend já os gerou) }
+  // Body: { profile, class_name, processed, mp3Base64, wavBase64? }
+  // (`slideImages` não é mais aceito/usado — ignorado se enviado).
   //
-  // O servidor gera imagens dos slides via Gemini (se não foram enviadas),
-  // monta o PDF com layout 2-painéis e persiste markdown + mp3 + pdf no Storage.
+  // O servidor persiste markdown + áudio no Storage e delega a geração da
+  // apresentação HTML interativa ao BrainHexPDF (renderAndStore), que faz
+  // seu próprio upload no Supabase Storage com a service role key dele.
+  // Resposta retorna `apresentacaoUrl` (não mais `pdfUrl`).
   app.post("/api/v1/archive", requireSecret, async (req, res) => {
     req.log.info("archive request received");
 
     try {
-      const { profile, class_name, processed, mp3Base64, wavBase64, slideImages: clientImages } = req.body;
+      const { profile, class_name, processed, mp3Base64, wavBase64 } = req.body;
 
       if (!profile || !class_name || !processed) {
         return res.status(400).json({ error: "profile, class_name e processed são obrigatórios." });
@@ -460,11 +433,11 @@ async function startServer() {
         sourceText:  processed.markdown ?? "",
         bucket,
         storagePath: htmlPath,
+        classe:      class_name,
         log:         req.log,
       });
 
       const result = await archiveToSupabase({
-        profile:          profile as BrainHexProfile,
         storagePath,
         bucket,
         refId,
