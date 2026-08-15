@@ -40,6 +40,23 @@ const presentationTheme = buildPresentationDesignPlan(profile);
 test("archiveToSupabase monta os 3 paths (audio/markdown/apresentacao) sem sufixo de parte", async () => {
   const { client, calls } = createFakeSupabaseClient();
   setSupabaseClientForTesting(client);
+  // A apresentacao agora e gerada via HTTP pelo BrainHexPDF (nao mais via
+  // uploadBuffer) - simula uma resposta de sucesso pra esse teste continuar
+  // cobrindo o caminho feliz das 3 midias.
+  const originalFetch = globalThis.fetch;
+  const originalBrainHexPdfUrl = process.env.BRAINHEXPDF_API_URL;
+  process.env.BRAINHEXPDF_API_URL = "http://fake-brainhexpdf.test";
+  globalThis.fetch = (async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      success: true,
+      url: "https://fake.supabase/conteudo_aluno/brainhex/socializer/classe-1/topico-2/apresentacao/material-ref-abc.html",
+      storage_path: "brainhex/socializer/classe-1/topico-2/apresentacao/material-ref-abc.html",
+      bucket: "conteudo_aluno",
+      slide_count: 8,
+    }),
+  })) as unknown as typeof fetch;
   try {
     const result = await archiveToSupabase({
       profile,
@@ -72,6 +89,9 @@ test("archiveToSupabase monta os 3 paths (audio/markdown/apresentacao) sem sufix
     assert.equal(audioCall?.contentType, "audio/mpeg");
   } finally {
     setSupabaseClientForTesting(null);
+    globalThis.fetch = originalFetch;
+    if (originalBrainHexPdfUrl === undefined) delete process.env.BRAINHEXPDF_API_URL;
+    else process.env.BRAINHEXPDF_API_URL = originalBrainHexPdfUrl;
   }
 });
 
