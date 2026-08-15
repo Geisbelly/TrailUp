@@ -233,6 +233,21 @@ function positiveInteger(
   return parsed;
 }
 
+// Contingência OpenAI fica ligada por padrão (compatibilidade retroativa) —
+// desligar via env quando a conta OpenAI está sem crédito, pra falhar com o
+// motivo real do Gemini em vez de uma "tentativa obrigatória" que nunca
+// tinha chance de funcionar. Religar é só remover/voltar a env pra "true".
+function openAIFallbackEnabled(
+  environment: Record<string, string | undefined>,
+): boolean {
+  const raw = String(
+    environment.CONTENT_GENERATION_ENABLE_OPENAI_FALLBACK ?? "true",
+  )
+    .trim()
+    .toLowerCase();
+  return raw !== "false" && raw !== "0";
+}
+
 export function resolveGeminiContentGenerationModel(
   environment: Record<string, string | undefined> = process.env,
 ): string {
@@ -432,6 +447,10 @@ async function generateAfterPrimaryGeminiFailure(
     environment: Record<string, string | undefined>;
   },
 ): Promise<StructuredContentGenerationResult> {
+  if (!openAIFallbackEnabled(options.environment)) {
+    throw new Error(reason);
+  }
+
   const maxAttempts = positiveInteger(
     options.environment.CONTENT_GENERATION_OPENAI_MAX_ATTEMPTS,
     DEFAULT_OPENAI_QUALITY_MAX_ATTEMPTS,
