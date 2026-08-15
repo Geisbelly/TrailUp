@@ -8,8 +8,6 @@ import {
   PRESENTATION_ENGINE_VERSION,
   PRESENTATION_SCHEMA_VERSION,
   buildPresentationMaterialMetadata,
-  renderAndUploadPresentation,
-  resolvePresentationRendering,
   buildApresentacaoSlidesPayload,
 } from "../server";
 import {
@@ -17,8 +15,6 @@ import {
   generationStorageSegment,
   versionStoragePath,
 } from "./constants/pipelineVersions";
-import { buildPresentationDesignPlan } from "./constants/presentationThemes";
-import type { Logger } from "./lib/logger";
 import type { SlideContent } from "./types";
 if (!process.env.OPENAI_API_KEY?.trim()) {
   process.env.OPENAI_API_KEY = "test-openai-key";
@@ -470,49 +466,6 @@ describe("POST /api/personalizar concorrencia", () => {
 });
 
 describe("diagnostico da apresentacao", () => {
-  it("classifica falha ao montar o HTML e nao tenta upload", async () => {
-    let uploadCalls = 0;
-    const result = await renderAndUploadPresentation({
-      slides: [{ titulo: "Teste" }],
-      profile: "seeker",
-      bucket: "conteudo_aluno",
-      presentationPath: "brainhex/seeker/apresentacao/teste.html",
-      buildHtml: () => {
-        throw new Error("slide invalido\ncom quebra de linha");
-      },
-      uploadHtml: async () => {
-        uploadCalls += 1;
-        return "https://example.test/nao-deveria-subir.html";
-      },
-    });
-
-    assert.equal(result.presentationUrl, null);
-    assert.deepEqual(result.failure, {
-      stage: "render",
-      error: "slide invalido com quebra de linha",
-    });
-    assert.equal(uploadCalls, 0);
-  });
-
-  it("classifica falha de upload separadamente", async () => {
-    const result = await renderAndUploadPresentation({
-      slides: [{ titulo: "Teste" }],
-      profile: "seeker",
-      bucket: "conteudo_aluno",
-      presentationPath: "brainhex/seeker/apresentacao/teste.html",
-      buildHtml: () => "<html></html>",
-      uploadHtml: async () => {
-        throw new Error("limite do bucket excedido");
-      },
-    });
-
-    assert.equal(result.presentationUrl, null);
-    assert.deepEqual(result.failure, {
-      stage: "upload",
-      error: "limite do bucket excedido",
-    });
-  });
-
   it("persiste engine e causa real sem anunciar URL legada", () => {
     const metadata = buildPresentationMaterialMetadata({
       generationKey: "ciclo-1:hash-a",
@@ -607,121 +560,7 @@ describe("x-request-id header", () => {
   });
 });
 
-// ─── resolvePresentationRendering (motor imersivo com fallback) ─────────────
-
-describe("resolvePresentationRendering", () => {
-  const noopLogger: Logger = {
-    debug() {},
-    info() {},
-    warn() {},
-    error() {},
-    child() {
-      return noopLogger;
-    },
-  };
-
-  const plan = buildPresentationDesignPlan("seeker", undefined, "Redes de computadores");
-
-  const slides: SlideContent[] = [
-    {
-      title: "Slide 1",
-      topics: ["DNS"],
-      explanation: "exp1",
-      visualDescription: "vd1",
-      characterQuote: "q1",
-      characterAction: "explaining",
-      imagePrompt: "prompt1",
-      iconPrompts: [],
-      sourceIds: [],
-    },
-  ];
-
-  it("usa o motor imersivo quando useImmersiveEngine e true", async () => {
-    let generateAssetsCalls = 0;
-    const fakeRenderImmersive = async () => ({
-      deckHtml: "<html>deck imersivo</html>",
-      slideHtmls: ["<section>a</section>"],
-    });
-    const fakeGenerateAssets = async () => {
-      generateAssetsCalls += 1;
-      throw new Error("nao deveria ser chamado");
-    };
-
-    const result = await resolvePresentationRendering(
-      slides,
-      "seeker",
-      plan,
-      true,
-      noopLogger,
-      { renderImmersive: fakeRenderImmersive, generateAssets: fakeGenerateAssets },
-    );
-
-    assert.equal(result.immersiveDeckHtml, "<html>deck imersivo</html>");
-    assert.deepEqual(result.immersiveSlideHtmls, ["<section>a</section>"]);
-    assert.equal(result.slidesComImagens, slides);
-    assert.equal(generateAssetsCalls, 0);
-  });
-
-  it("cai pro pipeline de imagem quando useImmersiveEngine e false", async () => {
-    let renderImmersiveCalls = 0;
-    const fakeRenderImmersive = async () => {
-      renderImmersiveCalls += 1;
-      throw new Error("nao deveria ser chamado");
-    };
-    const fakeGenerateAssets = async () => ({
-      imagem_referencia: ["cena-1"],
-      icones: [["icone-1"]],
-      renderMode: ["full-image" as const],
-    });
-
-    const result = await resolvePresentationRendering(
-      slides,
-      "seeker",
-      plan,
-      false,
-      noopLogger,
-      { renderImmersive: fakeRenderImmersive, generateAssets: fakeGenerateAssets },
-    );
-
-    assert.equal(result.immersiveDeckHtml, null);
-    assert.equal(result.immersiveSlideHtmls, null);
-    assert.equal(renderImmersiveCalls, 0);
-    // slidesComImagens reflete o enriquecimento com os assets do fake.
-    assert.equal(result.slidesComImagens.length, 1);
-    assert.notEqual(result.slidesComImagens, slides);
-  });
-
-  it("cai pro pipeline de imagem se o motor imersivo falhar", async () => {
-    let generateAssetsCalls = 0;
-    const fakeRenderImmersive = async () => {
-      throw new Error("motor imersivo indisponivel");
-    };
-    const fakeGenerateAssets = async () => {
-      generateAssetsCalls += 1;
-      return {
-        imagem_referencia: ["cena-1"],
-        icones: [["icone-1"]],
-        renderMode: ["full-image" as const],
-      };
-    };
-
-    const result = await resolvePresentationRendering(
-      slides,
-      "seeker",
-      plan,
-      true,
-      noopLogger,
-      { renderImmersive: fakeRenderImmersive, generateAssets: fakeGenerateAssets },
-    );
-
-    assert.equal(result.immersiveDeckHtml, null);
-    assert.equal(result.immersiveSlideHtmls, null);
-    assert.equal(generateAssetsCalls, 1);
-    assert.equal(result.slidesComImagens.length, 1);
-  });
-});
-
-// ─── buildApresentacaoSlidesPayload (payload.slides: imersivo vs estruturado) ─
+// ─── buildApresentacaoSlidesPayload (flatten das partes) ─────────────────────
 
 describe("buildApresentacaoSlidesPayload", () => {
   const slide: SlideContent = {
@@ -740,43 +579,9 @@ describe("buildApresentacaoSlidesPayload", () => {
     { slides: [{ ...slide, title: "Slide 2" }] },
   ];
 
-  it("usa os fragmentos HTML por slide do motor imersivo quando presentes", () => {
-    const result = buildApresentacaoSlidesPayload(parts, ["<section>s0</section>", "<section>s1</section>"]);
+  it("faz o flatten das slides de todas as partes, na ordem", () => {
+    const result = buildApresentacaoSlidesPayload(parts);
 
-    assert.deepEqual(result, [
-      { index: 0, html: "<section>s0</section>" },
-      { index: 1, html: "<section>s1</section>" },
-    ]);
-  });
-
-  it("cai pro flatten das partes estruturadas quando nao ha HTML imersivo", () => {
-    const withoutImmersive = buildApresentacaoSlidesPayload(parts, null);
-    const withUndefined = buildApresentacaoSlidesPayload(parts);
-
-    assert.deepEqual(withoutImmersive, [parts[0].slides[0], parts[1].slides[0]]);
-    assert.deepEqual(withUndefined, [parts[0].slides[0], parts[1].slides[0]]);
-  });
-});
-
-// ─── buildPresentationMaterialMetadata — engine_variant ──────────────────────
-
-describe("buildPresentationMaterialMetadata engine_variant", () => {
-  it("inclui engine_variant quando informado, omite quando ausente", () => {
-    const withVariant = buildPresentationMaterialMetadata({
-      generationKey: "g1",
-      presentationUrl: "https://x/y.html",
-      bucket: "b",
-      failure: null,
-      engineVariant: "immersive",
-    });
-    assert.equal(withVariant.engine_variant, "immersive");
-
-    const withoutVariant = buildPresentationMaterialMetadata({
-      generationKey: "g1",
-      presentationUrl: "https://x/y.html",
-      bucket: "b",
-      failure: null,
-    });
-    assert.equal(withoutVariant.engine_variant, undefined);
+    assert.deepEqual(result, [parts[0].slides[0], parts[1].slides[0]]);
   });
 });
