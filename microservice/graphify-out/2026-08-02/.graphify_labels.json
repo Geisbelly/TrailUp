@@ -1,0 +1,23 @@
+{
+  "0": "server.ts",
+  "1": "geminiService.ts",
+  "2": "slideAssetGenerator.ts",
+  "3": "dependencies",
+  "4": "slideTemplate.ts",
+  "5": "devDependencies",
+  "6": "contentGenerationService.ts",
+  "7": "validators.ts",
+  "8": "App.tsx",
+  "9": "compilerOptions",
+  "10": "logger.ts",
+  "11": "README.md",
+  "12": "materialsMerge.ts",
+  "13": "rateLimit.ts",
+  "14": "dedupedTimeoutRunner.ts",
+  "15": "resolveRealSlideOrder",
+  "16": "serialQueue.ts",
+  "17": "createConcurrencyGate",
+  "18": "textSanitize.ts",
+  "19": "testSetup.ts",
+  "20": "vite.config.ts"
+}
