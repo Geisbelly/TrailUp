@@ -32,6 +32,15 @@ Estas decisões são **fixas**; sigam-nas ao corrigir/estender.
    **gera a mídia base por perfil** (texto/áudio TTS/slides). Não duplicar
    geração pesada no Python — o caminho Python `MultiOutputPipeline` é fallback.
 
+   O `microservice` delega a etapa de **apresentação** (deck + HTML) a um
+   serviço externo, `../BrainHexPDF` (fora do monorepo, repo irmão — não
+   confundir com o app BrainHex/Google AI Studio mencionado acima), via
+   `BRAINHEXPDF_API_URL`/`POST /api/v1/render-and-store`. O BrainHexPDF gera
+   o deck (Gemini) e o HTML completo e sobe o arquivo no Supabase Storage;
+   o microservice continua dono do merge em `conteudo_personalizado.materiais`
+   (`mergePersonalizacaoMateriais`). Ver
+   `docs/superpowers/specs/2026-08-15-brainhexpdf-integracao-design.md`.
+
 2. **Duas camadas de personalização:**
    - **Base por perfil** — material compartilhável por `(classe × tópico × perfil BrainHex)`. Reusado entre alunos do mesmo perfil. É o que o microservice gera.
    - **Adequação por aluno** — camada leve sobre a base, usando preferências,
