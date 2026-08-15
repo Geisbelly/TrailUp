@@ -9,6 +9,7 @@ type FakeUploadCall = { bucket: string; path: string; contentType: string };
 
 function createFakeSupabaseClient(failingPaths: string[] = []) {
   const calls: FakeUploadCall[] = [];
+  let lastRpcUpdates: Record<string, unknown> | null = null;
   const client = {
     storage: {
       from(bucket: string) {
@@ -30,8 +31,26 @@ function createFakeSupabaseClient(failingPaths: string[] = []) {
         };
       },
     },
+    // So suporta merge_personalizacao_materiais_v2 - suficiente pra exercitar
+    // o ramo personalizacaoId !== null sem mockar o RPC inteiro. Qualquer
+    // outro RPC (ex: mark_personalizacao_failed_v2) cai no branch de erro,
+    // que os callers ja tratam sem lancar.
+    rpc: async (name: string, args: any) => {
+      if (name === "merge_personalizacao_materiais_v2") {
+        lastRpcUpdates = args.p_updates;
+        return {
+          data: {
+            status: "pronto",
+            materiais: args.p_updates,
+            generation_key: `${args.p_ciclo_id}:${args.p_source_hash}`,
+          },
+          error: null,
+        };
+      }
+      return { data: null, error: { message: `rpc ${name} nao suportado no fake` } };
+    },
   } as unknown as SupabaseClient;
-  return { client, calls };
+  return { client, calls, getLastRpcUpdates: () => lastRpcUpdates };
 }
 
 const profile = "socializer" as const;
@@ -86,6 +105,57 @@ test("archiveToSupabase monta os 3 paths (audio/markdown/apresentacao) sem sufix
     assert.ok(paths.includes("brainhex/socializer/classe-1/topico-2/markdown/material-ref-abc.md"));
     const audioCall = calls.find((c) => c.path.endsWith(".mp3"));
     assert.equal(audioCall?.contentType, "audio/mpeg");
+  } finally {
+    setSupabaseClientForTesting(null);
+    globalThis.fetch = originalFetch;
+    if (originalBrainHexPdfUrl === undefined) delete process.env.BRAINHEXPDF_API_URL;
+    else process.env.BRAINHEXPDF_API_URL = originalBrainHexPdfUrl;
+  }
+});
+
+// Regressao: com o motor antigo, materiais.apresentacao.payload.slides
+// guardava o SlideContent[] estruturado usado pra renderizar o HTML
+// localmente. O BrainHexPDF agora renderiza o deck inteiro por fora - se
+// esse campo continuar com conteudo "rico" (titulo/topicos), o mobile
+// (normalizeRichPresentationSlides em personalization.ts) sintetiza um
+// render nativo em vez de abrir o arquivo_url do BrainHexPDF, ignorando o
+// deck gerado. Precisa ficar vazio sempre. Ver
+// docs/superpowers/specs/2026-08-15-brainhexpdf-integracao-design.md.
+test("archiveToSupabase persiste apresentacao.payload.slides vazio (deck e do BrainHexPDF, nao sintetizado aqui)", async () => {
+  const { client, getLastRpcUpdates } = createFakeSupabaseClient();
+  setSupabaseClientForTesting(client);
+  const originalFetch = globalThis.fetch;
+  const originalBrainHexPdfUrl = process.env.BRAINHEXPDF_API_URL;
+  process.env.BRAINHEXPDF_API_URL = "http://fake-brainhexpdf.test";
+  globalThis.fetch = (async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      success: true,
+      url: "https://fake.supabase/conteudo_aluno/brainhex/socializer/classe-1/topico-2/apresentacao/material-ref-slides.html",
+      storage_path: "brainhex/socializer/classe-1/topico-2/apresentacao/material-ref-slides.html",
+      bucket: "conteudo_aluno",
+      slide_count: 8,
+    }),
+  })) as unknown as typeof fetch;
+  try {
+    await archiveToSupabase({
+      profile,
+      storagePath: "brainhex/socializer/classe-1/topico-2",
+      bucket: "conteudo_aluno",
+      refId: "ref-slides",
+      markdown: "# Título\n\nConteúdo",
+      audioScript: "roteiro",
+      presentationTheme,
+      mp3Base64: Buffer.from("audio-fake").toString("base64"),
+      wavBase64: null,
+      personalizacaoId: 42,
+      fence: { cicloId: "ciclo-1", sourceHash: "hash-a", generationKey: "ciclo-1:hash-a" },
+    });
+
+    const updates = getLastRpcUpdates();
+    assert.ok(updates, "esperava que o RPC de merge tivesse sido chamado");
+    assert.deepEqual((updates as any).apresentacao.payload.slides, []);
   } finally {
     setSupabaseClientForTesting(null);
     globalThis.fetch = originalFetch;
