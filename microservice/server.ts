@@ -7,21 +7,16 @@ import {
   processMediaWithGemini,
   generateLongNaturalAudio,
   generateLongConversationalAudio,
-  generateSlideImage,
   splitProcessedContentIntoParts,
   regenerateChapterContent,
   regenerateSlideContent,
   regenerateDocumentMarkdown,
-  renderImmersiveSlides,
   type ContentPart,
 } from "./src/services/geminiService";
 import type { ApiKeysConfig, SlideContent } from "./src/types";
-import { generateFullSlideImages, buildImageStyleSuffix } from "./src/lib/slideAssetGenerator";
-import { generateSlideIconWithFallback } from "./src/services/slideIconService";
 import { BrainHexProfile, BRAIN_HEX_CONFIG } from "./src/constants/brainHex";
 import {
   buildPresentationDesignPlan,
-  presentationLayoutForSlide,
   type PresentationDesignPlan,
   type PresentationThemeInput,
 } from "./src/constants/presentationThemes";
@@ -39,9 +34,8 @@ import {
   type MaterialPart,
   type PersistedMaterialsMerge,
 } from "./src/services/supabaseService";
-import { buildDeckHtml } from "./src/lib/slideTemplate";
 import { createLogger, type Logger } from "./src/lib/logger";
-import { enrichSlidesWithImages } from "./src/lib/slideEnricher";
+import { renderAndUploadPresentationViaBrainHexPdf } from "./src/services/brainHexPdfClient";
 import { validatePersonalizarBody } from "./src/lib/validators";
 import type { ContentBlock } from "./src/lib/validators";
 import { createRateLimiter } from "./src/lib/rateLimit";
