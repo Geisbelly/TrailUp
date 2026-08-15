@@ -52,7 +52,6 @@ src/
   constants/brainHex.ts
   lib/
     serialQueue.ts        # serializa por chave (testado)
-    textSanitize.ts       # Latin-1 sanitizer para jsPDF (testado)
     wav.ts                # header WAV para PCM Gemini TTS (testado)
   services/
     geminiService.ts      # texto/slides/áudio via Gemini

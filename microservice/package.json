@@ -7,7 +7,7 @@
     "dev": "node --require tsx/cjs server.ts",
     "start": "node --require tsx/cjs server.ts",
     "lint": "tsc --noEmit",
-    "test": "node --import tsx --test src/lib/serialQueue.test.ts src/lib/textSanitize.test.ts src/lib/wav.test.ts src/lib/logger.test.ts src/lib/materialsMerge.test.ts src/lib/validators.test.ts src/lib/rateLimit.test.ts src/services/brainhexPdfClient.test.ts"
+    "test": "node --import tsx --test src/lib/serialQueue.test.ts src/lib/wav.test.ts src/lib/logger.test.ts src/lib/materialsMerge.test.ts src/lib/validators.test.ts src/lib/rateLimit.test.ts src/services/brainhexPdfClient.test.ts src/services/supabaseService.test.ts"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
@@ -15,7 +15,6 @@
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
-    "jspdf": "^4.2.1",
     "jszip": "^3.10.1",
     "lamejs": "^1.2.1",
     "mammoth": "^1.12.0"
