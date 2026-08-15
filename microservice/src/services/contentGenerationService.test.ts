@@ -518,6 +518,71 @@ test("recorre a OpenAI so depois que o primario E todos os modelos fallback esgo
   resetGeminiContentGenerationCircuit();
 });
 
+test("CONTENT_GENERATION_ENABLE_OPENAI_FALLBACK=false: esgota Gemini e falha com o motivo real, sem chamar OpenAI", async () => {
+  resetGeminiContentGenerationCircuit();
+  let openaiCalls = 0;
+
+  await assert.rejects(
+    () =>
+      generateStructuredContentWithFallback(call, {
+        environment: {
+          CONTENT_GENERATION_GEMINI_QUALITY_MAX_ATTEMPTS: "1",
+          CONTENT_GENERATION_ENABLE_OPENAI_FALLBACK: "false",
+        },
+        generateWithGemini: async () => ({ chapters: [] }), // sempre invalido
+        generateWithOpenAI: async () => {
+          openaiCalls += 1;
+          return { chapters: [{ blockId: "bloco-01" }] };
+        },
+        validateResult: (value) => {
+          const chapters = (value as { chapters?: unknown[] }).chapters ?? [];
+          if (chapters.length === 0) {
+            throw new Error("Markdown abaixo do mínimo de cobertura.");
+          }
+        },
+      }),
+    (error: unknown) => {
+      assert.ok(error instanceof Error);
+      assert.match(error.message, /Markdown abaixo do mínimo de cobertura/);
+      assert.doesNotMatch(error.message, /OpenAI/);
+      return true;
+    },
+  );
+
+  assert.equal(openaiCalls, 0);
+  resetGeminiContentGenerationCircuit();
+});
+
+test("CONTENT_GENERATION_ENABLE_OPENAI_FALLBACK=false: indisponibilidade do Gemini tambem nao chama OpenAI", async () => {
+  resetGeminiContentGenerationCircuit();
+  let openaiCalls = 0;
+
+  await assert.rejects(
+    () =>
+      generateStructuredContentWithFallback(call, {
+        environment: { CONTENT_GENERATION_ENABLE_OPENAI_FALLBACK: "false" },
+        generateWithGemini: async () => {
+          const error = new Error("503 UNAVAILABLE: sobrecarregado");
+          Object.assign(error, { status: 503 });
+          throw error;
+        },
+        generateWithOpenAI: async () => {
+          openaiCalls += 1;
+          return { chapters: [{ blockId: "bloco-01" }] };
+        },
+      }),
+    (error: unknown) => {
+      assert.ok(error instanceof Error);
+      assert.match(error.message, /503 UNAVAILABLE/);
+      assert.doesNotMatch(error.message, /OpenAI/);
+      return true;
+    },
+  );
+
+  assert.equal(openaiCalls, 0);
+  resetGeminiContentGenerationCircuit();
+});
+
 test("erro de disponibilidade num modelo fallback aborta direto pra OpenAI, sem tentar os candidatos restantes", async () => {
   resetGeminiContentGenerationCircuit();
   const attemptedModels: string[] = [];
