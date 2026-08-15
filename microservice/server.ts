@@ -18,7 +18,7 @@ import {
   startJobHeartbeat,
   MaterialEntry,
 } from "./src/services/supabaseService";
-import { generateSlidesPDF } from "./src/services/pdfService";
+import { renderAndStore, type RenderAndStoreResult } from "./src/services/brainhexPdfClient";
 import { createLogger, type Logger } from "./src/lib/logger";
 import { enrichSlidesWithImages } from "./src/lib/slideEnricher";
 import { validatePersonalizarBody } from "./src/lib/validators";
@@ -54,24 +54,6 @@ function now() {
   return new Date().toISOString();
 }
 
-/** Gera até 6 imagens para os slides (com intervalo para respeitar rate-limit) */
-async function generateSlidesImages(slides: any[]): Promise<string[]> {
-  const images: string[] = [];
-  const max = Math.min(slides.length, 6);
-  for (let i = 0; i < max; i++) {
-    try {
-      if (i > 0) await new Promise((r) => setTimeout(r, 3000));
-      images.push((await generateSlideImage(slides[i].imagePrompt)) ?? "");
-    } catch (e) {
-      log.error("imagem slide falhou", { slide: i, err: e });
-      images.push("");
-    }
-  }
-  return images;
-}
-
-// enrichSlidesWithImages extraído para src/lib/slideEnricher.ts (testado).
-
 // ─── Core: archive to Supabase ────────────────────────────────────────────────
 
 async function archiveToSupabase(params: {
@@ -81,13 +63,13 @@ async function archiveToSupabase(params: {
   refId:           string;
   markdown:        string;
   audioScript:     string;
-  slides:          any[];             // slides COM imagem_referencia
+  apresentacao:    RenderAndStoreResult | null;
   mp3Base64:       string | null;
   wavBase64:       string | null;
   personalizacaoId: number | null;
   log?:            Logger;
-}): Promise<{ audioMp3Url: string | null; markdownUrl: string | null; pdfUrl: string | null }> {
-  const { profile, storagePath, bucket, refId, markdown, audioScript, slides, mp3Base64, wavBase64, personalizacaoId } = params;
+}): Promise<{ audioMp3Url: string | null; markdownUrl: string | null; apresentacaoUrl: string | null }> {
+  const { profile, storagePath, bucket, refId, markdown, audioScript, apresentacao, mp3Base64, wavBase64, personalizacaoId } = params;
   const lg = params.log ?? log;
 
   // Cada upload é isolado: uma falha não impede os demais nem o merge final.
@@ -123,25 +105,13 @@ async function archiveToSupabase(params: {
     }
   }
 
-  // PDF dos slides (layout 2 painéis: imagem esquerda, conteúdo direita)
-  const pdfPath = `${storagePath}/apresentacao/material-${refId}.pdf`;
-  let pdfUrl: string | null = null;
-  try {
-    const pdfBytes = await generateSlidesPDF(slides, profile);
-    pdfUrl         = await uploadBuffer(bucket, pdfPath, pdfBytes, "application/pdf");
-    lg.info("pdf upload", { status: pdfUrl ? "ok" : "falhou" });
-  } catch (e) {
-    lg.error("falha ao gerar/enviar PDF", { err: e });
-  }
-
   // Persiste metadados no banco (somente quando chamado pelo ApiTraiUp)
   if (personalizacaoId !== null) {
     const audioStatus  = audioMp3Url  ? "completed" : "failed";
     const mdStatus     = markdownUrl  ? "completed" : "failed";
-    const pdfStatus    = pdfUrl       ? "completed" : "failed";
+    const apresentacaoStatus = apresentacao ? "completed" : "failed";
     const audioPayloadObj = { roteiro: audioScript, texto: audioScript };
     const mdPayloadObj    = { texto: markdown, markdown };
-    const pdfPayloadObj   = { slides, abertura: markdown.split("\n").find((l) => l.trim()) ?? "" };
 
     const updates: Record<string, MaterialEntry> = {
       audio: {
@@ -159,11 +129,11 @@ async function archiveToSupabase(params: {
         bucket, mime_type: "text/markdown; charset=utf-8",
       },
       apresentacao: {
-        payload:      pdfPayloadObj,
-        metadata:     { status: pdfStatus, media_kind: "apresentacao",   updated_at: now(), ...(pdfUrl ? { bucket } : {}) },
-        arquivo_url:  pdfUrl,
-        storage_path: pdfUrl ? pdfPath : null,
-        ...(pdfUrl ? { bucket, mime_type: "application/pdf" } : {}),
+        payload:      apresentacao ? { url: apresentacao.url, slide_count: apresentacao.slideCount } : null,
+        metadata:     { status: apresentacaoStatus, media_kind: "apresentacao", updated_at: now(), ...(apresentacao ? { bucket: apresentacao.bucket } : {}) },
+        arquivo_url:  apresentacao?.url ?? null,
+        storage_path: apresentacao?.storagePath ?? null,
+        ...(apresentacao ? { bucket: apresentacao.bucket, mime_type: "text/html; charset=utf-8" } : {}),
       },
     };
 
@@ -183,7 +153,7 @@ async function archiveToSupabase(params: {
     lg.info("materiais persistidos");
   }
 
-  return { audioMp3Url, markdownUrl, pdfUrl };
+  return { audioMp3Url, markdownUrl, apresentacaoUrl: apresentacao?.url ?? null };
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -278,9 +248,15 @@ async function runPipeline(
     jobLog.error("falha no áudio", { err: e });
   }
 
-  // 4. Imagens dos slides
-  const images           = await generateSlidesImages(resultado.slides);
-  const slidesComImagens = enrichSlidesWithImages(resultado.slides, images);
+  // 4. Apresentação HTML via BrainHexPDF (falha isolada — nunca lança)
+  const htmlPath = `${storagePath}/apresentacao/material-${refId}.html`;
+  const apresentacao = await renderAndStore({
+    profile,
+    sourceText: resultado.markdown,
+    bucket,
+    storagePath: htmlPath,
+    log: jobLog,
+  });
 
   // 5. Persiste tudo no Supabase
   await archiveToSupabase({
@@ -290,7 +266,7 @@ async function runPipeline(
     refId,
     markdown:         resultado.markdown,
     audioScript:      resultado.audioScript,
-    slides:           slidesComImagens,
+    apresentacao,
     mp3Base64,
     wavBase64,
     personalizacaoId,
@@ -479,18 +455,15 @@ async function startServer() {
       const storagePath   = `brainhex/${profile}/classe-${safeClassName}`;
       const bucket        = "conteudo_aluno";
 
-      // Imagens dos slides:
-      // - Se o frontend enviou (slideImages array de base64), usa diretamente.
-      // - Caso contrário, gera server-side usando os imagePrompts dos slides.
-      let images: string[];
-      if (Array.isArray(clientImages) && clientImages.length > 0) {
-        images = clientImages;
-      } else {
-        req.log.info("gerando imagens dos slides server-side");
-        images = await generateSlidesImages(processed.slides || []);
-      }
-
-      const slidesComImagens = enrichSlidesWithImages(processed.slides || [], images);
+      // Apresentação HTML via BrainHexPDF (falha isolada — nunca lança)
+      const htmlPath = `${storagePath}/apresentacao/material-${refId}.html`;
+      const apresentacao = await renderAndStore({
+        profile:     profile as BrainHexProfile,
+        sourceText:  processed.markdown ?? "",
+        bucket,
+        storagePath: htmlPath,
+        log:         req.log,
+      });
 
       const result = await archiveToSupabase({
         profile:          profile as BrainHexProfile,
@@ -499,21 +472,21 @@ async function startServer() {
         refId,
         markdown:         processed.markdown ?? "",
         audioScript:      processed.audioScript ?? "",
-        slides:           slidesComImagens,
+        apresentacao,
         mp3Base64:        mp3Base64 ?? null,
         wavBase64:        wavBase64 ?? null,
         personalizacaoId: null,
       });
 
       return res.json({
-        success:     true,
-        audioMp3Url: result.audioMp3Url,
-        markdownUrl: result.markdownUrl,
-        pdfUrl:      result.pdfUrl,
+        success:         true,
+        audioMp3Url:     result.audioMp3Url,
+        markdownUrl:     result.markdownUrl,
+        apresentacaoUrl: result.apresentacaoUrl,
         supabase_paths: {
-          markdown:     result.markdownUrl  ? `${storagePath}/markdown/material-${refId}.md`          : null,
-          audio:        result.audioMp3Url  ? `${storagePath}/audio/material-${refId}.mp3`           : null,
-          apresentacao: result.pdfUrl       ? `${storagePath}/apresentacao/material-${refId}.pdf`    : null,
+          markdown:     result.markdownUrl     ? `${storagePath}/markdown/material-${refId}.md` : null,
+          audio:        result.audioMp3Url     ? `${storagePath}/audio/material-${refId}.mp3`    : null,
+          apresentacao: result.apresentacaoUrl ? htmlPath                                        : null,
         },
       });
     } catch (err: any) {
