@@ -237,6 +237,10 @@ export function isMarkdownUrl(url: string) {
   return /\.(md|markdown)$/i.test(cleanUrl(url)) || cleanUrl(url).includes("/raw/");
 }
 
+export function isHtmlUrl(url: string) {
+  return /\.html?$/i.test(cleanUrl(url));
+}
+
 export function looksLikeEmbedUrl(url: string) {
   const normalized = normalizeComparisonText(url);
   return (

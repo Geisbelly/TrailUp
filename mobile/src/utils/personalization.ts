@@ -23,6 +23,7 @@ import {
   isAudioUrl,
   isPdfUrl,
   isDocumentUrl,
+  isHtmlUrl,
   isImageUrl,
   isMarkdownUrl,
   isPresentationUrl,
@@ -1052,6 +1053,23 @@ function normalizeMediaBlocks(
           metadata: {
             ...metadata,
             defaultDisplayMode: "pagina",
+          },
+        },
+        key
+      );
+      return block ? [block] : [];
+    }
+
+    if (url && isHtmlUrl(url)) {
+      const block = normalizeContentBlock(
+        {
+          id: key,
+          tipo: "embed",
+          url,
+          title,
+          metadata: {
+            ...metadata,
+            defaultDisplayMode: "rolagem",
           },
         },
         key
