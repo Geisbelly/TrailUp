@@ -68,3 +68,4 @@ mobile/android/
 # --- Arquivos temporarios de trabalho ---
 **/tmp_*.txt
 **/_omnicontent-ai/
+.superpowers/
