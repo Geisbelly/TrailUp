@@ -111,6 +111,19 @@ export function getPersonalizacaoJobContentIds(
   return [...ids];
 }
 
+export function selectFailedJobTopicoIds(
+  jobs: PersonalizacaoJobStatus[]
+): number[] {
+  return [
+    ...new Set(
+      jobs
+        .filter((job) => String(job.status).trim().toLowerCase() === "failed")
+        .map((job) => job.topico_id)
+        .filter((id): id is number => typeof id === "number" && id > 0)
+    ),
+  ];
+}
+
 export type PersonalizacaoJobsSummary = {
   activeCount: number;
   processedTargets: number;
@@ -298,6 +311,16 @@ export async function enqueueClassDeltaJob(
   payload: PersonalizacaoJobPayload
 ): Promise<PersonalizacaoJobDetail> {
   return apiRequest<PersonalizacaoJobDetail>("/api/v1/personalizar/jobs/class-delta", accessToken, {
+    method: "POST",
+    body: JSON.stringify({ trigger_source: "web_console", ...payload }),
+  });
+}
+
+export async function enqueueManualRetryJob(
+  accessToken: string,
+  payload: PersonalizacaoJobPayload
+): Promise<PersonalizacaoJobDetail> {
+  return apiRequest<PersonalizacaoJobDetail>("/api/v1/personalizar/jobs/manual-retry", accessToken, {
     method: "POST",
     body: JSON.stringify({ trigger_source: "web_console", ...payload }),
   });

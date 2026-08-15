@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock
 
 from fastapi.testclient import TestClient
@@ -1689,3 +1689,48 @@ def test_telemetria_route_ignores_legacy_event_log_failures(app, aluno_user, mon
     assert body["persisted"] is True
     assert body["analysis"]["ciclo_id"] == "ciclo-telemetria-ok"
     assert fake_session.rollbacks >= 1
+
+
+def test_criar_job_manual_retry_route_dispara_kind_correto(app, monkeypatch) -> None:
+    """Botao 'tentar novamente' do console (POST /jobs/manual-retry) precisa
+    disparar com kind=manual_retry - diferente de class-delta, esse kind
+    reseta o circuit breaker de falhas consecutivas (_falha_streak_excedido)
+    em vez de so pular quando ja esgotado (ver personalizacao_jobs.py)."""
+    fake_session = FakeSession()
+
+    async def override_session():
+        yield fake_session
+
+    app.dependency_overrides[get_session] = override_session
+    app.dependency_overrides[get_current_user] = lambda: _regenerar_professor_user()
+    monkeypatch.setattr(AccessRepository, "professor_owns_classe", AsyncMock(return_value=True))
+
+    now = datetime.now(timezone.utc)
+    fake_job = {
+        "id": "job-retry-1",
+        "kind": "manual_retry",
+        "status": "pending",
+        "classe_id": 32,
+        "aluno_id": None,
+        "topico_id": None,
+        "conteudo_id": None,
+        "trigger_source": "web_console",
+        "payload": {},
+        "created_at": now,
+        "updated_at": now,
+    }
+    enqueue_mock = AsyncMock(return_value={"job": fake_job, "targets": []})
+    monkeypatch.setattr(personalizacao_module, "enqueue_personalizacao_job", enqueue_mock)
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/personalizar/jobs/manual-retry",
+            json={"classe_id": 32, "topico_ids": [117], "reason": "professor clicou tentar novamente"},
+        )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["kind"] == "manual_retry"
+    assert enqueue_mock.await_args.kwargs["kind"] == "manual_retry"
+    assert enqueue_mock.await_args.kwargs["classe_id"] == 32
+    assert enqueue_mock.await_args.kwargs["topico_ids"] == [117]

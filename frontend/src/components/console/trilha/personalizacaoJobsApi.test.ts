@@ -7,6 +7,7 @@ vi.mock("@/integrations/supabase/client", () => ({
 import {
   getPersonalizacaoJobContentIds,
   isPersonalizacaoJobActive,
+  selectFailedJobTopicoIds,
   summarizePersonalizacaoJobs,
   type PersonalizacaoJobStatus,
 } from "./personalizacaoJobsApi";
@@ -46,6 +47,24 @@ describe("status dos jobs de personalização", () => {
         })
       )
     ).toEqual([125, 126]);
+  });
+
+  it("coleta topico_id só dos jobs com status failed, deduplicado", () => {
+    expect(
+      selectFailedJobTopicoIds([
+        buildJob({ id: "a", status: "failed", topico_id: 121 }),
+        buildJob({ id: "b", status: "processing", topico_id: 122 }),
+        buildJob({ id: "c", status: "failed", topico_id: 121 }),
+        buildJob({ id: "d", status: "failed", topico_id: 123 }),
+        buildJob({ id: "e", status: "failed", topico_id: null }),
+      ])
+    ).toEqual([121, 123]);
+  });
+
+  it("retorna vazio quando não há job failed", () => {
+    expect(
+      selectFailedJobTopicoIds([buildJob({ status: "processing", topico_id: 121 })])
+    ).toEqual([]);
   });
 
   it("agrega progresso, conteúdos e erros somente dos jobs ativos", () => {

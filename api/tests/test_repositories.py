@@ -1418,6 +1418,28 @@ async def test_incrementar_falha_streak_casts_generation_key_for_asyncpg() -> No
 
 
 @pytest.mark.asyncio
+async def test_resetar_falha_streak_zera_contador_mantendo_generation_key() -> None:
+    """Usado pelo retry manual do professor - zera o streak (mesmo
+    generation_key) pra destravar uma geracao cujo circuit breaker
+    automatico ja parou de redisparar sozinho."""
+    session = RecordingSession([ScalarResult(None)])
+    repo = ConteudoPersonalizadoRepository(session)
+
+    await repo.resetar_falha_streak(
+        record_id=249,
+        ciclo_id="ciclo-249",
+        source_hash="hash-249",
+        generation_key="ciclo-249:hash-249",
+    )
+
+    sql, params = session.calls[-1]
+    assert "'streak', 0" in sql
+    assert "CAST(:generation_key AS TEXT)" in sql
+    assert params["id"] == 249
+    assert params["generation_key"] == "ciclo-249:hash-249"
+
+
+@pytest.mark.asyncio
 async def test_buscar_cards_ativos_ignora_perfil_e_filtra_por_ativo() -> None:
     """Cards nao variam por perfil BrainHex - a busca deve trazer o conjunto
     ativo do aluno/topico/conteudo sem filtrar por brainhex_profile_key, para

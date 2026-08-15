@@ -2121,42 +2121,25 @@ def _build_source_hash(
             for item in materiais_origem
         ],
         "sinais_topico": {
-            "cards": [
-                {
-                    # "id" fica de fora de proposito: cards_personalizados e
-                    # regerado (novo id sequencial, batch antigo marcado
-                    # obsoleto) a cada tentativa de QUALQUER perfil do mesmo
-                    # topico, mesmo quando o conteudo nao mudou. Incluir o id
-                    # faz o source_hash mudar a cada tentativa, quebrando o
-                    # cache de enriquecimento compartilhado entre perfis e
-                    # orfanizando qualquer registro existente que dependa
-                    # deste hash para ser reencontrado.
-                    "conteudo_id": item.get("conteudo_id"),
-                    "titulo": item.get("titulo"),
-                    "descricao": item.get("descricao"),
-                    "ordem": item.get("ordem"),
-                }
-                for item in (cards_topico or [])
-            ],
+            # `cards` e `questoes` ficam de fora de proposito: o prompt de
+            # geracao (gerar_cards_direto) nunca le essas tabelas - so
+            # topico/conteudos/atividades.titulo|descricao chegam no
+            # conteudo_estudado. Incluir cards/questoes aqui so causa
+            # over-invalidation: editar um card ou uma questao no console do
+            # professor mudava o source_hash e forcava regeneracao pra turma
+            # toda, sem nenhum efeito no conteudo de fato gerado.
             "atividades": [
                 {
+                    # Mesma logica: so titulo/descricao chegam no prompt
+                    # (conteudo_estudado["atividades"]). tipo/pontuacao_maxima/
+                    # metadata nunca sao lidos por gerar_cards_direto, entao
+                    # ficam fora do hash - mudar so esses campos nao deve
+                    # invalidar personalizacoes ja geradas.
                     "id": item.get("id"),
                     "titulo": item.get("titulo"),
                     "descricao": item.get("descricao"),
-                    "tipo": item.get("tipo"),
-                    "pontuacao_maxima": item.get("pontuacao_maxima"),
-                    "metadata": item.get("metadata"),
                 }
                 for item in (atividades_topico or [])
-            ],
-            "questoes": [
-                {
-                    "id": item.get("id"),
-                    "atividade_id": item.get("atividade_id"),
-                    "enunciado": item.get("enunciado"),
-                    "tipo": item.get("tipo"),
-                }
-                for item in (questoes_topico or [])
             ],
         },
     }

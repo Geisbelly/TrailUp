@@ -7,6 +7,7 @@ import pytest
 
 from app.services import personalizacao_jobs as jobs_module
 from app.services.personalizacao_jobs import (
+    JOB_KIND_MANUAL_RETRY,
     _assert_brainhex_media_completed,
     _build_targets,
     _compact_exception_text,
@@ -1790,6 +1791,84 @@ async def test_process_media_render_target_stops_redispatch_after_falha_streak_e
     }
     claim_mock.assert_not_awaited()
     dispatch_mock.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_process_media_render_target_manual_retry_bypasses_falha_streak_excedido(
+    monkeypatch,
+) -> None:
+    """Botao 'tentar novamente' do professor (kind=manual_retry) precisa
+    funcionar mesmo quando o circuit breaker automatico ja parou de
+    redisparar (streak >= max) - reseta o contador e prossegue com a
+    reclamacao normal em vez de pular como o class-delta automatico faria.
+    """
+    existing = _existing_record()
+    existing["materiais"] = {
+        "_geracao_falhas": {"generation_key": "ciclo-249:hash-249", "streak": 2}
+    }
+
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.buscar_mais_recente_por_perfil",
+        AsyncMock(return_value=existing),
+    )
+    reset_mock = AsyncMock()
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.resetar_falha_streak",
+        reset_mock,
+    )
+    claim_mock = AsyncMock(return_value=existing)
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.claim_retry_incomplete_generation",
+        claim_mock,
+    )
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.incrementar_falha_streak",
+        AsyncMock(return_value=1),
+    )
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.atualizar_status",
+        AsyncMock(return_value=False),
+    )
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.buscar_por_id",
+        AsyncMock(return_value=None),
+    )
+    monkeypatch.setattr(
+        jobs_module,
+        "fetch_personalizacao_context",
+        AsyncMock(return_value={"source_hash": "hash-249", "fontes": []}),
+    )
+    monkeypatch.setattr(
+        jobs_module,
+        "enrich_content_blocks",
+        AsyncMock(return_value={"blocos": [{"id": "bloco-01"}]}),
+    )
+    # Dispatch falha de proposito - o que importa aqui e provar que o
+    # bypass/reset do circuit breaker aconteceu ANTES da tentativa (a
+    # reclamacao e o disparo prosseguiram em vez de pular direto pro skip).
+    dispatch_mock = AsyncMock(return_value=False)
+    monkeypatch.setattr(jobs_module, "disparar_brainhex_async", dispatch_mock)
+
+    app = SimpleNamespace(
+        state=SimpleNamespace(
+            settings=SimpleNamespace(
+                personalizacao_job_stale_processing_min=15,
+                personalizacao_falha_streak_max=2,
+            )
+        )
+    )
+    job = {"id": "job-1", "classe_id": 32, "kind": JOB_KIND_MANUAL_RETRY, "payload": {}}
+    target = {"id": 579, "aluno_id": existing["aluno_id"], "topico_id": 117, "conteudo_id": None}
+
+    with pytest.raises(RuntimeError, match="Microservico BrainHex nao concluiu a geracao."):
+        await _process_media_render_target(
+            app=app, session=_FakeSession(is_stuck=False), job=job, target=target
+        )
+
+    reset_mock.assert_awaited_once()
+    assert reset_mock.await_args.kwargs["generation_key"] == "ciclo-249:hash-249"
+    claim_mock.assert_awaited_once()
+    dispatch_mock.assert_awaited_once()
 
 
 @pytest.mark.asyncio

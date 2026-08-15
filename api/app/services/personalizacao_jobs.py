@@ -1221,23 +1221,40 @@ async def _process_media_render_target(
         if completed_existing:
             return {"skipped": True, "record": completed_existing}
 
+        is_manual_retry = job.get("kind") == JOB_KIND_MANUAL_RETRY
         falha_streak_max = int(
             getattr(app.state.settings, "personalizacao_falha_streak_max", 3) or 3
         )
         if _falha_streak_excedido(
             existing, generation_key=generation_key, max_streak=falha_streak_max
         ):
-            logger.warning(
-                "geracao com falha_streak esgotado, redisparo suspenso: "
-                "personalizacao_id=%s generation_key=%s",
+            if not is_manual_retry:
+                logger.warning(
+                    "geracao com falha_streak esgotado, redisparo suspenso: "
+                    "personalizacao_id=%s generation_key=%s",
+                    existing["id"],
+                    generation_key,
+                )
+                return {
+                    "skipped": True,
+                    "record": existing,
+                    "reason": "falha_streak_excedido",
+                }
+            # Retry manual do professor: destrava mesmo com o circuit breaker
+            # automatico ja esgotado, zerando o contador pra essa mesma
+            # geracao (mesmo generation_key) prosseguir com a reclamacao normal.
+            logger.info(
+                "retry manual zera falha_streak esgotado: personalizacao_id=%s "
+                "generation_key=%s",
                 existing["id"],
                 generation_key,
             )
-            return {
-                "skipped": True,
-                "record": existing,
-                "reason": "falha_streak_excedido",
-            }
+            await repo.resetar_falha_streak(
+                record_id=int(existing["id"]),
+                ciclo_id=existing_cycle_id,
+                source_hash=existing_source_hash,
+                generation_key=generation_key,
+            )
 
         stale_min = _effective_stale_processing_min(app.state.settings)
         claimed = await repo.claim_retry_incomplete_generation(

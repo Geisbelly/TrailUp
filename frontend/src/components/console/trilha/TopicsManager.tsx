@@ -26,6 +26,7 @@ import {
   Maximize2,
   Pencil,
   Plus,
+  RotateCcw,
   Trash2,
   Workflow,
   ZoomIn,
@@ -43,8 +44,10 @@ import { useTopicCrud } from "./useTopicCrud";
 import { updateContentOrder } from "./topicsApi";
 import {
   enqueueClassDeltaJob,
+  enqueueManualRetryJob,
   isPersonalizacaoJobActive,
   listPersonalizacaoJobs,
+  selectFailedJobTopicoIds,
   summarizePersonalizacaoJobs,
   type PersonalizacaoJobStatus,
 } from "./personalizacaoJobsApi";
@@ -69,6 +72,7 @@ export default function TopicsManager() {
   const [recentJobs, setRecentJobs] = useState<PersonalizacaoJobStatus[]>([]);
   const [jobsRefreshRevision, setJobsRefreshRevision] = useState(0);
   const [jobsStatusError, setJobsStatusError] = useState<string | null>(null);
+  const [isRetryingJobs, setIsRetryingJobs] = useState(false);
   const hasActiveJobsRef = useRef(false);
   const [formData, setFormData] = useState({
     nome: "",
@@ -794,6 +798,34 @@ export default function TopicsManager() {
   const hasData = useMemo(() => topicos.length > 0, [topicos.length]);
   const jobsSummary = useMemo(() => summarizePersonalizacaoJobs(recentJobs), [recentJobs]);
   const latestJobStatus = recentJobs[0]?.status?.trim().toLowerCase() ?? "";
+  const failedJobTopicoIds = useMemo(
+    () => selectFailedJobTopicoIds(recentJobs),
+    [recentJobs]
+  );
+  const canRetryFailedJobs =
+    jobsSummary.activeCount === 0 && failedJobTopicoIds.length > 0;
+
+  const handleRetryFailedJobs = async () => {
+    if (!session?.access_token || !selectedClassFilter || isRetryingJobs) return;
+    setIsRetryingJobs(true);
+    try {
+      await enqueueManualRetryJob(session.access_token, {
+        classe_id: Number(selectedClassFilter),
+        topico_ids: failedJobTopicoIds,
+        reason: "retry_manual_console",
+      });
+      toast.success("Nova tentativa de personalização enfileirada.");
+      setJobsRefreshRevision((rev) => rev + 1);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Falha ao tentar novamente a personalização."
+      );
+    } finally {
+      setIsRetryingJobs(false);
+    }
+  };
   const jobsStatusTitle = [jobsSummary.lastError, jobsStatusError].filter(Boolean).join("\n");
   const jobsStatusLabel =
     jobsSummary.activeCount > 0
@@ -946,6 +978,22 @@ export default function TopicsManager() {
                 </>
               )}
             </div>
+          )}
+          {canRetryFailedJobs && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1.5 rounded-full px-2.5 text-[11px]"
+              onClick={handleRetryFailedJobs}
+              disabled={isRetryingJobs}
+            >
+              {isRetryingJobs ? (
+                <LoaderCircle className="h-3 w-3 shrink-0 animate-spin" aria-hidden="true" />
+              ) : (
+                <RotateCcw className="h-3 w-3 shrink-0" aria-hidden="true" />
+              )}
+              Tentar novamente
+            </Button>
           )}
           <Select
             value={selectedClassFilter}
