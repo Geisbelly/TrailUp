@@ -80,109 +80,6 @@ function now() {
   return new Date().toISOString();
 }
 
-type SlideAssetInput = { imagePrompt: string; iconPrompts?: string[] };
-type SlideAssets = { imagem_referencia: string[]; icones: string[][] };
-
-/**
- * 1 cena de fundo por slide, via Gemini (gemini-2.5-flash-image). Serial (1
- * chave, sem pool). gpt-image-1 (OpenAI) não é suportado em todos os tiers —
- * Gemini é o provedor principal aqui, não contingência.
- */
-async function generateSceneImages(
-  slides: { imagePrompt: string }[],
-  styleSuffix: string,
-  plan: PresentationDesignPlan,
-): Promise<string[]> {
-  const scenes: string[] = [];
-  for (let i = 0; i < slides.length; i++) {
-    try {
-      if (i > 0) await new Promise((r) => setTimeout(r, 2000));
-      const layout = presentationLayoutForSlide(plan, i, slides.length);
-      const prompt = (
-        `${slides[i].imagePrompt}${styleSuffix}. `
-        + `A composição será usada em um slide editorial do tipo ${layout}; `
-        + "preserve áreas de respiro e contraste para títulos e cartões."
-      );
-      scenes.push((await generateSlideImage(prompt)) ?? "");
-    } catch (e) {
-      log.error("cena de fundo falhou (gemini)", { slide: i, err: e });
-      scenes.push("");
-    }
-  }
-  return scenes;
-}
-
-/** Ícones: Gemini primário com circuito e contingência OpenAI. */
-async function generateSlideIcons(
-  slides: { iconPrompts?: string[] }[],
-  styleSuffix: string
-): Promise<string[][]> {
-  const iconsPerSlide: string[][] = [];
-  let calls = 0;
-  for (let i = 0; i < slides.length; i++) {
-    const prompts = slides[i].iconPrompts ?? [];
-    const icons: string[] = [];
-    for (const iconPrompt of prompts) {
-      try {
-        if (calls > 0) await new Promise((r) => setTimeout(r, 1000));
-        calls++;
-        const generated = await generateSlideIconWithFallback(
-          `${iconPrompt}${styleSuffix}`,
-        );
-        if (generated.fallbackReason) {
-          log.warn("icone gerado pela contingencia OpenAI", {
-            slide: i,
-            reason: generated.fallbackReason,
-          });
-        }
-        icons.push(generated.image ?? "");
-        // A contingência de imagem OpenAI é mais cara e já existe uma cena
-        // OpenAI por slide. Um ícone de contingência por slide preserva o
-        // acabamento sem multiplicar custo quando a cota Gemini está zerada.
-        // Esta mesma política de corte está espelhada em generateOneLegacySlide
-        // (src/lib/slideAssetGenerator.ts) — atualize os dois lugares juntos.
-        if (generated.provider === "openai") break;
-      } catch (e) {
-        log.error("icone falhou nos dois provedores", { slide: i, err: e });
-        icons.push("");
-      }
-    }
-    iconsPerSlide.push(icons);
-  }
-  return iconsPerSlide;
-}
-
-/**
- * Gera, para TODOS os slides: 1 cena de fundo por slide (OpenAI) + os icones
- * decorativos daquele slide (Gemini). As duas trilhas rodam em paralelo entre
- * si (provedores/chaves diferentes); dentro de cada trilha a geracao e serial
- * (1 chave cada, sem pool de chaves).
- */
-async function generateSlideAssets(
-  slides: SlideAssetInput[],
-  profile: BrainHexProfile,
-  plan: PresentationDesignPlan,
-): Promise<SlideAssets> {
-  const styleSuffix = buildImageStyleSuffix(profile, plan);
-  const [scenes, iconsPerSlide] = await Promise.all([
-    generateSceneImages(slides, styleSuffix, plan),
-    generateSlideIcons(slides, styleSuffix),
-  ]);
-  return { imagem_referencia: scenes, icones: iconsPerSlide };
-}
-
-// enrichSlidesWithImages extraído para src/lib/slideEnricher.ts (testado).
-
-// Flag desligado por padrao (mesmo padrao de ENABLE_OPENAI_FULL_SLIDE_IMAGES
-// em src/lib/slideAssetGenerator.ts). Quando ligado, decks de 1 parte usam o
-// motor imersivo (IA gera HTML/CSS/JS por slide) em vez de imagem de
-// cena/icone + template. Decks que precisaram ser divididos em multiplas
-// partes (parts.length > 1) sempre usam o pipeline atual, independente do
-// flag - o motor imersivo produz 1 documento autocontido, incompativel com
-// a paginacao multi-parte sem uma mudanca maior (fora de escopo aqui).
-const PRESENTATION_ENGINE_IMMERSIVE_ENABLED =
-  process.env.PRESENTATION_ENGINE_IMMERSIVE_ENABLED === "true";
-
 // ─── Core: archive to Supabase ────────────────────────────────────────────────
 
 export type PresentationFailureStage = "render" | "upload";
@@ -192,65 +89,12 @@ export interface PresentationFailure {
   error: string;
 }
 
-function presentationRendererError(error: unknown): string {
-  const raw = error instanceof Error ? error.message : String(error);
-  return raw.replace(/\s+/g, " ").trim().slice(0, 1200) || "renderer_error";
-}
-
-export async function renderAndUploadPresentation(params: {
-  slides: any[];
-  profile: BrainHexProfile;
-  presentationTheme?: PresentationDesignPlan;
-  bucket: string;
-  presentationPath: string;
-  buildHtml?: typeof buildDeckHtml;
-  uploadHtml?: typeof uploadBuffer;
-}): Promise<{ presentationUrl: string | null; failure: PresentationFailure | null }> {
-  const buildHtml = params.buildHtml ?? buildDeckHtml;
-  const uploadHtml = params.uploadHtml ?? uploadBuffer;
-
-  let html: string;
-  try {
-    html = buildHtml(params.slides, params.profile, params.presentationTheme);
-  } catch (error) {
-    return {
-      presentationUrl: null,
-      failure: { stage: "render", error: presentationRendererError(error) },
-    };
-  }
-
-  try {
-    const presentationUrl = await uploadHtml(
-      params.bucket,
-      params.presentationPath,
-      Buffer.from(html, "utf-8"),
-      "text/html; charset=utf-8",
-    );
-    if (!presentationUrl) {
-      return {
-        presentationUrl: null,
-        failure: {
-          stage: "upload",
-          error: "upload da apresentacao nao retornou URL publica",
-        },
-      };
-    }
-    return { presentationUrl, failure: null };
-  } catch (error) {
-    return {
-      presentationUrl: null,
-      failure: { stage: "upload", error: presentationRendererError(error) },
-    };
-  }
-}
-
 export function buildPresentationMaterialMetadata(params: {
   generationKey: string;
   presentationUrl: string | null;
   bucket: string;
   failure: PresentationFailure | null;
   updatedAt?: string;
-  engineVariant?: "immersive";
 }): MaterialEntry["metadata"] {
   return {
     status: params.presentationUrl ? "completed" : "failed",
@@ -258,7 +102,6 @@ export function buildPresentationMaterialMetadata(params: {
     ...buildPresentationVersionMetadata(params.generationKey),
     updated_at: params.updatedAt ?? now(),
     ...(params.presentationUrl ? { bucket: params.bucket } : {}),
-    ...(params.engineVariant ? { engine_variant: params.engineVariant } : {}),
     ...(params.failure
       ? {
           error_stage: params.failure.stage,
@@ -339,12 +182,15 @@ export async function archiveToSupabase(params: {
     }
   }
 
-  // Apresentacao: HTML com a identidade do guardiao + tema da aula, sem rasterizar.
+  // Apresentacao: gerada pelo BrainHexPDF (deck + HTML), usando o markdown
+  // ja sintetizado como conteudo-fonte (mesmo texto que virou material de
+  // estudo) e a primeira linha nao vazia do markdown como topico.
   const presentationPath = `${storagePath}/apresentacao/material-${refId}.html`;
-  const presentationResult = await renderAndUploadPresentation({
-    slides,
+  const presentationTopic = markdown.split("\n").find((l) => l.trim())?.trim() ?? "Aula";
+  const presentationResult = await renderAndUploadPresentationViaBrainHexPdf({
+    markdown,
+    topic: presentationTopic,
     profile,
-    presentationTheme,
     bucket,
     presentationPath,
   });
@@ -447,18 +293,10 @@ export async function archiveToSupabase(params: {
  * O endpoint /api/v1/archive (uso avulso, sem personalizacao) continua na
  * versao single-file (archiveToSupabase) - nao precisa dessa divisao.
  */
-// Extraida como funcao pura pra ser testavel sem mockar Supabase: decide se
-// o payload.slides persistido e o array de fragmentos HTML por slide do
-// motor imersivo ([{index, html}]) ou a estrutura SlideContent[] antiga
-// (title/topics/explanation/etc.), flatten das partes do pipeline de
-// imagem+template.
+// Extraida como funcao pura pra ser testavel sem mockar Supabase.
 export function buildApresentacaoSlidesPayload(
   parts: Array<{ slides: SlideContent[] }>,
-  prebuiltImmersiveSlideHtmls?: string[] | null,
-): SlideContent[] | Array<{ index: number; html: string }> {
-  if (prebuiltImmersiveSlideHtmls) {
-    return prebuiltImmersiveSlideHtmls.map((html, index) => ({ index, html }));
-  }
+): SlideContent[] {
   return parts.flatMap((p) => p.slides);
 }
 
@@ -472,8 +310,6 @@ export async function archiveMultiPartToSupabase(params: {
   personalizacaoId: number | null;
   fence?:           GenerationFence;
   log?:            Logger;
-  prebuiltPresentationHtml?: string | null;
-  prebuiltImmersiveSlideHtmls?: string[] | null;
 }): Promise<{
   audioMp3Url: string | null;
   markdownUrl: string | null;
@@ -535,15 +371,12 @@ export async function archiveMultiPartToSupabase(params: {
     });
 
     const presentationPath = `${storagePath}/apresentacao/material-${refId}${suffix}.html`;
-    const presentationResult = await renderAndUploadPresentation({
-      slides: part.slides,
+    const presentationResult = await renderAndUploadPresentationViaBrainHexPdf({
+      markdown: part.markdown,
+      topic: part.titulo,
       profile,
-      presentationTheme,
       bucket,
       presentationPath,
-      ...(params.prebuiltPresentationHtml
-        ? { buildHtml: () => params.prebuiltPresentationHtml as string }
-        : {}),
     });
     if (presentationResult.failure) {
       firstPresentationFailure = firstPresentationFailure ?? presentationResult.failure;
@@ -614,11 +447,8 @@ export async function archiveMultiPartToSupabase(params: {
         partes: markdownParts,
       },
       apresentacao: {
-        // qualquer consumidor de payload.slides precisa checar
-        // metadata.engine_variant === "immersive" antes de assumir o formato
-        // SlideContent — ver docs/superpowers/specs/2026-08-03-slides-imersivos-html-ia-design.md.
         payload: {
-          slides: buildApresentacaoSlidesPayload(parts, params.prebuiltImmersiveSlideHtmls),
+          slides: buildApresentacaoSlidesPayload(parts),
           tema_visual: presentationTheme,
         },
         metadata: buildPresentationMaterialMetadata({
@@ -626,7 +456,6 @@ export async function archiveMultiPartToSupabase(params: {
           presentationUrl,
           bucket,
           failure: firstPresentationFailure,
-          ...(params.prebuiltPresentationHtml ? { engineVariant: "immersive" as const } : {}),
         }),
         arquivo_url: presentationUrl,
         storage_path: presentationParts[0]?.storage_path ?? null,
@@ -770,56 +599,6 @@ async function runPersonalizacaoJobWithTimeout(
   );
 }
 
-interface PresentationRenderingResult {
-  immersiveDeckHtml: string | null;
-  immersiveSlideHtmls: string[] | null;
-  slidesComImagens: SlideContent[];
-}
-
-interface ResolvePresentationRenderingDeps {
-  renderImmersive?: typeof renderImmersiveSlides;
-  generateAssets?: typeof generateFullSlideImages;
-}
-
-/**
- * Decide como a apresentacao deve ser renderizada: motor imersivo (quando
- * useImmersiveEngine) ou o pipeline atual de imagem de cena/icone. Qualquer
- * falha do motor imersivo cai automaticamente pro pipeline atual - nunca
- * propaga o erro pra runPipeline. Extraida como funcao propria (em vez de
- * inline em runPipeline) especificamente pra ser testavel sem depender de
- * Supabase/audio/rede - so recebe os slides ja decididos e as 2 chamadas
- * que pode fazer, ambas com override injetavel pra teste.
- */
-export async function resolvePresentationRendering(
-  slides: SlideContent[],
-  profile: BrainHexProfile,
-  presentationPlan: PresentationDesignPlan,
-  useImmersiveEngine: boolean,
-  jobLog: Logger,
-  deps: ResolvePresentationRenderingDeps = {},
-): Promise<PresentationRenderingResult> {
-  const renderImmersive = deps.renderImmersive ?? renderImmersiveSlides;
-  const generateAssets = deps.generateAssets ?? generateFullSlideImages;
-
-  if (useImmersiveEngine) {
-    try {
-      const { deckHtml, slideHtmls } = await renderImmersive(slides, profile);
-      return { immersiveDeckHtml: deckHtml, immersiveSlideHtmls: slideHtmls, slidesComImagens: slides };
-    } catch (error) {
-      jobLog.error("falha no motor imersivo; caindo para o pipeline de imagem+template", { err: error });
-    }
-  }
-
-  const assets = await generateAssets(slides, profile, presentationPlan).catch((err) => {
-    jobLog.error("falha nos assets de slide", { err });
-    return null;
-  });
-  const slidesComImagens = assets
-    ? enrichSlidesWithImages(slides, assets.imagem_referencia, assets.icones, assets.renderMode)
-    : slides;
-  return { immersiveDeckHtml: null, immersiveSlideHtmls: null, slidesComImagens };
-}
-
 async function runPipeline(
   personalizacaoId: number,
   profile: BrainHexProfile,
@@ -861,11 +640,11 @@ async function runPipeline(
   );
 
   // 3. Divide o resultado JA sintetizado (uma so vez, sem duplicar topicos -
-  // ver mergeContentBlocksIntoOne) em partes entregaveis. As fronteiras vem
-  // so de markdown/audioScript/contagem de slides, entao podem ser
-  // calculadas antes do enriquecimento de imagem terminar - o audio de cada
-  // parte ja sai gerando em paralelo com as imagens, sem esperar por elas.
-  const partsForAudio = splitProcessedContentIntoParts({
+  // ver mergeContentBlocksIntoOne) em partes entregaveis. Cada parte vira 1
+  // chamada ao BrainHexPDF pra gerar a apresentacao daquele trecho - mesmas
+  // fronteiras de markdown/audioScript/apresentacao, sem particionamento
+  // separado (ver docs/superpowers/specs/2026-08-15-brainhexpdf-integracao-design.md).
+  const parts = splitProcessedContentIntoParts({
     markdown: resultado.markdown,
     audioScript: resultado.audioScript,
     slides: resultado.slides,
@@ -892,20 +671,14 @@ async function runPipeline(
         )
       : generateLongNaturalAudio(audioScript, voice, voiceProfile.direction);
 
-  // So decks de 1 parte usam o motor imersivo - ver decisao 6 no plano
-  // desta task (paginacao multi-parte do mobile e incompativel com o
-  // documento autocontido do motor imersivo).
-  const useImmersiveEngine = PRESENTATION_ENGINE_IMMERSIVE_ENABLED && partsForAudio.length === 1;
-
-  // allSettled no audio preserva a regra existente de sucesso parcial - uma
-  // parte de audio falhando nao derruba as outras. resolvePresentationRendering
-  // ja encapsula sua propria queda pro pipeline de imagem+template em caso de
-  // falha (motor imersivo ou assets), sem propagar erro pra runPipeline - ver
-  // comentario na funcao.
-  const [audioSettled, { immersiveDeckHtml, immersiveSlideHtmls, slidesComImagens }] = await Promise.all([
-    Promise.allSettled(partsForAudio.map((part) => generatePartAudio(part.audioScript))),
-    resolvePresentationRendering(resultado.slides, profile, presentationPlan, useImmersiveEngine, jobLog),
-  ]);
+  // allSettled preserva a regra existente de sucesso parcial - uma parte de
+  // audio falhando nao derruba as outras. A apresentacao de cada parte e
+  // gerada dentro de archiveMultiPartToSupabase (chamada ao BrainHexPDF por
+  // parte) - corte seco: falha lá derruba a apresentacao inteira, sem
+  // fallback (ver design).
+  const audioSettled = await Promise.allSettled(
+    parts.map((part) => generatePartAudio(part.audioScript)),
+  );
 
   const audioByPart = audioSettled.map((result, index) => {
     if (result.status === "fulfilled") {
@@ -915,21 +688,13 @@ async function runPipeline(
     return { mp3Base64: null, wavBase64: null };
   });
 
-  // Recalcula as mesmas fronteiras de parte (deterministicas a partir do
-  // mesmo markdown/audioScript) agora com as slides ja enriquecidas com
-  // imagem, para a apresentacao de cada parte sair completa.
-  const finalParts = splitProcessedContentIntoParts({
-    markdown: resultado.markdown,
-    audioScript: resultado.audioScript,
-    slides: slidesComImagens,
-  });
-  const partsWithAudio = finalParts.map((part, index) => ({
+  const partsWithAudio = parts.map((part, index) => ({
     ...part,
     mp3Base64: audioByPart[index]?.mp3Base64 ?? null,
     wavBase64: audioByPart[index]?.wavBase64 ?? null,
   }));
 
-  // 4. Persiste tudo no Supabase
+  // 4. Persiste tudo no Supabase (apresentacao gerada via BrainHexPDF por parte)
   const archived = await archiveMultiPartToSupabase({
     profile,
     storagePath,
@@ -940,8 +705,6 @@ async function runPipeline(
     personalizacaoId,
     fence,
     log:              jobLog,
-    prebuiltPresentationHtml: immersiveDeckHtml,
-    prebuiltImmersiveSlideHtmls: immersiveSlideHtmls,
   });
   if (!archived.persisted) {
     throw new Error("merge persistido ausente para a personalizacao");
@@ -1258,7 +1021,6 @@ export function buildApp(opts: AppOptions = {}): express.Application {
         processed,
         mp3Base64,
         wavBase64,
-        slideImages: clientImages,
         presentation_theme: requestedPresentationTheme,
       } = req.body;
 
@@ -1286,36 +1048,6 @@ export function buildApp(opts: AppOptions = {}): express.Application {
           ?? class_name,
       );
 
-      // Assets dos slides:
-      // - Se o frontend enviou cenas de fundo prontas (slideImages), usa direto e so
-      //   gera os icones (Gemini) server-side (generateSlideIcons sozinho — sem
-      //   desperdicar uma chamada OpenAI gerando cena de prompt vazio).
-      // - Caso contrario, gera cena (OpenAI) + icones (Gemini) server-side, tudo.
-      let sceneImages: string[];
-      let iconImages: string[][];
-      if (Array.isArray(clientImages) && clientImages.length > 0) {
-        sceneImages = clientImages;
-        req.log.info("gerando icones dos slides server-side (cena veio do cliente)");
-        iconImages = await generateSlideIcons(
-          processed.slides || [],
-          buildImageStyleSuffix(
-            profile as BrainHexProfile,
-            presentationPlan,
-          ),
-        );
-      } else {
-        req.log.info("gerando cena + icones dos slides server-side");
-        const assets = await generateSlideAssets(
-          processed.slides || [],
-          profile as BrainHexProfile,
-          presentationPlan,
-        );
-        sceneImages = assets.imagem_referencia;
-        iconImages  = assets.icones;
-      }
-
-      const slidesComImagens = enrichSlidesWithImages(processed.slides || [], sceneImages, iconImages);
-
       const result = await archiveToSupabase({
         profile:          profile as BrainHexProfile,
         storagePath,
@@ -1323,7 +1055,7 @@ export function buildApp(opts: AppOptions = {}): express.Application {
         refId,
         markdown:         processed.markdown ?? "",
         audioScript:      processed.audioScript ?? "",
-        slides:           slidesComImagens,
+        slides:           processed.slides ?? [],
         presentationTheme: presentationPlan,
         mp3Base64:        mp3Base64 ?? null,
         wavBase64:        wavBase64 ?? null,
