@@ -118,7 +118,6 @@ export async function archiveToSupabase(params: {
   refId:           string;
   markdown:        string;
   audioScript:     string;
-  slides:          any[];             // slides COM imagem_referencia
   presentationTheme: PresentationDesignPlan;
   mp3Base64:       string | null;
   wavBase64:       string | null;
@@ -139,7 +138,6 @@ export async function archiveToSupabase(params: {
     refId,
     markdown,
     audioScript,
-    slides,
     presentationTheme,
     mp3Base64,
     wavBase64,
@@ -184,9 +182,14 @@ export async function archiveToSupabase(params: {
 
   // Apresentacao: gerada pelo BrainHexPDF (deck + HTML), usando o markdown
   // ja sintetizado como conteudo-fonte (mesmo texto que virou material de
-  // estudo) e a primeira linha nao vazia do markdown como topico.
+  // estudo) e a primeira linha nao vazia do markdown (sem marcadores de
+  // heading) como topico.
   const presentationPath = `${storagePath}/apresentacao/material-${refId}.html`;
-  const presentationTopic = markdown.split("\n").find((l) => l.trim())?.trim() ?? "Aula";
+  const presentationTopic = markdown
+    .split("\n")
+    .find((l) => l.trim())
+    ?.replace(/^#+\s*/, "")
+    .trim() ?? "Aula";
   const presentationResult = await renderAndUploadPresentationViaBrainHexPdf({
     markdown,
     topic: presentationTopic,
@@ -218,8 +221,14 @@ export async function archiveToSupabase(params: {
     // caber no teto de statement_timeout em topicos com muitos blocos.
     const audioPayloadObj = { roteiro: audioScript };
     const mdPayloadObj    = { markdown };
+    // slides fica vazio de proposito: o deck agora e renderizado por inteiro
+    // pelo BrainHexPDF (arquivo_url) - nao ha mais slides estruturados
+    // equivalentes pra sintetizar aqui, e um array nao-vazio faria o mobile
+    // (normalizeRichPresentationSlides) montar um render nativo por engano
+    // em vez de abrir o HTML completo. Ver
+    // docs/superpowers/specs/2026-08-15-brainhexpdf-integracao-design.md.
     const apresentacaoPayloadObj = {
-      slides,
+      slides: [] as never[],
       abertura: markdown.split("\n").find((l) => l.trim()) ?? "",
       tema_visual: presentationTheme,
     };
@@ -293,13 +302,6 @@ export async function archiveToSupabase(params: {
  * O endpoint /api/v1/archive (uso avulso, sem personalizacao) continua na
  * versao single-file (archiveToSupabase) - nao precisa dessa divisao.
  */
-// Extraida como funcao pura pra ser testavel sem mockar Supabase.
-export function buildApresentacaoSlidesPayload(
-  parts: Array<{ slides: SlideContent[] }>,
-): SlideContent[] {
-  return parts.flatMap((p) => p.slides);
-}
-
 export async function archiveMultiPartToSupabase(params: {
   profile:         BrainHexProfile;
   storagePath:     string;
@@ -447,8 +449,11 @@ export async function archiveMultiPartToSupabase(params: {
         partes: markdownParts,
       },
       apresentacao: {
+        // slides fica vazio de proposito - ver comentario equivalente em
+        // archiveToSupabase (mesma razao: evita que o mobile sintetize um
+        // render nativo em vez de abrir o HTML completo do BrainHexPDF).
         payload: {
-          slides: buildApresentacaoSlidesPayload(parts),
+          slides: [] as never[],
           tema_visual: presentationTheme,
         },
         metadata: buildPresentationMaterialMetadata({
@@ -1054,7 +1059,6 @@ export function buildApp(opts: AppOptions = {}): express.Application {
         refId,
         markdown:         processed.markdown ?? "",
         audioScript:      processed.audioScript ?? "",
-        slides:           processed.slides ?? [],
         presentationTheme: presentationPlan,
         mp3Base64:        mp3Base64 ?? null,
         wavBase64:        wavBase64 ?? null,

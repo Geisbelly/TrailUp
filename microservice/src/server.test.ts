@@ -8,14 +8,12 @@ import {
   PRESENTATION_ENGINE_VERSION,
   PRESENTATION_SCHEMA_VERSION,
   buildPresentationMaterialMetadata,
-  buildApresentacaoSlidesPayload,
 } from "../server";
 import {
   buildPresentationVersionMetadata,
   generationStorageSegment,
   versionStoragePath,
 } from "./constants/pipelineVersions";
-import type { SlideContent } from "./types";
 if (!process.env.OPENAI_API_KEY?.trim()) {
   process.env.OPENAI_API_KEY = "test-openai-key";
 }
@@ -560,28 +558,3 @@ describe("x-request-id header", () => {
   });
 });
 
-// ─── buildApresentacaoSlidesPayload (flatten das partes) ─────────────────────
-
-describe("buildApresentacaoSlidesPayload", () => {
-  const slide: SlideContent = {
-    title: "Slide 1",
-    topics: ["DNS"],
-    explanation: "exp1",
-    visualDescription: "vd1",
-    characterQuote: "q1",
-    characterAction: "explaining",
-    imagePrompt: "prompt1",
-    iconPrompts: [],
-    sourceIds: [],
-  };
-  const parts = [
-    { slides: [slide] },
-    { slides: [{ ...slide, title: "Slide 2" }] },
-  ];
-
-  it("faz o flatten das slides de todas as partes, na ordem", () => {
-    const result = buildApresentacaoSlidesPayload(parts);
-
-    assert.deepEqual(result, [parts[0].slides[0], parts[1].slides[0]]);
-  });
-});
