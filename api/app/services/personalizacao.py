@@ -5654,6 +5654,40 @@ def _merge_materiais(existing: dict[str, Any], updates: dict[str, Any]) -> dict[
     return merged
 
 
+async def _fetch_existing_materiais_for_state(
+    state: dict[str, Any],
+    session_factory: async_sessionmaker[AsyncSession] | None,
+) -> dict[str, Any]:
+    """Busca o materiais ja persistido pra este aluno/topico/conteudo, pra
+    generate_materiais_personalizados preservar formatos ja completos em vez
+    de reconstruir do zero via existing_materiais.
+
+    Sem isso, os dois callers reais (agente_midias_personalizadas.py,
+    agente_geracao_midia.py) nunca passavam existing_materiais - e
+    ConteudoPersonalizadoRepository.salvar() sobrescreve a coluna materiais
+    inteira (nao faz merge), entao todo novo ciclo de geracao (retry, edicao
+    de conteudo, full_sync) apagava silenciosamente audio/apresentacao ja
+    concluidos de um ciclo anterior assim que fosse persistido de novo.
+    """
+    aluno_id = state.get("aluno_id")
+    topico_id = state.get("payload_topico_id")
+    if session_factory is None or not aluno_id:
+        return {}
+    async with session_factory() as session:
+        repo = ConteudoPersonalizadoRepository(session)
+        records = await repo.buscar_por_aluno(
+            str(aluno_id),
+            classe_id=state.get("classe_id"),
+            conteudo_id=state.get("conteudo_foco_id"),
+            topico_id=int(topico_id) if topico_id is not None else None,
+            limit=1,
+        )
+    if not records:
+        return {}
+    materiais = records[0].get("materiais")
+    return materiais if isinstance(materiais, dict) else {}
+
+
 def _collect_fontes_midias_relevantes(
     materiais_origem: list[dict[str, Any]] | None,
     *,
@@ -5790,7 +5824,10 @@ async def generate_materiais_personalizados(
     existing_materiais: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     generation_phase = _normalize_generation_phase(phase)
-    previous_materiais = existing_materiais if isinstance(existing_materiais, dict) else {}
+    if isinstance(existing_materiais, dict):
+        previous_materiais = existing_materiais
+    else:
+        previous_materiais = await _fetch_existing_materiais_for_state(state, session_factory)
 
     llm = JsonLLMService(settings)
     plano = state.get("plano_personalizacao") or _fallback_plano_for_state(state)
