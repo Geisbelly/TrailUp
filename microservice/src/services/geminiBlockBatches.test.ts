@@ -158,6 +158,70 @@ test("respeita override por env var, com o mesmo teto minimo de 8192 dos dois ca
   assert.equal(resolveContentGenerationMaxOutputTokens(true, { CONTENT_GENERATION_BATCH_MAX_OUTPUT_TOKENS: "24000" }), 65_536);
 });
 
+test("cobertura minima usa 55% (markdown) / 35% (audio) do texto-fonte, nao 75%/50%", () => {
+  // Achado de producao: 75%/50% (calibracao original) fazia os 6 modelos
+  // Gemini disponiveis convergirem consistentemente pra 90-98% do minimo,
+  // nunca cruzando - assinatura de teto apertado demais pra um
+  // conteudo_aprofundado que ja e, ele mesmo, um texto expandido por outra
+  // chamada de LLM (content_enrichment.py), nao o material bruto original.
+  // Fonte grande o bastante pra o piso absoluto (200/160 chars) nunca ser o
+  // fator limitante - só assim o teste exercita de fato o ratio 55%/35%.
+  const bigSourceBlock: EnrichedContentBlock = {
+    ...block(1),
+    conteudo_aprofundado: "x".repeat(2000),
+  };
+  const fonte = bigSourceBlock.conteudo_aprofundado.length;
+
+  // "x".repeat(fonte) pro campo que NAO esta sob teste em cada sub-caso -
+  // sempre acima de qualquer minimo possivel (ratio antigo ou novo), pra
+  // isolar exatamente o campo sendo verificado.
+  const abaixoDoNovoMinimoMarkdown = chapter("bloco-01", "UM");
+  abaixoDoNovoMinimoMarkdown.markdown = "x".repeat(Math.floor(fonte * 0.55) - 1);
+  abaixoDoNovoMinimoMarkdown.audioScript = "x".repeat(fonte);
+  assert.throws(
+    () => validateBlockBatchGeneration(
+      [bigSourceBlock],
+      { chapters: [abaixoDoNovoMinimoMarkdown], confidence: 0.9 },
+      1,
+    ),
+    /Markdown.*resumido abaixo do mínimo de cobertura/,
+  );
+
+  const acimaDoNovoMinimoMarkdown = chapter("bloco-01", "UM");
+  acimaDoNovoMinimoMarkdown.markdown = "x".repeat(Math.ceil(fonte * 0.55) + 1);
+  acimaDoNovoMinimoMarkdown.audioScript = "x".repeat(fonte);
+  // Não deve lançar - markdown já cruza o novo mínimo (55%), mesmo estando
+  // bem abaixo do antigo (75%), que teria reprovado esta mesma resposta.
+  validateBlockBatchGeneration(
+    [bigSourceBlock],
+    { chapters: [acimaDoNovoMinimoMarkdown], confidence: 0.9 },
+    1,
+  );
+
+  const abaixoDoNovoMinimoAudio = chapter("bloco-01", "UM");
+  abaixoDoNovoMinimoAudio.markdown = "x".repeat(fonte);
+  abaixoDoNovoMinimoAudio.audioScript = "x".repeat(Math.floor(fonte * 0.35) - 1);
+  assert.throws(
+    () => validateBlockBatchGeneration(
+      [bigSourceBlock],
+      { chapters: [abaixoDoNovoMinimoAudio], confidence: 0.9 },
+      1,
+    ),
+    /Áudio.*resumido abaixo do mínimo de cobertura/,
+  );
+
+  const acimaDoNovoMinimoAudio = chapter("bloco-01", "UM");
+  acimaDoNovoMinimoAudio.markdown = "x".repeat(fonte);
+  acimaDoNovoMinimoAudio.audioScript = "x".repeat(Math.ceil(fonte * 0.35) + 1);
+  // Não deve lançar - áudio já cruza o novo mínimo (35%), mesmo bem abaixo
+  // do antigo (50%).
+  validateBlockBatchGeneration(
+    [bigSourceBlock],
+    { chapters: [acimaDoNovoMinimoAudio], confidence: 0.9 },
+    1,
+  );
+});
+
 test("valida cobertura exata do lote e reordena capítulos pelos ids esperados", () => {
   const batch = [block(1), block(2), block(3)];
   const result = validateBlockBatchGeneration(
@@ -207,12 +271,17 @@ test("teto de cobertura por orcamento de output evita exigir mais markdown do qu
   // Reproduz o bug real: mergeContentBlocksIntoOne junta N blocos originais
   // num so ("documento-completo"), cujo conteudo_aprofundado bruto cresce
   // com N — mas markdown/audioScript/slides saem de UMA UNICA chamada com
-  // orcamento de output fixo (maxOutputTokens). Sem teto, a exigencia de 75%
+  // orcamento de output fixo (maxOutputTokens). Sem teto, a exigencia de 55%
   // do texto-fonte supera o que a resposta consegue fisicamente conter, e o
   // lote reprova sempre, nao importa quantas vezes o Gemini tente de novo.
+  // repeat(300), nao 120: com o ratio mais folgado (55%/35%, ver
+  // minimumMarkdownLength/minimumAudioLength em geminiService.ts), um N menor
+  // nao gera fonte grande o bastante pra sequer sem-teto ultrapassar o que a
+  // resposta de teste consegue conter — o cenario so se reproduz com fonte
+  // proporcionalmente maior.
   const bigBlock = (index: number): EnrichedContentBlock => ({
     ...block(index),
-    conteudo_aprofundado: `Conteudo aprofundado do bloco ${index}. `.repeat(120),
+    conteudo_aprofundado: `Conteudo aprofundado do bloco ${index}. `.repeat(300),
   });
   const merged = mergeContentBlocksIntoOne(
     Array.from({ length: 10 }, (_, i) => bigBlock(i + 1)),
