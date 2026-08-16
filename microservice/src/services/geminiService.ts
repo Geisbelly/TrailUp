@@ -819,11 +819,22 @@ function validateSlideForBlock(
   };
 }
 
+// Ultimo recurso do gate de cobertura: quando a cascata inteira de modelos e
+// providers ja foi tentada (ver generateAfterPrimaryGeminiFailure em
+// contentGenerationService.ts) e nenhum bateu o minimo exato, aceitar um
+// resultado a 95% do minimo calculado evita falhar o bloco inteiro por um
+// punhado de caracteres - mesma tolerancia ja usada do lado Python
+// (_MIN_EXPANSION_TOLERANCE_RATIO em content_enrichment.py). So se aplica
+// quando o chamador passa tolerant:true explicitamente (a ULTIMA tentativa
+// da cascata) - nas intermediarias o gate continua exigindo 100% do minimo,
+// senao perderia forca em toda geracao.
+const MIN_COVERAGE_TOLERANCE_RATIO = 0.95;
+
 export function validateBlockBatchGeneration(
   batch: EnrichedContentBlock[],
   raw: unknown,
   batchIndex: number,
-  options: { requireAudio?: boolean; maxOutputTokens?: number } = {},
+  options: { requireAudio?: boolean; maxOutputTokens?: number; tolerant?: boolean } = {},
 ): GeneratedBlockBatch {
   const requireAudio = options.requireAudio ?? true;
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
@@ -900,6 +911,10 @@ export function validateBlockBatchGeneration(
         minimumAudioLength,
         Math.max(160, Math.floor(outputCharBudget * 0.25)),
       );
+    }
+    if (options.tolerant) {
+      minimumMarkdownLength = Math.ceil(minimumMarkdownLength * MIN_COVERAGE_TOLERANCE_RATIO);
+      minimumAudioLength = Math.ceil(minimumAudioLength * MIN_COVERAGE_TOLERANCE_RATIO);
     }
     if (normalizedText(markdown).length < minimumMarkdownLength) {
       throw new Error(
@@ -1751,7 +1766,7 @@ export async function processMediaWithGemini(
                 generateSlides: () => generateOpenAISlidesOnly(currentCall),
               });
             },
-            validateResult: (value, provider) => {
+            validateResult: (value, provider, meta) => {
               // audioScript so sai do Gemini (sem fallback proprio) - quando
               // a origem e o fallback OpenAI, audio vazio e esperado e nao
               // pode reprovar markdown/slides que ja foram gerados com
@@ -1759,16 +1774,26 @@ export async function processMediaWithGemini(
               validateBlockBatchGeneration(batch, value, index + 1, {
                 requireAudio: provider !== "openai",
                 maxOutputTokens,
+                tolerant: meta.tolerant,
               });
             },
             geminiFallbackModels: resolveGeminiTextFallbackModels(),
           },
         );
+        // tolerant precisa repetir o mesmo tolerantAccepted da geracao: se o
+        // valor so passou porque o ultimo recurso da cascata aceitou com
+        // margem, revalidar aqui sem tolerant reprovaria de novo um
+        // resultado que ja foi aceito (ver StructuredContentGenerationResult
+        // em contentGenerationService.ts).
         const validated = validateBlockBatchGeneration(
           batch,
           generation.value,
           index + 1,
-          { requireAudio: generation.provider !== "openai", maxOutputTokens },
+          {
+            requireAudio: generation.provider !== "openai",
+            maxOutputTokens,
+            tolerant: generation.tolerantAccepted === true,
+          },
         );
         validated.generationProvider = generation.provider;
         validated.generationModel = generation.model;

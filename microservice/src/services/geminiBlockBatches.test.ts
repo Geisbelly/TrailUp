@@ -235,6 +235,59 @@ test("cobertura minima usa 55% (markdown) / 35% (audio) do texto-fonte, nao 75%/
   );
 });
 
+test("tolerant:true aceita markdown/audio a partir de 95% do minimo calculado, nao 100%", () => {
+  // Ultimo recurso da cascata inteira (ver generateAfterPrimaryGeminiFailure
+  // em contentGenerationService.ts): sem isso, um resultado a 96% do minimo
+  // reprova e falha o bloco/job inteiro por um punhado de caracteres, mesma
+  // tolerancia ja usada do lado Python (_MIN_EXPANSION_TOLERANCE_RATIO em
+  // content_enrichment.py). So se aplica quando tolerant:true e passado
+  // explicitamente - nas tentativas intermediarias o gate continua exigindo
+  // 100% do minimo, senao perderia forca em toda geracao.
+  const bigSourceBlock: EnrichedContentBlock = {
+    ...block(1),
+    conteudo_aprofundado: "x".repeat(2000),
+  };
+  const fonte = bigSourceBlock.conteudo_aprofundado.length;
+  const minimoBruto = Math.floor(fonte * 0.55);
+
+  const perto96 = chapter("bloco-01", "UM");
+  perto96.markdown = "x".repeat(Math.floor(minimoBruto * 0.96));
+  perto96.audioScript = "x".repeat(fonte);
+
+  assert.throws(
+    () => validateBlockBatchGeneration(
+      [bigSourceBlock],
+      { chapters: [perto96], confidence: 0.9 },
+      1,
+      { tolerant: false },
+    ),
+    /Markdown.*resumido abaixo do mínimo de cobertura/,
+  );
+
+  // Mesma resposta, so com tolerant:true — deve passar (96% > 95%).
+  validateBlockBatchGeneration(
+    [bigSourceBlock],
+    { chapters: [perto96], confidence: 0.9 },
+    1,
+    { tolerant: true },
+  );
+
+  // Mas tolerant:true nao aceita QUALQUER coisa - abaixo de 95% do minimo
+  // bruto continua reprovando.
+  const abaixoDaTolerancia = chapter("bloco-01", "UM");
+  abaixoDaTolerancia.markdown = "x".repeat(Math.floor(minimoBruto * 0.9));
+  abaixoDaTolerancia.audioScript = "x".repeat(fonte);
+  assert.throws(
+    () => validateBlockBatchGeneration(
+      [bigSourceBlock],
+      { chapters: [abaixoDaTolerancia], confidence: 0.9 },
+      1,
+      { tolerant: true },
+    ),
+    /Markdown.*resumido abaixo do mínimo de cobertura/,
+  );
+});
+
 test("valida cobertura exata do lote e reordena capítulos pelos ids esperados", () => {
   const batch = [block(1), block(2), block(3)];
   const result = validateBlockBatchGeneration(
