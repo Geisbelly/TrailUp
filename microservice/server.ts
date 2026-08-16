@@ -769,6 +769,7 @@ export async function retryApresentacaoOnly(
 
   const presentationParts: MaterialPart[] = [];
   let firstPresentationFailure: PresentationFailure | null = null;
+  let anyPresentationFallbackNeeded = false;
 
   for (const part of parts) {
     const suffix = multiPart ? `-parte-${String(part.ordem).padStart(2, "0")}` : "";
@@ -779,7 +780,21 @@ export async function retryApresentacaoOnly(
       profile,
       bucket,
       presentationPath,
+      personalizacaoId,
+      fence,
+      versionMetadata: {
+        engine: PRESENTATION_ENGINE_VERSION,
+        schema: PRESENTATION_SCHEMA_VERSION,
+        design_system: PRESENTATION_DESIGN_VERSION,
+        media_pipeline_version: MEDIA_PIPELINE_VERSION,
+      },
+      ordem: part.ordem,
+      totalPartes: parts.length,
+      titulo: part.titulo,
     });
+    if (!presentationResult.dbWritten) {
+      anyPresentationFallbackNeeded = true;
+    }
     if (presentationResult.failure) {
       firstPresentationFailure = firstPresentationFailure ?? presentationResult.failure;
       lg.error("falha na apresentacao (retry apresentacao-only)", {
@@ -795,10 +810,28 @@ export async function retryApresentacaoOnly(
       titulo: part.titulo,
       arquivo_url: presentationResult.presentationUrl,
       storage_path: presentationResult.presentationUrl ? presentationPath : null,
+      failed: presentationResult.presentationUrl === null,
     });
   }
 
   const presentationUrl = presentationParts[0]?.arquivo_url ?? null;
+
+  // O BrainHexPDF ja gravou ele mesmo, parte a parte (persistApresentacaoResult)
+  // - nada a fazer aqui. So cai no fallback quando alguma parte nao
+  // conseguiu (falha de transporte).
+  if (!anyPresentationFallbackNeeded) {
+    return { presentationUrl, persisted: null };
+  }
+
+  let aggregated: { partes: MaterialPart[]; status: string; headline: { arquivo_url: string | null; storage_path: string | null } } = {
+    partes: [],
+    status: "pending",
+    headline: { arquivo_url: null, storage_path: null },
+  };
+  for (const p of presentationParts) {
+    aggregated = computeAggregatedApresentacaoEntry(aggregated.partes, p, parts.length, aggregated.status);
+  }
+
   const updates: Record<string, MaterialEntry> = {
     apresentacao: {
       // slides fica vazio de proposito - ver comentario equivalente em
@@ -806,14 +839,15 @@ export async function retryApresentacaoOnly(
       payload: { slides: [] as never[], tema_visual: presentationTheme },
       metadata: buildPresentationMaterialMetadata({
         generationKey: fence.generationKey,
-        presentationUrl,
+        presentationUrl: aggregated.headline.arquivo_url,
         bucket,
         failure: firstPresentationFailure,
+        status: aggregated.status,
       }),
-      arquivo_url: presentationUrl,
-      storage_path: presentationParts[0]?.storage_path ?? null,
-      ...(presentationUrl ? { bucket, mime_type: "text/html; charset=utf-8" } : {}),
-      partes: presentationParts,
+      arquivo_url: aggregated.headline.arquivo_url,
+      storage_path: aggregated.headline.storage_path,
+      ...(aggregated.headline.arquivo_url ? { bucket, mime_type: "text/html; charset=utf-8" } : {}),
+      partes: aggregated.partes,
     },
   };
 

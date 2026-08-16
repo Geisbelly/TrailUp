@@ -135,7 +135,7 @@ test("retryApresentacaoOnly gera apenas a apresentacao e faz merge so dessa chav
     {
       renderAndUpload: async (params: any) => {
         renderCalls.push(params);
-        return { presentationUrl: "https://cdn/apresentacao.html", failure: null };
+        return { presentationUrl: "https://cdn/apresentacao.html", failure: null, dbWritten: false };
       },
       mergeMateriais: async (personalizacaoId: number, updates: any, mergeFence: GenerationFence) => {
         mergeCalls.push({ personalizacaoId, updates, fence: mergeFence });
@@ -177,6 +177,7 @@ test("retryApresentacaoOnly registra falha quando o render nao completa", async 
       renderAndUpload: async () => ({
         presentationUrl: null,
         failure: { stage: "upload", error: "fetch failed" },
+        dbWritten: false,
       }),
       mergeMateriais: async (_id: number, updates: any) => ({
         status: "failed",
@@ -211,7 +212,7 @@ test("retryApresentacaoOnly usa sufixo -parte-NN quando ha mais de uma parte", a
     {
       renderAndUpload: async (params: any) => {
         paths.push(params.presentationPath);
-        return { presentationUrl: `https://cdn/${params.presentationPath}`, failure: null };
+        return { presentationUrl: `https://cdn/${params.presentationPath}`, failure: null, dbWritten: false };
       },
       mergeMateriais: async (_id: number, updates: any) => ({
         status: "pronto",
@@ -225,4 +226,35 @@ test("retryApresentacaoOnly usa sufixo -parte-NN quando ha mais de uma parte", a
     "aluno/topico/apresentacao/material-ref-1-parte-01.html",
     "aluno/topico/apresentacao/material-ref-1-parte-02.html",
   ]);
+});
+
+test("retryApresentacaoOnly nao chama mergeMateriais quando todas as partes gravaram via BrainHexPDF", async () => {
+  const mergeMateriaisCalls: any[] = [];
+  const fakeMergeMateriais = async (id: number, updates: any, mergeFence: GenerationFence) => {
+    mergeMateriaisCalls.push({ id, updates, fence: mergeFence });
+    return { status: "pronto", generation_key: mergeFence.generationKey, materiais: { apresentacao: updates.apresentacao } };
+  };
+  const fakeRenderAndUpload = async (params: any) => ({
+    presentationUrl: `https://storage/p${params.ordem}.html`,
+    failure: null,
+    dbWritten: true,
+  });
+
+  const result = await retryApresentacaoOnly(
+    {
+      profile: "mastermind",
+      storagePath: "brainhex/mastermind/122",
+      bucket: "conteudo_aluno",
+      refId: "abc123",
+      parts: [{ ordem: 1, titulo: "Aula 1", markdown: "## Aula\nConteudo" }],
+      presentationTheme,
+      personalizacaoId: 42,
+      fence,
+    },
+    { renderAndUpload: fakeRenderAndUpload, mergeMateriais: fakeMergeMateriais },
+  );
+
+  assert.equal(result.presentationUrl, "https://storage/p1.html");
+  assert.equal(result.persisted, null);
+  assert.equal(mergeMateriaisCalls.length, 0);
 });
