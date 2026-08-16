@@ -323,6 +323,17 @@ class MateriaisRepository:
 
         supports_metadata = await self._supports_metadata()
         metadata_expr = "metadata" if supports_metadata else "'{}'::jsonb"
+        # So devolve linhas ORFAS (ainda sem personalizacao_id). Sem este
+        # filtro, este fallback (usado pelo loop por perfil BrainHex - 7
+        # personalizacoes por topico/ciclo) podia devolver o id de uma linha
+        # JA vinculada a OUTRO perfil (mesmo aluno/conteudo/tipo) - o patch
+        # subsequente recalcula a coluna gerada generation_key (derivada de
+        # metadata->>'generation_key', que e por ciclo/topico, nao por
+        # perfil) e colide com "uq_materiais_gerados_personalizacao_tipo_
+        # generation" da linha do outro perfil, travando a geracao daquele
+        # perfil pra sempre (reproduzido em producao).
+        supports_personalizacao_id = await self._supports_personalizacao_id()
+        orphan_predicate = "AND personalizacao_id IS NULL" if supports_personalizacao_id else ""
 
         result = await self.session.execute(
             text(
@@ -337,6 +348,7 @@ class MateriaisRepository:
                   WHERE aluno_id = CAST(:aluno_id AS UUID)
                     AND (CAST(:conteudo_id AS BIGINT) IS NULL OR conteudo_id = CAST(:conteudo_id AS BIGINT))
                     AND tipo = ANY(CAST(:tipos AS TEXT[]))
+                    {orphan_predicate}
                 ),
                 ranked AS (
                   SELECT
