@@ -194,12 +194,37 @@ export async function archiveToSupabase(params: {
     .find((l) => l.trim())
     ?.replace(/^#+\s*/, "")
     .trim() ?? "Aula";
+
+  if (personalizacaoId !== null && !fence) {
+    throw new Error("generation fence ausente para persistir personalizacao");
+  }
+
+  // Sem personalizacaoId (ex.: preview via /api/v1/archive), o BrainHexPDF
+  // ainda gera e sobe o deck normalmente - so nao recebe dados de fencing,
+  // entao nao tem como gravar no banco (dbWritten fica false, o caller
+  // abaixo trata como se sempre precisasse do fallback, que so roda dentro
+  // do "if (personalizacaoId !== null)" mesmo assim).
   const presentationResult = await renderAndUploadPresentationViaBrainHexPdf({
     markdown,
     topic: presentationTopic,
     profile,
     bucket,
     presentationPath,
+    ...(personalizacaoId !== null && fence
+      ? {
+          personalizacaoId,
+          fence,
+          versionMetadata: {
+            engine: PRESENTATION_ENGINE_VERSION,
+            schema: PRESENTATION_SCHEMA_VERSION,
+            design_system: PRESENTATION_DESIGN_VERSION,
+            media_pipeline_version: MEDIA_PIPELINE_VERSION,
+          },
+          ordem: 1,
+          totalPartes: 1,
+          titulo: presentationTopic,
+        }
+      : {}),
   });
   const presentationUrl = presentationResult.presentationUrl;
   if (presentationResult.failure) {
@@ -252,18 +277,27 @@ export async function archiveToSupabase(params: {
         storage_path: markdownUrl ? mdPath : null,
         bucket, mime_type: "text/markdown; charset=utf-8",
       },
-      apresentacao: {
-        payload:      apresentacaoPayloadObj,
-        metadata: buildPresentationMaterialMetadata({
-          generationKey: fence.generationKey,
-          presentationUrl,
-          bucket,
-          failure: presentationResult.failure,
-        }),
-        arquivo_url:  presentationUrl,
-        storage_path: presentationUrl ? presentationPath : null,
-        ...(presentationUrl ? { bucket, mime_type: "text/html; charset=utf-8" } : {}),
-      },
+      // apresentacao SO entra aqui quando o BrainHexPDF nao conseguiu gravar
+      // ele mesmo (dbWritten:false - falha de transporte) - no caminho
+      // feliz, quem grava essa chave e o proprio BrainHexPDF via
+      // persistApresentacaoResult (ver
+      // docs/superpowers/specs/2026-08-16-brainhexpdf-direct-db-write-design.md).
+      ...(presentationResult.dbWritten
+        ? {}
+        : {
+            apresentacao: {
+              payload: apresentacaoPayloadObj,
+              metadata: buildPresentationMaterialMetadata({
+                generationKey: fence.generationKey,
+                presentationUrl,
+                bucket,
+                failure: presentationResult.failure,
+              }),
+              arquivo_url: presentationUrl,
+              storage_path: presentationUrl ? presentationPath : null,
+              ...(presentationUrl ? { bucket, mime_type: "text/html; charset=utf-8" } : {}),
+            },
+          }),
     };
 
     persisted = await mergePersonalizacaoMateriais(personalizacaoId, updates, fence);

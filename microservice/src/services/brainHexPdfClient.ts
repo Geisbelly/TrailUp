@@ -37,12 +37,16 @@ export interface RenderAndUploadPresentationParams {
   profile: BrainHexProfile;
   bucket: string;
   presentationPath: string;
-  personalizacaoId: number;
-  fence: GenerationFence;
-  versionMetadata: PresentationVersionMetadata;
-  ordem: number;
-  totalPartes: number;
-  titulo: string;
+  // Ausentes quando o chamador nao tem onde persistir (ex.: modo preview,
+  // ver /api/v1/archive em server.ts, que chama com personalizacaoId: null
+  // de proposito) - o BrainHexPDF ainda gera e sobe o deck normalmente,
+  // so nao grava nada no banco (dbWritten sempre false nesse caso).
+  personalizacaoId?: number;
+  fence?: GenerationFence;
+  versionMetadata?: PresentationVersionMetadata;
+  ordem?: number;
+  totalPartes?: number;
+  titulo?: string;
 }
 
 export interface BrainHexPdfClientDeps {
@@ -88,13 +92,17 @@ export async function renderAndUploadPresentationViaBrainHexPdf(
         sourceText: params.markdown,
         bucket: params.bucket,
         storagePath: params.presentationPath,
-        personalizacaoId: params.personalizacaoId,
-        cicloId: params.fence.cicloId,
-        sourceHash: params.fence.sourceHash,
-        presentationVersionMetadata: params.versionMetadata,
-        ordem: params.ordem,
-        totalPartes: params.totalPartes,
-        titulo: params.titulo,
+        ...(params.personalizacaoId !== undefined && params.fence && params.versionMetadata
+          ? {
+              personalizacaoId: params.personalizacaoId,
+              cicloId: params.fence.cicloId,
+              sourceHash: params.fence.sourceHash,
+              presentationVersionMetadata: params.versionMetadata,
+              ordem: params.ordem ?? 1,
+              totalPartes: params.totalPartes ?? 1,
+              titulo: params.titulo,
+            }
+          : {}),
       }),
       signal: ac.signal,
     });
