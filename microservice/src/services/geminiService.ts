@@ -818,13 +818,22 @@ export function validateBlockBatchGeneration(
     }
     const markdown = String(chapter.markdown ?? "").trim();
     const audioScript = String(chapter.audioScript ?? "").trim();
+    // block.conteudo_aprofundado ja e um texto expandido por outra chamada
+    // de LLM (content_enrichment.py) - exigir 75%/50% disso do capitulo final
+    // (que ainda reparte o mesmo orcamento de output com audioScript e
+    // slides) se mostrou calibrado alto demais em producao: os 6 modelos
+    // Gemini disponiveis convergiam consistentemente pra 90-98% do minimo
+    // antigo, nunca cruzando - assinatura tipica de teto apertado demais,
+    // nao de modelo "preguicoso" (finishReason=STOP bem abaixo do teto de
+    // tokens, no MAX_TOKENS). 55%/35% ainda exige expansao real (rejeita
+    // resumo raso) com folga suficiente pra blocos de fonte enxuta.
     let minimumMarkdownLength = Math.max(
       200,
-      Math.floor(normalizedText(block.conteudo_aprofundado).length * 0.75),
+      Math.floor(normalizedText(block.conteudo_aprofundado).length * 0.55),
     );
     let minimumAudioLength = Math.max(
       160,
-      Math.floor(normalizedText(block.conteudo_aprofundado).length * 0.5),
+      Math.floor(normalizedText(block.conteudo_aprofundado).length * 0.35),
     );
     // markdown, audioScript e slides saem da MESMA chamada e dividem o mesmo
     // orcamento de output. Quando varios blocos sao mesclados num so (ver
