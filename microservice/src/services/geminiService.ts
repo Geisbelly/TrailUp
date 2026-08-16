@@ -711,16 +711,21 @@ function validateSlideForBlock(
   const slide = raw as Record<string, unknown>;
   let sourceIds = normalizedStringList(slide.sourceIds);
   if (!sourceIds.includes(blockId)) {
-    // Lotes sempre tem exatamente 1 bloco hoje (DEFAULT/MAX_CONTENT_BLOCK_BATCH_SIZE
-    // = 1) - com um unico id valido no lote nao ha ambiguidade sobre qual
-    // deveria ser o sourceIds. O modelo (sobretudo a contingencia OpenAI)
-    // as vezes esquece de preencher esse campo de rastreabilidade mesmo
-    // gerando o resto do slide corretamente; reprovar a tentativa inteira
-    // por isso descarta conteudo bom por um campo com resposta unica
-    // possivel neste caso. So reprova de verdade quando o lote tiver mais
-    // de um bloco valido (nao acontece hoje, mas preserva a checagem se o
-    // batch size voltar a ser >1 no futuro).
-    if (batchIds.size === 1) {
+    // sourceIds vazio nunca e ambiguo, batch grande ou nao: cada capitulo so
+    // pode pertencer ao seu proprio blockId (validateSlideForBlock roda por
+    // capitulo, chapterMap e chaveado por blockId) - o modelo (Gemini ou a
+    // contingencia OpenAI) so esqueceu de preencher um campo de
+    // rastreabilidade cuja resposta certa e a unica possivel aqui.
+    //
+    // Quando o lote tem so 1 bloco valido, tambem corrigimos mesmo se
+    // sourceIds vier preenchido com outro id (batchIds.size === 1): nao ha
+    // pra qual outro bloco poderia ter sido, entao ainda e so esquecimento,
+    // nao ambiguidade real.
+    //
+    // So reprova de verdade um sourceIds preenchido com um id ERRADO
+    // (diferente do proprio blockId) quando o lote tem mais de um bloco
+    // valido - aí sim pode ser o modelo confundindo capitulos entre si.
+    if (sourceIds.length === 0 || batchIds.size === 1) {
       sourceIds = [blockId];
     } else {
       throw new Error(
