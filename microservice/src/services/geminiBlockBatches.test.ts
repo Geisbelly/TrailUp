@@ -293,6 +293,27 @@ test("corrige sourceIds do slide quando o lote tem um unico bloco valido, em vez
   assert.deepEqual(corrected.chapters[0].slides[0].sourceIds, ["bloco-01"]);
 });
 
+test("corrige sourceIds ausente mesmo em lote com varios blocos (regressao: guard so cobria lote de 1 bloco)", () => {
+  // Bug real de producao: DEFAULT_CONTENT_BLOCK_BATCH_SIZE virou 6-8 no dia
+  // seguinte ao fix de "corrige sourceIds quando o lote tem 1 bloco", sem
+  // atualizar esse guard - com lotes de 6+ blocos (o caso normal hoje),
+  // sourceIds vazio (o mesmo esquecimento documentado no teste acima) parava
+  // de ser corrigido e virava "Slide 1 não referencia seu bloco" mesmo sem
+  // nenhuma ambiguidade real: cada capitulo so pode pertencer ao seu proprio
+  // blockId, batch grande ou nao.
+  const missingSourceIds = chapter("bloco-01", "UM");
+  missingSourceIds.slides[0].sourceIds = [];
+  const result = validateBlockBatchGeneration(
+    [block(1), block(2)],
+    {
+      chapters: [missingSourceIds, chapter("bloco-02", "DOIS")],
+      confidence: 0.9,
+    },
+    1,
+  );
+  assert.deepEqual(result.chapters[0].slides[0].sourceIds, ["bloco-01"]);
+});
+
 test("recusa slide fora do lote quando ha mais de um bloco valido (preserva a checagem multi-bloco)", () => {
   const outOfBatch = chapter("bloco-01", "UM");
   outOfBatch.slides[0].sourceIds = ["bloco-99"];
