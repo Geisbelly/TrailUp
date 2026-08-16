@@ -134,6 +134,12 @@ class Settings(BaseSettings):
     brainhex_health_timeout_sec: float = 90.0
     brainhex_health_max_attempts: int = 3
     brainhex_health_retry_delay_sec: float = 2.0
+    # brainhex_contract_ready falha silenciosamente (so loga warning) quando o
+    # microservice esta indisponivel ou com contrato de versao incompativel -
+    # sem este teto, o target ficava "pending" pra sempre (reproduzido em
+    # producao). Apos esse tempo desde a criacao do target, vira "failed" com
+    # mensagem explicita em vez de continuar preso silenciosamente.
+    brainhex_contract_deferred_max_age_minutes: int = 30
     # Regeneracao (capitulo/slide/documento) e uma unica chamada Gemini + no
     # maximo um asset (audio ou imagem) — bem mais rapido que o pipeline
     # completo de brainhex_api_wait_timeout_sec.
