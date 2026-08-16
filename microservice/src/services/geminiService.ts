@@ -51,8 +51,17 @@ export function parseGeminiApiKeys(raw: string | undefined): string[] {
   return keys;
 }
 
-function geminiApiKeys(): string[] {
-  return parseGeminiApiKeys(process.env.GEMINI_API_KEY);
+// Pool de chaves usado por TODA a geracao normal (texto/audio/TTS/slides via
+// getAi()/generateGeminiContent) - precisa ler as MESMAS fontes que
+// getActiveKeys() (GEMINI_API_KEY + GEMINI_API_KEY_1..4 + GEMINI_API_KEYS),
+// senao chaves configuradas nas vars numeradas (contas Google diferentes,
+// pensadas pra multiplicar RPM/RPD via rotacao) ficam paradas sem uso nesse
+// caminho - so alimentavam getActiveKeys(), que e exclusiva dos endpoints de
+// regeneracao por prompt do professor. Reproduzido em producao: 3 chaves em
+// GEMINI_API_KEY_1/2/3 nunca entravam na rotacao da geracao normal, que
+// rodava sozinha com a 1 chave de GEMINI_API_KEY e estourava RPM de TTS.
+export function geminiApiKeys(): string[] {
+  return getActiveKeys().geminiKeys;
 }
 
 // --- MOTOR DE REGENERACAO COM PROMPT (multi-chave/multi-modelo) ---

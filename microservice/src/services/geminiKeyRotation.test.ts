@@ -8,6 +8,7 @@ import {
   resolveGeminiTextFallbackModels,
   resolveGeminiTtsFallbackModels,
   resolveGeminiImageFallbackModels,
+  geminiApiKeys,
 } from "./geminiService";
 
 const PRIMARY_MODEL = "gemini-3.6-flash";
@@ -145,6 +146,38 @@ test("resolveGeminiTextFallbackModels respeita a lista configurada via env, sepa
     resolveGeminiTextFallbackModels({ GEMINI_TEXT_FALLBACK_MODELS: "model-a, model-b ;model-c" }),
     ["model-a", "model-b", "model-c"],
   );
+});
+
+test("geminiApiKeys inclui GEMINI_API_KEY_1..4 e GEMINI_API_KEYS, nao so GEMINI_API_KEY", () => {
+  // Regressao: producao configurou 4 chaves de contas Google diferentes
+  // (1 em GEMINI_API_KEY + 3 em GEMINI_API_KEY_1/2/3), esperando rotacao
+  // entre as 4 pra multiplicar RPM/RPD efetivo - mas geminiApiKeys() (usada
+  // por getAi() na geracao normal de texto/audio/TTS) so lia GEMINI_API_KEY,
+  // entao a geracao inteira rodava com 1 chave so, sem os outros 3 servirem
+  // pra nada (so alimentavam getActiveKeys(), usada exclusivamente pelos
+  // endpoints de regeneracao por prompt do professor - um caminho
+  // completamente diferente).
+  const previous = {
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+    GEMINI_API_KEY_1: process.env.GEMINI_API_KEY_1,
+    GEMINI_API_KEY_2: process.env.GEMINI_API_KEY_2,
+    GEMINI_API_KEYS: process.env.GEMINI_API_KEYS,
+  };
+  process.env.GEMINI_API_KEY = "key-principal";
+  process.env.GEMINI_API_KEY_1 = "key-conta-2";
+  process.env.GEMINI_API_KEY_2 = "key-conta-3";
+  process.env.GEMINI_API_KEYS = "key-conta-4";
+  try {
+    assert.deepEqual(
+      new Set(geminiApiKeys()),
+      new Set(["key-principal", "key-conta-2", "key-conta-3", "key-conta-4"]),
+    );
+  } finally {
+    process.env.GEMINI_API_KEY = previous.GEMINI_API_KEY;
+    process.env.GEMINI_API_KEY_1 = previous.GEMINI_API_KEY_1;
+    process.env.GEMINI_API_KEY_2 = previous.GEMINI_API_KEY_2;
+    process.env.GEMINI_API_KEYS = previous.GEMINI_API_KEYS;
+  }
 });
 
 test("resolveGeminiTtsFallbackModels/resolveGeminiImageFallbackModels tem defaults proprios, sem depender do texto", () => {
