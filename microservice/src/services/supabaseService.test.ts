@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   buildMateriaisGeradosSnapshot,
+  downloadStorageText,
+  fetchPersonalizacaoMateriais,
   setSupabaseClientForTesting,
   uploadBuffer,
   type GenerationFence,
@@ -164,6 +166,105 @@ test("snapshot rejeita retorno RPC de outra geração", () => {
     () => buildMateriaisGeradosSnapshot(persisted, fence, ["audio"]),
     /outra generation_key/,
   );
+});
+
+test("fetchPersonalizacaoMateriais retorna a coluna materiais do registro", async () => {
+  const client = {
+    from(table: string) {
+      assert.equal(table, "conteudo_personalizado");
+      return {
+        select(_cols: string) {
+          return {
+            eq(_col: string, _value: unknown) {
+              return {
+                limit: async (_n: number) => ({
+                  data: [{ materiais: { audio: material("audio", "completed") } }],
+                  error: null,
+                }),
+              };
+            },
+          };
+        },
+      };
+    },
+  } as unknown as SupabaseClient;
+  setSupabaseClientForTesting(client);
+  try {
+    const materiais = await fetchPersonalizacaoMateriais(123);
+    assert.equal(materiais?.audio?.metadata?.status, "completed");
+  } finally {
+    setSupabaseClientForTesting(null);
+  }
+});
+
+test("fetchPersonalizacaoMateriais retorna null quando o registro nao existe", async () => {
+  const client = {
+    from() {
+      return {
+        select() {
+          return {
+            eq() {
+              return {
+                limit: async () => ({ data: [], error: null }),
+              };
+            },
+          };
+        },
+      };
+    },
+  } as unknown as SupabaseClient;
+  setSupabaseClientForTesting(client);
+  try {
+    const materiais = await fetchPersonalizacaoMateriais(999);
+    assert.equal(materiais, null);
+  } finally {
+    setSupabaseClientForTesting(null);
+  }
+});
+
+test("downloadStorageText baixa e devolve o conteudo como texto", async () => {
+  const client = {
+    storage: {
+      from(bucket: string) {
+        assert.equal(bucket, "meu-bucket");
+        return {
+          download: async (path: string) => {
+            assert.equal(path, "markdown/material-x.md");
+            return {
+              data: { text: async () => "## Titulo\n\nConteudo em markdown." },
+              error: null,
+            };
+          },
+        };
+      },
+    },
+  } as unknown as SupabaseClient;
+  setSupabaseClientForTesting(client);
+  try {
+    const text = await downloadStorageText("meu-bucket", "markdown/material-x.md");
+    assert.equal(text, "## Titulo\n\nConteudo em markdown.");
+  } finally {
+    setSupabaseClientForTesting(null);
+  }
+});
+
+test("downloadStorageText devolve null quando o download falha", async () => {
+  const client = {
+    storage: {
+      from() {
+        return {
+          download: async () => ({ data: null, error: { message: "not found" } }),
+        };
+      },
+    },
+  } as unknown as SupabaseClient;
+  setSupabaseClientForTesting(client);
+  try {
+    const text = await downloadStorageText("meu-bucket", "markdown/ausente.md");
+    assert.equal(text, null);
+  } finally {
+    setSupabaseClientForTesting(null);
+  }
 });
 
 test("snapshot rejeita formato persistido de outra geração", () => {
