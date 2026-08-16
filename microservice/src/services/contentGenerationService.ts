@@ -50,6 +50,13 @@ export interface StructuredContentGenerationResult {
   model: string;
   fallbackFrom?: "gemini";
   fallbackReason?: string;
+  // true quando o resultado so passou porque a ULTIMA tentativa da cascata
+  // inteira (ultimo recurso, ver generateAfterPrimaryGeminiFailure) aceitou
+  // com a tolerancia de 95% do gate de cobertura - quem revalida esse valor
+  // depois (ex.: validateBlockBatchGeneration em geminiService.ts) precisa
+  // repetir a validacao com tolerant:true, senao reprova de novo um
+  // resultado que ja foi aceito.
+  tolerantAccepted?: boolean;
 }
 
 export interface StructuredContentGenerationOptions {
@@ -58,6 +65,7 @@ export interface StructuredContentGenerationOptions {
   validateResult?: (
     value: unknown,
     provider: ContentGenerationProvider,
+    meta: { tolerant: boolean },
   ) => void;
   environment?: Record<string, string | undefined>;
   now?: () => number;
@@ -197,11 +205,12 @@ async function generateAndValidateContent(
   generator: StructuredContentGenerator,
   call: StructuredContentGenerationCall,
   provider: ContentGenerationProvider,
-  validateResult?: StructuredContentGenerationOptions["validateResult"],
+  validateResult: StructuredContentGenerationOptions["validateResult"] | undefined,
+  tolerant: boolean,
 ): Promise<unknown> {
   const value = await generator(call);
   try {
-    validateResult?.(value, provider);
+    validateResult?.(value, provider, { tolerant });
   } catch (error) {
     throw new ContentGenerationQualityError(provider, error);
   }
@@ -474,6 +483,11 @@ async function generateAfterPrimaryGeminiFailure(
           + `Motivo da recusa anterior: ${previousQualityReason}`,
       };
 
+    // Ultimo recurso da cascata INTEIRA (Gemini primario + retries, modelos
+    // fallback do Gemini, e agora as tentativas da OpenAI): so a ultima
+    // tentativa aqui e tolerante (ver MIN_COVERAGE_TOLERANCE_RATIO em
+    // geminiService.ts) - nas intermediarias o gate continua exigindo 100%.
+    const tolerant = attempt === maxAttempts;
     try {
       return {
         value: await generateAndValidateContent(
@@ -481,11 +495,13 @@ async function generateAfterPrimaryGeminiFailure(
           currentCall,
           "openai",
           options.validateResult,
+          tolerant,
         ),
         provider: "openai",
         model: call.openaiModel,
         fallbackFrom: "gemini",
         fallbackReason: reason,
+        tolerantAccepted: tolerant,
       };
     } catch (openaiError) {
       lastOpenAIError = openaiError;
@@ -554,11 +570,14 @@ export async function generateStructuredContentWithFallback(
       };
 
     try {
+      // Nunca tolerante: ainda ha modelos fallback do Gemini e a OpenAI pela
+      // frente antes de chegar no ultimo recurso da cascata.
       const value = await generateAndValidateContent(
         options.generateWithGemini,
         currentCall,
         "gemini",
         options.validateResult,
+        false,
       );
       return {
         value,
@@ -613,13 +632,30 @@ export async function generateStructuredContentWithFallback(
   );
   for (const fallbackModel of fallbackModels) {
     triedModelsCount += 1;
-    const fallbackCall = { ...call, geminiModel: fallbackModel };
+    // previousQualityReason ja vem preenchido pelo laco do modelo primario
+    // (todo catch de ContentGenerationQualityError acima o atualiza) - sem
+    // repassar esse motivo aqui, os modelos fallback rodavam as cegas, sem
+    // sequer o feedback generico que o proprio Gemini/OpenAI ja recebem nas
+    // suas retentativas.
+    const fallbackCall = {
+      ...call,
+      geminiModel: fallbackModel,
+      instructions:
+        `${call.instructions}\n\nCORREÇÃO OBRIGATÓRIA (MODELO ALTERNATIVO): `
+        + "a resposta de outro modelo Gemini foi recusada pela validação de "
+        + "qualidade. Devolva exatamente um capítulo completo para cada "
+        + "blockId recebido, sem omitir, fundir, acrescentar ou resumir "
+        + "blocos. Preserve toda a cobertura do conteúdo aprofundado no "
+        + `texto e no roteiro de áudio. Motivo da recusa anterior: ${previousQualityReason}`,
+    };
     try {
+      // Nunca tolerante: a OpenAI ainda vem depois, como ultimo recurso.
       const value = await generateAndValidateContent(
         options.generateWithGemini,
         fallbackCall,
         "gemini",
         options.validateResult,
+        false,
       );
       return {
         value,
@@ -653,6 +689,10 @@ export async function generateStructuredContentWithFallback(
         });
       }
       lastQualityError = error;
+      // Atualiza pra o proximo modelo fallback (se houver) ver o motivo mais
+      // recente, igual o laco do modelo primario ja faz entre suas proprias
+      // retentativas.
+      previousQualityReason = errorDetails(error).slice(0, 500);
     }
   }
 

@@ -677,6 +677,83 @@ test("mensagem final de falha total menciona quantos modelos Gemini foram tentad
   resetGeminiContentGenerationCircuit();
 });
 
+test("so marca tolerant:true na ULTIMA tentativa da OpenAI (ultimo recurso da cascata inteira)", async () => {
+  resetGeminiContentGenerationCircuit();
+  const receivedTolerant: boolean[] = [];
+
+  const result = await generateStructuredContentWithFallback(call, {
+    environment: { CONTENT_GENERATION_OPENAI_MAX_ATTEMPTS: "3" },
+    generateWithGemini: async () => {
+      throw new Error("Gemini resumiu o lote.");
+    },
+    generateWithOpenAI: async () => ({ chapters: [] }),
+    validateResult: (_value, _provider, meta) => {
+      receivedTolerant.push(meta.tolerant);
+      // so aceita (nao lanca) na ultima tentativa, simulando o gate real
+      // aceitando com margem so no ultimo recurso.
+      if (!meta.tolerant) {
+        throw new Error("Markdown abaixo do mínimo de cobertura.");
+      }
+    },
+  });
+
+  assert.equal(result.provider, "openai");
+  assert.deepEqual(receivedTolerant, [false, false, true]);
+  assert.equal(result.tolerantAccepted, true);
+  resetGeminiContentGenerationCircuit();
+});
+
+test("tolerantAccepted fica false/undefined quando o Gemini resolve sem precisar de tolerancia", async () => {
+  resetGeminiContentGenerationCircuit();
+  const receivedTolerant: boolean[] = [];
+
+  const result = await generateStructuredContentWithFallback(call, {
+    generateWithGemini: async () => ({ source: "gemini" }),
+    generateWithOpenAI: async () => {
+      throw new Error("nao deveria ser chamado");
+    },
+    validateResult: (_value, _provider, meta) => {
+      receivedTolerant.push(meta.tolerant);
+    },
+  });
+
+  assert.equal(result.provider, "gemini");
+  assert.deepEqual(receivedTolerant, [false]);
+  assert.equal(result.tolerantAccepted, undefined);
+  resetGeminiContentGenerationCircuit();
+});
+
+test("modelos fallback Gemini recebem o motivo da recusa anterior (nao rodam mais as cegas)", async () => {
+  resetGeminiContentGenerationCircuit();
+  const receivedInstructions: string[] = [];
+
+  const result = await generateStructuredContentWithFallback(call, {
+    environment: { CONTENT_GENERATION_GEMINI_QUALITY_MAX_ATTEMPTS: "1" },
+    geminiFallbackModels: ["gemini-fallback-1"],
+    generateWithGemini: async (currentCall) => {
+      receivedInstructions.push(currentCall.instructions);
+      return currentCall.geminiModel === "gemini-fallback-1"
+        ? { chapters: [{ blockId: "bloco-01" }] }
+        : { chapters: [] };
+    },
+    generateWithOpenAI: async () => {
+      throw new Error("nao deveria ser chamado");
+    },
+    validateResult: (value) => {
+      const chapters = (value as { chapters?: unknown[] }).chapters ?? [];
+      if (chapters.length === 0) {
+        throw new Error("Markdown do bloco bloco-22 abaixo do mínimo de cobertura (recebido=749 chars, minimo=1393 chars).");
+      }
+    },
+  });
+
+  assert.equal(result.model, "gemini-fallback-1");
+  assert.doesNotMatch(receivedInstructions[0], /CORREÇÃO OBRIGATÓRIA/);
+  assert.match(receivedInstructions[1], /CORREÇÃO OBRIGATÓRIA/);
+  assert.match(receivedInstructions[1], /recebido=749 chars, minimo=1393 chars/);
+  resetGeminiContentGenerationCircuit();
+});
+
 test("reconhece indisponibilidade transitória e não confunde validação de conteúdo", () => {
   assert.equal(isGeminiAvailabilityError({ status: 503 }), true);
   assert.equal(isGeminiAvailabilityError({ status: 404 }), true);
