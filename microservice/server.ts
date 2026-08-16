@@ -11,8 +11,10 @@ import {
   regenerateChapterContent,
   regenerateSlideContent,
   regenerateDocumentMarkdown,
+  resolveAudioPartConcurrency,
   type ContentPart,
 } from "./src/services/geminiService";
+import { settleWithConcurrency } from "./src/lib/boundedConcurrency";
 import type { ApiKeysConfig, SlideContent } from "./src/types";
 import { BrainHexProfile, BRAIN_HEX_CONFIG } from "./src/constants/brainHex";
 import {
@@ -856,13 +858,19 @@ async function runPipeline(
         )
       : generateLongNaturalAudio(audioScript, voice, voiceProfile.direction);
 
-  // allSettled preserva a regra existente de sucesso parcial - uma parte de
-  // audio falhando nao derruba as outras. A apresentacao de cada parte e
-  // gerada dentro de archiveMultiPartToSupabase (chamada ao BrainHexPDF por
-  // parte) - corte seco: falha lá derruba a apresentacao inteira, sem
-  // fallback (ver design).
-  const audioSettled = await Promise.allSettled(
-    parts.map((part) => generatePartAudio(part.audioScript)),
+  // settleWithConcurrency preserva a regra existente de sucesso parcial (uma
+  // parte de audio falhando nao derruba as outras - mesma semantica de
+  // Promise.allSettled), mas limita quantas partes geram audio ao mesmo
+  // tempo. Disparar todas de uma vez (Promise.allSettled puro, sem teto)
+  // estourava RPM do free tier do Gemini (~10 req/min por conta) mesmo com
+  // rotacao de chave correta - a rajada em si e o problema, nao so a chave
+  // usada. A apresentacao de cada parte e gerada dentro de
+  // archiveMultiPartToSupabase (chamada ao BrainHexPDF por parte) - corte
+  // seco: falha lá derruba a apresentacao inteira, sem fallback (ver design).
+  const audioSettled = await settleWithConcurrency(
+    parts,
+    resolveAudioPartConcurrency(process.env.CONTENT_GENERATION_AUDIO_PART_CONCURRENCY),
+    (part) => generatePartAudio(part.audioScript),
   );
 
   const audioByPart = audioSettled.map((result, index) => {
