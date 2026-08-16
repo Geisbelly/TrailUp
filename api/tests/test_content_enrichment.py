@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from types import SimpleNamespace
 from typing import Any
 
@@ -372,6 +373,54 @@ def test_source_segmentation_splits_large_text_without_losing_its_tail() -> None
     rebuilt = "".join(segment["text"] for segment in segments)
     assert rebuilt.endswith(long_text)
     assert rebuilt.count("x") == 9_000
+
+
+def test_minimum_expanded_length_requires_at_least_30_percent_and_200_chars() -> None:
+    # Piso antigo era 15%/80 chars - baixo demais: producao mostrou blocos
+    # "aprofundados" que so raspavam esse piso e depois nunca alcancavam a
+    # cobertura minima exigida pelo microservice na geracao de materiais
+    # (ver geminiService.ts). O prompt de enriquecimento (_ENRICHMENT_
+    # INSTRUCTIONS) ja promete pelo menos 30%/200 chars ao modelo; o
+    # validador ficava mais frouxo que a propria instrucao.
+    long_base = "x" * 1_000
+    assert enrichment_module._minimum_expanded_length(long_base) == 1_000 + 300
+
+    short_base = "x" * 100
+    assert enrichment_module._minimum_expanded_length(short_base) == 100 + 200
+
+
+@pytest.mark.asyncio
+async def test_enrichment_rejects_response_expanded_below_new_30_percent_floor(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Expansao de 20% fica entre o piso antigo (15%, passava) e o novo piso
+    # (30%, deve falhar) - prova que o piso mais alto rejeita blocos que
+    # antes eram aceitos "de raspao".
+    def borderline(payload: dict[str, Any]) -> dict[str, Any]:
+        response = _rich_response(payload)
+        for block in response["blocos"]:
+            base = block["conteudo_base"]
+            extra_len = math.ceil(len(base) * 0.20)
+            block["conteudo_aprofundado"] = base + ("x" * extra_len)
+        return response
+
+    monkeypatch.setattr(
+        enrichment_module,
+        "_gemini_client",
+        _gemini_factory(borderline, {}),
+    )
+
+    context = _context(paragraphs=1)
+    # Zera o topico pra so sobrar 1 segmento (o conteudo abaixo) - com os 2
+    # segmentos padrao, o segmento do topico (curto) sempre falharia mesmo
+    # o piso antigo (extra de 20% de um base curto fica abaixo do piso
+    # absoluto de 80 chars), confundindo o que este teste quer provar.
+    context["conteudo_classe"]["topico"]["descricao"] = ""
+    context["conteudo_classe"]["topico"]["objetivo"] = ""
+    context["conteudo_classe"]["conteudos"][0]["conteudo"] = "A" * 1_000
+
+    with pytest.raises(ContentEnrichmentError, match="insuficiente"):
+        await enrich_content_blocks(context=context, settings=_settings())
 
 
 @pytest.mark.asyncio
