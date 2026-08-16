@@ -41,10 +41,23 @@ test("pickAvailableGeminiKey escolhe a primeira chave quando nenhuma esta em coo
   assert.equal(pickAvailableGeminiKey(["key-1", "key-2"], PRIMARY_MODEL), "key-1");
 });
 
+test("pickAvailableGeminiKey avanca o round-robin em toda chamada, nao so em falha - distribui chamadas concorrentes entre as chaves", () => {
+  // Regressao: chamadas concorrentes (parts.map de audio, por exemplo) que
+  // dao certo de primeira antes convergiam todas na MESMA chave, porque o
+  // indice global so avancava quando uma chave estava de cooldown. Isso
+  // estourava RPM numa unica conta mesmo com varias chaves configuradas.
+  resetGeminiKeyRotationForTests();
+  const keys = ["key-1", "key-2", "key-3"];
+  assert.equal(pickAvailableGeminiKey(keys, PRIMARY_MODEL), "key-1");
+  assert.equal(pickAvailableGeminiKey(keys, PRIMARY_MODEL), "key-2");
+  assert.equal(pickAvailableGeminiKey(keys, PRIMARY_MODEL), "key-3");
+  assert.equal(pickAvailableGeminiKey(keys, PRIMARY_MODEL), "key-1"); // completa a volta
+});
+
 test("rotateGeminiKeyAfterFailure só roda pra erro de cota/rate-limit, nunca pra erro genérico", () => {
   withGeminiApiKeys("key-1,key-2", () => {
     assert.equal(
-      rotateGeminiKeyAfterFailure(new Error("Connection timed out"), PRIMARY_MODEL),
+      rotateGeminiKeyAfterFailure(new Error("Connection timed out"), PRIMARY_MODEL, "key-1"),
       false,
     );
   });
@@ -53,7 +66,7 @@ test("rotateGeminiKeyAfterFailure só roda pra erro de cota/rate-limit, nunca pr
 test("rotateGeminiKeyAfterFailure não alterna quando só há uma chave configurada", () => {
   withGeminiApiKeys("key-1", () => {
     assert.equal(
-      rotateGeminiKeyAfterFailure(new Error("429 RESOURCE_EXHAUSTED: quota exceeded"), PRIMARY_MODEL),
+      rotateGeminiKeyAfterFailure(new Error("429 RESOURCE_EXHAUSTED: quota exceeded"), PRIMARY_MODEL, "key-1"),
       false,
     );
   });
@@ -62,11 +75,13 @@ test("rotateGeminiKeyAfterFailure não alterna quando só há uma chave configur
 test("rotateGeminiKeyAfterFailure alterna pra próxima chave disponível quando uma esgota a cota", () => {
   withGeminiApiKeys("key-1,key-2", () => {
     const keys = ["key-1", "key-2"];
-    assert.equal(pickAvailableGeminiKey(keys, PRIMARY_MODEL), "key-1");
+    const usedKey = pickAvailableGeminiKey(keys, PRIMARY_MODEL);
+    assert.equal(usedKey, "key-1");
 
     const hadAnotherKey = rotateGeminiKeyAfterFailure(
       new Error("429 RESOURCE_EXHAUSTED: quota exceeded"),
       PRIMARY_MODEL,
+      usedKey!,
     );
 
     assert.equal(hadAnotherKey, true);
@@ -80,11 +95,13 @@ test("rotateGeminiKeyAfterFailure tambem alterna chave pra 503 UNAVAILABLE (sobr
   // tentar a proxima chave em vez de propagar o erro imediatamente.
   withGeminiApiKeys("key-1,key-2", () => {
     const keys = ["key-1", "key-2"];
-    assert.equal(pickAvailableGeminiKey(keys, PRIMARY_MODEL), "key-1");
+    const usedKey = pickAvailableGeminiKey(keys, PRIMARY_MODEL);
+    assert.equal(usedKey, "key-1");
 
     const hadAnotherKey = rotateGeminiKeyAfterFailure(
       new Error("503 UNAVAILABLE. This model is currently experiencing high demand."),
       PRIMARY_MODEL,
+      usedKey!,
     );
 
     assert.equal(hadAnotherKey, true);
@@ -94,12 +111,15 @@ test("rotateGeminiKeyAfterFailure tambem alterna chave pra 503 UNAVAILABLE (sobr
 
 test("rotateGeminiKeyAfterFailure devolve false quando todas as chaves já esgotaram a cota do modelo", () => {
   withGeminiApiKeys("key-1,key-2", () => {
+    const keys = ["key-1", "key-2"];
     assert.equal(
-      rotateGeminiKeyAfterFailure(new Error("429 RESOURCE_EXHAUSTED: quota exceeded"), PRIMARY_MODEL),
+      rotateGeminiKeyAfterFailure(new Error("429 RESOURCE_EXHAUSTED: quota exceeded"), PRIMARY_MODEL, "key-1"),
       true,
     );
+    const nextKey = pickAvailableGeminiKey(keys, PRIMARY_MODEL);
+    assert.equal(nextKey, "key-2");
     assert.equal(
-      rotateGeminiKeyAfterFailure(new Error("429 RESOURCE_EXHAUSTED: quota exceeded"), PRIMARY_MODEL),
+      rotateGeminiKeyAfterFailure(new Error("429 RESOURCE_EXHAUSTED: quota exceeded"), PRIMARY_MODEL, nextKey!),
       false,
     );
   });
@@ -108,7 +128,7 @@ test("rotateGeminiKeyAfterFailure devolve false quando todas as chaves já esgot
 test("cooldown de cota e por (chave, modelo) - uma chave esgotada no modelo principal continua livre no fallback", () => {
   withGeminiApiKeys("key-1", () => {
     assert.equal(
-      rotateGeminiKeyAfterFailure(new Error("429 RESOURCE_EXHAUSTED: quota exceeded"), PRIMARY_MODEL),
+      rotateGeminiKeyAfterFailure(new Error("429 RESOURCE_EXHAUSTED: quota exceeded"), PRIMARY_MODEL, "key-1"),
       false, // so 1 chave: nao ha OUTRA chave pro mesmo modelo
     );
 

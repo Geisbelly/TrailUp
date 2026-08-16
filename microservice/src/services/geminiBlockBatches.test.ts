@@ -6,6 +6,7 @@ import {
   mergeContentBlocksIntoOne,
   mergeSplitFallbackChapters,
   partitionContentBlocks,
+  resolveAudioPartConcurrency,
   resolveContentBlockBatchSize,
   resolveContentBlockConcurrency,
   resolveContentGenerationMaxOutputTokens,
@@ -122,6 +123,18 @@ test("usa concorrência pequena e aplica um teto seguro", () => {
   assert.equal(resolveContentBlockConcurrency(4), 4);
   assert.equal(resolveContentBlockConcurrency(12), 4);
   assert.equal(resolveContentBlockConcurrency(0), 2);
+});
+
+test("usa concorrencia pequena pra geracao de audio por parte e aplica um teto seguro", () => {
+  // Regressao: gerar todas as partes de audio de um perfil ao mesmo tempo
+  // (ate 8 partes) estourava RPM do free tier do Gemini (~10 req/min por
+  // conta) mesmo com rotacao de chave correta - limitar a concorrencia real
+  // do fan-out evita a rajada.
+  assert.equal(resolveAudioPartConcurrency(undefined), 3);
+  assert.equal(resolveAudioPartConcurrency("2"), 2);
+  assert.equal(resolveAudioPartConcurrency(4), 4);
+  assert.equal(resolveAudioPartConcurrency(10), 4);
+  assert.equal(resolveAudioPartConcurrency(0), 3);
 });
 
 test("da ao documento mesclado um orcamento de saida maior que o lote normal", () => {

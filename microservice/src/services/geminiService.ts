@@ -282,13 +282,20 @@ function clientForGeminiKey(key: string): GoogleGenAI {
 
 // Round-robin entre as chaves que nao estao em cooldown de cota PRA ESSE
 // MODELO; null se todas estiverem indisponiveis no momento.
+//
+// Avanca _geminiKeyIndex pra DEPOIS da chave escolhida em toda chamada, nao
+// so quando pula uma chave em cooldown - senao chamadas concorrentes que dao
+// certo de primeira (ex.: parts.map(generatePartAudio) gerando varias partes
+// de audio ao mesmo tempo) convergiam todas na MESMA chave, porque o indice
+// global so mudava quando uma chave falhava. Reproduzido em producao:
+// estouro de RPM numa unica conta Gemini mesmo com 4 chaves configuradas.
 export function pickAvailableGeminiKey(keys: string[], model: string): string | null {
   const now = Date.now();
   for (let offset = 0; offset < keys.length; offset += 1) {
     const index = (_geminiKeyIndex + offset) % keys.length;
     const key = keys[index];
     if (now >= (_geminiKeyCooldownUntil.get(cooldownKey(key, model)) ?? 0)) {
-      _geminiKeyIndex = index;
+      _geminiKeyIndex = (index + 1) % keys.length;
       return key;
     }
   }
@@ -301,13 +308,17 @@ export function resetGeminiKeyRotationForTests(): void {
   _geminiKeyCooldownUntil.clear();
 }
 
-function getAi(model: string): GoogleGenAI {
+// Devolve tambem a chave usada (nao so o client) - generateGeminiContent
+// precisa dela pra passar a rotateGeminiKeyAfterFailure em caso de erro, sem
+// depender de ler _geminiKeyIndex (que pode ja ter avancado por causa de
+// outra chamada concorrente no meio tempo).
+function getAi(model: string): { client: GoogleGenAI; key: string } {
   const keys = geminiApiKeys();
   if (keys.length === 0) {
     throw new Error("GEMINI_API_KEY ausente — configure no .env antes de chamar o serviço Gemini.");
   }
   const key = pickAvailableGeminiKey(keys, model) ?? keys[_geminiKeyIndex % keys.length];
-  return clientForGeminiKey(key);
+  return { client: clientForGeminiKey(key), key };
 }
 
 function isGeminiQuotaOrRateLimitError(error: unknown): boolean {
@@ -348,12 +359,18 @@ function isGeminiTransientUnavailableError(error: unknown): boolean {
 }
 
 /**
- * Marca a chave Gemini atualmente selecionada como esgotada PRA ESSE MODELO
- * e avança o round-robin pra próxima. Retorna true quando havia outra chave
- * disponível pra tentar imediatamente (sem cooldown de espera) nesse mesmo
- * modelo.
+ * Marca `failedKey` como esgotada PRA ESSE MODELO e avança o round-robin pra
+ * próxima. Retorna true quando havia outra chave disponível pra tentar
+ * imediatamente (sem cooldown de espera) nesse mesmo modelo.
+ *
+ * `failedKey` é obrigatório e deve ser a chave EXATA usada na chamada que
+ * falhou (devolvida por getAi()) - nunca inferida de _geminiKeyIndex. Como
+ * pickAvailableGeminiKey agora avança o indice em toda chamada bem-sucedida
+ * (nao so em cooldown), por volta do momento em que uma chamada concorrente
+ * falha o indice global pode já ter avançado por causa de OUTRA chamada -
+ * ler o indice aqui marcaria a chave errada como esgotada.
  */
-export function rotateGeminiKeyAfterFailure(error: unknown, model: string): boolean {
+export function rotateGeminiKeyAfterFailure(error: unknown, model: string, failedKey: string): boolean {
   if (!isGeminiQuotaOrRateLimitError(error) && !isGeminiTransientUnavailableError(error)) {
     return false;
   }
@@ -364,8 +381,7 @@ export function rotateGeminiKeyAfterFailure(error: unknown, model: string): bool
   // modelo bata de novo numa cota ja sabidamente esgotada — ela cai direto
   // pro modelo alternativo (ver generateGeminiContent) sem gastar uma
   // chamada real.
-  const exhaustedKey = keys[_geminiKeyIndex % keys.length];
-  _geminiKeyCooldownUntil.set(cooldownKey(exhaustedKey, model), Date.now() + GEMINI_KEY_QUOTA_COOLDOWN_MS);
+  _geminiKeyCooldownUntil.set(cooldownKey(failedKey, model), Date.now() + GEMINI_KEY_QUOTA_COOLDOWN_MS);
   return keys.length > 1 && pickAvailableGeminiKey(keys, model) !== null;
 }
 
@@ -397,11 +413,12 @@ async function generateGeminiContent(
   for (const model of candidateModels) {
     const currentParams = model === primaryModel ? params : { ...params, model };
     for (let attempt = 0; attempt < maxAttemptsPerModel; attempt += 1) {
+      const { client, key } = getAi(model);
       try {
-        return await getAi(model).models.generateContent(currentParams);
+        return await client.models.generateContent(currentParams);
       } catch (error) {
         lastError = error;
-        if (rotateGeminiKeyAfterFailure(error, model)) {
+        if (rotateGeminiKeyAfterFailure(error, model, key)) {
           continue; // outra chave disponivel pra esse mesmo modelo
         }
         if (
@@ -674,6 +691,21 @@ export function resolveContentBlockConcurrency(value: unknown): number {
     return DEFAULT_CONTENT_BLOCK_CONCURRENCY;
   }
   return Math.min(parsed, MAX_CONTENT_BLOCK_CONCURRENCY);
+}
+
+// Disparar todas as partes de audio de um perfil ao mesmo tempo (ate 8
+// partes) estourava RPM do free tier do Gemini (~10 req/min por conta)
+// mesmo com a rotacao de chave corrigida - o fan-out em si precisa de um
+// teto de concorrencia real (ver settleWithConcurrency em server.ts).
+const DEFAULT_AUDIO_PART_CONCURRENCY = 3;
+const MAX_AUDIO_PART_CONCURRENCY = 4;
+
+export function resolveAudioPartConcurrency(value: unknown): number {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    return DEFAULT_AUDIO_PART_CONCURRENCY;
+  }
+  return Math.min(parsed, MAX_AUDIO_PART_CONCURRENCY);
 }
 
 export function partitionContentBlocks(
