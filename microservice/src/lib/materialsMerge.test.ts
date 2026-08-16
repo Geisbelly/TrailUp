@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { computeMergedMaterials } from "./materialsMerge";
+import { computeMergedMaterials, computeAggregatedApresentacaoEntry } from "./materialsMerge";
 
 const completed = (kind: string) => ({ metadata: { status: "completed", media_kind: kind, updated_at: "x" } });
 const failed    = (kind: string) => ({ metadata: { status: "failed",    media_kind: kind, updated_at: "x" } });
@@ -132,4 +132,57 @@ test("cenário realista: retry de audio falhado não sobrescreve markdown comple
   const { merged } = computeMergedMaterials(current, updates, "processando_midias");
   assert.deepEqual(merged.audio,    completed("audio"));    // retry venceu
   assert.deepEqual(merged.markdown, completed("markdown")); // completed protegido
+});
+
+test("computeAggregatedApresentacaoEntry: mantem status atual quando faltam partes", () => {
+  const result = computeAggregatedApresentacaoEntry(
+    [],
+    { ordem: 1, titulo: "Introducao", arquivo_url: "https://storage/p1.html", storage_path: "p1.html", failed: false },
+    2,
+    "pending",
+  );
+  assert.equal(result.status, "pending");
+  assert.equal(result.partes.length, 1);
+});
+
+test("computeAggregatedApresentacaoEntry: completed quando todas as partes chegaram sem falha", () => {
+  const currentPartes = [
+    { ordem: 1, titulo: "Introducao", arquivo_url: "https://storage/p1.html", storage_path: "p1.html", failed: false },
+  ];
+  const result = computeAggregatedApresentacaoEntry(
+    currentPartes,
+    { ordem: 2, titulo: "Conclusao", arquivo_url: "https://storage/p2.html", storage_path: "p2.html", failed: false },
+    2,
+    "pending",
+  );
+  assert.equal(result.status, "completed");
+  assert.equal(result.headline.arquivo_url, "https://storage/p1.html");
+});
+
+test("computeAggregatedApresentacaoEntry: failed se qualquer parte falhou", () => {
+  const currentPartes = [
+    { ordem: 1, titulo: "Introducao", arquivo_url: "https://storage/p1.html", storage_path: "p1.html", failed: false },
+  ];
+  const result = computeAggregatedApresentacaoEntry(
+    currentPartes,
+    { ordem: 2, titulo: "Conclusao", arquivo_url: null, storage_path: null, failed: true },
+    2,
+    "pending",
+  );
+  assert.equal(result.status, "failed");
+});
+
+test("computeAggregatedApresentacaoEntry: substitui parte com mesma ordem, nao duplica", () => {
+  const currentPartes = [
+    { ordem: 1, titulo: "Introducao", arquivo_url: null, storage_path: null, failed: true },
+    { ordem: 2, titulo: "Conclusao", arquivo_url: "https://storage/p2.html", storage_path: "p2.html", failed: false },
+  ];
+  const result = computeAggregatedApresentacaoEntry(
+    currentPartes,
+    { ordem: 1, titulo: "Introducao", arquivo_url: "https://storage/p1-retry.html", storage_path: "p1-retry.html", failed: false },
+    2,
+    "failed",
+  );
+  assert.equal(result.partes.length, 2);
+  assert.equal(result.status, "completed");
 });
