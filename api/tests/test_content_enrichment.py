@@ -1037,3 +1037,77 @@ async def test_openai_spend_guard_bloqueia_chamadas_acima_do_teto(
     with pytest.raises(ContentEnrichmentError, match="teto"):
         await enrich_content_blocks(context=_context(), settings=settings)
     assert calls.get("calls") is None
+
+
+# ─── Margem tolerada apos esgotar tentativas (bloco teimoso, ex.: bloco-22) ────
+
+
+def _near_miss_response(payload: dict[str, Any], *, ratio: float) -> dict[str, Any]:
+    # Simula um bloco que fica sistematicamente perto do piso minimo (mas
+    # abaixo dele) em toda tentativa - reproduz o caso real de producao
+    # (bloco-22: Base=1517, resposta=1889, minimo=1973 -> ~95.7% do alvo).
+    # `ratio` e a fracao do piso ESTRITO que a resposta atinge.
+    blocks = []
+    for base in payload["blocos_base"]:
+        base_text = enrichment_module._text(base["conteudo_base"])
+        strict_min = enrichment_module._minimum_expanded_length(base_text)
+        target_len = math.ceil(strict_min * ratio)
+        extra_len = max(target_len - len(base_text), 1)
+        blocks.append(
+            {
+                "id": base["id"],
+                "tema": base["tema"],
+                "topico": base["topico"],
+                "objetivos": ["Explicar e aplicar o conceito em uma situação real."],
+                "conteudo_base": base_text,
+                "conteudo_aprofundado": base_text + ("y" * extra_len),
+                "conceitos_chave": ["resolução de nomes", "comunicação distribuída"],
+                "exemplos_contextos": ["Abertura de um site no navegador."],
+                "ponte_proximo_bloco": "",
+                "source_ids": base["source_ids"],
+            }
+        )
+    return {"blocos": blocks}
+
+
+@pytest.mark.asyncio
+async def test_enrichment_accepts_block_within_tolerance_after_exhausting_attempts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Bloco fica em ~96% do piso estrito em toda tentativa (mesma resposta
+    # determinística nas 3 tentativas) - dentro da margem tolerada (95%), so
+    # aceita como ultimo recurso apos esgotar as tentativas normais, em vez
+    # de derrubar o topico inteiro por causa de 1 bloco teimoso.
+    captured: dict[str, Any] = {}
+    monkeypatch.setattr(
+        enrichment_module,
+        "_gemini_client",
+        _gemini_factory(lambda payload: _near_miss_response(payload, ratio=0.96), captured),
+    )
+
+    result = await enrich_content_blocks(context=_context(), settings=_settings())
+
+    assert len(result["blocos"]) == result["metadata"]["blocos_gerados"]
+    # 3 tentativas esgotadas (resposta nunca muda) antes da aceitacao tolerada.
+    assert result["metadata"]["chamadas_realizadas"] == 3
+    expected_ids = sorted(block["id"] for block in result["blocos"])
+    assert result["metadata"]["blocos_com_margem_tolerada"] == expected_ids
+    for block in result["blocos"]:
+        assert block["conteudo_aprofundado"].endswith("y")
+
+
+@pytest.mark.asyncio
+async def test_enrichment_ainda_falha_quando_resposta_fica_muito_abaixo_da_margem(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # A margem tolerada nao vira um piso frouxo generico - uma resposta bem
+    # abaixo dela (70% do piso estrito) deve continuar falhando apos esgotar
+    # as tentativas, igual ao comportamento anterior a esta mudanca.
+    monkeypatch.setattr(
+        enrichment_module,
+        "_gemini_client",
+        _gemini_factory(lambda payload: _near_miss_response(payload, ratio=0.70), {}),
+    )
+
+    with pytest.raises(ContentEnrichmentError, match="insuficiente"):
+        await enrich_content_blocks(context=_context(), settings=_settings())
