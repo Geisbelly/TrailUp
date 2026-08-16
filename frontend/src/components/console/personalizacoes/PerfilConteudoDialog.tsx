@@ -20,6 +20,7 @@ import {
   versionedMaterialUrl,
   type DocumentPreviewMode,
 } from "./materialPreview";
+import { getMaterialPartes } from "./materialParts";
 
 type MaterialTipo = "markdown" | "pdf" | "audio" | "apresentacao";
 
@@ -375,7 +376,20 @@ function MaterialTabContent({
   fallbackUpdatedAt?: string | null;
   regenerarContext?: RegenerarContext;
 }) {
-  const rawUrl = materialUrl(material);
+  // Materiais gerados em varias partes (ver ContentPart no microservice)
+  // trazem "partes" com um item por bloco; registros antigos, sem "partes",
+  // caem no fallback de 1 parte so via getMaterialPartes - o restante deste
+  // componente nunca precisa saber a diferenca.
+  const partes = getMaterialPartes(material);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [tipo, materialUrl(material)]);
+
+  const safeIndex = Math.min(activeIndex, partes.length - 1);
+  const activeParte = partes[safeIndex];
+  const rawUrl = activeParte?.arquivo_url ?? null;
   const url = rawUrl
     ? versionedMaterialUrl(rawUrl, material, fallbackUpdatedAt)
     : null;
@@ -383,26 +397,46 @@ function MaterialTabContent({
   const payload = material && typeof material.payload === "object" ? (material.payload as Record<string, unknown>) : null;
   const slides = Array.isArray(payload?.slides) ? (payload.slides as unknown[]) : null;
 
-  if (!url) {
+  if (partes.length === 0 || !partes.some((parte) => parte.arquivo_url)) {
     return <p className="text-sm text-muted-foreground py-8 text-center">Este material ainda não está disponível.</p>;
   }
-  if (tipo === "markdown") {
-    return (
-      <div>
-        <TextoMaterialContent url={url} />
-        {regenerarContext && <RegenerarConteudoPainel kind="documento" context={regenerarContext} />}
-      </div>
-    );
-  }
-  if (tipo === "audio") return <AudioMaterialContent url={url} />;
+
   return (
     <div>
-      <EmbedMaterialContent
-        url={url}
-        mode={resolveDocumentPreviewMode(material, tipo)}
-      />
-      {tipo === "apresentacao" && regenerarContext && (
-        <RegenerarConteudoPainel kind="slide" context={regenerarContext} totalSlides={slides?.length} />
+      {partes.length > 1 && (
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {partes.map((parte, index) => (
+            <Button
+              key={parte.ordem}
+              type="button"
+              size="sm"
+              variant={index === safeIndex ? "default" : "outline"}
+              onClick={() => setActiveIndex(index)}
+            >
+              {parte.titulo || `Parte ${parte.ordem}`}
+            </Button>
+          ))}
+        </div>
+      )}
+      {!url ? (
+        <p className="text-sm text-muted-foreground py-8 text-center">Esta parte ainda não está disponível.</p>
+      ) : tipo === "markdown" ? (
+        <div>
+          <TextoMaterialContent url={url} />
+          {regenerarContext && <RegenerarConteudoPainel kind="documento" context={regenerarContext} />}
+        </div>
+      ) : tipo === "audio" ? (
+        <AudioMaterialContent url={url} />
+      ) : (
+        <div>
+          <EmbedMaterialContent
+            url={url}
+            mode={resolveDocumentPreviewMode(material, tipo)}
+          />
+          {tipo === "apresentacao" && regenerarContext && (
+            <RegenerarConteudoPainel kind="slide" context={regenerarContext} totalSlides={slides?.length} />
+          )}
+        </div>
       )}
     </div>
   );
