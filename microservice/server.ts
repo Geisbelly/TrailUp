@@ -29,6 +29,8 @@ import {
   markPersonalizacaoFailed,
   recoverStaleJobs,
   startJobHeartbeat,
+  fetchPersonalizacaoMateriais,
+  downloadStorageText,
   MaterialEntry,
   type GenerationFence,
   type MaterialPart,
@@ -603,6 +605,133 @@ async function runPersonalizacaoJobWithTimeout(
   );
 }
 
+// Verdadeiro quando `entry` esta completed E pertence a mesma generationKey
+// da tentativa atual - a mesma checagem ja usada no failedFormats de
+// runPipeline, extraida pra decidir SE vale a pena pular a regeneracao via
+// Gemini de audio/markdown (ver retryApresentacaoOnly abaixo).
+function isMaterialCompletedForGeneration(
+  entry: MaterialEntry | null | undefined,
+  generationKey: string,
+): boolean {
+  return entry?.metadata?.status === "completed" && entry?.metadata?.generation_key === generationKey;
+}
+
+// Reconstroi as partes de markdown ja persistidas (ver ContentPart) sem
+// chamar o Gemini de novo - so o texto e necessario pra retentar a
+// apresentacao (renderAndUploadPresentationViaBrainHexPdf so consome
+// markdown/topic/profile). A parte 1 vem inline em materiais.markdown.
+// payload.markdown (ver archiveMultiPartToSupabase); partes 2+ so existem
+// no arquivo .md subido no Storage, entao precisam ser baixadas. Se
+// qualquer parte nao puder ser recuperada (bucket/storage_path ausente,
+// download falhou), retorna null - o chamador deve cair pra regeneracao
+// completa em vez de arriscar uma apresentacao incompleta ou fora de
+// ordem.
+export async function reconstructMarkdownPartsFromMaterials(
+  markdownEntry: MaterialEntry | null | undefined,
+  deps: { downloadText?: typeof downloadStorageText } = {},
+): Promise<Array<{ ordem: number; titulo: string; markdown: string }> | null> {
+  const downloadText = deps.downloadText ?? downloadStorageText;
+  const partes = markdownEntry?.partes;
+  const bucket = markdownEntry?.bucket;
+  if (!Array.isArray(partes) || partes.length === 0 || !bucket) return null;
+
+  const inlineMarkdown =
+    typeof markdownEntry?.payload?.markdown === "string" ? (markdownEntry.payload.markdown as string) : null;
+
+  const reconstructed: Array<{ ordem: number; titulo: string; markdown: string }> = [];
+  for (const parte of partes) {
+    if (!parte.storage_path) return null;
+    const text = parte.ordem === 1 && inlineMarkdown ? inlineMarkdown : await downloadText(bucket, parte.storage_path);
+    if (!text) return null;
+    reconstructed.push({ ordem: parte.ordem, titulo: parte.titulo, markdown: text });
+  }
+  return reconstructed;
+}
+
+// Retenta so a apresentacao (BrainHexPDF), reaproveitando markdown ja
+// concluido em vez de regenerar audio+markdown via Gemini de novo - mesmo
+// laco de apresentacao de archiveMultiPartToSupabase, mas o merge so toca
+// a chave "apresentacao" (audio/markdown persistidos permanecem intactos,
+// ja que mergePersonalizacaoMateriais so atualiza as chaves presentes em
+// updates). deps permite injetar fakes em teste sem tocar rede/Supabase de
+// verdade.
+export async function retryApresentacaoOnly(
+  params: {
+    profile: BrainHexProfile;
+    storagePath: string;
+    bucket: string;
+    refId: string;
+    parts: Array<{ ordem: number; titulo: string; markdown: string }>;
+    presentationTheme: PresentationDesignPlan;
+    personalizacaoId: number;
+    fence: GenerationFence;
+    log?: Logger;
+  },
+  deps: {
+    renderAndUpload?: typeof renderAndUploadPresentationViaBrainHexPdf;
+    mergeMateriais?: typeof mergePersonalizacaoMateriais;
+  } = {},
+): Promise<{ presentationUrl: string | null; persisted: PersistedMaterialsMerge | null }> {
+  const { profile, storagePath, bucket, refId, parts, presentationTheme, personalizacaoId, fence } = params;
+  const lg = params.log ?? log;
+  const renderAndUpload = deps.renderAndUpload ?? renderAndUploadPresentationViaBrainHexPdf;
+  const mergeMateriais = deps.mergeMateriais ?? mergePersonalizacaoMateriais;
+  const multiPart = parts.length > 1;
+
+  const presentationParts: MaterialPart[] = [];
+  let firstPresentationFailure: PresentationFailure | null = null;
+
+  for (const part of parts) {
+    const suffix = multiPart ? `-parte-${String(part.ordem).padStart(2, "0")}` : "";
+    const presentationPath = `${storagePath}/apresentacao/material-${refId}${suffix}.html`;
+    const presentationResult = await renderAndUpload({
+      markdown: part.markdown,
+      topic: part.titulo,
+      profile,
+      bucket,
+      presentationPath,
+    });
+    if (presentationResult.failure) {
+      firstPresentationFailure = firstPresentationFailure ?? presentationResult.failure;
+      lg.error("falha na apresentacao (retry apresentacao-only)", {
+        stage: presentationResult.failure.stage,
+        error: presentationResult.failure.error,
+        parte: part.ordem,
+      });
+    } else {
+      lg.info("apresentacao upload (retry apresentacao-only)", { status: "ok", parte: part.ordem });
+    }
+    presentationParts.push({
+      ordem: part.ordem,
+      titulo: part.titulo,
+      arquivo_url: presentationResult.presentationUrl,
+      storage_path: presentationResult.presentationUrl ? presentationPath : null,
+    });
+  }
+
+  const presentationUrl = presentationParts[0]?.arquivo_url ?? null;
+  const updates: Record<string, MaterialEntry> = {
+    apresentacao: {
+      // slides fica vazio de proposito - ver comentario equivalente em
+      // archiveMultiPartToSupabase.
+      payload: { slides: [] as never[], tema_visual: presentationTheme },
+      metadata: buildPresentationMaterialMetadata({
+        generationKey: fence.generationKey,
+        presentationUrl,
+        bucket,
+        failure: firstPresentationFailure,
+      }),
+      arquivo_url: presentationUrl,
+      storage_path: presentationParts[0]?.storage_path ?? null,
+      ...(presentationUrl ? { bucket, mime_type: "text/html; charset=utf-8" } : {}),
+      partes: presentationParts,
+    },
+  };
+
+  const persisted = await mergeMateriais(personalizacaoId, updates, fence);
+  return { presentationUrl, persisted };
+}
+
 async function runPipeline(
   personalizacaoId: number,
   profile: BrainHexProfile,
@@ -625,6 +754,58 @@ async function runPipeline(
     presentationTheme,
     fallbackSubject,
   );
+
+  // 0. Evita regenerar audio/markdown via Gemini quando ja estao completed
+  // pra esta MESMA generationKey e so a apresentacao falhou (ex.: TLS/rede
+  // no BrainHexPDF) - producao mostrou audio/markdown sendo regenerados do
+  // zero (estourando rate-limit de TTS) so pra tentar de novo uma
+  // apresentacao que falha por um motivo nao relacionado ao conteudo. Se a
+  // reconstrucao do markdown ja persistido falhar por qualquer motivo, cai
+  // pro pipeline completo abaixo (nunca arrisca uma apresentacao
+  // incompleta/fora de ordem).
+  const existingMateriais = await fetchPersonalizacaoMateriais(personalizacaoId);
+  const audioJaCompleto = isMaterialCompletedForGeneration(existingMateriais?.audio, fence.generationKey);
+  const markdownJaCompleto = isMaterialCompletedForGeneration(existingMateriais?.markdown, fence.generationKey);
+  const apresentacaoJaCompleta = isMaterialCompletedForGeneration(existingMateriais?.apresentacao, fence.generationKey);
+  if (audioJaCompleto && markdownJaCompleto && !apresentacaoJaCompleta) {
+    const reconstructedParts = await reconstructMarkdownPartsFromMaterials(existingMateriais?.markdown);
+    if (reconstructedParts) {
+      jobLog.info("apresentacao-only: reaproveitando audio/markdown ja concluidos", {
+        generationKey: fence.generationKey,
+      });
+      const archived = await retryApresentacaoOnly({
+        profile,
+        storagePath,
+        bucket,
+        refId,
+        parts: reconstructedParts,
+        presentationTheme: presentationPlan,
+        personalizacaoId,
+        fence,
+        log: jobLog,
+      });
+      if (!archived.persisted) {
+        throw new Error("merge persistido ausente para a personalizacao");
+      }
+      const failedFormatsRetry = ["audio", "markdown", "apresentacao"].filter((mediaKind) => {
+        const metadata = archived.persisted?.materiais?.[mediaKind]?.metadata;
+        return (
+          metadata?.status !== "completed"
+          || metadata?.generation_key !== fence.generationKey
+        );
+      });
+      if (failedFormatsRetry.length > 0) {
+        throw new Error(`midias obrigatorias nao geradas: ${failedFormatsRetry.join(", ")}`);
+      }
+      if (archived.persisted.status !== "pronto") {
+        throw new Error(`status persistido inesperado: ${archived.persisted.status}`);
+      }
+      return;
+    }
+    jobLog.warn("apresentacao-only: nao foi possivel reconstruir markdown ja gerado, regenerando tudo", {
+      generationKey: fence.generationKey,
+    });
+  }
 
   // 1. Download das fontes
   const filesData = await fetchFontesAsFileData(fontes);
