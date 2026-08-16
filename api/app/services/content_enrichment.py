@@ -32,8 +32,6 @@ _MAX_BLOCKS_CEILING = 60
 # dar mais margem, ao custo de mais segmentos/blocos (mais chamadas de LLM
 # por geracao).
 _MAX_SEGMENT_CHARS = 1_500
-_MIN_EXPANSION_CHARS = 80
-_MIN_EXPANSION_RATIO = 0.15
 # Sem teto, um bloco enriquecido podia crescer o quanto o modelo quisesse -
 # reproduziu estouro de max_output_tokens (16384) no fallback OpenAI e ate
 # "objeto excedeu o tamanho maximo permitido" no upload da apresentacao (os
@@ -41,6 +39,17 @@ _MIN_EXPANSION_RATIO = 0.15
 # generosa pro texto de estudo formatado (markdown com headings, exemplos)
 # ainda caber no orcamento de tokens de saida do gpt-4o-mini.
 _MAX_EXPANDED_CHARS = 12_000
+# Eram 80/0.15: o piso so exigia raspar 15% acima do conteudo_base, mais
+# frouxo que a propria instrucao do prompt (_ENRICHMENT_INSTRUCTIONS, "pelo
+# menos 30% e 200 caracteres maior"). Producao mostrou blocos que passavam
+# nesse piso frouxo mas cujo conteudo_aprofundado nunca alcancava a cobertura
+# minima exigida depois pelo microservice na geracao de materiais (55% de
+# conteudo_aprofundado em markdown - ver geminiService.ts), porque o
+# aprofundamento em si era raso demais pra dar "material" suficiente pra
+# narrar. Alinhado ao que o prompt ja promete, em vez de so validar mais
+# frouxo que ele.
+_MIN_EXPANSION_CHARS = 200
+_MIN_EXPANSION_RATIO = 0.30
 _SCHEMA_VERSION = "trailup.content-blocks.v2"
 # Fallback usado quando a settings nao traz o valor - ver
 # content_enrichment_batch_size em core/settings.py pro motivo de 6 (era 1,
