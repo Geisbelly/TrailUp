@@ -320,6 +320,109 @@ test("archiveToSupabase inclui apresentacao com fallback quando dbWritten:false"
   }
 });
 
+test("archiveMultiPartToSupabase nao monta apresentacao quando todas as partes gravaram (dbWritten:true)", async () => {
+  const { client, getLastRpcUpdates } = createFakeSupabaseClient();
+  setSupabaseClientForTesting(client);
+  const originalFetch = globalThis.fetch;
+  const originalBrainHexPdfUrl = process.env.BRAINHEXPDF_API_URL;
+  process.env.BRAINHEXPDF_API_URL = "http://fake-brainhexpdf.test";
+  let call = 0;
+  globalThis.fetch = (async (_url: any, init: any) => {
+    call += 1;
+    const body = JSON.parse(init.body);
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        success: true,
+        url: `https://fake.supabase/p${body.ordem}.html`,
+        storage_path: `p${body.ordem}.html`,
+        bucket: "conteudo_aluno",
+        slide_count: 8,
+        dbWritten: true,
+      }),
+    } as any;
+  }) as unknown as typeof fetch;
+  try {
+    await archiveMultiPartToSupabase({
+      profile,
+      storagePath: "brainhex/socializer/classe-1/topico-2",
+      bucket: "conteudo_aluno",
+      refId: "ref-multi-dbwritten",
+      parts: [
+        { ordem: 1, titulo: "Parte 1", markdown: "md-1", audioScript: "audio-1", slides: [], mp3Base64: Buffer.from("a1").toString("base64"), wavBase64: null } as any,
+        { ordem: 2, titulo: "Parte 2", markdown: "md-2", audioScript: "audio-2", slides: [], mp3Base64: Buffer.from("a2").toString("base64"), wavBase64: null } as any,
+      ],
+      presentationTheme,
+      personalizacaoId: 42,
+      fence: { cicloId: "ciclo-1", sourceHash: "hash-a", generationKey: "ciclo-1:hash-a" },
+    });
+
+    assert.equal(call, 2);
+    const updates = getLastRpcUpdates();
+    assert.ok(updates, "esperava merge de audio/markdown");
+    assert.equal("apresentacao" in (updates as any), false);
+  } finally {
+    setSupabaseClientForTesting(null);
+    globalThis.fetch = originalFetch;
+    if (originalBrainHexPdfUrl === undefined) delete process.env.BRAINHEXPDF_API_URL;
+    else process.env.BRAINHEXPDF_API_URL = originalBrainHexPdfUrl;
+  }
+});
+
+test("archiveMultiPartToSupabase grava fallback so pra apresentacao quando 1 parte falha o transporte", async () => {
+  const { client, getLastRpcUpdates } = createFakeSupabaseClient();
+  setSupabaseClientForTesting(client);
+  const originalFetch = globalThis.fetch;
+  const originalBrainHexPdfUrl = process.env.BRAINHEXPDF_API_URL;
+  process.env.BRAINHEXPDF_API_URL = "http://fake-brainhexpdf.test";
+  globalThis.fetch = (async (_url: any, init: any) => {
+    const body = JSON.parse(init.body);
+    if (body.ordem === 2) {
+      return { ok: false, status: 502, json: async () => ({ success: false, stage: "upload", error: "timeout" }) } as any;
+    }
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        success: true,
+        url: `https://fake.supabase/p${body.ordem}.html`,
+        storage_path: `p${body.ordem}.html`,
+        bucket: "conteudo_aluno",
+        slide_count: 8,
+        dbWritten: true,
+      }),
+    } as any;
+  }) as unknown as typeof fetch;
+  try {
+    await archiveMultiPartToSupabase({
+      profile,
+      storagePath: "brainhex/socializer/classe-1/topico-2",
+      bucket: "conteudo_aluno",
+      refId: "ref-multi-fallback",
+      parts: [
+        { ordem: 1, titulo: "Parte 1", markdown: "md-1", audioScript: "audio-1", slides: [], mp3Base64: Buffer.from("a1").toString("base64"), wavBase64: null } as any,
+        { ordem: 2, titulo: "Parte 2", markdown: "md-2", audioScript: "audio-2", slides: [], mp3Base64: Buffer.from("a2").toString("base64"), wavBase64: null } as any,
+      ],
+      presentationTheme,
+      personalizacaoId: 42,
+      fence: { cicloId: "ciclo-1", sourceHash: "hash-a", generationKey: "ciclo-1:hash-a" },
+    });
+
+    const updates = getLastRpcUpdates();
+    assert.ok(updates, "esperava merge de audio/markdown/apresentacao");
+    const apresentacao = (updates as any).apresentacao;
+    assert.equal(apresentacao.partes.length, 2);
+    assert.equal(apresentacao.partes[1].failed, true);
+    assert.equal(apresentacao.metadata.status, "failed");
+  } finally {
+    setSupabaseClientForTesting(null);
+    globalThis.fetch = originalFetch;
+    if (originalBrainHexPdfUrl === undefined) delete process.env.BRAINHEXPDF_API_URL;
+    else process.env.BRAINHEXPDF_API_URL = originalBrainHexPdfUrl;
+  }
+});
+
 test("archiveMultiPartToSupabase: falha de upload numa parte nao impede as demais partes", async () => {
   const { client, calls } = createFakeSupabaseClient([
     "brainhex/socializer/classe-1/topico-2/audio/material-ref-fail-parte-01.mp3",

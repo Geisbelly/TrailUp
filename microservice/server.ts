@@ -15,6 +15,7 @@ import {
   type ContentPart,
 } from "./src/services/geminiService";
 import { settleWithConcurrency } from "./src/lib/boundedConcurrency";
+import { computeAggregatedApresentacaoEntry } from "./src/lib/materialsMerge";
 import type { ApiKeysConfig, SlideContent } from "./src/types";
 import { BrainHexProfile, BRAIN_HEX_CONFIG } from "./src/constants/brainHex";
 import {
@@ -99,9 +100,14 @@ export function buildPresentationMaterialMetadata(params: {
   bucket: string;
   failure: PresentationFailure | null;
   updatedAt?: string;
+  // Override pro caso multi-parte: o status agregado (computeAggregatedApresentacaoEntry)
+  // pode ser "failed" mesmo com presentationUrl != null (o headline e a
+  // parte 1, que pode ter tido sucesso enquanto outra parte falhou) - sem
+  // isso, o status ficaria "completed" so por causa da parte 1.
+  status?: string;
 }): MaterialEntry["metadata"] {
   return {
-    status: params.presentationUrl ? "completed" : "failed",
+    status: params.status ?? (params.presentationUrl ? "completed" : "failed"),
     media_kind: "apresentacao",
     ...buildPresentationVersionMetadata(params.generationKey),
     updated_at: params.updatedAt ?? now(),
@@ -361,10 +367,15 @@ export async function archiveMultiPartToSupabase(params: {
   const lg = params.log ?? log;
   const multiPart = parts.length > 1;
 
+  if (personalizacaoId !== null && !fence) {
+    throw new Error("generation fence ausente para persistir personalizacao");
+  }
+
   const audioParts: MaterialPart[] = [];
   const markdownParts: MaterialPart[] = [];
   const presentationParts: MaterialPart[] = [];
   let firstPresentationFailure: PresentationFailure | null = null;
+  let anyPresentationFallbackNeeded = false;
   let anyAudioIsMp3 = false;
 
   for (const part of parts) {
@@ -417,7 +428,25 @@ export async function archiveMultiPartToSupabase(params: {
       profile,
       bucket,
       presentationPath,
+      ...(personalizacaoId !== null && fence
+        ? {
+            personalizacaoId,
+            fence,
+            versionMetadata: {
+              engine: PRESENTATION_ENGINE_VERSION,
+              schema: PRESENTATION_SCHEMA_VERSION,
+              design_system: PRESENTATION_DESIGN_VERSION,
+              media_pipeline_version: MEDIA_PIPELINE_VERSION,
+            },
+            ordem: part.ordem,
+            totalPartes: parts.length,
+            titulo: part.titulo,
+          }
+        : {}),
     });
+    if (!presentationResult.dbWritten) {
+      anyPresentationFallbackNeeded = true;
+    }
     if (presentationResult.failure) {
       firstPresentationFailure = firstPresentationFailure ?? presentationResult.failure;
       lg.error("falha na apresentacao", {
@@ -433,6 +462,7 @@ export async function archiveMultiPartToSupabase(params: {
       titulo: part.titulo,
       arquivo_url: presentationResult.presentationUrl,
       storage_path: presentationResult.presentationUrl ? presentationPath : null,
+      failed: presentationResult.presentationUrl === null,
     });
   }
 
@@ -442,6 +472,8 @@ export async function archiveMultiPartToSupabase(params: {
   let persisted: PersistedMaterialsMerge | null = null;
 
   if (personalizacaoId !== null) {
+    // fence garantido pela checagem no topo da funcao (antes do loop) - o
+    // TS nao ve essa relacao entre variaveis, entao asserta aqui.
     if (!fence) {
       throw new Error("generation fence ausente para persistir personalizacao");
     }
@@ -486,25 +518,46 @@ export async function archiveMultiPartToSupabase(params: {
         mime_type: "text/markdown; charset=utf-8",
         partes: markdownParts,
       },
-      apresentacao: {
-        // slides fica vazio de proposito - ver comentario equivalente em
-        // archiveToSupabase (mesma razao: evita que o mobile sintetize um
-        // render nativo em vez de abrir o HTML completo do BrainHexPDF).
-        payload: {
-          slides: [] as never[],
-          tema_visual: presentationTheme,
-        },
-        metadata: buildPresentationMaterialMetadata({
-          generationKey: fence.generationKey,
-          presentationUrl,
-          bucket,
-          failure: firstPresentationFailure,
-        }),
-        arquivo_url: presentationUrl,
-        storage_path: presentationParts[0]?.storage_path ?? null,
-        ...(presentationUrl ? { bucket, mime_type: "text/html; charset=utf-8" } : {}),
-        partes: presentationParts,
-      },
+      // apresentacao SO entra aqui quando pelo menos 1 parte precisou do
+      // fallback (o BrainHexPDF nao conseguiu gravar ele mesmo - falha de
+      // transporte) - no caminho feliz, quem grava essa chave e o proprio
+      // BrainHexPDF via persistApresentacaoResult, parte a parte. Ver
+      // docs/superpowers/specs/2026-08-16-brainhexpdf-direct-db-write-design.md.
+      ...(anyPresentationFallbackNeeded
+        ? {
+            apresentacao: (() => {
+              let aggregated: { partes: MaterialPart[]; status: string; headline: { arquivo_url: string | null; storage_path: string | null } } = {
+                partes: [],
+                status: "pending",
+                headline: { arquivo_url: null, storage_path: null },
+              };
+              for (const p of presentationParts) {
+                aggregated = computeAggregatedApresentacaoEntry(aggregated.partes, p, parts.length, aggregated.status);
+              }
+              // slides fica vazio de proposito - ver comentario equivalente
+              // em archiveToSupabase (mesma razao: evita que o mobile
+              // sintetize um render nativo em vez de abrir o HTML completo
+              // do BrainHexPDF).
+              return {
+                payload: {
+                  slides: [] as never[],
+                  tema_visual: presentationTheme,
+                },
+                metadata: buildPresentationMaterialMetadata({
+                  generationKey: fence.generationKey,
+                  presentationUrl: aggregated.headline.arquivo_url,
+                  bucket,
+                  failure: firstPresentationFailure,
+                  status: aggregated.status,
+                }),
+                arquivo_url: aggregated.headline.arquivo_url,
+                storage_path: aggregated.headline.storage_path,
+                ...(aggregated.headline.arquivo_url ? { bucket, mime_type: "text/html; charset=utf-8" } : {}),
+                partes: aggregated.partes,
+              };
+            })(),
+          }
+        : {}),
     };
 
     persisted = await mergePersonalizacaoMateriais(personalizacaoId, updates, fence);
