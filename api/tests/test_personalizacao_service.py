@@ -1399,6 +1399,148 @@ async def test_generate_materiais_slow_only_merges_existing_materials(monkeypatc
     assert state["midias_em_processamento"] is False
 
 
+class _FakeSessionWithNoOpCommit:
+    async def commit(self) -> None:
+        return None
+
+    async def rollback(self) -> None:
+        return None
+
+
+class _FakeSessionWithNoOpCommitContext:
+    async def __aenter__(self):
+        return _FakeSessionWithNoOpCommit()
+
+    async def __aexit__(self, exc_type, exc, tb):
+        del exc_type, exc, tb
+        return False
+
+
+class _FakeSessionWithNoOpCommitFactory:
+    def __call__(self):
+        return _FakeSessionWithNoOpCommitContext()
+
+
+@pytest.mark.asyncio
+async def test_generate_materiais_fetches_existing_materiais_when_not_provided_explicitly(
+    monkeypatch,
+) -> None:
+    # Regressao: repo.salvar() sobrescreve a coluna materiais inteira
+    # (nao faz merge) - se generate_materiais_personalizados nao receber
+    # existing_materiais, um novo ciclo de geracao apaga silenciosamente
+    # audio/apresentacao ja concluidos num ciclo anterior. A funcao ja
+    # aceita existing_materiais explicito (ver teste acima), mas os dois
+    # callers reais (agente_midias_personalizadas.py, agente_geracao_
+    # midia.py) nunca passam esse parametro - por isso a busca precisa
+    # acontecer sozinha quando existing_materiais nao vier preenchido e um
+    # session_factory estiver disponivel.
+    async def _fake_materialize(**kwargs):
+        media_materiais = kwargs["media_materiais"]
+        audio = media_materiais["audio"]
+        return (
+            {
+                "audio": {
+                    **audio,
+                    "arquivo_url": "https://cdn.example.com/material.mp3",
+                    "metadata": {"status": "completed"},
+                }
+            },
+            [],
+        )
+
+    monkeypatch.setattr(
+        "app.services.personalizacao._materialize_and_upload_media_assets",
+        _fake_materialize,
+    )
+
+    async def _fake_multistage(**kwargs):
+        del kwargs
+        return (
+            {
+                "audio": {
+                    "roteiro": "Roteiro sobre o tema com hipotese e evidencia.",
+                    "duracao_estimada_seg": 80,
+                }
+            },
+            {
+                "scores_validacao": {},
+                "quality_gate": {},
+                "rejected_by_quality": [],
+            },
+        )
+
+    monkeypatch.setattr(
+        "app.services.personalizacao._invoke_multistage_materiais_por_formato",
+        _fake_multistage,
+    )
+
+    existing_record = {
+        "id": 999,
+        "aluno_id": "aluno-1",
+        "classe_id": 10,
+        "topico_id": 5,
+        "conteudo_id": 90,
+        "materiais": {
+            "cards": {
+                "payload": [{"frente": "Q1", "verso": "R1"}],
+                "metadata": {"status": "completed"},
+            },
+            "audio": {
+                "payload": {"roteiro": "Roteiro pendente", "duracao_estimada_seg": 60},
+                "metadata": {"status": "pending"},
+            },
+        },
+    }
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.buscar_por_aluno",
+        AsyncMock(return_value=[existing_record]),
+    )
+    monkeypatch.setattr(
+        "app.repositories.materiais.MateriaisRepository.salvar",
+        AsyncMock(return_value={}),
+    )
+
+    state = {
+        "aluno_id": "aluno-1",
+        "classe_id": 10,
+        "ciclo_id": "ciclo-slow",
+        "payload_topico_id": 5,
+        "conteudo_foco_id": 90,
+        "conteudo_boss_foco_id": 90,
+        "perfil_brainhex": [{"perfil": "Achiever", "afinidade": 80}],
+        "topico_contexto": {"nome": "Frações", "descricao": "Base de matemática"},
+        "conteudos_topico": [{"titulo": "Conceitos", "descricao": "Descrição", "conteudo": "Conteúdo base"}],
+        "cards_conteudo": [],
+        "atividades_topico": [],
+        "questoes_topico": [],
+        "materiais_origem": [],
+        "plano_personalizacao": {
+            "formato_prioritario": "cards",
+            "formatos": ["cards", "audio"],
+            "nivel": "equilibrado",
+            "tom": "didatico",
+        },
+    }
+    settings = Settings(
+        openai_api_key=None,
+        gemini_api_key=None,
+        personalizacao_force_all_media_formats=False,
+    )
+
+    materiais = await generate_materiais_personalizados(
+        state,
+        settings,
+        session_factory=_FakeSessionWithNoOpCommitFactory(),
+        phase="slow_only",
+        # existing_materiais NAO informado de proposito - e o cenario real
+        # dos dois callers de producao.
+    )
+
+    assert materiais["cards"]["metadata"]["status"] == "completed"
+    assert materiais["audio"]["metadata"]["status"] == "completed"
+    assert materiais["audio"]["arquivo_url"] == "https://cdn.example.com/material.mp3"
+
+
 class _PersistSessionContext:
     async def __aenter__(self):
         return object()
