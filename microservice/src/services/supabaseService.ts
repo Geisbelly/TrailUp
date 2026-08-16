@@ -102,6 +102,7 @@ export interface MaterialPart {
   titulo: string;
   arquivo_url: string | null;
   storage_path: string | null;
+  failed?: boolean; // NOVO — aditivo, permite computeAggregatedApresentacaoEntry recomputar status sem reconstruir mensagens de erro de partes antigas
 }
 
 export interface MaterialEntry {

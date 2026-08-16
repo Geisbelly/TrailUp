@@ -5,6 +5,8 @@
 // public.merge_personalizacao_materiais (sql/migrations/0001_*.sql) devem
 // produzir o MESMO resultado. Se a lógica mudar aqui, atualize a SQL.
 
+import type { MaterialPart } from "../services/supabaseService";
+
 export interface MaterialEntryLike {
   metadata?: { status?: string; generation_key?: string };
 }
@@ -65,4 +67,41 @@ export function computeMergedMaterials(
       : currentStatus;
 
   return { merged, newStatus };
+}
+
+// computeAggregatedApresentacaoEntry é duplicada deliberadamente em
+// ../BrainHexPDF/src/services/materialsPersistence.ts (mesma lógica, TS dos
+// dois lados — o BrainHexPDF grava direto na RPC parte a parte; este lado
+// só é usado no fallback quando a chamada HTTP falha em nível de
+// transporte). Se a lógica mudar aqui, atualize a cópia lá.
+export function computeAggregatedApresentacaoEntry(
+  currentPartes: MaterialPart[],
+  novaParte: MaterialPart,
+  totalPartes: number,
+  currentStatus: string,
+): { partes: MaterialPart[]; status: string; headline: { arquivo_url: string | null; storage_path: string | null } } {
+  const mergedPartes = [...currentPartes.filter((p) => p.ordem !== novaParte.ordem), novaParte].sort(
+    (a, b) => a.ordem - b.ordem,
+  );
+
+  const anyFailed = mergedPartes.some((p) => p.failed);
+  const allArrived = mergedPartes.length === totalPartes;
+
+  let status: string;
+  if (anyFailed) {
+    status = "failed";
+  } else if (allArrived) {
+    status = "completed";
+  } else {
+    status = currentStatus;
+  }
+
+  return {
+    partes: mergedPartes,
+    status,
+    headline: {
+      arquivo_url: mergedPartes[0]?.arquivo_url ?? null,
+      storage_path: mergedPartes[0]?.storage_path ?? null,
+    },
+  };
 }
