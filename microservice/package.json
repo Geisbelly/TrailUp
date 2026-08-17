@@ -9,7 +9,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
-    "test": "node --import tsx --import ./src/testSetup.ts --test src/lib/boundedConcurrency.test.ts src/lib/concurrencyGate.test.ts src/lib/serialQueue.test.ts src/lib/textSanitize.test.ts src/lib/wav.test.ts src/lib/logger.test.ts src/lib/materialsMerge.test.ts src/lib/validators.test.ts src/lib/rateLimit.test.ts src/lib/dedupedTimeoutRunner.test.ts src/lib/pptxSlideOrder.test.ts src/server.test.ts src/server.archive.test.ts src/services/contentGenerationService.test.ts src/services/geminiBlockBatches.test.ts src/services/geminiKeyRotation.test.ts src/services/supabaseService.test.ts src/constants/guardianVoices.test.ts src/constants/presentationThemes.test.ts src/services/brainHexPdfClient.test.ts"
+    "test": "node --import tsx --import ./src/testSetup.ts --test src/lib/boundedConcurrency.test.ts src/lib/concurrencyGate.test.ts src/lib/serialQueue.test.ts src/lib/textSanitize.test.ts src/lib/wav.test.ts src/lib/logger.test.ts src/lib/materialsMerge.test.ts src/lib/validators.test.ts src/lib/rateLimit.test.ts src/lib/dedupedTimeoutRunner.test.ts src/lib/pptxSlideOrder.test.ts src/server.test.ts src/server.archive.test.ts src/server.pipeline.test.ts src/services/contentGenerationService.test.ts src/services/geminiBlockBatches.test.ts src/services/geminiKeyRotation.test.ts src/services/supabaseService.test.ts src/constants/guardianVoices.test.ts src/constants/presentationThemes.test.ts src/services/brainHexPdfClient.test.ts"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",

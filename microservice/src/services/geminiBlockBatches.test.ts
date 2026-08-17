@@ -53,8 +53,6 @@ function chapter(blockId: string, marker: string) {
       visualDescription: `Diagrama aplicado de ${marker}.`,
       characterQuote: `Vamos compreender ${marker}.`,
       characterAction: "explaining",
-      imagePrompt: `Ilustração educacional de ${marker}.`,
-      iconPrompts: [`Ícone técnico de ${marker}.`],
       sourceIds: [blockId],
     }],
   };
@@ -178,6 +176,41 @@ test("valida cobertura exata do lote e reordena capítulos pelos ids esperados",
     ["bloco-01", "bloco-02", "bloco-03"],
   );
   assert.equal(result.confidence, 0.86);
+});
+
+// Otimizacao de custo (achado do code review): imagePrompt/iconPrompts so
+// serviam pro pipeline de imagem/icone do motor de apresentacao antigo, ja
+// removido - o BrainHexPDF gera o deck inteiro por fora, e payload.slides
+// nunca sai do servidor (ver comentario em archiveMultiPartToSupabase). O
+// schema nao pede mais esses campos ao modelo; a validacao nao pode mais
+// exigi-los.
+test("valida slide sem imagePrompt/iconPrompts - campos removidos do schema (motor de imagem antigo)", () => {
+  const slideSemImagem = {
+    title: "Slide SEM-IMAGEM",
+    topics: ["Definição", "Aplicação"],
+    explanation: "Explicação visual completa de SEM-IMAGEM.",
+    visualDescription: "Diagrama aplicado de SEM-IMAGEM.",
+    characterQuote: "Vamos compreender SEM-IMAGEM.",
+    characterAction: "explaining",
+    sourceIds: ["bloco-01"],
+  };
+  const result = validateBlockBatchGeneration(
+    [block(1)],
+    {
+      chapters: [{
+        blockId: "bloco-01",
+        markdown: chapter("bloco-01", "SEM-IMAGEM").markdown,
+        audioScript: chapter("bloco-01", "SEM-IMAGEM").audioScript,
+        slides: [slideSemImagem],
+      }],
+      confidence: 0.9,
+    },
+    1,
+  );
+
+  assert.equal(result.chapters[0].slides[0].title, "Slide SEM-IMAGEM");
+  assert.equal(result.chapters[0].slides[0].imagePrompt, undefined);
+  assert.equal(result.chapters[0].slides[0].iconPrompts, undefined);
 });
 
 test("recusa lote que omite bloco ou devolve texto resumido", () => {
@@ -484,8 +517,6 @@ function slide(title: string): SlideContent {
     visualDescription: `Diagrama de ${title}.`,
     characterQuote: `Vamos ver ${title}.`,
     characterAction: "explaining",
-    imagePrompt: `Ilustração de ${title}.`,
-    iconPrompts: [`Ícone de ${title}.`],
     sourceIds: ["documento-completo"],
   };
 }

@@ -9,7 +9,6 @@ import { BrainHexProfile, BRAIN_HEX_CONFIG } from "../constants/brainHex";
 import { GUARDIAN_VOICE_PROFILES } from "../constants/guardianVoices";
 import {
   buildPresentationDesignPlan,
-  presentationImageDirection,
   type PresentationDesignPlan,
 } from "../constants/presentationThemes";
 import { mapWithConcurrency } from "../lib/boundedConcurrency";
@@ -571,11 +570,6 @@ const GEMINI_CONTENT_GENERATION_RESPONSE_SCHEMA = {
                   description:
                     "Ação: explaining, celebrating, thinking ou warning",
                 },
-                imagePrompt: { type: Type.STRING },
-                iconPrompts: {
-                  type: Type.ARRAY,
-                  items: { type: Type.STRING },
-                },
                 sourceIds: {
                   type: Type.ARRAY,
                   items: { type: Type.STRING },
@@ -588,8 +582,6 @@ const GEMINI_CONTENT_GENERATION_RESPONSE_SCHEMA = {
                 "visualDescription",
                 "characterQuote",
                 "characterAction",
-                "imagePrompt",
-                "iconPrompts",
                 "sourceIds",
               ],
             },
@@ -744,7 +736,6 @@ function validateSlideForBlock(
     "explanation",
     "visualDescription",
     "characterQuote",
-    "imagePrompt",
   ] as const;
   for (const field of requiredStrings) {
     if (!normalizedText(slide[field])) {
@@ -754,10 +745,9 @@ function validateSlideForBlock(
     }
   }
   const topics = normalizedStringList(slide.topics);
-  const iconPrompts = normalizedStringList(slide.iconPrompts);
-  if (topics.length === 0 || iconPrompts.length === 0) {
+  if (topics.length === 0) {
     throw new Error(
-      `Slide ${slideIndex + 1} não contém tópicos ou ícones no capítulo ${blockId}.`,
+      `Slide ${slideIndex + 1} não contém tópicos no capítulo ${blockId}.`,
     );
   }
   return {
@@ -767,8 +757,6 @@ function validateSlideForBlock(
     visualDescription: normalizedText(slide.visualDescription),
     characterQuote: normalizedText(slide.characterQuote),
     characterAction: action as SlideContent["characterAction"],
-    imagePrompt: normalizedText(slide.imagePrompt),
-    iconPrompts,
     sourceIds,
   };
 }
@@ -1409,9 +1397,8 @@ export async function processMediaWithGemini(
        Não funda blocos a ponto de perder tópicos e não reduza cada bloco a um bullet.
 
     2. Exemplos Visuais da Origem (MUITO CRÍTICO):
-       - Se você encontrar imagens, diagramas ou fluxogramas nas partes multimodais enviadas (IMAGENS DE REFERÊNCIA), você DEVE descrevê-los detalhadamente no campo 'visualDescription'.
-       - Use essas referências visuais para criar o 'imagePrompt', pedindo uma versão "Alquímica/2D Mágica" baseada exatamente naquela imagem do anexo.
-       - Se o anexo contiver uma foto de uma pessoa ou cenário, transforme-a em uma ilustração épica coerente com o tema ${profile}.
+       - Se você encontrar imagens, diagramas ou fluxogramas nas partes multimodais enviadas (IMAGENS DE REFERÊNCIA), você DEVE descrevê-los detalhadamente no campo 'visualDescription', numa versão "Alquímica/2D Mágica" baseada exatamente naquela imagem do anexo.
+       - Se o anexo contiver uma foto de uma pessoa ou cenário, descreva-o como uma ilustração épica coerente com o tema ${profile}.
     
     3. Exemplos e Analogias (Didática Alquímica):
        - Slides e Texto: Você DEVE incluir exemplos escritos explícitos e analogias temáticas para facilitar a compreensão.
@@ -1524,18 +1511,6 @@ export async function processMediaWithGemini(
        - visualDescription: Descrição de um exemplo prático ou analogia visual presente no slide.
        - characterQuote: Uma fala do guia ${config.guideName} reagindo ou explicando o conteúdo.
        - characterAction: A pose/emoção do guia ("explaining", "celebrating", "thinking", "warning").
-       - imagePrompt: Prompt para geração de imagem 2D.
-       - iconPrompts: 2 a 4 prompts curtos, cada um descrevendo UM elemento decorativo
-         especifico do slide (ex.: numa aula de Egito antigo, "hieroglifo dourado
-         estilizado", "escaravelho sagrado"; numa aula de sistemas distribuidos,
-         "engrenagem magica conectada por fios de luz"). Mesmo estilo magico/ilustrado
-         do guardiao ${config.guideName} — nunca icone generico de clipart, nunca
-         texto ou letras dentro da imagem.
-       - DIREÇÃO DE ARTE GLOBAL OBRIGATÓRIA: ${presentationImageDirection(presentationPlan)}
-       - Todos os imagePrompt e iconPrompts precisam parecer parte do MESMO template
-         editorial "${presentationPlan.styleName}", não uma coleção de artes independentes.
-       - imagePrompt deve pedir composição horizontal 16:9, sem texto dentro da imagem,
-         sem moldura pronta, com área de respiro para o conteúdo editorial do slide.
        - A temática visual vem de "${presentationPlan.subject}"; a identidade BrainHex
          funciona como assinatura, sem substituir o assunto real da aula por fantasia genérica.
 
@@ -1758,15 +1733,13 @@ export async function processMediaWithGemini(
                 explanation: { type: Type.STRING },
                 visualDescription: { type: Type.STRING },
                 characterQuote: { type: Type.STRING },
-                characterAction: { 
-                  type: Type.STRING, 
-                  description: "Ação do personagem: explaining, celebrating, thinking, or warning" 
+                characterAction: {
+                  type: Type.STRING,
+                  description: "Ação do personagem: explaining, celebrating, thinking, or warning"
                 },
-                imagePrompt: { type: Type.STRING },
-                iconPrompts: { type: Type.ARRAY, items: { type: Type.STRING } },
                 sourceIds: { type: Type.ARRAY, items: { type: Type.STRING } }
               },
-              required: ["title", "topics", "explanation", "visualDescription", "characterQuote", "characterAction", "imagePrompt", "iconPrompts", "sourceIds"]
+              required: ["title", "topics", "explanation", "visualDescription", "characterQuote", "characterAction", "sourceIds"]
             }
           },
           confidence: { type: Type.NUMBER }

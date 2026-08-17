@@ -9,9 +9,30 @@ import type { BrainHexProfile } from "../constants/brainHex";
 
 const log = createLogger({ ctx: "brainhexpdf-client" });
 
+// Espelha os stages reais que o BrainHexPDF reporta (server.ts la, endpoint
+// /api/v1/render-and-store): validate, generate, render, upload, e um
+// "unknown" de contingencia. "network" e nosso proprio - cobre erro de
+// rede/timeout daqui, quando nao houve resposta nenhuma do servidor pra
+// reportar um stage.
+export type PresentationRenderStage =
+  | "validate"
+  | "generate"
+  | "render"
+  | "upload"
+  | "network"
+  | "unknown";
+
 export interface PresentationRenderFailure {
-  stage: "render" | "upload";
+  stage: PresentationRenderStage;
   error: string;
+}
+
+const KNOWN_REMOTE_STAGES: readonly string[] = ["validate", "generate", "render", "upload", "unknown"];
+
+function normalizeRemoteStage(rawStage: unknown): PresentationRenderStage {
+  return typeof rawStage === "string" && KNOWN_REMOTE_STAGES.includes(rawStage)
+    ? (rawStage as PresentationRenderStage)
+    : "unknown";
 }
 
 export interface RenderAndUploadPresentationResult {
@@ -76,7 +97,7 @@ export async function renderAndUploadPresentationViaBrainHexPdf(
     const body: any = await response.json().catch(() => null);
 
     if (!response.ok || !body || body.success !== true) {
-      const stage: "render" | "upload" = body?.stage === "upload" ? "upload" : "render";
+      const stage = normalizeRemoteStage(body?.stage);
       const errMsg = typeof body?.error === "string" ? body.error : `HTTP ${response.status}`;
       log.error("render-and-store falhou", { status: response.status, stage, error: errMsg });
       return { presentationUrl: null, failure: { stage, error: truncateError(errMsg) } };
@@ -93,7 +114,7 @@ export async function renderAndUploadPresentationViaBrainHexPdf(
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     log.error("render-and-store erro de rede/timeout", { err: error });
-    return { presentationUrl: null, failure: { stage: "upload", error: truncateError(message) } };
+    return { presentationUrl: null, failure: { stage: "network", error: truncateError(message) } };
   } finally {
     clearTimeout(timer);
   }

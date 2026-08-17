@@ -81,7 +81,7 @@ export interface MaterialEntry {
     schema?: string;
     media_pipeline_version?: string;
     engine_variant?: "immersive";
-    error_stage?: "render" | "upload";
+    error_stage?: "validate" | "generate" | "render" | "upload" | "network" | "unknown";
     error?: string;
   };
   arquivo_url: string | null;

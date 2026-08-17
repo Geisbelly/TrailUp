@@ -189,12 +189,18 @@ test("archiveToSupabase usa wav/audio-wav quando so ha wavBase64 (sem mp3Base64)
   }
 });
 
+function fakePresentationResults(count: number) {
+  return Array.from({ length: count }, () => ({
+    presentationUrl: null,
+    failure: { stage: "render" as const, error: "BRAINHEXPDF_API_URL nao configurado" },
+  }));
+}
+
 test("archiveMultiPartToSupabase usa sufixo -parte-NN (2 digitos) quando ha mais de 1 parte", async () => {
   const { client, calls } = createFakeSupabaseClient();
   setSupabaseClientForTesting(client);
   try {
     await archiveMultiPartToSupabase({
-      profile,
       storagePath: "brainhex/socializer/classe-1/topico-2",
       bucket: "conteudo_aluno",
       refId: "ref-multi",
@@ -202,6 +208,7 @@ test("archiveMultiPartToSupabase usa sufixo -parte-NN (2 digitos) quando ha mais
         { ordem: 1, titulo: "Parte 1", markdown: "md-1", audioScript: "audio-1", slides: [], mp3Base64: Buffer.from("a1").toString("base64"), wavBase64: null } as any,
         { ordem: 2, titulo: "Parte 2", markdown: "md-2", audioScript: "audio-2", slides: [], mp3Base64: Buffer.from("a2").toString("base64"), wavBase64: null } as any,
       ],
+      presentationResults: fakePresentationResults(2),
       presentationTheme,
       personalizacaoId: null,
     });
@@ -220,13 +227,13 @@ test("archiveMultiPartToSupabase nao usa sufixo de parte quando ha so 1 parte", 
   setSupabaseClientForTesting(client);
   try {
     await archiveMultiPartToSupabase({
-      profile,
       storagePath: "brainhex/socializer/classe-1/topico-2",
       bucket: "conteudo_aluno",
       refId: "ref-single",
       parts: [
         { ordem: 1, titulo: "Única", markdown: "md-1", audioScript: "audio-1", slides: [], mp3Base64: Buffer.from("a1").toString("base64"), wavBase64: null } as any,
       ],
+      presentationResults: fakePresentationResults(1),
       presentationTheme,
       personalizacaoId: null,
     });
@@ -246,7 +253,6 @@ test("archiveMultiPartToSupabase: falha de upload numa parte nao impede as demai
   setSupabaseClientForTesting(client);
   try {
     const result = await archiveMultiPartToSupabase({
-      profile,
       storagePath: "brainhex/socializer/classe-1/topico-2",
       bucket: "conteudo_aluno",
       refId: "ref-fail",
@@ -254,6 +260,7 @@ test("archiveMultiPartToSupabase: falha de upload numa parte nao impede as demai
         { ordem: 1, titulo: "Parte 1", markdown: "md-1", audioScript: "audio-1", slides: [], mp3Base64: Buffer.from("a1").toString("base64"), wavBase64: null } as any,
         { ordem: 2, titulo: "Parte 2", markdown: "md-2", audioScript: "audio-2", slides: [], mp3Base64: Buffer.from("a2").toString("base64"), wavBase64: null } as any,
       ],
+      presentationResults: fakePresentationResults(2),
       presentationTheme,
       personalizacaoId: null,
     });
@@ -268,5 +275,50 @@ test("archiveMultiPartToSupabase: falha de upload numa parte nao impede as demai
     assert.equal(result.audioMp3Url, null);
   } finally {
     setSupabaseClientForTesting(null);
+  }
+});
+
+// Regressao: apresentacao agora e resolvida ANTES de chamar esta funcao (em
+// paralelo com o audio - ver runAudioAndPresentationInParallel), nao mais
+// chamada aqui dentro. archiveMultiPartToSupabase so precisa consumir o
+// resultado ja pronto (por indice, alinhado com `parts`) e refletir isso no
+// merge persistido.
+test("archiveMultiPartToSupabase usa os presentationResults ja resolvidos (nao chama a rede)", async () => {
+  const { client, getLastRpcUpdates } = createFakeSupabaseClient();
+  setSupabaseClientForTesting(client);
+  const originalFetch = globalThis.fetch;
+  let fetchCalls = 0;
+  globalThis.fetch = (async () => {
+    fetchCalls++;
+    throw new Error("nao deveria chamar fetch - presentationResults ja veio resolvido");
+  }) as unknown as typeof fetch;
+  try {
+    const result = await archiveMultiPartToSupabase({
+      storagePath: "brainhex/socializer/classe-1/topico-2",
+      bucket: "conteudo_aluno",
+      refId: "ref-pre-resolved",
+      parts: [
+        { ordem: 1, titulo: "Única", markdown: "md-1", audioScript: "audio-1", slides: [], mp3Base64: Buffer.from("a1").toString("base64"), wavBase64: null } as any,
+      ],
+      presentationResults: [
+        { presentationUrl: "https://fake.supabase/conteudo_aluno/apresentacao.html", failure: null },
+      ],
+      presentationTheme,
+      personalizacaoId: 42,
+      fence: { cicloId: "ciclo-1", sourceHash: "hash-a", generationKey: "ciclo-1:hash-a" },
+    });
+
+    assert.equal(fetchCalls, 0);
+    assert.equal(result.presentationUrl, "https://fake.supabase/conteudo_aluno/apresentacao.html");
+    assert.equal(result.presentationFailure, null);
+    const updates = getLastRpcUpdates();
+    assert.equal(
+      (updates as any).apresentacao.arquivo_url,
+      "https://fake.supabase/conteudo_aluno/apresentacao.html",
+    );
+    assert.equal((updates as any).apresentacao.metadata.status, "completed");
+  } finally {
+    setSupabaseClientForTesting(null);
+    globalThis.fetch = originalFetch;
   }
 });

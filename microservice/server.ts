@@ -35,7 +35,11 @@ import {
   type PersistedMaterialsMerge,
 } from "./src/services/supabaseService";
 import { createLogger, type Logger } from "./src/lib/logger";
-import { renderAndUploadPresentationViaBrainHexPdf } from "./src/services/brainHexPdfClient";
+import {
+  renderAndUploadPresentationViaBrainHexPdf,
+  type RenderAndUploadPresentationResult,
+  type PresentationRenderStage,
+} from "./src/services/brainHexPdfClient";
 import { validatePersonalizarBody } from "./src/lib/validators";
 import type { ContentBlock } from "./src/lib/validators";
 import { createRateLimiter } from "./src/lib/rateLimit";
@@ -82,7 +86,7 @@ function now() {
 
 // ─── Core: archive to Supabase ────────────────────────────────────────────────
 
-export type PresentationFailureStage = "render" | "upload";
+export type PresentationFailureStage = PresentationRenderStage;
 
 export interface PresentationFailure {
   stage: PresentationFailureStage;
@@ -290,6 +294,34 @@ export async function archiveToSupabase(params: {
 }
 
 /**
+ * Dispara a geracao de audio (por parte) e o render+upload da apresentacao
+ * via BrainHexPDF (por parte) CONCORRENTEMENTE entre si e entre partes.
+ * Antes, o pipeline esperava todo o audio terminar antes de comecar a
+ * chamar o BrainHexPDF, e ainda chamava uma parte por vez em serie dentro
+ * de archiveMultiPartToSupabase - para decks com varias partes, isso somava
+ * o tempo de audio + N chamadas de rede sequenciais (timeout de ate 120s
+ * cada). Aqui as duas frentes (audio de todas as partes, apresentacao de
+ * todas as partes) comecam juntas; renderPresentation nunca rejeita (ver
+ * renderAndUploadPresentationViaBrainHexPdf), so retorna failure no result.
+ */
+export async function runAudioAndPresentationInParallel<TAudio>(
+  parts: ContentPart[],
+  deps: {
+    generateAudio: (audioScript: string) => Promise<TAudio>;
+    renderPresentation: (part: ContentPart) => Promise<RenderAndUploadPresentationResult>;
+  },
+): Promise<{
+  audioSettled: PromiseSettledResult<TAudio>[];
+  presentationResults: RenderAndUploadPresentationResult[];
+}> {
+  const [audioSettled, presentationResults] = await Promise.all([
+    Promise.allSettled(parts.map((part) => deps.generateAudio(part.audioScript))),
+    Promise.all(parts.map((part) => deps.renderPresentation(part))),
+  ]);
+  return { audioSettled, presentationResults };
+}
+
+/**
  * Versao multi-parte de archiveToSupabase, usada pelo pipeline de
  * personalizacao (runPipeline). A sintese continua sendo UMA so (sem
  * duplicar topicos - ver mergeContentBlocksIntoOne), mas a ENTREGA vira N
@@ -303,11 +335,14 @@ export async function archiveToSupabase(params: {
  * versao single-file (archiveToSupabase) - nao precisa dessa divisao.
  */
 export async function archiveMultiPartToSupabase(params: {
-  profile:         BrainHexProfile;
   storagePath:     string;
   bucket:          string;
   refId:           string;
   parts:           Array<ContentPart & { mp3Base64: string | null; wavBase64: string | null }>;
+  // Ja resolvidos ANTES de chamar esta funcao (ver runAudioAndPresentationInParallel)
+  // - concorrente com a geracao de audio, nao mais chamado aqui em serie.
+  // Alinhado 1:1 por indice com `parts`.
+  presentationResults: RenderAndUploadPresentationResult[];
   presentationTheme: PresentationDesignPlan;
   personalizacaoId: number | null;
   fence?:           GenerationFence;
@@ -319,7 +354,7 @@ export async function archiveMultiPartToSupabase(params: {
   presentationFailure: PresentationFailure | null;
   persisted: PersistedMaterialsMerge | null;
 }> {
-  const { profile, storagePath, bucket, refId, parts, presentationTheme, personalizacaoId, fence } = params;
+  const { storagePath, bucket, refId, parts, presentationResults, presentationTheme, personalizacaoId, fence } = params;
   const lg = params.log ?? log;
   const multiPart = parts.length > 1;
 
@@ -329,7 +364,8 @@ export async function archiveMultiPartToSupabase(params: {
   let firstPresentationFailure: PresentationFailure | null = null;
   let anyAudioIsMp3 = false;
 
-  for (const part of parts) {
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
     const suffix = multiPart ? `-parte-${String(part.ordem).padStart(2, "0")}` : "";
 
     const audioPayload = part.mp3Base64 ?? part.wavBase64;
@@ -373,13 +409,7 @@ export async function archiveMultiPartToSupabase(params: {
     });
 
     const presentationPath = `${storagePath}/apresentacao/material-${refId}${suffix}.html`;
-    const presentationResult = await renderAndUploadPresentationViaBrainHexPdf({
-      markdown: part.markdown,
-      topic: part.titulo,
-      profile,
-      bucket,
-      presentationPath,
-    });
+    const presentationResult = presentationResults[i];
     if (presentationResult.failure) {
       firstPresentationFailure = firstPresentationFailure ?? presentationResult.failure;
       lg.error("falha na apresentacao", {
@@ -676,13 +706,27 @@ async function runPipeline(
       : generateLongNaturalAudio(audioScript, voice, voiceProfile.direction);
 
   // allSettled preserva a regra existente de sucesso parcial - uma parte de
-  // audio falhando nao derruba as outras. A apresentacao de cada parte e
-  // gerada dentro de archiveMultiPartToSupabase (chamada ao BrainHexPDF por
-  // parte) - corte seco: falha lá derruba a apresentacao inteira, sem
-  // fallback (ver design).
-  const audioSettled = await Promise.allSettled(
-    parts.map((part) => generatePartAudio(part.audioScript)),
-  );
+  // audio falhando nao derruba as outras. A apresentacao (chamada ao
+  // BrainHexPDF, uma por parte) roda CONCORRENTE com o audio - ver
+  // runAudioAndPresentationInParallel - em vez de esperar o audio inteiro
+  // pra so entao chamar o BrainHexPDF em serie por parte (achado do code
+  // review: isso inflava bastante a latencia total em decks com varias
+  // partes). Falha na apresentacao de uma parte derruba so aquela parte,
+  // sem fallback (ver design).
+  const multiPart = parts.length > 1;
+  const { audioSettled, presentationResults } = await runAudioAndPresentationInParallel(parts, {
+    generateAudio: generatePartAudio,
+    renderPresentation: (part) =>
+      renderAndUploadPresentationViaBrainHexPdf({
+        markdown: part.markdown,
+        topic: part.titulo,
+        profile,
+        bucket,
+        presentationPath: `${storagePath}/apresentacao/material-${refId}${
+          multiPart ? `-parte-${String(part.ordem).padStart(2, "0")}` : ""
+        }.html`,
+      }),
+  });
 
   const audioByPart = audioSettled.map((result, index) => {
     if (result.status === "fulfilled") {
@@ -698,13 +742,13 @@ async function runPipeline(
     wavBase64: audioByPart[index]?.wavBase64 ?? null,
   }));
 
-  // 4. Persiste tudo no Supabase (apresentacao gerada via BrainHexPDF por parte)
+  // 4. Persiste tudo no Supabase (apresentacao ja resolvida em paralelo acima)
   const archived = await archiveMultiPartToSupabase({
-    profile,
     storagePath,
     bucket,
     refId,
     parts: partsWithAudio,
+    presentationResults,
     presentationTheme: presentationPlan,
     personalizacaoId,
     fence,
