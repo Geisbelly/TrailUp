@@ -98,61 +98,99 @@ commitar, o subagente já tinha commitado uma versão equivalente
 
 ## Achados do code review AINDA NÃO resolvidos (follow-up)
 
+**Atualização 2026-08-17**: os 3 achados de `trailup/microservice` abaixo
+foram todos resolvidos nesta sessão (TDD, suíte 212/212, lint limpo). Só
+restam os 3 achados do `BrainHexPDF` — nenhum código desse repo foi tocado.
+
 ### trailup / microservice
 
-1. **[Important, otimização de custo] Schema do Gemini não foi enxugado.**
-   `processMediaWithGemini` (`microservice/src/services/geminiService.ts`)
-   ainda exige `imagePrompt`/`iconPrompts` por slide no schema — campos que
-   só serviam pro pipeline de imagem/ícone já removido. Isso é desperdício de
-   tokens/custo em toda chamada, mas **não é mais um bug de correção** desde
-   que `payload.slides` ficou sempre vazio (o campo é gerado mas nunca sai do
-   servidor). Fica como otimização de custo pra próxima sessão — tocar no
-   schema mexe em `validateBlockBatchGeneration`,
-   `geminiBlockBatches.test.ts` e correlatos, então tratar como tarefa própria
-   com seus próprios testes.
+1. **[RESOLVIDO em 2026-08-17] Schema do Gemini enxugado.**
+   `processMediaWithGemini` (`microservice/src/services/geminiService.ts`) e
+   o schema de contingência OpenAI equivalente
+   (`microservice/src/services/contentGenerationService.ts`,
+   `SLIDE_ITEM_SCHEMA`) não pedem mais `imagePrompt`/`iconPrompts` por slide —
+   campos que só serviam pro pipeline de imagem/ícone já removido.
+   `validateBlockBatchGeneration`/`validateSlideForBlock` não exigem mais
+   esses campos, e `SlideContent.imagePrompt`/`iconPrompts`
+   (`microservice/src/types/index.ts`) viraram opcionais (o único consumidor
+   restante é `regenerateSlideContent`, a regeneração individual de slide com
+   imagem via Gemini, que continua com seu próprio schema exigindo os dois —
+   não foi tocada). Teste de regressão em `geminiBlockBatches.test.ts`
+   ("valida slide sem imagePrompt/iconPrompts"). Lint limpo, suíte completa
+   passando (208/208).
 
-2. **[Important, latência] Apresentação não roda mais em paralelo com o
-   áudio.** Antes, `runPipeline` rodava
-   `Promise.all([audio, resolvePresentationRendering])` concorrente. Agora
-   (`server.ts`, dentro de `runPipeline`), o áudio é esperado por inteiro
-   primeiro, e só depois `archiveMultiPartToSupabase` chama o BrainHexPDF
-   sequencialmente, parte por parte, dentro do mesmo loop dos uploads. Pra
-   decks com várias partes isso pode aumentar bastante o tempo total do job
-   (antes era render local barato; agora é uma chamada de rede por parte, com
-   timeout de até 120s, feita em série). Vale rodar as chamadas ao
-   BrainHexPDF em paralelo com o áudio, ou pelo menos em paralelo entre
-   partes.
+2. **[RESOLVIDO em 2026-08-17] Apresentação volta a rodar em paralelo com o
+   áudio.** Nova função `runAudioAndPresentationInParallel` (`server.ts`)
+   dispara `Promise.allSettled` do áudio de todas as partes e `Promise.all`
+   do render+upload via BrainHexPDF de todas as partes **ao mesmo tempo**,
+   em vez de esperar o áudio inteiro terminar pra só então chamar o
+   BrainHexPDF em série, parte por parte. `archiveMultiPartToSupabase` não
+   chama mais a rede — recebe `presentationResults` já resolvidos (alinhados
+   por índice com `parts`). Testes novos em `server.pipeline.test.ts`
+   (verifica concorrência via tempo decorrido) e em
+   `server.archive.test.ts` (verifica que `archiveMultiPartToSupabase` usa o
+   resultado pré-resolvido sem chamar `fetch`).
 
-3. **[Minor]** Granularidade grosseira do `error_stage` em
-   `brainHexPdfClient.ts` (qualquer stage que não seja "upload" vira
-   "render"), e falta teste de timeout/`AbortError` real em
-   `brainHexPdfClient.test.ts`.
+3. **[RESOLVIDO em 2026-08-17] Granularidade do `error_stage` em
+   `brainHexPdfClient.ts`.** O BrainHexPDF reporta 4 stages reais
+   (`validate`, `generate`, `render`, `upload`, + `unknown` de contingência —
+   ver `server.ts` de lá), mas o client colapsava qualquer stage que não
+   fosse exatamente `"upload"` em `"render"` — um `targetProfile` inválido
+   (`validate`) aparecia nos logs como falha de renderização de HTML. Agora
+   `normalizeRemoteStage` propaga o stage real do body de resposta (com
+   fallback pra `"unknown"` quando o BrainHexPDF reportar algo não mapeado),
+   e erro de rede/timeout (sem resposta nenhuma do servidor) ganhou stage
+   próprio `"network"`, em vez de cair em `"upload"` por acaso. Tipos
+   espelhados (`PresentationFailureStage` em `server.ts`,
+   `error_stage` em `supabaseService.ts`) atualizados junto. Teste novo de
+   timeout real em `brainHexPdfClient.test.ts` (mock de `fetch` que rejeita
+   com `AbortError` quando o `AbortSignal` dispara) + testes cobrindo os
+   stages `validate`/`generate`/desconhecido.
 
 ### BrainHexPDF
 
-1. **[Important, segurança]** O aviso de startup (`265fd7f`) quando
-   `SUPABASE_SERVICE_ROLE_KEY` está configurada sem `API_SHARED_SECRET` é só
-   um `console.warn` — fácil de passar batido em produção. O revisor sugeriu
-   escalar pra hard-fail (recusar subir o servidor) nesse cenário, já que sem
-   segredo o endpoint vira escrita arbitrária não autenticada no Storage via
-   service role key. **Decisão de design pendente**: manter opt-in (consistente
-   com o padrão já usado no microservice/trailup) ou exigir o segredo sempre
-   que a service role key estiver presente. Não decidido ainda — precisa de
-   uma escolha consciente antes de ir pra produção.
+1. **[RESOLVIDO em 2026-08-17] Hard-fail no startup.** Decisão consciente do
+   usuário: recusar subir o servidor (em vez de só `console.warn`) quando
+   `SUPABASE_SERVICE_ROLE_KEY` está configurada sem `API_SHARED_SECRET`.
+   Extraído pra `src/security/checkSupabaseSecretGuard.ts` (função pura,
+   testável, lança `Error` na condição insegura); `server.ts` chama no
+   startup e faz `console.error` + `process.exit(1)` se lançar. Verificado
+   manualmente: com `SUPABASE_SERVICE_ROLE_KEY` sem `API_SHARED_SECRET` o
+   processo sai com código 1 e mensagem clara; com os dois configurados,
+   sobe normalmente.
 
-2. **[Important, cobertura]** Este repo não tem test runner nenhum instalado
-   (só `tsc --noEmit`). O endpoint novo não tem nenhum teste automatizado —
-   toda verificação foi manual (curl). Considerar adicionar `node --test`
-   (zero dependências novas, mesmo padrão já usado no `trailup/microservice`)
-   cobrindo pelo menos: capitalização de perfil pros 7 perfis + inválido, e
-   os 4 valores de `stage` em falhas mockadas.
+2. **[PARCIALMENTE RESOLVIDO em 2026-08-17] Test runner + cobertura.**
+   Adicionado `node --test` (`npm test`, zero dependências novas, mesmo
+   padrão do `trailup/microservice`) com 20 testes cobrindo:
+   `capitalizeProfile` (extraído pra `src/utils/capitalizeProfile.ts`) pros
+   7 perfis + entrada inválida/vazia/com espaços; o guard de segurança do
+   item 1; e o stage `"validate"` do `/api/v1/render-and-store` (extraído
+   pra `src/services/renderAndStoreValidation.ts`) — as 3 checagens
+   (`targetProfile` ausente, `bucket`/`storagePath` ausentes, perfil
+   inválido) mais os 7 perfis válidos. **Não cobrimos os stages
+   `generate`/`render`/`upload`**: essa parte do handler continua inline em
+   `server.ts`, acoplada a `generateWithKeyRotation`/`generateInteractiveHtml`/
+   `getServiceRoleClient` (chamadas reais a Gemini/Supabase) — testá-la
+   exigiria extrair o handler inteiro com injeção de dependência (refactor
+   maior, não feito agora) ou mocks profundos dessas três funções. Fica como
+   próximo passo se quiser cobertura completa dos 4 stages.
 
-3. **[Important, verificação]** O caminho de sucesso completo (deck gerado →
-   HTML → upload real no Supabase → `getPublicUrl` funcional) nunca foi
-   testado contra um bucket real — só os caminhos de validação e "sem chave
-   Gemini" foram exercitados via curl local. Antes de produção, rodar uma
-   vez contra um Supabase de dev de verdade e abrir a URL retornada pra
-   confirmar que o HTML renderiza direito fora de qualquer inspeção de string.
+   Nota de tooling: o `tsconfig.json` deste repo não ativa `strict`/
+   `strictNullChecks`, e sem isso o `tsc` **não estreita corretamente unions
+   discriminadas** (`if (!result.ok) { result.error }` falhava o typecheck
+   mesmo com `ok: true | false` bem tipado — confirmado empiricamente
+   comparando com/sem `--strict`). Por isso os tipos de retorno novos usam
+   um shape único com campos opcionais em vez de union discriminada.
+
+3. **[Important, verificação] Ainda não resolvido.** O caminho de sucesso
+   completo (deck gerado → HTML → upload real no Supabase → `getPublicUrl`
+   funcional) nunca foi testado contra um bucket real — só os caminhos de
+   validação e "sem chave Gemini" foram exercitados via curl local. Requer
+   credenciais reais de um Supabase de dev e vai consumir chamadas reais ao
+   Gemini — não executado nesta sessão por exigir essas credenciais e ter
+   custo real. Antes de produção, rodar uma vez contra um Supabase de dev de
+   verdade e abrir a URL retornada pra confirmar que o HTML renderiza
+   direito fora de qualquer inspeção de string.
 
 ## Como retomar
 
