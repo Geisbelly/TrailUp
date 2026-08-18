@@ -324,3 +324,69 @@ async def test_processar_job_media_generation_once_completa_fase_a_e_cria_fase_b
     assert any(t["media_kind"] == "apresentacao" for t in repo.targets)
     assert targets[0]["status"] == "completed"
     assert targets[1]["status"] == "completed"
+
+
+@pytest.mark.asyncio
+async def test_retentativa_apos_falha_so_na_apresentacao_nao_rechama_enriquecimento_nem_capitulo():
+    job = {"id": "job-1", "payload": {"ciclo_id": "c1", "source_hash": "h1", "brainhex_profile_key": "mastermind"}}
+    targets = [
+        {"id": 1, "media_kind": "enriquecimento", "block_id": "bloco-01", "status": "completed", "aluno_id": "aluno-1", "topico_id": 100, "conteudo_id": None},
+        {"id": 2, "media_kind": "capitulo", "block_id": "bloco-01", "status": "completed", "aluno_id": "aluno-1", "topico_id": 100, "conteudo_id": None},
+        {"id": 3, "media_kind": "audio", "block_id": None, "part_ordem": 1, "status": "completed", "aluno_id": "aluno-1", "topico_id": 100, "conteudo_id": None},
+        {"id": 4, "media_kind": "apresentacao", "block_id": None, "part_ordem": 1, "status": "pending", "aluno_id": "aluno-1", "topico_id": 100, "conteudo_id": None},
+    ]
+    repo = FakeJobsRepoCompleto(targets, job)
+    blocos_repo = FakeBlocosRepo()
+    blocos_repo.rows["bloco-01"] = {
+        "block_id": "bloco-01", "enriched_payload": {"id": "bloco-01"},
+        "markdown": "## Bloco\n\nTexto", "audio_script": "Narração", "slides": [],
+    }
+
+    chamadas_enrich = []
+    chamadas_capitulo = []
+    chamadas_apresentacao = []
+
+    async def fake_enrich(*, base_blocks, topic, source_hash, settings):
+        chamadas_enrich.append(base_blocks)
+        raise AssertionError("nao deveria ser chamado - bloco ja enriquecido")
+
+    async def fake_gerar_capitulo(*, settings, content_blocks, profile, presentation_theme=None, guidance_prompt=None, error_sink=None):
+        chamadas_capitulo.append(content_blocks)
+        raise AssertionError("nao deveria ser chamado - capitulo ja gerado")
+
+    async def fake_gerar_apresentacao(*, settings, markdown, topic, profile, bucket, storage_path):
+        chamadas_apresentacao.append(markdown)
+        return {"url": "https://fake/apresentacao.html"}
+
+    persistido = []
+
+    async def fake_persistir_parte(*, media_kind, ordem, url, storage_path):
+        persistido.append((media_kind, ordem, url))
+
+    job["payload"]["_markdown_by_ordem"] = {1: "## Bloco\n\nTexto"}
+    job["payload"]["_titulo_by_ordem"] = {1: "Bloco"}
+    job["payload"]["_persistir_parte_fn"] = fake_persistir_parte
+
+    result = await media_generation_jobs.processar_job_media_generation_once(
+        jobs_repo=repo,
+        blocos_repo=blocos_repo,
+        job=job,
+        base_blocks_by_id={"bloco-01": {"id": "bloco-01", "conteudo_base": "base"}},
+        topic={"titulo": "T"},
+        profile="mastermind",
+        settings=object(),
+        max_retries=3,
+        total_partes_calculator=lambda targets: 1,
+        enrich_base_blocks_fn=fake_enrich,
+        gerar_capitulo_fn=fake_gerar_capitulo,
+        gerar_audio_fn=None,
+        gerar_apresentacao_fn=fake_gerar_apresentacao,
+        bucket="conteudo_aluno",
+        storage_path_prefix="brainhex/mastermind/topico-100",
+    )
+
+    assert chamadas_enrich == []
+    assert chamadas_capitulo == []
+    assert chamadas_apresentacao == ["## Bloco\n\nTexto"]
+    assert persistido == [("apresentacao", 1, "https://fake/apresentacao.html")]
+    assert targets[3]["status"] == "completed"
