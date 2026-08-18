@@ -1048,6 +1048,135 @@ export function buildApp(opts: AppOptions = {}): express.Application {
     }
   });
 
+  // ── POST /api/v1/generate/block — geração granular por bloco ────
+  //
+  // Usado pelo worker de fila do Python (Fase A da geracao retomavel — ver
+  // docs/superpowers/specs/2026-08-18-geracao-granular-retomavel-design.md).
+  // Aceita um SUBCONJUNTO de blocos já enriquecidos (só os que ainda faltam
+  // numa retentativa) e devolve o capítulo (markdown+audioScript+slides) de
+  // cada um. Reaproveita processMediaWithGemini inteiro — já faz
+  // batching/concorrência/fallback Gemini→OpenAI quando contentBlocks não
+  // está vazio, sem nenhuma fonte binária (filesData=[]).
+  app.post("/api/v1/generate/block", requireSecret, async (req, res) => {
+    try {
+      const { contentBlocks, profile, presentation_theme: presentationTheme, guidance_prompt: guidancePrompt } = req.body ?? {};
+      if (!Array.isArray(contentBlocks) || contentBlocks.length === 0) {
+        return res.status(400).json({ error: "contentBlocks é obrigatório e não pode ser vazio" });
+      }
+      if (typeof profile !== "string" || !VALID_PROFILES.includes(profile as BrainHexProfile)) {
+        return res.status(400).json({ error: "profile é obrigatório e precisa ser um perfil BrainHex válido" });
+      }
+      const presentationPlan = buildPresentationDesignPlan(
+        profile as BrainHexProfile,
+        presentationTheme ?? {},
+        contentBlocks[0]?.tema || contentBlocks[0]?.topico || "Conteúdo de estudo",
+      );
+      const result = await processMediaWithGemini(
+        [],
+        profile as BrainHexProfile,
+        contentBlocks,
+        presentationPlan,
+        typeof guidancePrompt === "string" ? guidancePrompt : undefined,
+      );
+      if (!result.chapters || result.chapters.length === 0) {
+        return res.status(502).json({ error: "geração não retornou capítulos por bloco" });
+      }
+      res.json({ success: true, chapters: result.chapters });
+    } catch (error: any) {
+      req.log.error("generate/block erro", { err: error });
+      res.status(500).json({ error: error?.message || "Falha ao gerar capítulos por bloco" });
+    }
+  });
+
+  // ── POST /api/v1/generate/part-audio — TTS granular por parte ───
+  //
+  // Fase B da geracao retomavel: gera e sobe o audio de UMA parte de
+  // entrega (ja resplitada pelo worker Python a partir do markdown
+  // consolidado dos blocos da Fase A). storagePath vem SEM extensao — a
+  // extensao real (mp3 preferencial, wav fallback) e decidida aqui, como
+  // ja acontece em archiveMultiPartToSupabase.
+  app.post("/api/v1/generate/part-audio", requireSecret, async (req, res) => {
+    try {
+      const { audioScript, profile, bucket, storagePath } = req.body ?? {};
+      if (typeof audioScript !== "string" || !audioScript.trim()) {
+        return res.status(400).json({ error: "audioScript é obrigatório" });
+      }
+      if (typeof profile !== "string" || !VALID_PROFILES.includes(profile as BrainHexProfile)) {
+        return res.status(400).json({ error: "profile é obrigatório e precisa ser um perfil BrainHex válido" });
+      }
+      if (typeof bucket !== "string" || !bucket.trim() || typeof storagePath !== "string" || !storagePath.trim()) {
+        return res.status(400).json({ error: "bucket e storagePath são obrigatórios" });
+      }
+      const typedProfile = profile as BrainHexProfile;
+      const voiceProfile = GUARDIAN_VOICE_PROFILES[typedProfile];
+      const secondaryGuideName = BRAIN_HEX_CONFIG[typedProfile]?.secondaryGuideName;
+      const audioResult = secondaryGuideName && voiceProfile.secondaryVoice
+        ? await generateLongConversationalAudio(
+            audioScript,
+            { name: BRAIN_HEX_CONFIG[typedProfile].guideName, voice: voiceProfile.voice, direction: voiceProfile.direction },
+            { name: secondaryGuideName, voice: voiceProfile.secondaryVoice, direction: voiceProfile.secondaryDirection },
+          )
+        : await generateLongNaturalAudio(audioScript, voiceProfile.voice, voiceProfile.direction);
+
+      const audioPayload = audioResult.mp3 ?? audioResult.wav;
+      if (!audioPayload) {
+        return res.status(502).json({ error: "geração de áudio não retornou mp3 nem wav" });
+      }
+      const ext = audioResult.mp3 ? "mp3" : "wav";
+      const mime = audioResult.mp3 ? "audio/mpeg" : "audio/wav";
+      const path = `${storagePath}.${ext}`;
+      const audioUrl = await uploadBuffer(bucket, path, Buffer.from(audioPayload, "base64"), mime);
+      if (!audioUrl) {
+        return res.status(502).json({ error: "upload do áudio falhou" });
+      }
+      res.json({ success: true, url: audioUrl, storagePath: path, mimeType: mime });
+    } catch (error: any) {
+      req.log.error("generate/part-audio erro", { err: error });
+      res.status(500).json({ error: error?.message || "Falha ao gerar áudio da parte" });
+    }
+  });
+
+  // ── POST /api/v1/generate/part-presentation — render granular por parte ──
+  //
+  // Fase B da geracao retomavel: renderiza e sobe a apresentacao de UMA
+  // parte via BrainHexPDF. O upload real acontece do lado do BrainHexPDF
+  // (SUPABASE_SERVICE_ROLE_KEY dele) — aqui so repassa a chamada, igual
+  // arquiveMultiPartToSupabase ja faz por parte hoje.
+  app.post("/api/v1/generate/part-presentation", requireSecret, async (req, res) => {
+    try {
+      const { markdown, topic, profile, bucket, storagePath } = req.body ?? {};
+      if (typeof markdown !== "string" || !markdown.trim()) {
+        return res.status(400).json({ error: "markdown é obrigatório" });
+      }
+      if (typeof topic !== "string" || !topic.trim()) {
+        return res.status(400).json({ error: "topic é obrigatório" });
+      }
+      if (typeof profile !== "string" || !VALID_PROFILES.includes(profile as BrainHexProfile)) {
+        return res.status(400).json({ error: "profile é obrigatório e precisa ser um perfil BrainHex válido" });
+      }
+      if (typeof bucket !== "string" || !bucket.trim() || typeof storagePath !== "string" || !storagePath.trim()) {
+        return res.status(400).json({ error: "bucket e storagePath são obrigatórios" });
+      }
+      const result = await renderAndUploadPresentationViaBrainHexPdf({
+        markdown,
+        topic,
+        profile: profile as BrainHexProfile,
+        bucket,
+        presentationPath: storagePath,
+      });
+      if (result.failure) {
+        return res.status(502).json({
+          error: result.failure.error,
+          error_stage: result.failure.stage,
+        });
+      }
+      res.json({ success: true, url: result.presentationUrl });
+    } catch (error: any) {
+      req.log.error("generate/part-presentation erro", { err: error });
+      res.status(500).json({ error: error?.message || "Falha ao gerar apresentação da parte" });
+    }
+  });
+
   // ── POST /api/v1/archive — Frontend (JSON body) ──────────────────
   //
   // Chamado pelo frontend depois de:
