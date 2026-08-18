@@ -9,6 +9,9 @@ from app.services.media_agents import (
     _build_brainhex_presentation_theme,
     brainhex_contract_ready,
     disparar_brainhex_async,
+    gerar_apresentacao_parte_brainhex,
+    gerar_audio_parte_brainhex,
+    gerar_capitulo_bloco_brainhex,
     gerar_conteudo_brainhex,
     gerar_imagem_slide,
     regenerar_capitulo_brainhex,
@@ -693,3 +696,85 @@ async def test_regenerar_documento_brainhex_posts_expected_payload(settings):
     call = mock_client.post.await_args
     assert call.args[0] == "http://brainhex.local/api/v1/regenerate/document"
     assert call.kwargs["json"]["markdown"] == "doc antigo"
+
+
+@pytest.mark.asyncio
+async def test_gerar_capitulo_bloco_brainhex_chama_endpoint_correto(settings):
+    fake_output = {
+        "success": True,
+        "chapters": [{"blockId": "bloco-01", "markdown": "md", "audioScript": "audio", "slides": []}],
+    }
+    mock_response = MagicMock(status_code=200)
+    mock_response.json.return_value = fake_output
+
+    with patch("httpx.AsyncClient") as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client_cls.return_value = mock_client
+
+        result = await gerar_capitulo_bloco_brainhex(
+            settings=settings,
+            content_blocks=[{"id": "bloco-01"}],
+            profile="mastermind",
+        )
+
+    assert result["chapters"][0]["blockId"] == "bloco-01"
+    call = mock_client.post.await_args
+    assert call.args[0] == "http://brainhex.local/api/v1/generate/block"
+    assert call.kwargs["json"]["contentBlocks"] == [{"id": "bloco-01"}]
+    assert call.kwargs["json"]["profile"] == "mastermind"
+
+
+@pytest.mark.asyncio
+async def test_gerar_audio_parte_brainhex_chama_endpoint_correto(settings):
+    fake_output = {"success": True, "url": "https://fake/audio.mp3", "storagePath": "path.mp3", "mimeType": "audio/mpeg"}
+    mock_response = MagicMock(status_code=200)
+    mock_response.json.return_value = fake_output
+
+    with patch("httpx.AsyncClient") as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client_cls.return_value = mock_client
+
+        result = await gerar_audio_parte_brainhex(
+            settings=settings,
+            audio_script="roteiro",
+            profile="mastermind",
+            bucket="conteudo_aluno",
+            storage_path="brainhex/mastermind/topico-1/audio/material-1-parte-01",
+        )
+
+    assert result["url"] == "https://fake/audio.mp3"
+    call = mock_client.post.await_args
+    assert call.args[0] == "http://brainhex.local/api/v1/generate/part-audio"
+
+
+@pytest.mark.asyncio
+async def test_gerar_apresentacao_parte_brainhex_chama_endpoint_correto(settings):
+    fake_output = {"success": True, "url": "https://fake/apresentacao.html"}
+    mock_response = MagicMock(status_code=200)
+    mock_response.json.return_value = fake_output
+
+    with patch("httpx.AsyncClient") as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client_cls.return_value = mock_client
+
+        result = await gerar_apresentacao_parte_brainhex(
+            settings=settings,
+            markdown="## Bloco\n\nConteúdo",
+            topic="Bloco 1",
+            profile="mastermind",
+            bucket="conteudo_aluno",
+            storage_path="brainhex/mastermind/topico-1/apresentacao/material-1-parte-01.html",
+        )
+
+    assert result["url"] == "https://fake/apresentacao.html"
+    call = mock_client.post.await_args
+    assert call.args[0] == "http://brainhex.local/api/v1/generate/part-presentation"

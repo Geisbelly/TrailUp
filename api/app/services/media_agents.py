@@ -662,6 +662,83 @@ async def _regenerar_via_brainhex(
         return None
 
 
+async def gerar_capitulo_bloco_brainhex(
+    *,
+    settings: Settings,
+    content_blocks: list[dict[str, Any]],
+    profile: str,
+    presentation_theme: dict[str, Any] | None = None,
+    guidance_prompt: str | None = None,
+    error_sink: list[str] | None = None,
+) -> dict[str, Any] | None:
+    """Gera o capitulo (markdown+audioScript+slides) de um subconjunto de
+    blocos ja enriquecidos via POST /api/v1/generate/block (Fase A da
+    geracao retomavel). Retorna {chapters: [...]} ou None em caso de falha."""
+    return await _regenerar_via_brainhex(
+        settings=settings,
+        endpoint="/api/v1/generate/block",
+        json_payload={
+            "contentBlocks": content_blocks,
+            "profile": str(profile or "").strip().lower(),
+            "presentation_theme": presentation_theme,
+            "guidance_prompt": guidance_prompt,
+        },
+        error_sink=error_sink,
+    )
+
+
+async def gerar_audio_parte_brainhex(
+    *,
+    settings: Settings,
+    audio_script: str,
+    profile: str,
+    bucket: str,
+    storage_path: str,
+    error_sink: list[str] | None = None,
+) -> dict[str, Any] | None:
+    """Gera e sobe o audio de UMA parte de entrega via
+    POST /api/v1/generate/part-audio (Fase B). Retorna
+    {url, storagePath, mimeType} ou None em caso de falha."""
+    return await _regenerar_via_brainhex(
+        settings=settings,
+        endpoint="/api/v1/generate/part-audio",
+        json_payload={
+            "audioScript": audio_script,
+            "profile": str(profile or "").strip().lower(),
+            "bucket": bucket,
+            "storagePath": storage_path,
+        },
+        error_sink=error_sink,
+    )
+
+
+async def gerar_apresentacao_parte_brainhex(
+    *,
+    settings: Settings,
+    markdown: str,
+    topic: str,
+    profile: str,
+    bucket: str,
+    storage_path: str,
+    error_sink: list[str] | None = None,
+) -> dict[str, Any] | None:
+    """Renderiza e sobe a apresentacao de UMA parte de entrega via
+    POST /api/v1/generate/part-presentation (Fase B). Retorna {url} ou None
+    em caso de falha."""
+    return await _regenerar_via_brainhex(
+        settings=settings,
+        endpoint="/api/v1/generate/part-presentation",
+        json_payload={
+            "markdown": markdown,
+            "topic": topic,
+            "profile": str(profile or "").strip().lower(),
+            "bucket": bucket,
+            "storagePath": storage_path,
+        },
+        error_sink=error_sink,
+    )
+
+
 async def regenerar_capitulo_brainhex(
     *,
     settings: Settings,
