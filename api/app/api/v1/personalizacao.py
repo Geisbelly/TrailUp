@@ -13,7 +13,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import ensure_professor_access, get_current_user, get_session, require_professor
 from app.core.settings import get_settings
 from app.repositories.access import AccessRepository
-from app.repositories.artefatos_personalizados import ArtefatosPersonalizadosRepository
 from app.repositories.conteudo_classe import ConteudoClasseRepository
 from app.repositories.conteudo_personalizado import ConteudoPersonalizadoRepository
 from app.repositories.context import ContextRepository
@@ -55,20 +54,19 @@ from app.schemas.personalizacao import (
     RegenerarSlideResponse,
 )
 from app.services.auth import UserContext
-from app.services.content_enrichment import ContentEnrichmentError, enrich_content_blocks
+from app.services.content_enrichment import ContentEnrichmentError, derive_base_blocks_and_topic
 from app.services.group_analysis import GroupAnalysisService
 from app.services.llm import JsonLLMService, load_prompt
 from app.services.media_agents import (
-    disparar_brainhex_async,
     regenerar_documento_brainhex,
     regenerar_slide_brainhex,
 )
+from app.services.media_generation_jobs import criar_ciclo_media_generation
 from app.services.personalizacao import (
     _build_profile_editorial_context,
     _infer_source_type,
     build_personalizacao_steps,
     fetch_personalizacao_context,
-    gerar_cards_direto,
 )
 from app.services.personalizacao_jobs import (
     JOB_KIND_CLASS_DELTA,
@@ -1315,130 +1313,44 @@ async def personalizar(
     if brainhex_profile_key == "socialiser":
         brainhex_profile_key = "socializer"
 
-    # Evita reprocessar do zero (novo ciclo_id, novo enrich, novas cards) quando
-    # já existe uma personalização pronta ou em andamento para o mesmo
-    # conteudo/perfil com o mesmo source_hash. Sem essa checagem, chamadas
-    # repetidas do usePersonalizationRefresh (mobile) disparavam um ciclo novo
-    # a cada poucos segundos, marcando o ciclo anterior (bom) como obsoleto e
-    # reprocessando do zero com o gerador mais simples.
-    personalizacao_repo = ConteudoPersonalizadoRepository(session)
-    existing_ciclo = await personalizacao_repo.buscar_mais_recente_por_perfil(
-        classe_id=payload.classe_id,
-        topico_id=int(resolved_topico_id) if resolved_topico_id is not None else 0,
-        conteudo_id=int(resolved_conteudo_id) if resolved_conteudo_id is not None else None,
-        brainhex_profile_key=brainhex_profile_key,
-        source_hash=str(ctx.get("source_hash") or ""),
-    )
-    if existing_ciclo and str(existing_ciclo.get("status") or "").strip().lower() in {
-        "pronto",
-        "processando_midias",
-    }:
-        logger.info(
-            "personalizacao.reuse_ciclo_existente=%s",
-            {
-                "aluno_id": aluno_id,
-                "ciclo_id": existing_ciclo.get("ciclo_id"),
-                "status": existing_ciclo.get("status"),
-            },
-        )
-        return _to_response(existing_ciclo)
-
-    # O currículo-base é decomposto e aprofundado antes de qualquer adaptação
-    # BrainHex. Falha de enriquecimento interrompe a geração em vez de aceitar
-    # conteúdo raso como fallback.
+    # Retomada: enfileira um ciclo granular (media_generation) em vez de
+    # gerar tudo inline aqui. criar_ciclo_media_generation reaproveita um job
+    # aberto (status != completed, inclusive failed) para o mesmo
+    # classe/topico/conteudo/aluno/perfil/source_hash em vez de sempre abrir
+    # um ciclo novo do zero — a causa raiz do desperdicio de tokens em
+    # retentativas (ver docs/superpowers/specs/2026-08-18-geracao-granular-retomavel-design.md).
+    # O worker (personalizacao_jobs_loop) processa enriquecimento/capitulo/
+    # audio/apresentacao em background — a resposta HTTP nao espera por eles.
+    # derive_base_blocks_and_topic pode levantar ContentEnrichmentError quando
+    # nao ha texto-base pra decompor (fontes vazias) — mesmo tratamento que
+    # o enriquecimento LLM tinha antes de mover pro worker.
     try:
-        content_enrichment = await enrich_content_blocks(
-            context=ctx,
-            settings=settings,
-        )
+        base_blocks, _topic_payload, _source_hash, _segments = derive_base_blocks_and_topic(ctx)
     except ContentEnrichmentError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=str(exc),
         ) from exc
 
-    cards_payload = await gerar_cards_direto(
-        perfil=ctx["perfil_dominante"],
-        conteudo_classe=ctx["conteudo_classe"],
-        contexto_aluno=ctx["contexto_aluno"],
-        perfil_brainhex=ctx["perfil_brainhex"],
-        settings=settings,
-    )
-
-    repo_artefatos = ArtefatosPersonalizadosRepository(session)
-    await repo_artefatos.marcar_ciclos_anteriores_obsoletos(
-        aluno_id=aluno_id,
+    jobs_repo = PersonalizacaoJobsRepository(session)
+    job = await criar_ciclo_media_generation(
+        jobs_repo=jobs_repo,
         classe_id=payload.classe_id,
-        topico_id=int(resolved_topico_id or 0),
-        conteudo_id=(
-            int(resolved_conteudo_id)
-            if resolved_conteudo_id is not None
-            else None
-        ),
-        ciclo_id=ctx["ciclo_id"],
-        brainhex_profile_key=brainhex_profile_key,
-    )
-    cards_list = (
-        cards_payload if isinstance(cards_payload, list)
-        else (cards_payload.get("cards") if isinstance(cards_payload, dict) else [])
-    )
-    saved_cards = await repo_artefatos.salvar_cards(
         aluno_id=aluno_id,
-        classe_id=payload.classe_id,
-        topico_id=int(resolved_topico_id or 0),
-        conteudo_id=resolved_conteudo_id,
-        ciclo_id=ctx["ciclo_id"],
+        topico_id=int(resolved_topico_id) if resolved_topico_id is not None else 0,
+        conteudo_id=int(resolved_conteudo_id) if resolved_conteudo_id is not None else None,
         brainhex_profile_key=brainhex_profile_key,
+        ciclo_id=ctx["ciclo_id"],
         source_hash=str(ctx.get("source_hash") or ""),
-        cards=cards_list if isinstance(cards_list, list) else [],
-    )
-    cards_ids = [c["id"] for c in saved_cards if isinstance(c, dict) and c.get("id")]
-
-    repo = ConteudoPersonalizadoRepository(session)
-    record_id = await repo.salvar(
-        aluno_id=aluno_id,
-        classe_id=payload.classe_id,
-        topico_id=(
-            int(resolved_topico_id)
-            if resolved_topico_id is not None
-            else None
-        ),
-        conteudo_id=(
-            int(resolved_conteudo_id)
-            if resolved_conteudo_id is not None
-            else None
-        ),
-        ciclo_id=ctx["ciclo_id"],
-        plano={
-            "perfil_dominante": ctx.get("perfil_dominante"),
-            "brainhex_profile_key": brainhex_profile_key,
-            "cards_personalizados_ids": cards_ids,
-            "content_enrichment": content_enrichment,
-        },
-        materiais={},
-        ai_patch=None,
-        status="processando_midias",
-        source_hash=ctx["source_hash"],
-        formato_prioritario="cards",
-        formatos_gerados=["cards"],
+        base_blocks=base_blocks,
+        trigger_source="student_request",
     )
 
-    record = await repo.buscar_por_ciclo_id(aluno_id=aluno_id, ciclo_id=ctx["ciclo_id"])
+    personalizacao_repo = ConteudoPersonalizadoRepository(session)
+    ciclo_id_efetivo = str(job["payload"].get("ciclo_id") or ctx["ciclo_id"])
+    record = await personalizacao_repo.buscar_por_ciclo_id(aluno_id=aluno_id, ciclo_id=ciclo_id_efetivo)
     if not record:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Personalizacao nao retornou registro persistido.",
-        )
-
-    import asyncio as _asyncio
-    generation_key = f"{ctx['ciclo_id']}:{ctx['source_hash']}"
-    _asyncio.create_task(
-        disparar_brainhex_async(
-            settings=settings,
-            perfil=ctx["perfil_dominante"],
-            fontes=ctx["fontes"],
-            content_blocks=content_enrichment.get("blocos") or [],
-            personalizacao_id=int(record_id),
+        record_id = await personalizacao_repo.salvar(
             aluno_id=aluno_id,
             classe_id=payload.classe_id,
             topico_id=(
@@ -1446,13 +1358,29 @@ async def personalizar(
                 if resolved_topico_id is not None
                 else None
             ),
-            conteudo_id=resolved_conteudo_id,
-            ciclo_id=ctx["ciclo_id"],
+            conteudo_id=(
+                int(resolved_conteudo_id)
+                if resolved_conteudo_id is not None
+                else None
+            ),
+            ciclo_id=ciclo_id_efetivo,
+            plano={
+                "perfil_dominante": ctx.get("perfil_dominante"),
+                "brainhex_profile_key": brainhex_profile_key,
+            },
+            materiais={},
+            ai_patch=None,
+            status="processando_midias",
             source_hash=ctx["source_hash"],
-            generation_key=generation_key,
-            guidance_prompt=payload.guidance_prompt or "",
+            formato_prioritario="cards",
+            formatos_gerados=[],
         )
-    )
+        record = await personalizacao_repo.buscar_por_id(record_id)
+        if not record:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Personalizacao nao retornou registro persistido.",
+            )
 
     logger.info(
         "personalizacao.output=%s",

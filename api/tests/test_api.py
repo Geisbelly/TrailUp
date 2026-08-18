@@ -352,7 +352,7 @@ def test_personalizar_route_creates_personalizacao_record(app, aluno_user, monke
         "source_hash": "abc123",
         "perfil_dominante": "mastermind",
         "perfil_brainhex": [{"perfil": "mastermind", "afinidade": 1.0}],
-        "conteudo_classe": {"titulo": "Título"},
+        "conteudo_classe": {"titulo": "Título", "conteudos": [{"id": 1, "titulo": "Aula", "conteudo": "Conteudo base de teste com texto suficiente para segmentar."}]},
         "contexto_aluno": {"nome": "Aluno"},
         "fontes": [],
     }
@@ -374,38 +374,30 @@ def test_personalizar_route_creates_personalizacao_record(app, aluno_user, monke
     }
 
     monkeypatch.setattr(personalizacao_module, "fetch_personalizacao_context", AsyncMock(return_value=fake_ctx))
-    monkeypatch.setattr(
-        personalizacao_module,
-        "enrich_content_blocks",
-        AsyncMock(
-            return_value={
-                "schema_version": "trailup.content-blocks.v2",
-                "blocos": [
-                    {
-                        "id": "bloco-01",
-                        "conteudo_aprofundado": "Conteudo realmente aprofundado.",
-                    }
-                ],
-                "metadata": {"fallback": False},
-            }
-        ),
-    )
-    monkeypatch.setattr(personalizacao_module, "gerar_cards_direto", AsyncMock(return_value=[]))
-    monkeypatch.setattr(personalizacao_module, "disparar_brainhex_async", AsyncMock(return_value=None))
     monkeypatch.setattr(AccessRepository, "aluno_belongs_to_classe", AsyncMock(return_value=True))
     monkeypatch.setattr(ConteudoClasseRepository, "buscar_classe_id_por_topico", AsyncMock(return_value=1))
     monkeypatch.setattr(ConteudoClasseRepository, "buscar_classe_id_por_conteudo", AsyncMock(return_value=1))
     monkeypatch.setattr(
-        "app.repositories.artefatos_personalizados.ArtefatosPersonalizadosRepository.marcar_ciclos_anteriores_obsoletos",
+        PersonalizacaoJobsRepository,
+        "find_open_job_by_payload",
+        AsyncMock(return_value=None),
+    )
+    criar_job_mock = AsyncMock(
+        return_value={
+            "id": "job-1",
+            "kind": "media_generation",
+            "payload": {"ciclo_id": "ciclo-personalizado", "source_hash": "abc123", "brainhex_profile_key": "mastermind"},
+        }
+    )
+    monkeypatch.setattr(PersonalizacaoJobsRepository, "criar_job", criar_job_mock)
+    monkeypatch.setattr(
+        PersonalizacaoJobsRepository,
+        "inserir_targets_media_generation",
         AsyncMock(return_value=None),
     )
     monkeypatch.setattr(
-        "app.repositories.artefatos_personalizados.ArtefatosPersonalizadosRepository.salvar_cards",
-        AsyncMock(return_value=[]),
-    )
-    monkeypatch.setattr(
         ConteudoPersonalizadoRepository,
-        "buscar_mais_recente_por_perfil",
+        "buscar_por_ciclo_id",
         AsyncMock(return_value=None),
     )
     monkeypatch.setattr(
@@ -415,7 +407,7 @@ def test_personalizar_route_creates_personalizacao_record(app, aluno_user, monke
     )
     monkeypatch.setattr(
         ConteudoPersonalizadoRepository,
-        "buscar_por_ciclo_id",
+        "buscar_por_id",
         AsyncMock(return_value=fake_record),
     )
 
@@ -429,13 +421,15 @@ def test_personalizar_route_creates_personalizacao_record(app, aluno_user, monke
     assert body["media_status"] == "ready"
     assert body["media_job_id"] is None
     assert body["aiPatch"] is None
+    criar_job_mock.assert_awaited_once()
 
 
-def test_personalizar_route_reusa_ciclo_existente_sem_regenerar(app, aluno_user, monkeypatch) -> None:
-    """Se ja existe uma personalizacao pronta/em andamento com o mesmo source_hash
-    para o mesmo aluno/conteudo/perfil, o endpoint deve reaproveitar o ciclo em vez
-    de disparar um novo (novo ciclo_id, novo enrich, novas cards, ciclo anterior
-    marcado obsoleto)."""
+def test_personalizar_route_reaproveita_job_media_generation_aberto_sem_reiniciar(app, aluno_user, monkeypatch) -> None:
+    """Se ja existe um job media_generation aberto (status != completed,
+    inclusive failed) para o mesmo aluno/conteudo/perfil/source_hash, o
+    endpoint deve reaproveita-lo em vez de criar um ciclo novo do zero -
+    essa e a causa raiz do desperdicio de tokens em retentativas: antes,
+    qualquer falha parcial reiniciava enriquecimento+cards+sintese completa."""
     fake_session = FakeSession()
 
     async def override_session():
@@ -449,13 +443,19 @@ def test_personalizar_route_reusa_ciclo_existente_sem_regenerar(app, aluno_user,
         "classe_id": 1,
         "topico_id": 5,
         "conteudo_id": None,
-        "ciclo_id": "ciclo-novo",
+        "ciclo_id": "ciclo-novo-ignorado",
         "source_hash": "abc123",
         "perfil_dominante": "mastermind",
         "perfil_brainhex": [{"perfil": "mastermind", "afinidade": 1.0}],
-        "conteudo_classe": {"titulo": "Título"},
+        "conteudo_classe": {"titulo": "Título", "conteudos": [{"id": 1, "titulo": "Aula", "conteudo": "Conteudo base de teste com texto suficiente para segmentar."}]},
         "contexto_aluno": {"nome": "Aluno"},
         "fontes": [],
+    }
+    existing_job = {
+        "id": "job-existente",
+        "kind": "media_generation",
+        "status": "partial",
+        "payload": {"ciclo_id": "ciclo-existente", "source_hash": "abc123", "brainhex_profile_key": "mastermind"},
     }
     existing_record = {
         "id": 7,
@@ -464,34 +464,36 @@ def test_personalizar_route_reusa_ciclo_existente_sem_regenerar(app, aluno_user,
         "conteudo_id": None,
         "topico_id": 5,
         "ciclo_id": "ciclo-existente",
-        "status": "pronto",
+        "status": "processando_midias",
         "materiais": {},
         "ai_patch": None,
         "plano": {},
         "source_hash": "abc123",
         "formato_prioritario": "cards",
-        "formatos_gerados": ["cards"],
+        "formatos_gerados": [],
         "gerado_em": "2026-06-24T12:00:00Z",
     }
 
     monkeypatch.setattr(personalizacao_module, "fetch_personalizacao_context", AsyncMock(return_value=fake_ctx))
-    enrich_mock = AsyncMock()
-    cards_mock = AsyncMock()
-    monkeypatch.setattr(personalizacao_module, "enrich_content_blocks", enrich_mock)
-    monkeypatch.setattr(personalizacao_module, "gerar_cards_direto", cards_mock)
     monkeypatch.setattr(AccessRepository, "aluno_belongs_to_classe", AsyncMock(return_value=True))
     monkeypatch.setattr(ConteudoClasseRepository, "buscar_classe_id_por_topico", AsyncMock(return_value=1))
     monkeypatch.setattr(ConteudoClasseRepository, "buscar_classe_id_por_conteudo", AsyncMock(return_value=1))
-    marcar_obsoletos_mock = AsyncMock(return_value=None)
     monkeypatch.setattr(
-        "app.repositories.artefatos_personalizados.ArtefatosPersonalizadosRepository.marcar_ciclos_anteriores_obsoletos",
-        marcar_obsoletos_mock,
+        PersonalizacaoJobsRepository,
+        "find_open_job_by_payload",
+        AsyncMock(return_value=existing_job),
     )
+    criar_job_mock = AsyncMock()
+    monkeypatch.setattr(PersonalizacaoJobsRepository, "criar_job", criar_job_mock)
+    inserir_targets_mock = AsyncMock()
+    monkeypatch.setattr(PersonalizacaoJobsRepository, "inserir_targets_media_generation", inserir_targets_mock)
     monkeypatch.setattr(
         ConteudoPersonalizadoRepository,
-        "buscar_mais_recente_por_perfil",
+        "buscar_por_ciclo_id",
         AsyncMock(return_value=existing_record),
     )
+    salvar_mock = AsyncMock()
+    monkeypatch.setattr(ConteudoPersonalizadoRepository, "salvar", salvar_mock)
 
     with TestClient(app) as client:
         response = client.post("/api/v1/personalizar", json={"classe_id": 1, "topico_id": 5})
@@ -500,9 +502,10 @@ def test_personalizar_route_reusa_ciclo_existente_sem_regenerar(app, aluno_user,
     body = response.json()
     assert body["id"] == 7
     assert body["ciclo_id"] == "ciclo-existente"
-    enrich_mock.assert_not_called()
-    cards_mock.assert_not_called()
-    marcar_obsoletos_mock.assert_not_called()
+    # o job aberto foi reaproveitado - nenhum job/ciclo/registro novo foi criado
+    criar_job_mock.assert_not_called()
+    inserir_targets_mock.assert_not_called()
+    salvar_mock.assert_not_called()
 
 
 def test_personalizacao_media_status_route_returns_pending_media(app, aluno_user, monkeypatch) -> None:

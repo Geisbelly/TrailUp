@@ -19,15 +19,26 @@ from app.repositories.conteudo_classe import ConteudoClasseRepository
 from app.repositories.conteudo_personalizado import ConteudoPersonalizadoRepository
 from app.repositories.fontes_personalizacao import FontesPersonalizacaoRepository
 from app.repositories.materiais import MateriaisRepository
+from app.repositories.personalizacao_blocos import PersonalizacaoBlocosRepository
 from app.repositories.personalizacao_jobs import PersonalizacaoJobsRepository
 from app.repositories.personalizacao_progresso import PersonalizacaoProgressoRepository
 from app.services.classe_mapa_tema import gerar_classe_mapa_tema
-from app.services.content_enrichment import enrich_content_blocks
-from app.services.media_agents import brainhex_contract_ready, disparar_brainhex_async
+from app.services.content_enrichment import derive_base_blocks_and_topic, enrich_base_blocks, enrich_content_blocks
+from app.services.media_agents import (
+    brainhex_contract_ready,
+    disparar_brainhex_async,
+    gerar_apresentacao_parte_brainhex,
+    gerar_audio_parte_brainhex,
+    gerar_capitulo_bloco_brainhex,
+)
 from app.services.media_contract import (
     MEDIA_PIPELINE_VERSION,
     PRESENTATION_DESIGN_VERSION,
     PRESENTATION_ENGINE_VERSION,
+)
+from app.services.media_generation_jobs import (
+    JOB_KIND_MEDIA_GENERATION,
+    processar_job_media_generation_once,
 )
 from app.services.personalizacao import (
     _build_profile_editorial_context,
@@ -1735,6 +1746,67 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
                 )
                 await session.rollback()
                 await repo.finalize_job(
+                    job_id=str(job["id"]),
+                    status="failed",
+                    last_error=str(exc),
+                )
+        return True
+
+    if job["kind"] == JOB_KIND_MEDIA_GENERATION:
+        async with session_factory() as session:
+            jobs_repo = PersonalizacaoJobsRepository(session)
+            blocos_repo = PersonalizacaoBlocosRepository(session)
+            try:
+                payload = job.get("payload") or {}
+                ctx = await fetch_personalizacao_context(
+                    aluno_id=str(job["aluno_id"]),
+                    classe_id=int(job["classe_id"]),
+                    topico_id=job.get("topico_id"),
+                    conteudo_id=job.get("conteudo_id"),
+                    settings=app.state.settings,
+                    session=session,
+                )
+                base_blocks, topic_payload, _source_hash, _segments = derive_base_blocks_and_topic(ctx)
+                base_blocks_by_id = {str(b["id"]): b for b in base_blocks}
+                await processar_job_media_generation_once(
+                    jobs_repo=jobs_repo,
+                    blocos_repo=blocos_repo,
+                    job=job,
+                    base_blocks_by_id=base_blocks_by_id,
+                    topic=topic_payload,
+                    profile=str(payload.get("brainhex_profile_key") or "mastermind"),
+                    settings=app.state.settings,
+                    max_retries=int(app.state.settings.personalizacao_job_max_retries),
+                    total_partes_calculator=lambda _targets: 1,
+                    enrich_base_blocks_fn=enrich_base_blocks,
+                    gerar_capitulo_fn=gerar_capitulo_bloco_brainhex,
+                    gerar_audio_fn=gerar_audio_parte_brainhex,
+                    gerar_apresentacao_fn=gerar_apresentacao_parte_brainhex,
+                    bucket=BUCKET,
+                    storage_path_prefix=f"brainhex/{payload.get('brainhex_profile_key')}/classe-{job['classe_id']}/topico-{job.get('topico_id')}",
+                )
+                refreshed = await jobs_repo.refresh_job_counters(str(job["id"]))
+                targets = await jobs_repo.get_targets(str(job["id"]))
+                has_failed = any(t.get("status") == "failed" for t in targets)
+                has_pending = any(t.get("status") not in TARGET_DONE_STATES for t in targets)
+                final_status = "completed"
+                if has_failed or has_pending:
+                    final_status = "partial"
+                if (
+                    has_failed
+                    and refreshed
+                    and int(refreshed.get("processed_targets") or 0) == int(refreshed.get("error_count") or 0)
+                ):
+                    final_status = "failed"
+                if final_status == "completed":
+                    await jobs_repo.finalize_job(job_id=str(job["id"]), status="completed", last_error=None)
+            except Exception as exc:
+                logger.exception(
+                    "Falha ao processar job media_generation",
+                    extra={"job_id": str(job.get("id"))},
+                )
+                await session.rollback()
+                await jobs_repo.finalize_job(
                     job_id=str(job["id"]),
                     status="failed",
                     last_error=str(exc),
