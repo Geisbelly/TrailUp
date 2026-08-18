@@ -159,3 +159,111 @@ async def processar_target_capitulo(
         slides=chapter.get("slides") or [],
     )
     return True
+
+
+def fase_a_completa(targets: list[dict[str, Any]]) -> bool:
+    """True quando TODOS os targets de capitulo (a etapa mais tardia da Fase
+    A - cada capitulo so roda depois do enriquecimento do mesmo bloco) estao
+    completed. Fase B (por parte) so pode ser criada nesse momento, porque
+    splitProcessedContentIntoParts opera sobre o markdown CONSOLIDADO de
+    todos os blocos."""
+    capitulo_targets = [t for t in targets if t.get("media_kind") == "capitulo"]
+    if not capitulo_targets:
+        return False
+    return all(t.get("status") == "completed" for t in capitulo_targets)
+
+
+async def criar_targets_fase_b(
+    *,
+    jobs_repo: Any,
+    job_id: str,
+    aluno_id: str,
+    topico_id: int,
+    conteudo_id: int | None,
+    brainhex_profile_key: str,
+    total_partes: int,
+) -> None:
+    targets = []
+    for ordem in range(1, total_partes + 1):
+        for media_kind in _PART_MEDIA_KINDS:
+            targets.append({
+                "aluno_id": aluno_id,
+                "topico_id": topico_id,
+                "conteudo_id": conteudo_id,
+                "brainhex_profile_key": brainhex_profile_key,
+                "media_kind": media_kind,
+                "block_id": None,
+                "part_ordem": ordem,
+                "status": "pending",
+            })
+    await jobs_repo.inserir_targets_media_generation(job_id=job_id, targets=targets)
+
+
+async def processar_target_audio(
+    *,
+    target: dict[str, Any],
+    audio_script_by_ordem: dict[int, str],
+    profile: str,
+    bucket: str,
+    storage_path_prefix: str,
+    settings: Any,
+    gerar_audio_fn: Any,
+    persistir_parte_fn: Any,
+) -> bool:
+    ordem = int(target["part_ordem"])
+    audio_script = audio_script_by_ordem.get(ordem)
+    if not audio_script:
+        raise MediaGenerationTargetError(f"parte {ordem} sem audioScript disponivel para gerar audio")
+    suffix = f"-parte-{ordem:02d}" if len(audio_script_by_ordem) > 1 else ""
+    result = await gerar_audio_fn(
+        settings=settings,
+        audio_script=audio_script,
+        profile=profile,
+        bucket=bucket,
+        storage_path=f"{storage_path_prefix}{suffix}",
+    )
+    if not result or not result.get("url"):
+        raise MediaGenerationTargetError(f"geracao de audio nao retornou url para a parte {ordem}")
+    await persistir_parte_fn(
+        media_kind="audio",
+        ordem=ordem,
+        url=result["url"],
+        storage_path=result.get("storagePath"),
+    )
+    return True
+
+
+async def processar_target_apresentacao(
+    *,
+    target: dict[str, Any],
+    markdown_by_ordem: dict[int, str],
+    titulo_by_ordem: dict[int, str],
+    profile: str,
+    bucket: str,
+    storage_path_prefix: str,
+    settings: Any,
+    gerar_apresentacao_fn: Any,
+    persistir_parte_fn: Any,
+) -> bool:
+    ordem = int(target["part_ordem"])
+    markdown = markdown_by_ordem.get(ordem)
+    if not markdown:
+        raise MediaGenerationTargetError(f"parte {ordem} sem markdown disponivel para gerar apresentacao")
+    suffix = f"-parte-{ordem:02d}" if len(markdown_by_ordem) > 1 else ""
+    result = await gerar_apresentacao_fn(
+        settings=settings,
+        markdown=markdown,
+        topic=titulo_by_ordem.get(ordem, "Aula"),
+        profile=profile,
+        bucket=bucket,
+        storage_path=f"{storage_path_prefix}{suffix}.html",
+    )
+    if not result or not result.get("url"):
+        raise MediaGenerationTargetError(f"geracao de apresentacao nao retornou url para a parte {ordem}")
+    await persistir_parte_fn(
+        media_kind="apresentacao",
+        ordem=ordem,
+        url=result["url"],
+        storage_path=None,
+    )
+    return True

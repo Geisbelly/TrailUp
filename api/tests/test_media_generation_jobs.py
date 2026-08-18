@@ -178,3 +178,79 @@ async def test_processar_target_capitulo_falha_quando_bloco_nao_enriquecido():
             settings=object(),
             gerar_capitulo_fn=None,
         )
+
+
+class FakeJobsRepoComTargets(FakeJobsRepo):
+    def __init__(self, targets):
+        super().__init__()
+        self._targets = targets
+        self.inseridos_fase_b = []
+
+    async def get_targets(self, job_id):
+        return self._targets
+
+    async def inserir_targets_media_generation(self, *, job_id, targets):
+        self.inseridos_fase_b.extend(targets)
+        self._targets.extend(targets)
+
+
+def test_fase_b_nao_e_criada_com_bloco_de_capitulo_ainda_pendente():
+    targets = [
+        {"id": 1, "media_kind": "capitulo", "block_id": "bloco-01", "status": "completed"},
+        {"id": 2, "media_kind": "capitulo", "block_id": "bloco-02", "status": "pending"},
+    ]
+    assert media_generation_jobs.fase_a_completa(targets) is False
+
+
+def test_fase_b_e_criada_quando_todos_os_capitulos_completam():
+    targets = [
+        {"id": 1, "media_kind": "capitulo", "block_id": "bloco-01", "status": "completed"},
+        {"id": 2, "media_kind": "capitulo", "block_id": "bloco-02", "status": "completed"},
+        {"id": 3, "media_kind": "enriquecimento", "block_id": "bloco-01", "status": "completed"},
+    ]
+    assert media_generation_jobs.fase_a_completa(targets) is True
+
+
+@pytest.mark.asyncio
+async def test_criar_targets_fase_b_um_audio_e_uma_apresentacao_por_parte():
+    repo = FakeJobsRepoComTargets(targets=[])
+
+    await media_generation_jobs.criar_targets_fase_b(
+        jobs_repo=repo,
+        job_id="job-1",
+        aluno_id="aluno-1",
+        topico_id=100,
+        conteudo_id=None,
+        brainhex_profile_key="mastermind",
+        total_partes=2,
+    )
+
+    keys = {(t["media_kind"], t["part_ordem"]) for t in repo.inseridos_fase_b}
+    assert keys == {("audio", 1), ("apresentacao", 1), ("audio", 2), ("apresentacao", 2)}
+
+
+@pytest.mark.asyncio
+async def test_processar_target_audio_persiste_url_na_parte():
+    partes_persistidas = []
+
+    async def fake_persistir_parte(*, media_kind, ordem, url, storage_path):
+        partes_persistidas.append((media_kind, ordem, url))
+
+    async def fake_gerar_audio_fn(*, settings, audio_script, profile, bucket, storage_path):
+        return {"url": "https://fake/audio.mp3", "storagePath": storage_path, "mimeType": "audio/mpeg"}
+
+    target = {"id": 10, "media_kind": "audio", "part_ordem": 1}
+
+    ok = await media_generation_jobs.processar_target_audio(
+        target=target,
+        audio_script_by_ordem={1: "roteiro da parte 1"},
+        profile="mastermind",
+        bucket="conteudo_aluno",
+        storage_path_prefix="brainhex/mastermind/topico-1/audio/material-1",
+        settings=object(),
+        gerar_audio_fn=fake_gerar_audio_fn,
+        persistir_parte_fn=fake_persistir_parte,
+    )
+
+    assert ok is True
+    assert partes_persistidas == [("audio", 1, "https://fake/audio.mp3")]
