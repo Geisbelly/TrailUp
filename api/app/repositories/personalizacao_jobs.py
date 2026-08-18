@@ -346,6 +346,87 @@ class PersonalizacaoJobsRepository:
         if commit:
             await self.session.commit()
 
+    async def inserir_targets_media_generation(
+        self,
+        *,
+        job_id: str,
+        targets: list[dict[str, Any]],
+    ) -> None:
+        """INSERT simples (sem upsert) para targets granulares (bloco/parte)
+        de um job kind=media_generation. Diferente de inserir_targets: a
+        identidade aqui inclui media_kind/block_id/part_ordem (indice unico
+        parcial uq_job_target_granular garante nao duplicar), e estes
+        targets sao sempre criados uma unica vez por job (Fase A na criacao
+        do ciclo, Fase B na transicao) - nao ha cenario de "job antigo
+        reenviando os mesmos targets" que justifique um upsert aqui."""
+        if not targets:
+            return
+        if not await self._targets_exists():
+            raise RuntimeError("Tabela personalizacao_job_targets indisponivel.")
+
+        for target in targets:
+            await self.session.execute(
+                text(
+                    """
+                    INSERT INTO personalizacao_job_targets (
+                      job_id,
+                      aluno_id,
+                      topico_id,
+                      conteudo_id,
+                      brainhex_profile_key,
+                      media_kind,
+                      block_id,
+                      part_ordem,
+                      status,
+                      attempts,
+                      created_at,
+                      updated_at
+                    )
+                    VALUES (
+                      CAST(:job_id AS UUID),
+                      CAST(:aluno_id AS UUID),
+                      :topico_id,
+                      :conteudo_id,
+                      :brainhex_profile_key,
+                      :media_kind,
+                      :block_id,
+                      :part_ordem,
+                      :status,
+                      0,
+                      NOW(),
+                      NOW()
+                    )
+                    ON CONFLICT DO NOTHING
+                    """
+                ),
+                {
+                    "job_id": job_id,
+                    "aluno_id": target["aluno_id"],
+                    "topico_id": int(target["topico_id"]),
+                    "conteudo_id": target.get("conteudo_id"),
+                    "brainhex_profile_key": str(target.get("brainhex_profile_key") or "mastermind").strip().lower(),
+                    "media_kind": target["media_kind"],
+                    "block_id": target.get("block_id"),
+                    "part_ordem": target.get("part_ordem"),
+                    "status": target.get("status", "pending"),
+                },
+            )
+
+        await self.session.execute(
+            text(
+                """
+                UPDATE personalizacao_jobs
+                SET total_targets = (
+                  SELECT COUNT(*) FROM personalizacao_job_targets WHERE job_id = CAST(:job_id AS UUID)
+                ),
+                    updated_at = NOW()
+                WHERE id = CAST(:job_id AS UUID)
+                """
+            ),
+            {"job_id": job_id},
+        )
+        await self.session.commit()
+
     async def list_jobs(
         self,
         *,
@@ -586,7 +667,10 @@ class PersonalizacaoJobsRepository:
                   last_error,
                   personalizacao_id,
                   created_at,
-                  updated_at
+                  updated_at,
+                  media_kind,
+                  block_id,
+                  part_ordem
                 FROM personalizacao_job_targets
                 WHERE job_id = CAST(:job_id AS UUID)
                 ORDER BY id ASC

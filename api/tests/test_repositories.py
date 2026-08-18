@@ -1448,3 +1448,48 @@ async def test_buscar_cards_ativos_ignora_perfil_e_filtra_por_ativo() -> None:
     assert params["aluno_id"] == "b49f2e21-a6f9-4c8d-9533-5a32bb219754"
     assert params["topico_id"] == 122
     assert params["conteudo_id"] == 150
+
+
+@pytest.mark.asyncio
+async def test_inserir_targets_media_generation_grava_media_kind_block_id_part_ordem():
+    session = RecordingSession([ScalarResult(True), DummyResult(), DummyResult()])
+    repo = PersonalizacaoJobsRepository(session)
+
+    await repo.inserir_targets_media_generation(
+        job_id="job-1",
+        targets=[
+            {
+                "aluno_id": "aluno-1", "topico_id": 100, "conteudo_id": None,
+                "brainhex_profile_key": "mastermind", "media_kind": "enriquecimento",
+                "block_id": "bloco-01", "part_ordem": None, "status": "pending",
+            },
+        ],
+    )
+
+    sql, params = session.calls[1]
+    assert "INSERT INTO personalizacao_job_targets" in sql
+    assert "media_kind" in sql
+    assert "block_id" in sql
+    assert "part_ordem" in sql
+    assert params["media_kind"] == "enriquecimento"
+    assert params["block_id"] == "bloco-01"
+    assert params["part_ordem"] is None
+
+
+@pytest.mark.asyncio
+async def test_get_targets_inclui_colunas_granulares():
+    row = {
+        "id": 1, "job_id": "job-1", "aluno_id": "aluno-1", "topico_id": 100,
+        "conteudo_id": None, "brainhex_profile_key": "mastermind", "is_profile_template": False,
+        "status": "completed", "attempts": 1, "last_error": None, "personalizacao_id": None,
+        "created_at": None, "updated_at": None, "media_kind": "capitulo", "block_id": "bloco-01", "part_ordem": None,
+    }
+    session = RecordingSession([ScalarResult(True), MappingResult([row])])
+    repo = PersonalizacaoJobsRepository(session)
+
+    targets = await repo.get_targets("job-1")
+
+    assert targets[0]["media_kind"] == "capitulo"
+    assert targets[0]["block_id"] == "bloco-01"
+    sql, _params = session.calls[1]
+    assert "media_kind" in sql
