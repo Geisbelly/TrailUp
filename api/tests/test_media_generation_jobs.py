@@ -254,3 +254,73 @@ async def test_processar_target_audio_persiste_url_na_parte():
 
     assert ok is True
     assert partes_persistidas == [("audio", 1, "https://fake/audio.mp3")]
+
+
+class FakeJobsRepoCompleto:
+    def __init__(self, targets, job):
+        self.targets = targets
+        self.job = job
+        self.status_updates = []
+        self.finalized = None
+
+    async def get_targets(self, job_id):
+        return self.targets
+
+    async def update_target_status(self, *, target_id, status, attempts=None, last_error=None, personalizacao_id=None):
+        self.status_updates.append((target_id, status))
+        for t in self.targets:
+            if t["id"] == target_id:
+                t["status"] = status
+
+    async def inserir_targets_media_generation(self, *, job_id, targets):
+        next_id = max((t["id"] for t in self.targets), default=0) + 1
+        for t in targets:
+            t["id"] = next_id
+            next_id += 1
+        self.targets.extend(targets)
+
+    async def finalize_job(self, *, job_id, status, last_error=None):
+        self.finalized = status
+        return {**self.job, "status": status}
+
+
+@pytest.mark.asyncio
+async def test_processar_job_media_generation_once_completa_fase_a_e_cria_fase_b():
+    job = {"id": "job-1", "payload": {"ciclo_id": "c1", "source_hash": "h1", "brainhex_profile_key": "mastermind"}}
+    targets = [
+        {"id": 1, "media_kind": "enriquecimento", "block_id": "bloco-01", "status": "pending", "aluno_id": "aluno-1", "topico_id": 100, "conteudo_id": None},
+        {"id": 2, "media_kind": "capitulo", "block_id": "bloco-01", "status": "pending", "aluno_id": "aluno-1", "topico_id": 100, "conteudo_id": None},
+    ]
+    repo = FakeJobsRepoCompleto(targets, job)
+    blocos_repo = FakeBlocosRepo()
+    base_blocks_by_id = {"bloco-01": {"id": "bloco-01", "conteudo_base": "base"}}
+
+    async def fake_enrich(*, base_blocks, topic, source_hash, settings):
+        return [{**b, "conteudo_aprofundado": "aprofundado"} for b in base_blocks], {}
+
+    async def fake_gerar_capitulo(*, settings, content_blocks, profile, presentation_theme=None, guidance_prompt=None, error_sink=None):
+        return {"chapters": [{"blockId": "bloco-01", "markdown": "## Bloco\n\nTexto", "audioScript": "Narração", "slides": []}]}
+
+    result = await media_generation_jobs.processar_job_media_generation_once(
+        jobs_repo=repo,
+        blocos_repo=blocos_repo,
+        job=job,
+        base_blocks_by_id=base_blocks_by_id,
+        topic={"titulo": "T"},
+        profile="mastermind",
+        settings=object(),
+        max_retries=3,
+        total_partes_calculator=lambda blocos_repo_rows: 1,
+        enrich_base_blocks_fn=fake_enrich,
+        gerar_capitulo_fn=fake_gerar_capitulo,
+        gerar_audio_fn=None,
+        gerar_apresentacao_fn=None,
+        bucket="conteudo_aluno",
+        storage_path_prefix="brainhex/mastermind/topico-100",
+    )
+
+    assert result["fase_b_criada"] is True
+    assert any(t["media_kind"] == "audio" for t in repo.targets)
+    assert any(t["media_kind"] == "apresentacao" for t in repo.targets)
+    assert targets[0]["status"] == "completed"
+    assert targets[1]["status"] == "completed"
