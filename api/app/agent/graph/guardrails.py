@@ -1,9 +1,15 @@
 from __future__ import annotations
 
+import inspect
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Awaitable, Callable, TypeVar
+
+from pydantic import BaseModel
 
 from app.schemas.trilha_config import TrilhaConfig
+from app.services.llm import JsonLLMService, StructuredOutputError
+
+T = TypeVar("T", bound=BaseModel)
 
 
 @dataclass
@@ -85,3 +91,61 @@ def checar_evidencia_dominio(
             ),
         )
     return None
+
+
+async def gerar_validado(
+    llm: JsonLLMService,
+    *,
+    prompt_name: str,
+    payload: dict[str, Any],
+    schema: type[T],
+    guardrails: list[Callable[[T, dict[str, Any]], Any]],
+    fallback_factory: Callable[[], dict[str, Any]],
+    contexto: dict[str, Any] | None = None,
+    on_violation: Callable[[GuardrailViolation, str], Awaitable[None]] | None = None,
+    max_tentativas: int = 2,
+    **ainvoke_kwargs: Any,
+) -> T:
+    """Gera com schema nativo (Camada 1), roda guardrails de negocio (Camada
+    2). Schema invalido OU guardrail violado: 1 retry com o erro anexado ao
+    payload como 'correcao'. Falhou de novo: fallback deterministico do
+    proprio no, e a ultima violacao e reportada via on_violation (auditoria)."""
+    contexto = contexto or {}
+    tentativa_payload = dict(payload)
+    ultima_violacao: GuardrailViolation | None = None
+
+    for tentativa in range(max_tentativas):
+        try:
+            resultado = await llm.ainvoke_structured(
+                prompt_name=prompt_name,
+                payload=tentativa_payload,
+                schema=schema,
+                **ainvoke_kwargs,
+            )
+        except StructuredOutputError as exc:
+            ultima_violacao = GuardrailViolation(regra="schema", mensagem=str(exc))
+            tentativa_payload = {**payload, "correcao": ultima_violacao.mensagem}
+            if on_violation is not None:
+                fase = "retry" if tentativa < max_tentativas - 1 else "fallback_final"
+                await on_violation(ultima_violacao, fase)
+            continue
+
+        violacao: GuardrailViolation | None = None
+        for checar in guardrails:
+            possivel = checar(resultado, contexto)
+            if inspect.isawaitable(possivel):
+                possivel = await possivel
+            if possivel is not None:
+                violacao = possivel
+                break
+
+        if violacao is None:
+            return resultado
+
+        ultima_violacao = violacao
+        fase = "retry" if tentativa < max_tentativas - 1 else "fallback_final"
+        if on_violation is not None:
+            await on_violation(violacao, fase)
+        tentativa_payload = {**payload, "correcao": f"{violacao.regra}: {violacao.mensagem}"}
+
+    return schema.model_validate(fallback_factory())
