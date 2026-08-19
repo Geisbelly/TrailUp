@@ -1,11 +1,15 @@
 // Cliente HTTP do motor de apresentacao (BrainHexPDF, servico externo). Gera
 // o deck (Gemini) e o HTML completo do lado de la, sobe o arquivo no
-// Supabase Storage e devolve so a URL/path — o merge em
-// conteudo_personalizado continua no microservice (mergePersonalizacaoMateriais).
-// Ver docs/superpowers/specs/2026-08-15-brainhexpdf-integracao-design.md.
+// Supabase Storage e grava o resultado direto no banco (RPC
+// merge_personalizacao_materiais_v2 + materiais_gerados) quando recebe os
+// dados de fencing - ver docs/superpowers/specs/
+// 2026-08-16-brainhexpdf-direct-db-write-design.md. `dbWritten` na resposta
+// indica se o BrainHexPDF conseguiu persistir; quando false (falha de
+// transporte), o caller precisa gravar o fallback ele mesmo.
 
 import { createLogger } from "../lib/logger";
 import type { BrainHexProfile } from "../constants/brainHex";
+import type { GenerationFence } from "./supabaseService";
 
 const log = createLogger({ ctx: "brainhexpdf-client" });
 
@@ -38,6 +42,14 @@ function normalizeRemoteStage(rawStage: unknown): PresentationRenderStage {
 export interface RenderAndUploadPresentationResult {
   presentationUrl: string | null;
   failure: PresentationRenderFailure | null;
+  dbWritten: boolean;
+}
+
+export interface PresentationVersionMetadata {
+  engine: string;
+  schema: string;
+  design_system: string;
+  media_pipeline_version: string;
 }
 
 export interface RenderAndUploadPresentationParams {
@@ -46,6 +58,16 @@ export interface RenderAndUploadPresentationParams {
   profile: BrainHexProfile;
   bucket: string;
   presentationPath: string;
+  // Ausentes quando o chamador nao tem onde persistir (ex.: modo preview,
+  // ver /api/v1/archive em server.ts, que chama com personalizacaoId: null
+  // de proposito) - o BrainHexPDF ainda gera e sobe o deck normalmente,
+  // so nao grava nada no banco (dbWritten sempre false nesse caso).
+  personalizacaoId?: number;
+  fence?: GenerationFence;
+  versionMetadata?: PresentationVersionMetadata;
+  ordem?: number;
+  totalPartes?: number;
+  titulo?: string;
 }
 
 export interface BrainHexPdfClientDeps {
@@ -70,6 +92,7 @@ export async function renderAndUploadPresentationViaBrainHexPdf(
     return {
       presentationUrl: null,
       failure: { stage: "render", error: "BRAINHEXPDF_API_URL nao configurado" },
+      dbWritten: false,
     };
   }
 
@@ -90,6 +113,17 @@ export async function renderAndUploadPresentationViaBrainHexPdf(
         sourceText: params.markdown,
         bucket: params.bucket,
         storagePath: params.presentationPath,
+        ...(params.personalizacaoId !== undefined && params.fence && params.versionMetadata
+          ? {
+              personalizacaoId: params.personalizacaoId,
+              cicloId: params.fence.cicloId,
+              sourceHash: params.fence.sourceHash,
+              presentationVersionMetadata: params.versionMetadata,
+              ordem: params.ordem ?? 1,
+              totalPartes: params.totalPartes ?? 1,
+              titulo: params.titulo,
+            }
+          : {}),
       }),
       signal: ac.signal,
     });
@@ -100,21 +134,26 @@ export async function renderAndUploadPresentationViaBrainHexPdf(
       const stage = normalizeRemoteStage(body?.stage);
       const errMsg = typeof body?.error === "string" ? body.error : `HTTP ${response.status}`;
       log.error("render-and-store falhou", { status: response.status, stage, error: errMsg });
-      return { presentationUrl: null, failure: { stage, error: truncateError(errMsg) } };
+      return {
+        presentationUrl: null,
+        failure: { stage, error: truncateError(errMsg) },
+        dbWritten: body?.dbWritten === true,
+      };
     }
 
     if (typeof body.url !== "string" || !body.url) {
       return {
         presentationUrl: null,
         failure: { stage: "upload", error: "resposta sem url publica" },
+        dbWritten: body?.dbWritten === true,
       };
     }
 
-    return { presentationUrl: body.url, failure: null };
+    return { presentationUrl: body.url, failure: null, dbWritten: body?.dbWritten === true };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     log.error("render-and-store erro de rede/timeout", { err: error });
-    return { presentationUrl: null, failure: { stage: "network", error: truncateError(message) } };
+    return { presentationUrl: null, failure: { stage: "network", error: truncateError(message) }, dbWritten: false };
   } finally {
     clearTimeout(timer);
   }

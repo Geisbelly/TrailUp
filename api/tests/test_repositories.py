@@ -845,6 +845,32 @@ async def test_materiais_repository_saves_and_reads_materials() -> None:
 
 
 @pytest.mark.asyncio
+async def test_resolver_ids_por_tipo_recente_ignora_linhas_ja_vinculadas_a_outra_personalizacao() -> None:
+    # Regressao real de producao: o loop por perfil BrainHex (7 personalizacoes
+    # por topico) usa este resolver como fallback quando ainda nao existe linha
+    # vinculada ao personalizacao_id do perfil atual. Sem filtrar por
+    # personalizacao_id, o resolver podia "roubar" o id de uma linha JA
+    # vinculada a OUTRO perfil (mesmo aluno/conteudo/tipo=audio) - o patch
+    # subsequente entao recalculava a coluna gerada generation_key (derivada de
+    # metadata->>'generation_key', que e por ciclo/topico, nao por perfil) e
+    # colidia com "uq_materiais_gerados_personalizacao_tipo_generation" da
+    # linha do outro perfil. O resolver so pode devolver linhas orfas
+    # (personalizacao_id IS NULL) - nunca uma ja vinculada a outra personalizacao.
+    session = RecordingSession([MappingResult([])])
+    repo = MateriaisRepository(session)
+
+    await repo.resolver_ids_por_tipo_recente(
+        aluno_id="22222222-2222-2222-2222-222222222222",
+        conteudo_id=170,
+        tipos=["audio"],
+        ciclo_id="cycle-1",
+    )
+
+    sql, _params = session.calls[-1]
+    assert "personalizacao_id IS NULL" in sql
+
+
+@pytest.mark.asyncio
 async def test_materiais_repository_builds_public_url_from_storage_path() -> None:
     session = RecordingSession(
         [
@@ -1415,6 +1441,28 @@ async def test_incrementar_falha_streak_casts_generation_key_for_asyncpg() -> No
 
     sql, _params = session.calls[-1]
     assert "CAST(:generation_key AS TEXT)" in sql
+
+
+@pytest.mark.asyncio
+async def test_resetar_falha_streak_zera_contador_mantendo_generation_key() -> None:
+    """Usado pelo retry manual do professor - zera o streak (mesmo
+    generation_key) pra destravar uma geracao cujo circuit breaker
+    automatico ja parou de redisparar sozinho."""
+    session = RecordingSession([ScalarResult(None)])
+    repo = ConteudoPersonalizadoRepository(session)
+
+    await repo.resetar_falha_streak(
+        record_id=249,
+        ciclo_id="ciclo-249",
+        source_hash="hash-249",
+        generation_key="ciclo-249:hash-249",
+    )
+
+    sql, params = session.calls[-1]
+    assert "'streak', 0" in sql
+    assert "CAST(:generation_key AS TEXT)" in sql
+    assert params["id"] == 249
+    assert params["generation_key"] == "ciclo-249:hash-249"
 
 
 @pytest.mark.asyncio

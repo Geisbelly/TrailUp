@@ -61,6 +61,109 @@ def test_source_hash_changes_when_pipeline_version_changes(monkeypatch) -> None:
     assert personalizacao_service._build_source_hash(**kwargs) != current_hash
 
 
+def test_source_hash_ignores_card_content_edits() -> None:
+    """gerar_cards_direto/o prompt de geracao nunca le a tabela `cards` (so
+    le topico/conteudos/atividades.titulo|descricao) - editar titulo,
+    descricao ou ordem de um card no console do professor nao deveria mudar
+    o source_hash nem forcar regeneracao pra turma toda, ja que o conteudo
+    gerado seria identico (o card editado nunca influenciou o prompt).
+    """
+    kwargs = {
+        "classe_id": 32,
+        "topico_id": 121,
+        "conteudo_id": 125,
+        "materiais_origem": [{"source_id": "fonte:45", "texto_base": "Conteudo base"}],
+        "cards_topico": [
+            {"id": 2054, "conteudo_id": 125, "titulo": "Card 1", "descricao": "Frente/verso", "ordem": 1},
+        ],
+    }
+    hash_antes = personalizacao_service._build_source_hash(**kwargs)
+
+    kwargs_editado = dict(kwargs)
+    kwargs_editado["cards_topico"] = [
+        {"id": 2054, "conteudo_id": 125, "titulo": "Card 1 (editado)", "descricao": "Verso novo", "ordem": 2},
+    ]
+    hash_depois = personalizacao_service._build_source_hash(**kwargs_editado)
+
+    assert hash_antes == hash_depois
+
+
+def test_source_hash_ignores_questao_content_edits() -> None:
+    """Mesmo raciocinio de test_source_hash_ignores_card_content_edits: a
+    tabela `questoes` nunca chega no prompt de geracao (fetch_personalizacao_context
+    nao inclui `questoes` no conteudo_classe retornado) - editar o enunciado
+    ou tipo de uma questao nao deveria invalidar o cache de personalizacao.
+    """
+    kwargs = {
+        "classe_id": 32,
+        "topico_id": 121,
+        "conteudo_id": 125,
+        "materiais_origem": [{"source_id": "fonte:45", "texto_base": "Conteudo base"}],
+        "questoes_topico": [
+            {"id": 900, "atividade_id": 50, "enunciado": "Qual a capital?", "tipo": "multipla_escolha"},
+        ],
+    }
+    hash_antes = personalizacao_service._build_source_hash(**kwargs)
+
+    kwargs_editado = dict(kwargs)
+    kwargs_editado["questoes_topico"] = [
+        {"id": 900, "atividade_id": 50, "enunciado": "Enunciado totalmente diferente", "tipo": "dissertativa"},
+    ]
+    hash_depois = personalizacao_service._build_source_hash(**kwargs_editado)
+
+    assert hash_antes == hash_depois
+
+
+def test_source_hash_changes_when_atividade_titulo_muda() -> None:
+    """`atividades.titulo`/`descricao` SAO lidos por gerar_cards_direto
+    (conteudo_estudado["atividades"]) - editar esses campos deve continuar
+    invalidando o source_hash, diferente de cards/questoes.
+    """
+    kwargs = {
+        "classe_id": 32,
+        "topico_id": 121,
+        "conteudo_id": 125,
+        "materiais_origem": [{"source_id": "fonte:45", "texto_base": "Conteudo base"}],
+        "atividades_topico": [
+            {"id": 50, "titulo": "Quiz 1", "descricao": "Descricao", "tipo": "quiz", "pontuacao_maxima": 10},
+        ],
+    }
+    hash_antes = personalizacao_service._build_source_hash(**kwargs)
+
+    kwargs_editado = dict(kwargs)
+    kwargs_editado["atividades_topico"] = [
+        {"id": 50, "titulo": "Quiz 1 (titulo mudou)", "descricao": "Descricao", "tipo": "quiz", "pontuacao_maxima": 10},
+    ]
+    hash_depois = personalizacao_service._build_source_hash(**kwargs_editado)
+
+    assert hash_antes != hash_depois
+
+
+def test_source_hash_ignores_atividade_fields_not_used_by_prompt() -> None:
+    """`atividades.tipo`/`pontuacao_maxima`/`metadata` nunca chegam no prompt
+    (gerar_cards_direto so le titulo/descricao/enunciado) - mudar so esses
+    campos nao deveria invalidar o source_hash.
+    """
+    kwargs = {
+        "classe_id": 32,
+        "topico_id": 121,
+        "conteudo_id": 125,
+        "materiais_origem": [{"source_id": "fonte:45", "texto_base": "Conteudo base"}],
+        "atividades_topico": [
+            {"id": 50, "titulo": "Quiz 1", "descricao": "Descricao", "tipo": "quiz", "pontuacao_maxima": 10, "metadata": {"a": 1}},
+        ],
+    }
+    hash_antes = personalizacao_service._build_source_hash(**kwargs)
+
+    kwargs_editado = dict(kwargs)
+    kwargs_editado["atividades_topico"] = [
+        {"id": 50, "titulo": "Quiz 1", "descricao": "Descricao", "tipo": "dissertativa", "pontuacao_maxima": 20, "metadata": {"a": 2}},
+    ]
+    hash_depois = personalizacao_service._build_source_hash(**kwargs_editado)
+
+    assert hash_antes == hash_depois
+
+
 def test_source_hash_ignores_card_id_churn_from_regeneration() -> None:
     """cards_personalizados e regerado (novos ids sequenciais, batch antigo
     marcado obsoleto) a cada tentativa de geracao de QUALQUER perfil do
@@ -1294,6 +1397,148 @@ async def test_generate_materiais_slow_only_merges_existing_materials(monkeypatc
     assert materiais["audio"]["metadata"]["status"] == "completed"
     assert materiais["audio"]["arquivo_url"] == "https://cdn.example.com/material.mp3"
     assert state["midias_em_processamento"] is False
+
+
+class _FakeSessionWithNoOpCommit:
+    async def commit(self) -> None:
+        return None
+
+    async def rollback(self) -> None:
+        return None
+
+
+class _FakeSessionWithNoOpCommitContext:
+    async def __aenter__(self):
+        return _FakeSessionWithNoOpCommit()
+
+    async def __aexit__(self, exc_type, exc, tb):
+        del exc_type, exc, tb
+        return False
+
+
+class _FakeSessionWithNoOpCommitFactory:
+    def __call__(self):
+        return _FakeSessionWithNoOpCommitContext()
+
+
+@pytest.mark.asyncio
+async def test_generate_materiais_fetches_existing_materiais_when_not_provided_explicitly(
+    monkeypatch,
+) -> None:
+    # Regressao: repo.salvar() sobrescreve a coluna materiais inteira
+    # (nao faz merge) - se generate_materiais_personalizados nao receber
+    # existing_materiais, um novo ciclo de geracao apaga silenciosamente
+    # audio/apresentacao ja concluidos num ciclo anterior. A funcao ja
+    # aceita existing_materiais explicito (ver teste acima), mas os dois
+    # callers reais (agente_midias_personalizadas.py, agente_geracao_
+    # midia.py) nunca passam esse parametro - por isso a busca precisa
+    # acontecer sozinha quando existing_materiais nao vier preenchido e um
+    # session_factory estiver disponivel.
+    async def _fake_materialize(**kwargs):
+        media_materiais = kwargs["media_materiais"]
+        audio = media_materiais["audio"]
+        return (
+            {
+                "audio": {
+                    **audio,
+                    "arquivo_url": "https://cdn.example.com/material.mp3",
+                    "metadata": {"status": "completed"},
+                }
+            },
+            [],
+        )
+
+    monkeypatch.setattr(
+        "app.services.personalizacao._materialize_and_upload_media_assets",
+        _fake_materialize,
+    )
+
+    async def _fake_multistage(**kwargs):
+        del kwargs
+        return (
+            {
+                "audio": {
+                    "roteiro": "Roteiro sobre o tema com hipotese e evidencia.",
+                    "duracao_estimada_seg": 80,
+                }
+            },
+            {
+                "scores_validacao": {},
+                "quality_gate": {},
+                "rejected_by_quality": [],
+            },
+        )
+
+    monkeypatch.setattr(
+        "app.services.personalizacao._invoke_multistage_materiais_por_formato",
+        _fake_multistage,
+    )
+
+    existing_record = {
+        "id": 999,
+        "aluno_id": "aluno-1",
+        "classe_id": 10,
+        "topico_id": 5,
+        "conteudo_id": 90,
+        "materiais": {
+            "cards": {
+                "payload": [{"frente": "Q1", "verso": "R1"}],
+                "metadata": {"status": "completed"},
+            },
+            "audio": {
+                "payload": {"roteiro": "Roteiro pendente", "duracao_estimada_seg": 60},
+                "metadata": {"status": "pending"},
+            },
+        },
+    }
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.buscar_por_aluno",
+        AsyncMock(return_value=[existing_record]),
+    )
+    monkeypatch.setattr(
+        "app.repositories.materiais.MateriaisRepository.salvar",
+        AsyncMock(return_value={}),
+    )
+
+    state = {
+        "aluno_id": "aluno-1",
+        "classe_id": 10,
+        "ciclo_id": "ciclo-slow",
+        "payload_topico_id": 5,
+        "conteudo_foco_id": 90,
+        "conteudo_boss_foco_id": 90,
+        "perfil_brainhex": [{"perfil": "Achiever", "afinidade": 80}],
+        "topico_contexto": {"nome": "Frações", "descricao": "Base de matemática"},
+        "conteudos_topico": [{"titulo": "Conceitos", "descricao": "Descrição", "conteudo": "Conteúdo base"}],
+        "cards_conteudo": [],
+        "atividades_topico": [],
+        "questoes_topico": [],
+        "materiais_origem": [],
+        "plano_personalizacao": {
+            "formato_prioritario": "cards",
+            "formatos": ["cards", "audio"],
+            "nivel": "equilibrado",
+            "tom": "didatico",
+        },
+    }
+    settings = Settings(
+        openai_api_key=None,
+        gemini_api_key=None,
+        personalizacao_force_all_media_formats=False,
+    )
+
+    materiais = await generate_materiais_personalizados(
+        state,
+        settings,
+        session_factory=_FakeSessionWithNoOpCommitFactory(),
+        phase="slow_only",
+        # existing_materiais NAO informado de proposito - e o cenario real
+        # dos dois callers de producao.
+    )
+
+    assert materiais["cards"]["metadata"]["status"] == "completed"
+    assert materiais["audio"]["metadata"]["status"] == "completed"
+    assert materiais["audio"]["arquivo_url"] == "https://cdn.example.com/material.mp3"
 
 
 class _PersistSessionContext:

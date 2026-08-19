@@ -11,8 +11,11 @@ import {
   regenerateChapterContent,
   regenerateSlideContent,
   regenerateDocumentMarkdown,
+  resolveAudioPartConcurrency,
   type ContentPart,
 } from "./src/services/geminiService";
+import { settleWithConcurrency } from "./src/lib/boundedConcurrency";
+import { computeAggregatedApresentacaoEntry } from "./src/lib/materialsMerge";
 import type { ApiKeysConfig, SlideContent } from "./src/types";
 import { BrainHexProfile, BRAIN_HEX_CONFIG } from "./src/constants/brainHex";
 import {
@@ -29,6 +32,8 @@ import {
   markPersonalizacaoFailed,
   recoverStaleJobs,
   startJobHeartbeat,
+  fetchPersonalizacaoMateriais,
+  downloadStorageText,
   MaterialEntry,
   type GenerationFence,
   type MaterialPart,
@@ -99,9 +104,14 @@ export function buildPresentationMaterialMetadata(params: {
   bucket: string;
   failure: PresentationFailure | null;
   updatedAt?: string;
+  // Override pro caso multi-parte: o status agregado (computeAggregatedApresentacaoEntry)
+  // pode ser "failed" mesmo com presentationUrl != null (o headline e a
+  // parte 1, que pode ter tido sucesso enquanto outra parte falhou) - sem
+  // isso, o status ficaria "completed" so por causa da parte 1.
+  status?: string;
 }): MaterialEntry["metadata"] {
   return {
-    status: params.presentationUrl ? "completed" : "failed",
+    status: params.status ?? (params.presentationUrl ? "completed" : "failed"),
     media_kind: "apresentacao",
     ...buildPresentationVersionMetadata(params.generationKey),
     updated_at: params.updatedAt ?? now(),
@@ -194,12 +204,37 @@ export async function archiveToSupabase(params: {
     .find((l) => l.trim())
     ?.replace(/^#+\s*/, "")
     .trim() ?? "Aula";
+
+  if (personalizacaoId !== null && !fence) {
+    throw new Error("generation fence ausente para persistir personalizacao");
+  }
+
+  // Sem personalizacaoId (ex.: preview via /api/v1/archive), o BrainHexPDF
+  // ainda gera e sobe o deck normalmente - so nao recebe dados de fencing,
+  // entao nao tem como gravar no banco (dbWritten fica false, o caller
+  // abaixo trata como se sempre precisasse do fallback, que so roda dentro
+  // do "if (personalizacaoId !== null)" mesmo assim).
   const presentationResult = await renderAndUploadPresentationViaBrainHexPdf({
     markdown,
     topic: presentationTopic,
     profile,
     bucket,
     presentationPath,
+    ...(personalizacaoId !== null && fence
+      ? {
+          personalizacaoId,
+          fence,
+          versionMetadata: {
+            engine: PRESENTATION_ENGINE_VERSION,
+            schema: PRESENTATION_SCHEMA_VERSION,
+            design_system: PRESENTATION_DESIGN_VERSION,
+            media_pipeline_version: MEDIA_PIPELINE_VERSION,
+          },
+          ordem: 1,
+          totalPartes: 1,
+          titulo: presentationTopic,
+        }
+      : {}),
   });
   const presentationUrl = presentationResult.presentationUrl;
   if (presentationResult.failure) {
@@ -252,18 +287,27 @@ export async function archiveToSupabase(params: {
         storage_path: markdownUrl ? mdPath : null,
         bucket, mime_type: "text/markdown; charset=utf-8",
       },
-      apresentacao: {
-        payload:      apresentacaoPayloadObj,
-        metadata: buildPresentationMaterialMetadata({
-          generationKey: fence.generationKey,
-          presentationUrl,
-          bucket,
-          failure: presentationResult.failure,
-        }),
-        arquivo_url:  presentationUrl,
-        storage_path: presentationUrl ? presentationPath : null,
-        ...(presentationUrl ? { bucket, mime_type: "text/html; charset=utf-8" } : {}),
-      },
+      // apresentacao SO entra aqui quando o BrainHexPDF nao conseguiu gravar
+      // ele mesmo (dbWritten:false - falha de transporte) - no caminho
+      // feliz, quem grava essa chave e o proprio BrainHexPDF via
+      // persistApresentacaoResult (ver
+      // docs/superpowers/specs/2026-08-16-brainhexpdf-direct-db-write-design.md).
+      ...(presentationResult.dbWritten
+        ? {}
+        : {
+            apresentacao: {
+              payload: apresentacaoPayloadObj,
+              metadata: buildPresentationMaterialMetadata({
+                generationKey: fence.generationKey,
+                presentationUrl,
+                bucket,
+                failure: presentationResult.failure,
+              }),
+              arquivo_url: presentationUrl,
+              storage_path: presentationUrl ? presentationPath : null,
+              ...(presentationUrl ? { bucket, mime_type: "text/html; charset=utf-8" } : {}),
+            },
+          }),
     };
 
     persisted = await mergePersonalizacaoMateriais(personalizacaoId, updates, fence);
@@ -309,13 +353,21 @@ export async function runAudioAndPresentationInParallel<TAudio>(
   deps: {
     generateAudio: (audioScript: string) => Promise<TAudio>;
     renderPresentation: (part: ContentPart) => Promise<RenderAndUploadPresentationResult>;
+    // Teto de quantas partes geram audio ao mesmo tempo - disparar todas de
+    // uma vez estourava RPM do free tier do Gemini (~10 req/min por conta)
+    // mesmo com rotacao de chave correta. settleWithConcurrency preserva a
+    // mesma semantica de sucesso parcial do Promise.allSettled que isto
+    // usava antes (uma parte falhando nao derruba as outras), so limitando
+    // quantas rodam ao mesmo tempo. A apresentacao continua sem teto - o
+    // gargalo de rate limit e so no Gemini TTS.
+    audioConcurrency: number;
   },
 ): Promise<{
   audioSettled: PromiseSettledResult<TAudio>[];
   presentationResults: RenderAndUploadPresentationResult[];
 }> {
   const [audioSettled, presentationResults] = await Promise.all([
-    Promise.allSettled(parts.map((part) => deps.generateAudio(part.audioScript))),
+    settleWithConcurrency(parts, deps.audioConcurrency, (part) => deps.generateAudio(part.audioScript)),
     Promise.all(parts.map((part) => deps.renderPresentation(part))),
   ]);
   return { audioSettled, presentationResults };
@@ -358,10 +410,15 @@ export async function archiveMultiPartToSupabase(params: {
   const lg = params.log ?? log;
   const multiPart = parts.length > 1;
 
+  if (personalizacaoId !== null && !fence) {
+    throw new Error("generation fence ausente para persistir personalizacao");
+  }
+
   const audioParts: MaterialPart[] = [];
   const markdownParts: MaterialPart[] = [];
   const presentationParts: MaterialPart[] = [];
   let firstPresentationFailure: PresentationFailure | null = null;
+  let anyPresentationFallbackNeeded = false;
   let anyAudioIsMp3 = false;
 
   for (let i = 0; i < parts.length; i++) {
@@ -409,7 +466,13 @@ export async function archiveMultiPartToSupabase(params: {
     });
 
     const presentationPath = `${storagePath}/apresentacao/material-${refId}${suffix}.html`;
+    // Ja resolvido ANTES de chamar esta funcao (concorrente com a geracao de
+    // audio - ver runAudioAndPresentationInParallel/runPipeline), incluindo
+    // o fencing pro BrainHexPDF gravar direto no banco quando aplicavel.
     const presentationResult = presentationResults[i];
+    if (!presentationResult.dbWritten) {
+      anyPresentationFallbackNeeded = true;
+    }
     if (presentationResult.failure) {
       firstPresentationFailure = firstPresentationFailure ?? presentationResult.failure;
       lg.error("falha na apresentacao", {
@@ -425,6 +488,7 @@ export async function archiveMultiPartToSupabase(params: {
       titulo: part.titulo,
       arquivo_url: presentationResult.presentationUrl,
       storage_path: presentationResult.presentationUrl ? presentationPath : null,
+      failed: presentationResult.presentationUrl === null,
     });
   }
 
@@ -434,6 +498,8 @@ export async function archiveMultiPartToSupabase(params: {
   let persisted: PersistedMaterialsMerge | null = null;
 
   if (personalizacaoId !== null) {
+    // fence garantido pela checagem no topo da funcao (antes do loop) - o
+    // TS nao ve essa relacao entre variaveis, entao asserta aqui.
     if (!fence) {
       throw new Error("generation fence ausente para persistir personalizacao");
     }
@@ -478,25 +544,46 @@ export async function archiveMultiPartToSupabase(params: {
         mime_type: "text/markdown; charset=utf-8",
         partes: markdownParts,
       },
-      apresentacao: {
-        // slides fica vazio de proposito - ver comentario equivalente em
-        // archiveToSupabase (mesma razao: evita que o mobile sintetize um
-        // render nativo em vez de abrir o HTML completo do BrainHexPDF).
-        payload: {
-          slides: [] as never[],
-          tema_visual: presentationTheme,
-        },
-        metadata: buildPresentationMaterialMetadata({
-          generationKey: fence.generationKey,
-          presentationUrl,
-          bucket,
-          failure: firstPresentationFailure,
-        }),
-        arquivo_url: presentationUrl,
-        storage_path: presentationParts[0]?.storage_path ?? null,
-        ...(presentationUrl ? { bucket, mime_type: "text/html; charset=utf-8" } : {}),
-        partes: presentationParts,
-      },
+      // apresentacao SO entra aqui quando pelo menos 1 parte precisou do
+      // fallback (o BrainHexPDF nao conseguiu gravar ele mesmo - falha de
+      // transporte) - no caminho feliz, quem grava essa chave e o proprio
+      // BrainHexPDF via persistApresentacaoResult, parte a parte. Ver
+      // docs/superpowers/specs/2026-08-16-brainhexpdf-direct-db-write-design.md.
+      ...(anyPresentationFallbackNeeded
+        ? {
+            apresentacao: (() => {
+              let aggregated: { partes: MaterialPart[]; status: string; headline: { arquivo_url: string | null; storage_path: string | null } } = {
+                partes: [],
+                status: "pending",
+                headline: { arquivo_url: null, storage_path: null },
+              };
+              for (const p of presentationParts) {
+                aggregated = computeAggregatedApresentacaoEntry(aggregated.partes, p, parts.length, aggregated.status);
+              }
+              // slides fica vazio de proposito - ver comentario equivalente
+              // em archiveToSupabase (mesma razao: evita que o mobile
+              // sintetize um render nativo em vez de abrir o HTML completo
+              // do BrainHexPDF).
+              return {
+                payload: {
+                  slides: [] as never[],
+                  tema_visual: presentationTheme,
+                },
+                metadata: buildPresentationMaterialMetadata({
+                  generationKey: fence.generationKey,
+                  presentationUrl: aggregated.headline.arquivo_url,
+                  bucket,
+                  failure: firstPresentationFailure,
+                  status: aggregated.status,
+                }),
+                arquivo_url: aggregated.headline.arquivo_url,
+                storage_path: aggregated.headline.storage_path,
+                ...(aggregated.headline.arquivo_url ? { bucket, mime_type: "text/html; charset=utf-8" } : {}),
+                partes: aggregated.partes,
+              };
+            })(),
+          }
+        : {}),
     };
 
     persisted = await mergePersonalizacaoMateriais(personalizacaoId, updates, fence);
@@ -633,6 +720,167 @@ async function runPersonalizacaoJobWithTimeout(
   );
 }
 
+// Verdadeiro quando `entry` esta completed E pertence a mesma generationKey
+// da tentativa atual - a mesma checagem ja usada no failedFormats de
+// runPipeline, extraida pra decidir SE vale a pena pular a regeneracao via
+// Gemini de audio/markdown (ver retryApresentacaoOnly abaixo).
+function isMaterialCompletedForGeneration(
+  entry: MaterialEntry | null | undefined,
+  generationKey: string,
+): boolean {
+  return entry?.metadata?.status === "completed" && entry?.metadata?.generation_key === generationKey;
+}
+
+// Reconstroi as partes de markdown ja persistidas (ver ContentPart) sem
+// chamar o Gemini de novo - so o texto e necessario pra retentar a
+// apresentacao (renderAndUploadPresentationViaBrainHexPdf so consome
+// markdown/topic/profile). A parte 1 vem inline em materiais.markdown.
+// payload.markdown (ver archiveMultiPartToSupabase); partes 2+ so existem
+// no arquivo .md subido no Storage, entao precisam ser baixadas. Se
+// qualquer parte nao puder ser recuperada (bucket/storage_path ausente,
+// download falhou), retorna null - o chamador deve cair pra regeneracao
+// completa em vez de arriscar uma apresentacao incompleta ou fora de
+// ordem.
+export async function reconstructMarkdownPartsFromMaterials(
+  markdownEntry: MaterialEntry | null | undefined,
+  deps: { downloadText?: typeof downloadStorageText } = {},
+): Promise<Array<{ ordem: number; titulo: string; markdown: string }> | null> {
+  const downloadText = deps.downloadText ?? downloadStorageText;
+  const partes = markdownEntry?.partes;
+  const bucket = markdownEntry?.bucket;
+  if (!Array.isArray(partes) || partes.length === 0 || !bucket) return null;
+
+  const inlineMarkdown =
+    typeof markdownEntry?.payload?.markdown === "string" ? (markdownEntry.payload.markdown as string) : null;
+
+  const reconstructed: Array<{ ordem: number; titulo: string; markdown: string }> = [];
+  for (const parte of partes) {
+    if (!parte.storage_path) return null;
+    const text = parte.ordem === 1 && inlineMarkdown ? inlineMarkdown : await downloadText(bucket, parte.storage_path);
+    if (!text) return null;
+    reconstructed.push({ ordem: parte.ordem, titulo: parte.titulo, markdown: text });
+  }
+  return reconstructed;
+}
+
+// Retenta so a apresentacao (BrainHexPDF), reaproveitando markdown ja
+// concluido em vez de regenerar audio+markdown via Gemini de novo - mesmo
+// laco de apresentacao de archiveMultiPartToSupabase, mas o merge so toca
+// a chave "apresentacao" (audio/markdown persistidos permanecem intactos,
+// ja que mergePersonalizacaoMateriais so atualiza as chaves presentes em
+// updates). deps permite injetar fakes em teste sem tocar rede/Supabase de
+// verdade.
+export async function retryApresentacaoOnly(
+  params: {
+    profile: BrainHexProfile;
+    storagePath: string;
+    bucket: string;
+    refId: string;
+    parts: Array<{ ordem: number; titulo: string; markdown: string }>;
+    presentationTheme: PresentationDesignPlan;
+    personalizacaoId: number;
+    fence: GenerationFence;
+    log?: Logger;
+  },
+  deps: {
+    renderAndUpload?: typeof renderAndUploadPresentationViaBrainHexPdf;
+    mergeMateriais?: typeof mergePersonalizacaoMateriais;
+  } = {},
+): Promise<{ presentationUrl: string | null; persisted: PersistedMaterialsMerge | null }> {
+  const { profile, storagePath, bucket, refId, parts, presentationTheme, personalizacaoId, fence } = params;
+  const lg = params.log ?? log;
+  const renderAndUpload = deps.renderAndUpload ?? renderAndUploadPresentationViaBrainHexPdf;
+  const mergeMateriais = deps.mergeMateriais ?? mergePersonalizacaoMateriais;
+  const multiPart = parts.length > 1;
+
+  const presentationParts: MaterialPart[] = [];
+  let firstPresentationFailure: PresentationFailure | null = null;
+  let anyPresentationFallbackNeeded = false;
+
+  for (const part of parts) {
+    const suffix = multiPart ? `-parte-${String(part.ordem).padStart(2, "0")}` : "";
+    const presentationPath = `${storagePath}/apresentacao/material-${refId}${suffix}.html`;
+    const presentationResult = await renderAndUpload({
+      markdown: part.markdown,
+      topic: part.titulo,
+      profile,
+      bucket,
+      presentationPath,
+      personalizacaoId,
+      fence,
+      versionMetadata: {
+        engine: PRESENTATION_ENGINE_VERSION,
+        schema: PRESENTATION_SCHEMA_VERSION,
+        design_system: PRESENTATION_DESIGN_VERSION,
+        media_pipeline_version: MEDIA_PIPELINE_VERSION,
+      },
+      ordem: part.ordem,
+      totalPartes: parts.length,
+      titulo: part.titulo,
+    });
+    if (!presentationResult.dbWritten) {
+      anyPresentationFallbackNeeded = true;
+    }
+    if (presentationResult.failure) {
+      firstPresentationFailure = firstPresentationFailure ?? presentationResult.failure;
+      lg.error("falha na apresentacao (retry apresentacao-only)", {
+        stage: presentationResult.failure.stage,
+        error: presentationResult.failure.error,
+        parte: part.ordem,
+      });
+    } else {
+      lg.info("apresentacao upload (retry apresentacao-only)", { status: "ok", parte: part.ordem });
+    }
+    presentationParts.push({
+      ordem: part.ordem,
+      titulo: part.titulo,
+      arquivo_url: presentationResult.presentationUrl,
+      storage_path: presentationResult.presentationUrl ? presentationPath : null,
+      failed: presentationResult.presentationUrl === null,
+    });
+  }
+
+  const presentationUrl = presentationParts[0]?.arquivo_url ?? null;
+
+  // O BrainHexPDF ja gravou ele mesmo, parte a parte (persistApresentacaoResult)
+  // - nada a fazer aqui. So cai no fallback quando alguma parte nao
+  // conseguiu (falha de transporte).
+  if (!anyPresentationFallbackNeeded) {
+    return { presentationUrl, persisted: null };
+  }
+
+  let aggregated: { partes: MaterialPart[]; status: string; headline: { arquivo_url: string | null; storage_path: string | null } } = {
+    partes: [],
+    status: "pending",
+    headline: { arquivo_url: null, storage_path: null },
+  };
+  for (const p of presentationParts) {
+    aggregated = computeAggregatedApresentacaoEntry(aggregated.partes, p, parts.length, aggregated.status);
+  }
+
+  const updates: Record<string, MaterialEntry> = {
+    apresentacao: {
+      // slides fica vazio de proposito - ver comentario equivalente em
+      // archiveMultiPartToSupabase.
+      payload: { slides: [] as never[], tema_visual: presentationTheme },
+      metadata: buildPresentationMaterialMetadata({
+        generationKey: fence.generationKey,
+        presentationUrl: aggregated.headline.arquivo_url,
+        bucket,
+        failure: firstPresentationFailure,
+        status: aggregated.status,
+      }),
+      arquivo_url: aggregated.headline.arquivo_url,
+      storage_path: aggregated.headline.storage_path,
+      ...(aggregated.headline.arquivo_url ? { bucket, mime_type: "text/html; charset=utf-8" } : {}),
+      partes: aggregated.partes,
+    },
+  };
+
+  const persisted = await mergeMateriais(personalizacaoId, updates, fence);
+  return { presentationUrl, persisted };
+}
+
 async function runPipeline(
   personalizacaoId: number,
   profile: BrainHexProfile,
@@ -655,6 +903,58 @@ async function runPipeline(
     presentationTheme,
     fallbackSubject,
   );
+
+  // 0. Evita regenerar audio/markdown via Gemini quando ja estao completed
+  // pra esta MESMA generationKey e so a apresentacao falhou (ex.: TLS/rede
+  // no BrainHexPDF) - producao mostrou audio/markdown sendo regenerados do
+  // zero (estourando rate-limit de TTS) so pra tentar de novo uma
+  // apresentacao que falha por um motivo nao relacionado ao conteudo. Se a
+  // reconstrucao do markdown ja persistido falhar por qualquer motivo, cai
+  // pro pipeline completo abaixo (nunca arrisca uma apresentacao
+  // incompleta/fora de ordem).
+  const existingMateriais = await fetchPersonalizacaoMateriais(personalizacaoId);
+  const audioJaCompleto = isMaterialCompletedForGeneration(existingMateriais?.audio, fence.generationKey);
+  const markdownJaCompleto = isMaterialCompletedForGeneration(existingMateriais?.markdown, fence.generationKey);
+  const apresentacaoJaCompleta = isMaterialCompletedForGeneration(existingMateriais?.apresentacao, fence.generationKey);
+  if (audioJaCompleto && markdownJaCompleto && !apresentacaoJaCompleta) {
+    const reconstructedParts = await reconstructMarkdownPartsFromMaterials(existingMateriais?.markdown);
+    if (reconstructedParts) {
+      jobLog.info("apresentacao-only: reaproveitando audio/markdown ja concluidos", {
+        generationKey: fence.generationKey,
+      });
+      const archived = await retryApresentacaoOnly({
+        profile,
+        storagePath,
+        bucket,
+        refId,
+        parts: reconstructedParts,
+        presentationTheme: presentationPlan,
+        personalizacaoId,
+        fence,
+        log: jobLog,
+      });
+      if (!archived.persisted) {
+        throw new Error("merge persistido ausente para a personalizacao");
+      }
+      const failedFormatsRetry = ["audio", "markdown", "apresentacao"].filter((mediaKind) => {
+        const metadata = archived.persisted?.materiais?.[mediaKind]?.metadata;
+        return (
+          metadata?.status !== "completed"
+          || metadata?.generation_key !== fence.generationKey
+        );
+      });
+      if (failedFormatsRetry.length > 0) {
+        throw new Error(`midias obrigatorias nao geradas: ${failedFormatsRetry.join(", ")}`);
+      }
+      if (archived.persisted.status !== "pronto") {
+        throw new Error(`status persistido inesperado: ${archived.persisted.status}`);
+      }
+      return;
+    }
+    jobLog.warn("apresentacao-only: nao foi possivel reconstruir markdown ja gerado, regenerando tudo", {
+      generationKey: fence.generationKey,
+    });
+  }
 
   // 1. Download das fontes
   const filesData = await fetchFontesAsFileData(fontes);
@@ -705,17 +1005,20 @@ async function runPipeline(
         )
       : generateLongNaturalAudio(audioScript, voice, voiceProfile.direction);
 
-  // allSettled preserva a regra existente de sucesso parcial - uma parte de
-  // audio falhando nao derruba as outras. A apresentacao (chamada ao
-  // BrainHexPDF, uma por parte) roda CONCORRENTE com o audio - ver
-  // runAudioAndPresentationInParallel - em vez de esperar o audio inteiro
-  // pra so entao chamar o BrainHexPDF em serie por parte (achado do code
-  // review: isso inflava bastante a latencia total em decks com varias
-  // partes). Falha na apresentacao de uma parte derruba so aquela parte,
-  // sem fallback (ver design).
+  // A apresentacao (chamada ao BrainHexPDF, uma por parte) roda CONCORRENTE
+  // com o audio - ver runAudioAndPresentationInParallel - em vez de esperar
+  // o audio inteiro pra so entao chamar o BrainHexPDF em serie por parte
+  // (achado do code review: isso inflava bastante a latencia total em decks
+  // com varias partes). Falha na apresentacao de uma parte derruba so
+  // aquela parte, sem fallback (ver design). O audio, por sua vez, usa
+  // settleWithConcurrency (mesma semantica de sucesso parcial do
+  // Promise.allSettled) com um teto de partes simultaneas - disparar todas
+  // de uma vez estourava RPM do free tier do Gemini (~10 req/min por conta)
+  // mesmo com rotacao de chave correta.
   const multiPart = parts.length > 1;
   const { audioSettled, presentationResults } = await runAudioAndPresentationInParallel(parts, {
     generateAudio: generatePartAudio,
+    audioConcurrency: resolveAudioPartConcurrency(process.env.CONTENT_GENERATION_AUDIO_PART_CONCURRENCY),
     renderPresentation: (part) =>
       renderAndUploadPresentationViaBrainHexPdf({
         markdown: part.markdown,
@@ -725,6 +1028,23 @@ async function runPipeline(
         presentationPath: `${storagePath}/apresentacao/material-${refId}${
           multiPart ? `-parte-${String(part.ordem).padStart(2, "0")}` : ""
         }.html`,
+        // Fencing pro BrainHexPDF gravar direto no banco (RPC
+        // merge_personalizacao_materiais_v2) - ver
+        // docs/superpowers/specs/2026-08-16-brainhexpdf-direct-db-write-design.md.
+        // personalizacaoId/fence sempre presentes aqui (parametros
+        // obrigatorios de runPipeline, nao o caminho de preview de
+        // /api/v1/archive).
+        personalizacaoId,
+        fence,
+        versionMetadata: {
+          engine: PRESENTATION_ENGINE_VERSION,
+          schema: PRESENTATION_SCHEMA_VERSION,
+          design_system: PRESENTATION_DESIGN_VERSION,
+          media_pipeline_version: MEDIA_PIPELINE_VERSION,
+        },
+        ordem: part.ordem,
+        totalPartes: parts.length,
+        titulo: part.titulo,
       }),
   });
 

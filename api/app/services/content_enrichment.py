@@ -32,8 +32,6 @@ _MAX_BLOCKS_CEILING = 60
 # dar mais margem, ao custo de mais segmentos/blocos (mais chamadas de LLM
 # por geracao).
 _MAX_SEGMENT_CHARS = 1_500
-_MIN_EXPANSION_CHARS = 80
-_MIN_EXPANSION_RATIO = 0.15
 # Sem teto, um bloco enriquecido podia crescer o quanto o modelo quisesse -
 # reproduziu estouro de max_output_tokens (16384) no fallback OpenAI e ate
 # "objeto excedeu o tamanho maximo permitido" no upload da apresentacao (os
@@ -41,6 +39,31 @@ _MIN_EXPANSION_RATIO = 0.15
 # generosa pro texto de estudo formatado (markdown com headings, exemplos)
 # ainda caber no orcamento de tokens de saida do gpt-4o-mini.
 _MAX_EXPANDED_CHARS = 12_000
+# Eram 80/0.15: o piso so exigia raspar 15% acima do conteudo_base, mais
+# frouxo que a propria instrucao do prompt (_ENRICHMENT_INSTRUCTIONS, "pelo
+# menos 30% e 200 caracteres maior"). Producao mostrou blocos que passavam
+# nesse piso frouxo mas cujo conteudo_aprofundado nunca alcancava a cobertura
+# minima exigida depois pelo microservice na geracao de materiais (55% de
+# conteudo_aprofundado em markdown - ver geminiService.ts), porque o
+# aprofundamento em si era raso demais pra dar "material" suficiente pra
+# narrar. Alinhado ao que o prompt ja promete, em vez de so validar mais
+# frouxo que ele.
+_MIN_EXPANSION_CHARS = 200
+_MIN_EXPANSION_RATIO = 0.30
+# Margem tolerada, usada SO como ultimo recurso apos esgotar as tentativas
+# normais nos dois provedores (Gemini e OpenAI) pra um bloco especifico.
+# Producao mostrou blocos curtos/factuais (ex.: bloco-22, Base=1517,
+# resposta=1889, piso estrito=1973 -> ~95,7% do alvo) que o modelo nunca
+# consegue cumprir com precisao de caractere, mesmo recebendo o feedback
+# exato da tentativa anterior (nao e bug de retry - ver
+# _generate_gemini_batch/_generate_openai_batch, que ja repassam o alvo
+# exato). Sem essa margem, 1 bloco teimoso derrubava o LOTE inteiro, depois
+# o TOPICO inteiro (apos esgotar os dois provedores) - tudo ou nada. 95% e
+# calibrado pra aceitar esse caso real sem afrouxar o piso normal: uma
+# resposta com so 20% de expansao real (abaixo do piso de 30%) fica em
+# ~92% do piso estrito, continua sendo rejeitada mesmo com a margem (ver
+# test_enrichment_ainda_falha_quando_resposta_fica_muito_abaixo_da_margem).
+_MIN_EXPANSION_TOLERANCE_RATIO = 0.95
 _SCHEMA_VERSION = "trailup.content-blocks.v2"
 # Fallback usado quando a settings nao traz o valor - ver
 # content_enrichment_batch_size em core/settings.py pro motivo de 6 (era 1,
@@ -520,6 +543,7 @@ def _validate_enrichment_response(
     raw: Any,
     base_blocks: list[dict[str, Any]],
     source_hash: str,
+    tolerant: bool = False,
 ) -> list[dict[str, Any]]:
     if not isinstance(raw, dict):
         raise ContentEnrichmentError("OpenAI retornou enriquecimento fora do formato JSON.")
@@ -572,7 +596,10 @@ def _validate_enrichment_response(
             raise ContentEnrichmentError(f"Enriquecimento perdeu a rastreabilidade do bloco {block_id}.")
         if expanded.casefold() == base.casefold():
             raise ContentEnrichmentError(f"Enriquecimento raso: o bloco {block_id} apenas repetiu o original.")
-        if len(expanded) < _minimum_expanded_length(base):
+        required_length = _minimum_expanded_length(base)
+        if tolerant:
+            required_length = math.ceil(required_length * _MIN_EXPANSION_TOLERANCE_RATIO)
+        if len(expanded) < required_length:
             raise ContentEnrichmentError(f"Enriquecimento insuficiente no bloco {block_id}: conteúdo não foi ampliado.")
         if len(expanded) > _MAX_EXPANDED_CHARS:
             raise ContentEnrichmentError(
@@ -734,6 +761,7 @@ def _validate_generated_candidate(
     candidate: Any,
     base_block: dict[str, Any],
     source_hash: str,
+    tolerant: bool = False,
 ) -> dict[str, Any]:
     if not isinstance(candidate, dict):
         raise ContentEnrichmentError(
@@ -756,6 +784,7 @@ def _validate_generated_candidate(
         },
         base_blocks=[base_block],
         source_hash=source_hash,
+        tolerant=tolerant,
     )
     return {
         **result[0],
@@ -823,6 +852,7 @@ async def _enrich_base_blocks_with_openai(
     )
     client = _openai_client(api_key)
     enriched_by_id: dict[str, dict[str, Any]] = {}
+    tolerant_block_ids: set[str] = set()
     calls = 0
     models: set[str] = set()
 
@@ -880,10 +910,31 @@ async def _enrich_base_blocks_with_openai(
             if not pending:
                 break
             if attempt == max_attempts:
-                raise ContentEnrichmentError(
-                    "OpenAI não aprofundou todos os blocos após "
-                    f"{max_attempts} tentativas: {feedback}"
-                )
+                # Ver comentario equivalente em _enrich_base_blocks_with_gemini:
+                # ultimo recurso, so aceita com margem (>=95% do piso normal)
+                # blocos que ficam perto do piso em toda tentativa.
+                hard_failures: list[tuple[dict[str, Any], str]] = []
+                for block, message in failures:
+                    block_id = str(block["id"])
+                    candidate = indexed.get(block_id)
+                    try:
+                        enriched_by_id[block_id] = _validate_generated_candidate(
+                            candidate=candidate,
+                            base_block=block,
+                            source_hash=source_hash,
+                            tolerant=True,
+                        )
+                    except ContentEnrichmentError:
+                        hard_failures.append((block, message))
+                        continue
+                    tolerant_block_ids.add(block_id)
+                pending = [block for block, _message in hard_failures]
+                feedback = "\n".join(message for _block, message in hard_failures)
+                if pending:
+                    raise ContentEnrichmentError(
+                        "OpenAI não aprofundou todos os blocos após "
+                        f"{max_attempts} tentativas: {feedback}"
+                    )
 
     return (
         [enriched_by_id[str(block["id"])] for block in base_blocks],
@@ -892,6 +943,7 @@ async def _enrich_base_blocks_with_openai(
             "models": sorted(models),
             "lotes_gerados": math.ceil(len(base_blocks) / batch_size),
             "chamadas_realizadas": calls,
+            "blocos_com_margem_tolerada": sorted(tolerant_block_ids),
         },
     )
 
@@ -1029,6 +1081,7 @@ async def _enrich_base_blocks_with_gemini(
             "aprofundar o conteúdo via Gemini."
         )
     enriched_by_id: dict[str, dict[str, Any]] = {}
+    tolerant_block_ids: set[str] = set()
     calls = 0
     models: set[str] = set()
 
@@ -1087,10 +1140,33 @@ async def _enrich_base_blocks_with_gemini(
             if not pending:
                 break
             if attempt == max_attempts:
-                raise ContentEnrichmentError(
-                    "Gemini não aprofundou todos os blocos após "
-                    f"{max_attempts} tentativas: {feedback}"
-                )
+                # Ultimo recurso: um bloco que fica perto (>=95%) do piso
+                # normal em toda tentativa (ver _MIN_EXPANSION_TOLERANCE_RATIO)
+                # e aceito com margem em vez de derrubar o LOTE inteiro (e,
+                # em cascata, o TOPICO inteiro depois de esgotar tambem o
+                # fallback OpenAI) por causa de 1 bloco teimoso.
+                hard_failures: list[tuple[dict[str, Any], str]] = []
+                for block, message in failures:
+                    block_id = str(block["id"])
+                    candidate = indexed.get(block_id)
+                    try:
+                        enriched_by_id[block_id] = _validate_generated_candidate(
+                            candidate=candidate,
+                            base_block=block,
+                            source_hash=source_hash,
+                            tolerant=True,
+                        )
+                    except ContentEnrichmentError:
+                        hard_failures.append((block, message))
+                        continue
+                    tolerant_block_ids.add(block_id)
+                pending = [block for block, _message in hard_failures]
+                feedback = "\n".join(message for _block, message in hard_failures)
+                if pending:
+                    raise ContentEnrichmentError(
+                        "Gemini não aprofundou todos os blocos após "
+                        f"{max_attempts} tentativas: {feedback}"
+                    )
 
     return (
         [enriched_by_id[str(block["id"])] for block in base_blocks],
@@ -1099,6 +1175,7 @@ async def _enrich_base_blocks_with_gemini(
             "models": sorted(models),
             "lotes_gerados": math.ceil(len(base_blocks) / batch_size),
             "chamadas_realizadas": calls,
+            "blocos_com_margem_tolerada": sorted(tolerant_block_ids),
         },
     )
 
@@ -1234,6 +1311,12 @@ async def enrich_content_blocks(
             ),
             "chamadas_realizadas": _nonnegative_int(
                 provider_metadata.get("chamadas_realizadas")
+            ),
+            # Blocos aceitos com margem tolerada (>=95% do piso normal) como
+            # ultimo recurso, apos esgotar as tentativas - ver
+            # _MIN_EXPANSION_TOLERANCE_RATIO. Vazio no caso comum.
+            "blocos_com_margem_tolerada": sorted(
+                str(item) for item in provider_metadata.get("blocos_com_margem_tolerada") or []
             ),
         },
     }

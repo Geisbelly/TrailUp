@@ -6,7 +6,7 @@ import logging
 import socket
 from collections import OrderedDict
 from collections.abc import Awaitable, Callable
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import FastAPI
@@ -73,6 +73,28 @@ _BRAINHEX_PROFILE_KEYS = (
 )
 
 TARGET_DONE_STATES = {"completed", "failed", "skipped"}
+# reason usado quando brainhex_contract_ready() (media_agents.py) falha -
+# URL/secret errado, microservice fora do ar, ou contrato de versao
+# incompativel. brainhex_contract_ready ja falha silenciosamente (so loga
+# warning, nunca lanca), entao sem um teto aqui o target ficaria "pending"
+# pra sempre, sem nunca consumir tentativa nem virar "failed" - reproduzido
+# em producao (job nunca chegava a chamar o microservice de fato). Diferente
+# de "geracao_atual_em_processamento" (outro worker ja processando o mesmo
+# alvo - race legitima que resolve sozinha em segundos), este reason pode
+# ficar preso por horas/dias se for config de ambiente errada.
+_MICROSERVICE_CONTRACT_DEFERRED_REASON = "microservice_midia_incompativel_ou_indisponivel"
+_DEFAULT_BRAINHEX_CONTRACT_DEFERRED_MAX_AGE_MINUTES = 30
+
+
+def _microservice_contract_deferred_is_stale(
+    *, target: dict[str, Any], max_age_minutes: int, now: datetime,
+) -> bool:
+    created_at = target.get("created_at")
+    if not isinstance(created_at, datetime):
+        return False
+    if created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=timezone.utc)
+    return now - created_at >= timedelta(minutes=max_age_minutes)
 _MEDIA_FORMATOS = {"audio", "apresentacao", "markdown"}
 _REQUIRED_BRAINHEX_MEDIA = ("audio", "markdown", "apresentacao")
 MAX_DB_FAILURE_BACKOFF_SEC = 60
@@ -976,7 +998,7 @@ async def _process_media_render_target(
     if not await brainhex_contract_ready(settings=app.state.settings):
         return {
             "deferred": True,
-            "reason": "microservice_midia_incompativel_ou_indisponivel",
+            "reason": _MICROSERVICE_CONTRACT_DEFERRED_REASON,
         }
 
     if job.get("kind") in _MEDIA_RENDER_KINDS:
@@ -1234,23 +1256,40 @@ async def _process_media_render_target(
         if completed_existing:
             return {"skipped": True, "record": completed_existing}
 
+        is_manual_retry = job.get("kind") == JOB_KIND_MANUAL_RETRY
         falha_streak_max = int(
             getattr(app.state.settings, "personalizacao_falha_streak_max", 3) or 3
         )
         if _falha_streak_excedido(
             existing, generation_key=generation_key, max_streak=falha_streak_max
         ):
-            logger.warning(
-                "geracao com falha_streak esgotado, redisparo suspenso: "
-                "personalizacao_id=%s generation_key=%s",
+            if not is_manual_retry:
+                logger.warning(
+                    "geracao com falha_streak esgotado, redisparo suspenso: "
+                    "personalizacao_id=%s generation_key=%s",
+                    existing["id"],
+                    generation_key,
+                )
+                return {
+                    "skipped": True,
+                    "record": existing,
+                    "reason": "falha_streak_excedido",
+                }
+            # Retry manual do professor: destrava mesmo com o circuit breaker
+            # automatico ja esgotado, zerando o contador pra essa mesma
+            # geracao (mesmo generation_key) prosseguir com a reclamacao normal.
+            logger.info(
+                "retry manual zera falha_streak esgotado: personalizacao_id=%s "
+                "generation_key=%s",
                 existing["id"],
                 generation_key,
             )
-            return {
-                "skipped": True,
-                "record": existing,
-                "reason": "falha_streak_excedido",
-            }
+            await repo.resetar_falha_streak(
+                record_id=int(existing["id"]),
+                ciclo_id=existing_cycle_id,
+                source_hash=existing_source_hash,
+                generation_key=generation_key,
+            )
 
         stale_min = _effective_stale_processing_min(app.state.settings)
         claimed = await repo.claim_retry_incomplete_generation(
@@ -1949,13 +1988,44 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
                 )
                 record = outcome.get("record") if isinstance(outcome, dict) else None
                 if outcome.get("deferred"):
+                    reason = str(
+                        outcome.get("reason") or "geracao atual ainda em processamento"
+                    )
+                    max_age_minutes = int(
+                        getattr(
+                            app.state.settings,
+                            "brainhex_contract_deferred_max_age_minutes",
+                            _DEFAULT_BRAINHEX_CONTRACT_DEFERRED_MAX_AGE_MINUTES,
+                        )
+                        or _DEFAULT_BRAINHEX_CONTRACT_DEFERRED_MAX_AGE_MINUTES
+                    )
+                    if reason == _MICROSERVICE_CONTRACT_DEFERRED_REASON and (
+                        _microservice_contract_deferred_is_stale(
+                            target=target,
+                            max_age_minutes=max_age_minutes,
+                            now=datetime.now(timezone.utc),
+                        )
+                    ):
+                        await target_repo.update_target_status(
+                            target_id=int(target["id"]),
+                            status="failed",
+                            attempts=attempts,
+                            last_error=(
+                                "microservice indisponivel ou com contrato de midia "
+                                f"incompativel ha mais de {max_age_minutes} minuto(s) - "
+                                "verifique BRAINHEX_API_URL/brainhex_api_secret e a "
+                                "saude do microservice"
+                            ),
+                            personalizacao_id=(
+                                record.get("id") if isinstance(record, dict) else None
+                            ),
+                        )
+                        return 1
                     await target_repo.update_target_status(
                         target_id=int(target["id"]),
                         status="pending",
                         attempts=int(target.get("attempts") or 0),
-                        last_error=str(
-                            outcome.get("reason") or "geracao atual ainda em processamento"
-                        ),
+                        last_error=reason,
                         personalizacao_id=(
                             record.get("id") if isinstance(record, dict) else None
                         ),

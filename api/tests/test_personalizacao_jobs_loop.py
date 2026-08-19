@@ -2611,3 +2611,233 @@ async def test_job_media_generation_wiring_calls_orchestrator_and_finalizes_comp
     assert len(orchestrator_calls) == 1
     assert orchestrator_calls[0]["profile"] == "mastermind"
     assert finalized == [("completed", None)]
+
+
+@pytest.mark.asyncio
+async def test_job_fails_target_stuck_too_long_on_microservice_contract_gate(
+    monkeypatch,
+) -> None:
+    # Regressao real de producao: brainhex_contract_ready (media_agents.py)
+    # falha silenciosamente (URL/secret errado, microservice fora do ar,
+    # contrato de versao incompativel) - so loga warning, nunca lanca. O
+    # target ficava "pending" pra sempre, sem nunca consumir tentativa nem
+    # virar "failed", sem nunca de fato chamar o microservice. Diferente do
+    # deferred "geracao_atual_em_processamento" (outro worker ja
+    # processando - race legitima, resolve sozinha em segundos), esse reason
+    # especifico pode ficar preso por horas/dias - precisa de um teto.
+    job = {
+        "id": "job-contract-gate",
+        "classe_id": 32,
+        "kind": "class_delta_sync",
+        "payload": {},
+    }
+    stale_created_at = datetime.now(timezone.utc) - timedelta(minutes=45)
+    target = {
+        "id": 92,
+        "aluno_id": "aluno-1",
+        "topico_id": 121,
+        "conteudo_id": 125,
+        "status": "pending",
+        "attempts": 2,
+        "created_at": stale_created_at,
+    }
+    status_history: list[tuple[str, int, str | None]] = []
+    finalized: list[str] = []
+
+    async def claim_next_job(_self, *, stale_processing_min, partial_retry_delay_sec):
+        return job
+
+    async def get_targets(_self, _job_id):
+        return [dict(target)]
+
+    async def update_target_status(
+        _self,
+        *,
+        target_id,
+        status,
+        attempts,
+        last_error,
+        personalizacao_id=None,
+    ):
+        assert target_id == target["id"]
+        target.update(
+            {
+                "status": status,
+                "attempts": attempts,
+                "last_error": last_error,
+                "personalizacao_id": personalizacao_id,
+            }
+        )
+        status_history.append((status, attempts, last_error))
+
+    async def process_target(**_kwargs):
+        return {
+            "deferred": True,
+            "reason": "microservice_midia_incompativel_ou_indisponivel",
+        }
+
+    async def refresh_job_counters(_self, _job_id):
+        return {"processed_targets": 0, "error_count": 1}
+
+    async def finalize_job(_self, *, job_id, status, last_error):
+        finalized.append(status)
+
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.claim_next_job",
+        claim_next_job,
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.get_targets",
+        get_targets,
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.update_target_status",
+        update_target_status,
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.refresh_job_counters",
+        refresh_job_counters,
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.finalize_job",
+        finalize_job,
+    )
+    monkeypatch.setattr(jobs_module, "_process_media_render_target", process_target)
+
+    app = SimpleNamespace(
+        state=SimpleNamespace(
+            session_factory=_WorkerSessionFactory(),
+            settings=SimpleNamespace(
+                personalizacao_job_stale_processing_min=40,
+                brainhex_api_wait_timeout_sec=1980,
+                personalizacao_job_max_retries=3,
+                personalizacao_media_render_concurrency=2,
+                brainhex_contract_deferred_max_age_minutes=30,
+            ),
+        )
+    )
+
+    processed = await process_personalizacao_job_once(app)
+
+    assert processed is True
+    assert status_history == [
+        ("processing", 3, None),
+        (
+            "failed",
+            3,
+            "microservice indisponivel ou com contrato de midia incompativel ha "
+            "mais de 30 minuto(s) - verifique BRAINHEX_API_URL/brainhex_api_secret "
+            "e a saude do microservice",
+        ),
+    ]
+    assert target["status"] == "failed"
+
+
+@pytest.mark.asyncio
+async def test_job_keeps_recent_microservice_contract_gate_target_pending(
+    monkeypatch,
+) -> None:
+    # Mesmo reason do teste acima, mas o target foi criado ha pouco tempo
+    # (abaixo do teto) - deve continuar "pending" sem consumir tentativa,
+    # igual ao comportamento anterior a esta mudanca (o gate pode estar
+    # apenas com cold start temporario do Render, por exemplo).
+    job = {
+        "id": "job-contract-gate-recent",
+        "classe_id": 32,
+        "kind": "class_delta_sync",
+        "payload": {},
+    }
+    recent_created_at = datetime.now(timezone.utc) - timedelta(minutes=5)
+    target = {
+        "id": 93,
+        "aluno_id": "aluno-1",
+        "topico_id": 121,
+        "conteudo_id": 125,
+        "status": "pending",
+        "attempts": 2,
+        "created_at": recent_created_at,
+    }
+    status_history: list[tuple[str, int, str | None]] = []
+    finalized: list[str] = []
+
+    async def claim_next_job(_self, *, stale_processing_min, partial_retry_delay_sec):
+        return job
+
+    async def get_targets(_self, _job_id):
+        return [dict(target)]
+
+    async def update_target_status(
+        _self,
+        *,
+        target_id,
+        status,
+        attempts,
+        last_error,
+        personalizacao_id=None,
+    ):
+        target.update(
+            {
+                "status": status,
+                "attempts": attempts,
+                "last_error": last_error,
+                "personalizacao_id": personalizacao_id,
+            }
+        )
+        status_history.append((status, attempts, last_error))
+
+    async def process_target(**_kwargs):
+        return {
+            "deferred": True,
+            "reason": "microservice_midia_incompativel_ou_indisponivel",
+        }
+
+    async def refresh_job_counters(_self, _job_id):
+        return {"processed_targets": 0, "error_count": 0}
+
+    async def finalize_job(_self, *, job_id, status, last_error):
+        finalized.append(status)
+
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.claim_next_job",
+        claim_next_job,
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.get_targets",
+        get_targets,
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.update_target_status",
+        update_target_status,
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.refresh_job_counters",
+        refresh_job_counters,
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.finalize_job",
+        finalize_job,
+    )
+    monkeypatch.setattr(jobs_module, "_process_media_render_target", process_target)
+
+    app = SimpleNamespace(
+        state=SimpleNamespace(
+            session_factory=_WorkerSessionFactory(),
+            settings=SimpleNamespace(
+                personalizacao_job_stale_processing_min=40,
+                brainhex_api_wait_timeout_sec=1980,
+                personalizacao_job_max_retries=3,
+                personalizacao_media_render_concurrency=2,
+                brainhex_contract_deferred_max_age_minutes=30,
+            ),
+        )
+    )
+
+    processed = await process_personalizacao_job_once(app)
+
+    assert processed is True
+    assert status_history == [
+        ("processing", 3, None),
+        ("pending", 2, "microservice_midia_incompativel_ou_indisponivel"),
+    ]
+    assert target["status"] == "pending"
+    assert target["attempts"] == 2

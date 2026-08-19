@@ -36,6 +36,41 @@ export function isSupabaseConfigured(): boolean {
   );
 }
 
+/**
+ * Busca a coluna materiais de um registro conteudo_personalizado - usado
+ * pra checar, antes de redisparar a geracao inteira, se audio/markdown ja
+ * estao completed pra esta generation_key (ver runPipeline/retryApresenta
+ * caoOnly) e assim evitar regenerar via Gemini o que ja foi concluido.
+ */
+export async function fetchPersonalizacaoMateriais(
+  personalizacaoId: number,
+): Promise<Record<string, any> | null> {
+  const client = getClient();
+  const { data, error } = await client
+    .from("conteudo_personalizado")
+    .select("materiais")
+    .eq("id", personalizacaoId)
+    .limit(1);
+  if (error || !data || data.length === 0) return null;
+  const materiais = (data[0] as { materiais?: unknown } | undefined)?.materiais;
+  return materiais && typeof materiais === "object" ? (materiais as Record<string, any>) : null;
+}
+
+/**
+ * Baixa um arquivo de texto do Storage (ex.: markdown de uma parte ja
+ * persistida) - usado pra reaproveitar conteudo ja gerado sem chamar o
+ * Gemini de novo (ver retryApresentacaoOnly).
+ */
+export async function downloadStorageText(
+  bucket: string,
+  storagePath: string,
+): Promise<string | null> {
+  const client = getClient();
+  const { data, error } = await client.storage.from(bucket).download(storagePath);
+  if (error || !data) return null;
+  return await data.text();
+}
+
 export async function uploadBuffer(
   bucket: string,
   storagePath: string,
@@ -67,6 +102,7 @@ export interface MaterialPart {
   titulo: string;
   arquivo_url: string | null;
   storage_path: string | null;
+  failed?: boolean; // NOVO — aditivo, permite computeAggregatedApresentacaoEntry recomputar status sem reconstruir mensagens de erro de partes antigas
 }
 
 export interface MaterialEntry {

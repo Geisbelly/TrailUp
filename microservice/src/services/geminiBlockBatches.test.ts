@@ -6,6 +6,7 @@ import {
   mergeContentBlocksIntoOne,
   mergeSplitFallbackChapters,
   partitionContentBlocks,
+  resolveAudioPartConcurrency,
   resolveContentBlockBatchSize,
   resolveContentBlockConcurrency,
   resolveContentGenerationMaxOutputTokens,
@@ -122,6 +123,18 @@ test("usa concorrência pequena e aplica um teto seguro", () => {
   assert.equal(resolveContentBlockConcurrency(0), 2);
 });
 
+test("usa concorrencia pequena pra geracao de audio por parte e aplica um teto seguro", () => {
+  // Regressao: gerar todas as partes de audio de um perfil ao mesmo tempo
+  // (ate 8 partes) estourava RPM do free tier do Gemini (~10 req/min por
+  // conta) mesmo com rotacao de chave correta - limitar a concorrencia real
+  // do fan-out evita a rajada.
+  assert.equal(resolveAudioPartConcurrency(undefined), 3);
+  assert.equal(resolveAudioPartConcurrency("2"), 2);
+  assert.equal(resolveAudioPartConcurrency(4), 4);
+  assert.equal(resolveAudioPartConcurrency(10), 4);
+  assert.equal(resolveAudioPartConcurrency(0), 3);
+});
+
 test("da ao documento mesclado um orcamento de saida maior que o lote normal", () => {
   // O documento mesclado sintetiza TODOS os blocos do topico numa unica
   // chamada (markdown + audioScript + slides); 16384 tokens (calibrado pro
@@ -154,6 +167,123 @@ test("respeita override por env var, com o mesmo teto minimo de 8192 dos dois ca
     65_536,
   );
   assert.equal(resolveContentGenerationMaxOutputTokens(true, { CONTENT_GENERATION_BATCH_MAX_OUTPUT_TOKENS: "24000" }), 65_536);
+});
+
+test("cobertura minima usa 55% (markdown) / 35% (audio) do texto-fonte, nao 75%/50%", () => {
+  // Achado de producao: 75%/50% (calibracao original) fazia os 6 modelos
+  // Gemini disponiveis convergirem consistentemente pra 90-98% do minimo,
+  // nunca cruzando - assinatura de teto apertado demais pra um
+  // conteudo_aprofundado que ja e, ele mesmo, um texto expandido por outra
+  // chamada de LLM (content_enrichment.py), nao o material bruto original.
+  // Fonte grande o bastante pra o piso absoluto (200/160 chars) nunca ser o
+  // fator limitante - só assim o teste exercita de fato o ratio 55%/35%.
+  const bigSourceBlock: EnrichedContentBlock = {
+    ...block(1),
+    conteudo_aprofundado: "x".repeat(2000),
+  };
+  const fonte = bigSourceBlock.conteudo_aprofundado.length;
+
+  // "x".repeat(fonte) pro campo que NAO esta sob teste em cada sub-caso -
+  // sempre acima de qualquer minimo possivel (ratio antigo ou novo), pra
+  // isolar exatamente o campo sendo verificado.
+  const abaixoDoNovoMinimoMarkdown = chapter("bloco-01", "UM");
+  abaixoDoNovoMinimoMarkdown.markdown = "x".repeat(Math.floor(fonte * 0.55) - 1);
+  abaixoDoNovoMinimoMarkdown.audioScript = "x".repeat(fonte);
+  assert.throws(
+    () => validateBlockBatchGeneration(
+      [bigSourceBlock],
+      { chapters: [abaixoDoNovoMinimoMarkdown], confidence: 0.9 },
+      1,
+    ),
+    /Markdown.*resumido abaixo do mínimo de cobertura/,
+  );
+
+  const acimaDoNovoMinimoMarkdown = chapter("bloco-01", "UM");
+  acimaDoNovoMinimoMarkdown.markdown = "x".repeat(Math.ceil(fonte * 0.55) + 1);
+  acimaDoNovoMinimoMarkdown.audioScript = "x".repeat(fonte);
+  // Não deve lançar - markdown já cruza o novo mínimo (55%), mesmo estando
+  // bem abaixo do antigo (75%), que teria reprovado esta mesma resposta.
+  validateBlockBatchGeneration(
+    [bigSourceBlock],
+    { chapters: [acimaDoNovoMinimoMarkdown], confidence: 0.9 },
+    1,
+  );
+
+  const abaixoDoNovoMinimoAudio = chapter("bloco-01", "UM");
+  abaixoDoNovoMinimoAudio.markdown = "x".repeat(fonte);
+  abaixoDoNovoMinimoAudio.audioScript = "x".repeat(Math.floor(fonte * 0.35) - 1);
+  assert.throws(
+    () => validateBlockBatchGeneration(
+      [bigSourceBlock],
+      { chapters: [abaixoDoNovoMinimoAudio], confidence: 0.9 },
+      1,
+    ),
+    /Áudio.*resumido abaixo do mínimo de cobertura/,
+  );
+
+  const acimaDoNovoMinimoAudio = chapter("bloco-01", "UM");
+  acimaDoNovoMinimoAudio.markdown = "x".repeat(fonte);
+  acimaDoNovoMinimoAudio.audioScript = "x".repeat(Math.ceil(fonte * 0.35) + 1);
+  // Não deve lançar - áudio já cruza o novo mínimo (35%), mesmo bem abaixo
+  // do antigo (50%).
+  validateBlockBatchGeneration(
+    [bigSourceBlock],
+    { chapters: [acimaDoNovoMinimoAudio], confidence: 0.9 },
+    1,
+  );
+});
+
+test("tolerant:true aceita markdown/audio a partir de 95% do minimo calculado, nao 100%", () => {
+  // Ultimo recurso da cascata inteira (ver generateAfterPrimaryGeminiFailure
+  // em contentGenerationService.ts): sem isso, um resultado a 96% do minimo
+  // reprova e falha o bloco/job inteiro por um punhado de caracteres, mesma
+  // tolerancia ja usada do lado Python (_MIN_EXPANSION_TOLERANCE_RATIO em
+  // content_enrichment.py). So se aplica quando tolerant:true e passado
+  // explicitamente - nas tentativas intermediarias o gate continua exigindo
+  // 100% do minimo, senao perderia forca em toda geracao.
+  const bigSourceBlock: EnrichedContentBlock = {
+    ...block(1),
+    conteudo_aprofundado: "x".repeat(2000),
+  };
+  const fonte = bigSourceBlock.conteudo_aprofundado.length;
+  const minimoBruto = Math.floor(fonte * 0.55);
+
+  const perto96 = chapter("bloco-01", "UM");
+  perto96.markdown = "x".repeat(Math.floor(minimoBruto * 0.96));
+  perto96.audioScript = "x".repeat(fonte);
+
+  assert.throws(
+    () => validateBlockBatchGeneration(
+      [bigSourceBlock],
+      { chapters: [perto96], confidence: 0.9 },
+      1,
+      { tolerant: false },
+    ),
+    /Markdown.*resumido abaixo do mínimo de cobertura/,
+  );
+
+  // Mesma resposta, so com tolerant:true — deve passar (96% > 95%).
+  validateBlockBatchGeneration(
+    [bigSourceBlock],
+    { chapters: [perto96], confidence: 0.9 },
+    1,
+    { tolerant: true },
+  );
+
+  // Mas tolerant:true nao aceita QUALQUER coisa - abaixo de 95% do minimo
+  // bruto continua reprovando.
+  const abaixoDaTolerancia = chapter("bloco-01", "UM");
+  abaixoDaTolerancia.markdown = "x".repeat(Math.floor(minimoBruto * 0.9));
+  abaixoDaTolerancia.audioScript = "x".repeat(fonte);
+  assert.throws(
+    () => validateBlockBatchGeneration(
+      [bigSourceBlock],
+      { chapters: [abaixoDaTolerancia], confidence: 0.9 },
+      1,
+      { tolerant: true },
+    ),
+    /Markdown.*resumido abaixo do mínimo de cobertura/,
+  );
 });
 
 test("valida cobertura exata do lote e reordena capítulos pelos ids esperados", () => {
@@ -240,12 +370,17 @@ test("teto de cobertura por orcamento de output evita exigir mais markdown do qu
   // Reproduz o bug real: mergeContentBlocksIntoOne junta N blocos originais
   // num so ("documento-completo"), cujo conteudo_aprofundado bruto cresce
   // com N — mas markdown/audioScript/slides saem de UMA UNICA chamada com
-  // orcamento de output fixo (maxOutputTokens). Sem teto, a exigencia de 75%
+  // orcamento de output fixo (maxOutputTokens). Sem teto, a exigencia de 55%
   // do texto-fonte supera o que a resposta consegue fisicamente conter, e o
   // lote reprova sempre, nao importa quantas vezes o Gemini tente de novo.
+  // repeat(300), nao 120: com o ratio mais folgado (55%/35%, ver
+  // minimumMarkdownLength/minimumAudioLength em geminiService.ts), um N menor
+  // nao gera fonte grande o bastante pra sequer sem-teto ultrapassar o que a
+  // resposta de teste consegue conter — o cenario so se reproduz com fonte
+  // proporcionalmente maior.
   const bigBlock = (index: number): EnrichedContentBlock => ({
     ...block(index),
-    conteudo_aprofundado: `Conteudo aprofundado do bloco ${index}. `.repeat(120),
+    conteudo_aprofundado: `Conteudo aprofundado do bloco ${index}. `.repeat(300),
   });
   const merged = mergeContentBlocksIntoOne(
     Array.from({ length: 10 }, (_, i) => bigBlock(i + 1)),
@@ -324,6 +459,27 @@ test("corrige sourceIds do slide quando o lote tem um unico bloco valido, em vez
     1,
   );
   assert.deepEqual(corrected.chapters[0].slides[0].sourceIds, ["bloco-01"]);
+});
+
+test("corrige sourceIds ausente mesmo em lote com varios blocos (regressao: guard so cobria lote de 1 bloco)", () => {
+  // Bug real de producao: DEFAULT_CONTENT_BLOCK_BATCH_SIZE virou 6-8 no dia
+  // seguinte ao fix de "corrige sourceIds quando o lote tem 1 bloco", sem
+  // atualizar esse guard - com lotes de 6+ blocos (o caso normal hoje),
+  // sourceIds vazio (o mesmo esquecimento documentado no teste acima) parava
+  // de ser corrigido e virava "Slide 1 não referencia seu bloco" mesmo sem
+  // nenhuma ambiguidade real: cada capitulo so pode pertencer ao seu proprio
+  // blockId, batch grande ou nao.
+  const missingSourceIds = chapter("bloco-01", "UM");
+  missingSourceIds.slides[0].sourceIds = [];
+  const result = validateBlockBatchGeneration(
+    [block(1), block(2)],
+    {
+      chapters: [missingSourceIds, chapter("bloco-02", "DOIS")],
+      confidence: 0.9,
+    },
+    1,
+  );
+  assert.deepEqual(result.chapters[0].slides[0].sourceIds, ["bloco-01"]);
 });
 
 test("recusa slide fora do lote quando ha mais de um bloco valido (preserva a checagem multi-bloco)", () => {

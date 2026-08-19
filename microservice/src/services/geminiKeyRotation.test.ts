@@ -8,6 +8,7 @@ import {
   resolveGeminiTextFallbackModels,
   resolveGeminiTtsFallbackModels,
   resolveGeminiImageFallbackModels,
+  geminiApiKeys,
 } from "./geminiService";
 
 const PRIMARY_MODEL = "gemini-3.6-flash";
@@ -40,10 +41,23 @@ test("pickAvailableGeminiKey escolhe a primeira chave quando nenhuma esta em coo
   assert.equal(pickAvailableGeminiKey(["key-1", "key-2"], PRIMARY_MODEL), "key-1");
 });
 
+test("pickAvailableGeminiKey avanca o round-robin em toda chamada, nao so em falha - distribui chamadas concorrentes entre as chaves", () => {
+  // Regressao: chamadas concorrentes (parts.map de audio, por exemplo) que
+  // dao certo de primeira antes convergiam todas na MESMA chave, porque o
+  // indice global so avancava quando uma chave estava de cooldown. Isso
+  // estourava RPM numa unica conta mesmo com varias chaves configuradas.
+  resetGeminiKeyRotationForTests();
+  const keys = ["key-1", "key-2", "key-3"];
+  assert.equal(pickAvailableGeminiKey(keys, PRIMARY_MODEL), "key-1");
+  assert.equal(pickAvailableGeminiKey(keys, PRIMARY_MODEL), "key-2");
+  assert.equal(pickAvailableGeminiKey(keys, PRIMARY_MODEL), "key-3");
+  assert.equal(pickAvailableGeminiKey(keys, PRIMARY_MODEL), "key-1"); // completa a volta
+});
+
 test("rotateGeminiKeyAfterFailure só roda pra erro de cota/rate-limit, nunca pra erro genérico", () => {
   withGeminiApiKeys("key-1,key-2", () => {
     assert.equal(
-      rotateGeminiKeyAfterFailure(new Error("Connection timed out"), PRIMARY_MODEL),
+      rotateGeminiKeyAfterFailure(new Error("Connection timed out"), PRIMARY_MODEL, "key-1"),
       false,
     );
   });
@@ -52,7 +66,7 @@ test("rotateGeminiKeyAfterFailure só roda pra erro de cota/rate-limit, nunca pr
 test("rotateGeminiKeyAfterFailure não alterna quando só há uma chave configurada", () => {
   withGeminiApiKeys("key-1", () => {
     assert.equal(
-      rotateGeminiKeyAfterFailure(new Error("429 RESOURCE_EXHAUSTED: quota exceeded"), PRIMARY_MODEL),
+      rotateGeminiKeyAfterFailure(new Error("429 RESOURCE_EXHAUSTED: quota exceeded"), PRIMARY_MODEL, "key-1"),
       false,
     );
   });
@@ -61,11 +75,13 @@ test("rotateGeminiKeyAfterFailure não alterna quando só há uma chave configur
 test("rotateGeminiKeyAfterFailure alterna pra próxima chave disponível quando uma esgota a cota", () => {
   withGeminiApiKeys("key-1,key-2", () => {
     const keys = ["key-1", "key-2"];
-    assert.equal(pickAvailableGeminiKey(keys, PRIMARY_MODEL), "key-1");
+    const usedKey = pickAvailableGeminiKey(keys, PRIMARY_MODEL);
+    assert.equal(usedKey, "key-1");
 
     const hadAnotherKey = rotateGeminiKeyAfterFailure(
       new Error("429 RESOURCE_EXHAUSTED: quota exceeded"),
       PRIMARY_MODEL,
+      usedKey!,
     );
 
     assert.equal(hadAnotherKey, true);
@@ -79,11 +95,13 @@ test("rotateGeminiKeyAfterFailure tambem alterna chave pra 503 UNAVAILABLE (sobr
   // tentar a proxima chave em vez de propagar o erro imediatamente.
   withGeminiApiKeys("key-1,key-2", () => {
     const keys = ["key-1", "key-2"];
-    assert.equal(pickAvailableGeminiKey(keys, PRIMARY_MODEL), "key-1");
+    const usedKey = pickAvailableGeminiKey(keys, PRIMARY_MODEL);
+    assert.equal(usedKey, "key-1");
 
     const hadAnotherKey = rotateGeminiKeyAfterFailure(
       new Error("503 UNAVAILABLE. This model is currently experiencing high demand."),
       PRIMARY_MODEL,
+      usedKey!,
     );
 
     assert.equal(hadAnotherKey, true);
@@ -93,12 +111,15 @@ test("rotateGeminiKeyAfterFailure tambem alterna chave pra 503 UNAVAILABLE (sobr
 
 test("rotateGeminiKeyAfterFailure devolve false quando todas as chaves já esgotaram a cota do modelo", () => {
   withGeminiApiKeys("key-1,key-2", () => {
+    const keys = ["key-1", "key-2"];
     assert.equal(
-      rotateGeminiKeyAfterFailure(new Error("429 RESOURCE_EXHAUSTED: quota exceeded"), PRIMARY_MODEL),
+      rotateGeminiKeyAfterFailure(new Error("429 RESOURCE_EXHAUSTED: quota exceeded"), PRIMARY_MODEL, "key-1"),
       true,
     );
+    const nextKey = pickAvailableGeminiKey(keys, PRIMARY_MODEL);
+    assert.equal(nextKey, "key-2");
     assert.equal(
-      rotateGeminiKeyAfterFailure(new Error("429 RESOURCE_EXHAUSTED: quota exceeded"), PRIMARY_MODEL),
+      rotateGeminiKeyAfterFailure(new Error("429 RESOURCE_EXHAUSTED: quota exceeded"), PRIMARY_MODEL, nextKey!),
       false,
     );
   });
@@ -107,7 +128,7 @@ test("rotateGeminiKeyAfterFailure devolve false quando todas as chaves já esgot
 test("cooldown de cota e por (chave, modelo) - uma chave esgotada no modelo principal continua livre no fallback", () => {
   withGeminiApiKeys("key-1", () => {
     assert.equal(
-      rotateGeminiKeyAfterFailure(new Error("429 RESOURCE_EXHAUSTED: quota exceeded"), PRIMARY_MODEL),
+      rotateGeminiKeyAfterFailure(new Error("429 RESOURCE_EXHAUSTED: quota exceeded"), PRIMARY_MODEL, "key-1"),
       false, // so 1 chave: nao ha OUTRA chave pro mesmo modelo
     );
 
@@ -145,6 +166,38 @@ test("resolveGeminiTextFallbackModels respeita a lista configurada via env, sepa
     resolveGeminiTextFallbackModels({ GEMINI_TEXT_FALLBACK_MODELS: "model-a, model-b ;model-c" }),
     ["model-a", "model-b", "model-c"],
   );
+});
+
+test("geminiApiKeys inclui GEMINI_API_KEY_1..4 e GEMINI_API_KEYS, nao so GEMINI_API_KEY", () => {
+  // Regressao: producao configurou 4 chaves de contas Google diferentes
+  // (1 em GEMINI_API_KEY + 3 em GEMINI_API_KEY_1/2/3), esperando rotacao
+  // entre as 4 pra multiplicar RPM/RPD efetivo - mas geminiApiKeys() (usada
+  // por getAi() na geracao normal de texto/audio/TTS) so lia GEMINI_API_KEY,
+  // entao a geracao inteira rodava com 1 chave so, sem os outros 3 servirem
+  // pra nada (so alimentavam getActiveKeys(), usada exclusivamente pelos
+  // endpoints de regeneracao por prompt do professor - um caminho
+  // completamente diferente).
+  const previous = {
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+    GEMINI_API_KEY_1: process.env.GEMINI_API_KEY_1,
+    GEMINI_API_KEY_2: process.env.GEMINI_API_KEY_2,
+    GEMINI_API_KEYS: process.env.GEMINI_API_KEYS,
+  };
+  process.env.GEMINI_API_KEY = "key-principal";
+  process.env.GEMINI_API_KEY_1 = "key-conta-2";
+  process.env.GEMINI_API_KEY_2 = "key-conta-3";
+  process.env.GEMINI_API_KEYS = "key-conta-4";
+  try {
+    assert.deepEqual(
+      new Set(geminiApiKeys()),
+      new Set(["key-principal", "key-conta-2", "key-conta-3", "key-conta-4"]),
+    );
+  } finally {
+    process.env.GEMINI_API_KEY = previous.GEMINI_API_KEY;
+    process.env.GEMINI_API_KEY_1 = previous.GEMINI_API_KEY_1;
+    process.env.GEMINI_API_KEY_2 = previous.GEMINI_API_KEY_2;
+    process.env.GEMINI_API_KEYS = previous.GEMINI_API_KEYS;
+  }
 });
 
 test("resolveGeminiTtsFallbackModels/resolveGeminiImageFallbackModels tem defaults proprios, sem depender do texto", () => {

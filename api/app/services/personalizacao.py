@@ -2121,42 +2121,25 @@ def _build_source_hash(
             for item in materiais_origem
         ],
         "sinais_topico": {
-            "cards": [
-                {
-                    # "id" fica de fora de proposito: cards_personalizados e
-                    # regerado (novo id sequencial, batch antigo marcado
-                    # obsoleto) a cada tentativa de QUALQUER perfil do mesmo
-                    # topico, mesmo quando o conteudo nao mudou. Incluir o id
-                    # faz o source_hash mudar a cada tentativa, quebrando o
-                    # cache de enriquecimento compartilhado entre perfis e
-                    # orfanizando qualquer registro existente que dependa
-                    # deste hash para ser reencontrado.
-                    "conteudo_id": item.get("conteudo_id"),
-                    "titulo": item.get("titulo"),
-                    "descricao": item.get("descricao"),
-                    "ordem": item.get("ordem"),
-                }
-                for item in (cards_topico or [])
-            ],
+            # `cards` e `questoes` ficam de fora de proposito: o prompt de
+            # geracao (gerar_cards_direto) nunca le essas tabelas - so
+            # topico/conteudos/atividades.titulo|descricao chegam no
+            # conteudo_estudado. Incluir cards/questoes aqui so causa
+            # over-invalidation: editar um card ou uma questao no console do
+            # professor mudava o source_hash e forcava regeneracao pra turma
+            # toda, sem nenhum efeito no conteudo de fato gerado.
             "atividades": [
                 {
+                    # Mesma logica: so titulo/descricao chegam no prompt
+                    # (conteudo_estudado["atividades"]). tipo/pontuacao_maxima/
+                    # metadata nunca sao lidos por gerar_cards_direto, entao
+                    # ficam fora do hash - mudar so esses campos nao deve
+                    # invalidar personalizacoes ja geradas.
                     "id": item.get("id"),
                     "titulo": item.get("titulo"),
                     "descricao": item.get("descricao"),
-                    "tipo": item.get("tipo"),
-                    "pontuacao_maxima": item.get("pontuacao_maxima"),
-                    "metadata": item.get("metadata"),
                 }
                 for item in (atividades_topico or [])
-            ],
-            "questoes": [
-                {
-                    "id": item.get("id"),
-                    "atividade_id": item.get("atividade_id"),
-                    "enunciado": item.get("enunciado"),
-                    "tipo": item.get("tipo"),
-                }
-                for item in (questoes_topico or [])
             ],
         },
     }
@@ -5671,6 +5654,40 @@ def _merge_materiais(existing: dict[str, Any], updates: dict[str, Any]) -> dict[
     return merged
 
 
+async def _fetch_existing_materiais_for_state(
+    state: dict[str, Any],
+    session_factory: async_sessionmaker[AsyncSession] | None,
+) -> dict[str, Any]:
+    """Busca o materiais ja persistido pra este aluno/topico/conteudo, pra
+    generate_materiais_personalizados preservar formatos ja completos em vez
+    de reconstruir do zero via existing_materiais.
+
+    Sem isso, os dois callers reais (agente_midias_personalizadas.py,
+    agente_geracao_midia.py) nunca passavam existing_materiais - e
+    ConteudoPersonalizadoRepository.salvar() sobrescreve a coluna materiais
+    inteira (nao faz merge), entao todo novo ciclo de geracao (retry, edicao
+    de conteudo, full_sync) apagava silenciosamente audio/apresentacao ja
+    concluidos de um ciclo anterior assim que fosse persistido de novo.
+    """
+    aluno_id = state.get("aluno_id")
+    topico_id = state.get("payload_topico_id")
+    if session_factory is None or not aluno_id:
+        return {}
+    async with session_factory() as session:
+        repo = ConteudoPersonalizadoRepository(session)
+        records = await repo.buscar_por_aluno(
+            str(aluno_id),
+            classe_id=state.get("classe_id"),
+            conteudo_id=state.get("conteudo_foco_id"),
+            topico_id=int(topico_id) if topico_id is not None else None,
+            limit=1,
+        )
+    if not records:
+        return {}
+    materiais = records[0].get("materiais")
+    return materiais if isinstance(materiais, dict) else {}
+
+
 def _collect_fontes_midias_relevantes(
     materiais_origem: list[dict[str, Any]] | None,
     *,
@@ -5807,7 +5824,10 @@ async def generate_materiais_personalizados(
     existing_materiais: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     generation_phase = _normalize_generation_phase(phase)
-    previous_materiais = existing_materiais if isinstance(existing_materiais, dict) else {}
+    if isinstance(existing_materiais, dict):
+        previous_materiais = existing_materiais
+    else:
+        previous_materiais = await _fetch_existing_materiais_for_state(state, session_factory)
 
     llm = JsonLLMService(settings)
     plano = state.get("plano_personalizacao") or _fallback_plano_for_state(state)

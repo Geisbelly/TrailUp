@@ -50,8 +50,17 @@ export function parseGeminiApiKeys(raw: string | undefined): string[] {
   return keys;
 }
 
-function geminiApiKeys(): string[] {
-  return parseGeminiApiKeys(process.env.GEMINI_API_KEY);
+// Pool de chaves usado por TODA a geracao normal (texto/audio/TTS/slides via
+// getAi()/generateGeminiContent) - precisa ler as MESMAS fontes que
+// getActiveKeys() (GEMINI_API_KEY + GEMINI_API_KEY_1..4 + GEMINI_API_KEYS),
+// senao chaves configuradas nas vars numeradas (contas Google diferentes,
+// pensadas pra multiplicar RPM/RPD via rotacao) ficam paradas sem uso nesse
+// caminho - so alimentavam getActiveKeys(), que e exclusiva dos endpoints de
+// regeneracao por prompt do professor. Reproduzido em producao: 3 chaves em
+// GEMINI_API_KEY_1/2/3 nunca entravam na rotacao da geracao normal, que
+// rodava sozinha com a 1 chave de GEMINI_API_KEY e estourava RPM de TTS.
+export function geminiApiKeys(): string[] {
+  return getActiveKeys().geminiKeys;
 }
 
 // --- MOTOR DE REGENERACAO COM PROMPT (multi-chave/multi-modelo) ---
@@ -272,13 +281,20 @@ function clientForGeminiKey(key: string): GoogleGenAI {
 
 // Round-robin entre as chaves que nao estao em cooldown de cota PRA ESSE
 // MODELO; null se todas estiverem indisponiveis no momento.
+//
+// Avanca _geminiKeyIndex pra DEPOIS da chave escolhida em toda chamada, nao
+// so quando pula uma chave em cooldown - senao chamadas concorrentes que dao
+// certo de primeira (ex.: parts.map(generatePartAudio) gerando varias partes
+// de audio ao mesmo tempo) convergiam todas na MESMA chave, porque o indice
+// global so mudava quando uma chave falhava. Reproduzido em producao:
+// estouro de RPM numa unica conta Gemini mesmo com 4 chaves configuradas.
 export function pickAvailableGeminiKey(keys: string[], model: string): string | null {
   const now = Date.now();
   for (let offset = 0; offset < keys.length; offset += 1) {
     const index = (_geminiKeyIndex + offset) % keys.length;
     const key = keys[index];
     if (now >= (_geminiKeyCooldownUntil.get(cooldownKey(key, model)) ?? 0)) {
-      _geminiKeyIndex = index;
+      _geminiKeyIndex = (index + 1) % keys.length;
       return key;
     }
   }
@@ -291,13 +307,17 @@ export function resetGeminiKeyRotationForTests(): void {
   _geminiKeyCooldownUntil.clear();
 }
 
-function getAi(model: string): GoogleGenAI {
+// Devolve tambem a chave usada (nao so o client) - generateGeminiContent
+// precisa dela pra passar a rotateGeminiKeyAfterFailure em caso de erro, sem
+// depender de ler _geminiKeyIndex (que pode ja ter avancado por causa de
+// outra chamada concorrente no meio tempo).
+function getAi(model: string): { client: GoogleGenAI; key: string } {
   const keys = geminiApiKeys();
   if (keys.length === 0) {
     throw new Error("GEMINI_API_KEY ausente — configure no .env antes de chamar o serviço Gemini.");
   }
   const key = pickAvailableGeminiKey(keys, model) ?? keys[_geminiKeyIndex % keys.length];
-  return clientForGeminiKey(key);
+  return { client: clientForGeminiKey(key), key };
 }
 
 function isGeminiQuotaOrRateLimitError(error: unknown): boolean {
@@ -338,12 +358,18 @@ function isGeminiTransientUnavailableError(error: unknown): boolean {
 }
 
 /**
- * Marca a chave Gemini atualmente selecionada como esgotada PRA ESSE MODELO
- * e avança o round-robin pra próxima. Retorna true quando havia outra chave
- * disponível pra tentar imediatamente (sem cooldown de espera) nesse mesmo
- * modelo.
+ * Marca `failedKey` como esgotada PRA ESSE MODELO e avança o round-robin pra
+ * próxima. Retorna true quando havia outra chave disponível pra tentar
+ * imediatamente (sem cooldown de espera) nesse mesmo modelo.
+ *
+ * `failedKey` é obrigatório e deve ser a chave EXATA usada na chamada que
+ * falhou (devolvida por getAi()) - nunca inferida de _geminiKeyIndex. Como
+ * pickAvailableGeminiKey agora avança o indice em toda chamada bem-sucedida
+ * (nao so em cooldown), por volta do momento em que uma chamada concorrente
+ * falha o indice global pode já ter avançado por causa de OUTRA chamada -
+ * ler o indice aqui marcaria a chave errada como esgotada.
  */
-export function rotateGeminiKeyAfterFailure(error: unknown, model: string): boolean {
+export function rotateGeminiKeyAfterFailure(error: unknown, model: string, failedKey: string): boolean {
   if (!isGeminiQuotaOrRateLimitError(error) && !isGeminiTransientUnavailableError(error)) {
     return false;
   }
@@ -354,8 +380,7 @@ export function rotateGeminiKeyAfterFailure(error: unknown, model: string): bool
   // modelo bata de novo numa cota ja sabidamente esgotada — ela cai direto
   // pro modelo alternativo (ver generateGeminiContent) sem gastar uma
   // chamada real.
-  const exhaustedKey = keys[_geminiKeyIndex % keys.length];
-  _geminiKeyCooldownUntil.set(cooldownKey(exhaustedKey, model), Date.now() + GEMINI_KEY_QUOTA_COOLDOWN_MS);
+  _geminiKeyCooldownUntil.set(cooldownKey(failedKey, model), Date.now() + GEMINI_KEY_QUOTA_COOLDOWN_MS);
   return keys.length > 1 && pickAvailableGeminiKey(keys, model) !== null;
 }
 
@@ -387,11 +412,12 @@ async function generateGeminiContent(
   for (const model of candidateModels) {
     const currentParams = model === primaryModel ? params : { ...params, model };
     for (let attempt = 0; attempt < maxAttemptsPerModel; attempt += 1) {
+      const { client, key } = getAi(model);
       try {
-        return await getAi(model).models.generateContent(currentParams);
+        return await client.models.generateContent(currentParams);
       } catch (error) {
         lastError = error;
-        if (rotateGeminiKeyAfterFailure(error, model)) {
+        if (rotateGeminiKeyAfterFailure(error, model, key)) {
           continue; // outra chave disponivel pra esse mesmo modelo
         }
         if (
@@ -659,6 +685,21 @@ export function resolveContentBlockConcurrency(value: unknown): number {
   return Math.min(parsed, MAX_CONTENT_BLOCK_CONCURRENCY);
 }
 
+// Disparar todas as partes de audio de um perfil ao mesmo tempo (ate 8
+// partes) estourava RPM do free tier do Gemini (~10 req/min por conta)
+// mesmo com a rotacao de chave corrigida - o fan-out em si precisa de um
+// teto de concorrencia real (ver settleWithConcurrency em server.ts).
+const DEFAULT_AUDIO_PART_CONCURRENCY = 3;
+const MAX_AUDIO_PART_CONCURRENCY = 4;
+
+export function resolveAudioPartConcurrency(value: unknown): number {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    return DEFAULT_AUDIO_PART_CONCURRENCY;
+  }
+  return Math.min(parsed, MAX_AUDIO_PART_CONCURRENCY);
+}
+
 export function partitionContentBlocks(
   contentBlocks: EnrichedContentBlock[],
   batchSize = DEFAULT_CONTENT_BLOCK_BATCH_SIZE,
@@ -703,16 +744,21 @@ function validateSlideForBlock(
   const slide = raw as Record<string, unknown>;
   let sourceIds = normalizedStringList(slide.sourceIds);
   if (!sourceIds.includes(blockId)) {
-    // Lotes sempre tem exatamente 1 bloco hoje (DEFAULT/MAX_CONTENT_BLOCK_BATCH_SIZE
-    // = 1) - com um unico id valido no lote nao ha ambiguidade sobre qual
-    // deveria ser o sourceIds. O modelo (sobretudo a contingencia OpenAI)
-    // as vezes esquece de preencher esse campo de rastreabilidade mesmo
-    // gerando o resto do slide corretamente; reprovar a tentativa inteira
-    // por isso descarta conteudo bom por um campo com resposta unica
-    // possivel neste caso. So reprova de verdade quando o lote tiver mais
-    // de um bloco valido (nao acontece hoje, mas preserva a checagem se o
-    // batch size voltar a ser >1 no futuro).
-    if (batchIds.size === 1) {
+    // sourceIds vazio nunca e ambiguo, batch grande ou nao: cada capitulo so
+    // pode pertencer ao seu proprio blockId (validateSlideForBlock roda por
+    // capitulo, chapterMap e chaveado por blockId) - o modelo (Gemini ou a
+    // contingencia OpenAI) so esqueceu de preencher um campo de
+    // rastreabilidade cuja resposta certa e a unica possivel aqui.
+    //
+    // Quando o lote tem so 1 bloco valido, tambem corrigimos mesmo se
+    // sourceIds vier preenchido com outro id (batchIds.size === 1): nao ha
+    // pra qual outro bloco poderia ter sido, entao ainda e so esquecimento,
+    // nao ambiguidade real.
+    //
+    // So reprova de verdade um sourceIds preenchido com um id ERRADO
+    // (diferente do proprio blockId) quando o lote tem mais de um bloco
+    // valido - aí sim pode ser o modelo confundindo capitulos entre si.
+    if (sourceIds.length === 0 || batchIds.size === 1) {
       sourceIds = [blockId];
     } else {
       throw new Error(
@@ -761,11 +807,22 @@ function validateSlideForBlock(
   };
 }
 
+// Ultimo recurso do gate de cobertura: quando a cascata inteira de modelos e
+// providers ja foi tentada (ver generateAfterPrimaryGeminiFailure em
+// contentGenerationService.ts) e nenhum bateu o minimo exato, aceitar um
+// resultado a 95% do minimo calculado evita falhar o bloco inteiro por um
+// punhado de caracteres - mesma tolerancia ja usada do lado Python
+// (_MIN_EXPANSION_TOLERANCE_RATIO em content_enrichment.py). So se aplica
+// quando o chamador passa tolerant:true explicitamente (a ULTIMA tentativa
+// da cascata) - nas intermediarias o gate continua exigindo 100% do minimo,
+// senao perderia forca em toda geracao.
+const MIN_COVERAGE_TOLERANCE_RATIO = 0.95;
+
 export function validateBlockBatchGeneration(
   batch: EnrichedContentBlock[],
   raw: unknown,
   batchIndex: number,
-  options: { requireAudio?: boolean; maxOutputTokens?: number } = {},
+  options: { requireAudio?: boolean; maxOutputTokens?: number; tolerant?: boolean } = {},
 ): GeneratedBlockBatch {
   const requireAudio = options.requireAudio ?? true;
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
@@ -806,13 +863,22 @@ export function validateBlockBatchGeneration(
     }
     const markdown = String(chapter.markdown ?? "").trim();
     const audioScript = String(chapter.audioScript ?? "").trim();
+    // block.conteudo_aprofundado ja e um texto expandido por outra chamada
+    // de LLM (content_enrichment.py) - exigir 75%/50% disso do capitulo final
+    // (que ainda reparte o mesmo orcamento de output com audioScript e
+    // slides) se mostrou calibrado alto demais em producao: os 6 modelos
+    // Gemini disponiveis convergiam consistentemente pra 90-98% do minimo
+    // antigo, nunca cruzando - assinatura tipica de teto apertado demais,
+    // nao de modelo "preguicoso" (finishReason=STOP bem abaixo do teto de
+    // tokens, no MAX_TOKENS). 55%/35% ainda exige expansao real (rejeita
+    // resumo raso) com folga suficiente pra blocos de fonte enxuta.
     let minimumMarkdownLength = Math.max(
       200,
-      Math.floor(normalizedText(block.conteudo_aprofundado).length * 0.75),
+      Math.floor(normalizedText(block.conteudo_aprofundado).length * 0.55),
     );
     let minimumAudioLength = Math.max(
       160,
-      Math.floor(normalizedText(block.conteudo_aprofundado).length * 0.5),
+      Math.floor(normalizedText(block.conteudo_aprofundado).length * 0.35),
     );
     // markdown, audioScript e slides saem da MESMA chamada e dividem o mesmo
     // orcamento de output. Quando varios blocos sao mesclados num so (ver
@@ -833,6 +899,10 @@ export function validateBlockBatchGeneration(
         minimumAudioLength,
         Math.max(160, Math.floor(outputCharBudget * 0.25)),
       );
+    }
+    if (options.tolerant) {
+      minimumMarkdownLength = Math.ceil(minimumMarkdownLength * MIN_COVERAGE_TOLERANCE_RATIO);
+      minimumAudioLength = Math.ceil(minimumAudioLength * MIN_COVERAGE_TOLERANCE_RATIO);
     }
     if (normalizedText(markdown).length < minimumMarkdownLength) {
       throw new Error(
@@ -1672,7 +1742,7 @@ export async function processMediaWithGemini(
                 generateSlides: () => generateOpenAISlidesOnly(currentCall),
               });
             },
-            validateResult: (value, provider) => {
+            validateResult: (value, provider, meta) => {
               // audioScript so sai do Gemini (sem fallback proprio) - quando
               // a origem e o fallback OpenAI, audio vazio e esperado e nao
               // pode reprovar markdown/slides que ja foram gerados com
@@ -1680,16 +1750,26 @@ export async function processMediaWithGemini(
               validateBlockBatchGeneration(batch, value, index + 1, {
                 requireAudio: provider !== "openai",
                 maxOutputTokens,
+                tolerant: meta.tolerant,
               });
             },
             geminiFallbackModels: resolveGeminiTextFallbackModels(),
           },
         );
+        // tolerant precisa repetir o mesmo tolerantAccepted da geracao: se o
+        // valor so passou porque o ultimo recurso da cascata aceitou com
+        // margem, revalidar aqui sem tolerant reprovaria de novo um
+        // resultado que ja foi aceito (ver StructuredContentGenerationResult
+        // em contentGenerationService.ts).
         const validated = validateBlockBatchGeneration(
           batch,
           generation.value,
           index + 1,
-          { requireAudio: generation.provider !== "openai", maxOutputTokens },
+          {
+            requireAudio: generation.provider !== "openai",
+            maxOutputTokens,
+            tolerant: generation.tolerantAccepted === true,
+          },
         );
         validated.generationProvider = generation.provider;
         validated.generationModel = generation.model;
