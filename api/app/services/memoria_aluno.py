@@ -57,3 +57,33 @@ async def ler_memoria(session: AsyncSession, *, aluno_id: str, classe_id: int) -
         dominio_por_topico=dominio_por_topico,
         mental_state_recorrente=_detectar_recorrencia(registros_mentais),
     )
+
+
+async def atualizar_memoria(
+    session: AsyncSession,
+    *,
+    aluno_id: str,
+    topico_id: int | None,
+    performance_resumo: dict[str, Any] | None,
+) -> None:
+    """So cuida do dominio por topico (novo). O estado mental ja e gravado
+    por MentalStateHistoryRepository.registrar() em analysis_runner.py - nao
+    duplica essa escrita. Nunca levanta - mesmo padrao do bloco de
+    mental-state ja existente em analysis_runner.py (log + segue)."""
+    if topico_id is None or not performance_resumo:
+        return
+    try:
+        await AlunoTopicoDominioRepository(session).upsert(
+            aluno_id=aluno_id,
+            topico_id=topico_id,
+            dominio_estimado=float(performance_resumo.get("dominio_estimado", 0)),
+            tendencia=str(performance_resumo.get("tendencia") or "estavel"),
+            confianca=float(performance_resumo.get("confianca", 0)),
+        )
+    except Exception as exc:
+        logger.warning(
+            "Falha ao persistir aluno_topico_dominio (aluno=%s, topico=%s): %s",
+            aluno_id,
+            topico_id,
+            exc,
+        )

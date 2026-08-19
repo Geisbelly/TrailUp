@@ -2,7 +2,7 @@ import pytest
 
 from app.repositories.aluno_topico_dominio import AlunoTopicoDominioRepository
 from app.repositories.mental_state import MentalStateHistoryRepository
-from app.services.memoria_aluno import _detectar_recorrencia, ler_memoria
+from app.services.memoria_aluno import _detectar_recorrencia, atualizar_memoria, ler_memoria
 
 
 def test_detectar_recorrencia_marca_3_de_5_mesmo_kind_negativo() -> None:
@@ -103,3 +103,64 @@ async def test_ler_memoria_devolve_vazio_em_falha_de_leitura(monkeypatch) -> Non
 
     assert memoria.dominio_por_topico == {}
     assert memoria.mental_state_recorrente.recorrente is False
+
+
+@pytest.mark.asyncio
+async def test_atualizar_memoria_faz_upsert_com_resumo_de_performance(monkeypatch) -> None:
+    chamadas = []
+
+    async def fake_upsert(self, **kwargs):
+        chamadas.append(kwargs)
+
+    monkeypatch.setattr(AlunoTopicoDominioRepository, "upsert", fake_upsert)
+
+    await atualizar_memoria(
+        object(),
+        aluno_id="aluno-1",
+        topico_id=10,
+        performance_resumo={"dominio_estimado": 0.8, "tendencia": "ascendente", "confianca": 0.7},
+    )
+
+    assert chamadas == [
+        {
+            "aluno_id": "aluno-1",
+            "topico_id": 10,
+            "dominio_estimado": 0.8,
+            "tendencia": "ascendente",
+            "confianca": 0.7,
+        }
+    ]
+
+
+@pytest.mark.asyncio
+async def test_atualizar_memoria_nao_falha_sem_topico_id(monkeypatch) -> None:
+    chamadas = []
+
+    async def fake_upsert(self, **kwargs):
+        chamadas.append(kwargs)
+
+    monkeypatch.setattr(AlunoTopicoDominioRepository, "upsert", fake_upsert)
+
+    await atualizar_memoria(
+        object(),
+        aluno_id="aluno-1",
+        topico_id=None,
+        performance_resumo={"dominio_estimado": 0.8, "tendencia": "ascendente", "confianca": 0.7},
+    )
+
+    assert chamadas == []
+
+
+@pytest.mark.asyncio
+async def test_atualizar_memoria_engole_falha_de_upsert(monkeypatch) -> None:
+    async def fake_upsert(self, **kwargs):
+        raise RuntimeError("conexao perdida")
+
+    monkeypatch.setattr(AlunoTopicoDominioRepository, "upsert", fake_upsert)
+
+    await atualizar_memoria(
+        object(),
+        aluno_id="aluno-1",
+        topico_id=10,
+        performance_resumo={"dominio_estimado": 0.8, "tendencia": "ascendente", "confianca": 0.7},
+    )
