@@ -9,9 +9,10 @@ from app.agent.graph.nodes.agente_emocao import agente_emocao
 from app.agent.graph.nodes.agente_geracao_midia import agente_geracao_midia
 from app.agent.graph.nodes.agente_midias_personalizadas import agente_midias_personalizadas
 from app.agent.graph.nodes.agente_perfil import _fallback_perfil, agente_perfil
-from app.agent.graph.nodes.agente_trilha import _fallback_trilha
+from app.agent.graph.nodes.agente_trilha import _fallback_trilha, agente_trilha
 from app.agent.graph.routing import _needs_conteudo, compute_personalizacao_next, compute_supervisor_next
 from app.core.settings import Settings
+from app.repositories.conteudo_classe import ConteudoClasseRepository
 
 
 def test_compute_supervisor_next_routes_parallel_steps() -> None:
@@ -224,6 +225,36 @@ class _FakeSessionContext:
 class _FakeSessionFactory:
     def __call__(self):
         return _FakeSessionContext()
+
+
+@pytest.mark.asyncio
+async def test_agente_trilha_rejeita_pulo_de_ordem_e_cai_no_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def _fake_listar_topicos(self, classe_id):
+        return [
+            {"id": 10, "ordem": 1},
+            {"id": 11, "ordem": 2},
+        ]
+
+    monkeypatch.setattr(
+        ConteudoClasseRepository, "listar_topicos_classe", _fake_listar_topicos
+    )
+    settings = Settings(openai_api_key=None)
+
+    result = await agente_trilha(
+        {
+            "aluno_id": "aluno-1",
+            "classe_id": 1,
+            "progresso_trilha": {"10": {"percentual_concluido": 30}},
+            "desempenho_recente": {"media_acertos": 40},
+        },
+        settings=settings,
+        session_factory=_FakeSessionFactory(),
+    )
+
+    assert result["completed_nodes"] == ["agente_trilha"]
+    assert result["trilha_config"]["topico_foco"] == 10
 
 
 @pytest.mark.asyncio
