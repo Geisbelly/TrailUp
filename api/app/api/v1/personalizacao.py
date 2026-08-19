@@ -10,9 +10,9 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agent.graph.guardrails import checar_grounding_chat, gerar_validado
 from app.api.deps import ensure_professor_access, get_current_user, get_session, require_professor
 from app.core.settings import get_settings
-from app.agent.graph.guardrails import checar_grounding_chat, gerar_validado
 from app.repositories.access import AccessRepository
 from app.repositories.conteudo_classe import ConteudoClasseRepository
 from app.repositories.conteudo_personalizado import ConteudoPersonalizadoRepository
