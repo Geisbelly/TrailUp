@@ -38,6 +38,8 @@ from app.services.media_contract import (
 )
 from app.services.media_generation_jobs import (
     JOB_KIND_MEDIA_GENERATION,
+    consolidar_partes_a_partir_dos_blocos,
+    persistir_parte_em_materiais,
     processar_job_media_generation_once,
 )
 from app.services.personalizacao import (
@@ -47,7 +49,7 @@ from app.services.personalizacao import (
     fetch_personalizacao_context,
     gerar_cards_direto,
 )
-from app.services.storage import BUCKET
+from app.services.storage import BUCKET, SupabaseStorage
 
 logger = logging.getLogger(__name__)
 
@@ -1756,8 +1758,20 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
         async with session_factory() as session:
             jobs_repo = PersonalizacaoJobsRepository(session)
             blocos_repo = PersonalizacaoBlocosRepository(session)
+            conteudo_repo = ConteudoPersonalizadoRepository(session)
             try:
                 payload = job.get("payload") or {}
+                ciclo_id = str(payload.get("ciclo_id") or "")
+                source_hash = str(payload.get("source_hash") or "")
+                generation_key = _build_generation_key(ciclo_id=ciclo_id, source_hash=source_hash)
+                record = await conteudo_repo.buscar_por_ciclo_id(aluno_id=str(job["aluno_id"]), ciclo_id=ciclo_id)
+                if not record:
+                    raise RuntimeError(
+                        f"conteudo_personalizado nao encontrado para ciclo_id={ciclo_id} - "
+                        "personalizar() deveria te-lo criado antes de enfileirar o job"
+                    )
+                record_id = int(record["id"])
+
                 ctx = await fetch_personalizacao_context(
                     aluno_id=str(job["aluno_id"]),
                     classe_id=int(job["classe_id"]),
@@ -1768,7 +1782,29 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
                 )
                 base_blocks, topic_payload, _source_hash, _segments = derive_base_blocks_and_topic(ctx)
                 base_blocks_by_id = {str(b["id"]): b for b in base_blocks}
-                await processar_job_media_generation_once(
+
+                blocos_gerados = await blocos_repo.listar_por_job(job_id=str(job["id"]))
+                tema_fallback = str(topic_payload.get("titulo") or "Aula")
+                markdown_by_ordem, audio_script_by_ordem, titulo_by_ordem = consolidar_partes_a_partir_dos_blocos(
+                    blocos_gerados, tema_fallback=tema_fallback
+                )
+
+                storage = SupabaseStorage(app.state.settings)
+                storage_path_prefix = f"brainhex/{payload.get('brainhex_profile_key')}/classe-{job['classe_id']}/topico-{job.get('topico_id')}"
+
+                async def _persistir_parte(*, media_kind: str, ordem: int, url: str, storage_path: str | None) -> None:
+                    del ordem  # total_partes fixo em 1 por enquanto - ver consolidar_partes_a_partir_dos_blocos
+                    await persistir_parte_em_materiais(
+                        conteudo_repo=conteudo_repo,
+                        record_id=record_id,
+                        media_kind=media_kind,
+                        url=url,
+                        storage_path=storage_path,
+                        bucket=BUCKET,
+                        generation_key=generation_key,
+                    )
+
+                resultado = await processar_job_media_generation_once(
                     jobs_repo=jobs_repo,
                     blocos_repo=blocos_repo,
                     job=job,
@@ -1783,8 +1819,35 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
                     gerar_audio_fn=gerar_audio_parte_brainhex,
                     gerar_apresentacao_fn=gerar_apresentacao_parte_brainhex,
                     bucket=BUCKET,
-                    storage_path_prefix=f"brainhex/{payload.get('brainhex_profile_key')}/classe-{job['classe_id']}/topico-{job.get('topico_id')}",
+                    storage_path_prefix=storage_path_prefix,
+                    audio_script_by_ordem=audio_script_by_ordem,
+                    markdown_by_ordem=markdown_by_ordem,
+                    titulo_by_ordem=titulo_by_ordem,
+                    persistir_parte_fn=_persistir_parte,
                 )
+
+                # O texto do material (markdown) e barato de subir de novo (sem
+                # LLM) - persistido uma unica vez, exatamente quando a Fase A
+                # acaba de completar e a Fase B acabou de ser criada, em vez de
+                # ser tratado como target retomavel proprio.
+                if resultado.get("fase_b_criada") and markdown_by_ordem.get(1):
+                    markdown_url = await storage.upload_bytes(
+                        bucket=BUCKET,
+                        path=f"{storage_path_prefix}/markdown/material-{job['id']}.md",
+                        data=markdown_by_ordem[1].encode("utf-8"),
+                        content_type="text/markdown; charset=utf-8",
+                    )
+                    if markdown_url:
+                        await persistir_parte_em_materiais(
+                            conteudo_repo=conteudo_repo,
+                            record_id=record_id,
+                            media_kind="markdown",
+                            url=markdown_url,
+                            storage_path=f"{storage_path_prefix}/markdown/material-{job['id']}.md",
+                            bucket=BUCKET,
+                            generation_key=generation_key,
+                        )
+
                 refreshed = await jobs_repo.refresh_job_counters(str(job["id"]))
                 targets = await jobs_repo.get_targets(str(job["id"]))
                 has_failed = any(t.get("status") == "failed" for t in targets)
