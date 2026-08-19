@@ -1900,8 +1900,23 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
                     and int(refreshed.get("processed_targets") or 0) == int(refreshed.get("error_count") or 0)
                 ):
                     final_status = "failed"
-                if final_status == "completed":
-                    await jobs_repo.finalize_job(job_id=str(job["id"]), status="completed", last_error=None)
+                # BUG (achado ao investigar console sem status/retry travado):
+                # so chamava finalize_job no caminho "completed" - "partial" e
+                # "failed" nunca eram persistidos, entao job.status ficava
+                # travado em "processing" pra sempre (mesmo com todos os
+                # targets exauridos em failed, sem nada pendente pra
+                # reprocessar). O console nunca via status=failed e o botao
+                # de retry (que depende disso) nunca habilitava.
+                falhas = [t for t in targets if t.get("status") == "failed"]
+                await jobs_repo.finalize_job(
+                    job_id=str(job["id"]),
+                    status=final_status,
+                    last_error=(
+                        str(falhas[-1].get("last_error") or f"{len(falhas)} alvo(s) com falha")
+                        if falhas
+                        else None
+                    ),
+                )
             except Exception as exc:
                 logger.exception(
                     "Falha ao processar job media_generation",

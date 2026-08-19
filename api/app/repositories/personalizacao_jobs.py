@@ -700,42 +700,82 @@ class PersonalizacaoJobsRepository:
         result = await self.session.execute(
             text(
                 """
-                SELECT DISTINCT ON (LOWER(BTRIM(target.brainhex_profile_key)))
-                  target.id,
-                  target.job_id,
-                  target.aluno_id,
-                  target.topico_id,
-                  target.conteudo_id,
-                  target.brainhex_profile_key,
-                  target.is_profile_template,
-                  target.status,
-                  target.attempts,
-                  target.last_error,
-                  target.personalizacao_id,
-                  target.created_at,
-                  target.updated_at,
-                  job.status AS job_status,
-                  job.last_error AS job_last_error,
-                  job.created_at AS job_created_at,
-                  job.updated_at AS job_updated_at
-                FROM personalizacao_job_targets target
-                JOIN personalizacao_jobs job ON job.id = target.job_id
-                WHERE job.classe_id = CAST(:classe_id AS BIGINT)
-                  AND job.kind IN (
-                    'student_enrollment',
-                    'class_delta_sync',
-                    'full_class_sync',
-                    'manual_retry'
-                  )
-                  AND target.topico_id = CAST(:topico_id AS BIGINT)
-                  AND target.conteudo_id
-                        IS NOT DISTINCT FROM CAST(:conteudo_id AS BIGINT)
-                  AND NULLIF(BTRIM(target.brainhex_profile_key), '') IS NOT NULL
+                WITH combined AS (
+                  SELECT
+                    target.id,
+                    target.job_id,
+                    target.aluno_id,
+                    target.topico_id,
+                    target.conteudo_id,
+                    target.brainhex_profile_key,
+                    target.is_profile_template,
+                    target.status,
+                    target.attempts,
+                    target.last_error,
+                    target.personalizacao_id,
+                    target.created_at,
+                    target.updated_at,
+                    job.status AS job_status,
+                    job.last_error AS job_last_error,
+                    job.created_at AS job_created_at,
+                    job.updated_at AS job_updated_at
+                  FROM personalizacao_job_targets target
+                  JOIN personalizacao_jobs job ON job.id = target.job_id
+                  WHERE job.classe_id = CAST(:classe_id AS BIGINT)
+                    AND job.kind IN (
+                      'student_enrollment',
+                      'class_delta_sync',
+                      'full_class_sync',
+                      'manual_retry'
+                    )
+                    AND target.topico_id = CAST(:topico_id AS BIGINT)
+                    AND target.conteudo_id
+                          IS NOT DISTINCT FROM CAST(:conteudo_id AS BIGINT)
+                    AND NULLIF(BTRIM(target.brainhex_profile_key), '') IS NOT NULL
+
+                  UNION ALL
+
+                  -- job kind=media_generation nao tem 1 target por perfil: tem N
+                  -- targets granulares (bloco/parte) por perfil, todos no MESMO
+                  -- job (1 job = 1 ciclo de 1 perfil, ver criar_ciclo_media_generation).
+                  -- DISTINCT ON num target isolado escolheria um bloco/parte
+                  -- arbitrario e mentiria sobre o progresso — aqui usamos o
+                  -- proprio job como "target" agregado (job.status/total_targets/
+                  -- processed_targets ja refletem o conjunto inteiro, mantidos
+                  -- por refresh_job_counters). Sem id de target natural: NULL.
+                  SELECT
+                    NULL::BIGINT AS id,
+                    job.id AS job_id,
+                    job.aluno_id,
+                    job.topico_id,
+                    job.conteudo_id,
+                    job.payload->>'brainhex_profile_key' AS brainhex_profile_key,
+                    FALSE AS is_profile_template,
+                    job.status,
+                    0 AS attempts,
+                    job.last_error,
+                    NULL::BIGINT AS personalizacao_id,
+                    job.created_at,
+                    job.updated_at,
+                    job.status AS job_status,
+                    job.last_error AS job_last_error,
+                    job.created_at AS job_created_at,
+                    job.updated_at AS job_updated_at
+                  FROM personalizacao_jobs job
+                  WHERE job.classe_id = CAST(:classe_id AS BIGINT)
+                    AND job.kind = 'media_generation'
+                    AND job.topico_id = CAST(:topico_id AS BIGINT)
+                    AND job.conteudo_id
+                          IS NOT DISTINCT FROM CAST(:conteudo_id AS BIGINT)
+                    AND NULLIF(BTRIM(job.payload->>'brainhex_profile_key'), '') IS NOT NULL
+                )
+                SELECT DISTINCT ON (LOWER(BTRIM(brainhex_profile_key))) *
+                FROM combined
                 ORDER BY
-                  LOWER(BTRIM(target.brainhex_profile_key)),
-                  job.created_at DESC,
-                  target.created_at DESC,
-                  target.id DESC
+                  LOWER(BTRIM(brainhex_profile_key)),
+                  job_created_at DESC,
+                  created_at DESC,
+                  id DESC
                 """
             ),
             {

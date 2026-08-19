@@ -365,14 +365,54 @@ async def test_latest_personalization_targets_are_scoped_exactly_by_content() ->
     assert set(latest) == {"seeker", "mastermind"}
     assert latest["seeker"]["id"] == 701
     query, params = session.calls[-1]
-    assert "DISTINCT ON (LOWER(BTRIM(target.brainhex_profile_key)))" in query
+    assert "DISTINCT ON (LOWER(BTRIM(brainhex_profile_key)))" in query
     assert "IS NOT DISTINCT FROM CAST(:conteudo_id AS BIGINT)" in query
-    assert "job.created_at DESC" in query
+    assert "job_created_at DESC" in query
+    assert "job.kind = 'media_generation'" in query
     assert params == {
         "classe_id": 32,
         "topico_id": 121,
         "conteudo_id": 125,
     }
+
+
+@pytest.mark.asyncio
+async def test_latest_personalization_targets_aggregates_media_generation_at_job_level() -> None:
+    """job kind=media_generation nao tem 1 target por perfil - tem N targets
+    granulares (bloco/parte) no mesmo job. O bug real: a query so olhava os
+    outros 4 kinds no WHERE job.kind IN (...), entao toda geracao criada via
+    personalizar() (que so cria media_generation) ficava invisivel pro
+    console - sem status, sem progresso, sem erro, sem retry possivel."""
+    session = RecordingSession(
+        [
+            ScalarResult(True),
+            ScalarResult(True),
+            MappingResult(
+                [
+                    {
+                        "id": None,
+                        "job_id": "22222222-2222-2222-2222-222222222222",
+                        "brainhex_profile_key": "achiever",
+                        "status": "processing",
+                        "job_status": "processing",
+                    }
+                ]
+            ),
+        ]
+    )
+    repo = PersonalizacaoJobsRepository(session)
+
+    latest = await repo.buscar_targets_mais_recentes_por_perfil(
+        classe_id=32,
+        topico_id=121,
+        conteudo_id=125,
+    )
+
+    assert set(latest) == {"achiever"}
+    assert latest["achiever"]["status"] == "processing"
+    query, _params = session.calls[-1]
+    assert "job.payload->>'brainhex_profile_key'" in query
+    assert "UNION ALL" in query
 
 
 def test_content_hydration_prefers_persisted_brainhex_profile_column() -> None:
