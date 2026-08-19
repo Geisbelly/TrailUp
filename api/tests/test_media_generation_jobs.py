@@ -364,7 +364,7 @@ async def test_retentativa_apos_falha_so_na_apresentacao_nao_rechama_enriquecime
     async def fake_persistir_parte(*, media_kind, ordem, url, storage_path):
         persistido.append((media_kind, ordem, url))
 
-    result = await media_generation_jobs.processar_job_media_generation_once(
+    await media_generation_jobs.processar_job_media_generation_once(
         jobs_repo=repo,
         blocos_repo=blocos_repo,
         job=job,
