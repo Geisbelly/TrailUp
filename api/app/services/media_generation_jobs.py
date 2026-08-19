@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -373,3 +374,55 @@ async def processar_job_media_generation_once(
         fase_b_criada = True
 
     return {"errors": errors, "fase_b_criada": fase_b_criada}
+
+
+_FASE_B_REQUIRED_MEDIA_KINDS = frozenset(_PART_MEDIA_KINDS)
+
+
+async def persistir_parte_em_materiais(
+    *,
+    conteudo_repo: Any,
+    record_id: int,
+    media_kind: str,
+    url: str,
+    storage_path: str | None,
+    bucket: str,
+    generation_key: str,
+) -> None:
+    """Merge (read-modify-write) do resultado de UM target de parte (audio
+    ou apresentacao) em conteudo_personalizado.materiais - preserva
+    qualquer outro media_kind ja gravado (inclusive de uma tentativa
+    anterior). Quando os dois media_kinds da Fase B (audio + apresentacao)
+    ja estao completed com o MESMO generation_key deste ciclo, marca o
+    registro como "pronto" - so entao o mobile considera a personalizacao
+    disponivel."""
+    record = await conteudo_repo.buscar_por_id(record_id)
+    materiais = dict((record or {}).get("materiais") or {})
+
+    materiais[media_kind] = {
+        "payload": {},
+        "metadata": {
+            "status": "completed",
+            "media_kind": media_kind,
+            "generation_key": generation_key,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        },
+        "arquivo_url": url,
+        "storage_path": storage_path,
+        "bucket": bucket,
+    }
+
+    completed_kinds = {
+        kind
+        for kind in _FASE_B_REQUIRED_MEDIA_KINDS
+        if (materiais.get(kind) or {}).get("metadata", {}).get("status") == "completed"
+        and (materiais.get(kind) or {}).get("metadata", {}).get("generation_key") == generation_key
+    }
+    fase_b_completa = completed_kinds == _FASE_B_REQUIRED_MEDIA_KINDS
+
+    await conteudo_repo.atualizar_materiais_e_status(
+        record_id=record_id,
+        materiais=materiais,
+        status="pronto" if fase_b_completa else None,
+        formatos_gerados=sorted(completed_kinds) if fase_b_completa else None,
+    )

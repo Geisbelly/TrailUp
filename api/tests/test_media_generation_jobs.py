@@ -390,3 +390,80 @@ async def test_retentativa_apos_falha_so_na_apresentacao_nao_rechama_enriquecime
     assert chamadas_apresentacao == ["## Bloco\n\nTexto"]
     assert persistido == [("apresentacao", 1, "https://fake/apresentacao.html")]
     assert targets[3]["status"] == "completed"
+
+
+class FakeConteudoPersonalizadoRepo:
+    def __init__(self, record):
+        self.record = record
+        self.updates = []
+
+    async def buscar_por_id(self, record_id):
+        return self.record if self.record and self.record["id"] == record_id else None
+
+    async def atualizar_materiais_e_status(self, *, record_id, materiais, status=None, formatos_gerados=None):
+        self.updates.append({"record_id": record_id, "materiais": materiais, "status": status, "formatos_gerados": formatos_gerados})
+        self.record = {**self.record, "materiais": materiais}
+        if status is not None:
+            self.record["status"] = status
+        return self.record
+
+
+@pytest.mark.asyncio
+async def test_persistir_parte_em_materiais_grava_url_e_status_completed():
+    record = {"id": 7, "materiais": {}}
+    repo = FakeConteudoPersonalizadoRepo(record)
+
+    await media_generation_jobs.persistir_parte_em_materiais(
+        conteudo_repo=repo,
+        record_id=7,
+        media_kind="audio",
+        url="https://fake/audio.mp3",
+        storage_path="brainhex/mastermind/topico-1/audio/material-1.mp3",
+        bucket="conteudo_aluno",
+        generation_key="ciclo-1:hash-1",
+    )
+
+    materiais = repo.updates[0]["materiais"]
+    assert materiais["audio"]["arquivo_url"] == "https://fake/audio.mp3"
+    assert materiais["audio"]["metadata"]["status"] == "completed"
+    assert materiais["audio"]["metadata"]["generation_key"] == "ciclo-1:hash-1"
+    assert repo.updates[0]["status"] is None
+
+
+@pytest.mark.asyncio
+async def test_persistir_parte_em_materiais_preserva_outros_media_kinds_ja_gravados():
+    record = {"id": 7, "materiais": {"audio": {"arquivo_url": "https://fake/audio.mp3", "metadata": {"status": "completed"}}}}
+    repo = FakeConteudoPersonalizadoRepo(record)
+
+    await media_generation_jobs.persistir_parte_em_materiais(
+        conteudo_repo=repo,
+        record_id=7,
+        media_kind="apresentacao",
+        url="https://fake/apresentacao.html",
+        storage_path=None,
+        bucket="conteudo_aluno",
+        generation_key="ciclo-1:hash-1",
+    )
+
+    materiais = repo.updates[0]["materiais"]
+    assert materiais["audio"]["arquivo_url"] == "https://fake/audio.mp3"
+    assert materiais["apresentacao"]["arquivo_url"] == "https://fake/apresentacao.html"
+
+
+@pytest.mark.asyncio
+async def test_persistir_parte_em_materiais_marca_pronto_quando_audio_e_apresentacao_completam():
+    record = {"id": 7, "materiais": {"audio": {"arquivo_url": "https://fake/audio.mp3", "metadata": {"status": "completed", "generation_key": "ciclo-1:hash-1"}}}}
+    repo = FakeConteudoPersonalizadoRepo(record)
+
+    await media_generation_jobs.persistir_parte_em_materiais(
+        conteudo_repo=repo,
+        record_id=7,
+        media_kind="apresentacao",
+        url="https://fake/apresentacao.html",
+        storage_path=None,
+        bucket="conteudo_aluno",
+        generation_key="ciclo-1:hash-1",
+    )
+
+    assert repo.updates[0]["status"] == "pronto"
+    assert set(repo.updates[0]["formatos_gerados"]) == {"audio", "apresentacao"}
