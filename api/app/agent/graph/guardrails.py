@@ -6,6 +6,7 @@ from typing import Any, Awaitable, Callable, TypeVar
 
 from pydantic import BaseModel
 
+from app.schemas.mentor_chat import GroundingJudgment, MentorChatLLMResult
 from app.schemas.trilha_config import TrilhaConfig
 from app.services.llm import JsonLLMService, StructuredOutputError
 
@@ -149,3 +150,30 @@ async def gerar_validado(
         tentativa_payload = {**payload, "correcao": f"{violacao.regra}: {violacao.mensagem}"}
 
     return schema.model_validate(fallback_factory())
+
+
+async def checar_grounding_chat(
+    resposta: MentorChatLLMResult, contexto: dict[str, Any]
+) -> GuardrailViolation | None:
+    """Unica regra desta leva que precisa de julgamento sobre texto livre —
+    o payload do chat nem contem gabarito pra comparar diretamente
+    (buscar_questoes_topico ja filtra isso). Usa uma segunda chamada LLM
+    barata como juiz. Falha aberta: se o juiz falhar, nao bloqueia o chat
+    (a resposta principal ja passou pelas instrucoes de guardrail no prompt;
+    o juiz e uma camada extra de verificacao, nao a unica linha de defesa)."""
+    llm: JsonLLMService = contexto["llm"]
+    try:
+        julgamento = await llm.ainvoke_structured(
+            prompt_name="mentor_grounding_check.txt",
+            payload={
+                "resposta": resposta.reply,
+                "conteudo_materia": contexto.get("conteudo_materia", {}),
+            },
+            schema=GroundingJudgment,
+        )
+    except StructuredOutputError:
+        return None
+
+    if julgamento.viola:
+        return GuardrailViolation(regra="grounding_chat", mensagem=julgamento.motivo)
+    return None

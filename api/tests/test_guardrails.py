@@ -3,10 +3,12 @@ import asyncio
 from app.agent.graph.guardrails import (
     GuardrailViolation,
     checar_evidencia_dominio,
+    checar_grounding_chat,
     checar_ordem_sequencial,
     checar_topicos_existem,
     gerar_validado,
 )
+from app.schemas.mentor_chat import MentorChatLLMResult
 from app.schemas.trilha_config import TrilhaConfig
 from app.services.llm import StructuredOutputError
 
@@ -209,3 +211,51 @@ def test_gerar_validado_trata_structured_output_error_como_violacao_de_schema() 
 
     assert resultado.topico_foco == 10
     assert "json invalido" in llm.chamadas[1]["payload"]["correcao"]
+
+
+class _FakeJuizLLM:
+    def __init__(self, resposta: dict) -> None:
+        self._resposta = resposta
+        self.chamadas = 0
+
+    async def ainvoke_structured(self, *, prompt_name, payload, schema, **kwargs):
+        self.chamadas += 1
+        return schema.model_validate(self._resposta)
+
+
+def test_checar_grounding_chat_detecta_violacao_via_juiz() -> None:
+    resposta = MentorChatLLMResult(reply="A resposta certa e 42.", should_close=False, hinted_actions=[])
+    juiz = _FakeJuizLLM({"viola": True, "motivo": "entrega resposta pronta"})
+
+    violacao = asyncio.run(
+        checar_grounding_chat(resposta, {"llm": juiz, "conteudo_materia": {}})
+    )
+
+    assert violacao is not None
+    assert violacao.regra == "grounding_chat"
+    assert juiz.chamadas == 1
+
+
+def test_checar_grounding_chat_aceita_resposta_que_guia_sem_entregar() -> None:
+    resposta = MentorChatLLMResult(reply="Tente revisar o passo 2 do exemplo.", should_close=False, hinted_actions=[])
+    juiz = _FakeJuizLLM({"viola": False, "motivo": ""})
+
+    violacao = asyncio.run(
+        checar_grounding_chat(resposta, {"llm": juiz, "conteudo_materia": {}})
+    )
+
+    assert violacao is None
+
+
+def test_checar_grounding_chat_falha_aberta_quando_juiz_indisponivel() -> None:
+    resposta = MentorChatLLMResult(reply="qualquer coisa", should_close=False, hinted_actions=[])
+
+    class _JuizQuebrado:
+        async def ainvoke_structured(self, **kwargs):
+            raise StructuredOutputError("juiz fora do ar")
+
+    violacao = asyncio.run(
+        checar_grounding_chat(resposta, {"llm": _JuizQuebrado(), "conteudo_materia": {}})
+    )
+
+    assert violacao is None
