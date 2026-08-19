@@ -144,6 +144,38 @@ class SupabaseStorage:
     def public_url_for_bucket(self, bucket: str, path: str) -> str:
         return build_public_storage_url(self._base_url, bucket, path) or f"{self._base_url}/storage/v1/object/public/{bucket}/{path}"
 
+    async def upload_bytes(
+        self,
+        *,
+        bucket: str,
+        path: str,
+        data: bytes,
+        content_type: str,
+    ) -> str | None:
+        """Sobe um arquivo no Supabase Storage via PUT autenticado
+        (service role) com x-upsert (idempotente — sobrescreve se o mesmo
+        path ja existir, sem precisar checar antes). Retorna a URL publica,
+        ou None se SUPABASE_SERVICE_KEY nao estiver configurada ou o upload
+        falhar."""
+        bucket_name, normalized_path = _normalize_bucket_and_path(bucket, path)
+        if not self._base_url or not bucket_name or not normalized_path or not self._enabled:
+            return None
+
+        url = f"{self._base_url}/storage/v1/object/{bucket_name}/{normalized_path}"
+        headers = {
+            **self._headers(),
+            "content-type": content_type,
+            "x-upsert": "true",
+        }
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                resp = await client.put(url, content=data, headers=headers)
+                resp.raise_for_status()
+        except Exception as exc:
+            logger.warning("Supabase upload falhou (%s/%s): %s", bucket_name, normalized_path, exc)
+            return None
+        return self.public_url_for_bucket(bucket_name, normalized_path)
+
     async def download_bytes(self, *, bucket: str, path: str) -> bytes | None:
         bucket_name, normalized_path = _normalize_bucket_and_path(bucket, path)
         if not self._base_url or not bucket_name or not normalized_path:
