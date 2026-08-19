@@ -88,11 +88,6 @@ const SLIDE_ITEM_SCHEMA = {
       type: "string",
       enum: ["explaining", "celebrating", "thinking", "warning"],
     },
-    imagePrompt: { type: "string" },
-    iconPrompts: {
-      type: "array",
-      items: { type: "string" },
-    },
     sourceIds: {
       type: "array",
       items: { type: "string" },
@@ -105,8 +100,6 @@ const SLIDE_ITEM_SCHEMA = {
     "visualDescription",
     "characterQuote",
     "characterAction",
-    "imagePrompt",
-    "iconPrompts",
     "sourceIds",
   ],
 } as const;

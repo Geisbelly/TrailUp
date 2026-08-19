@@ -106,6 +106,92 @@ describe("GET /api/health", () => {
   });
 });
 
+// ─── POST /api/v1/generate/block ───────────────────────────────────────────
+
+describe("POST /api/v1/generate/block", () => {
+  let base: string;
+  let close: () => Promise<void>;
+
+  before(async () => ({ base, close } = await startTestServer({ apiSharedSecret: "test-secret" })));
+  after(async () => close());
+
+  it("exige x-api-secret", async () => {
+    const res = await fetch(`${base}/api/v1/generate/block`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ contentBlocks: [enrichedContentBlock()], profile: "mastermind" }),
+    });
+    assert.equal(res.status, 401);
+  });
+
+  it("exige contentBlocks e profile", async () => {
+    const res = await fetch(`${base}/api/v1/generate/block`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-api-secret": "test-secret" },
+      body: JSON.stringify({ contentBlocks: [] }),
+    });
+    assert.equal(res.status, 400);
+    const body = await res.json() as { error: string };
+    assert.match(body.error, /contentBlocks/);
+  });
+});
+
+// ─── POST /api/v1/generate/part-audio ──────────────────────────────────────
+
+describe("POST /api/v1/generate/part-audio", () => {
+  let base: string;
+  let close: () => Promise<void>;
+
+  before(async () => ({ base, close } = await startTestServer({ apiSharedSecret: "test-secret" })));
+  after(async () => close());
+
+  it("exige audioScript, profile, bucket e storagePath", async () => {
+    const res = await fetch(`${base}/api/v1/generate/part-audio`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-api-secret": "test-secret" },
+      body: JSON.stringify({ profile: "mastermind" }),
+    });
+    assert.equal(res.status, 400);
+    const body = await res.json() as { error: string };
+    assert.match(body.error, /audioScript/);
+  });
+
+  it("rejeita profile invalido", async () => {
+    const res = await fetch(`${base}/api/v1/generate/part-audio`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-api-secret": "test-secret" },
+      body: JSON.stringify({
+        audioScript: "roteiro de teste",
+        profile: "nao-existe",
+        bucket: "conteudo_aluno",
+        storagePath: "brainhex/mastermind/topico-1/audio/material-1-parte-01",
+      }),
+    });
+    assert.equal(res.status, 400);
+  });
+});
+
+// ─── POST /api/v1/generate/part-presentation ───────────────────────────────
+
+describe("POST /api/v1/generate/part-presentation", () => {
+  let base: string;
+  let close: () => Promise<void>;
+
+  before(async () => ({ base, close } = await startTestServer({ apiSharedSecret: "test-secret" })));
+  after(async () => close());
+
+  it("exige markdown, topic, profile, bucket e storagePath", async () => {
+    const res = await fetch(`${base}/api/v1/generate/part-presentation`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-api-secret": "test-secret" },
+      body: JSON.stringify({ profile: "mastermind" }),
+    });
+    assert.equal(res.status, 400);
+    const body = await res.json() as { error: string };
+    assert.match(body.error, /markdown/);
+  });
+});
+
 // ─── Rota desconhecida → 404 ─────────────────────────────────────────────────
 
 describe("rota desconhecida", () => {

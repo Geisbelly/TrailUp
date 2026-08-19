@@ -1039,6 +1039,77 @@ async def test_openai_spend_guard_bloqueia_chamadas_acima_do_teto(
     assert calls.get("calls") is None
 
 
+def test_derive_base_blocks_and_topic_e_deterministico_sem_llm() -> None:
+    context = _context()
+    base_blocks_1, topic_1, source_hash_1, segments_1 = enrichment_module.derive_base_blocks_and_topic(context)
+    base_blocks_2, topic_2, source_hash_2, segments_2 = enrichment_module.derive_base_blocks_and_topic(context)
+
+    assert [b["id"] for b in base_blocks_1] == [b["id"] for b in base_blocks_2]
+    assert topic_1 == topic_2
+    assert source_hash_1 == source_hash_2
+    assert len(segments_1) == len(segments_2)
+    assert all(b["id"].startswith("bloco-") for b in base_blocks_1)
+
+
+@pytest.mark.asyncio
+async def test_enrich_base_blocks_aceita_subconjunto_de_blocos(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    context = _context(paragraphs=2)
+    base_blocks, topic, source_hash, _segments = enrichment_module.derive_base_blocks_and_topic(context)
+    assert len(base_blocks) >= 1
+    subset = base_blocks[:1]
+
+    captured: dict[str, Any] = {}
+    monkeypatch.setattr(
+        enrichment_module,
+        "_gemini_client",
+        _gemini_factory(_rich_response, captured),
+    )
+
+    blocks, metadata = await enrichment_module.enrich_base_blocks(
+        base_blocks=subset,
+        topic=topic,
+        source_hash=source_hash,
+        settings=_settings(),
+    )
+
+    assert len(blocks) == 1
+    assert blocks[0]["id"] == subset[0]["id"]
+    assert metadata["enrichment_llm_provider"] == "gemini"
+    # so o subconjunto pedido (1 bloco) chegou na chamada ao Gemini - nao o
+    # conjunto completo de base_blocks do context.
+    assert len(captured["payloads"][-1]["blocos_base"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_enrich_content_blocks_continua_equivalente_apos_refatoracao(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Regressao: enrich_content_blocks precisa continuar se comportando
+    # exatamente igual apos virar um wrapper de derive_base_blocks_and_topic
+    # + enrich_base_blocks - mesmo formato de retorno, mesmos campos.
+    context = _context()
+    captured: dict[str, Any] = {}
+    monkeypatch.setattr(
+        enrichment_module,
+        "_gemini_client",
+        _gemini_factory(_rich_response, captured),
+    )
+
+    result = await enrich_content_blocks(
+        context=context,
+        settings=_settings(),
+    )
+
+    assert result["schema_version"]
+    assert isinstance(result["blocos"], list)
+    assert len(result["blocos"]) >= 1
+    assert result["metadata"]["enrichment_llm_provider"] == "gemini"
+    assert result["metadata"]["openai_fallback_used"] is False
+    assert result["metadata"]["gemini_failure_reason"] == ""
+
+
 # ─── Margem tolerada apos esgotar tentativas (bloco teimoso, ex.: bloco-22) ────
 
 

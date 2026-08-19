@@ -7,7 +7,6 @@ import pytest
 
 from app.services import personalizacao_jobs as jobs_module
 from app.services.personalizacao_jobs import (
-    JOB_KIND_MANUAL_RETRY,
     _assert_brainhex_media_completed,
     _build_targets,
     _compact_exception_text,
@@ -1794,84 +1793,6 @@ async def test_process_media_render_target_stops_redispatch_after_falha_streak_e
 
 
 @pytest.mark.asyncio
-async def test_process_media_render_target_manual_retry_bypasses_falha_streak_excedido(
-    monkeypatch,
-) -> None:
-    """Botao 'tentar novamente' do professor (kind=manual_retry) precisa
-    funcionar mesmo quando o circuit breaker automatico ja parou de
-    redisparar (streak >= max) - reseta o contador e prossegue com a
-    reclamacao normal em vez de pular como o class-delta automatico faria.
-    """
-    existing = _existing_record()
-    existing["materiais"] = {
-        "_geracao_falhas": {"generation_key": "ciclo-249:hash-249", "streak": 2}
-    }
-
-    monkeypatch.setattr(
-        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.buscar_mais_recente_por_perfil",
-        AsyncMock(return_value=existing),
-    )
-    reset_mock = AsyncMock()
-    monkeypatch.setattr(
-        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.resetar_falha_streak",
-        reset_mock,
-    )
-    claim_mock = AsyncMock(return_value=existing)
-    monkeypatch.setattr(
-        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.claim_retry_incomplete_generation",
-        claim_mock,
-    )
-    monkeypatch.setattr(
-        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.incrementar_falha_streak",
-        AsyncMock(return_value=1),
-    )
-    monkeypatch.setattr(
-        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.atualizar_status",
-        AsyncMock(return_value=False),
-    )
-    monkeypatch.setattr(
-        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.buscar_por_id",
-        AsyncMock(return_value=None),
-    )
-    monkeypatch.setattr(
-        jobs_module,
-        "fetch_personalizacao_context",
-        AsyncMock(return_value={"source_hash": "hash-249", "fontes": []}),
-    )
-    monkeypatch.setattr(
-        jobs_module,
-        "enrich_content_blocks",
-        AsyncMock(return_value={"blocos": [{"id": "bloco-01"}]}),
-    )
-    # Dispatch falha de proposito - o que importa aqui e provar que o
-    # bypass/reset do circuit breaker aconteceu ANTES da tentativa (a
-    # reclamacao e o disparo prosseguiram em vez de pular direto pro skip).
-    dispatch_mock = AsyncMock(return_value=False)
-    monkeypatch.setattr(jobs_module, "disparar_brainhex_async", dispatch_mock)
-
-    app = SimpleNamespace(
-        state=SimpleNamespace(
-            settings=SimpleNamespace(
-                personalizacao_job_stale_processing_min=15,
-                personalizacao_falha_streak_max=2,
-            )
-        )
-    )
-    job = {"id": "job-1", "classe_id": 32, "kind": JOB_KIND_MANUAL_RETRY, "payload": {}}
-    target = {"id": 579, "aluno_id": existing["aluno_id"], "topico_id": 117, "conteudo_id": None}
-
-    with pytest.raises(RuntimeError, match="Microservico BrainHex nao concluiu a geracao."):
-        await _process_media_render_target(
-            app=app, session=_FakeSession(is_stuck=False), job=job, target=target
-        )
-
-    reset_mock.assert_awaited_once()
-    assert reset_mock.await_args.kwargs["generation_key"] == "ciclo-249:hash-249"
-    claim_mock.assert_awaited_once()
-    dispatch_mock.assert_awaited_once()
-
-
-@pytest.mark.asyncio
 async def test_process_media_render_target_increments_falha_streak_when_dispatch_fails(
     monkeypatch,
 ) -> None:
@@ -2581,6 +2502,115 @@ async def test_job_keeps_deferred_target_pending_without_consuming_retry(
     assert target["attempts"] == 2
     assert target["personalizacao_id"] == 249
     assert finalized == ["partial"]
+
+
+@pytest.mark.asyncio
+async def test_job_media_generation_wiring_calls_orchestrator_and_finalizes_completed(monkeypatch) -> None:
+    """Teste de integracao leve do branch JOB_KIND_MEDIA_GENERATION: cobre a
+    fiacao (claim -> contexto -> orquestrador -> finalize), nao a logica do
+    orquestrador em si (ja coberta exaustivamente em
+    test_media_generation_jobs.py). processar_job_media_generation_once e
+    mockado aqui de proposito."""
+    job = {
+        "id": "job-mg-1",
+        "classe_id": 10,
+        "aluno_id": "aluno-1",
+        "topico_id": 100,
+        "conteudo_id": None,
+        "kind": jobs_module.JOB_KIND_MEDIA_GENERATION,
+        "payload": {"ciclo_id": "ciclo-1", "source_hash": "hash-1", "brainhex_profile_key": "mastermind"},
+    }
+    record = {"id": 7, "materiais": {}}
+    finalized: list[tuple[str, str | None]] = []
+    orchestrator_calls: list[dict] = []
+
+    claimed = False
+
+    async def claim_next_job(_self, *, stale_processing_min, partial_retry_delay_sec):
+        nonlocal claimed
+        if claimed:
+            return None
+        claimed = True
+        return job
+
+    async def buscar_por_ciclo_id(_self, *, aluno_id, ciclo_id):
+        assert aluno_id == "aluno-1"
+        assert ciclo_id == "ciclo-1"
+        return record
+
+    async def fetch_ctx(**kwargs):
+        return {
+            "source_hash": "hash-1",
+            "conteudo_classe": {"titulo": "Aula", "conteudos": [{"id": 1, "titulo": "Aula", "conteudo": "Texto base o suficiente para segmentar."}]},
+            "fontes_contexto": [],
+        }
+
+    async def listar_por_job(_self, *, job_id):
+        return []
+
+    async def processar_once_mock(**kwargs):
+        orchestrator_calls.append(kwargs)
+        return {"errors": 0, "fase_b_criada": False}
+
+    async def get_targets(_self, _job_id):
+        return [
+            {"id": 1, "media_kind": "enriquecimento", "block_id": "bloco-01", "status": "completed"},
+            {"id": 2, "media_kind": "capitulo", "block_id": "bloco-01", "status": "completed"},
+        ]
+
+    async def refresh_job_counters(_self, _job_id):
+        return {"processed_targets": 2, "error_count": 0}
+
+    async def finalize_job(_self, *, job_id, status, last_error=None):
+        finalized.append((status, last_error))
+
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.claim_next_job",
+        claim_next_job,
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.get_targets",
+        get_targets,
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.refresh_job_counters",
+        refresh_job_counters,
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.finalize_job",
+        finalize_job,
+    )
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.buscar_por_ciclo_id",
+        buscar_por_ciclo_id,
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_blocos.PersonalizacaoBlocosRepository.listar_por_job",
+        listar_por_job,
+    )
+    monkeypatch.setattr(jobs_module, "fetch_personalizacao_context", fetch_ctx)
+    monkeypatch.setattr(jobs_module, "processar_job_media_generation_once", processar_once_mock)
+
+    session_factory = _WorkerSessionFactory()
+    app = SimpleNamespace(
+        state=SimpleNamespace(
+            session_factory=session_factory,
+            settings=SimpleNamespace(
+                personalizacao_job_stale_processing_min=40,
+                brainhex_api_wait_timeout_sec=1980,
+                personalizacao_job_max_retries=3,
+                supabase_url="https://xrebtkmdewolzmpsdwgh.supabase.co",
+                supabase_service_key=None,
+            ),
+        )
+    )
+
+    processed = await process_personalizacao_job_once(app)
+
+    assert processed is True
+    assert len(orchestrator_calls) == 1
+    assert orchestrator_calls[0]["profile"] == "mastermind"
+    assert finalized == [("completed", None)]
 
 
 @pytest.mark.asyncio

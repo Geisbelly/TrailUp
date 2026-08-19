@@ -29,8 +29,14 @@ export interface SlideContent {
   visualDescription: string;
   characterQuote: string;
   characterAction: "explaining" | "celebrating" | "thinking" | "warning";
-  imagePrompt: string;
-  iconPrompts: string[];
+  // Opcionais: so preenchidos pelo fluxo de regeneracao individual de slide
+  // (regenerateSlideContent em geminiService.ts), que ainda gera imagem via
+  // Gemini pra aquele slide especifico. O schema de geracao em lote
+  // (validateBlockBatchGeneration) nao pede mais esses campos ao modelo -
+  // o BrainHexPDF gera o deck inteiro por fora e payload.slides nunca sai
+  // do servidor (ver comentario em archiveMultiPartToSupabase, server.ts).
+  imagePrompt?: string;
+  iconPrompts?: string[];
   sourceIds: string[];
 }
 
@@ -55,6 +61,11 @@ export interface ProcessedContent {
   slideImages?: string[];
   audioBase64?: string | null;
   audioMp3Base64?: string | null;
+  /** Capítulo bruto por bloco — só populado quando generation_mode é
+   * "block_batches" (ver consolidateBlockBatchGenerations). Usado pelo
+   * endpoint /api/v1/generate/block para persistir cada bloco separado,
+   * em vez de só o markdown/audioScript já consolidado acima. */
+  chapters?: { blockId: string; markdown: string; audioScript: string; slides: SlideContent[] }[];
 }
 
 export interface EnrichedContentBlock {

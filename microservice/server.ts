@@ -40,7 +40,11 @@ import {
   type PersistedMaterialsMerge,
 } from "./src/services/supabaseService";
 import { createLogger, type Logger } from "./src/lib/logger";
-import { renderAndUploadPresentationViaBrainHexPdf } from "./src/services/brainHexPdfClient";
+import {
+  renderAndUploadPresentationViaBrainHexPdf,
+  type RenderAndUploadPresentationResult,
+  type PresentationRenderStage,
+} from "./src/services/brainHexPdfClient";
 import { validatePersonalizarBody } from "./src/lib/validators";
 import type { ContentBlock } from "./src/lib/validators";
 import { createRateLimiter } from "./src/lib/rateLimit";
@@ -87,7 +91,7 @@ function now() {
 
 // ─── Core: archive to Supabase ────────────────────────────────────────────────
 
-export type PresentationFailureStage = "render" | "upload";
+export type PresentationFailureStage = PresentationRenderStage;
 
 export interface PresentationFailure {
   stage: PresentationFailureStage;
@@ -334,6 +338,42 @@ export async function archiveToSupabase(params: {
 }
 
 /**
+ * Dispara a geracao de audio (por parte) e o render+upload da apresentacao
+ * via BrainHexPDF (por parte) CONCORRENTEMENTE entre si e entre partes.
+ * Antes, o pipeline esperava todo o audio terminar antes de comecar a
+ * chamar o BrainHexPDF, e ainda chamava uma parte por vez em serie dentro
+ * de archiveMultiPartToSupabase - para decks com varias partes, isso somava
+ * o tempo de audio + N chamadas de rede sequenciais (timeout de ate 120s
+ * cada). Aqui as duas frentes (audio de todas as partes, apresentacao de
+ * todas as partes) comecam juntas; renderPresentation nunca rejeita (ver
+ * renderAndUploadPresentationViaBrainHexPdf), so retorna failure no result.
+ */
+export async function runAudioAndPresentationInParallel<TAudio>(
+  parts: ContentPart[],
+  deps: {
+    generateAudio: (audioScript: string) => Promise<TAudio>;
+    renderPresentation: (part: ContentPart) => Promise<RenderAndUploadPresentationResult>;
+    // Teto de quantas partes geram audio ao mesmo tempo - disparar todas de
+    // uma vez estourava RPM do free tier do Gemini (~10 req/min por conta)
+    // mesmo com rotacao de chave correta. settleWithConcurrency preserva a
+    // mesma semantica de sucesso parcial do Promise.allSettled que isto
+    // usava antes (uma parte falhando nao derruba as outras), so limitando
+    // quantas rodam ao mesmo tempo. A apresentacao continua sem teto - o
+    // gargalo de rate limit e so no Gemini TTS.
+    audioConcurrency: number;
+  },
+): Promise<{
+  audioSettled: PromiseSettledResult<TAudio>[];
+  presentationResults: RenderAndUploadPresentationResult[];
+}> {
+  const [audioSettled, presentationResults] = await Promise.all([
+    settleWithConcurrency(parts, deps.audioConcurrency, (part) => deps.generateAudio(part.audioScript)),
+    Promise.all(parts.map((part) => deps.renderPresentation(part))),
+  ]);
+  return { audioSettled, presentationResults };
+}
+
+/**
  * Versao multi-parte de archiveToSupabase, usada pelo pipeline de
  * personalizacao (runPipeline). A sintese continua sendo UMA so (sem
  * duplicar topicos - ver mergeContentBlocksIntoOne), mas a ENTREGA vira N
@@ -347,11 +387,14 @@ export async function archiveToSupabase(params: {
  * versao single-file (archiveToSupabase) - nao precisa dessa divisao.
  */
 export async function archiveMultiPartToSupabase(params: {
-  profile:         BrainHexProfile;
   storagePath:     string;
   bucket:          string;
   refId:           string;
   parts:           Array<ContentPart & { mp3Base64: string | null; wavBase64: string | null }>;
+  // Ja resolvidos ANTES de chamar esta funcao (ver runAudioAndPresentationInParallel)
+  // - concorrente com a geracao de audio, nao mais chamado aqui em serie.
+  // Alinhado 1:1 por indice com `parts`.
+  presentationResults: RenderAndUploadPresentationResult[];
   presentationTheme: PresentationDesignPlan;
   personalizacaoId: number | null;
   fence?:           GenerationFence;
@@ -363,7 +406,7 @@ export async function archiveMultiPartToSupabase(params: {
   presentationFailure: PresentationFailure | null;
   persisted: PersistedMaterialsMerge | null;
 }> {
-  const { profile, storagePath, bucket, refId, parts, presentationTheme, personalizacaoId, fence } = params;
+  const { storagePath, bucket, refId, parts, presentationResults, presentationTheme, personalizacaoId, fence } = params;
   const lg = params.log ?? log;
   const multiPart = parts.length > 1;
 
@@ -378,7 +421,8 @@ export async function archiveMultiPartToSupabase(params: {
   let anyPresentationFallbackNeeded = false;
   let anyAudioIsMp3 = false;
 
-  for (const part of parts) {
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
     const suffix = multiPart ? `-parte-${String(part.ordem).padStart(2, "0")}` : "";
 
     const audioPayload = part.mp3Base64 ?? part.wavBase64;
@@ -422,28 +466,10 @@ export async function archiveMultiPartToSupabase(params: {
     });
 
     const presentationPath = `${storagePath}/apresentacao/material-${refId}${suffix}.html`;
-    const presentationResult = await renderAndUploadPresentationViaBrainHexPdf({
-      markdown: part.markdown,
-      topic: part.titulo,
-      profile,
-      bucket,
-      presentationPath,
-      ...(personalizacaoId !== null && fence
-        ? {
-            personalizacaoId,
-            fence,
-            versionMetadata: {
-              engine: PRESENTATION_ENGINE_VERSION,
-              schema: PRESENTATION_SCHEMA_VERSION,
-              design_system: PRESENTATION_DESIGN_VERSION,
-              media_pipeline_version: MEDIA_PIPELINE_VERSION,
-            },
-            ordem: part.ordem,
-            totalPartes: parts.length,
-            titulo: part.titulo,
-          }
-        : {}),
-    });
+    // Ja resolvido ANTES de chamar esta funcao (concorrente com a geracao de
+    // audio - ver runAudioAndPresentationInParallel/runPipeline), incluindo
+    // o fencing pro BrainHexPDF gravar direto no banco quando aplicavel.
+    const presentationResult = presentationResults[i];
     if (!presentationResult.dbWritten) {
       anyPresentationFallbackNeeded = true;
     }
@@ -979,20 +1005,48 @@ async function runPipeline(
         )
       : generateLongNaturalAudio(audioScript, voice, voiceProfile.direction);
 
-  // settleWithConcurrency preserva a regra existente de sucesso parcial (uma
-  // parte de audio falhando nao derruba as outras - mesma semantica de
-  // Promise.allSettled), mas limita quantas partes geram audio ao mesmo
-  // tempo. Disparar todas de uma vez (Promise.allSettled puro, sem teto)
-  // estourava RPM do free tier do Gemini (~10 req/min por conta) mesmo com
-  // rotacao de chave correta - a rajada em si e o problema, nao so a chave
-  // usada. A apresentacao de cada parte e gerada dentro de
-  // archiveMultiPartToSupabase (chamada ao BrainHexPDF por parte) - corte
-  // seco: falha lá derruba a apresentacao inteira, sem fallback (ver design).
-  const audioSettled = await settleWithConcurrency(
-    parts,
-    resolveAudioPartConcurrency(process.env.CONTENT_GENERATION_AUDIO_PART_CONCURRENCY),
-    (part) => generatePartAudio(part.audioScript),
-  );
+  // A apresentacao (chamada ao BrainHexPDF, uma por parte) roda CONCORRENTE
+  // com o audio - ver runAudioAndPresentationInParallel - em vez de esperar
+  // o audio inteiro pra so entao chamar o BrainHexPDF em serie por parte
+  // (achado do code review: isso inflava bastante a latencia total em decks
+  // com varias partes). Falha na apresentacao de uma parte derruba so
+  // aquela parte, sem fallback (ver design). O audio, por sua vez, usa
+  // settleWithConcurrency (mesma semantica de sucesso parcial do
+  // Promise.allSettled) com um teto de partes simultaneas - disparar todas
+  // de uma vez estourava RPM do free tier do Gemini (~10 req/min por conta)
+  // mesmo com rotacao de chave correta.
+  const multiPart = parts.length > 1;
+  const { audioSettled, presentationResults } = await runAudioAndPresentationInParallel(parts, {
+    generateAudio: generatePartAudio,
+    audioConcurrency: resolveAudioPartConcurrency(process.env.CONTENT_GENERATION_AUDIO_PART_CONCURRENCY),
+    renderPresentation: (part) =>
+      renderAndUploadPresentationViaBrainHexPdf({
+        markdown: part.markdown,
+        topic: part.titulo,
+        profile,
+        bucket,
+        presentationPath: `${storagePath}/apresentacao/material-${refId}${
+          multiPart ? `-parte-${String(part.ordem).padStart(2, "0")}` : ""
+        }.html`,
+        // Fencing pro BrainHexPDF gravar direto no banco (RPC
+        // merge_personalizacao_materiais_v2) - ver
+        // docs/superpowers/specs/2026-08-16-brainhexpdf-direct-db-write-design.md.
+        // personalizacaoId/fence sempre presentes aqui (parametros
+        // obrigatorios de runPipeline, nao o caminho de preview de
+        // /api/v1/archive).
+        personalizacaoId,
+        fence,
+        versionMetadata: {
+          engine: PRESENTATION_ENGINE_VERSION,
+          schema: PRESENTATION_SCHEMA_VERSION,
+          design_system: PRESENTATION_DESIGN_VERSION,
+          media_pipeline_version: MEDIA_PIPELINE_VERSION,
+        },
+        ordem: part.ordem,
+        totalPartes: parts.length,
+        titulo: part.titulo,
+      }),
+  });
 
   const audioByPart = audioSettled.map((result, index) => {
     if (result.status === "fulfilled") {
@@ -1008,13 +1062,13 @@ async function runPipeline(
     wavBase64: audioByPart[index]?.wavBase64 ?? null,
   }));
 
-  // 4. Persiste tudo no Supabase (apresentacao gerada via BrainHexPDF por parte)
+  // 4. Persiste tudo no Supabase (apresentacao ja resolvida em paralelo acima)
   const archived = await archiveMultiPartToSupabase({
-    profile,
     storagePath,
     bucket,
     refId,
     parts: partsWithAudio,
+    presentationResults,
     presentationTheme: presentationPlan,
     personalizacaoId,
     fence,
@@ -1311,6 +1365,135 @@ export function buildApp(opts: AppOptions = {}): express.Application {
     } catch (error: any) {
       req.log.error("regenerate document erro", { err: error });
       res.status(500).json({ error: error?.message || "Falha ao regenerar documento" });
+    }
+  });
+
+  // ── POST /api/v1/generate/block — geração granular por bloco ────
+  //
+  // Usado pelo worker de fila do Python (Fase A da geracao retomavel — ver
+  // docs/superpowers/specs/2026-08-18-geracao-granular-retomavel-design.md).
+  // Aceita um SUBCONJUNTO de blocos já enriquecidos (só os que ainda faltam
+  // numa retentativa) e devolve o capítulo (markdown+audioScript+slides) de
+  // cada um. Reaproveita processMediaWithGemini inteiro — já faz
+  // batching/concorrência/fallback Gemini→OpenAI quando contentBlocks não
+  // está vazio, sem nenhuma fonte binária (filesData=[]).
+  app.post("/api/v1/generate/block", requireSecret, async (req, res) => {
+    try {
+      const { contentBlocks, profile, presentation_theme: presentationTheme, guidance_prompt: guidancePrompt } = req.body ?? {};
+      if (!Array.isArray(contentBlocks) || contentBlocks.length === 0) {
+        return res.status(400).json({ error: "contentBlocks é obrigatório e não pode ser vazio" });
+      }
+      if (typeof profile !== "string" || !VALID_PROFILES.includes(profile as BrainHexProfile)) {
+        return res.status(400).json({ error: "profile é obrigatório e precisa ser um perfil BrainHex válido" });
+      }
+      const presentationPlan = buildPresentationDesignPlan(
+        profile as BrainHexProfile,
+        presentationTheme ?? {},
+        contentBlocks[0]?.tema || contentBlocks[0]?.topico || "Conteúdo de estudo",
+      );
+      const result = await processMediaWithGemini(
+        [],
+        profile as BrainHexProfile,
+        contentBlocks,
+        presentationPlan,
+        typeof guidancePrompt === "string" ? guidancePrompt : undefined,
+      );
+      if (!result.chapters || result.chapters.length === 0) {
+        return res.status(502).json({ error: "geração não retornou capítulos por bloco" });
+      }
+      res.json({ success: true, chapters: result.chapters });
+    } catch (error: any) {
+      req.log.error("generate/block erro", { err: error });
+      res.status(500).json({ error: error?.message || "Falha ao gerar capítulos por bloco" });
+    }
+  });
+
+  // ── POST /api/v1/generate/part-audio — TTS granular por parte ───
+  //
+  // Fase B da geracao retomavel: gera e sobe o audio de UMA parte de
+  // entrega (ja resplitada pelo worker Python a partir do markdown
+  // consolidado dos blocos da Fase A). storagePath vem SEM extensao — a
+  // extensao real (mp3 preferencial, wav fallback) e decidida aqui, como
+  // ja acontece em archiveMultiPartToSupabase.
+  app.post("/api/v1/generate/part-audio", requireSecret, async (req, res) => {
+    try {
+      const { audioScript, profile, bucket, storagePath } = req.body ?? {};
+      if (typeof audioScript !== "string" || !audioScript.trim()) {
+        return res.status(400).json({ error: "audioScript é obrigatório" });
+      }
+      if (typeof profile !== "string" || !VALID_PROFILES.includes(profile as BrainHexProfile)) {
+        return res.status(400).json({ error: "profile é obrigatório e precisa ser um perfil BrainHex válido" });
+      }
+      if (typeof bucket !== "string" || !bucket.trim() || typeof storagePath !== "string" || !storagePath.trim()) {
+        return res.status(400).json({ error: "bucket e storagePath são obrigatórios" });
+      }
+      const typedProfile = profile as BrainHexProfile;
+      const voiceProfile = GUARDIAN_VOICE_PROFILES[typedProfile];
+      const secondaryGuideName = BRAIN_HEX_CONFIG[typedProfile]?.secondaryGuideName;
+      const audioResult = secondaryGuideName && voiceProfile.secondaryVoice
+        ? await generateLongConversationalAudio(
+            audioScript,
+            { name: BRAIN_HEX_CONFIG[typedProfile].guideName, voice: voiceProfile.voice, direction: voiceProfile.direction },
+            { name: secondaryGuideName, voice: voiceProfile.secondaryVoice, direction: voiceProfile.secondaryDirection },
+          )
+        : await generateLongNaturalAudio(audioScript, voiceProfile.voice, voiceProfile.direction);
+
+      const audioPayload = audioResult.mp3 ?? audioResult.wav;
+      if (!audioPayload) {
+        return res.status(502).json({ error: "geração de áudio não retornou mp3 nem wav" });
+      }
+      const ext = audioResult.mp3 ? "mp3" : "wav";
+      const mime = audioResult.mp3 ? "audio/mpeg" : "audio/wav";
+      const path = `${storagePath}.${ext}`;
+      const audioUrl = await uploadBuffer(bucket, path, Buffer.from(audioPayload, "base64"), mime);
+      if (!audioUrl) {
+        return res.status(502).json({ error: "upload do áudio falhou" });
+      }
+      res.json({ success: true, url: audioUrl, storagePath: path, mimeType: mime });
+    } catch (error: any) {
+      req.log.error("generate/part-audio erro", { err: error });
+      res.status(500).json({ error: error?.message || "Falha ao gerar áudio da parte" });
+    }
+  });
+
+  // ── POST /api/v1/generate/part-presentation — render granular por parte ──
+  //
+  // Fase B da geracao retomavel: renderiza e sobe a apresentacao de UMA
+  // parte via BrainHexPDF. O upload real acontece do lado do BrainHexPDF
+  // (SUPABASE_SERVICE_ROLE_KEY dele) — aqui so repassa a chamada, igual
+  // arquiveMultiPartToSupabase ja faz por parte hoje.
+  app.post("/api/v1/generate/part-presentation", requireSecret, async (req, res) => {
+    try {
+      const { markdown, topic, profile, bucket, storagePath } = req.body ?? {};
+      if (typeof markdown !== "string" || !markdown.trim()) {
+        return res.status(400).json({ error: "markdown é obrigatório" });
+      }
+      if (typeof topic !== "string" || !topic.trim()) {
+        return res.status(400).json({ error: "topic é obrigatório" });
+      }
+      if (typeof profile !== "string" || !VALID_PROFILES.includes(profile as BrainHexProfile)) {
+        return res.status(400).json({ error: "profile é obrigatório e precisa ser um perfil BrainHex válido" });
+      }
+      if (typeof bucket !== "string" || !bucket.trim() || typeof storagePath !== "string" || !storagePath.trim()) {
+        return res.status(400).json({ error: "bucket e storagePath são obrigatórios" });
+      }
+      const result = await renderAndUploadPresentationViaBrainHexPdf({
+        markdown,
+        topic,
+        profile: profile as BrainHexProfile,
+        bucket,
+        presentationPath: storagePath,
+      });
+      if (result.failure) {
+        return res.status(502).json({
+          error: result.failure.error,
+          error_stage: result.failure.stage,
+        });
+      }
+      res.json({ success: true, url: result.presentationUrl });
+    } catch (error: any) {
+      req.log.error("generate/part-presentation erro", { err: error });
+      res.status(500).json({ error: error?.message || "Falha ao gerar apresentação da parte" });
     }
   });
 

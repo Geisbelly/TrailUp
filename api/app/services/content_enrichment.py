@@ -1180,14 +1180,13 @@ async def _enrich_base_blocks_with_gemini(
     )
 
 
-async def enrich_content_blocks(
-    *,
+def derive_base_blocks_and_topic(
     context: dict[str, Any],
-    settings: Settings,
-) -> dict[str, Any]:
-    """Separa, aprofunda e só então libera blocos neutros para personalização."""
-    # Etapa 1: separação neutra e rastreável. Nenhum perfil BrainHex participa
-    # do agrupamento; assim os mesmos blocos-base atendem aos sete perfis.
+) -> tuple[list[dict[str, Any]], dict[str, Any], str, list[dict[str, Any]]]:
+    """Segmentacao neutra e rastreavel - sem LLM, sempre deterministica pro
+    mesmo context. Nenhum perfil BrainHex participa do agrupamento; assim os
+    mesmos blocos-base atendem aos sete perfis. Retorna
+    (base_blocks, topic_payload, source_hash, segments)."""
     segments = _source_segments(context)
     base_blocks = _group_segments(context, segments)
     class_content = context.get("conteudo_classe") if isinstance(context.get("conteudo_classe"), dict) else {}
@@ -1198,14 +1197,20 @@ async def enrich_content_blocks(
         "descricao": _text(topic.get("descricao")),
         "objetivo": _text(topic.get("objetivo")),
     }
-    # Etapa 2: aprofundamento curricular neutro. Gemini é o provedor PRINCIPAL
-    # (gratuito no tier atual, sem risco de cobrança) com fallback automático
-    # pra OpenAI só quando o Gemini falhar (rate-limit, circuito de
-    # indisponibilidade ou qualquer outro erro após esgotar as tentativas).
-    # A OpenAI usa um modelo barato (gpt-4o-mini) e tem trava de gasto
-    # estimado (ver openai_spend_cap_usd) — nunca é o caminho principal
-    # justamente pra minimizar o uso de um provedor pago. A personalização
-    # editorial acontece somente depois, ao enviar estes blocos ao microserviço.
+    return base_blocks, topic_payload, source_hash, segments
+
+
+async def enrich_base_blocks(
+    *,
+    base_blocks: list[dict[str, Any]],
+    topic: dict[str, Any],
+    source_hash: str,
+    settings: Settings,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Aprofundamento curricular neutro de um conjunto (ou subconjunto, numa
+    retentativa) de blocos-base. Gemini e o provedor PRINCIPAL, com fallback
+    automatico pra OpenAI so quando o Gemini falhar. Retorna
+    (blocks_aprofundados, provider_metadata_com_enrichment_llm_provider)."""
     openai_key = str(getattr(settings, "openai_api_key", "") or "").strip()
     gemini_key = str(getattr(settings, "gemini_api_key", "") or "").strip()
     if not openai_key and not gemini_key:
@@ -1222,7 +1227,7 @@ async def enrich_content_blocks(
         try:
             blocks, provider_metadata = await _enrich_base_blocks_with_gemini(
                 base_blocks=base_blocks,
-                topic=topic_payload,
+                topic=topic,
                 source_hash=source_hash,
                 settings=settings,
             )
@@ -1239,7 +1244,7 @@ async def enrich_content_blocks(
         try:
             blocks, provider_metadata = await _enrich_base_blocks_with_openai(
                 base_blocks=base_blocks,
-                topic=topic_payload,
+                topic=topic,
                 source_hash=source_hash,
                 settings=settings,
             )
@@ -1250,10 +1255,34 @@ async def enrich_content_blocks(
                 f"Gemini: {gemini_error}. OpenAI: {openai_error}"
             ) from openai_error
 
+    provider_metadata = dict(provider_metadata)
+    provider_metadata["enrichment_llm_provider"] = llm_provider
+    provider_metadata["openai_fallback_used"] = llm_provider == "openai"
+    provider_metadata["gemini_failure_reason"] = (
+        _text(str(gemini_error)) if llm_provider == "openai" and gemini_error else ""
+    )
+    return blocks, provider_metadata
+
+
+async def enrich_content_blocks(
+    *,
+    context: dict[str, Any],
+    settings: Settings,
+) -> dict[str, Any]:
+    """Separa, aprofunda e só então libera blocos neutros para personalização."""
+    base_blocks, topic_payload, source_hash, segments = derive_base_blocks_and_topic(context)
+    blocks, provider_metadata = await enrich_base_blocks(
+        base_blocks=base_blocks,
+        topic=topic_payload,
+        source_hash=source_hash,
+        settings=settings,
+    )
+    llm_provider = provider_metadata["enrichment_llm_provider"]
+
     return {
         "schema_version": _SCHEMA_VERSION,
         "source_hash": source_hash,
-        "tema": _text(topic.get("nome") or topic.get("titulo")) or "Conteúdo de estudo",
+        "tema": _text(topic_payload.get("titulo")) or "Conteúdo de estudo",
         "blocos": blocks,
         "metadata": {
             "segmentos_origem": len(segments),
@@ -1266,11 +1295,9 @@ async def enrich_content_blocks(
             # Provedor de LLM que efetivamente respondeu esta chamada — "provider"/
             # "enrichment_provider" acima são o contrato de versão fixo (sempre
             # "openai", ver media_contract.py), não quem gerou o texto de fato.
-            "enrichment_llm_provider": llm_provider,
-            "openai_fallback_used": llm_provider == "openai",
-            "gemini_failure_reason": (
-                _text(str(gemini_error)) if llm_provider == "openai" and gemini_error else ""
-            ),
+            "enrichment_llm_provider": provider_metadata["enrichment_llm_provider"],
+            "openai_fallback_used": provider_metadata["openai_fallback_used"],
+            "gemini_failure_reason": provider_metadata["gemini_failure_reason"],
             "personalization_applied": False,
             "pipeline_order": [
                 "content_decomposition",
