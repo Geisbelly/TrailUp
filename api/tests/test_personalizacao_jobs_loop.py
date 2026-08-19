@@ -2613,6 +2613,147 @@ async def test_job_media_generation_wiring_calls_orchestrator_and_finalizes_comp
     assert finalized == [("completed", None)]
 
 
+async def _run_media_generation_wiring(monkeypatch, *, targets, refresh_counters):
+    """Reproduz o mesmo fiacao de
+    test_job_media_generation_wiring_calls_orchestrator_and_finalizes_completed,
+    parametrizado pelos targets/contadores finais - usado pra provar o bug
+    real (job.status travava em 'processing' pra sempre quando o resultado
+    nao era 'completed', porque finalize_job so era chamado nesse caso)."""
+    job = {
+        "id": "job-mg-1",
+        "classe_id": 10,
+        "aluno_id": "aluno-1",
+        "topico_id": 100,
+        "conteudo_id": None,
+        "kind": jobs_module.JOB_KIND_MEDIA_GENERATION,
+        "payload": {"ciclo_id": "ciclo-1", "source_hash": "hash-1", "brainhex_profile_key": "mastermind"},
+    }
+    record = {"id": 7, "materiais": {}}
+    finalized: list[tuple[str, str | None]] = []
+    claimed = False
+
+    async def claim_next_job(_self, *, stale_processing_min, partial_retry_delay_sec):
+        nonlocal claimed
+        if claimed:
+            return None
+        claimed = True
+        return job
+
+    async def buscar_por_ciclo_id(_self, *, aluno_id, ciclo_id):
+        return record
+
+    async def fetch_ctx(**kwargs):
+        return {
+            "source_hash": "hash-1",
+            "conteudo_classe": {"titulo": "Aula", "conteudos": [{"id": 1, "titulo": "Aula", "conteudo": "Texto base o suficiente para segmentar."}]},
+            "fontes_contexto": [],
+        }
+
+    async def listar_por_job(_self, *, job_id):
+        return []
+
+    async def processar_once_mock(**kwargs):
+        return {"errors": 0, "fase_b_criada": False}
+
+    async def get_targets(_self, _job_id):
+        return targets
+
+    async def refresh_job_counters(_self, _job_id):
+        return refresh_counters
+
+    async def finalize_job(_self, *, job_id, status, last_error=None):
+        finalized.append((status, last_error))
+
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.claim_next_job",
+        claim_next_job,
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.get_targets",
+        get_targets,
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.refresh_job_counters",
+        refresh_job_counters,
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.finalize_job",
+        finalize_job,
+    )
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.buscar_por_ciclo_id",
+        buscar_por_ciclo_id,
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_blocos.PersonalizacaoBlocosRepository.listar_por_job",
+        listar_por_job,
+    )
+    monkeypatch.setattr(jobs_module, "fetch_personalizacao_context", fetch_ctx)
+    monkeypatch.setattr(jobs_module, "processar_job_media_generation_once", processar_once_mock)
+
+    session_factory = _WorkerSessionFactory()
+    app = SimpleNamespace(
+        state=SimpleNamespace(
+            session_factory=session_factory,
+            settings=SimpleNamespace(
+                personalizacao_job_stale_processing_min=40,
+                brainhex_api_wait_timeout_sec=1980,
+                personalizacao_job_max_retries=3,
+                supabase_url="https://xrebtkmdewolzmpsdwgh.supabase.co",
+                supabase_service_key=None,
+            ),
+        )
+    )
+
+    processed = await process_personalizacao_job_once(app)
+    assert processed is True
+    return finalized
+
+
+@pytest.mark.asyncio
+async def test_job_media_generation_finalizes_failed_when_all_targets_exhausted_retries(
+    monkeypatch,
+) -> None:
+    """Bug real (achado investigando 'console sem status, botao de retry
+    nunca habilita'): o branch media_generation so chamava finalize_job
+    quando final_status era 'completed'. Quando TODOS os targets esgotavam
+    as tentativas e viravam 'failed', job.status ficava travado em
+    'processing' pra sempre - o console nunca via status=failed, e o botao
+    'tentar novamente' (TopicsManager.tsx, depende de status=='failed') nunca
+    habilitava."""
+    finalized = await _run_media_generation_wiring(
+        monkeypatch,
+        targets=[
+            {"id": 1, "media_kind": "enriquecimento", "block_id": "bloco-01", "status": "failed", "last_error": "gemini indisponivel"},
+            {"id": 2, "media_kind": "capitulo", "block_id": "bloco-01", "status": "failed", "last_error": "gemini indisponivel"},
+        ],
+        refresh_counters={"processed_targets": 2, "error_count": 2},
+    )
+
+    assert finalized == [("failed", "gemini indisponivel")]
+
+
+@pytest.mark.asyncio
+async def test_job_media_generation_finalizes_partial_when_some_targets_still_pending(
+    monkeypatch,
+) -> None:
+    """Mesma classe de bug: com 1 target completed e outro ainda pending
+    (retry programado), o job precisa virar 'partial' pra ser reclamado pelo
+    poller com a janela rapida de partial_retry_delay_sec - antes do fix,
+    job.status nunca saia de 'processing' e so seria reclamado apos
+    stale_processing_min (15-40min), atrasando a retomada sem necessidade."""
+    finalized = await _run_media_generation_wiring(
+        monkeypatch,
+        targets=[
+            {"id": 1, "media_kind": "enriquecimento", "block_id": "bloco-01", "status": "completed"},
+            {"id": 2, "media_kind": "capitulo", "block_id": "bloco-01", "status": "pending", "attempts": 1},
+        ],
+        refresh_counters={"processed_targets": 1, "error_count": 0},
+    )
+
+    assert finalized == [("partial", None)]
+
+
 @pytest.mark.asyncio
 async def test_job_fails_target_stuck_too_long_on_microservice_contract_gate(
     monkeypatch,
