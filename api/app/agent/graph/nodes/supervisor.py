@@ -2,7 +2,8 @@ from typing import Any
 
 from app.agent.graph.routing import build_state_summary, compute_personalizacao_next, compute_supervisor_next
 from app.core.settings import Settings
-from app.services.llm import JsonLLMService
+from app.schemas.supervisor_decision import SupervisorDecision
+from app.services.llm import JsonLLMService, StructuredOutputError
 
 VALID_NEXT = {
     "agente_emocao",
@@ -35,20 +36,21 @@ async def supervisor(state: dict[str, Any], settings: Settings) -> dict[str, Any
     deterministic_next = compute_supervisor_next(state)
     summary = build_state_summary(state)
 
-    result = await llm.ainvoke_json(
-        prompt_name="supervisor.txt",
-        payload=summary,
-        model=settings.active_model_supervisor,
-        fallback_factory=lambda: {
-            "next": deterministic_next,
-            "justificativa": "roteamento deterministico do MVP",
-        },
-    )
-    next_nodes = [node for node in result.get("next", []) if node in VALID_NEXT]
+    try:
+        decisao = await llm.ainvoke_structured(
+            prompt_name="supervisor.txt",
+            payload=summary,
+            schema=SupervisorDecision,
+            model=settings.active_model_supervisor,
+        )
+    except StructuredOutputError:
+        decisao = SupervisorDecision(next=deterministic_next, justificativa="roteamento deterministico do MVP")
+
+    next_nodes = [node for node in decisao.next if node in VALID_NEXT]
     if not next_nodes:
         next_nodes = deterministic_next
 
     return {
         "next": next_nodes,
-        "messages": [result.get("justificativa", "supervisor executado")],
+        "messages": [decisao.justificativa or "supervisor executado"],
     }

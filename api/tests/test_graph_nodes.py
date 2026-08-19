@@ -228,6 +228,27 @@ class _FakeSessionFactory:
 
 
 @pytest.mark.asyncio
+async def test_supervisor_falls_back_to_deterministic_routing_without_llm() -> None:
+    from app.agent.graph.nodes.supervisor import supervisor
+
+    settings = Settings(openai_api_key=None)
+    result = await supervisor(
+        {
+            "workflow_kind": "chat",
+            "frame_b64": None,
+            "eventos_novos": [],
+            "historico_eventos": [],
+            "desempenho_recente": {},
+            "completed_nodes": [],
+        },
+        settings=settings,
+    )
+
+    assert isinstance(result["next"], list)
+    assert isinstance(result["messages"][0], str)
+
+
+@pytest.mark.asyncio
 async def test_agente_trilha_rejeita_pulo_de_ordem_e_cai_no_fallback(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
