@@ -52,10 +52,10 @@ def test_normalize_database_url_preserves_real_password() -> None:
 def test_idempotent_generated_materials_is_the_only_alembic_head() -> None:
     scripts = ScriptDirectory.from_config(_offline_alembic_config())
 
-    assert scripts.get_heads() == ["20260818_01"]
-    revision = scripts.get_revision("20260818_01")
+    assert scripts.get_heads() == ["20260819_01"]
+    revision = scripts.get_revision("20260819_01")
     assert revision is not None
-    assert revision.down_revision == "20260803_01"
+    assert revision.down_revision == "20260818_01"
 
 
 def test_personalizacao_jobs_conteudo_fk_renders_idempotent_offline_sql() -> None:
