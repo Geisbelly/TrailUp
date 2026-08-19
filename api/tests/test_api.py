@@ -13,6 +13,7 @@ from app.api.v1 import telemetria as telemetria_module
 from app.repositories.access import AccessRepository
 from app.repositories.conteudo_classe import ConteudoClasseRepository
 from app.repositories.conteudo_personalizado import ConteudoPersonalizadoRepository
+from app.repositories.context import ContextRepository
 from app.repositories.evento import EventoRepository
 from app.repositories.fontes_personalizacao import FontesPersonalizacaoRepository
 from app.repositories.materiais import MateriaisRepository
@@ -21,6 +22,7 @@ from app.repositories.telemetria import TelemetriaRepository
 from app.schemas.api import AnalisarResponse
 from app.schemas.telemetria import TelemetriaLotePayload
 from app.services.auth import UserContext
+from app.services.llm import JsonLLMService
 from app.services.storage import SupabaseStorage
 from tests.conftest import FakeGraph, FakeSession
 
@@ -1737,3 +1739,55 @@ def test_criar_job_manual_retry_route_dispara_kind_correto(app, monkeypatch) -> 
     assert enqueue_mock.await_args.kwargs["kind"] == "manual_retry"
     assert enqueue_mock.await_args.kwargs["classe_id"] == 32
     assert enqueue_mock.await_args.kwargs["topico_ids"] == [117]
+
+
+def test_chat_mentor_rejeita_resposta_que_entrega_gabarito(
+    app, aluno_user, monkeypatch
+) -> None:
+    fake_session = FakeSession()
+
+    async def override_session_local():
+        yield fake_session
+
+    app.dependency_overrides[get_session] = override_session_local
+    app.dependency_overrides[get_current_user] = lambda: aluno_user
+
+    monkeypatch.setattr(
+        AccessRepository, "aluno_belongs_to_classe", AsyncMock(return_value=True)
+    )
+    monkeypatch.setattr(
+        ContextRepository, "fetch_aluno_context", AsyncMock(return_value={})
+    )
+    monkeypatch.setattr(
+        ConteudoPersonalizadoRepository, "buscar_por_aluno", AsyncMock(return_value=[])
+    )
+
+    respostas_llm = iter(
+        [
+            {"reply": "A resposta e 42.", "should_close": False, "hinted_actions": []},
+            {"viola": True, "motivo": "entrega gabarito"},
+            {"reply": "Tente revisar o passo 2.", "should_close": False, "hinted_actions": []},
+            {"viola": False, "motivo": ""},
+        ]
+    )
+
+    async def fake_ainvoke_structured(self, *, prompt_name, payload, schema, **kwargs):
+        return schema.model_validate(next(respostas_llm))
+
+    monkeypatch.setattr(JsonLLMService, "ainvoke_structured", fake_ainvoke_structured)
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/personalizar/chat",
+            json={
+                "classe_id": 1,
+                "topico_id": None,
+                "conteudo_id": None,
+                "escopo": "trilha_home",
+                "mensagem": "como resolvo a atividade 2?",
+                "historico": [],
+            },
+        )
+
+    assert response.status_code == 200
+    assert "revisar o passo 2" in response.json()["reply"]
