@@ -1,4 +1,8 @@
-from app.services.memoria_aluno import _detectar_recorrencia
+import pytest
+
+from app.repositories.aluno_topico_dominio import AlunoTopicoDominioRepository
+from app.repositories.mental_state import MentalStateHistoryRepository
+from app.services.memoria_aluno import _detectar_recorrencia, ler_memoria
 
 
 def test_detectar_recorrencia_marca_3_de_5_mesmo_kind_negativo() -> None:
@@ -61,3 +65,41 @@ def test_detectar_recorrencia_ignora_registros_alem_da_janela_de_5() -> None:
 
 def test_detectar_recorrencia_com_lista_vazia() -> None:
     assert _detectar_recorrencia([]).recorrente is False
+
+
+@pytest.mark.asyncio
+async def test_ler_memoria_combina_dominio_e_recorrencia(monkeypatch) -> None:
+    async def fake_buscar_por_classe(self, *, aluno_id, classe_id):
+        return {
+            "10": {
+                "dominio_estimado": 0.72,
+                "tendencia": "ascendente",
+                "confianca": 0.66,
+                "atualizado_em": None,
+            }
+        }
+
+    async def fake_listar_por_aluno(self, *, aluno_id, limit=50):
+        return [{"kind": "frustrated"}] * 3
+
+    monkeypatch.setattr(AlunoTopicoDominioRepository, "buscar_por_classe", fake_buscar_por_classe)
+    monkeypatch.setattr(MentalStateHistoryRepository, "listar_por_aluno", fake_listar_por_aluno)
+
+    memoria = await ler_memoria(object(), aluno_id="aluno-1", classe_id=32)
+
+    assert memoria.dominio_por_topico["10"].dominio_estimado == 0.72
+    assert memoria.mental_state_recorrente.recorrente is True
+    assert memoria.mental_state_recorrente.kind == "frustrated"
+
+
+@pytest.mark.asyncio
+async def test_ler_memoria_devolve_vazio_em_falha_de_leitura(monkeypatch) -> None:
+    async def fake_buscar_por_classe(self, *, aluno_id, classe_id):
+        raise RuntimeError("tabela indisponivel")
+
+    monkeypatch.setattr(AlunoTopicoDominioRepository, "buscar_por_classe", fake_buscar_por_classe)
+
+    memoria = await ler_memoria(object(), aluno_id="aluno-1", classe_id=32)
+
+    assert memoria.dominio_por_topico == {}
+    assert memoria.mental_state_recorrente.recorrente is False

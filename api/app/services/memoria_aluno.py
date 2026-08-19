@@ -32,3 +32,28 @@ def _detectar_recorrencia(registros: list[dict[str, Any]]) -> MentalStateRecorre
             return MentalStateRecorrente(recorrente=True, kind=kind, ocorrencias=ocorrencias)
 
     return MentalStateRecorrente(recorrente=False, kind=None, ocorrencias=0)
+
+
+async def ler_memoria(session: AsyncSession, *, aluno_id: str, classe_id: int) -> MemoriaAluno:
+    """Nunca levanta - falha de leitura (tabela indisponivel, erro de
+    conexao pontual) devolve memoria vazia, igual ao principio de 'permitir
+    fallback' ja documentado nos guardrails de pipeline."""
+    try:
+        dominio_rows = await AlunoTopicoDominioRepository(session).buscar_por_classe(
+            aluno_id=aluno_id, classe_id=classe_id
+        )
+        registros_mentais = await MentalStateHistoryRepository(session).listar_por_aluno(
+            aluno_id=aluno_id, limit=_JANELA_RECORRENCIA
+        )
+    except Exception as exc:
+        logger.warning("Falha ao ler memoria do aluno %s: %s", aluno_id, exc)
+        return MemoriaAluno()
+
+    dominio_por_topico = {
+        topico_id: DominioTopico.model_validate(registro)
+        for topico_id, registro in dominio_rows.items()
+    }
+    return MemoriaAluno(
+        dominio_por_topico=dominio_por_topico,
+        mental_state_recorrente=_detectar_recorrencia(registros_mentais),
+    )
