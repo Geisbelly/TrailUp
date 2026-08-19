@@ -2,7 +2,7 @@ from typing import Any
 
 from app.core.settings import Settings
 from app.schemas.conteudo_adaptado import ConteudoAdaptado
-from app.services.llm import JsonLLMService
+from app.services.llm import JsonLLMService, StructuredOutputError
 
 
 def _fallback_conteudo(state: dict[str, Any]) -> dict[str, Any]:
@@ -25,18 +25,20 @@ def _fallback_conteudo(state: dict[str, Any]) -> dict[str, Any]:
 
 async def agente_conteudo(state: dict[str, Any], settings: Settings) -> dict[str, Any]:
     llm = JsonLLMService(settings)
-    result = await llm.ainvoke_json(
-        prompt_name="conteudo_adaptado.txt",
-        payload={
-            "payload_topico_id": state.get("payload_topico_id"),
-            "conteudo_foco_id": state.get("conteudo_foco_id"),
-            "desempenho_recente": state.get("desempenho_recente", {}),
-            "emocao_atual": state.get("emocao_atual"),
-            "perfil_brainhex": state.get("perfil_brainhex", []),
-        },
-        fallback_factory=lambda: _fallback_conteudo(state),
-    )
-    conteudo = ConteudoAdaptado.model_validate(result)
+    try:
+        conteudo = await llm.ainvoke_structured(
+            prompt_name="conteudo_adaptado.txt",
+            payload={
+                "payload_topico_id": state.get("payload_topico_id"),
+                "conteudo_foco_id": state.get("conteudo_foco_id"),
+                "desempenho_recente": state.get("desempenho_recente", {}),
+                "emocao_atual": state.get("emocao_atual"),
+                "perfil_brainhex": state.get("perfil_brainhex", []),
+            },
+            schema=ConteudoAdaptado,
+        )
+    except StructuredOutputError:
+        conteudo = ConteudoAdaptado.model_validate(_fallback_conteudo(state))
     return {
         "conteudo_adaptado": conteudo.model_dump(mode="json"),
         "completed_nodes": ["agente_conteudo"],

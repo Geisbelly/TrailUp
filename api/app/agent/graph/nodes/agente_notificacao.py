@@ -3,7 +3,7 @@ from typing import Any
 
 from app.core.settings import Settings
 from app.schemas.notificacao import NotificacaoPayload
-from app.services.llm import JsonLLMService
+from app.services.llm import JsonLLMService, StructuredOutputError
 
 
 def _fallback_notificacao(state: dict[str, Any]) -> dict[str, Any]:
@@ -33,16 +33,18 @@ def _fallback_notificacao(state: dict[str, Any]) -> dict[str, Any]:
 
 async def agente_notificacao(state: dict[str, Any], settings: Settings) -> dict[str, Any]:
     llm = JsonLLMService(settings)
-    result = await llm.ainvoke_json(
-        prompt_name="notificacao.txt",
-        payload={
-            "emocao_atual": state.get("emocao_atual"),
-            "eventos_novos": state.get("eventos_novos", []),
-            "desempenho_recente": state.get("desempenho_recente", {}),
-        },
-        fallback_factory=lambda: _fallback_notificacao(state),
-    )
-    notificacao = NotificacaoPayload.model_validate(result)
+    try:
+        notificacao = await llm.ainvoke_structured(
+            prompt_name="notificacao.txt",
+            payload={
+                "emocao_atual": state.get("emocao_atual"),
+                "eventos_novos": state.get("eventos_novos", []),
+                "desempenho_recente": state.get("desempenho_recente", {}),
+            },
+            schema=NotificacaoPayload,
+        )
+    except StructuredOutputError:
+        notificacao = NotificacaoPayload.model_validate(_fallback_notificacao(state))
     return {
         "notificacao_payload": notificacao.model_dump(mode="json"),
         "completed_nodes": ["agente_notificacao"],
