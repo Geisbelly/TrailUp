@@ -2,7 +2,7 @@ from typing import Any
 
 from app.core.settings import Settings
 from app.schemas.perfil import PerfilScore, PerfilUpdate
-from app.services.llm import JsonLLMService
+from app.services.llm import JsonLLMService, StructuredOutputError
 
 
 def _fallback_perfil(state: dict[str, Any]) -> dict[str, Any]:
@@ -51,17 +51,19 @@ def _fallback_perfil(state: dict[str, Any]) -> dict[str, Any]:
 
 async def agente_perfil(state: dict[str, Any], settings: Settings) -> dict[str, Any]:
     llm = JsonLLMService(settings)
-    result = await llm.ainvoke_json(
-        prompt_name="perfil_brainhex.txt",
-        payload={
-            "perfis_atuais": state.get("perfil_brainhex", []),
-            "historico_eventos": state.get("historico_eventos", [])[-20:],
-            "eventos_novos": state.get("eventos_novos", []),
-            "desempenho": state.get("desempenho_recente", {}),
-        },
-        fallback_factory=lambda: _fallback_perfil(state),
-    )
-    perfil_update = PerfilUpdate.model_validate(result)
+    try:
+        perfil_update = await llm.ainvoke_structured(
+            prompt_name="perfil_brainhex.txt",
+            payload={
+                "perfis_atuais": state.get("perfil_brainhex", []),
+                "historico_eventos": state.get("historico_eventos", [])[-20:],
+                "eventos_novos": state.get("eventos_novos", []),
+                "desempenho": state.get("desempenho_recente", {}),
+            },
+            schema=PerfilUpdate,
+        )
+    except StructuredOutputError:
+        perfil_update = PerfilUpdate.model_validate(_fallback_perfil(state))
     return {
         "perfil_update": perfil_update.model_dump(mode="json"),
         "completed_nodes": ["agente_perfil"],

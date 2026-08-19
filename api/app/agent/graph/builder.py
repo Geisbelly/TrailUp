@@ -28,7 +28,10 @@ def build_graph(
     )
     graph.add_node("agente_emocao", partial(nodes.agente_emocao, adapter=MockEmocaoAdapter()))
     graph.add_node("agente_perfil", partial(nodes.agente_perfil, settings=settings))
-    graph.add_node("agente_trilha", partial(nodes.agente_trilha, settings=settings))
+    graph.add_node(
+        "agente_trilha",
+        partial(nodes.agente_trilha, settings=settings, session_factory=session_factory),
+    )
     graph.add_node("agente_conteudo", partial(nodes.agente_conteudo, settings=settings))
     graph.add_node("agente_geracao_midia", partial(nodes.agente_geracao_midia, settings=settings, session_factory=session_factory))
     graph.add_node("agente_notificacao", partial(nodes.agente_notificacao, settings=settings))

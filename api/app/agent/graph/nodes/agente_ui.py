@@ -2,7 +2,7 @@ from typing import Any
 
 from app.core.settings import Settings
 from app.schemas.ui_config import UIConfig
-from app.services.llm import JsonLLMService
+from app.services.llm import JsonLLMService, StructuredOutputError
 
 EMOCAO_TEMA = {
     "frustrado": {"tema": "focus", "ritmo_conteudo": "lento", "tom_feedbacks": "suporte", "tipo_modal": "suporte"},
@@ -36,16 +36,18 @@ def _fallback_ui(state: dict[str, Any]) -> dict[str, Any]:
 
 async def agente_ui(state: dict[str, Any], settings: Settings) -> dict[str, Any]:
     llm = JsonLLMService(settings)
-    result = await llm.ainvoke_json(
-        prompt_name="ui_adaptativa.txt",
-        payload={
-            "emocao": state.get("emocao_atual"),
-            "perfil": state.get("perfil_brainhex", []),
-            "desempenho": state.get("desempenho_recente", {}),
-        },
-        fallback_factory=lambda: _fallback_ui(state),
-    )
-    ui_config = UIConfig.model_validate(result)
+    try:
+        ui_config = await llm.ainvoke_structured(
+            prompt_name="ui_adaptativa.txt",
+            payload={
+                "emocao": state.get("emocao_atual"),
+                "perfil": state.get("perfil_brainhex", []),
+                "desempenho": state.get("desempenho_recente", {}),
+            },
+            schema=UIConfig,
+        )
+    except StructuredOutputError:
+        ui_config = UIConfig.model_validate(_fallback_ui(state))
     return {
         "ui_config": ui_config.model_dump(mode="json"),
         "completed_nodes": ["agente_ui"],

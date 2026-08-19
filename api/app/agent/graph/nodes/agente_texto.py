@@ -2,7 +2,7 @@ from typing import Any
 
 from app.core.settings import Settings
 from app.schemas.texto_gerado import TextoGerado
-from app.services.llm import JsonLLMService
+from app.services.llm import JsonLLMService, StructuredOutputError
 
 
 def _fallback_texto(state: dict[str, Any]) -> dict[str, Any]:
@@ -25,18 +25,20 @@ def _fallback_texto(state: dict[str, Any]) -> dict[str, Any]:
 
 async def agente_texto(state: dict[str, Any], settings: Settings) -> dict[str, Any]:
     llm = JsonLLMService(settings)
-    result = await llm.ainvoke_json(
-        prompt_name="texto_personalizado.txt",
-        payload={
-            "ui_config": state.get("ui_config"),
-            "perfil_brainhex": state.get("perfil_brainhex", []),
-            "emocao_atual": state.get("emocao_atual"),
-            "nome_aluno": state.get("nome_aluno"),
-            "notificacao_payload": state.get("notificacao_payload"),
-        },
-        fallback_factory=lambda: _fallback_texto(state),
-    )
-    texto = TextoGerado.model_validate(result)
+    try:
+        texto = await llm.ainvoke_structured(
+            prompt_name="texto_personalizado.txt",
+            payload={
+                "ui_config": state.get("ui_config"),
+                "perfil_brainhex": state.get("perfil_brainhex", []),
+                "emocao_atual": state.get("emocao_atual"),
+                "nome_aluno": state.get("nome_aluno"),
+                "notificacao_payload": state.get("notificacao_payload"),
+            },
+            schema=TextoGerado,
+        )
+    except StructuredOutputError:
+        texto = TextoGerado.model_validate(_fallback_texto(state))
     return {
         "textos_gerados": [texto.model_dump(mode="json")],
         "completed_nodes": ["agente_texto"],

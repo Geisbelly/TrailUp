@@ -3,7 +3,9 @@ import logging
 import re
 import time
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, TypeVar
+
+from pydantic import BaseModel
 
 from app.core.settings import Settings
 
@@ -133,6 +135,15 @@ def extract_json(content: Any) -> dict[str, Any]:
     return json.loads(normalized)
 
 
+class StructuredOutputError(Exception):
+    """Geracao com schema nativo falhou (rede, provedor indisponivel, ou
+    saida que nao bate com o schema) mesmo depois de tentar todos os
+    candidatos de chave/modelo."""
+
+
+T = TypeVar("T", bound=BaseModel)
+
+
 class JsonLLMService:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
@@ -182,6 +193,7 @@ class JsonLLMService:
         *,
         messages: list[Any],
         primary_model: str,
+        structured_schema: dict[str, Any] | None = None,
     ) -> Any | None:
         """Tenta o modelo principal em todas as chaves configuradas
         (round-robin); se TODAS esgotarem a cota (ou o modelo estiver
@@ -201,6 +213,8 @@ class JsonLLMService:
                 if key is None:
                     break
                 client = self._get_gemini_client(model, key)
+                if structured_schema is not None:
+                    client = client.with_structured_output(structured_schema)
                 try:
                     return await client.ainvoke(messages)
                 except Exception as exc:
@@ -258,3 +272,61 @@ class JsonLLMService:
         except Exception as exc:  # pragma: no cover
             logger.warning("LLM fallback acionado para %s: %s", prompt_name, exc)
             return fallback_factory()
+
+    async def ainvoke_structured(
+        self,
+        *,
+        prompt_name: str,
+        payload: dict[str, Any],
+        schema: type[T],
+        model: str | None = None,
+        provider: str | None = None,
+    ) -> T:
+        normalized_payload = dict(payload)
+        normalized_payload.setdefault("idioma", "português brasileiro")
+        normalized_payload.setdefault("locale", "pt-BR")
+        normalized_payload.setdefault("linguagem", "português brasileiro")
+        messages = [
+            SystemMessage(content=load_prompt(prompt_name)),
+            HumanMessage(
+                content=json.dumps(normalized_payload, ensure_ascii=False, default=str)
+            ),
+        ]
+
+        effective_provider = provider or self.settings.llm_provider
+        effective_model = model or self._active_default(provider)
+        json_schema = schema.model_json_schema()
+
+        try:
+            if effective_provider == "gemini":
+                response = await self._ainvoke_gemini_with_rotation(
+                    messages=messages,
+                    primary_model=effective_model,
+                    structured_schema=json_schema,
+                )
+            else:
+                client = self._get_client(effective_model, provider=provider)
+                response = (
+                    await client.with_structured_output(json_schema).ainvoke(messages)
+                    if client is not None
+                    else None
+                )
+        except Exception as exc:
+            raise StructuredOutputError(
+                f"Falha ao gerar saida estruturada para {prompt_name}: {exc}"
+            ) from exc
+
+        if response is None:
+            raise StructuredOutputError(
+                f"Nenhum provedor LLM disponivel para {prompt_name}"
+            )
+
+        raw = response if isinstance(response, dict) else extract_json(
+            getattr(response, "content", response)
+        )
+        try:
+            return schema.model_validate(raw)
+        except Exception as exc:
+            raise StructuredOutputError(
+                f"Saida de {prompt_name} nao bateu com o schema {schema.__name__}: {exc}"
+            ) from exc

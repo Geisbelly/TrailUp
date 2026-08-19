@@ -10,6 +10,7 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agent.graph.guardrails import checar_grounding_chat, gerar_validado
 from app.api.deps import ensure_professor_access, get_current_user, get_session, require_professor
 from app.core.settings import get_settings
 from app.repositories.access import AccessRepository
@@ -22,6 +23,7 @@ from app.repositories.ia_decision_logs import IADecisionLogRepository
 from app.repositories.materiais import MateriaisRepository
 from app.repositories.personalizacao_jobs import PersonalizacaoJobsRepository
 from app.repositories.personalizacao_progresso import PersonalizacaoProgressoRepository
+from app.schemas.mentor_chat import MentorChatLLMResult
 from app.schemas.personalizacao import (
     ClassePerfilDistribuicaoItem,
     ClassePerfilSummaryResponse,
@@ -1468,7 +1470,15 @@ async def conversar_com_mentor_personalizacao(
     )
 
     llm = JsonLLMService(request.app.state.settings)
-    result = await llm.ainvoke_json(
+
+    async def _auditar_chat(violacao, fase) -> None:
+        logger.info(
+            "personalizacao.chat.guardrail=%s",
+            {"regra": violacao.regra, "mensagem": violacao.mensagem, "fase": fase},
+        )
+
+    mentor_result = await gerar_validado(
+        llm,
         prompt_name="mentor_personalizacao_chat.txt",
         payload={
             "escopo": payload.escopo,
@@ -1525,15 +1535,23 @@ async def conversar_com_mentor_personalizacao(
                 "sem_resposta_direta_atividade": True,
             },
         },
+        schema=MentorChatLLMResult,
+        guardrails=[checar_grounding_chat],
         fallback_factory=lambda: dict(fallback),
+        contexto={
+            "llm": llm,
+            "conteudo_materia": {"conteudos": conteudos_topico, "atividades": atividades_topico},
+        },
+        on_violation=_auditar_chat,
         provider="openai",
     )
 
+    result = mentor_result.model_dump(mode="json")
     response = MentorChatResponse(
-        reply=str(result.get("reply") or fallback["reply"]).strip(),
+        reply=mentor_result.reply.strip(),
         scope=payload.escopo,
-        should_close=bool(result.get("should_close", False)),
-        hinted_actions=[str(item).strip() for item in (result.get("hinted_actions") or []) if str(item).strip()],
+        should_close=mentor_result.should_close,
+        hinted_actions=[item.strip() for item in mentor_result.hinted_actions if item.strip()],
     )
 
     try:
