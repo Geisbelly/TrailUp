@@ -227,6 +227,20 @@ class _FakeSessionFactory:
         return _FakeSessionContext()
 
 
+def test_trilha_config_e_perfil_update_nao_expoe_campo_de_progresso() -> None:
+    """Guardrail 'nao alterar progresso arbitrariamente' e garantido por
+    construcao: os schemas que os nos de decisao preenchem nao tem campo de
+    percentual/progresso — quem escreve isso e so o merge de telemetria
+    (personalizacao_progresso.py). Este teste trava essa invariante."""
+    from app.schemas.perfil import PerfilUpdate
+    from app.schemas.trilha_config import TrilhaConfig
+
+    campos_proibidos = {"percentual_concluido", "percentual", "progresso"}
+
+    assert not (set(TrilhaConfig.model_fields) & campos_proibidos)
+    assert not (set(PerfilUpdate.model_fields) & campos_proibidos)
+
+
 @pytest.mark.asyncio
 async def test_supervisor_falls_back_to_deterministic_routing_without_llm() -> None:
     from app.agent.graph.nodes.supervisor import supervisor
