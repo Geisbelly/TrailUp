@@ -287,6 +287,10 @@ async def processar_job_media_generation_once(
     gerar_apresentacao_fn: Any,
     bucket: str,
     storage_path_prefix: str,
+    audio_script_by_ordem: dict[int, str] | None = None,
+    markdown_by_ordem: dict[int, str] | None = None,
+    titulo_by_ordem: dict[int, str] | None = None,
+    persistir_parte_fn: Any = None,
 ) -> dict[str, Any]:
     """Processa todos os targets PENDENTES do job (Fase A e, se ja aplicavel,
     Fase B), cria a Fase B quando a Fase A acabou de completar, e devolve um
@@ -324,32 +328,31 @@ async def processar_job_media_generation_once(
                     gerar_capitulo_fn=gerar_capitulo_fn,
                 )
             elif target["media_kind"] == "audio":
-                # audio_script_by_ordem/markdown/titulo_by_ordem sao resolvidos
-                # pelo chamador (personalizacao_jobs.py) antes de invocar este
-                # orquestrador, a partir do markdown consolidado da Fase A -
-                # ver wiring em process_personalizacao_job_once. Aqui so
-                # repassa o resultado ja calculado via payload.
+                # audio_script_by_ordem/markdown_by_ordem/titulo_by_ordem sao
+                # resolvidos pelo chamador (personalizacao_jobs.py) antes de
+                # invocar este orquestrador, a partir do markdown consolidado
+                # da Fase A - ver wiring em process_personalizacao_job_once.
                 await processar_target_audio(
                     target=target,
-                    audio_script_by_ordem=payload.get("_audio_script_by_ordem", {}),
+                    audio_script_by_ordem=audio_script_by_ordem or {},
                     profile=profile,
                     bucket=bucket,
                     storage_path_prefix=storage_path_prefix,
                     settings=settings,
                     gerar_audio_fn=gerar_audio_fn,
-                    persistir_parte_fn=payload.get("_persistir_parte_fn"),
+                    persistir_parte_fn=persistir_parte_fn,
                 )
             elif target["media_kind"] == "apresentacao":
                 await processar_target_apresentacao(
                     target=target,
-                    markdown_by_ordem=payload.get("_markdown_by_ordem", {}),
-                    titulo_by_ordem=payload.get("_titulo_by_ordem", {}),
+                    markdown_by_ordem=markdown_by_ordem or {},
+                    titulo_by_ordem=titulo_by_ordem or {},
                     profile=profile,
                     bucket=bucket,
                     storage_path_prefix=storage_path_prefix,
                     settings=settings,
                     gerar_apresentacao_fn=gerar_apresentacao_fn,
-                    persistir_parte_fn=payload.get("_persistir_parte_fn"),
+                    persistir_parte_fn=persistir_parte_fn,
                 )
             await jobs_repo.update_target_status(target_id=int(target["id"]), status="completed", attempts=attempts)
         except MediaGenerationTargetError as exc:
@@ -425,4 +428,42 @@ async def persistir_parte_em_materiais(
         materiais=materiais,
         status="pronto" if fase_b_completa else None,
         formatos_gerados=sorted(completed_kinds) if fase_b_completa else None,
+    )
+
+
+def consolidar_partes_a_partir_dos_blocos(
+    blocos: list[dict[str, Any]],
+    *,
+    tema_fallback: str,
+) -> tuple[dict[int, str], dict[int, str], dict[int, str]]:
+    """Junta os capitulos ja gerados (markdown/audioScript por bloco, na
+    ordem dos block_id — "bloco-01", "bloco-02", ... ordena lexicografica-
+    mente igual a ordem pedagogica) numa unica parte de entrega (ordem=1).
+    Blocos sem capitulo ainda gerado (markdown/audio_script None — nao
+    deveria acontecer quando chamado apos fase_a_completa, mas defensivo
+    contra chamada precoce) sao ignorados. Granularidade de PARTE continua
+    fixa em 1 (ver total_partes_calculator) — nao reimplementa aqui o
+    resplitamento por tamanho de caractere que o microservice ja faz
+    (splitProcessedContentIntoParts); documentos muito grandes que
+    precisariam de mais de uma parte ficam como follow-up."""
+    prontos = sorted(
+        (b for b in blocos if b.get("markdown") and b.get("audio_script")),
+        key=lambda b: str(b["block_id"]),
+    )
+    markdown_consolidado = "\n\n---\n\n".join(str(b["markdown"]) for b in prontos)
+    audio_consolidado = "\n\n".join(str(b["audio_script"]) for b in prontos)
+
+    titulo = tema_fallback
+    if prontos:
+        primeira_linha = next(
+            (linha for linha in str(prontos[0]["markdown"]).split("\n") if linha.strip()),
+            "",
+        )
+        if primeira_linha.strip().startswith("#"):
+            titulo = primeira_linha.lstrip("#").strip() or tema_fallback
+
+    return (
+        {1: markdown_consolidado},
+        {1: audio_consolidado},
+        {1: titulo},
     )

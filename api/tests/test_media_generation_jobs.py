@@ -363,10 +363,6 @@ async def test_retentativa_apos_falha_so_na_apresentacao_nao_rechama_enriquecime
     async def fake_persistir_parte(*, media_kind, ordem, url, storage_path):
         persistido.append((media_kind, ordem, url))
 
-    job["payload"]["_markdown_by_ordem"] = {1: "## Bloco\n\nTexto"}
-    job["payload"]["_titulo_by_ordem"] = {1: "Bloco"}
-    job["payload"]["_persistir_parte_fn"] = fake_persistir_parte
-
     result = await media_generation_jobs.processar_job_media_generation_once(
         jobs_repo=repo,
         blocos_repo=blocos_repo,
@@ -383,6 +379,9 @@ async def test_retentativa_apos_falha_so_na_apresentacao_nao_rechama_enriquecime
         gerar_apresentacao_fn=fake_gerar_apresentacao,
         bucket="conteudo_aluno",
         storage_path_prefix="brainhex/mastermind/topico-100",
+        markdown_by_ordem={1: "## Bloco\n\nTexto"},
+        titulo_by_ordem={1: "Bloco"},
+        persistir_parte_fn=fake_persistir_parte,
     )
 
     assert chamadas_enrich == []
@@ -467,3 +466,43 @@ async def test_persistir_parte_em_materiais_marca_pronto_quando_audio_e_apresent
 
     assert repo.updates[0]["status"] == "pronto"
     assert set(repo.updates[0]["formatos_gerados"]) == {"audio", "apresentacao"}
+
+
+def test_consolidar_partes_a_partir_dos_blocos_junta_markdown_e_audio_em_ordem():
+    blocos = [
+        {"block_id": "bloco-02", "markdown": "## Segundo\n\nTexto 2.", "audio_script": "Narração 2."},
+        {"block_id": "bloco-01", "markdown": "## Primeiro\n\nTexto 1.", "audio_script": "Narração 1."},
+    ]
+
+    markdown_by_ordem, audio_script_by_ordem, titulo_by_ordem = (
+        media_generation_jobs.consolidar_partes_a_partir_dos_blocos(blocos, tema_fallback="Aula")
+    )
+
+    assert markdown_by_ordem[1].index("Primeiro") < markdown_by_ordem[1].index("Segundo")
+    assert audio_script_by_ordem[1].index("Narração 1") < audio_script_by_ordem[1].index("Narração 2")
+    assert titulo_by_ordem[1] == "Primeiro"
+
+
+def test_consolidar_partes_a_partir_dos_blocos_usa_fallback_sem_headings():
+    blocos = [{"block_id": "bloco-01", "markdown": "Texto sem heading.", "audio_script": "Narração."}]
+
+    markdown_by_ordem, _audio, titulo_by_ordem = (
+        media_generation_jobs.consolidar_partes_a_partir_dos_blocos(blocos, tema_fallback="Aula de Teste")
+    )
+
+    assert markdown_by_ordem[1] == "Texto sem heading."
+    assert titulo_by_ordem[1] == "Aula de Teste"
+
+
+def test_consolidar_partes_ignora_blocos_sem_capitulo_ainda_gerado():
+    blocos = [
+        {"block_id": "bloco-01", "markdown": "## Pronto\n\nTexto.", "audio_script": "Narração."},
+        {"block_id": "bloco-02", "markdown": None, "audio_script": None},
+    ]
+
+    markdown_by_ordem, _audio, _titulo = media_generation_jobs.consolidar_partes_a_partir_dos_blocos(
+        blocos, tema_fallback="Aula"
+    )
+
+    assert "Pronto" in markdown_by_ordem[1]
+    assert markdown_by_ordem[1].count("##") == 1
