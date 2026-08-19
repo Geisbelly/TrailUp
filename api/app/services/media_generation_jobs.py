@@ -207,6 +207,7 @@ async def processar_target_audio(
     profile: str,
     bucket: str,
     storage_path_prefix: str,
+    ref_id: str,
     settings: Any,
     gerar_audio_fn: Any,
     persistir_parte_fn: Any,
@@ -221,7 +222,7 @@ async def processar_target_audio(
         audio_script=audio_script,
         profile=profile,
         bucket=bucket,
-        storage_path=f"{storage_path_prefix}{suffix}",
+        storage_path=f"{storage_path_prefix}/audio/material-{ref_id}{suffix}",
     )
     if not result or not result.get("url"):
         raise MediaGenerationTargetError(f"geracao de audio nao retornou url para a parte {ordem}")
@@ -242,6 +243,7 @@ async def processar_target_apresentacao(
     profile: str,
     bucket: str,
     storage_path_prefix: str,
+    ref_id: str,
     settings: Any,
     gerar_apresentacao_fn: Any,
     persistir_parte_fn: Any,
@@ -251,13 +253,14 @@ async def processar_target_apresentacao(
     if not markdown:
         raise MediaGenerationTargetError(f"parte {ordem} sem markdown disponivel para gerar apresentacao")
     suffix = f"-parte-{ordem:02d}" if len(markdown_by_ordem) > 1 else ""
+    storage_path = f"{storage_path_prefix}/apresentacao/material-{ref_id}{suffix}.html"
     result = await gerar_apresentacao_fn(
         settings=settings,
         markdown=markdown,
         topic=titulo_by_ordem.get(ordem, "Aula"),
         profile=profile,
         bucket=bucket,
-        storage_path=f"{storage_path_prefix}{suffix}.html",
+        storage_path=storage_path,
     )
     if not result or not result.get("url"):
         raise MediaGenerationTargetError(f"geracao de apresentacao nao retornou url para a parte {ordem}")
@@ -338,6 +341,7 @@ async def processar_job_media_generation_once(
                     profile=profile,
                     bucket=bucket,
                     storage_path_prefix=storage_path_prefix,
+                    ref_id=job_id,
                     settings=settings,
                     gerar_audio_fn=gerar_audio_fn,
                     persistir_parte_fn=persistir_parte_fn,
@@ -350,6 +354,7 @@ async def processar_job_media_generation_once(
                     profile=profile,
                     bucket=bucket,
                     storage_path_prefix=storage_path_prefix,
+                    ref_id=job_id,
                     settings=settings,
                     gerar_apresentacao_fn=gerar_apresentacao_fn,
                     persistir_parte_fn=persistir_parte_fn,
