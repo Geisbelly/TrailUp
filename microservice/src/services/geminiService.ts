@@ -1058,6 +1058,7 @@ export function consolidateBlockBatchGenerations(
     markdown: chapters.map((chapter) => chapter.markdown).join("\n\n---\n\n"),
     audioScript: chapters.map((chapter) => chapter.audioScript).join("\n\n"),
     slides: chapters.flatMap((chapter) => chapter.slides),
+    chapters,
     metadata: {
       blocks_processed: expectedIds.length,
       confidence,

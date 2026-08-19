@@ -2502,3 +2502,112 @@ async def test_job_keeps_deferred_target_pending_without_consuming_retry(
     assert target["attempts"] == 2
     assert target["personalizacao_id"] == 249
     assert finalized == ["partial"]
+
+
+@pytest.mark.asyncio
+async def test_job_media_generation_wiring_calls_orchestrator_and_finalizes_completed(monkeypatch) -> None:
+    """Teste de integracao leve do branch JOB_KIND_MEDIA_GENERATION: cobre a
+    fiacao (claim -> contexto -> orquestrador -> finalize), nao a logica do
+    orquestrador em si (ja coberta exaustivamente em
+    test_media_generation_jobs.py). processar_job_media_generation_once e
+    mockado aqui de proposito."""
+    job = {
+        "id": "job-mg-1",
+        "classe_id": 10,
+        "aluno_id": "aluno-1",
+        "topico_id": 100,
+        "conteudo_id": None,
+        "kind": jobs_module.JOB_KIND_MEDIA_GENERATION,
+        "payload": {"ciclo_id": "ciclo-1", "source_hash": "hash-1", "brainhex_profile_key": "mastermind"},
+    }
+    record = {"id": 7, "materiais": {}}
+    finalized: list[tuple[str, str | None]] = []
+    orchestrator_calls: list[dict] = []
+
+    claimed = False
+
+    async def claim_next_job(_self, *, stale_processing_min, partial_retry_delay_sec):
+        nonlocal claimed
+        if claimed:
+            return None
+        claimed = True
+        return job
+
+    async def buscar_por_ciclo_id(_self, *, aluno_id, ciclo_id):
+        assert aluno_id == "aluno-1"
+        assert ciclo_id == "ciclo-1"
+        return record
+
+    async def fetch_ctx(**kwargs):
+        return {
+            "source_hash": "hash-1",
+            "conteudo_classe": {"titulo": "Aula", "conteudos": [{"id": 1, "titulo": "Aula", "conteudo": "Texto base o suficiente para segmentar."}]},
+            "fontes_contexto": [],
+        }
+
+    async def listar_por_job(_self, *, job_id):
+        return []
+
+    async def processar_once_mock(**kwargs):
+        orchestrator_calls.append(kwargs)
+        return {"errors": 0, "fase_b_criada": False}
+
+    async def get_targets(_self, _job_id):
+        return [
+            {"id": 1, "media_kind": "enriquecimento", "block_id": "bloco-01", "status": "completed"},
+            {"id": 2, "media_kind": "capitulo", "block_id": "bloco-01", "status": "completed"},
+        ]
+
+    async def refresh_job_counters(_self, _job_id):
+        return {"processed_targets": 2, "error_count": 0}
+
+    async def finalize_job(_self, *, job_id, status, last_error=None):
+        finalized.append((status, last_error))
+
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.claim_next_job",
+        claim_next_job,
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.get_targets",
+        get_targets,
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.refresh_job_counters",
+        refresh_job_counters,
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.finalize_job",
+        finalize_job,
+    )
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.buscar_por_ciclo_id",
+        buscar_por_ciclo_id,
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_blocos.PersonalizacaoBlocosRepository.listar_por_job",
+        listar_por_job,
+    )
+    monkeypatch.setattr(jobs_module, "fetch_personalizacao_context", fetch_ctx)
+    monkeypatch.setattr(jobs_module, "processar_job_media_generation_once", processar_once_mock)
+
+    session_factory = _WorkerSessionFactory()
+    app = SimpleNamespace(
+        state=SimpleNamespace(
+            session_factory=session_factory,
+            settings=SimpleNamespace(
+                personalizacao_job_stale_processing_min=40,
+                brainhex_api_wait_timeout_sec=1980,
+                personalizacao_job_max_retries=3,
+                supabase_url="https://xrebtkmdewolzmpsdwgh.supabase.co",
+                supabase_service_key=None,
+            ),
+        )
+    )
+
+    processed = await process_personalizacao_job_once(app)
+
+    assert processed is True
+    assert len(orchestrator_calls) == 1
+    assert orchestrator_calls[0]["profile"] == "mastermind"
+    assert finalized == [("completed", None)]

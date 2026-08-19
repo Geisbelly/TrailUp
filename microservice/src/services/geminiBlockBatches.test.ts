@@ -398,6 +398,12 @@ test("consolida markdown, áudio e slides na ordem global com metadados dos lote
     ["bloco-03", "bloco-04"],
   ]);
   assert.equal(result.metadata.confidence, 0.9);
+  assert.deepEqual(
+    result.chapters?.map((c) => c.blockId),
+    ["bloco-01", "bloco-02", "bloco-03", "bloco-04"],
+  );
+  assert.equal(result.chapters?.[0]?.markdown.includes("PRIMEIRO"), true);
+  assert.equal(result.chapters?.[2]?.markdown.includes("TERCEIRO"), true);
 });
 
 test("mergeSplitFallbackChapters combina áudio (Gemini), texto e slides (OpenAI) por blockId", () => {

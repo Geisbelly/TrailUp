@@ -19,15 +19,28 @@ from app.repositories.conteudo_classe import ConteudoClasseRepository
 from app.repositories.conteudo_personalizado import ConteudoPersonalizadoRepository
 from app.repositories.fontes_personalizacao import FontesPersonalizacaoRepository
 from app.repositories.materiais import MateriaisRepository
+from app.repositories.personalizacao_blocos import PersonalizacaoBlocosRepository
 from app.repositories.personalizacao_jobs import PersonalizacaoJobsRepository
 from app.repositories.personalizacao_progresso import PersonalizacaoProgressoRepository
 from app.services.classe_mapa_tema import gerar_classe_mapa_tema
-from app.services.content_enrichment import enrich_content_blocks
-from app.services.media_agents import brainhex_contract_ready, disparar_brainhex_async
+from app.services.content_enrichment import derive_base_blocks_and_topic, enrich_base_blocks, enrich_content_blocks
+from app.services.media_agents import (
+    brainhex_contract_ready,
+    disparar_brainhex_async,
+    gerar_apresentacao_parte_brainhex,
+    gerar_audio_parte_brainhex,
+    gerar_capitulo_bloco_brainhex,
+)
 from app.services.media_contract import (
     MEDIA_PIPELINE_VERSION,
     PRESENTATION_DESIGN_VERSION,
     PRESENTATION_ENGINE_VERSION,
+)
+from app.services.media_generation_jobs import (
+    JOB_KIND_MEDIA_GENERATION,
+    consolidar_partes_a_partir_dos_blocos,
+    persistir_parte_em_materiais,
+    processar_job_media_generation_once,
 )
 from app.services.personalizacao import (
     _build_profile_editorial_context,
@@ -36,7 +49,7 @@ from app.services.personalizacao import (
     fetch_personalizacao_context,
     gerar_cards_direto,
 )
-from app.services.storage import BUCKET
+from app.services.storage import BUCKET, SupabaseStorage
 
 logger = logging.getLogger(__name__)
 
@@ -1735,6 +1748,128 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
                 )
                 await session.rollback()
                 await repo.finalize_job(
+                    job_id=str(job["id"]),
+                    status="failed",
+                    last_error=str(exc),
+                )
+        return True
+
+    if job["kind"] == JOB_KIND_MEDIA_GENERATION:
+        async with session_factory() as session:
+            jobs_repo = PersonalizacaoJobsRepository(session)
+            blocos_repo = PersonalizacaoBlocosRepository(session)
+            conteudo_repo = ConteudoPersonalizadoRepository(session)
+            try:
+                payload = job.get("payload") or {}
+                ciclo_id = str(payload.get("ciclo_id") or "")
+                source_hash = str(payload.get("source_hash") or "")
+                generation_key = _build_generation_key(ciclo_id=ciclo_id, source_hash=source_hash)
+                record = await conteudo_repo.buscar_por_ciclo_id(aluno_id=str(job["aluno_id"]), ciclo_id=ciclo_id)
+                if not record:
+                    raise RuntimeError(
+                        f"conteudo_personalizado nao encontrado para ciclo_id={ciclo_id} - "
+                        "personalizar() deveria te-lo criado antes de enfileirar o job"
+                    )
+                record_id = int(record["id"])
+
+                ctx = await fetch_personalizacao_context(
+                    aluno_id=str(job["aluno_id"]),
+                    classe_id=int(job["classe_id"]),
+                    topico_id=job.get("topico_id"),
+                    conteudo_id=job.get("conteudo_id"),
+                    settings=app.state.settings,
+                    session=session,
+                )
+                base_blocks, topic_payload, _source_hash, _segments = derive_base_blocks_and_topic(ctx)
+                base_blocks_by_id = {str(b["id"]): b for b in base_blocks}
+
+                blocos_gerados = await blocos_repo.listar_por_job(job_id=str(job["id"]))
+                tema_fallback = str(topic_payload.get("titulo") or "Aula")
+                markdown_by_ordem, audio_script_by_ordem, titulo_by_ordem = consolidar_partes_a_partir_dos_blocos(
+                    blocos_gerados, tema_fallback=tema_fallback
+                )
+
+                storage = SupabaseStorage(app.state.settings)
+                storage_path_prefix = f"brainhex/{payload.get('brainhex_profile_key')}/classe-{job['classe_id']}/topico-{job.get('topico_id')}"
+
+                async def _persistir_parte(*, media_kind: str, ordem: int, url: str, storage_path: str | None) -> None:
+                    del ordem  # total_partes fixo em 1 por enquanto - ver consolidar_partes_a_partir_dos_blocos
+                    await persistir_parte_em_materiais(
+                        conteudo_repo=conteudo_repo,
+                        record_id=record_id,
+                        media_kind=media_kind,
+                        url=url,
+                        storage_path=storage_path,
+                        bucket=BUCKET,
+                        generation_key=generation_key,
+                    )
+
+                resultado = await processar_job_media_generation_once(
+                    jobs_repo=jobs_repo,
+                    blocos_repo=blocos_repo,
+                    job=job,
+                    base_blocks_by_id=base_blocks_by_id,
+                    topic=topic_payload,
+                    profile=str(payload.get("brainhex_profile_key") or "mastermind"),
+                    settings=app.state.settings,
+                    max_retries=int(app.state.settings.personalizacao_job_max_retries),
+                    total_partes_calculator=lambda _targets: 1,
+                    enrich_base_blocks_fn=enrich_base_blocks,
+                    gerar_capitulo_fn=gerar_capitulo_bloco_brainhex,
+                    gerar_audio_fn=gerar_audio_parte_brainhex,
+                    gerar_apresentacao_fn=gerar_apresentacao_parte_brainhex,
+                    bucket=BUCKET,
+                    storage_path_prefix=storage_path_prefix,
+                    audio_script_by_ordem=audio_script_by_ordem,
+                    markdown_by_ordem=markdown_by_ordem,
+                    titulo_by_ordem=titulo_by_ordem,
+                    persistir_parte_fn=_persistir_parte,
+                )
+
+                # O texto do material (markdown) e barato de subir de novo (sem
+                # LLM) - persistido uma unica vez, exatamente quando a Fase A
+                # acaba de completar e a Fase B acabou de ser criada, em vez de
+                # ser tratado como target retomavel proprio.
+                if resultado.get("fase_b_criada") and markdown_by_ordem.get(1):
+                    markdown_url = await storage.upload_bytes(
+                        bucket=BUCKET,
+                        path=f"{storage_path_prefix}/markdown/material-{job['id']}.md",
+                        data=markdown_by_ordem[1].encode("utf-8"),
+                        content_type="text/markdown; charset=utf-8",
+                    )
+                    if markdown_url:
+                        await persistir_parte_em_materiais(
+                            conteudo_repo=conteudo_repo,
+                            record_id=record_id,
+                            media_kind="markdown",
+                            url=markdown_url,
+                            storage_path=f"{storage_path_prefix}/markdown/material-{job['id']}.md",
+                            bucket=BUCKET,
+                            generation_key=generation_key,
+                        )
+
+                refreshed = await jobs_repo.refresh_job_counters(str(job["id"]))
+                targets = await jobs_repo.get_targets(str(job["id"]))
+                has_failed = any(t.get("status") == "failed" for t in targets)
+                has_pending = any(t.get("status") not in TARGET_DONE_STATES for t in targets)
+                final_status = "completed"
+                if has_failed or has_pending:
+                    final_status = "partial"
+                if (
+                    has_failed
+                    and refreshed
+                    and int(refreshed.get("processed_targets") or 0) == int(refreshed.get("error_count") or 0)
+                ):
+                    final_status = "failed"
+                if final_status == "completed":
+                    await jobs_repo.finalize_job(job_id=str(job["id"]), status="completed", last_error=None)
+            except Exception as exc:
+                logger.exception(
+                    "Falha ao processar job media_generation",
+                    extra={"job_id": str(job.get("id"))},
+                )
+                await session.rollback()
+                await jobs_repo.finalize_job(
                     job_id=str(job["id"]),
                     status="failed",
                     last_error=str(exc),

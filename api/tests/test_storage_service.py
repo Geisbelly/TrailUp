@@ -62,6 +62,76 @@ async def test_download_bytes_faz_fallback_para_url_publica_sem_service_key(monk
 
 
 @pytest.mark.asyncio
+async def test_upload_bytes_faz_put_autenticado_e_devolve_url_publica(monkeypatch) -> None:
+    calls: list[tuple[str, bytes, dict | None]] = []
+
+    class _DummyResponse:
+        status_code = 200
+
+        def raise_for_status(self) -> None:
+            return None
+
+    class _DummyClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def put(self, url: str, content: bytes, headers: dict | None = None):
+            calls.append((url, content, headers))
+            return _DummyResponse()
+
+    monkeypatch.setattr("app.services.storage.httpx.AsyncClient", lambda *args, **kwargs: _DummyClient())
+
+    settings = Settings(
+        supabase_url="https://xrebtkmdewolzmpsdwgh.supabase.co",
+        supabase_service_key="fake-service-key",
+    )
+    storage = SupabaseStorage(settings)
+
+    url = await storage.upload_bytes(
+        bucket="conteudo_aluno",
+        path="brainhex/mastermind/topico-1/markdown/material-1.md",
+        data=b"## Aula\n\nTexto.",
+        content_type="text/markdown; charset=utf-8",
+    )
+
+    assert url == (
+        "https://xrebtkmdewolzmpsdwgh.supabase.co/storage/v1/object/public/"
+        "conteudo_aluno/brainhex/mastermind/topico-1/markdown/material-1.md"
+    )
+    assert len(calls) == 1
+    put_url, content, headers = calls[0]
+    assert put_url == (
+        "https://xrebtkmdewolzmpsdwgh.supabase.co/storage/v1/object/"
+        "conteudo_aluno/brainhex/mastermind/topico-1/markdown/material-1.md"
+    )
+    assert content == b"## Aula\n\nTexto."
+    assert headers["content-type"] == "text/markdown; charset=utf-8"
+    assert headers["x-upsert"] == "true"
+    assert headers["Authorization"] == "Bearer fake-service-key"
+
+
+@pytest.mark.asyncio
+async def test_upload_bytes_sem_service_key_retorna_none(monkeypatch) -> None:
+    settings = Settings(
+        supabase_url="https://xrebtkmdewolzmpsdwgh.supabase.co",
+        supabase_service_key=None,
+    )
+    storage = SupabaseStorage(settings)
+
+    url = await storage.upload_bytes(
+        bucket="conteudo_aluno",
+        path="brainhex/mastermind/topico-1/markdown/material-1.md",
+        data=b"## Aula",
+        content_type="text/markdown",
+    )
+
+    assert url is None
+
+
+@pytest.mark.asyncio
 async def test_load_source_preview_preserva_acentos_quando_texto_nao_esta_em_utf8(monkeypatch) -> None:
     settings = Settings(
         supabase_url="https://xrebtkmdewolzmpsdwgh.supabase.co",

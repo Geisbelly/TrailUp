@@ -61,6 +61,11 @@ export interface ProcessedContent {
   slideImages?: string[];
   audioBase64?: string | null;
   audioMp3Base64?: string | null;
+  /** Capítulo bruto por bloco — só populado quando generation_mode é
+   * "block_batches" (ver consolidateBlockBatchGenerations). Usado pelo
+   * endpoint /api/v1/generate/block para persistir cada bloco separado,
+   * em vez de só o markdown/audioScript já consolidado acima. */
+  chapters?: { blockId: string; markdown: string; audioScript: string; slides: SlideContent[] }[];
 }
 
 export interface EnrichedContentBlock {
