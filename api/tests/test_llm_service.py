@@ -1,10 +1,11 @@
 import asyncio
 
 import pytest
+from pydantic import BaseModel
 
 from app.core.settings import Settings
 from app.services import llm as llm_module
-from app.services.llm import JsonLLMService, reset_gemini_llm_circuit
+from app.services.llm import JsonLLMService, StructuredOutputError, reset_gemini_llm_circuit
 
 
 @pytest.fixture(autouse=True)
@@ -221,3 +222,88 @@ def test_ainvoke_json_gemini_handles_response_content_as_list_of_parts(
     )
 
     assert result == {"cards": [1]}
+
+
+class _FakeSchema(BaseModel):
+    titulo: str
+    prioridade: int
+
+
+def test_ainvoke_structured_gemini_returns_validated_model(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    class _FakeStructuredClient:
+        async def ainvoke(self, _messages):
+            return {"titulo": "Reforcar bases", "prioridade": 2}
+
+    class _FakeGeminiClientWithSchema:
+        def with_structured_output(self, schema):
+            captured["schema"] = schema
+            return _FakeStructuredClient()
+
+    def factory(*, model: str, temperature: float, google_api_key: str):
+        return _FakeGeminiClientWithSchema()
+
+    monkeypatch.setattr(llm_module, "ChatGoogleGenerativeAI", factory)
+    monkeypatch.setattr(llm_module, "load_prompt", lambda _name: "instrucoes")
+
+    settings = _settings(gemini_api_key="key-1", openai_api_key="")
+    service = JsonLLMService(settings)
+
+    result = asyncio.run(
+        service.ainvoke_structured(
+            prompt_name="trilha_config.txt",
+            payload={"classe_id": 1},
+            schema=_FakeSchema,
+        )
+    )
+
+    assert result == _FakeSchema(titulo="Reforcar bases", prioridade=2)
+    assert captured["schema"] == _FakeSchema.model_json_schema()
+
+
+def test_ainvoke_structured_raises_typed_error_when_shape_is_wrong(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _FakeStructuredClient:
+        async def ainvoke(self, _messages):
+            return {"titulo": "sem prioridade"}
+
+    class _FakeGeminiClientWithSchema:
+        def with_structured_output(self, _schema):
+            return _FakeStructuredClient()
+
+    monkeypatch.setattr(
+        llm_module,
+        "ChatGoogleGenerativeAI",
+        lambda *, model, temperature, google_api_key: _FakeGeminiClientWithSchema(),
+    )
+    monkeypatch.setattr(llm_module, "load_prompt", lambda _name: "instrucoes")
+
+    settings = _settings(gemini_api_key="key-1", openai_api_key="")
+    service = JsonLLMService(settings)
+
+    with pytest.raises(StructuredOutputError):
+        asyncio.run(
+            service.ainvoke_structured(
+                prompt_name="trilha_config.txt",
+                payload={"classe_id": 1},
+                schema=_FakeSchema,
+            )
+        )
+
+
+def test_ainvoke_structured_raises_typed_error_when_no_provider_available() -> None:
+    settings = _settings(gemini_api_key="", openai_api_key="")
+    service = JsonLLMService(settings)
+
+    with pytest.raises(StructuredOutputError):
+        asyncio.run(
+            service.ainvoke_structured(
+                prompt_name="trilha_config.txt",
+                payload={"classe_id": 1},
+                schema=_FakeSchema,
+            )
+        )
