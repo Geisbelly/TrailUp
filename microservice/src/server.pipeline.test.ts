@@ -33,8 +33,9 @@ test("runAudioAndPresentationInParallel dispara audio e apresentacao concorrente
   const start = Date.now();
   await runAudioAndPresentationInParallel(parts, {
     generateAudio: (audioScript) => delay(DELAY_MS, { mp3: audioScript, wav: null }),
+    audioConcurrency: parts.length,
     renderPresentation: (part) =>
-      delay(DELAY_MS, { presentationUrl: `https://fake/${part.titulo}`, failure: null }),
+      delay(DELAY_MS, { presentationUrl: `https://fake/${part.titulo}`, failure: null, dbWritten: false }),
   });
   const elapsed = Date.now() - start;
 
@@ -54,8 +55,9 @@ test("runAudioAndPresentationInParallel preserva a ordem das partes e nao deixa 
       audioScript === "audio-2"
         ? Promise.reject(new Error("falha simulada de audio"))
         : Promise.resolve({ mp3: audioScript, wav: null }),
+    audioConcurrency: parts.length,
     renderPresentation: (part) =>
-      Promise.resolve({ presentationUrl: `https://fake/${part.titulo}`, failure: null }),
+      Promise.resolve({ presentationUrl: `https://fake/${part.titulo}`, failure: null, dbWritten: false }),
   });
 
   assert.equal(result.audioSettled.length, 3);
