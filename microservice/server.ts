@@ -964,6 +964,15 @@ async function runPipeline(
     throw new Error(msg);
   }
 
+  // Subconjunto de filesData que o BrainHexPDF pode usar como imagem real
+  // de referencia num slide (ver renderAndUploadPresentationViaBrainHexPdf
+  // mais abaixo) - o restante (pdf, docx, audio, etc.) so serve pra
+  // processMediaWithGemini synthesize texto/audio, nao faz sentido como
+  // imagem de slide.
+  const imageAttachments = filesData
+    .filter((f) => f.mimeType.startsWith("image/"))
+    .map((f) => ({ data: f.data, mimeType: f.mimeType, name: f.name }));
+
   // 2. Texto + slides via Gemini (multi-arquivo)
   const resultado = await processMediaWithGemini(
     filesData,
@@ -1025,6 +1034,7 @@ async function runPipeline(
         topic: part.titulo,
         profile,
         bucket,
+        attachments: imageAttachments,
         presentationPath: `${storagePath}/apresentacao/material-${refId}${
           multiPart ? `-parte-${String(part.ordem).padStart(2, "0")}` : ""
         }.html`,
