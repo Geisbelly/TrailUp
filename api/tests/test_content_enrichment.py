@@ -86,6 +86,14 @@ def _rich_response(payload: dict[str, Any]) -> dict[str, Any]:
             "estudante pode observar esse processo ao abrir um endereço no navegador, "
             "comparar a resolução do nome e acompanhar a requisição até o servidor."
         )
+        # Repete a frase de aprofundamento ate ultrapassar o piso minimo com
+        # folga real (nao so "encostar" nele) - deixa a fixture robusta a
+        # mudancas futuras no piso, em vez de recalibrar um texto de tamanho
+        # fixo toda vez que _MIN_EXPANSION_RATIO/_MIN_EXPANSION_CHARS mudam.
+        minimum = enrichment_module._minimum_expanded_length(base_text)
+        expanded = base_text + expansion
+        while len(expanded) < minimum + 50:
+            expanded += expansion
         blocks.append(
             {
                 "id": base["id"],
@@ -93,7 +101,7 @@ def _rich_response(payload: dict[str, Any]) -> dict[str, Any]:
                 "topico": base["topico"],
                 "objetivos": ["Explicar e aplicar o conceito em uma situação real."],
                 "conteudo_base": base_text,
-                "conteudo_aprofundado": base_text + expansion,
+                "conteudo_aprofundado": expanded,
                 "conceitos_chave": ["resolução de nomes", "comunicação distribuída"],
                 "exemplos_contextos": ["Abertura de um site no navegador."],
                 "ponte_proximo_bloco": "O resultado prepara o próximo conceito.",
@@ -375,32 +383,31 @@ def test_source_segmentation_splits_large_text_without_losing_its_tail() -> None
     assert rebuilt.count("x") == 9_000
 
 
-def test_minimum_expanded_length_requires_at_least_30_percent_and_200_chars() -> None:
-    # Piso antigo era 15%/80 chars - baixo demais: producao mostrou blocos
-    # "aprofundados" que so raspavam esse piso e depois nunca alcancavam a
-    # cobertura minima exigida pelo microservice na geracao de materiais
-    # (ver geminiService.ts). O prompt de enriquecimento (_ENRICHMENT_
-    # INSTRUCTIONS) ja promete pelo menos 30%/200 chars ao modelo; o
-    # validador ficava mais frouxo que a propria instrucao.
+def test_minimum_expanded_length_requires_at_least_50_percent_and_350_chars() -> None:
+    # Piso subiu de 30%/200 chars para 50%/350 chars: o piso antigo, mesmo
+    # ja mais alto que o original de 15%/80, ainda deixava blocos "aprofundados"
+    # curtos demais depois de somado ao piso de cobertura do microservice
+    # (ver geminiService.ts) - ver docs/superpowers/specs/
+    # 2026-08-20-blocos-conteudo-profundidade-design.md.
     long_base = "x" * 1_000
-    assert enrichment_module._minimum_expanded_length(long_base) == 1_000 + 300
+    assert enrichment_module._minimum_expanded_length(long_base) == 1_000 + 500
 
     short_base = "x" * 100
-    assert enrichment_module._minimum_expanded_length(short_base) == 100 + 200
+    assert enrichment_module._minimum_expanded_length(short_base) == 100 + 350
 
 
 @pytest.mark.asyncio
-async def test_enrichment_rejects_response_expanded_below_new_30_percent_floor(
+async def test_enrichment_rejects_response_expanded_below_new_50_percent_floor(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    # Expansao de 20% fica entre o piso antigo (15%, passava) e o novo piso
-    # (30%, deve falhar) - prova que o piso mais alto rejeita blocos que
-    # antes eram aceitos "de raspao".
+    # Expansao de 40% fica entre o piso anterior (30%, passava) e o piso
+    # atual (50%, deve falhar) - prova que o piso mais alto rejeita blocos
+    # que antes eram aceitos "de raspao".
     def borderline(payload: dict[str, Any]) -> dict[str, Any]:
         response = _rich_response(payload)
         for block in response["blocos"]:
             base = block["conteudo_base"]
-            extra_len = math.ceil(len(base) * 0.20)
+            extra_len = math.ceil(len(base) * 0.40)
             block["conteudo_aprofundado"] = base + ("x" * extra_len)
         return response
 
@@ -1182,3 +1189,62 @@ async def test_enrichment_ainda_falha_quando_resposta_fica_muito_abaixo_da_marge
 
     with pytest.raises(ContentEnrichmentError, match="insuficiente"):
         await enrich_content_blocks(context=_context(), settings=_settings())
+
+
+# ─── Flag "escasso" (material do professor abaixo do limiar) ──────────────────
+
+
+def test_group_segments_marca_bloco_como_escasso_abaixo_do_limiar() -> None:
+    context = {"conteudo_classe": {"topico": {"nome": "Redes"}}}
+    segments = [
+        {
+            "segment_id": "segmento-0001",
+            "source_id": "conteudo:1",
+            "source_title": "Aula",
+            "source_order": 1,
+            "text": "Texto curto de origem.",
+        }
+    ]
+
+    groups = enrichment_module._group_segments(context, segments)
+
+    assert len(groups) == 1
+    assert groups[0]["escasso"] is True
+
+
+def test_group_segments_nao_marca_bloco_rico_como_escasso() -> None:
+    context = {"conteudo_classe": {"topico": {"nome": "Redes"}}}
+    segments = [
+        {
+            "segment_id": "segmento-0001",
+            "source_id": "conteudo:1",
+            "source_title": "Aula",
+            "source_order": 1,
+            "text": "T" * 900,
+        }
+    ]
+
+    groups = enrichment_module._group_segments(context, segments)
+
+    assert len(groups) == 1
+    assert groups[0]["escasso"] is False
+
+
+@pytest.mark.asyncio
+async def test_enrichment_envia_flag_escasso_no_payload_enviado_ao_modelo(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, Any] = {}
+    monkeypatch.setattr(
+        enrichment_module,
+        "_gemini_client",
+        _gemini_factory(_rich_response, captured),
+    )
+
+    context = _context(paragraphs=1)
+    context["conteudo_classe"]["conteudos"][0]["conteudo"] = "Texto curto."
+
+    await enrich_content_blocks(context=context, settings=_settings())
+
+    submitted_blocks = captured["payloads"][0]["blocos_base"]
+    assert all("escasso" in block for block in submitted_blocks)
