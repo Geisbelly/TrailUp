@@ -610,3 +610,24 @@ async def test_agente_trilha_passa_dominio_por_topico_da_memoria_no_contexto(
     )
 
     assert contextos_recebidos[0]["dominio_por_topico"] == {"10": {"dominio_estimado": 0.9}}
+
+
+@pytest.mark.asyncio
+async def test_agente_ui_forca_tema_de_suporte_com_frustracao_recorrente() -> None:
+    from app.agent.graph.nodes.agente_ui import agente_ui
+
+    settings = Settings(openai_api_key=None)
+    result = await agente_ui(
+        {
+            "emocao_atual": {"emocao_primaria": "concentrado"},  # ponto atual neutro
+            "perfil_brainhex": [],
+            "desempenho_recente": {},
+            "memoria_aluno": {
+                "mental_state_recorrente": {"recorrente": True, "kind": "frustrated", "ocorrencias": 3}
+            },
+        },
+        settings=settings,
+    )
+
+    assert result["ui_config"]["tema"] == "focus"
+    assert result["ui_config"]["tom_feedbacks"] == "suporte"

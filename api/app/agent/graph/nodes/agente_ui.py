@@ -48,6 +48,22 @@ async def agente_ui(state: dict[str, Any], settings: Settings) -> dict[str, Any]
         )
     except StructuredOutputError:
         ui_config = UIConfig.model_validate(_fallback_ui(state))
+
+    memoria = state.get("memoria_aluno") or {}
+    recorrencia = memoria.get("mental_state_recorrente") or {}
+    if recorrencia.get("recorrente"):
+        # recorrencia (varios ciclos) pesa mais que o instante do ciclo
+        # atual - forca o mesmo preset de suporte que EMOCAO_TEMA usa pra
+        # 'frustrado', mesmo que a emocao pontual pareca neutra.
+        suporte = EMOCAO_TEMA["frustrado"]
+        ui_config = ui_config.model_copy(
+            update={
+                "tema": suporte["tema"],
+                "ritmo_conteudo": suporte["ritmo_conteudo"],
+                "tom_feedbacks": suporte["tom_feedbacks"],
+            }
+        )
+
     return {
         "ui_config": ui_config.model_dump(mode="json"),
         "completed_nodes": ["agente_ui"],
