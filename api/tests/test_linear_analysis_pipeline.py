@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 
 from app.core.settings import Settings
@@ -210,3 +212,35 @@ async def test_linear_analysis_orchestrator_runs_all_stages_and_enriches_state()
     assert "time_metrics" in state["pipeline_stage_outputs"]["attention"]
     assert "simplificar_conteudo" in result["acoes_aplicadas"]
     assert request.app.state.graph_ephemeral.calls
+
+
+def test_deep_knowledge_tracing_usa_dominio_persistido_como_semente() -> None:
+    analyzer = DeepKnowledgeTracingAnalyzer()
+    state = {
+        "payload_topico_id": 10,
+        "desempenho_recente": {"media_acertos": 20},  # seria base_mastery baixo se usado
+        "memoria_aluno": {
+            "dominio_por_topico": {
+                "10": {"dominio_estimado": 0.9, "tendencia": "ascendente", "confianca": 0.7}
+            }
+        },
+    }
+
+    resultado = asyncio.run(analyzer.analyze(eventos_novos=[], state=state))
+
+    # com semente 0.9 (persistida) em vez de 0.2 (flat), o dominio final
+    # fica bem mais alto mesmo sem eventos no lote.
+    assert resultado.dominio_estimado > 0.8
+
+
+def test_deep_knowledge_tracing_cai_no_flat_quando_sem_dominio_persistido() -> None:
+    analyzer = DeepKnowledgeTracingAnalyzer()
+    state = {
+        "payload_topico_id": 10,
+        "desempenho_recente": {"media_acertos": 80},
+        "memoria_aluno": {"dominio_por_topico": {}},
+    }
+
+    resultado = asyncio.run(analyzer.analyze(eventos_novos=[], state=state))
+
+    assert resultado.dominio_estimado == 0.8

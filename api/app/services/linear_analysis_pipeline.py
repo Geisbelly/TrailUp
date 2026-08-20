@@ -496,7 +496,17 @@ class DeepKnowledgeTracingAnalyzer:
     ) -> PerformanceStageResult:
         counts = Counter(evento.tipo for evento in eventos_novos)
         desempenho = state.get("desempenho_recente", {}) or {}
-        base_mastery = _safe_float(desempenho.get("media_acertos"), 50.0) / 100.0
+        topico_id = state.get("payload_topico_id") or desempenho.get("topico_recente_id")
+        memoria = state.get("memoria_aluno") or {}
+        dominio_persistido = (
+            (memoria.get("dominio_por_topico") or {}).get(str(topico_id))
+            if topico_id is not None
+            else None
+        )
+        if dominio_persistido:
+            base_mastery = _safe_float(dominio_persistido.get("dominio_estimado"), 0.5)
+        else:
+            base_mastery = _safe_float(desempenho.get("media_acertos"), 50.0) / 100.0
         correct = counts.get("atividade_acertada", 0)
         wrong = counts.get("atividade_errada", 0)
         delta = (correct * 0.08) - (wrong * 0.07)
