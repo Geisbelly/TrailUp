@@ -77,13 +77,34 @@ def checar_evidencia_dominio(
     trilha: TrilhaConfig, contexto: dict[str, Any]
 ) -> GuardrailViolation | None:
     """'ajustes' e vocabulario controlado (ver trilha_config.txt) — o unico
-    jeito de dispensar reforco e o valor exato 'avancar sem reforco', e isso
-    so e aceito com desempenho real que sustente. Mesmo limiar (50) que
-    _fallback_trilha/_fallback_perfil ja usam pra 'reforcar fundamentos'."""
+    jeito de dispensar reforco e o valor exato 'avancar sem reforco'. Prefere
+    o dominio PERSISTIDO do topico especifico (memoria_aluno, mais preciso)
+    quando existe; cai pro media_acertos flat da classe so quando o aluno
+    ainda nao tem registro de dominio pro topico."""
+    if "avancar sem reforco" not in trilha.ajustes:
+        return None
+
+    dominio_por_topico = contexto.get("dominio_por_topico") or {}
+    registro_topico = (
+        dominio_por_topico.get(str(trilha.topico_foco))
+        if trilha.topico_foco is not None
+        else None
+    )
+    if registro_topico is not None:
+        dominio_pct = float(registro_topico.get("dominio_estimado", 0)) * 100
+        if dominio_pct < 50:
+            return GuardrailViolation(
+                regra="evidencia_dominio",
+                mensagem=(
+                    f"ajuste 'avancar sem reforco' sem evidencia de dominio persistido "
+                    f"pro topico {trilha.topico_foco} (dominio_estimado={dominio_pct:.0f}%)"
+                ),
+            )
+        return None
+
     desempenho = contexto.get("desempenho_recente", {})
     media_acertos = float(desempenho.get("media_acertos", 100))
-
-    if "avancar sem reforco" in trilha.ajustes and media_acertos < 50:
+    if media_acertos < 50:
         return GuardrailViolation(
             regra="evidencia_dominio",
             mensagem=(
