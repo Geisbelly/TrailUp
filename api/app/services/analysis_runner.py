@@ -9,6 +9,7 @@ from app.repositories.ia_decision_logs import IADecisionLogRepository
 from app.repositories.mental_state import MentalStateHistoryRepository
 from app.schemas.api import AnalisarPayload, AnalisarResponse
 from app.schemas.common import Evento
+from app.services import memoria_aluno
 from app.services.linear_analysis_pipeline import build_linear_analysis_orchestrator
 from app.services.state_builder import build_initial_state
 
@@ -153,6 +154,20 @@ async def run_analysis(
         except Exception as exc:  # pragma: no cover
             await session.rollback()
             logger.warning("Falha ao persistir aluno_mental_state_history: %s", exc)
+
+    performance_resumo = (result.get("pipeline_stage_outputs") or {}).get("performance")
+    topico_id_efetivo = topico_id or (result.get("desempenho_recente") or {}).get("topico_recente_id")
+    if performance_resumo:
+        try:
+            await memoria_aluno.atualizar_memoria(
+                session,
+                aluno_id=aluno_id,
+                topico_id=topico_id_efetivo,
+                performance_resumo=performance_resumo,
+            )
+        except Exception as exc:  # pragma: no cover
+            await session.rollback()
+            logger.warning("Falha ao persistir memoria de dominio: %s", exc)
     try:
         await IADecisionLogRepository(session).log(
             aluno_id=aluno_id,

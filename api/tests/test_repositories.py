@@ -4,6 +4,7 @@ from types import SimpleNamespace
 import pytest
 
 from app.repositories.access import AccessRepository
+from app.repositories.aluno_topico_dominio import AlunoTopicoDominioRepository
 from app.repositories.artefatos_personalizados import ArtefatosPersonalizadosRepository
 from app.repositories.conteudo_personalizado import ConteudoPersonalizadoRepository
 from app.repositories.context import ContextRepository
@@ -1581,3 +1582,48 @@ async def test_get_targets_inclui_colunas_granulares():
     assert targets[0]["block_id"] == "bloco-01"
     sql, _params = session.calls[1]
     assert "media_kind" in sql
+
+
+@pytest.mark.asyncio
+async def test_aluno_topico_dominio_buscar_por_classe_maps_rows() -> None:
+    session = RecordingSession(
+        [
+            MappingResult(
+                [
+                    {
+                        "topico_id": 10,
+                        "dominio_estimado": 0.72,
+                        "tendencia": "ascendente",
+                        "confianca": 0.66,
+                        "atualizado_em": datetime(2026, 8, 19),
+                    }
+                ]
+            )
+        ]
+    )
+    repo = AlunoTopicoDominioRepository(session)
+
+    registros = await repo.buscar_por_classe(aluno_id="aluno-1", classe_id=32)
+
+    assert set(registros) == {"10"}
+    assert registros["10"]["dominio_estimado"] == 0.72
+    assert registros["10"]["tendencia"] == "ascendente"
+
+
+@pytest.mark.asyncio
+async def test_aluno_topico_dominio_upsert_sends_on_conflict_update() -> None:
+    session = RecordingSession([ScalarResult(True)])
+    repo = AlunoTopicoDominioRepository(session)
+
+    await repo.upsert(
+        aluno_id="aluno-1",
+        topico_id=10,
+        dominio_estimado=0.8,
+        tendencia="ascendente",
+        confianca=0.7,
+    )
+
+    sql, params = session.calls[0]
+    assert "INSERT INTO aluno_topico_dominio" in sql
+    assert "ON CONFLICT (aluno_id, topico_id) DO UPDATE" in sql
+    assert params["dominio_estimado"] == 0.8

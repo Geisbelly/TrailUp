@@ -259,3 +259,40 @@ def test_checar_grounding_chat_falha_aberta_quando_juiz_indisponivel() -> None:
     )
 
     assert violacao is None
+
+
+def test_checar_evidencia_dominio_usa_dominio_persistido_do_topico() -> None:
+    trilha = TrilhaConfig(
+        classe_id=1,
+        topico_foco=10,
+        proximos_topicos=[],
+        ajustes=["avancar sem reforco"],
+        justificativa="x",
+    )
+    # media_acertos geral da classe e baixa, mas o dominio PERSISTIDO desse
+    # topico especifico e alto - deve prevalecer o dado mais preciso.
+    contexto = {
+        "desempenho_recente": {"media_acertos": 20},
+        "dominio_por_topico": {"10": {"dominio_estimado": 0.9}},
+    }
+
+    assert checar_evidencia_dominio(trilha, contexto) is None
+
+
+def test_checar_evidencia_dominio_rejeita_com_dominio_persistido_baixo() -> None:
+    trilha = TrilhaConfig(
+        classe_id=1,
+        topico_foco=10,
+        proximos_topicos=[],
+        ajustes=["avancar sem reforco"],
+        justificativa="x",
+    )
+    contexto = {
+        "desempenho_recente": {"media_acertos": 90},
+        "dominio_por_topico": {"10": {"dominio_estimado": 0.3}},
+    }
+
+    violacao = checar_evidencia_dominio(trilha, contexto)
+
+    assert violacao is not None
+    assert violacao.regra == "evidencia_dominio"
