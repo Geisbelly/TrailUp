@@ -137,11 +137,11 @@ test("usa concorrencia pequena pra geracao de audio por parte e aplica um teto s
 
 test("da ao documento mesclado um orcamento de saida maior que o lote normal", () => {
   // O documento mesclado sintetiza TODOS os blocos do topico numa unica
-  // chamada (markdown + audioScript + slides); 16384 tokens (calibrado pro
-  // fallback OpenAI, que tem teto rigido) e curto demais pra essa sintese e
-  // o Gemini devolve markdown abaixo do minimo de cobertura mesmo tentando
-  // de novo. O lote normal (1 bloco pequeno) continua no teto de sempre.
-  assert.equal(resolveContentGenerationMaxOutputTokens(false, {}), 16_384);
+  // chamada (markdown + audioScript); 24576 tokens e curto demais pra essa
+  // sintese e o Gemini devolve markdown abaixo do minimo de cobertura mesmo
+  // tentando de novo. O lote normal (1 bloco pequeno) continua no teto de
+  // sempre.
+  assert.equal(resolveContentGenerationMaxOutputTokens(false, {}), 24_576);
   assert.equal(resolveContentGenerationMaxOutputTokens(true, {}), 65_536);
 });
 
@@ -169,14 +169,17 @@ test("respeita override por env var, com o mesmo teto minimo de 8192 dos dois ca
   assert.equal(resolveContentGenerationMaxOutputTokens(true, { CONTENT_GENERATION_BATCH_MAX_OUTPUT_TOKENS: "24000" }), 65_536);
 });
 
-test("cobertura minima usa 55% (markdown) / 35% (audio) do texto-fonte, nao 75%/50%", () => {
-  // Achado de producao: 75%/50% (calibracao original) fazia os 6 modelos
-  // Gemini disponiveis convergirem consistentemente pra 90-98% do minimo,
-  // nunca cruzando - assinatura de teto apertado demais pra um
-  // conteudo_aprofundado que ja e, ele mesmo, um texto expandido por outra
-  // chamada de LLM (content_enrichment.py), nao o material bruto original.
+test("cobertura minima usa 70% (markdown) / 45% (audio) do texto-fonte, nao 55%/35%", () => {
+  // O piso de 55%/35% ja era deliberadamente mais frouxo que o ideal: com
+  // markdown/audioScript/slides dividindo o mesmo orcamento de output,
+  // 75%/50% (calibracao original) fazia os 6 modelos Gemini disponiveis
+  // convergirem consistentemente pra 90-98% do minimo, nunca cruzando -
+  // assinatura de teto apertado demais. Com "slides" removido da chamada
+  // (nunca chegava ao aluno - ver docs/superpowers/specs/
+  // 2026-08-20-blocos-conteudo-profundidade-design.md), markdown/audioScript
+  // tem mais orcamento livre e o piso volta a subir, agora pra 70%/45%.
   // Fonte grande o bastante pra o piso absoluto (200/160 chars) nunca ser o
-  // fator limitante - só assim o teste exercita de fato o ratio 55%/35%.
+  // fator limitante - só assim o teste exercita de fato o ratio 70%/45%.
   const bigSourceBlock: EnrichedContentBlock = {
     ...block(1),
     conteudo_aprofundado: "x".repeat(2000),
@@ -187,7 +190,7 @@ test("cobertura minima usa 55% (markdown) / 35% (audio) do texto-fonte, nao 75%/
   // sempre acima de qualquer minimo possivel (ratio antigo ou novo), pra
   // isolar exatamente o campo sendo verificado.
   const abaixoDoNovoMinimoMarkdown = chapter("bloco-01", "UM");
-  abaixoDoNovoMinimoMarkdown.markdown = "x".repeat(Math.floor(fonte * 0.55) - 1);
+  abaixoDoNovoMinimoMarkdown.markdown = "x".repeat(Math.floor(fonte * 0.70) - 1);
   abaixoDoNovoMinimoMarkdown.audioScript = "x".repeat(fonte);
   assert.throws(
     () => validateBlockBatchGeneration(
@@ -199,9 +202,9 @@ test("cobertura minima usa 55% (markdown) / 35% (audio) do texto-fonte, nao 75%/
   );
 
   const acimaDoNovoMinimoMarkdown = chapter("bloco-01", "UM");
-  acimaDoNovoMinimoMarkdown.markdown = "x".repeat(Math.ceil(fonte * 0.55) + 1);
+  acimaDoNovoMinimoMarkdown.markdown = "x".repeat(Math.ceil(fonte * 0.70) + 1);
   acimaDoNovoMinimoMarkdown.audioScript = "x".repeat(fonte);
-  // Não deve lançar - markdown já cruza o novo mínimo (55%), mesmo estando
+  // Não deve lançar - markdown já cruza o novo mínimo (70%), mesmo estando
   // bem abaixo do antigo (75%), que teria reprovado esta mesma resposta.
   validateBlockBatchGeneration(
     [bigSourceBlock],
@@ -211,7 +214,7 @@ test("cobertura minima usa 55% (markdown) / 35% (audio) do texto-fonte, nao 75%/
 
   const abaixoDoNovoMinimoAudio = chapter("bloco-01", "UM");
   abaixoDoNovoMinimoAudio.markdown = "x".repeat(fonte);
-  abaixoDoNovoMinimoAudio.audioScript = "x".repeat(Math.floor(fonte * 0.35) - 1);
+  abaixoDoNovoMinimoAudio.audioScript = "x".repeat(Math.floor(fonte * 0.45) - 1);
   assert.throws(
     () => validateBlockBatchGeneration(
       [bigSourceBlock],
@@ -223,8 +226,8 @@ test("cobertura minima usa 55% (markdown) / 35% (audio) do texto-fonte, nao 75%/
 
   const acimaDoNovoMinimoAudio = chapter("bloco-01", "UM");
   acimaDoNovoMinimoAudio.markdown = "x".repeat(fonte);
-  acimaDoNovoMinimoAudio.audioScript = "x".repeat(Math.ceil(fonte * 0.35) + 1);
-  // Não deve lançar - áudio já cruza o novo mínimo (35%), mesmo bem abaixo
+  acimaDoNovoMinimoAudio.audioScript = "x".repeat(Math.ceil(fonte * 0.45) + 1);
+  // Não deve lançar - áudio já cruza o novo mínimo (45%), mesmo bem abaixo
   // do antigo (50%).
   validateBlockBatchGeneration(
     [bigSourceBlock],
@@ -246,7 +249,7 @@ test("tolerant:true aceita markdown/audio a partir de 95% do minimo calculado, n
     conteudo_aprofundado: "x".repeat(2000),
   };
   const fonte = bigSourceBlock.conteudo_aprofundado.length;
-  const minimoBruto = Math.floor(fonte * 0.55);
+  const minimoBruto = Math.floor(fonte * 0.70);
 
   const perto96 = chapter("bloco-01", "UM");
   perto96.markdown = "x".repeat(Math.floor(minimoBruto * 0.96));
@@ -308,41 +311,6 @@ test("valida cobertura exata do lote e reordena capítulos pelos ids esperados",
   assert.equal(result.confidence, 0.86);
 });
 
-// Otimizacao de custo (achado do code review): imagePrompt/iconPrompts so
-// serviam pro pipeline de imagem/icone do motor de apresentacao antigo, ja
-// removido - o BrainHexPDF gera o deck inteiro por fora, e payload.slides
-// nunca sai do servidor (ver comentario em archiveMultiPartToSupabase). O
-// schema nao pede mais esses campos ao modelo; a validacao nao pode mais
-// exigi-los.
-test("valida slide sem imagePrompt/iconPrompts - campos removidos do schema (motor de imagem antigo)", () => {
-  const slideSemImagem = {
-    title: "Slide SEM-IMAGEM",
-    topics: ["Definição", "Aplicação"],
-    explanation: "Explicação visual completa de SEM-IMAGEM.",
-    visualDescription: "Diagrama aplicado de SEM-IMAGEM.",
-    characterQuote: "Vamos compreender SEM-IMAGEM.",
-    characterAction: "explaining",
-    sourceIds: ["bloco-01"],
-  };
-  const result = validateBlockBatchGeneration(
-    [block(1)],
-    {
-      chapters: [{
-        blockId: "bloco-01",
-        markdown: chapter("bloco-01", "SEM-IMAGEM").markdown,
-        audioScript: chapter("bloco-01", "SEM-IMAGEM").audioScript,
-        slides: [slideSemImagem],
-      }],
-      confidence: 0.9,
-    },
-    1,
-  );
-
-  assert.equal(result.chapters[0].slides[0].title, "Slide SEM-IMAGEM");
-  assert.equal(result.chapters[0].slides[0].imagePrompt, undefined);
-  assert.equal(result.chapters[0].slides[0].iconPrompts, undefined);
-});
-
 test("recusa lote que omite bloco ou devolve texto resumido", () => {
   const batch = [block(1), block(2)];
   assert.throws(
@@ -369,14 +337,14 @@ test("recusa lote que omite bloco ou devolve texto resumido", () => {
 test("teto de cobertura por orcamento de output evita exigir mais markdown do que uma unica chamada consegue conter", () => {
   // Reproduz o bug real: mergeContentBlocksIntoOne junta N blocos originais
   // num so ("documento-completo"), cujo conteudo_aprofundado bruto cresce
-  // com N — mas markdown/audioScript/slides saem de UMA UNICA chamada com
-  // orcamento de output fixo (maxOutputTokens). Sem teto, a exigencia de 55%
-  // do texto-fonte supera o que a resposta consegue fisicamente conter, e o
+  // com N — mas markdown/audioScript saem de UMA UNICA chamada com orcamento
+  // de output fixo (maxOutputTokens). Sem teto, a exigencia de 70% do
+  // texto-fonte supera o que a resposta consegue fisicamente conter, e o
   // lote reprova sempre, nao importa quantas vezes o Gemini tente de novo.
-  // repeat(300), nao 120: com o ratio mais folgado (55%/35%, ver
-  // minimumMarkdownLength/minimumAudioLength em geminiService.ts), um N menor
-  // nao gera fonte grande o bastante pra sequer sem-teto ultrapassar o que a
-  // resposta de teste consegue conter — o cenario so se reproduz com fonte
+  // repeat(300), nao 120: com o ratio (70%/45%, ver minimumMarkdownLength/
+  // minimumAudioLength em geminiService.ts), um N menor nao gera fonte
+  // grande o bastante pra sequer sem-teto ultrapassar o que a resposta de
+  // teste consegue conter — o cenario so se reproduz com fonte
   // proporcionalmente maior.
   const bigBlock = (index: number): EnrichedContentBlock => ({
     ...block(index),
@@ -395,12 +363,11 @@ test("teto de cobertura por orcamento de output evita exigir mais markdown do qu
       blockId: "documento-completo",
       markdown: achievableMarkdown,
       audioScript: "Narração completa do documento. ".repeat(450),
-      slides: [chapter("documento-completo", "UM").slides[0]],
     }],
     confidence: 0.9,
   };
 
-  // Sem o teto (maxOutputTokens omitido), a exigencia bruta de 50%/75% do
+  // Sem o teto (maxOutputTokens omitido), a exigencia bruta de 70%/45% do
   // texto-fonte mesclado ultrapassa uma resposta ja "razoavelmente boa"
   // (aqui, o áudio é o primeiro a esbarrar nisso).
   assert.throws(
@@ -436,69 +403,7 @@ test("aceita audioScript vazio quando requireAudio=false - fallback OpenAI nao t
   assert.ok(result.chapters[0].markdown.length > 0);
 });
 
-test("corrige sourceIds do slide quando o lote tem um unico bloco valido, em vez de recusar a tentativa", () => {
-  // Lote sempre tem 1 bloco hoje (batch size = 1) - com um unico id valido,
-  // sourceIds ausente/errado nao e ambiguo: so pode ser [blockId]. Reprovar
-  // a tentativa inteira por isso descarta markdown/audio bons que vieram
-  // corretos no mesmo capitulo, so por um campo de rastreabilidade que o
-  // fallback OpenAI as vezes esquece de preencher.
-  const missingSourceIds = chapter("bloco-01", "UM");
-  missingSourceIds.slides[0].sourceIds = [];
-  const result = validateBlockBatchGeneration(
-    [block(1)],
-    { chapters: [missingSourceIds], confidence: 0.9 },
-    1,
-  );
-  assert.deepEqual(result.chapters[0].slides[0].sourceIds, ["bloco-01"]);
-
-  const wrongSourceIds = chapter("bloco-01", "UM");
-  wrongSourceIds.slides[0].sourceIds = ["bloco-99"];
-  const corrected = validateBlockBatchGeneration(
-    [block(1)],
-    { chapters: [wrongSourceIds], confidence: 0.9 },
-    1,
-  );
-  assert.deepEqual(corrected.chapters[0].slides[0].sourceIds, ["bloco-01"]);
-});
-
-test("corrige sourceIds ausente mesmo em lote com varios blocos (regressao: guard so cobria lote de 1 bloco)", () => {
-  // Bug real de producao: DEFAULT_CONTENT_BLOCK_BATCH_SIZE virou 6-8 no dia
-  // seguinte ao fix de "corrige sourceIds quando o lote tem 1 bloco", sem
-  // atualizar esse guard - com lotes de 6+ blocos (o caso normal hoje),
-  // sourceIds vazio (o mesmo esquecimento documentado no teste acima) parava
-  // de ser corrigido e virava "Slide 1 não referencia seu bloco" mesmo sem
-  // nenhuma ambiguidade real: cada capitulo so pode pertencer ao seu proprio
-  // blockId, batch grande ou nao.
-  const missingSourceIds = chapter("bloco-01", "UM");
-  missingSourceIds.slides[0].sourceIds = [];
-  const result = validateBlockBatchGeneration(
-    [block(1), block(2)],
-    {
-      chapters: [missingSourceIds, chapter("bloco-02", "DOIS")],
-      confidence: 0.9,
-    },
-    1,
-  );
-  assert.deepEqual(result.chapters[0].slides[0].sourceIds, ["bloco-01"]);
-});
-
-test("recusa slide fora do lote quando ha mais de um bloco valido (preserva a checagem multi-bloco)", () => {
-  const outOfBatch = chapter("bloco-01", "UM");
-  outOfBatch.slides[0].sourceIds = ["bloco-99"];
-  assert.throws(
-    () => validateBlockBatchGeneration(
-      [block(1), block(2)],
-      {
-        chapters: [outOfBatch, chapter("bloco-02", "DOIS")],
-        confidence: 0.9,
-      },
-      1,
-    ),
-    /não referencia seu bloco/,
-  );
-});
-
-test("consolida markdown, áudio e slides na ordem global com metadados dos lotes", () => {
+test("consolida markdown e áudio na ordem global com metadados dos lotes", () => {
   // batchSize=2: cada lote agora cobre MAIS de um bloco (ver comentario em
   // DEFAULT_CONTENT_BLOCK_BATCH_SIZE) - cada bloco do lote ainda precisa do
   // seu proprio capitulo (validateBlockBatchGeneration exige 1 por blockId).
@@ -534,10 +439,6 @@ test("consolida markdown, áudio e slides na ordem global com metadados dos lote
   assert.ok(result.markdown.indexOf("PRIMEIRO") < result.markdown.indexOf("SEGUNDO"));
   assert.ok(result.markdown.indexOf("SEGUNDO") < result.markdown.indexOf("TERCEIRO"));
   assert.ok(result.audioScript.indexOf("TERCEIRO") < result.audioScript.indexOf("QUARTO"));
-  assert.deepEqual(
-    result.slides.map((slide) => slide.sourceIds[0]),
-    ["bloco-01", "bloco-02", "bloco-03", "bloco-04"],
-  );
   assert.equal(result.metadata.generation_mode, "block_batches");
   assert.equal(result.metadata.content_blocks_total, 4);
   assert.equal(result.metadata.content_block_batches, 2);
@@ -562,7 +463,7 @@ test("consolida markdown, áudio e slides na ordem global com metadados dos lote
   assert.equal(result.chapters?.[2]?.markdown.includes("TERCEIRO"), true);
 });
 
-test("mergeSplitFallbackChapters combina áudio (Gemini), texto e slides (OpenAI) por blockId", () => {
+test("mergeSplitFallbackChapters combina áudio (Gemini) e texto (OpenAI) por blockId", () => {
   const merged = mergeSplitFallbackChapters(
     ["bloco-01", "bloco-02"],
     {
@@ -579,13 +480,6 @@ test("mergeSplitFallbackChapters combina áudio (Gemini), texto e slides (OpenAI
       ],
       confidence: 0.8,
     },
-    {
-      chapters: [
-        { blockId: "bloco-01", slides: [{ title: "Slide 1" }] },
-        { blockId: "bloco-02", slides: [{ title: "Slide 2" }] },
-      ],
-      confidence: 0.7,
-    },
   );
 
   assert.deepEqual(merged.chapters, [
@@ -593,17 +487,17 @@ test("mergeSplitFallbackChapters combina áudio (Gemini), texto e slides (OpenAI
       blockId: "bloco-01",
       markdown: "## Bloco 1",
       audioScript: "Narração do bloco 1.",
-      slides: [{ title: "Slide 1" }],
+      slides: [],
     },
     {
       blockId: "bloco-02",
       markdown: "## Bloco 2",
       audioScript: "Narração do bloco 2.",
-      slides: [{ title: "Slide 2" }],
+      slides: [],
     },
   ]);
-  // Confiança final é a mais conservadora das três chamadas independentes.
-  assert.equal(merged.confidence, 0.7);
+  // Confiança final é a mais conservadora das duas chamadas independentes.
+  assert.equal(merged.confidence, 0.8);
 });
 
 test("mergeSplitFallbackChapters preenche campos ausentes em vez de omitir o blockId", () => {
@@ -611,16 +505,15 @@ test("mergeSplitFallbackChapters preenche campos ausentes em vez de omitir o blo
     ["bloco-01"],
     { chapters: [], confidence: 0.9 },
     { chapters: [{ blockId: "bloco-01", markdown: "## Bloco 1" }], confidence: 0.8 },
-    null,
   );
 
   assert.deepEqual(merged.chapters, [
     { blockId: "bloco-01", markdown: "## Bloco 1", audioScript: "", slides: [] },
   ]);
-  assert.equal(merged.confidence, 0);
+  assert.equal(merged.confidence, 0.8);
 });
 
-test("generateOpenAIFallbackChapters mantém markdown/slides mesmo quando o audioScript (Gemini) falha", async () => {
+test("generateOpenAIFallbackChapters mantém markdown mesmo quando o audioScript (Gemini) falha", async () => {
   const result = await generateOpenAIFallbackChapters(["bloco-01"], {
     generateAudioScript: async () => {
       throw new Error("Gemini indisponível (circuito de cooldown aberto)");
@@ -629,14 +522,10 @@ test("generateOpenAIFallbackChapters mantém markdown/slides mesmo quando o audi
       chapters: [{ blockId: "bloco-01", markdown: "## Bloco 1" }],
       confidence: 0.8,
     }),
-    generateSlides: async () => ({
-      chapters: [{ blockId: "bloco-01", slides: [{ title: "Slide 1" }] }],
-      confidence: 0.7,
-    }),
   });
 
   assert.deepEqual(result.chapters, [
-    { blockId: "bloco-01", markdown: "## Bloco 1", audioScript: "", slides: [{ title: "Slide 1" }] },
+    { blockId: "bloco-01", markdown: "## Bloco 1", audioScript: "", slides: [] },
   ]);
 });
 
@@ -647,7 +536,6 @@ test("generateOpenAIFallbackChapters propaga a falha quando markdown (OpenAI) fa
       generateMarkdown: async () => {
         throw new Error("OpenAI indisponível");
       },
-      generateSlides: async () => ({ chapters: [], confidence: 0.7 }),
     }),
     /OpenAI indisponível/,
   );

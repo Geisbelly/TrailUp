@@ -15,7 +15,6 @@ import { mapWithConcurrency } from "../lib/boundedConcurrency";
 import { resolveRealSlideOrder } from "../lib/pptxSlideOrder";
 import { addWavHeader } from "../lib/wav";
 import {
-  generateOpenAISlidesOnly,
   generateOpenAITextOnly,
   generateStructuredContentWithFallback,
   isGeminiContentGenerationUnavailable,
@@ -542,7 +541,7 @@ const DEFAULT_CONTENT_BLOCK_BATCH_SIZE = 6;
 const MAX_CONTENT_BLOCK_BATCH_SIZE = 8;
 const DEFAULT_CONTENT_BLOCK_CONCURRENCY = 2;
 const MAX_CONTENT_BLOCK_CONCURRENCY = 4;
-const DEFAULT_CONTENT_GENERATION_MAX_OUTPUT_TOKENS = 16_384;
+const DEFAULT_CONTENT_GENERATION_MAX_OUTPUT_TOKENS = 24_576;
 // Historico: quando processMediaWithGemini ainda mesclava TODOS os blocos do
 // topico numa unica chamada (mergeContentBlocksIntoOne), esse teto maior foi
 // adicionado na tentativa de dar mais espaco de saida ao Gemini. Diagnostico
@@ -578,42 +577,8 @@ const GEMINI_CONTENT_GENERATION_RESPONSE_SCHEMA = {
           blockId: { type: Type.STRING },
           markdown: { type: Type.STRING },
           audioScript: { type: Type.STRING },
-          slides: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                title: { type: Type.STRING },
-                topics: {
-                  type: Type.ARRAY,
-                  items: { type: Type.STRING },
-                },
-                explanation: { type: Type.STRING },
-                visualDescription: { type: Type.STRING },
-                characterQuote: { type: Type.STRING },
-                characterAction: {
-                  type: Type.STRING,
-                  description:
-                    "Ação: explaining, celebrating, thinking ou warning",
-                },
-                sourceIds: {
-                  type: Type.ARRAY,
-                  items: { type: Type.STRING },
-                },
-              },
-              required: [
-                "title",
-                "topics",
-                "explanation",
-                "visualDescription",
-                "characterQuote",
-                "characterAction",
-                "sourceIds",
-              ],
-            },
-          },
         },
-        required: ["blockId", "markdown", "audioScript", "slides"],
+        required: ["blockId", "markdown", "audioScript"],
       },
     },
     confidence: { type: Type.NUMBER },
@@ -729,84 +694,6 @@ export function partitionContentBlocks(
   return batches;
 }
 
-function validateSlideForBlock(
-  raw: unknown,
-  options: {
-    blockId: string;
-    batchIds: Set<string>;
-    slideIndex: number;
-  },
-): SlideContent {
-  const { blockId, batchIds, slideIndex } = options;
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
-    throw new Error(`Slide ${slideIndex + 1} inválido no capítulo ${blockId}.`);
-  }
-  const slide = raw as Record<string, unknown>;
-  let sourceIds = normalizedStringList(slide.sourceIds);
-  if (!sourceIds.includes(blockId)) {
-    // sourceIds vazio nunca e ambiguo, batch grande ou nao: cada capitulo so
-    // pode pertencer ao seu proprio blockId (validateSlideForBlock roda por
-    // capitulo, chapterMap e chaveado por blockId) - o modelo (Gemini ou a
-    // contingencia OpenAI) so esqueceu de preencher um campo de
-    // rastreabilidade cuja resposta certa e a unica possivel aqui.
-    //
-    // Quando o lote tem so 1 bloco valido, tambem corrigimos mesmo se
-    // sourceIds vier preenchido com outro id (batchIds.size === 1): nao ha
-    // pra qual outro bloco poderia ter sido, entao ainda e so esquecimento,
-    // nao ambiguidade real.
-    //
-    // So reprova de verdade um sourceIds preenchido com um id ERRADO
-    // (diferente do proprio blockId) quando o lote tem mais de um bloco
-    // valido - aí sim pode ser o modelo confundindo capitulos entre si.
-    if (sourceIds.length === 0 || batchIds.size === 1) {
-      sourceIds = [blockId];
-    } else {
-      throw new Error(
-        `Slide ${slideIndex + 1} não referencia seu bloco ${blockId}.`,
-      );
-    }
-  }
-  if (sourceIds.some((sourceId) => !batchIds.has(sourceId))) {
-    throw new Error(
-      `Slide ${slideIndex + 1} referencia bloco fora do lote.`,
-    );
-  }
-  const action = normalizedText(slide.characterAction);
-  if (!["explaining", "celebrating", "thinking", "warning"].includes(action)) {
-    throw new Error(
-      `Slide ${slideIndex + 1} contém characterAction inválida.`,
-    );
-  }
-  const requiredStrings = [
-    "title",
-    "explanation",
-    "visualDescription",
-    "characterQuote",
-  ] as const;
-  for (const field of requiredStrings) {
-    if (!normalizedText(slide[field])) {
-      throw new Error(
-        `Slide ${slideIndex + 1} não contém ${field} no capítulo ${blockId}.`,
-      );
-    }
-  }
-  const topics = normalizedStringList(slide.topics);
-  if (topics.length === 0) {
-    throw new Error(
-      `Slide ${slideIndex + 1} não contém tópicos no capítulo ${blockId}.`,
-    );
-  }
-  return {
-    title: normalizedText(slide.title),
-    topics,
-    explanation: normalizedText(slide.explanation),
-    visualDescription: normalizedText(slide.visualDescription),
-    characterQuote: normalizedText(slide.characterQuote),
-    characterAction: action as SlideContent["characterAction"],
-    sourceIds,
-  };
-}
-
 // Ultimo recurso do gate de cobertura: quando a cascata inteira de modelos e
 // providers ja foi tentada (ver generateAfterPrimaryGeminiFailure em
 // contentGenerationService.ts) e nenhum bateu o minimo exato, aceitar um
@@ -864,23 +751,23 @@ export function validateBlockBatchGeneration(
     const markdown = String(chapter.markdown ?? "").trim();
     const audioScript = String(chapter.audioScript ?? "").trim();
     // block.conteudo_aprofundado ja e um texto expandido por outra chamada
-    // de LLM (content_enrichment.py) - exigir 75%/50% disso do capitulo final
-    // (que ainda reparte o mesmo orcamento de output com audioScript e
-    // slides) se mostrou calibrado alto demais em producao: os 6 modelos
-    // Gemini disponiveis convergiam consistentemente pra 90-98% do minimo
-    // antigo, nunca cruzando - assinatura tipica de teto apertado demais,
-    // nao de modelo "preguicoso" (finishReason=STOP bem abaixo do teto de
-    // tokens, no MAX_TOKENS). 55%/35% ainda exige expansao real (rejeita
-    // resumo raso) com folga suficiente pra blocos de fonte enxuta.
+    // de LLM (content_enrichment.py). Piso subiu de 55%/35% para 70%/45%
+    // agora que markdown/audioScript nao dividem mais o orcamento de output
+    // com "slides" (removido - nunca chegava ao aluno, ver
+    // docs/superpowers/specs/2026-08-20-blocos-conteudo-profundidade-design.md).
+    // O piso de 55%/35% antigo ja era deliberadamente mais frouxo que o
+    // ideal (75%/50% se mostrou calibrado alto demais em producao quando
+    // ainda havia 3 campos dividindo o mesmo teto de tokens) - com mais
+    // orcamento livre agora, o piso pode subir de volta com seguranca.
     let minimumMarkdownLength = Math.max(
       200,
-      Math.floor(normalizedText(block.conteudo_aprofundado).length * 0.55),
+      Math.floor(normalizedText(block.conteudo_aprofundado).length * 0.70),
     );
     let minimumAudioLength = Math.max(
       160,
-      Math.floor(normalizedText(block.conteudo_aprofundado).length * 0.35),
+      Math.floor(normalizedText(block.conteudo_aprofundado).length * 0.45),
     );
-    // markdown, audioScript e slides saem da MESMA chamada e dividem o mesmo
+    // markdown e audioScript saem da MESMA chamada e dividem o mesmo
     // orcamento de output. Quando varios blocos sao mesclados num so (ver
     // mergeContentBlocksIntoOne), o texto-fonte cresce com a quantidade de
     // blocos mas o orcamento de output nao — sem este teto, a cobertura
@@ -927,20 +814,17 @@ export function validateBlockBatchGeneration(
         + `maxOutputTokens=${options.maxOutputTokens ?? "n/d"}).`,
       );
     }
-    if (!Array.isArray(chapter.slides) || chapter.slides.length === 0) {
-      throw new Error(`Gerador não produziu slides para o bloco ${blockId}.`);
-    }
     return {
       blockId,
       markdown,
       audioScript,
-      slides: chapter.slides.map((slide, slideIndex) =>
-        validateSlideForBlock(slide, {
-          blockId,
-          batchIds: batchIdSet,
-          slideIndex,
-        })
-      ),
+      // O schema nao pede mais "slides" ao modelo (ver GEMINI_CONTENT_
+      // GENERATION_RESPONSE_SCHEMA) - o campo continua tipado por
+      // compatibilidade estrutural com ContentPart/ProcessedContent
+      // (consolidateBlockBatchGenerations, splitProcessedContentIntoParts,
+      // server.ts), mas sempre vazio: a apresentacao real vem inteira do
+      // BrainHexPDF a partir do markdown, nao deste array.
+      slides: [],
     };
   });
 
@@ -957,19 +841,18 @@ export function validateBlockBatchGeneration(
 }
 
 /**
- * Combina os três pedaços da contingência dividida (áudio sempre via Gemini,
- * markdown e slides via OpenAI) num único objeto no formato que
+ * Combina os dois pedaços da contingência dividida (áudio sempre via Gemini,
+ * markdown via OpenAI) num único objeto no formato que
  * validateBlockBatchGeneration já sabe validar. blockId ausente em algum
  * pedaço vira campo vazio em vez de capítulo omitido — a validação existente
- * já recusa markdown/audioScript curto demais ou slides vazios com uma
- * mensagem específica, que realimenta o loop de correção da OpenAI.
+ * já recusa markdown/audioScript curto demais com uma mensagem específica,
+ * que realimenta o loop de correção da OpenAI.
  */
 export async function generateOpenAIFallbackChapters(
   expectedIds: string[],
   generators: {
     generateAudioScript: () => Promise<unknown>;
     generateMarkdown: () => Promise<unknown>;
-    generateSlides: () => Promise<unknown>;
   },
 ): Promise<{ chapters: unknown[]; confidence: number }> {
   const tagSubCallError = (
@@ -981,28 +864,25 @@ export async function generateOpenAIFallbackChapters(
       throw new Error(`${label}: ${message}`, { cause: error });
     });
 
-  // markdown/slides nao tem outro fallback depois da OpenAI - se falharem, a
-  // geracao do lote falhou de fato. audioScript so sai do Gemini (sem
-  // fallback proprio) e ja e tratado como opcional no resto do pipeline
-  // (materiais.audio pode ficar "failed" independente de markdown/
-  // apresentacao) - por isso sua falha nao pode derrubar markdown/slides que
-  // ja tenham sido gerados com sucesso.
-  const [audioResult, textResult, slidesResult] = await Promise.allSettled([
+  // markdown nao tem outro fallback depois da OpenAI - se falhar, a geracao
+  // do lote falhou de fato. audioScript so sai do Gemini (sem fallback
+  // proprio) e ja e tratado como opcional no resto do pipeline (materiais.
+  // audio pode ficar "failed" independente de markdown/apresentacao) - por
+  // isso sua falha nao pode derrubar markdown que ja tenha sido gerado com
+  // sucesso.
+  const [audioResult, textResult] = await Promise.allSettled([
     tagSubCallError("audioScript/Gemini", generators.generateAudioScript()),
     tagSubCallError("markdown/OpenAI", generators.generateMarkdown()),
-    tagSubCallError("slides/OpenAI", generators.generateSlides()),
   ]);
   if (textResult.status === "rejected") throw textResult.reason;
-  if (slidesResult.status === "rejected") throw slidesResult.reason;
   const audio = audioResult.status === "fulfilled" ? audioResult.value : null;
-  return mergeSplitFallbackChapters(expectedIds, audio, textResult.value, slidesResult.value);
+  return mergeSplitFallbackChapters(expectedIds, audio, textResult.value);
 }
 
 export function mergeSplitFallbackChapters(
   expectedIds: string[],
   audio: unknown,
   text: unknown,
-  slides: unknown,
 ): { chapters: unknown[]; confidence: number } {
   const chaptersById = (value: unknown): Map<string, Record<string, unknown>> => {
     const map = new Map<string, Record<string, unknown>>();
@@ -1027,18 +907,20 @@ export function mergeSplitFallbackChapters(
 
   const audioById = chaptersById(audio);
   const textById = chaptersById(text);
-  const slidesById = chaptersById(slides);
 
   const chapters = expectedIds.map((blockId) => ({
     blockId,
     markdown: String(textById.get(blockId)?.markdown ?? ""),
     audioScript: String(audioById.get(blockId)?.audioScript ?? ""),
-    slides: slidesById.get(blockId)?.slides ?? [],
+    // Ver comentario equivalente em validateBlockBatchGeneration: schema nao
+    // pede mais slides ao modelo, campo fica vazio por compatibilidade
+    // estrutural com ContentPart/ProcessedContent.
+    slides: [],
   }));
 
   return {
     chapters,
-    confidence: Math.min(confidenceOf(audio), confidenceOf(text), confidenceOf(slides)),
+    confidence: Math.min(confidenceOf(audio), confidenceOf(text)),
   };
 }
 
@@ -1563,41 +1445,17 @@ export async function processMediaWithGemini(
        - Inclua marcações de [Tom: ...] para guiar a entonação mística.
        `}
 
-    5. Slides (Visual Alchemy): ${contentBlocks.length > 0
-      ? "Para CADA bloco deste lote, crie ao menos um slide próprio e slides adicionais quando necessários para cobrir integralmente o capítulo."
-      : "Crie entre 10 e 25 slides (ou mais se necessário para cobrir 100% do conteúdo original)."
-    } Crie uma estrutura ÚNICA para o perfil ${profile}, garantindo que exemplos e analogias tenham destaque visual:
-       - 'mastermind': Estrutura analítica. Use analogias de "Engrenagens" e "Sistemas". Tópicos devem ser lógicos (Passo 1, Passo 2). Destaque o "Diagrama Lógico" como exemplo.
-       - 'seeker': Estrutura de jornada. Tópicos como "Pista", "Rastro" ou "Horizonte". Use analogias de "Bússolas" e "Mapas". Destaque "Encontros" como exemplos.
-       - 'survivor': Estrutura de alerta. Tópicos de "Atenção". Analogias de "Escudos" e "Abrigos". Destaque "Simulações de Campo" como exemplos.
-       - 'daredevil': Estrutura de alta energia. Tópicos de "Desafio". Analogias de "Voo" e "Combustão". Destaque "Manobras" como exemplos.
-       - 'conqueror': Estrutura de comando. Tópicos como "Domínio" e "Expansão". Analogias de "Estratégia Militar" e "Tronos". Destaque "Conquistas Reais" como exemplos.
-       - 'socializer': Estrutura de diálogo. Tópicos focados em "Pessoas" e "Comunidade". Analogias de "Fogueiras" e "Banquete". Destaque "Relações" como exemplos.
-       - 'achiever': Estrutura de progresso. Tópicos como "Meta" e "Recurso". Analogias de "Escadas" e "Pedras Preciosas". Destaque "Recompensas" como exemplos.
-       
-       RESTRIÇÕES DE TEXTO E ORGANIZAÇÃO:
-       - PROIBIDO: Nunca use sintaxe de tabelas (ex: | --- |). Use listas e headings bem espaçados.
-       - O texto deve ser entregue limpo, com parágrafos bem definidos e espaçamento duplo.
-       - Use títulos curtos (max 6 palavras) e explicações densas porém legíveis.
-       - visualDescription: Descrição de um exemplo prático ou analogia visual presente no slide.
-       - characterQuote: Uma fala do guia ${config.guideName} reagindo ou explicando o conteúdo.
-       - characterAction: A pose/emoção do guia ("explaining", "celebrating", "thinking", "warning").
-       - A temática visual vem de "${presentationPlan.subject}"; a identidade BrainHex
-         funciona como assinatura, sem substituir o assunto real da aula por fantasia genérica.
-
     ${contentBlocks.length > 0 ? `
     LOTE DE BLOCOS PEDAGÓGICOS:
     - Este lote contém ${contentBlocks.length > 1 ? "vários blocos distintos" : "um bloco"}
       do tópico (o professor organizou o material em blocos maiores — ver
       content_enrichment.py; este lote é uma fatia deles, não o tópico
       inteiro). Cada blockId listado em "IDS OBRIGATORIOS" precisa virar seu
-      PRÓPRIO capítulo completo (markdown + audioScript + slides), com
-      extensão proporcional ao conteúdo aprofundado DAQUELE bloco especificamente
+      PRÓPRIO capítulo completo (markdown + audioScript), com extensão
+      proporcional ao conteúdo aprofundado DAQUELE bloco especificamente
       — nunca condense um bloco achando que outro bloco do lote (ou de fora
       dele) já cobriu um conceito parecido; cada capítulo é validado sozinho
       e precisa se sustentar sem depender de nenhum outro.
-    - Ainda assim, gere ao menos um slide por assunto principal de cada
-      bloco. Todo slide deve incluir o blockId do capítulo em sourceIds.
     ` : ""}
 
     ${guidancePrompt ? `
@@ -1606,11 +1464,6 @@ export async function processMediaWithGemini(
     nem omitir conteúdo do material original):
     "${guidancePrompt}"
     ` : ""}
-
-    Estética: cor de assinatura ${config.color}, sistema ${presentationPlan.styleName},
-    acabamento de template editorial profissional e coerente entre todos os slides.
-    
-    Traceability: No campo slides.sourceIds, relacione os IDs dos blocos originais que fundamentaram aquele slide.
   `;
 
   if (contentBlocks.length > 0) {
@@ -1635,8 +1488,8 @@ export async function processMediaWithGemini(
         const batchInput =
           `IDS OBRIGATORIOS, NESTA ORDEM: ${JSON.stringify(expectedIds)}\n`
           + `Gere um capitulo PROPRIO para CADA um dos ${batch.length} `
-          + "bloco(s) abaixo (um markdown, um audioScript e slides por "
-          + "blockId) - cubra 100% dos conceitos de cada bloco individualmente, "
+          + "bloco(s) abaixo (um markdown e um audioScript por blockId) - "
+          + "cubra 100% dos conceitos de cada bloco individualmente, "
           + "com extensao proporcional ao conteudo_aprofundado daquele bloco "
           + "especifico.\n\n"
           + JSON.stringify(batch, null, 2);
@@ -1731,15 +1584,14 @@ export async function processMediaWithGemini(
                 }
               };
 
-              // audioScript nunca sai da OpenAI — só markdown e slides, cada
-              // um em chamada própria pra caber no teto de 16384 tokens de
-              // saída do gpt-4o-mini. audioScript falhar (cota do Gemini
-              // esgotada) não pode derrubar markdown/slides, que não têm
-              // outro fallback e já podem ter sido gerados com sucesso.
+              // audioScript nunca sai da OpenAI — só markdown, em chamada
+              // própria pra caber no teto de tokens de saída do gpt-4o-mini.
+              // audioScript falhar (cota do Gemini esgotada) não pode
+              // derrubar markdown, que não tem outro fallback e já pode ter
+              // sido gerado com sucesso.
               return generateOpenAIFallbackChapters(expectedIds, {
                 generateAudioScript: generateAudioScriptWithGemini,
                 generateMarkdown: () => generateOpenAITextOnly(currentCall),
-                generateSlides: () => generateOpenAISlidesOnly(currentCall),
               });
             },
             validateResult: (value, provider, meta) => {
