@@ -52,6 +52,12 @@ export interface PresentationVersionMetadata {
   media_pipeline_version: string;
 }
 
+export interface PresentationImageAttachment {
+  data: string; // base64, sem prefixo data URI
+  mimeType: string;
+  name: string;
+}
+
 export interface RenderAndUploadPresentationParams {
   markdown: string;
   topic: string;
@@ -68,6 +74,11 @@ export interface RenderAndUploadPresentationParams {
   ordem?: number;
   totalPartes?: number;
   titulo?: string;
+  // Imagens do material de referencia do professor (subconjunto de
+  // fetchFontesAsFileData filtrado por mimeType de imagem em server.ts) -
+  // o BrainHexPDF usa pra deixar o Gemini escolher, por slide, uma imagem
+  // real em vez de inventar um diagrama generico.
+  attachments?: PresentationImageAttachment[];
 }
 
 export interface BrainHexPdfClientDeps {
@@ -113,6 +124,15 @@ export async function renderAndUploadPresentationViaBrainHexPdf(
         sourceText: params.markdown,
         bucket: params.bucket,
         storagePath: params.presentationPath,
+        ...(params.attachments && params.attachments.length > 0
+          ? {
+              attachments: params.attachments.map((a) => ({
+                dataBase64: a.data,
+                mimeType: a.mimeType,
+                name: a.name,
+              })),
+            }
+          : {}),
         ...(params.personalizacaoId !== undefined && params.fence && params.versionMetadata
           ? {
               personalizacaoId: params.personalizacaoId,

@@ -294,3 +294,64 @@ test("timeout (AbortSignal) vira failure com stage 'network', distinto de upload
     assert.match(result.failure?.error ?? "", /aborted/i);
   });
 });
+
+test("inclui attachments no body quando fornecidos, mapeando data para dataBase64", async () => {
+  await withEnv({ BRAINHEXPDF_API_URL: "http://localhost:3002" }, async () => {
+    let capturedBody: any = null;
+    const fetchImpl = (async (_url: any, init: any) => {
+      capturedBody = JSON.parse(init.body);
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          url: "https://storage/x.html",
+          storage_path: "a/b.html",
+          bucket: "conteudo_aluno",
+          slide_count: 8,
+        }),
+      } as any;
+    }) as typeof fetch;
+
+    await renderAndUploadPresentationViaBrainHexPdf(
+      {
+        markdown: "## Aula\nConteudo",
+        topic: "Aula 1",
+        profile: "mastermind",
+        bucket: "conteudo_aluno",
+        presentationPath: "brainhex/mastermind/topico/apresentacao/material-1.html",
+        attachments: [{ data: "AAAA", mimeType: "image/png", name: "diagrama.png" }],
+      },
+      { fetchImpl },
+    );
+
+    assert.deepEqual(capturedBody.attachments, [{ dataBase64: "AAAA", mimeType: "image/png", name: "diagrama.png" }]);
+  });
+});
+
+test("omite attachments do body quando a lista esta vazia ou ausente", async () => {
+  await withEnv({ BRAINHEXPDF_API_URL: "http://localhost:3002" }, async () => {
+    let capturedBody: any = null;
+    const fetchImpl = (async (_url: any, init: any) => {
+      capturedBody = JSON.parse(init.body);
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true, url: "https://storage/x.html", storage_path: "a/b.html", bucket: "conteudo_aluno", slide_count: 8 }),
+      } as any;
+    }) as typeof fetch;
+
+    await renderAndUploadPresentationViaBrainHexPdf(
+      {
+        markdown: "## Aula\nConteudo",
+        topic: "Aula 1",
+        profile: "mastermind",
+        bucket: "conteudo_aluno",
+        presentationPath: "brainhex/mastermind/topico/apresentacao/material-1.html",
+      },
+      { fetchImpl },
+    );
+
+    assert.equal("attachments" in capturedBody, false);
+  });
+});
