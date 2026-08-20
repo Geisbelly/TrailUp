@@ -73,6 +73,7 @@ async def agente_trilha(
                 "topicos_classe": topicos_classe,
                 "progresso_trilha": state.get("progresso_trilha", {}),
                 "desempenho_recente": state.get("desempenho_recente", {}),
+                "dominio_por_topico": (state.get("memoria_aluno") or {}).get("dominio_por_topico", {}),
             },
             on_violation=_auditar,
         )

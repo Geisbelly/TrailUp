@@ -1,4 +1,5 @@
 from importlib import import_module
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -567,3 +568,45 @@ def test_fallback_trilha_reinforces_for_low_media_acertos_percentage() -> None:
     result = _fallback_trilha(state)
 
     assert result["ajustes"] == ["reforcar fundamentos"]
+
+
+@pytest.mark.asyncio
+async def test_agente_trilha_passa_dominio_por_topico_da_memoria_no_contexto(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.agent.graph import guardrails as guardrails_module
+
+    agente_trilha_module = import_module("app.agent.graph.nodes.agente_trilha")
+
+    monkeypatch.setattr(
+        ConteudoClasseRepository,
+        "listar_topicos_classe",
+        AsyncMock(return_value=[{"id": 10, "ordem": 1}]),
+    )
+
+    contextos_recebidos = []
+    gerar_validado_original = guardrails_module.gerar_validado
+
+    async def spy_gerar_validado(llm, **kwargs):
+        contextos_recebidos.append(kwargs.get("contexto"))
+        return await gerar_validado_original(llm, **kwargs)
+
+    monkeypatch.setattr(agente_trilha_module, "gerar_validado", spy_gerar_validado)
+
+    settings = Settings(openai_api_key=None)
+    await agente_trilha(
+        {
+            "aluno_id": "aluno-1",
+            "classe_id": 1,
+            "progresso_trilha": {},
+            "desempenho_recente": {"media_acertos": 80},
+            "memoria_aluno": {
+                "dominio_por_topico": {"10": {"dominio_estimado": 0.9}},
+                "mental_state_recorrente": {"recorrente": False},
+            },
+        },
+        settings=settings,
+        session_factory=_FakeSessionFactory(),
+    )
+
+    assert contextos_recebidos[0]["dominio_por_topico"] == {"10": {"dominio_estimado": 0.9}}
