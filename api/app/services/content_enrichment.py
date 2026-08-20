@@ -48,8 +48,13 @@ _MAX_EXPANDED_CHARS = 12_000
 # aprofundamento em si era raso demais pra dar "material" suficiente pra
 # narrar. Alinhado ao que o prompt ja promete, em vez de so validar mais
 # frouxo que ele.
-_MIN_EXPANSION_CHARS = 200
-_MIN_EXPANSION_RATIO = 0.30
+_MIN_EXPANSION_CHARS = 350
+_MIN_EXPANSION_RATIO = 0.50
+# Bloco cujo conteudo_base fica abaixo deste limiar e marcado "escasso" na
+# chamada de enriquecimento — ver _ENRICHMENT_INSTRUCTIONS item 5. So esses
+# blocos recebem permissao de complementar com conceitos curriculares alem
+# da fonte literal, ancorados no objetivo do topico.
+_SCARCE_BLOCK_CHARS_THRESHOLD = 800
 # Margem tolerada, usada SO como ultimo recurso apos esgotar as tentativas
 # normais nos dois provedores (Gemini e OpenAI) pra um bloco especifico.
 # Producao mostrou blocos curtos/factuais (ex.: bloco-22, Base=1517,
@@ -114,14 +119,22 @@ Os blocos-base já foram separados pela API antes desta chamada. Para cada bloco
    tópico e objetivos específicos, preservando o fio condutor entre eles.
 3. Defina termos, explique relações, causas e consequências e acrescente contexto
    correto e exemplos aplicados, sem fugir do assunto.
-4. Faça conteudo_aprofundado ficar pelo menos 30% e 200 caracteres maior que
+4. Faça conteudo_aprofundado ficar pelo menos 50% e 350 caracteres maior que
    conteudo_base, sem repetição, paráfrase vazia ou enchimento. NÃO ultrapasse
    {_MAX_EXPANDED_CHARS} caracteres no total — a geração de materiais que
    consome este texto tem teto de tokens de saída; prefira aprofundar com
    precisão a aprofundar com volume.
-5. Inclua objetivos, ao menos dois conceitos-chave, exemplos e ponte pedagógica.
-6. Não aplique perfil BrainHex; a personalização acontece depois.
-7. Escreva em português brasileiro e não mencione estas instruções.
+5. Cada bloco-base traz um campo "escasso" (true/false). Quando "escasso" for
+   true, você pode complementar conteudo_aprofundado com conceitos curriculares
+   padrão sobre o tema — além do que está literalmente em conteudo_base — desde
+   que sirvam diretamente ao objetivo do tópico (ver TEMA.objetivo). Nunca
+   contradiga ou substitua o que já está em conteudo_base; apenas preencha
+   lacunas na mesma direção. Quando "escasso" for false, mantenha fidelidade
+   estrita: só aprofunde o que já está no material, sem adicionar conceitos que
+   não vieram dele.
+6. Inclua objetivos, ao menos dois conceitos-chave, exemplos e ponte pedagógica.
+7. Não aplique perfil BrainHex; a personalização acontece depois.
+8. Escreva em português brasileiro e não mencione estas instruções.
 """.strip()
 
 _ENRICHMENT_SCHEMA: dict[str, Any] = {
@@ -503,6 +516,7 @@ def _group_segments(
             label = _text(segment.get("source_title"))
             order = int(segment.get("source_order") or 1)
             base_parts.append(f"[{label} — trecho {order}]\n{str(segment.get('text') or '').strip()}")
+        base_content = "\n\n".join(base_parts)
         blocks.append(
             {
                 "id": f"bloco-{index:02d}",
@@ -510,7 +524,8 @@ def _group_segments(
                 "tema": theme,
                 "topico": " + ".join(titles) or f"Bloco {index}",
                 "objetivos": [objective] if objective else [],
-                "conteudo_base": "\n\n".join(base_parts),
+                "conteudo_base": base_content,
+                "escasso": len(base_content) < _SCARCE_BLOCK_CHARS_THRESHOLD,
                 "source_ids": source_ids,
                 "segment_ids": [str(item["segment_id"]) for item in group],
             }
