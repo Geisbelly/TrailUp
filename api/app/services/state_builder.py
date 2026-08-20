@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repositories.context import ContextRepository
 from app.schemas.api import AnalisarPayload
+from app.services.memoria_aluno import ler_memoria
 
 
 async def build_initial_state(
@@ -14,6 +15,7 @@ async def build_initial_state(
 ) -> dict:
     context_repo = context_repository_factory(session)
     context = await context_repo.fetch_aluno_context(aluno_id=aluno_id, classe_id=payload.classe_id)
+    memoria = await ler_memoria(session, aluno_id=aluno_id, classe_id=payload.classe_id)
     aluno = context["aluno"]
     desempenho = context["desempenho_recente"]
     conteudo_foco_id = await context_repo.resolve_conteudo_foco_id(
@@ -40,6 +42,7 @@ async def build_initial_state(
         "desempenho_recente": context["desempenho_recente"],
         "trilha_atual": context["trilha_atual"],
         "ia_descricao_atual": context["ia_descricao_atual"],
+        "memoria_aluno": memoria.model_dump(mode="json"),
         "emocao_atual": None,
         "emocao_historico": [],
         "frame_b64": payload.frame_b64,
