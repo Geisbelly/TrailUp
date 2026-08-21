@@ -9,11 +9,15 @@ import { Loader2, Layers, Palette, UserSearch, Users, FileText, Music, FileImage
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import {
+  enqueueManualGenerateAllJob,
+  enqueueManualGenerateJob,
   fetchAdequacaoGrupo,
   fetchContextoDocente,
+  fetchPersonalizacaoJobStatus,
   fetchPersonalizacaoPorPerfil,
   type ClassePerfilSummaryResponse,
   type PersonalizacaoContextoDocenteResponse,
+  type PersonalizacaoJobResumo,
   type PersonalizacaoPerfilItem,
   type PersonalizacaoPorPerfilResponse,
 } from "./personalizacoesApi";
@@ -37,6 +41,18 @@ type ConteudoRow = { id: number; topico_id: number; titulo: string | null; ordem
 type AlunoRow = { id: string; nome: string | null; email: string | null; perfil_dominante: string };
 
 type MaterialTipo = "markdown" | "pdf" | "audio" | "apresentacao";
+
+const BRAINHEX_PROFILE_KEYS = [
+  "seeker",
+  "survivor",
+  "daredevil",
+  "mastermind",
+  "conqueror",
+  "socializer",
+  "achiever",
+] as const;
+
+const ACTIVE_JOB_STATUSES = new Set(["pending", "processing", "partial"]);
 
 const MATERIAL_TIPOS: Array<{ key: MaterialTipo; label: string; icon: typeof FileText }> = [
   { key: "markdown", label: "Texto", icon: NotebookPen },
@@ -586,6 +602,7 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
                     item={item}
                     classeId={Number(classeId)}
                     topicoId={Number(topicoId)}
+                    conteudoId={conteudoId ? Number(conteudoId) : undefined}
                     resolveToken={resolveToken}
                     onRegenerated={() => void loadPorPerfil({ silent: true, queueIfBusy: true })}
                   />
@@ -867,16 +884,62 @@ function PerfilMaterialCard({
   item,
   classeId,
   topicoId,
+  conteudoId,
   resolveToken,
   onRegenerated,
 }: {
   item: PersonalizacaoPerfilItem;
   classeId: number;
   topicoId: number;
+  conteudoId?: number;
   resolveToken: () => Promise<string>;
   onRegenerated: () => void;
 }) {
   const [dialogTab, setDialogTab] = useState<MaterialTipo | null>(null);
+  const [manualJob, setManualJob] = useState<PersonalizacaoJobResumo | null>(null);
+  const [manualJobError, setManualJobError] = useState<string | null>(null);
+  const manualJobAtivo = Boolean(manualJob && ACTIVE_JOB_STATUSES.has(manualJob.status));
+
+  useEffect(() => {
+    if (!manualJob || !ACTIVE_JOB_STATUSES.has(manualJob.status)) return;
+    let cancelled = false;
+    const timer = window.setInterval(async () => {
+      try {
+        const token = await resolveToken();
+        const updated = await fetchPersonalizacaoJobStatus(token, manualJob.id);
+        if (cancelled) return;
+        setManualJob(updated);
+        if (!ACTIVE_JOB_STATUSES.has(updated.status)) {
+          onRegenerated();
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setManualJobError(error instanceof Error ? error.message : "Falha ao consultar progresso.");
+        }
+      }
+    }, 3000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [manualJob, resolveToken, onRegenerated]);
+
+  const handleGerar = async () => {
+    setManualJobError(null);
+    try {
+      const token = await resolveToken();
+      const job = await enqueueManualGenerateJob(token, {
+        classeId,
+        topicoId,
+        conteudoId,
+        perfil: item.perfil,
+      });
+      setManualJob(job);
+    } catch (error) {
+      setManualJobError(error instanceof Error ? error.message : "Falha ao enfileirar geração.");
+    }
+  };
+
   const temAlgumMaterial = MATERIAL_TIPOS.some(({ key }) => getMaterial(item.materiais, key));
   const geracaoStatus = statusGeracaoDoPerfil(item);
   const geracaoAtiva = isGeracaoStatusAtivo(geracaoStatus);
@@ -919,6 +982,20 @@ function PerfilMaterialCard({
         <CardDescription>
           <span className="capitalize">{item.perfil}</span> · {item.total_alunos} aluno(s) com este perfil
         </CardDescription>
+        <div className="flex items-center gap-2 pt-1">
+          <Button variant="outline" size="sm" onClick={() => void handleGerar()} disabled={manualJobAtivo}>
+            {manualJobAtivo
+              ? `Gerando ${manualJob!.processed_targets}/${manualJob!.total_targets}${
+                  manualJob!.error_count > 0 ? ` (${manualJob!.error_count} erro(s))` : ""
+                }`
+              : "Gerar"}
+          </Button>
+        </div>
+        {manualJobError && (
+          <p className="text-xs text-destructive" role="alert">
+            {manualJobError}
+          </p>
+        )}
       </CardHeader>
       <CardContent className="space-y-3">
         {geracao && (
