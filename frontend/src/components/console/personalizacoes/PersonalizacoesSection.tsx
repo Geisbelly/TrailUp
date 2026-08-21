@@ -122,6 +122,11 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
     return String(data.session?.access_token ?? "").trim();
   }, [session?.access_token]);
 
+  const [perfilParaGerarTudo, setPerfilParaGerarTudo] = useState<string>(BRAINHEX_PROFILE_KEYS[0]);
+  const [gerarTudoJob, setGerarTudoJob] = useState<PersonalizacaoJobResumo | null>(null);
+  const [gerarTudoError, setGerarTudoError] = useState<string | null>(null);
+  const gerarTudoAtivo = Boolean(gerarTudoJob && ACTIVE_JOB_STATUSES.has(gerarTudoJob.status));
+
   // Carrega classes do professor
   useEffect(() => {
     if (!resolvedProfessorId) return;
@@ -393,6 +398,45 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
     porPerfilRefreshPendente.current = false;
   }, []);
 
+  useEffect(() => {
+    if (!gerarTudoJob || !ACTIVE_JOB_STATUSES.has(gerarTudoJob.status)) return;
+    let cancelled = false;
+    const timer = window.setInterval(async () => {
+      try {
+        const token = await resolveToken();
+        const updated = await fetchPersonalizacaoJobStatus(token, gerarTudoJob.id);
+        if (cancelled) return;
+        setGerarTudoJob(updated);
+        if (!ACTIVE_JOB_STATUSES.has(updated.status)) {
+          void loadPorPerfil({ silent: true, queueIfBusy: true });
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setGerarTudoError(error instanceof Error ? error.message : "Falha ao consultar progresso.");
+        }
+      }
+    }, 3000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [gerarTudoJob, resolveToken, loadPorPerfil]);
+
+  const handleGerarTudo = async () => {
+    if (!classeId) return;
+    setGerarTudoError(null);
+    try {
+      const token = await resolveToken();
+      const job = await enqueueManualGenerateAllJob(token, {
+        classeId: Number(classeId),
+        perfil: perfilParaGerarTudo,
+      });
+      setGerarTudoJob(job);
+    } catch (error) {
+      setGerarTudoError(error instanceof Error ? error.message : "Falha ao enfileirar geração.");
+    }
+  };
+
   // Busca contexto do aluno (visao 3)
   const loadContexto = useCallback(async () => {
     const numericClasse = Number(classeId);
@@ -537,6 +581,37 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
           >
             {porPerfilLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Atualizar"}
           </Button>
+
+          <div className="flex items-end gap-2 border-l pl-4 ml-2">
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">Gerar tudo para o perfil</p>
+              <Select value={perfilParaGerarTudo} onValueChange={setPerfilParaGerarTudo}>
+                <SelectTrigger className="w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {BRAINHEX_PROFILE_KEYS.map((perfil) => (
+                    <SelectItem key={perfil} value={perfil}>
+                      {perfil}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void handleGerarTudo()}
+              disabled={!classeId || gerarTudoAtivo}
+            >
+              {gerarTudoAtivo
+                ? `Gerando ${gerarTudoJob!.processed_targets}/${gerarTudoJob!.total_targets}${
+                    gerarTudoJob!.error_count > 0 ? ` (${gerarTudoJob!.error_count} erro(s))` : ""
+                  }`
+                : "Gerar tudo"}
+            </Button>
+          </div>
+          {gerarTudoError && <p className="w-full text-xs text-destructive">{gerarTudoError}</p>}
         </CardContent>
       </Card>
 
