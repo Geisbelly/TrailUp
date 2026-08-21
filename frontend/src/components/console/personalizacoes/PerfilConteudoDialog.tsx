@@ -21,6 +21,8 @@ import {
   type DocumentPreviewMode,
 } from "./materialPreview";
 import { getMaterialPartes } from "./materialParts";
+import { fetchHtmlDeckSource, createHtmlBlobUrl } from "./htmlDeckSource";
+import { supabase } from "@/integrations/supabase/client";
 
 type MaterialTipo = "markdown" | "pdf" | "audio" | "apresentacao";
 
@@ -41,6 +43,15 @@ function materialUrl(material: Record<string, unknown> | null): string | null {
   if (!material) return null;
   const url = material.arquivo_url;
   return typeof url === "string" && url.trim() ? url.trim() : null;
+}
+
+// bucket vive so no nivel do material (nao por parte - ver
+// persistApresentacaoResult no BrainHexPDF), ao contrario de storage_path
+// (que MaterialPartInfo ja traz por parte).
+function materialBucket(material: Record<string, unknown> | null): string | null {
+  if (!material) return null;
+  const bucket = material.bucket;
+  return typeof bucket === "string" && bucket.trim() ? bucket.trim() : null;
 }
 
 // Render leve de markdown -> JSX (sem dependencia externa), mesmo padrao usado em BlogPost.tsx.
@@ -173,13 +184,15 @@ function AudioMaterialContent({ url }: { url: string }) {
   );
 }
 
-// PDFs e decks HTML autocontidos (motor atual do BrainHexPDF) sao exibidos
-// diretamente pelo navegador. Arquivos PowerPoint legados continuam usando
-// o Office Viewer, conforme MIME/extensao do material.
-function EmbedMaterialContent({ url, mode }: { url: string; mode: DocumentPreviewMode }) {
+// PDFs sao exibidos diretamente pelo navegador. Arquivos PowerPoint legados
+// continuam usando o Office Viewer, conforme MIME/extensao do material.
+// Decks HTML (motor atual do BrainHexPDF) usam HtmlDeckEmbed, nao este
+// componente - ver comentario em htmlDeckSource.ts sobre por que a URL
+// publica do Supabase nao pode ir direto num <iframe src>.
+function EmbedMaterialContent({ url, mode }: { url: string; mode: "pdf" | "office" }) {
   const [embedFailed, setEmbedFailed] = useState(false);
   const embedSrc = useMemo(() => {
-    if (mode === "pdf" || mode === "html") return url;
+    if (mode === "pdf") return url;
     return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
   }, [url, mode]);
 
@@ -209,6 +222,72 @@ function EmbedMaterialContent({ url, mode }: { url: string; mode: DocumentPrevie
           <a href={url} target="_blank" rel="noreferrer">
             <ExternalLink className="h-3.5 w-3.5 mr-2" /> Abrir em nova aba
           </a>
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// Deck HTML autocontido do BrainHexPDF: baixado direto do Supabase (bucket +
+// storage_path), sem depender do proxy de reescrita do BrainHexPDF
+// (/api/v1/decks/...) nem da sua disponibilidade. Renderizado via
+// iframe.srcDoc (ver htmlDeckSource.ts) porque a URL publica do Supabase
+// serve .html como text/plain, e um <iframe src> direto so mostraria o
+// codigo-fonte como texto.
+function HtmlDeckEmbed({ bucket, storagePath, fallbackUrl }: { bucket: string; storagePath: string; fallbackUrl: string }) {
+  const [state, setState] = useState<
+    { status: "loading" } | { status: "ready"; html: string } | { status: "error"; message: string }
+  >({ status: "loading" });
+
+  useEffect(() => {
+    let cancelled = false;
+    setState({ status: "loading" });
+    fetchHtmlDeckSource(supabase.storage, bucket, storagePath).then((result) => {
+      if (cancelled) return;
+      if ("error" in result) {
+        setState({ status: "error", message: result.error });
+      } else {
+        setState({ status: "ready", html: result.html });
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [bucket, storagePath]);
+
+  if (state.status === "loading") {
+    return <div className="py-8 text-center text-sm text-muted-foreground">Carregando apresentação…</div>;
+  }
+
+  if (state.status === "error") {
+    return (
+      <div className="space-y-2 py-8 text-center">
+        <p className="text-sm text-muted-foreground">Não foi possível carregar a apresentação do Supabase.</p>
+        <p className="text-xs text-muted-foreground">{state.message}</p>
+        <Button variant="outline" size="sm" asChild>
+          <a href={fallbackUrl} target="_blank" rel="noreferrer">
+            <ExternalLink className="h-3.5 w-3.5 mr-2" /> Abrir em nova aba
+          </a>
+        </Button>
+      </div>
+    );
+  }
+
+  const html = state.html;
+  return (
+    <div className="space-y-2">
+      <iframe
+        srcDoc={html}
+        title="Pré-visualização da apresentação"
+        className="w-full h-[55vh] rounded-md border"
+      />
+      <div className="flex justify-end">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => window.open(createHtmlBlobUrl(html), "_blank", "noopener,noreferrer")}
+        >
+          <ExternalLink className="h-3.5 w-3.5 mr-2" /> Abrir em nova aba
         </Button>
       </div>
     </div>
@@ -394,6 +473,9 @@ function MaterialTabContent({
   const url = rawUrl
     ? versionedMaterialUrl(rawUrl, material, fallbackUpdatedAt)
     : null;
+  const previewMode = resolveDocumentPreviewMode(material, tipo === "pdf" ? "pdf" : "apresentacao");
+  const bucket = materialBucket(material);
+  const storagePath = activeParte?.storage_path ?? null;
 
   const payload = material && typeof material.payload === "object" ? (material.payload as Record<string, unknown>) : null;
   const slides = Array.isArray(payload?.slides) ? (payload.slides as unknown[]) : null;
@@ -430,10 +512,28 @@ function MaterialTabContent({
         <AudioMaterialContent url={url} />
       ) : (
         <div>
-          <EmbedMaterialContent
-            url={url}
-            mode={resolveDocumentPreviewMode(material, tipo)}
-          />
+          {previewMode === "html" ? (
+            bucket && storagePath ? (
+              <HtmlDeckEmbed bucket={bucket} storagePath={storagePath} fallbackUrl={url} />
+            ) : (
+              <div className="space-y-2">
+                <iframe
+                  src={url}
+                  title="Pré-visualização da apresentação"
+                  className="w-full h-[55vh] rounded-md border"
+                />
+                <div className="flex justify-end">
+                  <Button variant="ghost" size="sm" asChild>
+                    <a href={url} target="_blank" rel="noreferrer">
+                      <ExternalLink className="h-3.5 w-3.5 mr-2" /> Abrir em nova aba
+                    </a>
+                  </Button>
+                </div>
+              </div>
+            )
+          ) : (
+            <EmbedMaterialContent url={url} mode={previewMode} />
+          )}
           {tipo === "apresentacao" && regenerarContext && (
             <RegenerarConteudoPainel kind="slide" context={regenerarContext} totalSlides={slides?.length} />
           )}
