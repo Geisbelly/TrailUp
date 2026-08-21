@@ -445,7 +445,6 @@ export type PersonalizacaoJobResumo = {
   error_count: number;
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
 export function buildManualGeneratePayload(params: {
   classeId: number;
   topicoId: number;
@@ -460,7 +459,6 @@ export function buildManualGeneratePayload(params: {
   };
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export function buildManualGenerateAllPayload(params: { classeId: number; perfil: string }) {
   return {
     classe_id: params.classeId,
