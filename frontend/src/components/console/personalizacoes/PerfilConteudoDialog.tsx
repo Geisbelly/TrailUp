@@ -173,12 +173,13 @@ function AudioMaterialContent({ url }: { url: string }) {
   );
 }
 
-// PDFs sao exibidos diretamente pelo navegador. Arquivos PowerPoint legados
-// continuam usando o Office Viewer, conforme MIME/extensao do material.
+// PDFs e decks HTML autocontidos (motor atual do BrainHexPDF) sao exibidos
+// diretamente pelo navegador. Arquivos PowerPoint legados continuam usando
+// o Office Viewer, conforme MIME/extensao do material.
 function EmbedMaterialContent({ url, mode }: { url: string; mode: DocumentPreviewMode }) {
   const [embedFailed, setEmbedFailed] = useState(false);
   const embedSrc = useMemo(() => {
-    if (mode === "pdf") return url;
+    if (mode === "pdf" || mode === "html") return url;
     return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
   }, [url, mode]);
 
