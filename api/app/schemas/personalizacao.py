@@ -313,6 +313,20 @@ class PersonalizacaoJobPayload(BaseModel):
     trigger_source: str = "api"
 
 
+class PersonalizacaoManualGeneratePayload(BaseModel):
+    classe_id: int
+    topico_id: int
+    conteudo_id: int | None = None
+    brainhex_profile_key: str
+    trigger_source: str = "api"
+
+
+class PersonalizacaoManualGenerateAllPayload(BaseModel):
+    classe_id: int
+    brainhex_profile_key: str
+    trigger_source: str = "api"
+
+
 class PersonalizacaoJobTargetResponse(BaseModel):
     id: int
     job_id: str
