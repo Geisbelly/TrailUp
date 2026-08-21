@@ -2371,12 +2371,12 @@ async def criar_job_enrollment(
     )
 
 
-@router.post("/jobs/class-delta", response_model=PersonalizacaoJobDetailResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/jobs/class-delta", response_model=None, status_code=status.HTTP_201_CREATED)
 async def criar_job_class_delta(
     payload: PersonalizacaoJobPayload,
     user: UserContext = Depends(require_professor),
     session: AsyncSession = Depends(get_session),
-) -> PersonalizacaoJobDetailResponse:
+) -> PersonalizacaoJobDetailResponse | dict[str, Any]:
     access_repo = AccessRepository(session)
     owns_class = await access_repo.professor_owns_classe(user.professor_id or user.user_id, payload.classe_id)
     if not owns_class:
@@ -2393,6 +2393,12 @@ async def criar_job_class_delta(
         conteudo_ids=payload.conteudo_ids,
         reason=payload.reason,
     )
+    # Professor em modo manual (geracao_automatica=False): enqueue_
+    # personalizacao_job nao cria job nenhum pra class_delta_sync nesse caso
+    # - devolve um shape diferente (sem "job"/"targets"), entao nao da pra
+    # montar PersonalizacaoJobDetailResponse aqui.
+    if detail.get("skipped"):
+        return {"skipped": True, "reason": detail.get("reason")}
     return PersonalizacaoJobDetailResponse(
         **_to_job_response(detail["job"]).model_dump(),
         targets=[_to_job_target_response(item) for item in detail["targets"]],

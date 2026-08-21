@@ -22,6 +22,7 @@ from app.repositories.materiais import MateriaisRepository
 from app.repositories.personalizacao_blocos import PersonalizacaoBlocosRepository
 from app.repositories.personalizacao_jobs import PersonalizacaoJobsRepository
 from app.repositories.personalizacao_progresso import PersonalizacaoProgressoRepository
+from app.repositories.professor import ProfessorRepository
 from app.services.classe_mapa_tema import gerar_classe_mapa_tema
 from app.services.content_enrichment import derive_base_blocks_and_topic, enrich_base_blocks, enrich_content_blocks
 from app.services.media_agents import (
@@ -819,11 +820,23 @@ async def enqueue_personalizacao_job(
     aluno_id: str | None = None,
     topico_ids: list[int] | None = None,
     conteudo_ids: list[int] | None = None,
+    brainhex_profile_keys: list[str] | None = None,
     reason: str | None = None,
     payload: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     repo = PersonalizacaoJobsRepository(session)
     scoped_aluno_id = aluno_id if kind in {JOB_KIND_ENROLLMENT, JOB_KIND_CLEANUP} else None
+
+    # Portao de modo manual: so afeta class_delta_sync (disparo automatico
+    # por edicao de topico/conteudo). Matricula/limpeza continuam sempre
+    # automaticas, e os kinds manual_profile_generate* SAO a propria acao
+    # manual - nunca passam por aqui, entao nao existe risco de o professor
+    # ficar sem conseguir gerar nada em modo manual.
+    if kind == JOB_KIND_CLASS_DELTA:
+        professor_repo = ProfessorRepository(session)
+        geracao_automatica = await professor_repo.buscar_geracao_automatica_por_classe(classe_id)
+        if not geracao_automatica:
+            return {"skipped": True, "reason": "geracao_manual_ativa"}
 
     targets, resolved_topicos, target_profile_map = await _build_targets(
         session=session,
@@ -832,6 +845,7 @@ async def enqueue_personalizacao_job(
         aluno_id=aluno_id,
         topico_ids=topico_ids,
         conteudo_ids=conteudo_ids,
+        brainhex_profile_keys=brainhex_profile_keys,
     )
 
     # Evita jobs duplicados quando o MESMO pedido chega mais de uma vez (ex.:

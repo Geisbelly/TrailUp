@@ -40,6 +40,17 @@ def _brainhex_contract_is_ready(monkeypatch):
     )
 
 
+@pytest.fixture(autouse=True)
+def _professor_em_modo_automatico(monkeypatch):
+    """Default seguro pros testes existentes: professor em modo automatico
+    (mesmo default da coluna geracao_automatica no banco). Testes que
+    precisam do modo manual sobrescrevem esse mock explicitamente."""
+    monkeypatch.setattr(
+        "app.repositories.professor.ProfessorRepository.buscar_geracao_automatica_por_classe",
+        AsyncMock(return_value=True),
+    )
+
+
 def test_assert_brainhex_media_completed_requires_all_formats() -> None:
     generation_key = "ciclo-1:hash-1"
     completed = {"metadata": {"status": "completed", "generation_key": generation_key}}
@@ -1016,6 +1027,88 @@ async def test_enqueue_job_does_not_reuse_open_job_from_different_topico(
     assert result["job"]["id"] == "job-novo-topico"
     assert create_mock.await_count == 1
     assert create_mock.await_args.kwargs["targets"] == [new_target]
+
+
+@pytest.mark.asyncio
+async def test_enqueue_class_delta_no_op_quando_professor_em_modo_manual(monkeypatch) -> None:
+    """Professor com geracao_automatica=False: class_delta_sync (disparo por
+    edicao de topico/conteudo) nao deve criar job nenhum."""
+    build_targets_mock = AsyncMock()
+    create_mock = AsyncMock()
+    monkeypatch.setattr(jobs_module, "_build_targets", build_targets_mock)
+    monkeypatch.setattr(
+        "app.repositories.professor.ProfessorRepository.buscar_geracao_automatica_por_classe",
+        AsyncMock(return_value=False),
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.criar_job_com_targets",
+        create_mock,
+    )
+
+    result = await jobs_module.enqueue_personalizacao_job(
+        session=object(),
+        kind="class_delta_sync",
+        classe_id=32,
+        trigger_source="web_console",
+        topico_ids=[117],
+    )
+
+    assert result == {"skipped": True, "reason": "geracao_manual_ativa"}
+    assert build_targets_mock.await_count == 0
+    assert create_mock.await_count == 0
+
+
+@pytest.mark.asyncio
+async def test_enqueue_manual_profile_generate_ignora_modo_manual(monkeypatch) -> None:
+    """Os kinds manuais (gerar individual/gerar tudo) nunca passam pelo
+    portao de geracao_automatica - sao a propria acao manual."""
+    target = {
+        "aluno_id": "b49f2e21-a6f9-4c8d-9533-5a32bb219754",
+        "topico_id": 117,
+        "conteudo_id": 125,
+        "brainhex_profile_key": "achiever",
+        "is_profile_template": False,
+    }
+    monkeypatch.setattr(
+        jobs_module,
+        "_build_targets",
+        AsyncMock(return_value=([target], [117], {target["aluno_id"]: "achiever"})),
+    )
+    professor_pref_mock = AsyncMock(return_value=False)
+    monkeypatch.setattr(
+        "app.repositories.professor.ProfessorRepository.buscar_geracao_automatica_por_classe",
+        professor_pref_mock,
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.list_open_jobs_by_payload",
+        AsyncMock(return_value=[]),
+    )
+    monkeypatch.setattr(
+        "app.repositories.conteudo_classe.ConteudoClasseRepository.buscar_topico_id_por_conteudo",
+        AsyncMock(return_value=117),
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.criar_job_com_targets",
+        AsyncMock(return_value={"id": "job-manual"}),
+    )
+    monkeypatch.setattr(
+        jobs_module,
+        "get_job_detail",
+        AsyncMock(return_value={"job": {"id": "job-manual"}, "targets": [target]}),
+    )
+
+    result = await jobs_module.enqueue_personalizacao_job(
+        session=object(),
+        kind="manual_profile_generate",
+        classe_id=32,
+        trigger_source="web_console",
+        topico_ids=[117],
+        conteudo_ids=[125],
+        brainhex_profile_keys=["achiever"],
+    )
+
+    assert result["job"]["id"] == "job-manual"
+    assert professor_pref_mock.await_count == 0
 
 
 @pytest.mark.asyncio
