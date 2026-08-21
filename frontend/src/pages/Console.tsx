@@ -23,6 +23,7 @@ export interface ProfessorUpdateData {
   descricao: string;
   instituicao: string;
   disciplina: string;
+  geracaoAutomatica: boolean;
 }
 
 export default function Console() {
@@ -36,6 +37,7 @@ export default function Console() {
     instituicao: string | null;
     disciplina: string | null;
     descricao: string | null;
+    geracaoAutomatica: boolean;
   } | null>(null);
   const [isLoadingProfessor, setIsLoadingProfessor] = useState(false);
   const [view, setView] = useState<"trilha" | "dashboard" | "ranks" | "classes" | "personalizacoes" | "profile" | "aprovacoes">("dashboard");
@@ -57,7 +59,7 @@ export default function Console() {
       try {
         const { data, error } = await supabase
           .from("professor")
-          .select("id, nome, descricao, instituicao, disciplina")
+          .select("id, nome, descricao, instituicao, disciplina, geracao_automatica")
           .eq("id", user.id)
           .maybeSingle();
 
@@ -70,6 +72,7 @@ export default function Console() {
           instituicao: data?.instituicao ?? user.user_metadata?.instituicao ?? "",
           disciplina: data?.disciplina ?? user.user_metadata?.disciplina ?? "",
           descricao: data?.descricao ?? user.user_metadata?.descricao ?? "",
+          geracaoAutomatica: data?.geracao_automatica ?? true,
         });
       } catch (err) {
         console.error("Erro ao carregar dados do professor:", err);
@@ -82,6 +85,7 @@ export default function Console() {
             instituicao: user.user_metadata?.instituicao || "",
             disciplina: user.user_metadata?.disciplina || "",
             descricao: user.user_metadata?.descricao || "",
+            geracaoAutomatica: true,
           });
         }
       } finally {
@@ -108,6 +112,7 @@ export default function Console() {
           descricao: updatedData.descricao,
           instituicao: updatedData.instituicao,
           disciplina: updatedData.disciplina,
+          geracao_automatica: updatedData.geracaoAutomatica,
         })
         .eq("id", professorData.id);
 
@@ -121,6 +126,7 @@ export default function Console() {
               descricao: updatedData.descricao,
               instituicao: updatedData.instituicao,
               disciplina: updatedData.disciplina,
+              geracaoAutomatica: updatedData.geracaoAutomatica,
             }
           : prev
       );
