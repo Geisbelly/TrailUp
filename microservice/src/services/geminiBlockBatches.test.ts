@@ -169,17 +169,18 @@ test("respeita override por env var, com o mesmo teto minimo de 8192 dos dois ca
   assert.equal(resolveContentGenerationMaxOutputTokens(true, { CONTENT_GENERATION_BATCH_MAX_OUTPUT_TOKENS: "24000" }), 65_536);
 });
 
-test("cobertura minima usa 70% (markdown) / 45% (audio) do texto-fonte, nao 55%/35%", () => {
-  // O piso de 55%/35% ja era deliberadamente mais frouxo que o ideal: com
-  // markdown/audioScript/slides dividindo o mesmo orcamento de output,
-  // 75%/50% (calibracao original) fazia os 6 modelos Gemini disponiveis
-  // convergirem consistentemente pra 90-98% do minimo, nunca cruzando -
-  // assinatura de teto apertado demais. Com "slides" removido da chamada
-  // (nunca chegava ao aluno - ver docs/superpowers/specs/
-  // 2026-08-20-blocos-conteudo-profundidade-design.md), markdown/audioScript
-  // tem mais orcamento livre e o piso volta a subir, agora pra 70%/45%.
+test("cobertura minima usa 55% (markdown) / 35% (audio) do texto-fonte, nao 70%/45%", () => {
+  // 2026-08-21: piso voltou de 70%/45% pra 55%/35%. Subir pra 70%/45% em
+  // 2026-08-20 (quando "slides" saiu da chamada e liberou orcamento de
+  // output) causou falha TOTAL de geracao em blocos com material de origem
+  // escasso - conteudo_aprofundado ja e uma expansao (content_enrichment.py
+  // tem seu proprio piso minimo), e exigir de novo 70% dessa expansao
+  // empilha dois pisos sobre o mesmo material fino. 55%/35% e o valor que ja
+  // rodava em producao sem esse problema antes de 2026-08-20 (ver
+  // docs/superpowers/specs/2026-08-20-blocos-conteudo-profundidade-design.md,
+  // secao "dois pisos empilhados").
   // Fonte grande o bastante pra o piso absoluto (200/160 chars) nunca ser o
-  // fator limitante - só assim o teste exercita de fato o ratio 70%/45%.
+  // fator limitante - só assim o teste exercita de fato o ratio 55%/35%.
   const bigSourceBlock: EnrichedContentBlock = {
     ...block(1),
     conteudo_aprofundado: "x".repeat(2000),
@@ -190,7 +191,7 @@ test("cobertura minima usa 70% (markdown) / 45% (audio) do texto-fonte, nao 55%/
   // sempre acima de qualquer minimo possivel (ratio antigo ou novo), pra
   // isolar exatamente o campo sendo verificado.
   const abaixoDoNovoMinimoMarkdown = chapter("bloco-01", "UM");
-  abaixoDoNovoMinimoMarkdown.markdown = "x".repeat(Math.floor(fonte * 0.70) - 1);
+  abaixoDoNovoMinimoMarkdown.markdown = "x".repeat(Math.floor(fonte * 0.55) - 1);
   abaixoDoNovoMinimoMarkdown.audioScript = "x".repeat(fonte);
   assert.throws(
     () => validateBlockBatchGeneration(
@@ -202,10 +203,10 @@ test("cobertura minima usa 70% (markdown) / 45% (audio) do texto-fonte, nao 55%/
   );
 
   const acimaDoNovoMinimoMarkdown = chapter("bloco-01", "UM");
-  acimaDoNovoMinimoMarkdown.markdown = "x".repeat(Math.ceil(fonte * 0.70) + 1);
+  acimaDoNovoMinimoMarkdown.markdown = "x".repeat(Math.ceil(fonte * 0.55) + 1);
   acimaDoNovoMinimoMarkdown.audioScript = "x".repeat(fonte);
-  // Não deve lançar - markdown já cruza o novo mínimo (70%), mesmo estando
-  // bem abaixo do antigo (75%), que teria reprovado esta mesma resposta.
+  // Não deve lançar - markdown já cruza o novo mínimo (55%), mesmo estando
+  // bem abaixo do antigo (70%), que teria reprovado esta mesma resposta.
   validateBlockBatchGeneration(
     [bigSourceBlock],
     { chapters: [acimaDoNovoMinimoMarkdown], confidence: 0.9 },
@@ -214,7 +215,7 @@ test("cobertura minima usa 70% (markdown) / 45% (audio) do texto-fonte, nao 55%/
 
   const abaixoDoNovoMinimoAudio = chapter("bloco-01", "UM");
   abaixoDoNovoMinimoAudio.markdown = "x".repeat(fonte);
-  abaixoDoNovoMinimoAudio.audioScript = "x".repeat(Math.floor(fonte * 0.45) - 1);
+  abaixoDoNovoMinimoAudio.audioScript = "x".repeat(Math.floor(fonte * 0.35) - 1);
   assert.throws(
     () => validateBlockBatchGeneration(
       [bigSourceBlock],
@@ -226,9 +227,9 @@ test("cobertura minima usa 70% (markdown) / 45% (audio) do texto-fonte, nao 55%/
 
   const acimaDoNovoMinimoAudio = chapter("bloco-01", "UM");
   acimaDoNovoMinimoAudio.markdown = "x".repeat(fonte);
-  acimaDoNovoMinimoAudio.audioScript = "x".repeat(Math.ceil(fonte * 0.45) + 1);
-  // Não deve lançar - áudio já cruza o novo mínimo (45%), mesmo bem abaixo
-  // do antigo (50%).
+  acimaDoNovoMinimoAudio.audioScript = "x".repeat(Math.ceil(fonte * 0.35) + 1);
+  // Não deve lançar - áudio já cruza o novo mínimo (35%), mesmo bem abaixo
+  // do antigo (45%).
   validateBlockBatchGeneration(
     [bigSourceBlock],
     { chapters: [acimaDoNovoMinimoAudio], confidence: 0.9 },
@@ -236,52 +237,69 @@ test("cobertura minima usa 70% (markdown) / 45% (audio) do texto-fonte, nao 55%/
   );
 });
 
-test("tolerant:true aceita markdown/audio a partir de 95% do minimo calculado, nao 100%", () => {
-  // Ultimo recurso da cascata inteira (ver generateAfterPrimaryGeminiFailure
-  // em contentGenerationService.ts): sem isso, um resultado a 96% do minimo
-  // reprova e falha o bloco/job inteiro por um punhado de caracteres, mesma
-  // tolerancia ja usada do lado Python (_MIN_EXPANSION_TOLERANCE_RATIO em
-  // content_enrichment.py). So se aplica quando tolerant:true e passado
-  // explicitamente - nas tentativas intermediarias o gate continua exigindo
-  // 100% do minimo, senao perderia forca em toda geracao.
+test("tolerant:true aceita qualquer markdown nao-trivial (200+ chars) e audio vazio, nao exige fracao do minimo", () => {
+  // Ultimo recurso da cascata inteira (ver generateStructuredContentWithFallback
+  // em contentGenerationService.ts). Antes disso (ate 2026-08-21) tolerant
+  // so afrouxava o piso proporcional em 5% (MIN_COVERAGE_TOLERANCE_RATIO) -
+  // incidente real mostrou isso ainda reprovando um bloco com pouco material
+  // de origem mesmo depois de esgotar 6 modelos Gemini, porque o piso
+  // proporcional nao faz sentido pra material de origem curto (conteudo_
+  // aprofundado ja e uma expansao de outro piso minimo, content_
+  // enrichment.py). Agora tolerant:true so exige um markdown minimamente
+  // presente (200+ chars, mesmo piso absoluto de sempre) e aceita audio
+  // vazio - o objetivo e nunca falhar a geracao inteira quando ja se
+  // esgotou toda a cascata de modelos/providers disponivel.
   const bigSourceBlock: EnrichedContentBlock = {
     ...block(1),
     conteudo_aprofundado: "x".repeat(2000),
   };
   const fonte = bigSourceBlock.conteudo_aprofundado.length;
-  const minimoBruto = Math.floor(fonte * 0.70);
+  const minimoBruto = Math.floor(fonte * 0.55);
 
-  const perto96 = chapter("bloco-01", "UM");
-  perto96.markdown = "x".repeat(Math.floor(minimoBruto * 0.96));
-  perto96.audioScript = "x".repeat(fonte);
+  const curtoDemaisSemTolerancia = chapter("bloco-01", "UM");
+  curtoDemaisSemTolerancia.markdown = "x".repeat(minimoBruto - 1);
+  curtoDemaisSemTolerancia.audioScript = "x".repeat(fonte);
 
   assert.throws(
     () => validateBlockBatchGeneration(
       [bigSourceBlock],
-      { chapters: [perto96], confidence: 0.9 },
+      { chapters: [curtoDemaisSemTolerancia], confidence: 0.9 },
       1,
       { tolerant: false },
     ),
     /Markdown.*resumido abaixo do mínimo de cobertura/,
   );
 
-  // Mesma resposta, so com tolerant:true — deve passar (96% > 95%).
+  // Mesma resposta, so com tolerant:true — deve passar (200+ chars de
+  // markdown, mesmo bem abaixo do piso proporcional de 55%).
   validateBlockBatchGeneration(
     [bigSourceBlock],
-    { chapters: [perto96], confidence: 0.9 },
+    { chapters: [curtoDemaisSemTolerancia], confidence: 0.9 },
     1,
     { tolerant: true },
   );
 
-  // Mas tolerant:true nao aceita QUALQUER coisa - abaixo de 95% do minimo
-  // bruto continua reprovando.
-  const abaixoDaTolerancia = chapter("bloco-01", "UM");
-  abaixoDaTolerancia.markdown = "x".repeat(Math.floor(minimoBruto * 0.9));
-  abaixoDaTolerancia.audioScript = "x".repeat(fonte);
+  // tolerant:true tambem aceita audio vazio - nunca reprova por audio no
+  // ultimo recurso.
+  const semAudio = chapter("bloco-01", "UM");
+  semAudio.markdown = "x".repeat(minimoBruto);
+  semAudio.audioScript = "";
+  validateBlockBatchGeneration(
+    [bigSourceBlock],
+    { chapters: [semAudio], confidence: 0.9 },
+    1,
+    { tolerant: true },
+  );
+
+  // Mas tolerant:true nao aceita markdown vazio/trivial abaixo do piso
+  // absoluto (200 chars) - o ultimo recurso ainda exige ALGUM conteudo real.
+  const markdownTrivial = chapter("bloco-01", "UM");
+  markdownTrivial.markdown = "x".repeat(50);
+  markdownTrivial.audioScript = "x".repeat(fonte);
   assert.throws(
     () => validateBlockBatchGeneration(
       [bigSourceBlock],
-      { chapters: [abaixoDaTolerancia], confidence: 0.9 },
+      { chapters: [markdownTrivial], confidence: 0.9 },
       1,
       { tolerant: true },
     ),

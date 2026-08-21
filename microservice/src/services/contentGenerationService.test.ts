@@ -723,6 +723,99 @@ test("tolerantAccepted fica false/undefined quando o Gemini resolve sem precisar
   resetGeminiContentGenerationCircuit();
 });
 
+test("OpenAI desligada + modelos fallback configurados: so o ULTIMO modelo fallback e tolerante", async () => {
+  // Reproduz o incidente real de 2026-08-21: sem contingencia OpenAI (sem
+  // credito), a cascata 100% Gemini precisa ter uma tentativa tolerante de
+  // verdade no final, senao falha SEMPRE em 100% do piso proporcional pra
+  // blocos com material de origem escasso.
+  resetGeminiContentGenerationCircuit();
+  const receivedTolerant: boolean[] = [];
+  const attemptedModels: string[] = [];
+
+  const result = await generateStructuredContentWithFallback(call, {
+    environment: {
+      CONTENT_GENERATION_GEMINI_QUALITY_MAX_ATTEMPTS: "1",
+      CONTENT_GENERATION_ENABLE_OPENAI_FALLBACK: "false",
+    },
+    geminiFallbackModels: ["gemini-fallback-1", "gemini-fallback-2"],
+    generateWithGemini: async (currentCall) => {
+      attemptedModels.push(currentCall.geminiModel);
+      return { chapters: [] };
+    },
+    generateWithOpenAI: async () => {
+      throw new Error("nao deveria ser chamado — OpenAI esta desligada");
+    },
+    validateResult: (_value, _provider, meta) => {
+      receivedTolerant.push(meta.tolerant);
+      // so aceita (nao lanca) na ultima tentativa, simulando o gate real
+      // aceitando com margem so no ultimo recurso.
+      if (!meta.tolerant) {
+        throw new Error("Markdown abaixo do mínimo de cobertura.");
+      }
+    },
+  });
+
+  assert.deepEqual(attemptedModels, [
+    "gemini-primary",
+    "gemini-fallback-1",
+    "gemini-fallback-2",
+  ]);
+  assert.deepEqual(receivedTolerant, [false, false, true]);
+  assert.equal(result.provider, "gemini");
+  assert.equal(result.model, "gemini-fallback-2");
+  assert.equal(result.tolerantAccepted, true);
+  resetGeminiContentGenerationCircuit();
+});
+
+test("OpenAI desligada + sem modelos fallback: a ultima tentativa do modelo primario e tolerante", async () => {
+  resetGeminiContentGenerationCircuit();
+  const receivedTolerant: boolean[] = [];
+
+  const result = await generateStructuredContentWithFallback(call, {
+    environment: {
+      CONTENT_GENERATION_GEMINI_QUALITY_MAX_ATTEMPTS: "2",
+      CONTENT_GENERATION_ENABLE_OPENAI_FALLBACK: "false",
+    },
+    generateWithGemini: async () => ({ chapters: [] }),
+    generateWithOpenAI: async () => {
+      throw new Error("nao deveria ser chamado — OpenAI esta desligada");
+    },
+    validateResult: (_value, _provider, meta) => {
+      receivedTolerant.push(meta.tolerant);
+      if (!meta.tolerant) {
+        throw new Error("Markdown abaixo do mínimo de cobertura.");
+      }
+    },
+  });
+
+  assert.deepEqual(receivedTolerant, [false, true]);
+  assert.equal(result.provider, "gemini");
+  assert.equal(result.model, "gemini-primary");
+  assert.equal(result.tolerantAccepted, true);
+  resetGeminiContentGenerationCircuit();
+});
+
+test("OpenAI ligada + modelos fallback: nenhuma tentativa Gemini e tolerante (OpenAI ainda vem depois)", async () => {
+  resetGeminiContentGenerationCircuit();
+  const receivedTolerant: boolean[] = [];
+
+  const result = await generateStructuredContentWithFallback(call, {
+    environment: { CONTENT_GENERATION_GEMINI_QUALITY_MAX_ATTEMPTS: "1" },
+    geminiFallbackModels: ["gemini-fallback-1"],
+    generateWithGemini: async () => ({ chapters: [] }),
+    generateWithOpenAI: async () => ({ chapters: [{ blockId: "bloco-01" }] }),
+    validateResult: (value, provider, meta) => {
+      if (provider !== "gemini") return;
+      receivedTolerant.push(meta.tolerant);
+      throw new Error("Markdown abaixo do mínimo de cobertura.");
+    },
+  });
+
+  assert.deepEqual(receivedTolerant, [false, false]);
+  assert.equal(result.provider, "openai");
+  resetGeminiContentGenerationCircuit();
+});
+
 test("modelos fallback Gemini recebem o motivo da recusa anterior (nao rodam mais as cegas)", async () => {
   resetGeminiContentGenerationCircuit();
   const receivedInstructions: string[] = [];

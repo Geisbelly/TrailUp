@@ -478,7 +478,7 @@ async function generateAfterPrimaryGeminiFailure(
 
     // Ultimo recurso da cascata INTEIRA (Gemini primario + retries, modelos
     // fallback do Gemini, e agora as tentativas da OpenAI): so a ultima
-    // tentativa aqui e tolerante (ver MIN_COVERAGE_TOLERANCE_RATIO em
+    // tentativa aqui e tolerante (ver TOLERANT_MINIMUM_MARKDOWN_LENGTH em
     // geminiService.ts) - nas intermediarias o gate continua exigindo 100%.
     const tolerant = attempt === maxAttempts;
     try {
@@ -526,6 +526,17 @@ export async function generateStructuredContentWithFallback(
   const now = options.now ?? Date.now;
   const generateWithOpenAI =
     options.generateWithOpenAI ?? generateStructuredWithOpenAI;
+  // Calculados aqui (nao so dentro do laco de fallback, como antes) porque o
+  // laco do modelo primario e o de fallback do Gemini precisam saber, cada
+  // um, se sao a ULTIMA tentativa de toda a cascata - so assim quando a
+  // OpenAI esta desligada (ex.: sem credito, ver openAIFallbackEnabled) a
+  // cascata 100% Gemini tem uma tentativa tolerante de verdade no final, em
+  // vez de falhar sempre em 100% do piso e so cair na contingencia OpenAI
+  // (que nem roda) pra ter alguma folga.
+  const hasOpenAIFallback = openAIFallbackEnabled(environment);
+  const fallbackModels = (options.geminiFallbackModels ?? []).filter(
+    (model) => model !== call.geminiModel,
+  );
 
   if (now() < geminiUnavailableUntil) {
     return generateAfterPrimaryGeminiFailure(
@@ -562,20 +573,25 @@ export async function generateStructuredContentWithFallback(
           + `Motivo da recusa anterior: ${previousQualityReason}`,
       };
 
+    // So tolerante quando esta e de fato a ULTIMA tentativa de toda a
+    // cascata: nenhum modelo fallback do Gemini configurado e a OpenAI
+    // desligada. Caso contrario ainda ha recurso pela frente, entao o gate
+    // continua exigindo 100% do minimo.
+    const primaryTolerant =
+      attempt === maxQualityAttempts && fallbackModels.length === 0 && !hasOpenAIFallback;
     try {
-      // Nunca tolerante: ainda ha modelos fallback do Gemini e a OpenAI pela
-      // frente antes de chegar no ultimo recurso da cascata.
       const value = await generateAndValidateContent(
         options.generateWithGemini,
         currentCall,
         "gemini",
         options.validateResult,
-        false,
+        primaryTolerant,
       );
       return {
         value,
         provider: "gemini",
         model: call.geminiModel,
+        tolerantAccepted: primaryTolerant || undefined,
       };
     } catch (error) {
       // Só indisponibilidade real do Gemini abre o circuito e vai direto pro
@@ -620,10 +636,10 @@ export async function generateStructuredContentWithFallback(
   // demais modelos do mesmo tier free 1 vez cada: uma falha de qualidade e
   // sobre o CONTEUDO de uma resposta, nao sobre o modelo estar fora do ar, e
   // um modelo diferente pode simplesmente produzir uma cobertura melhor.
-  const fallbackModels = (options.geminiFallbackModels ?? []).filter(
-    (model) => model !== call.geminiModel,
-  );
-  for (const fallbackModel of fallbackModels) {
+  // (fallbackModels calculado no topo da funcao - ver comentario la sobre
+  // por que precisa ser conhecido antes do laco do modelo primario tambem.)
+  for (let fallbackIndex = 0; fallbackIndex < fallbackModels.length; fallbackIndex += 1) {
+    const fallbackModel = fallbackModels[fallbackIndex];
     triedModelsCount += 1;
     // previousQualityReason ja vem preenchido pelo laco do modelo primario
     // (todo catch de ContentGenerationQualityError acima o atualiza) - sem
@@ -641,19 +657,23 @@ export async function generateStructuredContentWithFallback(
         + "blocos. Preserve toda a cobertura do conteúdo aprofundado no "
         + `texto e no roteiro de áudio. Motivo da recusa anterior: ${previousQualityReason}`,
     };
+    // So tolerante no ULTIMO modelo fallback, e so quando a OpenAI esta
+    // desligada (senao ela ainda vem depois como ultimo recurso de verdade).
+    const fallbackTolerant =
+      fallbackIndex === fallbackModels.length - 1 && !hasOpenAIFallback;
     try {
-      // Nunca tolerante: a OpenAI ainda vem depois, como ultimo recurso.
       const value = await generateAndValidateContent(
         options.generateWithGemini,
         fallbackCall,
         "gemini",
         options.validateResult,
-        false,
+        fallbackTolerant,
       );
       return {
         value,
         provider: "gemini",
         model: fallbackModel,
+        tolerantAccepted: fallbackTolerant || undefined,
       };
     } catch (error) {
       if (!(error instanceof ContentGenerationQualityError)) {

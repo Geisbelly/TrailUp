@@ -695,15 +695,24 @@ export function partitionContentBlocks(
 }
 
 // Ultimo recurso do gate de cobertura: quando a cascata inteira de modelos e
-// providers ja foi tentada (ver generateAfterPrimaryGeminiFailure em
-// contentGenerationService.ts) e nenhum bateu o minimo exato, aceitar um
-// resultado a 95% do minimo calculado evita falhar o bloco inteiro por um
-// punhado de caracteres - mesma tolerancia ja usada do lado Python
-// (_MIN_EXPANSION_TOLERANCE_RATIO em content_enrichment.py). So se aplica
-// quando o chamador passa tolerant:true explicitamente (a ULTIMA tentativa
-// da cascata) - nas intermediarias o gate continua exigindo 100% do minimo,
-// senao perderia forca em toda geracao.
-const MIN_COVERAGE_TOLERANCE_RATIO = 0.95;
+// providers ja foi tentada (ver generateStructuredContentWithFallback /
+// generateAfterPrimaryGeminiFailure em contentGenerationService.ts) e a
+// ULTIMA tentativa disponivel ainda nao bateu a cobertura minima baseada em
+// %, aceitar o conteudo mesmo assim (contanto que nao seja trivial/vazio)
+// evita falhar o bloco inteiro quando o material de origem e genuinamente
+// escasso. Antes disso o "ultimo recurso" so afrouxava o piso em 5%
+// (MIN_COVERAGE_TOLERANCE_RATIO=0.95) - incidente real em 2026-08-21 mostrou
+// isso ainda reprovando um bloco com pouco material cadastrado mesmo depois
+// de esgotar 6 modelos Gemini, porque o piso proporcional (%) nao faz
+// sentido pra material de origem curto: fonte ja tinha sido esticada uma vez
+// pelo enriquecimento (content_enrichment.py, seu proprio piso minimo) e
+// exigir de novo uma fracao dela empilha dois pisos de expansao sobre o
+// mesmo material fino. So se aplica quando o chamador passa tolerant:true
+// explicitamente (a ULTIMA tentativa da cascata inteira) - nas
+// intermediarias o gate continua exigindo 100% do minimo proporcional, senao
+// perderia forca em toda geracao.
+const TOLERANT_MINIMUM_MARKDOWN_LENGTH = 200;
+const TOLERANT_MINIMUM_AUDIO_LENGTH = 0;
 
 export function validateBlockBatchGeneration(
   batch: EnrichedContentBlock[],
@@ -751,21 +760,26 @@ export function validateBlockBatchGeneration(
     const markdown = String(chapter.markdown ?? "").trim();
     const audioScript = String(chapter.audioScript ?? "").trim();
     // block.conteudo_aprofundado ja e um texto expandido por outra chamada
-    // de LLM (content_enrichment.py). Piso subiu de 55%/35% para 70%/45%
-    // agora que markdown/audioScript nao dividem mais o orcamento de output
-    // com "slides" (removido - nunca chegava ao aluno, ver
-    // docs/superpowers/specs/2026-08-20-blocos-conteudo-profundidade-design.md).
-    // O piso de 55%/35% antigo ja era deliberadamente mais frouxo que o
-    // ideal (75%/50% se mostrou calibrado alto demais em producao quando
-    // ainda havia 3 campos dividindo o mesmo teto de tokens) - com mais
-    // orcamento livre agora, o piso pode subir de volta com seguranca.
+    // de LLM (content_enrichment.py, que tem seu proprio piso minimo de
+    // expansao). Piso aqui volta de 70%/45% para 55%/35% (2026-08-21):
+    // subir pra 70%/45% (2026-08-20, quando "slides" saiu do schema e
+    // liberou orcamento de output) causou falha total de geracao em blocos
+    // com material de origem escasso - o texto ja tinha sido esticado uma
+    // vez pelo enriquecimento, e exigir de novo 70% DESSE texto ja esticado
+    // empilha dois pisos de expansao sobre o mesmo material fino (ver
+    // docs/superpowers/specs/2026-08-20-blocos-conteudo-profundidade-design.md,
+    // secao "dois pisos empilhados" - o risco ali so era teorico, virou
+    // incidente real). 55%/35% e o mesmo valor que ja rodou em producao sem
+    // esse problema antes de 2026-08-20. A rede de seguranca do ultimo
+    // recurso (tolerant, abaixo) continua existindo para os casos extremos
+    // que mesmo 55%/35% nao cobre.
     let minimumMarkdownLength = Math.max(
       200,
-      Math.floor(normalizedText(block.conteudo_aprofundado).length * 0.70),
+      Math.floor(normalizedText(block.conteudo_aprofundado).length * 0.55),
     );
     let minimumAudioLength = Math.max(
       160,
-      Math.floor(normalizedText(block.conteudo_aprofundado).length * 0.45),
+      Math.floor(normalizedText(block.conteudo_aprofundado).length * 0.35),
     );
     // markdown e audioScript saem da MESMA chamada e dividem o mesmo
     // orcamento de output. Quando varios blocos sao mesclados num so (ver
@@ -788,8 +802,8 @@ export function validateBlockBatchGeneration(
       );
     }
     if (options.tolerant) {
-      minimumMarkdownLength = Math.ceil(minimumMarkdownLength * MIN_COVERAGE_TOLERANCE_RATIO);
-      minimumAudioLength = Math.ceil(minimumAudioLength * MIN_COVERAGE_TOLERANCE_RATIO);
+      minimumMarkdownLength = TOLERANT_MINIMUM_MARKDOWN_LENGTH;
+      minimumAudioLength = TOLERANT_MINIMUM_AUDIO_LENGTH;
     }
     if (normalizedText(markdown).length < minimumMarkdownLength) {
       throw new Error(
