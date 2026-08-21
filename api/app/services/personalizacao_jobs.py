@@ -799,6 +799,12 @@ async def _build_targets(
     return targets, resolved_topicos, target_profile_map
 
 
+def _normalized_id_list(value: Any) -> list[int]:
+    if not isinstance(value, list):
+        return []
+    return sorted({int(item) for item in value if item is not None})
+
+
 async def enqueue_personalizacao_job(
     *,
     session: AsyncSession,
@@ -814,20 +820,6 @@ async def enqueue_personalizacao_job(
     repo = PersonalizacaoJobsRepository(session)
     scoped_aluno_id = aluno_id if kind in {JOB_KIND_ENROLLMENT, JOB_KIND_CLEANUP} else None
 
-    # Evita jobs duplicados quando o mesmo pedido chega mais de uma vez (ex.:
-    # duplo-clique num botao do console) enquanto um job equivalente ainda
-    # esta aberto. Sem isso, cada duplicata martela a OpenAI de forma
-    # independente ate esgotar suas proprias tentativas.
-    open_job = await repo.find_open_job_by_payload(
-        kind=kind,
-        aluno_id=scoped_aluno_id,
-        classe_id=classe_id,
-    )
-    if open_job:
-        detail = await get_job_detail(session=session, job_id=str(open_job["id"]))
-        if detail:
-            return detail
-
     targets, resolved_topicos, target_profile_map = await _build_targets(
         session=session,
         kind=kind,
@@ -836,6 +828,34 @@ async def enqueue_personalizacao_job(
         topico_ids=topico_ids,
         conteudo_ids=conteudo_ids,
     )
+
+    # Evita jobs duplicados quando o MESMO pedido chega mais de uma vez (ex.:
+    # duplo-clique num botao do console) enquanto um job equivalente ainda
+    # esta aberto. Sem isso, cada duplicata martela a OpenAI de forma
+    # independente ate esgotar suas proprias tentativas. Comparar tambem
+    # topico_ids/conteudo_ids (nao so kind+classe_id) e essencial: sem isso,
+    # QUALQUER job aberto de class-delta na classe (ex.: ainda processando um
+    # topico antigo) engolia silenciosamente um pedido de escopo totalmente
+    # diferente (ex.: um topico novo) - o pedido novo nunca criava targets
+    # proprios e o professor via o topico errado "regenerando" no lugar dele.
+    requested_topico_ids = sorted(set(resolved_topicos))
+    requested_conteudo_ids = _normalized_id_list(conteudo_ids)
+    for candidate in await repo.list_open_jobs_by_payload(
+        kind=kind,
+        aluno_id=scoped_aluno_id,
+        classe_id=classe_id,
+    ):
+        candidate_payload = candidate.get("payload")
+        candidate_payload = candidate_payload if isinstance(candidate_payload, dict) else {}
+        if (
+            _normalized_id_list(candidate_payload.get("topico_ids")) == requested_topico_ids
+            and _normalized_id_list(candidate_payload.get("conteudo_ids")) == requested_conteudo_ids
+        ):
+            detail = await get_job_detail(session=session, job_id=str(candidate["id"]))
+            if detail:
+                return detail
+            break
+
     job_payload = {
         **(payload or {}),
         "reason": reason,
