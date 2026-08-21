@@ -672,8 +672,8 @@ async def test_enqueue_job_creates_job_and_targets_atomically(monkeypatch) -> No
         AsyncMock(return_value=([target], [117], {target["aluno_id"]: "seeker"})),
     )
     monkeypatch.setattr(
-        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.find_open_job_by_payload",
-        AsyncMock(return_value=None),
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.list_open_jobs_by_payload",
+        AsyncMock(return_value=[]),
     )
     monkeypatch.setattr(
         "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.criar_job_com_targets",
@@ -744,8 +744,8 @@ async def test_enqueue_job_falls_back_to_get_targets_when_get_job_detail_returns
         ),
     )
     monkeypatch.setattr(
-        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.find_open_job_by_payload",
-        AsyncMock(return_value=None),
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.list_open_jobs_by_payload",
+        AsyncMock(return_value=[]),
     )
     monkeypatch.setattr(
         "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.criar_job_com_targets",
@@ -789,8 +789,8 @@ async def test_enqueue_job_never_passes_stale_conteudo_id_to_scalar_fk_column(
         AsyncMock(return_value=([], [], {})),
     )
     monkeypatch.setattr(
-        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.find_open_job_by_payload",
-        AsyncMock(return_value=None),
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.list_open_jobs_by_payload",
+        AsyncMock(return_value=[]),
     )
     monkeypatch.setattr(
         "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.criar_job_com_targets",
@@ -848,8 +848,8 @@ async def test_enqueue_job_rechecks_conteudo_id_right_before_insert_to_close_rac
         ),
     )
     monkeypatch.setattr(
-        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.find_open_job_by_payload",
-        AsyncMock(return_value=None),
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.list_open_jobs_by_payload",
+        AsyncMock(return_value=[]),
     )
     monkeypatch.setattr(
         "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.criar_job_com_targets",
@@ -881,22 +881,34 @@ async def test_enqueue_job_rechecks_conteudo_id_right_before_insert_to_close_rac
 
 
 @pytest.mark.asyncio
-async def test_enqueue_job_reuses_existing_open_job_instead_of_duplicating(
+async def test_enqueue_job_reuses_existing_open_job_when_same_scope(
     monkeypatch,
 ) -> None:
     """Reproduz o bug real: duplo-clique no console criava 2 jobs class_delta_sync
-    identicos para a mesma classe, cada um martelando a OpenAI de forma independente."""
-    build_targets_mock = AsyncMock()
+    identicos (mesmo topico) para a mesma classe, cada um martelando a OpenAI de
+    forma independente. Reaproveitar exige que o job aberto tenha o MESMO
+    escopo (topico_ids/conteudo_ids) do pedido novo, nao so o mesmo kind+classe."""
+    target = {
+        "aluno_id": "b49f2e21-a6f9-4c8d-9533-5a32bb219754",
+        "topico_id": 122,
+        "conteudo_id": None,
+        "brainhex_profile_key": "seeker",
+        "is_profile_template": False,
+    }
+    build_targets_mock = AsyncMock(return_value=([target], [122], {target["aluno_id"]: "seeker"}))
     create_mock = AsyncMock()
     monkeypatch.setattr(jobs_module, "_build_targets", build_targets_mock)
     monkeypatch.setattr(
-        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.find_open_job_by_payload",
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.list_open_jobs_by_payload",
         AsyncMock(
-            return_value={
-                "id": "job-existing",
-                "kind": "class_delta_sync",
-                "status": "processing",
-            }
+            return_value=[
+                {
+                    "id": "job-existing",
+                    "kind": "class_delta_sync",
+                    "status": "processing",
+                    "payload": {"topico_ids": [122], "conteudo_ids": []},
+                }
+            ]
         ),
     )
     monkeypatch.setattr(
@@ -919,7 +931,63 @@ async def test_enqueue_job_reuses_existing_open_job_instead_of_duplicating(
 
     assert result["job"]["id"] == "job-existing"
     assert create_mock.await_count == 0
-    assert build_targets_mock.await_count == 0
+
+
+@pytest.mark.asyncio
+async def test_enqueue_job_does_not_reuse_open_job_from_different_topico(
+    monkeypatch,
+) -> None:
+    """Reproduz o bug real: professor adiciona um topico novo enquanto um job
+    class_delta_sync de OUTRO topico ainda esta aberto (pending/processing/
+    partial) na mesma classe. O pedido do topico novo nao pode ser engolido
+    pelo job antigo - precisa criar targets/job proprios, senao o topico novo
+    nunca gera conteudo e o professor so ve o topico antigo "regenerando"."""
+    new_target = {
+        "aluno_id": "b49f2e21-a6f9-4c8d-9533-5a32bb219754",
+        "topico_id": 999,
+        "conteudo_id": None,
+        "brainhex_profile_key": "seeker",
+        "is_profile_template": False,
+    }
+    build_targets_mock = AsyncMock(
+        return_value=([new_target], [999], {new_target["aluno_id"]: "seeker"})
+    )
+    create_mock = AsyncMock(return_value={"id": "job-novo-topico"})
+    monkeypatch.setattr(jobs_module, "_build_targets", build_targets_mock)
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.list_open_jobs_by_payload",
+        AsyncMock(
+            return_value=[
+                {
+                    "id": "job-topico-antigo",
+                    "kind": "class_delta_sync",
+                    "status": "processing",
+                    "payload": {"topico_ids": [122], "conteudo_ids": []},
+                }
+            ]
+        ),
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.criar_job_com_targets",
+        create_mock,
+    )
+    monkeypatch.setattr(
+        jobs_module,
+        "get_job_detail",
+        AsyncMock(return_value={"job": {"id": "job-novo-topico"}, "targets": [new_target]}),
+    )
+
+    result = await jobs_module.enqueue_personalizacao_job(
+        session=object(),
+        kind="class_delta_sync",
+        classe_id=32,
+        trigger_source="web_console",
+        topico_ids=[999],
+    )
+
+    assert result["job"]["id"] == "job-novo-topico"
+    assert create_mock.await_count == 1
+    assert create_mock.await_args.kwargs["targets"] == [new_target]
 
 
 @pytest.mark.asyncio
@@ -928,7 +996,7 @@ async def test_enqueue_job_dedup_scopes_by_aluno_id_for_cleanup_kind(
 ) -> None:
     """Cleanup e por aluno: um job aberto para outro aluno na mesma classe
     nao deve impedir a criacao de um novo job para este aluno."""
-    find_open_mock = AsyncMock(return_value=None)
+    list_open_mock = AsyncMock(return_value=[])
     create_mock = AsyncMock(return_value={"id": "job-new"})
     monkeypatch.setattr(
         jobs_module,
@@ -936,8 +1004,8 @@ async def test_enqueue_job_dedup_scopes_by_aluno_id_for_cleanup_kind(
         AsyncMock(return_value=([], [], {})),
     )
     monkeypatch.setattr(
-        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.find_open_job_by_payload",
-        find_open_mock,
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.list_open_jobs_by_payload",
+        list_open_mock,
     )
     monkeypatch.setattr(
         "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.criar_job_com_targets",
@@ -957,7 +1025,7 @@ async def test_enqueue_job_dedup_scopes_by_aluno_id_for_cleanup_kind(
         trigger_source="web_console",
     )
 
-    assert find_open_mock.await_args.kwargs["aluno_id"] == "aluno-2"
+    assert list_open_mock.await_args.kwargs["aluno_id"] == "aluno-2"
     assert create_mock.await_count == 1
 
 

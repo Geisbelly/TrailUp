@@ -595,6 +595,63 @@ class PersonalizacaoJobsRepository:
         row = result.mappings().first()
         return self._hydrate_job(dict(row)) if row else None
 
+    async def list_open_jobs_by_payload(
+        self,
+        *,
+        kind: str,
+        aluno_id: str | None = None,
+        classe_id: int | None = None,
+    ) -> list[dict[str, Any]]:
+        """Mesmo filtro de find_open_job_by_payload, mas sem `topico_id`
+        (kinds como class_delta_sync espalham por varios topicos de uma vez,
+        um unico int nao da conta) e sem LIMIT 1 - o chamador compara o
+        payload de cada candidato (topico_ids/conteudo_ids) contra o pedido
+        atual pra decidir qual, se algum, e realmente o mesmo pedido."""
+        if not await self._jobs_exists():
+            return []
+        media_snapshot_select = self._media_snapshot_select_expr(
+            enabled=await self._jobs_has_media_snapshot()
+        )
+
+        result = await self.session.execute(
+            text(
+                f"""
+                SELECT
+                  id,
+                  kind,
+                  status,
+                  classe_id,
+                  aluno_id,
+                  topico_id,
+                  conteudo_id,
+                  trigger_source,
+                  payload,
+                  {media_snapshot_select},
+                  total_targets,
+                  processed_targets,
+                  error_count,
+                  last_error,
+                  created_at,
+                  updated_at,
+                  started_at,
+                  finished_at
+                FROM personalizacao_jobs
+                WHERE kind = :kind
+                  AND status IN ('pending', 'processing', 'partial')
+                  AND (CAST(:aluno_id AS UUID) IS NULL OR aluno_id = CAST(:aluno_id AS UUID))
+                  AND (CAST(:classe_id AS BIGINT) IS NULL OR classe_id = CAST(:classe_id AS BIGINT))
+                ORDER BY created_at DESC, id DESC
+                """
+            ),
+            {
+                "kind": kind,
+                "aluno_id": aluno_id,
+                "classe_id": classe_id,
+            },
+        )
+        rows = result.mappings().all()
+        return [self._hydrate_job(dict(row)) for row in rows]
+
     async def get_latest_media_render_job(
         self,
         *,
