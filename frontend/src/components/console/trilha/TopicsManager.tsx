@@ -49,6 +49,7 @@ import {
   listPersonalizacaoJobs,
   selectFailedJobTopicoIds,
   summarizePersonalizacaoJobs,
+  type PersonalizacaoJobEnqueueResult,
   type PersonalizacaoJobStatus,
 } from "./personalizacaoJobsApi";
 import { parseOptionalPositiveScore } from "@/lib/question-score";
@@ -217,7 +218,8 @@ export default function TopicsManager() {
   });
 
   const rememberEnqueuedJob = useCallback(
-    (job: PersonalizacaoJobStatus) => {
+    (job: PersonalizacaoJobEnqueueResult) => {
+      if ("skipped" in job) return;
       if (String(job.classe_id) !== selectedClassFilter) return;
       hasActiveJobsRef.current =
         isPersonalizacaoJobActive(job) || hasActiveJobsRef.current;
