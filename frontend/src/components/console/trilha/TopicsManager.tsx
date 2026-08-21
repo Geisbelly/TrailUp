@@ -53,6 +53,23 @@ import {
 } from "./personalizacaoJobsApi";
 import { parseOptionalPositiveScore } from "@/lib/question-score";
 
+// eslint-disable-next-line react-refresh/only-export-components
+export function buildTopicoDeltaPayload(params: {
+  classeId: number;
+  topicoIds: number[];
+  conteudoIds?: number[];
+  reason: string;
+}) {
+  return {
+    classe_id: params.classeId,
+    topico_ids: params.topicoIds,
+    ...(params.conteudoIds && params.conteudoIds.length > 0
+      ? { conteudo_ids: params.conteudoIds }
+      : {}),
+    reason: params.reason,
+  };
+}
+
 export default function TopicsManager() {
   const { user, session } = useAuth();
   const professorId = user?.id;
@@ -127,24 +144,14 @@ export default function TopicsManager() {
     questionNota: "",
     questionOptions: [""],
   });
-  const fetchClassContextIds = async (classeId: number) => {
-    const { data: topicoRows, error: topicoError } = await supabase
-      .from("topicos")
-      .select("id")
-      .eq("classe_id", classeId);
-    if (topicoError) throw topicoError;
-
-    const topico_ids = (topicoRows ?? []).map((row) => row.id);
-    if (topico_ids.length === 0) return { topico_ids, conteudo_ids: [] as number[] };
-
+  const fetchConteudoIdsForTopicos = async (topicoIds: number[]) => {
+    if (topicoIds.length === 0) return [] as number[];
     const { data: conteudoRows, error: conteudoError } = await supabase
       .from("conteudos")
       .select("id")
-      .in("topico_id", topico_ids);
+      .in("topico_id", topicoIds);
     if (conteudoError) throw conteudoError;
-
-    const conteudo_ids = (conteudoRows ?? []).map((row) => row.id);
-    return { topico_ids, conteudo_ids };
+    return (conteudoRows ?? []).map((row) => row.id);
   };
   const updateQuestionOption = (index: number, value: string) => {
     setQuestionOptions((prev) => prev.map((opt, idx) => (idx === index ? value : opt)));
@@ -250,30 +257,19 @@ export default function TopicsManager() {
     setTopicos,
     persistOrder: async (updates) => {
       await Promise.all(updates.map((u) => supabase.from("topicos").update({ ordem: u.ordem }).eq("id", u.id)));
-      if (session?.access_token && selectedClassFilter && updates.length < 0) {
+      if (session?.access_token && selectedClassFilter && updates.length > 0) {
         try {
-          const { topico_ids, conteudo_ids } = await fetchClassContextIds(Number(selectedClassFilter));
-          const job = await enqueueClassDeltaJob(session.access_token, {
-            classe_id: Number(selectedClassFilter),
-            topico_ids,
-            conteudo_ids,
-            reason: "reordenacao_topicos_console",
-          });
-          rememberEnqueuedJob(job);
-        } catch (error) {
-          console.error("[TopicsManager] Falha ao enfileirar class-delta apos salvar ordem:", error);
-          toast.warning("Ordem salva, mas o job de personalização não foi enfileirado.");
-        }
-      }
-      if (session?.access_token && selectedClassFilter) {
-        try {
-          const { topico_ids, conteudo_ids } = await fetchClassContextIds(Number(selectedClassFilter));
-          const job = await enqueueClassDeltaJob(session.access_token, {
-            classe_id: Number(selectedClassFilter),
-            topico_ids,
-            conteudo_ids,
-            reason: "reordenacao_topicos_console",
-          });
+          const topico_ids = updates.map((u) => u.id);
+          const conteudo_ids = await fetchConteudoIdsForTopicos(topico_ids);
+          const job = await enqueueClassDeltaJob(
+            session.access_token,
+            buildTopicoDeltaPayload({
+              classeId: Number(selectedClassFilter),
+              topicoIds: topico_ids,
+              conteudoIds: conteudo_ids,
+              reason: "reordenacao_topicos_console",
+            })
+          );
           rememberEnqueuedJob(job);
         } catch (error) {
           console.error("[TopicsManager] Falha ao enfileirar class-delta apos reordenacao:", error);
@@ -422,6 +418,7 @@ export default function TopicsManager() {
     }
     setIsSaving(true);
     try {
+      let savedTopicoId: number;
       if (editingTopic) {
         const { error } = await supabase
           .from("topicos")
@@ -435,6 +432,7 @@ export default function TopicsManager() {
           })
           .eq("id", editingTopic.id);
         if (error) throw error;
+        savedTopicoId = editingTopic.id;
         toast.success("Tópico atualizado!");
       } else {
         const { data, error } = await supabase
@@ -451,17 +449,24 @@ export default function TopicsManager() {
           .single();
         if (error) throw error;
         setTopicos((prev) => [...prev, { ...(data as Topico), next: [], depende: [] }]);
+        savedTopicoId = (data as Topico).id;
         toast.success("Tópico criado!");
       }
       if (session?.access_token) {
         try {
-          const { topico_ids, conteudo_ids } = await fetchClassContextIds(parseInt(targetClasseId, 10));
-          const job = await enqueueClassDeltaJob(session.access_token, {
-            classe_id: parseInt(targetClasseId, 10),
-            topico_ids,
-            conteudo_ids,
-            reason: editingTopic ? "edicao_topico_console" : "novo_topico_console",
-          });
+          // Escopo restrito ao topico recem-criado/editado - nao ao resto da
+          // classe, senao todo topico novo forcava reavaliacao dos demais.
+          const topico_ids = [savedTopicoId];
+          const conteudo_ids = await fetchConteudoIdsForTopicos(topico_ids);
+          const job = await enqueueClassDeltaJob(
+            session.access_token,
+            buildTopicoDeltaPayload({
+              classeId: parseInt(targetClasseId, 10),
+              topicoIds: topico_ids,
+              conteudoIds: conteudo_ids,
+              reason: editingTopic ? "edicao_topico_console" : "novo_topico_console",
+            })
+          );
           rememberEnqueuedJob(job);
         } catch (error) {
           console.error("[TopicsManager] Falha ao enfileirar class-delta apos salvar topico:", error);
@@ -491,13 +496,14 @@ export default function TopicsManager() {
       setTopicos((prev) => prev.filter((t) => t.id !== topic.id));
       if (session?.access_token) {
         try {
-          const { topico_ids, conteudo_ids } = await fetchClassContextIds(topic.classe_id);
-          const job = await enqueueClassDeltaJob(session.access_token, {
-            classe_id: topic.classe_id,
-            topico_ids,
-            conteudo_ids,
-            reason: "remocao_topico_console",
-          });
+          const job = await enqueueClassDeltaJob(
+            session.access_token,
+            buildTopicoDeltaPayload({
+              classeId: topic.classe_id,
+              topicoIds: [topic.id],
+              reason: "remocao_topico_console",
+            })
+          );
           rememberEnqueuedJob(job);
         } catch (error) {
           console.error("[TopicsManager] Falha ao enfileirar class-delta apos remover topico:", error);
@@ -541,13 +547,21 @@ export default function TopicsManager() {
       );
       if (session?.access_token && selectedClassFilter) {
         try {
-          const { topico_ids, conteudo_ids } = await fetchClassContextIds(Number(selectedClassFilter));
-          const job = await enqueueClassDeltaJob(session.access_token, {
-            classe_id: Number(selectedClassFilter),
-            topico_ids,
-            conteudo_ids,
-            reason: "edicao_dependencias_topicos_console",
-          });
+          // Dependencias afetam o grafo inteiro da classe selecionada (uma
+          // mudanca de 'depende' pode reordenar qualquer topico dela), entao
+          // o escopo correto aqui e todos os topicos da classe - nao da
+          // plataforma toda como fetchClassContextIds fazia antes.
+          const topico_ids = topicsForSelected.map((t) => t.id);
+          const conteudo_ids = await fetchConteudoIdsForTopicos(topico_ids);
+          const job = await enqueueClassDeltaJob(
+            session.access_token,
+            buildTopicoDeltaPayload({
+              classeId: Number(selectedClassFilter),
+              topicoIds: topico_ids,
+              conteudoIds: conteudo_ids,
+              reason: "edicao_dependencias_topicos_console",
+            })
+          );
           rememberEnqueuedJob(job);
         } catch (error) {
           console.error("[TopicsManager] Falha ao enfileirar class-delta apos salvar dependencias:", error);
@@ -570,13 +584,17 @@ export default function TopicsManager() {
       await Promise.all(updates.map((u) => supabase.from("topicos").update({ ordem: u.ordem }).eq("id", u.id)));
       if (session?.access_token && selectedClassFilter) {
         try {
-          const { topico_ids, conteudo_ids } = await fetchClassContextIds(Number(selectedClassFilter));
-          const job = await enqueueClassDeltaJob(session.access_token, {
-            classe_id: Number(selectedClassFilter),
-            topico_ids,
-            conteudo_ids,
-            reason: "reordenacao_topicos_console",
-          });
+          const topico_ids = updates.map((u) => u.id);
+          const conteudo_ids = await fetchConteudoIdsForTopicos(topico_ids);
+          const job = await enqueueClassDeltaJob(
+            session.access_token,
+            buildTopicoDeltaPayload({
+              classeId: Number(selectedClassFilter),
+              topicoIds: topico_ids,
+              conteudoIds: conteudo_ids,
+              reason: "reordenacao_topicos_console",
+            })
+          );
           rememberEnqueuedJob(job);
         } catch (error) {
           console.error("[TopicsManager] Falha ao enfileirar class-delta apos salvar ordem:", error);
