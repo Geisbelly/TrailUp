@@ -1,5 +1,5 @@
 export type MaterialRecord = Record<string, unknown>;
-export type DocumentPreviewMode = "pdf" | "office";
+export type DocumentPreviewMode = "pdf" | "office" | "html";
 
 const CACHE_VERSION_PARAM = "trailup_v";
 const OFFICE_EXTENSIONS = new Set([
@@ -72,9 +72,15 @@ export function resolveDocumentPreviewMode(
     const extension = fileExtension(candidate);
     if (extension === "pdf") return "pdf";
     if (extension && OFFICE_EXTENSIONS.has(extension)) return "office";
+    if (extension === "html" || extension === "htm") return "html";
   }
 
-  return fallbackKind === "pdf" ? "pdf" : "office";
+  // Motor de apresentacao atual (BrainHexPDF, html-direct) gera decks HTML
+  // autocontidos e nem sempre informa mime_type — sem MIME/extensao
+  // reconhecidos, "apresentacao" cai aqui e deve assumir o motor vigente
+  // (html), nao o Office Viewer (motor legado de PPTX, que nao sabe
+  // renderizar uma pagina HTML comum).
+  return fallbackKind === "pdf" ? "pdf" : "html";
 }
 
 export function materialCacheVersion(

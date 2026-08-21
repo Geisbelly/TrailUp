@@ -46,6 +46,40 @@ describe("resolveDocumentPreviewMode", () => {
       "apresentacao",
     )).toBe("office");
   });
+
+  it("abre deck HTML do BrainHexPDF direto no iframe, sem passar pelo Office Viewer", () => {
+    expect(resolveDocumentPreviewMode(
+      { arquivo_url: "https://cdn.example/apresentacao/material-1.html?trailup_v=abc" },
+      "apresentacao",
+    )).toBe("html");
+
+    expect(resolveDocumentPreviewMode(
+      {
+        arquivo_url: "https://cdn.example/public/material",
+        storage_path: "brainhex/seeker/apresentacao/material-123.html",
+      },
+      "apresentacao",
+    )).toBe("html");
+  });
+
+  it("usa html como fallback de apresentacao sem MIME/extensao reconhecida (motor atual do BrainHexPDF)", () => {
+    // O motor de apresentacao atual (html-direct/BrainHexPDF) nao sempre
+    // informa mime_type, e a URL as vezes carrega so query params - sem
+    // extensao/MIME reconhecidos, o fallback tinha que ser Office Viewer
+    // (motor legado), quebrando o preview de todo deck HTML atual. Agora
+    // o fallback de "apresentacao" reflete o motor vigente.
+    expect(resolveDocumentPreviewMode(
+      { arquivo_url: "https://cdn.example/apresentacao/material-1?trailup_v=abc" },
+      "apresentacao",
+    )).toBe("html");
+  });
+
+  it("preserva fallback pdf pra materiais do tipo PDF isolado, sem MIME/extensao reconhecida", () => {
+    expect(resolveDocumentPreviewMode(
+      { arquivo_url: "https://cdn.example/material-sem-extensao" },
+      "pdf",
+    )).toBe("pdf");
+  });
 });
 
 describe("cache busting de materiais", () => {
