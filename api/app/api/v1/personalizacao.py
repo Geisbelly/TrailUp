@@ -45,6 +45,8 @@ from app.schemas.personalizacao import (
     PersonalizacaoJobResponse,
     PersonalizacaoJobTargetResponse,
     PersonalizacaoListResponse,
+    PersonalizacaoManualGenerateAllPayload,
+    PersonalizacaoManualGeneratePayload,
     PersonalizacaoMediaItemStatusResponse,
     PersonalizacaoMediaStatusResponse,
     PersonalizacaoPerfilItem,
@@ -76,6 +78,8 @@ from app.services.personalizacao_jobs import (
     JOB_KIND_CLEANUP,
     JOB_KIND_ENROLLMENT,
     JOB_KIND_FULL_SYNC,
+    JOB_KIND_MANUAL_PROFILE_GENERATE,
+    JOB_KIND_MANUAL_PROFILE_GENERATE_ALL,
     JOB_KIND_MANUAL_RETRY,
     enqueue_personalizacao_job,
     get_job_detail,
@@ -2371,12 +2375,12 @@ async def criar_job_enrollment(
     )
 
 
-@router.post("/jobs/class-delta", response_model=PersonalizacaoJobDetailResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/jobs/class-delta", response_model=None, status_code=status.HTTP_201_CREATED)
 async def criar_job_class_delta(
     payload: PersonalizacaoJobPayload,
     user: UserContext = Depends(require_professor),
     session: AsyncSession = Depends(get_session),
-) -> PersonalizacaoJobDetailResponse:
+) -> PersonalizacaoJobDetailResponse | dict[str, Any]:
     access_repo = AccessRepository(session)
     owns_class = await access_repo.professor_owns_classe(user.professor_id or user.user_id, payload.classe_id)
     if not owns_class:
@@ -2393,6 +2397,12 @@ async def criar_job_class_delta(
         conteudo_ids=payload.conteudo_ids,
         reason=payload.reason,
     )
+    # Professor em modo manual (geracao_automatica=False): enqueue_
+    # personalizacao_job nao cria job nenhum pra class_delta_sync nesse caso
+    # - devolve um shape diferente (sem "job"/"targets"), entao nao da pra
+    # montar PersonalizacaoJobDetailResponse aqui.
+    if detail.get("skipped"):
+        return {"skipped": True, "reason": detail.get("reason")}
     return PersonalizacaoJobDetailResponse(
         **_to_job_response(detail["job"]).model_dump(),
         targets=[_to_job_target_response(item) for item in detail["targets"]],
@@ -2455,6 +2465,67 @@ async def criar_job_class_theme(
         trigger_source=payload.trigger_source,
         reason=payload.reason or "class_theme_manual_refresh",
         payload={"topico_ids_hint": payload.topico_ids},
+    )
+    return PersonalizacaoJobDetailResponse(
+        **_to_job_response(detail["job"]).model_dump(),
+        targets=[_to_job_target_response(item) for item in detail["targets"]],
+    )
+
+
+@router.post("/jobs/manual-generate", response_model=PersonalizacaoJobDetailResponse, status_code=status.HTTP_201_CREATED)
+async def criar_job_manual_generate(
+    payload: PersonalizacaoManualGeneratePayload,
+    user: UserContext = Depends(require_professor),
+    session: AsyncSession = Depends(get_session),
+) -> PersonalizacaoJobDetailResponse:
+    """Botao 'gerar' individual na aba Personalizacoes: um topico/conteudo x
+    um perfil especifico, independente do modo automatico/manual do
+    professor (essa chamada E a acao manual)."""
+    access_repo = AccessRepository(session)
+    owns_class = await access_repo.professor_owns_classe(user.professor_id or user.user_id, payload.classe_id)
+    if not owns_class:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Professor sem permissao para esta classe.",
+        )
+    detail = await enqueue_personalizacao_job(
+        session=session,
+        kind=JOB_KIND_MANUAL_PROFILE_GENERATE,
+        classe_id=payload.classe_id,
+        trigger_source=payload.trigger_source,
+        topico_ids=[payload.topico_id],
+        conteudo_ids=[payload.conteudo_id] if payload.conteudo_id is not None else None,
+        brainhex_profile_keys=[payload.brainhex_profile_key],
+        reason="geracao_manual_perfil_console",
+    )
+    return PersonalizacaoJobDetailResponse(
+        **_to_job_response(detail["job"]).model_dump(),
+        targets=[_to_job_target_response(item) for item in detail["targets"]],
+    )
+
+
+@router.post("/jobs/manual-generate-all", response_model=PersonalizacaoJobDetailResponse, status_code=status.HTTP_201_CREATED)
+async def criar_job_manual_generate_all(
+    payload: PersonalizacaoManualGenerateAllPayload,
+    user: UserContext = Depends(require_professor),
+    session: AsyncSession = Depends(get_session),
+) -> PersonalizacaoJobDetailResponse:
+    """Botao 'gerar tudo' na aba Personalizacoes: todos os topicos da turma
+    selecionada, para um unico perfil escolhido."""
+    access_repo = AccessRepository(session)
+    owns_class = await access_repo.professor_owns_classe(user.professor_id or user.user_id, payload.classe_id)
+    if not owns_class:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Professor sem permissao para esta classe.",
+        )
+    detail = await enqueue_personalizacao_job(
+        session=session,
+        kind=JOB_KIND_MANUAL_PROFILE_GENERATE_ALL,
+        classe_id=payload.classe_id,
+        trigger_source=payload.trigger_source,
+        brainhex_profile_keys=[payload.brainhex_profile_key],
+        reason="geracao_manual_turma_console",
     )
     return PersonalizacaoJobDetailResponse(
         **_to_job_response(detail["job"]).model_dump(),

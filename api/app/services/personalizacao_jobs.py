@@ -22,6 +22,7 @@ from app.repositories.materiais import MateriaisRepository
 from app.repositories.personalizacao_blocos import PersonalizacaoBlocosRepository
 from app.repositories.personalizacao_jobs import PersonalizacaoJobsRepository
 from app.repositories.personalizacao_progresso import PersonalizacaoProgressoRepository
+from app.repositories.professor import ProfessorRepository
 from app.services.classe_mapa_tema import gerar_classe_mapa_tema
 from app.services.content_enrichment import derive_base_blocks_and_topic, enrich_base_blocks, enrich_content_blocks
 from app.services.media_agents import (
@@ -59,6 +60,8 @@ JOB_KIND_CLASS_DELTA = "class_delta_sync"
 JOB_KIND_FULL_SYNC = "full_class_sync"
 JOB_KIND_MANUAL_RETRY = "manual_retry"
 JOB_KIND_CLASS_THEME = "class_theme_sync"
+JOB_KIND_MANUAL_PROFILE_GENERATE = "manual_profile_generate"
+JOB_KIND_MANUAL_PROFILE_GENERATE_ALL = "manual_profile_generate_all"
 _JOB_KIND_MEDIA_RENDER = "media_render"
 _JOB_KIND_MEDIA_RENDER_LEGACY = "personalizacao_media_render"
 _MEDIA_RENDER_KINDS = {_JOB_KIND_MEDIA_RENDER, _JOB_KIND_MEDIA_RENDER_LEGACY}
@@ -666,6 +669,7 @@ async def _build_targets(
     aluno_id: str | None = None,
     topico_ids: list[int] | None = None,
     conteudo_ids: list[int] | None = None,
+    brainhex_profile_keys: list[str] | None = None,
 ) -> tuple[list[dict[str, Any]], list[int], dict[str, str]]:
     if kind == JOB_KIND_CLASS_THEME:
         return [], [], {}
@@ -751,13 +755,15 @@ async def _build_targets(
         JOB_KIND_CLASS_DELTA,
         JOB_KIND_FULL_SYNC,
         JOB_KIND_MANUAL_RETRY,
+        JOB_KIND_MANUAL_PROFILE_GENERATE,
+        JOB_KIND_MANUAL_PROFILE_GENERATE_ALL,
     }:
         if not alunos:
             return [], resolved_topicos, {}
 
         representative_by_profile: dict[str, str] = {}
 
-        for profile_key in _BRAINHEX_PROFILE_KEYS:
+        for profile_key in (brainhex_profile_keys or _BRAINHEX_PROFILE_KEYS):
             candidate = next(
                 (
                     aluno
@@ -775,7 +781,7 @@ async def _build_targets(
                 conteudos_por_topico.get(current_topico_id) or [None]
             )
             for current_conteudo_id in scoped_conteudo_ids:
-                for profile_key in _BRAINHEX_PROFILE_KEYS:
+                for profile_key in (brainhex_profile_keys or _BRAINHEX_PROFILE_KEYS):
                     owner_aluno_id = representative_by_profile.get(profile_key)
                     if not owner_aluno_id:
                         continue
@@ -814,11 +820,23 @@ async def enqueue_personalizacao_job(
     aluno_id: str | None = None,
     topico_ids: list[int] | None = None,
     conteudo_ids: list[int] | None = None,
+    brainhex_profile_keys: list[str] | None = None,
     reason: str | None = None,
     payload: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     repo = PersonalizacaoJobsRepository(session)
     scoped_aluno_id = aluno_id if kind in {JOB_KIND_ENROLLMENT, JOB_KIND_CLEANUP} else None
+
+    # Portao de modo manual: so afeta class_delta_sync (disparo automatico
+    # por edicao de topico/conteudo). Matricula/limpeza continuam sempre
+    # automaticas, e os kinds manual_profile_generate* SAO a propria acao
+    # manual - nunca passam por aqui, entao nao existe risco de o professor
+    # ficar sem conseguir gerar nada em modo manual.
+    if kind == JOB_KIND_CLASS_DELTA:
+        professor_repo = ProfessorRepository(session)
+        geracao_automatica = await professor_repo.buscar_geracao_automatica_por_classe(classe_id)
+        if not geracao_automatica:
+            return {"skipped": True, "reason": "geracao_manual_ativa"}
 
     targets, resolved_topicos, target_profile_map = await _build_targets(
         session=session,
@@ -827,6 +845,7 @@ async def enqueue_personalizacao_job(
         aluno_id=aluno_id,
         topico_ids=topico_ids,
         conteudo_ids=conteudo_ids,
+        brainhex_profile_keys=brainhex_profile_keys,
     )
 
     # Evita jobs duplicados quando o MESMO pedido chega mais de uma vez (ex.:

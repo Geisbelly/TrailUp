@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
@@ -28,6 +29,7 @@ interface ProfileSectionProps {
     instituicao: string | null;
     disciplina: string | null;
     descricao: string | null;
+    geracaoAutomatica: boolean;
   } | null;
   onUpdate: (data: ProfessorUpdateData) => void;
   isLoading?: boolean;
@@ -40,6 +42,7 @@ export default function ProfileSection({ professorData, onUpdate, isLoading }: P
     instituicao: professorData?.instituicao || "",
     disciplina: professorData?.disciplina || "",
     descricao: professorData?.descricao || "",
+    geracaoAutomatica: professorData?.geracaoAutomatica ?? true,
   });
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
@@ -50,6 +53,7 @@ export default function ProfileSection({ professorData, onUpdate, isLoading }: P
       instituicao: professorData?.instituicao || "",
       disciplina: professorData?.disciplina || "",
       descricao: professorData?.descricao || "",
+      geracaoAutomatica: professorData?.geracaoAutomatica ?? true,
     });
   }, [professorData]);
 
@@ -125,6 +129,23 @@ export default function ProfileSection({ professorData, onUpdate, isLoading }: P
               onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
               placeholder="Breve descrição sobre você e sua área de atuação"
               rows={4}
+              disabled={isDisabled}
+            />
+          </div>
+
+          <div className="flex items-center justify-between rounded-lg border p-4">
+            <div className="space-y-0.5">
+              <p className="text-sm font-medium">Geração automática de personalização</p>
+              <p className="text-sm text-muted-foreground">
+                Quando desligado, criar/editar tópicos e conteúdos não dispara geração
+                sozinho — use o botão "Gerar" na aba Personalizações.
+              </p>
+            </div>
+            <Switch
+              checked={formData.geracaoAutomatica}
+              onCheckedChange={(checked) =>
+                setFormData((prev) => ({ ...prev, geracaoAutomatica: checked }))
+              }
               disabled={isDisabled}
             />
           </div>

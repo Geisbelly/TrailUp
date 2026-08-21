@@ -1791,3 +1791,38 @@ def test_chat_mentor_rejeita_resposta_que_entrega_gabarito(
 
     assert response.status_code == 200
     assert "revisar o passo 2" in response.json()["reply"]
+
+
+def test_criar_job_class_delta_route_devolve_skip_quando_modo_manual(app, monkeypatch) -> None:
+    """Quando enqueue_personalizacao_job devolve o shape de skip (professor em
+    modo manual), a rota nao pode tentar montar PersonalizacaoJobDetailResponse
+    a partir de um dict sem chave "job" - deve devolver o skip como esta."""
+    fake_session = FakeSession()
+    professor_user = UserContext(
+        user_id="prof-1",
+        role="professor",
+        roles=("professor",),
+        professor_id="prof-1",
+        professor_liberado=True,
+    )
+
+    async def override_session():
+        yield fake_session
+
+    app.dependency_overrides[get_session] = override_session
+    app.dependency_overrides[get_current_user] = lambda: professor_user
+    monkeypatch.setattr(AccessRepository, "professor_owns_classe", AsyncMock(return_value=True))
+    monkeypatch.setattr(
+        personalizacao_module,
+        "enqueue_personalizacao_job",
+        AsyncMock(return_value={"skipped": True, "reason": "geracao_manual_ativa"}),
+    )
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/personalizar/jobs/class-delta",
+            json={"classe_id": 32, "topico_ids": [117], "reason": "novo_topico_console"},
+        )
+
+    assert response.status_code == 201
+    assert response.json() == {"skipped": True, "reason": "geracao_manual_ativa"}

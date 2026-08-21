@@ -306,11 +306,15 @@ export async function enqueueCleanupJob(
   });
 }
 
+export type PersonalizacaoJobEnqueueResult =
+  | PersonalizacaoJobDetail
+  | { skipped: true; reason?: string };
+
 export async function enqueueClassDeltaJob(
   accessToken: string,
   payload: PersonalizacaoJobPayload
-): Promise<PersonalizacaoJobDetail> {
-  return apiRequest<PersonalizacaoJobDetail>("/api/v1/personalizar/jobs/class-delta", accessToken, {
+): Promise<PersonalizacaoJobEnqueueResult> {
+  return apiRequest<PersonalizacaoJobEnqueueResult>("/api/v1/personalizar/jobs/class-delta", accessToken, {
     method: "POST",
     body: JSON.stringify({ trigger_source: "web_console", ...payload }),
   });

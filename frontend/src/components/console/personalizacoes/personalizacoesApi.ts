@@ -434,3 +434,63 @@ export async function regenerarSlidePersonalizacao(
     REGENERATE_TIMEOUT_MS
   );
 }
+
+// ── Geracao manual (botao individual / gerar tudo) ────────────────────────────
+export type PersonalizacaoJobResumo = {
+  id: string;
+  kind: string;
+  status: string;
+  total_targets: number;
+  processed_targets: number;
+  error_count: number;
+};
+
+export function buildManualGeneratePayload(params: {
+  classeId: number;
+  topicoId: number;
+  conteudoId?: number;
+  perfil: string;
+}) {
+  return {
+    classe_id: params.classeId,
+    topico_id: params.topicoId,
+    ...(params.conteudoId == null ? {} : { conteudo_id: params.conteudoId }),
+    brainhex_profile_key: params.perfil,
+  };
+}
+
+export function buildManualGenerateAllPayload(params: { classeId: number; perfil: string }) {
+  return {
+    classe_id: params.classeId,
+    brainhex_profile_key: params.perfil,
+  };
+}
+
+export async function enqueueManualGenerateJob(
+  accessToken: string,
+  params: { classeId: number; topicoId: number; conteudoId?: number; perfil: string }
+): Promise<PersonalizacaoJobResumo> {
+  return apiRequest<PersonalizacaoJobResumo>("/api/v1/personalizar/jobs/manual-generate", accessToken, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(buildManualGeneratePayload(params)),
+  });
+}
+
+export async function enqueueManualGenerateAllJob(
+  accessToken: string,
+  params: { classeId: number; perfil: string }
+): Promise<PersonalizacaoJobResumo> {
+  return apiRequest<PersonalizacaoJobResumo>("/api/v1/personalizar/jobs/manual-generate-all", accessToken, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(buildManualGenerateAllPayload(params)),
+  });
+}
+
+export async function fetchPersonalizacaoJobStatus(
+  accessToken: string,
+  jobId: string
+): Promise<PersonalizacaoJobResumo> {
+  return apiRequest<PersonalizacaoJobResumo>(`/api/v1/personalizar/jobs/${jobId}`, accessToken);
+}
