@@ -59,6 +59,8 @@ JOB_KIND_CLASS_DELTA = "class_delta_sync"
 JOB_KIND_FULL_SYNC = "full_class_sync"
 JOB_KIND_MANUAL_RETRY = "manual_retry"
 JOB_KIND_CLASS_THEME = "class_theme_sync"
+JOB_KIND_MANUAL_PROFILE_GENERATE = "manual_profile_generate"
+JOB_KIND_MANUAL_PROFILE_GENERATE_ALL = "manual_profile_generate_all"
 _JOB_KIND_MEDIA_RENDER = "media_render"
 _JOB_KIND_MEDIA_RENDER_LEGACY = "personalizacao_media_render"
 _MEDIA_RENDER_KINDS = {_JOB_KIND_MEDIA_RENDER, _JOB_KIND_MEDIA_RENDER_LEGACY}
@@ -666,6 +668,7 @@ async def _build_targets(
     aluno_id: str | None = None,
     topico_ids: list[int] | None = None,
     conteudo_ids: list[int] | None = None,
+    brainhex_profile_keys: list[str] | None = None,
 ) -> tuple[list[dict[str, Any]], list[int], dict[str, str]]:
     if kind == JOB_KIND_CLASS_THEME:
         return [], [], {}
@@ -751,13 +754,15 @@ async def _build_targets(
         JOB_KIND_CLASS_DELTA,
         JOB_KIND_FULL_SYNC,
         JOB_KIND_MANUAL_RETRY,
+        JOB_KIND_MANUAL_PROFILE_GENERATE,
+        JOB_KIND_MANUAL_PROFILE_GENERATE_ALL,
     }:
         if not alunos:
             return [], resolved_topicos, {}
 
         representative_by_profile: dict[str, str] = {}
 
-        for profile_key in _BRAINHEX_PROFILE_KEYS:
+        for profile_key in (brainhex_profile_keys or _BRAINHEX_PROFILE_KEYS):
             candidate = next(
                 (
                     aluno
@@ -775,7 +780,7 @@ async def _build_targets(
                 conteudos_por_topico.get(current_topico_id) or [None]
             )
             for current_conteudo_id in scoped_conteudo_ids:
-                for profile_key in _BRAINHEX_PROFILE_KEYS:
+                for profile_key in (brainhex_profile_keys or _BRAINHEX_PROFILE_KEYS):
                     owner_aluno_id = representative_by_profile.get(profile_key)
                     if not owner_aluno_id:
                         continue

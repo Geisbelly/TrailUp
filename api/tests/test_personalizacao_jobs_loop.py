@@ -657,6 +657,34 @@ async def test_build_targets_generates_seven_profiles_for_each_content(
 
 
 @pytest.mark.asyncio
+async def test_build_targets_filters_by_brainhex_profile_keys_when_informado(monkeypatch) -> None:
+    """manual_profile_generate/manual_profile_generate_all passam um unico
+    perfil - _build_targets deve gerar targets so pra esse perfil, nao os 7."""
+    student_id = "b49f2e21-a6f9-4c8d-9533-5a32bb219754"
+    monkeypatch.setattr(
+        "app.repositories.conteudo_classe.ConteudoClasseRepository.listar_alunos_classe_com_perfil_dominante",
+        AsyncMock(return_value=[{"aluno_id": student_id, "perfil_dominante": "seeker"}]),
+    )
+    monkeypatch.setattr(
+        "app.repositories.conteudo_classe.ConteudoClasseRepository.mapear_todos_conteudos_por_topicos",
+        AsyncMock(return_value={117: [125]}),
+    )
+
+    targets, topics, profile_map = await _build_targets(
+        session=object(),
+        kind="manual_profile_generate",
+        classe_id=32,
+        topico_ids=[117],
+        brainhex_profile_keys=["achiever"],
+    )
+
+    assert topics == [117]
+    assert len(targets) == 1
+    assert targets[0]["brainhex_profile_key"] == "achiever"
+    assert len(profile_map) == 1
+
+
+@pytest.mark.asyncio
 async def test_enqueue_job_creates_job_and_targets_atomically(monkeypatch) -> None:
     target = {
         "aluno_id": "b49f2e21-a6f9-4c8d-9533-5a32bb219754",
