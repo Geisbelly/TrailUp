@@ -15,6 +15,7 @@ import {
 } from "@/utils/nativeDocumentParsers";
 import { ensureCachedNativeContent } from "@/utils/nativeContentCache";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { shouldHideQuiz, withHideQuizParam } from "@/utils/quizVisibility";
 import { looksLikeStorageObjectPath, resolveSupabaseStorageUrl } from "@/utils/supabaseStorage";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useMemo, useState } from "react";
@@ -953,10 +954,13 @@ export function DocumentBlock({ tipo, payload, WebView }: Props) {
     }
 
     if (tipo === "embed" && (sourceHtml || resolvedUrl)) {
+      const embedUri = resolvedUrl
+        ? withHideQuizParam(resolvedUrl, shouldHideQuiz(usuario?.modoOperacao_nome))
+        : resolvedUrl;
       return {
         title,
         html: sourceHtml ? wrapEmbedHtml(sourceHtml, viewerTheme.background) : null,
-        uri: sourceHtml ? resolvedUrl : resolvedUrl,
+        uri: embedUri,
         height: getViewerHeight(tipo, displayMode, false, windowHeight, windowWidth),
       };
     }
@@ -970,6 +974,7 @@ export function DocumentBlock({ tipo, payload, WebView }: Props) {
     sourceHtml,
     tipo,
     title,
+    usuario?.modoOperacao_nome,
     windowHeight,
     windowWidth,
     viewerTheme,
