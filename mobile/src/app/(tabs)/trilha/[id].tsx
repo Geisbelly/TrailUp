@@ -28,6 +28,7 @@ import { IAMentorPanel } from "@/components/ia/IAMentorPanel";
 import { LoadingState } from "@/components/LoadingState";
 import { TopicoIntroSummary } from "@/components/TopicoIntroSummary";
 import { PersonalizedTopicPayload } from "@/interfaces/personalizacao/IPersonalizedTopic";
+import type { DeckProgressEvent } from "@/utils/deckProgressMessage";
 
 
 import { useConquistaRank } from "@/context/ConquistaRankContext";
@@ -187,6 +188,31 @@ export default function TrilhaConteudoScreen() {
     topicoId == null || !classeAtual
       ? null
       : classeAtual.topicos.find((t: any) => t.id === topicoId) ?? null;
+
+  // Evento de XP reportado pelo deck do BrainHexPDF (ver
+  // reportProgressToHost em BrainHexPDF/src/utils/deckExportUtils.ts,
+  // repassado ate aqui por WebContentFrame -> DocumentBlock ->
+  // ContentRenderer). O deck nunca tem credenciais - so emite
+  // {itemKey, pontuacaoObtida, pontuacaoMaxima}; quem grava no banco e o
+  // app, via a mesma funcao ja usada pro progresso de leitura
+  // (personalizacao_item_progresso faz merge por MAXIMO por item_key,
+  // entao reenviar o mesmo evento nao duplica pontuacao).
+  const handleDeckProgressEvent = useCallback(
+    (event: DeckProgressEvent) => {
+      if (!topicoId) return;
+      void salvarProgressoItemPersonalizado({
+        topicoId,
+        itemKey: event.itemKey,
+        itemKind: "activity",
+        itemTitle: "Interação do slide",
+        status: "concluido",
+        percentualConcluido: 100,
+        pontuacaoObtida: event.pontuacaoObtida,
+        pontuacaoMaxima: event.pontuacaoMaxima,
+      });
+    },
+    [topicoId, salvarProgressoItemPersonalizado]
+  );
   const moduleDifficulty = useMemo(
     () =>
       normalizeModuleDifficulty(
@@ -1557,6 +1583,7 @@ export default function TrilhaConteudoScreen() {
                   blocks={conteudoBlocks}
                   WebView={WebView}
                   topicoId={topicoId}
+                  onDeckProgressEvent={handleDeckProgressEvent}
                 />
               </>
             ) : (
