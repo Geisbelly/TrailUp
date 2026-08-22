@@ -971,7 +971,7 @@ async function runPipeline(
   // imagem de slide.
   const imageAttachments = filesData
     .filter((f) => f.mimeType.startsWith("image/"))
-    .map((f) => ({ data: f.data, mimeType: f.mimeType, name: f.name }));
+    .map((f) => ({ data: f.data, mimeType: f.mimeType, name: f.name, url: f.url }));
 
   // 2. Texto + slides via Gemini (multi-arquivo)
   const resultado = await processMediaWithGemini(
@@ -1151,8 +1151,8 @@ async function downloadFonteStreamed(url: string): Promise<Buffer | null> {
 
 async function fetchFontesAsFileData(
   fontes: FonteItem[]
-): Promise<{ data: string; mimeType: string; name: string }[]> {
-  const results: { data: string; mimeType: string; name: string }[] = [];
+): Promise<{ data: string; mimeType: string; name: string; url: string }[]> {
+  const results: { data: string; mimeType: string; name: string; url: string }[] = [];
   for (const fonte of fontes) {
     if (!fonte.url) continue;
     try {
@@ -1160,7 +1160,7 @@ async function fetchFontesAsFileData(
       if (!buffer) continue;
       const base64 = buffer.toString("base64");
       const name   = fonte.url.split("/").pop()?.split("?")[0] ?? "arquivo";
-      results.push({ data: base64, mimeType: fonte.mime_type, name });
+      results.push({ data: base64, mimeType: fonte.mime_type, name, url: fonte.url });
     } catch (err) {
       log.error("erro ao baixar fonte", { url: fonte.url, err });
     }
