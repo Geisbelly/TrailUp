@@ -11,6 +11,7 @@ import {
   isPresentationUrl,
 } from "@/utils/contentBlocks";
 import type { DeckProgressEvent } from "@/utils/deckProgressMessage";
+import { parseImageCues } from "@/utils/audioImageCues";
 import React from "react";
 import { Image, Platform, StyleSheet, Text, View } from "react-native";
 import { DocumentBlock } from "./DocumentBlock";
@@ -159,6 +160,10 @@ function renderAudio(block: ContentBlock) {
   const title = payload ? readString(payload, "title", "legenda") : null;
   const fallbackText = metadata ? readString(metadata, "fallbackText") : null;
   const capaUrl = metadata ? readString(metadata, "capaUrl") : null;
+  const rawImageCues = metadata && Array.isArray((metadata as Record<string, unknown>).imageCues)
+    ? (metadata as Record<string, unknown>).imageCues
+    : null;
+  const imageCues = rawImageCues ? parseImageCues(rawImageCues) : null;
 
   if (!url) return null;
 
@@ -170,6 +175,7 @@ function renderAudio(block: ContentBlock) {
       bucketHint={bucketHint}
       fallbackText={fallbackText ?? undefined}
       capaUrl={capaUrl ?? undefined}
+      imageCues={imageCues ?? undefined}
     />
   );
 }

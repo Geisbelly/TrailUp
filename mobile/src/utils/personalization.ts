@@ -31,6 +31,7 @@ import {
   normalizeContentBlock,
 } from "@/utils/contentBlocks";
 import { buildSupabasePublicStorageUrl } from "@/utils/supabaseStorage";
+import { parseImageCues } from "@/utils/audioImageCues";
 
 const DEFAULT_REPERSONALIZATION_ACTIONS = [
   "simplificar_conteudo",
@@ -1090,6 +1091,7 @@ function normalizeMediaBlocks(
     // esteja indisponivel (upload pode ter falhado mesmo com status "completed").
     const roteiro = pickString(payload.roteiro, rawObject.roteiro);
     const capaUrl = pickString(payload.capaUrl, rawObject.capaUrl);
+    const imageCues = parseImageCues(payload.imageCues ?? rawObject.imageCues);
 
     const audioPartes = extractMediaPartes(rawObject, bucketValue);
     if (audioPartes.length > 0) {
@@ -1128,6 +1130,7 @@ function normalizeMediaBlocks(
         ...metadata,
         ...(roteiro ? { fallbackText: roteiro } : {}),
         ...(capaUrl ? { capaUrl } : {}),
+        ...(imageCues && imageCues.length > 0 ? { imageCues } : {}),
       };
       const block = normalizeContentBlock(
         {
@@ -1135,7 +1138,7 @@ function normalizeMediaBlocks(
           tipo,
           url,
           title,
-          metadata: (roteiro || capaUrl) ? audioMetadata : metadata,
+          metadata: (roteiro || capaUrl || (imageCues && imageCues.length > 0)) ? audioMetadata : metadata,
         },
         key
       );
