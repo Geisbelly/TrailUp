@@ -1,6 +1,7 @@
 import { Color } from "@/styles/GlobalStyle";
 import { getProfileShellPalette, ProfileShellPalette } from "@/utils/profileShellTheme";
-import React from "react";
+import { parseDeckProgressMessage, type DeckProgressEvent } from "@/utils/deckProgressMessage";
+import React, { useEffect, useRef } from "react";
 import {
   ActivityIndicator,
   Linking,
@@ -19,6 +20,7 @@ type Props = {
   scrollEnabled?: boolean;
   palette?: ProfileShellPalette;
   WebView?: React.ComponentType<any> | null;
+  onProgressEvent?: (event: DeckProgressEvent) => void;
 };
 
 const fallbackPalette = getProfileShellPalette("mastermind");
@@ -39,7 +41,30 @@ export function WebContentFrame({
   scrollEnabled = true,
   palette = fallbackPalette,
   WebView,
+  onProgressEvent,
 }: Props) {
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+
+  // Escuta postMessage do deck (ver reportProgressToHost em
+  // BrainHexPDF/src/utils/deckExportUtils.ts). window.addEventListener('message')
+  // recebe mensagem de QUALQUER origem por padrao - o check de
+  // event.source === iframeRef.current.contentWindow garante que a
+  // mensagem veio especificamente do nosso proprio iframe, nao de outra
+  // aba/origem arbitraria.
+  useEffect(() => {
+    if (Platform.OS !== "web" || !onProgressEvent) return;
+
+    function handleMessage(event: MessageEvent) {
+      if (!iframeRef.current || event.source !== iframeRef.current.contentWindow) return;
+      const raw = typeof event.data === "string" ? event.data : "";
+      const parsed = parseDeckProgressMessage(raw);
+      if (parsed) onProgressEvent!(parsed);
+    }
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [onProgressEvent]);
+
   if (Platform.OS === "web") {
     return html ? (
       <iframe
@@ -50,6 +75,7 @@ export function WebContentFrame({
       />
     ) : uri ? (
       <iframe
+        ref={iframeRef}
         title={title ?? "Visualizador"}
         src={uri}
         style={{ ...webFrameStyle, height, backgroundColor: palette.surface }}
@@ -67,6 +93,14 @@ export function WebContentFrame({
           source={html ? { html, baseUrl: uri ?? undefined } : { uri: uri ?? "" }}
           style={[styles.webView, { backgroundColor: palette.surface }]}
           containerStyle={[styles.webView, { backgroundColor: palette.surface }]}
+          onMessage={
+            onProgressEvent
+              ? (event: any) => {
+                  const parsed = parseDeckProgressMessage(event?.nativeEvent?.data ?? "");
+                  if (parsed) onProgressEvent(parsed);
+                }
+              : undefined
+          }
           javaScriptEnabled
           domStorageEnabled
           nestedScrollEnabled={scrollEnabled}
