@@ -1095,6 +1095,7 @@ export interface ContentPart {
   markdown: string;
   audioScript: string;
   slides: SlideContent[];
+  sectionBoundaries: Array<{ globalIndex: number; title: string; charStart: number; charEnd: number }>;
 }
 
 const DEFAULT_PART_TARGET_CHARS = 4_500;
@@ -1204,6 +1205,7 @@ export function splitProcessedContentIntoParts(
       markdown: content.markdown.trim(),
       audioScript: stripSectionMarkers(content.audioScript),
       slides: content.slides,
+      sectionBoundaries: [],
     }];
   }
 
@@ -1233,6 +1235,16 @@ export function splitProcessedContentIntoParts(
     const slideCount = slidesPerPart[partIndex];
     const slidesPart = content.slides.slice(slideCursor, slideCursor + slideCount);
     slideCursor += slideCount;
+
+    let cursor = 0;
+    const sectionBoundaries = indices.map((i) => {
+      const text = audioBySection[i];
+      const charStart = cursor;
+      const charEnd = cursor + text.length;
+      cursor = charEnd + 2; // "\n\n" separador, mesmo usado no .join abaixo
+      return { globalIndex: i, title: sections[i].title, charStart, charEnd };
+    });
+
     return {
       ordem: partIndex + 1,
       titulo: sections[indices[0]].title,
@@ -1241,6 +1253,7 @@ export function splitProcessedContentIntoParts(
         .join("\n\n"),
       audioScript: indices.map((i) => audioBySection[i]).join("\n\n"),
       slides: slidesPart,
+      sectionBoundaries,
     };
   });
 }

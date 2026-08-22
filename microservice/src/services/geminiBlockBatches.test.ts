@@ -661,3 +661,35 @@ test("splitProcessedContentIntoParts devolve uma unica parte quando o markdown n
   assert.equal(parts[0].audioScript, audioScript);
   assert.equal(parts[0].slides.length, 1);
 });
+
+test("splitProcessedContentIntoParts expoe sectionBoundaries com indice global e posicao em caracteres dentro do audioScript da parte", () => {
+  const markdown = "## Primeira\n\nTexto da primeira secao.\n\n## Segunda\n\nTexto bem mais longo da segunda secao, com mais caracteres que a primeira.";
+  const audioScript = "## Primeira\n\nTexto da primeira secao.\n\n## Segunda\n\nTexto bem mais longo da segunda secao, com mais caracteres que a primeira.";
+
+  const parts = splitProcessedContentIntoParts({ markdown, audioScript, slides: [] }, { targetPartChars: 10_000 });
+
+  assert.equal(parts.length, 1); // as duas secoes cabem numa parte so (bem abaixo de targetPartChars)
+  assert.equal(parts[0].sectionBoundaries?.length, 2);
+  assert.equal(parts[0].sectionBoundaries?.[0].globalIndex, 0);
+  assert.equal(parts[0].sectionBoundaries?.[0].title, "Primeira");
+  assert.equal(parts[0].sectionBoundaries?.[0].charStart, 0);
+  assert.equal(parts[0].sectionBoundaries?.[1].globalIndex, 1);
+  assert.equal(parts[0].sectionBoundaries?.[1].title, "Segunda");
+  // a 2a secao comeca depois do texto da 1a + separador "\n\n"
+  assert.ok(parts[0].sectionBoundaries![1].charStart > parts[0].sectionBoundaries![0].charEnd);
+});
+
+test("splitProcessedContentIntoParts nao muda markdown/audioScript retornados (sectionBoundaries e so bookkeeping aditivo)", () => {
+  const markdown = "## Única\n\nConteúdo.";
+  const audioScript = "## Única\n\nConteúdo narrado.";
+
+  const parts = splitProcessedContentIntoParts({ markdown, audioScript, slides: [] });
+
+  assert.equal(parts[0].markdown, "## Única\n\nConteúdo.");
+  assert.ok(parts[0].audioScript.includes("Conteúdo narrado."));
+});
+
+test("sem headings de nivel 2: sectionBoundaries fica vazio", () => {
+  const parts = splitProcessedContentIntoParts({ markdown: "Texto solto.", audioScript: "Texto solto.", slides: [] });
+  assert.deepEqual(parts[0].sectionBoundaries, []);
+});

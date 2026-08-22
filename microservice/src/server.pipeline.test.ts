@@ -18,6 +18,7 @@ function fakePart(ordem: number): ContentPart {
     markdown: `md-${ordem}`,
     audioScript: `audio-${ordem}`,
     slides: [],
+    sectionBoundaries: [],
   };
 }
 
