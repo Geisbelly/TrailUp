@@ -402,7 +402,13 @@ async def test_enrichment_rejects_response_expanded_below_new_50_percent_floor(
 ) -> None:
     # Expansao de 40% fica entre o piso anterior (30%, passava) e o piso
     # atual (50%, deve falhar) - prova que o piso mais alto rejeita blocos
-    # que antes eram aceitos "de raspao".
+    # que antes eram aceitos "de raspao". Mock devolve a MESMA expansao de
+    # 40% em toda tentativa (nao melhora com o feedback), entao por volta da
+    # 3a tentativa cai no ultimo recurso (`tolerant`, ver
+    # _validate_enrichment_response) - base=800 mantem os 320 chars extra
+    # (40%) abaixo tanto do piso estrito (400 = 50% de 800) quanto do piso
+    # tolerante do ultimo recurso (350 = _MIN_EXPANSION_CHARS), entao o
+    # bloco reprova em TODAS as tentativas, nao só nas estritas.
     def borderline(payload: dict[str, Any]) -> dict[str, Any]:
         response = _rich_response(payload)
         for block in response["blocos"]:
@@ -424,7 +430,7 @@ async def test_enrichment_rejects_response_expanded_below_new_50_percent_floor(
     # absoluto de 80 chars), confundindo o que este teste quer provar.
     context["conteudo_classe"]["topico"]["descricao"] = ""
     context["conteudo_classe"]["topico"]["objetivo"] = ""
-    context["conteudo_classe"]["conteudos"][0]["conteudo"] = "A" * 1_000
+    context["conteudo_classe"]["conteudos"][0]["conteudo"] = "A" * 800
 
     with pytest.raises(ContentEnrichmentError, match="insuficiente"):
         await enrich_content_blocks(context=context, settings=_settings())
@@ -511,6 +517,49 @@ async def test_enrichment_retries_only_the_rejected_block(
     )
     assert len(result["blocos"]) == result["metadata"]["blocos_gerados"]
     assert result["metadata"]["chamadas_realizadas"] == 2
+
+
+@pytest.mark.asyncio
+async def test_enrichment_retry_feedback_usa_o_piso_real_nao_formula_desatualizada(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Bug real corrigido em 2026-08-21: o alvo mostrado na instrucao de
+    # correcao ("reescreva com no mínimo X caracteres") usava uma formula
+    # hardcoded (base+200 / base*1.3) que ficou desatualizada quando
+    # _MIN_EXPANSION_CHARS/_MIN_EXPANSION_RATIO subiram (2026-08-20) -
+    # instruia o modelo a mirar um alvo ABAIXO do piso real, garantindo que
+    # a retentativa nunca passasse mesmo seguindo a instrucao a risca.
+    captured: dict[str, Any] = {}
+    response_calls = 0
+
+    def shallow_once(payload: dict[str, Any]) -> dict[str, Any]:
+        nonlocal response_calls
+        response_calls += 1
+        response = _rich_response(payload)
+        if response_calls == 1:
+            for block in response["blocos"]:
+                block["conteudo_aprofundado"] = block["conteudo_base"] + ("x" * 10)
+        return response
+
+    monkeypatch.setattr(
+        enrichment_module,
+        "_gemini_client",
+        _gemini_factory(shallow_once, captured),
+    )
+
+    context = _large_single_segment_context(conteudo_len=1_200)
+    await enrich_content_blocks(context=context, settings=_settings())
+
+    actual_base = captured["payloads"][0]["blocos_base"][0]["conteudo_base"]
+    real_minimum = enrichment_module._minimum_expanded_length(actual_base)
+    stale_formula_value = max(len(actual_base) + 200, math.ceil(len(actual_base) * 1.3))
+    # As duas formulas precisam divergir de verdade aqui, senao o teste nao
+    # prova nada.
+    assert real_minimum != stale_formula_value
+
+    retry_prompt = str(captured["calls"][1][1].content)
+    assert f"no mínimo {real_minimum} caracteres" in retry_prompt
+    assert f"no mínimo {stale_formula_value} caracteres" not in retry_prompt
 
 
 @pytest.mark.asyncio
@@ -1120,17 +1169,19 @@ async def test_enrich_content_blocks_continua_equivalente_apos_refatoracao(
 # ─── Margem tolerada apos esgotar tentativas (bloco teimoso, ex.: bloco-22) ────
 
 
-def _near_miss_response(payload: dict[str, Any], *, ratio: float) -> dict[str, Any]:
-    # Simula um bloco que fica sistematicamente perto do piso minimo (mas
-    # abaixo dele) em toda tentativa - reproduz o caso real de producao
-    # (bloco-22: Base=1517, resposta=1889, minimo=1973 -> ~95.7% do alvo).
-    # `ratio` e a fracao do piso ESTRITO que a resposta atinge.
+def _near_miss_response(payload: dict[str, Any], *, extra_chars: int) -> dict[str, Any]:
+    # Simula um bloco que fica sistematicamente com a MESMA expansao real
+    # (absoluta, nao fracao do piso estrito) em toda tentativa - reproduz o
+    # caso real de producao (topico com pouco material de origem, onde o
+    # modelo nunca consegue cruzar o piso proporcional mesmo apos 3
+    # tentativas). `extra_chars` e quantos caracteres a resposta soma ao
+    # texto-base, direto - ver ramo `tolerant` em _validate_enrichment_response
+    # (ultimo recurso exige so _MIN_EXPANSION_CHARS de expansao real, sem
+    # fracao proporcional).
     blocks = []
     for base in payload["blocos_base"]:
         base_text = enrichment_module._text(base["conteudo_base"])
-        strict_min = enrichment_module._minimum_expanded_length(base_text)
-        target_len = math.ceil(strict_min * ratio)
-        extra_len = max(target_len - len(base_text), 1)
+        extra_len = max(extra_chars, 1)
         blocks.append(
             {
                 "id": base["id"],
@@ -1148,22 +1199,42 @@ def _near_miss_response(payload: dict[str, Any], *, ratio: float) -> dict[str, A
     return {"blocos": blocks}
 
 
+def _large_single_segment_context(*, conteudo_len: int) -> dict[str, Any]:
+    # Zera descricao/objetivo do topico pra so sobrar 1 segmento (o conteudo
+    # abaixo) - com segmentos extras, o segmento curto do topico sempre
+    # falharia mesmo com o piso tolerante (abaixo do piso absoluto de 350
+    # chars), confundindo o que os testes abaixo querem provar. Base grande
+    # o bastante (>700 chars) pra que o piso estrito seja dominado pela
+    # fracao proporcional (50%), nao pelo piso absoluto (350) - so assim ha
+    # uma faixa real entre "abaixo do piso estrito" e "abaixo do piso
+    # tolerante" pra testar.
+    context = _context(paragraphs=1)
+    context["conteudo_classe"]["topico"]["descricao"] = ""
+    context["conteudo_classe"]["topico"]["objetivo"] = ""
+    context["conteudo_classe"]["conteudos"][0]["conteudo"] = "A" * conteudo_len
+    return context
+
+
 @pytest.mark.asyncio
 async def test_enrichment_accepts_block_within_tolerance_after_exhausting_attempts(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    # Bloco fica em ~96% do piso estrito em toda tentativa (mesma resposta
-    # determinística nas 3 tentativas) - dentro da margem tolerada (95%), so
-    # aceita como ultimo recurso apos esgotar as tentativas normais, em vez
-    # de derrubar o topico inteiro por causa de 1 bloco teimoso.
+    # Bloco expande so 400 chars reais em toda tentativa (mesma resposta
+    # determinística nas 3 tentativas) - abaixo do piso estrito (600 = 50%
+    # de 1200) mas acima do piso absoluto do ultimo recurso (350 =
+    # _MIN_EXPANSION_CHARS), entao so e aceito apos esgotar as tentativas
+    # normais, em vez de derrubar o topico inteiro por causa de 1 bloco
+    # teimoso.
     captured: dict[str, Any] = {}
     monkeypatch.setattr(
         enrichment_module,
         "_gemini_client",
-        _gemini_factory(lambda payload: _near_miss_response(payload, ratio=0.96), captured),
+        _gemini_factory(lambda payload: _near_miss_response(payload, extra_chars=400), captured),
     )
 
-    result = await enrich_content_blocks(context=_context(), settings=_settings())
+    result = await enrich_content_blocks(
+        context=_large_single_segment_context(conteudo_len=1_200), settings=_settings()
+    )
 
     assert len(result["blocos"]) == result["metadata"]["blocos_gerados"]
     # 3 tentativas esgotadas (resposta nunca muda) antes da aceitacao tolerada.
@@ -1175,20 +1246,23 @@ async def test_enrichment_accepts_block_within_tolerance_after_exhausting_attemp
 
 
 @pytest.mark.asyncio
-async def test_enrichment_ainda_falha_quando_resposta_fica_muito_abaixo_da_margem(
+async def test_enrichment_ainda_falha_quando_expansao_fica_abaixo_do_minimo_absoluto(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    # A margem tolerada nao vira um piso frouxo generico - uma resposta bem
-    # abaixo dela (70% do piso estrito) deve continuar falhando apos esgotar
-    # as tentativas, igual ao comportamento anterior a esta mudanca.
+    # O ultimo recurso nao vira um piso frouxo generico - uma expansao real
+    # bem abaixo do minimo absoluto (200 chars, contra o piso de 350) deve
+    # continuar falhando apos esgotar as tentativas, mesmo pra material de
+    # origem genuinamente escasso.
     monkeypatch.setattr(
         enrichment_module,
         "_gemini_client",
-        _gemini_factory(lambda payload: _near_miss_response(payload, ratio=0.70), {}),
+        _gemini_factory(lambda payload: _near_miss_response(payload, extra_chars=200), {}),
     )
 
     with pytest.raises(ContentEnrichmentError, match="insuficiente"):
-        await enrich_content_blocks(context=_context(), settings=_settings())
+        await enrich_content_blocks(
+            context=_large_single_segment_context(conteudo_len=1_200), settings=_settings()
+        )
 
 
 # ─── Flag "escasso" (material do professor abaixo do limiar) ──────────────────

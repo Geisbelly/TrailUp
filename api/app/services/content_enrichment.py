@@ -55,20 +55,16 @@ _MIN_EXPANSION_RATIO = 0.50
 # blocos recebem permissao de complementar com conceitos curriculares alem
 # da fonte literal, ancorados no objetivo do topico.
 _SCARCE_BLOCK_CHARS_THRESHOLD = 800
-# Margem tolerada, usada SO como ultimo recurso apos esgotar as tentativas
-# normais nos dois provedores (Gemini e OpenAI) pra um bloco especifico.
-# Producao mostrou blocos curtos/factuais (ex.: bloco-22, Base=1517,
-# resposta=1889, piso estrito=1973 -> ~95,7% do alvo) que o modelo nunca
-# consegue cumprir com precisao de caractere, mesmo recebendo o feedback
-# exato da tentativa anterior (nao e bug de retry - ver
-# _generate_gemini_batch/_generate_openai_batch, que ja repassam o alvo
-# exato). Sem essa margem, 1 bloco teimoso derrubava o LOTE inteiro, depois
-# o TOPICO inteiro (apos esgotar os dois provedores) - tudo ou nada. 95% e
-# calibrado pra aceitar esse caso real sem afrouxar o piso normal: uma
-# resposta com so 20% de expansao real (abaixo do piso de 30%) fica em
-# ~92% do piso estrito, continua sendo rejeitada mesmo com a margem (ver
-# test_enrichment_ainda_falha_quando_resposta_fica_muito_abaixo_da_margem).
-_MIN_EXPANSION_TOLERANCE_RATIO = 0.95
+# Ultimo recurso, usado SO apos esgotar as tentativas normais nos dois
+# provedores (Gemini e OpenAI) pra um bloco especifico - ver o ramo
+# `tolerant` em _validate_enrichment_response. Ate 2026-08-21 esse ultimo
+# recurso so afrouxava o piso proporcional em 5% (ceil(piso * 0.95)), que
+# ainda reprovava blocos com material de origem escasso (ex.: topico com
+# pouco conteudo cadastrado pelo professor) mesmo depois de esgotar toda a
+# cascata - o TOPICO inteiro (e, em cascata, TODOS os perfis que dependem
+# desse enriquecimento compartilhado) falhava por completo. Agora exige so
+# _MIN_EXPANSION_CHARS de expansao real, sem a fracao proporcional de
+# _MIN_EXPANSION_RATIO - ver _validate_enrichment_response.
 _SCHEMA_VERSION = "trailup.content-blocks.v2"
 # Fallback usado quando a settings nao traz o valor - ver
 # content_enrichment_batch_size em core/settings.py pro motivo de 6 (era 1,
@@ -611,9 +607,22 @@ def _validate_enrichment_response(
             raise ContentEnrichmentError(f"Enriquecimento perdeu a rastreabilidade do bloco {block_id}.")
         if expanded.casefold() == base.casefold():
             raise ContentEnrichmentError(f"Enriquecimento raso: o bloco {block_id} apenas repetiu o original.")
-        required_length = _minimum_expanded_length(base)
         if tolerant:
-            required_length = math.ceil(required_length * _MIN_EXPANSION_TOLERANCE_RATIO)
+            # Ultimo recurso (ver _enrich_base_blocks_with_gemini/_with_openai,
+            # so na ULTIMA tentativa): antes so afrouxava o piso proporcional
+            # em 5% (ceil(piso * 0.95)), o que ainda reprovava blocos com
+            # material de origem escasso mesmo depois de esgotar todas as
+            # tentativas + os dois provedores - o TOPICO inteiro (e, em
+            # cascata, TODOS os perfis que dependem desse enriquecimento
+            # compartilhado) falhava por completo. Incidente real em
+            # 2026-08-21. Agora exige so uma expansao real minima e absoluta
+            # (_MIN_EXPANSION_CHARS, sem a fracao proporcional de
+            # _MIN_EXPANSION_RATIO) - o objetivo do ultimo recurso e nunca
+            # falhar por completo quando ja nao ha mais nada a tentar, nao
+            # garantir a profundidade ideal.
+            required_length = len(base) + _MIN_EXPANSION_CHARS
+        else:
+            required_length = _minimum_expanded_length(base)
         if len(expanded) < required_length:
             raise ContentEnrichmentError(f"Enriquecimento insuficiente no bloco {block_id}: conteúdo não foi ampliado.")
         if len(expanded) > _MAX_EXPANDED_CHARS:
@@ -905,13 +914,22 @@ async def _enrich_base_blocks_with_openai(
                         source_hash=source_hash,
                     )
                 except ContentEnrichmentError as exc:
-                    base_length = len(_text(block.get("conteudo_base")))
+                    base_text = _text(block.get("conteudo_base"))
+                    base_length = len(base_text)
                     received_length = len(
                         _text(candidate.get("conteudo_aprofundado"))
                         if isinstance(candidate, dict)
                         else ""
                     )
-                    target = max(base_length + 200, math.ceil(base_length * 1.3))
+                    # _minimum_expanded_length() e a UNICA fonte de verdade
+                    # pro piso real - antes esse alvo era uma formula duplicada
+                    # e hardcoded (200 chars / 1.3x) que ficou desatualizada
+                    # quando _MIN_EXPANSION_CHARS/_MIN_EXPANSION_RATIO subiram
+                    # (2026-08-20), instruindo o modelo a mirar um alvo ABAIXO
+                    # do piso real - a retentativa nunca tinha chance de
+                    # passar mesmo seguindo a instrucao a risca (incidente
+                    # real em 2026-08-21).
+                    target = _minimum_expanded_length(base_text)
                     failures.append(
                         (
                             block,
@@ -1135,13 +1153,22 @@ async def _enrich_base_blocks_with_gemini(
                         source_hash=source_hash,
                     )
                 except ContentEnrichmentError as exc:
-                    base_length = len(_text(block.get("conteudo_base")))
+                    base_text = _text(block.get("conteudo_base"))
+                    base_length = len(base_text)
                     received_length = len(
                         _text(candidate.get("conteudo_aprofundado"))
                         if isinstance(candidate, dict)
                         else ""
                     )
-                    target = max(base_length + 200, math.ceil(base_length * 1.3))
+                    # _minimum_expanded_length() e a UNICA fonte de verdade
+                    # pro piso real - antes esse alvo era uma formula duplicada
+                    # e hardcoded (200 chars / 1.3x) que ficou desatualizada
+                    # quando _MIN_EXPANSION_CHARS/_MIN_EXPANSION_RATIO subiram
+                    # (2026-08-20), instruindo o modelo a mirar um alvo ABAIXO
+                    # do piso real - a retentativa nunca tinha chance de
+                    # passar mesmo seguindo a instrucao a risca (incidente
+                    # real em 2026-08-21).
+                    target = _minimum_expanded_length(base_text)
                     failures.append(
                         (
                             block,
@@ -1155,11 +1182,11 @@ async def _enrich_base_blocks_with_gemini(
             if not pending:
                 break
             if attempt == max_attempts:
-                # Ultimo recurso: um bloco que fica perto (>=95%) do piso
-                # normal em toda tentativa (ver _MIN_EXPANSION_TOLERANCE_RATIO)
-                # e aceito com margem em vez de derrubar o LOTE inteiro (e,
-                # em cascata, o TOPICO inteiro depois de esgotar tambem o
-                # fallback OpenAI) por causa de 1 bloco teimoso.
+                # Ultimo recurso: um bloco com expansao real minima (ver ramo
+                # `tolerant` em _validate_enrichment_response) e aceito em vez
+                # de derrubar o LOTE inteiro (e, em cascata, o TOPICO inteiro
+                # depois de esgotar tambem o fallback OpenAI) por causa de 1
+                # bloco teimoso.
                 hard_failures: list[tuple[dict[str, Any], str]] = []
                 for block, message in failures:
                     block_id = str(block["id"])
@@ -1327,9 +1354,9 @@ async def enrich_content_blocks(
             "chamadas_realizadas": _nonnegative_int(
                 provider_metadata.get("chamadas_realizadas")
             ),
-            # Blocos aceitos com margem tolerada (>=95% do piso normal) como
-            # ultimo recurso, apos esgotar as tentativas - ver
-            # _MIN_EXPANSION_TOLERANCE_RATIO. Vazio no caso comum.
+            # Blocos aceitos com expansao real minima (ramo `tolerant` em
+            # _validate_enrichment_response) como ultimo recurso, apos
+            # esgotar as tentativas. Vazio no caso comum.
             "blocos_com_margem_tolerada": sorted(
                 str(item) for item in provider_metadata.get("blocos_com_margem_tolerada") or []
             ),
