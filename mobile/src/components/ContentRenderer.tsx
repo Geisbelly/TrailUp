@@ -10,6 +10,7 @@ import {
   isPdfUrl,
   isPresentationUrl,
 } from "@/utils/contentBlocks";
+import type { DeckProgressEvent } from "@/utils/deckProgressMessage";
 import React from "react";
 import { Image, Platform, StyleSheet, Text, View } from "react-native";
 import { DocumentBlock } from "./DocumentBlock";
@@ -36,6 +37,7 @@ type Props = {
   WebView?: React.ComponentType<any> | null;
   topicoId?: number | null;
   enableItemIA?: boolean;
+  onDeckProgressEvent?: (event: DeckProgressEvent) => void;
 };
 
 function readString(payload: ContentBlockPayload, ...keys: string[]) {
@@ -170,7 +172,7 @@ function renderAudio(block: ContentBlock) {
   );
 }
 
-export function ContentRenderer({ blocks, WebView }: Props) {
+export function ContentRenderer({ blocks, WebView, onDeckProgressEvent }: Props) {
   const { usuario } = useUsuario();
   const palette = React.useMemo(
     () => getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null),
@@ -295,6 +297,7 @@ export function ContentRenderer({ blocks, WebView }: Props) {
                 tipo={block.tipo}
                 payload={block.payload}
                 WebView={resolvedWebView}
+                onDeckProgressEvent={onDeckProgressEvent}
               />
             </View>
           );

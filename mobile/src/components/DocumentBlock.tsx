@@ -16,6 +16,7 @@ import {
 import { ensureCachedNativeContent } from "@/utils/nativeContentCache";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { shouldHideQuiz, withHideQuizParam } from "@/utils/quizVisibility";
+import type { DeckProgressEvent } from "@/utils/deckProgressMessage";
 import { looksLikeStorageObjectPath, resolveSupabaseStorageUrl } from "@/utils/supabaseStorage";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useMemo, useState } from "react";
@@ -38,6 +39,7 @@ type Props = {
   tipo: "pdf" | "documento" | "apresentacao" | "embed";
   payload: any;
   WebView?: React.ComponentType<any> | null;
+  onDeckProgressEvent?: (event: DeckProgressEvent) => void;
 };
 
 type ViewerSource = {
@@ -678,7 +680,7 @@ function getDocumentIconName(tipo: Props["tipo"]) {
   return "globe-outline";
 }
 
-export function DocumentBlock({ tipo, payload, WebView }: Props) {
+export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent }: Props) {
   const { usuario } = useUsuario();
   const { height: windowHeight, width: windowWidth } = useWindowDimensions();
   const palette = useMemo(
@@ -1384,6 +1386,7 @@ export function DocumentBlock({ tipo, payload, WebView }: Props) {
             scrollEnabled={frameScrollEnabled}
             palette={palette}
             WebView={WebView}
+            onProgressEvent={onDeckProgressEvent}
           />
         )}
       </View>
@@ -1453,6 +1456,7 @@ export function DocumentBlock({ tipo, payload, WebView }: Props) {
                 scrollEnabled={frameScrollEnabled}
                 palette={palette}
                 WebView={WebView}
+                onProgressEvent={onDeckProgressEvent}
               />
             ) : null}
           </View>
