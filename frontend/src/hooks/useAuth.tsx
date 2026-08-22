@@ -239,7 +239,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // cadastro professor
-    if (role === "professor" && data?.user) {
+    // `&& professorData`: mesma guarda ja usada no ramo aluno acima. Sem ela,
+    // CadastroProfessor.tsx (que so cria a conta auth aqui e nunca passa
+    // professorData - a criacao real do registro fica pro
+    // ProfessorSignupForm apos confirmar o email) sempre caia nesse insert
+    // prematuro, sem sessao confirmada. Quando o RLS da tabela professor
+    // rejeitava essa escrita anonima, o erro abortava handleCreateNew ANTES
+    // do localStorage.setItem("pending-signup:..."), entao EmailConfirm.tsx
+    // nunca encontrava um cadastro pendente e o professor nunca era criado -
+    // bug real reportado em producao.
+    if (role === "professor" && data?.user && professorData) {
       const { error: insertError } = await supabase
         .from("professor")
         .insert({
