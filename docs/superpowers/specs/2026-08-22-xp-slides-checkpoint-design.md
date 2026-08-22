@@ -78,17 +78,26 @@ semanticamente: quiz é uma atividade avaliativa) em vez de estender o tipo.
 ## Wiring — bem mais simples do que a investigação inicial temia
 
 A suspeita inicial era que `personalizacaoId`/`classeId`/`alunoId`
-precisariam ser passados como props novas por 4 camadas de componente
-(`PersonalizedTopicView` → `ContentRenderer` → `DocumentBlock` →
-`WebContentFrame`). **Não é necessário**: `salvarProgressoItemPersonalizado`
-(exposto pelo hook `useTrilha()`, `mobile/src/context/TrilhaContext.tsx:2003`)
-já resolve `personalizacaoId`/`classeId`/`alunoId` internamente a partir do
-estado do próprio contexto. Só precisa passar **uma função de callback**
-pelas camadas, não IDs crus:
+precisariam ser passados como props novas por 4 camadas de componente. **Não
+é necessário**: `salvarProgressoItemPersonalizado` (exposto pelo hook
+`useTrilha()`, `mobile/src/context/TrilhaContext.tsx:2003`) já resolve
+`personalizacaoId`/`classeId`/`alunoId` internamente a partir do estado do
+próprio contexto. Só precisa passar **uma função de callback** pelas
+camadas, não IDs crus.
 
-1. `PersonalizedTopicView.tsx`: `const { salvarProgressoItemPersonalizado } = useTrilha()`,
-   um handler que traduz o evento do deck pro formato dessa função, passado
-   como prop `onDeckProgressEvent` pro `ContentRenderer`.
+**Correção de rota importante encontrada durante a investigação**:
+`mobile/src/components/PersonalizedTopicView.tsx` (citado até no
+`CLAUDE.md` como ponto de entrada do aluno) é **código morto** — não é
+importado/renderizado em nenhum lugar do app real (confirmado por busca
+global). A tela de verdade é `mobile/src/app/(tabs)/trilha/[id].tsx`
+(`TrilhaConteudoScreen`), que já chama `useTrilha()` e já tem
+`salvarProgressoItemPersonalizado` e `topicoId` em escopo exatamente onde
+`<ContentRenderer>` é invocado (linha ~1556). A cadeia de wiring correta é:
+
+1. `mobile/src/app/(tabs)/trilha/[id].tsx`: novo `useCallback` que traduz o
+   evento do deck pro formato de `salvarProgressoItemPersonalizado`
+   (já disponível em escopo), passado como prop `onDeckProgressEvent` pro
+   `ContentRenderer` (que já recebe `topicoId` no mesmo local, linha ~1559).
 2. `ContentRenderer.tsx`: já declara `topicoId`/`enableItemIA` na interface
    `Props` mas não os usa hoje (achado da investigação — prop morta,
    provavelmente de uma feature planejada e não terminada) — acrescenta
