@@ -397,18 +397,18 @@ def test_minimum_expanded_length_requires_at_least_50_percent_and_350_chars() ->
 
 
 @pytest.mark.asyncio
-async def test_enrichment_rejects_response_expanded_below_new_50_percent_floor(
+async def test_enrichment_rejects_response_expanded_below_new_50_percent_floor_on_strict_attempts(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     # Expansao de 40% fica entre o piso anterior (30%, passava) e o piso
-    # atual (50%, deve falhar) - prova que o piso mais alto rejeita blocos
-    # que antes eram aceitos "de raspao". Mock devolve a MESMA expansao de
-    # 40% em toda tentativa (nao melhora com o feedback), entao por volta da
-    # 3a tentativa cai no ultimo recurso (`tolerant`, ver
-    # _validate_enrichment_response) - base=800 mantem os 320 chars extra
-    # (40%) abaixo tanto do piso estrito (400 = 50% de 800) quanto do piso
-    # tolerante do ultimo recurso (350 = _MIN_EXPANSION_CHARS), entao o
-    # bloco reprova em TODAS as tentativas, nao só nas estritas.
+    # atual (50%, deve falhar nas tentativas ESTRITAS) - prova que o piso
+    # mais alto rejeita blocos que antes eram aceitos "de raspao". Mock
+    # devolve a MESMA expansao de 40% em toda tentativa (nao melhora com o
+    # feedback), entao esgota as 3 tentativas estritas antes de cair no
+    # ultimo recurso - que desde 2026-08-22 nao aplica piso de tamanho (so
+    # rejeita copia literal), entao acaba aceitando essa expansao de 40% ali.
+    # O que este teste prova e que isso SO acontece apos esgotar as 3
+    # tentativas estritas, nao que o bloco sempre falha.
     def borderline(payload: dict[str, Any]) -> dict[str, Any]:
         response = _rich_response(payload)
         for block in response["blocos"]:
@@ -432,8 +432,13 @@ async def test_enrichment_rejects_response_expanded_below_new_50_percent_floor(
     context["conteudo_classe"]["topico"]["objetivo"] = ""
     context["conteudo_classe"]["conteudos"][0]["conteudo"] = "A" * 800
 
-    with pytest.raises(ContentEnrichmentError, match="insuficiente"):
-        await enrich_content_blocks(context=context, settings=_settings())
+    result = await enrich_content_blocks(context=context, settings=_settings())
+
+    # 3 tentativas estritas esgotadas (40% sempre abaixo do piso de 50%)
+    # antes de cair no ultimo recurso, que aceita a expansao real de 40%.
+    assert result["metadata"]["chamadas_realizadas"] == 3
+    expected_ids = sorted(block["id"] for block in result["blocos"])
+    assert result["metadata"]["blocos_com_margem_tolerada"] == expected_ids
 
 
 @pytest.mark.asyncio
@@ -1221,9 +1226,10 @@ async def test_enrichment_accepts_block_within_tolerance_after_exhausting_attemp
 ) -> None:
     # Bloco expande so 400 chars reais em toda tentativa (mesma resposta
     # determinística nas 3 tentativas) - abaixo do piso estrito (600 = 50%
-    # de 1200) mas acima do piso absoluto do ultimo recurso (350 =
-    # _MIN_EXPANSION_CHARS), entao so e aceito apos esgotar as tentativas
-    # normais, em vez de derrubar o topico inteiro por causa de 1 bloco
+    # de 1200), entao reprova nas tentativas normais e so e aceito no
+    # ultimo recurso (que, desde 2026-08-22, nao aplica NENHUM piso minimo
+    # de tamanho - so a checagem de "nao pode ser copia literal do
+    # original"), em vez de derrubar o topico inteiro por causa de 1 bloco
     # teimoso.
     captured: dict[str, Any] = {}
     monkeypatch.setattr(
@@ -1245,21 +1251,43 @@ async def test_enrichment_accepts_block_within_tolerance_after_exhausting_attemp
         assert block["conteudo_aprofundado"].endswith("y")
 
 
+def _verbatim_repeat_response(payload: dict[str, Any]) -> dict[str, Any]:
+    blocks = []
+    for base in payload["blocos_base"]:
+        base_text = enrichment_module._text(base["conteudo_base"])
+        blocks.append(
+            {
+                "id": base["id"],
+                "tema": base["tema"],
+                "topico": base["topico"],
+                "objetivos": ["Explicar e aplicar o conceito em uma situação real."],
+                "conteudo_base": base_text,
+                "conteudo_aprofundado": base_text,
+                "conceitos_chave": ["resolução de nomes", "comunicação distribuída"],
+                "exemplos_contextos": ["Abertura de um site no navegador."],
+                "ponte_proximo_bloco": "",
+                "source_ids": base["source_ids"],
+            }
+        )
+    return {"blocos": blocks}
+
+
 @pytest.mark.asyncio
-async def test_enrichment_ainda_falha_quando_expansao_fica_abaixo_do_minimo_absoluto(
+async def test_enrichment_ainda_falha_quando_resposta_e_copia_literal_do_original(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    # O ultimo recurso nao vira um piso frouxo generico - uma expansao real
-    # bem abaixo do minimo absoluto (200 chars, contra o piso de 350) deve
-    # continuar falhando apos esgotar as tentativas, mesmo pra material de
-    # origem genuinamente escasso.
+    # O ultimo recurso (2026-08-22: sem piso minimo de tamanho) nao vira uma
+    # aprovacao automatica - uma resposta que so repete o texto-base
+    # (nenhuma expansao real, nem 1 char) deve continuar falhando apos
+    # esgotar as tentativas, senao "enriquecimento" deixa de significar
+    # qualquer coisa.
     monkeypatch.setattr(
         enrichment_module,
         "_gemini_client",
-        _gemini_factory(lambda payload: _near_miss_response(payload, extra_chars=200), {}),
+        _gemini_factory(_verbatim_repeat_response, {}),
     )
 
-    with pytest.raises(ContentEnrichmentError, match="insuficiente"):
+    with pytest.raises(ContentEnrichmentError, match="apenas repetiu o original"):
         await enrich_content_blocks(
             context=_large_single_segment_context(conteudo_len=1_200), settings=_settings()
         )

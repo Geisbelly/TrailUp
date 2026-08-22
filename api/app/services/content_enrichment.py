@@ -607,24 +607,22 @@ def _validate_enrichment_response(
             raise ContentEnrichmentError(f"Enriquecimento perdeu a rastreabilidade do bloco {block_id}.")
         if expanded.casefold() == base.casefold():
             raise ContentEnrichmentError(f"Enriquecimento raso: o bloco {block_id} apenas repetiu o original.")
-        if tolerant:
-            # Ultimo recurso (ver _enrich_base_blocks_with_gemini/_with_openai,
-            # so na ULTIMA tentativa): antes so afrouxava o piso proporcional
-            # em 5% (ceil(piso * 0.95)), o que ainda reprovava blocos com
-            # material de origem escasso mesmo depois de esgotar todas as
-            # tentativas + os dois provedores - o TOPICO inteiro (e, em
-            # cascata, TODOS os perfis que dependem desse enriquecimento
-            # compartilhado) falhava por completo. Incidente real em
-            # 2026-08-21. Agora exige so uma expansao real minima e absoluta
-            # (_MIN_EXPANSION_CHARS, sem a fracao proporcional de
-            # _MIN_EXPANSION_RATIO) - o objetivo do ultimo recurso e nunca
-            # falhar por completo quando ja nao ha mais nada a tentar, nao
-            # garantir a profundidade ideal.
-            required_length = len(base) + _MIN_EXPANSION_CHARS
-        else:
+        if not tolerant:
+            # Ultimo recurso (tolerant=True, ver _enrich_base_blocks_with_
+            # gemini/_with_openai, so na ULTIMA tentativa) nao aplica NENHUM
+            # piso minimo de tamanho - so a checagem acima (nao pode ser uma
+            # repeticao literal do original). Producao real em 2026-08-21/22
+            # mostrou blocos de topico com pouco material de origem (ex.:
+            # Base=1509, resposta=1744 - so 235 chars de expansao real)
+            # ficarem abaixo de QUALQUER piso minimo tentado ate aqui (95% do
+            # proporcional, depois um piso absoluto de 350 chars) mesmo apos
+            # esgotar Gemini + OpenAI - o TOPICO inteiro (e, em cascata,
+            # TODOS os perfis que dependem desse enriquecimento
+            # compartilhado) falhava por completo. Fora do ultimo recurso,
+            # _minimum_expanded_length continua valendo em cheio.
             required_length = _minimum_expanded_length(base)
-        if len(expanded) < required_length:
-            raise ContentEnrichmentError(f"Enriquecimento insuficiente no bloco {block_id}: conteúdo não foi ampliado.")
+            if len(expanded) < required_length:
+                raise ContentEnrichmentError(f"Enriquecimento insuficiente no bloco {block_id}: conteúdo não foi ampliado.")
         if len(expanded) > _MAX_EXPANDED_CHARS:
             raise ContentEnrichmentError(
                 f"Enriquecimento excessivo no bloco {block_id}: {len(expanded)} caracteres "
