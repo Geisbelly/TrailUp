@@ -16,6 +16,8 @@ import {
 } from "./src/services/geminiService";
 import { settleWithConcurrency } from "./src/lib/boundedConcurrency";
 import { insertImagesIntoMarkdown } from "./src/utils/markdownImages";
+import { estimateAudioDurationSec } from "./src/utils/audioDuration";
+import { computeImageCues, type ImageCue } from "./src/utils/audioImageCues";
 import { computeAggregatedApresentacaoEntry } from "./src/lib/materialsMerge";
 import type { ApiKeysConfig, SlideContent } from "./src/types";
 import { BrainHexProfile, BRAIN_HEX_CONFIG } from "./src/constants/brainHex";
@@ -400,6 +402,7 @@ export async function archiveMultiPartToSupabase(params: {
   personalizacaoId: number | null;
   fence?:           GenerationFence;
   audioCoverImageUrl?: string;
+  audioImageCues?: ImageCue[];
   log?:            Logger;
 }): Promise<{
   audioMp3Url: string | null;
@@ -408,7 +411,7 @@ export async function archiveMultiPartToSupabase(params: {
   presentationFailure: PresentationFailure | null;
   persisted: PersistedMaterialsMerge | null;
 }> {
-  const { storagePath, bucket, refId, parts, presentationResults, presentationTheme, personalizacaoId, fence, audioCoverImageUrl } = params;
+  const { storagePath, bucket, refId, parts, presentationResults, presentationTheme, personalizacaoId, fence, audioCoverImageUrl, audioImageCues } = params;
   const lg = params.log ?? log;
   const multiPart = parts.length > 1;
 
@@ -520,6 +523,7 @@ export async function archiveMultiPartToSupabase(params: {
         payload: {
           roteiro: firstAudioScript,
           ...(audioCoverImageUrl ? { capaUrl: audioCoverImageUrl } : {}),
+          ...(audioImageCues && audioImageCues.length > 0 ? { imageCues: audioImageCues } : {}),
         },
         metadata: {
           status: allAudioOk ? "completed" : "failed",
@@ -1086,6 +1090,18 @@ async function runPipeline(
     wavBase64: audioByPart[index]?.wavBase64 ?? null,
   }));
 
+  // Minutagem estimada de imagem por secao - so na 1a parte (mesma
+  // limitacao ja aceita pelo capaUrl no D2). Le so o tamanho do arquivo ja
+  // pronto, nao mexe em como o audio foi gerado/dividido/sintetizado - ver
+  // docs/superpowers/specs/2026-08-22-audio-image-cues-design.md.
+  const firstPartWithAudio = partsWithAudio[0];
+  const firstPartDurationSec = firstPartWithAudio
+    ? estimateAudioDurationSec(firstPartWithAudio.mp3Base64, firstPartWithAudio.wavBase64)
+    : null;
+  const audioImageCues = firstPartWithAudio
+    ? computeImageCues(firstPartWithAudio.sectionBoundaries, firstPartDurationSec, imageAttachments)
+    : [];
+
   // 4. Persiste tudo no Supabase (apresentacao ja resolvida em paralelo acima)
   const archived = await archiveMultiPartToSupabase({
     storagePath,
@@ -1100,6 +1116,7 @@ async function runPipeline(
     // mantem consistencia visual entre as duas midias do mesmo topico, sem
     // precisar de uma segunda logica de selecao independente.
     audioCoverImageUrl: imageAttachments[0]?.url,
+    audioImageCues,
     log:              jobLog,
   });
   if (!archived.persisted) {
