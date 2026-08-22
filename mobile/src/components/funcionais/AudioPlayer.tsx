@@ -2,6 +2,7 @@ import { useUsuario } from "@/context/SessaoContext";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { resolveSupabaseStorageUrl } from "@/utils/supabaseStorage";
+import { type ImageCue } from "@/utils/audioImageCues";
 import { Ionicons } from "@expo/vector-icons";
 import { Audio, AVPlaybackStatus } from "expo-av";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -22,6 +23,7 @@ type Props = {
   bucketHint?: string | null;
   fallbackText?: string;
   capaUrl?: string;
+  imageCues?: ImageCue[];
 };
 
 type PlaybackState = {
@@ -71,6 +73,7 @@ export default function AudioPlayer({
   bucketHint = "conteudo_aluno",
   fallbackText,
   capaUrl,
+  imageCues,
 }: Props) {
   const { usuario } = useUsuario();
   const palette = useMemo(
@@ -92,6 +95,21 @@ export default function AudioPlayer({
     durationMillis: 0,
     positionMillis: 0,
   });
+
+  // Troca a imagem exibida conforme a posicao de reproducao cruza os cues
+  // (minutagem ESTIMADA por proporcao de texto, ver computeImageCues no
+  // microservice - nao e um corte real no audio). Sem cues, cai pra capaUrl
+  // estatica (comportamento do D2 preservado).
+  const displayedImageUrl = useMemo(() => {
+    if (!imageCues || imageCues.length === 0) return capaUrl;
+    const positionSec = playback.positionMillis / 1000;
+    let selected = imageCues[0].imageUrl;
+    for (const cue of imageCues) {
+      if (cue.startSec <= positionSec) selected = cue.imageUrl;
+      else break;
+    }
+    return selected;
+  }, [imageCues, playback.positionMillis, capaUrl]);
 
   const unloadSound = useCallback(async () => {
     const currentSound = soundRef.current;
@@ -254,8 +272,8 @@ export default function AudioPlayer({
     return (
       <View style={styles.wrapper}>
         <View style={styles.header}>
-          {capaUrl ? (
-            <Image source={{ uri: capaUrl }} style={styles.coverImage} accessibilityIgnoresInvertColors />
+          {displayedImageUrl ? (
+            <Image source={{ uri: displayedImageUrl }} style={styles.coverImage} accessibilityIgnoresInvertColors />
           ) : null}
           <View style={styles.titleRow}>
             <View
