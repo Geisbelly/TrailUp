@@ -7,6 +7,7 @@ import { Audio, AVPlaybackStatus } from "expo-av";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   Linking,
   Platform,
   Pressable,
@@ -20,6 +21,7 @@ type Props = {
   title?: string;
   bucketHint?: string | null;
   fallbackText?: string;
+  capaUrl?: string;
 };
 
 type PlaybackState = {
@@ -68,6 +70,7 @@ export default function AudioPlayer({
   title = "Áudio",
   bucketHint = "conteudo_aluno",
   fallbackText,
+  capaUrl,
 }: Props) {
   const { usuario } = useUsuario();
   const palette = useMemo(
@@ -251,6 +254,9 @@ export default function AudioPlayer({
     return (
       <View style={styles.wrapper}>
         <View style={styles.header}>
+          {capaUrl ? (
+            <Image source={{ uri: capaUrl }} style={styles.coverImage} accessibilityIgnoresInvertColors />
+          ) : null}
           <View style={styles.titleRow}>
             <View
               style={[
@@ -292,6 +298,9 @@ export default function AudioPlayer({
   return (
     <View style={styles.wrapper}>
       <View style={styles.header}>
+        {capaUrl ? (
+          <Image source={{ uri: capaUrl }} style={styles.coverImage} accessibilityIgnoresInvertColors />
+        ) : null}
         <View style={styles.titleRow}>
           <View
             style={[
@@ -451,6 +460,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
+  },
+  coverImage: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
   },
   title: {
     flex: 1,

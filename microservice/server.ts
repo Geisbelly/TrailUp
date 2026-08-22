@@ -15,6 +15,7 @@ import {
   type ContentPart,
 } from "./src/services/geminiService";
 import { settleWithConcurrency } from "./src/lib/boundedConcurrency";
+import { insertImagesIntoMarkdown } from "./src/utils/markdownImages";
 import { computeAggregatedApresentacaoEntry } from "./src/lib/materialsMerge";
 import type { ApiKeysConfig, SlideContent } from "./src/types";
 import { BrainHexProfile, BRAIN_HEX_CONFIG } from "./src/constants/brainHex";
@@ -398,6 +399,7 @@ export async function archiveMultiPartToSupabase(params: {
   presentationTheme: PresentationDesignPlan;
   personalizacaoId: number | null;
   fence?:           GenerationFence;
+  audioCoverImageUrl?: string;
   log?:            Logger;
 }): Promise<{
   audioMp3Url: string | null;
@@ -406,7 +408,7 @@ export async function archiveMultiPartToSupabase(params: {
   presentationFailure: PresentationFailure | null;
   persisted: PersistedMaterialsMerge | null;
 }> {
-  const { storagePath, bucket, refId, parts, presentationResults, presentationTheme, personalizacaoId, fence } = params;
+  const { storagePath, bucket, refId, parts, presentationResults, presentationTheme, personalizacaoId, fence, audioCoverImageUrl } = params;
   const lg = params.log ?? log;
   const multiPart = parts.length > 1;
 
@@ -515,7 +517,10 @@ export async function archiveMultiPartToSupabase(params: {
 
     const updates: Record<string, MaterialEntry> = {
       audio: {
-        payload: { roteiro: firstAudioScript },
+        payload: {
+          roteiro: firstAudioScript,
+          ...(audioCoverImageUrl ? { capaUrl: audioCoverImageUrl } : {}),
+        },
         metadata: {
           status: allAudioOk ? "completed" : "failed",
           media_kind: "audio",
@@ -971,7 +976,7 @@ async function runPipeline(
   // imagem de slide.
   const imageAttachments = filesData
     .filter((f) => f.mimeType.startsWith("image/"))
-    .map((f) => ({ data: f.data, mimeType: f.mimeType, name: f.name }));
+    .map((f) => ({ data: f.data, mimeType: f.mimeType, name: f.name, url: f.url }));
 
   // 2. Texto + slides via Gemini (multi-arquivo)
   const resultado = await processMediaWithGemini(
@@ -981,6 +986,15 @@ async function runPipeline(
     presentationPlan,
     guidancePrompt,
   );
+
+  // Distribui as imagens do professor pelo markdown ANTES de dividir em
+  // partes - a divisao por heading (## titulo) ja existente cuida do resto
+  // sem mudanca, cada parte carrega as imagens que caem dentro da sua
+  // fatia. Precisa ser feito aqui (nao depois do BrainHexPDF) porque o
+  // markdown ja foi persistido antes da chamada de apresentacao - ver
+  // docs/superpowers/specs/2026-08-22-reaproveitamento-imagens-midias-design.md,
+  // secao "Descoberta que definiu o escopo".
+  resultado.markdown = insertImagesIntoMarkdown(resultado.markdown, imageAttachments);
 
   // 3. Divide o resultado JA sintetizado (uma so vez, sem duplicar topicos -
   // ver mergeContentBlocksIntoOne) em partes entregaveis. Cada parte vira 1
@@ -1082,6 +1096,10 @@ async function runPipeline(
     presentationTheme: presentationPlan,
     personalizacaoId,
     fence,
+    // Mesma imagem usada na 1a secao do markdown (imageAttachments[0]) -
+    // mantem consistencia visual entre as duas midias do mesmo topico, sem
+    // precisar de uma segunda logica de selecao independente.
+    audioCoverImageUrl: imageAttachments[0]?.url,
     log:              jobLog,
   });
   if (!archived.persisted) {
@@ -1151,8 +1169,8 @@ async function downloadFonteStreamed(url: string): Promise<Buffer | null> {
 
 async function fetchFontesAsFileData(
   fontes: FonteItem[]
-): Promise<{ data: string; mimeType: string; name: string }[]> {
-  const results: { data: string; mimeType: string; name: string }[] = [];
+): Promise<{ data: string; mimeType: string; name: string; url: string }[]> {
+  const results: { data: string; mimeType: string; name: string; url: string }[] = [];
   for (const fonte of fontes) {
     if (!fonte.url) continue;
     try {
@@ -1160,7 +1178,7 @@ async function fetchFontesAsFileData(
       if (!buffer) continue;
       const base64 = buffer.toString("base64");
       const name   = fonte.url.split("/").pop()?.split("?")[0] ?? "arquivo";
-      results.push({ data: base64, mimeType: fonte.mime_type, name });
+      results.push({ data: base64, mimeType: fonte.mime_type, name, url: fonte.url });
     } catch (err) {
       log.error("erro ao baixar fonte", { url: fonte.url, err });
     }

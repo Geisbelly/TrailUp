@@ -158,6 +158,7 @@ function renderAudio(block: ContentBlock) {
     : null;
   const title = payload ? readString(payload, "title", "legenda") : null;
   const fallbackText = metadata ? readString(metadata, "fallbackText") : null;
+  const capaUrl = metadata ? readString(metadata, "capaUrl") : null;
 
   if (!url) return null;
 
@@ -168,6 +169,7 @@ function renderAudio(block: ContentBlock) {
       title={title ?? undefined}
       bucketHint={bucketHint}
       fallbackText={fallbackText ?? undefined}
+      capaUrl={capaUrl ?? undefined}
     />
   );
 }

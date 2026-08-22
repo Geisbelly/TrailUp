@@ -1089,6 +1089,7 @@ function normalizeMediaBlocks(
     // fallbackText para o player exibir o texto caso o .wav no Storage
     // esteja indisponivel (upload pode ter falhado mesmo com status "completed").
     const roteiro = pickString(payload.roteiro, rawObject.roteiro);
+    const capaUrl = pickString(payload.capaUrl, rawObject.capaUrl);
 
     const audioPartes = extractMediaPartes(rawObject, bucketValue);
     if (audioPartes.length > 0) {
@@ -1096,8 +1097,10 @@ function normalizeMediaBlocks(
         .map((parte) => {
           if (!parte.url || !isAudioUrl(parte.url)) return null;
           // Parte 1 tem o roteiro inline no JSONB (payload.roteiro); as
-          // demais nao tem fallbackText de texto, so o audio em si.
+          // demais nao tem fallbackText de texto, so o audio em si. A
+          // capa segue o mesmo criterio - so precisa aparecer uma vez.
           const fallbackText = parte.ordem === 1 ? roteiro : undefined;
+          const parteCapaUrl = parte.ordem === 1 ? capaUrl : undefined;
           return normalizeContentBlock(
             {
               id: `${key}-parte-${parte.ordem}`,
@@ -1107,6 +1110,7 @@ function normalizeMediaBlocks(
               metadata: {
                 ...metadata,
                 ...(fallbackText ? { fallbackText } : {}),
+                ...(parteCapaUrl ? { capaUrl: parteCapaUrl } : {}),
                 parteAtual: parte.ordem,
                 totalPartes: audioPartes.length,
                 tituloParte: parte.titulo,
@@ -1120,13 +1124,18 @@ function normalizeMediaBlocks(
     }
 
     if (url && isAudioUrl(url)) {
+      const audioMetadata = {
+        ...metadata,
+        ...(roteiro ? { fallbackText: roteiro } : {}),
+        ...(capaUrl ? { capaUrl } : {}),
+      };
       const block = normalizeContentBlock(
         {
           id: key,
           tipo,
           url,
           title,
-          metadata: roteiro ? { ...metadata, fallbackText: roteiro } : metadata,
+          metadata: (roteiro || capaUrl) ? audioMetadata : metadata,
         },
         key
       );
