@@ -85,6 +85,79 @@ test("retorna presentationUrl quando o BrainHexPDF responde com sucesso", async 
     assert.equal(result.dbWritten, false); // fake response nao inclui dbWritten:true
     assert.equal(capturedUrl, "http://localhost:3002/api/v1/render-and-store");
     assert.equal(capturedSecret, "segredo");
+    assert.equal(result.generatedImagesBySubtopic, undefined);
+  });
+});
+
+test("repassa generatedImagesBySubtopic quando presente na resposta", async () => {
+  await withEnv({ BRAINHEXPDF_API_URL: "http://localhost:3002" }, async () => {
+    const fetchImpl = (async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        success: true,
+        url: "https://storage/x.html",
+        storage_path: "a/b.html",
+        bucket: "conteudo_aluno",
+        slide_count: 8,
+        generatedImagesBySubtopic: { DNS: "data:image/png;base64,AAA" },
+      }),
+    } as any)) as typeof fetch;
+
+    const result = await renderAndUploadPresentationViaBrainHexPdf(
+      {
+        markdown: "## Aula\nConteudo",
+        topic: "Aula 1",
+        profile: "mastermind",
+        bucket: "conteudo_aluno",
+        presentationPath: "brainhex/mastermind/topico/apresentacao/material-1.html",
+        personalizacaoId: 42,
+        fence,
+        versionMetadata,
+        ordem: 1,
+        totalPartes: 1,
+        titulo: "Aula 1",
+      },
+      { fetchImpl },
+    );
+
+    assert.deepEqual(result.generatedImagesBySubtopic, { DNS: "data:image/png;base64,AAA" });
+  });
+});
+
+test("ignora generatedImagesBySubtopic quando vem em formato invalido", async () => {
+  await withEnv({ BRAINHEXPDF_API_URL: "http://localhost:3002" }, async () => {
+    const fetchImpl = (async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        success: true,
+        url: "https://storage/x.html",
+        storage_path: "a/b.html",
+        bucket: "conteudo_aluno",
+        slide_count: 8,
+        generatedImagesBySubtopic: "nao e um objeto",
+      }),
+    } as any)) as typeof fetch;
+
+    const result = await renderAndUploadPresentationViaBrainHexPdf(
+      {
+        markdown: "## Aula\nConteudo",
+        topic: "Aula 1",
+        profile: "mastermind",
+        bucket: "conteudo_aluno",
+        presentationPath: "brainhex/mastermind/topico/apresentacao/material-1.html",
+        personalizacaoId: 42,
+        fence,
+        versionMetadata,
+        ordem: 1,
+        totalPartes: 1,
+        titulo: "Aula 1",
+      },
+      { fetchImpl },
+    );
+
+    assert.equal(result.generatedImagesBySubtopic, undefined);
   });
 });
 

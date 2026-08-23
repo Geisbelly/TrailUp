@@ -33,3 +33,20 @@ export function insertImagesIntoMarkdown(markdown: string, images: MarkdownImage
   result += markdown.slice(cursor);
   return result;
 }
+
+/**
+ * Deriva a lista de imagens a usar no markdown/audio de um topico: imagem
+ * do professor sempre vence quando existe; sem nenhuma, cai pra imagem
+ * gerada por IA que o BrainHexPDF devolveu (generatedImagesBySubtopic da
+ * resposta de render-and-store) - ver docs/superpowers/specs/
+ * 2026-08-24-imagem-gerada-fallback-markdown-audio-design.md. Sem imagem
+ * nenhuma dos dois lados, retorna array vazio (comportamento pre-D2).
+ */
+export function deriveImagesForMedia(
+  imageAttachments: MarkdownImage[],
+  generatedImagesBySubtopic: Record<string, string> | undefined | null,
+): MarkdownImage[] {
+  if (imageAttachments.length > 0) return imageAttachments;
+  if (!generatedImagesBySubtopic) return [];
+  return Object.values(generatedImagesBySubtopic).map((url) => ({ url }));
+}

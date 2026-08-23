@@ -43,6 +43,12 @@ export interface RenderAndUploadPresentationResult {
   presentationUrl: string | null;
   failure: PresentationRenderFailure | null;
   dbWritten: boolean;
+  // So preenchido quando a chamada foi feita SEM attachments do professor -
+  // o BrainHexPDF gerou uma ilustracao por IA pra pelo menos 1 subtopico.
+  // runPipeline (server.ts) usa isso como fallback de imagem no
+  // markdown/audio quando nao ha imagem do professor - ver
+  // docs/superpowers/specs/2026-08-24-imagem-gerada-fallback-markdown-audio-design.md.
+  generatedImagesBySubtopic?: Record<string, string>;
 }
 
 export interface PresentationVersionMetadata {
@@ -169,7 +175,17 @@ export async function renderAndUploadPresentationViaBrainHexPdf(
       };
     }
 
-    return { presentationUrl: body.url, failure: null, dbWritten: body?.dbWritten === true };
+    const generatedImagesBySubtopic =
+      body.generatedImagesBySubtopic && typeof body.generatedImagesBySubtopic === "object"
+        ? (body.generatedImagesBySubtopic as Record<string, string>)
+        : undefined;
+
+    return {
+      presentationUrl: body.url,
+      failure: null,
+      dbWritten: body?.dbWritten === true,
+      ...(generatedImagesBySubtopic ? { generatedImagesBySubtopic } : {}),
+    };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     log.error("render-and-store erro de rede/timeout", { err: error });

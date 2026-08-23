@@ -15,7 +15,7 @@ import {
   type ContentPart,
 } from "./src/services/geminiService";
 import { settleWithConcurrency } from "./src/lib/boundedConcurrency";
-import { insertImagesIntoMarkdown } from "./src/utils/markdownImages";
+import { deriveImagesForMedia, insertImagesIntoMarkdown } from "./src/utils/markdownImages";
 import { estimateAudioDurationSec } from "./src/utils/audioDuration";
 import { computeImageCues, type ImageCue } from "./src/utils/audioImageCues";
 import { computeAggregatedApresentacaoEntry } from "./src/lib/materialsMerge";
@@ -1090,6 +1090,21 @@ async function runPipeline(
     wavBase64: audioByPart[index]?.wavBase64 ?? null,
   }));
 
+  // Sem imagem do professor, reusa a MESMA imagem gerada por IA que os
+  // slides do BrainHexPDF usaram (so existe agora, depois da apresentacao
+  // resolver - por isso essa insercao e retroativa, diferente da inserida
+  // no markdown ANTES da apresentacao la em cima). So a 1a parte (mesma
+  // limitacao ja aceita pelo capaUrl/audioImageCues) - ver
+  // docs/superpowers/specs/2026-08-24-imagem-gerada-fallback-markdown-audio-design.md.
+  // Nao mexe em como o audio foi gerado/dividido/sintetizado.
+  const imagesForAudio = deriveImagesForMedia(imageAttachments, presentationResults[0]?.generatedImagesBySubtopic);
+  if (imageAttachments.length === 0 && imagesForAudio.length > 0 && partsWithAudio[0]) {
+    partsWithAudio[0] = {
+      ...partsWithAudio[0],
+      markdown: insertImagesIntoMarkdown(partsWithAudio[0].markdown, imagesForAudio),
+    };
+  }
+
   // Minutagem estimada de imagem por secao - so na 1a parte (mesma
   // limitacao ja aceita pelo capaUrl no D2). Le so o tamanho do arquivo ja
   // pronto, nao mexe em como o audio foi gerado/dividido/sintetizado - ver
@@ -1099,7 +1114,7 @@ async function runPipeline(
     ? estimateAudioDurationSec(firstPartWithAudio.mp3Base64, firstPartWithAudio.wavBase64)
     : null;
   const audioImageCues = firstPartWithAudio
-    ? computeImageCues(firstPartWithAudio.sectionBoundaries, firstPartDurationSec, imageAttachments)
+    ? computeImageCues(firstPartWithAudio.sectionBoundaries, firstPartDurationSec, imagesForAudio)
     : [];
 
   // 4. Persiste tudo no Supabase (apresentacao ja resolvida em paralelo acima)
@@ -1112,10 +1127,11 @@ async function runPipeline(
     presentationTheme: presentationPlan,
     personalizacaoId,
     fence,
-    // Mesma imagem usada na 1a secao do markdown (imageAttachments[0]) -
-    // mantem consistencia visual entre as duas midias do mesmo topico, sem
+    // Mesma imagem usada na 1a secao do markdown (imageAttachments[0], ou o
+    // fallback gerado por IA quando nao ha imagem do professor) - mantem
+    // consistencia visual entre as duas midias do mesmo topico, sem
     // precisar de uma segunda logica de selecao independente.
-    audioCoverImageUrl: imageAttachments[0]?.url,
+    audioCoverImageUrl: imagesForAudio[0]?.url,
     audioImageCues,
     log:              jobLog,
   });

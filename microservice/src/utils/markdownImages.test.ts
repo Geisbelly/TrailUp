@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { insertImagesIntoMarkdown } from "./markdownImages";
+import { deriveImagesForMedia, insertImagesIntoMarkdown } from "./markdownImages";
 
 test("insere uma imagem apos cada heading de nivel 2, em round-robin", () => {
   const markdown = "## Primeira Seção\n\nTexto 1.\n\n## Segunda Seção\n\nTexto 2.\n\n## Terceira Seção\n\nTexto 3.";
@@ -33,4 +33,26 @@ test("preserva o conteudo original integralmente, so adiciona as linhas de image
   const result = insertImagesIntoMarkdown(markdown, images);
 
   assert.match(result, /Parágrafo importante que não pode sumir\./);
+});
+
+test("deriveImagesForMedia: imagem do professor sempre vence quando existe", () => {
+  const attachments = [{ url: "https://x.test/professor.png" }];
+  const generated = { DNS: "data:image/png;base64,AAA" };
+
+  assert.deepEqual(deriveImagesForMedia(attachments, generated), attachments);
+});
+
+test("deriveImagesForMedia: sem imagem do professor, cai pras imagens geradas por IA", () => {
+  const generated = { DNS: "data:image/png;base64,AAA", Cache: "data:image/jpeg;base64,BBB" };
+
+  assert.deepEqual(deriveImagesForMedia([], generated), [
+    { url: "data:image/png;base64,AAA" },
+    { url: "data:image/jpeg;base64,BBB" },
+  ]);
+});
+
+test("deriveImagesForMedia: sem professor e sem gerada, retorna array vazio", () => {
+  assert.deepEqual(deriveImagesForMedia([], undefined), []);
+  assert.deepEqual(deriveImagesForMedia([], null), []);
+  assert.deepEqual(deriveImagesForMedia([], {}), []);
 });
