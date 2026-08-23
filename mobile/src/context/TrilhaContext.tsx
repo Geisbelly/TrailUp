@@ -35,6 +35,11 @@ import {
   normalizeRemoteMapTheme,
 } from '@/utils/classMapTheme';
 import { buildClasseAcademicMetrics, buildClasseResumoFallback } from '@/utils/classeMetrics';
+import {
+  buildSlideBonusDedupeKey,
+  computeSlideBonusPercent,
+  isSlideItemKey,
+} from '@/utils/slideXpBonus';
 import { buildContentBlocks, isUrl } from '@/utils/contentBlocks';
 import { ensureCachedNativeContent } from '@/utils/nativeContentCache';
 import {
@@ -744,6 +749,7 @@ type TrilhaContextValue = {
   ) => Promise<EnsurePersonalizationResult>
   getNodePersonalizationHint: (topicoId: number) => PersonalizedNodeHint | null
   mapTheme: MapWorldTheme | null
+  trilhaSlideBonusPercent: number
 }
 
 const TrilhaContext = createContext<TrilhaContextValue | null>(null)
@@ -758,6 +764,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
   const [classeAtual, setClasseAtual] = useState<Classe | null>(null)
   const [carregando, setCarregando] = useState<boolean>(true)
   const [erro, setErro] = useState<Error | null>(null)
+  const [slideBonusKeys, setSlideBonusKeys] = useState<Set<string>>(new Set())
 
   const [perfil, setPerfil] = useState<BrainHexProfile>('seeker')
   const visual: Visual = pickVisual(perfil)
@@ -1376,6 +1383,44 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
     // local salvo - so precisa reabrir quando a classe/usuario realmente mudam.
   }, [classeAtual?.classe_id, fetchGraphData, usuario?.id])
 
+  useEffect(() => {
+    const classeId = classeAtual?.classe_id
+    const alunoId = usuario?.id
+    setSlideBonusKeys(new Set())
+    if (!classeId || !alunoId) return
+
+    let cancelado = false
+    ;(async () => {
+      const { data, error } = await supabase
+        .from('personalizacao_item_progresso')
+        .select('topico_id, item_key')
+        .eq('aluno_id', alunoId)
+        .eq('classe_id', classeId)
+        .like('item_key', 'slide:%')
+
+      if (cancelado) return
+      if (error) {
+        console.warn('[TrilhaContext] Falha ao buscar bonus de XP de slides:', error)
+        return
+      }
+
+      const keys = new Set<string>()
+      for (const row of data ?? []) {
+        keys.add(buildSlideBonusDedupeKey(row.topico_id, row.item_key))
+      }
+      setSlideBonusKeys(keys)
+    })()
+
+    return () => {
+      cancelado = true
+    }
+  }, [classeAtual?.classe_id, usuario?.id])
+
+  const trilhaSlideBonusPercent = useMemo(
+    () => computeSlideBonusPercent(slideBonusKeys),
+    [slideBonusKeys]
+  )
+
   const { width: winW } = useWindowDimensions()
   const grafo = useGraphLayout(nodesState, {
     width: Math.max(360, (winW || 0) - 48),
@@ -1795,6 +1840,15 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
         ...progressoPayload,
         aluno_id: usuario.id,
       })
+      if (isSlideItemKey(itemKey)) {
+        const dedupeKey = buildSlideBonusDedupeKey(topicoId, itemKey)
+        setSlideBonusKeys((prev) => {
+          if (prev.has(dedupeKey)) return prev
+          const next = new Set(prev)
+          next.add(dedupeKey)
+          return next
+        })
+      }
       return
     } catch (directErr) {
       const warnKey = `${usuario.id}:${classeAtual.classe_id}:${topicoId}:${progressItemKey}`
@@ -1965,6 +2019,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       ensureTopicoPersonalizado,
       getNodePersonalizationHint,
       mapTheme,
+      trilhaSlideBonusPercent,
     }),
     [
       carregando,
@@ -1992,6 +2047,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       ensureTopicoPersonalizado,
       getNodePersonalizationHint,
       mapTheme,
+      trilhaSlideBonusPercent,
     ]
   )
 

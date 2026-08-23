@@ -20,6 +20,7 @@ export const TrilhaBase: React.FC = () => {
     visual,
     mapTheme,
     personalizedTopics,
+    trilhaSlideBonusPercent,
   } = useTrilha();
   const { usuario } = useUsuario();
   const palette = getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null);
@@ -54,7 +55,7 @@ export const TrilhaBase: React.FC = () => {
       <GameHeader
         titulo={nome}
         subtitulo={subtitulo}
-        xp={Math.round(progresso)}
+        xp={Math.round(progresso) + trilhaSlideBonusPercent}
         meta={100}
         palette={palette}
         rightSlot={
