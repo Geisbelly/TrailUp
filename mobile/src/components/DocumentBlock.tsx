@@ -15,7 +15,7 @@ import {
 } from "@/utils/nativeDocumentParsers";
 import { ensureCachedNativeContent } from "@/utils/nativeContentCache";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
-import { shouldHideQuiz, withHideQuizParam } from "@/utils/quizVisibility";
+import { shouldHideChecklist, shouldHideNotes, shouldHideQuiz, withHideParams } from "@/utils/contentVisibility";
 import type { DeckProgressEvent } from "@/utils/deckProgressMessage";
 import { looksLikeStorageObjectPath, resolveSupabaseStorageUrl } from "@/utils/supabaseStorage";
 import { Ionicons } from "@expo/vector-icons";
@@ -957,7 +957,11 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent }: P
 
     if (tipo === "embed" && (sourceHtml || resolvedUrl)) {
       const embedUri = resolvedUrl
-        ? withHideQuizParam(resolvedUrl, shouldHideQuiz(usuario?.modoOperacao_nome))
+        ? withHideParams(resolvedUrl, {
+            hideQuiz: shouldHideQuiz(usuario?.modoOperacao_nome),
+            hideChecklist: shouldHideChecklist(usuario?.modoOperacao_nome),
+            hideNotes: shouldHideNotes(usuario?.modoOperacao_nome),
+          })
         : resolvedUrl;
       return {
         title,
