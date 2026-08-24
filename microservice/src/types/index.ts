@@ -65,7 +65,15 @@ export interface ProcessedContent {
    * extractImageMediaFromFiles em geminiService.ts) - "imagem do conteudo
    * base", usada como fallback de imageAttachments quando o professor nao
    * anexou um arquivo de imagem avulso. */
-  extractedMedia?: { data: string; mimeType: string; name: string }[];
+  extractedMedia?: {
+    data: string;
+    mimeType: string;
+    name: string;
+    /** Texto do slide de onde a imagem veio (.pptx) - contexto que liga a
+     * imagem ao assunto dela (ver pptxImageContext.ts / imageTextGraph.ts). */
+    sourceText?: string;
+    sourceOrder?: number;
+  }[];
   /** Capítulo bruto por bloco — só populado quando generation_mode é
    * "block_batches" (ver consolidateBlockBatchGenerations). Usado pelo
    * endpoint /api/v1/generate/block para persistir cada bloco separado,

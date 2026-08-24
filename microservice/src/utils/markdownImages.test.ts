@@ -8,16 +8,65 @@ import {
   selectAttachmentsForMarkdown,
 } from "./markdownImages";
 
-test("insere uma imagem apos cada heading de nivel 2, em round-robin", () => {
-  const markdown = "## Primeira Seção\n\nTexto 1.\n\n## Segunda Seção\n\nTexto 2.\n\n## Terceira Seção\n\nTexto 3.";
-  const images = [{ url: "https://x.test/a.png" }, { url: "https://x.test/b.png" }];
+const MARKDOWN_SOCKETS = [
+  "## Taxonomia de Portas de Rede",
+  "",
+  "Portas identificam serviços; a porta 80 responde HTTP.",
+  "",
+  "## Abstração de Sockets",
+  "",
+  "O socket é o ponto final da comunicação entre processos.",
+  "",
+  "## Encerramento Gracioso",
+  "",
+  "O close() faz o flush dos buffers e transmite o segmento FIN.",
+].join("\n");
 
-  const result = insertImagesIntoMarkdown(markdown, images);
+test("coloca cada imagem na secao do MESMO assunto (nao no rodizio antigo)", () => {
+  const images = [
+    {
+      url: "https://x.test/portas.png",
+      sourceText: "Taxonomia de Portas: a porta 80 e a porta 443 identificam serviços",
+    },
+    {
+      url: "https://x.test/socket.png",
+      sourceText: "Abstração de Sockets: o socket é o ponto final da comunicação",
+    },
+  ];
 
-  assert.match(result, /## Primeira Seção\n\n!\[Imagem de referência\]\(https:\/\/x\.test\/a\.png\)/);
-  assert.match(result, /## Segunda Seção\n\n!\[Imagem de referência\]\(https:\/\/x\.test\/b\.png\)/);
-  // 3a secao repete a 1a imagem (round-robin com so 2 imagens disponiveis)
-  assert.match(result, /## Terceira Seção\n\n!\[Imagem de referência\]\(https:\/\/x\.test\/a\.png\)/);
+  const result = insertImagesIntoMarkdown(MARKDOWN_SOCKETS, images);
+
+  assert.match(
+    result,
+    /## Taxonomia de Portas de Rede\n\n!\[Imagem de referência\]\(https:\/\/x\.test\/portas\.png\)/,
+  );
+  assert.match(
+    result,
+    /## Abstração de Sockets\n\n!\[Imagem de referência\]\(https:\/\/x\.test\/socket\.png\)/,
+  );
+});
+
+test("a mesma imagem NUNCA aparece duas vezes no documento", () => {
+  // Uma imagem so, tres secoes: no rodizio antigo ela caia nas tres.
+  const images = [
+    { url: "https://x.test/socket.png", sourceText: "Abstração de Sockets: ponto final" },
+  ];
+
+  const result = insertImagesIntoMarkdown(MARKDOWN_SOCKETS, images);
+
+  const ocorrencias = result.match(/https:\/\/x\.test\/socket\.png/g) ?? [];
+  assert.equal(ocorrencias.length, 1);
+});
+
+test("secao sem afinidade com imagem nenhuma fica sem imagem", () => {
+  const images = [
+    { url: "https://x.test/socket.png", sourceText: "Abstração de Sockets: ponto final" },
+  ];
+
+  const result = insertImagesIntoMarkdown(MARKDOWN_SOCKETS, images);
+
+  const encerramento = result.slice(result.indexOf("## Encerramento Gracioso"));
+  assert.ok(!encerramento.includes("!["), "encerramento nao devia receber a imagem de sockets");
 });
 
 test("sem imagens disponiveis: retorna o markdown sem alteracao", () => {

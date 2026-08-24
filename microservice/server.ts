@@ -1016,6 +1016,10 @@ async function runPipeline(
         mimeType: m.mimeType,
         name: m.name,
         url: `data:${m.mimeType};base64,${m.data}`,
+        // Contexto de origem: e o que permite colocar cada imagem na secao do
+        // mesmo assunto, em vez de distribuir por rodizio (imageTextGraph.ts).
+        sourceText: m.sourceText,
+        sourceOrder: m.sourceOrder,
       })),
     ];
   }

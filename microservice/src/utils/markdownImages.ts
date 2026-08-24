@@ -1,5 +1,17 @@
+import {
+  assignImagesToSections,
+  type RelatableImage,
+  type RelatableSection,
+} from "./imageTextGraph";
+
 export interface MarkdownImage {
   url: string;
+  /** Nome do arquivo de origem - sinal fraco de assunto, mas util. */
+  name?: string;
+  /** Texto do slide de onde a imagem veio (.pptx) - o sinal forte. */
+  sourceText?: string;
+  /** Posicao no material de origem. */
+  sourceOrder?: number;
 }
 
 // Mesmo padrao de heading de nivel 2 usado em splitMarkdownByLevel2Headings
@@ -7,45 +19,70 @@ export interface MarkdownImage {
 // o mesmo ponto de fronteira, sem acoplar aos dois modulos diretamente.
 const LEVEL_2_HEADING_RE = /^##[ \t]+.+?[ \t]*$/gm;
 
+function imagemMarkdown(image: MarkdownImage): string {
+  return `![Imagem de referência](${image.url})`;
+}
+
 /**
- * Insere uma imagem logo apos cada heading de nivel 2 (##) do markdown,
- * ciclando (round-robin) entre as imagens disponiveis - sem chamada extra
- * ao Gemini, sem nocao de "relevancia por assunto" (diferente do
- * referenceImageIndex dos slides, que o modelo escolhe). Objetivo e
- * garantir que todas as imagens do professor apareçam em algum lugar do
- * documento, nao deixar nenhuma de fora - por isso as imagens que sobram
- * do round-robin (mais imagens que headings, ou nenhum heading no
- * markdown) sao anexadas no final em vez de simplesmente descartadas.
+ * Coloca as imagens do professor ao longo do markdown, cada uma na secao que
+ * fala do MESMO assunto (ver imageTextGraph.ts).
+ *
+ * Era rodizio: a lista de imagens era ciclada secao a secao, sem nocao nenhuma
+ * de assunto. Com menos imagens que secoes - o caso normal - a mesma imagem
+ * reaparecia secao atras de secao, e como o deck recebe as imagens da sua parte
+ * do markdown, a repeticao ia junto pros slides. Era a origem do "a mesma
+ * imagem em tudo".
+ *
+ * Agora: nenhuma imagem entra duas vezes, e secao sem afinidade fica sem
+ * imagem. O que sobra (mais imagens que secoes, ou imagem que nao casou com
+ * nada) vai pro fim do documento em vez de ser descartado - a garantia de que
+ * nenhuma imagem do professor se perde continua valendo.
  */
 export function insertImagesIntoMarkdown(markdown: string, images: MarkdownImage[]): string {
   if (images.length === 0) return markdown;
 
   const matches = [...markdown.matchAll(LEVEL_2_HEADING_RE)];
 
-  let result = markdown;
-  if (matches.length > 0) {
-    let rebuilt = "";
-    let cursor = 0;
-    matches.forEach((match, i) => {
-      const headingEnd = (match.index ?? 0) + match[0].length;
-      rebuilt += markdown.slice(cursor, headingEnd);
-      const image = images[i % images.length];
-      rebuilt += `\n\n![Imagem de referência](${image.url})`;
-      cursor = headingEnd;
-    });
-    rebuilt += markdown.slice(cursor);
-    result = rebuilt;
+  // Sem heading nenhum nao ha secao a que relacionar: tudo vai pro fim.
+  if (matches.length === 0) {
+    return `${markdown}\n\n${images.map(imagemMarkdown).join("\n\n")}`;
   }
 
-  // Indices de imagem que o round-robin acima nunca escolhe: com mais
-  // imagens que headings, "i % images.length" so cobre 0..matches.length-1;
-  // com nenhum heading, nenhuma foi usada ainda.
-  const leftover = images.slice(matches.length);
-  if (leftover.length > 0) {
-    result += "\n\n" + leftover.map((img) => `![Imagem de referência](${img.url})`).join("\n\n");
+  const secoes: RelatableSection[] = matches.map((match, i) => {
+    const inicio = (match.index ?? 0) + match[0].length;
+    const fim = i + 1 < matches.length ? matches[i + 1].index ?? markdown.length : markdown.length;
+    return {
+      title: match[0].replace(/^##\s*/, "").trim(),
+      body: markdown.slice(inicio, fim),
+    };
+  });
+
+  const relacionaveis: RelatableImage[] = images.map((img) => ({
+    url: img.url,
+    name: img.name,
+    sourceText: img.sourceText,
+    sourceOrder: img.sourceOrder,
+  }));
+
+  const { bySection, unmatched } = assignImagesToSections(relacionaveis, secoes);
+
+  let rebuilt = "";
+  let cursor = 0;
+  matches.forEach((match, i) => {
+    const headingEnd = (match.index ?? 0) + match[0].length;
+    rebuilt += markdown.slice(cursor, headingEnd);
+    for (const imageIndex of bySection.get(i) ?? []) {
+      rebuilt += `\n\n${imagemMarkdown(images[imageIndex])}`;
+    }
+    cursor = headingEnd;
+  });
+  rebuilt += markdown.slice(cursor);
+
+  if (unmatched.length > 0) {
+    rebuilt += `\n\n${unmatched.map((i) => imagemMarkdown(images[i])).join("\n\n")}`;
   }
 
-  return result;
+  return rebuilt;
 }
 
 // ![alt](data:image/png;base64,XXXX) - so data URI de imagem interessa aqui.
@@ -62,8 +99,8 @@ const MARKDOWN_DATA_URI_IMAGE_RE = /!\[[^\]]*\]\((data:(image\/[a-z0-9.+-]+);bas
  * So recupera imagem embutida (data URI, caso das imagens extraidas de
  * .pptx/.docx). Imagem referenciada por URL fica de fora de proposito:
  * precisaria de download pra virar base64, e este caminho nao faz rede.
- * Deduplica por URL - insertImagesIntoMarkdown repete a mesma imagem em
- * secoes diferentes no round-robin.
+ * Deduplica por URL por seguranca, ainda que a colocacao por afinidade nao
+ * repita mais a mesma imagem em secoes diferentes.
  */
 export function extractAttachmentsFromMarkdown(
   markdown: string,
@@ -79,7 +116,7 @@ export function extractAttachmentsFromMarkdown(
     // gerou a partir da arte ASCII (ver flowDiagram.ts). Reaproveitar isso como
     // "imagem de referencia" do professor mandaria o diagrama pro deck como se
     // fosse material base - e a extracao de .pptx/.docx nem aceita svg.
-    if (mimeType.toLowerCase() === 'image/svg+xml') continue;
+    if (mimeType.toLowerCase() === "image/svg+xml") continue;
     if (vistos.has(url)) continue;
     vistos.add(url);
     attachments.push({

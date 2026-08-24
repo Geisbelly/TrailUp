@@ -6,7 +6,7 @@ e do design de apresentação também são validadas antes de disparar qualquer
 geração, evitando que um deploy antigo produza ou preserve o layout legado.
 """
 
-MEDIA_PIPELINE_VERSION = "2026-08-24.1"
+MEDIA_PIPELINE_VERSION = "2026-08-24.2"
 PRESENTATION_ENGINE_VERSION = "brainhexpdf-v1"
 PRESENTATION_DESIGN_VERSION = "slidesgo-editorial-v3"
 CONTENT_ENRICHMENT_PROVIDER = "openai"

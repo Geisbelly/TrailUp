@@ -13,6 +13,7 @@ import {
 } from "../constants/presentationThemes";
 import { mapWithConcurrency } from "../lib/boundedConcurrency";
 import { resolveRealSlideOrder } from "../lib/pptxSlideOrder";
+import { buildImageSourceContexts, type ImageSourceContext } from "../lib/pptxImageContext";
 import { addWavHeader } from "../lib/wav";
 import {
   generateOpenAITextOnly,
@@ -447,6 +448,20 @@ const MAX_EXTRACTED_MEDIA = 32;
 // - .svg: o <Image> do React Native nao renderiza.
 // O mime vinha sendo chutado ("png ? image/png : webp ? image/webp :
 // image/jpeg"), o que rotularia qualquer formato novo como jpeg.
+/**
+ * Imagem extraida de um .pptx/.docx do professor. sourceText/sourceOrder so
+ * existem no .pptx, onde da pra saber por qual slide a imagem passou (o .rels
+ * do slide aponta pro arquivo em ppt/media) - e esse texto que depois liga a
+ * imagem a secao que fala do mesmo assunto, em vez de distribui-la por rodizio.
+ */
+export interface ExtractedMedia {
+  data: string;
+  mimeType: string;
+  name: string;
+  sourceText?: string;
+  sourceOrder?: number;
+}
+
 const EXTRACTED_MEDIA_MIME_BY_EXT: Record<string, string> = {
   png: "image/png",
   jpg: "image/jpeg",
@@ -461,7 +476,7 @@ function extractedMediaMime(fileName: string): string | undefined {
   return EXTRACTED_MEDIA_MIME_BY_EXT[ext];
 }
 
-async function extractFromZip(arrayBuffer: ArrayBuffer, mediaPath: string): Promise<{ blocks: InternalBlock[], media: { data: string, mimeType: string, name: string }[] }> {
+async function extractFromZip(arrayBuffer: ArrayBuffer, mediaPath: string): Promise<{ blocks: InternalBlock[], media: ExtractedMedia[] }> {
   const zip = await JSZip.loadAsync(arrayBuffer);
   // Ordena antes de cortar, pela mesma razao ja documentada em
   // MAX_PPTX_SLIDES: Object.keys() devolve a ordem fisica do zip, que nao
@@ -478,7 +493,9 @@ async function extractFromZip(arrayBuffer: ArrayBuffer, mediaPath: string): Prom
     .filter(name => name.startsWith("ppt/slides/slide") && name.endsWith(".xml"));
 
   const blocks: InternalBlock[] = [];
-  const media: { data: string, mimeType: string, name: string }[] = [];
+  const media: ExtractedMedia[] = [];
+  // arquivo de midia -> texto do slide de onde ele veio (ver pptxImageContext).
+  let contextosPorMidia = new Map<string, ImageSourceContext>();
 
   // Extract Text (PPTX specific logic if slideFiles exist)
   if (allSlideFiles.length > 0) {
@@ -501,8 +518,19 @@ async function extractFromZip(arrayBuffer: ArrayBuffer, mediaPath: string): Prom
     })();
     const slideFiles = orderedAllSlideFiles.slice(0, MAX_PPTX_SLIDES);
 
+    const slidesLidos: Array<{ slideXml: string; relsXml: string }> = [];
+
     for (const [index, slideFile] of slideFiles.entries()) {
       const content = await zip.files[slideFile].async("string");
+      // O .rels do slide e o que diz QUAL imagem de ppt/media aparecia nele -
+      // e por isso que da pra saber o assunto de cada imagem depois.
+      const relsPath = slideFile.replace(/^ppt\/slides\//, "ppt/slides/_rels/") + ".rels";
+      const relsFile = zip.files[relsPath];
+      slidesLidos.push({
+        slideXml: content,
+        relsXml: relsFile ? await relsFile.async("string") : "",
+      });
+
       const textMatches = content.match(/<a:t>([^<]*)<\/a:t>/g);
       if (textMatches) {
         const slideText = textMatches.map(m => m.replace(/<\/?a:t>/g, "")).join(" ");
@@ -514,13 +542,21 @@ async function extractFromZip(arrayBuffer: ArrayBuffer, mediaPath: string): Prom
         });
       }
     }
+
+    contextosPorMidia = buildImageSourceContexts(slidesLidos);
   }
 
   // Extract Media
   for (const file of mediaFiles) {
     const data = await zip.files[file].async("base64");
     const mimeType = extractedMediaMime(file) ?? "image/jpeg";
-    media.push({ data, mimeType, name: file });
+    const contexto = contextosPorMidia.get(file);
+    media.push({
+      data,
+      mimeType,
+      name: file,
+      ...(contexto ? { sourceText: contexto.sourceText, sourceOrder: contexto.sourceOrder } : {}),
+    });
   }
 
   return { blocks, media };
@@ -569,8 +605,8 @@ export async function extractRawFromDOCX(arrayBuffer: ArrayBuffer) {
  */
 export async function extractImageMediaFromFiles(
   filesData: { data: string; mimeType: string; name: string }[],
-): Promise<{ data: string; mimeType: string; name: string }[]> {
-  const media: { data: string; mimeType: string; name: string }[] = [];
+): Promise<ExtractedMedia[]> {
+  const media: ExtractedMedia[] = [];
 
   for (const fileData of filesData) {
     const isPptx = fileData.mimeType.includes("presentation");

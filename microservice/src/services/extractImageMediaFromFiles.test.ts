@@ -206,3 +206,47 @@ test("com mais imagens que o teto, corta DEPOIS de ordenar (mantem as primeiras 
   assert.equal(media[0].name, "ppt/media/image1.png");
   assert.equal(media[31].name, "ppt/media/image32.png");
 });
+
+test("imagem extraida carrega o texto do slide de onde veio (contexto pra relacionar depois)", async () => {
+  const zip = new JSZip();
+  const slide1 =
+    '<p:sld xmlns:a="x" xmlns:r="y"><a:t>Abstração de Sockets</a:t>' +
+    '<p:pic><a:blip r:embed="rId2"/></p:pic></p:sld>';
+  const slide2 =
+    '<p:sld xmlns:a="x" xmlns:r="y"><a:t>Taxonomia de Portas</a:t>' +
+    '<p:pic><a:blip r:embed="rId2"/></p:pic></p:sld>';
+  zip.file("ppt/slides/slide1.xml", slide1);
+  zip.file("ppt/slides/slide2.xml", slide2);
+  zip.file(
+    "ppt/slides/_rels/slide1.xml.rels",
+    '<Relationships><Relationship Id="rId2" Target="../media/image1.png"/></Relationships>',
+  );
+  zip.file(
+    "ppt/slides/_rels/slide2.xml.rels",
+    '<Relationships><Relationship Id="rId2" Target="../media/image2.png"/></Relationships>',
+  );
+  zip.file("ppt/media/image1.png", TINY_PNG_BASE64, { base64: true });
+  zip.file("ppt/media/image2.png", TINY_PNG_BASE64, { base64: true });
+  const pptxBase64 = (await zip.generateAsync({ type: "nodebuffer" })).toString("base64");
+
+  const media = await extractImageMediaFromFiles([
+    { data: pptxBase64, mimeType: PPTX_MIME, name: "aula.pptx" },
+  ]);
+
+  assert.equal(media.length, 2);
+  assert.match(media[0].sourceText ?? "", /Abstração de Sockets/);
+  assert.match(media[1].sourceText ?? "", /Taxonomia de Portas/);
+  assert.equal(media[0].sourceOrder, 1);
+  assert.equal(media[1].sourceOrder, 2);
+});
+
+test("imagem de .docx segue sem contexto de origem, sem quebrar (docx nao tem slide)", async () => {
+  const docxBase64 = await buildFakeDocxBase64();
+
+  const media = await extractImageMediaFromFiles([
+    { data: docxBase64, mimeType: DOCX_MIME, name: "aula.docx" },
+  ]);
+
+  assert.equal(media.length, 1);
+  assert.equal(media[0].sourceText, undefined);
+});
