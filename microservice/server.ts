@@ -978,7 +978,7 @@ async function runPipeline(
   // mais abaixo) - o restante (pdf, docx, audio, etc.) so serve pra
   // processMediaWithGemini synthesize texto/audio, nao faz sentido como
   // imagem de slide.
-  const imageAttachments = filesData
+  let imageAttachments = filesData
     .filter((f) => f.mimeType.startsWith("image/"))
     .map((f) => ({ data: f.data, mimeType: f.mimeType, name: f.name, url: f.url }));
 
@@ -990,6 +990,24 @@ async function runPipeline(
     presentationPlan,
     guidancePrompt,
   );
+
+  // Professor as vezes anexa um .pptx/.docx em vez de uma imagem avulsa -
+  // sem isso, as imagens de dentro do arquivo (o "conteudo base" de
+  // verdade) nunca viravam imageAttachments e o pipeline inteiro caia pro
+  // fallback de IA/SVG generico. Anexos avulsos (acima) sempre vem
+  // primeiro na lista - preferencia por eles em qualquer selecao por
+  // indice ja existente rio abaixo.
+  if (resultado.extractedMedia && resultado.extractedMedia.length > 0) {
+    imageAttachments = [
+      ...imageAttachments,
+      ...resultado.extractedMedia.map((m) => ({
+        data: m.data,
+        mimeType: m.mimeType,
+        name: m.name,
+        url: `data:${m.mimeType};base64,${m.data}`,
+      })),
+    ];
+  }
 
   // Distribui as imagens do professor pelo markdown ANTES de dividir em
   // partes - a divisao por heading (## titulo) ja existente cuida do resto

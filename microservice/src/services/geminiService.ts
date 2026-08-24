@@ -500,11 +500,17 @@ async function extractRawFromPPTX(arrayBuffer: ArrayBuffer) {
   return extractFromZip(arrayBuffer, "ppt/media/");
 }
 
-async function extractRawFromDOCX(arrayBuffer: ArrayBuffer) {
+export async function extractRawFromDOCX(arrayBuffer: ArrayBuffer) {
   const media: { data: string, mimeType: string, name: string }[] = [];
   
-  const result = await mammoth.extractRawText({ 
-    arrayBuffer: arrayBuffer
+  // mammoth.openZip (v1.x instalado aqui) so reconhece as chaves path/
+  // buffer/file - "arrayBuffer" nao existe na API dessa versao e sempre
+  // rejeitava com "Could not find file in options", derrubando a extracao
+  // de texto de QUALQUER .docx (sem try/catch no caminho legado que chama
+  // esta funcao). "buffer" aceita o ArrayBuffer direto (repassado pro
+  // JSZip.loadAsync por baixo, que aceita varios formatos).
+  const result = await mammoth.extractRawText({
+    buffer: Buffer.from(arrayBuffer)
   });
 
   // Extract media manually from the zip as mammoth image extraction is more for HTML conversion
@@ -518,6 +524,42 @@ async function extractRawFromDOCX(arrayBuffer: ArrayBuffer) {
   })).filter(b => b.text.length > 0);
 
   return { blocks: textBlocks, media: docData.media };
+}
+
+/**
+ * Extrai as imagens embutidas em arquivos .pptx/.docx do professor -
+ * "imagem do conteudo base", nao a imagem personalizada gerada por IA.
+ * Roda SEMPRE, independente do modo de geracao de texto (blocos
+ * enriquecidos da API OU extracao legada em processMediaWithGemini): esse
+ * ultimo so extrai media quando contentBlocks esta vazio, entao com o
+ * fluxo enriquecido (caso comum hoje) as imagens do arquivo original nunca
+ * chegavam a lugar nenhum - nem no markdown, nem na apresentacao, nem no
+ * audio. Best-effort: um arquivo corrompido ou invalido nao derruba a
+ * extracao dos demais.
+ */
+export async function extractImageMediaFromFiles(
+  filesData: { data: string; mimeType: string; name: string }[],
+): Promise<{ data: string; mimeType: string; name: string }[]> {
+  const media: { data: string; mimeType: string; name: string }[] = [];
+
+  for (const fileData of filesData) {
+    const isPptx = fileData.mimeType.includes("presentation");
+    const isDocx = fileData.mimeType.includes("wordprocessingml");
+    if (!isPptx && !isDocx) continue;
+
+    try {
+      const binaryString = atob(fileData.data);
+      const bytes = new Uint8Array(binaryString.length).map((_, i) => binaryString.charCodeAt(i));
+      const extractionResult = isPptx
+        ? await extractRawFromPPTX(bytes.buffer)
+        : await extractRawFromDOCX(bytes.buffer);
+      media.push(...extractionResult.media);
+    } catch {
+      // extracao de midia e best-effort - arquivo corrompido so fica sem imagem
+    }
+  }
+
+  return media;
 }
 
 // --- 2. Processing Pipeline ---
@@ -1289,6 +1331,12 @@ export async function processMediaWithGemini(
     throw new Error("processMediaWithGemini: fontes e contentBlocks vazios.");
   }
 
+  // Roda SEMPRE, independente de contentBlocks.length - com blocos
+  // enriquecidos (fluxo comum hoje) o loop de extracao de texto/midia mais
+  // abaixo nunca executa, entao sem isso as imagens do arquivo original do
+  // professor (.pptx/.docx) nunca chegavam a lugar nenhum.
+  const extractedMedia = await extractImageMediaFromFiles(filesData);
+
   // Use first non-empty file to detect family
   const primary = filesData[0] ?? { data: "", mimeType: "text/plain", name: "empty.txt" };
   let family: "text" | "presentation" | "paged" | "temporal" | "markdown" | "image" = "text";
@@ -1657,12 +1705,15 @@ export async function processMediaWithGemini(
       },
     );
 
-    return consolidateBlockBatchGenerations(contentBlocks, batchResults, {
-      batchSize,
-      concurrency,
-      family,
-      filesCount: filesData.length,
-    });
+    return {
+      ...consolidateBlockBatchGenerations(contentBlocks, batchResults, {
+        batchSize,
+        concurrency,
+        family,
+        filesCount: filesData.length,
+      }),
+      extractedMedia,
+    };
   }
 
   const response = await generateGeminiContent({
@@ -1712,6 +1763,7 @@ export async function processMediaWithGemini(
   const rawResult = JSON.parse(response.text);
   return {
     ...rawResult,
+    extractedMedia,
     metadata: {
       blocks_processed: blocksCount,
       confidence: rawResult.confidence || 0.9,

@@ -61,6 +61,11 @@ export interface ProcessedContent {
   slideImages?: string[];
   audioBase64?: string | null;
   audioMp3Base64?: string | null;
+  /** Imagens embutidas em arquivos .pptx/.docx do professor (ver
+   * extractImageMediaFromFiles em geminiService.ts) - "imagem do conteudo
+   * base", usada como fallback de imageAttachments quando o professor nao
+   * anexou um arquivo de imagem avulso. */
+  extractedMedia?: { data: string; mimeType: string; name: string }[];
   /** Capítulo bruto por bloco — só populado quando generation_mode é
    * "block_batches" (ver consolidateBlockBatchGenerations). Usado pelo
    * endpoint /api/v1/generate/block para persistir cada bloco separado,
