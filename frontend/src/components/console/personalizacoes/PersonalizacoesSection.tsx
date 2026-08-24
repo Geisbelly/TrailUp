@@ -21,7 +21,11 @@ import {
   type PersonalizacaoPerfilItem,
   type PersonalizacaoPorPerfilResponse,
 } from "./personalizacoesApi";
-import { PerfilConteudoDialog } from "./PerfilConteudoDialog";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { PerfilConteudoPage } from "./PerfilConteudoPage";
+import type { MaterialTipo } from "./PerfilConteudoView";
+import { buildMaterialPath, isMaterialRoute, parseMaterialQuery } from "./materialRoute";
+import { consolePathForView } from "@/pages/consoleSections";
 import {
   getFormatoStatusBadge,
   getPersonalizacaoStatusBadge,
@@ -81,9 +85,24 @@ function planoText(plano: PersonalizacaoPerfilItem["plano"], key: string): strin
   return typeof value === "string" ? value : "";
 }
 
+function consolePathForViewPersonalizacoes(): string {
+  return consolePathForView("personalizacoes");
+}
+
 export default function PersonalizacoesSection({ professorId }: { professorId?: string }) {
   const { user, session } = useAuth();
   const resolvedProfessorId = professorId ?? user?.id;
+
+  // Pagina do material: /console/personalizacoes/material?classe&topico&conteudo&perfil&aba.
+  // A selecao (turma/topico/conteudo) mora em estado local desta secao, entao
+  // ela viaja na query - sem isso, refresh ou link colado cairiam numa pagina
+  // sem saber o que abrir. Ver materialRoute.ts.
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const materialRouteParams = isMaterialRoute(location.pathname)
+    ? parseMaterialQuery(searchParams)
+    : null;
 
   const [classes, setClasses] = useState<ClasseRow[]>([]);
   const [topicos, setTopicos] = useState<TopicoRow[]>([]);
@@ -501,6 +520,18 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
     void loadGrupo();
   }, [loadGrupo]);
 
+  // Entrou direto na pagina do material (link/refresh): restaura a selecao a
+  // partir da query antes de qualquer carregamento, senao a secao nao teria o
+  // que buscar. So semeia o que ainda esta vazio - nao atropela navegacao
+  // normal, em que a selecao ja existe.
+  useEffect(() => {
+    if (!materialRouteParams) return;
+    if (materialRouteParams.classeId && !classeId) setClasseId(materialRouteParams.classeId);
+    if (materialRouteParams.topicoId && !topicoId) setTopicoId(materialRouteParams.topicoId);
+    if (materialRouteParams.conteudoId && !conteudoId) setConteudoId(materialRouteParams.conteudoId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [materialRouteParams?.classeId, materialRouteParams?.topicoId, materialRouteParams?.conteudoId]);
+
   const alunoSelecionado = useMemo(() => alunos.find((a) => a.id === alunoId) ?? null, [alunos, alunoId]);
   const conteudoSelecionado = useMemo(
     () => conteudos.find((item) => String(item.id) === conteudoId) ?? null,
@@ -512,6 +543,44 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
     const key = alunoSelecionado.perfil_dominante;
     return porPerfil.perfis.find((p) => p.perfil === key) ?? null;
   }, [alunoSelecionado, porPerfil]);
+
+  if (materialRouteParams) {
+    const voltarParaLista = () => navigate(consolePathForViewPersonalizacoes());
+    const itemDoPerfil =
+      porPerfil?.perfis.find((p) => p.perfil === materialRouteParams.perfil) ?? null;
+
+    if (itemDoPerfil) {
+      return (
+        <PerfilConteudoPage
+          item={itemDoPerfil}
+          initialTab={materialRouteParams.aba as MaterialTipo | undefined}
+          classeId={Number(classeId) || undefined}
+          topicoId={Number(topicoId) || undefined}
+          topicoTitulo={topicos.find((t) => String(t.id) === topicoId)?.titulo}
+          conteudoTitulo={conteudoSelecionado?.titulo}
+          resolveToken={resolveToken}
+          onRegenerated={() => void loadPorPerfil({ silent: true })}
+          onVoltar={voltarParaLista}
+        />
+      );
+    }
+
+    if (porPerfilLoading || !porPerfil) {
+      return <p className="py-12 text-center text-sm text-muted-foreground">Carregando material...</p>;
+    }
+
+    return (
+      <div className="py-12 text-center space-y-3">
+        <p className="text-sm text-muted-foreground">
+          Nao encontramos material do perfil <span className="capitalize">{materialRouteParams.perfil}</span>{" "}
+          para esta selecao.
+        </p>
+        <Button variant="outline" size="sm" onClick={voltarParaLista}>
+          Voltar para a lista
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -979,7 +1048,19 @@ function PerfilMaterialCard({
   resolveToken: () => Promise<string>;
   onRegenerated: () => void;
 }) {
-  const [dialogTab, setDialogTab] = useState<MaterialTipo | null>(null);
+  const navigate = useNavigate();
+  // Abre a pagina do material (era um modal): a URL carrega a selecao inteira,
+  // entao link direto, refresh e botao voltar funcionam.
+  const abrirMaterial = (aba: MaterialTipo) =>
+    navigate(
+      buildMaterialPath({
+        classeId: String(classeId),
+        topicoId: String(topicoId),
+        conteudoId: conteudoId != null ? String(conteudoId) : undefined,
+        perfil: item.perfil,
+        aba,
+      })
+    );
   const [manualJob, setManualJob] = useState<PersonalizacaoJobResumo | null>(null);
   const [manualJobError, setManualJobError] = useState<string | null>(null);
   const manualJobAtivo = Boolean(manualJob && ACTIVE_JOB_STATUSES.has(manualJob.status));
@@ -1153,7 +1234,7 @@ function PerfilMaterialCard({
                       {material ? (
                         <button
                           type="button"
-                          onClick={() => setDialogTab(key)}
+                          onClick={() => abrirMaterial(key)}
                           className="text-xs text-primary underline underline-offset-2"
                         >
                           {formato.status === "pronto" ? "ver" : "ver anterior"}
@@ -1196,23 +1277,13 @@ function PerfilMaterialCard({
               const primeiraDisponivel =
                 MATERIAL_TIPOS.find(({ key }) => getMaterial(item.materiais, key))?.key ??
                 "markdown";
-              setDialogTab(dialogTab ?? primeiraDisponivel);
+              abrirMaterial(primeiraDisponivel);
             }}
           >
             Ver conteúdo completo
           </Button>
         )}
       </CardContent>
-      <PerfilConteudoDialog
-        item={item}
-        open={dialogTab !== null}
-        onOpenChange={(open) => setDialogTab(open ? dialogTab : null)}
-        initialTab={dialogTab ?? undefined}
-        classeId={classeId}
-        topicoId={topicoId}
-        resolveToken={resolveToken}
-        onRegenerated={onRegenerated}
-      />
     </Card>
   );
 }

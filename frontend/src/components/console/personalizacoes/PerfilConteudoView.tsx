@@ -3,13 +3,6 @@ import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { markdownUrlTransform } from "./markdownUrlTransform";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,7 +20,7 @@ import { getMaterialPartes } from "./materialParts";
 import { fetchHtmlDeckSource, createHtmlBlobUrl } from "./htmlDeckSource";
 import { supabase } from "@/integrations/supabase/client";
 
-type MaterialTipo = "markdown" | "pdf" | "audio" | "apresentacao";
+export type MaterialTipo = "markdown" | "pdf" | "audio" | "apresentacao";
 
 const TABS: Array<{ key: MaterialTipo; label: string; icon: typeof FileText }> = [
   { key: "markdown", label: "Texto", icon: NotebookPen },
@@ -522,10 +515,16 @@ function MaterialTabContent({
   );
 }
 
-export function PerfilConteudoDialog({
+/**
+ * Conteudo completo de um perfil, em pagina inteira.
+ *
+ * Era um modal (Dialog) limitado a max-w-3xl: a lista de subtopicos estourava a
+ * largura, o material ficava espremido numa coluna estreita com scroll interno,
+ * e nao dava pra abrir por link nem voltar pelo navegador. Como pagina, o
+ * material usa a largura toda e a URL passa a dizer o que esta aberto.
+ */
+export function PerfilConteudoView({
   item,
-  open,
-  onOpenChange,
   initialTab,
   classeId,
   topicoId,
@@ -533,8 +532,6 @@ export function PerfilConteudoDialog({
   onRegenerated,
 }: {
   item: PersonalizacaoPerfilItem;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
   initialTab?: MaterialTipo;
   classeId?: number;
   topicoId?: number;
@@ -556,51 +553,38 @@ export function PerfilConteudoDialog({
   const [activeTab, setActiveTab] = useState<MaterialTipo>(initialTab ?? disponiveis[0]?.key ?? "markdown");
 
   useEffect(() => {
-    if (open) setActiveTab(initialTab ?? disponiveis[0]?.key ?? "markdown");
+    setActiveTab(initialTab ?? disponiveis[0]?.key ?? "markdown");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, initialTab, item.perfil]);
+  }, [initialTab, item.perfil]);
+
+  if (disponiveis.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground py-12 text-center">
+        Ainda não há materiais gerados para este perfil neste tópico.
+      </p>
+    );
+  }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
-        <DialogHeader>
-          <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-full" style={{ backgroundColor: item.cor }} />
-            <DialogTitle className="capitalize">{item.perfil_label}</DialogTitle>
-          </div>
-          <DialogDescription>
-            Conteúdo gerado para o perfil <span className="capitalize">{item.perfil}</span> — todos os formatos em um
-            só lugar.
-          </DialogDescription>
-        </DialogHeader>
-
-        {disponiveis.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-8 text-center">
-            Ainda não há materiais gerados para este perfil neste tópico.
-          </p>
-        ) : (
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as MaterialTipo)}>
-            <TabsList>
-              {disponiveis.map(({ key, label, icon: Icon }) => (
-                <TabsTrigger key={key} value={key} className="gap-1.5">
-                  <Icon className="h-3.5 w-3.5" />
-                  {label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-            {disponiveis.map(({ key }) => (
-              <TabsContent key={key} value={key}>
-                <MaterialTabContent
-                  tipo={key}
-                  material={getMaterial(item.materiais, key)}
-                  fallbackUpdatedAt={item.personalizacao?.updated_at ?? item.gerado_em}
-                  regenerarContext={regenerarContext}
-                />
-              </TabsContent>
-            ))}
-          </Tabs>
-        )}
-      </DialogContent>
-    </Dialog>
+    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as MaterialTipo)}>
+      <TabsList>
+        {disponiveis.map(({ key, label, icon: Icon }) => (
+          <TabsTrigger key={key} value={key} className="gap-1.5">
+            <Icon className="h-3.5 w-3.5" />
+            {label}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+      {disponiveis.map(({ key }) => (
+        <TabsContent key={key} value={key}>
+          <MaterialTabContent
+            tipo={key}
+            material={getMaterial(item.materiais, key)}
+            fallbackUpdatedAt={item.personalizacao?.updated_at ?? item.gerado_em}
+            regenerarContext={regenerarContext}
+          />
+        </TabsContent>
+      ))}
+    </Tabs>
   );
 }

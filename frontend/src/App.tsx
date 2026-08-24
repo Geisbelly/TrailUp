@@ -11,6 +11,7 @@ import CadastroProfessor from "./pages/CadastroProfessor";
 import Login from "./pages/Login";
 import Console from "./pages/Console";
 import { CONSOLE_SECTIONS, consolePathForView } from "./pages/consoleSections";
+import { MATERIAL_ROUTE_PATH } from "./components/console/personalizacoes/materialRoute";
 import Blog from "./pages/Blog";
 import BlogPost from "./pages/BlogPost";
 import Sobre from "./pages/Sobre";
@@ -51,6 +52,17 @@ const App = () => (
                 }
               />
             ))}
+            {/* Subrotas com conteudo proprio dentro de uma aba: a aba ativa sai
+                do primeiro segmento (consoleSections), entao elas continuam
+                abrindo o console na secao certa. */}
+            <Route
+              path={MATERIAL_ROUTE_PATH}
+              element={
+                <ProtectedRoute allowedRoles={["professor"]} requireLiberado>
+                  <Console />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/console/trilha/:topicoId/editar"
               element={
