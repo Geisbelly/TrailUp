@@ -62,14 +62,16 @@ function materialBucket(material: Record<string, unknown> | null): string | null
 // markdown gerado com tabela, code fence, link ou imagem. `prose` (plugin
 // @tailwindcss/typography) cobre a tipografia de todos os elementos GFM;
 // so o h2 recebe cor de destaque pra manter a enfase visual que a versao
-// anterior ja dava aos subtopicos.
+// anterior ja dava aos subtopicos. A variante `prose-trailup`
+// (tailwind.config.ts) amarra as cores aos tokens do tema - o `prose` puro
+// assume tema claro e o app e escuro por padrao, sem a classe "dark".
 function MarkdownView({ text }: { text: string }) {
   return (
-    <div className="prose prose-sm dark:prose-invert max-w-none">
+    <div className="prose prose-sm prose-trailup max-w-none">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          h2: ({ children }) => <h2 className="text-primary">{children}</h2>,
+          h2: ({ children }) => <h2 className="text-primary-light">{children}</h2>,
           a: ({ children, href }) => (
             <a href={href} target="_blank" rel="noreferrer">
               {children}

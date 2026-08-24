@@ -90,6 +90,47 @@ export default {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
       },
+      // Variante `prose-trailup` do @tailwindcss/typography amarrada aos tokens
+      // do tema. O tema do app e escuro por padrao (:root ja e escuro) e a
+      // classe "dark" nunca e aplicada em lugar nenhum, entao `dark:prose-invert`
+      // nunca ativava: o `prose` padrao pintava texto cinza-escuro sobre fundo
+      // escuro. Aqui cada slot aponta pro token correspondente, e os tons de
+      // texto ficam todos em contraste AAA (>= 7:1) contra --card/--background:
+      // foreground 15.3:1, muted-foreground 8.3:1, primary-light 7.0:1
+      // (--primary puro daria so 4.3:1, por isso links/citacoes usam a variante
+      // clara - luminosidade elevada no HSL, sem mistura com branco).
+      typography: {
+        trailup: {
+          css: {
+            "--tw-prose-body": "hsl(var(--foreground))",
+            "--tw-prose-headings": "hsl(var(--foreground))",
+            "--tw-prose-lead": "hsl(var(--muted-foreground))",
+            "--tw-prose-links": "hsl(var(--primary-light))",
+            "--tw-prose-bold": "hsl(var(--foreground))",
+            "--tw-prose-counters": "hsl(var(--muted-foreground))",
+            "--tw-prose-bullets": "hsl(var(--primary-light))",
+            "--tw-prose-hr": "hsl(var(--border))",
+            "--tw-prose-quotes": "hsl(var(--foreground))",
+            "--tw-prose-quote-borders": "hsl(var(--primary-light))",
+            "--tw-prose-captions": "hsl(var(--muted-foreground))",
+            "--tw-prose-code": "hsl(var(--foreground))",
+            "--tw-prose-pre-code": "hsl(var(--foreground))",
+            "--tw-prose-pre-bg": "hsl(var(--muted))",
+            "--tw-prose-th-borders": "hsl(var(--border))",
+            "--tw-prose-td-borders": "hsl(var(--border))",
+            // Codigo inline vira chip sobre --muted (12:1 com o foreground) e
+            // perde os backticks que o prose injeta por pseudo-elemento.
+            code: {
+              backgroundColor: "hsl(var(--muted))",
+              padding: "0.15em 0.4em",
+              borderRadius: "0.375rem",
+              fontWeight: "500",
+            },
+            "code::before": { content: '""' },
+            "code::after": { content: '""' },
+          },
+        },
+      },
     },
   },
   plugins: [tailwindcssAnimate, tailwindcssTypography],
