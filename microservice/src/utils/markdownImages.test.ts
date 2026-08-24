@@ -20,10 +20,32 @@ test("sem imagens disponiveis: retorna o markdown sem alteracao", () => {
   assert.equal(insertImagesIntoMarkdown(markdown, []), markdown);
 });
 
-test("markdown sem nenhum heading de nivel 2: retorna sem alteracao", () => {
+test("markdown sem nenhum heading de nivel 2: anexa as imagens no final em vez de descarta-las", () => {
   const markdown = "Texto solto, sem headings.\n\nMais texto.";
-  const images = [{ url: "https://x.test/a.png" }];
-  assert.equal(insertImagesIntoMarkdown(markdown, images), markdown);
+  const images = [{ url: "https://x.test/a.png" }, { url: "https://x.test/b.png" }];
+
+  const result = insertImagesIntoMarkdown(markdown, images);
+
+  assert.match(result, /Texto solto, sem headings\.\n\nMais texto\./);
+  assert.match(result, /!\[Imagem de referência\]\(https:\/\/x\.test\/a\.png\)/);
+  assert.match(result, /!\[Imagem de referência\]\(https:\/\/x\.test\/b\.png\)/);
+});
+
+test("mais imagens do professor do que headings: as que sobram do round-robin sao anexadas no final, nenhuma e descartada", () => {
+  const markdown = "## Única Seção\n\nTexto.";
+  const images = [
+    { url: "https://x.test/a.png" },
+    { url: "https://x.test/b.png" },
+    { url: "https://x.test/c.png" },
+  ];
+
+  const result = insertImagesIntoMarkdown(markdown, images);
+
+  // 1a imagem entra logo apos a unica secao (round-robin normal)
+  assert.match(result, /## Única Seção\n\n!\[Imagem de referência\]\(https:\/\/x\.test\/a\.png\)/);
+  // as que sobraram (b, c) nao tinham heading pra ir - vao pro final, nao somem
+  assert.match(result, /!\[Imagem de referência\]\(https:\/\/x\.test\/b\.png\)/);
+  assert.match(result, /!\[Imagem de referência\]\(https:\/\/x\.test\/c\.png\)/);
 });
 
 test("preserva o conteudo original integralmente, so adiciona as linhas de imagem", () => {
