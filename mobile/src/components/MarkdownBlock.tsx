@@ -9,7 +9,9 @@ import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { resolveSupabaseStorageUrl } from "@/utils/supabaseStorage";
 import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
-import Markdown from "react-native-markdown-display";
+import Markdown, { renderRules } from "react-native-markdown-display";
+import { SvgXml } from "react-native-svg";
+import { decodeInlineSvgDataUri } from "@/utils/inlineSvgDataUri";
 
 type Props = {
   payload: any;
@@ -24,6 +26,37 @@ function readString(value: any, ...keys: string[]) {
   }
   return null;
 }
+
+// Diagrama de fluxo chega no markdown como SVG embutido em data URI (ver
+// microservice/src/utils/flowDiagram.ts). O <Image> do React Native nao
+// renderiza SVG, entao esta regra desenha com react-native-svg; qualquer outra
+// imagem (foto do professor, png/jpeg) segue pelo renderizador padrao da
+// biblioteca, sem mudanca de comportamento.
+const markdownRules = {
+  image: (
+    node: any,
+    children: any,
+    parent: any,
+    estilos: any,
+    allowedImageHandlers: string[],
+    defaultImageHandler: string,
+  ) => {
+    const inline = decodeInlineSvgDataUri(node?.attributes?.src);
+    if (!inline) {
+      // renderRules.image e opcional no tipo da biblioteca; na pratica sempre
+      // existe, mas nao vale derrubar a tela do aluno por causa disso.
+      const padrao = renderRules.image;
+      return padrao
+        ? padrao(node, children, parent, estilos, allowedImageHandlers, defaultImageHandler)
+        : null;
+    }
+    return (
+      <View key={node.key} style={[styles.diagrama, { aspectRatio: inline.aspectRatio }]}>
+        <SvgXml xml={inline.xml} width="100%" height="100%" />
+      </View>
+    );
+  },
+};
 
 function splitByH2(content: string): string[] {
   const parts = content.split(/(?=^##\s)/m);
@@ -212,7 +245,7 @@ export function MarkdownBlock({ payload }: Props) {
 
   return (
     <View style={styles.wrapper}>
-      <Markdown style={mdStyles}>{currentPage}</Markdown>
+      <Markdown style={mdStyles} rules={markdownRules}>{currentPage}</Markdown>
 
       {totalPages > 1 && (
         <View style={[styles.pagination, { borderTopColor: palette.border }]}>
@@ -248,6 +281,12 @@ export function MarkdownBlock({ payload }: Props) {
 }
 
 const styles = StyleSheet.create({
+  // Largura total com altura reservada pela proporcao do viewBox: sem isso o
+  // SVG entra com altura zero e o diagrama nao aparece.
+  diagrama: {
+    width: "100%",
+    marginVertical: 12,
+  },
   wrapper: {
     marginTop: 6,
   },

@@ -72,3 +72,8 @@ mobile/android/
 # --- Git worktrees isolados (superpowers:using-git-worktrees) ---
 .worktrees/
 .superpowers/
+
+# graphify-out fora da raiz e artefato de rodar o graphify dentro de um
+# subdiretorio (o commit 8c409ae ja removeu um lote desses). O grafo do projeto
+# vive so em /graphify-out, que segue rastreado normalmente.
+**/*/graphify-out/
