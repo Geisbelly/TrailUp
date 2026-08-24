@@ -800,8 +800,8 @@
     "semantic_hash": "c735540bb63936a123bc867d950c9f69"
   },
   "frontend/src/App.tsx": {
-    "mtime": 1787593115.223675,
-    "ast_hash": "d32301a96c854cf11bdc8fbbc7aec4df",
+    "mtime": 1787615622.3094864,
+    "ast_hash": "d68fb0470ae5f363097087914d39f633",
     "semantic_hash": ""
   },
   "frontend/src/components/BrainHexShowcase.tsx": {
@@ -934,14 +934,9 @@
     "ast_hash": "0254354b897a8bcaa2974dd21feb0b84",
     "semantic_hash": "0254354b897a8bcaa2974dd21feb0b84"
   },
-  "frontend/src/components/console/personalizacoes/PerfilConteudoDialog.tsx": {
-    "mtime": 1787594174.7116115,
-    "ast_hash": "a9b773cb1fcdd0301a7756933fa9b5c4",
-    "semantic_hash": ""
-  },
   "frontend/src/components/console/personalizacoes/PersonalizacoesSection.tsx": {
-    "mtime": 1787589296.975307,
-    "ast_hash": "ddbb38561922d208845685f6a6cb5f45",
+    "mtime": 1787615706.1705756,
+    "ast_hash": "cbe31609e3779d2b8c34111769ed8ea8",
     "semantic_hash": ""
   },
   "frontend/src/components/console/personalizacoes/personalizacoesApi.ts": {
@@ -4787,6 +4782,26 @@
   "microservice/src/utils/imageTextGraph.ts": {
     "mtime": 1787613742.539575,
     "ast_hash": "e959115d383b15745349badd9935e355",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/console/personalizacoes/PerfilConteudoPage.tsx": {
+    "mtime": 1787615622.3079805,
+    "ast_hash": "6c236752936a58c9e95ba5d2f4be3c71",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/console/personalizacoes/PerfilConteudoView.tsx": {
+    "mtime": 1787615622.306979,
+    "ast_hash": "6ac0cde57283d5c6dc0a15121210a09b",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/console/personalizacoes/materialRoute.test.ts": {
+    "mtime": 1787615579.035232,
+    "ast_hash": "1e6b7410c9a98b854b05bd8dbd789db7",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/console/personalizacoes/materialRoute.ts": {
+    "mtime": 1787615562.4442825,
+    "ast_hash": "00385c8428a7e2924b98357197088e2e",
     "semantic_hash": ""
   }
 }
