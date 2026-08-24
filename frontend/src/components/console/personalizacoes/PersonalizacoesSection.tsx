@@ -115,12 +115,21 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
   const [grupoLoading, setGrupoLoading] = useState(false);
   const [grupoError, setGrupoError] = useState<string | null>(null);
 
+  // O access_token muda de valor a cada refresh silencioso do Supabase - que
+  // acontece justamente ao recuperar o foco da aba. Como dependencia ele fazia
+  // resolveToken trocar de identidade, e a cadeia resolveToken -> loadPorPerfil
+  // -> useEffect refazia o fetch inteiro, devolvendo a UI pro estado inicial
+  // (parte 1 de cada material, aba padrao) a cada troca de aba do navegador.
+  // O ref mantem sempre o token corrente sem invalidar o callback.
+  const sessionTokenRef = useRef<string>("");
+  sessionTokenRef.current = String(session?.access_token ?? "").trim();
+
   const resolveToken = useCallback(async () => {
-    const seed = String(session?.access_token ?? "").trim();
+    const seed = sessionTokenRef.current;
     if (seed) return seed;
     const { data } = await supabase.auth.getSession();
     return String(data.session?.access_token ?? "").trim();
-  }, [session?.access_token]);
+  }, []);
 
   const [perfilParaGerarTudo, setPerfilParaGerarTudo] = useState<string>(BRAINHEX_PROFILE_KEYS[0]);
   const [gerarTudoJob, setGerarTudoJob] = useState<PersonalizacaoJobResumo | null>(null);

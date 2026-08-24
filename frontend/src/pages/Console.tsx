@@ -94,7 +94,14 @@ export default function Console() {
     };
 
     fetchProfessor();
-  }, [user]);
+    // Depende do id, nao do objeto user: o Supabase emite um evento de auth ao
+    // recuperar o foco da aba e o AuthProvider troca `user` por um objeto novo
+    // com os mesmos dados. Com [user] esse efeito rodava de novo, ligava
+    // isLoadingProfessor e o early-return abaixo desmontava todo o console -
+    // era o que jogava a personalizacao de volta pro estado inicial (aba e
+    // parte 1) a cada troca de aba.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   const handleLogout = async () => {
     await signOut();
@@ -145,7 +152,10 @@ export default function Console() {
       .toUpperCase()
       .slice(0, 2) || "PR";
 
-  if (isLoading || isLoadingProfessor) {
+  // A tela cheia de loading e so pro primeiro carregamento. Recarregamentos
+  // posteriores (troca de aba, refresh de token) mantem o console montado pra
+  // nao perder o estado das secoes filhas.
+  if ((isLoading || isLoadingProfessor) && !professorData) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
