@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { markdownUrlTransform } from "./markdownUrlTransform";
 import {
   Dialog,
   DialogContent,
@@ -70,6 +71,10 @@ function MarkdownView({ text }: { text: string }) {
     <div className="prose prose-sm prose-trailup max-w-none">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
+        // Sem isso o react-markdown apaga toda imagem em data URI - some tanto
+        // a imagem que veio de dentro do .pptx do professor quanto o diagrama
+        // de fluxo em SVG que o pipeline gera (ver markdownUrlTransform.ts).
+        urlTransform={markdownUrlTransform}
         components={{
           h2: ({ children }) => <h2 className="text-primary-light">{children}</h2>,
           a: ({ children, href }) => (
