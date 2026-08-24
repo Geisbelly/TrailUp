@@ -467,5 +467,17 @@
   "465": "8. Constraints e indexes crÃ­ticos",
   "466": ".buscar_por_classe",
   "467": ".__init__",
-  "468": "browserslist"
+  "468": "browserslist",
+  "469": "upsert_progresso_personalizado",
+  "470": "@config-plugins/react-native-blob-util",
+  "471": "markdown.ts",
+  "472": "consoleSections.ts",
+  "473": "upload_fontes_personalizacao",
+  "474": "_professor_em_modo_automatico",
+  "475": "supabase/types.ts",
+  "476": "test_enqueue_manual_profile_generate_ignora_modo_manual",
+  "477": "test_enqueue_job_dedup_scopes_by_aluno_id_for_cleanup_kind",
+  "478": "test_enqueue_job_does_not_reuse_open_job_from_different_topico",
+  "479": "expo-symbols",
+  "480": "react-markdown"
 }

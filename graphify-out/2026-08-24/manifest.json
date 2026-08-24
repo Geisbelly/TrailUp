@@ -935,13 +935,13 @@
     "semantic_hash": "0254354b897a8bcaa2974dd21feb0b84"
   },
   "frontend/src/components/console/personalizacoes/PerfilConteudoDialog.tsx": {
-    "mtime": 1787532888.2245507,
-    "ast_hash": "06ebee6ac85ecb422da0a825ca2d9fa5",
+    "mtime": 1787589412.1565263,
+    "ast_hash": "ede18bbcc131df353eeb95d339445fbf",
     "semantic_hash": ""
   },
   "frontend/src/components/console/personalizacoes/PersonalizacoesSection.tsx": {
-    "mtime": 1787347226.0537577,
-    "ast_hash": "09ec8eaeae2706f4307757e14cd01bae",
+    "mtime": 1787589296.975307,
+    "ast_hash": "ddbb38561922d208845685f6a6cb5f45",
     "semantic_hash": ""
   },
   "frontend/src/components/console/personalizacoes/personalizacoesApi.ts": {
@@ -1420,8 +1420,8 @@
     "semantic_hash": "1e41cc022c4ba815d307b1c259dd077f"
   },
   "frontend/src/pages/Console.tsx": {
-    "mtime": 1787347226.0710852,
-    "ast_hash": "da378550d45dc085d28ad84099dcbb84",
+    "mtime": 1787589568.4169977,
+    "ast_hash": "c5081eba7fe8a2e48e6aa7634d218d00",
     "semantic_hash": ""
   },
   "frontend/src/pages/Contato.tsx": {
@@ -1505,8 +1505,8 @@
     "semantic_hash": "ac2d6edf0c71715406785b9a0aca6465"
   },
   "frontend/tailwind.config.ts": {
-    "mtime": 1787532888.225551,
-    "ast_hash": "5f0776b2af07fb41892daebacc30a586",
+    "mtime": 1787589412.1565263,
+    "ast_hash": "a5f93bef5454609d0d8bb62f37356661",
     "semantic_hash": ""
   },
   "frontend/tsconfig.app.json": {
@@ -1550,8 +1550,8 @@
     "semantic_hash": ""
   },
   "microservice/server.ts": {
-    "mtime": 1787534434.8885984,
-    "ast_hash": "0a2169792e1b8426287092f6c4799d42",
+    "mtime": 1787592275.8391397,
+    "ast_hash": "c0abfa932ec5d268824476d47c33c345",
     "semantic_hash": ""
   },
   "microservice/sql/migrations/0001_merge_personalizacao_materiais_rpc.sql": {
@@ -1660,8 +1660,8 @@
     "semantic_hash": ""
   },
   "microservice/src/services/geminiService.ts": {
-    "mtime": 1787534434.8905983,
-    "ast_hash": "3296b01e558dbccab186071f3a68bffb",
+    "mtime": 1787591922.5402806,
+    "ast_hash": "e001c23343608d7c94e2e5f45bdb4f6f",
     "semantic_hash": ""
   },
   "microservice/src/services/supabaseService.ts": {
@@ -4450,13 +4450,13 @@
     "semantic_hash": ""
   },
   "microservice/src/utils/markdownImages.test.ts": {
-    "mtime": 1787530115.5598042,
-    "ast_hash": "f04dc3ac2d5e79d4d1fd1b356d662b43",
+    "mtime": 1787592240.1517208,
+    "ast_hash": "55ad31d800ac5410b0a610ec429e54ea",
     "semantic_hash": ""
   },
   "microservice/src/utils/markdownImages.ts": {
-    "mtime": 1787530115.560811,
-    "ast_hash": "c7d478be6a71384f68b705d8420f5604",
+    "mtime": 1787592258.1823895,
+    "ast_hash": "e897acb104560c96ada7456c4a514a4e",
     "semantic_hash": ""
   },
   "mobile/src/components/PresentationSlidesBlock.test.ts": {
@@ -4695,8 +4695,18 @@
     "semantic_hash": ""
   },
   "microservice/src/services/extractImageMediaFromFiles.test.ts": {
-    "mtime": 1787534434.8885984,
-    "ast_hash": "c48a1066e9c1c2803b3a613fc8e76d66",
+    "mtime": 1787591900.6646242,
+    "ast_hash": "6303efccd72c48253dece385b2181d8e",
+    "semantic_hash": ""
+  },
+  "frontend/src/pages/consoleSections.test.ts": {
+    "mtime": 1787591355.3984604,
+    "ast_hash": "b118d0e0028b1f5c632d529fbf7d1dab",
+    "semantic_hash": ""
+  },
+  "frontend/src/pages/consoleSections.ts": {
+    "mtime": 1787591391.3962498,
+    "ast_hash": "f67a3298fc33ef9fa13c563d5da79d35",
     "semantic_hash": ""
   }
 }

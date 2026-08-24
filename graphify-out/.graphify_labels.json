@@ -469,5 +469,13 @@
   "467": ".__init__",
   "468": "browserslist",
   "469": "upsert_progresso_personalizado",
-  "470": "@config-plugins/react-native-blob-util"
+  "470": "@config-plugins/react-native-blob-util",
+  "471": "markdown.ts",
+  "472": "consoleSections.ts",
+  "473": "upload_fontes_personalizacao",
+  "474": "_professor_em_modo_automatico",
+  "475": "supabase/types.ts",
+  "476": "test_enqueue_manual_profile_generate_ignora_modo_manual",
+  "479": "expo-symbols",
+  "480": "react-markdown"
 }
