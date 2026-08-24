@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   Dialog,
   DialogContent,
@@ -54,59 +56,29 @@ function materialBucket(material: Record<string, unknown> | null): string | null
   return typeof bucket === "string" && bucket.trim() ? bucket.trim() : null;
 }
 
-// Render leve de markdown -> JSX (sem dependencia externa), mesmo padrao usado em BlogPost.tsx.
-function renderInline(text: string) {
-  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
-  return parts.map((part, i) => {
-    if (part.startsWith("**") && part.endsWith("**")) {
-      return <strong key={i}>{part.slice(2, -2)}</strong>;
-    }
-    if (part.startsWith("*") && part.endsWith("*")) {
-      return <em key={i}>{part.slice(1, -1)}</em>;
-    }
-    return <span key={i}>{part}</span>;
-  });
-}
-
+// ReactMarkdown + remark-gfm (tabelas, listas numeradas, links, blocos de
+// codigo, imagens) - o renderizador anterior era escrito a mao e so
+// reconhecia headings/lista simples/negrito/italico, quebrando qualquer
+// markdown gerado com tabela, code fence, link ou imagem. `prose` (plugin
+// @tailwindcss/typography) cobre a tipografia de todos os elementos GFM;
+// so o h2 recebe cor de destaque pra manter a enfase visual que a versao
+// anterior ja dava aos subtopicos.
 function MarkdownView({ text }: { text: string }) {
-  const paragraphs = text.split("\n").filter((p) => p.trim());
   return (
-    <div className="space-y-2">
-      {paragraphs.map((paragraph, index) => {
-        if (paragraph.startsWith("# ")) {
-          return (
-            <h1 key={index} className="text-xl font-bold mt-4 mb-2">
-              {renderInline(paragraph.slice(2))}
-            </h1>
-          );
-        }
-        if (paragraph.startsWith("## ")) {
-          return (
-            <h2 key={index} className="text-lg font-bold mt-3 mb-2 text-primary">
-              {renderInline(paragraph.slice(3))}
-            </h2>
-          );
-        }
-        if (paragraph.startsWith("### ")) {
-          return (
-            <h3 key={index} className="text-base font-semibold mt-2 mb-1">
-              {renderInline(paragraph.slice(4))}
-            </h3>
-          );
-        }
-        if (paragraph.startsWith("- ") || paragraph.startsWith("* ")) {
-          return (
-            <li key={index} className="ml-6 list-disc text-sm">
-              {renderInline(paragraph.slice(2))}
-            </li>
-          );
-        }
-        return (
-          <p key={index} className="text-sm text-muted-foreground leading-relaxed">
-            {renderInline(paragraph)}
-          </p>
-        );
-      })}
+    <div className="prose prose-sm dark:prose-invert max-w-none">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          h2: ({ children }) => <h2 className="text-primary">{children}</h2>,
+          a: ({ children, href }) => (
+            <a href={href} target="_blank" rel="noreferrer">
+              {children}
+            </a>
+          ),
+        }}
+      >
+        {text}
+      </ReactMarkdown>
     </div>
   );
 }
