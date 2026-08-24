@@ -1,13 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  describeFlow,
-  ensureContrast,
-  parseAsciiFlow,
-  renderFlowDiagramSvg,
-  replaceAsciiFlowsWithDiagrams,
-} from "./flowDiagram";
+import { describeFlow, ensureContrast, parseAsciiFlow, renderFlowDiagramSvg } from "./flowDiagram";
 
 // Os tres blocos abaixo sao arte ASCII real, copiada do markdown gerado em
 // producao (aula de sockets) - sao os casos que precisam virar diagrama.
@@ -165,85 +159,4 @@ test("ensureContrast eleva a luminosidade da cor do perfil ate o contraste minim
 
 test("ensureContrast nao mexe em cor que ja passa no contraste pedido", () => {
   assert.equal(ensureContrast("#f4623a", "#161a27", 3), "#f4623a");
-});
-
-test("replaceAsciiFlowsWithDiagrams troca o bloco ASCII por uma imagem SVG embutida", () => {
-  const markdown = `## Encerramento\n\nTexto antes.\n\n\`\`\`\n${FLUXO_COM_FAN_IN.trim()}\n\`\`\`\n\nTexto depois.`;
-
-  const resultado = replaceAsciiFlowsWithDiagrams(markdown);
-
-  assert.ok(!resultado.includes("```"));
-  assert.match(resultado, /!\[Diagrama de fluxo: Cliente A[^\]]*\]\(data:image\/svg\+xml,%3Csvg[^)]+\)/);
-  // Nenhum parentese cru na URI: um ")" ali fecharia o link do markdown no meio
-  // do SVG (rotulo com parentese, ex.: "Buffer Unico UDP (FIFO)").
-  const uri = resultado.slice(resultado.indexOf("data:image/svg+xml,"), resultado.lastIndexOf(")"));
-  assert.ok(!uri.includes("("), "parentese cru na data URI");
-  assert.ok(!uri.includes(")"), "parentese cru na data URI");
-  assert.match(resultado, /Texto antes\./);
-  assert.match(resultado, /Texto depois\./);
-});
-
-test("replaceAsciiFlowsWithDiagrams NAO toca em bloco de codigo de verdade", () => {
-  const markdown = "```python\nfila = [1, 2, 3]\nprint(fila[0])\n```";
-
-  assert.equal(replaceAsciiFlowsWithDiagrams(markdown), markdown);
-});
-
-test("replaceAsciiFlowsWithDiagrams deixa intacto bloco sem cara de fluxo", () => {
-  const markdown = "```\nsaida do terminal, sem caixa nenhuma\n```";
-
-  assert.equal(replaceAsciiFlowsWithDiagrams(markdown), markdown);
-});
-
-test("replaceAsciiFlowsWithDiagrams converte todos os blocos de fluxo do documento", () => {
-  const markdown =
-    `\`\`\`\n${FLUXO_COM_FAN_IN.trim()}\n\`\`\`\n\ntexto\n\n\`\`\`\n${FLUXO_COM_DESDOBRAMENTO.trim()}\n\`\`\``;
-
-  const resultado = replaceAsciiFlowsWithDiagrams(markdown);
-
-  assert.equal((resultado.match(/data:image\/svg\+xml,%3Csvg/g) || []).length, 2);
-});
-
-test("a data URI decodifica de volta pro SVG original (e assim que o mobile le)", () => {
-  const markdown = `\`\`\`
-${FLUXO_COM_FAN_IN.trim()}
-\`\`\``;
-  const resultado = replaceAsciiFlowsWithDiagrams(markdown);
-  const uri = resultado.slice(resultado.indexOf("data:image/svg+xml,"), resultado.lastIndexOf(")"));
-
-  const svg = decodeURIComponent(uri.replace("data:image/svg+xml,", ""));
-
-  assert.match(svg, /^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg"/);
-  assert.match(svg, /Buffer Único UDP \(FIFO\)/);
-});
-
-test("replaceAsciiFlowsWithDiagrams usa a cor do perfil no diagrama", () => {
-  const markdown = `\`\`\`\n${FLUXO_COM_FAN_IN.trim()}\n\`\`\``;
-
-  const comCor = replaceAsciiFlowsWithDiagrams(markdown, { accentColor: "#f4623a" });
-  const semCor = replaceAsciiFlowsWithDiagrams(markdown);
-
-  assert.notEqual(comCor, semCor);
-  const svg = decodeURIComponent(comCor.split("data:image/svg+xml,")[1].replace(/\)$/, ""));
-  assert.match(svg, /#f4623a/i);
-});
-
-test("markdown sem bloco nenhum passa sem alteracao", () => {
-  assert.equal(replaceAsciiFlowsWithDiagrams("## Título\n\nSó texto."), "## Título\n\nSó texto.");
-  assert.equal(replaceAsciiFlowsWithDiagrams(""), "");
-});
-
-test("caixa tem teto de largura e fica centralizada (fluxograma, nao pilha de barras)", () => {
-  const svg = renderFlowDiagramSvg({
-    stages: [{ nodes: [{ label: "Aplicação" }] }, { nodes: [{ label: "Destino" }] }],
-    notes: [],
-  });
-
-  const caixas = [...svg.matchAll(/<rect x="([\d.]+)" y="[\d.]+" width="([\d.]+)"[^>]*rx="10"/g)];
-  assert.equal(caixas.length, 2);
-  for (const [, x, largura] of caixas) {
-    assert.ok(Number(largura) <= 340, `largura ${largura} passou do teto`);
-    // Centralizada: sobra a mesma margem dos dois lados dentro dos 760 do viewBox.
-    assert.ok(Math.abs(Number(x) + Number(largura) / 2 - 380) < 0.5, `caixa fora do eixo: x=${x}`);
-  }
 });

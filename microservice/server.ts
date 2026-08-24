@@ -21,7 +21,7 @@ import {
   insertImagesIntoMarkdown,
   selectAttachmentsForMarkdown,
 } from "./src/utils/markdownImages";
-import { replaceAsciiFlowsWithDiagrams } from "./src/utils/flowDiagram";
+import { replaceAsciiDiagramsWithSvg } from "./src/utils/asciiDiagram";
 import { estimateAudioDurationSec } from "./src/utils/audioDuration";
 import { computeImageCues, type ImageCue } from "./src/utils/audioImageCues";
 import { computeAggregatedApresentacaoEntry } from "./src/lib/materialsMerge";
@@ -1021,11 +1021,12 @@ async function runPipeline(
   }
 
   // Diagramas em arte ASCII que o Gemini escreve dentro de bloco de codigo
-  // ("[ Aplicacao ] ---> [ Buffer ]") viram SVG de verdade, embutido no
-  // markdown como imagem - assim console, mobile e deck renderizam igual, sem
-  // precisar de renderizador em cada superficie. Bloco de codigo de verdade e
-  // bloco que nao da pra ler como fluxo ficam intactos (ver flowDiagram.ts).
-  resultado.markdown = replaceAsciiFlowsWithDiagrams(resultado.markdown, {
+  // viram SVG de verdade, embutido no markdown como imagem - assim console,
+  // mobile e deck renderizam igual, sem precisar de renderizador em cada
+  // superficie. Dois formatos reconhecidos: cadeia de caixas com setas
+  // (flowDiagram) e quadro emoldurado de duas raias (laneDiagram). Bloco de
+  // codigo de verdade e bloco que nao da pra ler como diagrama ficam intactos.
+  resultado.markdown = replaceAsciiDiagramsWithSvg(resultado.markdown, {
     accentColor: BRAIN_HEX_CONFIG[profile]?.color,
   });
 
