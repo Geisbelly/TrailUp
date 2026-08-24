@@ -10,6 +10,7 @@ import CadastroAluno from "./pages/CadastroAluno";
 import CadastroProfessor from "./pages/CadastroProfessor";
 import Login from "./pages/Login";
 import Console from "./pages/Console";
+import { CONSOLE_SECTIONS, consolePathForView } from "./pages/consoleSections";
 import Blog from "./pages/Blog";
 import BlogPost from "./pages/BlogPost";
 import Sobre from "./pages/Sobre";
@@ -35,22 +36,21 @@ const App = () => (
             <Route path="/cadastro-professor" element={<CadastroProfessor />} />
             <Route path="/auth/confirmacao" element={<AuthConfirm />} />
             <Route path="/login" element={<Login />} />
-            <Route
-              path="/console"
-              element={
-                <ProtectedRoute allowedRoles={["professor"]} requireLiberado>
-                  <Console />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/console/trilha"
-              element={
-                <ProtectedRoute allowedRoles={["professor"]} requireLiberado>
-                  <Console />
-                </ProtectedRoute>
-              }
-            />
+            {/* Uma rota por aba do console, geradas da mesma lista que a barra
+                de navegacao usa (consoleSections.ts) - sem caminho escrito a
+                mao em dois lugares. A rota do editor de topico e a unica
+                subrota com parametro, entao fica declarada a parte. */}
+            {CONSOLE_SECTIONS.map((secao) => (
+              <Route
+                key={secao.slug || "raiz"}
+                path={consolePathForView(secao.view)}
+                element={
+                  <ProtectedRoute allowedRoles={["professor"]} requireLiberado>
+                    <Console />
+                  </ProtectedRoute>
+                }
+              />
+            ))}
             <Route
               path="/console/trilha/:topicoId/editar"
               element={

@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useState } from "react";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,10 +13,32 @@ import RanksSection from "@/components/console/RanksSection";
 import ClassManagementSection from "@/components/console/ClassManagementSection";
 import PersonalizacoesSection from "@/components/console/personalizacoes/PersonalizacoesSection";
 import { ProfessorApprovalSection } from "@/components/console/ProfessorApprovalSection";
+import {
+  CONSOLE_SECTIONS,
+  DEFAULT_CONSOLE_VIEW,
+  consolePathForView,
+  consoleViewFromPathname,
+  type ConsoleView,
+} from "./consoleSections";
 
 // Aba de aprovação de professores só é visível para a dona do projeto (TCC);
 // os demais professores nunca veem nem conseguem acessar essa view.
 const OWNER_EMAIL = "geisbelly19@gmail.com";
+
+// Rotulo e icone de cada aba da barra do console. A ordem aqui e a ordem
+// exibida; o caminho de cada uma vem de CONSOLE_SECTIONS (consoleSections.ts),
+// pra nao existir "/console/..." escrito a mao em botao nenhum.
+const NAV_LABELS: Record<ConsoleView, { label: string; icon: typeof LayoutDashboard; ownerOnly?: boolean }> = {
+  dashboard: { label: "Dashboard", icon: LayoutDashboard },
+  trilha: { label: "Trilha", icon: Route },
+  classes: { label: "Classes", icon: GraduationCap },
+  personalizacoes: { label: "Personalizações", icon: Sparkles },
+  ranks: { label: "Ranks", icon: Trophy },
+  profile: { label: "Meus Dados", icon: Settings },
+  aprovacoes: { label: "Aprovações", icon: ShieldCheck, ownerOnly: true },
+};
+
+const NAV_ITEMS = CONSOLE_SECTIONS.map((secao) => ({ view: secao.view, ...NAV_LABELS[secao.view] }));
 
 export interface ProfessorUpdateData {
   nome: string;
@@ -40,17 +62,16 @@ export default function Console() {
     geracaoAutomatica: boolean;
   } | null>(null);
   const [isLoadingProfessor, setIsLoadingProfessor] = useState(false);
-  const [view, setView] = useState<"trilha" | "dashboard" | "ranks" | "classes" | "personalizacoes" | "profile" | "aprovacoes">("dashboard");
+  // A URL e a unica fonte da verdade da aba ativa (ver consoleSections.ts):
+  // refresh cai na mesma aba, o botao voltar anda entre abas em vez de sair do
+  // console, e o link e compartilhavel. Antes so /console/trilha tinha rota -
+  // todas as outras abas viviam em estado local em /console e se perdiam.
+  const view: ConsoleView = consoleViewFromPathname(location.pathname) ?? DEFAULT_CONSOLE_VIEW;
+  const irPara = useCallback(
+    (destino: ConsoleView) => navigate(consolePathForView(destino)),
+    [navigate],
+  );
   const isOwner = professorData?.email?.toLowerCase() === OWNER_EMAIL;
-
-  // /console/trilha e /console/trilha/:topicoId/editar sao rotas proprias (link
-  // compartilhavel, refresh funciona, botao voltar do navegador funciona) — as
-  // demais abas continuam so com estado local em /console.
-  useEffect(() => {
-    if (location.pathname.startsWith("/console/trilha")) {
-      setView("trilha");
-    }
-  }, [location.pathname]);
 
   useEffect(() => {
     const fetchProfessor = async () => {
@@ -178,64 +199,20 @@ export default function Console() {
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Button
-            variant={view === "dashboard" ? "default" : "outline"}
-            size="sm"
-            onClick={() => { setView("dashboard"); navigate("/console"); }}
-          >
-            <LayoutDashboard className="h-4 w-4 mr-2" />
-            Dashboard
-          </Button>
-          <Button
-            variant={view === "trilha" ? "default" : "outline"}
-            size="sm"
-            onClick={() => { setView("trilha"); navigate("/console/trilha"); }}
-          >
-            <Route className="h-4 w-4 mr-2" />
-            Trilha
-          </Button>
-          <Button
-            variant={view === "classes" ? "default" : "outline"}
-            size="sm"
-            onClick={() => { setView("classes"); navigate("/console"); }}
-          >
-            <GraduationCap className="h-4 w-4 mr-2" />
-            Classes
-          </Button>
-          <Button
-            variant={view === "personalizacoes" ? "default" : "outline"}
-            size="sm"
-            onClick={() => { setView("personalizacoes"); navigate("/console"); }}
-          >
-            <Sparkles className="h-4 w-4 mr-2" />
-            Personalizações
-          </Button>
-          <Button
-            variant={view === "ranks" ? "default" : "outline"}
-            size="sm"
-            onClick={() => { setView("ranks"); navigate("/console"); }}
-          >
-            <Trophy className="h-4 w-4 mr-2" />
-            Ranks
-          </Button>
-          <Button
-            variant={view === "profile" ? "default" : "outline"}
-            size="sm"
-            onClick={() => { setView("profile"); navigate("/console"); }}
-          >
-            <Settings className="h-4 w-4 mr-2" />
-            Meus Dados
-          </Button>
-          {isOwner && (
-            <Button
-              variant={view === "aprovacoes" ? "default" : "outline"}
-              size="sm"
-              onClick={() => { setView("aprovacoes"); navigate("/console"); }}
-            >
-              <ShieldCheck className="h-4 w-4 mr-2" />
-              Aprovações
-            </Button>
-          )}
+          {NAV_ITEMS.filter((item) => !item.ownerOnly || isOwner).map((item) => {
+            const Icone = item.icon;
+            return (
+              <Button
+                key={item.view}
+                variant={view === item.view ? "default" : "outline"}
+                size="sm"
+                onClick={() => irPara(item.view)}
+              >
+                <Icone className="h-4 w-4 mr-2" />
+                {item.label}
+              </Button>
+            );
+          })}
           <Button variant="ghost" size="sm" onClick={handleLogout}>
             <LogOut className="h-4 w-4 mr-2" />
             Sair
@@ -259,7 +236,12 @@ export default function Console() {
             ) : view === "personalizacoes" ? (
               <PersonalizacoesSection professorId={professorData?.id} />
             ) : view === "aprovacoes" ? (
-              isOwner ? <ProfessorApprovalSection /> : null
+              // Agora que /console/aprovacoes e uma URL de verdade, qualquer
+              // professor pode digita-la. Sem dono confirmado, manda pro
+              // dashboard em vez de renderizar uma pagina em branco - e espera
+              // professorData carregar antes de decidir, senao o proprio dono
+              // seria expulso no primeiro render.
+              isOwner ? <ProfessorApprovalSection /> : professorData ? <Navigate to={consolePathForView("dashboard")} replace /> : null
             ) : (
               <ClassManagementSection professorId={professorData?.id} />
             )}
