@@ -104,3 +104,105 @@ test("extractRawFromDOCX extrai o TEXTO do documento (mammoth.extractRawText com
   assert.equal(result.blocks.length, 1);
   assert.match(result.blocks[0].text, /Conteudo de teste\./);
 });
+
+test("extrai tambem gif e bmp embutidos, com o mime correto de cada um", async () => {
+  const zip = new JSZip();
+  zip.file("ppt/media/image1.png", TINY_PNG_BASE64, { base64: true });
+  zip.file("ppt/media/image2.gif", TINY_PNG_BASE64, { base64: true });
+  zip.file("ppt/media/image3.bmp", TINY_PNG_BASE64, { base64: true });
+  const pptxBase64 = (await zip.generateAsync({ type: "nodebuffer" })).toString("base64");
+
+  const media = await extractImageMediaFromFiles([
+    { data: pptxBase64, mimeType: PPTX_MIME, name: "aula.pptx" },
+  ]);
+
+  assert.deepEqual(
+    media.map((m) => m.mimeType),
+    ["image/png", "image/gif", "image/bmp"],
+  );
+});
+
+// tiff e svg ficam de fora de proposito: o Chrome nao renderiza tiff, e o
+// <Image> do React Native (mobile) nao renderiza svg - entrariam na lista
+// so pra virar imagem quebrada em alguma das superficies.
+test("descarta tiff e svg, que nao renderizam em todas as superficies", async () => {
+  const zip = new JSZip();
+  zip.file("ppt/media/image1.tiff", TINY_PNG_BASE64, { base64: true });
+  zip.file("ppt/media/image2.svg", "<svg xmlns='http://www.w3.org/2000/svg'/>");
+  zip.file("ppt/media/image3.png", TINY_PNG_BASE64, { base64: true });
+  const pptxBase64 = (await zip.generateAsync({ type: "nodebuffer" })).toString("base64");
+
+  const media = await extractImageMediaFromFiles([
+    { data: pptxBase64, mimeType: PPTX_MIME, name: "aula.pptx" },
+  ]);
+
+  assert.deepEqual(media.map((m) => m.name), ["ppt/media/image3.png"]);
+});
+
+test("nao confunde jpeg com os outros formatos (mime derivado da extensao, nao chutado)", async () => {
+  const zip = new JSZip();
+  zip.file("ppt/media/image1.jpg", TINY_PNG_BASE64, { base64: true });
+  zip.file("ppt/media/image2.jpeg", TINY_PNG_BASE64, { base64: true });
+  zip.file("ppt/media/image3.webp", TINY_PNG_BASE64, { base64: true });
+  const pptxBase64 = (await zip.generateAsync({ type: "nodebuffer" })).toString("base64");
+
+  const media = await extractImageMediaFromFiles([
+    { data: pptxBase64, mimeType: PPTX_MIME, name: "aula.pptx" },
+  ]);
+
+  assert.deepEqual(
+    media.map((m) => m.mimeType),
+    ["image/jpeg", "image/jpeg", "image/webp"],
+  );
+});
+
+test("descarta os wrappers vetoriais do Office (.emf/.wmf), que nenhum navegador renderiza", async () => {
+  const zip = new JSZip();
+  zip.file("ppt/media/image1.emf", TINY_PNG_BASE64, { base64: true });
+  zip.file("ppt/media/image2.wmf", TINY_PNG_BASE64, { base64: true });
+  zip.file("ppt/media/image3.png", TINY_PNG_BASE64, { base64: true });
+  const pptxBase64 = (await zip.generateAsync({ type: "nodebuffer" })).toString("base64");
+
+  const media = await extractImageMediaFromFiles([
+    { data: pptxBase64, mimeType: PPTX_MIME, name: "aula.pptx" },
+  ]);
+
+  assert.deepEqual(media.map((m) => m.name), ["ppt/media/image3.png"]);
+});
+
+test("ordena as imagens numericamente (image2 antes de image10), nao pela ordem fisica do zip", async () => {
+  const zip = new JSZip();
+  // Inseridas fora de ordem de proposito - Object.keys() devolve a ordem
+  // fisica do zip, que nao e a ordem das imagens na apresentacao.
+  for (const nome of ["image10.png", "image2.png", "image1.png"]) {
+    zip.file("ppt/media/" + nome, TINY_PNG_BASE64, { base64: true });
+  }
+  const pptxBase64 = (await zip.generateAsync({ type: "nodebuffer" })).toString("base64");
+
+  const media = await extractImageMediaFromFiles([
+    { data: pptxBase64, mimeType: PPTX_MIME, name: "aula.pptx" },
+  ]);
+
+  assert.deepEqual(
+    media.map((m) => m.name),
+    ["ppt/media/image1.png", "ppt/media/image2.png", "ppt/media/image10.png"],
+  );
+});
+
+test("com mais imagens que o teto, corta DEPOIS de ordenar (mantem as primeiras de verdade)", async () => {
+  const zip = new JSZip();
+  // 40 imagens (teto e 32), inseridas em ordem decrescente pra que a ordem
+  // fisica do zip seja o oposto da ordem real.
+  for (let i = 40; i >= 1; i -= 1) {
+    zip.file(`ppt/media/image${i}.png`, TINY_PNG_BASE64, { base64: true });
+  }
+  const pptxBase64 = (await zip.generateAsync({ type: "nodebuffer" })).toString("base64");
+
+  const media = await extractImageMediaFromFiles([
+    { data: pptxBase64, mimeType: PPTX_MIME, name: "aula.pptx" },
+  ]);
+
+  assert.equal(media.length, 32);
+  assert.equal(media[0].name, "ppt/media/image1.png");
+  assert.equal(media[31].name, "ppt/media/image32.png");
+});

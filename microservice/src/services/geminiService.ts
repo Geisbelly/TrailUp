@@ -438,10 +438,41 @@ async function generateGeminiContent(
 const MAX_PPTX_SLIDES = 200;
 const MAX_EXTRACTED_MEDIA = 32;
 
+// Extensoes de imagem embutida em .pptx/.docx que seguem adiante, e o mime
+// de cada uma. O conjunto e a interseccao do que TODAS as superficies
+// consumidoras renderizam: deck HTML (navegador), markdown do console e
+// <Image> do React Native (mobile). Ficam de fora de proposito:
+// - .emf/.wmf: wrappers vetoriais do Office, nenhum navegador renderiza;
+// - .tiff: o Chrome nao renderiza;
+// - .svg: o <Image> do React Native nao renderiza.
+// O mime vinha sendo chutado ("png ? image/png : webp ? image/webp :
+// image/jpeg"), o que rotularia qualquer formato novo como jpeg.
+const EXTRACTED_MEDIA_MIME_BY_EXT: Record<string, string> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  webp: "image/webp",
+  gif: "image/gif",
+  bmp: "image/bmp",
+};
+
+function extractedMediaMime(fileName: string): string | undefined {
+  const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
+  return EXTRACTED_MEDIA_MIME_BY_EXT[ext];
+}
+
 async function extractFromZip(arrayBuffer: ArrayBuffer, mediaPath: string): Promise<{ blocks: InternalBlock[], media: { data: string, mimeType: string, name: string }[] }> {
   const zip = await JSZip.loadAsync(arrayBuffer);
+  // Ordena antes de cortar, pela mesma razao ja documentada em
+  // MAX_PPTX_SLIDES: Object.keys() devolve a ordem fisica do zip, que nao
+  // acompanha a ordem das imagens na apresentacao - cortar antes de ordenar
+  // guardaria 32 imagens arbitrarias em vez das 32 primeiras. numeric:true
+  // pra image2 vir antes de image10 (lexicografico faria o contrario), e a
+  // ordem importa: o indice nessa lista e o que vira referenceImageIndex no
+  // deck e a posicao no round-robin do markdown.
   const mediaFiles = Object.keys(zip.files)
-    .filter(name => name.startsWith(mediaPath) && /\.(png|jpe?g|webp)$/i.test(name))
+    .filter(name => name.startsWith(mediaPath) && Boolean(extractedMediaMime(name)))
+    .sort((a, b) => a.localeCompare(b, "en", { numeric: true, sensitivity: "base" }))
     .slice(0, MAX_EXTRACTED_MEDIA);
   const allSlideFiles = Object.keys(zip.files)
     .filter(name => name.startsWith("ppt/slides/slide") && name.endsWith(".xml"));
@@ -488,8 +519,7 @@ async function extractFromZip(arrayBuffer: ArrayBuffer, mediaPath: string): Prom
   // Extract Media
   for (const file of mediaFiles) {
     const data = await zip.files[file].async("base64");
-    const ext = file.split('.').pop()?.toLowerCase();
-    const mimeType = ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
+    const mimeType = extractedMediaMime(file) ?? "image/jpeg";
     media.push({ data, mimeType, name: file });
   }
 

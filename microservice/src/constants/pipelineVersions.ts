@@ -6,7 +6,7 @@ import { createHash } from "crypto";
  * Alterações incompatíveis no pipeline ou no renderizador de apresentações
  * devem incrementar estas versões antes do deploy.
  */
-export const MEDIA_PIPELINE_VERSION = "2026-08-16.1" as const;
+export const MEDIA_PIPELINE_VERSION = "2026-08-24.1" as const;
 export const PRESENTATION_ENGINE_VERSION = "brainhexpdf-v1" as const;
 export const PRESENTATION_SCHEMA_VERSION = "presentation-material-v3" as const;
 export const PRESENTATION_DESIGN_VERSION = "slidesgo-editorial-v3" as const;

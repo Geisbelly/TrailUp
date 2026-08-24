@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { deriveImagesForMedia, insertImagesIntoMarkdown } from "./markdownImages";
+import {
+  deriveImagesForMedia,
+  extractAttachmentsFromMarkdown,
+  insertImagesIntoMarkdown,
+  selectAttachmentsForMarkdown,
+} from "./markdownImages";
 
 test("insere uma imagem apos cada heading de nivel 2, em round-robin", () => {
   const markdown = "## Primeira Seção\n\nTexto 1.\n\n## Segunda Seção\n\nTexto 2.\n\n## Terceira Seção\n\nTexto 3.";
@@ -77,4 +82,95 @@ test("deriveImagesForMedia: sem professor e sem gerada, retorna array vazio", ()
   assert.deepEqual(deriveImagesForMedia([], undefined), []);
   assert.deepEqual(deriveImagesForMedia([], null), []);
   assert.deepEqual(deriveImagesForMedia([], {}), []);
+});
+
+test("selectAttachmentsForMarkdown devolve so as imagens que aparecem naquela fatia", () => {
+  const a = { url: "https://x.test/a.png", data: "AAA", mimeType: "image/png", name: "a.png" };
+  const b = { url: "https://x.test/b.png", data: "BBB", mimeType: "image/png", name: "b.png" };
+  const c = { url: "https://x.test/c.png", data: "CCC", mimeType: "image/png", name: "c.png" };
+
+  const parte = "## Seção 2\n\n![Imagem de referência](https://x.test/b.png)\n\nTexto.";
+
+  const selecionadas = selectAttachmentsForMarkdown(parte, [a, b, c]);
+
+  assert.deepEqual(selecionadas, [b]);
+});
+
+test("selectAttachmentsForMarkdown preserva a ordem original da lista, nao a de aparicao", () => {
+  const a = { url: "https://x.test/a.png", data: "AAA", mimeType: "image/png" };
+  const b = { url: "https://x.test/b.png", data: "BBB", mimeType: "image/png" };
+
+  const parte = "![Imagem de referência](https://x.test/b.png)\n\n![Imagem de referência](https://x.test/a.png)";
+
+  assert.deepEqual(selectAttachmentsForMarkdown(parte, [a, b]), [a, b]);
+});
+
+test("selectAttachmentsForMarkdown funciona com data URI (imagem extraida de pptx/docx)", () => {
+  const embutida = {
+    url: "data:image/png;base64,QUJD",
+    data: "QUJD",
+    mimeType: "image/png",
+    name: "ppt/media/image1.png",
+  };
+  const avulsa = { url: "https://x.test/avulsa.png", data: "ZZZ", mimeType: "image/png" };
+
+  const parte = "## Seção\n\n![Imagem de referência](data:image/png;base64,QUJD)";
+
+  assert.deepEqual(selectAttachmentsForMarkdown(parte, [embutida, avulsa]), [embutida]);
+});
+
+test("selectAttachmentsForMarkdown devolve vazio quando a fatia nao tem nenhuma imagem", () => {
+  const a = { url: "https://x.test/a.png", data: "AAA", mimeType: "image/png" };
+  assert.deepEqual(selectAttachmentsForMarkdown("## Seção sem imagem\n\nTexto.", [a]), []);
+});
+
+test("selectAttachmentsForMarkdown ignora attachment sem url (nada a casar no markdown)", () => {
+  const semUrl = { data: "AAA", mimeType: "image/png" } as { url?: string; data: string; mimeType: string };
+  assert.deepEqual(selectAttachmentsForMarkdown("![x](https://x.test/a.png)", [semUrl]), []);
+});
+
+test("extractAttachmentsFromMarkdown recupera imagens embutidas (data URI) do markdown persistido", () => {
+  const markdown =
+    "## Seção 1\n\n![Imagem de referência](data:image/png;base64,QUJD)\n\nTexto.\n\n" +
+    "## Seção 2\n\n![Imagem de referência](data:image/jpeg;base64,WFla)\n\nMais texto.";
+
+  const attachments = extractAttachmentsFromMarkdown(markdown);
+
+  assert.deepEqual(attachments, [
+    { data: "QUJD", mimeType: "image/png", name: "markdown-imagem-1", url: "data:image/png;base64,QUJD" },
+    { data: "WFla", mimeType: "image/jpeg", name: "markdown-imagem-2", url: "data:image/jpeg;base64,WFla" },
+  ]);
+});
+
+test("extractAttachmentsFromMarkdown nao repete a mesma imagem quando ela aparece em varias secoes", () => {
+  const markdown =
+    "## A\n\n![Imagem de referência](data:image/png;base64,QUJD)\n\n## B\n\n![Imagem de referência](data:image/png;base64,QUJD)";
+
+  assert.equal(extractAttachmentsFromMarkdown(markdown).length, 1);
+});
+
+test("extractAttachmentsFromMarkdown ignora imagem por URL (precisaria de download, que este caminho nao faz)", () => {
+  const markdown = "## A\n\n![Imagem de referência](https://x.test/foto.png)";
+  assert.deepEqual(extractAttachmentsFromMarkdown(markdown), []);
+});
+
+test("extractAttachmentsFromMarkdown ignora data URI que nao e imagem", () => {
+  const markdown = "## A\n\n![nao imagem](data:application/pdf;base64,QUJD)";
+  assert.deepEqual(extractAttachmentsFromMarkdown(markdown), []);
+});
+
+test("extractAttachmentsFromMarkdown com markdown vazio ou sem imagem devolve vazio", () => {
+  assert.deepEqual(extractAttachmentsFromMarkdown(""), []);
+  assert.deepEqual(extractAttachmentsFromMarkdown("## Só texto\n\nSem imagem."), []);
+});
+
+test("extractAttachmentsFromMarkdown ignora SVG (diagrama gerado nao e imagem do professor)", () => {
+  const markdown =
+    "## A\n\n![Diagrama de fluxo: X → Y](data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=)\n\n" +
+    "![Imagem de referência](data:image/png;base64,QUJD)";
+
+  const attachments = extractAttachmentsFromMarkdown(markdown);
+
+  assert.equal(attachments.length, 1);
+  assert.equal(attachments[0].mimeType, "image/png");
 });

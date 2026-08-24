@@ -15,7 +15,13 @@ import {
   type ContentPart,
 } from "./src/services/geminiService";
 import { settleWithConcurrency } from "./src/lib/boundedConcurrency";
-import { deriveImagesForMedia, insertImagesIntoMarkdown } from "./src/utils/markdownImages";
+import {
+  deriveImagesForMedia,
+  extractAttachmentsFromMarkdown,
+  insertImagesIntoMarkdown,
+  selectAttachmentsForMarkdown,
+} from "./src/utils/markdownImages";
+import { replaceAsciiFlowsWithDiagrams } from "./src/utils/flowDiagram";
 import { estimateAudioDurationSec } from "./src/utils/audioDuration";
 import { computeImageCues, type ImageCue } from "./src/utils/audioImageCues";
 import { computeAggregatedApresentacaoEntry } from "./src/lib/materialsMerge";
@@ -815,6 +821,11 @@ export async function retryApresentacaoOnly(
       profile,
       bucket,
       presentationPath,
+      // Recupera as imagens do professor do proprio markdown persistido: esta
+      // retentativa nao passa por fetchFontesAsFileData, entao sem isso o
+      // deck refeito ia sem attachment nenhum e perdia todas as imagens do
+      // material base (caia no fallback de IA/SVG mesmo tendo imagem).
+      attachments: extractAttachmentsFromMarkdown(part.markdown),
       personalizacaoId,
       fence,
       versionMetadata: {
@@ -1009,6 +1020,15 @@ async function runPipeline(
     ];
   }
 
+  // Diagramas em arte ASCII que o Gemini escreve dentro de bloco de codigo
+  // ("[ Aplicacao ] ---> [ Buffer ]") viram SVG de verdade, embutido no
+  // markdown como imagem - assim console, mobile e deck renderizam igual, sem
+  // precisar de renderizador em cada superficie. Bloco de codigo de verdade e
+  // bloco que nao da pra ler como fluxo ficam intactos (ver flowDiagram.ts).
+  resultado.markdown = replaceAsciiFlowsWithDiagrams(resultado.markdown, {
+    accentColor: BRAIN_HEX_CONFIG[profile]?.color,
+  });
+
   // Distribui as imagens do professor pelo markdown ANTES de dividir em
   // partes - a divisao por heading (## titulo) ja existente cuida do resto
   // sem mudanca, cada parte carrega as imagens que caem dentro da sua
@@ -1070,7 +1090,13 @@ async function runPipeline(
         topic: part.titulo,
         profile,
         bucket,
-        attachments: imageAttachments,
+        // So as imagens desta parte, nao a lista inteira: o BrainHexPDF
+        // processa cada parte numa chamada isolada, entao mandar todas pra
+        // todas fazia cada parte reencontrar a mesma imagem "obviamente
+        // relevante" - ela terminava em todo slide do material e as demais
+        // nao apareciam em nenhum. A fronteira e a mesma que o aluno le no
+        // markdown (insertImagesIntoMarkdown roda antes da divisao).
+        attachments: selectAttachmentsForMarkdown(part.markdown, imageAttachments),
         presentationPath: `${storagePath}/apresentacao/material-${refId}${
           multiPart ? `-parte-${String(part.ordem).padStart(2, "0")}` : ""
         }.html`,
