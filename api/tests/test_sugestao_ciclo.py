@@ -2,7 +2,11 @@
 
 import pytest
 
-from app.services.sugestao_ciclo import garantir_sugestao, revisar_sugestao
+from app.services.sugestao_ciclo import (
+    garantir_sugestao,
+    revisar_sugestao,
+    revisar_sugestoes_do_ciclo,
+)
 
 TODOS = ["markdown", "audio", "cards"]
 
@@ -298,3 +302,57 @@ async def test_conteudo_id_distingue_alvos_do_mesmo_topico():
 
     assert len(repo.linhas) == 2
     assert len(repo.log) == 2
+
+
+# --- guardas da entrada do ciclo ------------------------------------------
+# Passar None como sessão é intencional: se qualquer uma destas guardas deixar
+# passar, o teste estoura com AttributeError em vez de silenciosamente ir ao
+# banco.
+
+
+@pytest.mark.asyncio
+async def test_ciclo_sem_topico_nao_tenta_revisar():
+    # A sugestão é por (aluno, tópico); "a sugestão do aluno em geral" não existe.
+    assert (
+        await revisar_sugestoes_do_ciclo(
+            None,
+            aluno_id="a1",
+            classe_id=32,
+            topico_id=None,
+            telemetry_payload={"time_metrics": {"materials": [{"material_tipo": "audio"}]}},
+            stage_outputs={},
+        )
+        is None
+    )
+
+
+@pytest.mark.asyncio
+async def test_lote_sem_material_aberto_nao_gera_registro():
+    # Registrar "mantida" aqui encheria o histórico de ciclos que não olharam
+    # nada, e o churn passaria a medir navegação em vez de decisão.
+    assert (
+        await revisar_sugestoes_do_ciclo(
+            None,
+            aluno_id="a1",
+            classe_id=32,
+            topico_id=10,
+            telemetry_payload={"time_metrics": {"materials": []}},
+            stage_outputs={},
+        )
+        is None
+    )
+
+
+@pytest.mark.asyncio
+async def test_telemetria_ausente_nao_quebra_o_ciclo():
+    assert (
+        await revisar_sugestoes_do_ciclo(
+            None,
+            aluno_id="a1",
+            classe_id=32,
+            topico_id=10,
+            telemetry_payload=None,
+            stage_outputs=None,
+        )
+        is None
+    )

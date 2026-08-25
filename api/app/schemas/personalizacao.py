@@ -199,10 +199,33 @@ class PersonalizacaoMediaStatusResponse(BaseModel):
     materiais: list[PersonalizacaoMediaItemStatusResponse] = Field(default_factory=list)
 
 
+class SugestaoMaterialItem(BaseModel):
+    formato: str
+    posicao: int
+    score: float = 0.0
+    motivos: list[str] = Field(default_factory=list)
+
+
+class SugestaoMaterialResponse(BaseModel):
+    """Ordem ACONSELHADA de consumo do material, por aluno.
+
+    Aconselhada, não imposta: o app usa como ordem inicial e destaque, e o aluno
+    segue livre para abrir qualquer formato. A aderência (seguiu ou não) é
+    justamente o que a métrica de efetividade mede — travar a navegação
+    destruiria o grupo de comparação.
+    """
+
+    formato_inicial: str | None = None
+    ordem: list[SugestaoMaterialItem] = Field(default_factory=list)
+    versao: int = 1
+    origem: str = "inicial"
+
+
 class PersonalizacaoListResponse(BaseModel):
     aluno_id: str
     total: int
     itens: list[PersonalizacaoResponse] = Field(default_factory=list)
+    sugestao: SugestaoMaterialResponse | None = None
 
 
 class PersonalizacaoContextoDocenteResponse(BaseModel):

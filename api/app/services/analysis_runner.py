@@ -11,6 +11,7 @@ from app.schemas.api import AnalisarPayload, AnalisarResponse
 from app.schemas.common import Evento
 from app.services import memoria_aluno
 from app.services.linear_analysis_pipeline import build_linear_analysis_orchestrator
+from app.services.sugestao_ciclo import revisar_sugestoes_do_ciclo
 from app.services.state_builder import build_initial_state
 
 logger = logging.getLogger(__name__)
@@ -168,6 +169,36 @@ async def run_analysis(
         except Exception as exc:  # pragma: no cover
             await session.rollback()
             logger.warning("Falha ao persistir memoria de dominio: %s", exc)
+    try:
+        decisao_sugestao = await revisar_sugestoes_do_ciclo(
+            session,
+            aluno_id=aluno_id,
+            classe_id=classe_id,
+            topico_id=topico_id_efetivo,
+            telemetry_payload=telemetry_payload,
+            stage_outputs=result.get("pipeline_stage_outputs"),
+        )
+        if decisao_sugestao is not None:
+            await session.commit()
+            logger.info(
+                "analysis_runner.sugestao=%s",
+                json.dumps(
+                    {
+                        "aluno_id": aluno_id,
+                        "topico_id": topico_id_efetivo,
+                        "acao": decisao_sugestao.get("acao"),
+                        "motivos": decisao_sugestao.get("motivos"),
+                    },
+                    ensure_ascii=False,
+                    default=str,
+                ),
+            )
+    except Exception as exc:  # pragma: no cover
+        # A sugestão é camada de consumo: ela nunca pode derrubar o ciclo de
+        # análise, que é o que devolve a adaptação para o app.
+        await session.rollback()
+        logger.warning("Falha ao revisar sugestao de material: %s", exc)
+
     try:
         await IADecisionLogRepository(session).log(
             aluno_id=aluno_id,

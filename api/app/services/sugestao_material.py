@@ -92,8 +92,17 @@ _MOTIVO_POR_MODO = {
 _PESO_MINIMO_PARA_MOTIVO = 0.15
 
 
+# A API grava o Socializador com a grafia britanica ("Socialiser") em vários
+# pontos (``context.py``, ``agente_perfil.py``), enquanto a fonte oficial dos
+# perfis usa "socializer". Sem o alias, o perfil cairia fora do vetor de
+# afinidades em silêncio — justamente o perfil cuja preferência por áudio é a
+# mais marcada de todos.
+_ALIAS_PERFIL = {"socialiser": "socializer"}
+
+
 def _normalizar_perfil(nome: Any) -> str:
-    return str(nome or "").strip().lower()
+    chave = str(nome or "").strip().lower()
+    return _ALIAS_PERFIL.get(chave, chave)
 
 
 def _afinidades(perfis: Iterable[Any]) -> list[tuple[str, float]]:

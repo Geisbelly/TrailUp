@@ -19,12 +19,20 @@ from __future__ import annotations
 
 from typing import Any, Iterable
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.repositories.context import ContextRepository
+from app.repositories.personalizacao_progresso import PersonalizacaoProgressoRepository
 from app.repositories.sugestao_material import SugestaoMaterialRepository
 from app.services.sugestao_material import (
     LIMIAR_MUDANCA_PADRAO,
     MINIMO_EVIDENCIA_PADRAO,
     revisar_ordem_material,
     sugerir_ordem_material,
+)
+from app.services.sugestao_sinais import (
+    indexar_progresso_por_conteudo,
+    sinais_por_formato,
 )
 
 
@@ -176,3 +184,78 @@ async def revisar_sugestao(
     )
 
     return decisao
+
+
+async def revisar_sugestoes_do_ciclo(
+    session: AsyncSession,
+    *,
+    aluno_id: str,
+    classe_id: int,
+    topico_id: int | None,
+    telemetry_payload: dict[str, Any] | None,
+    stage_outputs: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    """Ponto de entrada do ciclo de análise: revisa a sugestão com a telemetria.
+
+    Sem ``topico_id`` não há alvo — a sugestão é por (aluno, tópico), e revisar
+    "a sugestão do aluno em geral" não significa nada.
+    """
+    if topico_id is None:
+        return None
+
+    materiais = ((telemetry_payload or {}).get("time_metrics") or {}).get("materials") or []
+    ritmo = ((stage_outputs or {}).get("reading") or {}).get("reading_material_pace") or []
+    if not materiais:
+        # Lote sem material aberto não é evidência sobre formato nenhum. Registrar
+        # "mantida" aqui encheria o histórico de ciclos que não olharam nada.
+        return None
+
+    itens = await PersonalizacaoProgressoRepository(session).listar_por_aluno(
+        aluno_id=aluno_id, classe_id=classe_id, topico_id=topico_id
+    )
+
+    sinais = sinais_por_formato(
+        materiais_telemetria=materiais,
+        ritmo_por_material=ritmo,
+        progresso_por_conteudo=indexar_progresso_por_conteudo(itens),
+    )
+    if not sinais:
+        return None
+
+    return await revisar_sugestao(
+        SugestaoMaterialRepository(session),
+        aluno_id=aluno_id,
+        topico_id=topico_id,
+        classe_id=classe_id,
+        sinais_por_formato=sinais,
+    )
+
+
+async def garantir_sugestao_do_aluno(
+    session: AsyncSession,
+    *,
+    aluno_id: str,
+    classe_id: int,
+    topico_id: int,
+    formatos_disponiveis: Iterable[str],
+) -> dict[str, Any] | None:
+    """Cria (uma vez) a sugestão do aluno para um tópico, ao servir o material.
+
+    Lê perfil e modo de operação do contexto do aluno — as duas entradas do
+    motor. Perfil vazio não impede: o motor cai na ordem canônica, que ainda é
+    melhor do que nenhuma ordem.
+    """
+    contexto = await ContextRepository(session).fetch_aluno_context(
+        aluno_id=aluno_id, classe_id=classe_id
+    )
+    aluno = contexto.get("aluno") if isinstance(contexto.get("aluno"), dict) else {}
+
+    return await garantir_sugestao(
+        SugestaoMaterialRepository(session),
+        aluno_id=aluno_id,
+        topico_id=topico_id,
+        classe_id=classe_id,
+        perfis=contexto.get("perfil_brainhex") or [],
+        formatos_disponiveis=formatos_disponiveis,
+        modo_operacao=aluno.get("modo_operacao"),
+    )

@@ -56,6 +56,8 @@ from app.schemas.personalizacao import (
     RegenerarDocumentoPayload,
     RegenerarSlidePayload,
     RegenerarSlideResponse,
+    SugestaoMaterialItem,
+    SugestaoMaterialResponse,
 )
 from app.services.auth import UserContext
 from app.services.content_enrichment import ContentEnrichmentError, derive_base_blocks_and_topic
@@ -85,6 +87,7 @@ from app.services.personalizacao_jobs import (
     get_job_detail,
 )
 from app.services.storage import BUCKET, SupabaseStorage, build_public_storage_url
+from app.services.sugestao_ciclo import garantir_sugestao_do_aluno
 
 router = APIRouter(prefix="/personalizar", tags=["personalizar"])
 logger = logging.getLogger(__name__)
@@ -2809,8 +2812,69 @@ async def listar_personalizacoes(
         topico_id=topico_id,
         limit=limit,
     )
+    itens = [_to_response(r) for r in records]
     return PersonalizacaoListResponse(
         aluno_id=aluno_id,
         total=len(records),
-        itens=[_to_response(r) for r in records],
+        itens=itens,
+        sugestao=await _resolver_sugestao_do_aluno(
+            session, aluno_id=aluno_id, topico_id=topico_id, itens=itens
+        ),
+    )
+
+
+async def _resolver_sugestao_do_aluno(
+    session: AsyncSession,
+    *,
+    aluno_id: str,
+    topico_id: int | None,
+    itens: list[PersonalizacaoResponse],
+) -> SugestaoMaterialResponse | None:
+    """Garante a sugestão do tópico e devolve no formato da resposta.
+
+    Só com ``topico_id``: a sugestão é por (aluno, tópico), e ordenar "o material
+    do aluno em geral" não quer dizer nada. Falha aqui não derruba a listagem —
+    o aluno precisa do material mesmo sem a ordem aconselhada.
+    """
+    if topico_id is None or not itens:
+        return None
+
+    classe_id = next((item.classe_id for item in itens if item.classe_id), None)
+    if classe_id is None:
+        return None
+
+    formatos = sorted({formato for item in itens for formato in (item.formatos_gerados or [])})
+    if not formatos:
+        return None
+
+    try:
+        sugestao = await garantir_sugestao_do_aluno(
+            session,
+            aluno_id=aluno_id,
+            classe_id=classe_id,
+            topico_id=topico_id,
+            formatos_disponiveis=formatos,
+        )
+        await session.commit()
+    except Exception as exc:  # pragma: no cover
+        await session.rollback()
+        logger.warning("Falha ao garantir sugestao de material: %s", exc)
+        return None
+
+    if not sugestao:
+        return None
+
+    return SugestaoMaterialResponse(
+        formato_inicial=sugestao.get("formato_inicial"),
+        ordem=[
+            SugestaoMaterialItem(
+                formato=str(item.get("formato")),
+                posicao=int(item.get("posicao") or 0),
+                score=float(item.get("score") or 0),
+                motivos=list(item.get("motivos") or []),
+            )
+            for item in (sugestao.get("ordem") or [])
+        ],
+        versao=int(sugestao.get("versao") or 1),
+        origem=str(sugestao.get("origem") or "inicial"),
     )

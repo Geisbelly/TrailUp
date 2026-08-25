@@ -401,3 +401,19 @@ def test_revisao_e_reproduzivel():
     primeira = revisar_ordem_material(**entrada)
     for _ in range(3):
         assert revisar_ordem_material(**entrada) == primeira
+
+
+def test_grafia_britanica_do_socializador_nao_e_descartada():
+    # A API grava "Socialiser" em vários pontos; sem o alias o perfil sairia do
+    # vetor de afinidades em silêncio e o áudio perderia o peso que o define.
+    britanica = sugerir_ordem_material(
+        perfis=[{"perfil": "Socialiser", "afinidade": 100}],
+        formatos_disponiveis=["markdown", "audio", "cards"],
+    )
+    americana = sugerir_ordem_material(
+        perfis=[{"perfil": "Socializer", "afinidade": 100}],
+        formatos_disponiveis=["markdown", "audio", "cards"],
+    )
+
+    assert britanica["formato_inicial"] == "audio"
+    assert britanica["ordem"] == americana["ordem"]
