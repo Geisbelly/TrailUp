@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Upload, ExternalLink, X, Loader2, Link2, Clock } from "lucide-react";
+import { Clock, ExternalLink, Eye, EyeOff, Link2, Loader2, Upload, X } from "lucide-react";
 import { cn, formatFileSize } from "@/lib/utils";
 import {
   PROFESSOR_UPLOAD_ACCEPT,
@@ -12,6 +12,8 @@ import {
   isProfessorUploadFileAllowed,
 } from "@/lib/upload-file-policy";
 import type { ConteudoFile } from "./types";
+import { ContentFilePreview } from "./ContentFilePreview";
+import { podePreVisualizar } from "./sourceFilePreview";
 
 const EXT_LABELS: Record<string, string> = {
   pdf: "PDF",
@@ -75,6 +77,7 @@ export function ContentFileUpload({
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [loadingPreview, setLoadingPreview] = useState<string | null>(null);
+  const [previewAberto, setPreviewAberto] = useState<string | null>(null);
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [urlInput, setUrlInput] = useState("");
 
@@ -196,10 +199,8 @@ export function ContentFileUpload({
       {savedFiles.length > 0 && (
         <div className="space-y-1.5">
           {savedFiles.map(({ pathOrUrl, name }) => (
-            <div
-              key={pathOrUrl}
-              className="flex items-center gap-3 rounded-lg border border-border/80 bg-card p-3"
-            >
+            <div key={pathOrUrl} className="rounded-lg border border-border/80 bg-card">
+            <div className="flex items-center gap-3 p-3">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-primary/20 bg-primary/15 text-center text-[10px] font-bold uppercase leading-none text-primary">
                 {name ? getExtLabel(name) : "ARQ"}
               </div>
@@ -209,6 +210,23 @@ export function ContentFileUpload({
                   {isStoragePath(pathOrUrl) ? "Bucket privado · conteudos" : "URL direta"}
                 </p>
               </div>
+              {podePreVisualizar(name ?? pathOrUrl) && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+                  onClick={() => setPreviewAberto((atual) => (atual === pathOrUrl ? null : pathOrUrl))}
+                  title={previewAberto === pathOrUrl ? "Fechar pré-visualização" : "Visualizar conteúdo"}
+                  aria-expanded={previewAberto === pathOrUrl}
+                >
+                  {previewAberto === pathOrUrl ? (
+                    <EyeOff className="h-3.5 w-3.5" />
+                  ) : (
+                    <Eye className="h-3.5 w-3.5" />
+                  )}
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="ghost"
@@ -216,7 +234,7 @@ export function ContentFileUpload({
                 className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
                 onClick={() => void openPreview(pathOrUrl)}
                 disabled={loadingPreview === pathOrUrl}
-                title="Abrir"
+                title="Abrir em nova aba"
               >
                 {loadingPreview === pathOrUrl ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -234,6 +252,14 @@ export function ContentFileUpload({
               >
                 <X className="h-3.5 w-3.5" />
               </Button>
+            </div>
+            {previewAberto === pathOrUrl && (
+              <ContentFilePreview
+                pathOrUrl={pathOrUrl}
+                isStoragePath={isStoragePath(pathOrUrl)}
+                nome={name}
+              />
+            )}
             </div>
           ))}
         </div>
