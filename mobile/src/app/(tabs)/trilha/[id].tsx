@@ -66,6 +66,7 @@ import {
   isAtividadeConcluida,
   isConteudoConcluido,
   resolveConteudoMaterialContext,
+  todosOsBlocosConcluidos,
   type Atividade,
   type AtividadeResolvida,
   type Conteudo,
@@ -583,18 +584,16 @@ export default function TrilhaConteudoScreen() {
     topicoConcluido ? false : atualBlock?.kind === "atividade" && !atividadeAtualResolvida;
 
   const todosBlocosConcluidos = useMemo(() => {
-    if (displayedBlocks.length === 0) return true;
     if (topicoConcluido) return true;
-    return displayedBlocks.every((b, idx) => {
-      if (b.kind === "conteudo") {
-        return isConteudoConcluido(b.conteudo, conteudosVistosLocal) || idx < index;
-      }
-      if (b.kind === "atividade") {
-        return isAtividadeConcluida(b.atividade, atividadesResolvidasLocal) || idx < index;
-      }
-      return idx < index;
+    // `displayedBlocks` e nao `blocks`: quando o aluno opta por pular os
+    // conteudos, o que ele precisa terminar sao as atividades exibidas. A
+    // conclusao do TOPICO continua exigindo o percurso inteiro (topicoConcluido).
+    return todosOsBlocosConcluidos({
+      blocks: displayedBlocks,
+      conteudosVistosLocal,
+      atividadesResolvidasLocal,
     });
-  }, [displayedBlocks, conteudosVistosLocal, atividadesResolvidasLocal, index, topicoConcluido]);
+  }, [displayedBlocks, conteudosVistosLocal, atividadesResolvidasLocal, topicoConcluido]);
 
   const progressoVisual = useMemo(() => {
     return progressoPercurso.pct;

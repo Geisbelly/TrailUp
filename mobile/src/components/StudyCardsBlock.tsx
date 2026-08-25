@@ -1,7 +1,9 @@
 import { ContentBlockPayload } from "@/interfaces/componentes_simples/IContentBlock";
 import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+
+import { assinaturaDoDeck } from "./studyCardsDeck";
 import {
   Image,
   Pressable,
@@ -93,7 +95,19 @@ export default function StudyCardsBlock({ payload, WebView }: Props) {
   const [index, setIndex] = useState(0);
   const [showBack, setShowBack] = useState(false);
 
-  const card = cards[index] ?? null;
+  // Baralho novo comeca do primeiro card e pela FRENTE. Sem isto, um baralho
+  // regenerado herdava a face virada do anterior e abria com a resposta a
+  // mostra -- e, se o novo tivesse menos cards que o indice guardado, o bloco
+  // simplesmente nao renderizava nada.
+  const assinatura = useMemo(() => assinaturaDoDeck(cards), [cards]);
+  useEffect(() => {
+    setIndex(0);
+    setShowBack(false);
+  }, [assinatura]);
+
+  // Clamp defensivo: entre a troca de baralho e o efeito acima existe um render
+  // com o indice antigo, e e nele que a tela ficava em branco.
+  const card = cards.length > 0 ? cards[Math.min(index, cards.length - 1)] : null;
 
   if (!card) return null;
 

@@ -250,6 +250,34 @@ export function contarProgressoDeBlocos(params: {
   return { total, concluidos, pct: Math.max(0, Math.min(100, pct)) };
 }
 
+/**
+ * Todo bloco do percurso esta realmente concluido?
+ *
+ * Antes a regra era `concluido || idx < index`: qualquer bloco ATRAS do cursor
+ * contava como feito. Passar batido por uma questao equivalia a responde-la, e
+ * o modulo era dado como concluido com as atividades intocadas -- o gate existia
+ * so na aparencia.
+ *
+ * Posicao nao e evidencia de conclusao. Aqui so conta o que os predicados de
+ * conclusao confirmam (que ja aceitam status do banco, tentativa registrada e
+ * marcacao local, entao quem respondeu numa sessao anterior nao e penalizado).
+ */
+export function todosOsBlocosConcluidos(params: {
+  blocks: Block[];
+  conteudosVistosLocal: Set<number>;
+  atividadesResolvidasLocal: Map<number, AtividadeResolvida>;
+}): boolean {
+  const { blocks, conteudosVistosLocal, atividadesResolvidasLocal } = params;
+  const lista = blocks ?? [];
+  if (lista.length === 0) return true;
+
+  return lista.every((bloco) =>
+    bloco.kind === "conteudo"
+      ? isConteudoConcluido(bloco.conteudo, conteudosVistosLocal)
+      : isAtividadeConcluida(bloco.atividade, atividadesResolvidasLocal)
+  );
+}
+
 export function resolveLegacyStartPosition(
   blocks: Block[],
   ultimaAtividadeId?: number | null

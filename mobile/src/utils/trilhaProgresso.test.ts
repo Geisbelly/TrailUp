@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   buildBlocksForTopico,
   contarProgressoDeBlocos,
+  todosOsBlocosConcluidos,
   type AtividadeResolvida,
 } from "./trilhaBlocks";
 
@@ -208,4 +209,82 @@ test("dois personalizados distintos nao se confundem", () => {
 test("topico vazio nao se declara concluido", () => {
   // total 0 daria 0/0; concluir um topico sem bloco nenhum seria mentira.
   assert.equal(percursoCompleto(progresso({ conteudos: [], atividades: [] })), false);
+});
+
+// --- gate de avanco --------------------------------------------------------
+
+function gate(params: {
+  conteudos: any[];
+  atividades: any[];
+  vistos?: number[];
+  resolvidas?: number[];
+}) {
+  const blocks = buildBlocksForTopico(
+    params.conteudos,
+    params.atividades,
+    "conteudo_primeiro"
+  );
+  const resolvidas = new Map<number, AtividadeResolvida>();
+  (params.resolvidas ?? []).forEach((id) =>
+    resolvidas.set(id, { correto: true, acertosPercentual: 100 })
+  );
+
+  return todosOsBlocosConcluidos({
+    blocks,
+    conteudosVistosLocal: new Set(params.vistos ?? []),
+    atividadesResolvidasLocal: resolvidas,
+  });
+}
+
+test("passar batido por uma questao nao a conclui", () => {
+  // Era o bug: a regra aceitava `idx < index`, entao qualquer bloco atras do
+  // cursor contava como feito e o modulo concluia com as atividades intocadas.
+  assert.equal(
+    gate({
+      conteudos: [conteudo(1)],
+      atividades: [atividade(10)],
+      vistos: [1],
+    }),
+    false
+  );
+});
+
+test("com a questao respondida, libera", () => {
+  assert.equal(
+    gate({
+      conteudos: [conteudo(1)],
+      atividades: [atividade(10)],
+      vistos: [1],
+      resolvidas: [10],
+    }),
+    true
+  );
+});
+
+test("quem respondeu em sessao anterior nao e penalizado", () => {
+  // O predicado aceita status do banco e tentativa registrada, nao so a
+  // marcacao local desta sessao.
+  assert.equal(
+    gate({
+      conteudos: [conteudo(1, { status: "concluido" })],
+      atividades: [atividade(10, { ultima_tentativa: 1 })],
+    }),
+    true
+  );
+});
+
+test("conteudo nao visitado tambem segura", () => {
+  assert.equal(
+    gate({
+      conteudos: [conteudo(1), conteudo(2)],
+      atividades: [],
+      vistos: [1],
+    }),
+    false
+  );
+});
+
+test("sem bloco nenhum nao trava o aluno", () => {
+  // Modulo vazio nao tem o que concluir; segurar aqui deixaria a tela sem saida.
+  assert.equal(gate({ conteudos: [], atividades: [] }), true);
 });
