@@ -62,6 +62,7 @@ import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import {
   buildBlocksForTopico,
   calcularPosicaoInicial,
+  contarProgressoDeBlocos,
   isAtividadeConcluida,
   isConteudoConcluido,
   resolveConteudoMaterialContext,
@@ -588,9 +589,24 @@ export default function TrilhaConteudoScreen() {
     });
   }, [displayedBlocks, conteudosVistosLocal, atividadesResolvidasLocal, index, topicoConcluido]);
 
+  // A barra mede o PERCURSO (todos os blocos do topico, personalizado incluido),
+  // nao o subconjunto academico que `progressoTopico` usa pra decidir conclusao.
+  // Eram universos diferentes: concluir um passo personalizado avancava a tela e
+  // deixava a barra parada, e o rotulo "blocos" nao correspondia a nenhum dos
+  // dois. Ver contarProgressoDeBlocos.
+  const progressoPercurso = useMemo(
+    () =>
+      contarProgressoDeBlocos({
+        blocks,
+        conteudosVistosLocal,
+        atividadesResolvidasLocal,
+      }),
+    [atividadesResolvidasLocal, blocks, conteudosVistosLocal]
+  );
+
   const progressoVisual = useMemo(() => {
-    return progressoTopico.pct;
-  }, [progressoTopico.pct]);
+    return progressoPercurso.pct;
+  }, [progressoPercurso.pct]);
 
   const sugestaoMaterial = useMaterialSuggestion({
     alunoId: usuario?.id ?? null,
@@ -1451,7 +1467,7 @@ export default function TrilhaConteudoScreen() {
       >
         <View style={styles.header}>
           <View style={styles.headerTopMeta}>
-            {total > 0 ? (
+            {progressoPercurso.total > 0 ? (
               <>
                 <View style={styles.progressHeaderRow}>
                   <Text style={[styles.progressLabel, { color: profilePalette.textMuted }]}>Progresso do módulo</Text>
@@ -1472,7 +1488,7 @@ export default function TrilhaConteudoScreen() {
                   />
                 </View>
                 <Text style={[styles.progressCounter, { color: profilePalette.textSubtle }]}>
-                  {progressoTopico.concluidos} de {progressoTopico.total} blocos concluídos
+                  {progressoPercurso.concluidos} de {progressoPercurso.total} blocos concluídos
                 </Text>
               </>
             ) : null}

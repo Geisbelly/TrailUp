@@ -210,6 +210,46 @@ export function isAtividadeConcluida(
   );
 }
 
+/**
+ * Progresso sobre os blocos do topico -- o percurso que o aluno realmente ve.
+ *
+ * Existe porque a barra do modulo media outro conjunto: so conteudo/atividade do
+ * professor, excluindo o material personalizado. Duas consequencias, as duas
+ * visiveis pro aluno:
+ *
+ * 1. concluir um passo personalizado nao movia a barra (o passo entra no Set de
+ *    vistos, mas ficava fora do somatorio) -- a tela avancava e a barra ficava
+ *    parada;
+ * 2. o rotulo diz "blocos", e o gate de exibicao usava a contagem dos blocos
+ *    exibidos, entao numerador, denominador e rotulo falavam de tres universos
+ *    diferentes.
+ *
+ * Recebe `blocks` (o topico inteiro), nao os blocos exibidos: se o aluno pula os
+ * conteudos, eles continuam pendentes no modulo, e mostrar 100% ali seria trocar
+ * um numero errado por outro.
+ */
+export function contarProgressoDeBlocos(params: {
+  blocks: Block[];
+  conteudosVistosLocal: Set<number>;
+  atividadesResolvidasLocal: Map<number, AtividadeResolvida>;
+}): { total: number; concluidos: number; pct: number } {
+  const { blocks, conteudosVistosLocal, atividadesResolvidasLocal } = params;
+  const lista = blocks ?? [];
+
+  const concluidos = lista.reduce((soma, bloco) => {
+    const feito =
+      bloco.kind === "conteudo"
+        ? isConteudoConcluido(bloco.conteudo, conteudosVistosLocal)
+        : isAtividadeConcluida(bloco.atividade, atividadesResolvidasLocal);
+    return soma + (feito ? 1 : 0);
+  }, 0);
+
+  const total = lista.length;
+  const pct = total > 0 ? (concluidos / total) * 100 : 0;
+
+  return { total, concluidos, pct: Math.max(0, Math.min(100, pct)) };
+}
+
 export function resolveLegacyStartPosition(
   blocks: Block[],
   ultimaAtividadeId?: number | null
