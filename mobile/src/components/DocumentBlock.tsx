@@ -34,6 +34,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebContentFrame } from "./WebContentFrame";
+import { isHtmlDeckUrl } from "@/utils/htmlDeck";
 
 type Props = {
   tipo: "pdf" | "documento" | "apresentacao" | "embed";
@@ -776,13 +777,21 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent }: P
       ? "rolagem"
       : "pagina";
   const isNativePdfReader = tipo === "pdf" && Platform.OS !== "web" && isNativePdfViewerAvailable();
+  // Deck HTML e apresentacao, mas NAO e arquivo de Office: o leitor nativo
+  // baixa e parseia como PPTX (zip+xml) e falha, caindo no visualizador do
+  // Office, que tambem nao abre HTML - era esse o "nao foi possivel abrir os
+  // slides". Ele tem caminho proprio (deckHtml, mais abaixo).
+  const isDeckHtml = tipo === "apresentacao" && isHtmlDeckUrl(sourceUrl);
   const isNativeLocalReader =
     Platform.OS !== "web" &&
+    !isDeckHtml &&
     (isNativePdfReader || tipo === "documento" || tipo === "apresentacao");
 
   const [displayMode, setDisplayMode] = useState<ContentDisplayMode>(initialMode);
   const [fullscreenVisible, setFullscreenVisible] = useState(false);
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(sourceUrl);
+  const [deckHtml, setDeckHtml] = useState<string | null>(null);
+  const [deckErro, setDeckErro] = useState<string | null>(null);
   const [resolvingUrl, setResolvingUrl] = useState(false);
   const [resolveError, setResolveError] = useState<string | null>(null);
   const [nativeLoading, setNativeLoading] = useState(false);
@@ -934,6 +943,33 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent }: P
     };
   }, [isNativeLocalReader, resolvedUrl, sourceUrl, tipo]);
 
+  // Busca o HTML do deck pra renderizar inline. Por uri o WebView receberia
+  // text/plain (e como o Supabase serve .html) e mostraria o codigo-fonte.
+  useEffect(() => {
+    if (!isDeckHtml || !resolvedUrl) {
+      setDeckHtml(null);
+      setDeckErro(null);
+      return;
+    }
+
+    let ativo = true;
+    setDeckErro(null);
+    void (async () => {
+      try {
+        const resposta = await fetch(resolvedUrl);
+        if (!resposta.ok) throw new Error(String(resposta.status));
+        const html = await resposta.text();
+        if (ativo) setDeckHtml(html);
+      } catch {
+        if (ativo) setDeckErro("Não foi possível carregar a apresentação.");
+      }
+    })();
+
+    return () => {
+      ativo = false;
+    };
+  }, [isDeckHtml, resolvedUrl]);
+
   const viewer = useMemo<ViewerSource | null>(() => {
     if (effectiveUseNative) {
       return null;
@@ -943,6 +979,23 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent }: P
       return {
         title,
         html: buildPdfViewerHtml(resolvedUrl, displayMode, viewerTheme),
+        height: getViewerHeight(tipo, displayMode, false, windowHeight, windowWidth),
+      };
+    }
+
+    if (isDeckHtml && resolvedUrl) {
+      // html + uri juntos: o WebContentFrame monta {html, baseUrl: uri}, e e o
+      // baseUrl que faz o deck continuar lendo hideQuiz/hideChecklist/hideNotes
+      // de location.search - inline sem baseUrl perderia as flags e mostraria
+      // widget que o modo de operacao do aluno manda esconder.
+      return {
+        title,
+        html: deckHtml,
+        uri: withHideParams(resolvedUrl, {
+          hideQuiz: shouldHideQuiz(usuario?.modoOperacao_nome),
+          hideChecklist: shouldHideChecklist(usuario?.modoOperacao_nome),
+          hideNotes: shouldHideNotes(usuario?.modoOperacao_nome),
+        }),
         height: getViewerHeight(tipo, displayMode, false, windowHeight, windowWidth),
       };
     }
@@ -974,8 +1027,10 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent }: P
     return null;
   }, [
     currentPage,
+    deckHtml,
     displayMode,
     effectiveUseNative,
+    isDeckHtml,
     resolvedUrl,
     sourceHtml,
     tipo,
