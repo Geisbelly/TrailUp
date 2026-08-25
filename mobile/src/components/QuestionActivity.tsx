@@ -1,6 +1,6 @@
 // src/components/activities/QuestionActivity.tsx
 import { ContentRenderer } from '@/components/ContentRenderer';
-import { bannerImages, getProfileImageByString } from '@/constants/profileImages';
+import { getGuardianFaceImage } from '@/constants/profileImages';
 import { useMetricas } from '@/context/MetricasContext';
 import { useUsuario } from '@/context/SessaoContext';
 import { useTrilha } from '@/context/TrilhaContext';
@@ -428,7 +428,9 @@ export default function QuestionActivity({
     [questao?.resposta_aluno, atividade?.resposta_aluno]
   );
   const perfilNome = usuario?.perfis?.[0]?.nome || '';
-  const perfilImage = getProfileImageByString(perfilNome) ?? bannerImages[6];
+  // Modal de resultado: quem fala com o aluno aqui e o guia do perfil, entao a
+  // imagem e o guardiao, nao o simbolo abstrato do perfil.
+  const perfilImage = getGuardianFaceImage(perfilNome);
   const profilePalette = useMemo(
     () => getProfileShellPalette(perfilNome || null),
     [perfilNome]

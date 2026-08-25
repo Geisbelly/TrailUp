@@ -153,6 +153,36 @@ export const pickBySeed = <T>(
   return arr[index];
 };
 
+/**
+ * Rosto do guardião de cada perfil.
+ *
+ * A arte oficial vive em `microservice/src/assets/guardioes/` (fonte da verdade
+ * dos perfis, junto com cor-assinatura e nome do guia) e é de **corpo inteiro**.
+ * O que está aqui são recortes de rosto gerados a partir dela: todos os slots
+ * que mostram o guia no app são avatares — o maior tem 72pt —, e uma figura de
+ * corpo inteiro nesse tamanho vira um pontinho irreconhecível.
+ *
+ * O Socializador usa o par (Mateo e Zuri): é o único perfil com dois guardiões,
+ * e é o que faz o áudio dele ser diálogo em vez de narração solo. Mostrar só um
+ * contradiria o material que o aluno recebe.
+ */
+export const guardianFaceImages: Record<BrainHexProfile, ImageSourcePropType> = {
+  seeker: require("@/assets/guardioes/rosto/seeker.png"),
+  survivor: require("@/assets/guardioes/rosto/survivor.png"),
+  daredevil: require("@/assets/guardioes/rosto/daredevil.png"),
+  mastermind: require("@/assets/guardioes/rosto/mastermind.png"),
+  conqueror: require("@/assets/guardioes/rosto/conqueror.png"),
+  socializer: require("@/assets/guardioes/rosto/socializer-duo.png"),
+  achiever: require("@/assets/guardioes/rosto/achiever.png"),
+};
+
+export const getGuardianFaceImage = (
+  profileName?: string | null,
+): ImageSourcePropType => {
+  const normalized = normalizeBrainHexProfile(profileName);
+  return guardianFaceImages[normalized ?? "mastermind"];
+};
+
 // ...
 
 export const brainHexConfig: Record<
@@ -173,7 +203,9 @@ export const brainHexConfig: Record<
     icon_focus: "telescope", // Observação/Exploração
     label: "Explorador",
     imagemIndex: 9,
-    image: bannerImages[9],
+    // imagemIndex continua apontando pro simbolo do perfil (usado em banner);
+    // `image` agora e o guardiao, que e quem o aluno reconhece como guia.
+    image: guardianFaceImages.seeker,
   },
   survivor: {
     color: "#4e5a66",
@@ -181,7 +213,9 @@ export const brainHexConfig: Record<
     icon_focus: "sword-cross", // Luta/Sobrevivência
     label: "Sobrevivente",
     imagemIndex: 2,
-    image: bannerImages[2],
+    // imagemIndex continua apontando pro simbolo do perfil (usado em banner);
+    // `image` agora e o guardiao, que e quem o aluno reconhece como guia.
+    image: guardianFaceImages.survivor,
   },
   daredevil: {
     color: "#d7263d",
@@ -189,7 +223,9 @@ export const brainHexConfig: Record<
     icon_focus: "skull", // Velocidade/Risco
     label: "Aventureiro",
     imagemIndex: 7,
-    image: bannerImages[7],
+    // imagemIndex continua apontando pro simbolo do perfil (usado em banner);
+    // `image` agora e o guardiao, que e quem o aluno reconhece como guia.
+    image: guardianFaceImages.daredevil,
   },
   mastermind: {
     color: "#5b3fd9ff",
@@ -197,7 +233,9 @@ export const brainHexConfig: Record<
     icon_focus: "brain", // Intelecto
     label: "Estrategista",
     imagemIndex: 6,
-    image: bannerImages[6],
+    // imagemIndex continua apontando pro simbolo do perfil (usado em banner);
+    // `image` agora e o guardiao, que e quem o aluno reconhece como guia.
+    image: guardianFaceImages.mastermind,
   },
   conqueror: {
     color: "#1e4fd6ff",
@@ -205,7 +243,9 @@ export const brainHexConfig: Record<
     icon_focus: "fencing", // Força bruta
     label: "Conquistador",
     imagemIndex: 5,
-    image: bannerImages[5],
+    // imagemIndex continua apontando pro simbolo do perfil (usado em banner);
+    // `image` agora e o guardiao, que e quem o aluno reconhece como guia.
+    image: guardianFaceImages.conqueror,
   },
   socializer: {
     color: "rgb(244, 98, 58)",
@@ -213,7 +253,9 @@ export const brainHexConfig: Record<
     icon_focus: "redhat", // Comunicação
     label: "Socializador",
     imagemIndex: 4,
-    image: bannerImages[4],
+    // imagemIndex continua apontando pro simbolo do perfil (usado em banner);
+    // `image` agora e o guardiao, que e quem o aluno reconhece como guia.
+    image: guardianFaceImages.socializer,
   },
   achiever: {
     color: "rgb(201, 162, 39)",
@@ -221,7 +263,9 @@ export const brainHexConfig: Record<
     icon_focus: "diamond-stone", // Tesouro/Riqueza
     label: "Realizador",
     imagemIndex: 1,
-    image: bannerImages[1],
+    // imagemIndex continua apontando pro simbolo do perfil (usado em banner);
+    // `image` agora e o guardiao, que e quem o aluno reconhece como guia.
+    image: guardianFaceImages.achiever,
   },
 };
 
