@@ -119,3 +119,16 @@ jobs:
       - run: npm ci
       - name: Lint (expo)
         run: npm run lint
+      - name: Testes (node:test)
+        run: npm test
+      # `expo export` sai com codigo 0 mesmo quando o bundling falha, entao o
+      # exit code nao serve de verificacao: e preciso checar se dist/ existe.
+      # Foi assim que passou desapercebido que a web nao compilava (modulo
+      # nativo react-native-pdf resolvido pelo Metro na plataforma web).
+      - name: Build web (verifica bundling)
+        run: |
+          npm run build:web
+          if [ ! -d dist ]; then
+            echo "::error::expo export nao gerou dist/ - o bundling web falhou (exit code 0 mascara o erro)"
+            exit 1
+          fi
