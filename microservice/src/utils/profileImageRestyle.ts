@@ -8,7 +8,7 @@
 // perfis. Por isso vem DESLIGADA por padrao e com teto por material.
 //
 // Regras que evitam gastar a toa:
-//   - desligada por padrao (PROFILE_IMAGE_RESTYLE=1 liga);
+//   - ligada por padrao, com PROFILE_IMAGE_RESTYLE=0 como valvula de corte;
 //   - teto por material, pra material com muita imagem nao virar fatura;
 //   - GIF nunca entra: o modelo devolve imagem estatica e a animacao - que e
 //     justamente o conteudo - se perderia. Nesse caso so a moldura se aplica;
@@ -20,11 +20,17 @@ import { BRAIN_HEX_CONFIG, type BrainHexProfile } from "../constants/brainHex";
 export const DEFAULT_MAX_RESTYLES_PER_MATERIAL = 2;
 const TETO_ABSOLUTO = 12;
 
+/**
+ * LIGADA por padrao (decisao do usuario em 2026-08-24, ciente do custo).
+ * PROFILE_IMAGE_RESTYLE=0 (ou false/off) desliga sem precisar de deploy de
+ * codigo - e a valvula pra fechar rapido se a cota apertar.
+ */
 export function isRestyleEnabled(
   environment: Record<string, string | undefined> = process.env,
 ): boolean {
   const bruto = String(environment.PROFILE_IMAGE_RESTYLE ?? "").trim().toLowerCase();
-  return bruto === "1" || bruto === "true" || bruto === "on";
+  if (bruto === "0" || bruto === "false" || bruto === "off") return false;
+  return true;
 }
 
 export function maxRestylesPerMaterial(

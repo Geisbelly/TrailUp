@@ -15,15 +15,19 @@ const PNG = { mimeType: "image/png" };
 const JPEG = { mimeType: "image/jpeg" };
 const GIF = { mimeType: "image/gif" };
 
-test("vem DESLIGADA por padrao (nao gasta sem alguem mandar)", () => {
-  assert.equal(isRestyleEnabled({}), false);
-  assert.equal(isRestyleEnabled({ PROFILE_IMAGE_RESTYLE: "" }), false);
-  assert.equal(isRestyleEnabled({ PROFILE_IMAGE_RESTYLE: "0" }), false);
-  assert.equal(isRestyleEnabled({ PROFILE_IMAGE_RESTYLE: "false" }), false);
+test("vem LIGADA por padrao (decisao consciente do custo, 2026-08-24)", () => {
+  assert.equal(isRestyleEnabled({}), true);
+  assert.equal(isRestyleEnabled({ PROFILE_IMAGE_RESTYLE: "" }), true);
 });
 
-test("liga com 1/true/on, sem depender de caixa", () => {
-  for (const valor of ["1", "true", "TRUE", "on", " On "]) {
+test("desliga com 0/false/off - valvula de corte sem deploy de codigo", () => {
+  for (const valor of ["0", "false", "FALSE", "off", " Off "]) {
+    assert.equal(isRestyleEnabled({ PROFILE_IMAGE_RESTYLE: valor }), false, valor);
+  }
+});
+
+test("valor explicito de ligar continua valendo", () => {
+  for (const valor of ["1", "true", "on"]) {
     assert.equal(isRestyleEnabled({ PROFILE_IMAGE_RESTYLE: valor }), true, valor);
   }
 });
@@ -60,8 +64,12 @@ test("o que nao e imagem nao entra", () => {
   assert.equal(podeReilustrar(""), false);
 });
 
-test("desligada: nao seleciona nada, mesmo com imagem elegivel", () => {
-  assert.deepEqual(selecionarParaReilustrar([PNG, JPEG], {}), []);
+test("desligada explicitamente: nao seleciona nada, mesmo com imagem elegivel", () => {
+  assert.deepEqual(selecionarParaReilustrar([PNG, JPEG], { PROFILE_IMAGE_RESTYLE: "0" }), []);
+});
+
+test("no padrao (ligada), seleciona respeitando o teto padrao", () => {
+  assert.deepEqual(selecionarParaReilustrar([PNG, JPEG, PNG], {}), [0, 1]);
 });
 
 test("ligada: seleciona ate o teto, na ordem", () => {
@@ -117,7 +125,7 @@ test("desligada: nao chama o gerador nem toca nas imagens", async () => {
 
   const r = await applyProfileRestyle(entrada, {
     profile: "seeker",
-    environment: {},
+    environment: { PROFILE_IMAGE_RESTYLE: "0" },
     restyle: async () => {
       chamou = true;
       return { data: "x", mimeType: "image/png" };
