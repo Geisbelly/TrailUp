@@ -1410,7 +1410,10 @@ export default function TrilhaConteudoScreen() {
   return (
     <SafeAreaView
       style={[styles.screen, { backgroundColor: profilePalette.background }]}
-      edges={["top", "bottom"]}
+      // Sem "top": esta rota tem cabecalho de navegacao (trilha/_layout.tsx),
+      // que ja fica abaixo da barra de status - pedir o inset de topo aqui
+      // somava a altura da barra de status uma segunda vez.
+      edges={["bottom"]}
       onTouchStart={handleTelemetryTouch}
     >
       {/* ── Textura medieval de fundo ── */}

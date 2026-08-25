@@ -35,6 +35,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebContentFrame } from "./WebContentFrame";
 import { isHtmlDeckUrl } from "@/utils/htmlDeck";
+import { resolveMediaUrl } from "@/utils/mediaPayload";
 
 type Props = {
   tipo: "pdf" | "documento" | "apresentacao" | "embed";
@@ -740,8 +741,14 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent }: P
     typeof payload === "object"
       ? readString(payload, "texto", "text", "conteudo")
       : null;
+  // resolveMediaUrl entra como ultimo recurso: a lista local acima nao olha
+  // dentro de "partes", e material multi-parte pode ter o campo de cima vazio -
+  // nesse caso o bloco ficava sem url nenhuma (e o deck, sem como ser
+  // reconhecido como HTML). Ver utils/mediaPayload.ts.
   const rawSourceUrl =
-    payloadFileUrl ?? (looksLikeFileSource(payloadTextFallback) ? payloadTextFallback : null);
+    payloadFileUrl ??
+    (looksLikeFileSource(payloadTextFallback) ? payloadTextFallback : null) ??
+    resolveMediaUrl(payload);
   const sourceUrl = looksLikeFileSource(rawSourceUrl) ? rawSourceUrl : null;
   const sourceHtml =
     typeof payload === "string" && !looksLikeFileSource(payload)
@@ -781,16 +788,19 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent }: P
   // baixa e parseia como PPTX (zip+xml) e falha, caindo no visualizador do
   // Office, que tambem nao abre HTML - era esse o "nao foi possivel abrir os
   // slides". Ele tem caminho proprio (deckHtml, mais abaixo).
-  const isDeckHtml = tipo === "apresentacao" && isHtmlDeckUrl(sourceUrl);
+  // Testa as duas pontas: o caminho cru do payload e, depois, a url resolvida
+  // (publica/assinada). Uma delas basta pra reconhecer o deck.
+  const isDeckHtmlSource = tipo === "apresentacao" && isHtmlDeckUrl(sourceUrl);
   const isNativeLocalReader =
     Platform.OS !== "web" &&
-    !isDeckHtml &&
+    !isDeckHtmlSource &&
     (isNativePdfReader || tipo === "documento" || tipo === "apresentacao");
 
   const [displayMode, setDisplayMode] = useState<ContentDisplayMode>(initialMode);
   const [fullscreenVisible, setFullscreenVisible] = useState(false);
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(sourceUrl);
   const [deckHtml, setDeckHtml] = useState<string | null>(null);
+  const isDeckHtml = isDeckHtmlSource || (tipo === "apresentacao" && isHtmlDeckUrl(resolvedUrl));
   const [deckErro, setDeckErro] = useState<string | null>(null);
   const [resolvingUrl, setResolvingUrl] = useState(false);
   const [resolveError, setResolveError] = useState<string | null>(null);
