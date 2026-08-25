@@ -290,8 +290,8 @@
     "semantic_hash": ""
   },
   "api/app/api/v1/personalizacao.py": {
-    "mtime": 1787347226.0008557,
-    "ast_hash": "f438a4d8a787e0b47696f3d65fa3146d",
+    "mtime": 1787688983.509626,
+    "ast_hash": "9e31055f9d26f88a6eed4817058de824",
     "semantic_hash": ""
   },
   "api/app/api/v1/telemetria.py": {
@@ -525,8 +525,8 @@
     "semantic_hash": "73a385d9198ea411d128d44637a5e4f3"
   },
   "api/app/schemas/personalizacao.py": {
-    "mtime": 1787347226.0096452,
-    "ast_hash": "2b4413c160f48a0bf7c278e1643a0573",
+    "mtime": 1787688817.6697953,
+    "ast_hash": "ae556c5c49d93acbf5f5939426236c14",
     "semantic_hash": ""
   },
   "api/app/schemas/telemetria.py": {
@@ -555,8 +555,8 @@
     "semantic_hash": "bfb0476cab4b788c938b1a16d9b6df2b"
   },
   "api/app/services/analysis_runner.py": {
-    "mtime": 1787347226.0116668,
-    "ast_hash": "2c3ab770697e6879e24c98d500011877",
+    "mtime": 1787688707.9660225,
+    "ast_hash": "6b93c84202eb31aa06b0a1b9479a719d",
     "semantic_hash": ""
   },
   "api/app/services/audio.py": {
@@ -1705,9 +1705,9 @@
     "semantic_hash": "560a864580ad8107fbbf8d6d452c82fe"
   },
   "mobile/package.json": {
-    "mtime": 1782269189.3963897,
-    "ast_hash": "f55ed33bcb9c0e420f6d0d32c456c717",
-    "semantic_hash": "f55ed33bcb9c0e420f6d0d32c456c717"
+    "mtime": 1787689232.3324633,
+    "ast_hash": "e78a82e6e4696e631cd1a171f5a9c9df",
+    "semantic_hash": ""
   },
   "mobile/patch_trilha.py": {
     "mtime": 1765236156.577602,
@@ -1860,8 +1860,8 @@
     "semantic_hash": "2cf27d70fbb6b233df4922611a682d40"
   },
   "mobile/src/app/(tabs)/trilha/[id].tsx": {
-    "mtime": 1787686260.1673427,
-    "ast_hash": "3a4181d8307e8abc0eb2b835922ed742",
+    "mtime": 1787689473.6295702,
+    "ast_hash": "828deaacf1133a7fb8631799a296ecea",
     "semantic_hash": ""
   },
   "mobile/src/app/(tabs)/trilha/_layout.tsx": {
@@ -2515,9 +2515,9 @@
     "semantic_hash": "b79b764876d92c24b7281122a2c6db85"
   },
   "mobile/src/services/personalizacao/IPersonalizacaoProvider.ts": {
-    "mtime": 1782269199.9828808,
-    "ast_hash": "15d32bf08c0dd2d40e7e2f74ca645503",
-    "semantic_hash": "15d32bf08c0dd2d40e7e2f74ca645503"
+    "mtime": 1787689306.7166705,
+    "ast_hash": "577f7865e30d9948d2676158b5a57eda",
+    "semantic_hash": ""
   },
   "mobile/src/services/personalizacao/PersonalizacaoProviderContext.tsx": {
     "mtime": 1782269199.9828808,
@@ -2525,8 +2525,8 @@
     "semantic_hash": "c846ca0cdc2fcd6c4959d3aab7fb02ce"
   },
   "mobile/src/services/personalizacao/TrailupApiProvider.ts": {
-    "mtime": 1785326591.4889796,
-    "ast_hash": "84c285c13bcbada7c05e17987c167474",
+    "mtime": 1787689317.355495,
+    "ast_hash": "634ede9002e37664c853af78052cc011",
     "semantic_hash": ""
   },
   "mobile/src/services/personalizacao/errors.ts": {
@@ -2540,8 +2540,8 @@
     "semantic_hash": "175bd74efe5fe8f6f42833953d11952b"
   },
   "mobile/src/services/personalizacao/types.ts": {
-    "mtime": 1785286509.889788,
-    "ast_hash": "9001c94ccafa19566b27cc77d9e1ece4",
+    "mtime": 1787689292.4878626,
+    "ast_hash": "8d0c0edf15e87b6791d4ec12acd66625",
     "semantic_hash": ""
   },
   "mobile/src/services/progressoTrilha.ts": {
@@ -4910,13 +4910,13 @@
     "semantic_hash": ""
   },
   "api/app/services/sugestao_material.py": {
-    "mtime": 1787686788.8868413,
-    "ast_hash": "5849230cf6ff79830c661cb2d81d23ea",
+    "mtime": 1787688777.698434,
+    "ast_hash": "a161bb6917c19c5410bb9cde41915b3e",
     "semantic_hash": ""
   },
   "api/tests/test_sugestao_material.py": {
-    "mtime": 1787687111.914578,
-    "ast_hash": "2243585279673cb64256c3c11b3918f1",
+    "mtime": 1787688777.7374015,
+    "ast_hash": "a1b13122efce69d3ab9af0cf43d4df02",
     "semantic_hash": ""
   },
   "mobile/src/utils/storageOrigin.test.ts": {
@@ -4937,6 +4937,46 @@
   "api/tests/test_sugestao_metrica.py": {
     "mtime": 1787687876.3618624,
     "ast_hash": "4af1aac8ed4a76c90c4d041efad63372",
+    "semantic_hash": ""
+  },
+  "api/app/repositories/sugestao_material.py": {
+    "mtime": 1787688039.340264,
+    "ast_hash": "c8ced8269208ef8e2d70e840ea17aa24",
+    "semantic_hash": ""
+  },
+  "api/app/services/sugestao_ciclo.py": {
+    "mtime": 1787688805.905836,
+    "ast_hash": "9eda9f2b8554cba0d941136a8eae9124",
+    "semantic_hash": ""
+  },
+  "api/app/services/sugestao_sinais.py": {
+    "mtime": 1787688642.3650563,
+    "ast_hash": "40fcdfa116cfea2d6ed59bb89e417deb",
+    "semantic_hash": ""
+  },
+  "api/tests/test_sugestao_ciclo.py": {
+    "mtime": 1787688900.9421866,
+    "ast_hash": "fedbce920bb9fd94b8bf382011016494",
+    "semantic_hash": ""
+  },
+  "api/tests/test_sugestao_sinais.py": {
+    "mtime": 1787688655.825319,
+    "ast_hash": "e5036c788a7a4ed78bc5a0b0a835e3c1",
+    "semantic_hash": ""
+  },
+  "mobile/src/hooks/trilha/useMaterialSuggestion.ts": {
+    "mtime": 1787689459.8642857,
+    "ast_hash": "1023ec9871b82f002ec7fdb625008465",
+    "semantic_hash": ""
+  },
+  "mobile/src/utils/materialSuggestion.test.ts": {
+    "mtime": 1787689347.0691564,
+    "ast_hash": "876791f7f26f44efb2e87709bd5a86ce",
+    "semantic_hash": ""
+  },
+  "mobile/src/utils/materialSuggestion.ts": {
+    "mtime": 1787689099.0095358,
+    "ast_hash": "1d66d8d65136d67e23b65a241a7322f4",
     "semantic_hash": ""
   }
 }

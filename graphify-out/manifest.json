@@ -290,8 +290,8 @@
     "semantic_hash": ""
   },
   "api/app/api/v1/personalizacao.py": {
-    "mtime": 1787688983.509626,
-    "ast_hash": "9e31055f9d26f88a6eed4817058de824",
+    "mtime": 1787689893.169569,
+    "ast_hash": "1531da8b4c2bcaf946b7b575118c7d63",
     "semantic_hash": ""
   },
   "api/app/api/v1/telemetria.py": {
@@ -525,8 +525,8 @@
     "semantic_hash": "73a385d9198ea411d128d44637a5e4f3"
   },
   "api/app/schemas/personalizacao.py": {
-    "mtime": 1787688817.6697953,
-    "ast_hash": "ae556c5c49d93acbf5f5939426236c14",
+    "mtime": 1787689870.6996427,
+    "ast_hash": "4f5c9883ca99d7eb64325d30ebed4f51",
     "semantic_hash": ""
   },
   "api/app/schemas/telemetria.py": {
@@ -935,13 +935,13 @@
     "semantic_hash": "0254354b897a8bcaa2974dd21feb0b84"
   },
   "frontend/src/components/console/personalizacoes/PersonalizacoesSection.tsx": {
-    "mtime": 1787615706.1705756,
-    "ast_hash": "cbe31609e3779d2b8c34111769ed8ea8",
+    "mtime": 1787690151.185374,
+    "ast_hash": "10bd076b35992770b403e6d56edaf511",
     "semantic_hash": ""
   },
   "frontend/src/components/console/personalizacoes/personalizacoesApi.ts": {
-    "mtime": 1787347226.0616267,
-    "ast_hash": "e71417de3d185db7f1ff118c4c31fe01",
+    "mtime": 1787690019.3975341,
+    "ast_hash": "a117970e7e79f91f90ab5ec2b7a2deca",
     "semantic_hash": ""
   },
   "frontend/src/components/console/trilha/ActivitiesManager.tsx": {
@@ -4930,13 +4930,13 @@
     "semantic_hash": ""
   },
   "api/app/services/sugestao_metrica.py": {
-    "mtime": 1787687835.0780745,
-    "ast_hash": "1cdb9aec0731a734b5955c8f09703adb",
+    "mtime": 1787689825.0638754,
+    "ast_hash": "85ec3ef7901ccedad4042916fc58b240",
     "semantic_hash": ""
   },
   "api/tests/test_sugestao_metrica.py": {
-    "mtime": 1787687876.3618624,
-    "ast_hash": "4af1aac8ed4a76c90c4d041efad63372",
+    "mtime": 1787689847.4700127,
+    "ast_hash": "77db652fd981b63990db5836ac88a964",
     "semantic_hash": ""
   },
   "api/app/repositories/sugestao_material.py": {
@@ -4945,23 +4945,23 @@
     "semantic_hash": ""
   },
   "api/app/services/sugestao_ciclo.py": {
-    "mtime": 1787688805.905836,
-    "ast_hash": "9eda9f2b8554cba0d941136a8eae9124",
+    "mtime": 1787689753.958031,
+    "ast_hash": "4c3a5c7e2e09c4625ca391ff53a93394",
     "semantic_hash": ""
   },
   "api/app/services/sugestao_sinais.py": {
-    "mtime": 1787688642.3650563,
-    "ast_hash": "40fcdfa116cfea2d6ed59bb89e417deb",
+    "mtime": 1787689727.604273,
+    "ast_hash": "c14f43673a6a786bc6396ad056457f69",
     "semantic_hash": ""
   },
   "api/tests/test_sugestao_ciclo.py": {
-    "mtime": 1787688900.9421866,
-    "ast_hash": "fedbce920bb9fd94b8bf382011016494",
+    "mtime": 1787689948.3435318,
+    "ast_hash": "1b9b3a4a4d70450c3093a60b707a478c",
     "semantic_hash": ""
   },
   "api/tests/test_sugestao_sinais.py": {
-    "mtime": 1787688655.825319,
-    "ast_hash": "e5036c788a7a4ed78bc5a0b0a835e3c1",
+    "mtime": 1787689727.7210343,
+    "ast_hash": "aca495ce18fc70fc1b3bc4b221d70862",
     "semantic_hash": ""
   },
   "mobile/src/hooks/trilha/useMaterialSuggestion.ts": {
@@ -4977,6 +4977,21 @@
   "mobile/src/utils/materialSuggestion.ts": {
     "mtime": 1787689099.0095358,
     "ast_hash": "1d66d8d65136d67e23b65a241a7322f4",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/console/personalizacoes/SugestaoMaterialCard.tsx": {
+    "mtime": 1787690135.0036948,
+    "ast_hash": "c2d4b911db1377b9ccb2a6338e5c6208",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/console/personalizacoes/sugestaoDisplay.test.ts": {
+    "mtime": 1787690075.8601692,
+    "ast_hash": "86d7af56d80198c92b0bc7954853a1fc",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/console/personalizacoes/sugestaoDisplay.ts": {
+    "mtime": 1787690103.497834,
+    "ast_hash": "1306b53f36dbd7447f93f79a4a14b7bc",
     "semantic_hash": ""
   }
 }
