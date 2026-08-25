@@ -1860,8 +1860,8 @@
     "semantic_hash": "2cf27d70fbb6b233df4922611a682d40"
   },
   "mobile/src/app/(tabs)/trilha/[id].tsx": {
-    "mtime": 1787419388.588111,
-    "ast_hash": "c96f91b271f5bd3d5ff5680240bca559",
+    "mtime": 1787686260.1673427,
+    "ast_hash": "3a4181d8307e8abc0eb2b835922ed742",
     "semantic_hash": ""
   },
   "mobile/src/app/(tabs)/trilha/_layout.tsx": {
@@ -1915,13 +1915,13 @@
     "semantic_hash": "d138ea32de62c9f0425d16c6e50a7628"
   },
   "mobile/src/components/ContentRenderer.tsx": {
-    "mtime": 1787419515.9212346,
-    "ast_hash": "9908db82ccc44735617ac814ae5af862",
+    "mtime": 1787677945.8169508,
+    "ast_hash": "32f45d5513e83388f92feb7b852c8fed",
     "semantic_hash": ""
   },
   "mobile/src/components/DocumentBlock.tsx": {
-    "mtime": 1787527033.7267137,
-    "ast_hash": "fb33a9525e81be7e1b95d05c52dff265",
+    "mtime": 1787686350.598696,
+    "ast_hash": "dfc5e09f84e96ed450ba2dac3b238c7a",
     "semantic_hash": ""
   },
   "mobile/src/components/HallTheme.tsx": {
@@ -1945,8 +1945,8 @@
     "semantic_hash": "bffcf6c378592a1ea4450c7b2726ad87"
   },
   "mobile/src/components/MarkdownBlock.tsx": {
-    "mtime": 1787620401.1169486,
-    "ast_hash": "50eb54cb156556ca1b63a46f810120e4",
+    "mtime": 1787678057.433048,
+    "ast_hash": "e84adf5de1db2fb91e7b281512de4f42",
     "semantic_hash": ""
   },
   "mobile/src/components/PersonalizedTopicView.tsx": {
@@ -2270,8 +2270,8 @@
     "semantic_hash": "d99951f5ca38b937cf9741b9dfb38386"
   },
   "mobile/src/context/TrilhaContext.tsx": {
-    "mtime": 1787505433.9965153,
-    "ast_hash": "15e51167cd5e20d937b02b42cee07401",
+    "mtime": 1787687660.669832,
+    "ast_hash": "74873e999ee683a2602c5120959c052d",
     "semantic_hash": ""
   },
   "mobile/src/database/mockUser.ts": {
@@ -2560,9 +2560,9 @@
     "semantic_hash": "9d12967a6d4212aeb30be745a3f3d669"
   },
   "mobile/src/styles/trilhaTopicoStyles.ts": {
-    "mtime": 1784778660.4609818,
-    "ast_hash": "4582b2b7590ea8d5456fa8df920623ff",
-    "semantic_hash": "4582b2b7590ea8d5456fa8df920623ff"
+    "mtime": 1787686260.164788,
+    "ast_hash": "8b66f2869377216f3dcc56f85305ddf7",
+    "semantic_hash": ""
   },
   "mobile/src/utils/Formatacoes.ts": {
     "mtime": 1765156497.298393,
@@ -2590,8 +2590,8 @@
     "semantic_hash": "88ad22f0fdc024972c7476613afdb1c3"
   },
   "mobile/src/utils/contentBlocks.ts": {
-    "mtime": 1785437481.9627585,
-    "ast_hash": "6a843e68d025d47c9315142bd98fd05e",
+    "mtime": 1787678482.302889,
+    "ast_hash": "c45130378c3edb63ee95dbc1592d9171",
     "semantic_hash": ""
   },
   "mobile/src/utils/dataValidation.ts": {
@@ -2660,9 +2660,9 @@
     "semantic_hash": "691f47b42cfc5616c8194b7dd388707a"
   },
   "mobile/src/utils/supabaseStorage.ts": {
-    "mtime": 1784900116.419465,
-    "ast_hash": "f5581ad4400a67a8bec8e13695d88d88",
-    "semantic_hash": "f5581ad4400a67a8bec8e13695d88d88"
+    "mtime": 1787687543.820244,
+    "ast_hash": "9ea6279c27339f4881c32fc81bf937e4",
+    "semantic_hash": ""
   },
   "mobile/src/utils/telemetryConsent.ts": {
     "mtime": 1782269189.5078495,
@@ -4030,8 +4030,8 @@
     "semantic_hash": ""
   },
   "api/tests/test_migrations.py": {
-    "mtime": 1787347226.0361602,
-    "ast_hash": "c02e364b65e2a29ddbe4c5c0762301a7",
+    "mtime": 1787679115.1793675,
+    "ast_hash": "54769f3814b8a1a7d0828ab43ae472b4",
     "semantic_hash": ""
   },
   "api/alembic/versions/20260411_02_production_schema_baseline.py": {
@@ -4065,8 +4065,8 @@
     "semantic_hash": ""
   },
   "api/app/services/media_contract.py": {
-    "mtime": 1787614048.4496858,
-    "ast_hash": "8984fb8c2449a19033d6d8545e683d54",
+    "mtime": 1787621966.2096438,
+    "ast_hash": "d6abeb707b38ea9221b3a474670bee7a",
     "semantic_hash": ""
   },
   "frontend/src/components/console/personalizacoes/materialPreview.test.ts": {
@@ -4080,8 +4080,8 @@
     "semantic_hash": ""
   },
   "microservice/src/constants/pipelineVersions.ts": {
-    "mtime": 1787614048.448165,
-    "ast_hash": "f473887fa293a26da1e140a1fb1dba96",
+    "mtime": 1787621966.2085116,
+    "ast_hash": "17b744fa497ce65a05d87eb32c68ca1c",
     "semantic_hash": ""
   },
   "api/alembic/versions/20260728_04_scope_personalization_by_content.py": {
@@ -4870,13 +4870,73 @@
     "semantic_hash": ""
   },
   "microservice/src/utils/profileImageRestyle.test.ts": {
-    "mtime": 1787621701.584181,
-    "ast_hash": "a8f509a6ac390da4f06407b1490b78ca",
+    "mtime": 1787621948.5924685,
+    "ast_hash": "24da434ed26f1ec265b15bedf388f579",
     "semantic_hash": ""
   },
   "microservice/src/utils/profileImageRestyle.ts": {
     "mtime": 1787621923.0372245,
     "ast_hash": "cc98922babf26326c47ff6e1746c19cf",
+    "semantic_hash": ""
+  },
+  "mobile/src/utils/mediaPayload.test.ts": {
+    "mtime": 1787677880.7148948,
+    "ast_hash": "6809c0f46028ce0b9facacf38d1449d2",
+    "semantic_hash": ""
+  },
+  "mobile/src/utils/mediaPayload.ts": {
+    "mtime": 1787677859.2521172,
+    "ast_hash": "677bb28266eef1a7d16be9170ae98987",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-08-25-sugestao-de-material-por-aluno-design.md": {
+    "mtime": 1787678128.0205045,
+    "ast_hash": "bc7bb5e87d72f056d1abf123dcc21a05",
+    "semantic_hash": ""
+  },
+  "mobile/src/utils/htmlDeck.test.ts": {
+    "mtime": 1787678482.4301827,
+    "ast_hash": "90578c5712e4760616b2aa7e2bdcac89",
+    "semantic_hash": ""
+  },
+  "mobile/src/utils/htmlDeck.ts": {
+    "mtime": 1787678482.3478281,
+    "ast_hash": "346b773e6ee370fb245b3f516e808bee",
+    "semantic_hash": ""
+  },
+  "api/alembic/versions/20260825_01_sugestao_material_por_aluno.py": {
+    "mtime": 1787679076.3890731,
+    "ast_hash": "523c5947192819d2aa684436af329f71",
+    "semantic_hash": ""
+  },
+  "api/app/services/sugestao_material.py": {
+    "mtime": 1787686788.8868413,
+    "ast_hash": "5849230cf6ff79830c661cb2d81d23ea",
+    "semantic_hash": ""
+  },
+  "api/tests/test_sugestao_material.py": {
+    "mtime": 1787687111.914578,
+    "ast_hash": "2243585279673cb64256c3c11b3918f1",
+    "semantic_hash": ""
+  },
+  "mobile/src/utils/storageOrigin.test.ts": {
+    "mtime": 1787687511.498134,
+    "ast_hash": "92dd3f9534ce5473263b7df668e427f4",
+    "semantic_hash": ""
+  },
+  "mobile/src/utils/storageOrigin.ts": {
+    "mtime": 1787687511.4490626,
+    "ast_hash": "1c405a10d7857d99818a2c7e3f31d7d9",
+    "semantic_hash": ""
+  },
+  "api/app/services/sugestao_metrica.py": {
+    "mtime": 1787687835.0780745,
+    "ast_hash": "1cdb9aec0731a734b5955c8f09703adb",
+    "semantic_hash": ""
+  },
+  "api/tests/test_sugestao_metrica.py": {
+    "mtime": 1787687876.3618624,
+    "ast_hash": "4af1aac8ed4a76c90c4d041efad63372",
     "semantic_hash": ""
   }
 }
