@@ -56,6 +56,9 @@ from app.schemas.personalizacao import (
     RegenerarDocumentoPayload,
     RegenerarSlidePayload,
     RegenerarSlideResponse,
+    SugestaoAlunoResponse,
+    SugestaoEfetividadeResponse,
+    SugestaoHistoricoItem,
     SugestaoMaterialItem,
     SugestaoMaterialResponse,
 )
@@ -87,7 +90,9 @@ from app.services.personalizacao_jobs import (
     get_job_detail,
 )
 from app.services.storage import BUCKET, SupabaseStorage, build_public_storage_url
+from app.repositories.sugestao_material import SugestaoMaterialRepository
 from app.services.sugestao_ciclo import garantir_sugestao_do_aluno
+from app.services.sugestao_metrica import montar_registros_do_log, resumo_efetividade
 
 router = APIRouter(prefix="/personalizar", tags=["personalizar"])
 logger = logging.getLogger(__name__)
@@ -2773,6 +2778,89 @@ async def obter_personalizacao_media_status(
         status=overall_status,
         job_id=str(latest_job["id"]) if latest_job and latest_job.get("id") is not None else None,
         materiais=materiais_status,
+    )
+
+
+@router.get("/sugestao/{aluno_id}/historico", response_model=SugestaoAlunoResponse)
+async def obter_historico_de_sugestao(
+    aluno_id: str,
+    topico_id: int | None = Query(default=None, gt=0),
+    limite: int = Query(default=200, ge=1, le=1000),
+    user: UserContext = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> SugestaoAlunoResponse:
+    """Sugestão atual + histórico de decisões + efetividade, para o console.
+
+    Declarada ANTES de ``/sugestao/{aluno_id}/{topico_id}``: "historico" não é
+    inteiro, e com a ordem invertida o FastAPI responderia 422 em vez de chegar
+    aqui.
+
+    Todos os números saem do que já foi gravado no log. Nada é recalculado a
+    partir de telemetria nova — ela não existe mais quando o professor abre o
+    console, e recalcular daria um número diferente do que o sistema usou para
+    decidir.
+    """
+    if user.is_aluno and (user.aluno_id or user.user_id) == aluno_id:
+        pass
+    elif user.is_professor:
+        if not user.professor_liberado:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Professor sem liberacao de acesso.",
+            )
+        await ensure_professor_access(aluno_id, user, session)
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Perfil sem acesso a sugestao de material.",
+        )
+
+    repo = SugestaoMaterialRepository(session)
+    log = await repo.listar_log(aluno_id=aluno_id, topico_id=topico_id, limite=limite)
+    registros = montar_registros_do_log(log)
+
+    atual = None
+    if topico_id is not None:
+        gravada = await repo.buscar(aluno_id=aluno_id, topico_id=topico_id)
+        if gravada:
+            atual = SugestaoMaterialResponse(
+                formato_inicial=gravada.get("formato_inicial"),
+                ordem=[
+                    SugestaoMaterialItem(
+                        formato=str(item.get("formato")),
+                        posicao=int(item.get("posicao") or 0),
+                        score=float(item.get("score") or 0),
+                        motivos=list(item.get("motivos") or []),
+                    )
+                    for item in (gravada.get("ordem") or [])
+                ],
+                versao=int(gravada.get("versao") or 1),
+                origem=str(gravada.get("origem") or "inicial"),
+            )
+
+    return SugestaoAlunoResponse(
+        aluno_id=aluno_id,
+        topico_id=topico_id,
+        atual=atual,
+        # Mais recente primeiro: o professor quer ver o que mudou agora, nao a
+        # arqueologia da primeira versao.
+        historico=[
+            SugestaoHistoricoItem(
+                versao=int(registro.get("versao") or 1),
+                acao=str(registro.get("acao") or ""),
+                topico_id=registro.get("topico_id"),
+                criado_em=registro.get("criado_em"),
+                motivos=list(registro.get("motivos") or []),
+                ordem_sugerida=list(registro.get("ordem_sugerida") or []),
+                ordem_observada=list(registro.get("ordem_observada") or []),
+                aderencia=registro.get("aderencia"),
+                seguiu_inicio=registro.get("seguiu_inicio"),
+                desempenho=registro.get("desempenho"),
+                desempenho_posterior=registro.get("desempenho_posterior"),
+            )
+            for registro in reversed(registros)
+        ],
+        efetividade=SugestaoEfetividadeResponse(**resumo_efetividade(registros)),
     )
 
 

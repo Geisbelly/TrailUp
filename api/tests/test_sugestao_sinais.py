@@ -3,6 +3,7 @@
 from app.services.sugestao_sinais import (
     formato_do_material,
     indexar_progresso_por_conteudo,
+    ordem_de_consumo,
     sinais_por_formato,
 )
 
@@ -272,3 +273,42 @@ def test_item_key_malformado_nao_quebra():
     )
 
     assert indexado == {}
+
+
+# --- ordem observada ------------------------------------------------------
+
+
+def test_ordem_de_consumo_segue_primeira_aparicao():
+    ordem = ordem_de_consumo(
+        [
+            _material("audio", conteudo_id=1),
+            _material("markdown", conteudo_id=2),
+            _material("audio", conteudo_id=3),
+        ]
+    )
+
+    assert ordem == ["audio", "markdown"]
+
+
+def test_ordem_de_consumo_ignora_tempo_gasto():
+    # Quem abre o áudio primeiro e só depois se demora no texto seguiu a
+    # sugestão de começar pelo áudio.
+    ordem = ordem_de_consumo(
+        [
+            _material("audio", conteudo_id=1, active=5),
+            _material("markdown", conteudo_id=2, active=600),
+        ]
+    )
+
+    assert ordem == ["audio", "markdown"]
+
+
+def test_ordem_de_consumo_pula_formato_nao_sugerivel():
+    ordem = ordem_de_consumo([_material("video"), _material("cards", conteudo_id=2)])
+
+    assert ordem == ["cards"]
+
+
+def test_ordem_de_consumo_vazia_nao_quebra():
+    assert ordem_de_consumo([]) == []
+    assert ordem_de_consumo(None) == []

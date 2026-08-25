@@ -32,6 +32,7 @@ from app.services.sugestao_material import (
 )
 from app.services.sugestao_sinais import (
     indexar_progresso_por_conteudo,
+    ordem_de_consumo,
     sinais_por_formato,
 )
 
@@ -116,6 +117,7 @@ async def revisar_sugestao(
     conteudo_id: int | None = None,
     classe_id: int | None = None,
     sinais_por_formato: dict[str, dict[str, Any]] | None = None,
+    evidencia_extra: dict[str, Any] | None = None,
     minimo_evidencia: int = MINIMO_EVIDENCIA_PADRAO,
     limiar_mudanca: float = LIMIAR_MUDANCA_PADRAO,
 ) -> dict[str, Any] | None:
@@ -135,6 +137,10 @@ async def revisar_sugestao(
     )
 
     versao_atual = int(atual.get("versao") or 1)
+    # A evidência extra entra no LOG, não na decisão: são observações do ciclo
+    # (ex.: a ordem em que o aluno abriu o material) que o motor não usa para
+    # decidir, mas sem as quais a aderência não seria mensurável depois.
+    evidencia_do_log = {**decisao["evidencia"], **(evidencia_extra or {})}
 
     if decisao["acao"] != "revisada":
         # "Mantida" NÃO toca na sugestão — nem para atualizar o timestamp: um
@@ -151,7 +157,7 @@ async def revisar_sugestao(
             ordem_antes=ordem_antes,
             ordem_depois=None,
             motivos=decisao["motivos"],
-            evidencia=decisao["evidencia"],
+            evidencia=evidencia_do_log,
         )
         return decisao
 
@@ -180,7 +186,7 @@ async def revisar_sugestao(
         ordem_antes=ordem_antes,
         ordem_depois=nova_ordem,
         motivos=decisao["motivos"],
-        evidencia=decisao["evidencia"],
+        evidencia=evidencia_do_log,
     )
 
     return decisao
@@ -228,6 +234,7 @@ async def revisar_sugestoes_do_ciclo(
         topico_id=topico_id,
         classe_id=classe_id,
         sinais_por_formato=sinais,
+        evidencia_extra={"ordem_observada": ordem_de_consumo(materiais)},
     )
 
 

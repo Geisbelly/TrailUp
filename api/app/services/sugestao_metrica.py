@@ -220,3 +220,108 @@ def resumo_efetividade(
         "revisoes": efeito_das_revisoes(registros, minimo_amostra=minimo_amostra),
         "churn": churn_de_sugestoes(registros),
     }
+
+
+def _desempenho_dos_sinais(evidencia: Any) -> float | None:
+    """Média de acertos observada num snapshot de evidência.
+
+    Só entram formatos com ``acertos`` atribuível — a ponte de sinais deixa
+    ``None`` de propósito quando o conteúdo foi visto em mais de um formato, e
+    tratar isso como zero inventaria fracasso.
+    """
+    sinais = (evidencia or {}).get("sinais") if isinstance(evidencia, dict) else None
+    if not isinstance(sinais, dict):
+        return None
+    valores = [
+        float(sinal["acertos"])
+        for sinal in sinais.values()
+        if isinstance(sinal, dict) and sinal.get("acertos") is not None
+    ]
+    return round(sum(valores) / len(valores), 4) if valores else None
+
+
+def _formatos(ordem: Any) -> list[str]:
+    if not isinstance(ordem, list):
+        return []
+    return [
+        str(item.get("formato"))
+        for item in ordem
+        if isinstance(item, dict) and item.get("formato")
+    ]
+
+
+def montar_registros_do_log(
+    log: Iterable[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Transforma o log cru de sugestões nos registros que as métricas esperam.
+
+    É a camada de consulta que o resto do módulo evita de propósito. Tudo aqui
+    sai do que já foi gravado — nada é recalculado a partir de telemetria nova,
+    que já não existe mais quando o professor abre o console:
+
+    * **aderência** vem de ``ordem_antes`` (a ordem que estava valendo) contra
+      ``evidencia.ordem_observada`` (o que o aluno abriu naquele período);
+    * **desempenho do período** é a média de acertos dos sinais daquele registro
+      — eles descrevem o que aconteceu ENQUANTO aquela ordem valia;
+    * **desempenho posterior** é o desempenho do período do registro SEGUINTE, e
+      é isso que permite ver se uma revisão melhorou algo. O último registro de
+      cada alvo fica sem posterior: ainda não houve período depois dele, e
+      preencher com o próprio valor faria toda revisão recente parecer neutra.
+    """
+    por_alvo: dict[tuple[Any, Any], list[dict[str, Any]]] = {}
+    for registro in log or []:
+        chave = (registro.get("aluno_id"), registro.get("topico_id"))
+        por_alvo.setdefault(chave, []).append(registro)
+
+    resultado: list[dict[str, Any]] = []
+    for registros in por_alvo.values():
+        ordenados = sorted(registros, key=lambda r: int(r.get("versao") or 0))
+        desempenhos = [_desempenho_dos_sinais(r.get("evidencia")) for r in ordenados]
+
+        for indice, registro in enumerate(ordenados):
+            evidencia = registro.get("evidencia") if isinstance(registro.get("evidencia"), dict) else {}
+            observada = evidencia.get("ordem_observada")
+            sugerida = _formatos(registro.get("ordem_antes"))
+
+            aderencia: dict[str, Any] = {"aderencia": None, "seguiu_inicio": None}
+            if sugerida and isinstance(observada, list) and observada:
+                medida = aderencia_da_sugestao(
+                    ordem_sugerida=sugerida,
+                    ordem_consumida=[str(formato) for formato in observada],
+                )
+                aderencia = {
+                    "aderencia": medida["aderencia"],
+                    "seguiu_inicio": medida["seguiu_inicio"],
+                }
+
+            resultado.append(
+                {
+                    "aluno_id": registro.get("aluno_id"),
+                    "classe_id": registro.get("classe_id"),
+                    "topico_id": registro.get("topico_id"),
+                    "versao": registro.get("versao"),
+                    "acao": registro.get("acao"),
+                    "criado_em": registro.get("criado_em"),
+                    "motivos": registro.get("motivos") or [],
+                    "ordem_sugerida": sugerida or _formatos(registro.get("ordem_depois")),
+                    "ordem_observada": (
+                        [str(formato) for formato in observada]
+                        if isinstance(observada, list)
+                        else []
+                    ),
+                    **aderencia,
+                    # `seguiu` é o marcador binário da comparação de desempenho;
+                    # None quando não deu para medir, para não engordar o grupo
+                    # "não seguiu" com casos sem evidência.
+                    "seguiu": aderencia["seguiu_inicio"],
+                    "desempenho": desempenhos[indice],
+                    "desempenho_posterior": (
+                        desempenhos[indice + 1] if indice + 1 < len(desempenhos) else None
+                    ),
+                }
+            )
+
+    resultado.sort(
+        key=lambda r: (str(r.get("aluno_id")), int(r.get("topico_id") or 0), int(r.get("versao") or 0))
+    )
+    return resultado

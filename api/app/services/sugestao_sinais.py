@@ -229,3 +229,27 @@ def indexar_progresso_por_conteudo(
             "percentual": _opcional(item.get("percentual_concluido")),
         }
     return indexado
+
+
+def ordem_de_consumo(materiais_telemetria: Iterable[dict[str, Any]]) -> list[str]:
+    """Formatos na ordem em que o aluno os abriu, sem repetição.
+
+    É o que torna a **aderência** mensurável: sem registrar a ordem observada,
+    comparar "sugerido" com "consumido" depois seria impossível — a telemetria
+    bruta não fica guardada indefinidamente, e o progresso por item não diz
+    sequência. Vai no snapshot de evidência de cada decisão.
+
+    A ordem é a de primeira aparição no lote, que é como o app monta
+    ``time_metrics.materials``. Tempo gasto NÃO ordena: quem abre o áudio
+    primeiro e depois passa mais tempo no texto seguiu a sugestão de começar
+    pelo áudio.
+    """
+    vistos: list[str] = []
+    for entrada in materiais_telemetria or []:
+        formato = formato_do_material(
+            material_tipo=entrada.get("material_tipo"),
+            material_key=entrada.get("material_key") or entrada.get("key"),
+        )
+        if formato and formato not in vistos:
+            vistos.append(formato)
+    return vistos

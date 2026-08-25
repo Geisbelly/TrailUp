@@ -356,3 +356,78 @@ async def test_telemetria_ausente_nao_quebra_o_ciclo():
         )
         is None
     )
+
+
+# --- evidencia extra ------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_ordem_observada_vai_pro_log_mesmo_quando_mantida():
+    # Sem a ordem observada gravada, a aderencia nao seria mensurável depois: a
+    # telemetria bruta nao fica guardada indefinidamente.
+    repo = RepoFake()
+    await garantir_sugestao(
+        repo,
+        aluno_id="a1",
+        topico_id=10,
+        perfis=_perfil("mastermind"),
+        formatos_disponiveis=["markdown", "audio"],
+    )
+
+    await revisar_sugestao(
+        repo,
+        aluno_id="a1",
+        topico_id=10,
+        sinais_por_formato={"markdown": _sinal(skimming=True)},
+        evidencia_extra={"ordem_observada": ["audio", "markdown"]},
+    )
+
+    assert repo.log[-1]["acao"] == "mantida"
+    assert repo.log[-1]["evidencia"]["ordem_observada"] == ["audio", "markdown"]
+
+
+@pytest.mark.asyncio
+async def test_evidencia_extra_nao_apaga_a_do_motor():
+    repo = RepoFake()
+    await garantir_sugestao(
+        repo,
+        aluno_id="a1",
+        topico_id=10,
+        perfis=_perfil("mastermind"),
+        formatos_disponiveis=["markdown", "audio"],
+    )
+
+    await revisar_sugestao(
+        repo,
+        aluno_id="a1",
+        topico_id=10,
+        sinais_por_formato={
+            "markdown": _sinal(skimming=True, active_sec=40),
+            "audio": _sinal(acertos=85, active_sec=300),
+        },
+        evidencia_extra={"ordem_observada": ["markdown"]},
+    )
+
+    evidencia = repo.log[-1]["evidencia"]
+    assert evidencia["ordem_observada"] == ["markdown"]
+    assert evidencia["formatos_com_evidencia"] == 2
+    assert "sinais" in evidencia
+
+
+def test_rota_de_historico_vem_antes_da_rota_por_topico():
+    # "historico" nao e inteiro: com a ordem invertida o FastAPI tentaria casar
+    # /sugestao/{aluno}/{topico_id} primeiro e responderia 422 em vez de chegar
+    # ao endpoint do console.
+    from fastapi.routing import APIRoute
+
+    from app.api.v1.personalizacao import router
+
+    caminhos = [
+        rota.path
+        for rota in router.routes
+        if isinstance(rota, APIRoute) and "/sugestao/" in rota.path
+    ]
+
+    assert caminhos.index("/personalizar/sugestao/{aluno_id}/historico") < caminhos.index(
+        "/personalizar/sugestao/{aluno_id}/{topico_id}"
+    )

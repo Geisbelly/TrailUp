@@ -5,6 +5,7 @@ from app.services.sugestao_metrica import (
     churn_de_sugestoes,
     comparar_seguiu_versus_ignorou,
     efeito_das_revisoes,
+    montar_registros_do_log,
     resumo_efetividade,
 )
 
@@ -275,3 +276,134 @@ def test_resumo_vazio_nao_quebra_e_nao_inventa_numero():
     assert resumo["aderencia_media"] is None
     assert resumo["taxa_seguiu_inicio"] is None
     assert resumo["desempenho"]["confiavel"] is False
+
+
+# --- log cru -> registros de metrica ---------------------------------------
+
+
+def _log(versao, acao, *, ordem_antes=None, observada=None, acertos=None, aluno="a1", topico=1):
+    sinais = (
+        {formato: {"acertos": valor} for formato, valor in (acertos or {}).items()}
+        if acertos
+        else {}
+    )
+    return {
+        "aluno_id": aluno,
+        "classe_id": 32,
+        "topico_id": topico,
+        "versao": versao,
+        "acao": acao,
+        "ordem_antes": (
+            [{"formato": f, "posicao": i + 1} for i, f in enumerate(ordem_antes)]
+            if ordem_antes
+            else None
+        ),
+        "ordem_depois": None,
+        "motivos": [],
+        "evidencia": {
+            **({"sinais": sinais} if sinais else {}),
+            **({"ordem_observada": observada} if observada else {}),
+        },
+    }
+
+
+def test_aderencia_sai_da_ordem_valida_contra_a_observada():
+    registros = montar_registros_do_log(
+        [
+            _log(1, "criada"),
+            _log(
+                2,
+                "revisada",
+                ordem_antes=["markdown", "audio"],
+                observada=["markdown", "audio"],
+            ),
+        ]
+    )
+
+    assert registros[1]["aderencia"] == 1.0
+    assert registros[1]["seguiu_inicio"] is True
+
+
+def test_aluno_comecou_por_outro_formato_marca_que_nao_seguiu():
+    registros = montar_registros_do_log(
+        [_log(2, "mantida", ordem_antes=["markdown", "audio"], observada=["audio", "markdown"])]
+    )
+
+    assert registros[0]["seguiu_inicio"] is False
+    assert registros[0]["aderencia"] == 0.0
+
+
+def test_sem_ordem_observada_a_aderencia_fica_indeterminada():
+    # Zero aqui seria lido como desobediencia; None diz "nao deu para medir".
+    registros = montar_registros_do_log([_log(1, "criada", ordem_antes=["markdown"])])
+
+    assert registros[0]["aderencia"] is None
+    assert registros[0]["seguiu"] is None
+
+
+def test_desempenho_posterior_vem_do_periodo_seguinte():
+    registros = montar_registros_do_log(
+        [
+            _log(1, "criada", acertos={"markdown": 40}),
+            _log(2, "revisada", ordem_antes=["markdown"], acertos={"audio": 80}),
+        ]
+    )
+
+    assert registros[0]["desempenho"] == 40.0
+    assert registros[0]["desempenho_posterior"] == 80.0
+    # O ultimo registro nao tem periodo depois dele; preencher faria toda
+    # revisao recente parecer neutra.
+    assert registros[1]["desempenho_posterior"] is None
+
+
+def test_efeito_das_revisoes_le_o_que_o_log_produziu():
+    registros = montar_registros_do_log(
+        [
+            _log(1, "criada", acertos={"markdown": 40}),
+            _log(2, "revisada", ordem_antes=["markdown"], acertos={"audio": 80}),
+            _log(3, "revisada", ordem_antes=["audio"], acertos={"audio": 95}),
+        ]
+    )
+
+    efeito = efeito_das_revisoes(registros)
+
+    assert efeito["revisoes_comparadas"] == 1
+    assert efeito["delta_medio"] == 15.0
+
+
+def test_acerto_nao_atribuivel_nao_conta_como_zero():
+    # A ponte de sinais deixa `acertos` None de proposito quando o conteudo foi
+    # visto em dois formatos.
+    registros = montar_registros_do_log(
+        [_log(1, "criada", acertos=None), _log(2, "revisada", ordem_antes=["markdown"])]
+    )
+
+    assert registros[0]["desempenho"] is None
+    assert registros[0]["desempenho_posterior"] is None
+
+
+def test_alvos_diferentes_nao_se_contaminam():
+    registros = montar_registros_do_log(
+        [
+            _log(1, "criada", acertos={"markdown": 10}, aluno="a1"),
+            _log(1, "criada", acertos={"markdown": 90}, aluno="a2"),
+        ]
+    )
+
+    assert all(r["desempenho_posterior"] is None for r in registros)
+
+
+def test_versoes_fora_de_ordem_sao_reordenadas():
+    registros = montar_registros_do_log(
+        [
+            _log(2, "revisada", ordem_antes=["markdown"], acertos={"audio": 80}),
+            _log(1, "criada", acertos={"markdown": 40}),
+        ]
+    )
+
+    assert [r["versao"] for r in registros] == [1, 2]
+    assert registros[0]["desempenho_posterior"] == 80.0
+
+
+def test_log_vazio_devolve_lista_vazia():
+    assert montar_registros_do_log([]) == []

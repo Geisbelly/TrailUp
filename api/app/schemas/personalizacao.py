@@ -221,6 +221,46 @@ class SugestaoMaterialResponse(BaseModel):
     origem: str = "inicial"
 
 
+class SugestaoHistoricoItem(BaseModel):
+    versao: int
+    acao: str
+    topico_id: int | None = None
+    criado_em: datetime | None = None
+    motivos: list[str] = Field(default_factory=list)
+    ordem_sugerida: list[str] = Field(default_factory=list)
+    ordem_observada: list[str] = Field(default_factory=list)
+    aderencia: float | None = None
+    seguiu_inicio: bool | None = None
+    desempenho: float | None = None
+    desempenho_posterior: float | None = None
+
+
+class SugestaoEfetividadeResponse(BaseModel):
+    """Resumo das métricas — sempre com o ``n`` e um ``confiavel`` explícito.
+
+    Média de duas observações não é evidência; apresentar como se fosse é pior
+    do que não medir, então os campos derivados vêm ``None`` até haver amostra.
+    """
+
+    total_registros: int = 0
+    aderencia_media: float | None = None
+    n_aderencia: int = 0
+    taxa_seguiu_inicio: float | None = None
+    desempenho: dict[str, Any] = Field(default_factory=dict)
+    revisoes: dict[str, Any] = Field(default_factory=dict)
+    churn: dict[str, Any] = Field(default_factory=dict)
+
+
+class SugestaoAlunoResponse(BaseModel):
+    aluno_id: str
+    topico_id: int | None = None
+    atual: SugestaoMaterialResponse | None = None
+    historico: list[SugestaoHistoricoItem] = Field(default_factory=list)
+    efetividade: SugestaoEfetividadeResponse = Field(
+        default_factory=SugestaoEfetividadeResponse
+    )
+
+
 class PersonalizacaoListResponse(BaseModel):
     aluno_id: str
     total: int
