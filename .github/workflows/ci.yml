@@ -125,7 +125,16 @@ jobs:
       # exit code nao serve de verificacao: e preciso checar se dist/ existe.
       # Foi assim que passou desapercebido que a web nao compilava (modulo
       # nativo react-native-pdf resolvido pelo Metro na plataforma web).
+      # Valores de placeholder de proposito. `app.json` usa output: "static", entao
+      # o export renderiza cada rota em Node no build, e `src/database/supabase.ts`
+      # chama createClient() no escopo do modulo - sem env o build morre com
+      # "supabaseUrl is required". Este passo verifica BUNDLING, nao conectividade:
+      # nenhuma requisicao e feita, e portanto nao ha credencial a proteger aqui.
       - name: Build web (verifica bundling)
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key-para-build
+          EXPO_PUBLIC_APITRAIUP_URL: http://localhost:8000
         run: |
           npm run build:web
           if [ ! -d dist ]; then
