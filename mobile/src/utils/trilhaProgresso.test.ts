@@ -146,3 +146,66 @@ test("lista de blocos ausente nao quebra", () => {
   assert.equal(resultado.total, 0);
   assert.equal(resultado.pct, 0);
 });
+
+// --- conclusao do topico ---------------------------------------------------
+//
+// A regra vive na tela (depende de `topico.status` e do estado de carga da
+// personalizacao), mas o predicado que ela usa e este: percurso completo =
+// concluidos >= total, sobre TODOS os blocos.
+
+const percursoCompleto = (r: { total: number; concluidos: number }) =>
+  r.total > 0 && r.concluidos >= r.total;
+
+test("topico so conclui quando o passo personalizado tambem esta feito", () => {
+  // Antes o passo personalizado ficava fora da conta: o topico era dado como
+  // concluido com o material personalizado intocado.
+  const soAcademico = progresso({
+    conteudos: [conteudo(1), conteudo(2, { isPersonalizedLocal: true })],
+    atividades: [atividade(10)],
+    vistos: [1],
+    resolvidas: [10],
+  });
+
+  assert.equal(percursoCompleto(soAcademico), false);
+
+  const tudo = progresso({
+    conteudos: [conteudo(1), conteudo(2, { isPersonalizedLocal: true })],
+    atividades: [atividade(10)],
+    vistos: [1, 2],
+    resolvidas: [10],
+  });
+
+  assert.equal(percursoCompleto(tudo), true);
+});
+
+test("id negativo do conteudo personalizado e marcado como qualquer outro", () => {
+  // normalizePersonalizedStepContent gera id negativo estavel; se a marcacao
+  // nao casasse, o topico ficaria impossivel de concluir.
+  const resultado = progresso({
+    conteudos: [conteudo(-8172634)],
+    atividades: [],
+    vistos: [-8172634],
+  });
+
+  assert.equal(percursoCompleto(resultado), true);
+});
+
+test("dois personalizados distintos nao se confundem", () => {
+  // Ids negativos diferentes; concluir um nao pode concluir o outro.
+  const resultado = progresso({
+    conteudos: [
+      conteudo(-1, { isPersonalizedLocal: true }),
+      conteudo(-2, { isPersonalizedLocal: true }),
+    ],
+    atividades: [],
+    vistos: [-1],
+  });
+
+  assert.equal(resultado.concluidos, 1);
+  assert.equal(percursoCompleto(resultado), false);
+});
+
+test("topico vazio nao se declara concluido", () => {
+  // total 0 daria 0/0; concluir um topico sem bloco nenhum seria mentira.
+  assert.equal(percursoCompleto(progresso({ conteudos: [], atividades: [] })), false);
+});

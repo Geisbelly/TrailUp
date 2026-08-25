@@ -384,36 +384,43 @@ export default function TrilhaConteudoScreen() {
     [blocks, pulouConteudos]
   );
 
-  const progressoTopico = useMemo(() => {
-    const acadConteudos = conteudos.filter((c) => !(c as any).isPersonalizedLocal);
-    const acadAtividades = atividades.filter((a) => !(a as any).isPersonalizedLocal);
-    const total = acadConteudos.length + acadAtividades.length;
-
-    const concluidosConteudo = acadConteudos.reduce((sum, c) => {
-      return sum + (isConteudoConcluido(c, conteudosVistosLocal) ? 1 : 0);
-    }, 0);
-
-    const concluidosAtividades = acadAtividades.reduce((sum, a) => {
-      return sum + (isAtividadeConcluida(a, atividadesResolvidasLocal) ? 1 : 0);
-    }, 0);
-
-    const concluidos = concluidosConteudo + concluidosAtividades;
-    const pct = total > 0 ? (concluidos / total) * 100 : 0;
-
-    return {
-      total,
-      concluidos,
-      pct: Math.max(0, Math.min(100, pct)),
-    };
-  }, [conteudos, atividades, conteudosVistosLocal, atividadesResolvidasLocal]);
+  // Progresso sobre o PERCURSO: todos os blocos do topico, material
+  // personalizado incluido. E a base tanto da barra quanto da conclusao -- o
+  // aluno percorre esses blocos, entao sao eles que definem "terminei".
+  //
+  // Conta `blocks`, nao `displayedBlocks`: com "pular conteudos" ligado os
+  // conteudos continuam pendentes no modulo, e trata-los como inexistentes
+  // marcaria o topico como concluido sem eles.
+  const progressoPercurso = useMemo(
+    () =>
+      contarProgressoDeBlocos({
+        blocks,
+        conteudosVistosLocal,
+        atividadesResolvidasLocal,
+      }),
+    [atividadesResolvidasLocal, blocks, conteudosVistosLocal]
+  );
 
   const topicoConcluido = useMemo(() => {
     if (!topico) return false;
     const status = String(topico.status ?? "").toLowerCase();
     const pct = Number(topico.percentual_concluido ?? 0);
     if (status.includes("concl") || pct >= 100) return true;
-    return progressoTopico.total > 0 && progressoTopico.concluidos >= progressoTopico.total;
-  }, [progressoTopico.concluidos, progressoTopico.total, topico]);
+    // Enquanto a personalizacao carrega, o percurso ainda esta incompleto:
+    // declarar concluido aqui fecharia o modulo antes de o aluno ver o material
+    // que esta a caminho. Se a carga falhar, o estado volta a false e o topico
+    // segue concluivel so com o material do professor.
+    if (personalizacaoCarregando) return false;
+    return (
+      progressoPercurso.total > 0 &&
+      progressoPercurso.concluidos >= progressoPercurso.total
+    );
+  }, [
+    personalizacaoCarregando,
+    progressoPercurso.concluidos,
+    progressoPercurso.total,
+    topico,
+  ]);
 
   const topicoJaIniciado = useMemo(() => {
     if (!topico) return false;
@@ -588,21 +595,6 @@ export default function TrilhaConteudoScreen() {
       return idx < index;
     });
   }, [displayedBlocks, conteudosVistosLocal, atividadesResolvidasLocal, index, topicoConcluido]);
-
-  // A barra mede o PERCURSO (todos os blocos do topico, personalizado incluido),
-  // nao o subconjunto academico que `progressoTopico` usa pra decidir conclusao.
-  // Eram universos diferentes: concluir um passo personalizado avancava a tela e
-  // deixava a barra parada, e o rotulo "blocos" nao correspondia a nenhum dos
-  // dois. Ver contarProgressoDeBlocos.
-  const progressoPercurso = useMemo(
-    () =>
-      contarProgressoDeBlocos({
-        blocks,
-        conteudosVistosLocal,
-        atividadesResolvidasLocal,
-      }),
-    [atividadesResolvidasLocal, blocks, conteudosVistosLocal]
-  );
 
   const progressoVisual = useMemo(() => {
     return progressoPercurso.pct;
