@@ -1,0 +1,10 @@
+A pasta ou seção scripts centraliza tarefas automatizadas do projeto, facilitando a execução de comandos repetitivos sem precisar digitar longas linhas no terminal.
+Ela pode conter tanto scripts dentro do package.json quanto arquivos JS/TS customizados que executam operações específicas.
+
+Exemplos de uso:
+- Inicializar o app (start, android, ios, web)
+- Executar lint ou formatadores (eslint, prettier)
+- Build para produção (eas build)
+- Limpar cache e dependências
+- Gerar assets ou arquivos automáticos
+- Automatizar deploy

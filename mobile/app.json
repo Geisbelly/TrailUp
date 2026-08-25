@@ -1,0 +1,78 @@
+{
+  "expo": {
+    "name": "TrailUp",
+    "slug": "trailup-app-dsm-2502",
+    "description": "Plataforma adaptativa de aprendizado",
+    "version": "1.0.4",
+    "orientation": "portrait",
+    "icon": "./src/assets/images/icon_start.png",
+    "scheme": "trailupappdsm2502",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./src/assets/images/icon_start.png",
+      "backgroundColor": "#111936",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.seuprojeto.trailup",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "Permita o uso da camera frontal para a captura de frames de estudo, com analise comportamental e personalizacao adaptativa conforme os termos aceitos no app."
+      }
+    },
+    "android": {
+      "package": "com.seuprojeto.trailup",
+      "versionCode": 5,
+      "usesCleartextTraffic": true,
+      "permissions": [
+        "android.permission.CAMERA"
+      ],
+      "adaptiveIcon": {
+        "backgroundColor": "#111936",
+        "foregroundImage": "./src/assets/images/icon_start.png"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./src/assets/images/icon_start.png",
+      "name": "TrailUp Plataforma"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Permita o uso da camera frontal para a captura de frames de estudo, com analise comportamental e personalizacao adaptativa conforme os termos aceitos no app."
+        }
+      ],
+      "@config-plugins/react-native-blob-util",
+      "@config-plugins/react-native-pdf",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./src/assets/images/icon_start.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#111936",
+          "dark": {
+            "backgroundColor": "#111936"
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "a35625cb-e85d-45a2-8d9c-f20384f3a3eb"
+      }
+    }
+  }
+}

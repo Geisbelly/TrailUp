@@ -1,0 +1,8 @@
+A pasta database centraliza toda a lógica relacionada a armazenamento local da aplicação.
+Ela abstrai o acesso a bancos de dados, caches e storage, mantendo a camada de persistência separada da UI e da lógica de negócio.
+
+Exemplos de uso:
+- SQLite, Realm ou WatermelonDB para armazenamento offline
+- AsyncStorage para dados simples de sessão ou configuração
+- Métodos para criar, ler, atualizar e deletar dados
+- Migrações e inicializações do banco local

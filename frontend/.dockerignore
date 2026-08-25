@@ -1,0 +1,10 @@
+node_modules/
+dist/
+dist-ssr/
+.history/
+.claude/
+.git/
+.env
+*.log
+docs/
+_omnicontent-ai/

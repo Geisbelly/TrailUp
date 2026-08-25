@@ -1,0 +1,9 @@
+A pasta styles contém estilos globais e padrões visuais da aplicação, permitindo manter consistência e reutilização em todo o app.
+Ela deve guardar definições de cores, fontes, tamanhos, espaçamentos, temas e estilos que são compartilhados entre múltiplos componentes e telas.
+
+Exemplos de uso:
+- Paleta de cores
+- Fontes e tamanhos de texto
+- Estilos de botões ou inputs padronizados
+- Margens e paddings consistentes
+- Temas claro/escuro

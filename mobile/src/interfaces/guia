@@ -1,0 +1,5 @@
+Contratos
+Quando necessário implementações onde os objetos que o implementaram seguem suas proprias normas
+Exemplo: IUser, IProduct ...
+Usem sem dó, mas com sabedoria
+Não espalhar pelas demais pastas, manter organização colocando todas as interfaces aqui.

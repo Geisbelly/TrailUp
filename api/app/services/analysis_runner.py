@@ -1,0 +1,211 @@
+import json
+import logging
+
+from fastapi import Request
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.repositories.evento import EventoRepository
+from app.repositories.ia_decision_logs import IADecisionLogRepository
+from app.repositories.mental_state import MentalStateHistoryRepository
+from app.schemas.api import AnalisarPayload, AnalisarResponse
+from app.schemas.common import Evento
+from app.services import memoria_aluno
+from app.services.linear_analysis_pipeline import build_linear_analysis_orchestrator
+from app.services.state_builder import build_initial_state
+
+logger = logging.getLogger(__name__)
+
+
+def build_analysis_graph_config(
+    request: Request,
+    *,
+    aluno_id: str,
+    checkpoint_ns: str,
+    cycle_id: str,
+    classe_id: int,
+) -> dict:
+    return {
+        "configurable": {
+            # thread_id precisa variar por ciclo — completed_nodes usa reducer
+            # operator.add, então reaproveitar o thread_id do aluno entre ciclos
+            # acumula o valor no MemorySaver e trava o supervisor em "finish"
+            # a partir do 2º ciclo (mesmo padrao ja usado em personalizacao.py:346).
+            "thread_id": f"{aluno_id}:{cycle_id}",
+            "checkpoint_ns": checkpoint_ns,
+        },
+        "tags": ["trailup", checkpoint_ns],
+        "metadata": {
+            "aluno_id": aluno_id,
+            "classe_id": classe_id,
+            "ciclo_id": cycle_id,
+        },
+    }
+
+
+def extract_mental_state(result: dict) -> dict | None:
+    """Extrai o snapshot de mental-state do aiPatch produzido pelo pipeline/agentes."""
+    if not isinstance(result, dict):
+        return None
+    ai_patch = result.get("ai_patch") or result.get("aiPatch")
+    if not isinstance(ai_patch, dict):
+        return None
+    mental_state = ai_patch.get("mentalState") or ai_patch.get("mental_state")
+    if not isinstance(mental_state, dict) or not mental_state.get("kind"):
+        return None
+    return mental_state
+
+
+def build_analysis_response(result: dict) -> AnalisarResponse:
+    return AnalisarResponse(
+        ciclo_id=result.get("ciclo_id", ""),
+        ui_config=result.get("ui_config"),
+        conteudo_adaptado=result.get("conteudo_adaptado"),
+        materiais_gerados=result.get("materiais_gerados"),
+        textos_gerados=result.get("textos_gerados", []),
+        notificacao_payload=result.get("notificacao_payload"),
+        trilha_config=result.get("trilha_config"),
+        emocao_atual=result.get("emocao_atual"),
+        acoes_aplicadas=result.get("acoes_aplicadas", []),
+        erros=result.get("erros", []),
+    )
+
+
+async def run_analysis(
+    *,
+    request: Request,
+    session: AsyncSession,
+    aluno_id: str,
+    classe_id: int,
+    topico_id: int | None,
+    atividade_id: int | None,
+    frame_b64: str | None,
+    frames_b64: list[str] | None = None,
+    eventos_novos: list[Evento],
+    modo: str | None,
+    telemetry_payload: dict | None = None,
+    batch_id: str | None = None,
+    sessao_id: str | None = None,
+) -> AnalisarResponse:
+    resolved_frames = [frame for frame in (frames_b64 or []) if frame]
+    resolved_frame = frame_b64 or (resolved_frames[0] if resolved_frames else None)
+    logger.info(
+        "analysis_runner.input=%s",
+        json.dumps(
+            {
+                "aluno_id": aluno_id,
+                "classe_id": classe_id,
+                "topico_id": topico_id,
+                "atividade_id": atividade_id,
+                "modo": modo,
+                "frames_count": len(resolved_frames),
+                "eventos_count": len(eventos_novos),
+                "telemetry_keys": sorted((telemetry_payload or {}).keys())[:20],
+            },
+            ensure_ascii=False,
+            default=str,
+        ),
+    )
+    payload = AnalisarPayload(
+        classe_id=classe_id,
+        modo=modo,
+        frame_b64=resolved_frame,
+        eventos_novos=eventos_novos,
+        topico_id=topico_id,
+        atividade_id=atividade_id,
+    )
+    state = await build_initial_state(session, aluno_id, payload)
+
+    await EventoRepository(session).log(
+        aluno_id=aluno_id,
+        tipo="ciclo_iniciado",
+        referencia=state["ciclo_id"],
+        valor=float(classe_id),
+    )
+    await session.commit()
+
+    orchestrator = build_linear_analysis_orchestrator(request.app.state.settings)
+    result = await orchestrator.run(
+        request=request,
+        state=state,
+        config=build_analysis_graph_config(
+            request,
+            aluno_id=aluno_id,
+            checkpoint_ns=request.app.state.settings.default_checkpoint_ns,
+            cycle_id=state["ciclo_id"],
+            classe_id=classe_id,
+        ),
+        telemetry_payload=telemetry_payload,
+        frames_b64=resolved_frames,
+        eventos_novos=eventos_novos,
+    )
+    response = build_analysis_response(result)
+    mental_state = extract_mental_state(result)
+    if mental_state is not None:
+        try:
+            await MentalStateHistoryRepository(session).registrar(
+                aluno_id=aluno_id,
+                ciclo_id=response.ciclo_id or state.get("ciclo_id"),
+                kind=str(mental_state.get("kind")),
+                intensity=mental_state.get("intensity"),
+                confidence=mental_state.get("confidence"),
+                reason=mental_state.get("reason"),
+            )
+            await session.commit()
+        except Exception as exc:  # pragma: no cover
+            await session.rollback()
+            logger.warning("Falha ao persistir aluno_mental_state_history: %s", exc)
+
+    performance_resumo = (result.get("pipeline_stage_outputs") or {}).get("performance")
+    topico_id_efetivo = topico_id or (result.get("desempenho_recente") or {}).get("topico_recente_id")
+    if performance_resumo:
+        try:
+            await memoria_aluno.atualizar_memoria(
+                session,
+                aluno_id=aluno_id,
+                topico_id=topico_id_efetivo,
+                performance_resumo=performance_resumo,
+            )
+        except Exception as exc:  # pragma: no cover
+            await session.rollback()
+            logger.warning("Falha ao persistir memoria de dominio: %s", exc)
+    try:
+        await IADecisionLogRepository(session).log(
+            aluno_id=aluno_id,
+            classe_id=classe_id,
+            topico_id=topico_id,
+            atividade_id=atividade_id,
+            ciclo_id=response.ciclo_id,
+            batch_id=batch_id,
+            sessao_id=sessao_id,
+            source="telemetria",
+            stage="analise_adaptativa",
+            trigger_event=modo,
+            input_summary={
+                "eventos_novos": [evento.model_dump(mode="json") for evento in eventos_novos],
+                "telemetria": telemetry_payload or {},
+            },
+            raw_response=json.dumps(result, ensure_ascii=False, default=str),
+            parsed_response=result if isinstance(result, dict) else {},
+            decision_summary="Decisão adaptativa gerada a partir de telemetria do app.",
+            actions=list(response.acoes_aplicadas or []),
+        )
+    except Exception as exc:  # pragma: no cover
+        await session.rollback()
+        logger.warning("Falha ao persistir ia_decision_logs da telemetria: %s", exc)
+    logger.info(
+        "analysis_runner.output=%s",
+        json.dumps(
+            {
+                "aluno_id": aluno_id,
+                "classe_id": classe_id,
+                "ciclo_id": response.ciclo_id,
+                "acoes_count": len(response.acoes_aplicadas or []),
+                "erros_count": len(response.erros or []),
+                "ui_keys": sorted((response.ui_config or {}).keys()) if isinstance(response.ui_config, dict) else [],
+                "emocao_keys": sorted((response.emocao_atual or {}).keys()) if isinstance(response.emocao_atual, dict) else [],
+            },
+            ensure_ascii=False,
+            default=str,
+        ),
+    )
+    return response

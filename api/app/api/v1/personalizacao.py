@@ -1,0 +1,2816 @@
+import colorsys
+import copy
+import json
+import logging
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+from uuid import uuid4
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.agent.graph.guardrails import checar_grounding_chat, gerar_validado
+from app.api.deps import ensure_professor_access, get_current_user, get_session, require_professor
+from app.core.settings import get_settings
+from app.repositories.access import AccessRepository
+from app.repositories.conteudo_classe import ConteudoClasseRepository
+from app.repositories.conteudo_personalizado import ConteudoPersonalizadoRepository
+from app.repositories.context import ContextRepository
+from app.repositories.evento import EventoRepository
+from app.repositories.fontes_personalizacao import FontesPersonalizacaoRepository
+from app.repositories.ia_decision_logs import IADecisionLogRepository
+from app.repositories.materiais import MateriaisRepository
+from app.repositories.personalizacao_jobs import PersonalizacaoJobsRepository
+from app.repositories.personalizacao_progresso import PersonalizacaoProgressoRepository
+from app.schemas.mentor_chat import MentorChatLLMResult
+from app.schemas.personalizacao import (
+    ClassePerfilDistribuicaoItem,
+    ClassePerfilSummaryResponse,
+    DesignTokens,
+    DesignTokensCores,
+    FontePersonalizacaoResponse,
+    FontesPersonalizacaoUploadResponse,
+    MentorChatPayload,
+    MentorChatResponse,
+    PersonalizacaoContextoDocenteResponse,
+    PersonalizacaoGeracaoFormatoStatus,
+    PersonalizacaoGeracaoResumo,
+    PersonalizacaoGeracaoStatus,
+    PersonalizacaoItemProgressoPayload,
+    PersonalizacaoItemProgressoResponse,
+    PersonalizacaoJobDetailResponse,
+    PersonalizacaoJobListResponse,
+    PersonalizacaoJobPayload,
+    PersonalizacaoJobResponse,
+    PersonalizacaoJobTargetResponse,
+    PersonalizacaoListResponse,
+    PersonalizacaoManualGenerateAllPayload,
+    PersonalizacaoManualGeneratePayload,
+    PersonalizacaoMediaItemStatusResponse,
+    PersonalizacaoMediaStatusResponse,
+    PersonalizacaoPerfilItem,
+    PersonalizacaoPorPerfilResponse,
+    PersonalizacaoResponse,
+    PersonalizarPayload,
+    RegenerarDocumentoPayload,
+    RegenerarSlidePayload,
+    RegenerarSlideResponse,
+)
+from app.services.auth import UserContext
+from app.services.content_enrichment import ContentEnrichmentError, derive_base_blocks_and_topic
+from app.services.group_analysis import GroupAnalysisService
+from app.services.llm import JsonLLMService, load_prompt
+from app.services.media_agents import (
+    regenerar_documento_brainhex,
+    regenerar_slide_brainhex,
+)
+from app.services.media_generation_jobs import criar_ciclo_media_generation
+from app.services.personalizacao import (
+    _build_profile_editorial_context,
+    _infer_source_type,
+    build_personalizacao_steps,
+    fetch_personalizacao_context,
+)
+from app.services.personalizacao_jobs import (
+    JOB_KIND_CLASS_DELTA,
+    JOB_KIND_CLASS_THEME,
+    JOB_KIND_CLEANUP,
+    JOB_KIND_ENROLLMENT,
+    JOB_KIND_FULL_SYNC,
+    JOB_KIND_MANUAL_PROFILE_GENERATE,
+    JOB_KIND_MANUAL_PROFILE_GENERATE_ALL,
+    JOB_KIND_MANUAL_RETRY,
+    enqueue_personalizacao_job,
+    get_job_detail,
+)
+from app.services.storage import BUCKET, SupabaseStorage, build_public_storage_url
+
+router = APIRouter(prefix="/personalizar", tags=["personalizar"])
+logger = logging.getLogger(__name__)
+
+# Cores-assinatura oficiais por perfil BrainHex (fonte: microservice/src/constants/brainHex.ts,
+# espelhada em mobile/src/constants/profileImages.ts) — mantidas idênticas aqui para consistência
+# visual entre console/API, mobile e microservice.
+_PROFILE_COLOR_MAP = {
+    "seeker": "#17a398",
+    "survivor": "#4e5a66",
+    "daredevil": "#d7263d",
+    "mastermind": "#5b3fd9",
+    "conqueror": "#1e4fd6",
+    "socializer": "#f4623a",
+    "socialiser": "#f4623a",
+    "achiever": "#c9a227",
+}
+_BRAINHEX_PROFILES = (
+    "seeker",
+    "survivor",
+    "daredevil",
+    "mastermind",
+    "conqueror",
+    "socializer",
+    "achiever",
+)
+_PROFILE_LABEL_MAP = {
+    "seeker": "Explorador",
+    "survivor": "Sobrevivente",
+    "daredevil": "Aventureiro",
+    "mastermind": "Estrategista",
+    "conqueror": "Conquistador",
+    "socializer": "Socializador",
+    "achiever": "Realizador",
+}
+_MEDIA_TIPOS = ("pdf", "audio", "apresentacao", "markdown")
+_MEDIA_STATUS_MAP = {
+    "completed": "ready",
+    "ready": "ready",
+    "succeeded": "ready",
+    "pending": "pending",
+    "processing": "pending",
+    "queued": "pending",
+    "failed": "failed",
+    "failed_quality": "failed",
+    "error": "failed",
+    "partial": "partial",
+}
+_SUPABASE_PUBLIC_BASE_URL = (get_settings().supabase_url or "").strip()
+
+
+def _pick_string(*values: object) -> str | None:
+    for value in values:
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def _resolve_public_asset_fields(
+    *,
+    arquivo_url: object,
+    storage_path: object,
+    metadata: dict[str, Any] | None,
+    fallback_bucket: str | None = BUCKET,
+) -> tuple[str | None, str | None, dict[str, Any]]:
+    metadata_dict: dict[str, Any] = dict(metadata or {})
+    raw_url = _pick_string(arquivo_url)
+    raw_storage_path = _pick_string(storage_path)
+    is_http_url = bool(raw_url and raw_url.startswith(("http://", "https://")))
+    path_candidate = raw_storage_path or (None if is_http_url else raw_url)
+
+    bucket = _pick_string(
+        metadata_dict.get("bucket"),
+        metadata_dict.get("bucketName"),
+        metadata_dict.get("storageBucket"),
+        metadata_dict.get("storage_bucket"),
+        fallback_bucket,
+    )
+
+    resolved_url = raw_url if is_http_url else None
+    resolved_storage_path = raw_storage_path or path_candidate
+    if path_candidate and bucket:
+        public_url = build_public_storage_url(_SUPABASE_PUBLIC_BASE_URL, bucket, path_candidate)
+        if public_url:
+            resolved_url = public_url
+            resolved_storage_path = path_candidate
+            metadata_dict.setdefault("bucket", bucket)
+
+    return resolved_url, resolved_storage_path, metadata_dict
+
+
+def _hydrate_materiais_public_urls(
+    materiais: dict[str, Any] | None,
+    *,
+    fallback_bucket: str | None = BUCKET,
+) -> dict[str, Any] | None:
+    if not isinstance(materiais, dict):
+        return materiais
+
+    hydrated: dict[str, Any] = {}
+    for tipo, material in materiais.items():
+        if not isinstance(material, dict):
+            hydrated[tipo] = material
+            continue
+        metadata = material.get("metadata") if isinstance(material.get("metadata"), dict) else {}
+        arquivo_url, storage_path, metadata = _resolve_public_asset_fields(
+            arquivo_url=material.get("arquivo_url"),
+            storage_path=material.get("storage_path"),
+            metadata=metadata,
+            fallback_bucket=fallback_bucket,
+        )
+        hydrated[tipo] = {
+            **material,
+            "arquivo_url": arquivo_url,
+            "storage_path": storage_path,
+            "metadata": metadata,
+        }
+
+    return hydrated
+
+
+def _normalize_media_status(material: dict[str, object]) -> str:
+    metadata = material.get("metadata") if isinstance(material.get("metadata"), dict) else {}
+    scores = metadata.get("scores_validacao") if isinstance(metadata.get("scores_validacao"), dict) else {}
+    if scores.get("aprovado") is False:
+        raw_status = str((metadata or {}).get("status") or "").strip().lower()
+        if raw_status in {"pending", "processing", "queued"}:
+            return "pending"
+        return "failed"
+    raw_status = str((metadata or {}).get("status") or "").strip().lower()
+    mapped = _MEDIA_STATUS_MAP.get(raw_status)
+    if mapped:
+        return mapped
+    if material.get("arquivo_url"):
+        return "ready"
+    return "pending"
+
+
+def _aggregate_media_status(statuses: list[str]) -> str:
+    normalized = [status for status in statuses if status in {"ready", "pending", "partial", "failed"}]
+    if not normalized:
+        return "ready"
+    if any(status == "pending" for status in normalized):
+        return "pending"
+    if all(status == "failed" for status in normalized):
+        return "failed"
+    if any(status in {"failed", "partial"} for status in normalized):
+        return "partial"
+    return "ready"
+
+
+def _materials_media_status(materiais: dict[str, object] | None) -> str:
+    payload = materiais if isinstance(materiais, dict) else {}
+    statuses = [
+        _normalize_media_status(material)
+        for tipo, material in payload.items()
+        if tipo in _MEDIA_TIPOS and isinstance(material, dict)
+    ]
+    return _aggregate_media_status(statuses)
+
+
+_GENERATION_REQUIRED_FORMATS = ("cards", "markdown", "audio", "apresentacao")
+_GENERATION_FORMAT_STATUS_LABELS = {
+    "sem_material": "Sem material",
+    "na_fila": "Na fila",
+    "gerando": "Gerando",
+    "pronto": "Pronto",
+    "falhou": "Falhou",
+}
+_GENERATION_STATE_DETAILS = {
+    "sem_material": ("nao_iniciada", "Sem material"),
+    "na_fila": ("fila", "Na fila para geração"),
+    "enriquecendo": ("enriquecimento", "Dividindo e ampliando o conteúdo"),
+    "gerando_midias": ("midias", "Gerando texto, áudio e apresentação"),
+    "pronto": ("concluida", "Conteúdo personalizado pronto"),
+    "parcial": ("midias", "Geração concluída parcialmente"),
+    "falhou": ("erro", "Falha na geração"),
+}
+_GENERATION_RECORD_READY = {"pronto", "ready", "completed", "succeeded"}
+_GENERATION_RECORD_PROCESSING = {
+    "pending",
+    "processing",
+    "processando",
+    "processando_midias",
+}
+_GENERATION_RECORD_FAILED = {"failed", "falha", "failed_quality", "error"}
+_GENERATION_ERROR_MESSAGES = {
+    "microservice_midia_incompativel_ou_indisponivel": (
+        "Serviço de mídia temporariamente indisponível; "
+        "a geração será tentada novamente."
+    ),
+}
+
+
+def _as_datetime(value: object) -> datetime | None:
+    if isinstance(value, datetime):
+        return value
+    if not isinstance(value, str) or not value.strip():
+        return None
+    try:
+        return datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def _datetime_rank(value: object) -> float:
+    parsed = _as_datetime(value)
+    if parsed is None:
+        return float("-inf")
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc).timestamp()
+    return parsed.timestamp()
+
+
+def _latest_datetime(*values: object) -> datetime | None:
+    parsed = [item for item in (_as_datetime(value) for value in values) if item is not None]
+    return max(parsed, key=_datetime_rank) if parsed else None
+
+
+def _content_blocks_total(record: dict[str, Any] | None) -> int:
+    if not isinstance(record, dict):
+        return 0
+    plano = record.get("plano") if isinstance(record.get("plano"), dict) else {}
+    enrichment = (
+        plano.get("content_enrichment")
+        if isinstance(plano.get("content_enrichment"), dict)
+        else {}
+    )
+    blocks = enrichment.get("blocos")
+    if isinstance(blocks, list):
+        return len(blocks)
+    metadata = enrichment.get("metadata") if isinstance(enrichment.get("metadata"), dict) else {}
+    try:
+        return max(0, int(metadata.get("blocos_gerados") or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _material_error(material: dict[str, Any] | None) -> str | None:
+    if not isinstance(material, dict):
+        return None
+    metadata = material.get("metadata") if isinstance(material.get("metadata"), dict) else {}
+    return _pick_string(
+        material.get("erro"),
+        material.get("error"),
+        metadata.get("erro"),
+        metadata.get("error"),
+        metadata.get("failure_reason"),
+    )
+
+
+def _record_error(record: dict[str, Any] | None) -> str | None:
+    if not isinstance(record, dict):
+        return None
+    materiais = record.get("materiais") if isinstance(record.get("materiais"), dict) else {}
+    raw_error = materiais.get("erro")
+    if isinstance(raw_error, dict):
+        message = _pick_string(raw_error.get("mensagem"), raw_error.get("message"))
+        if message:
+            return message
+    elif isinstance(raw_error, str) and raw_error.strip():
+        return raw_error.strip()
+    for material in materiais.values():
+        error = _material_error(material if isinstance(material, dict) else None)
+        if error:
+            return error
+    return None
+
+
+def _normalize_generation_error(*values: object) -> tuple[str | None, str | None]:
+    raw_error = _pick_string(*values)
+    if raw_error is None:
+        return None, None
+    friendly = _GENERATION_ERROR_MESSAGES.get(raw_error)
+    return (friendly or raw_error), (raw_error if friendly else None)
+
+
+def _generation_format(
+    *,
+    status: str,
+    arquivo_url: str | None = None,
+    erro: str | None = None,
+) -> PersonalizacaoGeracaoFormatoStatus:
+    return PersonalizacaoGeracaoFormatoStatus(
+        status=status,
+        label=_GENERATION_FORMAT_STATUS_LABELS[status],
+        arquivo_url=arquivo_url,
+        erro=erro,
+    )
+
+
+def _record_generation_formats(
+    record: dict[str, Any] | None,
+) -> dict[str, PersonalizacaoGeracaoFormatoStatus]:
+    materiais = (
+        record.get("materiais")
+        if isinstance(record, dict) and isinstance(record.get("materiais"), dict)
+        else {}
+    )
+    plano = (
+        record.get("plano")
+        if isinstance(record, dict) and isinstance(record.get("plano"), dict)
+        else {}
+    )
+    record_status = (
+        str(record.get("status") or "").strip().lower() if isinstance(record, dict) else ""
+    )
+    raw_generated = (
+        record.get("formatos_gerados")
+        if isinstance(record, dict) and isinstance(record.get("formatos_gerados"), list)
+        else []
+    )
+    generated = {
+        str(item).strip().lower()
+        for item in raw_generated
+        if isinstance(item, str) and item.strip()
+    }
+    raw_planned = plano.get("formatos") if isinstance(plano.get("formatos"), list) else []
+    planned = {
+        str(item).strip().lower()
+        for item in raw_planned
+        if isinstance(item, str) and item.strip()
+    }
+    cards_ids = plano.get("cards_personalizados_ids")
+    if isinstance(cards_ids, list) and cards_ids:
+        generated.add("cards")
+
+    names = list(_GENERATION_REQUIRED_FORMATS)
+    if isinstance(materiais.get("pdf"), dict):
+        names.append("pdf")
+
+    result: dict[str, PersonalizacaoGeracaoFormatoStatus] = {}
+    for name in names:
+        material = materiais.get(name)
+        if isinstance(material, dict):
+            normalized = _normalize_media_status(material)
+            format_status = {
+                "ready": "pronto",
+                "pending": "gerando",
+                "partial": "falhou",
+                "failed": "falhou",
+            }[normalized]
+            result[name] = _generation_format(
+                status=format_status,
+                arquivo_url=_pick_string(material.get("arquivo_url")),
+                erro=_material_error(material),
+            )
+            continue
+
+        if name in generated:
+            result[name] = _generation_format(status="pronto")
+        elif record_status in _GENERATION_RECORD_PROCESSING and (
+            name in planned or name in _GENERATION_REQUIRED_FORMATS
+        ):
+            result[name] = _generation_format(status="gerando")
+        elif record_status in _GENERATION_RECORD_FAILED and (
+            name in planned or name in _GENERATION_REQUIRED_FORMATS
+        ):
+            result[name] = _generation_format(
+                status="falhou",
+                erro=_record_error(record),
+            )
+        elif record_status in _GENERATION_RECORD_READY and name in _GENERATION_REQUIRED_FORMATS:
+            # O novo contrato exige os quatro formatos. Um registro marcado
+            # pronto sem um deles é parcial, não um sucesso silencioso.
+            result[name] = _generation_format(
+                status="falhou",
+                erro="Formato obrigatório não foi persistido.",
+            )
+        else:
+            result[name] = _generation_format(status="sem_material")
+    return result
+
+
+def _record_is_current_for_target(
+    record: dict[str, Any] | None,
+    target: dict[str, Any] | None,
+) -> bool:
+    if not isinstance(record, dict):
+        return False
+    if not isinstance(target, dict):
+        return True
+    if target.get("personalizacao_id") is not None:
+        return str(target.get("personalizacao_id")) == str(record.get("id"))
+    return _datetime_rank(record.get("updated_at") or record.get("gerado_em")) >= _datetime_rank(
+        target.get("updated_at") or target.get("created_at")
+    )
+
+
+def _build_generation_status(
+    *,
+    record: dict[str, Any] | None,
+    target: dict[str, Any] | None,
+) -> PersonalizacaoGeracaoStatus:
+    target_status = (
+        str(target.get("status") or "").strip().lower() if isinstance(target, dict) else ""
+    )
+    record_status = (
+        str(record.get("status") or "").strip().lower() if isinstance(record, dict) else ""
+    )
+    record_is_current = _record_is_current_for_target(record, target)
+    formatos = _record_generation_formats(record)
+
+    state = "sem_material"
+    if target_status == "pending":
+        state = "na_fila"
+    elif target_status == "processing":
+        state = (
+            "gerando_midias"
+            if record_is_current and isinstance(record, dict)
+            else "enriquecendo"
+        )
+    elif target_status == "failed":
+        state = "falhou"
+    elif isinstance(record, dict):
+        ready_count = sum(
+            formatos[name].status == "pronto"
+            for name in _GENERATION_REQUIRED_FORMATS
+        )
+        failed_count = sum(
+            formatos[name].status == "falhou"
+            for name in _GENERATION_REQUIRED_FORMATS
+        )
+        generating_count = sum(
+            formatos[name].status in {"na_fila", "gerando"}
+            for name in _GENERATION_REQUIRED_FORMATS
+        )
+        if record_status in _GENERATION_RECORD_PROCESSING or generating_count:
+            state = "gerando_midias"
+        elif record_status in _GENERATION_RECORD_FAILED:
+            state = "parcial" if ready_count else "falhou"
+        elif record_status == "partial" or failed_count:
+            state = "parcial"
+        elif record_status in _GENERATION_RECORD_READY:
+            state = "pronto"
+        elif ready_count:
+            state = "parcial" if ready_count < len(_GENERATION_REQUIRED_FORMATS) else "pronto"
+
+    if state in {"na_fila", "enriquecendo"}:
+        override_status = "na_fila" if state == "na_fila" else "gerando"
+        formatos = {
+            name: _generation_format(
+                status=override_status,
+                arquivo_url=current.arquivo_url,
+                # O erro do material pertence à tentativa anterior. Enquanto
+                # o target atual está ativo, exibi-lo faz parecer que a nova
+                # chamada já falhou no mesmo provedor.
+                erro=None,
+            )
+            for name, current in formatos.items()
+        }
+    elif state == "falhou" and not record_is_current:
+        formatos = {
+            name: (
+                current
+                if current.status == "pronto"
+                else _generation_format(
+                    status="falhou",
+                    arquivo_url=current.arquivo_url,
+                    erro=_pick_string(
+                        target.get("last_error") if isinstance(target, dict) else None,
+                        target.get("job_last_error") if isinstance(target, dict) else None,
+                        current.erro,
+                    ),
+                )
+            )
+            for name, current in formatos.items()
+        }
+
+    ready_formats = sum(
+        formatos[name].status == "pronto"
+        for name in _GENERATION_REQUIRED_FORMATS
+    )
+    total_formats = len(_GENERATION_REQUIRED_FORMATS)
+    if state == "sem_material":
+        progress = 0
+    elif state == "na_fila":
+        progress = 10
+    elif state == "enriquecendo":
+        progress = 35
+    elif state == "gerando_midias":
+        progress = min(95, 60 + round((ready_formats / total_formats) * 35))
+    elif state == "pronto":
+        progress = 100
+    elif state == "parcial":
+        progress = min(95, max(60, round((ready_formats / total_formats) * 100)))
+    else:
+        progress = (
+            min(95, round((ready_formats / total_formats) * 100))
+            if record_is_current
+            else 0
+        )
+
+    blocks_total = _content_blocks_total(record)
+    has_persisted_media = bool(
+        isinstance(record, dict)
+        and isinstance(record.get("materiais"), dict)
+        and any(
+            isinstance(value, dict)
+            for key, value in record["materiais"].items()
+            if key in _MEDIA_TIPOS
+        )
+    )
+    blocks_completed = (
+        blocks_total
+        if state in {"pronto", "parcial"}
+        or (state == "gerando_midias" and record_is_current)
+        or (state == "falhou" and record_is_current and has_persisted_media)
+        else 0
+    )
+
+    etapa, label = _GENERATION_STATE_DETAILS[state]
+    active_target = state in {"na_fila", "enriquecendo"}
+    error, error_code = _normalize_generation_error(
+        target.get("last_error") if isinstance(target, dict) else None,
+        target.get("job_last_error") if isinstance(target, dict) else None,
+        None if active_target else _record_error(record),
+    )
+    return PersonalizacaoGeracaoStatus(
+        status=state,
+        etapa=etapa,
+        label=label,
+        etapa_label=label,
+        progresso_percentual=progress,
+        job_id=str(target["job_id"]) if isinstance(target, dict) and target.get("job_id") else None,
+        target_id=(
+            int(target["id"])
+            if isinstance(target, dict) and target.get("id") is not None
+            else None
+        ),
+        erro=error,
+        erro_codigo=error_code,
+        blocos_total=blocks_total,
+        blocos_concluidos=blocks_completed,
+        formatos=formatos,
+        updated_at=_latest_datetime(
+            target.get("updated_at") if isinstance(target, dict) else None,
+            target.get("job_updated_at") if isinstance(target, dict) else None,
+            record.get("updated_at") if isinstance(record, dict) else None,
+            record.get("gerado_em") if isinstance(record, dict) else None,
+        ),
+    )
+
+
+def _build_generation_summary(
+    perfis: list[PersonalizacaoPerfilItem],
+) -> PersonalizacaoGeracaoResumo:
+    statuses = [item.geracao for item in perfis]
+    counts: dict[str, int] = {}
+    for generation in statuses:
+        counts[generation.status] = counts.get(generation.status, 0) + 1
+    active = sum(
+        counts.get(status, 0)
+        for status in ("na_fila", "enriquecendo", "gerando_midias")
+    )
+    failed = counts.get("falhou", 0)
+    return PersonalizacaoGeracaoResumo(
+        total_perfis=len(statuses),
+        perfis_prontos=counts.get("pronto", 0),
+        perfis_ativos=active,
+        perfis_parciais=counts.get("parcial", 0),
+        perfis_falhos=failed,
+        perfis_sem_material=counts.get("sem_material", 0),
+        perfis_em_andamento=active,
+        perfis_com_falha=failed,
+        progresso_percentual=(
+            round(sum(item.progresso_percentual for item in statuses) / len(statuses))
+            if statuses
+            else 0
+        ),
+        estados=counts,
+        updated_at=_latest_datetime(*(item.updated_at for item in statuses)),
+    )
+
+
+def _normalize_profile_name(value: str | None) -> str:
+    return str(value or "").strip().lower()
+
+
+def _hex_to_rgb(color: str) -> tuple[int, int, int]:
+    normalized = color.strip().lstrip("#")
+    if len(normalized) == 3:
+        normalized = "".join(part * 2 for part in normalized)
+    return tuple(int(normalized[index : index + 2], 16) for index in (0, 2, 4))
+
+
+def _rgb_to_hex(rgb: tuple[int, int, int]) -> str:
+    return "#{:02x}{:02x}{:02x}".format(*[max(0, min(255, int(channel))) for channel in rgb])
+
+
+def _blend(color_a: str, color_b: str, ratio: float) -> str:
+    ratio = max(0.0, min(1.0, ratio))
+    left = _hex_to_rgb(color_a)
+    right = _hex_to_rgb(color_b)
+    mixed = tuple(round(left[i] * (1.0 - ratio) + right[i] * ratio) for i in range(3))
+    return _rgb_to_hex(mixed)
+
+
+def _darken(color: str, amount: float) -> str:
+    base = _hex_to_rgb(color)
+    factor = max(0.0, min(1.0, 1.0 - amount))
+    return _rgb_to_hex(tuple(round(channel * factor) for channel in base))
+
+
+def _rgba(color: str, alpha: float) -> str:
+    red, green, blue = _hex_to_rgb(color)
+    return f"rgba({red}, {green}, {blue}, {max(0.0, min(1.0, alpha)):.2f})"
+
+
+def _lighten(color: str, amount: float) -> str:
+    return _blend(color, "#ffffff", amount)
+
+
+def _set_lightness(color: str, lightness: float) -> str:
+    """Retorna `color` com a luminosidade (HLS) substituida, preservando matiz e saturacao."""
+    r, g, b = _hex_to_rgb(color)
+    h, _l, s = colorsys.rgb_to_hls(r / 255.0, g / 255.0, b / 255.0)
+    nr, ng, nb = colorsys.hls_to_rgb(h, max(0.0, min(1.0, lightness)), s)
+    return _rgb_to_hex((round(nr * 255), round(ng * 255), round(nb * 255)))
+
+
+def _relative_luminance(color: str) -> float:
+    """Luminância relativa sRGB (WCAG 2.x)."""
+    def _channel(value: int) -> float:
+        srgb = value / 255.0
+        return srgb / 12.92 if srgb <= 0.03928 else ((srgb + 0.055) / 1.055) ** 2.4
+
+    red, green, blue = _hex_to_rgb(color)
+    return 0.2126 * _channel(red) + 0.7152 * _channel(green) + 0.0722 * _channel(blue)
+
+
+def _contrast_ratio(foreground: str, background: str) -> float:
+    """Razão de contraste WCAG entre duas cores hex (1.0–21.0)."""
+    lighter = max(_relative_luminance(foreground), _relative_luminance(background))
+    darker = min(_relative_luminance(foreground), _relative_luminance(background))
+    return (lighter + 0.05) / (darker + 0.05)
+
+
+def _ensure_min_contrast(
+    color: str,
+    background: str,
+    min_ratio: float,
+    *,
+    step: float = 0.04,
+    max_steps: int = 20,
+) -> str:
+    """Eleva a luminosidade (HLS) de `color` até atingir `min_ratio` de contraste
+    contra `background`, preservando matiz E saturação da cor-assinatura do perfil.
+    Clarear misturando com branco (abordagem anterior) desatura a cor e deixa o
+    resultado "apagado" mesmo passando no contraste — por isso ajustamos só a
+    luminosidade, mantendo a cor vibrante e reconhecível."""
+    r, g, b = _hex_to_rgb(color)
+    _hue, lightness, _sat = colorsys.rgb_to_hls(r / 255.0, g / 255.0, b / 255.0)
+    adjusted = color
+    for _ in range(max_steps):
+        if _contrast_ratio(adjusted, background) >= min_ratio:
+            break
+        if lightness >= 1.0:
+            break
+        lightness = min(1.0, lightness + step)
+        adjusted = _set_lightness(color, lightness)
+    return adjusted
+
+
+def _build_design_tokens(profile_name: str | None) -> DesignTokens:
+    accent_base = _PROFILE_COLOR_MAP.get(
+        _normalize_profile_name(profile_name),
+        _PROFILE_COLOR_MAP["mastermind"],
+    )
+    background = _darken(_blend("#0b1220", accent_base, 0.06), 0.05)
+    surface = _blend("#131d31", accent_base, 0.10)
+    surface_elevated = _blend("#182338", accent_base, 0.14)
+
+    # WCAG AAA: o accent (texto grande, ícones, bordas) precisa ser legível sobre
+    # a superfície MAIS CLARA em que aparece (pior caso = surface_elevated).
+    # Elevamos so a luminosidade (matiz e saturacao intactos), garantindo >= 4.5:1
+    # (AAA para texto grande; excede o 3:1 exigido para componentes de UI) sem
+    # deixar a cor "apagada" como um mix com branco deixaria.
+    accent = _ensure_min_contrast(accent_base, surface_elevated, 4.5)
+
+    return DesignTokens(
+        cores=DesignTokensCores(
+            background=background,
+            surface=surface,
+            surface_elevated=surface_elevated,
+            primary=accent,
+            primary_glow=_rgba(accent, 0.30),
+            border=_rgba(accent, 0.40),
+            text_primary="#f2f7fa",
+            text_muted="rgba(242, 247, 250, 0.80)",
+            # Cores semânticas fixas (não derivadas do accent): evita Survivor
+            # vermelho como "sucesso" e garante contraste AAA consistente.
+            success="#34d399",
+            warning="#fbbf24",
+            info="#60a5fa",
+            locked="#5a676b",
+        ),
+        sombra_primary=_rgba(accent, 0.30),
+    )
+
+
+def _graph_config(request: Request, aluno_id: str, cycle_id: str, classe_id: int) -> dict:
+    return {
+        "configurable": {
+            "thread_id": f"{aluno_id}:{cycle_id}",
+            "checkpoint_ns": "personalizacao",
+        },
+        "tags": ["trailup", "personalizacao"],
+        "metadata": {
+            "aluno_id": aluno_id,
+            "classe_id": classe_id,
+            "ciclo_id": cycle_id,
+        },
+    }
+
+
+def _summarize_personalizar_payload(payload: PersonalizarPayload) -> dict[str, object]:
+    return {
+        "classe_id": payload.classe_id,
+        "topico_id": payload.topico_id,
+        "conteudo_id": payload.conteudo_id,
+        "conteudo_foco_id": payload.conteudo_foco_id,
+        "perfis_count": len(payload.perfis),
+        "snapshot_keys": sorted((payload.topico_snapshot or {}).keys()) if payload.topico_snapshot else [],
+        "materiais_origem_count": len(payload.materiais_origem_cliente or []),
+    }
+
+
+def _summarize_personalizacao_record(record: dict | None) -> dict[str, object]:
+    material_types = sorted((record or {}).get("materiais", {}).keys()) if isinstance((record or {}).get("materiais"), dict) else []
+    steps = build_personalizacao_steps(record or {})
+    return {
+        "id": (record or {}).get("id"),
+        "topico_id": (record or {}).get("topico_id"),
+        "conteudo_id": (record or {}).get("conteudo_id"),
+        "ciclo_id": (record or {}).get("ciclo_id"),
+        "formato_prioritario": (record or {}).get("formato_prioritario"),
+        "formatos_gerados": list((record or {}).get("formatos_gerados") or []),
+        "material_types": material_types,
+        "steps_count": len(steps),
+    }
+
+
+def _format_percent(value: object) -> str:
+    try:
+        numeric = max(0.0, min(100.0, float(value or 0)))
+    except (TypeError, ValueError):
+        numeric = 0.0
+    return f"{round(numeric)}%"
+
+
+def _format_minutes(value: object) -> str:
+    try:
+        numeric = max(0.0, float(value or 0))
+    except (TypeError, ValueError):
+        numeric = 0.0
+
+    rounded = round(numeric)
+    if rounded < 60:
+        return f"{rounded} min"
+
+    horas = rounded // 60
+    minutos = rounded % 60
+    if minutos <= 0:
+        return f"{horas}h"
+    return f"{horas}h {minutos}min"
+
+
+def _build_student_metrics_summary(context: dict[str, object]) -> dict[str, object]:
+    desempenho = context.get("desempenho_recente") if isinstance(context.get("desempenho_recente"), dict) else {}
+    progresso = context.get("progresso_trilha") if isinstance(context.get("progresso_trilha"), dict) else {}
+    historico_eventos = context.get("historico_eventos") if isinstance(context.get("historico_eventos"), list) else []
+    aluno = context.get("aluno") if isinstance(context.get("aluno"), dict) else {}
+
+    return {
+        "apelido": aluno.get("apelido") or aluno.get("nome"),
+        "modo_operacao": aluno.get("modo_operacao"),
+        "modo_resposta": aluno.get("modo_resposta"),
+        "progresso_topicos_count": len(progresso),
+        "media_acertos_pct": _format_percent(desempenho.get("media_acertos")),
+        "percentual_concluido_pct": _format_percent(desempenho.get("percentual_concluido")),
+        "tempo_medio_min": _format_minutes(desempenho.get("tempo_medio_min")),
+        "topico_concluido": bool(desempenho.get("topico_concluido")),
+        "atividade_recente_id": desempenho.get("atividade_recente_id"),
+        "topico_recente_id": desempenho.get("topico_recente_id"),
+        "eventos_recentes": [item.get("tipo") for item in historico_eventos[:6] if isinstance(item, dict) and item.get("tipo")],
+    }
+
+
+def _build_student_reading_summary(context: dict[str, object]) -> dict[str, object]:
+    desempenho = context.get("desempenho_recente") if isinstance(context.get("desempenho_recente"), dict) else {}
+    trilha = context.get("trilha_atual") if isinstance(context.get("trilha_atual"), dict) else {}
+    ia_descricao = context.get("ia_descricao_atual") if isinstance(context.get("ia_descricao_atual"), dict) else {}
+
+    return {
+        "ritmo_geral": "consistente" if float(desempenho.get("percentual_concluido") or 0) >= 50 else "em_formacao",
+        "tempo_medio": _format_minutes(desempenho.get("tempo_medio_min")),
+        "topico_concluido": bool(desempenho.get("topico_concluido")),
+        "trilha_status": trilha.get("status"),
+        "insights": ia_descricao.get("insights"),
+        "modo_operacao_sugerido": ia_descricao.get("modooperacao"),
+        "recomendacao_trilha": ia_descricao.get("recomendacaotrilha"),
+    }
+
+
+def _looks_like_answer_request(text: str) -> bool:
+    normalized = text.lower()
+    patterns = [
+        "qual a resposta",
+        "me passa a resposta",
+        "gabarito",
+        "alternativa correta",
+        "qual alternativa",
+        "resolva",
+        "faz pra mim",
+        "me diga a resposta",
+    ]
+    return any(pattern in normalized for pattern in patterns)
+
+
+def _mentor_tone_intro(perfil: str | None) -> str:
+    profile = (perfil or "").strip().lower()
+    mapping = {
+        "achiever": "Vamos focar em metas claras e progresso constante. ",
+        "conqueror": "Vamos encarar isso como um desafio direto. ",
+        "daredevil": "Vamos em um ritmo dinamico e pratico. ",
+        "mastermind": "Vou explicar a logica das escolhas para voce. ",
+        "socialiser": "Vamos juntos, passo a passo. ",
+        "seeker": "Vamos explorar o tema com curiosidade. ",
+        "survivor": "Vamos com calma e seguranca, um passo de cada vez. ",
+    }
+    return mapping.get(profile, "")
+
+
+def _fallback_mentor_chat_reply(
+    *,
+    payload: MentorChatPayload,
+    latest_record: dict | None,
+    context: dict[str, object],
+) -> dict[str, object]:
+    justification = ""
+    if latest_record:
+        justification = str(((latest_record.get("plano") or {}).get("justificativa")) or "").strip()
+    metrics_summary = _build_student_metrics_summary(context)
+    reading_summary = _build_student_reading_summary(context)
+    top_profile = (
+        ((context.get("perfil_brainhex") or [{}])[0] or {}).get("perfil")
+        if isinstance(context.get("perfil_brainhex"), list)
+        else None
+    )
+    tone_intro = _mentor_tone_intro(str(top_profile or "").strip())
+
+    if _looks_like_answer_request(payload.mensagem):
+        return {
+            "reply": (
+                f"{tone_intro}Nao posso entregar a resposta da atividade. Posso te explicar por que esse modulo foi personalizado "
+                "desse jeito e sugerir como revisar o material antes de tentar de novo."
+            ),
+            "should_close": False,
+            "hinted_actions": ["revisar_material", "explicar_personalizacao"],
+        }
+
+    profile_label = str(top_profile or "seu perfil").strip()
+    message_normalized = payload.mensagem.lower()
+
+    if any(keyword in message_normalized for keyword in ["metrica", "desempenho", "tempo", "progresso", "acerto", "leitura", "dados"]):
+        return {
+            "reply": (
+                f"{tone_intro}Ate aqui, seu progresso registrado nesta classe esta em {metrics_summary['percentual_concluido_pct']}, "
+                f"com media recente de {metrics_summary['media_acertos_pct']} e tempo medio de {metrics_summary['tempo_medio_min']} por atividade. "
+                f"Na leitura adaptativa, eu observo seu ritmo ({reading_summary['ritmo_geral']}) e o historico recente para sugerir ajustes sem entregar respostas."
+            ),
+            "should_close": False,
+            "hinted_actions": ["resumir_metricas", "explicar_personalizacao"],
+        }
+
+    if payload.escopo == "trilha_home":
+        reply = (
+            f"{tone_intro}Na sua trilha eu considero {profile_label} e seu historico recente para escolher formato, ritmo e apoio. "
+            "Posso te explicar o motivo de um modulo personalizado especifico, comentar metricas simples da sua jornada e resumir o que ja foi observado nas leituras adaptativas, sem entrar no gabarito das atividades."
+        )
+    elif justification:
+        reply = (
+            f"{tone_intro}Eu personalizei este modulo assim: {justification} "
+            "Se quiser, eu tambem posso sugerir a melhor ordem para estudar esse material e resumir como suas metricas mais recentes influenciaram essa decisao."
+        )
+    else:
+        reply = (
+            f"{tone_intro}Eu consigo comentar a decisao de personalizacao, o ritmo sugerido e a melhor estrategia para estudar este modulo, "
+            "alem de resumir metricas e leituras recentes, mas nao entrego respostas de atividade."
+        )
+
+    return {
+        "reply": reply,
+        "should_close": False,
+        "hinted_actions": ["explicar_personalizacao", "sugerir_ordem_estudo"],
+    }
+
+
+def _fill_plano_editorial_fields(plano: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Preenche tom/estilo/nivel com a assinatura editorial real do perfil
+    quando o plano salvo nao os tem (registros gerados pelo job de base por
+    perfil, que nao passa pelo planejador_conteudo.txt) — evita mostrar "—"
+    no console quando ja existe informacao real derivavel do perfil."""
+    if not isinstance(plano, dict):
+        return plano
+    if plano.get("tom") and plano.get("estilo") and plano.get("nivel"):
+        return plano
+    perfil_dominante = str(plano.get("perfil_dominante") or "").strip()
+    if not perfil_dominante:
+        return plano
+    editorial = _build_profile_editorial_context(perfil_dominante, [])
+    filled = dict(plano)
+    filled.setdefault("tom", editorial.get("tom_voz") or "neutro")
+    filled.setdefault("estilo", editorial.get("progressao_narrativa") or "direto")
+    filled.setdefault("nivel", "equilibrado")
+    return filled
+
+
+def _to_response(record: dict) -> PersonalizacaoResponse:
+    design_tokens = record.get("design_tokens")
+    plano = _fill_plano_editorial_fields(record.get("plano"))
+    if design_tokens is None:
+        dominant_profile = str(
+            (record.get("plano") or {}).get("perfil_dominante")
+            or (record.get("metadata") or {}).get("perfil_dominante")
+            or "mastermind"
+        ).strip()
+        design_tokens = _build_design_tokens(dominant_profile).model_dump(mode="json")
+
+    materiais = _hydrate_materiais_public_urls(
+        record.get("materiais") if isinstance(record.get("materiais"), dict) else None,
+        fallback_bucket=BUCKET,
+    )
+    record_for_steps = dict(record)
+    record_for_steps["materiais"] = materiais or {}
+
+    try:
+        steps = build_personalizacao_steps(record_for_steps)
+    except Exception:
+        logger.warning(
+            "Falha ao reconstruir steps de personalizacao",
+            extra={
+                "record_id": record.get("id"),
+                "topico_id": record.get("topico_id"),
+                "conteudo_id": record.get("conteudo_id"),
+            },
+            exc_info=True,
+        )
+        steps = []
+
+    media_status = _materials_media_status(materiais)
+
+    return PersonalizacaoResponse(
+        id=record["id"],
+        aluno_id=str(record["aluno_id"]),
+        classe_id=record.get("classe_id"),
+        conteudo_id=record.get("conteudo_id"),
+        topico_id=record.get("topico_id"),
+        ciclo_id=record["ciclo_id"],
+        status=str(record.get("status") or "pronto"),
+        media_status=media_status,
+        media_job_id=None,
+        source_hash=record.get("source_hash"),
+        formato_prioritario=record.get("formato_prioritario") or "",
+        formatos_gerados=list(record.get("formatos_gerados") or []),
+        plano=plano,
+        materiais=materiais,
+        ai_patch=record.get("ai_patch"),
+        design_tokens=design_tokens,
+        steps=steps,
+        gerado_em=record["gerado_em"],
+        updated_at=record.get("updated_at"),
+    )
+
+
+def _to_progresso_response(record: dict) -> PersonalizacaoItemProgressoResponse:
+    return PersonalizacaoItemProgressoResponse(
+        id=record["id"],
+        personalizacao_id=record["personalizacao_id"],
+        aluno_id=str(record["aluno_id"]),
+        classe_id=record["classe_id"],
+        topico_id=record["topico_id"],
+        item_key=record["item_key"],
+        item_kind=record["item_kind"],
+        item_title=record["item_title"],
+        status=record["status"],
+        percentual_concluido=float(record.get("percentual_concluido") or 0),
+        acertos_percentual=(
+            float(record["acertos_percentual"])
+            if record.get("acertos_percentual") is not None
+            else None
+        ),
+        tempo_gasto_min=float(record.get("tempo_gasto_min") or 0),
+        pontuacao_obtida=(
+            float(record["pontuacao_obtida"])
+            if record.get("pontuacao_obtida") is not None
+            else None
+        ),
+        pontuacao_maxima=(
+            float(record["pontuacao_maxima"])
+            if record.get("pontuacao_maxima") is not None
+            else None
+        ),
+        metadata=record.get("metadata") or {},
+        completed_at=record.get("completed_at"),
+        updated_at=record["updated_at"],
+    )
+
+
+def _to_fonte_response(record: dict) -> FontePersonalizacaoResponse:
+    metadata = record.get("metadata") if isinstance(record.get("metadata"), dict) else {}
+    arquivo_url, storage_path, metadata = _resolve_public_asset_fields(
+        arquivo_url=record.get("arquivo_url"),
+        storage_path=record.get("storage_path"),
+        metadata=metadata,
+        fallback_bucket="conteudos",
+    )
+    return FontePersonalizacaoResponse(
+        id=record["id"],
+        classe_id=record["classe_id"],
+        topico_id=record.get("topico_id"),
+        conteudo_id=record.get("conteudo_id"),
+        aluno_id=str(record["aluno_id"]) if record.get("aluno_id") is not None else None,
+        professor_id=str(record["professor_id"]) if record.get("professor_id") is not None else None,
+        visibilidade=record["visibilidade"],
+        tipo=record["tipo"],
+        titulo=record.get("titulo"),
+        descricao=record.get("descricao"),
+        arquivo_url=arquivo_url,
+        storage_path=storage_path,
+        mime_type=record.get("mime_type"),
+        nome_arquivo=record.get("nome_arquivo"),
+        tamanho_bytes=record.get("tamanho_bytes"),
+        origem=record["origem"],
+        metadata=metadata or {},
+        criado_em=record["criado_em"],
+    )
+
+
+def _to_job_response(record: dict) -> PersonalizacaoJobResponse:
+    return PersonalizacaoJobResponse(
+        id=str(record["id"]),
+        kind=str(record["kind"]),
+        status=str(record["status"]),
+        classe_id=int(record["classe_id"]),
+        aluno_id=str(record["aluno_id"]) if record.get("aluno_id") is not None else None,
+        topico_id=record.get("topico_id"),
+        conteudo_id=record.get("conteudo_id"),
+        trigger_source=str(record["trigger_source"]),
+        payload=record.get("payload") or {},
+        total_targets=int(record.get("total_targets") or 0),
+        processed_targets=int(record.get("processed_targets") or 0),
+        error_count=int(record.get("error_count") or 0),
+        last_error=record.get("last_error"),
+        created_at=record["created_at"],
+        updated_at=record["updated_at"],
+        started_at=record.get("started_at"),
+        finished_at=record.get("finished_at"),
+    )
+
+
+def _to_job_target_response(record: dict) -> PersonalizacaoJobTargetResponse:
+    return PersonalizacaoJobTargetResponse(
+        id=int(record["id"]),
+        job_id=str(record["job_id"]),
+        aluno_id=str(record["aluno_id"]),
+        topico_id=int(record["topico_id"]),
+        conteudo_id=record.get("conteudo_id"),
+        brainhex_profile_key=record.get("brainhex_profile_key"),
+        is_profile_template=bool(record.get("is_profile_template", False)),
+        status=str(record["status"]),
+        attempts=int(record.get("attempts") or 0),
+        last_error=record.get("last_error"),
+        personalizacao_id=record.get("personalizacao_id"),
+        created_at=record["created_at"],
+        updated_at=record["updated_at"],
+    )
+
+
+def _parse_links_json(raw_links: str | None) -> list[dict]:
+    if not raw_links:
+        return []
+
+    try:
+        parsed = json.loads(raw_links)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="links_json invalido. Envie um JSON array de URLs ou objetos.",
+        ) from exc
+
+    if not isinstance(parsed, list):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="links_json deve ser um array.",
+        )
+
+    normalized: list[dict] = []
+    for item in parsed:
+        if isinstance(item, str):
+            normalized.append({"url": item})
+            continue
+        if isinstance(item, dict) and isinstance(item.get("url"), str):
+            normalized.append(item)
+            continue
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Cada link deve ser uma URL string ou um objeto com campo url.",
+        )
+
+    return normalized
+
+
+def _sanitize_filename(filename: str | None) -> str:
+    name = Path(filename or "arquivo").name.strip()
+    return name or "arquivo"
+
+
+def _resolve_visibility(user: UserContext, requested: str | None) -> str:
+    if requested is None:
+        return "aluno" if user.is_aluno else "classe"
+
+    normalized = requested.strip().lower()
+    if normalized not in {"aluno", "classe"}:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="visibilidade deve ser 'aluno' ou 'classe'.",
+        )
+    return normalized
+
+
+def _build_storage_path(
+    *,
+    classe_id: int,
+    topico_id: int | None,
+    conteudo_id: int | None,
+    filename: str,
+) -> str:
+    safe_name = _sanitize_filename(filename)
+    return (
+        f"fontes/classe-{classe_id}/"
+        f"topico-{topico_id or 'geral'}/"
+        f"conteudo-{conteudo_id or 'geral'}/"
+        f"{uuid4()}-{safe_name}"
+    )
+
+
+async def _ensure_topico_conteudo_belongs_to_classe(
+    *,
+    classe_repo: ConteudoClasseRepository,
+    classe_id: int,
+    topico_id: int | None,
+    conteudo_id: int | None,
+) -> None:
+    """Evita que um aluno gere/consulte personalizacao de conteudo de outra classe
+    enviando um topico_id/conteudo_id que nao pertence a classe_id informado."""
+    if topico_id is not None:
+        actual_classe_id = await classe_repo.buscar_classe_id_por_topico(topico_id)
+        if actual_classe_id is not None and actual_classe_id != classe_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Topico nao pertence a classe informada.",
+            )
+    if conteudo_id is not None:
+        actual_classe_id = await classe_repo.buscar_classe_id_por_conteudo(conteudo_id)
+        if actual_classe_id is not None and actual_classe_id != classe_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Conteudo nao pertence a classe informada.",
+            )
+
+
+@router.post("", response_model=PersonalizacaoResponse, status_code=status.HTTP_201_CREATED)
+async def personalizar(
+    payload: PersonalizarPayload,
+    request: Request,
+    user: UserContext = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> PersonalizacaoResponse:
+    if not user.is_aluno:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Apenas alunos podem solicitar personalizacao de conteudo.",
+        )
+
+    if payload.topico_id is None and payload.conteudo_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Informe topico_id ou conteudo_id.",
+        )
+
+    aluno_id = user.aluno_id or user.user_id
+    access_repo = AccessRepository(session)
+    if not await access_repo.aluno_belongs_to_classe(aluno_id=str(aluno_id), classe_id=int(payload.classe_id)):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Aluno sem acesso a esta classe.",
+        )
+    await _ensure_topico_conteudo_belongs_to_classe(
+        classe_repo=ConteudoClasseRepository(session),
+        classe_id=int(payload.classe_id),
+        topico_id=payload.topico_id,
+        conteudo_id=payload.conteudo_id,
+    )
+
+    settings = request.app.state.settings
+    logger.info(
+        "personalizacao.input=%s",
+        {
+            "aluno_id": aluno_id,
+            **_summarize_personalizar_payload(payload),
+        },
+    )
+
+    try:
+        ctx = await fetch_personalizacao_context(
+            aluno_id=aluno_id,
+            classe_id=payload.classe_id,
+            topico_id=payload.topico_id,
+            conteudo_id=payload.conteudo_id,
+            settings=settings,
+            session=session,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    await session.commit()
+
+    resolved_topico_id = ctx.get("topico_id") or payload.topico_id
+    resolved_conteudo_id = ctx.get("conteudo_id") or payload.conteudo_id
+    brainhex_profile_key = str(ctx.get("perfil_dominante") or "mastermind").strip().lower()
+    if brainhex_profile_key == "socialiser":
+        brainhex_profile_key = "socializer"
+
+    # Retomada: enfileira um ciclo granular (media_generation) em vez de
+    # gerar tudo inline aqui. criar_ciclo_media_generation reaproveita um job
+    # aberto (status != completed, inclusive failed) para o mesmo
+    # classe/topico/conteudo/aluno/perfil/source_hash em vez de sempre abrir
+    # um ciclo novo do zero — a causa raiz do desperdicio de tokens em
+    # retentativas (ver docs/superpowers/specs/2026-08-18-geracao-granular-retomavel-design.md).
+    # O worker (personalizacao_jobs_loop) processa enriquecimento/capitulo/
+    # audio/apresentacao em background — a resposta HTTP nao espera por eles.
+    # derive_base_blocks_and_topic pode levantar ContentEnrichmentError quando
+    # nao ha texto-base pra decompor (fontes vazias) — mesmo tratamento que
+    # o enriquecimento LLM tinha antes de mover pro worker.
+    try:
+        base_blocks, _topic_payload, _source_hash, _segments = derive_base_blocks_and_topic(ctx)
+    except ContentEnrichmentError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+
+    jobs_repo = PersonalizacaoJobsRepository(session)
+    job = await criar_ciclo_media_generation(
+        jobs_repo=jobs_repo,
+        classe_id=payload.classe_id,
+        aluno_id=aluno_id,
+        topico_id=int(resolved_topico_id) if resolved_topico_id is not None else 0,
+        conteudo_id=int(resolved_conteudo_id) if resolved_conteudo_id is not None else None,
+        brainhex_profile_key=brainhex_profile_key,
+        ciclo_id=ctx["ciclo_id"],
+        source_hash=str(ctx.get("source_hash") or ""),
+        base_blocks=base_blocks,
+        trigger_source="student_request",
+    )
+
+    personalizacao_repo = ConteudoPersonalizadoRepository(session)
+    ciclo_id_efetivo = str(job["payload"].get("ciclo_id") or ctx["ciclo_id"])
+    record = await personalizacao_repo.buscar_por_ciclo_id(aluno_id=aluno_id, ciclo_id=ciclo_id_efetivo)
+    if not record:
+        record_id = await personalizacao_repo.salvar(
+            aluno_id=aluno_id,
+            classe_id=payload.classe_id,
+            topico_id=(
+                int(resolved_topico_id)
+                if resolved_topico_id is not None
+                else None
+            ),
+            conteudo_id=(
+                int(resolved_conteudo_id)
+                if resolved_conteudo_id is not None
+                else None
+            ),
+            ciclo_id=ciclo_id_efetivo,
+            plano={
+                "perfil_dominante": ctx.get("perfil_dominante"),
+                "brainhex_profile_key": brainhex_profile_key,
+            },
+            materiais={},
+            ai_patch=None,
+            status="processando_midias",
+            source_hash=ctx["source_hash"],
+            formato_prioritario="cards",
+            formatos_gerados=[],
+        )
+        record = await personalizacao_repo.buscar_por_id(record_id)
+        if not record:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Personalizacao nao retornou registro persistido.",
+            )
+
+    logger.info(
+        "personalizacao.output=%s",
+        {
+            "aluno_id": aluno_id,
+            **_summarize_personalizacao_record(record),
+        },
+    )
+    return _to_response(record)
+
+
+@router.post("/chat", response_model=MentorChatResponse)
+async def conversar_com_mentor_personalizacao(
+    payload: MentorChatPayload,
+    request: Request,
+    user: UserContext = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> MentorChatResponse:
+    if not user.is_aluno:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Apenas alunos podem conversar com o guia.",
+        )
+
+    aluno_id = user.aluno_id or user.user_id
+    access_repo = AccessRepository(session)
+    if not await access_repo.aluno_belongs_to_classe(aluno_id=str(aluno_id), classe_id=int(payload.classe_id)):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Aluno sem acesso a esta classe.",
+        )
+    context_repo = ContextRepository(session)
+    personalizacao_repo = ConteudoPersonalizadoRepository(session)
+    classe_repo = ConteudoClasseRepository(session)
+    await _ensure_topico_conteudo_belongs_to_classe(
+        classe_repo=classe_repo,
+        classe_id=int(payload.classe_id),
+        topico_id=payload.topico_id,
+        conteudo_id=payload.conteudo_id,
+    )
+
+    context = await context_repo.fetch_aluno_context(aluno_id, payload.classe_id)
+    records = await personalizacao_repo.buscar_por_aluno(
+        aluno_id,
+        conteudo_id=payload.conteudo_id,
+        topico_id=payload.topico_id,
+        limit=3,
+    )
+    latest_record = records[0] if records else None
+    topico = await classe_repo.buscar_topico(payload.topico_id) if payload.topico_id is not None else None
+
+    # Conteudo da materia do topico para o guia direcionar o estudo. Sem
+    # gabaritos/respostas (buscar_questoes_topico retorna apenas enunciado/tipo,
+    # respeitando os guardrails). Falha aqui nao deve quebrar o chat.
+    conteudos_topico: list = []
+    atividades_topico: list = []
+    questoes_topico: list = []
+    if payload.topico_id is not None:
+        try:
+            conteudos_topico = await classe_repo.buscar_conteudos_topico(payload.topico_id)
+            atividades_topico = await classe_repo.buscar_atividades_topico(payload.topico_id)
+            questoes_topico = await classe_repo.buscar_questoes_topico(payload.topico_id)
+        except Exception as exc:  # pragma: no cover
+            logger.warning("Falha ao carregar conteudo da materia para o guia: %s", exc)
+
+    logger.info(
+        "personalizacao.chat.input=%s",
+        {
+            "aluno_id": aluno_id,
+            "classe_id": payload.classe_id,
+            "topico_id": payload.topico_id,
+            "conteudo_id": payload.conteudo_id,
+            "escopo": payload.escopo,
+            "mensagem": payload.mensagem,
+            "historico_count": len(payload.historico),
+            "personalizacao_id": latest_record.get("id") if latest_record else None,
+        },
+    )
+
+    fallback = _fallback_mentor_chat_reply(
+        payload=payload,
+        latest_record=latest_record,
+        context=context,
+    )
+
+    llm = JsonLLMService(request.app.state.settings)
+
+    async def _auditar_chat(violacao, fase) -> None:
+        logger.info(
+            "personalizacao.chat.guardrail=%s",
+            {"regra": violacao.regra, "mensagem": violacao.mensagem, "fase": fase},
+        )
+
+    mentor_result = await gerar_validado(
+        llm,
+        prompt_name="mentor_personalizacao_chat.txt",
+        payload={
+            "escopo": payload.escopo,
+            "mensagem": payload.mensagem,
+            "historico": [item.model_dump(mode="json") for item in payload.historico[-6:]],
+            "aluno": {
+                "id": aluno_id,
+                "modo_operacao": (context.get("aluno") or {}).get("modo_operacao") if isinstance(context.get("aluno"), dict) else None,
+                "modo_resposta": (context.get("aluno") or {}).get("modo_resposta") if isinstance(context.get("aluno"), dict) else None,
+            },
+            "perfil_brainhex": context.get("perfil_brainhex", [])[:4],
+            "metricas_aluno": _build_student_metrics_summary(context),
+            "leituras_adaptativas": _build_student_reading_summary(context),
+            "topico": {
+                "id": payload.topico_id,
+                "nome": (topico or {}).get("nome") if isinstance(topico, dict) else None,
+                "descricao": (topico or {}).get("descricao") if isinstance(topico, dict) else None,
+            },
+            "decisao_personalizacao": (
+                ((latest_record or {}).get("plano") or {}).get("justificativa")
+                if latest_record
+                else None
+            ),
+            # Conteudo completo do topico (da turma) para o guia se especializar
+            # na materia e direcionar o estudo. Sem respostas de questoes.
+            "conteudo_materia": {
+                "conteudos": [
+                    {
+                        "titulo": c.get("titulo"),
+                        "tipo": c.get("tipo"),
+                        "resumo": str(c.get("conteudo") or "")[:600],
+                        "ordem": c.get("ordem"),
+                    }
+                    for c in (conteudos_topico or [])[:12]
+                    if isinstance(c, dict)
+                ],
+                "atividades": [
+                    {
+                        "titulo": a.get("titulo"),
+                        "descricao": a.get("descricao"),
+                        "tipo": a.get("tipo"),
+                    }
+                    for a in (atividades_topico or [])[:12]
+                    if isinstance(a, dict)
+                ],
+                "questoes_temas": [
+                    {"enunciado": q.get("enunciado"), "tipo": q.get("tipo")}
+                    for q in (questoes_topico or [])[:20]
+                    if isinstance(q, dict)
+                ],
+            },
+            "guardrails": {
+                "sem_gabarito": True,
+                "sem_resposta_direta_atividade": True,
+            },
+        },
+        schema=MentorChatLLMResult,
+        guardrails=[checar_grounding_chat],
+        fallback_factory=lambda: dict(fallback),
+        contexto={
+            "llm": llm,
+            "conteudo_materia": {"conteudos": conteudos_topico, "atividades": atividades_topico},
+        },
+        on_violation=_auditar_chat,
+        provider="openai",
+    )
+
+    result = mentor_result.model_dump(mode="json")
+    response = MentorChatResponse(
+        reply=mentor_result.reply.strip(),
+        scope=payload.escopo,
+        should_close=mentor_result.should_close,
+        hinted_actions=[item.strip() for item in mentor_result.hinted_actions if item.strip()],
+    )
+
+    try:
+        await IADecisionLogRepository(session).log(
+            aluno_id=aluno_id,
+            classe_id=payload.classe_id,
+            topico_id=payload.topico_id,
+            conteudo_id=payload.conteudo_id,
+            source="chat",
+            stage="mentor_personalizacao_chat",
+            provider="openai",
+            model_name=request.app.state.settings.openai_model_default,
+            trigger_event=payload.escopo,
+            input_summary={
+                "mensagem": payload.mensagem,
+                "historico": [item.model_dump(mode="json") for item in payload.historico[-6:]],
+                "metricas_aluno": _build_student_metrics_summary(context),
+            },
+            prompt_text=load_prompt("mentor_personalizacao_chat.txt"),
+            raw_response=json.dumps(result, ensure_ascii=False, default=str),
+            parsed_response=result,
+            decision_summary=response.reply[:500],
+            actions=response.hinted_actions,
+        )
+        await session.commit()
+    except Exception as exc:  # pragma: no cover
+        await session.rollback()
+        logger.warning("Falha ao persistir ia_decision_logs do chat: %s", exc)
+
+    logger.info(
+        "personalizacao.chat.output=%s",
+        {
+            "aluno_id": aluno_id,
+            "classe_id": payload.classe_id,
+            "topico_id": payload.topico_id,
+            "escopo": payload.escopo,
+            "reply_preview": response.reply[:180],
+            "should_close": response.should_close,
+            "hinted_actions": response.hinted_actions,
+        },
+    )
+    return response
+
+
+@router.post("/fontes", response_model=FontesPersonalizacaoUploadResponse, status_code=status.HTTP_201_CREATED)
+async def upload_fontes_personalizacao(
+    request: Request,
+    classe_id: int = Form(...),
+    topico_id: int | None = Form(default=None),
+    conteudo_id: int | None = Form(default=None),
+    visibilidade: str | None = Form(default=None),
+    descricao: str | None = Form(default=None),
+    links_json: str | None = Form(default=None),
+    files: list[UploadFile] | None = File(default=None),
+    user: UserContext = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> FontesPersonalizacaoUploadResponse:
+    link_items = _parse_links_json(links_json)
+    upload_files = [file for file in files or [] if file.filename]
+    if not upload_files and not link_items:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Envie ao menos um arquivo ou um link para criar fontes de personalizacao.",
+        )
+
+    classe_repo = ConteudoClasseRepository(session)
+    access_repo = AccessRepository(session)
+    resolved_topico_id = topico_id
+    resolved_conteudo_id = conteudo_id
+
+    if resolved_conteudo_id is not None:
+        conteudo_topico_id = await classe_repo.buscar_topico_id_por_conteudo(resolved_conteudo_id)
+        conteudo_classe_id = await classe_repo.buscar_classe_id_por_conteudo(resolved_conteudo_id)
+        if conteudo_topico_id is None or conteudo_classe_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Conteudo informado nao encontrado.",
+            )
+        if conteudo_classe_id != classe_id:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="conteudo_id nao pertence a classe_id informado.",
+            )
+        if resolved_topico_id is not None and resolved_topico_id != conteudo_topico_id:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="conteudo_id nao pertence ao topico_id informado.",
+            )
+        resolved_topico_id = conteudo_topico_id
+
+    if resolved_topico_id is not None:
+        topico_classe_id = await classe_repo.buscar_classe_id_por_topico(resolved_topico_id)
+        if topico_classe_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Topico informado nao encontrado.",
+            )
+        if topico_classe_id != classe_id:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="topico_id nao pertence a classe_id informado.",
+            )
+
+    resolved_visibility = _resolve_visibility(user, visibilidade)
+    actor_aluno_id: str | None = None
+    actor_professor_id: str | None = None
+
+    if resolved_visibility == "classe":
+        if not user.is_professor:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Apenas professores podem enviar fontes com visibilidade de classe.",
+            )
+        if not user.professor_liberado:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Professor sem liberacao de acesso.",
+            )
+        allowed = await access_repo.professor_owns_classe(user.professor_id or user.user_id, classe_id)
+        if not allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Professor sem permissao para enviar fontes nesta classe.",
+            )
+        actor_professor_id = user.professor_id or user.user_id
+    else:
+        if not user.is_aluno:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Apenas alunos podem enviar fontes com visibilidade individual.",
+            )
+        allowed = await access_repo.aluno_belongs_to_classe(user.aluno_id or user.user_id, classe_id)
+        if not allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Aluno sem vinculo com a classe informada.",
+            )
+        actor_aluno_id = user.aluno_id or user.user_id
+
+    storage = SupabaseStorage(request.app.state.settings)
+    repo = FontesPersonalizacaoRepository(session)
+    saved_items: list[dict] = []
+
+    for upload in upload_files:
+        filename = _sanitize_filename(upload.filename)
+        payload = await upload.read()
+        storage_path = _build_storage_path(
+            classe_id=classe_id,
+            topico_id=resolved_topico_id,
+            conteudo_id=resolved_conteudo_id,
+            filename=filename,
+        )
+        mime_type = upload.content_type or "application/octet-stream"
+        arquivo_url = await storage.upload(
+            path=storage_path,
+            data=payload,
+            content_type=mime_type,
+        )
+        if not arquivo_url:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Falha ao enviar arquivo '{filename}' para o storage.",
+            )
+
+        saved_items.append(
+            await repo.salvar(
+                classe_id=classe_id,
+                topico_id=resolved_topico_id,
+                conteudo_id=resolved_conteudo_id,
+                aluno_id=actor_aluno_id,
+                professor_id=actor_professor_id,
+                visibilidade=resolved_visibility,
+                tipo=_infer_source_type(
+                    declared_type=filename,
+                    url=arquivo_url,
+                    mime_hint=mime_type,
+                ),
+                titulo=Path(filename).stem,
+                descricao=descricao,
+                arquivo_url=arquivo_url,
+                storage_path=storage_path,
+                mime_type=mime_type,
+                nome_arquivo=filename,
+                tamanho_bytes=len(payload),
+                origem="upload",
+                metadata={
+                    "filename_original": filename,
+                    "source": "api_upload",
+                    "bucket": "conteudo_aluno",
+                },
+            )
+        )
+
+    for index, item in enumerate(link_items, start=1):
+        url = str(item["url"]).strip()
+        if not url:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Todos os links precisam ter URL valida.",
+            )
+        saved_items.append(
+            await repo.salvar(
+                classe_id=classe_id,
+                topico_id=resolved_topico_id,
+                conteudo_id=resolved_conteudo_id,
+                aluno_id=actor_aluno_id,
+                professor_id=actor_professor_id,
+                visibilidade=resolved_visibility,
+                tipo=_infer_source_type(
+                    declared_type=str(item.get("tipo") or ""),
+                    url=url,
+                    mime_hint=str(item.get("mime_type") or item.get("mimeType") or ""),
+                ),
+                titulo=str(item.get("titulo") or f"Link {index}"),
+                descricao=str(item.get("descricao") or descricao or ""),
+                arquivo_url=url,
+                storage_path=None,
+                mime_type=str(item.get("mime_type") or item.get("mimeType") or "") or None,
+                nome_arquivo=None,
+                tamanho_bytes=None,
+                origem="link",
+                metadata={
+                    "source": "api_link",
+                    "link_kind": str(item.get("tipo") or "").strip().lower() or None,
+                },
+            )
+        )
+
+    return FontesPersonalizacaoUploadResponse(
+        classe_id=classe_id,
+        topico_id=resolved_topico_id,
+        conteudo_id=resolved_conteudo_id,
+        total=len(saved_items),
+        itens=[_to_fonte_response(item) for item in saved_items],
+    )
+
+
+@router.post("/progresso", response_model=PersonalizacaoItemProgressoResponse)
+async def upsert_progresso_personalizado(
+    payload: PersonalizacaoItemProgressoPayload,
+    user: UserContext = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> PersonalizacaoItemProgressoResponse:
+    if not user.is_aluno:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Apenas alunos podem registrar progresso personalizado.",
+        )
+
+    aluno_id = user.aluno_id or user.user_id
+    personalizacao_repo = ConteudoPersonalizadoRepository(session)
+    progress_repo = PersonalizacaoProgressoRepository(session)
+    personalizacao = await personalizacao_repo.buscar_por_id(payload.personalizacao_id)
+    if not personalizacao:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Personalizacao nao encontrada.",
+        )
+    if str(personalizacao.get("aluno_id") or "") != str(aluno_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Personalizacao nao pertence a este aluno.",
+        )
+    personalizacao_classe_id = int(personalizacao.get("classe_id") or 0)
+    personalizacao_topico_id = int(personalizacao.get("topico_id") or 0)
+    if personalizacao_classe_id and personalizacao_classe_id != int(payload.classe_id):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="classe_id incompativel com a personalizacao informada.",
+        )
+    if personalizacao_topico_id and personalizacao_topico_id != int(payload.topico_id):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="topico_id incompativel com a personalizacao informada.",
+        )
+
+    access_repo = AccessRepository(session)
+    belongs = await access_repo.aluno_belongs_to_classe(
+        aluno_id=str(aluno_id),
+        classe_id=int(payload.classe_id),
+    )
+    if not belongs:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Aluno sem acesso a esta classe.",
+        )
+
+    previous = await progress_repo.buscar_item(
+        aluno_id=aluno_id,
+        personalizacao_id=payload.personalizacao_id,
+        item_key=payload.item_key,
+    )
+    saved = await progress_repo.upsert(
+        personalizacao_id=payload.personalizacao_id,
+        aluno_id=aluno_id,
+        classe_id=payload.classe_id,
+        topico_id=payload.topico_id,
+        item_key=payload.item_key,
+        item_kind=payload.item_kind,
+        item_title=payload.item_title,
+        status=payload.status,
+        percentual_concluido=payload.percentual_concluido,
+        acertos_percentual=payload.acertos_percentual,
+        tempo_gasto_min=payload.tempo_gasto_min,
+        pontuacao_obtida=payload.pontuacao_obtida,
+        pontuacao_maxima=payload.pontuacao_maxima,
+        metadata=payload.metadata,
+    )
+    await progress_repo.atualizar_classe_aluno_snapshot(
+        aluno_id=aluno_id,
+        classe_id=payload.classe_id,
+    )
+    await session.commit()
+
+    should_log_score = (
+        payload.status == "concluido"
+        and (payload.pontuacao_obtida or 0) > 0
+        and (
+            previous is None
+            or previous.get("status") != "concluido"
+            or float(previous.get("pontuacao_obtida") or 0) < float(payload.pontuacao_obtida or 0)
+        )
+    )
+    if should_log_score:
+        evento_repo = EventoRepository(session)
+        await evento_repo.log(
+            aluno_id=aluno_id,
+            tipo=f"topico_personalizado_{payload.item_kind}",
+            referencia=str(payload.topico_id),
+            valor=float(payload.pontuacao_obtida or 0),
+        )
+        await session.commit()
+
+    return _to_progresso_response(saved)
+
+
+@router.get(
+    "/perfis/{classe_id}/{topico_id}",
+    response_model=PersonalizacaoPorPerfilResponse,
+)
+async def listar_personalizacoes_por_perfil(
+    classe_id: int,
+    topico_id: int,
+    conteudo_id: int | None = Query(default=None, gt=0),
+    user: UserContext = Depends(require_professor),
+    session: AsyncSession = Depends(get_session),
+) -> PersonalizacaoPorPerfilResponse:
+    """Visao docente: personalizacao de um (classe x topico) lado a lado pelos 7 perfis BrainHex.
+
+    Para cada perfil retorna o plano (formato_prioritario, formatos, tom/estilo), os
+    design_tokens (preview da paleta), os materiais e o andamento do pipeline da
+    personalizacao mais recente daquele perfil, alem da contagem de alunos da
+    turma cujo perfil dominante e o perfil em questao.
+    """
+    access_repo = AccessRepository(session)
+    owns_class = await access_repo.professor_owns_classe(
+        user.professor_id or user.user_id, classe_id
+    )
+    if not owns_class:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Professor sem permissao para esta classe.",
+        )
+
+    personalizacao_repo = ConteudoPersonalizadoRepository(session)
+    jobs_repo = PersonalizacaoJobsRepository(session)
+    classe_repo = ConteudoClasseRepository(session)
+    topic_class_id = await classe_repo.buscar_classe_id_por_topico(topico_id)
+    if topic_class_id != classe_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Topico nao encontrado nesta classe.",
+        )
+
+    conteudo_titulo: str | None = None
+    if conteudo_id is not None:
+        scoped_content = next(
+            (
+                item
+                for item in await classe_repo.buscar_conteudos_topico(topico_id)
+                if int(item.get("id") or 0) == conteudo_id
+            ),
+            None,
+        )
+        if scoped_content is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Conteudo nao encontrado neste topico.",
+            )
+        conteudo_titulo = str(
+            scoped_content.get("titulo") or f"Conteudo {conteudo_id}"
+        )
+
+    alunos = await classe_repo.listar_alunos_classe_com_perfil_dominante(classe_id)
+    contagem_por_perfil: dict[str, int] = {}
+    for aluno in alunos:
+        perfil_key = personalizacao_repo._normalize_profile_key(aluno.get("perfil_dominante"))
+        contagem_por_perfil[perfil_key] = contagem_por_perfil.get(perfil_key, 0) + 1
+
+    latest_targets = await jobs_repo.buscar_targets_mais_recentes_por_perfil(
+        classe_id=classe_id,
+        topico_id=topico_id,
+        conteudo_id=conteudo_id,
+    )
+    perfis: list[PersonalizacaoPerfilItem] = []
+    total_com_material = 0
+    for perfil in _BRAINHEX_PROFILES:
+        record = await personalizacao_repo.buscar_mais_recente_por_perfil(
+            classe_id=classe_id,
+            topico_id=topico_id,
+            conteudo_id=conteudo_id,
+            brainhex_profile_key=perfil,
+        )
+        personalizacao_response = _to_response(record) if record else None
+        if personalizacao_response is not None:
+            total_com_material += 1
+
+        design_tokens = (
+            personalizacao_response.design_tokens
+            if personalizacao_response is not None
+            else _build_design_tokens(perfil)
+        )
+        generation_record = (
+            {
+                **record,
+                "materiais": personalizacao_response.materiais,
+                "plano": personalizacao_response.plano,
+                "formatos_gerados": personalizacao_response.formatos_gerados,
+            }
+            if record and personalizacao_response
+            else record
+        )
+        generation = _build_generation_status(
+            record=generation_record,
+            target=latest_targets.get(perfil),
+        )
+
+        perfis.append(
+            PersonalizacaoPerfilItem(
+                perfil=perfil,
+                perfil_label=_PROFILE_LABEL_MAP.get(perfil, perfil.capitalize()),
+                cor=_PROFILE_COLOR_MAP.get(perfil, _PROFILE_COLOR_MAP["mastermind"]),
+                design_tokens=design_tokens,
+                tem_personalizacao=personalizacao_response is not None,
+                personalizacao=personalizacao_response,
+                plano=personalizacao_response.plano if personalizacao_response else None,
+                formato_prioritario=(
+                    personalizacao_response.formato_prioritario if personalizacao_response else None
+                ),
+                formatos_gerados=(
+                    personalizacao_response.formatos_gerados if personalizacao_response else []
+                ),
+                materiais=personalizacao_response.materiais if personalizacao_response else None,
+                total_alunos=contagem_por_perfil.get(perfil, 0),
+                gerado_em=personalizacao_response.gerado_em if personalizacao_response else None,
+                geracao=generation,
+            )
+        )
+
+    return PersonalizacaoPorPerfilResponse(
+        classe_id=classe_id,
+        topico_id=topico_id,
+        conteudo_id=conteudo_id,
+        conteudo_titulo=conteudo_titulo,
+        total_perfis_com_material=total_com_material,
+        perfis=perfis,
+        geracao_resumo=_build_generation_summary(perfis),
+    )
+
+
+async def _carregar_registro_para_regeneracao(
+    *,
+    classe_id: int,
+    topico_id: int,
+    conteudo_id: int | None,
+    brainhex_profile_key: str,
+    user: UserContext,
+    session: AsyncSession,
+) -> dict[str, Any]:
+    """Valida posse da classe + tópico e resolve o registro base-por-perfil.
+
+    Compartilhado pelos endpoints de regeneracao: a "base por perfil" e o
+    registro achado por (classe_id, topico_id, conteudo_id, perfil) via
+    buscar_mais_recente_por_perfil — nao um registro por aluno (ver
+    CLAUDE.md "Duas camadas de personalizacao").
+    """
+    access_repo = AccessRepository(session)
+    owns_class = await access_repo.professor_owns_classe(
+        user.professor_id or user.user_id, classe_id
+    )
+    if not owns_class:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Professor sem permissao para esta classe.",
+        )
+
+    classe_repo = ConteudoClasseRepository(session)
+    topic_class_id = await classe_repo.buscar_classe_id_por_topico(topico_id)
+    if topic_class_id != classe_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Topico nao encontrado nesta classe.",
+        )
+
+    personalizacao_repo = ConteudoPersonalizadoRepository(session)
+    record = await personalizacao_repo.buscar_mais_recente_por_perfil(
+        classe_id=classe_id,
+        topico_id=topico_id,
+        conteudo_id=conteudo_id,
+        brainhex_profile_key=brainhex_profile_key,
+    )
+    if record is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Nenhum material gerado para este perfil ainda.",
+        )
+    return record
+
+
+@router.post(
+    "/perfis/{classe_id}/{topico_id}/regenerar/documento",
+    response_model=PersonalizacaoResponse,
+)
+async def regenerar_documento_personalizacao(
+    classe_id: int,
+    topico_id: int,
+    payload: RegenerarDocumentoPayload,
+    user: UserContext = Depends(require_professor),
+    session: AsyncSession = Depends(get_session),
+) -> PersonalizacaoResponse:
+    """Regenera o markdown+roteiro de audio da base por perfil via prompt livre.
+
+    Nao regenera o audio narrado (arquivo_url de materiais.audio) - so o
+    texto do roteiro, mesma limitacao do endpoint /api/v1/regenerate/document
+    do microservice que este endpoint consome.
+    """
+    record = await _carregar_registro_para_regeneracao(
+        classe_id=classe_id,
+        topico_id=topico_id,
+        conteudo_id=payload.conteudo_id,
+        brainhex_profile_key=payload.brainhex_profile_key,
+        user=user,
+        session=session,
+    )
+    materiais = record.get("materiais") if isinstance(record.get("materiais"), dict) else {}
+    markdown_atual = (
+        (materiais.get("markdown") or {}).get("payload") or {}
+    ).get("markdown")
+    if not isinstance(markdown_atual, str) or not markdown_atual.strip():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Este perfil ainda nao possui documento gerado para regenerar.",
+        )
+
+    settings = get_settings()
+    error_sink: list[str] = []
+    resultado = await regenerar_documento_brainhex(
+        settings=settings,
+        markdown=markdown_atual,
+        improvement_prompt=payload.improvement_prompt,
+        profile=payload.brainhex_profile_key,
+        expansion_prompt=payload.expansion_prompt,
+        error_sink=error_sink,
+    )
+    if resultado is None:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=error_sink[0] if error_sink else "Falha ao regenerar documento no microservice.",
+        )
+
+    materiais_atualizados = copy.deepcopy(materiais)
+    materiais_atualizados.setdefault("markdown", {}).setdefault("payload", {})["markdown"] = (
+        resultado.get("markdown", markdown_atual)
+    )
+    audio_atual = materiais_atualizados.get("audio")
+    if isinstance(audio_atual, dict) and isinstance(resultado.get("audioScript"), str):
+        audio_atual.setdefault("payload", {})["roteiro"] = resultado["audioScript"]
+
+    personalizacao_repo = ConteudoPersonalizadoRepository(session)
+    updated_record = await personalizacao_repo.atualizar_materiais_e_status(
+        record_id=record["id"],
+        materiais=materiais_atualizados,
+        status=record.get("status"),
+    )
+    if updated_record is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Falha ao persistir o documento regenerado.",
+        )
+    return _to_response(updated_record)
+
+
+@router.post(
+    "/perfis/{classe_id}/{topico_id}/regenerar/slide",
+    response_model=RegenerarSlideResponse,
+)
+async def regenerar_slide_personalizacao(
+    classe_id: int,
+    topico_id: int,
+    payload: RegenerarSlidePayload,
+    user: UserContext = Depends(require_professor),
+    session: AsyncSession = Depends(get_session),
+) -> RegenerarSlideResponse:
+    """Regenera um slide especifico da base por perfil via prompt livre.
+
+    Atualiza os campos de conteudo do slide (title/topics/explanation/etc) em
+    materiais.apresentacao.payload.slides[slide_index]. Nao reconstroi o HTML
+    do deck ja publicado (materiais.apresentacao.arquivo_url) - a imagem nova
+    volta em image_base64_preview so para preview imediato do professor; um
+    proximo passo decide como/quando re-renderizar o deck com ela.
+    """
+    record = await _carregar_registro_para_regeneracao(
+        classe_id=classe_id,
+        topico_id=topico_id,
+        conteudo_id=payload.conteudo_id,
+        brainhex_profile_key=payload.brainhex_profile_key,
+        user=user,
+        session=session,
+    )
+    materiais = record.get("materiais") if isinstance(record.get("materiais"), dict) else {}
+    raw_apresentacao = materiais.get("apresentacao")
+    apresentacao = raw_apresentacao if isinstance(raw_apresentacao, dict) else {}
+    raw_metadata = apresentacao.get("metadata")
+    apresentacao_metadata = raw_metadata if isinstance(raw_metadata, dict) else {}
+    if apresentacao_metadata.get("engine_variant") == "immersive":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "Este material usa o motor imersivo de slides; regeneracao de "
+                "slide individual via este endpoint ainda nao e suportada "
+                "para este formato."
+            ),
+        )
+    slides_atuais = (
+        (materiais.get("apresentacao") or {}).get("payload") or {}
+    ).get("slides")
+    if not isinstance(slides_atuais, list) or not slides_atuais:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Este perfil ainda nao possui apresentacao gerada para regenerar.",
+        )
+    if payload.slide_index >= len(slides_atuais):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"slide_index invalido: apresentacao tem {len(slides_atuais)} slide(s).",
+        )
+    slide_atual = slides_atuais[payload.slide_index]
+
+    settings = get_settings()
+    error_sink: list[str] = []
+    resultado = await regenerar_slide_brainhex(
+        settings=settings,
+        slide=slide_atual,
+        improvement_prompt=payload.improvement_prompt,
+        profile=payload.brainhex_profile_key,
+        expansion_prompt=payload.expansion_prompt,
+        error_sink=error_sink,
+    )
+    if resultado is None:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=error_sink[0] if error_sink else "Falha ao regenerar slide no microservice.",
+        )
+
+    slide_atualizado = {**slide_atual, **(resultado.get("slide") or {})}
+    materiais_atualizados = copy.deepcopy(materiais)
+    slides_atualizados = list(materiais_atualizados["apresentacao"]["payload"]["slides"])
+    slides_atualizados[payload.slide_index] = slide_atualizado
+    materiais_atualizados["apresentacao"]["payload"]["slides"] = slides_atualizados
+
+    personalizacao_repo = ConteudoPersonalizadoRepository(session)
+    updated_record = await personalizacao_repo.atualizar_materiais_e_status(
+        record_id=record["id"],
+        materiais=materiais_atualizados,
+        status=record.get("status"),
+    )
+    if updated_record is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Falha ao persistir o slide regenerado.",
+        )
+
+    return RegenerarSlideResponse(
+        personalizacao=_to_response(updated_record),
+        slide_index=payload.slide_index,
+        slide=slide_atualizado,
+        image_base64_preview=resultado.get("imageBase64"),
+    )
+
+
+@router.get("/grupo/{classe_id}", response_model=ClassePerfilSummaryResponse)
+async def obter_adequacao_grupo(
+    classe_id: int,
+    user: UserContext = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> ClassePerfilSummaryResponse:
+    if not user.is_professor:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Apenas professores podem consultar a adequacao de grupo.",
+        )
+    if not user.professor_liberado:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Professor sem liberacao de acesso.",
+        )
+
+    access_repo = AccessRepository(session)
+    owns_class = await access_repo.professor_owns_classe(user.professor_id or user.user_id, classe_id)
+    if not owns_class:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Professor sem permissao para esta classe.",
+        )
+
+    service = GroupAnalysisService(session)
+    summary = await service.upsert_summary(classe_id)
+    try:
+        await session.commit()
+    except Exception as exc:  # pragma: no cover
+        await session.rollback()
+        logger.warning("Falha ao persistir classe_perfil_summary da classe %s: %s", classe_id, exc)
+
+    distribuicao = {
+        chave: ClassePerfilDistribuicaoItem(**item)
+        for chave, item in (summary.get("distribuicao") or {}).items()
+    }
+    return ClassePerfilSummaryResponse(
+        classe_id=classe_id,
+        distribuicao=distribuicao,
+        perfil_predominante=summary.get("perfil_predominante"),
+        total_alunos=summary.get("total_alunos", 0),
+        media_desempenho=summary.get("media_desempenho", {}),
+        atualizado_em=summary.get("atualizado_em"),
+    )
+
+
+@router.get("/contexto/{aluno_id}", response_model=PersonalizacaoContextoDocenteResponse)
+async def obter_contexto_personalizacao_docente(
+    aluno_id: str,
+    classe_id: int = Query(...),
+    topico_id: int | None = Query(default=None),
+    user: UserContext = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> PersonalizacaoContextoDocenteResponse:
+    if not user.is_professor:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Apenas professores podem consultar este contexto.",
+        )
+    if not user.professor_liberado:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Professor sem liberacao de acesso.",
+        )
+
+    await ensure_professor_access(aluno_id, user, session)
+
+    context_repo = ContextRepository(session)
+    personalizacao_repo = ConteudoPersonalizadoRepository(session)
+    progress_repo = PersonalizacaoProgressoRepository(session)
+
+    contexto_aluno = await context_repo.fetch_aluno_context(aluno_id, classe_id)
+    records = await personalizacao_repo.buscar_por_aluno(
+        aluno_id,
+        topico_id=topico_id,
+        limit=50,
+    )
+    progresso = await progress_repo.listar_por_aluno(
+        aluno_id=aluno_id,
+        classe_id=classe_id,
+        topico_id=topico_id,
+        limit=400,
+    )
+
+    return PersonalizacaoContextoDocenteResponse(
+        aluno_id=aluno_id,
+        classe_id=classe_id,
+        topico_id=topico_id,
+        contexto_aluno=contexto_aluno,
+        personalizacoes=[_to_response(record) for record in records],
+        progresso_itens=[_to_progresso_response(item) for item in progresso],
+    )
+
+
+@router.post("/jobs/enrollment", response_model=PersonalizacaoJobDetailResponse, status_code=status.HTTP_201_CREATED)
+async def criar_job_enrollment(
+    payload: PersonalizacaoJobPayload,
+    user: UserContext = Depends(require_professor),
+    session: AsyncSession = Depends(get_session),
+) -> PersonalizacaoJobDetailResponse:
+    access_repo = AccessRepository(session)
+    owns_class = await access_repo.professor_owns_classe(user.professor_id or user.user_id, payload.classe_id)
+    if not owns_class:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Professor sem permissao para esta classe.",
+        )
+    if not payload.aluno_id:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="aluno_id e obrigatorio para enrollment.",
+        )
+    detail = await enqueue_personalizacao_job(
+        session=session,
+        kind=JOB_KIND_ENROLLMENT,
+        classe_id=payload.classe_id,
+        aluno_id=payload.aluno_id,
+        trigger_source=payload.trigger_source,
+        topico_ids=payload.topico_ids,
+        conteudo_ids=payload.conteudo_ids,
+        reason=payload.reason,
+    )
+    return PersonalizacaoJobDetailResponse(
+        **_to_job_response(detail["job"]).model_dump(),
+        targets=[_to_job_target_response(item) for item in detail["targets"]],
+    )
+
+
+@router.post("/jobs/class-delta", response_model=None, status_code=status.HTTP_201_CREATED)
+async def criar_job_class_delta(
+    payload: PersonalizacaoJobPayload,
+    user: UserContext = Depends(require_professor),
+    session: AsyncSession = Depends(get_session),
+) -> PersonalizacaoJobDetailResponse | dict[str, Any]:
+    access_repo = AccessRepository(session)
+    owns_class = await access_repo.professor_owns_classe(user.professor_id or user.user_id, payload.classe_id)
+    if not owns_class:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Professor sem permissao para esta classe.",
+        )
+    detail = await enqueue_personalizacao_job(
+        session=session,
+        kind=JOB_KIND_CLASS_DELTA,
+        classe_id=payload.classe_id,
+        trigger_source=payload.trigger_source,
+        topico_ids=payload.topico_ids,
+        conteudo_ids=payload.conteudo_ids,
+        reason=payload.reason,
+    )
+    # Professor em modo manual (geracao_automatica=False): enqueue_
+    # personalizacao_job nao cria job nenhum pra class_delta_sync nesse caso
+    # - devolve um shape diferente (sem "job"/"targets"), entao nao da pra
+    # montar PersonalizacaoJobDetailResponse aqui.
+    if detail.get("skipped"):
+        return {"skipped": True, "reason": detail.get("reason")}
+    return PersonalizacaoJobDetailResponse(
+        **_to_job_response(detail["job"]).model_dump(),
+        targets=[_to_job_target_response(item) for item in detail["targets"]],
+    )
+
+
+@router.post("/jobs/manual-retry", response_model=PersonalizacaoJobDetailResponse, status_code=status.HTTP_201_CREATED)
+async def criar_job_manual_retry(
+    payload: PersonalizacaoJobPayload,
+    user: UserContext = Depends(require_professor),
+    session: AsyncSession = Depends(get_session),
+) -> PersonalizacaoJobDetailResponse:
+    """Botao 'tentar novamente' do console, pra personalizacoes com status de
+    erro. Diferente de class-delta: kind=manual_retry reseta o circuit
+    breaker de falhas consecutivas (_falha_streak_excedido em
+    personalizacao_jobs.py) em vez de so pular quando ja esgotado - sem
+    isso, uma geracao que ja falhou 3x seguidas (default) nunca mais
+    redispara sozinha, mesmo que o professor peca explicitamente pra tentar
+    de novo.
+    """
+    access_repo = AccessRepository(session)
+    owns_class = await access_repo.professor_owns_classe(user.professor_id or user.user_id, payload.classe_id)
+    if not owns_class:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Professor sem permissao para esta classe.",
+        )
+    detail = await enqueue_personalizacao_job(
+        session=session,
+        kind=JOB_KIND_MANUAL_RETRY,
+        classe_id=payload.classe_id,
+        trigger_source=payload.trigger_source,
+        topico_ids=payload.topico_ids,
+        conteudo_ids=payload.conteudo_ids,
+        reason=payload.reason,
+    )
+    return PersonalizacaoJobDetailResponse(
+        **_to_job_response(detail["job"]).model_dump(),
+        targets=[_to_job_target_response(item) for item in detail["targets"]],
+    )
+
+
+@router.post("/jobs/class-theme", response_model=PersonalizacaoJobDetailResponse, status_code=status.HTTP_201_CREATED)
+async def criar_job_class_theme(
+    payload: PersonalizacaoJobPayload,
+    user: UserContext = Depends(require_professor),
+    session: AsyncSession = Depends(get_session),
+) -> PersonalizacaoJobDetailResponse:
+    access_repo = AccessRepository(session)
+    owns_class = await access_repo.professor_owns_classe(user.professor_id or user.user_id, payload.classe_id)
+    if not owns_class:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Professor sem permissao para esta classe.",
+        )
+    detail = await enqueue_personalizacao_job(
+        session=session,
+        kind=JOB_KIND_CLASS_THEME,
+        classe_id=payload.classe_id,
+        trigger_source=payload.trigger_source,
+        reason=payload.reason or "class_theme_manual_refresh",
+        payload={"topico_ids_hint": payload.topico_ids},
+    )
+    return PersonalizacaoJobDetailResponse(
+        **_to_job_response(detail["job"]).model_dump(),
+        targets=[_to_job_target_response(item) for item in detail["targets"]],
+    )
+
+
+@router.post("/jobs/manual-generate", response_model=PersonalizacaoJobDetailResponse, status_code=status.HTTP_201_CREATED)
+async def criar_job_manual_generate(
+    payload: PersonalizacaoManualGeneratePayload,
+    user: UserContext = Depends(require_professor),
+    session: AsyncSession = Depends(get_session),
+) -> PersonalizacaoJobDetailResponse:
+    """Botao 'gerar' individual na aba Personalizacoes: um topico/conteudo x
+    um perfil especifico, independente do modo automatico/manual do
+    professor (essa chamada E a acao manual)."""
+    access_repo = AccessRepository(session)
+    owns_class = await access_repo.professor_owns_classe(user.professor_id or user.user_id, payload.classe_id)
+    if not owns_class:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Professor sem permissao para esta classe.",
+        )
+    detail = await enqueue_personalizacao_job(
+        session=session,
+        kind=JOB_KIND_MANUAL_PROFILE_GENERATE,
+        classe_id=payload.classe_id,
+        trigger_source=payload.trigger_source,
+        topico_ids=[payload.topico_id],
+        conteudo_ids=[payload.conteudo_id] if payload.conteudo_id is not None else None,
+        brainhex_profile_keys=[payload.brainhex_profile_key],
+        reason="geracao_manual_perfil_console",
+    )
+    return PersonalizacaoJobDetailResponse(
+        **_to_job_response(detail["job"]).model_dump(),
+        targets=[_to_job_target_response(item) for item in detail["targets"]],
+    )
+
+
+@router.post("/jobs/manual-generate-all", response_model=PersonalizacaoJobDetailResponse, status_code=status.HTTP_201_CREATED)
+async def criar_job_manual_generate_all(
+    payload: PersonalizacaoManualGenerateAllPayload,
+    user: UserContext = Depends(require_professor),
+    session: AsyncSession = Depends(get_session),
+) -> PersonalizacaoJobDetailResponse:
+    """Botao 'gerar tudo' na aba Personalizacoes: todos os topicos da turma
+    selecionada, para um unico perfil escolhido."""
+    access_repo = AccessRepository(session)
+    owns_class = await access_repo.professor_owns_classe(user.professor_id or user.user_id, payload.classe_id)
+    if not owns_class:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Professor sem permissao para esta classe.",
+        )
+    detail = await enqueue_personalizacao_job(
+        session=session,
+        kind=JOB_KIND_MANUAL_PROFILE_GENERATE_ALL,
+        classe_id=payload.classe_id,
+        trigger_source=payload.trigger_source,
+        brainhex_profile_keys=[payload.brainhex_profile_key],
+        reason="geracao_manual_turma_console",
+    )
+    return PersonalizacaoJobDetailResponse(
+        **_to_job_response(detail["job"]).model_dump(),
+        targets=[_to_job_target_response(item) for item in detail["targets"]],
+    )
+
+
+@router.post("/jobs/student-cleanup", response_model=PersonalizacaoJobDetailResponse, status_code=status.HTTP_201_CREATED)
+async def criar_job_student_cleanup(
+    payload: PersonalizacaoJobPayload,
+    user: UserContext = Depends(require_professor),
+    session: AsyncSession = Depends(get_session),
+) -> PersonalizacaoJobDetailResponse:
+    access_repo = AccessRepository(session)
+    owns_class = await access_repo.professor_owns_classe(user.professor_id or user.user_id, payload.classe_id)
+    if not owns_class:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Professor sem permissao para esta classe.",
+        )
+    if not payload.aluno_id:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="aluno_id e obrigatorio para cleanup.",
+        )
+    detail = await enqueue_personalizacao_job(
+        session=session,
+        kind=JOB_KIND_CLEANUP,
+        classe_id=payload.classe_id,
+        aluno_id=payload.aluno_id,
+        trigger_source=payload.trigger_source,
+        topico_ids=payload.topico_ids,
+        conteudo_ids=payload.conteudo_ids,
+        reason=payload.reason,
+    )
+    return PersonalizacaoJobDetailResponse(
+        **_to_job_response(detail["job"]).model_dump(),
+        targets=[_to_job_target_response(item) for item in detail["targets"]],
+    )
+
+
+@router.post("/jobs/full-sync", response_model=PersonalizacaoJobDetailResponse, status_code=status.HTTP_201_CREATED)
+async def criar_job_full_sync(
+    payload: PersonalizacaoJobPayload,
+    user: UserContext = Depends(require_professor),
+    session: AsyncSession = Depends(get_session),
+) -> PersonalizacaoJobDetailResponse:
+    access_repo = AccessRepository(session)
+    owns_class = await access_repo.professor_owns_classe(user.professor_id or user.user_id, payload.classe_id)
+    if not owns_class:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Professor sem permissao para esta classe.",
+        )
+    detail = await enqueue_personalizacao_job(
+        session=session,
+        kind=JOB_KIND_FULL_SYNC,
+        classe_id=payload.classe_id,
+        trigger_source=payload.trigger_source,
+        topico_ids=payload.topico_ids,
+        conteudo_ids=payload.conteudo_ids,
+        reason=payload.reason,
+    )
+    return PersonalizacaoJobDetailResponse(
+        **_to_job_response(detail["job"]).model_dump(),
+        targets=[_to_job_target_response(item) for item in detail["targets"]],
+    )
+
+
+@router.get("/jobs", response_model=PersonalizacaoJobListResponse)
+async def listar_jobs_personalizacao(
+    classe_id: int | None = Query(default=None),
+    aluno_id: str | None = Query(default=None),
+    status_filter: list[str] = Query(default=[]),
+    limit: int = Query(default=50, ge=1, le=100),
+    user: UserContext = Depends(require_professor),
+    session: AsyncSession = Depends(get_session),
+) -> PersonalizacaoJobListResponse:
+    if classe_id is not None:
+        access_repo = AccessRepository(session)
+        owns_class = await access_repo.professor_owns_classe(user.professor_id or user.user_id, classe_id)
+        if not owns_class:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Professor sem permissao para esta classe.",
+            )
+    repo = PersonalizacaoJobsRepository(session)
+    jobs = await repo.list_jobs(
+        classe_id=classe_id,
+        aluno_id=aluno_id,
+        statuses=status_filter,
+        limit=limit,
+    )
+    return PersonalizacaoJobListResponse(
+        total=len(jobs),
+        itens=[_to_job_response(item) for item in jobs],
+    )
+
+
+@router.get("/jobs/{job_id}", response_model=PersonalizacaoJobDetailResponse)
+async def obter_job_personalizacao(
+    job_id: str,
+    user: UserContext = Depends(require_professor),
+    session: AsyncSession = Depends(get_session),
+) -> PersonalizacaoJobDetailResponse:
+    detail = await get_job_detail(session=session, job_id=job_id)
+    if not detail:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job nao encontrado.",
+        )
+    access_repo = AccessRepository(session)
+    owns_class = await access_repo.professor_owns_classe(
+        user.professor_id or user.user_id,
+        int(detail["job"]["classe_id"]),
+    )
+    if not owns_class:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Professor sem permissao para esta classe.",
+        )
+    return PersonalizacaoJobDetailResponse(
+        **_to_job_response(detail["job"]).model_dump(),
+        targets=[_to_job_target_response(item) for item in detail["targets"]],
+    )
+
+
+@router.get("/{personalizacao_id}/media-status", response_model=PersonalizacaoMediaStatusResponse)
+async def obter_personalizacao_media_status(
+    personalizacao_id: int,
+    user: UserContext = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> PersonalizacaoMediaStatusResponse:
+    personalizacao_repo = ConteudoPersonalizadoRepository(session)
+    record = await personalizacao_repo.buscar_por_id(personalizacao_id)
+    if not record:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Personalizacao nao encontrada.",
+        )
+
+    aluno_id = str(record.get("aluno_id") or "")
+    if user.is_aluno and (user.aluno_id or user.user_id) == aluno_id:
+        pass
+    elif user.is_professor:
+        if not user.professor_liberado:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Professor sem liberacao de acesso.",
+            )
+        await ensure_professor_access(aluno_id, user, session)
+    elif user.is_aluno:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Aluno sem acesso a personalizacoes de outro usuario.",
+        )
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Perfil sem acesso a personalizacoes.",
+        )
+
+    jobs_repo = PersonalizacaoJobsRepository(session)
+    latest_job = await jobs_repo.get_latest_media_render_job(personalizacao_id=personalizacao_id)
+    materiais_repo = MateriaisRepository(session)
+    materiais_rows = await materiais_repo.listar_por_personalizacao(personalizacao_id=personalizacao_id)
+    materiais_status: list[PersonalizacaoMediaItemStatusResponse] = []
+    seen_tipos: set[str] = set()
+    for row in materiais_rows:
+        tipo = str(row.get("tipo") or "").strip()
+        if tipo not in _MEDIA_TIPOS or tipo in seen_tipos:
+            continue
+        seen_tipos.add(tipo)
+        metadata = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
+        arquivo_url, storage_path, metadata = _resolve_public_asset_fields(
+            arquivo_url=row.get("arquivo_url"),
+            storage_path=row.get("storage_path"),
+            metadata=metadata,
+            fallback_bucket=BUCKET,
+        )
+        status_value = _normalize_media_status(
+            {
+                "arquivo_url": arquivo_url,
+                "metadata": metadata,
+            }
+        )
+        materiais_status.append(
+            PersonalizacaoMediaItemStatusResponse(
+                id=int(row["id"]) if row.get("id") is not None else None,
+                tipo=tipo,
+                status=status_value,
+                arquivo_url=arquivo_url,
+                storage_path=storage_path,
+                error=str((metadata or {}).get("error") or "").strip() or None,
+                metadata=metadata or {},
+            )
+        )
+
+    if not materiais_status:
+        materiais_record = record.get("materiais") if isinstance(record.get("materiais"), dict) else {}
+        for tipo in _MEDIA_TIPOS:
+            material = materiais_record.get(tipo)
+            if not isinstance(material, dict):
+                continue
+            metadata = material.get("metadata") if isinstance(material.get("metadata"), dict) else {}
+            arquivo_url, storage_path, metadata = _resolve_public_asset_fields(
+                arquivo_url=material.get("arquivo_url"),
+                storage_path=material.get("storage_path"),
+                metadata=metadata,
+                fallback_bucket=BUCKET,
+            )
+            status_value = _normalize_media_status(
+                {
+                    "arquivo_url": arquivo_url,
+                    "metadata": metadata,
+                }
+            )
+            materiais_status.append(
+                PersonalizacaoMediaItemStatusResponse(
+                    id=None,
+                    tipo=tipo,
+                    status=status_value,
+                    arquivo_url=arquivo_url,
+                    storage_path=storage_path,
+                    error=str((metadata or {}).get("error") or "").strip() or None,
+                    metadata=metadata or {},
+                )
+            )
+
+    order_map = {tipo: idx for idx, tipo in enumerate(_MEDIA_TIPOS)}
+    materiais_status.sort(key=lambda item: order_map.get(item.tipo, 99))
+    overall_status = _aggregate_media_status([item.status for item in materiais_status])
+    if (
+        overall_status == "ready"
+        and str(record.get("status") or "").strip().lower() == "processando_midias"
+        and materiais_status
+    ):
+        overall_status = "pending"
+
+    return PersonalizacaoMediaStatusResponse(
+        personalizacao_id=personalizacao_id,
+        status=overall_status,
+        job_id=str(latest_job["id"]) if latest_job and latest_job.get("id") is not None else None,
+        materiais=materiais_status,
+    )
+
+
+@router.get("/{aluno_id}", response_model=PersonalizacaoListResponse)
+async def listar_personalizacoes(
+    aluno_id: str,
+    conteudo_id: int | None = Query(default=None),
+    topico_id: int | None = Query(default=None),
+    limit: int = Query(default=20, ge=1, le=100),
+    user: UserContext = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> PersonalizacaoListResponse:
+    if user.is_aluno and (user.aluno_id or user.user_id) == aluno_id:
+        pass
+    elif user.is_professor:
+        if not user.professor_liberado:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Professor sem liberacao de acesso.",
+            )
+        await ensure_professor_access(aluno_id, user, session)
+    elif user.is_aluno:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Aluno sem acesso a personalizacoes de outro usuario.",
+        )
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Perfil sem acesso a personalizacoes.",
+        )
+
+    repo = ConteudoPersonalizadoRepository(session)
+    records = await repo.buscar_por_aluno(
+        aluno_id,
+        conteudo_id=conteudo_id,
+        topico_id=topico_id,
+        limit=limit,
+    )
+    return PersonalizacaoListResponse(
+        aluno_id=aluno_id,
+        total=len(records),
+        itens=[_to_response(r) for r in records],
+    )

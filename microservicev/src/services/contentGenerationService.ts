@@ -1,0 +1,720 @@
+import OpenAI from "openai";
+
+export const DEFAULT_GEMINI_CONTENT_GENERATION_MODEL =
+  "gemini-3.6-flash" as const;
+// gpt-5.4-mini tem tier de 10 RPM / 50 RPD — inviável como contingência real.
+// gpt-4o-mini (500 RPM / 10.000 RPD) é bem mais utilizável quando o Gemini
+// (provedor principal) falhar.
+export const DEFAULT_OPENAI_CONTENT_GENERATION_FALLBACK_MODEL =
+  "gpt-4o-mini" as const;
+
+const DEFAULT_GEMINI_UNAVAILABLE_COOLDOWN_MS = 5 * 60 * 1_000;
+const DEFAULT_OPENAI_MAX_OUTPUT_TOKENS = 16_384;
+const DEFAULT_OPENAI_QUALITY_MAX_ATTEMPTS = 3;
+// Um ContentGenerationQualityError do Gemini (cobertura insuficiente etc.) e
+// sobre a saida de UMA tentativa, nao indisponibilidade — vale repetir com o
+// proprio Gemini (gratuito, com feedback corretivo) antes de exigir a OpenAI
+// como recuperacao obrigatoria. Sem isso, com a conta OpenAI sem credito
+// (insufficient_quota), QUALQUER falha de qualidade do Gemini virava uma
+// falha permanente da geracao inteira, mesmo o Gemini estando saudavel.
+const DEFAULT_GEMINI_QUALITY_MAX_ATTEMPTS = 3;
+
+/**
+ * gpt-4o-mini (e a familia gpt-4o/gpt-4.1 em geral) rejeita o parametro
+ * reasoning.effort com 400 — so os modelos de raciocinio (o-series, gpt-5.x)
+ * aceitam. gpt-5.4-mini era o default anterior (aceitava); gpt-4o-mini e o
+ * novo default (nao aceita) — sem essa checagem, toda chamada quebraria.
+ */
+export function supportsReasoningEffort(model: string): boolean {
+  const normalized = model.trim().toLowerCase();
+  return /^(o1|o3|gpt-5)/.test(normalized);
+}
+
+export type ContentGenerationProvider = "gemini" | "openai";
+
+export interface StructuredContentGenerationCall {
+  instructions: string;
+  input: string;
+  maxOutputTokens: number;
+  geminiModel: string;
+  openaiModel: string;
+}
+
+export type StructuredContentGenerator = (
+  call: StructuredContentGenerationCall,
+) => Promise<unknown>;
+
+export interface StructuredContentGenerationResult {
+  value: unknown;
+  provider: ContentGenerationProvider;
+  model: string;
+  fallbackFrom?: "gemini";
+  fallbackReason?: string;
+  // true quando o resultado so passou porque a ULTIMA tentativa da cascata
+  // inteira (ultimo recurso, ver generateAfterPrimaryGeminiFailure) aceitou
+  // com a tolerancia de 95% do gate de cobertura - quem revalida esse valor
+  // depois (ex.: validateBlockBatchGeneration em geminiService.ts) precisa
+  // repetir a validacao com tolerant:true, senao reprova de novo um
+  // resultado que ja foi aceito.
+  tolerantAccepted?: boolean;
+}
+
+export interface StructuredContentGenerationOptions {
+  generateWithGemini: StructuredContentGenerator;
+  generateWithOpenAI?: StructuredContentGenerator;
+  validateResult?: (
+    value: unknown,
+    provider: ContentGenerationProvider,
+    meta: { tolerant: boolean },
+  ) => void;
+  environment?: Record<string, string | undefined>;
+  now?: () => number;
+  geminiFallbackModels?: string[];
+}
+
+const SLIDE_ITEM_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    title: { type: "string" },
+    topics: {
+      type: "array",
+      items: { type: "string" },
+    },
+    explanation: { type: "string" },
+    visualDescription: { type: "string" },
+    characterQuote: { type: "string" },
+    characterAction: {
+      type: "string",
+      enum: ["explaining", "celebrating", "thinking", "warning"],
+    },
+    sourceIds: {
+      type: "array",
+      items: { type: "string" },
+    },
+  },
+  required: [
+    "title",
+    "topics",
+    "explanation",
+    "visualDescription",
+    "characterQuote",
+    "characterAction",
+    "sourceIds",
+  ],
+} as const;
+
+export const CONTENT_GENERATION_RESPONSE_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    chapters: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          blockId: { type: "string" },
+          markdown: { type: "string" },
+          audioScript: { type: "string" },
+          slides: {
+            type: "array",
+            items: SLIDE_ITEM_SCHEMA,
+          },
+        },
+        required: ["blockId", "markdown", "audioScript", "slides"],
+      },
+    },
+    confidence: { type: "number" },
+  },
+  required: ["chapters", "confidence"],
+} as const;
+
+// gpt-4o-mini tem teto rígido de 16384 tokens de saída na API da OpenAI — não
+// dá pra "aumentar" além disso (confirmado: o modelo simplesmente não aceita
+// mais que isso em max_output_tokens). Por isso a contingência OpenAI nunca
+// pede tudo numa chamada só: markdown e slides vão em chamadas separadas
+// (menores schemas abaixo), e o audioScript nem passa pela OpenAI — continua
+// saindo do Gemini mesmo quando ele falhou pro resto do bloco.
+export const CONTENT_GENERATION_TEXT_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    chapters: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          blockId: { type: "string" },
+          markdown: { type: "string" },
+        },
+        required: ["blockId", "markdown"],
+      },
+    },
+    confidence: { type: "number" },
+  },
+  required: ["chapters", "confidence"],
+} as const;
+
+export const CONTENT_GENERATION_SLIDES_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    chapters: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          blockId: { type: "string" },
+          slides: {
+            type: "array",
+            items: SLIDE_ITEM_SCHEMA,
+          },
+        },
+        required: ["blockId", "slides"],
+      },
+    },
+    confidence: { type: "number" },
+  },
+  required: ["chapters", "confidence"],
+} as const;
+
+let openai: OpenAI | null = null;
+let geminiUnavailableUntil = 0;
+
+class ContentGenerationQualityError extends Error {
+  constructor(provider: ContentGenerationProvider, cause: unknown) {
+    super(
+      `${provider} retornou conteúdo que não atende ao contrato de geração.`,
+      { cause },
+    );
+    this.name = "ContentGenerationQualityError";
+  }
+}
+
+async function generateAndValidateContent(
+  generator: StructuredContentGenerator,
+  call: StructuredContentGenerationCall,
+  provider: ContentGenerationProvider,
+  validateResult: StructuredContentGenerationOptions["validateResult"] | undefined,
+  tolerant: boolean,
+): Promise<unknown> {
+  const value = await generator(call);
+  try {
+    validateResult?.(value, provider, { tolerant });
+  } catch (error) {
+    throw new ContentGenerationQualityError(provider, error);
+  }
+  return value;
+}
+
+function getOpenAI(): OpenAI {
+  if (openai) return openai;
+  const apiKey = String(process.env.OPENAI_API_KEY ?? "").trim();
+  if (!apiKey) {
+    throw new Error(
+      "OPENAI_API_KEY ausente: a contingência da geração de conteúdo não está disponível.",
+    );
+  }
+  openai = new OpenAI({ apiKey });
+  return openai;
+}
+
+function positiveInteger(
+  value: unknown,
+  fallback: number,
+  minimum: number,
+  maximum: number,
+): number {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < minimum || parsed > maximum) {
+    return fallback;
+  }
+  return parsed;
+}
+
+// Contingência OpenAI fica ligada por padrão (compatibilidade retroativa) —
+// desligar via env quando a conta OpenAI está sem crédito, pra falhar com o
+// motivo real do Gemini em vez de uma "tentativa obrigatória" que nunca
+// tinha chance de funcionar. Religar é só remover/voltar a env pra "true".
+function openAIFallbackEnabled(
+  environment: Record<string, string | undefined>,
+): boolean {
+  const raw = String(
+    environment.CONTENT_GENERATION_ENABLE_OPENAI_FALLBACK ?? "true",
+  )
+    .trim()
+    .toLowerCase();
+  return raw !== "false" && raw !== "0";
+}
+
+export function resolveGeminiContentGenerationModel(
+  environment: Record<string, string | undefined> = process.env,
+): string {
+  const configured = String(environment.CONTENT_GENERATION_MODEL ?? "").trim();
+  if (!configured || configured === "gemini-3-flash-preview") {
+    return DEFAULT_GEMINI_CONTENT_GENERATION_MODEL;
+  }
+  return configured;
+}
+
+export function resolveOpenAIContentGenerationFallbackModel(
+  environment: Record<string, string | undefined> = process.env,
+): string {
+  return String(
+    environment.OPENAI_CONTENT_GENERATION_FALLBACK_MODEL ?? "",
+  ).trim() || DEFAULT_OPENAI_CONTENT_GENERATION_FALLBACK_MODEL;
+}
+
+function errorDetails(error: unknown): string {
+  if (error instanceof Error) {
+    // tagSubCallError (geminiService.ts) rotula o erro original com um prefixo
+    // e o mantém como cause — nesse caso a mensagem da cause já está embutida
+    // em error.message, e repeti-la aqui só duplicaria o texto no log.
+    const causeMessage = error.cause instanceof Error
+      ? error.cause.message
+      : "cause" in error ? String(error.cause ?? "") : "";
+    const cause = causeMessage && !error.message.includes(causeMessage)
+      ? causeMessage
+      : "";
+    return `${error.name} ${error.message} ${cause}`.trim();
+  }
+  if (typeof error === "object" && error !== null) {
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return String(error);
+    }
+  }
+  return String(error ?? "");
+}
+
+export function isGeminiAvailabilityError(error: unknown): boolean {
+  const record = typeof error === "object" && error !== null
+    ? error as Record<string, unknown>
+    : {};
+  const status = Number(record.status ?? record.statusCode ?? record.code);
+  if (status === 404 || status === 408 || status === 429 || status >= 500) {
+    return true;
+  }
+
+  const details = errorDetails(error).toLowerCase();
+  return [
+    "429",
+    "404",
+    "not_found",
+    "model not found",
+    "no longer available",
+    "model is not available",
+    "resource_exhausted",
+    "quota",
+    "rate limit",
+    "too many requests",
+    "service unavailable",
+    "temporarily unavailable",
+    "timeout",
+    "timed out",
+    "etimedout",
+    "econnreset",
+    "connection reset",
+    "fetch failed",
+    "gemini_api_key ausente",
+  ].some((marker) => details.includes(marker));
+}
+
+async function callOpenAIStructured(
+  call: StructuredContentGenerationCall,
+  schema: Record<string, unknown>,
+  schemaName: string,
+  schemaDescription: string,
+): Promise<unknown> {
+  const configuredMaxOutputTokens = positiveInteger(
+    process.env.OPENAI_CONTENT_GENERATION_MAX_OUTPUT_TOKENS,
+    DEFAULT_OPENAI_MAX_OUTPUT_TOKENS,
+    8_192,
+    32_768,
+  );
+  const maxOutputTokens = Math.min(
+    Math.max(call.maxOutputTokens, 8_192),
+    configuredMaxOutputTokens,
+  );
+  const isReasoningModel = supportsReasoningEffort(call.openaiModel);
+  const response = await getOpenAI().responses.create({
+    model: call.openaiModel,
+    instructions: call.instructions,
+    input: call.input,
+    max_output_tokens: maxOutputTokens,
+    ...(isReasoningModel ? { reasoning: { effort: "medium" as const } } : {}),
+    store: false,
+    text: {
+      // gpt-4o-mini (e familia gpt-4o/gpt-4.1) so aceita "medium" — "high"
+      // retorna 400 unsupported_value. Mesma familia de modelos de
+      // raciocinio que aceita reasoning.effort.
+      verbosity: isReasoningModel ? "high" : "medium",
+      format: {
+        type: "json_schema",
+        name: schemaName,
+        description: schemaDescription,
+        strict: true,
+        schema,
+      },
+    },
+  });
+
+  if (response.status === "incomplete") {
+    const reason = response.incomplete_details?.reason ?? "motivo desconhecido";
+    // gpt-4o-mini tem teto rigido de 16384 tokens de saida na API da OpenAI —
+    // nao ha env var que resolva isso alem desse teto. A unica saida real e
+    // pedir menos por chamada (dividir o escopo), nao subir um limite.
+    throw new Error(
+      `OpenAI retornou resposta incompleta (motivo: ${reason}). Reduza o `
+      + "escopo pedido nesta chamada — gpt-4o-mini tem teto de 16384 tokens "
+      + "de saída, subir OPENAI_CONTENT_GENERATION_MAX_OUTPUT_TOKENS acima "
+      + "disso não tem efeito.",
+    );
+  }
+
+  const responseText = String(response.output_text ?? "").trim();
+  if (!responseText) {
+    throw new Error(
+      `OpenAI retornou a contingência vazia (status: ${response.status}).`,
+    );
+  }
+  try {
+    return JSON.parse(responseText);
+  } catch (error) {
+    throw new Error("OpenAI retornou JSON inválido na contingência.", {
+      cause: error,
+    });
+  }
+}
+
+async function generateStructuredWithOpenAI(
+  call: StructuredContentGenerationCall,
+): Promise<unknown> {
+  return callOpenAIStructured(
+    call,
+    CONTENT_GENERATION_RESPONSE_SCHEMA,
+    "trailup_personalized_content_batch",
+    "Capítulos personalizados completos, com roteiro de áudio e slides rastreáveis.",
+  );
+}
+
+export async function generateOpenAITextOnly(
+  call: StructuredContentGenerationCall,
+): Promise<unknown> {
+  return callOpenAIStructured(
+    call,
+    CONTENT_GENERATION_TEXT_SCHEMA,
+    "trailup_personalized_content_text",
+    "Markdown personalizado por bloco, sem roteiro de áudio nem slides.",
+  );
+}
+
+export async function generateOpenAISlidesOnly(
+  call: StructuredContentGenerationCall,
+): Promise<unknown> {
+  return callOpenAIStructured(
+    call,
+    CONTENT_GENERATION_SLIDES_SCHEMA,
+    "trailup_personalized_content_slides",
+    "Slides rastreáveis por bloco, sem markdown nem roteiro de áudio.",
+  );
+}
+
+export function resetGeminiContentGenerationCircuit(): void {
+  geminiUnavailableUntil = 0;
+}
+
+/**
+ * Permite que chamadas de Gemini feitas FORA deste módulo (ex.: o audioScript
+ * da contingência, que continua exclusivamente Gemini) respeitem o mesmo
+ * circuito de indisponibilidade — sem isso, elas martelariam o Gemini de novo
+ * na mesma janela de cooldown que a tentativa principal acabou de abrir.
+ */
+export function isGeminiContentGenerationUnavailable(
+  now: () => number = Date.now,
+): boolean {
+  return now() < geminiUnavailableUntil;
+}
+
+async function generateAfterPrimaryGeminiFailure(
+  call: StructuredContentGenerationCall,
+  reason: string,
+  options: {
+    generateWithOpenAI: StructuredContentGenerator;
+    validateResult?: StructuredContentGenerationOptions["validateResult"];
+    environment: Record<string, string | undefined>;
+  },
+): Promise<StructuredContentGenerationResult> {
+  if (!openAIFallbackEnabled(options.environment)) {
+    throw new Error(reason);
+  }
+
+  const maxAttempts = positiveInteger(
+    options.environment.CONTENT_GENERATION_OPENAI_MAX_ATTEMPTS,
+    DEFAULT_OPENAI_QUALITY_MAX_ATTEMPTS,
+    1,
+    4,
+  );
+  let lastOpenAIError: unknown;
+  let previousQualityReason = "";
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const currentCall = attempt === 1
+      ? call
+      : {
+        ...call,
+        instructions:
+          `${call.instructions}\n\nCORREÇÃO OBRIGATÓRIA DA TENTATIVA ${attempt}: `
+          + "a resposta anterior foi recusada pela validação de qualidade. "
+          + "Devolva exatamente um capítulo completo para cada blockId recebido, "
+          + "sem omitir, fundir, acrescentar ou resumir blocos. Preserve toda a "
+          + "cobertura do conteúdo aprofundado no texto e no roteiro de áudio. "
+          + `Motivo da recusa anterior: ${previousQualityReason}`,
+      };
+
+    // Ultimo recurso da cascata INTEIRA (Gemini primario + retries, modelos
+    // fallback do Gemini, e agora as tentativas da OpenAI): so a ultima
+    // tentativa aqui e tolerante (ver TOLERANT_MINIMUM_MARKDOWN_LENGTH em
+    // geminiService.ts) - nas intermediarias o gate continua exigindo 100%.
+    const tolerant = attempt === maxAttempts;
+    try {
+      return {
+        value: await generateAndValidateContent(
+          options.generateWithOpenAI,
+          currentCall,
+          "openai",
+          options.validateResult,
+          tolerant,
+        ),
+        provider: "openai",
+        model: call.openaiModel,
+        fallbackFrom: "gemini",
+        fallbackReason: reason,
+        tolerantAccepted: tolerant,
+      };
+    } catch (openaiError) {
+      lastOpenAIError = openaiError;
+      if (!(openaiError instanceof ContentGenerationQualityError)) {
+        break;
+      }
+      previousQualityReason = errorDetails(openaiError).slice(0, 500);
+    }
+  }
+
+  const openaiReason = errorDetails(lastOpenAIError).slice(0, 500);
+  throw new Error(
+    "A geração falhou no Gemini e as tentativas obrigatórias pela OpenAI "
+      + `também falharam. OpenAI: ${openaiReason}`,
+    {
+      cause: {
+        gemini: reason,
+        openai: openaiReason,
+      },
+    },
+  );
+}
+
+export async function generateStructuredContentWithFallback(
+  call: StructuredContentGenerationCall,
+  options: StructuredContentGenerationOptions,
+): Promise<StructuredContentGenerationResult> {
+  const environment = options.environment ?? process.env;
+  const now = options.now ?? Date.now;
+  const generateWithOpenAI =
+    options.generateWithOpenAI ?? generateStructuredWithOpenAI;
+  // Calculados aqui (nao so dentro do laco de fallback, como antes) porque o
+  // laco do modelo primario e o de fallback do Gemini precisam saber, cada
+  // um, se sao a ULTIMA tentativa de toda a cascata - so assim quando a
+  // OpenAI esta desligada (ex.: sem credito, ver openAIFallbackEnabled) a
+  // cascata 100% Gemini tem uma tentativa tolerante de verdade no final, em
+  // vez de falhar sempre em 100% do piso e so cair na contingencia OpenAI
+  // (que nem roda) pra ter alguma folga.
+  const hasOpenAIFallback = openAIFallbackEnabled(environment);
+  const fallbackModels = (options.geminiFallbackModels ?? []).filter(
+    (model) => model !== call.geminiModel,
+  );
+
+  if (now() < geminiUnavailableUntil) {
+    return generateAfterPrimaryGeminiFailure(
+      call,
+      "circuito temporário de indisponibilidade do Gemini principal",
+      {
+        generateWithOpenAI,
+        validateResult: options.validateResult,
+        environment,
+      },
+    );
+  }
+
+  const maxQualityAttempts = positiveInteger(
+    environment.CONTENT_GENERATION_GEMINI_QUALITY_MAX_ATTEMPTS,
+    DEFAULT_GEMINI_QUALITY_MAX_ATTEMPTS,
+    1,
+    4,
+  );
+  let lastQualityError: unknown;
+  let previousQualityReason = "";
+
+  for (let attempt = 1; attempt <= maxQualityAttempts; attempt += 1) {
+    const currentCall = attempt === 1
+      ? call
+      : {
+        ...call,
+        instructions:
+          `${call.instructions}\n\nCORREÇÃO OBRIGATÓRIA DA TENTATIVA ${attempt}: `
+          + "a resposta anterior foi recusada pela validação de qualidade. "
+          + "Devolva exatamente um capítulo completo para cada blockId recebido, "
+          + "sem omitir, fundir, acrescentar ou resumir blocos. Preserve toda a "
+          + "cobertura do conteúdo aprofundado no texto e no roteiro de áudio. "
+          + `Motivo da recusa anterior: ${previousQualityReason}`,
+      };
+
+    // So tolerante quando esta e de fato a ULTIMA tentativa de toda a
+    // cascata: nenhum modelo fallback do Gemini configurado e a OpenAI
+    // desligada. Caso contrario ainda ha recurso pela frente, entao o gate
+    // continua exigindo 100% do minimo.
+    const primaryTolerant =
+      attempt === maxQualityAttempts && fallbackModels.length === 0 && !hasOpenAIFallback;
+    try {
+      const value = await generateAndValidateContent(
+        options.generateWithGemini,
+        currentCall,
+        "gemini",
+        options.validateResult,
+        primaryTolerant,
+      );
+      return {
+        value,
+        provider: "gemini",
+        model: call.geminiModel,
+        tolerantAccepted: primaryTolerant || undefined,
+      };
+    } catch (error) {
+      // Só indisponibilidade real do Gemini abre o circuito e vai direto pro
+      // fallback obrigatório da OpenAI, sem repetir o Gemini (não adianta —
+      // ele está fora do ar). Um ContentGenerationQualityError é sobre a
+      // saída de UMA tentativa (ex.: markdown curto demais) — tratá-lo como
+      // indisponibilidade contaminaria gerações concorrentes não relacionadas,
+      // que pulariam o Gemini saudável sem necessidade; em vez disso, repete
+      // com o próprio Gemini (gratuito) antes de exigir a OpenAI.
+      if (isGeminiAvailabilityError(error)) {
+        const cooldownMs = positiveInteger(
+          environment.CONTENT_GENERATION_GEMINI_COOLDOWN_MS,
+          DEFAULT_GEMINI_UNAVAILABLE_COOLDOWN_MS,
+          1_000,
+          60 * 60 * 1_000,
+        );
+        geminiUnavailableUntil = now() + cooldownMs;
+        const reason = errorDetails(error).slice(0, 500);
+        return generateAfterPrimaryGeminiFailure(call, reason, {
+          generateWithOpenAI,
+          validateResult: options.validateResult,
+          environment,
+        });
+      }
+      if (!(error instanceof ContentGenerationQualityError)) {
+        const reason = errorDetails(error).slice(0, 500);
+        return generateAfterPrimaryGeminiFailure(call, reason, {
+          generateWithOpenAI,
+          validateResult: options.validateResult,
+          environment,
+        });
+      }
+      lastQualityError = error;
+      previousQualityReason = errorDetails(error).slice(0, 500);
+    }
+  }
+
+  let triedModelsCount = 1; // o modelo primario, ja tentado no laço acima
+
+  // O modelo primario esgotou as tentativas de qualidade (nunca disponibilidade
+  // — esse caso ja retornou mais acima). Antes de exigir a OpenAI, testa os
+  // demais modelos do mesmo tier free 1 vez cada: uma falha de qualidade e
+  // sobre o CONTEUDO de uma resposta, nao sobre o modelo estar fora do ar, e
+  // um modelo diferente pode simplesmente produzir uma cobertura melhor.
+  // (fallbackModels calculado no topo da funcao - ver comentario la sobre
+  // por que precisa ser conhecido antes do laco do modelo primario tambem.)
+  for (let fallbackIndex = 0; fallbackIndex < fallbackModels.length; fallbackIndex += 1) {
+    const fallbackModel = fallbackModels[fallbackIndex];
+    triedModelsCount += 1;
+    // previousQualityReason ja vem preenchido pelo laco do modelo primario
+    // (todo catch de ContentGenerationQualityError acima o atualiza) - sem
+    // repassar esse motivo aqui, os modelos fallback rodavam as cegas, sem
+    // sequer o feedback generico que o proprio Gemini/OpenAI ja recebem nas
+    // suas retentativas.
+    const fallbackCall = {
+      ...call,
+      geminiModel: fallbackModel,
+      instructions:
+        `${call.instructions}\n\nCORREÇÃO OBRIGATÓRIA (MODELO ALTERNATIVO): `
+        + "a resposta de outro modelo Gemini foi recusada pela validação de "
+        + "qualidade. Devolva exatamente um capítulo completo para cada "
+        + "blockId recebido, sem omitir, fundir, acrescentar ou resumir "
+        + "blocos. Preserve toda a cobertura do conteúdo aprofundado no "
+        + `texto e no roteiro de áudio. Motivo da recusa anterior: ${previousQualityReason}`,
+    };
+    // So tolerante no ULTIMO modelo fallback, e so quando a OpenAI esta
+    // desligada (senao ela ainda vem depois como ultimo recurso de verdade).
+    const fallbackTolerant =
+      fallbackIndex === fallbackModels.length - 1 && !hasOpenAIFallback;
+    try {
+      const value = await generateAndValidateContent(
+        options.generateWithGemini,
+        fallbackCall,
+        "gemini",
+        options.validateResult,
+        fallbackTolerant,
+      );
+      return {
+        value,
+        provider: "gemini",
+        model: fallbackModel,
+        tolerantAccepted: fallbackTolerant || undefined,
+      };
+    } catch (error) {
+      if (!(error instanceof ContentGenerationQualityError)) {
+        // Disponibilidade ou outro erro real: no nivel de transporte esse
+        // modelo ja esgotou toda a cascata de chaves+fallback antes de
+        // propagar (ver generateGeminiContent em geminiService.ts) —
+        // continuar tentando os proximos candidatos aqui nao ajudaria.
+        //
+        // Nao abrimos geminiUnavailableUntil aqui (diferente do laço do
+        // modelo primario, que abre via isGeminiAvailabilityError antes de
+        // ir pra OpenAI). geminiUnavailableUntil e um circuito GLOBAL — toda
+        // geracao futura, de qualquer topico/perfil, pula o Gemini inteiro
+        // enquanto ele estiver aberto. Abri-lo por causa de UM modelo
+        // fallback especifico estar indisponivel bloquearia incorretamente
+        // o modelo PRIMARIO (que, nesta mesma chamada, ja provou estar
+        // saudavel — so falhou por qualidade, nao disponibilidade) para
+        // chamadas futuras nao relacionadas. O cooldown por (chave, modelo)
+        // que ja existe em geminiService.ts (_geminiKeyCooldownUntil,
+        // GEMINI_KEY_QUOTA_COOLDOWN_MS) ja evita martelar de novo esse
+        // candidato especifico, sem precisar do circuito global.
+        const reason = errorDetails(error).slice(0, 500);
+        return generateAfterPrimaryGeminiFailure(call, reason, {
+          generateWithOpenAI,
+          validateResult: options.validateResult,
+          environment,
+        });
+      }
+      lastQualityError = error;
+      // Atualiza pra o proximo modelo fallback (se houver) ver o motivo mais
+      // recente, igual o laco do modelo primario ja faz entre suas proprias
+      // retentativas.
+      previousQualityReason = errorDetails(error).slice(0, 500);
+    }
+  }
+
+  const reason = triedModelsCount > 1
+    ? `${errorDetails(lastQualityError).slice(0, 400)} (${triedModelsCount} modelos Gemini tentados)`
+    : errorDetails(lastQualityError).slice(0, 500);
+  return generateAfterPrimaryGeminiFailure(call, reason, {
+    generateWithOpenAI,
+    validateResult: options.validateResult,
+    environment,
+  });
+}

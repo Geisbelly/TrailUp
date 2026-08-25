@@ -1,0 +1,3 @@
+Pasta para logica de services
+Intermediário entre UI e services.
+Recebe dados da tela, chama services, aplica regras e devolve models.

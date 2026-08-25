@@ -1,0 +1,63 @@
+Um Context é uma estrutura do React que permite compartilhar estados e métodos globais entre qualquer componente da aplicação sem precisar passar props manualmente por cada nível da árvore de componentes.
+Ele é ideal para gerenciar informações que afetam o app inteiro, como autenticação, tema, notificações, configurações do usuário ou dados de sessão.
+O Provider associado ao Context encapsula a hierarquia do app, estabelecendo regras, controladores e guardas para controlar o acesso a dados, manter consistência de estado e fornecer métodos que podem ser utilizados por qualquer tela ou componente.
+
+Exemplo:
+Context sozinho → só cria o “canal” de comunicação global, mas não fornece valor algum.
+interface AuthContextType {
+  user: User | null;
+  login: (user: User) => void;
+  logout: () => void;
+  isLoggedIn: boolean;
+}
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+Provider → é o que fornece os dados e métodos que os componentes vão consumir.
+Envolve a árvore de componentes (ou parte dela)
+Mantém estados globais
+Encapsula lógica de negócio e regras
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [user, setUser] = useState<User | null>(null);
+
+  const login = (newUser: User) => setUser(newUser);
+  const logout = () => setUser(null);
+
+  return (
+    <AuthContext.Provider value={{ user, login, logout, isLoggedIn: !!user }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+Exemplo de hook para uso dentro do UI
+export const useAuth = (): AuthContextType => {
+  const context = useContext(AuthContext);
+  if (!context) throw new Error("useAuth must be used within AuthProvider");
+  return context;
+};
+
+Consumindo o contexto:
+const { user, login, logout } = useContext(AuthContext);
+
+_layout exemplo de uso 
+// src/_layout.tsx
+import React from "react";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
+import AppNavigator from "@/navigation/AppNavigator";
+import LoginScreen from "@/screens/LoginScreen";
+
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isLoggedIn } = useAuth();
+  if (!isLoggedIn) return <LoginScreen />;
+  return <>{children}</>;
+}
+
+export default function Layout() {
+  return (
+    <AuthProvider>
+      <ProtectedRoute>
+        <AppNavigator />
+      </ProtectedRoute>
+    </AuthProvider>
+  );
+}

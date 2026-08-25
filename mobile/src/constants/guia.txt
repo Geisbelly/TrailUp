@@ -1,0 +1,9 @@
+A pasta constants guarda valores fixos e imutáveis usados em todo o app, que não dependem de estado ou lógica dinâmica.
+Ela serve para centralizar informações importantes, evitando duplicação e facilitando manutenção e consistência.
+
+Exemplos de uso:
+- Endpoints de API
+- Mensagens fixas do sistema
+- Nomes de rotas
+- Chaves de armazenamento local (AsyncStorage)
+- Valores padrão (limites, taxas, formatos)

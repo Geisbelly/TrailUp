@@ -1,0 +1,9 @@
+A pasta utils contém funções auxiliares genéricas, utilitárias, que podem ser usadas em qualquer parte do app.
+Elas não dependem de UI ou estado do React, servem apenas para processamentos, formatações, validações e cálculos que são repetitivos ou compartilhados entre várias partes do sistema.
+
+Exemplos de uso:
+- Formatar datas ou valores monetários
+- Validar e-mails ou senhas
+- Gerar IDs únicos
+- Calcular distâncias, porcentagens ou médias
+- Funções de debounce/throttle

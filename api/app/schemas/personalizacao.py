@@ -1,0 +1,439 @@
+from datetime import datetime
+from typing import Any, Literal
+
+from pydantic import AliasChoices, BaseModel, Field
+
+from app.schemas.ia_patch import IAPersonalizationPatch
+
+
+# ── TrailUp Design Tokens ─────────────────────────────────────────────────────
+# Paleta extraída do app mobile (src/constants/GlobalStyle.ts e screenshots)
+class DesignTokensCores(BaseModel):
+    background: str = "#09111d"
+    surface: str = "#152039"
+    surface_elevated: str = "#0f182d"
+    primary: str = "#9aa6b2"
+    primary_glow: str = "rgba(154, 166, 178, 0.30)"
+    border: str = "rgba(154, 166, 178, 0.40)"
+    text_primary: str = "#f2f7fa"
+    text_muted: str = "rgba(242, 247, 250, 0.80)"
+    # Cores semânticas fixas (não derivadas do accent) — garantem leitura
+    # consistente e contraste AAA independente da cor-assinatura do perfil.
+    success: str = "#34d399"
+    warning: str = "#fbbf24"
+    info: str = "#60a5fa"
+    locked: str = "#5a676b"
+
+
+class DesignTokensTipografia(BaseModel):
+    titulo: str = "Poppins-ExtraBold"
+    corpo: str = "Inter-Medium"
+    destaque: str = "Inika-Bold"
+    tamanho_titulo: int = 22
+    tamanho_corpo: int = 15
+    tamanho_label: int = 11
+
+
+class DesignTokens(BaseModel):
+    cores: DesignTokensCores = Field(default_factory=DesignTokensCores)
+    tipografia: DesignTokensTipografia = Field(default_factory=DesignTokensTipografia)
+    border_radius: int = 10
+    sombra: str = "2px 2px 9px rgba(0, 0, 0, 0.27)"
+    sombra_primary: str = "0 0 18px rgba(112, 124, 136, 0.18)"
+
+
+class PerfilBrainHexPayload(BaseModel):
+    nome: str
+    afinidade: float | None = None
+
+
+# ── Request ───────────────────────────────────────────────────────────────────
+class PersonalizarPayload(BaseModel):
+    classe_id: int
+    topico_id: int | None = None
+    conteudo_id: int | None = None
+    conteudo_foco_id: int | None = None
+    perfis: list[PerfilBrainHexPayload] = Field(default_factory=list)
+    topico_snapshot: dict[str, Any] | None = None
+    materiais_origem_cliente: list[dict[str, Any]] = Field(default_factory=list)
+    guidance_prompt: str | None = Field(default=None, max_length=4000)
+
+
+class PersonalizacaoStep(BaseModel):
+    item_key: str
+    ordem: int
+    kind: Literal["content", "activity"]
+    title: str
+    description: str | None = None
+    required: bool = True
+    pontuacao_maxima: float | None = None
+    blocks: list[dict[str, Any]] = Field(default_factory=list)
+    activity: dict[str, Any] | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class PersonalizacaoItemProgressoPayload(BaseModel):
+    personalizacao_id: int
+    classe_id: int
+    topico_id: int
+    item_key: str
+    item_kind: Literal["content", "activity", "cards"]
+    item_title: str
+    status: Literal["nao_iniciado", "em_andamento", "concluido"] = "em_andamento"
+    percentual_concluido: float = 0
+    acertos_percentual: float | None = None
+    tempo_gasto_min: float | None = None
+    pontuacao_obtida: float | None = None
+    pontuacao_maxima: float | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class PersonalizacaoItemProgressoResponse(BaseModel):
+    id: int
+    personalizacao_id: int
+    aluno_id: str
+    classe_id: int
+    topico_id: int
+    item_key: str
+    item_kind: str
+    item_title: str
+    status: str
+    percentual_concluido: float
+    acertos_percentual: float | None = None
+    tempo_gasto_min: float
+    pontuacao_obtida: float | None = None
+    pontuacao_maxima: float | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    completed_at: datetime | None = None
+    updated_at: datetime
+
+
+class MentorChatMessagePayload(BaseModel):
+    role: Literal["assistant", "user"]
+    content: str
+
+
+class MentorChatPayload(BaseModel):
+    classe_id: int
+    topico_id: int | None = None
+    conteudo_id: int | None = None
+    escopo: Literal["modulo", "trilha_home"] = "modulo"
+    mensagem: str
+    historico: list[MentorChatMessagePayload] = Field(default_factory=list)
+
+
+class MentorChatResponse(BaseModel):
+    reply: str
+    scope: Literal["modulo", "trilha_home"]
+    should_close: bool = False
+    hinted_actions: list[str] = Field(default_factory=list)
+
+
+# ── Sub-schemas de artefatos ──────────────────────────────────────────────────
+class CardItem(BaseModel):
+    frente: str
+    verso: str
+    icone: str = "★"
+    dificuldade: str = "medio"  # "facil" | "medio" | "dificil"
+    xp: int = 5
+
+
+class MarkdownMaterial(BaseModel):
+    arquivo_url: str | None = None
+    storage_path: str | None = None
+    perfil: str | None = None
+    guia_nome: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+# ── Response ──────────────────────────────────────────────────────────────────
+class PlanoPersonalizacao(BaseModel):
+    formato_prioritario: str
+    formatos: list[str]
+    nivel: str
+    tom: str
+    estilo: str = ""
+    justificativa: str = ""
+
+
+class PersonalizacaoResponse(BaseModel):
+    id: int
+    aluno_id: str
+    classe_id: int | None = None
+    conteudo_id: int | None = None
+    topico_id: int | None = None
+    ciclo_id: str
+    status: str = "pronto"
+    media_status: Literal["ready", "pending", "partial", "failed"] = "ready"
+    media_job_id: str | None = None
+    source_hash: str | None = None
+    formato_prioritario: str
+    formatos_gerados: list[str] = Field(default_factory=list)
+    plano: dict[str, Any] | None = None
+    materiais: dict[str, Any] | None = None
+    ai_patch: IAPersonalizationPatch | None = Field(
+        default=None,
+        validation_alias=AliasChoices("ai_patch", "aiPatch"),
+        serialization_alias="aiPatch",
+    )
+    design_tokens: DesignTokens = Field(default_factory=DesignTokens)
+    steps: list[PersonalizacaoStep] = Field(default_factory=list)
+    gerado_em: datetime
+    updated_at: datetime | None = None
+
+
+class PersonalizacaoMediaItemStatusResponse(BaseModel):
+    id: int | None = None
+    tipo: str
+    status: Literal["ready", "pending", "partial", "failed"]
+    arquivo_url: str | None = None
+    storage_path: str | None = None
+    error: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class PersonalizacaoMediaStatusResponse(BaseModel):
+    personalizacao_id: int
+    status: Literal["ready", "pending", "partial", "failed"]
+    job_id: str | None = None
+    materiais: list[PersonalizacaoMediaItemStatusResponse] = Field(default_factory=list)
+
+
+class PersonalizacaoListResponse(BaseModel):
+    aluno_id: str
+    total: int
+    itens: list[PersonalizacaoResponse] = Field(default_factory=list)
+
+
+class PersonalizacaoContextoDocenteResponse(BaseModel):
+    aluno_id: str
+    classe_id: int
+    topico_id: int | None = None
+    contexto_aluno: dict[str, Any] = Field(default_factory=dict)
+    personalizacoes: list[PersonalizacaoResponse] = Field(default_factory=list)
+    progresso_itens: list[PersonalizacaoItemProgressoResponse] = Field(default_factory=list)
+
+
+class PersonalizacaoGeracaoFormatoStatus(BaseModel):
+    """Estado de uma mídia dentro da geração personalizada mais recente."""
+
+    status: Literal["sem_material", "na_fila", "gerando", "pronto", "falhou"] = (
+        "sem_material"
+    )
+    label: str = "Sem material"
+    arquivo_url: str | None = None
+    erro: str | None = None
+
+
+class PersonalizacaoGeracaoStatus(BaseModel):
+    """Andamento do pipeline conteúdo -> enriquecimento -> mídias."""
+
+    status: Literal[
+        "sem_material",
+        "na_fila",
+        "enriquecendo",
+        "gerando_midias",
+        "pronto",
+        "parcial",
+        "falhou",
+    ] = "sem_material"
+    etapa: Literal[
+        "nao_iniciada",
+        "fila",
+        "enriquecimento",
+        "midias",
+        "concluida",
+        "erro",
+    ] = "nao_iniciada"
+    label: str = "Sem material"
+    etapa_label: str = "Sem material"
+    progresso_percentual: int = Field(default=0, ge=0, le=100)
+    job_id: str | None = None
+    target_id: int | None = None
+    erro: str | None = None
+    erro_codigo: str | None = None
+    blocos_total: int = Field(default=0, ge=0)
+    blocos_concluidos: int = Field(default=0, ge=0)
+    formatos: dict[str, PersonalizacaoGeracaoFormatoStatus] = Field(default_factory=dict)
+    updated_at: datetime | None = None
+
+
+class PersonalizacaoGeracaoResumo(BaseModel):
+    total_perfis: int = 0
+    perfis_prontos: int = 0
+    perfis_ativos: int = 0
+    perfis_parciais: int = 0
+    perfis_falhos: int = 0
+    perfis_sem_material: int = 0
+    perfis_em_andamento: int = 0
+    perfis_com_falha: int = 0
+    progresso_percentual: int = Field(default=0, ge=0, le=100)
+    estados: dict[str, int] = Field(default_factory=dict)
+    updated_at: datetime | None = None
+
+
+class PersonalizacaoPerfilItem(BaseModel):
+    """Visao por perfil BrainHex de uma personalizacao (classe x topico)."""
+
+    perfil: str
+    perfil_label: str
+    cor: str
+    design_tokens: DesignTokens = Field(default_factory=DesignTokens)
+    tem_personalizacao: bool = False
+    personalizacao: PersonalizacaoResponse | None = None
+    plano: dict[str, Any] | None = None
+    formato_prioritario: str | None = None
+    formatos_gerados: list[str] = Field(default_factory=list)
+    materiais: dict[str, Any] | None = None
+    total_alunos: int = 0
+    gerado_em: datetime | None = None
+    geracao: PersonalizacaoGeracaoStatus = Field(default_factory=PersonalizacaoGeracaoStatus)
+
+
+class PersonalizacaoPorPerfilResponse(BaseModel):
+    """Personalizacoes de um (classe x topico) agrupadas pelos 7 perfis BrainHex."""
+
+    classe_id: int
+    topico_id: int
+    conteudo_id: int | None = None
+    conteudo_titulo: str | None = None
+    total_perfis_com_material: int = 0
+    perfis: list[PersonalizacaoPerfilItem] = Field(default_factory=list)
+    geracao_resumo: PersonalizacaoGeracaoResumo = Field(
+        default_factory=PersonalizacaoGeracaoResumo
+    )
+
+
+class PersonalizacaoJobPayload(BaseModel):
+    classe_id: int
+    aluno_id: str | None = None
+    topico_ids: list[int] = Field(default_factory=list)
+    conteudo_ids: list[int] = Field(default_factory=list)
+    reason: str | None = None
+    trigger_source: str = "api"
+
+
+class PersonalizacaoManualGeneratePayload(BaseModel):
+    classe_id: int
+    topico_id: int
+    conteudo_id: int | None = None
+    brainhex_profile_key: str
+    trigger_source: str = "api"
+
+
+class PersonalizacaoManualGenerateAllPayload(BaseModel):
+    classe_id: int
+    brainhex_profile_key: str
+    trigger_source: str = "api"
+
+
+class PersonalizacaoJobTargetResponse(BaseModel):
+    id: int
+    job_id: str
+    aluno_id: str
+    topico_id: int
+    conteudo_id: int | None = None
+    brainhex_profile_key: str | None = None
+    is_profile_template: bool = False
+    status: str
+    attempts: int
+    last_error: str | None = None
+    personalizacao_id: int | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class PersonalizacaoJobResponse(BaseModel):
+    id: str
+    kind: str
+    status: str
+    classe_id: int
+    aluno_id: str | None = None
+    topico_id: int | None = None
+    conteudo_id: int | None = None
+    trigger_source: str
+    payload: dict[str, Any] = Field(default_factory=dict)
+    total_targets: int = 0
+    processed_targets: int = 0
+    error_count: int = 0
+    last_error: str | None = None
+    created_at: datetime
+    updated_at: datetime
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+
+
+class PersonalizacaoJobDetailResponse(PersonalizacaoJobResponse):
+    targets: list[PersonalizacaoJobTargetResponse] = Field(default_factory=list)
+
+
+class PersonalizacaoJobListResponse(BaseModel):
+    total: int
+    itens: list[PersonalizacaoJobResponse] = Field(default_factory=list)
+
+
+class FontePersonalizacaoResponse(BaseModel):
+    id: int
+    classe_id: int
+    topico_id: int | None = None
+    conteudo_id: int | None = None
+    aluno_id: str | None = None
+    professor_id: str | None = None
+    visibilidade: str
+    tipo: str
+    titulo: str | None = None
+    descricao: str | None = None
+    arquivo_url: str | None = None
+    storage_path: str | None = None
+    mime_type: str | None = None
+    nome_arquivo: str | None = None
+    tamanho_bytes: int | None = None
+    origem: str
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    criado_em: datetime
+
+
+class FontesPersonalizacaoUploadResponse(BaseModel):
+    classe_id: int
+    topico_id: int | None = None
+    conteudo_id: int | None = None
+    total: int
+    itens: list[FontePersonalizacaoResponse] = Field(default_factory=list)
+
+
+class ClassePerfilDistribuicaoItem(BaseModel):
+    perfil: str
+    quantidade: int = 0
+    percentual: float = 0.0
+
+
+class ClassePerfilSummaryResponse(BaseModel):
+    classe_id: int
+    distribuicao: dict[str, ClassePerfilDistribuicaoItem] = Field(default_factory=dict)
+    perfil_predominante: str | None = None
+    total_alunos: int = 0
+    media_desempenho: dict[str, float] = Field(default_factory=dict)
+
+
+# ── Regeneracao de material (professor) ────────────────────────────────────────
+class RegenerarDocumentoPayload(BaseModel):
+    brainhex_profile_key: str
+    conteudo_id: int | None = None
+    improvement_prompt: str = Field(min_length=1, max_length=4000)
+    expansion_prompt: str | None = Field(default=None, max_length=4000)
+
+
+class RegenerarSlidePayload(BaseModel):
+    brainhex_profile_key: str
+    conteudo_id: int | None = None
+    slide_index: int = Field(ge=0)
+    improvement_prompt: str = Field(min_length=1, max_length=4000)
+    expansion_prompt: str | None = Field(default=None, max_length=4000)
+
+
+class RegenerarSlideResponse(BaseModel):
+    personalizacao: PersonalizacaoResponse
+    slide_index: int
+    slide: dict[str, Any]
+    image_base64_preview: str | None = None
+    atualizado_em: datetime | None = None

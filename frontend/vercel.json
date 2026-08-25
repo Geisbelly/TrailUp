@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/trailup-api/:path*",
+      "destination": "https://trailup-frontend-8nw9al-e68946-87-99-146-75.traefik.me/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/"
+    }
+  ]
+}

@@ -1,0 +1,265 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* TrailUp Dark Theme - Mistico Medieval (grimorio + violeta arcano).
+       Primary calibrado por amostragem direta dos pixels do logo oficial
+       (src/assets/trailup-logo.png — faceta clara/estrela ~hsl(266 95% 66%),
+       faceta escura ~hsl(265 65% 50%)), nao mais o indigo do login antigo.
+       Accent fica no indigo (o tom que era primary antes) como par frio
+       complementar, dando o gradiente violeta->indigo usado nos titulos/CTAs.
+       Sem dourado no sistema base — removido por pedido direto (nao
+       representa a identidade real do app). Nao usa uma cor de perfil
+       BrainHex especifica como primary para nao favorecer um perfil sobre
+       os outros na pagina publica — os 7 perfis aparecem com suas cores
+       reais na secao "Conheca os 7 perfis". */
+    --background: 225 32% 8%;
+    --foreground: 40 20% 94%;
+
+    --card: 226 28% 12%;
+    --card-foreground: 40 20% 94%;
+
+    --popover: 225 32% 7%;
+    --popover-foreground: 40 20% 94%;
+
+    /* Primary - Violeta do logo (amostrado direto do PNG oficial) */
+    --primary: 266 95% 66%;
+    --primary-foreground: 266 30% 10%;
+
+    /* Primary variants for gradients (faceta clara / faceta escura do logo) */
+    --primary-light: 266 90% 77%;
+    --primary-dark: 265 65% 50%;
+
+    /* Secondary - Bronze/cobre escuro */
+    --secondary: 25 35% 26%;
+    --secondary-foreground: 40 20% 94%;
+
+    --muted: 226 20% 20%;
+    --muted-foreground: 230 10% 72%;
+
+    /* Accent - Indigo arcano (par frio complementar ao violeta do logo,
+       sem dourado: gradientes/glow secundario ficam na mesma familia) */
+    --accent: 239 84% 67%;
+    --accent-foreground: 226 30% 10%;
+
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 40 20% 94%;
+
+    --border: 226 20% 22%;
+    --input: 226 22% 16%;
+    --ring: 266 95% 66%;
+
+    --radius: 1.25rem;
+
+    /* Cores semanticas fixas (nao derivadas do primary/accent) */
+    --success: 142 65% 50%;
+    --warning: 45 90% 58%;
+    --info: 205 70% 58%;
+
+    /* Glow effects */
+    --glow-primary: 266 95% 66%;
+    --glow-secondary: 239 84% 67%;
+
+    /* Hexagon badge background */
+    --badge-bg: 25 35% 22%;
+    --badge-border: 266 95% 66%;
+  }
+
+  .dark {
+    --background: 225 32% 8%;
+    --foreground: 40 20% 94%;
+
+    --card: 226 28% 12%;
+    --card-foreground: 40 20% 94%;
+
+    --popover: 225 32% 7%;
+    --popover-foreground: 40 20% 94%;
+
+    --primary: 266 95% 66%;
+    --primary-foreground: 266 30% 10%;
+
+    --primary-light: 266 90% 77%;
+    --primary-dark: 265 65% 50%;
+
+    --secondary: 25 35% 26%;
+    --secondary-foreground: 40 20% 94%;
+
+    --muted: 226 20% 20%;
+    --muted-foreground: 230 10% 72%;
+
+    --accent: 239 84% 67%;
+    --accent-foreground: 226 30% 10%;
+
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 40 20% 94%;
+
+    --border: 226 20% 22%;
+    --input: 226 22% 16%;
+    --ring: 266 95% 66%;
+
+    --success: 142 65% 50%;
+    --warning: 45 90% 58%;
+    --info: 205 70% 58%;
+
+    --glow-primary: 266 95% 66%;
+    --glow-secondary: 239 84% 67%;
+
+    --badge-bg: 25 35% 22%;
+    --badge-border: 266 95% 66%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Tipografia de titulo do sistema inteiro — serif ornamental (Cinzel),
+     ecoando a identidade "grimorio medieval" do app mobile (que usa uma
+     serif ornamental via Georgia/system serif). Aplicado no nivel de tag
+     para nao depender de `font-display` manual em cada heading. */
+  h1, h2, h3, h4 {
+    font-family: "Cinzel", Georgia, serif;
+  }
+
+  html {
+    @apply dark;
+  }
+}
+
+@layer utilities {
+  .glow-primary {
+    box-shadow: 0 0 20px hsl(var(--glow-primary) / 0.5),
+                0 0 40px hsl(var(--glow-primary) / 0.3);
+  }
+  
+  .glow-secondary {
+    box-shadow: 0 0 20px hsl(var(--glow-secondary) / 0.5),
+                0 0 40px hsl(var(--glow-secondary) / 0.3);
+  }
+  
+  .gradient-primary {
+    background: linear-gradient(135deg, hsl(var(--primary-dark)), hsl(var(--primary-light)));
+  }
+  
+  .gradient-card {
+    background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--muted)) 100%);
+  }
+  
+  .hexagon-clip {
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  }
+  
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+  
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+  }
+  
+  .animate-glow {
+    animation: glow 2s ease-in-out infinite alternate;
+  }
+  
+  @keyframes glow {
+    from {
+      box-shadow: 0 0 10px hsl(var(--primary) / 0.3),
+                  0 0 20px hsl(var(--primary) / 0.2);
+    }
+    to {
+      box-shadow: 0 0 20px hsl(var(--primary) / 0.6),
+                  0 0 40px hsl(var(--primary) / 0.4);
+    }
+  }
+
+  /* Brasas flutuantes (Hero) — fagulhas arcanas subindo e apagando, na cor
+     --accent (violeta) sobre o fundo escuro. */
+  .animate-ember {
+    animation: ember linear infinite;
+  }
+
+  @keyframes ember {
+    0% {
+      transform: translateY(0) translateX(0);
+      opacity: 0;
+    }
+    10% {
+      opacity: 0.8;
+    }
+    90% {
+      opacity: 0.4;
+    }
+    100% {
+      transform: translateY(-140px) translateX(var(--ember-drift, 12px));
+      opacity: 0;
+    }
+  }
+
+  .animate-pulse-slow {
+    animation: pulse-slow 6s ease-in-out infinite;
+  }
+
+  @keyframes pulse-slow {
+    0%, 100% { opacity: 0.35; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(1.08); }
+  }
+
+  /* Entrada fade+slide (substitui framer-motion: initial/whileInView/animate).
+     .reveal comeca invisivel/deslocada; .reveal-in e adicionada via useInView
+     ou no mount direto, disparando a transicao. */
+  .reveal {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+  }
+  .reveal-in {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .reveal-scale {
+    opacity: 0;
+    transform: scale(0.97);
+    transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+  }
+  .reveal-scale-in {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  /* Entrada automatica ao montar (Hero — sempre acima da dobra, sem precisar
+     de scroll/IntersectionObserver). Usar com style={{ animationDelay }}. */
+  .fade-up-in {
+    opacity: 0;
+    animation: fade-up 0.6s ease-out forwards;
+  }
+
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Troca de conteudo chaveado por React key (ex.: card do guardiao
+     selecionado) — a animacao dispara sozinha a cada remount, sem JS. */
+  .fade-scale-in {
+    animation: fade-scale 0.35s ease-out forwards;
+  }
+
+  @keyframes fade-scale {
+    from { opacity: 0; transform: scale(0.97) translateY(8px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+}
