@@ -17,6 +17,10 @@ import { ensureCachedNativeContent } from "@/utils/nativeContentCache";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { shouldHideChecklist, shouldHideNotes, shouldHideQuiz, withHideParams } from "@/utils/contentVisibility";
 import type { DeckProgressEvent } from "@/utils/deckProgressMessage";
+import {
+  hostSoAlcancavelNoDeploy,
+  reancorarDeckNaOrigemPublica,
+} from "@/utils/storageOrigin";
 import { looksLikeStorageObjectPath, resolveSupabaseStorageUrl } from "@/utils/supabaseStorage";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useMemo, useState } from "react";
@@ -836,6 +840,34 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent }: P
       setResolvedUrl(null);
       setResolvingUrl(false);
       setResolveError(null);
+      return () => {
+        ativo = false;
+      };
+    }
+
+    // Deck com host que so existe na rede do deploy: nao passa por
+    // resolveSupabaseStorageUrl (nao e URL de storage) e nao ha DNS que o
+    // celular resolva. Ou trocamos o host por uma origem publica configurada,
+    // ou dizemos o que aconteceu -- o que nao serve e a tela branca com
+    // net::ERR_NAME_NOT_RESOLVED, que nao diz a ninguem que o problema e de
+    // configuracao do deploy.
+    if (hostSoAlcancavelNoDeploy(sourceUrl)) {
+      const publica = reancorarDeckNaOrigemPublica({
+        deckUrl: sourceUrl,
+        publicOrigin: process.env.EXPO_PUBLIC_BRAINHEXPDF_URL ?? null,
+      });
+      setResolvingUrl(false);
+      if (publica) {
+        setResolveError(null);
+        setResolvedUrl(publica);
+      } else {
+        setResolveError(
+          "A apresentação foi gravada com um endereço interno do servidor, que este " +
+            "dispositivo não alcança. Configure APP_URL no serviço de apresentações " +
+            "(ou EXPO_PUBLIC_BRAINHEXPDF_URL no app) e gere o material de novo."
+        );
+        setResolvedUrl(sourceUrl);
+      }
       return () => {
         ativo = false;
       };

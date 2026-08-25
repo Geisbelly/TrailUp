@@ -6,6 +6,8 @@ type ParsedStorageUrl = {
   mode: string;
   bucket: string;
   objectPath: string;
+  /** Query original; a reancoragem tem que devolve-la junto. */
+  search: string;
 };
 
 type ResolveStorageUrlOptions = {
@@ -102,6 +104,7 @@ export function buildSupabasePublicStorageUrl(
         appOrigin: appOriginParaPublico,
         bucket: parsed.bucket,
         objectPath: parsed.objectPath,
+        search: parsed.search,
       });
       if (reancorada) return reancorada;
     }
@@ -139,6 +142,7 @@ export function parseSupabaseStorageUrl(rawUrl: string): ParsedStorageUrl | null
       mode: mode.toLowerCase(),
       bucket,
       objectPath,
+      search: url.search,
     };
   } catch {
     return null;
@@ -181,6 +185,7 @@ export async function resolveSupabaseStorageUrl(
       appOrigin,
       bucket: parsed.bucket,
       objectPath: parsed.objectPath,
+      search: parsed.search,
     });
     if (reancorada) {
       if (parsed.mode === "public") return reancorada;
