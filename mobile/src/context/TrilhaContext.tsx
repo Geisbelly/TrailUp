@@ -50,7 +50,7 @@ import {
 } from '@/utils/personalization';
 import { inferModoApresentacao } from '@/utils/presentationOrder';
 import { resolveDominantBrainHexProfile } from '@/utils/brainHex';
-import { looksLikeStorageObjectPath } from '@/utils/supabaseStorage';
+import { buildSupabasePublicStorageUrl, looksLikeStorageObjectPath } from '@/utils/supabaseStorage';
 import {
   clampPercent,
   normalizeNullableNonNegativeNumber,
@@ -199,9 +199,14 @@ function collectPrefetchEntries(payload: PersonalizedTopicPayload | null): Prefe
 
   const pushUrl = (url: unknown, hint: string | null | undefined, key: string) => {
     if (typeof url !== 'string' || !isUrl(url)) return;
-    if (seen.has(url)) return;
-    seen.add(url);
-    entries.push({ url, hint, key });
+    // Reancora na origem do app antes de baixar: a URL gravada pode ter sido
+    // montada com a base errada no servidor (host interno do deploy), e ai o
+    // prefetch falhava com "Unable to resolve host" pra CADA material - 18
+    // avisos num carregamento. Ver utils/storageOrigin.ts.
+    const utilizavel = buildSupabasePublicStorageUrl(url);
+    if (seen.has(utilizavel)) return;
+    seen.add(utilizavel);
+    entries.push({ url: utilizavel, hint, key });
   };
 
   const handleBlock = (block: any, keyPrefix: string) => {
