@@ -20,6 +20,7 @@ import StudyCardsBlock from "./StudyCardsBlock";
 import PresentationSlidesBlock from "./PresentationSlidesBlock";
 import AudioPlayer from "./funcionais/AudioPlayer";
 import VideoPlayer from "./funcionais/VideoPlayer";
+import { resolveMediaText, resolveMediaTitle, resolveMediaUrl } from "@/utils/mediaPayload";
 
 function loadWebView(): React.ComponentType<any> | null {
   if (Platform.OS === "web") return null;
@@ -54,16 +55,38 @@ function readString(payload: ContentBlockPayload, ...keys: string[]) {
   return null;
 }
 
+/**
+ * Bloco que nao pode ser exibido. Antes cada helper devolvia null quando nao
+ * achava a midia, e o aluno via um ESPACO VAZIO - sem saber que ali deveria ter
+ * conteudo, e sem nada pra reportar. Um aviso curto e melhor que o silencio.
+ */
+function MidiaIndisponivel({
+  block,
+  palette,
+}: {
+  block: ContentBlock;
+  palette?: ReturnType<typeof getProfileShellPalette>;
+}) {
+  const titulo = resolveMediaTitle(block.payload);
+  const cor = palette?.textMuted ?? "#a1a1aa";
+  const borda = palette?.border ?? "rgba(255,255,255,0.12)";
+
+  return (
+    <View key={block.id} style={[styles.midiaIndisponivel, { borderColor: borda }]}>
+      <Text style={[styles.midiaIndisponivelTexto, { color: cor }]}>
+        {titulo ? `"${titulo}" não pôde ser exibido aqui.` : "Este material não pôde ser exibido aqui."}
+      </Text>
+    </View>
+  );
+}
+
 function renderText(
   block: ContentBlock,
   palette: ReturnType<typeof getProfileShellPalette>
 ) {
-  const text =
-    typeof block.payload === "string"
-      ? block.payload
-      : readString(block.payload, "texto", "markdown", "legenda");
+  const text = resolveMediaText(block.payload);
 
-  if (!text) return null;
+  if (!text) return <MidiaIndisponivel block={block} palette={palette} />;
 
   return (
     <Text key={block.id} style={[styles.cardBody, { color: palette.textMuted }]}>
@@ -76,12 +99,9 @@ function renderImage(
   block: ContentBlock,
   palette: ReturnType<typeof getProfileShellPalette>
 ) {
-  const url =
-    typeof block.payload === "object"
-      ? readString(block.payload, "url", "uri", "src")
-      : null;
+  const url = resolveMediaUrl(block.payload);
 
-  if (!url) return null;
+  if (!url) return <MidiaIndisponivel block={block} palette={palette} />;
 
   return (
     <View
@@ -103,11 +123,7 @@ function renderImage(
 function renderVideo(block: ContentBlock) {
   const payload =
     typeof block.payload === "object" && block.payload ? block.payload : null;
-  const url = payload
-    ? readString(payload, "url", "uri", "src")
-    : typeof block.payload === "string"
-    ? block.payload
-    : null;
+  const url = resolveMediaUrl(block.payload);
   const metadata =
     payload?.metadata && typeof payload.metadata === "object"
       ? (payload.metadata as Record<string, unknown>)
@@ -124,7 +140,7 @@ function renderVideo(block: ContentBlock) {
   const title = payload ? readString(payload, "title", "legenda") : null;
   const fallbackText = metadata ? readString(metadata, "fallbackText") : null;
 
-  if (!url) return null;
+  if (!url) return <MidiaIndisponivel block={block} />;
   return (
     <VideoPlayer
       key={block.id}
@@ -139,11 +155,7 @@ function renderVideo(block: ContentBlock) {
 function renderAudio(block: ContentBlock) {
   const payload =
     typeof block.payload === "object" && block.payload ? block.payload : null;
-  const url = payload
-    ? readString(payload, "url", "uri", "src")
-    : typeof block.payload === "string"
-    ? block.payload
-    : null;
+  const url = resolveMediaUrl(block.payload);
   const metadata =
     payload?.metadata && typeof payload.metadata === "object"
       ? (payload.metadata as Record<string, unknown>)
@@ -311,13 +323,32 @@ export function ContentRenderer({ blocks, WebView, onDeckProgressEvent }: Props)
           );
         }
 
-        return null;
+        // Tipo que o renderizador nao conhece: avisa em vez de sumir. O
+        // "return null" daqui era a outra metade do problema - qualquer tipo
+        // novo vindo do banco desaparecia sem deixar rastro.
+        return (
+          <View key={block.id}>
+            <MidiaIndisponivel block={block} palette={palette} />
+          </View>
+        );
       })}
     </>
   );
 }
 
 const styles = StyleSheet.create({
+  midiaIndisponivel: {
+    marginVertical: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderRadius: 12,
+    borderStyle: "dashed",
+  },
+  midiaIndisponivelTexto: {
+    fontSize: 12,
+    textAlign: "center",
+  },
   cardBody: {
     marginTop: 8,
     fontFamily: FontFamily.interMedium,

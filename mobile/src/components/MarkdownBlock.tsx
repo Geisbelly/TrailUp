@@ -13,6 +13,7 @@ import Markdown, { renderRules } from "react-native-markdown-display";
 import { SvgXml } from "react-native-svg";
 import { decodeInlineSvgDataUri } from "@/utils/inlineSvgDataUri";
 import tinycolor from "tinycolor2";
+import { resolveMediaUrl } from "@/utils/mediaPayload";
 
 type Props = {
   payload: any;
@@ -89,8 +90,11 @@ export function MarkdownBlock({ payload }: Props) {
     typeof payload === "string"
       ? payload
       : readString(payload, "markdown", "texto", "conteudo", "text");
-  const sourceUrl =
-    typeof payload === "object" ? readString(payload, "url", "uri", "src") : null;
+  // resolveMediaUrl e nao readString: o material do banco vem com
+  // "arquivo_url" (e material multi-parte guarda a parte 1 em "partes"), e a
+  // lista antiga so conhecia url/uri/src - markdown gravado assim nao
+  // carregava e o bloco ficava vazio. Ver utils/mediaPayload.ts.
+  const sourceUrl = resolveMediaUrl(payload);
   const bucketHint =
     typeof payload === "object" && payload?.metadata && typeof payload.metadata === "object"
       ? readString(
