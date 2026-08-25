@@ -20,7 +20,6 @@ export const TrilhaBase: React.FC = () => {
     visual,
     mapTheme,
     personalizedTopics,
-    trilhaSlideBonusPercent,
   } = useTrilha();
   const { usuario } = useUsuario();
   const palette = getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null);
@@ -55,7 +54,12 @@ export const TrilhaBase: React.FC = () => {
       <GameHeader
         titulo={nome}
         subtitulo={subtitulo}
-        xp={Math.round(progresso) + trilhaSlideBonusPercent}
+        // Sem o bonus de slides: ele e XP, e somar XP a uma taxa de conclusao
+        // fazia a barra bater 100% com topicos ainda pendentes -- e, acima de
+        // 90%, o bonus sumia no clamp sem o aluno entender por que. O calculo
+        // continua no TrilhaContext (trilhaSlideBonusPercent) para quando o XP
+        // ganhar um indicador proprio.
+        xp={Math.round(progresso)}
         meta={100}
         palette={palette}
         rightSlot={
