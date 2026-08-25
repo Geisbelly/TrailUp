@@ -101,6 +101,13 @@ Cada perfil carrega:
 - `fontes_personalizacao` — fontes do professor (upload/link), `visibilidade` `classe|aluno`.
 - `personalizacao_jobs` + `personalizacao_job_targets` — fila assíncrona
   (`enrollment`, `class-delta`, `class-theme`, `student-cleanup`, `full-sync`).
+- `personalizacao_sugestao` + `personalizacao_sugestao_log` — ordem **aconselhada**
+  de consumo do material por `(aluno × tópico × conteúdo)` e o histórico
+  append-only de cada decisão (`criada`/`revisada`/`mantida`). Motor
+  determinístico em `api/app/services/sugestao_material.py`; o repositório só
+  opera se **as duas** tabelas existirem (sem log, a métrica de efetividade
+  ficaria furada justamente onde vai olhar). Ver
+  `docs/superpowers/specs/2026-08-25-sugestao-de-material-por-aluno-design.md`.
 - `telemetria_sessoes`, `telemetria_lotes` — telemetria bruta + payload JSONB.
 - `personalizacao_item_progresso` — progresso por item (merge: percentual/acertos = máx, tempo = soma).
 - `aluno_perfil`, `perfil` — perfis BrainHex e afinidades.

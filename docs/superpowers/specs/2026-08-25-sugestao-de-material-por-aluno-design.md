@@ -136,8 +136,54 @@ Do log dá para responder, sem instrumentação nova:
 
 ## Ordem de implementação
 
-1. Motor determinístico + tabelas + persistência da primeira sugestão.
-2. Revisão por ciclo, com mínimo de evidência e limiar de mudança, gravando no
+1. ✅ Motor determinístico + tabelas + persistência da primeira sugestão.
+2. ✅ Revisão por ciclo, com mínimo de evidência e limiar de mudança, gravando no
    log a cada decisão (inclusive `mantida`).
-3. Métrica de efetividade derivada do log.
-4. Console: sugestão por aluno + histórico.
+3. ✅ Métrica de efetividade derivada do log.
+4. ✅ Console: sugestão por aluno + histórico.
+
+## Como ficou (implementado em 2026-08-25)
+
+| Peça | Arquivo |
+| --- | --- |
+| Motor puro (ordem inicial + revisão) | `api/app/services/sugestao_material.py` |
+| Telemetria → sinais por formato | `api/app/services/sugestao_sinais.py` |
+| Persistência (2 tabelas) | `api/app/repositories/sugestao_material.py` |
+| Orquestração no ciclo | `api/app/services/sugestao_ciclo.py` |
+| Métricas + camada de consulta | `api/app/services/sugestao_metrica.py` |
+| Rotas | `GET /personalizar/sugestao/{aluno}/{topico}` e `.../historico` |
+| Aluno aplica a ordem | `mobile/src/utils/materialSuggestion.ts` |
+| Console | `frontend/src/components/console/personalizacoes/SugestaoMaterialCard.tsx` |
+
+Detalhes que não estavam no desenho e foram decididos na implementação:
+
+* **`ordem_observada` no snapshot de evidência.** Sem gravar a ordem em que o
+  aluno abriu o material, a aderência nunca seria mensurável: a telemetria bruta
+  não fica guardada e o progresso por item não diz sequência. A ordem é a de
+  primeira aparição, não a de maior tempo — quem abre o áudio primeiro e depois
+  se demora no texto seguiu a sugestão de começar pelo áudio.
+* **Desempenho só é atribuído a um formato quando não há ambiguidade.**
+  `acertos` vem do progresso do conteúdo. Conteúdo visto em markdown E áudio não
+  credita nenhum dos dois: espalhar o mesmo número daria bônus de "desempenho
+  alto" ao formato que só estava aberto, e creditar o de maior tempo ativo faria
+  o motor confirmar a própria decisão a cada ciclo (é ele que a sugestão pôs em
+  primeiro lugar).
+* **`mantida` não faz UPDATE na sugestão.** Um UPDATE incrementaria a versão e
+  faria o histórico parecer cheio de revisões que nunca aconteceram. Ainda assim
+  o log registra: sem isso não se distingue motor estável de motor que nunca
+  rodou.
+* **A versão é incrementada dentro do UPDATE** (`versao + 1`), não calculada no
+  Python: dois ciclos concorrentes no mesmo alvo chegariam com o mesmo número e
+  um sobrescreveria o outro em silêncio.
+* **Reordenação no app é cirúrgica.** Só blocos de formato sugerível trocam de
+  lugar, e apenas entre as posições que já ocupavam. A sugestão opina sobre qual
+  formato do mesmo conteúdo ler primeiro, não sobre a sequência pedagógica —
+  mover tudo poderia jogar um quiz antes da explicação.
+* **Alias `socialiser` → `socializer`.** A API grava a grafia britânica em
+  `context.py` e `agente_perfil.py`; sem o alias o perfil caía fora do vetor de
+  afinidades em silêncio, justamente o perfil cuja preferência por áudio é a mais
+  marcada.
+
+Pendência do ambiente: a migração `20260825_01` precisa ser aplicada. Sem ela o
+repositório opera como no-op (as duas tabelas são exigidas juntas) e a sugestão
+simplesmente não acontece — nada quebra, mas nada é gravado.
