@@ -52,10 +52,10 @@ def test_normalize_database_url_preserves_real_password() -> None:
 def test_idempotent_generated_materials_is_the_only_alembic_head() -> None:
     scripts = ScriptDirectory.from_config(_offline_alembic_config())
 
-    assert scripts.get_heads() == ["20260821_01"]
-    revision = scripts.get_revision("20260821_01")
+    assert scripts.get_heads() == ["20260825_01"]
+    revision = scripts.get_revision("20260825_01")
     assert revision is not None
-    assert revision.down_revision == "20260819_01"
+    assert revision.down_revision == "20260821_01"
 
 
 def test_personalizacao_jobs_conteudo_fk_renders_idempotent_offline_sql() -> None:
@@ -190,3 +190,32 @@ def test_generated_material_history_is_idempotent_per_generation() -> None:
     assert "uq_materiais_gerados_personalizacao_tipo_generation" in rendered
     assert "personalizacao_id,\n          tipo,\n          generation_key" in rendered
     assert "UPDATE alembic_version SET version_num='20260728_06'" in rendered
+
+
+def test_sugestao_material_tables_render_idempotent_offline_sql() -> None:
+    output = StringIO()
+    config = _offline_alembic_config(output)
+
+    migrations.command.upgrade(
+        config,
+        "20260821_01:20260825_01",
+        sql=True,
+    )
+    rendered = output.getvalue()
+
+    # As duas tabelas, e o log referenciando a sugestao com SET NULL: apagar a
+    # sugestao atual nao pode apagar o historico, que e a base da metrica.
+    assert "CREATE TABLE IF NOT EXISTS personalizacao_sugestao" in rendered
+    assert "CREATE TABLE IF NOT EXISTS personalizacao_sugestao_log" in rendered
+    assert "ON DELETE SET NULL" in rendered
+    assert "CASCADE" not in rendered
+
+    # Unico por alvo, com COALESCE porque NULL nao colide com NULL em UNIQUE.
+    assert "personalizacao_sugestao_alvo_uidx" in rendered
+    assert "COALESCE(conteudo_id, -1)" in rendered
+
+    # Estados validos travados no banco, nao so no codigo.
+    assert "origem IN ('inicial', 'revisao')" in rendered
+    assert "acao IN ('criada', 'revisada', 'mantida')" in rendered
+
+    assert "UPDATE alembic_version SET version_num='20260825_01'" in rendered
