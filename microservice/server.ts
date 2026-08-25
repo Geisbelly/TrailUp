@@ -12,6 +12,7 @@ import {
   regenerateSlideContent,
   regenerateDocumentMarkdown,
   resolveAudioPartConcurrency,
+  restyleImageWithGemini,
   type ContentPart,
 } from "./src/services/geminiService";
 import { settleWithConcurrency } from "./src/lib/boundedConcurrency";
@@ -23,6 +24,7 @@ import {
 } from "./src/utils/markdownImages";
 import { replaceAsciiDiagramsWithSvg } from "./src/utils/asciiDiagram";
 import { describeError, summarizeAudioFailures, type AudioPartFailure } from "./src/utils/audioFailure";
+import { applyProfileRestyle } from "./src/utils/profileImageRestyle";
 import { estimateAudioDurationSec } from "./src/utils/audioDuration";
 import { computeImageCues, type ImageCue } from "./src/utils/audioImageCues";
 import { computeAggregatedApresentacaoEntry } from "./src/lib/materialsMerge";
@@ -1033,6 +1035,27 @@ async function runPipeline(
       })),
     ];
   }
+
+  // CAMADA 2 da adaptacao da imagem ao perfil: reilustra a imagem do professor
+  // no clima do Guardiao. Desligada por padrao (PROFILE_IMAGE_RESTYLE) e com
+  // teto por material - ver profileImageRestyle.ts pro custo. Como o pipeline
+  // roda uma vez por perfil, o resultado ja e uma versao por perfil. Falha
+  // aqui nunca derruba o material: a imagem original fica, e a camada 1
+  // (moldura na estetica do perfil, no console/mobile) continua valendo.
+  const restyleResult = await applyProfileRestyle(imageAttachments, {
+    profile,
+    assunto: fallbackSubject,
+    restyle: restyleImageWithGemini,
+    onAviso: (mensagem, detalhe) => jobLog.warn(`reilustracao por perfil: ${mensagem}`, { err: detalhe }),
+  });
+  if (restyleResult.reilustradas > 0 || restyleResult.interrompidoPor) {
+    jobLog.info("reilustracao por perfil", {
+      reilustradas: restyleResult.reilustradas,
+      total: imageAttachments.length,
+      ...(restyleResult.interrompidoPor ? { interrompidoPor: restyleResult.interrompidoPor } : {}),
+    });
+  }
+  imageAttachments = restyleResult.imagens as typeof imageAttachments;
 
   // Diagramas em arte ASCII que o Gemini escreve dentro de bloco de codigo
   // viram SVG de verdade, embutido no markdown como imagem - assim console,

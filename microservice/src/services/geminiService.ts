@@ -2116,6 +2116,42 @@ export async function generateLongConversationalAudio(
  * Generates a high-quality 2D magical animation image for a slide
  * Includes a robust retry mechanism for rate limits (429)
  */
+/**
+ * Reilustra uma imagem EXISTENTE (imagem -> imagem), mantendo o conteudo e
+ * trocando so a linguagem visual - ver buildRestylePrompt em
+ * profileImageRestyle.ts, que monta o texto por perfil.
+ *
+ * Diferente de generateSlideImage (texto -> imagem): aqui a imagem original vai
+ * junto como inlineData, e e ela que o modelo deve reestilizar. Sem retry
+ * proprio de proposito: quem chama (applyProfileRestyle) decide o que fazer com
+ * a falha, e insistir aqui atrapalharia a regra de parar quando a cota acaba.
+ */
+export async function restyleImageWithGemini(params: {
+  dataBase64: string;
+  mimeType: string;
+  prompt: string;
+}): Promise<{ data: string; mimeType: string } | null> {
+  const response = await generateGeminiContent({
+    model: 'gemini-2.5-flash-image',
+    contents: {
+      parts: [
+        { inlineData: { mimeType: params.mimeType, data: params.dataBase64 } },
+        { text: params.prompt },
+      ],
+    },
+  }, resolveGeminiImageFallbackModels());
+
+  for (const part of response.candidates?.[0]?.content?.parts || []) {
+    if (part.inlineData?.data) {
+      return {
+        data: part.inlineData.data,
+        mimeType: part.inlineData.mimeType || 'image/png',
+      };
+    }
+  }
+  return null;
+}
+
 export async function generateSlideImage(prompt: string, retries = 3): Promise<string> {
   try {
     const response = await generateGeminiContent({

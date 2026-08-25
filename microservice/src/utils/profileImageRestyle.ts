@@ -88,3 +88,101 @@ export function buildRestylePrompt(
     `Traços limpos, alto contraste, legível como material de estudo, sem poluição visual e sem texto ilegível.`
   );
 }
+
+// --- Execucao -------------------------------------------------------------
+
+/** Imagem do professor como o pipeline a carrega. */
+export interface RestylableImage {
+  data: string;
+  mimeType: string;
+  url?: string;
+  name?: string;
+  sourceText?: string;
+  sourceOrder?: number;
+}
+
+export type ImageRestyler = (params: {
+  dataBase64: string;
+  mimeType: string;
+  prompt: string;
+}) => Promise<{ data: string; mimeType: string } | null>;
+
+export interface RestyleOutcome {
+  /** A lista com as imagens reilustradas trocadas no lugar das originais. */
+  imagens: RestylableImage[];
+  /** Quantas foram efetivamente trocadas. */
+  reilustradas: number;
+  /** Motivo de ter parado antes do teto, quando parou. */
+  interrompidoPor?: "cota" | "erro";
+}
+
+function pareceCotaEsgotada(erro: unknown): boolean {
+  const mensagem = erro instanceof Error ? erro.message : String(erro ?? "");
+  return /429|quota|RESOURCE_EXHAUSTED|rate limit/i.test(mensagem);
+}
+
+/**
+ * Reilustra as imagens elegiveis no clima do perfil, respeitando a politica.
+ *
+ * O gerador entra injetado pra esta orquestracao ser testavel sem rede - e
+ * porque quem sabe falar com o Gemini e o geminiService, nao este modulo.
+ *
+ * Falha em uma imagem NUNCA derruba o material: a original fica no lugar (e a
+ * moldura do perfil, camada 1, continua valendo pra ela). Cota esgotada
+ * interrompe o resto do material - insistir imagem por imagem numa chamada
+ * fadada a falhar so queima o que sobrou da cota, que foi exatamente o laco
+ * que derrubou a geracao em producao.
+ */
+export async function applyProfileRestyle(
+  imagens: RestylableImage[],
+  options: {
+    profile: BrainHexProfile;
+    restyle: ImageRestyler;
+    assunto?: string;
+    environment?: Record<string, string | undefined>;
+    onAviso?: (mensagem: string, detalhe?: unknown) => void;
+  },
+): Promise<RestyleOutcome> {
+  const { profile, restyle, assunto, environment = process.env, onAviso } = options;
+
+  const alvos = selecionarParaReilustrar(imagens, environment);
+  if (alvos.length === 0) return { imagens, reilustradas: 0 };
+
+  const resultado = [...imagens];
+  const prompt = buildRestylePrompt(profile, { assunto });
+  let reilustradas = 0;
+  let interrompidoPor: RestyleOutcome["interrompidoPor"];
+
+  for (const indice of alvos) {
+    const original = resultado[indice];
+    try {
+      const nova = await restyle({
+        dataBase64: original.data,
+        mimeType: original.mimeType,
+        prompt,
+      });
+      if (!nova?.data) {
+        onAviso?.(`reilustracao devolveu vazio (imagem ${indice + 1})`);
+        continue;
+      }
+      resultado[indice] = {
+        ...original,
+        data: nova.data,
+        mimeType: nova.mimeType,
+        // A url identifica a imagem no markdown; trocar os bytes sem trocar a
+        // url deixaria o documento apontando pro conteudo antigo.
+        ...(original.url ? { url: `data:${nova.mimeType};base64,${nova.data}` } : {}),
+      };
+      reilustradas += 1;
+    } catch (erro) {
+      onAviso?.(`falha ao reilustrar imagem ${indice + 1}`, erro);
+      if (pareceCotaEsgotada(erro)) {
+        interrompidoPor = "cota";
+        break;
+      }
+      interrompidoPor = "erro";
+    }
+  }
+
+  return { imagens: resultado, reilustradas, ...(interrompidoPor ? { interrompidoPor } : {}) };
+}
