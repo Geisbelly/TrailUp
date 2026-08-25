@@ -1,5 +1,9 @@
 import { supabase } from "@/database/supabase";
-import { origemDeStorageConfiavel, reancorarNaOrigemDoApp } from "./storageOrigin";
+import {
+  extrairReferenciaDeDeck,
+  origemDeStorageConfiavel,
+  reancorarNaOrigemDoApp,
+} from "./storageOrigin";
 
 type ParsedStorageUrl = {
   origin: string;
@@ -29,6 +33,34 @@ function getSupabaseOrigin() {
   } catch {
     return null;
   }
+}
+
+/**
+ * URL de deck resservido (`/api/v1/decks/{bucket}/{caminho}`) virando URL
+ * publica de storage.
+ *
+ * O deck E gravado no mesmo bucket publico que o resto do material (audio,
+ * markdown, imagens) -- `supabaseService.ts` sobe tudo com `getPublicUrl`. O
+ * endpoint `/api/v1/decks` do BrainHexPDF existe por causa do Content-Type: o
+ * gateway publico serve `.html` como `text/plain`. Isso NAO nos afeta aqui,
+ * porque o app baixa o HTML e injeta inline (ver DocumentBlock) exatamente por
+ * esse motivo -- `fetch().text()` le os bytes independente do Content-Type.
+ *
+ * Convertemos SEMPRE que a origem do app e conhecida, sem comparar origens: o
+ * endpoint de deck e um atalho do servidor, o arquivo mora no Storage, e o
+ * Supabase nao serve essa rota -- um "acerto" de origem ali seria coincidencia
+ * sem valor.
+ */
+function deckComoUrlPublicaDeStorage(rawUrl: string): string | null {
+  const referencia = extrairReferenciaDeDeck(rawUrl);
+  if (!referencia) return null;
+
+  return reancorarNaOrigemDoApp({
+    appOrigin: getSupabaseOrigin(),
+    bucket: referencia.bucket,
+    objectPath: referencia.objectPath,
+    search: referencia.search,
+  });
 }
 
 export function looksLikeStorageObjectPath(rawValue: string) {
@@ -94,6 +126,9 @@ export function buildSupabasePublicStorageUrl(
   const trimmed = String(rawUrl ?? "").trim();
   if (!trimmed) return trimmed;
 
+  const deck = deckComoUrlPublicaDeStorage(trimmed);
+  if (deck) return deck;
+
   const parsed = parseSupabaseStorageUrl(trimmed);
   if (parsed) {
     // Mesma desconfianca do resolve: origem estranha ao app nao serve, mesmo
@@ -153,6 +188,9 @@ export async function resolveSupabaseStorageUrl(
   rawUrl: string,
   options: ResolveStorageUrlOptions = {}
 ) {
+  const deck = deckComoUrlPublicaDeStorage(rawUrl);
+  if (deck) return deck;
+
   const parsed = parseSupabaseStorageUrl(rawUrl);
   const expiresIn = options.expiresIn ?? 60 * 60;
 

@@ -18,6 +18,7 @@ import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { shouldHideChecklist, shouldHideNotes, shouldHideQuiz, withHideParams } from "@/utils/contentVisibility";
 import type { DeckProgressEvent } from "@/utils/deckProgressMessage";
 import {
+  extrairReferenciaDeDeck,
   hostSoAlcancavelNoDeploy,
   reancorarDeckNaOrigemPublica,
 } from "@/utils/storageOrigin";
@@ -845,13 +846,13 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent }: P
       };
     }
 
-    // Deck com host que so existe na rede do deploy: nao passa por
-    // resolveSupabaseStorageUrl (nao e URL de storage) e nao ha DNS que o
-    // celular resolva. Ou trocamos o host por uma origem publica configurada,
-    // ou dizemos o que aconteceu -- o que nao serve e a tela branca com
-    // net::ERR_NAME_NOT_RESOLVED, que nao diz a ninguem que o problema e de
-    // configuracao do deploy.
-    if (hostSoAlcancavelNoDeploy(sourceUrl)) {
+    // Deck com host que so existe na rede do deploy (APP_URL mal configurado no
+    // servidor). O arquivo em si esta no bucket publico, como todo o resto do
+    // material: resolveSupabaseStorageUrl converte a URL do endpoint de deck na
+    // URL publica de storage. Isso e tratado la dentro; aqui so cuidamos do que
+    // sobra -- URL interna que NAO e de deck e portanto nao tem como ser
+    // remontada a partir do caminho.
+    if (hostSoAlcancavelNoDeploy(sourceUrl) && !extrairReferenciaDeDeck(sourceUrl)) {
       const publica = reancorarDeckNaOrigemPublica({
         deckUrl: sourceUrl,
         publicOrigin: process.env.EXPO_PUBLIC_BRAINHEXPDF_URL ?? null,
@@ -861,10 +862,13 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent }: P
         setResolveError(null);
         setResolvedUrl(publica);
       } else {
+        // Melhor um erro que se explica do que tela branca com
+        // net::ERR_NAME_NOT_RESOLVED, que nao diz a ninguem que o problema e de
+        // configuracao do deploy.
         setResolveError(
-          "A apresentação foi gravada com um endereço interno do servidor, que este " +
-            "dispositivo não alcança. Configure APP_URL no serviço de apresentações " +
-            "(ou EXPO_PUBLIC_BRAINHEXPDF_URL no app) e gere o material de novo."
+          "Este material foi gravado com um endereço interno do servidor, que este " +
+            "dispositivo não alcança. Configure APP_URL no serviço que gerou o " +
+            "arquivo e gere o material de novo."
         );
         setResolvedUrl(sourceUrl);
       }
