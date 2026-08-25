@@ -8,9 +8,11 @@ import type {
   PersonalizacaoJobRecord,
   PersonalizacaoListResponse,
   PersonalizacaoProgressDirectPayload,
+  ObterSugestaoMaterialParams,
   PersonalizacaoRecord,
   PersonalizarPayload,
   SubscribePersonalizacoesClasseParams,
+  SugestaoMaterialResponse,
 } from "@/services/personalizacao/types";
 
 export interface IPersonalizacaoProvider {
@@ -26,6 +28,17 @@ export interface IPersonalizacaoProvider {
   listarPersonalizacoesPersistidasPerfil(
     params: ListarPersonalizacoesPerfilParams
   ): Promise<PersonalizacaoListResponse>;
+
+  /**
+   * Ordem aconselhada de consumo do material do aluno num tópico (GET HTTP).
+   *
+   * Rota HTTP e não leitura direta do Supabase: criar a sugestão exige o motor,
+   * que roda no servidor. A primeira chamada cria; as seguintes devolvem a mesma
+   * até o ciclo de telemetria revisar.
+   */
+  obterSugestaoMaterial(
+    params: ObterSugestaoMaterialParams
+  ): Promise<SugestaoMaterialResponse | null>;
 
   /** Lista jobs de personalização em execução/concluídos. */
   listarJobsPersistidosAluno(

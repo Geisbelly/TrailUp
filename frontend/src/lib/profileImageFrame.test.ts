@@ -6,10 +6,10 @@ import {
 } from "./profileImageFrame";
 
 // Cores-assinatura reais dos perfis (microservice/src/constants/brainHex.ts).
-const CONQUEROR = "#d7263d";
+const DAREDEVIL_VERMELHO = "#d7263d"; // Aventureiro (conferido em brainHex.ts)
 const MASTERMIND = "#5b3fd9";
 const SURVIVOR = "#4e5a66";
-const DAREDEVIL = "#f4623a";
+const SOCIALIZER = "#f4623a";
 
 describe("clarearParaFundoEscuro", () => {
   it("clareia cor escura demais ate ficar visivel no fundo escuro", () => {
@@ -24,15 +24,15 @@ describe("clarearParaFundoEscuro", () => {
     expect(r).toBeGreaterThan(g);
   });
 
-  it("preserva o matiz do vermelho do Conquistador", () => {
-    const ajustada = clarearParaFundoEscuro(CONQUEROR);
+  it("preserva o matiz do vermelho do Aventureiro", () => {
+    const ajustada = clarearParaFundoEscuro(DAREDEVIL_VERMELHO);
     const [r, g, b] = [1, 3, 5].map((i) => parseInt(ajustada.slice(i, i + 2), 16));
     expect(r).toBeGreaterThan(g);
     expect(r).toBeGreaterThan(b);
   });
 
   it("nao mexe em cor que ja tem contraste suficiente", () => {
-    expect(clarearParaFundoEscuro(DAREDEVIL)).toBe(DAREDEVIL);
+    expect(clarearParaFundoEscuro(SOCIALIZER)).toBe(SOCIALIZER);
   });
 
   it("aguenta o cinza do Sobrevivente sem virar branco", () => {
@@ -62,7 +62,7 @@ describe("corComAlpha", () => {
 
 describe("buildProfileImageFrame", () => {
   it("deriva borda, glow e fundo da cor do perfil", () => {
-    const frame = buildProfileImageFrame(CONQUEROR);
+    const frame = buildProfileImageFrame(DAREDEVIL_VERMELHO);
 
     expect(frame.accent).toMatch(/^#[0-9a-f]{6}$/i);
     expect(frame.borda).toMatch(/^rgba\(/);
@@ -71,7 +71,7 @@ describe("buildProfileImageFrame", () => {
   });
 
   it("perfis diferentes produzem molduras diferentes", () => {
-    expect(buildProfileImageFrame(CONQUEROR).accent).not.toBe(
+    expect(buildProfileImageFrame(DAREDEVIL_VERMELHO).accent).not.toBe(
       buildProfileImageFrame(MASTERMIND).accent,
     );
   });
@@ -103,18 +103,18 @@ describe("contraste da legenda (texto pequeno)", () => {
   };
 
   it.each([
-    ["Conqueror", "#d7263d"],
+    ["Daredevil", "#d7263d"],
     ["Mastermind", "#5b3fd9"],
     ["Seeker", "#17a398"],
     ["Survivor", "#4e5a66"],
-    ["Daredevil", "#f4623a"],
+    ["Socializer", "#f4623a"],
   ])("legenda do %s alcanca AAA (7:1) sobre o fundo do card", (_nome, cor) => {
     const frame = buildProfileImageFrame(cor);
     expect(razao(frame.accentTexto, "#161a27")).toBeGreaterThanOrEqual(7);
   });
 
   it("o traco pode ficar mais escuro que a legenda (3:1 basta pra borda)", () => {
-    const frame = buildProfileImageFrame(CONQUEROR);
+    const frame = buildProfileImageFrame(DAREDEVIL_VERMELHO);
     expect(razao(frame.accent, "#161a27")).toBeGreaterThanOrEqual(3);
     expect(razao(frame.accentTexto, "#161a27")).toBeGreaterThanOrEqual(razao(frame.accent, "#161a27"));
   });

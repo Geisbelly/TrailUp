@@ -2776,6 +2776,56 @@ async def obter_personalizacao_media_status(
     )
 
 
+@router.get(
+    "/sugestao/{aluno_id}/{topico_id}",
+    response_model=SugestaoMaterialResponse,
+)
+async def obter_sugestao_de_material(
+    aluno_id: str,
+    topico_id: int,
+    user: UserContext = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> SugestaoMaterialResponse:
+    """Ordem aconselhada de consumo do material do aluno naquele tópico.
+
+    Rota própria porque o app lê as personalizações direto do Supabase — a
+    sugestão, não: criá-la exige o motor, que é servidor. Cria na primeira
+    chamada e devolve a mesma nas seguintes; mudanças vêm por revisão no ciclo
+    de telemetria, nunca por regeneração a cada GET (regerar apagaria a história
+    que a métrica de efetividade compara).
+
+    Os formatos disponíveis são lidos do banco, não recebidos do cliente: quem
+    decide sobre o que se pode ordenar é o material que existe.
+    """
+    if user.is_aluno and (user.aluno_id or user.user_id) == aluno_id:
+        pass
+    elif user.is_professor:
+        if not user.professor_liberado:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Professor sem liberacao de acesso.",
+            )
+        await ensure_professor_access(aluno_id, user, session)
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Perfil sem acesso a sugestao de material.",
+        )
+
+    records = await ConteudoPersonalizadoRepository(session).buscar_por_aluno(
+        aluno_id, topico_id=topico_id, limit=50
+    )
+    sugestao = await _resolver_sugestao_do_aluno(
+        session,
+        aluno_id=aluno_id,
+        topico_id=topico_id,
+        itens=[_to_response(r) for r in records],
+    )
+    # Sem material gerado ainda não há o que ordenar. Uma resposta vazia deixa o
+    # app cair na ordem padrão dele em vez de tratar isso como erro.
+    return sugestao or SugestaoMaterialResponse()
+
+
 @router.get("/{aluno_id}", response_model=PersonalizacaoListResponse)
 async def listar_personalizacoes(
     aluno_id: str,

@@ -45,12 +45,14 @@ import {
 } from "@/interfaces/personalizacao/IAContracts";
 import { styles } from "@/styles/trilhaTopicoStyles";
 import { buildContentBlocks } from "@/utils/contentBlocks";
+import { ordenarBlocosPorSugestao } from "@/utils/materialSuggestion";
 import { inferModoApresentacao } from "@/utils/presentationOrder";
 import {
   clearTrilhaCheckpoint,
   saveTrilhaCheckpoint,
 } from "@/utils/trilhaCheckpoint";
 import { useCheckpointResume } from "@/hooks/trilha/useCheckpointResume";
+import { useMaterialSuggestion } from "@/hooks/trilha/useMaterialSuggestion";
 import { usePersonalizedFlow } from "@/hooks/trilha/usePersonalizedFlow";
 import { useStudyTimeTracking } from "@/hooks/trilha/useStudyTimeTracking";
 import { useTelemetryHandlers } from "@/hooks/trilha/useTelemetryHandlers";
@@ -590,9 +592,20 @@ export default function TrilhaConteudoScreen() {
     return progressoTopico.pct;
   }, [progressoTopico.pct]);
 
+  const sugestaoMaterial = useMaterialSuggestion({
+    alunoId: usuario?.id ?? null,
+    topicoId,
+  });
+
   const conteudoBlocks = useMemo(
-    () => (atualBlock?.kind === "conteudo" ? buildContentBlocks(atualBlock.conteudo) : []),
-    [atualBlock]
+    () =>
+      atualBlock?.kind === "conteudo"
+        ? // A sugestao entra APOS a montagem dos blocos, nao no lugar dela: ela
+          // opina sobre a ordem dos formatos do mesmo conteudo, e o que nao e
+          // formato sugerivel continua onde o professor deixou.
+          ordenarBlocosPorSugestao(buildContentBlocks(atualBlock.conteudo), sugestaoMaterial)
+        : [],
+    [atualBlock, sugestaoMaterial]
   );
   const currentContentItemKey = useMemo(() => {
     if (!atualBlock || atualBlock.kind !== "conteudo") return null;
