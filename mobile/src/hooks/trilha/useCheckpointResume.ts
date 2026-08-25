@@ -24,6 +24,16 @@ export function useCheckpointResume(args: {
   checkpointParams: TrilhaCheckpointKeyParams;
   topicoJaIniciado: boolean;
   topicoConcluido: boolean;
+  /**
+   * A lista de blocos ja esta completa?
+   *
+   * Enquanto a personalizacao carrega, `blocks` so tem o material do professor.
+   * Resolver o checkpoint contra essa lista parcial nao acha o bloco
+   * personalizado onde o aluno parou, cai no fallback de inicio e -- pior --
+   * marca `primeiraVez = false`, entao a hidratacao nao tenta de novo quando o
+   * resto chega. E a razao de a trilha "sempre voltar pro comeco".
+   */
+  blocosProntos: boolean;
 }): {
   index: number;
   mostrarResumo: boolean;
@@ -42,6 +52,7 @@ export function useCheckpointResume(args: {
     checkpointParams,
     topicoJaIniciado,
     topicoConcluido,
+    blocosProntos,
   } = args;
 
   const [index, setIndex] = useState(-1);
@@ -53,7 +64,7 @@ export function useCheckpointResume(args: {
   const checkpointHydratedRef = useRef(false);
 
   useEffect(() => {
-    if (!primeiraVez || blocks.length === 0 || !topicoId) return;
+    if (!primeiraVez || !blocosProntos || blocks.length === 0 || !topicoId) return;
 
     let active = true;
 
@@ -103,7 +114,16 @@ export function useCheckpointResume(args: {
     return () => {
       active = false;
     };
-  }, [blocks, checkpointParams, primeiraVez, topico?.ultima_atividade, topicoConcluido, topicoId, topicoJaIniciado]);
+  }, [
+    blocks,
+    blocosProntos,
+    checkpointParams,
+    primeiraVez,
+    topico?.ultima_atividade,
+    topicoConcluido,
+    topicoId,
+    topicoJaIniciado,
+  ]);
 
   return {
     index,

@@ -421,8 +421,10 @@ export default function RankingHome() {
           </View>
 
           {/* ── Ornamento de rodapé ── */}
-          <View style={{ marginTop: 32, opacity: 0.4 }}>
-            <OrnamentDivider color={Color.colorWhite} />
+          {/* A atenuação vai na cor, não num wrapper com `opacity`: a camada de
+              render que o Android cria pra opacidade recortava os glifos. */}
+          <View style={{ marginTop: 32 }}>
+            <OrnamentDivider color={Color.colorWhite} opacidade={0.4} />
           </View>
         </ScrollView>
       </SafeAreaView>

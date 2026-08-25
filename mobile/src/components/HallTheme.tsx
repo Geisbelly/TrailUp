@@ -4,6 +4,7 @@
  * Importar em qualquer tela para aplicar a temática.
  */
 
+import { coresDoDivisor } from "@/components/ornamentDividerColors";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React from "react";
@@ -182,9 +183,20 @@ export function HallBackground({
 /**
  * Divisor ornamental com fleur-de-lis e losangos flanqueados por linhas douradas.
  */
-export function OrnamentDivider({ color }: { color: string }) {
-  const dim = tinycolor(color).setAlpha(0.55).toRgbString();
-  const bright = tinycolor(color).lighten(15).toHexString();
+export function OrnamentDivider({
+  color,
+  opacidade,
+}: {
+  color: string;
+  /**
+   * Atenuacao do divisor. Use ISTO em vez de envolver o componente num
+   * `<View style={{ opacity }}>`: no Android a opacidade promove a View a uma
+   * camada de render propria, e os glifos da fonte de icone saem recortados ate
+   * um repaint. Ver ornamentDividerColors.ts.
+   */
+  opacidade?: number;
+}) {
+  const { dim, bright } = coresDoDivisor(color, opacidade);
   return (
     <View style={ornStyles.row}>
       <View style={[ornStyles.line, { backgroundColor: dim }]} />
@@ -229,6 +241,10 @@ const ornStyles = StyleSheet.create({
     alignItems: "center",
     width: "100%",
     marginVertical: 6,
+    // Altura explicita: sem ela a linha depende da metrica da fonte de
+    // icone, que resolve depois do primeiro layout -- e a fleur-de-lis (18px)
+    // chegava a ser cortada na primeira pintura.
+    minHeight: 22,
   },
   line: { flex: 1, height: 1 },
 });

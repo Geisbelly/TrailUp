@@ -445,6 +445,7 @@ export default function TrilhaConteudoScreen() {
     checkpointParams,
     topicoJaIniciado,
     topicoConcluido,
+    blocosProntos: !personalizacaoCarregando,
   });
 
   useEffect(() => {
@@ -535,7 +536,7 @@ export default function TrilhaConteudoScreen() {
       return;
     }
 
-    if (mostrarResumo || index < 0 || !atualBlock) {
+    if (mostrarResumo) {
       void saveTrilhaCheckpoint(checkpointParams, {
         mostrarResumo: true,
         blockKind: null,
@@ -545,6 +546,13 @@ export default function TrilhaConteudoScreen() {
       });
       return;
     }
+
+    // Sem resumo na tela mas sem bloco atual = estado transitorio: a lista de
+    // blocos acabou de mudar (personalizacao chegou, "pular conteudos" ligou) e
+    // o indice ainda nao foi reencaixado. Gravar "mostrarResumo" aqui apagava o
+    // checkpoint bom, e na proxima abertura a trilha comecava do zero. Melhor
+    // manter o que ja estava gravado ate a lista assentar.
+    if (index < 0 || !atualBlock) return;
 
     const blockId =
       atualBlock.kind === "conteudo"
