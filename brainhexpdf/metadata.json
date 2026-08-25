@@ -1,0 +1,8 @@
+{
+  "name": "TrailUp BrainHex - Microserviço & Gerador de Slides",
+  "description": "Microserviço RESTful para geração de apresentações de slides pedagógicas a partir de conteúdos, dividindo cada slide por assunto com narrativa temática e perfis psicopedagógicos BrainHex para a proposta TrailUp.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

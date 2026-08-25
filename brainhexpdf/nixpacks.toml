@@ -1,0 +1,7 @@
+# Sobrepõe o autodetect do Nixpacks: ele identifica este repo como app
+# estática (Vite + index.html na raiz) e serve o dist/ via Caddy, ignorando
+# que o build também gera dist/server.cjs (esbuild) — o servidor Express
+# (rotas /api/*, render-and-store, decks) nunca sobe nesse cenário.
+# Forçamos o start real aqui.
+[start]
+cmd = "node dist/server.cjs"
