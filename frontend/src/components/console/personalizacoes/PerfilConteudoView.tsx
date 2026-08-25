@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { markdownUrlTransform } from "./markdownUrlTransform";
+import { buildProfileImageFrame } from "@/lib/profileImageFrame";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -59,7 +60,8 @@ function materialBucket(material: Record<string, unknown> | null): string | null
 // anterior ja dava aos subtopicos. A variante `prose-trailup`
 // (tailwind.config.ts) amarra as cores aos tokens do tema - o `prose` puro
 // assume tema claro e o app e escuro por padrao, sem a classe "dark".
-function MarkdownView({ text }: { text: string }) {
+function MarkdownView({ text, corDoPerfil }: { text: string; corDoPerfil?: string }) {
+  const moldura = buildProfileImageFrame(corDoPerfil);
   return (
     <div className="prose prose-sm prose-trailup max-w-none">
       <ReactMarkdown
@@ -70,6 +72,26 @@ function MarkdownView({ text }: { text: string }) {
         urlTransform={markdownUrlTransform}
         components={{
           h2: ({ children }) => <h2 className="text-primary-light">{children}</h2>,
+          // Imagem do professor na estetica do perfil: borda e glow na
+          // cor-assinatura, sem tocar nos pixels - GIF continua animando, o que
+          // nenhuma reilustracao por IA preserva. Ver profileImageFrame.ts.
+          img: ({ src, alt }) => (
+            <figure
+              className="my-4 rounded-xl border p-2"
+              style={{
+                borderColor: moldura.borda,
+                backgroundColor: moldura.fundo,
+                boxShadow: `0 0 0 1px ${moldura.glow}, 0 8px 24px -12px ${moldura.glow}`,
+              }}
+            >
+              <img src={typeof src === "string" ? src : undefined} alt={alt ?? ""} className="mx-auto max-w-full rounded-lg" />
+              {alt && (
+                <figcaption className="mt-2 text-center text-xs" style={{ color: moldura.accentTexto }}>
+                  {alt}
+                </figcaption>
+              )}
+            </figure>
+          ),
           a: ({ children, href }) => (
             <a href={href} target="_blank" rel="noreferrer">
               {children}
@@ -83,7 +105,7 @@ function MarkdownView({ text }: { text: string }) {
   );
 }
 
-function TextoMaterialContent({ url }: { url: string }) {
+function TextoMaterialContent({ url, corDoPerfil }: { url: string; corDoPerfil?: string }) {
   const [state, setState] = useState<{ loading: boolean; text: string | null; error: string | null }>({
     loading: true,
     text: null,
@@ -136,7 +158,7 @@ function TextoMaterialContent({ url }: { url: string }) {
   }
   return (
     <div className="max-h-[55vh] overflow-y-auto pr-2">
-      <MarkdownView text={state.text} />
+      <MarkdownView text={state.text} corDoPerfil={corDoPerfil} />
     </div>
   );
 }
@@ -418,11 +440,13 @@ function RegenerarConteudoPainel({
 }
 
 function MaterialTabContent({
+  corDoPerfil,
   tipo,
   material,
   fallbackUpdatedAt,
   regenerarContext,
 }: {
+  corDoPerfil?: string;
   tipo: MaterialTipo;
   material: Record<string, unknown> | null;
   fallbackUpdatedAt?: string | null;
@@ -477,7 +501,7 @@ function MaterialTabContent({
         <p className="text-sm text-muted-foreground py-8 text-center">Esta parte ainda não está disponível.</p>
       ) : tipo === "markdown" ? (
         <div>
-          <TextoMaterialContent url={url} />
+          <TextoMaterialContent url={url} corDoPerfil={corDoPerfil} />
           {regenerarContext && <RegenerarConteudoPainel kind="documento" context={regenerarContext} />}
         </div>
       ) : tipo === "audio" ? (
@@ -578,6 +602,7 @@ export function PerfilConteudoView({
       {disponiveis.map(({ key }) => (
         <TabsContent key={key} value={key}>
           <MaterialTabContent
+            corDoPerfil={item.cor}
             tipo={key}
             material={getMaterial(item.materiais, key)}
             fallbackUpdatedAt={item.personalizacao?.updated_at ?? item.gerado_em}

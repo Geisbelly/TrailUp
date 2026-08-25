@@ -12,6 +12,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-nati
 import Markdown, { renderRules } from "react-native-markdown-display";
 import { SvgXml } from "react-native-svg";
 import { decodeInlineSvgDataUri } from "@/utils/inlineSvgDataUri";
+import tinycolor from "tinycolor2";
 
 type Props = {
   payload: any;
@@ -32,7 +33,16 @@ function readString(value: any, ...keys: string[]) {
 // renderiza SVG, entao esta regra desenha com react-native-svg; qualquer outra
 // imagem (foto do professor, png/jpeg) segue pelo renderizador padrao da
 // biblioteca, sem mudanca de comportamento.
-const markdownRules = {
+function criarMarkdownRules(palette: ReturnType<typeof getProfileShellPalette>) {
+  // Moldura do perfil em volta da imagem do professor - mesma ideia do console
+  // (frontend/src/lib/profileImageFrame.ts): a imagem entra na estetica do
+  // perfil sem ninguem tocar nos pixels dela, entao gif continua animando.
+  const moldura = {
+    borderColor: tinycolor(palette.accent).setAlpha(0.55).toRgbString(),
+    backgroundColor: tinycolor(palette.accent).setAlpha(0.06).toRgbString(),
+  };
+
+  return {
   image: (
     node: any,
     children: any,
@@ -46,9 +56,12 @@ const markdownRules = {
       // renderRules.image e opcional no tipo da biblioteca; na pratica sempre
       // existe, mas nao vale derrubar a tela do aluno por causa disso.
       const padrao = renderRules.image;
-      return padrao
-        ? padrao(node, children, parent, estilos, allowedImageHandlers, defaultImageHandler)
-        : null;
+      if (!padrao) return null;
+      return (
+        <View key={node.key} style={[styles.imagemEmoldurada, moldura]}>
+          {padrao(node, children, parent, estilos, allowedImageHandlers, defaultImageHandler)}
+        </View>
+      );
     }
     return (
       <View key={node.key} style={[styles.diagrama, { aspectRatio: inline.aspectRatio }]}>
@@ -56,7 +69,8 @@ const markdownRules = {
       </View>
     );
   },
-};
+  };
+}
 
 function splitByH2(content: string): string[] {
   const parts = content.split(/(?=^##\s)/m);
@@ -69,6 +83,7 @@ export function MarkdownBlock({ payload }: Props) {
     () => getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null),
     [usuario?.perfis]
   );
+  const markdownRules = useMemo(() => criarMarkdownRules(palette), [palette]);
 
   const inlineMarkdown =
     typeof payload === "string"
@@ -286,6 +301,12 @@ const styles = StyleSheet.create({
   diagrama: {
     width: "100%",
     marginVertical: 12,
+  },
+  imagemEmoldurada: {
+    marginVertical: 12,
+    padding: 6,
+    borderWidth: 1,
+    borderRadius: 14,
   },
   wrapper: {
     marginTop: 6,
