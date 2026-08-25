@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
+import { FORGOT_PASSWORD_PATH } from "@/features/auth/resetPasswordRoute";
 
 const loginSchema = z.object({
   email: z.string().email("Email inválido"),
@@ -226,7 +227,15 @@ export default function Login() {
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="password">Senha</Label>
+                <Link
+                  to={FORGOT_PASSWORD_PATH}
+                  className="text-xs text-primary hover:underline underline-offset-2"
+                >
+                  Esqueci minha senha
+                </Link>
+              </div>
               <div className="relative group">
               <Lock className="absolute left-3 top-3 h-4 w-4 text-zinc-500 group-focus-within:text-primary transition-colors" />
               <Input

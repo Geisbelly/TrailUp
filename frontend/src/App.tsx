@@ -9,6 +9,9 @@ import Index from "./pages/Index";
 import CadastroAluno from "./pages/CadastroAluno";
 import CadastroProfessor from "./pages/CadastroProfessor";
 import Login from "./pages/Login";
+import EsqueciSenha from "./pages/EsqueciSenha";
+import RedefinirSenha from "./pages/RedefinirSenha";
+import { FORGOT_PASSWORD_PATH, RESET_PASSWORD_PATH } from "./features/auth/resetPasswordRoute";
 import Console from "./pages/Console";
 import { CONSOLE_SECTIONS, consolePathForView } from "./pages/consoleSections";
 import { MATERIAL_ROUTE_PATH } from "./components/console/personalizacoes/materialRoute";
@@ -37,6 +40,8 @@ const App = () => (
             <Route path="/cadastro-professor" element={<CadastroProfessor />} />
             <Route path="/auth/confirmacao" element={<AuthConfirm />} />
             <Route path="/login" element={<Login />} />
+            <Route path={FORGOT_PASSWORD_PATH} element={<EsqueciSenha />} />
+            <Route path={RESET_PASSWORD_PATH} element={<RedefinirSenha />} />
             {/* Uma rota por aba do console, geradas da mesma lista que a barra
                 de navegacao usa (consoleSections.ts) - sem caminho escrito a
                 mao em dois lugares. A rota do editor de topico e a unica

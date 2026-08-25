@@ -20,6 +20,7 @@ import {
 import { Save, Trash2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import type { ProfessorUpdateData } from "@/pages/Console";
+import AlterarSenhaCard from "./AlterarSenhaCard";
 
 interface ProfileSectionProps {
   professorData: {
@@ -219,6 +220,8 @@ export default function ProfileSection({ professorData, onUpdate, isLoading }: P
           </Dialog>
         </CardContent>
       </Card>
+
+      <AlterarSenhaCard />
     </div>
   );
 }
