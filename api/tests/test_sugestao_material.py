@@ -175,3 +175,229 @@ def test_formato_desconhecido_na_lista_disponivel_e_ignorado():
     )
 
     assert _ordem(resultado) == ["markdown"]
+
+
+# --- Revisão (fase 2) ------------------------------------------------------
+
+from app.services.sugestao_material import (  # noqa: E402
+    LIMIAR_MUDANCA_PADRAO,
+    revisar_ordem_material,
+)
+
+
+def _ordem_base() -> list[dict]:
+    """Ordem inicial de um Estrategista: texto na frente, áudio atrás."""
+    return [
+        {"formato": "markdown", "posicao": 1, "score": 1.0, "motivos": ["Estrategista: profundidade e estrutura"]},
+        {"formato": "audio", "posicao": 2, "score": 0.3, "motivos": []},
+    ]
+
+
+def _sinal(**kwargs) -> dict:
+    base = {
+        "skimming": False,
+        "leitura_lenta": False,
+        "acertos": None,
+        "percentual": None,
+        "active_sec": 0.0,
+        "tempo_min": None,
+    }
+    base.update(kwargs)
+    return base
+
+
+def test_sem_evidencia_suficiente_mantem_e_diz_por_que():
+    decisao = revisar_ordem_material(
+        ordem_atual=_ordem_base(),
+        sinais_por_formato={"markdown": _sinal(skimming=True)},
+    )
+
+    assert decisao["acao"] == "mantida"
+    assert "evidência insuficiente" in decisao["motivos"][0]
+    # A decisão de NÃO mexer também é registrada: sem isso não se distingue um
+    # motor estável de um motor que nunca rodou.
+    assert decisao["evidencia"]["formatos_com_evidencia"] == 1
+
+
+def test_skimming_no_texto_derruba_e_audio_assume():
+    decisao = revisar_ordem_material(
+        ordem_atual=_ordem_base(),
+        sinais_por_formato={
+            "markdown": _sinal(skimming=True, active_sec=40),
+            "audio": _sinal(acertos=80, active_sec=300),
+        },
+    )
+
+    assert decisao["acao"] == "revisada"
+    assert [i["formato"] for i in decisao["ordem"]] == ["audio", "markdown"]
+    assert any("passou os olhos" in m for m in decisao["motivos"])
+
+
+def test_leitura_lenta_com_bom_desempenho_nao_e_penalizada():
+    # O formato funciona, o aluno só leva mais tempo. Penalizar aqui empurraria
+    # para baixo justamente o material que está dando resultado.
+    decisao = revisar_ordem_material(
+        ordem_atual=_ordem_base(),
+        sinais_por_formato={
+            "markdown": _sinal(leitura_lenta=True, acertos=85, active_sec=200),
+            "audio": _sinal(acertos=50, active_sec=200),
+        },
+    )
+
+    assert [i["formato"] for i in decisao["ordem"]] == ["markdown", "audio"]
+    assert any("bom desempenho" in m for m in decisao["motivos"])
+
+
+def test_leitura_lenta_com_desempenho_ruim_penaliza():
+    lento_ruim = revisar_ordem_material(
+        ordem_atual=_ordem_base(),
+        sinais_por_formato={
+            "markdown": _sinal(leitura_lenta=True, acertos=30, active_sec=200),
+            "audio": _sinal(acertos=40, active_sec=200),
+        },
+    )
+
+    markdown = next(i for i in lento_ruim["ordem"] if i["formato"] == "markdown")
+    assert markdown["score"] < 1.0
+
+
+def test_material_abandonado_desce():
+    decisao = revisar_ordem_material(
+        ordem_atual=_ordem_base(),
+        sinais_por_formato={
+            # Tempo gasto sem avançar é abandono, não dificuldade momentânea.
+            "markdown": _sinal(percentual=10, tempo_min=8, active_sec=200),
+            "audio": _sinal(percentual=90, acertos=80, active_sec=200),
+        },
+    )
+
+    assert decisao["acao"] == "revisada"
+    assert decisao["ordem"][0]["formato"] == "audio"
+    assert any("abandonado" in m for m in decisao["motivos"])
+
+
+def test_percentual_baixo_com_pouco_tempo_nao_conta_como_abandono():
+    # Aluno abriu e saiu em 1 minuto: não deu tempo de ser abandono.
+    decisao = revisar_ordem_material(
+        ordem_atual=_ordem_base(),
+        sinais_por_formato={
+            "markdown": _sinal(percentual=10, tempo_min=1, active_sec=60),
+            "audio": _sinal(percentual=20, tempo_min=1, active_sec=60),
+        },
+    )
+
+    assert decisao["acao"] == "mantida"
+
+
+def test_mudanca_abaixo_do_limiar_nao_vira_revisao():
+    # Reordenar por diferença mínima faz o material "pular de lugar" sem motivo
+    # perceptível e polui a métrica com revisões que não significam nada.
+    quase_empate = [
+        {"formato": "markdown", "posicao": 1, "score": 0.50, "motivos": []},
+        {"formato": "audio", "posicao": 2, "score": 0.49, "motivos": []},
+    ]
+
+    # Penalidade pequena (leitura lenta sem desempenho = 0.25) inverte a ordem
+    # nesse quase-empate, mas fica abaixo do limiar pedido.
+    decisao = revisar_ordem_material(
+        ordem_atual=quase_empate,
+        sinais_por_formato={
+            "markdown": _sinal(leitura_lenta=True, acertos=40, active_sec=100),
+            "audio": _sinal(acertos=50, active_sec=100),
+        },
+        limiar_mudanca=0.4,
+    )
+
+    assert decisao["acao"] == "mantida"
+    assert "abaixo do limiar" in decisao["motivos"][0]
+    assert [i["formato"] for i in decisao["ordem"]] == ["markdown", "audio"]
+
+
+def test_sinais_que_nao_mudam_a_ordem_registram_mantida():
+    decisao = revisar_ordem_material(
+        ordem_atual=_ordem_base(),
+        sinais_por_formato={
+            "markdown": _sinal(acertos=90, active_sec=300),
+            "audio": _sinal(acertos=40, active_sec=100),
+        },
+    )
+
+    assert decisao["acao"] == "mantida"
+    assert decisao["evidencia"]["ordem_mudou"] is False
+
+
+def test_motivos_da_revisao_somam_aos_originais():
+    decisao = revisar_ordem_material(
+        ordem_atual=_ordem_base(),
+        sinais_por_formato={
+            "markdown": _sinal(skimming=True, active_sec=40),
+            "audio": _sinal(acertos=85, active_sec=300),
+        },
+    )
+
+    markdown = next(i for i in decisao["ordem"] if i["formato"] == "markdown")
+    # O log precisa mostrar por que o formato entrou E por que desceu depois.
+    assert "Estrategista: profundidade e estrutura" in markdown["motivos"]
+    assert any("passou os olhos" in m for m in markdown["motivos"])
+
+
+def test_evidencia_e_snapshot_com_os_numeros_que_a_decisao_viu():
+    sinais = {
+        "markdown": _sinal(skimming=True, active_sec=40),
+        "audio": _sinal(acertos=85, active_sec=300),
+    }
+
+    decisao = revisar_ordem_material(ordem_atual=_ordem_base(), sinais_por_formato=sinais)
+
+    assert decisao["evidencia"]["sinais"] == sinais
+    assert decisao["evidencia"]["limiar_mudanca"] == LIMIAR_MUDANCA_PADRAO
+    assert "maior_delta" in decisao["evidencia"]
+
+
+def test_formato_sem_sinal_mantem_o_score_original():
+    ordem = _ordem_base() + [{"formato": "cards", "posicao": 3, "score": 0.5, "motivos": []}]
+
+    decisao = revisar_ordem_material(
+        ordem_atual=ordem,
+        sinais_por_formato={
+            "markdown": _sinal(skimming=True, active_sec=40),
+            "audio": _sinal(acertos=85, active_sec=300),
+        },
+    )
+
+    cards = next(i for i in decisao["ordem"] if i["formato"] == "cards")
+    assert cards["score"] == 0.5
+
+
+def test_sem_ordem_anterior_nao_inventa_revisao():
+    decisao = revisar_ordem_material(ordem_atual=[], sinais_por_formato={})
+
+    assert decisao["acao"] == "mantida"
+    assert decisao["ordem"] == []
+    assert "sem sugestão anterior" in decisao["motivos"][0]
+
+
+def test_posicoes_sao_recalculadas_apos_revisar():
+    decisao = revisar_ordem_material(
+        ordem_atual=_ordem_base(),
+        sinais_por_formato={
+            "markdown": _sinal(skimming=True, active_sec=40),
+            "audio": _sinal(acertos=85, active_sec=300),
+        },
+    )
+
+    assert [i["posicao"] for i in decisao["ordem"]] == [1, 2]
+
+
+def test_revisao_e_reproduzivel():
+    entrada = dict(
+        ordem_atual=_ordem_base(),
+        sinais_por_formato={
+            "markdown": _sinal(skimming=True, active_sec=40),
+            "audio": _sinal(acertos=85, active_sec=300),
+        },
+    )
+
+    primeira = revisar_ordem_material(**entrada)
+    for _ in range(3):
+        assert revisar_ordem_material(**entrada) == primeira
