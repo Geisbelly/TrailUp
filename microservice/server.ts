@@ -22,6 +22,7 @@ import {
   selectAttachmentsForMarkdown,
 } from "./src/utils/markdownImages";
 import { replaceAsciiDiagramsWithSvg } from "./src/utils/asciiDiagram";
+import { describeError, summarizeAudioFailures, type AudioPartFailure } from "./src/utils/audioFailure";
 import { estimateAudioDurationSec } from "./src/utils/audioDuration";
 import { computeImageCues, type ImageCue } from "./src/utils/audioImageCues";
 import { computeAggregatedApresentacaoEntry } from "./src/lib/materialsMerge";
@@ -409,6 +410,9 @@ export async function archiveMultiPartToSupabase(params: {
   fence?:           GenerationFence;
   audioCoverImageUrl?: string;
   audioImageCues?: ImageCue[];
+  /** Falhas de sintese por parte, vindas de quem gerou o audio - sem isso o
+   * material fica "failed" sem motivo nenhum e o professor ve so "Falhou". */
+  audioFailures?:  AudioPartFailure[];
   log?:            Logger;
 }): Promise<{
   audioMp3Url: string | null;
@@ -418,6 +422,7 @@ export async function archiveMultiPartToSupabase(params: {
   persisted: PersistedMaterialsMerge | null;
 }> {
   const { storagePath, bucket, refId, parts, presentationResults, presentationTheme, personalizacaoId, fence, audioCoverImageUrl, audioImageCues } = params;
+  const falhasDeAudio: AudioPartFailure[] = [...(params.audioFailures ?? [])];
   const lg = params.log ?? log;
   const multiPart = parts.length > 1;
 
@@ -449,6 +454,7 @@ export async function archiveMultiPartToSupabase(params: {
         lg.info("áudio upload", { status: audioUrl ? "ok" : "falhou", ext: audioExt, parte: part.ordem });
       } catch (e) {
         lg.error("falha no upload de áudio", { err: e, parte: part.ordem });
+        falhasDeAudio.push({ ordem: part.ordem, motivo: `upload: ${describeError(e)}` });
       }
     }
     audioParts.push({
@@ -536,6 +542,10 @@ export async function archiveMultiPartToSupabase(params: {
           media_kind: "audio",
           generation_key: fence.generationKey,
           updated_at: now(),
+          // A API le failure_reason e mostra no card do formato
+          // (_material_error). Sem isso, "Falhou" nao dizia se foi cota,
+          // modelo indisponivel ou bug.
+          ...(allAudioOk ? {} : { failure_reason: summarizeAudioFailures(falhasDeAudio, parts.length) }),
           ...(audioMp3Url ? { bucket } : {}),
         },
         arquivo_url: audioMp3Url,
@@ -1125,11 +1135,15 @@ async function runPipeline(
       }),
   });
 
+  const audioFailures: AudioPartFailure[] = [];
   const audioByPart = audioSettled.map((result, index) => {
     if (result.status === "fulfilled") {
       return { mp3Base64: result.value.mp3 ?? null, wavBase64: result.value.wav ?? null };
     }
     jobLog.error("falha no áudio de uma parte", { parte: index + 1, err: result.reason });
+    // O motivo tambem VAI JUNTO do material (metadata.failure_reason), nao so
+    // pro log: e o que o professor le no console em vez de "Falhou" pelado.
+    audioFailures.push({ ordem: index + 1, motivo: describeError(result.reason) });
     return { mp3Base64: null, wavBase64: null };
   });
 
@@ -1182,6 +1196,7 @@ async function runPipeline(
     // precisar de uma segunda logica de selecao independente.
     audioCoverImageUrl: imagesForAudio[0]?.url,
     audioImageCues,
+    audioFailures,
     log:              jobLog,
   });
   if (!archived.persisted) {
