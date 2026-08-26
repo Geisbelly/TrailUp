@@ -6,6 +6,11 @@ import { EventoAluno } from "@/models/Evento";
 import { PerfilDoAluno } from "@/models/PerfilAluno";
 import { PosicaoDoAluno } from "@/models/RankAlunoPosicao";
 import { buildClasseAcademicMetrics, buildClasseResumoFallback } from "@/utils/classeMetrics";
+import {
+  agregarProgressoPersonalizado,
+  unificarContadores,
+  type ProgressoPersonalizado,
+} from "@/utils/progressoPersonalizado";
 
 export type MetricsCameraPermissionState = "unknown" | "granted" | "denied" | "unavailable";
 
@@ -251,7 +256,31 @@ type BuildMetricsViewModelParams = {
   cameraOptIn: boolean;
   cameraPermission: MetricsCameraPermissionState;
   battleState?: IABattleRuntimeState | null;
+  /**
+   * Agregado de `personalizacao_item_progresso` (ver TrilhaContext). Opcional
+   * para nao quebrar chamadas antigas -- ausente, os contadores voltam a
+   * mostrar so o material do professor.
+   */
+  progressoPersonalizado?: ProgressoPersonalizado | null;
 };
+
+/**
+ * Ids dos conteudos que o lado academico ja conhece.
+ *
+ * Servem para nao contar duas vezes: um `content:12` em
+ * personalizacao_item_progresso e o MESMO material que o `conteudo_aluno` 12,
+ * visto por outra tabela.
+ */
+function idsDeConteudoDaClasse(classe: Classe | null): number[] {
+  const ids: number[] = [];
+  for (const topico of (classe?.topicos ?? []) as any[]) {
+    for (const conteudo of (topico?.conteudos ?? []) as any[]) {
+      const id = Number(conteudo?.id);
+      if (Number.isFinite(id)) ids.push(id);
+    }
+  }
+  return ids;
+}
 
 export function buildProfileMetricsViewModel({
   classeAtual,
@@ -264,16 +293,35 @@ export function buildProfileMetricsViewModel({
   cameraOptIn,
   cameraPermission,
   battleState,
+  progressoPersonalizado,
 }: BuildMetricsViewModelParams): ProfileMetricsViewModel {
   const resumoConfiavel = buildClasseResumoFallback(classeAtual, classeAtual?.resumo ?? null);
   const academicMetrics = buildClasseAcademicMetrics(classeAtual);
   const totalTopicos = academicMetrics.totalTopicos;
   const concluidos = academicMetrics.topicosConcluidos;
   const emAndamento = academicMetrics.topicosEmAndamento;
-  const totalConteudos = academicMetrics.totalConteudos;
-  const conteudosConcluidos = academicMetrics.conteudosConcluidos;
-  const totalAtividades = academicMetrics.totalAtividades;
-  const atividadesConcluidas = academicMetrics.atividadesConcluidas;
+  // Os contadores somam os DOIS livros-caixa. Sem isto eles mostravam apenas o
+  // material do professor: "Arquivos lidos 1 / 4" com o aluno tendo lido muito
+  // mais, e "Desafios resolvidos 0" depois de responder os quizzes da
+  // apresentacao (que vivem em personalizacao_item_progresso, nao em
+  // atividade_aluno). Ver progressoPersonalizado.ts para a regra de
+  // nao-duplicacao.
+  const unificado = unificarContadores({
+    academico: {
+      conteudosConcluidos: academicMetrics.conteudosConcluidos,
+      totalConteudos: academicMetrics.totalConteudos,
+      atividadesConcluidas: academicMetrics.atividadesConcluidas,
+      totalAtividades: academicMetrics.totalAtividades,
+      tempoMin: academicMetrics.tempoTotalMin,
+      conteudoIds: idsDeConteudoDaClasse(classeAtual),
+    },
+    personalizado: progressoPersonalizado ?? agregarProgressoPersonalizado([]),
+  });
+
+  const totalConteudos = unificado.totalConteudos;
+  const conteudosConcluidos = unificado.conteudosConcluidos;
+  const totalAtividades = unificado.totalAtividades;
+  const atividadesConcluidas = unificado.atividadesConcluidas;
   const hasEstruturaDaClasse = totalTopicos > 0 || totalConteudos > 0 || totalAtividades > 0;
   const hasAtividades = totalAtividades > 0;
   const progresso = hasEstruturaDaClasse

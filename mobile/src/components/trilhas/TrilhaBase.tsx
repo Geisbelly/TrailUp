@@ -3,6 +3,8 @@ import { normalizeBrainHexProfile } from "@/constants/profileImages";
 import { useUsuario } from "@/context/SessaoContext";
 import { useTrilha } from "@/context/TrilhaContext";
 import { Color } from "@/styles/GlobalStyle";
+import { buildClasseAcademicMetrics } from "@/utils/classeMetrics";
+import { unificarContadores } from "@/utils/progressoPersonalizado";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import React from "react";
 import { StyleSheet, View } from "react-native";
@@ -20,6 +22,7 @@ export const TrilhaBase: React.FC = () => {
     visual,
     mapTheme,
     personalizedTopics,
+    progressoPersonalizado,
   } = useTrilha();
   const { usuario } = useUsuario();
   const palette = getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null);
@@ -37,8 +40,31 @@ export const TrilhaBase: React.FC = () => {
       : (classeAtual.resumo?.materia_nome ?? "Classe");
   const subtitulo =
     visual === "mapa" ? (mapTheme?.classLabel ?? "Reino da classe") : "Trilha";
+  // O progresso soma os DOIS livros-caixa. `getProgressoGeral` conta apenas
+  // conteudo/atividade do professor, entao a barra ficava parada enquanto o
+  // aluno avancava no material personalizado e nos quizzes da apresentacao --
+  // que e o "progresso desatualizado" relatado. Ver progressoPersonalizado.ts.
+  const academico = buildClasseAcademicMetrics(classeAtual);
+  const unificado = unificarContadores({
+    academico: {
+      conteudosConcluidos: academico.conteudosConcluidos,
+      totalConteudos: academico.totalConteudos,
+      atividadesConcluidas: academico.atividadesConcluidas,
+      totalAtividades: academico.totalAtividades,
+      conteudoIds: classeAtual.topicos.flatMap((topico: any) =>
+        ((topico?.conteudos ?? []) as any[])
+          .map((conteudo) => Number(conteudo?.id))
+          .filter((id) => Number.isFinite(id))
+      ),
+    },
+    personalizado: progressoPersonalizado,
+  });
+  const totalBlocos = unificado.totalConteudos + unificado.totalAtividades;
+  const blocosFeitos = unificado.conteudosConcluidos + unificado.atividadesConcluidas;
   const progressoBruto =
-    typeof (classeAtual as any).getProgressoGeral === "function"
+    totalBlocos > 0
+      ? (blocosFeitos / totalBlocos) * 100
+      : typeof (classeAtual as any).getProgressoGeral === "function"
       ? (classeAtual as any).getProgressoGeral()
       : ((classeAtual.resumo?.porcentagemConcluida as number | undefined) ?? 0);
   const progresso = Math.max(0, Math.min(100, Number(progressoBruto) || 0));

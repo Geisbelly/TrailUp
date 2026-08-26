@@ -40,6 +40,11 @@ import {
   computeSlideBonusPercent,
   isSlideItemKey,
 } from '@/utils/slideXpBonus';
+import {
+  agregarProgressoPersonalizado,
+  type LinhaProgressoItem,
+  type ProgressoPersonalizado,
+} from '@/utils/progressoPersonalizado';
 import { buildContentBlocks, isUrl } from '@/utils/contentBlocks';
 import { ensureCachedNativeContent } from '@/utils/nativeContentCache';
 import {
@@ -755,6 +760,7 @@ type TrilhaContextValue = {
   getNodePersonalizationHint: (topicoId: number) => PersonalizedNodeHint | null
   mapTheme: MapWorldTheme | null
   trilhaSlideBonusPercent: number
+  progressoPersonalizado: ProgressoPersonalizado
 }
 
 const TrilhaContext = createContext<TrilhaContextValue | null>(null)
@@ -770,6 +776,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
   const [carregando, setCarregando] = useState<boolean>(true)
   const [erro, setErro] = useState<Error | null>(null)
   const [slideBonusKeys, setSlideBonusKeys] = useState<Set<string>>(new Set())
+  const [progressoItens, setProgressoItens] = useState<LinhaProgressoItem[]>([])
 
   const [perfil, setPerfil] = useState<BrainHexProfile>('seeker')
   const visual: Visual = pickVisual(perfil)
@@ -1392,26 +1399,39 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
     const classeId = classeAtual?.classe_id
     const alunoId = usuario?.id
     setSlideBonusKeys(new Set())
+    setProgressoItens([])
     if (!classeId || !alunoId) return
 
     let cancelado = false
     ;(async () => {
+      // Antes esta consulta pedia só `topico_id, item_key` e filtrava
+      // `slide:%` -- servia apenas ao bônus de XP e jogava fora status,
+      // percentual, acertos e tempo. Era por isso que "Arquivos lidos",
+      // "Desafios resolvidos" e o tempo de estudo ignoravam tudo que o aluno
+      // fez no material personalizado e nos quizzes da apresentação: o dado
+      // existia no banco e ninguém lia. Agora vem a linha inteira, de TODOS os
+      // itens, e o bônus de slide passa a ser um recorte disso.
       const { data, error } = await supabase
         .from('personalizacao_item_progresso')
-        .select('topico_id, item_key')
+        .select(
+          'topico_id, item_key, item_kind, status, percentual_concluido, acertos_percentual, tempo_gasto_min'
+        )
         .eq('aluno_id', alunoId)
         .eq('classe_id', classeId)
-        .like('item_key', 'slide:%')
 
       if (cancelado) return
       if (error) {
-        console.warn('[TrilhaContext] Falha ao buscar bonus de XP de slides:', error)
+        console.warn('[TrilhaContext] Falha ao buscar progresso personalizado:', error)
         return
       }
 
+      const linhas = (data ?? []) as LinhaProgressoItem[]
+      setProgressoItens(linhas)
+
       const keys = new Set<string>()
-      for (const row of data ?? []) {
-        keys.add(buildSlideBonusDedupeKey(row.topico_id, row.item_key))
+      for (const row of linhas) {
+        if (!isSlideItemKey(String(row.item_key ?? ''))) continue
+        keys.add(buildSlideBonusDedupeKey(Number(row.topico_id), String(row.item_key)))
       }
       setSlideBonusKeys(keys)
     })()
@@ -1424,6 +1444,13 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
   const trilhaSlideBonusPercent = useMemo(
     () => computeSlideBonusPercent(slideBonusKeys),
     [slideBonusKeys]
+  )
+
+  // Segundo livro-caixa do progresso, agregado uma vez e compartilhado: as telas
+  // de métrica liam só o material do professor. Ver progressoPersonalizado.ts.
+  const progressoPersonalizado = useMemo(
+    () => agregarProgressoPersonalizado(progressoItens),
+    [progressoItens]
   )
 
   const { width: winW } = useWindowDimensions()
@@ -2025,6 +2052,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       getNodePersonalizationHint,
       mapTheme,
       trilhaSlideBonusPercent,
+      progressoPersonalizado,
     }),
     [
       carregando,
@@ -2053,6 +2081,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       getNodePersonalizationHint,
       mapTheme,
       trilhaSlideBonusPercent,
+      progressoPersonalizado,
     ]
   )
 

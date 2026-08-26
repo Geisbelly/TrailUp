@@ -45,7 +45,7 @@ const { width } = Dimensions.get("window");
 
 export default function PerfilHome() {
   const { usuario } = useUsuario();
-  const { classeAtual } = useTrilha();
+  const { classeAtual, progressoPersonalizado } = useTrilha();
   const { conquistas, carregando, eventos, posicoesDoAluno } =
     useConquistaRank();
   const { lastAnalysis, cameraOptIn, cameraPermission } = useMetricas();
@@ -120,6 +120,7 @@ export default function PerfilHome() {
         cameraOptIn,
         cameraPermission,
         battleState,
+        progressoPersonalizado,
       }),
     [
       battleState,
@@ -128,6 +129,7 @@ export default function PerfilHome() {
       classeAtual,
       conquistas,
       eventos,
+      progressoPersonalizado,
       lastAnalysis,
       lastBatchTimeMetrics,
       posicoesDoAluno,
