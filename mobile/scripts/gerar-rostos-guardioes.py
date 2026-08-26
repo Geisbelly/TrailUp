@@ -1,11 +1,18 @@
 """Recorta o rosto de cada guardiao a partir da arte de corpo inteiro.
 
-Uso:
-    python mobile/scripts/gerar-rostos-guardioes.py         microservice/src/assets/guardioes         mobile/src/assets/guardioes/rosto
+Uso (rodando de dentro de mobile/):
+    python scripts/gerar-rostos-guardioes.py         src/assets/guardioes         src/assets/guardioes/rosto
 
-Rode isto quando a arte oficial dos guardioes mudar. A fonte da verdade e
-`microservice/src/assets/guardioes/` -- os recortes sao derivados, nunca
+Rode isto quando a arte dos guardioes mudar. Os recortes sao derivados, nunca
 editados a mao (edicao manual dessincroniza sem deixar rastro).
+
+ORIGEM: use `mobile/src/assets/guardioes/`, NAO a copia do microservice.
+Ela existe e o CLAUDE.md trata o microservice como fonte da verdade dos perfis,
+mas isso vale para as CONSTANTES (cor-assinatura, nome do guia), nao para os
+arquivos de imagem -- a copia de la ficou numa versao anterior da arte
+(2026-07-25 contra 2026-07-27), em que o Sobrevivente era vermelho em vez do
+cinza-chumbo da cor-assinatura dele. Gerar de la produz rostos com as cores
+erradas; foi o que aconteceu, e o aluno viu o guia errado no chat.
 
 Nao usa fracao fixa da imagem: a composicao varia (o Realizador tem um braco
 estendido, o que desloca o centro do bounding box). O alpha resolve isso -- as
