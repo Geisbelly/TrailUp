@@ -42,6 +42,7 @@ import {
 } from '@/utils/slideXpBonus';
 import {
   agregarProgressoPersonalizado,
+  topicosComPendenciaPersonalizada,
   type LinhaProgressoItem,
   type ProgressoPersonalizado,
 } from '@/utils/progressoPersonalizado';
@@ -264,7 +265,21 @@ async function prefetchPersonalizedPayload(payload: PersonalizedTopicPayload | n
   }
 }
 
-function isTopicoConcluido(t: any): boolean {
+function isTopicoConcluido(t: any, topicosPendentes?: Set<number>): boolean {
+  // Passo personalizado pendente impede a conclusao, e vem ANTES de qualquer
+  // outra checagem -- inclusive do status do banco.
+  //
+  // `topico_aluno.status`/`percentual_concluido` saem de
+  // `Topico.calcularPercentual()`, que conta so conteudo/atividade do professor:
+  // com os academicos feitos e os passos personalizados intocados, o topico era
+  // dado por concluido e LIBERAVA O PROXIMO antes da hora. Mesma raiz do
+  // checkpoint que era apagado.
+  //
+  // O conjunto so contem topico cujo payload personalizado esta carregado; sem
+  // saber quantos passos existem, nao ha pendencia declarada (ver
+  // topicosComPendenciaPersonalizada).
+  if (topicosPendentes?.has(Number(t?.id))) return false
+
   const st = (t?.status ?? '').toString().toLowerCase()
   const pct = Number(t?.percentual_concluido ?? 0)
   if (st === 'concluido' || st === 'done' || st === 'complete' || st === 'finished') return true
@@ -294,7 +309,11 @@ function isTopicoConcluido(t: any): boolean {
   return conteudosConcluidos && atividadesConcluidas
 }
 
-function isTopicoUnlockedLocal(t: Topico, todos: Topico[]): boolean {
+function isTopicoUnlockedLocal(
+  t: Topico,
+  todos: Topico[],
+  topicosPendentes?: Set<number>
+): boolean {
   if (!t.depende || (Array.isArray(t.depende) && t.depende.length === 0)) return true
 
   const deps: number[] =
@@ -307,9 +326,11 @@ function isTopicoUnlockedLocal(t: Topico, todos: Topico[]): boolean {
   return deps.every((id) => {
     const dep = todos.find((x) => x.id === id)
     if (!dep) return true
-    const st = (dep.status ?? '').toString().toLowerCase()
-    const pct = Number(dep.percentual_concluido ?? 0)
-    return st.includes('concl') || pct >= 100
+    // Mesma regra do resto: a dependencia so conta como cumprida se nao tiver
+    // passo personalizado pendente. Antes lia direto status/percentual do banco
+    // -- que chega a 100 com o material personalizado intocado -- e liberava o
+    // topico seguinte cedo.
+    return isTopicoConcluido(dep, topicosPendentes)
   })
 }
 
@@ -525,14 +546,17 @@ function mergeTopicoLocalState(persistedTopico: Topico, localTopico?: Topico | n
   return mergedTopico
 }
 
-function buildGraphFromTopicos(classe: Classe): {
+function buildGraphFromTopicos(
+  classe: Classe,
+  topicosPendentes?: Set<number>
+): {
   nodes: NodeItem[]
   unlocked: NodeId[]
 } {
   const ts = [...classe.topicos].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0))
   const doneById = new Map<number, boolean>()
   for (const t of ts) {
-    doneById.set(t.id, isTopicoConcluido(t))
+    doneById.set(t.id, isTopicoConcluido(t, topicosPendentes))
   }
 
   const nodes: NodeItem[] = ts.map((t, i) => ({
@@ -673,8 +697,12 @@ function decorateNodesWithPersonalization(
   })
 }
 
-function reconcileNodesWithClasse(nodes: NodeItem[], classe: Classe) {
-  const localGraph = buildGraphFromTopicos(classe)
+function reconcileNodesWithClasse(
+  nodes: NodeItem[],
+  classe: Classe,
+  topicosPendentes?: Set<number>
+) {
+  const localGraph = buildGraphFromTopicos(classe, topicosPendentes)
   const localNodeMap = new Map(localGraph.nodes.map((node) => [String(node.id), node] as const))
   const unlockedIds = new Set(localGraph.unlocked.map((id) => String(id)))
 
@@ -778,6 +806,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
   const [slideBonusKeys, setSlideBonusKeys] = useState<Set<string>>(new Set())
   const [progressoItens, setProgressoItens] = useState<LinhaProgressoItem[]>([])
 
+
   const [perfil, setPerfil] = useState<BrainHexProfile>('seeker')
   const visual: Visual = pickVisual(perfil)
   const dominantProfileKey = useMemo(
@@ -788,6 +817,21 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
   const [nodesState, setNodesState] = useState<NodeItem[]>([])
   const [unlockedState, setUnlockedState] = useState<NodeId[]>([])
   const [personalizedTopics, setPersonalizedTopics] = useState<Record<number, PersonalizedTopicPayload>>({})
+  // Topicos que ainda tem passo personalizado pendente. Alimenta o DESBLOQUEIO:
+  // sem isto, terminar so o material do professor liberava o topico seguinte.
+  // So entra topico cujo payload personalizado esta carregado -- sem saber
+  // quantos passos existem, nao se declara pendencia (travaria a trilha).
+  const topicosPendentesPersonalizados = useMemo(() => {
+    const passosPorTopico: Record<number, number> = {}
+    for (const [chave, payload] of Object.entries(personalizedTopics)) {
+      const total = Array.isArray(payload?.steps) ? payload.steps.length : 0
+      if (total > 0) passosPorTopico[Number(chave)] = total
+    }
+    return new Set(
+      topicosComPendenciaPersonalizada({ passosPorTopico, linhas: progressoItens })
+    )
+  }, [personalizedTopics, progressoItens])
+
   const [remoteMapThemeState, setRemoteMapThemeState] = useState<Record<string, unknown> | null>(null)
   // Refs "espelho" para classeAtual/personalizedTopics: permitem que fetchGraphData leia o
   // estado mais recente sem depender das referencias de objeto (que mudam a cada progresso
@@ -879,7 +923,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
         : prev
     )
 
-    const { nodes, unlocked } = buildGraphFromTopicos(nextClasse)
+    const { nodes, unlocked } = buildGraphFromTopicos(nextClasse, topicosPendentesPersonalizados)
     setNodesState(decorateNodesWithPersonalization(nodes, nextClasse.topicos, personalizedTopics))
     setUnlockedState(unlocked)
   }, [personalizedTopics])
@@ -1198,7 +1242,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       const userId = usuario?.id
       if (!userId) {
         console.warn('[TrilhaContext] Sessao ainda nao hidratada para buscar grafo, usando fallback local.')
-        const { nodes, unlocked } = buildGraphFromTopicos(classeAtual)
+        const { nodes, unlocked } = buildGraphFromTopicos(classeAtual, topicosPendentesPersonalizados)
         setNodesState(decorateNodesWithPersonalization(nodes, classeAtual.topicos, personalizedTopics))
         setUnlockedState(unlocked)
         setRemoteMapThemeState(null)
@@ -1291,14 +1335,14 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
         setRemoteMapThemeState(incomingMapTheme)
       } else {
         console.log('[TrilhaContext] Usando fallback (buildGraphFromTopicos)')
-        const { nodes, unlocked } = buildGraphFromTopicos(classeAtual)
+        const { nodes, unlocked } = buildGraphFromTopicos(classeAtual, topicosPendentesPersonalizados)
         setNodesState(decorateNodesWithPersonalization(nodes, classeAtual.topicos, personalizedTopics))
         setUnlockedState(unlocked)
         setRemoteMapThemeState(incomingMapTheme)
       }
     } catch (e: any) {
       console.warn('[TrilhaContext] Erro ao buscar grafo, usando fallback:', e)
-      const { nodes, unlocked } = buildGraphFromTopicos(classeAtual!)
+      const { nodes, unlocked } = buildGraphFromTopicos(classeAtual!, topicosPendentesPersonalizados)
       setNodesState(decorateNodesWithPersonalization(nodes, classeAtual.topicos, personalizedTopics))
       setUnlockedState(unlocked)
       setRemoteMapThemeState(null)
@@ -1339,7 +1383,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
   const mapTheme = useMemo(() => {
     if (!classeAtual) return null
 
-    const baseNodes = nodesState.length ? nodesState : buildGraphFromTopicos(classeAtual).nodes
+    const baseNodes = nodesState.length ? nodesState : buildGraphFromTopicos(classeAtual, topicosPendentesPersonalizados).nodes
     return (
       normalizeRemoteMapTheme(remoteMapThemeState, classeAtual, baseNodes) ??
       buildClassMapTheme(classeAtual, baseNodes)
@@ -1452,6 +1496,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
     () => agregarProgressoPersonalizado(progressoItens),
     [progressoItens]
   )
+
 
   const { width: winW } = useWindowDimensions()
   const grafo = useGraphLayout(nodesState, {
@@ -1986,7 +2031,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
 
     const restantes = topicosOrdenados.filter((t) => {
       if (topicoId != null && t.id === topicoId) return false;
-      return isTopicoUnlockedLocal(t, topicosOrdenados);
+      return isTopicoUnlockedLocal(t, topicosOrdenados, topicosPendentesPersonalizados);
     });
 
     const futuros = ordemAtual == null

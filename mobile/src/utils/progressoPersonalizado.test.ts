@@ -6,6 +6,7 @@ import {
   conteudoIdDaChave,
   itemConcluido,
   naturezaDoItem,
+  topicosComPendenciaPersonalizada,
   unificarContadores,
   type LinhaProgressoItem,
 } from "./progressoPersonalizado";
@@ -243,4 +244,72 @@ test("concluidos nunca passa do total", () => {
 
   assert.ok(unificado.atividadesConcluidas <= unificado.totalAtividades);
   assert.ok(unificado.conteudosConcluidos <= unificado.totalConteudos);
+});
+
+// --- pendencia personalizada (desbloqueio) --------------------------------
+
+test("topico com passo personalizado intocado fica pendente", () => {
+  // Era o que liberava o proximo topico antes da hora: os academicos feitos, os
+  // personalizados nao.
+  const pendentes = topicosComPendenciaPersonalizada({
+    passosPorTopico: { 125: 3 },
+    linhas: [linha({ topico_id: 125, item_key: "p1", status: "concluido" })],
+  });
+
+  assert.deepEqual(pendentes, [125]);
+});
+
+test("todos os passos feitos nao gera pendencia", () => {
+  const pendentes = topicosComPendenciaPersonalizada({
+    passosPorTopico: { 125: 2 },
+    linhas: [
+      linha({ topico_id: 125, item_key: "p1", status: "concluido" }),
+      linha({ topico_id: 125, item_key: "p2", percentual_concluido: 100 }),
+    ],
+  });
+
+  assert.deepEqual(pendentes, []);
+});
+
+test("topico sem payload carregado nao entra como pendente", () => {
+  // Sem saber quantos passos existem, declarar pendencia trancaria a trilha de
+  // quem ainda nao carregou a personalizacao.
+  assert.deepEqual(
+    topicosComPendenciaPersonalizada({ passosPorTopico: {}, linhas: [] }),
+    []
+  );
+});
+
+test("interacoes de slide nao contam como passo do percurso", () => {
+  // Senao a pendencia dependeria de quantos quizzes o deck gerou.
+  const pendentes = topicosComPendenciaPersonalizada({
+    passosPorTopico: { 125: 1 },
+    linhas: [
+      linha({ topico_id: 125, item_key: "slide:q1", status: "concluido" }),
+      linha({ topico_id: 125, item_key: "slide:q2", status: "concluido" }),
+    ],
+  });
+
+  assert.deepEqual(pendentes, [125]);
+});
+
+test("passo aberto mas nao concluido continua pendente", () => {
+  const pendentes = topicosComPendenciaPersonalizada({
+    passosPorTopico: { 125: 1 },
+    linhas: [linha({ topico_id: 125, item_key: "p1", percentual_concluido: 40 })],
+  });
+
+  assert.deepEqual(pendentes, [125]);
+});
+
+test("mesma chave repetida nao conta duas vezes", () => {
+  const pendentes = topicosComPendenciaPersonalizada({
+    passosPorTopico: { 125: 2 },
+    linhas: [
+      linha({ topico_id: 125, item_key: "p1", status: "concluido" }),
+      linha({ topico_id: 125, item_key: "p1", status: "concluido" }),
+    ],
+  });
+
+  assert.deepEqual(pendentes, [125]);
 });

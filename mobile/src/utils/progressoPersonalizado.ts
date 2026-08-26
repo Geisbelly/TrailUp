@@ -221,3 +221,58 @@ export function unificarContadores(params: {
       100,
   };
 }
+
+
+/**
+ * Topicos que ainda tem passo personalizado pendente.
+ *
+ * Serve ao DESBLOQUEIO. `isTopicoConcluido` (TrilhaContext) so olha
+ * conteudo/atividade do professor, entao um topico com os 4 itens academicos
+ * feitos e os passos personalizados intocados contava como concluido e liberava
+ * o proximo antes da hora -- a mesma raiz do checkpoint apagado.
+ *
+ * `passosPorTopico` diz quantos passos personalizados cada topico TEM (vem do
+ * payload carregado). Topico ausente desse mapa nao entra no resultado: sem
+ * saber quantos passos existem, declarar pendencia travaria a trilha inteira de
+ * quem ainda nao teve a personalizacao carregada. Preferimos degradar pro
+ * comportamento antigo do que trancar o aluno.
+ *
+ * Interacoes `slide:*` ficam de fora da contagem: sao eventos dentro da
+ * apresentacao, nao passos do percurso -- inclui-las faria a pendencia depender
+ * de quantos quizzes o deck gerou.
+ */
+export function topicosComPendenciaPersonalizada(params: {
+  passosPorTopico: Record<number, number> | null | undefined;
+  linhas: LinhaProgressoItem[] | null | undefined;
+}): number[] {
+  const passos = params.passosPorTopico ?? {};
+  const concluidosPorTopico = new Map<number, Set<string>>();
+
+  for (const linha of params.linhas ?? []) {
+    const chave = String(linha?.item_key ?? "").trim();
+    if (!chave) continue;
+
+    const natureza = naturezaDoItem(linha);
+    if (natureza === "slide") continue;
+    if (!itemConcluido(linha)) continue;
+
+    const topicoId = Number(linha?.topico_id);
+    if (!Number.isFinite(topicoId)) continue;
+
+    const atual = concluidosPorTopico.get(topicoId) ?? new Set<string>();
+    atual.add(chave.toLowerCase());
+    concluidosPorTopico.set(topicoId, atual);
+  }
+
+  const pendentes: number[] = [];
+  for (const [chaveTopico, total] of Object.entries(passos)) {
+    const topicoId = Number(chaveTopico);
+    const esperado = Number(total);
+    if (!Number.isFinite(topicoId) || !Number.isFinite(esperado) || esperado <= 0) continue;
+
+    const feitos = concluidosPorTopico.get(topicoId)?.size ?? 0;
+    if (feitos < esperado) pendentes.push(topicoId);
+  }
+
+  return pendentes;
+}
