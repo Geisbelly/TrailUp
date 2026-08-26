@@ -421,10 +421,12 @@ export default function RankingHome() {
           </View>
 
           {/* ── Ornamento de rodapé ── */}
-          {/* A atenuação vai na cor, não num wrapper com `opacity`: a camada de
-              render que o Android cria pra opacidade recortava os glifos. */}
+          {/* Atenuação na cor, não num wrapper com `opacity` (evita a camada de
+              render extra no Android). 0.7 é o piso medido: abaixo dele as duas
+              linhas de 1px caem para menos de 3:1 contra o fundo e o divisor
+              aparece "quebrado" — só os losangos, sem linha. */}
           <View style={{ marginTop: 32 }}>
-            <OrnamentDivider color={Color.colorWhite} opacidade={0.4} />
+            <OrnamentDivider color={Color.colorWhite} opacidade={0.7} />
           </View>
         </ScrollView>
       </SafeAreaView>

@@ -252,11 +252,19 @@ export default function TrilhaConteudoScreen() {
     [academicAtividades, personalizedFlow.atividades]
   );
   const [personalizacaoCarregando, setPersonalizacaoCarregando] = useState(false);
+  // `personalizacaoCarregando` NAO serve para saber se a lista de blocos esta
+  // completa: ele nasce `false` e so viraria `true` dentro de um efeito, e
+  // setState num efeito nao altera o valor que os OUTROS efeitos do mesmo commit
+  // ja capturaram. A hidratacao do checkpoint rodava com a lista parcial antes
+  // do flag subir. Este estado responde a pergunta certa -- "a tentativa de
+  // carregar a personalizacao terminou?" -- e so vira true depois dela.
+  const [personalizacaoTentada, setPersonalizacaoTentada] = useState(false);
   const concluirTopicoRef = useRef<(() => Promise<void>) | null>(null);
   const lastOpenedSignalRef = useRef<string | null>(null);
   const emitSignalRef = useRef(emitSignal);
   const autoViewedContentRef = useRef<string | null>(null);
   const moduleSessionStartedAtRef = useRef<number | null>(null);
+  const topicoIdEmFocoRef = useRef<number | null>(topicoId);
 
   // `personalizedTopic`/`topico` mudam de referencia como CONSEQUENCIA do
   // proprio ensureTopicoPersonalizado em andamento (setPersonalizedTopics no
@@ -326,9 +334,27 @@ export default function TrilhaConteudoScreen() {
         console.warn("[TrilhaConteudo] Falha ao carregar personalização:", err);
       })
       .finally(() => {
-        if (isMountedRef.current) setPersonalizacaoCarregando(false);
+        // Compara o TOPICO em vez de usar um `ativo` local: este efeito
+        // reexecuta como consequencia do proprio ensureTopicoPersonalizado
+        // (ver o comentario do isMountedRef acima), e um flag de cleanup
+        // travaria o spinner ligado. Ja o resultado de OUTRO topico nao pode
+        // marcar a tentativa deste como concluida -- seria a lista parcial
+        // sendo considerada pronta de novo.
+        if (!isMountedRef.current || topicoIdEmFocoRef.current !== topicoId) return;
+        setPersonalizacaoCarregando(false);
+        setPersonalizacaoTentada(true);
       });
   }, [ensureTopicoPersonalizado, personalizedTopic, topico, topicoId]);
+
+  // Topico novo = tentativa nova. Sem isto, a lista parcial do proximo topico
+  // seria considerada pronta por causa da tentativa do anterior.
+  useEffect(() => {
+    setPersonalizacaoTentada(false);
+  }, [topicoId]);
+
+  useEffect(() => {
+    topicoIdEmFocoRef.current = topicoId;
+  }, [topicoId]);
 
   usePersonalizationRefresh({
     topicoId,
@@ -445,7 +471,10 @@ export default function TrilhaConteudoScreen() {
     checkpointParams,
     topicoJaIniciado,
     topicoConcluido,
-    blocosProntos: !personalizacaoCarregando,
+    // Pronto = a personalizacao chegou (e seus passos ja estao em `blocks`, no
+    // mesmo render) OU a tentativa terminou sem ela. Cobre tambem o caso em que
+    // `personalizedTopic` ja vinha em cache e o efeito de carga nem roda.
+    blocosProntos: Boolean(personalizedTopic) || personalizacaoTentada,
   });
 
   useEffect(() => {
