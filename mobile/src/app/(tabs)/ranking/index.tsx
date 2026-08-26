@@ -360,7 +360,14 @@ export default function RankingHome() {
         pointerEvents="none"
       />
 
-      <SafeAreaView style={{ flex: 1 }}>
+      {/* `edges` SEM "bottom": a tab bar (height 100 + marginBottom 10) já
+          reserva o rodapé, e o `paddingBottom: 110` do conteúdo é exatamente
+          essa medida. Sem excluir o bottom aqui, o inset de baixo entrava DE
+          NOVO -- a area util encolhia, sobrava um vao morto entre o conteudo e o
+          menu, e os elementos do fim eram cortados. As outras abas
+          (notificacoes) ja faziam assim; esta tela era a unica fora do padrao,
+          e era a unica com o problema. */}
+      <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
         <ScrollView
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
