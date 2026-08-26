@@ -626,13 +626,19 @@ export function IAMentorPanel({
                   </Text>
                 </View>
                 <Text style={[styles.subtitle, { color: palette.text }]}>{currentTitle}</Text>
-                <Text style={[styles.headerHint, { color: palette.textSubtle }]}>
-                  {scope === "trilha_home"
-                    ? "Toque nas explicações abaixo ou envie uma pergunta."
-                    : socialSignalStrong
-                    ? "Aqui a conversa tem mais peso. Posso orientar sua leitura, explicar a personalização e comentar o funcionamento da tela."
-                    : "Converse comigo sobre o módulo, a personalização e o funcionamento desta tela."}
-                </Text>
+                {/* Fora da home o cabeçalho fica sem subtítulo: ele dizia
+                    "converse comigo sobre o módulo, a personalização..." e o
+                    rodapé, três linhas abaixo, repetia "eu explico sua
+                    personalização, métricas e estratégia" -- a mesma promessa
+                    duas vezes na mesma tela, com o guia falando no meio. O
+                    rodapé fica, porque ele também carrega o limite (não entrego
+                    respostas de atividade), que é a parte que o aluno precisa
+                    saber. */}
+                {scope === "trilha_home" ? (
+                  <Text style={[styles.headerHint, { color: palette.textSubtle }]}>
+                    Toque nas explicações abaixo ou envie uma pergunta.
+                  </Text>
+                ) : null}
               </View>
             </View>
 

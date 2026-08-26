@@ -1,18 +1,23 @@
 """Recorta o rosto de cada guardiao a partir da arte de corpo inteiro.
 
 Uso (rodando de dentro de mobile/):
-    python scripts/gerar-rostos-guardioes.py         src/assets/guardioes         src/assets/guardioes/rosto
+    python scripts/gerar-rostos-guardioes.py         ../frontend/src/assets/guardioes         src/assets/guardioes/rosto
 
 Rode isto quando a arte dos guardioes mudar. Os recortes sao derivados, nunca
 editados a mao (edicao manual dessincroniza sem deixar rastro).
 
-ORIGEM: use `mobile/src/assets/guardioes/`, NAO a copia do microservice.
-Ela existe e o CLAUDE.md trata o microservice como fonte da verdade dos perfis,
-mas isso vale para as CONSTANTES (cor-assinatura, nome do guia), nao para os
-arquivos de imagem -- a copia de la ficou numa versao anterior da arte
-(2026-07-25 contra 2026-07-27), em que o Sobrevivente era vermelho em vez do
-cinza-chumbo da cor-assinatura dele. Gerar de la produz rostos com as cores
-erradas; foi o que aconteceu, e o aluno viu o guia errado no chat.
+ORIGEM: `frontend/src/assets/guardioes/` (.webp). Tres pastas do monorepo tem a
+arte dos guardioes e SO ESSA esta atualizada -- foi conferido imagem por imagem
+em 2026-08-26:
+
+  frontend/    .webp  arte ATUAL (Exploradora em teal, Sobrevivente cinza-chumbo)
+  mobile/      .png   versao anterior (Exploradora dourada)
+  microservice/ .png  versao mais antiga ainda (Sobrevivente VERMELHO)
+
+O CLAUDE.md trata o microservice como fonte da verdade dos perfis, e isso vale
+para as CONSTANTES (cor-assinatura, nome do guia) -- nao para os arquivos de
+imagem. Gerar das outras duas pastas produz avatar com a cor errada, e foi o que
+aconteceu duas vezes: o aluno via um guia que nao combinava com a tela.
 
 Nao usa fracao fixa da imagem: a composicao varia (o Realizador tem um braco
 estendido, o que desloca o centro do bounding box). O alpha resolve isso -- as
@@ -35,11 +40,20 @@ LADO = 256
 FAIXA_CABECA = 0.12
 # Quanto o recorte e maior que a largura da cabeca. 2.2 deixa ombros e um pouco
 # de ar em volta, sem entrar no tronco.
+#
+# Nao mexa nisto sem olhar os 7 resultados: `vao` inclui cabelo, penacho e
+# cajado, entao o mesmo numero enquadra cada guardiao de forma diferente. Subir
+# pra 3.0 transformou a Conquistadora em figura inteira com o rosto minusculo.
 FOLGA = 2.2
 # O Socializador tem DOIS guardioes (Mateo e Zuri). Com duas cabecas o vao
 # detectado e largo, e a folga de 2.2 abriria o recorte pro corpo inteiro dos
 # dois. Quando o vao passa desta fracao da largura da figura, tratamos como
 # multi-cabeca e apertamos a folga pra caber so os rostos.
+#
+# A heuristica e grosseira (larga != duas cabecas) e pega a Conquistadora pelo
+# penacho, mas o resultado dela ficou BOM assim -- um recorte apertado no rosto.
+# Trocar por deteccao de vao transparente "corrigiu" a classificacao e piorou o
+# enquadramento. Fica como esta ate haver como comparar os 7 lado a lado.
 LIMITE_MULTI_CABECA = 0.5
 FOLGA_MULTI = 1.15
 
@@ -77,7 +91,47 @@ def recortar(caminho: Path) -> Image.Image:
     return recorte.resize((LADO, LADO), Image.LANCZOS)
 
 
-for arquivo in sorted(ORIGEM.glob("*.png")):
-    saida = DESTINO / arquivo.name
+# A arte mais nova esta em .webp (frontend); a antiga era .png. Aceitamos os
+# dois e SEMPRE gravamos .png, porque e o que `profileImages.ts` requer.
+#
+# `socializer` na origem ja e o PAR (Mateo e Zuri) e o app o consome como
+# `socializer-duo` -- e o unico perfil com dois guardioes, e e isso que faz o
+# audio dele ser dialogo em vez de narracao solo.
+RENOMEAR = {"socializer": "socializer-duo"}
+
+# Só os 7 perfis entram. A pasta de origem carrega variantes soltas
+# (`socializer2`, versões antigas) que nenhum slot do app consome -- recortar
+# tudo enchia o bundle de arquivo morto.
+PERFIS = {
+    "seeker",
+    "survivor",
+    "daredevil",
+    "mastermind",
+    "conqueror",
+    "socializer",
+    "achiever",
+}
+
+# .webp ganha de .png para o mesmo perfil: a arte nova veio em webp, e a cópia
+# .png ao lado é a versão anterior. Deixar a ordem do glob decidir isso ja
+# produziu recorte com a cor errada uma vez.
+PRIORIDADE = {".webp": 0, ".png": 1}
+
+escolhidos: dict[str, Path] = {}
+for extensao in ("*.png", "*.webp"):
+    for caminho in ORIGEM.glob(extensao):
+        if caminho.stem not in PERFIS:
+            continue
+        atual = escolhidos.get(caminho.stem)
+        if atual is None or PRIORIDADE[caminho.suffix] < PRIORIDADE[atual.suffix]:
+            escolhidos[caminho.stem] = caminho
+
+faltando = PERFIS - set(escolhidos)
+if faltando:
+    raise SystemExit(f"arte ausente para: {', '.join(sorted(faltando))} (em {ORIGEM})")
+
+for perfil in sorted(escolhidos):
+    arquivo = escolhidos[perfil]
+    saida = DESTINO / f"{RENOMEAR.get(perfil, perfil)}.png"
     recortar(arquivo).save(saida, optimize=True)
-    print(f"{arquivo.name} -> {saida.stat().st_size // 1024} KB")
+    print(f"{arquivo.name} -> {saida.name} ({saida.stat().st_size // 1024} KB)")
