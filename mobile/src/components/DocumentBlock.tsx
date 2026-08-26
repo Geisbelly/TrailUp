@@ -781,7 +781,6 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent }: P
       ? "Apresentação"
       : "Embed");
 
-  const supportsModes = tipo === "pdf" || tipo === "documento" || tipo === "apresentacao";
   const initialMode =
     typeof payload === "object" && payload?.defaultDisplayMode
       ? normalizeMode(payload.defaultDisplayMode)
@@ -806,6 +805,13 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent }: P
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(sourceUrl);
   const [deckHtml, setDeckHtml] = useState<string | null>(null);
   const isDeckHtml = isDeckHtmlSource || (tipo === "apresentacao" && isHtmlDeckUrl(resolvedUrl));
+
+  // Pagina/Rolagem nao vale para deck HTML: ele PAGINA SOZINHO, com contador
+  // proprio ("2 / 5") e botao "Proximo" dentro do conteudo. O par de botoes
+  // duplicava o controle e, no modo "rolagem", nao mudava nada visivelmente --
+  // dois jeitos de virar pagina na mesma tela, um deles inerte.
+  const supportsModes =
+    !isDeckHtml && (tipo === "pdf" || tipo === "documento" || tipo === "apresentacao");
   const [deckErro, setDeckErro] = useState<string | null>(null);
   const [resolvingUrl, setResolvingUrl] = useState(false);
   const [resolveError, setResolveError] = useState<string | null>(null);

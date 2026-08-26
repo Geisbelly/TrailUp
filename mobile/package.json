@@ -9,7 +9,7 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "test": "node --import tsx --test src/utils/audioImageCues.test.ts src/utils/contentVisibility.test.ts src/utils/deckProgressMessage.test.ts src/utils/htmlDeck.test.ts src/utils/inlineSvgDataUri.test.ts src/utils/materialSuggestion.test.ts src/utils/mediaPayload.test.ts src/utils/personalization.multicontent.test.ts src/utils/slideXpBonus.test.ts src/utils/storageOrigin.test.ts src/utils/supabaseStorage.deck.test.ts src/constants/profileImages.guardioes.test.ts src/utils/trilhaProgresso.test.ts src/components/studyCards.test.ts src/utils/trilhaCheckpointResume.test.ts src/components/ornamentDividerColors.test.ts"
+    "test": "node --import tsx --test src/utils/audioImageCues.test.ts src/utils/contentVisibility.test.ts src/utils/deckProgressMessage.test.ts src/utils/htmlDeck.test.ts src/utils/inlineSvgDataUri.test.ts src/utils/materialSuggestion.test.ts src/utils/mediaPayload.test.ts src/utils/personalization.multicontent.test.ts src/utils/slideXpBonus.test.ts src/utils/storageOrigin.test.ts src/utils/supabaseStorage.deck.test.ts src/constants/profileImages.guardioes.test.ts src/utils/trilhaProgresso.test.ts src/components/studyCards.test.ts src/utils/trilhaCheckpointResume.test.ts src/components/ornamentDividerColors.test.ts src/utils/webviewSpeechBridge.test.ts"
   },
   "dependencies": {
     "@config-plugins/react-native-blob-util": "^12.0.0",
@@ -35,6 +35,7 @@
     "expo-print": "~15.0.8",
     "expo-router": "~6.0.7",
     "expo-sharing": "~14.0.8",
+    "expo-speech": "~14.0.8",
     "expo-splash-screen": "~31.0.10",
     "expo-status-bar": "~3.0.8",
     "expo-symbols": "~1.0.7",

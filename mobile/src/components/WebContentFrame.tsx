@@ -1,6 +1,12 @@
 import { Color } from "@/styles/GlobalStyle";
 import { getProfileShellPalette, ProfileShellPalette } from "@/utils/profileShellTheme";
 import { parseDeckProgressMessage, type DeckProgressEvent } from "@/utils/deckProgressMessage";
+import {
+  SCRIPT_PONTE_DE_VOZ,
+  parsePedidoDeFala,
+  scriptDeConclusao,
+} from "@/utils/webviewSpeechBridge";
+import * as Speech from "expo-speech";
 import React, { useEffect, useRef } from "react";
 import {
   ActivityIndicator,
@@ -44,6 +50,46 @@ export function WebContentFrame({
   onProgressEvent,
 }: Props) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const webViewRef = useRef<any>(null);
+
+  // Narração do deck no TTS nativo. O WebView do Android não implementa a Web
+  // Speech API, então o polyfill injetado manda o texto para cá.
+  const tratarPedidoDeFala = React.useCallback(
+    (pedido: ReturnType<typeof parsePedidoDeFala>) => {
+      if (!pedido) return;
+
+      if (pedido.acao === "cancel") {
+        void Speech.stop();
+        return;
+      }
+
+      const avisarDeck = (comErro: boolean) => {
+        // A página pode ter recarregado no meio da fala; o próprio script
+        // injetado checa se o callback ainda existe.
+        webViewRef.current?.injectJavaScript?.(scriptDeConclusao(pedido.id, comErro));
+      };
+
+      // Uma fala por vez: sem isto, tocar "Narrar" no slide seguinte empilharia
+      // as duas vozes em cima uma da outra.
+      void Speech.stop();
+      Speech.speak(pedido.texto, {
+        language: pedido.lang ?? "pt-BR",
+        ...(pedido.rate != null ? { rate: pedido.rate } : {}),
+        onDone: () => avisarDeck(false),
+        onStopped: () => avisarDeck(false),
+        onError: () => avisarDeck(true),
+      });
+    },
+    []
+  );
+
+  useEffect(() => {
+    // Sair da tela com a narração no ar deixaria a voz tocando sobre o resto do
+    // app.
+    return () => {
+      void Speech.stop();
+    };
+  }, []);
 
   // Escuta postMessage do deck (ver reportProgressToHost em
   // BrainHexPDF/src/utils/deckExportUtils.ts). window.addEventListener('message')
@@ -93,14 +139,24 @@ export function WebContentFrame({
           source={html ? { html, baseUrl: uri ?? undefined } : { uri: uri ?? "" }}
           style={[styles.webView, { backgroundColor: palette.surface }]}
           containerStyle={[styles.webView, { backgroundColor: palette.surface }]}
-          onMessage={
-            onProgressEvent
-              ? (event: any) => {
-                  const parsed = parseDeckProgressMessage(event?.nativeEvent?.data ?? "");
-                  if (parsed) onProgressEvent(parsed);
-                }
-              : undefined
-          }
+          ref={webViewRef}
+          // ANTES do conteudo: o deck testa `'speechSynthesis' in window` e o
+          // WebView do Android nao implementa a API. Ver webviewSpeechBridge.
+          injectedJavaScriptBeforeContentLoaded={SCRIPT_PONTE_DE_VOZ}
+          onMessage={(event: any) => {
+            const raw = event?.nativeEvent?.data ?? "";
+
+            const fala = parsePedidoDeFala(raw);
+            if (fala) {
+              tratarPedidoDeFala(fala);
+              return;
+            }
+
+            if (onProgressEvent) {
+              const parsed = parseDeckProgressMessage(raw);
+              if (parsed) onProgressEvent(parsed);
+            }
+          }}
           javaScriptEnabled
           domStorageEnabled
           nestedScrollEnabled={scrollEnabled}
