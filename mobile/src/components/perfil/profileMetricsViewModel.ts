@@ -62,9 +62,21 @@ export type ProfileMetricsViewModel = {
   sessionActiveSec: number;
   sessionIdleSec: number;
   sessionEngajamento: number;
+  /** Media de tempo ATIVO desta sessao, em segundos (vem da telemetria). */
   tempoTopico: number;
   tempoConteudo: number;
   tempoAtividade: number;
+  /**
+   * Tempo ACUMULADO por escopo, em minutos, vindo do que esta persistido
+   * (`topico_aluno` / `conteudo_aluno` / `atividade_aluno`).
+   *
+   * Existia so dentro do calculo e nunca chegava a tela: o card de tempo
+   * mostrava apenas a media da sessao atual, entao quem estudou ontem via zero.
+   */
+  tempoTopicoAcumuladoMin: number;
+  tempoConteudoAcumuladoMin: number;
+  tempoAtividadeAcumuladoMin: number;
+  temTempoAcumulado: boolean;
   topicosVisitados: number;
   touchTotal: number;
   scrollTotal: number;
@@ -485,6 +497,13 @@ export function buildProfileMetricsViewModel({
     tempoTopico: avgActiveSec(topicsArr),
     tempoConteudo: avgActiveSec(contentsArr),
     tempoAtividade: avgActiveSec(activitiesArr),
+    tempoTopicoAcumuladoMin: academicMetrics.tempoTopicoMin,
+    tempoConteudoAcumuladoMin: academicMetrics.tempoConteudoMin,
+    tempoAtividadeAcumuladoMin: academicMetrics.tempoAtividadeMin,
+    temTempoAcumulado:
+      academicMetrics.tempoTopicoMin > 0 ||
+      academicMetrics.tempoConteudoMin > 0 ||
+      academicMetrics.tempoAtividadeMin > 0,
     topicosVisitados,
     touchTotal: tm?.general.touch_count ?? 0,
     scrollTotal: tm?.general.scroll_distance_px ?? 0,

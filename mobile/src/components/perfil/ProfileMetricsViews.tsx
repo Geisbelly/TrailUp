@@ -955,15 +955,42 @@ function AffinityBoard({ vm, palette, accent }: { vm: ProfileMetricsViewModel; p
 }
 
 function TempoEstudoSection({ vm, palette, accent }: { vm: ProfileMetricsViewModel; palette: ThemePalette; accent: string }) {
-  if (!vm.hasSessionMetrics) return null;
+  // Duas leituras diferentes, e por isso duas fileiras rotuladas em vez de um
+  // numero so: o ACUMULADO responde "quanto tempo eu ja investi" e vem do que
+  // esta persistido; a MEDIA DA SESSAO responde "qual meu ritmo agora" e vem da
+  // telemetria do lote atual. Antes a tela mostrava apenas a segunda -- e ela
+  // desaparecia inteira quando nao havia sessao, entao quem estudou ontem via
+  // zero.
+  if (!vm.temTempoAcumulado && !vm.hasSessionMetrics) return null;
+
   return (
     <SurfaceCard palette={palette}>
-      <SectionTitle title="Tempo de estudo" subtitle="Tempo médio ativo por tipo de conteúdo nesta sessão." icon="timer-outline" palette={palette} />
-      <View style={s.statRow}>
-        <StatTile icon="timer-outline" label="Em tópicos" value={formatSeconds(vm.tempoTopico)} palette={palette} accent={accent} />
-        <StatTile icon="book-open-outline" label="Em conteúdos" value={formatSeconds(vm.tempoConteudo)} palette={palette} accent={accent} />
-        <StatTile icon="pencil-outline" label="Em atividades" value={formatSeconds(vm.tempoAtividade)} palette={palette} accent={accent} />
-      </View>
+      <SectionTitle
+        title="Tempo de estudo"
+        subtitle={
+          vm.temTempoAcumulado
+            ? "Tempo acumulado por tipo de material, e o ritmo desta sessão."
+            : "Tempo médio ativo por tipo de conteúdo nesta sessão."
+        }
+        icon="timer-outline"
+        palette={palette}
+      />
+
+      {vm.temTempoAcumulado ? (
+        <View style={s.statRow}>
+          <StatTile icon="timer-outline" label="Tópicos (total)" value={formatMinutes(vm.tempoTopicoAcumuladoMin)} palette={palette} accent={accent} />
+          <StatTile icon="book-open-outline" label="Conteúdos (total)" value={formatMinutes(vm.tempoConteudoAcumuladoMin)} palette={palette} accent={accent} />
+          <StatTile icon="pencil-outline" label="Atividades (total)" value={formatMinutes(vm.tempoAtividadeAcumuladoMin)} palette={palette} accent={accent} />
+        </View>
+      ) : null}
+
+      {vm.hasSessionMetrics ? (
+        <View style={s.statRow}>
+          <StatTile icon="timer-outline" label="Tópicos (sessão)" value={formatSeconds(vm.tempoTopico)} palette={palette} accent={accent} />
+          <StatTile icon="book-open-outline" label="Conteúdos (sessão)" value={formatSeconds(vm.tempoConteudo)} palette={palette} accent={accent} />
+          <StatTile icon="pencil-outline" label="Atividades (sessão)" value={formatSeconds(vm.tempoAtividade)} palette={palette} accent={accent} />
+        </View>
+      ) : null}
     </SurfaceCard>
   );
 }
