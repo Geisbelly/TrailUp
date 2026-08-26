@@ -812,6 +812,8 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent }: P
   // dois jeitos de virar pagina na mesma tela, um deles inerte.
   const supportsModes =
     !isDeckHtml && (tipo === "pdf" || tipo === "documento" || tipo === "apresentacao");
+  const podeTelaCheia =
+    tipo === "pdf" || tipo === "documento" || tipo === "apresentacao" || isDeckHtml;
   const [deckErro, setDeckErro] = useState<string | null>(null);
   const [resolvingUrl, setResolvingUrl] = useState(false);
   const [resolveError, setResolveError] = useState<string | null>(null);
@@ -1442,7 +1444,9 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent }: P
               </Text>
             </View>
             <Text style={[styles.helperText, { color: palette.textSubtle }]}>
-              {supportsModes
+              {isDeckHtml
+                ? "Abra em tela cheia para navegar os slides"
+                : supportsModes
                 ? displayMode === "pagina"
                   ? "Leitura paginada"
                   : "Leitura continua"
@@ -1451,7 +1455,12 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent }: P
           </View>
 
           <View style={styles.toolbarActions}>
-            {supportsModes ? (
+            {/* Tela cheia nao tem relacao com Pagina/Rolagem -- estava presa a
+                `supportsModes` e, quando os modos sairam do deck HTML, o botao
+                saiu junto: sobrou o embed curto dentro de uma pagina que tambem
+                rola, sem jeito de ler a apresentacao. Para o deck a tela cheia e
+                a unica superficie utilizavel, entao ela nunca pode faltar. */}
+            {podeTelaCheia ? (
               renderActionButton(
                 "expand-outline",
                 "Tela cheia",
@@ -1500,6 +1509,22 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent }: P
             onProgressEvent={onDeckProgressEvent}
           />
         )}
+
+        {/* Deck HTML inline nao da pra ler: ele fica num frame curto DENTRO de
+            uma pagina que tambem rola, e no Android o gesto e capturado pelo
+            ScrollView de fora -- a apresentacao nao rola e os slides ficam
+            cortados. Entao o embed vale como CAPA: um toque em qualquer parte
+            dele abre a tela cheia, que e a superficie de leitura de verdade.
+            Vem DEPOIS do frame de proposito -- irmao posterior fica por cima e
+            e quem recebe o toque. */}
+        {isDeckHtml && !effectiveUseNative ? (
+          <Pressable
+            onPress={() => setFullscreenVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel={`Abrir ${title} em tela cheia`}
+            style={StyleSheet.absoluteFill}
+          />
+        ) : null}
       </View>
       {pagerAtBottom ? renderNativePager() : null}
 
