@@ -559,24 +559,12 @@ export function IAMentorPanel({
                 color={palette.accent}
               />
             ) : (
-              <>
-                <Image source={avatarSource} style={styles.launcherAvatar} resizeMode="cover" />
-                <View
-                  style={[
-                    styles.launcherIconWrap,
-                    {
-                      backgroundColor: palette.accentMuted,
-                      borderColor: palette.borderStrong,
-                    },
-                  ]}
-                >
-                  <MaterialCommunityIcons
-                    name="chat-processing-outline"
-                    size={18}
-                    color={palette.accent}
-                  />
-                </View>
-              </>
+              // Só o rosto do guia. A bolha de chat que ficava sobreposta aqui
+              // era ruído: o avatar já diz quem é e que dá pra tocar, e dois
+              // ícones empilhados num alvo de 64pt disputavam o mesmo espaço com
+              // o ponto de não-lido. Na home (acima) não há avatar, então lá a
+              // bolha continua sendo o ícone.
+              <Image source={avatarSource} style={styles.launcherAvatar} resizeMode="cover" />
             )}
             {hasUnreadCue ? (
               <View
@@ -832,17 +820,6 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
     borderRadius: 32,
-  },
-  launcherIconWrap: {
-    position: "absolute",
-    right: -4,
-    bottom: -2,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
   },
   unreadDot: {
     position: "absolute",
