@@ -219,6 +219,18 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
   tempo de execução, não de import). Use `CAST(:param AS TIPO)`. E parâmetro
   usado só em `IS NOT NULL`/`CASE WHEN` **precisa** de cast explícito, senão o
   asyncpg falha com `AmbiguousParameterError`.
+- **`COALESCE(coluna_enum, '')` estoura em tempo de execução.** O Postgres
+  resolve o COALESCE para o tipo da primeira expressão e tenta coagir `''` ao
+  enum. Enquanto nenhuma linha vier NULL o segundo argumento não é avaliado e o
+  bug fica dormindo — depois aborta a transação inteira, longe de onde foi
+  escrito. Use `coluna::text` antes do COALESCE. `status` em `conteudo_aluno`,
+  `atividade_aluno` e `topico_aluno` é o enum `status_atividade`; em
+  `personalizacao_item_progresso` é `text` de verdade.
+- **Os rótulos de `status_atividade` têm acento:** `não iniciado`,
+  `em andamento`, `concluido`. Escrever `'nao iniciado'` compila e só falha em
+  produção. Ao gerar SQL com esses rótulos, declare a variável com o tipo do
+  enum (o erro aparece na atribuição, não dentro do INSERT) e valide o rótulo na
+  própria migração — ver `20260826_11`.
 - **`ON CONFLICT` sobre índice PARCIAL exige repetir o predicado**
   (`ON CONFLICT (col) WHERE col IS NOT NULL`). Sem ele o Postgres não casa o
   índice e levanta "no unique or exclusion constraint matching".

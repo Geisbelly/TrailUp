@@ -2725,8 +2725,8 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1787772393.1675713,
-    "ast_hash": "adfab56beece7c3143456d626c984e2c",
+    "mtime": 1787773038.0626645,
+    "ast_hash": "bdf16214911ab69697500c30374ccc2c",
     "semantic_hash": ""
   },
   "README.md": {
@@ -4030,8 +4030,8 @@
     "semantic_hash": ""
   },
   "api/tests/test_migrations.py": {
-    "mtime": 1787772368.0317678,
-    "ast_hash": "57b0515181fff53fc9cfec9ef8930de3",
+    "mtime": 1787772911.4893105,
+    "ast_hash": "65090ab67b919a49a44687c3e3582378",
     "semantic_hash": ""
   },
   "api/alembic/versions/20260411_02_production_schema_baseline.py": {
@@ -5177,6 +5177,11 @@
   "api/alembic/versions/20260826_10_rls_views.py": {
     "mtime": 1787772167.3591237,
     "ast_hash": "06df468a869cef9bda717bb3b36d9d83",
+    "semantic_hash": ""
+  },
+  "api/alembic/versions/20260826_11_fix_recalculo_progresso.py": {
+    "mtime": 1787772812.4566731,
+    "ast_hash": "2fb446758e3bea107245f3632469f392",
     "semantic_hash": ""
   }
 }

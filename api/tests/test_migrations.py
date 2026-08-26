@@ -410,3 +410,30 @@ def test_views_deixam_de_contornar_o_rls() -> None:
     assert "app_alunos_do_professor()" in rendered
 
     assert "UPDATE alembic_version SET version_num='20260826_10'" in rendered
+
+
+def test_recalculo_de_progresso_nao_coage_enum_nem_perde_acento() -> None:
+    output = StringIO()
+    config = _offline_alembic_config(output)
+
+    migrations.command.upgrade(config, "20260826_10:20260826_11", sql=True)
+    rendered = output.getvalue()
+
+    # `conteudo_aluno.status` e `atividade_aluno.status` sao do enum
+    # `status_atividade`. Sem o `::text`, o COALESCE resolve para o enum e o
+    # Postgres tenta coagir '' a ele — o INSERT em `conteudos` abortava.
+    assert "coalesce(ca.status::text, '')" in rendered
+    assert "coalesce(aa.status::text, '')" in rendered
+    # `personalizacao_item_progresso.status` e text de verdade: fica sem cast.
+    assert "coalesce(pip.status, '')" in rendered
+
+    # Os rotulos reais do enum tem acento; sem ele, todo topico com progresso
+    # zero (o caso mais comum) falhava ao gravar.
+    assert "não iniciado" in rendered
+    assert "v_status := 'nao iniciado'" not in rendered
+
+    # Guarda de codificacao: o projeto ja teve mojibake commitado, e este
+    # arquivo carrega string acentuada dentro de SQL dentro de Python.
+    assert "PERFORM 'não iniciado'::status_atividade" in rendered
+
+    assert "UPDATE alembic_version SET version_num='20260826_11'" in rendered

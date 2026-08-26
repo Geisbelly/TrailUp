@@ -2725,8 +2725,8 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1787770875.5278003,
-    "ast_hash": "b832feca5e6fdf7be8e87fd8caf2fdf9",
+    "mtime": 1787772393.1675713,
+    "ast_hash": "adfab56beece7c3143456d626c984e2c",
     "semantic_hash": ""
   },
   "README.md": {
@@ -4030,8 +4030,8 @@
     "semantic_hash": ""
   },
   "api/tests/test_migrations.py": {
-    "mtime": 1787771126.7609692,
-    "ast_hash": "e2230f4c21fd63271fd213faacb2d096",
+    "mtime": 1787772368.0317678,
+    "ast_hash": "57b0515181fff53fc9cfec9ef8930de3",
     "semantic_hash": ""
   },
   "api/alembic/versions/20260411_02_production_schema_baseline.py": {
@@ -5167,6 +5167,16 @@
   "api/alembic/versions/20260826_08_rls_sem_anonimo.py": {
     "mtime": 1787771027.5936413,
     "ast_hash": "c1c0e7fdc1af60c8937e4dc0edcdf478",
+    "semantic_hash": ""
+  },
+  "api/alembic/versions/20260826_09_rls_posse_por_tabela.py": {
+    "mtime": 1787771696.405528,
+    "ast_hash": "bf6ff008302dada7403195cd823e76e7",
+    "semantic_hash": ""
+  },
+  "api/alembic/versions/20260826_10_rls_views.py": {
+    "mtime": 1787772167.3591237,
+    "ast_hash": "06df468a869cef9bda717bb3b36d9d83",
     "semantic_hash": ""
   }
 }
