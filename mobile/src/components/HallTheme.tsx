@@ -6,7 +6,6 @@
 
 import { coresDoDivisor } from "@/components/ornamentDividerColors";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React from "react";
 import { Dimensions, StyleSheet, View } from "react-native";
 import Svg, {
@@ -197,39 +196,43 @@ export function OrnamentDivider({
   opacidade?: number;
 }) {
   const { dim, bright } = coresDoDivisor(color, opacidade);
+
+  // Desenhado em SVG, nao com glifos da fonte de icone.
+  //
+  // Com MaterialCommunityIcons o divisor de rodape do ranking aparecia
+  // "quebrado" -- so as pontas dos losangos, sem as linhas --, e as duas
+  // tentativas de explicar isso pela camada de opacidade e pelo contraste nao
+  // resolveram. Glifo depende de carregamento de fonte e de metrica de texto,
+  // que resolvem DEPOIS do primeiro layout; geometria nao depende de nada disso.
+  // Como bonus, sai um arquivo de fonte do caminho critico deste ornamento.
   return (
     <View style={ornStyles.row}>
       <View style={[ornStyles.line, { backgroundColor: dim }]} />
-      <MaterialCommunityIcons
-        name="rhombus"
-        size={7}
-        color={dim}
-        style={{ marginHorizontal: 3 }}
-      />
-      <MaterialCommunityIcons
-        name="rhombus"
-        size={11}
-        color={bright}
-        style={{ marginHorizontal: 1 }}
-      />
-      <MaterialCommunityIcons
-        name="fleur-de-lis"
-        size={18}
-        color={bright}
-        style={{ marginHorizontal: 2 }}
-      />
-      <MaterialCommunityIcons
-        name="rhombus"
-        size={11}
-        color={bright}
-        style={{ marginHorizontal: 1 }}
-      />
-      <MaterialCommunityIcons
-        name="rhombus"
-        size={7}
-        color={dim}
-        style={{ marginHorizontal: 3 }}
-      />
+      <Svg width={78} height={20} viewBox="0 0 78 20">
+        {/* losangos pequenos das pontas */}
+        <Path d="M4 10 L7 7 L10 10 L7 13 Z" fill={dim} />
+        <Path d="M68 10 L71 7 L74 10 L71 13 Z" fill={dim} />
+        {/* losangos grandes */}
+        <Path d="M15 10 L20 5 L25 10 L20 15 Z" fill={bright} />
+        <Path d="M53 10 L58 5 L63 10 L58 15 Z" fill={bright} />
+        {/* flor-de-lis simplificada: petala central + duas laterais e a haste.
+            Em 20px de altura o desenho detalhado vira borrao, entao a silhueta
+            reconhecivel vale mais que a fidelidade. */}
+        <Path
+          d="M39 2 C41.6 5 41.6 8 39 10.6 C36.4 8 36.4 5 39 2 Z"
+          fill={bright}
+        />
+        <Path
+          d="M39 11 C35.4 8.6 31.8 9.4 31 12.4 C33.2 14.6 37 14.2 39 11 Z"
+          fill={bright}
+        />
+        <Path
+          d="M39 11 C42.6 8.6 46.2 9.4 47 12.4 C44.8 14.6 41 14.2 39 11 Z"
+          fill={bright}
+        />
+        <Rect x={38.2} y={10} width={1.6} height={7} rx={0.8} fill={bright} />
+        <Rect x={34.6} y={15.4} width={8.8} height={1.6} rx={0.8} fill={bright} />
+      </Svg>
       <View style={[ornStyles.line, { backgroundColor: dim }]} />
     </View>
   );
@@ -241,9 +244,8 @@ const ornStyles = StyleSheet.create({
     alignItems: "center",
     width: "100%",
     marginVertical: 6,
-    // Altura explicita: sem ela a linha depende da metrica da fonte de
-    // icone, que resolve depois do primeiro layout -- e a fleur-de-lis (18px)
-    // chegava a ser cortada na primeira pintura.
+    // Altura explicita continua valendo: o SVG tem altura propria (20), mas a
+    // linha de 1px sozinha nao sustentaria a fileira se o SVG falhasse.
     minHeight: 22,
   },
   line: { flex: 1, height: 1 },

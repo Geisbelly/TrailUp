@@ -811,12 +811,22 @@ const adjustedPositions = useMemo(() => {
             return (
               <View
                 key={`badge-${n.id}`}
+                // A camada decorativa cobria o proprio no: 84x70 com
+                // `space-between` e TRES filhos (badge + estrela/cadeado +
+                // heroIcon) somando ~72px de conteudo em 70px de altura, tudo
+                // centrado sobre um hexagono de 36px. Resultado: badge por cima
+                // da borda de cima e os dois circulos colidindo no meio, em cima
+                // do glifo do no.
+                //
+                // Agora a caixa e alta o suficiente para o badge ficar ACIMA do
+                // hexagono, o meio fica vazio (o no aparece limpo) e os dois
+                // circulos vao lado a lado ABAIXO dele.
                 style={{
                   position: "absolute",
                   left: left - 8 - 16,
-                  top: top - 18,
+                  top: top - 34,
                   width: 84,
-                  height: 70,
+                  height: 104,
                   alignItems: "center",
                   justifyContent: "space-between",
                 }}
@@ -849,6 +859,11 @@ const adjustedPositions = useMemo(() => {
                 ) : (
                   <View />
                 )}
+                {/* Espaco do hexagono: nada e desenhado aqui, e o que
+                    devolve o glifo do no. */}
+                <View style={{ height: 36 }} />
+
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                 {n.locked ? (
                   <LockBadge size={28} color={palette.text} />
                 ) : (
@@ -890,9 +905,8 @@ const adjustedPositions = useMemo(() => {
                       color={palette.text}
                     />
                   </View>
-                ) : (
-                  <View />
-                )}
+                ) : null}
+                </View>
               </View>
             );
           })}
