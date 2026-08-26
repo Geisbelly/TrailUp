@@ -22,6 +22,32 @@ antigo). Banco: **Supabase** (externo, via `.env`).
 > `../ApiBrainHex` (origem do `microservice/`). São repositórios externos ao
 > monorepo; o `microservice/` é a versão integrada e é a fonte da verdade aqui.
 
+## Regra de fronteira (a mais importante do repo)
+
+> **A API é para IA: LangGraph, RAG, geração e decisão adaptativa. Nada além
+> disso. Todo o resto é via banco.**
+
+Encanamento — CRUD, fila, agendamento, sessão, contador, entrega — **não entra
+na API**. Vai para o Postgres (funções/RPC, trigger, RLS) e o mobile fala direto
+com o Supabase, como `notificacoes` e `topico_aluno` já fazem.
+
+Dois motivos concretos, não estilo:
+
+1. **A API dorme.** Ela roda no free tier do Render e hiberna. Qualquer coisa
+   com relógio (rotina diária, fila, expiração) simplesmente **para** enquanto
+   ela está fria. O banco não hiberna.
+2. **Um salto a menos.** `mobile → Supabase` já é o caminho autenticado e com
+   Realtime. Passar por `mobile → API → Supabase` adiciona latência, um ponto de
+   falha e uma segunda cópia das regras de acesso.
+
+Ao estender: se a pergunta for "onde ponho isso?", e a resposta não envolver um
+modelo de linguagem, **não é na API**.
+
+> Dívida conhecida: `POST /api/v1/telemetria/lote` recebe lotes do mobile e
+> grava — é encanamento vivendo na API, anterior a esta regra. Ele fica porque o
+> mesmo endpoint dispara o pipeline de análise (que é IA), mas a **persistência**
+> deveria descer para o banco. Não use como precedente.
+
 ## Sistema de personalização — decisões de arquitetura
 
 Estas decisões são **fixas**; sigam-nas ao corrigir/estender.
@@ -109,6 +135,20 @@ Cada perfil carrega:
   ficaria furada justamente onde vai olhar). Ver
   `docs/superpowers/specs/2026-08-25-sugestao-de-material-por-aluno-design.md`.
 - `telemetria_sessoes`, `telemetria_lotes` — telemetria bruta + payload JSONB.
+- **Notificações — motor inteiro no banco.** Quatro tabelas com papéis **não
+  intercambiáveis**: `notificacoes_ia` (o que a IA *sugeriu*; a API só insere
+  aqui), `notificacoes_pendentes` (a *fila*, com `gatilho`
+  `horario|login|tempo_uso` e `expira_em`), `notificacoes_agendamentos` (a
+  *rotina* recorrente) e `notificacoes` (a *caixa de entrada*, só o entregue).
+  O trigger `trg_notificacoes_ia_promover` liga sugestão → fila; as RPCs
+  `notificacoes_registrar_login` / `_heartbeat` / `_minhas_rotinas` /
+  `_salvar_rotina` são o que o mobile chama. Push sai do próprio Postgres por
+  `pg_net` → Expo, e `pg_cron` varre a cada 5min. A **rotina diária é
+  notificação local** agendada no aparelho: dispara com o app fechado sem
+  servidor. Ver `docs/superpowers/specs/2026-08-26-notificacoes-via-banco-design.md`.
+- `notificacoes_config` (parâmetros do motor, uma linha por chave),
+  `notificacoes_dispositivos` (push token por aparelho), `aluno_sessoes_app`
+  (histórico de login) e `aluno_atividade_diaria` (tempo de uso por dia).
 - `personalizacao_item_progresso` — progresso por item (merge: percentual/acertos = máx, tempo = soma).
 - `aluno_perfil`, `perfil` — perfis BrainHex e afinidades.
 
@@ -148,6 +188,19 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
   fluxo de coleta e a realimentação por ciclo intactos.
 - **Não quebrar o existente:** os 7 perfis, o grafo LangGraph, os endpoints e os
   schemas JSONB são pontos de extensão — corrigir/estender, não reescrever.
+- **RLS é a autorização, não defesa extra.** Com o mobile escrevendo direto no
+  Supabase, uma policy `USING (true)` é acesso irrestrito de qualquer portador
+  da chave anon. Várias tabelas do projeto ainda estão assim (as de notificação
+  foram corrigidas em `20260826_04`). Ao tocar numa tabela lida pelo app,
+  confira a policy antes de assumir que ela protege alguma coisa.
+- **`text()` do SQLAlchemy não aceita `:param::tipo`** — o `::` do Postgres
+  colide com a sintaxe de bind e o parâmetro deixa de ser reconhecido (erro em
+  tempo de execução, não de import). Use `CAST(:param AS TIPO)`. E parâmetro
+  usado só em `IS NOT NULL`/`CASE WHEN` **precisa** de cast explícito, senão o
+  asyncpg falha com `AmbiguousParameterError`.
+- **`ON CONFLICT` sobre índice PARCIAL exige repetir o predicado**
+  (`ON CONFLICT (col) WHERE col IS NOT NULL`). Sem ele o Postgres não casa o
+  índice e levanta "no unique or exclusion constraint matching".
 
 ## Pontos de entrada (código)
 

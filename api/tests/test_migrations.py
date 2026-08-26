@@ -239,3 +239,73 @@ def test_sugestao_material_tables_render_idempotent_offline_sql() -> None:
     assert "acao IN ('criada', 'revisada', 'mantida')" in rendered
 
     assert "UPDATE alembic_version SET version_num='20260825_01'" in rendered
+
+
+def test_notificacoes_via_banco_renders_idempotent_offline_sql() -> None:
+    output = StringIO()
+    config = _offline_alembic_config(output)
+
+    migrations.command.upgrade(config, "20260826_02:20260826_03", sql=True)
+    rendered = output.getvalue()
+
+    # As tres tabelas sem as quais push, login e tempo de uso nao existem.
+    assert "CREATE TABLE IF NOT EXISTS notificacoes_dispositivos" in rendered
+    assert "CREATE TABLE IF NOT EXISTS aluno_sessoes_app" in rendered
+    assert "CREATE TABLE IF NOT EXISTS aluno_atividade_diaria" in rendered
+
+    # Configuracao numa tabela, nao espalhada por SQL.
+    assert "CREATE TABLE IF NOT EXISTS notificacoes_config" in rendered
+    assert "'max_por_dia'" in rendered
+
+    # O dedupe que `resposta_hash` sempre prometeu e nunca entregou.
+    assert "notificacoes_ia_resposta_hash_uidx" in rendered
+    # O dedupe da fila NAO pode filtrar por status: filtrando, a linha sairia do
+    # indice ao ser entregue e a rotina dispararia de novo no proximo poll.
+    assert "notificacoes_pendentes_dedupe_uidx" in rendered
+    assert "dedupe_key IS NOT NULL AND status" not in rendered
+
+    assert "UPDATE alembic_version SET version_num='20260826_03'" in rendered
+
+
+def test_notificacoes_motor_sql_renders_offline_sql() -> None:
+    output = StringIO()
+    config = _offline_alembic_config(output)
+
+    migrations.command.upgrade(config, "20260826_03:20260826_04", sql=True)
+    rendered = output.getvalue()
+
+    # As RPCs que o app chama.
+    for rpc in (
+        "notificacoes_registrar_login",
+        "notificacoes_heartbeat",
+        "notificacoes_encerrar_sessao",
+        "notificacoes_minhas_rotinas",
+        "notificacoes_salvar_rotina",
+        "notificacoes_desativar_dispositivo",
+    ):
+        assert f"GRANT EXECUTE ON FUNCTION public.{rpc}" in rendered, rpc
+
+    # As internas NAO podem ser chamaveis pelo app: expo-las deixaria o aluno
+    # disparar entrega em nome de qualquer outro.
+    for interna in (
+        "notificacoes_entregar",
+        "notificacoes_processar_rotinas",
+        "notificacoes_enviar_push",
+        "notificacoes_varrer",
+    ):
+        assert f"REVOKE ALL ON FUNCTION public.{interna}" in rendered, interna
+        assert f"GRANT EXECUTE ON FUNCTION public.{interna}" not in rendered, interna
+
+    # A API so insere a sugestao; o trigger faz o resto.
+    assert "CREATE TRIGGER trg_notificacoes_ia_promover" in rendered
+
+    # Push sai do proprio banco — e o que alcanca o app FECHADO.
+    assert "net.http_post" in rendered
+
+    # As policies abertas (`USING (true)` para `public`) precisam MORRER: elas
+    # deixavam qualquer portador da chave anon ler e apagar notificacao alheia.
+    assert 'DROP POLICY IF EXISTS "Enable read access for all users" ON notificacoes' in rendered
+    assert "USING (aluno_id = auth.uid())" in rendered
+    assert "WITH CHECK (aluno_id = auth.uid())" in rendered
+
+    assert "UPDATE alembic_version SET version_num='20260826_04'" in rendered

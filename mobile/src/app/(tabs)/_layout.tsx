@@ -14,11 +14,17 @@ import { useUsuario } from "@/context/SessaoContext";
 import { MetricasProvider } from "@/context/MetricasContext";
 import { user } from "@/database/mockUser";
 import { FontFamily } from "@/styles/GlobalStyle";
+import { useMonitorDeSessao } from "@/hooks/useMonitorDeSessao";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 
 export default function TabLayout() {
   const { usuario } = useUsuario();
   const segments = useSegments() as string[];
+
+  // Login, tempo de uso, push token e lembretes locais. Fica aqui e nao no
+  // layout raiz porque so faz sentido dentro da area autenticada — no grupo
+  // (auth) nao existe aluno para monitorar.
+  useMonitorDeSessao();
 
   const brainProfile =
     (usuario?.perfis?.[0]?.nome as keyof typeof brainHexImageMap | undefined) ||
