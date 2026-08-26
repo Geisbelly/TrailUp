@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 2,
   },
   statusDot: {
     width: 12,
