@@ -561,11 +561,15 @@ export default function TrilhaConteudoScreen() {
     if (!checkpointHydratedRef.current || !topicoId) return;
 
     if (topicoConcluido) {
+      // Apagar aqui e o que faz a proxima abertura comecar do inicio. Se o
+      // topico esta sendo considerado concluido cedo, este log mostra.
+      if (__DEV__) console.log("[Checkpoint] apagando (topico concluido)", JSON.stringify({ topicoId }));
       void clearTrilhaCheckpoint(checkpointParams);
       return;
     }
 
     if (mostrarResumo) {
+      if (__DEV__) console.log("[Checkpoint] gravando resumo", JSON.stringify({ topicoId }));
       void saveTrilhaCheckpoint(checkpointParams, {
         mostrarResumo: true,
         blockKind: null,
@@ -587,6 +591,13 @@ export default function TrilhaConteudoScreen() {
       atualBlock.kind === "conteudo"
         ? Number(atualBlock.conteudo.id)
         : Number(atualBlock.atividade.id);
+
+    if (__DEV__) {
+      console.log(
+        "[Checkpoint] gravando",
+        JSON.stringify({ topicoId, index, blockKind: atualBlock.kind, blockId })
+      );
+    }
 
     void saveTrilhaCheckpoint(checkpointParams, {
       mostrarResumo: false,

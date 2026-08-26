@@ -64,7 +64,15 @@ export function useCheckpointResume(args: {
   const checkpointHydratedRef = useRef(false);
 
   useEffect(() => {
-    if (!primeiraVez || !blocosProntos || blocks.length === 0 || !topicoId) return;
+    if (!primeiraVez || !blocosProntos || blocks.length === 0 || !topicoId) {
+      if (__DEV__ && primeiraVez && topicoId) {
+        console.log(
+          "[Checkpoint] hidratacao adiada",
+          JSON.stringify({ blocosProntos, blocks: blocks.length, topicoId })
+        );
+      }
+      return;
+    }
 
     let active = true;
 
@@ -79,10 +87,36 @@ export function useCheckpointResume(args: {
         checkpoint?.blockId ?? null
       );
 
+      if (__DEV__) {
+        console.log(
+          "[Checkpoint] hidratando",
+          JSON.stringify({
+            topicoId,
+            gravado: checkpoint
+              ? {
+                  mostrarResumo: checkpoint.mostrarResumo,
+                  blockKind: checkpoint.blockKind,
+                  blockId: checkpoint.blockId,
+                }
+              : null,
+            posicaoResolvida: checkpointPosition,
+            blocos: blocks.map((bloco) =>
+              bloco.kind === "conteudo"
+                ? `c:${Number(bloco.conteudo.id)}`
+                : `a:${Number(bloco.atividade.id)}`
+            ),
+            topicoJaIniciado,
+            topicoConcluido,
+          })
+        );
+      }
+
       if (checkpoint?.mostrarResumo) {
+        decisao("gravado pedia resumo -> tela inicial");
         setIndex(-1);
         setMostrarResumo(true);
       } else if (checkpointPosition >= 0) {
+        decisao(`retomando no bloco ${checkpointPosition}`);
         setIndex(checkpointPosition);
         setMostrarResumo(false);
 
@@ -97,16 +131,22 @@ export function useCheckpointResume(args: {
           }));
         }
       } else if (topicoJaIniciado || topicoConcluido) {
+        decisao("sem checkpoint utilizavel -> posicao legada");
         const posicao = resolveLegacyStartPosition(blocks, topico?.ultima_atividade ?? null);
         setIndex(posicao);
         setMostrarResumo(false);
       } else {
+        decisao("nada gravado e topico nao iniciado -> tela inicial");
         setIndex(-1);
         setMostrarResumo(true);
       }
 
       checkpointHydratedRef.current = true;
       setPrimeiraVez(false);
+    }
+
+    function decisao(qual: string) {
+      if (__DEV__) console.log("[Checkpoint] decisao", qual);
     }
 
     void hydrateCheckpoint();
