@@ -468,8 +468,20 @@
   "466": "api/estrutura-banco-supabase-executivo.md",
   "467": "react-native",
   "468": "@vitejs/plugin-react",
+  "469": "lamejs",
+  "470": "mammoth",
   "471": "GUIA_USO.md",
   "472": "docs/microservice/README.md",
   "473": "upload_fontes_personalizacao",
-  "475": "caniuse-lite"
+  "474": "motion",
+  "475": "caniuse-lite",
+  "476": "openai",
+  "477": "react",
+  "478": "@tailwindcss/vite",
+  "479": "jszip",
+  "480": "node-html-parser",
+  "481": "react-dom",
+  "482": "react-native-gesture-handler",
+  "483": "react-native-safe-area-context",
+  "484": "react-native-webview"
 }

@@ -309,3 +309,47 @@ def test_notificacoes_motor_sql_renders_offline_sql() -> None:
     assert "WITH CHECK (aluno_id = auth.uid())" in rendered
 
     assert "UPDATE alembic_version SET version_num='20260826_04'" in rendered
+
+
+def test_push_migra_para_expo_tokens_e_fecha_policies() -> None:
+    output = StringIO()
+    config = _offline_alembic_config(output)
+
+    migrations.command.upgrade(config, "20260826_06:20260826_07", sql=True)
+    rendered = output.getvalue()
+
+    # O token e a identidade do aparelho para a Expo: precisa ser unico para o
+    # upsert poder trocar o dono num celular compartilhado.
+    assert "expo_tokens_token_uidx" in rendered
+    # Os dados sao migrados ANTES do drop — a migracao nao pode depender de a
+    # tabela nova estar vazia para estar correta.
+    assert "INSERT INTO expo_tokens" in rendered
+    assert rendered.index("INSERT INTO expo_tokens") < rendered.index(
+        "DROP TABLE IF EXISTS notificacoes_dispositivos"
+    )
+    # As policies abertas de expo_tokens morrem.
+    assert 'DROP POLICY IF EXISTS "Enable read access for all users" ON expo_tokens' in rendered
+    assert "CREATE POLICY expo_tokens_aluno_sel" in rendered
+    assert "USING (aluno_id = auth.uid())" in rendered
+
+    assert "UPDATE alembic_version SET version_num='20260826_07'" in rendered
+
+
+def test_rls_sem_anonimo_migra_policies_para_authenticated() -> None:
+    output = StringIO()
+    config = _offline_alembic_config(output)
+
+    migrations.command.upgrade(config, "20260826_07:20260826_08", sql=True)
+    rendered = output.getvalue()
+
+    # `format()` esta fora de proposito: o Alembic duplica o marcador de
+    # parametro ao renderizar offline (--sql), e o ALTER POLICY gerado sairia
+    # invalido. `quote_ident` + concatenacao executa igual nos dois caminhos.
+    assert "ALTER POLICY ' || quote_ident(r.policyname)" in rendered
+    assert "EXECUTE format(" not in rendered
+    assert "TO authenticated" in rendered
+    # `{public}` exato: uma policy ja concedida a roles especificos nao pode ser
+    # tocada, para nao remover acesso intencional.
+    assert "roles::text = '{public}'" in rendered
+
+    assert "UPDATE alembic_version SET version_num='20260826_08'" in rendered

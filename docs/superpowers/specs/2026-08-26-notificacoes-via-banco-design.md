@@ -138,3 +138,6 @@ das funções, e o console do professor pode ajustar sem deploy: `max_por_dia`,
   continua funcionando (é local). O que se perde é o alcance ao app fechado para
   sugestões novas da IA.
 - **Push remoto exige build de desenvolvimento.** Não funciona no Expo Go.
+- **RLS ainda não distingue aluno de aluno fora das notificações.** O acesso
+  anônimo foi fechado (`20260826_08`), mas em ~26 tabelas o predicado segue
+  `true` para qualquer autenticado. Ver CLAUDE.md, seção de convenções.

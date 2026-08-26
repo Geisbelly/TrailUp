@@ -147,8 +147,10 @@ Cada perfil carrega:
   notificação local** agendada no aparelho: dispara com o app fechado sem
   servidor. Ver `docs/superpowers/specs/2026-08-26-notificacoes-via-banco-design.md`.
 - `notificacoes_config` (parâmetros do motor, uma linha por chave),
-  `notificacoes_dispositivos` (push token por aparelho), `aluno_sessoes_app`
-  (histórico de login) e `aluno_atividade_diaria` (tempo de uso por dia).
+  `expo_tokens` (push token por aparelho — tabela que **já existia**; a
+  `notificacoes_dispositivos` que eu havia criado foi descartada em
+  `20260826_07` por duplicá-la), `aluno_sessoes_app` (histórico de login) e
+  `aluno_atividade_diaria` (tempo de uso por dia).
 - `personalizacao_item_progresso` — progresso por item (merge: percentual/acertos = máx, tempo = soma).
 - `aluno_perfil`, `perfil` — perfis BrainHex e afinidades.
 
@@ -188,11 +190,16 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
   fluxo de coleta e a realimentação por ciclo intactos.
 - **Não quebrar o existente:** os 7 perfis, o grafo LangGraph, os endpoints e os
   schemas JSONB são pontos de extensão — corrigir/estender, não reescrever.
-- **RLS é a autorização, não defesa extra.** Com o mobile escrevendo direto no
-  Supabase, uma policy `USING (true)` é acesso irrestrito de qualquer portador
-  da chave anon. Várias tabelas do projeto ainda estão assim (as de notificação
-  foram corrigidas em `20260826_04`). Ao tocar numa tabela lida pelo app,
-  confira a policy antes de assumir que ela protege alguma coisa.
+- **RLS é a autorização, não defesa extra.** `anon` e `authenticated` têm
+  GRANT de SELECT/INSERT/UPDATE/DELETE nas 84 tabelas — RLS é a única
+  barreira, e uma policy `USING (true)` não é barreira nenhuma. O acesso
+  **anônimo** foi fechado em `20260826_08` (nenhuma policy aponta mais para
+  o role `public`). **Ainda em aberto:** em ~26 tabelas o predicado continua
+  `true` para autenticado, então um aluno logado enxerga dado de outro. A
+  correção é predicado de posse por tabela, e o console do professor escreve
+  direto no Supabase (`topicos`, `conteudos`, `questoes`, `ranks`…), então a
+  cadeia de posse passa por `classe`. Ao tocar numa tabela lida pelo app,
+  confira a policy antes de assumir que ela protege algo.
 - **`text()` do SQLAlchemy não aceita `:param::tipo`** — o `::` do Postgres
   colide com a sintaxe de bind e o parâmetro deixa de ser reconhecido (erro em
   tempo de execução, não de import). Use `CAST(:param AS TIPO)`. E parâmetro
