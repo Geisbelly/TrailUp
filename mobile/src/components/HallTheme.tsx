@@ -208,30 +208,25 @@ export function OrnamentDivider({
   return (
     <View style={ornStyles.row}>
       <View style={[ornStyles.line, { backgroundColor: dim }]} />
-      <Svg width={78} height={20} viewBox="0 0 78 20">
-        {/* losangos pequenos das pontas */}
-        <Path d="M4 10 L7 7 L10 10 L7 13 Z" fill={dim} />
-        <Path d="M68 10 L71 7 L74 10 L71 13 Z" fill={dim} />
-        {/* losangos grandes */}
-        <Path d="M15 10 L20 5 L25 10 L20 15 Z" fill={bright} />
-        <Path d="M53 10 L58 5 L63 10 L58 15 Z" fill={bright} />
-        {/* flor-de-lis simplificada: petala central + duas laterais e a haste.
-            Em 20px de altura o desenho detalhado vira borrao, entao a silhueta
-            reconhecivel vale mais que a fidelidade. */}
-        <Path
-          d="M39 2 C41.6 5 41.6 8 39 10.6 C36.4 8 36.4 5 39 2 Z"
-          fill={bright}
-        />
-        <Path
-          d="M39 11 C35.4 8.6 31.8 9.4 31 12.4 C33.2 14.6 37 14.2 39 11 Z"
-          fill={bright}
-        />
-        <Path
-          d="M39 11 C42.6 8.6 46.2 9.4 47 12.4 C44.8 14.6 41 14.2 39 11 Z"
-          fill={bright}
-        />
-        <Rect x={38.2} y={10} width={1.6} height={7} rx={0.8} fill={bright} />
-        <Rect x={34.6} y={15.4} width={8.8} height={1.6} rx={0.8} fill={bright} />
+      <Svg width={92} height={24} viewBox="0 0 92 24">
+        {/* Losangos pequenos das pontas */}
+        <Path d="M6 12 L9 9 L12 12 L9 15 Z" fill={dim} />
+        <Path d="M80 12 L83 9 L86 12 L83 15 Z" fill={dim} />
+        {/* Losangos grandes */}
+        <Path d="M20 12 L25 7 L30 12 L25 17 Z" fill={bright} />
+        <Path d="M62 12 L67 7 L72 12 L67 17 Z" fill={bright} />
+        {/* Flor-de-lis: petala central, duas laterais SUBINDO em ponta, faixa
+            horizontal e um pe curto.
+            As laterais precisam curvar pra cima -- na primeira versao elas
+            desciam como folhas e o desenho virava uma plantinha. E o pe precisa
+            ser curto: haste longa com base larga fazia parecer trofeu. Conferido
+            renderizado, a 1x e a 6x, antes de subir. */}
+        <Path d="M46 3 C49 6.6 49.8 9.6 48.6 13 L43.4 13 C42.2 9.6 43 6.6 46 3 Z" fill={bright} />
+        <Path d="M42.9 13.2 C39.8 12.6 37.2 10.7 35.7 7.8 C34.7 10 35 12 36.4 13.2 Z" fill={bright} />
+        <Path d="M49.1 13.2 C52.2 12.6 54.8 10.7 56.3 7.8 C57.3 10 57 12 55.6 13.2 Z" fill={bright} />
+        <Rect x={36.2} y={13.6} width={19.6} height={1.9} rx={0.95} fill={bright} />
+        <Path d="M44.7 15.9 L47.3 15.9 L46.8 19.4 L45.2 19.4 Z" fill={bright} />
+        <Rect x={43.6} y={19.4} width={4.8} height={1.5} rx={0.75} fill={bright} />
       </Svg>
       <View style={[ornStyles.line, { backgroundColor: dim }]} />
     </View>
@@ -246,7 +241,8 @@ const ornStyles = StyleSheet.create({
     marginVertical: 6,
     // Altura explicita continua valendo: o SVG tem altura propria (20), mas a
     // linha de 1px sozinha nao sustentaria a fileira se o SVG falhasse.
-    minHeight: 22,
+    // Acompanha a altura do SVG (24) com uma folga minima.
+    minHeight: 26,
   },
   line: { flex: 1, height: 1 },
 });
