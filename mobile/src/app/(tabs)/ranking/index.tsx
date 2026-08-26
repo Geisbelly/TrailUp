@@ -450,7 +450,12 @@ const styles = StyleSheet.create({
   scroll: {
     paddingHorizontal: PADDING_H,
     paddingTop: 24,
-    paddingBottom: 110,
+    // 110 aqui era vao morto puro. A tab bar nao flutua (nao tem
+    // `position: absolute` em (tabs)/_layout.tsx), entao o ScrollView ja termina
+    // onde ela comeca -- reservar a altura dela DE NOVO dentro do conteudo
+    // criava ~110dp de nada no fim e, pior, deixava o conteudo mais alto que a
+    // viewport: a tela rolava mesmo com tudo caibindo. Agora e so respiro.
+    paddingBottom: 24,
   },
 
   // Header
