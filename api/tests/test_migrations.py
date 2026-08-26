@@ -49,13 +49,33 @@ def test_normalize_database_url_preserves_real_password() -> None:
     assert "***" not in normalized
 
 
-def test_idempotent_generated_materials_is_the_only_alembic_head() -> None:
+def test_alembic_tem_uma_unica_cabeca_e_cadeia_continua() -> None:
+    """Duas cabecas fazem `upgrade head` falhar -- e o nome antigo deste teste
+    ("idempotent_generated_materials_is_the_only_alembic_head") ja nao dizia a
+    verdade: ele fixava uma revisao qualquer, que virava divida a cada migracao
+    nova. O invariante que importa e este: uma cabeca so, e caminho continuo
+    dela ate a base.
+    """
     scripts = ScriptDirectory.from_config(_offline_alembic_config())
 
-    assert scripts.get_heads() == ["20260825_01"]
-    revision = scripts.get_revision("20260825_01")
-    assert revision is not None
-    assert revision.down_revision == "20260821_01"
+    heads = scripts.get_heads()
+    assert len(heads) == 1, f"cadeia ramificada: {heads}"
+
+    visitadas = set()
+    atual = scripts.get_revision(heads[0])
+    while atual is not None:
+        assert atual.revision not in visitadas, f"ciclo em {atual.revision}"
+        visitadas.add(atual.revision)
+        anterior = atual.down_revision
+        if anterior is None:
+            break
+        assert isinstance(anterior, str), f"merge inesperado em {atual.revision}"
+        atual = scripts.get_revision(anterior)
+
+    # Toda migracao no diretorio precisa estar nesse caminho; uma solta nunca
+    # roda e passa despercebida.
+    todas = {revisao.revision for revisao in scripts.walk_revisions()}
+    assert visitadas == todas, f"fora da cadeia: {sorted(todas - visitadas)}"
 
 
 def test_personalizacao_jobs_conteudo_fk_renders_idempotent_offline_sql() -> None:
