@@ -2725,8 +2725,8 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1787769222.838979,
-    "ast_hash": "b7f690368d860e94395f2651cb42c98b",
+    "mtime": 1787770875.5278003,
+    "ast_hash": "b832feca5e6fdf7be8e87fd8caf2fdf9",
     "semantic_hash": ""
   },
   "README.md": {
@@ -4030,8 +4030,8 @@
     "semantic_hash": ""
   },
   "api/tests/test_migrations.py": {
-    "mtime": 1787769076.2813187,
-    "ast_hash": "55a06272a03a29810578299295125ddc",
+    "mtime": 1787771126.7609692,
+    "ast_hash": "e2230f4c21fd63271fd213faacb2d096",
     "semantic_hash": ""
   },
   "api/alembic/versions/20260411_02_production_schema_baseline.py": {
@@ -5150,13 +5150,23 @@
     "semantic_hash": ""
   },
   "docs/superpowers/specs/2026-08-26-notificacoes-via-banco-design.md": {
-    "mtime": 1787769203.8270905,
-    "ast_hash": "a3bbee854d04c0e7b22d0267e8ce16a1",
+    "mtime": 1787770875.5293078,
+    "ast_hash": "7cd14e76b9c21f61ac23ae6c4cbe91b0",
     "semantic_hash": ""
   },
   "api/alembic/versions/20260826_06_notificacoes_config_publico.py": {
     "mtime": 1787769458.5180612,
     "ast_hash": "49aa169a066c5bce0a0a4e4caa76ba8d",
+    "semantic_hash": ""
+  },
+  "api/alembic/versions/20260826_07_push_em_expo_tokens.py": {
+    "mtime": 1787770678.8925512,
+    "ast_hash": "ac35e4dd97de399bbd01a743ff2dc7ee",
+    "semantic_hash": ""
+  },
+  "api/alembic/versions/20260826_08_rls_sem_anonimo.py": {
+    "mtime": 1787771027.5936413,
+    "ast_hash": "c1c0e7fdc1af60c8937e4dc0edcdf478",
     "semantic_hash": ""
   }
 }

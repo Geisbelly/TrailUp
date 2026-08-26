@@ -353,3 +353,60 @@ def test_rls_sem_anonimo_migra_policies_para_authenticated() -> None:
     assert "roles::text = '{public}'" in rendered
 
     assert "UPDATE alembic_version SET version_num='20260826_08'" in rendered
+
+
+def test_posse_por_tabela_usa_a_cadeia_de_classe() -> None:
+    output = StringIO()
+    config = _offline_alembic_config(output)
+
+    migrations.command.upgrade(config, "20260826_08:20260826_09", sql=True)
+    rendered = output.getvalue()
+
+    # Helpers SECURITY DEFINER: uma policy em classe_aluno que consultasse
+    # classe_aluno entraria em recursao de RLS.
+    for fn in ("app_classes_do_professor", "app_classes_do_aluno",
+               "app_alunos_do_professor", "app_colegas_de_turma"):
+        assert f"FUNCTION public.{fn}" in rendered, fn
+        assert f"REVOKE ALL ON FUNCTION public.{fn}" in rendered, fn
+
+    # As policies herdadas `USING (true)` precisam morrer.
+    assert 'DROP POLICY IF EXISTS "Enable read access for all users"' in rendered
+
+    # Aluno matriculado LE o conteudo (trilha sem conteudo nao e trilha),
+    # mas quem escreve e o professor dono.
+    assert "app_minhas_classes()" in rendered
+    assert "app_classes_do_professor()" in rendered
+
+    # Sem policy de DELETE nas tabelas de progresso do aluno: apagar
+    # `eventos_aluno` zeraria o ranking, e era o que a policy aberta permitia.
+    assert "CREATE POLICY eventos_aluno_posse_del" not in rendered
+
+    # Escalada de privilegio: so o professor do vinculo escreve.
+    assert "CREATE POLICY professor_aluno_posse_ins" in rendered
+    assert "WITH CHECK (professor_id = auth.uid())" in rendered
+
+    assert "UPDATE alembic_version SET version_num='20260826_09'" in rendered
+
+
+def test_views_deixam_de_contornar_o_rls() -> None:
+    output = StringIO()
+    config = _offline_alembic_config(output)
+
+    migrations.command.upgrade(config, "20260826_09:20260826_10", sql=True)
+    rendered = output.getvalue()
+
+    # Uma view sem `security_invoker` roda como o DONO e ignora o RLS das
+    # tabelas base — era um segundo bypass, paralelo ao das policies.
+    assert "SET (security_invoker = on)" in rendered
+    assert "vw_metricas_desempenho_aluno_classe" in rendered
+
+    # O ranking mantem o bypass de proposito (soma eventos de varios alunos),
+    # mas filtrado pelas classes do chamador.
+    assert "vw_rank_posicoes_por_classe_todas" in rendered
+    assert "app_minhas_classes()" in rendered
+
+    # Professor ganha a telemetria dos alunos DELE — a posse que faltava.
+    assert "telemetria_lotes_professor_sel" in rendered
+    assert "app_alunos_do_professor()" in rendered
+
+    assert "UPDATE alembic_version SET version_num='20260826_10'" in rendered

@@ -190,16 +190,30 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
   fluxo de coleta e a realimentação por ciclo intactos.
 - **Não quebrar o existente:** os 7 perfis, o grafo LangGraph, os endpoints e os
   schemas JSONB são pontos de extensão — corrigir/estender, não reescrever.
-- **RLS é a autorização, não defesa extra.** `anon` e `authenticated` têm
-  GRANT de SELECT/INSERT/UPDATE/DELETE nas 84 tabelas — RLS é a única
-  barreira, e uma policy `USING (true)` não é barreira nenhuma. O acesso
-  **anônimo** foi fechado em `20260826_08` (nenhuma policy aponta mais para
-  o role `public`). **Ainda em aberto:** em ~26 tabelas o predicado continua
-  `true` para autenticado, então um aluno logado enxerga dado de outro. A
-  correção é predicado de posse por tabela, e o console do professor escreve
-  direto no Supabase (`topicos`, `conteudos`, `questoes`, `ranks`…), então a
-  cadeia de posse passa por `classe`. Ao tocar numa tabela lida pelo app,
-  confira a policy antes de assumir que ela protege algo.
+- **RLS é a autorização, não defesa extra.** `anon` e `authenticated` têm GRANT
+  de SELECT/INSERT/UPDATE/DELETE nas 84 tabelas — RLS é a única barreira. A
+  posse está implementada (`20260826_08` a `20260826_10`):
+  - **anônimo não lê nada** — nem tabela nem view;
+  - **aluno** vê o próprio dado, os colegas da sua turma (o ranking depende
+    disso) e o conteúdo das classes em que está matriculado; escreve só o que é
+    dele;
+  - **professor** vê e escreve o conteúdo das classes que ele criou
+    (`classe.professor_id = auth.uid()`), e lê o dado e a telemetria dos alunos
+    dessas classes.
+
+  Os predicados usam helpers `SECURITY DEFINER` (`app_classes_do_professor()`,
+  `app_alunos_do_professor()`, `app_colegas_de_turma()`…) **de propósito**: uma
+  policy em `classe_aluno` que consultasse `classe_aluno` entraria em recursão
+  de RLS. Ao criar policy nova, use os helpers em vez de repetir o `EXISTS`.
+- **View sem `security_invoker` ignora RLS.** Ela roda com os privilégios do
+  dono (`postgres`), então as policies das tabelas base **não se aplicam** —
+  era um segundo bypass, paralelo ao das policies, e por ele dava para ler
+  ranking, métricas e telemetria sem login. Todas foram para
+  `security_invoker = on` em `20260826_10`. A única exceção deliberada é
+  `vw_rank_posicoes_por_classe`: ela soma eventos de vários alunos, o que um
+  aluno não pode fazer lendo `eventos_aluno` linha a linha, então mantém o
+  bypass e é filtrada na saída pelas classes do chamador. **Toda view nova
+  nasce com `security_invoker = on`.**
 - **`text()` do SQLAlchemy não aceita `:param::tipo`** — o `::` do Postgres
   colide com a sintaxe de bind e o parâmetro deixa de ser reconhecido (erro em
   tempo de execução, não de import). Use `CAST(:param AS TIPO)`. E parâmetro
