@@ -288,3 +288,73 @@ test("sem bloco nenhum nao trava o aluno", () => {
   // Modulo vazio nao tem o que concluir; segurar aqui deixaria a tela sem saida.
   assert.equal(gate({ conteudos: [], atividades: [] }), true);
 });
+
+// --- percurso manda na conclusao ------------------------------------------
+//
+// A tela decide `topicoConcluido` pelo PERCURSO, nao pelo status do banco.
+// `Topico.calcularPercentual()` conta so o material do professor, entao ele
+// chega a 100 com os passos personalizados intocados -- e era isso que fazia o
+// checkpoint ser apagado a cada render.
+
+function concluidoPelaTela(params: {
+  statusDoBanco: string | null;
+  pctDoBanco: number;
+  percurso: { total: number; concluidos: number };
+  personalizacaoCarregando?: boolean;
+}) {
+  if (params.personalizacaoCarregando) return false;
+  if (params.percurso.total > 0) {
+    return params.percurso.concluidos >= params.percurso.total;
+  }
+  const status = String(params.statusDoBanco ?? "").toLowerCase();
+  return status.includes("concl") || params.pctDoBanco >= 100;
+}
+
+test("banco dizendo concluido nao encerra topico com percurso pendente", () => {
+  // Caso real observado no aparelho: cabecalho mostrando "6 de 26 blocos" e o
+  // log repetindo "[Checkpoint] apagando (topico concluido)".
+  assert.equal(
+    concluidoPelaTela({
+      statusDoBanco: "concluido",
+      pctDoBanco: 100,
+      percurso: { total: 26, concluidos: 6 },
+    }),
+    false
+  );
+});
+
+test("percurso completo encerra o topico mesmo com banco atrasado", () => {
+  assert.equal(
+    concluidoPelaTela({
+      statusDoBanco: "em andamento",
+      pctDoBanco: 40,
+      percurso: { total: 26, concluidos: 26 },
+    }),
+    true
+  );
+});
+
+test("sem percurso montado o status do banco vale", () => {
+  // Topico sem bloco ou dado ainda nao carregado: e a unica informacao que ha.
+  assert.equal(
+    concluidoPelaTela({
+      statusDoBanco: "concluido",
+      pctDoBanco: 100,
+      percurso: { total: 0, concluidos: 0 },
+    }),
+    true
+  );
+});
+
+test("personalizacao carregando nunca encerra o topico", () => {
+  // O percurso esta incompleto por definicao nesse momento.
+  assert.equal(
+    concluidoPelaTela({
+      statusDoBanco: "concluido",
+      pctDoBanco: 100,
+      percurso: { total: 4, concluidos: 4 },
+      personalizacaoCarregando: true,
+    }),
+    false
+  );
+});

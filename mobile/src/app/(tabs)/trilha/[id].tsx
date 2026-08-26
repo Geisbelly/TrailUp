@@ -430,18 +430,35 @@ export default function TrilhaConteudoScreen() {
 
   const topicoConcluido = useMemo(() => {
     if (!topico) return false;
+
+    // Enquanto a personalizacao carrega, o percurso ainda esta incompleto por
+    // definicao: declarar concluido aqui fecharia o modulo antes de o aluno ver
+    // o material que esta a caminho.
+    if (personalizacaoCarregando) return false;
+
+    // O PERCURSO decide, nao o status do banco.
+    //
+    // `topico_aluno.status`/`percentual_concluido` vem de
+    // `Topico.calcularPercentual()`, que conta SO conteudo/atividade do
+    // professor. Terminando esses, o topico era gravado como 'concluido' com o
+    // material personalizado intocado -- e a tela, que confiava nesse status
+    // antes de olhar qualquer coisa, dava o topico por encerrado exibindo
+    // "6 de 26 blocos concluidos" no cabecalho.
+    //
+    // Pior que a contradicao: `topicoConcluido` dispara
+    // `clearTrilhaCheckpoint`, entao o checkpoint era APAGADO a cada render. A
+    // trilha "sempre voltava pro inicio" porque o ponto de parada era deletado,
+    // nao porque falhava ao gravar. (Confirmado no log do aparelho:
+    // "[Checkpoint] apagando (topico concluido)" repetindo sem parar.)
+    if (progressoPercurso.total > 0) {
+      return progressoPercurso.concluidos >= progressoPercurso.total;
+    }
+
+    // Sem percurso montado (topico sem bloco, ou dado ainda nao carregado), o
+    // status do banco e a unica informacao disponivel -- ai ele vale.
     const status = String(topico.status ?? "").toLowerCase();
     const pct = Number(topico.percentual_concluido ?? 0);
-    if (status.includes("concl") || pct >= 100) return true;
-    // Enquanto a personalizacao carrega, o percurso ainda esta incompleto:
-    // declarar concluido aqui fecharia o modulo antes de o aluno ver o material
-    // que esta a caminho. Se a carga falhar, o estado volta a false e o topico
-    // segue concluivel so com o material do professor.
-    if (personalizacaoCarregando) return false;
-    return (
-      progressoPercurso.total > 0 &&
-      progressoPercurso.concluidos >= progressoPercurso.total
-    );
+    return status.includes("concl") || pct >= 100;
   }, [
     personalizacaoCarregando,
     progressoPercurso.concluidos,
