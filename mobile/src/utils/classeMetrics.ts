@@ -42,6 +42,11 @@ export type ClasseAcademicMetrics = {
   progressPct: number;
   isComplete: boolean;
   tempoTotalMin: number;
+  /** Tempo por escopo. Existiam apenas dentro do calculo; agora sao expostos
+   *  para a tela poder detalhar em vez de mostrar um total opaco. */
+  tempoTopicoMin: number;
+  tempoConteudoMin: number;
+  tempoAtividadeMin: number;
   tempoMedioPorAtividade: number;
   acertosPercentual: number;
   atividadesConcluidasIds: number[];
@@ -136,7 +141,6 @@ export function buildClasseAcademicMetrics(classe: Classe | null): ClasseAcademi
       ? clampPercent((topicosConcluidos / totalTopicos) * 100)
       : 0;
 
-  // Ranking de tempo deve considerar apenas tempo ativo de tópico.
   const tempoTopicoMin = topicos.reduce((sum, topico) => {
     const tempo = Number(topico.tempo_gasto_min ?? 0);
     return sum + (Number.isFinite(tempo) ? Math.max(0, tempo) : 0);
@@ -145,7 +149,22 @@ export function buildClasseAcademicMetrics(classe: Classe | null): ClasseAcademi
     (sum, atividade) => sum + resolveAtividadeTempoMin(atividade),
     0
   );
-  const tempoTotalMin = roundMetric(tempoTopicoMin);
+  // Tempo de conteudo NAO era calculado em lugar nenhum, e o de atividade era
+  // calculado e descartado (`tempoTotalMin` recebia so o do topico). Os tres
+  // agora existem, e o total usa MAXIMO, nao soma.
+  //
+  // Por que maximo: `registrarTempoTopico` roda a cada flush do rastreio,
+  // inclusive nos blocos personalizados, entao o tempo do topico JA CONTEM o
+  // dos itens -- somar contaria duas vezes. Mas se a escrita em `topico_aluno`
+  // falha (RLS, rede), o tempo do topico fica em zero enquanto os itens tem
+  // tempo gravado, e ai o total zerava mesmo havendo estudo registrado. Era o
+  // "tempo nao contabilizado". O maximo cobre os dois casos.
+  const tempoConteudoMin = conteudos.reduce((sum, conteudo) => {
+    const tempo = Number((conteudo as any)?.tempo_gasto_min ?? 0);
+    return sum + (Number.isFinite(tempo) ? Math.max(0, tempo) : 0);
+  }, 0);
+  const tempoItensMin = tempoConteudoMin + tempoAtividadeMin;
+  const tempoTotalMin = roundMetric(Math.max(tempoTopicoMin, tempoItensMin));
 
   const acuracias = atividades
     .map(resolveAtividadeAcertos)
@@ -172,6 +191,9 @@ export function buildClasseAcademicMetrics(classe: Classe | null): ClasseAcademi
       (totalBlocos > 0 && blocosConcluidos >= totalBlocos) ||
       (totalBlocos === 0 && totalTopicos > 0 && topicosConcluidos >= totalTopicos),
     tempoTotalMin,
+    tempoTopicoMin: roundMetric(tempoTopicoMin),
+    tempoConteudoMin: roundMetric(tempoConteudoMin),
+    tempoAtividadeMin: roundMetric(tempoAtividadeMin),
     tempoMedioPorAtividade,
     acertosPercentual,
     atividadesConcluidasIds: atividades

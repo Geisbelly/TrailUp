@@ -201,10 +201,25 @@ test("cards entram como material proprio", () => {
   assert.equal(unificado.conteudosConcluidos, 2);
 });
 
-test("tempo dos dois lados soma", () => {
+test("tempo usa o maior dos dois lados, nao a soma", () => {
+  // O tempo do topico ja inclui o dos itens (o rastreio grava topico em todo
+  // flush, inclusive nos blocos personalizados). Somar contaria duas vezes.
   const personalizado = agregarProgressoPersonalizado([linha({ tempo_gasto_min: 7.5 })]);
 
-  assert.equal(unificarContadores({ academico, personalizado }).tempoMin, 17.5);
+  assert.equal(unificarContadores({ academico, personalizado }).tempoMin, 10);
+});
+
+test("tempo do lado personalizado sustenta o total quando o academico falha", () => {
+  // Se a escrita em topico_aluno falha (RLS, rede), o tempo academico fica em
+  // zero mesmo havendo estudo -- era o "tempo nao contabilizado".
+  const personalizado = agregarProgressoPersonalizado([linha({ tempo_gasto_min: 12 })]);
+
+  const unificado = unificarContadores({
+    academico: { ...academico, tempoMin: 0 },
+    personalizado,
+  });
+
+  assert.equal(unificado.tempoMin, 12);
 });
 
 test("sem nada personalizado os numeros academicos passam intactos", () => {

@@ -330,9 +330,13 @@ export function buildProfileMetricsViewModel({
   const acertos = hasAtividades
     ? academicMetrics.acertosPercentual
     : resumoConfiavel?.acertosPercentual ?? 0;
+  // MAXIMO, nao soma: o tempo do topico ja inclui o dos itens (o rastreio grava
+  // topico em todo flush, inclusive nos blocos personalizados). O maximo evita
+  // contar duas vezes e ao mesmo tempo recupera o numero quando a escrita de um
+  // dos lados falha -- era o caso do total zerado com estudo registrado.
   const tempoPersistido = hasEstruturaDaClasse
-    ? academicMetrics.tempoTotalMin
-    : resumoConfiavel?.tempoGastoMin ?? 0;
+    ? Math.max(academicMetrics.tempoTotalMin, unificado.tempoMin)
+    : Math.max(resumoConfiavel?.tempoGastoMin ?? 0, unificado.tempoMin);
   const tempoMedio = hasAtividades
     ? academicMetrics.tempoMedioPorAtividade
     : resumoConfiavel?.tempoMedioPorAtividade ?? 0;

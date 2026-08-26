@@ -211,7 +211,13 @@ export function unificarContadores(params: {
     totalAtividades: academico.totalAtividades + slidesTotal + atividadesExtra,
     atividadesConcluidas:
       academico.atividadesConcluidas + slidesConcluidos + atividadesExtraConcluidas,
+    // MAXIMO, nao soma: o tempo do topico (que alimenta `academico.tempoMin`)
+    // ja inclui o tempo gasto nos itens personalizados, porque o rastreio grava
+    // o topico em TODO flush, inclusive nesses blocos. Somar contaria duas
+    // vezes; o maximo tambem recupera o valor quando uma das duas escritas
+    // falha e o outro lado tem o tempo.
     tempoMin:
-      Math.round((Math.max(0, academico.tempoMin ?? 0) + personalizado.tempoMin) * 100) / 100,
+      Math.round(Math.max(Math.max(0, academico.tempoMin ?? 0), personalizado.tempoMin) * 100) /
+      100,
   };
 }
