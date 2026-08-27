@@ -18,12 +18,10 @@ export default function PerfilStack() {
         headerTitleStyle: {
           color: "#fff",
           fontFamily: FontFamily.inikaBold,
-          letterSpacing: 1.5,
           fontSize: 15,
         },
         headerTintColor: "#fff",
         headerShadowVisible: false,
-        headerBottomShadowVisible: false,
         contentStyle: { backgroundColor: palette.background },
       }}
     >
