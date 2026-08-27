@@ -444,6 +444,10 @@ export default function BibliotecaConquistasScreen() {
   );
 }
 
+// Largura do botao de guia (34) + respiro. O texto do cartao reserva esta
+// faixa para nao passar por baixo dele.
+const GUIA_ESPACO = 46;
+
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   guideButton: {
@@ -467,11 +471,14 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.inikaBold,
     fontSize: 17,
     marginBottom: 2,
+    // Faixa reservada para o botao de guia, que flutua sobre o canto direito.
+    paddingRight: GUIA_ESPACO,
   },
   summarySubtitle: {
     fontFamily: FontFamily.interMedium,
     fontSize: 12,
     marginBottom: 8,
+    paddingRight: GUIA_ESPACO,
   },
   scopeSummaryRow: {
     flexDirection: "row",
