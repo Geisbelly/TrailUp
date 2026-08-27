@@ -9,7 +9,6 @@ from app.services.sugestao_metrica import (
     resumo_efetividade,
 )
 
-
 # --- aderência -------------------------------------------------------------
 
 

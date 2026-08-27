@@ -11,8 +11,8 @@ from app.schemas.api import AnalisarPayload, AnalisarResponse
 from app.schemas.common import Evento
 from app.services import memoria_aluno
 from app.services.linear_analysis_pipeline import build_linear_analysis_orchestrator
-from app.services.sugestao_ciclo import revisar_sugestoes_do_ciclo
 from app.services.state_builder import build_initial_state
+from app.services.sugestao_ciclo import revisar_sugestoes_do_ciclo
 
 logger = logging.getLogger(__name__)
 

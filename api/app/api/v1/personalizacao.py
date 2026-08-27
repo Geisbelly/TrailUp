@@ -23,6 +23,7 @@ from app.repositories.ia_decision_logs import IADecisionLogRepository
 from app.repositories.materiais import MateriaisRepository
 from app.repositories.personalizacao_jobs import PersonalizacaoJobsRepository
 from app.repositories.personalizacao_progresso import PersonalizacaoProgressoRepository
+from app.repositories.sugestao_material import SugestaoMaterialRepository
 from app.schemas.mentor_chat import MentorChatLLMResult
 from app.schemas.personalizacao import (
     ClassePerfilDistribuicaoItem,
@@ -90,7 +91,6 @@ from app.services.personalizacao_jobs import (
     get_job_detail,
 )
 from app.services.storage import BUCKET, SupabaseStorage, build_public_storage_url
-from app.repositories.sugestao_material import SugestaoMaterialRepository
 from app.services.sugestao_ciclo import garantir_sugestao_do_aluno
 from app.services.sugestao_metrica import montar_registros_do_log, resumo_efetividade
 
