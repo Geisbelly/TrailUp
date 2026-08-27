@@ -159,7 +159,9 @@ class ArtefatosPersonalizadosRepository:
                 """
                 SELECT id, ordem, titulo, descricao, icone, dificuldade, xp, metadata
                 FROM cards_personalizados
-                WHERE aluno_id = CAST(:aluno_id AS UUID)
+                -- Base (aluno_id NULL): `= NULL` nunca casa e a busca voltaria
+                -- vazia, regerando os cards e trocando o source_hash.
+                WHERE aluno_id IS NOT DISTINCT FROM CAST(:aluno_id AS UUID)
                   AND topico_id = CAST(:topico_id AS BIGINT)
                   AND conteudo_id IS NOT DISTINCT FROM CAST(:conteudo_id AS BIGINT)
                   AND ativo = TRUE

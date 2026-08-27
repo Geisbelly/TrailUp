@@ -712,7 +712,7 @@ async def _build_targets(
 
     def _append_target(
         *,
-        owner_aluno_id: str,
+        owner_aluno_id: str | None,
         topico_id: int,
         conteudo_id: int | None,
         profile_key: str,
@@ -722,19 +722,28 @@ async def _build_targets(
             "topico_id": topico_id,
             "conteudo_id": conteudo_id,
             "brainhex_profile_key": _normalize_profile_key(profile_key),
+            # Sem dono, e base -- e base e sempre template. Com dono, so e
+            # template se o material nao for do perfil do proprio aluno.
             "is_profile_template": (
-                profile_by_aluno.get(owner_aluno_id) != _normalize_profile_key(profile_key)
+                owner_aluno_id is None
+                or profile_by_aluno.get(owner_aluno_id) != _normalize_profile_key(profile_key)
             ),
             "status": "pending",
         }
         targets.append(target)
-        target_profile_map[
-            _target_profile_map_key(
-                aluno_id=owner_aluno_id,
-                topico_id=topico_id,
-                conteudo_id=conteudo_id,
-            )
-        ] = _normalize_profile_key(profile_key)
+        # So a camada por aluno entra no mapa. A chave e (aluno, topico,
+        # conteudo) e o perfil e o VALOR: sem aluno, os 7 perfis colapsariam
+        # na mesma chave e 6 seriam perdidos silenciosamente. A base nao
+        # precisa do mapa -- `brainhex_profile_key` vem na propria linha do
+        # target, que e a fonte primaria em _process_media_render_target.
+        if owner_aluno_id is not None:
+            target_profile_map[
+                _target_profile_map_key(
+                    aluno_id=owner_aluno_id,
+                    topico_id=topico_id,
+                    conteudo_id=conteudo_id,
+                )
+            ] = _normalize_profile_key(profile_key)
 
     if kind == JOB_KIND_CLEANUP:
         selected_aluno_id = str(aluno_id) if aluno_id else None
@@ -758,35 +767,18 @@ async def _build_targets(
         JOB_KIND_MANUAL_PROFILE_GENERATE,
         JOB_KIND_MANUAL_PROFILE_GENERATE_ALL,
     }:
-        if not alunos:
-            return [], resolved_topicos, {}
-
-        representative_by_profile: dict[str, str] = {}
-
-        for profile_key in (brainhex_profile_keys or _BRAINHEX_PROFILE_KEYS):
-            candidate = next(
-                (
-                    aluno
-                    for aluno in alunos
-                    if profile_by_aluno.get(aluno) == profile_key
-                ),
-                None,
-            )
-            if candidate is None:
-                candidate = str(aluno_id) if aluno_id and str(aluno_id) in alunos else alunos[0]
-            representative_by_profile[profile_key] = candidate
-
+        # A base nao tem dono: ela e material de (classe x topico x conteudo x
+        # perfil), e existe com ou sem aluno matriculado. Antes, cada perfil era
+        # pendurado num aluno representante -- e turma sem aluno nao gerava nada
+        # (job 0/0, fechando `completed` sem erro).
         for current_topico_id in resolved_topicos:
             scoped_conteudo_ids: list[int | None] = list(
                 conteudos_por_topico.get(current_topico_id) or [None]
             )
             for current_conteudo_id in scoped_conteudo_ids:
                 for profile_key in (brainhex_profile_keys or _BRAINHEX_PROFILE_KEYS):
-                    owner_aluno_id = representative_by_profile.get(profile_key)
-                    if not owner_aluno_id:
-                        continue
                     _append_target(
-                        owner_aluno_id=owner_aluno_id,
+                        owner_aluno_id=None,
                         topico_id=current_topico_id,
                         conteudo_id=current_conteudo_id,
                         profile_key=profile_key,
@@ -1004,7 +996,9 @@ async def _process_media_render_target(
     job: dict[str, Any],
     target: dict[str, Any],
 ) -> dict[str, Any]:
-    aluno_id = str(target["aluno_id"])
+    # Target base nao tem dono. str(None) devolveria a string "None" e ela
+    # viajaria adiante como se fosse UUID.
+    aluno_id = str(target["aluno_id"]) if target.get("aluno_id") is not None else None
     topico_id = int(target["topico_id"])
     conteudo_id = int(target["conteudo_id"]) if target.get("conteudo_id") is not None else None
     classe_id = int(job["classe_id"])
@@ -1104,7 +1098,8 @@ async def _process_media_render_target(
                     fontes=fontes,
                     content_blocks=stored_enrichment.get("blocos") or [],
                     personalizacao_id=int(personalizacao_id),
-                    aluno_id=aluno_id,
+                    # O contrato do microservice espera string; base nao tem dono.
+                    aluno_id=aluno_id or "",
                     classe_id=classe_id,
                     topico_id=topico_id,
                     conteudo_id=conteudo_id,
@@ -1626,7 +1621,8 @@ async def _process_media_render_target(
         fontes=ctx["fontes"],
         content_blocks=content_enrichment.get("blocos") or [],
         personalizacao_id=int(record_id),
-        aluno_id=aluno_id,
+        # O contrato do microservice espera string; base nao tem dono.
+        aluno_id=aluno_id or "",
         classe_id=classe_id,
         topico_id=topico_id,
         conteudo_id=conteudo_id,

@@ -198,7 +198,8 @@ class ConteudoPersonalizadoRepository:
     async def salvar(
         self,
         *,
-        aluno_id: str,
+        # None = base da classe por perfil (sem dono). Ver 20260827_04.
+        aluno_id: "str | None",
         classe_id: int | None = None,
         conteudo_id: int | None = None,
         topico_id: int | None = None,
@@ -227,15 +228,31 @@ class ConteudoPersonalizadoRepository:
         can_upsert = all((has_ai_patch, has_classe_id, has_status, has_source_hash, topico_id is not None))
 
         if can_upsert and has_profile_key:
-            if conteudo_id is not None:
+            # ON CONFLICT sobre indice PARCIAL so casa quando o predicado
+            # informado IMPLICA o do indice. A 20260827_04 acrescentou
+            # `aluno_id IS NOT NULL` aos indices por aluno e criou os da base
+            # (chaveados em classe_id), entao sao QUATRO clausulas, nao duas.
+            # Deixar o predicado antigo aqui faz o Postgres levantar "no unique
+            # or exclusion constraint matching" em TODO save -- nao so na base.
+            if aluno_id is None and conteudo_id is not None:
+                conflict_clause = """
+                ON CONFLICT (classe_id, topico_id, conteudo_id, brainhex_profile_key)
+                  WHERE aluno_id IS NULL AND topico_id IS NOT NULL AND conteudo_id IS NOT NULL
+                """
+            elif aluno_id is None:
+                conflict_clause = """
+                ON CONFLICT (classe_id, topico_id, brainhex_profile_key)
+                  WHERE aluno_id IS NULL AND topico_id IS NOT NULL AND conteudo_id IS NULL
+                """
+            elif conteudo_id is not None:
                 conflict_clause = """
                 ON CONFLICT (aluno_id, topico_id, conteudo_id, brainhex_profile_key)
-                  WHERE topico_id IS NOT NULL AND conteudo_id IS NOT NULL
+                  WHERE aluno_id IS NOT NULL AND topico_id IS NOT NULL AND conteudo_id IS NOT NULL
                 """
             else:
                 conflict_clause = """
                 ON CONFLICT (aluno_id, topico_id, brainhex_profile_key)
-                  WHERE topico_id IS NOT NULL AND conteudo_id IS NULL
+                  WHERE aluno_id IS NOT NULL AND topico_id IS NOT NULL AND conteudo_id IS NULL
                 """
             statement = text(
                 f"""
@@ -378,7 +395,8 @@ class ConteudoPersonalizadoRepository:
     async def claim_new_generation(
         self,
         *,
-        aluno_id: str,
+        # None = base da classe por perfil (sem dono). Ver 20260827_04.
+        aluno_id: "str | None",
         classe_id: int | None,
         topico_id: int | None,
         conteudo_id: int | None,
@@ -413,8 +431,21 @@ class ConteudoPersonalizadoRepository:
             return None
 
         normalized_profile_key = self._normalize_profile_key(brainhex_profile_key)
-        statement = text(
+        # Mesma regra do `salvar`: o predicado tem que implicar o do indice
+        # parcial. Aqui conteudo_id nunca e nulo (o guard acima ja retornou),
+        # entao so as duas variantes "com conteudo" fazem sentido.
+        if aluno_id is None:
+            conflict_clause = """
+            ON CONFLICT (classe_id, topico_id, conteudo_id, brainhex_profile_key)
+              WHERE aluno_id IS NULL AND topico_id IS NOT NULL AND conteudo_id IS NOT NULL
             """
+        else:
+            conflict_clause = """
+            ON CONFLICT (aluno_id, topico_id, conteudo_id, brainhex_profile_key)
+              WHERE aluno_id IS NOT NULL AND topico_id IS NOT NULL AND conteudo_id IS NOT NULL
+            """
+        statement = text(
+            f"""
             INSERT INTO conteudo_personalizado (
               aluno_id, classe_id, conteudo_id, topico_id, ciclo_id,
               brainhex_profile_key, plano, materiais, ai_patch, status,
@@ -436,8 +467,7 @@ class ConteudoPersonalizadoRepository:
               CAST(:plano AS JSONB), CAST(:materiais AS JSONB), NULL,
               'processando_midias', :source_hash, '', :formatos_gerados, NOW()
             )
-            ON CONFLICT (aluno_id, topico_id, conteudo_id, brainhex_profile_key)
-              WHERE topico_id IS NOT NULL AND conteudo_id IS NOT NULL
+            {conflict_clause}
             DO UPDATE SET
               classe_id = EXCLUDED.classe_id,
               ciclo_id = EXCLUDED.ciclo_id,

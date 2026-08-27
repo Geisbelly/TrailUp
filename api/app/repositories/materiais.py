@@ -345,7 +345,9 @@ class MateriaisRepository:
                     criado_em,
                     {metadata_expr} AS metadata
                   FROM materiais_gerados
-                  WHERE aluno_id = CAST(:aluno_id AS UUID)
+                  -- Base (aluno_id NULL): sem isto o fallback de orfaos volta
+                  -- vazio e duplica linha em materiais_gerados.
+                  WHERE aluno_id IS NOT DISTINCT FROM CAST(:aluno_id AS UUID)
                     AND (CAST(:conteudo_id AS BIGINT) IS NULL OR conteudo_id = CAST(:conteudo_id AS BIGINT))
                     AND tipo = ANY(CAST(:tipos AS TEXT[]))
                     {orphan_predicate}
