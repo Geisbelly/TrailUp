@@ -114,15 +114,25 @@ export class Notificacao {
     if (error) throw error;
     this.status = status;
   }
-  /** 🕓 Atualiza o status da notificação */
-  async updateRead(): Promise<void> {
+  /**
+   * 👁️ Define o estado de leitura.
+   *
+   * Recebe o valor desejado em vez de alternar: `marcarLida` era chamado toda
+   * vez que o aluno abria a notificação, e como isto alternava, abrir a mesma
+   * notificação duas vezes a deixava NÃO lida de novo. Sem argumento, mantém a
+   * alternância (usada pelo botão "marcar como não lida").
+   */
+  async updateRead(valor?: boolean): Promise<void> {
+    const novo = valor ?? !this.read;
+    if (novo === this.read) return;
+
     const { error } = await supabase
       .from('notificacoes')
-      .update({ read: !this.read })
+      .update({ read: novo })
       .eq('id', this.id);
 
     if (error) throw error;
-    this.read = !this.read;
+    this.read = novo;
   }
 
   /** 🗑️ Remove a notificação */

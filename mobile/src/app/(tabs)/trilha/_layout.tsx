@@ -2,7 +2,6 @@ import {
   ModuleHeaderGuideButton,
   ModuleHeaderTitle,
 } from "@/components/trilhas/ModuleHeaderTitle";
-import { normalizeBrainHexProfile } from "@/constants/profileImages";
 import { useUsuario } from "@/context/SessaoContext";
 import { useTrilha } from "@/context/TrilhaContext";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
@@ -37,8 +36,7 @@ function countCompletedTopicBlocks(topico: any) {
 export default function TrilhaStack() {
   const { grafo, classeAtual, perfil, personalizedTopics } = useTrilha();
   const { usuario } = useUsuario();
-  const palette = getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? perfil ?? null);
-  const normalizedProfile = normalizeBrainHexProfile(usuario?.perfis?.[0]?.nome ?? perfil) ?? "mastermind";
+  const palette = getProfileShellPalette(perfil);
 
   const headerForId = ({ route }: any) => {
     const { id }: any = route.params || {};
@@ -60,7 +58,7 @@ export default function TrilhaStack() {
         <ModuleHeaderTitle
           title={titulo}
           description={descricao}
-          profile={normalizedProfile}
+          profile={perfil}
           totalBlocks={totalBlocos}
           completedBlocks={concluidos}
           hideGuideButton
@@ -76,7 +74,7 @@ export default function TrilhaStack() {
       ),
       headerRight: () => (
         <ModuleHeaderGuideButton
-          profile={normalizedProfile}
+          profile={perfil}
           title={titulo}
           totalBlocks={totalBlocos}
           completedBlocks={concluidos}

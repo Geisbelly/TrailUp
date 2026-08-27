@@ -1,5 +1,9 @@
 import { OrnamentDivider } from "@/components/HallTheme";
 import { LoadingState } from "@/components/LoadingState";
+import {
+  SectionGuideButton,
+  SectionGuideStep,
+} from "@/components/SectionGuideButton";
 import { useDialog } from "@/context/DialogContext";
 import { useNotifications } from "@/context/NotificacaoContext";
 import { useUsuario } from "@/context/SessaoContext";
@@ -8,9 +12,10 @@ import { Notificacao } from "@/models/Notificacoes";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { formatAbsoluteFrom, formatSmartTime } from "@/utils/Formatacoes";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { getProfileGuideEmphasis } from "@/utils/profileSectionGuide";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { router, useLocalSearchParams } from "expo-router";
+import { Stack, router, useLocalSearchParams } from "expo-router";
 import React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -23,9 +28,14 @@ export default function NotificacaoDetalhe() {
   const { usuario } = useUsuario();
   const { setLoading: setGlobalLoading } = useLoading();
   const palette = React.useMemo(
-    () => getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfis]
+    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
+    [usuario?.perfilAtivo, usuario?.perfis]
   );
+  const activeProfile = usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome;
+  const profileEmphasis = getProfileGuideEmphasis(activeProfile, "notifications");
+  const headerGuideRef = React.useRef<View | null>(null);
+  const bodyGuideRef = React.useRef<View | null>(null);
+  const actionsGuideRef = React.useRef<View | null>(null);
 
   const gold = tinycolor(palette.accent).lighten(10).toHexString();
   const goldDim = tinycolor(palette.accent).setAlpha(0.5).toRgbString();
@@ -70,6 +80,53 @@ export default function NotificacaoDetalhe() {
   const timeFull = React.useMemo(
     () => (when ? formatAbsoluteFrom(when) : ""),
     [when]
+  );
+  const detailGuideSteps = React.useMemo<SectionGuideStep[]>(
+    () => [
+      {
+        id: "notification-detail-title",
+        target: "notification_detail_header",
+        title: "Título e estado",
+        description: `O título identifica o assunto. Esta notificação está ${isRead ? "lida" : "não lida"}; a cor do cabeçalho acompanha esse estado. ${profileEmphasis}`,
+        icon: isRead ? "email-open-outline" : "email-alert-outline",
+      },
+      ...(when
+        ? [{
+            id: "notification-detail-time",
+            target: "notification_detail_header",
+            title: "Quando foi enviada",
+            description:
+              "A primeira linha usa um horário fácil de ler, como “há 1 h”. A segunda mantém a data e o horário completos para consulta precisa.",
+            icon: "clock-outline" as const,
+          }]
+        : []),
+      {
+        id: "notification-detail-body",
+        target: "notification_detail_body",
+        title: "Conteúdo do aviso",
+        description:
+          "Este cartão contém a mensagem completa enviada pela plataforma. O conteúdo pode informar progresso, pausas, retorno à trilha, conquistas ou atualizações acadêmicas.",
+        icon: "text-box-outline",
+      },
+      {
+        id: "notification-detail-actions",
+        target: "notification_detail_actions",
+        title: "Ações disponíveis",
+        description: isRead
+          ? "Você pode marcar novamente como não lida para devolver o aviso ao filtro de pendentes, ou excluir definitivamente a notificação."
+          : "Ao abrir, a notificação é registrada como lida. Você também pode excluí-la definitivamente pelo botão disponível.",
+        icon: "gesture-tap-button",
+      },
+    ],
+    [isRead, profileEmphasis, when],
+  );
+  const detailGuideTargets = React.useMemo(
+    () => ({
+      notification_detail_header: headerGuideRef,
+      notification_detail_body: bodyGuideRef,
+      notification_detail_actions: actionsGuideRef,
+    }),
+    [],
   );
 
   const onMarkUnread = React.useCallback(async () => {
@@ -150,8 +207,25 @@ export default function NotificacaoDetalhe() {
       />
 
       <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
+        {/* Guia no cabecalho da tela: mesmo lugar em toda pagina com header,
+            sem flutuar sobre o conteudo nem depender de offset por pagina. */}
+        <Stack.Screen
+          options={{
+            headerRight: () => (
+              <SectionGuideButton
+                profile={activeProfile}
+                sectionTitle="Notificação"
+                steps={detailGuideSteps}
+                targetRefs={detailGuideTargets}
+                style={s.guideButton}
+              />
+            ),
+          }}
+        />
         {/* Card de cabeçalho */}
         <View
+          ref={headerGuideRef}
+          collapsable={false}
           style={[
             s.headerCard,
             {
@@ -188,6 +262,8 @@ export default function NotificacaoDetalhe() {
 
         <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
           <View
+            ref={bodyGuideRef}
+            collapsable={false}
             style={[
               s.bodyCard,
               {
@@ -202,6 +278,8 @@ export default function NotificacaoDetalhe() {
 
         {/* Footer de ações */}
         <View
+          ref={actionsGuideRef}
+          collapsable={false}
           style={[
             s.footerBar,
             {
@@ -251,10 +329,14 @@ const s = StyleSheet.create({
   outer: {
     flex: 1,
   },
+  guideButton: {
+    marginRight: 12,
+  },
   headerCard: {
     marginHorizontal: 16,
     marginTop: 12,
     padding: 16,
+    paddingRight: 54,
     borderRadius: 16,
     borderWidth: 1,
     overflow: "hidden",

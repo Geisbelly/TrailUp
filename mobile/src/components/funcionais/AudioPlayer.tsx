@@ -3,6 +3,7 @@ import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { resolveSupabaseStorageUrl } from "@/utils/supabaseStorage";
 import { type ImageCue } from "@/utils/audioImageCues";
+import { buildContentResumeKey, loadContentResume, saveContentResume } from "@/utils/contentResume";
 import { Ionicons } from "@expo/vector-icons";
 import { Audio, AVPlaybackStatus } from "expo-av";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -24,6 +25,7 @@ type Props = {
   fallbackText?: string;
   capaUrl?: string;
   imageCues?: ImageCue[];
+  progressKey?: string;
 };
 
 type PlaybackState = {
@@ -74,14 +76,19 @@ export default function AudioPlayer({
   fallbackText,
   capaUrl,
   imageCues,
+  progressKey,
 }: Props) {
   const { usuario } = useUsuario();
   const palette = useMemo(
-    () => getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfis]
+    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
+    [usuario?.perfilAtivo, usuario?.perfis]
   );
   const sourceUrl = String(url ?? "").trim();
   const soundRef = useRef<Audio.Sound | null>(null);
+  const resumePositionRef = useRef(0);
+  const resumeLoadRef = useRef<Promise<number>>(Promise.resolve(0));
+  const lastPersistedAtRef = useRef(0);
+  const progressWidthRef = useRef(1);
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(
     isHttpUrl(sourceUrl) ? sourceUrl : null
   );
@@ -95,6 +102,34 @@ export default function AudioPlayer({
     durationMillis: 0,
     positionMillis: 0,
   });
+  const resumeStorageKey = useMemo(
+    () => buildContentResumeKey(usuario?.id, "audio", progressKey ?? sourceUrl),
+    [progressKey, sourceUrl, usuario?.id]
+  );
+
+  const persistPosition = useCallback(
+    (positionMillis: number) => {
+      const safePosition = Math.max(0, Math.round(positionMillis));
+      resumePositionRef.current = safePosition;
+      void saveContentResume(resumeStorageKey, { positionMillis: safePosition });
+    },
+    [resumeStorageKey]
+  );
+
+  useEffect(() => {
+    let active = true;
+    resumePositionRef.current = 0;
+    const request = loadContentResume(resumeStorageKey).then((saved) => {
+      const restored = Math.max(0, saved?.positionMillis ?? 0);
+      if (!active) return;
+      resumePositionRef.current = restored;
+      setPlayback((current) => ({ ...current, positionMillis: resumePositionRef.current }));
+      if (soundRef.current) void soundRef.current.setPositionAsync(resumePositionRef.current);
+      return restored;
+    });
+    resumeLoadRef.current = request.then((value) => value ?? 0);
+    return () => { active = false; };
+  }, [resumeStorageKey]);
 
   // Troca a imagem exibida conforme a posicao de reproducao cruza os cues
   // (minutagem ESTIMADA por proporcao de texto, ver computeImageCues no
@@ -180,9 +215,10 @@ export default function AudioPlayer({
 
   useEffect(() => {
     return () => {
+      persistPosition(resumePositionRef.current);
       void unloadSound();
     };
-  }, [unloadSound]);
+  }, [persistPosition, unloadSound]);
 
   const playbackUrl = resolvedUrl;
 
@@ -201,6 +237,7 @@ export default function AudioPlayer({
       setFailed(false);
 
       try {
+        const restoredPosition = await resumeLoadRef.current;
         await Audio.setAudioModeAsync({
           allowsRecordingIOS: false,
           playsInSilentModeIOS: true,
@@ -213,6 +250,7 @@ export default function AudioPlayer({
           {
             shouldPlay,
             progressUpdateIntervalMillis: 350,
+            positionMillis: restoredPosition,
           }
         );
 
@@ -222,7 +260,15 @@ export default function AudioPlayer({
           const normalized = normalizePlaybackStatus(nextStatus);
           setPlayback(normalized);
           if (nextStatus.isLoaded && nextStatus.didJustFinish) {
+            persistPosition(0);
             void sound.setPositionAsync(0);
+          } else if (nextStatus.isLoaded) {
+            resumePositionRef.current = normalized.positionMillis;
+            const now = Date.now();
+            if (!normalized.isPlaying || now - lastPersistedAtRef.current >= 2000) {
+              lastPersistedAtRef.current = now;
+              persistPosition(normalized.positionMillis);
+            }
           }
         });
 
@@ -234,7 +280,7 @@ export default function AudioPlayer({
         setLoadingAudio(false);
       }
     },
-    [playbackUrl]
+    [persistPosition, playbackUrl]
   );
 
   const handleTogglePlayback = useCallback(async () => {
@@ -257,8 +303,32 @@ export default function AudioPlayer({
     const sound = await ensureSound(false);
     if (!sound) return;
     await sound.setPositionAsync(0);
+    persistPosition(0);
     await sound.playAsync();
-  }, [ensureSound]);
+  }, [ensureSound, persistPosition]);
+
+  const seekToRatio = useCallback(async (ratio: number, persist = false) => {
+    const duration = playback.durationMillis;
+    if (!duration) return;
+    const nextPosition = Math.max(0, Math.min(duration, Math.round(duration * ratio)));
+    setPlayback((current) => ({ ...current, positionMillis: nextPosition }));
+    resumePositionRef.current = nextPosition;
+    const sound = await ensureSound(false);
+    await sound?.setPositionAsync(nextPosition);
+    if (persist) persistPosition(nextPosition);
+  }, [ensureSound, persistPosition, playback.durationMillis]);
+
+  const seekFromLocation = useCallback((locationX: number, commit = false) => {
+    const ratio = locationX / Math.max(1, progressWidthRef.current);
+    const safeRatio = Math.max(0, Math.min(1, ratio));
+    if (commit) {
+      void seekToRatio(safeRatio, true);
+      return;
+    }
+    const nextPosition = Math.round(playback.durationMillis * safeRatio);
+    resumePositionRef.current = nextPosition;
+    setPlayback((current) => ({ ...current, positionMillis: nextPosition }));
+  }, [playback.durationMillis, seekToRatio]);
 
   const progress = useMemo(() => {
     if (!playback.durationMillis) return 0;
@@ -307,6 +377,20 @@ export default function AudioPlayer({
             preload="metadata"
             src={playbackUrl}
             style={{ width: "100%" }}
+            onLoadedMetadata={(event: any) => {
+              event.currentTarget.currentTime = resumePositionRef.current / 1000;
+            }}
+            onTimeUpdate={(event: any) => {
+              const position = Math.round(Number(event.currentTarget.currentTime || 0) * 1000);
+              resumePositionRef.current = position;
+              const now = Date.now();
+              if (now - lastPersistedAtRef.current >= 2000) {
+                lastPersistedAtRef.current = now;
+                persistPosition(position);
+              }
+            }}
+            onPause={(event: any) => persistPosition(Number(event.currentTarget.currentTime || 0) * 1000)}
+            onEnded={() => persistPosition(0)}
           />
         </View>
       </View>
@@ -384,12 +468,27 @@ export default function AudioPlayer({
                 : "Áudio disponível"}
             </Text>
 
-            <View style={[styles.progressTrack, { backgroundColor: palette.progressTrack }]}>
+            <View
+              style={[styles.progressTrack, { backgroundColor: palette.progressTrack }]}
+              onLayout={(event) => { progressWidthRef.current = event.nativeEvent.layout.width; }}
+              onStartShouldSetResponder={() => Boolean(playback.durationMillis)}
+              onMoveShouldSetResponder={() => Boolean(playback.durationMillis)}
+              onResponderGrant={(event) => seekFromLocation(event.nativeEvent.locationX)}
+              onResponderMove={(event) => seekFromLocation(event.nativeEvent.locationX)}
+              onResponderRelease={(event) => seekFromLocation(event.nativeEvent.locationX, true)}
+              accessibilityRole="adjustable"
+              accessibilityLabel="Posição do áudio"
+              accessibilityValue={{ min: 0, max: 100, now: Math.round(progress * 100) }}
+            >
               <View
                 style={[
                   styles.progressFill,
                   { width: `${progress * 100}%`, backgroundColor: palette.accent },
                 ]}
+              />
+              <View
+                pointerEvents="none"
+                style={[styles.progressThumb, { left: `${progress * 100}%`, backgroundColor: palette.accent }]}
               />
             </View>
 
@@ -523,13 +622,20 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   progressTrack: {
-    height: 8,
+    height: 14,
     borderRadius: 999,
-    overflow: "hidden",
+    justifyContent: "center",
   },
   progressFill: {
-    height: "100%",
+    height: 8,
     borderRadius: 999,
+  },
+  progressThumb: {
+    position: "absolute",
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    marginLeft: -8,
   },
   timeRow: {
     flexDirection: "row",

@@ -41,6 +41,24 @@ export function useStudyTimeTracking(args: {
       const elapsedMin = Math.max(0.01, Number((elapsedMs / 60_000).toFixed(2)));
       if (!Number.isFinite(elapsedMin) || elapsedMin <= 0) return;
 
+      // Todo este pipeline ficava DESLIGADO quando `topicoConcluido` era true:
+      // `isCurrentStudyBlockTrackable` (trilha/[id].tsx) o usa como veto, e o
+      // banco reportava 'concluido' contando so o material do professor. Uma
+      // hora de estudo nao gravava um minuto. Este log torna a gravacao
+      // observavel -- silencio aqui significa que nem tentou.
+      if (__DEV__) {
+        console.log(
+          "[Tempo] gravando",
+          JSON.stringify({
+            topicoId: snapshot.topicoId,
+            min: elapsedMin,
+            conteudoId: snapshot.conteudoId ?? null,
+            atividadeId: snapshot.atividadeId ?? null,
+            personalizado: Boolean(snapshot.isPersonalizedLocal),
+          })
+        );
+      }
+
       await registrarTempoTopico(snapshot.topicoId, elapsedMin);
 
       if (snapshot.isPersonalizedLocal && snapshot.itemKey && snapshot.itemTitle) {

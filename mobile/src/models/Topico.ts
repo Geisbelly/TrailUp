@@ -122,6 +122,23 @@ export class Topico {
   }
 
   /** ✅ Calcula percentual de conclusão baseado em conteúdos e atividades */
+  /**
+   * Percentual sobre o material do PROFESSOR apenas.
+   *
+   * Nao conhece o material personalizado -- o modelo enxerga so `conteudos` e
+   * `atividades` da estrutura da classe. Isso importa porque
+   * `calcularStatus()` deriva daqui: terminando os conteudos academicos, o
+   * topico era gravado como 'concluido' em `topico_aluno` com os passos
+   * personalizados intocados. A tela do modulo entao dava o topico por
+   * encerrado e APAGAVA o checkpoint de navegacao, o que fazia a trilha sempre
+   * reabrir no inicio (corrigido em (tabs)/trilha/[id].tsx, onde o percurso
+   * completo passou a decidir).
+   *
+   * Quem precisa do progresso REAL do percurso usa
+   * `contarProgressoDeBlocos` (utils/trilhaBlocks) somado ao agregado de
+   * `personalizacao_item_progresso` (utils/progressoPersonalizado) -- nao este
+   * metodo.
+   */
   calcularPercentual(): number {
     const totalConteudos = this.conteudos.length;
     const conteudosConcluidos = this.conteudos.filter(c => {

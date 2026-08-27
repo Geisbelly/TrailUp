@@ -1,5 +1,10 @@
 import { getSessionSafe, supabase } from "@/database/supabase";
+import {
+  BrainHexProfile,
+  normalizeBrainHexProfile,
+} from "@/constants/brainHexProfiles";
 import { Aluno } from "@/models/Aluno";
+import { resolveRepresentativeBrainHexProfiles } from "@/utils/brainHex";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 
 type SessionLike = {
@@ -19,6 +24,7 @@ type AlunoBaseRow = {
   foto_url: string | null;
   banner_url: string | null;
   modo_resposta: string | null;
+  perfil_ativo: string | null;
 };
 
 type AlunoPerfilRow = {
@@ -38,6 +44,7 @@ type SessionContextType = {
   autenticado: boolean;
   carregando: boolean;
   atualizarUsuario: () => Promise<void>;
+  selecionarPerfilAtivo: (profile: BrainHexProfile) => Promise<void>;
 };
 
 const UserContext = createContext<SessionContextType>({
@@ -46,6 +53,9 @@ const UserContext = createContext<SessionContextType>({
   carregando: true,
   atualizarUsuario: async () => {
     console.warn("UserProvider não montado ou atualizarUsuario chamado no valor padrão do contexto.");
+  },
+  selecionarPerfilAtivo: async () => {
+    console.warn("UserProvider não montado ou selecionarPerfilAtivo chamado no valor padrão.");
   },
 });
 
@@ -91,6 +101,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       modoOperacao_nome: null,
       modoOperacao_descricao: null,
       modoOperacao_ordem: null,
+      perfilAtivo: null,
       perfis: [],
       loadPerfis: async () => {},
       save: async () => {},
@@ -110,6 +121,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         modoOperacao_descricao: null,
         modoOperacao_ordem: null,
         modoResposta: null,
+        perfilAtivo: null,
         perfis: [],
       }),
     };
@@ -148,7 +160,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         const { data, error } = await withTimeout(
           supabase
             .from("alunos")
-            .select("id, nome, email, apelido, descricao, foto_url, banner_url, modo_resposta")
+            .select("id, nome, email, apelido, descricao, foto_url, banner_url, modo_resposta, perfil_ativo")
             .eq("id", uid)
             .maybeSingle<AlunoBaseRow>(),
           6_000,
@@ -164,6 +176,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           foto_url: data.foto_url ?? current?.foto_url ?? null,
           banner_url: data.banner_url ?? current?.banner_url ?? null,
           modoResposta: data.modo_resposta ?? current?.modoResposta ?? null,
+          perfilAtivo:
+            normalizeBrainHexProfile(data.perfil_ativo) ?? current?.perfilAtivo ?? null,
         } as Partial<Aluno>);
         console.log("[UserContext] Hidracao base concluida (alunos).");
       } catch {
@@ -347,6 +361,27 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     await syncFromSession();
   }, [syncFromSession]);
 
+  const selecionarPerfilAtivo = useCallback(
+    async (profile: BrainHexProfile) => {
+      const current = usuarioRef.current;
+      if (!current?.id) throw new Error("Usuário não carregado.");
+
+      const representativeProfiles = resolveRepresentativeBrainHexProfiles(current.perfis);
+      if (!representativeProfiles.includes(profile)) {
+        throw new Error("Este perfil não está entre os seus perfis representativos.");
+      }
+
+      const { error } = await supabase
+        .from("alunos")
+        .update({ perfil_ativo: profile })
+        .eq("id", current.id);
+      if (error) throw error;
+
+      patchCurrentUsuario(current.id, requestIdRef.current, { perfilAtivo: profile });
+    },
+    [patchCurrentUsuario],
+  );
+
   useEffect(() => {
     mountedRef.current = true;
     void syncFromSession();
@@ -377,7 +412,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, [syncFromSession, updateUsuario]);
 
   return (
-    <UserContext.Provider value={{ usuario, autenticado, carregando, atualizarUsuario }}>
+    <UserContext.Provider
+      value={{ usuario, autenticado, carregando, atualizarUsuario, selecionarPerfilAtivo }}
+    >
       {children}
     </UserContext.Provider>
   );

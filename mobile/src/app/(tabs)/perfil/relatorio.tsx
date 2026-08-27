@@ -1,6 +1,10 @@
 import { HallBackground, OrnamentDivider } from "@/components/HallTheme";
+import {
+  SectionGuideButton,
+  SectionGuideStep,
+} from "@/components/SectionGuideButton";
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Image,
@@ -27,6 +31,7 @@ import { useUsuario } from "@/context/SessaoContext";
 import { useTrilha } from "@/context/TrilhaContext";
 import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { registrarAlvoTour } from "@/utils/tourTargets";
 
 // Verifique se o caminho da imagem está correto
 const appLogoSource = require("@/assets/ImagensReferencia/rosa_dos_ventos_filter.png");
@@ -51,11 +56,61 @@ export default function RelatorioDadosScreen() {
   const { eventos, conquistas, ranking, posicoesDoAluno } = useConquistaRank();
   
   const [logoBase64, setLogoBase64] = useState<string | null>(null);
+  const scrollRef = useRef<ScrollView | null>(null);
+  const scrollOffsetRef = useRef(0);
+  const reportHeaderGuideRef = useRef<View | null>(null);
+  const reportSummaryGuideRef = useRef<View | null>(null);
+  const reportButtonGuideRef = useRef<View | null>(null);
 
-  const perfilPrincipal = usuario?.perfis?.[0]?.nome || "conqueror";
+  const perfilPrincipal = usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? "conqueror";
   const perfilConfig = getBrainHexConfig(perfilPrincipal);
   const palette = useMemo(() => getProfileShellPalette(perfilPrincipal), [perfilPrincipal]);
   const gold = useMemo(() => tinycolor(palette.accent).lighten(10).toHexString(), [palette.accent]);
+  const guideSteps = useMemo<SectionGuideStep[]>(
+    () => [
+      {
+        id: "report-intro",
+        target: "report_header",
+        title: "Relatório dos seus dados",
+        description:
+          "Esta página prepara uma visão consolidada da sua jornada usando os dados vinculados à sua conta.",
+        icon: "file-chart-outline",
+      },
+      {
+        id: "report-content",
+        target: "report_summary",
+        title: "O que entra no relatório",
+        description:
+          "O documento inclui identificação, quantidade de eventos registrados, posições nos rankings, progresso nas trilhas e conquistas disponíveis.",
+        icon: "text-box-search-outline",
+      },
+      {
+        id: "report-generate",
+        target: "report_button",
+        title: "Gerar e compartilhar o PDF",
+        description:
+          "Este botão monta o PDF completo no aparelho e abre as opções de compartilhamento. Gerar o arquivo não altera seus dados.",
+        icon: "file-pdf-box",
+      },
+    ],
+    [],
+  );
+  const guideTargets = useMemo(
+    () => ({
+      report_header: reportHeaderGuideRef,
+      report_summary: reportSummaryGuideRef,
+      report_button: reportButtonGuideRef,
+    }),
+    [],
+  );
+
+  useEffect(
+    () =>
+      registrarAlvoTour("config_relatorio", reportButtonGuideRef, () => {
+        scrollRef.current?.scrollToEnd({ animated: false });
+      }),
+    [],
+  );
 
   // --- CARREGAMENTO DA LOGO ---
   useEffect(() => {
@@ -399,12 +454,26 @@ export default function RelatorioDadosScreen() {
       <View style={[StyleSheet.absoluteFill, { opacity: 0.35 }]} pointerEvents="none">
         <HallBackground palette={palette} />
       </View>
+      <SectionGuideButton
+        profile={perfilPrincipal}
+        sectionTitle="Relatório de dados"
+        steps={guideSteps}
+        targetRefs={guideTargets}
+        scrollRef={scrollRef}
+        scrollOffsetRef={scrollOffsetRef}
+        style={styles.guideButton}
+      />
     <ScrollView
+      ref={scrollRef}
       style={styles.container}
       contentContainerStyle={styles.content}
+      onScroll={(event) => {
+        scrollOffsetRef.current = event.nativeEvent.contentOffset.y;
+      }}
+      scrollEventThrottle={16}
     >
 
-      <View style={styles.headerContainer}>
+      <View ref={reportHeaderGuideRef} collapsable={false} style={styles.headerContainer}>
         <View
           style={[
             styles.profileImageContainer,
@@ -423,7 +492,11 @@ export default function RelatorioDadosScreen() {
         </View>
       </View>
 
-      <View style={[styles.card, { backgroundColor: palette.surfaceElevated, borderColor: palette.border }]}>
+      <View
+        ref={reportSummaryGuideRef}
+        collapsable={false}
+        style={[styles.card, { backgroundColor: palette.surfaceElevated, borderColor: palette.border }]}
+      >
         <View style={[styles.cardHeader, { borderBottomColor: palette.border }]}>
           <MaterialCommunityIcons name="account-details" size={20} color={palette.accent} />
           <Text style={[styles.cardTitle, { color: palette.text }]}>Identificação</Text>
@@ -489,14 +562,16 @@ export default function RelatorioDadosScreen() {
         </View>
       </View>
 
-      <TouchableOpacity
-        style={[styles.button, { backgroundColor: palette.accent, borderColor: palette.borderStrong }]}
-        onPress={handleDownload}
-        activeOpacity={0.8}
-      >
-        <MaterialCommunityIcons name="file-pdf-box" size={24} color={Color.colorWhite} style={{marginRight: 8}}/>
-        <Text style={styles.buttonText}>GERAR PDF COMPLETO</Text>
-      </TouchableOpacity>
+      <View ref={reportButtonGuideRef} collapsable={false}>
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: palette.accent, borderColor: palette.borderStrong }]}
+          onPress={handleDownload}
+          activeOpacity={0.8}
+        >
+          <MaterialCommunityIcons name="file-pdf-box" size={24} color={Color.colorWhite} style={{marginRight: 8}}/>
+          <Text style={styles.buttonText}>GERAR PDF COMPLETO</Text>
+        </TouchableOpacity>
+      </View>
 
       <View style={{height: 40}} />
     </ScrollView>
@@ -507,6 +582,11 @@ export default function RelatorioDadosScreen() {
 const styles = StyleSheet.create({
   outer: {
     flex: 1,
+  },
+  guideButton: {
+    position: "absolute",
+    top: 14,
+    right: 18,
   },
   container: {
     flex: 1,

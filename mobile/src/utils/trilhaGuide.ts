@@ -1,5 +1,5 @@
 import { BrainHexProfile, getBrainHexConfig } from "@/constants/profileImages";
-import { hasBrainHexProfileSignal } from "@/utils/brainHex";
+import { getBrainHexProfileCapabilities } from "@/utils/brainHexCapabilities";
 
 type TrilhaGuideContext = {
   topicTitle: string;
@@ -155,7 +155,8 @@ function buildTrailSteps(
   context: TrilhaGuideContext
 ): TrilhaGuideTutorialStep[] {
   const visualMode = context.visibleElements?.visualMode ?? "lista";
-  const hasChat = context.visibleElements?.hasChat ?? true;
+  const capabilities = getBrainHexProfileCapabilities(profile);
+  const hasChat = context.visibleElements?.hasChat ?? capabilities.hasChat;
   const steps: TrilhaGuideTutorialStep[] = [
     {
       id: "trilha-progress",
@@ -227,20 +228,10 @@ function buildModuleSteps(
   profile: BrainHexProfile,
   context: TrilhaGuideContext
 ): TrilhaGuideTutorialStep[] {
-  const perfis = context.perfis ?? [];
-  const hasTimer =
-    context.visibleElements?.hasTimer ??
-    (hasBrainHexProfileSignal(perfis, "survivor") ||
-      hasBrainHexProfileSignal(perfis, "mastermind") ||
-      hasBrainHexProfileSignal(perfis, "achiever") ||
-      hasBrainHexProfileSignal(perfis, "conqueror") ||
-      hasBrainHexProfileSignal(perfis, "daredevil"));
-  const hasBattle =
-    context.visibleElements?.hasBattle ??
-    (hasBrainHexProfileSignal(perfis, "survivor") ||
-      hasBrainHexProfileSignal(perfis, "daredevil") ||
-      hasBrainHexProfileSignal(perfis, "conqueror"));
-  const hasChat = context.visibleElements?.hasChat ?? true;
+  const capabilities = getBrainHexProfileCapabilities(profile);
+  const hasTimer = context.visibleElements?.hasTimer ?? capabilities.hasTimer;
+  const hasBattle = context.visibleElements?.hasBattle ?? capabilities.hasBattle;
+  const hasChat = context.visibleElements?.hasChat ?? capabilities.hasChat;
 
   const steps: TrilhaGuideTutorialStep[] = [
     {
@@ -305,11 +296,12 @@ function buildPersonalizedDetails(
   scope: TrilhaGuideScope
 ) {
   const details: string[] = [];
+  const capabilities = getBrainHexProfileCapabilities(profile);
   const totalBlocks = Math.max(0, Number(context.totalBlocks ?? 0));
   const completedBlocks = Math.max(0, Number(context.completedBlocks ?? 0));
-  const hasChat = context.visibleElements?.hasChat ?? true;
-  const hasTimer = Boolean(context.visibleElements?.hasTimer);
-  const hasBattle = Boolean(context.visibleElements?.hasBattle);
+  const hasChat = context.visibleElements?.hasChat ?? capabilities.hasChat;
+  const hasTimer = context.visibleElements?.hasTimer ?? capabilities.hasTimer;
+  const hasBattle = context.visibleElements?.hasBattle ?? capabilities.hasBattle;
   const visualMode = context.visibleElements?.visualMode ?? "lista";
   const guideVariant =
     context.guideVariant ?? (scope === "trilha" ? "padrao_trilha" : "mock_modulo");

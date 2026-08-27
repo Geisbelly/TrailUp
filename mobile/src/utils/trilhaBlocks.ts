@@ -210,6 +210,95 @@ export function isAtividadeConcluida(
   );
 }
 
+/**
+ * Progresso sobre os blocos do topico -- o percurso que o aluno realmente ve.
+ *
+ * Existe porque a barra do modulo media outro conjunto: so conteudo/atividade do
+ * professor, excluindo o material personalizado. Duas consequencias, as duas
+ * visiveis pro aluno:
+ *
+ * 1. concluir um passo personalizado nao movia a barra (o passo entra no Set de
+ *    vistos, mas ficava fora do somatorio) -- a tela avancava e a barra ficava
+ *    parada;
+ * 2. o rotulo diz "blocos", e o gate de exibicao usava a contagem dos blocos
+ *    exibidos, entao numerador, denominador e rotulo falavam de tres universos
+ *    diferentes.
+ *
+ * Recebe `blocks` (o topico inteiro), nao os blocos exibidos: se o aluno pula os
+ * conteudos, eles continuam pendentes no modulo, e mostrar 100% ali seria trocar
+ * um numero errado por outro.
+ */
+export function contarProgressoDeBlocos(params: {
+  blocks: Block[];
+  conteudosVistosLocal: Set<number>;
+  atividadesResolvidasLocal: Map<number, AtividadeResolvida>;
+}): { total: number; concluidos: number; pct: number } {
+  const { blocks, conteudosVistosLocal, atividadesResolvidasLocal } = params;
+  const lista = blocks ?? [];
+
+  const concluidos = lista.reduce((soma, bloco) => {
+    const feito =
+      bloco.kind === "conteudo"
+        ? isConteudoConcluido(bloco.conteudo, conteudosVistosLocal)
+        : isAtividadeConcluida(bloco.atividade, atividadesResolvidasLocal);
+    return soma + (feito ? 1 : 0);
+  }, 0);
+
+  const total = lista.length;
+  const pct = total > 0 ? (concluidos / total) * 100 : 0;
+
+  return { total, concluidos, pct: Math.max(0, Math.min(100, pct)) };
+}
+
+/**
+ * Progresso mostrado durante a navegacao. Um checkpoint no bloco N confirma
+ * que os N blocos anteriores foram atravessados pelos gates da tela. Isso
+ * evita restaurar no bloco 17 com a barra visual ainda presa em 6/26 quando o
+ * estado local foi recriado depois de fechar o app.
+ */
+export function calcularProgressoVisualPercurso(params: {
+  total: number;
+  concluidosConfirmados: number;
+  maiorIndiceAlcancado: number;
+  blocoAtualConcluido: boolean;
+}) {
+  const total = Math.max(0, Math.round(params.total));
+  const confirmados = Math.max(0, Math.round(params.concluidosConfirmados));
+  const anterioresPercorridos = Math.max(0, Math.round(params.maiorIndiceAlcancado));
+  const percorridos = anterioresPercorridos + (params.blocoAtualConcluido ? 1 : 0);
+  const concluidos = Math.min(total, Math.max(confirmados, percorridos));
+  const pct = total > 0 ? (concluidos / total) * 100 : 0;
+  return { total, concluidos, pct };
+}
+
+/**
+ * Todo bloco do percurso esta realmente concluido?
+ *
+ * Antes a regra era `concluido || idx < index`: qualquer bloco ATRAS do cursor
+ * contava como feito. Passar batido por uma questao equivalia a responde-la, e
+ * o modulo era dado como concluido com as atividades intocadas -- o gate existia
+ * so na aparencia.
+ *
+ * Posicao nao e evidencia de conclusao. Aqui so conta o que os predicados de
+ * conclusao confirmam (que ja aceitam status do banco, tentativa registrada e
+ * marcacao local, entao quem respondeu numa sessao anterior nao e penalizado).
+ */
+export function todosOsBlocosConcluidos(params: {
+  blocks: Block[];
+  conteudosVistosLocal: Set<number>;
+  atividadesResolvidasLocal: Map<number, AtividadeResolvida>;
+}): boolean {
+  const { blocks, conteudosVistosLocal, atividadesResolvidasLocal } = params;
+  const lista = blocks ?? [];
+  if (lista.length === 0) return true;
+
+  return lista.every((bloco) =>
+    bloco.kind === "conteudo"
+      ? isConteudoConcluido(bloco.conteudo, conteudosVistosLocal)
+      : isAtividadeConcluida(bloco.atividade, atividadesResolvidasLocal)
+  );
+}
+
 export function resolveLegacyStartPosition(
   blocks: Block[],
   ultimaAtividadeId?: number | null

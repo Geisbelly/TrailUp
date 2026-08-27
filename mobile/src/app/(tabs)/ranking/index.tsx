@@ -3,10 +3,16 @@ import {
   HallBackground,
   OrnamentDivider,
 } from "@/components/HallTheme";
+import {
+  SectionGuideButton,
+  SectionGuideStep,
+} from "@/components/SectionGuideButton";
 import { useConquistaRank } from "@/context/ConquistaRankContext";
 import { useUsuario } from "@/context/SessaoContext";
 import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { registrarAlvoTour } from "@/utils/tourTargets";
+import { getProfileGuideEmphasis } from "@/utils/profileSectionGuide";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -55,7 +61,6 @@ function RankCard({
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const shimmerAnim = useRef(new Animated.Value(0)).current;
 
-  const gold = tinycolor(palette.accent).lighten(10).toHexString();
   const goldDim = tinycolor(palette.accent).setAlpha(0.5).toRgbString();
   const goldFaint = tinycolor(palette.accent).setAlpha(0.13).toRgbString();
 
@@ -299,11 +304,50 @@ function RankCard({
 export default function RankingHome() {
   const { ranking } = useConquistaRank();
   const { usuario } = useUsuario();
-  const palette = getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null);
+  const activeProfile = usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null;
+  const palette = getProfileShellPalette(activeProfile);
+  const profileEmphasis = getProfileGuideEmphasis(activeProfile, "ranking");
+  const rankingHeaderGuideRef = useRef<View | null>(null);
+  const rankingCategoriesGuideRef = useRef<View | null>(null);
+  const rankingSampleCategoryTourRef = useRef<View | null>(null);
+  const rankingScrollRef = useRef<ScrollView | null>(null);
+  const rankingGuideSteps = useMemo<SectionGuideStep[]>(
+    () => [
+      {
+        id: "ranking-header",
+        target: "ranking_header",
+        title: "Sala de honra",
+        description:
+          `O ranking reúne categorias diferentes de classificação. ${profileEmphasis}`,
+        icon: "shield-crown-outline",
+      },
+      {
+        id: "ranking-categories",
+        target: "ranking_categories",
+        title: "Categorias do ranking",
+        description:
+          "Toque em uma categoria para abrir a classificação, consultar sua posição e entender quais resultados estão sendo considerados.",
+        icon: "podium",
+      },
+    ],
+    [profileEmphasis],
+  );
+  // Alvos do tutorial inicial: as refs ja existiam para o guia de pagina.
+  useEffect(
+    () =>
+      registrarAlvoTour("ranking_categorias", rankingSampleCategoryTourRef, () => {
+        rankingScrollRef.current?.scrollTo({ y: 250, animated: false });
+      }),
+    [],
+  );
 
-  const gold = tinycolor(palette.accent).lighten(10).toHexString();
-  const goldDim = tinycolor(palette.accent).setAlpha(0.55).toRgbString();
-  const goldFaint = tinycolor(palette.accent).setAlpha(0.08).toRgbString();
+  const rankingGuideTargets = useMemo(
+    () => ({
+      ranking_header: rankingHeaderGuideRef,
+      ranking_categories: rankingCategoriesGuideRef,
+    }),
+    [],
+  );
 
   // Pulsação do ícone do topo
   const crownPulse = useRef(new Animated.Value(0)).current;
@@ -360,13 +404,28 @@ export default function RankingHome() {
         pointerEvents="none"
       />
 
-      <SafeAreaView style={{ flex: 1 }}>
+      {/* `edges` SEM "bottom": a tab bar (height 100 + marginBottom 10) já
+          reserva o rodapé, e o `paddingBottom: 110` do conteúdo é exatamente
+          essa medida. Sem excluir o bottom aqui, o inset de baixo entrava DE
+          NOVO -- a area util encolhia, sobrava um vao morto entre o conteudo e o
+          menu, e os elementos do fim eram cortados. As outras abas
+          (notificacoes) ja faziam assim; esta tela era a unica fora do padrao,
+          e era a unica com o problema. */}
+      <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
+        <SectionGuideButton
+          profile={usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome}
+          sectionTitle="Ranking"
+          steps={rankingGuideSteps}
+          targetRefs={rankingGuideTargets}
+          style={styles.guideButton}
+        />
         <ScrollView
+          ref={rankingScrollRef}
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
         >
           {/* ══════════ HEADER DO SALÃO ══════════ */}
-          <View style={styles.header}>
+          <View ref={rankingHeaderGuideRef} collapsable={false} style={styles.header}>
             {/* Ícone animado do topo */}
             <Animated.View
               style={{
@@ -404,25 +463,36 @@ export default function RankingHome() {
           </View>
 
           {/* ══════════ GRADE DE CARDS ══════════ */}
-          <View style={styles.grid}>
+          <View ref={rankingCategoriesGuideRef} collapsable={false} style={styles.grid}>
             {data.map((item, index) => {
               const isLastItem = index === data.length - 1;
               const isTotalOdd = data.length % 2 !== 0;
               const isFullWidth = isLastItem && isTotalOdd;
+              const highlightedIndex = data.length > 1 ? 1 : 0;
               return (
-                <RankCard
+                <View
                   key={item.id}
-                  item={item}
-                  isFullWidth={isFullWidth}
-                  palette={palette}
-                />
+                  ref={index === highlightedIndex ? rankingSampleCategoryTourRef : undefined}
+                  collapsable={false}
+                  style={{ width: isFullWidth ? "100%" : CARD_W }}
+                >
+                  <RankCard
+                    item={item}
+                    isFullWidth={isFullWidth}
+                    palette={palette}
+                  />
+                </View>
               );
             })}
           </View>
 
           {/* ── Ornamento de rodapé ── */}
-          <View style={{ marginTop: 32, opacity: 0.4 }}>
-            <OrnamentDivider color={Color.colorWhite} />
+          {/* Atenuação na cor, não num wrapper com `opacity` (evita a camada de
+              render extra no Android). 0.7 é o piso medido: abaixo dele as duas
+              linhas de 1px caem para menos de 3:1 contra o fundo e o divisor
+              aparece "quebrado" — só os losangos, sem linha. */}
+          <View style={{ marginTop: 32 }}>
+            <OrnamentDivider color={Color.colorWhite} opacidade={0.7} />
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -435,11 +505,21 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
   },
+  guideButton: {
+    position: "absolute",
+    top: 34,
+    right: 16,
+  },
 
   scroll: {
     paddingHorizontal: PADDING_H,
     paddingTop: 24,
-    paddingBottom: 110,
+    // 110 aqui era vao morto puro. A tab bar nao flutua (nao tem
+    // `position: absolute` em (tabs)/_layout.tsx), entao o ScrollView ja termina
+    // onde ela comeca -- reservar a altura dela DE NOVO dentro do conteudo
+    // criava ~110dp de nada no fim e, pior, deixava o conteudo mais alto que a
+    // viewport: a tela rolava mesmo com tudo caibindo. Agora e so respiro.
+    paddingBottom: 24,
   },
 
   // Header

@@ -85,7 +85,7 @@ const NotificationModal = ({ item, onRemove }: { item: ToastMessage; onRemove: (
   const opacity = useRef(new Animated.Value(0)).current;
   
   const { usuario } = useUsuario();
-  const profileName = usuario?.perfis?.[0]?.nome || 'seeker'; 
+  const profileName = usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? 'seeker';
   const profileConfig = getBrainHexConfig(profileName);
   const palette = getProfileShellPalette(profileName);
 
@@ -232,7 +232,7 @@ export function ToastContainer() {
   const insets = useSafeAreaInsets();
   
   const { usuario } = useUsuario();
-  const profileName = usuario?.perfis?.[0]?.nome || 'seeker';
+  const profileName = usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? 'seeker';
   const profileConfig = getBrainHexConfig(profileName);
   const palette = getProfileShellPalette(profileName);
 

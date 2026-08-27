@@ -1,5 +1,6 @@
 // src/models/Aluno.ts
 import { getSessionSafe, supabase } from '@/database/supabase';
+import type { BrainHexProfile } from '@/constants/brainHexProfiles';
 import { PerfilDoAluno } from './PerfilAluno';
 
 export class Aluno {
@@ -15,6 +16,7 @@ export class Aluno {
   public modoOperacao_nome: string | null;
   public modoOperacao_descricao: string | null;
   public modoOperacao_ordem: unknown | null;
+  public perfilAtivo: BrainHexProfile | null;
   
 
   // perfis associados
@@ -32,13 +34,26 @@ export class Aluno {
     this.modoOperacao_nome = row.modoOperacao_nome ?? null;
     this.modoOperacao_descricao = row.modoOperacao_descricao ?? null;
     this.modoOperacao_ordem = row.modoOperacao_ordem ?? null;
+    this.perfilAtivo = row.perfil_ativo ?? null;
   }
 
   static async fromViewRow(row: any): Promise<Aluno> {
     if (!row) throw new Error('Linha inválida da vw_aluno_usuario');
     const aluno = new Aluno(row);
-    await aluno.loadPerfis(); // ✅ Aguarda aqui
+    await Promise.all([aluno.loadPerfis(), aluno.loadPerfilAtivo()]);
     return aluno;
+  }
+
+  async loadPerfilAtivo(): Promise<void> {
+    const { data, error } = await supabase
+      .from('alunos')
+      .select('perfil_ativo')
+      .eq('id', this.id)
+      .maybeSingle();
+
+    if (error) throw error;
+    this.perfilAtivo =
+      (data?.perfil_ativo as BrainHexProfile | null | undefined) ?? null;
   }
 
   /** Busca pela view */
@@ -345,6 +360,7 @@ export class Aluno {
       modoOperacao_descricao: this.modoOperacao_descricao,
       modoOperacao_ordem: this.modoOperacao_ordem,
       modoResposta: this.modoResposta,
+      perfilAtivo: this.perfilAtivo,
       perfis: this.perfis,
     };
   }

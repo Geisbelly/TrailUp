@@ -1,3 +1,1 @@
-export interface IModal {
-    
-}
+export type IModal = Record<string, never>;

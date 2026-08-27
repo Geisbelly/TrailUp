@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- dependências nativas opcionais são carregadas apenas quando disponíveis */
 // Optional polyfills for React Native without adding hard dependency
 import { createClient, Session } from '@supabase/supabase-js'
 import { Platform } from 'react-native'

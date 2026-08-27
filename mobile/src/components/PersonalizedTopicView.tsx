@@ -675,8 +675,8 @@ export default function PersonalizedTopicView({
   const { usuario } = useUsuario();
   const { showDialog } = useDialog();
   const profilePalette = useMemo(
-    () => getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfis]
+    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
+    [usuario?.perfilAtivo, usuario?.perfis]
   );
   const [started, setStarted] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);

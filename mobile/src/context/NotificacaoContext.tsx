@@ -225,8 +225,12 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
       const item = itens.find(n => n.id === id);
       if (!item) return;
       await item.updateStatus(status);
-      await item.updateRead();
-      setItens(prev => prev.map(n => (n.id === id ? { ...n, status } as Notificacao : n)));
+      // `read` acompanha o status em vez de alternar: 'lida' significa lida, e
+      // reabrir a notificação não pode desmarcá-la.
+      await item.updateRead(status === 'lida');
+      setItens(prev =>
+        prev.map(n => (n.id === id ? ({ ...n, status, read: status === 'lida' } as Notificacao) : n))
+      );
     } catch (e) {
       console.warn('[NotificationsContext] marcarStatus erro:', e);
     }
@@ -254,12 +258,14 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
 
       const { error } = await supabase
         .from('notificacoes')
-        .update({ status: 'lida' })
+        // `read` junto com o status: sem isso, "marcar todas como lidas"
+        // limpava o rótulo da lista mas o contador de não lidas seguia cheio.
+        .update({ status: 'lida', read: true })
         .eq('aluno_id', uid)
         .neq('status', 'lida');
       if (error) throw error;
 
-      setItens(prev => prev.map(n => ({ ...n, status: 'lida' } as Notificacao)));
+      setItens(prev => prev.map(n => ({ ...n, status: 'lida', read: true } as Notificacao)));
     } catch (e) {
       console.warn('[NotificationsContext] marcarTodasLidas erro:', e);
     }

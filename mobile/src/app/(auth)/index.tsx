@@ -1,6 +1,6 @@
 import { app } from "@/constants/definicoes";
 import { HallBackground, OrnamentDivider } from "@/components/HallTheme";
-import { Color, FontFamily } from "@/styles/GlobalStyle";
+import { FontFamily } from "@/styles/GlobalStyle";
 import { buildProfileShellPaletteFromAccent } from "@/utils/profileShellTheme";
 import { LinearGradient } from "expo-linear-gradient";
 import { Image } from "expo-image";

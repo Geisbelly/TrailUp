@@ -1,10 +1,17 @@
 import { supabase } from "@/database/supabase";
+import {
+  extrairReferenciaDeDeck,
+  origemDeStorageConfiavel,
+  reancorarNaOrigemDoApp,
+} from "./storageOrigin";
 
 type ParsedStorageUrl = {
   origin: string;
   mode: string;
   bucket: string;
   objectPath: string;
+  /** Query original; a reancoragem tem que devolve-la junto. */
+  search: string;
 };
 
 type ResolveStorageUrlOptions = {
@@ -26,6 +33,34 @@ function getSupabaseOrigin() {
   } catch {
     return null;
   }
+}
+
+/**
+ * URL de deck resservido (`/api/v1/decks/{bucket}/{caminho}`) virando URL
+ * publica de storage.
+ *
+ * O deck E gravado no mesmo bucket publico que o resto do material (audio,
+ * markdown, imagens) -- `supabaseService.ts` sobe tudo com `getPublicUrl`. O
+ * endpoint `/api/v1/decks` do BrainHexPDF existe por causa do Content-Type: o
+ * gateway publico serve `.html` como `text/plain`. Isso NAO nos afeta aqui,
+ * porque o app baixa o HTML e injeta inline (ver DocumentBlock) exatamente por
+ * esse motivo -- `fetch().text()` le os bytes independente do Content-Type.
+ *
+ * Convertemos SEMPRE que a origem do app e conhecida, sem comparar origens: o
+ * endpoint de deck e um atalho do servidor, o arquivo mora no Storage, e o
+ * Supabase nao serve essa rota -- um "acerto" de origem ali seria coincidencia
+ * sem valor.
+ */
+function deckComoUrlPublicaDeStorage(rawUrl: string): string | null {
+  const referencia = extrairReferenciaDeDeck(rawUrl);
+  if (!referencia) return null;
+
+  return reancorarNaOrigemDoApp({
+    appOrigin: getSupabaseOrigin(),
+    bucket: referencia.bucket,
+    objectPath: referencia.objectPath,
+    search: referencia.search,
+  });
 }
 
 export function looksLikeStorageObjectPath(rawValue: string) {
@@ -91,8 +126,23 @@ export function buildSupabasePublicStorageUrl(
   const trimmed = String(rawUrl ?? "").trim();
   if (!trimmed) return trimmed;
 
+  const deck = deckComoUrlPublicaDeStorage(trimmed);
+  if (deck) return deck;
+
   const parsed = parseSupabaseStorageUrl(trimmed);
   if (parsed) {
+    // Mesma desconfianca do resolve: origem estranha ao app nao serve, mesmo
+    // que a URL esteja "pronta".
+    const appOriginParaPublico = getSupabaseOrigin();
+    if (!origemDeStorageConfiavel(parsed.origin, appOriginParaPublico)) {
+      const reancorada = reancorarNaOrigemDoApp({
+        appOrigin: appOriginParaPublico,
+        bucket: parsed.bucket,
+        objectPath: parsed.objectPath,
+        search: parsed.search,
+      });
+      if (reancorada) return reancorada;
+    }
     if (parsed.mode === "public") return trimmed;
     const encodedPath = encodeObjectPath(parsed.objectPath);
     if (!encodedPath) return trimmed;
@@ -127,6 +177,7 @@ export function parseSupabaseStorageUrl(rawUrl: string): ParsedStorageUrl | null
       mode: mode.toLowerCase(),
       bucket,
       objectPath,
+      search: url.search,
     };
   } catch {
     return null;
@@ -137,6 +188,9 @@ export async function resolveSupabaseStorageUrl(
   rawUrl: string,
   options: ResolveStorageUrlOptions = {}
 ) {
+  const deck = deckComoUrlPublicaDeStorage(rawUrl);
+  if (deck) return deck;
+
   const parsed = parseSupabaseStorageUrl(rawUrl);
   const expiresIn = options.expiresIn ?? 60 * 60;
 
@@ -156,6 +210,33 @@ export async function resolveSupabaseStorageUrl(
     }
 
     return buildSupabasePublicStorageUrl(rawUrl, { bucket: options.bucket });
+  }
+
+  // A URL veio pronta, mas de quem? Se a origem nao e a do app, ela foi montada
+  // com a base errada no servidor (caso real: SUPABASE_URL apontando pro
+  // servico interno do deploy, gerando host que o celular nao resolve -
+  // net::ERR_NAME_NOT_RESOLVED). O caminho dentro do bucket continua valido:
+  // basta reancorar na origem que o app conhece. Ver storageOrigin.ts.
+  const appOrigin = getSupabaseOrigin();
+  if (!origemDeStorageConfiavel(parsed.origin, appOrigin)) {
+    const reancorada = reancorarNaOrigemDoApp({
+      appOrigin,
+      bucket: parsed.bucket,
+      objectPath: parsed.objectPath,
+      search: parsed.search,
+    });
+    if (reancorada) {
+      if (parsed.mode === "public") return reancorada;
+      // Bucket privado: assina no cliente, que fala com a origem certa.
+      const { data, error } = await supabase
+        .storage
+        .from(parsed.bucket)
+        .createSignedUrl(parsed.objectPath, expiresIn);
+      if (!error && data?.signedUrl && appOrigin) {
+        return joinUrl(appOrigin, data.signedUrl);
+      }
+      return reancorada;
+    }
   }
 
   if (parsed.mode === "public" || parsed.mode === "sign") {

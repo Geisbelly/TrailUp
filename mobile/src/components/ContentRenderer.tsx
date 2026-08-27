@@ -20,6 +20,7 @@ import StudyCardsBlock from "./StudyCardsBlock";
 import PresentationSlidesBlock from "./PresentationSlidesBlock";
 import AudioPlayer from "./funcionais/AudioPlayer";
 import VideoPlayer from "./funcionais/VideoPlayer";
+import { resolveMediaText, resolveMediaTitle, resolveMediaUrl } from "@/utils/mediaPayload";
 
 function loadWebView(): React.ComponentType<any> | null {
   if (Platform.OS === "web") return null;
@@ -41,6 +42,19 @@ type Props = {
   onDeckProgressEvent?: (event: DeckProgressEvent) => void;
 };
 
+function resumeIdentity(topicoId: number | null | undefined, block: ContentBlock) {
+  const mediaIdentity = resolveMediaUrl(block.payload);
+  let payloadIdentity = mediaIdentity ?? "";
+  if (!payloadIdentity) {
+    try {
+      payloadIdentity = JSON.stringify(block.payload) ?? "";
+    } catch {
+      payloadIdentity = String(block.payload ?? "");
+    }
+  }
+  return `${topicoId ?? "sem-topico"}:${block.id}:${payloadIdentity}`;
+}
+
 function readString(payload: ContentBlockPayload, ...keys: string[]) {
   if (!payload || typeof payload !== "object") return null;
 
@@ -54,16 +68,38 @@ function readString(payload: ContentBlockPayload, ...keys: string[]) {
   return null;
 }
 
+/**
+ * Bloco que nao pode ser exibido. Antes cada helper devolvia null quando nao
+ * achava a midia, e o aluno via um ESPACO VAZIO - sem saber que ali deveria ter
+ * conteudo, e sem nada pra reportar. Um aviso curto e melhor que o silencio.
+ */
+function MidiaIndisponivel({
+  block,
+  palette,
+}: {
+  block: ContentBlock;
+  palette?: ReturnType<typeof getProfileShellPalette>;
+}) {
+  const titulo = resolveMediaTitle(block.payload);
+  const cor = palette?.textMuted ?? "#a1a1aa";
+  const borda = palette?.border ?? "rgba(255,255,255,0.12)";
+
+  return (
+    <View key={block.id} style={[styles.midiaIndisponivel, { borderColor: borda }]}>
+      <Text style={[styles.midiaIndisponivelTexto, { color: cor }]}>
+        {titulo ? `"${titulo}" não pôde ser exibido aqui.` : "Este material não pôde ser exibido aqui."}
+      </Text>
+    </View>
+  );
+}
+
 function renderText(
   block: ContentBlock,
   palette: ReturnType<typeof getProfileShellPalette>
 ) {
-  const text =
-    typeof block.payload === "string"
-      ? block.payload
-      : readString(block.payload, "texto", "markdown", "legenda");
+  const text = resolveMediaText(block.payload);
 
-  if (!text) return null;
+  if (!text) return <MidiaIndisponivel block={block} palette={palette} />;
 
   return (
     <Text key={block.id} style={[styles.cardBody, { color: palette.textMuted }]}>
@@ -76,12 +112,9 @@ function renderImage(
   block: ContentBlock,
   palette: ReturnType<typeof getProfileShellPalette>
 ) {
-  const url =
-    typeof block.payload === "object"
-      ? readString(block.payload, "url", "uri", "src")
-      : null;
+  const url = resolveMediaUrl(block.payload);
 
-  if (!url) return null;
+  if (!url) return <MidiaIndisponivel block={block} palette={palette} />;
 
   return (
     <View
@@ -100,14 +133,10 @@ function renderImage(
   );
 }
 
-function renderVideo(block: ContentBlock) {
+function renderVideo(block: ContentBlock, topicoId?: number | null) {
   const payload =
     typeof block.payload === "object" && block.payload ? block.payload : null;
-  const url = payload
-    ? readString(payload, "url", "uri", "src")
-    : typeof block.payload === "string"
-    ? block.payload
-    : null;
+  const url = resolveMediaUrl(block.payload);
   const metadata =
     payload?.metadata && typeof payload.metadata === "object"
       ? (payload.metadata as Record<string, unknown>)
@@ -124,7 +153,7 @@ function renderVideo(block: ContentBlock) {
   const title = payload ? readString(payload, "title", "legenda") : null;
   const fallbackText = metadata ? readString(metadata, "fallbackText") : null;
 
-  if (!url) return null;
+  if (!url) return <MidiaIndisponivel block={block} />;
   return (
     <VideoPlayer
       key={block.id}
@@ -132,18 +161,15 @@ function renderVideo(block: ContentBlock) {
       title={title ?? undefined}
       bucketHint={bucketHint}
       fallbackText={fallbackText ?? undefined}
+      progressKey={resumeIdentity(topicoId, block)}
     />
   );
 }
 
-function renderAudio(block: ContentBlock) {
+function renderAudio(block: ContentBlock, topicoId?: number | null) {
   const payload =
     typeof block.payload === "object" && block.payload ? block.payload : null;
-  const url = payload
-    ? readString(payload, "url", "uri", "src")
-    : typeof block.payload === "string"
-    ? block.payload
-    : null;
+  const url = resolveMediaUrl(block.payload);
   const metadata =
     payload?.metadata && typeof payload.metadata === "object"
       ? (payload.metadata as Record<string, unknown>)
@@ -176,15 +202,16 @@ function renderAudio(block: ContentBlock) {
       fallbackText={fallbackText ?? undefined}
       capaUrl={capaUrl ?? undefined}
       imageCues={imageCues ?? undefined}
+      progressKey={resumeIdentity(topicoId, block)}
     />
   );
 }
 
-export function ContentRenderer({ blocks, WebView, onDeckProgressEvent }: Props) {
+export function ContentRenderer({ blocks, WebView, topicoId, onDeckProgressEvent }: Props) {
   const { usuario } = useUsuario();
   const palette = React.useMemo(
-    () => getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfis]
+    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
+    [usuario?.perfilAtivo, usuario?.perfis]
   );
   const resolvedWebView = WebView ?? DefaultWebView;
 
@@ -210,7 +237,7 @@ export function ContentRenderer({ blocks, WebView, onDeckProgressEvent }: Props)
           if (urlFromPayload && isPdfUrl(urlFromPayload)) {
             return (
               <View key={block.id}>
-                <DocumentBlock tipo="pdf" payload={block.payload} WebView={resolvedWebView} />
+                <DocumentBlock tipo="pdf" payload={block.payload} WebView={resolvedWebView} progressKey={resumeIdentity(topicoId, block)} />
               </View>
             );
           }
@@ -222,6 +249,7 @@ export function ContentRenderer({ blocks, WebView, onDeckProgressEvent }: Props)
                   tipo="apresentacao"
                   payload={block.payload}
                   WebView={resolvedWebView}
+                  progressKey={resumeIdentity(topicoId, block)}
                 />
               </View>
             );
@@ -234,6 +262,7 @@ export function ContentRenderer({ blocks, WebView, onDeckProgressEvent }: Props)
                   tipo="documento"
                   payload={block.payload}
                   WebView={resolvedWebView}
+                  progressKey={resumeIdentity(topicoId, block)}
                 />
               </View>
             );
@@ -257,7 +286,7 @@ export function ContentRenderer({ blocks, WebView, onDeckProgressEvent }: Props)
         if (block.tipo === "audio") {
           return (
             <View key={block.id}>
-              {renderAudio(block)}
+              {renderAudio(block, topicoId)}
             </View>
           );
         }
@@ -265,7 +294,7 @@ export function ContentRenderer({ blocks, WebView, onDeckProgressEvent }: Props)
         if (block.tipo === "video" || block.tipo === "youtube") {
           return (
             <View key={block.id}>
-              {renderVideo(block)}
+              {renderVideo(block, topicoId)}
             </View>
           );
         }
@@ -273,7 +302,7 @@ export function ContentRenderer({ blocks, WebView, onDeckProgressEvent }: Props)
         if (block.tipo === "cards") {
           return (
             <View key={block.id}>
-              <StudyCardsBlock payload={block.payload} WebView={resolvedWebView} />
+              <StudyCardsBlock payload={block.payload} WebView={resolvedWebView} progressKey={resumeIdentity(topicoId, block)} />
             </View>
           );
         }
@@ -281,7 +310,7 @@ export function ContentRenderer({ blocks, WebView, onDeckProgressEvent }: Props)
         if (block.tipo === "apresentacao-slides") {
           return (
             <View key={block.id}>
-              <PresentationSlidesBlock payload={block.payload} />
+              <PresentationSlidesBlock payload={block.payload} progressKey={resumeIdentity(topicoId, block)} />
             </View>
           );
         }
@@ -289,7 +318,7 @@ export function ContentRenderer({ blocks, WebView, onDeckProgressEvent }: Props)
         if (block.tipo === "pdf") {
           return (
             <View key={block.id}>
-              <DocumentBlock tipo="pdf" payload={block.payload} WebView={resolvedWebView} />
+              <DocumentBlock tipo="pdf" payload={block.payload} WebView={resolvedWebView} progressKey={resumeIdentity(topicoId, block)} />
             </View>
           );
         }
@@ -306,18 +335,38 @@ export function ContentRenderer({ blocks, WebView, onDeckProgressEvent }: Props)
                 payload={block.payload}
                 WebView={resolvedWebView}
                 onDeckProgressEvent={onDeckProgressEvent}
+                progressKey={resumeIdentity(topicoId, block)}
               />
             </View>
           );
         }
 
-        return null;
+        // Tipo que o renderizador nao conhece: avisa em vez de sumir. O
+        // "return null" daqui era a outra metade do problema - qualquer tipo
+        // novo vindo do banco desaparecia sem deixar rastro.
+        return (
+          <View key={block.id}>
+            <MidiaIndisponivel block={block} palette={palette} />
+          </View>
+        );
       })}
     </>
   );
 }
 
 const styles = StyleSheet.create({
+  midiaIndisponivel: {
+    marginVertical: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderRadius: 12,
+    borderStyle: "dashed",
+  },
+  midiaIndisponivelTexto: {
+    fontSize: 12,
+    textAlign: "center",
+  },
   cardBody: {
     marginTop: 8,
     fontFamily: FontFamily.interMedium,
