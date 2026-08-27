@@ -1,13 +1,30 @@
-﻿from dataclasses import dataclass, field
+﻿import functools
+from dataclasses import dataclass, field
 from typing import Any
 
 import httpx
 import jwt
 from fastapi import HTTPException, status
+from jwt import PyJWKClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.settings import Settings
 from app.repositories.access import AccessRepository
+
+# Algoritmos assimetricos que o Supabase usa quando o projeto tem "JWT Signing
+# Keys" habilitado (chave rotacionada, via JWKS) em vez do segredo simetrico
+# legado (HS256). Sem isso, qualquer sessao emitida apos essa rotacao falha na
+# verificacao local — e cai a cada requisicao no fallback remoto
+# (_resolve_via_supabase_auth), ou falha de vez se ele nao estiver configurado.
+_ASYMMETRIC_ALGORITHMS = ("ES256", "RS256")
+
+
+@functools.lru_cache(maxsize=4)
+def _jwks_client(jwks_url: str) -> PyJWKClient:
+    # Cacheado por URL (modulo, nao por instancia de AuthService — ela e criada
+    # por requisicao) para o PyJWKClient reaproveitar o cache interno de chaves
+    # entre requisicoes em vez de buscar o JWKS toda vez.
+    return PyJWKClient(jwks_url)
 
 
 @dataclass(slots=True)
@@ -47,11 +64,27 @@ class AuthService:
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token ausente.",
             )
+
+        try:
+            alg = jwt.get_unverified_header(normalized_token).get("alg")
+        except jwt.DecodeError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Formato de token invalido.",
+            ) from exc
+
+        if alg in _ASYMMETRIC_ALGORITHMS:
+            key: Any = self._resolve_jwks_signing_key(normalized_token, alg)
+            algorithms = [alg]
+        else:
+            key = self.settings.supabase_jwt_secret
+            algorithms = ["HS256"]
+
         try:
             kwargs: dict[str, Any] = {
                 "jwt": normalized_token,
-                "key": self.settings.supabase_jwt_secret,
-                "algorithms": ["HS256"],
+                "key": key,
+                "algorithms": algorithms,
             }
             if self.settings.supabase_jwt_audience:
                 kwargs["audience"] = self.settings.supabase_jwt_audience
@@ -90,6 +123,26 @@ class AuthService:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=f"Token invalido ({type(exc).__name__}).",
+            ) from exc
+
+    def _resolve_jwks_signing_key(self, token: str, alg: str) -> Any:
+        base_url = (self.settings.supabase_url or "").rstrip("/")
+        if not base_url:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=(
+                    f"Token assinado com {alg}, mas SUPABASE_URL nao esta "
+                    "configurada para buscar a chave publica (JWKS)."
+                ),
+            )
+
+        jwks_url = f"{base_url}/auth/v1/.well-known/jwks.json"
+        try:
+            return _jwks_client(jwks_url).get_signing_key_from_jwt(token).key
+        except jwt.PyJWKClientError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Nao foi possivel obter a chave publica (JWKS) para validar o token.",
             ) from exc
 
     async def _resolve_via_supabase_auth(self, token: str) -> dict[str, Any] | None:

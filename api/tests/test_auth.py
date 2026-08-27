@@ -228,3 +228,69 @@ def test_decode_token_rejects_invalid_algorithm() -> None:
 
     assert exc.value.status_code == status.HTTP_401_UNAUTHORIZED
     assert exc.value.detail == "Token invalido (InvalidAlgorithmError)."
+
+
+def test_decode_token_accepts_es256_via_jwks(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Sessao emitida pelo Supabase com JWT Signing Keys (assimetrico) em vez do
+    segredo legado HS256 — precisa validar contra a chave publica do JWKS."""
+    from cryptography.hazmat.primitives.asymmetric import ec
+
+    private_key = ec.generate_private_key(ec.SECP256R1())
+    public_key = private_key.public_key()
+    token = jwt.encode(
+        {"sub": "aluno-es256", "aud": "authenticated"},
+        private_key,
+        algorithm="ES256",
+        headers={"kid": "test-kid"},
+    )
+
+    class FakeSigningKey:
+        def __init__(self, key) -> None:
+            self.key = key
+
+    class FakeJWKClient:
+        def get_signing_key_from_jwt(self, jwt_token: str) -> FakeSigningKey:
+            assert jwt_token == token
+            return FakeSigningKey(public_key)
+
+    seen_urls: list[str] = []
+
+    def fake_jwks_client(jwks_url: str) -> FakeJWKClient:
+        seen_urls.append(jwks_url)
+        return FakeJWKClient()
+
+    monkeypatch.setattr("app.services.auth._jwks_client", fake_jwks_client)
+
+    settings = Settings(
+        supabase_jwt_secret="unused-legacy-secret",
+        supabase_jwt_audience="authenticated",
+        supabase_url="https://xrebtkmdewolzmpsdwgh.supabase.co",
+    )
+    auth = AuthService(settings=settings, session=None, access_repository_factory=AlunoRepo)
+
+    payload = auth.decode_token(token)
+
+    assert payload["sub"] == "aluno-es256"
+    assert seen_urls == ["https://xrebtkmdewolzmpsdwgh.supabase.co/auth/v1/.well-known/jwks.json"]
+
+
+def test_decode_token_es256_without_supabase_url_falls_back() -> None:
+    """Sem SUPABASE_URL nao ha como buscar o JWKS — deve virar 401 (que o
+    authenticate() acima tenta resolver via /auth/v1/user antes de desistir)."""
+    from cryptography.hazmat.primitives.asymmetric import ec
+
+    private_key = ec.generate_private_key(ec.SECP256R1())
+    token = jwt.encode(
+        {"sub": "aluno-1", "aud": "authenticated"},
+        private_key,
+        algorithm="ES256",
+        headers={"kid": "test-kid"},
+    )
+
+    settings = Settings(supabase_jwt_secret="test-secret", supabase_jwt_audience="authenticated")
+    auth = AuthService(settings=settings, session=None, access_repository_factory=AlunoRepo)
+
+    with pytest.raises(HTTPException) as exc:
+        auth.decode_token(token)
+
+    assert exc.value.status_code == status.HTTP_401_UNAUTHORIZED
