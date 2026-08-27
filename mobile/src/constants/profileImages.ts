@@ -269,7 +269,7 @@ export const brainHexGuideNames: Record<BrainHexProfile, string> = {
   daredevil: "Ember",
   mastermind: "Idris",
   conqueror: "Amina",
-  socializer: "Mateo",
+  socializer: "Mateo e Zuri",
   achiever: "Kwame",
 };
 

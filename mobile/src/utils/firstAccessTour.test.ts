@@ -24,11 +24,35 @@ test("o roteiro e o painel de métricas mudam com o perfil", () => {
   const seekerMetrics = seeker.find((step) => step.id === "profile-metrics");
   const conquerorMetrics = conqueror.find((step) => step.id === "profile-metrics");
 
-  assert.match(seeker[0].title, /Explorador/);
-  assert.match(conqueror[0].title, /Conquistador/);
+  assert.match(seeker[0].title, /Amara/);
+  assert.match(seeker[0].description, /bússola dourada/i);
+  assert.match(conqueror[0].title, /Amina/);
+  assert.match(conqueror[0].description, /armadura azul e dourada/i);
   assert.match(seekerMetrics?.title ?? "", /Mistério/);
   assert.match(conquerorMetrics?.title ?? "", /Arena Tática/);
   assert.notEqual(seekerMetrics?.description, conquerorMetrics?.description);
+  assert.notEqual(seeker[1].description, conqueror[1].description);
+});
+
+test("cada guardião se apresenta antes da primeira instrução", () => {
+  const expectedGuides = {
+    seeker: "Amara",
+    survivor: "Kenji",
+    daredevil: "Ember",
+    mastermind: "Idris",
+    conqueror: "Amina",
+    socializer: "Mateo e Zuri",
+    achiever: "Kwame",
+  } as const;
+
+  Object.entries(expectedGuides).forEach(([profile, guideName]) => {
+    const steps = buildFirstAccessTourSteps(profile);
+    assert.equal(steps[0].id, "welcome");
+    assert.match(steps[0].title, new RegExp(guideName));
+    assert.match(steps[0].description, /^(Eu sou|Somos)/i);
+    assert.ok(steps[0].description.length > 140);
+    assert.notEqual(steps[0].description, steps[1].description);
+  });
 });
 
 test("a conclusão do primeiro acesso é isolada por usuário e versionada", () => {
@@ -39,4 +63,3 @@ test("a conclusão do primeiro acesso é isolada por usuário e versionada", () 
   assert.match(first, /tutorial-inicial-v\d+/);
   assert.ok(first.endsWith("/aluno-a"));
 });
-
