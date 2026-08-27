@@ -52,7 +52,7 @@ export default function RelatorioDadosScreen() {
   
   const [logoBase64, setLogoBase64] = useState<string | null>(null);
 
-  const perfilPrincipal = usuario?.perfis?.[0]?.nome || "conqueror";
+  const perfilPrincipal = usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? "conqueror";
   const perfilConfig = getBrainHexConfig(perfilPrincipal);
   const palette = useMemo(() => getProfileShellPalette(perfilPrincipal), [perfilPrincipal]);
   const gold = useMemo(() => tinycolor(palette.accent).lighten(10).toHexString(), [palette.accent]);

@@ -1,4 +1,3 @@
-import { useUsuario } from "@/context/SessaoContext";
 import { useTrilha } from "@/context/TrilhaContext";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
@@ -100,12 +99,11 @@ function buildContinentBackdrop(
 }
 
 export function TrilhaMapaHeroStable() {
-  const { grafo, mapTheme } = useTrilha();
-  const { usuario } = useUsuario();
+  const { grafo, mapTheme, perfil } = useTrilha();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const shellPalette = useMemo(
-    () => getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfis],
+    () => getProfileShellPalette(perfil),
+    [perfil],
   );
 
   const nodes = useMemo<MapNode[]>(() => {

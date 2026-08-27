@@ -5,7 +5,7 @@ import { useMetricas } from "@/context/MetricasContext";
 import { useUsuario } from "@/context/SessaoContext";
 import { usePersonalizacaoProvider } from "@/services/personalizacao/PersonalizacaoProviderContext";
 import { FontFamily } from "@/styles/GlobalStyle";
-import { hasBrainHexProfileSignal } from "@/utils/brainHex";
+import { resolveActiveBrainHexProfile } from "@/utils/brainHex";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -26,6 +26,7 @@ type Props = {
   classeId?: number | null;
   scope?: "modulo" | "trilha_home";
   bottomOffset?: number;
+  guideTargetRef?: React.RefObject<View | null>;
 };
 
 type ChatMessage = {
@@ -163,6 +164,7 @@ export function IAMentorPanel({
   classeId,
   scope = "modulo",
   bottomOffset = 110,
+  guideTargetRef,
 }: Props) {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const { usuario } = useUsuario();
@@ -175,14 +177,15 @@ export function IAMentorPanel({
   const { recordAppEvent } = useMetricas();
   const personalizacaoProvider = usePersonalizacaoProvider();
 
-  const profileName = String(usuario?.perfis?.[0]?.nome ?? "mastermind").toLowerCase();
+  const profileName = resolveActiveBrainHexProfile(
+    usuario?.perfis ?? null,
+    usuario?.perfilAtivo,
+    "seeker",
+  );
   const palette = useMemo(() => getProfileShellPalette(profileName), [profileName]);
   const guideConfig = useMemo(() => getBrainHexConfig(profileName), [profileName]);
   const guideName = useMemo(() => getBrainHexGuideName(profileName), [profileName]);
-  const socialSignalStrong = useMemo(
-    () => hasBrainHexProfileSignal(usuario?.perfis ?? null, "socializer"),
-    [usuario?.perfis]
-  );
+  const socialSignalStrong = profileName === "socializer";
   const scrollRef = useRef<ScrollView | null>(null);
   const hasManualHomeOpenRef = useRef(false);
   const scopeHistoryRef = useRef<Record<string, ChatMessage[]>>({});
@@ -285,6 +288,8 @@ export function IAMentorPanel({
       <View pointerEvents="box-none" style={[styles.overlay, { bottom: bottomOffset }]}>
         <View style={styles.launcherColumn}>
           <Pressable
+            ref={guideTargetRef}
+            collapsable={false}
             onPress={() => void setUserFeaturePreference("mentor_character", true)}
             style={[
               styles.reactivateButton,
@@ -541,6 +546,8 @@ export function IAMentorPanel({
       {!isOpen ? (
         <View style={styles.launcherColumn}>
           <Pressable
+            ref={guideTargetRef}
+            collapsable={false}
             onPress={handleOpen}
             style={[
               styles.launcherButton,
@@ -581,6 +588,8 @@ export function IAMentorPanel({
         </View>
       ) : (
         <View
+          ref={guideTargetRef}
+          collapsable={false}
           style={[
             styles.card,
             scope === "modulo" ? styles.cardModule : styles.cardFloating,

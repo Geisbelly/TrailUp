@@ -3,10 +3,15 @@ import {
   HallBackground,
   OrnamentDivider,
 } from "@/components/HallTheme";
+import {
+  SectionGuideButton,
+  SectionGuideStep,
+} from "@/components/SectionGuideButton";
 import { useConquistaRank } from "@/context/ConquistaRankContext";
 import { useUsuario } from "@/context/SessaoContext";
 import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { getProfileGuideEmphasis } from "@/utils/profileSectionGuide";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -55,7 +60,6 @@ function RankCard({
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const shimmerAnim = useRef(new Animated.Value(0)).current;
 
-  const gold = tinycolor(palette.accent).lighten(10).toHexString();
   const goldDim = tinycolor(palette.accent).setAlpha(0.5).toRgbString();
   const goldFaint = tinycolor(palette.accent).setAlpha(0.13).toRgbString();
 
@@ -299,11 +303,39 @@ function RankCard({
 export default function RankingHome() {
   const { ranking } = useConquistaRank();
   const { usuario } = useUsuario();
-  const palette = getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null);
-
-  const gold = tinycolor(palette.accent).lighten(10).toHexString();
-  const goldDim = tinycolor(palette.accent).setAlpha(0.55).toRgbString();
-  const goldFaint = tinycolor(palette.accent).setAlpha(0.08).toRgbString();
+  const activeProfile = usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null;
+  const palette = getProfileShellPalette(activeProfile);
+  const profileEmphasis = getProfileGuideEmphasis(activeProfile, "ranking");
+  const rankingHeaderGuideRef = useRef<View | null>(null);
+  const rankingCategoriesGuideRef = useRef<View | null>(null);
+  const rankingGuideSteps = useMemo<SectionGuideStep[]>(
+    () => [
+      {
+        id: "ranking-header",
+        target: "ranking_header",
+        title: "Sala de honra",
+        description:
+          `O ranking reúne categorias diferentes de classificação. ${profileEmphasis}`,
+        icon: "shield-crown-outline",
+      },
+      {
+        id: "ranking-categories",
+        target: "ranking_categories",
+        title: "Categorias do ranking",
+        description:
+          "Toque em uma categoria para abrir a classificação, consultar sua posição e entender quais resultados estão sendo considerados.",
+        icon: "podium",
+      },
+    ],
+    [profileEmphasis],
+  );
+  const rankingGuideTargets = useMemo(
+    () => ({
+      ranking_header: rankingHeaderGuideRef,
+      ranking_categories: rankingCategoriesGuideRef,
+    }),
+    [],
+  );
 
   // Pulsação do ícone do topo
   const crownPulse = useRef(new Animated.Value(0)).current;
@@ -368,12 +400,19 @@ export default function RankingHome() {
           (notificacoes) ja faziam assim; esta tela era a unica fora do padrao,
           e era a unica com o problema. */}
       <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
+        <SectionGuideButton
+          profile={usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome}
+          sectionTitle="Ranking"
+          steps={rankingGuideSteps}
+          targetRefs={rankingGuideTargets}
+          style={styles.guideButton}
+        />
         <ScrollView
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
         >
           {/* ══════════ HEADER DO SALÃO ══════════ */}
-          <View style={styles.header}>
+          <View ref={rankingHeaderGuideRef} collapsable={false} style={styles.header}>
             {/* Ícone animado do topo */}
             <Animated.View
               style={{
@@ -411,7 +450,7 @@ export default function RankingHome() {
           </View>
 
           {/* ══════════ GRADE DE CARDS ══════════ */}
-          <View style={styles.grid}>
+          <View ref={rankingCategoriesGuideRef} collapsable={false} style={styles.grid}>
             {data.map((item, index) => {
               const isLastItem = index === data.length - 1;
               const isTotalOdd = data.length % 2 !== 0;
@@ -445,6 +484,11 @@ export default function RankingHome() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+  },
+  guideButton: {
+    position: "absolute",
+    top: 34,
+    right: 16,
   },
 
   scroll: {

@@ -1,5 +1,4 @@
 import Constants from 'expo-constants';
-import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
 import type { PlataformaApp, RotinaNotificacao } from '@/services/notificacoesDb';
@@ -29,6 +28,25 @@ export const CANAL_ANDROID = 'trailup';
 const PREFIXO_ROTINA = 'trailup-rotina-';
 
 let handlerConfigurado = false;
+type NotificationsModule = typeof import('expo-notifications');
+let notificationsPromise: Promise<NotificationsModule> | null = null;
+
+function executandoNoExpoGo() {
+  const constants = Constants as typeof Constants & {
+    executionEnvironment?: string;
+    appOwnership?: string | null;
+  };
+  return (
+    String(constants.executionEnvironment ?? '').toLowerCase() === 'storeclient' ||
+    constants.appOwnership === 'expo'
+  );
+}
+
+async function carregarNotifications(): Promise<NotificationsModule | null> {
+  if (Platform.OS === 'web' || executandoNoExpoGo()) return null;
+  notificationsPromise ??= import('expo-notifications');
+  return notificationsPromise;
+}
 
 /**
  * O que acontece quando a notificação chega com o app ABERTO.
@@ -37,8 +55,10 @@ let handlerConfigurado = false;
  * que chega durante o estudo sumiria, e o comportamento ficaria diferente do
  * que o aluno vê com o app fechado.
  */
-export function configurarHandlerDeNotificacao() {
+export async function configurarHandlerDeNotificacao() {
   if (handlerConfigurado) return;
+  const Notifications = await carregarNotifications();
+  if (!Notifications) return;
   handlerConfigurado = true;
 
   Notifications.setNotificationHandler({
@@ -58,6 +78,8 @@ export function configurarHandlerDeNotificacao() {
  */
 export async function garantirCanalAndroid() {
   if (Platform.OS !== 'android') return;
+  const Notifications = await carregarNotifications();
+  if (!Notifications) return;
   await Notifications.setNotificationChannelAsync(CANAL_ANDROID, {
     name: 'TrailUp',
     importance: Notifications.AndroidImportance.MAX,
@@ -116,9 +138,16 @@ export async function registrarParaPush(): Promise<RegistroPush> {
   if (Platform.OS === 'web') {
     return { token: null, permissaoConcedida: false, motivo: 'web_sem_push' };
   }
+  if (executandoNoExpoGo()) {
+    return { token: null, permissaoConcedida: false, motivo: 'expo_go_sem_push' };
+  }
 
   try {
-    configurarHandlerDeNotificacao();
+    const Notifications = await carregarNotifications();
+    if (!Notifications) {
+      return { token: null, permissaoConcedida: false, motivo: 'notificacoes_indisponiveis' };
+    }
+    await configurarHandlerDeNotificacao();
     await garantirCanalAndroid();
 
     const atual = await Notifications.getPermissionsAsync();
@@ -158,7 +187,8 @@ export async function registrarParaPush(): Promise<RegistroPush> {
  * um agendamento órfão significaria o aluno recebendo o lembrete duas vezes.
  */
 export async function agendarRotinasLocais(rotinas: RotinaNotificacao[]): Promise<number> {
-  if (Platform.OS === 'web') return 0;
+  const Notifications = await carregarNotifications();
+  if (!Notifications) return 0;
 
   try {
     const agendadas = await Notifications.getAllScheduledNotificationsAsync();
@@ -199,7 +229,8 @@ export async function agendarRotinasLocais(rotinas: RotinaNotificacao[]): Promis
 
 /** Logout: o aluno seguinte no mesmo aparelho não pode herdar os lembretes. */
 export async function cancelarRotinasLocais() {
-  if (Platform.OS === 'web') return;
+  const Notifications = await carregarNotifications();
+  if (!Notifications) return;
   try {
     const agendadas = await Notifications.getAllScheduledNotificationsAsync();
     await Promise.all(
@@ -210,4 +241,19 @@ export async function cancelarRotinasLocais() {
   } catch (erro) {
     console.warn('[pushNotifications] falha ao cancelar rotinas locais:', erro);
   }
+}
+
+export async function ouvirAberturaDeNotificacao(
+  onOpen: (notificacaoId?: number | string) => void,
+): Promise<() => void> {
+  const Notifications = await carregarNotifications();
+  if (!Notifications) return () => {};
+
+  const inscricao = Notifications.addNotificationResponseReceivedListener((resposta) => {
+    const dados = resposta.notification.request.content.data as
+      | { notificacao_id?: number | string }
+      | undefined;
+    onOpen(dados?.notificacao_id);
+  });
+  return () => inscricao.remove();
 }

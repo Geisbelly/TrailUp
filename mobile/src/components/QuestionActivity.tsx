@@ -427,7 +427,7 @@ export default function QuestionActivity({
     () => questao?.resposta_aluno ?? atividade?.resposta_aluno ?? null,
     [questao?.resposta_aluno, atividade?.resposta_aluno]
   );
-  const perfilNome = usuario?.perfis?.[0]?.nome || '';
+  const perfilNome = usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? '';
   // Modal de resultado: quem fala com o aluno aqui e o guia do perfil, entao a
   // imagem e o guardiao, nao o simbolo abstrato do perfil.
   const perfilImage = getGuardianFaceImage(perfilNome);

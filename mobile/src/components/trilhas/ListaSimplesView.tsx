@@ -1,4 +1,3 @@
-import { useUsuario } from "@/context/SessaoContext";
 import { useTrilha } from "@/context/TrilhaContext";
 import { Color, FontFamily, FontSize } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
@@ -28,9 +27,8 @@ type Row = {
 };
 
 export const TrilhaLinearList: React.FC = () => {
-  const { grafo } = useTrilha();
-  const { usuario } = useUsuario();
-  const palette = getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null);
+  const { grafo, perfil } = useTrilha();
+  const palette = getProfileShellPalette(perfil);
   const { width: winW } = useWindowDimensions();
 
   const data: Row[] = useMemo(

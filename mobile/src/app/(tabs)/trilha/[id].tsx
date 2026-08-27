@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useFocusEffect, useIsFocused } from "@react-navigation/native";
+import { useFocusEffect, useIsFocused, useNavigation } from "@react-navigation/native";
 import React, {
   useCallback,
   useEffect,
@@ -27,6 +27,10 @@ import { IAHeaderTimer } from "@/components/ia/IAHeaderTimer";
 import { IAMentorPanel } from "@/components/ia/IAMentorPanel";
 import { LoadingState } from "@/components/LoadingState";
 import { TopicoIntroSummary } from "@/components/TopicoIntroSummary";
+import {
+  GuideTargetRefs,
+  ModuleHeaderGuideButton,
+} from "@/components/trilhas/ModuleHeaderTitle";
 import { PersonalizedTopicPayload } from "@/interfaces/personalizacao/IPersonalizedTopic";
 import type { DeckProgressEvent } from "@/utils/deckProgressMessage";
 
@@ -45,6 +49,7 @@ import {
 } from "@/interfaces/personalizacao/IAContracts";
 import { styles } from "@/styles/trilhaTopicoStyles";
 import { buildContentBlocks } from "@/utils/contentBlocks";
+import { getBrainHexProfileCapabilities } from "@/utils/brainHexCapabilities";
 import { ordenarBlocosPorSugestao } from "@/utils/materialSuggestion";
 import { inferModoApresentacao } from "@/utils/presentationOrder";
 import {
@@ -61,6 +66,7 @@ import { usePersonalizationRefresh } from "@/hooks/trilha/usePersonalizationRefr
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import {
   buildBlocksForTopico,
+  calcularProgressoVisualPercurso,
   calcularPosicaoInicial,
   contarProgressoDeBlocos,
   isAtividadeConcluida,
@@ -140,6 +146,7 @@ function normalizeModuleDifficulty(value: unknown): "facil" | "medio" | "dificil
 
 export default function TrilhaConteudoScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
 
   const {
@@ -158,6 +165,7 @@ export default function TrilhaConteudoScreen() {
     getProximosTopicos,
     personalizedTopics,
     ensureTopicoPersonalizado,
+    perfil,
   } = useTrilha();
 
   const { setLoading } = useLoading();
@@ -264,6 +272,19 @@ export default function TrilhaConteudoScreen() {
   const emitSignalRef = useRef(emitSignal);
   const autoViewedContentRef = useRef<string | null>(null);
   const moduleSessionStartedAtRef = useRef<number | null>(null);
+  const progressGuideTargetRef = useRef<View | null>(null);
+  const timerGuideTargetRef = useRef<View | null>(null);
+  const battleGuideTargetRef = useRef<View | null>(null);
+  const chatGuideTargetRef = useRef<View | null>(null);
+  const guideTargetRefs = useMemo<GuideTargetRefs>(
+    () => ({
+      progress: progressGuideTargetRef,
+      timer: timerGuideTargetRef,
+      battle: battleGuideTargetRef,
+      chat: chatGuideTargetRef,
+    }),
+    []
+  );
   const topicoIdEmFocoRef = useRef<number | null>(topicoId);
 
   // `personalizedTopic`/`topico` mudam de referencia como CONSEQUENCIA do
@@ -316,8 +337,8 @@ export default function TrilhaConteudoScreen() {
     );
   }, [classeAtual, resolvedClasseId, topicoId]);
   const profilePalette = useMemo(
-    () => getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfis]
+    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
+    [usuario?.perfilAtivo, usuario?.perfis]
   );
 
   useEffect(() => {
@@ -377,6 +398,7 @@ export default function TrilhaConteudoScreen() {
     Record<number, AtividadeResolvida>
   >({});
   const [pulouConteudos, setPulouConteudos] = useState(false);
+  const [maiorIndiceAlcancado, setMaiorIndiceAlcancado] = useState(-1);
 
   // So reseta "pulou trilha" quando o TOPICO muda, nao a cada vez que
   // conteudos/atividades trocam de referencia (ex.: um refresh de
@@ -558,6 +580,7 @@ export default function TrilhaConteudoScreen() {
   useEffect(() => {
     setActivityQuestionIndices({});
     setActivityTimeoutMap({});
+    setMaiorIndiceAlcancado(-1);
   }, [topicoId, setActivityQuestionIndices]);
 
   const total = displayedBlocks.length;
@@ -645,6 +668,11 @@ export default function TrilhaConteudoScreen() {
     return isConteudoConcluido(atualBlock.conteudo, conteudosVistosLocal);
   }, [atualBlock, conteudosVistosLocal]);
 
+  useEffect(() => {
+    if (mostrarResumo || index < 0) return;
+    setMaiorIndiceAlcancado((anterior) => Math.max(anterior, index));
+  }, [index, mostrarResumo]);
+
   const bloqueiaAvanco =
     topicoConcluido ? false : atualBlock?.kind === "atividade" && !atividadeAtualResolvida;
 
@@ -660,9 +688,28 @@ export default function TrilhaConteudoScreen() {
     });
   }, [displayedBlocks, conteudosVistosLocal, atividadesResolvidasLocal, topicoConcluido]);
 
-  const progressoVisual = useMemo(() => {
-    return progressoPercurso.pct;
-  }, [progressoPercurso.pct]);
+  const progressoVisual = useMemo(
+    () =>
+      calcularProgressoVisualPercurso({
+        total: progressoPercurso.total,
+        concluidosConfirmados: progressoPercurso.concluidos,
+        maiorIndiceAlcancado,
+        blocoAtualConcluido:
+          atualBlock?.kind === "conteudo"
+            ? conteudoAtualConcluido
+            : atualBlock?.kind === "atividade"
+            ? atividadeAtualResolvida
+            : false,
+      }),
+    [
+      atividadeAtualResolvida,
+      atualBlock?.kind,
+      conteudoAtualConcluido,
+      maiorIndiceAlcancado,
+      progressoPercurso.concluidos,
+      progressoPercurso.total,
+    ]
+  );
 
   const sugestaoMaterial = useMaterialSuggestion({
     alunoId: usuario?.id ?? null,
@@ -830,6 +877,60 @@ export default function TrilhaConteudoScreen() {
     setActivityTimeoutMap,
     showDialog,
   });
+
+  useEffect(() => {
+    const titulo = String(topico?.titulo ?? "Detalhes");
+    const totalBlocos = progressoVisual.total;
+    const concluidos = progressoVisual.concluidos;
+    const capabilities = getBrainHexProfileCapabilities(perfil);
+
+    navigation.setOptions({
+      headerRight: () => (
+        <View style={styles.headerRightActions}>
+          <View ref={timerGuideTargetRef} collapsable={false}>
+            <IAHeaderTimer
+              compact
+              topicoId={topicoId}
+              itemKey={currentOverlayItemKey}
+              preferredTimerFeature={currentOverlayTimerFeature}
+              elapsedStartAtMs={moduleSessionStartedAtRef.current}
+              active={isOverlayTimerActive}
+              onTimeoutAction={handleOverlayTimerTimeout}
+            />
+          </View>
+          <ModuleHeaderGuideButton
+            profile={perfil}
+            title={titulo}
+            totalBlocks={totalBlocos}
+            completedBlocks={concluidos}
+            guideVariant={personalizedTopic ? "personalizado" : "mock_modulo"}
+            visibleElements={{
+              hasChat: capabilities.hasChat,
+              hasProgress: totalBlocos > 0,
+              hasTimer: capabilities.hasTimer,
+              hasBattle: capabilities.hasBattle,
+            }}
+            perfis={usuario?.perfis ?? null}
+            targetRefs={guideTargetRefs}
+          />
+        </View>
+      ),
+    });
+  }, [
+    currentOverlayItemKey,
+    currentOverlayTimerFeature,
+    guideTargetRefs,
+    handleOverlayTimerTimeout,
+    isOverlayTimerActive,
+    navigation,
+    perfil,
+    personalizedTopic,
+    progressoVisual.concluidos,
+    progressoVisual.total,
+    topico?.titulo,
+    topicoId,
+    usuario?.perfis,
+  ]);
 
   const blocoLabel = atualBlock
     ? atualBlock.kind === "conteudo"
@@ -1018,6 +1119,16 @@ export default function TrilhaConteudoScreen() {
           ? currentContentItemKey
           : buildIAItemKey("content", Number(conteudoId)));
 
+      // A leitura ja aconteceu no aparelho. Atualiza a interface antes da
+      // rede para a barra nao ficar parada enquanto o Supabase sincroniza.
+      if (!jaConcluido && !topicoConcluido) {
+        setConteudosVistosLocal((prev) => {
+          const next = new Set(prev);
+          next.add(Number(conteudoId));
+          return next;
+        });
+      }
+
       try {
         if (jaConcluido || topicoConcluido) {
           return;
@@ -1056,11 +1167,6 @@ export default function TrilhaConteudoScreen() {
             },
           });
         }
-        setConteudosVistosLocal((prev) => {
-          const next = new Set(prev);
-          next.add(Number(conteudoId));
-          return next;
-        });
         emitSignalRef.current({
           type: "content_complete",
           topicoId,
@@ -1522,13 +1628,13 @@ export default function TrilhaConteudoScreen() {
         ]}
       >
         <View style={styles.header}>
-          <View style={styles.headerTopMeta}>
+          <View ref={progressGuideTargetRef} collapsable={false} style={styles.headerTopMeta}>
             {progressoPercurso.total > 0 ? (
               <>
                 <View style={styles.progressHeaderRow}>
                   <Text style={[styles.progressLabel, { color: profilePalette.textMuted }]}>Progresso do módulo</Text>
                   <Text style={[styles.progressPercent, { color: profilePalette.accent }]}>
-                    {Math.round(progressoVisual)}%
+                    {Math.round(progressoVisual.pct)}%
                   </Text>
                 </View>
 
@@ -1537,14 +1643,14 @@ export default function TrilhaConteudoScreen() {
                     style={[
                       styles.progressBarFill,
                       {
-                        width: `${Math.max(0, Math.min(100, progressoVisual))}%`,
+                        width: `${Math.max(0, Math.min(100, progressoVisual.pct))}%`,
                         backgroundColor: profilePalette.accent,
                       },
                     ]}
                   />
                 </View>
                 <Text style={[styles.progressCounter, { color: profilePalette.textSubtle }]}>
-                  {progressoPercurso.concluidos} de {progressoPercurso.total} blocos concluídos
+                  {progressoVisual.concluidos} de {progressoVisual.total} blocos concluídos
                 </Text>
               </>
             ) : null}
@@ -1828,24 +1934,18 @@ export default function TrilhaConteudoScreen() {
           topicoId={topicoId}
           scope="modulo"
           bottomOffset={148}
+          guideTargetRef={chatGuideTargetRef}
         />
       ) : null}
 
-      {/* ── Timer flutuante — fora do ScrollView, não rola com o conteúdo ── */}
-      <View style={styles.floatingTimerWrap} pointerEvents="none">
-        <IAHeaderTimer
-          topicoId={topicoId}
-          itemKey={currentOverlayItemKey}
-          preferredTimerFeature={currentOverlayTimerFeature}
-          elapsedStartAtMs={moduleSessionStartedAtRef.current}
-          active={isOverlayTimerActive}
-          onTimeoutAction={handleOverlayTimerTimeout}
-        />
-      </View>
-
       {/* ── Chip de batalha flutuante ── */}
       {!mostrarResumo && isCurrentStudyBlockTrackable && topicoId ? (
-        <View style={styles.floatingBattleWrap} pointerEvents="box-none">
+        <View
+          ref={battleGuideTargetRef}
+          collapsable={false}
+          style={styles.floatingBattleWrap}
+          pointerEvents="box-none"
+        >
           <IABattleHeaderChip
             topicoId={topicoId}
             itemKey={currentOverlayItemKey}

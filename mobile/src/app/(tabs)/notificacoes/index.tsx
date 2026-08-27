@@ -1,10 +1,15 @@
 import NotificationItem from "@/components/CardNotificacao";
 import CardSemDados from "@/components/CardSemDados";
 import { OrnamentDivider } from "@/components/HallTheme";
+import {
+  SectionGuideButton,
+  SectionGuideStep,
+} from "@/components/SectionGuideButton";
 import { useNotifications } from "@/context/NotificacaoContext";
 import { useUsuario } from "@/context/SessaoContext";
 import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { getProfileGuideEmphasis } from "@/utils/profileSectionGuide";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -22,7 +27,6 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
-import tinycolor from "tinycolor2";
 
 type FilterTab = "todas" | "nao_lidas" | "lidas";
 
@@ -31,11 +35,63 @@ export default function PerfilHome() {
   const { usuario } = useUsuario();
   const insets = useSafeAreaInsets();
   const palette = React.useMemo(
-    () => getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfis],
+    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
+    [usuario?.perfilAtivo, usuario?.perfis],
+  );
+  const profileEmphasis = getProfileGuideEmphasis(
+    usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome,
+    "notifications",
   );
 
   const [tab, setTab] = React.useState<FilterTab>("todas");
+  const notificationsHeaderGuideRef = React.useRef<View | null>(null);
+  const notificationsFiltersGuideRef = React.useRef<View | null>(null);
+  const notificationsListGuideRef = React.useRef<View | null>(null);
+  const notificationsGuideSteps = React.useMemo<SectionGuideStep[]>(
+    () => [
+      {
+        id: "notifications-header",
+        target: "notifications_header",
+        title: "Central de notificações",
+        description:
+          `Aqui ficam avisos da plataforma, atualizações acadêmicas e eventos importantes. ${profileEmphasis}`,
+        icon: "bell-outline",
+      },
+      {
+        id: "notifications-filters",
+        target: "notifications_filters",
+        title: "Filtros de leitura",
+        description:
+          "Alterne entre todas, não lidas e lidas para encontrar rapidamente o que ainda precisa da sua atenção.",
+        icon: "filter-variant",
+      },
+      {
+        id: "notifications-list",
+        target: "notifications_list",
+        title: "Lista de avisos",
+        description:
+          "Toque em um aviso para abrir a página interna, onde o guia explica status, horário, conteúdo e ações. Na lista, arraste para a direita para marcar como lida ou para a esquerda para excluir.",
+        icon: "gesture-swipe-horizontal",
+      },
+      {
+        id: "notifications-refresh",
+        target: "notifications_list",
+        title: "Atualizar a caixa",
+        description:
+          "Puxe a lista para baixo para buscar novas notificações e sincronizar alterações de leitura ou exclusão.",
+        icon: "refresh",
+      },
+    ],
+    [profileEmphasis],
+  );
+  const notificationsGuideTargets = React.useMemo(
+    () => ({
+      notifications_header: notificationsHeaderGuideRef,
+      notifications_filters: notificationsFiltersGuideRef,
+      notifications_list: notificationsListGuideRef,
+    }),
+    [],
+  );
 
   const handlePress = async (id: string, read?: boolean, status?: string) => {
     const isRead = read ?? status === "lida";
@@ -139,20 +195,33 @@ export default function PerfilHome() {
     </Swipeable>
   );
 
-  const gold = tinycolor(palette.accent).lighten(10).toHexString();
-
   return (
     <View style={[styles.screenOuter, { backgroundColor: palette.background }]}>
       <SafeAreaView style={styles.screen} edges={["top", "left", "right"]}>
         <StatusBar style="light" translucent backgroundColor="transparent" />
 
-        <View style={[styles.header, { borderBottomColor: palette.border }]}>
+        <View
+          ref={notificationsHeaderGuideRef}
+          collapsable={false}
+          style={[styles.header, { borderBottomColor: palette.border }]}
+        >
           <Text style={[styles.headerTitle, { color: Color.colorWhite }]}>
             Notificações
           </Text>
+          <SectionGuideButton
+            profile={usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome}
+            sectionTitle="Notificações"
+            steps={notificationsGuideSteps}
+            targetRefs={notificationsGuideTargets}
+            style={styles.guideButton}
+          />
         </View>
 
-        <View style={[styles.filters, { borderBottomColor: palette.border }]}>
+        <View
+          ref={notificationsFiltersGuideRef}
+          collapsable={false}
+          style={[styles.filters, { borderBottomColor: palette.border }]}
+        >
           <FilterPill
             label="Todas"
             active={tab === "todas"}
@@ -175,10 +244,15 @@ export default function PerfilHome() {
 
         {/* Ornamento divisor */}
         <View style={styles.ornamentRow}>
-          <OrnamentDivider color={Color.colorWhite10} />
+          <OrnamentDivider color={Color.colorWhite70} />
         </View>
 
-        <FlatList
+        <View
+          ref={notificationsListGuideRef}
+          collapsable={false}
+          style={styles.listWrap}
+        >
+          <FlatList
           data={data}
           keyExtractor={(n) => String(n.id)}
           style={{ flex: 1, alignSelf: "stretch" }}
@@ -211,16 +285,17 @@ export default function PerfilHome() {
           ListFooterComponent={
             data.length > 0 ? (
               <View style={styles.footer}>
-                <OrnamentDivider color={Color.colorWhite10} />
+                <OrnamentDivider color={Color.colorWhite70} />
                 <Text
-                  style={[styles.footerText, { color: palette.textSubtle }]}
+                  style={[styles.footerText, { color: Color.colorWhite70 }]}
                 >
                   Essas foram todas as notificações
                 </Text>
               </View>
             ) : null
           }
-        />
+          />
+        </View>
       </SafeAreaView>
     </View>
   );
@@ -287,6 +362,14 @@ const styles = StyleSheet.create({
     textShadowColor: "rgba(0,0,0,0.8)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 6,
+  },
+  guideButton: {
+    position: "absolute",
+    right: 16,
+  },
+  listWrap: {
+    flex: 1,
+    alignSelf: "stretch",
   },
   ornamentRow: {
     paddingHorizontal: 16,

@@ -33,8 +33,8 @@ const NotificationItem: React.FC<Props> = React.memo(
     const router = useRouter();
     const { usuario } = useUsuario();
     const palette = React.useMemo(
-      () => getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null),
-      [usuario?.perfis],
+      () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
+      [usuario?.perfilAtivo, usuario?.perfis],
     );
 
     const handlePress = React.useCallback(() => {
@@ -130,13 +130,13 @@ const styles = StyleSheet.create({
     alignSelf: "stretch",
     paddingHorizontal: 20,
     paddingVertical: 14,
-    borderWidth: 1,
+    borderWidth: 0.2,
   },
   pressed: { opacity: 0.92 },
   row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 2,
+    gap: 10,
   },
   statusDot: {
     width: 12,

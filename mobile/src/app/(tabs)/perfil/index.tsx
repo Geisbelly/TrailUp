@@ -2,8 +2,9 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
+  Alert,
   Dimensions,
   Image,
   ScrollView,
@@ -21,7 +22,10 @@ import { HallBackground, OrnamentDivider } from "@/components/HallTheme";
 import { ProfileMetricsViews } from "@/components/perfil/ProfileMetricsViews";
 import { buildProfileMetricsViewModel } from "@/components/perfil/profileMetricsViewModel";
 import {
-  BrainHexProfile,
+  SectionGuideButton,
+  type SectionGuideStep,
+} from "@/components/SectionGuideButton";
+import {
   avatarImages,
   bannerImages,
   getBrainHexConfig,
@@ -40,12 +44,14 @@ import {
   resolveMetricsTheme,
 } from "@/utils/profileMetricThemes";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { resolveRepresentativeBrainHexProfiles } from "@/utils/brainHex";
+import { buildProfileGuideSteps } from "@/utils/profileSectionGuide";
 
 const { width } = Dimensions.get("window");
 
 export default function PerfilHome() {
-  const { usuario } = useUsuario();
-  const { classeAtual, progressoPersonalizado } = useTrilha();
+  const { usuario, selecionarPerfilAtivo } = useUsuario();
+  const { classeAtual, perfil, progressoPersonalizado } = useTrilha();
   const { conquistas, carregando, eventos, posicoesDoAluno } =
     useConquistaRank();
   const { lastAnalysis, cameraOptIn, cameraPermission } = useMetricas();
@@ -56,6 +62,15 @@ export default function PerfilHome() {
   const [aba, setAba] = useState<"metricas" | "conquistas">("metricas");
   const [conquistaSelecionada, setConquistaSelecionada] =
     useState<Conquista | null>(null);
+  const [perfilSalvando, setPerfilSalvando] = useState<string | null>(null);
+  const profileSummaryGuideRef = useRef<View | null>(null);
+  const profileSwitcherGuideRef = useRef<View | null>(null);
+  const profileTabsGuideRef = useRef<View | null>(null);
+  const profileLibraryGuideRef = useRef<View | null>(null);
+  const profileSettingsGuideRef = useRef<View | null>(null);
+  const profileAchievementsGuideRef = useRef<View | null>(null);
+  const profileScrollRef = useRef<ScrollView | null>(null);
+  const profileScrollYRef = useRef(0);
   const [themeOverride, setThemeOverride] = useState<
     "auto" | "arena" | "goals" | "mystery" | "analytics" | "squad"
   >("auto");
@@ -96,8 +111,10 @@ export default function PerfilHome() {
     [usuario?.id],
   );
 
-  const perfil = (normalizeBrainHexProfile(usuario?.perfis?.[0]?.nome) ??
-    "mastermind") as BrainHexProfile;
+  const perfisRepresentativos = useMemo(
+    () => resolveRepresentativeBrainHexProfiles(usuario?.perfis),
+    [usuario?.perfis],
+  );
   const hexConfig = getBrainHexConfig(perfil);
   const shellPalette = useMemo(() => getProfileShellPalette(perfil), [perfil]);
   const accent = tinycolor(hexConfig.color).lighten(3).toString();
@@ -136,10 +153,88 @@ export default function PerfilHome() {
       usuario?.perfis,
     ],
   );
+  const profileGuideSteps = useMemo(
+    () =>
+      buildProfileGuideSteps({
+        hasProfileSwitcher: perfisRepresentativos.length > 1,
+        theme: resolvedTheme,
+        vm: metricsViewModel,
+      }),
+    [metricsViewModel, perfisRepresentativos.length, resolvedTheme],
+  );
+  const metricGuideRefs = useMemo(
+    () =>
+      Object.fromEntries(
+        profileGuideSteps
+          .filter((step) => step.target.startsWith("profile_metric_"))
+          .map((step) => [step.target, React.createRef<View>()]),
+      ),
+    [profileGuideSteps],
+  );
+  const profileGuideTargets = useMemo(
+    () => ({
+      profile_summary: profileSummaryGuideRef,
+      profile_switcher: profileSwitcherGuideRef,
+      profile_tabs: profileTabsGuideRef,
+      profile_achievements: profileAchievementsGuideRef,
+      profile_library: profileLibraryGuideRef,
+      profile_settings: profileSettingsGuideRef,
+      ...metricGuideRefs,
+    }),
+    [metricGuideRefs],
+  );
+  const prepareProfileGuideStep = useCallback(
+    async (step: SectionGuideStep) => {
+      const metricStep = step.target.startsWith("profile_metric_");
+      const achievementsStep = step.target === "profile_achievements";
+
+      if (metricStep && aba !== "metricas") {
+        setAba("metricas");
+        await new Promise((resolve) => setTimeout(resolve, 180));
+      } else if (achievementsStep && aba !== "conquistas") {
+        setAba("conquistas");
+        await new Promise((resolve) => setTimeout(resolve, 180));
+      }
+
+      const targetRef = profileGuideTargets[step.target];
+      if (!targetRef?.current) return;
+
+      await new Promise<void>((resolve) => {
+        const fallback = setTimeout(resolve, 550);
+        targetRef.current?.measureInWindow((_x, y) => {
+          const targetY = Math.max(0, profileScrollYRef.current + y - 120);
+          profileScrollRef.current?.scrollTo({ y: targetY, animated: true });
+          setTimeout(() => {
+            clearTimeout(fallback);
+            resolve();
+          }, 420);
+        });
+      });
+    },
+    [aba, profileGuideTargets],
+  );
 
   const username = usuario?.apelido
     ? `@${usuario.apelido.toUpperCase()}`
     : "@USUARIO";
+
+  const handleSelecionarPerfil = useCallback(
+    async (profile: (typeof perfisRepresentativos)[number]) => {
+      if (profile === perfil || perfilSalvando) return;
+      setPerfilSalvando(profile);
+      try {
+        await selecionarPerfilAtivo(profile);
+      } catch (error) {
+        Alert.alert(
+          "Não foi possível trocar o perfil",
+          error instanceof Error ? error.message : "Tente novamente em instantes.",
+        );
+      } finally {
+        setPerfilSalvando(null);
+      }
+    },
+    [perfil, perfilSalvando, selecionarPerfilAtivo],
+  );
 
   return (
     <>
@@ -159,10 +254,23 @@ export default function PerfilHome() {
           <HallBackground palette={shellPalette} />
         </View>
         <ScrollView
+          ref={profileScrollRef}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
+          scrollEventThrottle={16}
+          onScroll={(event) => {
+            profileScrollYRef.current = event.nativeEvent.contentOffset.y;
+          }}
         >
           <View style={styles.headerContainer}>
+            <SectionGuideButton
+              profile={perfil}
+              sectionTitle="Perfil"
+              steps={profileGuideSteps}
+              targetRefs={profileGuideTargets}
+              onStepFocus={prepareProfileGuideStep}
+              style={styles.guideButton}
+            />
             <View style={styles.bannerWrapper}>
               {usuario?.banner_url ? (
                 <Image
@@ -183,40 +291,46 @@ export default function PerfilHome() {
               />
             </View>
 
-            <TouchableOpacity
-              style={[
-                styles.btnSettings,
-                {
-                  backgroundColor: shellPalette.surfaceElevated,
-                  borderColor: shellPalette.border,
-                },
-              ]}
-              onPress={() => router.push("/(tabs)/perfil/settings")}
-            >
-              <MaterialCommunityIcons
-                name="cog-outline"
-                size={22}
-                color={shellPalette.text}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.btnLibrary,
-                {
-                  backgroundColor: shellPalette.surfaceElevated,
-                  borderColor: shellPalette.border,
-                },
-              ]}
-              onPress={() => router.push("/(tabs)/perfil/biblioteca-conquistas")}
-            >
-              <MaterialCommunityIcons
-                name="trophy-variant-outline"
-                size={20}
-                color={shellPalette.text}
-              />
-            </TouchableOpacity>
+            <View ref={profileSettingsGuideRef} collapsable={false} style={styles.btnSettingsWrap}>
+              <TouchableOpacity
+                style={[
+                  styles.btnSettings,
+                  {
+                    backgroundColor: shellPalette.surfaceElevated,
+                    borderColor: shellPalette.border,
+                  },
+                ]}
+                onPress={() => router.push("/(tabs)/perfil/settings")}
+              >
+                <MaterialCommunityIcons
+                  name="cog-outline"
+                  size={22}
+                  color={shellPalette.text}
+                />
+              </TouchableOpacity>
+            </View>
+            <View ref={profileLibraryGuideRef} collapsable={false} style={styles.btnLibraryWrap}>
+              <TouchableOpacity
+                style={[
+                  styles.btnLibrary,
+                  {
+                    backgroundColor: shellPalette.surfaceElevated,
+                    borderColor: shellPalette.border,
+                  },
+                ]}
+                onPress={() => router.push("/(tabs)/perfil/biblioteca-conquistas")}
+              >
+                <MaterialCommunityIcons
+                  name="trophy-variant-outline"
+                  size={20}
+                  color={shellPalette.text}
+                />
+              </TouchableOpacity>
+            </View>
 
             <View
+              ref={profileSummaryGuideRef}
+              collapsable={false}
               style={[
                 styles.profileCard,
                 {
@@ -284,9 +398,84 @@ export default function PerfilHome() {
                 ) : null}
               </View>
             </View>
+
+            {perfisRepresentativos.length > 1 ? (
+              <View ref={profileSwitcherGuideRef} collapsable={false} style={styles.profileSwitcherWrap}>
+                <Text style={[styles.profileSwitcherTitle, { color: shellPalette.textMuted }]}>
+                  Alternar perfil ativo
+                </Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.profileSwitcherContent}
+                >
+                  {perfisRepresentativos.map((profileKey) => {
+                    const config = getBrainHexConfig(profileKey);
+                    const afinidade = usuario?.perfis.find(
+                      (item) => normalizeBrainHexProfile(item.nome) === profileKey,
+                    )?.afinidade;
+                    const selected = profileKey === perfil;
+                    const saving = profileKey === perfilSalvando;
+
+                    return (
+                      <TouchableOpacity
+                        key={profileKey}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected, busy: saving }}
+                        disabled={Boolean(perfilSalvando)}
+                        onPress={() => void handleSelecionarPerfil(profileKey)}
+                        style={[
+                          styles.profileOption,
+                          {
+                            borderColor: selected ? config.color : shellPalette.border,
+                            backgroundColor: selected
+                              ? tinycolor(config.color).setAlpha(0.2).toRgbString()
+                              : shellPalette.surface,
+                            opacity: perfilSalvando && !saving ? 0.55 : 1,
+                          },
+                        ]}
+                      >
+                        <MaterialCommunityIcons
+                          name={config.icon}
+                          size={17}
+                          color={selected ? config.color : shellPalette.textMuted}
+                        />
+                        <View>
+                          <Text
+                            style={[
+                              styles.profileOptionLabel,
+                              { color: selected ? config.color : shellPalette.text },
+                            ]}
+                          >
+                            {config.label}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.profileOptionAffinity,
+                              { color: shellPalette.textSubtle },
+                            ]}
+                          >
+                            {saving ? "Salvando..." : `${Math.round(afinidade ?? 0)}% de afinidade`}
+                          </Text>
+                        </View>
+                        {selected ? (
+                          <MaterialCommunityIcons
+                            name="check-circle"
+                            size={16}
+                            color={config.color}
+                          />
+                        ) : null}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            ) : null}
           </View>
 
           <View
+            ref={profileTabsGuideRef}
+            collapsable={false}
             style={[
               styles.tabsContainer,
               { borderBottomColor: shellPalette.border },
@@ -351,7 +540,7 @@ export default function PerfilHome() {
             <OrnamentDivider color={Color.colorWhite} />
           </View>
 
-          <View style={styles.listContainer}>
+          <View ref={profileAchievementsGuideRef} collapsable={false} style={styles.listContainer}>
             {aba === "conquistas" ? (
               <>
                 {carregando ? (
@@ -445,6 +634,7 @@ export default function PerfilHome() {
                 profile={perfil}
                 theme={resolvedTheme}
                 vm={metricsViewModel}
+                guideRefs={profileGuideTargets}
               />
             )}
           </View>
@@ -476,18 +666,28 @@ const styles = StyleSheet.create({
   bannerWrapper: { width: "100%", height: 180, position: "relative" },
   banner: { width: "100%", height: "100%" },
   btnSettings: {
-    position: "absolute",
-    top: 50,
-    right: 20,
     padding: 8,
     borderRadius: 20,
     borderWidth: 1,
+  },
+  btnSettingsWrap: {
+    position: "absolute",
+    top: 50,
+    right: 20,
     zIndex: 10,
   },
-  btnLibrary: {
+  guideButton: {
+    position: "absolute",
+    top: 50,
+    left: 20,
+  },
+  btnLibraryWrap: {
     position: "absolute",
     top: 96,
     right: 20,
+    zIndex: 10,
+  },
+  btnLibrary: {
     padding: 8,
     borderRadius: 20,
     borderWidth: 1,
@@ -538,6 +738,39 @@ const styles = StyleSheet.create({
     borderColor: "#F4F7FC",
   },
   infoContainer: { alignItems: "center", gap: 4 },
+  profileSwitcherWrap: {
+    width: "100%",
+    marginTop: 14,
+  },
+  profileSwitcherTitle: {
+    fontFamily: FontFamily.interMedium,
+    fontSize: 11,
+    marginBottom: 8,
+    marginLeft: 20,
+  },
+  profileSwitcherContent: {
+    gap: 8,
+    paddingHorizontal: 20,
+  },
+  profileOption: {
+    minWidth: 154,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  profileOptionLabel: {
+    fontFamily: FontFamily.inikaBold,
+    fontSize: 12,
+  },
+  profileOptionAffinity: {
+    fontFamily: FontFamily.interMedium,
+    fontSize: 9,
+    marginTop: 1,
+  },
   username: {
     fontFamily: FontFamily.inikaBold,
     fontSize: 13,

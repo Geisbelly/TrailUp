@@ -20,11 +20,8 @@ import {
   IATriggerSignal,
 } from "@/interfaces/personalizacao/IAContracts";
 import { PersonalizedTopicPayload } from "@/interfaces/personalizacao/IPersonalizedTopic";
-import {
-  hasAnyBrainHexProfileSignal,
-  hasBrainHexProfileSignal,
-  resolveDominantBrainHexProfile,
-} from "@/utils/brainHex";
+import { resolveActiveBrainHexProfile } from "@/utils/brainHex";
+import { getBrainHexProfileCapabilities } from "@/utils/brainHexCapabilities";
 import React, {
   createContext,
   useCallback,
@@ -319,7 +316,6 @@ function mergeBattle(base?: IABattleConfig | null, patch?: Partial<IABattleConfi
 }
 
 function inferProfileDefaultPatches(
-  perfis?: { nome?: string | null; afinidade?: number | null }[] | null,
   profileName?: string | null,
   guideName?: string | null,
   modoNome?: string | null
@@ -327,19 +323,10 @@ function inferProfileDefaultPatches(
   const profile = String(profileName ?? "").trim().toLowerCase();
   const modo = String(modoNome ?? "").trim().toLowerCase();
   const patches: IAFeaturePatch[] = [];
-  // Boss battle e narrativa de confronto/dominacao: survivor, daredevil e conqueror
-  // (mesmo criterio usado abaixo em hasBattleProfileSignal e em IABattleHeaderChip.tsx).
-  const hasBattleSignal = hasAnyBrainHexProfileSignal(perfis, ["survivor", "daredevil", "conqueror"]);
-  const hasSocialSignal = hasBrainHexProfileSignal(perfis, "socializer");
-  const hasTimerSignal = hasAnyBrainHexProfileSignal(perfis, [
-    "survivor",
-    "mastermind",
-    "achiever",
-    "conqueror",
-    "daredevil",
-  ]);
+  const capabilities = getBrainHexProfileCapabilities(profile);
+  const hasSocialSignal = profile === "socializer";
 
-  if (hasTimerSignal || ["mastermind", "achiever"].includes(profile)) {
+  if (capabilities.hasTimer) {
     patches.push({
       key: "reading_timer",
       enabled: true,
@@ -354,7 +341,7 @@ function inferProfileDefaultPatches(
     });
   }
 
-  if (hasSocialSignal || ["socializer", "seeker"].includes(profile)) {
+  if (capabilities.hasChat) {
     patches.push({
       key: "mentor_character",
       enabled: true,
@@ -375,7 +362,7 @@ function inferProfileDefaultPatches(
     });
   }
 
-  if (hasBattleSignal) {
+  if (capabilities.hasBattle) {
     patches.push({
       key: "battle_mode",
       enabled: true,
@@ -606,24 +593,16 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
   );
 
   const userId = usuario?.id ?? null;
-  const perfis = usuario?.perfis ?? null;
-  const profileName = resolveDominantBrainHexProfile(usuario?.perfis ?? null, "seeker");
+  const profileName = resolveActiveBrainHexProfile(
+    usuario?.perfis ?? null,
+    usuario?.perfilAtivo,
+    "seeker",
+  );
   const guideName = getBrainHexGuideName(profileName);
   const modoNome = usuario?.modoOperacao_nome ?? usuario?.modoOperacao_descricao ?? null;
-  const hasBattleProfileSignal = useMemo(
-    () => hasAnyBrainHexProfileSignal(perfis, ["survivor", "daredevil", "conqueror"]),
-    [perfis]
-  );
-  const hasTimerProfileSignal = useMemo(
-    () =>
-      hasAnyBrainHexProfileSignal(perfis, [
-        "survivor",
-        "mastermind",
-        "achiever",
-        "conqueror",
-        "daredevil",
-      ]),
-    [perfis]
+  const profileCapabilities = useMemo(
+    () => getBrainHexProfileCapabilities(profileName),
+    [profileName]
   );
   const featureRegistry = DEFAULT_FEATURE_REGISTRY;
   const effectiveMentalState = useMemo(
@@ -631,8 +610,8 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
     [mentalState]
   );
   const profileDefaultPatches = useMemo(
-    () => inferProfileDefaultPatches(perfis, profileName, guideName, modoNome),
-    [guideName, modoNome, perfis, profileName]
+    () => inferProfileDefaultPatches(profileName, guideName, modoNome),
+    [guideName, modoNome, profileName]
   );
 
   useEffect(() => {
@@ -860,15 +839,21 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
         resolved.disabledReason = "runtime_safety";
       }
 
-      if (key === "battle_mode" && !hasBattleProfileSignal) {
+      if (key === "battle_mode" && !profileCapabilities.hasBattle) {
         resolved.enabled = false;
         resolved.battle = null;
         resolved.disabledReason = "runtime_safety";
       }
 
-      if ((key === "reading_timer" || key === "activity_timer") && !hasTimerProfileSignal) {
+      if ((key === "reading_timer" || key === "activity_timer") && !profileCapabilities.hasTimer) {
         resolved.enabled = false;
         resolved.timer = null;
+        resolved.disabledReason = "runtime_safety";
+      }
+
+      if (key === "mentor_character" && !profileCapabilities.hasChat) {
+        resolved.enabled = false;
+        resolved.character = null;
         resolved.disabledReason = "runtime_safety";
       }
 
@@ -906,9 +891,10 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
       effectiveMentalState.kind,
       featureRegistry,
       getTopicPatch,
-      hasBattleProfileSignal,
-      hasTimerProfileSignal,
       guideName,
+      profileCapabilities.hasBattle,
+      profileCapabilities.hasChat,
+      profileCapabilities.hasTimer,
       profileDefaultPatches,
       runtimeStates.suppressedUntil,
       userPreferences,

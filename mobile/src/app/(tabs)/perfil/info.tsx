@@ -26,8 +26,8 @@ export default function Infor() {
   const { usuario, atualizarUsuario } = useUsuario();
   const { addToast } = useNotifications();
   const palette = useMemo(
-    () => getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfis]
+    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
+    [usuario?.perfilAtivo, usuario?.perfis]
   );
 
   const [editando, setEditando] = useState(false);

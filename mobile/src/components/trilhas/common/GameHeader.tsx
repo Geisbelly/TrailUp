@@ -11,6 +11,7 @@ type Props = {
   meta?: number;
   rightSlot?: React.ReactNode;
   palette?: ProfileShellPalette | null;
+  progressTargetRef?: React.RefObject<View | null>;
 };
 
 export const GameHeader = ({
@@ -20,6 +21,7 @@ export const GameHeader = ({
   meta = 200,
   rightSlot,
   palette = null,
+  progressTargetRef,
 }: Props) => {
   const divisor = meta > 0 ? meta : 1;
   const progresso = Math.min(1, Math.max(0, xp / divisor));
@@ -51,7 +53,7 @@ export const GameHeader = ({
         </View>
         {rightSlot ? <View style={s.rightSlot}>{rightSlot}</View> : null}
       </View>
-      <View style={s.xpRow}>
+      <View ref={progressTargetRef} collapsable={false} style={s.xpRow}>
         <View
           style={[
             s.xpBarTrack,

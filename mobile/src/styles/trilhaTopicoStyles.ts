@@ -29,11 +29,10 @@ export const styles = StyleSheet.create({
     marginBottom: 4,
     marginTop: 8,
   },
-  floatingTimerWrap: {
-    position: "absolute",
-    top: 8,
-    left: 16,
-    zIndex: 46,
+  headerRightActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
   floatingBattleWrap: {
     position: "absolute",

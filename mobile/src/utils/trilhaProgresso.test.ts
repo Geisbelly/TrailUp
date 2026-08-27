@@ -3,10 +3,29 @@ import test from "node:test";
 
 import {
   buildBlocksForTopico,
+  calcularProgressoVisualPercurso,
   contarProgressoDeBlocos,
   todosOsBlocosConcluidos,
   type AtividadeResolvida,
 } from "./trilhaBlocks";
+
+test("retomada no bloco 17 preserva os 16 blocos anteriores na barra", () => {
+  assert.deepEqual(
+    calcularProgressoVisualPercurso({
+      total: 26,
+      concluidosConfirmados: 6,
+      maiorIndiceAlcancado: 16,
+      blocoAtualConcluido: false,
+    }),
+    { total: 26, concluidos: 16, pct: (16 / 26) * 100 }
+  );
+});
+
+test("bloco atual so entra no visual depois de concluido", () => {
+  const base = { total: 26, concluidosConfirmados: 6, maiorIndiceAlcancado: 16 };
+  assert.equal(calcularProgressoVisualPercurso({ ...base, blocoAtualConcluido: false }).concluidos, 16);
+  assert.equal(calcularProgressoVisualPercurso({ ...base, blocoAtualConcluido: true }).concluidos, 17);
+});
 
 const conteudo = (id: number, extra: Record<string, unknown> = {}) => ({
   id,

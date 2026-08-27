@@ -830,7 +830,7 @@ export const TrilhaMapaHero: React.FC = () => {
   const { grafo, classeAtual, mapTheme } = useTrilha();
   const { usuario } = useUsuario();
   const { width } = useWindowDimensions();
-  const profilePalette = getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null);
+  const profilePalette = getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null);
 
   const maxRows = useMemo(
     () => Math.max(1, ...grafo.levels.map((level) => level.length)),

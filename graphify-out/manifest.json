@@ -1900,9 +1900,9 @@
     "semantic_hash": "e5bd741b0cc615d5719d8893eb268991"
   },
   "mobile/src/components/CardNotificacao.tsx": {
-    "mtime": 1784778227.8070157,
-    "ast_hash": "e4f1f8fde22e9f6c42471b7e57110ad1",
-    "semantic_hash": "e4f1f8fde22e9f6c42471b7e57110ad1"
+    "mtime": 1787773547.4033768,
+    "ast_hash": "3f173ae33180728b250e1b47ac75279b",
+    "semantic_hash": ""
   },
   "mobile/src/components/CardSemDados.tsx": {
     "mtime": 1784900116.4000616,

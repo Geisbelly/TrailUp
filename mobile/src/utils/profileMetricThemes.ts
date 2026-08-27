@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
-import { BrainHexProfile, normalizeBrainHexProfile } from "@/constants/profileImages";
+import { BrainHexProfile, normalizeBrainHexProfile } from "@/constants/brainHexProfiles";
 
 export type MetricsThemeOverride = "auto" | "arena" | "goals" | "mystery" | "analytics" | "squad";
 export type MetricsThemeResolved = Exclude<MetricsThemeOverride, "auto">;

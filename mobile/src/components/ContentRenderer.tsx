@@ -42,6 +42,19 @@ type Props = {
   onDeckProgressEvent?: (event: DeckProgressEvent) => void;
 };
 
+function resumeIdentity(topicoId: number | null | undefined, block: ContentBlock) {
+  const mediaIdentity = resolveMediaUrl(block.payload);
+  let payloadIdentity = mediaIdentity ?? "";
+  if (!payloadIdentity) {
+    try {
+      payloadIdentity = JSON.stringify(block.payload) ?? "";
+    } catch {
+      payloadIdentity = String(block.payload ?? "");
+    }
+  }
+  return `${topicoId ?? "sem-topico"}:${block.id}:${payloadIdentity}`;
+}
+
 function readString(payload: ContentBlockPayload, ...keys: string[]) {
   if (!payload || typeof payload !== "object") return null;
 
@@ -120,7 +133,7 @@ function renderImage(
   );
 }
 
-function renderVideo(block: ContentBlock) {
+function renderVideo(block: ContentBlock, topicoId?: number | null) {
   const payload =
     typeof block.payload === "object" && block.payload ? block.payload : null;
   const url = resolveMediaUrl(block.payload);
@@ -148,11 +161,12 @@ function renderVideo(block: ContentBlock) {
       title={title ?? undefined}
       bucketHint={bucketHint}
       fallbackText={fallbackText ?? undefined}
+      progressKey={resumeIdentity(topicoId, block)}
     />
   );
 }
 
-function renderAudio(block: ContentBlock) {
+function renderAudio(block: ContentBlock, topicoId?: number | null) {
   const payload =
     typeof block.payload === "object" && block.payload ? block.payload : null;
   const url = resolveMediaUrl(block.payload);
@@ -188,15 +202,16 @@ function renderAudio(block: ContentBlock) {
       fallbackText={fallbackText ?? undefined}
       capaUrl={capaUrl ?? undefined}
       imageCues={imageCues ?? undefined}
+      progressKey={resumeIdentity(topicoId, block)}
     />
   );
 }
 
-export function ContentRenderer({ blocks, WebView, onDeckProgressEvent }: Props) {
+export function ContentRenderer({ blocks, WebView, topicoId, onDeckProgressEvent }: Props) {
   const { usuario } = useUsuario();
   const palette = React.useMemo(
-    () => getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfis]
+    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
+    [usuario?.perfilAtivo, usuario?.perfis]
   );
   const resolvedWebView = WebView ?? DefaultWebView;
 
@@ -222,7 +237,7 @@ export function ContentRenderer({ blocks, WebView, onDeckProgressEvent }: Props)
           if (urlFromPayload && isPdfUrl(urlFromPayload)) {
             return (
               <View key={block.id}>
-                <DocumentBlock tipo="pdf" payload={block.payload} WebView={resolvedWebView} />
+                <DocumentBlock tipo="pdf" payload={block.payload} WebView={resolvedWebView} progressKey={resumeIdentity(topicoId, block)} />
               </View>
             );
           }
@@ -234,6 +249,7 @@ export function ContentRenderer({ blocks, WebView, onDeckProgressEvent }: Props)
                   tipo="apresentacao"
                   payload={block.payload}
                   WebView={resolvedWebView}
+                  progressKey={resumeIdentity(topicoId, block)}
                 />
               </View>
             );
@@ -246,6 +262,7 @@ export function ContentRenderer({ blocks, WebView, onDeckProgressEvent }: Props)
                   tipo="documento"
                   payload={block.payload}
                   WebView={resolvedWebView}
+                  progressKey={resumeIdentity(topicoId, block)}
                 />
               </View>
             );
@@ -269,7 +286,7 @@ export function ContentRenderer({ blocks, WebView, onDeckProgressEvent }: Props)
         if (block.tipo === "audio") {
           return (
             <View key={block.id}>
-              {renderAudio(block)}
+              {renderAudio(block, topicoId)}
             </View>
           );
         }
@@ -277,7 +294,7 @@ export function ContentRenderer({ blocks, WebView, onDeckProgressEvent }: Props)
         if (block.tipo === "video" || block.tipo === "youtube") {
           return (
             <View key={block.id}>
-              {renderVideo(block)}
+              {renderVideo(block, topicoId)}
             </View>
           );
         }
@@ -285,7 +302,7 @@ export function ContentRenderer({ blocks, WebView, onDeckProgressEvent }: Props)
         if (block.tipo === "cards") {
           return (
             <View key={block.id}>
-              <StudyCardsBlock payload={block.payload} WebView={resolvedWebView} />
+              <StudyCardsBlock payload={block.payload} WebView={resolvedWebView} progressKey={resumeIdentity(topicoId, block)} />
             </View>
           );
         }
@@ -293,7 +310,7 @@ export function ContentRenderer({ blocks, WebView, onDeckProgressEvent }: Props)
         if (block.tipo === "apresentacao-slides") {
           return (
             <View key={block.id}>
-              <PresentationSlidesBlock payload={block.payload} />
+              <PresentationSlidesBlock payload={block.payload} progressKey={resumeIdentity(topicoId, block)} />
             </View>
           );
         }
@@ -301,7 +318,7 @@ export function ContentRenderer({ blocks, WebView, onDeckProgressEvent }: Props)
         if (block.tipo === "pdf") {
           return (
             <View key={block.id}>
-              <DocumentBlock tipo="pdf" payload={block.payload} WebView={resolvedWebView} />
+              <DocumentBlock tipo="pdf" payload={block.payload} WebView={resolvedWebView} progressKey={resumeIdentity(topicoId, block)} />
             </View>
           );
         }
@@ -318,6 +335,7 @@ export function ContentRenderer({ blocks, WebView, onDeckProgressEvent }: Props)
                 payload={block.payload}
                 WebView={resolvedWebView}
                 onDeckProgressEvent={onDeckProgressEvent}
+                progressKey={resumeIdentity(topicoId, block)}
               />
             </View>
           );

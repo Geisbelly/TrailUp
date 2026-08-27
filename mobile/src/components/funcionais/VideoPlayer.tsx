@@ -1,9 +1,10 @@
 import { useUsuario } from "@/context/SessaoContext";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { resolveSupabaseStorageUrl } from "@/utils/supabaseStorage";
+import { buildContentResumeKey, loadContentResume, saveContentResume } from "@/utils/contentResume";
 import { Ionicons } from "@expo/vector-icons";
 import { AVPlaybackStatus, ResizeMode, Video as ExpoVideo } from "expo-av";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Linking,
@@ -22,6 +23,7 @@ type Props = {
   title?: string;
   bucketHint?: string | null;
   fallbackText?: string;
+  progressKey?: string;
 };
 
 function isHttpUrl(value: unknown): value is string {
@@ -49,11 +51,12 @@ export default function VideoPlayer({
   title = "Vídeo",
   bucketHint = "conteudo_aluno",
   fallbackText,
+  progressKey,
 }: Props) {
   const { usuario } = useUsuario();
   const palette = useMemo(
-    () => getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfis]
+    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
+    [usuario?.perfilAtivo, usuario?.perfis]
   );
   const sourceUrl = String(url ?? "").trim();
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(
@@ -64,11 +67,37 @@ export default function VideoPlayer({
   const [failed, setFailed] = useState(false);
   const [fullscreenVisible, setFullscreenVisible] = useState(false);
   const videoRef = useRef<ExpoVideo>(null);
+  const resumePositionRef = useRef(0);
+  const lastPersistedAtRef = useRef(0);
+  const progressWidthRef = useRef(1);
   const [positionMs, setPositionMs] = useState(0);
   const [durationMs, setDurationMs] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showSeekControls, setShowSeekControls] = useState(true);
   const hideSeekTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const resumeStorageKey = useMemo(
+    () => buildContentResumeKey(usuario?.id, "video", progressKey ?? sourceUrl),
+    [progressKey, sourceUrl, usuario?.id]
+  );
+
+  const persistPosition = useCallback((positionMillis: number) => {
+    const safePosition = Math.max(0, Math.round(positionMillis));
+    resumePositionRef.current = safePosition;
+    void saveContentResume(resumeStorageKey, { positionMillis: safePosition });
+  }, [resumeStorageKey]);
+
+  useEffect(() => {
+    let active = true;
+    resumePositionRef.current = 0;
+    void loadContentResume(resumeStorageKey).then((saved) => {
+      if (!active) return;
+      const restored = Math.max(0, saved?.positionMillis ?? 0);
+      resumePositionRef.current = restored;
+      setPositionMs(restored);
+      if (videoRef.current) void videoRef.current.setPositionAsync(restored);
+    });
+    return () => { active = false; };
+  }, [resumeStorageKey]);
 
   useEffect(() => {
     let active = true;
@@ -126,9 +155,10 @@ export default function VideoPlayer({
 
   useEffect(() => {
     return () => {
+      persistPosition(resumePositionRef.current);
       if (hideSeekTimerRef.current) clearTimeout(hideSeekTimerRef.current);
     };
-  }, []);
+  }, [persistPosition]);
 
   const handleVideoAreaTap = () => {
     setShowSeekControls(true);
@@ -141,7 +171,28 @@ export default function VideoPlayer({
     setPositionMs(status.positionMillis ?? 0);
     setDurationMs(status.durationMillis ?? 0);
     setIsPlaying(status.isPlaying ?? false);
+    if (status.didJustFinish) {
+      persistPosition(0);
+      return;
+    }
+    resumePositionRef.current = status.positionMillis ?? 0;
+    const now = Date.now();
+    if (!status.isPlaying || now - lastPersistedAtRef.current >= 2000) {
+      lastPersistedAtRef.current = now;
+      persistPosition(status.positionMillis ?? 0);
+    }
   };
+
+  const seekToLocation = useCallback(async (locationX: number, commit = false) => {
+    if (!durationMs) return;
+    const ratio = Math.max(0, Math.min(1, locationX / Math.max(1, progressWidthRef.current)));
+    const next = Math.round(durationMs * ratio);
+    setPositionMs(next);
+    resumePositionRef.current = next;
+    if (!commit || !videoRef.current) return;
+    await videoRef.current.setPositionAsync(next);
+    persistPosition(next);
+  }, [durationMs, persistPosition]);
 
   function formatTime(ms: number) {
     const totalSec = Math.floor(ms / 1000);
@@ -229,6 +280,7 @@ export default function VideoPlayer({
           resizeMode={ResizeMode.CONTAIN}
           useNativeControls={false}
           shouldPlay={false}
+          positionMillis={resumePositionRef.current}
           onPlaybackStatusUpdate={onPlaybackStatusUpdate}
           onError={() => setFailed(true)}
         />
@@ -261,7 +313,18 @@ export default function VideoPlayer({
 
             <View style={seekStyles.progressRow}>
               <Text style={seekStyles.timeText}>{formatTime(positionMs)}</Text>
-              <View style={seekStyles.progressTrack}>
+              <View
+                style={seekStyles.progressTrack}
+                onLayout={(event) => { progressWidthRef.current = event.nativeEvent.layout.width; }}
+                onStartShouldSetResponder={() => durationMs > 0}
+                onMoveShouldSetResponder={() => durationMs > 0}
+                onResponderGrant={(event) => void seekToLocation(event.nativeEvent.locationX)}
+                onResponderMove={(event) => void seekToLocation(event.nativeEvent.locationX)}
+                onResponderRelease={(event) => void seekToLocation(event.nativeEvent.locationX, true)}
+                accessibilityRole="adjustable"
+                accessibilityLabel="Posição do vídeo"
+                accessibilityValue={{ min: 0, max: 100, now: Math.round(progressPct) }}
+              >
                 <View style={[seekStyles.progressFill, { width: `${progressPct}%` }]} />
               </View>
               <Text style={seekStyles.timeText}>{formatTime(durationMs)}</Text>
@@ -668,8 +731,8 @@ const seekStyles = StyleSheet.create({
   },
   progressTrack: {
     flex: 1,
-    height: 4,
-    borderRadius: 2,
+    height: 12,
+    borderRadius: 6,
     backgroundColor: 'rgba(255,255,255,0.3)',
     overflow: 'hidden',
   },

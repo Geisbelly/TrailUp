@@ -1,5 +1,5 @@
 import { HapticTab } from "@/components/haptic-tab";
-import { bannerImages, brainHexConfig, brainHexImageMap, getProfileImageByString } from "@/constants/profileImages";
+import { bannerImages, brainHexConfig, brainHexImageMap, getProfileImageByString, normalizeBrainHexProfile } from "@/constants/profileImages";
 import { ConquistaRankProvider } from "@/context/ConquistaRankContext";
 import { IAProvider } from "@/context/IAContext";
 import { NotificationsProvider } from "@/context/NotificacaoContext";
@@ -10,6 +10,7 @@ import { Tabs, useSegments } from "expo-router";
 import { Image, View } from "react-native";
 
 import { ToastContainer } from "@/components/ToastContainer";
+import { FirstAccessTour } from "@/components/FirstAccessTour";
 import { useUsuario } from "@/context/SessaoContext";
 import { MetricasProvider } from "@/context/MetricasContext";
 import { user } from "@/database/mockUser";
@@ -26,15 +27,14 @@ export default function TabLayout() {
   // (auth) nao existe aluno para monitorar.
   useMonitorDeSessao();
 
-  const brainProfile =
-    (usuario?.perfis?.[0]?.nome as keyof typeof brainHexImageMap | undefined) ||
-    (usuario?.perfis?.[0]?.nome as keyof typeof brainHexImageMap | undefined);
+  const activeProfileName = usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome;
+  const brainProfile = normalizeBrainHexProfile(activeProfileName) ?? undefined;
   const perfilImage =
     (brainProfile && brainHexImageMap[brainProfile] !== undefined
       ? bannerImages[brainHexImageMap[brainProfile]]
-      : getProfileImageByString(usuario?.perfis?.[0]?.nome ?? "")) || user.avatar;
+      : getProfileImageByString(activeProfileName ?? "")) || user.avatar;
   const perfilConfig = brainProfile ? brainHexConfig[brainProfile] : undefined;
-  const palette = getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null);
+  const palette = getProfileShellPalette(activeProfileName ?? null);
 
   const perfilFoto =
     usuario?.foto_url
@@ -161,6 +161,10 @@ export default function TabLayout() {
               }}
             />
               </Tabs>
+              <FirstAccessTour
+                userId={usuario?.id}
+                profile={activeProfileName}
+              />
             </ConquistaRankProvider>
             <ToastContainer />
           </TrilhaProvider>

@@ -46,8 +46,8 @@ const TOGGLE_ITEMS: ToggleItem[] = [
 export default function ColetaDadosScreen() {
   const { usuario } = useUsuario();
   const palette = useMemo(
-    () => getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfis]
+    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
+    [usuario?.perfilAtivo, usuario?.perfis]
   );
   const { telemetryPreferences, setTelemetryPreference, cameraPermission } = useMetricas();
   const [savingKey, setSavingKey] = useState<keyof TelemetryConsentPreferences | null>(null);

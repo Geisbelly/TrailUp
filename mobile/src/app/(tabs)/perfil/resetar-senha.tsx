@@ -14,8 +14,8 @@ export default function ResetarSenhaScreen() {
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [doneVisible, setDoneVisible] = useState(false);
   const palette = useMemo(
-    () => getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfis]
+    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
+    [usuario?.perfilAtivo, usuario?.perfis]
   );
 
   const solicitarReset = async () => {

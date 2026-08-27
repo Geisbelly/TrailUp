@@ -32,7 +32,17 @@ type DashboardProps = {
     label: string;
     icon: keyof typeof MaterialCommunityIcons.glyphMap;
   };
+  guideRefs: ProfileMetricsGuideRefs;
 };
+
+export type ProfileMetricsGuideRefs = Record<
+  string,
+  React.RefObject<View | null> | undefined
+>;
+
+function guideRef(guideRefs: ProfileMetricsGuideRefs, id: string) {
+  return guideRefs[`profile_metric_${id}`];
+}
 
 function formatPercent(value?: number | null) {
   return `${Math.round(Number(value ?? 0))}%`;
@@ -115,8 +125,8 @@ function buildPalette(theme: MetricsThemeResolved, baseColor: string): ThemePale
   }
 }
 
-function SurfaceCard({ children, palette }: { children: React.ReactNode; palette: ThemePalette }) {
-  return <View style={[s.surfaceCard, { backgroundColor: palette.card, borderColor: palette.border }]}>{children}</View>;
+function SurfaceCard({ children, palette, targetRef }: { children: React.ReactNode; palette: ThemePalette; targetRef?: React.RefObject<View | null> }) {
+  return <View ref={targetRef} collapsable={false} style={[s.surfaceCard, { backgroundColor: palette.card, borderColor: palette.border }]}>{children}</View>;
 }
 
 function SectionTitle({
@@ -169,6 +179,7 @@ function StatTile({
   helper,
   palette,
   accent,
+  targetRef,
 }: {
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
   label: string;
@@ -176,9 +187,10 @@ function StatTile({
   helper?: string;
   palette: ThemePalette;
   accent: string;
+  targetRef?: React.RefObject<View | null>;
 }) {
   return (
-    <View style={[s.statTile, { backgroundColor: palette.cardAlt, borderColor: palette.border }]}>
+    <View ref={targetRef} collapsable={false} style={[s.statTile, { backgroundColor: palette.cardAlt, borderColor: palette.border }]}>
       <View style={[s.statIconWrap, { backgroundColor: tinycolor(accent).setAlpha(0.18).toRgbString() }]}>
         <MaterialCommunityIcons name={icon} size={18} color={accent} />
       </View>
@@ -218,7 +230,7 @@ function ProgressLine({
   );
 }
 
-function AnalysisPanel({ vm, palette, accent }: { vm: ProfileMetricsViewModel; palette: ThemePalette; accent: string }) {
+function AnalysisPanel({ vm, palette, accent, targetRef }: { vm: ProfileMetricsViewModel; palette: ThemePalette; accent: string; targetRef?: React.RefObject<View | null> }) {
   const hasAnalysisDetail =
     vm.analysisSignals.length > 0 ||
     vm.analysisInsights.length > 0 ||
@@ -226,7 +238,7 @@ function AnalysisPanel({ vm, palette, accent }: { vm: ProfileMetricsViewModel; p
     vm.analysisRecommendations.length > 0;
 
   return (
-    <SurfaceCard palette={palette}>
+    <SurfaceCard palette={palette} targetRef={targetRef}>
       <SectionTitle
         title="Leitura adaptativa"
         subtitle="Última interpretação da IA durante sua sessão de estudo."
@@ -927,9 +939,9 @@ function TopicBarChart({
 
 // ─── AffinityBoard ────────────────────────────────────────────────────────────
 
-function AffinityBoard({ vm, palette, accent }: { vm: ProfileMetricsViewModel; palette: ThemePalette; accent: string }) {
+function AffinityBoard({ vm, palette, accent, targetRef }: { vm: ProfileMetricsViewModel; palette: ThemePalette; accent: string; targetRef?: React.RefObject<View | null> }) {
   return (
-    <SurfaceCard palette={palette}>
+    <SurfaceCard palette={palette} targetRef={targetRef}>
       <SectionTitle
         title="Perfil de aprendizagem"
         subtitle="Afinidades BrainHex detectadas para orientar a experiência."
@@ -954,7 +966,7 @@ function AffinityBoard({ vm, palette, accent }: { vm: ProfileMetricsViewModel; p
   );
 }
 
-function TempoEstudoSection({ vm, palette, accent }: { vm: ProfileMetricsViewModel; palette: ThemePalette; accent: string }) {
+function TempoEstudoSection({ vm, palette, accent, targetRef }: { vm: ProfileMetricsViewModel; palette: ThemePalette; accent: string; targetRef?: React.RefObject<View | null> }) {
   // Duas leituras diferentes, e por isso duas fileiras rotuladas em vez de um
   // numero so: o ACUMULADO responde "quanto tempo eu ja investi" e vem do que
   // esta persistido; a MEDIA DA SESSAO responde "qual meu ritmo agora" e vem da
@@ -964,7 +976,7 @@ function TempoEstudoSection({ vm, palette, accent }: { vm: ProfileMetricsViewMod
   if (!vm.temTempoAcumulado && !vm.hasSessionMetrics) return null;
 
   return (
-    <SurfaceCard palette={palette}>
+    <SurfaceCard palette={palette} targetRef={targetRef}>
       <SectionTitle
         title="Tempo de estudo"
         subtitle={
@@ -995,10 +1007,10 @@ function TempoEstudoSection({ vm, palette, accent }: { vm: ProfileMetricsViewMod
   );
 }
 
-function BossSection({ vm, palette, accent }: { vm: ProfileMetricsViewModel; palette: ThemePalette; accent: string }) {
+function BossSection({ vm, palette, accent, targetRef }: { vm: ProfileMetricsViewModel; palette: ThemePalette; accent: string; targetRef?: React.RefObject<View | null> }) {
   if (vm.danoTotal === null) return null;
   return (
-    <SurfaceCard palette={palette}>
+    <SurfaceCard palette={palette} targetRef={targetRef}>
       <SectionTitle title="Boss" icon="sword-cross" palette={palette} />
       <View style={s.statRow}>
         <StatTile icon="sword-cross" label="Dano causado ao boss" value={String(vm.danoTotal)} palette={palette} accent={accent} />
@@ -1007,10 +1019,10 @@ function BossSection({ vm, palette, accent }: { vm: ProfileMetricsViewModel; pal
   );
 }
 
-function MelhorTempoSection({ vm, palette, accent }: { vm: ProfileMetricsViewModel; palette: ThemePalette; accent: string }) {
+function MelhorTempoSection({ vm, palette, accent, targetRef }: { vm: ProfileMetricsViewModel; palette: ThemePalette; accent: string; targetRef?: React.RefObject<View | null> }) {
   if (vm.melhorTempoMin === null) return null;
   return (
-    <SurfaceCard palette={palette}>
+    <SurfaceCard palette={palette} targetRef={targetRef}>
       <SectionTitle title="Melhor tempo" icon="timer-sand" palette={palette} />
       <View style={s.statRow}>
         <StatTile icon="timer-sand" label="Melhor tempo em atividade" value={formatMinutesTimer(vm.melhorTempoMin)} palette={palette} accent={accent} />
@@ -1019,7 +1031,7 @@ function MelhorTempoSection({ vm, palette, accent }: { vm: ProfileMetricsViewMod
   );
 }
 
-function ArenaDashboard({ profile, vm, palette, accent, themeBadge }: DashboardProps) {
+function ArenaDashboard({ profile, vm, palette, accent, themeBadge, guideRefs }: DashboardProps) {
   const copy =
     profile === "conqueror"
       ? {
@@ -1052,8 +1064,8 @@ function ArenaDashboard({ profile, vm, palette, accent, themeBadge }: DashboardP
           {vm.materiaNome ? `Classe atual: ${vm.materiaNome}. ${copy.subtitle}` : copy.subtitle}
         </Text>
         <View style={s.statGrid}>
-          <StatTile icon="crosshairs-gps" label="Precisão" value={formatPercent(vm.acertos)} helper="desempenho nas respostas" palette={palette} accent={accent} />
-          <StatTile icon="trophy-outline" label="Posição" value={vm.melhorPosicao?.posicao ? `#${vm.melhorPosicao.posicao}` : "Sem rank"} helper="melhor marca na classe" palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "arena-precision")} icon="crosshairs-gps" label="Precisão" value={formatPercent(vm.acertos)} helper="desempenho nas respostas" palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "arena-position")} icon="trophy-outline" label="Posição" value={vm.melhorPosicao?.posicao ? `#${vm.melhorPosicao.posicao}` : "Sem rank"} helper="melhor marca na classe" palette={palette} accent={accent} />
           <StatTile
             icon="clock-outline"
             label="Tempo ativo"
@@ -1061,8 +1073,9 @@ function ArenaDashboard({ profile, vm, palette, accent, themeBadge }: DashboardP
             helper={vm.hasSessionMetrics ? "sessão atual" : vm.presencaResumo}
             palette={palette}
             accent={accent}
+            targetRef={guideRef(guideRefs, "arena-active-time")}
           />
-          <StatTile icon="flag-outline" label="Campanha" value={formatPercent(vm.progresso)} helper={vm.missaoResumo} palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "arena-campaign")} icon="flag-outline" label="Campanha" value={formatPercent(vm.progresso)} helper={vm.missaoResumo} palette={palette} accent={accent} />
         </View>
       </LinearGradient>
 
@@ -1076,10 +1089,10 @@ function ArenaDashboard({ profile, vm, palette, accent, themeBadge }: DashboardP
         />
       ) : (
         <>
-          <TempoEstudoSection vm={vm} palette={palette} accent={accent} />
-          <BossSection vm={vm} palette={palette} accent={accent} />
-          <MelhorTempoSection vm={vm} palette={palette} accent={accent} />
-          <SurfaceCard palette={palette}>
+          <TempoEstudoSection vm={vm} palette={palette} accent={accent} targetRef={guideRef(guideRefs, "study-time-detail")} />
+          <BossSection vm={vm} palette={palette} accent={accent} targetRef={guideRef(guideRefs, "boss")} />
+          <MelhorTempoSection vm={vm} palette={palette} accent={accent} targetRef={guideRef(guideRefs, "best-time")} />
+          <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "arena-status")}>
             <SectionTitle title={copy.mission} subtitle="Visão rápida da campanha atual." icon="sword-cross" palette={palette} />
             <View style={s.tripleRow}>
               <View style={[s.kpiPill, { backgroundColor: palette.cardAlt, borderColor: palette.border }]}>
@@ -1106,7 +1119,7 @@ function ArenaDashboard({ profile, vm, palette, accent, themeBadge }: DashboardP
               Último registro em {formatLastEvent(vm.ultimoEvento)}. Continue alimentando a campanha para reforçar sua presença no ranking.
             </Text>
           </SurfaceCard>
-          <SurfaceCard palette={palette}>
+          <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "arena-radar")}>
             <SectionTitle title="Inteligência de combate" subtitle="Visão tática do desempenho nos 5 eixos." icon="radar" palette={palette} />
             <View style={s.chartCenter}>
               <RadarChart
@@ -1123,14 +1136,14 @@ function ArenaDashboard({ profile, vm, palette, accent, themeBadge }: DashboardP
               />
             </View>
           </SurfaceCard>
-          <SurfaceCard palette={palette}>
+          <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "arena-week")}>
             <SectionTitle title="Pulso da semana" subtitle="Atividade registrada nos últimos 7 dias." icon="chart-bar" palette={palette} />
             <View style={s.chartCenter}>
               <WeeklyBars data={vm.semanaDiaria} accent={accent} palette={palette} />
             </View>
           </SurfaceCard>
           {vm.hasSessionMetrics && (
-            <SurfaceCard palette={palette}>
+            <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "arena-live")}>
               <SectionTitle title="Operação em tempo real" subtitle="Eficiência e intensidade da última sessão de estudo." icon="timer-outline" palette={palette} />
               <EngagementBar activeSec={vm.sessionActiveSec} idleSec={vm.sessionIdleSec} accent={accent} palette={palette} />
               <View style={s.tripleRow}>
@@ -1140,14 +1153,14 @@ function ArenaDashboard({ profile, vm, palette, accent, themeBadge }: DashboardP
               </View>
             </SurfaceCard>
           )}
-          <AnalysisPanel vm={vm} palette={palette} accent={accent} />
+          <AnalysisPanel vm={vm} palette={palette} accent={accent} targetRef={guideRef(guideRefs, "adaptive-reading")} />
         </>
       )}
     </View>
   );
 }
 
-function GoalsDashboard({ vm, palette, accent, themeBadge }: DashboardProps) {
+function GoalsDashboard({ vm, palette, accent, themeBadge, guideRefs }: DashboardProps) {
   const checkpoints = [
     { label: "Meta da trilha", done: vm.progresso >= 100, helper: `${formatPercent(vm.progresso)} concluído` },
     { label: "Meta de conteúdo", done: vm.totalConteudos > 0 && vm.conteudosConcluidos >= vm.totalConteudos, helper: `${vm.conteudosConcluidos}/${vm.totalConteudos} concluídos` },
@@ -1165,10 +1178,10 @@ function GoalsDashboard({ vm, palette, accent, themeBadge }: DashboardProps) {
           {vm.materiaNome ? `Classe atual: ${vm.materiaNome}. O foco aqui é transformar estudo em metas claras.` : "O foco aqui é transformar estudo em metas claras, mensuráveis e motivadoras."}
         </Text>
         <View style={s.statGrid}>
-          <StatTile icon="target" label="Meta principal" value={formatPercent(vm.progresso)} helper="progresso da trilha" palette={palette} accent={accent} />
-          <StatTile icon="check-decagram-outline" label="Conquistas" value={String(vm.totalConquistas)} helper="recompensas desbloqueadas" palette={palette} accent={accent} />
-          <StatTile icon="clock-outline" label="Tempo investido" value={formatMinutes(vm.tempo)} helper={`${formatMinutes(vm.tempoMedio)} por atividade`} palette={palette} accent={accent} />
-          <StatTile icon="chart-donut" label="Taxa de acerto" value={formatPercent(vm.acertos)} helper="qualidade das respostas" palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "goals-main")} icon="target" label="Meta principal" value={formatPercent(vm.progresso)} helper="progresso da trilha" palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "goals-achievements")} icon="check-decagram-outline" label="Conquistas" value={String(vm.totalConquistas)} helper="recompensas desbloqueadas" palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "goals-invested-time")} icon="clock-outline" label="Tempo investido" value={formatMinutes(vm.tempo)} helper={`${formatMinutes(vm.tempoMedio)} por atividade`} palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "goals-accuracy")} icon="chart-donut" label="Taxa de acerto" value={formatPercent(vm.acertos)} helper="qualidade das respostas" palette={palette} accent={accent} />
         </View>
       </LinearGradient>
 
@@ -1182,10 +1195,10 @@ function GoalsDashboard({ vm, palette, accent, themeBadge }: DashboardProps) {
         />
       ) : (
         <>
-          <TempoEstudoSection vm={vm} palette={palette} accent={accent} />
-          <BossSection vm={vm} palette={palette} accent={accent} />
-          <MelhorTempoSection vm={vm} palette={palette} accent={accent} />
-          <SurfaceCard palette={palette}>
+          <TempoEstudoSection vm={vm} palette={palette} accent={accent} targetRef={guideRef(guideRefs, "study-time-detail")} />
+          <BossSection vm={vm} palette={palette} accent={accent} targetRef={guideRef(guideRefs, "boss")} />
+          <MelhorTempoSection vm={vm} palette={palette} accent={accent} targetRef={guideRef(guideRefs, "best-time")} />
+          <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "goals-checklist")}>
             <SectionTitle title="Checklist da jornada" subtitle="Metas que ajudam a visualizar o que já foi entregue." icon="clipboard-check-outline" palette={palette} />
             {checkpoints.map((item) => (
               <View key={item.label} style={[s.checkRow, { borderColor: palette.border }]}>
@@ -1199,7 +1212,7 @@ function GoalsDashboard({ vm, palette, accent, themeBadge }: DashboardProps) {
               </View>
             ))}
           </SurfaceCard>
-          <SurfaceCard palette={palette}>
+          <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "goals-rings")}>
             <SectionTitle title="Anéis de metas" subtitle="Progresso em exploração, conteúdo e atividades." icon="chart-donut" palette={palette} />
             <View style={s.chartCenter}>
               <ConcentricRings
@@ -1212,7 +1225,7 @@ function GoalsDashboard({ vm, palette, accent, themeBadge }: DashboardProps) {
             </View>
           </SurfaceCard>
           {vm.hasSessionMetrics && (
-            <SurfaceCard palette={palette}>
+            <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "goals-time")}>
               <SectionTitle title="Tempo investido por tipo" subtitle="Distribuição do tempo ativo nesta sessão." icon="clock-check-outline" palette={palette} />
               <View style={s.chartWrap}>
                 <TimeDistributionBars tempoTopico={vm.tempoTopico} tempoConteudo={vm.tempoConteudo} tempoAtividade={vm.tempoAtividade} accent={accent} palette={palette} />
@@ -1224,7 +1237,7 @@ function GoalsDashboard({ vm, palette, accent, themeBadge }: DashboardProps) {
               ) : null}
             </SurfaceCard>
           )}
-          <SurfaceCard palette={palette}>
+          <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "goals-next")}>
             <SectionTitle title="Próximo marco" subtitle="Uma meta por vez, com clareza do que falta." icon="flag-outline" palette={palette} />
             <Text style={[s.storyHeadline, { color: palette.text }]}>{vm.proximoMarco}</Text>
             <View style={s.tripleRow}>
@@ -1242,14 +1255,14 @@ function GoalsDashboard({ vm, palette, accent, themeBadge }: DashboardProps) {
               </View>
             </View>
           </SurfaceCard>
-          <AffinityBoard vm={vm} palette={palette} accent={accent} />
+          <AffinityBoard vm={vm} palette={palette} accent={accent} targetRef={guideRef(guideRefs, "goals-affinity")} />
         </>
       )}
     </View>
   );
 }
 
-function MysteryDashboard({ vm, palette, accent, themeBadge }: DashboardProps) {
+function MysteryDashboard({ vm, palette, accent, themeBadge, guideRefs }: DashboardProps) {
   return (
     <View style={s.dashboard}>
       <LinearGradient colors={[palette.heroTop, palette.heroBottom]} style={[s.heroCard, { borderColor: palette.border }]}>
@@ -1262,10 +1275,10 @@ function MysteryDashboard({ vm, palette, accent, themeBadge }: DashboardProps) {
             : "O painel mostra o quanto do território acadêmico você já descobriu e o que ainda está oculto."}
         </Text>
         <View style={s.statGrid}>
-          <StatTile icon="compass-outline" label="Mapa revelado" value={formatPercent(vm.taxaExploracao)} helper={`${vm.topicosDescobertos}/${vm.totalTopicos} tópicos vistos`} palette={palette} accent={accent} />
-          <StatTile icon="book-open-page-variant-outline" label="Arquivos lidos" value={String(vm.conteudosConcluidos)} helper={`${vm.totalConteudos} no total`} palette={palette} accent={accent} />
-          <StatTile icon="help-circle-outline" label="Desafios resolvidos" value={String(vm.atividadesConcluidas)} helper={`${vm.totalAtividades} registrados`} palette={palette} accent={accent} />
-          <StatTile icon="star-circle-outline" label="Relíquias" value={String(vm.totalConquistas)} helper="marcos colecionados" palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "mystery-revealed")} icon="compass-outline" label="Mapa revelado" value={formatPercent(vm.taxaExploracao)} helper={`${vm.topicosDescobertos}/${vm.totalTopicos} tópicos vistos`} palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "mystery-content")} icon="book-open-page-variant-outline" label="Arquivos lidos" value={String(vm.conteudosConcluidos)} helper={`${vm.totalConteudos} no total`} palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "mystery-challenges")} icon="help-circle-outline" label="Desafios resolvidos" value={String(vm.atividadesConcluidas)} helper={`${vm.totalAtividades} registrados`} palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "mystery-relics")} icon="star-circle-outline" label="Relíquias" value={String(vm.totalConquistas)} helper="marcos colecionados" palette={palette} accent={accent} />
         </View>
       </LinearGradient>
 
@@ -1279,16 +1292,16 @@ function MysteryDashboard({ vm, palette, accent, themeBadge }: DashboardProps) {
         />
       ) : (
         <>
-          <TempoEstudoSection vm={vm} palette={palette} accent={accent} />
-          <BossSection vm={vm} palette={palette} accent={accent} />
-          <MelhorTempoSection vm={vm} palette={palette} accent={accent} />
-          <SurfaceCard palette={palette}>
+          <TempoEstudoSection vm={vm} palette={palette} accent={accent} targetRef={guideRef(guideRefs, "study-time-detail")} />
+          <BossSection vm={vm} palette={palette} accent={accent} targetRef={guideRef(guideRefs, "boss")} />
+          <MelhorTempoSection vm={vm} palette={palette} accent={accent} targetRef={guideRef(guideRefs, "best-time")} />
+          <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "mystery-map")}>
             <SectionTitle title="Mapa da trilha" subtitle="O quanto do percurso já foi desvendado." icon="map" palette={palette} />
             <ProgressLine label="Tópicos descobertos" current={vm.topicosDescobertos} total={vm.totalTopicos} accent={accent} palette={palette} />
             <ProgressLine label="Conteúdos revelados" current={vm.conteudosConcluidos} total={vm.totalConteudos} accent={accent} palette={palette} />
             <ProgressLine label="Desafios superados" current={vm.atividadesConcluidas} total={vm.totalAtividades} accent={accent} palette={palette} />
           </SurfaceCard>
-          <SurfaceCard palette={palette}>
+          <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "mystery-discovery")}>
             <SectionTitle title="Mapa de descoberta" subtitle="Setores do território acadêmico revelados." icon="compass-outline" palette={palette} />
             <View style={s.chartCenter}>
               <DiscoveryRadial
@@ -1300,7 +1313,7 @@ function MysteryDashboard({ vm, palette, accent, themeBadge }: DashboardProps) {
             </View>
           </SurfaceCard>
           {vm.hasSessionMetrics && (
-            <SurfaceCard palette={palette}>
+            <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "mystery-traces")}>
               <SectionTitle title="Rastros da exploração" subtitle="Intensidade e profundidade da última sessão." icon="foot-print" palette={palette} />
               <View style={s.tripleRow}>
                 <KpiPill label="Tópicos visitados" value={String(vm.topicosVisitados)} palette={palette} />
@@ -1314,21 +1327,21 @@ function MysteryDashboard({ vm, palette, accent, themeBadge }: DashboardProps) {
               ) : null}
             </SurfaceCard>
           )}
-          <SurfaceCard palette={palette}>
+          <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "mystery-next")}>
             <SectionTitle title="Próxima pista" subtitle="Sugestão de exploração para manter a curiosidade ativa." icon="telescope" palette={palette} />
             <Text style={[s.storyHeadline, { color: palette.text }]}>{vm.proximoMarco}</Text>
             <Text style={[s.storyBody, { color: palette.muted }]}>
               Seu último rastro apareceu em {formatLastEvent(vm.ultimoEvento)}. Há {vm.pendentes} tópicos ainda esperando descoberta.
             </Text>
           </SurfaceCard>
-          <AnalysisPanel vm={vm} palette={palette} accent={accent} />
+          <AnalysisPanel vm={vm} palette={palette} accent={accent} targetRef={guideRef(guideRefs, "adaptive-reading")} />
         </>
       )}
     </View>
   );
 }
 
-function AnalyticsDashboard({ vm, palette, accent, themeBadge }: DashboardProps) {
+function AnalyticsDashboard({ vm, palette, accent, themeBadge, guideRefs }: DashboardProps) {
   return (
     <View style={s.dashboard}>
       <LinearGradient colors={[palette.heroTop, palette.heroBottom]} style={[s.heroCard, { borderColor: palette.border }]}>
@@ -1341,10 +1354,10 @@ function AnalyticsDashboard({ vm, palette, accent, themeBadge }: DashboardProps)
             : "Este modo organiza tudo com foco em clareza, leitura rápida e acompanhamento consistente."}
         </Text>
         <View style={s.statGrid}>
-          <StatTile icon="chart-donut" label="Progresso" value={formatPercent(vm.progresso)} helper={`${vm.concluidos}/${vm.totalTopicos} tópicos`} palette={palette} accent={accent} />
-          <StatTile icon="target" label="Acertos" value={formatPercent(vm.acertos)} helper="média da turma atual" palette={palette} accent={accent} />
-          <StatTile icon="clock-outline" label="Tempo de estudo" value={formatMinutes(vm.tempo)} helper={`${formatMinutes(vm.tempoMedio)} por atividade`} palette={palette} accent={accent} />
-          <StatTile icon="trophy-outline" label="Conquistas" value={String(vm.totalConquistas)} helper={vm.melhorPosicao?.posicao != null ? `melhor posição #${vm.melhorPosicao.posicao}` : "sem posição em ranking"} palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "analytics-progress")} icon="chart-donut" label="Progresso" value={formatPercent(vm.progresso)} helper={`${vm.concluidos}/${vm.totalTopicos} tópicos`} palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "analytics-accuracy")} icon="target" label="Acertos" value={formatPercent(vm.acertos)} helper="média da turma atual" palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "analytics-time")} icon="clock-outline" label="Tempo de estudo" value={formatMinutes(vm.tempo)} helper={`${formatMinutes(vm.tempoMedio)} por atividade`} palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "analytics-achievements")} icon="trophy-outline" label="Conquistas" value={String(vm.totalConquistas)} helper={vm.melhorPosicao?.posicao != null ? `melhor posição #${vm.melhorPosicao.posicao}` : "sem posição em ranking"} palette={palette} accent={accent} />
         </View>
       </LinearGradient>
 
@@ -1358,10 +1371,10 @@ function AnalyticsDashboard({ vm, palette, accent, themeBadge }: DashboardProps)
         />
       ) : (
         <>
-          <TempoEstudoSection vm={vm} palette={palette} accent={accent} />
-          <BossSection vm={vm} palette={palette} accent={accent} />
-          <MelhorTempoSection vm={vm} palette={palette} accent={accent} />
-          <SurfaceCard palette={palette}>
+          <TempoEstudoSection vm={vm} palette={palette} accent={accent} targetRef={guideRef(guideRefs, "study-time-detail")} />
+          <BossSection vm={vm} palette={palette} accent={accent} targetRef={guideRef(guideRefs, "boss")} />
+          <MelhorTempoSection vm={vm} palette={palette} accent={accent} targetRef={guideRef(guideRefs, "best-time")} />
+          <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "analytics-journey")}>
             <SectionTitle title="Jornada da classe" subtitle="Distribuição atual do seu avanço na trilha." icon="chart-box-outline" palette={palette} />
             <View style={s.chartWrap}>
               <TopicBarChart
@@ -1376,7 +1389,7 @@ function AnalyticsDashboard({ vm, palette, accent, themeBadge }: DashboardProps)
             <ProgressLine label="Conteúdos" current={vm.conteudosConcluidos} total={vm.totalConteudos} accent={accent} palette={palette} />
             <ProgressLine label="Atividades" current={vm.atividadesConcluidas} total={vm.totalAtividades} accent={accent} palette={palette} />
           </SurfaceCard>
-          <SurfaceCard palette={palette}>
+          <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "analytics-affinity")}>
             <SectionTitle title="Radar de afinidades" subtitle="Perfil BrainHex em visão de teia comparativa." icon="spider-web" palette={palette} />
             {vm.afinidades.length >= 3 ? (
               <View style={s.chartCenter}>
@@ -1402,7 +1415,7 @@ function AnalyticsDashboard({ vm, palette, accent, themeBadge }: DashboardProps)
               ))
             )}
           </SurfaceCard>
-          <SurfaceCard palette={palette}>
+          <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "analytics-recent")}>
             <SectionTitle title="Engajamento recente" subtitle="Recorte dos últimos registros do aluno." icon="pulse" palette={palette} />
             <View style={s.doubleRow}>
               <View style={[s.metricPanel, { backgroundColor: palette.cardAlt, borderColor: palette.border }]}>
@@ -1417,7 +1430,7 @@ function AnalyticsDashboard({ vm, palette, accent, themeBadge }: DashboardProps)
             <Text style={[s.sectionSubtitle, { color: palette.muted }]}>Último registro: {formatLastEvent(vm.ultimoEvento)}</Text>
           </SurfaceCard>
           {vm.hasSessionMetrics && (
-            <SurfaceCard palette={palette}>
+            <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "analytics-session")}>
               <SectionTitle title="Análise da sessão" subtitle="Distribuição de tempo ativo por entidade de estudo." icon="chart-timeline-variant" palette={palette} />
               <EngagementBar activeSec={vm.sessionActiveSec} idleSec={vm.sessionIdleSec} accent={accent} palette={palette} />
               <View style={[s.chartWrap, { marginTop: 14 }]}>
@@ -1435,14 +1448,14 @@ function AnalyticsDashboard({ vm, palette, accent, themeBadge }: DashboardProps)
               </View>
             </SurfaceCard>
           )}
-          <AnalysisPanel vm={vm} palette={palette} accent={accent} />
+          <AnalysisPanel vm={vm} palette={palette} accent={accent} targetRef={guideRef(guideRefs, "adaptive-reading")} />
         </>
       )}
     </View>
   );
 }
 
-function SquadDashboard({ vm, palette, accent, themeBadge }: DashboardProps) {
+function SquadDashboard({ vm, palette, accent, themeBadge, guideRefs }: DashboardProps) {
   return (
     <View style={s.dashboard}>
       <LinearGradient colors={[palette.heroTop, palette.heroBottom]} style={[s.heroCard, { borderColor: palette.border }]}>
@@ -1455,10 +1468,10 @@ function SquadDashboard({ vm, palette, accent, themeBadge }: DashboardProps) {
             : "O foco é mostrar como você aparece, participa e cresce ao longo da trilha."}
         </Text>
         <View style={s.statGrid}>
-          <StatTile icon="account-group-outline" label="Presença" value={`${vm.diasAtivos} dias`} helper={vm.presencaResumo} palette={palette} accent={accent} />
-          <StatTile icon="podium" label="Ranking" value={vm.melhorPosicao?.posicao ? `#${vm.melhorPosicao.posicao}` : "Sem posição"} helper="melhor colocação" palette={palette} accent={accent} />
-          <StatTile icon="trophy-outline" label="Conquistas" value={String(vm.totalConquistas)} helper="emblemas e marcos" palette={palette} accent={accent} />
-          <StatTile icon="pulse" label="Movimento" value={String(vm.eventosRecentes)} helper="ações recentes" palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "squad-presence-hero")} icon="account-group-outline" label="Presença" value={`${vm.diasAtivos} dias`} helper={vm.presencaResumo} palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "squad-ranking")} icon="podium" label="Ranking" value={vm.melhorPosicao?.posicao ? `#${vm.melhorPosicao.posicao}` : "Sem posição"} helper="melhor colocação" palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "squad-achievements")} icon="trophy-outline" label="Conquistas" value={String(vm.totalConquistas)} helper="emblemas e marcos" palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "squad-movement")} icon="pulse" label="Movimento" value={String(vm.eventosRecentes)} helper="ações recentes" palette={palette} accent={accent} />
         </View>
       </LinearGradient>
 
@@ -1472,10 +1485,10 @@ function SquadDashboard({ vm, palette, accent, themeBadge }: DashboardProps) {
         />
       ) : (
         <>
-          <TempoEstudoSection vm={vm} palette={palette} accent={accent} />
-          <BossSection vm={vm} palette={palette} accent={accent} />
-          <MelhorTempoSection vm={vm} palette={palette} accent={accent} />
-          <SurfaceCard palette={palette}>
+          <TempoEstudoSection vm={vm} palette={palette} accent={accent} targetRef={guideRef(guideRefs, "study-time-detail")} />
+          <BossSection vm={vm} palette={palette} accent={accent} targetRef={guideRef(guideRefs, "boss")} />
+          <MelhorTempoSection vm={vm} palette={palette} accent={accent} targetRef={guideRef(guideRefs, "best-time")} />
+          <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "squad-energy")}>
             <SectionTitle title="Energia do grupo" subtitle="Indicadores que valorizam presença e constância." icon="star-circle-outline" palette={palette} />
             <View style={s.tripleRow}>
               <View style={[s.kpiPill, { backgroundColor: palette.cardAlt, borderColor: palette.border }]}><Text style={[s.kpiLabel, { color: palette.muted }]}>Progresso</Text><Text style={[s.kpiValue, { color: palette.text }]}>{formatPercent(vm.progresso)}</Text></View>
@@ -1486,14 +1499,14 @@ function SquadDashboard({ vm, palette, accent, themeBadge }: DashboardProps) {
               Último pulso registrado em {formatLastEvent(vm.ultimoEvento)}. O painel valoriza continuidade e visibilidade dentro da turma.
             </Text>
           </SurfaceCard>
-          <SurfaceCard palette={palette}>
+          <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "squad-presence")}>
             <SectionTitle title="Presença na semana" subtitle="Dias com atividade nos últimos 7 dias." icon="calendar-week" palette={palette} />
             <View style={s.chartCenter}>
               <PresenceGrid data={vm.semanaDiaria} accent={accent} palette={palette} />
             </View>
           </SurfaceCard>
           {vm.hasSessionMetrics && (
-            <SurfaceCard palette={palette}>
+            <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "squad-session")}>
               <SectionTitle title="Energia da sessão" subtitle="Qualidade do tempo de presença mais recente." icon="lightning-bolt-circle" palette={palette} />
               <EngagementBar activeSec={vm.sessionActiveSec} idleSec={vm.sessionIdleSec} accent={accent} palette={palette} />
               <View style={s.tripleRow}>
@@ -1503,7 +1516,7 @@ function SquadDashboard({ vm, palette, accent, themeBadge }: DashboardProps) {
               </View>
             </SurfaceCard>
           )}
-          <SurfaceCard palette={palette}>
+          <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "squad-position")}>
             <SectionTitle title="Seu lugar no momento" subtitle="Resumo social e competitivo da jornada." icon="podium" palette={palette} />
             <Text style={[s.storyHeadline, { color: palette.text }]}>
               {vm.melhorPosicao?.posicao ? `Você já alcançou a posição #${vm.melhorPosicao.posicao} no ranking.` : "Ainda não há posição registrada no ranking da classe."}
@@ -1512,7 +1525,7 @@ function SquadDashboard({ vm, palette, accent, themeBadge }: DashboardProps) {
               {vm.totalConquistas > 0 ? `Com ${vm.totalConquistas} conquistas, sua presença já aparece no histórico da turma.` : "Assim que os primeiros marcos forem desbloqueados, eles aparecerão como sinais do seu impacto."}
             </Text>
           </SurfaceCard>
-          <AnalysisPanel vm={vm} palette={palette} accent={accent} />
+          <AnalysisPanel vm={vm} palette={palette} accent={accent} targetRef={guideRef(guideRefs, "adaptive-reading")} />
         </>
       )}
     </View>
@@ -1523,10 +1536,12 @@ export function ProfileMetricsViews({
   profile,
   theme,
   vm,
+  guideRefs,
 }: {
   profile: BrainHexProfile;
   theme: MetricsThemeResolved;
   vm: ProfileMetricsViewModel;
+  guideRefs: ProfileMetricsGuideRefs;
 }) {
   const hexConfig = getBrainHexConfig(profile);
   const accent = tinycolor(hexConfig.color).lighten(theme === "analytics" ? 6 : 2).toString();
@@ -1543,6 +1558,7 @@ export function ProfileMetricsViews({
           palette={palette}
           accent={accent}
           themeBadge={{ label: themeOption.label, icon: themeOption.icon }}
+          guideRefs={guideRefs}
         />
       ) : theme === "goals" ? (
         <GoalsDashboard
@@ -1552,6 +1568,7 @@ export function ProfileMetricsViews({
           palette={palette}
           accent={accent}
           themeBadge={{ label: themeOption.label, icon: themeOption.icon }}
+          guideRefs={guideRefs}
         />
       ) : theme === "mystery" ? (
         <MysteryDashboard
@@ -1561,6 +1578,7 @@ export function ProfileMetricsViews({
           palette={palette}
           accent={accent}
           themeBadge={{ label: themeOption.label, icon: themeOption.icon }}
+          guideRefs={guideRefs}
         />
       ) : theme === "squad" ? (
         <SquadDashboard
@@ -1570,6 +1588,7 @@ export function ProfileMetricsViews({
           palette={palette}
           accent={accent}
           themeBadge={{ label: themeOption.label, icon: themeOption.icon }}
+          guideRefs={guideRefs}
         />
       ) : (
         <AnalyticsDashboard
@@ -1579,6 +1598,7 @@ export function ProfileMetricsViews({
           palette={palette}
           accent={accent}
           themeBadge={{ label: themeOption.label, icon: themeOption.icon }}
+          guideRefs={guideRefs}
         />
       )}
     </View>

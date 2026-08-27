@@ -1,4 +1,3 @@
-import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
@@ -15,6 +14,7 @@ import {
   agendarRotinasLocais,
   cancelarRotinasLocais,
   configurarHandlerDeNotificacao,
+  ouvirAberturaDeNotificacao,
   registrarParaPush,
   resolverPlataforma,
   resolverTimezone,
@@ -98,7 +98,7 @@ export function useMonitorDeSessao() {
 
     let cancelado = false;
     void (async () => {
-      configurarHandlerDeNotificacao();
+      await configurarHandlerDeNotificacao();
       const registro = await registrarParaPush();
       if (cancelado) return;
       pushTokenRef.current = registro.token;
@@ -158,15 +158,24 @@ export function useMonitorDeSessao() {
 
   // --- toque na notificação do SO -------------------------------------
   useEffect(() => {
-    const inscricao = Notifications.addNotificationResponseReceivedListener((resposta) => {
-      const dados = resposta.notification.request.content.data as
-        | { notificacao_id?: number | string }
-        | undefined;
-      const id = dados?.notificacao_id;
+    let cancelado = false;
+    let remover = () => {};
+
+    void ouvirAberturaDeNotificacao((id) => {
       // Sem id conhecido (caso das locais), abre a lista: melhor levar o aluno
       // ao lugar certo do que não reagir ao toque.
       router.push(id ? `/notificacoes/${id}` : '/notificacoes');
+    }).then((removerListener) => {
+      if (cancelado) {
+        removerListener();
+      } else {
+        remover = removerListener;
+      }
     });
-    return () => inscricao.remove();
+
+    return () => {
+      cancelado = true;
+      remover();
+    };
   }, [router]);
 }

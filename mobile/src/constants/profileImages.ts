@@ -3,6 +3,14 @@ import { ImageSourcePropType } from "react-native";
 
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
+import {
+  BrainHexProfile,
+  normalizeBrainHexProfile,
+} from "./brainHexProfiles";
+
+export { normalizeBrainHexProfile } from "./brainHexProfiles";
+export type { BrainHexProfile } from "./brainHexProfiles";
+
 export const bannerImages: ImageSourcePropType[] = [
   require("@/assets/imgPerfil/bfae835207e72c1686f15699fd2f14c86998f251.png"), //0
   require("@/assets/ImagensReferencia/arte_filter.png"), //1
@@ -34,50 +42,6 @@ export const avatarImages: ImageSourcePropType[] = [
   require("@/assets/images/icon.png"),
   require("@/assets/images/react-logo.png"),
 ];
-
-// Tipos de perfil BrainHex
-export type BrainHexProfile =
-  | "seeker" // Explorador/Buscador
-  | "survivor" // Sobrevivente
-  | "daredevil" // Aventureiro/Ousado
-  | "mastermind" // Mestre/Estrategista
-  | "conqueror" // Conquistador
-  | "socializer" // Socializador
-  | "achiever"; // Realizador
-
-const profileAliases: Record<string, BrainHexProfile> = {
-  seeker: "seeker",
-  explorador: "seeker",
-  buscador: "seeker",
-  survivor: "survivor",
-  sobrevivente: "survivor",
-  daredevil: "daredevil",
-  aventureiro: "daredevil",
-  ousado: "daredevil",
-  mastermind: "mastermind",
-  estrategista: "mastermind",
-  mestre: "mastermind",
-  conqueror: "conqueror",
-  conquistador: "conqueror",
-  socializer: "socializer",
-  socialiser: "socializer",
-  socializador: "socializer",
-  achiever: "achiever",
-  realizador: "achiever",
-};
-
-export function normalizeBrainHexProfile(
-  profileName?: string | null,
-): BrainHexProfile | null {
-  const normalized = String(profileName ?? "")
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .replace(/\s+/g, "_");
-
-  return profileAliases[normalized] ?? null;
-}
 
 // Mapeamento de perfis BrainHex para índices de imagens com filtro
 export const brainHexImageMap: Record<BrainHexProfile, number> = {
@@ -186,6 +150,17 @@ export const guardianFaceImages: Record<BrainHexProfile, ImageSourcePropType> = 
   conqueror: require("@/assets/guardioes/rosto/conqueror.png"),
   socializer: require("@/assets/guardioes/rosto/socializer-duo.png"),
   achiever: require("@/assets/guardioes/rosto/achiever.png"),
+};
+
+/** Arte de corpo inteiro usada em apresentações e no tutorial inicial. */
+export const guardianFullImages: Record<BrainHexProfile, ImageSourcePropType> = {
+  seeker: require("@/assets/guardioes/seeker.png"),
+  survivor: require("@/assets/guardioes/survivor.png"),
+  daredevil: require("@/assets/guardioes/daredevil.png"),
+  mastermind: require("@/assets/guardioes/mastermind.png"),
+  conqueror: require("@/assets/guardioes/conqueror.png"),
+  socializer: require("@/assets/guardioes/socializer-duo.png"),
+  achiever: require("@/assets/guardioes/achiever.png"),
 };
 
 export const getGuardianFaceImage = (

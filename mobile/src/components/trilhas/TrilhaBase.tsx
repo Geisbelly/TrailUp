@@ -1,20 +1,22 @@
 // src/components/trilhas/TrilhaBase.tsx
-import { normalizeBrainHexProfile } from "@/constants/profileImages";
-import { useUsuario } from "@/context/SessaoContext";
 import { useTrilha } from "@/context/TrilhaContext";
+import { useUsuario } from "@/context/SessaoContext";
 import { Color } from "@/styles/GlobalStyle";
 import { buildClasseAcademicMetrics } from "@/utils/classeMetrics";
+import { getBrainHexProfileCapabilities } from "@/utils/brainHexCapabilities";
 import { unificarContadores } from "@/utils/progressoPersonalizado";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
-import React from "react";
+import React, { useMemo, useRef } from "react";
 import { StyleSheet, View } from "react-native";
 import { TrilhaArvoreSimple } from "./ArvoreView";
 import { GameHeader } from "./common/GameHeader";
 import { TrilhaLinearList } from "./ListaSimplesView";
 import { TrilhaMapaHeroStable } from "./MapaViewStable";
-import { ModuleHeaderGuideButton } from "./ModuleHeaderTitle";
+import { GuideTargetRefs, ModuleHeaderGuideButton } from "./ModuleHeaderTitle";
 
-export const TrilhaBase: React.FC = () => {
+export const TrilhaBase: React.FC<{
+  chatGuideTargetRef?: React.RefObject<View | null>;
+}> = ({ chatGuideTargetRef }) => {
   const {
     classeAtual,
     carregando,
@@ -23,11 +25,24 @@ export const TrilhaBase: React.FC = () => {
     mapTheme,
     personalizedTopics,
     progressoPersonalizado,
+    perfil,
   } = useTrilha();
   const { usuario } = useUsuario();
-  const palette = getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null);
-  const profile =
-    normalizeBrainHexProfile(usuario?.perfis?.[0]?.nome) ?? "mastermind";
+  const palette = getProfileShellPalette(perfil);
+  const capabilities = getBrainHexProfileCapabilities(perfil);
+  const progressGuideTargetRef = useRef<View | null>(null);
+  const journeyGuideTargetRef = useRef<View | null>(null);
+  const guideTargetRefs = useMemo<GuideTargetRefs>(
+    () => ({
+      progress: progressGuideTargetRef,
+      journey: journeyGuideTargetRef,
+      map: journeyGuideTargetRef,
+      tree: journeyGuideTargetRef,
+      list: journeyGuideTargetRef,
+      chat: chatGuideTargetRef,
+    }),
+    [chatGuideTargetRef]
+  );
   const hasTrailPersonalization =
     Object.keys(personalizedTopics ?? {}).length > 0;
 
@@ -88,9 +103,10 @@ export const TrilhaBase: React.FC = () => {
         xp={Math.round(progresso)}
         meta={100}
         palette={palette}
+        progressTargetRef={progressGuideTargetRef}
         rightSlot={
           <ModuleHeaderGuideButton
-            profile={profile}
+            profile={perfil}
             title={nome}
             totalBlocks={totalTopicos}
             completedBlocks={concluidos}
@@ -101,14 +117,15 @@ export const TrilhaBase: React.FC = () => {
             }
             visibleElements={{
               visualMode: visual,
-              hasChat: true,
+              hasChat: capabilities.hasChat,
               hasProgress: true,
             }}
             perfis={usuario?.perfis ?? null}
+            targetRefs={guideTargetRefs}
           />
         }
       />
-      <View style={{ flex: 1 }}>
+      <View ref={journeyGuideTargetRef} collapsable={false} style={{ flex: 1 }}>
         {visual === "mapa" && <TrilhaMapaHeroStable />}
         {visual === "arvore" && <TrilhaArvoreSimple />}
         {visual === "lista" && <TrilhaLinearList />}

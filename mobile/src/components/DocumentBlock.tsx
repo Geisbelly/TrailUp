@@ -41,12 +41,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { WebContentFrame } from "./WebContentFrame";
 import { isHtmlDeckUrl } from "@/utils/htmlDeck";
 import { resolveMediaUrl } from "@/utils/mediaPayload";
+import { buildContentResumeKey, loadContentResume, saveContentResume } from "@/utils/contentResume";
 
 type Props = {
   tipo: "pdf" | "documento" | "apresentacao" | "embed";
   payload: any;
   WebView?: React.ComponentType<any> | null;
   onDeckProgressEvent?: (event: DeckProgressEvent) => void;
+  progressKey?: string;
 };
 
 type ViewerSource = {
@@ -338,6 +340,8 @@ function buildPdfViewerHtml(
         display: flex;
         flex-direction: column;
         gap: 16px;
+        min-width: 0;
+        width: 100%;
       }
 
       .viewer.page-mode {
@@ -349,6 +353,8 @@ function buildPdfViewerHtml(
         flex-direction: column;
         gap: 10px;
         padding: 14px;
+        min-width: 0;
+        overflow: hidden;
         border-radius: 16px;
         border: 1px solid ${theme.border};
         background: ${theme.surface};
@@ -358,6 +364,8 @@ function buildPdfViewerHtml(
         display: flex;
         justify-content: center;
         padding: 8px;
+        min-width: 0;
+        overflow: hidden;
         border-radius: 16px;
         border: 1px solid ${theme.border};
         background: ${theme.surface};
@@ -371,10 +379,12 @@ function buildPdfViewerHtml(
       }
 
       canvas {
-        width: min(100%, 980px);
+        display: block;
+        max-width: 100%;
         height: auto;
         border-radius: 12px;
         background: #fff;
+        align-self: center;
       }
 
       @media (max-width: 640px) {
@@ -458,9 +468,9 @@ function buildPdfViewerHtml(
 
       function getScale(page) {
         const baseViewport = page.getViewport({ scale: 1 });
-        const availableWidth = Math.max(260, (viewerEl.clientWidth || 820) - 24);
+        const availableWidth = Math.max(1, (viewerEl.clientWidth || document.documentElement.clientWidth || 320) - 28);
         const ratio = availableWidth / baseViewport.width;
-        return Math.max(0.65, Math.min(ratio, 2.2));
+        return Math.max(0.05, Math.min(ratio, 2.2));
       }
 
       function clampPage(pageNumber) {
@@ -486,13 +496,19 @@ function buildPdfViewerHtml(
         if (!context) {
           throw new Error("Não foi possível inicializar o canvas para renderizar o PDF.");
         }
-        const pixelRatio = Math.max(1, window.devicePixelRatio || 1);
-        canvas.width = Math.floor(viewport.width * pixelRatio);
-        canvas.height = Math.floor(viewport.height * pixelRatio);
-        canvas.style.width = Math.floor(viewport.width) + "px";
-        canvas.style.height = Math.floor(viewport.height) + "px";
-        context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-        await page.render({ canvasContext: context, viewport }).promise;
+        const pixelRatio = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+        const cssWidth = Math.max(1, Math.floor(viewport.width));
+        canvas.width = Math.max(1, Math.floor(viewport.width * pixelRatio));
+        canvas.height = Math.max(1, Math.floor(viewport.height * pixelRatio));
+        canvas.style.width = cssWidth + "px";
+        const renderContext = {
+          canvasContext: context,
+          viewport,
+        };
+        if (pixelRatio !== 1) {
+          renderContext.transform = [pixelRatio, 0, 0, pixelRatio, 0, 0];
+        }
+        await page.render(renderContext).promise;
         return canvas;
       }
 
@@ -687,12 +703,12 @@ function getDocumentIconName(tipo: Props["tipo"]) {
   return "globe-outline";
 }
 
-export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent }: Props) {
+export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent, progressKey }: Props) {
   const { usuario } = useUsuario();
   const { height: windowHeight, width: windowWidth } = useWindowDimensions();
   const palette = useMemo(
-    () => getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfis]
+    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
+    [usuario?.perfilAtivo, usuario?.perfis]
   );
   const viewerTheme = useMemo<ViewerTheme>(
     () => ({
@@ -825,6 +841,11 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent }: P
   const [currentPage, setCurrentPage] = useState(1);
   const [pageInput, setPageInput] = useState("1");
   const [pageCount, setPageCount] = useState(1);
+  const [resumeLoaded, setResumeLoaded] = useState(false);
+  const resumeStorageKey = useMemo(
+    () => buildContentResumeKey(usuario?.id, tipo, progressKey ?? sourceUrl ?? sourceHtml ?? title),
+    [progressKey, sourceHtml, sourceUrl, tipo, title, usuario?.id]
+  );
   const useWebFallback = isNativeLocalReader && Boolean(nativeError) && Boolean(resolvedUrl);
   const effectiveUseNative = isNativeLocalReader && !useWebFallback;
 
@@ -833,10 +854,23 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent }: P
   }, [initialMode, sourceUrl, sourceHtml, tipo]);
 
   useEffect(() => {
-    setCurrentPage(1);
-    setPageInput("1");
+    let active = true;
+    setResumeLoaded(false);
     setPageCount(1);
-  }, [resolvedUrl, sourceUrl, tipo]);
+    void loadContentResume(resumeStorageKey).then((saved) => {
+      if (!active) return;
+      const restoredPage = Math.max(1, Math.round(saved?.page ?? 1));
+      setCurrentPage(restoredPage);
+      setPageInput(String(restoredPage));
+      setResumeLoaded(true);
+    });
+    return () => { active = false; };
+  }, [resumeStorageKey]);
+
+  useEffect(() => {
+    if (!resumeLoaded) return;
+    void saveContentResume(resumeStorageKey, { page: currentPage });
+  }, [currentPage, resumeLoaded, resumeStorageKey]);
 
   useEffect(() => {
     setPageInput(String(currentPage));

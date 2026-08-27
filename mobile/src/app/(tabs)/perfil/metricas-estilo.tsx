@@ -19,8 +19,8 @@ export default function PerfilMetricasEstilo() {
   const { usuario } = useUsuario();
   const [selectedTheme, setSelectedTheme] = useState<MetricsThemeOverride>("auto");
   const palette = useMemo(
-    () => getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfis]
+    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
+    [usuario?.perfilAtivo, usuario?.perfis]
   );
 
   useEffect(() => {

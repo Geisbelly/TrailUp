@@ -15,7 +15,7 @@ type Props = {
 
 export default function VideoActivity({ atividade }: Props) {
   const { usuario } = useUsuario();
-  const palette = getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null);
+  const palette = getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null);
   const url =
     atividade?.conteudos?.[0]?.conteudo ??
     atividade?.url ??

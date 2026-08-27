@@ -494,7 +494,15 @@
   "492": "cmdk",
   "493": "@config-plugins/react-native-blob-util",
   "494": "@supabase/supabase-js",
+  "495": "mobile/guia-uso-app.md",
   "496": "20260826_07_push_em_expo_tokens.py",
   "497": "20260826_08_rls_sem_anonimo.py",
-  "498": "react-native-markdown-display"
+  "498": "react-native-markdown-display",
+  "499": "gerar_pdf_slides",
+  "500": "GUIA_USO.md",
+  "501": "createConcurrencyGate",
+  "502": "20260826_12_conquistas_por_perfil.py",
+  "503": "_professor_em_modo_automatico",
+  "504": "20260826_13_perfil_ativo_aluno.py",
+  "505": "LockBadge.tsx"
 }

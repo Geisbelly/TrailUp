@@ -14,6 +14,7 @@ import { join } from "node:path";
 // se quer proteger.
 const CONSTANTES = join(process.cwd(), "src", "constants");
 const ROSTOS = join(process.cwd(), "src", "assets", "guardioes", "rosto");
+const CORPOS = join(process.cwd(), "src", "assets", "guardioes");
 const fonte = readFileSync(join(CONSTANTES, "profileImages.ts"), "utf8");
 
 const PERFIS = [
@@ -35,6 +36,24 @@ test("todo perfil tem rosto de guardiao no mapa", () => {
   }
 });
 
+test("todo perfil tem arte de corpo inteiro para o tutorial inicial", () => {
+  for (const perfil of PERFIS) {
+    const arquivoEsperado = perfil === "socializer" ? "socializer-duo.png" : `${perfil}.png`;
+    assert.ok(
+      fonte.includes(`${perfil}: require("@/assets/guardioes/${arquivoEsperado}")`),
+      `perfil sem entrada em guardianFullImages: ${perfil}`,
+    );
+  }
+
+  const referencias = [...fonte.matchAll(/@\/assets\/guardioes\/([\w.-]+\.png)/g)].map(
+    (achado) => achado[1],
+  );
+  assert.ok(referencias.length >= PERFIS.length);
+  for (const arquivo of referencias) {
+    assert.ok(existsSync(join(CORPOS, arquivo)), `arte de corpo inteiro ausente: ${arquivo}`);
+  }
+});
+
 test("todo arquivo referenciado existe em disco", () => {
   const referencias = [...fonte.matchAll(/@\/assets\/guardioes\/rosto\/([\w.-]+\.png)/g)].map(
     (achado) => achado[1]
@@ -51,6 +70,9 @@ test("o Socializador usa o par, nao um guardiao so", () => {
   // dialogo. Mostrar so um contradiria o material que o aluno recebe.
   assert.ok(
     fonte.includes('socializer: require("@/assets/guardioes/rosto/socializer-duo.png")')
+  );
+  assert.ok(
+    fonte.includes('socializer: require("@/assets/guardioes/socializer-duo.png")')
   );
 });
 
