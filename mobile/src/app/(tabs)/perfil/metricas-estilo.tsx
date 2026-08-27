@@ -1,7 +1,11 @@
 import { HallBackground } from "@/components/HallTheme";
+import {
+  SectionGuideButton,
+  SectionGuideStep,
+} from "@/components/SectionGuideButton";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { useUsuario } from "@/context/SessaoContext";
@@ -14,13 +18,46 @@ import {
   setMetricsThemePreference,
 } from "@/utils/profileMetricThemes";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { registrarAlvoTour } from "@/utils/tourTargets";
 
 export default function PerfilMetricasEstilo() {
   const { usuario } = useUsuario();
   const [selectedTheme, setSelectedTheme] = useState<MetricsThemeOverride>("auto");
+  const headerGuideRef = useRef<View | null>(null);
+  const optionsGuideRef = useRef<View | null>(null);
   const palette = useMemo(
     () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
     [usuario?.perfilAtivo, usuario?.perfis]
+  );
+  const guideSteps = useMemo<SectionGuideStep[]>(
+    () => [
+      {
+        id: "metrics-appearance-intro",
+        target: "metrics_header",
+        title: "Visualização das métricas",
+        description:
+          "Esta configuração altera apenas a aparência e a organização do painel. Seus valores, progresso e histórico permanecem iguais.",
+        icon: "view-dashboard-outline",
+      },
+      {
+        id: "metrics-appearance-options",
+        target: "metrics_options",
+        title: "Automático ou estilo fixo",
+        description:
+          "Automático acompanha o perfil BrainHex ativo. Escolher outro estilo fixa aquela visualização neste aparelho até você mudar novamente.",
+        icon: "palette-outline",
+      },
+    ],
+    [],
+  );
+  const guideTargets = useMemo(
+    () => ({ metrics_header: headerGuideRef, metrics_options: optionsGuideRef }),
+    [],
+  );
+
+  useEffect(
+    () => registrarAlvoTour("config_metricas_visual", optionsGuideRef),
+    [],
   );
 
   useEffect(() => {
@@ -51,11 +88,20 @@ export default function PerfilMetricasEstilo() {
       <View style={[StyleSheet.absoluteFill, { opacity: 0.35 }]} pointerEvents="none">
         <HallBackground palette={palette} />
       </View>
+      <SectionGuideButton
+        profile={usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome}
+        sectionTitle="Visualização das métricas"
+        steps={guideSteps}
+        targetRefs={guideTargets}
+        style={styles.guideButton}
+      />
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.content}
     >
       <View
+        ref={headerGuideRef}
+        collapsable={false}
         style={[
           styles.headerCard,
           { backgroundColor: palette.surfaceElevated, borderColor: palette.border },
@@ -75,28 +121,32 @@ export default function PerfilMetricasEstilo() {
       </View>
 
       <View style={styles.list}>
-        {METRICS_THEME_OPTIONS.map((option) => {
+        {METRICS_THEME_OPTIONS.map((option, index) => {
           const active = option.key === selectedTheme;
 
           return (
-            <TouchableOpacity
+            <View
               key={option.key}
-              style={[
-                styles.optionCard,
-                {
-                  backgroundColor: palette.surface,
-                  borderColor: palette.border,
-                },
-                active && {
-                  backgroundColor: palette.accentSoft,
-                  borderColor: palette.borderStrong,
-                },
-              ]}
-              activeOpacity={0.86}
-              onPress={() => {
-                void handleSelect(option.key);
-              }}
+              ref={index === 0 ? optionsGuideRef : undefined}
+              collapsable={false}
             >
+              <TouchableOpacity
+                style={[
+                  styles.optionCard,
+                  {
+                    backgroundColor: palette.surface,
+                    borderColor: palette.border,
+                  },
+                  active && {
+                    backgroundColor: palette.accentSoft,
+                    borderColor: palette.borderStrong,
+                  },
+                ]}
+                activeOpacity={0.86}
+                onPress={() => {
+                  void handleSelect(option.key);
+                }}
+              >
               <View
                 style={[
                   styles.optionIcon,
@@ -130,7 +180,8 @@ export default function PerfilMetricasEstilo() {
                 size={22}
                 color={active ? palette.accent : palette.textSubtle}
               />
-            </TouchableOpacity>
+              </TouchableOpacity>
+            </View>
           );
         })}
       </View>
@@ -142,6 +193,11 @@ export default function PerfilMetricasEstilo() {
 const styles = StyleSheet.create({
   outer: {
     flex: 1,
+  },
+  guideButton: {
+    position: "absolute",
+    top: 14,
+    right: 18,
   },
   container: {
     flex: 1,

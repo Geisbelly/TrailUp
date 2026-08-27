@@ -27,9 +27,9 @@ export type NodeState = NodeItem & {
 }
 
 export type GraphLayout = {
-  levels: Array<Array<NodeState>>
+  levels: NodeState[][]
   positions: Map<NodeId, { x: number; y: number }>
-  edges: Array<{ from: NodeId; to: NodeId }>
+  edges: { from: NodeId; to: NodeId }[]
   roots: NodeState[]
   height: number
   width: number
@@ -156,7 +156,7 @@ export function useGraphLayout(data: NodeItem[], opts: Options = {}): GraphLayou
 
   // Arestas simples (para render)
   const edges = useMemo(() => {
-    const arr: Array<{ from: NodeId; to: NodeId }> = []
+    const arr: { from: NodeId; to: NodeId }[] = []
     safeData.forEach(n => (n.next || []).forEach(t => arr.push({ from: n.id, to: t })))
     return arr
   }, [safeData])

@@ -98,7 +98,11 @@ function buildContinentBackdrop(
     C ${width * 0.46} ${height * 0.4}, ${width * 0.46} ${height * 0.22}, ${width * 0.58} ${height * 0.14} Z`;
 }
 
-export function TrilhaMapaHeroStable() {
+export function TrilhaMapaHeroStable({
+  tourTargetRef,
+}: {
+  tourTargetRef?: React.RefObject<View | null>;
+}) {
   const { grafo, mapTheme, perfil } = useTrilha();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const shellPalette = useMemo(
@@ -448,7 +452,7 @@ export function TrilhaMapaHeroStable() {
               />
             </View>
 
-            {nodes.map((node) => {
+            {nodes.map((node, nodeIndex) => {
               const borderColor = node.completed
                 ? palette.borderDone
                 : node.current
@@ -467,6 +471,8 @@ export function TrilhaMapaHeroStable() {
               return (
                 <Pressable
                   key={node.id}
+                  ref={nodeIndex === 0 ? tourTargetRef : undefined}
+                  collapsable={false}
                   onPress={() => {
                     if (node.locked) return;
                     router.push(

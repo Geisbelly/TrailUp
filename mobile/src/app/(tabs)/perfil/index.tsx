@@ -163,7 +163,7 @@ export default function PerfilHome() {
       }),
     [metricsViewModel, perfisRepresentativos.length, resolvedTheme],
   );
-  const metricGuideRefs = useMemo(
+  const metricGuideRefs = useMemo<Record<string, React.RefObject<View | null>>>(
     () =>
       Object.fromEntries(
         profileGuideSteps
@@ -173,8 +173,34 @@ export default function PerfilHome() {
     [profileGuideSteps],
   );
   // Alvos do tutorial inicial: as refs ja existiam para o guia de pagina.
-  useEffect(() => registrarAlvoTour("perfil_resumo", profileSummaryGuideRef), [profileSummaryGuideRef]);
-  useEffect(() => registrarAlvoTour("perfil_metricas", profileTabsGuideRef), [profileTabsGuideRef]);
+  useEffect(
+    () =>
+      registrarAlvoTour("perfil_resumo", profileSummaryGuideRef, () => {
+        profileScrollRef.current?.scrollTo({ y: 0, animated: false });
+      }),
+    [],
+  );
+  useEffect(
+    () => {
+      const visibleMetricTargets = profileGuideSteps
+        .filter((step) => step.target.startsWith("profile_metric_"))
+        .map((step) => step.target);
+      // O segundo cartao, quando existe, fica livre da personagem posicionada
+      // no lado esquerdo e continua sendo uma metrica real deste perfil.
+      const visibleMetricTarget = visibleMetricTargets[1] ?? visibleMetricTargets[0];
+      const visibleMetricRef = visibleMetricTarget
+        ? metricGuideRefs[visibleMetricTarget]
+        : undefined;
+      const targetRef = visibleMetricRef ?? profileTabsGuideRef;
+      return registrarAlvoTour("perfil_metricas", targetRef, () => {
+        targetRef.current?.measureInWindow((_x, y) => {
+          const targetY = Math.max(0, profileScrollYRef.current + y - 118);
+          profileScrollRef.current?.scrollTo({ y: targetY, animated: false });
+        });
+      });
+    },
+    [metricGuideRefs, profileGuideSteps],
+  );
 
   const profileGuideTargets = useMemo(
     () => ({

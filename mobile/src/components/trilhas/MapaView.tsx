@@ -1,6 +1,5 @@
 import { useTrilha } from "@/context/TrilhaContext";
 import { useUsuario } from "@/context/SessaoContext";
-import { Color } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { router } from "expo-router";
 import React, { useMemo } from "react";

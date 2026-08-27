@@ -22,7 +22,7 @@ import {
   normalizeBrainHexProfile,
 } from "@/constants/profileImages";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
-import { obterAlvoTour } from "@/utils/tourTargets";
+import { obterAlvoTour, revelarAlvoTour } from "@/utils/tourTargets";
 import {
   buildFirstAccessTourSteps,
   buildFirstAccessTourStorageKey,
@@ -134,17 +134,35 @@ export function FirstAccessTour({
     if (!visible || !currentStep?.target) return;
 
     let ativo = true;
-    const timers = [160, 340, 620, 1000].map((atraso) =>
+    void revelarAlvoTour(currentStep.target);
+    const timers = [180, 380, 720, 1200, 1900, 2800].map((atraso) =>
       setTimeout(() => {
+        void revelarAlvoTour(currentStep.target);
         const ref = obterAlvoTour(currentStep.target);
+        if (__DEV__ && !ref) {
+          console.log(
+            `[TourAlvo] ${currentStep.id}: alvo "${currentStep.target}" NAO registrado ` +
+              `(t=${atraso}ms) — aguardando a tela montar`,
+          );
+        }
         ref?.current?.measureInWindow((x, y, largura, altura) => {
+          if (__DEV__) {
+            console.log(
+              `[TourAlvo] ${currentStep.id}: "${currentStep.target}" t=${atraso}ms ` +
+                `x=${Math.round(x)} y=${Math.round(y)} w=${Math.round(largura)} ` +
+                `h=${Math.round(altura)} | tela ${Math.round(width)}x${Math.round(height)}`,
+            );
+          }
           if (!ativo || largura < 2 || altura < 2) return;
           // Fora da tela: manter o que ja havia em vez de acender um retangulo
           // grampeado sobre o elemento errado.
           if (y + altura < 0 || y > height) return;
           const respiro = 8;
           setAlvoRect({
-            top: Math.max(0, y - respiro),
+            // No Android, measureInWindow parte da area de conteudo, enquanto
+            // o Modal translucido parte do topo fisico da tela. Sem o inset o
+            // recorte inteiro ficava uma barra de status acima do componente.
+            top: Math.max(0, y + insets.top - respiro),
             left: Math.max(0, x - respiro),
             width: Math.min(width, largura + respiro * 2),
             height: Math.min(height, altura + respiro * 2),
@@ -157,7 +175,7 @@ export function FirstAccessTour({
       ativo = false;
       timers.forEach(clearTimeout);
     };
-  }, [currentStep, height, visible, width]);
+  }, [currentStep, height, insets.top, visible, width]);
 
   const finish = useCallback(async () => {
     if (storageKey) {
@@ -193,8 +211,6 @@ export function FirstAccessTour({
   const measuredBubbleTop = bubbleAtTop
     ? bubbleTop
     : height - bubbleBottom - (bubbleHeight || height * 0.36);
-  const contentTop = Math.max(insets.top + 54, 66);
-  const contentBottom = Math.max(contentTop + 90, measuredBubbleTop - 12);
   const introductionWidth = Math.min(width * 0.64, 240);
   const introductionTop = Math.max(insets.top + 58, 70);
   const introductionRect = {
@@ -207,45 +223,28 @@ export function FirstAccessTour({
       Math.max(170, measuredBubbleTop - introductionTop - 12),
     ),
   };
-  // Recorte aproximado — so vale enquanto o alvo real nao foi medido (ou o
-  // passo nao tem alvo). Ele acende uma REGIAO, nao o item.
-  const recorteAproximado =
-    isIntroduction
-      ? introductionRect
-      : currentStep.highlight === "navigation"
-      ? {
-          top: height - navigationHighlightBottom - navigationHighlightHeight,
-          left: 8,
-          width: width - 16,
-          height: navigationHighlightHeight,
-        }
-      : currentStep.highlight === "help"
-        ? {
-            top: Math.max(insets.top + 42, 48),
-            left: width - 68,
-            width: 52,
-            height: 52,
-          }
-        : {
-            top: contentTop,
-            left: 12,
-            width: width - 24,
-            height: Math.max(90, contentBottom - contentTop),
-          };
-  // O elemento medido sempre ganha do desenho aproximado.
-  const highlightRect =
-    !isIntroduction && alvoRect ? alvoRect : recorteAproximado;
+  // A apresentacao destaca o palco do personagem. Nos demais passos somente
+  // uma medida real pode abrir o recorte; nunca iluminamos uma area estimada.
+  const highlightRect = isIntroduction ? introductionRect : alvoRect;
 
   // Balao colado no recorte: abaixo se couber, senao acima, senao no rodape.
   // Antes ele ia sempre para topo ou rodape fixo, e acabava longe do item que
   // estava explicando — ou por cima dele.
   const balaoAltura = bubbleHeight || height * 0.36;
   const limiteInferior = height - Math.max(insets.bottom, 12);
-  const abaixoDoAlvo = highlightRect.top + highlightRect.height + 12;
-  const acimaDoAlvo = highlightRect.top - 12 - balaoAltura;
+  const safeHighlight = highlightRect ?? {
+    top: height * 0.32,
+    left: width * 0.25,
+    width: width * 0.5,
+    height: 60,
+  };
+  const abaixoDoAlvo = safeHighlight.top + safeHighlight.height + 12;
+  const acimaDoAlvo = safeHighlight.top - 12 - balaoAltura;
   const balaoTop =
     isIntroduction || !alvoRect
       ? measuredBubbleTop
+      : !highlightRect
+        ? Math.max(insets.top + 72, height * 0.56)
       : limiteInferior - abaixoDoAlvo >= balaoAltura
         ? abaixoDoAlvo
         : acimaDoAlvo >= insets.top + 12
@@ -254,6 +253,22 @@ export function FirstAccessTour({
 
   const accent = guideConfig.color;
   const bubbleBorder = tinycolor(accent).lighten(12).setAlpha(0.75).toRgbString();
+  const coachWidth = Math.min(164, width * 0.43);
+  const coachHeight = Math.min(310, height * 0.41);
+  const targetCenterY = safeHighlight.top + safeHighlight.height / 2;
+  const coachOnBottom = targetCenterY < height * 0.5;
+  const coachTop = coachOnBottom
+    ? Math.min(height - insets.bottom - coachHeight - 8, balaoTop + Math.max(70, balaoAltura * 0.42))
+    : Math.max(insets.top + 58, balaoTop - coachHeight * 0.52);
+  const dialogLeft = Math.min(width * 0.28, 112);
+  const arrowStart = {
+    x: dialogLeft + (width - dialogLeft - 14) * 0.5,
+    y: coachOnBottom ? balaoTop : balaoTop + balaoAltura,
+  };
+  const arrowEnd = {
+    x: Math.max(22, Math.min(width - 22, safeHighlight.left + safeHighlight.width / 2)),
+    y: coachOnBottom ? safeHighlight.top + safeHighlight.height : safeHighlight.top,
+  };
 
   return (
     <Modal
@@ -265,13 +280,20 @@ export function FirstAccessTour({
       onRequestClose={() => void finish()}
     >
       <View style={styles.root}>
-        <TourSpotlight
-          rect={highlightRect}
-          screenWidth={width}
-          screenHeight={height}
-          scrim={`${palette.background}c9`}
-          accent={accent}
-        />
+        {highlightRect ? (
+          <TourSpotlight
+            rect={highlightRect}
+            screenWidth={width}
+            screenHeight={height}
+            scrim={`${palette.background}b8`}
+            accent={accent}
+          />
+        ) : (
+          <View
+            pointerEvents="none"
+            style={[StyleSheet.absoluteFill, { backgroundColor: `${palette.background}b8` }]}
+          />
+        )}
 
         {isIntroduction ? (
           <View
@@ -315,10 +337,26 @@ export function FirstAccessTour({
           </Pressable>
         </View>
 
+        {!isIntroduction && highlightRect ? (
+          <TourArrow start={arrowStart} end={arrowEnd} accent={accent} />
+        ) : null}
+
+        {!isIntroduction ? (
+          <Image
+            source={guardianFullImages[normalizedProfile]}
+            resizeMode="contain"
+            accessibilityLabel={`${guideName}, guia do perfil`}
+            style={[
+              styles.coachGuideImage,
+              { top: coachTop, width: coachWidth, height: coachHeight },
+            ]}
+          />
+        ) : null}
+
         <View
           style={[
             styles.speechBubble,
-            { top: balaoTop },
+            { top: balaoTop, left: isIntroduction ? 16 : dialogLeft },
             {
               backgroundColor: palette.surfaceElevated,
               borderColor: bubbleBorder,
@@ -329,16 +367,19 @@ export function FirstAccessTour({
             if (nextHeight !== bubbleHeight) setBubbleHeight(nextHeight);
           }}
         >
+          <View style={[styles.bubbleAccent, { backgroundColor: accent }]} />
           {!isIntroduction ? (
-            <Image
-              source={guardianFullImages[normalizedProfile]}
-              resizeMode="contain"
-              accessibilityLabel={`${guideName}, guia do perfil`}
-              style={styles.coachGuideImage}
+            <View
+              style={[
+                styles.bubbleTail,
+                {
+                  backgroundColor: palette.surfaceElevated,
+                  borderColor: bubbleBorder,
+                },
+              ]}
             />
           ) : null}
-
-          <View style={!isIntroduction ? styles.dialogCopyWithGuide : undefined}>
+          <View>
             <View style={styles.guideHeader}>
               <View style={styles.guideHeaderCopy}>
                 <View style={styles.speakerRow}>
@@ -376,7 +417,7 @@ export function FirstAccessTour({
               onPress={() => setIndex((value) => Math.max(0, value - 1))}
               style={[
                 styles.backButton,
-                { borderColor: palette.border, opacity: index === 0 ? 0.35 : 1 },
+                { borderColor: bubbleBorder, opacity: index === 0 ? 0.35 : 1 },
               ]}
             >
               <Text style={[styles.backText, { color: palette.textMuted }]}>Voltar</Text>
@@ -428,6 +469,51 @@ function TourSpotlight({
   );
 }
 
+function TourArrow({
+  start,
+  end,
+  accent,
+}: {
+  start: { x: number; y: number };
+  end: { x: number; y: number };
+  accent: string;
+}) {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const distance = Math.max(1, Math.sqrt(dx * dx + dy * dy));
+  // A seta do Clash fica junto do objeto; ela nao vira uma linha atravessando
+  // a tela quando o alvo e uma lista ou painel grande.
+  const length = Math.max(34, Math.min(108, distance - 18));
+  const angle = Math.atan2(dy, dx);
+  const arrowStartX = end.x - (dx / distance) * length;
+  const arrowStartY = end.y - (dy / distance) * length;
+  const centerX = (arrowStartX + end.x) / 2;
+  const centerY = (arrowStartY + end.y) / 2;
+
+  return (
+    <View
+      pointerEvents="none"
+      style={[
+        styles.arrow,
+        {
+          left: centerX - length / 2,
+          top: centerY - 18,
+          width: length,
+          transform: [{ rotate: `${angle}rad` }],
+        },
+      ]}
+    >
+      <View style={[styles.arrowShaft, { backgroundColor: accent, shadowColor: accent }]} />
+      <MaterialCommunityIcons
+        name="arrow-right-bold"
+        size={38}
+        color={accent}
+        style={styles.arrowHead}
+      />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   root: { flex: 1 },
   topBar: {
@@ -461,12 +547,12 @@ const styles = StyleSheet.create({
   skipText: { fontSize: 12, fontWeight: "700" },
   speechBubble: {
     position: "absolute",
-    left: 16,
-    right: 16,
-    zIndex: 3,
-    borderWidth: 1.5,
-    borderRadius: 24,
-    padding: 15,
+    right: 12,
+    zIndex: 6,
+    borderWidth: 2,
+    borderRadius: 18,
+    padding: 13,
+    overflow: "visible",
     shadowColor: "#000",
     shadowOpacity: 0.42,
     shadowRadius: 18,
@@ -480,15 +566,8 @@ const styles = StyleSheet.create({
   },
   coachGuideImage: {
     position: "absolute",
-    zIndex: 4,
-    top: 8,
-    left: -10,
-    width: 132,
-    height: 218,
-  },
-  dialogCopyWithGuide: {
-    marginLeft: 104,
-    minHeight: 210,
+    zIndex: 5,
+    left: -12,
   },
   guideHeaderCopy: { flex: 1 },
   introductionStage: {
@@ -520,14 +599,14 @@ const styles = StyleSheet.create({
   },
   speaker: { fontSize: 12, fontWeight: "900", letterSpacing: 1.2, textTransform: "uppercase" },
   counter: { fontSize: 12, fontWeight: "700" },
-  title: { marginTop: 5, fontSize: 20, lineHeight: 24, fontWeight: "800" },
-  description: { marginTop: 9, fontSize: 15, lineHeight: 21 },
-  progressRow: { flexDirection: "row", gap: 4, marginTop: 14 },
+  title: { marginTop: 4, fontSize: 18, lineHeight: 22, fontWeight: "900" },
+  description: { marginTop: 7, fontSize: 13.5, lineHeight: 18.5 },
+  progressRow: { flexDirection: "row", gap: 4, marginTop: 10 },
   progressDot: { flex: 1, height: 3, borderRadius: 2 },
-  actions: { flexDirection: "row", gap: 10, marginTop: 15 },
+  actions: { flexDirection: "row", gap: 8, marginTop: 11 },
   backButton: {
     flex: 1,
-    minHeight: 44,
+    minHeight: 39,
     borderRadius: 14,
     borderWidth: 1,
     alignItems: "center",
@@ -535,12 +614,12 @@ const styles = StyleSheet.create({
   },
   nextButton: {
     flex: 1.45,
-    minHeight: 44,
+    minHeight: 39,
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
   },
-  backText: { fontSize: 14, fontWeight: "700" },
+  backText: { fontSize: 13, fontWeight: "800" },
   nextText: { color: "#FFFFFF", fontSize: 14, fontWeight: "900" },
   scrim: { position: "absolute" },
   spotlight: {
@@ -550,5 +629,42 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.9,
     shadowRadius: 16,
     elevation: 3,
+  },
+  arrow: {
+    position: "absolute",
+    zIndex: 4,
+    height: 36,
+    justifyContent: "center",
+  },
+  arrowShaft: {
+    height: 10,
+    borderRadius: 999,
+    marginRight: 20,
+    shadowOpacity: 0.9,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  arrowHead: {
+    position: "absolute",
+    right: -8,
+    top: -1,
+  },
+  bubbleAccent: {
+    position: "absolute",
+    left: 18,
+    right: 18,
+    top: -2,
+    height: 3,
+    borderRadius: 999,
+  },
+  bubbleTail: {
+    position: "absolute",
+    left: -10,
+    top: 34,
+    width: 20,
+    height: 20,
+    borderLeftWidth: 2,
+    borderBottomWidth: 2,
+    transform: [{ rotate: "45deg" }],
   },
 });

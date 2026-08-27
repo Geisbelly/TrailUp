@@ -1,6 +1,10 @@
 import { HallBackground } from "@/components/HallTheme";
+import {
+  SectionGuideButton,
+  SectionGuideStep,
+} from "@/components/SectionGuideButton";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { useMetricas } from "@/context/MetricasContext";
@@ -8,6 +12,7 @@ import { useUsuario } from "@/context/SessaoContext";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { TelemetryConsentPreferences } from "@/utils/telemetryConsent";
+import { registrarAlvoTour } from "@/utils/tourTargets";
 
 type ToggleItem = {
   key: keyof TelemetryConsentPreferences;
@@ -45,12 +50,96 @@ const TOGGLE_ITEMS: ToggleItem[] = [
 
 export default function ColetaDadosScreen() {
   const { usuario } = useUsuario();
+  const scrollRef = useRef<ScrollView | null>(null);
+  const scrollOffsetRef = useRef(0);
+  const cameraPermissionGuideRef = useRef<View | null>(null);
+  const toggleGuideRefs = useMemo<
+    Record<keyof TelemetryConsentPreferences, React.RefObject<View | null>>
+  >(
+    () => ({
+      cameraEnabled: React.createRef<View>(),
+      usageEnabled: React.createRef<View>(),
+      performanceEnabled: React.createRef<View>(),
+      chatEnabled: React.createRef<View>(),
+    }),
+    [],
+  );
   const palette = useMemo(
     () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
     [usuario?.perfilAtivo, usuario?.perfis]
   );
   const { telemetryPreferences, setTelemetryPreference, cameraPermission } = useMetricas();
   const [savingKey, setSavingKey] = useState<keyof TelemetryConsentPreferences | null>(null);
+  const guideSteps = useMemo<SectionGuideStep[]>(
+    () => [
+      {
+        id: "collection-camera",
+        target: "collection_camera",
+        title: "Ativar ou desativar a câmera",
+        description:
+          "A câmera é opcional. Ativo permite analisar frames durante o estudo, desde que o Android também tenha concedido a permissão. Desativado interrompe essa captura sem bloquear aulas, atividades ou notas.",
+        icon: "camera-outline",
+      },
+      {
+        id: "collection-usage",
+        target: "collection_usage",
+        title: "Uso e navegação",
+        description:
+          "Controla o registro de sessões, páginas visitadas e interações usado para calcular engajamento, continuidade e tempo de uso.",
+        icon: "gesture-tap",
+      },
+      {
+        id: "collection-performance",
+        target: "collection_performance",
+        title: "Desempenho acadêmico",
+        description:
+          "Controla o registro de tentativas, acertos e evolução nas atividades. Essas informações alimentam as métricas de aprendizagem.",
+        icon: "chart-line",
+      },
+      {
+        id: "collection-chat",
+        target: "collection_chat",
+        title: "Ativar ou desativar o chat",
+        description:
+          "Ativo permite registrar abertura, mensagens e contexto de uso do mentor para melhorar o apoio. Desativado interrompe esse registro; o estado pode ser alterado aqui a qualquer momento.",
+        icon: "chat-processing-outline",
+      },
+      {
+        id: "collection-permission",
+        target: "collection_permission",
+        title: "Permissão do aparelho",
+        description:
+          "Este estado vem do Android. A coleta por câmera só funciona quando o controle acima está Ativo e a permissão do sistema está Permitida.",
+        icon: "shield-lock-outline",
+      },
+    ],
+    [],
+  );
+  const guideTargets = useMemo(
+    () => ({
+      collection_camera: toggleGuideRefs.cameraEnabled,
+      collection_usage: toggleGuideRefs.usageEnabled,
+      collection_performance: toggleGuideRefs.performanceEnabled,
+      collection_chat: toggleGuideRefs.chatEnabled,
+      collection_permission: cameraPermissionGuideRef,
+    }),
+    [toggleGuideRefs],
+  );
+
+  useEffect(
+    () =>
+      registrarAlvoTour("config_camera", toggleGuideRefs.cameraEnabled, () => {
+        scrollRef.current?.scrollTo({ y: 0, animated: false });
+      }),
+    [toggleGuideRefs],
+  );
+  useEffect(
+    () =>
+      registrarAlvoTour("config_chat", toggleGuideRefs.chatEnabled, () => {
+        scrollRef.current?.scrollTo({ y: 190, animated: false });
+      }),
+    [toggleGuideRefs],
+  );
 
   const handleToggle = async (key: keyof TelemetryConsentPreferences) => {
     if (savingKey) return;
@@ -67,9 +156,23 @@ export default function ColetaDadosScreen() {
       <View style={[StyleSheet.absoluteFill, { opacity: 0.35 }]} pointerEvents="none">
         <HallBackground palette={palette} />
       </View>
+      <SectionGuideButton
+        profile={usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome}
+        sectionTitle="Coleta e acessos"
+        steps={guideSteps}
+        targetRefs={guideTargets}
+        scrollRef={scrollRef}
+        scrollOffsetRef={scrollOffsetRef}
+        style={styles.guideButton}
+      />
     <ScrollView
+      ref={scrollRef}
       style={styles.container}
       contentContainerStyle={styles.content}
+      onScroll={(event) => {
+        scrollOffsetRef.current = event.nativeEvent.contentOffset.y;
+      }}
+      scrollEventThrottle={16}
     >
       <Text style={[styles.title, { color: palette.text }]}>Coleta e acessos</Text>
       <Text style={[styles.subtitle, { color: palette.textMuted }]}>
@@ -81,15 +184,19 @@ export default function ColetaDadosScreen() {
           const enabled = telemetryPreferences[item.key];
           const isSaving = savingKey === item.key;
           return (
-            <TouchableOpacity
+            <View
               key={item.key}
-              style={[styles.itemRow, { borderColor: palette.border }]}
-              activeOpacity={0.85}
-              onPress={() => {
-                void handleToggle(item.key);
-              }}
-              disabled={Boolean(savingKey)}
+              ref={toggleGuideRefs[item.key]}
+              collapsable={false}
             >
+              <TouchableOpacity
+                style={[styles.itemRow, { borderColor: palette.border }]}
+                activeOpacity={0.85}
+                onPress={() => {
+                  void handleToggle(item.key);
+                }}
+                disabled={Boolean(savingKey)}
+              >
               <View style={styles.itemLeft}>
                 <View
                   style={[
@@ -126,12 +233,17 @@ export default function ColetaDadosScreen() {
                   {isSaving ? "..." : enabled ? "Ativo" : "Desativado"}
                 </Text>
               </View>
-            </TouchableOpacity>
+              </TouchableOpacity>
+            </View>
           );
         })}
       </View>
 
-      <View style={[styles.infoBox, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+      <View
+        ref={cameraPermissionGuideRef}
+        collapsable={false}
+        style={[styles.infoBox, { backgroundColor: palette.surface, borderColor: palette.border }]}
+      >
         <Text style={[styles.infoTitle, { color: palette.text }]}>Permissão de câmera</Text>
         <Text style={[styles.infoBody, { color: palette.textMuted }]}>
           Estado atual:{" "}
@@ -154,6 +266,11 @@ export default function ColetaDadosScreen() {
 const styles = StyleSheet.create({
   outer: {
     flex: 1,
+  },
+  guideButton: {
+    position: "absolute",
+    top: 14,
+    right: 18,
   },
   container: {
     flex: 1,

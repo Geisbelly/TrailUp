@@ -16,6 +16,26 @@ test("o tutorial percorre todas as áreas principais e páginas internas previst
   assert.ok(routes.has("/(tabs)/perfil"));
   assert.ok(routes.has("/(tabs)/perfil/biblioteca-conquistas"));
   assert.ok(routes.has("/(tabs)/perfil/settings"));
+  assert.ok(routes.has("/(tabs)/perfil/metricas-estilo"));
+  assert.ok(routes.has("/(tabs)/perfil/coleta-dados"));
+  assert.ok(routes.has("/(tabs)/perfil/relatorio"));
+});
+
+test("o tutorial explica controles de privacidade e apresentação dos dados", () => {
+  const steps = buildFirstAccessTourSteps("mastermind");
+  const camera = steps.find((step) => step.id === "camera-consent");
+  const chat = steps.find((step) => step.id === "chat-consent");
+  const appearance = steps.find((step) => step.id === "metrics-appearance");
+  const report = steps.find((step) => step.id === "data-report");
+
+  assert.match(camera?.description ?? "", /ativar|desativar|permissão/i);
+  assert.equal(camera?.target, "config_camera");
+  assert.match(chat?.description ?? "", /chat|mentor/i);
+  assert.equal(chat?.target, "config_chat");
+  assert.match(appearance?.description ?? "", /visualização|apresentação/i);
+  assert.equal(appearance?.target, "config_metricas_visual");
+  assert.match(report?.description ?? "", /PDF|relatório/i);
+  assert.equal(report?.target, "config_relatorio");
 });
 
 test("o roteiro e o painel de métricas mudam com o perfil", () => {

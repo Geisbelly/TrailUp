@@ -1,9 +1,13 @@
 import { OrnamentDivider } from "@/components/HallTheme";
+import {
+  SectionGuideButton,
+  SectionGuideStep,
+} from "@/components/SectionGuideButton";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Linking,
   ScrollView,
@@ -13,7 +17,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import tinycolor from "tinycolor2";
 
 import { useDialog } from "@/context/DialogContext";
 import { useUsuario } from "@/context/SessaoContext";
@@ -25,6 +28,7 @@ import {
 } from "@/utils/profileMetricThemes";
 import { buildFirstAccessTourStorageKey } from "@/utils/firstAccessTour";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { registrarAlvoTour } from "@/utils/tourTargets";
 
 const pkg = require("../../../../package.json");
 
@@ -36,6 +40,19 @@ export default function Settings() {
   const [metricsThemeLabel, setMetricsThemeLabel] = useState("Automático");
   const { showDialog } = useDialog();
   const { usuario } = useUsuario();
+  const settingsListGuideRef = useRef<View | null>(null);
+  const settingsScrollRef = useRef<ScrollView | null>(null);
+  const settingsScrollOffsetRef = useRef(0);
+  const legalGuideRef = useRef<View | null>(null);
+  const aboutGuideRef = useRef<View | null>(null);
+  const securityGuideRef = useRef<View | null>(null);
+  useEffect(
+    () =>
+      registrarAlvoTour("config_lista", settingsListGuideRef, () => {
+        settingsScrollRef.current?.scrollTo({ y: 0, animated: false });
+      }),
+    [],
+  );
   const palette = useMemo(
     () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
     [usuario?.perfilAtivo, usuario?.perfis],
@@ -190,7 +207,6 @@ export default function Settings() {
       ].filter((item) => textoMatches(item.label)),
     [
       metricsThemeLabel,
-      palette.border,
       palette.surfaceElevated,
       palette.text,
       textoMatches,
@@ -310,7 +326,6 @@ export default function Settings() {
       ].filter((item) => textoMatches(item.label)),
     [
       appVersion,
-      palette.border,
       palette.surfaceElevated,
       palette.text,
       reverTutorial,
@@ -341,20 +356,79 @@ export default function Settings() {
           ),
         },
       ].filter((item) => textoMatches(item.label)),
-    [palette.border, palette.surfaceElevated, palette.text, textoMatches],
+    [palette.surfaceElevated, palette.text, textoMatches],
   );
-
-  const gold = tinycolor(palette.accent).lighten(10).toHexString();
+  const settingsGuideSteps = useMemo<SectionGuideStep[]>(
+    () => [
+      {
+        id: "settings-account",
+        target: "settings_account",
+        title: "Conta, métricas e coleta",
+        description:
+          "Sua conta reúne informações pessoais, a visualização das métricas, os controles de câmera, uso, desempenho e chat, além da exclusão e do relatório dos dados.",
+        icon: "account-cog-outline",
+      },
+      {
+        id: "settings-legal",
+        target: "settings_legal",
+        title: "Privacidade e termos",
+        description:
+          "Consulte aqui a política de privacidade e os termos que explicam o tratamento dos dados e as condições de uso da plataforma.",
+        icon: "shield-account-outline",
+      },
+      {
+        id: "settings-about",
+        target: "settings_about",
+        title: "Tutorial e informações do app",
+        description:
+          "Você pode reiniciar este tutorial, consultar informações do aplicativo e verificar a versão instalada.",
+        icon: "information-outline",
+      },
+      {
+        id: "settings-security",
+        target: "settings_security",
+        title: "Segurança",
+        description:
+          "A área de segurança permite redefinir sua senha. O botão Sair encerra somente a sessão atual.",
+        icon: "lock-reset",
+      },
+    ],
+    [],
+  );
+  const settingsGuideTargets = useMemo(
+    () => ({
+      settings_account: settingsListGuideRef,
+      settings_legal: legalGuideRef,
+      settings_about: aboutGuideRef,
+      settings_security: securityGuideRef,
+    }),
+    [],
+  );
 
   return (
     <View
       style={[styles.outerWrapper, { backgroundColor: palette.background }]}
     >
+      <SectionGuideButton
+        profile={usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome}
+        sectionTitle="Configurações"
+        steps={settingsGuideSteps}
+        targetRefs={settingsGuideTargets}
+        scrollRef={settingsScrollRef}
+        scrollOffsetRef={settingsScrollOffsetRef}
+        style={styles.guideButton}
+      />
       <ScrollView
+        ref={settingsScrollRef}
         style={styles.container}
         contentContainerStyle={styles.content}
+        onScroll={(event) => {
+          settingsScrollOffsetRef.current = event.nativeEvent.contentOffset.y;
+        }}
+        scrollEventThrottle={16}
       >
-        <View
+        <View ref={settingsListGuideRef} collapsable={false}>
+          <View
           style={[
             styles.searchContainer,
             {
@@ -362,7 +436,7 @@ export default function Settings() {
               borderColor: "#ffffff25",
             },
           ]}
-        >
+          >
           <Feather
             name="search"
             size={20}
@@ -376,22 +450,23 @@ export default function Settings() {
             value={busca}
             onChangeText={setBusca}
           />
-        </View>
+          </View>
 
-        <View style={styles.sectionContainer}>
-          <Text style={[styles.sectionTitle, { color: palette.textMuted }]}>
-            Sua conta
-          </Text>
-          {contaLinks.map((item, idx) => (
-            <View key={idx}>{item.render}</View>
-          ))}
+          <View style={styles.sectionContainer}>
+            <Text style={[styles.sectionTitle, { color: palette.textMuted }]}>
+              Sua conta
+            </Text>
+            {contaLinks.map((item, idx) => (
+              <View key={idx}>{item.render}</View>
+            ))}
+          </View>
         </View>
 
         <View style={styles.ornamentRow}>
           <OrnamentDivider color={"#fff"} />
         </View>
 
-        <View style={styles.sectionContainer}>
+        <View ref={legalGuideRef} collapsable={false} style={styles.sectionContainer}>
           <Text style={[styles.sectionTitle, { color: palette.textMuted }]}>
             Legal
           </Text>
@@ -418,7 +493,7 @@ export default function Settings() {
           <OrnamentDivider color={"#fff"} />
         </View>
 
-        <View style={styles.sectionContainer}>
+        <View ref={aboutGuideRef} collapsable={false} style={styles.sectionContainer}>
           <Text style={[styles.sectionTitle, { color: palette.textMuted }]}>
             Sobre
           </Text>
@@ -431,7 +506,7 @@ export default function Settings() {
           <OrnamentDivider color={"#fff"} />
         </View>
 
-        <View style={styles.sectionContainer}>
+        <View ref={securityGuideRef} collapsable={false} style={styles.sectionContainer}>
           <Text style={[styles.sectionTitle, { color: palette.textMuted }]}>
             Segurança
           </Text>
@@ -468,6 +543,11 @@ export default function Settings() {
 const styles = StyleSheet.create({
   outerWrapper: {
     flex: 1,
+  },
+  guideButton: {
+    position: "absolute",
+    top: 14,
+    right: 18,
   },
   container: {
     flex: 1,

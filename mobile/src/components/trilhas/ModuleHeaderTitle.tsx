@@ -6,12 +6,14 @@ import {
 } from "@/constants/profileImages";
 import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { registrarAlvoTour } from "@/utils/tourTargets";
 import {
   buildTrilhaGuideContent,
   TrilhaGuideScope,
   TrilhaGuideTarget,
 } from "@/utils/trilhaGuide";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useIsFocused } from "@react-navigation/native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Image,
@@ -290,6 +292,11 @@ export function ModuleHeaderGuideButton({
 }) {
   const [open, setOpen] = useState(false);
   const guideButtonRef = useRef<View | null>(null);
+  const isFocused = useIsFocused();
+  useEffect(() => {
+    if (!isFocused) return;
+    return registrarAlvoTour("guia_botao", guideButtonRef);
+  }, [isFocused]);
   const normalizedProfile = useMemo(
     () => normalizeBrainHexProfile(profile) ?? "mastermind",
     [profile],
@@ -328,6 +335,7 @@ export function ModuleHeaderGuideButton({
     <>
       <Pressable
         ref={guideButtonRef}
+        collapsable={false}
         style={[
           styles.helpButton,
           variant === "icon"

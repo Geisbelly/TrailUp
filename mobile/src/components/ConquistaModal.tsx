@@ -28,13 +28,6 @@ interface ConquistaModalProps {
   category?: string;
 }
 
-function withAlpha(color: string, alphaHex: string) {
-  const normalized = String(color).trim();
-  if (/^#[0-9a-fA-F]{8}$/.test(normalized)) return `${normalized.slice(0, 7)}${alphaHex}`;
-  if (/^#[0-9a-fA-F]{6}$/.test(normalized)) return `${normalized}${alphaHex}`;
-  return normalized;
-}
-
 export default function ConquistaModal({
   visible,
   onClose,

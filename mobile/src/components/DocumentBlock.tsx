@@ -830,7 +830,7 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent, pro
     !isDeckHtml && (tipo === "pdf" || tipo === "documento" || tipo === "apresentacao");
   const podeTelaCheia =
     tipo === "pdf" || tipo === "documento" || tipo === "apresentacao" || isDeckHtml;
-  const [deckErro, setDeckErro] = useState<string | null>(null);
+  const [, setDeckErro] = useState<string | null>(null);
   const [resolvingUrl, setResolvingUrl] = useState(false);
   const [resolveError, setResolveError] = useState<string | null>(null);
   const [nativeLoading, setNativeLoading] = useState(false);

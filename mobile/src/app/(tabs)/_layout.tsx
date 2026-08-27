@@ -6,7 +6,9 @@ import { NotificationsProvider } from "@/context/NotificacaoContext";
 import { TrilhaProvider } from "@/context/TrilhaContext";
 // 1. Importando MaterialCommunityIcons (mais criativo/detalhado)
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { BottomTabBar, BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { Tabs, useSegments } from "expo-router";
+import React, { useEffect, useRef } from "react";
 import { Image, View } from "react-native";
 
 import { ToastContainer } from "@/components/ToastContainer";
@@ -17,6 +19,18 @@ import { user } from "@/database/mockUser";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { useMonitorDeSessao } from "@/hooks/useMonitorDeSessao";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { registrarAlvoTour } from "@/utils/tourTargets";
+
+function TourAwareTabBar(props: BottomTabBarProps) {
+  const targetRef = useRef<View | null>(null);
+  useEffect(() => registrarAlvoTour("abas_principais", targetRef), []);
+
+  return (
+    <View ref={targetRef} collapsable={false}>
+      <BottomTabBar {...props} />
+    </View>
+  );
+}
 
 export default function TabLayout() {
   const { usuario } = useUsuario();
@@ -55,6 +69,7 @@ export default function TabLayout() {
           <TrilhaProvider>
             <ConquistaRankProvider>
               <Tabs
+            tabBar={(props) => <TourAwareTabBar {...props} />}
             screenOptions={{
               tabBarActiveTintColor: palette.accent,
               tabBarInactiveTintColor: palette.inactive,

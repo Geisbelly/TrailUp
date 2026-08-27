@@ -309,6 +309,8 @@ export default function RankingHome() {
   const profileEmphasis = getProfileGuideEmphasis(activeProfile, "ranking");
   const rankingHeaderGuideRef = useRef<View | null>(null);
   const rankingCategoriesGuideRef = useRef<View | null>(null);
+  const rankingSampleCategoryTourRef = useRef<View | null>(null);
+  const rankingScrollRef = useRef<ScrollView | null>(null);
   const rankingGuideSteps = useMemo<SectionGuideStep[]>(
     () => [
       {
@@ -331,7 +333,13 @@ export default function RankingHome() {
     [profileEmphasis],
   );
   // Alvos do tutorial inicial: as refs ja existiam para o guia de pagina.
-  useEffect(() => registrarAlvoTour("ranking_categorias", rankingCategoriesGuideRef), [rankingCategoriesGuideRef]);
+  useEffect(
+    () =>
+      registrarAlvoTour("ranking_categorias", rankingSampleCategoryTourRef, () => {
+        rankingScrollRef.current?.scrollTo({ y: 250, animated: false });
+      }),
+    [],
+  );
 
   const rankingGuideTargets = useMemo(
     () => ({
@@ -412,6 +420,7 @@ export default function RankingHome() {
           style={styles.guideButton}
         />
         <ScrollView
+          ref={rankingScrollRef}
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
         >
@@ -459,13 +468,20 @@ export default function RankingHome() {
               const isLastItem = index === data.length - 1;
               const isTotalOdd = data.length % 2 !== 0;
               const isFullWidth = isLastItem && isTotalOdd;
+              const highlightedIndex = data.length > 1 ? 1 : 0;
               return (
-                <RankCard
+                <View
                   key={item.id}
-                  item={item}
-                  isFullWidth={isFullWidth}
-                  palette={palette}
-                />
+                  ref={index === highlightedIndex ? rankingSampleCategoryTourRef : undefined}
+                  collapsable={false}
+                  style={{ width: isFullWidth ? "100%" : CARD_W }}
+                >
+                  <RankCard
+                    item={item}
+                    isFullWidth={isFullWidth}
+                    palette={palette}
+                  />
+                </View>
               );
             })}
           </View>

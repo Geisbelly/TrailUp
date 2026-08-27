@@ -7,6 +7,7 @@ import { getBrainHexProfileCapabilities } from "@/utils/brainHexCapabilities";
 import { unificarContadores } from "@/utils/progressoPersonalizado";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { registrarAlvoTour } from "@/utils/tourTargets";
+import { useIsFocused } from "@react-navigation/native";
 import React, { useEffect, useMemo, useRef } from "react";
 import { StyleSheet, View } from "react-native";
 import { TrilhaArvoreSimple } from "./ArvoreView";
@@ -29,6 +30,7 @@ export const TrilhaBase: React.FC<{
     perfil,
   } = useTrilha();
   const { usuario } = useUsuario();
+  const isFocused = useIsFocused();
   const palette = getProfileShellPalette(perfil);
   const capabilities = getBrainHexProfileCapabilities(perfil);
   const progressGuideTargetRef = useRef<View | null>(null);
@@ -46,6 +48,23 @@ export const TrilhaBase: React.FC<{
   );
   const hasTrailPersonalization =
     Object.keys(personalizedTopics ?? {}).length > 0;
+
+  // Hooks precisam ser executados em todas as renderizações, inclusive durante
+  // carregamento/erro. O registro aceita refs ainda vazias e as resolve depois.
+  useEffect(
+    () => {
+      if (!isFocused) return;
+      return registrarAlvoTour("trilha_resumo", progressGuideTargetRef);
+    },
+    [isFocused],
+  );
+  useEffect(
+    () => {
+      if (!isFocused) return;
+      return registrarAlvoTour("trilha_mapa", journeyGuideTargetRef);
+    },
+    [isFocused],
+  );
 
   if (carregando || !classeAtual) return <View style={st.page} />;
   if (erro) return <View style={st.page} />;
@@ -91,18 +110,6 @@ export const TrilhaBase: React.FC<{
     return status.includes("concl") || pct >= 100;
   }).length;
 
-  // O tutorial inicial precisa apontar para ESTES elementos; as refs ja
-  // existiam para o guia de modulo, entao aqui elas so passam a ser
-  // alcancaveis por nome de fora da tela.
-  useEffect(
-    () => registrarAlvoTour("trilha_resumo", progressGuideTargetRef),
-    [progressGuideTargetRef],
-  );
-  useEffect(
-    () => registrarAlvoTour("trilha_mapa", journeyGuideTargetRef),
-    [journeyGuideTargetRef],
-  );
-
   return (
     <View style={[st.page, { backgroundColor: palette.background }]}>
       <GameHeader
@@ -138,10 +145,14 @@ export const TrilhaBase: React.FC<{
           />
         }
       />
-      <View ref={journeyGuideTargetRef} collapsable={false} style={{ flex: 1 }}>
-        {visual === "mapa" && <TrilhaMapaHeroStable />}
+      <View
+        ref={visual === "arvore" ? journeyGuideTargetRef : undefined}
+        collapsable={false}
+        style={{ flex: 1 }}
+      >
+        {visual === "mapa" && <TrilhaMapaHeroStable tourTargetRef={journeyGuideTargetRef} />}
         {visual === "arvore" && <TrilhaArvoreSimple />}
-        {visual === "lista" && <TrilhaLinearList />}
+        {visual === "lista" && <TrilhaLinearList tourTargetRef={journeyGuideTargetRef} />}
       </View>
     </View>
   );

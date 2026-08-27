@@ -55,6 +55,7 @@ export default function PerfilHome() {
   const notificationsHeaderGuideRef = React.useRef<View | null>(null);
   const notificationsFiltersGuideRef = React.useRef<View | null>(null);
   const notificationsListGuideRef = React.useRef<View | null>(null);
+  const firstNotificationTourRef = React.useRef<View | null>(null);
   const notificationsGuideSteps = React.useMemo<SectionGuideStep[]>(
     () => [
       {
@@ -182,30 +183,43 @@ export default function PerfilHome() {
     [deletar],
   );
 
-  const renderRow = ({ item }: { item: any }) => (
-    <Swipeable
-      renderLeftActions={() => <LeftActions item={item} />}
-      renderRightActions={() => <RightActions item={item} />}
-      overshootLeft={false}
-      overshootRight={false}
+  const renderRow = ({ item, index }: { item: any; index: number }) => (
+    <View
+      ref={index === 0 ? firstNotificationTourRef : undefined}
+      collapsable={false}
     >
-      <NotificationItem
-        id={String(item.id)}
-        title={item.titulo}
-        time={String(item.horario_envio)}
-        description={item.corpo}
-        read={item.read ?? item.status === "lida"}
-        onPress={() =>
-          handlePress(String(item.id), item.read, (item as any).status)
-        }
-        relativeThresholdHours={24}
-      />
-    </Swipeable>
+      <Swipeable
+        renderLeftActions={() => <LeftActions item={item} />}
+        renderRightActions={() => <RightActions item={item} />}
+        overshootLeft={false}
+        overshootRight={false}
+      >
+        <NotificationItem
+          id={String(item.id)}
+          title={item.titulo}
+          time={String(item.horario_envio)}
+          description={item.corpo}
+          read={item.read ?? item.status === "lida"}
+          onPress={() =>
+            handlePress(String(item.id), item.read, (item as any).status)
+          }
+          relativeThresholdHours={24}
+        />
+      </Swipeable>
+    </View>
   );
 
 
   // Alvos do tutorial inicial: as refs ja existiam para o guia de pagina.
-  useEffect(() => registrarAlvoTour("notificacoes_lista", notificationsListGuideRef), [notificationsListGuideRef]);
+  useEffect(
+    () =>
+      registrarAlvoTour(
+        "notificacoes_lista",
+        data.length > 0 ? firstNotificationTourRef : notificationsListGuideRef,
+        () => listaRef.current?.scrollToOffset({ offset: 0, animated: false }),
+      ),
+    [data.length],
+  );
 
   return (
     <View style={[styles.screenOuter, { backgroundColor: palette.background }]}>

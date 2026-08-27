@@ -32,7 +32,6 @@ function formatTime(totalSeconds: number) {
 const GOLD        = "#d4af37";
 const GOLD_DIM    = "rgba(212, 175, 55, 0.42)";
 const GOLD_GLOW   = "rgba(212, 175, 55, 0.18)";
-const PURPLE      = "#a78bfa";
 const CARD_BG     = "rgba(7, 4, 20, 0.97)";
 const CRIT_BG     = "rgba(35, 6, 12, 0.98)";
 const CRIT_BORDER = "rgba(252, 100, 100, 0.55)";

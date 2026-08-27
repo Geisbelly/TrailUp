@@ -503,7 +503,7 @@ export default function QuestionActivity({
   const [timeoutLocked, setTimeoutLocked] = useState<Record<number, boolean>>({});
   const [mostrarResposta, setMostrarResposta] = useState(false);
   const [validandoIA, setValidandoIA] = useState(false);
-  const [feedbackIA, setFeedbackIA] = useState<Record<number, EssayValidationResult | null>>({});
+  const [, setFeedbackIA] = useState<Record<number, EssayValidationResult | null>>({});
   const [modalVisivel, setModalVisivel] = useState(false);
   const [modalInfo, setModalInfo] = useState<{ titulo: string; descricao: string; pontos?: number; acerto?: boolean }>({
     titulo: '',

@@ -4,7 +4,7 @@ import {
 } from "@/constants/brainHexProfiles";
 import { resolveProfileMetricsTheme } from "@/utils/profileMetricThemes";
 
-export const FIRST_ACCESS_TOUR_VERSION = 4;
+export const FIRST_ACCESS_TOUR_VERSION = 7;
 
 export type FirstAccessTourRoute =
   | "/(tabs)"
@@ -12,7 +12,10 @@ export type FirstAccessTourRoute =
   | "/(tabs)/ranking"
   | "/(tabs)/perfil"
   | "/(tabs)/perfil/biblioteca-conquistas"
-  | "/(tabs)/perfil/settings";
+  | "/(tabs)/perfil/settings"
+  | "/(tabs)/perfil/metricas-estilo"
+  | "/(tabs)/perfil/coleta-dados"
+  | "/(tabs)/perfil/relatorio";
 
 export type FirstAccessTourStep = {
   id: string;
@@ -318,6 +321,46 @@ export function buildFirstAccessTourSteps(
       title: "Suas preferências",
       description: `${copy.voice.settings} Conta, estilo das métricas, coleta de dados e privacidade.`,
       target: "config_lista",
+      highlight: "content",
+    },
+    {
+      id: "metrics-appearance",
+      route: "/(tabs)/perfil/metricas-estilo",
+      page: "Configurações · Métricas",
+      title: "Como suas métricas aparecem",
+      description:
+        "O modo Automático acompanha o seu perfil ativo. Você também pode fixar outra visualização; isso muda somente a apresentação do painel, nunca seus resultados nem seu histórico.",
+      target: "config_metricas_visual",
+      highlight: "content",
+    },
+    {
+      id: "camera-consent",
+      route: "/(tabs)/perfil/coleta-dados",
+      page: "Configurações · Coleta",
+      title: "Câmera: você mantém o controle",
+      description:
+        "Este controle ativa ou desativa a análise opcional por câmera. Ativar ainda depende da permissão do Android; desativar interrompe essa coleta sem bloquear seus estudos, notas ou demais recursos.",
+      target: "config_camera",
+      highlight: "content",
+    },
+    {
+      id: "chat-consent",
+      route: "/(tabs)/perfil/coleta-dados",
+      page: "Configurações · Coleta",
+      title: "Chat e contexto do mentor",
+      description:
+        "Aqui você permite ou interrompe o registro das interações com o chat do guia. O estado Ativo ou Desativado aparece no próprio controle e pode ser alterado quando quiser.",
+      target: "config_chat",
+      highlight: "content",
+    },
+    {
+      id: "data-report",
+      route: "/(tabs)/perfil/relatorio",
+      page: "Configurações · Relatório",
+      title: "Seu relatório completo",
+      description:
+        "O relatório reúne identificação, eventos registrados, posições nos rankings, progresso nas trilhas e conquistas. Este botão gera um PDF para você revisar e compartilhar.",
+      target: "config_relatorio",
       highlight: "content",
     },
     {

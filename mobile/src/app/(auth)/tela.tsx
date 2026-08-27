@@ -14,7 +14,6 @@ const AUTH_PALETTE = buildProfileShellPaletteFromAccent("#a057fd", "magica");
 const Tela_De_Rosto = () => {
   const navigation = useRouter();
 
-  const gold = tinycolor(AUTH_PALETTE.accent).lighten(12).toHexString();
   const goldDim = tinycolor(AUTH_PALETTE.accent).setAlpha(0.45).toRgbString();
 
   useEffect(() => {
@@ -22,7 +21,7 @@ const Tela_De_Rosto = () => {
       navigation.replace("/(auth)/login");
     }, 2000);
     return () => clearTimeout(timer);
-  }, []);
+  }, [navigation]);
 
   return (
     <View style={[styles.outer, { backgroundColor: AUTH_PALETTE.background }]}>

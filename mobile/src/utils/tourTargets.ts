@@ -22,15 +22,25 @@ import type { View } from "react-native";
 
 export type AlvoTour = React.RefObject<View | null>;
 
-const alvos = new Map<string, AlvoTour>();
+type RegistroAlvoTour = {
+  ref: AlvoTour;
+  revelar?: () => void | Promise<void>;
+};
 
-export function registrarAlvoTour(nome: string, ref: AlvoTour): () => void {
-  alvos.set(nome, ref);
+const alvos = new Map<string, RegistroAlvoTour>();
+
+export function registrarAlvoTour(
+  nome: string,
+  ref: AlvoTour,
+  revelar?: () => void | Promise<void>,
+): () => void {
+  const registro = { ref, revelar };
+  alvos.set(nome, registro);
   return () => {
     // Só remove se ainda for a MESMA ref. Durante uma troca de tela a nova
     // monta antes de a antiga desmontar, e um `delete` cego apagaria o alvo
     // recém-registrado.
-    if (alvos.get(nome) === ref) {
+    if (alvos.get(nome) === registro) {
       alvos.delete(nome);
     }
   };
@@ -38,8 +48,13 @@ export function registrarAlvoTour(nome: string, ref: AlvoTour): () => void {
 
 export function obterAlvoTour(nome: string | undefined): AlvoTour | undefined {
   if (!nome) return undefined;
-  const ref = alvos.get(nome);
+  const ref = alvos.get(nome)?.ref;
   return ref?.current ? ref : undefined;
+}
+
+export async function revelarAlvoTour(nome: string | undefined): Promise<void> {
+  if (!nome) return;
+  await alvos.get(nome)?.revelar?.();
 }
 
 /**
