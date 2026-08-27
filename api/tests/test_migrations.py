@@ -466,3 +466,29 @@ def test_conciliacao_de_push_liga_ticket_ao_token() -> None:
     assert "REVOKE ALL ON FUNCTION public.notificacoes_conciliar_push" in rendered
 
     assert "UPDATE alembic_version SET version_num='20260826_15'" in rendered
+
+
+def test_revisao_diaria_pula_quem_ja_estudou_mas_nao_quando_ha_sugestao() -> None:
+    output = StringIO()
+    config = _offline_alembic_config(output)
+
+    migrations.command.upgrade(config, "20260826_15:20260826_16", sql=True)
+    rendered = output.getvalue()
+
+    # Limiar em configuracao, nao fixo na funcao.
+    assert "'revisao_pular_se_uso_min', '10'" in rendered
+
+    # `FOUND` reflete o ULTIMO comando SQL: sem capturar antes, a consulta de
+    # uso do dia sobrescreveria o resultado da busca por sugestao.
+    assert "v_tem_sugestao := FOUND;" in rendered
+
+    # A guarda so pula quando NAO ha sugestao -- com conteudo novo da IA a
+    # notificacao vale mesmo para quem ja estudou.
+    assert "IF NOT v_tem_sugestao" in rendered
+
+    # A funcao e alterada por substituicao no proprio corpo; recolar uma copia
+    # antiga desfaria em silencio o que outra sessao tenha mudado nela.
+    assert "SELECT p.prosrc INTO v_src" in rendered
+    assert "Nao encontrei o ponto de insercao" in rendered
+
+    assert "UPDATE alembic_version SET version_num='20260826_16'" in rendered
