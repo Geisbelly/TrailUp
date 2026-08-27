@@ -1867,8 +1867,11 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       const conteudo = topico.conteudos.find((c) => c.id === conteudoId)
       if (!conteudo) throw new Error('ConteÃºdo nÃ£o encontrado')
 
-      const tempoTotal = Number(conteudo.tempo_gasto_min ?? 0) + tempoNormalizado
-      await conteudo.atualizarTempoGasto(usuario.id, tempoTotal)
+      // O tempo em si nao e mais gravado aqui: vem da telemetria, por
+      // trigger (`20260826_19`). Este acumulo era leitura-soma-escrita sobre
+      // uma base que podia estar velha, e a escrita que falhava so virava
+      // `console.warn` -- o intervalo se perdia para sempre.
+      await conteudo.registrarVisita(usuario.id)
       await atualizarProgressoClasse()
     } catch (err) {
       console.warn('[TrilhaContext] Erro ao registrar tempo do conteÃºdo:', err)
@@ -1892,8 +1895,9 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       const atividade = topico.atividades.find((a) => a.id === atividadeId)
       if (!atividade) throw new Error('Atividade nÃ£o encontrada')
 
-      const tempoTotal = Number(atividade.tempo_gasto_min ?? 0) + tempoNormalizado
-      await atividade.atualizarTempoGasto(usuario.id, tempoTotal)
+      // Idem conteudo: o tempo vem da telemetria. E este caminho ainda
+      // zerava `acertos_percentual` de quebra.
+      await atividade.registrarVisita(usuario.id)
       await atualizarProgressoClasse()
     } catch (err) {
       console.warn('[TrilhaContext] Erro ao registrar tempo da atividade:', err)
@@ -1906,15 +1910,15 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
   ) => {
     if (!classeAtual || !usuario) return
 
+    // O tempo nao e mais gravado daqui (vem da telemetria, por trigger), mas
+    // continua sendo a CONDICAO: sem tempo decorrido nao houve visita a
+    // registrar, e um upsert por evento vazio so gera escrita a toa.
     const tempoNormalizado = Math.max(0, Number(tempoGastoMin ?? 0))
     if (!Number.isFinite(tempoNormalizado) || tempoNormalizado <= 0) return
 
     try {
       const topico = classeAtual.topicos.find((t) => t.id === topicoId)
       if (!topico) throw new Error('Topico nao encontrado')
-
-      const tempoAtual = Number(topico.tempo_gasto_min ?? 0)
-      const tempoTotal = Math.max(tempoAtual + tempoNormalizado, tempoNormalizado)
 
       const { error } = await supabase
         .from('topico_aluno')
@@ -1932,7 +1936,6 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
             // ramos devolviam 'em andamento', entao um topico com 0% era
             // marcado como iniciado so por ter tido tempo contabilizado.
             ultima_atividade: topico.ultima_atividade ?? null,
-            tempo_gasto_min: tempoTotal,
             ultima_visualizacao: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           },
@@ -1942,7 +1945,6 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
         )
 
       if (error) throw error
-      topico.tempo_gasto_min = tempoTotal
       syncClasseLocally(cloneClasse(classeAtual, { topicos: [...classeAtual.topicos] }))
       await atualizarProgressoClasse()
     } catch (err) {
