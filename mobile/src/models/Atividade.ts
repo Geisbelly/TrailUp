@@ -138,19 +138,33 @@ export class Atividade {
     }
   }
 
-  async atualizarTempoGasto(aluno_id: string, tempo_gasto_min: number): Promise<void> {
+  /**
+   * Registra a visita à atividade.
+   *
+   * Já se chamou `atualizarTempoGasto` e escrevia três coisas que não são
+   * dela:
+   *
+   * - `tempo_gasto_min` — agora derivado da telemetria por trigger
+   *   (`20260826_19`). O contador do cliente perdia todo intervalo cuja
+   *   escrita falhasse e ficava até 29x fora.
+   * - `acertos_percentual: this.acertos_percentual ?? 0` — com o modelo local
+   *   sem a taxa carregada, **registrar tempo zerava a taxa de acertos** da
+   *   atividade. Quem escreve isso é `registrarConclusao`, que sabe o valor.
+   * - `percentual_concluido: ... : 0` — pelo mesmo caminho, derrubava para
+   *   zero o percentual de uma atividade em andamento.
+   *
+   * Omitir a coluna do upsert preserva o que está no banco quando a linha já
+   * existe: o `ON CONFLICT` só toca no que foi enviado.
+   */
+  async registrarVisita(aluno_id: string): Promise<void> {
     try {
       const agora = new Date().toISOString();
-      const tempoNormalizado = normalizeNonNegativeNumber(tempo_gasto_min);
 
       const { error } = await supabase.from("atividade_aluno").upsert(
         {
           aluno_id,
           atividade_id: this.id,
           status: this.status ?? "em andamento",
-          percentual_concluido: String(this.status ?? "").toLowerCase().includes("concl") ? 100 : 0,
-          acertos_percentual: this.acertos_percentual ?? 0,
-          tempo_gasto_min: tempoNormalizado,
           ultima_visualizacao: agora,
           updated_at: agora,
         },
@@ -160,13 +174,8 @@ export class Atividade {
       );
 
       if (error) throw error;
-
-      this.tempo_gasto_min = tempoNormalizado;
-      this.percentual_concluido = String(this.status ?? "").toLowerCase().includes("concl")
-        ? 100
-        : Number(this.percentual_concluido ?? 0);
     } catch (err) {
-      console.warn("[Atividade] Erro ao atualizar tempo:", err);
+      console.warn("[Atividade] Erro ao registrar visita:", err);
       throw err;
     }
   }
