@@ -188,6 +188,20 @@ de ritmo de leitura (WPM) roda no `linear_analysis_pipeline.py`
 — **não** `dwell_sec`, que inclui tempo parado com o material aberto e sub-
 estimaria o WPM de quem só fez uma pausa no meio da leitura.
 
+> **`dwell_sec`, `active_sec` e `idle_sec` são contadores CUMULATIVOS** por
+> `(sessão × item)`, reenviados inteiros a cada lote — não são o tempo daquele
+> lote. Somar as linhas multiplica o tempo pelo número de lotes: em 15 das 34
+> sessões medidas a soma dava mais que o relógio da própria sessão. Para totalizar,
+> some os **incrementos** entre leituras consecutivas, tratando queda como reset
+> do contador (a leitura inteira vale) e leitura repetida como zero — é o que
+> `trailup_tempo_telemetria_min` faz (`20260827_02`). É também por isso que
+> `topic`, `content` e `material` aparecem com o mesmo valor dentro de um lote:
+> cada escopo tem o próprio acumulado, e o aninhamento é inclusivo.
+>
+> Corolário: `tempo_gasto_min` em `topico_aluno`, `conteudo_aluno` e
+> `atividade_aluno` é **derivado por trigger** a partir da telemetria. Nenhum
+> cliente escreve essa coluna.
+
 > Lacuna real ainda aberta: `MentalStateHistoryRepository.listar_por_aluno`
 > (`api/app/repositories/mental_state.py`) só é exercitado em teste — o
 > histórico em `aluno_mental_state_history` é **gravado** a cada ciclo
