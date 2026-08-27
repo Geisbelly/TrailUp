@@ -12,6 +12,7 @@ concurrency:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   # Detecta quais serviços mudaram para rodar apenas o necessário.
