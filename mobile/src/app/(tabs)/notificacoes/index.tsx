@@ -3,6 +3,7 @@ import CardSemDados from "@/components/CardSemDados";
 import { OrnamentDivider } from "@/components/HallTheme";
 import {
   SectionGuideButton,
+  SectionGuideScrollable,
   SectionGuideStep,
 } from "@/components/SectionGuideButton";
 import { useNotifications } from "@/context/NotificacaoContext";
@@ -13,7 +14,7 @@ import { getProfileGuideEmphasis } from "@/utils/profileSectionGuide";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React from "react";
+import React, { useRef } from "react";
 import {
   FlatList,
   Pressable,
@@ -32,6 +33,9 @@ type FilterTab = "todas" | "nao_lidas" | "lidas";
 
 export default function PerfilHome() {
   const { itens, marcarLida, deletar, reload, carregando } = useNotifications();
+
+  // Entregue ao guia: sem isso ele descreve itens que ficaram fora da tela.
+  const listaRef = useRef<FlatList>(null);
   const { usuario } = useUsuario();
   const insets = useSafeAreaInsets();
   const palette = React.useMemo(
@@ -213,7 +217,8 @@ export default function PerfilHome() {
             sectionTitle="Notificações"
             steps={notificationsGuideSteps}
             targetRefs={notificationsGuideTargets}
-            style={styles.guideButton}
+            scrollRef={listaRef as unknown as React.RefObject<SectionGuideScrollable | null>}
+          style={styles.guideButton}
           />
         </View>
 
@@ -253,6 +258,7 @@ export default function PerfilHome() {
           style={styles.listWrap}
         >
           <FlatList
+            ref={listaRef}
           data={data}
           keyExtractor={(n) => String(n.id)}
           style={{ flex: 1, alignSelf: "stretch" }}

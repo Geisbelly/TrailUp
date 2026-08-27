@@ -11,7 +11,6 @@ import {
   LayoutChangeEvent,
   Modal,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -41,6 +40,18 @@ export type SectionGuideTargetRefs = Record<
 
 type SpotlightRect = { top: number; left: number; width: number; height: number };
 
+/**
+ * Container rolável da página. Aceita tanto `ScrollView` (`scrollTo`) quanto
+ * `FlatList` (`scrollToOffset`) — as páginas do app usam os dois, e exigir só
+ * um deixava metade delas sem rolagem no guia.
+ */
+export type SectionGuideScrollable = {
+  scrollTo?: (opcoes: { y?: number; animated?: boolean }) => void;
+  scrollToOffset?: (opcoes: { offset: number; animated?: boolean }) => void;
+  getScrollableNode?: () => unknown;
+  getInnerViewRef?: () => unknown;
+};
+
 export function SectionGuideButton({
   profile,
   sectionTitle,
@@ -59,7 +70,7 @@ export function SectionGuideButton({
    * Rolagem da página. Sem ela o guia descreve elementos que podem estar fora
    * da tela: ele mede a posição, mas nunca leva o aluno até lá.
    */
-  scrollRef?: React.RefObject<ScrollView | null>;
+  scrollRef?: React.RefObject<SectionGuideScrollable | null>;
   style?: object;
 }) {
   const buttonRef = useRef<View | null>(null);
@@ -102,15 +113,21 @@ export function SectionGuideButton({
       if (rolagem && typeof alvo.measureLayout === "function") {
         // Coordenadas relativas ao conteúdo da rolagem são exatamente o que
         // `scrollTo` espera; medir na janela daria a posição já rolada.
+        // FlatList esconde a rolagem real atrás de `getScrollableNode`;
+        // ScrollView expõe o conteúdo por `getInnerViewRef`.
         const conteudo =
-          (rolagem as unknown as { getInnerViewRef?: () => unknown }).getInnerViewRef?.() ??
-          rolagem;
+          rolagem.getInnerViewRef?.() ?? rolagem.getScrollableNode?.() ?? rolagem;
         try {
           alvo.measureLayout(
             conteudo as never,
             (_x, y) => {
               if (!active) return;
-              rolagem.scrollTo({ y: Math.max(0, y - MARGEM_ROLAGEM), animated: true });
+              const destino = Math.max(0, y - MARGEM_ROLAGEM);
+              if (typeof rolagem.scrollTo === "function") {
+                rolagem.scrollTo({ y: destino, animated: true });
+              } else if (typeof rolagem.scrollToOffset === "function") {
+                rolagem.scrollToOffset({ offset: destino, animated: true });
+              }
             },
             () => {
               // Alvo fora da árvore da rolagem (cabeçalho fixo, por exemplo):

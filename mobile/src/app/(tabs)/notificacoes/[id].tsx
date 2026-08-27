@@ -15,7 +15,7 @@ import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { getProfileGuideEmphasis } from "@/utils/profileSectionGuide";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { router, useLocalSearchParams } from "expo-router";
+import { Stack, router, useLocalSearchParams } from "expo-router";
 import React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -207,12 +207,20 @@ export default function NotificacaoDetalhe() {
       />
 
       <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
-        <SectionGuideButton
-          profile={activeProfile}
-          sectionTitle="Notificação"
-          steps={detailGuideSteps}
-          targetRefs={detailGuideTargets}
-          style={s.guideButton}
+        {/* Guia no cabecalho da tela: mesmo lugar em toda pagina com header,
+            sem flutuar sobre o conteudo nem depender de offset por pagina. */}
+        <Stack.Screen
+          options={{
+            headerRight: () => (
+              <SectionGuideButton
+                profile={activeProfile}
+                sectionTitle="Notificação"
+                steps={detailGuideSteps}
+                targetRefs={detailGuideTargets}
+                style={s.guideButton}
+              />
+            ),
+          }}
         />
         {/* Card de cabeçalho */}
         <View
@@ -322,9 +330,7 @@ const s = StyleSheet.create({
     flex: 1,
   },
   guideButton: {
-    position: "absolute",
-    top: 18,
-    right: 22,
+    marginRight: 12,
   },
   headerCard: {
     marginHorizontal: 16,

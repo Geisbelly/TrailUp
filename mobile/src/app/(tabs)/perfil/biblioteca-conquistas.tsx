@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
+import { Stack } from "expo-router";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   ScrollView,
@@ -196,13 +197,22 @@ export default function BibliotecaConquistasScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: shellPalette.background }]}>
-      <SectionGuideButton
-        profile={perfil}
-        sectionTitle="Conquistas"
-        steps={guideSteps}
-        targetRefs={guideTargets}
-        scrollRef={scrollRef}
-        style={styles.guideButton}
+      {/* O guia vive no cabecalho da tela, e nao flutuando sobre o conteudo:
+          e o mesmo lugar em toda pagina que tem header, e assim ele nunca
+          cobre texto nem depende de offset ajustado a mao por pagina. */}
+      <Stack.Screen
+        options={{
+          headerRight: () => (
+            <SectionGuideButton
+              profile={perfil}
+              sectionTitle="Conquistas"
+              steps={guideSteps}
+              targetRefs={guideTargets}
+              scrollRef={scrollRef}
+              style={styles.guideButton}
+            />
+          ),
+        }}
       />
       <View
         style={[StyleSheet.absoluteFill, { opacity: 0.4 }]}
@@ -444,16 +454,10 @@ export default function BibliotecaConquistasScreen() {
   );
 }
 
-// Largura do botao de guia (34) + respiro. O texto do cartao reserva esta
-// faixa para nao passar por baixo dele.
-const GUIA_ESPACO = 46;
-
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   guideButton: {
-    position: "absolute",
-    top: 12,
-    right: 18,
+    marginRight: 12,
   },
   content: {
     paddingHorizontal: 18,
@@ -471,14 +475,11 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.inikaBold,
     fontSize: 17,
     marginBottom: 2,
-    // Faixa reservada para o botao de guia, que flutua sobre o canto direito.
-    paddingRight: GUIA_ESPACO,
   },
   summarySubtitle: {
     fontFamily: FontFamily.interMedium,
     fontSize: 12,
     marginBottom: 8,
-    paddingRight: GUIA_ESPACO,
   },
   scopeSummaryRow: {
     flexDirection: "row",

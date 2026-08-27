@@ -3,6 +3,7 @@ import { HallBackground, OrnamentDivider } from "@/components/HallTheme";
 import { LoadingState } from "@/components/LoadingState";
 import {
   SectionGuideButton,
+  SectionGuideScrollable,
   SectionGuideStep,
 } from "@/components/SectionGuideButton";
 import {
@@ -18,7 +19,7 @@ import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { getProfileGuideEmphasis } from "@/utils/profileSectionGuide";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useLocalSearchParams, useNavigation } from "expo-router";
+import { Stack, useLocalSearchParams, useNavigation } from "expo-router";
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
@@ -120,6 +121,9 @@ export default function RankDetalheScreen() {
   const [perfisCarregando, setPerfisCarregando] = useState(false);
   const [perfilDominantePorAluno, setPerfilDominantePorAluno] = useState<Record<string, DominantProfileMeta>>({});
   const rankHeaderGuideRef = useRef<View | null>(null);
+
+  // Entregue ao guia: sem isso ele descreve linhas fora da tela.
+  const listaRef = useRef<FlatList>(null);
   const rankFiltersGuideRef = useRef<View | null>(null);
   const rankMyPositionGuideRef = useRef<View | null>(null);
 
@@ -478,12 +482,21 @@ export default function RankDetalheScreen() {
       />
 
       <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
-        <SectionGuideButton
-          profile={activeProfile}
-          sectionTitle="Classificação"
-          steps={rankDetailGuideSteps}
-          targetRefs={rankDetailGuideTargets}
-          style={s.guideButton}
+        {/* Guia no cabecalho da tela: mesmo lugar em toda pagina com header,
+            sem flutuar sobre o conteudo nem depender de offset por pagina. */}
+        <Stack.Screen
+          options={{
+            headerRight: () => (
+              <SectionGuideButton
+                profile={activeProfile}
+                sectionTitle="Classificação"
+                steps={rankDetailGuideSteps}
+                targetRefs={rankDetailGuideTargets}
+                scrollRef={listaRef as unknown as React.RefObject<SectionGuideScrollable | null>}
+                style={s.guideButton}
+              />
+            ),
+          }}
         />
         {/* ══════════ HEADER ══════════ */}
         <View ref={rankHeaderGuideRef} collapsable={false} style={s.header}>
@@ -549,6 +562,7 @@ export default function RankDetalheScreen() {
 
         {/* ══════════ LISTA ══════════ */}
         <FlatList
+          ref={listaRef}
           data={posicoesFiltradas}
           keyExtractor={(item, idx) => `${item.rank_id}-${item.id_aluno}-${idx}`}
           contentContainerStyle={s.listContent}
@@ -600,9 +614,7 @@ export default function RankDetalheScreen() {
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: Color.background },
   guideButton: {
-    position: "absolute",
-    top: 12,
-    right: 16,
+    marginRight: 12,
   },
 
   // Header
