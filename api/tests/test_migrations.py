@@ -437,3 +437,32 @@ def test_recalculo_de_progresso_nao_coage_enum_nem_perde_acento() -> None:
     assert "PERFORM 'não iniciado'::status_atividade" in rendered
 
     assert "UPDATE alembic_version SET version_num='20260826_11'" in rendered
+
+
+def test_conciliacao_de_push_liga_ticket_ao_token() -> None:
+    output = StringIO()
+    config = _offline_alembic_config(output)
+
+    migrations.command.upgrade(config, "20260826_14:20260826_15", sql=True)
+    rendered = output.getvalue()
+
+    # Sem guardar o id da requisicao nao ha o que conciliar: `pg_net` e
+    # assincrono e a resposta so aparece depois, em `net._http_response`.
+    assert "CREATE TABLE IF NOT EXISTS notificacoes_push_envios" in rendered
+    assert "request_id" in rendered
+
+    # A Expo responde um ticket por mensagem NA ORDEM do array enviado; sem a
+    # ordem dos tokens nao da para saber qual ticket condena qual aparelho.
+    assert "array_agg(d.token ORDER BY d.id)" in rendered
+    assert "ORDER BY d.id" in rendered
+
+    # So erro definitivo desativa. Um transitorio nao pode silenciar o
+    # aparelho de um aluno.
+    assert "v_erro IN ('DeviceNotRegistered', 'InvalidCredentials')" in rendered
+    # A desativacao acontece DENTRO desse IF: qualquer outro erro passa reto.
+    assert rendered.count("SET ativo = FALSE, desativado_motivo = v_erro") == 1
+
+    # A conciliacao e interna: expo-la deixaria qualquer um marcar token alheio.
+    assert "REVOKE ALL ON FUNCTION public.notificacoes_conciliar_push" in rendered
+
+    assert "UPDATE alembic_version SET version_num='20260826_15'" in rendered
