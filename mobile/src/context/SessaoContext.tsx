@@ -129,7 +129,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     return fallback as unknown as Aluno;
   }, []);
 
-  const withTimeout = useCallback(async <T,>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> => {
+  // `PromiseLike` e nao `Promise`: o builder do Supabase e um thenable (tem
+  // `then`, nao tem `catch`/`finally`). `Promise.race` aceita PromiseLike, e
+  // exigir Promise fazia o TypeScript perder o tipo do retorno — dai os erros
+  // de `.data`/`.error` em `unknown` nos chamadores.
+  const withTimeout = useCallback(async <T,>(promise: PromiseLike<T>, timeoutMs: number, label: string): Promise<T> => {
     return await Promise.race([
       promise,
       new Promise<T>((_, reject) =>
@@ -211,7 +215,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         );
         if (error || !data) return;
 
-        const perfis = (data as AlunoPerfilRow[]).map((row) => ({
+        // `as unknown as`: o Supabase infere `perfil` como array no join,
+        // mas a relacao e para-UM e em runtime vem objeto.
+        const perfis = (data as unknown as AlunoPerfilRow[]).map((row) => ({
           id: row.perfil?.id,
           nome: row.perfil?.nome ?? null,
           descricao: row.perfil?.descricao ?? null,
@@ -254,7 +260,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     async (sessionFromEvent?: SessionLike, options?: { showLoading?: boolean }) => {
       const showLoading = options?.showLoading ?? true;
       const reqId = ++requestIdRef.current;
-      let resolvedSession: SessionLike = sessionFromEvent;
+      let resolvedSession: SessionLike | undefined = sessionFromEvent;
       if (mountedRef.current && showLoading) setCarregando(true);
 
       try {

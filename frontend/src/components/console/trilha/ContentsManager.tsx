@@ -24,7 +24,6 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { deleteContentCascade } from "./classDeletion";
-import { enqueueClassDeltaJob } from "./personalizacaoJobsApi";
 
 interface Conteudo {
   id: number;
@@ -48,21 +47,6 @@ const tiposConteudo = [
   { value: "imagem", label: "Imagem", icon: Image },
   { value: "link", label: "Link Externo", icon: LinkIcon },
 ];
-
-// eslint-disable-next-line react-refresh/only-export-components
-export function buildContentDeltaPayload(params: {
-  classeId: number;
-  topicoId: number;
-  conteudoId?: number;
-  reason: string;
-}) {
-  return {
-    classe_id: params.classeId,
-    topico_ids: [params.topicoId],
-    ...(params.conteudoId == null ? {} : { conteudo_ids: [params.conteudoId] }),
-    reason: params.reason,
-  };
-}
 
 export default function ContentsManager() {
   const { user, session } = useAuth();
@@ -139,25 +123,11 @@ export default function ContentsManager() {
       ? conteudos
       : conteudos.filter((c) => c.topico_id.toString() === selectedTopicFilter);
 
-  const enqueueDeltaSafely = async (params: {
-    classeId: number;
-    topicoId: number;
-    conteudoId?: number;
-    reason: string;
-    successContext: string;
-  }) => {
-    try {
-      await enqueueClassDeltaJob(
-        String(session?.access_token ?? ""),
-        buildContentDeltaPayload(params)
-      );
-    } catch (error) {
-      console.error("[ContentsManager] Falha ao enfileirar class-delta:", error);
-      toast.warning(
-        `${params.successContext}, mas o job de personalizacao nao foi enfileirado. Tente novamente.`
-      );
-    }
-  };
+  // O disparo de class-delta virou trigger no Postgres
+  // (`trg_conteudos_class_delta_job`, migration 20260827_03): salvar, mover ou
+  // excluir conteudo JA' enfileira. Inclusive o caso de mover entre topicos,
+  // que aqui exigia duas chamadas (destino e origem) e no trigger sai numa so,
+  // porque OLD.topico_id esta disponivel.
 
   const handleSubmit = async () => {
     if (!formData.titulo || !formData.topico_id) {
@@ -169,7 +139,6 @@ export default function ContentsManager() {
 
     try {
       let savedContent: Conteudo;
-      const previousTopicId = editingContent?.topico_id;
 
       if (editingContent) {
         const { data, error } = await supabase
@@ -212,31 +181,6 @@ export default function ContentsManager() {
         toast.success("Conteúdo criado!");
       }
 
-      const savedTopic = topicos.find((topic) => topic.id === savedContent.topico_id);
-      if (savedTopic) {
-        await enqueueDeltaSafely({
-          classeId: savedTopic.classe_id,
-          topicoId: savedContent.topico_id,
-          conteudoId: savedContent.id,
-          reason: editingContent ? "edicao_conteudo_console" : "novo_conteudo_console",
-          successContext: editingContent ? "Conteúdo atualizado" : "Conteúdo criado",
-        });
-      } else {
-        toast.warning("Conteúdo salvo, mas não foi possível identificar a classe para gerar a personalização.");
-      }
-
-      if (previousTopicId != null && previousTopicId !== savedContent.topico_id) {
-        const previousTopic = topicos.find((topic) => topic.id === previousTopicId);
-        if (previousTopic) {
-          await enqueueDeltaSafely({
-            classeId: previousTopic.classe_id,
-            topicoId: previousTopic.id,
-            reason: "conteudo_movido_de_topico_console",
-            successContext: "Conteúdo movido",
-          });
-        }
-      }
-
       await loadData();
       setIsDialogOpen(false);
       setEditingContent(null);
@@ -263,23 +207,10 @@ export default function ContentsManager() {
   };
 
   const handleDelete = async (id: number) => {
-    const content = conteudos.find((item) => item.id === id);
-    const topic = content ? topicos.find((item) => item.id === content.topico_id) : undefined;
-
     try {
       await deleteContentCascade(id);
       setConteudos((prev) => prev.filter((c) => c.id !== id));
       toast.success("Conteúdo excluído!");
-      if (topic) {
-        await enqueueDeltaSafely({
-          classeId: topic.classe_id,
-          topicoId: topic.id,
-          reason: "remocao_conteudo_console",
-          successContext: "Conteúdo excluído",
-        });
-      } else {
-        toast.warning("Conteúdo excluído, mas não foi possível identificar o tópico para atualizar a personalização.");
-      }
     } catch (error) {
       console.error("Erro ao excluir conteúdo:", error);
       toast.error("Não foi possível excluir o conteúdo.");

@@ -1,4 +1,5 @@
 import { apiRequest } from "@/lib/apiTraiupClient";
+import { supabase } from "@/integrations/supabase/client";
 
 export type PersonalizacaoJobPayload = {
   classe_id: number;
@@ -161,19 +162,10 @@ export async function enqueueCleanupJob(
   });
 }
 
-export type PersonalizacaoJobEnqueueResult =
-  | PersonalizacaoJobDetail
-  | { skipped: true; reason?: string };
-
-export async function enqueueClassDeltaJob(
-  accessToken: string,
-  payload: PersonalizacaoJobPayload
-): Promise<PersonalizacaoJobEnqueueResult> {
-  return apiRequest<PersonalizacaoJobEnqueueResult>("/api/v1/personalizar/jobs/class-delta", accessToken, {
-    method: "POST",
-    body: JSON.stringify({ trigger_source: "web_console", ...payload }),
-  });
-}
+// class-delta nao tem mais cliente: quem enfileira e' o proprio Postgres,
+// pelos triggers `trg_topicos_class_delta_job` / `trg_conteudos_class_delta_job`
+// (migration 20260827_03). Salvar topico/conteudo E' o disparo — o console nao
+// precisa (nem deve) chamar nada depois do save.
 
 export async function enqueueManualRetryJob(
   accessToken: string,
@@ -195,19 +187,72 @@ export async function enqueueFullSyncJob(
   });
 }
 
+const JOB_COLUMNS = [
+  "id",
+  "kind",
+  "status",
+  "classe_id",
+  "aluno_id",
+  "topico_id",
+  "conteudo_id",
+  "trigger_source",
+  "payload",
+  "total_targets",
+  "processed_targets",
+  "error_count",
+  "last_error",
+  "created_at",
+  "updated_at",
+  "started_at",
+  "finished_at",
+].join(", ");
+
+/**
+ * Le a fila direto do Postgres, sem passar pela API.
+ *
+ * Listar job e' encanamento — nao tem modelo de linguagem no meio — e a API
+ * hiberna no free tier. Enquanto ela estava fora, esta consulta voltava 502 a
+ * cada ciclo do polling e o painel de status do console ficava travado em
+ * erro. O banco nao hiberna.
+ *
+ * A checagem de posse que a rota fazia com `professor_owns_classe` agora e'
+ * RLS: `personalizacao_jobs_professor_sel` (migration 20260827_03) so deixa o
+ * professor enxergar job das classes dele. Filtrar por `classeId` aqui e'
+ * conveniencia de consulta, nao autorizacao.
+ *
+ * O cast do client: `personalizacao_jobs` nao esta em
+ * `src/integrations/supabase/types.ts`, que cobre 25 das 84 tabelas do banco
+ * (as views e `cards` tambem faltam, e ja produzem erro de tipo em
+ * RanksSection/ClassManagementSection). Regerar aquele arquivo mexeria em
+ * todo mundo que hoje se apoia no shape antigo, entao o escape fica preso
+ * aqui — a saida volta tipada em `PersonalizacaoJobStatus`.
+ */
 export async function listPersonalizacaoJobs(
-  accessToken: string,
   params: { classeId?: number; alunoId?: string; statuses?: string[]; limit?: number } = {}
-) {
-  const search = new URLSearchParams();
-  if (params.classeId != null) search.set("classe_id", String(params.classeId));
-  if (params.alunoId) search.set("aluno_id", params.alunoId);
-  for (const status of params.statuses ?? []) {
-    search.append("status_filter", status);
-  }
-  search.set("limit", String(params.limit ?? 20));
-  return apiRequest<{ total: number; itens: PersonalizacaoJobStatus[] }>(
-    `/api/v1/personalizar/jobs?${search.toString()}`,
-    accessToken
-  );
+): Promise<{ total: number; itens: PersonalizacaoJobStatus[] }> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const client = supabase as any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let query: any = client
+    .from("personalizacao_jobs")
+    .select(JOB_COLUMNS)
+    .order("created_at", { ascending: false })
+    .limit(params.limit ?? 20);
+
+  if (params.classeId != null) query = query.eq("classe_id", params.classeId);
+  if (params.alunoId) query = query.eq("aluno_id", params.alunoId);
+  if (params.statuses && params.statuses.length > 0) query = query.in("status", params.statuses);
+
+  const { data, error } = await query;
+  if (error) throw error;
+
+  // payload e' NOT NULL no banco, mas o tipo do supabase-js admite null e os
+  // consumidores (getPersonalizacaoJobContentIds, summarize...) leem campos
+  // dele direto — normalizar aqui evita espalhar `?? {}` por eles.
+  const itens = ((data ?? []) as unknown as PersonalizacaoJobStatus[]).map((job) => ({
+    ...job,
+    payload: job.payload ?? {},
+  }));
+
+  return { total: itens.length, itens };
 }

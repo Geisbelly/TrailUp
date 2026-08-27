@@ -547,20 +547,19 @@ function mergeTopicoLocalState(persistedTopico: Topico, localTopico?: Topico | n
     Number(localTopico.tempo_gasto_min ?? 0)
   )
 
-  const recalculatedPct = mergedTopico.calcularPercentual()
-  if (recalculatedPct > Number(mergedTopico.percentual_concluido ?? 0)) {
-    mergedTopico.percentual_concluido = recalculatedPct
-  }
-
-  if (recalculatedPct >= 100) {
-    mergedTopico.status = 'concluido'
-  } else if (
-    recalculatedPct > 0 &&
-    !String(mergedTopico.status ?? '').toLowerCase().includes('concl')
-  ) {
-    mergedTopico.status = 'em andamento'
-  }
-
+  // Aqui havia um "puxao para cima" pelo `calcularPercentual()`: se a conta
+  // sobre o material do professor desse mais que o valor do banco, ela vencia,
+  // e >= 100 marcava o topico como concluido.
+  //
+  // Isso inverte a regra: o conteudo do professor e opcional (vale bonus), e o
+  // percurso e o material personalizado. Terminar so os academicos passava o
+  // topico para 'concluido' com os passos personalizados intocados -- o que
+  // liberava o proximo topico antes da hora e apagava o checkpoint de
+  // navegacao. A guarda por `topicosPendentes` em `isTopicoConcluido` existe
+  // justamente para remendar esse efeito; agora a causa saiu.
+  //
+  // O valor do banco manda: ele e calculado por trigger sobre o percurso
+  // inteiro (ver a migracao 20260826_18).
   return mergedTopico
 }
 
@@ -1784,8 +1783,11 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       // Atualiza estado local imediatamente (antes do upsert)
       conteudo.status = 'concluido';
       conteudo.percentual_concluido = 100;
-      topico.percentual_concluido = topico.calcularPercentual();
-      topico.status = topico.calcularStatus();
+      // Sem palpite otimista do percentual: `calcularPercentual` so conhece o
+      // material do professor, e mostrar o numero dele aqui faria a barra
+      // pular para um valor errado por meio segundo ate o `refreshTopico`
+      // abaixo trazer o que o banco calculou sobre o percurso inteiro. Manter
+      // o valor anterior por um instante e menos pior que mostrar o errado.
       syncClasseLocally(cloneClasse(classeAtual, { topicos: [...classeAtual.topicos] }));
 
       // Persiste no banco
@@ -1822,8 +1824,11 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       atividade.status = 'concluido';
       atividade.percentual_concluido = 100;
       atividade.acertos_percentual = acertosPercentual;
-      topico.percentual_concluido = topico.calcularPercentual();
-      topico.status = topico.calcularStatus();
+      // Sem palpite otimista do percentual: `calcularPercentual` so conhece o
+      // material do professor, e mostrar o numero dele aqui faria a barra
+      // pular para um valor errado por meio segundo ate o `refreshTopico`
+      // abaixo trazer o que o banco calculou sobre o percurso inteiro. Manter
+      // o valor anterior por um instante e menos pior que mostrar o errado.
       syncClasseLocally(cloneClasse(classeAtual, { topicos: [...classeAtual.topicos] }));
 
       // Persiste no banco
@@ -1862,8 +1867,11 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       const conteudo = topico.conteudos.find((c) => c.id === conteudoId)
       if (!conteudo) throw new Error('ConteÃºdo nÃ£o encontrado')
 
-      const tempoTotal = Number(conteudo.tempo_gasto_min ?? 0) + tempoNormalizado
-      await conteudo.atualizarTempoGasto(usuario.id, tempoTotal)
+      // O tempo em si nao e mais gravado aqui: vem da telemetria, por
+      // trigger (`20260826_19`). Este acumulo era leitura-soma-escrita sobre
+      // uma base que podia estar velha, e a escrita que falhava so virava
+      // `console.warn` -- o intervalo se perdia para sempre.
+      await conteudo.registrarVisita(usuario.id)
       await atualizarProgressoClasse()
     } catch (err) {
       console.warn('[TrilhaContext] Erro ao registrar tempo do conteÃºdo:', err)
@@ -1887,8 +1895,9 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       const atividade = topico.atividades.find((a) => a.id === atividadeId)
       if (!atividade) throw new Error('Atividade nÃ£o encontrada')
 
-      const tempoTotal = Number(atividade.tempo_gasto_min ?? 0) + tempoNormalizado
-      await atividade.atualizarTempoGasto(usuario.id, tempoTotal)
+      // Idem conteudo: o tempo vem da telemetria. E este caminho ainda
+      // zerava `acertos_percentual` de quebra.
+      await atividade.registrarVisita(usuario.id)
       await atualizarProgressoClasse()
     } catch (err) {
       console.warn('[TrilhaContext] Erro ao registrar tempo da atividade:', err)
@@ -1901,6 +1910,9 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
   ) => {
     if (!classeAtual || !usuario) return
 
+    // O tempo nao e mais gravado daqui (vem da telemetria, por trigger), mas
+    // continua sendo a CONDICAO: sem tempo decorrido nao houve visita a
+    // registrar, e um upsert por evento vazio so gera escrita a toa.
     const tempoNormalizado = Math.max(0, Number(tempoGastoMin ?? 0))
     if (!Number.isFinite(tempoNormalizado) || tempoNormalizado <= 0) return
 
@@ -1908,24 +1920,22 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       const topico = classeAtual.topicos.find((t) => t.id === topicoId)
       if (!topico) throw new Error('Topico nao encontrado')
 
-      const tempoAtual = Number(topico.tempo_gasto_min ?? 0)
-      const tempoTotal = Math.max(tempoAtual + tempoNormalizado, tempoNormalizado)
-
       const { error } = await supabase
         .from('topico_aluno')
         .upsert(
           {
             aluno_id: usuario.id,
             topico_id: topicoId,
-            status:
-              String(topico.status ?? '').toLowerCase().includes('concl')
-                ? 'concluido'
-                : Number(topico.percentual_concluido ?? 0) > 0
-                ? 'em andamento'
-                : 'em andamento',
-            percentual_concluido: Math.max(0, Math.min(100, Number(topico.percentual_concluido ?? 0))),
+            // Sem `status` nem `percentual_concluido`: sao derivados no banco
+            // pelo trigger de progresso. Mandar o valor local aqui gravava por
+            // cima da conta certa com o que a memoria do app tivesse no
+            // momento -- e este caminho dispara a cada registro de tempo, o
+            // que fazia o percentual correto durar segundos.
+            //
+            // O `status` que estava aqui tambem era ternario morto: os dois
+            // ramos devolviam 'em andamento', entao um topico com 0% era
+            // marcado como iniciado so por ter tido tempo contabilizado.
             ultima_atividade: topico.ultima_atividade ?? null,
-            tempo_gasto_min: tempoTotal,
             ultima_visualizacao: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           },
@@ -1935,7 +1945,6 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
         )
 
       if (error) throw error
-      topico.tempo_gasto_min = tempoTotal
       syncClasseLocally(cloneClasse(classeAtual, { topicos: [...classeAtual.topicos] }))
       await atualizarProgressoClasse()
     } catch (err) {

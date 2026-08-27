@@ -60,7 +60,6 @@ import type {
 } from "./types";
 import { ContentFileUpload } from "./ContentFileUpload";
 import { saveAiSuggestionsBatch, updateContent, updateContentMetadata } from "./topicsApi";
-import { enqueueClassDeltaJob } from "./personalizacaoJobsApi";
 import { normalizeOptionalPositiveScore, scoreToInputString } from "@/lib/question-score";
 import { buildPersonalizacaoThemeGuide } from "@/lib/personalizacao-theme-guide";
 import {
@@ -228,15 +227,9 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
     setIsCardReuseEnabled(hasReuseOrigin);
   }, [cardForm.id, cardForm.conteudo_origem_id, resolvedCardConteudoId]);
 
-  const syncDeltaJob = async (payload: { topicoIds?: number[]; conteudoIds?: number[]; reason: string }) => {
-    if (!session?.access_token || !editingTopic?.classe_id) return;
-    await enqueueClassDeltaJob(session.access_token, {
-      classe_id: editingTopic.classe_id,
-      topico_ids: payload.topicoIds,
-      conteudo_ids: payload.conteudoIds,
-      reason: payload.reason,
-    });
-  };
+  // O disparo de class-delta virou trigger no Postgres, sobre topicos,
+  // conteudos, atividades, questoes e cards (migration 20260827_03).
+  // Escrever JA e o disparo — nao ha mais nada a chamar depois do save.
 
   /** Lê conteúdo textual dos arquivos pendentes para enviar como material de referência ao AI */
   const readPendingFileContents = async (): Promise<{ fileContents: string; fileNames: string[] }> => {
@@ -425,11 +418,6 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
             setExtraFiles(allExtra);
           }
         }
-        await syncDeltaJob({
-          conteudoIds: created?.id ? [created.id] : selectedContentId ? [selectedContentId] : undefined,
-          topicoIds: [editingTopic.id],
-          reason: "edicao_conteudo_console",
-        });
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Erro ao enviar arquivo.";
         toast.error(msg);
@@ -446,11 +434,6 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
       undefined,
       selectedContentId && !isCreating ? selectedContentId : undefined
     );
-    await syncDeltaJob({
-      conteudoIds: saved?.id ? [saved.id] : selectedContentId ? [selectedContentId] : undefined,
-      topicoIds: editingTopic?.id ? [editingTopic.id] : undefined,
-      reason: "edicao_conteudo_console",
-    });
   };
 
   const handleUploadQuestionMedia = async (file: File) => {
@@ -480,48 +463,23 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
 
   const handleDeleteContentWithSync = async (contentId: number) => {
     handleDeleteContent(contentId);
-    await syncDeltaJob({
-      conteudoIds: [contentId],
-      topicoIds: editingTopic?.id ? [editingTopic.id] : undefined,
-      reason: "remocao_conteudo_console",
-    });
   };
 
   const handleSaveActivityWithSync = async () => {
     await handleSaveActivityProp();
-    await syncDeltaJob({
-      topicoIds: editingTopic?.id ? [editingTopic.id] : undefined,
-      conteudoIds: selectedContentId ? [selectedContentId] : undefined,
-      reason: "edicao_atividade_console",
-    });
   };
 
   const handleCreateActivityWithQuestionWithSync = async () => {
     await Promise.resolve(handleCreateActivityWithQuestionProp());
-    await syncDeltaJob({
-      topicoIds: editingTopic?.id ? [editingTopic.id] : undefined,
-      conteudoIds: selectedContentId ? [selectedContentId] : undefined,
-      reason: "criacao_atividade_questao_console",
-    });
   };
 
   const handleSaveQuestionWithSync = async () => {
     await Promise.resolve(handleSaveQuestionProp());
-    await syncDeltaJob({
-      topicoIds: editingTopic?.id ? [editingTopic.id] : undefined,
-      conteudoIds: selectedContentId ? [selectedContentId] : undefined,
-      reason: "edicao_questao_console",
-    });
   };
 
   const handleSaveCardWithSync = async () => {
     await Promise.resolve(handleSaveCardProp());
     setIsCardReuseEnabled(false);
-    await syncDeltaJob({
-      topicoIds: editingTopic?.id ? [editingTopic.id] : undefined,
-      conteudoIds: resolvedCardConteudoId ? [Number(resolvedCardConteudoId)] : selectedContentId ? [selectedContentId] : undefined,
-      reason: "edicao_card_console",
-    });
   };
 
   const handleDeleteCardWithSync = async (cardId: number) => {
@@ -529,16 +487,6 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
     if (!removed) return;
     if (cardForm.id === cardId) {
       resetCardEditor();
-    }
-    try {
-      await syncDeltaJob({
-        topicoIds: editingTopic?.id ? [editingTopic.id] : undefined,
-        conteudoIds: selectedContentId ? [selectedContentId] : undefined,
-        reason: "remocao_card_console",
-      });
-    } catch (error) {
-      console.error("[TopicEditDrawer] Falha ao enfileirar class-delta apos excluir card:", error);
-      toast.warning("Card excluido, mas o job de personalizacao nao foi enfileirado.");
     }
   };
 
@@ -647,11 +595,6 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
       await props.loadCards(editingTopic.id);
       await loadActivities(editingTopic.id);
       await loadActivityLinks(editingTopic.id);
-      await syncDeltaJob({
-        topicoIds: [editingTopic.id],
-        conteudoIds: [selectedContentId],
-        reason: "aplicar_sugestoes_ia_console",
-      });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Erro ao criar sugestoes.";
       toast.error(msg);
