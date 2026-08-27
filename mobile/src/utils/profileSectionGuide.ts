@@ -83,6 +83,58 @@ function heroMetricSteps(theme: MetricsThemeResolved): SectionGuideStep[] {
   ];
 }
 
+/**
+ * Id do cartão de sessão em cada tema. O passo sobre telemetria aponta para
+ * ele: é o único bloco da tela que só existe quando há lote recente, e portanto
+ * o lugar certo para explicar de onde aqueles números vêm.
+ */
+function idDoCartaoDeSessao(theme: MetricsThemeResolved): string {
+  if (theme === "arena") return "arena-live";
+  if (theme === "goals") return "goals-time";
+  if (theme === "mystery") return "mystery-traces";
+  if (theme === "squad") return "squad-session";
+  return "analytics-session";
+}
+
+function telemetriaSteps(
+  theme: MetricsThemeResolved,
+  vm: ProfileMetricsViewModel,
+): SectionGuideStep[] {
+  // Sem lote recente os cartões de sessão nem existem; apontar para eles
+  // deixaria o guia descrevendo um elemento ausente. Aí a explicação vai para
+  // as abas, que estão sempre na tela.
+  const alvo = vm.hasSessionMetrics
+    ? `profile_metric_${idDoCartaoDeSessao(theme)}`
+    : "profile_tabs";
+
+  return [
+    {
+      id: "telemetria-origem",
+      target: alvo,
+      title: "De onde vêm os números da sessão",
+      description:
+        "Enquanto você estuda, o app envia em lotes o tempo ativo, o tempo ocioso, os toques e a rolagem registrados em cada tópico, conteúdo e atividade. É essa telemetria que alimenta os cartões de sessão e a leitura adaptativa da IA. Sem lote recente, os cartões de sessão não aparecem e as demais métricas continuam vindo dos registros já salvos.",
+      icon: "access-point",
+    },
+    {
+      id: "telemetria-ativo-ocioso",
+      target: alvo,
+      title: "Ativo, ocioso e engajamento",
+      description:
+        "Tempo ativo conta os trechos com interação; ocioso conta o material aberto sem interação. Engajamento é ativo ÷ (ativo + ocioso), em porcentagem. Interações contam toques registrados. Por isso o tempo ativo costuma ser menor que o tempo em que a tela ficou aberta.",
+      icon: "timer-outline",
+    },
+    {
+      id: "telemetria-camera",
+      target: "profile_settings",
+      title: "Câmera e o que você escolhe coletar",
+      description:
+        "A captura pela câmera é opcional: depende da permissão do sistema e da sua escolha em Coleta e acessos. O indicador informa apenas o estado da permissão e da coleta que você aceitou. Recusar a câmera não interrompe o restante da telemetria nem afeta suas notas.",
+      icon: "camera-outline",
+    },
+  ];
+}
+
 function themeMetricSteps(
   theme: MetricsThemeResolved,
   vm: ProfileMetricsViewModel,
@@ -185,6 +237,7 @@ export function buildProfileGuideSteps({
       ? []
       : [
           ...themeMetricSteps(theme, vm),
+          ...telemetriaSteps(theme, vm),
           ...(theme !== "goals"
             ? [metricStep("adaptive-reading", "Leitura adaptativa", "Mostra a última interpretação da IA: estado percebido, sinais, recomendações e ajustes aplicados. O indicador da câmera informa apenas o estado da permissão e da coleta escolhida por você.", "radar")]
             : []),

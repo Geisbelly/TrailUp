@@ -1,4 +1,5 @@
 import { OrnamentDivider } from "@/components/HallTheme";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
@@ -22,6 +23,7 @@ import {
   getMetricsThemeLabel,
   getMetricsThemePreference,
 } from "@/utils/profileMetricThemes";
+import { buildFirstAccessTourStorageKey } from "@/utils/firstAccessTour";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 
 const pkg = require("../../../../package.json");
@@ -218,9 +220,55 @@ export default function Settings() {
     [openLink, textoMatches],
   );
 
+  /**
+   * Apaga a marca de "tutorial concluido" deste aluno.
+   *
+   * A conclusao vive numa chave do AsyncStorage que inclui a versao do
+   * roteiro; a alternativa seria subir `FIRST_ACCESS_TOUR_VERSION` a cada
+   * teste, o que reapresentaria o tutorial para TODOS os alunos e exigiria um
+   * deploy por rodada de teste.
+   */
+  const reverTutorial = useCallback(async () => {
+    if (!usuario?.id) return;
+    try {
+      await AsyncStorage.removeItem(buildFirstAccessTourStorageKey(usuario.id));
+      showDialog({
+        title: "Tutorial reiniciado",
+        description:
+          "Ele aparece de novo na proxima vez que voce abrir a Trilha.",
+        tone: "success",
+      });
+    } catch {
+      showDialog({
+        title: "Aviso",
+        description: "Nao foi possivel reiniciar o tutorial agora.",
+        tone: "warning",
+      });
+    }
+  }, [showDialog, usuario?.id]);
+
   const sobreLinks: MenuItem[] = useMemo(
     () =>
       [
+        {
+          label: "Rever tutorial inicial",
+          render: (
+            <TouchableOpacity
+              style={[
+                styles.menuItem,
+                {
+                  backgroundColor: palette.surfaceElevated,
+                  borderColor: "#ffffff20",
+                },
+              ]}
+              onPress={reverTutorial}
+            >
+              <Text style={[styles.menuItemText, { color: palette.text }]}>
+                Rever tutorial inicial
+              </Text>
+            </TouchableOpacity>
+          ),
+        },
         {
           label: "Informações do app",
           render: (
@@ -265,6 +313,7 @@ export default function Settings() {
       palette.border,
       palette.surfaceElevated,
       palette.text,
+      reverTutorial,
       textoMatches,
     ],
   );
