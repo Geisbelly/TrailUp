@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Image,
+  LayoutChangeEvent,
   Modal,
   Pressable,
   StyleSheet,
@@ -11,6 +12,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import tinycolor from "tinycolor2";
 
 import {
@@ -38,7 +40,11 @@ export function FirstAccessTour({
   profile?: string | null;
 }) {
   const router = useRouter();
+  // Última rota para a qual o tutorial navegou, para não renavegar quando o
+  // passo muda mas a tela é a mesma.
+  const rotaAtualRef = useRef<string | null>(null);
   const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const normalizedProfile = normalizeBrainHexProfile(profile);
   const storageKey = userId ? buildFirstAccessTourStorageKey(userId) : null;
   const steps = useMemo(() => buildFirstAccessTourSteps(profile), [profile]);
@@ -47,6 +53,7 @@ export function FirstAccessTour({
   const guideName = useMemo(() => getBrainHexGuideName(profile), [profile]);
   const [visible, setVisible] = useState(false);
   const [index, setIndex] = useState(0);
+  const [bubbleHeight, setBubbleHeight] = useState(0);
   const loadedKeyRef = useRef<string | null>(null);
   const persistQueueRef = useRef<Promise<void>>(Promise.resolve());
   const currentStep = steps[index] ?? steps[0];
@@ -87,7 +94,20 @@ export function FirstAccessTour({
 
   useEffect(() => {
     if (!visible || !currentStep || !storageKey) return;
-    router.replace(currentStep.route as never);
+
+    // `replace` destruía a entrada anterior da pilha. Ao entrar em
+    // `/(tabs)/perfil/settings`, o perfil deixava de existir no histórico e o
+    // aluno ficava preso nas configurações, sem para onde voltar. `navigate`
+    // empilha (ou reaproveita, se a tela já estiver na pilha), então o caminho
+    // de volta continua existindo.
+    //
+    // A guarda por rota evita renavegar a cada passo: vários passos seguidos
+    // compartilham `/(tabs)`, e renavegar em cada um remontava a tela à toa.
+    if (rotaAtualRef.current !== currentStep.route) {
+      rotaAtualRef.current = currentStep.route;
+      router.navigate(currentStep.route as never);
+    }
+
     persistQueueRef.current = persistQueueRef.current
       .then(() =>
         AsyncStorage.setItem(
@@ -114,16 +134,63 @@ export function FirstAccessTour({
     }
     setVisible(false);
     setIndex(0);
-    router.replace("/(tabs)" as never);
+    // `navigate` também aqui: se o aluno encerrar o tutorial numa tela interna
+    // (pelo botão de pular), `replace` trocaria essa tela pela raiz e deixaria
+    // a pilha do perfil sem retorno — o mesmo defeito corrigido acima.
+    rotaAtualRef.current = "/(tabs)";
+    router.navigate("/(tabs)" as never);
   }, [router, steps.length, storageKey]);
 
   if (!normalizedProfile || !currentStep) return null;
 
   const isLast = index >= steps.length - 1;
+  const isIntroduction = currentStep.id === "welcome";
   const compact = height < 720;
-  const guideOnRight = index % 2 === 1;
-  const imageHeight = Math.min(height * (compact ? 0.39 : 0.46), 430);
-  const imageWidth = Math.min(width * 0.64, 310);
+  const bubbleTop = compact ? 76 : 92;
+  const navigationHighlightHeight = Math.min(82, height * 0.12);
+  const navigationHighlightBottom = Math.max(insets.bottom, 8);
+  const bubbleAtTop = currentStep.highlight === "navigation";
+  const bubbleBottom = navigationHighlightBottom + navigationHighlightHeight + 12;
+  const measuredBubbleTop = bubbleAtTop
+    ? bubbleTop
+    : height - bubbleBottom - (bubbleHeight || height * 0.36);
+  const contentTop = Math.max(insets.top + 54, 66);
+  const contentBottom = Math.max(contentTop + 90, measuredBubbleTop - 12);
+  const introductionWidth = Math.min(width * 0.64, 240);
+  const introductionTop = Math.max(insets.top + 58, 70);
+  const introductionRect = {
+    top: introductionTop,
+    left: (width - introductionWidth) / 2,
+    width: introductionWidth,
+    height: Math.min(
+      height * 0.37,
+      300,
+      Math.max(170, measuredBubbleTop - introductionTop - 12),
+    ),
+  };
+  const highlightRect =
+    isIntroduction
+      ? introductionRect
+      : currentStep.highlight === "navigation"
+      ? {
+          top: height - navigationHighlightBottom - navigationHighlightHeight,
+          left: 8,
+          width: width - 16,
+          height: navigationHighlightHeight,
+        }
+      : currentStep.highlight === "help"
+        ? {
+            top: Math.max(insets.top + 42, 48),
+            left: width - 68,
+            width: 52,
+            height: 52,
+          }
+        : {
+            top: contentTop,
+            left: 12,
+            width: width - 24,
+            height: Math.max(90, contentBottom - contentTop),
+          };
   const accent = guideConfig.color;
   const bubbleBorder = tinycolor(accent).lighten(12).setAlpha(0.75).toRgbString();
 
@@ -137,21 +204,39 @@ export function FirstAccessTour({
       onRequestClose={() => void finish()}
     >
       <View style={styles.root}>
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: `${palette.background}dc` }]} />
+        <TourSpotlight
+          rect={highlightRect}
+          screenWidth={width}
+          screenHeight={height}
+          scrim={`${palette.background}c9`}
+          accent={accent}
+        />
 
-        {currentStep.highlight === "navigation" ? (
+        {isIntroduction ? (
           <View
             pointerEvents="none"
             style={[
-              styles.navigationHighlight,
+              styles.introductionStage,
+              introductionRect,
               {
-                borderColor: accent,
+                backgroundColor: tinycolor(accent).setAlpha(0.12).toRgbString(),
                 shadowColor: accent,
-                bottom: 8,
-                height: Math.min(108, height * 0.15),
               },
             ]}
-          />
+          >
+            <View
+              style={[
+                styles.introductionAura,
+                { backgroundColor: tinycolor(accent).setAlpha(0.18).toRgbString() },
+              ]}
+            />
+            <Image
+              source={guardianFullImages[normalizedProfile]}
+              resizeMode="contain"
+              accessibilityLabel={`${guideName}, guia do perfil`}
+              style={styles.introductionGuideImage}
+            />
+          </View>
         ) : null}
 
         <View style={[styles.topBar, { paddingTop: Math.max(18, height * 0.025) }]}>
@@ -172,23 +257,42 @@ export function FirstAccessTour({
         <View
           style={[
             styles.speechBubble,
+            bubbleAtTop ? { top: bubbleTop } : { bottom: bubbleBottom },
             {
-              top: compact ? 76 : 92,
               backgroundColor: palette.surfaceElevated,
               borderColor: bubbleBorder,
             },
           ]}
+          onLayout={(event: LayoutChangeEvent) => {
+            const nextHeight = Math.ceil(event.nativeEvent.layout.height);
+            if (nextHeight !== bubbleHeight) setBubbleHeight(nextHeight);
+          }}
         >
-          <View style={styles.speakerRow}>
-            <Text style={[styles.speaker, { color: accent }]}>{guideName}</Text>
-            <Text style={[styles.counter, { color: palette.textSubtle }]}>
-              {index + 1}/{steps.length}
+          {!isIntroduction ? (
+            <Image
+              source={guardianFullImages[normalizedProfile]}
+              resizeMode="contain"
+              accessibilityLabel={`${guideName}, guia do perfil`}
+              style={styles.coachGuideImage}
+            />
+          ) : null}
+
+          <View style={!isIntroduction ? styles.dialogCopyWithGuide : undefined}>
+            <View style={styles.guideHeader}>
+              <View style={styles.guideHeaderCopy}>
+                <View style={styles.speakerRow}>
+                  <Text style={[styles.speaker, { color: accent }]}>{guideName}</Text>
+                  <Text style={[styles.counter, { color: palette.textSubtle }]}>
+                    {index + 1}/{steps.length}
+                  </Text>
+                </View>
+                <Text style={[styles.title, { color: palette.text }]}>{currentStep.title}</Text>
+              </View>
+            </View>
+            <Text style={[styles.description, { color: palette.textMuted }]}>
+              {currentStep.description}
             </Text>
           </View>
-          <Text style={[styles.title, { color: palette.text }]}>{currentStep.title}</Text>
-          <Text style={[styles.description, { color: palette.textMuted }]}>
-            {currentStep.description}
-          </Text>
 
           <View style={styles.progressRow}>
             {steps.map((step, stepIndex) => (
@@ -226,32 +330,40 @@ export function FirstAccessTour({
               <Text style={styles.nextText}>{isLast ? "Começar" : "Próximo"}</Text>
             </Pressable>
           </View>
-
-          <View
-            style={[
-              styles.bubbleTail,
-              guideOnRight ? styles.tailRight : styles.tailLeft,
-              { borderTopColor: bubbleBorder },
-            ]}
-          />
         </View>
-
-        <Image
-          source={guardianFullImages[normalizedProfile]}
-          resizeMode="contain"
-          accessibilityLabel={`${guideName}, guia do perfil`}
-          style={[
-            styles.guideImage,
-            {
-              width: imageWidth,
-              height: imageHeight,
-              bottom: currentStep.highlight === "navigation" ? 96 : 18,
-            },
-            guideOnRight ? styles.guideRight : styles.guideLeft,
-          ]}
-        />
       </View>
     </Modal>
+  );
+}
+
+type TourRect = { top: number; left: number; width: number; height: number };
+
+function TourSpotlight({
+  rect,
+  screenWidth,
+  screenHeight,
+  scrim,
+  accent,
+}: {
+  rect: TourRect;
+  screenWidth: number;
+  screenHeight: number;
+  scrim: string;
+  accent: string;
+}) {
+  const top = Math.max(0, Math.min(screenHeight, rect.top));
+  const left = Math.max(0, Math.min(screenWidth, rect.left));
+  const width = Math.max(0, Math.min(screenWidth - left, rect.width));
+  const height = Math.max(0, Math.min(screenHeight - top, rect.height));
+
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      <View style={[styles.scrim, { top: 0, left: 0, right: 0, height: top, backgroundColor: scrim }]} />
+      <View style={[styles.scrim, { top, left: 0, width: left, height, backgroundColor: scrim }]} />
+      <View style={[styles.scrim, { top, left: left + width, right: 0, height, backgroundColor: scrim }]} />
+      <View style={[styles.scrim, { top: top + height, left: 0, right: 0, bottom: 0, backgroundColor: scrim }]} />
+      <View style={[styles.spotlight, { top, left, width, height, borderColor: accent, shadowColor: accent }]} />
+    </View>
   );
 }
 
@@ -293,12 +405,52 @@ const styles = StyleSheet.create({
     zIndex: 3,
     borderWidth: 1.5,
     borderRadius: 24,
-    padding: 18,
+    padding: 15,
     shadowColor: "#000",
     shadowOpacity: 0.42,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 10 },
     elevation: 20,
+  },
+  guideHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  coachGuideImage: {
+    position: "absolute",
+    zIndex: 4,
+    top: 8,
+    left: -10,
+    width: 132,
+    height: 218,
+  },
+  dialogCopyWithGuide: {
+    marginLeft: 104,
+    minHeight: 210,
+  },
+  guideHeaderCopy: { flex: 1 },
+  introductionStage: {
+    position: "absolute",
+    zIndex: 2,
+    borderRadius: 26,
+    alignItems: "center",
+    justifyContent: "flex-end",
+    overflow: "hidden",
+    shadowOpacity: 0.8,
+    shadowRadius: 22,
+    elevation: 12,
+  },
+  introductionAura: {
+    position: "absolute",
+    width: "88%",
+    aspectRatio: 1,
+    borderRadius: 999,
+    bottom: -24,
+  },
+  introductionGuideImage: {
+    width: "94%",
+    height: "96%",
   },
   speakerRow: {
     flexDirection: "row",
@@ -307,7 +459,7 @@ const styles = StyleSheet.create({
   },
   speaker: { fontSize: 12, fontWeight: "900", letterSpacing: 1.2, textTransform: "uppercase" },
   counter: { fontSize: 12, fontWeight: "700" },
-  title: { marginTop: 7, fontSize: 21, lineHeight: 26, fontWeight: "800" },
+  title: { marginTop: 5, fontSize: 20, lineHeight: 24, fontWeight: "800" },
   description: { marginTop: 9, fontSize: 15, lineHeight: 21 },
   progressRow: { flexDirection: "row", gap: 4, marginTop: 14 },
   progressDot: { flex: 1, height: 3, borderRadius: 2 },
@@ -329,28 +481,11 @@ const styles = StyleSheet.create({
   },
   backText: { fontSize: 14, fontWeight: "700" },
   nextText: { color: "#FFFFFF", fontSize: 14, fontWeight: "900" },
-  bubbleTail: {
+  scrim: { position: "absolute" },
+  spotlight: {
     position: "absolute",
-    bottom: -15,
-    width: 0,
-    height: 0,
-    borderLeftWidth: 13,
-    borderRightWidth: 13,
-    borderTopWidth: 16,
-    borderLeftColor: "transparent",
-    borderRightColor: "transparent",
-  },
-  tailLeft: { left: 64 },
-  tailRight: { right: 64 },
-  guideImage: { position: "absolute", zIndex: 2 },
-  guideLeft: { left: 2 },
-  guideRight: { right: 2 },
-  navigationHighlight: {
-    position: "absolute",
-    left: 8,
-    right: 8,
     borderWidth: 2,
-    borderRadius: 24,
+    borderRadius: 18,
     shadowOpacity: 0.9,
     shadowRadius: 16,
     elevation: 3,
