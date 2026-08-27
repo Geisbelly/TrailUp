@@ -2,7 +2,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Stack } from "expo-router";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -28,6 +28,7 @@ import { useUsuario } from "@/context/SessaoContext";
 import { Conquista, ConquistaBibliotecaItem } from "@/models/Conquista";
 import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { resolveRepresentativeBrainHexProfiles } from "@/utils/brainHex";
+import { registrarAlvoTour } from "@/utils/tourTargets";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { getProfileGuideEmphasis } from "@/utils/profileSectionGuide";
 
@@ -197,6 +198,10 @@ export default function BibliotecaConquistasScreen() {
   // `scrollTo` quer posicao ABSOLUTA e `measureInWindow` devolve posicao na
   // TELA; o deslocamento atual e o que converte uma na outra.
   const scrollOffsetRef = useRef(0);
+
+
+  // Alvos do tutorial inicial: as refs ja existiam para o guia de pagina.
+  useEffect(() => registrarAlvoTour("conquistas_resumo", summaryGuideRef), [summaryGuideRef]);
 
   return (
     <View style={[styles.screen, { backgroundColor: shellPalette.background }]}>

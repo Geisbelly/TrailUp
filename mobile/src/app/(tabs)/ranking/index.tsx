@@ -11,6 +11,7 @@ import { useConquistaRank } from "@/context/ConquistaRankContext";
 import { useUsuario } from "@/context/SessaoContext";
 import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { registrarAlvoTour } from "@/utils/tourTargets";
 import { getProfileGuideEmphasis } from "@/utils/profileSectionGuide";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -329,6 +330,9 @@ export default function RankingHome() {
     ],
     [profileEmphasis],
   );
+  // Alvos do tutorial inicial: as refs ja existiam para o guia de pagina.
+  useEffect(() => registrarAlvoTour("ranking_categorias", rankingCategoriesGuideRef), [rankingCategoriesGuideRef]);
+
   const rankingGuideTargets = useMemo(
     () => ({
       ranking_header: rankingHeaderGuideRef,

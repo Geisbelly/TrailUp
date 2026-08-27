@@ -6,7 +6,8 @@ import { buildClasseAcademicMetrics } from "@/utils/classeMetrics";
 import { getBrainHexProfileCapabilities } from "@/utils/brainHexCapabilities";
 import { unificarContadores } from "@/utils/progressoPersonalizado";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
-import React, { useMemo, useRef } from "react";
+import { registrarAlvoTour } from "@/utils/tourTargets";
+import React, { useEffect, useMemo, useRef } from "react";
 import { StyleSheet, View } from "react-native";
 import { TrilhaArvoreSimple } from "./ArvoreView";
 import { GameHeader } from "./common/GameHeader";
@@ -89,6 +90,18 @@ export const TrilhaBase: React.FC<{
     const pct = Number(topico.percentual_concluido ?? 0);
     return status.includes("concl") || pct >= 100;
   }).length;
+
+  // O tutorial inicial precisa apontar para ESTES elementos; as refs ja
+  // existiam para o guia de modulo, entao aqui elas so passam a ser
+  // alcancaveis por nome de fora da tela.
+  useEffect(
+    () => registrarAlvoTour("trilha_resumo", progressGuideTargetRef),
+    [progressGuideTargetRef],
+  );
+  useEffect(
+    () => registrarAlvoTour("trilha_mapa", journeyGuideTargetRef),
+    [journeyGuideTargetRef],
+  );
 
   return (
     <View style={[st.page, { backgroundColor: palette.background }]}>

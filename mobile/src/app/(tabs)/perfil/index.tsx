@@ -2,7 +2,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Dimensions,
@@ -44,6 +44,7 @@ import {
   resolveMetricsTheme,
 } from "@/utils/profileMetricThemes";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { registrarAlvoTour } from "@/utils/tourTargets";
 import { resolveRepresentativeBrainHexProfiles } from "@/utils/brainHex";
 import { buildProfileGuideSteps } from "@/utils/profileSectionGuide";
 
@@ -171,6 +172,10 @@ export default function PerfilHome() {
       ),
     [profileGuideSteps],
   );
+  // Alvos do tutorial inicial: as refs ja existiam para o guia de pagina.
+  useEffect(() => registrarAlvoTour("perfil_resumo", profileSummaryGuideRef), [profileSummaryGuideRef]);
+  useEffect(() => registrarAlvoTour("perfil_metricas", profileTabsGuideRef), [profileTabsGuideRef]);
+
   const profileGuideTargets = useMemo(
     () => ({
       profile_summary: profileSummaryGuideRef,

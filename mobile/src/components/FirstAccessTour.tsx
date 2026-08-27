@@ -22,6 +22,7 @@ import {
   normalizeBrainHexProfile,
 } from "@/constants/profileImages";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { obterAlvoTour } from "@/utils/tourTargets";
 import {
   buildFirstAccessTourSteps,
   buildFirstAccessTourStorageKey,
@@ -43,6 +44,11 @@ export function FirstAccessTour({
   // Última rota para a qual o tutorial navegou, para não renavegar quando o
   // passo muda mas a tela é a mesma.
   const rotaAtualRef = useRef<string | null>(null);
+  // Recorte medido do elemento real do passo atual. `null` = ainda nao
+  // medido (ou o passo nao tem alvo), e ai vale o desenho aproximado.
+  const [alvoRect, setAlvoRect] = useState<{
+    top: number; left: number; width: number; height: number;
+  } | null>(null);
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const normalizedProfile = normalizeBrainHexProfile(profile);
@@ -120,6 +126,39 @@ export function FirstAccessTour({
       });
   }, [currentStep, index, router, storageKey, visible]);
 
+  // Mede o elemento real do passo. A tela pode ter acabado de trocar, entao
+  // uma medida unica pegaria o layout no meio da transicao e devolveria zeros;
+  // dai a escada de tentativas, igual a do guia de pagina.
+  useEffect(() => {
+    setAlvoRect(null);
+    if (!visible || !currentStep?.target) return;
+
+    let ativo = true;
+    const timers = [160, 340, 620, 1000].map((atraso) =>
+      setTimeout(() => {
+        const ref = obterAlvoTour(currentStep.target);
+        ref?.current?.measureInWindow((x, y, largura, altura) => {
+          if (!ativo || largura < 2 || altura < 2) return;
+          // Fora da tela: manter o que ja havia em vez de acender um retangulo
+          // grampeado sobre o elemento errado.
+          if (y + altura < 0 || y > height) return;
+          const respiro = 8;
+          setAlvoRect({
+            top: Math.max(0, y - respiro),
+            left: Math.max(0, x - respiro),
+            width: Math.min(width, largura + respiro * 2),
+            height: Math.min(height, altura + respiro * 2),
+          });
+        });
+      }, atraso),
+    );
+
+    return () => {
+      ativo = false;
+      timers.forEach(clearTimeout);
+    };
+  }, [currentStep, height, visible, width]);
+
   const finish = useCallback(async () => {
     if (storageKey) {
       try {
@@ -168,7 +207,9 @@ export function FirstAccessTour({
       Math.max(170, measuredBubbleTop - introductionTop - 12),
     ),
   };
-  const highlightRect =
+  // Recorte aproximado — so vale enquanto o alvo real nao foi medido (ou o
+  // passo nao tem alvo). Ele acende uma REGIAO, nao o item.
+  const recorteAproximado =
     isIntroduction
       ? introductionRect
       : currentStep.highlight === "navigation"
@@ -191,6 +232,26 @@ export function FirstAccessTour({
             width: width - 24,
             height: Math.max(90, contentBottom - contentTop),
           };
+  // O elemento medido sempre ganha do desenho aproximado.
+  const highlightRect =
+    !isIntroduction && alvoRect ? alvoRect : recorteAproximado;
+
+  // Balao colado no recorte: abaixo se couber, senao acima, senao no rodape.
+  // Antes ele ia sempre para topo ou rodape fixo, e acabava longe do item que
+  // estava explicando — ou por cima dele.
+  const balaoAltura = bubbleHeight || height * 0.36;
+  const limiteInferior = height - Math.max(insets.bottom, 12);
+  const abaixoDoAlvo = highlightRect.top + highlightRect.height + 12;
+  const acimaDoAlvo = highlightRect.top - 12 - balaoAltura;
+  const balaoTop =
+    isIntroduction || !alvoRect
+      ? measuredBubbleTop
+      : limiteInferior - abaixoDoAlvo >= balaoAltura
+        ? abaixoDoAlvo
+        : acimaDoAlvo >= insets.top + 12
+          ? acimaDoAlvo
+          : Math.max(insets.top + 12, limiteInferior - balaoAltura);
+
   const accent = guideConfig.color;
   const bubbleBorder = tinycolor(accent).lighten(12).setAlpha(0.75).toRgbString();
 
@@ -257,7 +318,7 @@ export function FirstAccessTour({
         <View
           style={[
             styles.speechBubble,
-            bubbleAtTop ? { top: bubbleTop } : { bottom: bubbleBottom },
+            { top: balaoTop },
             {
               backgroundColor: palette.surfaceElevated,
               borderColor: bubbleBorder,

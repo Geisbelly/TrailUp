@@ -10,11 +10,12 @@ import { useNotifications } from "@/context/NotificacaoContext";
 import { useUsuario } from "@/context/SessaoContext";
 import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { registrarAlvoTour } from "@/utils/tourTargets";
 import { getProfileGuideEmphasis } from "@/utils/profileSectionGuide";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import {
   FlatList,
   Pressable,
@@ -201,6 +202,10 @@ export default function PerfilHome() {
       />
     </Swipeable>
   );
+
+
+  // Alvos do tutorial inicial: as refs ja existiam para o guia de pagina.
+  useEffect(() => registrarAlvoTour("notificacoes_lista", notificationsListGuideRef), [notificationsListGuideRef]);
 
   return (
     <View style={[styles.screenOuter, { backgroundColor: palette.background }]}>
