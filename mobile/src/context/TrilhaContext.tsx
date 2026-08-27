@@ -1922,13 +1922,15 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
           {
             aluno_id: usuario.id,
             topico_id: topicoId,
-            status:
-              String(topico.status ?? '').toLowerCase().includes('concl')
-                ? 'concluido'
-                : Number(topico.percentual_concluido ?? 0) > 0
-                ? 'em andamento'
-                : 'em andamento',
-            percentual_concluido: Math.max(0, Math.min(100, Number(topico.percentual_concluido ?? 0))),
+            // Sem `status` nem `percentual_concluido`: sao derivados no banco
+            // pelo trigger de progresso. Mandar o valor local aqui gravava por
+            // cima da conta certa com o que a memoria do app tivesse no
+            // momento -- e este caminho dispara a cada registro de tempo, o
+            // que fazia o percentual correto durar segundos.
+            //
+            // O `status` que estava aqui tambem era ternario morto: os dois
+            // ramos devolviam 'em andamento', entao um topico com 0% era
+            // marcado como iniciado so por ter tido tempo contabilizado.
             ultima_atividade: topico.ultima_atividade ?? null,
             tempo_gasto_min: tempoTotal,
             ultima_visualizacao: new Date().toISOString(),
