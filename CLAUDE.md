@@ -143,6 +143,26 @@ Cada perfil carrega:
 - `fontes_personalizacao` — fontes do professor (upload/link), `visibilidade` `classe|aluno`.
 - `personalizacao_jobs` + `personalizacao_job_targets` — fila assíncrona
   (`enrollment`, `class-delta`, `class-theme`, `student-cleanup`, `full-sync`).
+  **`class_delta_sync` é enfileirado pelo BANCO**, não pela API
+  (`20260827_03`): `fn_enqueue_class_delta_job` dispara em `topicos`,
+  `conteudos`, `atividades`, `questoes` e `cards` — as cinco tabelas que o
+  editor de trilha escreve. Salvar **é** o disparo; o console não chama nada
+  depois. Isso e o `class_theme_sync` (`fn_enqueue_classe_mapa_tema_job`) são
+  a aplicação direta da regra de fronteira: enfileirar não tem modelo de
+  linguagem no meio, e a API hibernando fazia todo save do professor falhar
+  com 502. Quem **processa** a fila continua na API — isso é geração, é IA.
+
+  Dois detalhes que não são acidentais. **Coalescência:** o trigger funde o
+  evento no job `pending` da classe (travando a linha com `FOR UPDATE`) em vez
+  de criar um por linha — sem isso, a reordenação de tópicos (um `UPDATE` por
+  linha) viraria N jobs. Job já em `processing` nunca é reaproveitado: o
+  worker já leu o `total_targets` dele. **Escopo na fusão:** se qualquer um
+  dos lados pediu o tópico inteiro, a fusão é o tópico inteiro — a união crua
+  de `conteudo_ids` encolheria o escopo e deixaria conteúdo sem regerar.
+
+  A listagem no console também não passa mais pela API: o professor lê
+  `personalizacao_jobs` direto, autorizado por
+  `personalizacao_jobs_professor_sel` (via `app_classes_do_professor()`).
 - `personalizacao_sugestao` + `personalizacao_sugestao_log` — ordem **aconselhada**
   de consumo do material por `(aluno × tópico × conteúdo)` e o histórico
   append-only de cada decisão (`criada`/`revisada`/`mantida`). Motor
