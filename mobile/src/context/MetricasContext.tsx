@@ -18,9 +18,11 @@ import {
   TelemetryTouchTarget,
   UpdateStudyContextParams,
 } from "@/interfaces/telemetria/TelemetryContracts";
+import { enviarLoteTelemetria } from "@/services/telemetriaApi";
 import {
-  enviarLoteTelemetria,
-} from "@/services/telemetriaApi";
+  drenarLotesTelemetria,
+  enfileirarLoteTelemetria,
+} from "@/services/telemetriaOutbox";
 import {
   DEFAULT_TELEMETRY_PREFERENCES,
   getTelemetryConsentRecord,
@@ -704,6 +706,11 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
     ((reason: TelemetryFlushReason) => Promise<TelemetryBatchResponse | null>) | null
   >(null);
   const lastFlushErrorAtRef = useRef(0);
+  // O envio do lote e assincrono e demorado (o endpoint roda o pipeline de
+  // analise na mesma requisicao). Sem estes dois, duas chamadas concorrentes
+  // leem o MESMO `batchRef` e mandam o mesmo tempo duas vezes.
+  const flushInFlightRef = useRef<Promise<TelemetryBatchResponse | null> | null>(null);
+  const endingSessionRef = useRef(false);
   const appStateRef = useRef(AppState.currentState);
   const resumeDescriptorRef = useRef<BeginStudySessionParams | null>(null);
   const captureRef = useRef<any>(null);
@@ -1024,7 +1031,7 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
     }
   }, [recordAppEvent, syncBatchTimeline, telemetryPreferences.usageEnabled]);
 
-  const flushStudyBatch = useCallback(
+  const runStudyBatchFlush = useCallback(
     async (reason: TelemetryFlushReason) => {
       const session = sessionRef.current;
       const batch = batchRef.current;
@@ -1092,12 +1099,23 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
 
       let response: TelemetryBatchResponse | null = null;
       let persisted = false;
+      // Diferente de `persisted`: significa que o lote saiu das mãos deste
+      // acumulador — foi gravado OU foi assumido pela fila em disco. Nos dois
+      // casos o acumulado precisa ser zerado, senão o mesmo tempo é enviado
+      // outra vez quando a rede voltar.
+      let assumido = false;
 
       try {
         response = await enviarLoteTelemetria(payload);
         persisted = response?.persisted === true;
+        assumido = persisted;
         if (response?.analysis) {
           setLastAnalysis(response.analysis);
+        }
+        if (persisted) {
+          // A gravação voltou a funcionar: é a hora de escoar o que ficou
+          // para trás, e não um intervalo fixo tentando no escuro.
+          void drenarLotesTelemetria(enviarLoteTelemetria).catch(() => undefined);
         }
       } catch (error) {
         const nowMs = Date.now();
@@ -1105,8 +1123,17 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
           console.warn("[MetricasContext] Falha ao enviar lote de telemetria:", error);
           lastFlushErrorAtRef.current = nowMs;
         }
+        try {
+          // Sem isto o lote só existia em memória, e a falha acontece
+          // justamente ao ir para segundo plano — quando o sistema pode matar
+          // o app e levar o tempo de estudo junto.
+          await enfileirarLoteTelemetria(payload);
+          assumido = true;
+        } catch (erroFila) {
+          console.warn("[MetricasContext] Falha ao enfileirar lote:", erroFila);
+        }
       } finally {
-        if (persisted) {
+        if (assumido) {
           batchRef.current = buildEmptyBatch(nowMs);
           markContextVisit(batchRef.current, { ...EMPTY_STUDY_CONTEXT }, currentContext);
           lastTouchSampleAtRef.current = 0;
@@ -1127,41 +1154,75 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
     ]
   );
 
+  // `batchRef` so e zerado DEPOIS que o envio volta, e o envio pode levar ate
+  // 120s. Sem serializar, um segundo flush nesse intervalo monta o payload a
+  // partir do mesmo acumulado e grava o tempo de novo -- e o tempo de topico,
+  // conteudo e questao aparece inflado no banco. Acontece de verdade: sair do
+  // app pela tela da trilha dispara `screen_blur` e `app_background` juntos.
+  const flushStudyBatch = useCallback(
+    (reason: TelemetryFlushReason) => {
+      const emAndamento = flushInFlightRef.current;
+      // Encadear em vez de descartar: o segundo motivo pode trazer dado que o
+      // primeiro ainda nao tinha (o evento de fim de sessao, por exemplo).
+      const proximo = emAndamento
+        ? emAndamento.catch(() => null).then(() => runStudyBatchFlush(reason))
+        : runStudyBatchFlush(reason);
+
+      flushInFlightRef.current = proximo;
+      return proximo.finally(() => {
+        if (flushInFlightRef.current === proximo) {
+          flushInFlightRef.current = null;
+        }
+      });
+    },
+    [runStudyBatchFlush]
+  );
+
   const endStudySession = useCallback(
     async (reason: TelemetryFlushReason) => {
-      if (!sessionRef.current) return;
+      // A guarda por `sessionRef` sozinha nao segura nada: ela so e limpa
+      // depois do `await` abaixo, entao dois motivos concorrentes passam os
+      // dois. Este sinalizador e ligado de forma sincrona, antes de qualquer
+      // await, e por isso fecha a janela.
+      if (!sessionRef.current || endingSessionRef.current) return;
+      endingSessionRef.current = true;
+      try {
+        recordAppEvent({
+          eventGroup: "session",
+          eventName: reason === "session_end" ? "session_end" : "session_interrupt",
+          topicoId: currentContextRef.current.topicoId,
+          conteudoId: currentContextRef.current.conteudoId,
+          atividadeId: currentContextRef.current.atividadeId,
+          itemKey: currentContextRef.current.itemKey,
+          payload: { reason },
+        });
 
-      recordAppEvent({
-        eventGroup: "session",
-        eventName: reason === "session_end" ? "session_end" : "session_interrupt",
-        topicoId: currentContextRef.current.topicoId,
-        conteudoId: currentContextRef.current.conteudoId,
-        atividadeId: currentContextRef.current.atividadeId,
-        itemKey: currentContextRef.current.itemKey,
-        payload: { reason },
-      });
+        await flushStudyBatch(reason);
+        stopFrameCaptureTimer();
 
-      await flushStudyBatch(reason);
-      stopFrameCaptureTimer();
+        if (flushTimerRef.current) {
+          clearInterval(flushTimerRef.current);
+          flushTimerRef.current = null;
+        }
 
-      if (flushTimerRef.current) {
-        clearInterval(flushTimerRef.current);
-        flushTimerRef.current = null;
+        const shouldPreserveResume = reason === "app_background";
+        if (!shouldPreserveResume) {
+          resumeDescriptorRef.current = null;
+        }
+
+        sessionRef.current = null;
+        batchRef.current = null;
+        wrongStreaksRef.current = {};
+        currentContextRef.current = { ...EMPTY_STUDY_CONTEXT };
+        lastAppEventAtRef.current = null;
+        seenTopicIdsRef.current = new Set();
+        seenContentIdsRef.current = new Set();
+        setIsSessionActive(false);
+      } finally {
+        // No `finally`: se o envio falhar, a sessao precisa poder ser
+        // encerrada de novo, senao o aluno fica com a sessao presa aberta.
+        endingSessionRef.current = false;
       }
-
-      const shouldPreserveResume = reason === "app_background";
-      if (!shouldPreserveResume) {
-        resumeDescriptorRef.current = null;
-      }
-
-      sessionRef.current = null;
-      batchRef.current = null;
-      wrongStreaksRef.current = {};
-      currentContextRef.current = { ...EMPTY_STUDY_CONTEXT };
-      lastAppEventAtRef.current = null;
-      seenTopicIdsRef.current = new Set();
-      seenContentIdsRef.current = new Set();
-      setIsSessionActive(false);
     },
     [flushStudyBatch, recordAppEvent, stopFrameCaptureTimer]
   );
@@ -1169,6 +1230,13 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     flushStudyBatchRef.current = flushStudyBatch;
   }, [flushStudyBatch]);
+
+  // O caso que a fila existe para cobrir: o app foi morto com lote pendente.
+  // A tentativa acontece na abertura seguinte, antes de qualquer sessão nova,
+  // para que o tempo antigo chegue ao banco na ordem em que foi vivido.
+  useEffect(() => {
+    void drenarLotesTelemetria(enviarLoteTelemetria).catch(() => undefined);
+  }, []);
 
   const beginStudySession = useCallback(
     async (params: BeginStudySessionParams) => {
