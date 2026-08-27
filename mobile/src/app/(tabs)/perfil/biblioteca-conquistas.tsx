@@ -190,6 +190,9 @@ export default function BibliotecaConquistasScreen() {
     () => ({ achievements_summary: summaryGuideRef }),
     [],
   );
+  // Entregue ao guia para que ele role até o elemento que está explicando —
+  // sem isto ele descreve trechos que ficaram fora da tela.
+  const scrollRef = useRef<ScrollView>(null);
 
   return (
     <View style={[styles.screen, { backgroundColor: shellPalette.background }]}>
@@ -198,6 +201,7 @@ export default function BibliotecaConquistasScreen() {
         sectionTitle="Conquistas"
         steps={guideSteps}
         targetRefs={guideTargets}
+        scrollRef={scrollRef}
         style={styles.guideButton}
       />
       <View
@@ -208,6 +212,7 @@ export default function BibliotecaConquistasScreen() {
       </View>
 
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >

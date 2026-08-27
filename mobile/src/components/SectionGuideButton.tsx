@@ -8,13 +8,23 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Image,
+  LayoutChangeEvent,
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
   View,
 } from "react-native";
+
+// Margem entre o recorte e o balão, e folga mínima da borda da tela.
+const FOLGA = 14;
+// Quanto o alvo fica abaixo do topo depois de rolar, para não colar no header.
+const MARGEM_ROLAGEM = 120;
+// O layout precisa assentar depois da rolagem antes de medir; uma medida só,
+// cedo demais, devolvia posição errada (ou zero) e o recorte não aparecia.
+const TENTATIVAS_MEDIDA = [120, 260, 460];
 
 export type SectionGuideStep = {
   id: string;
@@ -37,6 +47,7 @@ export function SectionGuideButton({
   steps,
   targetRefs,
   onStepFocus,
+  scrollRef,
   style,
 }: {
   profile?: string | null;
@@ -44,12 +55,18 @@ export function SectionGuideButton({
   steps: SectionGuideStep[];
   targetRefs: SectionGuideTargetRefs;
   onStepFocus?: (step: SectionGuideStep, index: number) => void | Promise<void>;
+  /**
+   * Rolagem da página. Sem ela o guia descreve elementos que podem estar fora
+   * da tela: ele mede a posição, mas nunca leva o aluno até lá.
+   */
+  scrollRef?: React.RefObject<ScrollView | null>;
   style?: object;
 }) {
   const buttonRef = useRef<View | null>(null);
   const [open, setOpen] = useState(false);
   const [index, setIndex] = useState(0);
   const [rect, setRect] = useState<SpotlightRect | null>(null);
+  const [balaoAltura, setBalaoAltura] = useState(0);
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const activeProfile = normalizeBrainHexProfile(profile) ?? "seeker";
   const palette = useMemo(() => getProfileShellPalette(activeProfile), [activeProfile]);
@@ -66,34 +83,75 @@ export function SectionGuideButton({
     setRect(null);
 
     let active = true;
-    let timer: ReturnType<typeof setTimeout> | null = null;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
     void Promise.resolve(onStepFocus?.(currentStep, index)).then(() => {
       if (!active) return;
       const ref =
         currentStep.target === "guide_button"
           ? buttonRef
           : targetRefs[currentStep.target];
-      if (!ref?.current?.measureInWindow) return;
+      const alvo = ref?.current;
+      if (!alvo?.measureInWindow) return;
 
-      timer = setTimeout(() => {
-        ref.current?.measureInWindow((x, y, width, height) => {
-          if (!active || width < 2 || height < 2) return;
-          const padding = 6;
-          setRect({
-            top: Math.max(0, y - padding),
-            left: Math.max(0, x - padding),
-            width: Math.min(screenWidth, width + padding * 2),
-            height: Math.min(screenHeight, height + padding * 2),
-          });
-        });
-      }, 100);
+      // 1. Levar o aluno até o elemento. Sem isto, o guia descrevia algo que
+      //    estava fora da tela: a medida caía fora da viewport, `top` era
+      //    grampeado em zero e o recorte simplesmente não aparecia — sobrava o
+      //    escurecimento uniforme.
+      const rolagem = scrollRef?.current;
+      if (rolagem && typeof alvo.measureLayout === "function") {
+        // Coordenadas relativas ao conteúdo da rolagem são exatamente o que
+        // `scrollTo` espera; medir na janela daria a posição já rolada.
+        const conteudo =
+          (rolagem as unknown as { getInnerViewRef?: () => unknown }).getInnerViewRef?.() ??
+          rolagem;
+        try {
+          alvo.measureLayout(
+            conteudo as never,
+            (_x, y) => {
+              if (!active) return;
+              rolagem.scrollTo({ y: Math.max(0, y - MARGEM_ROLAGEM), animated: true });
+            },
+            () => {
+              // Alvo fora da árvore da rolagem (cabeçalho fixo, por exemplo):
+              // ele já está visível, então não há o que rolar.
+            },
+          );
+        } catch {
+          // measureLayout varia entre versões/arquiteturas do RN. Falhar aqui
+          // custa a rolagem, não o guia.
+        }
+      }
+
+      // 2. Medir depois que o layout assentar. Uma medida única a 100ms pegava
+      //    a tela no meio da rolagem e devolvia posição errada.
+      TENTATIVAS_MEDIDA.forEach((atraso) => {
+        timers.push(
+          setTimeout(() => {
+            ref?.current?.measureInWindow((x, y, width, height) => {
+              if (!active || width < 2 || height < 2) return;
+              // Alvo ainda fora da viewport: manter o recorte anterior (ou
+              // nenhum) em vez de desenhar um retângulo grampeado em cima do
+              // elemento errado.
+              if (y + height < 0 || y > screenHeight) return;
+              const padding = 6;
+              setRect({
+                top: Math.max(0, y - padding),
+                left: Math.max(0, x - padding),
+                width: Math.min(screenWidth, width + padding * 2),
+                height: Math.min(screenHeight, height + padding * 2),
+              });
+            });
+          }, atraso),
+        );
+      });
     });
 
     return () => {
       active = false;
-      if (timer) clearTimeout(timer);
+      timers.forEach(clearTimeout);
     };
-  }, [currentStep, index, onStepFocus, open, screenHeight, screenWidth, targetRefs]);
+  }, [currentStep, index, onStepFocus, open, screenHeight, screenWidth, scrollRef, targetRefs]);
 
   useEffect(() => {
     setIndex(0);
@@ -104,6 +162,35 @@ export function SectionGuideButton({
     setIndex(0);
     setOpen(false);
   };
+
+  const aoMedirBalao = (evento: LayoutChangeEvent) => {
+    const altura = evento.nativeEvent.layout.height;
+    setBalaoAltura((atual) => (Math.abs(atual - altura) > 1 ? altura : atual));
+  };
+
+  /**
+   * Topo do balão.
+   *
+   * A regra antiga olhava só `rect.top > 52%` e ignorava a altura do próprio
+   * balão — um alvo na metade de cima mandava o balão para o rodapé, e um
+   * balão alto subia por cima do elemento que ele estava explicando. Aqui o
+   * balão vai para o lado do recorte em que ele REALMENTE cabe.
+   */
+  const balaoTop = useMemo(() => {
+    const altura = balaoAltura || screenHeight * 0.36;
+    const rodape = screenHeight - altura - FOLGA;
+    if (!rect) return rodape;
+
+    const espacoAcima = rect.top - FOLGA;
+    const espacoAbaixo = screenHeight - (rect.top + rect.height) - FOLGA;
+
+    if (espacoAbaixo >= altura) return rect.top + rect.height + FOLGA;
+    if (espacoAcima >= altura) return Math.max(FOLGA, rect.top - FOLGA - altura);
+
+    // Alvo grande demais para caber com o balão de qualquer lado: encosta no
+    // lado mais folgado. A sobreposição aqui é inevitável, não um descuido.
+    return espacoAbaixo >= espacoAcima ? Math.max(FOLGA, rodape) : FOLGA;
+  }, [balaoAltura, rect, screenHeight]);
 
   return (
     <>
@@ -151,9 +238,10 @@ export function SectionGuideButton({
 
           {currentStep ? (
             <View
+              onLayout={aoMedirBalao}
               style={[
                 styles.card,
-                rect && rect.top > screenHeight * 0.52 ? styles.cardTop : styles.cardBottom,
+                { top: balaoTop },
                 {
                   backgroundColor: palette.surfaceElevated,
                   borderColor: palette.borderStrong,
@@ -274,8 +362,6 @@ const styles = StyleSheet.create({
     padding: 18,
     elevation: 20,
   },
-  cardTop: { top: 34 },
-  cardBottom: { bottom: 34 },
   headingRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   headingCopy: { flex: 1 },
   avatar: { width: 46, height: 46, borderRadius: 23 },
