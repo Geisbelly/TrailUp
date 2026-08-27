@@ -781,7 +781,6 @@ async def test_trilha_notificacao_ia_and_evento_repositories_persist_expected_ta
             ScalarResult(99),
             ScalarResult(None),
             ScalarResult(None),
-            ScalarResult(None),
             MappingResult([
                 {
                     "lower_name": None,
@@ -820,8 +819,11 @@ async def test_trilha_notificacao_ia_and_evento_repositories_persist_expected_ta
     sql_statements = " ".join(sql for sql, _ in session.calls)
     insert_params = next(params for sql, params in session.calls if "INSERT INTO eventos_aluno" in sql)
     assert "UPDATE trilha_aluno" in sql_statements
-    assert "INSERT INTO notificacoes_pendentes" in sql_statements
+    # A API grava a SUGESTAO da IA e so isso. A fila (`notificacoes_pendentes`)
+    # e abastecida pelo trigger `trg_notificacoes_ia_promover`, no banco —
+    # escrever nela aqui duplicaria a notificacao que chega ao aluno.
     assert "INSERT INTO notificacoes_ia" in sql_statements
+    assert "INSERT INTO notificacoes_pendentes" not in sql_statements
     assert "UPDATE \"iaDescricao\"" in sql_statements or "UPDATE iadescricao" in sql_statements
     assert "INSERT INTO eventos_aluno" in sql_statements
     assert insert_params["referencia"] == "1"

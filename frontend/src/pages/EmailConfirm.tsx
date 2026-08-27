@@ -156,6 +156,13 @@ export default function EmailConfirm() {
 
       if (rpcError) throw rpcError;
 
+      const { error: perfilAtivoError } = await supabase
+        .from("alunos")
+        .update({ perfil_ativo: payload.perfilInicial } as never)
+        .eq("id", session.user.id);
+
+      if (perfilAtivoError) throw perfilAtivoError;
+
       localStorage.removeItem(`${STORAGE_PREFIX}${sessionEmail.toLowerCase()}`);
       toast.success("Cadastro de aluno concluído!");
       navigate("/login");

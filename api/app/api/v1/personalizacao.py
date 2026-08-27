@@ -23,6 +23,7 @@ from app.repositories.ia_decision_logs import IADecisionLogRepository
 from app.repositories.materiais import MateriaisRepository
 from app.repositories.personalizacao_jobs import PersonalizacaoJobsRepository
 from app.repositories.personalizacao_progresso import PersonalizacaoProgressoRepository
+from app.repositories.sugestao_material import SugestaoMaterialRepository
 from app.schemas.mentor_chat import MentorChatLLMResult
 from app.schemas.personalizacao import (
     ClassePerfilDistribuicaoItem,
@@ -56,6 +57,11 @@ from app.schemas.personalizacao import (
     RegenerarDocumentoPayload,
     RegenerarSlidePayload,
     RegenerarSlideResponse,
+    SugestaoAlunoResponse,
+    SugestaoEfetividadeResponse,
+    SugestaoHistoricoItem,
+    SugestaoMaterialItem,
+    SugestaoMaterialResponse,
 )
 from app.services.auth import UserContext
 from app.services.content_enrichment import ContentEnrichmentError, derive_base_blocks_and_topic
@@ -85,6 +91,8 @@ from app.services.personalizacao_jobs import (
     get_job_detail,
 )
 from app.services.storage import BUCKET, SupabaseStorage, build_public_storage_url
+from app.services.sugestao_ciclo import garantir_sugestao_do_aluno
+from app.services.sugestao_metrica import montar_registros_do_log, resumo_efetividade
 
 router = APIRouter(prefix="/personalizar", tags=["personalizar"])
 logger = logging.getLogger(__name__)
@@ -2773,6 +2781,139 @@ async def obter_personalizacao_media_status(
     )
 
 
+@router.get("/sugestao/{aluno_id}/historico", response_model=SugestaoAlunoResponse)
+async def obter_historico_de_sugestao(
+    aluno_id: str,
+    topico_id: int | None = Query(default=None, gt=0),
+    limite: int = Query(default=200, ge=1, le=1000),
+    user: UserContext = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> SugestaoAlunoResponse:
+    """Sugestão atual + histórico de decisões + efetividade, para o console.
+
+    Declarada ANTES de ``/sugestao/{aluno_id}/{topico_id}``: "historico" não é
+    inteiro, e com a ordem invertida o FastAPI responderia 422 em vez de chegar
+    aqui.
+
+    Todos os números saem do que já foi gravado no log. Nada é recalculado a
+    partir de telemetria nova — ela não existe mais quando o professor abre o
+    console, e recalcular daria um número diferente do que o sistema usou para
+    decidir.
+    """
+    if user.is_aluno and (user.aluno_id or user.user_id) == aluno_id:
+        pass
+    elif user.is_professor:
+        if not user.professor_liberado:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Professor sem liberacao de acesso.",
+            )
+        await ensure_professor_access(aluno_id, user, session)
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Perfil sem acesso a sugestao de material.",
+        )
+
+    repo = SugestaoMaterialRepository(session)
+    log = await repo.listar_log(aluno_id=aluno_id, topico_id=topico_id, limite=limite)
+    registros = montar_registros_do_log(log)
+
+    atual = None
+    if topico_id is not None:
+        gravada = await repo.buscar(aluno_id=aluno_id, topico_id=topico_id)
+        if gravada:
+            atual = SugestaoMaterialResponse(
+                formato_inicial=gravada.get("formato_inicial"),
+                ordem=[
+                    SugestaoMaterialItem(
+                        formato=str(item.get("formato")),
+                        posicao=int(item.get("posicao") or 0),
+                        score=float(item.get("score") or 0),
+                        motivos=list(item.get("motivos") or []),
+                    )
+                    for item in (gravada.get("ordem") or [])
+                ],
+                versao=int(gravada.get("versao") or 1),
+                origem=str(gravada.get("origem") or "inicial"),
+            )
+
+    return SugestaoAlunoResponse(
+        aluno_id=aluno_id,
+        topico_id=topico_id,
+        atual=atual,
+        # Mais recente primeiro: o professor quer ver o que mudou agora, nao a
+        # arqueologia da primeira versao.
+        historico=[
+            SugestaoHistoricoItem(
+                versao=int(registro.get("versao") or 1),
+                acao=str(registro.get("acao") or ""),
+                topico_id=registro.get("topico_id"),
+                criado_em=registro.get("criado_em"),
+                motivos=list(registro.get("motivos") or []),
+                ordem_sugerida=list(registro.get("ordem_sugerida") or []),
+                ordem_observada=list(registro.get("ordem_observada") or []),
+                aderencia=registro.get("aderencia"),
+                seguiu_inicio=registro.get("seguiu_inicio"),
+                desempenho=registro.get("desempenho"),
+                desempenho_posterior=registro.get("desempenho_posterior"),
+            )
+            for registro in reversed(registros)
+        ],
+        efetividade=SugestaoEfetividadeResponse(**resumo_efetividade(registros)),
+    )
+
+
+@router.get(
+    "/sugestao/{aluno_id}/{topico_id}",
+    response_model=SugestaoMaterialResponse,
+)
+async def obter_sugestao_de_material(
+    aluno_id: str,
+    topico_id: int,
+    user: UserContext = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> SugestaoMaterialResponse:
+    """Ordem aconselhada de consumo do material do aluno naquele tópico.
+
+    Rota própria porque o app lê as personalizações direto do Supabase — a
+    sugestão, não: criá-la exige o motor, que é servidor. Cria na primeira
+    chamada e devolve a mesma nas seguintes; mudanças vêm por revisão no ciclo
+    de telemetria, nunca por regeneração a cada GET (regerar apagaria a história
+    que a métrica de efetividade compara).
+
+    Os formatos disponíveis são lidos do banco, não recebidos do cliente: quem
+    decide sobre o que se pode ordenar é o material que existe.
+    """
+    if user.is_aluno and (user.aluno_id or user.user_id) == aluno_id:
+        pass
+    elif user.is_professor:
+        if not user.professor_liberado:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Professor sem liberacao de acesso.",
+            )
+        await ensure_professor_access(aluno_id, user, session)
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Perfil sem acesso a sugestao de material.",
+        )
+
+    records = await ConteudoPersonalizadoRepository(session).buscar_por_aluno(
+        aluno_id, topico_id=topico_id, limit=50
+    )
+    sugestao = await _resolver_sugestao_do_aluno(
+        session,
+        aluno_id=aluno_id,
+        topico_id=topico_id,
+        itens=[_to_response(r) for r in records],
+    )
+    # Sem material gerado ainda não há o que ordenar. Uma resposta vazia deixa o
+    # app cair na ordem padrão dele em vez de tratar isso como erro.
+    return sugestao or SugestaoMaterialResponse()
+
+
 @router.get("/{aluno_id}", response_model=PersonalizacaoListResponse)
 async def listar_personalizacoes(
     aluno_id: str,
@@ -2809,8 +2950,69 @@ async def listar_personalizacoes(
         topico_id=topico_id,
         limit=limit,
     )
+    itens = [_to_response(r) for r in records]
     return PersonalizacaoListResponse(
         aluno_id=aluno_id,
         total=len(records),
-        itens=[_to_response(r) for r in records],
+        itens=itens,
+        sugestao=await _resolver_sugestao_do_aluno(
+            session, aluno_id=aluno_id, topico_id=topico_id, itens=itens
+        ),
+    )
+
+
+async def _resolver_sugestao_do_aluno(
+    session: AsyncSession,
+    *,
+    aluno_id: str,
+    topico_id: int | None,
+    itens: list[PersonalizacaoResponse],
+) -> SugestaoMaterialResponse | None:
+    """Garante a sugestão do tópico e devolve no formato da resposta.
+
+    Só com ``topico_id``: a sugestão é por (aluno, tópico), e ordenar "o material
+    do aluno em geral" não quer dizer nada. Falha aqui não derruba a listagem —
+    o aluno precisa do material mesmo sem a ordem aconselhada.
+    """
+    if topico_id is None or not itens:
+        return None
+
+    classe_id = next((item.classe_id for item in itens if item.classe_id), None)
+    if classe_id is None:
+        return None
+
+    formatos = sorted({formato for item in itens for formato in (item.formatos_gerados or [])})
+    if not formatos:
+        return None
+
+    try:
+        sugestao = await garantir_sugestao_do_aluno(
+            session,
+            aluno_id=aluno_id,
+            classe_id=classe_id,
+            topico_id=topico_id,
+            formatos_disponiveis=formatos,
+        )
+        await session.commit()
+    except Exception as exc:  # pragma: no cover
+        await session.rollback()
+        logger.warning("Falha ao garantir sugestao de material: %s", exc)
+        return None
+
+    if not sugestao:
+        return None
+
+    return SugestaoMaterialResponse(
+        formato_inicial=sugestao.get("formato_inicial"),
+        ordem=[
+            SugestaoMaterialItem(
+                formato=str(item.get("formato")),
+                posicao=int(item.get("posicao") or 0),
+                score=float(item.get("score") or 0),
+                motivos=list(item.get("motivos") or []),
+            )
+            for item in (sugestao.get("ordem") or [])
+        ],
+        versao=int(sugestao.get("versao") or 1),
+        origem=str(sugestao.get("origem") or "inicial"),
     )

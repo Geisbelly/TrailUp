@@ -31,6 +31,7 @@ import {
   getPersonalizacaoStatusBadge,
   isGeracaoStatusAtivo,
 } from "./statusBadge";
+import { SugestaoMaterialCard } from "./SugestaoMaterialCard";
 import {
   limitarPercentual,
   resolverGeracaoFormato,
@@ -821,12 +822,19 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
               </CardContent>
             </Card>
           ) : (
-            <AlunoPreview
-              aluno={alunoSelecionado}
-              contexto={contextoAluno}
-              perfilDoAluno={perfilDoAluno}
-              conteudoId={conteudoSelecionado?.id}
-            />
+            <>
+              <AlunoPreview
+                aluno={alunoSelecionado}
+                contexto={contextoAluno}
+                perfilDoAluno={perfilDoAluno}
+                conteudoId={conteudoSelecionado?.id}
+              />
+              <SugestaoMaterialCard
+                alunoId={alunoSelecionado.id}
+                topicoId={topicoId ? Number(topicoId) : undefined}
+                resolveToken={resolveToken}
+              />
+            </>
           )}
         </TabsContent>
 

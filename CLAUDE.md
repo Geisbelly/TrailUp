@@ -22,6 +22,32 @@ antigo). Banco: **Supabase** (externo, via `.env`).
 > `../ApiBrainHex` (origem do `microservice/`). São repositórios externos ao
 > monorepo; o `microservice/` é a versão integrada e é a fonte da verdade aqui.
 
+## Regra de fronteira (a mais importante do repo)
+
+> **A API é para IA: LangGraph, RAG, geração e decisão adaptativa. Nada além
+> disso. Todo o resto é via banco.**
+
+Encanamento — CRUD, fila, agendamento, sessão, contador, entrega — **não entra
+na API**. Vai para o Postgres (funções/RPC, trigger, RLS) e o mobile fala direto
+com o Supabase, como `notificacoes` e `topico_aluno` já fazem.
+
+Dois motivos concretos, não estilo:
+
+1. **A API dorme.** Ela roda no free tier do Render e hiberna. Qualquer coisa
+   com relógio (rotina diária, fila, expiração) simplesmente **para** enquanto
+   ela está fria. O banco não hiberna.
+2. **Um salto a menos.** `mobile → Supabase` já é o caminho autenticado e com
+   Realtime. Passar por `mobile → API → Supabase` adiciona latência, um ponto de
+   falha e uma segunda cópia das regras de acesso.
+
+Ao estender: se a pergunta for "onde ponho isso?", e a resposta não envolver um
+modelo de linguagem, **não é na API**.
+
+> Dívida conhecida: `POST /api/v1/telemetria/lote` recebe lotes do mobile e
+> grava — é encanamento vivendo na API, anterior a esta regra. Ele fica porque o
+> mesmo endpoint dispara o pipeline de análise (que é IA), mas a **persistência**
+> deveria descer para o banco. Não use como precedente.
+
 ## Sistema de personalização — decisões de arquitetura
 
 Estas decisões são **fixas**; sigam-nas ao corrigir/estender.
@@ -101,7 +127,30 @@ Cada perfil carrega:
 - `fontes_personalizacao` — fontes do professor (upload/link), `visibilidade` `classe|aluno`.
 - `personalizacao_jobs` + `personalizacao_job_targets` — fila assíncrona
   (`enrollment`, `class-delta`, `class-theme`, `student-cleanup`, `full-sync`).
+- `personalizacao_sugestao` + `personalizacao_sugestao_log` — ordem **aconselhada**
+  de consumo do material por `(aluno × tópico × conteúdo)` e o histórico
+  append-only de cada decisão (`criada`/`revisada`/`mantida`). Motor
+  determinístico em `api/app/services/sugestao_material.py`; o repositório só
+  opera se **as duas** tabelas existirem (sem log, a métrica de efetividade
+  ficaria furada justamente onde vai olhar). Ver
+  `docs/superpowers/specs/2026-08-25-sugestao-de-material-por-aluno-design.md`.
 - `telemetria_sessoes`, `telemetria_lotes` — telemetria bruta + payload JSONB.
+- **Notificações — motor inteiro no banco.** Quatro tabelas com papéis **não
+  intercambiáveis**: `notificacoes_ia` (o que a IA *sugeriu*; a API só insere
+  aqui), `notificacoes_pendentes` (a *fila*, com `gatilho`
+  `horario|login|tempo_uso` e `expira_em`), `notificacoes_agendamentos` (a
+  *rotina* recorrente) e `notificacoes` (a *caixa de entrada*, só o entregue).
+  O trigger `trg_notificacoes_ia_promover` liga sugestão → fila; as RPCs
+  `notificacoes_registrar_login` / `_heartbeat` / `_minhas_rotinas` /
+  `_salvar_rotina` são o que o mobile chama. Push sai do próprio Postgres por
+  `pg_net` → Expo, e `pg_cron` varre a cada 5min. A **rotina diária é
+  notificação local** agendada no aparelho: dispara com o app fechado sem
+  servidor. Ver `docs/superpowers/specs/2026-08-26-notificacoes-via-banco-design.md`.
+- `notificacoes_config` (parâmetros do motor, uma linha por chave),
+  `expo_tokens` (push token por aparelho — tabela que **já existia**; a
+  `notificacoes_dispositivos` que eu havia criado foi descartada em
+  `20260826_07` por duplicá-la), `aluno_sessoes_app` (histórico de login) e
+  `aluno_atividade_diaria` (tempo de uso por dia).
 - `personalizacao_item_progresso` — progresso por item (merge: percentual/acertos = máx, tempo = soma).
 - `aluno_perfil`, `perfil` — perfis BrainHex e afinidades.
 
@@ -141,6 +190,50 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
   fluxo de coleta e a realimentação por ciclo intactos.
 - **Não quebrar o existente:** os 7 perfis, o grafo LangGraph, os endpoints e os
   schemas JSONB são pontos de extensão — corrigir/estender, não reescrever.
+- **RLS é a autorização, não defesa extra.** `anon` e `authenticated` têm GRANT
+  de SELECT/INSERT/UPDATE/DELETE nas 84 tabelas — RLS é a única barreira. A
+  posse está implementada (`20260826_08` a `20260826_10`):
+  - **anônimo não lê nada** — nem tabela nem view;
+  - **aluno** vê o próprio dado, os colegas da sua turma (o ranking depende
+    disso) e o conteúdo das classes em que está matriculado; escreve só o que é
+    dele;
+  - **professor** vê e escreve o conteúdo das classes que ele criou
+    (`classe.professor_id = auth.uid()`), e lê o dado e a telemetria dos alunos
+    dessas classes.
+
+  Os predicados usam helpers `SECURITY DEFINER` (`app_classes_do_professor()`,
+  `app_alunos_do_professor()`, `app_colegas_de_turma()`…) **de propósito**: uma
+  policy em `classe_aluno` que consultasse `classe_aluno` entraria em recursão
+  de RLS. Ao criar policy nova, use os helpers em vez de repetir o `EXISTS`.
+- **View sem `security_invoker` ignora RLS.** Ela roda com os privilégios do
+  dono (`postgres`), então as policies das tabelas base **não se aplicam** —
+  era um segundo bypass, paralelo ao das policies, e por ele dava para ler
+  ranking, métricas e telemetria sem login. Todas foram para
+  `security_invoker = on` em `20260826_10`. A única exceção deliberada é
+  `vw_rank_posicoes_por_classe`: ela soma eventos de vários alunos, o que um
+  aluno não pode fazer lendo `eventos_aluno` linha a linha, então mantém o
+  bypass e é filtrada na saída pelas classes do chamador. **Toda view nova
+  nasce com `security_invoker = on`.**
+- **`text()` do SQLAlchemy não aceita `:param::tipo`** — o `::` do Postgres
+  colide com a sintaxe de bind e o parâmetro deixa de ser reconhecido (erro em
+  tempo de execução, não de import). Use `CAST(:param AS TIPO)`. E parâmetro
+  usado só em `IS NOT NULL`/`CASE WHEN` **precisa** de cast explícito, senão o
+  asyncpg falha com `AmbiguousParameterError`.
+- **`COALESCE(coluna_enum, '')` estoura em tempo de execução.** O Postgres
+  resolve o COALESCE para o tipo da primeira expressão e tenta coagir `''` ao
+  enum. Enquanto nenhuma linha vier NULL o segundo argumento não é avaliado e o
+  bug fica dormindo — depois aborta a transação inteira, longe de onde foi
+  escrito. Use `coluna::text` antes do COALESCE. `status` em `conteudo_aluno`,
+  `atividade_aluno` e `topico_aluno` é o enum `status_atividade`; em
+  `personalizacao_item_progresso` é `text` de verdade.
+- **Os rótulos de `status_atividade` têm acento:** `não iniciado`,
+  `em andamento`, `concluido`. Escrever `'nao iniciado'` compila e só falha em
+  produção. Ao gerar SQL com esses rótulos, declare a variável com o tipo do
+  enum (o erro aparece na atribuição, não dentro do INSERT) e valide o rótulo na
+  própria migração — ver `20260826_11`.
+- **`ON CONFLICT` sobre índice PARCIAL exige repetir o predicado**
+  (`ON CONFLICT (col) WHERE col IS NOT NULL`). Sem ele o Postgres não casa o
+  índice e levanta "no unique or exclusion constraint matching".
 
 ## Pontos de entrada (código)
 
