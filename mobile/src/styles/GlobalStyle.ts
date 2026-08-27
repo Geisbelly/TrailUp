@@ -26,6 +26,7 @@ export const FontFamily = {
 /* Font sizes */
 export const FontSize = {
   fs_18: 18,
+  fs_20: 20,
 };
 /* Colors */
 export const Color = {
