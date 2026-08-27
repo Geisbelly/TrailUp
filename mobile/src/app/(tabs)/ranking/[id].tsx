@@ -124,6 +124,9 @@ export default function RankDetalheScreen() {
 
   // Entregue ao guia: sem isso ele descreve linhas fora da tela.
   const listaRef = useRef<FlatList>(null);
+  // `scrollTo` quer posicao ABSOLUTA e `measureInWindow` devolve posicao na
+  // TELA; o deslocamento atual e o que converte uma na outra.
+  const scrollOffsetRef = useRef(0);
   const rankFiltersGuideRef = useRef<View | null>(null);
   const rankMyPositionGuideRef = useRef<View | null>(null);
 
@@ -493,6 +496,7 @@ export default function RankDetalheScreen() {
                 steps={rankDetailGuideSteps}
                 targetRefs={rankDetailGuideTargets}
                 scrollRef={listaRef as unknown as React.RefObject<SectionGuideScrollable | null>}
+          scrollOffsetRef={scrollOffsetRef}
                 style={s.guideButton}
               />
             ),
@@ -563,6 +567,10 @@ export default function RankDetalheScreen() {
         {/* ══════════ LISTA ══════════ */}
         <FlatList
           ref={listaRef}
+          scrollEventThrottle={16}
+          onScroll={(e) => {
+            scrollOffsetRef.current = e.nativeEvent.contentOffset.y;
+          }}
           data={posicoesFiltradas}
           keyExtractor={(item, idx) => `${item.rank_id}-${item.id_aluno}-${idx}`}
           contentContainerStyle={s.listContent}

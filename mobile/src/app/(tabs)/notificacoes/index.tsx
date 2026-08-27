@@ -36,6 +36,9 @@ export default function PerfilHome() {
 
   // Entregue ao guia: sem isso ele descreve itens que ficaram fora da tela.
   const listaRef = useRef<FlatList>(null);
+  // `scrollTo` quer posicao ABSOLUTA e `measureInWindow` devolve posicao na
+  // TELA; o deslocamento atual e o que converte uma na outra.
+  const scrollOffsetRef = useRef(0);
   const { usuario } = useUsuario();
   const insets = useSafeAreaInsets();
   const palette = React.useMemo(
@@ -218,6 +221,7 @@ export default function PerfilHome() {
             steps={notificationsGuideSteps}
             targetRefs={notificationsGuideTargets}
             scrollRef={listaRef as unknown as React.RefObject<SectionGuideScrollable | null>}
+          scrollOffsetRef={scrollOffsetRef}
           style={styles.guideButton}
           />
         </View>
@@ -259,6 +263,10 @@ export default function PerfilHome() {
         >
           <FlatList
             ref={listaRef}
+            scrollEventThrottle={16}
+            onScroll={(e) => {
+              scrollOffsetRef.current = e.nativeEvent.contentOffset.y;
+            }}
           data={data}
           keyExtractor={(n) => String(n.id)}
           style={{ flex: 1, alignSelf: "stretch" }}

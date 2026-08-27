@@ -5,6 +5,7 @@ import {
 } from "@/constants/profileImages";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Image,
@@ -48,8 +49,6 @@ type SpotlightRect = { top: number; left: number; width: number; height: number 
 export type SectionGuideScrollable = {
   scrollTo?: (opcoes: { y?: number; animated?: boolean }) => void;
   scrollToOffset?: (opcoes: { offset: number; animated?: boolean }) => void;
-  getScrollableNode?: () => unknown;
-  getInnerViewRef?: () => unknown;
 };
 
 export function SectionGuideButton({
@@ -59,6 +58,7 @@ export function SectionGuideButton({
   targetRefs,
   onStepFocus,
   scrollRef,
+  scrollOffsetRef,
   style,
 }: {
   profile?: string | null;
@@ -71,6 +71,13 @@ export function SectionGuideButton({
    * da tela: ele mede a posição, mas nunca leva o aluno até lá.
    */
   scrollRef?: React.RefObject<SectionGuideScrollable | null>;
+  /**
+   * Deslocamento atual da rolagem, alimentado pelo `onScroll` da página.
+   * `scrollTo` recebe posição ABSOLUTA, e `measureInWindow` devolve posição
+   * na TELA — sem saber onde a rolagem está, não dá para converter uma na
+   * outra. É o mesmo par que `perfil/index.tsx` já usa.
+   */
+  scrollOffsetRef?: React.RefObject<number>;
   style?: object;
 }) {
   const buttonRef = useRef<View | null>(null);
@@ -79,6 +86,7 @@ export function SectionGuideButton({
   const [rect, setRect] = useState<SpotlightRect | null>(null);
   const [balaoAltura, setBalaoAltura] = useState(0);
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const activeProfile = normalizeBrainHexProfile(profile) ?? "seeker";
   const palette = useMemo(() => getProfileShellPalette(activeProfile), [activeProfile]);
   const guide = useMemo(() => getBrainHexConfig(activeProfile), [activeProfile]);
@@ -107,37 +115,26 @@ export function SectionGuideButton({
 
       // 1. Levar o aluno até o elemento. Sem isto, o guia descrevia algo que
       //    estava fora da tela: a medida caía fora da viewport, `top` era
-      //    grampeado em zero e o recorte simplesmente não aparecia — sobrava o
-      //    escurecimento uniforme.
+      //    grampeado em zero e o recorte não aparecia — sobrava o escurecimento
+      //    uniforme.
+      //
+      //    `measureLayout` NÃO serve aqui: na nova arquitetura ele exige uma
+      //    instância nativa, e nem `getInnerViewRef` nem `getScrollableNode`
+      //    devolvem uma — o app enchia o console de
+      //    "ref.measureLayout must be called with a ref to a native component"
+      //    e nunca rolava. `measureInWindow` funciona, e somado ao
+      //    deslocamento atual dá a posição absoluta que `scrollTo` espera.
       const rolagem = scrollRef?.current;
-      if (rolagem && typeof alvo.measureLayout === "function") {
-        // Coordenadas relativas ao conteúdo da rolagem são exatamente o que
-        // `scrollTo` espera; medir na janela daria a posição já rolada.
-        // FlatList esconde a rolagem real atrás de `getScrollableNode`;
-        // ScrollView expõe o conteúdo por `getInnerViewRef`.
-        const conteudo =
-          rolagem.getInnerViewRef?.() ?? rolagem.getScrollableNode?.() ?? rolagem;
-        try {
-          alvo.measureLayout(
-            conteudo as never,
-            (_x, y) => {
-              if (!active) return;
-              const destino = Math.max(0, y - MARGEM_ROLAGEM);
-              if (typeof rolagem.scrollTo === "function") {
-                rolagem.scrollTo({ y: destino, animated: true });
-              } else if (typeof rolagem.scrollToOffset === "function") {
-                rolagem.scrollToOffset({ offset: destino, animated: true });
-              }
-            },
-            () => {
-              // Alvo fora da árvore da rolagem (cabeçalho fixo, por exemplo):
-              // ele já está visível, então não há o que rolar.
-            },
-          );
-        } catch {
-          // measureLayout varia entre versões/arquiteturas do RN. Falhar aqui
-          // custa a rolagem, não o guia.
-        }
+      if (rolagem && scrollOffsetRef) {
+        alvo.measureInWindow((_x, y, _w, altura) => {
+          if (!active || altura < 2) return;
+          const destino = Math.max(0, (scrollOffsetRef.current ?? 0) + y - MARGEM_ROLAGEM);
+          if (typeof rolagem.scrollTo === "function") {
+            rolagem.scrollTo({ y: destino, animated: true });
+          } else if (typeof rolagem.scrollToOffset === "function") {
+            rolagem.scrollToOffset({ offset: destino, animated: true });
+          }
+        });
       }
 
       // 2. Medir depois que o layout assentar. Uma medida única a 100ms pegava
@@ -168,7 +165,7 @@ export function SectionGuideButton({
       active = false;
       timers.forEach(clearTimeout);
     };
-  }, [currentStep, index, onStepFocus, open, screenHeight, screenWidth, scrollRef, targetRefs]);
+  }, [currentStep, index, onStepFocus, open, screenHeight, screenWidth, scrollOffsetRef, scrollRef, targetRefs]);
 
   useEffect(() => {
     setIndex(0);
@@ -195,19 +192,24 @@ export function SectionGuideButton({
    */
   const balaoTop = useMemo(() => {
     const altura = balaoAltura || screenHeight * 0.36;
-    const rodape = screenHeight - altura - FOLGA;
+    // A barra de sistema do Android entra na altura da janela; sem descontá-la
+    // o balão descia por baixo dela e os botões ficavam inacessíveis.
+    const limite = screenHeight - Math.max(insets.bottom, FOLGA);
+    const rodape = limite - altura;
     if (!rect) return rodape;
 
-    const espacoAcima = rect.top - FOLGA;
-    const espacoAbaixo = screenHeight - (rect.top + rect.height) - FOLGA;
+    const espacoAcima = rect.top - Math.max(insets.top, FOLGA);
+    const espacoAbaixo = limite - (rect.top + rect.height) - FOLGA;
 
     if (espacoAbaixo >= altura) return rect.top + rect.height + FOLGA;
-    if (espacoAcima >= altura) return Math.max(FOLGA, rect.top - FOLGA - altura);
+    if (espacoAcima >= altura) return Math.max(insets.top + FOLGA, rect.top - FOLGA - altura);
 
     // Alvo grande demais para caber com o balão de qualquer lado: encosta no
     // lado mais folgado. A sobreposição aqui é inevitável, não um descuido.
-    return espacoAbaixo >= espacoAcima ? Math.max(FOLGA, rodape) : FOLGA;
-  }, [balaoAltura, rect, screenHeight]);
+    return espacoAbaixo >= espacoAcima
+      ? Math.max(insets.top + FOLGA, rodape)
+      : insets.top + FOLGA;
+  }, [balaoAltura, insets.bottom, insets.top, rect, screenHeight]);
 
   return (
     <>

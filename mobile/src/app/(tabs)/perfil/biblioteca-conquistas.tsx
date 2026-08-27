@@ -194,6 +194,9 @@ export default function BibliotecaConquistasScreen() {
   // Entregue ao guia para que ele role até o elemento que está explicando —
   // sem isto ele descreve trechos que ficaram fora da tela.
   const scrollRef = useRef<ScrollView>(null);
+  // `scrollTo` quer posicao ABSOLUTA e `measureInWindow` devolve posicao na
+  // TELA; o deslocamento atual e o que converte uma na outra.
+  const scrollOffsetRef = useRef(0);
 
   return (
     <View style={[styles.screen, { backgroundColor: shellPalette.background }]}>
@@ -209,6 +212,7 @@ export default function BibliotecaConquistasScreen() {
               steps={guideSteps}
               targetRefs={guideTargets}
               scrollRef={scrollRef}
+                scrollOffsetRef={scrollOffsetRef}
               style={styles.guideButton}
             />
           ),
@@ -223,6 +227,10 @@ export default function BibliotecaConquistasScreen() {
 
       <ScrollView
         ref={scrollRef}
+        scrollEventThrottle={16}
+        onScroll={(e) => {
+          scrollOffsetRef.current = e.nativeEvent.contentOffset.y;
+        }}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
