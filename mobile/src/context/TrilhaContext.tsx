@@ -547,20 +547,19 @@ function mergeTopicoLocalState(persistedTopico: Topico, localTopico?: Topico | n
     Number(localTopico.tempo_gasto_min ?? 0)
   )
 
-  const recalculatedPct = mergedTopico.calcularPercentual()
-  if (recalculatedPct > Number(mergedTopico.percentual_concluido ?? 0)) {
-    mergedTopico.percentual_concluido = recalculatedPct
-  }
-
-  if (recalculatedPct >= 100) {
-    mergedTopico.status = 'concluido'
-  } else if (
-    recalculatedPct > 0 &&
-    !String(mergedTopico.status ?? '').toLowerCase().includes('concl')
-  ) {
-    mergedTopico.status = 'em andamento'
-  }
-
+  // Aqui havia um "puxao para cima" pelo `calcularPercentual()`: se a conta
+  // sobre o material do professor desse mais que o valor do banco, ela vencia,
+  // e >= 100 marcava o topico como concluido.
+  //
+  // Isso inverte a regra: o conteudo do professor e opcional (vale bonus), e o
+  // percurso e o material personalizado. Terminar so os academicos passava o
+  // topico para 'concluido' com os passos personalizados intocados -- o que
+  // liberava o proximo topico antes da hora e apagava o checkpoint de
+  // navegacao. A guarda por `topicosPendentes` em `isTopicoConcluido` existe
+  // justamente para remendar esse efeito; agora a causa saiu.
+  //
+  // O valor do banco manda: ele e calculado por trigger sobre o percurso
+  // inteiro (ver a migracao 20260826_18).
   return mergedTopico
 }
 
@@ -1784,8 +1783,11 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       // Atualiza estado local imediatamente (antes do upsert)
       conteudo.status = 'concluido';
       conteudo.percentual_concluido = 100;
-      topico.percentual_concluido = topico.calcularPercentual();
-      topico.status = topico.calcularStatus();
+      // Sem palpite otimista do percentual: `calcularPercentual` so conhece o
+      // material do professor, e mostrar o numero dele aqui faria a barra
+      // pular para um valor errado por meio segundo ate o `refreshTopico`
+      // abaixo trazer o que o banco calculou sobre o percurso inteiro. Manter
+      // o valor anterior por um instante e menos pior que mostrar o errado.
       syncClasseLocally(cloneClasse(classeAtual, { topicos: [...classeAtual.topicos] }));
 
       // Persiste no banco
@@ -1822,8 +1824,11 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       atividade.status = 'concluido';
       atividade.percentual_concluido = 100;
       atividade.acertos_percentual = acertosPercentual;
-      topico.percentual_concluido = topico.calcularPercentual();
-      topico.status = topico.calcularStatus();
+      // Sem palpite otimista do percentual: `calcularPercentual` so conhece o
+      // material do professor, e mostrar o numero dele aqui faria a barra
+      // pular para um valor errado por meio segundo ate o `refreshTopico`
+      // abaixo trazer o que o banco calculou sobre o percurso inteiro. Manter
+      // o valor anterior por um instante e menos pior que mostrar o errado.
       syncClasseLocally(cloneClasse(classeAtual, { topicos: [...classeAtual.topicos] }));
 
       // Persiste no banco
