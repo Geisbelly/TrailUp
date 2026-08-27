@@ -24,6 +24,20 @@ export type PersonalizacaoListResponse = {
   aluno_id: string;
   total: number;
   itens: PersonalizacaoRecord[];
+  sugestao?: SugestaoMaterialResponse | null;
+};
+
+/**
+ * Ordem ACONSELHADA de consumo do material, calculada por perfil + preferencias
+ * e revisada pela telemetria. Aconselhada, nao imposta: o aluno segue livre para
+ * abrir qualquer formato, e e justamente essa liberdade que permite medir se a
+ * sugestao ajudou.
+ */
+export type SugestaoMaterialResponse = {
+  formato_inicial?: string | null;
+  ordem?: { formato: string; posicao?: number | null; score?: number | null; motivos?: string[] | null }[] | null;
+  versao?: number | null;
+  origem?: string | null;
 };
 
 export type CardPersonalizadoRecord = {
@@ -115,6 +129,11 @@ export type ListarPersonalizacoesPerfilParams = {
   conteudoId?: number | null;
   brainhexProfileKey: string;
   limit?: number;
+};
+
+export type ObterSugestaoMaterialParams = {
+  alunoId: string;
+  topicoId: number;
 };
 
 export type ListarJobsParams = {

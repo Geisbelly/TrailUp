@@ -17,6 +17,11 @@ import { ensureCachedNativeContent } from "@/utils/nativeContentCache";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { shouldHideChecklist, shouldHideNotes, shouldHideQuiz, withHideParams } from "@/utils/contentVisibility";
 import type { DeckProgressEvent } from "@/utils/deckProgressMessage";
+import {
+  extrairReferenciaDeDeck,
+  hostSoAlcancavelNoDeploy,
+  reancorarDeckNaOrigemPublica,
+} from "@/utils/storageOrigin";
 import { looksLikeStorageObjectPath, resolveSupabaseStorageUrl } from "@/utils/supabaseStorage";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useMemo, useState } from "react";
@@ -34,12 +39,16 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebContentFrame } from "./WebContentFrame";
+import { isHtmlDeckUrl } from "@/utils/htmlDeck";
+import { resolveMediaUrl } from "@/utils/mediaPayload";
+import { buildContentResumeKey, loadContentResume, saveContentResume } from "@/utils/contentResume";
 
 type Props = {
   tipo: "pdf" | "documento" | "apresentacao" | "embed";
   payload: any;
   WebView?: React.ComponentType<any> | null;
   onDeckProgressEvent?: (event: DeckProgressEvent) => void;
+  progressKey?: string;
 };
 
 type ViewerSource = {
@@ -331,6 +340,8 @@ function buildPdfViewerHtml(
         display: flex;
         flex-direction: column;
         gap: 16px;
+        min-width: 0;
+        width: 100%;
       }
 
       .viewer.page-mode {
@@ -342,6 +353,8 @@ function buildPdfViewerHtml(
         flex-direction: column;
         gap: 10px;
         padding: 14px;
+        min-width: 0;
+        overflow: hidden;
         border-radius: 16px;
         border: 1px solid ${theme.border};
         background: ${theme.surface};
@@ -351,6 +364,8 @@ function buildPdfViewerHtml(
         display: flex;
         justify-content: center;
         padding: 8px;
+        min-width: 0;
+        overflow: hidden;
         border-radius: 16px;
         border: 1px solid ${theme.border};
         background: ${theme.surface};
@@ -364,10 +379,12 @@ function buildPdfViewerHtml(
       }
 
       canvas {
-        width: min(100%, 980px);
+        display: block;
+        max-width: 100%;
         height: auto;
         border-radius: 12px;
         background: #fff;
+        align-self: center;
       }
 
       @media (max-width: 640px) {
@@ -451,9 +468,9 @@ function buildPdfViewerHtml(
 
       function getScale(page) {
         const baseViewport = page.getViewport({ scale: 1 });
-        const availableWidth = Math.max(260, (viewerEl.clientWidth || 820) - 24);
+        const availableWidth = Math.max(1, (viewerEl.clientWidth || document.documentElement.clientWidth || 320) - 28);
         const ratio = availableWidth / baseViewport.width;
-        return Math.max(0.65, Math.min(ratio, 2.2));
+        return Math.max(0.05, Math.min(ratio, 2.2));
       }
 
       function clampPage(pageNumber) {
@@ -479,13 +496,19 @@ function buildPdfViewerHtml(
         if (!context) {
           throw new Error("Não foi possível inicializar o canvas para renderizar o PDF.");
         }
-        const pixelRatio = Math.max(1, window.devicePixelRatio || 1);
-        canvas.width = Math.floor(viewport.width * pixelRatio);
-        canvas.height = Math.floor(viewport.height * pixelRatio);
-        canvas.style.width = Math.floor(viewport.width) + "px";
-        canvas.style.height = Math.floor(viewport.height) + "px";
-        context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-        await page.render({ canvasContext: context, viewport }).promise;
+        const pixelRatio = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+        const cssWidth = Math.max(1, Math.floor(viewport.width));
+        canvas.width = Math.max(1, Math.floor(viewport.width * pixelRatio));
+        canvas.height = Math.max(1, Math.floor(viewport.height * pixelRatio));
+        canvas.style.width = cssWidth + "px";
+        const renderContext = {
+          canvasContext: context,
+          viewport,
+        };
+        if (pixelRatio !== 1) {
+          renderContext.transform = [pixelRatio, 0, 0, pixelRatio, 0, 0];
+        }
+        await page.render(renderContext).promise;
         return canvas;
       }
 
@@ -680,12 +703,12 @@ function getDocumentIconName(tipo: Props["tipo"]) {
   return "globe-outline";
 }
 
-export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent }: Props) {
+export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent, progressKey }: Props) {
   const { usuario } = useUsuario();
   const { height: windowHeight, width: windowWidth } = useWindowDimensions();
   const palette = useMemo(
-    () => getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfis]
+    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
+    [usuario?.perfilAtivo, usuario?.perfis]
   );
   const viewerTheme = useMemo<ViewerTheme>(
     () => ({
@@ -739,8 +762,14 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent }: P
     typeof payload === "object"
       ? readString(payload, "texto", "text", "conteudo")
       : null;
+  // resolveMediaUrl entra como ultimo recurso: a lista local acima nao olha
+  // dentro de "partes", e material multi-parte pode ter o campo de cima vazio -
+  // nesse caso o bloco ficava sem url nenhuma (e o deck, sem como ser
+  // reconhecido como HTML). Ver utils/mediaPayload.ts.
   const rawSourceUrl =
-    payloadFileUrl ?? (looksLikeFileSource(payloadTextFallback) ? payloadTextFallback : null);
+    payloadFileUrl ??
+    (looksLikeFileSource(payloadTextFallback) ? payloadTextFallback : null) ??
+    resolveMediaUrl(payload);
   const sourceUrl = looksLikeFileSource(rawSourceUrl) ? rawSourceUrl : null;
   const sourceHtml =
     typeof payload === "string" && !looksLikeFileSource(payload)
@@ -768,7 +797,6 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent }: P
       ? "Apresentação"
       : "Embed");
 
-  const supportsModes = tipo === "pdf" || tipo === "documento" || tipo === "apresentacao";
   const initialMode =
     typeof payload === "object" && payload?.defaultDisplayMode
       ? normalizeMode(payload.defaultDisplayMode)
@@ -776,13 +804,33 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent }: P
       ? "rolagem"
       : "pagina";
   const isNativePdfReader = tipo === "pdf" && Platform.OS !== "web" && isNativePdfViewerAvailable();
+  // Deck HTML e apresentacao, mas NAO e arquivo de Office: o leitor nativo
+  // baixa e parseia como PPTX (zip+xml) e falha, caindo no visualizador do
+  // Office, que tambem nao abre HTML - era esse o "nao foi possivel abrir os
+  // slides". Ele tem caminho proprio (deckHtml, mais abaixo).
+  // Testa as duas pontas: o caminho cru do payload e, depois, a url resolvida
+  // (publica/assinada). Uma delas basta pra reconhecer o deck.
+  const isDeckHtmlSource = tipo === "apresentacao" && isHtmlDeckUrl(sourceUrl);
   const isNativeLocalReader =
     Platform.OS !== "web" &&
+    !isDeckHtmlSource &&
     (isNativePdfReader || tipo === "documento" || tipo === "apresentacao");
 
   const [displayMode, setDisplayMode] = useState<ContentDisplayMode>(initialMode);
   const [fullscreenVisible, setFullscreenVisible] = useState(false);
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(sourceUrl);
+  const [deckHtml, setDeckHtml] = useState<string | null>(null);
+  const isDeckHtml = isDeckHtmlSource || (tipo === "apresentacao" && isHtmlDeckUrl(resolvedUrl));
+
+  // Pagina/Rolagem nao vale para deck HTML: ele PAGINA SOZINHO, com contador
+  // proprio ("2 / 5") e botao "Proximo" dentro do conteudo. O par de botoes
+  // duplicava o controle e, no modo "rolagem", nao mudava nada visivelmente --
+  // dois jeitos de virar pagina na mesma tela, um deles inerte.
+  const supportsModes =
+    !isDeckHtml && (tipo === "pdf" || tipo === "documento" || tipo === "apresentacao");
+  const podeTelaCheia =
+    tipo === "pdf" || tipo === "documento" || tipo === "apresentacao" || isDeckHtml;
+  const [, setDeckErro] = useState<string | null>(null);
   const [resolvingUrl, setResolvingUrl] = useState(false);
   const [resolveError, setResolveError] = useState<string | null>(null);
   const [nativeLoading, setNativeLoading] = useState(false);
@@ -793,6 +841,11 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent }: P
   const [currentPage, setCurrentPage] = useState(1);
   const [pageInput, setPageInput] = useState("1");
   const [pageCount, setPageCount] = useState(1);
+  const [resumeLoaded, setResumeLoaded] = useState(false);
+  const resumeStorageKey = useMemo(
+    () => buildContentResumeKey(usuario?.id, tipo, progressKey ?? sourceUrl ?? sourceHtml ?? title),
+    [progressKey, sourceHtml, sourceUrl, tipo, title, usuario?.id]
+  );
   const useWebFallback = isNativeLocalReader && Boolean(nativeError) && Boolean(resolvedUrl);
   const effectiveUseNative = isNativeLocalReader && !useWebFallback;
 
@@ -801,10 +854,23 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent }: P
   }, [initialMode, sourceUrl, sourceHtml, tipo]);
 
   useEffect(() => {
-    setCurrentPage(1);
-    setPageInput("1");
+    let active = true;
+    setResumeLoaded(false);
     setPageCount(1);
-  }, [resolvedUrl, sourceUrl, tipo]);
+    void loadContentResume(resumeStorageKey).then((saved) => {
+      if (!active) return;
+      const restoredPage = Math.max(1, Math.round(saved?.page ?? 1));
+      setCurrentPage(restoredPage);
+      setPageInput(String(restoredPage));
+      setResumeLoaded(true);
+    });
+    return () => { active = false; };
+  }, [resumeStorageKey]);
+
+  useEffect(() => {
+    if (!resumeLoaded) return;
+    void saveContentResume(resumeStorageKey, { page: currentPage });
+  }, [currentPage, resumeLoaded, resumeStorageKey]);
 
   useEffect(() => {
     setPageInput(String(currentPage));
@@ -817,6 +883,37 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent }: P
       setResolvedUrl(null);
       setResolvingUrl(false);
       setResolveError(null);
+      return () => {
+        ativo = false;
+      };
+    }
+
+    // Deck com host que so existe na rede do deploy (APP_URL mal configurado no
+    // servidor). O arquivo em si esta no bucket publico, como todo o resto do
+    // material: resolveSupabaseStorageUrl converte a URL do endpoint de deck na
+    // URL publica de storage. Isso e tratado la dentro; aqui so cuidamos do que
+    // sobra -- URL interna que NAO e de deck e portanto nao tem como ser
+    // remontada a partir do caminho.
+    if (hostSoAlcancavelNoDeploy(sourceUrl) && !extrairReferenciaDeDeck(sourceUrl)) {
+      const publica = reancorarDeckNaOrigemPublica({
+        deckUrl: sourceUrl,
+        publicOrigin: process.env.EXPO_PUBLIC_BRAINHEXPDF_URL ?? null,
+      });
+      setResolvingUrl(false);
+      if (publica) {
+        setResolveError(null);
+        setResolvedUrl(publica);
+      } else {
+        // Melhor um erro que se explica do que tela branca com
+        // net::ERR_NAME_NOT_RESOLVED, que nao diz a ninguem que o problema e de
+        // configuracao do deploy.
+        setResolveError(
+          "Este material foi gravado com um endereço interno do servidor, que este " +
+            "dispositivo não alcança. Configure APP_URL no serviço que gerou o " +
+            "arquivo e gere o material de novo."
+        );
+        setResolvedUrl(sourceUrl);
+      }
       return () => {
         ativo = false;
       };
@@ -934,6 +1031,33 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent }: P
     };
   }, [isNativeLocalReader, resolvedUrl, sourceUrl, tipo]);
 
+  // Busca o HTML do deck pra renderizar inline. Por uri o WebView receberia
+  // text/plain (e como o Supabase serve .html) e mostraria o codigo-fonte.
+  useEffect(() => {
+    if (!isDeckHtml || !resolvedUrl) {
+      setDeckHtml(null);
+      setDeckErro(null);
+      return;
+    }
+
+    let ativo = true;
+    setDeckErro(null);
+    void (async () => {
+      try {
+        const resposta = await fetch(resolvedUrl);
+        if (!resposta.ok) throw new Error(String(resposta.status));
+        const html = await resposta.text();
+        if (ativo) setDeckHtml(html);
+      } catch {
+        if (ativo) setDeckErro("Não foi possível carregar a apresentação.");
+      }
+    })();
+
+    return () => {
+      ativo = false;
+    };
+  }, [isDeckHtml, resolvedUrl]);
+
   const viewer = useMemo<ViewerSource | null>(() => {
     if (effectiveUseNative) {
       return null;
@@ -943,6 +1067,23 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent }: P
       return {
         title,
         html: buildPdfViewerHtml(resolvedUrl, displayMode, viewerTheme),
+        height: getViewerHeight(tipo, displayMode, false, windowHeight, windowWidth),
+      };
+    }
+
+    if (isDeckHtml && resolvedUrl) {
+      // html + uri juntos: o WebContentFrame monta {html, baseUrl: uri}, e e o
+      // baseUrl que faz o deck continuar lendo hideQuiz/hideChecklist/hideNotes
+      // de location.search - inline sem baseUrl perderia as flags e mostraria
+      // widget que o modo de operacao do aluno manda esconder.
+      return {
+        title,
+        html: deckHtml,
+        uri: withHideParams(resolvedUrl, {
+          hideQuiz: shouldHideQuiz(usuario?.modoOperacao_nome),
+          hideChecklist: shouldHideChecklist(usuario?.modoOperacao_nome),
+          hideNotes: shouldHideNotes(usuario?.modoOperacao_nome),
+        }),
         height: getViewerHeight(tipo, displayMode, false, windowHeight, windowWidth),
       };
     }
@@ -974,8 +1115,10 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent }: P
     return null;
   }, [
     currentPage,
+    deckHtml,
     displayMode,
     effectiveUseNative,
+    isDeckHtml,
     resolvedUrl,
     sourceHtml,
     tipo,
@@ -1335,7 +1478,9 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent }: P
               </Text>
             </View>
             <Text style={[styles.helperText, { color: palette.textSubtle }]}>
-              {supportsModes
+              {isDeckHtml
+                ? "Abra em tela cheia para navegar os slides"
+                : supportsModes
                 ? displayMode === "pagina"
                   ? "Leitura paginada"
                   : "Leitura continua"
@@ -1344,7 +1489,12 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent }: P
           </View>
 
           <View style={styles.toolbarActions}>
-            {supportsModes ? (
+            {/* Tela cheia nao tem relacao com Pagina/Rolagem -- estava presa a
+                `supportsModes` e, quando os modos sairam do deck HTML, o botao
+                saiu junto: sobrou o embed curto dentro de uma pagina que tambem
+                rola, sem jeito de ler a apresentacao. Para o deck a tela cheia e
+                a unica superficie utilizavel, entao ela nunca pode faltar. */}
+            {podeTelaCheia ? (
               renderActionButton(
                 "expand-outline",
                 "Tela cheia",
@@ -1393,6 +1543,22 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent }: P
             onProgressEvent={onDeckProgressEvent}
           />
         )}
+
+        {/* Deck HTML inline nao da pra ler: ele fica num frame curto DENTRO de
+            uma pagina que tambem rola, e no Android o gesto e capturado pelo
+            ScrollView de fora -- a apresentacao nao rola e os slides ficam
+            cortados. Entao o embed vale como CAPA: um toque em qualquer parte
+            dele abre a tela cheia, que e a superficie de leitura de verdade.
+            Vem DEPOIS do frame de proposito -- irmao posterior fica por cima e
+            e quem recebe o toque. */}
+        {isDeckHtml && !effectiveUseNative ? (
+          <Pressable
+            onPress={() => setFullscreenVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel={`Abrir ${title} em tela cheia`}
+            style={StyleSheet.absoluteFill}
+          />
+        ) : null}
       </View>
       {pagerAtBottom ? renderNativePager() : null}
 

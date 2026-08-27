@@ -1,5 +1,7 @@
 // src/context/ConquistaRankContext.tsx
 import { Conquista } from '@/models/Conquista';
+import { normalizeBrainHexProfile } from '@/constants/profileImages';
+import { resolveRepresentativeBrainHexProfiles } from '@/utils/brainHex';
 import { EventoAluno } from '@/models/Evento';
 import { ClasseRanking } from '@/models/Rank';
 import { PosicaoDoAluno } from '@/models/RankAlunoPosicao';
@@ -64,6 +66,12 @@ export function ConquistaRankProvider({ children }: { children: React.ReactNode 
   const [conquistas, setConquistas] = useState<Conquista[]>([]);
 
   const uid = usuario?.id ?? null;
+  const perfisRepresentativos = useMemo(() => {
+    const representativos = resolveRepresentativeBrainHexProfiles(usuario?.perfis);
+    if (representativos.length > 0) return representativos;
+    const fallback = normalizeBrainHexProfile(usuario?.perfis?.[0]?.nome);
+    return fallback ? [fallback] : [];
+  }, [usuario?.perfis]);
 
   const clearScheduledRankingRefresh = useCallback(() => {
     if (!rankingRefreshTimerRef.current) return;
@@ -122,13 +130,13 @@ export function ConquistaRankProvider({ children }: { children: React.ReactNode 
     }
 
     try {
-      const lista = await Conquista.fetchAllForAluno(uid);
+      const lista = await Conquista.fetchAllForAluno(uid, perfisRepresentativos);
       setConquistas(lista);
     } catch (err) {
       console.warn('[ConquistaRank] Erro ao recarregar conquistas:', err);
       setConquistas([]);
     }
-  }, [uid]);
+  }, [perfisRepresentativos, uid]);
 
   const reloadAll = useCallback(async () => {
     if (!uid) {

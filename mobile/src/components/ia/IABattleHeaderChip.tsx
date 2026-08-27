@@ -2,10 +2,8 @@ import { useIA } from "@/context/IAContext";
 import { useUsuario } from "@/context/SessaoContext";
 import { IAFeatureSelectorScope } from "@/interfaces/personalizacao/IAContracts";
 import { FontFamily } from "@/styles/GlobalStyle";
-import {
-  hasAnyBrainHexProfileSignal,
-  resolveDominantBrainHexProfile,
-} from "@/utils/brainHex";
+import { resolveActiveBrainHexProfile } from "@/utils/brainHex";
+import { getBrainHexProfileCapabilities } from "@/utils/brainHexCapabilities";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useMemo, useState } from "react";
@@ -98,13 +96,12 @@ export function IABattleHeaderChip({ topicoId = null, itemKey = null }: Props) {
   const [open, setOpen] = useState(false);
   const { getBattleState, resolveFeature } = useIA();
   const { usuario } = useUsuario();
-  const profileName = resolveDominantBrainHexProfile(usuario?.perfis ?? null, "seeker");
-  // Boss battle: perfis de narrativa combate/dominacao (mesmo criterio de IAContext.tsx).
-  const hasBattleSignal = hasAnyBrainHexProfileSignal(usuario?.perfis ?? null, [
-    "survivor",
-    "daredevil",
-    "conqueror",
-  ]);
+  const profileName = resolveActiveBrainHexProfile(
+    usuario?.perfis ?? null,
+    usuario?.perfilAtivo,
+    "seeker",
+  );
+  const hasBattleSignal = getBrainHexProfileCapabilities(profileName).hasBattle;
   const palette = useMemo(() => getProfileShellPalette(profileName), [profileName]);
 
   const itemScope = useMemo(

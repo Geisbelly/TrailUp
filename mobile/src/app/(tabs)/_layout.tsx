@@ -1,34 +1,54 @@
 import { HapticTab } from "@/components/haptic-tab";
-import { bannerImages, brainHexConfig, brainHexImageMap, getProfileImageByString } from "@/constants/profileImages";
+import { bannerImages, brainHexConfig, brainHexImageMap, getProfileImageByString, normalizeBrainHexProfile } from "@/constants/profileImages";
 import { ConquistaRankProvider } from "@/context/ConquistaRankContext";
 import { IAProvider } from "@/context/IAContext";
 import { NotificationsProvider } from "@/context/NotificacaoContext";
 import { TrilhaProvider } from "@/context/TrilhaContext";
 // 1. Importando MaterialCommunityIcons (mais criativo/detalhado)
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { BottomTabBar, BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { Tabs, useSegments } from "expo-router";
+import React, { useEffect, useRef } from "react";
 import { Image, View } from "react-native";
 
 import { ToastContainer } from "@/components/ToastContainer";
+import { FirstAccessTour } from "@/components/FirstAccessTour";
 import { useUsuario } from "@/context/SessaoContext";
 import { MetricasProvider } from "@/context/MetricasContext";
 import { user } from "@/database/mockUser";
 import { FontFamily } from "@/styles/GlobalStyle";
+import { useMonitorDeSessao } from "@/hooks/useMonitorDeSessao";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { registrarAlvoTour } from "@/utils/tourTargets";
+
+function TourAwareTabBar(props: BottomTabBarProps) {
+  const targetRef = useRef<View | null>(null);
+  useEffect(() => registrarAlvoTour("abas_principais", targetRef), []);
+
+  return (
+    <View ref={targetRef} collapsable={false}>
+      <BottomTabBar {...props} />
+    </View>
+  );
+}
 
 export default function TabLayout() {
   const { usuario } = useUsuario();
   const segments = useSegments() as string[];
 
-  const brainProfile =
-    (usuario?.perfis?.[0]?.nome as keyof typeof brainHexImageMap | undefined) ||
-    (usuario?.perfis?.[0]?.nome as keyof typeof brainHexImageMap | undefined);
+  // Login, tempo de uso, push token e lembretes locais. Fica aqui e nao no
+  // layout raiz porque so faz sentido dentro da area autenticada — no grupo
+  // (auth) nao existe aluno para monitorar.
+  useMonitorDeSessao();
+
+  const activeProfileName = usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome;
+  const brainProfile = normalizeBrainHexProfile(activeProfileName) ?? undefined;
   const perfilImage =
     (brainProfile && brainHexImageMap[brainProfile] !== undefined
       ? bannerImages[brainHexImageMap[brainProfile]]
-      : getProfileImageByString(usuario?.perfis?.[0]?.nome ?? "")) || user.avatar;
+      : getProfileImageByString(activeProfileName ?? "")) || user.avatar;
   const perfilConfig = brainProfile ? brainHexConfig[brainProfile] : undefined;
-  const palette = getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null);
+  const palette = getProfileShellPalette(activeProfileName ?? null);
 
   const perfilFoto =
     usuario?.foto_url
@@ -49,6 +69,7 @@ export default function TabLayout() {
           <TrilhaProvider>
             <ConquistaRankProvider>
               <Tabs
+            tabBar={(props) => <TourAwareTabBar {...props} />}
             screenOptions={{
               tabBarActiveTintColor: palette.accent,
               tabBarInactiveTintColor: palette.inactive,
@@ -155,6 +176,10 @@ export default function TabLayout() {
               }}
             />
               </Tabs>
+              <FirstAccessTour
+                userId={usuario?.id}
+                profile={activeProfileName}
+              />
             </ConquistaRankProvider>
             <ToastContainer />
           </TrilhaProvider>

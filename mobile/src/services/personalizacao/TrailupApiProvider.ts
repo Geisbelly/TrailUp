@@ -20,12 +20,14 @@ import type {
   ListarPersonalizacoesPerfilParams,
   MentorChatPayload,
   MentorChatResponse,
+  ObterSugestaoMaterialParams,
   PersonalizacaoJobRecord,
   PersonalizacaoListResponse,
   PersonalizacaoProgressDirectPayload,
   PersonalizacaoRecord,
   PersonalizarPayload,
   SubscribePersonalizacoesClasseParams,
+  SugestaoMaterialResponse,
 } from "@/services/personalizacao/types";
 import type { IPersonalizacaoProvider } from "@/services/personalizacao/IPersonalizacaoProvider";
 import {
@@ -589,6 +591,30 @@ export class TrailupApiProvider implements IPersonalizacaoProvider {
       total: merged.length,
       itens: merged,
     } satisfies PersonalizacaoListResponse;
+  }
+
+  async obterSugestaoMaterial(
+    params: ObterSugestaoMaterialParams
+  ): Promise<SugestaoMaterialResponse | null> {
+    const urls = this.buildUrls(
+      `/api/v1/personalizar/sugestao/${encodeURIComponent(params.alunoId)}/${params.topicoId}`
+    );
+    if (!urls.length) return null;
+
+    try {
+      const resposta = await this.requestWithAuth<SugestaoMaterialResponse>(urls, {
+        method: "GET",
+      });
+      // Sem ordem, a resposta nao adiciona nada: devolver null deixa a tela cair
+      // na ordem padrao em vez de tratar "ainda nao ha material" como sugestao.
+      return resposta?.ordem?.length ? resposta : null;
+    } catch (error) {
+      // A ordem aconselhada e um plus sobre o material; sem ela o topico abre
+      // igual. Derrubar a tela por causa dela seria trocar o essencial pelo
+      // acessorio.
+      console.warn("[personalizacao] sugestao de material indisponivel", error);
+      return null;
+    }
   }
 
   async listarJobsPersistidosAluno(params: ListarJobsParams): Promise<PersonalizacaoJobRecord[]> {

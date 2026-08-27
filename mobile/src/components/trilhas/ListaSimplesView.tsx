@@ -1,4 +1,3 @@
-import { useUsuario } from "@/context/SessaoContext";
 import { useTrilha } from "@/context/TrilhaContext";
 import { Color, FontFamily, FontSize } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
@@ -27,10 +26,11 @@ type Row = {
   badgeLabel?: string | null;
 };
 
-export const TrilhaLinearList: React.FC = () => {
-  const { grafo } = useTrilha();
-  const { usuario } = useUsuario();
-  const palette = getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null);
+export const TrilhaLinearList: React.FC<{
+  tourTargetRef?: React.RefObject<View | null>;
+}> = ({ tourTargetRef }) => {
+  const { grafo, perfil } = useTrilha();
+  const palette = getProfileShellPalette(perfil);
   const { width: winW } = useWindowDimensions();
 
   const data: Row[] = useMemo(
@@ -68,7 +68,13 @@ export const TrilhaLinearList: React.FC = () => {
         contentContainerStyle={s.listContent}
         data={data}
         keyExtractor={keyExtractor}
-        renderItem={({ item }) => <ItemCard row={item} palette={palette} />}
+        renderItem={({ item, index }) => (
+          <ItemCard
+            row={item}
+            palette={palette}
+            targetRef={index === 0 ? tourTargetRef : undefined}
+          />
+        )}
         showsVerticalScrollIndicator={false}
       />
     </View>
@@ -90,9 +96,11 @@ const hexPoints = (cx: number, cy: number, r: number) => {
 const ItemCard = ({
   row,
   palette,
+  targetRef,
 }: {
   row: Row;
   palette: ReturnType<typeof getProfileShellPalette>;
+  targetRef?: React.RefObject<View | null>;
 }) => {
   const router = useRouter();
   const disabled = row.estado === "bloqueado";
@@ -153,6 +161,8 @@ const ItemCard = ({
 
   return (
     <Pressable
+      ref={targetRef}
+      collapsable={false}
       onPress={onPress}
       disabled={disabled}
       android_ripple={disabled ? undefined : { color: Color.colorAliceblue200 }}

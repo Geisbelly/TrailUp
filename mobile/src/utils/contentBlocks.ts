@@ -209,6 +209,8 @@ export function isPresentationUrl(url: string) {
   );
 }
 
+export { isHtmlDeckUrl } from "./htmlDeck";
+
 export function isImageUrl(url: string) {
   return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(cleanUrl(url));
 }

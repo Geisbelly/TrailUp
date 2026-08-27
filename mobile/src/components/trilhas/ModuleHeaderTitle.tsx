@@ -6,13 +6,15 @@ import {
 } from "@/constants/profileImages";
 import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { registrarAlvoTour } from "@/utils/tourTargets";
 import {
   buildTrilhaGuideContent,
   TrilhaGuideScope,
   TrilhaGuideTarget,
 } from "@/utils/trilhaGuide";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import React, { useEffect, useMemo, useState } from "react";
+import { useIsFocused } from "@react-navigation/native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Image,
   Modal,
@@ -44,16 +46,27 @@ type Props = {
   perfis?: { nome?: string | null; afinidade?: number | null }[] | null;
 };
 
+type SpotlightRect = {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+};
+
+export type GuideTargetRefs = Partial<
+  Record<TrilhaGuideTarget, React.RefObject<View | null>>
+>;
+
 function resolveSpotlightStyle(
   target: TrilhaGuideTarget,
   scope: TrilhaGuideScope,
   screenWidth: number,
   screenHeight: number,
-) {
+): SpotlightRect {
   if (scope === "trilha") {
     switch (target) {
       case "progress":
-        return { top: 88, left: 14, width: screenWidth - 28, height: 94 };
+        return { top: 82, left: 14, width: screenWidth - 28, height: 48 };
       case "map":
       case "tree":
       case "list":
@@ -62,10 +75,15 @@ function resolveSpotlightStyle(
           top: 176,
           left: 12,
           width: screenWidth - 24,
-          height: Math.min(332, screenHeight * 0.44),
+          height: Math.min(272, screenHeight * 0.34),
         };
       case "chat":
-        return { right: 10, bottom: 52, width: 86, height: 86 };
+        return {
+          top: screenHeight - 52 - 86,
+          left: screenWidth - 10 - 86,
+          width: 86,
+          height: 86,
+        };
       default:
         return { top: 110, left: 16, width: screenWidth - 32, height: 80 };
     }
@@ -73,28 +91,77 @@ function resolveSpotlightStyle(
 
   switch (target) {
     case "guide_button":
-      return { top: 54, right: 14, width: 48, height: 48 };
+      return { top: 54, left: screenWidth - 14 - 48, width: 48, height: 48 };
     case "progress":
       return { top: 104, left: 14, width: screenWidth - 28, height: 88 };
     case "timer":
       return {
         top: 104,
-        right: 14,
+        left: screenWidth - 14 - Math.min(196, screenWidth * 0.46),
         width: Math.min(196, screenWidth * 0.46),
         height: 64,
       };
     case "battle":
       return {
         top: 104,
-        right: 14,
+        left: screenWidth - 14 - Math.min(206, screenWidth * 0.5),
         width: Math.min(206, screenWidth * 0.5),
         height: 70,
       };
     case "chat":
-      return { right: 10, bottom: 112, width: 86, height: 86 };
+      return {
+        top: screenHeight - 112 - 86,
+        left: screenWidth - 10 - 86,
+        width: 86,
+        height: 86,
+      };
     default:
       return { top: 110, left: 16, width: screenWidth - 32, height: 80 };
   }
+}
+
+function TourSpotlightMask({
+  rect,
+  screenWidth,
+  screenHeight,
+  scrimColor,
+  borderColor,
+}: {
+  rect: SpotlightRect;
+  screenWidth: number;
+  screenHeight: number;
+  scrimColor: string;
+  borderColor: string;
+}) {
+  const top = Math.max(0, Math.min(screenHeight, rect.top));
+  const left = Math.max(0, Math.min(screenWidth, rect.left));
+  const width = Math.max(0, Math.min(screenWidth - left, rect.width));
+  const height = Math.max(0, Math.min(screenHeight - top, rect.height));
+  const right = left + width;
+  const bottom = top + height;
+
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      <View
+        style={[styles.tourScrim, { top: 0, left: 0, right: 0, height: top, backgroundColor: scrimColor }]}
+      />
+      <View
+        style={[styles.tourScrim, { top, left: 0, width: left, height, backgroundColor: scrimColor }]}
+      />
+      <View
+        style={[styles.tourScrim, { top, left: right, right: 0, height, backgroundColor: scrimColor }]}
+      />
+      <View
+        style={[styles.tourScrim, { top: bottom, left: 0, right: 0, bottom: 0, backgroundColor: scrimColor }]}
+      />
+      <View
+        style={[
+          styles.spotlight,
+          { top, left, width, height, borderColor, shadowColor: borderColor },
+        ]}
+      />
+    </View>
+  );
 }
 
 export function ModuleHeaderTitle({
@@ -210,6 +277,7 @@ export function ModuleHeaderGuideButton({
   guideVariant,
   visibleElements,
   perfis,
+  targetRefs,
 }: {
   profile: BrainHexProfile | string | null | undefined;
   title: string;
@@ -220,8 +288,15 @@ export function ModuleHeaderGuideButton({
   guideVariant?: "personalizado" | "mock_modulo" | "padrao_trilha" | null;
   visibleElements?: GuideVisibleElements;
   perfis?: { nome?: string | null; afinidade?: number | null }[] | null;
+  targetRefs?: GuideTargetRefs;
 }) {
   const [open, setOpen] = useState(false);
+  const guideButtonRef = useRef<View | null>(null);
+  const isFocused = useIsFocused();
+  useEffect(() => {
+    if (!isFocused) return;
+    return registrarAlvoTour("guia_botao", guideButtonRef);
+  }, [isFocused]);
   const normalizedProfile = useMemo(
     () => normalizeBrainHexProfile(profile) ?? "mastermind",
     [profile],
@@ -259,6 +334,8 @@ export function ModuleHeaderGuideButton({
   return (
     <>
       <Pressable
+        ref={guideButtonRef}
+        collapsable={false}
         style={[
           styles.helpButton,
           variant === "icon"
@@ -306,6 +383,7 @@ export function ModuleHeaderGuideButton({
           profile={normalizedProfile}
           scope={scope}
           onClose={() => setOpen(false)}
+          targetRefs={{ ...targetRefs, guide_button: guideButtonRef }}
         />
       </Modal>
     </>
@@ -318,12 +396,14 @@ function GuideModalContent({
   profile,
   scope,
   onClose,
+  targetRefs,
 }: {
   guide: ReturnType<typeof buildTrilhaGuideContent>;
   palette: ReturnType<typeof getProfileShellPalette>;
   profile: BrainHexProfile;
   scope: TrilhaGuideScope;
   onClose: () => void;
+  targetRefs?: GuideTargetRefs;
 }) {
   const guideProfile = useMemo(() => getBrainHexConfig(profile), [profile]);
   const guideName = useMemo(() => getBrainHexGuideName(profile), [profile]);
@@ -332,18 +412,53 @@ function GuideModalContent({
   const [tutorialIndex, setTutorialIndex] = useState(0);
   const currentStep = guide.tutorialSteps[tutorialIndex] ?? null;
   const prefersTopTourCard = currentStep?.target === "chat";
-  const spotlightStyle = useMemo(
-    () =>
-      currentStep
-        ? resolveSpotlightStyle(
-            currentStep.target,
-            scope,
-            screenWidth,
-            screenHeight,
-          )
-        : null,
-    [currentStep, scope, screenHeight, screenWidth],
-  );
+  const [measuredSpotlight, setMeasuredSpotlight] = useState<SpotlightRect | null>(null);
+
+  useEffect(() => {
+    if (!tutorialActive || !currentStep) {
+      setMeasuredSpotlight(null);
+      return;
+    }
+
+    const targetRef = targetRefs?.[currentStep.target];
+    if (!targetRef?.current?.measureInWindow) {
+      setMeasuredSpotlight(null);
+      return;
+    }
+
+    setMeasuredSpotlight(null);
+    let active = true;
+    const timer = setTimeout(() => {
+      targetRef.current?.measureInWindow((x, y, width, height) => {
+        if (!active || width < 2 || height < 2) {
+          if (active) setMeasuredSpotlight(null);
+          return;
+        }
+        const padding = 6;
+        setMeasuredSpotlight({
+          top: Math.max(0, y - padding),
+          left: Math.max(0, x - padding),
+          width: Math.min(screenWidth, width + padding * 2),
+          height: Math.min(screenHeight, height + padding * 2),
+        });
+      });
+    }, 60);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [currentStep, screenHeight, screenWidth, targetRefs, tutorialActive]);
+
+  const spotlightStyle = useMemo(() => {
+    if (!currentStep) return null;
+    if (measuredSpotlight) return measuredSpotlight;
+    // A tela de trilha ainda usa alvos estruturais grandes (mapa/arvore/lista).
+    // No modulo, nunca desenhamos um retangulo estimado sobre outro elemento.
+    return scope === "trilha"
+      ? resolveSpotlightStyle(currentStep.target, scope, screenWidth, screenHeight)
+      : null;
+  }, [currentStep, measuredSpotlight, scope, screenHeight, screenWidth]);
 
   useEffect(() => {
     setTutorialActive(false);
@@ -352,24 +467,14 @@ function GuideModalContent({
 
   if (tutorialActive && currentStep) {
     return (
-      <View
-        style={[
-          styles.tourBackdrop,
-          { backgroundColor: `${palette.background}e8` },
-        ]}
-      >
+      <View style={styles.tourBackdrop}>
         {spotlightStyle ? (
-          <View
-            pointerEvents="none"
-            style={[
-              styles.spotlight,
-              spotlightStyle,
-              {
-                borderColor: guide.accentColor,
-                backgroundColor: palette.accentMuted,
-                shadowColor: guide.accentColor,
-              },
-            ]}
+          <TourSpotlightMask
+            rect={spotlightStyle}
+            screenWidth={screenWidth}
+            screenHeight={screenHeight}
+            scrimColor={`${palette.background}e8`}
+            borderColor={guide.accentColor}
           />
         ) : null}
 
@@ -1058,10 +1163,14 @@ const styles = StyleSheet.create({
   tourBackdrop: {
     flex: 1,
   },
+  tourScrim: {
+    position: "absolute",
+  },
   spotlight: {
     position: "absolute",
     borderRadius: 22,
     borderWidth: 2,
+    backgroundColor: "transparent",
     shadowOpacity: 0.44,
     shadowRadius: 28,
     shadowOffset: { width: 0, height: 0 },

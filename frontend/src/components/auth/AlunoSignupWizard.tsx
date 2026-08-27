@@ -9,7 +9,13 @@ import StudentPresentationStep from "./StudentPresentationStep";
 import BrainHexIntroStep from "./BrainHexIntroStep";
 import BrainHexQuizStep from "./BrainHexQuizStep";
 import BrainHexResultStep from "./BrainHexResultStep";
-import { BrainHexAnswers, computeBrainHexResult, isAllAnswered } from "@/features/signup/brainhex";
+import {
+  BrainHexAnswers,
+  BrainHexProfileKey,
+  computeBrainHexResult,
+  isAllAnswered,
+  resolveRepresentativeBrainHexResults,
+} from "@/features/signup/brainhex";
 
 type StepKey =
   | "basics"
@@ -30,6 +36,7 @@ export function AlunoSignupWizard({
     modoApresentacao: string;
     brainhexPercent: Record<string, number>;
     brainhexRaw: Record<string, number>;
+    perfilInicial: BrainHexProfileKey;
   }) => Promise<void> | void;
   isSaving?: boolean;
 }) {
@@ -44,6 +51,7 @@ export function AlunoSignupWizard({
   const [modoOperacao, setModoOperacao] = useState("");
   const [modoApresentacao, setModoApresentacao] = useState("");
   const [brainhexAnswers, setBrainhexAnswers] = useState<BrainHexAnswers>({});
+  const [perfilInicial, setPerfilInicial] = useState<BrainHexProfileKey | null>(null);
   const [quizPage, setQuizPage] = useState(0);
 
   const progress = Math.round(((stepIndex + 1) / steps.length) * 100);
@@ -75,6 +83,14 @@ export function AlunoSignupWizard({
       return;
     }
     const result = computeBrainHexResult(brainhexAnswers);
+    const perfisRepresentativos = resolveRepresentativeBrainHexResults(result.sorted);
+    const perfilEscolhido =
+      perfisRepresentativos.find((profile) => profile.key === perfilInicial)?.key ??
+      perfisRepresentativos[0]?.key;
+    if (!perfilEscolhido) {
+      toast.error("Não foi possível definir seu perfil inicial.");
+      return;
+    }
 
     await onConfirm({
       nome: basics.nome.trim(),
@@ -83,6 +99,7 @@ export function AlunoSignupWizard({
       modoApresentacao,
       brainhexPercent: result.percent,
       brainhexRaw: result.raw,
+      perfilInicial: perfilEscolhido,
     });
   };
 
@@ -118,7 +135,13 @@ export function AlunoSignupWizard({
         />
       )}
 
-      {step === "brainhex_result" && <BrainHexResultStep answers={brainhexAnswers} />}
+      {step === "brainhex_result" && (
+        <BrainHexResultStep
+          answers={brainhexAnswers}
+          selectedProfile={perfilInicial}
+          onSelectProfile={setPerfilInicial}
+        />
+      )}
 
       {/* O quiz tem sua própria navegação (Anterior / Próximo página / Finalizar Análise);
           o rodapé abaixo ficaria duplicado e com "Próximo" fazendo algo diferente do botão
@@ -134,7 +157,11 @@ export function AlunoSignupWizard({
               Próximo
             </Button>
           ) : (
-            <Button className="flex-1" onClick={confirm} disabled={Boolean(isSaving)}>
+            <Button
+              className="flex-1"
+              onClick={confirm}
+              disabled={Boolean(isSaving) || !perfilInicial}
+            >
               {isSaving ? "Confirmando..." : "Confirmar conta de aluno"}
             </Button>
           )}

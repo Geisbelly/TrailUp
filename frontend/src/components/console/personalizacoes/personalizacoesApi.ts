@@ -369,6 +369,97 @@ export async function fetchAdequacaoGrupo(
   );
 }
 
+// ── Sugestao de material por aluno ────────────────────────────────────────────
+
+export type SugestaoMaterialItem = {
+  formato: string;
+  posicao: number;
+  score: number;
+  motivos: string[];
+};
+
+export type SugestaoMaterial = {
+  formato_inicial: string | null;
+  ordem: SugestaoMaterialItem[];
+  versao: number;
+  origem: string;
+};
+
+export type SugestaoHistoricoItem = {
+  versao: number;
+  acao: string;
+  topico_id?: number | null;
+  criado_em?: string | null;
+  motivos: string[];
+  ordem_sugerida: string[];
+  ordem_observada: string[];
+  /** null = nao deu para medir. Zero significaria "ignorou tudo". */
+  aderencia: number | null;
+  seguiu_inicio: boolean | null;
+  desempenho: number | null;
+  desempenho_posterior: number | null;
+};
+
+export type SugestaoEfetividade = {
+  total_registros: number;
+  aderencia_media: number | null;
+  n_aderencia: number;
+  taxa_seguiu_inicio: number | null;
+  desempenho: {
+    desempenho_seguiu?: number | null;
+    desempenho_ignorou?: number | null;
+    n_seguiu?: number;
+    n_ignorou?: number;
+    minimo_amostra?: number;
+    confiavel?: boolean;
+    diferenca?: number | null;
+  };
+  revisoes: {
+    revisoes_comparadas?: number;
+    delta_medio?: number | null;
+    revisoes_que_melhoraram?: number;
+    revisoes_que_pioraram?: number;
+    confiavel?: boolean;
+  };
+  churn: {
+    por_acao?: Record<string, number>;
+    alvos?: number;
+    alvos_revisados?: number;
+    revisoes_por_alvo?: number | null;
+    maior_numero_de_revisoes?: number;
+  };
+};
+
+export type SugestaoAlunoResponse = {
+  aluno_id: string;
+  topico_id?: number | null;
+  atual: SugestaoMaterial | null;
+  historico: SugestaoHistoricoItem[];
+  efetividade: SugestaoEfetividade;
+};
+
+/**
+ * Visao 3 (por aluno): ordem aconselhada, historico de decisoes e efetividade.
+ *
+ * Uma chamada so: o historico e a metrica saem do mesmo log, e busca-los
+ * separado abriria espaco para o console mostrar uma efetividade que nao
+ * corresponde as linhas listadas ao lado.
+ */
+export async function fetchSugestaoAluno(
+  accessToken: string,
+  params: { alunoId: string; topicoId?: number }
+): Promise<SugestaoAlunoResponse> {
+  const search = new URLSearchParams();
+  if (params.topicoId != null) search.set("topico_id", String(params.topicoId));
+  const query = search.toString();
+  return apiRequest<SugestaoAlunoResponse>(
+    `/api/v1/personalizar/sugestao/${encodeURIComponent(params.alunoId)}/historico${
+      query ? `?${query}` : ""
+    }`,
+    accessToken
+  );
+}
+
 // ── Regeneracao de material via prompt livre (professor) ───────────────────────
 //
 // Uma unica chamada Gemini (+ eventual asset) no microservice — mais demorada

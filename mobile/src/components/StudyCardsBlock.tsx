@@ -1,7 +1,9 @@
 import { ContentBlockPayload } from "@/interfaces/componentes_simples/IContentBlock";
 import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+
+import { assinaturaDoDeck } from "./studyCardsDeck";
 import {
   Image,
   Pressable,
@@ -14,6 +16,7 @@ import AudioPlayer from "@/components/funcionais/AudioPlayer";
 import VideoPlayer from "@/components/funcionais/VideoPlayer";
 import { useUsuario } from "@/context/SessaoContext";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { buildContentResumeKey, loadContentResume, saveContentResume } from "@/utils/contentResume";
 
 type StudyCard = {
   id?: string | number;
@@ -33,6 +36,7 @@ type StudyCard = {
 type Props = {
   payload: ContentBlockPayload;
   WebView?: React.ComponentType<any> | null;
+  progressKey?: string;
 };
 
 function normalizeCards(payload: ContentBlockPayload): StudyCard[] {
@@ -83,17 +87,46 @@ function buildCardMediaBlock(card: StudyCard) {
   return null;
 }
 
-export default function StudyCardsBlock({ payload, WebView }: Props) {
+export default function StudyCardsBlock({ payload, WebView, progressKey }: Props) {
   const { usuario } = useUsuario();
   const palette = useMemo(
-    () => getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfis]
+    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
+    [usuario?.perfilAtivo, usuario?.perfis]
   );
   const cards = useMemo(() => normalizeCards(payload), [payload]);
   const [index, setIndex] = useState(0);
   const [showBack, setShowBack] = useState(false);
+  const [resumeLoaded, setResumeLoaded] = useState(false);
 
-  const card = cards[index] ?? null;
+  // Baralho novo comeca do primeiro card e pela FRENTE. Sem isto, um baralho
+  // regenerado herdava a face virada do anterior e abria com a resposta a
+  // mostra -- e, se o novo tivesse menos cards que o indice guardado, o bloco
+  // simplesmente nao renderizava nada.
+  const assinatura = useMemo(() => assinaturaDoDeck(cards), [cards]);
+  const resumeStorageKey = useMemo(
+    () => buildContentResumeKey(usuario?.id, "cards", progressKey ?? assinatura),
+    [assinatura, progressKey, usuario?.id]
+  );
+  useEffect(() => {
+    let active = true;
+    setResumeLoaded(false);
+    setShowBack(false);
+    void loadContentResume(resumeStorageKey).then((saved) => {
+      if (!active) return;
+      setIndex(Math.max(0, Math.min(cards.length - 1, Math.round(saved?.card ?? 0))));
+      setResumeLoaded(true);
+    });
+    return () => { active = false; };
+  }, [cards.length, resumeStorageKey]);
+
+  useEffect(() => {
+    if (!resumeLoaded) return;
+    void saveContentResume(resumeStorageKey, { card: index });
+  }, [index, resumeLoaded, resumeStorageKey]);
+
+  // Clamp defensivo: entre a troca de baralho e o efeito acima existe um render
+  // com o indice antigo, e e nele que a tela ficava em branco.
+  const card = cards.length > 0 ? cards[Math.min(index, cards.length - 1)] : null;
 
   if (!card) return null;
 
@@ -155,11 +188,11 @@ export default function StudyCardsBlock({ payload, WebView }: Props) {
         {media ? (
           <View style={styles.mediaContainer}>
             {media.kind === "audio" ? (
-              <AudioPlayer url={media.url} />
+              <AudioPlayer url={media.url} progressKey={`${progressKey ?? assinatura}:card:${index}:audio`} />
             ) : media.kind === "video" ? (
-              <VideoPlayer url={media.url} />
+              <VideoPlayer url={media.url} progressKey={`${progressKey ?? assinatura}:card:${index}:video`} />
             ) : media.kind === "pdf" || media.kind === "documento" || media.kind === "apresentacao" ? (
-              <DocumentBlock tipo={media.kind} payload={{ url: media.url }} WebView={WebView} />
+              <DocumentBlock tipo={media.kind} payload={{ url: media.url }} WebView={WebView} progressKey={`${progressKey ?? assinatura}:card:${index}:${media.kind}`} />
             ) : media.kind === "embed" ? (
               <DocumentBlock tipo="embed" payload={{ html: media.html }} WebView={WebView} />
             ) : null}

@@ -4,7 +4,6 @@ import { IAMentorPanel } from "@/components/ia/IAMentorPanel";
 import { LoadingState } from "@/components/LoadingState";
 import { TrilhaBase } from "@/components/trilhas/TrilhaBase";
 import { useIA } from "@/context/IAContext";
-import { useUsuario } from "@/context/SessaoContext";
 import { useTrilha } from "@/context/TrilhaContext";
 import { Color } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
@@ -13,12 +12,12 @@ import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function TrilhasIndex() {
-  const { carregando, erro, classes, classeAtual, personalizedTopics } =
+  const { carregando, erro, classes, classeAtual, perfil, personalizedTopics } =
     useTrilha();
-  const { usuario } = useUsuario();
   const { pushMentorCue } = useIA();
-  const palette = getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null);
+  const palette = getProfileShellPalette(perfil);
   const personalizationCueKeyRef = useRef<string | null>(null);
+  const chatGuideTargetRef = useRef<View | null>(null);
 
   const trailMentorCue = useMemo(() => {
     const currentClass = classeAtual;
@@ -111,12 +110,13 @@ export default function TrilhasIndex() {
       <View style={[StyleSheet.absoluteFill, { opacity: 0.4 }]} pointerEvents="none">
         <HallBackground palette={palette} />
       </View>
-      <TrilhaBase />
+      <TrilhaBase chatGuideTargetRef={chatGuideTargetRef} />
       <IAMentorPanel
         classeId={classeAtual?.classe_id ?? null}
         topicoId={trailMentorCue?.topicoId ?? null}
         scope="trilha_home"
         bottomOffset={10}
+        guideTargetRef={chatGuideTargetRef}
       />
     </SafeAreaView>
   );

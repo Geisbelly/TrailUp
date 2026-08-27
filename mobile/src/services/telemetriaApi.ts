@@ -414,6 +414,28 @@ async function persistTelemetryBatchDirect(payload: TelemetryBatchPayload) {
   return buildFallbackResponse(batchId, safePayload);
 }
 
+// O endpoint de lote responde so DEPOIS de rodar o pipeline de analise inteiro
+// (LangGraph + LLM) na mesma requisicao, entao ele e legitimamente lento -- daí
+// o teto alto. O que nao pode e ser infinito: sem limite, uma requisicao
+// pendurada trava o laço de URLs candidatas abaixo e a alternativa nunca chega a
+// ser tentada.
+const TELEMETRIA_TIMEOUT_MS = 120_000;
+
+async function postComTimeout(url: string, headers: HeadersInit, body: string) {
+  const controle = new AbortController();
+  const limite = setTimeout(() => controle.abort(), TELEMETRIA_TIMEOUT_MS);
+  try {
+    return await fetch(url, {
+      method: "POST",
+      headers,
+      body,
+      signal: controle.signal,
+    });
+  } finally {
+    clearTimeout(limite);
+  }
+}
+
 export async function enviarLoteTelemetria(payload: TelemetryBatchPayload) {
   const safePayload = sanitizeTelemetryPayload(payload);
   const urls = buildUrls("/api/v1/telemetria/lotes");
@@ -421,25 +443,18 @@ export async function enviarLoteTelemetria(payload: TelemetryBatchPayload) {
     return persistTelemetryBatchDirect(safePayload);
   }
 
+  const corpo = JSON.stringify(safePayload);
   let lastNetworkError: unknown = null;
 
   for (const url of urls) {
     try {
       const headers = await getAuthHeaders();
-      const response = await fetch(url, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(safePayload),
-      });
+      const response = await postComTimeout(url, headers, corpo);
 
       if (response.status === 401) {
         const refreshedHeaders = await refreshAuthHeaders();
         if (refreshedHeaders) {
-          const retryResponse = await fetch(url, {
-            method: "POST",
-            headers: refreshedHeaders,
-            body: JSON.stringify(safePayload),
-          });
+          const retryResponse = await postComTimeout(url, refreshedHeaders, corpo);
           return await parseResponse<TelemetryBatchResponse>(retryResponse);
         }
       }

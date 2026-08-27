@@ -54,8 +54,8 @@ function normalizeMediaBlocks(atividade: any): ContentBlock[] {
 export default function TextoActivity({ atividade }: Props) {
   const { usuario } = useUsuario();
   const palette = useMemo(
-    () => getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfis]
+    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
+    [usuario?.perfilAtivo, usuario?.perfis]
   );
   const mediaBlocks = useMemo(() => normalizeMediaBlocks(atividade), [atividade]);
 

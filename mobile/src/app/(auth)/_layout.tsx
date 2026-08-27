@@ -15,7 +15,7 @@ export default function TabLayout() {
     };
 
     void verificarSessao();
-  }, []);
+  }, [router]);
 
   return (
     <Tabs

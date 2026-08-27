@@ -27,7 +27,9 @@
       "versionCode": 5,
       "usesCleartextTraffic": true,
       "permissions": [
-        "android.permission.CAMERA"
+        "android.permission.CAMERA",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.RECEIVE_BOOT_COMPLETED"
       ],
       "adaptiveIcon": {
         "backgroundColor": "#111936",
@@ -61,6 +63,14 @@
           "dark": {
             "backgroundColor": "#111936"
           }
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./src/assets/images/icon_start.png",
+          "color": "#111936",
+          "defaultChannel": "trailup"
         }
       ]
     ],

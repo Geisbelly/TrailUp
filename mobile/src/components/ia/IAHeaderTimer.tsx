@@ -13,7 +13,8 @@ import {
   IATimerTimeoutAction,
 } from "@/interfaces/personalizacao/IAContracts";
 import { FontFamily } from "@/styles/GlobalStyle";
-import { hasAnyBrainHexProfileSignal, resolveDominantBrainHexProfile } from "@/utils/brainHex";
+import { resolveActiveBrainHexProfile } from "@/utils/brainHex";
+import { getBrainHexProfileCapabilities } from "@/utils/brainHexCapabilities";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -29,6 +30,7 @@ type Props = {
   elapsedStartAtMs?: number | null;
   active?: boolean;
   onTimeoutAction?: (action: IATimerTimeoutAction | null) => void;
+  compact?: boolean;
 };
 
 function pickTimerFeatureOrder(preferredTimerFeature?: TimerFeature | null): TimerFeature[] {
@@ -50,16 +52,14 @@ export function IAHeaderTimer({
   elapsedStartAtMs = null,
   active = true,
   onTimeoutAction,
+  compact = false,
 }: Props) {
   const { resolveFeature, emitSignal } = useIA();
   const { usuario } = useUsuario();
   const perfis = usuario?.perfis ?? null;
-  const dominantProfile = resolveDominantBrainHexProfile(perfis, "seeker");
-  const palette = useMemo(() => getProfileShellPalette(dominantProfile), [dominantProfile]);
-  const hasTimerSignal = useMemo(
-    () => hasAnyBrainHexProfileSignal(perfis, ["survivor", "mastermind", "achiever", "conqueror", "daredevil"]),
-    [perfis]
-  );
+  const activeProfile = resolveActiveBrainHexProfile(perfis, usuario?.perfilAtivo, "seeker");
+  const palette = useMemo(() => getProfileShellPalette(activeProfile), [activeProfile]);
+  const hasTimerSignal = getBrainHexProfileCapabilities(activeProfile).hasTimer;
 
   // ── Scopes ──────────────────────────────────────────────────────────────────
   const itemScope = useMemo(
@@ -252,6 +252,7 @@ export function IAHeaderTimer({
     <Animated.View
       style={[
         styles.chip,
+        compact && styles.chipCompact,
         {
           borderColor: chipBorderColor,
           backgroundColor: chipBg,
@@ -261,7 +262,7 @@ export function IAHeaderTimer({
       ]}
     >
       {/* Gema pulsante */}
-      <View style={[styles.gemDot, { backgroundColor: dotColor }]} />
+      {!compact ? <View style={[styles.gemDot, { backgroundColor: dotColor }]} /> : null}
 
       {/* Ícone místico */}
       <MaterialCommunityIcons
@@ -271,7 +272,9 @@ export function IAHeaderTimer({
       />
 
       {/* Separador vertical ornamental */}
-      <View style={[styles.sep, { backgroundColor: isCritical ? "rgba(252,165,165,0.25)" : palette.border }]} />
+      {!compact ? (
+        <View style={[styles.sep, { backgroundColor: isCritical ? "rgba(252,165,165,0.25)" : palette.border }]} />
+      ) : null}
 
       {/* Tempo — fonte medieval */}
       <Text style={[styles.time, { color: timeColor }]}>
@@ -279,9 +282,11 @@ export function IAHeaderTimer({
       </Text>
 
       {/* Label contextual */}
-      <Text style={[styles.label, { color: labelColor }]}>
-        {isActivity ? "restante" : "no módulo"}
-      </Text>
+      {!compact ? (
+        <Text style={[styles.label, { color: labelColor }]}>
+          {isActivity ? "restante" : "no módulo"}
+        </Text>
+      ) : null}
     </Animated.View>
   );
 }
@@ -300,6 +305,13 @@ const styles = StyleSheet.create({
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 2 },
     elevation: 12,
+  },
+  chipCompact: {
+    gap: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 7,
+    borderRadius: 999,
+    elevation: 4,
   },
   gemDot: {
     width: 7,

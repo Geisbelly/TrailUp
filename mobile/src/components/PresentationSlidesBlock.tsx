@@ -6,9 +6,10 @@ import { getBrainHexConfig, getBrainHexGuideName } from "@/constants/profileImag
 import { useUsuario } from "@/context/SessaoContext";
 import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { buildContentResumeKey, loadContentResume, saveContentResume } from "@/utils/contentResume";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Image,
   Modal,
@@ -21,6 +22,7 @@ import {
 
 type Props = {
   payload: ContentBlockPayload;
+  progressKey?: string;
 };
 
 export function normalizePayload(payload: ContentBlockPayload): {
@@ -51,9 +53,9 @@ export function normalizePayload(payload: ContentBlockPayload): {
   };
 }
 
-export default function PresentationSlidesBlock({ payload: rawPayload }: Props) {
+export default function PresentationSlidesBlock({ payload: rawPayload, progressKey }: Props) {
   const { usuario } = useUsuario();
-  const perfilNome = usuario?.perfis?.[0]?.nome ?? null;
+  const perfilNome = usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null;
   const palette = useMemo(() => getProfileShellPalette(perfilNome), [perfilNome]);
   const brainHexConfig = useMemo(() => getBrainHexConfig(perfilNome ?? undefined), [perfilNome]);
   const guideName = useMemo(() => getBrainHexGuideName(perfilNome), [perfilNome]);
@@ -62,6 +64,27 @@ export default function PresentationSlidesBlock({ payload: rawPayload }: Props) 
   const slides = payload.slides;
   const [visible, setVisible] = useState(false);
   const [index, setIndex] = useState(0);
+  const [resumeLoaded, setResumeLoaded] = useState(false);
+  const storageKey = useMemo(
+    () => buildContentResumeKey(usuario?.id, "slides", progressKey ?? payload.title ?? "slides"),
+    [payload.title, progressKey, usuario?.id]
+  );
+
+  useEffect(() => {
+    let active = true;
+    setResumeLoaded(false);
+    void loadContentResume(storageKey).then((saved) => {
+      if (!active) return;
+      setIndex(Math.max(0, Math.min(slides.length - 1, Math.round(saved?.slide ?? 0))));
+      setResumeLoaded(true);
+    });
+    return () => { active = false; };
+  }, [slides.length, storageKey]);
+
+  useEffect(() => {
+    if (!resumeLoaded) return;
+    void saveContentResume(storageKey, { slide: index });
+  }, [index, resumeLoaded, storageKey]);
 
   if (slides.length === 0) return null;
 
@@ -70,7 +93,6 @@ export default function PresentationSlidesBlock({ payload: rawPayload }: Props) 
   const isLast = index === slides.length - 1;
 
   const openViewer = () => {
-    setIndex(0);
     setVisible(true);
   };
 
@@ -107,7 +129,9 @@ export default function PresentationSlidesBlock({ payload: rawPayload }: Props) 
         ) : null}
         <View style={[styles.previewButton, { backgroundColor: palette.accent }]}>
           <Ionicons name="play" size={16} color={Color.colorWhite} />
-          <Text style={styles.previewButtonText}>Ver apresentação</Text>
+          <Text style={styles.previewButtonText}>
+            {index > 0 ? `Continuar do slide ${index + 1}` : "Ver apresentação"}
+          </Text>
         </View>
       </Pressable>
 

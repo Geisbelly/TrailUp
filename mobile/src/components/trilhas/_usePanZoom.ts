@@ -24,7 +24,7 @@ export function usePanZoom(opts?: { minScale?: number; maxScale?: number }) {
 
   const reset = useCallback(() => {
     tx.value = 0; ty.value = 0; scale.value = 1;
-  }, []);
+  }, [scale, tx, ty]);
 
   return { tx, ty, scale, gestures, reset };
 }

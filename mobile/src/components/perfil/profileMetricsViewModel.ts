@@ -6,6 +6,11 @@ import { EventoAluno } from "@/models/Evento";
 import { PerfilDoAluno } from "@/models/PerfilAluno";
 import { PosicaoDoAluno } from "@/models/RankAlunoPosicao";
 import { buildClasseAcademicMetrics, buildClasseResumoFallback } from "@/utils/classeMetrics";
+import {
+  agregarProgressoPersonalizado,
+  unificarContadores,
+  type ProgressoPersonalizado,
+} from "@/utils/progressoPersonalizado";
 
 export type MetricsCameraPermissionState = "unknown" | "granted" | "denied" | "unavailable";
 
@@ -57,9 +62,21 @@ export type ProfileMetricsViewModel = {
   sessionActiveSec: number;
   sessionIdleSec: number;
   sessionEngajamento: number;
+  /** Media de tempo ATIVO desta sessao, em segundos (vem da telemetria). */
   tempoTopico: number;
   tempoConteudo: number;
   tempoAtividade: number;
+  /**
+   * Tempo ACUMULADO por escopo, em minutos, vindo do que esta persistido
+   * (`topico_aluno` / `conteudo_aluno` / `atividade_aluno`).
+   *
+   * Existia so dentro do calculo e nunca chegava a tela: o card de tempo
+   * mostrava apenas a media da sessao atual, entao quem estudou ontem via zero.
+   */
+  tempoTopicoAcumuladoMin: number;
+  tempoConteudoAcumuladoMin: number;
+  tempoAtividadeAcumuladoMin: number;
+  temTempoAcumulado: boolean;
   topicosVisitados: number;
   touchTotal: number;
   scrollTotal: number;
@@ -251,7 +268,31 @@ type BuildMetricsViewModelParams = {
   cameraOptIn: boolean;
   cameraPermission: MetricsCameraPermissionState;
   battleState?: IABattleRuntimeState | null;
+  /**
+   * Agregado de `personalizacao_item_progresso` (ver TrilhaContext). Opcional
+   * para nao quebrar chamadas antigas -- ausente, os contadores voltam a
+   * mostrar so o material do professor.
+   */
+  progressoPersonalizado?: ProgressoPersonalizado | null;
 };
+
+/**
+ * Ids dos conteudos que o lado academico ja conhece.
+ *
+ * Servem para nao contar duas vezes: um `content:12` em
+ * personalizacao_item_progresso e o MESMO material que o `conteudo_aluno` 12,
+ * visto por outra tabela.
+ */
+function idsDeConteudoDaClasse(classe: Classe | null): number[] {
+  const ids: number[] = [];
+  for (const topico of (classe?.topicos ?? []) as any[]) {
+    for (const conteudo of (topico?.conteudos ?? []) as any[]) {
+      const id = Number(conteudo?.id);
+      if (Number.isFinite(id)) ids.push(id);
+    }
+  }
+  return ids;
+}
 
 export function buildProfileMetricsViewModel({
   classeAtual,
@@ -264,16 +305,35 @@ export function buildProfileMetricsViewModel({
   cameraOptIn,
   cameraPermission,
   battleState,
+  progressoPersonalizado,
 }: BuildMetricsViewModelParams): ProfileMetricsViewModel {
   const resumoConfiavel = buildClasseResumoFallback(classeAtual, classeAtual?.resumo ?? null);
   const academicMetrics = buildClasseAcademicMetrics(classeAtual);
   const totalTopicos = academicMetrics.totalTopicos;
   const concluidos = academicMetrics.topicosConcluidos;
   const emAndamento = academicMetrics.topicosEmAndamento;
-  const totalConteudos = academicMetrics.totalConteudos;
-  const conteudosConcluidos = academicMetrics.conteudosConcluidos;
-  const totalAtividades = academicMetrics.totalAtividades;
-  const atividadesConcluidas = academicMetrics.atividadesConcluidas;
+  // Os contadores somam os DOIS livros-caixa. Sem isto eles mostravam apenas o
+  // material do professor: "Arquivos lidos 1 / 4" com o aluno tendo lido muito
+  // mais, e "Desafios resolvidos 0" depois de responder os quizzes da
+  // apresentacao (que vivem em personalizacao_item_progresso, nao em
+  // atividade_aluno). Ver progressoPersonalizado.ts para a regra de
+  // nao-duplicacao.
+  const unificado = unificarContadores({
+    academico: {
+      conteudosConcluidos: academicMetrics.conteudosConcluidos,
+      totalConteudos: academicMetrics.totalConteudos,
+      atividadesConcluidas: academicMetrics.atividadesConcluidas,
+      totalAtividades: academicMetrics.totalAtividades,
+      tempoMin: academicMetrics.tempoTotalMin,
+      conteudoIds: idsDeConteudoDaClasse(classeAtual),
+    },
+    personalizado: progressoPersonalizado ?? agregarProgressoPersonalizado([]),
+  });
+
+  const totalConteudos = unificado.totalConteudos;
+  const conteudosConcluidos = unificado.conteudosConcluidos;
+  const totalAtividades = unificado.totalAtividades;
+  const atividadesConcluidas = unificado.atividadesConcluidas;
   const hasEstruturaDaClasse = totalTopicos > 0 || totalConteudos > 0 || totalAtividades > 0;
   const hasAtividades = totalAtividades > 0;
   const progresso = hasEstruturaDaClasse
@@ -282,9 +342,13 @@ export function buildProfileMetricsViewModel({
   const acertos = hasAtividades
     ? academicMetrics.acertosPercentual
     : resumoConfiavel?.acertosPercentual ?? 0;
+  // MAXIMO, nao soma: o tempo do topico ja inclui o dos itens (o rastreio grava
+  // topico em todo flush, inclusive nos blocos personalizados). O maximo evita
+  // contar duas vezes e ao mesmo tempo recupera o numero quando a escrita de um
+  // dos lados falha -- era o caso do total zerado com estudo registrado.
   const tempoPersistido = hasEstruturaDaClasse
-    ? academicMetrics.tempoTotalMin
-    : resumoConfiavel?.tempoGastoMin ?? 0;
+    ? Math.max(academicMetrics.tempoTotalMin, unificado.tempoMin)
+    : Math.max(resumoConfiavel?.tempoGastoMin ?? 0, unificado.tempoMin);
   const tempoMedio = hasAtividades
     ? academicMetrics.tempoMedioPorAtividade
     : resumoConfiavel?.tempoMedioPorAtividade ?? 0;
@@ -433,6 +497,13 @@ export function buildProfileMetricsViewModel({
     tempoTopico: avgActiveSec(topicsArr),
     tempoConteudo: avgActiveSec(contentsArr),
     tempoAtividade: avgActiveSec(activitiesArr),
+    tempoTopicoAcumuladoMin: academicMetrics.tempoTopicoMin,
+    tempoConteudoAcumuladoMin: academicMetrics.tempoConteudoMin,
+    tempoAtividadeAcumuladoMin: academicMetrics.tempoAtividadeMin,
+    temTempoAcumulado:
+      academicMetrics.tempoTopicoMin > 0 ||
+      academicMetrics.tempoConteudoMin > 0 ||
+      academicMetrics.tempoAtividadeMin > 0,
     topicosVisitados,
     touchTotal: tm?.general.touch_count ?? 0,
     scrollTotal: tm?.general.scroll_distance_px ?? 0,

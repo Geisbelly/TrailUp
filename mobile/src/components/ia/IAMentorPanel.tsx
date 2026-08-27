@@ -5,7 +5,7 @@ import { useMetricas } from "@/context/MetricasContext";
 import { useUsuario } from "@/context/SessaoContext";
 import { usePersonalizacaoProvider } from "@/services/personalizacao/PersonalizacaoProviderContext";
 import { FontFamily } from "@/styles/GlobalStyle";
-import { hasBrainHexProfileSignal } from "@/utils/brainHex";
+import { resolveActiveBrainHexProfile } from "@/utils/brainHex";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -26,6 +26,7 @@ type Props = {
   classeId?: number | null;
   scope?: "modulo" | "trilha_home";
   bottomOffset?: number;
+  guideTargetRef?: React.RefObject<View | null>;
 };
 
 type ChatMessage = {
@@ -163,6 +164,7 @@ export function IAMentorPanel({
   classeId,
   scope = "modulo",
   bottomOffset = 110,
+  guideTargetRef,
 }: Props) {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const { usuario } = useUsuario();
@@ -175,14 +177,15 @@ export function IAMentorPanel({
   const { recordAppEvent } = useMetricas();
   const personalizacaoProvider = usePersonalizacaoProvider();
 
-  const profileName = String(usuario?.perfis?.[0]?.nome ?? "mastermind").toLowerCase();
+  const profileName = resolveActiveBrainHexProfile(
+    usuario?.perfis ?? null,
+    usuario?.perfilAtivo,
+    "seeker",
+  );
   const palette = useMemo(() => getProfileShellPalette(profileName), [profileName]);
   const guideConfig = useMemo(() => getBrainHexConfig(profileName), [profileName]);
   const guideName = useMemo(() => getBrainHexGuideName(profileName), [profileName]);
-  const socialSignalStrong = useMemo(
-    () => hasBrainHexProfileSignal(usuario?.perfis ?? null, "socializer"),
-    [usuario?.perfis]
-  );
+  const socialSignalStrong = profileName === "socializer";
   const scrollRef = useRef<ScrollView | null>(null);
   const hasManualHomeOpenRef = useRef(false);
   const scopeHistoryRef = useRef<Record<string, ChatMessage[]>>({});
@@ -285,6 +288,8 @@ export function IAMentorPanel({
       <View pointerEvents="box-none" style={[styles.overlay, { bottom: bottomOffset }]}>
         <View style={styles.launcherColumn}>
           <Pressable
+            ref={guideTargetRef}
+            collapsable={false}
             onPress={() => void setUserFeaturePreference("mentor_character", true)}
             style={[
               styles.reactivateButton,
@@ -541,6 +546,8 @@ export function IAMentorPanel({
       {!isOpen ? (
         <View style={styles.launcherColumn}>
           <Pressable
+            ref={guideTargetRef}
+            collapsable={false}
             onPress={handleOpen}
             style={[
               styles.launcherButton,
@@ -559,24 +566,12 @@ export function IAMentorPanel({
                 color={palette.accent}
               />
             ) : (
-              <>
-                <Image source={avatarSource} style={styles.launcherAvatar} resizeMode="cover" />
-                <View
-                  style={[
-                    styles.launcherIconWrap,
-                    {
-                      backgroundColor: palette.accentMuted,
-                      borderColor: palette.borderStrong,
-                    },
-                  ]}
-                >
-                  <MaterialCommunityIcons
-                    name="chat-processing-outline"
-                    size={18}
-                    color={palette.accent}
-                  />
-                </View>
-              </>
+              // Só o rosto do guia. A bolha de chat que ficava sobreposta aqui
+              // era ruído: o avatar já diz quem é e que dá pra tocar, e dois
+              // ícones empilhados num alvo de 64pt disputavam o mesmo espaço com
+              // o ponto de não-lido. Na home (acima) não há avatar, então lá a
+              // bolha continua sendo o ícone.
+              <Image source={avatarSource} style={styles.launcherAvatar} resizeMode="cover" />
             )}
             {hasUnreadCue ? (
               <View
@@ -593,6 +588,8 @@ export function IAMentorPanel({
         </View>
       ) : (
         <View
+          ref={guideTargetRef}
+          collapsable={false}
           style={[
             styles.card,
             scope === "modulo" ? styles.cardModule : styles.cardFloating,
@@ -638,13 +635,19 @@ export function IAMentorPanel({
                   </Text>
                 </View>
                 <Text style={[styles.subtitle, { color: palette.text }]}>{currentTitle}</Text>
-                <Text style={[styles.headerHint, { color: palette.textSubtle }]}>
-                  {scope === "trilha_home"
-                    ? "Toque nas explicações abaixo ou envie uma pergunta."
-                    : socialSignalStrong
-                    ? "Aqui a conversa tem mais peso. Posso orientar sua leitura, explicar a personalização e comentar o funcionamento da tela."
-                    : "Converse comigo sobre o módulo, a personalização e o funcionamento desta tela."}
-                </Text>
+                {/* Fora da home o cabeçalho fica sem subtítulo: ele dizia
+                    "converse comigo sobre o módulo, a personalização..." e o
+                    rodapé, três linhas abaixo, repetia "eu explico sua
+                    personalização, métricas e estratégia" -- a mesma promessa
+                    duas vezes na mesma tela, com o guia falando no meio. O
+                    rodapé fica, porque ele também carrega o limite (não entrego
+                    respostas de atividade), que é a parte que o aluno precisa
+                    saber. */}
+                {scope === "trilha_home" ? (
+                  <Text style={[styles.headerHint, { color: palette.textSubtle }]}>
+                    Toque nas explicações abaixo ou envie uma pergunta.
+                  </Text>
+                ) : null}
               </View>
             </View>
 
@@ -832,17 +835,6 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
     borderRadius: 32,
-  },
-  launcherIconWrap: {
-    position: "absolute",
-    right: -4,
-    bottom: -2,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
   },
   unreadDot: {
     position: "absolute",

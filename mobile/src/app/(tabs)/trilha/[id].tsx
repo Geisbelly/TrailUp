@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useFocusEffect, useIsFocused } from "@react-navigation/native";
+import { useFocusEffect, useIsFocused, useNavigation } from "@react-navigation/native";
 import React, {
   useCallback,
   useEffect,
@@ -27,6 +27,10 @@ import { IAHeaderTimer } from "@/components/ia/IAHeaderTimer";
 import { IAMentorPanel } from "@/components/ia/IAMentorPanel";
 import { LoadingState } from "@/components/LoadingState";
 import { TopicoIntroSummary } from "@/components/TopicoIntroSummary";
+import {
+  GuideTargetRefs,
+  ModuleHeaderGuideButton,
+} from "@/components/trilhas/ModuleHeaderTitle";
 import { PersonalizedTopicPayload } from "@/interfaces/personalizacao/IPersonalizedTopic";
 import type { DeckProgressEvent } from "@/utils/deckProgressMessage";
 
@@ -45,12 +49,15 @@ import {
 } from "@/interfaces/personalizacao/IAContracts";
 import { styles } from "@/styles/trilhaTopicoStyles";
 import { buildContentBlocks } from "@/utils/contentBlocks";
+import { getBrainHexProfileCapabilities } from "@/utils/brainHexCapabilities";
+import { ordenarBlocosPorSugestao } from "@/utils/materialSuggestion";
 import { inferModoApresentacao } from "@/utils/presentationOrder";
 import {
   clearTrilhaCheckpoint,
   saveTrilhaCheckpoint,
 } from "@/utils/trilhaCheckpoint";
 import { useCheckpointResume } from "@/hooks/trilha/useCheckpointResume";
+import { useMaterialSuggestion } from "@/hooks/trilha/useMaterialSuggestion";
 import { usePersonalizedFlow } from "@/hooks/trilha/usePersonalizedFlow";
 import { useStudyTimeTracking } from "@/hooks/trilha/useStudyTimeTracking";
 import { useTelemetryHandlers } from "@/hooks/trilha/useTelemetryHandlers";
@@ -59,10 +66,13 @@ import { usePersonalizationRefresh } from "@/hooks/trilha/usePersonalizationRefr
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import {
   buildBlocksForTopico,
+  calcularProgressoVisualPercurso,
   calcularPosicaoInicial,
+  contarProgressoDeBlocos,
   isAtividadeConcluida,
   isConteudoConcluido,
   resolveConteudoMaterialContext,
+  todosOsBlocosConcluidos,
   type Atividade,
   type AtividadeResolvida,
   type Conteudo,
@@ -136,6 +146,7 @@ function normalizeModuleDifficulty(value: unknown): "facil" | "medio" | "dificil
 
 export default function TrilhaConteudoScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
 
   const {
@@ -154,6 +165,7 @@ export default function TrilhaConteudoScreen() {
     getProximosTopicos,
     personalizedTopics,
     ensureTopicoPersonalizado,
+    perfil,
   } = useTrilha();
 
   const { setLoading } = useLoading();
@@ -248,11 +260,32 @@ export default function TrilhaConteudoScreen() {
     [academicAtividades, personalizedFlow.atividades]
   );
   const [personalizacaoCarregando, setPersonalizacaoCarregando] = useState(false);
+  // `personalizacaoCarregando` NAO serve para saber se a lista de blocos esta
+  // completa: ele nasce `false` e so viraria `true` dentro de um efeito, e
+  // setState num efeito nao altera o valor que os OUTROS efeitos do mesmo commit
+  // ja capturaram. A hidratacao do checkpoint rodava com a lista parcial antes
+  // do flag subir. Este estado responde a pergunta certa -- "a tentativa de
+  // carregar a personalizacao terminou?" -- e so vira true depois dela.
+  const [personalizacaoTentada, setPersonalizacaoTentada] = useState(false);
   const concluirTopicoRef = useRef<(() => Promise<void>) | null>(null);
   const lastOpenedSignalRef = useRef<string | null>(null);
   const emitSignalRef = useRef(emitSignal);
   const autoViewedContentRef = useRef<string | null>(null);
   const moduleSessionStartedAtRef = useRef<number | null>(null);
+  const progressGuideTargetRef = useRef<View | null>(null);
+  const timerGuideTargetRef = useRef<View | null>(null);
+  const battleGuideTargetRef = useRef<View | null>(null);
+  const chatGuideTargetRef = useRef<View | null>(null);
+  const guideTargetRefs = useMemo<GuideTargetRefs>(
+    () => ({
+      progress: progressGuideTargetRef,
+      timer: timerGuideTargetRef,
+      battle: battleGuideTargetRef,
+      chat: chatGuideTargetRef,
+    }),
+    []
+  );
+  const topicoIdEmFocoRef = useRef<number | null>(topicoId);
 
   // `personalizedTopic`/`topico` mudam de referencia como CONSEQUENCIA do
   // proprio ensureTopicoPersonalizado em andamento (setPersonalizedTopics no
@@ -304,8 +337,8 @@ export default function TrilhaConteudoScreen() {
     );
   }, [classeAtual, resolvedClasseId, topicoId]);
   const profilePalette = useMemo(
-    () => getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfis]
+    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
+    [usuario?.perfilAtivo, usuario?.perfis]
   );
 
   useEffect(() => {
@@ -322,9 +355,27 @@ export default function TrilhaConteudoScreen() {
         console.warn("[TrilhaConteudo] Falha ao carregar personalização:", err);
       })
       .finally(() => {
-        if (isMountedRef.current) setPersonalizacaoCarregando(false);
+        // Compara o TOPICO em vez de usar um `ativo` local: este efeito
+        // reexecuta como consequencia do proprio ensureTopicoPersonalizado
+        // (ver o comentario do isMountedRef acima), e um flag de cleanup
+        // travaria o spinner ligado. Ja o resultado de OUTRO topico nao pode
+        // marcar a tentativa deste como concluida -- seria a lista parcial
+        // sendo considerada pronta de novo.
+        if (!isMountedRef.current || topicoIdEmFocoRef.current !== topicoId) return;
+        setPersonalizacaoCarregando(false);
+        setPersonalizacaoTentada(true);
       });
   }, [ensureTopicoPersonalizado, personalizedTopic, topico, topicoId]);
+
+  // Topico novo = tentativa nova. Sem isto, a lista parcial do proximo topico
+  // seria considerada pronta por causa da tentativa do anterior.
+  useEffect(() => {
+    setPersonalizacaoTentada(false);
+  }, [topicoId]);
+
+  useEffect(() => {
+    topicoIdEmFocoRef.current = topicoId;
+  }, [topicoId]);
 
   usePersonalizationRefresh({
     topicoId,
@@ -347,6 +398,7 @@ export default function TrilhaConteudoScreen() {
     Record<number, AtividadeResolvida>
   >({});
   const [pulouConteudos, setPulouConteudos] = useState(false);
+  const [maiorIndiceAlcancado, setMaiorIndiceAlcancado] = useState(-1);
 
   // So reseta "pulou trilha" quando o TOPICO muda, nao a cada vez que
   // conteudos/atividades trocam de referencia (ex.: um refresh de
@@ -381,36 +433,60 @@ export default function TrilhaConteudoScreen() {
     [blocks, pulouConteudos]
   );
 
-  const progressoTopico = useMemo(() => {
-    const acadConteudos = conteudos.filter((c) => !(c as any).isPersonalizedLocal);
-    const acadAtividades = atividades.filter((a) => !(a as any).isPersonalizedLocal);
-    const total = acadConteudos.length + acadAtividades.length;
-
-    const concluidosConteudo = acadConteudos.reduce((sum, c) => {
-      return sum + (isConteudoConcluido(c, conteudosVistosLocal) ? 1 : 0);
-    }, 0);
-
-    const concluidosAtividades = acadAtividades.reduce((sum, a) => {
-      return sum + (isAtividadeConcluida(a, atividadesResolvidasLocal) ? 1 : 0);
-    }, 0);
-
-    const concluidos = concluidosConteudo + concluidosAtividades;
-    const pct = total > 0 ? (concluidos / total) * 100 : 0;
-
-    return {
-      total,
-      concluidos,
-      pct: Math.max(0, Math.min(100, pct)),
-    };
-  }, [conteudos, atividades, conteudosVistosLocal, atividadesResolvidasLocal]);
+  // Progresso sobre o PERCURSO: todos os blocos do topico, material
+  // personalizado incluido. E a base tanto da barra quanto da conclusao -- o
+  // aluno percorre esses blocos, entao sao eles que definem "terminei".
+  //
+  // Conta `blocks`, nao `displayedBlocks`: com "pular conteudos" ligado os
+  // conteudos continuam pendentes no modulo, e trata-los como inexistentes
+  // marcaria o topico como concluido sem eles.
+  const progressoPercurso = useMemo(
+    () =>
+      contarProgressoDeBlocos({
+        blocks,
+        conteudosVistosLocal,
+        atividadesResolvidasLocal,
+      }),
+    [atividadesResolvidasLocal, blocks, conteudosVistosLocal]
+  );
 
   const topicoConcluido = useMemo(() => {
     if (!topico) return false;
+
+    // Enquanto a personalizacao carrega, o percurso ainda esta incompleto por
+    // definicao: declarar concluido aqui fecharia o modulo antes de o aluno ver
+    // o material que esta a caminho.
+    if (personalizacaoCarregando) return false;
+
+    // O PERCURSO decide, nao o status do banco.
+    //
+    // `topico_aluno.status`/`percentual_concluido` vem de
+    // `Topico.calcularPercentual()`, que conta SO conteudo/atividade do
+    // professor. Terminando esses, o topico era gravado como 'concluido' com o
+    // material personalizado intocado -- e a tela, que confiava nesse status
+    // antes de olhar qualquer coisa, dava o topico por encerrado exibindo
+    // "6 de 26 blocos concluidos" no cabecalho.
+    //
+    // Pior que a contradicao: `topicoConcluido` dispara
+    // `clearTrilhaCheckpoint`, entao o checkpoint era APAGADO a cada render. A
+    // trilha "sempre voltava pro inicio" porque o ponto de parada era deletado,
+    // nao porque falhava ao gravar. (Confirmado no log do aparelho:
+    // "[Checkpoint] apagando (topico concluido)" repetindo sem parar.)
+    if (progressoPercurso.total > 0) {
+      return progressoPercurso.concluidos >= progressoPercurso.total;
+    }
+
+    // Sem percurso montado (topico sem bloco, ou dado ainda nao carregado), o
+    // status do banco e a unica informacao disponivel -- ai ele vale.
     const status = String(topico.status ?? "").toLowerCase();
     const pct = Number(topico.percentual_concluido ?? 0);
-    if (status.includes("concl") || pct >= 100) return true;
-    return progressoTopico.total > 0 && progressoTopico.concluidos >= progressoTopico.total;
-  }, [progressoTopico.concluidos, progressoTopico.total, topico]);
+    return status.includes("concl") || pct >= 100;
+  }, [
+    personalizacaoCarregando,
+    progressoPercurso.concluidos,
+    progressoPercurso.total,
+    topico,
+  ]);
 
   const topicoJaIniciado = useMemo(() => {
     if (!topico) return false;
@@ -434,6 +510,10 @@ export default function TrilhaConteudoScreen() {
     checkpointParams,
     topicoJaIniciado,
     topicoConcluido,
+    // Pronto = a personalizacao chegou (e seus passos ja estao em `blocks`, no
+    // mesmo render) OU a tentativa terminou sem ela. Cobre tambem o caso em que
+    // `personalizedTopic` ja vinha em cache e o efeito de carga nem roda.
+    blocosProntos: Boolean(personalizedTopic) || personalizacaoTentada,
   });
 
   useEffect(() => {
@@ -500,6 +580,7 @@ export default function TrilhaConteudoScreen() {
   useEffect(() => {
     setActivityQuestionIndices({});
     setActivityTimeoutMap({});
+    setMaiorIndiceAlcancado(-1);
   }, [topicoId, setActivityQuestionIndices]);
 
   const total = displayedBlocks.length;
@@ -520,11 +601,15 @@ export default function TrilhaConteudoScreen() {
     if (!checkpointHydratedRef.current || !topicoId) return;
 
     if (topicoConcluido) {
+      // Apagar aqui e o que faz a proxima abertura comecar do inicio. Se o
+      // topico esta sendo considerado concluido cedo, este log mostra.
+      if (__DEV__) console.log("[Checkpoint] apagando (topico concluido)", JSON.stringify({ topicoId }));
       void clearTrilhaCheckpoint(checkpointParams);
       return;
     }
 
-    if (mostrarResumo || index < 0 || !atualBlock) {
+    if (mostrarResumo) {
+      if (__DEV__) console.log("[Checkpoint] gravando resumo", JSON.stringify({ topicoId }));
       void saveTrilhaCheckpoint(checkpointParams, {
         mostrarResumo: true,
         blockKind: null,
@@ -535,10 +620,24 @@ export default function TrilhaConteudoScreen() {
       return;
     }
 
+    // Sem resumo na tela mas sem bloco atual = estado transitorio: a lista de
+    // blocos acabou de mudar (personalizacao chegou, "pular conteudos" ligou) e
+    // o indice ainda nao foi reencaixado. Gravar "mostrarResumo" aqui apagava o
+    // checkpoint bom, e na proxima abertura a trilha comecava do zero. Melhor
+    // manter o que ja estava gravado ate a lista assentar.
+    if (index < 0 || !atualBlock) return;
+
     const blockId =
       atualBlock.kind === "conteudo"
         ? Number(atualBlock.conteudo.id)
         : Number(atualBlock.atividade.id);
+
+    if (__DEV__) {
+      console.log(
+        "[Checkpoint] gravando",
+        JSON.stringify({ topicoId, index, blockKind: atualBlock.kind, blockId })
+      );
+    }
 
     void saveTrilhaCheckpoint(checkpointParams, {
       mostrarResumo: false,
@@ -569,30 +668,63 @@ export default function TrilhaConteudoScreen() {
     return isConteudoConcluido(atualBlock.conteudo, conteudosVistosLocal);
   }, [atualBlock, conteudosVistosLocal]);
 
+  useEffect(() => {
+    if (mostrarResumo || index < 0) return;
+    setMaiorIndiceAlcancado((anterior) => Math.max(anterior, index));
+  }, [index, mostrarResumo]);
+
   const bloqueiaAvanco =
     topicoConcluido ? false : atualBlock?.kind === "atividade" && !atividadeAtualResolvida;
 
   const todosBlocosConcluidos = useMemo(() => {
-    if (displayedBlocks.length === 0) return true;
     if (topicoConcluido) return true;
-    return displayedBlocks.every((b, idx) => {
-      if (b.kind === "conteudo") {
-        return isConteudoConcluido(b.conteudo, conteudosVistosLocal) || idx < index;
-      }
-      if (b.kind === "atividade") {
-        return isAtividadeConcluida(b.atividade, atividadesResolvidasLocal) || idx < index;
-      }
-      return idx < index;
+    // `displayedBlocks` e nao `blocks`: quando o aluno opta por pular os
+    // conteudos, o que ele precisa terminar sao as atividades exibidas. A
+    // conclusao do TOPICO continua exigindo o percurso inteiro (topicoConcluido).
+    return todosOsBlocosConcluidos({
+      blocks: displayedBlocks,
+      conteudosVistosLocal,
+      atividadesResolvidasLocal,
     });
-  }, [displayedBlocks, conteudosVistosLocal, atividadesResolvidasLocal, index, topicoConcluido]);
+  }, [displayedBlocks, conteudosVistosLocal, atividadesResolvidasLocal, topicoConcluido]);
 
-  const progressoVisual = useMemo(() => {
-    return progressoTopico.pct;
-  }, [progressoTopico.pct]);
+  const progressoVisual = useMemo(
+    () =>
+      calcularProgressoVisualPercurso({
+        total: progressoPercurso.total,
+        concluidosConfirmados: progressoPercurso.concluidos,
+        maiorIndiceAlcancado,
+        blocoAtualConcluido:
+          atualBlock?.kind === "conteudo"
+            ? conteudoAtualConcluido
+            : atualBlock?.kind === "atividade"
+            ? atividadeAtualResolvida
+            : false,
+      }),
+    [
+      atividadeAtualResolvida,
+      atualBlock?.kind,
+      conteudoAtualConcluido,
+      maiorIndiceAlcancado,
+      progressoPercurso.concluidos,
+      progressoPercurso.total,
+    ]
+  );
+
+  const sugestaoMaterial = useMaterialSuggestion({
+    alunoId: usuario?.id ?? null,
+    topicoId,
+  });
 
   const conteudoBlocks = useMemo(
-    () => (atualBlock?.kind === "conteudo" ? buildContentBlocks(atualBlock.conteudo) : []),
-    [atualBlock]
+    () =>
+      atualBlock?.kind === "conteudo"
+        ? // A sugestao entra APOS a montagem dos blocos, nao no lugar dela: ela
+          // opina sobre a ordem dos formatos do mesmo conteudo, e o que nao e
+          // formato sugerivel continua onde o professor deixou.
+          ordenarBlocosPorSugestao(buildContentBlocks(atualBlock.conteudo), sugestaoMaterial)
+        : [],
+    [atualBlock, sugestaoMaterial]
   );
   const currentContentItemKey = useMemo(() => {
     if (!atualBlock || atualBlock.kind !== "conteudo") return null;
@@ -745,6 +877,60 @@ export default function TrilhaConteudoScreen() {
     setActivityTimeoutMap,
     showDialog,
   });
+
+  useEffect(() => {
+    const titulo = String(topico?.titulo ?? "Detalhes");
+    const totalBlocos = progressoVisual.total;
+    const concluidos = progressoVisual.concluidos;
+    const capabilities = getBrainHexProfileCapabilities(perfil);
+
+    navigation.setOptions({
+      headerRight: () => (
+        <View style={styles.headerRightActions}>
+          <View ref={timerGuideTargetRef} collapsable={false}>
+            <IAHeaderTimer
+              compact
+              topicoId={topicoId}
+              itemKey={currentOverlayItemKey}
+              preferredTimerFeature={currentOverlayTimerFeature}
+              elapsedStartAtMs={moduleSessionStartedAtRef.current}
+              active={isOverlayTimerActive}
+              onTimeoutAction={handleOverlayTimerTimeout}
+            />
+          </View>
+          <ModuleHeaderGuideButton
+            profile={perfil}
+            title={titulo}
+            totalBlocks={totalBlocos}
+            completedBlocks={concluidos}
+            guideVariant={personalizedTopic ? "personalizado" : "mock_modulo"}
+            visibleElements={{
+              hasChat: capabilities.hasChat,
+              hasProgress: totalBlocos > 0,
+              hasTimer: capabilities.hasTimer,
+              hasBattle: capabilities.hasBattle,
+            }}
+            perfis={usuario?.perfis ?? null}
+            targetRefs={guideTargetRefs}
+          />
+        </View>
+      ),
+    });
+  }, [
+    currentOverlayItemKey,
+    currentOverlayTimerFeature,
+    guideTargetRefs,
+    handleOverlayTimerTimeout,
+    isOverlayTimerActive,
+    navigation,
+    perfil,
+    personalizedTopic,
+    progressoVisual.concluidos,
+    progressoVisual.total,
+    topico?.titulo,
+    topicoId,
+    usuario?.perfis,
+  ]);
 
   const blocoLabel = atualBlock
     ? atualBlock.kind === "conteudo"
@@ -933,6 +1119,16 @@ export default function TrilhaConteudoScreen() {
           ? currentContentItemKey
           : buildIAItemKey("content", Number(conteudoId)));
 
+      // A leitura ja aconteceu no aparelho. Atualiza a interface antes da
+      // rede para a barra nao ficar parada enquanto o Supabase sincroniza.
+      if (!jaConcluido && !topicoConcluido) {
+        setConteudosVistosLocal((prev) => {
+          const next = new Set(prev);
+          next.add(Number(conteudoId));
+          return next;
+        });
+      }
+
       try {
         if (jaConcluido || topicoConcluido) {
           return;
@@ -971,11 +1167,6 @@ export default function TrilhaConteudoScreen() {
             },
           });
         }
-        setConteudosVistosLocal((prev) => {
-          const next = new Set(prev);
-          next.add(Number(conteudoId));
-          return next;
-        });
         emitSignalRef.current({
           type: "content_complete",
           topicoId,
@@ -1410,7 +1601,10 @@ export default function TrilhaConteudoScreen() {
   return (
     <SafeAreaView
       style={[styles.screen, { backgroundColor: profilePalette.background }]}
-      edges={["top", "bottom"]}
+      // Sem "top": esta rota tem cabecalho de navegacao (trilha/_layout.tsx),
+      // que ja fica abaixo da barra de status - pedir o inset de topo aqui
+      // somava a altura da barra de status uma segunda vez.
+      edges={["bottom"]}
       onTouchStart={handleTelemetryTouch}
     >
       {/* ── Textura medieval de fundo ── */}
@@ -1434,13 +1628,13 @@ export default function TrilhaConteudoScreen() {
         ]}
       >
         <View style={styles.header}>
-          <View style={styles.headerTopMeta}>
-            {total > 0 ? (
+          <View ref={progressGuideTargetRef} collapsable={false} style={styles.headerTopMeta}>
+            {progressoPercurso.total > 0 ? (
               <>
                 <View style={styles.progressHeaderRow}>
                   <Text style={[styles.progressLabel, { color: profilePalette.textMuted }]}>Progresso do módulo</Text>
                   <Text style={[styles.progressPercent, { color: profilePalette.accent }]}>
-                    {Math.round(progressoVisual)}%
+                    {Math.round(progressoVisual.pct)}%
                   </Text>
                 </View>
 
@@ -1449,14 +1643,14 @@ export default function TrilhaConteudoScreen() {
                     style={[
                       styles.progressBarFill,
                       {
-                        width: `${Math.max(0, Math.min(100, progressoVisual))}%`,
+                        width: `${Math.max(0, Math.min(100, progressoVisual.pct))}%`,
                         backgroundColor: profilePalette.accent,
                       },
                     ]}
                   />
                 </View>
                 <Text style={[styles.progressCounter, { color: profilePalette.textSubtle }]}>
-                  {progressoTopico.concluidos} de {progressoTopico.total} blocos concluídos
+                  {progressoVisual.concluidos} de {progressoVisual.total} blocos concluídos
                 </Text>
               </>
             ) : null}
@@ -1740,24 +1934,18 @@ export default function TrilhaConteudoScreen() {
           topicoId={topicoId}
           scope="modulo"
           bottomOffset={148}
+          guideTargetRef={chatGuideTargetRef}
         />
       ) : null}
 
-      {/* ── Timer flutuante — fora do ScrollView, não rola com o conteúdo ── */}
-      <View style={styles.floatingTimerWrap} pointerEvents="none">
-        <IAHeaderTimer
-          topicoId={topicoId}
-          itemKey={currentOverlayItemKey}
-          preferredTimerFeature={currentOverlayTimerFeature}
-          elapsedStartAtMs={moduleSessionStartedAtRef.current}
-          active={isOverlayTimerActive}
-          onTimeoutAction={handleOverlayTimerTimeout}
-        />
-      </View>
-
       {/* ── Chip de batalha flutuante ── */}
       {!mostrarResumo && isCurrentStudyBlockTrackable && topicoId ? (
-        <View style={styles.floatingBattleWrap} pointerEvents="box-none">
+        <View
+          ref={battleGuideTargetRef}
+          collapsable={false}
+          style={styles.floatingBattleWrap}
+          pointerEvents="box-none"
+        >
           <IABattleHeaderChip
             topicoId={topicoId}
             itemKey={currentOverlayItemKey}

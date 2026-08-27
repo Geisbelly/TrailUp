@@ -4,8 +4,8 @@
  * Importar em qualquer tela para aplicar a temática.
  */
 
+import { coresDoDivisor } from "@/components/ornamentDividerColors";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React from "react";
 import { Dimensions, StyleSheet, View } from "react-native";
 import Svg, {
@@ -182,42 +182,52 @@ export function HallBackground({
 /**
  * Divisor ornamental com fleur-de-lis e losangos flanqueados por linhas douradas.
  */
-export function OrnamentDivider({ color }: { color: string }) {
-  const dim = tinycolor(color).setAlpha(0.55).toRgbString();
-  const bright = tinycolor(color).lighten(15).toHexString();
+export function OrnamentDivider({
+  color,
+  opacidade,
+}: {
+  color: string;
+  /**
+   * Atenuacao do divisor. Use ISTO em vez de envolver o componente num
+   * `<View style={{ opacity }}>`: no Android a opacidade promove a View a uma
+   * camada de render propria, e os glifos da fonte de icone saem recortados ate
+   * um repaint. Ver ornamentDividerColors.ts.
+   */
+  opacidade?: number;
+}) {
+  const { dim, bright } = coresDoDivisor(color, opacidade);
+
+  // Desenhado em SVG, nao com glifos da fonte de icone.
+  //
+  // Com MaterialCommunityIcons o divisor de rodape do ranking aparecia
+  // "quebrado" -- so as pontas dos losangos, sem as linhas --, e as duas
+  // tentativas de explicar isso pela camada de opacidade e pelo contraste nao
+  // resolveram. Glifo depende de carregamento de fonte e de metrica de texto,
+  // que resolvem DEPOIS do primeiro layout; geometria nao depende de nada disso.
+  // Como bonus, sai um arquivo de fonte do caminho critico deste ornamento.
   return (
     <View style={ornStyles.row}>
       <View style={[ornStyles.line, { backgroundColor: dim }]} />
-      <MaterialCommunityIcons
-        name="rhombus"
-        size={7}
-        color={dim}
-        style={{ marginHorizontal: 3 }}
-      />
-      <MaterialCommunityIcons
-        name="rhombus"
-        size={11}
-        color={bright}
-        style={{ marginHorizontal: 1 }}
-      />
-      <MaterialCommunityIcons
-        name="fleur-de-lis"
-        size={18}
-        color={bright}
-        style={{ marginHorizontal: 2 }}
-      />
-      <MaterialCommunityIcons
-        name="rhombus"
-        size={11}
-        color={bright}
-        style={{ marginHorizontal: 1 }}
-      />
-      <MaterialCommunityIcons
-        name="rhombus"
-        size={7}
-        color={dim}
-        style={{ marginHorizontal: 3 }}
-      />
+      <Svg width={92} height={24} viewBox="0 0 92 24">
+        {/* Losangos pequenos das pontas */}
+        <Path d="M6 12 L9 9 L12 12 L9 15 Z" fill={dim} />
+        <Path d="M80 12 L83 9 L86 12 L83 15 Z" fill={dim} />
+        {/* Losangos grandes */}
+        <Path d="M20 12 L25 7 L30 12 L25 17 Z" fill={bright} />
+        <Path d="M62 12 L67 7 L72 12 L67 17 Z" fill={bright} />
+        {/* Flor-de-lis: petala central, duas laterais SUBINDO em ponta, faixa
+            horizontal e um pe curto.
+            As laterais precisam curvar pra cima -- na primeira versao elas
+            desciam como folhas e o desenho virava uma plantinha. E o pe precisa
+            ser curto: haste longa com base larga fazia parecer trofeu. Conferido
+            renderizado, a 1x e a 6x, antes de subir. */}
+        <Path d="M46 3 C49 6.6 49.8 9.6 48.6 13 L43.4 13 C42.2 9.6 43 6.6 46 3 Z" fill={bright} />
+        <Path d="M42.9 13.2 C39.8 12.6 37.2 10.7 35.7 7.8 C34.7 10 35 12 36.4 13.2 Z" fill={bright} />
+        <Path d="M49.1 13.2 C52.2 12.6 54.8 10.7 56.3 7.8 C57.3 10 57 12 55.6 13.2 Z" fill={bright} />
+        <Rect x={36.2} y={13.6} width={19.6} height={1.9} rx={0.95} fill={bright} />
+        <Path d="M44.7 15.9 L47.3 15.9 L46.8 19.4 L45.2 19.4 Z" fill={bright} />
+        <Rect x={43.6} y={19.4} width={4.8} height={1.5} rx={0.75} fill={bright} />
+      </Svg>
       <View style={[ornStyles.line, { backgroundColor: dim }]} />
     </View>
   );
@@ -229,6 +239,10 @@ const ornStyles = StyleSheet.create({
     alignItems: "center",
     width: "100%",
     marginVertical: 6,
+    // Altura explicita continua valendo: o SVG tem altura propria (20), mas a
+    // linha de 1px sozinha nao sustentaria a fileira se o SVG falhasse.
+    // Acompanha a altura do SVG (24) com uma folga minima.
+    minHeight: 26,
   },
   line: { flex: 1, height: 1 },
 });

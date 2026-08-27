@@ -1,6 +1,4 @@
 import { useTrilha } from "@/context/TrilhaContext";
-import { useUsuario } from "@/context/SessaoContext";
-import { LockBadge } from "@/components/trilhas/common/LockBadge";
 import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -149,13 +147,12 @@ function clipToHex(cx: number, cy: number, r: number, tx: number, ty: number) {
 }
 
 export const TrilhaArvoreSimple: React.FC = () => {
-  const { grafo } = useTrilha();
-  const { usuario } = useUsuario();
+  const { grafo, perfil } = useTrilha();
   const router = useRouter();
   const { width: winW, height: winH } = useWindowDimensions();
   const palette = useMemo(
-    () => getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfis]
+    () => getProfileShellPalette(perfil),
+    [perfil]
   );
 
   // ===== Nó foco (primeiro jogável) =====
@@ -701,7 +698,33 @@ const adjustedPositions = useMemo(() => {
                     opacity={locked ? 0.35 : 0.5}
                   />
 
-                  {completed ? (
+                  {locked ? (
+                    <G>
+                      <Path
+                        d={`M ${cx - 8} ${cy - 3} v-5 a8 8 0 0 1 16 0 v5`}
+                        stroke={text}
+                        strokeWidth={3}
+                        strokeLinecap="round"
+                        fill="none"
+                      />
+                      <Rect
+                        x={cx - 11}
+                        y={cy - 3}
+                        width={22}
+                        height={17}
+                        rx={2}
+                        stroke={text}
+                        strokeWidth={3}
+                        fill="none"
+                      />
+                      <Path
+                        d={`M ${cx} ${cy + 3} v5`}
+                        stroke={text}
+                        strokeWidth={3}
+                        strokeLinecap="round"
+                      />
+                    </G>
+                  ) : completed ? (
                     <Path
                       d={`M ${cx - 10} ${cy + 2} l 6 6 l 12 -14`}
                       stroke={text}
@@ -712,7 +735,7 @@ const adjustedPositions = useMemo(() => {
                     />
                   ) : null}
 
-                  {shouldFloat && (
+                  {shouldFloat && !locked && (
                     <>
                       <Circle cx={cx} cy={cy + 3} r={14} fill="url(#starGlow)" />
                       <Path d={starPath(cx, cy + 3, 11, 5.5)} fill={palette.text} stroke="url(#nodeStroke)" strokeWidth={1.2} />
@@ -795,107 +818,6 @@ const adjustedPositions = useMemo(() => {
             })}
           </Svg>
 
-          {/* Badges/ícones mapeados sobre o SVG */}
-          {grafo.nodes.map((n) => {
-            const pos = adjustedPositions.get(n.id);
-            if (!pos) return null;
-            const isCurrent = currentId === n.id;
-            const cx = (pos.x - (vbSafe as any).x) * scale;
-            const cy = (pos.y - (vbSafe as any).y) * scale + (isCurrent ? floatOffset * scale : 0);
-            const heroIcon = (n as any).icon as string | null | undefined;
-            const badgeLabel = (n as any).badgeLabel as string | null | undefined;
-
-            const left = cx - 18;
-            const top = cy - 18;
-
-            return (
-              <View
-                key={`badge-${n.id}`}
-                style={{
-                  position: "absolute",
-                  left: left - 8 - 16,
-                  top: top - 18,
-                  width: 84,
-                  height: 70,
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-                pointerEvents="none"
-              >
-                {badgeLabel ? (
-                  <View
-                    style={{
-                      flexShrink: 0,
-                      paddingHorizontal: 8,
-                      paddingVertical: 3,
-                      borderRadius: 999,
-                      backgroundColor: palette.accentMuted,
-                      borderWidth: 1,
-                      borderColor: palette.borderStrong,
-                    }}
-                  >
-                    <Animated.Text
-                      numberOfLines={1}
-                      style={{
-                        color: palette.text,
-                        fontSize: 10,
-                        fontFamily: FontFamily.inikaBold,
-                        flexShrink: 0,
-                      }}
-                    >
-                      {badgeLabel}
-                    </Animated.Text>
-                  </View>
-                ) : (
-                  <View />
-                )}
-                {n.locked ? (
-                  <LockBadge size={28} color={palette.text} />
-                ) : (
-                  <View
-                    style={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: 999,
-                      alignItems: "center",
-                      justifyContent: "center",
-                      backgroundColor: palette.accentMuted,
-                      borderWidth: 1,
-                      borderColor: palette.borderStrong,
-                    }}
-                  >
-                    <MaterialCommunityIcons
-                      name="star-four-points"
-                      size={14}
-                      color={palette.accent}
-                    />
-                  </View>
-                )}
-                {!n.locked && heroIcon ? (
-                  <View
-                    style={{
-                      width: 24,
-                      height: 24,
-                      borderRadius: 999,
-                      alignItems: "center",
-                      justifyContent: "center",
-                      backgroundColor: palette.surfaceElevated,
-                      borderWidth: 1,
-                      borderColor: palette.border,
-                    }}
-                  >
-                    <MaterialCommunityIcons
-                      name={heroIcon as any}
-                      size={12}
-                      color={palette.text}
-                    />
-                  </View>
-                ) : (
-                  <View />
-                )}
-              </View>
-            );
-          })}
         </View>
       </ScrollView>
     </View>

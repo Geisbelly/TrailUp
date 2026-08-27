@@ -3,7 +3,7 @@ import { app } from "@/constants/definicoes";
 import { useDialog } from "@/context/DialogContext";
 import { useLoading } from "@/context/LoadingContext";
 import { autenticarUsuario, getAuthErrorMessage, normalizeEmail } from "@/services/auth";
-import { Color, FontFamily } from "@/styles/GlobalStyle";
+import { FontFamily } from "@/styles/GlobalStyle";
 import { buildProfileShellPaletteFromAccent } from "@/utils/profileShellTheme";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";

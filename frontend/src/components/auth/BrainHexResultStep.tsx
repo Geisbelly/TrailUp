@@ -1,96 +1,168 @@
+import { useEffect, useMemo } from "react";
+import { CheckCircle2, Sparkles } from "lucide-react";
+
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import {
-  Trophy, Compass, Shield, Zap, Brain, Users, CheckCircle2,
-  Sparkles, Share2, ArrowRight
-} from "lucide-react";
+  BrainHexAnswers,
+  BrainHexProfileKey,
+  computeBrainHexResult,
+  PROFILES,
+  resolveRepresentativeBrainHexResults,
+} from "@/features/signup/brainhex";
 import { cn } from "@/lib/utils";
-import { BrainHexAnswers, computeBrainHexResult, PROFILES } from "@/features/signup/brainhex";
 
+type BrainHexResultStepProps = {
+  answers: BrainHexAnswers;
+  selectedProfile: BrainHexProfileKey | null;
+  onSelectProfile: (profile: BrainHexProfileKey) => void;
+};
 
+export default function BrainHexResultStep({
+  answers,
+  selectedProfile,
+  onSelectProfile,
+}: BrainHexResultStepProps) {
+  const result = useMemo(() => computeBrainHexResult(answers), [answers]);
+  const representativeProfiles = useMemo(
+    () => resolveRepresentativeBrainHexResults(result.sorted),
+    [result.sorted],
+  );
+  const activeProfile =
+    representativeProfiles.find((profile) => profile.key === selectedProfile) ??
+    representativeProfiles[0];
+  const config = PROFILES[activeProfile?.key ?? "seeker"];
+  const ActiveIcon = config.icon;
 
-export default function BrainHexResultStep({ answers }: { answers: BrainHexAnswers }) {
-  const result = computeBrainHexResult(answers);
-  const topProfile = result.sorted[0];
-  const config = PROFILES[topProfile.key.toLowerCase()] || PROFILES.seeker;
-  const TopIcon = config.icon;
+  useEffect(() => {
+    if (
+      representativeProfiles[0] &&
+      !representativeProfiles.some((profile) => profile.key === selectedProfile)
+    ) {
+      onSelectProfile(representativeProfiles[0].key);
+    }
+  }, [onSelectProfile, representativeProfiles, selectedProfile]);
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
-
-      {/* Header de Sucesso */}
-      <div className="text-center space-y-2">
-        <div className="inline-flex items-center justify-center p-2 rounded-full bg-emerald-500/10 text-emerald-500 mb-2 border border-emerald-500/20">
-          <Sparkles className="w-5 h-5" />
+      <div className="space-y-2 text-center">
+        <div className="mb-2 inline-flex items-center justify-center rounded-full border border-emerald-500/20 bg-emerald-500/10 p-2 text-emerald-500">
+          <Sparkles className="h-5 w-5" />
         </div>
-        <h2 className="text-2xl font-bold text-white tracking-tight">Análise Completa!</h2>
-        <p className="text-zinc-400 text-sm">Aqui está o seu perfil.</p>
+        <h2 className="text-2xl font-bold tracking-tight text-white">Análise completa!</h2>
+        <p className="text-sm text-zinc-400">
+          {representativeProfiles.length > 1
+            ? "Escolha por qual dos seus perfis representativos deseja começar."
+            : "Este é o perfil que mais representa você."}
+        </p>
       </div>
 
-      {/* Card do Vencedor (Top Profile) */}
-      <div className="relative group">
-        <div className={cn(
-          "absolute inset-0 blur-2xl opacity-20 transition-opacity duration-500 group-hover:opacity-30",
-          config.bgColor
-        )} />
+      {representativeProfiles.length > 1 && (
+        <fieldset className="space-y-3">
+          <legend className="text-sm font-medium text-zinc-300">
+            Qual perfil você quer usar primeiro?
+          </legend>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {representativeProfiles.map((profile) => {
+              const profileConfig = PROFILES[profile.key];
+              const ProfileIcon = profileConfig.icon;
+              const selected = profile.key === activeProfile.key;
 
-        <Card className={cn(
-          "relative p-6 border backdrop-blur-xl bg-zinc-900/50 overflow-hidden",
-          config.cardStyle
-        )}>
-          <div className="flex flex-col items-center text-center space-y-4">
-            <div className={cn(
-              "w-20 h-20 rounded-2xl flex items-center justify-center shadow-lg transition-transform duration-500 group-hover:scale-110",
-              "bg-zinc-950/50 border border-white/10"
-            )}>
-              <TopIcon className={cn("w-10 h-10", config.textColor)} />
+              return (
+                <button
+                  key={profile.key}
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => onSelectProfile(profile.key)}
+                  className={cn(
+                    "relative flex items-center gap-3 rounded-xl border p-4 text-left transition-all",
+                    selected
+                      ? profileConfig.cardStyle
+                      : "border-zinc-800 bg-zinc-900/30 hover:border-zinc-600",
+                  )}
+                >
+                  <span className="rounded-lg border border-white/10 bg-zinc-950/60 p-2">
+                    <ProfileIcon className={cn("h-5 w-5", profileConfig.textColor)} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-semibold text-white">
+                      {profile.label}
+                    </span>
+                    <span className="text-xs text-zinc-400">{profile.percent}% de afinidade</span>
+                  </span>
+                  {selected && (
+                    <CheckCircle2 className={cn("h-5 w-5", profileConfig.textColor)} />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-xs text-zinc-500">
+            Você poderá alternar entre estes perfis depois, na aba Perfil do aplicativo.
+          </p>
+        </fieldset>
+      )}
+
+      <div className="group relative">
+        <div
+          className={cn(
+            "absolute inset-0 opacity-20 blur-2xl transition-opacity duration-500 group-hover:opacity-30",
+            config.bgColor,
+          )}
+        />
+        <Card
+          className={cn(
+            "relative overflow-hidden border bg-zinc-900/50 p-6 backdrop-blur-xl",
+            config.cardStyle,
+          )}
+        >
+          <div className="flex flex-col items-center space-y-4 text-center">
+            <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-white/10 bg-zinc-950/50 shadow-lg">
+              <ActiveIcon className={cn("h-10 w-10", config.textColor)} />
             </div>
-
             <div className="space-y-1">
-              <span className="text-xs uppercase tracking-widest font-semibold text-zinc-500">Seu Arquétipo Principal</span>
-              <h1 className="text-3xl font-bold text-white">{topProfile.label}</h1>
-              <p className={cn("text-sm font-medium", config.textColor)}>
-                {config.text}
-              </p>
+              <span className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
+                Perfil escolhido para começar
+              </span>
+              <h1 className="text-3xl font-bold text-white">{activeProfile.label}</h1>
+              <p className={cn("text-sm font-medium", config.textColor)}>{config.text}</p>
             </div>
-
-            <div className="w-full bg-zinc-950/50 rounded-full h-4 p-0.5 border border-white/5 mt-2">
+            <div className="mt-2 h-4 w-full rounded-full border border-white/5 bg-zinc-950/50 p-0.5">
               <div
-                className={cn("h-full rounded-full transition-all duration-1000 ease-out", config.bgColor)}
-                style={{ width: `${topProfile.percent}%` }}
+                className={cn("h-full rounded-full", config.bgColor)}
+                style={{ width: `${activeProfile.percent}%` }}
               />
             </div>
-            <span className="text-xs font-mono text-zinc-500">{topProfile.percent}% de compatibilidade</span>
+            <span className="font-mono text-xs text-zinc-500">
+              {activeProfile.percent}% de compatibilidade
+            </span>
           </div>
         </Card>
       </div>
 
-      {/* Lista de Detalhes (Outros Perfis) */}
       <div className="space-y-4">
-        <h3 className="text-sm font-medium text-zinc-400 pl-1">Composição Detalhada</h3>
+        <h3 className="pl-1 text-sm font-medium text-zinc-400">Composição detalhada</h3>
         <div className="grid gap-3">
-          {result.sorted.slice(1).map((p, index) => {
-            const subConfig = PROFILES[p.key.toLowerCase()] || PROFILES.seeker;
-            const SubIcon = subConfig.icon;
-
+          {result.sorted.map((profile) => {
+            const profileConfig = PROFILES[profile.key];
+            const ProfileIcon = profileConfig.icon;
             return (
               <div
-                key={p.key}
-                className="group/item flex items-center gap-4 p-3 rounded-lg border border-zinc-800/50 bg-zinc-900/30 hover:bg-zinc-800/50 hover:border-zinc-700 transition-all duration-300"
+                key={profile.key}
+                className="flex items-center gap-4 rounded-lg border border-zinc-800/50 bg-zinc-900/30 p-3"
               >
-                <div className="p-2 rounded-md bg-zinc-950 border border-zinc-800 text-zinc-400 group-hover/item:text-zinc-200 transition-colors">
-                  <SubIcon className="w-4 h-4" />
+                <div className="rounded-md border border-zinc-800 bg-zinc-950 p-2 text-zinc-400">
+                  <ProfileIcon className="h-4 w-4" />
                 </div>
-
                 <div className="flex-1 space-y-1.5">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="font-medium text-zinc-200">{p.label}</span>
-                    <span className="text-zinc-500 text-xs font-mono">{p.percent}%</span>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium text-zinc-200">{profile.label}</span>
+                    <span className="font-mono text-xs text-zinc-500">{profile.percent}%</span>
                   </div>
                   <Progress
-                    value={p.percent}
+                    value={profile.percent}
                     className="h-1.5 bg-zinc-950"
-                    indicatorClassName={cn(subConfig.bgColor, "opacity-70 group-hover/item:opacity-100 transition-opacity")}
+                    indicatorClassName={cn(profileConfig.bgColor, "opacity-80")}
                   />
                 </div>
               </div>

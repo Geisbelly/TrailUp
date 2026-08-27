@@ -3,6 +3,14 @@ import { ImageSourcePropType } from "react-native";
 
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
+import {
+  BrainHexProfile,
+  normalizeBrainHexProfile,
+} from "./brainHexProfiles";
+
+export { normalizeBrainHexProfile } from "./brainHexProfiles";
+export type { BrainHexProfile } from "./brainHexProfiles";
+
 export const bannerImages: ImageSourcePropType[] = [
   require("@/assets/imgPerfil/bfae835207e72c1686f15699fd2f14c86998f251.png"), //0
   require("@/assets/ImagensReferencia/arte_filter.png"), //1
@@ -34,50 +42,6 @@ export const avatarImages: ImageSourcePropType[] = [
   require("@/assets/images/icon.png"),
   require("@/assets/images/react-logo.png"),
 ];
-
-// Tipos de perfil BrainHex
-export type BrainHexProfile =
-  | "seeker" // Explorador/Buscador
-  | "survivor" // Sobrevivente
-  | "daredevil" // Aventureiro/Ousado
-  | "mastermind" // Mestre/Estrategista
-  | "conqueror" // Conquistador
-  | "socializer" // Socializador
-  | "achiever"; // Realizador
-
-const profileAliases: Record<string, BrainHexProfile> = {
-  seeker: "seeker",
-  explorador: "seeker",
-  buscador: "seeker",
-  survivor: "survivor",
-  sobrevivente: "survivor",
-  daredevil: "daredevil",
-  aventureiro: "daredevil",
-  ousado: "daredevil",
-  mastermind: "mastermind",
-  estrategista: "mastermind",
-  mestre: "mastermind",
-  conqueror: "conqueror",
-  conquistador: "conqueror",
-  socializer: "socializer",
-  socialiser: "socializer",
-  socializador: "socializer",
-  achiever: "achiever",
-  realizador: "achiever",
-};
-
-export function normalizeBrainHexProfile(
-  profileName?: string | null,
-): BrainHexProfile | null {
-  const normalized = String(profileName ?? "")
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .replace(/\s+/g, "_");
-
-  return profileAliases[normalized] ?? null;
-}
 
 // Mapeamento de perfis BrainHex para índices de imagens com filtro
 export const brainHexImageMap: Record<BrainHexProfile, number> = {
@@ -153,6 +117,59 @@ export const pickBySeed = <T>(
   return arr[index];
 };
 
+/**
+ * Rosto do guardião de cada perfil.
+ *
+ * A arte de **corpo inteiro** fica em `mobile/src/assets/guardioes/`, e o que
+ * está aqui são recortes de rosto gerados a partir dela por
+ * `scripts/gerar-rostos-guardioes.py`: todos os slots que mostram o guia no app
+ * são avatares — o maior tem 72pt —, e uma figura de corpo inteiro nesse tamanho
+ * vira um pontinho irreconhecível.
+ *
+ * ATENÇÃO à pasta de origem. `microservice/src/assets/guardioes/` também tem a
+ * arte e o CLAUDE.md a trata como fonte da verdade dos perfis — mas isso vale
+ * para as CONSTANTES (cor-assinatura, nome do guia), não para os arquivos de
+ * imagem: a cópia de lá ficou 2 dias atrás (2026-07-25 contra 2026-07-27) numa
+ * versão anterior da arte, em que o Sobrevivente era vermelho em vez do
+ * cinza-chumbo da cor-assinatura dele. Recortes gerados de lá saíram com as
+ * cores erradas (corrigido em 2026-08-26).
+ *
+ * Divergência ainda aberta: o microservice usa a própria cópia para compor
+ * slides/apresentações, então o material gerado continua com a arte antiga até
+ * alguém propagar os arquivos novos para lá.
+ *
+ * O Socializador usa o par (Mateo e Zuri): é o único perfil com dois guardiões,
+ * e é o que faz o áudio dele ser diálogo em vez de narração solo. Mostrar só um
+ * contradiria o material que o aluno recebe.
+ */
+export const guardianFaceImages: Record<BrainHexProfile, ImageSourcePropType> = {
+  seeker: require("@/assets/guardioes/rosto/seeker.png"),
+  survivor: require("@/assets/guardioes/rosto/survivor.png"),
+  daredevil: require("@/assets/guardioes/rosto/daredevil.png"),
+  mastermind: require("@/assets/guardioes/rosto/mastermind.png"),
+  conqueror: require("@/assets/guardioes/rosto/conqueror.png"),
+  socializer: require("@/assets/guardioes/rosto/socializer-duo.png"),
+  achiever: require("@/assets/guardioes/rosto/achiever.png"),
+};
+
+/** Arte de corpo inteiro usada em apresentações e no tutorial inicial. */
+export const guardianFullImages: Record<BrainHexProfile, ImageSourcePropType> = {
+  seeker: require("@/assets/guardioes/seeker.png"),
+  survivor: require("@/assets/guardioes/survivor.png"),
+  daredevil: require("@/assets/guardioes/daredevil.png"),
+  mastermind: require("@/assets/guardioes/mastermind.png"),
+  conqueror: require("@/assets/guardioes/conqueror.png"),
+  socializer: require("@/assets/guardioes/socializer-duo.png"),
+  achiever: require("@/assets/guardioes/achiever.png"),
+};
+
+export const getGuardianFaceImage = (
+  profileName?: string | null,
+): ImageSourcePropType => {
+  const normalized = normalizeBrainHexProfile(profileName);
+  return guardianFaceImages[normalized ?? "mastermind"];
+};
+
 // ...
 
 export const brainHexConfig: Record<
@@ -173,7 +190,9 @@ export const brainHexConfig: Record<
     icon_focus: "telescope", // Observação/Exploração
     label: "Explorador",
     imagemIndex: 9,
-    image: bannerImages[9],
+    // imagemIndex continua apontando pro simbolo do perfil (usado em banner);
+    // `image` agora e o guardiao, que e quem o aluno reconhece como guia.
+    image: guardianFaceImages.seeker,
   },
   survivor: {
     color: "#4e5a66",
@@ -181,7 +200,9 @@ export const brainHexConfig: Record<
     icon_focus: "sword-cross", // Luta/Sobrevivência
     label: "Sobrevivente",
     imagemIndex: 2,
-    image: bannerImages[2],
+    // imagemIndex continua apontando pro simbolo do perfil (usado em banner);
+    // `image` agora e o guardiao, que e quem o aluno reconhece como guia.
+    image: guardianFaceImages.survivor,
   },
   daredevil: {
     color: "#d7263d",
@@ -189,7 +210,9 @@ export const brainHexConfig: Record<
     icon_focus: "skull", // Velocidade/Risco
     label: "Aventureiro",
     imagemIndex: 7,
-    image: bannerImages[7],
+    // imagemIndex continua apontando pro simbolo do perfil (usado em banner);
+    // `image` agora e o guardiao, que e quem o aluno reconhece como guia.
+    image: guardianFaceImages.daredevil,
   },
   mastermind: {
     color: "#5b3fd9ff",
@@ -197,7 +220,9 @@ export const brainHexConfig: Record<
     icon_focus: "brain", // Intelecto
     label: "Estrategista",
     imagemIndex: 6,
-    image: bannerImages[6],
+    // imagemIndex continua apontando pro simbolo do perfil (usado em banner);
+    // `image` agora e o guardiao, que e quem o aluno reconhece como guia.
+    image: guardianFaceImages.mastermind,
   },
   conqueror: {
     color: "#1e4fd6ff",
@@ -205,7 +230,9 @@ export const brainHexConfig: Record<
     icon_focus: "fencing", // Força bruta
     label: "Conquistador",
     imagemIndex: 5,
-    image: bannerImages[5],
+    // imagemIndex continua apontando pro simbolo do perfil (usado em banner);
+    // `image` agora e o guardiao, que e quem o aluno reconhece como guia.
+    image: guardianFaceImages.conqueror,
   },
   socializer: {
     color: "rgb(244, 98, 58)",
@@ -213,7 +240,9 @@ export const brainHexConfig: Record<
     icon_focus: "redhat", // Comunicação
     label: "Socializador",
     imagemIndex: 4,
-    image: bannerImages[4],
+    // imagemIndex continua apontando pro simbolo do perfil (usado em banner);
+    // `image` agora e o guardiao, que e quem o aluno reconhece como guia.
+    image: guardianFaceImages.socializer,
   },
   achiever: {
     color: "rgb(201, 162, 39)",
@@ -221,7 +250,9 @@ export const brainHexConfig: Record<
     icon_focus: "diamond-stone", // Tesouro/Riqueza
     label: "Realizador",
     imagemIndex: 1,
-    image: bannerImages[1],
+    // imagemIndex continua apontando pro simbolo do perfil (usado em banner);
+    // `image` agora e o guardiao, que e quem o aluno reconhece como guia.
+    image: guardianFaceImages.achiever,
   },
 };
 
@@ -238,7 +269,7 @@ export const brainHexGuideNames: Record<BrainHexProfile, string> = {
   daredevil: "Ember",
   mastermind: "Idris",
   conqueror: "Amina",
-  socializer: "Mateo",
+  socializer: "Mateo e Zuri",
   achiever: "Kwame",
 };
 

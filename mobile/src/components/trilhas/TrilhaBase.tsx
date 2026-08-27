@@ -1,18 +1,24 @@
 // src/components/trilhas/TrilhaBase.tsx
-import { normalizeBrainHexProfile } from "@/constants/profileImages";
-import { useUsuario } from "@/context/SessaoContext";
 import { useTrilha } from "@/context/TrilhaContext";
+import { useUsuario } from "@/context/SessaoContext";
 import { Color } from "@/styles/GlobalStyle";
+import { buildClasseAcademicMetrics } from "@/utils/classeMetrics";
+import { getBrainHexProfileCapabilities } from "@/utils/brainHexCapabilities";
+import { unificarContadores } from "@/utils/progressoPersonalizado";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
-import React from "react";
+import { registrarAlvoTour } from "@/utils/tourTargets";
+import { useIsFocused } from "@react-navigation/native";
+import React, { useEffect, useMemo, useRef } from "react";
 import { StyleSheet, View } from "react-native";
 import { TrilhaArvoreSimple } from "./ArvoreView";
 import { GameHeader } from "./common/GameHeader";
 import { TrilhaLinearList } from "./ListaSimplesView";
 import { TrilhaMapaHeroStable } from "./MapaViewStable";
-import { ModuleHeaderGuideButton } from "./ModuleHeaderTitle";
+import { GuideTargetRefs, ModuleHeaderGuideButton } from "./ModuleHeaderTitle";
 
-export const TrilhaBase: React.FC = () => {
+export const TrilhaBase: React.FC<{
+  chatGuideTargetRef?: React.RefObject<View | null>;
+}> = ({ chatGuideTargetRef }) => {
   const {
     classeAtual,
     carregando,
@@ -20,14 +26,45 @@ export const TrilhaBase: React.FC = () => {
     visual,
     mapTheme,
     personalizedTopics,
-    trilhaSlideBonusPercent,
+    progressoPersonalizado,
+    perfil,
   } = useTrilha();
   const { usuario } = useUsuario();
-  const palette = getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null);
-  const profile =
-    normalizeBrainHexProfile(usuario?.perfis?.[0]?.nome) ?? "mastermind";
+  const isFocused = useIsFocused();
+  const palette = getProfileShellPalette(perfil);
+  const capabilities = getBrainHexProfileCapabilities(perfil);
+  const progressGuideTargetRef = useRef<View | null>(null);
+  const journeyGuideTargetRef = useRef<View | null>(null);
+  const guideTargetRefs = useMemo<GuideTargetRefs>(
+    () => ({
+      progress: progressGuideTargetRef,
+      journey: journeyGuideTargetRef,
+      map: journeyGuideTargetRef,
+      tree: journeyGuideTargetRef,
+      list: journeyGuideTargetRef,
+      chat: chatGuideTargetRef,
+    }),
+    [chatGuideTargetRef]
+  );
   const hasTrailPersonalization =
     Object.keys(personalizedTopics ?? {}).length > 0;
+
+  // Hooks precisam ser executados em todas as renderizações, inclusive durante
+  // carregamento/erro. O registro aceita refs ainda vazias e as resolve depois.
+  useEffect(
+    () => {
+      if (!isFocused) return;
+      return registrarAlvoTour("trilha_resumo", progressGuideTargetRef);
+    },
+    [isFocused],
+  );
+  useEffect(
+    () => {
+      if (!isFocused) return;
+      return registrarAlvoTour("trilha_mapa", journeyGuideTargetRef);
+    },
+    [isFocused],
+  );
 
   if (carregando || !classeAtual) return <View style={st.page} />;
   if (erro) return <View style={st.page} />;
@@ -38,8 +75,31 @@ export const TrilhaBase: React.FC = () => {
       : (classeAtual.resumo?.materia_nome ?? "Classe");
   const subtitulo =
     visual === "mapa" ? (mapTheme?.classLabel ?? "Reino da classe") : "Trilha";
+  // O progresso soma os DOIS livros-caixa. `getProgressoGeral` conta apenas
+  // conteudo/atividade do professor, entao a barra ficava parada enquanto o
+  // aluno avancava no material personalizado e nos quizzes da apresentacao --
+  // que e o "progresso desatualizado" relatado. Ver progressoPersonalizado.ts.
+  const academico = buildClasseAcademicMetrics(classeAtual);
+  const unificado = unificarContadores({
+    academico: {
+      conteudosConcluidos: academico.conteudosConcluidos,
+      totalConteudos: academico.totalConteudos,
+      atividadesConcluidas: academico.atividadesConcluidas,
+      totalAtividades: academico.totalAtividades,
+      conteudoIds: classeAtual.topicos.flatMap((topico: any) =>
+        ((topico?.conteudos ?? []) as any[])
+          .map((conteudo) => Number(conteudo?.id))
+          .filter((id) => Number.isFinite(id))
+      ),
+    },
+    personalizado: progressoPersonalizado,
+  });
+  const totalBlocos = unificado.totalConteudos + unificado.totalAtividades;
+  const blocosFeitos = unificado.conteudosConcluidos + unificado.atividadesConcluidas;
   const progressoBruto =
-    typeof (classeAtual as any).getProgressoGeral === "function"
+    totalBlocos > 0
+      ? (blocosFeitos / totalBlocos) * 100
+      : typeof (classeAtual as any).getProgressoGeral === "function"
       ? (classeAtual as any).getProgressoGeral()
       : ((classeAtual.resumo?.porcentagemConcluida as number | undefined) ?? 0);
   const progresso = Math.max(0, Math.min(100, Number(progressoBruto) || 0));
@@ -55,12 +115,18 @@ export const TrilhaBase: React.FC = () => {
       <GameHeader
         titulo={nome}
         subtitulo={subtitulo}
-        xp={Math.round(progresso) + trilhaSlideBonusPercent}
+        // Sem o bonus de slides: ele e XP, e somar XP a uma taxa de conclusao
+        // fazia a barra bater 100% com topicos ainda pendentes -- e, acima de
+        // 90%, o bonus sumia no clamp sem o aluno entender por que. O calculo
+        // continua no TrilhaContext (trilhaSlideBonusPercent) para quando o XP
+        // ganhar um indicador proprio.
+        xp={Math.round(progresso)}
         meta={100}
         palette={palette}
+        progressTargetRef={progressGuideTargetRef}
         rightSlot={
           <ModuleHeaderGuideButton
-            profile={profile}
+            profile={perfil}
             title={nome}
             totalBlocks={totalTopicos}
             completedBlocks={concluidos}
@@ -71,17 +137,22 @@ export const TrilhaBase: React.FC = () => {
             }
             visibleElements={{
               visualMode: visual,
-              hasChat: true,
+              hasChat: capabilities.hasChat,
               hasProgress: true,
             }}
             perfis={usuario?.perfis ?? null}
+            targetRefs={guideTargetRefs}
           />
         }
       />
-      <View style={{ flex: 1 }}>
-        {visual === "mapa" && <TrilhaMapaHeroStable />}
+      <View
+        ref={visual === "arvore" ? journeyGuideTargetRef : undefined}
+        collapsable={false}
+        style={{ flex: 1 }}
+      >
+        {visual === "mapa" && <TrilhaMapaHeroStable tourTargetRef={journeyGuideTargetRef} />}
         {visual === "arvore" && <TrilhaArvoreSimple />}
-        {visual === "lista" && <TrilhaLinearList />}
+        {visual === "lista" && <TrilhaLinearList tourTargetRef={journeyGuideTargetRef} />}
       </View>
     </View>
   );

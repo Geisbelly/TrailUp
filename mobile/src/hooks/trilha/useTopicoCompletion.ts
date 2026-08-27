@@ -312,7 +312,17 @@ export function useTopicoCompletion(args: {
         eventName: "topic_complete",
         topicoId,
       });
-      await flushStudyBatch("topic_complete");
+      // O lote de telemetria SAI, mas a tela nao espera por ele: o endpoint que
+      // o recebe roda o pipeline de analise inteiro (LangGraph + LLM) na mesma
+      // requisicao, e sem timeout. Aguardar aqui deixava o aluno mais de um
+      // minuto olhando pro botao antes do card de concluido aparecer.
+      //
+      // Nada se perde: flushStudyBatch vive no MetricasContext, que e provider
+      // de app e sobrevive a navegacao, e a analise que volta serve ao PROXIMO
+      // ciclo -- chegar depois da tela de conclusao nao muda o que ela faz.
+      void flushStudyBatch("topic_complete").catch((erro) => {
+        console.warn("[TrilhaConteudo] Falha ao enviar telemetria da conclusao:", erro);
+      });
       await resetBattleState({ scope: "topic", topicoId });
       await navegarAposConclusao();
     } catch (err) {

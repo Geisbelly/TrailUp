@@ -1,4 +1,7 @@
-import { BrainHexProfile, normalizeBrainHexProfile } from "@/constants/profileImages";
+import {
+  BrainHexProfile,
+  normalizeBrainHexProfile,
+} from "@/constants/brainHexProfiles";
 
 type BrainHexPerfilLike = {
   nome?: string | null;
@@ -43,6 +46,37 @@ export function resolveDominantBrainHexProfile(
   fallback: BrainHexProfile = "seeker"
 ): BrainHexProfile {
   return rankBrainHexProfiles(perfis)[0]?.profile ?? fallback;
+}
+
+export function resolveRepresentativeBrainHexProfiles(
+  perfis?: BrainHexPerfilLike[] | null,
+  threshold = DEFAULT_SIGNAL_THRESHOLD,
+): BrainHexProfile[] {
+  return rankBrainHexProfiles(perfis)
+    .filter((entry, index) => {
+      const hasMeaningfulAffinity = entry.afinidade > 0;
+      return (
+        ((index === 0 || index === SECONDARY_SIGNAL_INDEX) && hasMeaningfulAffinity) ||
+        entry.afinidade >= threshold
+      );
+    })
+    .map((entry) => entry.profile);
+}
+
+export function resolveActiveBrainHexProfile(
+  perfis: BrainHexPerfilLike[] | null | undefined,
+  preferred?: string | null,
+  fallback: BrainHexProfile = "seeker",
+): BrainHexProfile {
+  const normalizedPreferred = normalizeBrainHexProfile(preferred);
+  const representativeProfiles = resolveRepresentativeBrainHexProfiles(perfis);
+  if (
+    normalizedPreferred &&
+    representativeProfiles.includes(normalizedPreferred)
+  ) {
+    return normalizedPreferred;
+  }
+  return resolveDominantBrainHexProfile(perfis, fallback);
 }
 
 export function hasBrainHexProfileSignal(

@@ -14,7 +14,11 @@ export const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 16,
-    paddingTop: 60,
+    // 60 aqui vinha de quando a tela nao tinha cabecalho de navegacao. Hoje a
+    // rota [id] tem header de verdade (ver trilha/_layout.tsx, headerForId),
+    // entao aquele valor empilhava com o header E com o inset do SafeAreaView:
+    // ~180px de vazio antes do "Progresso do modulo".
+    paddingTop: 12,
     paddingBottom: 4,
   },
   headerTopMeta: {
@@ -25,11 +29,10 @@ export const styles = StyleSheet.create({
     marginBottom: 4,
     marginTop: 8,
   },
-  floatingTimerWrap: {
-    position: "absolute",
-    top: 8,
-    left: 16,
-    zIndex: 46,
+  headerRightActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
   floatingBattleWrap: {
     position: "absolute",

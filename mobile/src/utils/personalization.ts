@@ -1947,17 +1947,19 @@ export function normalizePersonalizedTopicPayload({
       materiais.imagem?.payload?.legenda
     ) ?? null;
 
-  const introBlock =
-    planSummary.uiConfig.precisa_texto && summaryText
-      ? normalizeContentBlock(
-          {
-            id: `intro-${topicoId}-${record.id}`,
-            tipo: "markdown",
-            markdown: buildMarkdownSummary("Por que este formato?", [summaryText]) ?? summaryText,
-          },
-          `intro-${topicoId}-${record.id}`
-        )
-      : null;
+  // O bloco "Por que este formato?" foi removido do percurso do aluno.
+  //
+  // Ele abria TODO modulo com `plano.justificativa`, que e nota interna do
+  // sistema ("Conteudo compartilhado por perfil BrainHex."), nao explicacao
+  // pedagogica. Tres problemas de uma vez: o aluno nao precisa saber como a
+  // personalizacao foi decidida, o mesmo texto ainda reaparecia na fala do guia
+  // (redundancia dupla na mesma tela), e o bloco ocupava a posicao 1 de 25 --
+  // gastando o primeiro passo do modulo com meta-informacao.
+  //
+  // `justificativa` continua no plano: o lugar dela e o console do professor,
+  // que precisa auditar a decisao. Ver planSummary.justification.
+  const introBlock = null;
+  void summaryText;
 
   const derivedPrimaryBlocks = orderContentBlocksByMode(
     [

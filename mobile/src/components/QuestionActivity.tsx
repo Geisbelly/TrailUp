@@ -1,6 +1,6 @@
 // src/components/activities/QuestionActivity.tsx
 import { ContentRenderer } from '@/components/ContentRenderer';
-import { bannerImages, getProfileImageByString } from '@/constants/profileImages';
+import { getGuardianFaceImage } from '@/constants/profileImages';
 import { useMetricas } from '@/context/MetricasContext';
 import { useUsuario } from '@/context/SessaoContext';
 import { useTrilha } from '@/context/TrilhaContext';
@@ -427,8 +427,10 @@ export default function QuestionActivity({
     () => questao?.resposta_aluno ?? atividade?.resposta_aluno ?? null,
     [questao?.resposta_aluno, atividade?.resposta_aluno]
   );
-  const perfilNome = usuario?.perfis?.[0]?.nome || '';
-  const perfilImage = getProfileImageByString(perfilNome) ?? bannerImages[6];
+  const perfilNome = usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? '';
+  // Modal de resultado: quem fala com o aluno aqui e o guia do perfil, entao a
+  // imagem e o guardiao, nao o simbolo abstrato do perfil.
+  const perfilImage = getGuardianFaceImage(perfilNome);
   const profilePalette = useMemo(
     () => getProfileShellPalette(perfilNome || null),
     [perfilNome]
@@ -501,7 +503,7 @@ export default function QuestionActivity({
   const [timeoutLocked, setTimeoutLocked] = useState<Record<number, boolean>>({});
   const [mostrarResposta, setMostrarResposta] = useState(false);
   const [validandoIA, setValidandoIA] = useState(false);
-  const [feedbackIA, setFeedbackIA] = useState<Record<number, EssayValidationResult | null>>({});
+  const [, setFeedbackIA] = useState<Record<number, EssayValidationResult | null>>({});
   const [modalVisivel, setModalVisivel] = useState(false);
   const [modalInfo, setModalInfo] = useState<{ titulo: string; descricao: string; pontos?: number; acerto?: boolean }>({
     titulo: '',

@@ -86,7 +86,7 @@ function getToneConfig(
 
 export function DialogProvider({ children }: { children: React.ReactNode }) {
   const { usuario } = useUsuario();
-  const palette = getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null);
+  const palette = getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null);
   const [dialog, setDialog] = useState<DialogState | null>(null);
 
   const gold = tinycolor(palette.accent).lighten(10).toHexString();

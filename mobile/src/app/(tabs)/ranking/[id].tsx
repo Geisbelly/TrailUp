@@ -2,6 +2,11 @@ import CardSemDados from "@/components/CardSemDados";
 import { HallBackground, OrnamentDivider } from "@/components/HallTheme";
 import { LoadingState } from "@/components/LoadingState";
 import {
+  SectionGuideButton,
+  SectionGuideScrollable,
+  SectionGuideStep,
+} from "@/components/SectionGuideButton";
+import {
   BrainHexProfile,
   getBrainHexConfig,
   normalizeBrainHexProfile,
@@ -11,9 +16,10 @@ import { useUsuario } from "@/context/SessaoContext";
 import { supabase } from "@/database/supabase";
 import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { getProfileGuideEmphasis } from "@/utils/profileSectionGuide";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useLocalSearchParams, useNavigation } from "expo-router";
+import { Stack, useLocalSearchParams, useNavigation } from "expo-router";
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
@@ -104,15 +110,25 @@ export default function RankDetalheScreen() {
 
   const { ranking, carregando } = useConquistaRank();
   const { usuario } = useUsuario();
-  const palette = getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null);
+  const activeProfile = usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null;
+  const palette = getProfileShellPalette(activeProfile);
+  const profileEmphasis = getProfileGuideEmphasis(activeProfile, "ranking");
 
   const gold = tinycolor(palette.accent).lighten(10).toHexString();
   const goldDim = tinycolor(palette.accent).setAlpha(0.55).toRgbString();
-  const goldFaint = tinycolor(palette.accent).setAlpha(0.12).toRgbString();
 
   const [filtro, setFiltro] = useState<RankFilter>("geral");
   const [perfisCarregando, setPerfisCarregando] = useState(false);
   const [perfilDominantePorAluno, setPerfilDominantePorAluno] = useState<Record<string, DominantProfileMeta>>({});
+  const rankHeaderGuideRef = useRef<View | null>(null);
+
+  // Entregue ao guia: sem isso ele descreve linhas fora da tela.
+  const listaRef = useRef<FlatList>(null);
+  // `scrollTo` quer posicao ABSOLUTA e `measureInWindow` devolve posicao na
+  // TELA; o deslocamento atual e o que converte uma na outra.
+  const scrollOffsetRef = useRef(0);
+  const rankFiltersGuideRef = useRef<View | null>(null);
+  const rankMyPositionGuideRef = useRef<View | null>(null);
 
   const meuPerfilMajoritario = normalizeBrainHexProfile(usuario?.perfis?.[0]?.nome ?? null);
   const meuPerfilLabel = getDominantProfileLabel(meuPerfilMajoritario);
@@ -248,6 +264,75 @@ export default function RankDetalheScreen() {
     }
     return "Classificação geral da turma";
   }, [filtro, meuPerfilLabel, meuPerfilMajoritario]);
+
+  const rankDetailGuideSteps = useMemo<SectionGuideStep[]>(() => {
+    const criterio = String(rank?.info.criterio ?? "").toLowerCase();
+    const scoreDescription =
+      criterio === "percentual"
+        ? "A coluna % mostra o percentual concluído da trilha, de 0 a 100. A ordem segue esse avanço registrado."
+        : criterio === "tempo"
+        ? "A coluna Tempo mostra o estudo acumulado e formata o resultado em minutos ou horas. A posição segue o critério de tempo configurado para esta categoria."
+        : "A coluna Pts. mostra a pontuação acumulada conforme as regras desta categoria. A classificação é ordenada por esse resultado.";
+
+    return [
+      {
+        id: "rank-detail-header",
+        target: "rank_detail_header",
+        title: rank?.info.nome_rank ?? "Classificação",
+        description: `${rank?.info.descricao ?? "O cabeçalho informa qual categoria e critério estão sendo consultados."} ${profileEmphasis}`,
+        icon: "shield-crown-outline",
+      },
+      {
+        id: "rank-detail-filters",
+        target: "rank_detail_filters",
+        title: "Filtros por perfil",
+        description:
+          "Geral mostra toda a turma; Meu perfil mostra alunos com o mesmo perfil BrainHex majoritário que o seu; Outros perfis mostra os demais. O número em cada botão é a quantidade de alunos no recorte.",
+        icon: "filter-variant",
+      },
+      {
+        id: "rank-detail-position",
+        target: "rank_detail_explanation",
+        title: "Posição e medalha",
+        description:
+          "Pos. é a colocação do aluno. Rank mostra a medalha cadastrada; as três primeiras posições recebem destaque visual de ouro, prata e bronze quando disponíveis.",
+        icon: "medal-outline",
+      },
+      {
+        id: "rank-detail-student",
+        target: "rank_detail_explanation",
+        title: "Aluno e perfil",
+        description:
+          "A coluna Aluno mostra o nome e, abaixo, o perfil BrainHex de maior afinidade. Sua linha recebe a indicação “Você” e uma cor de destaque.",
+        icon: "account-outline",
+      },
+      {
+        id: "rank-detail-score",
+        target: "rank_detail_explanation",
+        title: "Valor da classificação",
+        description: scoreDescription,
+        icon: "chart-line",
+      },
+      ...(myRankData
+        ? [{
+            id: "rank-detail-me",
+            target: "rank_detail_me",
+            title: "Sua posição fixa",
+            description:
+              "O rodapé mantém sua própria colocação visível mesmo enquanto você percorre a lista. Ele usa os dados da classificação geral, independentemente do filtro selecionado.",
+            icon: "account-star-outline" as const,
+          }]
+        : []),
+    ];
+  }, [myRankData, profileEmphasis, rank?.info.criterio, rank?.info.descricao, rank?.info.nome_rank]);
+  const rankDetailGuideTargets = useMemo(
+    () => ({
+      rank_detail_header: rankHeaderGuideRef,
+      rank_detail_filters: rankFiltersGuideRef,
+      rank_detail_me: rankMyPositionGuideRef,
+    }),
+    [],
+  );
 
   if (carregando) {
     return (
@@ -400,8 +485,25 @@ export default function RankDetalheScreen() {
       />
 
       <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
+        {/* Guia no cabecalho da tela: mesmo lugar em toda pagina com header,
+            sem flutuar sobre o conteudo nem depender de offset por pagina. */}
+        <Stack.Screen
+          options={{
+            headerRight: () => (
+              <SectionGuideButton
+                profile={activeProfile}
+                sectionTitle="Classificação"
+                steps={rankDetailGuideSteps}
+                targetRefs={rankDetailGuideTargets}
+                scrollRef={listaRef as unknown as React.RefObject<SectionGuideScrollable | null>}
+          scrollOffsetRef={scrollOffsetRef}
+                style={s.guideButton}
+              />
+            ),
+          }}
+        />
         {/* ══════════ HEADER ══════════ */}
-        <View style={s.header}>
+        <View ref={rankHeaderGuideRef} collapsable={false} style={s.header}>
           <Animated.View style={{ transform: [{ scale: crownScale }], opacity: crownOpacity }}>
             <MaterialCommunityIcons name="shield-crown" size={46} color={gold} />
           </Animated.View>
@@ -420,7 +522,7 @@ export default function RankDetalheScreen() {
         </View>
 
         {/* ══════════ ABAS DE FILTRO ══════════ */}
-        <View style={s.filtersRow}>
+        <View ref={rankFiltersGuideRef} collapsable={false} style={s.filtersRow}>
           {(["geral", "perfil_majoritario", "outros_perfis"] as RankFilter[]).map((f) => {
             const active = filtro === f;
             return (
@@ -464,6 +566,11 @@ export default function RankDetalheScreen() {
 
         {/* ══════════ LISTA ══════════ */}
         <FlatList
+          ref={listaRef}
+          scrollEventThrottle={16}
+          onScroll={(e) => {
+            scrollOffsetRef.current = e.nativeEvent.contentOffset.y;
+          }}
           data={posicoesFiltradas}
           keyExtractor={(item, idx) => `${item.rank_id}-${item.id_aluno}-${idx}`}
           contentContainerStyle={s.listContent}
@@ -485,7 +592,11 @@ export default function RankDetalheScreen() {
 
         {/* ══════════ FOOTER — SUA POSIÇÃO ══════════ */}
         {myRankData && (
-          <View style={[s.footerContainer, { backgroundColor: palette.surfaceElevated }]}>
+          <View
+            ref={rankMyPositionGuideRef}
+            collapsable={false}
+            style={[s.footerContainer, { backgroundColor: palette.surfaceElevated }]}
+          >
             {/* Borda topo dourada */}
             <LinearGradient
               colors={["transparent", gold, "transparent"]}
@@ -510,6 +621,9 @@ export default function RankDetalheScreen() {
 
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: Color.background },
+  guideButton: {
+    marginRight: 12,
+  },
 
   // Header
   header: {

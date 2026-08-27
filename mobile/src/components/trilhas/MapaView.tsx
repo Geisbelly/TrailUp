@@ -1,6 +1,5 @@
 import { useTrilha } from "@/context/TrilhaContext";
 import { useUsuario } from "@/context/SessaoContext";
-import { Color } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { router } from "expo-router";
 import React, { useMemo } from "react";
@@ -830,7 +829,7 @@ export const TrilhaMapaHero: React.FC = () => {
   const { grafo, classeAtual, mapTheme } = useTrilha();
   const { usuario } = useUsuario();
   const { width } = useWindowDimensions();
-  const profilePalette = getProfileShellPalette(usuario?.perfis?.[0]?.nome ?? null);
+  const profilePalette = getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null);
 
   const maxRows = useMemo(
     () => Math.max(1, ...grafo.levels.map((level) => level.length)),

@@ -20,8 +20,6 @@
     "android:mobile": "npm --prefix mobile run android",
     "web:mobile": "npm --prefix mobile run web",
     "lint:mobile": "npm --prefix mobile run lint",
-    "test:mobile": "npm --prefix mobile run test",
-    "build:web:mobile": "npm --prefix mobile run build:web",
     "install:all": "npm --prefix frontend install && npm --prefix microservice install && npm --prefix mobile install"
   }
 }

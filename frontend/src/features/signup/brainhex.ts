@@ -203,6 +203,16 @@ export function computeBrainHexResult(answers: BrainHexAnswers) {
   return { axis, raw, percent, sorted };
 }
 
+export function resolveRepresentativeBrainHexResults<
+  T extends { key: BrainHexProfileKey; percent: number },
+>(sorted: readonly T[], minimumAffinity = 20): T[] {
+  return sorted.filter(
+    (profile, index) =>
+      ((index === 0 || index === 1) && profile.percent > 0) ||
+      profile.percent >= minimumAffinity,
+  );
+}
+
 export function isAllAnswered(answers: BrainHexAnswers) {
   return BRAINHEX_QUESTIONS.every((q) => typeof answers[q.id] === "number");
 }
