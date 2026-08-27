@@ -83,6 +83,22 @@ Estas decisões são **fixas**; sigam-nas ao corrigir/estender.
    perfil, mas garante AAA: eleva o accent quando muito escuro, alpha mínimo em
    bordas/glow, e `success`/`warning`/`info` **fixos** (não derivados do accent).
 
+5. **Progresso: o percurso é o material personalizado; o do professor é
+   opcional e vale bônus.** O percentual do tópico sai de
+   `trailup_recalcular_topico_aluno` (trigger sobre `conteudo_aluno`,
+   `atividade_aluno` e `personalizacao_item_progresso`), e o denominador é só o
+   material personalizado. Quando ele ainda não foi gerado, o conteúdo do
+   professor volta a ser o percurso — senão o aluno que concluiu tudo o que
+   existe veria 0%.
+
+   **Nenhum cliente escreve `percentual_concluido` nem `status` em
+   `topico_aluno`.** Havia quatro gravadores fazendo isso, todos com a conta
+   sobre o material do professor apenas, e todos rodando DEPOIS do trigger — a
+   conta certa nunca sobrevivia. `Topico.calcularPercentual()` continua
+   existindo, mas serve só a leituras locais: não use o valor dele para gravar
+   nem para "puxar para cima" o que veio do banco. Ver
+   `20260826_18_progresso_professor_opcional.py`.
+
 ## Perfis BrainHex (7)
 
 `Seeker`, `Survivor`, `Daredevil`, `Mastermind`, `Conqueror`, `Socializer`,
