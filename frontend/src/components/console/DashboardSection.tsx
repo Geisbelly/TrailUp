@@ -26,6 +26,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import StudentTrailVisualization from "./StudentTrailVisualization";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchContextoDocente } from "./personalizacoes/personalizacoesApi";
 import { useAuth } from "@/hooks/useAuth";
 import { createRequestGuard, type RequestToken } from "@/lib/requestGuard";
 import { computeTurmaResumo } from "@/lib/turmaResumo";
@@ -155,12 +156,6 @@ type EvolucaoAluno = {
   progresso_trilha_pct: number;
 };
 
-const API_BASE_URL = String(import.meta.env.VITE_APITRAIUP_URL ?? "")
-  .trim()
-  .replace(/\/+$/, "");
-const AUTH_FAILURE_PATTERN =
-  /token invalido|token inv[aá]lido|token expirado|audience do token|assinatura do token|formato de token|authorization bearer token obrigatorio|token ausente/i;
-
 type ViewSelectBuilder = {
   in: (column: string, values: ReadonlyArray<string | number>) => Promise<{ data: unknown[] | null }>;
   eq: (column: string, value: string | number) => {
@@ -209,67 +204,17 @@ export default function DashboardSection() {
   };
 
   const loadPersonalizacaoContexto = useCallback(async (aluno: Aluno, request: RequestToken) => {
-    if (!API_BASE_URL) {
-      if (!request.isCurrent()) return;
-      setPersonalizacaoData(null);
-      setPersonalizacaoError("Defina VITE_APITRAIUP_URL para consultar a personalizacao.");
-      return;
-    }
-
     setPersonalizacaoLoading(true);
     setPersonalizacaoError(null);
 
     try {
-      const resolveToken = async (forceRefresh = false) => {
-        const sessionResult = forceRefresh
-          ? await supabase.auth.refreshSession()
-          : await supabase.auth.getSession();
-
-        if (sessionResult.error) {
-          throw new Error(`Falha ao obter sessao do Supabase: ${sessionResult.error.message}`);
-        }
-
-        const resolved = String(
-          (forceRefresh ? sessionResult.data.session?.access_token : session?.access_token ?? sessionResult.data.session?.access_token) ?? ""
-        ).trim();
-        if (resolved) return resolved;
-
-        if (!forceRefresh) return resolveToken(true);
-        throw new Error("Sessao expirada para consultar a API de personalizacao.");
-      };
-
-      const requestContext = async (token: string) => {
-        const response = await fetch(
-          `${API_BASE_URL}/api/v1/personalizar/contexto/${aluno.id}?classe_id=${aluno.classe_id}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        const payload = await response.json().catch(() => null);
-        const detail =
-          payload?.detail ||
-          payload?.message ||
-          "Nao foi possivel carregar o contexto de personalizacao.";
-        return { response, payload, detail: String(detail) };
-      };
-
-      let token = await resolveToken(false);
-      let result = await requestContext(token);
-
-      if (!result.response.ok && (result.response.status === 401 || AUTH_FAILURE_PATTERN.test(result.detail))) {
-        token = await resolveToken(true);
-        result = await requestContext(token);
-      }
-
-      if (!result.response.ok) {
-        throw new Error(result.detail);
-      }
+      const contexto = await fetchContextoDocente(session?.access_token ?? "", {
+        alunoId: aluno.id,
+        classeId: aluno.classe_id,
+      });
 
       if (!request.isCurrent()) return;
-      setPersonalizacaoData(result.payload as PersonalizacaoDocenteResponse);
+      setPersonalizacaoData(contexto as PersonalizacaoDocenteResponse);
     } catch (error) {
       if (!request.isCurrent()) return;
       console.error("Erro ao carregar contexto de personalizacao:", error);
