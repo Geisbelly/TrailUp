@@ -167,3 +167,47 @@ def test_artefatos_nao_fabricam_a_string_none() -> None:
 
     assert '"aluno_id": str(aluno_id),' not in fonte
     assert '"aluno_id": str(aluno_id) if aluno_id is not None else None,' in fonte
+
+
+def test_dispatch_de_midia_nunca_manda_none_ao_microservice() -> None:
+    """O contrato do microservice pede string. As TRES chamadas de
+    disparar_brainhex_async precisam normalizar -- corrigir duas de tres deixa
+    o caminho que sobrou quebrando exatamente igual."""
+    from app.services import personalizacao_jobs
+
+    fonte = inspect.getsource(personalizacao_jobs._process_media_render_target)
+
+    # Cada bloco `disparar_brainhex_async(...)` tem que normalizar. Os demais
+    # `aluno_id=aluno_id` da funcao sao legitimos: repositorios bindam NULL
+    # corretamente, e so o contrato HTTP do microservice exige string.
+    linhas = fonte.split("\n")
+    inicios = [
+        i for i, linha in enumerate(linhas) if "disparar_brainhex_async(" in linha
+    ]
+    assert len(inicios) == 3, f"esperava 3 dispatches, achei {len(inicios)}"
+
+    for numero, inicio in enumerate(inicios, 1):
+        # A lista de argumentos e' multi-linha; varre ate achar o aluno_id.
+        argumento = next(
+            (
+                linha.strip()
+                for linha in linhas[inicio : inicio + 25]
+                if linha.strip().startswith("aluno_id=")
+            ),
+            None,
+        )
+        assert argumento == 'aluno_id=aluno_id or "",', (
+            f"dispatch #{numero} passa aluno_id sem normalizar: {argumento!r}"
+        )
+
+
+def test_seed_progress_guardado_pelo_fato_e_nao_por_coluna_paralela() -> None:
+    """progresso e' comportamento: a linha exige dono (aluno_id NOT NULL) e
+    _seed_progress faz str(record["aluno_id"]), que viraria 'None'.
+
+    A guarda existia via is_profile_template, mas essa e' uma coluna PARALELA
+    ao fato. O fato e' nao ter dono -- e e' nele que a guarda deve se apoiar."""
+    from app.services import personalizacao_jobs
+
+    fonte = inspect.getsource(personalizacao_jobs._process_media_render_target)
+    assert 'record.get("aluno_id") is not None' in fonte

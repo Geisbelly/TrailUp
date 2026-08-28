@@ -1495,7 +1495,8 @@ async def _process_media_render_target(
             fontes=ctx["fontes"],
             content_blocks=content_enrichment.get("blocos") or [],
             personalizacao_id=int(existing["id"]),
-            aluno_id=aluno_id,
+            # O contrato do microservice espera string; base nao tem dono.
+            aluno_id=aluno_id or "",
             classe_id=classe_id,
             topico_id=topico_id,
             conteudo_id=conteudo_id,
@@ -1686,7 +1687,14 @@ async def _process_media_render_target(
     record = await repo.buscar_por_id(int(record_id)) or {}
     if not record:
         raise RuntimeError("Personalizacao nao retornou registro persistido apos salvar.")
-    if not bool(target.get("is_profile_template")):
+    # Progresso e' COMPORTAMENTO: a linha exige dono (personalizacao_item_
+    # progresso.aluno_id e NOT NULL) e _seed_progress faz
+    # str(record["aluno_id"]), que com None viraria a string "None".
+    #
+    # A guarda por is_profile_template continua, mas ela e' uma coluna
+    # PARALELA ao fato. O fato e' nao ter dono -- e depender so da coluna
+    # deixaria a base estourar aqui caso as duas divergissem.
+    if record.get("aluno_id") is not None and not bool(target.get("is_profile_template")):
         await _seed_progress(session=session, record=record)
 
     record_cycle_id = str(record.get("ciclo_id") or ctx["ciclo_id"])
