@@ -4588,7 +4588,8 @@ async def _generate_personalized_image_png(
 
 async def fetch_personalizacao_context(
     *,
-    aluno_id: str,
+    # None = base da classe por perfil (sem dono). Ver 20260827_04.
+    aluno_id: str | None,
     classe_id: int,
     topico_id: int | None,
     conteudo_id: int | None,
@@ -4610,7 +4611,22 @@ async def fetch_personalizacao_context(
     classe_repo = ConteudoClasseRepository(session)
     fontes_repo = FontesPersonalizacaoRepository(session)
 
-    context = await context_repo.fetch_aluno_context(aluno_id=aluno_id, classe_id=classe_id)
+    # A base por perfil e (classe x topico x conteudo x perfil) montada a
+    # partir do conteudo do PROFESSOR: ela nao tem dono, e contexto de aluno
+    # -- modo de operacao, modo de resposta, eventos, progresso, desempenho,
+    # trilha, ia_descricao -- simplesmente nao se aplica. Buscar isso com
+    # aluno_id nulo estourava em producao com "invalid UUID 'None'" e
+    # "Aluno None nao encontrado", derrubando os 7 targets de cada topico.
+    #
+    # Nada se perde: do resultado de fetch_aluno_context so saem
+    # perfil_brainhex/perfil_dominante -- que quem chama sobrescreve com o
+    # perfil do proprio target -- e contexto_aluno, que para a base e vazio
+    # por definicao. Fontes, conteudo da classe e source_hash ja vinham de
+    # classe/topico/conteudo.
+    if aluno_id is None:
+        context: dict[str, Any] = {}
+    else:
+        context = await context_repo.fetch_aluno_context(aluno_id=aluno_id, classe_id=classe_id)
 
     # Resolve topico_id a partir do conteudo_id se não foi fornecido
     if topico_id is None and conteudo_id is not None:

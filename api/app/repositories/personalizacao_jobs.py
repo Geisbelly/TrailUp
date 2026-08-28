@@ -281,7 +281,9 @@ class PersonalizacaoJobsRepository:
                         is_profile_template = :is_profile_template,
                         updated_at = NOW()
                     WHERE job_id = CAST(:job_id AS UUID)
-                      AND aluno_id = CAST(:aluno_id AS UUID)
+                      -- Target base tem aluno_id NULL, e `= NULL` nunca casa:
+                      -- sem isto o UPDATE erra e cada chamada duplica o target.
+                      AND aluno_id IS NOT DISTINCT FROM CAST(:aluno_id AS UUID)
                       AND topico_id = :topico_id
                       AND conteudo_id IS NOT DISTINCT FROM :conteudo_id
                       AND brainhex_profile_key = :brainhex_profile_key

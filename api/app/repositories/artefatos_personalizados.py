@@ -104,7 +104,10 @@ class ArtefatosPersonalizadosRepository:
         params = {
             "topico_id": int(topico_id),
             "conteudo_id": int(conteudo_id) if conteudo_id is not None else None,
-            "aluno_id": str(aluno_id),
+            # Base (aluno_id None): str(None) devolve a string "None", que o
+                # asyncpg tenta encodar como UUID. Predicado certo nao
+                # salva se o PARAMETRO ja chega errado.
+                "aluno_id": str(aluno_id) if aluno_id is not None else None,
             "classe_id": int(classe_id),
             "ciclo_id": str(ciclo_id),
             "brainhex_profile_key": normalized_profile,
@@ -159,7 +162,9 @@ class ArtefatosPersonalizadosRepository:
                 """
                 SELECT id, ordem, titulo, descricao, icone, dificuldade, xp, metadata
                 FROM cards_personalizados
-                WHERE aluno_id = CAST(:aluno_id AS UUID)
+                -- Base (aluno_id NULL): `= NULL` nunca casa e a busca voltaria
+                -- vazia, regerando os cards e trocando o source_hash.
+                WHERE aluno_id IS NOT DISTINCT FROM CAST(:aluno_id AS UUID)
                   AND topico_id = CAST(:topico_id AS BIGINT)
                   AND conteudo_id IS NOT DISTINCT FROM CAST(:conteudo_id AS BIGINT)
                   AND ativo = TRUE
@@ -167,7 +172,10 @@ class ArtefatosPersonalizadosRepository:
                 """
             ),
             {
-                "aluno_id": str(aluno_id),
+                # Base (aluno_id None): str(None) devolve a string "None", que o
+                # asyncpg tenta encodar como UUID. Predicado certo nao
+                # salva se o PARAMETRO ja chega errado.
+                "aluno_id": str(aluno_id) if aluno_id is not None else None,
                 "topico_id": int(topico_id),
                 "conteudo_id": int(conteudo_id) if conteudo_id is not None else None,
             },
@@ -223,7 +231,10 @@ class ArtefatosPersonalizadosRepository:
 
             metadata = {
                 "personalizado": True,
-                "aluno_id": str(aluno_id),
+                # Base (aluno_id None): str(None) devolve a string "None", que o
+                # asyncpg tenta encodar como UUID. Predicado certo nao
+                # salva se o PARAMETRO ja chega errado.
+                "aluno_id": str(aluno_id) if aluno_id is not None else None,
                 "classe_id": int(classe_id),
                 "topico_id": int(topico_id),
                 "conteudo_id": conteudo_id,
@@ -270,7 +281,10 @@ class ArtefatosPersonalizadosRepository:
                     """
                 ),
                 {
-                    "aluno_id": str(aluno_id),
+                    # Base (aluno_id None): str(None) devolve a string "None", que o
+                # asyncpg tenta encodar como UUID. Predicado certo nao
+                # salva se o PARAMETRO ja chega errado.
+                "aluno_id": str(aluno_id) if aluno_id is not None else None,
                     "classe_id": int(classe_id),
                     "topico_id": int(topico_id),
                     "conteudo_id": int(conteudo_id) if conteudo_id is not None else None,
@@ -437,7 +451,10 @@ class ArtefatosPersonalizadosRepository:
             metadata_atividade = json.dumps(
                 {
                     "personalizado": True,
-                    "aluno_id": str(aluno_id),
+                    # Base (aluno_id None): str(None) devolve a string "None", que o
+                # asyncpg tenta encodar como UUID. Predicado certo nao
+                # salva se o PARAMETRO ja chega errado.
+                "aluno_id": str(aluno_id) if aluno_id is not None else None,
                     "ciclo_id": ciclo_id,
                     "classe_id": classe_id,
                     "conteudo_id": conteudo_id,

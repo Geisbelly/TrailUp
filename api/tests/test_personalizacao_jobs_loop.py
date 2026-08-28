@@ -620,11 +620,14 @@ async def test_build_targets_generates_all_seven_profiles_with_one_student(monke
         "socializer",
         "achiever",
     }
-    assert {item["aluno_id"] for item in targets} == {student_id}
+    # A geracao pesada virou base sem dono: mesmo havendo aluno, os 7 perfis
+    # saem como material de (classe x topico x conteudo x perfil). O aluno
+    # ganha linha propria depois, derivada da base pelo job de enrollment.
+    assert {item["aluno_id"] for item in targets} == {None}
     assert {item["conteudo_id"] for item in targets} == {125}
-    assert sum(not item["is_profile_template"] for item in targets) == 1
-    assert sum(item["is_profile_template"] for item in targets) == 6
-    assert len(profile_map) == 1
+    assert all(item["is_profile_template"] for item in targets)
+    # Base nao entra no mapa: a chave nao tem o perfil, entao os 7 colapsariam.
+    assert profile_map == {}
 
 
 @pytest.mark.asyncio
@@ -692,7 +695,9 @@ async def test_build_targets_filters_by_brainhex_profile_keys_when_informado(mon
     assert topics == [117]
     assert len(targets) == 1
     assert targets[0]["brainhex_profile_key"] == "achiever"
-    assert len(profile_map) == 1
+    assert targets[0]["aluno_id"] is None
+    # Base nao entra no target_profile_map (ver _append_target).
+    assert profile_map == {}
 
 
 @pytest.mark.asyncio
@@ -3171,3 +3176,62 @@ async def test_job_keeps_recent_microservice_contract_gate_target_pending(
     ]
     assert target["status"] == "pending"
     assert target["attempts"] == 2
+
+
+def test_upsert_target_casa_base_sem_aluno() -> None:
+    """Target base tem aluno_id NULL. `= NULL` nunca casa, entao o UPDATE de
+    conciliacao erraria e cada chamada inseriria uma duplicata."""
+    import inspect
+
+    from app.repositories.personalizacao_jobs import PersonalizacaoJobsRepository
+
+    fonte = inspect.getsource(PersonalizacaoJobsRepository)
+    assert "aluno_id IS NOT DISTINCT FROM CAST(:aluno_id AS UUID)" in fonte
+    assert "AND aluno_id = CAST(:aluno_id AS UUID)" not in fonte
+
+
+@pytest.mark.asyncio
+async def test_build_targets_gera_base_em_turma_sem_aluno(monkeypatch) -> None:
+    """Era o bug: turma vazia devolvia lista vazia, o job nascia 0/0 e fechava
+    `completed` sem erro."""
+    monkeypatch.setattr(
+        "app.repositories.conteudo_classe.ConteudoClasseRepository.listar_alunos_classe_com_perfil_dominante",
+        AsyncMock(return_value=[]),
+    )
+    monkeypatch.setattr(
+        "app.repositories.conteudo_classe.ConteudoClasseRepository.mapear_todos_conteudos_por_topicos",
+        AsyncMock(return_value={117: [125]}),
+    )
+
+    targets, topics, _profile_map = await _build_targets(
+        session=object(),
+        kind="full_class_sync",
+        classe_id=54,
+        topico_ids=[117],
+    )
+
+    assert topics == [117]
+    assert len(targets) == 7
+    assert {item["aluno_id"] for item in targets} == {None}
+    assert all(item["is_profile_template"] for item in targets)
+    assert {item["brainhex_profile_key"] for item in targets} == {
+        "seeker", "survivor", "daredevil", "mastermind",
+        "conqueror", "socializer", "achiever",
+    }
+    # A base NAO entra no target_profile_map: a chave e (aluno, topico,
+    # conteudo) e o perfil e o valor, entao os 7 perfis colapsariam numa
+    # chave so e o mapa guardaria apenas o ultimo. Para a base o mapa e
+    # desnecessario -- brainhex_profile_key ja vem na linha do target.
+    assert _profile_map == {}
+
+
+def test_target_base_nao_vira_string_none() -> None:
+    """Target base chega com aluno_id nulo; str(None) devolve a string literal
+    "None", que viajaria adiante como se fosse UUID."""
+    import inspect
+
+    from app.services import personalizacao_jobs
+
+    fonte = inspect.getsource(personalizacao_jobs._process_media_render_target)
+    assert 'aluno_id = str(target["aluno_id"])\n' not in fonte
+    assert 'if target.get("aluno_id") is not None else None' in fonte

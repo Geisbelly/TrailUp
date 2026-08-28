@@ -712,7 +712,7 @@ async def _build_targets(
 
     def _append_target(
         *,
-        owner_aluno_id: str,
+        owner_aluno_id: str | None,
         topico_id: int,
         conteudo_id: int | None,
         profile_key: str,
@@ -722,19 +722,28 @@ async def _build_targets(
             "topico_id": topico_id,
             "conteudo_id": conteudo_id,
             "brainhex_profile_key": _normalize_profile_key(profile_key),
+            # Sem dono, e base -- e base e sempre template. Com dono, so e
+            # template se o material nao for do perfil do proprio aluno.
             "is_profile_template": (
-                profile_by_aluno.get(owner_aluno_id) != _normalize_profile_key(profile_key)
+                owner_aluno_id is None
+                or profile_by_aluno.get(owner_aluno_id) != _normalize_profile_key(profile_key)
             ),
             "status": "pending",
         }
         targets.append(target)
-        target_profile_map[
-            _target_profile_map_key(
-                aluno_id=owner_aluno_id,
-                topico_id=topico_id,
-                conteudo_id=conteudo_id,
-            )
-        ] = _normalize_profile_key(profile_key)
+        # So a camada por aluno entra no mapa. A chave e (aluno, topico,
+        # conteudo) e o perfil e o VALOR: sem aluno, os 7 perfis colapsariam
+        # na mesma chave e 6 seriam perdidos silenciosamente. A base nao
+        # precisa do mapa -- `brainhex_profile_key` vem na propria linha do
+        # target, que e a fonte primaria em _process_media_render_target.
+        if owner_aluno_id is not None:
+            target_profile_map[
+                _target_profile_map_key(
+                    aluno_id=owner_aluno_id,
+                    topico_id=topico_id,
+                    conteudo_id=conteudo_id,
+                )
+            ] = _normalize_profile_key(profile_key)
 
     if kind == JOB_KIND_CLEANUP:
         selected_aluno_id = str(aluno_id) if aluno_id else None
@@ -758,35 +767,18 @@ async def _build_targets(
         JOB_KIND_MANUAL_PROFILE_GENERATE,
         JOB_KIND_MANUAL_PROFILE_GENERATE_ALL,
     }:
-        if not alunos:
-            return [], resolved_topicos, {}
-
-        representative_by_profile: dict[str, str] = {}
-
-        for profile_key in (brainhex_profile_keys or _BRAINHEX_PROFILE_KEYS):
-            candidate = next(
-                (
-                    aluno
-                    for aluno in alunos
-                    if profile_by_aluno.get(aluno) == profile_key
-                ),
-                None,
-            )
-            if candidate is None:
-                candidate = str(aluno_id) if aluno_id and str(aluno_id) in alunos else alunos[0]
-            representative_by_profile[profile_key] = candidate
-
+        # A base nao tem dono: ela e material de (classe x topico x conteudo x
+        # perfil), e existe com ou sem aluno matriculado. Antes, cada perfil era
+        # pendurado num aluno representante -- e turma sem aluno nao gerava nada
+        # (job 0/0, fechando `completed` sem erro).
         for current_topico_id in resolved_topicos:
             scoped_conteudo_ids: list[int | None] = list(
                 conteudos_por_topico.get(current_topico_id) or [None]
             )
             for current_conteudo_id in scoped_conteudo_ids:
                 for profile_key in (brainhex_profile_keys or _BRAINHEX_PROFILE_KEYS):
-                    owner_aluno_id = representative_by_profile.get(profile_key)
-                    if not owner_aluno_id:
-                        continue
                     _append_target(
-                        owner_aluno_id=owner_aluno_id,
+                        owner_aluno_id=None,
                         topico_id=current_topico_id,
                         conteudo_id=current_conteudo_id,
                         profile_key=profile_key,
@@ -963,6 +955,63 @@ async def _seed_progress(
         )
 
 
+async def derivar_personalizacao_do_base(
+    *,
+    session: AsyncSession,
+    aluno_id: str,
+    classe_id: int,
+    topico_id: int,
+    conteudo_id: int | None,
+    brainhex_profile_key: str,
+) -> int | None:
+    """Copia a base do perfil para uma linha do aluno.
+
+    A geracao pesada acontece uma vez, na base (aluno_id NULL). Matricular
+    alguem nao deve disparar OpenAI/TTS de novo para material que ja existe:
+    30 alunos do mesmo perfil viram 30 derivacoes de UMA geracao, nao 30
+    geracoes.
+
+    Devolve o id da linha do aluno recem-criada, ou None quando nao havia base
+    para copiar (o chamador segue pelo caminho de geracao normal). Em conflito
+    - a linha do aluno ja existe - tambem devolve None de proposito: a dedup do
+    caminho normal (`buscar_mais_recente_por_perfil`) ja sabe reaproveitar, e
+    duplicar essa decisao aqui daria duas fontes de verdade.
+    """
+    result = await session.execute(
+        text(
+            """
+            INSERT INTO conteudo_personalizado (
+              aluno_id, classe_id, topico_id, conteudo_id, brainhex_profile_key,
+              ciclo_id, plano, materiais, formato_prioritario, formatos_gerados,
+              status, source_hash, gerado_em, updated_at
+            )
+            SELECT
+              CAST(:aluno_id AS UUID), base.classe_id, base.topico_id, base.conteudo_id,
+              base.brainhex_profile_key, base.ciclo_id, base.plano, base.materiais,
+              base.formato_prioritario, base.formatos_gerados,
+              base.status, base.source_hash, NOW(), NOW()
+            FROM conteudo_personalizado base
+            WHERE base.aluno_id IS NULL
+              AND base.classe_id = :classe_id
+              AND base.topico_id = :topico_id
+              AND base.conteudo_id IS NOT DISTINCT FROM :conteudo_id
+              AND base.brainhex_profile_key = :brainhex_profile_key
+            ON CONFLICT DO NOTHING
+            RETURNING id
+            """
+        ),
+        {
+            "aluno_id": aluno_id,
+            "classe_id": classe_id,
+            "topico_id": topico_id,
+            "conteudo_id": conteudo_id,
+            "brainhex_profile_key": brainhex_profile_key,
+        },
+    )
+    return result.scalar()
+
+
+
 async def _cleanup_target(
     *,
     session: AsyncSession,
@@ -1004,7 +1053,9 @@ async def _process_media_render_target(
     job: dict[str, Any],
     target: dict[str, Any],
 ) -> dict[str, Any]:
-    aluno_id = str(target["aluno_id"])
+    # Target base nao tem dono. str(None) devolveria a string "None" e ela
+    # viajaria adiante como se fosse UUID.
+    aluno_id = str(target["aluno_id"]) if target.get("aluno_id") is not None else None
     topico_id = int(target["topico_id"])
     conteudo_id = int(target["conteudo_id"]) if target.get("conteudo_id") is not None else None
     classe_id = int(job["classe_id"])
@@ -1031,6 +1082,31 @@ async def _process_media_render_target(
             aluno_id=aluno_id,
             topico_id=topico_id,
         )
+
+    # Matricular nao regera: a base do perfil ja tem o material, entao a linha
+    # do aluno e uma COPIA dela. Sem isto, 30 alunos do mesmo perfil disparam
+    # 30 geracoes identicas. Quando ainda nao ha base, segue o caminho normal.
+    #
+    # Devolve {"record": ...} porque e o que o chamador le: ele so marca o
+    # target como completed quando record["status"] == "pronto". Como a copia
+    # herda o status da base, uma base ainda em "processando_midias" deixa o
+    # target pendente e ele volta depois - que e o comportamento certo.
+    if job.get("kind") == JOB_KIND_ENROLLMENT and aluno_id is not None:
+        derivado_id = await derivar_personalizacao_do_base(
+            session=session,
+            aluno_id=aluno_id,
+            classe_id=classe_id,
+            topico_id=topico_id,
+            conteudo_id=conteudo_id,
+            brainhex_profile_key=target_profile_key,
+        )
+        if derivado_id is not None:
+            repo_derivado = ConteudoPersonalizadoRepository(session)
+            record = await repo_derivado.buscar_por_id(int(derivado_id))
+            if record:
+                await _seed_progress(session=session, record=record)
+                await session.commit()
+                return {"record": record}
 
     # Jobs media_render são legados — BrainHex é responsável por gerar as mídias.
     # Redireciona disparando BrainHex para o personalizacao_id já existente.
@@ -1104,7 +1180,8 @@ async def _process_media_render_target(
                     fontes=fontes,
                     content_blocks=stored_enrichment.get("blocos") or [],
                     personalizacao_id=int(personalizacao_id),
-                    aluno_id=aluno_id,
+                    # O contrato do microservice espera string; base nao tem dono.
+                    aluno_id=aluno_id or "",
                     classe_id=classe_id,
                     topico_id=topico_id,
                     conteudo_id=conteudo_id,
@@ -1418,7 +1495,8 @@ async def _process_media_render_target(
             fontes=ctx["fontes"],
             content_blocks=content_enrichment.get("blocos") or [],
             personalizacao_id=int(existing["id"]),
-            aluno_id=aluno_id,
+            # O contrato do microservice espera string; base nao tem dono.
+            aluno_id=aluno_id or "",
             classe_id=classe_id,
             topico_id=topico_id,
             conteudo_id=conteudo_id,
@@ -1609,7 +1687,14 @@ async def _process_media_render_target(
     record = await repo.buscar_por_id(int(record_id)) or {}
     if not record:
         raise RuntimeError("Personalizacao nao retornou registro persistido apos salvar.")
-    if not bool(target.get("is_profile_template")):
+    # Progresso e' COMPORTAMENTO: a linha exige dono (personalizacao_item_
+    # progresso.aluno_id e NOT NULL) e _seed_progress faz
+    # str(record["aluno_id"]), que com None viraria a string "None".
+    #
+    # A guarda por is_profile_template continua, mas ela e' uma coluna
+    # PARALELA ao fato. O fato e' nao ter dono -- e depender so da coluna
+    # deixaria a base estourar aqui caso as duas divergissem.
+    if record.get("aluno_id") is not None and not bool(target.get("is_profile_template")):
         await _seed_progress(session=session, record=record)
 
     record_cycle_id = str(record.get("ciclo_id") or ctx["ciclo_id"])
@@ -1626,7 +1711,8 @@ async def _process_media_render_target(
         fontes=ctx["fontes"],
         content_blocks=content_enrichment.get("blocos") or [],
         personalizacao_id=int(record_id),
-        aluno_id=aluno_id,
+        # O contrato do microservice espera string; base nao tem dono.
+        aluno_id=aluno_id or "",
         classe_id=classe_id,
         topico_id=topico_id,
         conteudo_id=conteudo_id,
