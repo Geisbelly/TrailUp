@@ -7,6 +7,8 @@ volta vazia e o codigo segue como se nao houvesse nada -- em vez de estourar.
 
 import inspect
 
+import pytest
+
 from app.repositories.artefatos_personalizados import ArtefatosPersonalizadosRepository
 from app.repositories.conteudo_personalizado import ConteudoPersonalizadoRepository
 from app.repositories.materiais import MateriaisRepository
@@ -71,3 +73,51 @@ def test_materiais_orfaos_casam_base_sem_aluno():
 
     assert "aluno_id IS NOT DISTINCT FROM CAST(:aluno_id AS UUID)" in fonte
     assert "WHERE aluno_id = CAST(:aluno_id AS UUID)" not in fonte
+
+
+@pytest.mark.asyncio
+async def test_derivar_do_base_copia_materiais_sem_regerar() -> None:
+    """Enrollment nao deve regerar midia: a base ja tem o material do perfil.
+    30 alunos do mesmo perfil viram 30 derivacoes de UMA geracao."""
+    from app.services.personalizacao_jobs import derivar_personalizacao_do_base
+
+    executed: list[str] = []
+
+    class FakeResult:
+        def scalar(self):
+            return 4242
+
+    class FakeSession:
+        async def execute(self, sql, params=None):
+            executed.append(str(sql))
+            return FakeResult()
+
+    novo_id = await derivar_personalizacao_do_base(
+        session=FakeSession(),
+        aluno_id="b49f2e21-a6f9-4c8d-9533-5a32bb219754",
+        classe_id=32,
+        topico_id=117,
+        conteudo_id=125,
+        brainhex_profile_key="seeker",
+    )
+
+    assert novo_id == 4242
+    sql = "\n".join(executed)
+    assert "INSERT INTO conteudo_personalizado" in sql
+    assert "FROM conteudo_personalizado base" in sql
+    assert "base.aluno_id IS NULL" in sql
+    # A derivacao copia; nao pode inventar geracao nova.
+    assert "base.materiais" in sql
+    assert "base.source_hash" in sql
+
+
+def test_enrollment_deriva_antes_de_gerar() -> None:
+    """O ramo tem que devolver {"record": ...}: o chamador so marca o target
+    como completed quando record["status"] == "pronto"."""
+    import inspect
+
+    from app.services import personalizacao_jobs
+
+    fonte = inspect.getsource(personalizacao_jobs._process_media_render_target)
+    assert "derivar_personalizacao_do_base" in fonte
+    assert "JOB_KIND_ENROLLMENT" in fonte

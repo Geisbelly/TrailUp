@@ -955,6 +955,63 @@ async def _seed_progress(
         )
 
 
+async def derivar_personalizacao_do_base(
+    *,
+    session: AsyncSession,
+    aluno_id: str,
+    classe_id: int,
+    topico_id: int,
+    conteudo_id: int | None,
+    brainhex_profile_key: str,
+) -> int | None:
+    """Copia a base do perfil para uma linha do aluno.
+
+    A geracao pesada acontece uma vez, na base (aluno_id NULL). Matricular
+    alguem nao deve disparar OpenAI/TTS de novo para material que ja existe:
+    30 alunos do mesmo perfil viram 30 derivacoes de UMA geracao, nao 30
+    geracoes.
+
+    Devolve o id da linha do aluno recem-criada, ou None quando nao havia base
+    para copiar (o chamador segue pelo caminho de geracao normal). Em conflito
+    - a linha do aluno ja existe - tambem devolve None de proposito: a dedup do
+    caminho normal (`buscar_mais_recente_por_perfil`) ja sabe reaproveitar, e
+    duplicar essa decisao aqui daria duas fontes de verdade.
+    """
+    result = await session.execute(
+        text(
+            """
+            INSERT INTO conteudo_personalizado (
+              aluno_id, classe_id, topico_id, conteudo_id, brainhex_profile_key,
+              ciclo_id, plano, materiais, formato_prioritario, formatos_gerados,
+              status, source_hash, gerado_em, updated_at
+            )
+            SELECT
+              CAST(:aluno_id AS UUID), base.classe_id, base.topico_id, base.conteudo_id,
+              base.brainhex_profile_key, base.ciclo_id, base.plano, base.materiais,
+              base.formato_prioritario, base.formatos_gerados,
+              base.status, base.source_hash, NOW(), NOW()
+            FROM conteudo_personalizado base
+            WHERE base.aluno_id IS NULL
+              AND base.classe_id = :classe_id
+              AND base.topico_id = :topico_id
+              AND base.conteudo_id IS NOT DISTINCT FROM :conteudo_id
+              AND base.brainhex_profile_key = :brainhex_profile_key
+            ON CONFLICT DO NOTHING
+            RETURNING id
+            """
+        ),
+        {
+            "aluno_id": aluno_id,
+            "classe_id": classe_id,
+            "topico_id": topico_id,
+            "conteudo_id": conteudo_id,
+            "brainhex_profile_key": brainhex_profile_key,
+        },
+    )
+    return result.scalar()
+
+
+
 async def _cleanup_target(
     *,
     session: AsyncSession,
@@ -1025,6 +1082,31 @@ async def _process_media_render_target(
             aluno_id=aluno_id,
             topico_id=topico_id,
         )
+
+    # Matricular nao regera: a base do perfil ja tem o material, entao a linha
+    # do aluno e uma COPIA dela. Sem isto, 30 alunos do mesmo perfil disparam
+    # 30 geracoes identicas. Quando ainda nao ha base, segue o caminho normal.
+    #
+    # Devolve {"record": ...} porque e o que o chamador le: ele so marca o
+    # target como completed quando record["status"] == "pronto". Como a copia
+    # herda o status da base, uma base ainda em "processando_midias" deixa o
+    # target pendente e ele volta depois - que e o comportamento certo.
+    if job.get("kind") == JOB_KIND_ENROLLMENT and aluno_id is not None:
+        derivado_id = await derivar_personalizacao_do_base(
+            session=session,
+            aluno_id=aluno_id,
+            classe_id=classe_id,
+            topico_id=topico_id,
+            conteudo_id=conteudo_id,
+            brainhex_profile_key=target_profile_key,
+        )
+        if derivado_id is not None:
+            repo_derivado = ConteudoPersonalizadoRepository(session)
+            record = await repo_derivado.buscar_por_id(int(derivado_id))
+            if record:
+                await _seed_progress(session=session, record=record)
+                await session.commit()
+                return {"record": record}
 
     # Jobs media_render são legados — BrainHex é responsável por gerar as mídias.
     # Redireciona disparando BrainHex para o personalizacao_id já existente.
