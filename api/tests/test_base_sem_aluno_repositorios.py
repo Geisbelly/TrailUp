@@ -150,3 +150,20 @@ def test_fetch_personalizacao_context_aceita_base_sem_dono() -> None:
         .annotation
         == "str | None"
     )
+
+
+def test_artefatos_nao_fabricam_a_string_none() -> None:
+    """`str(None)` devolve a string 'None', e o asyncpg tenta encodar isso como
+    UUID: `invalid UUID 'None': length must be between 32..36 characters`.
+
+    Corrigir so o predicado (IS NOT DISTINCT FROM) nao adianta se o PARAMETRO
+    ja chega como 'None' -- foi assim que a base quebrou em producao mesmo com
+    o predicado certo:
+
+        WHERE aluno_id IS NOT DISTINCT FROM CAST($1 AS UUID)
+        [parameters: ('None', 133, 193)]
+    """
+    fonte = inspect.getsource(ArtefatosPersonalizadosRepository)
+
+    assert '"aluno_id": str(aluno_id),' not in fonte
+    assert '"aluno_id": str(aluno_id) if aluno_id is not None else None,' in fonte
