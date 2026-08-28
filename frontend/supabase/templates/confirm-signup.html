@@ -1,0 +1,192 @@
+<!--
+  TrailUp — e-mail de confirmacao de cadastro (Supabase Auth).
+
+  Cole em: Authentication > Emails > Confirm signup.
+  A unica variavel obrigatoria e {{ .ConfirmationURL }}.
+
+  Por que o HTML e assim (e nao como o resto do frontend):
+
+  - Tabelas, nao flexbox/grid. O Outlook renderiza com o motor do Word e
+    ignora layout moderno; tabela e o unico container que se comporta igual
+    em todos os clientes.
+  - Estilo inline em tudo que importa. Gmail e outros removem <style> do
+    <head> em varios contextos; o bloco la em cima serve so para o que nao
+    da para inlinar (media query e prefers-color-scheme).
+  - Sem webfont. Cinzel e Inter nao carregam na maioria dos clientes, entao
+    a pilha cai em Georgia (serif, para o wordmark) e nas sans do sistema.
+    O peso da identidade fica na cor e no layout, nao na tipografia.
+  - Cores em hex fixo, derivadas dos tokens de frontend/src/index.css:
+      --background 225 32% 8%  -> #0E111B
+      --card       226 28% 12% -> #161A27
+      --primary    266 95% 66% -> #9D56FB
+      --accent     239 84% 67% -> #6467F2
+      --foreground 40 20% 94%  -> #F3F1ED
+      --muted-fg   230 10% 72% -> #B0B3BF
+      --border     226 20% 22% -> #2D3243
+    Variavel CSS nao existe em e-mail: se os tokens mudarem, este arquivo
+    precisa ser atualizado junto.
+  - O link aparece tambem como texto puro no rodape. Cliente corporativo
+    reescreve href para dominio de scanner, e ai o botao pode nao abrir --
+    copiar e colar vira a saida.
+-->
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="supported-color-schemes" content="dark light" />
+    <title>Confirme seu cadastro no TrailUp</title>
+    <style>
+      /* Clientes que suportam <style> ganham isto; os demais usam o inline. */
+      @media only screen and (max-width: 600px) {
+        .tu-wrap { width: 100% !important; }
+        .tu-pad { padding-left: 24px !important; padding-right: 24px !important; }
+        .tu-h1 { font-size: 26px !important; line-height: 34px !important; }
+        .tu-btn a { display: block !important; }
+      }
+      a { color: #B79BFF; }
+    </style>
+  </head>
+  <body style="margin:0; padding:0; background-color:#0E111B; -webkit-font-smoothing:antialiased;">
+    <!-- Preheader: primeira linha na caixa de entrada, invisivel no corpo. -->
+    <div style="display:none; max-height:0; overflow:hidden; opacity:0; mso-hide:all;">
+      Falta um passo para sua trilha começar. Confirme seu e-mail.
+    </div>
+
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+           style="background-color:#0E111B; margin:0; padding:0;">
+      <tr>
+        <td align="center" style="padding:40px 12px;">
+
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" class="tu-wrap"
+                 style="width:600px; max-width:600px;">
+
+            <!-- Marca: icone + wordmark.
+
+                 O icone e' referenciado por URL porque e-mail nao aceita
+                 base64 embutido (o Gmail bloqueia). A origem tem que ser
+                 publica e estavel: /logo.png ja e' servido pela Vercel.
+                 Este endereco e' literal de proposito -- o template mora no
+                 painel do Supabase e nao le variavel de ambiente. Se o
+                 dominio mudar, esta linha muda junto.
+
+                 O wordmark em texto continua embaixo: a maioria dos clientes
+                 bloqueia imagem por padrao ate o leitor liberar, e sem ele o
+                 e-mail comecaria sem marca nenhuma. O `alt` cobre o mesmo
+                 caso no lugar do icone. -->
+            <tr>
+              <td align="center" style="padding-bottom:28px;">
+                <img src="https://trailup.vercel.app/logo.png"
+                     width="64" height="64" alt="TrailUp"
+                     style="display:block; margin:0 auto 14px; width:64px; height:64px;
+                            border:0; outline:none; text-decoration:none;" />
+                <span style="font-family:Cinzel, Georgia, 'Times New Roman', serif; font-size:30px;
+                             font-weight:700; letter-spacing:3px; color:#F3F1ED;">TRAILUP</span>
+                <div style="height:3px; width:56px; margin:12px auto 0;
+                            background-color:#9D56FB; border-radius:2px;
+                            background-image:linear-gradient(90deg,#9D56FB,#6467F2);"></div>
+              </td>
+            </tr>
+
+            <!-- Cartao -->
+            <tr>
+              <td style="background-color:#161A27; border:1px solid #2D3243; border-radius:16px;">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+
+                  <!-- Faixa superior, no lugar de um heroi grafico -->
+                  <tr>
+                    <td style="height:4px; line-height:4px; font-size:0;
+                               background-color:#9D56FB;
+                               background-image:linear-gradient(90deg,#9D56FB 0%,#6467F2 100%);
+                               border-radius:16px 16px 0 0;">&nbsp;</td>
+                  </tr>
+
+                  <tr>
+                    <td class="tu-pad" style="padding:40px 44px 8px;">
+                      <p style="margin:0 0 10px; font-family:Inter,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+                                font-size:12px; font-weight:700; letter-spacing:1.6px;
+                                text-transform:uppercase; color:#9D56FB;">Sua trilha começa aqui</p>
+
+                      <h1 class="tu-h1" style="margin:0 0 18px;
+                                 font-family:Cinzel, Georgia,'Times New Roman',serif;
+                                 font-size:31px; line-height:40px; font-weight:700; color:#F3F1ED;">
+                        Confirme seu cadastro
+                      </h1>
+
+                      <p style="margin:0 0 14px; font-family:Inter,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+                                font-size:16px; line-height:26px; color:#B0B3BF;">
+                        Falta um passo. Confirme seu e-mail para liberar seu acesso e
+                        descobrir o perfil que vai moldar seu jeito de aprender.
+                      </p>
+                    </td>
+                  </tr>
+
+                  <!-- Botao -->
+                  <tr>
+                    <td class="tu-pad tu-btn" align="center" style="padding:18px 44px 8px;">
+                      <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                        <tr>
+                          <td align="center" bgcolor="#9D56FB" style="border-radius:10px;">
+                            <a href="{{ .ConfirmationURL }}"
+                               style="display:inline-block; padding:15px 40px; border-radius:10px;
+                                      font-family:Inter,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+                                      font-size:16px; font-weight:700; letter-spacing:0.3px;
+                                      color:#12081F; text-decoration:none;
+                                      background-color:#9D56FB;">Confirmar meu e-mail</a>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td class="tu-pad" style="padding:14px 44px 36px;">
+                      <p style="margin:0; font-family:Inter,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+                                font-size:13px; line-height:21px; color:#8A8D99; text-align:center;">
+                        O link vale por tempo limitado.
+                      </p>
+                    </td>
+                  </tr>
+
+                  <!-- Fallback do link -->
+                  <tr>
+                    <td class="tu-pad" style="padding:0 44px 36px;">
+                      <div style="border-top:1px solid #2D3243; padding-top:22px;">
+                        <p style="margin:0 0 8px; font-family:Inter,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+                                  font-size:12px; line-height:19px; color:#8A8D99;">
+                          Se o botão não funcionar, copie e cole este endereço no navegador:
+                        </p>
+                        <p style="margin:0; font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;
+                                  font-size:12px; line-height:19px; color:#B79BFF; word-break:break-all;">
+                          {{ .ConfirmationURL }}
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+
+                </table>
+              </td>
+            </tr>
+
+            <!-- Rodape -->
+            <tr>
+              <td align="center" style="padding:26px 24px 0;">
+                <p style="margin:0 0 6px; font-family:Inter,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+                          font-size:12px; line-height:19px; color:#6E7180;">
+                  Você recebeu este e-mail porque criaram uma conta com este endereço no TrailUp.
+                </p>
+                <p style="margin:0; font-family:Inter,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+                          font-size:12px; line-height:19px; color:#6E7180;">
+                  Se não foi você, ignore esta mensagem — nenhuma conta será ativada.
+                </p>
+              </td>
+            </tr>
+
+          </table>
+
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
