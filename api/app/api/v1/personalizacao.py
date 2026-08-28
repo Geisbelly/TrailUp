@@ -67,6 +67,7 @@ from app.services.auth import UserContext
 from app.services.content_enrichment import ContentEnrichmentError, derive_base_blocks_and_topic
 from app.services.group_analysis import GroupAnalysisService
 from app.services.llm import JsonLLMService, load_prompt
+from app.services.material_revisao import incrementar_revisao
 from app.services.media_agents import (
     regenerar_documento_brainhex,
     regenerar_slide_brainhex,
@@ -2135,9 +2136,15 @@ async def regenerar_documento_personalizacao(
         )
 
     materiais_atualizados = copy.deepcopy(materiais)
-    materiais_atualizados.setdefault("markdown", {}).setdefault("payload", {})["markdown"] = (
+    markdown_material = materiais_atualizados.setdefault("markdown", {})
+    markdown_material.setdefault("payload", {})["markdown"] = (
         resultado.get("markdown", markdown_atual)
     )
+    # Sinaliza ao cliente que este material mudou. Sem isto o mobile mantem
+    # o arquivo em cache para sempre: a URL nao muda (o caminho embute
+    # generation-<source_hash>, que a regeracao nao toca) e o cache nunca
+    # revalida.
+    materiais_atualizados["markdown"] = incrementar_revisao(markdown_material)
     audio_atual = materiais_atualizados.get("audio")
     if isinstance(audio_atual, dict) and isinstance(resultado.get("audioScript"), str):
         audio_atual.setdefault("payload", {})["roteiro"] = resultado["audioScript"]
