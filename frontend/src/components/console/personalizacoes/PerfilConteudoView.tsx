@@ -19,6 +19,7 @@ import {
 } from "./materialPreview";
 import { getMaterialPartes } from "./materialParts";
 import { fetchHtmlDeckSource, createHtmlBlobUrl } from "./htmlDeckSource";
+import { resolverBucketDoMaterial } from "./materialBucket";
 import { supabase } from "@/integrations/supabase/client";
 
 export type MaterialTipo = "markdown" | "pdf" | "audio" | "apresentacao";
@@ -42,14 +43,11 @@ function materialUrl(material: Record<string, unknown> | null): string | null {
   return typeof url === "string" && url.trim() ? url.trim() : null;
 }
 
-// bucket vive so no nivel do material (nao por parte - ver
+// O bucket vive no nivel do material (nao por parte - ver
 // persistApresentacaoResult no BrainHexPDF), ao contrario de storage_path
-// (que MaterialPartInfo ja traz por parte).
-function materialBucket(material: Record<string, unknown> | null): string | null {
-  if (!material) return null;
-  const bucket = material.bucket;
-  return typeof bucket === "string" && bucket.trim() ? bucket.trim() : null;
-}
+// (que MaterialPartInfo ja traz por parte). Mas ele e' gravado de forma
+// INCONSISTENTE: metade das apresentacoes chega sem o campo, e ai o preview
+// caia num <iframe src> que nunca renderiza. Ver materialBucket.ts.
 
 // ReactMarkdown + remark-gfm (tabelas, listas numeradas, links, blocos de
 // codigo, imagens) - o renderizador anterior era escrito a mao e so
@@ -470,7 +468,7 @@ function MaterialTabContent({
     ? versionedMaterialUrl(rawUrl, material, fallbackUpdatedAt)
     : null;
   const previewMode = resolveDocumentPreviewMode(material, tipo === "pdf" ? "pdf" : "apresentacao");
-  const bucket = materialBucket(material);
+  const bucket = resolverBucketDoMaterial(material);
   const storagePath = activeParte?.storage_path ?? null;
 
   const payload = material && typeof material.payload === "object" ? (material.payload as Record<string, unknown>) : null;

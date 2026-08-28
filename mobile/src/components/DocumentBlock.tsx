@@ -14,6 +14,7 @@ import {
   parsePptxSlides,
 } from "@/utils/nativeDocumentParsers";
 import { ensureCachedNativeContent } from "@/utils/nativeContentCache";
+import { versionedCacheKey } from "@/utils/materialCacheVersion";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { shouldHideChecklist, shouldHideNotes, shouldHideQuiz, withHideParams } from "@/utils/contentVisibility";
 import type { DeckProgressEvent } from "@/utils/deckProgressMessage";
@@ -961,7 +962,11 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent, pro
       };
     }
 
-    const cacheKey = sourceUrl?.trim() || resolvedUrl;
+    // Versionado pela revisao do material: a URL sozinha NAO muda quando o
+    // professor regenera (o caminho embute generation-<source_hash>, que a
+    // regeracao nao toca) e o cache nativo nunca revalida. A revisao vem no
+    // payload -- ver normalizeMediaBlocks em utils/personalization.ts.
+    const cacheKey = versionedCacheKey(sourceUrl?.trim() || resolvedUrl, payload);
     const extensionHint =
       getFileExtension(sourceUrl) ??
       getFileExtension(resolvedUrl) ??

@@ -48,6 +48,7 @@ import {
 } from '@/utils/progressoPersonalizado';
 import { buildContentBlocks, isUrl } from '@/utils/contentBlocks';
 import { ensureCachedNativeContent } from '@/utils/nativeContentCache';
+import { versionedCacheKey } from '@/utils/materialCacheVersion';
 import {
   aggregatePersonalizedTopicPayloads,
   buildContentScopedPersonalizationItemKey,
@@ -104,7 +105,7 @@ const PREFETCHABLE_TYPES = new Set([
 
 const MEDIA_GENERATION_COOLDOWN_MS = 3 * 60 * 1000;
 
-type PrefetchEntry = { url: string; hint?: string | null; key: string };
+type PrefetchEntry = { url: string; hint?: string | null; key: string; revisao?: number };
 
 function parseJsonStringSafe<T = unknown>(value: unknown): T | unknown {
   if (typeof value !== 'string') return value;
@@ -212,7 +213,8 @@ function collectPrefetchEntries(payload: PersonalizedTopicPayload | null): Prefe
   const seen = new Set<string>();
   const entries: PrefetchEntry[] = [];
 
-  const pushUrl = (url: unknown, hint: string | null | undefined, key: string) => {
+  const pushUrl = (url: unknown, hint: string | null | undefined, key: string,
+                   revisao?: number) => {
     if (typeof url !== 'string' || !isUrl(url)) return;
     // Reancora na origem do app antes de baixar: a URL gravada pode ter sido
     // montada com a base errada no servidor (host interno do deploy), e ai o
@@ -221,7 +223,7 @@ function collectPrefetchEntries(payload: PersonalizedTopicPayload | null): Prefe
     const utilizavel = buildSupabasePublicStorageUrl(url);
     if (seen.has(utilizavel)) return;
     seen.add(utilizavel);
-    entries.push({ url: utilizavel, hint, key });
+    entries.push({ url: utilizavel, hint, key, revisao });
   };
 
   const handleBlock = (block: any, keyPrefix: string) => {
@@ -232,7 +234,8 @@ function collectPrefetchEntries(payload: PersonalizedTopicPayload | null): Prefe
       payloadObj?.uri ??
       payloadObj?.src ??
       (typeof block.payload === 'string' ? block.payload : null);
-    pushUrl(url, String(block.tipo ?? ''), `${keyPrefix}:${block.id ?? 'block'}`);
+    pushUrl(url, String(block.tipo ?? ''), `${keyPrefix}:${block.id ?? 'block'}`,
+      typeof payloadObj?.revisao === 'number' ? payloadObj.revisao : undefined);
   };
 
   (payload.primaryBlocks ?? []).forEach((block: any, index: number) => {
@@ -264,7 +267,9 @@ async function prefetchPersonalizedPayload(payload: PersonalizedTopicPayload | n
   for (const entry of limited) {
     try {
       await ensureCachedNativeContent(
-        `${entry.key}:${entry.url}`,
+        // Versionada pela revisao: sem isso o prefetch rebaixa o arquivo
+        // antigo e o aluno nunca ve o material regerado.
+        `${entry.key}:${versionedCacheKey(entry.url, { revisao: entry.revisao })}`,
         entry.url,
         { extensionHint: entry.hint ?? undefined }
       );

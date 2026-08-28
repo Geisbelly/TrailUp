@@ -139,6 +139,19 @@ Cada perfil carrega:
   (JSONB: `audio`/`apresentacao`/`markdown`/`cards`), `ai_patch` (JSONB),
   `formato_prioritario`, `formatos_gerados`, `ciclo_id`. Unique por
   `(aluno, tópico, perfil BrainHex)`.
+  > **`materiais.<tipo>.revisao`** é o sinal de "este material mudou" para o
+  > cliente. A regeração faz `UPDATE` in place sem trocar `source_hash` — e não
+  > pode trocar, porque `source_hash` governa a dedup de geração —, então a URL
+  > no Storage (que embute `generation-<source_hash>`) continua a mesma. Sem
+  > `revisao`, o cache do mobile nunca rebaixa o arquivo: ele é chaveado pela
+  > URL, **não revalida**, e a expiração de 3 dias é renovada a cada acesso.
+  >
+  > É por MATERIAL, não por personalização: regerar o texto não pode invalidar
+  > áudio e apresentação. No mobile ela é carimbada **no payload do bloco**
+  > (`normalizeMediaBlocks`), nunca na URL — `resumeIdentity` deriva a posição
+  > de retomada da URL, e versioná-la faria o aluno perder o progresso a cada
+  > regeração.
+
 - `cards_personalizados`, `atividades_personalizadas`, `questoes_personalizadas` — artefatos desnormalizados (com `ativo`/`obsoleto_em`).
 - `fontes_personalizacao` — fontes do professor (upload/link), `visibilidade` `classe|aluno`.
 - `personalizacao_jobs` + `personalizacao_job_targets` — fila assíncrona
