@@ -79,6 +79,8 @@ export default function Entrada() {
           <TouchableOpacity
             style={[style.button, { borderColor: gold, backgroundColor: tinycolor(AUTH_PALETTE.accent).darken(5).toHexString() }]}
             onPress={() => Linking.openURL(app.siteCadastro)}
+            accessibilityRole="link"
+            accessibilityLabel="Novato, criar conta"
           >
             <Text style={[style.buttonText, { color: "#FFF" }]}>NOVATO(A)</Text>
           </TouchableOpacity>
@@ -86,6 +88,8 @@ export default function Entrada() {
           <TouchableOpacity
             style={[style.button, style.buttonSecondary, { borderColor: goldDim, backgroundColor: goldFaint }]}
             onPress={() => router.replace("/(auth)/tela")}
+            accessibilityRole="button"
+            accessibilityLabel="Já tenho conta"
           >
             <Text style={[style.buttonText, { color: gold }]}>JÁ TENHO CONTA</Text>
           </TouchableOpacity>
