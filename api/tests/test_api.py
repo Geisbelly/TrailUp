@@ -1047,7 +1047,7 @@ def _stored_record_com_materiais(materiais: dict) -> dict:
     }
 
 
-def test_regenerar_documento_route_updates_markdown_e_roteiro(app, monkeypatch) -> None:
+def test_regenerar_documento_route_atualiza_markdown_sem_tocar_no_audio(app, monkeypatch) -> None:
     fake_session = FakeSession()
 
     async def override_session():
@@ -1091,7 +1091,13 @@ def test_regenerar_documento_route_updates_markdown_e_roteiro(app, monkeypatch) 
     assert response.status_code == 200
     body = response.json()
     assert body["materiais"]["markdown"]["payload"]["markdown"] == "texto novo"
-    assert body["materiais"]["audio"]["payload"]["roteiro"] == "roteiro novo"
+    # O roteiro NAO muda: este endpoint nao refaz o .mp3, entao gravar um
+    # roteiro novo deixaria o aluno lendo um texto e ouvindo outro. O
+    # microservice devolve `audioScript` e ele e' ignorado de proposito.
+    assert body["materiais"]["audio"]["payload"]["roteiro"] == "roteiro antigo"
+    # Sinal de cache: so o material regerado sobe de revisao.
+    assert body["materiais"]["markdown"]["revisao"] == 2
+    assert "revisao" not in body["materiais"]["audio"]
     assert captured["record_id"] == 321
     assert captured["materiais"]["markdown"]["payload"]["markdown"] == "texto novo"
 

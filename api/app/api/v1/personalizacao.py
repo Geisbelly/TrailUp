@@ -2095,11 +2095,12 @@ async def regenerar_documento_personalizacao(
     user: UserContext = Depends(require_professor),
     session: AsyncSession = Depends(get_session),
 ) -> PersonalizacaoResponse:
-    """Regenera o markdown+roteiro de audio da base por perfil via prompt livre.
+    """Regenera SO o markdown da base por perfil, via prompt livre.
 
-    Nao regenera o audio narrado (arquivo_url de materiais.audio) - so o
-    texto do roteiro, mesma limitacao do endpoint /api/v1/regenerate/document
-    do microservice que este endpoint consome.
+    Nao toca em audio nem apresentacao. O microservice devolve tambem um
+    roteiro de audio, que e' deliberadamente ignorado: este endpoint nao
+    refaz o .mp3, e gravar so o roteiro deixaria o aluno lendo um texto e
+    ouvindo outro.
     """
     record = await _carregar_registro_para_regeneracao(
         classe_id=classe_id,
@@ -2145,9 +2146,10 @@ async def regenerar_documento_personalizacao(
     # generation-<source_hash>, que a regeracao nao toca) e o cache nunca
     # revalida.
     materiais_atualizados["markdown"] = incrementar_revisao(markdown_material)
-    audio_atual = materiais_atualizados.get("audio")
-    if isinstance(audio_atual, dict) and isinstance(resultado.get("audioScript"), str):
-        audio_atual.setdefault("payload", {})["roteiro"] = resultado["audioScript"]
+    # O roteiro do audio NAO e' escrito aqui. Este endpoint nao regenera o
+    # .mp3 (ver docstring), entao gravar um roteiro novo deixaria o material
+    # internamente inconsistente: o aluno leria um texto e ouviria outro.
+    # A regeracao de audio tem endpoint proprio, que refaz o arquivo.
 
     personalizacao_repo = ConteudoPersonalizadoRepository(session)
     updated_record = await personalizacao_repo.atualizar_materiais_e_status(

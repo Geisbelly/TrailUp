@@ -53,3 +53,15 @@ def test_endpoint_de_documento_incrementa_a_revisao_do_markdown() -> None:
     assert "incrementar_revisao(markdown_material)" in fonte
     # A revisao e' do markdown; o audio tem a dele (Task 3).
     assert 'materiais_atualizados["markdown"] = incrementar_revisao' in fonte
+
+
+def test_regeneracao_de_texto_nao_toca_no_audio() -> None:
+    """O .mp3 NAO e' regerado por este endpoint (ver docstring dele). Escrever
+    o roteiro novo aqui deixava o audio dizendo uma coisa e o texto outra."""
+    import inspect
+
+    from app.api.v1 import personalizacao
+
+    fonte = inspect.getsource(personalizacao.regenerar_documento_personalizacao)
+    assert 'audio_atual.setdefault("payload", {})["roteiro"]' not in fonte
+    assert "audioScript" not in fonte
