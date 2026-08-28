@@ -12,6 +12,7 @@ import pytest
 from app.repositories.artefatos_personalizados import ArtefatosPersonalizadosRepository
 from app.repositories.conteudo_personalizado import ConteudoPersonalizadoRepository
 from app.repositories.materiais import MateriaisRepository
+from app.services import personalizacao as personalizacao_service
 
 
 def test_on_conflict_repete_o_predicado_do_indice_por_aluno():
@@ -121,3 +122,31 @@ def test_enrollment_deriva_antes_de_gerar() -> None:
     fonte = inspect.getsource(personalizacao_jobs._process_media_render_target)
     assert "derivar_personalizacao_do_base" in fonte
     assert "JOB_KIND_ENROLLMENT" in fonte
+
+
+def test_contexto_da_base_nao_busca_aluno() -> None:
+    """A base e (classe x topico x perfil) montada do conteudo do professor.
+    Buscar aluno ali trazia modo_operacao, eventos, progresso e desempenho --
+    nada disso se aplica -- e estourava com aluno_id nulo:
+    `invalid input for query argument $1: 'None' (invalid UUID)` e
+    `Aluno None nao encontrado.`
+
+    O resultado de fetch_aluno_context so alimentava perfil_brainhex/
+    perfil_dominante (que o worker sobrescreve com o perfil do target) e
+    contexto_aluno. Para a base, os dois sao descartaveis."""
+    fonte = inspect.getsource(personalizacao_service.fetch_personalizacao_context)
+
+    assert "if aluno_id is None:" in fonte
+    # A CHAMADA (nao a mencao em comentario) tem que estar no ramo do else.
+    assert "else:\n        context = await context_repo.fetch_aluno_context(" in fonte
+    # E nunca incondicional, na margem da funcao.
+    assert "\n    context = await context_repo.fetch_aluno_context(" not in fonte
+
+
+def test_fetch_personalizacao_context_aceita_base_sem_dono() -> None:
+    assert (
+        inspect.signature(personalizacao_service.fetch_personalizacao_context)
+        .parameters["aluno_id"]
+        .annotation
+        == "str | None"
+    )
