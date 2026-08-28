@@ -879,7 +879,7 @@ export default function TrilhaConteudoScreen() {
   });
 
   useEffect(() => {
-    const titulo = String(topico?.titulo ?? "Detalhes");
+    const titulo = String(topico?.nome ?? "Detalhes");
     const totalBlocos = progressoVisual.total;
     const concluidos = progressoVisual.concluidos;
     const capabilities = getBrainHexProfileCapabilities(perfil);
@@ -927,7 +927,7 @@ export default function TrilhaConteudoScreen() {
     personalizedTopic,
     progressoVisual.concluidos,
     progressoVisual.total,
-    topico?.titulo,
+    topico?.nome,
     topicoId,
     usuario?.perfis,
   ]);

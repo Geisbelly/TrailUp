@@ -174,12 +174,23 @@ export class Topico {
     return 'não iniciado';
   }
 
-  /** ✅ Atualiza progresso no banco */
+  /**
+   * Registra a visita no `topico_aluno`.
+   *
+   * **Não grava `percentual_concluido` nem `status`.** Eles são derivados no
+   * banco pelo trigger `trg_*_progresso`, que enxerga o percurso inteiro
+   * (material personalizado incluído) e sabe que o conteúdo do professor é
+   * opcional.
+   *
+   * Escrever daqui era pior que redundante: quem chama grava o item primeiro
+   * (`marcarVisto`, `registrarConclusao`), o trigger calcula o valor certo, e
+   * este upsert vinha logo atrás e o substituía pelo percentual sobre o
+   * material do professor apenas — que é o que `calcularPercentual` sabe
+   * calcular. A conta correta do banco nunca sobrevivia.
+   */
   async atualizarProgresso(aluno_id: string): Promise<void> {
     try {
       const agora = new Date().toISOString();
-      const percentual = clampPercent(this.calcularPercentual());
-      const status = this.calcularStatus();
       const ultimaAtividade = this.inferirUltimaAtividadeId();
 
       const { error } = await supabase
@@ -187,8 +198,6 @@ export class Topico {
         .upsert({
           aluno_id,
           topico_id: this.id,
-          percentual_concluido: percentual,
-          status,
           ultima_atividade: ultimaAtividade,
           ultima_visualizacao: agora,
           updated_at: agora
@@ -198,15 +207,10 @@ export class Topico {
 
       if (error) throw error;
 
-      // Atualiza localmente
-      this.percentual_concluido = percentual;
-      this.status = status;
       this.ultima_atividade = ultimaAtividade;
       this.ultima_visualizacao = agora;
-
-      console.log(`[Topico] Progresso atualizado: ${percentual.toFixed(1)}%`);
     } catch (err) {
-      console.warn('[Topico] Erro ao atualizar progresso:', err);
+      console.warn('[Topico] Erro ao registrar visita do tópico:', err);
       throw err;
     }
   }

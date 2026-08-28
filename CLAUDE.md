@@ -83,6 +83,22 @@ Estas decisões são **fixas**; sigam-nas ao corrigir/estender.
    perfil, mas garante AAA: eleva o accent quando muito escuro, alpha mínimo em
    bordas/glow, e `success`/`warning`/`info` **fixos** (não derivados do accent).
 
+5. **Progresso: o percurso é o material personalizado; o do professor é
+   opcional e vale bônus.** O percentual do tópico sai de
+   `trailup_recalcular_topico_aluno` (trigger sobre `conteudo_aluno`,
+   `atividade_aluno` e `personalizacao_item_progresso`), e o denominador é só o
+   material personalizado. Quando ele ainda não foi gerado, o conteúdo do
+   professor volta a ser o percurso — senão o aluno que concluiu tudo o que
+   existe veria 0%.
+
+   **Nenhum cliente escreve `percentual_concluido` nem `status` em
+   `topico_aluno`.** Havia quatro gravadores fazendo isso, todos com a conta
+   sobre o material do professor apenas, e todos rodando DEPOIS do trigger — a
+   conta certa nunca sobrevivia. `Topico.calcularPercentual()` continua
+   existindo, mas serve só a leituras locais: não use o valor dele para gravar
+   nem para "puxar para cima" o que veio do banco. Ver
+   `20260826_18_progresso_professor_opcional.py`.
+
 ## Perfis BrainHex (7)
 
 `Seeker`, `Survivor`, `Daredevil`, `Mastermind`, `Conqueror`, `Socializer`,
@@ -127,6 +143,26 @@ Cada perfil carrega:
 - `fontes_personalizacao` — fontes do professor (upload/link), `visibilidade` `classe|aluno`.
 - `personalizacao_jobs` + `personalizacao_job_targets` — fila assíncrona
   (`enrollment`, `class-delta`, `class-theme`, `student-cleanup`, `full-sync`).
+  **`class_delta_sync` é enfileirado pelo BANCO**, não pela API
+  (`20260827_03`): `fn_enqueue_class_delta_job` dispara em `topicos`,
+  `conteudos`, `atividades`, `questoes` e `cards` — as cinco tabelas que o
+  editor de trilha escreve. Salvar **é** o disparo; o console não chama nada
+  depois. Isso e o `class_theme_sync` (`fn_enqueue_classe_mapa_tema_job`) são
+  a aplicação direta da regra de fronteira: enfileirar não tem modelo de
+  linguagem no meio, e a API hibernando fazia todo save do professor falhar
+  com 502. Quem **processa** a fila continua na API — isso é geração, é IA.
+
+  Dois detalhes que não são acidentais. **Coalescência:** o trigger funde o
+  evento no job `pending` da classe (travando a linha com `FOR UPDATE`) em vez
+  de criar um por linha — sem isso, a reordenação de tópicos (um `UPDATE` por
+  linha) viraria N jobs. Job já em `processing` nunca é reaproveitado: o
+  worker já leu o `total_targets` dele. **Escopo na fusão:** se qualquer um
+  dos lados pediu o tópico inteiro, a fusão é o tópico inteiro — a união crua
+  de `conteudo_ids` encolheria o escopo e deixaria conteúdo sem regerar.
+
+  A listagem no console também não passa mais pela API: o professor lê
+  `personalizacao_jobs` direto, autorizado por
+  `personalizacao_jobs_professor_sel` (via `app_classes_do_professor()`).
 - `personalizacao_sugestao` + `personalizacao_sugestao_log` — ordem **aconselhada**
   de consumo do material por `(aluno × tópico × conteúdo)` e o histórico
   append-only de cada decisão (`criada`/`revisada`/`mantida`). Motor
@@ -171,6 +207,20 @@ de ritmo de leitura (WPM) roda no `linear_analysis_pipeline.py`
 (`_summarize_reading_pace`) usando `active_sec` por material como denominador
 — **não** `dwell_sec`, que inclui tempo parado com o material aberto e sub-
 estimaria o WPM de quem só fez uma pausa no meio da leitura.
+
+> **`dwell_sec`, `active_sec` e `idle_sec` são contadores CUMULATIVOS** por
+> `(sessão × item)`, reenviados inteiros a cada lote — não são o tempo daquele
+> lote. Somar as linhas multiplica o tempo pelo número de lotes: em 15 das 34
+> sessões medidas a soma dava mais que o relógio da própria sessão. Para totalizar,
+> some os **incrementos** entre leituras consecutivas, tratando queda como reset
+> do contador (a leitura inteira vale) e leitura repetida como zero — é o que
+> `trailup_tempo_telemetria_min` faz (`20260827_02`). É também por isso que
+> `topic`, `content` e `material` aparecem com o mesmo valor dentro de um lote:
+> cada escopo tem o próprio acumulado, e o aninhamento é inclusivo.
+>
+> Corolário: `tempo_gasto_min` em `topico_aluno`, `conteudo_aluno` e
+> `atividade_aluno` é **derivado por trigger** a partir da telemetria. Nenhum
+> cliente escreve essa coluna.
 
 > Lacuna real ainda aberta: `MentalStateHistoryRepository.listar_por_aluno`
 > (`api/app/repositories/mental_state.py`) só é exercitado em teste — o

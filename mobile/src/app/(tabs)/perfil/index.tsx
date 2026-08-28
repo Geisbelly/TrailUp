@@ -193,7 +193,7 @@ export default function PerfilHome() {
         : undefined;
       const targetRef = visibleMetricRef ?? profileTabsGuideRef;
       return registrarAlvoTour("perfil_metricas", targetRef, () => {
-        targetRef.current?.measureInWindow((_x, y) => {
+        targetRef.current?.measureInWindow((_x: number, y: number) => {
           const targetY = Math.max(0, profileScrollYRef.current + y - 118);
           profileScrollRef.current?.scrollTo({ y: targetY, animated: false });
         });
@@ -227,7 +227,9 @@ export default function PerfilHome() {
         await new Promise((resolve) => setTimeout(resolve, 180));
       }
 
-      const targetRef = profileGuideTargets[step.target];
+      const targetRef: React.RefObject<View | null> | undefined = (
+        profileGuideTargets as Record<string, React.RefObject<View | null>>
+      )[step.target];
       if (!targetRef?.current) return;
 
       await new Promise<void>((resolve) => {

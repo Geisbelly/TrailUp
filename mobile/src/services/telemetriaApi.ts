@@ -398,16 +398,24 @@ async function persistTelemetryBatchDirect(payload: TelemetryBatchPayload) {
 
     if (metricsError) {
       const rawMessage = String((metricsError as any)?.message ?? "").toLowerCase();
+      // 42P01 = relacao inexistente. Ai nao ha o que reter: o destino nao
+      // existe, e retentar so empilharia o mesmo lote para sempre.
       const missingTable =
         String((metricsError as any)?.code ?? "") === "42P01" ||
-        rawMessage.includes("telemetria_time_metric_entries");
+        rawMessage.includes("does not exist");
 
       if (!missingTable) {
-        console.warn(
-          "[telemetriaApi] Falha ao persistir metricas granulares:",
-          metricsError
-        );
+        // Antes isso era so um `console.warn` e a funcao seguia devolvendo
+        // sucesso -- o lote era descartado e o tempo por topico, conteudo,
+        // questao e card sumia em silencio, que e justamente o dado que
+        // aparecia errado. Propagar deixa o chamador reter e retentar.
+        throw metricsError;
       }
+
+      console.warn(
+        "[telemetriaApi] telemetria_time_metric_entries ausente; metricas granulares descartadas.",
+        metricsError
+      );
     }
   }
 
