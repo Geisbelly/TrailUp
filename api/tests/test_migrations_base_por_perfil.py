@@ -77,3 +77,44 @@ def test_professor_enxerga_material_de_nivel_topico():
     sql = _sql()
     assert "professor_all_materiais_gerados" in sql
     assert "personalizacao_id" in sql
+
+
+def _load_trigger_migration():
+    path = (
+        Path(__file__).resolve().parents[1]
+        / "alembic"
+        / "versions"
+        / "20260827_05_trigger_class_delta_base.py"
+    )
+    spec = importlib.util.spec_from_file_location("migration_20260827_05", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_trigger_nao_depende_mais_de_classe_aluno():
+    module = _load_trigger_migration()
+    assert module.revision == "20260827_05"
+    assert module.down_revision == "20260827_04"
+
+    sql = module.FN_ENQUEUE
+    assert "WHERE r.aluno_id IS NOT NULL" not in sql
+    assert "NULL::uuid" in sql
+    # As CTEs que tiravam representante da turma somem.
+    assert "FROM classe_aluno ca" not in sql
+    assert "representante AS" not in sql
+
+
+def test_trigger_repete_o_predicado_do_indice_parcial_da_base():
+    # ON CONFLICT sobre indice PARCIAL exige repetir o predicado, senao o
+    # Postgres levanta "no unique or exclusion constraint matching".
+    sql = _load_trigger_migration().FN_ENQUEUE
+    assert "ON CONFLICT (job_id, topico_id, conteudo_id, brainhex_profile_key)" in sql
+    assert "WHERE media_kind IS NULL AND aluno_id IS NULL" in sql
+
+
+def test_trigger_nao_escreve_target_profile_map():
+    # Chave e (aluno, topico, conteudo) e o perfil e o VALOR: sem aluno, os 7
+    # perfis colapsariam numa chave so. Todo target do trigger e base.
+    sql = _load_trigger_migration().FN_ENQUEUE
+    assert "jsonb_object_agg" not in sql
