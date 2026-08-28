@@ -160,6 +160,8 @@ export default function Login() {
             ]}
             onPress={handleLogin}
             disabled={!dadosValidos || carregando}
+            accessibilityRole="button"
+            accessibilityLabel="Entrar"
           >
             <Text style={[styles.buttonText, { color: dadosValidos ? "#FFF" : AUTH_PALETTE.textSubtle }]}>
               {carregando ? "Entrando..." : "Entrar"}
@@ -169,7 +171,11 @@ export default function Login() {
           {/* Link recuperar senha */}
           <View style={styles.linkContainer}>
             <Text style={[styles.boldText, { color: AUTH_PALETTE.textMuted }]}>Esqueceu a senha? </Text>
-            <TouchableOpacity onPress={() => router.push("/(auth)/recuperarSenha")}>
+            <TouchableOpacity
+              onPress={() => router.push("/(auth)/recuperarSenha")}
+              accessibilityRole="link"
+              accessibilityLabel="Recuperar senha"
+            >
               <Text style={[styles.linkText, { color: gold }]}>Recuperar senha</Text>
             </TouchableOpacity>
           </View>
@@ -181,6 +187,8 @@ export default function Login() {
               <Text
                 style={[styles.footerLink, { color: gold }]}
                 onPress={() => Linking.openURL(app.siteCadastro)}
+                accessibilityRole="link"
+                accessibilityLabel="Cadastre-se"
               >
                 Cadastre-se.
               </Text>

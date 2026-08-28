@@ -125,6 +125,8 @@ export default function RecuperarSenhaScreen() {
             ]}
             disabled={!emailValido || enviando}
             onPress={handleReset}
+            accessibilityRole="button"
+            accessibilityLabel="Enviar link"
           >
             <Text style={[styles.buttonText, { color: emailValido ? "#fff" : AUTH_PALETTE.textMuted }]}>
               {enviando ? "Enviando..." : "Enviar Link"}
@@ -134,7 +136,11 @@ export default function RecuperarSenhaScreen() {
           {/* Link de login */}
           <View style={styles.linkRow}>
             <Text style={[styles.linkText, { color: AUTH_PALETTE.textMuted }]}>Lembrou da senha? </Text>
-            <TouchableOpacity onPress={() => router.push("/(auth)/login")}>
+            <TouchableOpacity
+              onPress={() => router.push("/(auth)/login")}
+              accessibilityRole="link"
+              accessibilityLabel="Fazer login"
+            >
               <Text style={[styles.linkAction, { color: gold }]}>Fazer login</Text>
             </TouchableOpacity>
           </View>
@@ -146,6 +152,8 @@ export default function RecuperarSenhaScreen() {
               <Text
                 style={{ color: gold, textDecorationLine: "underline" }}
                 onPress={() => Linking.openURL(app.siteCadastro)}
+                accessibilityRole="link"
+                accessibilityLabel="Cadastre-se"
               >
                 Cadastre-se.
               </Text>
