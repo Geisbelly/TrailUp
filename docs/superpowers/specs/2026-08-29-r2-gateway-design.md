@@ -171,12 +171,26 @@ mobile mais o teste de que o `Authorization` não vaza para o R2 no 302.
 
 Ordem que nunca deixa o app sem arquivo:
 
-1. Copiar Supabase Storage → R2 preservando **o mesmo caminho**.
-2. Escrita nova passa a ir para os **dois** (`uploadBuffer` no microservice e o
-   upload do BrainHexPDF).
-3. Leitura passa a apontar para o gateway.
-4. Parar de escrever no Supabase Storage.
-5. **Nada é apagado do Supabase.**
+**Escrita nova vai só para o R2.** Nunca para os dois — gravar em dois lugares
+dobra o trabalho de escrita e o armazenamento para não resolver nada: o que
+protege a leitura é o fallback, não uma segunda cópia.
+
+**O que já está no Supabase fica onde está.** Não há migração em massa
+obrigatória. O gateway lê dos dois, então o material antigo continua servindo do
+Supabase enquanto o novo nasce no R2, e o egress decai sozinho conforme o
+material novo substitui o velho.
+
+Ordem, então:
+
+1. Leitura passa pelo gateway (troca das 700 URLs — migration `20260829_02`).
+2. Escrita nova aponta para o R2 (`uploadBuffer` no microservice e o upload do
+   BrainHexPDF). **Ainda não implementado.**
+3. **Nada é apagado do Supabase, e nada precisa ser copiado em massa.**
+
+A cópia dos 558 arquivos (`scripts/copiar-storage-para-r2.ts`) vira **opcional**:
+serve para antecipar o ganho no material mais acessado, não para viabilizar a
+migração. Ela custa ~327 MB de egress uma vez; sem ela, o custo é zero e o ganho
+chega mais devagar.
 
 **Não migrar os órfãos.** 537 arquivos / 367 MB (53% do bucket) não são
 referenciados por nenhuma linha viva de `materiais_gerados` nem do JSONB

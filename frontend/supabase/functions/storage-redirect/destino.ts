@@ -11,9 +11,13 @@
 // copiar deixaria material quebrado no intervalo, e a ordem entre os dois
 // passos viraria um ponto de falha.
 //
-// Nada e' apagado do Supabase: manter as duas copias custa armazenamento
-// (o bucket segue em ~712 MB de 1 GB) e nao custa egress, porque depois da
-// copia completa nenhuma requisicao cai mais no fallback.
+// Isto e' um fallback de LEITURA, nao gravacao em dois lugares. Escrita nova vai
+// so' para o R2; o que ja' esta' no Supabase fica onde esta'. Gravar nos dois
+// dobraria escrita e armazenamento sem resolver nada - o que protege a leitura
+// e' este fallback, nao uma segunda copia.
+//
+// Consequencia: nao ha migracao em massa obrigatoria. O material antigo segue
+// servindo do Supabase enquanto o novo nasce no R2, e o egress decai sozinho.
 
 /** Percent-encode por segmento, preservando as barras - igual ao Storage. */
 export function codificarCaminho(caminho: string): string {
