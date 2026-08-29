@@ -176,12 +176,30 @@ Ordem que nunca deixa o app sem arquivo:
    upload do BrainHexPDF).
 3. Leitura passa a apontar para o gateway.
 4. Parar de escrever no Supabase Storage.
-5. Só então apagar do Supabase.
+5. **Nada é apagado do Supabase.**
 
 **Não migrar os órfãos.** 537 arquivos / 367 MB (53% do bucket) não são
 referenciados por nenhuma linha viva de `materiais_gerados` nem do JSONB
 `conteudo_personalizado.materiais`. A migração é a hora natural de deixá-los
 para trás — e some a necessidade de escrever uma rotina de limpeza retroativa.
+
+### Os dois lugares, não um (decidido 2026-08-29)
+
+O plano original terminava apagando os arquivos do Supabase. Descartado: o
+material passa a viver nos **dois** lugares, e o gateway prefere o R2 (que não
+cobra egress) caindo no Supabase quando o objeto ainda não foi copiado.
+
+O ganho não é só evitar perda de dado. É que **o gateway responde certo para
+arquivo copiado e para arquivo ainda não copiado** — então a troca das 700 URLs
+deixa de precisar esperar a cópia terminar. Sem o fallback, trocar antes de
+copiar quebraria o material no intervalo, e a ordem entre os dois passos seria
+um ponto de falha.
+
+Custo: o bucket do Supabase continua ocupado (~712 MB de 1 GB). Não custa
+egress — depois da cópia completa, nenhuma requisição cai no fallback.
+
+E se o R2 ficar inacessível, o gateway cai no Supabase em vez de derrubar
+material que ainda é servível.
 
 ## Telemetria
 

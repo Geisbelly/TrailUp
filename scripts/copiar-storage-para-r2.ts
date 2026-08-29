@@ -136,7 +136,11 @@ function urlPublicaDoSupabase(cfg: Config, caminho: string): string {
   );
 }
 
-function assinarR2(cfg: Config, caminho: string, metodo: "GET" | "PUT" | "HEAD") {
+async function assinarR2(
+  cfg: Config,
+  caminho: string,
+  metodo: "GET" | "PUT" | "HEAD",
+): Promise<string> {
   return presignR2GetUrl({
     accountId: cfg.r2.accountId,
     accessKeyId: cfg.r2.accessKeyId,
@@ -172,7 +176,7 @@ async function copiarUm(
 
   // 2. Ja' esta' no destino com o mesmo tamanho? Pula - e' o que torna o script
   //    retomavel sem guardar progresso em lugar nenhum.
-  const destinoHead = await fetch(assinarR2(cfg, caminho, "HEAD"), { method: "HEAD" });
+  const destinoHead = await fetch(await assinarR2(cfg, caminho, "HEAD"), { method: "HEAD" });
   if (destinoHead.ok && tamanhoOrigem !== null && tamanhoDe(destinoHead) === tamanhoOrigem) {
     return { estado: "pulado", bytes: tamanhoOrigem };
   }
@@ -184,7 +188,7 @@ async function copiarUm(
   if (!origem.ok) return { estado: "falha", bytes: 0, nota: `download ${origem.status}` };
   const corpo = new Uint8Array(await origem.arrayBuffer());
 
-  const put = await fetch(assinarR2(cfg, caminho, "PUT"), {
+  const put = await fetch(await assinarR2(cfg, caminho, "PUT"), {
     method: "PUT",
     body: corpo,
     headers: {
@@ -198,7 +202,7 @@ async function copiarUm(
 
   // 4. Confere o que chegou. Sem isto um upload truncado passaria por sucesso e
   //    so' apareceria como material quebrado na mao do aluno.
-  const conferencia = await fetch(assinarR2(cfg, caminho, "HEAD"), { method: "HEAD" });
+  const conferencia = await fetch(await assinarR2(cfg, caminho, "HEAD"), { method: "HEAD" });
   const tamanhoDestino = conferencia.ok ? tamanhoDe(conferencia) : null;
   if (tamanhoDestino !== corpo.byteLength) {
     return {

@@ -35,6 +35,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.86.0";
 
 import { normalizarStoragePath } from "./caminho.ts";
 import { inicioDaJanela, presignR2GetUrl } from "./r2Presign.ts";
+import { urlPublicaDoSupabase } from "./destino.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -90,15 +91,35 @@ serve(async (req: Request) => {
   if (!data || data.length === 0) return erro(404, "Material nao encontrado.");
 
   const agoraMs = Date.now();
-  const url = await presignR2GetUrl({
-    accountId: contaR2,
-    accessKeyId: chaveR2,
-    secretAccessKey: segredoR2,
-    bucket: bucketR2,
-    key: caminho,
-    agoraMs,
-    janelaSegundos: JANELA_SEGUNDOS,
-  });
+  const assinar = (metodo: "GET" | "HEAD") =>
+    presignR2GetUrl({
+      accountId: contaR2,
+      accessKeyId: chaveR2,
+      secretAccessKey: segredoR2,
+      bucket: bucketR2,
+      key: caminho,
+      agoraMs,
+      janelaSegundos: JANELA_SEGUNDOS,
+      metodo,
+    });
+
+  // O material vive nos DOIS lugares. Prefere o R2, que nao cobra egress, e cai
+  // no Supabase quando o objeto ainda nao foi copiado - ver destino.ts.
+  //
+  // E' esse fallback que desacopla a troca das URLs da copia: o gateway responde
+  // certo para arquivo copiado e para arquivo ainda nao copiado, entao nenhum
+  // dos dois passos precisa esperar o outro.
+  let url: string;
+  try {
+    const noR2 = await fetch(await assinar("HEAD"), { method: "HEAD" });
+    url = noR2.ok
+      ? await assinar("GET")
+      : urlPublicaDoSupabase(Deno.env.get("SUPABASE_URL") ?? "", bucketR2, caminho);
+  } catch (e) {
+    // R2 inacessivel nao pode derrubar material que o Supabase ainda serve.
+    console.error("[storage-redirect] R2 indisponivel, caindo no Supabase", (e as Error).message);
+    url = urlPublicaDoSupabase(Deno.env.get("SUPABASE_URL") ?? "", bucketR2, caminho);
+  }
 
   // O 302 pode ser cacheado ate' o fim da janela: dentro dela a assinatura e' a
   // mesma para todo mundo, entao `public` vale e poupa invocacao.
