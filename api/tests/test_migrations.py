@@ -514,10 +514,24 @@ def test_rag_schema_pgvector_renders_idempotent_offline_sql() -> None:
     assert "idx_rag_chunks_embedding_hnsw" in rendered
     assert "USING hnsw (embedding vector_cosine_ops)" in rendered
 
+    # Scope nao tem default: quem insere deve escolher o escopo explicitamente.
+    assert "scope         text          NOT NULL" in rendered
+    assert "DEFAULT 'publico'" not in rendered
+
     # Check constraints de dominio no banco.
     assert "CHECK (scope IN ('publico', 'turma', 'aluno'))" in rendered
     assert "CHECK (tipo IN ('prereq', 'sucessor', 'similar'))" in rendered
     assert "CHECK (status IN ('pending', 'applied', 'dismissed'))" in rendered
+    assert "CHECK (tipo IN ('pedagogica', 'emocional', 'engajamento', 'notificacao'))" in rendered
+
+    # Escopo turma exige classe; escopo aluno exige aluno.
+    assert "CHECK (scope <> 'turma' OR classe_id IS NOT NULL)" in rendered
+    assert "CHECK (scope <> 'aluno' OR aluno_id IS NOT NULL)" in rendered
+
+    # Trigger de updated_at para rag_chunks.
+    assert "CREATE OR REPLACE FUNCTION set_rag_chunks_updated_at()" in rendered
+    assert "CREATE TRIGGER trg_rag_chunks_updated_at" in rendered
+    assert "EXECUTE FUNCTION set_rag_chunks_updated_at()" in rendered
 
     # FK interna entre relacoes e chunks; FKs para tabelas mestras foram
     # removidas porque elas pertencem a outro servico.
@@ -537,3 +551,40 @@ def test_rag_schema_pgvector_renders_idempotent_offline_sql() -> None:
     assert "auth.uid()" in rendered
 
     assert "UPDATE alembic_version SET version_num='20260829_03'" in rendered
+
+
+def test_rag_schema_pgvector_downgrade_renders_drop_sequence() -> None:
+    output = StringIO()
+    config = _offline_alembic_config(output)
+
+    migrations.command.downgrade(config, "20260829_03:20260829_02", sql=True)
+    rendered = output.getvalue()
+
+    # Policies sao removidas antes das tabelas.
+    assert rendered.index("DROP POLICY IF EXISTS intervencoes_sel") < rendered.index(
+        "DROP TABLE IF EXISTS intervencoes"
+    )
+    assert rendered.index("DROP POLICY IF EXISTS rag_relacoes_sel") < rendered.index(
+        "DROP TABLE IF EXISTS rag_relacoes"
+    )
+    assert rendered.index("DROP POLICY IF EXISTS rag_chunks_sel") < rendered.index(
+        "DROP TABLE IF EXISTS rag_chunks"
+    )
+
+    # Trigger e funcao de updated_at sao removidos antes da tabela.
+    assert rendered.index("DROP TRIGGER IF EXISTS trg_rag_chunks_updated_at") < rendered.index(
+        "DROP TABLE IF EXISTS rag_chunks"
+    )
+    assert rendered.index("DROP FUNCTION IF EXISTS set_rag_chunks_updated_at()") < rendered.index(
+        "DROP TABLE IF EXISTS rag_chunks"
+    )
+
+    # Indices caem junto com as tabelas; a extensao so e removida se ninguem
+    # mais usar o tipo vector.
+    assert "DROP TABLE IF EXISTS intervencoes" in rendered
+    assert "DROP TABLE IF EXISTS rag_relacoes" in rendered
+    assert "DROP TABLE IF EXISTS rag_chunks" in rendered
+    assert "DROP EXTENSION IF EXISTS vector" in rendered
+    assert "t.typname = 'vector'" in rendered
+
+    assert "UPDATE alembic_version SET version_num='20260829_02'" in rendered

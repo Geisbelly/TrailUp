@@ -6,7 +6,8 @@ Cria as tres tabelas da camada de evidencias do RAG:
 - `rag_relacoes`: relacionamentos semanticos/pedagogicos entre chunks.
 - `intervencoes`: intervencoes psicopedagogicas sugeridas pela IA.
 
-RLS e aplicado no banco para que alunos e professores vejam apenas o que
+Inclui trigger de `updated_at` para `rag_chunks` e RLS para que alunos e
+professores vejam apenas o que
 tem permissao; a API (camada de IA) escreve como service_role. As colunas
 que referenciam tabelas mestras (`classe`, `topicos`, `conteudos`,
 `fontes_personalizacao`, `alunos`) sao mantidas nullable e sem FK, porque
@@ -46,14 +47,18 @@ def upgrade() -> None:
           topico_id     bigint        NULL,
           conteudo_id   bigint        NULL,
           aluno_id      uuid          NULL,
-          scope         text          NOT NULL DEFAULT 'publico'
+          scope         text          NOT NULL
             CHECK (scope IN ('publico', 'turma', 'aluno')),
           texto         text          NOT NULL,
           embedding     vector(1536)  NULL,
           metadata      jsonb         NOT NULL DEFAULT '{}'::jsonb,
           source_hash   text          NULL,
           created_at    timestamptz   NOT NULL DEFAULT now(),
-          updated_at    timestamptz   NOT NULL DEFAULT now()
+          updated_at    timestamptz   NOT NULL DEFAULT now(),
+          CONSTRAINT chk_rag_chunks_scope_turma_tem_classe
+            CHECK (scope <> 'turma' OR classe_id IS NOT NULL),
+          CONSTRAINT chk_rag_chunks_scope_aluno_tem_aluno
+            CHECK (scope <> 'aluno' OR aluno_id IS NOT NULL)
         )
         """
     )
@@ -96,7 +101,8 @@ def upgrade() -> None:
         CREATE TABLE IF NOT EXISTS intervencoes (
           id          uuid          PRIMARY KEY DEFAULT gen_random_uuid(),
           aluno_id    uuid          NOT NULL,
-          tipo        text          NOT NULL,
+          tipo        text          NOT NULL
+            CHECK (tipo IN ('pedagogica', 'emocional', 'engajamento', 'notificacao')),
           motivo      text          NULL,
           contexto    jsonb         NOT NULL DEFAULT '{}'::jsonb,
           acao        text          NULL,
@@ -112,7 +118,31 @@ def upgrade() -> None:
     op.execute("CREATE INDEX IF NOT EXISTS idx_intervencoes_created_at ON intervencoes (created_at)")
 
     # ------------------------------------------------------------------
-    # 5. RLS
+    # 5. Trigger de updated_at para rag_chunks
+    # ------------------------------------------------------------------
+    op.execute(
+        """
+        CREATE OR REPLACE FUNCTION set_rag_chunks_updated_at()
+        RETURNS TRIGGER AS $$
+        BEGIN
+          NEW.updated_at = NOW();
+          RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql
+        """
+    )
+    op.execute("DROP TRIGGER IF EXISTS trg_rag_chunks_updated_at ON rag_chunks")
+    op.execute(
+        """
+        CREATE TRIGGER trg_rag_chunks_updated_at
+          BEFORE INSERT OR UPDATE ON rag_chunks
+          FOR EACH ROW
+          EXECUTE FUNCTION set_rag_chunks_updated_at()
+        """
+    )
+
+    # ------------------------------------------------------------------
+    # 6. RLS
     # ------------------------------------------------------------------
     # Leitura de chunks: publico para todos; turma para quem esta na classe;
     # aluno so para o proprio aluno. Escrita fica com a API (service_role).
@@ -180,6 +210,9 @@ def downgrade() -> None:
     op.execute("DROP POLICY IF EXISTS rag_relacoes_sel ON rag_relacoes")
     op.execute("DROP POLICY IF EXISTS rag_chunks_sel ON rag_chunks")
 
+    op.execute("DROP TRIGGER IF EXISTS trg_rag_chunks_updated_at ON rag_chunks")
+    op.execute("DROP FUNCTION IF EXISTS set_rag_chunks_updated_at()")
+
     op.execute("DROP INDEX IF EXISTS idx_intervencoes_created_at")
     op.execute("DROP INDEX IF EXISTS idx_intervencoes_status")
     op.execute("DROP INDEX IF EXISTS idx_intervencoes_aluno_id")
@@ -198,4 +231,23 @@ def downgrade() -> None:
     op.execute("DROP INDEX IF EXISTS idx_rag_chunks_embedding_hnsw")
     op.execute("DROP TABLE IF EXISTS rag_chunks")
 
-    op.execute("DROP EXTENSION IF EXISTS vector")
+    # So remove a extensao se nenhuma outra coluna no banco ainda usar o tipo
+    # vector; assim o downgrade nao quebra outros schemas que compartilhem a
+    # mesma instancia do Postgres.
+    op.execute(
+        """
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1
+            FROM pg_attribute a
+            JOIN pg_type t ON a.atttypid = t.oid
+            WHERE t.typname = 'vector'
+              AND a.attnum > 0
+              AND NOT a.attisdropped
+          ) THEN
+            EXECUTE 'DROP EXTENSION IF EXISTS vector';
+          END IF;
+        END $$
+        """
+    )

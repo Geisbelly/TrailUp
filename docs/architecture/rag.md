@@ -85,10 +85,10 @@ O que não existe:
 | Coluna | Tipo | Descrição |
 |---|---|---|
 | `id` | uuid | PK |
-| `fonte_id` | uuid | Referência à fonte original |
-| `classe_id` | uuid | Escopo da turma (nullable) |
-| `topico_id` | uuid | Escopo do tópico (nullable) |
-| `conteudo_id` | uuid | Escopo do conteúdo (nullable) |
+| `fonte_id` | bigint | Referência à fonte original |
+| `classe_id` | bigint | Escopo da turma (nullable) |
+| `topico_id` | bigint | Escopo do tópico (nullable) |
+| `conteudo_id` | bigint | Escopo do conteúdo (nullable) |
 | `aluno_id` | uuid | Escopo privado do aluno (nullable) |
 | `scope` | text | `publico`, `turma`, `aluno` |
 | `texto` | text | Texto do chunk |
