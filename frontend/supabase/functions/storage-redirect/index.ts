@@ -62,6 +62,11 @@ serve(async (req: Request) => {
   const chaveR2 = Deno.env.get("R2_ACCESS_KEY_ID");
   const segredoR2 = Deno.env.get("R2_SECRET_ACCESS_KEY");
   const bucketR2 = Deno.env.get("R2_BUCKET");
+  // O bucket do Supabase NAO e o do R2: la e "conteudo_aluno", aqui e
+  // "trailup". Usar o mesmo nome nos dois lados gera uma URL de fallback
+  // para um bucket que nao existe - e como o fallback so entra quando o
+  // objeto ainda nao foi copiado, o erro so apareceria em producao.
+  const bucketSupabase = Deno.env.get("SUPABASE_BUCKET") ?? "conteudo_aluno";
   if (!contaR2 || !chaveR2 || !segredoR2 || !bucketR2) {
     // Falta de segredo e' erro de deploy, nao do chamador - e nao pode virar
     // 404, que mandaria o cliente concluir que o material sumiu.
@@ -114,11 +119,11 @@ serve(async (req: Request) => {
     const noR2 = await fetch(await assinar("HEAD"), { method: "HEAD" });
     url = noR2.ok
       ? await assinar("GET")
-      : urlPublicaDoSupabase(Deno.env.get("SUPABASE_URL") ?? "", bucketR2, caminho);
+      : urlPublicaDoSupabase(Deno.env.get("SUPABASE_URL") ?? "", bucketSupabase, caminho);
   } catch (e) {
     // R2 inacessivel nao pode derrubar material que o Supabase ainda serve.
     console.error("[storage-redirect] R2 indisponivel, caindo no Supabase", (e as Error).message);
-    url = urlPublicaDoSupabase(Deno.env.get("SUPABASE_URL") ?? "", bucketR2, caminho);
+    url = urlPublicaDoSupabase(Deno.env.get("SUPABASE_URL") ?? "", bucketSupabase, caminho);
   }
 
   // O 302 pode ser cacheado ate' o fim da janela: dentro dela a assinatura e' a

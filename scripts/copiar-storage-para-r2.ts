@@ -152,6 +152,19 @@ async function assinarR2(
   });
 }
 
+/**
+ * HEAD sem compressao.
+ *
+ * Origem e destino ficam atras da Cloudflare, que comprime texto e nesse caso
+ * OMITE o `content-length` (e devolve ETag fraco, `W/"..."`). Sem isto o
+ * tamanho vem `null` para todo .md e .html, e as duas comparacoes do script
+ * quebram: a verificacao pos-upload acusa "tamanho divergente" num arquivo que
+ * subiu inteiro, e o "pular o que ja esta la" nunca casa - todo arquivo de
+ * texto seria recopiado a cada execucao, justamente o egress que queremos
+ * evitar. Medido: com `identity` o mesmo objeto responde content-length=4423.
+ */
+const SEM_COMPRESSAO = { "Accept-Encoding": "identity" };
+
 function tamanhoDe(resposta: Response): number | null {
   const bruto = resposta.headers.get("content-length");
   if (!bruto) return null;
@@ -164,7 +177,7 @@ async function copiarUm(
   caminho: string,
 ): Promise<{ estado: Resultado; bytes: number; nota?: string }> {
   // 1. Tamanho na origem. HEAD traz so' cabecalho, entao o egress e' irrelevante.
-  const origemHead = await fetch(urlPublicaDoSupabase(cfg, caminho), { method: "HEAD" });
+  const origemHead = await fetch(urlPublicaDoSupabase(cfg, caminho), { method: "HEAD", headers: SEM_COMPRESSAO });
   if (origemHead.status === 404 || origemHead.status === 400) {
     // Referencia morta no banco, nao falha da copia. Ver o tipo Resultado.
     return { estado: "ausente", bytes: 0, nota: `origem ${origemHead.status}` };
@@ -176,7 +189,7 @@ async function copiarUm(
 
   // 2. Ja' esta' no destino com o mesmo tamanho? Pula - e' o que torna o script
   //    retomavel sem guardar progresso em lugar nenhum.
-  const destinoHead = await fetch(await assinarR2(cfg, caminho, "HEAD"), { method: "HEAD" });
+  const destinoHead = await fetch(await assinarR2(cfg, caminho, "HEAD"), { method: "HEAD", headers: SEM_COMPRESSAO });
   if (destinoHead.ok && tamanhoOrigem !== null && tamanhoDe(destinoHead) === tamanhoOrigem) {
     return { estado: "pulado", bytes: tamanhoOrigem };
   }
@@ -202,7 +215,7 @@ async function copiarUm(
 
   // 4. Confere o que chegou. Sem isto um upload truncado passaria por sucesso e
   //    so' apareceria como material quebrado na mao do aluno.
-  const conferencia = await fetch(await assinarR2(cfg, caminho, "HEAD"), { method: "HEAD" });
+  const conferencia = await fetch(await assinarR2(cfg, caminho, "HEAD"), { method: "HEAD", headers: SEM_COMPRESSAO });
   const tamanhoDestino = conferencia.ok ? tamanhoDe(conferencia) : null;
   if (tamanhoDestino !== corpo.byteLength) {
     return {
