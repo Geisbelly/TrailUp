@@ -29,7 +29,16 @@
 
 import { presignR2GetUrl } from "../frontend/supabase/functions/storage-redirect/r2Presign";
 
-type Resultado = "copiado" | "pulado" | "falha";
+/**
+ * `ausente` e distinto de `falha` de proposito. Ha caminhos referenciados no
+ * banco cujo arquivo nao existe mais no Storage - medido em 29/08/2026: 26
+ * deles, todos de `topico-121`, um topico APAGADO cujas 52 linhas em
+ * `materiais_gerados` sobreviveram (25% da tabela). Nada vivo os alcanca.
+ *
+ * Se isso contasse como falha, a migracao terminaria vermelha por uma condicao
+ * pre-existente e as falhas de verdade se perderiam no meio.
+ */
+type Resultado = "copiado" | "pulado" | "ausente" | "falha";
 
 interface Config {
   supabaseUrl: string;
@@ -152,6 +161,10 @@ async function copiarUm(
 ): Promise<{ estado: Resultado; bytes: number; nota?: string }> {
   // 1. Tamanho na origem. HEAD traz so' cabecalho, entao o egress e' irrelevante.
   const origemHead = await fetch(urlPublicaDoSupabase(cfg, caminho), { method: "HEAD" });
+  if (origemHead.status === 404 || origemHead.status === 400) {
+    // Referencia morta no banco, nao falha da copia. Ver o tipo Resultado.
+    return { estado: "ausente", bytes: 0, nota: `origem ${origemHead.status}` };
+  }
   if (!origemHead.ok) {
     return { estado: "falha", bytes: 0, nota: `origem respondeu ${origemHead.status}` };
   }
@@ -216,8 +229,9 @@ async function main() {
     console.log(`Limitado a ${caminhos.length}.`);
   }
 
-  const contagem: Record<Resultado, number> = { copiado: 0, pulado: 0, falha: 0 };
+  const contagem: Record<Resultado, number> = { copiado: 0, pulado: 0, ausente: 0, falha: 0 };
   const falhas: string[] = [];
+  const ausentes: string[] = [];
   let bytes = 0;
   let processados = 0;
   let proximo = 0;
@@ -232,6 +246,7 @@ async function main() {
         contagem[r.estado]++;
         if (r.estado === "copiado") bytes += r.bytes;
         if (r.estado === "falha") falhas.push(`${caminho} -> ${r.nota}`);
+        if (r.estado === "ausente") ausentes.push(caminho);
       } catch (e) {
         contagem.falha++;
         falhas.push(`${caminho} -> ${(e as Error).message}`);
@@ -253,11 +268,15 @@ async function main() {
   console.log("");
   console.log(`copiados: ${contagem.copiado} (${emMB(bytes)})`);
   console.log(`pulados : ${contagem.pulado} (ja estavam no destino)`);
+  console.log(`ausentes: ${contagem.ausente} (referencia morta no banco, arquivo nao existe)`);
+  for (const a of ausentes.slice(0, 10)) console.log("  - " + a);
+  if (ausentes.length > 10) console.log(`  ... e mais ${ausentes.length - 10}`);
   console.log(`falhas  : ${contagem.falha}`);
   for (const f of falhas.slice(0, 30)) console.log("  ! " + f);
   if (falhas.length > 30) console.log(`  ... e mais ${falhas.length - 30}`);
 
-  // Sai diferente de zero quando ha falha, para nao passar despercebido.
+  // So falha de verdade muda o codigo de saida. Referencia morta e condicao
+  // pre-existente do banco: reportada, nunca fatal.
   process.exit(contagem.falha > 0 ? 1 : 0);
 }
 
