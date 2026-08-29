@@ -359,6 +359,47 @@ class TelemetriaRepository:
             },
         )
 
+    async def _payloads_de_eventos_para_gravar(
+        self, eventos: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """Sobe os payloads do lote inteiro num UNICO objeto e devolve ponteiros.
+
+        Um objeto por evento seria desperdicio: sao ~6 eventos por lote e 1 lote
+        por minuto por aluno - numa aula de 20 alunos daria milhares de PUTs por
+        hora. Um objeto por chamada, com o indice no ponteiro, resolve igual.
+
+        Como em `_payload_para_gravar`, nenhuma das 12 views que leem
+        `telemetria_eventos_app` e `telemetria_time_metric_entries` toca o
+        campo `payload` - todas usam as colunas estruturadas. Por isso ele pode
+        sair sem migracao e sem quebrar metrica nenhuma.
+
+        Falha no R2 devolve os payloads originais: degrada, nao derruba o lote.
+        """
+        originais = [evento.get("payload") or {} for evento in eventos]
+
+        cfg = ler_config_r2(get_settings())
+        if cfg is None or not originais:
+            return originais
+
+        caminho = (
+            f"telemetria/eventos/{datetime.now(UTC):%Y/%m/%d}/{uuid4()}.json"
+        )
+        try:
+            await enviar_para_r2(
+                cfg,
+                caminho,
+                json.dumps(originais, ensure_ascii=False, default=str).encode("utf-8"),
+                "application/json; charset=utf-8",
+            )
+        except Exception as exc:  # noqa: BLE001 - degradar e melhor que recusar o lote
+            logger.warning("[telemetria] eventos nao foram para o R2 (%s): %s", caminho, exc)
+            return originais
+
+        return [
+            {"_r2": caminho, "_bucket": cfg.bucket, "_i": indice}
+            for indice in range(len(originais))
+        ]
+
     async def insert_eventos_app(
         self,
         *,
@@ -369,7 +410,8 @@ class TelemetriaRepository:
         route_name: str,
         eventos: list[dict[str, Any]],
     ) -> None:
-        for evento in eventos:
+        payloads = await self._payloads_de_eventos_para_gravar(eventos)
+        for indice, evento in enumerate(eventos):
             await self.session.execute(
                 text(
                     """
@@ -445,7 +487,7 @@ class TelemetriaRepository:
                     "is_correct": evento.get("is_correct"),
                     "chat_role": evento.get("chat_role"),
                     "trigger_context": evento.get("trigger_context"),
-                    "payload": json.dumps(evento.get("payload") or {}, ensure_ascii=False, default=str),
+                    "payload": json.dumps(payloads[indice], ensure_ascii=False, default=str),
                 },
             )
 
