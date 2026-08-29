@@ -1,0 +1,7 @@
+[functions.storage-redirect]
+# Sem JWT de proposito - ver "Opcao A" no spec 2026-08-29-r2-gateway-design.md.
+# O app baixa midia com FileSystem.downloadAsync(url, localUri), sem headers;
+# exigir JWT daria 401 em toda midia. E nao ha protecao a perder: os buckets de
+# hoje ja sao publicos, entao link ja e' acesso. Isto aqui e' ESTRITAMENTE mais
+# restrito que o estado atual, porque a URL assinada expira e a de hoje nao.
+verify_jwt = false
