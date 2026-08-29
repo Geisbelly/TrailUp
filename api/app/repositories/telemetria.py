@@ -1,6 +1,7 @@
 import asyncio
 import json
-from datetime import datetime
+import logging
+from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
@@ -8,6 +9,11 @@ from asyncpg.exceptions import QueryCanceledError
 from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.settings import get_settings
+from app.services.r2_storage import enviar_para_r2, ler_config_r2
+
+logger = logging.getLogger(__name__)
 
 
 class TelemetriaRepository:
@@ -270,7 +276,11 @@ class TelemetriaRepository:
                 "scroll_distance_px": scroll_distance_px,
                 "max_depth_px": max_depth_px,
                 "frame_sent": frame_sent,
-                "payload": json.dumps(payload, ensure_ascii=False, default=str),
+                "payload": json.dumps(
+                    await self._payload_para_gravar(batch_id, payload),
+                    ensure_ascii=False,
+                    default=str,
+                ),
             },
         )
         inserted = result.mappings().first()
@@ -297,6 +307,42 @@ class TelemetriaRepository:
         if row:
             return dict(row), False
         return {"id": batch_id, "sessao_id": sessao_id, "analysis_ciclo_id": None}, False
+
+    async def _payload_para_gravar(
+        self, batch_id: str, payload: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Manda o payload bruto para o R2 e devolve so um ponteiro.
+
+        O bruto e ~96% do tamanho da linha e **nada o le de volta**: o unico
+        SELECT sobre `telemetria_lotes` pega `id, sessao_id, analysis_ciclo_id`,
+        e nao ha view nem funcao que use a tabela. As outras 20 colunas ja
+        carregam o que as consultas usam - por isso da para tirar o payload sem
+        migracao e sem perder nenhuma consulta.
+
+        Falha no R2 NAO derruba o lote: perder o arquivo bruto e melhor que
+        recusar a requisicao e perder tambem as metricas estruturadas, que sao o
+        que alimenta o pipeline de analise. Nesse caso grava o payload inteiro,
+        como antes - o comportamento degrada, nao quebra.
+
+        Sem R2 configurado, o comportamento e identico ao anterior.
+        """
+        cfg = ler_config_r2(get_settings())
+        if cfg is None:
+            return payload
+
+        caminho = f"telemetria/lotes/{datetime.now(UTC):%Y/%m/%d}/{batch_id}.json"
+        try:
+            await enviar_para_r2(
+                cfg,
+                caminho,
+                json.dumps(payload, ensure_ascii=False, default=str).encode("utf-8"),
+                "application/json; charset=utf-8",
+            )
+        except Exception as exc:  # noqa: BLE001 - degradar e melhor que recusar o lote
+            logger.warning("[telemetria] payload nao foi para o R2 (%s): %s", caminho, exc)
+            return payload
+
+        return {"_r2": caminho, "_bucket": cfg.bucket}
 
     async def update_lote_analysis(self, *, batch_id: str, analysis_ciclo_id: str | None) -> None:
         await self.session.execute(
