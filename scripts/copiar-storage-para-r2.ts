@@ -87,6 +87,30 @@ function lerConfig(argv: string[]): Config {
   return cfg;
 }
 
+/**
+ * Content-Type pela EXTENSAO, nao pelo cabecalho da origem.
+ *
+ * O gateway publico do Supabase serve .html sempre como `text/plain` (protecao
+ * anti-XSS da plataforma, nao configuravel). Herdar esse cabecalho levaria a
+ * mutilacao para dentro do R2 - medido: o primeiro .html copiado ficou la como
+ * `text/plain`. O R2 nao tem essa restricao, entao guardar o tipo correto
+ * permite servir o deck direto, sem o proxy /api/v1/decks que existe hoje so
+ * por causa disso.
+ */
+const TIPO_POR_EXTENSAO: Record<string, string> = {
+  html: "text/html; charset=utf-8",
+  md: "text/markdown; charset=utf-8",
+  mp3: "audio/mpeg",
+  pdf: "application/pdf",
+  json: "application/json; charset=utf-8",
+  txt: "text/plain; charset=utf-8",
+};
+
+function tipoDoConteudo(caminho: string, cabecalhoDaOrigem: string | null): string {
+  const ext = caminho.split(".").pop()?.toLowerCase() ?? "";
+  return TIPO_POR_EXTENSAO[ext] || cabecalhoDaOrigem || "application/octet-stream";
+}
+
 /** Percent-encode por segmento, preservando as barras (igual ao Storage). */
 function codificarCaminho(caminho: string): string {
   return caminho.split("/").filter(Boolean).map(encodeURIComponent).join("/");
@@ -190,7 +214,17 @@ async function copiarUm(
   // 2. Ja' esta' no destino com o mesmo tamanho? Pula - e' o que torna o script
   //    retomavel sem guardar progresso em lugar nenhum.
   const destinoHead = await fetch(await assinarR2(cfg, caminho, "HEAD"), { method: "HEAD", headers: SEM_COMPRESSAO });
-  if (destinoHead.ok && tamanhoOrigem !== null && tamanhoDe(destinoHead) === tamanhoOrigem) {
+  // Pula so' quando tamanho E tipo batem. Conferir o tipo faz o script consertar
+  // sozinho objetos copiados antes desta correcao, que foram para o R2 com o
+  // `text/plain` herdado do Supabase.
+  const tipoEsperado = tipoDoConteudo(caminho, origemHead.headers.get("content-type"));
+  const tipoNoDestino = destinoHead.headers.get("content-type");
+  if (
+    destinoHead.ok &&
+    tamanhoOrigem !== null &&
+    tamanhoDe(destinoHead) === tamanhoOrigem &&
+    tipoNoDestino === tipoEsperado
+  ) {
     return { estado: "pulado", bytes: tamanhoOrigem };
   }
 
@@ -204,9 +238,7 @@ async function copiarUm(
   const put = await fetch(await assinarR2(cfg, caminho, "PUT"), {
     method: "PUT",
     body: corpo,
-    headers: {
-      "Content-Type": origem.headers.get("content-type") || "application/octet-stream",
-    },
+    headers: { "Content-Type": tipoDoConteudo(caminho, origem.headers.get("content-type")) },
   });
   if (!put.ok) {
     const detalhe = (await put.text()).slice(0, 200);
