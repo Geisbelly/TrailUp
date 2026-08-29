@@ -492,3 +492,48 @@ def test_revisao_diaria_pula_quem_ja_estudou_mas_nao_quando_ha_sugestao() -> Non
     assert "Nao encontrei o ponto de insercao" in rendered
 
     assert "UPDATE alembic_version SET version_num='20260826_16'" in rendered
+
+
+def test_rag_schema_pgvector_renders_idempotent_offline_sql() -> None:
+    output = StringIO()
+    config = _offline_alembic_config(output)
+
+    migrations.command.upgrade(config, "20260829_02:20260829_03", sql=True)
+    rendered = output.getvalue()
+
+    # Extensao e tabelas do schema de RAG.
+    assert "CREATE EXTENSION IF NOT EXISTS vector" in rendered
+    assert "CREATE TABLE IF NOT EXISTS rag_chunks" in rendered
+    assert "CREATE TABLE IF NOT EXISTS rag_relacoes" in rendered
+    assert "CREATE TABLE IF NOT EXISTS intervencoes" in rendered
+
+    # Embedding com dimensao do modelo (text-embedding-3-small).
+    assert "embedding     vector(1536)" in rendered
+
+    # Indice vetorial HNSW para busca por similaridade de cosseno.
+    assert "idx_rag_chunks_embedding_hnsw" in rendered
+    assert "USING hnsw (embedding vector_cosine_ops)" in rendered
+
+    # Check constraints de dominio no banco.
+    assert "CHECK (scope IN ('publico', 'turma', 'aluno'))" in rendered
+    assert "CHECK (tipo IN ('prereq', 'sucessor', 'similar'))" in rendered
+    assert "CHECK (status IN ('pending', 'applied', 'dismissed'))" in rendered
+
+    # FK interna entre relacoes e chunks; FKs para tabelas mestras foram
+    # removidas porque elas pertencem a outro servico.
+    assert "REFERENCES rag_chunks(id) ON DELETE CASCADE" in rendered
+    assert "REFERENCES classe" not in rendered
+    assert "REFERENCES alunos" not in rendered
+
+    # RLS por escopo/classe/aluno.
+    assert "ALTER TABLE rag_chunks ENABLE ROW LEVEL SECURITY" in rendered
+    assert "ALTER TABLE rag_relacoes ENABLE ROW LEVEL SECURITY" in rendered
+    assert "ALTER TABLE intervencoes ENABLE ROW LEVEL SECURITY" in rendered
+    assert "CREATE POLICY rag_chunks_sel ON rag_chunks" in rendered
+    assert "CREATE POLICY rag_relacoes_sel ON rag_relacoes" in rendered
+    assert "CREATE POLICY intervencoes_sel ON intervencoes" in rendered
+    assert "app_minhas_classes()" in rendered
+    assert "app_alunos_do_professor()" in rendered
+    assert "auth.uid()" in rendered
+
+    assert "UPDATE alembic_version SET version_num='20260829_03'" in rendered
