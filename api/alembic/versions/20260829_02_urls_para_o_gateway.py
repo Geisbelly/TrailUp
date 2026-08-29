@@ -38,12 +38,30 @@ BUCKET_PADRAO = "conteudo_aluno"
 
 
 def _base_url() -> str:
-    bruto = (os.environ.get("SUPABASE_URL") or "").strip().rstrip("/")
+    """
+    Base do projeto Supabase, do ambiente ou das settings da API.
+
+    O `env.py` do alembic ja' carrega `app.core.settings`, e e' de la' que vem o
+    `.env` - `os.environ` sozinho fica vazio quando a migracao roda pelo
+    `scripts/db-migrate.ps1`, que e' o caminho documentado. Tentar as duas
+    fontes evita que o caminho normal falhe por uma variavel que existe.
+    """
+    bruto = (os.environ.get("SUPABASE_URL") or "").strip()
+
+    if not bruto:
+        try:
+            from app.core.settings import get_settings
+
+            bruto = (get_settings().supabase_url or "").strip()
+        except Exception:  # noqa: BLE001 - settings indisponivel e' so' mais um "nao achei"
+            bruto = ""
+
+    bruto = bruto.rstrip("/")
     if not bruto:
         raise RuntimeError(
-            "SUPABASE_URL ausente no ambiente. Esta migracao reescreve URLs de "
-            "material e precisa saber para qual projeto apontar; sem isso ela "
-            "gravaria URL invalida em 700 registros."
+            "SUPABASE_URL ausente no ambiente e nas settings. Esta migracao "
+            "reescreve URLs de material e precisa saber para qual projeto "
+            "apontar; sem isso gravaria URL invalida em 700 registros."
         )
     return bruto
 
