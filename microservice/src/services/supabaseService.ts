@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { lerConfigR2, uploadParaR2, urlDoGateway } from "./r2Storage";
 import { createKeyedQueue } from "../lib/serialQueue";
 import { createLogger } from "../lib/logger";
 import type { MaterialEntryLike } from "../lib/materialsMerge";
@@ -71,12 +72,38 @@ export async function downloadStorageText(
   return await data.text();
 }
 
+/**
+ * Sobe o material e devolve a URL que vai para `arquivo_url`.
+ *
+ * Com o R2 configurado, escreve LA e devolve a URL do GATEWAY - nunca a do R2
+ * direto, e nunca nos dois lugares. Gravar em dois dobraria escrita e
+ * armazenamento sem resolver nada: quem protege a leitura do material antigo e'
+ * o fallback do gateway, nao uma segunda copia.
+ *
+ * Sem R2 configurado, mantem o comportamento antigo (Supabase Storage). E' o
+ * que permite subir este codigo antes de os segredos existirem, e o que faz
+ * ambiente de desenvolvimento continuar funcionando sem conta na Cloudflare.
+ *
+ * Falha no R2 LANCA, nao cai para o Supabase. Um fallback silencioso faria a
+ * migracao parecer concluida enquanto o egress continuava saindo do mesmo
+ * lugar - o defeito exato que ela existe para corrigir.
+ */
 export async function uploadBuffer(
   bucket: string,
   storagePath: string,
   data: Buffer,
   contentType: string
 ): Promise<string | null> {
+  const configR2 = lerConfigR2();
+  if (configR2) {
+    await uploadParaR2(configR2, storagePath, data, contentType);
+    const url = urlDoGateway(storagePath);
+    if (url) return url;
+    console.warn(
+      `[r2] objeto subiu mas SUPABASE_URL esta ausente; sem ela nao da para montar a URL do gateway (${storagePath})`
+    );
+  }
+
   const client = getClient();
   const { error } = await client.storage
     .from(bucket)
