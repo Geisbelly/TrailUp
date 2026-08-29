@@ -35,6 +35,7 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  Legend,
   Line,
   LineChart,
   Pie,
@@ -44,6 +45,19 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+
+// Cores de grafico elevadas para manter contraste >= 7:1 (AAA) quando usadas
+// como texto (rotulo de pizza, legenda) contra o fundo escuro do card — o
+// recharts reaproveita a cor de preenchimento/linha como cor do texto nesses
+// casos, entao a cor "de dado" precisa por si so ja atender AAA.
+// Mesma tecnica do CLAUDE.md para as cores-assinatura BrainHex: eleva a
+// luminosidade em HSL preservando matiz/saturacao, sem misturar com branco.
+const CHART_COLOR_DANGER = "hsl(0, 84%, 78%)"; // ~8.1:1 (original #ef4444 dava ~4.6:1)
+const CHART_COLOR_INFO = "hsl(221, 83%, 75%)"; // ~7.7:1 (original #2563eb dava ~3.4:1)
+const CHART_COLOR_PROGRESS = "hsl(142, 76%, 44%)"; // ~7.6:1 (original #16a34a dava ~5.3:1)
+const CHART_COLOR_WARNING = "#f59e0b"; // ja atende AAA (~8.1:1)
+const CHART_COLOR_SUCCESS = "#22c55e"; // ja atende AAA (~7.6:1)
+const CHART_TICK_STYLE = { fill: "hsl(var(--muted-foreground))" }; // ~8.3:1
 
 interface AlunoPerfil {
   nome: string;
@@ -647,10 +661,10 @@ export default function DashboardSection() {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={abandonoPorPerfilData}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="perfil" tick={{ fontSize: 11 }} />
-                <YAxis />
+                <XAxis dataKey="perfil" tick={{ ...CHART_TICK_STYLE, fontSize: 11 }} />
+                <YAxis tick={CHART_TICK_STYLE} />
                 <Tooltip />
-                <Bar dataKey="abandono" fill="#ef4444" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="abandono" fill={CHART_COLOR_DANGER} radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -677,7 +691,13 @@ export default function DashboardSection() {
                   {distribuicaoNotasData.map((entry, idx) => (
                     <Cell
                       key={`${entry.faixa}-${idx}`}
-                      fill={idx % 3 === 0 ? "#ef4444" : idx % 3 === 1 ? "#f59e0b" : "#22c55e"}
+                      fill={
+                        idx % 3 === 0
+                          ? CHART_COLOR_DANGER
+                          : idx % 3 === 1
+                          ? CHART_COLOR_WARNING
+                          : CHART_COLOR_SUCCESS
+                      }
                     />
                   ))}
                 </Pie>
@@ -878,12 +898,36 @@ export default function DashboardSection() {
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={evolucaoAlunoData}>
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="dia" />
-                        <YAxis />
+                        <XAxis dataKey="dia" tick={CHART_TICK_STYLE} />
+                        <YAxis tick={CHART_TICK_STYLE} />
                         <Tooltip />
-                        <Line type="monotone" dataKey="acertos" stroke="#2563eb" strokeWidth={2} dot={false} />
-                        <Line type="monotone" dataKey="progresso" stroke="#16a34a" strokeWidth={2} dot={false} />
-                        <Line type="monotone" dataKey="nota" stroke="#f59e0b" strokeWidth={2} dot={false} />
+                        <Legend />
+                        <Line
+                          type="monotone"
+                          dataKey="acertos"
+                          name="Acertos (%)"
+                          stroke={CHART_COLOR_INFO}
+                          strokeWidth={2}
+                          dot={false}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="progresso"
+                          name="Progresso (%)"
+                          stroke={CHART_COLOR_PROGRESS}
+                          strokeWidth={2}
+                          strokeDasharray="6 4"
+                          dot={false}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="nota"
+                          name="Nota"
+                          stroke={CHART_COLOR_WARNING}
+                          strokeWidth={2}
+                          strokeDasharray="2 3"
+                          dot={false}
+                        />
                       </LineChart>
                     </ResponsiveContainer>
                   </CardContent>
