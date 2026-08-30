@@ -165,12 +165,14 @@ export function ActivityRenderer({
           <Pressable
             onPress={() => onComplete?.({ completed: true })}
             style={[summaryStyles.btn, summaryStyles.btnPrimary]}
+            accessibilityRole="button"
           >
             <Text style={summaryStyles.btnPrimaryText}>Continuar</Text>
           </Pressable>
           <Pressable
             onPress={() => { userChoseReviewRef.current = true; setLocalReviewMode(true); }}
             style={summaryStyles.btn}
+            accessibilityRole="button"
           >
             <Text style={summaryStyles.btnSecondaryText}>Revisar respostas</Text>
           </Pressable>
