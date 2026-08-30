@@ -334,6 +334,8 @@ export default function PerfilHome() {
                   },
                 ]}
                 onPress={() => router.push("/(tabs)/perfil/settings")}
+                accessibilityRole="button"
+                accessibilityLabel="Configurações"
               >
                 <MaterialCommunityIcons
                   name="cog-outline"
@@ -352,6 +354,8 @@ export default function PerfilHome() {
                   },
                 ]}
                 onPress={() => router.push("/(tabs)/perfil/biblioteca-conquistas")}
+                accessibilityRole="button"
+                accessibilityLabel="Biblioteca de conquistas"
               >
                 <MaterialCommunityIcons
                   name="trophy-variant-outline"
@@ -517,6 +521,8 @@ export default function PerfilHome() {
             <TouchableOpacity
               onPress={() => setAba("metricas")}
               style={styles.tabButton}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: aba === "metricas" }}
             >
               <Text
                 style={[
@@ -543,6 +549,8 @@ export default function PerfilHome() {
             <TouchableOpacity
               onPress={() => setAba("conquistas")}
               style={styles.tabButton}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: aba === "conquistas" }}
             >
               <Text
                 style={[
@@ -603,6 +611,8 @@ export default function PerfilHome() {
                       ]}
                       activeOpacity={0.7}
                       onPress={() => setConquistaSelecionada(conquista)}
+                      accessibilityRole="button"
+                      accessibilityLabel={conquista.nome ?? "Conquista"}
                     >
                       <View
                         style={[

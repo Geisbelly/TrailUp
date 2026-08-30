@@ -567,6 +567,7 @@ export default function RelatorioDadosScreen() {
           style={[styles.button, { backgroundColor: palette.accent, borderColor: palette.borderStrong }]}
           onPress={handleDownload}
           activeOpacity={0.8}
+          accessibilityRole="button"
         >
           <MaterialCommunityIcons name="file-pdf-box" size={24} color={Color.colorWhite} style={{marginRight: 8}}/>
           <Text style={styles.buttonText}>GERAR PDF COMPLETO</Text>

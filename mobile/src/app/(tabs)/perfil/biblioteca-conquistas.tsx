@@ -369,6 +369,8 @@ export default function BibliotecaConquistasScreen() {
                     ]}
                     activeOpacity={0.75}
                     onPress={() => setSelected(item.conquista)}
+                    accessibilityRole="button"
+                    accessibilityLabel={item.conquista.nome ?? "Conquista"}
                   >
                     <View
                       style={[

@@ -196,6 +196,8 @@ export default function ColetaDadosScreen() {
                   void handleToggle(item.key);
                 }}
                 disabled={Boolean(savingKey)}
+                accessibilityRole="switch"
+                accessibilityState={{ checked: enabled, disabled: Boolean(savingKey) }}
               >
               <View style={styles.itemLeft}>
                 <View

@@ -298,6 +298,7 @@ export default function NotificacaoDetalhe() {
                 },
               ]}
               onPress={onMarkUnread}
+              accessibilityRole="button"
             >
               <Ionicons name="mail-unread-outline" size={18} color={gold} />
               <Text style={[s.btnText, { color: gold }]}>Marcar como não lida</Text>
@@ -312,6 +313,7 @@ export default function NotificacaoDetalhe() {
               },
             ]}
             onPress={onDelete}
+            accessibilityRole="button"
           >
             <Ionicons name="trash" size={18} color="#fff" />
             <Text style={[s.btnText, { color: "#fff" }]}>Excluir</Text>

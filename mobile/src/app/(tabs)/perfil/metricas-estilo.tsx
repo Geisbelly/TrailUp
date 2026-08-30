@@ -146,6 +146,9 @@ export default function PerfilMetricasEstilo() {
                 onPress={() => {
                   void handleSelect(option.key);
                 }}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: active }}
+                accessibilityLabel={option.label}
               >
               <View
                 style={[
