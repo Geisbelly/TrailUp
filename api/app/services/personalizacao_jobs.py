@@ -1372,14 +1372,22 @@ async def _process_media_render_target(
         if completed_existing:
             return {"skipped": True, "record": completed_existing}
 
-        is_manual_retry = job.get("kind") == JOB_KIND_MANUAL_RETRY
+        # Todo pedido MANUAL fura o circuit breaker, nao so o "tentar de novo".
+        # O professor clicando em "gerar" e' um pedido explicito tanto quanto o
+        # retry; sem isto, um alvo que falhou 3x seguidas some silenciosamente
+        # de toda geracao manual e nunca mais e' tentado.
+        is_pedido_manual = job.get("kind") in {
+            JOB_KIND_MANUAL_RETRY,
+            JOB_KIND_MANUAL_PROFILE_GENERATE,
+            JOB_KIND_MANUAL_PROFILE_GENERATE_ALL,
+        }
         falha_streak_max = int(
             getattr(app.state.settings, "personalizacao_falha_streak_max", 3) or 3
         )
         if _falha_streak_excedido(
             existing, generation_key=generation_key, max_streak=falha_streak_max
         ):
-            if not is_manual_retry:
+            if not is_pedido_manual:
                 logger.warning(
                     "geracao com falha_streak esgotado, redisparo suspenso: "
                     "personalizacao_id=%s generation_key=%s",
@@ -1391,11 +1399,11 @@ async def _process_media_render_target(
                     "record": existing,
                     "reason": "falha_streak_excedido",
                 }
-            # Retry manual do professor: destrava mesmo com o circuit breaker
+            # Pedido manual do professor: destrava mesmo com o circuit breaker
             # automatico ja esgotado, zerando o contador pra essa mesma
             # geracao (mesmo generation_key) prosseguir com a reclamacao normal.
             logger.info(
-                "retry manual zera falha_streak esgotado: personalizacao_id=%s "
+                "pedido manual zera falha_streak esgotado: personalizacao_id=%s "
                 "generation_key=%s",
                 existing["id"],
                 generation_key,

@@ -564,7 +564,7 @@ class PersonalizacaoJobsRepository:
                   finished_at
                 FROM personalizacao_jobs
                 WHERE kind = :kind
-                  AND status IN ('pending', 'processing', 'partial')
+                  AND status IN ('pending', 'processing')
                   AND (CAST(:aluno_id AS UUID) IS NULL OR aluno_id = CAST(:aluno_id AS UUID))
                   AND (CAST(:classe_id AS BIGINT) IS NULL OR classe_id = CAST(:classe_id AS BIGINT))
                   AND (CAST(:topico_id AS BIGINT) IS NULL OR topico_id = CAST(:topico_id AS BIGINT))
@@ -639,7 +639,7 @@ class PersonalizacaoJobsRepository:
                   finished_at
                 FROM personalizacao_jobs
                 WHERE kind = :kind
-                  AND status IN ('pending', 'processing', 'partial')
+                  AND status IN ('pending', 'processing')
                   AND (CAST(:aluno_id AS UUID) IS NULL OR aluno_id = CAST(:aluno_id AS UUID))
                   AND (CAST(:classe_id AS BIGINT) IS NULL OR classe_id = CAST(:classe_id AS BIGINT))
                 ORDER BY created_at DESC, id DESC
