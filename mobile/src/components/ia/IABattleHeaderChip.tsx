@@ -178,6 +178,8 @@ export function IABattleHeaderChip({ topicoId = null, itemKey = null }: Props) {
           },
         ]}
         onPress={() => setOpen(true)}
+        accessibilityRole="button"
+        accessibilityLabel={`Boss: ${battleStatusLabel}`}
       >
         <View
           style={[
@@ -257,6 +259,8 @@ export function IABattleHeaderChip({ topicoId = null, itemKey = null }: Props) {
                   },
                 ]}
                 onPress={() => setOpen(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Fechar"
               >
                 <MaterialCommunityIcons
                   name="close"
