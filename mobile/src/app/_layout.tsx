@@ -1,12 +1,12 @@
 import { LoadingState } from "@/components/LoadingState";
 import { TelemetryConsentGate } from "@/components/TelemetryConsentGate";
 import LoadingScreen from "@/components/funcionais/Loading";
-import { DialogProvider } from "@/context/DialogContext";
+import { DialogProvider, useDialog } from "@/context/DialogContext";
 import { PersonalizacaoProviderProvider } from "@/services/personalizacao/PersonalizacaoProviderContext";
 import { LoadingProvider, useLoading } from "@/context/LoadingContext";
 import { SessionProvider, useUsuario } from "@/context/SessaoContext";
 import { PortoesProvider } from "@/context/PortoesContext";
-import { getSessionSafe, supabase } from "@/database/supabase";
+import { consumeSupabaseUrlAuthError, getSessionSafe, supabase } from "@/database/supabase";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { consumePendingRoute, setPendingRoute } from "@/utils/pendingRoute";
 import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
@@ -35,6 +35,17 @@ function VerificacaoDeRota() {
   const segments = useSegments();
   const pathname = usePathname();
   const { usuario, autenticado, carregando } = useUsuario();
+  const { showDialog } = useDialog();
+
+  useEffect(() => {
+    // Token invalido/expirado na URL (link de confirmacao vencido, consentimento
+    // OAuth negado etc.): sem isso o aluno so via a sessao nao se estabelecer,
+    // sem nenhuma pista do motivo.
+    const urlError = consumeSupabaseUrlAuthError();
+    if (urlError) {
+      showDialog({ title: "Não foi possível entrar", description: urlError, tone: "error" });
+    }
+  }, [showDialog]);
 
   console.log("[VerificacaoDeRota] Carregando:", carregando, "Usuario:", !!usuario, "Autenticado:", autenticado);
 
