@@ -534,6 +534,8 @@ export default function RankDetalheScreen() {
                   active && { backgroundColor: palette.accentMuted },
                 ]}
                 onPress={() => setFiltro(f)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: active }}
               >
                 <Text style={[s.filterLabel, { color: active ? gold : palette.textMuted }]}>
                   {FILTER_LABELS[f]}

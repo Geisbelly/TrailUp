@@ -96,6 +96,7 @@ export default function ResetarSenhaScreen() {
           { backgroundColor: palette.accent, borderColor: palette.borderStrong },
         ]}
         onPress={() => setConfirmVisible(true)}
+        accessibilityRole="button"
       >
         <Text style={styles.buttonText}>Solicitar alteração</Text>
       </TouchableOpacity>
@@ -126,6 +127,7 @@ export default function ResetarSenhaScreen() {
                   { backgroundColor: palette.surface, borderColor: palette.border },
                 ]}
                 onPress={() => setConfirmVisible(false)}
+                accessibilityRole="button"
               >
                 <Text style={[styles.secondaryText, { color: palette.textMuted }]}>
                   Cancelar
@@ -137,6 +139,7 @@ export default function ResetarSenhaScreen() {
                   { backgroundColor: palette.accent, borderColor: palette.borderStrong },
                 ]}
                 onPress={solicitarReset}
+                accessibilityRole="button"
               >
                 <Text style={styles.primaryText}>Confirmar</Text>
               </TouchableOpacity>
@@ -169,6 +172,7 @@ export default function ResetarSenhaScreen() {
                 { backgroundColor: palette.accent, borderColor: palette.borderStrong },
               ]}
               onPress={() => setDoneVisible(false)}
+              accessibilityRole="button"
             >
               <Text style={styles.primaryText}>OK</Text>
             </TouchableOpacity>

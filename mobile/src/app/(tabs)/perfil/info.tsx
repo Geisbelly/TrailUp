@@ -194,6 +194,7 @@ export default function Infor() {
                 backgroundColor: editando ? palette.accent : palette.surface,
               },
             ]}
+            accessibilityRole="button"
           >
             <Feather
               name={editando ? "x" : "edit-2"}
@@ -249,6 +250,8 @@ export default function Infor() {
                   backgroundColor: palette.surface,
                 },
               ]}
+              accessibilityRole="button"
+              accessibilityLabel="Trocar banner"
             >
               <Feather
                 name="image"
@@ -266,6 +269,8 @@ export default function Infor() {
                   backgroundColor: palette.surface,
                 },
               ]}
+              accessibilityRole="button"
+              accessibilityLabel="Trocar foto"
             >
               <Feather
                 name="camera"
@@ -391,6 +396,8 @@ export default function Infor() {
             <TouchableOpacity
               disabled={!editando}
               onPress={() => setModoResposta("imediato")}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: modoResposta === "imediato", disabled: !editando }}
               style={[
                 styles.modoRespostaChip,
                 {
@@ -433,6 +440,8 @@ export default function Infor() {
             <TouchableOpacity
               disabled={!editando}
               onPress={() => setModoResposta("pensante")}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: modoResposta === "pensante", disabled: !editando }}
               style={[
                 styles.modoRespostaChip,
                 {
@@ -492,6 +501,7 @@ export default function Infor() {
             ]}
             onPress={salvar}
             disabled={salvando}
+            accessibilityRole="button"
           >
             <Text style={styles.buttonText}>
               {salvando ? "Salvando..." : "Salvar alterações"}
