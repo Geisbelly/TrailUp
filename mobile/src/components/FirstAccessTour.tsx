@@ -139,20 +139,7 @@ export function FirstAccessTour({
       setTimeout(() => {
         void revelarAlvoTour(currentStep.target);
         const ref = obterAlvoTour(currentStep.target);
-        if (__DEV__ && !ref) {
-          console.log(
-            `[TourAlvo] ${currentStep.id}: alvo "${currentStep.target}" NAO registrado ` +
-              `(t=${atraso}ms) — aguardando a tela montar`,
-          );
-        }
         ref?.current?.measureInWindow((x, y, largura, altura) => {
-          if (__DEV__) {
-            console.log(
-              `[TourAlvo] ${currentStep.id}: "${currentStep.target}" t=${atraso}ms ` +
-                `x=${Math.round(x)} y=${Math.round(y)} w=${Math.round(largura)} ` +
-                `h=${Math.round(altura)} | tela ${Math.round(width)}x${Math.round(height)}`,
-            );
-          }
           if (!ativo || largura < 2 || altura < 2) return;
           // Fora da tela: manter o que ja havia em vez de acender um retangulo
           // grampeado sobre o elemento errado.
