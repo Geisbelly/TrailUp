@@ -719,6 +719,13 @@ async def test_enqueue_job_creates_job_and_targets_atomically(monkeypatch) -> No
         "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.list_open_jobs_by_payload",
         AsyncMock(return_value=[]),
     )
+    # Kinds manuais tambem consultam jobs RETOMAVEIS (partial/failed com alvo
+    # por fazer) antes de criar um novo. Sem este mock, os testes que exercitam
+    # esses kinds cairiam na consulta real.
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.list_resumable_jobs_by_payload",
+        AsyncMock(return_value=[]),
+    )
     monkeypatch.setattr(
         "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.criar_job_com_targets",
         create_mock,
@@ -791,6 +798,13 @@ async def test_enqueue_job_falls_back_to_get_targets_when_get_job_detail_returns
         "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.list_open_jobs_by_payload",
         AsyncMock(return_value=[]),
     )
+    # Kinds manuais tambem consultam jobs RETOMAVEIS (partial/failed com alvo
+    # por fazer) antes de criar um novo. Sem este mock, os testes que exercitam
+    # esses kinds cairiam na consulta real.
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.list_resumable_jobs_by_payload",
+        AsyncMock(return_value=[]),
+    )
     monkeypatch.setattr(
         "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.criar_job_com_targets",
         AsyncMock(return_value={"id": "job-fallback"}),
@@ -834,6 +848,13 @@ async def test_enqueue_job_never_passes_stale_conteudo_id_to_scalar_fk_column(
     )
     monkeypatch.setattr(
         "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.list_open_jobs_by_payload",
+        AsyncMock(return_value=[]),
+    )
+    # Kinds manuais tambem consultam jobs RETOMAVEIS (partial/failed com alvo
+    # por fazer) antes de criar um novo. Sem este mock, os testes que exercitam
+    # esses kinds cairiam na consulta real.
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.list_resumable_jobs_by_payload",
         AsyncMock(return_value=[]),
     )
     monkeypatch.setattr(
@@ -893,6 +914,13 @@ async def test_enqueue_job_rechecks_conteudo_id_right_before_insert_to_close_rac
     )
     monkeypatch.setattr(
         "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.list_open_jobs_by_payload",
+        AsyncMock(return_value=[]),
+    )
+    # Kinds manuais tambem consultam jobs RETOMAVEIS (partial/failed com alvo
+    # por fazer) antes de criar um novo. Sem este mock, os testes que exercitam
+    # esses kinds cairiam na consulta real.
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.list_resumable_jobs_by_payload",
         AsyncMock(return_value=[]),
     )
     monkeypatch.setattr(
@@ -1086,6 +1114,13 @@ async def test_enqueue_manual_profile_generate_ignora_modo_manual(monkeypatch) -
     )
     monkeypatch.setattr(
         "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.list_open_jobs_by_payload",
+        AsyncMock(return_value=[]),
+    )
+    # Kinds manuais tambem consultam jobs RETOMAVEIS (partial/failed com alvo
+    # por fazer) antes de criar um novo. Sem este mock, os testes que exercitam
+    # esses kinds cairiam na consulta real.
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.list_resumable_jobs_by_payload",
         AsyncMock(return_value=[]),
     )
     monkeypatch.setattr(

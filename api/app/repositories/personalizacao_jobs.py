@@ -654,6 +654,101 @@ class PersonalizacaoJobsRepository:
         rows = result.mappings().all()
         return [self._hydrate_job(dict(row)) for row in rows]
 
+    async def list_resumable_jobs_by_payload(
+        self,
+        *,
+        kind: str,
+        aluno_id: str | None = None,
+        classe_id: int | None = None,
+    ) -> list[dict[str, Any]]:
+        """Jobs TERMINAIS que ainda tem trabalho por fazer.
+
+        `partial` e `failed` sao finais para o worker (`claim_next_job` so
+        reivindica `pending`), mas nem sempre estao completos: sobram alvos em
+        `failed`/`pending` que nunca foram gerados. Sao esses que a retomada
+        reabre, em vez de comecar um job novo do zero e perder o historico.
+        """
+        if not await self._jobs_exists() or not await self._targets_exists():
+            return []
+        media_snapshot_select = self._media_snapshot_select_expr(
+            enabled=await self._jobs_has_media_snapshot()
+        )
+
+        result = await self.session.execute(
+            text(
+                f"""
+                SELECT
+                  j.id, j.kind, j.status, j.classe_id, j.aluno_id, j.topico_id,
+                  j.conteudo_id, j.trigger_source, j.payload,
+                  {media_snapshot_select.replace("media_snapshot", "j.media_snapshot")},
+                  j.total_targets, j.processed_targets, j.error_count, j.last_error,
+                  j.created_at, j.updated_at, j.started_at, j.finished_at
+                FROM personalizacao_jobs j
+                WHERE j.kind = :kind
+                  AND j.status IN ('partial', 'failed')
+                  AND (CAST(:aluno_id AS UUID) IS NULL OR j.aluno_id = CAST(:aluno_id AS UUID))
+                  AND (CAST(:classe_id AS BIGINT) IS NULL OR j.classe_id = CAST(:classe_id AS BIGINT))
+                  AND EXISTS (
+                    SELECT 1 FROM personalizacao_job_targets t
+                     WHERE t.job_id = j.id AND t.status IN ('failed', 'pending')
+                  )
+                ORDER BY j.created_at DESC, j.id DESC
+                """
+            ),
+            {"kind": kind, "aluno_id": aluno_id, "classe_id": classe_id},
+        )
+        return [self._hydrate_job(dict(row)) for row in result.mappings().all()]
+
+    async def reabrir_job_para_retomada(
+        self, *, job_id: str, zerar_tentativas: bool
+    ) -> int:
+        """Devolve o job a fila com SO os alvos que faltam.
+
+        Alvos `completed`/`skipped` ficam intocados - retomar nao pode refazer o
+        que ja deu certo, senao "continuar de onde parou" viraria "comecar de
+        novo", gastando cota de geracao a toa.
+
+        `zerar_tentativas` e' necessario no pedido manual: um alvo que ja bateu
+        o teto voltaria de `pending` para `failed` na primeira passada do
+        worker, e a retomada nao teria efeito nenhum.
+        """
+        if not await self._jobs_exists() or not await self._targets_exists():
+            return 0
+
+        result = await self.session.execute(
+            text(
+                """
+                UPDATE personalizacao_job_targets
+                   SET status = 'pending',
+                       attempts = CASE WHEN :zerar THEN 0 ELSE attempts END,
+                       last_error = NULL,
+                       updated_at = NOW()
+                 WHERE job_id = CAST(:job_id AS UUID)
+                   AND status IN ('failed', 'pending')
+                RETURNING id
+                """
+            ),
+            {"job_id": job_id, "zerar": zerar_tentativas},
+        )
+        reabertos = len(result.mappings().all())
+        if not reabertos:
+            return 0
+
+        await self.session.execute(
+            text(
+                """
+                UPDATE personalizacao_jobs
+                   SET status = 'pending',
+                       finished_at = NULL,
+                       last_error = NULL,
+                       updated_at = NOW()
+                 WHERE id = CAST(:job_id AS UUID)
+                """
+            ),
+            {"job_id": job_id},
+        )
+        return reabertos
+
     async def get_latest_media_render_job(
         self,
         *,

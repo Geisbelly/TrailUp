@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import asyncio
 import copy
@@ -62,6 +62,14 @@ JOB_KIND_MANUAL_RETRY = "manual_retry"
 JOB_KIND_CLASS_THEME = "class_theme_sync"
 JOB_KIND_MANUAL_PROFILE_GENERATE = "manual_profile_generate"
 JOB_KIND_MANUAL_PROFILE_GENERATE_ALL = "manual_profile_generate_all"
+
+# Pedido explicito de gente. Fura o circuit breaker e habilita a retomada de job
+# terminal - as duas coisas so' fazem sentido quando alguem pediu.
+_KINDS_MANUAIS = {
+    JOB_KIND_MANUAL_RETRY,
+    JOB_KIND_MANUAL_PROFILE_GENERATE,
+    JOB_KIND_MANUAL_PROFILE_GENERATE_ALL,
+}
 _JOB_KIND_MEDIA_RENDER = "media_render"
 _JOB_KIND_MEDIA_RENDER_LEGACY = "personalizacao_media_render"
 _MEDIA_RENDER_KINDS = {_JOB_KIND_MEDIA_RENDER, _JOB_KIND_MEDIA_RENDER_LEGACY}
@@ -867,6 +875,53 @@ async def enqueue_personalizacao_job(
                 return detail
             break
 
+    # RETOMADA: pedido manual sobre um job que terminou `partial`/`failed` mas
+    # ainda tem alvo por fazer reabre AQUELE job, em vez de comecar outro.
+    #
+    # E o que "continuar de onde parou" significa na pratica: alvos
+    # `completed`/`skipped` ficam intocados e so os `failed`/`pending` voltam
+    # para a fila. Comecar um job novo tambem funcionaria, mas perderia o
+    # historico, contaria de novo o que ja estava pronto e mostraria ao
+    # professor um total que nao corresponde ao trabalho restante.
+    #
+    # So para pedido MANUAL, de proposito: reabrir automaticamente faria uma
+    # geracao quebrada girar em loop sem ninguem pedir - o mesmo motivo pelo
+    # qual o disparo automatico continua respeitando o circuit breaker.
+    if kind in _KINDS_MANUAIS:
+        for candidate in await repo.list_resumable_jobs_by_payload(
+            kind=kind,
+            aluno_id=scoped_aluno_id,
+            classe_id=classe_id,
+        ):
+            candidate_payload = candidate.get("payload")
+            candidate_payload = candidate_payload if isinstance(candidate_payload, dict) else {}
+            if (
+                _normalized_id_list(candidate_payload.get("topico_ids")) != requested_topico_ids
+                or _normalized_id_list(candidate_payload.get("conteudo_ids"))
+                != requested_conteudo_ids
+            ):
+                continue
+
+            # `zerar_tentativas`: sem isso um alvo que ja bateu o teto de
+            # retentativas voltaria de `pending` para `failed` na primeira
+            # passada do worker, e a retomada nao teria efeito nenhum.
+            reabertos = await repo.reabrir_job_para_retomada(
+                job_id=str(candidate["id"]), zerar_tentativas=True
+            )
+            if not reabertos:
+                continue
+
+            await session.commit()
+            logger.info(
+                "job retomado do ponto em que parou: job_id=%s alvos_reabertos=%s",
+                candidate["id"],
+                reabertos,
+            )
+            detail = await get_job_detail(session=session, job_id=str(candidate["id"]))
+            if detail:
+                return detail
+            break
+
     job_payload = {
         **(payload or {}),
         "reason": reason,
@@ -1376,11 +1431,7 @@ async def _process_media_render_target(
         # O professor clicando em "gerar" e' um pedido explicito tanto quanto o
         # retry; sem isto, um alvo que falhou 3x seguidas some silenciosamente
         # de toda geracao manual e nunca mais e' tentado.
-        is_pedido_manual = job.get("kind") in {
-            JOB_KIND_MANUAL_RETRY,
-            JOB_KIND_MANUAL_PROFILE_GENERATE,
-            JOB_KIND_MANUAL_PROFILE_GENERATE_ALL,
-        }
+        is_pedido_manual = job.get("kind") in _KINDS_MANUAIS
         falha_streak_max = int(
             getattr(app.state.settings, "personalizacao_falha_streak_max", 3) or 3
         )
