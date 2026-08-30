@@ -17,6 +17,9 @@ export const NodeBadge: React.FC<NodeBadgeProps> = ({ x, y, r=18, title, locked,
       onPress={onPress}
       hitSlop={12}
       style={[s.wrap, { left: x - r - 12, top: y - r - 12, width: (r+12)*2, height: (r+12)*2 }]}
+      accessibilityRole="button"
+      accessibilityLabel={title || 'Nó da trilha'}
+      accessibilityState={{ disabled: locked }}
     >
       <View style={[s.glow, { width:r*2+10, height:r*2+10, borderRadius:r+5, backgroundColor: color+'33' }]} />
       <View style={[s.dot, { width: r*2, height:r*2, borderRadius: r, backgroundColor: color }]} />
