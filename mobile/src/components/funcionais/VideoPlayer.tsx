@@ -237,6 +237,8 @@ export default function VideoPlayer({
           {playbackUrl ? (
             <Pressable
               onPress={() => openExternalUrl(playbackUrl)}
+              accessibilityRole="button"
+              accessibilityLabel="Abrir arquivo"
               style={[
                 styles.secondaryButton,
                 {
@@ -287,7 +289,12 @@ export default function VideoPlayer({
         {showSeekControls && (
           <View style={[seekStyles.overlay, { backgroundColor: 'rgba(0,0,0,0.45)' }]}>
             <View style={seekStyles.controls}>
-              <Pressable onPress={() => seekBy(-10_000)} style={seekStyles.seekBtn}>
+              <Pressable
+                onPress={() => seekBy(-10_000)}
+                style={seekStyles.seekBtn}
+                accessibilityRole="button"
+                accessibilityLabel="Voltar 10 segundos"
+              >
                 <Ionicons name="play-back-outline" size={22} color="#fff" />
                 <Text style={seekStyles.seekLabel}>10s</Text>
               </Pressable>
@@ -301,11 +308,18 @@ export default function VideoPlayer({
                   }
                 }}
                 style={seekStyles.playBtn}
+                accessibilityRole="button"
+                accessibilityLabel={isPlaying ? "Pausar" : "Reproduzir"}
               >
                 <Ionicons name={isPlaying ? 'pause' : 'play'} size={28} color="#fff" />
               </Pressable>
 
-              <Pressable onPress={() => seekBy(10_000)} style={seekStyles.seekBtn}>
+              <Pressable
+                onPress={() => seekBy(10_000)}
+                style={seekStyles.seekBtn}
+                accessibilityRole="button"
+                accessibilityLabel="Avançar 10 segundos"
+              >
                 <Ionicons name="play-forward-outline" size={22} color="#fff" />
                 <Text style={seekStyles.seekLabel}>10s</Text>
               </Pressable>

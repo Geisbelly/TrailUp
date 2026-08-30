@@ -149,6 +149,8 @@ export function TelemetryConsentGate() {
               onPress={() => {
                 void handleReject();
               }}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: saving }}
             >
               <Text style={styles.secondaryButtonText}>Recusar coleta</Text>
             </Pressable>
@@ -158,6 +160,8 @@ export function TelemetryConsentGate() {
               onPress={() => {
                 void handleAccept();
               }}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: saving }}
             >
               <Text style={styles.primaryButtonText}>
                 {saving ? "Salvando..." : "Aceitar e continuar"}

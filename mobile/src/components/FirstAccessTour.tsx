@@ -415,6 +415,8 @@ export function FirstAccessTour({
             <Pressable
               disabled={index === 0}
               onPress={() => setIndex((value) => Math.max(0, value - 1))}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: index === 0 }}
               style={[
                 styles.backButton,
                 { borderColor: bubbleBorder, opacity: index === 0 ? 0.35 : 1 },
@@ -427,6 +429,7 @@ export function FirstAccessTour({
                 if (isLast) void finish();
                 else setIndex((value) => Math.min(steps.length - 1, value + 1));
               }}
+              accessibilityRole="button"
               style={[styles.nextButton, { backgroundColor: accent }]}
             >
               <Text style={styles.nextText}>{isLast ? "Começar" : "Próximo"}</Text>

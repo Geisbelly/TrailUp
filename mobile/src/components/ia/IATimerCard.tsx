@@ -161,6 +161,8 @@ export function IATimerCard({
           style={styles.closeBtn}
           hitSlop={8}
           onPress={() => void setUserFeaturePreference(featureKey, false)}
+          accessibilityRole="button"
+          accessibilityLabel="Desativar temporizador"
         >
           <Text style={styles.closeTxt}>✕</Text>
         </Pressable>
