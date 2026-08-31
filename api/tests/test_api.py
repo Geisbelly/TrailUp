@@ -1685,6 +1685,13 @@ def test_telemetria_route_ignores_legacy_event_log_failures(app, aluno_user, mon
     )
     monkeypatch.setattr(TelemetriaRepository, "insert_eventos_app", AsyncMock(return_value=None))
     monkeypatch.setattr(TelemetriaRepository, "update_lote_analysis", AsyncMock(return_value=None))
+    # Os DOIS caminhos falham: `log_muitos` e o caminho rapido (um execute para
+    # o lote inteiro) e `log` e o de excecao, um por evento, que existe para que
+    # um evento ruim nao leve os outros. Falhando so o primeiro, a rota se
+    # recuperaria pelo segundo e este teste nao exercitaria nada.
+    monkeypatch.setattr(
+        EventoRepository, "log_muitos", AsyncMock(side_effect=RuntimeError("lote-legado-falhou"))
+    )
     monkeypatch.setattr(EventoRepository, "log", AsyncMock(side_effect=RuntimeError("evento-legado-falhou")))
     monkeypatch.setattr(
         telemetria_module,

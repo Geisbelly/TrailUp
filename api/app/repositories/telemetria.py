@@ -411,8 +411,43 @@ class TelemetriaRepository:
         eventos: list[dict[str, Any]],
     ) -> None:
         payloads = await self._payloads_de_eventos_para_gravar(eventos)
-        for indice, evento in enumerate(eventos):
-            await self.session.execute(
+        if not eventos:
+            return
+
+        # Um `execute` com a lista inteira (executemany do driver), e nao um por
+        # evento. Medido num lote de sessao real -- 30 eventos, 3 entradas por
+        # escopo, 8 sinais -- o endpoint fazia 53 round-trips ao banco, dos quais
+        # 30 eram este loop. O Supabase e remoto: cada ida e volta custa latencia
+        # de rede, e isto roda DENTRO da requisicao que tambem executa o
+        # pipeline de analise. Dai o cliente precisar de 120s de timeout.
+        linhas = [
+            {
+                "client_event_id": str(evento.get("client_event_id") or uuid4()),
+                "sessao_id": sessao_id,
+                "aluno_id": aluno_id,
+                "classe_id": classe_id,
+                "topico_id": evento.get("topico_id"),
+                "conteudo_id": evento.get("conteudo_id"),
+                "atividade_id": evento.get("atividade_id"),
+                "questao_id": evento.get("questao_id"),
+                "item_key": evento.get("item_key"),
+                "screen_name": evento.get("screen_name") or screen_name,
+                "route_name": evento.get("route_name") or route_name,
+                "event_group": str(evento.get("event_group") or "interaction"),
+                "event_name": str(evento.get("event_name") or "unknown"),
+                "event_source": str(evento.get("event_source") or "mobile_app"),
+                "occurred_at": self._coerce_datetime(evento.get("occurred_at")),
+                "time_since_prev_sec": evento.get("time_since_prev_sec"),
+                "attempt_number": evento.get("attempt_number"),
+                "is_correct": evento.get("is_correct"),
+                "chat_role": evento.get("chat_role"),
+                "trigger_context": evento.get("trigger_context"),
+                "payload": json.dumps(payloads[indice], ensure_ascii=False, default=str),
+            }
+            for indice, evento in enumerate(eventos)
+        ]
+
+        await self.session.execute(
                 text(
                     """
                     INSERT INTO telemetria_eventos_app (
@@ -465,31 +500,9 @@ class TelemetriaRepository:
                     )
                     ON CONFLICT (sessao_id, client_event_id) DO NOTHING
                     """
-                ),
-                {
-                    "client_event_id": str(evento.get("client_event_id") or uuid4()),
-                    "sessao_id": sessao_id,
-                    "aluno_id": aluno_id,
-                    "classe_id": classe_id,
-                    "topico_id": evento.get("topico_id"),
-                    "conteudo_id": evento.get("conteudo_id"),
-                    "atividade_id": evento.get("atividade_id"),
-                    "questao_id": evento.get("questao_id"),
-                    "item_key": evento.get("item_key"),
-                    "screen_name": evento.get("screen_name") or screen_name,
-                    "route_name": evento.get("route_name") or route_name,
-                    "event_group": str(evento.get("event_group") or "interaction"),
-                    "event_name": str(evento.get("event_name") or "unknown"),
-                    "event_source": str(evento.get("event_source") or "mobile_app"),
-                    "occurred_at": self._coerce_datetime(evento.get("occurred_at")),
-                    "time_since_prev_sec": evento.get("time_since_prev_sec"),
-                    "attempt_number": evento.get("attempt_number"),
-                    "is_correct": evento.get("is_correct"),
-                    "chat_role": evento.get("chat_role"),
-                    "trigger_context": evento.get("trigger_context"),
-                    "payload": json.dumps(payloads[indice], ensure_ascii=False, default=str),
-                },
-            )
+            ),
+            linhas,
+        )
 
     async def insert_time_metric_entries(
         self,
@@ -518,6 +531,12 @@ class TelemetriaRepository:
             ("material", time_metrics.get("materials")),
         )
 
+        # Acumula e grava de UMA vez (executemany), em vez de um `execute` por
+        # entrada. Num lote de sessao real este loop respondia por 12 dos 53
+        # round-trips do endpoint, e o Supabase e remoto: cada ida e volta custa
+        # latencia dentro da mesma requisicao que roda o pipeline de analise.
+        linhas: list[dict[str, Any]] = []
+
         for scope, entries in scope_map:
             if not isinstance(entries, list):
                 continue
@@ -539,7 +558,38 @@ class TelemetriaRepository:
                 if scope == "material" and not (entry.get("material_key") or entry.get("item_key") or entry.get("key")):
                     continue
 
-                await self.session.execute(
+                linhas.append(
+                    {
+                        "lote_id": lote_id,
+                        "sessao_id": sessao_id,
+                        "aluno_id": aluno_id,
+                        "classe_id": classe_id,
+                        "topico_id": resolved_topico_id,
+                        "conteudo_id": resolved_conteudo_id,
+                        "atividade_id": resolved_atividade_id,
+                        "item_key": entry.get("item_key") or entry.get("key"),
+                        "material_key": entry.get("material_key"),
+                        "material_tipo": entry.get("material_tipo"),
+                        "scope": scope,
+                        "visits": max(0, self._coerce_int(entry.get("visits"), 0)),
+                        "dwell_sec": max(0.0, self._coerce_float(entry.get("dwell_sec"), 0.0)),
+                        "active_sec": max(0.0, self._coerce_float(entry.get("active_sec"), 0.0)),
+                        "idle_sec": max(0.0, self._coerce_float(entry.get("idle_sec"), 0.0)),
+                        "touch_count": max(0, self._coerce_int(entry.get("touch_count"), 0)),
+                        "scroll_distance_px": max(
+                            0.0, self._coerce_float(entry.get("scroll_distance_px"), 0.0)
+                        ),
+                        "max_depth_px": max(
+                            0.0, self._coerce_float(entry.get("max_depth_px"), 0.0)
+                        ),
+                        "captured_at": captured_at_value,
+                    }
+                )
+
+        if not linhas:
+            return
+
+        await self.session.execute(
                     text(
                         """
                         INSERT INTO telemetria_time_metric_entries (
@@ -591,25 +641,5 @@ class TelemetriaRepository:
                         ON CONFLICT (lote_id, scope, entry_key) DO NOTHING
                         """
                     ),
-                    {
-                        "lote_id": lote_id,
-                        "sessao_id": sessao_id,
-                        "aluno_id": aluno_id,
-                        "classe_id": classe_id,
-                        "topico_id": resolved_topico_id,
-                        "conteudo_id": resolved_conteudo_id,
-                        "atividade_id": resolved_atividade_id,
-                        "item_key": entry.get("item_key") or entry.get("key"),
-                        "material_key": entry.get("material_key"),
-                        "material_tipo": entry.get("material_tipo"),
-                        "scope": scope,
-                        "visits": max(0, self._coerce_int(entry.get("visits"), 0)),
-                        "dwell_sec": max(0.0, self._coerce_float(entry.get("dwell_sec"), 0.0)),
-                        "active_sec": max(0.0, self._coerce_float(entry.get("active_sec"), 0.0)),
-                        "idle_sec": max(0.0, self._coerce_float(entry.get("idle_sec"), 0.0)),
-                        "touch_count": max(0, self._coerce_int(entry.get("touch_count"), 0)),
-                        "scroll_distance_px": max(0.0, self._coerce_float(entry.get("scroll_distance_px"), 0.0)),
-                        "max_depth_px": max(0.0, self._coerce_float(entry.get("max_depth_px"), 0.0)),
-                        "captured_at": captured_at_value,
-                    },
-                )
+            linhas,
+        )

@@ -1215,8 +1215,24 @@ async def test_telemetria_repository_persists_app_events_with_conflict_guard() -
     sql_statements = " ".join(sql for sql, _ in session.calls)
     assert "INSERT INTO telemetria_eventos_app" in sql_statements
     assert "ON CONFLICT (sessao_id, client_event_id) DO NOTHING" in sql_statements
-    assert session.calls[0][1]["screen_name"] == "trilha_topico"
-    assert session.calls[1][1]["chat_role"] == "user"
+
+    # UM `execute` para os dois eventos, com a lista de parametros (executemany),
+    # e nao um por evento. O custo deixa de crescer com o tamanho do lote: num
+    # lote de sessao real o endpoint fazia 53 round-trips e passou a fazer 6.
+    assert len(session.calls) == 1, "os eventos vao num execute so"
+    linhas = session.calls[0][1]
+    assert isinstance(linhas, list), "executemany recebe lista de dicts"
+    assert len(linhas) == 2
+
+    # O conteudo por evento continua correto, cada um na sua linha.
+    assert linhas[0]["screen_name"] == "trilha_topico"
+    assert linhas[0]["client_event_id"] == "evt-1"
+    assert linhas[1]["chat_role"] == "user"
+    assert linhas[1]["client_event_id"] == "evt-2"
+
+    # Toda linha tem o mesmo conjunto de chaves: com executemany, uma linha com
+    # chave faltando quebraria o bind do statement inteiro, nao so a dela.
+    assert {frozenset(linha) for linha in linhas} == {frozenset(linhas[0])}
 
 
 @pytest.mark.asyncio

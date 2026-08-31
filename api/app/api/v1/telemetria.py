@@ -313,23 +313,52 @@ async def registrar_lote_telemetria(
     await session.commit()
 
     evento_repo = EventoRepository(session)
-    for evento in normalized_events:
+
+    async def _gravar_evento_legado(evento: Evento) -> None:
+        await evento_repo.log(
+            aluno_id=aluno_id,
+            tipo=evento.tipo,
+            referencia=str(evento.referencia) if evento.referencia is not None else None,
+            valor=evento.valor,
+        )
+
+    # Caminho rapido: todos, um commit so. Antes havia um `commit()` DENTRO do
+    # laco -- num lote de sessao real isso eram 8 dos 10 commits da requisicao,
+    # cada um com round-trip e fsync, dentro da chamada que ja roda o pipeline
+    # de analise.
+    #
+    # O commit por evento existia por um bom motivo: um evento ruim (referencia
+    # que nao resolve, por exemplo) nao pode levar os outros. Isso continua
+    # valendo -- so deixa de ser o caminho normal e passa a ser o de excecao.
+    if normalized_events:
         try:
-            await evento_repo.log(
-                aluno_id=aluno_id,
-                tipo=evento.tipo,
-                referencia=str(evento.referencia) if evento.referencia is not None else None,
-                valor=evento.valor,
+            await evento_repo.log_muitos(
+                aluno_id,
+                [
+                    (
+                        evento.tipo,
+                        str(evento.referencia) if evento.referencia is not None else None,
+                        evento.valor,
+                    )
+                    for evento in normalized_events
+                ],
             )
             await session.commit()
         except Exception:
             await session.rollback()
-            logger.warning(
-                "Falha ao persistir evento legado de telemetria: aluno_id=%s tipo=%s referencia=%s",
-                aluno_id,
-                evento.tipo,
-                EventoRepository._sanitize_reference(evento.tipo, evento.referencia),
-            )
+            for evento in normalized_events:
+                try:
+                    await _gravar_evento_legado(evento)
+                    await session.commit()
+                except Exception:
+                    await session.rollback()
+                    logger.warning(
+                        "Falha ao persistir evento legado de telemetria: "
+                        "aluno_id=%s tipo=%s referencia=%s",
+                        aluno_id,
+                        evento.tipo,
+                        EventoRepository._sanitize_reference(evento.tipo, evento.referencia),
+                    )
 
     analysis = TelemetriaAnalysisResponse()
     try:

@@ -216,3 +216,130 @@ async def test_os_frames_continuam_chegando_ao_pipeline(monkeypatch):
 
     assert capturado.get("frames_b64") == ["BYTES-DA-FOTO-0", "BYTES-DA-FOTO-1"]
     assert capturado.get("frame_b64") == "BYTES-DA-FOTO-0"
+
+
+# ---------------------------------------------------------------------------
+# Custo constante: um lote grande nao pode custar mais round-trips que um pequeno
+# ---------------------------------------------------------------------------
+
+
+class _SessaoContadora:
+    """Conta `execute`/`commit` para travar o custo do endpoint."""
+
+    def __init__(self):
+        self.executes = 0
+        self.commits = 0
+        self.bind = None
+
+    async def execute(self, _sql, _params=None):
+        self.executes += 1
+
+        class R:
+            def mappings(self_inner):
+                class M:
+                    def first(self_m):
+                        return {"id": "22222222-2222-4222-8222-222222222222"}
+
+                return M()
+
+        return R()
+
+    async def commit(self):
+        self.commits += 1
+
+    async def rollback(self):
+        pass
+
+
+def _payload_grande(eventos: int, entradas: int, sinais: int) -> TelemetriaLotePayload:
+    agora = datetime.now(UTC)
+
+    def entrada(prefixo, i):
+        return {
+            "key": f"{prefixo}:{i}",
+            "topico_id": 10,
+            "conteudo_id": 100 + i,
+            "atividade_id": 200 + i,
+            "material_key": f"material:{prefixo}:{i}",
+            "dwell_sec": 12,
+        }
+
+    return TelemetriaLotePayload.model_validate(
+        {
+            "sessao_id": "11111111-1111-4111-8111-111111111111",
+            "classe_id": 1,
+            "topico_id": 10,
+            "screen_name": "trilha_topico",
+            "route_name": "/(tabs)/trilha/[id]",
+            "flush_reason": "interval",
+            "captured_at": agora,
+            "session_started_at": agora,
+            "study_elapsed_sec": 60,
+            "screen_dwell_sec": 60,
+            "active_sec": 55,
+            "idle_sec": 5,
+            "touch_count": 8,
+            "scroll_distance_px": 1400,
+            "max_depth_px": 900,
+            "time_metrics": {
+                "general": {},
+                "topics": [entrada("topic", i) for i in range(entradas)],
+                "contents": [entrada("content", i) for i in range(entradas)],
+                "activities": [entrada("activity", i) for i in range(entradas)],
+                "materials": [entrada("material", i) for i in range(entradas)],
+            },
+            "signals": [
+                {"type": "content_open", "timestamp": i, "conteudo_id": 100 + i}
+                for i in range(sinais)
+            ],
+            "eventos_app": [
+                {
+                    "client_event_id": f"evt-{i}",
+                    "event_group": "interaction",
+                    "event_name": "tap",
+                    "occurred_at": agora,
+                }
+                for i in range(eventos)
+            ],
+        }
+    )
+
+
+async def _custo(payload, monkeypatch) -> tuple[int, int]:
+    sessao = _SessaoContadora()
+
+    async def sem_analise(**_kwargs):
+        return None
+
+    monkeypatch.setattr(rota, "run_analysis", sem_analise)
+
+    class FakeUser:
+        aluno_id = "33333333-3333-4333-8333-333333333333"
+        user_id = aluno_id
+
+    await rota.registrar_lote_telemetria(
+        payload=payload, request=object(), user=FakeUser(), session=sessao
+    )
+    return sessao.executes, sessao.commits
+
+
+async def test_o_custo_no_banco_nao_cresce_com_o_tamanho_do_lote(monkeypatch):
+    """Eventos e metricas vao em UM execute cada (executemany).
+
+    Antes era um `execute` por evento e por entrada, mais um `commit` por evento
+    legado: um lote de sessao real -- 30 eventos, 3 entradas por escopo, 8 sinais
+    -- custava 53 round-trips e 10 commits. O Supabase e remoto, e isto roda
+    DENTRO da requisicao que tambem executa o pipeline de analise; e parte de por
+    que o cliente precisa de 120s de timeout.
+    """
+    pequeno = await _custo(_payload_grande(eventos=6, entradas=1, sinais=2), monkeypatch)
+    grande = await _custo(_payload_grande(eventos=60, entradas=8, sinais=20), monkeypatch)
+
+    assert pequeno == grande, (
+        f"o custo tem de ser constante: pequeno={pequeno} grande={grande}"
+    )
+    executes, commits = grande
+    # Uma folga sobre o observado (6 e 3), para nao travar refatoracao legitima
+    # -- o que importa e nao voltar a crescer com o lote.
+    assert executes <= 10, f"round-trips demais: {executes}"
+    assert commits <= 4, f"commits demais: {commits}"

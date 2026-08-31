@@ -1,3 +1,5 @@
+from collections.abc import Sequence
+
 from sqlalchemy import String, bindparam, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -49,6 +51,52 @@ class EventoRepository:
             return numeric_reference
 
         return normalized
+
+    _INSERT = """
+        INSERT INTO eventos_aluno (aluno_id, tipo, referencia, valor)
+        VALUES (:aluno_id, :tipo, :referencia, :valor)
+    """
+
+    def _linha(
+        self,
+        aluno_id: str,
+        tipo: str,
+        referencia: str | int | None,
+        valor: float | None,
+    ) -> dict[str, object | None]:
+        sanitized_reference = self._sanitize_reference(tipo, referencia)
+        if sanitized_reference is not None:
+            sanitized_reference = str(sanitized_reference)
+        return {
+            "aluno_id": aluno_id,
+            "tipo": tipo,
+            "referencia": sanitized_reference,
+            "valor": valor,
+        }
+
+    async def log_muitos(
+        self,
+        aluno_id: str,
+        eventos: Sequence[tuple[str, str | int | None, float | None]],
+    ) -> None:
+        """Grava vários eventos num `execute` só (executemany do driver).
+
+        `log` continua existindo e intocado para quem grava um evento avulso.
+        Isto serve ao lote de telemetria, onde os eventos vinham um por
+        `execute` — e o Supabase é remoto, então cada ida e volta custa latência
+        dentro da requisição que também roda o pipeline de análise.
+        """
+        if not eventos:
+            return
+
+        linhas = [
+            self._linha(aluno_id, tipo, referencia, valor)
+            for tipo, referencia, valor in eventos
+        ]
+        await self.session.execute(
+            text(self._INSERT).bindparams(bindparam("referencia", type_=String)),
+            linhas,
+        )
 
     async def log(
         self,
