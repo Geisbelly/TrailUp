@@ -244,6 +244,12 @@ function buildMetricRowsForScope(params: {
     item_key: entry.item_key ?? null,
     material_key: entry.material_key ?? null,
     material_tipo: entry.material_tipo ?? null,
+    // Identidade da entrada dentro do lote: e a chave do dicionario que o
+    // acumulador ja usa, e o que a constraint de dedup casa. O trigger no banco
+    // sabe derivar isso sozinho (para os apps antigos, que nao mandam a coluna),
+    // mas mandar o valor de origem evita depender da derivacao onde ela e
+    // conhecida.
+    entry_key: entry.key,
     scope,
     visits: Math.max(0, Math.round(normalizeMetricNumber(entry.visits))),
     dwell_sec: normalizeMetricNumber(entry.dwell_sec),
@@ -392,9 +398,17 @@ async function persistTelemetryBatchDirect(payload: TelemetryBatchPayload) {
 
   const metricRows = buildAllMetricRows(batchId, safePayload, alunoId);
   if (metricRows.length > 0) {
+    // `upsert` com `ignoreDuplicates`, e nao `insert`: o mesmo lote pode voltar
+    // pela fila em disco depois de ja ter sido gravado (a resposta se perde com
+    // mais frequencia que a gravacao falha). Com `insert` cru, o reenvio ou
+    // duplicava o tempo do aluno, ou -- com a chave unica em vigor -- estourava
+    // e prendia o lote na cabeca da fila.
     const { error: metricsError } = await supabase
       .from("telemetria_time_metric_entries")
-      .insert(metricRows);
+      .upsert(metricRows, {
+        onConflict: "lote_id,scope,entry_key",
+        ignoreDuplicates: true,
+      });
 
     if (metricsError) {
       const rawMessage = String((metricsError as any)?.message ?? "").toLowerCase();
