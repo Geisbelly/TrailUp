@@ -335,31 +335,68 @@ async function persistTelemetryBatchDirect(payload: TelemetryBatchPayload) {
     Array.isArray(safePayload.camera.frames) &&
     safePayload.camera.frames.length > 0;
 
-  const { error: batchError } = await supabase.from("telemetria_lotes").insert({
-    id: batchId,
-    sessao_id: safePayload.sessao_id,
-    aluno_id: alunoId,
-    classe_id: safePayload.classe_id,
-    topico_id: safePayload.topico_id ?? null,
-    atividade_id: safePayload.atividade_id ?? null,
-    conteudo_id: safePayload.conteudo_id ?? null,
-    screen_name: safePayload.screen_name,
-    route_name: safePayload.route_name,
-    flush_reason: safePayload.flush_reason,
-    captured_at: safePayload.captured_at,
-    study_elapsed_sec: safePayload.study_elapsed_sec,
-    screen_dwell_sec: safePayload.screen_dwell_sec,
-    active_sec: safePayload.active_sec,
-    idle_sec: safePayload.idle_sec,
-    touch_count: safePayload.touch_count,
-    scroll_distance_px: safePayload.scroll_distance_px,
-    max_depth_px: safePayload.max_depth_px,
-    frame_sent: frameSent,
-    analysis_ciclo_id: null,
-    payload: sanitizarCameraParaBanco(safePayload),
-    created_at: nowIso,
-  });
+  // `upsert` com `ignoreDuplicates`, e nao `insert`: `telemetria_lotes` tem
+  // UNIQUE (sessao_id, captured_at, flush_reason) desde `20260406_03`, e o mesmo
+  // lote volta pela fila em disco sempre que a resposta se perde DEPOIS de a
+  // gravacao ter dado certo -- o que e comum, porque o flush dispara justamente
+  // quando o app vai para segundo plano. Com `insert` cru isso levantava 23505,
+  // o erro subia, e o lote ficava preso na cabeca da fila trancando todos os que
+  // estavam atras dele ate vencerem os 7 dias de validade.
+  const { data: loteInserido, error: batchError } = await supabase
+    .from("telemetria_lotes")
+    .upsert(
+      {
+        id: batchId,
+        sessao_id: safePayload.sessao_id,
+        aluno_id: alunoId,
+        classe_id: safePayload.classe_id,
+        topico_id: safePayload.topico_id ?? null,
+        atividade_id: safePayload.atividade_id ?? null,
+        conteudo_id: safePayload.conteudo_id ?? null,
+        screen_name: safePayload.screen_name,
+        route_name: safePayload.route_name,
+        flush_reason: safePayload.flush_reason,
+        captured_at: safePayload.captured_at,
+        study_elapsed_sec: safePayload.study_elapsed_sec,
+        screen_dwell_sec: safePayload.screen_dwell_sec,
+        active_sec: safePayload.active_sec,
+        idle_sec: safePayload.idle_sec,
+        touch_count: safePayload.touch_count,
+        scroll_distance_px: safePayload.scroll_distance_px,
+        max_depth_px: safePayload.max_depth_px,
+        frame_sent: frameSent,
+        analysis_ciclo_id: null,
+        payload: sanitizarCameraParaBanco(safePayload),
+        created_at: nowIso,
+      },
+      {
+        onConflict: "sessao_id,captured_at,flush_reason",
+        ignoreDuplicates: true,
+      }
+    )
+    .select("id")
+    .maybeSingle();
   if (batchError) throw batchError;
+
+  // `ignoreDuplicates` nao devolve linha quando o lote ja existia. Seguir com o
+  // `batchId` local seria pior que o erro original: ele aponta para uma linha
+  // que nao existe, e as metricas granulares quebrariam na FK de `lote_id`.
+  //
+  // Este lote ja foi gravado antes, com os eventos e as metricas dele -- e o que
+  // `insert_or_get_lote` faz do lado da API, que tambem retorna cedo quando nao
+  // criou. Nao ha nada a refazer, e para a fila isto e SUCESSO: o dado esta no
+  // banco, que era o objetivo.
+  if (!loteInserido?.id) {
+    const { data: loteExistente } = await supabase
+      .from("telemetria_lotes")
+      .select("id")
+      .eq("sessao_id", safePayload.sessao_id)
+      .eq("captured_at", safePayload.captured_at)
+      .eq("flush_reason", safePayload.flush_reason)
+      .maybeSingle();
+
+    return buildFallbackResponse(loteExistente?.id ?? batchId, safePayload);
+  }
 
   const events = Array.isArray(safePayload.eventos_app) ? safePayload.eventos_app : [];
   if (events.length > 0) {

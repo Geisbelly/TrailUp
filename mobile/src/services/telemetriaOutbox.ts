@@ -48,25 +48,74 @@ export function podarLotes(
 }
 
 /**
- * Reenvia do mais antigo para o mais novo e **para no primeiro que falhar**:
- * se o envio ainda não voltou, insistir nos seguintes só gasta bateria e rede.
- * O que já passou sai da fila mesmo assim, então o progresso parcial não é
- * perdido.
+ * Códigos que significam "este lote NUNCA vai ser aceito": chave única violada,
+ * FK apontando para linha que não existe mais (classe removida, por exemplo),
+ * NOT NULL, tipo inválido. Retentar não muda o resultado.
+ */
+const CODIGOS_PERMANENTES = new Set(["23505", "23503", "23502", "22P02", "22007"]);
+
+function codigoDoErro(erro: unknown): string | null {
+  if (!erro || typeof erro !== "object") return null;
+  const codigo = (erro as { code?: unknown }).code;
+  return typeof codigo === "string" ? codigo : null;
+}
+
+/**
+ * Distingue "ainda não dá" de "isto nunca vai passar".
+ *
+ * Na dúvida, RETENTAR: descartar um lote por um erro que era temporário perde
+ * tempo de estudo do aluno para sempre. Só o que é reconhecidamente definitivo
+ * sai da fila.
+ */
+export function ehErroPermanente(erro: unknown): boolean {
+  const codigo = codigoDoErro(erro);
+  if (codigo && CODIGOS_PERMANENTES.has(codigo)) return true;
+
+  const status = (erro as { status?: unknown } | null)?.status;
+  // 4xx de validação; 408 e 429 são temporários e ficam de fora de propósito.
+  if (typeof status === "number" && status >= 400 && status < 500) {
+    return status !== 408 && status !== 429;
+  }
+
+  return false;
+}
+
+/**
+ * Reenvia do mais antigo para o mais novo.
+ *
+ * Para no primeiro erro **retentável**: se o envio ainda não voltou, insistir
+ * nos seguintes só gasta bateria e rede.
+ *
+ * Mas um erro DEFINITIVO não pode parar a fila. Antes qualquer falha dava
+ * `break`, e um lote que nunca seria aceito — o caso comum era 23505, o lote já
+ * gravado voltando porque a resposta se perdeu — ficava na cabeça da fila
+ * trancando **todos os que estavam atrás dele** até vencerem os 7 dias. Uma
+ * resposta perdida custava uma semana de telemetria, não um lote.
  */
 export async function escoarLotes(
   fila: LoteEnfileirado[],
   enviar: (payload: TelemetryBatchPayload) => Promise<unknown>
-): Promise<{ enviados: number; restante: LoteEnfileirado[] }> {
+): Promise<{ enviados: number; descartados: number; restante: LoteEnfileirado[] }> {
   let enviados = 0;
-  for (const lote of fila) {
+  let descartados = 0;
+  let indice = 0;
+
+  for (; indice < fila.length; indice += 1) {
     try {
-      await enviar(lote.payload);
+      await enviar(fila[indice].payload);
       enviados += 1;
-    } catch {
-      break;
+    } catch (erro) {
+      if (!ehErroPermanente(erro)) break;
+
+      descartados += 1;
+      console.warn(
+        "[telemetriaOutbox] Lote descartado por erro definitivo; a fila segue.",
+        erro
+      );
     }
   }
-  return { enviados, restante: fila.slice(enviados) };
+
+  return { enviados, descartados, restante: fila.slice(indice) };
 }
 
 function parsearFila(bruto: string | null): LoteEnfileirado[] {
@@ -112,13 +161,13 @@ export async function contarLotesPendentes(): Promise<number> {
 
 export async function drenarLotesTelemetria(
   enviar: (payload: TelemetryBatchPayload) => Promise<unknown>
-): Promise<{ enviados: number; pendentes: number }> {
+): Promise<{ enviados: number; descartados: number; pendentes: number }> {
   const fila = podarLotes(await ler(), Date.now());
   if (fila.length === 0) {
-    return { enviados: 0, pendentes: 0 };
+    return { enviados: 0, descartados: 0, pendentes: 0 };
   }
 
-  const { enviados, restante } = await escoarLotes(fila, enviar);
+  const { enviados, descartados, restante } = await escoarLotes(fila, enviar);
   await gravar(restante);
-  return { enviados, pendentes: restante.length };
+  return { enviados, descartados, pendentes: restante.length };
 }
