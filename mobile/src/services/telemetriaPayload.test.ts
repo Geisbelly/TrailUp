@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { sanitizarCameraParaBanco } from "./telemetriaPayload";
+import {
+  descartarCameraParaFila,
+  sanitizarCameraParaBanco,
+} from "./telemetriaPayload";
 
 function payload(frames: number, over: Record<string, unknown> = {}) {
   return {
@@ -113,4 +116,53 @@ test("camera ausente no payload nao quebra", () => {
 
   assert.equal(limpo.camera.frames_count, 0);
   assert.deepEqual(limpo.camera.frames, []);
+});
+
+// ---------------------------------------------------------------------------
+// A fila em disco nao pode carregar os frames
+// ---------------------------------------------------------------------------
+
+test("a camera e descartada antes de o lote ir para a fila", () => {
+  // Medido no banco: ~2,5 MB por frame. Com MAX_CAMERA_FRAMES_PER_BATCH = 30 um
+  // lote chega a ~75 MB, e MAX_LOTES_OUTBOX = 50 daria alguns GB — no
+  // AsyncStorage, que guarda a fila inteira num unico valor.
+  const limpo = descartarCameraParaFila(payload(3));
+
+  assert.equal(limpo.camera.enabled, false);
+  assert.deepEqual(limpo.camera.frames, []);
+  assert.ok(semBytes(limpo));
+});
+
+test("frames vazios, e nao frames sem os bytes", () => {
+  // O schema da API exige `frame_b64` em cada frame: uma lista de frames
+  // incompletos seria 422 e o lote inteiro recusado — o oposto do que a fila
+  // quer. Por isso a lista fica vazia, nao "sanitizada".
+  const limpo = descartarCameraParaFila(payload(2));
+
+  assert.deepEqual(limpo.camera.frames ?? [], []);
+  assert.ok(!("frames_count" in limpo.camera), "nada de campo extra no contrato de envio");
+});
+
+test("o resto do lote sobrevive ao descarte da camera", () => {
+  const original = payload(2);
+  const limpo = descartarCameraParaFila(original);
+
+  assert.equal(limpo.study_elapsed_sec, 60);
+  assert.equal(limpo.sessao_id, original.sessao_id);
+  assert.deepEqual(limpo.time_metrics, original.time_metrics);
+});
+
+test("nao muta o payload recebido", () => {
+  // O mesmo objeto segue para a gravacao direta, que PRECISA dos frames quando
+  // a API esta alcancavel.
+  const original = payload(2);
+  descartarCameraParaFila(original);
+
+  assert.equal(original.camera.frames.length, 2);
+  assert.equal(original.camera.frames[0].frame_b64, "BYTES-DA-FOTO-0");
+});
+
+test("lote sem camera passa intacto, sem copia desnecessaria", () => {
+  const original = payload(0, { camera: { enabled: false, frames: [] } });
+  assert.equal(descartarCameraParaFila(original), original);
 });

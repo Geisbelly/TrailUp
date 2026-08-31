@@ -34,6 +34,7 @@ import {
   drenarLotesTelemetria,
   enfileirarLoteTelemetria,
 } from "@/services/telemetriaOutbox";
+import { descartarCameraParaFila } from "@/services/telemetriaPayload";
 import {
   DEFAULT_TELEMETRY_PREFERENCES,
   getTelemetryConsentRecord,
@@ -859,7 +860,12 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
           // Sem isto o lote só existia em memória, e a falha acontece
           // justamente ao ir para segundo plano — quando o sistema pode matar
           // o app e levar o tempo de estudo junto.
-          await enfileirarLoteTelemetria(payload);
+          //
+          // Sem a câmera: os frames em base64 pesam ~2,5 MB cada, a fila guarda
+          // até 50 lotes num único valor do AsyncStorage, e um lote grande
+          // impedia a gravação de todos os demais. O frame também não serviria
+          // ao ser reenviado depois — a emoção é do instante da captura.
+          await enfileirarLoteTelemetria(descartarCameraParaFila(payload));
           assumido = true;
         } catch (erroFila) {
           console.warn("[MetricasContext] Falha ao enfileirar lote:", erroFila);
