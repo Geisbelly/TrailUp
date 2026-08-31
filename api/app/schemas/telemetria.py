@@ -1,7 +1,10 @@
+import logging
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError, field_validator
+
+logger = logging.getLogger(__name__)
 
 TelemetryFlushReason = Literal[
     "interval",
@@ -43,7 +46,15 @@ class TelemetriaTouchSamplePayload(BaseModel):
 
 
 class TelemetriaTimeMetricEntryPayload(BaseModel):
-    key: str
+    # Com default: `key` obrigatorio fazia uma entrada sem ela derrubar o lote
+    # INTEIRO com 422 -- eventos, sinais e as outras metricas junto. E o cliente
+    # trata 422 como erro nao-rede e cai no fallback direto, que nao valida nada
+    # e grava: a rigidez aqui empurrava o lote para o caminho menos supervisionado.
+    #
+    # Ninguem depende de `key` estar preenchida: o repositorio le
+    # `entry.get("item_key") or entry.get("key")`, e `entry_key` e derivada pelo
+    # trigger `telemetria_resolver_entidade` (20260830_01).
+    key: str = ""
     topico_id: int | None = None
     atividade_id: int | None = None
     conteudo_id: int | None = None
@@ -59,12 +70,54 @@ class TelemetriaTimeMetricEntryPayload(BaseModel):
     max_depth_px: float = 0
 
 
+def _entradas_aproveitaveis(valor: Any) -> Any:
+    """Descarta a entrada ruim em vez de recusar o lote por causa dela.
+
+    Sem isto, um unico campo invalido -- um `dwell_sec` que veio como texto de
+    uma versao antiga do app, por exemplo -- levantava 422 e levava embora o lote
+    TODO: os eventos, os sinais e as outras metricas, todos corretos. E o cliente
+    trata 422 como erro nao-rede, entao o lote descia para o fallback direto, que
+    nao valida nada e grava: a validacao rigorosa nao protegia o banco, so movia
+    o dado para o caminho sem supervisao.
+
+    Perder uma linha de metrica e o preco menor. E ele nao e silencioso: o
+    descarte e registrado, e `telemetria.input` no endpoint mostra a contagem que
+    sobrou.
+    """
+    if not isinstance(valor, list):
+        return valor
+
+    aproveitadas: list[Any] = []
+    descartadas = 0
+    for item in valor:
+        if isinstance(item, TelemetriaTimeMetricEntryPayload):
+            aproveitadas.append(item)
+            continue
+        try:
+            aproveitadas.append(TelemetriaTimeMetricEntryPayload.model_validate(item))
+        except ValidationError:
+            descartadas += 1
+
+    if descartadas:
+        logger.warning(
+            "telemetria: %d entrada(s) de metrica descartada(s) por invalidez; "
+            "o resto do lote foi preservado.",
+            descartadas,
+        )
+
+    return aproveitadas
+
+
 class TelemetriaTimeMetricsPayload(BaseModel):
     general: dict[str, float | int] = Field(default_factory=dict)
     topics: list[TelemetriaTimeMetricEntryPayload] = Field(default_factory=list)
     contents: list[TelemetriaTimeMetricEntryPayload] = Field(default_factory=list)
     activities: list[TelemetriaTimeMetricEntryPayload] = Field(default_factory=list)
     materials: list[TelemetriaTimeMetricEntryPayload] = Field(default_factory=list)
+
+    _aproveita_o_que_der = field_validator(
+        "topics", "contents", "activities", "materials", mode="before"
+    )(_entradas_aproveitaveis)
 
 
 class TelemetriaCameraFramePayload(BaseModel):
