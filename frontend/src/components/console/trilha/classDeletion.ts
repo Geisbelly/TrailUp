@@ -112,11 +112,33 @@ async function fetchTrailIds(classeId: number) {
   };
 }
 
+/**
+ * `count: "exact"` para poder distinguir "apagou nada porque nao havia nada" de
+ * "apagou nada porque o RLS filtrou tudo".
+ *
+ * Sem policy de DELETE, o PostgREST afeta ZERO linhas e **nao retorna erro**.
+ * Como estas funcoes so registravam algo quando havia `error`, a limpeza da
+ * telemetria era um no-op perfeitamente silencioso -- foi assim que 299 sessoes
+ * orfas acumularam sem ninguem notar. O `console.warn` que existia justamente
+ * para pegar isso nunca disparava.
+ *
+ * Segue sendo "opcional": nao derruba a exclusao da classe. Mas agora aparece.
+ */
 async function tryDeleteEq(table: string, column: string, value: number) {
   try {
-    const { error } = await dynamicSupabase.from(table).delete().eq(column, value);
+    const { error, count } = await dynamicSupabase
+      .from(table)
+      .delete({ count: "exact" })
+      .eq(column, value);
     if (error) {
       console.warn(`[ClassDeletion] Falha opcional ao limpar ${table}:`, error);
+      return;
+    }
+    if (count === 0) {
+      console.warn(
+        `[ClassDeletion] ${table}: nenhuma linha apagada para ${column}=${value}. ` +
+          `Se havia dado, falta policy de DELETE (o RLS filtra sem erro).`
+      );
     }
   } catch (error) {
     console.warn(`[ClassDeletion] Falha opcional ao limpar ${table}:`, error);
@@ -127,9 +149,19 @@ async function tryDeleteIn(table: string, column: string, values: number[]) {
   if (values.length === 0) return;
 
   try {
-    const { error } = await dynamicSupabase.from(table).delete().in(column, values);
+    const { error, count } = await dynamicSupabase
+      .from(table)
+      .delete({ count: "exact" })
+      .in(column, values);
     if (error) {
       console.warn(`[ClassDeletion] Falha opcional ao limpar ${table}:`, error);
+      return;
+    }
+    if (count === 0) {
+      console.warn(
+        `[ClassDeletion] ${table}: nenhuma linha apagada para ${values.length} valor(es) ` +
+          `de ${column}. Se havia dado, falta policy de DELETE.`
+      );
     }
   } catch (error) {
     console.warn(`[ClassDeletion] Falha opcional ao limpar ${table}:`, error);
@@ -138,10 +170,13 @@ async function tryDeleteIn(table: string, column: string, values: number[]) {
 
 export async function deleteClassTrail(classeId: number) {
   const { topicIds, conteudoIds, atividadeIds, questionIds, storagePaths } = await fetchTrailIds(classeId);
-  if (topicIds.length === 0) return;
 
   await deleteStoragePaths(storagePaths);
 
+  // O que é por `classe_id` roda ANTES da guarda de tópicos. Uma classe sem
+  // tópico ainda pode ter telemetria, progresso e fonte — o aluno entra na
+  // classe e o app já começa a coletar. O `return` antecipado ficava entre a
+  // classe e a limpeza dela, e era a segunda causa das sessões órfãs.
   await tryDeleteEq("telemetria_lotes", "classe_id", classeId);
   await tryDeleteEq("telemetria_sessoes", "classe_id", classeId);
   await tryDeleteEq("personalizacao_item_progresso", "classe_id", classeId);
@@ -188,8 +223,13 @@ export async function deleteClassTrail(classeId: number) {
     if (e6) throw e6;
   }
 
-  const { error: e7 } = await supabase.from("topicos").delete().in("id", topicIds);
-  if (e7) throw e7;
+  // Guardado como os blocos acima: sem o `return` antecipado no topo, esta
+  // chamada passaria a rodar com lista vazia, e `.in("id", [])` monta `id=in.()`
+  // no PostgREST.
+  if (topicIds.length > 0) {
+    const { error: e7 } = await supabase.from("topicos").delete().in("id", topicIds);
+    if (e7) throw e7;
+  }
 }
 
 async function fetchTopicDependencyIds(topicoId: number) {
