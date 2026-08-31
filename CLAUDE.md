@@ -43,7 +43,7 @@ Dois motivos concretos, não estilo:
 Ao estender: se a pergunta for "onde ponho isso?", e a resposta não envolver um
 modelo de linguagem, **não é na API**.
 
-> Dívida conhecida: `POST /api/v1/telemetria/lote` recebe lotes do mobile e
+> Dívida conhecida: `POST /api/v1/telemetria/lotes` recebe lotes do mobile e
 > grava — é encanamento vivendo na API, anterior a esta regra. Ele fica porque o
 > mesmo endpoint dispara o pipeline de análise (que é IA), mas a **persistência**
 > deveria descer para o banco. Não use como precedente.
@@ -206,7 +206,7 @@ Cada perfil carrega:
 ## Telemetria → análise → realimentação
 
 Mobile coleta lotes (`mobile/src/services/telemetriaApi.ts`: dwell/active/idle,
-toque, scroll, sinais, câmera opcional) → `POST /api/v1/telemetria/lote` →
+toque, scroll, sinais, câmera opcional) → `POST /api/v1/telemetria/lotes` →
 persiste em `telemetria_lotes` + `personalizacao_item_progresso` → pipeline de
 análise (`api/app/services/linear_analysis_pipeline.py`: emoção → leitura →
 interação → desempenho → atenção → decisão) → `usePersonalizationRefresh` no
