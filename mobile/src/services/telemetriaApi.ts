@@ -3,6 +3,7 @@ import {
   isNetworkRequestFailedError,
   resolveApiBaseCandidates,
 } from "@/services/apiBaseUrl";
+import { sanitizarCameraParaBanco } from "@/services/telemetriaPayload";
 import {
   normalizeNonNegativeNumber,
   normalizePositiveInteger,
@@ -355,7 +356,7 @@ async function persistTelemetryBatchDirect(payload: TelemetryBatchPayload) {
     max_depth_px: safePayload.max_depth_px,
     frame_sent: frameSent,
     analysis_ciclo_id: null,
-    payload: safePayload,
+    payload: sanitizarCameraParaBanco(safePayload),
     created_at: nowIso,
   });
   if (batchError) throw batchError;
