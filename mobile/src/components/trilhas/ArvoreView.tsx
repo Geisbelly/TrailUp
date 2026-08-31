@@ -372,7 +372,20 @@ const adjustedPositions = useMemo(() => {
   // ===== navegação =====
   const [flashId, setFlashId] = useState<string | null>(null);
   const go = (id: string, locked: boolean) => {
-    if (locked) return;
+    if (locked) {
+      // Antes era um `return` seco. Um nó bloqueado que não reage a nada é
+      // indistinguível de um nó quebrado — e foi assim que "não consigo clicar
+      // nos nós" chegou como relato. O flash usa o mecanismo que já existe: diz
+      // "recebi seu toque, e este nó está fechado", sem inventar UI nem navegar.
+      setFlashId(id);
+      flashAnim.stopAnimation();
+      flashAnim.setValue(0);
+      Animated.sequence([
+        Animated.timing(flashAnim, { toValue: 1, duration: 90, useNativeDriver: false }),
+        Animated.timing(flashAnim, { toValue: 0, duration: 180, useNativeDriver: false }),
+      ]).start(() => setFlashId(null));
+      return;
+    }
     setFlashId(id);
     flashAnim.stopAnimation();
     flashAnim.setValue(0);
@@ -813,6 +826,28 @@ const adjustedPositions = useMemo(() => {
                       </>
                     );
                   })()}
+
+                  {/*
+                    Captador de toque, por ÚLTIMO e portanto no topo da pilha.
+
+                    O `onPress` do `<G>` e o do hexágono externo não bastavam: o
+                    `Polygon` de raio `HEX_R - 6`, o ícone e os textos são
+                    desenhados DEPOIS e cobrem o centro do nó — justamente onde
+                    o dedo cai. Nenhum deles tem handler, e no react-native-svg
+                    o toque num filho sem handler não sobe de forma confiável
+                    para o `<G>` pai no Android. Sobrava responder só o anel de
+                    6px entre os dois hexágonos, o que dá a sensação de "às
+                    vezes clica, às vezes não".
+
+                    `fill="transparent"` e não `fill="none"`: `none` não é
+                    testável ao toque, `transparent` é — pinta nada e recebe o
+                    evento.
+                  */}
+                  <Polygon
+                    points={hexPoints(cx, cy, HEX_R + 8)}
+                    fill="transparent"
+                    onPress={onPress}
+                  />
                 </G>
               );
             })}
