@@ -428,11 +428,38 @@ async def persistir_parte_em_materiais(
     }
     fase_b_completa = completed_kinds == _FASE_B_REQUIRED_MEDIA_KINDS
 
+    # `formatos_gerados` NAO e um espelho do status: e o INDICE que o app usa
+    # para saber o que existe. `inferHeroFormat` le o primeiro item para eleger o
+    # formato principal, e `PersonalizedNodeHint.formatos` leva a lista para o no
+    # da trilha.
+    #
+    # Atualizar so quando a Fase B fechava inteira deixava esse indice congelado
+    # no valor da Fase A -- `{cards}` -- sempre que UMA midia falhava. Medido em
+    # producao: 26 de 27 registros com `formatos_gerados = {cards}` enquanto
+    # markdown (27/27), audio (21) e apresentacao (23) tinham `arquivo_url`
+    # valida e servivel. O material estava no Storage, publico e acessivel, e o
+    # app nao sabia que existia: mostrava so os cards.
+    #
+    # Uma midia que falha nao pode esconder as que tiveram sucesso. Cada uma
+    # entra no indice assim que completa.
+    #
+    # UNIAO, nao substituicao: `cards` vem da Fase A e nao esta em `materiais`,
+    # entao sobrescrever apagaria justamente o formato que o app ainda
+    # conseguia enxergar.
+    formatos_anteriores = {
+        str(formato).strip().lower()
+        for formato in ((record or {}).get("formatos_gerados") or [])
+        if str(formato).strip()
+    }
+    formatos_atualizados = sorted(formatos_anteriores | completed_kinds)
+
     await conteudo_repo.atualizar_materiais_e_status(
         record_id=record_id,
         materiais=materiais,
+        # `status` continua reservado ao ciclo COMPLETO -- e o sinal de "a
+        # personalizacao esta inteira", e afrouxar isso e outra decisao.
         status="pronto" if fase_b_completa else None,
-        formatos_gerados=sorted(completed_kinds) if fase_b_completa else None,
+        formatos_gerados=formatos_atualizados or None,
     )
 
 

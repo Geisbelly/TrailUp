@@ -507,3 +507,78 @@ def test_consolidar_partes_ignora_blocos_sem_capitulo_ainda_gerado():
 
     assert "Pronto" in markdown_by_ordem[1]
     assert markdown_by_ordem[1].count("##") == 1
+
+
+# ---------------------------------------------------------------------------
+# `formatos_gerados` e o indice que o app consulta: uma midia que falha nao pode
+# esconder as que tiveram sucesso
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_formatos_gerados_registra_a_midia_que_completou_mesmo_sem_a_outra():
+    """Medido em producao: 26 de 27 registros com `formatos_gerados = {cards}`
+    enquanto markdown (27/27), audio (21) e apresentacao (23) tinham
+    `arquivo_url` valida e servivel.
+
+    A causa: `formatos_gerados` so era atualizado quando a Fase B fechava
+    INTEIRA. Uma midia que falha deixava o indice congelado no valor da Fase A,
+    e o app -- que usa `formatos_gerados[0]` em `inferHeroFormat` e leva a lista
+    para o no da trilha em `PersonalizedNodeHint` -- nao sabia que o material
+    existia.
+    """
+    # Fase A gravou os cards; audio acabou de completar; apresentacao NAO veio.
+    record = {"id": 9, "formatos_gerados": ["cards"], "materiais": {}}
+    repo = FakeConteudoPersonalizadoRepo(record)
+
+    await media_generation_jobs.persistir_parte_em_materiais(
+        conteudo_repo=repo,
+        record_id=9,
+        media_kind="audio",
+        url="https://fake/audio.mp3",
+        storage_path=None,
+        bucket="conteudo_aluno",
+        generation_key="ciclo-1:hash-1",
+    )
+
+    update = repo.updates[0]
+    assert update["formatos_gerados"] is not None, (
+        "com uma midia completa, o indice tem de ser atualizado"
+    )
+    assert "audio" in update["formatos_gerados"], "o audio completou e precisa aparecer"
+    # `cards` veio da Fase A e nao esta em `materiais`: substituir em vez de unir
+    # apagaria o unico formato que o app conseguia enxergar.
+    assert "cards" in update["formatos_gerados"], "a uniao preserva o que a Fase A gerou"
+    # A apresentacao nao completou, entao nao entra.
+    assert "apresentacao" not in update["formatos_gerados"]
+    # E o status segue reservado ao ciclo completo.
+    assert update["status"] is None, "parcial nao e 'pronto'"
+
+
+@pytest.mark.asyncio
+async def test_formatos_gerados_nao_duplica_nem_perde_ao_completar_a_segunda():
+    record = {
+        "id": 11,
+        "formatos_gerados": ["cards", "audio"],
+        "materiais": {
+            "audio": {
+                "arquivo_url": "https://fake/audio.mp3",
+                "metadata": {"status": "completed", "generation_key": "ciclo-1:hash-1"},
+            }
+        },
+    }
+    repo = FakeConteudoPersonalizadoRepo(record)
+
+    await media_generation_jobs.persistir_parte_em_materiais(
+        conteudo_repo=repo,
+        record_id=11,
+        media_kind="apresentacao",
+        url="https://fake/apresentacao.html",
+        storage_path=None,
+        bucket="conteudo_aluno",
+        generation_key="ciclo-1:hash-1",
+    )
+
+    update = repo.updates[0]
+    assert sorted(update["formatos_gerados"]) == ["apresentacao", "audio", "cards"]
+    assert update["status"] == "pronto", "agora a Fase B fechou"
