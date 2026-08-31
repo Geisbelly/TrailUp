@@ -293,6 +293,16 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
   tempo de execução, não de import). Use `CAST(:param AS TIPO)`. E parâmetro
   usado só em `IS NOT NULL`/`CASE WHEN` **precisa** de cast explícito, senão o
   asyncpg falha com `AmbiguousParameterError`.
+- **Para falar com o banco, use `build_engine()` — nunca monte um engine à mão.**
+  O Supabase fica atrás de **PgBouncer**, que não aceita prepared statements
+  nomeados. `app/db/session.py` desliga o cache (`statement_cache_size = 0` +
+  `NullPool`) quando o host termina em `pooler.supabase.com`; um
+  `create_async_engine` improvisado não faz isso e morre com
+  `DuplicatePreparedStatementError: prepared statement "__asyncpg_stmt_N__"
+  already exists`. Vale para script de manutenção, backfill e teste de
+  integração — o erro só aparece na segunda consulta, então parece intermitente.
+  Também é o motivo de `executemany` (uma lista de dicts em `session.execute`)
+  ser seguro aqui: sem cache de statement, ele não colide.
 - **`COALESCE(coluna_enum, '')` estoura em tempo de execução.** O Postgres
   resolve o COALESCE para o tipo da primeira expressão e tenta coagir `''` ao
   enum. Enquanto nenhuma linha vier NULL o segundo argumento não é avaliado e o

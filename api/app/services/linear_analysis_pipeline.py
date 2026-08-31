@@ -133,6 +133,16 @@ def _summarize_time_metrics(payload: dict[str, Any] | None) -> dict[str, Any]:
     activities = _safe_list(time_metrics.get("activities"))
     materials = _safe_list(time_metrics.get("materials"))
 
+    # Somar escopos diferentes multiplica o tempo -- o aninhamento e inclusivo,
+    # e `content`, `activity` e `material` contam o MESMO intervalo. Aqui isso e
+    # deliberado e inofensivo: os dois so existem para virar
+    # `entity_idle_ratio`, e o fator de multiplicacao aparece igual no numerador
+    # e no denominador, entao se cancela.
+    #
+    # NAO exponha nenhum dos dois como valor absoluto, nem os reuse fora da
+    # razao: fora dela o numero esta inflado em ate 3x. Se precisar de tempo por
+    # entidade, use `content_dwell_sec`/`material_dwell_sec`/
+    # `activity_dwell_sec`, que sao por escopo.
     entity_dwell = _sum_metric_entries(contents, "dwell_sec") + _sum_metric_entries(activities, "dwell_sec") + _sum_metric_entries(materials, "dwell_sec")
     entity_idle = _sum_metric_entries(contents, "idle_sec") + _sum_metric_entries(activities, "idle_sec") + _sum_metric_entries(materials, "idle_sec")
     material_dwell = _sum_metric_entries(materials, "dwell_sec")
