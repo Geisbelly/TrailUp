@@ -30,6 +30,8 @@ import { fetchContextoDocente } from "./personalizacoes/personalizacoesApi";
 import { useAuth } from "@/hooks/useAuth";
 import { createRequestGuard, type RequestToken } from "@/lib/requestGuard";
 import { computeTurmaResumo } from "@/lib/turmaResumo";
+import { selectView } from "@/lib/supabaseViews";
+import { useTurmaKpis, type TurmaDistribuicao } from "./useTurmaKpis";
 import {
   Bar,
   BarChart,
@@ -118,47 +120,6 @@ type PersonalizacaoDocenteResponse = {
   }>;
 };
 
-type TurmaGeralMetricas = {
-  classe_id: number;
-  total_alunos: number;
-  tempo_medio_uso_seg: number;
-  sessoes_medias_por_aluno: number;
-  taxa_media_retorno_pct: number;
-  taxa_media_abandono_pct: number;
-  taxa_media_conclusao_pct: number;
-  media_nota_turma: number;
-  taxa_media_acertos_pct: number;
-  taxa_media_acertos_sem_erro_pct: number;
-  eficiencia_media_aprendizagem: number;
-  media_tentativas_por_questao: number;
-  taxa_revisitas_pct: number;
-  taxa_interrupcoes_pct: number;
-  frequencia_chat_media_sessao: number;
-  taxa_media_uso_chat_pct: number;
-  tempo_medio_chat_seg: number;
-  uso_chat_apos_erro_pct: number;
-};
-
-type TurmaPerfilMetricas = {
-  classe_id: number;
-  segmento: string;
-  perfil_nome: string;
-  total_alunos_segmento: number;
-  taxa_abandono_pct: number;
-  media_nota: number;
-  taxa_acertos_pct: number;
-  taxa_uso_chat_pct: number;
-  uso_chat_apos_erro_pct: number;
-};
-
-type TurmaDistribuicao = {
-  classe_id: number;
-  metrica: string;
-  faixa: string;
-  total_alunos: number;
-  percentual: number;
-};
-
 type EvolucaoAluno = {
   classe_id: number;
   aluno_id: string;
@@ -169,25 +130,6 @@ type EvolucaoAluno = {
   eficiencia_aprendizagem: number;
   progresso_trilha_pct: number;
 };
-
-type ViewSelectBuilder = {
-  in: (column: string, values: ReadonlyArray<string | number>) => Promise<{ data: unknown[] | null }>;
-  eq: (column: string, value: string | number) => {
-    eq: (column: string, value: string | number) => {
-      order: (column: string, options: { ascending: boolean }) => Promise<{ data: unknown[] | null }>;
-    };
-  };
-};
-
-type ViewClient = {
-  from: (relation: string) => {
-    select: (columns: string) => ViewSelectBuilder;
-  };
-};
-
-function selectView(viewName: string): ViewSelectBuilder {
-  return (supabase as unknown as ViewClient).from(viewName).select("*");
-}
 
 export default function DashboardSection() {
   const { user, session } = useAuth();
@@ -208,11 +150,10 @@ export default function DashboardSection() {
   const [personalizacaoData, setPersonalizacaoData] = useState<PersonalizacaoDocenteResponse | null>(null);
   const [personalizacaoLoading, setPersonalizacaoLoading] = useState(false);
   const [personalizacaoError, setPersonalizacaoError] = useState<string | null>(null);
-  const [turmaMetricas, setTurmaMetricas] = useState<TurmaGeralMetricas[]>([]);
-  const [perfilMetricas, setPerfilMetricas] = useState<TurmaPerfilMetricas[]>([]);
-  const [distribuicaoMetricas, setDistribuicaoMetricas] = useState<TurmaDistribuicao[]>([]);
   const alunoRequestGuard = useRef(createRequestGuard());
   const [alunoEvolucao, setAlunoEvolucao] = useState<EvolucaoAluno[]>([]);
+  const kpiClassIds = useMemo(() => classes.map((c) => c.id), [classes]);
+  const { turmaMetricas, perfilMetricas, distribuicaoMetricas } = useTurmaKpis(kpiClassIds);
 
   const mapStatus = (status?: string | null): "concluido" | "disponivel" | "bloqueado" => {
     if (!status) return "disponivel";
@@ -273,9 +214,6 @@ export default function DashboardSection() {
 
       if (classIds.length === 0) {
         setAlunos([]);
-        setTurmaMetricas([]);
-        setPerfilMetricas([]);
-        setDistribuicaoMetricas([]);
         setIsLoading(false);
         return;
       }
@@ -324,23 +262,6 @@ export default function DashboardSection() {
       if (topicosError) throw topicosError;
       if (taError) throw taError;
       if (atividadesError) throw atividadesError;
-
-      const [{ data: turmaData }, { data: perfilAggData }, { data: distribuicaoData }] =
-        await Promise.all([
-          classIds.length > 0
-            ? selectView("vw_metricas_turma_geral_classe").in("classe_id", classIds)
-            : Promise.resolve({ data: [] }),
-          classIds.length > 0
-            ? selectView("vw_metricas_turma_perfil_classe").in("classe_id", classIds)
-            : Promise.resolve({ data: [] }),
-          classIds.length > 0
-            ? selectView("vw_metricas_distribuicao_turma_classe").in("classe_id", classIds)
-            : Promise.resolve({ data: [] }),
-        ]);
-
-      setTurmaMetricas((turmaData ?? []) as TurmaGeralMetricas[]);
-      setPerfilMetricas((perfilAggData ?? []) as TurmaPerfilMetricas[]);
-      setDistribuicaoMetricas((distribuicaoData ?? []) as TurmaDistribuicao[]);
 
       const modoMap = new Map<number, string>();
       (modoOperacaoData ?? []).forEach((m) => {
