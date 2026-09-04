@@ -13,6 +13,8 @@ export function useTopicGraph(
   onInvalidLink?: (from?: Topico, to?: Topico) => void
 ) {
   const [selectedEdge, setSelectedEdge] = useState<{ from: number; to: number; type: ConnectorType } | null>(null);
+  const [hasPendingChanges, setHasPendingChanges] = useState(false);
+  const resetPendingChanges = useCallback(() => setHasPendingChanges(false), []);
   const [positions, setPositions] = useState<Record<number, { x: number; y: number }>>({});
   const [canvasOffset, setCanvasOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -48,6 +50,7 @@ export function useTopicGraph(
       if (type === "depende" && t.id === fromId) return { ...t, depende: t.depende.filter((d) => d !== toId) };
       return t;
     }));
+    setHasPendingChanges(true);
   };
 
   const removeLink = (fromId: number, toId: number, type: ConnectorType) => {
@@ -56,6 +59,7 @@ export function useTopicGraph(
       if (type === "depende" && t.id === toId) return { ...t, depende: t.depende.filter((n) => n !== fromId) };
       return t;
     }));
+    setHasPendingChanges(true);
   };
 
   // ── Zoom ─────────────────────────────────────────────────────────────────
@@ -257,6 +261,8 @@ export function useTopicGraph(
     handleCanvasWheel,
     selectedEdge,
     setSelectedEdge,
+    hasPendingChanges,
+    resetPendingChanges,
     draggingConnector,
     connectorPos,
     NODE_WIDTH,
