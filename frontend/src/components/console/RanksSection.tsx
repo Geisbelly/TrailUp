@@ -332,7 +332,7 @@ export default function RanksSection() {
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle className="text-lg">Tipos de Ranking</CardTitle>
-            <CardDescription>Configure os críterios de classificacao</CardDescription>
+            <CardDescription>Configure os critérios de classificação</CardDescription>
           </div>
           <Dialog
             open={isTipoDialogOpen}
@@ -360,7 +360,7 @@ export default function RanksSection() {
                   <Input
                     value={tipoFormData.nome}
                     onChange={(e) => setTipoFormData({ ...tipoFormData, nome: e.target.value })}
-                    placeholder="Ex: Pontuacao Geral"
+                    placeholder="Ex: Pontuação Geral"
                   />
                 </div>
                 <div>
