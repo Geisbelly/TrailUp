@@ -584,6 +584,11 @@ class TelemetriaRepository:
                           :max_depth_px,
                           :captured_at
                         )
+                        -- `entry_key` e preenchido pelo trigger BEFORE INSERT
+                        -- (`telemetria_resolver_entidade`), que roda antes de o
+                        -- conflito ser avaliado -- por isso da para referencia-lo
+                        -- aqui sem o insert precisar conhece-lo.
+                        ON CONFLICT (lote_id, scope, entry_key) DO NOTHING
                         """
                     ),
                     {
