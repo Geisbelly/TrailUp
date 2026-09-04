@@ -501,6 +501,14 @@ export default function RanksSection() {
           <CardContent>
             {isLoading ? (
               <p className="text-sm text-muted-foreground">Carregando rankings...</p>
+            ) : ranks.length === 0 ? (
+              <div className="text-center py-10 border-2 border-dashed border-border rounded-xl bg-card/50 space-y-3">
+                <Trophy className="w-10 h-10 mx-auto text-muted-foreground/40" />
+                <div>
+                  <p className="text-foreground font-semibold text-sm">Nenhum ranking criado ainda</p>
+                  <p className="text-muted-foreground text-xs mt-1">Crie um ranking para acompanhar as posições dos alunos.</p>
+                </div>
+              </div>
             ) : (
               <div className="space-y-2">
                 {ranks.map((rank) => (

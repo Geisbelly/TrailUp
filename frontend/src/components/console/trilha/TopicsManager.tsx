@@ -951,7 +951,13 @@ export default function TopicsManager() {
       {isLoading ? (
         <div className="text-sm text-muted-foreground">Carregando tópicos...</div>
       ) : !selectedClassFilter ? (
-        <div className="text-sm text-muted-foreground">Selecione uma classe para visualizar o canvas.</div>
+        <div className="text-center py-20 border-2 border-dashed border-border rounded-xl bg-card/50 space-y-4">
+          <Workflow className="w-12 h-12 mx-auto text-muted-foreground/40" />
+          <div>
+            <p className="text-foreground font-semibold">Nenhuma classe selecionada</p>
+            <p className="text-muted-foreground text-sm mt-1">Selecione uma classe para visualizar o canvas.</p>
+          </div>
+        </div>
       ) : (
         <div className="flex-1 min-h-0 flex flex-col gap-2">
           {/* Legend */}
