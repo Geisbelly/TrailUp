@@ -157,6 +157,8 @@ export default function TopicsManager() {
     handleCanvasWheel,
     selectedEdge,
     setSelectedEdge,
+    hasPendingChanges,
+    resetPendingChanges,
     draggingConnector,
     connectorPos,
     NODE_WIDTH,
@@ -234,6 +236,12 @@ export default function TopicsManager() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // topicos acabou de vir do banco (loadData terminou) — nao ha mais nada
+  // pendente pra salvar no grafo de dependencias ate a proxima edicao.
+  useEffect(() => {
+    if (!isLoading) resetPendingChanges();
+  }, [isLoading, resetPendingChanges]);
 
   useEffect(() => {
     let cancelled = false;
@@ -469,6 +477,7 @@ export default function TopicsManager() {
       // Um UPDATE por topico, todos coalescidos no mesmo job pending da
       // classe — o escopo final e' o grafo inteiro, como antes.
       refreshJobsSoon();
+      resetPendingChanges();
       toast.success("Mapa de dependencias salvo!");
     } catch (error) {
       console.error("Erro ao salvar grafo:", error);
@@ -942,7 +951,8 @@ export default function TopicsManager() {
             classes={classes}
             selectedClassFilter={selectedClassFilter}
           />
-          <Button variant="secondary" size="sm" onClick={saveGraph} disabled={isSaving}>
+          <Button variant="secondary" size="sm" onClick={saveGraph} disabled={isSaving || !hasPendingChanges}>
+            {hasPendingChanges && <span className="w-1.5 h-1.5 rounded-full bg-warning mr-2" aria-hidden="true" />}
             Salvar dependências
           </Button>
         </div>
