@@ -1,4 +1,7 @@
 import tinycolor from "tinycolor2";
+// so os tipos -- apagados na compilacao, entao nao pesam no bundle nem
+// exigem "react-native" resolvivel no ambiente de teste (node --test puro).
+import type { TextStyle, ViewStyle } from "react-native";
 
 // react-native-web avisa no console a cada render quando ve shadowColor/
 // shadowOffset/shadowOpacity/shadowRadius (ou textShadowColor/Offset/Radius)
@@ -44,9 +47,12 @@ export type RNBoxShadowStyle =
       shadowRadius: number;
     };
 
-export function shadowStyle(shadow: RNBoxShadow = {}, isWeb: boolean): RNBoxShadowStyle {
+// Cast pra ViewStyle: boxShadow existe de verdade em runtime (react-native-web
+// sempre, RN nativo atras da flag), mas os tipos ambientes do RN nao o
+// declaram -- sem o cast, todo call site precisaria repetir esse `as`.
+export function shadowStyle(shadow: RNBoxShadow = {}, isWeb: boolean): ViewStyle {
   if (isWeb) {
-    return { boxShadow: boxShadowFromRN(shadow) };
+    return { boxShadow: boxShadowFromRN(shadow) } as ViewStyle;
   }
 
   const { color = "#000", offset = { width: 0, height: 0 }, opacity = 1, radius = 0 } = shadow;
@@ -80,9 +86,12 @@ export type RNTextShadowStyle =
       textShadowRadius: number;
     };
 
-export function textShadowStyle(shadow: RNTextShadow = {}, isWeb: boolean): RNTextShadowStyle {
+// Mesmo motivo do cast em shadowStyle: textShadow so existe pros tipos do
+// react-native-web, que este projeto nao usa pra type-check (um tsconfig so,
+// pra todas as plataformas).
+export function textShadowStyle(shadow: RNTextShadow = {}, isWeb: boolean): TextStyle {
   if (isWeb) {
-    return { textShadow: textShadowFromRN(shadow) };
+    return { textShadow: textShadowFromRN(shadow) } as TextStyle;
   }
 
   const { color = "#000", offset = { width: 0, height: 0 }, radius = 0 } = shadow;
