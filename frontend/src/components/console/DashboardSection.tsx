@@ -200,6 +200,10 @@ export default function DashboardSection() {
   const [selectedAluno, setSelectedAluno] = useState<Aluno | null>(null);
   const [trailViewMode, setTrailViewMode] = useState<"hexagon" | "list">("hexagon");
   const [perfilSegmentFilter, setPerfilSegmentFilter] = useState<"majoritario" | "segundo" | "afinidade_20_plus">("majoritario");
+  // So a UI por enquanto — nao filtra nada ainda. Os KPIs agregados (turma,
+  // perfil, distribuicao) vem de views que nao tem coluna de data por
+  // evento, entao janela temporal real depende do endpoint de KPIs da #12.
+  const [janelaTemporal, setJanelaTemporal] = useState<"7d" | "30d" | "mes_atual" | "tudo">("30d");
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [personalizacaoData, setPersonalizacaoData] = useState<PersonalizacaoDocenteResponse | null>(null);
@@ -553,9 +557,30 @@ export default function DashboardSection() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold">Dashboard de Alunos</h2>
-        <p className="text-muted-foreground">Acompanhe o desempenho dos alunos com permissao de acesso</p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold">Dashboard de Alunos</h2>
+          <p className="text-muted-foreground">Acompanhe o desempenho dos alunos com permissao de acesso</p>
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-muted-foreground">Janela temporal</span>
+          <Select
+            value={janelaTemporal}
+            onValueChange={(value) =>
+              setJanelaTemporal(value as "7d" | "30d" | "mes_atual" | "tudo")
+            }
+          >
+            <SelectTrigger className="w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7d">Últimos 7 dias</SelectItem>
+              <SelectItem value="30d">Últimos 30 dias</SelectItem>
+              <SelectItem value="mes_atual">Este mês</SelectItem>
+              <SelectItem value="tudo">Todo o período</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
