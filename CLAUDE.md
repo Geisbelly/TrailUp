@@ -221,15 +221,26 @@ de ritmo de leitura (WPM) roda no `linear_analysis_pipeline.py`
 — **não** `dwell_sec`, que inclui tempo parado com o material aberto e sub-
 estimaria o WPM de quem só fez uma pausa no meio da leitura.
 
-> **`dwell_sec`, `active_sec` e `idle_sec` são contadores CUMULATIVOS** por
-> `(sessão × item)`, reenviados inteiros a cada lote — não são o tempo daquele
-> lote. Somar as linhas multiplica o tempo pelo número de lotes: em 15 das 34
-> sessões medidas a soma dava mais que o relógio da própria sessão. Para totalizar,
-> some os **incrementos** entre leituras consecutivas, tratando queda como reset
-> do contador (a leitura inteira vale) e leitura repetida como zero — é o que
-> `trailup_tempo_telemetria_min` faz (`20260827_02`). É também por isso que
-> `topic`, `content` e `material` aparecem com o mesmo valor dentro de um lote:
-> cada escopo tem o próprio acumulado, e o aninhamento é inclusivo.
+> **`dwell_sec`, `active_sec` e `idle_sec` são o tempo DAQUELE lote**, não um
+> acumulado da sessão: `runStudyBatchFlush` troca o acumulador por
+> `buildEmptyBatch(nowMs)` a cada flush. Para totalizar, **some as linhas** — é
+> o que `trailup_tempo_telemetria_min` faz (`20260830_01`). A imunidade a lote
+> duplicado **não** vem da forma da conta; vem da chave única
+> `(lote_id, scope, entry_key)`, preenchida pelo trigger
+> `telemetria_resolver_entidade`.
+>
+> Este parágrafo já disse o contrário, e a inversão custou caro: entre 20% e 80%
+> do tempo de estudo sumia. Até `6c1482e` o acumulador só era zerado quando o
+> envio dava certo, então cada falha o fazia crescer e os lotes seguintes
+> reenviavam o total — de onde saiu a leitura de que era cumulativo. As
+> migrations `20260826_19` e `20260827_02`, escritas horas depois da correção
+> sobre dados coletados antes dela, gravaram essa premissa na função de
+> agregação. Ao mexer aqui, **confira o que o coletor faz hoje**, não o que a
+> série histórica sugere.
+>
+> `topic`, `content` e `material` aparecem com o mesmo valor dentro de um lote
+> porque o aninhamento é inclusivo: cada escopo conta o mesmo intervalo. Somar
+> escopos diferentes multiplica o tempo — filtre por `scope` sempre.
 >
 > Corolário: `tempo_gasto_min` em `topico_aluno`, `conteudo_aluno` e
 > `atividade_aluno` é **derivado por trigger** a partir da telemetria. Nenhum
