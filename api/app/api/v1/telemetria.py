@@ -344,7 +344,16 @@ async def registrar_lote_telemetria(
             frames_b64=frames_b64,
             eventos_novos=normalized_events,
             modo="telemetria",
-            telemetry_payload=payload.model_dump(mode="json"),
+            # `persisted_payload`, nao `payload.model_dump()`: o sanitizado, sem
+            # os `frame_b64`. Este payload e gravado inteiro em
+            # `ia_decision_logs.input_summary` (analysis_runner), e com o bruto
+            # iam para la ate 30 fotos do rosto do aluno por lote -- exatamente
+            # o que `_sanitize_lote_payload` existe para evitar em
+            # `telemetria_lotes`, e o que a mudanca para o R2 (c7fd436) buscava
+            # aliviar. Os frames continuam chegando ao pipeline por
+            # `frames_b64`, que e o parametro feito para isso: nenhum no le a
+            # camera pelo telemetry_payload.
+            telemetry_payload=persisted_payload,
             batch_id=str(lote["id"]),
             sessao_id=payload.sessao_id,
         )
