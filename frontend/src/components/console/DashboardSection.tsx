@@ -482,6 +482,10 @@ export default function DashboardSection() {
   const mediaAcertos =
     filteredAlunos.reduce((acc, a) => acc + (isNaN(a.acertosPercentual) ? 0 : a.acertosPercentual), 0) /
     (totalAlunos || 1);
+  // Sem alunos no escopo, as médias acima são 0/(0||1) = 0 — um zero
+  // fabricado, nao um dado real. Usa essa flag pra mostrar estado vazio
+  // em vez do numero, senao "0% de acertos" parece um resultado de verdade.
+  const hasAlunoKpis = totalAlunos > 0;
   const contextoAluno = personalizacaoData?.contexto_aluno ?? {};
   const personalizacoes = personalizacaoData?.personalizacoes ?? [];
   const progressoItens = personalizacaoData?.progresso_itens ?? [];
@@ -508,6 +512,10 @@ export default function DashboardSection() {
     () => computeTurmaResumo(turmaMetricasEscopo),
     [turmaMetricasEscopo]
   );
+  // computeTurmaResumo tambem devolve zeros quando nao ha linha nenhuma —
+  // mesmo problema do hasAlunoKpis, mas pra fonte de dado separada (view de
+  // metricas de turma).
+  const hasTurmaKpis = turmaMetricasEscopo.length > 0;
   const abandonoPorPerfilData = useMemo(
     () =>
       perfilMetricasEscopo
@@ -568,7 +576,11 @@ export default function DashboardSection() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mediaNotas.toFixed(1)}</div>
+            {hasAlunoKpis ? (
+              <div className="text-2xl font-bold">{mediaNotas.toFixed(1)}</div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Sem dados ainda</p>
+            )}
           </CardContent>
         </Card>
 
@@ -578,7 +590,11 @@ export default function DashboardSection() {
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mediaConclusao.toFixed(0)}%</div>
+            {hasAlunoKpis ? (
+              <div className="text-2xl font-bold">{mediaConclusao.toFixed(0)}%</div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Sem dados ainda</p>
+            )}
           </CardContent>
         </Card>
 
@@ -588,7 +604,11 @@ export default function DashboardSection() {
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mediaAcertos.toFixed(0)}%</div>
+            {hasAlunoKpis ? (
+              <div className="text-2xl font-bold">{mediaAcertos.toFixed(0)}%</div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Sem dados ainda</p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -599,7 +619,11 @@ export default function DashboardSection() {
             <CardTitle className="text-sm font-medium">Abandono Médio</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{turmaResumo.taxa_media_abandono_pct.toFixed(1)}%</div>
+            {hasTurmaKpis ? (
+              <div className="text-2xl font-bold">{turmaResumo.taxa_media_abandono_pct.toFixed(1)}%</div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Sem dados ainda</p>
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -607,7 +631,11 @@ export default function DashboardSection() {
             <CardTitle className="text-sm font-medium">Conclusão Média</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{turmaResumo.taxa_media_conclusao_pct.toFixed(1)}%</div>
+            {hasTurmaKpis ? (
+              <div className="text-2xl font-bold">{turmaResumo.taxa_media_conclusao_pct.toFixed(1)}%</div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Sem dados ainda</p>
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -615,7 +643,11 @@ export default function DashboardSection() {
             <CardTitle className="text-sm font-medium">Uso do Chat após Erro</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{turmaResumo.uso_chat_apos_erro_pct.toFixed(1)}%</div>
+            {hasTurmaKpis ? (
+              <div className="text-2xl font-bold">{turmaResumo.uso_chat_apos_erro_pct.toFixed(1)}%</div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Sem dados ainda</p>
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -623,9 +655,13 @@ export default function DashboardSection() {
             <CardTitle className="text-sm font-medium">Tempo Médio de Uso</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {(turmaResumo.tempo_medio_uso_seg / 60).toFixed(1)}min
-            </div>
+            {hasTurmaKpis ? (
+              <div className="text-2xl font-bold">
+                {(turmaResumo.tempo_medio_uso_seg / 60).toFixed(1)}min
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Sem dados ainda</p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -658,15 +694,21 @@ export default function DashboardSection() {
             </div>
           </CardHeader>
           <CardContent className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={abandonoPorPerfilData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="perfil" tick={{ ...CHART_TICK_STYLE, fontSize: 11 }} />
-                <YAxis tick={CHART_TICK_STYLE} />
-                <Tooltip />
-                <Bar dataKey="abandono" fill={CHART_COLOR_DANGER} radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            {abandonoPorPerfilData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={abandonoPorPerfilData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="perfil" tick={{ ...CHART_TICK_STYLE, fontSize: 11 }} />
+                  <YAxis tick={CHART_TICK_STYLE} />
+                  <Tooltip />
+                  <Bar dataKey="abandono" fill={CHART_COLOR_DANGER} radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                Sem dados suficientes ainda
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -676,34 +718,40 @@ export default function DashboardSection() {
             <CardDescription>Faixas baixa, média e alta</CardDescription>
           </CardHeader>
           <CardContent className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={distribuicaoNotasData}
-                  dataKey="percentual"
-                  nameKey="faixa"
-                  outerRadius={100}
-                  label={(entry) => {
-                    const item = entry as Partial<TurmaDistribuicao>;
-                    return `${item.faixa ?? "faixa"}: ${Number(item.percentual ?? 0).toFixed(1)}%`;
-                  }}
-                >
-                  {distribuicaoNotasData.map((entry, idx) => (
-                    <Cell
-                      key={`${entry.faixa}-${idx}`}
-                      fill={
-                        idx % 3 === 0
-                          ? CHART_COLOR_DANGER
-                          : idx % 3 === 1
-                          ? CHART_COLOR_WARNING
-                          : CHART_COLOR_SUCCESS
-                      }
-                    />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+            {distribuicaoNotasData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={distribuicaoNotasData}
+                    dataKey="percentual"
+                    nameKey="faixa"
+                    outerRadius={100}
+                    label={(entry) => {
+                      const item = entry as Partial<TurmaDistribuicao>;
+                      return `${item.faixa ?? "faixa"}: ${Number(item.percentual ?? 0).toFixed(1)}%`;
+                    }}
+                  >
+                    {distribuicaoNotasData.map((entry, idx) => (
+                      <Cell
+                        key={`${entry.faixa}-${idx}`}
+                        fill={
+                          idx % 3 === 0
+                            ? CHART_COLOR_DANGER
+                            : idx % 3 === 1
+                            ? CHART_COLOR_WARNING
+                            : CHART_COLOR_SUCCESS
+                        }
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                Sem dados suficientes ainda
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
