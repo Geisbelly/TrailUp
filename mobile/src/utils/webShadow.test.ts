@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { boxShadowFromRN, textShadowFromRN } from "./webShadow";
+import { boxShadowFromRN, shadowStyle, textShadowFromRN, textShadowStyle } from "./webShadow";
 
 test("boxShadowFromRN combina shadowOpacity no alpha da cor", () => {
   const css = boxShadowFromRN({
@@ -41,4 +41,48 @@ test("textShadowFromRN repassa a cor sem mexer no alpha", () => {
   });
 
   assert.equal(css, "0px 1px 4px rgba(0,0,0,0.7)");
+});
+
+test("shadowStyle devolve boxShadow na web e as props separadas no nativo", () => {
+  const shadow = {
+    color: "#000",
+    offset: { width: 0, height: 4 },
+    opacity: 0.3,
+    radius: 8,
+  };
+
+  assert.deepEqual(shadowStyle(shadow, true), {
+    boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.3)",
+  });
+
+  // boxShadow so e reconhecido no nativo atras da feature flag
+  // enableNativeCSSParsing do RN, sem garantia de estar ligada -- o caminho
+  // nativo tem que continuar exatamente como sempre foi.
+  assert.deepEqual(shadowStyle(shadow, false), {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  });
+});
+
+test("textShadowStyle devolve textShadow na web e as props separadas no nativo", () => {
+  const shadow = {
+    color: "rgba(0,0,0,0.8)",
+    offset: { width: 0, height: 2 },
+    radius: 8,
+  };
+
+  assert.deepEqual(textShadowStyle(shadow, true), {
+    textShadow: "0px 2px 8px rgba(0,0,0,0.8)",
+  });
+
+  // textShadow (a versao unificada) nem existe no registro de estilos do
+  // nativo -- so textShadowColor/Offset/Radius. Setar so textShadow faria o
+  // texto perder a sombra inteira no app.
+  assert.deepEqual(textShadowStyle(shadow, false), {
+    textShadowColor: "rgba(0,0,0,0.8)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
+  });
 });
