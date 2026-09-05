@@ -150,6 +150,26 @@ export default function Settings() {
           ),
         },
         {
+          label: "Lembrete diário",
+          render: (
+            <TouchableOpacity
+              style={[
+                styles.menuItem,
+                {
+                  backgroundColor: palette.surfaceElevated,
+                  borderColor: "#ffffff20",
+                },
+              ]}
+              onPress={() => router.push("/(tabs)/perfil/lembrete-diario")}
+              accessibilityRole="button"
+            >
+              <Text style={[styles.menuItemText, { color: palette.text }]}>
+                Lembrete diário
+              </Text>
+            </TouchableOpacity>
+          ),
+        },
+        {
           label: "Coleta e acessos",
           render: (
             <TouchableOpacity
