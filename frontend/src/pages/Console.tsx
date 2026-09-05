@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
@@ -6,13 +6,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { LogOut, Settings, Loader2, Route, LayoutDashboard, Trophy, GraduationCap, Sparkles, ShieldCheck } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import TopicsManager from "@/components/console/trilha/TopicsManager";
-import ProfileSection from "@/components/console/ProfileSection";
-import DashboardSection from "@/components/console/DashboardSection";
-import RanksSection from "@/components/console/RanksSection";
-import ClassManagementSection from "@/components/console/ClassManagementSection";
-import PersonalizacoesSection from "@/components/console/personalizacoes/PersonalizacoesSection";
-import { ProfessorApprovalSection } from "@/components/console/ProfessorApprovalSection";
 import {
   CONSOLE_SECTIONS,
   DEFAULT_CONSOLE_VIEW,
@@ -20,6 +13,19 @@ import {
   consoleViewFromPathname,
   type ConsoleView,
 } from "./consoleSections";
+
+// Uma aba por vez fica visivel (ver `view` abaixo), entao cada secao vira o
+// proprio chunk — a mais pesada, o Dashboard, carrega o recharts inteiro e
+// nao deveria pesar em quem so abre a Trilha ou o Perfil (issue #29).
+const TopicsManager = lazy(() => import("@/components/console/trilha/TopicsManager"));
+const ProfileSection = lazy(() => import("@/components/console/ProfileSection"));
+const DashboardSection = lazy(() => import("@/components/console/DashboardSection"));
+const RanksSection = lazy(() => import("@/components/console/RanksSection"));
+const ClassManagementSection = lazy(() => import("@/components/console/ClassManagementSection"));
+const PersonalizacoesSection = lazy(() => import("@/components/console/personalizacoes/PersonalizacoesSection"));
+const ProfessorApprovalSection = lazy(() =>
+  import("@/components/console/ProfessorApprovalSection").then((m) => ({ default: m.ProfessorApprovalSection }))
+);
 
 // Aba de aprovação de professores só é visível para a dona do projeto (TCC);
 // os demais professores nunca veem nem conseguem acessar essa view.
@@ -221,32 +227,40 @@ export default function Console() {
       </header>
 
       <main className="flex-1 min-h-0 flex flex-col overflow-hidden">
-        {view === "trilha" ? (
-          <div className="flex-1 min-h-0 flex flex-col px-6 pt-4 pb-2">
-            <TopicsManager />
-          </div>
-        ) : (
-          <div className="flex-1 overflow-auto p-6">
-            {view === "profile" ? (
-              <ProfileSection professorData={professorData} onUpdate={handleProfileUpdate} isLoading={isLoadingProfessor} />
-            ) : view === "dashboard" ? (
-              <DashboardSection />
-            ) : view === "ranks" ? (
-              <RanksSection />
-            ) : view === "personalizacoes" ? (
-              <PersonalizacoesSection professorId={professorData?.id} />
-            ) : view === "aprovacoes" ? (
-              // Agora que /console/aprovacoes e uma URL de verdade, qualquer
-              // professor pode digita-la. Sem dono confirmado, manda pro
-              // dashboard em vez de renderizar uma pagina em branco - e espera
-              // professorData carregar antes de decidir, senao o proprio dono
-              // seria expulso no primeiro render.
-              isOwner ? <ProfessorApprovalSection /> : professorData ? <Navigate to={consolePathForView("dashboard")} replace /> : null
-            ) : (
-              <ClassManagementSection professorId={professorData?.id} />
-            )}
-          </div>
-        )}
+        <Suspense
+          fallback={
+            <div className="flex-1 flex items-center justify-center">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          }
+        >
+          {view === "trilha" ? (
+            <div className="flex-1 min-h-0 flex flex-col px-6 pt-4 pb-2">
+              <TopicsManager />
+            </div>
+          ) : (
+            <div className="flex-1 overflow-auto p-6">
+              {view === "profile" ? (
+                <ProfileSection professorData={professorData} onUpdate={handleProfileUpdate} isLoading={isLoadingProfessor} />
+              ) : view === "dashboard" ? (
+                <DashboardSection />
+              ) : view === "ranks" ? (
+                <RanksSection />
+              ) : view === "personalizacoes" ? (
+                <PersonalizacoesSection professorId={professorData?.id} />
+              ) : view === "aprovacoes" ? (
+                // Agora que /console/aprovacoes e uma URL de verdade, qualquer
+                // professor pode digita-la. Sem dono confirmado, manda pro
+                // dashboard em vez de renderizar uma pagina em branco - e espera
+                // professorData carregar antes de decidir, senao o proprio dono
+                // seria expulso no primeiro render.
+                isOwner ? <ProfessorApprovalSection /> : professorData ? <Navigate to={consolePathForView("dashboard")} replace /> : null
+              ) : (
+                <ClassManagementSection professorId={professorData?.id} />
+              )}
+            </div>
+          )}
+        </Suspense>
       </main>
     </div>
   );
