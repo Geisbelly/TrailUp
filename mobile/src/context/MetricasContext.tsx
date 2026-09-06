@@ -1510,7 +1510,7 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
       telemetryPreferences.cameraEnabled &&
       cameraOptIn &&
       cameraPermission === "granted" ? (
-        <View pointerEvents="none" style={styles.hiddenCameraWrap}>
+        <View style={[styles.hiddenCameraWrap, { pointerEvents: "none" }]}>
           <CameraView
             ref={captureRef}
             style={styles.hiddenCamera}

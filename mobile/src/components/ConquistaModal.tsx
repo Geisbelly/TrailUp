@@ -59,8 +59,7 @@ export default function ConquistaModal({
             ]}
             start={{ x: 0.5, y: 0 }}
             end={{ x: 0.5, y: 1 }}
-            style={StyleSheet.absoluteFill}
-            pointerEvents="none"
+            style={[StyleSheet.absoluteFill, { pointerEvents: "none" }]}
           />
 
           <TouchableWithoutFeedback onPress={() => {}}>

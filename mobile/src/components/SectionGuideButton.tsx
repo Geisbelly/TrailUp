@@ -250,8 +250,7 @@ export function SectionGuideButton({
             />
           ) : (
             <View
-              pointerEvents="none"
-              style={[StyleSheet.absoluteFill, { backgroundColor: `${palette.background}e8` }]}
+              style={[StyleSheet.absoluteFill, { backgroundColor: `${palette.background}e8`, pointerEvents: "none" }]}
             />
           )}
 
@@ -341,7 +340,7 @@ function SpotlightMask({
   const height = Math.max(0, Math.min(screenHeight - top, rect.height));
 
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+    <View style={[StyleSheet.absoluteFill, { pointerEvents: "none" }]}>
       <View style={[styles.scrim, { top: 0, left: 0, right: 0, height: top, backgroundColor: scrim }]} />
       <View style={[styles.scrim, { top, left: 0, width: left, height, backgroundColor: scrim }]} />
       <View style={[styles.scrim, { top, left: left + width, right: 0, height, backgroundColor: scrim }]} />

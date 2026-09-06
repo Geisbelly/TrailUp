@@ -141,7 +141,7 @@ function TourSpotlightMask({
   const bottom = top + height;
 
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+    <View style={[StyleSheet.absoluteFill, { pointerEvents: "none" }]}>
       <View
         style={[styles.tourScrim, { top: 0, left: 0, right: 0, height: top, backgroundColor: scrimColor }]}
       />

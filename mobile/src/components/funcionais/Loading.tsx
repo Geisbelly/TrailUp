@@ -209,7 +209,7 @@ const LoadingScreen = ({ forceShow = false }: LoadingScreenProps) => {
     <Animated.View style={[styles.container, { backgroundColor }]}>
 
       {/* Textura medieval */}
-      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <View style={[StyleSheet.absoluteFill, { pointerEvents: "none" }]}>
         <HallBackground palette={defaultPalette} />
       </View>
 
@@ -222,14 +222,12 @@ const LoadingScreen = ({ forceShow = false }: LoadingScreenProps) => {
         ]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
-        style={[StyleSheet.absoluteFill, { height: "55%" }]}
-        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, { height: "55%", pointerEvents: "none" }]}
       />
 
       {/* Flash místico (JS driver, opacity) */}
       <Animated.View
-        style={[StyleSheet.absoluteFill, styles.flash, { opacity: flashAnim }]}
-        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, styles.flash, { opacity: flashAnim, pointerEvents: "none" }]}
       />
 
       {/* Ícone do guia */}

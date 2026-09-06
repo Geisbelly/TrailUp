@@ -285,7 +285,7 @@ export function IAMentorPanel({
 
   if (mentorSilencedByUser) {
     return (
-      <View pointerEvents="box-none" style={[styles.overlay, { bottom: bottomOffset }]}>
+      <View style={[styles.overlay, { bottom: bottomOffset, pointerEvents: "box-none" }]}>
         <View style={styles.launcherColumn}>
           <Pressable
             ref={guideTargetRef}
@@ -536,11 +536,11 @@ export function IAMentorPanel({
 
   return (
     <View
-      pointerEvents="box-none"
       style={[
         styles.overlay,
         { bottom: bottomOffset },
         isOpen ? styles.overlayOpen : null,
+        { pointerEvents: "box-none" },
       ]}
     >
       {!isOpen ? (

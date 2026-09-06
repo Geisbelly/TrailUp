@@ -1689,7 +1689,7 @@ export default function PersonalizedTopicView({
       </View>
 
       {started && currentStep ? (
-        <View style={[styles.floatingTimerWrap, { top: Math.max(insets.top + 8, 14) }]} pointerEvents="none">
+        <View style={[styles.floatingTimerWrap, { top: Math.max(insets.top + 8, 14), pointerEvents: "none" }]}>
           <IAHeaderTimer
             topicoId={topico?.id ? Number(topico.id) : null}
             itemKey={currentItemKey}
