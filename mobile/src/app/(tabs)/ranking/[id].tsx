@@ -480,8 +480,7 @@ export default function RankDetalheScreen() {
         ]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
-        style={[StyleSheet.absoluteFill, { height: SCREEN_H * 0.45 }]}
-        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, { height: SCREEN_H * 0.45, pointerEvents: "none" }]}
       />
 
       <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
