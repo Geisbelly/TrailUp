@@ -202,8 +202,7 @@ export default function NotificacaoDetalhe() {
         ]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
-        style={[StyleSheet.absoluteFill, { height: "40%" }]}
-        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, { height: "40%", pointerEvents: "none" }]}
       />
 
       <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
