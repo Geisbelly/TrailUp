@@ -277,20 +277,19 @@ export function FirstAccessTour({
           />
         ) : (
           <View
-            pointerEvents="none"
-            style={[StyleSheet.absoluteFill, { backgroundColor: `${palette.background}b8` }]}
+            style={[StyleSheet.absoluteFill, { backgroundColor: `${palette.background}b8`, pointerEvents: "none" }]}
           />
         )}
 
         {isIntroduction ? (
           <View
-            pointerEvents="none"
             style={[
               styles.introductionStage,
               introductionRect,
               {
                 backgroundColor: tinycolor(accent).setAlpha(0.12).toRgbString(),
                 shadowColor: accent,
+                pointerEvents: "none",
               },
             ]}
           >
@@ -449,7 +448,7 @@ function TourSpotlight({
   const height = Math.max(0, Math.min(screenHeight - top, rect.height));
 
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+    <View style={[StyleSheet.absoluteFill, { pointerEvents: "none" }]}>
       <View style={[styles.scrim, { top: 0, left: 0, right: 0, height: top, backgroundColor: scrim }]} />
       <View style={[styles.scrim, { top, left: 0, width: left, height, backgroundColor: scrim }]} />
       <View style={[styles.scrim, { top, left: left + width, right: 0, height, backgroundColor: scrim }]} />
@@ -482,7 +481,6 @@ function TourArrow({
 
   return (
     <View
-      pointerEvents="none"
       style={[
         styles.arrow,
         {
@@ -490,6 +488,7 @@ function TourArrow({
           top: centerY - 18,
           width: length,
           transform: [{ rotate: `${angle}rad` }],
+          pointerEvents: "none",
         },
       ]}
     >

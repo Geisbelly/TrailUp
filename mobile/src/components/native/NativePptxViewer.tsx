@@ -71,7 +71,6 @@ function renderSlide(
             return (
               <View
                 key={element.id}
-                pointerEvents="none"
                 style={[
                   styles.absoluteShape,
                   {
@@ -84,6 +83,7 @@ function renderSlide(
                     borderWidth: element.strokeColor ? element.strokeWidth ?? 1 : 0,
                     borderRadius: element.radius ?? 0,
                     opacity: element.opacity ?? 1,
+                    pointerEvents: "none",
                   },
                 ]}
               />
