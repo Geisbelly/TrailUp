@@ -25,7 +25,7 @@ export default function Estudo() {
 
   return (
     <View style={[styles.outer, { backgroundColor: palette.background }]}>
-      <View style={[StyleSheet.absoluteFill, { opacity: 0.35 }]} pointerEvents="none">
+      <View style={[StyleSheet.absoluteFill, { opacity: 0.35, pointerEvents: "none" }]}>
         <HallBackground palette={palette} />
       </View>
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
