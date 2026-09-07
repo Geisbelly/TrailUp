@@ -2,7 +2,7 @@ import { HallBackground, OrnamentDivider } from "@/components/HallTheme";
 import { app } from "@/constants/definicoes";
 import { useDialog } from "@/context/DialogContext";
 import { useLoading } from "@/context/LoadingContext";
-import { autenticarUsuario, getAuthErrorMessage, normalizeEmail } from "@/services/auth";
+import { autenticarComGoogle, autenticarUsuario, getAuthErrorMessage, normalizeEmail } from "@/services/auth";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { buildProfileShellPaletteFromAccent } from "@/utils/profileShellTheme";
 import { LinearGradient } from "expo-linear-gradient";
@@ -77,6 +77,23 @@ export default function Login() {
       showDialog({
         title: "Erro no login",
         description: authMessage,
+        tone: "error",
+      });
+    } finally {
+      setCarregando(false);
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      setCarregando(true);
+      setLoading(true);
+      await autenticarComGoogle();
+    } catch (error: unknown) {
+      showDialog({
+        title: "Não foi possível entrar",
+        description: getAuthErrorMessage(error),
         tone: "error",
       });
     } finally {
@@ -166,6 +183,16 @@ export default function Login() {
             <Text style={[styles.buttonText, { color: dadosValidos ? "#FFF" : AUTH_PALETTE.textSubtle }]}>
               {carregando ? "Entrando..." : "Entrar"}
             </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.googleButton, { borderColor: goldDim, backgroundColor: AUTH_PALETTE.surfaceElevated }]}
+            onPress={handleGoogleLogin}
+            disabled={carregando}
+            accessibilityRole="button"
+            accessibilityLabel="Entrar com Google"
+          >
+            <Text style={[styles.googleButtonText, { color: AUTH_PALETTE.text }]}>Entrar com Google</Text>
           </TouchableOpacity>
 
           {/* Link recuperar senha */}
@@ -261,6 +288,20 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontFamily: FontFamily.inknutAntiquaMedium,
     letterSpacing: 0.5,
+  },
+  googleButton: {
+    width: "100%",
+    height: 52,
+    marginTop: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  googleButtonText: {
+    fontSize: 15,
+    fontWeight: "600",
+    fontFamily: FontFamily.inknutAntiquaMedium,
   },
   linkContainer: {
     flexDirection: "row",
