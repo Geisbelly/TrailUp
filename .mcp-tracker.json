@@ -1,0 +1,28 @@
+{
+  "codeProvider": "github",
+  "taskProvider": "github-projects",
+  "repo": "BitStudioLabs/trail-up",
+  "boardId": "PVT_kwDOCc66tM4BhERG",
+  "defaults": {
+    "baseBranch": "main",
+    "mergeMethod": "squash",
+    "deleteBranchOnMerge": true,
+    "assignee": "$current"
+  },
+  "workflow": {
+    "stages": [
+      { "key": "backlog", "name": "Backlog" },
+      { "key": "ready", "name": "Ready" },
+      { "key": "doing", "name": "In progress" },
+      { "key": "review", "name": "In review" },
+      { "key": "done", "name": "Done" }
+    ],
+    "on": {
+      "createIssue": "backlog",
+      "createBranch": "doing",
+      "createPr": "review",
+      "reviewApproved": "done",
+      "mergePr": "done"
+    }
+  }
+}
