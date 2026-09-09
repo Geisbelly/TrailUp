@@ -3001,7 +3001,12 @@ async def test_job_fails_target_stuck_too_long_on_microservice_contract_gate(
         "kind": "class_delta_sync",
         "payload": {},
     }
-    stale_created_at = datetime.now(timezone.utc) - timedelta(minutes=45)
+    # O que reprova o alvo e o ADIAMENTO durar demais, nao o alvo ser velho.
+    # Antes a conta saia de `created_at`, e com a fila lenta um alvo que
+    # esperou 45 min para ser processado ja nascia reprovado - falhava no
+    # primeiro adiamento, mesmo transitorio, sem nunca retentar. Por isso aqui
+    # o alvo carrega a marca de um adiamento que comecou ha 45 min.
+    adiado_desde = datetime.now(timezone.utc) - timedelta(minutes=45)
     target = {
         "id": 92,
         "aluno_id": "aluno-1",
@@ -3009,7 +3014,11 @@ async def test_job_fails_target_stuck_too_long_on_microservice_contract_gate(
         "conteudo_id": 125,
         "status": "pending",
         "attempts": 2,
-        "created_at": stale_created_at,
+        "created_at": datetime.now(timezone.utc) - timedelta(minutes=45),
+        "last_error": (
+            "microservice_midia_incompativel_ou_indisponivel|desde="
+            f"{adiado_desde.isoformat()}"
+        ),
     }
     status_history: list[tuple[str, int, str | None]] = []
     finalized: list[str] = []
@@ -3090,16 +3099,15 @@ async def test_job_fails_target_stuck_too_long_on_microservice_contract_gate(
     processed = await process_personalizacao_job_once(app)
 
     assert processed is True
-    assert status_history == [
-        ("processing", 3, None),
-        (
-            "failed",
-            3,
-            "microservice indisponivel ou com contrato de midia incompativel ha "
-            "mais de 30 minuto(s) - verifique BRAINHEX_API_URL/brainhex_api_secret "
-            "e a saude do microservice",
-        ),
-    ]
+    assert status_history[0] == ("processing", 3, None)
+    estado, tentativas, erro = status_history[1]
+    assert (estado, tentativas) == ("failed", 3)
+    # A mensagem diz o que foi de fato observado - adiamento longo - em vez de
+    # acusar o microservice, que pode estar respondendo 200 com o contrato
+    # correto. A versao antiga mandou investigar o lugar errado duas vezes.
+    assert "geracao adiada sem parar desde" in erro
+    assert adiado_desde.isoformat() in erro
+    assert "mais de 30 minuto(s)" in erro
     assert target["status"] == "failed"
 
 
@@ -3205,10 +3213,12 @@ async def test_job_keeps_recent_microservice_contract_gate_target_pending(
     processed = await process_personalizacao_job_once(app)
 
     assert processed is True
-    assert status_history == [
-        ("processing", 3, None),
-        ("pending", 2, "microservice_midia_incompativel_ou_indisponivel"),
-    ]
+    assert processed is True
+    estado, tentativas, erro = status_history[1]
+    assert (estado, tentativas) == ("pending", 2)
+    # O adiamento por contrato carrega o instante em que COMECOU: e dai que a
+    # janela de 30 min passa a contar, nao da criacao do alvo.
+    assert erro.startswith("microservice_midia_incompativel_ou_indisponivel|desde=")
     assert target["status"] == "pending"
     assert target["attempts"] == 2
 
