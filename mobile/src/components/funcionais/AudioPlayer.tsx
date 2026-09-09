@@ -487,8 +487,7 @@ export default function AudioPlayer({
                 ]}
               />
               <View
-                pointerEvents="none"
-                style={[styles.progressThumb, { left: `${progress * 100}%`, backgroundColor: palette.accent }]}
+                style={[styles.progressThumb, { left: `${progress * 100}%`, backgroundColor: palette.accent, pointerEvents: "none" }]}
               />
             </View>
 

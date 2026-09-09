@@ -93,13 +93,13 @@ export function IAFloatingOverlay({
 
   return (
     <View
-      pointerEvents="box-none"
       style={[
         styles.host,
         {
           top: insets.top + 12,
           right: 12,
           maxWidth: Math.min(340, Math.max(220, width - 24)),
+          pointerEvents: "box-none",
         },
       ]}
     >

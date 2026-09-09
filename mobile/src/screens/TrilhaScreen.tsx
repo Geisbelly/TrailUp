@@ -107,7 +107,7 @@ export default function TrilhasIndex() {
       style={[styles.root, { backgroundColor: palette.background }]}
     >
       {/* Fundo do salão (sutil) */}
-      <View style={[StyleSheet.absoluteFill, { opacity: 0.4 }]} pointerEvents="none">
+      <View style={[StyleSheet.absoluteFill, { opacity: 0.4, pointerEvents: "none" }]}>
         <HallBackground palette={palette} />
       </View>
       <TrilhaBase chatGuideTargetRef={chatGuideTargetRef} />
