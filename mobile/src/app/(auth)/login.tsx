@@ -88,7 +88,7 @@ export default function Login() {
   return (
     <View style={[styles.outerContainer, { backgroundColor: AUTH_PALETTE.background }]}>
       {/* Fundo do salão */}
-      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <View style={[StyleSheet.absoluteFill, { pointerEvents: "none" }]}>
         <HallBackground palette={AUTH_PALETTE} />
       </View>
 
@@ -101,8 +101,7 @@ export default function Login() {
         ]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
-        style={[StyleSheet.absoluteFill, { height: "50%" }]}
-        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, { height: "50%", pointerEvents: "none" }]}
       />
 
       <KeyboardAvoidingView
