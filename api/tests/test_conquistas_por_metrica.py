@@ -100,7 +100,10 @@ def test_a_metrica_e_obrigatoria_no_banco_e_nao_so_no_codigo() -> None:
     assert "public.fn_conquista_metrica_suportada(criterio->>'metrica')" in sql
 
     # Falha com o nome das conquistas, nao com estouro de constraint.
-    assert "RAISE EXCEPTION 'conquistas sem metrica suportada: '" in sql
+    # `RAISE EXCEPTION 'texto' || expr` e erro de sintaxe em PL/pgSQL: o
+    # formato tem que ser literal. `USING MESSAGE` aceita expressao -- e nao
+    # carrega `%`, que o render do Alembic duplicaria.
+    assert "RAISE EXCEPTION USING MESSAGE = 'conquistas sem metrica suportada: '" in sql
 
 
 def test_premio_da_conquista_chega_ao_rank_sem_reentrar_no_gatilho() -> None:

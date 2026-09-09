@@ -198,7 +198,7 @@ BEGIN
       OR NOT public.fn_conquista_metrica_suportada(criterio->>'metrica');
 
   IF v_orfas IS NOT NULL THEN
-    RAISE EXCEPTION 'conquistas sem metrica suportada: ' || v_orfas;
+    RAISE EXCEPTION USING MESSAGE = 'conquistas sem metrica suportada: ' || v_orfas;
   END IF;
 END $$;
 """
