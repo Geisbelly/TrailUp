@@ -97,15 +97,47 @@ _MICROSERVICE_CONTRACT_DEFERRED_REASON = "microservice_midia_incompativel_ou_ind
 _DEFAULT_BRAINHEX_CONTRACT_DEFERRED_MAX_AGE_MINUTES = 30
 
 
+# Marca gravada no `last_error` do alvo com o instante em que ESTE adiamento
+# comecou. Nao ha coluna para isso, e a marca evita uma migracao so' para
+# guardar um timestamp.
+_MARCA_ADIAMENTO_DESDE = "|desde="
+
+
+def inicio_do_adiamento(
+    *, target: dict[str, Any], reason: str, now: datetime
+) -> datetime:
+    """Quando este adiamento comecou - nao quando o alvo foi criado.
+
+    Medir pela criacao do alvo era um defeito com consequencia real: com a fila
+    lenta, um alvo que esperou mais de 30 minutos para ser processado ja nascia
+    "velho" e era reprovado no PRIMEIRO adiamento, mesmo transitorio de
+    segundos, sem nunca retentar. Foi o que marcou 19 alvos como
+    "microservice indisponivel" em 30/08 enquanto o microservice respondia 200
+    com o contrato correto - e 130 alvos em 28/08, pelo mesmo motivo.
+
+    Medir por `updated_at` tambem nao serve: o adiamento regrava o alvo a cada
+    passada, entao o relogio zeraria sempre e o teto nunca seria alcancado.
+    """
+    anterior = str(target.get("last_error") or "")
+    prefixo = f"{reason}{_MARCA_ADIAMENTO_DESDE}"
+    if anterior.startswith(prefixo):
+        try:
+            marcado = datetime.fromisoformat(anterior[len(prefixo) :])
+        except ValueError:
+            return now
+        return marcado if marcado.tzinfo else marcado.replace(tzinfo=timezone.utc)
+    return now
+
+
+def marcar_adiamento(*, reason: str, desde: datetime) -> str:
+    """`last_error` do alvo adiado, carregando o inicio do adiamento."""
+    return f"{reason}{_MARCA_ADIAMENTO_DESDE}{desde.isoformat()}"
+
+
 def _microservice_contract_deferred_is_stale(
-    *, target: dict[str, Any], max_age_minutes: int, now: datetime,
+    *, desde: datetime, max_age_minutes: int, now: datetime,
 ) -> bool:
-    created_at = target.get("created_at")
-    if not isinstance(created_at, datetime):
-        return False
-    if created_at.tzinfo is None:
-        created_at = created_at.replace(tzinfo=timezone.utc)
-    return now - created_at >= timedelta(minutes=max_age_minutes)
+    return now - desde >= timedelta(minutes=max_age_minutes)
 _MEDIA_FORMATOS = {"audio", "apresentacao", "markdown"}
 _REQUIRED_BRAINHEX_MEDIA = ("audio", "markdown", "apresentacao")
 MAX_DB_FAILURE_BACKOFF_SEC = 60
@@ -2198,11 +2230,15 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
                         )
                         or _DEFAULT_BRAINHEX_CONTRACT_DEFERRED_MAX_AGE_MINUTES
                     )
+                    agora = datetime.now(timezone.utc)
+                    desde = inicio_do_adiamento(
+                        target=target, reason=reason, now=agora
+                    )
                     if reason == _MICROSERVICE_CONTRACT_DEFERRED_REASON and (
                         _microservice_contract_deferred_is_stale(
-                            target=target,
+                            desde=desde,
                             max_age_minutes=max_age_minutes,
-                            now=datetime.now(timezone.utc),
+                            now=agora,
                         )
                     ):
                         await target_repo.update_target_status(
@@ -2210,10 +2246,14 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
                             status="failed",
                             attempts=attempts,
                             last_error=(
-                                "microservice indisponivel ou com contrato de midia "
-                                f"incompativel ha mais de {max_age_minutes} minuto(s) - "
-                                "verifique BRAINHEX_API_URL/brainhex_api_secret e a "
-                                "saude do microservice"
+                                "geracao adiada sem parar desde "
+                                f"{desde.isoformat()} (mais de {max_age_minutes} "
+                                "minuto(s)): a API nao conseguiu confirmar o contrato "
+                                "de midia do microservice. Confira /api/health do "
+                                "microservice e BRAINHEX_API_URL/brainhex_api_secret "
+                                "na API - se o /api/health responder com as versoes "
+                                "certas, o problema esta no alcance entre os dois, "
+                                "nao no microservice"
                             ),
                             personalizacao_id=(
                                 record.get("id") if isinstance(record, dict) else None
@@ -2224,7 +2264,14 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
                         target_id=int(target["id"]),
                         status="pending",
                         attempts=int(target.get("attempts") or 0),
-                        last_error=reason,
+                        # So o adiamento por contrato precisa de relogio: e o
+                        # unico com teto. Marcar os demais poluiria o
+                        # `last_error` sem que ninguem leia a marca.
+                        last_error=(
+                            marcar_adiamento(reason=reason, desde=desde)
+                            if reason == _MICROSERVICE_CONTRACT_DEFERRED_REASON
+                            else reason
+                        ),
                         personalizacao_id=(
                             record.get("id") if isinstance(record, dict) else None
                         ),

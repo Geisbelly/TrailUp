@@ -442,8 +442,8 @@ export function TrilhaMapaHeroStable({
                 right: 14,
                 bottom: 22,
                 opacity: 0.18,
+                pointerEvents: "none",
               }}
-              pointerEvents="none"
             >
               <MaterialCommunityIcons
                 name="compass-rose"

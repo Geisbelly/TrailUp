@@ -431,7 +431,7 @@ const adjustedPositions = useMemo(() => {
   return (
     <View style={[styles.root, { width: winW, height: winH, backgroundColor: palette.background }]}>
       {/* Camada de textura principal */}
-      <View style={styles.textureLayerWrap} pointerEvents="none">
+      <View style={[styles.textureLayerWrap, { pointerEvents: "none" }]}>
         <Image
           source={require("@/assets/ImagensReferencia/arte_filter.png")}
           style={[styles.textureLayerImage, { opacity: 0.14 }]}
@@ -439,7 +439,7 @@ const adjustedPositions = useMemo(() => {
         />
       </View>
       {/* Segunda camada espelhada para dar profundidade */}
-      <View style={styles.textureLayerWrap} pointerEvents="none">
+      <View style={[styles.textureLayerWrap, { pointerEvents: "none" }]}>
         <Image
           source={require("@/assets/ImagensReferencia/arte_filter.png")}
           style={[
@@ -450,7 +450,7 @@ const adjustedPositions = useMemo(() => {
         />
       </View>
       {/* ── Bússola ── */}
-      <View style={styles.compassTexture} pointerEvents="none">
+      <View style={[styles.compassTexture, { pointerEvents: "none" }]}>
         <MaterialCommunityIcons
           name="compass-rose"
           size={200}

@@ -26,7 +26,7 @@ const Tela_De_Rosto = () => {
   return (
     <View style={[styles.outer, { backgroundColor: AUTH_PALETTE.background }]}>
       {/* Fundo do salão */}
-      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <View style={[StyleSheet.absoluteFill, { pointerEvents: "none" }]}>
         <HallBackground palette={AUTH_PALETTE} />
       </View>
 
@@ -38,8 +38,7 @@ const Tela_De_Rosto = () => {
         ]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
-        style={[StyleSheet.absoluteFill, { height: "40%" }]}
-        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, { height: "40%", pointerEvents: "none" }]}
       />
 
       <SafeAreaView style={styles.container}>
