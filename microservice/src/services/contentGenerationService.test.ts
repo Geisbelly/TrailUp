@@ -371,6 +371,40 @@ test("limita a três as tentativas da OpenAI recusadas por qualidade", async () 
   resetGeminiContentGenerationCircuit();
 });
 
+test("leva o motivo do Gemini para a mensagem, nao só para cause", async () => {
+  // O que chega ao banco é `err.message`: o handler de /api/personalizar
+  // chama `markPersonalizacaoFailed(id, err?.message ?? String(err), fence)`,
+  // e `cause` não é serializado em nenhum ponto desse caminho. Enquanto a
+  // mensagem citava apenas a OpenAI, a falha do PRIMÁRIO ficava invisível --
+  // e é ela a causa raiz, já que a OpenAI é só a rede de segurança.
+  resetGeminiContentGenerationCircuit();
+
+  await assert.rejects(
+    generateStructuredContentWithFallback(call, {
+      environment: {
+        CONTENT_GENERATION_OPENAI_MAX_ATTEMPTS: "1",
+      },
+      generateWithGemini: async () => {
+        throw new Error("Gemini recusou: quota diária estourada.");
+      },
+      generateWithOpenAI: async () => {
+        throw new Error("429 You have no credits remaining.");
+      },
+    }),
+    (err: unknown) => {
+      const mensagem = (err as Error).message;
+      assert.match(mensagem, /tentativas obrigatórias pela OpenAI/);
+      assert.match(mensagem, /Gemini:/);
+      assert.match(mensagem, /quota diária estourada/);
+      assert.match(mensagem, /OpenAI:/);
+      assert.match(mensagem, /no credits remaining/);
+      return true;
+    },
+  );
+
+  resetGeminiContentGenerationCircuit();
+});
+
 test("não volta ao Gemini quando a tentativa obrigatória da OpenAI falha", async () => {
   resetGeminiContentGenerationCircuit();
   let geminiCalls = 0;
