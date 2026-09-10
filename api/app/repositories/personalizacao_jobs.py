@@ -670,8 +670,22 @@ class PersonalizacaoJobsRepository:
         """
         if not await self._jobs_exists() or not await self._targets_exists():
             return []
+        # `alias="j"`, e nao `.replace("media_snapshot", "j.media_snapshot")`: o
+        # replace trocava as DUAS ocorrencias de `media_snapshot AS
+        # media_snapshot` e gerava `j.media_snapshot AS j.media_snapshot` --
+        # `AS j.media_snapshot` e' erro de sintaxe ("syntax error at or near
+        # '.'"), e esta consulta nunca chegava a rodar.
+        #
+        # E' ela que acha job terminal com alvo pendente, ou seja, e' o que faz
+        # a retomada reaproveitar um ciclo aberto em vez de abrir um novo. Com
+        # ela quebrada, toda retentativa comecava do zero -- a "causa raiz do
+        # desperdicio de tokens" que a retomada granular existe para evitar.
+        # Medido na classe 32: 18 jobs `failed` para os topicos 129 e 130.
+        #
+        # O parametro `alias` sempre existiu na expressao e nao era usado aqui.
         media_snapshot_select = self._media_snapshot_select_expr(
-            enabled=await self._jobs_has_media_snapshot()
+            enabled=await self._jobs_has_media_snapshot(),
+            alias="j",
         )
 
         result = await self.session.execute(
@@ -680,7 +694,7 @@ class PersonalizacaoJobsRepository:
                 SELECT
                   j.id, j.kind, j.status, j.classe_id, j.aluno_id, j.topico_id,
                   j.conteudo_id, j.trigger_source, j.payload,
-                  {media_snapshot_select.replace("media_snapshot", "j.media_snapshot")},
+                  {media_snapshot_select},
                   j.total_targets, j.processed_targets, j.error_count, j.last_error,
                   j.created_at, j.updated_at, j.started_at, j.finished_at
                 FROM personalizacao_jobs j
