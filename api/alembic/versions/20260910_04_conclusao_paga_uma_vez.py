@@ -101,7 +101,7 @@ BEGIN
   -- Para todo o resto, o que o cliente mandou em `valor` e' descartado.
   NEW.valor := public.fn_pontos_do_evento(NEW.tipo);
 
-  IF TG_OP = 'INSERT' AND public.fn_evento_de_conclusao(NEW.tipo) THEN
+  IF public.fn_evento_de_conclusao(NEW.tipo) THEN
     -- Conclusao sem referencia nao pode ser atribuida a rank algum: pagar por
     -- ela inflaria o razao com pontos que nunca aparecem.
     IF NULLIF(TRIM(BOTH FROM COALESCE(NEW.referencia, '')), '') IS NULL THEN
@@ -111,12 +111,27 @@ BEGIN
 
     -- Concluir de novo nao paga de novo. A linha E gravada -- o cliente faz
     -- `.insert().select().single()` e um RETURN NULL o quebraria.
+    --
+    -- Vale para INSERT **e** para UPDATE, e o ramo de UPDATE nao e' zelo: a
+    -- `20260909_05` instalou um `BEFORE UPDATE OF valor, tipo` sobre esta mesma
+    -- funcao, entao sem ele o gatilho recalculava o valor cheio por cima do
+    -- zero e desfazia o backfill logo abaixo, linha por linha.
+    --
+    -- No UPDATE a comparacao e' "existe linha ANTERIOR com a mesma chave", nao
+    -- "existe outra": comparar por existencia acharia a propria vizinha e
+    -- zeraria as duas. `criado_em` e' anulavel, e sem o COALESCE a comparacao
+    -- daria NULL e a repeticao passaria batida.
     IF EXISTS (
       SELECT 1
         FROM public.eventos_aluno e
        WHERE e.aluno_id = NEW.aluno_id
          AND e.tipo = NEW.tipo
          AND e.referencia = NEW.referencia
+         AND (
+           TG_OP = 'INSERT'
+           OR (COALESCE(e.criado_em, 'epoch'::timestamp), e.id)
+              < (COALESCE(NEW.criado_em, 'epoch'::timestamp), NEW.id)
+         )
     ) THEN
       NEW.valor := 0;
     END IF;

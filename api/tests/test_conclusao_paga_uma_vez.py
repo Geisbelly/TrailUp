@@ -64,7 +64,19 @@ def test_a_linha_e_gravada_e_a_repeticao_vale_zero() -> None:
 
     assert "NEW.valor := 0;" in sql
     assert "RETURN NULL;" not in sql
-    assert "IF TG_OP = 'INSERT' AND public.fn_evento_de_conclusao(NEW.tipo) THEN" in sql
+    assert "IF public.fn_evento_de_conclusao(NEW.tipo) THEN" in sql
+
+
+def test_a_regra_vale_no_update_tambem() -> None:
+    """A 20260909_05 instalou um `BEFORE UPDATE OF valor, tipo` sobre esta mesma
+    funcao. Sem o ramo de UPDATE o gatilho recalculava o valor cheio por cima do
+    zero e desfazia o backfill -- foi o que a propria migracao pegou ao rodar."""
+    sql = _sql()
+
+    assert "TG_OP = 'INSERT'" in sql
+    # No UPDATE compara com a linha ANTERIOR: "existe outra" zeraria as duas.
+    assert "(COALESCE(e.criado_em, 'epoch'::timestamp), e.id)" in sql
+    assert "< (COALESCE(NEW.criado_em, 'epoch'::timestamp), NEW.id)" in sql
 
 
 def test_o_dedupe_e_gatilho_e_nao_indice_unico() -> None:
@@ -152,7 +164,7 @@ def test_o_creditado_continua_com_valor_de_quem_concedeu() -> None:
     sql = _sql()
 
     creditado = sql.index("IF public.fn_evento_creditado(NEW.tipo) THEN")
-    conclusao = sql.index("IF TG_OP = 'INSERT' AND public.fn_evento_de_conclusao")
+    conclusao = sql.index("IF public.fn_evento_de_conclusao(NEW.tipo) THEN")
     assert creditado < conclusao
 
 
