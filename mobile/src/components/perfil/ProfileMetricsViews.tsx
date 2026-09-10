@@ -7,6 +7,10 @@ import tinycolor from "tinycolor2";
 import { BrainHexProfile, getBrainHexConfig } from "@/constants/profileImages";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { MetricsThemeResolved, getMetricsThemeOption } from "@/utils/profileMetricThemes";
+import {
+  descreverPosicaoDaPontuacao,
+  rotularPontuacao,
+} from "@/utils/pontuacaoDoAluno";
 import { ProfileMetricsViewModel } from "./profileMetricsViewModel";
 
 const CHART_W = 280;
@@ -1066,6 +1070,7 @@ function ArenaDashboard({ profile, vm, palette, accent, themeBadge, guideRefs }:
         <View style={s.statGrid}>
           <StatTile targetRef={guideRef(guideRefs, "arena-precision")} icon="crosshairs-gps" label="Precisão" value={formatPercent(vm.acertos)} helper="desempenho nas respostas" palette={palette} accent={accent} />
           <StatTile targetRef={guideRef(guideRefs, "arena-position")} icon="trophy-outline" label="Posição" value={vm.melhorPosicao?.posicao ? `#${vm.melhorPosicao.posicao}` : "Sem rank"} helper="melhor marca na classe" palette={palette} accent={accent} />
+          <StatTile icon="star-circle-outline" label="Pontuação" value={rotularPontuacao(vm.pontuacao)} helper={descreverPosicaoDaPontuacao(vm.pontuacao)} palette={palette} accent={accent} />
           <StatTile
             icon="clock-outline"
             label="Tempo ativo"
@@ -1357,6 +1362,7 @@ function AnalyticsDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dash
           <StatTile targetRef={guideRef(guideRefs, "analytics-progress")} icon="chart-donut" label="Progresso" value={formatPercent(vm.progresso)} helper={`${vm.concluidos}/${vm.totalTopicos} tópicos`} palette={palette} accent={accent} />
           <StatTile targetRef={guideRef(guideRefs, "analytics-accuracy")} icon="target" label="Acertos" value={formatPercent(vm.acertos)} helper="média da turma atual" palette={palette} accent={accent} />
           <StatTile targetRef={guideRef(guideRefs, "analytics-time")} icon="clock-outline" label="Tempo de estudo" value={formatMinutes(vm.tempo)} helper={`${formatMinutes(vm.tempoMedio)} por atividade`} palette={palette} accent={accent} />
+          <StatTile icon="star-circle-outline" label="Pontuação" value={rotularPontuacao(vm.pontuacao)} helper={descreverPosicaoDaPontuacao(vm.pontuacao)} palette={palette} accent={accent} />
           <StatTile targetRef={guideRef(guideRefs, "analytics-achievements")} icon="trophy-outline" label="Conquistas" value={String(vm.totalConquistas)} helper={vm.melhorPosicao?.posicao != null ? `melhor posição #${vm.melhorPosicao.posicao}` : "sem posição em ranking"} palette={palette} accent={accent} />
         </View>
       </LinearGradient>
@@ -1470,6 +1476,7 @@ function SquadDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dashboar
         <View style={s.statGrid}>
           <StatTile targetRef={guideRef(guideRefs, "squad-presence-hero")} icon="account-group-outline" label="Presença" value={`${vm.diasAtivos} dias`} helper={vm.presencaResumo} palette={palette} accent={accent} />
           <StatTile targetRef={guideRef(guideRefs, "squad-ranking")} icon="podium" label="Ranking" value={vm.melhorPosicao?.posicao ? `#${vm.melhorPosicao.posicao}` : "Sem posição"} helper="melhor colocação" palette={palette} accent={accent} />
+          <StatTile icon="star-circle-outline" label="Pontuação" value={rotularPontuacao(vm.pontuacao)} helper={descreverPosicaoDaPontuacao(vm.pontuacao)} palette={palette} accent={accent} />
           <StatTile targetRef={guideRef(guideRefs, "squad-achievements")} icon="trophy-outline" label="Conquistas" value={String(vm.totalConquistas)} helper="emblemas e marcos" palette={palette} accent={accent} />
           <StatTile targetRef={guideRef(guideRefs, "squad-movement")} icon="pulse" label="Movimento" value={String(vm.eventosRecentes)} helper="ações recentes" palette={palette} accent={accent} />
         </View>

@@ -53,7 +53,7 @@ const { width } = Dimensions.get("window");
 export default function PerfilHome() {
   const { usuario, selecionarPerfilAtivo } = useUsuario();
   const { classeAtual, perfil, progressoPersonalizado } = useTrilha();
-  const { conquistas, carregando, eventos, posicoesDoAluno } =
+  const { conquistas, carregando, eventos, posicoesDoAluno, ranking } =
     useConquistaRank();
   const { lastAnalysis, cameraOptIn, cameraPermission } = useMetricas();
   const { lastBatchTimeMetrics } = useMetricasBatch();
@@ -125,6 +125,17 @@ export default function PerfilHome() {
     .toRgbString();
   const resolvedTheme = resolveMetricsTheme(perfil, themeOverride);
 
+  // Sem o criterio nao da para saber qual das posicoes esta em PONTOS: a turma
+  // tem um rank por criterio, e as tres linhas chegam no mesmo campo.
+  const criteriosDosRanks = useMemo(
+    () =>
+      (ranking?.ranks ?? []).map((rank) => ({
+        rank_id: rank.info.rank_id,
+        criterio: rank.info.criterio,
+      })),
+    [ranking],
+  );
+
   const metricsViewModel = useMemo(
     () =>
       buildProfileMetricsViewModel({
@@ -139,6 +150,7 @@ export default function PerfilHome() {
         cameraPermission,
         battleState,
         progressoPersonalizado,
+        criteriosDosRanks,
       }),
     [
       battleState,
@@ -146,6 +158,7 @@ export default function PerfilHome() {
       cameraPermission,
       classeAtual,
       conquistas,
+      criteriosDosRanks,
       eventos,
       progressoPersonalizado,
       lastAnalysis,
