@@ -18,6 +18,7 @@ import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { getProfileGuideEmphasis } from "@/utils/profileSectionGuide";
 import { aplicarCorteDoRank, descreverCorte } from "@/utils/rankCorte";
+import { formatarMinutos } from "@/utils/tempoDeEstudo";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Stack, useLocalSearchParams, useNavigation } from "expo-router";
@@ -88,13 +89,9 @@ function formatPontuacao(valor: number | null | undefined, criterio: string | nu
   if (criterio === "percentual") {
     return `${numero.toFixed(0)}%`;
   }
-  if (criterio === "tempo") {
-    const minutos = Math.round(numero);
-    if (minutos < 60) return `${minutos} min`;
-    const horas = Math.floor(minutos / 60);
-    const restoMin = minutos % 60;
-    return restoMin > 0 ? `${horas}h ${restoMin}min` : `${horas}h`;
-  }
+  // Mesma conta das metricas: arredondar para minuto inteiro mostrava "0 min" a
+  // quem estudou. O rank de tempo da classe 32 dizia isso com 0,39 min gravado.
+  if (criterio === "tempo") return formatarMinutos(numero);
   return numero.toFixed(0);
 }
 
