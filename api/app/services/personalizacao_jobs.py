@@ -1892,7 +1892,21 @@ async def _prewarm_shared_content_enrichments(
     classe_id = int(job["classe_id"])
 
     async def _prepare(target: dict[str, Any]) -> None:
-        aluno_id = str(target["aluno_id"])
+        # Mesma guarda de `_process_media_render_target` (linha ~1145): target
+        # base nao tem dono, e `str(None)` devolve a STRING "None", que viaja
+        # adiante como se fosse UUID.
+        #
+        # A guarda existia la e nao aqui, e este e o caminho de pre-aquecimento
+        # do cache de contexto -- ele roda ANTES, entao era ele que estourava.
+        # `fetch_personalizacao_context` tem um `if aluno_id is None` para
+        # pular o contexto de aluno, e a string "None" passa por ele: cai no
+        # `else` e consulta `alunos WHERE id = 'None'`, que estoura com
+        # `invalid input for query argument $1: 'None' (invalid UUID)` e derruba
+        # os 7 targets do topico sem nunca chamar o microservice.
+        #
+        # O `context_key` continua compativel: `_process_media_render_target`
+        # monta a chave com o mesmo `None` e as duas compartilham o cache.
+        aluno_id = str(target["aluno_id"]) if target.get("aluno_id") is not None else None
         topico_id = int(target["topico_id"])
         conteudo_id = (
             int(target["conteudo_id"])
