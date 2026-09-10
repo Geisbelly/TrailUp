@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     langgraph_db_url: str | None = None
     database_connect_timeout_sec: int = 20
     database_command_timeout_sec: int = 60
+    database_connect_retry_attempts: int = 3
+    database_connect_retry_delay_sec: float = 1.0
     database_migrations_on_startup: bool = True
 
     supabase_url: str | None = Field(
@@ -223,6 +225,10 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _check_production_safety(self) -> "Settings":
+        for name in ("database_url", "alembic_database_url"):
+            value = getattr(self, name)
+            if value is not None and "://" not in value:
+                raise ValueError(f"{name} precisa ser uma URL de banco valida.")
         if self.app_env == "production" and self.cors_allow_origins == ["*"]:
             raise ValueError(
                 "cors_allow_origins não pode ser ['*'] em produção. "
