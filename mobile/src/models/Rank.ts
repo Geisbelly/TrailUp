@@ -37,7 +37,7 @@ type FallbackRankRow = {
   id_aluno: string;
   nome_aluno: string;
   pontuacao: number;
-  progresso: number | null;
+  percentual_do_lider: number | null;
   medalha: string | null;
 };
 
@@ -59,7 +59,7 @@ function buildRankPosicao(row: any) {
     String(row.id_aluno),
     String(row.nome_aluno ?? "Aluno"),
     row.pontuacao != null ? Number(row.pontuacao) : null,
-    row.progresso != null ? Number(row.progresso) : null,
+    row.percentual_do_lider != null ? Number(row.percentual_do_lider) : null,
     row.medalha != null ? String(row.medalha) : null
   );
 }
@@ -71,7 +71,7 @@ function buildPosicaoDoAluno(alunoId: string, row: RankPosicao) {
     alunoId,
     row.posicao ?? null,
     row.pontuacao ?? null,
-    row.progresso ?? null,
+    row.percentualDoLider ?? null,
     row.medalha ?? null
   );
 }
@@ -193,7 +193,8 @@ function buildFallbackRankRows(
       allRows.push({
         ...row,
         posicao: currentRank,
-        progresso: maxPontuacao > 0 ? roundProgress((row.pontuacao / maxPontuacao) * 100) : null,
+        percentual_do_lider:
+          maxPontuacao > 0 ? roundProgress((row.pontuacao / maxPontuacao) * 100) : null,
         medalha:
           currentRank === 1
             ? "ouro"
@@ -471,7 +472,7 @@ export class RankDaClasse {
       aluno_id,
       fallback.posicao ?? null,
       fallback.pontuacao ?? null,
-      fallback.progresso ?? null,
+      fallback.percentual_do_lider ?? null,
       fallback.medalha ?? null
     );
   }

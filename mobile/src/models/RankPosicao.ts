@@ -6,7 +6,12 @@ export class RankPosicao {
     public id_aluno: string,
     public nome_aluno: string,
     public pontuacao: number | null,
-    public progresso: number | null,
+    /**
+     * Quanto o aluno tem em relacao ao PRIMEIRO COLOCADO -- nao progresso na
+     * trilha. O lider da 100 por construcao. Vem de
+     * `vw_rank_posicoes_por_classe.percentual_do_lider`.
+     */
+    public percentualDoLider: number | null,
     public medalha: string | null
   ) {}
 }
