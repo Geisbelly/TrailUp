@@ -12,6 +12,7 @@ import React, { useEffect, useRef } from "react";
 import { Image, View } from "react-native";
 
 import { ToastContainer } from "@/components/ToastContainer";
+import { VigiaDePresenca } from "@/components/VigiaDePresenca";
 import { FirstAccessTour } from "@/components/FirstAccessTour";
 import { useUsuario } from "@/context/SessaoContext";
 import { MetricasProvider } from "@/context/MetricasContext";
@@ -19,6 +20,7 @@ import { user } from "@/database/mockUser";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { useMonitorDeSessao } from "@/hooks/useMonitorDeSessao";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { estaNaTrilhaDeEstudo } from "@/utils/presencaDeEstudo";
 import { registrarAlvoTour } from "@/utils/tourTargets";
 
 function TourAwareTabBar(props: BottomTabBarProps) {
@@ -54,16 +56,14 @@ export default function TabLayout() {
     usuario?.foto_url
       ? { uri: usuario.foto_url }
       : perfilImage;
-  const trilhaIndex = segments.indexOf("trilha");
-  const nextTrilhaSegment = trilhaIndex >= 0 ? segments[trilhaIndex + 1] : null;
-  const hideTabBarOnModule = Boolean(
-    nextTrilhaSegment &&
-      nextTrilhaSegment !== "index" &&
-      nextTrilhaSegment !== "_layout"
-  );
+  // Mesma leitura de rota que o vigia de presença usa para saber se o aluno
+  // está estudando: esconder a barra e "não perguntar agora" respondem à mesma
+  // pergunta, e duas cópias divergiriam.
+  const hideTabBarOnModule = estaNaTrilhaDeEstudo(segments as readonly string[]);
 
   return (
     <IAProvider>
+      <VigiaDePresenca>
       <MetricasProvider>
         <NotificationsProvider>
           <TrilhaProvider>
@@ -185,6 +185,7 @@ export default function TabLayout() {
           </TrilhaProvider>
         </NotificationsProvider>
       </MetricasProvider>
+      </VigiaDePresenca>
     </IAProvider>
   );
 }
