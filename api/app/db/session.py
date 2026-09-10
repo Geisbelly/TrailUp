@@ -1,11 +1,51 @@
 from collections.abc import AsyncIterator
+import asyncio
+from typing import Awaitable, Callable, TypeVar
 
 from sqlalchemy import text
+from sqlalchemy.exc import DBAPIError, OperationalError
 from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from app.core.settings import Settings
+
+T = TypeVar("T")
+
+
+class DatabaseUnavailableError(RuntimeError):
+    """Banco temporariamente indisponivel depois das tentativas configuradas."""
+
+
+def _is_transient_database_error(exc: BaseException) -> bool:
+    current: BaseException | None = exc
+    while current is not None:
+        if isinstance(current, (OSError, TimeoutError, OperationalError, DBAPIError)):
+            return True
+        current = current.__cause__ or current.__context__
+    return isinstance(exc, DBAPIError) and bool(exc.connection_invalidated)
+
+
+async def execute_with_database_retry(
+    operation: Callable[[], Awaitable[T]],
+    settings: Settings,
+) -> T:
+    attempts = max(1, int(settings.database_connect_retry_attempts))
+    delay = max(0.0, float(settings.database_connect_retry_delay_sec))
+    last_error: BaseException | None = None
+
+    for attempt in range(attempts):
+        try:
+            return await operation()
+        except Exception as exc:
+            last_error = exc
+            if not _is_transient_database_error(exc) or attempt == attempts - 1:
+                break
+            await asyncio.sleep(delay * (attempt + 1))
+
+    raise DatabaseUnavailableError(
+        f"Banco indisponivel apos {attempts} tentativa(s)."
+    ) from last_error
 
 
 def build_engine(settings: Settings) -> AsyncEngine:
@@ -48,6 +88,11 @@ async def ping_database(session: AsyncSession) -> None:
 
 async def session_dependency(
     session_factory: async_sessionmaker[AsyncSession],
+    settings: Settings,
 ) -> AsyncIterator[AsyncSession]:
     async with session_factory() as session:
+        await execute_with_database_retry(
+            lambda: session.execute(text("SELECT 1")),
+            settings,
+        )
         yield session
