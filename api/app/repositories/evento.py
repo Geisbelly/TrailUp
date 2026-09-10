@@ -45,7 +45,17 @@ class EventoRepository:
         numeric_reference = cls._extract_numeric_reference(normalized)
 
         if prefix is not None:
-            return f"{prefix}:{numeric_reference}" if numeric_reference is not None else None
+            if numeric_reference is not None:
+                return f"{prefix}:{numeric_reference}"
+            # Sem id numerico a referencia NAO e descartada. Descartar era pior
+            # que guardar: a view do rank falha em resolver a classe nos dois
+            # casos, mas o `None` apagava tambem a identidade do evento -- ficava
+            # uma linha em `eventos_aluno` sem nenhuma pista do que ela marcou.
+            #
+            # Medido em producao: 13 de 15 `conteudo_concluido` e 9 de 9
+            # `conteudo_aberto` gravados com referencia nula, sem como saber a
+            # que conteudo se referiam.
+            return normalized
 
         if numeric_reference is not None:
             return numeric_reference
