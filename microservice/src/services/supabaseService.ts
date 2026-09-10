@@ -188,9 +188,11 @@ const withPersonalizacaoLock = <T>(id: number, fn: () => Promise<T>) =>
   personalizacaoQueue.enqueue(id, fn);
 
 /**
- * Inicia um heartbeat que atualiza `updated_at` da personalização periodicamente
- * enquanto o job está em execução. Permite que recoverStaleJobs use threshold
- * muito mais agressivo (ex.: 3min) sem matar jobs legítimos longos.
+ * Inicia um heartbeat que atualiza `updated_at` da personalização
+ * periodicamente enquanto o job está VIVO — o que inclui o tempo parado na
+ * fila do gate de concorrência, não só a execução. Permite que
+ * recoverStaleJobs use threshold muito mais agressivo (ex.: 3min) sem matar
+ * jobs legítimos longos, nem jobs aceitos que ainda esperam a vez.
  *
  * Retorna função de cleanup que para o heartbeat. SEMPRE chame em finally.
  *
@@ -236,8 +238,18 @@ export function startJobHeartbeat(
  * startup do servidor — libera TrailUp para retentar.
  *
  * `olderThanMs` define a idade mínima (em ms) para considerar um job órfão.
- * Deve ser >= MAX_JOB_DURATION_MS no server para não matar jobs em execução
- * legítima de outras instâncias.
+ *
+ * O threshold pode ser MUITO menor que MAX_JOB_DURATION_MS — e é (150s contra
+ * 30min) — mas isso só é correto porque `startJobHeartbeat` cobre o job desde
+ * a ACEITAÇÃO da requisição, incluindo o tempo esperando na fila do gate de
+ * concorrência, e não apenas a execução. A premissa aqui é literalmente "job
+ * vivo tem `updated_at` fresco": se algum caminho novo deixar uma linha em
+ * `processando_midias` sem heartbeat, esta função a mata como órfã.
+ *
+ * Já aconteceu: o heartbeat nascia depois do gate, então do 3º perfil em
+ * diante o job esperava com `updated_at` congelado no instante da criação e
+ * era reapado antes da vez dele (tópico 128, seeker e socializer, "idade
+ * 534s"). Ver o comentário no handler de /api/personalizar.
  *
  * Retorna a quantidade de jobs marcados como falha.
  */
