@@ -331,6 +331,29 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 - **`ON CONFLICT` sobre índice PARCIAL exige repetir o predicado**
   (`ON CONFLICT (col) WHERE col IS NOT NULL`). Sem ele o Postgres não casa o
   índice e levanta "no unique or exclusion constraint matching".
+- **`eventos_aluno.classe_id` é resolvida no INSERT e CONGELA.** Nenhum cliente
+  escreve essa coluna, e o gatilho `trg_eventos_aluno_valor_upd` restaura
+  `OLD.classe_id` em qualquer UPDATE. Duas razões, e as duas doem:
+
+  1. **Histórico não pode depender do presente.** A classe era deduzida na
+     *leitura* — a view pegava o id dentro de `referencia` e caçava a tabela. Aí
+     conteúdo regerado apaga atividade e os pontos do aluno somem
+     retroativamente. Foram 66 ids órfãos e 160 pontos medidos em produção
+     (`20260910_06`, `20260910_07`).
+  2. **É superfície de ataque.** `eventos_aluno_posse_upd` deixa o aluno dar
+     UPDATE nos próprios eventos, e o gatilho de valor olhava só
+     `UPDATE OF valor, tipo`. Com a coluna gravável, um
+     `UPDATE ... SET classe_id = <outra turma>` moveria a pontuação dele para a
+     turma que quisesse liderar. É por isso que o gatilho dispara em **todas** as
+     colunas: a lista curta era o buraco.
+
+  Corolário: a view do rank **lê a coluna**, não deduz. Se ela voltar a resolver
+  por `referencia`, os dois problemas voltam juntos. `fn_eventos_aluno_resolve_classe_id`
+  continua existindo, e é ela que alimenta o INSERT — um lugar só.
+
+  Exceção: `conquista_desbloqueada` fica com `classe_id` nulo de propósito.
+  `conquistas.escopo` é `comum` ou `perfil`: o prêmio não pertence a uma classe,
+  vale em todas as do aluno, e a view espalha por `classe_aluno`.
 
 ## Pontos de entrada (código)
 
