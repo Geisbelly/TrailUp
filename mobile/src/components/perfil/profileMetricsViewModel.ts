@@ -336,9 +336,14 @@ export function buildProfileMetricsViewModel({
   const atividadesConcluidas = unificado.atividadesConcluidas;
   const hasEstruturaDaClasse = totalTopicos > 0 || totalConteudos > 0 || totalAtividades > 0;
   const hasAtividades = totalAtividades > 0;
-  const progresso = hasEstruturaDaClasse
-    ? academicMetrics.progressPct
-    : resumoConfiavel?.porcentagemConcluida ?? classeAtual?.getProgressoGeral() ?? 0;
+  // Campanha e' o percentual do banco (topicos concluidos), nao a conta local.
+  // Antes esta linha usava `academicMetrics.progressPct` -- blocos so' do
+  // professor -- e convivia, no MESMO cartao, com as barras de "Conteudos
+  // explorados", que ja somam os dois livros-caixa. Dois numeros diferentes
+  // para a mesma coisa, lado a lado.
+  const progresso =
+    resumoConfiavel?.porcentagemConcluida ??
+    (hasEstruturaDaClasse ? academicMetrics.progressPct : classeAtual?.getProgressoGeral() ?? 0);
   const acertos = hasAtividades
     ? academicMetrics.acertosPercentual
     : resumoConfiavel?.acertosPercentual ?? 0;
