@@ -10,10 +10,12 @@ import {
   IATimerTimeoutAction,
 } from "@/interfaces/personalizacao/IAContracts";
 import { FontFamily } from "@/styles/GlobalStyle";
+import { cronometroDeveContar } from "@/utils/presencaDeEstudo";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useIsFocused } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
+import { Animated, AppState, Pressable, StyleSheet, Text, View } from "react-native";
 
 type Props = {
   featureKey: Extract<IAFeatureKey, "activity_timer" | "reading_timer">;
@@ -52,6 +54,28 @@ export function IATimerCard({
   const timeoutSentRef  = useRef(false);
   const pulseAnim       = useRef(new Animated.Value(1)).current;
 
+  // Mesma regra do `IAHeaderTimer`: tempo de estudo só corre com o aluno
+  // diante do material. Aqui o gate é preventivo -- este card ainda não está
+  // montado em nenhuma tela --, mas deixá-lo de fora devolveria o defeito pela
+  // outra porta no dia em que o `IAFloatingOverlay` for ligado.
+  const telaFocada = useIsFocused();
+  const [appEmPrimeiroPlano, setAppEmPrimeiroPlano] = useState(
+    AppState.currentState === "active"
+  );
+
+  useEffect(() => {
+    const assinatura = AppState.addEventListener("change", (estado) => {
+      setAppEmPrimeiroPlano(estado === "active");
+    });
+    return () => assinatura.remove();
+  }, []);
+
+  const contando = cronometroDeveContar({
+    recursoAtivo: Boolean(resolved.enabled && resolved.timer),
+    appEmPrimeiroPlano,
+    telaFocada,
+  });
+
   const scopeKey = useMemo(() => {
     if (scope.scope === "session") return "session";
     if (scope.scope === "topic") return `topic:${scope.topicoId}`;
@@ -67,14 +91,14 @@ export function IATimerCard({
 
   // ── Countdown ────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!resolved.enabled || !resolved.timer || resolved.timer.autoStart === false || secondsLeft <= 0) return;
+    if (!contando || resolved.timer?.autoStart === false || secondsLeft <= 0) return;
     const t = setInterval(() => setSecondsLeft((p) => Math.max(0, p - 1)), 1000);
     return () => clearInterval(t);
-  }, [resolved.enabled, resolved.timer, secondsLeft]);
+  }, [contando, resolved.timer?.autoStart, secondsLeft]);
 
   // ── Sinais ───────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!resolved.enabled || !resolved.timer) return;
+    if (!contando) return;
     if (warningAt != null && secondsLeft <= warningAt && secondsLeft > 0 && !warningSentRef.current) {
       warningSentRef.current = true;
       emitSignal({
@@ -90,11 +114,11 @@ export function IATimerCard({
         type: "timer_timeout",
         topicoId: scope.scope !== "session" ? (scope as any).topicoId ?? null : null,
         itemKey: scope.scope === "item" ? scope.itemKey : null,
-        meta: { featureKey, timeoutAction: resolved.timer.timeoutAction ?? null },
+        meta: { featureKey, timeoutAction: resolved.timer?.timeoutAction ?? null },
       });
-      onTimeoutAction?.(resolved.timer.timeoutAction ?? null);
+      onTimeoutAction?.(resolved.timer?.timeoutAction ?? null);
     }
-  }, [emitSignal, featureKey, onTimeoutAction, resolved.enabled, resolved.timer, scope, secondsLeft, warningAt]);
+  }, [contando, emitSignal, featureKey, onTimeoutAction, resolved.timer, scope, secondsLeft, warningAt]);
 
   // ── Pulso crítico (native driver — só transform) ─────────────────────────
   const isCritical = secondsLeft <= Math.max(10, Number(warningAt ?? 10));

@@ -15,8 +15,10 @@ import {
 import { FontFamily } from "@/styles/GlobalStyle";
 import { resolveActiveBrainHexProfile } from "@/utils/brainHex";
 import { getBrainHexProfileCapabilities } from "@/utils/brainHexCapabilities";
+import { cronometroDeveContar } from "@/utils/presencaDeEstudo";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useIsFocused } from "@react-navigation/native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, AppState, StyleSheet, Text, View } from "react-native";
 
@@ -55,6 +57,10 @@ export function IAHeaderTimer({
   compact = false,
 }: Props) {
   const { resolveFeature, emitSignal } = useIA();
+  // O foco é lido AQUI, e não recebido por prop, porque é este componente que
+  // roda o `setInterval`: assim ele para de contar mesmo que a tela pai não
+  // reregistre o `headerRight` ao perder o foco.
+  const telaFocada = useIsFocused();
   const { usuario } = useUsuario();
   const perfis = usuario?.perfis ?? null;
   const activeProfile = resolveActiveBrainHexProfile(perfis, usuario?.perfilAtivo, "seeker");
@@ -104,7 +110,11 @@ export function IAHeaderTimer({
   const pausedStartedAtRef = useRef<number | null>(null);
   const pausedAccumulatedMsRef = useRef(0);
 
-  const isTimerRunning = active && isAppActive;
+  const isTimerRunning = cronometroDeveContar({
+    recursoAtivo: active,
+    appEmPrimeiroPlano: isAppActive,
+    telaFocada,
+  });
 
   const scopeKey = useMemo(() => {
     if (!timerSelection) return "none";
@@ -114,24 +124,30 @@ export function IAHeaderTimer({
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
-      const becameActive = nextState === "active";
-      setIsAppActive(becameActive);
-
-      if (!becameActive) {
-        if (pausedStartedAtRef.current == null) {
-          pausedStartedAtRef.current = Date.now();
-        }
-        return;
-      }
-
-      if (pausedStartedAtRef.current != null) {
-        pausedAccumulatedMsRef.current += Date.now() - pausedStartedAtRef.current;
-        pausedStartedAtRef.current = null;
-      }
+      setIsAppActive(nextState === "active");
     });
 
     return () => subscription.remove();
   }, []);
+
+  // Abre e fecha a janela de pausa a cada mudança em `isTimerRunning`, o que
+  // cobre as DUAS causas de pausa: app em segundo plano e tela sem foco. Antes
+  // isso vivia dentro do listener de AppState, então sair para outra aba não
+  // acumulava nada -- e o "tempo no módulo" dava um salto igual ao tempo que o
+  // aluno passou fora ao voltar.
+  useEffect(() => {
+    if (!isTimerRunning) {
+      if (pausedStartedAtRef.current == null) {
+        pausedStartedAtRef.current = Date.now();
+      }
+      return;
+    }
+
+    if (pausedStartedAtRef.current != null) {
+      pausedAccumulatedMsRef.current += Date.now() - pausedStartedAtRef.current;
+      pausedStartedAtRef.current = null;
+    }
+  }, [isTimerRunning]);
 
   // ── Animação de pulso crítico (native driver OK — só transform) ──────────
   const pulseAnim = useRef(new Animated.Value(1)).current;
