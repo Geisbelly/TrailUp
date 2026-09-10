@@ -19,6 +19,39 @@ class EventoRepository:
             return "atividade"
         return None
 
+    # Vocabulario -> entidade. O cliente manda `content:`/`activity:`/`topic:`
+    # em alguns caminhos e `conteudo:`/`atividade:`/`topico:` em outros; as duas
+    # grafias apontam para a mesma tabela.
+    _PREFIXOS_CONHECIDOS = {
+        "topic": "topico",
+        "topico": "topico",
+        "content": "conteudo",
+        "conteudo": "conteudo",
+        "activity": "atividade",
+        "atividade": "atividade",
+        "classe": "classe",
+        "class": "classe",
+        "conquista": "conquista",
+    }
+
+    @classmethod
+    def _explicit_reference_prefix(cls, referencia: str) -> str | None:
+        """O prefixo que a PROPRIA referencia declara, se declarar algum.
+
+        Existe porque confiar no tipo do evento fabricava referencia orfa: um
+        `content:174` num `atividade_concluida` virava `atividade:174`, e nao
+        existe atividade 174 -- a view do rank nunca resolvia a classe e os
+        pontos morriam ali. Medido em producao: 66 ids orfaos, e 4 deles eram
+        conteudo do proprio aluno com o prefixo trocado.
+
+        O id e' a parte confiavel da referencia; o prefixo do tipo e' palpite. Na
+        duvida, quem manda e' o que a referencia diz de si.
+        """
+        if ":" not in referencia:
+            return None
+        candidato = referencia.split(":", 1)[0].strip().lower()
+        return cls._PREFIXOS_CONHECIDOS.get(candidato)
+
     @staticmethod
     def _extract_numeric_reference(referencia: str | int | None) -> str | None:
         if referencia is None:
@@ -41,7 +74,10 @@ class EventoRepository:
         if not normalized:
             return None
 
-        prefix = cls._infer_reference_prefix(tipo)
+        # A referencia declarada vence o palpite do tipo. Trocar `content:174`
+        # por `atividade:174` num evento de atividade nao "corrigia" nada:
+        # inventava uma atividade que nao existe e a view perdia a classe.
+        prefix = cls._explicit_reference_prefix(normalized) or cls._infer_reference_prefix(tipo)
         numeric_reference = cls._extract_numeric_reference(normalized)
 
         if prefix is not None:
