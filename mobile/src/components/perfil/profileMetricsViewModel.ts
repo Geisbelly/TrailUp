@@ -5,6 +5,11 @@ import { Conquista } from "@/models/Conquista";
 import { EventoAluno } from "@/models/Evento";
 import { PerfilDoAluno } from "@/models/PerfilAluno";
 import { PosicaoDoAluno } from "@/models/RankAlunoPosicao";
+import {
+  extrairPontuacao,
+  type CriterioDoRank,
+  type PontuacaoDoAluno,
+} from "@/utils/pontuacaoDoAluno";
 import { buildClasseAcademicMetrics, buildClasseResumoFallback } from "@/utils/classeMetrics";
 import {
   agregarProgressoPersonalizado,
@@ -40,6 +45,15 @@ export type ProfileMetricsViewModel = {
   semanaDiaria: number[];
   ultimoEvento: string | null;
   melhorPosicao: PosicaoDoAluno | null;
+  /**
+   * Pontos no rank de PONTUACAO, especificamente.
+   *
+   * `melhorPosicao` escolhe pela melhor colocacao entre os ranks da turma, e
+   * cada rank mede numa unidade diferente -- pontos, minutos, por cento. O
+   * campo `pontuacao` dele, por isso, tem unidade imprevisivel. Aqui a unidade
+   * e sempre ponto. Ver `utils/pontuacaoDoAluno`.
+   */
+  pontuacao: PontuacaoDoAluno;
   afinidades: ProfileMetricAffinity[];
   materiaNome: string | null;
   emotionLabel: string;
@@ -274,6 +288,11 @@ type BuildMetricsViewModelParams = {
    * mostrar so o material do professor.
    */
   progressoPersonalizado?: ProgressoPersonalizado | null;
+  /**
+   * Criterio de cada rank da turma (`ClasseRanking.ranks[].info`). Sem isso nao
+   * da para saber qual das posicoes esta em pontos.
+   */
+  criteriosDosRanks?: CriterioDoRank[] | null;
 };
 
 /**
@@ -306,6 +325,7 @@ export function buildProfileMetricsViewModel({
   cameraPermission,
   battleState,
   progressoPersonalizado,
+  criteriosDosRanks,
 }: BuildMetricsViewModelParams): ProfileMetricsViewModel {
   const resumoConfiavel = buildClasseResumoFallback(classeAtual, classeAtual?.resumo ?? null);
   const academicMetrics = buildClasseAcademicMetrics(classeAtual);
@@ -389,6 +409,8 @@ export function buildProfileMetricsViewModel({
     [...posicoesDoAluno].sort(
       (a, b) => (a.posicao ?? Number.MAX_SAFE_INTEGER) - (b.posicao ?? Number.MAX_SAFE_INTEGER)
     )[0] ?? null;
+
+  const pontuacao = extrairPontuacao(posicoesDoAluno, criteriosDosRanks ?? []);
 
   const emotionLabel = getEmotionLabel(
     lastAnalysis?.emocao_atual &&
@@ -477,6 +499,7 @@ export function buildProfileMetricsViewModel({
     semanaDiaria,
     ultimoEvento: eventos[0]?.criado_em ?? null,
     melhorPosicao,
+    pontuacao,
     afinidades,
     materiaNome: resumoConfiavel?.materia_nome ?? null,
     emotionLabel,
