@@ -5,6 +5,7 @@ import { DialogProvider } from "@/context/DialogContext";
 import { PersonalizacaoProviderProvider } from "@/services/personalizacao/PersonalizacaoProviderContext";
 import { LoadingProvider, useLoading } from "@/context/LoadingContext";
 import { SessionProvider, useUsuario } from "@/context/SessaoContext";
+import { PortoesProvider } from "@/context/PortoesContext";
 import { getSessionSafe, supabase } from "@/database/supabase";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
@@ -92,6 +93,7 @@ export default function RootLayout() {
         <LoadingProvider>
           <SessionProvider>
             <PersonalizacaoProviderProvider>
+            <PortoesProvider>
             <DialogProvider>
               <LoadingOverlay />
               <VerificacaoDeRota />
@@ -101,6 +103,7 @@ export default function RootLayout() {
               </Stack>
               <TelemetryConsentGate />
             </DialogProvider>
+            </PortoesProvider>
             </PersonalizacaoProviderProvider>
           </SessionProvider>
         </LoadingProvider>
