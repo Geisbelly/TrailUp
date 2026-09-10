@@ -296,11 +296,26 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
   dono (`postgres`), então as policies das tabelas base **não se aplicam** —
   era um segundo bypass, paralelo ao das policies, e por ele dava para ler
   ranking, métricas e telemetria sem login. Todas foram para
-  `security_invoker = on` em `20260826_10`. A única exceção deliberada é
-  `vw_rank_posicoes_por_classe`: ela soma eventos de vários alunos, o que um
-  aluno não pode fazer lendo `eventos_aluno` linha a linha, então mantém o
-  bypass e é filtrada na saída pelas classes do chamador. **Toda view nova
-  nasce com `security_invoker = on`.**
+  `security_invoker = on` em `20260826_10`. A exceção deliberada é o ranking, e
+  ele são **duas** views em camadas — descrevê-lo como uma só (o que este
+  parágrafo fazia) esconde por que cada uma abre mão do `security_invoker`:
+
+  - **`vw_rank_posicoes_por_classe_todas`** soma eventos de vários alunos, o que
+    um aluno não pode fazer lendo `eventos_aluno` linha a linha. É por isso que
+    ela roda como dono. E **o cliente não a lê**: `20260910_05` revogou
+    `anon`/`authenticated` dela explicitamente, porque um `DROP`+`CREATE` não
+    preserva grant e os *default privileges* do Supabase a republicariam — o
+    ranking inteiro, sem corte e sem filtro.
+  - **`vw_rank_posicoes_por_classe`** é a única que `authenticated` lê. Ela
+    também roda como dono, e não por escolha: como `invoker`, leria a `_todas`
+    como `authenticated`, que não tem privilégio nenhum nela, e o rank sumiria
+    com "permission denied". A segurança dela é o filtro de saída —
+    `app_minhas_classes()`, `auth.uid()`, `app_classes_do_professor()` — mais o
+    corte de `app_rank_limite_visivel()`.
+
+  O linter marca a segunda como `security_definer_view` **ERROR**, e é esperado:
+  é essa a exceção. Antes ele apontava a `_todas`; mudou de view quando o grant
+  saiu de lá. **Toda view nova nasce com `security_invoker = on`.**
 - **`text()` do SQLAlchemy não aceita `:param::tipo`** — o `::` do Postgres
   colide com a sintaxe de bind e o parâmetro deixa de ser reconhecido (erro em
   tempo de execução, não de import). Use `CAST(:param AS TIPO)`. E parâmetro
