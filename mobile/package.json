@@ -26,6 +26,7 @@
     "@shopify/react-native-skia": "2.2.12",
     "@supabase/supabase-js": "^2.76.1",
     "expo": "~54.0.9",
+    "expo-auth-session": "~7.0.8",
     "expo-av": "~16.0.7",
     "expo-camera": "~17.0.10",
     "expo-constants": "~18.0.9",
