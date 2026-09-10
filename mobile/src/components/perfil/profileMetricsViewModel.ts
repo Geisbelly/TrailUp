@@ -6,6 +6,10 @@ import { EventoAluno } from "@/models/Evento";
 import { PerfilDoAluno } from "@/models/PerfilAluno";
 import { PosicaoDoAluno } from "@/models/RankAlunoPosicao";
 import {
+  escolherTempoDaClasse,
+  escolherTempoMedio,
+} from "@/utils/tempoDaClasse";
+import {
   extrairPontuacao,
   type CriterioDoRank,
   type PontuacaoDoAluno,
@@ -367,16 +371,23 @@ export function buildProfileMetricsViewModel({
   const acertos = hasAtividades
     ? academicMetrics.acertosPercentual
     : resumoConfiavel?.acertosPercentual ?? 0;
-  // MAXIMO, nao soma: o tempo do topico ja inclui o dos itens (o rastreio grava
-  // topico em todo flush, inclusive nos blocos personalizados). O maximo evita
-  // contar duas vezes e ao mesmo tempo recupera o numero quando a escrita de um
-  // dos lados falha -- era o caso do total zerado com estudo registrado.
-  const tempoPersistido = hasEstruturaDaClasse
-    ? Math.max(academicMetrics.tempoTotalMin, unificado.tempoMin)
-    : Math.max(resumoConfiavel?.tempoGastoMin ?? 0, unificado.tempoMin);
-  const tempoMedio = hasAtividades
-    ? academicMetrics.tempoMedioPorAtividade
-    : resumoConfiavel?.tempoMedioPorAtividade ?? 0;
+  // O tempo do BANCO vence, como o percentual logo acima. A ordem estava
+  // invertida aqui: com estrutura de classe -- o caso normal -- o valor do
+  // banco nao era nem lido, e a conta local somava conteudo + atividade. Os
+  // escopos da telemetria sao INCLUSIVOS (o `topic` ja conta o mesmo
+  // intervalo), entao somar dois deles multiplica o tempo: 2,89 na metrica
+  // contra 2,26 no rank, medido na classe 32. Ver `utils/tempoDaClasse`.
+  const tempoPersistido = escolherTempoDaClasse({
+    doBanco: resumoConfiavel?.tempoGastoMin,
+    academicoMin: academicMetrics.tempoTotalMin,
+    unificadoMin: unificado.tempoMin,
+    temEstrutura: hasEstruturaDaClasse,
+  });
+  const tempoMedio = escolherTempoMedio({
+    doBanco: resumoConfiavel?.tempoMedioPorAtividade,
+    localMin: academicMetrics.tempoMedioPorAtividade,
+    temAtividades: hasAtividades,
+  });
   const seteDias = Date.now() - 7 * 24 * 60 * 60 * 1000;
   const eventosRecentes = eventos.filter((evento) => {
     const time = evento.criado_em ? new Date(evento.criado_em).getTime() : NaN;
