@@ -38,6 +38,7 @@ src/
 - `EXPO_PUBLIC_SUPABASE_URL`
 - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
 - `EXPO_PUBLIC_APITRAIUP_URL`
+- `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` (login nativo com Google — ver `.env.example`)
 
 ## Comandos
 ```bash
@@ -47,7 +48,12 @@ npm run android
 npm run ios
 npm run web
 npm run lint
+npm run build:apk
+npm run build:aab
+npm run build:android
 ```
+
+`build:apk` gera o APK para instalação direta, `build:aab` gera o Android App Bundle para publicação na Google Play e `build:android` executa os dois builds em sequência. Os builds usam o EAS e exigem login/configuração do projeto (`eas login`).
 
 ## Diagnostico rapido
 Erro repetido `TypeError: Network request failed` geralmente indica:
