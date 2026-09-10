@@ -1315,8 +1315,23 @@ async def _process_media_render_target(
         return {"skipped": True}
 
     # Legacy path: jobs with media_snapshot + personalizacao_id → direct media materialization
+    #
+    # O guard era `media_snapshot is not None`, e `{} is not None` e SEMPRE
+    # verdadeiro -- entao qualquer target com `personalizacao_id` caia aqui,
+    # inclusive com snapshot vazio. Com `shared_rendered` e `slow_payload`
+    # vazios, `to_materialize` fica vazio, `new_materiais` sai identico ao que
+    # ja estava, e o final do bloco gravava `status="pronto"` sem ter
+    # materializado nada -- ao mesmo tempo que curto-circuitava o caminho de
+    # geracao de verdade, que fica ACIMA e nunca era alcancado numa retomada.
+    #
+    # Medido no topico 128: os 7 targets tinham `personalizacao_id` de uma
+    # tentativa anterior e o job tinha `media_snapshot = '{}'`. Resultado:
+    # achiever, daredevil, seeker e socializer viraram `pronto` com a
+    # apresentacao falhada ou pendente (achiever e daredevil com ZERO partes
+    # com URL), e os targets foram marcados `completed` -- porque target
+    # completed e' derivado de record `pronto`.
     media_snapshot = job.get("media_snapshot") if isinstance(job.get("media_snapshot"), dict) else {}
-    if target.get("personalizacao_id") is not None and media_snapshot is not None:
+    if target.get("personalizacao_id") is not None and media_snapshot:
         personalizacao_id = int(target["personalizacao_id"])
         repo_cp = ConteudoPersonalizadoRepository(session)
         record = await repo_cp.buscar_por_id(personalizacao_id)
@@ -1382,10 +1397,60 @@ async def _process_media_render_target(
             job_id=str(job["id"]),
             media_snapshot={},
         )
+        # `pronto` significa "o ciclo fechou inteiro" -- ver
+        # 20260831_02_formatos_gerados_reflete_o_que_existe. Este era o unico
+        # dos tres gravadores de `pronto` sem gate de completude: o
+        # `_normalize_completed_generation_status` exige as tres midias
+        # `completed` com o generation_key certo, e a RPC
+        # `merge_personalizacao_materiais_v2` faz a mesma conta em SQL (e
+        # ainda rebaixa `pronto` velho para `processando_midias`). Aqui era
+        # incondicional, o que anunciava ao aluno material que nao existe.
+        #
+        # Quando falta midia obrigatoria, o status anterior fica -- a
+        # retentativa segue em `processando_midias`, e quem declara falha
+        # continua sendo o caminho explicito de falha, que sabe o motivo.
+        # `_build_generation_key` LEVANTA quando falta ciclo_id ou source_hash,
+        # e registro legado tem ciclo_id sem source_hash -- usar ela aqui
+        # transformaria a conferencia em erro fatal para exatamente os
+        # registros que este ramo existe para atender.
+        ciclo_do_registro = str(record.get("ciclo_id") or "").strip()
+        hash_do_registro = str(record.get("source_hash") or "").strip()
+        if ciclo_do_registro and hash_do_registro:
+            incompletas = _incomplete_brainhex_media_for_generation(
+                {**record, "materiais": new_materiais},
+                generation_key=_build_generation_key(
+                    ciclo_id=ciclo_do_registro,
+                    source_hash=hash_do_registro,
+                ),
+            )
+        else:
+            # Sem fence nao ha generation_key para comparar, entao a conferencia
+            # se limita ao status de cada midia. E mais fraca que a do caminho
+            # normal, mas ainda impede o `pronto` incondicional -- e nao regride
+            # o registro antigo, que nunca teve os dois campos.
+            def _midia_completa(kind: str) -> bool:
+                material = new_materiais.get(kind)
+                if not isinstance(material, dict):
+                    return False
+                metadata = material.get("metadata")
+                if not isinstance(metadata, dict):
+                    return False
+                return metadata.get("status") == "completed"
+
+            incompletas = [
+                kind for kind in _REQUIRED_BRAINHEX_MEDIA if not _midia_completa(kind)
+            ]
+        if incompletas:
+            logger.warning(
+                "materializacao legacy sem midia obrigatoria completa, "
+                "mantendo status: personalizacao_id=%s faltando=%s",
+                personalizacao_id,
+                ",".join(incompletas),
+            )
         updated = await repo_cp.atualizar_materiais_e_status(
             record_id=personalizacao_id,
             materiais=new_materiais,
-            status="pronto",
+            status="pronto" if not incompletas else str(record.get("status") or "processando_midias"),
         )
         return {"record": updated}
 
