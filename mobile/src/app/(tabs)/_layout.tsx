@@ -12,6 +12,8 @@ import React, { useEffect, useRef } from "react";
 import { Image, View } from "react-native";
 
 import { ToastContainer } from "@/components/ToastContainer";
+import DesbloqueioModal from "@/components/DesbloqueioModal";
+import { usePortoes } from "@/context/PortoesContext";
 import { FirstAccessTour } from "@/components/FirstAccessTour";
 import { useUsuario } from "@/context/SessaoContext";
 import { MetricasProvider } from "@/context/MetricasContext";
@@ -49,6 +51,7 @@ export default function TabLayout() {
       : getProfileImageByString(activeProfileName ?? "")) || user.avatar;
   const perfilConfig = brainProfile ? brainHexConfig[brainProfile] : undefined;
   const palette = getProfileShellPalette(activeProfileName ?? null);
+  const { aberturas, cerimoniaAtual, concluirCerimonia } = usePortoes();
 
   const perfilFoto =
     usuario?.foto_url
@@ -129,6 +132,9 @@ export default function TabLayout() {
               name="ranking"
               options={{
                 title: "Ranking",
+                // Travado nao e' so' escondido: o aluno continua pontuando, e a
+                // posicao dele ja existe no banco quando a aba aparece.
+                href: aberturas.rank ? undefined : null,
                 // Ícone de Pódio (fiel à referência do ranking/liderança)
                 // Outra opção boa seria "trophy-variant" se preferir o troféu detalhado
                 tabBarIcon: ({ color, focused }) => (
@@ -179,6 +185,11 @@ export default function TabLayout() {
               <FirstAccessTour
                 userId={usuario?.id}
                 profile={activeProfileName}
+              />
+              <DesbloqueioModal
+                funcionalidade={cerimoniaAtual}
+                color={palette.accent}
+                onClose={concluirCerimonia}
               />
             </ConquistaRankProvider>
             <ToastContainer />
