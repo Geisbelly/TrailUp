@@ -245,6 +245,19 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 > Corolário: `tempo_gasto_min` em `topico_aluno`, `conteudo_aluno` e
 > `atividade_aluno` é **derivado por trigger** a partir da telemetria. Nenhum
 > cliente escreve essa coluna.
+>
+> **E o nível de cima também: `classe_aluno`.** Este parágrafo só falava das três
+> tabelas de baixo, e a omissão custou caro. `classe_aluno` tem duas colunas
+> agregadas lado a lado — `porcentagemConcluida` e `tempoGastoMin` — e por muito
+> tempo só a primeira era derivada: `trailup_recalcular_classe_aluno` calculava
+> o percentual e **não tocava o tempo**. Nada mais escrevia `tempoGastoMin` (nem
+> mobile, nem API, nem frontend, nem função do banco), então o valor era um
+> fóssil: gravado uma vez por código que não existe mais. Medido em produção,
+> 0,39 min contra 2,17 min de soma real — e é essa coluna que o rank "Tempo de
+> Estudo" lê, então o rank divergia da trilha e do perfil por 5,6×. As duas
+> agora saem da mesma função (`20260910_03`); o percentual é **média** dos
+> tópicos (cada tópico vale o mesmo) e o tempo é **soma** (estudo acumula).
+> Ao criar agregado novo em `classe_aluno`, derive junto com esses dois.
 
 > Lacuna real ainda aberta: `MentalStateHistoryRepository.listar_por_aluno`
 > (`api/app/repositories/mental_state.py`) só é exercitado em teste — o
