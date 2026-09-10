@@ -1248,6 +1248,50 @@ class PersonalizacaoJobsRepository:
             ),
             {"job_id": job_id, "status": status, "last_error": last_error},
         )
-        await self.session.commit()
+        # Lido ANTES da varredura: um `execute` novo na mesma sessao fecha o
+        # cursor anterior, e `result.mappings()` depois dele viria vazio.
         row = result.mappings().first()
+
+        # Job que termina nao pode deixar alvo dizendo que ainda esta em voo.
+        #
+        # `claim_next_job` reivindica job `pending`, `partial` ou `processing`
+        # -- `failed` e `completed` NAO entram em nenhuma das tres hipoteses.
+        # Entao alvo que ficou em `pending`/`processing` quando o job foi
+        # finalizado nunca mais e tocado por ninguem: nem worker, nem
+        # retentativa. Fica irrecuperavel, e a unica saida era mexer no banco
+        # na mao.
+        #
+        # Medido em producao: 2 alvos `pending` de um job `failed` em
+        # 2026-08-28, parados havia duas semanas. Hoje o mesmo aconteceu tres
+        # vezes com o job do topico 128 (6 alvos em `processing` cada vez).
+        #
+        # `partial` de proposito NAO varre: e exatamente o estado que o
+        # `claim_next_job` reivindica de volta para retomar de onde parou.
+        # Varrer ali destruiria o mecanismo de retomada.
+        if status in ("completed", "failed"):
+            await self.session.execute(
+                text(
+                    """
+                    UPDATE personalizacao_job_targets
+                    SET status = 'failed',
+                        last_error = COALESCE(last_error, :motivo),
+                        updated_at = NOW()
+                    WHERE job_id = CAST(:job_id AS UUID)
+                      AND status NOT IN ('completed', 'failed', 'skipped')
+                    """
+                ),
+                # COALESCE preserva o erro que o alvo ja tinha -- ele diz o
+                # motivo real; este texto so preenche quando nao havia nenhum.
+                # O proprio `last_error` da linha e o registro duravel do que
+                # aconteceu, melhor que uma linha de log.
+                {
+                    "job_id": job_id,
+                    "motivo": (
+                        "alvo abandonado: o job foi finalizado como "
+                        f"'{status}' enquanto este alvo ainda nao era terminal"
+                    ),
+                },
+            )
+
+        await self.session.commit()
         return self._hydrate_job(dict(row)) if row else None
