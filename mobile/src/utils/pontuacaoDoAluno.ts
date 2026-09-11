@@ -74,6 +74,26 @@ export function extrairPontuacao(
   };
 }
 
+/**
+ * Projeta os ranks da turma no par `(rank_id, criterio)` que `extrairPontuacao`
+ * espera.
+ *
+ * O tipo é estrutural de propósito: assim este arquivo continua puro, sem
+ * importar `ClasseRanking`, e o teste não precisa construir um modelo inteiro
+ * para exercitar a regra.
+ */
+export function criteriosDoRanking(
+  ranking:
+    | { ranks?: readonly { info: CriterioDoRank }[] | null }
+    | null
+    | undefined,
+): CriterioDoRank[] {
+  return (ranking?.ranks ?? []).map((rank) => ({
+    rank_id: rank.info.rank_id,
+    criterio: rank.info.criterio,
+  }));
+}
+
 /** Rótulo curto para a tela. Sem rank de pontuação, não inventa zero. */
 export function rotularPontuacao(valor: PontuacaoDoAluno): string {
   if (valor.semRankDePontuacao || valor.pontos == null) return "—";

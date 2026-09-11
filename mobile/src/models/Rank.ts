@@ -8,29 +8,7 @@ function normalizeClasseId(value: unknown): number | null {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
-function normalizeReferenciaId(value: unknown): number | null {
-  if (value == null) return null;
-
-  const normalized = String(value).trim();
-  if (!normalized) return null;
-
-  if (/^\d+$/.test(normalized)) {
-    return Number(normalized);
-  }
-
-  const suffixMatch = normalized.match(/(\d+)$/);
-  if (suffixMatch?.[1]) {
-    return Number(suffixMatch[1]);
-  }
-
-  return null;
-}
-
-function roundProgress(value: number) {
-  return Math.round(value * 100) / 100;
-}
-
-type FallbackRankRow = {
+type LinhaDoRank = {
   rank_id: number;
   classe_id: number;
   posicao: number;
@@ -40,16 +18,6 @@ type FallbackRankRow = {
   percentual_do_lider: number | null;
   medalha: string | null;
 };
-
-type ClasseAlunoMetricRow = {
-  aluno_id: string;
-  porcentagemConcluida?: number | null;
-  tempoGastoMin?: number | null;
-};
-
-function isTipoLike(tipo: unknown, prefixo: "topico" | "conteudo" | "atividade") {
-  return String(tipo ?? "").trim().toLowerCase().startsWith(prefixo);
-}
 
 function buildRankPosicao(row: any) {
   return new RankPosicao(
@@ -94,290 +62,36 @@ function buildRankInfoFromRow(row: {
   );
 }
 
-async function loadFallbackRankInfosByClasse(classeId: number): Promise<RankInfo[]> {
-  const { data: rankRows, error: rankError } = await supabase
-    .from("ranks")
-    .select("id, classe_id, nome, descricao, tipo_id, icone")
-    .eq("classe_id", classeId)
-    .order("id", { ascending: true });
-  if (rankError) throw rankError;
-
-  const rows = (rankRows ?? []) as {
-    id: number;
-    classe_id: number;
-    nome: string | null;
-    descricao: string | null;
-    tipo_id: number | null;
-    icone: string | number | null;
-  }[];
-  if (!rows.length) return [];
-
-  const tipoIds = [...new Set(rows.map((row) => Number(row.tipo_id ?? 0)).filter((id) => id > 0))];
-  const criterioByTipoId = new Map<number, string | null>();
-
-  if (tipoIds.length) {
-    const { data: tipoRows, error: tipoError } = await supabase
-      .from("rank_tipo")
-      .select("id, criterio")
-      .in("id", tipoIds);
-    if (tipoError) throw tipoError;
-    (tipoRows ?? []).forEach((row: any) => {
-      criterioByTipoId.set(Number(row.id), row.criterio != null ? String(row.criterio) : null);
-    });
-  }
-
-  return rows.map(
-    (row) =>
-      new RankInfo(
-        Number(row.id),
-        Number(row.classe_id),
-        String(row.nome ?? `Rank ${row.id}`),
-        row.descricao ?? null,
-        row.tipo_id != null ? criterioByTipoId.get(Number(row.tipo_id)) ?? null : null,
-        row.icone != null ? String(row.icone) : null
-      )
-  );
-}
-
-function buildFallbackRankRows(
-  classeId: number,
-  infos: RankInfo[],
-  metricsRows: ClasseAlunoMetricRow[],
-  studentNames: Map<string, string>,
-  scoreByAluno: Map<string, number>
-): FallbackRankRow[] {
-  const allRows: FallbackRankRow[] = [];
-
-  infos.forEach((info) => {
-    const criterio = String(info.criterio ?? "").toLowerCase();
-    const baseRows = metricsRows.map((row) => {
-      const alunoId = String(row.aluno_id);
-      const pontuacao =
-        criterio === "percentual"
-          ? Number(row.porcentagemConcluida ?? 0)
-          : criterio === "pontuacao"
-          ? Number(scoreByAluno.get(alunoId) ?? 0)
-          : criterio === "tempo"
-          ? Number(row.tempoGastoMin ?? 0)
-          : 0;
-
-      return {
-        rank_id: info.rank_id,
-        classe_id: classeId,
-        id_aluno: alunoId,
-        nome_aluno: studentNames.get(alunoId) ?? "Aluno",
-        pontuacao: Number.isFinite(pontuacao) ? pontuacao : 0,
-      };
-    });
-
-    const sortedRows = [...baseRows].sort((a, b) => {
-      if (b.pontuacao !== a.pontuacao) {
-        return b.pontuacao - a.pontuacao;
-      }
-      return a.id_aluno.localeCompare(b.id_aluno);
-    });
-
-    const maxPontuacao = sortedRows.length
-      ? Math.max(...sortedRows.map((row) => row.pontuacao))
-      : 0;
-
-    let lastPontuacao: number | null = null;
-    let currentRank = 0;
-
-    sortedRows.forEach((row, index) => {
-      if (lastPontuacao == null || row.pontuacao !== lastPontuacao) {
-        currentRank = index + 1;
-        lastPontuacao = row.pontuacao;
-      }
-
-      allRows.push({
-        ...row,
-        posicao: currentRank,
-        percentual_do_lider:
-          maxPontuacao > 0 ? roundProgress((row.pontuacao / maxPontuacao) * 100) : null,
-        medalha:
-          currentRank === 1
-            ? "ouro"
-            : currentRank === 2
-            ? "prata"
-            : currentRank === 3
-            ? "bronze"
-            : null,
-      });
-    });
-  });
-
-  return allRows;
-}
-
-async function loadFallbackRankRowsByClasse(
-  classeId: number,
-  infos: RankInfo[]
-): Promise<FallbackRankRow[]> {
-  if (!infos.length) return [];
-
-  const { data: metricsRows, error: metricsError } = await supabase
-    .from("classe_aluno")
-    .select("aluno_id, porcentagemConcluida, tempoGastoMin")
-    .eq("classe_id", classeId);
-  if (metricsError) throw metricsError;
-
-  const metrics = (metricsRows ?? []) as ClasseAlunoMetricRow[];
-  const alunoIds = metrics.map((row) => String(row.aluno_id)).filter(Boolean);
-  if (!alunoIds.length) return [];
-
-  const { data: alunosRows, error: alunosError } = await supabase
-    .from("alunos")
-    .select("id, nome")
-    .in("id", alunoIds);
-  if (alunosError) throw alunosError;
-
-  const studentNames = new Map<string, string>(
-    (alunosRows ?? []).map((row: any) => [String(row.id), String(row.nome ?? "Aluno")] as const)
-  );
-
-  const { data: eventosRows, error: eventosError } = await supabase
-    .from("eventos_aluno")
-    .select("aluno_id, tipo, referencia, valor")
-    .in("aluno_id", alunoIds);
-  if (eventosError) throw eventosError;
-
-  const eventRefs = (eventosRows ?? []).map((row: any) => ({
-    aluno_id: String(row.aluno_id),
-    tipo: String(row.tipo ?? ""),
-    referenciaId: normalizeReferenciaId(row.referencia),
-    valor: Number(row.valor ?? 0),
-  }));
-
-  const topicIds = [
-    ...new Set(
-      eventRefs
-        .filter((row) => isTipoLike(row.tipo, "topico") && row.referenciaId != null)
-        .map((row) => Number(row.referenciaId))
-    ),
-  ];
-  const contentIds = [
-    ...new Set(
-      eventRefs
-        .filter((row) => isTipoLike(row.tipo, "conteudo") && row.referenciaId != null)
-        .map((row) => Number(row.referenciaId))
-    ),
-  ];
-  const activityIds = [
-    ...new Set(
-      eventRefs
-        .filter((row) => isTipoLike(row.tipo, "atividade") && row.referenciaId != null)
-        .map((row) => Number(row.referenciaId))
-    ),
-  ];
-
-  const topicClassById = new Map<number, number>();
-  if (topicIds.length) {
-    const { data, error } = await supabase
-      .from("topicos")
-      .select("id, classe_id")
-      .in("id", topicIds);
-    if (error) throw error;
-    (data ?? []).forEach((row: any) => {
-      topicClassById.set(Number(row.id), Number(row.classe_id));
-    });
-  }
-
-  const contentClassById = new Map<number, number>();
-  if (contentIds.length) {
-    const { data, error } = await supabase
-      .from("conteudos")
-      .select("id, topico_id")
-      .in("id", contentIds);
-    if (error) throw error;
-
-    const missingTopicIds = [
-      ...new Set(
-        (data ?? [])
-          .map((row: any) => Number(row.topico_id))
-          .filter((id) => !topicClassById.has(id))
-      ),
-    ];
-
-    if (missingTopicIds.length) {
-      const { data: extraTopics, error: extraTopicsError } = await supabase
-        .from("topicos")
-        .select("id, classe_id")
-        .in("id", missingTopicIds);
-      if (extraTopicsError) throw extraTopicsError;
-      (extraTopics ?? []).forEach((row: any) => {
-        topicClassById.set(Number(row.id), Number(row.classe_id));
-      });
-    }
-
-    (data ?? []).forEach((row: any) => {
-      const topicoId = Number(row.topico_id);
-      const classe = topicClassById.get(topicoId);
-      if (classe != null) {
-        contentClassById.set(Number(row.id), classe);
-      }
-    });
-  }
-
-  const activityClassById = new Map<number, number>();
-  if (activityIds.length) {
-    const { data, error } = await supabase
-      .from("atividades")
-      .select("id, topico_id")
-      .in("id", activityIds);
-    if (error) throw error;
-
-    const missingTopicIds = [
-      ...new Set(
-        (data ?? [])
-          .map((row: any) => Number(row.topico_id))
-          .filter((id) => !topicClassById.has(id))
-      ),
-    ];
-
-    if (missingTopicIds.length) {
-      const { data: extraTopics, error: extraTopicsError } = await supabase
-        .from("topicos")
-        .select("id, classe_id")
-        .in("id", missingTopicIds);
-      if (extraTopicsError) throw extraTopicsError;
-      (extraTopics ?? []).forEach((row: any) => {
-        topicClassById.set(Number(row.id), Number(row.classe_id));
-      });
-    }
-
-    (data ?? []).forEach((row: any) => {
-      const topicoId = Number(row.topico_id);
-      const classe = topicClassById.get(topicoId);
-      if (classe != null) {
-        activityClassById.set(Number(row.id), classe);
-      }
-    });
-  }
-
-  const scoreByAluno = new Map<string, number>();
-  eventRefs.forEach((row) => {
-    if (row.referenciaId == null) return;
-
-    let eventClasseId: number | null = null;
-    if (isTipoLike(row.tipo, "topico")) {
-      eventClasseId = topicClassById.get(row.referenciaId) ?? null;
-    } else if (isTipoLike(row.tipo, "conteudo")) {
-      eventClasseId = contentClassById.get(row.referenciaId) ?? null;
-    } else if (isTipoLike(row.tipo, "atividade")) {
-      eventClasseId = activityClassById.get(row.referenciaId) ?? null;
-    }
-
-    if (eventClasseId !== classeId) return;
-
-    scoreByAluno.set(row.aluno_id, (scoreByAluno.get(row.aluno_id) ?? 0) + row.valor);
-  });
-
-  return buildFallbackRankRows(classeId, infos, metrics, studentNames, scoreByAluno);
-}
-
+/**
+ * A view é a ÚNICA autoridade sobre posição, pontuação e medalha.
+ *
+ * Havia um segundo cálculo aqui: se a consulta falhasse -- ou se voltasse
+ * VAZIA --, o app remontava o ranking inteiro em TypeScript, lendo
+ * `classe_aluno`, `alunos` e `eventos_aluno` crus. Ele não produzia os mesmos
+ * números, e por três motivos independentes:
+ *
+ * 1. **Ignorava o corte.** `vw_rank_posicoes_por_classe` mostra até
+ *    `app_rank_limite_visivel()`, mais a própria linha do aluno. O cálculo
+ *    local devolvia a turma inteira, sempre.
+ * 2. **Deduzia a classe do evento por `referencia`.** É exatamente o que a
+ *    `20260910_06` tirou do banco: conteúdo regerado apaga a atividade
+ *    referenciada e a pontuação some retroativamente -- 66 ids órfãos e 160
+ *    pontos medidos em produção. A coluna `eventos_aluno.classe_id` existe e
+ *    congela justamente para isso, e o cálculo local não a lia.
+ * 3. **`percentual_do_lider` era outra conta**, sobre o máximo das linhas que
+ *    o cliente tivesse em mãos.
+ *
+ * E o gatilho mais comum não era nem a falha: `!data?.length` também
+ * disparava. Resultado vazio é uma resposta LEGÍTIMA da view -- é o que ela
+ * devolve para quem não está na classe --, então o caminho normal do rank
+ * passava pelo recálculo.
+ *
+ * Sem alternativa: se a view falha, a lista vem vazia e a tela diz que não
+ * conseguiu carregar. Um ranking inventado é pior do que um ranking ausente,
+ * porque o aluno não tem como saber que está olhando outro número.
+ */
 async function loadRankRowsByClasse(classeId: number, infos: RankInfo[]) {
-  if (!infos.length) return [] as FallbackRankRow[];
+  if (!infos.length) return [] as LinhaDoRank[];
 
   const { data, error } = await supabase
     .from("vw_rank_posicoes_por_classe")
@@ -387,15 +101,11 @@ async function loadRankRowsByClasse(classeId: number, infos: RankInfo[]) {
     .order("posicao", { ascending: true });
 
   if (error) {
-    console.warn("[Rank] Falha ao consultar vw_rank_posicoes_por_classe, usando fallback:", error);
-    return loadFallbackRankRowsByClasse(classeId, infos);
+    console.warn("[Rank] Falha ao consultar vw_rank_posicoes_por_classe:", error);
+    return [] as LinhaDoRank[];
   }
 
-  if (!data?.length && infos.length) {
-    return loadFallbackRankRowsByClasse(classeId, infos);
-  }
-
-  return (data ?? []) as FallbackRankRow[];
+  return (data ?? []) as LinhaDoRank[];
 }
 
 export class RankDaClasse {
@@ -406,6 +116,17 @@ export class RankDaClasse {
     this.info = info;
   }
 
+  /**
+   * O nome, a descrição e o ícone do rank vêm de `rank_tipo`, e a view é quem
+   * faz essa junção.
+   *
+   * Havia um caminho alternativo aqui que lia `ranks` direto pedindo
+   * `nome, descricao, icone` -- colunas que essa tabela NÃO tem (ela é
+   * `id, tipo_id, classe_id, periodo, created_at`). Ou seja: sempre que ele
+   * era acionado, estourava com 42703 em vez de salvar a leitura. E ele ainda
+   * daria rótulos diferentes dos da view se as colunas existissem, porque a
+   * view lê os de `rank_tipo`.
+   */
   static async loadByRankId(rank_id: number): Promise<RankDaClasse> {
     const { data: infoRow, error: infoError } = await supabase
       .from("vw_ranks_info_por_classe")
@@ -413,37 +134,10 @@ export class RankDaClasse {
       .eq("rank_id", rank_id)
       .single();
 
-    let info: RankInfo | null = null;
-    if (!infoError && infoRow) {
-      info = buildRankInfoFromRow(infoRow);
-    } else {
-      const { data: rankRow, error: rankError } = await supabase
-        .from("ranks")
-        .select("id, classe_id, nome, descricao, tipo_id, icone")
-        .eq("id", rank_id)
-        .maybeSingle();
-      if (rankError) throw rankError;
-      if (!rankRow) throw infoError ?? new Error("Rank não encontrado");
+    if (infoError) throw infoError;
+    if (!infoRow) throw new Error("Rank não encontrado");
 
-      let criterio: string | null = null;
-      if (rankRow.tipo_id != null) {
-        const { data: tipoRow } = await supabase
-          .from("rank_tipo")
-          .select("id, criterio")
-          .eq("id", Number(rankRow.tipo_id))
-          .maybeSingle();
-        criterio = tipoRow?.criterio != null ? String(tipoRow.criterio) : null;
-      }
-
-      info = new RankInfo(
-        Number(rankRow.id),
-        Number(rankRow.classe_id),
-        String(rankRow.nome ?? `Rank ${rankRow.id}`),
-        rankRow.descricao ?? null,
-        criterio,
-        rankRow.icone != null ? String(rankRow.icone) : null
-      );
-    }
+    const info = buildRankInfoFromRow(infoRow);
 
     const rows = await loadRankRowsByClasse(info.classe_id, [info]);
     const rank = new RankDaClasse(info);
@@ -461,19 +155,19 @@ export class RankDaClasse {
     }
 
     const rows = await loadRankRowsByClasse(this.info.classe_id, [this.info]);
-    const fallback = rows.find(
+    const linha = rows.find(
       (row) => Number(row.rank_id) === Number(this.info.rank_id) && row.id_aluno === aluno_id
     );
-    if (!fallback) return null;
+    if (!linha) return null;
 
     return new PosicaoDoAluno(
-      fallback.rank_id,
-      fallback.classe_id,
+      linha.rank_id,
+      linha.classe_id,
       aluno_id,
-      fallback.posicao ?? null,
-      fallback.pontuacao ?? null,
-      fallback.percentual_do_lider ?? null,
-      fallback.medalha ?? null
+      linha.posicao ?? null,
+      linha.pontuacao ?? null,
+      linha.percentual_do_lider ?? null,
+      linha.medalha ?? null
     );
   }
 
@@ -502,14 +196,14 @@ export class ClasseRanking {
       .select("*")
       .eq("classe_id", normalizedClasseId);
     if (error) {
-      console.warn("[Rank] Falha ao consultar vw_ranks_info_por_classe, usando fallback:", error);
-      return loadFallbackRankInfosByClasse(normalizedClasseId);
+      console.warn("[Rank] Falha ao consultar vw_ranks_info_por_classe:", error);
+      return [];
     }
 
-    const fromView = (data ?? []).map((row: any) => buildRankInfoFromRow(row));
-    if (fromView.length) return fromView;
-
-    return loadFallbackRankInfosByClasse(normalizedClasseId);
+    // Lista vazia é uma resposta legítima: a classe pode não ter rank
+    // configurado. Antes isso caía num segundo caminho que lia `ranks` pedindo
+    // colunas inexistentes e estourava -- ou seja, o caso normal virava erro.
+    return (data ?? []).map((row: any) => buildRankInfoFromRow(row));
   }
 
   static async loadAllByClasse(classe_id: number): Promise<ClasseRanking> {
