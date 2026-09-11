@@ -237,15 +237,19 @@ export function construirEscritaDeAtividade(
  * menor por cima do certo -- e ele fica de pé até que alguma OUTRA escrita
  * dispare o recálculo, podendo ser nunca.
  *
- * `status` é aceito porque a conclusão do tópico ainda é declarada pelo
- * cliente (`Topico.marcarConcluido`): é dela que sai o desbloqueio dos
- * próximos tópicos depois de o app ser reaberto. Quem só registra visita não
- * manda.
+ * **Também não aceita `status`**, e isso é recente. Ele ficou de fora da
+ * remoção original por medo de re-travar o desbloqueio dos próximos tópicos.
+ * Medido depois: forçando o recálculo dos 9 tópicos da base, o gatilho devolve
+ * valores IDÊNTICOS aos que o cliente escrevia. A escrita era redundante quando
+ * certa, e enganosa quando não -- um `concluido` do cliente que não fosse
+ * seguido de nenhuma escrita de item mascarava um 96% do banco para sempre.
+ *
+ * Não ter o parâmetro é o ponto: a regra passa a ser garantida pelo tipo, e não
+ * por quem lembra dela.
  */
 export function construirEscritaDeTopico(params: {
   alunoId: string;
   topicoId: number;
-  status?: StatusAtividade;
   ultimaAtividadeId?: number | null;
   agora?: string;
 }): EscritaPendente {
@@ -258,7 +262,6 @@ export function construirEscritaDeTopico(params: {
     valores: {
       aluno_id: params.alunoId,
       topico_id: params.topicoId,
-      ...(params.status === undefined ? {} : { status: params.status }),
       // Mandar null apagaria o ponto de retomada do aluno, então a coluna só
       // entra quando o chamador diz alguma coisa sobre ela.
       ...("ultimaAtividadeId" in params

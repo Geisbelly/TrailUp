@@ -112,9 +112,20 @@ Estas decisões são **fixas**; sigam-nas ao corrigir/estender.
    existe veria 0%.
 
    **Nenhum cliente escreve `percentual_concluido` nem `status` em
-   `topico_aluno`.** Havia quatro gravadores fazendo isso, todos com a conta
-   sobre o material do professor apenas, e todos rodando DEPOIS do trigger — a
-   conta certa nunca sobrevivia. `Topico.calcularPercentual()` continua
+   `topico_aluno`, e agora o TIPO impede.** `construirEscritaDeTopico` não tem
+   os dois parâmetros — a regra deixou de depender de quem lembra dela. Havia
+   quatro gravadores fazendo isso, todos com a conta sobre o material do
+   professor apenas, e todos rodando DEPOIS do trigger — a conta certa nunca
+   sobrevivia.
+
+   O `status` sobreviveu à remoção original por medo de re-travar o desbloqueio
+   dos próximos tópicos. Medido depois: forçando o recálculo dos 9 tópicos da
+   base, `trailup_recalcular_topico_aluno` devolve valores **idênticos** aos que
+   o cliente escrevia. A escrita era redundante quando certa e enganosa quando
+   não — um `concluido` do cliente que não fosse seguido de nenhuma escrita de
+   item mascarava um 96% do banco para sempre. O desbloqueio lê o modelo local
+   dentro da sessão, e o banco entre sessões; nos dois casos a resposta é a
+   mesma. `Topico.calcularPercentual()` continua
    existindo, mas serve só a leituras locais: não use o valor dele para gravar
    nem para "puxar para cima" o que veio do banco. Ver
    `20260826_18_progresso_professor_opcional.py`.

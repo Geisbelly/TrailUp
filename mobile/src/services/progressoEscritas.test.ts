@@ -187,14 +187,17 @@ test("atividade: a conclusão carrega nota, pontuação e metadata", () => {
   );
 });
 
-test("tópico: NÃO escreve percentual -- quem calcula é o banco", () => {
+test("tópico: NÃO escreve percentual NEM status -- os dois são do banco", () => {
   // A conta local é sobre o material do professor apenas, e roda DEPOIS do
   // trigger: gravá-la aqui escreve um número menor por cima do certo, e ele
   // fica de pé até alguma outra escrita disparar o recálculo. Ver 20260826_18.
+  //
+  // O `status` ficou de fora da remoção original por medo de re-travar o
+  // desbloqueio. Medido depois: forçando o recálculo dos 9 tópicos da base, o
+  // gatilho devolve valores idênticos aos que o cliente escrevia.
   const escrita = construirEscritaDeTopico({
     alunoId: ALUNO,
     topicoId: 4,
-    status: "concluido",
     agora: AGORA,
   });
 
@@ -203,10 +206,14 @@ test("tópico: NÃO escreve percentual -- quem calcula é o banco", () => {
     false,
     "o percentual do tópico é do trigger, não do cliente",
   );
+  assert.equal(
+    "status" in escrita.valores,
+    false,
+    "o status do tópico também é do trigger",
+  );
   assert.deepEqual(escrita.valores, {
     aluno_id: ALUNO,
     topico_id: 4,
-    status: "concluido",
     ultima_visualizacao: AGORA,
     updated_at: AGORA,
   });
