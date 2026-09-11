@@ -307,6 +307,55 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 >    contradizia. Contar tópicos distintos da telemetria não é alternativa: o
 >    payload não carrega `topico_id`.
 
+> **Escrita de progresso, tempo e ponto passa por fila durável.** Os
+> gravadores (`models/Conteudo`, `models/Atividade`, `models/Topico`,
+> `models/Classe`, `models/Evento` e o upsert de tópico em `TrilhaContext`)
+> chamam `gravarProgresso` (`services/progressoOutbox`), nunca
+> `supabase.from(...).upsert(...)` direto. Sem isso, rede oscilando ou o
+> sistema matando o app apagava o conteúdo concluído, a atividade corrigida e o
+> ponto conquistado — em silêncio.
+>
+> A máquina da fila é a mesma da telemetria (`services/filaDuravel`), extraída
+> em vez de copiada. **A forma de cada escrita mora em
+> `services/progressoEscritas`**, em funções puras, sob uma regra só: *coluna
+> que o chamador não conhece não entra no upsert*. O `ON CONFLICT` só toca no
+> que foi enviado, então omitir preserva o que está no banco e mandar um
+> palpite (`?? 0`, o valor velho da memória do app) sobrescreve o certo.
+>
+> Retentar ponto é seguro por causa de `eventos_aluno.idempotencia_key`
+> (`20260911_02`): a chave nasce **antes da primeira tentativa** e viaja com a
+> escrita para o disco, então a segunda entrega bate no índice único parcial,
+> devolve 23505, e a fila trata 23505 como definitivo. Gerar a chave na hora de
+> reenviar faz o oposto — duplica o ponto. Ao dar fila a uma escrita nova, veja
+> se ela é idempotente por construção (`upsert` é) ou se precisa de chave.
+
+> **Rank: a view é a única autoridade, e "vazio" é resposta.** O mobile lê
+> `vw_rank_posicoes_por_classe` e mais nada. Havia um segundo cálculo em
+> TypeScript (`buildFallbackRankRows`) acionado quando a consulta falhava **ou
+> voltava vazia** — e vazio é legítimo, então o caminho normal passava por ele.
+> Ele ignorava o corte de `app_rank_limite_visivel()`, deduzia a classe do
+> evento por `referencia` (o defeito que a `20260910_06` tirou do banco) e
+> calculava `percentual_do_lider` sobre o próprio máximo. Se a view falhar, a
+> lista vem vazia: ranking inventado é pior que ranking ausente.
+>
+> Os rótulos do rank (`nome`, `descricao`, `icone`) vêm de **`rank_tipo`**, não
+> de `ranks` — essa tabela é só `id, tipo_id, classe_id, periodo, created_at`.
+> Um fallback que pedia essas colunas a `ranks` estourava com 42703 toda vez que
+> rodava.
+>
+> A pontuação do rank **inclui as conquistas**, que têm `classe_id` nulo de
+> propósito e são espalhadas por todas as turmas do aluno. Medido na classe 32:
+> 234 pontos da turma + 560 de conquista = os 794 que a view mostra. Somar só
+> `WHERE classe_id = <turma>` dá outro número e não é divergência.
+
+> **Módulo com cara de vivo que ninguém chama.** Já custou tempo três vezes
+> nesta área: `services/progressoTrilha.ts` existia desde o commit inicial e
+> **nunca** teve um chamador, enquanto as escritas de verdade estavam nos
+> models; o fallback do rank rodava no caminho normal fazendo a conta errada; e
+> `Rank.loadByRankId` / `getPosicaoDoAluno` / `listRankInfosByClasse`
+> continuam sem uso externo. Antes de corrigir um "gravador" ou "calculador",
+> confirme quem o chama — `grep` pelo nome fora do próprio arquivo.
+
 > Lacuna real ainda aberta: `MentalStateHistoryRepository.listar_por_aluno`
 > (`api/app/repositories/mental_state.py`) só é exercitado em teste — o
 > histórico em `aluno_mental_state_history` é **gravado** a cada ciclo
