@@ -33,15 +33,33 @@ com o Supabase, como `notificacoes` e `topico_aluno` já fazem.
 
 Dois motivos concretos, não estilo:
 
-1. **A API dorme.** Ela roda no free tier do Render e hiberna. Qualquer coisa
-   com relógio (rotina diária, fila, expiração) simplesmente **para** enquanto
-   ela está fria. O banco não hiberna.
-2. **Um salto a menos.** `mobile → Supabase` já é o caminho autenticado e com
+1. **Um salto a menos.** `mobile → Supabase` já é o caminho autenticado e com
    Realtime. Passar por `mobile → API → Supabase` adiciona latência, um ponto de
    falha e uma segunda cópia das regras de acesso.
+2. **Uma autoridade só.** Encanamento espalhado entre a API e o banco vira duas
+   implementações da mesma regra, e elas divergem. Já custou caro três vezes:
+   o merge de materiais em TS que ensinava o contrário da RPC viva, a audiência
+   de conquista que o cliente filtrava e o gatilho não, e os três gravadores de
+   `pronto` com gates diferentes.
 
 Ao estender: se a pergunta for "onde ponho isso?", e a resposta não envolver um
-modelo de linguagem, **não é na API**.
+modelo de linguagem, **não é na API** — com uma ressalva, abaixo.
+
+> **A API não hiberna mais.** Este trecho já listou "a API dorme, roda no free
+> tier do Render" como o PRIMEIRO motivo da regra, e a premissa deixou de
+> valer. Isso importa porque ela era usada para decidir o oposto do que o
+> motivo 2 recomenda: ao automatizar o recálculo de `classe_perfil_summary`, a
+> leitura literal do texto antigo mandava portar para PL/pgSQL uma conta que só
+> existe em Python — criando exatamente a segunda autoridade que o motivo 2
+> proíbe, e numa conta cheia de sutileza (o percentual da distribuição usa como
+> denominador os alunos COM perfil, as médias usam TODOS, e
+> `perfil_predominante` é nulo em empate). O laço ficou na API, chamando o mesmo
+> `upsert_summary` do endpoint (`20260911`, `group_analysis.py`).
+>
+> Regra atualizada: **relógio pode ficar na API** quando mover a conta para o
+> banco duplicaria uma regra que já existe em Python. Quando não há conta a
+> duplicar — enfileirar, expirar, entregar —, continua no Postgres, onde
+> `pg_cron` e os gatilhos já vivem.
 
 > Dívida conhecida: `POST /api/v1/telemetria/lotes` recebe lotes do mobile e
 > grava — é encanamento vivendo na API, anterior a esta regra. Ele fica porque o
@@ -258,6 +276,36 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 > agora saem da mesma função (`20260910_03`); o percentual é **média** dos
 > tópicos (cada tópico vale o mesmo) e o tempo é **soma** (estudo acumula).
 > Ao criar agregado novo em `classe_aluno`, derive junto com esses dois.
+
+> **Quatro armadilhas de tempo/progresso, todas medidas em produção.** O
+> gatilho `trg_telemetria_tempo_gasto` RECALCULA o total a cada INSERT de
+> telemetria (não soma incremental), então toda linha tocada por dado novo
+> fica certa — e o que sobra errado é **fóssil**, nunca mais recalculado:
+>
+> 1. **`trailup_recalcular_topico_aluno` se ABSTÉM de `tempo_gasto_min`**, com
+>    um comentário que alega ser "contador incremental do app". A justificativa
+>    envelheceu, mas a função continua abstendo-se, então backfill de tempo do
+>    tópico precisa fazê-lo por conta própria. Confiar nela custou uma tentativa
+>    (`20260910_12`). Cuidado: um `grep` por `tempo_gasto_min` nessa função casa
+>    com o COMENTÁRIO, não com uma atribuição.
+> 2. **O total diário é limitado a 86400s** (`20260910_13`). Cada batida já era
+>    limitada a 3600s, mas o acumulado não: o mesmo aluno com o app aberto em
+>    dois lugares soma nos dois e a chave `(aluno_id, dia)` funde os aparelhos —
+>    27,3 h num dia de 12,4 h de janela. `aluno_sessoes_app` não sofre disso
+>    porque é por `session.id`, um por aparelho. O total alimenta o gatilho
+>    `tempo_uso`, que dispara "Hora de uma pausa".
+> 3. **Métrica do perfil NÃO soma a sessão ao vivo.** `vm.tempo` é o mesmo
+>    número do rank, então vem do banco e só dele. Somar `session_elapsed_sec`
+>    (que é `now - sessionStartedAt`, a sessão inteira) contava a sessão duas
+>    vezes, e o erro crescia com a duração. O dado ao vivo fica em
+>    `tempoAtivoMin`, separado.
+> 4. **Abandono e conclusão da turma vêm de `topico_aluno`, nunca de contagem
+>    de eventos** (`20260911_01`). `topic_open` é um evento por ABERTURA: 106
+>    aberturas contra 1 `topic_complete` davam 0,94% de conclusão e 99,06% de
+>    abandono onde a trilha tinha 75%. As duas somavam 100 entre si, então eram
+>    coerentes uma com a outra e erradas juntas — nada dentro da view as
+>    contradizia. Contar tópicos distintos da telemetria não é alternativa: o
+>    payload não carrega `topico_id`.
 
 > Lacuna real ainda aberta: `MentalStateHistoryRepository.listar_por_aluno`
 > (`api/app/repositories/mental_state.py`) só é exercitado em teste — o
