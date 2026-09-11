@@ -24,6 +24,11 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2, ClipboardList, Calendar, Award, Layers } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  formatarPrazo,
+  prazoParaFormulario,
+  prazoParaGravar,
+} from "@/lib/prazoDaAtividade";
 import { useAuth } from "@/hooks/useAuth";
 
 interface Atividade {
@@ -210,7 +215,7 @@ export default function ActivitiesManager() {
             tipo: formData.tipo,
             topico_id: parseInt(formData.topico_id, 10),
             pontuacao_maxima: parseInt(formData.pontuacao_maxima, 10),
-            data_entrega: formData.data_entrega || null,
+            data_entrega: prazoParaGravar(formData.data_entrega),
             metadata: {
               grading_rules: {
                 penalty_timeout_pct: Number(formData.penalty_timeout_pct || 0),
@@ -247,7 +252,7 @@ export default function ActivitiesManager() {
             tipo: formData.tipo,
             topico_id: parseInt(formData.topico_id, 10),
             pontuacao_maxima: parseInt(formData.pontuacao_maxima, 10),
-            data_entrega: formData.data_entrega || null,
+            data_entrega: prazoParaGravar(formData.data_entrega),
             metadata: {
               grading_rules: {
                 penalty_timeout_pct: Number(formData.penalty_timeout_pct || 0),
@@ -311,7 +316,7 @@ export default function ActivitiesManager() {
       tipo: activity.tipo || "quiz",
       topico_id: activity.topico_id.toString(),
       pontuacao_maxima: (activity.pontuacao_maxima ?? 10).toString(),
-      data_entrega: activity.data_entrega || "",
+      data_entrega: prazoParaFormulario(activity.data_entrega),
       conteudo_ids: activity.conteudo_ids || [],
       penalty_timeout_pct: String(Number(gradingRules.penalty_timeout_pct ?? 20)),
       penalty_retry_pct: String(Number(gradingRules.penalty_retry_pct ?? 50)),
@@ -575,6 +580,9 @@ export default function ActivitiesManager() {
                     value={formData.data_entrega}
                     onChange={(e) => setFormData({ ...formData, data_entrega: e.target.value })}
                   />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Vale até o fim do dia escolhido, no seu fuso.
+                  </p>
                 </div>
                 <Button onClick={handleSubmit} className="w-full" disabled={isSaving}>
                   {editingActivity ? "Salvar" : "Criar Atividade"}
@@ -633,7 +641,7 @@ export default function ActivitiesManager() {
                     {activity.data_entrega && (
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
-                        {new Date(activity.data_entrega).toLocaleDateString("pt-BR")}
+                        {formatarPrazo(activity.data_entrega)}
                       </span>
                     )}
                   </div>

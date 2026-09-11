@@ -21,6 +21,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ActivityCompletePayload, ActivityRenderer } from "@/components/ActivityRenderer";
 import CardSemDados from "@/components/CardSemDados";
 import { ContentRenderer } from "@/components/ContentRenderer";
+import { PrazoBadge } from "@/components/PrazoBadge";
 import { HallBackground, OrnamentDivider } from "@/components/HallTheme";
 import { IABattleHeaderChip } from "@/components/ia/IABattleHeaderChip";
 import { IAHeaderTimer } from "@/components/ia/IAHeaderTimer";
@@ -1770,6 +1771,13 @@ export default function TrilhaConteudoScreen() {
               >
                 {formatConteudoTipo(atualBlock.conteudo.tipo)}
               </Text>
+            ) : null}
+
+            {atualBlock.kind === "atividade" ? (
+              <PrazoBadge
+                dataEntrega={atualBlock.atividade.data_entrega}
+                palette={profilePalette}
+              />
             ) : null}
 
             {atualBlock.kind === "conteudo" ? (
