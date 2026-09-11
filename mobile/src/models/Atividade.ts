@@ -1,6 +1,6 @@
 import {
   construirEscritaDeAtividade,
-  normalizarStatus,
+  statusConhecido,
 } from "@/services/progressoEscritas";
 import { gravarProgresso } from "@/services/progressoOutbox";
 import { clampPercent } from "@/utils/dataValidation";
@@ -159,7 +159,13 @@ export class Atividade {
         construirEscritaDeAtividade({
           alunoId: aluno_id,
           atividadeId: this.id,
-          status: normalizarStatus(this.status) ?? "em andamento",
+          // Sem `?? "em andamento"`: esse palpite demoveu uma atividade
+          // concluída em produção (atividade 1063, status caído para
+          // "em andamento" com percentual em 100). Ver `statusConhecido`.
+          status: statusConhecido({
+            status: this.status,
+            percentual: this.percentual_concluido,
+          }),
           agora,
         })
       );

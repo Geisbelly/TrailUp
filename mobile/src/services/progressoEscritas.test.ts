@@ -9,6 +9,7 @@ import {
   construirEscritaDeTopico,
   normalizarStatus,
   resolverStatusPorPercentual,
+  statusConhecido,
   type EscritaPendente,
 } from "./progressoEscritas";
 
@@ -286,4 +287,58 @@ test("pontos: referência fora do formato conhecido vira nula", () => {
     referencia: "sem formato nenhum",
   });
   assert.equal(escrita.valores.referencia, null);
+});
+
+test("statusConhecido nunca inventa 'em andamento'", () => {
+  // O palpite demoveu uma atividade concluída em produção: `registrarVisita`
+  // mandava `this.status ?? "em andamento"` e, com o modelo local sem o rótulo
+  // carregado, gravava isso por cima da linha concluída -- o percentual ficou
+  // em 100 e o status caiu.
+  assert.equal(statusConhecido({ status: null, percentual: null }), undefined);
+  assert.equal(statusConhecido({ status: undefined, percentual: 40 }), undefined);
+  assert.equal(statusConhecido({}), undefined);
+});
+
+test("statusConhecido confia no rótulo quando ele existe", () => {
+  assert.equal(statusConhecido({ status: "concluido" }), "concluido");
+  assert.equal(statusConhecido({ status: "em andamento" }), "em andamento");
+  assert.equal(statusConhecido({ status: "nao iniciado" }), "não iniciado");
+});
+
+test("statusConhecido deduz a conclusão do percentual, e só ela", () => {
+  // 100 prova que acabou; 99 não prova nada além de "não acabou".
+  assert.equal(statusConhecido({ status: null, percentual: 100 }), "concluido");
+  assert.equal(statusConhecido({ status: null, percentual: 140 }), "concluido");
+  assert.equal(statusConhecido({ status: null, percentual: 99.9 }), undefined);
+});
+
+test("visita à atividade sem status conhecido não manda a coluna", () => {
+  // É o caminho que causou a divergência. Omitir preserva o que está no banco;
+  // a linha nova cai no default da coluna, `não iniciado`.
+  const escrita = construirEscritaDeAtividade({
+    alunoId: ALUNO,
+    atividadeId: 1063,
+    status: statusConhecido({ status: null, percentual: null }),
+    agora: AGORA,
+  });
+
+  assert.equal("status" in escrita.valores, false);
+  assert.equal("percentual_concluido" in escrita.valores, false);
+  assert.deepEqual(escrita.valores, {
+    aluno_id: ALUNO,
+    atividade_id: 1063,
+    ultima_visualizacao: AGORA,
+    updated_at: AGORA,
+  });
+});
+
+test("visita a uma atividade já concluída não a demove", () => {
+  const escrita = construirEscritaDeAtividade({
+    alunoId: ALUNO,
+    atividadeId: 1063,
+    status: statusConhecido({ status: null, percentual: 100 }),
+    agora: AGORA,
+  });
+
+  assert.equal(escrita.valores.status, "concluido");
 });
