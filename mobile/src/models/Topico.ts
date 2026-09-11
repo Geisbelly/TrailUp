@@ -1,4 +1,5 @@
-import { supabase } from '@/database/supabase';
+import { construirEscritaDeTopico } from '@/services/progressoEscritas';
+import { gravarProgresso } from '@/services/progressoOutbox';
 import { clampPercent } from '@/utils/dataValidation';
 import { Atividade } from './Atividade';
 import { Conteudo } from './Conteudo';
@@ -193,19 +194,14 @@ export class Topico {
       const agora = new Date().toISOString();
       const ultimaAtividade = this.inferirUltimaAtividadeId();
 
-      const { error } = await supabase
-        .from('topico_aluno')
-        .upsert({
-          aluno_id,
-          topico_id: this.id,
-          ultima_atividade: ultimaAtividade,
-          ultima_visualizacao: agora,
-          updated_at: agora
-        }, {
-          onConflict: 'aluno_id,topico_id'
-        });
-
-      if (error) throw error;
+      await gravarProgresso(
+        construirEscritaDeTopico({
+          alunoId: aluno_id,
+          topicoId: this.id,
+          ultimaAtividadeId: ultimaAtividade,
+          agora,
+        })
+      );
 
       this.ultima_atividade = ultimaAtividade;
       this.ultima_visualizacao = agora;
@@ -219,19 +215,14 @@ export class Topico {
   async marcarIniciado(aluno_id: string): Promise<void> {
     try {
       const agora = new Date().toISOString();
-      const { error } = await supabase
-        .from('topico_aluno')
-        .upsert({
-          aluno_id,
-          topico_id: this.id,
+      await gravarProgresso(
+        construirEscritaDeTopico({
+          alunoId: aluno_id,
+          topicoId: this.id,
           status: 'em andamento',
-          ultima_visualizacao: agora,
-          updated_at: agora
-        }, {
-          onConflict: 'aluno_id,topico_id'
-        });
-
-      if (error) throw error;
+          agora,
+        })
+      );
 
       this.status = 'em andamento';
       this.ultima_visualizacao = agora;
@@ -246,21 +237,20 @@ export class Topico {
     try {
       const agora = new Date().toISOString();
       const ultimaAtividade = this.inferirUltimaAtividadeId();
-      const { error } = await supabase
-        .from('topico_aluno')
-        .upsert({
-          aluno_id,
-          topico_id: this.id,
+      // Sem `percentual_concluido`: quem calcula o do tópico é
+      // `trailup_recalcular_topico_aluno`, sobre o material personalizado
+      // (`20260826_18`). Cravar 100 aqui mostrava a barra cheia até o próximo
+      // refresh trazer a conta do banco -- e a decisão de desbloqueio já sai
+      // do `status`, que continua sendo declarado pelo cliente.
+      await gravarProgresso(
+        construirEscritaDeTopico({
+          alunoId: aluno_id,
+          topicoId: this.id,
           status: 'concluido',
-          percentual_concluido: 100,
-          ultima_atividade: ultimaAtividade,
-          ultima_visualizacao: agora,
-          updated_at: agora
-        }, {
-          onConflict: 'aluno_id,topico_id'
-        });
-
-      if (error) throw error;
+          ultimaAtividadeId: ultimaAtividade,
+          agora,
+        })
+      );
 
       this.status = 'concluido';
       this.percentual_concluido = 100;

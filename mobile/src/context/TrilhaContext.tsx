@@ -28,6 +28,8 @@ import { Classe } from '@/models/Classe';
 import { QuestaoAluno } from '@/models/QuestaoAluno';
 import { Topico } from '@/models/Topico';
 import { PersonalizacaoRlsError } from "@/services/personalizacao/errors";
+import { construirEscritaDeTopico } from '@/services/progressoEscritas';
+import { gravarProgresso } from '@/services/progressoOutbox';
 import { usePersonalizacaoProvider } from "@/services/personalizacao/PersonalizacaoProviderContext";
 import {
   buildClassMapTheme,
@@ -1840,7 +1842,6 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       await atividade.registrarConclusao(
         usuario.id,
         acertosPercentual,
-        undefined,
         options?.pontuacaoObtida ?? null,
         options?.pontuacaoMaxima ?? null,
         options?.avaliacaoMetadata ?? null
@@ -1925,31 +1926,23 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       const topico = classeAtual.topicos.find((t) => t.id === topicoId)
       if (!topico) throw new Error('Topico nao encontrado')
 
-      const { error } = await supabase
-        .from('topico_aluno')
-        .upsert(
-          {
-            aluno_id: usuario.id,
-            topico_id: topicoId,
-            // Sem `status` nem `percentual_concluido`: sao derivados no banco
-            // pelo trigger de progresso. Mandar o valor local aqui gravava por
-            // cima da conta certa com o que a memoria do app tivesse no
-            // momento -- e este caminho dispara a cada registro de tempo, o
-            // que fazia o percentual correto durar segundos.
-            //
-            // O `status` que estava aqui tambem era ternario morto: os dois
-            // ramos devolviam 'em andamento', entao um topico com 0% era
-            // marcado como iniciado so por ter tido tempo contabilizado.
-            ultima_atividade: topico.ultima_atividade ?? null,
-            ultima_visualizacao: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
-          {
-            onConflict: 'aluno_id,topico_id',
-          }
-        )
+      // Sem `status` nem `percentual_concluido`: sao derivados no banco pelo
+      // trigger de progresso. Mandar o valor local aqui gravava por cima da
+      // conta certa com o que a memoria do app tivesse no momento -- e este
+      // caminho dispara a cada registro de tempo, o que fazia o percentual
+      // correto durar segundos.
+      //
+      // O `status` que estava aqui tambem era ternario morto: os dois ramos
+      // devolviam 'em andamento', entao um topico com 0% era marcado como
+      // iniciado so por ter tido tempo contabilizado.
+      await gravarProgresso(
+        construirEscritaDeTopico({
+          alunoId: usuario.id,
+          topicoId,
+          ultimaAtividadeId: topico.ultima_atividade ?? null,
+        })
+      )
 
-      if (error) throw error
       syncClasseLocally(cloneClasse(classeAtual, { topicos: [...classeAtual.topicos] }))
       await atualizarProgressoClasse()
     } catch (err) {

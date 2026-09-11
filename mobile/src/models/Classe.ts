@@ -1,5 +1,7 @@
 // src/models/Classe.ts
 import { getSessionSafe, supabase } from '@/database/supabase'
+import { construirEscritaDeTopico } from '@/services/progressoEscritas'
+import { gravarProgresso } from '@/services/progressoOutbox'
 import { mapearResumoDaClasse } from "@/utils/resumoDaClasse"
 import { buildClasseAcademicMetrics } from '@/utils/classeMetrics'
 import { Atividade } from './Atividade'
@@ -216,17 +218,13 @@ export class Classe {
       //
       // O que continua sendo do cliente e' a visita: qual foi a ultima
       // atividade tocada e quando o topico foi visto.
-      await supabase
-        .from('topico_aluno')
-        .upsert({
-          aluno_id: this.aluno_id,
-          topico_id: topicoId,
-          ultima_atividade: ultimaAtividade,
-          ultima_visualizacao: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'aluno_id,topico_id'
-        });
+      await gravarProgresso(
+        construirEscritaDeTopico({
+          alunoId: this.aluno_id,
+          topicoId,
+          ultimaAtividadeId: ultimaAtividade,
+        })
+      );
 
       // Local tambem nao: sobrescrever aqui faria a tela mostrar a conta errada
       // ate o proximo refresh, que e' de onde vem o numero do banco.

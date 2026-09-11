@@ -13,6 +13,7 @@ import {
   TelemetryBatchResponse,
   TelemetryTimeMetricEntry,
 } from "@/interfaces/telemetria/TelemetryContracts";
+import { gerarUuid } from "@/utils/uuid";
 
 const API_BASE_CANDIDATES = resolveApiBaseCandidates(
   process.env.EXPO_PUBLIC_APITRAIUP_URL
@@ -23,17 +24,6 @@ function buildUrls(path: string) {
   return API_BASE_CANDIDATES.map((base) => `${base}${path}`);
 }
 
-function buildUuid() {
-  if (typeof globalThis.crypto?.randomUUID === "function") {
-    return globalThis.crypto.randomUUID();
-  }
-
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (char) => {
-    const random = Math.floor(Math.random() * 16);
-    const value = char === "x" ? random : (random & 0x3) | 0x8;
-    return value.toString(16);
-  });
-}
 
 async function getAuthHeaders() {
   const session = await getSessionSafe();
@@ -329,7 +319,7 @@ async function persistTelemetryBatchDirect(payload: TelemetryBatchPayload) {
   );
   if (sessionError) throw sessionError;
 
-  const batchId = buildUuid();
+  const batchId = gerarUuid();
   const frameSent =
     safePayload.camera.enabled === true &&
     Array.isArray(safePayload.camera.frames) &&

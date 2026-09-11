@@ -54,6 +54,8 @@ import React, {
   useState,
 } from "react";
 import { AppState, Platform, StyleSheet, View } from "react-native";
+import { gerarUuid } from "@/utils/uuid";
+import { drenarProgressoPendente } from "@/services/progressoOutbox";
 
 type CameraPermissionState = "unknown" | "granted" | "denied" | "unavailable";
 
@@ -206,17 +208,6 @@ function inferChatTriggerContextFromBatch(batch: BatchAccumulator): TelemetryTri
   return "on_demand";
 }
 
-function buildUuid() {
-  if (typeof globalThis.crypto?.randomUUID === "function") {
-    return globalThis.crypto.randomUUID();
-  }
-
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (char) => {
-    const random = Math.floor(Math.random() * 16);
-    const value = char === "x" ? random : (random & 0x3) | 0x8;
-    return value.toString(16);
-  });
-}
 
 
 function clamp01(value: number) {
@@ -635,7 +626,7 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
           : event.triggerContext ?? null;
 
       batch.appEvents.push({
-        client_event_id: buildUuid(),
+        client_event_id: gerarUuid(),
         topico_id: event.topicoId ?? context.topicoId ?? session.topicoId ?? null,
         conteudo_id: event.conteudoId ?? context.conteudoId ?? null,
         atividade_id: event.atividadeId ?? context.atividadeId ?? null,
@@ -974,8 +965,14 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
   // O caso que a fila existe para cobrir: o app foi morto com lote pendente.
   // A tentativa acontece na abertura seguinte, antes de qualquer sessão nova,
   // para que o tempo antigo chegue ao banco na ordem em que foi vivido.
+  //
+  // A fila de progresso/pontos é drenada junto, e pelo mesmo motivo: as duas
+  // guardam trabalho que o aluno já fez e o banco ainda não soube. Ela também
+  // escoa sozinha quando uma gravação volta a funcionar (ver
+  // `progressoOutbox.gravarProgresso`); aqui é a rede de segurança da abertura.
   useEffect(() => {
     void drenarLotesTelemetria(enviarLoteTelemetria).catch(() => undefined);
+    void drenarProgressoPendente().catch(() => undefined);
   }, []);
 
   const beginStudySession = useCallback(
@@ -1024,7 +1021,7 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
       const now = new Date();
       sessionRef.current = {
         ...params,
-        sessionId: buildUuid(),
+        sessionId: gerarUuid(),
         sessionStartedAt: now.toISOString(),
       };
       batchRef.current = buildEmptyBatch(now.getTime());

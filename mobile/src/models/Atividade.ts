@@ -1,5 +1,9 @@
-import { supabase } from "@/database/supabase";
-import { clampPercent, normalizeNonNegativeNumber } from "@/utils/dataValidation";
+import {
+  construirEscritaDeAtividade,
+  normalizarStatus,
+} from "@/services/progressoEscritas";
+import { gravarProgresso } from "@/services/progressoOutbox";
+import { clampPercent } from "@/utils/dataValidation";
 import { Questao } from "./Questao";
 
 export type AtividadeTipo =
@@ -63,10 +67,20 @@ export class Atividade {
     if (!this.conteudo_ids.includes(conteudoId)) this.conteudo_ids.push(conteudoId);
   }
 
+  /**
+   * Não recebe mais `tempo_gasto_min`, e não grava a coluna.
+   *
+   * Ela é derivada da telemetria por trigger (`20260826_19`). O parâmetro
+   * existia, o único chamador passava `undefined`, e o valor caía em
+   * `this.tempo_gasto_min ?? 0` -- ou seja, CONCLUIR uma atividade apagava o
+   * tempo que o trigger tinha somado e punha no lugar o que a memória do app
+   * tivesse, quase sempre zero. Era o mesmo defeito que a `20260826_19`
+   * removeu dos outros gravadores; este sobreviveu por estar num parâmetro
+   * opcional.
+   */
   async registrarConclusao(
     aluno_id: string,
     acertos_percentual: number,
-    tempo_gasto_min?: number,
     pontuacao_obtida?: number | null,
     pontuacao_maxima?: number | null,
     avaliacao_metadata?: Record<string, unknown> | null
@@ -74,36 +88,24 @@ export class Atividade {
     try {
       const agora = new Date().toISOString();
       const acertosNormalizado = clampPercent(acertos_percentual);
-      const tempoNormalizado =
-        tempo_gasto_min != null
-          ? normalizeNonNegativeNumber(tempo_gasto_min)
-          : normalizeNonNegativeNumber(this.tempo_gasto_min ?? 0);
 
-      const { error } = await supabase.from("atividade_aluno").upsert(
-        {
-          aluno_id,
-          atividade_id: this.id,
+      await gravarProgresso(
+        construirEscritaDeAtividade({
+          alunoId: aluno_id,
+          atividadeId: this.id,
           status: "concluido",
-          percentual_concluido: 100,
-          acertos_percentual: acertosNormalizado,
-          tempo_gasto_min: tempoNormalizado,
-          pontuacao_obtida: pontuacao_obtida ?? null,
-          pontuacao_maxima: pontuacao_maxima ?? this.pontuacao_maxima ?? null,
-          avaliacao_metadata: avaliacao_metadata ?? {},
-          ultima_visualizacao: agora,
-          updated_at: agora,
-        },
-        {
-          onConflict: "aluno_id,atividade_id",
-        }
+          percentual: 100,
+          acertosPercentual: acertosNormalizado,
+          pontuacaoObtida: pontuacao_obtida ?? null,
+          pontuacaoMaxima: pontuacao_maxima ?? this.pontuacao_maxima ?? null,
+          avaliacaoMetadata: avaliacao_metadata ?? {},
+          agora,
+        })
       );
-
-      if (error) throw error;
 
       this.status = "concluido";
       this.percentual_concluido = 100;
       this.acertos_percentual = acertosNormalizado;
-      this.tempo_gasto_min = tempoNormalizado;
       this.pontuacao_obtida = pontuacao_obtida ?? this.pontuacao_obtida;
       this.pontuacao_maxima_avaliada =
         pontuacao_maxima ?? this.pontuacao_maxima_avaliada ?? this.pontuacao_maxima ?? null;
@@ -115,20 +117,13 @@ export class Atividade {
 
   async marcarIniciada(aluno_id: string): Promise<void> {
     try {
-      const { error } = await supabase.from("atividade_aluno").upsert(
-        {
-          aluno_id,
-          atividade_id: this.id,
+      await gravarProgresso(
+        construirEscritaDeAtividade({
+          alunoId: aluno_id,
+          atividadeId: this.id,
           status: "em andamento",
-          ultima_visualizacao: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        {
-          onConflict: "aluno_id,atividade_id",
-        }
+        })
       );
-
-      if (error) throw error;
 
       this.status = "em andamento";
       this.percentual_concluido = clampPercent(this.percentual_concluido ?? 0);
@@ -160,20 +155,14 @@ export class Atividade {
     try {
       const agora = new Date().toISOString();
 
-      const { error } = await supabase.from("atividade_aluno").upsert(
-        {
-          aluno_id,
-          atividade_id: this.id,
-          status: this.status ?? "em andamento",
-          ultima_visualizacao: agora,
-          updated_at: agora,
-        },
-        {
-          onConflict: "aluno_id,atividade_id",
-        }
+      await gravarProgresso(
+        construirEscritaDeAtividade({
+          alunoId: aluno_id,
+          atividadeId: this.id,
+          status: normalizarStatus(this.status) ?? "em andamento",
+          agora,
+        })
       );
-
-      if (error) throw error;
     } catch (err) {
       console.warn("[Atividade] Erro ao registrar visita:", err);
       throw err;

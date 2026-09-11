@@ -167,7 +167,7 @@ export function ConquistaRankProvider({ children }: { children: React.ReactNode 
     if (!uid) return;
 
     try {
-      await EventoAluno.create({
+      await EventoAluno.registrar({
         aluno_id: uid,
         tipo,
         referencia: referencia ?? null,
