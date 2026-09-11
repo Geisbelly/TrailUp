@@ -1,6 +1,7 @@
 // src/models/Conteudo.ts
-import { supabase } from '@/database/supabase';
-import { clampPercent, normalizeNonNegativeNumber } from '@/utils/dataValidation';
+import { construirEscritaDeConteudo, normalizarStatus } from '@/services/progressoEscritas';
+import { gravarProgresso } from '@/services/progressoOutbox';
+import { clampPercent } from '@/utils/dataValidation';
 import { Midia } from './Midia';
 
 export class Conteudo {
@@ -36,20 +37,15 @@ export class Conteudo {
       // (`20260826_19`). Aqui o valor caia em `this.tempo_gasto_min ?? 0`, ou
       // seja, marcar um conteudo como visto sobrescrevia o tempo do banco com
       // o que a memoria do app tivesse -- ou com zero.
-      const { error } = await supabase
-        .from('conteudo_aluno')
-        .upsert({
-          aluno_id,
-          conteudo_id: this.id,
+      await gravarProgresso(
+        construirEscritaDeConteudo({
+          alunoId: aluno_id,
+          conteudoId: this.id,
           status: 'concluido',
-          percentual_concluido: 100,
-          ultima_visualizacao: agora,
-          updated_at: agora,
-        }, {
-          onConflict: 'aluno_id,conteudo_id'
-        });
-
-      if (error) throw error;
+          percentual: 100,
+          agora,
+        })
+      );
 
       // Atualiza localmente
       this.status = 'concluido';
@@ -85,23 +81,15 @@ export class Conteudo {
         ? 100
         : clampPercent(this.percentual_concluido ?? 0);
 
-      const { error } = await supabase
-        .from('conteudo_aluno')
-        .upsert(
-          {
-            aluno_id,
-            conteudo_id: this.id,
-            status: statusAtual,
-            percentual_concluido: percentualAtual,
-            ultima_visualizacao: agora,
-            updated_at: agora,
-          },
-          {
-            onConflict: 'aluno_id,conteudo_id',
-          }
-        );
-
-      if (error) throw error;
+      await gravarProgresso(
+        construirEscritaDeConteudo({
+          alunoId: aluno_id,
+          conteudoId: this.id,
+          status: normalizarStatus(statusAtual),
+          percentual: percentualAtual,
+          agora,
+        })
+      );
 
       this.status = statusAtual;
       this.percentual_concluido = percentualAtual;

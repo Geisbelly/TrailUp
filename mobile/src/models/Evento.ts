@@ -1,10 +1,7 @@
 // src/models/EventoAluno.ts
 import { supabase } from '@/database/supabase';
-import {
-  normalizeEventType,
-  normalizeNonNegativeNumber,
-  normalizeReferencia,
-} from '@/utils/dataValidation';
+import { construirEscritaDePontos } from '@/services/progressoEscritas';
+import { gravarProgresso } from '@/services/progressoOutbox';
 
 /**
  * Classe de domínio para eventos do aluno.
@@ -123,30 +120,42 @@ export class EventoAluno {
     return totalMs / (eventos.length - 1) / 1000 / 60; // minutos
   }
 
-  /** 🆕 Cria e retorna um novo evento */
-  static async create(input: {
+  /**
+   * 🆕 Registra um evento de pontuação.
+   *
+   * Passa pela fila durável: se a rede estiver oscilando ou o sistema matar o
+   * app, a escrita fica no disco e sai na próxima abertura. Antes disto o
+   * ponto simplesmente não existia -- o aluno fazia o trabalho e o rank não
+   * sabia, sem nenhum aviso.
+   *
+   * Repetir a entrega é seguro porque `construirEscritaDePontos` carimba uma
+   * `idempotencia_key` ANTES da primeira tentativa: a segunda bate no índice
+   * `eventos_aluno_idempotencia_unico`, devolve 23505, e a fila trata 23505
+   * como definitivo -- ou seja, sai da fila em vez de pagar de novo.
+   *
+   * Não devolve a linha criada (e por isso não se chama mais `create`): quando
+   * a escrita é enfileirada, não existe linha ainda. Quem precisa do evento
+   * relê a lista -- é o que o `ConquistaRankContext` já faz.
+   *
+   * `aluno_id` nulo é descartado: evento sem dono não pontua ninguém e só
+   * ocuparia a fila até bater no NOT NULL.
+   */
+  static async registrar(input: {
     aluno_id: string | null;
     tipo: string;
     referencia?: string | number | null;
     valor?: number | null;
-  }): Promise<EventoAluno> {
-    const tipoNormalizado = normalizeEventType(input.tipo, 'atividade');
-    const referenciaNormalizada = normalizeReferencia(input.referencia ?? null);
-    const valorNormalizado = normalizeNonNegativeNumber(input.valor ?? 0);
+  }): Promise<void> {
+    if (!input.aluno_id) return;
 
-    const { data, error } = await supabase
-      .from('eventos_aluno')
-      .insert({
-        aluno_id: input.aluno_id ?? null,
-        tipo: tipoNormalizado,
-        referencia: referenciaNormalizada,
-        valor: valorNormalizado,
+    await gravarProgresso(
+      construirEscritaDePontos({
+        alunoId: input.aluno_id,
+        tipo: input.tipo,
+        referencia: input.referencia ?? null,
+        valor: input.valor ?? 0,
       })
-      .select('*')
-      .single();
-
-    if (error) throw error;
-    return EventoAluno.fromRow(data);
+    );
   }
 
   /** 🔢 Contador de eventos por tipo (ex: "atividade_concluida") */
