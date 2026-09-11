@@ -492,6 +492,14 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
     `app_minhas_classes()`, `auth.uid()`, `app_classes_do_professor()` — mais o
     corte de `app_rank_limite_visivel()`.
 
+  **`CREATE OR REPLACE VIEW` NÃO preserva `security_invoker`.** Observado ao
+  trocar uma expressão em `vw_metricas_comportamento_aluno_classe`
+  (`20260911_10`): depois do replace ela era a única das nove `vw_metricas_*`
+  sem a opção — ou seja, a única voltando a rodar como dono, com as policies das
+  tabelas base sem se aplicar. O `ALTER VIEW ... SET (security_invoker = on)`
+  faz parte da troca, não é zelo, e a migração confere isso — sem a conferência
+  o bypass volta calado, porque a view continua devolvendo número.
+
   O linter marca a segunda como `security_definer_view` **ERROR**, e é esperado:
   é essa a exceção. Antes ele apontava a `_todas`; mudou de view quando o grant
   saiu de lá. **Toda view nova nasce com `security_invoker = on`.**
