@@ -348,6 +348,41 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 > 234 pontos da turma + 560 de conquista = os 794 que a view mostra. Somar só
 > `WHERE classe_id = <turma>` dá outro número e não é divergência.
 
+> **Crédito concedido pelo professor — presença, participação e atividade em
+> sala.** Uma RPC só (`registrar_credito_da_turma`, `20260911_05`) para os três
+> tipos: os quatro bloqueios (sessão, posse da classe, tipo permitido, valor
+> válido) são os mesmos, e duas cópias deles divergiriam.
+> `registrar_presenca_da_turma` continua existindo e delega.
+>
+> **"Creditado" é decidido por PREFIXO**, em `fn_evento_creditado`:
+> `presenca*`, `participacao*`, `conquista*`. Evento creditado mantém o `valor`
+> de quem concedeu em vez de tirá-lo de `fn_pontos_do_evento` — então um tipo
+> novo com um desses prefixos passa a valer o que o chamador mandar. A lista de
+> tipos aceitos pela RPC é fechada de propósito por causa disso.
+>
+> O que protege a coluna é a RLS somada ao congelamento: `eventos_aluno_posse_ins`
+> barra o aluno de INSERIR tipo creditado, e no UPDATE `tipo`, `valor`,
+> `concedido_por`, `aluno_id`, `motivo` e `classe_id` são restaurados de OLD
+> (`20260911_04`). Antes disso um `UPDATE ... SET valor = 99999` no próprio
+> evento de presença passava — provado nesta base e desfeito por exceção. A
+> **ordem** importa: `tipo` congela ANTES do teste de creditado, senão trocar o
+> tipo no UPDATE escolhia qual regra de pagamento aplicar.
+>
+> **A referência é `classe:<id>:<AAAA-MM-DD>`, e o id está no SEGUNDO segmento.**
+> `fn_eventos_aluno_resolve_classe_id` foi ensinada a ler de lá
+> (`20260911_05`); antes ela usava `fn_eventos_aluno_referencia_id`, que pega os
+> dígitos do FIM (`'^.*:[0-9]+$'`) e devolvia NULL para a data com hífen. Classe
+> nula tira o evento do rank inteiro (a CTE `eventos_por_classe` filtra
+> `IS NOT NULL`), então **presença concedida nunca teria contado** — não apareceu
+> porque havia zero eventos de presença na base. Medido depois da correção:
+> conceder 8 pontos leva o rank da classe 32 de 794 para 802.
+>
+> `participacao_extra` acrescenta um quarto segmento com o slug do motivo:
+> presença deduplica por dia (há uma aula por dia), mas duas atividades em sala
+> no mesmo dia são dois créditos, e com a mesma referência a segunda cairia no
+> `DO NOTHING` sem erro nenhum. Por isso `motivo` é **obrigatório** nesse tipo, e
+> o valor tem teto em `app_config.credito_extra_maximo`.
+
 > **Módulo com cara de vivo que ninguém chama.** Já custou tempo três vezes
 > nesta área: `services/progressoTrilha.ts` existia desde o commit inicial e
 > **nunca** teve um chamador, enquanto as escritas de verdade estavam nos
@@ -413,6 +448,16 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
   O linter marca a segunda como `security_definer_view` **ERROR**, e é esperado:
   é essa a exceção. Antes ele apontava a `_todas`; mudou de view quando o grant
   saiu de lá. **Toda view nova nasce com `security_invoker = on`.**
+- **`text()` do SQLAlchemy lê `:qualquercoisa` dentro de string literal como
+  bind parameter.** Ele varre a string CRUA, sem entender SQL: `'classe:1:2026-09-11'`
+  derruba a migração com `A value is required for bind parameter '2026'`. E vale
+  **inclusive dentro de comentário SQL** (`-- ... :2026 ...`), que ele não
+  reconhece — isso custou duas rodadas na `20260911_05`, a segunda num
+  comentário que explicava o problema. Contorne montando o literal por
+  concatenação (`'classe' || ':' || '1'`), quebrando a sequência
+  dois-pontos-seguido-de-caractere-de-palavra. `x::text` continua seguro: o
+  duplo dois-pontos é tratado como cast. Um teste que varre o SQL renderizado
+  com `(?<!:):[A-Za-z_]\w*` pega isso antes de ir ao banco.
 - **`text()` do SQLAlchemy não aceita `:param::tipo`** — o `::` do Postgres
   colide com a sintaxe de bind e o parâmetro deixa de ser reconhecido (erro em
   tempo de execução, não de import). Use `CAST(:param AS TIPO)`. E parâmetro
