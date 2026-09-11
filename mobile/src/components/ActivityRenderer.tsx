@@ -3,6 +3,7 @@ import React from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 import QuestionActivity from './QuestionActivity'
+import { resolverTipoDeRenderizacao } from "@/utils/tiposDeAtividade";
 import TextoActivity from './TextoActivity'
 import VideoActivity from './VideoActivity'
 
@@ -142,7 +143,24 @@ export function ActivityRenderer({
     texto: TextoActivity,
   };
 
-  const Component = registry[tipo] ?? (hasQuestoes ? QuestionActivity : undefined);
+  // A decisao de QUAL familia renderiza mora em `resolverTipoDeRenderizacao`,
+  // e nao neste registro, porque ela precisa ser testavel -- a #150 pede uma
+  // regressao explicita de que missao continua renderizando. O registro segue
+  // valendo para o que ele resolve melhor (video e texto tem componente
+  // proprio); a missao entra pelo ramo de questao mesmo SEM itens, porque o
+  // enunciado dela e' a tarefa.
+  const familia = resolverTipoDeRenderizacao(atividade?.tipo, hasQuestoes);
+  // O tipo explicito acompanha o do registro: sem ele, o ternario infere a
+  // uniao dos componentes concretos e as props de um passam a nao valer para o
+  // outro (`VideoActivity` nao recebe `topicoId`).
+  const Component: React.ComponentType<any> | undefined =
+    familia === "video"
+      ? VideoActivity
+      : familia === "texto"
+        ? TextoActivity
+        : familia === "questao"
+          ? (registry[tipo] ?? QuestionActivity)
+          : undefined;
 
   if (atividadeConcluida && !localReviewMode) {
     const acertosPct = Number(atividade?.acertos_percentual ?? 0);

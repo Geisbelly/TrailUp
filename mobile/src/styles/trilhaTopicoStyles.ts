@@ -172,6 +172,26 @@ export const styles = StyleSheet.create({
     fontSize: 12,
     color: Color.colorSlategray,
   },
+  // Os selos da atividade (missão, prazo) ficam na mesma linha: são dois
+  // rótulos curtos e empilhá-los empurraria o conteúdo para baixo à toa.
+  selosDaAtividade: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  seloMissao: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingVertical: 3,
+    paddingHorizontal: 9,
+    marginTop: 6,
+  },
+  seloMissaoTexto: {
+    fontSize: 11,
+    letterSpacing: 1.5,
+    fontFamily: FontFamily.interMedium,
+  },
   cardTitle: {
     fontFamily: FontFamily.inikaBold,
     fontSize: 16,

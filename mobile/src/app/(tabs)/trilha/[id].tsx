@@ -22,6 +22,7 @@ import { ActivityCompletePayload, ActivityRenderer } from "@/components/Activity
 import CardSemDados from "@/components/CardSemDados";
 import { ContentRenderer } from "@/components/ContentRenderer";
 import { PrazoBadge } from "@/components/PrazoBadge";
+import { ehMissao } from "@/utils/tiposDeAtividade";
 import { HallBackground, OrnamentDivider } from "@/components/HallTheme";
 import { IABattleHeaderChip } from "@/components/ia/IABattleHeaderChip";
 import { IAHeaderTimer } from "@/components/ia/IAHeaderTimer";
@@ -1773,10 +1774,33 @@ export default function TrilhaConteudoScreen() {
             ) : null}
 
             {atualBlock.kind === "atividade" ? (
-              <PrazoBadge
-                dataEntrega={atualBlock.atividade.data_entrega}
-                palette={profilePalette}
-              />
+              <View style={styles.selosDaAtividade}>
+                {/* Missao e atividade com `tipo = 'missao'` (#150): mesma
+                    tabela, mesmo progresso, mesmo rank. O selo existe porque a
+                    NATUREZA e outra -- e uma tarefa que o professor montou,
+                    nao um formato de questao. */}
+                {ehMissao(atualBlock.atividade.tipo) ? (
+                  <View
+                    style={[
+                      styles.seloMissao,
+                      { borderColor: profilePalette.accent },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.seloMissaoTexto,
+                        { color: profilePalette.accent },
+                      ]}
+                    >
+                      MISSÃO
+                    </Text>
+                  </View>
+                ) : null}
+                <PrazoBadge
+                  dataEntrega={atualBlock.atividade.data_entrega}
+                  palette={profilePalette}
+                />
+              </View>
             ) : null}
 
             {atualBlock.kind === "conteudo" ? (
