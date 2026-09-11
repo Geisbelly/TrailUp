@@ -356,6 +356,11 @@ export default function BibliotecaConquistasScreen() {
                     ? gold
                     : itemProfileAccent;
                 const isProfileAchievement = item.conquista.escopo === "perfil";
+                // Conquista com `classe_id` foi o professor quem cadastrou
+                // (`20260911_06`). Distinguir importa: o aluno reconhece a
+                // medalha da própria turma, e ela não aparece para quem é de
+                // outra -- quem decide isso é a RLS, não esta tela.
+                const daTurma = item.conquista.classe_id != null;
 
                 return (
                   <TouchableOpacity
@@ -401,6 +406,23 @@ export default function BibliotecaConquistasScreen() {
                         >
                           {item.conquista.nome ?? "Conquista"}
                         </Text>
+                        {daTurma ? (
+                          <View
+                            style={[
+                              styles.seloDaTurma,
+                              { borderColor: shellPalette.borderStrong },
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.seloDaTurmaTexto,
+                                { color: shellPalette.textMuted },
+                              ]}
+                            >
+                              DA SUA TURMA
+                            </Text>
+                          </View>
+                        ) : null}
                         <Text
                           style={[
                             styles.itemPercent,
@@ -600,6 +622,18 @@ const styles = StyleSheet.create({
     marginRight: 10,
     fontFamily: FontFamily.inikaBold,
     fontSize: 14,
+  },
+  seloDaTurma: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    marginRight: 6,
+  },
+  seloDaTurmaTexto: {
+    fontSize: 9,
+    letterSpacing: 1,
+    fontFamily: FontFamily.interMedium,
   },
   itemPercent: {
     fontFamily: FontFamily.inikaBold,
