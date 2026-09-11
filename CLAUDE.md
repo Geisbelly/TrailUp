@@ -14,9 +14,11 @@ arquitetura** do sistema de personalização. Não repete o que o `README.md` /
 | `mobile/`       | Expo · React Native        | 8081      | App do aluno (consome personalização)             |
 
 Rodar tudo: `npm run dev` (Windows, abre uma janela por serviço via
-`scripts/dev.ps1`). A API é iniciada por `python -m uvicorn` (não pelo
-`uvicorn.exe` da venv — a venv foi movida e os `.exe` apontam para caminho
-antigo). Banco: **Supabase** (externo, via `.env`).
+`scripts/dev.ps1`). A API sobe por **`python -m app`** (não pelo `uvicorn.exe`
+da venv — a venv foi movida e os `.exe` apontam para caminho antigo, e **não**
+por `python -m uvicorn app.main:app`, que no Windows escolhe `ProactorEventLoop`
+e derruba o checkpointer do LangGraph; ver `app/event_loop.py`). Banco:
+**Supabase** (externo, via `.env`).
 
 > Existe um app **BrainHex** separado (`../BrainHex`, Google AI Studio) e um
 > `../ApiBrainHex` (origem do `microservice/`). São repositórios externos ao

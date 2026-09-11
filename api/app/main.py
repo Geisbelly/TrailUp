@@ -19,11 +19,6 @@ from app.services.group_analysis import classe_perfil_summary_loop
 from app.services.personalizacao_jobs import personalizacao_jobs_loop
 
 
-def _configure_windows_event_loop_policy() -> None:
-    if hasattr(asyncio, "WindowsSelectorEventLoopPolicy"):
-        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-
-
 def create_app(settings: Settings | None = None) -> FastAPI:
     app_settings = settings or get_settings()
 
@@ -135,5 +130,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     return app
 
 
-_configure_windows_event_loop_policy()
+# A politica de event loop NAO fica aqui, e isso e deliberado. Ela existia neste
+# arquivo desde o commit inicial e nunca teve efeito: o uvicorn 0.43 passa
+# `loop_factory` para `asyncio.run`, e uma fabrica explicita ignora a politica.
+# Quem resolve o caso do Windows e' `app/__main__.py`; ver `app/event_loop.py`
+# para o porque.
 app = create_app()
