@@ -22,6 +22,7 @@ import {
 import { HelpCircle, Loader2, Pencil, Plus, Sparkles, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { normalizarFormato } from "@/lib/tiposDeAtividade";
 import { useAuth } from "@/hooks/useAuth";
 import { parseOptionalPositiveScore, scoreToInputString } from "@/lib/question-score";
 import { QUESTION_MEDIA_ACCEPT, isQuestionMediaFileAllowed } from "@/lib/upload-file-policy";
@@ -54,13 +55,17 @@ const tiposQuestao: Array<{ value: UiQuestionType; label: string }> = [
   { value: "essay", label: "Dissertativa (Essay)" },
 ];
 
+// Era uma segunda copia da tabela de apelidos -- a outra estava no
+// `TopicEditDrawer`, com uma diferenca silenciosa: la o desconhecido caia em
+// `essay`, aqui tambem, mas `multipla_escolha` so existia numa delas. Duas
+// copias da mesma regra divergem, e a #150 pediu a lista num lugar so.
+//
+// O vocabulario da UI daqui chama `essay` o que o banco chama `dissertativa`,
+// entao a conversao final continua sendo local.
 const normalizeQuestionTypeForUi = (tipo: string | null | undefined): UiQuestionType => {
-  const raw = (tipo || "").trim().toLowerCase();
-  if (raw === "multipla" || raw === "quiz") return "multipla";
-  if (raw === "verdadeiro_falso" || raw === "true_false" || raw === "vf") return "verdadeiro_falso";
-  if (raw === "fill_blank" || raw === "lacuna" || raw === "completar") return "fill_blank";
-  if (raw === "essay" || raw === "dissertativa" || raw === "questao" || raw === "texto") return "essay";
-  return "essay";
+  const formato = normalizarFormato(tipo);
+  if (formato === "dissertativa" || formato === null) return "essay";
+  return formato;
 };
 
 const mapUiTypeToDb = (tipo: UiQuestionType): DbQuestionType => {
