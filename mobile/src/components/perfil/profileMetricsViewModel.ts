@@ -456,13 +456,26 @@ export function buildProfileMetricsViewModel({
   const tm = lastBatchTimeMetrics ?? null;
   const sessionActiveSec = tm?.general.batch_active_sec ?? 0;
   const sessionIdleSec = tm?.general.batch_idle_sec ?? 0;
-  const sessionElapsedSec = tm?.general.session_elapsed_sec ?? 0;
   const tempoAtivoMin = Math.max(0, Math.round(sessionActiveSec / 60));
   const sessionEngajamento =
     sessionActiveSec + sessionIdleSec > 0
       ? clampPercent((sessionActiveSec / (sessionActiveSec + sessionIdleSec)) * 100)
       : 0;
-  const tempo = Math.max(0, Number(tempoPersistido) + sessionElapsedSec / 60);
+  // `tempo` e o MESMO numero que o rank "Tempo de Estudo" e a trilha mostram,
+  // entao ele vem do banco e so do banco.
+  //
+  // Aqui havia `+ sessionElapsedSec / 60`, e `session_elapsed_sec` e
+  // `now - sessionStartedAt` -- a sessao INTEIRA, nao o lote (ver
+  // `MetricasContext.montarTimeMetrics`). O tempo do banco ja inclui tudo que
+  // os lotes desta mesma sessao gravaram, entao somar os dois contava a sessao
+  // duas vezes, e o erro CRESCIA com a duracao: 10 min de estudo apareciam
+  // como ~20 aqui e como 10 no rank.
+  //
+  // A correcao de `escolherTempoDaClasse` logo acima resolveu a escolha da
+  // FONTE (banco vence o calculo local); esta resolve a soma que vinha depois
+  // dela. O dado ao vivo nao se perde: `tempoAtivoMin` continua exposto
+  // separadamente, rotulado como tempo ativo da sessao.
+  const tempo = Math.max(0, Number(tempoPersistido));
   const topicsArr = tm?.topics ?? [];
   const contentsArr = tm?.contents ?? [];
   const activitiesArr = tm?.activities ?? [];
