@@ -579,6 +579,47 @@ export default function PerfilHome() {
             <OrnamentDivider color={Color.colorWhite} />
           </View>
 
+          {/* Presença e crédito do professor nao tem rastro em nenhuma outra
+              tela: eles nao vem do que o aluno fez no app, vem do que o
+              professor registrou. Sem esta porta, o numero entrava na
+              pontuacao total sem nada explicando de onde veio. Fica na aba de
+              metricas porque e' onde a pontuacao aparece. */}
+          {aba === "metricas" ? (
+            <TouchableOpacity
+              style={[
+                styles.linhaCreditos,
+                {
+                  backgroundColor: shellPalette.surfaceElevated,
+                  borderColor: shellPalette.border,
+                },
+              ]}
+              onPress={() => router.push("/(tabs)/perfil/creditos")}
+              accessibilityRole="button"
+              accessibilityLabel="Ver histórico de presença e créditos do professor"
+            >
+              <MaterialCommunityIcons
+                name="calendar-check"
+                size={20}
+                color={shellPalette.accent}
+              />
+              <View style={styles.linhaCreditosTexto}>
+                <Text style={[styles.linhaCreditosTitulo, { color: shellPalette.text }]}>
+                  Presença e créditos
+                </Text>
+                <Text
+                  style={[styles.linhaCreditosApoio, { color: shellPalette.textMuted }]}
+                >
+                  O que o professor registrou para você
+                </Text>
+              </View>
+              <MaterialCommunityIcons
+                name="chevron-right"
+                size={22}
+                color={shellPalette.textMuted}
+              />
+            </TouchableOpacity>
+          ) : null}
+
           <View ref={profileAchievementsGuideRef} collapsable={false} style={styles.listContainer}>
             {aba === "conquistas" ? (
               <>
@@ -700,6 +741,21 @@ export default function PerfilHome() {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   ornamentRow: { marginTop: 4, opacity: 0.7 },
+  linhaCreditos: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginHorizontal: 20,
+    marginTop: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  // `flex: 1` para o chevron nunca ser empurrado fora da tela.
+  linhaCreditosTexto: { flex: 1, gap: 1 },
+  linhaCreditosTitulo: { fontSize: 14, fontFamily: FontFamily.poppinsExtraBold },
+  linhaCreditosApoio: { fontSize: 12, fontFamily: FontFamily.interMedium },
   scrollContent: { paddingBottom: 40 },
   headerContainer: { marginBottom: 10, alignItems: "center" },
   bannerWrapper: { width: "100%", height: 180, position: "relative" },
