@@ -383,6 +383,40 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 > `DO NOTHING` sem erro nenhum. Por isso `motivo` é **obrigatório** nesse tipo, e
 > o valor tem teto em `app_config.credito_extra_maximo`.
 
+> **Conquista: o gatilho avalia contra uma lista, e a lista agora tem dono.**
+> `trg_eventos_aluno_after_iud` percorre `conquistas` a cada evento. Desde a
+> `20260911_06` o `SELECT` filtra por turma — `classe_id IS NULL` (global) ou
+> uma das turmas do aluno. Sem o filtro, conquista de turma seria avaliada para
+> todo mundo e o aluno destravaria a de outra turma.
+>
+> **O `WHERE` desse loop é uma disjunção, e o filtro precisou de parênteses.** O
+> predicado de perfil é `A OR B`; acrescentar `AND C` no fim faz o Postgres ler
+> `A OR (B AND C)`, porque `AND` liga mais forte. Conquista comum de outra turma
+> continuaria passando pelo primeiro ramo, calada. Ao mexer nesse `SELECT`,
+> confira os parênteses — há teste guardando.
+>
+> **`tipo` é único POR TURMA**, via `COALESCE(classe_id, -1)` nos dois índices
+> parciais. O `COALESCE` não é enfeite: em índice único NULL não colide com NULL,
+> então `UNIQUE (classe_id, tipo)` cru deixaria duas globais com o mesmo tipo
+> passarem. Antes da `20260911_06` a unicidade era global, e era o que travava a
+> conquista do professor no primeiro cadastro.
+>
+> **A métrica é lista fechada, e isso é correção.** O que avalia é um ramo de
+> `IF`; métrica desconhecida vira conquista morta — cadastrada com sucesso,
+> nunca destravada, sem aviso (foi assim que 21 das 27 ficaram paradas).
+> Acrescentar métrica exige **duas** coisas: o ramo no gatilho e a entrada em
+> `fn_conquista_metrica_suportada`, que um CHECK usa. E a chave do limiar dentro
+> de `criterio` tem de casar com o que o ramo lê (`minimo`, `dias_seguidos`,
+> `max_tempo`…): chave errada faz `COALESCE(..., 0)` valer zero, e a conquista
+> destrava para todo mundo no primeiro evento.
+
+> **Caractere invisível no fonte é regra que ninguém revisa.** `normalize("NFD")`
+> seguido de um range de combining marks (`[̀-ͯ]`) funciona, mas
+> gravado literalmente no arquivo ele é **invisível** — um `replace` acidental
+> apaga a regra sem deixar rastro, e o diff não mostra nada. Prefira a forma
+> escapada ou uma tabela explícita de acentos, como `derivarTipo` em
+> `frontend/src/lib/conquistaDaTurma.ts`.
+
 > **Módulo com cara de vivo que ninguém chama.** Já custou tempo três vezes
 > nesta área: `services/progressoTrilha.ts` existia desde o commit inicial e
 > **nunca** teve um chamador, enquanto as escritas de verdade estavam nos
