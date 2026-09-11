@@ -23,6 +23,7 @@ import CardSemDados from "@/components/CardSemDados";
 import { ContentRenderer } from "@/components/ContentRenderer";
 import { PrazoBadge } from "@/components/PrazoBadge";
 import { ehMissao } from "@/utils/tiposDeAtividade";
+import { motivoDeSaidaDaSessao } from "@/utils/motivoDeSaidaDaSessao";
 import { HallBackground, OrnamentDivider } from "@/components/HallTheme";
 import { IABattleHeaderChip } from "@/components/ia/IABattleHeaderChip";
 import { IAHeaderTimer } from "@/components/ia/IAHeaderTimer";
@@ -489,6 +490,14 @@ export default function TrilhaConteudoScreen() {
     progressoPercurso.total,
     topico,
   ]);
+
+  // Espelha `topicoConcluido` num ref para o cleanup do focus effect poder
+  // le-lo. O cleanup e um closure montado uma vez; sem o ref ele veria o valor
+  // do quadro em que o efeito subiu, e a conclusao acontece depois.
+  const topicoConcluidoRef = useRef(false);
+  useEffect(() => {
+    topicoConcluidoRef.current = topicoConcluido;
+  }, [topicoConcluido]);
 
   const topicoJaIniciado = useMemo(() => {
     if (!topico) return false;
@@ -973,7 +982,15 @@ export default function TrilhaConteudoScreen() {
           void persistElapsedStudyBlock(activeStudyBlockRef.current);
           activeStudyBlockRef.current = null;
         }
-        void endStudySession("screen_blur");
+        // Sair de um topico CONCLUIDO nao e interrupcao: e o fim natural do
+        // trabalho. Passava sempre `"screen_blur"`, entao `session_end` nunca
+        // acontecia e a metrica do professor marcava 106 de 106 sessoes como
+        // interrompidas. Ver `motivoDeSaidaDaSessao`.
+        //
+        // Le de um ref porque este cleanup e um closure: o valor do memo aqui
+        // dentro seria o do quadro em que o efeito foi montado, e a conclusao
+        // acontece depois.
+        void endStudySession(motivoDeSaidaDaSessao(topicoConcluidoRef.current));
       };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- activeStudyBlockRef is a stable ref object
     }, [
