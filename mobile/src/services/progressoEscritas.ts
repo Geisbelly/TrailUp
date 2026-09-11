@@ -89,6 +89,35 @@ export function normalizarStatus(valor: unknown): StatusAtividade | undefined {
 }
 
 /**
+ * O status que dá para AFIRMAR a partir do que o modelo tem em memória.
+ *
+ * Nunca inventa `em andamento`. Foi assim que uma atividade concluída voltou a
+ * ficar "em andamento" em produção: `registrarVisita` mandava
+ * `this.status ?? "em andamento"`, e quando o modelo local estava sem o rótulo
+ * carregado o palpite ia por cima da linha concluída. O `percentual_concluido`
+ * ficou em 100 e o status caiu -- os dois discordando na mesma linha, que é
+ * como a divergência foi encontrada.
+ *
+ * A regra: se o rótulo é reconhecível, vale ele; se não é mas o percentual
+ * prova conclusão, vale `concluido`; senão devolve `undefined`, e `undefined`
+ * significa não mandar a coluna. Abrir uma atividade e não fazer nada não é
+ * progresso -- quem declara que começou é `marcarIniciada`, que é outra
+ * chamada, e o default da coluna (`não iniciado`) cobre a linha nova.
+ */
+export function statusConhecido(params: {
+  status?: unknown;
+  percentual?: number | null;
+}): StatusAtividade | undefined {
+  const doRotulo = normalizarStatus(params.status);
+  if (doRotulo) return doRotulo;
+
+  const percentual = Number(params.percentual ?? Number.NaN);
+  if (Number.isFinite(percentual) && percentual >= 100) return "concluido";
+
+  return undefined;
+}
+
+/**
  * `tempo_gasto_min` é derivada por trigger a partir da telemetria em
  * `conteudo_aluno`, `atividade_aluno` e `topico_aluno` (`20260826_19`) --
  * nenhum cliente escreve essa coluna, e nenhuma função deste arquivo a emite.

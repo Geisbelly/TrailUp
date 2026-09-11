@@ -1,5 +1,5 @@
 // src/models/Conteudo.ts
-import { construirEscritaDeConteudo, normalizarStatus } from '@/services/progressoEscritas';
+import { construirEscritaDeConteudo, statusConhecido } from '@/services/progressoEscritas';
 import { gravarProgresso } from '@/services/progressoOutbox';
 import { clampPercent } from '@/utils/dataValidation';
 import { Midia } from './Midia';
@@ -75,23 +75,27 @@ export class Conteudo {
   async registrarVisita(aluno_id: string): Promise<void> {
     try {
       const agora = new Date().toISOString();
-      const statusAtual =
-        this.status ?? (Number(this.percentual_concluido ?? 0) >= 100 ? 'concluido' : 'em andamento');
-      const percentualAtual = String(statusAtual).toLowerCase().includes('concl')
-        ? 100
-        : clampPercent(this.percentual_concluido ?? 0);
+      // O percentual do banco é preservado, não recalculado: aqui só se sabe
+      // que houve visita. Quando ele já prova conclusão, `statusConhecido`
+      // devolve `concluido` -- é o que impede a visita de demover a linha.
+      const statusAtual = statusConhecido({
+        status: this.status,
+        percentual: this.percentual_concluido,
+      });
+      const percentualAtual =
+        statusAtual === 'concluido' ? 100 : clampPercent(this.percentual_concluido ?? 0);
 
       await gravarProgresso(
         construirEscritaDeConteudo({
           alunoId: aluno_id,
           conteudoId: this.id,
-          status: normalizarStatus(statusAtual),
+          status: statusAtual,
           percentual: percentualAtual,
           agora,
         })
       );
 
-      this.status = statusAtual;
+      this.status = statusAtual ?? this.status;
       this.percentual_concluido = percentualAtual;
       this.ultima_visualizacao = agora;
     } catch (err) {
