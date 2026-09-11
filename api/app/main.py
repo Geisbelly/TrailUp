@@ -15,6 +15,7 @@ from app.core.settings import Settings, get_settings
 from app.db.migrations import upgrade_database_to_head
 from app.db.session import build_session_factory
 from app.services.checkpoint_retention import checkpoint_retention_loop, run_checkpoint_retention_once
+from app.services.group_analysis import classe_perfil_summary_loop
 from app.services.personalizacao_jobs import personalizacao_jobs_loop
 
 
@@ -78,9 +79,28 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             personalizacao_jobs_task = asyncio.create_task(personalizacao_jobs_loop(app))
         app.state.personalizacao_jobs_task = personalizacao_jobs_task
 
+        resumo_perfis_task = None
+        if (
+            app_settings.classe_perfil_summary_refresh_enabled
+            and database_url.startswith("postgres")
+        ):
+            resumo_perfis_task = asyncio.create_task(
+                classe_perfil_summary_loop(
+                    session_factory=app.state.session_factory,
+                    interval_min=app_settings.classe_perfil_summary_interval_min,
+                )
+            )
+        app.state.classe_perfil_summary_task = resumo_perfis_task
+
         try:
             yield
         finally:
+            if resumo_perfis_task is not None:
+                resumo_perfis_task.cancel()
+                try:
+                    await resumo_perfis_task
+                except asyncio.CancelledError:
+                    pass
             if personalizacao_jobs_task is not None:
                 personalizacao_jobs_task.cancel()
                 try:
