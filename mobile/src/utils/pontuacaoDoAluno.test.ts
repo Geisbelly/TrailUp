@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  criteriosDoRanking,
   descreverPosicaoDaPontuacao,
   extrairPontuacao,
   rotularPontuacao,
@@ -89,4 +90,50 @@ test("o rótulo arredonda e a posição vem do rank certo", () => {
 
 test("lista de critérios vazia", () => {
   assert.equal(extrairPontuacao(POSICOES, []).semRankDePontuacao, true);
+});
+
+test("criteriosDoRanking projeta os ranks no par que extrairPontuacao espera", () => {
+  const ranking = {
+    ranks: [
+      { info: { rank_id: 7, criterio: "pontuacao" } },
+      { info: { rank_id: 8, criterio: "tempo" } },
+    ],
+  };
+
+  assert.deepEqual(criteriosDoRanking(ranking), [
+    { rank_id: 7, criterio: "pontuacao" },
+    { rank_id: 8, criterio: "tempo" },
+  ]);
+});
+
+test("criteriosDoRanking aguenta ranking ausente", () => {
+  // A trilha renderiza antes de o ranking carregar; sem isto o cabeçalho
+  // quebraria no primeiro quadro.
+  assert.deepEqual(criteriosDoRanking(null), []);
+  assert.deepEqual(criteriosDoRanking(undefined), []);
+  assert.deepEqual(criteriosDoRanking({ ranks: null }), []);
+});
+
+test("a projeção alimenta extrairPontuacao e escolhe a linha em pontos", () => {
+  // O caminho inteiro, ponta a ponta: é o que a trilha faz. As três linhas
+  // chegam no mesmo campo `pontuacao` -- 794 pontos, 2,37 minutos e 99,06 por
+  // cento -- e só o critério distingue.
+  const ranking = {
+    ranks: [
+      { info: { rank_id: 7, criterio: "pontuacao" } },
+      { info: { rank_id: 8, criterio: "tempo" } },
+      { info: { rank_id: 9, criterio: "percentual" } },
+    ],
+  };
+  const posicoes = [
+    { rank_id: 8, posicao: 1, pontuacao: 2.37 },
+    { rank_id: 9, posicao: 1, pontuacao: 99.06 },
+    { rank_id: 7, posicao: 1, pontuacao: 794 },
+  ];
+
+  const valor = extrairPontuacao(posicoes, criteriosDoRanking(ranking));
+
+  assert.equal(valor.pontos, 794);
+  assert.equal(rotularPontuacao(valor), "794");
+  assert.equal(descreverPosicaoDaPontuacao(valor), "1º no rank de pontuação");
 });

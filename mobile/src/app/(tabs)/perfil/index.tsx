@@ -43,6 +43,7 @@ import {
   getMetricsThemePreference,
   resolveMetricsTheme,
 } from "@/utils/profileMetricThemes";
+import { criteriosDoRanking } from "@/utils/pontuacaoDoAluno";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { registrarAlvoTour } from "@/utils/tourTargets";
 import { resolveRepresentativeBrainHexProfiles } from "@/utils/brainHex";
@@ -127,14 +128,7 @@ export default function PerfilHome() {
 
   // Sem o criterio nao da para saber qual das posicoes esta em PONTOS: a turma
   // tem um rank por criterio, e as tres linhas chegam no mesmo campo.
-  const criteriosDosRanks = useMemo(
-    () =>
-      (ranking?.ranks ?? []).map((rank) => ({
-        rank_id: rank.info.rank_id,
-        criterio: rank.info.criterio,
-      })),
-    [ranking],
-  );
+  const criteriosDosRanks = useMemo(() => criteriosDoRanking(ranking), [ranking]);
 
   const metricsViewModel = useMemo(
     () =>

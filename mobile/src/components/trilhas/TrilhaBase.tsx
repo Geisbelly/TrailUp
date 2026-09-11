@@ -1,9 +1,14 @@
 // src/components/trilhas/TrilhaBase.tsx
 import { useTrilha } from "@/context/TrilhaContext";
 import { useUsuario } from "@/context/SessaoContext";
+import { usePontuacaoDoAluno } from "@/hooks/usePontuacaoDoAluno";
 import { Color } from "@/styles/GlobalStyle";
 import { buildClasseAcademicMetrics } from "@/utils/classeMetrics";
 import { getBrainHexProfileCapabilities } from "@/utils/brainHexCapabilities";
+import {
+  descreverPosicaoDaPontuacao,
+  rotularPontuacao,
+} from "@/utils/pontuacaoDoAluno";
 import { unificarContadores } from "@/utils/progressoPersonalizado";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { registrarAlvoTour } from "@/utils/tourTargets";
@@ -30,6 +35,7 @@ export const TrilhaBase: React.FC<{
     perfil,
   } = useTrilha();
   const { usuario } = useUsuario();
+  const pontuacaoDoAluno = usePontuacaoDoAluno();
   const isFocused = useIsFocused();
   const palette = getProfileShellPalette(perfil);
   const capabilities = getBrainHexProfileCapabilities(perfil);
@@ -48,6 +54,17 @@ export const TrilhaBase: React.FC<{
   );
   const hasTrailPersonalization =
     Object.keys(personalizedTopics ?? {}).length > 0;
+
+  // Só mostra quando há número de verdade. Sem rank de pontuação na turma --
+  // ou com o aluno fora dele -- a linha viraria um "—" que não informa nada.
+  const pontuacao = useMemo(() => {
+    if (pontuacaoDoAluno.semRankDePontuacao) return null;
+    if (pontuacaoDoAluno.pontos == null) return null;
+    return {
+      valor: rotularPontuacao(pontuacaoDoAluno),
+      detalhe: descreverPosicaoDaPontuacao(pontuacaoDoAluno),
+    };
+  }, [pontuacaoDoAluno]);
 
   // Hooks precisam ser executados em todas as renderizações, inclusive durante
   // carregamento/erro. O registro aceita refs ainda vazias e as resolve depois.
@@ -129,6 +146,7 @@ export const TrilhaBase: React.FC<{
         meta={100}
         palette={palette}
         progressTargetRef={progressGuideTargetRef}
+        pontuacao={pontuacao}
         rightSlot={
           <ModuleHeaderGuideButton
             profile={perfil}
