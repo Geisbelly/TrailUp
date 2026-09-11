@@ -24,7 +24,7 @@ import {
   Save,
   CalendarCheck,
 } from "lucide-react";
-import { PresencaDialog } from "./PresencaDialog";
+import { CreditoDialog } from "./CreditoDialog";
 import { ClassManagerDialog } from "./trilha/ClassManagerDialog";
 import { deleteClasseCascade } from "./trilha/classDeletion";
 import { enqueueCleanupJob, enqueueEnrollmentJob } from "./trilha/personalizacaoJobsApi";
@@ -458,7 +458,7 @@ export default function ClassManagementSection({ professorId }: Props) {
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => setClasseParaPresenca(c)}>
-                      <CalendarCheck className="w-3 h-3 mr-1.5" /> Presença
+                      <CalendarCheck className="w-3 h-3 mr-1.5" /> Créditos
                     </Button>
                     <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => setSelectedClassForStudents(c)}>
                       <UserPlus className="w-3 h-3 mr-1.5" /> Alunos
@@ -484,8 +484,8 @@ export default function ClassManagementSection({ professorId }: Props) {
         handleCreateClass={handleCreateClass}
       />
 
-      {/* -- Modal: Gerenciar Alunos -- */}
-      <PresencaDialog
+      {/* -- Modal: Creditos da turma (presenca, participacao, atividade em sala) -- */}
+      <CreditoDialog
         classeId={classeParaPresenca?.id ?? null}
         classeDescricao={classeParaPresenca?.descricao}
         alunos={alunosDaPresenca}
