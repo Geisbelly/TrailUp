@@ -29,9 +29,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import tinycolor from "tinycolor2";
-import { StoreLauncher } from "@/components/loja/StoreLauncher";
-import { StoreModal } from "@/components/loja/StoreModal";
-import { resolveStoreIcon } from "@/services/loja/storeTheme";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 
@@ -322,7 +319,6 @@ export default function RankingHome() {
   const rankingCategoriesGuideRef = useRef<View | null>(null);
   const rankingSampleCategoryTourRef = useRef<View | null>(null);
   const rankingScrollRef = useRef<ScrollView | null>(null);
-  const [storeVisible, setStoreVisible] = React.useState(false);
   const rankingGuideSteps = useMemo<SectionGuideStep[]>(
     () => [
       {
@@ -437,13 +433,6 @@ export default function RankingHome() {
         >
           {/* ══════════ HEADER DO SALÃO ══════════ */}
           <View ref={rankingHeaderGuideRef} collapsable={false} style={styles.header}>
-            <View style={styles.storeAction}>
-              <StoreLauncher
-                color={palette.accent}
-                icon={resolveStoreIcon(activeProfile)}
-                onPress={() => setStoreVisible(true)}
-              />
-            </View>
             {/* Ícone animado do topo */}
             <Animated.View
               style={{
@@ -514,14 +503,6 @@ export default function RankingHome() {
           </View>
         </ScrollView>
       </SafeAreaView>
-      {usuario?.id ? (
-        <StoreModal
-          visible={storeVisible}
-          alunoId={usuario.id}
-          profileName={activeProfile}
-          onClose={() => setStoreVisible(false)}
-        />
-      ) : null}
     </View>
   );
 }
@@ -535,11 +516,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 34,
     right: 16,
-  },
-  storeAction: {
-    position: "absolute",
-    top: 0,
-    right: 0,
   },
 
   scroll: {

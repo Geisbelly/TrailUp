@@ -128,6 +128,21 @@ export default function TabLayout() {
               }}
             />
 
+            <Tabs.Screen
+              name="social"
+              options={{
+                title: "Social",
+                href: aberturas.social ? undefined : null,
+                tabBarIcon: ({ color, focused }) => (
+                  <MaterialCommunityIcons
+                    size={focused ? 28 : 26}
+                    name={focused ? "account-heart" : "account-heart-outline"}
+                    color={color}
+                  />
+                ),
+              }}
+            />
+
              <Tabs.Screen 
               name="ranking"
               options={{
