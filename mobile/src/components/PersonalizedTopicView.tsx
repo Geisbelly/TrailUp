@@ -1643,6 +1643,7 @@ export default function PersonalizedTopicView({
                   : findFirstPendingAcademicStepIndex(unifiedSteps)
               );
             }}
+            accessibilityRole="button"
           >
             <Text style={styles.primaryButtonText}>
               {topicoConcluido ? "Revisar módulo" : "Começar módulo"}
@@ -1661,6 +1662,7 @@ export default function PersonalizedTopicView({
                 },
               ]}
               onPress={handleBack}
+              accessibilityRole="button"
             >
               <Text style={styles.secondaryButtonText}>Voltar</Text>
             </Pressable>
@@ -1679,6 +1681,7 @@ export default function PersonalizedTopicView({
               onPress={() => {
                 void handleAdvance();
               }}
+              accessibilityRole="button"
             >
               <Text style={styles.primaryButtonText}>
                 {isLastStep ? "Concluir módulo" : "Continuar"}
@@ -1689,7 +1692,7 @@ export default function PersonalizedTopicView({
       </View>
 
       {started && currentStep ? (
-        <View style={[styles.floatingTimerWrap, { top: Math.max(insets.top + 8, 14) }]} pointerEvents="none">
+        <View style={[styles.floatingTimerWrap, { top: Math.max(insets.top + 8, 14), pointerEvents: "none" }]}>
           <IAHeaderTimer
             topicoId={topico?.id ? Number(topico.id) : null}
             itemKey={currentItemKey}

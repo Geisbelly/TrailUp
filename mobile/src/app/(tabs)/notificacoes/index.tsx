@@ -140,6 +140,8 @@ export default function PerfilHome() {
               opacity: isRead ? 0.5 : 1,
             },
           ]}
+          accessibilityRole="button"
+          accessibilityLabel={isRead ? "Lida" : "Marcar lida"}
         >
           <Ionicons name="checkmark-done" size={20} color={palette.accent} />
           <Text style={[styles.swipeText, { color: palette.text }]}>
@@ -175,6 +177,8 @@ export default function PerfilHome() {
             borderLeftColor: "rgba(248, 113, 113, 0.35)",
           },
         ]}
+        accessibilityRole="button"
+        accessibilityLabel="Excluir"
       >
         <Ionicons name="trash" size={20} color={Color.colorWhite} />
         <Text style={styles.swipeText}>Excluir</Text>
@@ -348,6 +352,9 @@ function FilterPill({
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: active }}
+      accessibilityLabel={label}
       style={[
         styles.pill,
         active

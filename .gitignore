@@ -31,6 +31,13 @@
 **/.env
 **/.env.*
 !**/.env.example
+/env
+/env([1-4])
+/mobile.json
+/client_secret_*.json
+/secrets/
+.mcp.json
+/Envs/
 
 # --- Logs ---
 *.log
@@ -77,3 +84,5 @@ mobile/android/
 # subdiretorio (o commit 8c409ae ja removeu um lote desses). O grafo do projeto
 # vive so em /graphify-out, que segue rastreado normalmente.
 **/*/graphify-out/
+.mcp-tracker.local.json
+.codex

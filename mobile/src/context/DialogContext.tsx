@@ -178,8 +178,7 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
             ]}
             start={{ x: 0.5, y: 0 }}
             end={{ x: 0.5, y: 1 }}
-            style={StyleSheet.absoluteFill}
-            pointerEvents="none"
+            style={[StyleSheet.absoluteFill, { pointerEvents: "none" }]}
           />
 
           <View
@@ -267,6 +266,8 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
                           },
                     ]}
                     onPress={buildActionHandler(action)}
+                    accessibilityRole="button"
+                    accessibilityLabel={action.label}
                   >
                     <Text
                       style={[

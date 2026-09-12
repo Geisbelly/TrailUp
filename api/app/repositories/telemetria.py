@@ -1,6 +1,7 @@
 import asyncio
 import json
-from datetime import datetime
+import logging
+from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
@@ -8,6 +9,11 @@ from asyncpg.exceptions import QueryCanceledError
 from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.settings import get_settings
+from app.services.r2_storage import enviar_para_r2, ler_config_r2
+
+logger = logging.getLogger(__name__)
 
 
 class TelemetriaRepository:
@@ -270,7 +276,11 @@ class TelemetriaRepository:
                 "scroll_distance_px": scroll_distance_px,
                 "max_depth_px": max_depth_px,
                 "frame_sent": frame_sent,
-                "payload": json.dumps(payload, ensure_ascii=False, default=str),
+                "payload": json.dumps(
+                    await self._payload_para_gravar(batch_id, payload),
+                    ensure_ascii=False,
+                    default=str,
+                ),
             },
         )
         inserted = result.mappings().first()
@@ -298,6 +308,42 @@ class TelemetriaRepository:
             return dict(row), False
         return {"id": batch_id, "sessao_id": sessao_id, "analysis_ciclo_id": None}, False
 
+    async def _payload_para_gravar(
+        self, batch_id: str, payload: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Manda o payload bruto para o R2 e devolve so um ponteiro.
+
+        O bruto e ~96% do tamanho da linha e **nada o le de volta**: o unico
+        SELECT sobre `telemetria_lotes` pega `id, sessao_id, analysis_ciclo_id`,
+        e nao ha view nem funcao que use a tabela. As outras 20 colunas ja
+        carregam o que as consultas usam - por isso da para tirar o payload sem
+        migracao e sem perder nenhuma consulta.
+
+        Falha no R2 NAO derruba o lote: perder o arquivo bruto e melhor que
+        recusar a requisicao e perder tambem as metricas estruturadas, que sao o
+        que alimenta o pipeline de analise. Nesse caso grava o payload inteiro,
+        como antes - o comportamento degrada, nao quebra.
+
+        Sem R2 configurado, o comportamento e identico ao anterior.
+        """
+        cfg = ler_config_r2(get_settings())
+        if cfg is None:
+            return payload
+
+        caminho = f"telemetria/lotes/{datetime.now(UTC):%Y/%m/%d}/{batch_id}.json"
+        try:
+            await enviar_para_r2(
+                cfg,
+                caminho,
+                json.dumps(payload, ensure_ascii=False, default=str).encode("utf-8"),
+                "application/json; charset=utf-8",
+            )
+        except Exception as exc:  # noqa: BLE001 - degradar e melhor que recusar o lote
+            logger.warning("[telemetria] payload nao foi para o R2 (%s): %s", caminho, exc)
+            return payload
+
+        return {"_r2": caminho, "_bucket": cfg.bucket}
+
     async def update_lote_analysis(self, *, batch_id: str, analysis_ciclo_id: str | None) -> None:
         await self.session.execute(
             text(
@@ -313,6 +359,47 @@ class TelemetriaRepository:
             },
         )
 
+    async def _payloads_de_eventos_para_gravar(
+        self, eventos: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """Sobe os payloads do lote inteiro num UNICO objeto e devolve ponteiros.
+
+        Um objeto por evento seria desperdicio: sao ~6 eventos por lote e 1 lote
+        por minuto por aluno - numa aula de 20 alunos daria milhares de PUTs por
+        hora. Um objeto por chamada, com o indice no ponteiro, resolve igual.
+
+        Como em `_payload_para_gravar`, nenhuma das 12 views que leem
+        `telemetria_eventos_app` e `telemetria_time_metric_entries` toca o
+        campo `payload` - todas usam as colunas estruturadas. Por isso ele pode
+        sair sem migracao e sem quebrar metrica nenhuma.
+
+        Falha no R2 devolve os payloads originais: degrada, nao derruba o lote.
+        """
+        originais = [evento.get("payload") or {} for evento in eventos]
+
+        cfg = ler_config_r2(get_settings())
+        if cfg is None or not originais:
+            return originais
+
+        caminho = (
+            f"telemetria/eventos/{datetime.now(UTC):%Y/%m/%d}/{uuid4()}.json"
+        )
+        try:
+            await enviar_para_r2(
+                cfg,
+                caminho,
+                json.dumps(originais, ensure_ascii=False, default=str).encode("utf-8"),
+                "application/json; charset=utf-8",
+            )
+        except Exception as exc:  # noqa: BLE001 - degradar e melhor que recusar o lote
+            logger.warning("[telemetria] eventos nao foram para o R2 (%s): %s", caminho, exc)
+            return originais
+
+        return [
+            {"_r2": caminho, "_bucket": cfg.bucket, "_i": indice}
+            for indice in range(len(originais))
+        ]
+
     async def insert_eventos_app(
         self,
         *,
@@ -323,7 +410,8 @@ class TelemetriaRepository:
         route_name: str,
         eventos: list[dict[str, Any]],
     ) -> None:
-        for evento in eventos:
+        payloads = await self._payloads_de_eventos_para_gravar(eventos)
+        for indice, evento in enumerate(eventos):
             await self.session.execute(
                 text(
                     """
@@ -399,7 +487,7 @@ class TelemetriaRepository:
                     "is_correct": evento.get("is_correct"),
                     "chat_role": evento.get("chat_role"),
                     "trigger_context": evento.get("trigger_context"),
-                    "payload": json.dumps(evento.get("payload") or {}, ensure_ascii=False, default=str),
+                    "payload": json.dumps(payloads[indice], ensure_ascii=False, default=str),
                 },
             )
 
@@ -496,6 +584,11 @@ class TelemetriaRepository:
                           :max_depth_px,
                           :captured_at
                         )
+                        -- `entry_key` e preenchido pelo trigger BEFORE INSERT
+                        -- (`telemetria_resolver_entidade`), que roda antes de o
+                        -- conflito ser avaliado -- por isso da para referencia-lo
+                        -- aqui sem o insert precisar conhece-lo.
+                        ON CONFLICT (lote_id, scope, entry_key) DO NOTHING
                         """
                     ),
                     {

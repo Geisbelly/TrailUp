@@ -193,7 +193,7 @@ export default function PerfilHome() {
         : undefined;
       const targetRef = visibleMetricRef ?? profileTabsGuideRef;
       return registrarAlvoTour("perfil_metricas", targetRef, () => {
-        targetRef.current?.measureInWindow((_x, y) => {
+        targetRef.current?.measureInWindow((_x: number, y: number) => {
           const targetY = Math.max(0, profileScrollYRef.current + y - 118);
           profileScrollRef.current?.scrollTo({ y: targetY, animated: false });
         });
@@ -227,7 +227,9 @@ export default function PerfilHome() {
         await new Promise((resolve) => setTimeout(resolve, 180));
       }
 
-      const targetRef = profileGuideTargets[step.target];
+      const targetRef: React.RefObject<View | null> | undefined = (
+        profileGuideTargets as Record<string, React.RefObject<View | null>>
+      )[step.target];
       if (!targetRef?.current) return;
 
       await new Promise<void>((resolve) => {
@@ -279,8 +281,7 @@ export default function PerfilHome() {
       >
         {/* ── Fundo do salão (sutil) ── */}
         <View
-          style={[StyleSheet.absoluteFill, { opacity: 0.45 }]}
-          pointerEvents="none"
+          style={[StyleSheet.absoluteFill, { opacity: 0.45, pointerEvents: "none" }]}
         >
           <HallBackground palette={shellPalette} />
         </View>
@@ -332,6 +333,8 @@ export default function PerfilHome() {
                   },
                 ]}
                 onPress={() => router.push("/(tabs)/perfil/settings")}
+                accessibilityRole="button"
+                accessibilityLabel="Configurações"
               >
                 <MaterialCommunityIcons
                   name="cog-outline"
@@ -350,6 +353,8 @@ export default function PerfilHome() {
                   },
                 ]}
                 onPress={() => router.push("/(tabs)/perfil/biblioteca-conquistas")}
+                accessibilityRole="button"
+                accessibilityLabel="Biblioteca de conquistas"
               >
                 <MaterialCommunityIcons
                   name="trophy-variant-outline"
@@ -515,6 +520,8 @@ export default function PerfilHome() {
             <TouchableOpacity
               onPress={() => setAba("metricas")}
               style={styles.tabButton}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: aba === "metricas" }}
             >
               <Text
                 style={[
@@ -541,6 +548,8 @@ export default function PerfilHome() {
             <TouchableOpacity
               onPress={() => setAba("conquistas")}
               style={styles.tabButton}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: aba === "conquistas" }}
             >
               <Text
                 style={[
@@ -601,6 +610,8 @@ export default function PerfilHome() {
                       ]}
                       activeOpacity={0.7}
                       onPress={() => setConquistaSelecionada(conquista)}
+                      accessibilityRole="button"
+                      accessibilityLabel={conquista.nome ?? "Conquista"}
                     >
                       <View
                         style={[

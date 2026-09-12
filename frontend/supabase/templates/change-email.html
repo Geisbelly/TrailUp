@@ -1,0 +1,209 @@
+<!--
+  TrailUp — e-mail de confirmação de troca de endereço (Supabase Auth).
+
+  Cole em: Authentication > Emails > Change Email Address.
+  Variáveis: {{ .Email }} (atual), {{ .NewEmail }} (novo) e
+  {{ .ConfirmationURL }}.
+
+  As restrições de formato são as mesmas de confirm-signup.html — tabelas em
+  vez de flexbox (Outlook usa o motor do Word), estilo inline (o Gmail remove
+  <style> em vários contextos), sem webfont (Cinzel/Inter não carregam, a
+  pilha cai em Georgia e nas sans do sistema) e cores em hex fixo derivadas
+  dos tokens de frontend/src/index.css. Se aqueles tokens mudarem, os dois
+  arquivos precisam ser atualizados juntos.
+
+  Duas coisas específicas DESTE template:
+
+  - Com "Secure email change" ligado (padrão do Supabase), esta mesma
+    mensagem é enviada para os DOIS endereços: o atual e o novo. O texto por
+    isso não pode assumir em qual caixa está sendo lido -- por isso ele
+    mostra os dois lados explicitamente, em vez de dizer "seu novo e-mail".
+
+  - O aviso de segurança no rodapé não é decorativo. Troca de endereço é o
+    passo clássico de sequestro de conta: quem lê isso na caixa ANTIGA pode
+    ser a única pessoa em posição de perceber que o pedido não foi dela.
+-->
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="supported-color-schemes" content="dark light" />
+    <title>Confirme a troca do seu e-mail no TrailUp</title>
+    <style>
+      @media only screen and (max-width: 600px) {
+        .tu-wrap { width: 100% !important; }
+        .tu-pad { padding-left: 24px !important; padding-right: 24px !important; }
+        .tu-h1 { font-size: 26px !important; line-height: 34px !important; }
+        .tu-btn a { display: block !important; }
+        .tu-mail { font-size: 13px !important; }
+      }
+      a { color: #B79BFF; }
+    </style>
+  </head>
+  <body style="margin:0; padding:0; background-color:#0E111B; -webkit-font-smoothing:antialiased;">
+    <div style="display:none; max-height:0; overflow:hidden; opacity:0; mso-hide:all;">
+      Confirme a troca do endereço de e-mail da sua conta TrailUp.
+    </div>
+
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+           style="background-color:#0E111B; margin:0; padding:0;">
+      <tr>
+        <td align="center" style="padding:40px 12px;">
+
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" class="tu-wrap"
+                 style="width:600px; max-width:600px;">
+
+            <!-- Marca. Endereço literal: o template mora no painel do
+                 Supabase e não lê variável de ambiente. O wordmark em texto
+                 fica embaixo porque cliente de e-mail bloqueia imagem por
+                 padrão até o leitor liberar. -->
+            <tr>
+              <td align="center" style="padding-bottom:28px;">
+                <img src="https://trailup.vercel.app/logo.png"
+                     width="64" height="64" alt="TrailUp"
+                     style="display:block; margin:0 auto 14px; width:64px; height:64px;
+                            border:0; outline:none; text-decoration:none;" />
+                <span style="font-family:Cinzel, Georgia, 'Times New Roman', serif; font-size:30px;
+                             font-weight:700; letter-spacing:3px; color:#F3F1ED;">TRAILUP</span>
+                <div style="height:3px; width:56px; margin:12px auto 0;
+                            background-color:#9D56FB; border-radius:2px;
+                            background-image:linear-gradient(90deg,#9D56FB,#6467F2);"></div>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="background-color:#161A27; border:1px solid #2D3243; border-radius:16px;">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+
+                  <tr>
+                    <td style="height:4px; line-height:4px; font-size:0;
+                               background-color:#9D56FB;
+                               background-image:linear-gradient(90deg,#9D56FB 0%,#6467F2 100%);
+                               border-radius:16px 16px 0 0;">&nbsp;</td>
+                  </tr>
+
+                  <tr>
+                    <td class="tu-pad" style="padding:40px 44px 8px;">
+                      <p style="margin:0 0 10px; font-family:Inter,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+                                font-size:12px; font-weight:700; letter-spacing:1.6px;
+                                text-transform:uppercase; color:#9D56FB;">Alteração de conta</p>
+
+                      <h1 class="tu-h1" style="margin:0 0 18px;
+                                 font-family:Cinzel, Georgia,'Times New Roman',serif;
+                                 font-size:31px; line-height:40px; font-weight:700; color:#F3F1ED;">
+                        Confirme seu novo e-mail
+                      </h1>
+
+                      <p style="margin:0 0 4px; font-family:Inter,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+                                font-size:16px; line-height:26px; color:#B0B3BF;">
+                        Recebemos um pedido para trocar o endereço de e-mail da sua conta.
+                        Confirme abaixo para que a mudança tenha efeito.
+                      </p>
+                    </td>
+                  </tr>
+
+                  <!-- De -> para. Mostra os dois lados porque a mesma mensagem
+                       chega no endereço antigo E no novo. -->
+                  <tr>
+                    <td class="tu-pad" style="padding:22px 44px 4px;">
+                      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+                             style="background-color:#0E111B; border:1px solid #2D3243; border-radius:12px;">
+                        <tr>
+                          <td style="padding:18px 20px 10px;">
+                            <p style="margin:0 0 4px; font-family:Inter,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+                                      font-size:11px; font-weight:700; letter-spacing:1.2px;
+                                      text-transform:uppercase; color:#6E7180;">Endereço atual</p>
+                            <p class="tu-mail" style="margin:0; font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;
+                                      font-size:14px; line-height:21px; color:#8A8D99;
+                                      text-decoration:line-through; word-break:break-all;">{{ .Email }}</p>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style="padding:0 20px;">
+                            <div style="border-top:1px solid #2D3243;"></div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style="padding:12px 20px 18px;">
+                            <p style="margin:0 0 4px; font-family:Inter,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+                                      font-size:11px; font-weight:700; letter-spacing:1.2px;
+                                      text-transform:uppercase; color:#9D56FB;">Novo endereço</p>
+                            <p class="tu-mail" style="margin:0; font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;
+                                      font-size:14px; line-height:21px; color:#F3F1ED;
+                                      font-weight:700; word-break:break-all;">{{ .NewEmail }}</p>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td class="tu-pad tu-btn" align="center" style="padding:24px 44px 8px;">
+                      <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                        <tr>
+                          <td align="center" bgcolor="#9D56FB" style="border-radius:10px;">
+                            <a href="{{ .ConfirmationURL }}"
+                               style="display:inline-block; padding:15px 40px; border-radius:10px;
+                                      font-family:Inter,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+                                      font-size:16px; font-weight:700; letter-spacing:0.3px;
+                                      color:#12081F; text-decoration:none;
+                                      background-color:#9D56FB;">Confirmar a troca</a>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td class="tu-pad" style="padding:14px 44px 30px;">
+                      <p style="margin:0; font-family:Inter,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+                                font-size:13px; line-height:21px; color:#8A8D99; text-align:center;">
+                        O link vale por tempo limitado.
+                      </p>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td class="tu-pad" style="padding:0 44px 36px;">
+                      <div style="border-top:1px solid #2D3243; padding-top:22px;">
+                        <p style="margin:0 0 8px; font-family:Inter,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+                                  font-size:12px; line-height:19px; color:#8A8D99;">
+                          Se o botão não funcionar, copie e cole este endereço no navegador:
+                        </p>
+                        <p style="margin:0; font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;
+                                  font-size:12px; line-height:19px; color:#B79BFF; word-break:break-all;">
+                          {{ .ConfirmationURL }}
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+
+                </table>
+              </td>
+            </tr>
+
+            <!-- Aviso de segurança: quem lê na caixa ANTIGA pode ser a única
+                 pessoa em posição de perceber um pedido que não foi dela. -->
+            <tr>
+              <td align="center" style="padding:26px 24px 0;">
+                <p style="margin:0 0 6px; font-family:Inter,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+                          font-size:12px; line-height:19px; color:#6E7180;">
+                  Esta mensagem foi enviada para o endereço atual e para o novo.
+                </p>
+                <p style="margin:0; font-family:Inter,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+                          font-size:12px; line-height:19px; color:#6E7180;">
+                  <strong style="color:#B0B3BF;">Se você não pediu essa troca, não clique no link.</strong>
+                  Seu endereço continua o mesmo enquanto ninguém confirmar.
+                </p>
+              </td>
+            </tr>
+
+          </table>
+
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

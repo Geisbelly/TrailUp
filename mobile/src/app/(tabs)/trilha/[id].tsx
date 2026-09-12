@@ -879,7 +879,7 @@ export default function TrilhaConteudoScreen() {
   });
 
   useEffect(() => {
-    const titulo = String(topico?.titulo ?? "Detalhes");
+    const titulo = String(topico?.nome ?? "Detalhes");
     const totalBlocos = progressoVisual.total;
     const concluidos = progressoVisual.concluidos;
     const capabilities = getBrainHexProfileCapabilities(perfil);
@@ -927,7 +927,7 @@ export default function TrilhaConteudoScreen() {
     personalizedTopic,
     progressoVisual.concluidos,
     progressoVisual.total,
-    topico?.titulo,
+    topico?.nome,
     topicoId,
     usuario?.perfis,
   ]);
@@ -1608,7 +1608,7 @@ export default function TrilhaConteudoScreen() {
       onTouchStart={handleTelemetryTouch}
     >
       {/* ── Textura medieval de fundo ── */}
-      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <View style={[StyleSheet.absoluteFill, { pointerEvents: "none" }]}>
         <HallBackground palette={profilePalette} />
       </View>
 
@@ -1689,6 +1689,7 @@ export default function TrilhaConteudoScreen() {
                   },
                 ]}
                 onPress={handlePularTrilha}
+                accessibilityRole="button"
               >
                 <Text style={[styles.skipButtonText, { color: profilePalette.accent }]}>
                   Fazer teste e pular módulo
@@ -1842,6 +1843,7 @@ export default function TrilhaConteudoScreen() {
                     }
                   }
                 }}
+                accessibilityRole="button"
               >
                 <Text style={styles.buttonText}>
                   {topicoJaIniciado
@@ -1865,6 +1867,7 @@ export default function TrilhaConteudoScreen() {
                     setPulouConteudos(false);
                     setIndex(0);
                   }}
+                  accessibilityRole="button"
                 >
                   <Text style={styles.secondaryButtonText}>
                     Revisar tópico
@@ -1886,6 +1889,8 @@ export default function TrilhaConteudoScreen() {
                 ]}
                 disabled={!canBack}
                 onPress={handleVoltar}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: !canBack }}
               >
                 <Text style={styles.secondaryButtonText}>Voltar</Text>
               </Pressable>
@@ -1918,6 +1923,7 @@ export default function TrilhaConteudoScreen() {
                     await handleConcluirTopico();
                   }
                 }}
+                accessibilityRole="button"
                 >
                   <Text style={styles.buttonText}>
                   {canContinue ? "Continuar" : "Concluir módulo"}
@@ -1943,8 +1949,7 @@ export default function TrilhaConteudoScreen() {
         <View
           ref={battleGuideTargetRef}
           collapsable={false}
-          style={styles.floatingBattleWrap}
-          pointerEvents="box-none"
+          style={[styles.floatingBattleWrap, { pointerEvents: "box-none" }]}
         >
           <IABattleHeaderChip
             topicoId={topicoId}
@@ -1990,6 +1995,8 @@ export default function TrilhaConteudoScreen() {
                   setModalProximos({ visivel: false, opcoes: [] });
                   router.replace(`/trilha/${opt.id}`);
                 }}
+                accessibilityRole="button"
+                accessibilityLabel={`${opt.nome ?? `Módulo ${opt.id}`}, ${Math.round(Number(opt.percentual_concluido ?? 0))}% concluído`}
               >
                 <View style={{ flex: 1 }}>
                   <Text style={styles.modalOptionTitle}>
@@ -2012,6 +2019,7 @@ export default function TrilhaConteudoScreen() {
                 },
               ]}
               onPress={() => setModalProximos({ visivel: false, opcoes: [] })}
+              accessibilityRole="button"
             >
               <Text style={styles.modalCloseText}>Ficar neste módulo</Text>
             </Pressable>

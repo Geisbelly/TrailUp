@@ -85,7 +85,7 @@ export default function PerfilMetricasEstilo() {
 
   return (
     <View style={[styles.outer, { backgroundColor: palette.background }]}>
-      <View style={[StyleSheet.absoluteFill, { opacity: 0.35 }]} pointerEvents="none">
+      <View style={[StyleSheet.absoluteFill, { opacity: 0.35, pointerEvents: "none" }]}>
         <HallBackground palette={palette} />
       </View>
       <SectionGuideButton
@@ -146,6 +146,9 @@ export default function PerfilMetricasEstilo() {
                 onPress={() => {
                   void handleSelect(option.key);
                 }}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: active }}
+                accessibilityLabel={option.label}
               >
               <View
                 style={[

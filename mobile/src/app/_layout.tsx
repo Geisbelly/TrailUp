@@ -1,14 +1,16 @@
 import { LoadingState } from "@/components/LoadingState";
 import { TelemetryConsentGate } from "@/components/TelemetryConsentGate";
 import LoadingScreen from "@/components/funcionais/Loading";
-import { DialogProvider } from "@/context/DialogContext";
+import { DialogProvider, useDialog } from "@/context/DialogContext";
 import { PersonalizacaoProviderProvider } from "@/services/personalizacao/PersonalizacaoProviderContext";
 import { LoadingProvider, useLoading } from "@/context/LoadingContext";
 import { SessionProvider, useUsuario } from "@/context/SessaoContext";
-import { getSessionSafe, supabase } from "@/database/supabase";
+import { PortoesProvider } from "@/context/PortoesContext";
+import { consumeSupabaseUrlAuthError, getSessionSafe, supabase } from "@/database/supabase";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { consumePendingRoute, setPendingRoute } from "@/utils/pendingRoute";
 import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
-import { Stack, useRouter, useSegments } from "expo-router";
+import { Redirect, Stack, usePathname, useSegments, type Href } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -30,25 +32,45 @@ function LoadingOverlay() {
 }
 
 function VerificacaoDeRota() {
-  const router = useRouter();
   const segments = useSegments();
+  const pathname = usePathname();
   const { usuario, autenticado, carregando } = useUsuario();
+  const { showDialog } = useDialog();
 
   useEffect(() => {
-    console.log("[VerificacaoDeRota] Carregando:", carregando, "Usuario:", !!usuario, "Autenticado:", autenticado);
-    if (carregando && !autenticado) return;
+    // Token invalido/expirado na URL (link de confirmacao vencido, consentimento
+    // OAuth negado etc.): sem isso o aluno so via a sessao nao se estabelecer,
+    // sem nenhuma pista do motivo.
+    const urlError = consumeSupabaseUrlAuthError();
+    if (urlError) {
+      showDialog({ title: "Não foi possível entrar", description: urlError, tone: "error" });
+    }
+  }, [showDialog]);
 
-    const currentGroup = segments[0];
-    const inAuthGroup = currentGroup === "(auth)";
-    const inTabsGroup = currentGroup === "(tabs)";
+  console.log("[VerificacaoDeRota] Carregando:", carregando, "Usuario:", !!usuario, "Autenticado:", autenticado);
 
-    if (autenticado && inTabsGroup) return;
-    if (!autenticado && inAuthGroup) return;
+  if (carregando && !autenticado) return null;
 
-    router.replace(autenticado ? "/(tabs)" : "/(auth)");
-  }, [autenticado, carregando, usuario, router, segments]);
+  const currentGroup = segments[0];
+  const inAuthGroup = currentGroup === "(auth)";
+  const inTabsGroup = currentGroup === "(tabs)";
 
-  return null;
+  if (autenticado && inTabsGroup) return null;
+  if (!autenticado && inAuthGroup) return null;
+
+  // `<Redirect>` troca a rota (e a URL, na web) de forma sincrona durante o
+  // render — diferente do `router.replace` num useEffect, que so navegava
+  // depois do commit e deixava a barra de enderecos presa na rota protegida
+  // (issue #27).
+  if (autenticado) {
+    const destino = consumePendingRoute();
+    return <Redirect href={(destino ?? "/(tabs)") as Href} />;
+  }
+
+  if (inTabsGroup && pathname) {
+    setPendingRoute(pathname);
+  }
+  return <Redirect href="/(auth)" />;
 }
 
 export default function RootLayout() {
@@ -92,6 +114,7 @@ export default function RootLayout() {
         <LoadingProvider>
           <SessionProvider>
             <PersonalizacaoProviderProvider>
+            <PortoesProvider>
             <DialogProvider>
               <LoadingOverlay />
               <VerificacaoDeRota />
@@ -101,6 +124,7 @@ export default function RootLayout() {
               </Stack>
               <TelemetryConsentGate />
             </DialogProvider>
+            </PortoesProvider>
             </PersonalizacaoProviderProvider>
           </SessionProvider>
         </LoadingProvider>

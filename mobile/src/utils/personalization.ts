@@ -813,7 +813,38 @@ function extractMediaPartes(
     .sort((a, b) => a.ordem - b.ordem);
 }
 
+// Carimba a `revisao` do material em cada bloco produzido, para que o cache
+// nativo saiba que o conteudo mudou.
+//
+// Por que aqui e nao na URL: `resumeIdentity` (ContentRenderer) deriva a
+// identidade de progresso de `resolveMediaUrl(block.payload)`. Versionar a URL
+// faria o aluno PERDER a posicao de retomada a cada regeracao -- efeito
+// colateral que a correcao de cache nao deve causar. No payload, a URL fica
+// intacta e so a chave de cache muda.
+//
+// Blocos SEM url caem no fallback `JSON.stringify(block.payload)` do
+// resumeIdentity, entao para eles a retomada reseta quando a revisao sobe.
+// E' aceitavel: sao os blocos de texto inline, que nao usam o cache nativo, e
+// so acontece apos uma regeracao de verdade.
 function normalizeMediaBlocks(
+  tipo: ContentBlockType,
+  raw: unknown,
+  key: string,
+  inheritedMetadata: LooseRecord = {}
+) {
+  const blocos = normalizeMediaBlocksSemRevisao(tipo, raw, key, inheritedMetadata);
+  const revisao = asLooseRecord(raw).revisao;
+  if (typeof revisao !== "number" || !Number.isInteger(revisao) || revisao < 1) {
+    return blocos;
+  }
+  return blocos.map((bloco) =>
+    bloco && typeof bloco.payload === "object" && bloco.payload
+      ? { ...bloco, payload: { ...bloco.payload, revisao } }
+      : bloco
+  );
+}
+
+function normalizeMediaBlocksSemRevisao(
   tipo: ContentBlockType,
   raw: unknown,
   key: string,

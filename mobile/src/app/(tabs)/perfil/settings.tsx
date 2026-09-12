@@ -121,6 +121,7 @@ export default function Settings() {
                 },
               ]}
               onPress={() => router.push("/(tabs)/perfil/info")}
+              accessibilityRole="button"
             >
               <Text style={[styles.menuItemText, { color: palette.text }]}>
                 Informações
@@ -140,9 +141,30 @@ export default function Settings() {
                 },
               ]}
               onPress={() => router.push("/(tabs)/perfil/metricas-estilo")}
+              accessibilityRole="button"
             >
               <Text style={[styles.menuItemText, { color: palette.text }]}>
                 Estilo das métricas: {metricsThemeLabel}
+              </Text>
+            </TouchableOpacity>
+          ),
+        },
+        {
+          label: "Lembrete diário",
+          render: (
+            <TouchableOpacity
+              style={[
+                styles.menuItem,
+                {
+                  backgroundColor: palette.surfaceElevated,
+                  borderColor: "#ffffff20",
+                },
+              ]}
+              onPress={() => router.push("/(tabs)/perfil/lembrete-diario")}
+              accessibilityRole="button"
+            >
+              <Text style={[styles.menuItemText, { color: palette.text }]}>
+                Lembrete diário
               </Text>
             </TouchableOpacity>
           ),
@@ -159,6 +181,7 @@ export default function Settings() {
                 },
               ]}
               onPress={() => router.push("/(tabs)/perfil/coleta-dados")}
+              accessibilityRole="button"
             >
               <Text style={[styles.menuItemText, { color: palette.text }]}>
                 Coleta e acessos
@@ -178,6 +201,7 @@ export default function Settings() {
                 },
               ]}
               onPress={() => router.push("/(tabs)/perfil/excluir")}
+              accessibilityRole="button"
             >
               <Text style={[styles.menuItemText, { color: palette.text }]}>
                 Solicitar exclusão da conta
@@ -197,6 +221,7 @@ export default function Settings() {
                 },
               ]}
               onPress={() => router.push("/(tabs)/perfil/relatorio")}
+              accessibilityRole="button"
             >
               <Text style={[styles.menuItemText, { color: palette.text }]}>
                 Gerar relatório dos dados
@@ -278,6 +303,7 @@ export default function Settings() {
                 },
               ]}
               onPress={reverTutorial}
+              accessibilityRole="button"
             >
               <Text style={[styles.menuItemText, { color: palette.text }]}>
                 Rever tutorial inicial
@@ -297,6 +323,7 @@ export default function Settings() {
                 },
               ]}
               onPress={() => router.push("/(tabs)/perfil/info-app")}
+              accessibilityRole="button"
             >
               <Text style={[styles.menuItemText, { color: palette.text }]}>
                 Informações do app
@@ -316,6 +343,7 @@ export default function Settings() {
                 },
               ]}
               onPress={() => router.push("/(tabs)/perfil/info-versao")}
+              accessibilityRole="button"
             >
               <Text style={[styles.menuItemText, { color: palette.text }]}>
                 Versão: {appVersion}
@@ -348,6 +376,7 @@ export default function Settings() {
                 },
               ]}
               onPress={() => router.push("/(tabs)/perfil/resetar-senha")}
+              accessibilityRole="button"
             >
               <Text style={[styles.menuItemText, { color: palette.text }]}>
                 Resetar senha
@@ -481,6 +510,7 @@ export default function Settings() {
                 },
               ]}
               onPress={item.onPress}
+              accessibilityRole="button"
             >
               <Text style={[styles.menuItemText, { color: palette.text }]}>
                 {item.label}
@@ -525,6 +555,7 @@ export default function Settings() {
               },
             ]}
             onPress={handleLogout}
+            accessibilityRole="button"
           >
             <Feather
               name="log-out"

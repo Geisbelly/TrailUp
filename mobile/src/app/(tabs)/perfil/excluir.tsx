@@ -84,7 +84,7 @@ export default function ExcluirContaScreen() {
 
   return (
     <View style={[styles.outer, { backgroundColor: palette.background }]}>
-      <View style={[StyleSheet.absoluteFill, { opacity: 0.35 }]} pointerEvents="none">
+      <View style={[StyleSheet.absoluteFill, { opacity: 0.35, pointerEvents: "none" }]}>
         <HallBackground palette={palette} />
       </View>
     <ScrollView
@@ -123,6 +123,7 @@ export default function ExcluirContaScreen() {
         ]}
         onPress={handleSolicitar}
         disabled={enviando}
+        accessibilityRole="button"
       >
         <Text style={styles.buttonText}>{enviando ? "Enviando..." : "Enviar solicitação"}</Text>
       </TouchableOpacity>

@@ -28,7 +28,7 @@ export default function Entrada() {
   return (
     <View style={[style.outer, { backgroundColor: AUTH_PALETTE.background }]}>
       {/* Fundo do salão */}
-      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <View style={[StyleSheet.absoluteFill, { pointerEvents: "none" }]}>
         <HallBackground palette={AUTH_PALETTE} />
       </View>
 
@@ -41,8 +41,7 @@ export default function Entrada() {
         ]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
-        style={[StyleSheet.absoluteFill, { height: "45%" }]}
-        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, { height: "45%", pointerEvents: "none" }]}
       />
 
       <SafeAreaView style={style.container}>
@@ -79,6 +78,8 @@ export default function Entrada() {
           <TouchableOpacity
             style={[style.button, { borderColor: gold, backgroundColor: tinycolor(AUTH_PALETTE.accent).darken(5).toHexString() }]}
             onPress={() => Linking.openURL(app.siteCadastro)}
+            accessibilityRole="link"
+            accessibilityLabel="Novato, criar conta"
           >
             <Text style={[style.buttonText, { color: "#FFF" }]}>NOVATO(A)</Text>
           </TouchableOpacity>
@@ -86,6 +87,8 @@ export default function Entrada() {
           <TouchableOpacity
             style={[style.button, style.buttonSecondary, { borderColor: goldDim, backgroundColor: goldFaint }]}
             onPress={() => router.replace("/(auth)/tela")}
+            accessibilityRole="button"
+            accessibilityLabel="Já tenho conta"
           >
             <Text style={[style.buttonText, { color: gold }]}>JÁ TENHO CONTA</Text>
           </TouchableOpacity>

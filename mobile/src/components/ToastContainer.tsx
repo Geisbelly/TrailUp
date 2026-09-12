@@ -51,7 +51,8 @@ const RankBanner = ({
             backgroundColor: palette.surfaceElevated,
           },
         ]}
-        activeOpacity={0.8} 
+        activeOpacity={0.8}
+        accessibilityRole="button"
         onPress={handlePress}
       >
         <View
@@ -215,6 +216,7 @@ const NotificationModal = ({ item, onRemove }: { item: ToastMessage; onRemove: (
           ]} 
           onPress={handleClose}
           activeOpacity={0.7}
+          accessibilityRole="button"
         >
           <Text style={[styles.modalButtonText, { color: config.color }]}>
             {config.btnLabel}
@@ -242,7 +244,7 @@ export function ToastContainer() {
   const activeBanners = activeToasts.filter(t => t.type === 'rank');
 
   return (
-    <View style={[styles.rootContainer, { top: insets.top }]} pointerEvents="box-none">
+    <View style={[styles.rootContainer, { top: insets.top, pointerEvents: "box-none" }]}>
       
       {activeBanners.map((toast) => (
         <RankBanner 

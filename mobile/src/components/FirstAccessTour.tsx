@@ -139,20 +139,7 @@ export function FirstAccessTour({
       setTimeout(() => {
         void revelarAlvoTour(currentStep.target);
         const ref = obterAlvoTour(currentStep.target);
-        if (__DEV__ && !ref) {
-          console.log(
-            `[TourAlvo] ${currentStep.id}: alvo "${currentStep.target}" NAO registrado ` +
-              `(t=${atraso}ms) — aguardando a tela montar`,
-          );
-        }
         ref?.current?.measureInWindow((x, y, largura, altura) => {
-          if (__DEV__) {
-            console.log(
-              `[TourAlvo] ${currentStep.id}: "${currentStep.target}" t=${atraso}ms ` +
-                `x=${Math.round(x)} y=${Math.round(y)} w=${Math.round(largura)} ` +
-                `h=${Math.round(altura)} | tela ${Math.round(width)}x${Math.round(height)}`,
-            );
-          }
           if (!ativo || largura < 2 || altura < 2) return;
           // Fora da tela: manter o que ja havia em vez de acender um retangulo
           // grampeado sobre o elemento errado.
@@ -290,20 +277,19 @@ export function FirstAccessTour({
           />
         ) : (
           <View
-            pointerEvents="none"
-            style={[StyleSheet.absoluteFill, { backgroundColor: `${palette.background}b8` }]}
+            style={[StyleSheet.absoluteFill, { backgroundColor: `${palette.background}b8`, pointerEvents: "none" }]}
           />
         )}
 
         {isIntroduction ? (
           <View
-            pointerEvents="none"
             style={[
               styles.introductionStage,
               introductionRect,
               {
                 backgroundColor: tinycolor(accent).setAlpha(0.12).toRgbString(),
                 shadowColor: accent,
+                pointerEvents: "none",
               },
             ]}
           >
@@ -415,6 +401,8 @@ export function FirstAccessTour({
             <Pressable
               disabled={index === 0}
               onPress={() => setIndex((value) => Math.max(0, value - 1))}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: index === 0 }}
               style={[
                 styles.backButton,
                 { borderColor: bubbleBorder, opacity: index === 0 ? 0.35 : 1 },
@@ -427,6 +415,7 @@ export function FirstAccessTour({
                 if (isLast) void finish();
                 else setIndex((value) => Math.min(steps.length - 1, value + 1));
               }}
+              accessibilityRole="button"
               style={[styles.nextButton, { backgroundColor: accent }]}
             >
               <Text style={styles.nextText}>{isLast ? "Começar" : "Próximo"}</Text>
@@ -459,7 +448,7 @@ function TourSpotlight({
   const height = Math.max(0, Math.min(screenHeight - top, rect.height));
 
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+    <View style={[StyleSheet.absoluteFill, { pointerEvents: "none" }]}>
       <View style={[styles.scrim, { top: 0, left: 0, right: 0, height: top, backgroundColor: scrim }]} />
       <View style={[styles.scrim, { top, left: 0, width: left, height, backgroundColor: scrim }]} />
       <View style={[styles.scrim, { top, left: left + width, right: 0, height, backgroundColor: scrim }]} />
@@ -492,7 +481,6 @@ function TourArrow({
 
   return (
     <View
-      pointerEvents="none"
       style={[
         styles.arrow,
         {
@@ -500,6 +488,7 @@ function TourArrow({
           top: centerY - 18,
           width: length,
           transform: [{ rotate: `${angle}rad` }],
+          pointerEvents: "none",
         },
       ]}
     >

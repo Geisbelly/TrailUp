@@ -280,6 +280,8 @@ export function MarkdownBlock({ payload }: Props) {
           <Pressable
             onPress={() => setPageIndex((i) => Math.max(0, i - 1))}
             disabled={pageIndex === 0}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: pageIndex === 0 }}
             style={[
               styles.pageBtn,
               { borderColor: palette.border, opacity: pageIndex === 0 ? 0.3 : 1 },
@@ -295,6 +297,8 @@ export function MarkdownBlock({ payload }: Props) {
           <Pressable
             onPress={() => setPageIndex((i) => Math.min(totalPages - 1, i + 1))}
             disabled={pageIndex === totalPages - 1}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: pageIndex === totalPages - 1 }}
             style={[
               styles.pageBtn,
               { borderColor: palette.border, opacity: pageIndex === totalPages - 1 ? 0.3 : 1 },

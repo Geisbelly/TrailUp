@@ -61,14 +61,62 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   console.warn('Supabase env missing: set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY')
 }
 
+// No nativo a sessao chega por deep link, entao detectSessionInUrl fica
+// desligado (nao ha URL de navegador pra ler). Na web e o unico jeito de
+// capturar a sessao: OAuth (Google), confirmacao de e-mail e recuperacao de
+// senha devolvem o token na propria URL (fragmento ou query), e com essa
+// flag desligada o cliente simplesmente ignorava esse retorno - o aluno
+// voltava do consentimento do Google e continuava deslogado, sem erro.
+const detectSessionInUrl = Platform.OS === 'web'
+
 export const supabase = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
   auth: {
     storage,
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false,
+    flowType: 'pkce',
+    detectSessionInUrl,
   },
 })
+
+// Preenchido se a URL de retorno trazia um erro (ex.: link de confirmacao
+// expirado, consentimento OAuth negado) - a tela consome uma vez via
+// consumeSupabaseUrlAuthError() para mostrar um dialogo em vez de deixar o
+// aluno num estado deslogado sem explicacao.
+let pendingUrlAuthError: string | null = null
+
+export function consumeSupabaseUrlAuthError(): string | null {
+  const error = pendingUrlAuthError
+  pendingUrlAuthError = null
+  return error
+}
+
+if (detectSessionInUrl && typeof window !== 'undefined') {
+  const url = new URL(window.location.href)
+  const errorDescription = url.searchParams.get('error_description')
+  if (errorDescription) {
+    pendingUrlAuthError = errorDescription.replace(/\+/g, ' ')
+  }
+
+  // O supabase-js consome o token da URL para estabelecer a sessao, mas
+  // nao limpa a URL sozinho - o token (ou o erro acima) ficava visivel na
+  // barra de enderecos. Uma unica vez, depois que a sessao inicial assenta,
+  // tira o fragmento/query de auth sem mexer no resto da URL (ex.: rota
+  // profunda que o link de confirmacao aponte).
+  let cleaned = false
+  supabase.auth.onAuthStateChange((_event, _session) => {
+    if (cleaned) return
+    cleaned = true
+
+    const hasHashToken = window.location.hash.includes('access_token')
+    const authParams = ['code', 'token_hash', 'type', 'error', 'error_description', 'error_code']
+    const hadQueryToken = authParams.some((param) => url.searchParams.has(param))
+    if (!hasHashToken && !hadQueryToken) return
+
+    authParams.forEach((param) => url.searchParams.delete(param))
+    window.history.replaceState({}, document.title, url.pathname + url.search)
+  })
+}
 
 function looksLikeInvalidRefreshTokenError(error: unknown) {
   const message =

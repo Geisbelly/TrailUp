@@ -26,14 +26,18 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import StudentTrailVisualization from "./StudentTrailVisualization";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchContextoDocente } from "./personalizacoes/personalizacoesApi";
 import { useAuth } from "@/hooks/useAuth";
 import { createRequestGuard, type RequestToken } from "@/lib/requestGuard";
 import { computeTurmaResumo } from "@/lib/turmaResumo";
+import { selectView } from "@/lib/supabaseViews";
+import { useTurmaKpis, type TurmaDistribuicao } from "./useTurmaKpis";
 import {
   Bar,
   BarChart,
   CartesianGrid,
   Cell,
+  Legend,
   Line,
   LineChart,
   Pie,
@@ -43,6 +47,19 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+
+// Cores de grafico elevadas para manter contraste >= 7:1 (AAA) quando usadas
+// como texto (rotulo de pizza, legenda) contra o fundo escuro do card — o
+// recharts reaproveita a cor de preenchimento/linha como cor do texto nesses
+// casos, entao a cor "de dado" precisa por si so ja atender AAA.
+// Mesma tecnica do CLAUDE.md para as cores-assinatura BrainHex: eleva a
+// luminosidade em HSL preservando matiz/saturacao, sem misturar com branco.
+const CHART_COLOR_DANGER = "hsl(0, 84%, 78%)"; // ~8.1:1 (original #ef4444 dava ~4.6:1)
+const CHART_COLOR_INFO = "hsl(221, 83%, 75%)"; // ~7.7:1 (original #2563eb dava ~3.4:1)
+const CHART_COLOR_PROGRESS = "hsl(142, 76%, 44%)"; // ~7.6:1 (original #16a34a dava ~5.3:1)
+const CHART_COLOR_WARNING = "#f59e0b"; // ja atende AAA (~8.1:1)
+const CHART_COLOR_SUCCESS = "#22c55e"; // ja atende AAA (~7.6:1)
+const CHART_TICK_STYLE = { fill: "hsl(var(--muted-foreground))" }; // ~8.3:1
 
 interface AlunoPerfil {
   nome: string;
@@ -103,47 +120,6 @@ type PersonalizacaoDocenteResponse = {
   }>;
 };
 
-type TurmaGeralMetricas = {
-  classe_id: number;
-  total_alunos: number;
-  tempo_medio_uso_seg: number;
-  sessoes_medias_por_aluno: number;
-  taxa_media_retorno_pct: number;
-  taxa_media_abandono_pct: number;
-  taxa_media_conclusao_pct: number;
-  media_nota_turma: number;
-  taxa_media_acertos_pct: number;
-  taxa_media_acertos_sem_erro_pct: number;
-  eficiencia_media_aprendizagem: number;
-  media_tentativas_por_questao: number;
-  taxa_revisitas_pct: number;
-  taxa_interrupcoes_pct: number;
-  frequencia_chat_media_sessao: number;
-  taxa_media_uso_chat_pct: number;
-  tempo_medio_chat_seg: number;
-  uso_chat_apos_erro_pct: number;
-};
-
-type TurmaPerfilMetricas = {
-  classe_id: number;
-  segmento: string;
-  perfil_nome: string;
-  total_alunos_segmento: number;
-  taxa_abandono_pct: number;
-  media_nota: number;
-  taxa_acertos_pct: number;
-  taxa_uso_chat_pct: number;
-  uso_chat_apos_erro_pct: number;
-};
-
-type TurmaDistribuicao = {
-  classe_id: number;
-  metrica: string;
-  faixa: string;
-  total_alunos: number;
-  percentual: number;
-};
-
 type EvolucaoAluno = {
   classe_id: number;
   aluno_id: string;
@@ -154,31 +130,6 @@ type EvolucaoAluno = {
   eficiencia_aprendizagem: number;
   progresso_trilha_pct: number;
 };
-
-const API_BASE_URL = String(import.meta.env.VITE_APITRAIUP_URL ?? "")
-  .trim()
-  .replace(/\/+$/, "");
-const AUTH_FAILURE_PATTERN =
-  /token invalido|token inv[aá]lido|token expirado|audience do token|assinatura do token|formato de token|authorization bearer token obrigatorio|token ausente/i;
-
-type ViewSelectBuilder = {
-  in: (column: string, values: ReadonlyArray<string | number>) => Promise<{ data: unknown[] | null }>;
-  eq: (column: string, value: string | number) => {
-    eq: (column: string, value: string | number) => {
-      order: (column: string, options: { ascending: boolean }) => Promise<{ data: unknown[] | null }>;
-    };
-  };
-};
-
-type ViewClient = {
-  from: (relation: string) => {
-    select: (columns: string) => ViewSelectBuilder;
-  };
-};
-
-function selectView(viewName: string): ViewSelectBuilder {
-  return (supabase as unknown as ViewClient).from(viewName).select("*");
-}
 
 export default function DashboardSection() {
   const { user, session } = useAuth();
@@ -191,15 +142,19 @@ export default function DashboardSection() {
   const [selectedAluno, setSelectedAluno] = useState<Aluno | null>(null);
   const [trailViewMode, setTrailViewMode] = useState<"hexagon" | "list">("hexagon");
   const [perfilSegmentFilter, setPerfilSegmentFilter] = useState<"majoritario" | "segundo" | "afinidade_20_plus">("majoritario");
+  // So a UI por enquanto — nao filtra nada ainda. Os KPIs agregados (turma,
+  // perfil, distribuicao) vem de views que nao tem coluna de data por
+  // evento, entao janela temporal real depende do endpoint de KPIs da #12.
+  const [janelaTemporal, setJanelaTemporal] = useState<"7d" | "30d" | "mes_atual" | "tudo">("30d");
   const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [personalizacaoData, setPersonalizacaoData] = useState<PersonalizacaoDocenteResponse | null>(null);
   const [personalizacaoLoading, setPersonalizacaoLoading] = useState(false);
   const [personalizacaoError, setPersonalizacaoError] = useState<string | null>(null);
-  const [turmaMetricas, setTurmaMetricas] = useState<TurmaGeralMetricas[]>([]);
-  const [perfilMetricas, setPerfilMetricas] = useState<TurmaPerfilMetricas[]>([]);
-  const [distribuicaoMetricas, setDistribuicaoMetricas] = useState<TurmaDistribuicao[]>([]);
   const alunoRequestGuard = useRef(createRequestGuard());
   const [alunoEvolucao, setAlunoEvolucao] = useState<EvolucaoAluno[]>([]);
+  const kpiClassIds = useMemo(() => classes.map((c) => c.id), [classes]);
+  const { turmaMetricas, perfilMetricas, distribuicaoMetricas } = useTurmaKpis(kpiClassIds);
 
   const mapStatus = (status?: string | null): "concluido" | "disponivel" | "bloqueado" => {
     if (!status) return "disponivel";
@@ -209,67 +164,17 @@ export default function DashboardSection() {
   };
 
   const loadPersonalizacaoContexto = useCallback(async (aluno: Aluno, request: RequestToken) => {
-    if (!API_BASE_URL) {
-      if (!request.isCurrent()) return;
-      setPersonalizacaoData(null);
-      setPersonalizacaoError("Defina VITE_APITRAIUP_URL para consultar a personalizacao.");
-      return;
-    }
-
     setPersonalizacaoLoading(true);
     setPersonalizacaoError(null);
 
     try {
-      const resolveToken = async (forceRefresh = false) => {
-        const sessionResult = forceRefresh
-          ? await supabase.auth.refreshSession()
-          : await supabase.auth.getSession();
-
-        if (sessionResult.error) {
-          throw new Error(`Falha ao obter sessao do Supabase: ${sessionResult.error.message}`);
-        }
-
-        const resolved = String(
-          (forceRefresh ? sessionResult.data.session?.access_token : session?.access_token ?? sessionResult.data.session?.access_token) ?? ""
-        ).trim();
-        if (resolved) return resolved;
-
-        if (!forceRefresh) return resolveToken(true);
-        throw new Error("Sessao expirada para consultar a API de personalizacao.");
-      };
-
-      const requestContext = async (token: string) => {
-        const response = await fetch(
-          `${API_BASE_URL}/api/v1/personalizar/contexto/${aluno.id}?classe_id=${aluno.classe_id}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        const payload = await response.json().catch(() => null);
-        const detail =
-          payload?.detail ||
-          payload?.message ||
-          "Nao foi possivel carregar o contexto de personalizacao.";
-        return { response, payload, detail: String(detail) };
-      };
-
-      let token = await resolveToken(false);
-      let result = await requestContext(token);
-
-      if (!result.response.ok && (result.response.status === 401 || AUTH_FAILURE_PATTERN.test(result.detail))) {
-        token = await resolveToken(true);
-        result = await requestContext(token);
-      }
-
-      if (!result.response.ok) {
-        throw new Error(result.detail);
-      }
+      const contexto = await fetchContextoDocente(session?.access_token ?? "", {
+        alunoId: aluno.id,
+        classeId: aluno.classe_id,
+      });
 
       if (!request.isCurrent()) return;
-      setPersonalizacaoData(result.payload as PersonalizacaoDocenteResponse);
+      setPersonalizacaoData(contexto as PersonalizacaoDocenteResponse);
     } catch (error) {
       if (!request.isCurrent()) return;
       console.error("Erro ao carregar contexto de personalizacao:", error);
@@ -297,6 +202,7 @@ export default function DashboardSection() {
   const loadData = async () => {
     if (!professorId) return;
     setIsLoading(true);
+    setLoadError(null);
     try {
       const { data: classesData, error: classesError } = await supabase
         .from("classe")
@@ -310,9 +216,6 @@ export default function DashboardSection() {
 
       if (classIds.length === 0) {
         setAlunos([]);
-        setTurmaMetricas([]);
-        setPerfilMetricas([]);
-        setDistribuicaoMetricas([]);
         setIsLoading(false);
         return;
       }
@@ -361,23 +264,6 @@ export default function DashboardSection() {
       if (topicosError) throw topicosError;
       if (taError) throw taError;
       if (atividadesError) throw atividadesError;
-
-      const [{ data: turmaData }, { data: perfilAggData }, { data: distribuicaoData }] =
-        await Promise.all([
-          classIds.length > 0
-            ? selectView("vw_metricas_turma_geral_classe").in("classe_id", classIds)
-            : Promise.resolve({ data: [] }),
-          classIds.length > 0
-            ? selectView("vw_metricas_turma_perfil_classe").in("classe_id", classIds)
-            : Promise.resolve({ data: [] }),
-          classIds.length > 0
-            ? selectView("vw_metricas_distribuicao_turma_classe").in("classe_id", classIds)
-            : Promise.resolve({ data: [] }),
-        ]);
-
-      setTurmaMetricas((turmaData ?? []) as TurmaGeralMetricas[]);
-      setPerfilMetricas((perfilAggData ?? []) as TurmaPerfilMetricas[]);
-      setDistribuicaoMetricas((distribuicaoData ?? []) as TurmaDistribuicao[]);
 
       const modoMap = new Map<number, string>();
       (modoOperacaoData ?? []).forEach((m) => {
@@ -467,6 +353,12 @@ export default function DashboardSection() {
       setAlunos(alunosFormatados);
     } catch (error) {
       console.error("Erro ao carregar dashboard:", error);
+      setAlunos([]);
+      setLoadError(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível carregar os alunos."
+      );
     } finally {
       setIsLoading(false);
     }
@@ -515,6 +407,10 @@ export default function DashboardSection() {
   const mediaAcertos =
     filteredAlunos.reduce((acc, a) => acc + (isNaN(a.acertosPercentual) ? 0 : a.acertosPercentual), 0) /
     (totalAlunos || 1);
+  // Sem alunos no escopo, as médias acima são 0/(0||1) = 0 — um zero
+  // fabricado, nao um dado real. Usa essa flag pra mostrar estado vazio
+  // em vez do numero, senao "0% de acertos" parece um resultado de verdade.
+  const hasAlunoKpis = totalAlunos > 0;
   const contextoAluno = personalizacaoData?.contexto_aluno ?? {};
   const personalizacoes = personalizacaoData?.personalizacoes ?? [];
   const progressoItens = personalizacaoData?.progresso_itens ?? [];
@@ -541,6 +437,10 @@ export default function DashboardSection() {
     () => computeTurmaResumo(turmaMetricasEscopo),
     [turmaMetricasEscopo]
   );
+  // computeTurmaResumo tambem devolve zeros quando nao ha linha nenhuma —
+  // mesmo problema do hasAlunoKpis, mas pra fonte de dado separada (view de
+  // metricas de turma).
+  const hasTurmaKpis = turmaMetricasEscopo.length > 0;
   const abandonoPorPerfilData = useMemo(
     () =>
       perfilMetricasEscopo
@@ -578,9 +478,30 @@ export default function DashboardSection() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold">Dashboard de Alunos</h2>
-        <p className="text-muted-foreground">Acompanhe o desempenho dos alunos com permissao de acesso</p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold">Dashboard de Alunos</h2>
+          <p className="text-muted-foreground">Acompanhe o desempenho dos alunos com permissao de acesso</p>
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-muted-foreground">Janela temporal</span>
+          <Select
+            value={janelaTemporal}
+            onValueChange={(value) =>
+              setJanelaTemporal(value as "7d" | "30d" | "mes_atual" | "tudo")
+            }
+          >
+            <SelectTrigger className="w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7d">Últimos 7 dias</SelectItem>
+              <SelectItem value="30d">Últimos 30 dias</SelectItem>
+              <SelectItem value="mes_atual">Este mês</SelectItem>
+              <SelectItem value="tudo">Todo o período</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -601,7 +522,11 @@ export default function DashboardSection() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mediaNotas.toFixed(1)}</div>
+            {hasAlunoKpis ? (
+              <div className="text-2xl font-bold">{mediaNotas.toFixed(1)}</div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Sem dados ainda</p>
+            )}
           </CardContent>
         </Card>
 
@@ -611,7 +536,11 @@ export default function DashboardSection() {
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mediaConclusao.toFixed(0)}%</div>
+            {hasAlunoKpis ? (
+              <div className="text-2xl font-bold">{mediaConclusao.toFixed(0)}%</div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Sem dados ainda</p>
+            )}
           </CardContent>
         </Card>
 
@@ -621,7 +550,11 @@ export default function DashboardSection() {
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mediaAcertos.toFixed(0)}%</div>
+            {hasAlunoKpis ? (
+              <div className="text-2xl font-bold">{mediaAcertos.toFixed(0)}%</div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Sem dados ainda</p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -632,7 +565,11 @@ export default function DashboardSection() {
             <CardTitle className="text-sm font-medium">Abandono Médio</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{turmaResumo.taxa_media_abandono_pct.toFixed(1)}%</div>
+            {hasTurmaKpis ? (
+              <div className="text-2xl font-bold">{turmaResumo.taxa_media_abandono_pct.toFixed(1)}%</div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Sem dados ainda</p>
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -640,7 +577,11 @@ export default function DashboardSection() {
             <CardTitle className="text-sm font-medium">Conclusão Média</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{turmaResumo.taxa_media_conclusao_pct.toFixed(1)}%</div>
+            {hasTurmaKpis ? (
+              <div className="text-2xl font-bold">{turmaResumo.taxa_media_conclusao_pct.toFixed(1)}%</div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Sem dados ainda</p>
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -648,7 +589,11 @@ export default function DashboardSection() {
             <CardTitle className="text-sm font-medium">Uso do Chat após Erro</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{turmaResumo.uso_chat_apos_erro_pct.toFixed(1)}%</div>
+            {hasTurmaKpis ? (
+              <div className="text-2xl font-bold">{turmaResumo.uso_chat_apos_erro_pct.toFixed(1)}%</div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Sem dados ainda</p>
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -656,9 +601,13 @@ export default function DashboardSection() {
             <CardTitle className="text-sm font-medium">Tempo Médio de Uso</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {(turmaResumo.tempo_medio_uso_seg / 60).toFixed(1)}min
-            </div>
+            {hasTurmaKpis ? (
+              <div className="text-2xl font-bold">
+                {(turmaResumo.tempo_medio_uso_seg / 60).toFixed(1)}min
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Sem dados ainda</p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -691,15 +640,21 @@ export default function DashboardSection() {
             </div>
           </CardHeader>
           <CardContent className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={abandonoPorPerfilData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="perfil" tick={{ fontSize: 11 }} />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="abandono" fill="#ef4444" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            {abandonoPorPerfilData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={abandonoPorPerfilData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="perfil" tick={{ ...CHART_TICK_STYLE, fontSize: 11 }} />
+                  <YAxis tick={CHART_TICK_STYLE} />
+                  <Tooltip />
+                  <Bar dataKey="abandono" fill={CHART_COLOR_DANGER} radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                Sem dados suficientes ainda
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -709,28 +664,40 @@ export default function DashboardSection() {
             <CardDescription>Faixas baixa, média e alta</CardDescription>
           </CardHeader>
           <CardContent className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={distribuicaoNotasData}
-                  dataKey="percentual"
-                  nameKey="faixa"
-                  outerRadius={100}
-                  label={(entry) => {
-                    const item = entry as Partial<TurmaDistribuicao>;
-                    return `${item.faixa ?? "faixa"}: ${Number(item.percentual ?? 0).toFixed(1)}%`;
-                  }}
-                >
-                  {distribuicaoNotasData.map((entry, idx) => (
-                    <Cell
-                      key={`${entry.faixa}-${idx}`}
-                      fill={idx % 3 === 0 ? "#ef4444" : idx % 3 === 1 ? "#f59e0b" : "#22c55e"}
-                    />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+            {distribuicaoNotasData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={distribuicaoNotasData}
+                    dataKey="percentual"
+                    nameKey="faixa"
+                    outerRadius={100}
+                    label={(entry) => {
+                      const item = entry as Partial<TurmaDistribuicao>;
+                      return `${item.faixa ?? "faixa"}: ${Number(item.percentual ?? 0).toFixed(1)}%`;
+                    }}
+                  >
+                    {distribuicaoNotasData.map((entry, idx) => (
+                      <Cell
+                        key={`${entry.faixa}-${idx}`}
+                        fill={
+                          idx % 3 === 0
+                            ? CHART_COLOR_DANGER
+                            : idx % 3 === 1
+                            ? CHART_COLOR_WARNING
+                            : CHART_COLOR_SUCCESS
+                        }
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                Sem dados suficientes ainda
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -766,7 +733,14 @@ export default function DashboardSection() {
             </Select>
           </div>
 
-          {isLoading ? (
+          {loadError ? (
+            <div className="flex flex-col items-center gap-3 py-8 text-center">
+              <p className="text-sm text-destructive">{loadError}</p>
+              <Button variant="outline" size="sm" onClick={loadData}>
+                Tentar novamente
+              </Button>
+            </div>
+          ) : isLoading ? (
             <p className="text-sm text-muted-foreground">Carregando alunos...</p>
           ) : (
             <>
@@ -818,7 +792,11 @@ export default function DashboardSection() {
               </Table>
 
               {filteredAlunos.length === 0 && (
-                <p className="text-center text-muted-foreground py-8">Nenhum aluno encontrado</p>
+                <p className="text-center text-muted-foreground py-8">
+                  {alunos.length === 0
+                    ? "Nenhum aluno matriculado ainda."
+                    : "Nenhum aluno encontrado com esse filtro."}
+                </p>
               )}
             </>
           )}
@@ -914,12 +892,36 @@ export default function DashboardSection() {
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={evolucaoAlunoData}>
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="dia" />
-                        <YAxis />
+                        <XAxis dataKey="dia" tick={CHART_TICK_STYLE} />
+                        <YAxis tick={CHART_TICK_STYLE} />
                         <Tooltip />
-                        <Line type="monotone" dataKey="acertos" stroke="#2563eb" strokeWidth={2} dot={false} />
-                        <Line type="monotone" dataKey="progresso" stroke="#16a34a" strokeWidth={2} dot={false} />
-                        <Line type="monotone" dataKey="nota" stroke="#f59e0b" strokeWidth={2} dot={false} />
+                        <Legend />
+                        <Line
+                          type="monotone"
+                          dataKey="acertos"
+                          name="Acertos (%)"
+                          stroke={CHART_COLOR_INFO}
+                          strokeWidth={2}
+                          dot={false}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="progresso"
+                          name="Progresso (%)"
+                          stroke={CHART_COLOR_PROGRESS}
+                          strokeWidth={2}
+                          strokeDasharray="6 4"
+                          dot={false}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="nota"
+                          name="Nota"
+                          stroke={CHART_COLOR_WARNING}
+                          strokeWidth={2}
+                          strokeDasharray="2 3"
+                          dot={false}
+                        />
                       </LineChart>
                     </ResponsiveContainer>
                   </CardContent>

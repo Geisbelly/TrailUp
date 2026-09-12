@@ -250,8 +250,7 @@ export function SectionGuideButton({
             />
           ) : (
             <View
-              pointerEvents="none"
-              style={[StyleSheet.absoluteFill, { backgroundColor: `${palette.background}e8` }]}
+              style={[StyleSheet.absoluteFill, { backgroundColor: `${palette.background}e8`, pointerEvents: "none" }]}
             />
           )}
 
@@ -296,6 +295,7 @@ export function SectionGuideButton({
                   <Pressable
                     onPress={() => (index === 0 ? close() : setIndex((value) => value - 1))}
                     style={[styles.secondary, { borderColor: palette.border }]}
+                    accessibilityRole="button"
                   >
                     <Text style={[styles.secondaryText, { color: palette.textMuted }]}>
                       {index === 0 ? "Fechar" : "Voltar"}
@@ -307,6 +307,7 @@ export function SectionGuideButton({
                       else setIndex((value) => value + 1);
                     }}
                     style={[styles.primary, { backgroundColor: palette.accent }]}
+                    accessibilityRole="button"
                   >
                     <Text style={[styles.primaryText, { color: palette.background }]}>
                       {index >= steps.length - 1 ? "Concluir" : "Próximo"}
@@ -341,7 +342,7 @@ function SpotlightMask({
   const height = Math.max(0, Math.min(screenHeight - top, rect.height));
 
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+    <View style={[StyleSheet.absoluteFill, { pointerEvents: "none" }]}>
       <View style={[styles.scrim, { top: 0, left: 0, right: 0, height: top, backgroundColor: scrim }]} />
       <View style={[styles.scrim, { top, left: 0, width: left, height, backgroundColor: scrim }]} />
       <View style={[styles.scrim, { top, left: left + width, right: 0, height, backgroundColor: scrim }]} />

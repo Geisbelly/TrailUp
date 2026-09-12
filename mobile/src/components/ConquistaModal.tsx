@@ -59,8 +59,7 @@ export default function ConquistaModal({
             ]}
             start={{ x: 0.5, y: 0 }}
             end={{ x: 0.5, y: 1 }}
-            style={StyleSheet.absoluteFill}
-            pointerEvents="none"
+            style={[StyleSheet.absoluteFill, { pointerEvents: "none" }]}
           />
 
           <TouchableWithoutFeedback onPress={() => {}}>
@@ -165,6 +164,7 @@ export default function ConquistaModal({
                   { backgroundColor: tinycolor(color).darken(5).toHexString(), borderColor: goldDim },
                 ]}
                 onPress={onClose}
+                accessibilityRole="button"
               >
                 <Text style={[s.modalCloseText, { color: "#FFF" }]}>{buttonText}</Text>
               </TouchableOpacity>

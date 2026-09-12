@@ -3,6 +3,7 @@ import {
   isNetworkRequestFailedError,
   resolveApiBaseCandidates,
 } from "@/services/apiBaseUrl";
+import { sanitizarCameraParaBanco } from "@/services/telemetriaPayload";
 import {
   normalizeNonNegativeNumber,
   normalizePositiveInteger,
@@ -244,6 +245,12 @@ function buildMetricRowsForScope(params: {
     item_key: entry.item_key ?? null,
     material_key: entry.material_key ?? null,
     material_tipo: entry.material_tipo ?? null,
+    // Identidade da entrada dentro do lote: e a chave do dicionario que o
+    // acumulador ja usa, e o que a constraint de dedup casa. O trigger no banco
+    // sabe derivar isso sozinho (para os apps antigos, que nao mandam a coluna),
+    // mas mandar o valor de origem evita depender da derivacao onde ela e
+    // conhecida.
+    entry_key: entry.key,
     scope,
     visits: Math.max(0, Math.round(normalizeMetricNumber(entry.visits))),
     dwell_sec: normalizeMetricNumber(entry.dwell_sec),
@@ -349,7 +356,7 @@ async function persistTelemetryBatchDirect(payload: TelemetryBatchPayload) {
     max_depth_px: safePayload.max_depth_px,
     frame_sent: frameSent,
     analysis_ciclo_id: null,
-    payload: safePayload,
+    payload: sanitizarCameraParaBanco(safePayload),
     created_at: nowIso,
   });
   if (batchError) throw batchError;
@@ -392,22 +399,38 @@ async function persistTelemetryBatchDirect(payload: TelemetryBatchPayload) {
 
   const metricRows = buildAllMetricRows(batchId, safePayload, alunoId);
   if (metricRows.length > 0) {
+    // `upsert` com `ignoreDuplicates`, e nao `insert`: o mesmo lote pode voltar
+    // pela fila em disco depois de ja ter sido gravado (a resposta se perde com
+    // mais frequencia que a gravacao falha). Com `insert` cru, o reenvio ou
+    // duplicava o tempo do aluno, ou -- com a chave unica em vigor -- estourava
+    // e prendia o lote na cabeca da fila.
     const { error: metricsError } = await supabase
       .from("telemetria_time_metric_entries")
-      .insert(metricRows);
+      .upsert(metricRows, {
+        onConflict: "lote_id,scope,entry_key",
+        ignoreDuplicates: true,
+      });
 
     if (metricsError) {
       const rawMessage = String((metricsError as any)?.message ?? "").toLowerCase();
+      // 42P01 = relacao inexistente. Ai nao ha o que reter: o destino nao
+      // existe, e retentar so empilharia o mesmo lote para sempre.
       const missingTable =
         String((metricsError as any)?.code ?? "") === "42P01" ||
-        rawMessage.includes("telemetria_time_metric_entries");
+        rawMessage.includes("does not exist");
 
       if (!missingTable) {
-        console.warn(
-          "[telemetriaApi] Falha ao persistir metricas granulares:",
-          metricsError
-        );
+        // Antes isso era so um `console.warn` e a funcao seguia devolvendo
+        // sucesso -- o lote era descartado e o tempo por topico, conteudo,
+        // questao e card sumia em silencio, que e justamente o dado que
+        // aparecia errado. Propagar deixa o chamador reter e retentar.
+        throw metricsError;
       }
+
+      console.warn(
+        "[telemetriaApi] telemetria_time_metric_entries ausente; metricas granulares descartadas.",
+        metricsError
+      );
     }
   }
 

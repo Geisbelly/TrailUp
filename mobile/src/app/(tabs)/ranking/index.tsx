@@ -115,7 +115,11 @@ function RankCard({
       <Animated.View
         style={{ transform: [{ scale: scaleAnim }], width: "100%" }}
       >
-        <Pressable onPress={handlePress}>
+        <Pressable
+          onPress={handlePress}
+          accessibilityRole="button"
+          accessibilityLabel={item.nome ?? "Ranking"}
+        >
           <LinearGradient
             colors={[cardTop, cardMid, cardBot]}
             start={{ x: 0, y: 0 }}
@@ -199,7 +203,11 @@ function RankCard({
 
   return (
     <Animated.View style={{ transform: [{ scale: scaleAnim }], width: CARD_W }}>
-      <Pressable onPress={handlePress}>
+      <Pressable
+        onPress={handlePress}
+        accessibilityRole="button"
+        accessibilityLabel={item.nome ?? "Ranking"}
+      >
         <LinearGradient
           colors={[cardTop, cardMid, cardBot]}
           start={{ x: 0.5, y: 0 }}
@@ -400,8 +408,7 @@ export default function RankingHome() {
         ]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
-        style={[StyleSheet.absoluteFill, { height: SCREEN_H * 0.42 }]}
-        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, { height: SCREEN_H * 0.42, pointerEvents: "none" }]}
       />
 
       {/* `edges` SEM "bottom": a tab bar (height 100 + marginBottom 10) já

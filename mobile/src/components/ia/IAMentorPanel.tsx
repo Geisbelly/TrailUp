@@ -285,12 +285,14 @@ export function IAMentorPanel({
 
   if (mentorSilencedByUser) {
     return (
-      <View pointerEvents="box-none" style={[styles.overlay, { bottom: bottomOffset }]}>
+      <View style={[styles.overlay, { bottom: bottomOffset, pointerEvents: "box-none" }]}>
         <View style={styles.launcherColumn}>
           <Pressable
             ref={guideTargetRef}
             collapsable={false}
             onPress={() => void setUserFeaturePreference("mentor_character", true)}
+            accessibilityRole="button"
+            accessibilityLabel="Reativar guia"
             style={[
               styles.reactivateButton,
               scope === "trilha_home" ? styles.reactivateButtonHome : null,
@@ -536,11 +538,11 @@ export function IAMentorPanel({
 
   return (
     <View
-      pointerEvents="box-none"
       style={[
         styles.overlay,
         { bottom: bottomOffset },
         isOpen ? styles.overlayOpen : null,
+        { pointerEvents: "box-none" },
       ]}
     >
       {!isOpen ? (
@@ -549,6 +551,8 @@ export function IAMentorPanel({
             ref={guideTargetRef}
             collapsable={false}
             onPress={handleOpen}
+            accessibilityRole="button"
+            accessibilityLabel="Abrir guia"
             style={[
               styles.launcherButton,
               scope === "trilha_home" ? styles.homeLauncherButton : null,
@@ -663,6 +667,8 @@ export function IAMentorPanel({
                     borderColor: palette.border,
                   },
                 ]}
+                accessibilityRole="button"
+                accessibilityLabel="Silenciar guia"
               >
                 <MaterialCommunityIcons
                   name="volume-high"
@@ -670,7 +676,13 @@ export function IAMentorPanel({
                   color={palette.accent}
                 />
               </Pressable>
-              <Pressable onPress={handleClose} hitSlop={14} style={styles.iconButton}>
+              <Pressable
+                onPress={handleClose}
+                hitSlop={14}
+                style={styles.iconButton}
+                accessibilityRole="button"
+                accessibilityLabel="Fechar"
+              >
                 <MaterialCommunityIcons name="close" size={18} color={palette.textMuted} />
               </Pressable>
             </View>
@@ -693,6 +705,8 @@ export function IAMentorPanel({
                 <Pressable
                   key={tip.id}
                   onPress={() => handleTutorialAction(tip)}
+                  accessibilityRole="button"
+                  accessibilityLabel={tip.label}
                   style={[
                     styles.tutorialChip,
                     {
@@ -755,6 +769,9 @@ export function IAMentorPanel({
               ]}
               onPress={handleSend}
               disabled={!canChat || !draft.trim() || sending}
+              accessibilityRole="button"
+              accessibilityLabel="Enviar"
+              accessibilityState={{ disabled: !canChat || !draft.trim() || sending }}
             >
               <MaterialCommunityIcons
                 name={sending ? "timer-sand" : "send"}

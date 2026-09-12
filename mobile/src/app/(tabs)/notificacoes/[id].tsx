@@ -202,8 +202,7 @@ export default function NotificacaoDetalhe() {
         ]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
-        style={[StyleSheet.absoluteFill, { height: "40%" }]}
-        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, { height: "40%", pointerEvents: "none" }]}
       />
 
       <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
@@ -298,6 +297,7 @@ export default function NotificacaoDetalhe() {
                 },
               ]}
               onPress={onMarkUnread}
+              accessibilityRole="button"
             >
               <Ionicons name="mail-unread-outline" size={18} color={gold} />
               <Text style={[s.btnText, { color: gold }]}>Marcar como não lida</Text>
@@ -312,6 +312,7 @@ export default function NotificacaoDetalhe() {
               },
             ]}
             onPress={onDelete}
+            accessibilityRole="button"
           >
             <Ionicons name="trash" size={18} color="#fff" />
             <Text style={[s.btnText, { color: "#fff" }]}>Excluir</Text>

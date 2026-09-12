@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import asyncio
 import copy
@@ -62,6 +62,14 @@ JOB_KIND_MANUAL_RETRY = "manual_retry"
 JOB_KIND_CLASS_THEME = "class_theme_sync"
 JOB_KIND_MANUAL_PROFILE_GENERATE = "manual_profile_generate"
 JOB_KIND_MANUAL_PROFILE_GENERATE_ALL = "manual_profile_generate_all"
+
+# Pedido explicito de gente. Fura o circuit breaker e habilita a retomada de job
+# terminal - as duas coisas so' fazem sentido quando alguem pediu.
+_KINDS_MANUAIS = {
+    JOB_KIND_MANUAL_RETRY,
+    JOB_KIND_MANUAL_PROFILE_GENERATE,
+    JOB_KIND_MANUAL_PROFILE_GENERATE_ALL,
+}
 _JOB_KIND_MEDIA_RENDER = "media_render"
 _JOB_KIND_MEDIA_RENDER_LEGACY = "personalizacao_media_render"
 _MEDIA_RENDER_KINDS = {_JOB_KIND_MEDIA_RENDER, _JOB_KIND_MEDIA_RENDER_LEGACY}
@@ -89,15 +97,47 @@ _MICROSERVICE_CONTRACT_DEFERRED_REASON = "microservice_midia_incompativel_ou_ind
 _DEFAULT_BRAINHEX_CONTRACT_DEFERRED_MAX_AGE_MINUTES = 30
 
 
+# Marca gravada no `last_error` do alvo com o instante em que ESTE adiamento
+# comecou. Nao ha coluna para isso, e a marca evita uma migracao so' para
+# guardar um timestamp.
+_MARCA_ADIAMENTO_DESDE = "|desde="
+
+
+def inicio_do_adiamento(
+    *, target: dict[str, Any], reason: str, now: datetime
+) -> datetime:
+    """Quando este adiamento comecou - nao quando o alvo foi criado.
+
+    Medir pela criacao do alvo era um defeito com consequencia real: com a fila
+    lenta, um alvo que esperou mais de 30 minutos para ser processado ja nascia
+    "velho" e era reprovado no PRIMEIRO adiamento, mesmo transitorio de
+    segundos, sem nunca retentar. Foi o que marcou 19 alvos como
+    "microservice indisponivel" em 30/08 enquanto o microservice respondia 200
+    com o contrato correto - e 130 alvos em 28/08, pelo mesmo motivo.
+
+    Medir por `updated_at` tambem nao serve: o adiamento regrava o alvo a cada
+    passada, entao o relogio zeraria sempre e o teto nunca seria alcancado.
+    """
+    anterior = str(target.get("last_error") or "")
+    prefixo = f"{reason}{_MARCA_ADIAMENTO_DESDE}"
+    if anterior.startswith(prefixo):
+        try:
+            marcado = datetime.fromisoformat(anterior[len(prefixo) :])
+        except ValueError:
+            return now
+        return marcado if marcado.tzinfo else marcado.replace(tzinfo=timezone.utc)
+    return now
+
+
+def marcar_adiamento(*, reason: str, desde: datetime) -> str:
+    """`last_error` do alvo adiado, carregando o inicio do adiamento."""
+    return f"{reason}{_MARCA_ADIAMENTO_DESDE}{desde.isoformat()}"
+
+
 def _microservice_contract_deferred_is_stale(
-    *, target: dict[str, Any], max_age_minutes: int, now: datetime,
+    *, desde: datetime, max_age_minutes: int, now: datetime,
 ) -> bool:
-    created_at = target.get("created_at")
-    if not isinstance(created_at, datetime):
-        return False
-    if created_at.tzinfo is None:
-        created_at = created_at.replace(tzinfo=timezone.utc)
-    return now - created_at >= timedelta(minutes=max_age_minutes)
+    return now - desde >= timedelta(minutes=max_age_minutes)
 _MEDIA_FORMATOS = {"audio", "apresentacao", "markdown"}
 _REQUIRED_BRAINHEX_MEDIA = ("audio", "markdown", "apresentacao")
 MAX_DB_FAILURE_BACKOFF_SEC = 60
@@ -712,7 +752,7 @@ async def _build_targets(
 
     def _append_target(
         *,
-        owner_aluno_id: str,
+        owner_aluno_id: str | None,
         topico_id: int,
         conteudo_id: int | None,
         profile_key: str,
@@ -722,19 +762,28 @@ async def _build_targets(
             "topico_id": topico_id,
             "conteudo_id": conteudo_id,
             "brainhex_profile_key": _normalize_profile_key(profile_key),
+            # Sem dono, e base -- e base e sempre template. Com dono, so e
+            # template se o material nao for do perfil do proprio aluno.
             "is_profile_template": (
-                profile_by_aluno.get(owner_aluno_id) != _normalize_profile_key(profile_key)
+                owner_aluno_id is None
+                or profile_by_aluno.get(owner_aluno_id) != _normalize_profile_key(profile_key)
             ),
             "status": "pending",
         }
         targets.append(target)
-        target_profile_map[
-            _target_profile_map_key(
-                aluno_id=owner_aluno_id,
-                topico_id=topico_id,
-                conteudo_id=conteudo_id,
-            )
-        ] = _normalize_profile_key(profile_key)
+        # So a camada por aluno entra no mapa. A chave e (aluno, topico,
+        # conteudo) e o perfil e o VALOR: sem aluno, os 7 perfis colapsariam
+        # na mesma chave e 6 seriam perdidos silenciosamente. A base nao
+        # precisa do mapa -- `brainhex_profile_key` vem na propria linha do
+        # target, que e a fonte primaria em _process_media_render_target.
+        if owner_aluno_id is not None:
+            target_profile_map[
+                _target_profile_map_key(
+                    aluno_id=owner_aluno_id,
+                    topico_id=topico_id,
+                    conteudo_id=conteudo_id,
+                )
+            ] = _normalize_profile_key(profile_key)
 
     if kind == JOB_KIND_CLEANUP:
         selected_aluno_id = str(aluno_id) if aluno_id else None
@@ -758,35 +807,18 @@ async def _build_targets(
         JOB_KIND_MANUAL_PROFILE_GENERATE,
         JOB_KIND_MANUAL_PROFILE_GENERATE_ALL,
     }:
-        if not alunos:
-            return [], resolved_topicos, {}
-
-        representative_by_profile: dict[str, str] = {}
-
-        for profile_key in (brainhex_profile_keys or _BRAINHEX_PROFILE_KEYS):
-            candidate = next(
-                (
-                    aluno
-                    for aluno in alunos
-                    if profile_by_aluno.get(aluno) == profile_key
-                ),
-                None,
-            )
-            if candidate is None:
-                candidate = str(aluno_id) if aluno_id and str(aluno_id) in alunos else alunos[0]
-            representative_by_profile[profile_key] = candidate
-
+        # A base nao tem dono: ela e material de (classe x topico x conteudo x
+        # perfil), e existe com ou sem aluno matriculado. Antes, cada perfil era
+        # pendurado num aluno representante -- e turma sem aluno nao gerava nada
+        # (job 0/0, fechando `completed` sem erro).
         for current_topico_id in resolved_topicos:
             scoped_conteudo_ids: list[int | None] = list(
                 conteudos_por_topico.get(current_topico_id) or [None]
             )
             for current_conteudo_id in scoped_conteudo_ids:
                 for profile_key in (brainhex_profile_keys or _BRAINHEX_PROFILE_KEYS):
-                    owner_aluno_id = representative_by_profile.get(profile_key)
-                    if not owner_aluno_id:
-                        continue
                     _append_target(
-                        owner_aluno_id=owner_aluno_id,
+                        owner_aluno_id=None,
                         topico_id=current_topico_id,
                         conteudo_id=current_conteudo_id,
                         profile_key=profile_key,
@@ -870,6 +902,53 @@ async def enqueue_personalizacao_job(
             _normalized_id_list(candidate_payload.get("topico_ids")) == requested_topico_ids
             and _normalized_id_list(candidate_payload.get("conteudo_ids")) == requested_conteudo_ids
         ):
+            detail = await get_job_detail(session=session, job_id=str(candidate["id"]))
+            if detail:
+                return detail
+            break
+
+    # RETOMADA: pedido manual sobre um job que terminou `partial`/`failed` mas
+    # ainda tem alvo por fazer reabre AQUELE job, em vez de comecar outro.
+    #
+    # E o que "continuar de onde parou" significa na pratica: alvos
+    # `completed`/`skipped` ficam intocados e so os `failed`/`pending` voltam
+    # para a fila. Comecar um job novo tambem funcionaria, mas perderia o
+    # historico, contaria de novo o que ja estava pronto e mostraria ao
+    # professor um total que nao corresponde ao trabalho restante.
+    #
+    # So para pedido MANUAL, de proposito: reabrir automaticamente faria uma
+    # geracao quebrada girar em loop sem ninguem pedir - o mesmo motivo pelo
+    # qual o disparo automatico continua respeitando o circuit breaker.
+    if kind in _KINDS_MANUAIS:
+        for candidate in await repo.list_resumable_jobs_by_payload(
+            kind=kind,
+            aluno_id=scoped_aluno_id,
+            classe_id=classe_id,
+        ):
+            candidate_payload = candidate.get("payload")
+            candidate_payload = candidate_payload if isinstance(candidate_payload, dict) else {}
+            if (
+                _normalized_id_list(candidate_payload.get("topico_ids")) != requested_topico_ids
+                or _normalized_id_list(candidate_payload.get("conteudo_ids"))
+                != requested_conteudo_ids
+            ):
+                continue
+
+            # `zerar_tentativas`: sem isso um alvo que ja bateu o teto de
+            # retentativas voltaria de `pending` para `failed` na primeira
+            # passada do worker, e a retomada nao teria efeito nenhum.
+            reabertos = await repo.reabrir_job_para_retomada(
+                job_id=str(candidate["id"]), zerar_tentativas=True
+            )
+            if not reabertos:
+                continue
+
+            await session.commit()
+            logger.info(
+                "job retomado do ponto em que parou: job_id=%s alvos_reabertos=%s",
+                candidate["id"],
+                reabertos,
+            )
             detail = await get_job_detail(session=session, job_id=str(candidate["id"]))
             if detail:
                 return detail
@@ -963,6 +1042,63 @@ async def _seed_progress(
         )
 
 
+async def derivar_personalizacao_do_base(
+    *,
+    session: AsyncSession,
+    aluno_id: str,
+    classe_id: int,
+    topico_id: int,
+    conteudo_id: int | None,
+    brainhex_profile_key: str,
+) -> int | None:
+    """Copia a base do perfil para uma linha do aluno.
+
+    A geracao pesada acontece uma vez, na base (aluno_id NULL). Matricular
+    alguem nao deve disparar OpenAI/TTS de novo para material que ja existe:
+    30 alunos do mesmo perfil viram 30 derivacoes de UMA geracao, nao 30
+    geracoes.
+
+    Devolve o id da linha do aluno recem-criada, ou None quando nao havia base
+    para copiar (o chamador segue pelo caminho de geracao normal). Em conflito
+    - a linha do aluno ja existe - tambem devolve None de proposito: a dedup do
+    caminho normal (`buscar_mais_recente_por_perfil`) ja sabe reaproveitar, e
+    duplicar essa decisao aqui daria duas fontes de verdade.
+    """
+    result = await session.execute(
+        text(
+            """
+            INSERT INTO conteudo_personalizado (
+              aluno_id, classe_id, topico_id, conteudo_id, brainhex_profile_key,
+              ciclo_id, plano, materiais, formato_prioritario, formatos_gerados,
+              status, source_hash, gerado_em, updated_at
+            )
+            SELECT
+              CAST(:aluno_id AS UUID), base.classe_id, base.topico_id, base.conteudo_id,
+              base.brainhex_profile_key, base.ciclo_id, base.plano, base.materiais,
+              base.formato_prioritario, base.formatos_gerados,
+              base.status, base.source_hash, NOW(), NOW()
+            FROM conteudo_personalizado base
+            WHERE base.aluno_id IS NULL
+              AND base.classe_id = :classe_id
+              AND base.topico_id = :topico_id
+              AND base.conteudo_id IS NOT DISTINCT FROM :conteudo_id
+              AND base.brainhex_profile_key = :brainhex_profile_key
+            ON CONFLICT DO NOTHING
+            RETURNING id
+            """
+        ),
+        {
+            "aluno_id": aluno_id,
+            "classe_id": classe_id,
+            "topico_id": topico_id,
+            "conteudo_id": conteudo_id,
+            "brainhex_profile_key": brainhex_profile_key,
+        },
+    )
+    return result.scalar()
+
+
+
 async def _cleanup_target(
     *,
     session: AsyncSession,
@@ -1004,7 +1140,9 @@ async def _process_media_render_target(
     job: dict[str, Any],
     target: dict[str, Any],
 ) -> dict[str, Any]:
-    aluno_id = str(target["aluno_id"])
+    # Target base nao tem dono. str(None) devolveria a string "None" e ela
+    # viajaria adiante como se fosse UUID.
+    aluno_id = str(target["aluno_id"]) if target.get("aluno_id") is not None else None
     topico_id = int(target["topico_id"])
     conteudo_id = int(target["conteudo_id"]) if target.get("conteudo_id") is not None else None
     classe_id = int(job["classe_id"])
@@ -1031,6 +1169,31 @@ async def _process_media_render_target(
             aluno_id=aluno_id,
             topico_id=topico_id,
         )
+
+    # Matricular nao regera: a base do perfil ja tem o material, entao a linha
+    # do aluno e uma COPIA dela. Sem isto, 30 alunos do mesmo perfil disparam
+    # 30 geracoes identicas. Quando ainda nao ha base, segue o caminho normal.
+    #
+    # Devolve {"record": ...} porque e o que o chamador le: ele so marca o
+    # target como completed quando record["status"] == "pronto". Como a copia
+    # herda o status da base, uma base ainda em "processando_midias" deixa o
+    # target pendente e ele volta depois - que e o comportamento certo.
+    if job.get("kind") == JOB_KIND_ENROLLMENT and aluno_id is not None:
+        derivado_id = await derivar_personalizacao_do_base(
+            session=session,
+            aluno_id=aluno_id,
+            classe_id=classe_id,
+            topico_id=topico_id,
+            conteudo_id=conteudo_id,
+            brainhex_profile_key=target_profile_key,
+        )
+        if derivado_id is not None:
+            repo_derivado = ConteudoPersonalizadoRepository(session)
+            record = await repo_derivado.buscar_por_id(int(derivado_id))
+            if record:
+                await _seed_progress(session=session, record=record)
+                await session.commit()
+                return {"record": record}
 
     # Jobs media_render são legados — BrainHex é responsável por gerar as mídias.
     # Redireciona disparando BrainHex para o personalizacao_id já existente.
@@ -1104,7 +1267,8 @@ async def _process_media_render_target(
                     fontes=fontes,
                     content_blocks=stored_enrichment.get("blocos") or [],
                     personalizacao_id=int(personalizacao_id),
-                    aluno_id=aluno_id,
+                    # O contrato do microservice espera string; base nao tem dono.
+                    aluno_id=aluno_id or "",
                     classe_id=classe_id,
                     topico_id=topico_id,
                     conteudo_id=conteudo_id,
@@ -1295,14 +1459,18 @@ async def _process_media_render_target(
         if completed_existing:
             return {"skipped": True, "record": completed_existing}
 
-        is_manual_retry = job.get("kind") == JOB_KIND_MANUAL_RETRY
+        # Todo pedido MANUAL fura o circuit breaker, nao so o "tentar de novo".
+        # O professor clicando em "gerar" e' um pedido explicito tanto quanto o
+        # retry; sem isto, um alvo que falhou 3x seguidas some silenciosamente
+        # de toda geracao manual e nunca mais e' tentado.
+        is_pedido_manual = job.get("kind") in _KINDS_MANUAIS
         falha_streak_max = int(
             getattr(app.state.settings, "personalizacao_falha_streak_max", 3) or 3
         )
         if _falha_streak_excedido(
             existing, generation_key=generation_key, max_streak=falha_streak_max
         ):
-            if not is_manual_retry:
+            if not is_pedido_manual:
                 logger.warning(
                     "geracao com falha_streak esgotado, redisparo suspenso: "
                     "personalizacao_id=%s generation_key=%s",
@@ -1314,11 +1482,11 @@ async def _process_media_render_target(
                     "record": existing,
                     "reason": "falha_streak_excedido",
                 }
-            # Retry manual do professor: destrava mesmo com o circuit breaker
+            # Pedido manual do professor: destrava mesmo com o circuit breaker
             # automatico ja esgotado, zerando o contador pra essa mesma
             # geracao (mesmo generation_key) prosseguir com a reclamacao normal.
             logger.info(
-                "retry manual zera falha_streak esgotado: personalizacao_id=%s "
+                "pedido manual zera falha_streak esgotado: personalizacao_id=%s "
                 "generation_key=%s",
                 existing["id"],
                 generation_key,
@@ -1418,7 +1586,8 @@ async def _process_media_render_target(
             fontes=ctx["fontes"],
             content_blocks=content_enrichment.get("blocos") or [],
             personalizacao_id=int(existing["id"]),
-            aluno_id=aluno_id,
+            # O contrato do microservice espera string; base nao tem dono.
+            aluno_id=aluno_id or "",
             classe_id=classe_id,
             topico_id=topico_id,
             conteudo_id=conteudo_id,
@@ -1609,7 +1778,14 @@ async def _process_media_render_target(
     record = await repo.buscar_por_id(int(record_id)) or {}
     if not record:
         raise RuntimeError("Personalizacao nao retornou registro persistido apos salvar.")
-    if not bool(target.get("is_profile_template")):
+    # Progresso e' COMPORTAMENTO: a linha exige dono (personalizacao_item_
+    # progresso.aluno_id e NOT NULL) e _seed_progress faz
+    # str(record["aluno_id"]), que com None viraria a string "None".
+    #
+    # A guarda por is_profile_template continua, mas ela e' uma coluna
+    # PARALELA ao fato. O fato e' nao ter dono -- e depender so da coluna
+    # deixaria a base estourar aqui caso as duas divergissem.
+    if record.get("aluno_id") is not None and not bool(target.get("is_profile_template")):
         await _seed_progress(session=session, record=record)
 
     record_cycle_id = str(record.get("ciclo_id") or ctx["ciclo_id"])
@@ -1626,7 +1802,8 @@ async def _process_media_render_target(
         fontes=ctx["fontes"],
         content_blocks=content_enrichment.get("blocos") or [],
         personalizacao_id=int(record_id),
-        aluno_id=aluno_id,
+        # O contrato do microservice espera string; base nao tem dono.
+        aluno_id=aluno_id or "",
         classe_id=classe_id,
         topico_id=topico_id,
         conteudo_id=conteudo_id,
@@ -2053,11 +2230,15 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
                         )
                         or _DEFAULT_BRAINHEX_CONTRACT_DEFERRED_MAX_AGE_MINUTES
                     )
+                    agora = datetime.now(timezone.utc)
+                    desde = inicio_do_adiamento(
+                        target=target, reason=reason, now=agora
+                    )
                     if reason == _MICROSERVICE_CONTRACT_DEFERRED_REASON and (
                         _microservice_contract_deferred_is_stale(
-                            target=target,
+                            desde=desde,
                             max_age_minutes=max_age_minutes,
-                            now=datetime.now(timezone.utc),
+                            now=agora,
                         )
                     ):
                         await target_repo.update_target_status(
@@ -2065,10 +2246,14 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
                             status="failed",
                             attempts=attempts,
                             last_error=(
-                                "microservice indisponivel ou com contrato de midia "
-                                f"incompativel ha mais de {max_age_minutes} minuto(s) - "
-                                "verifique BRAINHEX_API_URL/brainhex_api_secret e a "
-                                "saude do microservice"
+                                "geracao adiada sem parar desde "
+                                f"{desde.isoformat()} (mais de {max_age_minutes} "
+                                "minuto(s)): a API nao conseguiu confirmar o contrato "
+                                "de midia do microservice. Confira /api/health do "
+                                "microservice e BRAINHEX_API_URL/brainhex_api_secret "
+                                "na API - se o /api/health responder com as versoes "
+                                "certas, o problema esta no alcance entre os dois, "
+                                "nao no microservice"
                             ),
                             personalizacao_id=(
                                 record.get("id") if isinstance(record, dict) else None
@@ -2079,7 +2264,14 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
                         target_id=int(target["id"]),
                         status="pending",
                         attempts=int(target.get("attempts") or 0),
-                        last_error=reason,
+                        # So o adiamento por contrato precisa de relogio: e o
+                        # unico com teto. Marcar os demais poluiria o
+                        # `last_error` sem que ninguem leia a marca.
+                        last_error=(
+                            marcar_adiamento(reason=reason, desde=desde)
+                            if reason == _MICROSERVICE_CONTRACT_DEFERRED_REASON
+                            else reason
+                        ),
                         personalizacao_id=(
                             record.get("id") if isinstance(record, dict) else None
                         ),

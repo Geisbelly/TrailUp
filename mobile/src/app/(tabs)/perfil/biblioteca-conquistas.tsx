@@ -224,8 +224,7 @@ export default function BibliotecaConquistasScreen() {
         }}
       />
       <View
-        style={[StyleSheet.absoluteFill, { opacity: 0.4 }]}
-        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, { opacity: 0.4, pointerEvents: "none" }]}
       >
         <HallBackground palette={shellPalette} />
       </View>
@@ -369,6 +368,8 @@ export default function BibliotecaConquistasScreen() {
                     ]}
                     activeOpacity={0.75}
                     onPress={() => setSelected(item.conquista)}
+                    accessibilityRole="button"
+                    accessibilityLabel={item.conquista.nome ?? "Conquista"}
                   >
                     <View
                       style={[

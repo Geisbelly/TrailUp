@@ -451,7 +451,7 @@ export default function RelatorioDadosScreen() {
 
   return (
     <View style={[styles.outer, { backgroundColor: palette.background }]}>
-      <View style={[StyleSheet.absoluteFill, { opacity: 0.35 }]} pointerEvents="none">
+      <View style={[StyleSheet.absoluteFill, { opacity: 0.35, pointerEvents: "none" }]}>
         <HallBackground palette={palette} />
       </View>
       <SectionGuideButton
@@ -567,6 +567,7 @@ export default function RelatorioDadosScreen() {
           style={[styles.button, { backgroundColor: palette.accent, borderColor: palette.borderStrong }]}
           onPress={handleDownload}
           activeOpacity={0.8}
+          accessibilityRole="button"
         >
           <MaterialCommunityIcons name="file-pdf-box" size={24} color={Color.colorWhite} style={{marginRight: 8}}/>
           <Text style={styles.buttonText}>GERAR PDF COMPLETO</Text>

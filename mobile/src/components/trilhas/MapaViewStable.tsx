@@ -442,8 +442,8 @@ export function TrilhaMapaHeroStable({
                 right: 14,
                 bottom: 22,
                 opacity: 0.18,
+                pointerEvents: "none",
               }}
-              pointerEvents="none"
             >
               <MaterialCommunityIcons
                 name="compass-rose"
@@ -493,6 +493,9 @@ export function TrilhaMapaHeroStable({
                       opacity: node.locked ? 0.72 : 1,
                     },
                   ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${node.title}${node.locked ? ", bloqueado" : ""}`}
+                  accessibilityState={{ disabled: node.locked }}
                 >
                   <View style={styles.nodeHeader}>
                     <View

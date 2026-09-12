@@ -1,32 +1,5 @@
+import { apiRequest } from "@/lib/apiTraiupClient";
 import { supabase } from "@/integrations/supabase/client";
-
-const ENV_API_BASE_URL = String(import.meta.env.VITE_APITRAIUP_URL ?? "")
-  .trim()
-  .replace(/\/+$/, "");
-
-// So faz sentido tentar a porta 8000 do proprio hostname em dev local — em producao
-// (dominio real tipo trailup.vercel.app) essa URL nunca responde, so atrasa o erro
-// real da API (Render) em ~20s e polui a mensagem com um endereco sem sentido.
-const IS_LOCAL_DEV_HOST =
-  typeof window !== "undefined" &&
-  /^(localhost|127\.0\.0\.1|(\d{1,3}\.){3}\d{1,3})$/.test(window.location.hostname);
-
-const FALLBACK_LOCAL_API_BASE_URL = IS_LOCAL_DEV_HOST
-  ? `${window.location.protocol}//${window.location.hostname}:8000`
-  : "";
-
-// Em producao, passa pela propria origem da Vercel. Assim respostas de
-// infraestrutura do Render (cold start, gateway/timeout) nao viram um falso
-// erro de CORS no navegador e o corpo/status real continua observavel.
-const SAME_ORIGIN_API_PROXY = typeof window !== "undefined" && !IS_LOCAL_DEV_HOST
-  ? `${window.location.origin}/trailup-api`
-  : "";
-
-const API_BASE_URL_CANDIDATES = Array.from(
-  new Set([SAME_ORIGIN_API_PROXY, ENV_API_BASE_URL, FALLBACK_LOCAL_API_BASE_URL].filter(Boolean))
-);
-
-const REQUEST_TIMEOUT_MS = Number(import.meta.env.VITE_APITRAIUP_TIMEOUT_MS ?? 20000);
 
 export type PersonalizacaoJobPayload = {
   classe_id: number;
@@ -169,123 +142,6 @@ export function summarizePersonalizacaoJobs(
   };
 }
 
-const AUTH_ERROR_PATTERN =
-  /token invalido|token inv[aá]lido|token expirado|audience do token|assinatura do token|formato de token|authorization bearer token obrigatorio|token ausente/i;
-
-function parseJsonSafe(raw: string): unknown {
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
-
-function extractErrorDetail(response: Response, payload: unknown, rawText: string): string {
-  if (payload && typeof payload === "object") {
-    const obj = payload as Record<string, unknown>;
-    if (typeof obj.detail === "string" && obj.detail.trim()) return obj.detail.trim();
-    if (typeof obj.error === "string" && obj.error.trim()) return obj.error.trim();
-    if (typeof obj.message === "string" && obj.message.trim()) return obj.message.trim();
-  }
-  if (rawText.trim()) return rawText.trim();
-  return `Falha ao chamar API de personalizacao (${response.status}).`;
-}
-
-function isAuthFailure(response: Response, detail: string): boolean {
-  return response.status === 401 || AUTH_ERROR_PATTERN.test(detail);
-}
-
-async function resolveAccessToken(seedToken: string, forceRefresh: boolean): Promise<string> {
-  const normalizedSeed = String(seedToken || "").trim();
-  if (normalizedSeed && !forceRefresh) return normalizedSeed;
-
-  const sessionResult = forceRefresh
-    ? await supabase.auth.refreshSession()
-    : await supabase.auth.getSession();
-
-  if (sessionResult.error) {
-    throw new Error(`Falha ao obter sessao do Supabase: ${sessionResult.error.message}`);
-  }
-
-  const token = String(sessionResult.data.session?.access_token ?? "").trim();
-  if (token) return token;
-
-  if (!forceRefresh) {
-    return resolveAccessToken("", true);
-  }
-
-  throw new Error("Sessao expirada no console. Faca login novamente.");
-}
-
-async function executeApiFetch(
-  url: string,
-  accessToken: string,
-  init: RequestInit,
-  controller: AbortController
-): Promise<{ response: Response; payload: unknown; rawText: string }> {
-  const response = await fetch(url, {
-    ...init,
-    signal: controller.signal,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
-      ...(init.headers ?? {}),
-    },
-  });
-
-  const rawText = await response.text();
-  return { response, payload: parseJsonSafe(rawText), rawText };
-}
-
-async function apiRequest<T>(path: string, accessToken: string, init?: RequestInit): Promise<T> {
-  if (API_BASE_URL_CANDIDATES.length === 0) {
-    throw new Error("Defina VITE_APITRAIUP_URL para usar os jobs de personalizacao.");
-  }
-
-  let lastNetworkError: unknown = null;
-  let resolvedToken = await resolveAccessToken(accessToken, false);
-
-  for (const baseUrl of API_BASE_URL_CANDIDATES) {
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
-    try {
-      const url = `${baseUrl}${path}`;
-      let result = await executeApiFetch(url, resolvedToken, init ?? {}, controller);
-
-      if (!result.response.ok) {
-        const detail = extractErrorDetail(result.response, result.payload, result.rawText);
-        if (isAuthFailure(result.response, detail)) {
-          resolvedToken = await resolveAccessToken("", true);
-          result = await executeApiFetch(url, resolvedToken, init ?? {}, controller);
-        }
-      }
-
-      if (!result.response.ok) {
-        throw new Error(extractErrorDetail(result.response, result.payload, result.rawText));
-      }
-
-      return (result.payload ?? null) as T;
-    } catch (error) {
-      const isNetworkError =
-        error instanceof DOMException ||
-        (error instanceof TypeError && /fetch|network|connection/i.test(String(error.message)));
-
-      if (!isNetworkError) throw error;
-      lastNetworkError = error;
-    } finally {
-      window.clearTimeout(timeout);
-    }
-  }
-
-  throw new Error(
-    `Nao foi possivel conectar na API de personalizacao (${API_BASE_URL_CANDIDATES.join(
-      " ou "
-    )}). Verifique VITE_APITRAIUP_URL e se a API esta ativa. Detalhe: ${String(lastNetworkError)}`
-  );
-}
-
 export async function enqueueEnrollmentJob(
   accessToken: string,
   payload: PersonalizacaoJobPayload
@@ -306,19 +162,10 @@ export async function enqueueCleanupJob(
   });
 }
 
-export type PersonalizacaoJobEnqueueResult =
-  | PersonalizacaoJobDetail
-  | { skipped: true; reason?: string };
-
-export async function enqueueClassDeltaJob(
-  accessToken: string,
-  payload: PersonalizacaoJobPayload
-): Promise<PersonalizacaoJobEnqueueResult> {
-  return apiRequest<PersonalizacaoJobEnqueueResult>("/api/v1/personalizar/jobs/class-delta", accessToken, {
-    method: "POST",
-    body: JSON.stringify({ trigger_source: "web_console", ...payload }),
-  });
-}
+// class-delta nao tem mais cliente: quem enfileira e' o proprio Postgres,
+// pelos triggers `trg_topicos_class_delta_job` / `trg_conteudos_class_delta_job`
+// (migration 20260827_03). Salvar topico/conteudo E' o disparo — o console nao
+// precisa (nem deve) chamar nada depois do save.
 
 export async function enqueueManualRetryJob(
   accessToken: string,
@@ -340,19 +187,72 @@ export async function enqueueFullSyncJob(
   });
 }
 
+const JOB_COLUMNS = [
+  "id",
+  "kind",
+  "status",
+  "classe_id",
+  "aluno_id",
+  "topico_id",
+  "conteudo_id",
+  "trigger_source",
+  "payload",
+  "total_targets",
+  "processed_targets",
+  "error_count",
+  "last_error",
+  "created_at",
+  "updated_at",
+  "started_at",
+  "finished_at",
+].join(", ");
+
+/**
+ * Le a fila direto do Postgres, sem passar pela API.
+ *
+ * Listar job e' encanamento — nao tem modelo de linguagem no meio — e a API
+ * hiberna no free tier. Enquanto ela estava fora, esta consulta voltava 502 a
+ * cada ciclo do polling e o painel de status do console ficava travado em
+ * erro. O banco nao hiberna.
+ *
+ * A checagem de posse que a rota fazia com `professor_owns_classe` agora e'
+ * RLS: `personalizacao_jobs_professor_sel` (migration 20260827_03) so deixa o
+ * professor enxergar job das classes dele. Filtrar por `classeId` aqui e'
+ * conveniencia de consulta, nao autorizacao.
+ *
+ * O cast do client: `personalizacao_jobs` nao esta em
+ * `src/integrations/supabase/types.ts`, que cobre 25 das 84 tabelas do banco
+ * (as views e `cards` tambem faltam, e ja produzem erro de tipo em
+ * RanksSection/ClassManagementSection). Regerar aquele arquivo mexeria em
+ * todo mundo que hoje se apoia no shape antigo, entao o escape fica preso
+ * aqui — a saida volta tipada em `PersonalizacaoJobStatus`.
+ */
 export async function listPersonalizacaoJobs(
-  accessToken: string,
   params: { classeId?: number; alunoId?: string; statuses?: string[]; limit?: number } = {}
-) {
-  const search = new URLSearchParams();
-  if (params.classeId != null) search.set("classe_id", String(params.classeId));
-  if (params.alunoId) search.set("aluno_id", params.alunoId);
-  for (const status of params.statuses ?? []) {
-    search.append("status_filter", status);
-  }
-  search.set("limit", String(params.limit ?? 20));
-  return apiRequest<{ total: number; itens: PersonalizacaoJobStatus[] }>(
-    `/api/v1/personalizar/jobs?${search.toString()}`,
-    accessToken
-  );
+): Promise<{ total: number; itens: PersonalizacaoJobStatus[] }> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const client = supabase as any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let query: any = client
+    .from("personalizacao_jobs")
+    .select(JOB_COLUMNS)
+    .order("created_at", { ascending: false })
+    .limit(params.limit ?? 20);
+
+  if (params.classeId != null) query = query.eq("classe_id", params.classeId);
+  if (params.alunoId) query = query.eq("aluno_id", params.alunoId);
+  if (params.statuses && params.statuses.length > 0) query = query.in("status", params.statuses);
+
+  const { data, error } = await query;
+  if (error) throw error;
+
+  // payload e' NOT NULL no banco, mas o tipo do supabase-js admite null e os
+  // consumidores (getPersonalizacaoJobContentIds, summarize...) leem campos
+  // dele direto — normalizar aqui evita espalhar `?? {}` por eles.
+  const itens = ((data ?? []) as unknown as PersonalizacaoJobStatus[]).map((job) => ({
+    ...job,
+    payload: job.payload ?? {},
+  }));
+
+  return { total: itens.length, itens };
 }

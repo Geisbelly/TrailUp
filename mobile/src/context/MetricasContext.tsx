@@ -1,4 +1,15 @@
 import { useIA } from "@/context/IAContext";
+import {
+  accumulateContextTime,
+  buildEmptyBatch,
+  EMPTY_STUDY_CONTEXT,
+  getOrCreateTimeMetricEntry,
+  markContextVisit,
+  roundSeconds,
+  serializeTimeMetricEntries,
+  type BatchAccumulator,
+  type CurrentStudyContext,
+} from "@/context/metricas/acumuladorLote";
 import { IATriggerSignal } from "@/interfaces/personalizacao/IAContracts";
 import {
   BeginStudySessionParams,
@@ -18,9 +29,11 @@ import {
   TelemetryTouchTarget,
   UpdateStudyContextParams,
 } from "@/interfaces/telemetria/TelemetryContracts";
+import { enviarLoteTelemetria } from "@/services/telemetriaApi";
 import {
-  enviarLoteTelemetria,
-} from "@/services/telemetriaApi";
+  drenarLotesTelemetria,
+  enfileirarLoteTelemetria,
+} from "@/services/telemetriaOutbox";
 import {
   DEFAULT_TELEMETRY_PREFERENCES,
   getTelemetryConsentRecord,
@@ -49,57 +62,9 @@ type SessionDescriptor = BeginStudySessionParams & {
   sessionStartedAt: string;
 };
 
-type TimeMetricEntryAccumulator = {
-  key: string;
-  topicoId: number | null;
-  conteudoId: number | null;
-  atividadeId: number | null;
-  itemKey: string | null;
-  materialKey: string | null;
-  materialType: string | null;
-  visits: number;
-  dwellMs: number;
-  activeMs: number;
-  idleMs: number;
-  touchCount: number;
-  scrollDistancePx: number;
-  maxDepthPx: number;
-};
 
-type TimeMetricsAccumulator = {
-  topics: Record<string, TimeMetricEntryAccumulator>;
-  contents: Record<string, TimeMetricEntryAccumulator>;
-  activities: Record<string, TimeMetricEntryAccumulator>;
-  materials: Record<string, TimeMetricEntryAccumulator>;
-};
 
-type BatchAccumulator = {
-  batchStartedAtMs: number;
-  lastAccruedAtMs: number;
-  lastInteractionAtMs: number;
-  generalActiveMs: number;
-  generalIdleMs: number;
-  touchCount: number;
-  touchSamples: TelemetryTouchSample[];
-  signals: TelemetrySignalPayload[];
-  appEvents: TelemetryAppEventPayload[];
-  scrollDistancePx: number;
-  maxDepthPx: number;
-  lastScrollY: number | null;
-  cameraFrames: TelemetryCameraFrame[];
-  timeMetrics: TimeMetricsAccumulator;
-};
 
-type CurrentStudyContext = {
-  topicoId: number | null;
-  atividadeId: number | null;
-  conteudoId: number | null;
-  itemKey: string | null;
-  materialKey: string | null;
-  materialType: string | null;
-  target: TelemetryTouchTarget;
-  studyState: TelemetryStudyState;
-};
 
 type MetricasContextValue = {
   beginStudySession: (params: BeginStudySessionParams) => Promise<void>;
@@ -153,16 +118,6 @@ const BATCH_INTERVAL_MS = 60_000;
 const FRAME_CAPTURE_INTERVAL_MS = 6_000;
 const MAX_CAMERA_FRAMES_PER_BATCH = 30;
 
-const EMPTY_STUDY_CONTEXT: CurrentStudyContext = {
-  topicoId: null,
-  atividadeId: null,
-  conteudoId: null,
-  itemKey: null,
-  materialKey: null,
-  materialType: null,
-  target: "screen",
-  studyState: "idle",
-};
 
 const cameraModule =
   Platform.OS !== "web"
@@ -263,29 +218,6 @@ function buildUuid() {
   });
 }
 
-function buildEmptyBatch(nowMs: number): BatchAccumulator {
-  return {
-    batchStartedAtMs: nowMs,
-    lastAccruedAtMs: nowMs,
-    lastInteractionAtMs: nowMs,
-    generalActiveMs: 0,
-    generalIdleMs: 0,
-    touchCount: 0,
-    touchSamples: [],
-    signals: [],
-    appEvents: [],
-    scrollDistancePx: 0,
-    maxDepthPx: 0,
-    lastScrollY: null,
-    cameraFrames: [],
-    timeMetrics: {
-      topics: {},
-      contents: {},
-      activities: {},
-      materials: {},
-    },
-  };
-}
 
 function clamp01(value: number) {
   if (!Number.isFinite(value)) return 0;
@@ -300,180 +232,10 @@ function resolveEventTimestampMs(value?: number | string | Date | null) {
   return Number.isFinite(parsed) ? parsed : Date.now();
 }
 
-function buildTimeMetricEntry(seed: {
-  key: string;
-  topicoId?: number | null;
-  conteudoId?: number | null;
-  atividadeId?: number | null;
-  itemKey?: string | null;
-  materialKey?: string | null;
-  materialType?: string | null;
-}): TimeMetricEntryAccumulator {
-  return {
-    key: seed.key,
-    topicoId: seed.topicoId ?? null,
-    conteudoId: seed.conteudoId ?? null,
-    atividadeId: seed.atividadeId ?? null,
-    itemKey: seed.itemKey ?? null,
-    materialKey: seed.materialKey ?? null,
-    materialType: seed.materialType ?? null,
-    visits: 0,
-    dwellMs: 0,
-    activeMs: 0,
-    idleMs: 0,
-    touchCount: 0,
-    scrollDistancePx: 0,
-    maxDepthPx: 0,
-  };
-}
 
-function getOrCreateTimeMetricEntry(
-  collection: Record<string, TimeMetricEntryAccumulator>,
-  seed: {
-    key: string;
-    topicoId?: number | null;
-    conteudoId?: number | null;
-    atividadeId?: number | null;
-    itemKey?: string | null;
-    materialKey?: string | null;
-    materialType?: string | null;
-  }
-) {
-  const existing = collection[seed.key];
-  if (existing) {
-    if (seed.itemKey != null) existing.itemKey = seed.itemKey;
-    if (seed.materialKey != null) existing.materialKey = seed.materialKey;
-    if (seed.materialType != null) existing.materialType = seed.materialType;
-    if (seed.topicoId != null) existing.topicoId = seed.topicoId;
-    if (seed.conteudoId != null) existing.conteudoId = seed.conteudoId;
-    if (seed.atividadeId != null) existing.atividadeId = seed.atividadeId;
-    return existing;
-  }
 
-  const created = buildTimeMetricEntry(seed);
-  collection[seed.key] = created;
-  return created;
-}
 
-function accumulateEntryTime(entry: TimeMetricEntryAccumulator, activeMs: number, idleMs: number) {
-  const dwellMs = Math.max(0, activeMs + idleMs);
-  entry.dwellMs += dwellMs;
-  entry.activeMs += Math.max(0, activeMs);
-  entry.idleMs += Math.max(0, idleMs);
-}
 
-function accumulateContextTime(
-  batch: BatchAccumulator,
-  context: CurrentStudyContext,
-  activeMs: number,
-  idleMs: number
-) {
-  if (context.studyState !== "active") {
-    return;
-  }
-
-  if (context.topicoId != null) {
-    accumulateEntryTime(
-      getOrCreateTimeMetricEntry(batch.timeMetrics.topics, {
-        key: `topic:${context.topicoId}`,
-        topicoId: context.topicoId,
-      }),
-      activeMs,
-      idleMs
-    );
-  }
-
-  if (context.conteudoId != null) {
-    accumulateEntryTime(
-      getOrCreateTimeMetricEntry(batch.timeMetrics.contents, {
-        key: `content:${context.conteudoId}`,
-        topicoId: context.topicoId,
-        conteudoId: context.conteudoId,
-        itemKey: context.itemKey,
-      }),
-      activeMs,
-      idleMs
-    );
-  }
-
-  if (context.atividadeId != null) {
-    accumulateEntryTime(
-      getOrCreateTimeMetricEntry(batch.timeMetrics.activities, {
-        key: `activity:${context.atividadeId}`,
-        topicoId: context.topicoId,
-        conteudoId: context.conteudoId,
-        atividadeId: context.atividadeId,
-        itemKey: context.itemKey,
-      }),
-      activeMs,
-      idleMs
-    );
-  }
-
-  if (context.materialKey) {
-    accumulateEntryTime(
-      getOrCreateTimeMetricEntry(batch.timeMetrics.materials, {
-        key: context.materialKey,
-        topicoId: context.topicoId,
-        conteudoId: context.conteudoId,
-        atividadeId: context.atividadeId,
-        itemKey: context.itemKey,
-        materialKey: context.materialKey,
-        materialType: context.materialType,
-      }),
-      activeMs,
-      idleMs
-    );
-  }
-}
-
-function markContextVisit(
-  batch: BatchAccumulator,
-  previous: CurrentStudyContext,
-  next: CurrentStudyContext
-) {
-  if (next.studyState !== "active") {
-    return;
-  }
-
-  if (next.topicoId != null && next.topicoId !== previous.topicoId) {
-    getOrCreateTimeMetricEntry(batch.timeMetrics.topics, {
-      key: `topic:${next.topicoId}`,
-      topicoId: next.topicoId,
-    }).visits += 1;
-  }
-
-  if (next.conteudoId != null && next.conteudoId !== previous.conteudoId) {
-    getOrCreateTimeMetricEntry(batch.timeMetrics.contents, {
-      key: `content:${next.conteudoId}`,
-      topicoId: next.topicoId,
-      conteudoId: next.conteudoId,
-      itemKey: next.itemKey,
-    }).visits += 1;
-  }
-
-  if (next.atividadeId != null && next.atividadeId !== previous.atividadeId) {
-    getOrCreateTimeMetricEntry(batch.timeMetrics.activities, {
-      key: `activity:${next.atividadeId}`,
-      topicoId: next.topicoId,
-      conteudoId: next.conteudoId,
-      atividadeId: next.atividadeId,
-      itemKey: next.itemKey,
-    }).visits += 1;
-  }
-
-  if (next.materialKey && next.materialKey !== previous.materialKey) {
-    getOrCreateTimeMetricEntry(batch.timeMetrics.materials, {
-      key: next.materialKey,
-      topicoId: next.topicoId,
-      conteudoId: next.conteudoId,
-      atividadeId: next.atividadeId,
-      itemKey: next.itemKey,
-      materialKey: next.materialKey,
-      materialType: next.materialType,
-    }).visits += 1;
-  }
-}
 
 function registerContextTouch(batch: BatchAccumulator, context: CurrentStudyContext) {
   if (context.studyState !== "active") {
@@ -576,35 +338,7 @@ function registerContextScroll(
   }
 }
 
-function roundSeconds(ms: number) {
-  return Math.max(0, Math.round(ms / 1000));
-}
 
-function serializeTimeMetricEntries(collection: Record<string, TimeMetricEntryAccumulator>) {
-  return Object.values(collection)
-    .map((entry) => ({
-      key: entry.key,
-      topico_id: entry.topicoId,
-      conteudo_id: entry.conteudoId,
-      atividade_id: entry.atividadeId,
-      item_key: entry.itemKey,
-      material_key: entry.materialKey,
-      material_tipo: entry.materialType,
-      visits: entry.visits,
-      dwell_sec: roundSeconds(entry.dwellMs),
-      active_sec: roundSeconds(entry.activeMs),
-      idle_sec: roundSeconds(entry.idleMs),
-      touch_count: entry.touchCount,
-      scroll_distance_px: Math.round(entry.scrollDistancePx),
-      max_depth_px: Math.round(entry.maxDepthPx),
-    }))
-    .sort((left, right) => {
-      if (right.active_sec !== left.active_sec) {
-        return right.active_sec - left.active_sec;
-      }
-      return left.key.localeCompare(right.key);
-    });
-}
 
 function buildTimeMetricsSnapshot(
   session: SessionDescriptor,
@@ -704,6 +438,11 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
     ((reason: TelemetryFlushReason) => Promise<TelemetryBatchResponse | null>) | null
   >(null);
   const lastFlushErrorAtRef = useRef(0);
+  // O envio do lote e assincrono e demorado (o endpoint roda o pipeline de
+  // analise na mesma requisicao). Sem estes dois, duas chamadas concorrentes
+  // leem o MESMO `batchRef` e mandam o mesmo tempo duas vezes.
+  const flushInFlightRef = useRef<Promise<TelemetryBatchResponse | null> | null>(null);
+  const endingSessionRef = useRef(false);
   const appStateRef = useRef(AppState.currentState);
   const resumeDescriptorRef = useRef<BeginStudySessionParams | null>(null);
   const captureRef = useRef<any>(null);
@@ -1024,7 +763,7 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
     }
   }, [recordAppEvent, syncBatchTimeline, telemetryPreferences.usageEnabled]);
 
-  const flushStudyBatch = useCallback(
+  const runStudyBatchFlush = useCallback(
     async (reason: TelemetryFlushReason) => {
       const session = sessionRef.current;
       const batch = batchRef.current;
@@ -1092,12 +831,23 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
 
       let response: TelemetryBatchResponse | null = null;
       let persisted = false;
+      // Diferente de `persisted`: significa que o lote saiu das mãos deste
+      // acumulador — foi gravado OU foi assumido pela fila em disco. Nos dois
+      // casos o acumulado precisa ser zerado, senão o mesmo tempo é enviado
+      // outra vez quando a rede voltar.
+      let assumido = false;
 
       try {
         response = await enviarLoteTelemetria(payload);
         persisted = response?.persisted === true;
+        assumido = persisted;
         if (response?.analysis) {
           setLastAnalysis(response.analysis);
+        }
+        if (persisted) {
+          // A gravação voltou a funcionar: é a hora de escoar o que ficou
+          // para trás, e não um intervalo fixo tentando no escuro.
+          void drenarLotesTelemetria(enviarLoteTelemetria).catch(() => undefined);
         }
       } catch (error) {
         const nowMs = Date.now();
@@ -1105,10 +855,27 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
           console.warn("[MetricasContext] Falha ao enviar lote de telemetria:", error);
           lastFlushErrorAtRef.current = nowMs;
         }
+        try {
+          // Sem isto o lote só existia em memória, e a falha acontece
+          // justamente ao ir para segundo plano — quando o sistema pode matar
+          // o app e levar o tempo de estudo junto.
+          await enfileirarLoteTelemetria(payload);
+          assumido = true;
+        } catch (erroFila) {
+          console.warn("[MetricasContext] Falha ao enfileirar lote:", erroFila);
+        }
       } finally {
-        if (persisted) {
+        if (assumido) {
           batchRef.current = buildEmptyBatch(nowMs);
-          markContextVisit(batchRef.current, { ...EMPTY_STUDY_CONTEXT }, currentContext);
+          // Recria a presenca no lote novo SO se o aluno estava de fato num
+          // item. O guard vivia dentro de `markContextVisit` e por isso valia
+          // tambem para a abertura da sessao, onde o contexto e `idle` — era
+          // ali que a visita ao topico se perdia. Aqui ele continua fazendo
+          // sentido: sem ele, cada flush contaria uma visita nova do mesmo
+          // item, a cada 60s.
+          if (currentContext.studyState === "active") {
+            markContextVisit(batchRef.current, { ...EMPTY_STUDY_CONTEXT }, currentContext);
+          }
           lastTouchSampleAtRef.current = 0;
         }
         resetFrameCaptureTimer();
@@ -1127,41 +894,75 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
     ]
   );
 
+  // `batchRef` so e zerado DEPOIS que o envio volta, e o envio pode levar ate
+  // 120s. Sem serializar, um segundo flush nesse intervalo monta o payload a
+  // partir do mesmo acumulado e grava o tempo de novo -- e o tempo de topico,
+  // conteudo e questao aparece inflado no banco. Acontece de verdade: sair do
+  // app pela tela da trilha dispara `screen_blur` e `app_background` juntos.
+  const flushStudyBatch = useCallback(
+    (reason: TelemetryFlushReason) => {
+      const emAndamento = flushInFlightRef.current;
+      // Encadear em vez de descartar: o segundo motivo pode trazer dado que o
+      // primeiro ainda nao tinha (o evento de fim de sessao, por exemplo).
+      const proximo = emAndamento
+        ? emAndamento.catch(() => null).then(() => runStudyBatchFlush(reason))
+        : runStudyBatchFlush(reason);
+
+      flushInFlightRef.current = proximo;
+      return proximo.finally(() => {
+        if (flushInFlightRef.current === proximo) {
+          flushInFlightRef.current = null;
+        }
+      });
+    },
+    [runStudyBatchFlush]
+  );
+
   const endStudySession = useCallback(
     async (reason: TelemetryFlushReason) => {
-      if (!sessionRef.current) return;
+      // A guarda por `sessionRef` sozinha nao segura nada: ela so e limpa
+      // depois do `await` abaixo, entao dois motivos concorrentes passam os
+      // dois. Este sinalizador e ligado de forma sincrona, antes de qualquer
+      // await, e por isso fecha a janela.
+      if (!sessionRef.current || endingSessionRef.current) return;
+      endingSessionRef.current = true;
+      try {
+        recordAppEvent({
+          eventGroup: "session",
+          eventName: reason === "session_end" ? "session_end" : "session_interrupt",
+          topicoId: currentContextRef.current.topicoId,
+          conteudoId: currentContextRef.current.conteudoId,
+          atividadeId: currentContextRef.current.atividadeId,
+          itemKey: currentContextRef.current.itemKey,
+          payload: { reason },
+        });
 
-      recordAppEvent({
-        eventGroup: "session",
-        eventName: reason === "session_end" ? "session_end" : "session_interrupt",
-        topicoId: currentContextRef.current.topicoId,
-        conteudoId: currentContextRef.current.conteudoId,
-        atividadeId: currentContextRef.current.atividadeId,
-        itemKey: currentContextRef.current.itemKey,
-        payload: { reason },
-      });
+        await flushStudyBatch(reason);
+        stopFrameCaptureTimer();
 
-      await flushStudyBatch(reason);
-      stopFrameCaptureTimer();
+        if (flushTimerRef.current) {
+          clearInterval(flushTimerRef.current);
+          flushTimerRef.current = null;
+        }
 
-      if (flushTimerRef.current) {
-        clearInterval(flushTimerRef.current);
-        flushTimerRef.current = null;
+        const shouldPreserveResume = reason === "app_background";
+        if (!shouldPreserveResume) {
+          resumeDescriptorRef.current = null;
+        }
+
+        sessionRef.current = null;
+        batchRef.current = null;
+        wrongStreaksRef.current = {};
+        currentContextRef.current = { ...EMPTY_STUDY_CONTEXT };
+        lastAppEventAtRef.current = null;
+        seenTopicIdsRef.current = new Set();
+        seenContentIdsRef.current = new Set();
+        setIsSessionActive(false);
+      } finally {
+        // No `finally`: se o envio falhar, a sessao precisa poder ser
+        // encerrada de novo, senao o aluno fica com a sessao presa aberta.
+        endingSessionRef.current = false;
       }
-
-      const shouldPreserveResume = reason === "app_background";
-      if (!shouldPreserveResume) {
-        resumeDescriptorRef.current = null;
-      }
-
-      sessionRef.current = null;
-      batchRef.current = null;
-      wrongStreaksRef.current = {};
-      currentContextRef.current = { ...EMPTY_STUDY_CONTEXT };
-      lastAppEventAtRef.current = null;
-      seenTopicIdsRef.current = new Set();
-      seenContentIdsRef.current = new Set();
-      setIsSessionActive(false);
     },
     [flushStudyBatch, recordAppEvent, stopFrameCaptureTimer]
   );
@@ -1169,6 +970,13 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     flushStudyBatchRef.current = flushStudyBatch;
   }, [flushStudyBatch]);
+
+  // O caso que a fila existe para cobrir: o app foi morto com lote pendente.
+  // A tentativa acontece na abertura seguinte, antes de qualquer sessão nova,
+  // para que o tempo antigo chegue ao banco na ordem em que foi vivido.
+  useEffect(() => {
+    void drenarLotesTelemetria(enviarLoteTelemetria).catch(() => undefined);
+  }, []);
 
   const beginStudySession = useCallback(
     async (params: BeginStudySessionParams) => {
@@ -1611,11 +1419,54 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
     };
   }, [stopFrameCaptureTimer]);
 
+  // ------------------------------------------------------------------
+  // Identidade estavel para quem consome o ciclo de sessao
+  // ------------------------------------------------------------------
+  // `useFocusEffect` na tela da trilha tem `beginStudySession`,
+  // `endStudySession` e `updateStudyContext` nas dependencias, e o cleanup dele
+  // chama `endStudySession("screen_blur")`. Enquanto essas funcoes trocavam de
+  // identidade, o efeito re-executava e ENCERRAVA a sessao em curso.
+  //
+  // E elas trocavam com facilidade: `recordAppEvent` depende do objeto
+  // `telemetryPreferences`, e por ele as tres. Somando `telemetryConsentStatus`
+  // (null -> accepted), `cameraOptIn` e `cameraPermission` (unknown ->
+  // granted), sao varias trocas nos primeiros segundos de cada tela — cada uma
+  // matando a sessao e abrindo outra.
+  //
+  // O efeito media no banco: 32 sessoes para poucos minutos de uso, a mais
+  // longa com 11,4s, e ZERO lotes com `flush_reason = interval` (o intervalo e
+  // 60s). Nenhuma sessao vivia o suficiente para medir alguem lendo.
+  //
+  // O padrao "latest ref" resolve sem tocar na logica: a funcao exposta nunca
+  // muda de identidade e sempre delega para a versao mais recente.
+  const beginStudySessionRef = useRef(beginStudySession);
+  const endStudySessionRef = useRef(endStudySession);
+  const updateStudyContextRef = useRef(updateStudyContext);
+
+  useEffect(() => {
+    beginStudySessionRef.current = beginStudySession;
+    endStudySessionRef.current = endStudySession;
+    updateStudyContextRef.current = updateStudyContext;
+  }, [beginStudySession, endStudySession, updateStudyContext]);
+
+  const beginStudySessionEstavel = useCallback(
+    (params: BeginStudySessionParams) => beginStudySessionRef.current(params),
+    []
+  );
+  const endStudySessionEstavel = useCallback(
+    (reason: TelemetryFlushReason) => endStudySessionRef.current(reason),
+    []
+  );
+  const updateStudyContextEstavel = useCallback(
+    (params: UpdateStudyContextParams) => updateStudyContextRef.current(params),
+    []
+  );
+
   const value = useMemo<MetricasContextValue>(
     () => ({
-      beginStudySession,
-      updateStudyContext,
-      endStudySession,
+      beginStudySession: beginStudySessionEstavel,
+      updateStudyContext: updateStudyContextEstavel,
+      endStudySession: endStudySessionEstavel,
       flushStudyBatch,
       recordTouchSample,
       recordScroll,
@@ -1628,9 +1479,9 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
       cameraPermission,
     }),
     [
-      beginStudySession,
-      updateStudyContext,
-      endStudySession,
+      beginStudySessionEstavel,
+      updateStudyContextEstavel,
+      endStudySessionEstavel,
       flushStudyBatch,
       recordTouchSample,
       recordScroll,
@@ -1653,7 +1504,7 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
       telemetryPreferences.cameraEnabled &&
       cameraOptIn &&
       cameraPermission === "granted" ? (
-        <View pointerEvents="none" style={styles.hiddenCameraWrap}>
+        <View style={[styles.hiddenCameraWrap, { pointerEvents: "none" }]}>
           <CameraView
             ref={captureRef}
             style={styles.hiddenCamera}

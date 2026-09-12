@@ -153,7 +153,7 @@ export default function ColetaDadosScreen() {
 
   return (
     <View style={[styles.outer, { backgroundColor: palette.background }]}>
-      <View style={[StyleSheet.absoluteFill, { opacity: 0.35 }]} pointerEvents="none">
+      <View style={[StyleSheet.absoluteFill, { opacity: 0.35, pointerEvents: "none" }]}>
         <HallBackground palette={palette} />
       </View>
       <SectionGuideButton
@@ -196,6 +196,8 @@ export default function ColetaDadosScreen() {
                   void handleToggle(item.key);
                 }}
                 disabled={Boolean(savingKey)}
+                accessibilityRole="switch"
+                accessibilityState={{ checked: enabled, disabled: Boolean(savingKey) }}
               >
               <View style={styles.itemLeft}>
                 <View
