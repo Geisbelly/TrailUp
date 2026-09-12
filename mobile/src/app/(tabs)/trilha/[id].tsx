@@ -1608,7 +1608,7 @@ export default function TrilhaConteudoScreen() {
       onTouchStart={handleTelemetryTouch}
     >
       {/* ── Textura medieval de fundo ── */}
-      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <View style={[StyleSheet.absoluteFill, { pointerEvents: "none" }]}>
         <HallBackground palette={profilePalette} />
       </View>
 
@@ -1949,8 +1949,7 @@ export default function TrilhaConteudoScreen() {
         <View
           ref={battleGuideTargetRef}
           collapsable={false}
-          style={styles.floatingBattleWrap}
-          pointerEvents="box-none"
+          style={[styles.floatingBattleWrap, { pointerEvents: "box-none" }]}
         >
           <IABattleHeaderChip
             topicoId={topicoId}

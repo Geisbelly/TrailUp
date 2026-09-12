@@ -281,8 +281,7 @@ export default function PerfilHome() {
       >
         {/* ── Fundo do salão (sutil) ── */}
         <View
-          style={[StyleSheet.absoluteFill, { opacity: 0.45 }]}
-          pointerEvents="none"
+          style={[StyleSheet.absoluteFill, { opacity: 0.45, pointerEvents: "none" }]}
         >
           <HallBackground palette={shellPalette} />
         </View>

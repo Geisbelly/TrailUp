@@ -244,7 +244,7 @@ export function ToastContainer() {
   const activeBanners = activeToasts.filter(t => t.type === 'rank');
 
   return (
-    <View style={[styles.rootContainer, { top: insets.top }]} pointerEvents="box-none">
+    <View style={[styles.rootContainer, { top: insets.top, pointerEvents: "box-none" }]}>
       
       {activeBanners.map((toast) => (
         <RankBanner 

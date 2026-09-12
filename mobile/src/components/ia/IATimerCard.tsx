@@ -140,8 +140,7 @@ export function IATimerCard({
         }
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, { pointerEvents: "none" }]}
       />
 
       {/* Cabeçalho ornamental */}
@@ -173,8 +172,7 @@ export function IATimerCard({
         colors={[GOLD_GLOW, GOLD_DIM, GOLD_GLOW]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
-        style={styles.divider}
-        pointerEvents="none"
+        style={[styles.divider, { pointerEvents: "none" }]}
       />
 
       {/* Tempo */}

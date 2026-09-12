@@ -17,6 +17,7 @@ import { supabase } from "@/database/supabase";
 import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { getProfileGuideEmphasis } from "@/utils/profileSectionGuide";
+import { aplicarCorteDoRank, descreverCorte } from "@/utils/rankCorte";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Stack, useLocalSearchParams, useNavigation } from "expo-router";
@@ -151,6 +152,34 @@ export default function RankDetalheScreen() {
     [ranking?.ranks, rankId]
   );
 
+  // Quantos alunos a turma tem, para o aviso do corte dizer "de quantos".
+  // `head: true` nao traz linha nenhuma -- so o total.
+  const classeId = rank?.info.classe_id ?? null;
+  const [totalDaTurma, setTotalDaTurma] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!classeId) {
+      setTotalDaTurma(null);
+      return;
+    }
+
+    let ativo = true;
+    void (async () => {
+      const { count, error } = await supabase
+        .from("classe_aluno")
+        .select("aluno_id", { count: "exact", head: true })
+        .eq("classe_id", classeId);
+
+      if (!ativo) return;
+      // Sem o total o aviso ainda funciona, so nao diz "de N".
+      setTotalDaTurma(error ? null : (count ?? null));
+    })();
+
+    return () => {
+      ativo = false;
+    };
+  }, [classeId]);
+
   useLayoutEffect(() => {
     navigation.setOptions({
       headerTitle: "",
@@ -225,31 +254,45 @@ export default function RankDetalheScreen() {
     [rank?.posicoes]
   );
 
+  // A view ja devolve so o topo mais a propria linha. O que falta aqui e nao
+  // mostrar a propria linha duas vezes -- ela ja tem o rodape fixo so dela.
+  const corte = useMemo(
+    () => aplicarCorteDoRank(posicoes, usuario?.id ?? null),
+    [posicoes, usuario?.id]
+  );
+
+  // As abas contam o que a LISTA mostra; o tamanho da turma vai no aviso do
+  // corte. Antes `geral` era `posicoes.length` e passava por total da turma --
+  // com o corte, isso viraria uma mentira silenciosa.
   const contagens = useMemo(() => {
-    const geral = posicoes.length;
+    const visiveis = corte.visiveis;
+    const geral = visiveis.length;
     const perfilMajoritario = !meuPerfilMajoritario
       ? 0
-      : posicoes.filter((item) => perfilDominantePorAluno[item.id_aluno]?.key === meuPerfilMajoritario).length;
+      : visiveis.filter((item) => perfilDominantePorAluno[item.id_aluno]?.key === meuPerfilMajoritario).length;
     const outrosPerfis = !meuPerfilMajoritario
-      ? posicoes.length
-      : posicoes.filter((item) => perfilDominantePorAluno[item.id_aluno]?.key !== meuPerfilMajoritario).length;
+      ? visiveis.length
+      : visiveis.filter((item) => perfilDominantePorAluno[item.id_aluno]?.key !== meuPerfilMajoritario).length;
     return { geral, perfil_majoritario: perfilMajoritario, outros_perfis: outrosPerfis };
-  }, [posicoes, perfilDominantePorAluno, meuPerfilMajoritario]);
+  }, [corte, perfilDominantePorAluno, meuPerfilMajoritario]);
 
   const posicoesFiltradas = useMemo(() => {
-    if (filtro === "geral") return posicoes;
+    const visiveis = corte.visiveis;
+    if (filtro === "geral") return visiveis;
     if (filtro === "perfil_majoritario") {
       if (!meuPerfilMajoritario) return [];
-      return posicoes.filter((item) => perfilDominantePorAluno[item.id_aluno]?.key === meuPerfilMajoritario);
+      return visiveis.filter((item) => perfilDominantePorAluno[item.id_aluno]?.key === meuPerfilMajoritario);
     }
-    if (!meuPerfilMajoritario) return posicoes;
-    return posicoes.filter((item) => perfilDominantePorAluno[item.id_aluno]?.key !== meuPerfilMajoritario);
-  }, [filtro, posicoes, perfilDominantePorAluno, meuPerfilMajoritario]);
+    if (!meuPerfilMajoritario) return visiveis;
+    return visiveis.filter((item) => perfilDominantePorAluno[item.id_aluno]?.key !== meuPerfilMajoritario);
+  }, [filtro, corte, perfilDominantePorAluno, meuPerfilMajoritario]);
 
-  const myRankData = useMemo(() => {
-    if (!usuario?.id) return null;
-    return posicoes.find((p) => p.id_aluno === usuario.id) ?? null;
-  }, [posicoes, usuario?.id]);
+  const myRankData = corte.minhaLinha;
+
+  const avisoDoCorte = useMemo(
+    () => descreverCorte(corte, totalDaTurma),
+    [corte, totalDaTurma]
+  );
 
   const textoFiltro = useMemo(() => {
     if (filtro === "perfil_majoritario") {
@@ -480,8 +523,7 @@ export default function RankDetalheScreen() {
         ]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
-        style={[StyleSheet.absoluteFill, { height: SCREEN_H * 0.45 }]}
-        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, { height: SCREEN_H * 0.45, pointerEvents: "none" }]}
       />
 
       <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
@@ -587,6 +629,15 @@ export default function RankDetalheScreen() {
             perfisCarregando ? (
               <Text style={[s.loadingHint, { color: palette.textSubtle }]}>
                 Carregando perfis...
+              </Text>
+            ) : null
+          }
+          ListFooterComponent={
+            // Sem isto, quem esta em #18 ve 15 linhas e um rodape dizendo #18,
+            // sem nada ligando as duas coisas.
+            avisoDoCorte ? (
+              <Text style={[s.corteAviso, { color: palette.textSubtle }]}>
+                {avisoDoCorte}
               </Text>
             ) : null
           }
@@ -743,6 +794,14 @@ const s = StyleSheet.create({
     marginTop: 8,
     marginBottom: 2,
     fontSize: 12,
+  },
+  corteAviso: {
+    textAlign: "center",
+    fontFamily: FontFamily.interMedium,
+    marginTop: 14,
+    marginBottom: 4,
+    fontSize: 12,
+    letterSpacing: 0.3,
   },
   emptyText: {
     textAlign: "center",
