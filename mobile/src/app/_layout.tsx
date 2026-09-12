@@ -5,6 +5,7 @@ import { DialogProvider, useDialog } from "@/context/DialogContext";
 import { PersonalizacaoProviderProvider } from "@/services/personalizacao/PersonalizacaoProviderContext";
 import { LoadingProvider, useLoading } from "@/context/LoadingContext";
 import { SessionProvider, useUsuario } from "@/context/SessaoContext";
+import { PortoesProvider } from "@/context/PortoesContext";
 import { consumeSupabaseUrlAuthError, getSessionSafe, supabase } from "@/database/supabase";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { consumePendingRoute, setPendingRoute } from "@/utils/pendingRoute";
@@ -113,6 +114,7 @@ export default function RootLayout() {
         <LoadingProvider>
           <SessionProvider>
             <PersonalizacaoProviderProvider>
+            <PortoesProvider>
             <DialogProvider>
               <LoadingOverlay />
               <VerificacaoDeRota />
@@ -122,6 +124,7 @@ export default function RootLayout() {
               </Stack>
               <TelemetryConsentGate />
             </DialogProvider>
+            </PortoesProvider>
             </PersonalizacaoProviderProvider>
           </SessionProvider>
         </LoadingProvider>
