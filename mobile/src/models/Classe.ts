@@ -1,7 +1,6 @@
 // src/models/Classe.ts
 import { getSessionSafe, supabase } from '@/database/supabase'
 import { buildClasseAcademicMetrics } from '@/utils/classeMetrics'
-import { clampPercent } from '@/utils/dataValidation'
 import { Atividade } from './Atividade'
 import { ClasseResumo } from './ClasseResumo'
 import { Conteudo } from './Conteudo'
@@ -171,68 +170,18 @@ export class Classe {
     this.topicos = topicos
   }
 
-  /** ✅ NOVO: Atualiza percentual de progresso de um tópico específico */
+  /**
+   * Registra a visita ao tópico: qual foi a última atividade tocada e quando.
+   *
+   * NÃO calcula nem grava progresso. `percentual_concluido` e `status` são
+   * derivados por `trailup_recalcular_topico_aluno`, que conta sobre o
+   * material personalizado — a conta local só enxerga o do professor.
+   */
   async updateTopicoProgress(topicoId: number): Promise<void> {
     const topico = this.topicos.find(t => t.id === topicoId);
     if (!topico) return;
 
     try {
-      // Conta conteúdos concluídos
-      const totalConteudos = topico.conteudos.length;
-      const conteudosConcluidos = topico.conteudos.filter(c => {
-        const status = String(c.status ?? '').toLowerCase();
-        const pct = Number(c.percentual_concluido ?? 0);
-        return status.includes('concl') || pct >= 100;
-      }).length;
-
-      // Conta atividades concluídas
-      const totalAtividades = topico.atividades.length;
-      const atividadesConcluidas = topico.atividades.filter(a => {
-        const status = String(a.status ?? '').toLowerCase();
-        const pct = Number(a.percentual_concluido ?? 0);
-        return status.includes('concl') || pct >= 100;
-      }).length;
-
-      // Calcula percentual
-      const total = totalConteudos + totalAtividades;
-      const completados = conteudosConcluidos + atividadesConcluidas;
-      const percentual = clampPercent(total > 0 ? (completados / total) * 100 : 0);
-
-      // Determina status
-      const hasConteudoEmAndamento = topico.conteudos.some((conteudo) => {
-        const status = String(conteudo.status ?? '').toLowerCase();
-        const pct = Number(conteudo.percentual_concluido ?? 0);
-        const tempo = Number((conteudo as any).tempo_gasto_min ?? 0);
-        return status.includes('andamento') || status.includes('concl') || pct > 0 || tempo > 0;
-      });
-
-      const hasAtividadeEmAndamento = topico.atividades.some((atividade) => {
-        const status = String(atividade.status ?? '').toLowerCase();
-        const pct = Number(atividade.percentual_concluido ?? 0);
-        const tempo = Number((atividade as any).tempo_gasto_min ?? 0);
-        const hasQuestaoRespondida = Array.isArray((atividade as any).questoes)
-          ? (atividade as any).questoes.some((questao: any) => questao?.resposta_aluno != null)
-          : false;
-        return (
-          status.includes('andamento') ||
-          status.includes('concl') ||
-          pct > 0 ||
-          tempo > 0 ||
-          (atividade as any).resposta_aluno != null ||
-          Number((atividade as any).ultima_tentativa ?? 0) > 0 ||
-          hasQuestaoRespondida
-        );
-      });
-
-      let status: 'concluido' | 'em andamento' | 'não iniciado';
-      if (percentual >= 100) {
-        status = 'concluido';
-      } else if (percentual > 0 || hasConteudoEmAndamento || hasAtividadeEmAndamento) {
-        status = 'em andamento';
-      } else {
-        status = 'não iniciado';
-      }
-
       let ultimaAtividade: number | null = null;
       for (let index = topico.atividades.length - 1; index >= 0; index -= 1) {
         const atividade = topico.atividades[index];
@@ -256,14 +205,21 @@ export class Classe {
         }
       }
 
-      // Atualiza no banco
+      // `percentual_concluido` e `status` NAO sao gravados aqui.
+      //
+      // Eles sao derivados por `trailup_recalcular_topico_aluno`, que conta
+      // sobre o material personalizado; esta conta local so' enxerga o material
+      // do professor e rodava DEPOIS do trigger, entao a conta certa nunca
+      // sobrevivia. A `20260826_18` removeu quatro gravadores com esse mesmo
+      // defeito -- este era o quinto.
+      //
+      // O que continua sendo do cliente e' a visita: qual foi a ultima
+      // atividade tocada e quando o topico foi visto.
       await supabase
         .from('topico_aluno')
         .upsert({
           aluno_id: this.aluno_id,
           topico_id: topicoId,
-          percentual_concluido: percentual,
-          status: status,
           ultima_atividade: ultimaAtividade,
           ultima_visualizacao: new Date().toISOString(),
           updated_at: new Date().toISOString()
@@ -271,12 +227,11 @@ export class Classe {
           onConflict: 'aluno_id,topico_id'
         });
 
-      // Atualiza objeto local
-      topico.percentual_concluido = percentual;
-      topico.status = status;
+      // Local tambem nao: sobrescrever aqui faria a tela mostrar a conta errada
+      // ate o proximo refresh, que e' de onde vem o numero do banco.
       topico.ultima_atividade = ultimaAtividade;
 
-      console.log(`[Classe] Tópico ${topicoId} atualizado: ${percentual.toFixed(1)}%`);
+      console.log(`[Classe] Visita ao tópico ${topicoId} registrada`);
     } catch (err) {
       console.warn('[Classe] Erro ao atualizar progresso do tópico:', err);
     }
@@ -424,7 +379,10 @@ export class Classe {
             row.atividade_titulo,
             row.atividade_descricao ?? null,
             row.atividade_tipo ?? null,
-            row.status??null,
+            // `row.status` nao existe na view -- ela expoe `topico_status` e
+            // `conteudo_status`. A atividade vinha sempre sem status, e por isso
+            // a tela mostrava "0 de 12" com 9 concluidas no banco.
+            (row as any).atividade_status ?? null,
             row.pontuacao_maxima ?? null,
             row.atividade_data_entrega ?? null,
             (row as any).atividade_tempo_gasto_min ?? null,
@@ -440,7 +398,7 @@ export class Classe {
             null
           atividade.percentual_concluido =
             (row as any).atividade_percentual_concluido ??
-            (String(row.status ?? '').toLowerCase().includes('concl') ? 100 : 0)
+            (String((row as any).atividade_status ?? '').toLowerCase().includes('concl') ? 100 : 0)
           atividadeMap.set(aId, atividade)
           topico.addAtividade(atividade)
         }

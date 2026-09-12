@@ -22,7 +22,9 @@ import {
   Loader2,
   GraduationCap,
   Save,
+  CalendarCheck,
 } from "lucide-react";
+import { PresencaDialog } from "./PresencaDialog";
 import { ClassManagerDialog } from "./trilha/ClassManagerDialog";
 import { deleteClasseCascade } from "./trilha/classDeletion";
 import { enqueueCleanupJob, enqueueEnrollmentJob } from "./trilha/personalizacaoJobsApi";
@@ -69,6 +71,7 @@ export default function ClassManagementSection({ professorId }: Props) {
 
   // --- Alunos ---
   const [selectedClassForStudents, setSelectedClassForStudents] = useState<Classe | null>(null);
+  const [classeParaPresenca, setClasseParaPresenca] = useState<Classe | null>(null);
   const [studentToAdId, setStudentToAddId] = useState<string>("");
   const [isProcessingStudent, setIsProcessingStudent] = useState(false);
 
@@ -274,6 +277,15 @@ export default function ClassManagementSection({ professorId }: Props) {
   };
 
   // --- Alunos ---
+  const alunosDaPresenca = useMemo(() => {
+    if (!classeParaPresenca) return [];
+    const ids = classStudents[classeParaPresenca.id] || [];
+    return ids
+      .map((id) => students.find((s) => s.id === id))
+      .filter((s): s is Student => Boolean(s))
+      .map((s) => ({ id: s.id, nome: s.nome }));
+  }, [classeParaPresenca, classStudents, students]);
+
   const handleAddStudentToClass = async () => {
     if (!selectedClassForStudents || !studentToAdId) return;
     const classId = selectedClassForStudents.id;
@@ -444,9 +456,14 @@ export default function ClassManagementSection({ professorId }: Props) {
                     <Users className="w-3.5 h-3.5" />
                     <span>{enrolledCount} alunos</span>
                   </div>
-                  <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => setSelectedClassForStudents(c)}>
-                    <UserPlus className="w-3 h-3 mr-1.5" /> Alunos
-                  </Button>
+                  <div className="flex items-center gap-1.5">
+                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => setClasseParaPresenca(c)}>
+                      <CalendarCheck className="w-3 h-3 mr-1.5" /> Presença
+                    </Button>
+                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => setSelectedClassForStudents(c)}>
+                      <UserPlus className="w-3 h-3 mr-1.5" /> Alunos
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -468,6 +485,14 @@ export default function ClassManagementSection({ professorId }: Props) {
       />
 
       {/* -- Modal: Gerenciar Alunos -- */}
+      <PresencaDialog
+        classeId={classeParaPresenca?.id ?? null}
+        classeDescricao={classeParaPresenca?.descricao}
+        alunos={alunosDaPresenca}
+        open={!!classeParaPresenca}
+        onOpenChange={(aberto) => !aberto && setClasseParaPresenca(null)}
+      />
+
       <Dialog open={!!selectedClassForStudents} onOpenChange={(open) => !open && setSelectedClassForStudents(null)}>
         <DialogContent className="max-w-2xl max-h-[85vh] p-0 gap-0 bg-[#0F172A] border-slate-800 flex flex-col overflow-hidden sm:rounded-xl shadow-2xl shadow-black">
           <div className="px-6 py-4 bg-[#1E293B] border-b border-slate-800">
