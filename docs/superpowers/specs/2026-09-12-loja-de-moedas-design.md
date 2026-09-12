@@ -32,6 +32,8 @@ economia que hiberna junto é uma economia que some no meio da aula.
 | 8 | **Livro-razão append-only, saldo derivado** | Aceite do #142. Sem histórico não há como auditar de onde veio a moeda. |
 | 9 | **Compra é uma RPC atômica** | Aceite do #144: debita e concede, ou não faz nada. |
 | 10 | **Aba Social nova na barra** | Hub de guildas, amigos, chats, loja, carteira e resumo. Agora nascem carteira e loja; o resto é lugar reservado. |
+| 11 | **Dotação inicial igual para todos** | Moeda compra só unidades *adicionais*. Sem isso, quem está atrás fica sem justamente o item que o ajudaria (§6.3). |
+| 12 | **Segunda chance exige revisar o material antes** | Em Illinois o gate derrubou a taxa de retake de 49% para 34% **com nota idêntica** — filtrou quem só ia rolar o dado (§6.4). |
 
 A decisão 1 tem uma consequência que vale dizer em voz alta: com carteira única
 e ganho por turma, **o aluno acumula na turma generosa e gasta na rígida**. O
@@ -43,7 +45,7 @@ consciente, não um descuido.
 
 ## 3. Modelo de dados
 
-Sete objetos novos. Nenhuma tabela existente muda de forma, com uma exceção
+Oito objetos novos. Nenhuma tabela existente muda de forma, com uma exceção
 declarada em §3.2.
 
 ### 3.1 `moedas_ledger` — a única fonte de saldo
@@ -171,7 +173,9 @@ CREATE TABLE public.loja_compras (
   aluno_id         uuid    NOT NULL REFERENCES public.alunos(id) ON DELETE CASCADE,
   classe_id        bigint  NOT NULL REFERENCES public.classe(id) ON DELETE CASCADE,
   item_codigo      text    NOT NULL REFERENCES public.loja_itens(codigo),
-  preco_pago       numeric NOT NULL CHECK (preco_pago > 0),
+  origem           text    NOT NULL DEFAULT 'compra'
+                     CHECK (origem IN ('compra','dotacao','concessao')),
+  preco_pago       numeric NOT NULL DEFAULT 0 CHECK (preco_pago >= 0),
   alvo_tipo        text    NULL CHECK (alvo_tipo IN ('atividade','topico','questao')),
   alvo_id          bigint  NULL,
   status           text    NOT NULL DEFAULT 'ativa'
@@ -187,7 +191,36 @@ A chave de idempotência é do **cliente**, gerada antes de chamar. Serve para o
 caso em que o pedido chegou e a resposta se perdeu: repetir a chamada devolve a
 mesma compra em vez de cobrar duas vezes.
 
-### 3.6 `atividade_prazo_aluno` — o prazo é por aluno, não da atividade
+`origem` é o que faz a dotação (§6.3) caber na mesma tabela: uma unidade dada é
+uma posse como outra qualquer, com `preco_pago = 0`. A distinção importa em
+exatamente dois lugares, e em nenhum outro:
+
+- **preço** — a escalada de `preco_fator` conta só as posses com
+  `origem = 'compra'`. Ganhar unidades não encarece as seguintes;
+- **teto** — o teto do professor conta **todas** as posses, dotação inclusa. O
+  teto é decisão pedagógica sobre quanto prazo é aceitável, não sobre quanto o
+  aluno pagou.
+
+### 3.6 `loja_dotacao` — quantas unidades todo mundo ganha
+
+```sql
+CREATE TABLE public.loja_dotacao (
+  classe_id   bigint  NOT NULL REFERENCES public.classe(id) ON DELETE CASCADE,
+  item_codigo text    NOT NULL REFERENCES public.loja_itens(codigo),
+  quantidade  integer NOT NULL DEFAULT 0 CHECK (quantidade >= 0),
+  PRIMARY KEY (classe_id, item_codigo)
+);
+```
+
+A concessão é **preguiçosa**, não um gatilho de matrícula: `loja_saldo_item()`
+calcula `dotação_da_turma − usadas + compradas`. Materializar no momento da
+matrícula criaria a pergunta insolúvel do que fazer quando o professor mudar a
+dotação depois — quem entrou antes fica com a antiga? Derivando, mudar o número
+vale para todo mundo na hora, e não há linha para migrar.
+
+Semente proposta: 2 unidades de `prazo_extra` e 1 de `segunda_chance` por turma.
+
+### 3.7 `atividade_prazo_aluno` — o prazo é por aluno, não da atividade
 
 Este é o ponto mais fácil de errar do desenho inteiro.
 
@@ -216,7 +249,7 @@ prazo pelo professor mova retroativamente uma extensão já comprada.
 > que erra um dia entrega um item que parece quebrado no primeiro uso. O #177
 > deve fechar antes de o item `prazo_extra` ser ligado.
 
-### 3.7 `atividade_tentativa` — o histórico que a política 90/10 exige
+### 3.8 `atividade_tentativa` — o histórico que a política 90/10 exige
 
 Hoje `atividade_aluno` guarda **uma** nota, e a revisão nem chega a gravar. Para
 calcular 90% da melhor mais 10% da pior é preciso ter as duas:
@@ -284,27 +317,31 @@ loja_comprar(
 1. idempotência — se já existe compra com essa chave, devolve ela e sai;
 2. matrícula — o aluno está nessa turma?
 3. item ligado — existe, `ativo`, e não está em `itens_desligados` da turma;
-4. teto — a regra específica do efeito (§5.2), consultando o que já foi usado;
-5. preço — `preco_base * preco_fator^(compras anteriores do mesmo alvo)`;
-6. saldo — `SUM(delta)` do razão **com `FOR UPDATE` na carteira**, e recusa se
+4. teto, gate e cooldown — as regras do efeito (§5.2), incluindo o gate de
+   revisão para `segunda_chance` (§6.4);
+5. dotação — se ainda há unidade gratuita (§6.3), a posse sai com
+   `origem = 'dotacao'` e `preco_pago = 0`, e os passos 6, 7 e 9 são pulados —
+   unidade gratuita não consulta preço, não consulta saldo e não gera débito;
+6. preço — `preco_base * preco_fator^(compras anteriores do mesmo alvo)`;
+7. saldo — `SUM(delta)` do razão **com `FOR UPDATE` na carteira**, e recusa se
    ficar negativo;
-7. grava a compra;
-8. grava o débito no razão, apontando para a compra;
-9. aplica o efeito;
-10. devolve `{ok, compra_id, saldo_novo, efeito}`.
+8. grava a compra;
+9. grava o débito no razão, apontando para a compra;
+10. aplica o efeito;
+11. devolve `{ok, compra_id, saldo_novo, efeito}`.
 
 Qualquer falha desfaz tudo. É o aceite do #144 — "debita e concede, ou não faz
 nada" — e a razão de a compra ser RPC e não `INSERT` com gatilhos em cadeia.
 
-**Saldo negativo é impossível por construção**, não por convenção: o passo 6
-trava a linha e o passo 8 só existe se o 6 passou.
+**Saldo negativo é impossível por construção**, não por convenção: o passo 7
+trava a linha e o passo 9 só existe se o 7 passou.
 
 ### 5.2 Os efeitos
 
 | efeito | o que faz | teto |
 |---|---|---|
 | `prazo_extra` | soma dias em `atividade_prazo_aluno` | `prazo_max_por_ativ` na atividade, `prazo_max_dias_total` no semestre |
-| `segunda_chance` | libera uma tentativa que **conta** | `retry_max_por_topico`, mais cooldown de 24h desde a tentativa anterior (§6.2) |
+| `segunda_chance` | libera uma tentativa que **conta** | `retry_max_por_topico`, cooldown de 24h, e o gate de revisão (§6.4) |
 | `dica` | marca a questão como "dica liberada" | 1 por questão |
 | `troca_formato` | troca `formato_prioritario` do próximo material | nenhum |
 
@@ -324,7 +361,7 @@ inventar item novo.
 
 ---
 
-## 6. Os dois itens que têm consequência acadêmica
+## 6. Os itens de consequência acadêmica, e as duas salvaguardas
 
 ### 6.1 Extensão de prazo
 
@@ -373,6 +410,76 @@ nota_final = 0.9 * max(tentativas) + 0.1 * min(tentativas)
 Com uma tentativa só, `max = min` e a conta devolve a própria nota — a fórmula
 não muda nada para quem nunca comprou o item.
 
+### 6.3 Dotação inicial igual
+
+Uma economia em que **moeda ∝ desempenho** e os itens de recuperação **custam
+moeda** é uma máquina de agravar desigualdade: quem está atrás é quem tem menos
+moeda e quem mais precisaria do item. Isso não é hipótese — é a aplicação
+literal do desenho, e o #144 já antecipava ao pedir "itens de recuperação
+acessíveis a quem está atrás".
+
+A mitigação com prática mais convergente — Tufts, Cornell, UMD — é a mais
+simples: **todo mundo começa com N unidades**, e moeda compra apenas unidades
+adicionais. Some o problema por construção, sem preço progressivo nem subsídio
+invisível.
+
+Isso importa também porque o desconto invisível por desempenho é uma armadilha
+específica deste piloto: são 20 adultos numa sala que conversam entre si. Preço
+que muda por aluno **vai** ser descoberto e **vai** ser lido como julgamento. A
+dotação é pública, igual e impessoal.
+
+Alinha com a segunda regra do épico #133 — "nenhum elemento é a única via para
+pontuar". Aqui: nenhum item de recuperação depende de o aluno ter ido bem antes.
+
+**Como fica:** `loja_dotacao` diz quantas unidades a turma dá (§3.6), e
+`loja_saldo_item(aluno, classe, item)` devolve
+`dotação − usadas + compradas`. A compra só entra quando a dotação acabou, e é
+aí que a moeda passa a valer. Consequência deliberada: um aluno que use pouco
+os itens **nunca precisa da loja** — e está tudo bem.
+
+### 6.4 O gate de revisão
+
+Refazer só libera depois de o aluno **voltar ao material do tópico**.
+
+O dado: em Illinois, exigir uma tarefa antes de liberar o retry derrubou a taxa
+de retake de 49% para 34% **com política de nota idêntica**. Quem desistiu
+diante do gate era quem ia rolar o dado, não quem ia estudar.
+
+O motivo de fundo é mais forte que o número. A literatura de *answer-until-
+correct* é morna — Attali (2015) não achou efeito do multiple-try, e
+meta-análises indicam que feedback elaborado supera tentar de novo. Ou seja:
+**o que carrega o efeito é a revisão entre tentativas, não a tentativa em si.**
+Um retry sem gate compra a parte que não funciona.
+
+**A regra, em duas condições:**
+
+```
+revisou(aluno, topico, desde) :=
+     existe item de material do tópico em personalizacao_item_progresso
+     com atualizado_em > desde
+  E  SUM(active_sec) >= 120 em telemetria_time_metric_entries
+     para (aluno, topico), scope = 'material', captured_at > desde
+```
+
+A primeira condição sozinha seria satisfeita por abrir e fechar. A segunda usa
+`active_sec`, **nunca `dwell_sec`** — `dwell` inclui tempo parado com o material
+aberto, e aceitaria o aluno deixando a tela ligada. É a mesma distinção que
+`_summarize_reading_pace` já faz para estimar WPM.
+
+> Filtre por `scope` sempre. Dentro de um lote, `topic`, `content` e `material`
+> trazem o mesmo intervalo — o aninhamento é inclusivo, e somar escopos
+> diferentes multiplica o tempo.
+
+**O gate é verificado na compra, não no uso.** Comprar e só então descobrir que
+está bloqueado gasta a moeda do aluno numa porta fechada. Como a faixa de venda
+vive dentro do modo de revisão (§9.2), o caminho natural é: o aluno volta ao
+material, o gate abre, e a oferta aparece onde ele já está.
+
+Não é cooldown — os dois existem e são independentes. O cooldown de 24h impede
+a segunda tentativa colada na primeira; o gate exige que algo tenha acontecido
+no meio. Em Illinois 97% dos alunos espaçaram as tentativas porque **a janela
+os obrigou**, não por escolha: alargar a janela não fez ninguém espaçar mais.
+
 ---
 
 ## 7. Métricas
@@ -385,7 +492,9 @@ Uma RPC `loja_metricas_aluno()` devolve, e a tela mostra:
 - **prazo extra usado contra o teto da turma** — "2 de 4 dias usados neste
   semestre". Era o que você pediu, e é a informação que evita o aluno descobrir
   o teto justamente quando precisa dele;
-- retries usados por tópico;
+- **unidades gratuitas restantes**, separadas das compradas — a dotação só
+  cumpre o papel de §6.3 se o aluno souber que ela existe antes de precisar;
+- retries usados por tópico, e se o gate de revisão está aberto;
 - quanto cada ação paga na turma dele.
 
 ### 7.2 O que o professor vê
@@ -522,10 +631,12 @@ aluno não acredita.
    *A economia já funciona: o aluno acumula e vê o saldo.*
 3. Catálogo, config por turma, `loja_comprar` com `troca_formato` — o efeito sem
    consequência acadêmica, que valida a máquina de compra sozinha.
-4. `atividade_tentativa` e `segunda_chance` com a fórmula 90/10.
-5. `atividade_prazo_aluno` e `prazo_extra`.
-6. Métricas e painel do professor.
-7. Aba Social, vitrine e faixa de revisão.
+4. `loja_dotacao` e `loja_saldo_item` — a dotação precede a venda: o primeiro
+   item de recuperação que o aluno encontra tem que ser o gratuito.
+5. `atividade_tentativa`, o gate de revisão e `segunda_chance` com a 90/10.
+6. `atividade_prazo_aluno` e `prazo_extra`.
+7. Métricas e painel do professor.
+8. Aba Social, vitrine e faixa de revisão.
 
 Cada passo é utilizável sozinho e reversível sem desfazer o anterior.
 
@@ -533,22 +644,15 @@ Cada passo é utilizável sozinho e reversível sem desfazer o anterior.
 
 ## 11. Decisões em aberto
 
-Três coisas que a pesquisa recomenda, que **não** estão no desenho acima, e que
-precisam de uma decisão sua antes do plano de implementação:
+Uma só, e ela depende de outra issue:
 
-1. **Dotação inicial igual.** Tufts, Cornell e UMD dão N fichas de prazo a todo
-   mundo no início, e moeda compra apenas unidades *adicionais*. O argumento: uma
-   economia onde moeda ∝ desempenho e os itens de recuperação custam moeda faz
-   quem está atrás ficar sem justamente o que o ajudaria. O razão já suporta —
-   é uma linha com `motivo = 'dotacao'`.
-2. **Gate de revisão antes do retry.** Exigir reabrir o material do tópico antes
-   de liberar a segunda chance derrubou a taxa de retake de 49% para 34% em
-   Illinois, com política de nota idêntica — filtrou quem só ia rolar o dado.
-3. **Recompensa coletiva.** O #144 lista no aceite ("recompensa coletiva
-   existe"), e ela vendeu 1 vez no estudo. Não desenhei porque depende de guildas
-   (#153), que não existem.
+**Recompensa coletiva.** O #144 lista no aceite ("recompensa coletiva existe"),
+e no estudo de referência ela vendeu exatamente uma vez, a 50 SP. Não está
+desenhada porque depende de guildas (#153), que não existem. Quando existirem,
+o razão já suporta: é um débito de vários alunos com o mesmo `compra_id`.
 
----
+As outras duas que estavam aqui — dotação inicial igual e gate de revisão —
+foram decididas e entraram em §6.3 e §6.4.
 
 ## 12. O que este desenho deliberadamente não faz
 
