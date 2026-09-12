@@ -2,8 +2,9 @@ export type StoreSection = "informacoes" | "itens" | "combos" | "bonus" | "prese
 export type StoreItemState = "available" | "blocked" | "owned" | "unavailable";
 export type StoreProfileTheme = { iconKey: string; themeKey: string; chestKey: string; accentColor: string | null; version: number };
 export type StoreItem = {
-  id: number; slug: string; section: StoreSection; name: string; description: string;
+  id: string; slug: string; name: string; description: string;
   assetKey: string | null; price: number; currency: string; gate: Record<string, unknown> | null;
+  section: StoreSection;
   state: StoreItemState; metadata: Record<string, unknown>;
 };
 export type StoreSnapshot = { theme: StoreProfileTheme; balance: number; currency: string; items: StoreItem[] };
@@ -13,4 +14,3 @@ export function normalizeStoreItem(item: RawStoreItem): StoreItem {
   const state: StoreItemState = item.active === false ? "unavailable" : item.owned ? "owned" : item.gate && item.gate_met !== true ? "blocked" : "available";
   return { ...item, state };
 }
-

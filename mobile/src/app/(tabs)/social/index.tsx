@@ -4,6 +4,7 @@ import { SocialPersonCard } from "@/components/social/SocialPersonCard";
 import { StoreLauncher } from "@/components/loja/StoreLauncher";
 import { StoreModal } from "@/components/loja/StoreModal";
 import { useUsuario } from "@/context/SessaoContext";
+import { useTrilha } from "@/context/TrilhaContext";
 import { aceitarConvite, bloquear, carregarSocial, desfazerAmizade, enviarConvite, recusarConvite } from "@/services/social/socialService";
 import type { SocialPerson } from "@/services/social/socialModel";
 import { Color, FontFamily } from "@/styles/GlobalStyle";
@@ -24,6 +25,8 @@ function errorMessage(error: unknown) {
 
 export default function SocialScreen() {
   const { usuario } = useUsuario();
+  const { classeAtual } = useTrilha();
+  const classeId = Number(classeAtual?.classe_id ?? 0);
   const profile = usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null;
   const palette = getProfileShellPalette(profile);
   const [section, setSection] = useState<Section>("friends");
@@ -79,7 +82,7 @@ export default function SocialScreen() {
           {loading && !social ? <ActivityIndicator color={palette.accent} style={styles.loader} /> : error ? <View style={styles.empty}><MaterialCommunityIcons name="database-alert-outline" size={42} color={palette.accent} /><Text style={[styles.message, { color: palette.textMuted }]}>{error}</Text><Pressable onPress={() => void load()} style={[styles.retry, { backgroundColor: palette.accent }]}><Text style={styles.retryText}>Tentar novamente</Text></Pressable></View> : people.length === 0 ? <View style={styles.empty}><MaterialCommunityIcons name={section === "friends" ? "account-group-outline" : "account-search-outline"} size={44} color={palette.accent} /><Text style={[styles.sectionTitle, { color: palette.text }]}>{section === "friends" ? "AMIGOS" : section === "invites" ? "CONVITES" : "ENCONTRAR"}</Text><Text style={[styles.message, { color: palette.textMuted }]}>{emptyMessage}</Text></View> : <View style={styles.list}>{people.map((person) => person.status === "incoming" ? <SocialInviteCard key={person.relationshipId} person={person} accent={palette.accent} onAccept={() => act(person.alunoId, () => aceitarConvite(person.relationshipId!))} onDecline={() => act(person.alunoId, () => recusarConvite(person.relationshipId!))} /> : <SocialPersonCard key={person.relationshipId ?? person.alunoId} person={person} accent={palette.accent} actionLabel={busy === person.alunoId ? "..." : actionFor(person).label} onAction={actionFor(person).fn} secondaryLabel={person.status === "friend" ? "Bloquear" : undefined} onSecondary={() => act(person.alunoId, () => bloquear(person.alunoId))} />)}</View>}
         </ScrollView>
       </SafeAreaView>
-      {usuario?.id ? <StoreModal visible={storeVisible} alunoId={usuario.id} profileName={profile} onClose={() => setStoreVisible(false)} /> : null}
+      {usuario?.id && classeId > 0 ? <StoreModal visible={storeVisible} alunoId={usuario.id} classeId={classeId} profileName={profile} onClose={() => setStoreVisible(false)} /> : null}
     </View>
   );
 }
