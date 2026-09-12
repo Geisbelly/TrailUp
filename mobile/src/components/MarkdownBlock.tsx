@@ -9,7 +9,8 @@ import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { resolveSupabaseStorageUrl } from "@/utils/supabaseStorage";
 import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
-import Markdown, { renderRules } from "react-native-markdown-display";
+import Markdown from "react-native-markdown-display";
+import FitImage from "react-native-fit-image";
 import { SvgXml } from "react-native-svg";
 import { decodeInlineSvgDataUri } from "@/utils/inlineSvgDataUri";
 import tinycolor from "tinycolor2";
@@ -54,13 +55,21 @@ function criarMarkdownRules(palette: ReturnType<typeof getProfileShellPalette>) 
   ) => {
     const inline = decodeInlineSvgDataUri(node?.attributes?.src);
     if (!inline) {
-      // renderRules.image e opcional no tipo da biblioteca; na pratica sempre
-      // existe, mas nao vale derrubar a tela do aluno por causa disso.
-      const padrao = renderRules.image;
-      if (!padrao) return null;
+      const src = node?.attributes?.src ?? "";
+      const alt = node?.attributes?.alt;
+      const permitido = allowedImageHandlers.some((handler) =>
+        src.toLowerCase().startsWith(handler.toLowerCase()),
+      );
+      if (!permitido && defaultImageHandler === null) return null;
+      const imageProps = {
+        indicator: true,
+        style: estilos._VIEW_SAFE_image,
+        source: { uri: permitido ? src : `${defaultImageHandler}${src}` },
+        ...(alt ? { accessible: true, accessibilityLabel: alt } : {}),
+      };
       return (
         <View key={node.key} style={[styles.imagemEmoldurada, moldura]}>
-          {padrao(node, children, parent, estilos, allowedImageHandlers, defaultImageHandler)}
+          <FitImage key={node.key} {...imageProps} />
         </View>
       );
     }
