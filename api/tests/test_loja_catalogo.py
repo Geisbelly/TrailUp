@@ -88,3 +88,49 @@ def test_o_aluno_ve_o_catalogo_e_nao_escreve_nele() -> None:
     assert "CREATE POLICY loja_itens_sel" in sql
     assert "REVOKE INSERT, UPDATE, DELETE ON public.loja_itens" in sql
     assert "FROM anon, authenticated" in sql
+
+
+def test_a_turma_tem_teto_de_prazo_e_ele_e_do_professor() -> None:
+    """O teto e' a decisao pedagogica, tomada uma vez na configuracao em vez de
+    uma aprovacao por compra."""
+    sql = _sql()
+
+    assert "CREATE TABLE IF NOT EXISTS public.loja_config_classe" in sql
+    assert "prazo_max_dias_total integer NOT NULL DEFAULT 2" in sql
+    assert "prazo_max_por_ativ" in sql
+    assert "retry_max_por_topico" in sql
+
+
+def test_turma_sem_configuracao_funciona() -> None:
+    """Nenhuma turma precisa ser configurada: os defaults valem."""
+    sql = _sql()
+
+    assert "DEFAULT 2" in sql
+    assert "itens_desligados     text[]  NOT NULL DEFAULT '{}'::text[]" in sql
+
+
+def test_todo_aluno_comeca_com_as_mesmas_unidades() -> None:
+    """Economia onde moeda e proporcional ao desempenho e itens de recuperacao
+    custam moeda agrava desigualdade: quem esta atras e quem tem menos moeda e
+    quem mais precisaria do item."""
+    sql = _sql()
+
+    assert "CREATE TABLE IF NOT EXISTS public.loja_dotacao" in sql
+    assert "PRIMARY KEY (classe_id, item_codigo)" in sql
+
+
+def test_a_dotacao_cobre_os_itens_de_recuperacao() -> None:
+    modulo = _modulo()
+
+    assert modulo.DOTACAO_PADRAO["prazo_extra"] >= 1
+    assert modulo.DOTACAO_PADRAO["segunda_chance"] >= 1
+    # Autonomia nao precisa de dotacao: nao e' item de recuperacao.
+    assert "troca_formato" not in modulo.DOTACAO_PADRAO
+
+
+def test_so_o_dono_da_classe_configura_a_loja_dela() -> None:
+    sql = _sql()
+
+    assert "CREATE POLICY loja_config_classe_professor" in sql
+    assert "CREATE POLICY loja_dotacao_professor" in sql
+    assert "classe_id IN (SELECT public.app_classes_do_professor())" in sql

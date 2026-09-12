@@ -140,9 +140,73 @@ REVOKE INSERT, UPDATE, DELETE ON public.loja_itens FROM anon, authenticated;
 """
 
 
+CONFIG = """
+CREATE TABLE IF NOT EXISTS public.loja_config_classe (
+  classe_id            bigint PRIMARY KEY REFERENCES public.classe(id) ON DELETE CASCADE,
+  prazo_max_dias_total integer NOT NULL DEFAULT 2 CHECK (prazo_max_dias_total BETWEEN 0 AND 14),
+  prazo_max_por_ativ   integer NOT NULL DEFAULT 2 CHECK (prazo_max_por_ativ   BETWEEN 0 AND 14),
+  retry_max_por_topico integer NOT NULL DEFAULT 1 CHECK (retry_max_por_topico BETWEEN 0 AND 5),
+  itens_desligados     text[]  NOT NULL DEFAULT '{}'::text[],
+  atualizado_em        timestamptz NOT NULL DEFAULT now()
+);
+
+COMMENT ON COLUMN public.loja_config_classe.prazo_max_dias_total IS
+  'Teto de prazo extra no semestre. Conta dotacao e compra juntas: o teto e
+   sobre quanto prazo e aceitavel, nao sobre quanto o aluno pagou.';
+
+CREATE TABLE IF NOT EXISTS public.loja_dotacao (
+  classe_id   bigint  NOT NULL REFERENCES public.classe(id) ON DELETE CASCADE,
+  item_codigo text    NOT NULL REFERENCES public.loja_itens(codigo),
+  quantidade  integer NOT NULL DEFAULT 0 CHECK (quantidade >= 0),
+  PRIMARY KEY (classe_id, item_codigo)
+);
+
+COMMENT ON TABLE public.loja_dotacao IS
+  'Unidades gratuitas por turma. A concessao e derivada, nao materializada na
+   matricula: mudar o numero vale para todos na hora, sem linha para migrar.';
+
+ALTER TABLE public.loja_config_classe ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.loja_dotacao       ENABLE ROW LEVEL SECURITY;
+
+-- O aluno precisa ver o teto e a dotacao da turma dele: a dotacao so' cumpre o
+-- papel dela se ele souber que existe ANTES de precisar.
+DROP POLICY IF EXISTS loja_config_classe_sel ON public.loja_config_classe;
+CREATE POLICY loja_config_classe_sel ON public.loja_config_classe
+  FOR SELECT TO authenticated
+  USING (classe_id IN (SELECT public.app_classes_do_aluno())
+         OR classe_id IN (SELECT public.app_classes_do_professor()));
+
+DROP POLICY IF EXISTS loja_dotacao_sel ON public.loja_dotacao;
+CREATE POLICY loja_dotacao_sel ON public.loja_dotacao
+  FOR SELECT TO authenticated
+  USING (classe_id IN (SELECT public.app_classes_do_aluno())
+         OR classe_id IN (SELECT public.app_classes_do_professor()));
+
+REVOKE INSERT, UPDATE, DELETE ON public.loja_config_classe FROM anon;
+REVOKE INSERT, UPDATE, DELETE ON public.loja_dotacao       FROM anon;
+GRANT  INSERT, UPDATE, DELETE ON public.loja_config_classe TO authenticated;
+GRANT  INSERT, UPDATE, DELETE ON public.loja_dotacao       TO authenticated;
+
+DROP POLICY IF EXISTS loja_config_classe_professor ON public.loja_config_classe;
+CREATE POLICY loja_config_classe_professor ON public.loja_config_classe
+  FOR ALL TO authenticated
+  USING (classe_id IN (SELECT public.app_classes_do_professor()))
+  WITH CHECK (classe_id IN (SELECT public.app_classes_do_professor()));
+
+DROP POLICY IF EXISTS loja_dotacao_professor ON public.loja_dotacao;
+CREATE POLICY loja_dotacao_professor ON public.loja_dotacao
+  FOR ALL TO authenticated
+  USING (classe_id IN (SELECT public.app_classes_do_professor()))
+  WITH CHECK (classe_id IN (SELECT public.app_classes_do_professor()));
+"""
+
+
 def upgrade() -> None:
     op.execute(TABELA)
+    op.execute(CONFIG)
 
 
 def downgrade() -> None:
+    op.execute("DROP TABLE IF EXISTS public.loja_dotacao CASCADE;")
+    op.execute("DROP TABLE IF EXISTS public.loja_config_classe CASCADE;")
     op.execute("DROP TABLE IF EXISTS public.loja_itens CASCADE;")
