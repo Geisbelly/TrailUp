@@ -327,9 +327,22 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'erro', 'item_desligado_na_turma');
   END IF;
 
-  -- 4. Teto, cooldown e gate -- so' para segunda_chance. Todos ANTES de
-  -- cobrar: comprar e so' entao descobrir que esta travado gasta a moeda do
-  -- aluno numa porta fechada.
+  -- 4. Validacao do alvo/parametro ANTES de cobrar. Ela vivia no passo 10, e
+  -- de la so' sabia recusar com RAISE: o cliente recebia erro cru de banco em
+  -- vez do `{ok:false, erro:...}` que toda outra recusa devolve. A atomicidade
+  -- se segurava, mas o contrato da RPC nao.
+  --
+  -- `p_parametro IS NULL` explicito: `NULL NOT IN (...)` devolve NULL, nao
+  -- TRUE, entao sem esta guarda o NULL passaria batido.
+  IF v_item.efeito = 'troca_formato' THEN
+    IF p_alvo_id IS NULL
+       OR p_parametro IS NULL
+       OR p_parametro NOT IN ('audio','texto','slides') THEN
+      RETURN jsonb_build_object('ok', false, 'erro', 'formato_invalido');
+    END IF;
+  END IF;
+
+  -- Teto, cooldown e gate da segunda chance. Todos ANTES de cobrar.
   IF v_item.efeito = 'segunda_chance' THEN
     IF p_alvo_tipo IS DISTINCT FROM 'atividade' OR p_alvo_id IS NULL THEN
       RETURN jsonb_build_object('ok', false, 'erro', 'alvo_invalido');
@@ -436,15 +449,7 @@ BEGIN
   -- 10. O efeito. Nesta fatia so' `troca_formato`; os outros tres chegam com
   -- as suas salvaguardas nas fatias 3 e 4.
   IF v_item.efeito = 'troca_formato' THEN
-    -- `p_parametro IS NULL` explicito: `NULL NOT IN (...)` devolve NULL, nao
-    -- TRUE, entao sem esta guarda o IF nao dispararia e o NULL seguiria ate
-    -- estourar no CHECK, longe daqui.
-    IF p_parametro IS NULL
-       OR p_parametro NOT IN ('audio','texto','slides')
-       OR p_alvo_id IS NULL THEN
-      RAISE EXCEPTION 'troca_formato exige alvo e formato validos';
-    END IF;
-
+    -- Ja validado no passo 4, antes de cobrar.
     INSERT INTO public.loja_formato_escolhido (aluno_id, topico_id, formato)
     VALUES (v_aluno, p_alvo_id, p_parametro)
     ON CONFLICT (aluno_id, topico_id)
