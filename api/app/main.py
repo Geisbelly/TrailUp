@@ -13,7 +13,7 @@ from app.agent.graph.checkpointer import (
 from app.api.router import api_router
 from app.core.settings import Settings, get_settings
 from app.db.migrations import upgrade_database_to_head
-from app.db.session import build_session_factory
+from app.db.session import build_session_factory, execute_with_database_retry
 from app.services.checkpoint_retention import checkpoint_retention_loop, run_checkpoint_retention_once
 from app.services.personalizacao_jobs import personalizacao_jobs_loop
 
@@ -30,9 +30,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def lifespan(app: FastAPI):
         database_url = (app_settings.database_url or "").lower()
         if app_settings.database_migrations_on_startup and database_url.startswith("postgres"):
-            await asyncio.to_thread(
-                upgrade_database_to_head,
-                app_settings.database_url,
+            await execute_with_database_retry(
+                lambda: asyncio.to_thread(
+                    upgrade_database_to_head,
+                    app_settings.database_url,
+                ),
+                app_settings,
             )
 
         engine, session_factory = build_session_factory(app_settings)

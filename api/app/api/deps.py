@@ -7,7 +7,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBasic, HTTPBasicC
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.settings import Settings
-from app.db.session import session_dependency
+from app.db.session import DatabaseUnavailableError, session_dependency
 from app.repositories.access import AccessRepository
 from app.services.auth import AuthService, UserContext
 
@@ -25,8 +25,20 @@ def get_settings(request: Request) -> Settings:
 
 
 async def get_session(request: Request) -> AsyncIterator[AsyncSession]:
-    async for session in session_dependency(request.app.state.session_factory):
-        yield session
+    try:
+        async for session in session_dependency(
+            request.app.state.session_factory,
+            request.app.state.settings,
+        ):
+            yield session
+    except DatabaseUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "code": "database_unavailable",
+                "message": "Banco temporariamente indisponivel. Tente novamente.",
+            },
+        ) from exc
 
 
 async def get_current_user(
