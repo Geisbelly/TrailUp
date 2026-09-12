@@ -75,3 +75,26 @@ def test_ganhar_unidade_nao_encarece_a_seguinte() -> None:
     sql = _sql()
 
     assert "origem = 'compra'" in sql
+
+
+def test_a_vitrine_traz_o_preco_ja_calculado() -> None:
+    """O preco nunca e' calculado no cliente: e' a mesma regra de saldo. Numero
+    que o app calcula e' numero em que o aluno nao acredita."""
+    sql = _sql()
+
+    assert "CREATE OR REPLACE FUNCTION public.loja_catalogo" in sql
+    assert "preco" in sql
+    assert "gratis_restantes" in sql
+
+
+def test_a_vitrine_esconde_o_que_o_professor_desligou() -> None:
+    sql = _sql()
+
+    assert "itens_desligados" in sql
+
+
+def test_a_escalada_usa_as_compradas_e_nao_as_gratuitas() -> None:
+    sql = _sql()
+
+    assert "public.loja_compradas_do_item" in sql
+    assert "preco_fator" in sql

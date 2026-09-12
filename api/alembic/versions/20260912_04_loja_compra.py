@@ -127,9 +127,52 @@ GRANT EXECUTE ON FUNCTION public.loja_compradas_do_item(bigint, text) TO authent
 """
 
 
+CATALOGO = """
+CREATE OR REPLACE FUNCTION public.loja_catalogo(p_classe_id bigint)
+RETURNS TABLE (
+  codigo           text,
+  nome             text,
+  descricao        text,
+  efeito           text,
+  preco            numeric,
+  gratis_restantes integer,
+  disponivel       boolean,
+  ordem            integer
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path TO 'public', 'pg_temp'
+AS $fn$
+  SELECT
+    i.codigo,
+    i.nome,
+    i.descricao,
+    i.efeito,
+    -- A n-esima COMPRA custa preco_base * preco_fator^(n-1). Arredondado para
+    -- cima: preco quebrado numa moeda inteira confunde mais do que ajuda.
+    ceil(
+      i.preco_base
+      * power(i.preco_fator, public.loja_compradas_do_item(p_classe_id, i.codigo))
+    )::numeric AS preco,
+    public.loja_saldo_item(p_classe_id, i.codigo) AS gratis_restantes,
+    (i.ativo AND NOT (i.codigo = ANY(
+       COALESCE(c.itens_desligados, '{}'::text[])
+     ))) AS disponivel,
+    i.ordem
+  FROM public.loja_itens i
+  LEFT JOIN public.loja_config_classe c ON c.classe_id = p_classe_id
+  ORDER BY i.ordem;
+$fn$;
+
+GRANT EXECUTE ON FUNCTION public.loja_catalogo(bigint) TO authenticated;
+"""
+
+
 def upgrade() -> None:
     op.execute(TABELA)
     op.execute(SALDO_ITEM)
+    op.execute(CATALOGO)
 
 
 def downgrade() -> None:
