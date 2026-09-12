@@ -76,9 +76,49 @@ CREATE POLICY moedas_ledger_sel_professor ON public.moedas_ledger
 """
 
 
+FUNCOES = """
+-- SECURITY INVOKER de proposito: a RPC le o razao do proprio chamador, e as
+-- policies de SELECT ja fazem o recorte. Definer aqui seria privilegio a mais
+-- sem necessidade.
+CREATE OR REPLACE FUNCTION public.loja_saldo()
+RETURNS numeric
+LANGUAGE sql
+STABLE
+SET search_path TO 'public', 'pg_temp'
+AS $fn$
+  SELECT COALESCE(SUM(delta), 0)
+    FROM public.moedas_ledger
+   WHERE aluno_id = auth.uid();
+$fn$;
+
+CREATE OR REPLACE FUNCTION public.loja_extrato(p_limite integer DEFAULT 50)
+RETURNS TABLE (
+  criado_em   timestamptz,
+  delta       numeric,
+  motivo      text,
+  evento_tipo text,
+  classe_id   bigint
+)
+LANGUAGE sql
+STABLE
+SET search_path TO 'public', 'pg_temp'
+AS $fn$
+  SELECT criado_em, delta, motivo, evento_tipo, classe_id
+    FROM public.moedas_ledger
+   WHERE aluno_id = auth.uid()
+   ORDER BY criado_em DESC, id DESC
+   LIMIT GREATEST(1, LEAST(COALESCE(p_limite, 50), 200));
+$fn$;
+
+GRANT EXECUTE ON FUNCTION public.loja_saldo() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.loja_extrato(integer) TO authenticated;
+"""
+
+
 def upgrade() -> None:
     op.execute(TABELA)
     op.execute(RLS)
+    op.execute(FUNCOES)
 
 
 def downgrade() -> None:

@@ -82,3 +82,26 @@ def test_o_professor_le_o_razao_dos_alunos_dele() -> None:
 
     assert "CREATE POLICY moedas_ledger_sel_professor" in sql
     assert "aluno_id IN (SELECT public.app_alunos_do_professor())" in sql
+
+
+def test_o_saldo_e_somado_no_banco_nunca_no_cliente() -> None:
+    """Percentual do topico, tempo de estudo e ranking ja foram calculados no
+    app, e nas tres vezes o numero do cliente passou por cima do certo."""
+    sql = _sql()
+
+    assert "CREATE OR REPLACE FUNCTION public.loja_saldo()" in sql
+    # Sem linha nenhuma o saldo e' zero, nao NULL: NULL vira "—" na tela.
+    assert "COALESCE(SUM(delta), 0)" in sql
+
+
+def test_o_saldo_e_do_chamador_e_de_mais_ninguem() -> None:
+    sql = _sql()
+
+    assert "WHERE aluno_id = auth.uid()" in sql
+
+
+def test_o_extrato_diz_de_onde_veio_cada_moeda() -> None:
+    sql = _sql()
+
+    assert "CREATE OR REPLACE FUNCTION public.loja_extrato" in sql
+    assert "p_limite integer DEFAULT 50" in sql
