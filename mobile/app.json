@@ -72,7 +72,8 @@
           "color": "#111936",
           "defaultChannel": "trailup"
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
