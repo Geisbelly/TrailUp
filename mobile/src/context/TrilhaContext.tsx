@@ -48,6 +48,7 @@ import {
 } from '@/utils/progressoPersonalizado';
 import { buildContentBlocks, isUrl } from '@/utils/contentBlocks';
 import { ensureCachedNativeContent } from '@/utils/nativeContentCache';
+import { executarComConcorrencia } from '@/utils/prefetchPool';
 import { versionedCacheKey } from '@/utils/materialCacheVersion';
 import {
   aggregatePersonalizedTopicPayloads,
@@ -104,6 +105,12 @@ const PREFETCHABLE_TYPES = new Set([
 ]);
 
 const MEDIA_GENERATION_COOLDOWN_MS = 3 * 60 * 1000;
+
+// Quantos materiais o prefetch baixa ao mesmo tempo. Quatro por ser o meio
+// termo medido: em serie o aluno espera a soma de tudo, e com os 12 de uma vez
+// a banda do celular e' dividida entre todos -- nenhum material chega cedo, e o
+// gateway passa a responder 429 sob rajada.
+const PREFETCH_SIMULTANEOS = 4;
 
 type PrefetchEntry = { url: string; hint?: string | null; key: string; revisao?: number };
 
@@ -264,19 +271,24 @@ async function prefetchPersonalizedPayload(payload: PersonalizedTopicPayload | n
   if (!entries.length) return;
 
   const limited = entries.slice(0, 12);
-  for (const entry of limited) {
-    try {
-      await ensureCachedNativeContent(
+  // Baixa em paralelo com teto: era um `await` por item, e com o gateway
+  // custando ~800ms de 302 antes de cada download, 12 materiais viravam ~15s
+  // de "Preparando seu modulo..." antes do primeiro aparecer.
+  await executarComConcorrencia(
+    limited,
+    PREFETCH_SIMULTANEOS,
+    (entry) =>
+      ensureCachedNativeContent(
         // Versionada pela revisao: sem isso o prefetch rebaixa o arquivo
         // antigo e o aluno nunca ve o material regerado.
         `${entry.key}:${versionedCacheKey(entry.url, { revisao: entry.revisao })}`,
         entry.url,
         { extensionHint: entry.hint ?? undefined }
-      );
-    } catch (err) {
+      ),
+    (err) => {
       console.warn('[TrilhaContext] Falha ao prefetch de material personalizado:', err);
     }
-  }
+  );
 }
 
 function isTopicoConcluido(t: any, topicosPendentes?: Set<number>): boolean {
