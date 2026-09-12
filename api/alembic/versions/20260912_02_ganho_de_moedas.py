@@ -99,11 +99,89 @@ CREATE POLICY eventos_pontuacao_classe_professor ON public.eventos_pontuacao_cla
 """
 
 
+GATILHO = """
+CREATE OR REPLACE FUNCTION public.fn_moedas_do_evento(
+  p_tipo      text,
+  p_classe_id bigint
+)
+RETURNS numeric
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path TO 'public', 'pg_temp'
+AS $fn$
+DECLARE
+  v_moedas_classe numeric;
+  v_moedas_global numeric;
+BEGIN
+  IF p_classe_id IS NOT NULL THEN
+    SELECT moedas INTO v_moedas_classe
+      FROM public.eventos_pontuacao_classe
+     WHERE classe_id = p_classe_id AND tipo = p_tipo;
+  END IF;
+
+  SELECT moedas INTO v_moedas_global
+    FROM public.eventos_pontuacao
+   WHERE tipo = p_tipo;
+
+  -- Tipo desconhecido vale zero, nao e' recusado: recusar quebraria o fluxo do
+  -- aluno na cara dele se algum cliente emitisse um tipo novo.
+  RETURN COALESCE(v_moedas_classe, v_moedas_global, 0);
+END;
+$fn$;
+
+CREATE OR REPLACE FUNCTION public.fn_eventos_aluno_paga_moeda()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public', 'pg_temp'
+AS $fn$
+DECLARE
+  v_classe_id bigint;
+  v_moedas    numeric;
+BEGIN
+  IF NEW.aluno_id IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  v_classe_id := public.fn_eventos_aluno_resolve_classe_id(NEW.tipo, NEW.referencia);
+  v_moedas := public.fn_moedas_do_evento(NEW.tipo, v_classe_id);
+
+  IF v_moedas <= 0 THEN
+    RETURN NEW;
+  END IF;
+
+  -- O predicado do indice parcial precisa ser repetido no ON CONFLICT, senao o
+  -- Postgres nao casa o indice e levanta "no unique or exclusion constraint
+  -- matching".
+  INSERT INTO public.moedas_ledger
+    (aluno_id, delta, motivo, evento_tipo, referencia, classe_id)
+  VALUES
+    (NEW.aluno_id, v_moedas, 'evento', NEW.tipo, NEW.referencia, v_classe_id)
+  ON CONFLICT (aluno_id, evento_tipo, referencia) WHERE motivo = 'evento'
+  DO NOTHING;
+
+  RETURN NEW;
+END;
+$fn$;
+
+DROP TRIGGER IF EXISTS trg_eventos_aluno_paga_moeda ON public.eventos_aluno;
+CREATE TRIGGER trg_eventos_aluno_paga_moeda
+  AFTER INSERT ON public.eventos_aluno
+  FOR EACH ROW
+  EXECUTE FUNCTION public.fn_eventos_aluno_paga_moeda();
+"""
+
+
 def upgrade() -> None:
     op.execute(COLUNA)
     op.execute(OVERRIDE)
+    op.execute(GATILHO)
 
 
 def downgrade() -> None:
+    op.execute(
+        "DROP TRIGGER IF EXISTS trg_eventos_aluno_paga_moeda ON public.eventos_aluno;"
+    )
     op.execute("DROP TABLE IF EXISTS public.eventos_pontuacao_classe CASCADE;")
     op.execute("ALTER TABLE public.eventos_pontuacao DROP COLUMN IF EXISTS moedas;")

@@ -121,3 +121,70 @@ def test_o_aluno_ve_quanto_rende_mas_nao_escreve() -> None:
         "REVOKE INSERT, UPDATE, DELETE ON public.eventos_pontuacao_classe FROM anon"
         in sql
     )
+
+
+def test_a_turma_vence_o_global_quando_define() -> None:
+    sql = _sql()
+
+    assert "CREATE OR REPLACE FUNCTION public.fn_moedas_do_evento" in sql
+    # COALESCE na ordem certa: turma primeiro, global depois, zero no fim.
+    assert "COALESCE(v_moedas_classe, v_moedas_global, 0)" in sql
+
+
+def test_tipo_desconhecido_vale_zero_e_nao_e_recusado() -> None:
+    """Recusar quebraria o fluxo do aluno na cara dele se algum cliente
+    emitisse um tipo novo. Valendo zero, o buraco fecha do mesmo jeito."""
+    sql = _sql()
+
+    assert "RETURNS numeric" in sql
+    assert "COALESCE(v_moedas_classe, v_moedas_global, 0)" in sql
+
+
+def test_o_pagamento_e_depois_do_insert_e_idempotente() -> None:
+    """O DO NOTHING e' o que impede a faucet infinita: se moeda viesse de
+    acerto em questao repetivel, a estrategia dominante seria chutar ate
+    acertar."""
+    sql = _sql()
+
+    assert "AFTER INSERT ON public.eventos_aluno" in sql
+    assert "trg_eventos_aluno_paga_moeda" in sql
+    # Convencao do repo: ON CONFLICT sobre indice PARCIAL repete o predicado.
+    assert (
+        "ON CONFLICT (aluno_id, evento_tipo, referencia) WHERE motivo = 'evento'"
+        in sql
+    )
+    assert "DO NOTHING" in sql
+
+
+def test_o_gatilho_nao_toca_no_xp() -> None:
+    """Gasto nunca altera XP nem posicao no rank -- aceite do #142. O gatilho
+    e' AFTER e nao atribui NEW.valor em lugar nenhum."""
+    sql = _sql()
+
+    inicio = sql.find("FUNCTION public.fn_eventos_aluno_paga_moeda")
+    # Sem esta guarda o teste passa por vacuo: find devolve -1, o corpo sai
+    # vazio, e "x not in ''" e sempre verdadeiro.
+    assert inicio > 0, "o gatilho nem foi criado"
+    fim = sql.find("$fn$;", inicio)
+    assert fim > inicio
+    corpo = sql[inicio:fim]
+
+    assert "NEW.valor" not in corpo
+    assert "UPDATE public.eventos_aluno" not in corpo
+
+
+def test_evento_concedido_tambem_paga() -> None:
+    """Presenca concedida pelo professor e' esforco do aluno tanto quanto
+    concluir um conteudo: fn_evento_creditado separa quem define o VALOR em
+    pontos, nao quem merece moeda."""
+    sql = _sql()
+
+    inicio = sql.find("FUNCTION public.fn_eventos_aluno_paga_moeda")
+    # Sem esta guarda o teste passa por vacuo: find devolve -1, o corpo sai
+    # vazio, e "x not in ''" e sempre verdadeiro.
+    assert inicio > 0, "o gatilho nem foi criado"
+    fim = sql.find("$fn$;", inicio)
+    assert fim > inicio
+    corpo = sql[inicio:fim]
+
+    assert "fn_evento_creditado" not in corpo
