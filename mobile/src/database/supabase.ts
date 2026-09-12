@@ -162,6 +162,25 @@ function getAuthStorageKey() {
   return `sb-${ref}-auth-token`
 }
 
+/**
+ * Apaga a sessao deste aparelho SEM tocar na rede: storage mais os caches em
+ * memoria deste modulo.
+ *
+ * O `lastKnownSession` precisa cair junto. Ele existe para sobreviver a queda
+ * de rede, e `getSessionSafe()` o devolve enquanto o cooldown estiver ativo --
+ * ou seja, depois de um logout ele ressuscitaria a sessao que acabou de ser
+ * encerrada, e a mesma falha de rede que quebra o logout e a que arma o
+ * cooldown.
+ */
+export async function removerSessaoLocal() {
+  lastKnownSession = null
+  clearAuthNetworkBlock()
+
+  const key = getAuthStorageKey()
+  if (!key || !storage || typeof storage.removeItem !== 'function') return
+  await storage.removeItem(key)
+}
+
 export async function clearInvalidSupabaseSession() {
   try {
     await supabase.auth.signOut({ scope: 'local' })
@@ -169,10 +188,8 @@ export async function clearInvalidSupabaseSession() {
     // fallback abaixo
   }
 
-  const key = getAuthStorageKey()
-  if (!key || !storage || typeof storage.removeItem !== 'function') return
   try {
-    await storage.removeItem(key)
+    await removerSessaoLocal()
   } catch {
     // no-op
   }
