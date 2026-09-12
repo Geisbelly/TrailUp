@@ -160,6 +160,24 @@ def test_downgrade_tira_o_atraso_e_devolve_o_resto() -> None:
     assert modulo.CORPO_ANTERIOR.rstrip().endswith("$function$;")
 
 
+def test_as_funcoes_novas_nao_ficam_abertas_ao_anonimo() -> None:
+    """O Supabase concede EXECUTE a PUBLIC por padrao, entao funcao DEFINER
+    recem-criada nasce exposta em /rest/v1/rpc para quem nao fez login -- e
+    "anonimo nao le nada" e' a primeira linha da RLS deste projeto. Medido
+    depois de aplicar: o linter listou as tres, e `fn_pontos_do_evento` nao."""
+    modulo = _modulo()
+    sql = _sql()
+
+    assert modulo.FUNCOES, "a lista de assinaturas e' o que o REVOKE percorre"
+    for assinatura in modulo.FUNCOES:
+        assert f"REVOKE ALL ON FUNCTION {assinatura} FROM PUBLIC, anon" in sql
+        # ... e o aluno continua podendo chamar: o gatilho de valor NAO e'
+        # DEFINER, entao ele roda como quem gravou o evento.
+        assert f"GRANT EXECUTE ON FUNCTION {assinatura} TO authenticated" in sql
+
+    assert "timestamptz" in " ".join(modulo.FUNCOES), "assinatura precisa dos tipos"
+
+
 def test_nenhum_bind_parameter_escondido_no_sql() -> None:
     """`text()` varre a string CRUA: `'classe:1:2026-09-11'` derrubou a
     `20260911_05` com `A value is required for bind parameter '2026'`, e vale

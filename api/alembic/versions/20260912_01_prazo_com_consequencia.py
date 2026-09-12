@@ -72,9 +72,16 @@ quem chamar direto le a `data_entrega` de QUALQUER atividade por id, inclusive
 de turma em que nao esta. E um timestamp, e a alternativa e' pior -- como
 INVOKER, a punicao passaria a depender do RLS de quem gravou o evento, e a mesma
 entrega atrasada pagaria valores diferentes conforme quem a registrou.
-`app_classe_da_atividade` ja e' DEFINER com a mesma forma. Revogar o EXECUTE nao
-e' opcao: o gatilho de valor NAO e' DEFINER, entao ele roda como o aluno e
-precisa poder chamar.
+`app_classe_da_atividade` ja e' DEFINER com a mesma forma.
+
+**As tres sao revogadas de `PUBLIC` e de `anon`**, e isso nao e' zelo: o Supabase
+concede EXECUTE a PUBLIC por padrao, entao uma funcao DEFINER recem-criada fica
+exposta em `/rest/v1/rpc/<nome>` para quem nao fez login -- e "anonimo nao le
+nada" e' a primeira linha da RLS deste projeto. Conferido depois de aplicar: o
+linter do Supabase listou as tres em `anon_security_definer_function_executable`,
+enquanto `fn_pontos_do_evento` e `app_rank_limite_visivel` nao aparecem la. O
+GRANT para `authenticated` fica: o gatilho de valor NAO e' DEFINER, entao roda
+como o aluno e precisa poder chamar.
 
 ## Por que o corpo do gatilho e restatado inteiro
 
@@ -394,11 +401,27 @@ $function$;
 """
 
 
+# Assinaturas completas: `REVOKE ON FUNCTION` exige os tipos dos argumentos.
+FUNCOES = (
+    "public.app_prazo_atraso_fator()",
+    "public.fn_prazo_efetivo(uuid, bigint)",
+    "public.fn_fator_de_atraso(uuid, text, timestamptz)",
+)
+
+
 def upgrade() -> None:
     op.execute(CONFIG)
     op.execute(FUNCAO_FATOR)
     op.execute(FUNCAO_PRAZO)
     op.execute(FUNCAO_ATRASO)
+
+    # O Supabase concede EXECUTE a PUBLIC por padrao. Sem isto, as tres ficam
+    # expostas em /rest/v1/rpc/<nome> para quem nao fez login. Mesma forma da
+    # `20260826_09`, que fez isso com os helpers de posse.
+    for fn in FUNCOES:
+        op.execute(f"REVOKE ALL ON FUNCTION {fn} FROM PUBLIC, anon")
+        op.execute(f"GRANT EXECUTE ON FUNCTION {fn} TO authenticated")
+
     op.execute(_confere_corpo_vivo())
     op.execute(CORPO_NOVO)
 

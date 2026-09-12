@@ -396,6 +396,42 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 > `DO NOTHING` sem erro nenhum. Por isso `motivo` é **obrigatório** nesse tipo, e
 > o valor tem teto em `app_config.credito_extra_maximo`.
 
+> **Prazo agora tem consequência, e ela nasce desligada.** `atividades.data_entrega`
+> era só um selo — `prazoDaAtividade.ts`: *"Atrasado é AVISO, não porta fechada"* —
+> e 0 das 248 atividades tinha prazo. `trg_eventos_aluno_valor_do_banco` passou a
+> multiplicar o valor por `fn_fator_de_atraso`, que lê
+> `app_config.prazo_atraso_fator` (`20260912_01`). O fator nasce em **1.0**, que é
+> multiplicar por um: ligar é um UPDATE numa linha, não uma migração. Não bloqueia
+> entrega. Quem decide se há atraso é a **referência** (`atividade:<id>`), não o
+> tipo — conteúdo, tópico e o UUID do ciclo caem fora no regex. E o instante
+> julgado é `criado_em`, não `now()`, senão um UPDATE futuro tornaria atrasado o
+> que foi entregue no prazo. `fn_prazo_efetivo(aluno, atividade)` já nasce com o
+> aluno na assinatura porque a extensão comprável de prazo é por aluno; hoje
+> devolve a `data_entrega` crua.
+>
+> Três armadilhas que essa migração encontrou, e que valem para a próxima:
+>
+> 1. **O parser de `app_config` do resto do repo destrói decimal.** As outras
+>    chaves são inteiras e usam `regexp_replace(valor, '[^0-9]', '', 'g')`. Medido
+>    no Postgres: sobre `'0.5'` isso devolve `'05'`, ou seja **5** — multiplicaria
+>    a pontuação por cinco em vez de cortá-la pela metade, calado. Chave decimal
+>    precisa de `[^0-9.]`, de `translate(valor, ',', '.')` antes, e de clamp.
+>    Configuração ilegível deve falhar para o lado de **não punir**: devolver zero
+>    zeraria o rank inteiro por um typo.
+> 2. **`CREATE OR REPLACE` sobre função que cresceu por emenda apaga regra em
+>    silêncio.** A `20260911_05` não restatou `trg_eventos_aluno_valor_do_banco`:
+>    ela leu `pg_get_functiondef`, inseriu `NEW.motivo := OLD.motivo;` depois de
+>    uma âncora e executou. Então o texto da `20260911_04` **não é** o que roda.
+>    Antes de substituir essa função, compare o `md5(pg_get_functiondef(...))` com
+>    o corpo do repo — a `20260912_01` traz um `DO` que confere oito regras no
+>    corpo vivo e recusa a substituição se faltar alguma.
+> 3. **Função nova nasce executável por `anon`.** O Supabase concede EXECUTE a
+>    PUBLIC por padrão, então uma `SECURITY DEFINER` recém-criada fica exposta em
+>    `/rest/v1/rpc/<nome>` sem login — contra a primeira linha da RLS daqui. O
+>    linter acusa em `anon_security_definer_function_executable`. A forma é a da
+>    `20260826_09`: `REVOKE ALL ON FUNCTION <assinatura completa> FROM PUBLIC, anon`
+>    seguido de `GRANT EXECUTE ... TO authenticated`.
+
 > **Conquista: o gatilho avalia contra uma lista, e a lista agora tem dono.**
 > `trg_eventos_aluno_after_iud` percorre `conquistas` a cada evento. Desde a
 > `20260911_06` o `SELECT` filtra por turma — `classe_id IS NULL` (global) ou
