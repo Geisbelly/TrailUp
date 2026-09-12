@@ -65,9 +65,45 @@ ON CONFLICT (tipo) DO UPDATE SET moedas = EXCLUDED.moedas;
 """
 
 
+OVERRIDE = """
+CREATE TABLE IF NOT EXISTS public.eventos_pontuacao_classe (
+  classe_id  bigint  NOT NULL REFERENCES public.classe(id) ON DELETE CASCADE,
+  tipo       text    NOT NULL,
+  pontos     numeric NULL CHECK (pontos >= 0),
+  moedas     numeric NULL CHECK (moedas >= 0),
+  PRIMARY KEY (classe_id, tipo)
+);
+
+COMMENT ON TABLE public.eventos_pontuacao_classe IS
+  'Sobreposicao por turma de eventos_pontuacao. NULL herda o valor global.';
+
+ALTER TABLE public.eventos_pontuacao_classe ENABLE ROW LEVEL SECURITY;
+
+-- O aluno precisa ver quanto cada acao rende na turma dele.
+DROP POLICY IF EXISTS eventos_pontuacao_classe_sel ON public.eventos_pontuacao_classe;
+CREATE POLICY eventos_pontuacao_classe_sel ON public.eventos_pontuacao_classe
+  FOR SELECT TO authenticated
+  USING (true);
+
+-- Escrita e' do professor, e so' nas classes dele -- quem recorta e' a policy
+-- abaixo, nao o GRANT. Pelo console, nao pela API.
+REVOKE INSERT, UPDATE, DELETE ON public.eventos_pontuacao_classe FROM anon;
+GRANT INSERT, UPDATE, DELETE ON public.eventos_pontuacao_classe TO authenticated;
+
+DROP POLICY IF EXISTS eventos_pontuacao_classe_professor
+  ON public.eventos_pontuacao_classe;
+CREATE POLICY eventos_pontuacao_classe_professor ON public.eventos_pontuacao_classe
+  FOR ALL TO authenticated
+  USING (classe_id IN (SELECT public.app_classes_do_professor()))
+  WITH CHECK (classe_id IN (SELECT public.app_classes_do_professor()));
+"""
+
+
 def upgrade() -> None:
     op.execute(COLUNA)
+    op.execute(OVERRIDE)
 
 
 def downgrade() -> None:
+    op.execute("DROP TABLE IF EXISTS public.eventos_pontuacao_classe CASCADE;")
     op.execute("ALTER TABLE public.eventos_pontuacao DROP COLUMN IF EXISTS moedas;")

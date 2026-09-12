@@ -86,3 +86,38 @@ def test_o_ciclo_da_ia_nao_paga_moeda() -> None:
 
     assert modulo.MOEDAS["ciclo_iniciado"] == 0
     assert modulo.MOEDAS["ciclo_executado"] == 0
+
+
+def test_a_turma_sobrepoe_o_padrao_global() -> None:
+    sql = _sql()
+
+    assert "CREATE TABLE IF NOT EXISTS public.eventos_pontuacao_classe" in sql
+    assert "PRIMARY KEY (classe_id, tipo)" in sql
+
+
+def test_nulo_significa_herda_o_global() -> None:
+    """Quem nao mexe em nada continua com o padrao: nenhuma turma precisa ser
+    configurada para funcionar."""
+    sql = _sql()
+
+    assert "pontos     numeric NULL" in sql
+    assert "moedas     numeric NULL" in sql
+
+
+def test_so_o_dono_da_classe_escreve_o_ganho_dela() -> None:
+    """Via helper SECURITY DEFINER: o predicado que consultasse classe_aluno
+    direto entraria em recursao de RLS."""
+    sql = _sql()
+
+    assert "CREATE POLICY eventos_pontuacao_classe_professor" in sql
+    assert "classe_id IN (SELECT public.app_classes_do_professor())" in sql
+
+
+def test_o_aluno_ve_quanto_rende_mas_nao_escreve() -> None:
+    sql = _sql()
+
+    assert "CREATE POLICY eventos_pontuacao_classe_sel" in sql
+    assert (
+        "REVOKE INSERT, UPDATE, DELETE ON public.eventos_pontuacao_classe FROM anon"
+        in sql
+    )
