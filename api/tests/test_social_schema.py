@@ -1,6 +1,7 @@
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+MIGRATION = ROOT / "api/alembic/versions/20260912_06_social_amizades.py"
 SQL = (ROOT / "docs/mobile/sql/20260912_02_social_amizades.sql").read_text(encoding="utf-8")
 
 
@@ -23,3 +24,9 @@ def test_privacidade_nao_expoe_telemetria_ou_email():
     assert "email" not in SQL
     assert "telemetria" not in SQL
 
+
+def test_social_fica_depois_da_cadeia_da_loja():
+    source = MIGRATION.read_text(encoding="utf-8")
+    assert 'revision = "20260912_06"' in source
+    assert 'down_revision = "20260912_05"' in source
+    assert "guild" not in source.lower()

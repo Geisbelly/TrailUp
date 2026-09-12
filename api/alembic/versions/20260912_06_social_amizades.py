@@ -1,10 +1,17 @@
-"""Create the social relationships schema and RPC contract."""
+"""Create the private, mutual Social relationships after the store chain.
+
+Guilds are intentionally not created here: issue #153 is still a design
+contract for future event mechanics. Keeping this migration scoped to private
+friendships prevents guild membership from becoming an accidental bypass of
+the friendship block/RLS rules.
+"""
 
 from pathlib import Path
+
 from alembic import op
 
-revision = "20260912_02"
-down_revision = "20260912_01"
+revision = "20260912_06"
+down_revision = "20260912_05"
 branch_labels = None
 depends_on = None
 
@@ -27,4 +34,3 @@ def downgrade() -> None:
       DROP FUNCTION IF EXISTS public.social_par(uuid,uuid);
       DROP TABLE IF EXISTS public.social_relacionamentos;
     """)
-
