@@ -15,3 +15,25 @@ export function resolveStoreIcon(profileName?: string | null, configured?: strin
   return configured || (normalizeBrainHexProfile(profileName) ? "storefront" : "storefront-outline");
 }
 export function resolveStoreChest(configured?: string | null) { return configured || "treasure-chest"; }
+
+export type StoreIconKind = "deadline" | "retry" | "hint" | "format";
+
+export function storeIconKind(effect: string | null | undefined): StoreIconKind {
+  if (effect === "prazo_extra") return "deadline";
+  if (effect === "segunda_chance") return "retry";
+  if (effect === "troca_formato") return "format";
+  return "hint";
+}
+
+export function purchaseErrorMessage(result: unknown): string | null {
+  if (!result || typeof result !== "object") return "Não foi possível concluir a compra.";
+  const response = result as { ok?: unknown; erro?: unknown };
+  if (response.ok === true) return null;
+  switch (response.erro) {
+    case "saldo_insuficiente": return "Saldo insuficiente para este item.";
+    case "item_indisponivel": return "Este item não está disponível nesta turma.";
+    case "sem_sessao": return "Sua sessão expirou. Entre novamente para comprar.";
+    case "idempotencia": return "Esta compra já está sendo processada.";
+    default: return "Não foi possível concluir a compra.";
+  }
+}

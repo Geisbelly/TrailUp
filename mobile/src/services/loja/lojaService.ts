@@ -1,6 +1,7 @@
 import { normalizeBrainHexProfile, type BrainHexProfile } from "@/constants/brainHexProfiles";
 import { supabase } from "@/database/supabase";
 import { normalizeStoreItem, type StoreItem, type StoreProfileTheme, type StoreSection, type StoreSnapshot } from "@/services/loja/storeModel";
+import { purchaseErrorMessage } from "@/services/loja/storeTheme";
 
 export type { StoreItem, StoreProfileTheme, StoreSection, StoreSnapshot } from "@/services/loja/storeModel";
 const fallbackTheme: StoreProfileTheme = { iconKey: "storefront-outline", themeKey: "default", chestKey: "treasure-chest", accentColor: null, version: 1 };
@@ -41,6 +42,8 @@ export async function carregarLoja(alunoId: string, classeId: number, profileNam
 export async function comprarItem(itemCode: string, classeId: number) {
   const { data, error } = await supabase.rpc("loja_comprar", { p_item: itemCode, p_classe_id: classeId, p_idempotency_key: requestId() });
   if (error) throw error;
+  const businessError = purchaseErrorMessage(data);
+  if (businessError) throw new Error(businessError);
   return data as { ok: boolean; compra_id?: number; saldo?: number; preco?: number; erro?: string };
 }
 
