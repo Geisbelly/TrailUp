@@ -331,18 +331,41 @@ fn_prazo_efetivo(p_aluno uuid, p_atividade bigint) RETURNS timestamptz
 -- limitada por app_config.loja_prazo_extra_dias_maximo.
 ```
 
-O teto é configurável, como você pediu, e fica em `app_config` ao lado de
-`credito_extra_maximo` — `CHECK` não serve, porque exige expressão imutável
-(foi o que a `20260911_06` concluiu para a recompensa de conquista).
+A função já existe, com o aluno na assinatura, e hoje devolve a `data_entrega`
+do professor: a fase 3 troca só o corpo dela, para somar os dias comprados, e
+nenhum chamador muda. O teto é configurável, como você pediu, e fica em
+`app_config` ao lado de `credito_extra_maximo` — `CHECK` não serve, porque exige
+expressão imutável (foi o que a `20260911_06` concluiu para a recompensa de
+conquista).
 
-**O pré-requisito.** Hoje o prazo não faz nada, e o próprio código diz por que
-ele não faz: *"descontar pontos exigiria que o banco soubesse do prazo na hora
-de pagar — `fn_pontos_do_evento` recebe só o tipo do evento"*. Proposta: o
-gatilho de valor passa a consultar `fn_prazo_efetivo` quando o evento tem
-referência de atividade, e multiplica por **`app_config.prazo_atraso_fator`,
-que nasce em `1.0`**. Com 1.0 nada muda para ninguém — o mecanismo entra
-desligado, e o piloto liga quando o professor começar a marcar prazo. Bloquear
-entrega continua fora: prenderia o aluno que voltou depois de uma semana doente.
+**O pré-requisito — feito em `20260912_01_prazo_com_consequencia.py`.** Hoje o
+prazo não faz nada, e o próprio código dizia por quê: *"descontar pontos exigiria
+que o banco soubesse do prazo na hora de pagar — `fn_pontos_do_evento` recebe só
+o tipo do evento"*. O gatilho de valor passou a consultar `fn_prazo_efetivo`
+quando o evento tem referência de atividade e a multiplicar por
+**`app_config.prazo_atraso_fator`, que nasce em `1.0`**. Com 1.0 nada muda para
+ninguém — o mecanismo entrou desligado, e o piloto liga com um UPDATE numa linha
+de configuração. Bloquear entrega continua fora: prenderia o aluno que voltou
+depois de uma semana doente.
+
+Quem decide se há atraso é a **referência**, não o tipo: `atividade:1067` olha
+prazo; `conteudo:174`, `topico:3` e o UUID do ciclo caem fora no regex sem
+tocar em `atividades`. Uma lista de tipos aqui seria uma segunda lista para
+divergir da de `eventos_pontuacao`.
+
+Duas coisas que a migração descobriu e que valem para quem mexer nisso:
+
+- **O parser de `app_config` do resto do repo destruiria o fator.** As outras
+  chaves são inteiras e são lidas com `regexp_replace(valor, '[^0-9]', '', 'g')`.
+  Medido no Postgres desta base: esse idioma sobre `0.5` devolve `05`, isto é,
+  **5** — multiplicaria a pontuação por cinco em vez de cortá-la pela metade, em
+  silêncio. O parser desta chave preserva o ponto, aceita vírgula e apara o
+  resultado em [0, 1].
+- **`20260911_05` emendou o corpo do gatilho no lugar**, então o texto da
+  `20260911_04` já não era o que rodava (faltava `NEW.motivo := OLD.motivo;`).
+  Um `CREATE OR REPLACE` copiado de lá apagaria esse congelamento sem deixar
+  rastro. A migração restata o corpo inteiro e põe um `DO` que confere o corpo
+  vivo antes de substituir.
 
 Enquanto `data_entrega` for nulo em 248 de 248 atividades, este item não vende
 nada. Ele está desenhado e fica na fase 3, atrás do fator e de o console
@@ -485,7 +508,7 @@ exatamente por cima delas.
 | --- | --- | --- |
 | 1 | `moedas_por_evento`, `moedas_lancamentos`, gatilho de ganho, saldo, RLS, métricas do aluno | moeda acumula; ninguém gasta; o aluno da base fecha em 28 |
 | 2 | `loja_itens`, `loja_compras`, `loja_comprar`, `refazer_atividade`, congelamento da nota | nota sobe depois da compra; sem compra, a nota não muda |
-| 3 | `prazo_extra`, `fn_prazo_efetivo`, `prazo_atraso_fator` (em 1.0), teto | prazo estendido aparece na métrica do aluno |
+| 3 | `prazo_extra` e o teto (o resto — `fn_prazo_efetivo` e `prazo_atraso_fator` — já foi em `20260912_01`) | prazo estendido aparece na métrica do aluno |
 | 4 | `recompensa_coletiva`, `dica` | decidido pela pesquisa |
 
 Fase 1 é entregável sozinha e sem risco: nada gasta, então nada quebra se a
@@ -507,9 +530,10 @@ calibragem estiver errada — corrige-se a tabela sem migração nova.
 
 ## 12. Em aberto para você
 
-1. **Consequência do prazo** (§5.1): fator multiplicativo desligado por padrão,
-   como proposto, ou nenhuma consequência — e aí `prazo_extra` sai do catálogo em
-   vez de ficar na fase 3?
+1. ~~**Consequência do prazo**~~ — decidida e feita em `20260912_01`: fator
+   multiplicativo em `app_config.prazo_atraso_fator`, nascendo em `1.0`, sem
+   bloquear entrega. Falta o professor marcar prazo em alguma atividade: são 0
+   de 248.
 2. **Professor pode presentear moeda?** A mecânica já existe (`motivo='presente'`)
    e seria uma RPC de dez linhas. Fora do #144, e por isso não entrou.
 3. **Estorno.** Comprou no alvo errado — devolve? Proposta: sim, só enquanto
