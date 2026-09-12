@@ -29,4 +29,5 @@ def test_social_fica_depois_da_cadeia_da_loja():
     source = MIGRATION.read_text(encoding="utf-8")
     assert 'revision = "20260912_06"' in source
     assert 'down_revision = "20260912_05"' in source
-    assert "guild" not in source.lower()
+    assert "CREATE TABLE" not in source
+    assert "guild_relacionamentos" not in source.lower()
