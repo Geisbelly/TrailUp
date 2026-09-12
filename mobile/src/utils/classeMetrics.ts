@@ -233,9 +233,13 @@ export function buildClasseResumoFallback(
     acertosPercentual: hasAcademicStructure
       ? metrics.acertosPercentual
       : baseResumo?.acertosPercentual ?? 0,
-    porcentagemConcluida: hasAcademicStructure
-      ? metrics.progressPct
-      : baseResumo?.porcentagemConcluida ?? 0,
+    // O percentual da campanha e' o do BANCO. `trailup_recalcular_topico_aluno`
+    // conta sobre o material personalizado; a conta local so' enxerga o material
+    // do professor, e vinha ganhando -- o nome desta funcao diz "fallback", mas
+    // a ordem estava invertida. Local so' quando o banco nao tem numero.
+    porcentagemConcluida:
+      baseResumo?.porcentagemConcluida ??
+      (hasAcademicStructure ? metrics.progressPct : 0),
     ultimaAtividade: hasAcademicStructure
       ? metrics.atividadesConcluidasIds[metrics.atividadesConcluidasIds.length - 1] ?? null
       : baseResumo?.ultimaAtividade ?? null,

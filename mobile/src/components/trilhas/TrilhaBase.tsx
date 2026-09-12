@@ -96,12 +96,17 @@ export const TrilhaBase: React.FC<{
   });
   const totalBlocos = unificado.totalConteudos + unificado.totalAtividades;
   const blocosFeitos = unificado.conteudosConcluidos + unificado.atividadesConcluidas;
+  // Uma fonte so' para o percentual da campanha: o banco. A conta por blocos
+  // continua alimentando os contadores abaixo, mas nao a barra -- ela dizia 32%
+  // enquanto o perfil dizia 19% e o rank 75%, cada um com sua propria formula.
+  const doBanco = classeAtual.resumo?.porcentagemConcluida as number | undefined;
   const progressoBruto =
-    totalBlocos > 0
+    doBanco ??
+    (totalBlocos > 0
       ? (blocosFeitos / totalBlocos) * 100
       : typeof (classeAtual as any).getProgressoGeral === "function"
       ? (classeAtual as any).getProgressoGeral()
-      : ((classeAtual.resumo?.porcentagemConcluida as number | undefined) ?? 0);
+      : 0);
   const progresso = Math.max(0, Math.min(100, Number(progressoBruto) || 0));
   const totalTopicos = classeAtual.topicos.length;
   const concluidos = classeAtual.topicos.filter((topico) => {
