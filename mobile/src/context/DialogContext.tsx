@@ -44,12 +44,19 @@ type DialogContextValue = {
   showDialog: (options: DialogOptions) => void;
   showConfirm: (options: ConfirmOptions) => void;
   hideDialog: () => void;
+  /**
+   * Já existe um diálogo na tela. Quem abre por conta própria -- sem o aluno
+   * ter pedido nada -- consulta antes: `showDialog` substitui o conteúdo, e
+   * substituir apagaria uma mensagem que o aluno ainda não leu.
+   */
+  dialogoAberto: boolean;
 };
 
 const DialogContext = createContext<DialogContextValue>({
   showDialog: () => console.warn("DialogProvider não montado (showDialog)"),
   showConfirm: () => console.warn("DialogProvider não montado (showConfirm)"),
   hideDialog: () => console.warn("DialogProvider não montado (hideDialog)"),
+  dialogoAberto: false,
 });
 
 function getToneConfig(
@@ -148,9 +155,11 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
     [showDialog]
   );
 
+  const dialogoAberto = Boolean(dialog?.visible);
+
   const value = useMemo(
-    () => ({ showDialog, showConfirm, hideDialog }),
-    [hideDialog, showConfirm, showDialog]
+    () => ({ showDialog, showConfirm, hideDialog, dialogoAberto }),
+    [dialogoAberto, hideDialog, showConfirm, showDialog]
   );
 
   const toneConfig = getToneConfig(dialog?.tone ?? "info", palette);
