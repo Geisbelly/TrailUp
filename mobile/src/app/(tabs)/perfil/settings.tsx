@@ -20,7 +20,6 @@ import {
 
 import { useDialog } from "@/context/DialogContext";
 import { useUsuario } from "@/context/SessaoContext";
-import { supabase } from "@/database/supabase";
 import { FontFamily } from "@/styles/GlobalStyle";
 import {
   getMetricsThemeLabel,
@@ -39,7 +38,7 @@ export default function Settings() {
   const [busca, setBusca] = useState("");
   const [metricsThemeLabel, setMetricsThemeLabel] = useState("Automático");
   const { showDialog } = useDialog();
-  const { usuario } = useUsuario();
+  const { usuario, sair } = useUsuario();
   const settingsListGuideRef = useRef<View | null>(null);
   const settingsScrollRef = useRef<ScrollView | null>(null);
   const settingsScrollOffsetRef = useRef(0);
@@ -78,12 +77,23 @@ export default function Settings() {
   );
 
   const handleLogout = async () => {
-    try {
-      await supabase.auth.signOut();
-    } catch (error) {
-      console.error("Erro ao sair:", error);
-    } finally {
-      router.replace("/(auth)/login");
+    // `sair()` derruba o estado de sessao mesmo quando o Supabase nao responde.
+    // Antes daqui saia um `supabase.auth.signOut()` cru, e a tela dependia do
+    // evento `SIGNED_OUT` para a guarda de rota liberar a saida -- evento que
+    // nao vem quando o POST /logout falha ou o refresh token ja venceu. O
+    // `router.replace` ate rodava, e a guarda devolvia o aluno para as abas.
+    const { remotoOk } = await sair();
+    router.replace("/(auth)/login");
+
+    if (!remotoOk) {
+      // A sessao deste aparelho ja caiu; o que pode ter sobrado e o token vivo
+      // no servidor, valido nos outros aparelhos do aluno.
+      showDialog({
+        title: "Você saiu deste aparelho",
+        description:
+          "Não deu para avisar o servidor, então a sua sessão pode continuar aberta em outros aparelhos.",
+        tone: "warning",
+      });
     }
   };
 
