@@ -1,7 +1,6 @@
 // src/models/Conteudo.ts
-import { construirEscritaDeConteudo, statusConhecido } from '@/services/progressoEscritas';
-import { gravarProgresso } from '@/services/progressoOutbox';
-import { clampPercent } from '@/utils/dataValidation';
+import { supabase } from '@/database/supabase';
+import { clampPercent, normalizeNonNegativeNumber } from '@/utils/dataValidation';
 import { Midia } from './Midia';
 
 export class Conteudo {
@@ -37,15 +36,20 @@ export class Conteudo {
       // (`20260826_19`). Aqui o valor caia em `this.tempo_gasto_min ?? 0`, ou
       // seja, marcar um conteudo como visto sobrescrevia o tempo do banco com
       // o que a memoria do app tivesse -- ou com zero.
-      await gravarProgresso(
-        construirEscritaDeConteudo({
-          alunoId: aluno_id,
-          conteudoId: this.id,
+      const { error } = await supabase
+        .from('conteudo_aluno')
+        .upsert({
+          aluno_id,
+          conteudo_id: this.id,
           status: 'concluido',
-          percentual: 100,
-          agora,
-        })
-      );
+          percentual_concluido: 100,
+          ultima_visualizacao: agora,
+          updated_at: agora,
+        }, {
+          onConflict: 'aluno_id,conteudo_id'
+        });
+
+      if (error) throw error;
 
       // Atualiza localmente
       this.status = 'concluido';
@@ -75,27 +79,31 @@ export class Conteudo {
   async registrarVisita(aluno_id: string): Promise<void> {
     try {
       const agora = new Date().toISOString();
-      // O percentual do banco é preservado, não recalculado: aqui só se sabe
-      // que houve visita. Quando ele já prova conclusão, `statusConhecido`
-      // devolve `concluido` -- é o que impede a visita de demover a linha.
-      const statusAtual = statusConhecido({
-        status: this.status,
-        percentual: this.percentual_concluido,
-      });
-      const percentualAtual =
-        statusAtual === 'concluido' ? 100 : clampPercent(this.percentual_concluido ?? 0);
+      const statusAtual =
+        this.status ?? (Number(this.percentual_concluido ?? 0) >= 100 ? 'concluido' : 'em andamento');
+      const percentualAtual = String(statusAtual).toLowerCase().includes('concl')
+        ? 100
+        : clampPercent(this.percentual_concluido ?? 0);
 
-      await gravarProgresso(
-        construirEscritaDeConteudo({
-          alunoId: aluno_id,
-          conteudoId: this.id,
-          status: statusAtual,
-          percentual: percentualAtual,
-          agora,
-        })
-      );
+      const { error } = await supabase
+        .from('conteudo_aluno')
+        .upsert(
+          {
+            aluno_id,
+            conteudo_id: this.id,
+            status: statusAtual,
+            percentual_concluido: percentualAtual,
+            ultima_visualizacao: agora,
+            updated_at: agora,
+          },
+          {
+            onConflict: 'aluno_id,conteudo_id',
+          }
+        );
 
-      this.status = statusAtual ?? this.status;
+      if (error) throw error;
+
+      this.status = statusAtual;
       this.percentual_concluido = percentualAtual;
       this.ultima_visualizacao = agora;
     } catch (err) {

@@ -1326,12 +1326,6 @@ export interface AppOptions {
    */
   maxConcurrentPersonalizacaoJobs?: number;
   /**
-   * Injetável só para teste. Em produção é o `startJobHeartbeat` do
-   * supabaseService — ver o comentário no handler de /api/personalizar sobre
-   * por que o heartbeat começa na ACEITAÇÃO e não dentro do pipeline.
-   */
-  startJobHeartbeat?:    typeof startJobHeartbeat;
-  /**
    * Quando true, o 404 catch-all não é registrado aqui — o middleware da SPA
    * (Vite em dev / dist em prod) é montado depois, em startServer (async).
    */
@@ -1350,7 +1344,6 @@ export function buildApp(opts: AppOptions = {}): express.Application {
     renderGitCommit = getRenderGitCommit(),
     enableSpa           = false,
     maxConcurrentPersonalizacaoJobs = Number(process.env.PERSONALIZACAO_MAX_CONCURRENT_JOBS) || 2,
-    startJobHeartbeat: iniciarHeartbeatDoJob = startJobHeartbeat,
   } = opts;
 
   const personalizacaoJobGate = createConcurrencyGate(maxConcurrentPersonalizacaoJobs);
@@ -1892,42 +1885,9 @@ export function buildApp(opts: AppOptions = {}): express.Application {
       }
     };
 
-    // O heartbeat começa na ACEITAÇÃO, não quando o pipeline começa a rodar.
-    //
-    // `runPersonalizacaoJob` já inicia um heartbeat, mas ele só nasce DEPOIS
-    // do gate de concorrência. Com o default de 2 jobs simultâneos, do 3º
-    // perfil em diante o job espera na fila FIFO do gate — e nesse tempo
-    // `updated_at` fica congelado no instante em que a API criou a linha,
-    // porque nada mais escreve nela. `recoverStaleJobs` reaproveita esse
-    // mesmo `updated_at` com threshold de 150s (HEARTBEAT_INTERVAL_MS * 5) e
-    // marca a linha como órfã de processo que crashou.
-    //
-    // O threshold agressivo é justificado pela premissa de que "job vivo
-    // sempre tem updated_at fresco" — e um job aceito, esperando a vez, está
-    // vivo. Sem este heartbeat a premissa é falsa exatamente para a cauda da
-    // fila. Medido no tópico 128 (7 perfis): seeker e socializer morreram com
-    // "idade 534s", que é o instante em que foram criados, sem nunca terem
-    // sido processados.
-    //
-    // O heartbeat do pipeline continua onde está: assim `runPersonalizacaoJob`
-    // segue correto quando chamado direto. A sobreposição custa um UPDATE de
-    // `updated_at` a cada 30s e é idempotente.
-    const executarComHeartbeatDesdeAFila = async () => {
-      const pararHeartbeat = iniciarHeartbeatDoJob(
-        personalizacaoId,
-        HEARTBEAT_INTERVAL_MS,
-        fence,
-      );
-      try {
-        await personalizacaoJobGate.run(executeJob);
-      } finally {
-        pararHeartbeat();
-      }
-    };
-
     if (waitForCompletion) {
       try {
-        await executarComHeartbeatDesdeAFila();
+        await personalizacaoJobGate.run(executeJob);
         return res.status(200).json({
           status: "completed",
           personalizacao_id: personalizacaoId,
@@ -1954,7 +1914,7 @@ export function buildApp(opts: AppOptions = {}): express.Application {
       content_enrichment_provider: CONTENT_ENRICHMENT_PROVIDER,
     });
     setImmediate(() => {
-      void executarComHeartbeatDesdeAFila().catch(() => undefined);
+      void personalizacaoJobGate.run(executeJob).catch(() => undefined);
     });
   });
 

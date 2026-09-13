@@ -239,6 +239,8 @@ export function ModuleHeaderTitle({
               },
             ]}
             onPress={() => setOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Ajuda sobre este módulo"
           >
             <MaterialCommunityIcons
               name="help-circle-outline"
@@ -347,6 +349,8 @@ export function ModuleHeaderGuideButton({
           },
         ]}
         onPress={() => setOpen(true)}
+        accessibilityRole="button"
+        accessibilityLabel="Ajuda sobre este módulo"
       >
         <MaterialCommunityIcons
           name="help-circle-outline"
@@ -542,6 +546,7 @@ function GuideModalContent({
                   }
                   setTutorialIndex((prev) => Math.max(0, prev - 1));
                 }}
+                accessibilityRole="button"
               >
                 <Text
                   style={[
@@ -569,6 +574,7 @@ function GuideModalContent({
                   }
                   setTutorialIndex((prev) => prev + 1);
                 }}
+                accessibilityRole="button"
               >
                 <Text
                   style={[
@@ -854,6 +860,7 @@ function GuideModalContent({
                 },
               ]}
               onPress={onClose}
+              accessibilityRole="button"
             >
               <Text
                 style={[
@@ -877,6 +884,7 @@ function GuideModalContent({
                 setTutorialIndex(0);
                 setTutorialActive(true);
               }}
+              accessibilityRole="button"
             >
               <Text
                 style={[styles.closeButtonText, { color: palette.background }]}

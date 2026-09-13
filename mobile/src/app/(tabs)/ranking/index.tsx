@@ -115,7 +115,11 @@ function RankCard({
       <Animated.View
         style={{ transform: [{ scale: scaleAnim }], width: "100%" }}
       >
-        <Pressable onPress={handlePress}>
+        <Pressable
+          onPress={handlePress}
+          accessibilityRole="button"
+          accessibilityLabel={item.nome ?? "Ranking"}
+        >
           <LinearGradient
             colors={[cardTop, cardMid, cardBot]}
             start={{ x: 0, y: 0 }}
@@ -199,7 +203,11 @@ function RankCard({
 
   return (
     <Animated.View style={{ transform: [{ scale: scaleAnim }], width: CARD_W }}>
-      <Pressable onPress={handlePress}>
+      <Pressable
+        onPress={handlePress}
+        accessibilityRole="button"
+        accessibilityLabel={item.nome ?? "Ranking"}
+      >
         <LinearGradient
           colors={[cardTop, cardMid, cardBot]}
           start={{ x: 0.5, y: 0 }}

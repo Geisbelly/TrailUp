@@ -493,6 +493,9 @@ export function TrilhaMapaHeroStable({
                       opacity: node.locked ? 0.72 : 1,
                     },
                   ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${node.title}${node.locked ? ", bloqueado" : ""}`}
+                  accessibilityState={{ disabled: node.locked }}
                 >
                   <View style={styles.nodeHeader}>
                     <View

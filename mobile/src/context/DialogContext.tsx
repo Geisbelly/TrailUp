@@ -275,6 +275,8 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
                           },
                     ]}
                     onPress={buildActionHandler(action)}
+                    accessibilityRole="button"
+                    accessibilityLabel={action.label}
                   >
                     <Text
                       style={[

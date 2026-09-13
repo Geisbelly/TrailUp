@@ -123,6 +123,7 @@ export default function ExcluirContaScreen() {
         ]}
         onPress={handleSolicitar}
         disabled={enviando}
+        accessibilityRole="button"
       >
         <Text style={styles.buttonText}>{enviando ? "Enviando..." : "Enviar solicitação"}</Text>
       </TouchableOpacity>

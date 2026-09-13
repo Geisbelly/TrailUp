@@ -164,6 +164,7 @@ export default function ConquistaModal({
                   { backgroundColor: tinycolor(color).darken(5).toHexString(), borderColor: goldDim },
                 ]}
                 onPress={onClose}
+                accessibilityRole="button"
               >
                 <Text style={[s.modalCloseText, { color: "#FFF" }]}>{buttonText}</Text>
               </TouchableOpacity>

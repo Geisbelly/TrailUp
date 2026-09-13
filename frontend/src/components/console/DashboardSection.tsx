@@ -147,6 +147,7 @@ export default function DashboardSection() {
   // evento, entao janela temporal real depende do endpoint de KPIs da #12.
   const [janelaTemporal, setJanelaTemporal] = useState<"7d" | "30d" | "mes_atual" | "tudo">("30d");
   const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [personalizacaoData, setPersonalizacaoData] = useState<PersonalizacaoDocenteResponse | null>(null);
   const [personalizacaoLoading, setPersonalizacaoLoading] = useState(false);
   const [personalizacaoError, setPersonalizacaoError] = useState<string | null>(null);
@@ -201,6 +202,7 @@ export default function DashboardSection() {
   const loadData = async () => {
     if (!professorId) return;
     setIsLoading(true);
+    setLoadError(null);
     try {
       const { data: classesData, error: classesError } = await supabase
         .from("classe")
@@ -351,6 +353,12 @@ export default function DashboardSection() {
       setAlunos(alunosFormatados);
     } catch (error) {
       console.error("Erro ao carregar dashboard:", error);
+      setAlunos([]);
+      setLoadError(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível carregar os alunos."
+      );
     } finally {
       setIsLoading(false);
     }
@@ -725,7 +733,14 @@ export default function DashboardSection() {
             </Select>
           </div>
 
-          {isLoading ? (
+          {loadError ? (
+            <div className="flex flex-col items-center gap-3 py-8 text-center">
+              <p className="text-sm text-destructive">{loadError}</p>
+              <Button variant="outline" size="sm" onClick={loadData}>
+                Tentar novamente
+              </Button>
+            </div>
+          ) : isLoading ? (
             <p className="text-sm text-muted-foreground">Carregando alunos...</p>
           ) : (
             <>
@@ -777,7 +792,11 @@ export default function DashboardSection() {
               </Table>
 
               {filteredAlunos.length === 0 && (
-                <p className="text-center text-muted-foreground py-8">Nenhum aluno encontrado</p>
+                <p className="text-center text-muted-foreground py-8">
+                  {alunos.length === 0
+                    ? "Nenhum aluno matriculado ainda."
+                    : "Nenhum aluno encontrado com esse filtro."}
+                </p>
               )}
             </>
           )}

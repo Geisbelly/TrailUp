@@ -295,6 +295,7 @@ export function SectionGuideButton({
                   <Pressable
                     onPress={() => (index === 0 ? close() : setIndex((value) => value - 1))}
                     style={[styles.secondary, { borderColor: palette.border }]}
+                    accessibilityRole="button"
                   >
                     <Text style={[styles.secondaryText, { color: palette.textMuted }]}>
                       {index === 0 ? "Fechar" : "Voltar"}
@@ -306,6 +307,7 @@ export function SectionGuideButton({
                       else setIndex((value) => value + 1);
                     }}
                     style={[styles.primary, { backgroundColor: palette.accent }]}
+                    accessibilityRole="button"
                   >
                     <Text style={[styles.primaryText, { color: palette.background }]}>
                       {index >= steps.length - 1 ? "Concluir" : "Próximo"}

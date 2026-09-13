@@ -1,14 +1,6 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  ehMissao,
-  formatoDaQuestao,
-  FORMATOS_DE_QUESTAO,
-  TIPO_DE_MISSAO,
-  TIPOS_DE_ATIVIDADE,
-  tipoDeAtividadeDoFormato,
-} from "@/lib/tiposDeAtividade";
 import { useAuth } from "@/hooks/useAuth";
 import { formatSupabaseFunctionError } from "@/lib/supabaseFunctionError";
 import { toast } from "sonner";
@@ -619,15 +611,14 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
     }
   }, [contents.length, setIsCreating, setContentForm]);
 
-  // Era uma cadeia de `if` aqui dentro, com um vocabulario proprio. Agora vem da
-  // lista central (`lib/tiposDeAtividade`): `atividades.tipo` e texto livre no
-  // banco, e duas tabelas de apelidos divergem.
-  //
-  // MISSAO nao passa por aqui: ela nao tem formato implicito, entao converter a
-  // questao dela para um tipo de atividade apagaria justamente o que a missao
-  // tem de proprio -- itens de formatos diferentes na mesma tarefa.
-  const normalizeQuestionTypeToActivityType = (tipo: string | null | undefined) =>
-    ehMissao(activityForm.tipo) ? TIPO_DE_MISSAO : tipoDeAtividadeDoFormato(tipo);
+  const normalizeQuestionTypeToActivityType = (tipo: string | null | undefined) => {
+    const raw = (tipo || "").trim().toLowerCase();
+    if (raw === "quiz" || raw === "multipla" || raw === "multipla_escolha") return "quiz";
+    if (raw === "true_false" || raw === "verdadeiro_falso" || raw === "vf") return "true_false";
+    if (raw === "fill_blank" || raw === "lacuna" || raw === "completar") return "fill_blank";
+    if (raw === "essay" || raw === "dissertativa" || raw === "questao" || raw === "texto") return "essay";
+    return "essay";
+  };
 
   // Efeito para carregar questão existente ao selecionar atividade
   useEffect(() => {
@@ -1113,9 +1104,10 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                 <Select value={newActivityForm.tipo || "quiz"} onValueChange={(v) => setNewActivityForm({...newActivityForm, tipo: v})}>
                                     <SelectTrigger className={darkInputClass}><SelectValue placeholder="Tipo"/></SelectTrigger>
                                     <SelectContent className="bg-[#1E293B] border-slate-700 text-slate-200">
-                                        {TIPOS_DE_ATIVIDADE.map((t) => (
-                                          <SelectItem key={t.tipo} value={t.tipo}>{t.rotulo}</SelectItem>
-                                        ))}
+                                        <SelectItem value="quiz">Quiz (Múltipla)</SelectItem>
+                                        <SelectItem value="fill_blank">Completar</SelectItem>
+                                        <SelectItem value="true_false">V/F</SelectItem>
+                                        <SelectItem value="essay">Dissertação</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 <Input
@@ -1150,9 +1142,10 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                 <Select value={activityForm.tipo || "quiz"} onValueChange={(v) => setActivityForm({...activityForm, tipo: v})}>
                                     <SelectTrigger className={darkInputClass}><SelectValue/></SelectTrigger>
                                     <SelectContent className="bg-[#1E293B] border-slate-700 text-slate-200">
-                                        {TIPOS_DE_ATIVIDADE.map((t) => (
-                                          <SelectItem key={t.tipo} value={t.tipo}>{t.rotulo}</SelectItem>
-                                        ))}
+                                        <SelectItem value="quiz">Quiz (Múltipla)</SelectItem>
+                                        <SelectItem value="fill_blank">Completar</SelectItem>
+                                        <SelectItem value="true_false">Verdadeiro/Falso</SelectItem>
+                                        <SelectItem value="essay">Dissertação</SelectItem>
                                     </SelectContent>
                                 </Select>
                               </div>
@@ -1177,31 +1170,8 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                     <Textarea value={questionForm.enunciado || ""} onChange={e => setQuestionForm({...questionForm, enunciado: e.target.value})} className={`${darkInputClass} text-sm min-h-[60px]`} placeholder="Digite a pergunta..."/>
                                 </div>
                                 
-                                {/* 0. MISSAO -- o unico tipo em que o formato e de cada ITEM.
-                                       Sem este ramo, `tipo = 'missao'` nao casava nenhuma
-                                       condicao e o professor via formulario VAZIO, sem erro. */}
-                                {ehMissao(activityForm.tipo) && (
-                                    <div className="space-y-1.5">
-                                        <Label className={darkLabelClass}>Formato deste item</Label>
-                                        <Select
-                                            value={questionForm.tipo || "multipla"}
-                                            onValueChange={(v) => setQuestionForm({ ...questionForm, tipo: v })}
-                                        >
-                                            <SelectTrigger className={darkInputClass}><SelectValue/></SelectTrigger>
-                                            <SelectContent className="bg-[#1E293B] border-slate-700 text-slate-200">
-                                                {FORMATOS_DE_QUESTAO.map((f) => (
-                                                    <SelectItem key={f.formato} value={f.formato}>{f.rotulo}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        <p className="text-[11px] text-slate-500">
-                                            Uma missão pode misturar formatos — cada item escolhe o seu.
-                                        </p>
-                                    </div>
-                                )}
-
                                 {/* 1. QUIZ (Multipla Escolha) */}
-                                {formatoDaQuestao(activityForm.tipo, questionForm.tipo) === 'multipla' && (
+                                {activityForm.tipo === 'quiz' && (
                                     <div className="space-y-2">
                                         <Label className={darkLabelClass}>Alternativas</Label>
                                         {questionOptions.map((opt, i) => (
@@ -1218,7 +1188,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                 )}
 
                                 {/* 2. TRUE / FALSE */}
-                                {formatoDaQuestao(activityForm.tipo, questionForm.tipo) === 'verdadeiro_falso' && (
+                                {activityForm.tipo === 'true_false' && (
                                     <div className="flex gap-4">
                                         {["Verdadeiro", "Falso"].map(opt => (
                                             <button 
@@ -1233,7 +1203,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                 )}
 
                                 {/* 3. FILL BLANK */}
-                                {formatoDaQuestao(activityForm.tipo, questionForm.tipo) === 'fill_blank' && (
+                                {activityForm.tipo === 'fill_blank' && (
                                     <div>
                                         <Label className={darkLabelClass}>Palavra/Resposta Correta</Label>
                                         <Input 

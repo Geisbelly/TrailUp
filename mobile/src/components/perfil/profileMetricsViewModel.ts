@@ -5,15 +5,6 @@ import { Conquista } from "@/models/Conquista";
 import { EventoAluno } from "@/models/Evento";
 import { PerfilDoAluno } from "@/models/PerfilAluno";
 import { PosicaoDoAluno } from "@/models/RankAlunoPosicao";
-import {
-  escolherTempoDaClasse,
-  escolherTempoMedio,
-} from "@/utils/tempoDaClasse";
-import {
-  extrairPontuacao,
-  type CriterioDoRank,
-  type PontuacaoDoAluno,
-} from "@/utils/pontuacaoDoAluno";
 import { buildClasseAcademicMetrics, buildClasseResumoFallback } from "@/utils/classeMetrics";
 import {
   agregarProgressoPersonalizado,
@@ -49,15 +40,6 @@ export type ProfileMetricsViewModel = {
   semanaDiaria: number[];
   ultimoEvento: string | null;
   melhorPosicao: PosicaoDoAluno | null;
-  /**
-   * Pontos no rank de PONTUACAO, especificamente.
-   *
-   * `melhorPosicao` escolhe pela melhor colocacao entre os ranks da turma, e
-   * cada rank mede numa unidade diferente -- pontos, minutos, por cento. O
-   * campo `pontuacao` dele, por isso, tem unidade imprevisivel. Aqui a unidade
-   * e sempre ponto. Ver `utils/pontuacaoDoAluno`.
-   */
-  pontuacao: PontuacaoDoAluno;
   afinidades: ProfileMetricAffinity[];
   materiaNome: string | null;
   emotionLabel: string;
@@ -292,11 +274,6 @@ type BuildMetricsViewModelParams = {
    * mostrar so o material do professor.
    */
   progressoPersonalizado?: ProgressoPersonalizado | null;
-  /**
-   * Criterio de cada rank da turma (`ClasseRanking.ranks[].info`). Sem isso nao
-   * da para saber qual das posicoes esta em pontos.
-   */
-  criteriosDosRanks?: CriterioDoRank[] | null;
 };
 
 /**
@@ -329,7 +306,6 @@ export function buildProfileMetricsViewModel({
   cameraPermission,
   battleState,
   progressoPersonalizado,
-  criteriosDosRanks,
 }: BuildMetricsViewModelParams): ProfileMetricsViewModel {
   const resumoConfiavel = buildClasseResumoFallback(classeAtual, classeAtual?.resumo ?? null);
   const academicMetrics = buildClasseAcademicMetrics(classeAtual);
@@ -371,23 +347,16 @@ export function buildProfileMetricsViewModel({
   const acertos = hasAtividades
     ? academicMetrics.acertosPercentual
     : resumoConfiavel?.acertosPercentual ?? 0;
-  // O tempo do BANCO vence, como o percentual logo acima. A ordem estava
-  // invertida aqui: com estrutura de classe -- o caso normal -- o valor do
-  // banco nao era nem lido, e a conta local somava conteudo + atividade. Os
-  // escopos da telemetria sao INCLUSIVOS (o `topic` ja conta o mesmo
-  // intervalo), entao somar dois deles multiplica o tempo: 2,89 na metrica
-  // contra 2,26 no rank, medido na classe 32. Ver `utils/tempoDaClasse`.
-  const tempoPersistido = escolherTempoDaClasse({
-    doBanco: resumoConfiavel?.tempoGastoMin,
-    academicoMin: academicMetrics.tempoTotalMin,
-    unificadoMin: unificado.tempoMin,
-    temEstrutura: hasEstruturaDaClasse,
-  });
-  const tempoMedio = escolherTempoMedio({
-    doBanco: resumoConfiavel?.tempoMedioPorAtividade,
-    localMin: academicMetrics.tempoMedioPorAtividade,
-    temAtividades: hasAtividades,
-  });
+  // MAXIMO, nao soma: o tempo do topico ja inclui o dos itens (o rastreio grava
+  // topico em todo flush, inclusive nos blocos personalizados). O maximo evita
+  // contar duas vezes e ao mesmo tempo recupera o numero quando a escrita de um
+  // dos lados falha -- era o caso do total zerado com estudo registrado.
+  const tempoPersistido = hasEstruturaDaClasse
+    ? Math.max(academicMetrics.tempoTotalMin, unificado.tempoMin)
+    : Math.max(resumoConfiavel?.tempoGastoMin ?? 0, unificado.tempoMin);
+  const tempoMedio = hasAtividades
+    ? academicMetrics.tempoMedioPorAtividade
+    : resumoConfiavel?.tempoMedioPorAtividade ?? 0;
   const seteDias = Date.now() - 7 * 24 * 60 * 60 * 1000;
   const eventosRecentes = eventos.filter((evento) => {
     const time = evento.criado_em ? new Date(evento.criado_em).getTime() : NaN;
@@ -420,8 +389,6 @@ export function buildProfileMetricsViewModel({
     [...posicoesDoAluno].sort(
       (a, b) => (a.posicao ?? Number.MAX_SAFE_INTEGER) - (b.posicao ?? Number.MAX_SAFE_INTEGER)
     )[0] ?? null;
-
-  const pontuacao = extrairPontuacao(posicoesDoAluno, criteriosDosRanks ?? []);
 
   const emotionLabel = getEmotionLabel(
     lastAnalysis?.emocao_atual &&
@@ -456,26 +423,13 @@ export function buildProfileMetricsViewModel({
   const tm = lastBatchTimeMetrics ?? null;
   const sessionActiveSec = tm?.general.batch_active_sec ?? 0;
   const sessionIdleSec = tm?.general.batch_idle_sec ?? 0;
+  const sessionElapsedSec = tm?.general.session_elapsed_sec ?? 0;
   const tempoAtivoMin = Math.max(0, Math.round(sessionActiveSec / 60));
   const sessionEngajamento =
     sessionActiveSec + sessionIdleSec > 0
       ? clampPercent((sessionActiveSec / (sessionActiveSec + sessionIdleSec)) * 100)
       : 0;
-  // `tempo` e o MESMO numero que o rank "Tempo de Estudo" e a trilha mostram,
-  // entao ele vem do banco e so do banco.
-  //
-  // Aqui havia `+ sessionElapsedSec / 60`, e `session_elapsed_sec` e
-  // `now - sessionStartedAt` -- a sessao INTEIRA, nao o lote (ver
-  // `MetricasContext.montarTimeMetrics`). O tempo do banco ja inclui tudo que
-  // os lotes desta mesma sessao gravaram, entao somar os dois contava a sessao
-  // duas vezes, e o erro CRESCIA com a duracao: 10 min de estudo apareciam
-  // como ~20 aqui e como 10 no rank.
-  //
-  // A correcao de `escolherTempoDaClasse` logo acima resolveu a escolha da
-  // FONTE (banco vence o calculo local); esta resolve a soma que vinha depois
-  // dela. O dado ao vivo nao se perde: `tempoAtivoMin` continua exposto
-  // separadamente, rotulado como tempo ativo da sessao.
-  const tempo = Math.max(0, Number(tempoPersistido));
+  const tempo = Math.max(0, Number(tempoPersistido) + sessionElapsedSec / 60);
   const topicsArr = tm?.topics ?? [];
   const contentsArr = tm?.contents ?? [];
   const activitiesArr = tm?.activities ?? [];
@@ -523,7 +477,6 @@ export function buildProfileMetricsViewModel({
     semanaDiaria,
     ultimoEvento: eventos[0]?.criado_em ?? null,
     melhorPosicao,
-    pontuacao,
     afinidades,
     materiaNome: resumoConfiavel?.materia_nome ?? null,
     emotionLabel,

@@ -18,9 +18,6 @@
     "lint:microservice": "npm --prefix microservice run lint",
     "start:mobile": "npm --prefix mobile run start",
     "android:mobile": "npm --prefix mobile run android",
-    "build:mobile:apk": "npm --prefix mobile run build:apk",
-    "build:mobile:aab": "npm --prefix mobile run build:aab",
-    "build:mobile:android": "npm --prefix mobile run build:android",
     "web:mobile": "npm --prefix mobile run web",
     "lint:mobile": "npm --prefix mobile run lint",
     "install:all": "npm --prefix frontend install && npm --prefix microservice install && npm --prefix mobile install"
