@@ -22,3 +22,4 @@ export const bloquear = (alvoId: string) => socialAction("social_bloquear", { p_
 export const desbloquear = (relationshipId: string) => socialAction("social_desbloquear", { p_relationship_id: relationshipId });
 export async function socialChatListar(alunoId: string) { const { data, error } = await supabase.rpc("social_chat_listar", { p_destinatario_id: alunoId }); if (error) throw error; return Array.isArray(data) ? data : []; }
 export async function socialChatEnviar(alunoId: string, texto: string) { return socialAction("social_chat_enviar", { p_destinatario_id: alunoId, p_texto: texto.trim() }); }
+export async function socialChatPresenca(alunoId: string) { const { data, error } = await supabase.rpc("social_presenca_aluno", { p_aluno_id: alunoId }); if (error) throw error; return Boolean((data as { online?: unknown } | null)?.online); }
