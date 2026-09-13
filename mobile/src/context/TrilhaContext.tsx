@@ -1596,13 +1596,47 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       // fez no material personalizado e nos quizzes da apresentação: o dado
       // existia no banco e ninguém lia. Agora vem a linha inteira, de TODOS os
       // itens, e o bônus de slide passa a ser um recorte disso.
-      const { data, error } = await supabase
+      // O banco calcula o percentual usando somente a geração pronta do perfil
+      // ativo. A leitura do app precisa usar exatamente o mesmo recorte; buscar
+      // todas as gerações e deduplicar por item fazia uma geração antiga vencer
+      // a atual de forma não determinística.
+      const perfilAtivo = String(usuario?.perfilAtivo ?? '').trim()
+      let personalizacaoIds: number[] = []
+      if (perfilAtivo) {
+        const { data: personalizacoes, error: personalizacaoError } = await supabase
+          .from('conteudo_personalizado')
+          .select('id')
+          .eq('aluno_id', alunoId)
+          .eq('classe_id', classeId)
+          .eq('brainhex_profile_key', perfilAtivo)
+          .eq('status', 'pronto')
+
+        if (personalizacaoError) {
+          console.warn('[TrilhaContext] Falha ao buscar personalização ativa:', personalizacaoError)
+          if (!cancelado) setProgressoItens([])
+          return
+        }
+        personalizacaoIds = (personalizacoes ?? [])
+          .map((row: any) => Number(row.id))
+          .filter((id) => Number.isFinite(id))
+      }
+
+      let progressoQuery = supabase
         .from('personalizacao_item_progresso')
         .select(
           'topico_id, item_key, item_kind, status, percentual_concluido, acertos_percentual, tempo_gasto_min'
         )
         .eq('aluno_id', alunoId)
         .eq('classe_id', classeId)
+      if (perfilAtivo) {
+        if (!personalizacaoIds.length) {
+          if (!cancelado) setProgressoItens([])
+          return
+        }
+        progressoQuery = progressoQuery.in('personalizacao_id', personalizacaoIds)
+      }
+
+      const { data, error } = await progressoQuery
 
       if (cancelado) return
       if (error) {
@@ -1624,7 +1658,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
     return () => {
       cancelado = true
     }
-  }, [classeAtual?.classe_id, usuario?.id])
+  }, [classeAtual?.classe_id, usuario?.id, usuario?.perfilAtivo])
 
   const trilhaSlideBonusPercent = useMemo(
     () => computeSlideBonusPercent(slideBonusKeys),
