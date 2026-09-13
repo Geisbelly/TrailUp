@@ -1711,6 +1711,30 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
   const atualizarProgressoClasse = useCallback(async () => {
     if (!classeAtual) return;
     try {
+      // O percentual da classe é calculado no banco porque a jornada
+      // personalizada pode ter itens que não existem em `classeAtual.topicos`.
+      // Usar `classeAtual.resumo` aqui reaproveitava o percentual antigo e o
+      // gravava de volta, fazendo uma trilha concluída permanecer em 80%, 90%
+      // etc. Recalcular e reler o resumo torna a escrita idempotente e mantém
+      // Trilha, Perfil e Ranking na mesma fonte.
+      const { error: recalcError } = await supabase.rpc('trailup_recalcular_classe_aluno', {
+        p_aluno: classeAtual.aluno_id,
+        p_classe: classeAtual.classe_id,
+      });
+
+      if (!recalcError) {
+        const resumoAtualizado = await Classe.loadResumo(classeAtual.aluno_id, classeAtual.classe_id);
+        if (resumoAtualizado) {
+          syncClasseLocally(cloneClasse(classeAtual, {
+            topicos: [...classeAtual.topicos],
+            resumo: resumoAtualizado,
+          }));
+          return;
+        }
+      } else {
+        console.warn('[TrilhaContext] Recálculo canônico da classe falhou; usando fallback:', recalcError);
+      }
+
       const metrics = buildClasseAcademicMetrics(classeAtual)
       const novoResumo = buildClasseResumoFallback(classeAtual, classeAtual.resumo)
       if (!novoResumo) return
