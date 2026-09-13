@@ -292,7 +292,10 @@ export default function ClassManagementSection({ professorId }: Props) {
     if (classStudents[classId]?.includes(studentToAdId)) return toast.error("Aluno já está na turma.");
     setIsProcessingStudent(true);
     try {
-      await supabase.from("classe_aluno").insert({ classe_id: classId, aluno_id: studentToAdId });
+      const { error: enrollmentError } = await supabase
+        .from("classe_aluno")
+        .insert({ classe_id: classId, aluno_id: studentToAdId });
+      if (enrollmentError) throw enrollmentError;
       const { data: authData } = await supabase.auth.getSession();
       if (authData.session?.access_token) {
         const { topico_ids, conteudo_ids } = await fetchClassContextIds(classId);
