@@ -21,6 +21,7 @@ import PresentationSlidesBlock from "./PresentationSlidesBlock";
 import AudioPlayer from "./funcionais/AudioPlayer";
 import VideoPlayer from "./funcionais/VideoPlayer";
 import { resolveMediaText, resolveMediaTitle, resolveMediaUrl } from "@/utils/mediaPayload";
+import { resolveSupabaseStorageUrl } from "@/utils/supabaseStorage";
 
 function loadWebView(): React.ComponentType<any> | null {
   if (Platform.OS === "web") return null;
@@ -108,13 +109,24 @@ function renderText(
   );
 }
 
-function renderImage(
-  block: ContentBlock,
-  palette: ReturnType<typeof getProfileShellPalette>
-) {
+function ResolvedImage({ block, palette }: { block: ContentBlock; palette: ReturnType<typeof getProfileShellPalette> }) {
   const url = resolveMediaUrl(block.payload);
+  const [resolvedUrl, setResolvedUrl] = React.useState<string | null>(null);
+  const [failed, setFailed] = React.useState(false);
+  React.useEffect(() => {
+    let active = true;
+    setFailed(false);
+    setResolvedUrl(null);
+    if (!url) return () => { active = false; };
+    const payload = typeof block.payload === "object" && block.payload ? block.payload as Record<string, unknown> : null;
+    const metadata = payload?.metadata && typeof payload.metadata === "object" ? payload.metadata as Record<string, unknown> : null;
+    const bucket = typeof metadata?.bucket === "string" ? metadata.bucket : typeof metadata?.storageBucket === "string" ? metadata.storageBucket : undefined;
+    void resolveSupabaseStorageUrl(url, { bucket }).then((next) => { if (active) setResolvedUrl(next); }).catch(() => { if (active) setFailed(true); });
+    return () => { active = false; };
+  }, [block.payload, url]);
 
-  if (!url) return <MidiaIndisponivel block={block} palette={palette} />;
+  if (!url || failed) return <MidiaIndisponivel block={block} palette={palette} />;
+  if (!resolvedUrl) return <View key={block.id} style={[styles.mediaBox, { backgroundColor: palette.surface, borderColor: palette.border }]}><Text style={[styles.mediaLoading, { color: palette.textMuted }]}>Carregando imagem…</Text></View>;
 
   return (
     <View
@@ -125,12 +137,16 @@ function renderImage(
       ]}
     >
       <Image
-        source={{ uri: url }}
+        source={{ uri: resolvedUrl }}
         style={styles.image}
         resizeMode="contain"
       />
     </View>
   );
+}
+
+function renderImage(block: ContentBlock, palette: ReturnType<typeof getProfileShellPalette>) {
+  return <ResolvedImage key={block.id} block={block} palette={palette} />;
 }
 
 function renderVideo(block: ContentBlock, topicoId?: number | null) {
@@ -191,7 +207,7 @@ function renderAudio(block: ContentBlock, topicoId?: number | null) {
     : null;
   const imageCues = rawImageCues ? parseImageCues(rawImageCues) : null;
 
-  if (!url) return null;
+  if (!url) return <MidiaIndisponivel block={block} />;
 
   return (
     <AudioPlayer
@@ -386,5 +402,12 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 260,
     backgroundColor: "transparent",
+  },
+  mediaLoading: {
+    height: 160,
+    alignItems: "center",
+    justifyContent: "center",
+    textAlign: "center",
+    paddingTop: 70,
   },
 });
