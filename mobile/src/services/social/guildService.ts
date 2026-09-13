@@ -13,7 +13,8 @@ export async function carregarGuildas(classeId: number): Promise<Guild[]> {
   if (error) throw error;
   return normalizeGuilds(data);
 }
-export const criarGuilda = (classeId: number, nome: string, descricao?: string, emblema?: string) => action("guilda_criar", { p_classe_id: classeId, p_nome: nome, p_descricao: descricao ?? null, p_emblema: emblema ?? "constellation" });
+export const criarGuilda = (classeId: number, nome: string, descricao?: string, emblema?: string, logoUrl?: string, modoPerfil: "misto" | "perfil" = "misto", perfilAlvo?: string) => action("guilda_criar", { p_classe_id: classeId, p_nome: nome, p_descricao: descricao ?? null, p_emblema: emblema ?? "constellation", p_logo_url: logoUrl ?? null, p_modo_perfil: modoPerfil, p_perfil_alvo: perfilAlvo ?? null });
+export const atualizarGuilda = (guildaId: string, nome: string, descricao?: string, emblema?: string, logoUrl?: string, modoPerfil: "misto" | "perfil" = "misto", perfilAlvo?: string) => action("guilda_atualizar_config", { p_guilda_id: guildaId, p_nome: nome, p_descricao: descricao ?? null, p_emblema: emblema ?? null, p_logo_url: logoUrl ?? null, p_modo_perfil: modoPerfil, p_perfil_alvo: perfilAlvo ?? null });
 export const convidarParaGuilda = (guildaId: string, alunoId: string) => action("guilda_convidar", { p_guilda_id: guildaId, p_convidado_id: alunoId });
 export const aceitarConviteGuilda = (conviteId: string) => action("guilda_aceitar_convite", { p_convite_id: conviteId });
 export const recusarConviteGuilda = (conviteId: string) => action("guilda_recusar_convite", { p_convite_id: conviteId });
