@@ -33,6 +33,7 @@ def test_regras_de_integridade_privacidade_e_bloqueio():
     assert "telemetria" not in SQL.lower()
     assert "ROW LEVEL SECURITY" in SQL
     assert "REVOKE ALL ON public.guildas FROM anon, authenticated" in SQL
+    assert "COALESCE((SELECT tamanho_maximo FROM public.guilda_config_turma" in SQL
 
 
 def test_snapshot_e_historico_sao_imutaveis():
@@ -40,3 +41,8 @@ def test_snapshot_e_historico_sao_imutaveis():
     assert "CREATE OR REPLACE FUNCTION public.guilda_congelar_composicao" in SQL
     assert "UPDATE public.guilda_evento_snapshot" not in SQL
     assert "DELETE FROM public.guilda_evento_snapshot" not in SQL
+
+
+def test_social_e_guilda_respeitam_a_turma_atual():
+    assert "social_listar_pessoas(p_classe_id bigint)" in SQL
+    assert "a.classe_id=p_classe_id" in SQL

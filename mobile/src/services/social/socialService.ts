@@ -1,8 +1,8 @@
 import { supabase } from "@/database/supabase";
 import { groupSocialRows, type SocialSnapshot } from "./socialModel";
 
-export async function carregarSocial(): Promise<SocialSnapshot> {
-  const { data, error } = await supabase.rpc("social_listar_pessoas");
+export async function carregarSocial(classeId?: number): Promise<SocialSnapshot> {
+  const { data, error } = classeId ? await supabase.rpc("social_listar_pessoas", { p_classe_id: classeId }) : await supabase.rpc("social_listar_pessoas");
   if (error) throw error;
   return groupSocialRows((data ?? []) as Record<string, unknown>[]);
 }
@@ -17,4 +17,3 @@ export const recusarConvite = (relationshipId: string) => socialAction("social_r
 export const desfazerAmizade = (relationshipId: string) => socialAction("social_desfazer_amizade", { p_relationship_id: relationshipId });
 export const bloquear = (alvoId: string) => socialAction("social_bloquear", { p_alvo: alvoId });
 export const desbloquear = (relationshipId: string) => socialAction("social_desbloquear", { p_relationship_id: relationshipId });
-

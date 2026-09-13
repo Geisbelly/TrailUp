@@ -106,7 +106,7 @@ BEGIN
   IF NOT public.guilda_e_colega(v_me,p_classe_id) THEN RAISE EXCEPTION 'guilda_sem_permissao'; END IF;
   IF NOT public.guilda_janela_aberta(p_classe_id) THEN RAISE EXCEPTION 'guilda_janela_fechada'; END IF;
   IF EXISTS (SELECT 1 FROM public.guilda_membros WHERE classe_id=p_classe_id AND aluno_id=v_me AND left_at IS NULL) THEN RAISE EXCEPTION 'guilda_membro_existente'; END IF;
-  SELECT COALESCE(tamanho_maximo,4) INTO v_limit FROM public.guilda_config_turma WHERE classe_id=p_classe_id;
+  SELECT COALESCE((SELECT tamanho_maximo FROM public.guilda_config_turma WHERE classe_id=p_classe_id),4) INTO v_limit;
   INSERT INTO public.guildas(classe_id,nome,descricao,emblema,limite_membros,criado_por) VALUES(p_classe_id,btrim(p_nome),NULLIF(btrim(p_descricao),''),COALESCE(NULLIF(btrim(p_emblema),''),'constellation'),v_limit,v_me) RETURNING id INTO v_id;
   INSERT INTO public.guilda_membros(guilda_id,classe_id,aluno_id) VALUES(v_id,p_classe_id,v_me);
   RETURN jsonb_build_object('guilda_id',v_id,'status','created');
@@ -265,5 +265,26 @@ GRANT EXECUTE ON FUNCTION public.guilda_dissolver(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.guilda_configurar_turma(bigint,integer,timestamptz,timestamptz) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.guilda_congelar_composicao(text,bigint) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.social_perfil_publico(uuid,bigint) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.social_listar_pessoas(p_classe_id bigint)
+RETURNS TABLE(aluno_id uuid,nome text,apelido text,foto_url text,perfil_ativo text,status text,relationship_id uuid,guilda_id uuid,guilda_nome text)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $fn$
+  SELECT CASE WHEN r.aluno_a_id=auth.uid() THEN r.aluno_b_id ELSE r.aluno_a_id END, a.nome,a.apelido,a.foto_url,a.perfil_ativo,
+         CASE WHEN r.status='accepted' THEN 'friend' WHEN r.status='pending' AND r.solicitante_id=auth.uid() THEN 'outgoing' WHEN r.status='pending' THEN 'incoming' WHEN r.status='blocked' THEN 'blocked' END, r.id,
+         gm.guilda_id, g.nome
+    FROM public.social_relacionamentos r JOIN public.alunos a ON a.id = CASE WHEN r.aluno_a_id=auth.uid() THEN r.aluno_b_id ELSE r.aluno_a_id END
+    LEFT JOIN public.guilda_membros gm ON gm.aluno_id=a.id AND gm.classe_id=p_classe_id AND gm.left_at IS NULL
+    LEFT JOIN public.guildas g ON g.id=gm.guilda_id AND g.ativa
+   WHERE (r.aluno_a_id=auth.uid() OR r.aluno_b_id=auth.uid()) AND public.guilda_e_colega(a.id,p_classe_id)
+  UNION ALL
+  SELECT a.id,a.nome,a.apelido,a.foto_url,a.perfil_ativo,'candidate',NULL,gm.guilda_id,g.nome
+    FROM public.alunos a
+    LEFT JOIN public.guilda_membros gm ON gm.aluno_id=a.id AND gm.classe_id=p_classe_id AND gm.left_at IS NULL
+    LEFT JOIN public.guildas g ON g.id=gm.guilda_id AND g.ativa
+   WHERE a.id IN (SELECT ca.aluno_id FROM public.classe_aluno ca WHERE ca.classe_id=p_classe_id AND ca.aluno_id <> auth.uid())
+     AND public.guilda_e_colega(auth.uid(),p_classe_id)
+     AND NOT EXISTS (SELECT 1 FROM public.social_relacionamentos r WHERE r.aluno_a_id=LEAST(auth.uid(),a.id) AND r.aluno_b_id=GREATEST(auth.uid(),a.id));
+$fn$;
+GRANT EXECUTE ON FUNCTION public.social_listar_pessoas(bigint) TO authenticated;
 
 COMMIT;
