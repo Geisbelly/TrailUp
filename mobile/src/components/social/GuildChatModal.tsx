@@ -1,6 +1,6 @@
 import type { Guild } from "@/services/social/guildModel";
 import type { GuildMessage, GuildShareKind } from "@/services/social/guildChatModel";
-import { carregarMensagensGuilda, compartilharNaGuilda, enviarMensagemGuilda } from "@/services/social/guildService";
+import { carregarMensagensGuilda, compartilharNaGuilda, criarDesafioGuilda, enviarMensagemGuilda } from "@/services/social/guildService";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -38,7 +38,7 @@ export function GuildChatModal({ visible, guild, accent, profile, options, onClo
   async function share(option: GuildShareOption) {
     if (!guild || sending) return;
     setSending(true);
-    try { await compartilharNaGuilda(guild.id, option.kind, option.id, option.title); setShareKind(null); await load(); }
+    try { if (option.kind === "desafio") await criarDesafioGuilda(guild.id, "todos", 3); else await compartilharNaGuilda(guild.id, option.kind, option.id, option.title); setShareKind(null); await load(); }
     catch (error) { console.warn("[GuildChat] Falha ao compartilhar:", error); }
     finally { setSending(false); }
   }

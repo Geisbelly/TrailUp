@@ -1,5 +1,5 @@
 export type GuildShareKind = "desafio" | "questao";
-export type GuildShare = { kind: GuildShareKind; id: number; title: string };
+export type GuildShare = { kind: GuildShareKind; id: number; title: string; activityId?: number; questionType?: string | null; alternatives?: string[] };
 export type GuildMessage = {
   id: string;
   guildaId: string;
@@ -16,8 +16,9 @@ function normalizeShare(kind: unknown, value: unknown): GuildShare | null {
   if (kind !== "desafio" && kind !== "questao" || !value || typeof value !== "object") return null;
   const row = value as Record<string, unknown>;
   const id = Number(row.id);
-  const title = String(row.titulo ?? row.title ?? "").trim();
-  return Number.isFinite(id) && id > 0 && title ? { kind, id, title } : null;
+  const title = String(row.titulo ?? row.title ?? row.enunciado ?? "").trim();
+  const alternatives = Array.isArray(row.alternativas) ? row.alternativas.map((item) => String(typeof item === "object" && item ? ((item as Record<string, unknown>).texto ?? (item as Record<string, unknown>).label ?? "") : item)).filter(Boolean) : undefined;
+  return Number.isFinite(id) && id > 0 && title ? { kind, id, title, activityId: Number(row.atividade_id) || undefined, questionType: typeof row.tipo === "string" ? row.tipo : null, alternatives } : null;
 }
 
 export function normalizeGuildMessages(rows: unknown): GuildMessage[] {
