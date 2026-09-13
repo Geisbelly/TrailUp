@@ -1,10 +1,11 @@
 import { useTrilha } from "@/context/TrilhaContext";
+import { LockedNodeModal } from "@/components/trilhas/LockedNodeModal";
 import { Color, FontFamily, FontSize } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import tinycolor from "tinycolor2";
 import { useRouter } from "expo-router";
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   FlatList,
   Image,
@@ -24,6 +25,7 @@ type Row = {
   icon?: string | null;
   resumo?: string | null;
   badgeLabel?: string | null;
+  prerequisiteTitles: string[];
 };
 
 export const TrilhaLinearList: React.FC<{
@@ -32,6 +34,7 @@ export const TrilhaLinearList: React.FC<{
   const { grafo, perfil } = useTrilha();
   const palette = getProfileShellPalette(perfil);
   const { width: winW } = useWindowDimensions();
+  const [lockedRow, setLockedRow] = useState<Row | null>(null);
 
   const data: Row[] = useMemo(
     () =>
@@ -47,8 +50,12 @@ export const TrilhaLinearList: React.FC<{
         icon: (n as any).icon ?? null,
         resumo: (n as any).resumo ?? null,
         badgeLabel: (n as any).badgeLabel ?? null,
+        prerequisiteTitles: grafo.edges
+          .filter((edge) => String(edge.to) === String(n.id))
+          .map((edge) => grafo.nodes.find((parent) => String(parent.id) === String(edge.from))?.titulo)
+          .filter((title): title is string => Boolean(title)),
       })),
-    [grafo.nodes],
+    [grafo.edges, grafo.nodes],
   );
 
   const keyExtractor = useCallback((r: Row) => r.id, []);
@@ -73,9 +80,17 @@ export const TrilhaLinearList: React.FC<{
             row={item}
             palette={palette}
             targetRef={index === 0 ? tourTargetRef : undefined}
+            onLockedPress={() => setLockedRow(item)}
           />
         )}
         showsVerticalScrollIndicator={false}
+      />
+      <LockedNodeModal
+        visible={lockedRow !== null}
+        nodeTitle={lockedRow?.titulo ?? "Conteúdo"}
+        prerequisiteTitles={lockedRow?.prerequisiteTitles}
+        profile={perfil}
+        onClose={() => setLockedRow(null)}
       />
     </View>
   );
@@ -97,10 +112,12 @@ const ItemCard = ({
   row,
   palette,
   targetRef,
+  onLockedPress,
 }: {
   row: Row;
   palette: ReturnType<typeof getProfileShellPalette>;
   targetRef?: React.RefObject<View | null>;
+  onLockedPress: () => void;
 }) => {
   const router = useRouter();
   const disabled = row.estado === "bloqueado";
@@ -145,9 +162,12 @@ const ItemCard = ({
         : "Disponível";
 
   const onPress = useCallback(() => {
-    if (disabled) return;
+    if (disabled) {
+      onLockedPress();
+      return;
+    }
     router.push({ pathname: "/(tabs)/trilha/[id]", params: { id: row.id } });
-  }, [router, row.id, disabled]);
+  }, [router, row.id, disabled, onLockedPress]);
 
   const FallbackIcon = () => {
     if (row.estado === "bloqueado")
@@ -164,8 +184,7 @@ const ItemCard = ({
       ref={targetRef}
       collapsable={false}
       onPress={onPress}
-      disabled={disabled}
-      android_ripple={disabled ? undefined : { color: Color.colorAliceblue200 }}
+      android_ripple={{ color: Color.colorAliceblue200 }}
       style={({ pressed }) => [
         s.card,
         {
@@ -177,7 +196,7 @@ const ItemCard = ({
         },
       ]}
       accessibilityRole="button"
-      accessibilityState={{ disabled }}
+      accessibilityHint={disabled ? "Toque para saber como desbloquear" : "Abre o conteúdo"}
       accessibilityLabel={
         disabled ? `${row.titulo} bloqueado` : `Abrir ${row.titulo}`
       }
@@ -243,7 +262,9 @@ const ItemCard = ({
         ) : null}
       </View>
 
-      {!disabled && (
+      {disabled ? (
+        <MaterialCommunityIcons name="lock-outline" size={21} color={palette.textMuted} />
+      ) : (
         <MaterialCommunityIcons
           name="chevron-right"
           size={22}

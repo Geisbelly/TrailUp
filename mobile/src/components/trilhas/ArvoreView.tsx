@@ -1,4 +1,5 @@
 import { useTrilha } from "@/context/TrilhaContext";
+import { LockedNodeModal } from "@/components/trilhas/LockedNodeModal";
 import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -371,8 +372,23 @@ const adjustedPositions = useMemo(() => {
 
   // ===== navegação =====
   const [flashId, setFlashId] = useState<string | null>(null);
-  const go = (id: string, locked: boolean) => {
-    if (locked) return;
+  const [lockedNode, setLockedNode] = useState<{ title: string; prerequisites: string[] } | null>(null);
+  const prerequisiteTitles = useMemo(() => {
+    const titles = new Map(grafo.nodes.map((node) => [String(node.id), node.titulo]));
+    const result = new Map<string, string[]>();
+    for (const edge of grafo.edges) {
+      const title = titles.get(String(edge.from));
+      if (!title) continue;
+      result.set(String(edge.to), [...(result.get(String(edge.to)) ?? []), title]);
+    }
+    return result;
+  }, [grafo.edges, grafo.nodes]);
+
+  const go = (id: string, locked: boolean, title: string) => {
+    if (locked) {
+      setLockedNode({ title, prerequisites: prerequisiteTitles.get(String(id)) ?? [] });
+      return;
+    }
     setFlashId(id);
     flashAnim.stopAnimation();
     flashAnim.setValue(0);
@@ -664,7 +680,7 @@ const adjustedPositions = useMemo(() => {
               const shouldFloat = isCurrent || isInProgress;
               const cy = shouldFloat ? cyBase + floatOffset : cyBase;
 
-              const onPress = () => go(n.id, locked);
+              const onPress = () => go(n.id, locked, n.titulo);
 
               return (
                 <G key={n.id} onPress={onPress}>
@@ -820,6 +836,13 @@ const adjustedPositions = useMemo(() => {
 
         </View>
       </ScrollView>
+      <LockedNodeModal
+        visible={lockedNode !== null}
+        nodeTitle={lockedNode?.title ?? "Conteúdo"}
+        prerequisiteTitles={lockedNode?.prerequisites}
+        profile={perfil}
+        onClose={() => setLockedNode(null)}
+      />
     </View>
   );
 };
