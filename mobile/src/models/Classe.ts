@@ -282,7 +282,7 @@ export class Classe {
     }
   }
 
-  private static async loadResumo(aluno_id: string, classe_id: number): Promise<ClasseResumo | null> {
+  static async loadResumo(aluno_id: string, classe_id: number): Promise<ClasseResumo | null> {
     const { data, error } = await supabase
       .from('vw_aluno_classe_resumo')
       .select('*')
