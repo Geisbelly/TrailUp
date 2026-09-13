@@ -1,4 +1,5 @@
 import { supabase } from "@/database/supabase";
+import { resolveRankEventClasseId } from "@/utils/rankEventClasse";
 import { PosicaoDoAluno } from "./RankAlunoPosicao";
 import { RankInfo } from "./RankInfo";
 import { RankPosicao } from "./RankPosicao";
@@ -237,15 +238,17 @@ async function loadFallbackRankRowsByClasse(
 
   const { data: eventosRows, error: eventosError } = await supabase
     .from("eventos_aluno")
-    .select("aluno_id, tipo, referencia, valor")
+    .select("aluno_id, tipo, referencia, valor, classe_id")
     .in("aluno_id", alunoIds);
   if (eventosError) throw eventosError;
 
   const eventRefs = (eventosRows ?? []).map((row: any) => ({
     aluno_id: String(row.aluno_id),
     tipo: String(row.tipo ?? ""),
+    referencia: row.referencia,
     referenciaId: normalizeReferenciaId(row.referencia),
     valor: Number(row.valor ?? 0),
+    classeId: row.classe_id,
   }));
 
   const topicIds = [
@@ -358,12 +361,16 @@ async function loadFallbackRankRowsByClasse(
   eventRefs.forEach((row) => {
     if (row.referenciaId == null) return;
 
-    let eventClasseId: number | null = null;
-    if (isTipoLike(row.tipo, "topico")) {
+    let eventClasseId = resolveRankEventClasseId({
+      tipo: row.tipo,
+      referencia: row.referencia,
+      classe_id: row.classeId,
+    });
+    if (eventClasseId == null && isTipoLike(row.tipo, "topico")) {
       eventClasseId = topicClassById.get(row.referenciaId) ?? null;
-    } else if (isTipoLike(row.tipo, "conteudo")) {
+    } else if (eventClasseId == null && isTipoLike(row.tipo, "conteudo")) {
       eventClasseId = contentClassById.get(row.referenciaId) ?? null;
-    } else if (isTipoLike(row.tipo, "atividade")) {
+    } else if (eventClasseId == null && isTipoLike(row.tipo, "atividade")) {
       eventClasseId = activityClassById.get(row.referenciaId) ?? null;
     }
 
