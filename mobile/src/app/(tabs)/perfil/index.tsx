@@ -48,6 +48,7 @@ import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { registrarAlvoTour } from "@/utils/tourTargets";
 import { resolveRepresentativeBrainHexProfiles } from "@/utils/brainHex";
 import { buildProfileGuideSteps } from "@/utils/profileSectionGuide";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width } = Dimensions.get("window");
 
@@ -60,6 +61,7 @@ export default function PerfilHome() {
   const { lastBatchTimeMetrics } = useMetricasBatch();
   const { getBattleState } = useIA();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [bagOpen, setBagOpen] = useState(false);
 
   const [aba, setAba] = useState<"metricas" | "conquistas">("metricas");
@@ -290,7 +292,7 @@ export default function PerfilHome() {
         <ScrollView
           ref={profileScrollRef}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 8 }]}
           scrollEventThrottle={16}
           onScroll={(event) => {
             profileScrollYRef.current = event.nativeEvent.contentOffset.y;
