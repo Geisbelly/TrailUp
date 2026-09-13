@@ -51,7 +51,8 @@ export default function SocialScreen() {
       if (topic?.id && topic?.nome) result.push({ kind: "desafio", id: Number(topic.id), title: String(topic.nome) });
       for (const activity of topic?.atividades ?? []) {
         for (const question of activity?.questoes ?? []) {
-          if (question?.id && question?.enunciado) result.push({ kind: "questao", id: Number(question.id), title: String(question.enunciado) });
+          const activityStarted = Boolean(activity?.resposta_aluno || activity?.percentual_concluido > 0 || activity?.progresso > 0 || ["andamento", "em_andamento", "concluida", "concluído", "concluida"].includes(String(activity?.status ?? "").toLowerCase()));
+          if (question?.id && question?.enunciado && (question?.resposta_aluno != null || activityStarted)) result.push({ kind: "questao", id: Number(question.id), title: String(question.enunciado) });
         }
       }
     }
@@ -114,7 +115,7 @@ export default function SocialScreen() {
         </ScrollView>
       </SafeAreaView>
       {usuario?.id && classeId > 0 ? <StoreModal visible={storeVisible} alunoId={usuario.id} classeId={classeId} profileName={profile} onClose={() => setStoreVisible(false)} /> : null}
-      <SocialProfileModal visible={selectedPerson !== null} alunoId={selectedPerson?.alunoId ?? null} classeId={activeClasseId} accent={palette.accent} onClose={() => setSelectedPerson(null)} />
+      <SocialProfileModal visible={selectedPerson !== null} alunoId={selectedPerson?.alunoId ?? null} classeId={activeClasseId} accent={palette.accent} online={selectedPerson?.online} onClose={() => setSelectedPerson(null)} />
     </View>
   );
 }

@@ -34,3 +34,9 @@ export async function enviarMensagemGuilda(guildaId: string, texto: string) {
 export async function compartilharNaGuilda(guildaId: string, tipo: GuildShareKind, id: number, titulo: string) {
   return action("guilda_chat_enviar", { p_guilda_id: guildaId, p_tipo: tipo, p_texto: titulo, p_conteudo: { id, titulo } });
 }
+export async function responderQuestaoGuilda(mensagemId: string, resposta: string) {
+  return action("guilda_chat_questao_responder", { p_mensagem_id: mensagemId, p_resposta: resposta });
+}
+export async function criarDesafioGuilda(guildaId: string, modo: "todos" | "velocidade" | "precisao" | "duelo" | "duplo" = "todos", quantidade = 3) {
+  return action("guilda_desafio_criar", { p_guilda_id: guildaId, p_modo: modo, p_quantidade: quantidade });
+}
