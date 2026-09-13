@@ -1,5 +1,6 @@
 import { supabase } from "@/database/supabase";
 import { normalizeGuilds, type Guild } from "./guildModel";
+import { normalizeGuildMessages, type GuildMessage, type GuildShareKind } from "./guildChatModel";
 
 async function action(name: string, params: Record<string, unknown>) {
   const { data, error } = await supabase.rpc(name, params);
@@ -19,3 +20,17 @@ export const recusarConviteGuilda = (conviteId: string) => action("guilda_recusa
 export const entrarGuilda = (guildaId: string) => action("guilda_entrar", { p_guilda_id: guildaId });
 export const sairGuilda = (guildaId: string) => action("guilda_sair", { p_guilda_id: guildaId });
 export const dissolverGuilda = (guildaId: string) => action("guilda_dissolver", { p_guilda_id: guildaId });
+
+export async function carregarMensagensGuilda(guildaId: string, limite = 100): Promise<GuildMessage[]> {
+  const { data, error } = await supabase.rpc("guilda_chat_listar", { p_guilda_id: guildaId, p_limite: limite });
+  if (error) throw error;
+  return normalizeGuildMessages(data);
+}
+
+export async function enviarMensagemGuilda(guildaId: string, texto: string) {
+  return action("guilda_chat_enviar", { p_guilda_id: guildaId, p_tipo: "text", p_texto: texto.trim(), p_conteudo: {} });
+}
+
+export async function compartilharNaGuilda(guildaId: string, tipo: GuildShareKind, id: number, titulo: string) {
+  return action("guilda_chat_enviar", { p_guilda_id: guildaId, p_tipo: tipo, p_texto: titulo, p_conteudo: { id, titulo } });
+}
