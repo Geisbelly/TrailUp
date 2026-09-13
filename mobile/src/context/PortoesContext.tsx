@@ -7,6 +7,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
+import { AppState, type AppStateStatus } from "react-native";
 
 import { useUsuario } from "@/context/SessaoContext";
 import { supabase } from "@/database/supabase";
@@ -67,12 +68,12 @@ export const PortoesProvider: React.FC<{ children: React.ReactNode }> = ({ child
           .from("conteudo_aluno")
           .select("id", { count: "exact", head: true })
           .eq("aluno_id", alunoId)
-          .eq("status", "concluido"),
+          .or("status.eq.concluido,percentual_concluido.gte.100"),
         supabase
           .from("topico_aluno")
           .select("id", { count: "exact", head: true })
           .eq("aluno_id", alunoId)
-          .eq("status", "concluido"),
+          .or("status.eq.concluido,percentual_concluido.gte.100"),
       ]);
 
       if (!ativo) return;
@@ -89,6 +90,36 @@ export const PortoesProvider: React.FC<{ children: React.ReactNode }> = ({ child
       ativo = false;
     };
   }, [alunoId, versao]);
+
+  // O progresso pode mudar enquanto o aluno continua dentro da mesma tela.
+  // Sem esta assinatura, o primeiro conteúdo concluído só atualizava o banco;
+  // o snapshot local seguia fechado e mantinha o cadeado na aba.
+  useEffect(() => {
+    if (!alunoId) return;
+
+    const atualizarAoVoltar = (estado: AppStateStatus) => {
+      if (estado === "active") setVersao((v) => v + 1);
+    };
+    const appStateSubscription = AppState.addEventListener("change", atualizarAoVoltar);
+    const channel = supabase
+      .channel(`portoes-progresso-${alunoId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "conteudo_aluno", filter: `aluno_id=eq.${alunoId}` },
+        () => setVersao((v) => v + 1),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "topico_aluno", filter: `aluno_id=eq.${alunoId}` },
+        () => setVersao((v) => v + 1),
+      )
+      .subscribe();
+
+    return () => {
+      appStateSubscription.remove();
+      void supabase.removeChannel(channel);
+    };
+  }, [alunoId]);
 
   // Quais cerimônias este aluno já viu.
   useEffect(() => {

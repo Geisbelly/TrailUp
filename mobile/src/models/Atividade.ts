@@ -75,9 +75,7 @@ export class Atividade {
       const agora = new Date().toISOString();
       const acertosNormalizado = clampPercent(acertos_percentual);
       const tempoNormalizado =
-        tempo_gasto_min != null
-          ? normalizeNonNegativeNumber(tempo_gasto_min)
-          : normalizeNonNegativeNumber(this.tempo_gasto_min ?? 0);
+        tempo_gasto_min != null ? normalizeNonNegativeNumber(tempo_gasto_min) : null;
 
       const { error } = await supabase.from("atividade_aluno").upsert(
         {
@@ -86,7 +84,6 @@ export class Atividade {
           status: "concluido",
           percentual_concluido: 100,
           acertos_percentual: acertosNormalizado,
-          tempo_gasto_min: tempoNormalizado,
           pontuacao_obtida: pontuacao_obtida ?? null,
           pontuacao_maxima: pontuacao_maxima ?? this.pontuacao_maxima ?? null,
           avaliacao_metadata: avaliacao_metadata ?? {},
@@ -103,7 +100,7 @@ export class Atividade {
       this.status = "concluido";
       this.percentual_concluido = 100;
       this.acertos_percentual = acertosNormalizado;
-      this.tempo_gasto_min = tempoNormalizado;
+      if (tempoNormalizado != null) this.tempo_gasto_min = tempoNormalizado;
       this.pontuacao_obtida = pontuacao_obtida ?? this.pontuacao_obtida;
       this.pontuacao_maxima_avaliada =
         pontuacao_maxima ?? this.pontuacao_maxima_avaliada ?? this.pontuacao_maxima ?? null;

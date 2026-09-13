@@ -26,6 +26,7 @@ interface Props {
   funcionalidade: Funcionalidade | null;
   color: string;
   onClose: () => void;
+  bloqueado?: boolean;
 }
 
 /**
@@ -35,7 +36,7 @@ interface Props {
  * mudou por causa do que ele fez, não achar que a aba sempre esteve lá. Por isso
  * ela é curta e acontece uma vez só por funcionalidade.
  */
-export default function DesbloqueioModal({ funcionalidade, color, onClose }: Props) {
+export default function DesbloqueioModal({ funcionalidade, color, onClose, bloqueado = false }: Props) {
   const palette = buildProfileShellPaletteFromAccent(color);
   // Clareia o tom em vez de misturar com branco: misturar apaga a cor do perfil
   // mesmo passando no contraste.
@@ -149,8 +150,8 @@ export default function DesbloqueioModal({ funcionalidade, color, onClose }: Pro
               pointerEvents="none"
               style={[s.anel, anel, { borderColor: destaque }]}
             />
-            <Animated.View style={[s.icone, cadeado]}>
-              <MaterialCommunityIcons name="lock-open-variant" size={54} color={destaque} />
+            <Animated.View style={[s.icone, bloqueado ? undefined : cadeado]}>
+              <MaterialCommunityIcons name={bloqueado ? "lock" : "lock-open-variant"} size={54} color={destaque} />
             </Animated.View>
             <Animated.View style={[s.icone, simbolo]}>
               <MaterialCommunityIcons
@@ -161,25 +162,25 @@ export default function DesbloqueioModal({ funcionalidade, color, onClose }: Pro
             </Animated.View>
           </View>
 
-          <Text style={[s.titulo, { color: destaque }]}>{portao.titulo}</Text>
+          <Text style={[s.titulo, { color: destaque }]}>{bloqueado ? `${portao.titulo} indisponível` : portao.titulo}</Text>
           <OrnamentDivider color={destaque} />
-          <Text style={[s.promessa, { color: palette.textMuted }]}>{portao.promessa}</Text>
+          <Text style={[s.promessa, { color: palette.textMuted }]}>{bloqueado ? portao.comoAbrir : portao.promessa}</Text>
 
-          <View style={s.passos}>
+          {!bloqueado ? <View style={s.passos}>
             {portao.passos.map((passo) => (
               <View key={passo} style={s.passo}>
                 <MaterialCommunityIcons name="circle-small" size={20} color={destaque} />
                 <Text style={[s.passoTexto, { color: palette.textMuted }]}>{passo}</Text>
               </View>
             ))}
-          </View>
+          </View> : null}
 
           <TouchableOpacity
             accessibilityRole="button"
             onPress={onClose}
             style={[s.botao, { backgroundColor: destaque }]}
           >
-            <Text style={[s.botaoTexto, { color: palette.surfaceElevated }]}>Entendi</Text>
+            <Text style={[s.botaoTexto, { color: palette.surfaceElevated }]}>{bloqueado ? "Fechar" : "Entendi"}</Text>
           </TouchableOpacity>
         </Animated.View>
       </View>

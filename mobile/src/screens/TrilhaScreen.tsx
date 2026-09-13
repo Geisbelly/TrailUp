@@ -3,11 +3,12 @@ import { HallBackground } from "@/components/HallTheme";
 import { IAMentorPanel } from "@/components/ia/IAMentorPanel";
 import { LoadingState } from "@/components/LoadingState";
 import { TrilhaBase } from "@/components/trilhas/TrilhaBase";
+import { BagModal } from "@/components/bag/BagModal";
 import { useIA } from "@/context/IAContext";
 import { useTrilha } from "@/context/TrilhaContext";
 import { Color } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -18,6 +19,7 @@ export default function TrilhasIndex() {
   const palette = getProfileShellPalette(perfil);
   const personalizationCueKeyRef = useRef<string | null>(null);
   const chatGuideTargetRef = useRef<View | null>(null);
+  const [bagOpen, setBagOpen] = useState(false);
 
   const trailMentorCue = useMemo(() => {
     const currentClass = classeAtual;
@@ -110,7 +112,8 @@ export default function TrilhasIndex() {
       <View style={[StyleSheet.absoluteFill, { opacity: 0.4, pointerEvents: "none" }]}>
         <HallBackground palette={palette} />
       </View>
-      <TrilhaBase chatGuideTargetRef={chatGuideTargetRef} />
+      <TrilhaBase chatGuideTargetRef={chatGuideTargetRef} onOpenBag={() => setBagOpen(true)} />
+      <BagModal visible={bagOpen} classeId={classeAtual?.classe_id ?? null} profile={perfil} onClose={() => setBagOpen(false)} />
       <IAMentorPanel
         classeId={classeAtual?.classe_id ?? null}
         topicoId={trailMentorCue?.topicoId ?? null}

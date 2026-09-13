@@ -18,6 +18,7 @@ import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { getProfileGuideEmphasis } from "@/utils/profileSectionGuide";
 import { aplicarCorteDoRank, descreverCorte } from "@/utils/rankCorte";
+import { carregarPerfilPublico } from "@/services/social/publicProfileService";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Stack, useLocalSearchParams, useNavigation } from "expo-router";
@@ -51,12 +52,6 @@ type RankPosicaoRow = {
   nome_aluno: string;
   pontuacao: number | null;
   medalha: string | null;
-};
-
-type AlunoPerfilRow = {
-  aluno_id: string;
-  afinidade: number | null;
-  perfil: { nome: string | null } | null;
 };
 
 const medalMap: Record<string, any> = {
@@ -205,30 +200,27 @@ export default function RankDetalheScreen() {
     setPerfisCarregando(true);
 
     const carregarPerfis = async () => {
-      const { data, error } = await supabase
-        .from("aluno_perfil")
-        .select("aluno_id, afinidade, perfil:perfil_id(nome)")
-        .in("aluno_id", alunoIds)
-        .order("aluno_id", { ascending: true })
-        .order("afinidade", { ascending: false });
+      // `aluno_perfil` possui RLS de posse: consultar essa tabela diretamente
+      // funciona para o próprio aluno, mas devolve vazio para os colegas.
+      // O RPC público já valida a turma compartilhada e expõe o perfil ativo.
+      const resultados = await Promise.all(
+        alunoIds.map(async (alunoId) => {
+          try {
+            return [alunoId, await carregarPerfilPublico(alunoId, classeId ?? 0)] as const;
+          } catch (error) {
+            console.warn("[Ranking] Falha ao carregar perfil público:", error);
+            return [alunoId, null] as const;
+          }
+        }),
+      );
 
       if (!ativo) return;
 
-      if (error) {
-        console.warn("[Ranking] Falha ao carregar perfis majoritários:", error);
-        setPerfilDominantePorAluno({});
-        setPerfisCarregando(false);
-        return;
-      }
-
-      const rows = (data ?? []) as unknown as AlunoPerfilRow[];
       const dominantes: Record<string, DominantProfileMeta> = {};
 
-      rows.forEach((row) => {
-        const alunoId = String(row.aluno_id ?? "");
-        if (!alunoId || dominantes[alunoId]) return;
-
-        const normalized = normalizeBrainHexProfile(row.perfil?.nome ?? null);
+      resultados.forEach(([alunoId, perfilPublico]) => {
+        if (!perfilPublico) return;
+        const normalized = normalizeBrainHexProfile(perfilPublico.perfilAtivo);
         dominantes[alunoId] = {
           key: normalized,
           label: getDominantProfileLabel(normalized),
@@ -247,7 +239,7 @@ export default function RankDetalheScreen() {
 
     void carregarPerfis();
     return () => { ativo = false; };
-  }, [rank?.posicoes]);
+  }, [classeId, rank?.posicoes]);
 
   const posicoes = useMemo(
     () => (rank?.posicoes ?? []) as RankPosicaoRow[],
@@ -409,6 +401,9 @@ export default function RankDetalheScreen() {
       key: null,
       label: "Perfil não definido",
     };
+    const profileAccent = perfilAluno.key
+      ? getProfileShellPalette(perfilAluno.key).accent
+      : palette.textSubtle;
 
     const medalSource = getMedalImage(item.medalha);
 
@@ -492,7 +487,7 @@ export default function RankDetalheScreen() {
             {item.nome_aluno}
             {isMe && !isFooter ? " (Você)" : ""}
           </Text>
-          <Text style={[s.profileHint, { color: palette.textSubtle }]} numberOfLines={1}>
+          <Text style={[s.profileHint, { color: profileAccent }]} numberOfLines={1}>
             {perfilAluno.label}
           </Text>
         </View>

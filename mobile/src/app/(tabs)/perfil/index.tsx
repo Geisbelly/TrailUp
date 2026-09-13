@@ -17,6 +17,7 @@ import {
 import tinycolor from "tinycolor2";
 
 import CardSemDados from "@/components/CardSemDados";
+import { BagModal } from "@/components/bag/BagModal";
 import ConquistaModal from "@/components/ConquistaModal";
 import { HallBackground, OrnamentDivider } from "@/components/HallTheme";
 import { ProfileMetricsViews } from "@/components/perfil/ProfileMetricsViews";
@@ -47,6 +48,7 @@ import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { registrarAlvoTour } from "@/utils/tourTargets";
 import { resolveRepresentativeBrainHexProfiles } from "@/utils/brainHex";
 import { buildProfileGuideSteps } from "@/utils/profileSectionGuide";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width } = Dimensions.get("window");
 
@@ -59,6 +61,8 @@ export default function PerfilHome() {
   const { lastBatchTimeMetrics } = useMetricasBatch();
   const { getBattleState } = useIA();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const [bagOpen, setBagOpen] = useState(false);
 
   const [aba, setAba] = useState<"metricas" | "conquistas">("metricas");
   const [conquistaSelecionada, setConquistaSelecionada] =
@@ -288,7 +292,7 @@ export default function PerfilHome() {
         <ScrollView
           ref={profileScrollRef}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 8 }]}
           scrollEventThrottle={16}
           onScroll={(event) => {
             profileScrollYRef.current = event.nativeEvent.contentOffset.y;
@@ -363,6 +367,14 @@ export default function PerfilHome() {
                 />
               </TouchableOpacity>
             </View>
+            <TouchableOpacity
+              style={[styles.btnLibrary, { backgroundColor: shellPalette.surfaceElevated, borderColor: shellPalette.border }]}
+              onPress={() => setBagOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Abrir minha Bag"
+            >
+              <MaterialCommunityIcons name="bag-personal-outline" size={20} color={shellPalette.text} />
+            </TouchableOpacity>
 
             <View
               ref={profileSummaryGuideRef}
@@ -682,6 +694,12 @@ export default function PerfilHome() {
           </View>
         </ScrollView>
 
+        <BagModal
+          visible={bagOpen}
+          classeId={classeAtual?.classe_id ?? null}
+          profile={perfil}
+          onClose={() => setBagOpen(false)}
+        />
         <ConquistaModal
           visible={!!conquistaSelecionada}
           onClose={() => setConquistaSelecionada(null)}

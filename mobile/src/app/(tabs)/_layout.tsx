@@ -8,7 +8,7 @@ import { TrilhaProvider } from "@/context/TrilhaContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { BottomTabBar, BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { Tabs, useSegments } from "expo-router";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Image, View } from "react-native";
 
 import { ToastContainer } from "@/components/ToastContainer";
@@ -24,6 +24,7 @@ import { useMonitorDeSessao } from "@/hooks/useMonitorDeSessao";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { estaNaTrilhaDeEstudo } from "@/utils/presencaDeEstudo";
 import { registrarAlvoTour } from "@/utils/tourTargets";
+import type { Funcionalidade } from "@/utils/portoes";
 
 function TourAwareTabBar(props: BottomTabBarProps) {
   const targetRef = useRef<View | null>(null);
@@ -54,6 +55,7 @@ export default function TabLayout() {
   const perfilConfig = brainProfile ? brainHexConfig[brainProfile] : undefined;
   const palette = getProfileShellPalette(activeProfileName ?? null);
   const { aberturas, cerimoniaAtual, concluirCerimonia } = usePortoes();
+  const [portaoBloqueado, setPortaoBloqueado] = useState<Funcionalidade | null>(null);
 
   const perfilFoto =
     usuario?.foto_url
@@ -132,13 +134,24 @@ export default function TabLayout() {
               name="social"
               options={{
                 title: "Social",
-                href: aberturas.social ? undefined : null,
+                href: undefined,
+                listeners: {
+                  tabPress: (event) => {
+                    if (!aberturas.social) {
+                      event.preventDefault();
+                      setPortaoBloqueado("social");
+                    }
+                  },
+                },
                 tabBarIcon: ({ color, focused }) => (
-                  <MaterialCommunityIcons
-                    size={focused ? 28 : 26}
-                    name={focused ? "account-heart" : "account-heart-outline"}
-                    color={color}
-                  />
+                  <View style={{ opacity: aberturas.social ? 1 : 0.5 }}>
+                    <MaterialCommunityIcons
+                      size={focused ? 28 : 26}
+                      name={focused ? "account-heart" : "account-heart-outline"}
+                      color={color}
+                    />
+                    {!aberturas.social ? <MaterialCommunityIcons name="lock" size={12} color={color} style={{ position: "absolute", right: -5, bottom: -2 }} /> : null}
+                  </View>
                 ),
               }}
             />
@@ -147,17 +160,26 @@ export default function TabLayout() {
               name="ranking"
               options={{
                 title: "Ranking",
-                // Travado nao e' so' escondido: o aluno continua pontuando, e a
-                // posicao dele ja existe no banco quando a aba aparece.
-                href: aberturas.rank ? undefined : null,
+                href: undefined,
+                listeners: {
+                  tabPress: (event) => {
+                    if (!aberturas.rank) {
+                      event.preventDefault();
+                      setPortaoBloqueado("rank");
+                    }
+                  },
+                },
                 // Ícone de Pódio (fiel à referência do ranking/liderança)
                 // Outra opção boa seria "trophy-variant" se preferir o troféu detalhado
                 tabBarIcon: ({ color, focused }) => (
-                  <MaterialCommunityIcons 
-                    size={focused ? 28 : 26} 
-                    name={focused ? "podium" : "podium-bronze"} 
-                    color={color} 
-                  />
+                  <View style={{ opacity: aberturas.rank ? 1 : 0.5 }}>
+                    <MaterialCommunityIcons
+                      size={focused ? 28 : 26}
+                      name={focused ? "podium" : "podium-bronze"}
+                      color={color}
+                    />
+                    {!aberturas.rank ? <MaterialCommunityIcons name="lock" size={12} color={color} style={{ position: "absolute", right: -5, bottom: -2 }} /> : null}
+                  </View>
                 ),
               }}
             />
@@ -205,6 +227,12 @@ export default function TabLayout() {
                 funcionalidade={cerimoniaAtual}
                 color={palette.accent}
                 onClose={concluirCerimonia}
+              />
+              <DesbloqueioModal
+                funcionalidade={portaoBloqueado}
+                color={palette.accent}
+                bloqueado
+                onClose={() => setPortaoBloqueado(null)}
               />
             </ConquistaRankProvider>
             <ToastContainer />
