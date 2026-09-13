@@ -23,9 +23,6 @@ export default defineConfig(({ mode }) => ({
         // unico vendor chunk > 500 kB (issue #29).
         manualChunks(id) {
           if (!id.includes("node_modules")) return undefined;
-          if (id.includes("react-router") || id.match(/node_modules\/(react|react-dom)\//)) {
-            return "vendor-react";
-          }
           if (id.includes("@radix-ui")) return "vendor-radix";
           if (id.includes("@supabase")) return "vendor-supabase";
           if (id.includes("recharts") || id.includes("d3-")) return "vendor-charts";
