@@ -202,12 +202,9 @@ test("geminiApiKeys inclui GEMINI_API_KEY_1..4 e GEMINI_API_KEYS, nao so GEMINI_
 
 test("resolveGeminiTtsFallbackModels/resolveGeminiImageFallbackModels tem defaults proprios, sem depender do texto", () => {
   assert.deepEqual(resolveGeminiTtsFallbackModels({}), ["gemini-2.5-flash-preview-tts"]);
-  // Imagem nao tem fallback por padrao: o antigo default
-  // (`gemini-2.0-flash-preview-image-generation`) foi aposentado pelo Google e
-  // responde 404. Como `generateGeminiContent` so propaga o `lastError`, um
-  // fallback morto MASCARAVA a falha real do primario -- o log culpava o
-  // modelo aposentado enquanto a causa era cota/indisponibilidade.
-  assert.deepEqual(resolveGeminiImageFallbackModels({}), []);
+  assert.deepEqual(resolveGeminiImageFallbackModels({}), [
+    "gemini-2.0-flash-preview-image-generation",
+  ]);
   assert.deepEqual(
     resolveGeminiTtsFallbackModels({ GEMINI_TTS_FALLBACK_MODELS: "tts-a,tts-b" }),
     ["tts-a", "tts-b"],

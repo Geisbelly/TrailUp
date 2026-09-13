@@ -1,29 +1,72 @@
-// Helper puro para o agregado de `conteudo_personalizado.materiais`.
+// Lógica pura de merge de conteudo_personalizado.materiais.
 //
-// A AUTORIDADE do merge e do `status` agregado é a RPC PL/pgSQL
-// `public.merge_personalizacao_materiais_v2`, e ela é o único caminho de
-// escrita: `supabaseService.mergePersonalizacaoMateriais` chama a RPC e
-// LANÇA quando ela não existe — não há fallback em JS. O BrainHexPDF grava
-// pela mesma RPC, parte a parte.
-//
-// Este cabeçalho já disse o contrário — que a versão TypeScript era "a fonte
-// canônica" e que havia um fallback JS em `mergePersonalizacaoMateriais` — e a
-// afirmação obsoleta custou caro: levou a um diagnóstico errado de onde um
-// `pronto` indevido tinha sido gravado. O `computeMergedMaterials` que morava
-// aqui não era chamado por nenhum código de produção (só pelo próprio teste),
-// e a regra dele contradizia a da RPC: contava `failed` como conclusão e
-// devolvia `pronto`, além de tornar `pronto` sticky. A RPC exige as três
-// mídias `completed` com o `generation_key` corrente e chega a rebaixar um
-// `pronto` velho para `processando_midias`. Duas implementações da mesma
-// regra, discordando, com a morta ensinando a versão errada nos testes.
-//
-// Se precisar de merge em TypeScript algum dia, derive da RPC — não deste
-// arquivo.
+// Esta função é a fonte canônica para o cálculo. Tanto o fallback JS em
+// supabaseService.ts:mergePersonalizacaoMateriais quanto a função PL/pgSQL
+// public.merge_personalizacao_materiais (sql/migrations/0001_*.sql) devem
+// produzir o MESMO resultado. Se a lógica mudar aqui, atualize a SQL.
 
 import type { MaterialPart } from "../services/supabaseService";
 
 export interface MaterialEntryLike {
   metadata?: { status?: string; generation_key?: string };
+}
+
+export type MaterialsMap = Record<string, MaterialEntryLike>;
+
+export interface MergeResult {
+  merged:    MaterialsMap;
+  newStatus: string;
+}
+
+const TERMINAL_STATUSES = new Set(["completed", "failed", "failed_quality"]);
+
+/**
+ * Computa o novo estado de `materiais` + `status` agregado.
+ *
+ * - Updates para formatos com `metadata.status === "completed"` são descartados
+ *   (proteção contra sobrescrever artefatos finalizados).
+ * - `newStatus`:
+ *   - se já era "pronto" → continua "pronto" (sticky)
+ *   - se TODOS os artefatos finais (após merge) estão em status terminal → "pronto"
+ *   - se algum está "pending" → "processando_midias"
+ *   - caso contrário → mantém o currentStatus
+ */
+export function computeMergedMaterials(
+  current:       MaterialsMap | null | undefined,
+  updates:       MaterialsMap,
+  currentStatus: string
+): MergeResult {
+  const base = current ?? {};
+
+  const filteredUpdates: MaterialsMap = {};
+  for (const [fmt, entry] of Object.entries(updates)) {
+    const currentMetadata = base[fmt]?.metadata;
+    const incomingGeneration = entry?.metadata?.generation_key;
+    if (
+      currentMetadata?.status === "completed"
+      && currentMetadata.generation_key === incomingGeneration
+    ) {
+      continue;
+    }
+    filteredUpdates[fmt] = entry;
+  }
+
+  const merged: MaterialsMap = { ...base, ...filteredUpdates };
+
+  const statuses = Object.values(merged)
+    .map((m) => m?.metadata?.status ?? "")
+    .filter(Boolean);
+
+  const allDone     = statuses.length > 0 && statuses.every((s) => TERMINAL_STATUSES.has(s));
+  const anyPending  = statuses.some((s) => s === "pending");
+
+  const newStatus =
+    currentStatus === "pronto" ? "pronto"
+      : allDone                  ? "pronto"
+      : anyPending               ? "processando_midias"
+      : currentStatus;
+
+  return { merged, newStatus };
 }
 
 // computeAggregatedApresentacaoEntry é duplicada deliberadamente em

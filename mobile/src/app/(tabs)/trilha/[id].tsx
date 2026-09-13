@@ -21,9 +21,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ActivityCompletePayload, ActivityRenderer } from "@/components/ActivityRenderer";
 import CardSemDados from "@/components/CardSemDados";
 import { ContentRenderer } from "@/components/ContentRenderer";
-import { PrazoBadge } from "@/components/PrazoBadge";
-import { ehMissao } from "@/utils/tiposDeAtividade";
-import { motivoDeSaidaDaSessao } from "@/utils/motivoDeSaidaDaSessao";
 import { HallBackground, OrnamentDivider } from "@/components/HallTheme";
 import { IABattleHeaderChip } from "@/components/ia/IABattleHeaderChip";
 import { IAHeaderTimer } from "@/components/ia/IAHeaderTimer";
@@ -490,14 +487,6 @@ export default function TrilhaConteudoScreen() {
     progressoPercurso.total,
     topico,
   ]);
-
-  // Espelha `topicoConcluido` num ref para o cleanup do focus effect poder
-  // le-lo. O cleanup e um closure montado uma vez; sem o ref ele veria o valor
-  // do quadro em que o efeito subiu, e a conclusao acontece depois.
-  const topicoConcluidoRef = useRef(false);
-  useEffect(() => {
-    topicoConcluidoRef.current = topicoConcluido;
-  }, [topicoConcluido]);
 
   const topicoJaIniciado = useMemo(() => {
     if (!topico) return false;
@@ -982,15 +971,7 @@ export default function TrilhaConteudoScreen() {
           void persistElapsedStudyBlock(activeStudyBlockRef.current);
           activeStudyBlockRef.current = null;
         }
-        // Sair de um topico CONCLUIDO nao e interrupcao: e o fim natural do
-        // trabalho. Passava sempre `"screen_blur"`, entao `session_end` nunca
-        // acontecia e a metrica do professor marcava 106 de 106 sessoes como
-        // interrompidas. Ver `motivoDeSaidaDaSessao`.
-        //
-        // Le de um ref porque este cleanup e um closure: o valor do memo aqui
-        // dentro seria o do quadro em que o efeito foi montado, e a conclusao
-        // acontece depois.
-        void endStudySession(motivoDeSaidaDaSessao(topicoConcluidoRef.current));
+        void endStudySession("screen_blur");
       };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- activeStudyBlockRef is a stable ref object
     }, [
@@ -1708,6 +1689,7 @@ export default function TrilhaConteudoScreen() {
                   },
                 ]}
                 onPress={handlePularTrilha}
+                accessibilityRole="button"
               >
                 <Text style={[styles.skipButtonText, { color: profilePalette.accent }]}>
                   Fazer teste e pular módulo
@@ -1790,36 +1772,6 @@ export default function TrilhaConteudoScreen() {
               </Text>
             ) : null}
 
-            {atualBlock.kind === "atividade" ? (
-              <View style={styles.selosDaAtividade}>
-                {/* Missao e atividade com `tipo = 'missao'` (#150): mesma
-                    tabela, mesmo progresso, mesmo rank. O selo existe porque a
-                    NATUREZA e outra -- e uma tarefa que o professor montou,
-                    nao um formato de questao. */}
-                {ehMissao(atualBlock.atividade.tipo) ? (
-                  <View
-                    style={[
-                      styles.seloMissao,
-                      { borderColor: profilePalette.accent },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.seloMissaoTexto,
-                        { color: profilePalette.accent },
-                      ]}
-                    >
-                      MISSÃO
-                    </Text>
-                  </View>
-                ) : null}
-                <PrazoBadge
-                  dataEntrega={atualBlock.atividade.data_entrega}
-                  palette={profilePalette}
-                />
-              </View>
-            ) : null}
-
             {atualBlock.kind === "conteudo" ? (
               <>
                 <ContentRenderer
@@ -1891,6 +1843,7 @@ export default function TrilhaConteudoScreen() {
                     }
                   }
                 }}
+                accessibilityRole="button"
               >
                 <Text style={styles.buttonText}>
                   {topicoJaIniciado
@@ -1914,6 +1867,7 @@ export default function TrilhaConteudoScreen() {
                     setPulouConteudos(false);
                     setIndex(0);
                   }}
+                  accessibilityRole="button"
                 >
                   <Text style={styles.secondaryButtonText}>
                     Revisar tópico
@@ -1935,6 +1889,8 @@ export default function TrilhaConteudoScreen() {
                 ]}
                 disabled={!canBack}
                 onPress={handleVoltar}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: !canBack }}
               >
                 <Text style={styles.secondaryButtonText}>Voltar</Text>
               </Pressable>
@@ -1967,6 +1923,7 @@ export default function TrilhaConteudoScreen() {
                     await handleConcluirTopico();
                   }
                 }}
+                accessibilityRole="button"
                 >
                   <Text style={styles.buttonText}>
                   {canContinue ? "Continuar" : "Concluir módulo"}
@@ -2038,6 +1995,8 @@ export default function TrilhaConteudoScreen() {
                   setModalProximos({ visivel: false, opcoes: [] });
                   router.replace(`/trilha/${opt.id}`);
                 }}
+                accessibilityRole="button"
+                accessibilityLabel={`${opt.nome ?? `Módulo ${opt.id}`}, ${Math.round(Number(opt.percentual_concluido ?? 0))}% concluído`}
               >
                 <View style={{ flex: 1 }}>
                   <Text style={styles.modalOptionTitle}>
@@ -2060,6 +2019,7 @@ export default function TrilhaConteudoScreen() {
                 },
               ]}
               onPress={() => setModalProximos({ visivel: false, opcoes: [] })}
+              accessibilityRole="button"
             >
               <Text style={styles.modalCloseText}>Ficar neste módulo</Text>
             </Pressable>

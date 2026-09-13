@@ -43,34 +43,8 @@ def test_tipo_sem_prefixo_conhecido_mantem_o_que_veio() -> None:
     assert sanear("inatividade", "42") == "42"
 
 
-def test_a_referencia_declarada_vence_o_tipo_do_evento() -> None:
-    """Este teste dizia o contrario, e o contrario estava errado.
-
-    A regra antiga era "o prefixo sai do TIPO", justificada por a view do rank
-    casar pelo prefixo do tipo. So que trocar `content:12` por `atividade:12`
-    nao resolvia a view: inventava uma atividade 12 que pode nao existir, e
-    entao a view nao resolvia classe nenhuma e os pontos morriam ali.
-
-    Medido em producao: 66 ids de referencia orfaos, e 4 deles eram conteudo do
-    proprio aluno com o prefixo trocado por este caminho. A view passou a
-    resolver pela FORMA da referencia (20260910_06), e o id e' a parte
-    confiavel -- o prefixo do tipo e' palpite, e vale so quando a referencia
-    nao diz nada de si.
-    """
-    assert sanear("atividade_concluida", "content:12") == "conteudo:12"
-    assert sanear("conteudo_concluido", "activity:1056") == "atividade:1056"
-    assert sanear("atividade_revisada", "topic:114") == "topico:114"
-
-
-def test_sem_prefixo_declarado_o_tipo_ainda_decide() -> None:
-    """Referencia crua (`122`) nao diz o que e': o tipo continua sendo a unica
-    pista, e e' legitimo usa-lo."""
+def test_o_prefixo_sai_do_tipo_do_evento() -> None:
+    """`conteudo:12` num evento de atividade seria resolvido contra a tabela
+    errada pela view, que casa pelo prefixo do TIPO."""
+    assert sanear("atividade_concluida", "content:12") == "atividade:12"
     assert sanear("topico_iniciado", "122") == "topico:122"
-    assert sanear("conteudo_concluido", 174) == "conteudo:174"
-    assert sanear("atividade_concluida", "1056") == "atividade:1056"
-
-
-def test_prefixo_desconhecido_nao_e_tratado_como_declaracao() -> None:
-    """`item:` nao aponta para tabela alguma, entao o tipo volta a decidir --
-    senao um vocabulario novo do cliente viraria referencia insalvavel."""
-    assert sanear("conteudo_concluido", "item:12") == "conteudo:12"

@@ -1,11 +1,6 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
 import type { TelemetryBatchPayload } from "../interfaces/telemetria/TelemetryContracts";
-import {
-  criarFilaDuravel,
-  ehErroPermanente,
-  escoarItens,
-  podarItens,
-  type ItemEnfileirado,
-} from "./filaDuravel";
 
 /**
  * Fila durável de lotes de telemetria que não conseguiram ser gravados.
@@ -16,11 +11,8 @@ import {
  * é a alternativa para a perda de persistência: o lote espera o próximo
  * momento em que o envio volta a funcionar.
  *
- * A MÁQUINA da fila (poda, classificação de erro, escoamento) mora em
- * `filaDuravel`, compartilhada com a fila de progresso e pontos. Aqui fica só
- * o que é de telemetria: os limites e o tipo do payload. Antes esta era a
- * única fila do app e as duas coisas viviam juntas; separá-las evitou copiar a
- * regra para a segunda fila, que é como duas cópias começam a divergir.
+ * As regras de poda e de escoamento ficam em funções puras (`podarLotes`,
+ * `escoarLotes`) para poderem ser testadas sem AsyncStorage.
  */
 
 const CHAVE = "trailup:telemetria-outbox";
@@ -39,49 +31,94 @@ export const MAX_LOTES_OUTBOX = 50;
  */
 export const VALIDADE_OUTBOX_MS = 7 * 24 * 60 * 60 * 1000;
 
-export type LoteEnfileirado = ItemEnfileirado<TelemetryBatchPayload>;
-
-const fila = criarFilaDuravel<TelemetryBatchPayload>({
-  chave: CHAVE,
-  maxItens: MAX_LOTES_OUTBOX,
-  validadeMs: VALIDADE_OUTBOX_MS,
-  rotulo: "telemetriaOutbox",
-});
+export type LoteEnfileirado = {
+  enfileiradoEm: number;
+  payload: TelemetryBatchPayload;
+};
 
 /** Descarta o que venceu e depois o excedente mais antigo. */
 export function podarLotes(
   lotes: LoteEnfileirado[],
-  agora: number,
+  agora: number
 ): LoteEnfileirado[] {
-  return podarItens(lotes, agora, {
-    maxItens: MAX_LOTES_OUTBOX,
-    validadeMs: VALIDADE_OUTBOX_MS,
-  });
+  const vigentes = lotes.filter(
+    (lote) => agora - lote.enfileiradoEm <= VALIDADE_OUTBOX_MS
+  );
+  return vigentes.slice(-MAX_LOTES_OUTBOX);
 }
 
-export { ehErroPermanente };
-
-/** Reenvia do mais antigo para o mais novo. Ver `escoarItens`. */
+/**
+ * Reenvia do mais antigo para o mais novo e **para no primeiro que falhar**:
+ * se o envio ainda não voltou, insistir nos seguintes só gasta bateria e rede.
+ * O que já passou sai da fila mesmo assim, então o progresso parcial não é
+ * perdido.
+ */
 export async function escoarLotes(
   fila: LoteEnfileirado[],
-  enviar: (payload: TelemetryBatchPayload) => Promise<unknown>,
-): Promise<{ enviados: number; descartados: number; restante: LoteEnfileirado[] }> {
-  return escoarItens(fila, enviar, "telemetriaOutbox");
+  enviar: (payload: TelemetryBatchPayload) => Promise<unknown>
+): Promise<{ enviados: number; restante: LoteEnfileirado[] }> {
+  let enviados = 0;
+  for (const lote of fila) {
+    try {
+      await enviar(lote.payload);
+      enviados += 1;
+    } catch {
+      break;
+    }
+  }
+  return { enviados, restante: fila.slice(enviados) };
+}
+
+function parsearFila(bruto: string | null): LoteEnfileirado[] {
+  if (!bruto) return [];
+  const dados = JSON.parse(bruto);
+  if (!Array.isArray(dados)) return [];
+  return dados.filter(
+    (item): item is LoteEnfileirado =>
+      !!item && typeof item.enfileiradoEm === "number" && !!item.payload
+  );
+}
+
+async function ler(): Promise<LoteEnfileirado[]> {
+  try {
+    return parsearFila(await AsyncStorage.getItem(CHAVE));
+  } catch {
+    // Fila corrompida não pode derrubar a telemetria viva. Perder a fila é
+    // ruim; travar a coleta em curso é pior.
+    return [];
+  }
+}
+
+async function gravar(lotes: LoteEnfileirado[]): Promise<void> {
+  try {
+    await AsyncStorage.setItem(CHAVE, JSON.stringify(lotes));
+  } catch (erro) {
+    console.warn("[telemetriaOutbox] Não foi possível gravar a fila:", erro);
+  }
 }
 
 /** Guarda um lote que não pôde ser gravado, para tentar de novo mais tarde. */
 export async function enfileirarLoteTelemetria(
-  payload: TelemetryBatchPayload,
+  payload: TelemetryBatchPayload
 ): Promise<void> {
-  await fila.enfileirar(payload);
+  const fila = await ler();
+  fila.push({ enfileiradoEm: Date.now(), payload });
+  await gravar(podarLotes(fila, Date.now()));
 }
 
 export async function contarLotesPendentes(): Promise<number> {
-  return fila.contarPendentes();
+  return podarLotes(await ler(), Date.now()).length;
 }
 
 export async function drenarLotesTelemetria(
-  enviar: (payload: TelemetryBatchPayload) => Promise<unknown>,
-): Promise<{ enviados: number; descartados: number; pendentes: number }> {
-  return fila.drenar(enviar);
+  enviar: (payload: TelemetryBatchPayload) => Promise<unknown>
+): Promise<{ enviados: number; pendentes: number }> {
+  const fila = podarLotes(await ler(), Date.now());
+  if (fila.length === 0) {
+    return { enviados: 0, pendentes: 0 };
+  }
+
+  const { enviados, restante } = await escoarLotes(fila, enviar);
+  await gravar(restante);
+  return { enviados, pendentes: restante.length };
 }

@@ -43,7 +43,6 @@ import {
   getMetricsThemePreference,
   resolveMetricsTheme,
 } from "@/utils/profileMetricThemes";
-import { criteriosDoRanking } from "@/utils/pontuacaoDoAluno";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { registrarAlvoTour } from "@/utils/tourTargets";
 import { resolveRepresentativeBrainHexProfiles } from "@/utils/brainHex";
@@ -54,7 +53,7 @@ const { width } = Dimensions.get("window");
 export default function PerfilHome() {
   const { usuario, selecionarPerfilAtivo } = useUsuario();
   const { classeAtual, perfil, progressoPersonalizado } = useTrilha();
-  const { conquistas, carregando, eventos, posicoesDoAluno, ranking } =
+  const { conquistas, carregando, eventos, posicoesDoAluno } =
     useConquistaRank();
   const { lastAnalysis, cameraOptIn, cameraPermission } = useMetricas();
   const { lastBatchTimeMetrics } = useMetricasBatch();
@@ -126,10 +125,6 @@ export default function PerfilHome() {
     .toRgbString();
   const resolvedTheme = resolveMetricsTheme(perfil, themeOverride);
 
-  // Sem o criterio nao da para saber qual das posicoes esta em PONTOS: a turma
-  // tem um rank por criterio, e as tres linhas chegam no mesmo campo.
-  const criteriosDosRanks = useMemo(() => criteriosDoRanking(ranking), [ranking]);
-
   const metricsViewModel = useMemo(
     () =>
       buildProfileMetricsViewModel({
@@ -144,7 +139,6 @@ export default function PerfilHome() {
         cameraPermission,
         battleState,
         progressoPersonalizado,
-        criteriosDosRanks,
       }),
     [
       battleState,
@@ -152,7 +146,6 @@ export default function PerfilHome() {
       cameraPermission,
       classeAtual,
       conquistas,
-      criteriosDosRanks,
       eventos,
       progressoPersonalizado,
       lastAnalysis,
@@ -340,6 +333,8 @@ export default function PerfilHome() {
                   },
                 ]}
                 onPress={() => router.push("/(tabs)/perfil/settings")}
+                accessibilityRole="button"
+                accessibilityLabel="Configurações"
               >
                 <MaterialCommunityIcons
                   name="cog-outline"
@@ -358,6 +353,8 @@ export default function PerfilHome() {
                   },
                 ]}
                 onPress={() => router.push("/(tabs)/perfil/biblioteca-conquistas")}
+                accessibilityRole="button"
+                accessibilityLabel="Biblioteca de conquistas"
               >
                 <MaterialCommunityIcons
                   name="trophy-variant-outline"
@@ -523,6 +520,8 @@ export default function PerfilHome() {
             <TouchableOpacity
               onPress={() => setAba("metricas")}
               style={styles.tabButton}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: aba === "metricas" }}
             >
               <Text
                 style={[
@@ -549,6 +548,8 @@ export default function PerfilHome() {
             <TouchableOpacity
               onPress={() => setAba("conquistas")}
               style={styles.tabButton}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: aba === "conquistas" }}
             >
               <Text
                 style={[
@@ -578,47 +579,6 @@ export default function PerfilHome() {
           <View style={[styles.ornamentRow, { paddingHorizontal: 20 }]}>
             <OrnamentDivider color={Color.colorWhite} />
           </View>
-
-          {/* Presença e crédito do professor nao tem rastro em nenhuma outra
-              tela: eles nao vem do que o aluno fez no app, vem do que o
-              professor registrou. Sem esta porta, o numero entrava na
-              pontuacao total sem nada explicando de onde veio. Fica na aba de
-              metricas porque e' onde a pontuacao aparece. */}
-          {aba === "metricas" ? (
-            <TouchableOpacity
-              style={[
-                styles.linhaCreditos,
-                {
-                  backgroundColor: shellPalette.surfaceElevated,
-                  borderColor: shellPalette.border,
-                },
-              ]}
-              onPress={() => router.push("/(tabs)/perfil/creditos")}
-              accessibilityRole="button"
-              accessibilityLabel="Ver histórico de presença e créditos do professor"
-            >
-              <MaterialCommunityIcons
-                name="calendar-check"
-                size={20}
-                color={shellPalette.accent}
-              />
-              <View style={styles.linhaCreditosTexto}>
-                <Text style={[styles.linhaCreditosTitulo, { color: shellPalette.text }]}>
-                  Presença e créditos
-                </Text>
-                <Text
-                  style={[styles.linhaCreditosApoio, { color: shellPalette.textMuted }]}
-                >
-                  O que o professor registrou para você
-                </Text>
-              </View>
-              <MaterialCommunityIcons
-                name="chevron-right"
-                size={22}
-                color={shellPalette.textMuted}
-              />
-            </TouchableOpacity>
-          ) : null}
 
           <View ref={profileAchievementsGuideRef} collapsable={false} style={styles.listContainer}>
             {aba === "conquistas" ? (
@@ -650,6 +610,8 @@ export default function PerfilHome() {
                       ]}
                       activeOpacity={0.7}
                       onPress={() => setConquistaSelecionada(conquista)}
+                      accessibilityRole="button"
+                      accessibilityLabel={conquista.nome ?? "Conquista"}
                     >
                       <View
                         style={[
@@ -741,21 +703,6 @@ export default function PerfilHome() {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   ornamentRow: { marginTop: 4, opacity: 0.7 },
-  linhaCreditos: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginHorizontal: 20,
-    marginTop: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  // `flex: 1` para o chevron nunca ser empurrado fora da tela.
-  linhaCreditosTexto: { flex: 1, gap: 1 },
-  linhaCreditosTitulo: { fontSize: 14, fontFamily: FontFamily.poppinsExtraBold },
-  linhaCreditosApoio: { fontSize: 12, fontFamily: FontFamily.interMedium },
   scrollContent: { paddingBottom: 40 },
   headerContainer: { marginBottom: 10, alignItems: "center" },
   bannerWrapper: { width: "100%", height: 180, position: "relative" },

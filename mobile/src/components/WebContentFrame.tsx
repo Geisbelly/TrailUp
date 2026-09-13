@@ -211,6 +211,7 @@ export function WebContentFrame({
           },
         ]}
         onPress={() => Linking.openURL(uri)}
+        accessibilityRole="button"
       >
         <Text style={[styles.fallbackButtonText, { color: palette.background }]}>
           Abrir arquivo

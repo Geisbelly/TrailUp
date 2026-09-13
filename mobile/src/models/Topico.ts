@@ -1,5 +1,4 @@
-import { construirEscritaDeTopico } from '@/services/progressoEscritas';
-import { gravarProgresso } from '@/services/progressoOutbox';
+import { supabase } from '@/database/supabase';
 import { clampPercent } from '@/utils/dataValidation';
 import { Atividade } from './Atividade';
 import { Conteudo } from './Conteudo';
@@ -194,14 +193,19 @@ export class Topico {
       const agora = new Date().toISOString();
       const ultimaAtividade = this.inferirUltimaAtividadeId();
 
-      await gravarProgresso(
-        construirEscritaDeTopico({
-          alunoId: aluno_id,
-          topicoId: this.id,
-          ultimaAtividadeId: ultimaAtividade,
-          agora,
-        })
-      );
+      const { error } = await supabase
+        .from('topico_aluno')
+        .upsert({
+          aluno_id,
+          topico_id: this.id,
+          ultima_atividade: ultimaAtividade,
+          ultima_visualizacao: agora,
+          updated_at: agora
+        }, {
+          onConflict: 'aluno_id,topico_id'
+        });
+
+      if (error) throw error;
 
       this.ultima_atividade = ultimaAtividade;
       this.ultima_visualizacao = agora;
@@ -215,25 +219,20 @@ export class Topico {
   async marcarIniciado(aluno_id: string): Promise<void> {
     try {
       const agora = new Date().toISOString();
-      // Sem `status`: quem decide o do topico e
-      // `trailup_recalcular_topico_aluno`, e abrir um topico sem fazer nada
-      // nele nao e progresso -- o gatilho calcularia 0% e 'nao iniciado'.
-      // Gravar 'em andamento' aqui era uma opiniao do cliente que durava ate a
-      // primeira escrita de item disparar o recalculo, e ficava de pe para
-      // sempre em quem abriu e nao voltou.
-      //
-      // O sinal honesto de "voce esteve aqui" e `ultima_visualizacao`, que
-      // continua sendo gravada.
-      await gravarProgresso(
-        construirEscritaDeTopico({
-          alunoId: aluno_id,
-          topicoId: this.id,
-          agora,
-        })
-      );
+      const { error } = await supabase
+        .from('topico_aluno')
+        .upsert({
+          aluno_id,
+          topico_id: this.id,
+          status: 'em andamento',
+          ultima_visualizacao: agora,
+          updated_at: agora
+        }, {
+          onConflict: 'aluno_id,topico_id'
+        });
 
-      // Em memoria continua: a tela precisa reagir ao toque, e o proximo
-      // refresh traz o que o banco calculou.
+      if (error) throw error;
+
       this.status = 'em andamento';
       this.ultima_visualizacao = agora;
     } catch (err) {
@@ -247,28 +246,21 @@ export class Topico {
     try {
       const agora = new Date().toISOString();
       const ultimaAtividade = this.inferirUltimaAtividadeId();
-      // Nem `percentual_concluido` nem `status`: os DOIS sao de
-      // `trailup_recalcular_topico_aluno`, sobre o material personalizado
-      // (`20260826_18`). O CLAUDE.md ja dizia isso; o `status` tinha ficado de
-      // fora por medo de re-travar o desbloqueio.
-      //
-      // Medido: forcando o recalculo dos 9 topicos da base, os valores saem
-      // IDENTICOS aos que o cliente escrevia -- 125, 129 e 130 continuam
-      // `concluido/100`. A escrita era redundante quando certa, e enganosa
-      // quando nao: se nenhuma escrita de item disparasse o recalculo depois
-      // dela, um `concluido` do cliente mascarava um 96% do banco para sempre.
-      //
-      // O desbloqueio nao depende dela. `estaDesbloqueado` le o modelo local,
-      // que `TrilhaContext` ja marca como concluido antes do sync; entre
-      // sessoes ele le o banco, e la o gatilho da a mesma resposta.
-      await gravarProgresso(
-        construirEscritaDeTopico({
-          alunoId: aluno_id,
-          topicoId: this.id,
-          ultimaAtividadeId: ultimaAtividade,
-          agora,
-        })
-      );
+      const { error } = await supabase
+        .from('topico_aluno')
+        .upsert({
+          aluno_id,
+          topico_id: this.id,
+          status: 'concluido',
+          percentual_concluido: 100,
+          ultima_atividade: ultimaAtividade,
+          ultima_visualizacao: agora,
+          updated_at: agora
+        }, {
+          onConflict: 'aluno_id,topico_id'
+        });
+
+      if (error) throw error;
 
       this.status = 'concluido';
       this.percentual_concluido = 100;

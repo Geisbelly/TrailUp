@@ -7,15 +7,6 @@ import tinycolor from "tinycolor2";
 import { BrainHexProfile, getBrainHexConfig } from "@/constants/profileImages";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { MetricsThemeResolved, getMetricsThemeOption } from "@/utils/profileMetricThemes";
-import {
-  formatarMinutos,
-  formatarMinutosPreciso,
-  formatarTempoDaSessao,
-} from "@/utils/tempoDeEstudo";
-import {
-  descreverPosicaoDaPontuacao,
-  rotularPontuacao,
-} from "@/utils/pontuacaoDoAluno";
 import { ProfileMetricsViewModel } from "./profileMetricsViewModel";
 
 const CHART_W = 280;
@@ -57,10 +48,13 @@ function formatPercent(value?: number | null) {
   return `${Math.round(Number(value ?? 0))}%`;
 }
 
-// A conta vive em `utils/tempoDeEstudo`, testavel. Esta funcao arredondava para
-// minuto inteiro e transformava estudo curto em "0 min" -- inclusive a media por
-// atividade, que e 0,18 min na classe de demonstracao.
-const formatMinutes = formatarMinutos;
+function formatMinutes(value?: number | null) {
+  const minutes = Math.max(0, Math.round(Number(value ?? 0)));
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest > 0 ? `${hours}h ${rest}min` : `${hours}h`;
+}
 
 function formatLastEvent(value?: string | null) {
   if (!value) return "sem registros";
@@ -370,12 +364,21 @@ function EmptyState({
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
-// `temMedicao` e o argumento que faltava: sem ele, ausencia de telemetria saia
-// como "0s", que parece medicao.
-const formatSeconds = (sec: number, temMedicao = true) =>
-  formatarTempoDaSessao(sec, temMedicao);
+function formatSeconds(sec: number) {
+  if (sec <= 0) return "0s";
+  if (sec < 60) return `${sec}s`;
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return s > 0 ? `${m}min ${s}s` : `${m}min`;
+}
 
-const formatMinutesTimer = formatarMinutosPreciso;
+function formatMinutesTimer(totalMin?: number | null) {
+  if (totalMin == null) return "—";
+  const totalSec = Math.round(totalMin * 60);
+  const min = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  return `${min}min ${sec}s`;
+}
 
 function KpiPill({ label, value, palette }: { label: string; value: string; palette: ThemePalette }) {
   return (
@@ -1063,12 +1066,11 @@ function ArenaDashboard({ profile, vm, palette, accent, themeBadge, guideRefs }:
         <View style={s.statGrid}>
           <StatTile targetRef={guideRef(guideRefs, "arena-precision")} icon="crosshairs-gps" label="Precisão" value={formatPercent(vm.acertos)} helper="desempenho nas respostas" palette={palette} accent={accent} />
           <StatTile targetRef={guideRef(guideRefs, "arena-position")} icon="trophy-outline" label="Posição" value={vm.melhorPosicao?.posicao ? `#${vm.melhorPosicao.posicao}` : "Sem rank"} helper="melhor marca na classe" palette={palette} accent={accent} />
-          <StatTile icon="star-circle-outline" label="Pontuação" value={rotularPontuacao(vm.pontuacao)} helper={descreverPosicaoDaPontuacao(vm.pontuacao)} palette={palette} accent={accent} />
           <StatTile
             icon="clock-outline"
             label="Tempo ativo"
-            value={formatSeconds(vm.sessionActiveSec, vm.hasSessionMetrics)}
-            helper={vm.hasSessionMetrics ? "sessão atual" : "sem dados desta sessão"}
+            value={formatSeconds(vm.sessionActiveSec)}
+            helper={vm.hasSessionMetrics ? "sessão atual" : vm.presencaResumo}
             palette={palette}
             accent={accent}
             targetRef={guideRef(guideRefs, "arena-active-time")}
@@ -1355,7 +1357,6 @@ function AnalyticsDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dash
           <StatTile targetRef={guideRef(guideRefs, "analytics-progress")} icon="chart-donut" label="Progresso" value={formatPercent(vm.progresso)} helper={`${vm.concluidos}/${vm.totalTopicos} tópicos`} palette={palette} accent={accent} />
           <StatTile targetRef={guideRef(guideRefs, "analytics-accuracy")} icon="target" label="Acertos" value={formatPercent(vm.acertos)} helper="média da turma atual" palette={palette} accent={accent} />
           <StatTile targetRef={guideRef(guideRefs, "analytics-time")} icon="clock-outline" label="Tempo de estudo" value={formatMinutes(vm.tempo)} helper={`${formatMinutes(vm.tempoMedio)} por atividade`} palette={palette} accent={accent} />
-          <StatTile icon="star-circle-outline" label="Pontuação" value={rotularPontuacao(vm.pontuacao)} helper={descreverPosicaoDaPontuacao(vm.pontuacao)} palette={palette} accent={accent} />
           <StatTile targetRef={guideRef(guideRefs, "analytics-achievements")} icon="trophy-outline" label="Conquistas" value={String(vm.totalConquistas)} helper={vm.melhorPosicao?.posicao != null ? `melhor posição #${vm.melhorPosicao.posicao}` : "sem posição em ranking"} palette={palette} accent={accent} />
         </View>
       </LinearGradient>
@@ -1469,7 +1470,6 @@ function SquadDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dashboar
         <View style={s.statGrid}>
           <StatTile targetRef={guideRef(guideRefs, "squad-presence-hero")} icon="account-group-outline" label="Presença" value={`${vm.diasAtivos} dias`} helper={vm.presencaResumo} palette={palette} accent={accent} />
           <StatTile targetRef={guideRef(guideRefs, "squad-ranking")} icon="podium" label="Ranking" value={vm.melhorPosicao?.posicao ? `#${vm.melhorPosicao.posicao}` : "Sem posição"} helper="melhor colocação" palette={palette} accent={accent} />
-          <StatTile icon="star-circle-outline" label="Pontuação" value={rotularPontuacao(vm.pontuacao)} helper={descreverPosicaoDaPontuacao(vm.pontuacao)} palette={palette} accent={accent} />
           <StatTile targetRef={guideRef(guideRefs, "squad-achievements")} icon="trophy-outline" label="Conquistas" value={String(vm.totalConquistas)} helper="emblemas e marcos" palette={palette} accent={accent} />
           <StatTile targetRef={guideRef(guideRefs, "squad-movement")} icon="pulse" label="Movimento" value={String(vm.eventosRecentes)} helper="ações recentes" palette={palette} accent={accent} />
         </View>

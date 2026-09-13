@@ -108,6 +108,8 @@ export default function PresentationSlidesBlock({ payload: rawPayload, progressK
     <View style={styles.wrapper}>
       <Pressable
         onPress={openViewer}
+        accessibilityRole="button"
+        accessibilityLabel="Ver apresentação"
         style={[
           styles.previewCard,
           { backgroundColor: palette.surfaceElevated, borderColor: palette.borderStrong },
@@ -170,7 +172,12 @@ export default function PresentationSlidesBlock({ payload: rawPayload, progressK
                 <Image source={brainHexConfig.image} style={styles.guideImage} />
                 <Text style={[styles.guideName, { color: palette.text }]}>{guideName}</Text>
               </View>
-              <Pressable onPress={() => setVisible(false)} style={styles.closeButton}>
+              <Pressable
+                onPress={() => setVisible(false)}
+                style={styles.closeButton}
+                accessibilityRole="button"
+                accessibilityLabel="Fechar"
+              >
                 <Ionicons name="close" size={22} color={Color.colorWhite} />
               </Pressable>
             </View>
@@ -214,6 +221,9 @@ export default function PresentationSlidesBlock({ payload: rawPayload, progressK
               <Pressable
                 onPress={goPrev}
                 disabled={isFirst}
+                accessibilityRole="button"
+                accessibilityLabel="Slide anterior"
+                accessibilityState={{ disabled: isFirst }}
                 style={[styles.navButton, isFirst && styles.navButtonDisabled]}
               >
                 <Ionicons name="chevron-back" size={22} color={Color.colorWhite} />
@@ -226,6 +236,9 @@ export default function PresentationSlidesBlock({ payload: rawPayload, progressK
               <Pressable
                 onPress={goNext}
                 disabled={isLast}
+                accessibilityRole="button"
+                accessibilityLabel="Próximo slide"
+                accessibilityState={{ disabled: isLast }}
                 style={[styles.navButton, isLast && styles.navButtonDisabled]}
               >
                 <Ionicons name="chevron-forward" size={22} color={Color.colorWhite} />

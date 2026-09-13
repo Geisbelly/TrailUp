@@ -1,5 +1,3 @@
-from collections.abc import Sequence
-
 from sqlalchemy import String, bindparam, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,39 +16,6 @@ class EventoRepository:
         if normalized.startswith("atividade_"):
             return "atividade"
         return None
-
-    # Vocabulario -> entidade. O cliente manda `content:`/`activity:`/`topic:`
-    # em alguns caminhos e `conteudo:`/`atividade:`/`topico:` em outros; as duas
-    # grafias apontam para a mesma tabela.
-    _PREFIXOS_CONHECIDOS = {
-        "topic": "topico",
-        "topico": "topico",
-        "content": "conteudo",
-        "conteudo": "conteudo",
-        "activity": "atividade",
-        "atividade": "atividade",
-        "classe": "classe",
-        "class": "classe",
-        "conquista": "conquista",
-    }
-
-    @classmethod
-    def _explicit_reference_prefix(cls, referencia: str) -> str | None:
-        """O prefixo que a PROPRIA referencia declara, se declarar algum.
-
-        Existe porque confiar no tipo do evento fabricava referencia orfa: um
-        `content:174` num `atividade_concluida` virava `atividade:174`, e nao
-        existe atividade 174 -- a view do rank nunca resolvia a classe e os
-        pontos morriam ali. Medido em producao: 66 ids orfaos, e 4 deles eram
-        conteudo do proprio aluno com o prefixo trocado.
-
-        O id e' a parte confiavel da referencia; o prefixo do tipo e' palpite. Na
-        duvida, quem manda e' o que a referencia diz de si.
-        """
-        if ":" not in referencia:
-            return None
-        candidato = referencia.split(":", 1)[0].strip().lower()
-        return cls._PREFIXOS_CONHECIDOS.get(candidato)
 
     @staticmethod
     def _extract_numeric_reference(referencia: str | int | None) -> str | None:
@@ -74,10 +39,7 @@ class EventoRepository:
         if not normalized:
             return None
 
-        # A referencia declarada vence o palpite do tipo. Trocar `content:174`
-        # por `atividade:174` num evento de atividade nao "corrigia" nada:
-        # inventava uma atividade que nao existe e a view perdia a classe.
-        prefix = cls._explicit_reference_prefix(normalized) or cls._infer_reference_prefix(tipo)
+        prefix = cls._infer_reference_prefix(tipo)
         numeric_reference = cls._extract_numeric_reference(normalized)
 
         if prefix is not None:
@@ -97,52 +59,6 @@ class EventoRepository:
             return numeric_reference
 
         return normalized
-
-    _INSERT = """
-        INSERT INTO eventos_aluno (aluno_id, tipo, referencia, valor)
-        VALUES (:aluno_id, :tipo, :referencia, :valor)
-    """
-
-    def _linha(
-        self,
-        aluno_id: str,
-        tipo: str,
-        referencia: str | int | None,
-        valor: float | None,
-    ) -> dict[str, object | None]:
-        sanitized_reference = self._sanitize_reference(tipo, referencia)
-        if sanitized_reference is not None:
-            sanitized_reference = str(sanitized_reference)
-        return {
-            "aluno_id": aluno_id,
-            "tipo": tipo,
-            "referencia": sanitized_reference,
-            "valor": valor,
-        }
-
-    async def log_muitos(
-        self,
-        aluno_id: str,
-        eventos: Sequence[tuple[str, str | int | None, float | None]],
-    ) -> None:
-        """Grava vários eventos num `execute` só (executemany do driver).
-
-        `log` continua existindo e intocado para quem grava um evento avulso.
-        Isto serve ao lote de telemetria, onde os eventos vinham um por
-        `execute` — e o Supabase é remoto, então cada ida e volta custa latência
-        dentro da requisição que também roda o pipeline de análise.
-        """
-        if not eventos:
-            return
-
-        linhas = [
-            self._linha(aluno_id, tipo, referencia, valor)
-            for tipo, referencia, valor in eventos
-        ]
-        await self.session.execute(
-            text(self._INSERT).bindparams(bindparam("referencia", type_=String)),
-            linhas,
-        )
 
     async def log(
         self,

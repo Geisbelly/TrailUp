@@ -28,8 +28,6 @@ import { Classe } from '@/models/Classe';
 import { QuestaoAluno } from '@/models/QuestaoAluno';
 import { Topico } from '@/models/Topico';
 import { PersonalizacaoRlsError } from "@/services/personalizacao/errors";
-import { construirEscritaDeTopico } from '@/services/progressoEscritas';
-import { gravarProgresso } from '@/services/progressoOutbox';
 import { usePersonalizacaoProvider } from "@/services/personalizacao/PersonalizacaoProviderContext";
 import {
   buildClassMapTheme,
@@ -50,6 +48,7 @@ import {
 } from '@/utils/progressoPersonalizado';
 import { buildContentBlocks, isUrl } from '@/utils/contentBlocks';
 import { ensureCachedNativeContent } from '@/utils/nativeContentCache';
+import { executarComConcorrencia } from '@/utils/prefetchPool';
 import { versionedCacheKey } from '@/utils/materialCacheVersion';
 import {
   aggregatePersonalizedTopicPayloads,
@@ -106,6 +105,12 @@ const PREFETCHABLE_TYPES = new Set([
 ]);
 
 const MEDIA_GENERATION_COOLDOWN_MS = 3 * 60 * 1000;
+
+// Quantos materiais o prefetch baixa ao mesmo tempo. Quatro por ser o meio
+// termo medido: em serie o aluno espera a soma de tudo, e com os 12 de uma vez
+// a banda do celular e' dividida entre todos -- nenhum material chega cedo, e o
+// gateway passa a responder 429 sob rajada.
+const PREFETCH_SIMULTANEOS = 4;
 
 type PrefetchEntry = { url: string; hint?: string | null; key: string; revisao?: number };
 
@@ -266,19 +271,24 @@ async function prefetchPersonalizedPayload(payload: PersonalizedTopicPayload | n
   if (!entries.length) return;
 
   const limited = entries.slice(0, 12);
-  for (const entry of limited) {
-    try {
-      await ensureCachedNativeContent(
+  // Baixa em paralelo com teto: era um `await` por item, e com o gateway
+  // custando ~800ms de 302 antes de cada download, 12 materiais viravam ~15s
+  // de "Preparando seu modulo..." antes do primeiro aparecer.
+  await executarComConcorrencia(
+    limited,
+    PREFETCH_SIMULTANEOS,
+    (entry) =>
+      ensureCachedNativeContent(
         // Versionada pela revisao: sem isso o prefetch rebaixa o arquivo
         // antigo e o aluno nunca ve o material regerado.
         `${entry.key}:${versionedCacheKey(entry.url, { revisao: entry.revisao })}`,
         entry.url,
         { extensionHint: entry.hint ?? undefined }
-      );
-    } catch (err) {
+      ),
+    (err) => {
       console.warn('[TrilhaContext] Falha ao prefetch de material personalizado:', err);
     }
-  }
+  );
 }
 
 function isTopicoConcluido(t: any, topicosPendentes?: Set<number>): boolean {
@@ -1842,6 +1852,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       await atividade.registrarConclusao(
         usuario.id,
         acertosPercentual,
+        undefined,
         options?.pontuacaoObtida ?? null,
         options?.pontuacaoMaxima ?? null,
         options?.avaliacaoMetadata ?? null
@@ -1926,23 +1937,31 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       const topico = classeAtual.topicos.find((t) => t.id === topicoId)
       if (!topico) throw new Error('Topico nao encontrado')
 
-      // Sem `status` nem `percentual_concluido`: sao derivados no banco pelo
-      // trigger de progresso. Mandar o valor local aqui gravava por cima da
-      // conta certa com o que a memoria do app tivesse no momento -- e este
-      // caminho dispara a cada registro de tempo, o que fazia o percentual
-      // correto durar segundos.
-      //
-      // O `status` que estava aqui tambem era ternario morto: os dois ramos
-      // devolviam 'em andamento', entao um topico com 0% era marcado como
-      // iniciado so por ter tido tempo contabilizado.
-      await gravarProgresso(
-        construirEscritaDeTopico({
-          alunoId: usuario.id,
-          topicoId,
-          ultimaAtividadeId: topico.ultima_atividade ?? null,
-        })
-      )
+      const { error } = await supabase
+        .from('topico_aluno')
+        .upsert(
+          {
+            aluno_id: usuario.id,
+            topico_id: topicoId,
+            // Sem `status` nem `percentual_concluido`: sao derivados no banco
+            // pelo trigger de progresso. Mandar o valor local aqui gravava por
+            // cima da conta certa com o que a memoria do app tivesse no
+            // momento -- e este caminho dispara a cada registro de tempo, o
+            // que fazia o percentual correto durar segundos.
+            //
+            // O `status` que estava aqui tambem era ternario morto: os dois
+            // ramos devolviam 'em andamento', entao um topico com 0% era
+            // marcado como iniciado so por ter tido tempo contabilizado.
+            ultima_atividade: topico.ultima_atividade ?? null,
+            ultima_visualizacao: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          {
+            onConflict: 'aluno_id,topico_id',
+          }
+        )
 
+      if (error) throw error
       syncClasseLocally(cloneClasse(classeAtual, { topicos: [...classeAtual.topicos] }))
       await atualizarProgressoClasse()
     } catch (err) {

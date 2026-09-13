@@ -255,23 +255,9 @@ export function resolveGeminiTtsFallbackModels(
   return configured.length > 0 ? configured : DEFAULT_GEMINI_TTS_FALLBACK_MODELS;
 }
 
-// Imagem de slide NAO tem fallback por padrao, e isso e deliberado.
-//
-// O default era `gemini-2.0-flash-preview-image-generation`, que o Google
-// aposentou: ele responde 404 NOT_FOUND. Um fallback que nunca pode dar certo
-// nao e neutro -- ele MASCARA a causa real. `generateGeminiContent` percorre
-// `[primario, ...fallbacks]` e guarda so o `lastError`, entao o que chega ao
-// log e o 404 do modelo morto, e a falha do primario (cota ou
-// indisponibilidade, as duas unicas que fazem avancar) desaparece.
-//
-// Medido em producao: "reilustracao por perfil: falha ao reilustrar imagem 1
-// ... 404 models/gemini-2.0-flash-preview-image-generation is not found",
-// reilustradas=0 total=7. O erro apontava para o modelo errado.
-//
-// Com a lista vazia, `candidateModels` fica so com o primario e o erro que
-// sobe e o verdadeiro. Quem quiser um fallback de verdade configura
-// `GEMINI_IMAGE_FALLBACK_MODELS` com um modelo que exista.
-const DEFAULT_GEMINI_IMAGE_FALLBACK_MODELS: string[] = [];
+// Idem para imagem de slide — gemini-2.0-flash-preview-image-generation é o
+// mesmo modelo já referenciado como GEMINI_MODEL_IMAGE no lado da API.
+const DEFAULT_GEMINI_IMAGE_FALLBACK_MODELS = ["gemini-2.0-flash-preview-image-generation"];
 
 export function resolveGeminiImageFallbackModels(
   environment: Record<string, string | undefined> = process.env,

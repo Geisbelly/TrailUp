@@ -10,9 +10,21 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, CalendarCheck, Copy, GraduationCap, Loader2, Medal, Pencil, Plus, Save, Trash2, UserPlus, Users, X } from "lucide-react";
-import { ConquistaDialog } from "./ConquistaDialog";
-import { CreditoDialog } from "./CreditoDialog";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Copy,
+  Users,
+  BookOpen,
+  UserPlus,
+  X,
+  Loader2,
+  GraduationCap,
+  Save,
+  CalendarCheck,
+} from "lucide-react";
+import { PresencaDialog } from "./PresencaDialog";
 import { ClassManagerDialog } from "./trilha/ClassManagerDialog";
 import { deleteClasseCascade } from "./trilha/classDeletion";
 import { enqueueCleanupJob, enqueueEnrollmentJob } from "./trilha/personalizacaoJobsApi";
@@ -60,7 +72,6 @@ export default function ClassManagementSection({ professorId }: Props) {
   // --- Alunos ---
   const [selectedClassForStudents, setSelectedClassForStudents] = useState<Classe | null>(null);
   const [classeParaPresenca, setClasseParaPresenca] = useState<Classe | null>(null);
-  const [classeParaConquista, setClasseParaConquista] = useState<Classe | null>(null);
   const [studentToAdId, setStudentToAddId] = useState<string>("");
   const [isProcessingStudent, setIsProcessingStudent] = useState(false);
 
@@ -281,7 +292,10 @@ export default function ClassManagementSection({ professorId }: Props) {
     if (classStudents[classId]?.includes(studentToAdId)) return toast.error("Aluno já está na turma.");
     setIsProcessingStudent(true);
     try {
-      await supabase.from("classe_aluno").insert({ classe_id: classId, aluno_id: studentToAdId });
+      const { error: enrollmentError } = await supabase
+        .from("classe_aluno")
+        .insert({ classe_id: classId, aluno_id: studentToAdId });
+      if (enrollmentError) throw enrollmentError;
       const { data: authData } = await supabase.auth.getSession();
       if (authData.session?.access_token) {
         const { topico_ids, conteudo_ids } = await fetchClassContextIds(classId);
@@ -447,10 +461,7 @@ export default function ClassManagementSection({ professorId }: Props) {
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => setClasseParaPresenca(c)}>
-                      <CalendarCheck className="w-3 h-3 mr-1.5" /> Créditos
-                    </Button>
-                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => setClasseParaConquista(c)}>
-                      <Medal className="w-3 h-3 mr-1.5" /> Conquistas
+                      <CalendarCheck className="w-3 h-3 mr-1.5" /> Presença
                     </Button>
                     <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => setSelectedClassForStudents(c)}>
                       <UserPlus className="w-3 h-3 mr-1.5" /> Alunos
@@ -476,15 +487,8 @@ export default function ClassManagementSection({ professorId }: Props) {
         handleCreateClass={handleCreateClass}
       />
 
-      {/* -- Modal: Creditos da turma (presenca, participacao, atividade em sala) -- */}
-      <ConquistaDialog
-        classeId={classeParaConquista?.id ?? null}
-        classeDescricao={classeParaConquista?.descricao}
-        open={!!classeParaConquista}
-        onOpenChange={(aberto) => !aberto && setClasseParaConquista(null)}
-      />
-
-      <CreditoDialog
+      {/* -- Modal: Gerenciar Alunos -- */}
+      <PresencaDialog
         classeId={classeParaPresenca?.id ?? null}
         classeDescricao={classeParaPresenca?.descricao}
         alunos={alunosDaPresenca}

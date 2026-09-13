@@ -150,13 +150,7 @@ export class Conquista {
     public progresso?: number,
     public concluida?: boolean,
     public escopo: ConquistaEscopo = "comum",
-    public perfil_alvo?: string | null,
-    /**
-     * Nula na conquista geral do TrailUp; preenchida na que o professor
-     * cadastrou para a turma (`20260911_06`). Quem decide se o aluno a vê é a
-     * RLS -- este campo serve só para a tela poder dizer de onde ela vem.
-     */
-    public classe_id?: number | null
+    public perfil_alvo?: string | null
   ) {}
 
   private static fromJoinedRow(row: any): Conquista {
@@ -175,8 +169,7 @@ export class Conquista {
       row.progresso ?? null,
       row.concluida ?? null,
       normalizeConquistaEscopo(base.escopo ?? row.escopo),
-      base.perfil_alvo ?? row.perfil_alvo ?? null,
-      base.classe_id ?? row.classe_id ?? null
+      base.perfil_alvo ?? row.perfil_alvo ?? null
     );
   }
 
@@ -202,8 +195,7 @@ export class Conquista {
           criterio,
           pontos_recompensa,
           escopo,
-          perfil_alvo,
-          classe_id
+          perfil_alvo
         )
       `)
       .eq('aluno_id', aluno_id);
@@ -218,7 +210,7 @@ export class Conquista {
   static async fetchCatalogo(perfis?: readonly string[] | null): Promise<Conquista[]> {
     const { data, error } = await supabase
       .from("conquistas")
-      .select("id, nome, descricao, icone_url, categoria, tipo, criterio, pontos_recompensa, escopo, perfil_alvo, classe_id")
+      .select("id, nome, descricao, icone_url, categoria, tipo, criterio, pontos_recompensa, escopo, perfil_alvo")
       .order("id", { ascending: true });
 
     if (error) throw error;
@@ -238,8 +230,7 @@ export class Conquista {
         undefined,
         false,
         normalizeConquistaEscopo(row.escopo),
-        row.perfil_alvo ?? null,
-        row.classe_id ?? null
+        row.perfil_alvo ?? null
       )
     ).filter((item) => conquistaVisivelParaPerfis(item, perfis));
   }
@@ -292,8 +283,7 @@ export class Conquista {
         progressoPercentual,
         concluida,
         baseConquista.escopo,
-        baseConquista.perfil_alvo,
-        baseConquista.classe_id ?? null
+        baseConquista.perfil_alvo
       );
 
       return {

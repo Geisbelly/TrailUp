@@ -139,20 +139,7 @@ export function FirstAccessTour({
       setTimeout(() => {
         void revelarAlvoTour(currentStep.target);
         const ref = obterAlvoTour(currentStep.target);
-        if (__DEV__ && !ref) {
-          console.log(
-            `[TourAlvo] ${currentStep.id}: alvo "${currentStep.target}" NAO registrado ` +
-              `(t=${atraso}ms) — aguardando a tela montar`,
-          );
-        }
         ref?.current?.measureInWindow((x, y, largura, altura) => {
-          if (__DEV__) {
-            console.log(
-              `[TourAlvo] ${currentStep.id}: "${currentStep.target}" t=${atraso}ms ` +
-                `x=${Math.round(x)} y=${Math.round(y)} w=${Math.round(largura)} ` +
-                `h=${Math.round(altura)} | tela ${Math.round(width)}x${Math.round(height)}`,
-            );
-          }
           if (!ativo || largura < 2 || altura < 2) return;
           // Fora da tela: manter o que ja havia em vez de acender um retangulo
           // grampeado sobre o elemento errado.
@@ -414,6 +401,8 @@ export function FirstAccessTour({
             <Pressable
               disabled={index === 0}
               onPress={() => setIndex((value) => Math.max(0, value - 1))}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: index === 0 }}
               style={[
                 styles.backButton,
                 { borderColor: bubbleBorder, opacity: index === 0 ? 0.35 : 1 },
@@ -426,6 +415,7 @@ export function FirstAccessTour({
                 if (isLast) void finish();
                 else setIndex((value) => Math.min(steps.length - 1, value + 1));
               }}
+              accessibilityRole="button"
               style={[styles.nextButton, { backgroundColor: accent }]}
             >
               <Text style={styles.nextText}>{isLast ? "Começar" : "Próximo"}</Text>
