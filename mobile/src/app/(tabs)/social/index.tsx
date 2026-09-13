@@ -1,11 +1,14 @@
 import { HallBackground, OrnamentDivider } from "@/components/HallTheme";
 import { SocialInviteCard } from "@/components/social/SocialInviteCard";
 import { SocialPersonCard } from "@/components/social/SocialPersonCard";
+import { SocialProfileModal } from "@/components/social/SocialProfileModal";
+import { GuildSection } from "@/components/social/GuildSection";
 import { StoreLauncher } from "@/components/loja/StoreLauncher";
 import { StoreModal } from "@/components/loja/StoreModal";
 import { useUsuario } from "@/context/SessaoContext";
 import { useTrilha } from "@/context/TrilhaContext";
 import { aceitarConvite, bloquear, carregarSocial, desfazerAmizade, enviarConvite, recusarConvite } from "@/services/social/socialService";
+import { carregarGuildas } from "@/services/social/guildService";
 import type { SocialPerson } from "@/services/social/socialModel";
 import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
@@ -13,7 +16,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, RefreshControl, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 
-type Section = "friends" | "invites" | "discover";
+type Section = "friends" | "invites" | "discover" | "guilds";
 
 function errorMessage(error: unknown) {
   const text = String((error as { message?: unknown })?.message ?? error ?? "").toLowerCase();
@@ -35,18 +38,20 @@ export default function SocialScreen() {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [storeVisible, setStoreVisible] = useState(false);
+  const [guilds, setGuilds] = useState<Awaited<ReturnType<typeof carregarGuildas>>>([]);
+  const [selectedPerson, setSelectedPerson] = useState<SocialPerson | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    try { setSocial(await carregarSocial()); }
+    try { const [nextSocial, nextGuilds] = await Promise.all([carregarSocial(), classeId > 0 ? carregarGuildas(classeId) : Promise.resolve([])]); setSocial(nextSocial); setGuilds(nextGuilds); }
     catch (caught) { console.warn("[Social] Falha ao carregar:", caught); setError(errorMessage(caught)); }
     finally { setLoading(false); }
-  }, []);
+  }, [classeId]);
   useEffect(() => { void load(); }, [load]);
 
   const people = useMemo(() => {
-    if (!social) return [];
+    if (!social || section === "guilds") return [];
     return section === "friends" ? social.friends : section === "invites" ? [...social.incoming, ...social.outgoing] : social.candidates;
   }, [section, social]);
 
@@ -77,12 +82,13 @@ export default function SocialScreen() {
               <StoreLauncher color={palette.accent} onPress={() => setStoreVisible(true)} />
             </View>
             <OrnamentDivider color={palette.accent} />
-            <View style={styles.tabs}>{(["friends", "invites", "discover"] as Section[]).map((key) => { const active = section === key; const label = key === "friends" ? "AMIGOS" : key === "invites" ? "CONVITES" : "ENCONTRAR"; return <Pressable key={key} accessibilityRole="tab" accessibilityState={{ selected: active }} onPress={() => setSection(key)} style={[styles.tab, active && { borderBottomColor: palette.accent }]}><Text style={[styles.tabText, active && { color: palette.accent }]}>{label}</Text></Pressable>; })}</View>
+            <View style={styles.tabs}>{(["friends", "invites", "discover", "guilds"] as Section[]).map((key) => { const active = section === key; const label = key === "friends" ? "AMIGOS" : key === "invites" ? "CONVITES" : key === "discover" ? "ENCONTRAR" : "GUILDAS"; return <Pressable key={key} accessibilityRole="tab" accessibilityState={{ selected: active }} onPress={() => setSection(key)} style={[styles.tab, active && { borderBottomColor: palette.accent }]}><Text style={[styles.tabText, active && { color: palette.accent }]}>{label}</Text></Pressable>; })}</View>
           </View>
-          {loading && !social ? <ActivityIndicator color={palette.accent} style={styles.loader} /> : error ? <View style={styles.empty}><MaterialCommunityIcons name="database-alert-outline" size={42} color={palette.accent} /><Text style={[styles.message, { color: palette.textMuted }]}>{error}</Text><Pressable onPress={() => void load()} style={[styles.retry, { backgroundColor: palette.accent }]}><Text style={styles.retryText}>Tentar novamente</Text></Pressable></View> : people.length === 0 ? <View style={styles.empty}><MaterialCommunityIcons name={section === "friends" ? "account-group-outline" : "account-search-outline"} size={44} color={palette.accent} /><Text style={[styles.sectionTitle, { color: palette.text }]}>{section === "friends" ? "AMIGOS" : section === "invites" ? "CONVITES" : "ENCONTRAR"}</Text><Text style={[styles.message, { color: palette.textMuted }]}>{emptyMessage}</Text></View> : <View style={styles.list}>{people.map((person) => person.status === "incoming" ? <SocialInviteCard key={person.relationshipId} person={person} accent={palette.accent} onAccept={() => act(person.alunoId, () => aceitarConvite(person.relationshipId!))} onDecline={() => act(person.alunoId, () => recusarConvite(person.relationshipId!))} /> : <SocialPersonCard key={person.relationshipId ?? person.alunoId} person={person} accent={palette.accent} actionLabel={busy === person.alunoId ? "..." : actionFor(person).label} onAction={actionFor(person).fn} secondaryLabel={person.status === "friend" ? "Bloquear" : undefined} onSecondary={() => act(person.alunoId, () => bloquear(person.alunoId))} />)}</View>}
+          {section === "guilds" ? <GuildSection guilds={guilds} classeId={classeId} accent={palette.accent} onReload={load} /> : loading && !social ? <ActivityIndicator color={palette.accent} style={styles.loader} /> : error ? <View style={styles.empty}><MaterialCommunityIcons name="database-alert-outline" size={42} color={palette.accent} /><Text style={[styles.message, { color: palette.textMuted }]}>{error}</Text><Pressable onPress={() => void load()} style={[styles.retry, { backgroundColor: palette.accent }]}><Text style={styles.retryText}>Tentar novamente</Text></Pressable></View> : people.length === 0 ? <View style={styles.empty}><MaterialCommunityIcons name={section === "friends" ? "account-group-outline" : "account-search-outline"} size={44} color={palette.accent} /><Text style={[styles.sectionTitle, { color: palette.text }]}>{section === "friends" ? "AMIGOS" : section === "invites" ? "CONVITES" : "ENCONTRAR"}</Text><Text style={[styles.message, { color: palette.textMuted }]}>{emptyMessage}</Text></View> : <View style={styles.list}>{people.map((person) => person.status === "incoming" ? <SocialInviteCard key={person.relationshipId} person={person} accent={palette.accent} onAccept={() => act(person.alunoId, () => aceitarConvite(person.relationshipId!))} onDecline={() => act(person.alunoId, () => recusarConvite(person.relationshipId!))} onPressProfile={() => setSelectedPerson(person)} /> : <SocialPersonCard key={person.relationshipId ?? person.alunoId} person={person} accent={palette.accent} actionLabel={busy === person.alunoId ? "..." : actionFor(person).label} onAction={actionFor(person).fn} onPressProfile={() => setSelectedPerson(person)} secondaryLabel={person.status === "friend" ? "Bloquear" : undefined} onSecondary={() => act(person.alunoId, () => bloquear(person.alunoId))} />)}</View>}
         </ScrollView>
       </SafeAreaView>
       {usuario?.id && classeId > 0 ? <StoreModal visible={storeVisible} alunoId={usuario.id} classeId={classeId} profileName={profile} onClose={() => setStoreVisible(false)} /> : null}
+      <SocialProfileModal visible={selectedPerson !== null} alunoId={selectedPerson?.alunoId ?? null} classeId={classeId} accent={palette.accent} onClose={() => setSelectedPerson(null)} />
     </View>
   );
 }
