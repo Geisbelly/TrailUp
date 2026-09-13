@@ -56,7 +56,7 @@ export default function SocialScreen() {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    try { const [nextSocial, nextGuilds] = await Promise.all([activeClasseId > 0 ? carregarSocial(activeClasseId) : carregarSocial(), activeClasseId > 0 ? carregarGuildas(activeClasseId) : Promise.resolve([])]); setSocial(nextSocial); setGuilds(nextGuilds); }
+    try { const [nextSocial, nextGuilds] = await Promise.all([activeClasseId > 0 ? carregarSocial(activeClasseId) : carregarSocial(), carregarGuildas(activeClasseId)]); setSocial(nextSocial); setGuilds(nextGuilds); }
     catch (caught) { console.warn("[Social] Falha ao carregar:", caught); setError(errorMessage(caught)); }
     finally { setLoading(false); }
   }, [activeClasseId]);

@@ -3,6 +3,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATION = ROOT / "api/alembic/versions/20260912_07_guildas_perfil_publico.py"
 FIX_MIGRATION = ROOT / "api/alembic/versions/20260912_10_fix_perfil_publico_sem_classe.py"
+GUILD_CLASS_MIGRATION = ROOT / "api/alembic/versions/20260912_11_resolve_guilda_class.py"
 SQL = (ROOT / "docs/mobile/sql/20260912_03_guildas_perfil_publico.sql").read_text(encoding="utf-8")
 
 
@@ -47,3 +48,10 @@ def test_social_e_guilda_respeitam_a_turma_atual():
     assert "social_listar_pessoas(p_classe_id bigint)" in SQL
     assert "a.classe_id=p_classe_id" in SQL
     assert "NULLIF(p_classe_id,0)" in FIX_MIGRATION.read_text(encoding="utf-8")
+
+
+def test_guilda_resolve_turma_no_banco():
+    source = GUILD_CLASS_MIGRATION.read_text(encoding="utf-8")
+    assert "guilda_classe_atual" in source
+    assert "p_classe_id" in source
+    assert "COALESCE" in source
