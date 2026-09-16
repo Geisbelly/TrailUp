@@ -163,6 +163,30 @@ Cada perfil carrega:
 > sempre elevar a luminosidade HSL/HLS da cor-assinatura (nunca misturar com
 > branco), para não desaturar o accent do perfil — misturar com branco "apaga"
 > a cor mesmo passando no contraste.
+>
+> **O inimigo do painel de batalha tem paleta própria, e ela não é a do
+> perfil.** O *chrome* de `IABattlePanel` lê `palette.*` normalmente (25 vezes),
+> mas as cores do boss vêm de `IAEnemyVisualSpec.palette`, enviada pela IA — e,
+> quando ela não vem, de `buildFallbackVisual`, que tem quatro presets
+> (`mech`, `scholar`/`mage`, `beast`, `phantom`) com hex cravado no arquivo:
+> `#38bdf8`, `#a78bfa`, `#fb7185`, `#f97316`. São defaults do Tailwind, não
+> cor-assinatura. Trocar o tema do app não muda o inimigo.
+
+> **A camada de arte do combate já está implementada e recebe `null`.**
+> `IAEnemyVisualSpec` (`mobile/src/interfaces/personalizacao/IAContracts.ts`)
+> tem `avatarUrl`, `backgroundUrl`, `frameUrl` e `effectUrl`, e `IABattlePanel`
+> **renderiza os quatro** — fundo na linha 230, efeito na 231, moldura na 277
+> com `resizeMode="stretch"`. O prompt que os alimenta
+> (`api/app/agent/prompts/personalizacao_comportamental.txt`) declara os campos
+> e emite `null` em todos. Ou seja: não falta código para arte de boss, de
+> cenário e de moldura — falta conteúdo e falta quem preencha a URL.
+>
+> E o `backgroundLayer` usa **`opacity: 0.16`**, que é o mesmo que um véu de
+> α 0,84 da superfície sobre a arte. Medido nos cenários da pasta de
+> identidade, o mínimo para o texto passar em AAA sobre o cenário mais claro é
+> α 0,79 — ou seja, o painel já está do lado certo do limite, e é o precedente
+> a copiar em qualquer tela que ponha cenário atrás de texto. Ver
+> `docs/superpowers/specs/2026-09-16-identidade-visual-design.md`.
 
 ## Tabelas Supabase (personalização)
 
