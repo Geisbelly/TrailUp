@@ -23,6 +23,10 @@ export const FontFamily = {
   interMedium: readableSerif,
   poppinsExtraBold: ornamentalSerif,
 };
+// Os tokens da identidade moram em `identidade.ts`, sem dependencia de
+// runtime. Reexportados aqui para quem ja importa de `@/styles/GlobalStyle`.
+export { Aco, Luz, Noite, Texto } from "./identidade";
+
 /* Font sizes */
 export const FontSize = {
   fs_18: 18,

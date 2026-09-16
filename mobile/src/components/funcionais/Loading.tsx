@@ -38,7 +38,7 @@ interface LoadingScreenProps {
   forceShow?: boolean;
 }
 
-const defaultPalette = buildProfileShellPaletteFromAccent("#a057fd", "magica");
+const defaultPalette = buildProfileShellPaletteFromAccent("#a057fd");
 const defaultAccentGlow = tinycolor(defaultPalette.accent).lighten(12).toHexString();
 
 // ─── driver: false em TUDO ────────────────────────────────────────────────────

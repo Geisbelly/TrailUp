@@ -290,8 +290,9 @@ ninguém. A Lumi preenche esse vazio — é a voz do lado que hoje é só formul
 | Arquivo | O que muda | Tamanho |
 | --- | --- | --- |
 | `microservice/src/constants/brainHex.ts` | nada — as sete assinaturas continuam as mesmas | — |
-| `mobile/src/utils/profileShellTheme.ts` | `THEME_TONES` sai; a UI vira constante; `ensureMinContrast` roda contra `noite-700` | núcleo |
-| `mobile/src/styles/GlobalStyle.ts` | `Color` ganha os tokens da §5; `FontFamily` deixa de mapear serifa | núcleo |
+| `mobile/src/utils/profileShellTheme.ts` | **feito** — `THEME_TONES` saiu; a UI é constante; `ensureMinContrast` roda contra `noite-700` | núcleo |
+| `mobile/src/styles/identidade.ts` | **feito** — os tokens da §5, sem import nenhum; `GlobalStyle` reexporta | núcleo |
+| `mobile/src/styles/GlobalStyle.ts` | `FontFamily` deixa de mapear serifa — **pendente**, ver §12 | núcleo |
 | `frontend/src/lib/personalizacao-theme-guide.ts` | tons clareados à mão saem; passa a ler a tabela da §6 | médio |
 | `frontend/src/features/signup/brainhex.ts` | idem | pequeno |
 | `api/app/api/v1/personalizacao.py` `_build_design_tokens` | `_ensure_min_contrast` passa a receber `noite-700` fixo | pequeno |
@@ -307,8 +308,8 @@ continuam pedindo `palette.surface` e recebendo o valor novo.
 
 | Passo | Entrega | Como se vê |
 | --- | --- | --- |
-| 1 | Tokens da §5 em `GlobalStyle.ts` + `profileShellTheme` com UI fixa | o app inteiro muda de chão numa PR |
-| 2 | Tipografia (tracking, fim da serifa) | os rótulos ganham o ar da ficha |
+| ~~1~~ | **feito** — tokens em `mobile/src/styles/identidade.ts` + `profileShellTheme` com UI fixa | o app inteiro mudou de chão |
+| 2 | Tipografia (tracking, fim da serifa) — **não é uma linha**: sem fonte empacotada, trocar a serifa por `System` achata o peso de todo título no iOS | os rótulos ganham o ar da ficha |
 | 3 | Frontend e backend lendo a tabela da §6 | a divergência dos três fecha |
 | 4 | Moldura e emblema (as duas peças com lugar pronto) | o perfil reaparece como sprite |
 | ~~5~~ | ~~URL de arte no prompt de combate~~ — **feito**; falta subir as peças e definir `ARTE_BASE_URL` | boss, cenário e moldura aparecem sem uma linha de componente nova (§9.1) |

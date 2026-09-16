@@ -21,7 +21,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import tinycolor from "tinycolor2";
 
 // Paleta estática para telas de autenticação — violeta oficial do logo TrailUp
-const AUTH_PALETTE = buildProfileShellPaletteFromAccent("#a057fd", "magica");
+const AUTH_PALETTE = buildProfileShellPaletteFromAccent("#a057fd");
 
 export default function RecuperarSenhaScreen() {
   const [email, setEmail] = useState("");

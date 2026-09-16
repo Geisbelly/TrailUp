@@ -164,6 +164,39 @@ Cada perfil carrega:
 > branco), para não desaturar o accent do perfil — misturar com branco "apaga"
 > a cor mesmo passando no contraste.
 >
+> **O mobile ja fechou o lado dele (`20260916`).** `profileShellTheme.ts` nao
+> mistura mais a cor-assinatura no fundo: `THEME_TONES` (`real`/`medieval`/
+> `magica`) saiu inteira, e a superficie e uma constante — `Noite.n900/800/700`
+> em `mobile/src/styles/identidade.ts`, medida na pasta de identidade do Drive.
+> O perfil vira **acento**, e `ensureMinContrast` roda contra `Noite.n700` fixo.
+>
+> Consequencia medida: o accent de cada perfil virou **um numero**, e dois deles
+> ficaram MAIS fieis do que eram — Seeker era clareado de `#17a398` para
+> `#1ab5a9` e Socializer de `#f4623a` para `#f68161`; agora os dois chegam
+> intactos, porque o chao escuro constante ja da contraste. Backend e frontend
+> **continuam calculando os deles** contra superficies proprias: a divergencia
+> encolheu de tres pontas para duas, nao acabou.
+>
+> Dois detalhes que nao sao acidentais:
+>
+> 1. **Os tokens moram em `identidade.ts`, sem import nenhum.** `GlobalStyle.ts`
+>    importa `react-native` por causa de `Platform`, e isso impede o harness de
+>    teste do node de carregar. Cor e dado, nao runtime — `GlobalStyle`
+>    reexporta para quem ja importava de la.
+> 2. **`Aco` (`#527a8e`) e cor de icone e ornamento. Texto nunca.** Da 4,20
+>    sobre o fundo e 3,27 sobre a elevada: passa como componente de UI e reprova
+>    como texto. E o mesmo vale para o piso de texto da ficha (`#7d8794`, 4,15
+>    sobre a elevada) — por isso ele passa por `ensureMinContrast` antes de
+>    virar token, em vez de ser copiado cru. Ha teste cobrindo os tres niveis
+>    contra as tres superficies (`profileShellTheme.test.ts`).
+>
+> A tipografia **nao** mudou junto, e nao por esquecimento: nao ha fonte
+> empacotada no repo (`expo-font` esta nas dependencias, mas nao ha `.ttf` nem
+> `useFonts`), e trocar a serifa por `System` achata o peso de TODO titulo no
+> iOS, onde nao da para escolher peso por nome de familia. Sair da serifa exige
+> passar `fontWeight` nos ~50 arquivos que usam `FontFamily.inikaBold`, ou
+> empacotar a fonte — nao e uma linha.
+>
 > **O inimigo do painel de batalha tem paleta própria, e ela não é a do
 > perfil.** O *chrome* de `IABattlePanel` lê `palette.*` normalmente (25 vezes),
 > mas as cores do boss vêm de `IAEnemyVisualSpec.palette`, enviada pela IA.
