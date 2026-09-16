@@ -385,7 +385,9 @@ trg_atividade_aluno_nota_congelada  BEFORE UPDATE ON atividade_aluno
   nota não mudou                                    → passa
   OLD.status::text <> 'concluido'                   → passa (primeira tentativa)
   existe compra 'ativa' de refazer_atividade no alvo → consome (estado='consumida',
-                                                       consumido_em=now()) e passa
+                                                       consumido_em=now()) e
+                                                       APARA PARA CIMA: a nota
+                                                       vira GREATEST(OLD, NEW)
   senão                                             → restaura OLD e passa
 ```
 
@@ -399,16 +401,54 @@ restaurar é o que `trg_eventos_aluno_valor_upd` já faz. O app não deve depend
 disso: ele só oferece "refazer valendo" quando enxerga a compra ativa — a
 restauração é a rede, não o caminho.
 
+### A nota só sobe
+
+**Decidido: refazer mantém a MELHOR nota, não a última.** O upsert de
+`atividade_aluno` hoje sobrescreve `acertos_percentual`; com o item, o gatilho
+apara para cima — `GREATEST(OLD.acertos_percentual, NEW.acertos_percentual)`, e
+o mesmo para `pontuacao_obtida`.
+
+Três coisas vêm junto, e todas melhoram o desenho:
+
+1. **Uma regra a menos no repositório, não uma a mais.**
+   `personalizacao_item_progresso` já funde percentual e acertos por MÁXIMO
+   (CLAUDE.md). Com esta decisão, as duas tabelas de progresso passam a
+   responder a mesma coisa quando o aluno repete — em vez de uma guardar a
+   melhor e a outra a última, que é a divergência que o motivo 2 da regra de
+   fronteira existe para evitar.
+2. **O item fica seguro de comprar, e isso é argumento de venda.** Quem está em
+   20% não arrisca cair para 0 por ter tentado. O `CompraModal` diz isso com
+   todas as letras: *"Se você for melhor, a nota sobe. Se for pior, fica a que
+   você já tinha."* Um item que pode piorar a situação do aluno não vende — e
+   não deveria.
+3. **Erra para o lado de quem estuda.** É a mesma direção do `atividade_errada`
+   valendo 0 em vez de −5: neste sistema, tentar nunca anda para trás.
+
+O custo é o caso em que o aluno gasta 5 moedas, vai pior, e a tela não muda de
+número. A compra foi consumida — ele usou a tentativa. Por isso a tela de
+resultado precisa dizer o que aconteceu (*"você fez 15%, sua nota continua
+20%"*), senão parece defeito. Silêncio aqui é o que transforma uma regra gentil
+em uma reclamação de suporte.
+
 Efeito colateral bom: das 68 linhas de `atividade_aluno`, 65 estão em zero,
 parte delas resíduo do defeito que `progressoEscritas` corrigiu (o `?? 0` que
-gravava zero em visita). Como o upsert **sobrescreve** `acertos_percentual` —
-não funde por máximo —, a tentativa comprada move o número de verdade.
+gravava zero em visita). Como zero é o piso, qualquer tentativa comprada move o
+número — o `GREATEST` não atrapalha justamente onde a base está hoje.
 
 ### 5.3 `recompensa_coletiva` — moeda para a turma
 
 Efeito imediato dentro da própria RPC: um lançamento `motivo='presente'` para
-cada colega da turma, com `referencia = 'compra:' || id`. Barato de construir
-porque não inventa mecânica nenhuma — só mais linhas no razão.
+cada colega, com `referencia = 'compra:' || id`. Barato de construir porque não
+inventa mecânica nenhuma — só mais linhas no razão.
+
+**O alvo provavelmente não é a turma inteira: é a guilda.** `guildas`,
+`guilda_convites`, `social_relacionamentos` e `social_mensagens` **já existem no
+banco**, com 3 guildas, 5 convites e 3 relacionamentos gravados — e nenhuma
+linha de código no monorepo inteiro lê ou escreve essas quatro tabelas
+(conferido em `mobile/src`, `frontend/src` e `api/app`). Presentear 40 colegas
+de turma é diluição; presentear os 5 da sua guilda é um gesto que alguém
+percebe. Se a aba Social entrar (ver o desenho do mobile), o alvo natural deste
+item passa a ser `guilda:<id>`, com `classe:<id>` como caso de turma sem guilda.
 
 No estudo teve 1 compra. Fica na fase 4 por isso, não por dificuldade.
 

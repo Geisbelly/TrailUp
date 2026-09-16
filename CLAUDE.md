@@ -474,6 +474,20 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 > continuam sem uso externo. Antes de corrigir um "gravador" ou "calculador",
 > confirme quem o chama — `grep` pelo nome fora do próprio arquivo.
 
+> **O inverso disso: backend inteiro sem tela, e uma cerimônia que já o
+> prometeu.** Quatro tabelas existem no Supabase com dado dentro —
+> `social_relacionamentos` (3), `social_mensagens` (2), `guildas` (3),
+> `guilda_convites` (5) — e **nenhuma linha do monorepo lê ou escreve qualquer
+> uma delas** (conferido em `mobile/src`, `frontend/src`, `api/app`). Enquanto
+> isso, `utils/portoes.ts` tem dois portões e só um é consumido:
+> `_layout.tsx` usa `aberturas.rank` para revelar a aba Ranking, mas
+> **`aberturas.social` não é lido por ninguém** — e a cerimônia dele dispara ao
+> concluir o primeiro conteúdo anunciando "Amizades liberadas", com passos que
+> descrevem convite, aceite mútuo e bloqueio. O aluno recebe a promessa e não
+> tem para onde ir. Ao mexer em portão ou em navegação, saiba que essa dívida
+> existe; o desenho de como pagá-la está em
+> `docs/superpowers/specs/2026-09-12-loja-no-mobile-design.md`, §2.
+
 > Lacuna real ainda aberta: `MentalStateHistoryRepository.listar_por_aluno`
 > (`api/app/repositories/mental_state.py`) só é exercitado em teste — o
 > histórico em `aluno_mental_state_history` é **gravado** a cada ciclo

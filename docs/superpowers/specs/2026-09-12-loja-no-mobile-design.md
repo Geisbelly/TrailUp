@@ -27,37 +27,112 @@ menos importante dos três:
 | --- | --- | --- |
 | **Faixa na atividade em revisão** | `reviewMode` verdadeiro — o aluno reabriu algo já concluído | `refazer_atividade` |
 | **`PrazoBadge` atrasado** | selo já existe e já fica vermelho; ganha toque | `prazo_extra` |
-| **`perfil/loja`** | quando o aluno vai procurar | todos |
+| **`social/loja`** | quando o aluno vai procurar | todos |
 
 `ActivityRenderer` **já recebe `reviewMode`** (`trilha/[id].tsx` passa
 `isAtividadeConcluida(...)`), e `QuestionActivity` já ramifica nele. O ponto de
 enxerto existe: é uma faixa a mais no mesmo lugar onde hoje a revisão só avisa
 que não vale nada.
 
-## 2. Onde a loja mora
+**A faixa aparece mesmo para quem não tem saldo**, com `faltam N moedas` no
+lugar do botão. É onde o aluno descobre para que a moeda serve, e o momento em
+que ele quer a coisa é o único momento em que a explicação gruda. O risco
+declarado é virar propaganda do inalcançável — o que segura isso é o preço: a 5
+moedas, "faltam 3" é uma tarde de estudo, não um mês. Se a calibragem mudar e o
+item ficar caro, esta decisão precisa ser revista junto.
 
-**Não é uma quinta aba.** São quatro (Trilha, Notificações, Ranking, Perfil) e a
-loja não é destino diário — é destino de momento. Uma aba permanente para algo
-que se visita uma vez por semana rouba espaço de quem se visita todo dia.
+## 2. Onde a loja mora — e a aba Social que já era devida
 
-A loja é uma tela do **stack do Perfil**, irmã de `biblioteca-conquistas`: mesma
-natureza (catálogo com estado por item), mesmo cabeçalho, mesma navegação.
+**Decidido: a carteira vive numa aba Social nova.** O que começou como "onde
+ponho o chip de moedas" esbarrou numa coisa maior, e vale contar na ordem em
+que apareceu.
+
+O app tem quatro abas (Trilha, Notificações, Ranking, Perfil) e um sistema de
+portões em `utils/portoes.ts`, que segura funcionalidade até o aluno ter
+capacidade de usá-la — Fogg, e o mesmo dano que o corte de 15 posições evita.
+São **dois** portões: `rank` e `social`.
+
+O portão `rank` funciona: `_layout.tsx:137` faz `href: aberturas.rank ?
+undefined : null`, e a aba aparece quando abre.
+
+**O portão `social` não é lido por ninguém.** `aberturas.social` é calculado,
+a cerimônia dispara ao concluir o primeiro conteúdo, e o texto que ela mostra
+ao aluno é este:
+
+> **Amizades liberadas** — Agora você pode se conectar com colegas da turma e
+> acompanhar o avanço de quem você escolher.
+> · Envie um convite para um colega da turma.
+> · A amizade só existe quando os dois aceitam.
+> · Você pode desfazer ou bloquear quando quiser.
+
+E não há para onde ir. Nenhuma aba, nenhuma tela, nenhum botão.
+
+Pior — ou melhor: **o backend existe e tem dado**. Quatro tabelas no Supabase,
+conferidas agora:
+
+| Tabela | Linhas | O que guarda |
+| --- | --- | --- |
+| `social_relacionamentos` | 3 | `aluno_a`/`aluno_b`, `solicitante_id`, `status`, `blocked_by_id` — exatamente o "só existe quando os dois aceitam" e o "bloquear" da cerimônia |
+| `social_mensagens` | 2 | remetente, destinatário, texto |
+| `guildas` | 3 | `classe_id`, nome, emblema, `limite_membros`, `perfil_alvo` |
+| `guilda_convites` | 5 | convidante, convidado, status |
+
+**Nenhuma linha de código no monorepo lê ou escreve as quatro** — conferido em
+`mobile/src`, `frontend/src` e `api/app`. É o padrão que o CLAUDE.md chama de
+"módulo com cara de vivo que ninguém chama", só que ao contrário: aqui é o
+backend inteiro, com dado dentro, esperando uma tela — e uma cerimônia que já
+anuncia a funcionalidade para o aluno.
+
+Então a aba Social não é custo novo do sistema de moedas. Ela é a dívida que o
+portão `social` já cobrava, e a carteira é só mais um morador dela:
 
 ```
-perfil/
-  index.tsx            ← chip de carteira no cabeçalho
-  biblioteca-conquistas.tsx
-  loja.tsx             ← NOVO: vitrine
-  loja-extrato.tsx     ← NOVO: o razão do aluno
+(tabs)/
+  index      Trilha
+  social     ← NOVA: href = aberturas.social ? undefined : null
+  ranking    (já existe, já portãoada)
+  notificacoes
+  perfil
 ```
 
-Títulos em caixa alta, como todos os irmãos (`"LOJA"`, `"EXTRATO DE MOEDAS"`),
-via `perfil/_layout.tsx`, que já aplica `palette.background` no header e
-`FontFamily.inikaBold` 15 no título.
+Cinco abas é o teto do que a barra comporta em tela de telefone; mais que isso
+e os rótulos começam a truncar. Se apertar, **Notificações é a candidata a
+sair** da barra — ela já tem push e o sino pode voltar para o cabeçalho —, mas
+isso é decisão de outra conversa e não precisa ser tomada agora.
 
-**A carteira aparece onde o ponto já aparece**: chip no cabeçalho do perfil e no
-ranking. Mas moeda não é XP — ícone diferente (`circle-multiple` em vez de
-`podium`) e rótulo explícito, senão o aluno soma as duas coisas de cabeça.
+### O que a aba Social guarda
+
+| Seção | Fonte | Estado |
+| --- | --- | --- |
+| **Carteira** — saldo, ganho, gasto, atalho para loja e extrato | `vw_moedas_saldo` | a construir (fase 1) |
+| **Colegas** — pedidos, amizades, bloquear | `social_relacionamentos` | tabela pronta, sem cliente |
+| **Guilda** — membros, convites, emblema | `guildas`, `guilda_convites` | tabela pronta, sem cliente |
+| **Recados** | `social_mensagens` | tabela pronta, sem cliente |
+
+A loja em si continua sendo tela de **stack**, não de aba — ela é destino de
+momento, não de todo dia:
+
+```
+social/
+  index.tsx            ← carteira, colegas, guilda
+  loja.tsx             ← vitrine
+  loja-extrato.tsx     ← o razão do aluno
+```
+
+Títulos em caixa alta, como os irmãos do perfil (`"LOJA"`, `"EXTRATO DE
+MOEDAS"`), com o mesmo `Stack` que `perfil/_layout.tsx` já configura —
+`palette.background` no header, `FontFamily.inikaBold` 15 no título.
+
+**Moeda não é XP, e a barra precisa deixar isso claro.** Ícone diferente do
+pódio (`circle-multiple`) e rótulo explícito. Ranking e Social ficam lado a
+lado justamente onde a confusão é possível, então a diferença tem de estar no
+ícone, não só no número.
+
+> **Alcance:** desenhar a aba Social inteira — amizade, guilda, recados — é
+> trabalho maior que a loja, e este documento não faz isso. O que ele fixa é:
+> a carteira mora lá, a aba é criada com a carteira, e as outras três seções
+> entram quando alguém desenhar cada uma. Uma aba Social que na fase 1 só tem
+> carteira é honesta; um chip de moeda perdido no Perfil, não.
 
 ## 3. A gramática visual, extraída do que existe
 
@@ -200,7 +275,7 @@ saldo novo chutado.
 
 ## 9. O extrato
 
-`perfil/loja-extrato.tsx` — o razão do aluno, ganho e gasto, do mais novo para o
+`social/loja-extrato.tsx` — o razão do aluno, ganho e gasto, do mais novo para o
 mais velho. Forma de lista igual à de `notificacoes/index.tsx`: ícone, título,
 timestamp, uma linha de detalhe.
 
@@ -227,8 +302,8 @@ Cada linha diz a origem no concreto: `+2 · Concluiu "Sistemas Abertos"`,
 
 | Passo | Entrega | Dá para ver funcionando |
 | --- | --- | --- |
-| 1 | Chip de carteira no perfil + `loja-extrato` | o aluno vê moeda entrando, sem nada para gastar |
-| 2 | `perfil/loja` com catálogo e estados | a vitrine, ainda sem comprar |
+| 1 | **Aba Social** com a carteira + `loja-extrato` | o aluno vê moeda entrando, sem nada para gastar — e o portão `social` deixa de mentir |
+| 2 | `social/loja` com catálogo e estados | a vitrine, ainda sem comprar |
 | 3 | `CompraModal` + `loja_comprar` + seletor de alvo | a compra |
 | 4 | Faixa em `reviewMode` | **o ponto de venda que importa** |
 | 5 | Toque no `PrazoBadge` atrasado | depende de o professor marcar prazo |
@@ -236,15 +311,41 @@ Cada linha diz a origem no concreto: `+2 · Concluiu "Sistemas Abertos"`,
 O passo 1 é entregável sozinho e é o que valida a economia antes de existir
 qualquer botão de gastar — mesma lógica da fase 1 do desenho do banco.
 
-## 12. Em aberto
+## 12. Decidido
 
-1. **A faixa de `reviewMode` aparece para quem não tem saldo?** Proposta: sim,
-   mostrando `faltam N moedas` — é o que ensina o aluno de que a moeda serve
-   para alguma coisa. O risco é virar propaganda de algo inalcançável.
-2. **Refazer substitui a nota ou fica a melhor?** O upsert de `atividade_aluno`
-   **sobrescreve** hoje. Sobrescrever é mais honesto (a nota é a da última
-   tentativa); "fica a melhor" é mais gentil e é o que `personalizacao_item_progresso`
-   faz para percentual. As duas defensáveis, e a escolha muda o texto do
-   `CompraModal`.
-3. **Chip de carteira no Ranking também, ou só no Perfil?** No Ranking ele fica
-   ao lado da pontuação, que é exatamente onde o aluno pode confundir as duas.
+As três perguntas que este documento abriu foram respondidas. Ficam aqui com o
+que cada resposta arrastou junto.
+
+1. **A faixa de `reviewMode` aparece para quem não tem saldo — sim.** Com
+   `faltam N moedas` no lugar do botão (§1). É a tela que ensina para que a
+   moeda serve, no único momento em que o aluno quer saber.
+
+2. **Refazer mantém a MELHOR nota, não a última.** O gatilho apara para cima
+   (`GREATEST`), e isso alinha `atividade_aluno` com
+   `personalizacao_item_progresso`, que já funde acertos por máximo — duas
+   tabelas de progresso passam a responder a mesma coisa quando o aluno repete,
+   em vez de uma guardar a melhor e a outra a última. Detalhe em
+   `2026-09-12-economia-moedas-e-loja-design.md`, §5.2.
+
+   Duas consequências para esta tela: o `CompraModal` ganha a frase que torna o
+   item seguro de comprar (*"Se você for melhor, a nota sobe. Se for pior, fica
+   a que você já tinha"*), e a tela de resultado **precisa** dizer quando a nota
+   não mudou (*"você fez 15%, sua nota continua 20%"*). Sem isso, gastar 5
+   moedas e ver o mesmo número parece defeito.
+
+3. **A carteira vive numa aba Social nova** — nem Perfil, nem Ranking (§2). A
+   pergunta era onde pôr um chip e a resposta descobriu uma dívida: o portão
+   `social` de `portoes.ts` dispara uma cerimônia prometendo amizades, quatro
+   tabelas existem no banco com dado dentro, e nada no monorepo as lê. A aba
+   nasce com a carteira e abre espaço para o resto.
+
+## 13. Em aberto
+
+1. **A barra comporta cinco abas?** No papel sim; em telefone estreito os
+   rótulos podem truncar. Se apertar, Notificações é a candidata a sair da
+   barra — ela já tem push e o sino cabe num cabeçalho.
+2. **O alvo de `recompensa_coletiva` é a guilda ou a turma?** Com `guildas` já
+   existindo, presentear 5 companheiros é um gesto e presentear 40 colegas é
+   diluição. Fica para quando a seção de guilda for desenhada.
+3. **Quem desenha amizade, guilda e recados?** Este documento não faz isso — ele
+   só reserva o lugar. As três seções têm backend pronto e nenhuma tela.
