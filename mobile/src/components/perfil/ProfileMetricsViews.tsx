@@ -8,10 +8,12 @@ import { BrainHexProfile, getBrainHexConfig } from "@/constants/profileImages";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { MetricsThemeResolved, getMetricsThemeOption } from "@/utils/profileMetricThemes";
 import { ProfileMetricsViewModel } from "./profileMetricsViewModel";
+import { buildProfileShellPaletteFromAccent } from "@/utils/profileShellTheme";
 
 const CHART_W = 280;
 
 type ThemePalette = {
+  accent: string;
   heroTop: string;
   heroBottom: string;
   border: string;
@@ -64,65 +66,9 @@ function formatLastEvent(value?: string | null) {
   });
 }
 
-function buildPalette(theme: MetricsThemeResolved, baseColor: string): ThemePalette {
-  switch (theme) {
-    case "arena":
-      return {
-        heroTop: tinycolor.mix(baseColor, "#071526", 40).toRgbString(),
-        heroBottom: tinycolor.mix("#0f1724", "#111936", 50).toRgbString(),
-        border: tinycolor(baseColor).setAlpha(0.42).toRgbString(),
-        soft: tinycolor(baseColor).setAlpha(0.18).toRgbString(),
-        card: "rgba(8, 16, 28, 0.84)",
-        cardAlt: "rgba(255,255,255,0.05)",
-        muted: "rgba(242,247,250,0.62)",
-        text: "#F8FAFC",
-      };
-    case "goals":
-      return {
-        heroTop: tinycolor.mix(baseColor, "#4f2300", 28).toRgbString(),
-        heroBottom: tinycolor.mix("#1e1a30", "#111936", 65).toRgbString(),
-        border: tinycolor(baseColor).setAlpha(0.34).toRgbString(),
-        soft: tinycolor(baseColor).setAlpha(0.16).toRgbString(),
-        card: "rgba(28, 20, 14, 0.74)",
-        cardAlt: "rgba(255,255,255,0.05)",
-        muted: "rgba(255,244,231,0.7)",
-        text: "#FFF8F0",
-      };
-    case "mystery":
-      return {
-        heroTop: tinycolor.mix(baseColor, "#18200b", 28).toRgbString(),
-        heroBottom: tinycolor.mix("#101725", "#111936", 60).toRgbString(),
-        border: tinycolor(baseColor).setAlpha(0.34).toRgbString(),
-        soft: tinycolor(baseColor).setAlpha(0.14).toRgbString(),
-        card: "rgba(17, 23, 16, 0.76)",
-        cardAlt: "rgba(255,255,255,0.05)",
-        muted: "rgba(250,250,227,0.68)",
-        text: "#FBF8E8",
-      };
-    case "squad":
-      return {
-        heroTop: tinycolor.mix(baseColor, "#231241", 26).toRgbString(),
-        heroBottom: tinycolor.mix("#181235", "#111936", 58).toRgbString(),
-        border: tinycolor(baseColor).setAlpha(0.34).toRgbString(),
-        soft: tinycolor(baseColor).setAlpha(0.16).toRgbString(),
-        card: "rgba(28, 18, 45, 0.78)",
-        cardAlt: "rgba(255,255,255,0.05)",
-        muted: "rgba(246,238,255,0.72)",
-        text: "#FBF7FF",
-      };
-    case "analytics":
-    default:
-      return {
-        heroTop: tinycolor.mix(baseColor, "#162137", 25).toRgbString(),
-        heroBottom: tinycolor.mix("#162137", "#111936", 62).toRgbString(),
-        border: tinycolor(baseColor).setAlpha(0.3).toRgbString(),
-        soft: tinycolor(baseColor).setAlpha(0.16).toRgbString(),
-        card: "rgba(255,255,255,0.05)",
-        cardAlt: "rgba(255,255,255,0.08)",
-        muted: "rgba(242,247,250,0.64)",
-        text: "#FFFFFF",
-      };
-  }
+function buildPalette(baseColor: string): ThemePalette {
+  const shell = buildProfileShellPaletteFromAccent(baseColor);
+  return { accent: shell.accent, heroTop: shell.surface, heroBottom: shell.background, border: shell.border, soft: shell.accentSoft, card: shell.background, cardAlt: shell.surface, muted: shell.textMuted, text: shell.text };
 }
 
 function SurfaceCard({ children, palette, targetRef }: { children: React.ReactNode; palette: ThemePalette; targetRef?: React.RefObject<View | null> }) {
@@ -145,7 +91,7 @@ function SectionTitle({
       <View style={s.sectionTitleRow}>
         {icon ? (
           <View style={[s.sectionIconWrap, { backgroundColor: palette.soft }]}>
-            <MaterialCommunityIcons name={icon} size={16} color={palette.text} />
+            <MaterialCommunityIcons name={icon} size={16} color={palette.accent} />
           </View>
         ) : null}
         <Text style={[s.sectionTitle, { color: palette.text }]}>{title}</Text>
@@ -1544,8 +1490,8 @@ export function ProfileMetricsViews({
   guideRefs: ProfileMetricsGuideRefs;
 }) {
   const hexConfig = getBrainHexConfig(profile);
-  const accent = tinycolor(hexConfig.color).lighten(theme === "analytics" ? 6 : 2).toString();
-  const palette = useMemo(() => buildPalette(theme, hexConfig.color), [theme, hexConfig.color]);
+  const accent = buildProfileShellPaletteFromAccent(hexConfig.color).accent;
+  const palette = useMemo(() => buildPalette(hexConfig.color), [hexConfig.color]);
   const themeOption = getMetricsThemeOption(theme);
 
   return (
@@ -1630,17 +1576,17 @@ const s = StyleSheet.create({
     paddingVertical: 8,
     marginBottom: 10,
   },
-  heroCard: { borderRadius: 24, padding: 18, borderWidth: 1, overflow: "hidden" },
-  heroEyebrow: { fontFamily: FontFamily.interMedium, fontSize: 11, letterSpacing: 1.1, marginBottom: 8 },
+  heroCard: { paddingVertical: 20, paddingHorizontal: 4, borderBottomWidth: 1, overflow: "hidden" },
+  heroEyebrow: { fontFamily: FontFamily.interMedium, fontSize: 11, letterSpacing: 0, marginBottom: 8 },
   heroTitle: { fontFamily: FontFamily.inikaBold, fontSize: 22, marginBottom: 6 },
   heroSubtitle: { fontFamily: FontFamily.interMedium, fontSize: 13, lineHeight: 20, marginBottom: 14 },
   statGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
-  statTile: { width: "48.3%", borderRadius: 18, padding: 14, marginBottom: 10, borderWidth: 1 },
-  statIconWrap: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center", marginBottom: 10 },
+  statTile: { width: "48.3%", borderRadius: 6, padding: 14, marginBottom: 10, borderWidth: 1 },
+  statIconWrap: { width: 34, height: 34, borderRadius: 6, alignItems: "center", justifyContent: "center", marginBottom: 10 },
   statLabel: { fontFamily: FontFamily.interMedium, fontSize: 12, marginBottom: 4 },
   statValue: { fontFamily: FontFamily.inikaBold, fontSize: 20, marginBottom: 4 },
   statHelper: { fontFamily: FontFamily.interMedium, fontSize: 11, lineHeight: 16 },
-  surfaceCard: { borderRadius: 22, padding: 18, borderWidth: 1 },
+  surfaceCard: { paddingVertical: 20, paddingHorizontal: 4, borderBottomWidth: 1 },
   sectionTitleWrap: { marginBottom: 14 },
   sectionTitleRow: { flexDirection: "row", alignItems: "center", marginBottom: 6 },
   sectionIconWrap: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", marginRight: 10 },
@@ -1648,16 +1594,16 @@ const s = StyleSheet.create({
   sectionSubtitle: { fontFamily: FontFamily.interMedium, fontSize: 12, lineHeight: 18 },
   tripleRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
   doubleRow: { flexDirection: "row", gap: 10, marginBottom: 12 },
-  kpiPill: { flex: 1, borderRadius: 16, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 10 },
-  metricPanel: { flex: 1, borderRadius: 16, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 14 },
+  kpiPill: { flex: 1, minWidth: 0, borderRadius: 6, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 10 },
+  metricPanel: { flex: 1, minWidth: 0, borderRadius: 6, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 14 },
   kpiLabel: { fontFamily: FontFamily.interMedium, fontSize: 11, marginBottom: 4 },
   kpiValue: { fontFamily: FontFamily.inikaBold, fontSize: 18 },
   progressLine: { marginBottom: 14 },
   progressLineHeader: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },
   progressLineLabel: { fontFamily: FontFamily.interMedium, fontSize: 13 },
   progressLineValue: { fontFamily: FontFamily.interMedium, fontSize: 12 },
-  progressTrack: { height: 10, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.08)", overflow: "hidden" },
-  progressFill: { height: "100%", borderRadius: 999 },
+  progressTrack: { height: 8, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.08)", overflow: "hidden" },
+  progressFill: { height: "100%", borderRadius: 1 },
   chipRow: { flexDirection: "row", flexWrap: "wrap", marginBottom: 10 },
   chip: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, marginRight: 8, marginBottom: 8 },
   chipText: { marginLeft: 8, fontFamily: FontFamily.interMedium, fontSize: 12 },
@@ -1665,7 +1611,7 @@ const s = StyleSheet.create({
   actionPill: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1, marginRight: 8, marginBottom: 8 },
   actionText: { fontFamily: FontFamily.interMedium, fontSize: 11 },
   analysisStack: { gap: 10, marginTop: 6 },
-  analysisBox: { borderRadius: 16, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 12 },
+  analysisBox: { borderRadius: 6, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 12 },
   analysisBoxTitle: { fontFamily: FontFamily.inikaBold, fontSize: 13, marginBottom: 6 },
   analysisBoxItem: { fontFamily: FontFamily.interMedium, fontSize: 12, lineHeight: 18, marginBottom: 4 },
   emptyIconWrap: { width: 52, height: 52, borderRadius: 26, alignItems: "center", justifyContent: "center", marginBottom: 12 },

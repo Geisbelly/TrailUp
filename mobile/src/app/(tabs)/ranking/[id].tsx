@@ -1,648 +1,424 @@
-import CardSemDados from "@/components/CardSemDados";
-import { HallBackground, OrnamentDivider } from "@/components/HallTheme";
-import { LoadingState } from "@/components/LoadingState";
+import { RankingPodium } from "@/components/ranking/RankingPodium";
+import { ProfileArtwork } from "@/components/ProfileArtwork";
 import {
   SectionGuideButton,
-  SectionGuideScrollable,
-  SectionGuideStep,
+  type SectionGuideScrollable,
+  type SectionGuideStep,
 } from "@/components/SectionGuideButton";
-import {
-  BrainHexProfile,
-  getBrainHexConfig,
-  normalizeBrainHexProfile,
-} from "@/constants/profileImages";
+import { getProfileArtwork, profileEmblems } from "@/constants/designAssets";
+import { normalizeBrainHexProfile } from "@/constants/profileImages";
 import { useConquistaRank } from "@/context/ConquistaRankContext";
 import { useUsuario } from "@/context/SessaoContext";
 import { supabase } from "@/database/supabase";
-import { Color, FontFamily } from "@/styles/GlobalStyle";
+import { useRankingPeople } from "@/hooks/useRankingPeople";
+import type { RankPosicao } from "@/models/RankPosicao";
+import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
-import { getProfileGuideEmphasis } from "@/utils/profileSectionGuide";
 import { aplicarCorteDoRank, descreverCorte } from "@/utils/rankCorte";
-import { buildRankingProfileMap } from "@/utils/rankingProfiles";
+import { formatRankScore } from "@/utils/rankingPodium";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { Stack, useLocalSearchParams, useNavigation } from "expo-router";
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Animated,
-  Dimensions,
+  ActivityIndicator,
   FlatList,
   Image,
   Pressable,
+  RefreshControl,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import tinycolor from "tinycolor2";
 
-const { height: SCREEN_H } = Dimensions.get("window");
-
-type RankFilter = "geral" | "perfil_majoritario" | "outros_perfis";
-
-type DominantProfileMeta = {
-  key: BrainHexProfile | null;
-  label: string;
-};
-
-type RankPosicaoRow = {
-  rank_id: number;
-  id_aluno: string;
-  posicao: number | null;
-  nome_aluno: string;
-  pontuacao: number | null;
-  medalha: string | null;
-};
-
-const medalMap: Record<string, any> = {
-  ouro: require("@/assets/icones/rank/2.png"),
-  prata: require("@/assets/icones/rank/4.png"),
-  bronze: require("@/assets/icones/rank/1.png"),
-  diamante: require("@/assets/icones/rank/3.png"),
-};
-
-const getMedalImage = (nome?: string | null) => {
-  if (!nome) return null;
-  const key = nome.toLowerCase().trim().split(" ")[0];
-  return medalMap[key] ?? null;
-};
-
-function getDominantProfileLabel(profile: BrainHexProfile | null) {
-  if (!profile) return "Perfil não definido";
-  return getBrainHexConfig(profile).label;
-}
-
-const FILTER_LABELS: Record<RankFilter, string> = {
-  geral: "Geral",
-  perfil_majoritario: "Meu perfil",
-  outros_perfis: "Outros perfis",
-};
-
-function formatPontuacao(valor: number | null | undefined, criterio: string | null) {
-  const numero = valor ?? 0;
-  if (criterio === "percentual") {
-    return `${numero.toFixed(0)}%`;
-  }
-  if (criterio === "tempo") {
-    const minutos = Math.round(numero);
-    if (minutos < 60) return `${minutos} min`;
-    const horas = Math.floor(minutos / 60);
-    const restoMin = minutos % 60;
-    return restoMin > 0 ? `${horas}h ${restoMin}min` : `${horas}h`;
-  }
-  return numero.toFixed(0);
-}
-
-function getPontuacaoColumnLabel(criterio: string | null) {
-  if (criterio === "percentual") return "%";
-  if (criterio === "tempo") return "Tempo";
-  return "Pts.";
-}
+type Filter = "geral" | "perfil_majoritario" | "outros_perfis";
+const filters: { key: Filter; label: string }[] = [
+  { key: "geral", label: "Geral" },
+  { key: "perfil_majoritario", label: "Meu perfil" },
+  { key: "outros_perfis", label: "Outros perfis" },
+];
 
 export default function RankDetalheScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
-  const rankId = id ? Number(id) : null;
-  const navigation = useNavigation();
-
-  const { ranking, carregando } = useConquistaRank();
+  const router = useRouter();
+  const { ranking, carregando, reloadRanking } = useConquistaRank();
   const { usuario } = useUsuario();
-  const activeProfile = usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null;
-  const palette = getProfileShellPalette(activeProfile);
-  const profileEmphasis = getProfileGuideEmphasis(activeProfile, "ranking");
-
-  const gold = tinycolor(palette.accent).lighten(10).toHexString();
-  const goldDim = tinycolor(palette.accent).setAlpha(0.55).toRgbString();
-
-  const [filtro, setFiltro] = useState<RankFilter>("geral");
-  const [perfisCarregando, setPerfisCarregando] = useState(false);
-  const [perfilDominantePorAluno, setPerfilDominantePorAluno] = useState<Record<string, DominantProfileMeta>>({});
-  const rankHeaderGuideRef = useRef<View | null>(null);
-
-  // Entregue ao guia: sem isso ele descreve linhas fora da tela.
-  const listaRef = useRef<FlatList>(null);
-  // `scrollTo` quer posicao ABSOLUTA e `measureInWindow` devolve posicao na
-  // TELA; o deslocamento atual e o que converte uma na outra.
+  const profile = usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome;
+  const palette = getProfileShellPalette(profile);
+  const rank = ranking?.ranks.find((item) => item.info.rank_id === Number(id));
+  const [filter, setFilter] = useState<Filter>("geral");
+  const [total, setTotal] = useState<number | null>(null);
+  const ids = useMemo(
+    () => (rank?.posicoes ?? []).map((row) => row.id_aluno),
+    [rank?.posicoes],
+  );
+  const {
+    profiles,
+    photos,
+    loading: profilesLoading,
+  } = useRankingPeople(
+    rank?.info.classe_id,
+    ids,
+    usuario?.id,
+    profile,
+    usuario?.foto_url,
+  );
+  const ownProfile = normalizeBrainHexProfile(profile);
+  const cutoff = useMemo(
+    () => aplicarCorteDoRank(rank?.posicoes ?? [], usuario?.id ?? null),
+    [rank?.posicoes, usuario?.id],
+  );
+  const filtered = useMemo(
+    () =>
+      cutoff.visiveis.filter(
+        (row) =>
+          filter === "geral" ||
+          (filter === "perfil_majoritario"
+            ? !!ownProfile && profiles[row.id_aluno]?.key === ownProfile
+            : !ownProfile || profiles[row.id_aluno]?.key !== ownProfile),
+      ),
+    [cutoff.visiveis, filter, profiles, ownProfile],
+  );
+  const notice = descreverCorte(cutoff, total);
+  const listRef = useRef<FlatList<RankPosicao> | null>(null);
   const scrollOffsetRef = useRef(0);
-  const rankFiltersGuideRef = useRef<View | null>(null);
-  const rankMyPositionGuideRef = useRef<View | null>(null);
-
-  const meuPerfilMajoritario = normalizeBrainHexProfile(activeProfile);
-  const meuPerfilLabel = getDominantProfileLabel(meuPerfilMajoritario);
-
-  // Pulse animation for the crown icon
-  const crownPulse = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(crownPulse, { toValue: 1, duration: 2200, useNativeDriver: true }),
-        Animated.timing(crownPulse, { toValue: 0, duration: 2200, useNativeDriver: true }),
-      ])
-    ).start();
-  }, [crownPulse]);
-  const crownScale = crownPulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.07] });
-  const crownOpacity = crownPulse.interpolate({ inputRange: [0, 1], outputRange: [0.82, 1] });
-
-  const rank = useMemo(
-    () => ranking?.ranks.find((r) => r.info.rank_id === rankId) ?? null,
-    [ranking?.ranks, rankId]
-  );
-
-  // Quantos alunos a turma tem, para o aviso do corte dizer "de quantos".
-  // `head: true` nao traz linha nenhuma -- so o total.
-  const classeId = rank?.info.classe_id ?? null;
-  const [totalDaTurma, setTotalDaTurma] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!classeId) {
-      setTotalDaTurma(null);
-      return;
-    }
-
-    let ativo = true;
-    void (async () => {
-      const { count, error } = await supabase
-        .from("classe_aluno")
-        .select("aluno_id", { count: "exact", head: true })
-        .eq("classe_id", classeId);
-
-      if (!ativo) return;
-      // Sem o total o aviso ainda funciona, so nao diz "de N".
-      setTotalDaTurma(error ? null : (count ?? null));
-    })();
-
-    return () => {
-      ativo = false;
-    };
-  }, [classeId]);
-
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerTitle: "",
-      headerTransparent: true,
-      headerTintColor: gold,
-      headerStyle: { backgroundColor: "transparent" },
-      headerShadowVisible: false,
-    });
-  }, [navigation, gold]);
-
-  useEffect(() => {
-    const alunoIds = Array.from(
-      new Set((rank?.posicoes ?? []).map((item) => String(item.id_aluno)).filter(Boolean))
-    );
-
-    if (!alunoIds.length) {
-      setPerfilDominantePorAluno({});
-      setPerfisCarregando(false);
-      return;
-    }
-
-    let ativo = true;
-    setPerfisCarregando(true);
-
-    const carregarPerfis = async () => {
-      const { data, error } = await supabase.rpc("social_listar_pessoas", {
-        p_classe_id: classeId,
-      });
-
-      if (!ativo) return;
-
-      if (error) {
-        console.warn("[Ranking] Falha ao carregar perfis majoritários:", error);
-        setPerfilDominantePorAluno({});
-        setPerfisCarregando(false);
-        return;
-      }
-
-      setPerfilDominantePorAluno(
-        buildRankingProfileMap(data ?? [], alunoIds, {
-          alunoId: usuario?.id,
-          perfilAtivo: activeProfile,
-        }),
-      );
-      setPerfisCarregando(false);
-    };
-
-    void carregarPerfis();
-    return () => { ativo = false; };
-  }, [activeProfile, classeId, rank?.posicoes, usuario?.id]);
-
-  const posicoes = useMemo(
-    () => (rank?.posicoes ?? []) as RankPosicaoRow[],
-    [rank?.posicoes]
-  );
-
-  // A view ja devolve so o topo mais a propria linha. O que falta aqui e nao
-  // mostrar a propria linha duas vezes -- ela ja tem o rodape fixo so dela.
-  const corte = useMemo(
-    () => aplicarCorteDoRank(posicoes, usuario?.id ?? null),
-    [posicoes, usuario?.id]
-  );
-
-  // As abas contam o que a LISTA mostra; o tamanho da turma vai no aviso do
-  // corte. Antes `geral` era `posicoes.length` e passava por total da turma --
-  // com o corte, isso viraria uma mentira silenciosa.
-  const contagens = useMemo(() => {
-    const visiveis = corte.visiveis;
-    const geral = visiveis.length;
-    const perfilMajoritario = !meuPerfilMajoritario
-      ? 0
-      : visiveis.filter((item) => perfilDominantePorAluno[item.id_aluno]?.key === meuPerfilMajoritario).length;
-    const outrosPerfis = !meuPerfilMajoritario
-      ? visiveis.length
-      : visiveis.filter((item) => perfilDominantePorAluno[item.id_aluno]?.key !== meuPerfilMajoritario).length;
-    return { geral, perfil_majoritario: perfilMajoritario, outros_perfis: outrosPerfis };
-  }, [corte, perfilDominantePorAluno, meuPerfilMajoritario]);
-
-  const posicoesFiltradas = useMemo(() => {
-    const visiveis = corte.visiveis;
-    if (filtro === "geral") return visiveis;
-    if (filtro === "perfil_majoritario") {
-      if (!meuPerfilMajoritario) return [];
-      return visiveis.filter((item) => perfilDominantePorAluno[item.id_aluno]?.key === meuPerfilMajoritario);
-    }
-    if (!meuPerfilMajoritario) return visiveis;
-    return visiveis.filter((item) => perfilDominantePorAluno[item.id_aluno]?.key !== meuPerfilMajoritario);
-  }, [filtro, corte, perfilDominantePorAluno, meuPerfilMajoritario]);
-
-  const myRankData = corte.minhaLinha;
-
-  const avisoDoCorte = useMemo(
-    () => descreverCorte(corte, totalDaTurma),
-    [corte, totalDaTurma]
-  );
-
-  const textoFiltro = useMemo(() => {
-    if (filtro === "perfil_majoritario") {
-      return meuPerfilMajoritario
-        ? `Alunos com perfil majoritário: ${meuPerfilLabel}`
-        : "Seu perfil majoritário ainda não está definido.";
-    }
-    if (filtro === "outros_perfis") {
-      return meuPerfilMajoritario
-        ? `Alunos de perfis diferentes de ${meuPerfilLabel}`
-        : "Todos os perfis (seu perfil não definido)";
-    }
-    return "Classificação geral da turma";
-  }, [filtro, meuPerfilLabel, meuPerfilMajoritario]);
-
-  const rankDetailGuideSteps = useMemo<SectionGuideStep[]>(() => {
-    const criterio = String(rank?.info.criterio ?? "").toLowerCase();
-    const scoreDescription =
-      criterio === "percentual"
-        ? "A coluna % mostra o percentual concluído da trilha, de 0 a 100. A ordem segue esse avanço registrado."
-        : criterio === "tempo"
-        ? "A coluna Tempo mostra o estudo acumulado e formata o resultado em minutos ou horas. A posição segue o critério de tempo configurado para esta categoria."
-        : "A coluna Pts. mostra a pontuação acumulada conforme as regras desta categoria. A classificação é ordenada por esse resultado.";
-
-    return [
-      {
-        id: "rank-detail-header",
-        target: "rank_detail_header",
-        title: rank?.info.nome_rank ?? "Classificação",
-        description: `${rank?.info.descricao ?? "O cabeçalho informa qual categoria e critério estão sendo consultados."} ${profileEmphasis}`,
-        icon: "shield-crown-outline",
-      },
-      {
-        id: "rank-detail-filters",
-        target: "rank_detail_filters",
-        title: "Filtros por perfil",
-        description:
-          "Geral mostra toda a turma; Meu perfil mostra alunos com o mesmo perfil BrainHex majoritário que o seu; Outros perfis mostra os demais. O número em cada botão é a quantidade de alunos no recorte.",
-        icon: "filter-variant",
-      },
-      {
-        id: "rank-detail-position",
-        target: "rank_detail_explanation",
-        title: "Posição e medalha",
-        description:
-          "Pos. é a colocação do aluno. Rank mostra a medalha cadastrada; as três primeiras posições recebem destaque visual de ouro, prata e bronze quando disponíveis.",
-        icon: "medal-outline",
-      },
-      {
-        id: "rank-detail-student",
-        target: "rank_detail_explanation",
-        title: "Aluno e perfil",
-        description:
-          "A coluna Aluno mostra o nome e, abaixo, o perfil BrainHex de maior afinidade. Sua linha recebe a indicação “Você” e uma cor de destaque.",
-        icon: "account-outline",
-      },
-      {
-        id: "rank-detail-score",
-        target: "rank_detail_explanation",
-        title: "Valor da classificação",
-        description: scoreDescription,
-        icon: "chart-line",
-      },
-      ...(myRankData
-        ? [{
-            id: "rank-detail-me",
-            target: "rank_detail_me",
-            title: "Sua posição fixa",
-            description:
-              "O rodapé mantém sua própria colocação visível mesmo enquanto você percorre a lista. Ele usa os dados da classificação geral, independentemente do filtro selecionado.",
-            icon: "account-star-outline" as const,
-          }]
-        : []),
-    ];
-  }, [myRankData, profileEmphasis, rank?.info.criterio, rank?.info.descricao, rank?.info.nome_rank]);
-  const rankDetailGuideTargets = useMemo(
+  const headerRef = useRef<View | null>(null);
+  const filtersRef = useRef<View | null>(null);
+  const myRef = useRef<View | null>(null);
+  const targets = useMemo(
     () => ({
-      rank_detail_header: rankHeaderGuideRef,
-      rank_detail_filters: rankFiltersGuideRef,
-      rank_detail_me: rankMyPositionGuideRef,
+      rank_detail_header: headerRef,
+      rank_detail_filters: filtersRef,
+      rank_detail_me: myRef,
     }),
     [],
   );
-
-  if (carregando) {
-    return (
-      <View style={[s.screen, { backgroundColor: palette.background }]}>
-        <LoadingState title="Carregando" message="Atualizando tabela de ranking..." />
-      </View>
-    );
-  }
-
-  if (!rank) {
-    return (
-      <View style={[s.screen, { backgroundColor: palette.background }]}>
-        <CardSemDados title="Indisponível" description="Ranking não encontrado." accentColor={palette.accent} />
-      </View>
-    );
-  }
-
-  const RankRow = ({
-    item,
-    index,
-    isFooter = false,
-  }: {
-    item: RankPosicaoRow;
-    index?: number;
-    isFooter?: boolean;
-  }) => {
-    const isTop3 = (item.posicao || 0) <= 3;
-    const isMe = usuario?.id === item.id_aluno;
-
-    const perfilAluno = perfilDominantePorAluno[item.id_aluno] ?? {
-      key: null,
-      label: "Perfil não definido",
-    };
-
-    const medalSource = getMedalImage(item.medalha);
-
-    const medalStyles: Record<number, { backgroundColor: string; borderLeftColor: string }> = {
-      1: {
-        backgroundColor: tinycolor("#FFD700").setAlpha(0.12).toRgbString(),
-        borderLeftColor: "#FFD700",
+  const steps = useMemo<SectionGuideStep[]>(
+    () => [
+      {
+        id: "podium",
+        target: "rank_detail_header",
+        title: "Pódio da turma",
+        description:
+          "Os três primeiros lugares seguem a classificação geral desta categoria. Empates mantêm a mesma posição.",
+        icon: "podium",
       },
-      2: {
-        backgroundColor: tinycolor("#C0C0C0").setAlpha(0.12).toRgbString(),
-        borderLeftColor: "#C0C0C0",
+      {
+        id: "filters",
+        target: "rank_detail_filters",
+        title: "Classificação",
+        description:
+          "Os filtros se aplicam à lista. As posições originais da categoria são preservadas.",
+        icon: "filter-variant",
       },
-      3: {
-        backgroundColor: tinycolor("#CD7F32").setAlpha(0.12).toRgbString(),
-        borderLeftColor: "#CD7F32",
-      },
+      ...(cutoff.minhaLinha
+        ? [
+            {
+              id: "me",
+              target: "rank_detail_me",
+              title: "Sua posição",
+              description:
+                "Sua colocação geral permanece visível no rodapé, mesmo ao filtrar os colegas.",
+              icon: "account-star-outline" as const,
+            },
+          ]
+        : []),
+    ],
+    [cutoff.minhaLinha],
+  );
+  const classeId = rank?.info.classe_id;
+  useEffect(() => {
+    let active = true;
+    setTotal(null);
+    if (!classeId) return;
+    void supabase
+      .from("classe_aluno")
+      .select("aluno_id", { count: "exact", head: true })
+      .eq("classe_id", classeId)
+      .then(({ count, error }) => {
+        if (active) setTotal(error ? null : count);
+      });
+    return () => {
+      active = false;
     };
+  }, [classeId]);
 
-    const getRowStyle = () => {
-      if (isFooter) return {};
-      if (isMe) {
-        return {
-          backgroundColor: palette.accentMuted,
-          borderLeftWidth: 3,
-          borderLeftColor: palette.accent,
-          marginLeft: -3,
-        };
-      }
-      if (item.posicao && medalStyles[item.posicao]) {
-        return { ...medalStyles[item.posicao], borderLeftWidth: 3, marginLeft: -3 };
-      }
-      if ((index ?? 0) % 2 !== 0) {
-        return { backgroundColor: tinycolor(palette.surface).setAlpha(0.22).toRgbString() };
-      }
-      return {};
-    };
-
-    return (
-      <View style={[s.tableRow, getRowStyle()]}>
-        {/* Posição */}
-        <View style={s.colPos}>
-          <Text
-            style={[
-              s.cellTextBold,
-              isTop3 && s.textHighlight,
-              !isMe && item.posicao === 1 && { color: "#FFD700" },
-              !isMe && item.posicao === 2 && { color: "#C0C0C0" },
-              !isMe && item.posicao === 3 && { color: "#CD7F32" },
-              { color: isMe ? gold : undefined },
-            ]}
-          >
-            #{item.posicao}
-          </Text>
-        </View>
-
-        <View style={[s.verticalDivider, { backgroundColor: goldDim }]} />
-
-        {/* Medalha/Rank */}
-        <View style={s.colClass}>
-          {medalSource ? (
-            <Image source={medalSource} style={s.medalIcon} resizeMode="contain" />
-          ) : (
-            <Text style={[s.cellTextSmall, { color: palette.textSubtle }]}>
-              {item.medalha ? item.medalha.charAt(0).toUpperCase() : "—"}
-            </Text>
-          )}
-        </View>
-
-        <View style={[s.verticalDivider, { backgroundColor: goldDim }]} />
-
-        {/* Nome + perfil */}
-        <View style={s.colNome}>
-          <Text
-            style={[
-              s.cellText,
-              { color: palette.textMuted },
-              isMe && { color: gold, fontFamily: FontFamily.inikaBold },
-            ]}
-            numberOfLines={1}
-          >
-            {item.nome_aluno}
-            {isMe && !isFooter ? " (Você)" : ""}
-          </Text>
-          <Text style={[s.profileHint, { color: palette.textSubtle }]} numberOfLines={1}>
-            {perfilAluno.label}
-          </Text>
-        </View>
-
-        <View style={[s.verticalDivider, { backgroundColor: goldDim }]} />
-
-        {/* Pontuação */}
-        <View style={s.colPts}>
-          <Text style={[s.cellTextBold, { color: isMe ? gold : palette.text }]}>
-            {formatPontuacao(item.pontuacao, rank.info.criterio)}
-          </Text>
-        </View>
-      </View>
-    );
-  };
-
+  const scoreLabel =
+    rank?.info.criterio === "tempo"
+      ? "Tempo"
+      : rank?.info.criterio === "percentual"
+        ? "Progresso"
+        : "Pontos";
   return (
     <View style={[s.screen, { backgroundColor: palette.background }]}>
-      {/* ── Fundo do salão ── */}
-      <HallBackground palette={palette} />
-
-      {/* ── Gradiente candelabro ── */}
-      <LinearGradient
-        colors={[
-          tinycolor(palette.accent).setAlpha(0.22).toRgbString(),
-          tinycolor(palette.accent).setAlpha(0.06).toRgbString(),
-          "transparent",
-        ]}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={[StyleSheet.absoluteFill, { height: SCREEN_H * 0.45, pointerEvents: "none" }]}
-      />
-
-      <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
-        {/* Guia no cabecalho da tela: mesmo lugar em toda pagina com header,
-            sem flutuar sobre o conteudo nem depender de offset por pagina. */}
-        <Stack.Screen
-          options={{
-            headerRight: () => (
-              <SectionGuideButton
-                profile={activeProfile}
-                sectionTitle="Classificação"
-                steps={rankDetailGuideSteps}
-                targetRefs={rankDetailGuideTargets}
-                scrollRef={listaRef as unknown as React.RefObject<SectionGuideScrollable | null>}
-          scrollOffsetRef={scrollOffsetRef}
-                style={s.guideButton}
-              />
-            ),
-          }}
-        />
-        {/* ══════════ HEADER ══════════ */}
-        <View ref={rankHeaderGuideRef} collapsable={false} style={s.header}>
-          <Animated.View style={{ transform: [{ scale: crownScale }], opacity: crownOpacity }}>
-            <MaterialCommunityIcons name="shield-crown" size={46} color={gold} />
-          </Animated.View>
-
-          <Text style={[s.headerTitle, { color: gold }]}>
-            {(rank.info.nome_rank ?? "Ranking").toUpperCase()}
-          </Text>
-
-          <OrnamentDivider color={gold} />
-
-          {rank.info.descricao ? (
-            <Text style={[s.headerSubtitle, { color: palette.textMuted }]}>
-              {rank.info.descricao}
-            </Text>
-          ) : null}
-        </View>
-
-        {/* ══════════ ABAS DE FILTRO ══════════ */}
-        <View ref={rankFiltersGuideRef} collapsable={false} style={s.filtersRow}>
-          {(["geral", "perfil_majoritario", "outros_perfis"] as RankFilter[]).map((f) => {
-            const active = filtro === f;
-            return (
-              <Pressable
-                key={f}
-                style={[
-                  s.filterBtn,
-                  { borderColor: active ? gold : goldDim },
-                  active && { backgroundColor: palette.accentMuted },
-                ]}
-                onPress={() => setFiltro(f)}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: active }}
-              >
-                <Text style={[s.filterLabel, { color: active ? gold : palette.textMuted }]}>
-                  {FILTER_LABELS[f]}
-                </Text>
-                <Text style={[s.filterCount, { color: active ? goldDim : palette.textSubtle }]}>
-                  {contagens[f]}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        {/* Descrição do filtro */}
-        <Text style={[s.filterDesc, { color: palette.textSubtle }]}>{textoFiltro}</Text>
-
-        {/* ══════════ CABEÇALHO DA TABELA ══════════ */}
-        <LinearGradient
-          colors={[palette.surfaceElevated, palette.surface]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={[s.tableHeader, { borderTopColor: goldDim, borderBottomColor: goldDim }]}
-        >
-          <Text style={[s.colHeader, s.colPos, { color: gold }]}>Pos.</Text>
-          <Text style={[s.colHeader, s.colClass, { color: gold }]}>Rank</Text>
-          <Text style={[s.colHeader, s.colNome, { color: gold }]}>Aluno</Text>
-          <Text style={[s.colHeader, s.colPts, { color: gold }]}>
-            {getPontuacaoColumnLabel(rank.info.criterio)}
-          </Text>
-        </LinearGradient>
-
-        {/* ══════════ LISTA ══════════ */}
-        <FlatList
-          ref={listaRef}
-          scrollEventThrottle={16}
-          onScroll={(e) => {
-            scrollOffsetRef.current = e.nativeEvent.contentOffset.y;
-          }}
-          data={posicoesFiltradas}
-          keyExtractor={(item, idx) => `${item.rank_id}-${item.id_aluno}-${idx}`}
-          contentContainerStyle={s.listContent}
-          showsVerticalScrollIndicator={false}
-          renderItem={({ item, index }) => <RankRow item={item} index={index} />}
-          ListEmptyComponent={
-            <Text style={[s.emptyText, { color: palette.textSubtle }]}>
-              Nenhum dado encontrado para este recorte.
-            </Text>
-          }
-          ListHeaderComponent={
-            perfisCarregando ? (
-              <Text style={[s.loadingHint, { color: palette.textSubtle }]}>
-                Carregando perfis...
-              </Text>
-            ) : null
-          }
-          ListFooterComponent={
-            // Sem isto, quem esta em #18 ve 15 linhas e um rodape dizendo #18,
-            // sem nada ligando as duas coisas.
-            avisoDoCorte ? (
-              <Text style={[s.corteAviso, { color: palette.textSubtle }]}>
-                {avisoDoCorte}
-              </Text>
-            ) : null
-          }
-        />
-
-        {/* ══════════ FOOTER — SUA POSIÇÃO ══════════ */}
-        {myRankData && (
-          <View
-            ref={rankMyPositionGuideRef}
-            collapsable={false}
-            style={[s.footerContainer, { backgroundColor: palette.surfaceElevated }]}
+      <Stack.Screen options={{ headerShown: false }} />
+      <SafeAreaView style={s.screen} edges={["top", "left", "right"]}>
+        <View style={[s.topbar, { borderBottomColor: palette.border }]}>
+          <Pressable
+            onPress={() => router.back()}
+            accessibilityRole="button"
+            accessibilityLabel="Voltar aos rankings"
+            style={s.back}
           >
-            {/* Borda topo dourada */}
-            <LinearGradient
-              colors={["transparent", gold, "transparent"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={s.footerBorderTop}
+            <MaterialCommunityIcons
+              name="arrow-left"
+              size={22}
+              color={palette.accent}
             />
-            {/* Ornamento micro */}
-            <View style={s.footerOrnRow}>
-              <OrnamentDivider color={gold} />
-            </View>
-            {/* Linha do usuário */}
-            <View style={[s.footerContent, { backgroundColor: palette.accentMuted }]}>
-              <RankRow item={myRankData} isFooter />
-            </View>
-          </View>
+            <Text style={[s.backLabel, { color: palette.text }]}>Rankings</Text>
+          </Pressable>
+          <SectionGuideButton
+            profile={profile}
+            sectionTitle="Classificação"
+            steps={steps}
+            targetRefs={targets}
+            scrollRef={
+              listRef as unknown as React.RefObject<SectionGuideScrollable | null>
+            }
+            scrollOffsetRef={scrollOffsetRef}
+          />
+        </View>
+        {!rank ? (
+          carregando ? (
+            <ActivityIndicator color={palette.accent} style={s.empty} />
+          ) : (
+            <Text style={[s.empty, { color: palette.textMuted }]}>
+              Ranking não encontrado.
+            </Text>
+          )
+        ) : (
+          <>
+            <FlatList
+              ref={listRef}
+              data={profilesLoading && filter !== "geral" ? [] : filtered}
+              keyExtractor={(row) => `${row.rank_id}-${row.id_aluno}`}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={s.listContent}
+              scrollEventThrottle={16}
+              onScroll={(event) => {
+                scrollOffsetRef.current = event.nativeEvent.contentOffset.y;
+              }}
+              refreshControl={
+                <RefreshControl
+                  refreshing={carregando}
+                  onRefresh={() => void reloadRanking()}
+                  tintColor={palette.accent}
+                />
+              }
+              ListHeaderComponent={
+                <>
+                  <View ref={headerRef} collapsable={false} style={s.hero}>
+                    <View style={s.scenery} pointerEvents="none">
+                      <Image
+                        source={getProfileArtwork(profile, "rank")}
+                        style={s.sceneryImage}
+                        resizeMode="cover"
+                        accessible={false}
+                      />
+                      <LinearGradient
+                        colors={[
+                          `${palette.background}60`,
+                          `${palette.background}b0`,
+                          palette.background,
+                        ]}
+                        locations={[0, 0.5, 1]}
+                        style={StyleSheet.absoluteFill}
+                      />
+                    </View>
+                    <View style={s.heading}>
+                      <Text style={[s.eyebrow, { color: palette.accent }]}>
+                        SALA DE HONRA
+                      </Text>
+                      <Text style={[s.title, { color: palette.text }]}>
+                        {rank.info.nome_rank}
+                      </Text>
+                      {rank.info.descricao ? (
+                        <Text
+                          style={[s.subtitle, { color: palette.textMuted }]}
+                        >
+                          {rank.info.descricao}
+                        </Text>
+                      ) : null}
+                    </View>
+                    <RankingPodium
+                      rows={rank.posicoes}
+                      criterion={rank.info.criterio}
+                      palette={palette}
+                      userId={usuario?.id}
+                      profiles={profiles}
+                      photos={photos}
+                    />
+                  </View>
+                  <View
+                    ref={filtersRef}
+                    collapsable={false}
+                    style={s.filtersSection}
+                  >
+                    <Text style={[s.sectionTitle, { color: palette.text }]}>
+                      Classificação
+                    </Text>
+                    <View
+                      style={[s.filters, { borderBottomColor: palette.border }]}
+                    >
+                      {filters.map((item) => (
+                        <Pressable
+                          key={item.key}
+                          accessibilityRole="tab"
+                          accessibilityState={{ selected: filter === item.key }}
+                          onPress={() => setFilter(item.key)}
+                          style={[
+                            s.filter,
+                            {
+                              borderBottomColor:
+                                filter === item.key
+                                  ? palette.accent
+                                  : "transparent",
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              s.filterText,
+                              {
+                                color:
+                                  filter === item.key
+                                    ? palette.accent
+                                    : palette.textMuted,
+                              },
+                            ]}
+                          >
+                            {item.label}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                    <View style={s.listHeading}>
+                      <Text
+                        style={[s.columnLabel, { color: palette.textSubtle }]}
+                      >
+                        ALUNO
+                      </Text>
+                      <Text
+                        style={[s.columnLabel, { color: palette.textSubtle }]}
+                      >
+                        {scoreLabel.toUpperCase()}
+                      </Text>
+                    </View>
+                  </View>
+                </>
+              }
+              renderItem={({ item }) => {
+                const me = item.id_aluno === usuario?.id;
+                const personProfile = profiles[item.id_aluno];
+                return (
+                  <View
+                    style={[
+                      s.row,
+                      {
+                        borderBottomColor: palette.border,
+                        backgroundColor: me
+                          ? palette.surface
+                          : palette.background,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        s.position,
+                        { color: me ? palette.accent : palette.textMuted },
+                      ]}
+                    >
+                      {item.posicao ? `${item.posicao}º` : "--"}
+                    </Text>
+                    {personProfile?.key ? (
+                      <ProfileArtwork
+                        source={profileEmblems[personProfile.key]}
+                        profile={profile}
+                        width={32}
+                        height={38}
+                        style={s.emblem}
+                      />
+                    ) : (
+                      <View style={s.emblem}>
+                        <MaterialCommunityIcons
+                          name="account-outline"
+                          color={palette.textSubtle}
+                          size={25}
+                        />
+                      </View>
+                    )}
+                    <View style={s.student}>
+                      <Text style={[s.studentName, { color: palette.text }]}>
+                        {item.nome_aluno}
+                        {me ? " (Você)" : ""}
+                      </Text>
+                      <Text style={[s.profile, { color: palette.textMuted }]}>
+                        {personProfile?.label ?? "Perfil não definido"}
+                      </Text>
+                    </View>
+                    <Text
+                      style={[
+                        s.score,
+                        { color: me ? palette.accent : palette.text },
+                      ]}
+                    >
+                      {formatRankScore(item.pontuacao, rank.info.criterio)}
+                    </Text>
+                  </View>
+                );
+              }}
+              ListEmptyComponent={
+                profilesLoading && filter !== "geral" ? (
+                  <ActivityIndicator color={palette.accent} style={s.empty} />
+                ) : (
+                  <Text style={[s.empty, { color: palette.textMuted }]}>
+                    Nenhum aluno neste recorte.
+                  </Text>
+                )
+              }
+              ListFooterComponent={
+                notice ? (
+                  <Text style={[s.notice, { color: palette.textMuted }]}>
+                    {notice}
+                  </Text>
+                ) : null
+              }
+            />
+            {cutoff.minhaLinha ? (
+              <View
+                ref={myRef}
+                collapsable={false}
+                style={[
+                  s.myPosition,
+                  {
+                    backgroundColor: palette.surfaceElevated,
+                    borderTopColor: palette.borderStrong,
+                  },
+                ]}
+              >
+                <Text style={[s.myPlace, { color: palette.accent }]}>
+                  {cutoff.minhaLinha.posicao
+                    ? `${cutoff.minhaLinha.posicao}º`
+                    : "--"}
+                </Text>
+                <View style={s.student}>
+                  <Text style={[s.myLabel, { color: palette.text }]}>
+                    Sua posição
+                  </Text>
+                  <Text style={[s.profile, { color: palette.textMuted }]}>
+                    Classificação geral
+                  </Text>
+                </View>
+                <Text style={[s.myScore, { color: palette.text }]}>
+                  {formatRankScore(
+                    cutoff.minhaLinha.pontuacao,
+                    rank.info.criterio,
+                  )}
+                </Text>
+              </View>
+            ) : null}
+          </>
         )}
       </SafeAreaView>
     </View>
@@ -650,162 +426,78 @@ export default function RankDetalheScreen() {
 }
 
 const s = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: Color.background },
-  guideButton: {
-    marginRight: 12,
-  },
-
-  // Header
-  header: {
-    alignItems: "center",
-    marginTop: 10,
-    marginBottom: 10,
+  screen: { flex: 1 },
+  topbar: {
+    minHeight: 56,
     paddingHorizontal: 20,
-    gap: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderBottomWidth: 1,
   },
-  headerTitle: {
+  back: { minHeight: 44, flexDirection: "row", alignItems: "center", gap: 10 },
+  backLabel: { fontSize: 14, fontWeight: "600" },
+  listContent: { paddingBottom: 20 },
+  hero: { paddingHorizontal: 20, overflow: "hidden" },
+  scenery: { ...StyleSheet.absoluteFillObject },
+  sceneryImage: { width: "100%", height: "100%", opacity: 0.75 },
+  heading: { paddingTop: 24, gap: 7 },
+  eyebrow: { fontSize: 10, fontWeight: "700" },
+  title: { fontFamily: FontFamily.inikaBold, fontSize: 27, lineHeight: 34 },
+  subtitle: { fontSize: 12, lineHeight: 18, maxWidth: 300 },
+  filtersSection: { paddingHorizontal: 20 },
+  sectionTitle: {
     fontFamily: FontFamily.inikaBold,
     fontSize: 22,
-    letterSpacing: 2,
-    textShadowColor: "rgba(0,0,0,0.9)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 8,
-    marginTop: 4,
+    marginTop: 10,
+    marginBottom: 8,
   },
-  headerSubtitle: {
-    fontFamily: FontFamily.interMedium,
-    fontSize: 12,
-    letterSpacing: 0.5,
-    textAlign: "center",
-    paddingHorizontal: 16,
-    marginTop: 2,
-  },
-
-  // Filtros
-  filtersRow: {
-    flexDirection: "row",
-    gap: 8,
-    paddingHorizontal: 12,
-    marginBottom: 4,
-  },
-  filterBtn: {
+  filters: { flexDirection: "row", borderBottomWidth: 1, gap: 12 },
+  filter: {
     flex: 1,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 6,
     alignItems: "center",
+    paddingVertical: 14,
+    borderBottomWidth: 2,
   },
-  filterLabel: {
-    fontFamily: FontFamily.inikaBold,
-    fontSize: 11,
-  },
-  filterCount: {
-    fontFamily: FontFamily.interMedium,
-    fontSize: 10,
-    marginTop: 2,
-  },
-  filterDesc: {
-    fontFamily: FontFamily.interMedium,
-    fontSize: 11,
-    paddingHorizontal: 12,
-    marginBottom: 6,
-    textAlign: "center",
-  },
-
-  // Cabeçalho da tabela
-  tableHeader: {
+  filterText: { fontSize: 12, fontWeight: "600", textAlign: "center" },
+  listHeading: {
     flexDirection: "row",
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 10,
+    justifyContent: "space-between",
+    paddingTop: 20,
+    paddingBottom: 10,
   },
-  colPos: { width: 50, alignItems: "center" },
-  colNome: { flex: 1, paddingLeft: 10, alignItems: "flex-start" },
-  colClass: { width: 60, alignItems: "center" },
-  colPts: { width: 70, alignItems: "center" },
-  colHeader: {
-    fontFamily: FontFamily.inikaBold,
-    fontSize: 12,
-    textAlign: "center",
-  },
-
-  // Linhas
-  listContent: { paddingBottom: 120 },
-  tableRow: {
+  columnLabel: { fontSize: 10, fontWeight: "600" },
+  row: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-  },
-  verticalDivider: {
-    width: 1,
-    height: 20,
-    opacity: 0.22,
-    marginHorizontal: 2,
-  },
-  cellText: {
-    fontFamily: FontFamily.inikaBold,
-    fontSize: 13,
-  },
-  cellTextBold: {
-    fontFamily: FontFamily.inikaBold,
-    fontSize: 14,
-    color: "#FFF",
-  },
-  textHighlight: { fontSize: 15 },
-  cellTextSmall: {
-    fontFamily: FontFamily.inikaBold,
-    fontSize: 12,
-    letterSpacing: 2,
-  },
-  profileHint: {
-    fontFamily: FontFamily.interMedium,
-    fontSize: 11,
-    marginTop: 2,
-  },
-  loadingHint: {
-    textAlign: "center",
-    fontFamily: FontFamily.interMedium,
-    marginTop: 8,
-    marginBottom: 2,
-    fontSize: 12,
-  },
-  corteAviso: {
-    textAlign: "center",
-    fontFamily: FontFamily.interMedium,
-    marginTop: 14,
-    marginBottom: 4,
-    fontSize: 12,
-    letterSpacing: 0.3,
-  },
-  emptyText: {
-    textAlign: "center",
-    marginTop: 24,
-    fontFamily: FontFamily.interMedium,
-    fontSize: 13,
-  },
-  medalIcon: { width: 24, height: 24 },
-
-  // Footer
-  footerContainer: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -5 },
-    shadowOpacity: 0.55,
-    shadowRadius: 12,
-    elevation: 20,
-    zIndex: 100,
-  },
-  footerBorderTop: { height: 1, width: "100%" },
-  footerOrnRow: {
+    minHeight: 80,
     paddingHorizontal: 20,
-    transform: [{ scaleY: 0.75 }],
-    opacity: 0.65,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    gap: 10,
   },
-  footerContent: {},
+  position: { width: 26, fontFamily: FontFamily.inikaBold, fontSize: 17 },
+  emblem: {
+    width: 32,
+    height: 38,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  student: { flex: 1, minWidth: 0 },
+  studentName: { fontSize: 13, lineHeight: 19, fontWeight: "600" },
+  profile: { fontSize: 10, lineHeight: 15, marginTop: 3 },
+  score: { width: 64, fontSize: 13, fontWeight: "700", textAlign: "right" },
+  myPosition: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+  },
+  myPlace: { fontFamily: FontFamily.inikaBold, fontSize: 26 },
+  myLabel: { fontSize: 13, fontWeight: "700" },
+  myScore: { fontSize: 18, fontWeight: "700" },
+  empty: { margin: 36, textAlign: "center" },
+  notice: { padding: 20, fontSize: 12, lineHeight: 18, textAlign: "center" },
 });

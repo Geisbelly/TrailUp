@@ -5,681 +5,246 @@ import {
 } from "@/components/HallTheme";
 import {
   SectionGuideButton,
-  SectionGuideStep,
+  type SectionGuideStep,
 } from "@/components/SectionGuideButton";
+import { journeyObjects } from "@/constants/designAssets";
+import { ProfileArtwork } from "@/components/ProfileArtwork";
 import { useConquistaRank } from "@/context/ConquistaRankContext";
 import { useUsuario } from "@/context/SessaoContext";
-import { Color, FontFamily } from "@/styles/GlobalStyle";
+import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { registrarAlvoTour } from "@/utils/tourTargets";
-import { getProfileGuideEmphasis } from "@/utils/profileSectionGuide";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
-  Animated,
-  Dimensions,
-  Image,
+  ActivityIndicator,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import tinycolor from "tinycolor2";
 
-const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
-
-const PADDING_H = 20;
-const GAP = 14;
-const CARD_W = (SCREEN_W - PADDING_H * 2 - GAP) / 2;
-const CARD_H = CARD_W * 1.48;
-
-const rankIconMap: Record<number, any> = {
-  1: require("@/assets/icones/rank/2.png"),
-  2: require("@/assets/icones/rank/4.png"),
-  3: require("@/assets/icones/rank/1.png"),
-  4: require("@/assets/icones/rank/3.png"),
-};
-
-type RankCardItem = { id: number; nome: string; icone?: number | null };
-type Palette = ReturnType<typeof getProfileShellPalette>;
-
-// ─── RankCard ─────────────────────────────────────────────────────────────────
-function RankCard({
-  item,
-  isFullWidth,
-  palette,
-}: {
-  item: RankCardItem;
-  isFullWidth: boolean;
-  palette: Palette;
-}) {
-  const router = useRouter();
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-  const shimmerAnim = useRef(new Animated.Value(0)).current;
-
-  const goldDim = tinycolor(palette.accent).setAlpha(0.5).toRgbString();
-  const goldFaint = tinycolor(palette.accent).setAlpha(0.13).toRgbString();
-
-  const cardTop = tinycolor
-    .mix(palette.surfaceElevated, palette.accent, 22)
-    .toRgbString();
-  const cardMid = tinycolor
-    .mix(palette.surface, palette.accent, 8)
-    .toRgbString();
-  const cardBot = tinycolor
-    .mix(palette.background, palette.surface, 40)
-    .toRgbString();
-
-  const iconSource = (item.icone && rankIconMap[item.icone]) || rankIconMap[1];
-
-  const handlePress = () => {
-    Animated.parallel([
-      Animated.timing(scaleAnim, {
-        toValue: 1.04,
-        duration: 110,
-        useNativeDriver: true,
-      }),
-      Animated.timing(shimmerAnim, {
-        toValue: 1,
-        duration: 90,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      setTimeout(() => {
-        Animated.parallel([
-          Animated.timing(scaleAnim, {
-            toValue: 1,
-            duration: 160,
-            useNativeDriver: true,
-          }),
-          Animated.timing(shimmerAnim, {
-            toValue: 0,
-            duration: 180,
-            useNativeDriver: true,
-          }),
-        ]).start();
-        router.push({
-          pathname: "/(tabs)/ranking/[id]",
-          params: { id: item.id },
-        });
-      }, 90);
-    });
-  };
-
-  if (isFullWidth) {
-    return (
-      <Animated.View
-        style={{ transform: [{ scale: scaleAnim }], width: "100%" }}
-      >
-        <Pressable
-          onPress={handlePress}
-          accessibilityRole="button"
-          accessibilityLabel={item.nome ?? "Ranking"}
-        >
-          <LinearGradient
-            colors={[cardTop, cardMid, cardBot]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={[styles.cardFull]}
-          >
-            {/* Bordas ornamentadas */}
-            <View
-              style={[styles.outerBorder, { borderColor: Color.colorwhite50 }]}
-            />
-            <View
-              style={[
-                styles.innerBorder,
-                {
-                  borderColor: tinycolor(palette.accent)
-                    .setAlpha(0.22)
-                    .toRgbString(),
-                },
-              ]}
-            />
-            {/* Cantos */}
-            <Corner pos="TL" color={Color.colorwhite50} />
-            <Corner pos="TR" color={Color.colorwhite50} />
-            <Corner pos="BL" color={Color.colorwhite50} />
-            <Corner pos="BR" color={Color.colorwhite50} />
-
-            {/* Shimmer */}
-            <Animated.View style={[styles.shimmer, { opacity: shimmerAnim }]}>
-              <LinearGradient
-                colors={[
-                  "transparent",
-                  "rgba(255,255,255,0.28)",
-                  "transparent",
-                ]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={StyleSheet.absoluteFill}
-              />
-            </Animated.View>
-
-            {/* Ícone com moldura circular */}
-            <View
-              style={[
-                styles.medalCircleFull,
-                { borderColor: goldDim, backgroundColor: goldFaint },
-              ]}
-            >
-              <Image
-                source={iconSource}
-                style={styles.iconFull}
-                resizeMode="contain"
-              />
-            </View>
-
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.rankLabelFull, { color: Color.colorWhite }]}>
-                {item.nome ? item.nome.toUpperCase() : "RANK"}
-              </Text>
-              <Text
-                style={[
-                  styles.rankSubFull,
-                  {
-                    color: tinycolor(palette.text).setAlpha(0.55).toRgbString(),
-                  },
-                ]}
-              >
-                Categoria de honra
-              </Text>
-            </View>
-
-            <MaterialCommunityIcons
-              name="chevron-right"
-              size={22}
-              color={Color.colorWhite20}
-            />
-          </LinearGradient>
-        </Pressable>
-      </Animated.View>
-    );
-  }
-
-  return (
-    <Animated.View style={{ transform: [{ scale: scaleAnim }], width: CARD_W }}>
-      <Pressable
-        onPress={handlePress}
-        accessibilityRole="button"
-        accessibilityLabel={item.nome ?? "Ranking"}
-      >
-        <LinearGradient
-          colors={[cardTop, cardMid, cardBot]}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
-          style={[styles.card, { height: CARD_H }]}
-        >
-          {/* Bordas ornamentadas */}
-          <View
-            style={[styles.outerBorder, { borderColor: Color.colorwhite50 }]}
-          />
-          <View
-            style={[
-              styles.innerBorder,
-              {
-                borderColor: tinycolor(palette.accent)
-                  .setAlpha(0.22)
-                  .toRgbString(),
-              },
-            ]}
-          />
-
-          {/* Cantos */}
-          <Corner pos="TL" color={Color.colorwhite50} />
-          <Corner pos="TR" color={Color.colorwhite50} />
-          <Corner pos="BL" color={Color.colorwhite50} />
-          <Corner pos="BR" color={Color.colorwhite50} />
-
-          {/* Shimmer no press */}
-          <Animated.View style={[styles.shimmer, { opacity: shimmerAnim }]}>
-            <LinearGradient
-              colors={["transparent", "rgba(255,255,255,0.26)", "transparent"]}
-              start={{ x: 0.5, y: 0 }}
-              end={{ x: 0.5, y: 1 }}
-              style={StyleSheet.absoluteFill}
-            />
-          </Animated.View>
-
-          {/* Glow de fundo atrás do ícone */}
-          <View style={[styles.iconGlowBg, { backgroundColor: goldFaint }]} />
-
-          {/* Ícone com moldura escudo */}
-          <View
-            style={[
-              styles.medalCircle,
-              { borderColor: goldDim, backgroundColor: goldFaint },
-            ]}
-          >
-            <Image
-              source={iconSource}
-              style={styles.icon}
-              resizeMode="contain"
-            />
-          </View>
-
-          {/* Separador decorativo */}
-          <View style={styles.separator}>
-            <View
-              style={[styles.sepLine, { backgroundColor: Color.colorwhite50 }]}
-            />
-            <MaterialCommunityIcons
-              name="rhombus"
-              size={6}
-              color={Color.colorwhite50}
-            />
-            <View
-              style={[styles.sepLine, { backgroundColor: Color.colorwhite50 }]}
-            />
-          </View>
-
-          {/* Nome do rank */}
-          <Text
-            style={[styles.rankLabel, { color: Color.colorWhite }]}
-            numberOfLines={2}
-          >
-            {item.nome ? item.nome.toUpperCase() : "RANK"}
-          </Text>
-
-          {/* Badge de "Entrar" */}
-          <View
-            style={[
-              styles.enterBadge,
-              {
-                borderColor: tinycolor(Color.colorwhite50)
-                  .setAlpha(0.35)
-                  .toRgbString(),
-              },
-            ]}
-          >
-            <MaterialCommunityIcons
-              name="chevron-right"
-              size={12}
-              color={Color.colorwhite50}
-            />
-          </View>
-        </LinearGradient>
-      </Pressable>
-    </Animated.View>
-  );
-}
-
-// ─── Tela principal ───────────────────────────────────────────────────────────
 export default function RankingHome() {
-  const { ranking } = useConquistaRank();
+  const { ranking, carregando, reloadRanking } = useConquistaRank();
   const { usuario } = useUsuario();
-  const activeProfile = usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null;
-  const palette = getProfileShellPalette(activeProfile);
-  const profileEmphasis = getProfileGuideEmphasis(activeProfile, "ranking");
-  const rankingHeaderGuideRef = useRef<View | null>(null);
-  const rankingCategoriesGuideRef = useRef<View | null>(null);
-  const rankingSampleCategoryTourRef = useRef<View | null>(null);
-  const rankingScrollRef = useRef<ScrollView | null>(null);
-  const rankingGuideSteps = useMemo<SectionGuideStep[]>(
+  const router = useRouter();
+  const profile = usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome;
+  const palette = getProfileShellPalette(profile);
+  const ranks = ranking?.ranks ?? [];
+  const headerRef = useRef<View | null>(null);
+  const categoriesRef = useRef<View | null>(null);
+  const sampleRef = useRef<View | null>(null);
+  const scrollRef = useRef<ScrollView | null>(null);
+  const targets = useMemo(
+    () => ({ ranking_header: headerRef, ranking_categories: categoriesRef }),
+    [],
+  );
+  const steps = useMemo<SectionGuideStep[]>(
     () => [
       {
         id: "ranking-header",
         target: "ranking_header",
         title: "Sala de honra",
         description:
-          `O ranking reúne categorias diferentes de classificação. ${profileEmphasis}`,
-        icon: "shield-crown-outline",
+          "Cada categoria reconhece um resultado diferente da sua jornada.",
+        icon: "podium",
       },
       {
         id: "ranking-categories",
         target: "ranking_categories",
-        title: "Categorias do ranking",
+        title: "Classificações",
         description:
-          "Toque em uma categoria para abrir a classificação, consultar sua posição e entender quais resultados estão sendo considerados.",
-        icon: "podium",
+          "Abra uma categoria para ver o pódio, sua posição e os resultados da turma.",
+        icon: "trophy-outline",
       },
     ],
-    [profileEmphasis],
+    [],
   );
-  // Alvos do tutorial inicial: as refs ja existiam para o guia de pagina.
   useEffect(
     () =>
-      registrarAlvoTour("ranking_categorias", rankingSampleCategoryTourRef, () => {
-        rankingScrollRef.current?.scrollTo({ y: 250, animated: false });
-      }),
+      registrarAlvoTour("ranking_categorias", sampleRef, () =>
+        scrollRef.current?.scrollTo({ y: 180, animated: false }),
+      ),
     [],
-  );
-
-  const rankingGuideTargets = useMemo(
-    () => ({
-      ranking_header: rankingHeaderGuideRef,
-      ranking_categories: rankingCategoriesGuideRef,
-    }),
-    [],
-  );
-
-  // Pulsação do ícone do topo
-  const crownPulse = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(crownPulse, {
-          toValue: 1,
-          duration: 2200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(crownPulse, {
-          toValue: 0,
-          duration: 2200,
-          useNativeDriver: true,
-        }),
-      ]),
-    ).start();
-  }, [crownPulse]);
-  const crownScale = crownPulse.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 1.07],
-  });
-  const crownOpacity = crownPulse.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.82, 1],
-  });
-
-  const data: RankCardItem[] = useMemo(
-    () =>
-      (ranking?.ranks ?? []).map((r: any) => ({
-        id: r.info.rank_id,
-        nome: r.info.nome_rank,
-        icone: Number((r.info as any)?.icone ?? 0) || undefined,
-      })),
-    [ranking],
   );
 
   return (
-    <View style={[styles.screen, { backgroundColor: palette.background }]}>
-      {/* ── Fundo do salão ── */}
+    <View style={[s.screen, { backgroundColor: palette.background }]}>
       <HallBackground palette={palette} />
-
-      {/* ── Gradiente topo (candelabro) ── */}
-      <LinearGradient
-        colors={[
-          tinycolor(palette.accent).setAlpha(0.22).toRgbString(),
-          tinycolor(palette.accent).setAlpha(0.06).toRgbString(),
-          "transparent",
-        ]}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={[StyleSheet.absoluteFill, { height: SCREEN_H * 0.42, pointerEvents: "none" }]}
-      />
-
-      {/* `edges` SEM "bottom": a tab bar (height 100 + marginBottom 10) já
-          reserva o rodapé, e o `paddingBottom: 110` do conteúdo é exatamente
-          essa medida. Sem excluir o bottom aqui, o inset de baixo entrava DE
-          NOVO -- a area util encolhia, sobrava um vao morto entre o conteudo e o
-          menu, e os elementos do fim eram cortados. As outras abas
-          (notificacoes) ja faziam assim; esta tela era a unica fora do padrao,
-          e era a unica com o problema. */}
-      <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
-        <SectionGuideButton
-          profile={usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome}
-          sectionTitle="Ranking"
-          steps={rankingGuideSteps}
-          targetRefs={rankingGuideTargets}
-          style={styles.guideButton}
-        />
+      <SafeAreaView style={s.screen} edges={["top", "left", "right"]}>
         <ScrollView
-          ref={rankingScrollRef}
-          contentContainerStyle={styles.scroll}
+          ref={scrollRef}
           showsVerticalScrollIndicator={false}
+          contentContainerStyle={s.scroll}
+          refreshControl={
+            <RefreshControl
+              refreshing={carregando}
+              onRefresh={() => void reloadRanking()}
+              tintColor={palette.accent}
+            />
+          }
         >
-          {/* ══════════ HEADER DO SALÃO ══════════ */}
-          <View ref={rankingHeaderGuideRef} collapsable={false} style={styles.header}>
-            {/* Ícone animado do topo */}
-            <Animated.View
-              style={{
-                transform: [{ scale: crownScale }],
-                opacity: crownOpacity,
-              }}
-            >
-              <MaterialCommunityIcons
-                name="shield-crown"
-                size={56}
-                color={Color.colorWhite}
+          <View ref={headerRef} collapsable={false} style={s.header}>
+            <View style={s.topLine}>
+              <Text style={[s.eyebrow, { color: palette.accent }]}>
+                RANKING
+              </Text>
+              <SectionGuideButton
+                profile={profile}
+                sectionTitle="Ranking"
+                steps={steps}
+                targetRefs={targets}
               />
-            </Animated.View>
-
-            {/* Título */}
-            <Text style={[styles.title, { color: Color.colorWhite }]}>
-              SALA DE HONRA
+            </View>
+            <ProfileArtwork
+              source={journeyObjects.trophy}
+              profile={profile}
+              width={94}
+              height={104}
+              style={s.trophy}
+            />
+            <Text style={[s.title, { color: palette.text }]}>
+              Sala de honra
             </Text>
-            <Text style={[styles.titleSub, { color: palette.text }]}>
-              Quadro de Classificações
+            <Text style={[s.subtitle, { color: palette.textMuted }]}>
+              Classificações da turma
             </Text>
-
-            {/* Ornamento */}
-            <OrnamentDivider color={Color.colorWhite} />
-
-            {/* Subtítulo descritivo */}
-            <Text
-              style={[
-                styles.subtitle,
-                { color: tinycolor(palette.text).setAlpha(0.52).toRgbString() },
-              ]}
-            >
-              Escolha uma categoria e descubra sua posição entre os melhores
-            </Text>
+            <OrnamentDivider color={palette.borderStrong} />
           </View>
-
-          {/* ══════════ GRADE DE CARDS ══════════ */}
-          <View ref={rankingCategoriesGuideRef} collapsable={false} style={styles.grid}>
-            {data.map((item, index) => {
-              const isLastItem = index === data.length - 1;
-              const isTotalOdd = data.length % 2 !== 0;
-              const isFullWidth = isLastItem && isTotalOdd;
-              const highlightedIndex = data.length > 1 ? 1 : 0;
+          <View ref={categoriesRef} collapsable={false} style={s.categories}>
+            {ranks.map((rank, index) => {
+              const wide = ranks.length % 2 !== 0 && index === ranks.length - 1;
+              const artwork =
+                rank.info.criterio === "tempo"
+                  ? journeyObjects.deadline
+                  : rank.info.criterio === "percentual"
+                    ? journeyObjects.book
+                    : journeyObjects.gold;
               return (
                 <View
-                  key={item.id}
-                  ref={index === highlightedIndex ? rankingSampleCategoryTourRef : undefined}
+                  ref={index === 0 ? sampleRef : undefined}
                   collapsable={false}
-                  style={{ width: isFullWidth ? "100%" : CARD_W }}
+                  key={rank.info.rank_id}
+                  style={wide ? s.full : s.half}
                 >
-                  <RankCard
-                    item={item}
-                    isFullWidth={isFullWidth}
-                    palette={palette}
-                  />
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Abrir ranking de ${rank.info.nome_rank}`}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/(tabs)/ranking/[id]",
+                        params: { id: rank.info.rank_id },
+                      })
+                    }
+                    style={({ pressed }) => [
+                      s.category,
+                      wide && s.categoryWide,
+                      {
+                        borderColor: palette.borderStrong,
+                        backgroundColor: pressed
+                          ? palette.surfaceElevated
+                          : palette.surface,
+                      },
+                    ]}
+                  >
+                    <Corner pos="TL" color={palette.accent} />
+                    <Corner pos="BR" color={palette.accent} />
+                    <ProfileArtwork
+                      source={artwork}
+                      profile={profile}
+                      width={wide ? 70 : 86}
+                      height={wide ? 78 : 92}
+                      style={wide ? s.wideArt : s.categoryArt}
+                    />
+                    <View style={wide ? s.wideCopy : s.copy}>
+                      <Text
+                        style={[
+                          s.categoryTitle,
+                          { color: palette.text },
+                          wide && s.leftText,
+                        ]}
+                      >
+                        {rank.info.nome_rank}
+                      </Text>
+                      {wide ? (
+                        <Text
+                          style={[s.description, { color: palette.textMuted }]}
+                        >
+                          {rank.info.descricao}
+                        </Text>
+                      ) : null}
+                    </View>
+                    <MaterialCommunityIcons
+                      name="arrow-right"
+                      size={20}
+                      color={palette.accent}
+                    />
+                  </Pressable>
                 </View>
               );
             })}
           </View>
-
-          {/* ── Ornamento de rodapé ── */}
-          {/* Atenuação na cor, não num wrapper com `opacity` (evita a camada de
-              render extra no Android). 0.7 é o piso medido: abaixo dele as duas
-              linhas de 1px caem para menos de 3:1 contra o fundo e o divisor
-              aparece "quebrado" — só os losangos, sem linha. */}
-          <View style={{ marginTop: 32 }}>
-            <OrnamentDivider color={Color.colorWhite} opacidade={0.7} />
-          </View>
+          {carregando && !ranks.length ? (
+            <ActivityIndicator style={s.empty} color={palette.accent} />
+          ) : !ranks.length ? (
+            <Text style={[s.empty, { color: palette.textMuted }]}>
+              Nenhum ranking disponível nesta turma.
+            </Text>
+          ) : null}
         </ScrollView>
       </SafeAreaView>
     </View>
   );
 }
 
-// ─── Estilos ──────────────────────────────────────────────────────────────────
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
-  guideButton: {
-    position: "absolute",
-    top: 34,
-    right: 16,
-  },
-
-  scroll: {
-    paddingHorizontal: PADDING_H,
-    paddingTop: 24,
-    // 110 aqui era vao morto puro. A tab bar nao flutua (nao tem
-    // `position: absolute` em (tabs)/_layout.tsx), entao o ScrollView ja termina
-    // onde ela comeca -- reservar a altura dela DE NOVO dentro do conteudo
-    // criava ~110dp de nada no fim e, pior, deixava o conteudo mais alto que a
-    // viewport: a tela rolava mesmo com tudo caibindo. Agora e so respiro.
-    paddingBottom: 24,
-  },
-
-  // Header
-  header: {
+const s = StyleSheet.create({
+  screen: { flex: 1 },
+  scroll: { paddingHorizontal: 20, paddingBottom: 24 },
+  header: { alignItems: "center", paddingBottom: 16 },
+  topLine: {
+    width: "100%",
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 32,
-    gap: 6,
+    paddingTop: 8,
   },
-  title: {
-    fontFamily: FontFamily.inikaBold,
-    fontSize: 26,
-    letterSpacing: 3,
-    textShadowColor: "rgba(0,0,0,0.8)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 8,
-    marginTop: 8,
-  },
-  titleSub: {
-    fontFamily: FontFamily.inikaBold,
-    fontSize: 11,
-    letterSpacing: 2.5,
-    textTransform: "uppercase",
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontFamily: FontFamily.interMedium,
-    fontSize: 13,
-    textAlign: "center",
-    lineHeight: 19,
-    marginTop: 4,
-    paddingHorizontal: 12,
-  },
-
-  // Grid
-  grid: {
+  eyebrow: { fontSize: 11, fontWeight: "700" },
+  trophy: { width: 94, height: 104, marginTop: 4, marginBottom: 8 },
+  title: { fontFamily: FontFamily.inikaBold, fontSize: 28 },
+  subtitle: { fontSize: 13, marginTop: 6, marginBottom: 16 },
+  categories: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
-    gap: GAP,
+    rowGap: 14,
   },
-
-  // Card normal (portrait)
-  card: {
-    borderRadius: 18,
-    padding: 12,
-    overflow: "hidden",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    marginBottom: 4,
-  },
-  outerBorder: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: 18,
+  half: { width: "48%" },
+  full: { width: "100%" },
+  category: {
+    minHeight: 220,
     borderWidth: 1,
-    opacity: 0.65,
-  },
-  innerBorder: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: 14,
-    margin: 4,
-    borderWidth: 1,
-  },
-  shimmer: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: 18,
-    overflow: "hidden",
-  },
-  iconGlowBg: {
-    position: "absolute",
-    top: "18%",
-    width: CARD_W * 0.55,
-    height: CARD_W * 0.55,
-    borderRadius: CARD_W * 0.28,
-  },
-  medalCircle: {
-    width: CARD_W * 0.58,
-    height: CARD_W * 0.58,
-    borderRadius: CARD_W * 0.29,
-    borderWidth: 1.5,
+    borderRadius: 6,
+    padding: 18,
     alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-  icon: {
-    width: "80%",
-    height: "80%",
-  },
-  separator: {
-    flexDirection: "row",
-    alignItems: "center",
-    width: "70%",
-    gap: 4,
-  },
-  sepLine: {
-    flex: 1,
-    height: 1,
-    opacity: 0.6,
-  },
-  rankLabel: {
-    fontFamily: FontFamily.inikaBold,
-    fontSize: 13,
-    letterSpacing: 1.5,
-    textAlign: "center",
-    textShadowColor: "rgba(0,0,0,0.9)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 6,
-  },
-  enterBadge: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    opacity: 0.7,
-  },
-
-  // Card full-width (landscape)
-  cardFull: {
-    borderRadius: 18,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    flexDirection: "row",
-    alignItems: "center",
+    justifyContent: "space-between",
     gap: 14,
-    overflow: "hidden",
-    marginBottom: 4,
   },
-  medalCircleFull: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
-    borderWidth: 1.5,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-  iconFull: {
-    width: "76%",
-    height: "76%",
-  },
-  rankLabelFull: {
+  categoryWide: { flexDirection: "row", minHeight: 128, gap: 14 },
+  categoryArt: { width: 86, height: 92 },
+  wideArt: { width: 70, height: 78 },
+  copy: { flex: 1, justifyContent: "center" },
+  wideCopy: { flex: 1, minWidth: 0 },
+  categoryTitle: {
     fontFamily: FontFamily.inikaBold,
-    fontSize: 18,
-    letterSpacing: 1.5,
-    textShadowColor: "rgba(0,0,0,0.8)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 6,
+    fontSize: 19,
+    lineHeight: 25,
+    textAlign: "center",
   },
-  rankSubFull: {
-    fontFamily: FontFamily.interMedium,
-    fontSize: 12,
-    marginTop: 2,
-  },
+  leftText: { textAlign: "left" },
+  description: { fontSize: 12, lineHeight: 18, marginTop: 6 },
+  empty: { marginTop: 40, textAlign: "center" },
 });

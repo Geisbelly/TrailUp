@@ -20,6 +20,7 @@ import { useUsuario } from "@/context/SessaoContext";
 import { MetricasProvider } from "@/context/MetricasContext";
 import { user } from "@/database/mockUser";
 import { FontFamily } from "@/styles/GlobalStyle";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMonitorDeSessao } from "@/hooks/useMonitorDeSessao";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { estaNaTrilhaDeEstudo } from "@/utils/presencaDeEstudo";
@@ -38,6 +39,7 @@ function TourAwareTabBar(props: BottomTabBarProps) {
 }
 
 export default function TabLayout() {
+  const insets = useSafeAreaInsets();
   const { usuario } = useUsuario();
   const segments = useSegments() as string[];
 
@@ -78,16 +80,18 @@ export default function TabLayout() {
             screenOptions={{
               tabBarActiveTintColor: palette.accent,
               tabBarInactiveTintColor: palette.inactive,
+              tabBarActiveBackgroundColor: palette.accentMuted,
+              tabBarItemStyle: { borderRadius: 6, marginHorizontal: 2 },
               sceneStyle: {
                 backgroundColor: palette.background,
               },
               tabBarStyle: {
-                backgroundColor: palette.background,
-                borderTopColor: palette.border,
+                backgroundColor: palette.surface,
+                borderTopColor: palette.borderStrong,
                 borderTopWidth: hideTabBarOnModule ? 0 : 1,
-                height: hideTabBarOnModule ? 0 : 100,
-                marginBottom: hideTabBarOnModule ? 0 : 10,
-                paddingTop: hideTabBarOnModule ? 0 : 10,
+                height: hideTabBarOnModule ? 0 : 66 + insets.bottom,
+                paddingBottom: hideTabBarOnModule ? 0 : Math.max(insets.bottom, 8),
+                paddingTop: hideTabBarOnModule ? 0 : 8,
                 display: hideTabBarOnModule ? "none" : "flex",
               },
               headerStyle: { backgroundColor: palette.background },
@@ -95,9 +99,10 @@ export default function TabLayout() {
                 , fontFamily: FontFamily.poppinsExtraBold
               },
               tabBarLabelStyle: {
-                fontFamily: FontFamily.inikaBold,
-                fontSize: 12,
-                letterSpacing: 0.2,
+                fontFamily: FontFamily.interMedium,
+                fontSize: 10,
+                fontWeight: "600",
+                letterSpacing: 0,
               },
               headerShown: false,
               tabBarButton: HapticTab,
@@ -109,7 +114,11 @@ export default function TabLayout() {
                 title: 'Trilha',
                 tabBarIcon: ({ color, focused }) =>
                   perfilConfig ? (
-                    <MaterialCommunityIcons name={focused ? perfilConfig.icon : perfilConfig.icon_focus} size={focused ? 28 : 26} color={color} />
+                    <MaterialCommunityIcons
+                      name={focused ? perfilConfig.icon : perfilConfig.icon_focus}
+                      size={focused ? 28 : 26}
+                      color={color}
+                    />
                   ) : (
                     // 2. Usando 'bookshelf' para representar uma biblioteca cheia e visual
                     // Outra opção boa seria 'library-shelves' ou 'book-open-variant'
@@ -132,17 +141,17 @@ export default function TabLayout() {
 
             <Tabs.Screen
               name="social"
+              listeners={{
+                tabPress: (event) => {
+                  if (!aberturas.social) {
+                    event.preventDefault();
+                    setPortaoBloqueado("social");
+                  }
+                },
+              }}
               options={{
                 title: "Social",
                 href: undefined,
-                listeners: {
-                  tabPress: (event) => {
-                    if (!aberturas.social) {
-                      event.preventDefault();
-                      setPortaoBloqueado("social");
-                    }
-                  },
-                },
                 tabBarIcon: ({ color, focused }) => (
                   <View style={{ opacity: aberturas.social ? 1 : 0.5 }}>
                     <MaterialCommunityIcons
@@ -158,17 +167,17 @@ export default function TabLayout() {
 
              <Tabs.Screen 
               name="ranking"
+              listeners={{
+                tabPress: (event) => {
+                  if (!aberturas.rank) {
+                    event.preventDefault();
+                    setPortaoBloqueado("rank");
+                  }
+                },
+              }}
               options={{
                 title: "Ranking",
                 href: undefined,
-                listeners: {
-                  tabPress: (event) => {
-                    if (!aberturas.rank) {
-                      event.preventDefault();
-                      setPortaoBloqueado("rank");
-                    }
-                  },
-                },
                 // Ícone de Pódio (fiel à referência do ranking/liderança)
                 // Outra opção boa seria "trophy-variant" se preferir o troféu detalhado
                 tabBarIcon: ({ color, focused }) => (

@@ -5,7 +5,6 @@ import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
-  Dimensions,
   Image,
   ScrollView,
   StatusBar,
@@ -19,7 +18,12 @@ import tinycolor from "tinycolor2";
 import CardSemDados from "@/components/CardSemDados";
 import { BagModal } from "@/components/bag/BagModal";
 import ConquistaModal from "@/components/ConquistaModal";
-import { HallBackground, OrnamentDivider } from "@/components/HallTheme";
+import { OrnamentDivider } from "@/components/HallTheme";
+import { getProfileArtwork, profileEmblems } from "@/constants/designAssets";
+import { getAchievementArtwork } from "@/constants/achievementImages";
+import { ProfileArtwork } from "@/components/ProfileArtwork";
+import { FramedProfileImage } from "@/components/FramedProfileImage";
+import { Design } from "@/styles/design";
 import { ProfileMetricsViews } from "@/components/perfil/ProfileMetricsViews";
 import { buildProfileMetricsViewModel } from "@/components/perfil/profileMetricsViewModel";
 import {
@@ -27,11 +31,9 @@ import {
   type SectionGuideStep,
 } from "@/components/SectionGuideButton";
 import {
-  avatarImages,
-  bannerImages,
+  getGuardianFaceImage,
   getBrainHexConfig,
   normalizeBrainHexProfile,
-  pickBySeed,
 } from "@/constants/profileImages";
 import { useConquistaRank } from "@/context/ConquistaRankContext";
 import { useIA } from "@/context/IAContext";
@@ -48,8 +50,6 @@ import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { registrarAlvoTour } from "@/utils/tourTargets";
 import { resolveRepresentativeBrainHexProfiles } from "@/utils/brainHex";
 import { buildProfileGuideSteps } from "@/utils/profileSectionGuide";
-
-const { width } = Dimensions.get("window");
 
 export default function PerfilHome() {
   const { usuario, selecionarPerfilAtivo } = useUsuario();
@@ -106,12 +106,12 @@ export default function PerfilHome() {
   }, [classeAtual, getBattleState]);
 
   const banner = useMemo(
-    () => pickBySeed(usuario?.id, bannerImages),
-    [usuario?.id],
+    () => getProfileArtwork(perfil, 'banner'),
+    [perfil],
   );
   const avatar = useMemo(
-    () => pickBySeed(usuario?.id, avatarImages),
-    [usuario?.id],
+    () => getGuardianFaceImage(perfil),
+    [perfil],
   );
 
   const perfisRepresentativos = useMemo(
@@ -120,7 +120,7 @@ export default function PerfilHome() {
   );
   const hexConfig = getBrainHexConfig(perfil);
   const shellPalette = useMemo(() => getProfileShellPalette(perfil), [perfil]);
-  const accent = tinycolor(hexConfig.color).lighten(3).toString();
+  const accent = shellPalette.accent;
   const accentSoft = tinycolor(hexConfig.color)
     .lighten(18)
     .setAlpha(0.18)
@@ -281,12 +281,6 @@ export default function PerfilHome() {
       <View
         style={[styles.screen, { backgroundColor: shellPalette.background }]}
       >
-        {/* ── Fundo do salão (sutil) ── */}
-        <View
-          style={[StyleSheet.absoluteFill, { opacity: 0.45, pointerEvents: "none" }]}
-        >
-          <HallBackground palette={shellPalette} />
-        </View>
         <ScrollView
           ref={profileScrollRef}
           showsVerticalScrollIndicator={false}
@@ -341,7 +335,7 @@ export default function PerfilHome() {
                 <MaterialCommunityIcons
                   name="cog-outline"
                   size={22}
-                  color={shellPalette.text}
+                  color={shellPalette.accent}
                 />
               </TouchableOpacity>
             </View>
@@ -361,7 +355,7 @@ export default function PerfilHome() {
                 <MaterialCommunityIcons
                   name="trophy-variant-outline"
                   size={20}
-                  color={shellPalette.text}
+                  color={shellPalette.accent}
                 />
               </TouchableOpacity>
             </View>
@@ -372,7 +366,7 @@ export default function PerfilHome() {
                 accessibilityRole="button"
                 accessibilityLabel="Abrir minha Bag"
               >
-                <MaterialCommunityIcons name="bag-personal-outline" size={20} color={shellPalette.text} />
+                <MaterialCommunityIcons name="bag-personal-outline" size={20} color={shellPalette.accent} />
               </TouchableOpacity>
             </View>
 
@@ -382,36 +376,15 @@ export default function PerfilHome() {
               style={[
                 styles.profileCard,
                 {
-                  backgroundColor: shellPalette.surfaceElevated,
+                  backgroundColor: shellPalette.background,
                   borderColor: shellPalette.border,
                 },
               ]}
             >
               <View style={styles.avatarContainer}>
-                {usuario?.foto_url ? (
-                  <Image
-                    source={{ uri: usuario.foto_url }}
-                    style={[styles.avatar, { borderColor: accent }]}
-                  />
-                ) : (
-                  <Image
-                    source={avatar}
-                    style={[styles.avatar, { borderColor: accent }]}
-                  />
-                )}
+                <FramedProfileImage profile={perfil} source={usuario?.foto_url ? { uri: usuario.foto_url } : avatar} size={112} label={`Foto de ${usuario?.nome ?? 'Aluno'}`} />
                 <View style={styles.hexBadgeContainer}>
-                  <View
-                    style={[
-                      styles.hexBadgeShape,
-                      { backgroundColor: hexConfig.color },
-                    ]}
-                  />
-                  <MaterialCommunityIcons
-                    name={hexConfig.icon}
-                    size={14}
-                    color="#FFF"
-                    style={{ zIndex: 2 }}
-                  />
+                  <ProfileArtwork source={profileEmblems[perfil]} profile={perfil} width={32} />
                 </View>
               </View>
 
@@ -432,7 +405,7 @@ export default function PerfilHome() {
                   ]}
                 >
                   <Text
-                    style={[styles.tagProfileText, { color: hexConfig.color }]}
+                    style={[styles.tagProfileText, { color: shellPalette.accent }]}
                   >
                     {hexConfig.label.toUpperCase()}
                   </Text>
@@ -483,16 +456,12 @@ export default function PerfilHome() {
                           },
                         ]}
                       >
-                        <MaterialCommunityIcons
-                          name={config.icon}
-                          size={17}
-                          color={selected ? config.color : shellPalette.textMuted}
-                        />
+                        <ProfileArtwork source={profileEmblems[profileKey]} profile={perfil} width={28} />
                         <View>
                           <Text
                             style={[
                               styles.profileOptionLabel,
-                              { color: selected ? config.color : shellPalette.text },
+                              { color: selected ? getProfileShellPalette(profileKey).accent : shellPalette.text },
                             ]}
                           >
                             {config.label}
@@ -510,7 +479,7 @@ export default function PerfilHome() {
                           <MaterialCommunityIcons
                             name="check-circle"
                             size={16}
-                            color={config.color}
+                            color={getProfileShellPalette(profileKey).accent}
                           />
                         ) : null}
                       </TouchableOpacity>
@@ -631,16 +600,7 @@ export default function PerfilHome() {
                           { borderColor: shellPalette.borderStrong },
                         ]}
                       >
-                        <LinearGradient
-                          colors={[accent, hexConfig.color]}
-                          style={styles.iconGradient}
-                        >
-                          <MaterialCommunityIcons
-                            name={hexConfig.icon}
-                            size={24}
-                            color={shellPalette.text}
-                          />
-                        </LinearGradient>
+                        <ProfileArtwork source={getAchievementArtwork(conquista)} profile={perfil} width={50} height={54} />
                       </View>
                       <View style={styles.conquistaTextBlock}>
                         <View style={styles.conquistaHeaderRow}>
@@ -712,7 +672,8 @@ export default function PerfilHome() {
           }
           date={conquistaSelecionada?.data_conquista}
           color={hexConfig.color}
-          imageSource={hexConfig.image}
+          profile={perfil}
+          imageSource={getAchievementArtwork(conquistaSelecionada)}
         />
       </View>
     </>
@@ -724,11 +685,11 @@ const styles = StyleSheet.create({
   ornamentRow: { marginTop: 4, opacity: 0.7 },
   scrollContent: { paddingBottom: 40 },
   headerContainer: { marginBottom: 10, alignItems: "center" },
-  bannerWrapper: { width: "100%", height: 180, position: "relative" },
+  bannerWrapper: { width: "100%", height: 220, position: "relative" },
   banner: { width: "100%", height: "100%" },
   btnSettings: {
     padding: 8,
-    borderRadius: 20,
+    borderRadius: Design.radius,
     borderWidth: 1,
   },
   btnSettingsWrap: {
@@ -756,24 +717,18 @@ const styles = StyleSheet.create({
   },
   btnLibrary: {
     padding: 8,
-    borderRadius: 20,
+    borderRadius: Design.radius,
     borderWidth: 1,
     zIndex: 10,
   },
   profileCard: {
-    marginTop: -50,
-    width: width * 0.9,
-    borderRadius: 24,
+    marginTop: -20,
+    width: "100%",
     alignItems: "center",
-    paddingTop: 55,
+    paddingTop: 72,
     paddingBottom: 24,
     paddingHorizontal: 20,
-    borderWidth: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.14,
-    shadowRadius: 15,
-    elevation: 6,
+    borderBottomWidth: 1,
   },
   avatarContainer: {
     position: "absolute",
@@ -782,27 +737,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     zIndex: 2,
   },
-  avatar: { width: 100, height: 100, borderRadius: 50, borderWidth: 4 },
   hexBadgeContainer: {
     position: "absolute",
-    top: 0,
+    bottom: 0,
     right: 0,
-    marginTop: -5,
-    marginRight: -5,
     width: 34,
     height: 34,
     alignItems: "center",
     justifyContent: "center",
     zIndex: 3,
-  },
-  hexBadgeShape: {
-    position: "absolute",
-    width: 26,
-    height: 26,
-    borderRadius: 4,
-    transform: [{ rotate: "45deg" }],
-    borderWidth: 2,
-    borderColor: "#F4F7FC",
   },
   infoContainer: { alignItems: "center", gap: 4 },
   profileSwitcherWrap: {
@@ -825,7 +768,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     borderWidth: 1,
-    borderRadius: 14,
+    borderRadius: Design.radius,
     paddingHorizontal: 12,
     paddingVertical: 9,
   },
@@ -841,21 +784,21 @@ const styles = StyleSheet.create({
   username: {
     fontFamily: FontFamily.inikaBold,
     fontSize: 13,
-    letterSpacing: 1,
+    letterSpacing: 0,
     fontWeight: "700",
   },
-  name: { fontFamily: FontFamily.inikaBold, fontSize: 18, textAlign: "center" },
+  name: { fontFamily: FontFamily.inikaBold, fontSize: 24, lineHeight: 31, textAlign: "center" },
   tagProfile: {
     borderWidth: 1,
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 8,
+    borderRadius: 4,
     marginVertical: 4,
   },
   tagProfileText: {
     fontFamily: FontFamily.inikaBold,
     fontSize: 10,
-    letterSpacing: 0.5,
+    letterSpacing: 0,
   },
   desc: {
     fontFamily: FontFamily.interMedium,
@@ -891,8 +834,6 @@ const styles = StyleSheet.create({
   },
   conquistaIconContainer: {
     marginRight: 15,
-    borderWidth: 1,
-    borderRadius: 26,
   },
   iconGradient: {
     width: 44,

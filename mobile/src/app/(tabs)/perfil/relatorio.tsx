@@ -569,8 +569,8 @@ export default function RelatorioDadosScreen() {
           activeOpacity={0.8}
           accessibilityRole="button"
         >
-          <MaterialCommunityIcons name="file-pdf-box" size={24} color={Color.colorWhite} style={{marginRight: 8}}/>
-          <Text style={styles.buttonText}>GERAR PDF COMPLETO</Text>
+          <MaterialCommunityIcons name="file-pdf-box" size={24} color={palette.background} style={{marginRight: 8}}/>
+          <Text style={[styles.buttonText, { color: palette.background }]}>GERAR PDF COMPLETO</Text>
         </TouchableOpacity>
       </View>
 

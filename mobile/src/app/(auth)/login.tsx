@@ -4,6 +4,7 @@ import { useDialog } from "@/context/DialogContext";
 import { useLoading } from "@/context/LoadingContext";
 import { autenticarComGoogle, autenticarUsuario, getAuthErrorMessage, normalizeEmail } from "@/services/auth";
 import { FontFamily } from "@/styles/GlobalStyle";
+import { Design } from "@/styles/design";
 import { buildProfileShellPaletteFromAccent } from "@/utils/profileShellTheme";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -12,6 +13,7 @@ import {
   KeyboardAvoidingView,
   Linking,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -21,8 +23,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import tinycolor from "tinycolor2";
 
-// Paleta estática para telas de autenticação — violeta oficial do logo TrailUp
-const AUTH_PALETTE = buildProfileShellPaletteFromAccent("#a057fd", "magica");
+const AUTH_PALETTE = buildProfileShellPaletteFromAccent(Design.primary, "magica");
 
 export default function Login() {
   const router = useRouter();
@@ -125,10 +126,11 @@ export default function Login() {
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
           {/* Título */}
           <Text style={[styles.appName, { color: "#fff" }]}>
-            — {app.name.toUpperCase()} —
+            {app.name}
           </Text>
           <Text style={[styles.title, { color: "rgba(255,255,255,0.78)" }]}>
             Acesse sua conta
@@ -171,7 +173,7 @@ export default function Login() {
             style={[
               styles.button,
               dadosValidos
-                ? { backgroundColor: tinycolor(AUTH_PALETTE.accent).darken(5).toHexString(), borderColor: gold }
+                ? { backgroundColor: Design.primary, borderColor: gold }
                 : { backgroundColor: goldFaint, borderColor: goldDim },
             ]}
             onPress={handleLogin}
@@ -179,7 +181,7 @@ export default function Login() {
             accessibilityRole="button"
             accessibilityLabel="Entrar"
           >
-            <Text style={[styles.buttonText, { color: dadosValidos ? "#FFF" : AUTH_PALETTE.textSubtle }]}>
+            <Text style={[styles.buttonText, { color: dadosValidos ? Design.ink : AUTH_PALETTE.textSubtle }]}>
               {carregando ? "Entrando..." : "Entrar"}
             </Text>
           </TouchableOpacity>
@@ -220,6 +222,7 @@ export default function Login() {
               </Text>
             </Text>
           </View>
+        </ScrollView>
         </SafeAreaView>
       </KeyboardAvoidingView>
     </View>
@@ -231,10 +234,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   container: {
-    flex: 1,
+    flexGrow: 1,
+    width: "100%",
+    maxWidth: 520,
+    alignSelf: "center",
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 28,
+    paddingVertical: 32,
   },
   appName: {
     marginBottom: 4,
@@ -250,7 +257,7 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.inikaBold,
     marginBottom: 2,
     textAlign: "center",
-    letterSpacing: 1,
+    letterSpacing: 0,
   },
   ornamentRow: {
     width: "100%",
@@ -263,21 +270,21 @@ const styles = StyleSheet.create({
   },
   inputWrapper: {
     width: "100%",
-    borderRadius: 12,
+    borderRadius: Design.radius,
     borderWidth: 1,
     overflow: "hidden",
   },
   Input: {
     height: 50,
     fontSize: 14,
-    fontFamily: FontFamily.inknutAntiquaMedium,
+    fontFamily: FontFamily.interMedium,
     paddingHorizontal: 16,
   },
   button: {
     width: "100%",
     height: 52,
     marginTop: 18,
-    borderRadius: 12,
+    borderRadius: Design.radius,
     borderWidth: 1.5,
     justifyContent: "center",
     alignItems: "center",
@@ -286,13 +293,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     fontFamily: FontFamily.inknutAntiquaMedium,
-    letterSpacing: 0.5,
+    letterSpacing: 0,
   },
   googleButton: {
     width: "100%",
     height: 52,
     marginTop: 12,
-    borderRadius: 12,
+    borderRadius: Design.radius,
     borderWidth: 1,
     justifyContent: "center",
     alignItems: "center",
@@ -304,6 +311,7 @@ const styles = StyleSheet.create({
   },
   linkContainer: {
     flexDirection: "row",
+    flexWrap: "wrap",
     justifyContent: "center",
     alignItems: "center",
     marginTop: 18,
@@ -320,8 +328,8 @@ const styles = StyleSheet.create({
     textDecorationLine: "underline",
   },
   footer: {
-    position: "absolute",
-    bottom: 60,
+    marginTop: 36,
+    alignItems: "center",
   },
   footerText: {
     fontSize: 12,

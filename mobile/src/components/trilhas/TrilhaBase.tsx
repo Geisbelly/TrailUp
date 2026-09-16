@@ -1,6 +1,7 @@
 // src/components/trilhas/TrilhaBase.tsx
 import { useTrilha } from "@/context/TrilhaContext";
 import { useUsuario } from "@/context/SessaoContext";
+import { getProfileArtwork } from "@/constants/designAssets";
 import { Color } from "@/styles/GlobalStyle";
 import { buildClasseAcademicMetrics } from "@/utils/classeMetrics";
 import { getBrainHexProfileCapabilities } from "@/utils/brainHexCapabilities";
@@ -10,7 +11,7 @@ import { registrarAlvoTour } from "@/utils/tourTargets";
 import { useIsFocused } from "@react-navigation/native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useEffect, useMemo, useRef } from "react";
-import { StyleSheet, View } from "react-native";
+import { Image, StyleSheet, View } from "react-native";
 import { TrilhaArvoreSimple } from "./ArvoreView";
 import { GameHeader } from "./common/GameHeader";
 import { TrilhaLinearList } from "./ListaSimplesView";
@@ -119,6 +120,15 @@ export const TrilhaBase: React.FC<{
 
   return (
     <View style={[st.page, { backgroundColor: palette.background }]}>
+      <View pointerEvents="none" accessible={false} style={StyleSheet.absoluteFill}>
+        <Image
+          key={perfil}
+          source={getProfileArtwork(perfil, 'trail')}
+          resizeMode="cover"
+          style={st.scenery}
+        />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: palette.background, opacity: 0.3 }]} />
+      </View>
       <GameHeader
         titulo={nome}
         subtitulo={subtitulo}
@@ -133,7 +143,7 @@ export const TrilhaBase: React.FC<{
         progressTargetRef={progressGuideTargetRef}
         rightSlot={
           <View style={st.headerActions}>
-            {onOpenBag ? <MaterialCommunityIcons.Button name="bag-personal-outline" size={20} color={palette.text} backgroundColor="transparent" underlayColor={palette.surface} onPress={onOpenBag} accessibilityLabel="Abrir Bag" /> : null}
+            {onOpenBag ? <MaterialCommunityIcons.Button name="bag-personal-outline" size={20} color={palette.accent} backgroundColor="transparent" underlayColor={palette.surface} onPress={onOpenBag} accessibilityLabel="Abrir Bag" /> : null}
             <ModuleHeaderGuideButton
               profile={perfil}
               title={nome}
@@ -170,5 +180,6 @@ export const TrilhaBase: React.FC<{
 
 const st = StyleSheet.create({
   page: { flex: 1, backgroundColor: Color.background },
+  scenery: { width: '100%', height: '100%' },
   headerActions: { flexDirection: "row", alignItems: "center" },
 });

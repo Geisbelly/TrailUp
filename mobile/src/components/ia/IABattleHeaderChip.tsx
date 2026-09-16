@@ -195,7 +195,7 @@ export function IABattleHeaderChip({ topicoId = null, itemKey = null }: Props) {
             <MaterialCommunityIcons
               name={battleState?.defeated ? "shield-check" : "sword-cross"}
               size={16}
-              color={palette.text}
+              color={palette.accent}
             />
           )}
         </View>
@@ -265,7 +265,7 @@ export function IABattleHeaderChip({ topicoId = null, itemKey = null }: Props) {
                 <MaterialCommunityIcons
                   name="close"
                   size={20}
-                  color={palette.text}
+                  color={palette.accent}
                 />
               </Pressable>
             </View>

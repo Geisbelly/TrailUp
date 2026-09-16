@@ -1,11 +1,14 @@
 import { useTrilha } from "@/context/TrilhaContext";
 import { LockedNodeModal } from "@/components/trilhas/LockedNodeModal";
 import { FontFamily } from "@/styles/GlobalStyle";
+import { Design } from "@/styles/design";
+import { getProfileArtwork } from "@/constants/designAssets";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -59,10 +62,10 @@ function buildCountryPath(
 
   return [
     `M ${x + width * 0.14} ${y + topRise}`,
-    `C ${x + width * 0.3} ${y - 20}, ${x + width * 0.58} ${y - 16}, ${x + width * 0.84} ${y + topRise * 0.72}`,
-    `C ${x + width + rightPush} ${y + height * 0.24}, ${x + width + rightPush} ${y + height * 0.58}, ${x + width * 0.82} ${y + height - 12}`,
-    `C ${x + width * 0.68} ${y + height + bottomDrop}, ${x + width * 0.32} ${y + height + bottomDrop}, ${x + leftBend} ${y + height - 4}`,
-    `C ${x - leftBend} ${y + height * 0.68}, ${x - leftBend} ${y + height * 0.26}, ${x + width * 0.14} ${y + topRise}`,
+    `L ${x + width * 0.48} ${y - 16} L ${x + width * 0.84} ${y + topRise * 0.72}`,
+    `L ${x + width + rightPush} ${y + height * 0.44} L ${x + width * 0.82} ${y + height - 12}`,
+    `L ${x + width * 0.5} ${y + height + bottomDrop} L ${x + leftBend} ${y + height - 4}`,
+    `L ${x - leftBend} ${y + height * 0.48}`,
     "Z",
   ].join(" ");
 }
@@ -232,7 +235,7 @@ export function TrilhaMapaHeroStable({
     sea: shellPalette.surface,
     seaDeep: shellPalette.background,
     route: shellPalette.accent,
-    routeGlow: shellPalette.accentSoft,
+    routeGlow: shellPalette.borderStrong,
     countryLocked: shellPalette.surface,
     countryOpen: shellPalette.accentMuted,
     countryDone: shellPalette.accentStrong,
@@ -255,7 +258,7 @@ export function TrilhaMapaHeroStable({
         style={[
           styles.headerCard,
           {
-            backgroundColor: palette.panelBg,
+            backgroundColor: shellPalette.background,
             borderColor: palette.panelBorder,
           },
         ]}
@@ -265,8 +268,7 @@ export function TrilhaMapaHeroStable({
         </Text>
 
         <Text style={[styles.headerBody, { color: palette.textSecondary }]}>
-          {mapTheme?.worldSubtitle ??
-            "Cada módulo aparece como um país navegável. Siga as rotas para explorar a trilha como um mapa-múndi acadêmico."}
+          {nodes.filter((node) => node.completed).length} de {nodes.length} módulos concluídos
         </Text>
       </View>
 
@@ -281,6 +283,7 @@ export function TrilhaMapaHeroStable({
           contentContainerStyle={styles.scrollContent}
         >
           <View style={{ width: canvasWidth, height: canvasHeight }}>
+            <Image source={getProfileArtwork(shellPalette.profile, 'map')} style={{ width: canvasWidth, height: canvasHeight }} resizeMode="cover" accessible={false} />
             <Svg
               width={canvasWidth}
               height={canvasHeight}
@@ -316,6 +319,7 @@ export function TrilhaMapaHeroStable({
               <Path
                 d={`M 0 0 H ${worldWidth} V ${worldHeight} H 0 Z`}
                 fill="url(#oceanBackground)"
+                opacity={0.65}
               />
 
               {/* Brilho globo (luz incidente) */}
@@ -589,27 +593,19 @@ export function TrilhaMapaHeroStable({
 
 const styles = StyleSheet.create({
   root: {
-    height: "109%",
+    flex: 1,
   },
   headerCard: {
-    position: "absolute",
-    top: 4,
-    left: 10,
-    right: 10,
-    zIndex: 10,
-    marginTop: 10,
-    marginBottom: 8,
-    borderRadius: 22,
-    borderWidth: 1,
+    borderBottomWidth: 1,
     paddingHorizontal: 18,
-    paddingVertical: 16,
+    paddingVertical: 12,
     gap: 6,
   },
   headerEyebrow: {
     fontFamily: FontFamily.inikaBold,
     fontSize: 11,
     textTransform: "uppercase",
-    letterSpacing: 1.2,
+    letterSpacing: 0,
   },
   headerTitle: {
     fontFamily: FontFamily.inikaBold,
@@ -627,7 +623,7 @@ const styles = StyleSheet.create({
   nodePlate: {
     position: "absolute",
     minHeight: 94,
-    borderRadius: 18,
+    borderRadius: Design.radius,
     borderWidth: 1.5,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -648,14 +644,14 @@ const styles = StyleSheet.create({
   nodeEmblem: {
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: 4,
     alignItems: "center",
     justifyContent: "center",
   },
   sequenceBadge: {
     minWidth: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: 4,
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",

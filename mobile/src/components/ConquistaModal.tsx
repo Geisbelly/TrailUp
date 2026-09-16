@@ -1,13 +1,14 @@
 import { OrnamentDivider } from "@/components/HallTheme";
+import { FramedProfileImage } from "@/components/FramedProfileImage";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { buildProfileShellPaletteFromAccent } from "@/utils/profileShellTheme";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import {
-  Image,
   ImageSourcePropType,
   Modal,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -26,6 +27,7 @@ interface ConquistaModalProps {
   imageSource: ImageSourcePropType;
   buttonText?: string;
   category?: string;
+  profile?: string | null;
 }
 
 export default function ConquistaModal({
@@ -38,6 +40,7 @@ export default function ConquistaModal({
   imageSource,
   buttonText = "Fechar",
   category,
+  profile,
 }: ConquistaModalProps) {
   const palette = buildProfileShellPaletteFromAccent(color);
   const gold = tinycolor(color).lighten(10).toHexString();
@@ -63,11 +66,13 @@ export default function ConquistaModal({
           />
 
           <TouchableWithoutFeedback onPress={() => {}}>
-            <View
+            <ScrollView
               style={[
                 s.modalCard,
                 { backgroundColor: palette.surfaceElevated, borderColor },
               ]}
+              contentContainerStyle={s.modalContent}
+              bounces={false}
             >
               {/* Borda interna ornamental */}
               <View
@@ -83,21 +88,7 @@ export default function ConquistaModal({
               <View style={[s.corner, s.cornerBL, { borderColor: gold }]} />
               <View style={[s.corner, s.cornerBR, { borderColor: gold }]} />
 
-              {/* Ícone com glow */}
-              <View style={s.modalGlowContainer}>
-                <LinearGradient
-                  colors={[tinycolor(color).setAlpha(0.4).toRgbString(), "transparent"]}
-                  style={s.modalGlow}
-                />
-                <View
-                  style={[
-                    s.modalIconWrapper,
-                    { borderColor: goldDim, backgroundColor: goldFaint },
-                  ]}
-                >
-                  <Image source={imageSource} style={s.modalImage} resizeMode="cover" />
-                </View>
-              </View>
+              <FramedProfileImage profile={profile} source={imageSource} size={112} fit="contain" artworkTone />
 
               {/* Categoria badge */}
               {category && (
@@ -168,7 +159,7 @@ export default function ConquistaModal({
               >
                 <Text style={[s.modalCloseText, { color: "#FFF" }]}>{buttonText}</Text>
               </TouchableOpacity>
-            </View>
+            </ScrollView>
           </TouchableWithoutFeedback>
         </View>
       </TouchableWithoutFeedback>
@@ -187,10 +178,11 @@ const s = StyleSheet.create({
     padding: 20,
   },
   modalCard: {
+    flexGrow: 0,
     width: "100%",
-    borderRadius: 24,
-    padding: 24,
-    alignItems: "center",
+    maxWidth: 440,
+    maxHeight: "90%",
+    borderRadius: 6,
     borderWidth: 1,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 10 },
@@ -198,11 +190,11 @@ const s = StyleSheet.create({
     shadowRadius: 24,
     elevation: 20,
     overflow: "hidden",
-    gap: 10,
   },
+  modalContent: { padding: 24, alignItems: 'center', gap: 10 },
   innerBorder: {
     ...StyleSheet.absoluteFillObject,
-    borderRadius: 20,
+    borderRadius: 4,
     margin: 4,
     borderWidth: 1,
   },
@@ -217,50 +209,24 @@ const s = StyleSheet.create({
   cornerBL: { bottom: CORNER_OFFSET, left: CORNER_OFFSET, borderBottomWidth: 1.5, borderLeftWidth: 1.5 },
   cornerBR: { bottom: CORNER_OFFSET, right: CORNER_OFFSET, borderBottomWidth: 1.5, borderRightWidth: 1.5 },
 
-  modalGlowContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  modalGlow: {
-    position: "absolute",
-    width: 130,
-    height: 130,
-    borderRadius: 65,
-    opacity: 0.25,
-  },
-  modalIconWrapper: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    overflow: "hidden",
-  },
-  modalImage: {
-    width: "100%",
-    height: "100%",
-  },
   categoryBadge: {
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: 4,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
   categoryText: {
     fontFamily: FontFamily.inikaBold,
     fontSize: 10,
-    letterSpacing: 1.5,
+    letterSpacing: 0,
   },
   modalTitle: {
     fontFamily: FontFamily.inikaBold,
     fontSize: 22,
     textAlign: "center",
-    letterSpacing: 0.5,
+    letterSpacing: 0,
   },
   modalDesc: {
     fontFamily: FontFamily.interMedium,
@@ -273,7 +239,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 14,
     paddingVertical: 7,
-    borderRadius: 20,
+    borderRadius: 4,
     borderWidth: 1,
   },
   modalDate: {
@@ -283,7 +249,7 @@ const s = StyleSheet.create({
   modalCloseBtn: {
     width: "100%",
     paddingVertical: 14,
-    borderRadius: 16,
+    borderRadius: 6,
     alignItems: "center",
     borderWidth: 1.5,
     marginTop: 4,
@@ -291,6 +257,6 @@ const s = StyleSheet.create({
   modalCloseText: {
     fontFamily: FontFamily.inikaBold,
     fontSize: 16,
-    letterSpacing: 0.5,
+    letterSpacing: 0,
   },
 });

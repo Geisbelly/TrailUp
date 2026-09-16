@@ -2,12 +2,10 @@ import { useTrilha } from "@/context/TrilhaContext";
 import { LockedNodeModal } from "@/components/trilhas/LockedNodeModal";
 import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
-  Image,
   Platform,
   ScrollView,
   StyleSheet,
@@ -20,7 +18,6 @@ import Svg, {
   G,
   LinearGradient,
   Path,
-  Pattern,
   Polygon,
   RadialGradient,
   Rect,
@@ -445,34 +442,7 @@ const adjustedPositions = useMemo(() => {
   }, [currentNodePosition, scale, vbSafeY, winH]);
 
   return (
-    <View style={[styles.root, { width: winW, height: winH, backgroundColor: palette.background }]}>
-      {/* Camada de textura principal */}
-      <View style={[styles.textureLayerWrap, { pointerEvents: "none" }]}>
-        <Image
-          source={require("@/assets/ImagensReferencia/arte_filter.png")}
-          style={[styles.textureLayerImage, { opacity: 0.14 }]}
-          resizeMode="cover"
-        />
-      </View>
-      {/* Segunda camada espelhada para dar profundidade */}
-      <View style={[styles.textureLayerWrap, { pointerEvents: "none" }]}>
-        <Image
-          source={require("@/assets/ImagensReferencia/arte_filter.png")}
-          style={[
-            styles.textureLayerImage,
-            { opacity: 0.07, transform: [{ rotate: "180deg" }] },
-          ]}
-          resizeMode="cover"
-        />
-      </View>
-      {/* ── Bússola ── */}
-      <View style={[styles.compassTexture, { pointerEvents: "none" }]}>
-        <MaterialCommunityIcons
-          name="compass-rose"
-          size={200}
-          color={palette.text}
-        />
-      </View>
+    <View style={[styles.root, { width: winW, flex: 1, backgroundColor: "transparent" }]}>
       <ScrollView
         ref={vScrollRef}
         contentContainerStyle={[
@@ -481,7 +451,7 @@ const adjustedPositions = useMemo(() => {
             width: winW,
             minHeight: contentH,
             paddingBottom: SAFE_PAD,
-            backgroundColor: palette.background,
+            backgroundColor: "transparent",
           },
         ]}
         showsVerticalScrollIndicator={false}
@@ -518,73 +488,7 @@ const adjustedPositions = useMemo(() => {
                 <Stop offset="0%"   stopColor={palette.text} stopOpacity="0.45" />
                 <Stop offset="100%" stopColor={palette.text} stopOpacity="0" />
               </RadialGradient>
-              {/* ── Fundo: gradiente vertical (topo mais rico) ── */}
-              <LinearGradient id="treeBg" x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0%"   stopColor={palette.surfaceElevated} stopOpacity="0.55" />
-                <Stop offset="40%"  stopColor={palette.surface}         stopOpacity="0.22" />
-                <Stop offset="100%" stopColor={palette.background}      stopOpacity="0" />
-              </LinearGradient>
-              {/* ── Fundo: brilho central ── */}
-              <RadialGradient id="treeCenterGlow" cx="50%" cy="40%" r="55%">
-                <Stop offset="0%"   stopColor={palette.accentMuted} stopOpacity="0.18" />
-                <Stop offset="100%" stopColor={palette.background}  stopOpacity="0" />
-              </RadialGradient>
-              {/* ── Padrão de hexágonos no fundo (menor que os nós) ── */}
-              <Pattern
-                id="hexGrid"
-                x="0"
-                y="0"
-                width={HEX_R * 1.73}
-                height={HEX_R * 1.5}
-                patternUnits="userSpaceOnUse"
-              >
-                {/* hex menor: raio = HEX_R * 0.42 para ficar como grade de fundo */}
-                <Polygon
-                  points={hexPoints(HEX_R * 0.865, HEX_R * 0.5, HEX_R * 0.42)}
-                  fill="none"
-                  stroke={palette.borderStrong}
-                  strokeWidth={0.55}
-                  opacity={0.32}
-                />
-                <Polygon
-                  points={hexPoints(0, HEX_R * 1.0, HEX_R * 0.42)}
-                  fill="none"
-                  stroke={palette.borderStrong}
-                  strokeWidth={0.55}
-                  opacity={0.32}
-                />
-                <Polygon
-                  points={hexPoints(HEX_R * 1.73, HEX_R * 1.0, HEX_R * 0.42)}
-                  fill="none"
-                  stroke={palette.borderStrong}
-                  strokeWidth={0.55}
-                  opacity={0.32}
-                />
-              </Pattern>
             </Defs>
-
-            {/* ── Fundo texturizado ── */}
-            <Rect
-              x={(vbSafe as any).x}
-              y={(vbSafe as any).y}
-              width={(vbSafe as any).w}
-              height={(vbSafe as any).h}
-              fill="url(#hexGrid)"
-            />
-            <Rect
-              x={(vbSafe as any).x}
-              y={(vbSafe as any).y}
-              width={(vbSafe as any).w}
-              height={(vbSafe as any).h}
-              fill="url(#treeBg)"
-            />
-            <Rect
-              x={(vbSafe as any).x}
-              y={(vbSafe as any).y}
-              width={(vbSafe as any).w}
-              height={(vbSafe as any).h}
-              fill="url(#treeCenterGlow)"
-            />
 
             {adjustedPositions.size === 0 && (
               <SvgText
@@ -851,19 +755,6 @@ const styles = StyleSheet.create({
   root: { backgroundColor: Color.background },
   container: { backgroundColor: Color.background, alignItems: "center" },
   svg: { alignSelf: "center" },
-  textureLayerWrap: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  textureLayerImage: {
-    width: "100%",
-    height: "100%",
-  },
-  compassTexture: {
-    position: "absolute",
-    right: 4,
-    top: 64,
-    opacity: 0.15,
-  },
 });
 
 export default TrilhaArvoreSimple;

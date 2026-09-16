@@ -560,10 +560,10 @@ export default function Settings() {
             <Feather
               name="log-out"
               size={20}
-              color="#fff"
+              color={palette.background}
               style={styles.searchIcon}
             />
-            <Text style={[styles.buttonText, { color: "#fff" }]}>Sair</Text>
+            <Text style={[styles.buttonText, { color: palette.background }]}>Sair</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

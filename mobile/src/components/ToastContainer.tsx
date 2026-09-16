@@ -1,4 +1,6 @@
 import { getBrainHexConfig } from '@/constants/profileImages';
+import { ProfileArtwork } from '@/components/ProfileArtwork';
+import { journeyObjects } from '@/constants/designAssets';
 import { ToastMessage, useNotifications } from '@/context/NotificacaoContext';
 import { useUsuario } from '@/context/SessaoContext';
 import { FontFamily } from '@/styles/GlobalStyle';
@@ -47,7 +49,7 @@ const RankBanner = ({
         style={[
           styles.bannerContainer,
           {
-            borderColor: profileColor || '#FFD700',
+            borderColor: profileColor || palette.accent,
             backgroundColor: palette.surfaceElevated,
           },
         ]}
@@ -61,10 +63,10 @@ const RankBanner = ({
             { backgroundColor: palette.accentMuted },
           ]}
         >
-          <MaterialCommunityIcons name="podium-gold" size={28} color="#FFD700" />
+          <ProfileArtwork source={journeyObjects.trophy} color={palette.accent} width={36} />
         </View>
         <View style={styles.bannerTextContainer}>
-          <Text style={[styles.bannerTitle, { color: profileColor || '#FFD700' }]}>{item.title}</Text>
+          <Text style={[styles.bannerTitle, { color: palette.accent }]}>{item.title}</Text>
           <Text style={[styles.bannerDesc, { color: palette.textMuted }]} numberOfLines={1}>
             {item.description}
           </Text>
@@ -72,7 +74,7 @@ const RankBanner = ({
         <MaterialCommunityIcons
           name="chevron-right"
           size={24}
-          color={palette.text}
+          color={palette.accent}
           style={{ opacity: 0.5 }}
         />
       </TouchableOpacity>
@@ -193,7 +195,7 @@ const NotificationModal = ({ item, onRemove }: { item: ToastMessage; onRemove: (
           {/* Badge de conquista mantido */}
           {config.isProfileThemed && (
             <View style={[styles.badgeIcon, { backgroundColor: palette.surfaceElevated }]}>
-              <MaterialCommunityIcons name="trophy" size={22} color="#FFD700" />
+              <ProfileArtwork source={journeyObjects.gold} color={palette.accent} width={26} />
             </View>
           )}
         </View>

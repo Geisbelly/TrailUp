@@ -1,6 +1,5 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
-import { LinearGradient } from "expo-linear-gradient";
 import { Stack } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -14,6 +13,8 @@ import tinycolor from "tinycolor2";
 
 import CardSemDados from "@/components/CardSemDados";
 import ConquistaModal from "@/components/ConquistaModal";
+import { getAchievementArtwork } from "@/constants/achievementImages";
+import { ProfileArtwork } from "@/components/ProfileArtwork";
 import { HallBackground, OrnamentDivider } from "@/components/HallTheme";
 import {
   SectionGuideButton,
@@ -54,7 +55,6 @@ export default function BibliotecaConquistasScreen() {
   const shellPalette = useMemo(() => getProfileShellPalette(perfil), [perfil]);
   const accent = tinycolor(hexConfig.color).lighten(4).toHexString();
   const gold = tinycolor(shellPalette.accent).lighten(10).toHexString();
-  const commonDark = tinycolor(gold).darken(24).toHexString();
 
   const loadBiblioteca = useCallback(async () => {
     if (!usuario?.id) {
@@ -140,8 +140,6 @@ export default function BibliotecaConquistasScreen() {
     ].filter((section) => section.groups.length > 0);
   }, [conquistasComuns, conquistasPerfil, perfisRepresentativos]);
 
-  const selectedProfile = normalizeBrainHexProfile(selected?.perfil_alvo) ?? perfil;
-  const selectedProfileConfig = getBrainHexConfig(selectedProfile);
   const profileEmphasis = getProfileGuideEmphasis(perfil, "achievements");
   const guideSteps = useMemo<SectionGuideStep[]>(
     () => [
@@ -266,7 +264,7 @@ export default function BibliotecaConquistasScreen() {
                       key={profileKey}
                       name={profileConfig.icon}
                       size={13}
-                      color={tinycolor(profileConfig.color).lighten(4).toHexString()}
+                      color={shellPalette.accent}
                     />
                   );
                 })}
@@ -355,7 +353,6 @@ export default function BibliotecaConquistasScreen() {
                   item.status === "concluida"
                     ? gold
                     : itemProfileAccent;
-                const isProfileAchievement = item.conquista.escopo === "perfil";
 
                 return (
                   <TouchableOpacity
@@ -377,20 +374,7 @@ export default function BibliotecaConquistasScreen() {
                         { borderColor: shellPalette.borderStrong },
                       ]}
                     >
-                      <LinearGradient
-                        colors={
-                          isProfileAchievement
-                            ? [itemProfileAccent, itemProfileConfig.color]
-                            : [gold, commonDark]
-                        }
-                        style={styles.itemIconGradient}
-                      >
-                        <MaterialCommunityIcons
-                          name={isProfileAchievement ? itemProfileConfig.icon : "earth"}
-                          size={20}
-                          color={shellPalette.text}
-                        />
-                      </LinearGradient>
+                      <ProfileArtwork source={getAchievementArtwork(item.conquista)} profile={perfil} width={48} height={52} />
                     </View>
 
                     <View style={styles.itemBody}>
@@ -453,16 +437,9 @@ export default function BibliotecaConquistasScreen() {
         category={selected?.categoria ?? ""}
         description={selected?.descricao ?? "Detalhes da conquista."}
         date={selected?.data_conquista}
-        color={
-          selected?.escopo === "perfil"
-            ? selectedProfileConfig.color
-            : shellPalette.accent
-        }
-        imageSource={
-          selected?.icone_url
-            ? { uri: selected.icone_url }
-            : selectedProfileConfig.image
-        }
+        profile={perfil}
+        color={shellPalette.accent}
+        imageSource={getAchievementArtwork(selected)}
       />
     </View>
   );

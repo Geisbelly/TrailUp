@@ -11,6 +11,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { consumePendingRoute, setPendingRoute } from "@/utils/pendingRoute";
 import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { Redirect, Stack, usePathname, useSegments, type Href } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useState } from "react";
 import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -110,6 +111,7 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
+      <StatusBar style="light" />
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
         <LoadingProvider>
           <SessionProvider>
