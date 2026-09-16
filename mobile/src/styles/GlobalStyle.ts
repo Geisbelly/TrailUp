@@ -1,34 +1,27 @@
-import { Platform } from "react-native";
-
-import { Noite, Texto } from "./identidade";
-
-const ornamentalSerif =
-  Platform.select({
-    ios: "Georgia",
-    android: "serif",
-    web: "Georgia",
-    default: "serif",
-  }) ?? "serif";
-
-const readableSerif =
-  Platform.select({
-    ios: "Palatino",
-    android: "serif",
-    web: "Georgia",
-    default: "serif",
-  }) ?? "serif";
+import { Fontes, Noite, Texto } from "./identidade";
 
 /* Fonts */
+/**
+ * Os nomes legados ficam; a familia por tras deles muda.
+ *
+ * As tres chaves "ornamentais" apontavam todas para a MESMA serifa, entao
+ * mapear as tres para `Fontes.titulo` nao perde distincao nenhuma — preserva
+ * exatamente a relacao que existia. Sao 425 usos no app; a troca e' aqui.
+ *
+ * As familias so' existem depois que `fontes.ts` as carrega no layout raiz. Se
+ * o carregamento falhar, o React Native cai na fonte do sistema em vez de
+ * quebrar — e' por isso que o gate do `_layout` libera em `loaded || erro`.
+ */
 export const FontFamily = {
-  inikaBold: ornamentalSerif,
-  inknutAntiquaMedium: ornamentalSerif,
-  interMedium: readableSerif,
-  poppinsExtraBold: ornamentalSerif,
+  inikaBold: Fontes.titulo,
+  inknutAntiquaMedium: Fontes.titulo,
+  interMedium: Fontes.corpo,
+  poppinsExtraBold: Fontes.titulo,
 };
 // Os tokens da identidade moram em `identidade.ts`, sem dependencia de
 // runtime. Reexportados aqui para quem ja importa de `@/styles/GlobalStyle`.
 export { Aco, Luz } from "./identidade";
-export { Noite, Texto };
+export { Fontes, Noite, Texto };
 
 /* Font sizes */
 export const FontSize = {

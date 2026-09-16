@@ -190,12 +190,30 @@ Cada perfil carrega:
 >    virar token, em vez de ser copiado cru. Ha teste cobrindo os tres niveis
 >    contra as tres superficies (`profileShellTheme.test.ts`).
 >
-> A tipografia **nao** mudou junto, e nao por esquecimento: nao ha fonte
-> empacotada no repo (`expo-font` esta nas dependencias, mas nao ha `.ttf` nem
-> `useFonts`), e trocar a serifa por `System` achata o peso de TODO titulo no
-> iOS, onde nao da para escolher peso por nome de familia. Sair da serifa exige
-> passar `fontWeight` nos ~50 arquivos que usam `FontFamily.inikaBold`, ou
-> empacotar a fonte — nao e uma linha.
+> **A tipografia agora é Jost + Karla, empacotadas.** `expo-font` estava nas
+> dependências e nunca era usado: não havia `.ttf` nem `useFonts`, e as famílias
+> saíam de `Platform.select` apontando para Georgia/Palatino. Entram por
+> `@expo-google-fonts/jost` e `/karla`, carregadas uma vez em `_layout.tsx`.
+>
+> Três coisas que importam ao mexer aqui:
+>
+> 1. **As três chaves ornamentais apontavam para a MESMA serifa.** `inikaBold`,
+>    `inknutAntiquaMedium` e `poppinsExtraBold` eram todas `ornamentalSerif` —
+>    não havia hierarquia de peso, só de tamanho. Por isso mapear as três para
+>    `Fontes.titulo` não perde nada, e Jost 600 contra Karla 400 *acrescenta*
+>    hierarquia que não existia.
+> 2. **O gate libera em `loaded || erro`, nunca só em `loaded`.** Fonte que não
+>    carrega faz o React Native cair na do sistema sozinho; travar o app nisso
+>    transformaria um defeito cosmético em tela branca.
+> 3. **Nome de família errado não quebra nada — e é por isso que é perigoso.**
+>    O app sobe inteiro e renderiza na fonte do sistema, calado. As chaves de
+>    `FONTES_DA_IDENTIDADE` saem de `Fontes` por propriedade computada, e há
+>    teste conferindo os dois lados (`fontes.test.ts`, `globalStyleColors.test.ts`).
+>
+> O que **não** veio junto: o *tracking* largo da ficha. `letterSpacing` é prop
+> de estilo por chamador, não viaja na família — aplicá-lo exige decidir, entre
+> os 425 usos, quais são rótulo de seção. É trabalho de escala de tipo, não da
+> troca de fonte.
 >
 > **O inimigo do painel de batalha tem paleta própria, e ela não é a do
 > perfil.** O *chrome* de `IABattlePanel` lê `palette.*` normalmente (25 vezes),

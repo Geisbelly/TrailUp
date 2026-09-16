@@ -292,7 +292,8 @@ ninguém. A Lumi preenche esse vazio — é a voz do lado que hoje é só formul
 | `microservice/src/constants/brainHex.ts` | nada — as sete assinaturas continuam as mesmas | — |
 | `mobile/src/utils/profileShellTheme.ts` | **feito** — `THEME_TONES` saiu; a UI é constante; `ensureMinContrast` roda contra `noite-700` | núcleo |
 | `mobile/src/styles/identidade.ts` | **feito** — os tokens da §5, sem import nenhum; `GlobalStyle` reexporta | núcleo |
-| `mobile/src/styles/GlobalStyle.ts` | `FontFamily` deixa de mapear serifa — **pendente**, ver §12 | núcleo |
+| `mobile/src/styles/GlobalStyle.ts` | **feito** — `Color` remapeado para os tokens e `FontFamily` para Jost/Karla | núcleo |
+| `mobile/src/styles/fontes.ts` | **feito** — o mapa que o `useFonts` consome | pequeno |
 | `frontend/src/lib/personalizacao-theme-guide.ts` | tons clareados à mão saem; passa a ler a tabela da §6 | médio |
 | `frontend/src/features/signup/brainhex.ts` | idem | pequeno |
 | `api/app/api/v1/personalizacao.py` `_build_design_tokens` | `_ensure_min_contrast` passa a receber `noite-700` fixo | pequeno |
@@ -309,7 +310,7 @@ continuam pedindo `palette.surface` e recebendo o valor novo.
 | Passo | Entrega | Como se vê |
 | --- | --- | --- |
 | ~~1~~ | **feito** — tokens em `mobile/src/styles/identidade.ts` + `profileShellTheme` com UI fixa | o app inteiro mudou de chão |
-| 2 | Tipografia (tracking, fim da serifa) — **não é uma linha**: sem fonte empacotada, trocar a serifa por `System` achata o peso de todo título no iOS | os rótulos ganham o ar da ficha |
+| ~~2~~ | **feito** — Jost 600 + Karla 400 por `@expo-google-fonts`, carregadas no `_layout`. Falta o *tracking*: é prop por chamador, não viaja na família | a serifa saiu; os rótulos ainda não têm o espaçamento largo |
 | 3 | Frontend e backend lendo a tabela da §6 | a divergência dos três fecha |
 | 4 | Moldura e emblema (as duas peças com lugar pronto) | o perfil reaparece como sprite |
 | ~~5~~ | ~~URL de arte no prompt de combate~~ — **feito**; falta subir as peças e definir `ARTE_BASE_URL` | boss, cenário e moldura aparecem sem uma linha de componente nova (§9.1) |

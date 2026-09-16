@@ -53,3 +53,21 @@ export const Texto = {
   medio: "#97a3b4", // 7,61 · 5,92
   fraco: "#7d8794", // 5,34 · 4,15 -> corrigido antes de virar token
 } as const;
+
+/**
+ * A tipografia da identidade: Jost para titulo/rotulo/numero, Karla para corpo.
+ *
+ * O app usava serifa (`Georgia`/`Palatino`), heranca do tema medieval, e as
+ * TRES chaves ornamentais de `FontFamily` apontavam para a MESMA serifa — ou
+ * seja, nao havia hierarquia de peso a preservar, so' tamanho. Trocar por Jost
+ * SemiBold no titulo e Karla Regular no corpo DA hierarquia onde nao havia.
+ *
+ * Nomes de familia carregada, nao caminhos: quem carrega e' `fontes.ts`, uma
+ * vez, no layout raiz. Este arquivo continua sem import nenhum de proposito.
+ */
+export const Fontes = {
+  /** Titulo, rotulo em caixa alta, numero grande. */
+  titulo: "Jost_600SemiBold",
+  /** Corpo de leitura. */
+  corpo: "Karla_400Regular",
+} as const;
