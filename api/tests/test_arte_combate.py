@@ -1,8 +1,12 @@
+import re
+from pathlib import Path
+
 import pytest
 
 from app.core.settings import Settings
 from app.services import arte_combate
 from app.services.behavioral_personalization import (
+    _PALETTES,
     _PROFILE_PRESETS,
     build_behavioral_personalization,
 )
@@ -281,3 +285,77 @@ def test_placeholder_do_prompt_nao_vaza_para_o_app() -> None:
         _settings(BASE),
     )
     assert saneado["avatarUrl"] == f"{BASE}/combate/boss/veil.png"
+
+
+# --------------------------------------------------------------------------
+# O fallback do mobile e um espelho: divergir dele tem de doer aqui
+# --------------------------------------------------------------------------
+
+_PAINEL = (
+    Path(__file__).resolve().parents[2]
+    / "mobile"
+    / "src"
+    / "components"
+    / "ia"
+    / "IABattlePanel.tsx"
+)
+
+
+def _bloco_do_preset(fonte: str, preset: str) -> str:
+    """O objeto `<preset>: { ... }` dentro de BOSS_PRESETS.
+
+    Recortar por preset evita o falso negativo de um hex certo aparecer no
+    bloco errado e o teste passar assim mesmo.
+    """
+    achado = re.search(
+        rf"^  {re.escape(preset)}: \{{\n(.*?)^  \}},$",
+        fonte,
+        re.DOTALL | re.MULTILINE,
+    )
+    assert achado, f"BOSS_PRESETS nao tem o preset {preset}"
+    return achado.group(1)
+
+
+def _fonte_do_painel() -> str:
+    if not _PAINEL.is_file():
+        pytest.skip("mobile/ nao esta neste checkout")
+    return _PAINEL.read_text(encoding="utf-8")
+
+
+def test_mobile_casa_os_sete_archetypes() -> None:
+    """Ate 20260916 o casamento era por substring e nenhum dos sete casava.
+
+    `night-stalker` nao contem "mech", "scholar" nem "beast", entao TODO boss
+    caia no default laranja — qualquer que fosse o perfil do aluno.
+    """
+    fonte = _fonte_do_painel()
+    for dados in _PROFILE_PRESETS.values():
+        esperado = f'"{dados["archetype"]}": "{dados["preset"]}",'
+        assert esperado in fonte, f"PRESET_POR_ARCHETYPE sem {esperado}"
+
+
+def test_mobile_espelha_paleta_e_rotulo_de_cada_preset() -> None:
+    """O fallback tem de ser indistinguivel do que a API manda.
+
+    Se divergir, o boss muda de cara conforme o patch trouxe `visual` ou nao —
+    e isso aparece como piscada de cor no aparelho do aluno, sem erro nenhum.
+    """
+    fonte = _fonte_do_painel()
+    for dados in _PROFILE_PRESETS.values():
+        preset = dados["preset"]
+        bloco = _bloco_do_preset(fonte, preset)
+        assert f'badgeLabel: "{dados["badge"]}"' in bloco, f"rotulo divergente em {preset}"
+
+        paleta = _PALETTES[preset]
+        for campo_py, campo_ts in (
+            ("primary_color", "primaryColor"),
+            ("secondary_color", "secondaryColor"),
+            ("accent_color", "accentColor"),
+            ("hp_color", "hpColor"),
+            ("shield_color", "shieldColor"),
+            ("text_color", "textColor"),
+        ):
+            valor = getattr(paleta, campo_py)
+            assert f'{campo_ts}: "{valor}"' in bloco, (
+                f"{preset}.{campo_ts} divergiu: a API manda {valor}"
+            )

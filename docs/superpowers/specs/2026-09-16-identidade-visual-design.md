@@ -264,11 +264,15 @@ decisão de quem o escreveu e sem referência a esta medição. **Isso deixa de 
 proposta e vira precedente:** qualquer tela que ponha cenário atrás de texto
 copia o número do painel de batalha.
 
-Sobra um problema, que volta para a §4: as **cores** do inimigo não vêm de
-`palette.*`. Vêm de `IAEnemyVisualSpec.palette` (enviada pela IA) ou, na falta,
-de `buildFallbackVisual`, com quatro presets em hex cravado — `#38bdf8`,
-`#a78bfa`, `#fb7185`, `#f97316`, defaults do Tailwind. O *chrome* do painel lê
-`palette.*` normalmente; o inimigo não. Trocar o tema não muda o boss.
+As **cores** do inimigo não vêm de `palette.*`, e isso é deliberado: vêm de
+`IAEnemyVisualSpec.palette`, enviada pela IA. O boss é o adversário, não o
+aluno. O *chrome* do painel lê `palette.*` normalmente.
+
+O que estava quebrado era o **espelho**: `buildFallbackVisual` casava por
+substring (`includes("mech")`, `includes("beast")`) sobre quatro presets, e
+nenhum dos sete archetypes da API continha nenhuma delas — todo boss caía no
+default laranja. Corrigido: duas tabelas copiadas literalmente do Python, com
+teste na API lendo o `.tsx` para impedir que divirjam de novo.
 
 ## 10. Lumi, e as cinco famílias de personagem
 

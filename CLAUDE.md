@@ -166,11 +166,33 @@ Cada perfil carrega:
 >
 > **O inimigo do painel de batalha tem paleta própria, e ela não é a do
 > perfil.** O *chrome* de `IABattlePanel` lê `palette.*` normalmente (25 vezes),
-> mas as cores do boss vêm de `IAEnemyVisualSpec.palette`, enviada pela IA — e,
-> quando ela não vem, de `buildFallbackVisual`, que tem quatro presets
-> (`mech`, `scholar`/`mage`, `beast`, `phantom`) com hex cravado no arquivo:
-> `#38bdf8`, `#a78bfa`, `#fb7185`, `#f97316`. São defaults do Tailwind, não
-> cor-assinatura. Trocar o tema do app não muda o inimigo.
+> mas as cores do boss vêm de `IAEnemyVisualSpec.palette`, enviada pela IA.
+> Isso é deliberado: o boss é o adversário, não o aluno — trocar o tema do app
+> não muda o inimigo, e não deve mudar.
+>
+> **O fallback do mobile é um espelho, e até `20260916` ele não casava com
+> nada.** `buildFallbackVisual` decidia por substring (`includes("mech")`,
+> `includes("scholar")`, `includes("beast")`) sobre quatro presets, enquanto a
+> API manda sete archetypes — `night-stalker`, `fallen-usurper`,
+> `arena-tyrant`, `shadow-puppeteer`, `void-entity`, `chaos-saboteur`,
+> `toxic-demagogue`. **Nenhum dos sete contém nenhuma das substrings**, então
+> todo boss caía no default laranja, qualquer que fosse o perfil. Não aparecia
+> porque o caminho só roda quando o patch chega SEM `visual`, e a API sempre
+> manda um.
+>
+> Hoje são duas tabelas — `PRESET_POR_ARCHETYPE` e `BOSS_PRESETS` — copiadas
+> **literalmente** de `_PROFILE_PRESETS` e `_PALETTES`, inclusive a falta de
+> acento nos rótulos ("Ameaca", "Mente Sombria"). A cópia literal é o ponto: o
+> fallback tem de ser indistinguível do que a API manda, senão o boss muda de
+> cara conforme o patch trouxe `visual` ou não. Dois testes no lado da API leem
+> o `.tsx` e falham se divergir (`test_mobile_casa_os_sete_archetypes`,
+> `test_mobile_espelha_paleta_e_rotulo_de_cada_preset`).
+>
+> Corolário do acento: os rótulos e as falas do boss em
+> `behavioral_personalization.py` são **todos sem acento** ("Cada passo seu
+> alimenta a perseguicao deste modulo"), e chegam ao aluno assim. É convenção
+> do arquivo inteiro, não deslize de uma linha — corrigir é trocar o arquivo
+> todo de uma vez, com o espelho do mobile junto, nunca meia dúzia de strings.
 
 > **A arte do combate sai de um catálogo em Python, nunca do LLM.**
 > `IAEnemyVisualSpec` (`mobile/src/interfaces/personalizacao/IAContracts.ts`)
