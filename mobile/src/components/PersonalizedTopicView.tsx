@@ -359,9 +359,19 @@ function buildPersonalizedContentSteps(
 function buildPersonalizedActivitySteps(
   payload: PersonalizedTopicPayload
 ): Extract<UnifiedTopicStep, { source: "personalizado"; kind: "activity" }>[] {
-  void payload;
-  // Regra de produto: as questoes devem vir da atividade do professor.
-  return [];
+  return payload.primaryActivities.map((activity, index) => ({
+    id: `personalized-activity-${activity.personalizationKey ?? activity.id}-${index}`,
+    source: "personalizado",
+    academic: false,
+    kind: "activity",
+    title: activity.titulo ?? `Atividade personalizada ${index + 1}`,
+    activity,
+    atividadeId: Number(activity.id),
+    linkedConteudoId:
+      Array.isArray(activity.conteudo_ids) && activity.conteudo_ids.length > 0
+        ? Number(activity.conteudo_ids[0])
+        : null,
+  }));
 }
 
 function buildOfficialPersonalizedSteps(payload: PersonalizedTopicPayload): UnifiedTopicStep[] {
@@ -381,7 +391,19 @@ function buildOfficialPersonalizedSteps(payload: PersonalizedTopicPayload): Unif
         `personalized:${payload.topicoId}:${step.kind}:${index + 1}`;
 
       if (step.kind === "activity" && step.activity) {
-        return null;
+        return {
+          id: `personalized-step-activity-${itemKey}`,
+          source: "personalizado",
+          academic: false,
+          kind: "activity",
+          title: step.title ?? `Atividade personalizada ${index + 1}`,
+          activity: step.activity,
+          atividadeId: Number(step.activity.id),
+          linkedConteudoId:
+            Array.isArray(step.activity.conteudo_ids) && step.activity.conteudo_ids.length > 0
+              ? Number(step.activity.conteudo_ids[0])
+              : null,
+        };
       }
 
       const blocks = Array.isArray(step.blocks) ? step.blocks : [];

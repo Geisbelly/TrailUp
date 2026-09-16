@@ -215,61 +215,26 @@ export class Topico {
     }
   }
 
-  /** ✅ Marca tópico como iniciado */
+  /**
+   * Registra a entrada no tópico.
+   *
+   * Mantemos o método por compatibilidade com o fluxo da tela, mas o status
+   * não pertence ao cliente: ele é derivado pelo banco a partir dos itens
+   * concluídos, incluindo a jornada personalizada.
+   */
   async marcarIniciado(aluno_id: string): Promise<void> {
-    try {
-      const agora = new Date().toISOString();
-      const { error } = await supabase
-        .from('topico_aluno')
-        .upsert({
-          aluno_id,
-          topico_id: this.id,
-          status: 'em andamento',
-          ultima_visualizacao: agora,
-          updated_at: agora
-        }, {
-          onConflict: 'aluno_id,topico_id'
-        });
-
-      if (error) throw error;
-
-      this.status = 'em andamento';
-      this.ultima_visualizacao = agora;
-    } catch (err) {
-      console.warn('[Topico] Erro ao marcar iniciado:', err);
-      throw err;
-    }
+    await this.atualizarProgresso(aluno_id);
   }
 
-  /** ✅ Marca tópico como concluído */
+  /**
+   * Registra a saída do tópico após a conclusão dos itens.
+   *
+   * A conclusão efetiva é confirmada pelo recálculo do banco. Gravar
+   * `status`/`percentual_concluido` aqui permitiria concluir um tópico com
+   * material personalizado ainda pendente.
+   */
   async marcarConcluido(aluno_id: string): Promise<void> {
-    try {
-      const agora = new Date().toISOString();
-      const ultimaAtividade = this.inferirUltimaAtividadeId();
-      const { error } = await supabase
-        .from('topico_aluno')
-        .upsert({
-          aluno_id,
-          topico_id: this.id,
-          status: 'concluido',
-          percentual_concluido: 100,
-          ultima_atividade: ultimaAtividade,
-          ultima_visualizacao: agora,
-          updated_at: agora
-        }, {
-          onConflict: 'aluno_id,topico_id'
-        });
-
-      if (error) throw error;
-
-      this.status = 'concluido';
-      this.percentual_concluido = 100;
-      this.ultima_atividade = ultimaAtividade;
-      this.ultima_visualizacao = agora;
-    } catch (err) {
-      console.warn('[Topico] Erro ao marcar concluído:', err);
-      throw err;
-    }
+    await this.atualizarProgresso(aluno_id);
   }
 
   /** ✅ Verifica se está desbloqueado */

@@ -10,16 +10,16 @@ import { StoreModal } from "@/components/loja/StoreModal";
 import { useUsuario } from "@/context/SessaoContext";
 import { useTrilha } from "@/context/TrilhaContext";
 import { Classe } from "@/models/Classe";
-import { aceitarConvite, bloquear, carregarSocial, desfazerAmizade, enviarConvite, recusarConvite } from "@/services/social/socialService";
+import { aceitarConvite, bloquear, carregarSocial, desbloquear, desfazerAmizade, enviarConvite, recusarConvite } from "@/services/social/socialService";
 import { carregarGuildas } from "@/services/social/guildService";
-import type { SocialPerson } from "@/services/social/socialModel";
+import { peopleForSocialSection, type SocialPeopleSection, type SocialPerson } from "@/services/social/socialModel";
 import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, RefreshControl, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 
-type Section = "friends" | "invites" | "discover" | "guilds";
+type Section = SocialPeopleSection | "guilds";
 
 function errorMessage(error: unknown) {
   const text = String((error as { message?: unknown })?.message ?? error ?? "").toLowerCase();
@@ -81,24 +81,31 @@ export default function SocialScreen() {
 
   const people = useMemo(() => {
     if (!social || section === "guilds") return [];
-    return section === "friends" ? social.friends : section === "invites" ? [...social.incoming, ...social.outgoing] : social.candidates;
+    return peopleForSocialSection(social, section);
   }, [section, social]);
 
-  async function act(key: string, operation: () => Promise<unknown>) {
+  async function act(key: string, operation: () => Promise<unknown>): Promise<boolean> {
     setBusy(key); setError(null);
-    try { await operation(); await load(); }
-    catch (caught) { console.warn("[Social] Falha na ação:", caught); setError(errorMessage(caught)); }
+    try { await operation(); await load(); return true; }
+    catch (caught) { console.warn("[Social] Falha na ação:", caught); setError(errorMessage(caught)); return false; }
     finally { setBusy(null); }
   }
 
+  async function unblockAndOpenChat(person: SocialPerson) {
+    if (!person.relationshipId) return;
+    const succeeded = await act(person.alunoId, () => desbloquear(person.relationshipId!));
+    if (succeeded) setChatPerson({ ...person, status: "candidate" });
+  }
+
   function actionFor(person: SocialPerson) {
+    if (person.status === "blocked") return { label: "Desbloquear", fn: () => void unblockAndOpenChat(person) };
     if (person.status === "candidate") return { label: "Convidar", fn: () => act(person.alunoId, () => enviarConvite(person.alunoId)) };
     if (person.status === "friend") return { label: "Desfazer", fn: () => act(person.alunoId, () => desfazerAmizade(person.relationshipId!)) };
     if (person.status === "outgoing") return { label: "Enviado", fn: undefined };
     return { label: "Bloquear", fn: () => act(person.alunoId, () => bloquear(person.alunoId)) };
   }
 
-  const emptyMessage = section === "friends" ? "Você ainda não tem amigos na jornada." : section === "invites" ? "Nenhum convite por enquanto." : "Nenhum colega disponível para convidar.";
+  const emptyMessage = section === "friends" ? "Você ainda não tem amigos na jornada." : section === "invites" ? "Nenhum convite por enquanto." : section === "discover" ? "Nenhum colega disponível para convidar." : "Você não bloqueou ninguém.";
 
   return (
     <View style={[styles.screen, { backgroundColor: palette.background }]}>
@@ -111,9 +118,9 @@ export default function SocialScreen() {
               <StoreLauncher color={palette.accent} onPress={() => setStoreVisible(true)} />
             </View>
             <OrnamentDivider color={palette.accent} />
-            <View style={styles.tabs}>{(["friends", "invites", "discover", "guilds"] as Section[]).map((key) => { const active = section === key; const label = key === "friends" ? "AMIGOS" : key === "invites" ? "CONVITES" : key === "discover" ? "ENCONTRAR" : "GUILDAS"; return <Pressable key={key} accessibilityRole="tab" accessibilityState={{ selected: active }} onPress={() => setSection(key)} style={[styles.tab, active && { borderBottomColor: palette.accent }]}><Text style={[styles.tabText, active && { color: palette.accent }]}>{label}</Text></Pressable>; })}</View>
+            <View style={styles.tabs}>{(["friends", "invites", "discover", "blocked", "guilds"] as Section[]).map((key) => { const active = section === key; const label = key === "friends" ? "AMIGOS" : key === "invites" ? "CONVITES" : key === "discover" ? "ENCONTRAR" : key === "blocked" ? "BLOQUEADOS" : "GUILDAS"; return <Pressable key={key} accessibilityRole="tab" accessibilityState={{ selected: active }} onPress={() => setSection(key)} style={[styles.tab, active && { borderBottomColor: palette.accent }]}><Text style={[styles.tabText, active && { color: palette.accent }]}>{label}</Text></Pressable>; })}</View>
           </View>
-          {section === "guilds" ? <GuildSection guilds={guilds} people={social ? [...social.friends, ...social.incoming, ...social.outgoing, ...social.candidates] : []} classeId={activeClasseId} accent={palette.accent} profile={profile} shareOptions={shareOptions} onReload={load} /> : loading && !social ? <ActivityIndicator color={palette.accent} style={styles.loader} /> : error ? <View style={styles.empty}><MaterialCommunityIcons name="database-alert-outline" size={42} color={palette.accent} /><Text style={[styles.message, { color: palette.textMuted }]}>{error}</Text><Pressable onPress={() => void load()} style={[styles.retry, { backgroundColor: palette.accent }]}><Text style={styles.retryText}>Tentar novamente</Text></Pressable></View> : people.length === 0 ? <View style={styles.empty}><MaterialCommunityIcons name={section === "friends" ? "account-group-outline" : "account-search-outline"} size={44} color={palette.accent} /><Text style={[styles.sectionTitle, { color: palette.text }]}>{section === "friends" ? "AMIGOS" : section === "invites" ? "CONVITES" : "ENCONTRAR"}</Text><Text style={[styles.message, { color: palette.textMuted }]}>{emptyMessage}</Text></View> : <View style={styles.list}>{people.map((person) => person.status === "incoming" ? <SocialInviteCard key={person.relationshipId} person={person} accent={palette.accent} onAccept={() => act(person.alunoId, () => aceitarConvite(person.relationshipId!))} onDecline={() => act(person.alunoId, () => recusarConvite(person.relationshipId!))} onPressProfile={() => setSelectedPerson(person)} /> : <SocialPersonCard key={person.relationshipId ?? person.alunoId} person={person} accent={palette.accent} actionLabel={busy === person.alunoId ? "..." : actionFor(person).label} onAction={actionFor(person).fn} onPressProfile={() => setSelectedPerson(person)} onPressChat={() => setChatPerson(person)} secondaryLabel={person.status === "friend" ? "Bloquear" : undefined} onSecondary={() => act(person.alunoId, () => bloquear(person.alunoId))} />)}</View>}
+          {section === "guilds" ? <GuildSection guilds={guilds} people={social ? [...social.friends, ...social.incoming, ...social.outgoing, ...social.candidates] : []} classeId={activeClasseId} accent={palette.accent} profile={profile} shareOptions={shareOptions} onReload={load} /> : loading && !social ? <ActivityIndicator color={palette.accent} style={styles.loader} /> : error ? <View style={styles.empty}><MaterialCommunityIcons name="database-alert-outline" size={42} color={palette.accent} /><Text style={[styles.message, { color: palette.textMuted }]}>{error}</Text><Pressable onPress={() => void load()} style={[styles.retry, { backgroundColor: palette.accent }]}><Text style={styles.retryText}>Tentar novamente</Text></Pressable></View> : people.length === 0 ? <View style={styles.empty}><MaterialCommunityIcons name={section === "friends" ? "account-group-outline" : section === "blocked" ? "account-cancel-outline" : "account-search-outline"} size={44} color={palette.accent} /><Text style={[styles.sectionTitle, { color: palette.text }]}>{section === "friends" ? "AMIGOS" : section === "invites" ? "CONVITES" : section === "discover" ? "ENCONTRAR" : "BLOQUEADOS"}</Text><Text style={[styles.message, { color: palette.textMuted }]}>{emptyMessage}</Text></View> : <View style={styles.list}>{people.map((person) => person.status === "incoming" ? <SocialInviteCard key={person.relationshipId} person={person} accent={palette.accent} onAccept={() => act(person.alunoId, () => aceitarConvite(person.relationshipId!))} onDecline={() => act(person.alunoId, () => recusarConvite(person.relationshipId!))} onPressProfile={() => setSelectedPerson(person)} /> : <SocialPersonCard key={person.relationshipId ?? person.alunoId} person={person} accent={palette.accent} actionLabel={busy === person.alunoId ? "..." : actionFor(person).label} onAction={actionFor(person).fn} onPressProfile={() => setSelectedPerson(person)} onPressChat={() => setChatPerson(person)} secondaryLabel={person.status === "friend" ? "Bloquear" : undefined} onSecondary={() => act(person.alunoId, () => bloquear(person.alunoId))} />)}</View>}
         </ScrollView>
       </SafeAreaView>
       {usuario?.id && classeId > 0 ? <StoreModal visible={storeVisible} alunoId={usuario.id} classeId={classeId} profileName={profile} onClose={() => setStoreVisible(false)} /> : null}

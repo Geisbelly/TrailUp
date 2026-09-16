@@ -631,6 +631,35 @@ async def test_build_targets_generates_all_seven_profiles_with_one_student(monke
 
 
 @pytest.mark.asyncio
+async def test_build_targets_enrollment_targets_the_student_profile(monkeypatch) -> None:
+    """Matrícula deriva uma cópia para o aluno, não cria targets de base."""
+    student_id = "b49f2e21-a6f9-4c8d-9533-5a32bb219754"
+    monkeypatch.setattr(
+        "app.repositories.conteudo_classe.ConteudoClasseRepository.listar_alunos_classe_com_perfil_dominante",
+        AsyncMock(return_value=[{"aluno_id": student_id, "perfil_dominante": "seeker"}]),
+    )
+    monkeypatch.setattr(
+        "app.repositories.conteudo_classe.ConteudoClasseRepository.mapear_todos_conteudos_por_topicos",
+        AsyncMock(return_value={117: [125]}),
+    )
+
+    targets, topics, profile_map = await _build_targets(
+        session=object(),
+        kind="student_enrollment",
+        classe_id=32,
+        aluno_id=student_id,
+        topico_ids=[117],
+    )
+
+    assert topics == [117]
+    assert len(targets) == 1
+    assert targets[0]["aluno_id"] == student_id
+    assert targets[0]["brainhex_profile_key"] == "seeker"
+    assert targets[0]["is_profile_template"] is False
+    assert profile_map == {f"{student_id}:117:125": "seeker"}
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("conteudo_ids", [[125], [125, 126]])
 async def test_build_targets_generates_seven_profiles_for_each_content(
     monkeypatch,

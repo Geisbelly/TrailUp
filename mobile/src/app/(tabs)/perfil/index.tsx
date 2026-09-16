@@ -17,6 +17,7 @@ import {
 import tinycolor from "tinycolor2";
 
 import CardSemDados from "@/components/CardSemDados";
+import { BagModal } from "@/components/bag/BagModal";
 import ConquistaModal from "@/components/ConquistaModal";
 import { HallBackground, OrnamentDivider } from "@/components/HallTheme";
 import { ProfileMetricsViews } from "@/components/perfil/ProfileMetricsViews";
@@ -59,6 +60,7 @@ export default function PerfilHome() {
   const { lastBatchTimeMetrics } = useMetricasBatch();
   const { getBattleState } = useIA();
   const router = useRouter();
+  const [bagOpen, setBagOpen] = useState(false);
 
   const [aba, setAba] = useState<"metricas" | "conquistas">("metricas");
   const [conquistaSelecionada, setConquistaSelecionada] =
@@ -361,6 +363,16 @@ export default function PerfilHome() {
                   size={20}
                   color={shellPalette.text}
                 />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.btnBagWrap}>
+              <TouchableOpacity
+                style={[styles.btnLibrary, { backgroundColor: shellPalette.surfaceElevated, borderColor: shellPalette.border }]}
+                onPress={() => setBagOpen(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Abrir minha Bag"
+              >
+                <MaterialCommunityIcons name="bag-personal-outline" size={20} color={shellPalette.text} />
               </TouchableOpacity>
             </View>
 
@@ -682,6 +694,13 @@ export default function PerfilHome() {
           </View>
         </ScrollView>
 
+        <BagModal
+          visible={bagOpen}
+          classeId={classeAtual?.classe_id ?? null}
+          profile={perfil}
+          onClose={() => setBagOpen(false)}
+        />
+
         <ConquistaModal
           visible={!!conquistaSelecionada}
           onClose={() => setConquistaSelecionada(null)}
@@ -726,6 +745,12 @@ const styles = StyleSheet.create({
   btnLibraryWrap: {
     position: "absolute",
     top: 96,
+    right: 20,
+    zIndex: 10,
+  },
+  btnBagWrap: {
+    position: "absolute",
+    top: 142,
     right: 20,
     zIndex: 10,
   },

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { groupSocialRows } from "./socialModel";
+import { groupSocialRows, peopleForSocialSection } from "./socialModel";
 
 test("agrupa amigos, convites e candidatos", () => {
   const result = groupSocialRows([
@@ -15,3 +15,10 @@ test("agrupa amigos, convites e candidatos", () => {
   assert.equal(result.candidates.length, 1);
 });
 
+test("mantém bloqueados na seção própria para permitir desbloqueio", () => {
+  const result = groupSocialRows([
+    { aluno_id: "9", nome: "Bloqueado", status: "blocked", relationship_id: "r9" },
+  ]);
+
+  assert.deepEqual(peopleForSocialSection(result, "blocked"), result.blocked);
+});

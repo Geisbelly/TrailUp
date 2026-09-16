@@ -18,6 +18,7 @@ import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { getProfileGuideEmphasis } from "@/utils/profileSectionGuide";
 import { aplicarCorteDoRank, descreverCorte } from "@/utils/rankCorte";
+import { buildRankingProfileMap } from "@/utils/rankingProfiles";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Stack, useLocalSearchParams, useNavigation } from "expo-router";
@@ -51,12 +52,6 @@ type RankPosicaoRow = {
   nome_aluno: string;
   pontuacao: number | null;
   medalha: string | null;
-};
-
-type AlunoPerfilRow = {
-  aluno_id: string;
-  afinidade: number | null;
-  perfil: { nome: string | null } | null;
 };
 
 const medalMap: Record<string, any> = {
@@ -131,7 +126,7 @@ export default function RankDetalheScreen() {
   const rankFiltersGuideRef = useRef<View | null>(null);
   const rankMyPositionGuideRef = useRef<View | null>(null);
 
-  const meuPerfilMajoritario = normalizeBrainHexProfile(usuario?.perfis?.[0]?.nome ?? null);
+  const meuPerfilMajoritario = normalizeBrainHexProfile(activeProfile);
   const meuPerfilLabel = getDominantProfileLabel(meuPerfilMajoritario);
 
   // Pulse animation for the crown icon
@@ -205,12 +200,9 @@ export default function RankDetalheScreen() {
     setPerfisCarregando(true);
 
     const carregarPerfis = async () => {
-      const { data, error } = await supabase
-        .from("aluno_perfil")
-        .select("aluno_id, afinidade, perfil:perfil_id(nome)")
-        .in("aluno_id", alunoIds)
-        .order("aluno_id", { ascending: true })
-        .order("afinidade", { ascending: false });
+      const { data, error } = await supabase.rpc("social_listar_pessoas", {
+        p_classe_id: classeId,
+      });
 
       if (!ativo) return;
 
@@ -221,33 +213,18 @@ export default function RankDetalheScreen() {
         return;
       }
 
-      const rows = (data ?? []) as unknown as AlunoPerfilRow[];
-      const dominantes: Record<string, DominantProfileMeta> = {};
-
-      rows.forEach((row) => {
-        const alunoId = String(row.aluno_id ?? "");
-        if (!alunoId || dominantes[alunoId]) return;
-
-        const normalized = normalizeBrainHexProfile(row.perfil?.nome ?? null);
-        dominantes[alunoId] = {
-          key: normalized,
-          label: getDominantProfileLabel(normalized),
-        };
-      });
-
-      alunoIds.forEach((alunoId) => {
-        if (!dominantes[alunoId]) {
-          dominantes[alunoId] = { key: null, label: "Perfil não definido" };
-        }
-      });
-
-      setPerfilDominantePorAluno(dominantes);
+      setPerfilDominantePorAluno(
+        buildRankingProfileMap(data ?? [], alunoIds, {
+          alunoId: usuario?.id,
+          perfilAtivo: activeProfile,
+        }),
+      );
       setPerfisCarregando(false);
     };
 
     void carregarPerfis();
     return () => { ativo = false; };
-  }, [rank?.posicoes]);
+  }, [activeProfile, classeId, rank?.posicoes, usuario?.id]);
 
   const posicoes = useMemo(
     () => (rank?.posicoes ?? []) as RankPosicaoRow[],

@@ -80,21 +80,19 @@ export async function registrarAtividadeProgresso(params: {
 export async function registrarTopicoProgresso(params: {
   alunoId?: string | null;
   topicoId?: number | null;
+  /** Mantido para compatibilidade; o percentual é derivado no banco. */
   percentual?: number;
   ultimaAtividadeId?: number | null;
   ultimaVisualizacao?: string | null;
 }) {
-  const { alunoId, topicoId, percentual = 0, ultimaAtividadeId, ultimaVisualizacao } = params;
+  const { alunoId, topicoId, ultimaAtividadeId, ultimaVisualizacao } = params;
   if (!alunoId || !topicoId) return;
 
-  const percentualNormalizado = clampPercent(percentual);
   const agora = ultimaVisualizacao ?? new Date().toISOString();
 
   const payload = {
     aluno_id: alunoId,
     topico_id: topicoId,
-    status: resolveStatusByPercentual(percentualNormalizado),
-    percentual_concluido: percentualNormalizado,
     ultima_visualizacao: agora,
     updated_at: agora,
     ...(ultimaAtividadeId === undefined ? {} : { ultima_atividade: ultimaAtividadeId }),

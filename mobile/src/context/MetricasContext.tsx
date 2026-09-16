@@ -101,6 +101,7 @@ type MetricasContextValue = {
   lastAnalysis: TelemetryBatchResponse["analysis"] | null;
   cameraOptIn: boolean;
   cameraPermission: CameraPermissionState;
+  isStudySessionActive: boolean;
 };
 
 type MetricasBatchContextValue = {
@@ -1477,6 +1478,7 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
       lastAnalysis,
       cameraOptIn,
       cameraPermission,
+      isStudySessionActive: isSessionActive,
     }),
     [
       beginStudySessionEstavel,
@@ -1492,6 +1494,7 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
       lastAnalysis,
       cameraOptIn,
       cameraPermission,
+      isSessionActive,
     ]
   );
 

@@ -227,12 +227,12 @@ export function buildClasseResumoFallback(
     professor_nome: baseResumo?.professor_nome ?? null,
     professor_descricao: baseResumo?.professor_descricao ?? null,
     notaMedia: baseResumo?.notaMedia ?? null,
-    tempoMedioPorAtividade: hasAcademicStructure
-      ? metrics.tempoMedioPorAtividade
-      : baseResumo?.tempoMedioPorAtividade ?? 0,
-    acertosPercentual: hasAcademicStructure
-      ? metrics.acertosPercentual
-      : baseResumo?.acertosPercentual ?? 0,
+    tempoMedioPorAtividade:
+      baseResumo?.tempoMedioPorAtividade ??
+      (hasAcademicStructure ? metrics.tempoMedioPorAtividade : 0),
+    acertosPercentual:
+      baseResumo?.acertosPercentual ??
+      (hasAcademicStructure ? metrics.acertosPercentual : 0),
     // O percentual da campanha e' o do BANCO. `trailup_recalcular_topico_aluno`
     // conta sobre o material personalizado; a conta local so' enxerga o material
     // do professor, e vinha ganhando -- o nome desta funcao diz "fallback", mas
@@ -240,18 +240,20 @@ export function buildClasseResumoFallback(
     porcentagemConcluida:
       baseResumo?.porcentagemConcluida ??
       (hasAcademicStructure ? metrics.progressPct : 0),
-    ultimaAtividade: hasAcademicStructure
-      ? metrics.atividadesConcluidasIds[metrics.atividadesConcluidasIds.length - 1] ?? null
-      : baseResumo?.ultimaAtividade ?? null,
-    tempoGastoMin: hasAcademicStructure
-      ? metrics.tempoTotalMin
-      : baseResumo?.tempoGastoMin ?? 0,
-    isComplete: hasAcademicStructure
-      ? metrics.isComplete
-      : baseResumo?.isComplete ?? false,
-    atividadesConcluidas: hasAcademicStructure
-      ? metrics.atividadesConcluidasIds
-      : baseResumo?.atividadesConcluidas ?? [],
+    ultimaAtividade:
+      baseResumo?.ultimaAtividade ??
+      (hasAcademicStructure
+        ? metrics.atividadesConcluidasIds[metrics.atividadesConcluidasIds.length - 1] ?? null
+        : null),
+    tempoGastoMin:
+      baseResumo?.tempoGastoMin ??
+      (hasAcademicStructure ? metrics.tempoTotalMin : 0),
+    isComplete:
+      baseResumo?.isComplete ??
+      (hasAcademicStructure ? metrics.isComplete : false),
+    atividadesConcluidas:
+      baseResumo?.atividadesConcluidas ??
+      (hasAcademicStructure ? metrics.atividadesConcluidasIds : []),
     recomendacaoTrilha: baseResumo?.recomendacaoTrilha ?? null,
     modoOperacao: baseResumo?.modoOperacao ?? null,
     insights: baseResumo?.insights ?? null,
