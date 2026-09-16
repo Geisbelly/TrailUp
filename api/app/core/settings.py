@@ -56,6 +56,14 @@ class Settings(BaseSettings):
     r2_bucket: str | None = Field(
         default=None, validation_alias=AliasChoices("r2_bucket", "R2_BUCKET")
     )
+    # Base publica da arte de identidade (boss, cenario, moldura) servida pelo
+    # R2 ou por um CDN na frente dele - ex.: "https://pub-<hash>.r2.dev".
+    # NAO aponte para o Supabase Storage: o projeto esta em overage de egress e
+    # o Storage e 99,9% dele. Sem esta base, as URLs de arte do combate ficam
+    # None, que e o comportamento que o app ja tinha.
+    arte_base_url: str | None = Field(
+        default=None, validation_alias=AliasChoices("arte_base_url", "ARTE_BASE_URL")
+    )
 
     supabase_jwt_secret: str
     supabase_jwt_audience: str | None = "authenticated"

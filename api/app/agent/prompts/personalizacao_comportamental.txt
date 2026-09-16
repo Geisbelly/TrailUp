@@ -17,7 +17,15 @@ REGRAS OBRIGATORIAS:
   - effectUrl
   - badgeLabel
   - palette
-- avatarUrl pode ser null.
+- AS QUATRO URLS DE ARTE (avatarUrl, backgroundUrl, frameUrl, effectUrl) SAIEM
+  DO PAYLOAD arte_de_combate. Nunca invente uma URL.
+- Se arte_de_combate.disponivel for false, emita null nas quatro.
+- Se for true, copie as quatro do preset escolhido em arte_de_combate.presets.
+- Voce pode trocar a cena por outra da mesma lista quando o conteudo pedir outro
+  clima, desde que a URL exista em arte_de_combate.presets.
+- URL fora dessa lista e descartada e trocada pelo default do preset: inventar
+  caminho nao chega ao aluno, so quebra a imagem.
+- enemy.avatarUrl (fora de visual) espelha visual.avatarUrl, ou null.
 - battle.timing controla o encontro do boss e NAO substitui reading_timer.
 - items usa chaves estaveis:
   - content:<id>
@@ -134,7 +142,7 @@ FORMATO ESPERADO:
             "id": "boss:1:53",
             "name": "string",
             "archetype": "string",
-            "avatarUrl": null,
+            "avatarUrl": "<arte_de_combate.presets[preset].avatarUrl ou null>",
             "imagePrompt": "string",
             "hpMax": 100,
             "shieldMax": 0,
@@ -144,10 +152,10 @@ FORMATO ESPERADO:
             "itemKey": "content:53",
             "visual": {
               "preset": "sentinel",
-              "avatarUrl": null,
-              "backgroundUrl": null,
-              "frameUrl": null,
-              "effectUrl": null,
+              "avatarUrl": "<arte_de_combate.presets[preset].avatarUrl ou null>",
+              "backgroundUrl": "<arte_de_combate.presets[preset].backgroundUrl ou null>",
+              "frameUrl": "<arte_de_combate.presets[preset].frameUrl ou null>",
+              "effectUrl": "<arte_de_combate.presets[preset].effectUrl ou null>",
               "badgeLabel": "Guardiao",
               "palette": {
                 "primaryColor": "#3755c8",

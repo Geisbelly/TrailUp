@@ -245,10 +245,17 @@ campos das camadas da §3 — e `IABattlePanel` **renderiza os quatro**:
 | `visual.frameUrl` | `IABattlePanel.tsx:277` | **sprite** (moldura, `resizeMode="stretch"`) |
 
 O prompt que alimenta esses campos
-(`api/app/agent/prompts/personalizacao_comportamental.txt`) declara os quatro e
-emite **`null` em todos**. Não falta código para arte de boss, de cenário e de
-moldura: **falta conteúdo, e falta quem preencha a URL.** A pasta do Drive é o
-conteúdo que esse sistema espera desde que foi escrito.
+(`api/app/agent/prompts/personalizacao_comportamental.txt`) declarava os quatro e
+emitia **`null` em todos**. Não faltava código para arte de boss, de cenário e de
+moldura: faltava conteúdo, e faltava quem preenchesse a URL.
+
+**Isto foi implementado** (`api/app/services/arte_combate.py`): uma tabela
+`preset -> peça`, URL montada sobre `settings.arte_base_url`, catálogo fechado
+entregue ao modelo e saneamento antes da validação — URL fora da lista é
+descartada. Sem a base configurada as quatro voltam a `None`, que é o
+comportamento anterior. As onze peças estão em `api/app/assets/combate/`
+(1,0 MB no total, de 15,6 MB de originais) e sobem com
+`scripts/subir-arte-de-combate.py`.
 
 E o `backgroundLayer` usa **`opacity: 0.16`** — que é o mesmo que um véu de
 α 0,84 da superfície sobre a arte. A §2 mediu que o mínimo para AAA sobre o
@@ -284,7 +291,7 @@ ninguém. A Lumi preenche esse vazio — é a voz do lado que hoje é só formul
 | `frontend/src/lib/personalizacao-theme-guide.ts` | tons clareados à mão saem; passa a ler a tabela da §6 | médio |
 | `frontend/src/features/signup/brainhex.ts` | idem | pequeno |
 | `api/app/api/v1/personalizacao.py` `_build_design_tokens` | `_ensure_min_contrast` passa a receber `noite-700` fixo | pequeno |
-| `api/app/agent/prompts/personalizacao_comportamental.txt` | os quatro `null` de arte passam a receber URL de peça real (§9.1) | pequeno, e é o de maior efeito visível |
+| `api/app/agent/prompts/personalizacao_comportamental.txt` | **feito** — os quatro `null` passam a sair do catálogo `arte_de_combate` (§9.1) | pequeno, e é o de maior efeito visível |
 | `mobile/src/components/ia/IABattlePanel.tsx` | decidir se a paleta do inimigo passa a sair de `palette.*` ou continua própria | médio |
 | ~40 componentes do mobile | **nenhuma mudança** — todos leem `palette.*` | zero |
 
@@ -300,7 +307,7 @@ continuam pedindo `palette.surface` e recebendo o valor novo.
 | 2 | Tipografia (tracking, fim da serifa) | os rótulos ganham o ar da ficha |
 | 3 | Frontend e backend lendo a tabela da §6 | a divergência dos três fecha |
 | 4 | Moldura e emblema (as duas peças com lugar pronto) | o perfil reaparece como sprite |
-| 5 | **URL de arte no prompt de combate** — trocar os `null` por peças reais | boss, cenário e moldura aparecem sem uma linha de componente nova (§9.1) |
+| ~~5~~ | ~~URL de arte no prompt de combate~~ — **feito**; falta subir as peças e definir `ARTE_BASE_URL` | boss, cenário e moldura aparecem sem uma linha de componente nova (§9.1) |
 | 6 | Cenário com véu α 0,84 nas telas sem texto | cerimônia e capa de tópico |
 | 7 | Totem, mascote, Lumi no console | depende de decisão de produto, não de estilo |
 

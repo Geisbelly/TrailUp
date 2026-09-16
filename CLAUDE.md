@@ -172,14 +172,35 @@ Cada perfil carrega:
 > `#38bdf8`, `#a78bfa`, `#fb7185`, `#f97316`. São defaults do Tailwind, não
 > cor-assinatura. Trocar o tema do app não muda o inimigo.
 
-> **A camada de arte do combate já está implementada e recebe `null`.**
+> **A arte do combate sai de um catálogo em Python, nunca do LLM.**
 > `IAEnemyVisualSpec` (`mobile/src/interfaces/personalizacao/IAContracts.ts`)
 > tem `avatarUrl`, `backgroundUrl`, `frameUrl` e `effectUrl`, e `IABattlePanel`
 > **renderiza os quatro** — fundo na linha 230, efeito na 231, moldura na 277
-> com `resizeMode="stretch"`. O prompt que os alimenta
-> (`api/app/agent/prompts/personalizacao_comportamental.txt`) declara os campos
-> e emite `null` em todos. Ou seja: não falta código para arte de boss, de
-> cenário e de moldura — falta conteúdo e falta quem preencha a URL.
+> com `resizeMode="stretch"`. Até `20260916` o prompt emitia `null` nos quatro,
+> então o painel sempre desenhou o inimigo por preset procedural.
+>
+> Quem preenche é `app/services/arte_combate.py`: uma tabela `preset -> peça`,
+> URL montada sobre `settings.arte_base_url`. O modelo recebe o catálogo no
+> payload (`arte_de_combate`) e **pode trocar a cena por outra da lista**, mas
+> qualquer URL fora dela é descartada em `sanear_patch`, que roda antes da
+> validação. O motivo é concreto: URL inventada dá 404, e `Image` do React
+> Native falha **calado** — o aluno vê um buraco onde estaria o boss.
+>
+> Três coisas que não são acidentais:
+>
+> 1. **Sem `arte_base_url`, as quatro voltam a `None`.** É o comportamento
+>    anterior, não um meio-termo quebrado. Mesma disciplina de `ler_config_r2`.
+> 2. **`enemy.avatarUrl` é saneado junto com `visual.avatarUrl`.** O mobile lê
+>    `visual?.avatarUrl ?? enemy.avatarUrl`: sanear só um deixa a URL descartada
+>    voltar pelo outro lado.
+> 3. **A arte vai para o R2, não para o Supabase Storage.** O projeto está em
+>    overage de egress e o Storage é 99,9% dele; arte é baixada toda sessão.
+>    Sobe com `scripts/subir-arte-de-combate.py`, que tira a lista de arquivos
+>    **do catálogo** e recusa rodar se faltar peça.
+>
+> Preset novo em `_PROFILE_PRESETS` exige entrada em `_ARTE_POR_PRESET` — há
+> teste guardando (`test_todo_preset_de_perfil_tem_arte_no_catalogo`), porque
+> sem ele o boss do perfil novo nasceria sem imagem e calado.
 >
 > E o `backgroundLayer` usa **`opacity: 0.16`**, que é o mesmo que um véu de
 > α 0,84 da superfície sobre a arte. Medido nos cenários da pasta de
