@@ -1,8 +1,7 @@
-import { Hexagon, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import Footer from "@/components/Footer";
-import Header from "@/components/Header";
+import { PublicLayout } from "@/components/PublicLayout";
 
 // Divide o texto em partes normais, negrito (**assim**) e italico (*assim*), sem alterar o markdown de origem.
 function renderInline(text: string) {
@@ -405,31 +404,23 @@ const BlogPost = () => {
 
   if (!post) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
+      <PublicLayout>
+        <div className="public-empty">
           <h1 className="text-4xl font-bold mb-4">Post não encontrado</h1>
-          <Link to="/blog">
-            <Button>Voltar ao Blog</Button>
-          </Link>
+          <Button asChild><Link to="/blog"><ArrowLeft size={16} className="mr-2" />Voltar ao Blog</Link></Button>
         </div>
-      </div>
+      </PublicLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <Header />
-
-      {/* Content */}
-      <article className="py-12 px-4 pt-20">
-        <div className="container mx-auto max-w-4xl">
-          <Link to="/blog">
-            <Button variant="ghost" className="mb-8 gap-2">
+    <PublicLayout>
+      <article className="public-article">
+        <div>
+            <Button asChild variant="ghost" className="mb-8 gap-2"><Link to="/blog">
               <ArrowLeft className="w-4 h-4" />
               Voltar ao Blog
-            </Button>
-          </Link>
+            </Link></Button>
 
           <div className="space-y-6">
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -439,7 +430,7 @@ const BlogPost = () => {
               <span>{new Date(post.date).toLocaleDateString('pt-BR')}</span>
             </div>
 
-            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            <h1>
               {post.title}
             </h1>
 
@@ -484,8 +475,7 @@ const BlogPost = () => {
         </div>
       </article>
 
-      <Footer />
-    </div>
+    </PublicLayout>
   );
 };
 

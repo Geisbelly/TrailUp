@@ -83,13 +83,13 @@ export function ProfessorSignupForm({ sessionEmail, onDone }: Props) {
         
         {/* Nome */}
         <div className="space-y-2">
-          <Label className="text-zinc-300">Nome completo</Label>
+          <Label className="text-foreground">Nome completo</Label>
           <div className="relative group">
-            <User className="absolute left-3 top-3 h-4 w-4 text-zinc-500 group-focus-within:text-primary transition-colors" />
+            <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
             <Input 
               value={profData.nome} 
               onChange={(e) => setProfData({ ...profData, nome: e.target.value })}
-              className="pl-10 bg-zinc-900/50 border-zinc-800 text-zinc-100 placeholder:text-zinc-600 focus:ring-primary/20 focus:border-primary/50 transition-all"
+              className="pl-10 bg-card/50 border-border text-foreground placeholder:text-muted-foreground focus:ring-primary/20 focus:border-primary/50 transition-all"
               placeholder="Como prefere ser chamado"
             />
           </div>
@@ -98,25 +98,25 @@ export function ProfessorSignupForm({ sessionEmail, onDone }: Props) {
         {/* Instituição e Disciplina (Grid) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label className="text-zinc-300">Instituição</Label>
+            <Label className="text-foreground">Instituição</Label>
             <div className="relative group">
-              <Building2 className="absolute left-3 top-3 h-4 w-4 text-zinc-500 group-focus-within:text-primary transition-colors" />
+              <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
               <Input 
                 value={profData.instituicao} 
                 onChange={(e) => setProfData({ ...profData, instituicao: e.target.value })}
-                className="pl-10 bg-zinc-900/50 border-zinc-800 text-zinc-100 placeholder:text-zinc-600 focus:ring-primary/20 focus:border-primary/50 transition-all"
+                className="pl-10 bg-card/50 border-border text-foreground placeholder:text-muted-foreground focus:ring-primary/20 focus:border-primary/50 transition-all"
                 placeholder="Universidade ou Escola"
               />
             </div>
           </div>
           <div className="space-y-2">
-            <Label className="text-zinc-300">Disciplina Principal</Label>
+            <Label className="text-foreground">Disciplina Principal</Label>
             <div className="relative group">
-              <BookOpen className="absolute left-3 top-3 h-4 w-4 text-zinc-500 group-focus-within:text-primary transition-colors" />
+              <BookOpen className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
               <Input 
                 value={profData.disciplina} 
                 onChange={(e) => setProfData({ ...profData, disciplina: e.target.value })}
-                className="pl-10 bg-zinc-900/50 border-zinc-800 text-zinc-100 placeholder:text-zinc-600 focus:ring-primary/20 focus:border-primary/50 transition-all"
+                className="pl-10 bg-card/50 border-border text-foreground placeholder:text-muted-foreground focus:ring-primary/20 focus:border-primary/50 transition-all"
                 placeholder="Ex: Gamificação"
               />
             </div>
@@ -125,14 +125,14 @@ export function ProfessorSignupForm({ sessionEmail, onDone }: Props) {
 
         {/* Descrição */}
         <div className="space-y-2">
-          <Label className="text-zinc-300">Sobre você</Label>
+          <Label className="text-foreground">Sobre você</Label>
           <div className="relative group">
-            <FileText className="absolute left-3 top-3 h-4 w-4 text-zinc-500 group-focus-within:text-primary transition-colors" />
+            <FileText className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
             <Textarea
               value={profData.descricao}
               onChange={(e) => setProfData({ ...profData, descricao: e.target.value })}
               rows={3}
-              className="pl-10 bg-zinc-900/50 border-zinc-800 text-zinc-100 placeholder:text-zinc-600 focus:ring-primary/20 focus:border-primary/50 transition-all resize-none"
+              className="pl-10 bg-card/50 border-border text-foreground placeholder:text-muted-foreground focus:ring-primary/20 focus:border-primary/50 transition-all resize-none"
               placeholder="Uma breve descrição sobre sua atuação acadêmica..."
             />
           </div>
@@ -144,9 +144,9 @@ export function ProfessorSignupForm({ sessionEmail, onDone }: Props) {
             id="termos-prof"
             checked={profData.termos}
             onCheckedChange={(v) => setProfData({ ...profData, termos: Boolean(v) })}
-            className="border-zinc-700 data-[state=checked]:bg-primary data-[state=checked]:text-white mt-1"
+            className="border-border data-[state=checked]:bg-primary data-[state=checked]:text-white mt-1"
           />
-          <Label htmlFor="termos-prof" className="text-sm text-zinc-400 leading-relaxed cursor-pointer hover:text-zinc-300 transition-colors">
+          <Label htmlFor="termos-prof" className="text-sm text-muted-foreground leading-relaxed cursor-pointer hover:text-foreground transition-colors">
             Li e aceito os <span className="underline underline-offset-2">termos de uso</span> e a <span className="underline underline-offset-2">política de privacidade</span> para professores.
           </Label>
         </div>

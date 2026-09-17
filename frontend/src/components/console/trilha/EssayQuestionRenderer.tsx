@@ -140,35 +140,35 @@ export default function EssayQuestionRenderer({
   };
 
   return (
-    <Card className="border-slate-700 bg-slate-950/30">
+    <Card className="border-border bg-background/30">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base text-slate-100 flex items-center gap-2">
+        <CardTitle className="text-base text-foreground flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-emerald-400" />
           Questao Dissertativa
         </CardTitle>
-        <CardDescription className="text-slate-400">
+        <CardDescription className="text-muted-foreground">
           Nota maxima:{" "}
-          <span className="font-medium text-slate-200">{notaMaxima.toFixed(2)}</span>
+          <span className="font-medium text-foreground">{notaMaxima.toFixed(2)}</span>
           {usaEscalaPadrao ? " (escala percentual padrao)" : ""}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-3 text-sm text-slate-200 whitespace-pre-wrap">
+        <div className="rounded-lg border border-border bg-background/40 p-3 text-sm text-foreground whitespace-pre-wrap">
           {enunciado}
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-200">Resposta do aluno</label>
+          <label className="text-sm font-medium text-foreground">Resposta do aluno</label>
           <Textarea
             value={respostaAluno}
             onChange={(event) => setRespostaAluno(event.target.value)}
             rows={6}
             placeholder="Digite ou cole a resposta dissertativa do aluno..."
-            className="bg-slate-900/40 border-slate-700 text-slate-100"
+            className="bg-background/40 border-border text-foreground"
           />
         </div>
 
-        <div className="flex items-center justify-between text-xs text-slate-400">
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>
             {isLoadingContext
               ? "Carregando conteudo de referencia..."
@@ -194,21 +194,21 @@ export default function EssayQuestionRenderer({
         </Button>
 
         {resultado && (
-          <div className="rounded-lg border border-slate-700 bg-slate-900/40 p-4 space-y-3">
+          <div className="rounded-lg border border-border bg-background/40 p-4 space-y-3">
             <div className="flex items-center justify-between gap-3">
               <Badge variant={resultado.correta ? "default" : "destructive"}>
                 {resultado.correta ? "Criterio atingido" : "Requer reforco"}
               </Badge>
-              <div className="text-sm text-slate-200 font-medium">
+              <div className="text-sm text-foreground font-medium">
                 {resultado.nota_obtida.toFixed(2)} / {resultado.nota_maxima.toFixed(2)}
               </div>
             </div>
             <Progress value={resultado.percentual} />
-            <p className="text-sm text-slate-200 whitespace-pre-wrap">{resultado.feedback}</p>
+            <p className="text-sm text-foreground whitespace-pre-wrap">{resultado.feedback}</p>
             <div className="grid gap-3 md:grid-cols-2">
               <div>
                 <h5 className="text-xs uppercase tracking-wide text-emerald-400 mb-1">Pontos fortes</h5>
-                <ul className="text-sm text-slate-200 space-y-1 list-disc pl-4">
+                <ul className="text-sm text-foreground space-y-1 list-disc pl-4">
                   {resultado.pontos_fortes.map((item, index) => (
                     <li key={`forte-${index}`}>{item}</li>
                   ))}
@@ -216,7 +216,7 @@ export default function EssayQuestionRenderer({
               </div>
               <div>
                 <h5 className="text-xs uppercase tracking-wide text-amber-400 mb-1">Pontos de melhoria</h5>
-                <ul className="text-sm text-slate-200 space-y-1 list-disc pl-4">
+                <ul className="text-sm text-foreground space-y-1 list-disc pl-4">
                   {resultado.pontos_melhoria.map((item, index) => (
                     <li key={`melhoria-${index}`}>{item}</li>
                   ))}
