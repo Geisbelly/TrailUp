@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  body { margin:0; background:hsl(225 32% 8%); font-family:Inter, system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:hsl(266 90% 77%); text-decoration:none; }
+  a:hover { color:hsl(266 95% 82%); }
+  @keyframes tu-spin { to { transform:rotate(360deg); } }
+  @keyframes tu-rise { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes tu-glow { 0%,100% { opacity:.5; } 50% { opacity:1; } }
+  @keyframes tu-float { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-8px); } }
+</style>
+</helmet>
+<div style="min-height:100vh;padding:32px 24px 72px;background-color:hsl(225 32% 8%);background-image:radial-gradient(hsl(230 30% 62% / .10) 1px, transparent 1px), radial-gradient(hsl(230 30% 62% / .06) 1px, transparent 1px), radial-gradient(900px 520px at 50% -10%, hsl(266 45% 26% / .20), transparent 62%);background-size:118px 118px, 47px 47px, 100% 100%;background-position:0 0, 23px 31px, 0 0;color:hsl(40 20% 94%)">
+
+  <div style="max-width:820px;margin:0 auto">
+
+    <div style="display:flex;align-items:center;gap:8px;row-gap:8px;flex-wrap:wrap;padding:13px 16px;border-radius:16px;background:hsl(226 28% 12% / .8);border:1px solid hsl(226 20% 22%);margin-bottom:26px">
+      <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:hsl(230 10% 70%);font-weight:600">Entrada</div>
+      <div onClick="{{ goC }}" style="{{ stC }}">confirmando</div>
+      <div onClick="{{ goE }}" style="{{ stE }}">erro</div>
+      <div style="width:1px;height:22px;background:hsl(226 20% 24%);margin:0 4px"></div>
+      <div onClick="{{ goP }}" style="{{ stP }}">professor</div>
+      <div style="width:1px;height:22px;background:hsl(226 20% 24%);margin:0 4px"></div>
+      <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:hsl(230 10% 70%);font-weight:600">Aluno</div>
+      <div onClick="{{ go1 }}" style="{{ st1 }}">1 básico</div>
+      <div onClick="{{ go2 }}" style="{{ st2 }}">2 aprender</div>
+      <div onClick="{{ go3 }}" style="{{ st3 }}">3 feedback</div>
+      <div onClick="{{ go4 }}" style="{{ st4 }}">4 intro</div>
+      <div onClick="{{ go5 }}" style="{{ st5 }}">5 questionário</div>
+      <div onClick="{{ go6 }}" style="{{ st6 }}">6 resultado</div>
+    </div>
+
+    <sc-if value="{{ isConfirming }}">
+    <div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:20px;padding:90px 34px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+      <div style="position:relative;width:74px;height:82px">
+        <div style="position:absolute;inset:0;background:hsl(266 95% 66% / .2);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);animation:tu-glow 1.6s ease-in-out infinite"></div>
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+          <div style="width:26px;height:26px;border-radius:999px;border:3px solid hsl(266 90% 80% / .3);border-top-color:hsl(266 90% 84%);animation:tu-spin 1s linear infinite"></div>
+        </div>
+      </div>
+      <div style="font-family:Cinzel, serif;font-size:24px;font-weight:700">Confirmando seu e-mail</div>
+      <div style="font-size:14px;color:hsl(230 10% 78%);max-width:340px;line-height:1.6">Só um instante. Não feche esta página.</div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isError }}">
+    <div style="padding:44px 38px 38px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(0 70% 55% / .45);text-align:center">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:18px">
+        <div style="position:relative;width:70px;height:78px">
+          <div style="position:absolute;inset:0;background:hsl(0 70% 55% / .18);border:1px solid hsl(0 70% 60% / .55);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="hsl(0 78% 76%)" stroke-width="2.6"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </div>
+        </div>
+        <div style="font-family:Cinzel, serif;font-size:26px;font-weight:700">Não foi possível continuar</div>
+        <div style="font-size:14px;color:hsl(230 10% 84%);line-height:1.65;max-width:460px">O link de confirmação não pôde ser validado. Ele pode ter expirado, já ter sido usado, ou não existe cadastro pendente para esse e-mail.</div>
+        <div style="font-size:13px;color:hsl(230 10% 76%);line-height:1.6;max-width:460px">Se você já concluiu o cadastro antes, basta entrar normalmente.</div>
+      </div>
+      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:26px">
+        <div style="padding:13px 24px;border-radius:999px;border:1px solid hsl(226 20% 28%);font-size:14px;font-weight:600;color:hsl(230 10% 86%);cursor:pointer" style-hover="border-color:hsl(266 95% 66% / .6)">Início</div>
+        <a href="Login%20Professor.dc.html" style="padding:13px 24px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));font-size:14px;font-weight:700;color:hsl(40 20% 96%);text-decoration:none;">Ir para o login</a>
+      </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isProf }}">
+    <div style="padding:34px 34px 30px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%);box-shadow:0 30px 80px hsl(225 40% 3% / .6)">
+      <div style="display:flex;align-items:center;gap:16px">
+        <div style="position:relative;width:60px;height:66px;flex:none">
+          <div style="position:absolute;inset:0;background:linear-gradient(140deg, hsl(265 65% 50% / .55), hsl(239 84% 67% / .35));clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+          <div style="position:absolute;inset:4px;background:hsl(226 28% 12%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center">
+            <img src="assets/trailup-logo.png" alt="TrailUp" style="width:22px;height:27px;object-fit:contain" />
+          </div>
+        </div>
+        <div style="min-width:0">
+          <div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:hsl(266 90% 80%);font-weight:600">E-mail confirmado</div>
+          <div style="font-family:Cinzel, serif;font-size:26px;font-weight:700;margin-top:6px;line-height:1.15">Finalizar cadastro de professor</div>
+          <div style="font-size:14px;color:hsl(230 10% 78%);margin-top:6px">Só faltam alguns dados sobre onde você dá aula.</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(230px, 1fr));gap:16px;margin-top:26px">
+        <div>
+          <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 78%);font-weight:600">Nome completo</div>
+          <div style="margin-top:9px;padding:13px 16px;border-radius:16px;background:hsl(226 22% 16%);border:1px solid hsl(266 95% 66% / .45);font-size:14px">Cláudia Mendes</div>
+        </div>
+        <div>
+          <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 78%);font-weight:600">Instituição</div>
+          <div style="margin-top:9px;padding:13px 16px;border-radius:16px;background:hsl(226 22% 16%);border:1px solid hsl(226 20% 26%);font-size:14px">ULBRA Palmas</div>
+        </div>
+      </div>
+      <div style="margin-top:16px">
+        <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 78%);font-weight:600">Disciplina principal</div>
+        <div style="margin-top:9px;padding:13px 16px;border-radius:16px;background:hsl(226 22% 16%);border:1px solid hsl(226 20% 26%);font-size:14px">Matemática Aplicada</div>
+      </div>
+      <div style="margin-top:16px">
+        <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 78%);font-weight:600">Descrição / apresentação</div>
+        <div style="margin-top:9px;padding:14px 16px;border-radius:16px;background:hsl(226 22% 16%);border:1px solid hsl(226 20% 26%);font-size:14px;line-height:1.6;min-height:88px;color:hsl(230 10% 70%)">Conte em poucas linhas o que você ensina e o que espera da plataforma. Isso ajuda na aprovação do seu acesso.</div>
+      </div>
+
+      <div style="display:flex;align-items:flex-start;gap:13px;margin-top:20px;padding:16px 18px;border-radius:16px;background:hsl(45 45% 15%);border:1px solid hsl(45 90% 58% / .45)">
+        <div style="width:24px;height:28px;flex:none;background:hsl(45 90% 58% / .2);border:1px solid hsl(45 90% 58% / .6);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:hsl(45 90% 70%)">!</div>
+        <div style="font-size:13px;color:hsl(45 15% 88%);line-height:1.55;min-width:0">Ao concluir, seu acesso fica <strong style="font-weight:700">pendente de aprovação</strong> de um administrador. Você recebe um e-mail quando for liberado — normalmente em até um dia útil.</div>
+      </div>
+
+      <div onClick="{{ toggleTerms }}" style="display:flex;align-items:flex-start;gap:12px;margin-top:16px;padding:14px 16px;border-radius:16px;background:hsl(226 22% 16%);cursor:pointer">
+        <div style="{{ boxStyle }}">
+          <sc-if value="{{ terms }}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="hsl(266 30% 12%)" stroke-width="3.4"><path d="M5 13l4 4 10-10" /></svg>
+          </sc-if>
+        </div>
+        <div style="font-size:13px;color:hsl(230 10% 86%);line-height:1.55;min-width:0">Li e aceito os <a href="#" style="font-weight:600">termos de uso</a> e a <a href="#" style="font-weight:600">política de privacidade</a>.</div>
+      </div>
+      <div style="{{ ctaStyle }}">Concluir cadastro de professor</div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isAluno }}" hint-placeholder-val="{{ true }}">
+    <div style="border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%);box-shadow:0 30px 80px hsl(225 40% 3% / .6);overflow:hidden">
+
+      <div style="padding:22px 30px 20px;background:hsl(226 26% 14%);border-bottom:1px solid hsl(226 20% 22%)">
+        <div style="display:flex;align-items:center;gap:12px;row-gap:10px;flex-wrap:wrap">
+          <div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:hsl(266 90% 80%);font-weight:600">{{ stepLabel }}</div>
+          <div style="margin-left:auto;font-size:12px;color:hsl(230 10% 80%)">{{ progressLabel }}</div>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:12px">
+          <div style="{{ b1 }}"></div>
+          <div style="{{ b2 }}"></div>
+          <div style="{{ b3 }}"></div>
+          <div style="{{ b4 }}"></div>
+          <div style="{{ b5 }}"></div>
+          <div style="{{ b6 }}"></div>
+        </div>
+      </div>
+
+      <div style="padding:30px">
+
+        <sc-if value="{{ isS1 }}">
+        <div style="animation:tu-rise .2s ease-out">
+          <div style="font-family:Cinzel, serif;font-size:26px;font-weight:700">Vamos começar pelo básico</div>
+          <div style="font-size:14px;color:hsl(230 10% 78%);margin-top:8px;line-height:1.6">Duas informações e seguimos para a parte divertida.</div>
+          <div style="margin-top:24px">
+            <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 78%);font-weight:600">Nome completo</div>
+            <div style="margin-top:9px;padding:14px 16px;border-radius:16px;background:hsl(226 22% 16%);border:1px solid hsl(266 95% 66% / .45);font-size:14px">Lucas Meireles</div>
+          </div>
+          <div style="margin-top:18px">
+            <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 78%);font-weight:600">Apelido</div>
+            <div style="margin-top:9px;padding:14px 16px;border-radius:16px;background:hsl(226 22% 16%);border:1px solid hsl(226 20% 26%);font-size:14px">Lucão</div>
+            <div style="font-size:12px;color:hsl(230 10% 74%);margin-top:8px">Como você quer aparecer nos rankings da turma.</div>
+          </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ isS2 }}">
+        <div style="animation:tu-rise .2s ease-out">
+          <div style="font-family:Cinzel, serif;font-size:26px;font-weight:700">Como você prefere aprender?</div>
+          <div style="font-size:14px;color:hsl(230 10% 78%);margin-top:8px;line-height:1.6">Escolha uma. Isso define a ordem em que o material aparece para você.</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:12px;margin-top:22px">
+            <div onClick="{{ pickA0 }}" style="{{ a0 }}">
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:32px;height:36px;flex:none;background:hsl(266 95% 66% / .2);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="hsl(266 90% 84%)" stroke-width="2"><path d="M6 4h9l4 4v12H6z" /><path d="M9 12h6M9 16h6" /></svg>
+                </div>
+                <div style="font-size:15px;font-weight:700;flex:1;min-width:0">Conteúdo primeiro</div>
+                <div style="{{ a0Badge }}"><sc-if value="{{ a0Sel }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="hsl(266 30% 12%)" stroke-width="4"><path d="M5 13l4 4 10-10"></path></svg></sc-if></div>
+              </div>
+              <div style="font-size:13px;color:hsl(230 10% 82%);margin-top:10px;line-height:1.5">Estudo o material inteiro e só depois respondo as questões.</div>
+              <div style="{{ a0Tag }}">Selecionado</div>
+            </div>
+            <div onClick="{{ pickA1 }}" style="{{ a1 }}">
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:32px;height:36px;flex:none;background:hsl(239 84% 67% / .2);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="hsl(239 84% 80%)" stroke-width="2"><path d="M9 9a3 3 0 116 0c0 2-3 2.5-3 5" /><path d="M12 18v.5" /></svg>
+                </div>
+                <div style="font-size:15px;font-weight:700;flex:1;min-width:0">Pergunta primeiro</div>
+                <div style="{{ a1Badge }}"><sc-if value="{{ a1Sel }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="hsl(266 30% 12%)" stroke-width="4"><path d="M5 13l4 4 10-10"></path></svg></sc-if></div>
+              </div>
+              <div style="font-size:13px;color:hsl(230 10% 82%);margin-top:10px;line-height:1.5">Tento responder antes, e o conteúdo vem para explicar.</div>
+              <div style="{{ a1Tag }}">Selecionado</div>
+            </div>
+            <div onClick="{{ pickA2 }}" style="{{ a2 }}">
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:32px;height:36px;flex:none;background:hsl(142 65% 50% / .18);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="hsl(142 65% 66%)" stroke-width="2"><path d="M4 8h7M13 8h7M4 16h7M13 16h7" /></svg>
+                </div>
+                <div style="font-size:15px;font-weight:700;flex:1;min-width:0">Misto</div>
+                <div style="{{ a2Badge }}"><sc-if value="{{ a2Sel }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="hsl(266 30% 12%)" stroke-width="4"><path d="M5 13l4 4 10-10"></path></svg></sc-if></div>
+              </div>
+              <div style="font-size:13px;color:hsl(230 10% 82%);margin-top:10px;line-height:1.5">Um pouco de conteúdo, uma pergunta, e assim por diante.</div>
+              <div style="{{ a2Tag }}">Selecionado</div>
+            </div>
+            <div onClick="{{ pickA3 }}" style="{{ a3 }}">
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:32px;height:36px;flex:none;background:hsl(45 90% 58% / .18);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="hsl(45 90% 68%)" stroke-width="2"><path d="M5 5h14M5 12h14M5 19h9" /></svg>
+                </div>
+                <div style="font-size:15px;font-weight:700;flex:1;min-width:0">Perguntas ao final</div>
+                <div style="{{ a3Badge }}"><sc-if value="{{ a3Sel }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="hsl(266 30% 12%)" stroke-width="4"><path d="M5 13l4 4 10-10"></path></svg></sc-if></div>
+              </div>
+              <div style="font-size:13px;color:hsl(230 10% 82%);margin-top:10px;line-height:1.5">Todas as questões juntas, no fim do tópico.</div>
+              <div style="{{ a3Tag }}">Selecionado</div>
+            </div>
+          </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ isS3 }}">
+        <div style="animation:tu-rise .2s ease-out">
+          <div style="font-family:Cinzel, serif;font-size:26px;font-weight:700">Estilo de feedback</div>
+          <div style="font-size:14px;color:hsl(230 10% 78%);margin-top:8px;line-height:1.6">Como você quer ser avisado quando errar uma questão.</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:14px;margin-top:22px">
+            <div onClick="{{ pickF0 }}" style="{{ f0 }}">
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:40px;height:44px;flex:none;background:hsl(0 70% 55% / .16);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center">
+                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="hsl(0 78% 74%)" stroke-width="2"><path d="M13 3L4 14h7l-1 7 9-11h-7z" /></svg>
+                </div>
+                <div style="{{ f0Badge }}"><sc-if value="{{ f0Sel }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="hsl(266 30% 12%)" stroke-width="4"><path d="M5 13l4 4 10-10"></path></svg></sc-if></div>
+              </div>
+              <div style="font-family:Cinzel, serif;font-size:21px;font-weight:700;margin-top:16px">Imediato</div>
+              <div style="font-size:13px;color:hsl(230 10% 84%);margin-top:10px;line-height:1.6">Vejo na hora se acertei ou errei, com a resposta correta e a explicação em seguida.</div>
+              <div style="{{ f0Tag }}">Selecionado</div>
+            </div>
+            <div onClick="{{ pickF1 }}" style="{{ f1 }}">
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:40px;height:44px;flex:none;background:hsl(205 70% 58% / .16);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center">
+                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="hsl(205 70% 76%)" stroke-width="2"><path d="M9 18h6M10 21h4" /><path d="M12 3a6 6 0 00-3 11v1h6v-1a6 6 0 00-3-11z" /></svg>
+                </div>
+                <div style="{{ f1Badge }}"><sc-if value="{{ f1Sel }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="hsl(266 30% 12%)" stroke-width="4"><path d="M5 13l4 4 10-10"></path></svg></sc-if></div>
+              </div>
+              <div style="font-family:Cinzel, serif;font-size:21px;font-weight:700;margin-top:16px">Pensante</div>
+              <div style="font-size:13px;color:hsl(230 10% 84%);margin-top:10px;line-height:1.6">Recebo uma dica primeiro e tenho a chance de tentar de novo antes de ver a resposta.</div>
+              <div style="{{ f1Tag }}">Selecionado</div>
+            </div>
+          </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ isS4 }}">
+        <div style="animation:tu-rise .2s ease-out;text-align:center">
+          <div style="display:flex;justify-content:center;gap:10px;margin-bottom:8px">
+            <div style="width:26px;height:29px;background:#17a398;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);animation:tu-float 4s ease-in-out infinite"></div>
+            <div style="width:26px;height:29px;background:#5b3fd9;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);animation:tu-float 4s ease-in-out infinite .3s"></div>
+            <div style="width:26px;height:29px;background:#c9a227;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);animation:tu-float 4s ease-in-out infinite .6s"></div>
+            <div style="width:26px;height:29px;background:#f4623a;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);animation:tu-float 4s ease-in-out infinite .9s"></div>
+            <div style="width:26px;height:29px;background:#1e4fd6;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);animation:tu-float 4s ease-in-out infinite 1.2s"></div>
+          </div>
+          <div style="font-family:Cinzel, serif;font-size:28px;font-weight:700;margin-top:18px">Agora, o seu perfil de jogador</div>
+          <div style="font-size:15px;color:hsl(230 10% 84%);margin-top:14px;line-height:1.7;max-width:520px;margin-left:auto;margin-right:auto">O BrainHex descreve sete jeitos de encarar um desafio. Descobrir o seu diz à plataforma como escrever, narrar e ritmar o seu material — quem gosta de estratégia recebe problemas antes da teoria; quem gosta de descobrir recebe pistas.</div>
+          <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:24px">
+            <div style="padding:14px 18px;border-radius:16px;background:hsl(226 22% 16%);font-size:13px;color:hsl(230 10% 84%)"><strong style="display:block;font-size:20px;font-weight:800;color:hsl(40 20% 94%);margin-bottom:4px">39</strong>afirmações</div>
+            <div style="padding:14px 18px;border-radius:16px;background:hsl(226 22% 16%);font-size:13px;color:hsl(230 10% 84%)"><strong style="display:block;font-size:20px;font-weight:800;color:hsl(40 20% 94%);margin-bottom:4px">0 a 5</strong>o quanto combina com você</div>
+            <div style="padding:14px 18px;border-radius:16px;background:hsl(226 22% 16%);font-size:13px;color:hsl(230 10% 84%)"><strong style="display:block;font-size:20px;font-weight:800;color:hsl(40 20% 94%);margin-bottom:4px">~5 min</strong>sem resposta certa</div>
+          </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ isS5 }}">
+        <div style="animation:tu-rise .2s ease-out">
+          <div style="display:flex;align-items:flex-end;gap:16px;row-gap:12px;flex-wrap:wrap">
+            <div style="min-width:0">
+              <div style="font-family:Cinzel, serif;font-size:24px;font-weight:700">Questionário BrainHex</div>
+              <div style="font-size:13px;color:hsl(230 10% 78%);margin-top:6px">O quanto cada frase combina com você.</div>
+            </div>
+            <div style="margin-left:auto;display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:999px;background:hsl(226 22% 16%);border:1px solid hsl(226 20% 26%);font-size:12px;font-weight:600;color:hsl(230 10% 84%)">página 3 de 8</div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:12px;margin-top:18px;padding:11px 16px;border-radius:14px;background:hsl(225 32% 9%);border:1px solid hsl(226 20% 20%);position:sticky;top:8px;z-index:5">
+            <div style="font-size:12px;color:hsl(230 10% 78%);font-weight:600">0 · nada a ver comigo</div>
+            <div style="flex:1;height:1px;background:hsl(226 20% 22%)"></div>
+            <div style="font-size:12px;color:hsl(266 90% 82%);font-weight:600">5 · é exatamente eu</div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:14px">
+            <sc-for list="{{ questions }}" as="q" hint-placeholder-count="5">
+              <div style="{{ q.rowStyle }}">
+                <div style="display:flex;align-items:center;gap:12px;min-width:0">
+                  <div style="font-size:11px;font-weight:800;color:hsl(230 10% 66%);width:26px;flex:none">{{ q.num }}</div>
+                  <div style="font-size:14px;line-height:1.5;flex:1;min-width:0">{{ q.text }}</div>
+                </div>
+                <div style="display:flex;gap:8px;margin-top:12px;padding-left:38px;flex-wrap:wrap">
+                  <sc-for list="{{ q.dots }}" as="d" hint-placeholder-count="6">
+                    <div onClick="{{ d.pick }}" style="{{ d.style }}">{{ d.n }}</div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:12px;row-gap:12px;flex-wrap:wrap;margin-top:22px">
+            <div style="padding:12px 22px;border-radius:999px;border:1px solid hsl(226 20% 28%);font-size:14px;font-weight:600;color:hsl(230 10% 86%);cursor:pointer" style-hover="border-color:hsl(266 95% 66% / .6)">Página anterior</div>
+            <div style="font-size:12px;color:hsl(230 10% 74%)">{{ answered }} de 39 respondidas</div>
+            <div onClick="{{ go6 }}" style="margin-left:auto;padding:12px 24px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));font-size:14px;font-weight:700;color:hsl(40 20% 96%);cursor:pointer;">Próxima página</div>
+          </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ isS6 }}">
+        <div style="animation:tu-rise .25s ease-out">
+          <div style="text-align:center">
+            <div style="display:inline-flex;align-items:center;gap:9px;padding:6px 14px;border-radius:999px;background:hsl(142 40% 16%);border:1px solid hsl(142 65% 50% / .45);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:hsl(142 65% 68%)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4"><path d="M5 13l4 4 10-10" /></svg>
+              Análise completa
+            </div>
+            <div style="font-family:Cinzel, serif;font-size:30px;font-weight:700;margin-top:16px;line-height:1.15">Seu perfil de jogador</div>
+            <div style="font-size:14px;color:hsl(230 10% 80%);margin-top:10px;line-height:1.6;max-width:460px;margin-left:auto;margin-right:auto">Dois perfis apareceram fortes na sua composição. Escolha com qual quer começar — dá para trocar depois, no app.</div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:16px;margin-top:26px;align-items:start">
+            <div onClick="{{ pickP0 }}" style="{{ p0 }}">
+              <div style="display:flex;align-items:center;gap:10px">
+                <div style="padding:4px 11px;border-radius:999px;background:#17a39833;font-size:11px;font-weight:700;color:#5fe0d5">92% de compatibilidade</div>
+                <div style="{{ p0Badge }}"><sc-if value="{{ p0Sel }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="hsl(266 30% 12%)" stroke-width="4"><path d="M5 13l4 4 10-10"></path></svg></sc-if></div>
+              </div>
+              <img src="assets/seeker.webp" alt="Guardião Seeker" style="width:100%;max-width:200px;display:block;margin:14px auto 6px;filter:drop-shadow(0 12px 34px #17a39877)" />
+              <div style="font-family:Cinzel, serif;font-size:26px;font-weight:700;text-align:center">Seeker</div>
+              <div style="font-size:13px;color:hsl(230 10% 84%);margin-top:10px;line-height:1.6;text-align:center">Você aprende explorando: gosta de descobrir o porquê das coisas antes de decorar a regra.</div>
+              <div style="height:8px;border-radius:999px;background:hsl(226 20% 20%);margin-top:16px;overflow:hidden"><div style="width:92%;height:100%;border-radius:999px;background:#17a398;box-shadow:0 0 16px #17a39899"></div></div>
+              <div style="{{ p0Tag }}">Começar como Seeker</div>
+            </div>
+            <div onClick="{{ pickP1 }}" style="{{ p1 }}">
+              <div style="display:flex;align-items:center;gap:10px">
+                <div style="padding:4px 11px;border-radius:999px;background:#c9a22733;font-size:11px;font-weight:700;color:#e8c964">86% de compatibilidade</div>
+                <div style="{{ p1Badge }}"><sc-if value="{{ p1Sel }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="hsl(266 30% 12%)" stroke-width="4"><path d="M5 13l4 4 10-10"></path></svg></sc-if></div>
+              </div>
+              <img src="assets/achiever.webp" alt="Guardião Achiever" style="width:100%;max-width:200px;display:block;margin:14px auto 6px;filter:drop-shadow(0 12px 34px #c9a22777)" />
+              <div style="font-family:Cinzel, serif;font-size:26px;font-weight:700;text-align:center">Achiever</div>
+              <div style="font-size:13px;color:hsl(230 10% 84%);margin-top:10px;line-height:1.6;text-align:center">Você se move por metas: completar tudo, subir de nível e ver a coleção fechada.</div>
+              <div style="height:8px;border-radius:999px;background:hsl(226 20% 20%);margin-top:16px;overflow:hidden"><div style="width:86%;height:100%;border-radius:999px;background:#c9a227"></div></div>
+              <div style="{{ p1Tag }}">Começar como Achiever</div>
+            </div>
+          </div>
+
+          <div style="margin-top:30px;padding:24px 26px;border-radius:20px;background:hsl(226 22% 15%);border:1px solid hsl(226 20% 24%)">
+            <div style="font-family:Cinzel, serif;font-size:19px;font-weight:700">Composição detalhada</div>
+            <div style="font-size:13px;color:hsl(230 10% 78%);margin-top:5px">Todos têm um pouco de cada — esta é a sua mistura.</div>
+            <div style="display:flex;flex-direction:column;gap:13px;margin-top:20px">
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:104px;flex:none;display:flex;align-items:center;gap:9px"><div style="width:14px;height:16px;background:#22c9bc;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div><div style="font-size:13px;font-weight:700">Seeker</div></div>
+                <div style="flex:1;height:11px;border-radius:999px;background:hsl(226 20% 21%);overflow:hidden"><div style="width:92%;height:100%;border-radius:999px;background:#17a398"></div></div>
+                <div style="width:42px;text-align:right;font-size:13px;font-weight:700">92%</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:104px;flex:none;display:flex;align-items:center;gap:9px"><div style="width:14px;height:16px;background:#dfb63a;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div><div style="font-size:13px;font-weight:700">Achiever</div></div>
+                <div style="flex:1;height:11px;border-radius:999px;background:hsl(226 20% 21%);overflow:hidden"><div style="width:86%;height:100%;border-radius:999px;background:#c9a227"></div></div>
+                <div style="width:42px;text-align:right;font-size:13px;font-weight:700">86%</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:104px;flex:none;display:flex;align-items:center;gap:9px"><div style="width:14px;height:16px;background:#7a63e8;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div><div style="font-size:13px;font-weight:500;color:hsl(230 10% 86%)">Mastermind</div></div>
+                <div style="flex:1;height:11px;border-radius:999px;background:hsl(226 20% 21%);overflow:hidden"><div style="width:64%;height:100%;border-radius:999px;background:#5b3fd9"></div></div>
+                <div style="width:42px;text-align:right;font-size:13px;font-weight:600;color:hsl(230 10% 86%)">64%</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:104px;flex:none;display:flex;align-items:center;gap:9px"><div style="width:14px;height:16px;background:#f77b57;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div><div style="font-size:13px;font-weight:500;color:hsl(230 10% 86%)">Socializer</div></div>
+                <div style="flex:1;height:11px;border-radius:999px;background:hsl(226 20% 21%);overflow:hidden"><div style="width:51%;height:100%;border-radius:999px;background:#f4623a"></div></div>
+                <div style="width:42px;text-align:right;font-size:13px;font-weight:600;color:hsl(230 10% 86%)">51%</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:104px;flex:none;display:flex;align-items:center;gap:9px"><div style="width:14px;height:16px;background:#3e6dea;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div><div style="font-size:13px;font-weight:500;color:hsl(230 10% 86%)">Conqueror</div></div>
+                <div style="flex:1;height:11px;border-radius:999px;background:hsl(226 20% 21%);overflow:hidden"><div style="width:38%;height:100%;border-radius:999px;background:#1e4fd6"></div></div>
+                <div style="width:42px;text-align:right;font-size:13px;font-weight:600;color:hsl(230 10% 86%)">38%</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:104px;flex:none;display:flex;align-items:center;gap:9px"><div style="width:14px;height:16px;background:#e8455b;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div><div style="font-size:13px;font-weight:500;color:hsl(230 10% 86%)">Daredevil</div></div>
+                <div style="flex:1;height:11px;border-radius:999px;background:hsl(226 20% 21%);overflow:hidden"><div style="width:27%;height:100%;border-radius:999px;background:#d7263d"></div></div>
+                <div style="width:42px;text-align:right;font-size:13px;font-weight:600;color:hsl(230 10% 86%)">27%</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:104px;flex:none;display:flex;align-items:center;gap:9px"><div style="width:14px;height:16px;background:#8593a2;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div><div style="font-size:13px;font-weight:500;color:hsl(230 10% 86%)">Survivor</div></div>
+                <div style="flex:1;height:11px;border-radius:999px;background:hsl(226 20% 21%);overflow:hidden"><div style="width:19%;height:100%;border-radius:999px;background:#4e5a66"></div></div>
+                <div style="width:42px;text-align:right;font-size:13px;font-weight:600;color:hsl(230 10% 86%)">19%</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        </sc-if>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:12px;row-gap:12px;flex-wrap:wrap;padding:20px 30px;border-top:1px solid hsl(226 20% 22%);background:hsl(225 32% 9%)">
+        <div onClick="{{ back }}" style="{{ backStyle }}">Voltar</div>
+        <div style="font-size:12px;color:hsl(230 10% 72%)">{{ footHint }}</div>
+        <div onClick="{{ next }}" style="{{ nextStyle }}">{{ nextLabel }}</div>
+      </div>
+    </div>
+    </sc-if>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{}">
+const PILL = 'padding:7px 12px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;';
+const ON = PILL + 'background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));color:hsl(40 20% 96%)';
+const OFF = PILL + 'background:hsl(226 22% 16%);color:hsl(230 10% 80%)';
+
+const CARD = 'padding:18px 20px;border-radius:18px;cursor:pointer;';
+const CARD_ON = CARD + 'background:hsl(226 24% 16%);border:2px solid hsl(266 95% 66%)';
+const CARD_OFF = CARD + 'background:hsl(226 22% 16%);border:2px solid hsl(226 20% 24%)';
+
+const BADGE_ON = 'width:22px;height:22px;flex:none;border-radius:999px;background:hsl(266 95% 66%);display:flex;align-items:center;justify-content:center';
+const BADGE_OFF = 'width:22px;height:22px;flex:none;border-radius:999px;border:2px solid hsl(226 20% 34%)';
+
+const TAG_ON = 'display:inline-block;margin-top:14px;padding:5px 12px;border-radius:999px;background:hsl(266 95% 66%);font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:hsl(266 30% 12%)';
+const TAG_OFF = 'display:none';
+
+const QUESTIONS = [
+  'Gosto de encontrar coisas que ninguém tinha notado ainda.',
+  'Prefiro entender o mecanismo antes de tentar resolver.',
+  'Fico satisfeito quando completo 100% de uma coleção.',
+  'Gosto de competir para ficar em primeiro lugar.',
+  'Estudar junto com outras pessoas me motiva mais.'
+];
+
+const BAR = 'flex:1;height:5px;border-radius:999px;';
+
+class Component extends DCLogic {
+  state = {
+    view: 'aluno', step: 5, terms: false,
+    aprender: 1, feedback: 1, perfil: 0,
+    answers: [4, 5, 2, null, 3]
+  };
+
+  renderVals() {
+    const v = this.state.view;
+    const s = this.state.step;
+    const st = n => (v === 'aluno' && s === n ? ON : OFF);
+    const bar = n => BAR + (v === 'aluno' && s >= n ? 'background:hsl(266 95% 66%)' : 'background:hsl(226 20% 24%)');
+    const pick = (key, i) => () => this.setState({ [key]: i });
+    const sel = (key, i) => this.state[key] === i;
+
+    const answered = 12 + this.state.answers.filter(a => a !== null).length;
+    const questions = QUESTIONS.map((text, qi) => ({
+      num: String(11 + qi).padStart(2, '0'),
+      text,
+      rowStyle: 'padding:14px 16px;border-radius:16px;background:' + (qi % 2 ? 'hsl(226 22% 15%)' : 'hsl(226 24% 17%)'),
+      dots: [0, 1, 2, 3, 4, 5].map(n => {
+        const on = this.state.answers[qi] === n;
+        const alpha = 0.16 + n * 0.14;
+        return {
+          n,
+          pick: () => {
+            const a = this.state.answers.slice();
+            a[qi] = n;
+            this.setState({ answers: a });
+          },
+          style: 'width:40px;height:40px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;cursor:pointer;'
+            + (on
+              ? 'background:hsl(266 95% 66%);color:hsl(266 30% 12%);box-shadow:0 0 16px hsl(266 95% 66% / .6);border:2px solid hsl(266 90% 82%)'
+              : 'background:hsl(266 60% 60% / ' + alpha.toFixed(2) + ');color:hsl(230 10% 84%);border:1px solid hsl(226 20% 28%)')
+        };
+      })
+    }));
+
+    const labels = {
+      1: 'Passo 1 de 6 · básico', 2: 'Passo 2 de 6 · como você aprende',
+      3: 'Passo 3 de 6 · estilo de feedback', 4: 'Passo 4 de 6 · sobre o BrainHex',
+      5: 'Passo 5 de 6 · questionário', 6: 'Passo 6 de 6 · resultado'
+    };
+
+    return {
+      isConfirming: v === 'conf',
+      isError: v === 'erro',
+      isProf: v === 'prof',
+      isAluno: v === 'aluno',
+      goC: () => this.setState({ view: 'conf' }),
+      goE: () => this.setState({ view: 'erro' }),
+      goP: () => this.setState({ view: 'prof' }),
+      stC: v === 'conf' ? ON : OFF,
+      stE: v === 'erro' ? ON : OFF,
+      stP: v === 'prof' ? ON : OFF,
+      go1: () => this.setState({ view: 'aluno', step: 1 }),
+      go2: () => this.setState({ view: 'aluno', step: 2 }),
+      go3: () => this.setState({ view: 'aluno', step: 3 }),
+      go4: () => this.setState({ view: 'aluno', step: 4 }),
+      go5: () => this.setState({ view: 'aluno', step: 5 }),
+      go6: () => this.setState({ view: 'aluno', step: 6 }),
+      st1: st(1), st2: st(2), st3: st(3), st4: st(4), st5: st(5), st6: st(6),
+      b1: bar(1), b2: bar(2), b3: bar(3), b4: bar(4), b5: bar(5), b6: bar(6),
+      isS1: s === 1, isS2: s === 2, isS3: s === 3, isS4: s === 4, isS5: s === 5, isS6: s === 6,
+      stepLabel: labels[s],
+      progressLabel: s === 5 ? answered + ' de 39 afirmações respondidas (' + Math.round(answered / 39 * 100) + '%)' : 'Cadastro do aluno',
+      answered,
+      questions,
+      terms: this.state.terms,
+      toggleTerms: () => this.setState({ terms: !this.state.terms }),
+      boxStyle: 'width:20px;height:20px;flex:none;border-radius:6px;display:flex;align-items:center;justify-content:center;' + (this.state.terms
+        ? 'background:hsl(266 95% 66%);border:1px solid hsl(266 95% 66%)'
+        : 'background:hsl(226 28% 12%);border:1px solid hsl(226 20% 32%)'),
+      ctaStyle: this.state.terms
+        ? 'margin-top:18px;padding:15px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));font-size:15px;font-weight:700;color:hsl(40 20% 96%);text-align:center;cursor:pointer;'
+        : 'margin-top:18px;padding:15px;border-radius:999px;background:hsl(226 20% 18%);border:1px solid hsl(226 20% 24%);font-size:15px;font-weight:700;color:hsl(230 10% 55%);text-align:center;cursor:not-allowed',
+      pickA0: pick('aprender', 0), pickA1: pick('aprender', 1), pickA2: pick('aprender', 2), pickA3: pick('aprender', 3),
+      a0: sel('aprender', 0) ? CARD_ON : CARD_OFF,
+      a1: sel('aprender', 1) ? CARD_ON : CARD_OFF,
+      a2: sel('aprender', 2) ? CARD_ON : CARD_OFF,
+      a3: sel('aprender', 3) ? CARD_ON : CARD_OFF,
+      a0Badge: sel('aprender', 0) ? BADGE_ON : BADGE_OFF,
+      a1Badge: sel('aprender', 1) ? BADGE_ON : BADGE_OFF,
+      a2Badge: sel('aprender', 2) ? BADGE_ON : BADGE_OFF,
+      a3Badge: sel('aprender', 3) ? BADGE_ON : BADGE_OFF,
+      a0Tag: sel('aprender', 0) ? TAG_ON : TAG_OFF,
+      a1Tag: sel('aprender', 1) ? TAG_ON : TAG_OFF,
+      a2Tag: sel('aprender', 2) ? TAG_ON : TAG_OFF,
+      a3Tag: sel('aprender', 3) ? TAG_ON : TAG_OFF,
+      a0Sel: sel('aprender', 0), a1Sel: sel('aprender', 1), a2Sel: sel('aprender', 2), a3Sel: sel('aprender', 3),
+      f0Sel: sel('feedback', 0), f1Sel: sel('feedback', 1),
+      p0Sel: sel('perfil', 0), p1Sel: sel('perfil', 1),
+      pickF0: pick('feedback', 0), pickF1: pick('feedback', 1),
+      f0: (sel('feedback', 0) ? CARD_ON : CARD_OFF) + ';padding:24px 26px',
+      f1: (sel('feedback', 1) ? CARD_ON : CARD_OFF) + ';padding:24px 26px',
+      f0Badge: sel('feedback', 0) ? BADGE_ON + ';margin-left:auto' : BADGE_OFF + ';margin-left:auto',
+      f1Badge: sel('feedback', 1) ? BADGE_ON + ';margin-left:auto' : BADGE_OFF + ';margin-left:auto',
+      f0Tag: sel('feedback', 0) ? TAG_ON : TAG_OFF,
+      f1Tag: sel('feedback', 1) ? TAG_ON : TAG_OFF,
+      pickP0: pick('perfil', 0), pickP1: pick('perfil', 1),
+      p0: (sel('perfil', 0) ? CARD_ON : CARD_OFF) + ';padding:22px 24px',
+      p1: (sel('perfil', 1) ? CARD_ON : CARD_OFF) + ';padding:22px 24px',
+      p0Badge: (sel('perfil', 0) ? BADGE_ON : BADGE_OFF) + ';margin-left:auto',
+      p1Badge: (sel('perfil', 1) ? BADGE_ON : BADGE_OFF) + ';margin-left:auto',
+      p0Tag: sel('perfil', 0) ? TAG_ON + ';width:100%;text-align:center' : TAG_OFF,
+      p1Tag: sel('perfil', 1) ? TAG_ON + ';width:100%;text-align:center' : TAG_OFF,
+      back: () => this.setState({ step: Math.max(1, s - 1) }),
+      next: () => this.setState({ step: Math.min(6, s + 1) }),
+      backStyle: s === 1
+        ? 'padding:12px 22px;border-radius:999px;border:1px solid hsl(226 20% 22%);font-size:14px;font-weight:600;color:hsl(230 10% 55%);cursor:not-allowed'
+        : 'padding:12px 22px;border-radius:999px;border:1px solid hsl(226 20% 28%);font-size:14px;font-weight:600;color:hsl(230 10% 86%);cursor:pointer',
+      nextStyle: 'margin-left:auto;padding:12px 26px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));font-size:14px;font-weight:700;color:hsl(40 20% 96%);cursor:pointer;',
+      nextLabel: s === 6 ? 'Concluir cadastro' : 'Continuar',
+      footHint: s === 5
+        ? 'A navegação do questionário fica dentro da página.'
+        : (s === 6 ? 'Você poderá trocar de perfil depois, no app.' : 'Nada é publicado até o fim do cadastro.')
+    };
+  }
+}
+
+</script>
+</body>
+</html>

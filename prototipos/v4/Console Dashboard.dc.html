@@ -1,0 +1,1423 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  body { margin:0; background:hsl(225 32% 8%); font-family:Inter, system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:hsl(266 90% 77%); text-decoration:none; }
+  a:hover { color:hsl(266 95% 76%); }
+  @keyframes tu-shimmer { 0% { background-position:-500px 0; } 100% { background-position:500px 0; } }
+  @keyframes tu-glow { 0%,100% { opacity:.55; } 50% { opacity:1; } }
+  * { scrollbar-width:thin; scrollbar-color:hsl(266 60% 55% / .5) hsl(226 22% 15%); }
+  *::-webkit-scrollbar { width:8px; height:8px; }
+  *::-webkit-scrollbar-track { background:hsl(226 22% 15%); }
+  *::-webkit-scrollbar-thumb { background:hsl(266 60% 55% / .5); border-radius:999px; }
+  *::-webkit-scrollbar-thumb:hover { background:hsl(266 70% 60% / .7); }
+  @keyframes tu-ember { 0% { transform:translateY(0) scale(1); opacity:0 } 14% { opacity:.85 } 100% { transform:translateY(-130px) scale(.3); opacity:0 } }
+</style>
+</helmet>
+<div style="min-height:100vh;background-color:hsl(225 32% 8%);background-image:radial-gradient(hsl(230 30% 62% / .10) 1px, transparent 1px), radial-gradient(hsl(230 30% 62% / .06) 1px, transparent 1px), radial-gradient(880px 420px at 14% -8%, hsl(266 45% 26% / .20), transparent 62%);background-size:118px 118px, 47px 47px, 100% 100%;background-position:0 0, 23px 31px, 0 0;color:hsl(40 20% 94%);padding-bottom:72px">
+
+  <div style="position:sticky;top:0;z-index:20;display:flex;align-items:center;flex-wrap:wrap;row-gap:10px;gap:24px;padding:12px 32px;background:hsl(225 32% 8% / .88);backdrop-filter:blur(14px);border-bottom:1px solid hsl(226 20% 22%)">
+    <div style="display:flex;align-items:center;gap:12px;min-width:0">
+      <img src="assets/trailup-logo.png" alt="TrailUp" style="width:26px;height:32px;object-fit:contain" />
+      <div style="font-family:Cinzel, serif;font-weight:700;font-size:19px;letter-spacing:.04em">TrailUp</div>
+      <div style="width:1px;height:20px;background:hsl(226 20% 22%)"></div>
+      <div style="font-size:13px;color:hsl(230 10% 72%);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap">Console</div>
+    </div>
+    <div style="display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:6px;margin-left:auto;min-width:0">
+      <div style="padding:9px 18px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));color:hsl(40 20% 96%);font-size:14px;font-weight:600">Dashboard</div>
+      <a href="Console%20Trilha.dc.html" style="padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer;text-decoration:none" style-hover="background:hsl(226 20% 20%);color:hsl(40 20% 94%)">Trilha</a>
+      <a href="Console%20Classes.dc.html" style="padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer;text-decoration:none" style-hover="background:hsl(226 20% 20%);color:hsl(40 20% 94%)">Classes</a>
+      <a href="Console%20Personalizacoes.dc.html" style="padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer;text-decoration:none" style-hover="background:hsl(226 20% 20%);color:hsl(40 20% 94%)">Personalizações</a>
+      <a href="Console%20Ranks.dc.html" style="padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer;text-decoration:none" style-hover="background:hsl(226 20% 20%);color:hsl(40 20% 94%)">Ranks</a>
+      <a href="Console%20Meus%20Dados.dc.html" style="padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer;text-decoration:none" style-hover="background:hsl(226 20% 20%);color:hsl(40 20% 94%)">Meus Dados</a>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;padding-left:16px;border-left:1px solid hsl(226 20% 22%)">
+      <div style="width:34px;height:34px;border-radius:999px;background:hsl(226 20% 20%);border:1px solid hsl(266 95% 66% / .45);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:hsl(266 90% 77%)">JP</div>
+      <div style="font-size:13px;color:hsl(230 10% 72%);cursor:pointer" style-hover="color:hsl(0 70% 62%)">Sair</div>
+    </div>
+  </div>
+
+  <div style="max-width:1360px;margin:0 auto;padding:0 32px">
+
+    <sc-if value="{{ isOverview }}" hint-placeholder-val="{{ true }}">
+    <div>
+      <div style="display:flex;align-items:flex-end;gap:32px;row-gap:18px;flex-wrap:wrap;padding:40px 0 28px;position:relative"><div style="position:absolute;left:-70px;top:-46px;width:600px;height:270px;pointer-events:none;background:radial-gradient(closest-side, hsl(266 95% 66% / .17), transparent 72%)"></div><div style="position:absolute;left:-70px;top:-46px;width:340px;height:220px;pointer-events:none;background:radial-gradient(closest-side, hsl(239 84% 67% / .10), transparent 70%)"></div><div style="position:absolute;left:8px;bottom:14px;width:430px;height:88px;pointer-events:none;overflow:hidden"><div style="position:absolute;left:20px;bottom:0;width:3px;height:3px;border-radius:999px;background:hsl(266 90% 80%);animation:tu-ember 6.2s linear infinite 0s"></div><div style="position:absolute;left:104px;bottom:0;width:2px;height:2px;border-radius:999px;background:hsl(239 84% 80%);animation:tu-ember 7.4s linear infinite 1.3s"></div><div style="position:absolute;left:186px;bottom:0;width:3px;height:3px;border-radius:999px;background:hsl(266 90% 84%);animation:tu-ember 6.6s linear infinite 2.5s"></div><div style="position:absolute;left:268px;bottom:0;width:2px;height:2px;border-radius:999px;background:hsl(266 90% 80%);animation:tu-ember 8s linear infinite 3.2s"></div><div style="position:absolute;left:352px;bottom:0;width:2px;height:2px;border-radius:999px;background:hsl(239 84% 82%);animation:tu-ember 7s linear infinite 4.4s"></div></div>
+        <div style="min-width:0">
+          <div style="font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:hsl(266 90% 77%);font-weight:600;margin-bottom:10px">Turma selecionada</div>
+          <div style="display:flex;align-items:center;gap:14px;padding:10px 20px 10px 16px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%);cursor:pointer" style-hover="border-color:hsl(266 95% 66% / .6)">
+            <div style="width:34px;height:38px;background:hsl(226 20% 26%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:hsl(230 10% 84%)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="7" height="7" rx="1.5" /><rect x="14" y="4" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg>
+            </div>
+            <div>
+              <div style="font-family:Cinzel, serif;font-size:26px;font-weight:700;line-height:1.1">Todas as turmas</div>
+              <div style="font-size:13px;color:hsl(230 10% 72%);margin-top:2px">3 turmas · 74 alunos</div>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 72%)" stroke-width="2" style="margin-left:8px"><path d="M6 9l6 6 6-6" /></svg>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-left:auto">
+          <div style="display:flex;gap:4px;padding:4px;border-radius:999px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+            <div style="padding:7px 15px;border-radius:999px;font-size:13px;font-weight:600;background:hsl(226 20% 20%);color:hsl(40 20% 94%);cursor:pointer">30 dias</div>
+            <div style="padding:7px 15px;border-radius:999px;font-size:13px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer" style-hover="color:hsl(40 20% 94%)">Semestre</div>
+            <div style="padding:7px 15px;border-radius:999px;font-size:13px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer" style-hover="color:hsl(40 20% 94%)">Tudo</div>
+          </div>
+          <div style="font-size:12px;color:hsl(230 10% 72%)">Atualizado há 4 min</div>
+        </div>
+      </div>
+
+      <sc-if value="{{ isLoading }}">
+      <div style="display:flex;flex-direction:column;gap:20px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:20px">
+          <div style="height:158px;border-radius:20px;border:1px solid hsl(226 20% 22%);background:linear-gradient(90deg, hsl(226 28% 12%) 0%, hsl(226 22% 17%) 50%, hsl(226 28% 12%) 100%);background-size:500px 100%;animation:tu-shimmer 1.4s linear infinite"></div>
+          <div style="height:158px;border-radius:20px;border:1px solid hsl(226 20% 22%);background:linear-gradient(90deg, hsl(226 28% 12%) 0%, hsl(226 22% 17%) 50%, hsl(226 28% 12%) 100%);background-size:500px 100%;animation:tu-shimmer 1.4s linear infinite .15s"></div>
+          <div style="height:158px;border-radius:20px;border:1px solid hsl(226 20% 22%);background:linear-gradient(90deg, hsl(226 28% 12%) 0%, hsl(226 22% 17%) 50%, hsl(226 28% 12%) 100%);background-size:500px 100%;animation:tu-shimmer 1.4s linear infinite .3s"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:20px">
+          <div style="height:320px;border-radius:20px;border:1px solid hsl(226 20% 22%);background:linear-gradient(90deg, hsl(226 28% 12%) 0%, hsl(226 22% 17%) 50%, hsl(226 28% 12%) 100%);background-size:500px 100%;animation:tu-shimmer 1.4s linear infinite .2s"></div>
+          <div style="height:320px;border-radius:20px;border:1px solid hsl(226 20% 22%);background:linear-gradient(90deg, hsl(226 28% 12%) 0%, hsl(226 22% 17%) 50%, hsl(226 28% 12%) 100%);background-size:500px 100%;animation:tu-shimmer 1.4s linear infinite .35s"></div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:12px;padding:18px;border-radius:20px;border:1px dashed hsl(226 20% 22%);color:hsl(230 10% 72%);font-size:14px">
+          <div style="width:22px;height:24px;background:hsl(266 95% 66%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);animation:tu-glow 1.3s ease-in-out infinite"></div>
+          Consultando o desempenho da turma…
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isEmpty }}">
+      <div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:18px;padding:88px 40px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+        <div style="position:relative;width:96px;height:104px">
+          <div style="position:absolute;inset:0;background:linear-gradient(135deg, hsl(265 65% 50% / .5), hsl(239 84% 67% / .35));clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+          <div style="position:absolute;inset:12px;background:hsl(226 28% 12%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-family:Cinzel, serif;font-size:30px;color:hsl(266 90% 77%)">0</div>
+        </div>
+        <div style="font-family:Cinzel, serif;font-size:24px;font-weight:700">Nenhum aluno nesta turma ainda</div>
+        <div style="font-size:15px;color:hsl(230 10% 72%);max-width:480px;line-height:1.6">Os indicadores aparecem assim que os alunos aceitarem a matrícula e começarem a percorrer a trilha. Convide sua turma para começar.</div>
+        <div style="display:flex;gap:12px;margin-top:6px">
+          <div style="padding:12px 22px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));font-size:14px;font-weight:600;color:hsl(40 20% 96%);cursor:pointer">Convidar alunos</div>
+          <div style="padding:12px 22px;border-radius:999px;border:1px solid hsl(226 20% 22%);font-size:14px;font-weight:600;color:hsl(40 20% 94%);cursor:pointer" style-hover="border-color:hsl(266 95% 66% / .6)">Montar a trilha</div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isError }}">
+      <div style="display:flex;align-items:flex-start;gap:20px;padding:32px;border-radius:20px;background:hsl(0 40% 14%);border:1px solid hsl(0 70% 55% / .45)">
+        <div style="width:44px;height:48px;flex:none;background:hsl(0 70% 55% / .22);border:1px solid hsl(0 70% 62% / .5);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:hsl(0 75% 68%)">!</div>
+        <div style="min-width:0">
+          <div style="font-family:Cinzel, serif;font-size:21px;font-weight:700;margin-bottom:8px">Não foi possível carregar os indicadores</div>
+          <div style="font-size:14px;color:hsl(30 15% 84%);line-height:1.6;max-width:620px">O serviço de métricas não respondeu. Os dados da turma estão salvos — nada foi perdido. Tente de novo em alguns segundos.</div>
+          <div style="display:flex;gap:12px;margin-top:18px">
+            <div onClick="{{ retry }}" style="padding:11px 20px;border-radius:999px;background:hsl(40 20% 94%);color:hsl(226 30% 12%);font-size:14px;font-weight:600;cursor:pointer">Tentar novamente</div>
+            <div style="padding:11px 20px;border-radius:999px;border:1px solid hsl(0 70% 62% / .4);color:hsl(30 15% 88%);font-size:14px;font-weight:600;cursor:pointer">Ver status do serviço</div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isData }}">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px;padding:5px;border-radius:999px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%);width:fit-content">
+        <div onClick="{{ cls0 }}" style="{{ clsStyle0 }}">Visão geral</div>
+        <div onClick="{{ cls1 }}" style="{{ clsStyle1 }}">Evolução</div>
+        <div onClick="{{ cls2 }}" style="{{ clsStyle2 }}">Conteúdo</div>
+      </div>
+
+      <sc-if value="{{ isCls0 }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;gap:20px">
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:20px">
+          <div style="position:relative;overflow:hidden;padding:26px 28px;border-radius:20px;background:linear-gradient(158deg, hsl(226 26% 16%), hsl(226 28% 12%) 58%);border:1px solid hsl(266 95% 66% / .34);box-shadow:0 20px 44px -24px hsl(226 55% 3% / .95)"><div style="position:absolute;right:-44px;top:-54px;width:210px;height:210px;pointer-events:none;background:radial-gradient(closest-side, hsl(266 95% 66% / .16), transparent 72%)"></div><div style="position:absolute;right:20px;top:20px;width:34px;height:38px;pointer-events:none;background:hsl(266 95% 66% / .15);border:1px solid hsl(266 95% 66% / .3);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="hsl(266 90% 82%)" stroke-width="1.9"><path d="M17 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2" /><circle cx="10" cy="7" r="4" /></svg></div>
+            <div style="position:relative;font-family:Cinzel, serif;font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:hsl(230 10% 78%)">Total de alunos</div>
+            <div style="display:flex;align-items:flex-end;gap:12px;margin-top:14px">
+              <div style="font-size:52px;font-weight:800;line-height:1;letter-spacing:-.02em">34</div>
+              <div style="font-size:14px;color:hsl(230 10% 72%);padding-bottom:6px">com acesso liberado</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:9px;margin-top:16px">
+              <div style="display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:hsl(142 40% 16%);border:1px solid hsl(142 65% 50% / .4);font-size:12px;font-weight:700;color:hsl(142 65% 66%)">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 19V5M6 11l6-6 6 6" /></svg>
+                +3
+              </div>
+              <div style="font-size:12px;color:hsl(230 10% 76%)">matrículas aceitas nesta semana</div>
+            </div>
+          </div>
+          <div style="position:relative;overflow:hidden;padding:26px 28px;border-radius:20px;background:linear-gradient(158deg, hsl(226 26% 16%), hsl(226 28% 12%) 58%);border:1px solid hsl(226 20% 24%);box-shadow:0 20px 44px -24px hsl(226 55% 3% / .95)"><div style="position:absolute;right:-44px;top:-54px;width:210px;height:210px;pointer-events:none;background:radial-gradient(closest-side, hsl(239 84% 67% / .13), transparent 72%)"></div><div style="position:absolute;right:20px;top:20px;width:34px;height:38px;pointer-events:none;background:hsl(266 95% 66% / .15);border:1px solid hsl(266 95% 66% / .3);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="hsl(266 90% 82%)" stroke-width="1.9"><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3" /></svg></div>
+            <div style="position:relative;font-family:Cinzel, serif;font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:hsl(230 10% 78%)">Média de notas</div>
+            <div style="display:flex;align-items:flex-end;gap:12px;margin-top:14px">
+              <div style="font-size:52px;font-weight:800;line-height:1;letter-spacing:-.02em">7.4</div>
+              <div style="font-size:14px;color:hsl(230 10% 72%);padding-bottom:6px">de 10</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:9px;margin-top:16px">
+              <div style="display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:hsl(142 40% 16%);border:1px solid hsl(142 65% 50% / .4);font-size:12px;font-weight:700;color:hsl(142 65% 66%)">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 19V5M6 11l6-6 6 6" /></svg>
+                +0,3
+              </div>
+              <div style="font-size:12px;color:hsl(230 10% 76%)">subindo · era 7,1 no período anterior</div>
+            </div>
+          </div>
+          <div style="position:relative;overflow:hidden;padding:26px 28px;border-radius:20px;background:linear-gradient(158deg, hsl(226 26% 16%), hsl(226 28% 12%) 58%);border:1px solid hsl(226 20% 24%);box-shadow:0 20px 44px -24px hsl(226 55% 3% / .95)"><div style="position:absolute;right:-44px;top:-54px;width:210px;height:210px;pointer-events:none;background:radial-gradient(closest-side, hsl(266 95% 66% / .12), transparent 72%)"></div><div style="position:absolute;right:20px;top:20px;width:34px;height:38px;pointer-events:none;background:hsl(266 95% 66% / .15);border:1px solid hsl(266 95% 66% / .3);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="hsl(266 90% 82%)" stroke-width="1.9"><polyline points="3 17 9 11 13 15 21 7" /><polyline points="15 7 21 7 21 13" /></svg></div>
+            <div style="position:relative;font-family:Cinzel, serif;font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:hsl(230 10% 78%)">Conclusão média</div>
+            <div style="display:flex;align-items:flex-end;gap:12px;margin-top:14px">
+              <div style="font-size:52px;font-weight:800;line-height:1;letter-spacing:-.02em">62%</div>
+              <div style="font-size:14px;color:hsl(230 10% 72%);padding-bottom:6px">da trilha</div>
+            </div>
+            <div style="position:relative;height:8px;border-radius:999px;background:hsl(226 20% 20%);margin-top:20px">
+              <div style="width:62%;height:100%;border-radius:999px;background:linear-gradient(90deg, hsl(265 65% 50%), hsl(266 90% 77%))"></div>
+              <div style="position:absolute;left:60%;top:-4px;width:2px;height:16px;background:hsl(230 10% 78%)"></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:9px;margin-top:12px">
+              <div style="display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:hsl(142 40% 16%);border:1px solid hsl(142 65% 50% / .4);font-size:12px;font-weight:700;color:hsl(142 65% 66%)">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4"><path d="M5 13l4 4 10-10" /></svg>
+                No previsto
+              </div>
+              <div style="font-size:12px;color:hsl(230 10% 76%)">marca: 60% esperado nesta semana</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="border-radius:20px;background:linear-gradient(158deg, hsl(226 26% 15%), hsl(226 28% 12%) 55%);border:1px solid hsl(45 90% 58% / .35);overflow:hidden;box-shadow:0 22px 50px -28px hsl(226 55% 3% / .95)">
+          <div style="display:flex;align-items:center;gap:16px;row-gap:12px;flex-wrap:wrap;padding:22px 26px 18px">
+            <div style="position:relative;flex:none;display:flex;align-items:center;justify-content:center"><div style="position:absolute;width:130px;height:130px;pointer-events:none;background:radial-gradient(closest-side, hsl(45 90% 58% / .24), transparent 70%)"></div><div style="position:relative;width:40px;height:44px;background:hsl(45 90% 58% / .16);border:1px solid hsl(45 90% 58% / .5);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;color:hsl(45 90% 70%)">5</div></div>
+            <div style="min-width:0">
+              <div style="font-family:Cinzel, serif;font-size:20px;font-weight:700">Precisam de atenção</div>
+              <div style="font-size:13px;color:hsl(230 10% 76%);margin-top:4px">5 de 34 alunos fora da curva da turma. A média esconde estes casos.</div>
+            </div>
+            <div style="margin-left:auto;display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:999px;background:hsl(226 22% 16%);border:1px solid hsl(226 20% 24%);font-size:12px;color:hsl(230 10% 80%)">
+              Critério: abandono acima de 30%, nota abaixo de 5,0, progresso 20 pontos abaixo do previsto ou 7 dias sem atividade
+            </div>
+          </div>
+          <sc-for list="{{ atRisk }}" as="r" hint-placeholder-count="5">
+            <div onClick="{{ r.open }}" style="display:flex;align-items:center;gap:16px;row-gap:12px;flex-wrap:wrap;padding:15px 26px;border-top:1px solid hsl(226 20% 22%);cursor:pointer" style-hover="background:hsl(226 22% 16%)">
+              <div style="width:32px;height:36px;flex:none;background:{{ r.color }};clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:hsl(226 32% 10%)">{{ r.initials }}</div>
+              <div style="min-width:150px">
+                <div style="font-size:15px;font-weight:600">{{ r.name }}</div>
+                <div style="font-size:12px;color:hsl(230 10% 74%);margin-top:2px">{{ r.profile }}</div>
+              </div>
+              <div style="{{ r.chip }}">
+                <div style="{{ r.dot }}"></div>
+                {{ r.severity }}
+              </div>
+              <div style="min-width:220px;flex:1">
+                <div style="font-size:13px;font-weight:600">{{ r.reason }}</div>
+                <div style="font-size:12px;color:hsl(230 10% 74%);margin-top:3px">{{ r.compare }}</div>
+              </div>
+              <div style="font-size:12px;font-weight:600;color:hsl(266 90% 80%);white-space:nowrap">Abrir jornada</div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(210px, 1fr));gap:16px">
+          <div style="padding:18px 20px;border-radius:16px;background:hsl(226 28% 12% / .7);border:1px solid hsl(226 20% 22%)">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 72%);font-weight:600">Taxa de acertos</div>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="hsl(142 65% 60%)" stroke-width="2.2"><path d="M5 13l4 4 10-10" /></svg>
+            </div>
+            <div style="font-size:28px;font-weight:700;margin-top:8px">71%</div>
+            <div style="height:5px;border-radius:999px;background:hsl(226 20% 20%);margin-top:12px;overflow:hidden"><div style="width:71%;height:100%;background:hsl(142 65% 50%)"></div></div>
+            <div style="display:flex;align-items:center;gap:7px;margin-top:10px;font-size:12px;color:hsl(142 65% 64%);font-weight:600">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4"><path d="M5 13l4 4 10-10" /></svg>
+              Bom · meta 70%
+            </div>
+          </div>
+          <div style="padding:18px 20px;border-radius:16px;background:hsl(226 28% 12% / .7);border:1px solid hsl(226 20% 22%)">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 72%);font-weight:600">Abandono médio</div>
+              <div style="width:11px;height:13px;background:hsl(45 90% 60%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+            </div>
+            <div style="font-size:28px;font-weight:700;margin-top:8px">18.5%</div>
+            <div style="height:5px;border-radius:999px;background:hsl(226 20% 20%);margin-top:12px;overflow:hidden"><div style="width:18.5%;height:100%;background:hsl(45 90% 58%)"></div></div>
+            <div style="display:flex;align-items:center;gap:7px;margin-top:10px;font-size:12px;color:hsl(45 90% 66%);font-weight:600">
+              <div style="width:10px;height:12px;flex:none;background:hsl(45 90% 62%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+              Atenção · acima da meta de 15%
+            </div>
+          </div>
+          <div style="padding:18px 20px;border-radius:16px;background:hsl(226 28% 12% / .7);border:1px solid hsl(226 20% 22%)">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 72%);font-weight:600">Chat após erro</div>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="hsl(205 70% 68%)" stroke-width="2.2"><path d="M4 4h16v12H8l-4 4z" /></svg>
+            </div>
+            <div style="font-size:28px;font-weight:700;margin-top:8px">43%</div>
+            <div style="height:5px;border-radius:999px;background:hsl(226 20% 20%);margin-top:12px;overflow:hidden"><div style="width:43%;height:100%;background:hsl(205 70% 58%)"></div></div>
+            <div style="display:flex;align-items:center;gap:7px;margin-top:10px;font-size:12px;color:hsl(205 70% 72%);font-weight:600">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8v.5" /></svg>
+              Informativo · quem pede ajuda erra menos depois
+            </div>
+          </div>
+          <div style="padding:18px 20px;border-radius:16px;background:hsl(226 28% 12% / .7);border:1px solid hsl(226 20% 22%)">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 72%);font-weight:600">Tempo médio de uso</div>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 74%)" stroke-width="2.2"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l4 2" /></svg>
+            </div>
+            <div style="font-size:28px;font-weight:700;margin-top:8px">24.8<span style="font-size:15px;font-weight:600;color:hsl(230 10% 72%);margin-left:4px">min/sessão</span></div>
+            <div style="font-size:12px;color:hsl(230 10% 72%);margin-top:12px">mediana 21 min · estável vs. período anterior</div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(360px, 1fr));gap:20px">
+          <div style="padding:26px 28px 22px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+            <div style="display:flex;align-items:flex-start;gap:16px">
+              <div style="min-width:0">
+                <div style="font-family:Cinzel, serif;font-size:20px;font-weight:700">Abandono por perfil</div>
+                <div style="font-size:13px;color:hsl(230 10% 72%);margin-top:4px">Percentual de atividades abandonadas, por perfil BrainHex dominante</div>
+              </div>
+              <div style="margin-left:auto;display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:hsl(226 22% 16%);border:1px solid hsl(226 20% 22%);font-size:13px;font-weight:600;cursor:pointer">
+                Majoritário
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 72%)" stroke-width="2"><path d="M6 9l6 6 6-6" /></svg>
+              </div>
+            </div>
+            <div style="margin-top:26px;padding-bottom:8px;overflow-x:auto">
+              <div style="position:relative;min-width:600px">
+                <div style="position:absolute;left:0;right:0;bottom:74px;border-top:1px dashed hsl(230 10% 72% / .45)"></div>
+                <div style="position:absolute;right:0;bottom:78px;font-size:11px;color:hsl(230 10% 72%);background:hsl(226 28% 12%);padding:0 6px">média 18,5%</div>
+              <div style="display:grid;grid-template-columns:repeat(7, minmax(72px,1fr));gap:14px;align-items:end;height:220px">
+                <div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
+                  <div style="font-size:14px;font-weight:700;margin-bottom:8px">9%</div>
+                  <div style="width:100%;max-width:56px;height:44px;border-radius:10px 10px 4px 4px;background:#17a398"></div>
+                  <div style="width:20px;height:22px;margin-top:12px;background:#17a398;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+                  <div style="font-size:12px;color:hsl(230 10% 78%);margin-top:8px;font-weight:500;max-width:100%;line-height:1.2;text-align:center;overflow-wrap:anywhere">Seeker</div>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
+                  <div style="font-size:14px;font-weight:700;margin-bottom:8px">31%</div>
+                  <div style="width:100%;max-width:56px;height:130px;border-radius:10px 10px 4px 4px;background:#5c6875"></div>
+                  <div style="width:20px;height:22px;margin-top:12px;background:#6d7c8c;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+                  <div style="font-size:12px;color:hsl(230 10% 78%);margin-top:8px;font-weight:500;max-width:100%;line-height:1.2;text-align:center;overflow-wrap:anywhere">Survivor</div>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
+                  <div style="font-size:14px;font-weight:700;margin-bottom:8px">24%</div>
+                  <div style="width:100%;max-width:56px;height:100px;border-radius:10px 10px 4px 4px;background:#d7263d"></div>
+                  <div style="width:20px;height:22px;margin-top:12px;background:#d7263d;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+                  <div style="font-size:12px;color:hsl(230 10% 78%);margin-top:8px;font-weight:500;max-width:100%;line-height:1.2;text-align:center;overflow-wrap:anywhere">Daredevil</div>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
+                  <div style="font-size:14px;font-weight:700;margin-bottom:8px">12%</div>
+                  <div style="width:100%;max-width:56px;height:56px;border-radius:10px 10px 4px 4px;background:#5b3fd9"></div>
+                  <div style="width:20px;height:22px;margin-top:12px;background:#7a63e8;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+                  <div style="font-size:12px;color:hsl(230 10% 78%);margin-top:8px;font-weight:500;max-width:100%;line-height:1.2;text-align:center;overflow-wrap:anywhere">Mastermind</div>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
+                  <div style="font-size:14px;font-weight:700;margin-bottom:8px">15%</div>
+                  <div style="width:100%;max-width:56px;height:70px;border-radius:10px 10px 4px 4px;background:#1e4fd6"></div>
+                  <div style="width:20px;height:22px;margin-top:12px;background:#3e6dea;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+                  <div style="font-size:12px;color:hsl(230 10% 78%);margin-top:8px;font-weight:500;max-width:100%;line-height:1.2;text-align:center;overflow-wrap:anywhere">Conqueror</div>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
+                  <div style="font-size:14px;font-weight:700;margin-bottom:8px">21%</div>
+                  <div style="width:100%;max-width:56px;height:88px;border-radius:10px 10px 4px 4px;background:#f4623a"></div>
+                  <div style="width:20px;height:22px;margin-top:12px;background:#f4623a;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+                  <div style="font-size:12px;color:hsl(230 10% 78%);margin-top:8px;font-weight:500;max-width:100%;line-height:1.2;text-align:center;overflow-wrap:anywhere">Socializer</div>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
+                  <div style="font-size:14px;font-weight:700;margin-bottom:8px">18%</div>
+                  <div style="width:100%;max-width:56px;height:76px;border-radius:10px 10px 4px 4px;background:#c9a227"></div>
+                  <div style="width:20px;height:22px;margin-top:12px;background:#c9a227;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+                  <div style="font-size:12px;color:hsl(230 10% 78%);margin-top:8px;font-weight:500;max-width:100%;line-height:1.2;text-align:center;overflow-wrap:anywhere">Achiever</div>
+                </div>
+              </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="padding:26px 28px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+            <div style="font-family:Cinzel, serif;font-size:20px;font-weight:700">Distribuição de notas</div>
+            <div style="font-size:13px;color:hsl(230 10% 72%);margin-top:4px">34 alunos por faixa de nota</div>
+            <div style="display:flex;align-items:center;gap:26px;margin-top:24px">
+              <div style="position:relative;width:168px;height:168px;flex:none;border-radius:999px;background:conic-gradient(hsl(142 65% 50%) 0 33%, hsl(205 70% 58%) 33% 68%, hsl(45 90% 58%) 68% 88%, hsl(0 70% 55%) 88% 100%)">
+                <div style="position:absolute;inset:26px;border-radius:999px;background:hsl(226 28% 12%);display:flex;flex-direction:column;align-items:center;justify-content:center">
+                  <div style="font-size:30px;font-weight:800;line-height:1">7.4</div>
+                  <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 72%);margin-top:4px">média</div>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:14px;min-width:0">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <div style="width:12px;height:14px;flex:none;background:hsl(142 65% 50%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+                  <div style="font-size:13px;color:hsl(230 10% 78%)">9–10 alta</div>
+                  <div style="margin-left:auto;font-size:14px;font-weight:700">11</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px">
+                  <div style="width:12px;height:14px;flex:none;background:hsl(205 70% 58%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+                  <div style="font-size:13px;color:hsl(230 10% 78%)">7–8 média-alta</div>
+                  <div style="margin-left:auto;font-size:14px;font-weight:700">12</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px">
+                  <div style="width:12px;height:14px;flex:none;background:hsl(45 90% 58%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+                  <div style="font-size:13px;color:hsl(230 10% 78%)">5–6 média</div>
+                  <div style="margin-left:auto;font-size:14px;font-weight:700">7</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px">
+                  <div style="width:12px;height:14px;flex:none;background:hsl(0 70% 55%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+                  <div style="font-size:13px;color:hsl(230 10% 78%)">0–4 baixa</div>
+                  <div style="margin-left:auto;font-size:14px;font-weight:700">4</div>
+                </div>
+              </div>
+            </div>
+            <div style="margin-top:24px;padding:14px 16px;border-radius:14px;background:hsl(226 22% 16%);font-size:13px;color:hsl(230 10% 78%);line-height:1.5">4 alunos na faixa baixa concentram 62% do abandono da turma.</div>
+          </div>
+        </div>
+
+        <div style="border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%);overflow-x:auto">
+          <div style="display:flex;align-items:center;gap:16px;row-gap:14px;flex-wrap:wrap;padding:24px 28px 20px;min-width:940px">
+            <div style="min-width:0">
+              <div style="font-family:Cinzel, serif;font-size:20px;font-weight:700">Alunos da turma</div>
+              <div style="font-size:13px;color:hsl(230 10% 72%);margin-top:4px">Clique em um aluno para abrir o detalhe e a trilha dele</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;margin-left:auto">
+              <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-radius:999px;background:hsl(226 22% 16%);border:1px solid hsl(226 20% 22%);min-width:260px">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 72%)" stroke-width="2"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
+                <div style="font-size:13px;color:hsl(230 10% 72%)">Buscar por nome ou e-mail…</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:999px;background:hsl(226 22% 16%);border:1px solid hsl(226 20% 22%);font-size:13px;font-weight:600;cursor:pointer">
+                Todos os perfis
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 72%)" stroke-width="2"><path d="M6 9l6 6 6-6" /></svg>
+              </div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:2.3fr 1.5fr .8fr 1.5fr .8fr .9fr 28px;min-width:940px;gap:16px;padding:12px 28px;background:hsl(226 22% 16%);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 72%);font-weight:600">
+            <div>Aluno</div>
+            <div>Perfil dominante</div>
+            <div>Nota</div>
+            <div>Progresso na trilha</div>
+            <div>Acertos</div>
+            <div>Abandono</div>
+            <div></div>
+          </div>
+          <sc-for list="{{ students }}" as="s" hint-placeholder-count="6">
+            <div onClick="{{ s.open }}" style="display:grid;grid-template-columns:2.3fr 1.5fr .8fr 1.5fr .8fr .9fr 28px;min-width:940px;gap:16px;align-items:center;padding:16px 28px;border-top:1px solid hsl(226 20% 22%);cursor:pointer" style-hover="background:hsl(226 22% 16%)">
+              <div style="display:flex;align-items:center;gap:14px;min-width:0">
+                <div style="width:34px;height:38px;flex:none;background:{{ s.color }};clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:hsl(226 32% 10%)">{{ s.initials }}</div>
+                <div style="min-width:0">
+                  <div style="font-size:15px;font-weight:600">{{ s.name }}</div>
+                  <div style="font-size:12px;color:hsl(230 10% 72%);margin-top:2px">{{ s.email }}</div>
+                </div>
+              </div>
+              <div>
+                <div style="display:inline-flex;align-items:center;gap:8px;padding:5px 12px 5px 8px;border-radius:999px;background:{{ s.chipBg }};border:1px solid {{ s.chipBorder }}">
+                  <div style="width:12px;height:14px;background:{{ s.color }};clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+                  <div style="font-size:12px;font-weight:600;color:{{ s.textColor }}">{{ s.profile }}</div>
+                </div>
+              </div>
+              <div style="font-size:15px;font-weight:700">{{ s.nota }}</div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <div style="flex:1;height:6px;border-radius:999px;background:hsl(226 20% 20%);overflow:hidden">
+                  <div style="width:{{ s.prog }}%;height:100%;border-radius:999px;background:linear-gradient(90deg, hsl(265 65% 50%), hsl(266 90% 77%))"></div>
+                </div>
+                <div style="font-size:12px;color:hsl(230 10% 78%);width:34px;text-align:right">{{ s.prog }}%</div>
+              </div>
+              <div style="font-size:14px;color:hsl(230 10% 82%)">{{ s.acertos }}%</div>
+              <div>
+                <div style="font-size:14px;font-weight:600;color:{{ s.abColor }}">{{ s.abandono }}%</div>
+                <div style="font-size:11px;color:hsl(230 10% 72%);margin-top:2px">{{ s.abLabel }}</div>
+              </div>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 72%)" stroke-width="2"><path d="M9 6l6 6-6 6" /></svg>
+            </div>
+          </sc-for>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-top:1px solid hsl(226 20% 22%);font-size:13px;color:hsl(230 10% 72%);min-width:940px">
+            <div>Mostrando 8 de 34 alunos</div>
+            <div style="display:flex;gap:8px">
+              <div style="padding:7px 14px;border-radius:999px;border:1px solid hsl(226 20% 22%);cursor:pointer" style-hover="border-color:hsl(266 95% 66% / .6);color:hsl(40 20% 94%)">Anterior</div>
+              <div style="padding:7px 14px;border-radius:999px;border:1px solid hsl(226 20% 22%);cursor:pointer" style-hover="border-color:hsl(266 95% 66% / .6);color:hsl(40 20% 94%)">Próxima</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isCls1 }}">
+      <div style="display:flex;flex-direction:column;gap:20px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(210px, 1fr));gap:16px">
+          <div style="padding:18px 20px;border-radius:16px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+            <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 72%);font-weight:600">Conclusão da trilha</div>
+            <div style="display:flex;align-items:baseline;gap:8px;margin-top:8px"><div style="font-size:28px;font-weight:700">62%</div><div style="font-size:13px;color:hsl(142 65% 64%);font-weight:700">+11 pts</div></div>
+            <div style="font-size:12px;color:hsl(230 10% 76%);margin-top:10px">nos últimos 30 dias · era 51%</div>
+          </div>
+          <div style="padding:18px 20px;border-radius:16px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+            <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 72%);font-weight:600">Nota média</div>
+            <div style="display:flex;align-items:baseline;gap:8px;margin-top:8px"><div style="font-size:28px;font-weight:700">7,4</div><div style="font-size:13px;color:hsl(142 65% 64%);font-weight:700">+0,3</div></div>
+            <div style="font-size:12px;color:hsl(230 10% 76%);margin-top:10px">tendência de alta há 4 semanas</div>
+          </div>
+          <div style="padding:18px 20px;border-radius:16px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+            <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 72%);font-weight:600">Atividades entregues</div>
+            <div style="display:flex;align-items:baseline;gap:8px;margin-top:8px"><div style="font-size:28px;font-weight:700">216</div><div style="font-size:13px;color:hsl(0 78% 72%);font-weight:700">−18%</div></div>
+            <div style="font-size:12px;color:hsl(230 10% 76%);margin-top:10px">queda na semana da prova de Cálculo</div>
+          </div>
+          <div style="padding:18px 20px;border-radius:16px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+            <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 72%);font-weight:600">Abandono</div>
+            <div style="display:flex;align-items:baseline;gap:8px;margin-top:8px"><div style="font-size:28px;font-weight:700">18,5%</div><div style="font-size:13px;color:hsl(142 65% 64%);font-weight:700">−2,4 pts</div></div>
+            <div style="font-size:12px;color:hsl(230 10% 76%);margin-top:10px">caindo, mas ainda acima da meta de 15%</div>
+          </div>
+        </div>
+
+        <div style="padding:26px 28px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+          <div style="display:flex;align-items:flex-start;gap:16px;row-gap:14px;flex-wrap:wrap">
+            <div style="min-width:0">
+              <div style="font-family:Cinzel, serif;font-size:20px;font-weight:700">Evolução da turma</div>
+              <div style="font-size:13px;color:hsl(230 10% 72%);margin-top:4px">Semana a semana · 10 semanas de Física I</div>
+            </div>
+            <div style="margin-left:auto;display:flex;align-items:center;gap:16px;row-gap:8px;flex-wrap:wrap;font-size:12px;color:hsl(230 10% 80%)">
+              <div style="display:flex;align-items:center;gap:7px"><div style="width:18px;height:3px;border-radius:2px;background:hsl(266 90% 77%)"></div>Conclusão da trilha (%)</div>
+              <div style="display:flex;align-items:center;gap:7px"><div style="width:18px;height:3px;border-radius:2px;background:hsl(266 50% 62%)"></div>Nota média (0–10)</div>
+              <div style="display:flex;align-items:center;gap:7px"><div style="width:14px;height:9px;border-radius:2px;background:hsl(230 12% 34%)"></div>Atividades entregues</div>
+            </div>
+          </div>
+          <svg viewBox="0 0 660 260" style="width:100%;height:280px;margin-top:20px;overflow:visible">
+            <line x1="0" y1="20" x2="660" y2="20" stroke="hsl(226 20% 22%)" stroke-width="1" />
+            <line x1="0" y1="70" x2="660" y2="70" stroke="hsl(226 20% 22%)" stroke-width="1" />
+            <line x1="0" y1="120" x2="660" y2="120" stroke="hsl(226 20% 22%)" stroke-width="1" />
+            <line x1="0" y1="170" x2="660" y2="170" stroke="hsl(226 20% 22%)" stroke-width="1" />
+            <line x1="0" y1="220" x2="660" y2="220" stroke="hsl(226 20% 26%)" stroke-width="1" />
+            <rect x="14" y="196" width="30" height="24" rx="3" fill="hsl(230 12% 34%)" />
+            <rect x="82" y="188" width="30" height="32" rx="3" fill="hsl(230 12% 34%)" />
+            <rect x="150" y="180" width="30" height="40" rx="3" fill="hsl(230 12% 34%)" />
+            <rect x="218" y="172" width="30" height="48" rx="3" fill="hsl(230 12% 34%)" />
+            <rect x="286" y="184" width="30" height="36" rx="3" fill="hsl(230 12% 34%)" />
+            <rect x="354" y="164" width="30" height="56" rx="3" fill="hsl(230 12% 34%)" />
+            <rect x="422" y="200" width="30" height="20" rx="3" fill="hsl(0 45% 38%)" />
+            <rect x="490" y="176" width="30" height="44" rx="3" fill="hsl(230 12% 34%)" />
+            <rect x="558" y="168" width="30" height="52" rx="3" fill="hsl(230 12% 34%)" />
+            <rect x="620" y="160" width="30" height="60" rx="3" fill="hsl(230 12% 34%)" />
+            <polyline points="29,186 97,174 165,158 233,150 301,138 369,120 437,116 505,96 573,80 635,68" fill="none" stroke="hsl(266 90% 77%)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+            <polyline points="29,150 97,146 165,140 233,132 301,136 369,120 437,126 505,110 573,102 635,92" fill="none" stroke="hsl(266 50% 62%)" stroke-width="2.5" stroke-dasharray="6 5" stroke-linejoin="round" />
+            <circle cx="437" cy="116" r="5" fill="hsl(45 90% 58%)" stroke="hsl(226 28% 12%)" stroke-width="3" />
+            <circle cx="635" cy="68" r="6" fill="hsl(266 90% 77%)" stroke="hsl(226 28% 12%)" stroke-width="3" />
+            <text x="404" y="104" fill="hsl(45 90% 68%)" font-size="11" font-family="Inter, sans-serif" font-weight="700">semana da prova</text>
+            <text x="14" y="248" fill="hsl(230 10% 72%)" font-size="11" font-family="Inter, sans-serif">sem 1</text>
+            <text x="300" y="248" fill="hsl(230 10% 72%)" font-size="11" font-family="Inter, sans-serif">sem 5</text>
+            <text x="608" y="248" fill="hsl(230 10% 72%)" font-size="11" font-family="Inter, sans-serif">sem 10</text>
+          </svg>
+        </div>
+
+        <div style="padding:26px 28px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+          <div style="font-family:Cinzel, serif;font-size:20px;font-weight:700">Mudanças relevantes</div>
+          <div style="font-size:13px;color:hsl(230 10% 72%);margin-top:4px">Eventos que explicam as curvas acima</div>
+          <div style="display:flex;flex-direction:column;gap:10px;margin-top:22px">
+            <div style="display:flex;align-items:flex-start;gap:14px;row-gap:10px;flex-wrap:wrap;padding:15px 18px;border-radius:16px;background:hsl(226 22% 16%)">
+              <div style="font-size:12px;font-weight:700;color:hsl(230 10% 76%);width:74px;flex:none">04/09</div>
+              <div style="display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:hsl(142 40% 16%);font-size:11px;font-weight:700;color:hsl(142 65% 66%);flex:none">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4"><path d="M5 13l4 4 10-10" /></svg>
+                Melhora
+              </div>
+              <div style="min-width:200px;flex:1">
+                <div style="font-size:14px;font-weight:600">Acertos em Dinâmica subiram de 58% para 74%</div>
+                <div style="font-size:12px;color:hsl(230 10% 76%);margin-top:3px">Depois da regeração do material de Dinâmica para os 7 perfis, em 28/08.</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:14px;row-gap:10px;flex-wrap:wrap;padding:15px 18px;border-radius:16px;background:hsl(226 22% 16%)">
+              <div style="font-size:12px;font-weight:700;color:hsl(230 10% 76%);width:74px;flex:none">27/08</div>
+              <div style="display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:hsl(45 50% 18%);font-size:11px;font-weight:700;color:hsl(45 90% 68%);flex:none">
+                <div style="width:9px;height:11px;background:hsl(45 90% 62%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+                Queda
+              </div>
+              <div style="min-width:200px;flex:1">
+                <div style="font-size:14px;font-weight:600">Entregas caíram 18% na semana</div>
+                <div style="font-size:12px;color:hsl(230 10% 76%);margin-top:3px">Coincide com a prova de Cálculo I da mesma turma. Recuperou na semana seguinte.</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:14px;row-gap:10px;flex-wrap:wrap;padding:15px 18px;border-radius:16px;background:hsl(226 22% 16%)">
+              <div style="font-size:12px;font-weight:700;color:hsl(230 10% 76%);width:74px;flex:none">19/08</div>
+              <div style="display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:hsl(205 45% 18%);font-size:11px;font-weight:700;color:hsl(205 70% 74%);flex:none">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8v.5" /></svg>
+                Estrutura
+              </div>
+              <div style="min-width:200px;flex:1">
+                <div style="font-size:14px;font-weight:600">Tópico "Trabalho e Energia" liberado</div>
+                <div style="font-size:12px;color:hsl(230 10% 76%);margin-top:3px">A conclusão média caiu 6 pontos no dia — efeito esperado ao abrir um tópico novo.</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:14px;row-gap:10px;flex-wrap:wrap;padding:15px 18px;border-radius:16px;background:hsl(226 22% 16%)">
+              <div style="font-size:12px;font-weight:700;color:hsl(230 10% 76%);width:74px;flex:none">12/08</div>
+              <div style="display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:hsl(0 50% 20%);font-size:11px;font-weight:700;color:hsl(0 80% 78%);flex:none">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 6l12 12M18 6L6 18" /></svg>
+                Risco
+              </div>
+              <div style="min-width:200px;flex:1">
+                <div style="font-size:14px;font-weight:600">2 alunos passaram de 30% de abandono</div>
+                <div style="font-size:12px;color:hsl(230 10% 76%);margin-top:3px">Rafael Antunes e Otávio Prado entraram na lista de atenção e seguem lá.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isCls2 }}">
+      <div style="display:flex;flex-direction:column;gap:20px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:20px">
+          <div style="padding:24px 26px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+            <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 74%);font-weight:600">Mais consumido</div>
+            <div style="font-size:19px;font-weight:700;margin-top:12px;line-height:1.3">Áudio · Cinemática</div>
+            <div style="display:flex;align-items:baseline;gap:8px;margin-top:12px"><div style="font-size:30px;font-weight:800">31</div><div style="font-size:13px;color:hsl(230 10% 76%)">de 34 alunos abriram</div></div>
+            <div style="font-size:12px;color:hsl(230 10% 76%);margin-top:10px;line-height:1.5">Áudio é o formato mais consumido da turma (81% contra 59% da leitura).</div>
+          </div>
+          <div style="padding:24px 26px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(0 70% 55% / .4)">
+            <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 74%);font-weight:600">Maior dificuldade</div>
+            <div style="font-size:19px;font-weight:700;margin-top:12px;line-height:1.3">Leitura · Vetores (parte 2)</div>
+            <div style="display:flex;align-items:baseline;gap:8px;margin-top:12px"><div style="font-size:30px;font-weight:800;color:hsl(0 78% 74%)">54%</div><div style="font-size:13px;color:hsl(230 10% 76%)">de erro nas questões ligadas</div></div>
+            <div style="display:flex;align-items:center;gap:7px;margin-top:10px;font-size:12px;font-weight:700;color:hsl(0 80% 78%)">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 6l12 12M18 6L6 18" /></svg>
+              Pior que a média da turma (29%) — revisar
+            </div>
+          </div>
+          <div style="padding:24px 26px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(142 65% 50% / .35)">
+            <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 74%);font-weight:600">Maior conclusão</div>
+            <div style="font-size:19px;font-weight:700;margin-top:12px;line-height:1.3">Quiz · Leis de Newton</div>
+            <div style="display:flex;align-items:baseline;gap:8px;margin-top:12px"><div style="font-size:30px;font-weight:800;color:hsl(142 65% 62%)">94%</div><div style="font-size:13px;color:hsl(230 10% 76%)">concluíram até o fim</div></div>
+            <div style="display:flex;align-items:center;gap:7px;margin-top:10px;font-size:12px;font-weight:700;color:hsl(142 65% 66%)">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4"><path d="M5 13l4 4 10-10" /></svg>
+              Formato curto funciona nesta turma
+            </div>
+          </div>
+        </div>
+
+        <div style="border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%);overflow-x:auto">
+          <div style="padding:24px 28px 18px;min-width:900px">
+            <div style="font-family:Cinzel, serif;font-size:20px;font-weight:700">Conteúdo por tópico</div>
+            <div style="font-size:13px;color:hsl(230 10% 72%);margin-top:4px">Consumo, dificuldade e conclusão de cada material da trilha</div>
+          </div>
+          <div style="display:grid;grid-template-columns:2.2fr 1fr 1.4fr 1.4fr 1.2fr;min-width:900px;gap:16px;padding:12px 28px;background:hsl(226 22% 16%);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 72%);font-weight:600">
+            <div>Conteúdo</div>
+            <div>Formato</div>
+            <div>Consumo</div>
+            <div>Dificuldade (erro)</div>
+            <div>Conclusão</div>
+          </div>
+          <sc-for list="{{ contents }}" as="c" hint-placeholder-count="6">
+            <div style="display:grid;grid-template-columns:2.2fr 1fr 1.4fr 1.4fr 1.2fr;min-width:900px;gap:16px;align-items:center;padding:15px 28px;border-top:1px solid hsl(226 20% 22%)">
+              <div style="min-width:0">
+                <div style="font-size:14px;font-weight:600">{{ c.name }}</div>
+                <div style="font-size:12px;color:hsl(230 10% 72%);margin-top:2px">{{ c.topic }}</div>
+              </div>
+              <div style="font-size:12px;color:hsl(230 10% 84%)">{{ c.format }}</div>
+              <div>
+                <div style="height:6px;border-radius:999px;background:hsl(226 20% 20%);overflow:hidden"><div style="width:{{ c.use }}%;height:100%;background:hsl(266 90% 72%)"></div></div>
+                <div style="font-size:11px;color:hsl(230 10% 76%);margin-top:5px">{{ c.useLabel }}</div>
+              </div>
+              <div>
+                <div style="display:flex;align-items:center;gap:7px">
+                  <div style="{{ c.diffDot }}"></div>
+                  <div style="font-size:14px;font-weight:700;color:{{ c.diffColor }}">{{ c.err }}%</div>
+                  <div style="font-size:11px;font-weight:700;color:{{ c.diffColor }}">{{ c.diffLabel }}</div>
+                </div>
+                <div style="font-size:11px;color:hsl(230 10% 74%);margin-top:4px">{{ c.diffNote }}</div>
+              </div>
+              <div>
+                <div style="font-size:14px;font-weight:700">{{ c.done }}%</div>
+                <div style="font-size:11px;color:hsl(230 10% 74%);margin-top:3px">{{ c.doneLabel }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      </sc-if>
+      </sc-if>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isStudent }}">
+    <div style="padding-top:32px">
+      <div onClick="{{ back }}" style="display:inline-flex;align-items:center;gap:8px;font-size:13px;color:hsl(230 10% 72%);cursor:pointer;margin-bottom:22px" style-hover="color:hsl(266 90% 77%)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6" /></svg>
+        Física I · todos os alunos
+      </div>
+
+      <div style="position:relative;overflow:hidden;display:flex;align-items:center;gap:32px;padding:28px 32px;border-radius:20px;background:hsl(226 26% 13%);border:1px solid hsl(266 95% 66% / .3)">
+        <div style="min-width:0;flex:1">
+          <div style="display:flex;align-items:center;gap:16px">
+            <div style="width:52px;height:58px;flex:none;background:#7a63e8;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;color:hsl(226 32% 10%)">MC</div>
+            <div style="min-width:0">
+              <div style="font-family:Cinzel, serif;font-size:30px;font-weight:700;line-height:1.15">Marina Corrêa</div>
+              <div style="font-size:13px;color:hsl(230 10% 78%);margin-top:4px">marina.correa@ulbra.br · matriculada em 04/03/2026</div>
+            </div>
+            <div style="display:inline-flex;align-items:center;gap:9px;padding:7px 16px 7px 10px;border-radius:999px;background:#5b3fd9;margin-left:8px">
+              <div style="width:14px;height:16px;background:hsl(40 20% 96%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+              <div style="font-size:13px;font-weight:700;color:hsl(40 20% 96%)">Mastermind</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:36px;margin-top:26px;flex-wrap:wrap">
+            <div>
+              <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 78%);font-weight:600">Nota média</div>
+              <div style="font-size:26px;font-weight:800;margin-top:6px">8.2</div>
+            </div>
+            <div>
+              <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 78%);font-weight:600">Trilha concluída</div>
+              <div style="font-size:26px;font-weight:800;margin-top:6px">74%</div>
+            </div>
+            <div>
+              <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 78%);font-weight:600">Acertos</div>
+              <div style="font-size:26px;font-weight:800;margin-top:6px">79%</div>
+            </div>
+            <div>
+              <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 78%);font-weight:600">Abandono</div>
+              <div style="display:flex;align-items:baseline;gap:8px;margin-top:6px">
+                <div style="font-size:26px;font-weight:800;color:hsl(142 65% 58%)">11%</div>
+                <div style="font-size:11px;font-weight:700;color:hsl(142 65% 64%)">saudável</div>
+              </div>
+              <div style="font-size:11px;color:hsl(230 10% 76%);margin-top:3px">turma: 18,5%</div>
+            </div>
+            <div>
+              <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 78%);font-weight:600">Tempo/sessão</div>
+              <div style="font-size:26px;font-weight:800;margin-top:6px">31min</div>
+            </div>
+          </div>
+        </div>
+        <sc-if value="{{ showGuardians }}" hint-placeholder-val="{{ true }}">
+        <img src="assets/mastermind.webp" alt="Guardião Mastermind" style="width:210px;flex:none;filter:drop-shadow(0 12px 40px hsl(265 65% 50% / .55))" />
+        </sc-if>
+      </div>
+
+      <div style="display:flex;gap:6px;margin:26px 0 20px;padding:5px;border-radius:999px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%);width:fit-content">
+        <div onClick="{{ tab0 }}" style="{{ tabStyle0 }}">Visão geral</div>
+        <div onClick="{{ tab1 }}" style="{{ tabStyle1 }}">Perfil BrainHex</div>
+        <div onClick="{{ tab2 }}" style="{{ tabStyle2 }}">Trilha visual</div>
+        <div onClick="{{ tab3 }}" style="{{ tabStyle3 }}">Personalização</div>
+      </div>
+
+      <sc-if value="{{ isTab0 }}">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(340px, 1fr));gap:20px">
+        <div style="padding:26px 28px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+          <div style="display:flex;align-items:center;gap:16px">
+            <div>
+              <div style="font-family:Cinzel, serif;font-size:20px;font-weight:700">Evolução do aluno</div>
+              <div style="font-size:13px;color:hsl(230 10% 72%);margin-top:4px">Nota média por semana · últimos 10 encontros</div>
+            </div>
+            <div style="margin-left:auto;display:flex;align-items:center;gap:16px;font-size:12px;color:hsl(230 10% 78%)">
+              <div style="display:flex;align-items:center;gap:7px"><div style="width:18px;height:3px;border-radius:2px;background:hsl(266 90% 77%)"></div>Marina</div>
+              <div style="display:flex;align-items:center;gap:7px"><div style="width:18px;height:3px;border-radius:2px;background:hsl(230 10% 55%)"></div>Média da turma</div>
+            </div>
+          </div>
+          <svg viewBox="0 0 620 240" style="width:100%;height:240px;margin-top:18px;overflow:visible">
+            <defs>
+              <linearGradient id="tuFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="hsl(266 95% 66%)" stop-opacity="0.35" />
+                <stop offset="100%" stop-color="hsl(266 95% 66%)" stop-opacity="0" />
+              </linearGradient>
+            </defs>
+            <line x1="0" y1="20" x2="620" y2="20" stroke="hsl(226 20% 22%)" stroke-width="1" />
+            <line x1="0" y1="80" x2="620" y2="80" stroke="hsl(226 20% 22%)" stroke-width="1" />
+            <line x1="0" y1="140" x2="620" y2="140" stroke="hsl(226 20% 22%)" stroke-width="1" />
+            <line x1="0" y1="200" x2="620" y2="200" stroke="hsl(226 20% 22%)" stroke-width="1" />
+            <polyline points="10,150 78,138 146,142 214,118 282,124 350,96 418,88 486,70 554,62 610,48" fill="none" stroke="hsl(230 10% 55%)" stroke-width="2" stroke-dasharray="5 5" />
+            <polygon points="10,168 78,152 146,120 214,128 282,96 350,78 418,84 486,56 554,44 610,30 610,220 10,220" fill="url(#tuFill)" />
+            <polyline points="10,168 78,152 146,120 214,128 282,96 350,78 418,84 486,56 554,44 610,30" fill="none" stroke="hsl(266 90% 77%)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+            <circle cx="610" cy="30" r="6" fill="hsl(266 90% 77%)" stroke="hsl(226 28% 12%)" stroke-width="3" />
+            <text x="0" y="236" fill="hsl(230 10% 72%)" font-size="11" font-family="Inter, sans-serif">sem 1</text>
+            <text x="290" y="236" fill="hsl(230 10% 72%)" font-size="11" font-family="Inter, sans-serif">sem 5</text>
+            <text x="580" y="236" fill="hsl(230 10% 72%)" font-size="11" font-family="Inter, sans-serif">sem 10</text>
+          </svg>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div style="padding:24px 26px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+            <div style="font-family:Cinzel, serif;font-size:18px;font-weight:700">Última atividade</div>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:18px">
+              <div style="width:10px;height:10px;border-radius:999px;background:hsl(142 65% 50%)"></div>
+              <div style="font-size:14px;font-weight:600">Quiz · Dinâmica: leis de Newton</div>
+            </div>
+            <div style="font-size:13px;color:hsl(230 10% 78%);margin-top:12px;line-height:1.6">Concluído hoje, 14:32 · 8 de 10 acertos · 12 min<br />Usou o chat de apoio 1 vez após erro</div>
+            <div style="height:1px;background:hsl(226 20% 22%);margin:18px 0"></div>
+            <div style="font-size:13px;color:hsl(230 10% 78%);line-height:1.7">
+              <div>Antes: Áudio personalizado · Vetores</div>
+              <div>Antes: Leitura · Cinemática (parte 2)</div>
+            </div>
+          </div>
+          <div style="padding:24px 26px;border-radius:20px;background:hsl(226 22% 16%);border:1px solid hsl(45 90% 58% / .35)">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:18px;height:20px;background:hsl(45 90% 58%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+              <div style="font-size:14px;font-weight:700">Atenção</div>
+            </div>
+            <div style="font-size:13px;color:hsl(230 10% 82%);margin-top:10px;line-height:1.6">Dois tópicos consecutivos ficaram sem atividade nos últimos 9 dias.</div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isTab1 }}">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(340px, 1fr));gap:20px">
+        <div style="padding:26px 28px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+          <div style="font-family:Cinzel, serif;font-size:20px;font-weight:700">Afinidade entre os 7 perfis</div>
+          <div style="font-size:13px;color:hsl(230 10% 72%);margin-top:4px">Vetor BrainHex do questionário inicial (0–100% por perfil)</div>
+          <div style="display:flex;flex-direction:column;gap:16px;margin-top:26px">
+            <div style="display:flex;align-items:center;gap:14px">
+              <div style="width:118px;flex:none;display:flex;align-items:center;gap:9px"><div style="width:14px;height:16px;background:#7a63e8;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div><div style="font-size:13px;font-weight:700">Mastermind</div></div>
+              <div style="flex:1;height:12px;border-radius:999px;background:hsl(226 20% 20%);overflow:hidden"><div style="width:92%;height:100%;border-radius:999px;background:#5b3fd9"></div></div>
+              <div style="width:44px;text-align:right;font-size:14px;font-weight:700">92%</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:14px">
+              <div style="width:118px;flex:none;display:flex;align-items:center;gap:9px"><div style="width:14px;height:16px;background:#22c9bc;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div><div style="font-size:13px;font-weight:500;color:hsl(230 10% 82%)">Seeker</div></div>
+              <div style="flex:1;height:12px;border-radius:999px;background:hsl(226 20% 20%);overflow:hidden"><div style="width:68%;height:100%;border-radius:999px;background:#17a398"></div></div>
+              <div style="width:44px;text-align:right;font-size:14px;font-weight:600;color:hsl(230 10% 82%)">68%</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:14px">
+              <div style="width:118px;flex:none;display:flex;align-items:center;gap:9px"><div style="width:14px;height:16px;background:#dfb63a;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div><div style="font-size:13px;font-weight:500;color:hsl(230 10% 82%)">Achiever</div></div>
+              <div style="flex:1;height:12px;border-radius:999px;background:hsl(226 20% 20%);overflow:hidden"><div style="width:61%;height:100%;border-radius:999px;background:#c9a227"></div></div>
+              <div style="width:44px;text-align:right;font-size:14px;font-weight:600;color:hsl(230 10% 82%)">61%</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:14px">
+              <div style="width:118px;flex:none;display:flex;align-items:center;gap:9px"><div style="width:14px;height:16px;background:#3e6dea;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div><div style="font-size:13px;font-weight:500;color:hsl(230 10% 82%)">Conqueror</div></div>
+              <div style="flex:1;height:12px;border-radius:999px;background:hsl(226 20% 20%);overflow:hidden"><div style="width:44%;height:100%;border-radius:999px;background:#1e4fd6"></div></div>
+              <div style="width:44px;text-align:right;font-size:14px;font-weight:600;color:hsl(230 10% 82%)">44%</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:14px">
+              <div style="width:118px;flex:none;display:flex;align-items:center;gap:9px"><div style="width:14px;height:16px;background:#f77b57;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div><div style="font-size:13px;font-weight:500;color:hsl(230 10% 82%)">Socializer</div></div>
+              <div style="flex:1;height:12px;border-radius:999px;background:hsl(226 20% 20%);overflow:hidden"><div style="width:29%;height:100%;border-radius:999px;background:#f4623a"></div></div>
+              <div style="width:44px;text-align:right;font-size:14px;font-weight:600;color:hsl(230 10% 82%)">29%</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:14px">
+              <div style="width:118px;flex:none;display:flex;align-items:center;gap:9px"><div style="width:14px;height:16px;background:#e8455b;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div><div style="font-size:13px;font-weight:500;color:hsl(230 10% 82%)">Daredevil</div></div>
+              <div style="flex:1;height:12px;border-radius:999px;background:hsl(226 20% 20%);overflow:hidden"><div style="width:22%;height:100%;border-radius:999px;background:#d7263d"></div></div>
+              <div style="width:44px;text-align:right;font-size:14px;font-weight:600;color:hsl(230 10% 82%)">22%</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:14px">
+              <div style="width:118px;flex:none;display:flex;align-items:center;gap:9px"><div style="width:14px;height:16px;background:#6d7c8c;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div><div style="font-size:13px;font-weight:500;color:hsl(230 10% 82%)">Survivor</div></div>
+              <div style="flex:1;height:12px;border-radius:999px;background:hsl(226 20% 20%);overflow:hidden"><div style="width:15%;height:100%;border-radius:999px;background:#4e5a66"></div></div>
+              <div style="width:44px;text-align:right;font-size:14px;font-weight:600;color:hsl(230 10% 82%)">15%</div>
+            </div>
+          </div>
+        </div>
+        <div style="padding:26px 28px;border-radius:20px;background:hsl(226 26% 13%);border:1px solid hsl(266 95% 66% / .28);display:flex;flex-direction:column;align-items:center;text-align:center">
+          <div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:hsl(266 90% 77%);font-weight:600">Perfil dominante</div>
+          <sc-if value="{{ showGuardians }}" hint-placeholder-val="{{ true }}">
+          <img src="assets/mastermind.webp" alt="Guardião Mastermind" style="width:190px;margin:14px 0 6px;filter:drop-shadow(0 10px 34px hsl(265 65% 50% / .6))" />
+          </sc-if>
+          <div style="font-family:Cinzel, serif;font-size:26px;font-weight:700">Mastermind</div>
+          <div style="font-size:13px;color:hsl(230 10% 80%);line-height:1.65;margin-top:10px">Aprende resolvendo: prefere material com desafio lógico, poucos passos guiados e feedback explicativo. O conteúdo gerado para Marina prioriza problemas antes da teoria.</div>
+          <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;justify-content:center">
+            <div style="padding:6px 13px;border-radius:999px;background:hsl(226 20% 20%);font-size:12px;font-weight:600;color:hsl(230 10% 84%)">Estratégia</div>
+            <div style="padding:6px 13px;border-radius:999px;background:hsl(226 20% 20%);font-size:12px;font-weight:600;color:hsl(230 10% 84%)">Quebra-cabeças</div>
+            <div style="padding:6px 13px;border-radius:999px;background:hsl(226 20% 20%);font-size:12px;font-weight:600;color:hsl(230 10% 84%)">Autonomia</div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isTab2 }}">
+      <div style="display:flex;flex-direction:column;gap:20px">
+
+        <div style="padding:26px 30px 30px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+          <div style="display:flex;align-items:flex-end;gap:20px;row-gap:16px;flex-wrap:wrap">
+            <div style="min-width:0">
+              <div style="font-family:Cinzel, serif;font-size:22px;font-weight:700">Jornada real de Marina</div>
+              <div style="font-size:13px;color:hsl(230 10% 78%);margin-top:5px">Na ordem em que ela realmente percorreu — não na ordem cadastrada da trilha. Clique em um passo para investigar.</div>
+            </div>
+            <div style="margin-left:auto;min-width:260px;flex:1;max-width:400px">
+              <div style="display:flex;justify-content:space-between;font-size:12px;color:hsl(230 10% 80%);margin-bottom:8px"><div style="font-weight:600;letter-spacing:.08em;text-transform:uppercase">XP</div><div>3.480 / 5.000</div></div>
+              <div style="height:12px;border-radius:999px;background:hsl(226 20% 20%);border:1px solid hsl(226 20% 26%);overflow:hidden">
+                <div style="width:70%;height:100%;border-radius:999px;background:linear-gradient(90deg, hsl(265 65% 50%), hsl(266 90% 77%))"></div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:10px;row-gap:10px;flex-wrap:wrap;margin-top:20px;padding:14px 16px;border-radius:16px;background:hsl(226 22% 16%)">
+            <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:hsl(230 10% 74%);font-weight:600">Desvios detectados</div>
+            <div style="display:flex;align-items:center;gap:7px;padding:5px 12px;border-radius:999px;background:hsl(45 50% 18%);font-size:12px;font-weight:700;color:hsl(45 90% 68%)">
+              <div style="width:9px;height:11px;flex:none;background:hsl(45 90% 60%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+              2 retornos a tópico anterior
+            </div>
+            <div style="display:flex;align-items:center;gap:7px;padding:5px 12px;border-radius:999px;background:hsl(205 45% 18%);font-size:12px;font-weight:700;color:hsl(205 70% 76%)">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+              1 tópico feito fora de ordem
+            </div>
+            <div style="display:flex;align-items:center;gap:7px;padding:5px 12px;border-radius:999px;background:hsl(0 50% 20%);font-size:12px;font-weight:700;color:hsl(0 80% 78%)">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 6l12 12M18 6L6 18" /></svg>
+              1 abandono no meio do conteúdo
+            </div>
+            <div style="margin-left:auto;font-size:12px;color:hsl(230 10% 76%)">10 passos registrados · 04/03 a hoje</div>
+          </div>
+
+          <div style="display:flex;align-items:flex-start;flex-wrap:wrap;row-gap:22px;margin-top:26px">
+            <sc-for list="{{ journey }}" as="j" hint-placeholder-count="10">
+              <div style="display:flex;align-items:flex-start">
+                <sc-if value="{{ j.hasConn }}">
+                <div style="width:46px;padding-top:26px;display:flex;flex-direction:column;align-items:center;gap:5px">
+                  <div style="display:flex;align-items:center;width:100%">
+                    <div style="{{ j.connLine }}"></div>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="{{ j.connColor }}" stroke-width="3" style="flex:none"><path d="M9 6l6 6-6 6" /></svg>
+                  </div>
+                  <div style="font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:{{ j.connColor }};text-align:center;line-height:1.2">{{ j.connLabel }}</div>
+                </div>
+                </sc-if>
+                <div onClick="{{ j.select }}" style="{{ j.wrap }}">
+                  <div style="position:relative;width:58px;height:64px">
+                    <div style="{{ j.hex }}"></div>
+                    <div style="{{ j.hexInner }}">{{ j.topicNum }}</div>
+                  </div>
+                  <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:hsl(230 10% 72%);margin-top:9px">{{ j.orderLabel }}</div>
+                  <div style="font-size:12px;font-weight:600;text-align:center;line-height:1.25;margin-top:3px;max-width:100%;overflow-wrap:anywhere">{{ j.topicName }}</div>
+                  <div style="{{ j.chip }}">{{ j.chipLabel }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="display:flex;gap:24px;row-gap:12px;margin-top:26px;padding-top:20px;border-top:1px solid hsl(226 20% 22%);font-size:12px;color:hsl(230 10% 78%);flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:9px"><div style="width:14px;height:16px;background:hsl(266 90% 77%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>Passo concluído</div>
+            <div style="display:flex;align-items:center;gap:9px"><div style="width:14px;height:16px;background:hsl(0 72% 60%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>Errou ou abandonou</div>
+            <div style="display:flex;align-items:center;gap:9px"><div style="width:14px;height:16px;background:hsl(45 90% 60%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>Retorno / repetição</div>
+            <div style="display:flex;align-items:center;gap:9px"><div style="width:14px;height:16px;border:2px solid hsl(266 95% 66%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>Passo selecionado</div>
+          </div>
+        </div>
+
+        <div style="border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(266 95% 66% / .3);overflow:hidden">
+          <div style="display:flex;align-items:center;gap:16px;row-gap:12px;flex-wrap:wrap;padding:22px 26px 18px;border-bottom:1px solid hsl(226 20% 22%)">
+            <div style="width:40px;height:44px;flex:none;background:hsl(266 95% 66% / .18);border:1px solid hsl(266 95% 66% / .5);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:hsl(266 90% 84%)">{{ sel.topicNum }}</div>
+            <div style="min-width:0">
+              <div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:hsl(266 90% 80%);font-weight:600">{{ sel.orderLabel }} · {{ sel.topicName }}</div>
+              <div style="font-family:Cinzel, serif;font-size:22px;font-weight:700;margin-top:5px;line-height:1.2">{{ sel.title }}</div>
+            </div>
+            <div style="{{ sel.statusChip }}">{{ sel.statusLabel }}</div>
+            <div style="margin-left:auto;font-size:12px;color:hsl(230 10% 76%);white-space:nowrap">{{ sel.when }}</div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(210px, 1fr));gap:1px;background:hsl(226 20% 22%)">
+            <div style="padding:18px 22px;background:hsl(226 28% 12%)">
+              <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 74%);font-weight:600">Conteúdo acessado</div>
+              <div style="font-size:14px;font-weight:600;margin-top:8px;line-height:1.45">{{ sel.content }}</div>
+              <div style="font-size:12px;color:hsl(230 10% 76%);margin-top:4px">{{ sel.contentNote }}</div>
+            </div>
+            <div style="padding:18px 22px;background:hsl(226 28% 12%)">
+              <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 74%);font-weight:600">Atividade</div>
+              <div style="font-size:14px;font-weight:600;margin-top:8px;line-height:1.45">{{ sel.activity }}</div>
+              <div style="font-size:12px;color:hsl(230 10% 76%);margin-top:4px">{{ sel.activityNote }}</div>
+            </div>
+            <div style="padding:18px 22px;background:hsl(226 28% 12%)">
+              <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 74%);font-weight:600">Resposta dada</div>
+              <div style="font-size:14px;font-weight:600;margin-top:8px;line-height:1.45">{{ sel.answer }}</div>
+              <div style="font-size:12px;color:hsl(230 10% 76%);margin-top:4px">{{ sel.expected }}</div>
+            </div>
+            <div style="padding:18px 22px;background:hsl(226 28% 12%)">
+              <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 74%);font-weight:600">Resultado</div>
+              <div style="display:flex;align-items:center;gap:9px;margin-top:8px">
+                <div style="{{ sel.resultIconBox }}">{{ sel.resultIcon }}</div>
+                <div style="font-size:14px;font-weight:700;color:{{ sel.resultColor }}">{{ sel.result }}</div>
+              </div>
+              <div style="font-size:12px;color:hsl(230 10% 76%);margin-top:6px">{{ sel.resultNote }}</div>
+            </div>
+            <div style="padding:18px 22px;background:hsl(226 28% 12%)">
+              <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 74%);font-weight:600">Tempo gasto</div>
+              <div style="font-size:22px;font-weight:800;margin-top:8px">{{ sel.time }}</div>
+              <div style="font-size:12px;color:hsl(230 10% 76%);margin-top:4px">{{ sel.timeNote }}</div>
+            </div>
+            <div style="padding:18px 22px;background:hsl(226 28% 12%)">
+              <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 74%);font-weight:600">Tentativa</div>
+              <div style="font-size:22px;font-weight:800;margin-top:8px">{{ sel.attempt }}</div>
+              <div style="font-size:12px;color:hsl(230 10% 76%);margin-top:4px">{{ sel.attemptNote }}</div>
+            </div>
+            <div style="padding:18px 22px;background:hsl(226 28% 12%)">
+              <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 74%);font-weight:600">Ordem em que foi feito</div>
+              <div style="font-size:22px;font-weight:800;margin-top:8px">{{ sel.order }}</div>
+              <div style="font-size:12px;color:hsl(230 10% 76%);margin-top:4px">{{ sel.orderNote }}</div>
+            </div>
+            <div style="padding:18px 22px;background:hsl(226 28% 12%)">
+              <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 74%);font-weight:600">Progresso neste ponto</div>
+              <div style="font-size:22px;font-weight:800;margin-top:8px">{{ sel.progress }}%</div>
+              <div style="height:6px;border-radius:999px;background:hsl(226 20% 20%);margin-top:10px;overflow:hidden"><div style="{{ sel.progressBar }}"></div></div>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:flex-start;gap:14px;row-gap:12px;flex-wrap:wrap;padding:18px 26px;border-top:1px solid hsl(226 20% 22%);background:hsl(226 22% 15%)">
+            <div style="{{ sel.noteIconBox }}">{{ sel.noteIcon }}</div>
+            <div style="min-width:220px;flex:1">
+              <div style="font-size:13px;font-weight:700;color:{{ sel.noteColor }}">{{ sel.noteTitle }}</div>
+              <div style="font-size:13px;color:hsl(230 10% 84%);margin-top:5px;line-height:1.55">{{ sel.note }}</div>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <div style="padding:10px 18px;border-radius:999px;border:1px solid hsl(226 20% 28%);font-size:13px;font-weight:600;color:hsl(230 10% 86%);cursor:pointer;white-space:nowrap" style-hover="border-color:hsl(266 95% 66% / .6)">Ver conteúdo entregue</div>
+              <div style="padding:10px 18px;border-radius:999px;background:hsl(266 95% 66% / .18);border:1px solid hsl(266 95% 66% / .45);font-size:13px;font-weight:600;color:hsl(266 90% 84%);cursor:pointer;white-space:nowrap">Abrir conversa do chat</div>
+            </div>
+          </div>
+
+          <div style="padding:20px 26px;border-top:1px solid hsl(226 20% 22%)">
+            <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 74%);font-weight:600">Intervenções do professor neste passo</div>
+            <div style="display:flex;align-items:flex-start;gap:10px;margin-top:12px">
+              <div style="{{ noteInputStyle }}">{{ noteInputText }}</div>
+              <div onClick="{{ saveNote }}" style="padding:11px 18px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));font-size:13px;font-weight:600;color:hsl(40 20% 96%);cursor:pointer;white-space:nowrap">Salvar comentário</div>
+            </div>
+            <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 74%);font-weight:600;margin-top:20px">Histórico deste passo</div>
+            <sc-if value="{{ sel.hasNotes }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
+              <sc-for list="{{ sel.interventions }}" as="iv" hint-placeholder-count="1">
+                <div style="padding:12px 14px;border-radius:12px;background:hsl(226 22% 16%)">
+                  <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:hsl(230 10% 72%)">
+                    <div style="{{ iv.avatarStyle }}">{{ iv.avatar }}</div>
+                    {{ iv.when }}
+                  </div>
+                  <div style="font-size:13px;color:hsl(230 10% 90%);margin-top:6px;line-height:1.5">{{ iv.text }}</div>
+                </div>
+              </sc-for>
+            </div>
+            </sc-if>
+            <sc-if value="{{ sel.noNotes }}">
+            <div style="margin-top:12px;padding:14px;border-radius:12px;background:hsl(226 22% 16% / .5);font-size:13px;color:hsl(230 10% 72%);text-align:center">Nenhuma intervenção registrada ainda neste passo.</div>
+            </sc-if>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isTab3 }}">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(340px, 1fr));gap:20px">
+        <div style="padding:26px 28px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+          <div style="font-family:Cinzel, serif;font-size:20px;font-weight:700">Material personalizado</div>
+          <div style="font-size:13px;color:hsl(230 10% 72%);margin-top:4px">Gerado pela IA para o perfil Mastermind · consumo por tópico</div>
+          <div style="display:flex;flex-direction:column;gap:12px;margin-top:24px">
+            <div style="display:flex;align-items:center;gap:16px;padding:16px 18px;border-radius:16px;background:hsl(226 22% 16%)">
+              <div style="min-width:0;flex:1">
+                <div style="font-size:14px;font-weight:600">Cinemática · texto + áudio</div>
+                <div style="font-size:12px;color:hsl(230 10% 78%);margin-top:3px">2 leituras, 1 áudio (8 min)</div>
+              </div>
+              <div style="width:180px;height:8px;border-radius:999px;background:hsl(226 20% 22%);overflow:hidden"><div style="width:100%;height:100%;background:hsl(142 65% 50%)"></div></div>
+              <div style="width:96px;text-align:right;font-size:12px;font-weight:600;color:hsl(142 65% 58%)">Consumido</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:16px;padding:16px 18px;border-radius:16px;background:hsl(226 22% 16%)">
+              <div style="min-width:0;flex:1">
+                <div style="font-size:14px;font-weight:600">Vetores · texto + áudio</div>
+                <div style="font-size:12px;color:hsl(230 10% 78%);margin-top:3px">3 leituras, 1 áudio (11 min)</div>
+              </div>
+              <div style="width:180px;height:8px;border-radius:999px;background:hsl(226 20% 22%);overflow:hidden"><div style="width:100%;height:100%;background:hsl(142 65% 50%)"></div></div>
+              <div style="width:96px;text-align:right;font-size:12px;font-weight:600;color:hsl(142 65% 58%)">Consumido</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:16px;padding:16px 18px;border-radius:16px;background:hsl(226 22% 16%)">
+              <div style="min-width:0;flex:1">
+                <div style="font-size:14px;font-weight:600">Dinâmica · texto</div>
+                <div style="font-size:12px;color:hsl(230 10% 78%);margin-top:3px">4 leituras · áudio pendente de geração</div>
+              </div>
+              <div style="width:180px;height:8px;border-radius:999px;background:hsl(226 20% 22%);overflow:hidden"><div style="width:75%;height:100%;background:hsl(266 95% 66%)"></div></div>
+              <div style="width:96px;text-align:right;font-size:12px;font-weight:600;color:hsl(266 90% 77%)">3 de 4</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:16px;padding:16px 18px;border-radius:16px;background:hsl(226 22% 16%)">
+              <div style="min-width:0;flex:1">
+                <div style="font-size:14px;font-weight:600">Trabalho e Energia · texto + áudio</div>
+                <div style="font-size:12px;color:hsl(230 10% 78%);margin-top:3px">2 leituras, 1 áudio (9 min)</div>
+              </div>
+              <div style="width:180px;height:8px;border-radius:999px;background:hsl(226 20% 22%);overflow:hidden"><div style="width:33%;height:100%;background:hsl(45 90% 58%)"></div></div>
+              <div style="width:96px;text-align:right;font-size:12px;font-weight:600;color:hsl(45 90% 62%)">1 de 3</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:16px;padding:16px 18px;border-radius:16px;background:hsl(226 22% 14%);border:1px dashed hsl(226 20% 26%)">
+              <div style="min-width:0;flex:1">
+                <div style="font-size:14px;font-weight:600;color:hsl(230 10% 78%)">Rotação · aguardando liberação do tópico</div>
+                <div style="font-size:12px;color:hsl(230 10% 68%);margin-top:3px">Material já gerado, será liberado com o tópico</div>
+              </div>
+              <div style="font-size:12px;font-weight:600;color:hsl(230 10% 72%)">Em espera</div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div style="padding:24px 26px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+            <div style="font-family:Cinzel, serif;font-size:18px;font-weight:700">Consumo total</div>
+            <div style="display:flex;align-items:flex-end;gap:10px;margin-top:16px"><div style="font-size:44px;font-weight:800;line-height:1">68%</div><div style="font-size:13px;color:hsl(230 10% 78%);padding-bottom:6px">do material gerado</div></div>
+            <div style="height:8px;border-radius:999px;background:hsl(226 20% 20%);margin-top:18px;overflow:hidden"><div style="width:68%;height:100%;background:linear-gradient(90deg, hsl(265 65% 50%), hsl(266 90% 77%))"></div></div>
+            <div style="font-size:13px;color:hsl(230 10% 78%);margin-top:16px;line-height:1.6">13 de 19 itens · áudio tem consumo maior (81%) que leitura (59%).</div>
+          </div>
+          <div style="padding:24px 26px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+            <div style="font-family:Cinzel, serif;font-size:18px;font-weight:700">Ações</div>
+            <div style="display:flex;flex-direction:column;gap:10px;margin-top:16px">
+              <div style="padding:11px 18px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));font-size:13px;font-weight:600;text-align:center;cursor:pointer">Regerar material pendente</div>
+              <div style="padding:11px 18px;border-radius:999px;border:1px solid hsl(226 20% 22%);font-size:13px;font-weight:600;text-align:center;cursor:pointer" style-hover="border-color:hsl(266 95% 66% / .6)">Ver conteúdo gerado</div>
+              <div style="height:1px;background:hsl(226 20% 22%);margin:8px 0"></div>
+              <div style="padding:11px 18px;border-radius:999px;border:1px solid hsl(0 70% 55% / .45);color:hsl(0 75% 68%);font-size:13px;font-weight:600;text-align:center;cursor:pointer" style-hover="background:hsl(0 45% 16%)">Descartar personalizações…</div>
+              <div style="font-size:11px;color:hsl(230 10% 68%);text-align:center;line-height:1.5">Pede confirmação por escrito. Apaga todo o material já gerado para esta aluna.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+    </div>
+    </sc-if>
+  </div>
+</div>
+
+<div onClick="{{ toggleTutor }}" style="position:fixed;right:28px;bottom:28px;z-index:70;width:56px;height:56px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 10px 30px hsl(266 60% 30% / .5)" style-hover="box-shadow:0 12px 36px hsl(266 70% 40% / .6)">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="hsl(266 30% 12%)" stroke-width="2"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z" /></svg>
+</div>
+
+<sc-if value="{{ showTutor }}">
+<div style="position:fixed;right:28px;bottom:96px;z-index:70;width:380px;max-height:560px;display:flex;flex-direction:column;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(266 95% 66% / .35);box-shadow:0 24px 70px hsl(225 40% 2% / .8);overflow:hidden">
+  <div style="display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid hsl(226 20% 22%);background:hsl(226 26% 14%)">
+    <div style="width:30px;height:30px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));display:flex;align-items:center;justify-content:center;flex:none">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(266 30% 12%)" stroke-width="2.4"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z" /></svg>
+    </div>
+    <div style="min-width:0">
+      <div style="font-size:13px;font-weight:700">Tutor de dados</div>
+      <div style="font-size:11px;color:hsl(230 10% 72%)">Responde com base na turma selecionada</div>
+    </div>
+    <div onClick="{{ toggleTutor }}" style="margin-left:auto;width:26px;height:26px;border-radius:999px;display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="background:hsl(226 20% 22%)">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 82%)" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" /></svg>
+    </div>
+  </div>
+  <div style="flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:12px;min-height:220px">
+    <div style="align-self:flex-start;max-width:88%;padding:11px 14px;border-radius:14px;background:hsl(226 22% 16%);font-size:13px;line-height:1.55">Posso ajudar a interpretar os dados desta turma. Pergunte algo como "quais alunos precisam de atenção esta semana?".</div>
+    <sc-for list="{{ tutorMessages }}" as="m" hint-placeholder-count="0">
+      <div style="{{ m.bubbleStyle }}">{{ m.text }}</div>
+    </sc-for>
+    <sc-if value="{{ tutorThinking }}">
+    <div style="align-self:flex-start;display:flex;align-items:center;gap:7px;padding:11px 14px;border-radius:14px;background:hsl(226 22% 16%)">
+      <div style="width:14px;height:14px;border-radius:999px;border:2px solid hsl(266 90% 80% / .3);border-top-color:hsl(266 90% 82%);animation:tu-spin 1s linear infinite"></div>
+      <div style="font-size:12px;color:hsl(230 10% 78%)">Consultando os dados da turma…</div>
+    </div>
+    </sc-if>
+  </div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;padding:0 18px 10px">
+    <div onClick="{{ askAttention }}" style="padding:6px 12px;border-radius:999px;border:1px solid hsl(226 20% 28%);font-size:11px;color:hsl(230 10% 82%);cursor:pointer" style-hover="border-color:hsl(266 95% 66% / .6)">Quem precisa de atenção?</div>
+    <div onClick="{{ askDifficulty }}" style="padding:6px 12px;border-radius:999px;border:1px solid hsl(226 20% 28%);font-size:11px;color:hsl(230 10% 82%);cursor:pointer" style-hover="border-color:hsl(266 95% 66% / .6)">Onde a turma mais erra?</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;padding:12px 16px;border-top:1px solid hsl(226 20% 22%)">
+    <div style="flex:1;padding:10px 13px;border-radius:999px;background:hsl(226 22% 16%);border:1px solid hsl(226 20% 28%);font-size:13px;color:hsl(230 10% 62%)">Pergunte sobre a turma…</div>
+    <div onClick="{{ askAttention }}" style="width:34px;height:34px;flex:none;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));display:flex;align-items:center;justify-content:center;cursor:pointer">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(266 30% 12%)" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;estado&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;com dados&quot;,&quot;vazio&quot;,&quot;carregando&quot;,&quot;erro&quot;],&quot;default&quot;:&quot;com dados&quot;,&quot;tsType&quot;:&quot;'com dados' | 'vazio' | 'carregando' | 'erro'&quot;,&quot;section&quot;:&quot;Estados da tela&quot;},&quot;mostrarGuardioes&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Detalhe do aluno&quot;}}">
+const PROFILES = {
+  Seeker: { color: '#22c9bc', text: '#5fe0d5', bg: '#17a39826', border: '#17a39859' },
+  Survivor: { color: '#8593a2', text: '#a9b5c2', bg: '#4e5a6633', border: '#4e5a6666' },
+  Daredevil: { color: '#e8455b', text: '#f47f8d', bg: '#d7263d26', border: '#d7263d59' },
+  Mastermind: { color: '#7a63e8', text: '#a794f2', bg: '#5b3fd92e', border: '#5b3fd966' },
+  Conqueror: { color: '#3e6dea', text: '#7f9df5', bg: '#1e4fd62e', border: '#1e4fd666' },
+  Socializer: { color: '#f77b57', text: '#fa9c80', bg: '#f4623a26', border: '#f4623a59' },
+  Achiever: { color: '#dfb63a', text: '#e8c964', bg: '#c9a22726', border: '#c9a22759' }
+};
+
+const ROWS = [
+  ['Marina Corrêa', 'marina.correa@ulbra.br', 'MC', 'Mastermind', '8.2', 74, 79, 11],
+  ['Rafael Antunes', 'rafael.antunes@ulbra.br', 'RA', 'Survivor', '5.1', 28, 52, 39],
+  ['Beatriz Lemos', 'beatriz.lemos@ulbra.br', 'BL', 'Seeker', '9.1', 88, 86, 6],
+  ['Diego Fontana', 'diego.fontana@ulbra.br', 'DF', 'Daredevil', '6.4', 51, 63, 27],
+  ['Helena Vasques', 'helena.vasques@ulbra.br', 'HV', 'Achiever', '8.7', 81, 82, 14],
+  ['Caio Bertoldo', 'caio.bertoldo@ulbra.br', 'CB', 'Conqueror', '7.3', 66, 71, 17],
+  ['Nina Salgado', 'nina.salgado@ulbra.br', 'NS', 'Socializer', '6.9', 58, 68, 23],
+  ['Otávio Prado', 'otavio.prado@ulbra.br', 'OP', 'Survivor', '4.6', 19, 47, 44]
+];
+
+const AT_RISK = [
+  ['Otávio Prado', 'OP', 'Survivor', 'crit', 'Abandona 44% das atividades', 'Turma: 18,5% · pior caso da turma'],
+  ['Rafael Antunes', 'RA', 'Survivor', 'crit', 'Nota 4,6 — abaixo da aprovação', 'Turma: 7,4 · caiu 1,2 em 3 semanas'],
+  ['Diego Fontana', 'DF', 'Daredevil', 'warn', 'Sem atividade há 9 dias', 'Parou em Trabalho e Energia, tópico 6'],
+  ['Nina Salgado', 'NS', 'Socializer', 'warn', 'Progresso 58% com 78% do prazo usado', 'Esperado nesta semana: 60%'],
+  ['Caio Bertoldo', 'CB', 'Conqueror', 'watch', 'Acertos caíram de 82% para 71%', 'Queda concentrada em Vetores']
+];
+
+const SEV = {
+  crit: { label: 'Crítico', bg: 'hsl(0 50% 20%)', fg: 'hsl(0 80% 78%)', dot: 'hsl(0 72% 60%)' },
+  warn: { label: 'Atenção', bg: 'hsl(45 50% 18%)', fg: 'hsl(45 90% 68%)', dot: 'hsl(45 90% 60%)' },
+  watch: { label: 'Observar', bg: 'hsl(205 45% 18%)', fg: 'hsl(205 70% 76%)', dot: 'hsl(205 70% 60%)' }
+};
+
+const CONTENTS = [
+  ['Áudio personalizado', 'Cinemática', 'Áudio · 11 min', 91, '31 de 34 alunos', 22, 88, 'acima da média'],
+  ['Leitura · parte 2', 'Vetores', 'Texto · 8 min', 68, '23 de 34 alunos', 54, 61, 'abaixo da média'],
+  ['Quiz · Leis de Newton', 'Dinâmica', 'Atividade · 10 questões', 88, '30 de 34 alunos', 26, 94, 'melhor da trilha'],
+  ['Simulador de queda livre', 'Cinemática', 'Link externo', 41, '14 de 34 alunos', 19, 38, 'pouco acessado'],
+  ['Cards de estudo', 'Medidas e Unidades', 'Cards · 12 cards', 76, '26 de 34 alunos', 17, 82, 'acima da média'],
+  ['Leitura · introdução', 'Trabalho e Energia', 'Texto · 6 min', 34, '12 de 34 alunos', 31, 29, 'tópico recém-liberado']
+];
+
+
+const JOURNEY = [
+  { t: 1, topic: 'Introdução', kind: 'ok', title: 'Leitura · O que a Física descreve',
+    content: 'Leitura personalizada (Mastermind)', contentNote: '4 blocos · 820 palavras',
+    activity: 'Nenhuma atividade neste passo', activityNote: 'conteúdo de abertura do tópico',
+    answer: '—', expected: 'sem questões vinculadas',
+    result: 'Concluído', resultNote: 'leu até o último bloco',
+    time: '6 min', timeNote: 'média da turma: 8 min',
+    attempt: '1ª', attemptNote: 'sem repetição',
+    orderNote: 'coincide com a ordem da trilha', progress: 8,
+    noteTitle: 'Sem desvio', note: 'Marina começou pelo início previsto da trilha, em 04/03 às 19:12.',
+    when: '04/03 · 19:12' },
+  { t: 1, topic: 'Introdução', kind: 'ok', title: 'Quiz de entrada · 5 questões',
+    content: 'Retomou a leitura antes de responder', contentNote: 'voltou 1 bloco por 40 s',
+    activity: 'Quiz de entrada', activityNote: '5 questões · vale 5 pontos',
+    answer: '4 de 5 corretas (errou a Q3)', expected: 'Q3 esperava “grandeza escalar”; respondeu “vetorial”',
+    result: 'Acertou 80%', resultNote: 'acima do corte de 60%',
+    time: '9 min', timeNote: 'média da turma: 11 min',
+    attempt: '1ª', attemptNote: 'aprovada na primeira',
+    orderNote: 'na ordem da trilha', progress: 11,
+    noteTitle: 'Sem desvio', note: 'Consultou o conteúdo durante o quiz, comportamento típico do perfil Mastermind.',
+    when: '04/03 · 19:28' },
+  { t: 2, topic: 'Medidas', kind: 'ok', title: 'Áudio · Unidades e conversões',
+    content: 'Áudio personalizado (Mastermind)', contentNote: '11 min · ouviu 100%',
+    activity: 'Nenhuma atividade neste passo', activityNote: 'material de apoio',
+    answer: '—', expected: 'sem questões vinculadas',
+    result: 'Concluído', resultNote: 'ouviu sem pausas longas',
+    time: '11 min', timeNote: 'igual à duração do áudio',
+    attempt: '1ª', attemptNote: 'sem repetição',
+    orderNote: 'na ordem da trilha', progress: 18,
+    noteTitle: 'Sem desvio', note: 'Áudio é o formato que ela consome mais: 81% contra 59% da leitura.',
+    when: '07/03 · 08:41' },
+  { t: 2, topic: 'Medidas', kind: 'err', title: 'Conversão de unidades · tentativa 1',
+    content: 'Não reabriu o conteúdo antes', contentNote: 'foi direto para a atividade',
+    activity: 'Conversão de unidades', activityNote: '6 questões · vale 10 pontos',
+    answer: '3 de 6 corretas', expected: 'erros concentrados em notação científica',
+    result: 'Reprovada (50%)', resultNote: 'corte da atividade: 60%',
+    time: '7 min', timeNote: 'média da turma: 13 min — respondeu rápido',
+    attempt: '1ª', attemptNote: 'liberou nova tentativa',
+    orderNote: 'na ordem da trilha', progress: 22,
+    noteTitle: 'Erro relevante', note: 'Respondeu em metade do tempo médio e errou metade. Indício de tentativa apressada, não de falta de material.',
+    when: '07/03 · 09:02' },
+  { t: 2, topic: 'Medidas', kind: 'retry', title: 'Conversão de unidades · tentativa 2',
+    content: 'Reabriu o áudio no trecho de notação', contentNote: 'ouviu 3 min do minuto 6 ao 9',
+    activity: 'Conversão de unidades', activityNote: 'mesma atividade, nova tentativa',
+    answer: '6 de 6 corretas', expected: 'corrigiu as três de notação científica',
+    result: 'Aprovada (100%)', resultNote: 'ganho de 50 pontos percentuais',
+    time: '15 min', timeNote: 'mais que o dobro da 1ª tentativa',
+    attempt: '2ª', attemptNote: 'repetição por reprovação',
+    orderNote: 'repetiu o mesmo ponto da trilha', progress: 26,
+    noteTitle: 'Repetição com retorno ao conteúdo', note: 'Voltou ao áudio antes de repetir e acertou tudo. O material resolveu o problema — não foi preciso intervenção.',
+    when: '07/03 · 09:34' },
+  { t: 3, topic: 'Cinemática', kind: 'ok', title: 'Leitura · Movimento uniforme',
+    content: 'Leitura personalizada (Mastermind)', contentNote: '2 de 4 blocos lidos',
+    activity: 'Nenhuma atividade neste passo', activityNote: 'atividade do tópico ficou pendente',
+    answer: '—', expected: 'sem questões vinculadas',
+    result: 'Parcial', resultNote: 'saiu antes do último bloco',
+    time: '12 min', timeNote: 'média da turma: 15 min',
+    attempt: '1ª', attemptNote: 'sem repetição',
+    orderNote: 'na ordem da trilha', progress: 34,
+    noteTitle: 'Conteúdo deixado no meio', note: 'Parou na metade da leitura e saiu do tópico 3 — é aqui que começa o desvio dos dois passos seguintes.',
+    when: '11/03 · 20:05' },
+  { t: 4, topic: 'Vetores', kind: 'skip', title: 'Áudio · Soma de vetores',
+    content: 'Áudio personalizado (Mastermind)', contentNote: '9 min · ouviu 100%',
+    activity: 'Nenhuma atividade neste passo', activityNote: 'apenas conteúdo',
+    answer: '—', expected: 'sem questões vinculadas',
+    result: 'Concluído', resultNote: 'consumiu o áudio inteiro',
+    time: '9 min', timeNote: 'igual à duração do áudio',
+    attempt: '1ª', attemptNote: 'sem repetição',
+    orderNote: 'fora de ordem — pulou o tópico 3 inacabado', progress: 41,
+    noteTitle: 'Fora de ordem', note: 'Entrou no tópico 4 com a leitura e a atividade do tópico 3 ainda abertas. A trilha permitia, porque Vetores não tinha Cinemática como pré-requisito.',
+    when: '12/03 · 07:58' },
+  { t: 3, topic: 'Cinemática', kind: 'back', title: 'Gráficos de posição e velocidade',
+    content: 'Terminou os 2 blocos que faltavam', contentNote: 'leitura concluída 4 dias depois',
+    activity: 'Gráficos de posição e velocidade', activityNote: '6 questões · vale 10 pontos',
+    answer: '5 de 6 corretas', expected: 'errou a leitura do gráfico com velocidade negativa',
+    result: 'Aprovada (83%)', resultNote: 'acima da média da turma (71%)',
+    time: '18 min', timeNote: 'média da turma: 16 min',
+    attempt: '1ª', attemptNote: 'sem repetição',
+    orderNote: 'retorno ao tópico 3 depois do tópico 4', progress: 52,
+    noteTitle: 'Retorno a tópico anterior', note: 'Voltou por conta própria para fechar o que tinha deixado aberto. Usou o chat de apoio 1 vez, na questão do gráfico negativo.',
+    when: '15/03 · 21:14' },
+  { t: 5, topic: 'Dinâmica', kind: 'ok', title: 'Quiz · Leis de Newton',
+    content: 'Leitura + áudio de Dinâmica', contentNote: 'material regerado em 28/08',
+    activity: 'Quiz · Leis de Newton', activityNote: '10 questões · vale 10 pontos',
+    answer: '8 de 10 corretas', expected: 'erros na Q6 e Q9 (terceira lei)',
+    result: 'Aprovada (80%)', resultNote: 'melhor nota dela em atividade longa',
+    time: '12 min', timeNote: 'média da turma: 14 min',
+    attempt: '1ª', attemptNote: 'sem repetição',
+    orderNote: 'na ordem da trilha', progress: 68,
+    noteTitle: 'Sem desvio', note: 'Usou o chat de apoio 1 vez após errar a Q6. Passo mais recente concluído.',
+    when: 'hoje · 14:32' },
+  { t: 6, topic: 'Trabalho e Energia', kind: 'drop', title: 'Leitura · Trabalho de uma força',
+    content: 'Leitura personalizada (Mastermind)', contentNote: '1 de 3 blocos · saiu no bloco 2',
+    activity: 'Atividade não iniciada', activityNote: '3 questões aguardando',
+    answer: '—', expected: 'nenhuma resposta registrada',
+    result: 'Abandonado', resultNote: 'saiu sem concluir e não voltou',
+    time: '3 min', timeNote: 'média da turma: 14 min',
+    attempt: '1ª', attemptNote: 'nenhuma retomada em 9 dias',
+    orderNote: 'na ordem da trilha', progress: 74,
+    noteTitle: 'Abandono em aberto', note: 'É o ponto onde a jornada parou. Nove dias sem atividade — o mesmo alerta que aparece na Visão geral do aluno.',
+    when: '29/08 · 22:40' }
+];
+
+const JK = {
+  ok:    { hex: 'hsl(266 90% 77%)', ink: 'hsl(266 30% 12%)', chipBg: 'hsl(266 95% 66% / .16)', chipFg: 'hsl(266 90% 84%)', chip: 'concluído',  conn: 'hsl(266 95% 66% / .6)', connLabel: 'seguiu', connColor: 'hsl(230 10% 62%)' },
+  err:   { hex: 'hsl(0 72% 60%)',   ink: 'hsl(0 30% 12%)',   chipBg: 'hsl(0 50% 20%)',          chipFg: 'hsl(0 80% 78%)',   chip: 'errou',      conn: 'hsl(266 95% 66% / .6)', connLabel: 'seguiu', connColor: 'hsl(230 10% 62%)' },
+  retry: { hex: 'hsl(45 90% 60%)',  ink: 'hsl(45 40% 12%)',  chipBg: 'hsl(45 50% 18%)',         chipFg: 'hsl(45 90% 68%)',  chip: '2ª tentativa', conn: 'hsl(45 90% 58% / .8)', connLabel: 'repetiu', connColor: 'hsl(45 90% 66%)' },
+  skip:  { hex: 'hsl(205 70% 62%)', ink: 'hsl(205 40% 12%)', chipBg: 'hsl(205 45% 18%)',        chipFg: 'hsl(205 70% 78%)', chip: 'fora de ordem', conn: 'hsl(205 70% 58% / .85)', connLabel: 'pulou', connColor: 'hsl(205 70% 76%)' },
+  back:  { hex: 'hsl(45 90% 60%)',  ink: 'hsl(45 40% 12%)',  chipBg: 'hsl(45 50% 18%)',         chipFg: 'hsl(45 90% 68%)',  chip: 'retorno',    conn: 'hsl(45 90% 58% / .85)', connLabel: 'voltou', connColor: 'hsl(45 90% 66%)' },
+  drop:  { hex: 'hsl(0 72% 60%)',   ink: 'hsl(0 30% 12%)',   chipBg: 'hsl(0 50% 20%)',          chipFg: 'hsl(0 80% 78%)',   chip: 'abandonou',  conn: 'hsl(266 95% 66% / .6)', connLabel: 'seguiu', connColor: 'hsl(230 10% 62%)' }
+};
+
+const TAB_BASE = 'padding:10px 20px;border-radius:999px;font-size:14px;font-weight:600;cursor:pointer;';
+const SUB_BASE = 'padding:9px 18px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;';
+const SUB_ON = SUB_BASE + 'background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));color:hsl(40 20% 96%)';
+const SUB_OFF = SUB_BASE + 'color:hsl(230 10% 74%)';
+const TAB_ON = TAB_BASE + 'background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));color:hsl(40 20% 96%)';
+const TAB_OFF = TAB_BASE + 'color:hsl(230 10% 72%)';
+
+class Component extends DCLogic {
+  state = { view: 'class', tab: 0, cls: 0, step: 7, estadoOverride: null, noteDraft: false, tutorOpen: false, tutorThinking: false, tutorMsgs: [], notesByStep: {
+    7: [
+      { when: '10/09 · IA', author: 'ia', text: 'Sugestão automática: aluno errou 2 vezes o mesmo tipo de conversão de unidade — recomendo revisar "Medidas e Unidades" antes de avançar.' },
+      { when: '11/09 · você', author: 'professor', text: 'Conversei com o aluno na aula; ele disse que confundiu km/h com m/s. Vou observar o próximo exercício.' }
+    ]
+  } };
+
+  toggleTutorFn() { this.setState({ tutorOpen: !this.state.tutorOpen }); }
+  askTutor(question, answer) {
+    const msgs = this.state.tutorMsgs.slice();
+    msgs.push({ text: question, bubbleStyle: 'align-self:flex-end;max-width:88%;padding:11px 14px;border-radius:14px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));color:hsl(40 20% 96%);font-size:13px;line-height:1.55' });
+    this.setState({ tutorMsgs: msgs, tutorThinking: true });
+    setTimeout(() => {
+      const msgs2 = this.state.tutorMsgs.slice();
+      msgs2.push({ text: answer, bubbleStyle: 'align-self:flex-start;max-width:88%;padding:11px 14px;border-radius:14px;background:hsl(226 22% 16%);font-size:13px;line-height:1.55' });
+      this.setState({ tutorMsgs: msgs2, tutorThinking: false });
+    }, 1100);
+  }
+
+  estado() {
+    return this.state.estadoOverride || this.props.estado || 'com dados';
+  }
+
+  renderVals() {
+    const e = this.estado();
+    const tab = this.state.tab;
+    const abColor = v => v >= 30 ? 'hsl(0 75% 66%)' : v >= 20 ? 'hsl(45 90% 62%)' : 'hsl(142 65% 58%)';
+    const abLabel = v => v >= 30 ? 'crítico' : v >= 20 ? 'atenção' : 'saudável';
+    const cls = this.state.cls;
+    const diff = v => v >= 45
+      ? { color: 'hsl(0 78% 74%)', label: 'alta', note: 'revisar o material', dot: 'hsl(0 72% 60%)' }
+      : v >= 30
+        ? { color: 'hsl(45 90% 66%)', label: 'média', note: 'acompanhar', dot: 'hsl(45 90% 60%)' }
+        : { color: 'hsl(142 65% 64%)', label: 'baixa', note: 'dentro do esperado', dot: 'hsl(142 65% 52%)' };
+    const step = this.state.step;
+    const journey = JOURNEY.map((e, n) => {
+      const k = JK[e.kind];
+      const on = n === step;
+      const prev = JOURNEY[n - 1];
+      return {
+        topicNum: e.t,
+        topicName: e.topic,
+        orderLabel: 'passo ' + (n + 1),
+        hasConn: n > 0,
+        connLine: 'flex:1;height:2px;background:' + k.conn + (e.kind === 'back' || e.kind === 'skip' || e.kind === 'retry' ? ';border-top:0' : ''),
+        connColor: k.connColor,
+        connLabel: prev && e.t < prev.t ? 'voltou p/ ' + e.t : (prev && e.t > prev.t + 1 ? 'pulou p/ ' + e.t : k.connLabel),
+        hex: 'position:absolute;inset:0;background:' + k.hex + ';clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)',
+        hexInner: 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:800;color:' + k.ink,
+        wrap: 'display:flex;flex-direction:column;align-items:center;width:104px;padding:10px 6px 12px;border-radius:16px;cursor:pointer;'
+          + (on ? 'background:hsl(226 22% 17%);border:2px solid hsl(266 95% 66%)' : 'border:2px solid transparent'),
+        chip: 'margin-top:8px;padding:3px 9px;border-radius:999px;font-size:10px;font-weight:700;white-space:nowrap;background:' + k.chipBg + ';color:' + k.chipFg,
+        chipLabel: k.chip,
+        select: () => this.setState({ step: n })
+      };
+    });
+    const evt = JOURNEY[step] || JOURNEY[0];
+    const ek = JK[evt.kind];
+    const good = evt.kind === 'ok' || evt.kind === 'retry';
+    const resColor = evt.kind === 'err' || evt.kind === 'drop' ? 'hsl(0 80% 78%)' : (evt.kind === 'ok' ? 'hsl(142 65% 66%)' : 'hsl(45 90% 68%)');
+    const iconBox = c => 'width:24px;height:24px;flex:none;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;background:' + c;
+    return {
+      journey,
+      sel: {
+        topicNum: evt.t, topicName: evt.topic, title: evt.title,
+        orderLabel: 'passo ' + (step + 1) + ' de 10',
+        order: (step + 1) + 'º de 10', orderNote: evt.orderNote,
+        when: evt.when,
+        statusChip: 'padding:5px 13px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap;background:' + ek.chipBg + ';color:' + ek.chipFg,
+        statusLabel: ek.chip,
+        content: evt.content, contentNote: evt.contentNote,
+        activity: evt.activity, activityNote: evt.activityNote,
+        answer: evt.answer, expected: evt.expected,
+        result: evt.result, resultNote: evt.resultNote, resultColor: resColor,
+        resultIcon: evt.kind === 'err' || evt.kind === 'drop' ? '✕' : (good ? '✓' : '!'),
+        resultIconBox: iconBox(evt.kind === 'err' || evt.kind === 'drop' ? 'hsl(0 60% 26%)' : (evt.kind === 'ok' ? 'hsl(142 45% 20%)' : 'hsl(45 50% 20%)')) + ';color:' + resColor,
+        time: evt.time, timeNote: evt.timeNote,
+        attempt: evt.attempt, attemptNote: evt.attemptNote,
+        progress: evt.progress,
+        progressBar: 'width:' + evt.progress + '%;height:100%;border-radius:999px;background:linear-gradient(90deg, hsl(265 65% 50%), hsl(266 90% 77%))',
+        noteTitle: evt.noteTitle, note: evt.note,
+        noteColor: evt.kind === 'ok' ? 'hsl(230 10% 88%)' : (evt.kind === 'err' || evt.kind === 'drop' ? 'hsl(0 80% 78%)' : 'hsl(45 90% 68%)'),
+        noteIcon: evt.kind === 'ok' ? '=' : (evt.kind === 'err' || evt.kind === 'drop' ? '!' : '↺'),
+        noteIconBox: iconBox(evt.kind === 'ok' ? 'hsl(226 20% 24%)' : (evt.kind === 'err' || evt.kind === 'drop' ? 'hsl(0 60% 26%)' : 'hsl(45 50% 20%)'))
+          + ';color:' + (evt.kind === 'ok' ? 'hsl(230 10% 86%)' : (evt.kind === 'err' || evt.kind === 'drop' ? 'hsl(0 80% 78%)' : 'hsl(45 90% 68%)')),
+        interventions: (this.state.notesByStep[step] || []).map(iv => ({
+          when: iv.when, text: iv.text,
+          avatar: iv.author === 'ia' ? 'IA' : 'JP',
+          avatarStyle: 'width:20px;height:20px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;' + (iv.author === 'ia' ? 'background:hsl(205 70% 58% / .25);color:hsl(205 70% 78%)' : 'background:hsl(266 95% 66% / .2);color:hsl(266 90% 84%)')
+        })),
+        hasNotes: !!(this.state.notesByStep[step] && this.state.notesByStep[step].length),
+        noNotes: !(this.state.notesByStep[step] && this.state.notesByStep[step].length)
+      },
+      noteInputStyle: 'flex:1;min-width:200px;padding:11px 14px;border-radius:14px;background:hsl(226 22% 16%);border:1px solid hsl(226 20% 28%);font-size:13px;color:' + (this.state.noteDraft ? 'hsl(230 10% 90%)' : 'hsl(230 10% 62%)') + ';cursor:text',
+      noteInputText: this.state.noteDraft ? 'Reforçar leitura do gráfico antes da próxima atividade de queda livre.' : 'Escrever um comentário, sugestão de estudo ou guia para este passo…',
+      showTutor: this.state.tutorOpen,
+      toggleTutor: () => this.toggleTutorFn(),
+      tutorMessages: this.state.tutorMsgs,
+      tutorThinking: this.state.tutorThinking,
+      askAttention: () => this.askTutor(
+        'Quais alunos precisam de atenção esta semana?',
+        'Com base nos dados desta turma: Otávio Prado (44% de abandono, sem atividade há 9 dias) e mais 2 alunos estão fora da curva. Recomendo priorizar o contato com Otávio primeiro — o risco de abandono é o mais alto do grupo.'
+      ),
+      askDifficulty: () => this.askTutor(
+        'Onde a turma mais erra?',
+        'O maior índice de erro está em "Queda livre — simulação", dentro de Cinemática — cerca de 40% das respostas trocam a unidade (km/h por m/s). Vale reforçar esse ponto antes da próxima atividade.'
+      ),
+      saveNote: () => {
+        if (!this.state.noteDraft) { this.setState({ noteDraft: true }); return; }
+        const list = (this.state.notesByStep[step] || []).slice();
+        list.push({ when: 'agora · você', author: 'professor', text: 'Reforçar leitura do gráfico antes da próxima atividade de queda livre.' });
+        this.setState({ notesByStep: { ...this.state.notesByStep, [step]: list }, noteDraft: false });
+      },
+      cls0: () => this.setState({ cls: 0 }),
+      cls1: () => this.setState({ cls: 1 }),
+      cls2: () => this.setState({ cls: 2 }),
+      clsStyle0: cls === 0 ? SUB_ON : SUB_OFF,
+      clsStyle1: cls === 1 ? SUB_ON : SUB_OFF,
+      clsStyle2: cls === 2 ? SUB_ON : SUB_OFF,
+      isCls0: cls === 0,
+      isCls1: cls === 1,
+      isCls2: cls === 2,
+      atRisk: AT_RISK.map(r => {
+        const sev = SEV[r[3]];
+        return {
+          name: r[0], initials: r[1], profile: r[2], reason: r[4], compare: r[5],
+          color: PROFILES[r[2]].color,
+          severity: sev.label,
+          chip: 'display:flex;align-items:center;gap:8px;padding:5px 12px;border-radius:999px;flex:none;font-size:11px;font-weight:700;background:' + sev.bg + ';color:' + sev.fg,
+          dot: 'width:9px;height:11px;flex:none;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);background:' + sev.dot,
+          open: () => this.setState({ view: 'student', tab: 0 })
+        };
+      }),
+      contents: CONTENTS.map(c => {
+        const d = diff(c[5]);
+        return {
+          name: c[0], topic: c[1], format: c[2], use: c[3], useLabel: c[4],
+          err: c[5], done: c[6], doneLabel: c[7],
+          diffColor: d.color, diffLabel: d.label, diffNote: d.note,
+          diffDot: 'width:10px;height:12px;flex:none;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);background:' + d.dot
+        };
+      }),
+      isOverview: this.state.view === 'class',
+      isStudent: this.state.view === 'student',
+      isData: e === 'com dados',
+      isEmpty: e === 'vazio',
+      isLoading: e === 'carregando',
+      isError: e === 'erro',
+      showGuardians: this.props.mostrarGuardioes ?? true,
+      retry: () => this.setState({ estadoOverride: 'com dados' }),
+      back: () => this.setState({ view: 'class' }),
+      tab0: () => this.setState({ tab: 0 }),
+      tab1: () => this.setState({ tab: 1 }),
+      tab2: () => this.setState({ tab: 2 }),
+      tab3: () => this.setState({ tab: 3 }),
+      tabStyle0: tab === 0 ? TAB_ON : TAB_OFF,
+      tabStyle1: tab === 1 ? TAB_ON : TAB_OFF,
+      tabStyle2: tab === 2 ? TAB_ON : TAB_OFF,
+      tabStyle3: tab === 3 ? TAB_ON : TAB_OFF,
+      isTab0: tab === 0,
+      isTab1: tab === 1,
+      isTab2: tab === 2,
+      isTab3: tab === 3,
+      students: ROWS.map(r => {
+        const p = PROFILES[r[3]];
+        return {
+          name: r[0], email: r[1], initials: r[2], profile: r[3],
+          nota: r[4], prog: r[5], acertos: r[6], abandono: r[7],
+          color: p.color, chipBg: p.bg, chipBorder: p.border, textColor: p.text,
+          abColor: abColor(r[7]),
+          abLabel: abLabel(r[7]),
+          open: () => this.setState({ view: 'student', tab: 0 })
+        };
+      })
+    };
+  }
+}
+
+</script>
+</body>
+</html>
