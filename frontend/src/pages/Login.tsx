@@ -11,7 +11,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, School, Hexagon, Mail, Lock, EyeOff, Eye } from "lucide-react";
+import { AlertCircle, Mail, Lock, EyeOff, Eye } from "lucide-react";
+import { AuthBrand, AuthScenery } from "@/components/auth/AuthScenery";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { z } from "zod";
@@ -164,21 +165,12 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4">
-      <Card className="w-full max-w-md">
+    <div className="auth-immersive min-h-screen flex items-center justify-center p-4">
+      <AuthScenery />
+      <Card className="auth-panel w-full max-w-md">
         <CardHeader className="space-y-1">
           <div className="flex flex-col items-center text-center space-y-4 mb-1">
-          <Link to="/" className="group relative">
-            <div className="absolute inset-0 bg-primary/40 blur-lg rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <div className="relative p-4 bg-zinc-900/50 rounded-2xl border border-white/10 backdrop-blur-md shadow-xl transition-transform duration-300 group-hover:scale-105">
-              {/* Ícone School para diferenciar sutilmente, mas mantendo a base Hexagon na marca */}
-              <Hexagon className="w-10 h-10 text-primary fill-primary/20" />
-            </div>
-            {/* Ícone Badge flutuante para professor */}
-            <div className="absolute -bottom-1 -right-1 bg-zinc-900 rounded-full p-1 border border-zinc-700 shadow-lg">
-                <School className="w-4 h-4 text-primary" />
-            </div>
-          </Link>
+          <AuthBrand />
           <CardTitle className="text-2xl font-bold text-center">
             Login do Professor
           </CardTitle>
@@ -211,7 +203,7 @@ export default function Login() {
             <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
         <div className="relative group">
-          <Mail className="absolute left-3 top-3 h-4 w-4 text-zinc-500 group-focus-within:text-primary transition-colors" />
+          <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
               <Input
                 id="email"
                 type="email"
@@ -219,7 +211,7 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="pl-10 bg-zinc-900/50 border-zinc-800 text-zinc-100 placeholder:text-zinc-600 focus:ring-primary/20 focus:border-primary/50 transition-all"
+                className="pl-10 bg-card/50 border-border text-foreground placeholder:text-muted-foreground focus:ring-primary/20 focus:border-primary/50 transition-all"
               />
               </div>
               {errors.email && (
@@ -227,17 +219,9 @@ export default function Login() {
               )}
             </div>
             <div className="space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <Label htmlFor="password">Senha</Label>
-                <Link
-                  to={FORGOT_PASSWORD_PATH}
-                  className="text-xs text-primary hover:underline underline-offset-2"
-                >
-                  Esqueci minha senha
-                </Link>
-              </div>
+              <Label htmlFor="password">Senha</Label>
               <div className="relative group">
-              <Lock className="absolute left-3 top-3 h-4 w-4 text-zinc-500 group-focus-within:text-primary transition-colors" />
+              <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
               <Input
                 id="password"
                 type={showSenha ? "text" : "password"}
@@ -245,13 +229,15 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="pl-10 pr-10 bg-zinc-900/50 border-zinc-800 text-zinc-100 focus:ring-primary/20 focus:border-primary/50"
+                className="pl-10 pr-10 bg-card/50 border-border text-foreground focus:ring-primary/20 focus:border-primary/50"
               />
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="absolute right-0 top-0 h-full w-10 text-zinc-500 hover:text-zinc-300 hover:bg-transparent"
+                aria-label={showSenha ? "Ocultar senha" : "Mostrar senha"}
+                title={showSenha ? "Ocultar senha" : "Mostrar senha"}
+                className="absolute right-0 top-0 h-full w-10 text-muted-foreground hover:text-foreground hover:bg-transparent"
                 onClick={() => setShowSenha((s) => !s)}
               >
                 {showSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -260,6 +246,14 @@ export default function Login() {
               {errors.password && (
                 <p className="text-xs text-red-500 mt-1">{errors.password}</p>
               )}
+              <div className="text-right">
+                <Link
+                  to={FORGOT_PASSWORD_PATH}
+                  className="text-xs text-primary hover:underline underline-offset-2"
+                >
+                  Esqueci minha senha
+                </Link>
+              </div>
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? "Entrando..." : "Entrar"}

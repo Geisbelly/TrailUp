@@ -1,11 +1,12 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Hexagon, X, Loader2, Home, LogIn } from "lucide-react";
+import { X, Loader2, Home, LogIn } from "lucide-react";
+import { AuthBrand, AuthScenery } from "@/components/auth/AuthScenery";
 
 import { AlunoSignupWizard } from "@/components/auth/AlunoSignupWizard";
 import { ProfessorSignupForm } from "@/components/auth/ProfessorSignupForm";
@@ -178,7 +179,8 @@ export default function EmailConfirm() {
   // ======= UI =======
   if (status === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="auth-immersive min-h-screen flex items-center justify-center p-4">
+        <AuthScenery />
         <Loader2 className="w-8 h-8 text-primary animate-spin" />
       </div>
     );
@@ -186,8 +188,10 @@ export default function EmailConfirm() {
 
   if (status === "error") {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="w-full max-w-md p-8 text-center space-y-4">
+      <div className="auth-immersive min-h-screen flex items-center justify-center p-4">
+        <AuthScenery />
+        <Card className="auth-panel w-full max-w-md p-8 text-center space-y-4">
+          <AuthBrand />
           <X className="w-10 h-10 text-destructive mx-auto" />
           <h1 className="text-xl font-bold">Não foi possível continuar</h1>
           <p className="text-sm text-muted-foreground">{detail}</p>
@@ -210,15 +214,11 @@ export default function EmailConfirm() {
   const showProfessor = pendingTipo === "professor";
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="auth-immersive min-h-screen flex items-center justify-center p-4">
+      <AuthScenery />
       <div className="w-full max-w-3xl">
-        {/* <div className="flex justify-center mb-6">
-          <Link to="/" aria-label="Início">
-            <Hexagon className="w-10 h-10 text-primary fill-primary/20" />
-          </Link>
-        </div> */}
-
-        <Card className="p-8 border-primary/20 bg-card/60 backdrop-blur">
+        <div className="text-center mb-4"><AuthBrand /></div>
+        <Card className="auth-panel p-8">
           <div className="mb-6">
             <h1 className="text-2xl font-bold">
               {showStudent

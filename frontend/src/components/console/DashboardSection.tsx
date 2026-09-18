@@ -615,7 +615,7 @@ export default function DashboardSection() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <CardTitle>Abandono por Perfil</CardTitle>
                 <CardDescription>Segmentação por perfil da turma selecionada</CardDescription>

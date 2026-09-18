@@ -589,7 +589,7 @@ export function PerfilConteudoView({
 
   return (
     <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as MaterialTipo)}>
-      <TabsList>
+      <TabsList className="flex h-auto w-fit max-w-full flex-wrap justify-start gap-1">
         {disponiveis.map(({ key, label, icon: Icon }) => (
           <TabsTrigger key={key} value={key} className="gap-1.5">
             <Icon className="h-3.5 w-3.5" />
