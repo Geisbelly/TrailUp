@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  body { margin:0; background:hsl(225 32% 8%); font-family:Inter, system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:hsl(266 90% 77%); text-decoration:none; }
+  a:hover { color:hsl(266 95% 76%); }
+  @keyframes tu-shimmer { 0% { background-position:-500px 0; } 100% { background-position:500px 0; } }
+  @keyframes tu-glow { 0%,100% { opacity:.55; } 50% { opacity:1; } }
+</style>
+</helmet>
+<div style="min-height:100vh;background:radial-gradient(1100px 520px at 12% -12%, hsl(266 60% 22% / .40), transparent 62%), radial-gradient(900px 480px at 96% 4%, hsl(239 60% 24% / .28), transparent 60%), hsl(225 32% 8%);color:hsl(40 20% 94%);padding-bottom:72px">
+
+  <div style="position:sticky;top:0;z-index:20;display:flex;align-items:center;flex-wrap:wrap;row-gap:10px;gap:24px;padding:12px 32px;background:hsl(225 32% 8% / .88);backdrop-filter:blur(14px);border-bottom:1px solid hsl(226 20% 22%)">
+    <div style="display:flex;align-items:center;gap:12px;min-width:0">
+      <img src="assets/trailup-logo.png" alt="TrailUp" style="width:26px;height:32px;object-fit:contain;filter:drop-shadow(0 0 10px hsl(266 95% 66% / .55))" />
+      <div style="font-family:Cinzel, serif;font-weight:700;font-size:19px;letter-spacing:.04em">TrailUp</div>
+      <div style="width:1px;height:20px;background:hsl(226 20% 22%)"></div>
+      <div style="font-size:13px;color:hsl(230 10% 72%);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap">Console</div>
+    </div>
+    <div style="display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:6px;margin-left:auto;min-width:0">
+      <div style="padding:9px 18px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));color:hsl(40 20% 96%);font-size:14px;font-weight:600;box-shadow:0 0 22px hsl(266 95% 66% / .38)">Dashboard</div>
+      <a href="Console%20Trilha.dc.html" style="padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer;text-decoration:none" style-hover="background:hsl(226 20% 20%);color:hsl(40 20% 94%)">Trilha</a>
+      <a href="Console%20Classes.dc.html" style="padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer;text-decoration:none" style-hover="background:hsl(226 20% 20%);color:hsl(40 20% 94%)">Classes</a>
+      <a href="Console%20Personalizacoes.dc.html" style="padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer;text-decoration:none" style-hover="background:hsl(226 20% 20%);color:hsl(40 20% 94%)">Personalizações</a>
+      <a href="Console%20Ranks.dc.html" style="padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer;text-decoration:none" style-hover="background:hsl(226 20% 20%);color:hsl(40 20% 94%)">Ranks</a>
+      <a href="Console%20Meus%20Dados.dc.html" style="padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer;text-decoration:none" style-hover="background:hsl(226 20% 20%);color:hsl(40 20% 94%)">Meus Dados</a>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;padding-left:16px;border-left:1px solid hsl(226 20% 22%)">
+      <div style="width:34px;height:34px;border-radius:999px;background:hsl(226 20% 20%);border:1px solid hsl(266 95% 66% / .45);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:hsl(266 90% 77%)">JP</div>
+      <div style="font-size:13px;color:hsl(230 10% 72%);cursor:pointer" style-hover="color:hsl(0 70% 62%)">Sair</div>
+    </div>
+  </div>
+
+  <div style="max-width:1360px;margin:0 auto;padding:0 32px">
+
+    <sc-if value="{{ isOverview }}" hint-placeholder-val="{{ true }}">
+    <div>
+      <div style="display:flex;align-items:flex-end;gap:32px;row-gap:18px;flex-wrap:wrap;padding:40px 0 28px">
+        <div style="min-width:0">
+          <div style="font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:hsl(266 90% 77%);font-weight:600;margin-bottom:10px">Turma selecionada</div>
+          <div style="display:flex;align-items:center;gap:14px;padding:10px 20px 10px 16px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%);cursor:pointer" style-hover="border-color:hsl(266 95% 66% / .6)">
+            <div style="width:34px;height:38px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 90% 77%));clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:hsl(266 30% 12%)">FI</div>
+            <div>
+              <div style="font-family:Cinzel, serif;font-size:26px;font-weight:700;line-height:1.1">Física I</div>
+              <div style="font-size:13px;color:hsl(230 10% 72%);margin-top:2px">2026/1 · 34 alunos · Eng. Civil</div>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 72%)" stroke-width="2" style="margin-left:8px"><path d="M6 9l6 6 6-6" /></svg>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-left:auto">
+          <div style="display:flex;gap:4px;padding:4px;border-radius:999px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+            <div style="padding:7px 15px;border-radius:999px;font-size:13px;font-weight:600;background:hsl(226 20% 20%);color:hsl(40 20% 94%);cursor:pointer">30 dias</div>
+            <div style="padding:7px 15px;border-radius:999px;font-size:13px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer" style-hover="color:hsl(40 20% 94%)">Semestre</div>
+            <div style="padding:7px 15px;border-radius:999px;font-size:13px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer" style-hover="color:hsl(40 20% 94%)">Tudo</div>
+          </div>
+          <div style="font-size:12px;color:hsl(230 10% 72%)">Atualizado há 4 min</div>
+        </div>
+      </div>
+
+      <sc-if value="{{ isLoading }}">
+      <div style="display:flex;flex-direction:column;gap:20px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:20px">
+          <div style="height:158px;border-radius:20px;border:1px solid hsl(226 20% 22%);background:linear-gradient(90deg, hsl(226 28% 12%) 0%, hsl(226 22% 17%) 50%, hsl(226 28% 12%) 100%);background-size:500px 100%;animation:tu-shimmer 1.4s linear infinite"></div>
+          <div style="height:158px;border-radius:20px;border:1px solid hsl(226 20% 22%);background:linear-gradient(90deg, hsl(226 28% 12%) 0%, hsl(226 22% 17%) 50%, hsl(226 28% 12%) 100%);background-size:500px 100%;animation:tu-shimmer 1.4s linear infinite .15s"></div>
+          <div style="height:158px;border-radius:20px;border:1px solid hsl(226 20% 22%);background:linear-gradient(90deg, hsl(226 28% 12%) 0%, hsl(226 22% 17%) 50%, hsl(226 28% 12%) 100%);background-size:500px 100%;animation:tu-shimmer 1.4s linear infinite .3s"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:20px">
+          <div style="height:320px;border-radius:20px;border:1px solid hsl(226 20% 22%);background:linear-gradient(90deg, hsl(226 28% 12%) 0%, hsl(226 22% 17%) 50%, hsl(226 28% 12%) 100%);background-size:500px 100%;animation:tu-shimmer 1.4s linear infinite .2s"></div>
+          <div style="height:320px;border-radius:20px;border:1px solid hsl(226 20% 22%);background:linear-gradient(90deg, hsl(226 28% 12%) 0%, hsl(226 22% 17%) 50%, hsl(226 28% 12%) 100%);background-size:500px 100%;animation:tu-shimmer 1.4s linear infinite .35s"></div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:12px;padding:18px;border-radius:20px;border:1px dashed hsl(226 20% 22%);color:hsl(230 10% 72%);font-size:14px">
+          <div style="width:22px;height:24px;background:hsl(266 95% 66%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);animation:tu-glow 1.3s ease-in-out infinite"></div>
+          Consultando o desempenho da turma…
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isEmpty }}">
+      <div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:18px;padding:88px 40px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+        <div style="position:relative;width:96px;height:104px">
+          <div style="position:absolute;inset:0;background:linear-gradient(135deg, hsl(265 65% 50% / .5), hsl(239 84% 67% / .35));clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+          <div style="position:absolute;inset:12px;background:hsl(226 28% 12%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-family:Cinzel, serif;font-size:30px;color:hsl(266 90% 77%)">0</div>
+        </div>
+        <div style="font-family:Cinzel, serif;font-size:24px;font-weight:700">Nenhum aluno nesta turma ainda</div>
+        <div style="font-size:15px;color:hsl(230 10% 72%);max-width:480px;line-height:1.6">Os indicadores aparecem assim que os alunos aceitarem a matrícula e começarem a percorrer a trilha. Convide sua turma para começar.</div>
+        <div style="display:flex;gap:12px;margin-top:6px">
+          <div style="padding:12px 22px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));font-size:14px;font-weight:600;color:hsl(40 20% 96%);cursor:pointer;box-shadow:0 0 24px hsl(266 95% 66% / .35)">Convidar alunos</div>
+          <div style="padding:12px 22px;border-radius:999px;border:1px solid hsl(226 20% 22%);font-size:14px;font-weight:600;color:hsl(40 20% 94%);cursor:pointer" style-hover="border-color:hsl(266 95% 66% / .6)">Montar a trilha</div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isError }}">
+      <div style="display:flex;align-items:flex-start;gap:20px;padding:32px;border-radius:20px;background:hsl(0 40% 14%);border:1px solid hsl(0 70% 55% / .45)">
+        <div style="width:44px;height:48px;flex:none;background:hsl(0 70% 55% / .22);border:1px solid hsl(0 70% 62% / .5);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:hsl(0 75% 68%)">!</div>
+        <div style="min-width:0">
+          <div style="font-family:Cinzel, serif;font-size:21px;font-weight:700;margin-bottom:8px">Não foi possível carregar os indicadores</div>
+          <div style="font-size:14px;color:hsl(30 15% 84%);line-height:1.6;max-width:620px">O serviço de métricas não respondeu. Os dados da turma estão salvos — nada foi perdido. Tente de novo em alguns segundos.</div>
+          <div style="display:flex;gap:12px;margin-top:18px">
+            <div onClick="{{ retry }}" style="padding:11px 20px;border-radius:999px;background:hsl(40 20% 94%);color:hsl(226 30% 12%);font-size:14px;font-weight:600;cursor:pointer">Tentar novamente</div>
+            <div style="padding:11px 20px;border-radius:999px;border:1px solid hsl(0 70% 62% / .4);color:hsl(30 15% 88%);font-size:14px;font-weight:600;cursor:pointer">Ver status do serviço</div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isData }}">
+      <div style="display:flex;flex-direction:column;gap:20px">
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:20px">
+          <div style="position:relative;overflow:hidden;padding:26px 28px;border-radius:20px;background:linear-gradient(135deg, hsl(226 28% 12%), hsl(226 20% 20%));border:1px solid hsl(266 95% 66% / .28);box-shadow:0 0 40px hsl(266 95% 66% / .10)">
+            <div style="font-family:Cinzel, serif;font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:hsl(230 10% 78%)">Total de alunos</div>
+            <div style="display:flex;align-items:flex-end;gap:12px;margin-top:14px">
+              <div style="font-size:52px;font-weight:800;line-height:1;letter-spacing:-.02em">34</div>
+              <div style="font-size:14px;color:hsl(230 10% 72%);padding-bottom:6px">com acesso liberado</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:16px;font-size:13px;color:hsl(142 65% 58%);font-weight:600">+3 desde a última semana</div>
+            <div style="position:absolute;right:-24px;top:-24px;width:120px;height:130px;background:hsl(266 95% 66% / .10);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+          </div>
+          <div style="position:relative;overflow:hidden;padding:26px 28px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+            <div style="font-family:Cinzel, serif;font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:hsl(230 10% 78%)">Média de notas</div>
+            <div style="display:flex;align-items:flex-end;gap:12px;margin-top:14px">
+              <div style="font-size:52px;font-weight:800;line-height:1;letter-spacing:-.02em">7.4</div>
+              <div style="font-size:14px;color:hsl(230 10% 72%);padding-bottom:6px">de 10</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:16px;font-size:13px;color:hsl(142 65% 58%);font-weight:600">+0.3 vs. período anterior</div>
+          </div>
+          <div style="position:relative;overflow:hidden;padding:26px 28px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+            <div style="font-family:Cinzel, serif;font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:hsl(230 10% 78%)">Conclusão média</div>
+            <div style="display:flex;align-items:flex-end;gap:12px;margin-top:14px">
+              <div style="font-size:52px;font-weight:800;line-height:1;letter-spacing:-.02em">62%</div>
+              <div style="font-size:14px;color:hsl(230 10% 72%);padding-bottom:6px">da trilha</div>
+            </div>
+            <div style="height:8px;border-radius:999px;background:hsl(226 20% 20%);margin-top:20px;overflow:hidden">
+              <div style="width:62%;height:100%;border-radius:999px;background:linear-gradient(90deg, hsl(265 65% 50%), hsl(266 90% 77%))"></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(210px, 1fr));gap:16px">
+          <div style="padding:18px 20px;border-radius:16px;background:hsl(226 28% 12% / .7);border:1px solid hsl(226 20% 22%)">
+            <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 72%);font-weight:600">Taxa de acertos</div>
+            <div style="font-size:28px;font-weight:700;margin-top:8px">71%</div>
+            <div style="height:5px;border-radius:999px;background:hsl(226 20% 20%);margin-top:12px;overflow:hidden"><div style="width:71%;height:100%;background:hsl(142 65% 50%)"></div></div>
+          </div>
+          <div style="padding:18px 20px;border-radius:16px;background:hsl(226 28% 12% / .7);border:1px solid hsl(226 20% 22%)">
+            <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 72%);font-weight:600">Abandono médio</div>
+            <div style="font-size:28px;font-weight:700;margin-top:8px">18.5%</div>
+            <div style="height:5px;border-radius:999px;background:hsl(226 20% 20%);margin-top:12px;overflow:hidden"><div style="width:18.5%;height:100%;background:hsl(45 90% 58%)"></div></div>
+          </div>
+          <div style="padding:18px 20px;border-radius:16px;background:hsl(226 28% 12% / .7);border:1px solid hsl(226 20% 22%)">
+            <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 72%);font-weight:600">Chat após erro</div>
+            <div style="font-size:28px;font-weight:700;margin-top:8px">43%</div>
+            <div style="height:5px;border-radius:999px;background:hsl(226 20% 20%);margin-top:12px;overflow:hidden"><div style="width:43%;height:100%;background:hsl(205 70% 58%)"></div></div>
+          </div>
+          <div style="padding:18px 20px;border-radius:16px;background:hsl(226 28% 12% / .7);border:1px solid hsl(226 20% 22%)">
+            <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 72%);font-weight:600">Tempo médio de uso</div>
+            <div style="font-size:28px;font-weight:700;margin-top:8px">24.8<span style="font-size:15px;font-weight:600;color:hsl(230 10% 72%);margin-left:4px">min/sessão</span></div>
+            <div style="font-size:12px;color:hsl(230 10% 72%);margin-top:12px">mediana 21 min</div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(360px, 1fr));gap:20px">
+          <div style="padding:26px 28px 22px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+            <div style="display:flex;align-items:flex-start;gap:16px">
+              <div style="min-width:0">
+                <div style="font-family:Cinzel, serif;font-size:20px;font-weight:700">Abandono por perfil</div>
+                <div style="font-size:13px;color:hsl(230 10% 72%);margin-top:4px">Percentual de atividades abandonadas, por perfil BrainHex dominante</div>
+              </div>
+              <div style="margin-left:auto;display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:hsl(226 22% 16%);border:1px solid hsl(226 20% 22%);font-size:13px;font-weight:600;cursor:pointer">
+                Majoritário
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 72%)" stroke-width="2"><path d="M6 9l6 6 6-6" /></svg>
+              </div>
+            </div>
+            <div style="position:relative;margin-top:26px;padding-bottom:8px">
+              <div style="position:absolute;left:0;right:0;bottom:74px;border-top:1px dashed hsl(230 10% 72% / .45)"></div>
+              <div style="position:absolute;right:0;bottom:78px;font-size:11px;color:hsl(230 10% 72%);background:hsl(226 28% 12%);padding:0 6px">média 18.5%</div>
+              <div style="display:grid;grid-template-columns:repeat(7, minmax(0,1fr));gap:14px;align-items:end;height:220px">
+                <div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
+                  <div style="font-size:14px;font-weight:700;margin-bottom:8px">9%</div>
+                  <div style="width:100%;max-width:56px;height:44px;border-radius:10px 10px 4px 4px;background:linear-gradient(180deg, #22c9bc, #17a398)"></div>
+                  <div style="width:20px;height:22px;margin-top:12px;background:#17a398;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+                  <div style="font-size:12px;color:hsl(230 10% 78%);margin-top:8px;font-weight:500">Seeker</div>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
+                  <div style="font-size:14px;font-weight:700;margin-bottom:8px">31%</div>
+                  <div style="width:100%;max-width:56px;height:130px;border-radius:10px 10px 4px 4px;background:linear-gradient(180deg, #6d7c8c, #4e5a66)"></div>
+                  <div style="width:20px;height:22px;margin-top:12px;background:#6d7c8c;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+                  <div style="font-size:12px;color:hsl(230 10% 78%);margin-top:8px;font-weight:500">Survivor</div>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
+                  <div style="font-size:14px;font-weight:700;margin-bottom:8px">24%</div>
+                  <div style="width:100%;max-width:56px;height:100px;border-radius:10px 10px 4px 4px;background:linear-gradient(180deg, #e8455b, #d7263d)"></div>
+                  <div style="width:20px;height:22px;margin-top:12px;background:#d7263d;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+                  <div style="font-size:12px;color:hsl(230 10% 78%);margin-top:8px;font-weight:500">Daredevil</div>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
+                  <div style="font-size:14px;font-weight:700;margin-bottom:8px">12%</div>
+                  <div style="width:100%;max-width:56px;height:56px;border-radius:10px 10px 4px 4px;background:linear-gradient(180deg, #7a63e8, #5b3fd9)"></div>
+                  <div style="width:20px;height:22px;margin-top:12px;background:#7a63e8;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+                  <div style="font-size:12px;color:hsl(230 10% 78%);margin-top:8px;font-weight:500">Mastermind</div>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
+                  <div style="font-size:14px;font-weight:700;margin-bottom:8px">15%</div>
+                  <div style="width:100%;max-width:56px;height:70px;border-radius:10px 10px 4px 4px;background:linear-gradient(180deg, #3e6dea, #1e4fd6)"></div>
+                  <div style="width:20px;height:22px;margin-top:12px;background:#3e6dea;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+                  <div style="font-size:12px;color:hsl(230 10% 78%);margin-top:8px;font-weight:500">Conqueror</div>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
+                  <div style="font-size:14px;font-weight:700;margin-bottom:8px">21%</div>
+                  <div style="width:100%;max-width:56px;height:88px;border-radius:10px 10px 4px 4px;background:linear-gradient(180deg, #f77b57, #f4623a)"></div>
+                  <div style="width:20px;height:22px;margin-top:12px;background:#f4623a;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+                  <div style="font-size:12px;color:hsl(230 10% 78%);margin-top:8px;font-weight:500">Socializer</div>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
+                  <div style="font-size:14px;font-weight:700;margin-bottom:8px">18%</div>
+                  <div style="width:100%;max-width:56px;height:76px;border-radius:10px 10px 4px 4px;background:linear-gradient(180deg, #dfb63a, #c9a227)"></div>
+                  <div style="width:20px;height:22px;margin-top:12px;background:#c9a227;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+                  <div style="font-size:12px;color:hsl(230 10% 78%);margin-top:8px;font-weight:500">Achiever</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="padding:26px 28px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+            <div style="font-family:Cinzel, serif;font-size:20px;font-weight:700">Distribuição de notas</div>
+            <div style="font-size:13px;color:hsl(230 10% 72%);margin-top:4px">34 alunos por faixa de nota</div>
+            <div style="display:flex;align-items:center;gap:26px;margin-top:24px">
+              <div style="position:relative;width:168px;height:168px;flex:none;border-radius:999px;background:conic-gradient(hsl(142 65% 50%) 0 33%, hsl(205 70% 58%) 33% 68%, hsl(45 90% 58%) 68% 88%, hsl(0 70% 55%) 88% 100%)">
+                <div style="position:absolute;inset:26px;border-radius:999px;background:hsl(226 28% 12%);display:flex;flex-direction:column;align-items:center;justify-content:center">
+                  <div style="font-size:30px;font-weight:800;line-height:1">7.4</div>
+                  <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 72%);margin-top:4px">média</div>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:14px;min-width:0">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <div style="width:12px;height:14px;flex:none;background:hsl(142 65% 50%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+                  <div style="font-size:13px;color:hsl(230 10% 78%)">9–10 alta</div>
+                  <div style="margin-left:auto;font-size:14px;font-weight:700">11</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px">
+                  <div style="width:12px;height:14px;flex:none;background:hsl(205 70% 58%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+                  <div style="font-size:13px;color:hsl(230 10% 78%)">7–8 média-alta</div>
+                  <div style="margin-left:auto;font-size:14px;font-weight:700">12</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px">
+                  <div style="width:12px;height:14px;flex:none;background:hsl(45 90% 58%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+                  <div style="font-size:13px;color:hsl(230 10% 78%)">5–6 média</div>
+                  <div style="margin-left:auto;font-size:14px;font-weight:700">7</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px">
+                  <div style="width:12px;height:14px;flex:none;background:hsl(0 70% 55%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+                  <div style="font-size:13px;color:hsl(230 10% 78%)">0–4 baixa</div>
+                  <div style="margin-left:auto;font-size:14px;font-weight:700">4</div>
+                </div>
+              </div>
+            </div>
+            <div style="margin-top:24px;padding:14px 16px;border-radius:14px;background:hsl(226 22% 16%);font-size:13px;color:hsl(230 10% 78%);line-height:1.5">4 alunos na faixa baixa concentram 62% do abandono da turma.</div>
+          </div>
+        </div>
+
+        <div style="border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%);overflow-x:auto">
+          <div style="display:flex;align-items:center;gap:16px;row-gap:14px;flex-wrap:wrap;padding:24px 28px 20px;min-width:940px">
+            <div style="min-width:0">
+              <div style="font-family:Cinzel, serif;font-size:20px;font-weight:700">Alunos da turma</div>
+              <div style="font-size:13px;color:hsl(230 10% 72%);margin-top:4px">Clique em um aluno para abrir o detalhe e a trilha dele</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;margin-left:auto">
+              <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-radius:999px;background:hsl(226 22% 16%);border:1px solid hsl(226 20% 22%);min-width:260px">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 72%)" stroke-width="2"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
+                <div style="font-size:13px;color:hsl(230 10% 72%)">Buscar por nome ou e-mail…</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:999px;background:hsl(226 22% 16%);border:1px solid hsl(226 20% 22%);font-size:13px;font-weight:600;cursor:pointer">
+                Todos os perfis
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 72%)" stroke-width="2"><path d="M6 9l6 6 6-6" /></svg>
+              </div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:2.3fr 1.5fr .8fr 1.5fr .8fr .9fr 28px;min-width:940px;gap:16px;padding:12px 28px;background:hsl(226 22% 16%);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 72%);font-weight:600">
+            <div>Aluno</div>
+            <div>Perfil dominante</div>
+            <div>Nota</div>
+            <div>Progresso na trilha</div>
+            <div>Acertos</div>
+            <div>Abandono</div>
+            <div></div>
+          </div>
+          <sc-for list="{{ students }}" as="s" hint-placeholder-count="6">
+            <div onClick="{{ s.open }}" style="display:grid;grid-template-columns:2.3fr 1.5fr .8fr 1.5fr .8fr .9fr 28px;min-width:940px;gap:16px;align-items:center;padding:16px 28px;border-top:1px solid hsl(226 20% 22%);cursor:pointer" style-hover="background:hsl(226 22% 16%)">
+              <div style="display:flex;align-items:center;gap:14px;min-width:0">
+                <div style="width:34px;height:38px;flex:none;background:{{ s.color }};clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:hsl(226 32% 10%)">{{ s.initials }}</div>
+                <div style="min-width:0">
+                  <div style="font-size:15px;font-weight:600">{{ s.name }}</div>
+                  <div style="font-size:12px;color:hsl(230 10% 72%);margin-top:2px">{{ s.email }}</div>
+                </div>
+              </div>
+              <div>
+                <div style="display:inline-flex;align-items:center;gap:8px;padding:5px 12px 5px 8px;border-radius:999px;background:{{ s.chipBg }};border:1px solid {{ s.chipBorder }}">
+                  <div style="width:12px;height:14px;background:{{ s.color }};clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+                  <div style="font-size:12px;font-weight:600;color:{{ s.textColor }}">{{ s.profile }}</div>
+                </div>
+              </div>
+              <div style="font-size:15px;font-weight:700">{{ s.nota }}</div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <div style="flex:1;height:6px;border-radius:999px;background:hsl(226 20% 20%);overflow:hidden">
+                  <div style="width:{{ s.prog }}%;height:100%;border-radius:999px;background:linear-gradient(90deg, hsl(265 65% 50%), hsl(266 90% 77%))"></div>
+                </div>
+                <div style="font-size:12px;color:hsl(230 10% 78%);width:34px;text-align:right">{{ s.prog }}%</div>
+              </div>
+              <div style="font-size:14px;color:hsl(230 10% 82%)">{{ s.acertos }}%</div>
+              <div style="font-size:14px;font-weight:600;color:{{ s.abColor }}">{{ s.abandono }}%</div>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 72%)" stroke-width="2"><path d="M9 6l6 6-6 6" /></svg>
+            </div>
+          </sc-for>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-top:1px solid hsl(226 20% 22%);font-size:13px;color:hsl(230 10% 72%);min-width:940px">
+            <div>Mostrando 8 de 34 alunos</div>
+            <div style="display:flex;gap:8px">
+              <div style="padding:7px 14px;border-radius:999px;border:1px solid hsl(226 20% 22%);cursor:pointer" style-hover="border-color:hsl(266 95% 66% / .6);color:hsl(40 20% 94%)">Anterior</div>
+              <div style="padding:7px 14px;border-radius:999px;border:1px solid hsl(226 20% 22%);cursor:pointer" style-hover="border-color:hsl(266 95% 66% / .6);color:hsl(40 20% 94%)">Próxima</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isStudent }}">
+    <div style="padding-top:32px">
+      <div onClick="{{ back }}" style="display:inline-flex;align-items:center;gap:8px;font-size:13px;color:hsl(230 10% 72%);cursor:pointer;margin-bottom:22px" style-hover="color:hsl(266 90% 77%)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6" /></svg>
+        Física I · todos os alunos
+      </div>
+
+      <div style="position:relative;overflow:hidden;display:flex;align-items:center;gap:32px;padding:28px 32px;border-radius:20px;background:linear-gradient(120deg, hsl(226 28% 12%), hsl(258 30% 16%));border:1px solid hsl(266 95% 66% / .3);box-shadow:0 0 60px hsl(266 95% 66% / .10)">
+        <div style="min-width:0;flex:1">
+          <div style="display:flex;align-items:center;gap:16px">
+            <div style="width:52px;height:58px;flex:none;background:#7a63e8;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;color:hsl(226 32% 10%)">MC</div>
+            <div style="min-width:0">
+              <div style="font-family:Cinzel, serif;font-size:30px;font-weight:700;line-height:1.15">Marina Corrêa</div>
+              <div style="font-size:13px;color:hsl(230 10% 78%);margin-top:4px">marina.correa@ulbra.br · matriculada em 04/03/2026</div>
+            </div>
+            <div style="display:inline-flex;align-items:center;gap:9px;padding:7px 16px 7px 10px;border-radius:999px;background:#5b3fd9;margin-left:8px">
+              <div style="width:14px;height:16px;background:hsl(40 20% 96%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+              <div style="font-size:13px;font-weight:700;color:hsl(40 20% 96%)">Mastermind</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:36px;margin-top:26px;flex-wrap:wrap">
+            <div>
+              <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 78%);font-weight:600">Nota média</div>
+              <div style="font-size:26px;font-weight:800;margin-top:6px">8.2</div>
+            </div>
+            <div>
+              <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 78%);font-weight:600">Trilha concluída</div>
+              <div style="font-size:26px;font-weight:800;margin-top:6px">74%</div>
+            </div>
+            <div>
+              <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 78%);font-weight:600">Acertos</div>
+              <div style="font-size:26px;font-weight:800;margin-top:6px">79%</div>
+            </div>
+            <div>
+              <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 78%);font-weight:600">Abandono</div>
+              <div style="font-size:26px;font-weight:800;margin-top:6px;color:hsl(142 65% 58%)">11%</div>
+            </div>
+            <div>
+              <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 78%);font-weight:600">Tempo/sessão</div>
+              <div style="font-size:26px;font-weight:800;margin-top:6px">31min</div>
+            </div>
+          </div>
+        </div>
+        <sc-if value="{{ showGuardians }}" hint-placeholder-val="{{ true }}">
+        <img src="assets/mastermind.webp" alt="Guardião Mastermind" style="width:210px;flex:none;filter:drop-shadow(0 12px 40px hsl(265 65% 50% / .55))" />
+        </sc-if>
+      </div>
+
+      <div style="display:flex;gap:6px;margin:26px 0 20px;padding:5px;border-radius:999px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%);width:fit-content">
+        <div onClick="{{ tab0 }}" style="{{ tabStyle0 }}">Visão geral</div>
+        <div onClick="{{ tab1 }}" style="{{ tabStyle1 }}">Perfil BrainHex</div>
+        <div onClick="{{ tab2 }}" style="{{ tabStyle2 }}">Trilha visual</div>
+        <div onClick="{{ tab3 }}" style="{{ tabStyle3 }}">Personalização</div>
+      </div>
+
+      <sc-if value="{{ isTab0 }}">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(340px, 1fr));gap:20px">
+        <div style="padding:26px 28px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+          <div style="display:flex;align-items:center;gap:16px">
+            <div>
+              <div style="font-family:Cinzel, serif;font-size:20px;font-weight:700">Evolução do aluno</div>
+              <div style="font-size:13px;color:hsl(230 10% 72%);margin-top:4px">Nota média por semana · últimos 10 encontros</div>
+            </div>
+            <div style="margin-left:auto;display:flex;align-items:center;gap:16px;font-size:12px;color:hsl(230 10% 78%)">
+              <div style="display:flex;align-items:center;gap:7px"><div style="width:18px;height:3px;border-radius:2px;background:hsl(266 90% 77%)"></div>Marina</div>
+              <div style="display:flex;align-items:center;gap:7px"><div style="width:18px;height:3px;border-radius:2px;background:hsl(230 10% 55%)"></div>Média da turma</div>
+            </div>
+          </div>
+          <svg viewBox="0 0 620 240" style="width:100%;height:240px;margin-top:18px;overflow:visible">
+            <defs>
+              <linearGradient id="tuFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="hsl(266 95% 66%)" stop-opacity="0.35" />
+                <stop offset="100%" stop-color="hsl(266 95% 66%)" stop-opacity="0" />
+              </linearGradient>
+            </defs>
+            <line x1="0" y1="20" x2="620" y2="20" stroke="hsl(226 20% 22%)" stroke-width="1" />
+            <line x1="0" y1="80" x2="620" y2="80" stroke="hsl(226 20% 22%)" stroke-width="1" />
+            <line x1="0" y1="140" x2="620" y2="140" stroke="hsl(226 20% 22%)" stroke-width="1" />
+            <line x1="0" y1="200" x2="620" y2="200" stroke="hsl(226 20% 22%)" stroke-width="1" />
+            <polyline points="10,150 78,138 146,142 214,118 282,124 350,96 418,88 486,70 554,62 610,48" fill="none" stroke="hsl(230 10% 55%)" stroke-width="2" stroke-dasharray="5 5" />
+            <polygon points="10,168 78,152 146,120 214,128 282,96 350,78 418,84 486,56 554,44 610,30 610,220 10,220" fill="url(#tuFill)" />
+            <polyline points="10,168 78,152 146,120 214,128 282,96 350,78 418,84 486,56 554,44 610,30" fill="none" stroke="hsl(266 90% 77%)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+            <circle cx="610" cy="30" r="6" fill="hsl(266 90% 77%)" stroke="hsl(226 28% 12%)" stroke-width="3" />
+            <text x="0" y="236" fill="hsl(230 10% 72%)" font-size="11" font-family="Inter, sans-serif">sem 1</text>
+            <text x="290" y="236" fill="hsl(230 10% 72%)" font-size="11" font-family="Inter, sans-serif">sem 5</text>
+            <text x="580" y="236" fill="hsl(230 10% 72%)" font-size="11" font-family="Inter, sans-serif">sem 10</text>
+          </svg>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div style="padding:24px 26px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+            <div style="font-family:Cinzel, serif;font-size:18px;font-weight:700">Última atividade</div>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:18px">
+              <div style="width:10px;height:10px;border-radius:999px;background:hsl(142 65% 50%);box-shadow:0 0 12px hsl(142 65% 50% / .8)"></div>
+              <div style="font-size:14px;font-weight:600">Quiz · Dinâmica: leis de Newton</div>
+            </div>
+            <div style="font-size:13px;color:hsl(230 10% 78%);margin-top:12px;line-height:1.6">Concluído hoje, 14:32 · 8 de 10 acertos · 12 min<br />Usou o chat de apoio 1 vez após erro</div>
+            <div style="height:1px;background:hsl(226 20% 22%);margin:18px 0"></div>
+            <div style="font-size:13px;color:hsl(230 10% 78%);line-height:1.7">
+              <div>Antes: Áudio personalizado · Vetores</div>
+              <div>Antes: Leitura · Cinemática (parte 2)</div>
+            </div>
+          </div>
+          <div style="padding:24px 26px;border-radius:20px;background:hsl(226 22% 16%);border:1px solid hsl(45 90% 58% / .35)">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:18px;height:20px;background:hsl(45 90% 58%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+              <div style="font-size:14px;font-weight:700">Atenção</div>
+            </div>
+            <div style="font-size:13px;color:hsl(230 10% 82%);margin-top:10px;line-height:1.6">Dois tópicos consecutivos ficaram sem atividade nos últimos 9 dias.</div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isTab1 }}">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(340px, 1fr));gap:20px">
+        <div style="padding:26px 28px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+          <div style="font-family:Cinzel, serif;font-size:20px;font-weight:700">Afinidade entre os 7 perfis</div>
+          <div style="font-size:13px;color:hsl(230 10% 72%);margin-top:4px">Vetor BrainHex do questionário inicial (0–100% por perfil)</div>
+          <div style="display:flex;flex-direction:column;gap:16px;margin-top:26px">
+            <div style="display:flex;align-items:center;gap:14px">
+              <div style="width:118px;flex:none;display:flex;align-items:center;gap:9px"><div style="width:14px;height:16px;background:#7a63e8;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div><div style="font-size:13px;font-weight:700">Mastermind</div></div>
+              <div style="flex:1;height:12px;border-radius:999px;background:hsl(226 20% 20%);overflow:hidden"><div style="width:92%;height:100%;border-radius:999px;background:#5b3fd9;box-shadow:0 0 18px #5b3fd9aa"></div></div>
+              <div style="width:44px;text-align:right;font-size:14px;font-weight:700">92%</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:14px">
+              <div style="width:118px;flex:none;display:flex;align-items:center;gap:9px"><div style="width:14px;height:16px;background:#22c9bc;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div><div style="font-size:13px;font-weight:500;color:hsl(230 10% 82%)">Seeker</div></div>
+              <div style="flex:1;height:12px;border-radius:999px;background:hsl(226 20% 20%);overflow:hidden"><div style="width:68%;height:100%;border-radius:999px;background:#17a398"></div></div>
+              <div style="width:44px;text-align:right;font-size:14px;font-weight:600;color:hsl(230 10% 82%)">68%</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:14px">
+              <div style="width:118px;flex:none;display:flex;align-items:center;gap:9px"><div style="width:14px;height:16px;background:#dfb63a;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div><div style="font-size:13px;font-weight:500;color:hsl(230 10% 82%)">Achiever</div></div>
+              <div style="flex:1;height:12px;border-radius:999px;background:hsl(226 20% 20%);overflow:hidden"><div style="width:61%;height:100%;border-radius:999px;background:#c9a227"></div></div>
+              <div style="width:44px;text-align:right;font-size:14px;font-weight:600;color:hsl(230 10% 82%)">61%</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:14px">
+              <div style="width:118px;flex:none;display:flex;align-items:center;gap:9px"><div style="width:14px;height:16px;background:#3e6dea;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div><div style="font-size:13px;font-weight:500;color:hsl(230 10% 82%)">Conqueror</div></div>
+              <div style="flex:1;height:12px;border-radius:999px;background:hsl(226 20% 20%);overflow:hidden"><div style="width:44%;height:100%;border-radius:999px;background:#1e4fd6"></div></div>
+              <div style="width:44px;text-align:right;font-size:14px;font-weight:600;color:hsl(230 10% 82%)">44%</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:14px">
+              <div style="width:118px;flex:none;display:flex;align-items:center;gap:9px"><div style="width:14px;height:16px;background:#f77b57;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div><div style="font-size:13px;font-weight:500;color:hsl(230 10% 82%)">Socializer</div></div>
+              <div style="flex:1;height:12px;border-radius:999px;background:hsl(226 20% 20%);overflow:hidden"><div style="width:29%;height:100%;border-radius:999px;background:#f4623a"></div></div>
+              <div style="width:44px;text-align:right;font-size:14px;font-weight:600;color:hsl(230 10% 82%)">29%</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:14px">
+              <div style="width:118px;flex:none;display:flex;align-items:center;gap:9px"><div style="width:14px;height:16px;background:#e8455b;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div><div style="font-size:13px;font-weight:500;color:hsl(230 10% 82%)">Daredevil</div></div>
+              <div style="flex:1;height:12px;border-radius:999px;background:hsl(226 20% 20%);overflow:hidden"><div style="width:22%;height:100%;border-radius:999px;background:#d7263d"></div></div>
+              <div style="width:44px;text-align:right;font-size:14px;font-weight:600;color:hsl(230 10% 82%)">22%</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:14px">
+              <div style="width:118px;flex:none;display:flex;align-items:center;gap:9px"><div style="width:14px;height:16px;background:#6d7c8c;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div><div style="font-size:13px;font-weight:500;color:hsl(230 10% 82%)">Survivor</div></div>
+              <div style="flex:1;height:12px;border-radius:999px;background:hsl(226 20% 20%);overflow:hidden"><div style="width:15%;height:100%;border-radius:999px;background:#4e5a66"></div></div>
+              <div style="width:44px;text-align:right;font-size:14px;font-weight:600;color:hsl(230 10% 82%)">15%</div>
+            </div>
+          </div>
+        </div>
+        <div style="padding:26px 28px;border-radius:20px;background:linear-gradient(160deg, hsl(258 30% 16%), hsl(226 28% 12%));border:1px solid hsl(266 95% 66% / .28);display:flex;flex-direction:column;align-items:center;text-align:center">
+          <div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:hsl(266 90% 77%);font-weight:600">Perfil dominante</div>
+          <sc-if value="{{ showGuardians }}" hint-placeholder-val="{{ true }}">
+          <img src="assets/mastermind.webp" alt="Guardião Mastermind" style="width:190px;margin:14px 0 6px;filter:drop-shadow(0 10px 34px hsl(265 65% 50% / .6))" />
+          </sc-if>
+          <div style="font-family:Cinzel, serif;font-size:26px;font-weight:700">Mastermind</div>
+          <div style="font-size:13px;color:hsl(230 10% 80%);line-height:1.65;margin-top:10px">Aprende resolvendo: prefere material com desafio lógico, poucos passos guiados e feedback explicativo. O conteúdo gerado para Marina prioriza problemas antes da teoria.</div>
+          <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;justify-content:center">
+            <div style="padding:6px 13px;border-radius:999px;background:hsl(226 20% 20%);font-size:12px;font-weight:600;color:hsl(230 10% 84%)">Estratégia</div>
+            <div style="padding:6px 13px;border-radius:999px;background:hsl(226 20% 20%);font-size:12px;font-weight:600;color:hsl(230 10% 84%)">Quebra-cabeças</div>
+            <div style="padding:6px 13px;border-radius:999px;background:hsl(226 20% 20%);font-size:12px;font-weight:600;color:hsl(230 10% 84%)">Autonomia</div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isTab2 }}">
+      <div style="padding:28px 32px 34px;border-radius:20px;background:linear-gradient(180deg, hsl(258 30% 15%), hsl(226 28% 12%) 60%);border:1px solid hsl(266 95% 66% / .28)">
+        <div style="display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap">
+          <div>
+            <div style="font-family:Cinzel, serif;font-size:22px;font-weight:700">Trilha de Física I</div>
+            <div style="font-size:13px;color:hsl(230 10% 78%);margin-top:4px">6 de 9 tópicos concluídos · nível 4 de guardião</div>
+          </div>
+          <div style="margin-left:auto;min-width:280px;flex:1;max-width:420px">
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:hsl(230 10% 80%);margin-bottom:8px"><div style="font-weight:600;letter-spacing:.08em;text-transform:uppercase">XP</div><div>3.480 / 5.000</div></div>
+            <div style="height:14px;border-radius:999px;background:hsl(226 20% 20%);border:1px solid hsl(266 95% 66% / .25);overflow:hidden">
+              <div style="width:70%;height:100%;border-radius:999px;background:linear-gradient(90deg, hsl(265 65% 50%), hsl(266 90% 77%));box-shadow:0 0 18px hsl(266 95% 66% / .7)"></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:flex-start;gap:0;margin-top:38px;flex-wrap:wrap">
+          <div style="display:flex;flex-direction:column;align-items:center;width:104px">
+            <div style="position:relative;width:80px;height:88px">
+              <div style="position:absolute;inset:0;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 90% 77%));clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);box-shadow:0 0 26px hsl(266 95% 66% / .5)"></div>
+              <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="hsl(266 30% 12%)" stroke-width="3"><path d="M5 13l4 4 10-10" /></svg>
+              </div>
+            </div>
+            <div style="font-size:13px;font-weight:600;margin-top:12px;text-align:center">Introdução</div>
+            <div style="font-size:11px;color:hsl(142 65% 58%);margin-top:3px">Concluído</div>
+          </div>
+          <div style="height:88px;display:flex;align-items:center;flex:1;min-width:24px"><div style="height:3px;width:100%;background:hsl(266 95% 66% / .55)"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;width:104px">
+            <div style="position:relative;width:80px;height:88px">
+              <div style="position:absolute;inset:0;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 90% 77%));clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);box-shadow:0 0 26px hsl(266 95% 66% / .5)"></div>
+              <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="hsl(266 30% 12%)" stroke-width="3"><path d="M5 13l4 4 10-10" /></svg>
+              </div>
+            </div>
+            <div style="font-size:13px;font-weight:600;margin-top:12px;text-align:center">Medidas</div>
+            <div style="font-size:11px;color:hsl(142 65% 58%);margin-top:3px">Concluído</div>
+          </div>
+          <div style="height:88px;display:flex;align-items:center;flex:1;min-width:24px"><div style="height:3px;width:100%;background:hsl(266 95% 66% / .55)"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;width:104px">
+            <div style="position:relative;width:80px;height:88px">
+              <div style="position:absolute;inset:0;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 90% 77%));clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);box-shadow:0 0 26px hsl(266 95% 66% / .5)"></div>
+              <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="hsl(266 30% 12%)" stroke-width="3"><path d="M5 13l4 4 10-10" /></svg>
+              </div>
+            </div>
+            <div style="font-size:13px;font-weight:600;margin-top:12px;text-align:center">Cinemática</div>
+            <div style="font-size:11px;color:hsl(142 65% 58%);margin-top:3px">Concluído</div>
+          </div>
+          <div style="height:88px;display:flex;align-items:center;flex:1;min-width:24px"><div style="height:3px;width:100%;background:hsl(266 95% 66% / .55)"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;width:104px">
+            <div style="position:relative;width:80px;height:88px">
+              <div style="position:absolute;inset:0;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 90% 77%));clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);box-shadow:0 0 26px hsl(266 95% 66% / .5)"></div>
+              <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="hsl(266 30% 12%)" stroke-width="3"><path d="M5 13l4 4 10-10" /></svg>
+              </div>
+            </div>
+            <div style="font-size:13px;font-weight:600;margin-top:12px;text-align:center">Vetores</div>
+            <div style="font-size:11px;color:hsl(142 65% 58%);margin-top:3px">Concluído</div>
+          </div>
+          <div style="height:88px;display:flex;align-items:center;flex:1;min-width:24px"><div style="height:3px;width:100%;background:hsl(266 95% 66% / .55)"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;width:104px">
+            <div style="position:relative;width:80px;height:88px">
+              <div style="position:absolute;inset:0;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 90% 77%));clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);box-shadow:0 0 26px hsl(266 95% 66% / .5)"></div>
+              <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="hsl(266 30% 12%)" stroke-width="3"><path d="M5 13l4 4 10-10" /></svg>
+              </div>
+            </div>
+            <div style="font-size:13px;font-weight:600;margin-top:12px;text-align:center">Dinâmica</div>
+            <div style="font-size:11px;color:hsl(142 65% 58%);margin-top:3px">Concluído</div>
+          </div>
+          <div style="height:88px;display:flex;align-items:center;flex:1;min-width:24px"><div style="height:3px;width:100%;background:hsl(266 95% 66% / .55)"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;width:104px">
+            <div style="position:relative;width:88px;height:96px">
+              <div style="position:absolute;inset:0;background:hsl(266 95% 66%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);box-shadow:0 0 34px hsl(266 95% 66% / .85);animation:tu-glow 2.6s ease-in-out infinite"></div>
+              <div style="position:absolute;inset:5px;background:hsl(258 40% 22%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:hsl(266 90% 82%)">6</div>
+            </div>
+            <div style="font-size:13px;font-weight:700;margin-top:10px;text-align:center">Trabalho e Energia</div>
+            <div style="font-size:11px;color:hsl(266 90% 77%);margin-top:3px;font-weight:600">Em andamento · 40%</div>
+          </div>
+          <div style="height:88px;display:flex;align-items:center;flex:1;min-width:24px"><div style="height:3px;width:100%;background:hsl(226 20% 26%)"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;width:104px">
+            <div style="position:relative;width:80px;height:88px">
+              <div style="position:absolute;inset:0;background:hsl(226 20% 20%);border:0;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+              <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 60%)" stroke-width="2"><rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 018 0v3" /></svg>
+              </div>
+            </div>
+            <div style="font-size:13px;font-weight:500;margin-top:12px;text-align:center;color:hsl(230 10% 72%)">Rotação</div>
+            <div style="font-size:11px;color:hsl(230 10% 62%);margin-top:3px">Bloqueado</div>
+          </div>
+          <div style="height:88px;display:flex;align-items:center;flex:1;min-width:24px"><div style="height:3px;width:100%;background:hsl(226 20% 26%)"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;width:104px">
+            <div style="position:relative;width:80px;height:88px">
+              <div style="position:absolute;inset:0;background:hsl(226 20% 20%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+              <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 60%)" stroke-width="2"><rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 018 0v3" /></svg>
+              </div>
+            </div>
+            <div style="font-size:13px;font-weight:500;margin-top:12px;text-align:center;color:hsl(230 10% 72%)">Fluidos</div>
+            <div style="font-size:11px;color:hsl(230 10% 62%);margin-top:3px">Bloqueado</div>
+          </div>
+          <div style="height:88px;display:flex;align-items:center;flex:1;min-width:24px"><div style="height:3px;width:100%;background:hsl(226 20% 26%)"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;width:104px">
+            <div style="position:relative;width:80px;height:88px">
+              <div style="position:absolute;inset:0;background:hsl(226 20% 20%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+              <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 60%)" stroke-width="2"><rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 018 0v3" /></svg>
+              </div>
+            </div>
+            <div style="font-size:13px;font-weight:500;margin-top:12px;text-align:center;color:hsl(230 10% 72%)">Termologia</div>
+            <div style="font-size:11px;color:hsl(230 10% 62%);margin-top:3px">Bloqueado</div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:28px;margin-top:34px;padding-top:22px;border-top:1px solid hsl(226 20% 22%);font-size:12px;color:hsl(230 10% 78%);flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:9px"><div style="width:16px;height:18px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 90% 77%));clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>Concluído</div>
+          <div style="display:flex;align-items:center;gap:9px"><div style="width:16px;height:18px;background:hsl(266 95% 66%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);box-shadow:0 0 12px hsl(266 95% 66% / .8)"></div>Disponível / em andamento</div>
+          <div style="display:flex;align-items:center;gap:9px"><div style="width:16px;height:18px;background:hsl(226 20% 20%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>Bloqueado</div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isTab3 }}">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(340px, 1fr));gap:20px">
+        <div style="padding:26px 28px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+          <div style="font-family:Cinzel, serif;font-size:20px;font-weight:700">Material personalizado</div>
+          <div style="font-size:13px;color:hsl(230 10% 72%);margin-top:4px">Gerado pela IA para o perfil Mastermind · consumo por tópico</div>
+          <div style="display:flex;flex-direction:column;gap:12px;margin-top:24px">
+            <div style="display:flex;align-items:center;gap:16px;padding:16px 18px;border-radius:16px;background:hsl(226 22% 16%)">
+              <div style="min-width:0;flex:1">
+                <div style="font-size:14px;font-weight:600">Cinemática · texto + áudio</div>
+                <div style="font-size:12px;color:hsl(230 10% 78%);margin-top:3px">2 leituras, 1 áudio (8 min)</div>
+              </div>
+              <div style="width:180px;height:8px;border-radius:999px;background:hsl(226 20% 22%);overflow:hidden"><div style="width:100%;height:100%;background:hsl(142 65% 50%)"></div></div>
+              <div style="width:96px;text-align:right;font-size:12px;font-weight:600;color:hsl(142 65% 58%)">Consumido</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:16px;padding:16px 18px;border-radius:16px;background:hsl(226 22% 16%)">
+              <div style="min-width:0;flex:1">
+                <div style="font-size:14px;font-weight:600">Vetores · texto + áudio</div>
+                <div style="font-size:12px;color:hsl(230 10% 78%);margin-top:3px">3 leituras, 1 áudio (11 min)</div>
+              </div>
+              <div style="width:180px;height:8px;border-radius:999px;background:hsl(226 20% 22%);overflow:hidden"><div style="width:100%;height:100%;background:hsl(142 65% 50%)"></div></div>
+              <div style="width:96px;text-align:right;font-size:12px;font-weight:600;color:hsl(142 65% 58%)">Consumido</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:16px;padding:16px 18px;border-radius:16px;background:hsl(226 22% 16%)">
+              <div style="min-width:0;flex:1">
+                <div style="font-size:14px;font-weight:600">Dinâmica · texto</div>
+                <div style="font-size:12px;color:hsl(230 10% 78%);margin-top:3px">4 leituras · áudio pendente de geração</div>
+              </div>
+              <div style="width:180px;height:8px;border-radius:999px;background:hsl(226 20% 22%);overflow:hidden"><div style="width:75%;height:100%;background:hsl(266 95% 66%)"></div></div>
+              <div style="width:96px;text-align:right;font-size:12px;font-weight:600;color:hsl(266 90% 77%)">3 de 4</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:16px;padding:16px 18px;border-radius:16px;background:hsl(226 22% 16%)">
+              <div style="min-width:0;flex:1">
+                <div style="font-size:14px;font-weight:600">Trabalho e Energia · texto + áudio</div>
+                <div style="font-size:12px;color:hsl(230 10% 78%);margin-top:3px">2 leituras, 1 áudio (9 min)</div>
+              </div>
+              <div style="width:180px;height:8px;border-radius:999px;background:hsl(226 20% 22%);overflow:hidden"><div style="width:33%;height:100%;background:hsl(45 90% 58%)"></div></div>
+              <div style="width:96px;text-align:right;font-size:12px;font-weight:600;color:hsl(45 90% 62%)">1 de 3</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:16px;padding:16px 18px;border-radius:16px;background:hsl(226 22% 14%);border:1px dashed hsl(226 20% 26%)">
+              <div style="min-width:0;flex:1">
+                <div style="font-size:14px;font-weight:600;color:hsl(230 10% 78%)">Rotação · aguardando liberação do tópico</div>
+                <div style="font-size:12px;color:hsl(230 10% 68%);margin-top:3px">Material já gerado, será liberado com o tópico</div>
+              </div>
+              <div style="font-size:12px;font-weight:600;color:hsl(230 10% 72%)">Em espera</div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div style="padding:24px 26px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+            <div style="font-family:Cinzel, serif;font-size:18px;font-weight:700">Consumo total</div>
+            <div style="display:flex;align-items:flex-end;gap:10px;margin-top:16px"><div style="font-size:44px;font-weight:800;line-height:1">68%</div><div style="font-size:13px;color:hsl(230 10% 78%);padding-bottom:6px">do material gerado</div></div>
+            <div style="height:8px;border-radius:999px;background:hsl(226 20% 20%);margin-top:18px;overflow:hidden"><div style="width:68%;height:100%;background:linear-gradient(90deg, hsl(265 65% 50%), hsl(266 90% 77%))"></div></div>
+            <div style="font-size:13px;color:hsl(230 10% 78%);margin-top:16px;line-height:1.6">13 de 19 itens · áudio tem consumo maior (81%) que leitura (59%).</div>
+          </div>
+          <div style="padding:24px 26px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+            <div style="font-family:Cinzel, serif;font-size:18px;font-weight:700">Ações</div>
+            <div style="display:flex;flex-direction:column;gap:10px;margin-top:16px">
+              <div style="padding:11px 18px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));font-size:13px;font-weight:600;text-align:center;cursor:pointer">Regerar material pendente</div>
+              <div style="padding:11px 18px;border-radius:999px;border:1px solid hsl(226 20% 22%);font-size:13px;font-weight:600;text-align:center;cursor:pointer" style-hover="border-color:hsl(266 95% 66% / .6)">Ver conteúdo gerado</div>
+              <div style="height:1px;background:hsl(226 20% 22%);margin:8px 0"></div>
+              <div style="padding:11px 18px;border-radius:999px;border:1px solid hsl(0 70% 55% / .45);color:hsl(0 75% 68%);font-size:13px;font-weight:600;text-align:center;cursor:pointer" style-hover="background:hsl(0 45% 16%)">Descartar personalizações…</div>
+              <div style="font-size:11px;color:hsl(230 10% 68%);text-align:center;line-height:1.5">Pede confirmação por escrito. Apaga todo o material já gerado para esta aluna.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+    </div>
+    </sc-if>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;estado&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;com dados&quot;,&quot;vazio&quot;,&quot;carregando&quot;,&quot;erro&quot;],&quot;default&quot;:&quot;com dados&quot;,&quot;tsType&quot;:&quot;'com dados' | 'vazio' | 'carregando' | 'erro'&quot;,&quot;section&quot;:&quot;Estados da tela&quot;},&quot;mostrarGuardioes&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Detalhe do aluno&quot;}}">
+const PROFILES = {
+  Seeker: { color: '#22c9bc', text: '#5fe0d5', bg: '#17a39826', border: '#17a39859' },
+  Survivor: { color: '#8593a2', text: '#a9b5c2', bg: '#4e5a6633', border: '#4e5a6666' },
+  Daredevil: { color: '#e8455b', text: '#f47f8d', bg: '#d7263d26', border: '#d7263d59' },
+  Mastermind: { color: '#7a63e8', text: '#a794f2', bg: '#5b3fd92e', border: '#5b3fd966' },
+  Conqueror: { color: '#3e6dea', text: '#7f9df5', bg: '#1e4fd62e', border: '#1e4fd666' },
+  Socializer: { color: '#f77b57', text: '#fa9c80', bg: '#f4623a26', border: '#f4623a59' },
+  Achiever: { color: '#dfb63a', text: '#e8c964', bg: '#c9a22726', border: '#c9a22759' }
+};
+
+const ROWS = [
+  ['Marina Corrêa', 'marina.correa@ulbra.br', 'MC', 'Mastermind', '8.2', 74, 79, 11],
+  ['Rafael Antunes', 'rafael.antunes@ulbra.br', 'RA', 'Survivor', '5.1', 28, 52, 39],
+  ['Beatriz Lemos', 'beatriz.lemos@ulbra.br', 'BL', 'Seeker', '9.1', 88, 86, 6],
+  ['Diego Fontana', 'diego.fontana@ulbra.br', 'DF', 'Daredevil', '6.4', 51, 63, 27],
+  ['Helena Vasques', 'helena.vasques@ulbra.br', 'HV', 'Achiever', '8.7', 81, 82, 14],
+  ['Caio Bertoldo', 'caio.bertoldo@ulbra.br', 'CB', 'Conqueror', '7.3', 66, 71, 17],
+  ['Nina Salgado', 'nina.salgado@ulbra.br', 'NS', 'Socializer', '6.9', 58, 68, 23],
+  ['Otávio Prado', 'otavio.prado@ulbra.br', 'OP', 'Survivor', '4.6', 19, 47, 44]
+];
+
+const TAB_BASE = 'padding:10px 20px;border-radius:999px;font-size:14px;font-weight:600;cursor:pointer;';
+const TAB_ON = TAB_BASE + 'background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));color:hsl(40 20% 96%);box-shadow:0 0 20px hsl(266 95% 66% / .35)';
+const TAB_OFF = TAB_BASE + 'color:hsl(230 10% 72%)';
+
+class Component extends DCLogic {
+  state = { view: 'class', tab: 0, estadoOverride: null };
+
+  estado() {
+    return this.state.estadoOverride || this.props.estado || 'com dados';
+  }
+
+  renderVals() {
+    const e = this.estado();
+    const tab = this.state.tab;
+    const abColor = v => v >= 30 ? 'hsl(0 75% 66%)' : v >= 20 ? 'hsl(45 90% 62%)' : 'hsl(142 65% 58%)';
+    return {
+      isOverview: this.state.view === 'class',
+      isStudent: this.state.view === 'student',
+      isData: e === 'com dados',
+      isEmpty: e === 'vazio',
+      isLoading: e === 'carregando',
+      isError: e === 'erro',
+      showGuardians: this.props.mostrarGuardioes ?? true,
+      retry: () => this.setState({ estadoOverride: 'com dados' }),
+      back: () => this.setState({ view: 'class' }),
+      tab0: () => this.setState({ tab: 0 }),
+      tab1: () => this.setState({ tab: 1 }),
+      tab2: () => this.setState({ tab: 2 }),
+      tab3: () => this.setState({ tab: 3 }),
+      tabStyle0: tab === 0 ? TAB_ON : TAB_OFF,
+      tabStyle1: tab === 1 ? TAB_ON : TAB_OFF,
+      tabStyle2: tab === 2 ? TAB_ON : TAB_OFF,
+      tabStyle3: tab === 3 ? TAB_ON : TAB_OFF,
+      isTab0: tab === 0,
+      isTab1: tab === 1,
+      isTab2: tab === 2,
+      isTab3: tab === 3,
+      students: ROWS.map(r => {
+        const p = PROFILES[r[3]];
+        return {
+          name: r[0], email: r[1], initials: r[2], profile: r[3],
+          nota: r[4], prog: r[5], acertos: r[6], abandono: r[7],
+          color: p.color, chipBg: p.bg, chipBorder: p.border, textColor: p.text,
+          abColor: abColor(r[7]),
+          open: () => this.setState({ view: 'student', tab: 0 })
+        };
+      })
+    };
+  }
+}
+
+</script>
+</body>
+</html>
