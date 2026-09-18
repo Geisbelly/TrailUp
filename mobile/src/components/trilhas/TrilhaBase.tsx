@@ -9,6 +9,7 @@ import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { registrarAlvoTour } from "@/utils/tourTargets";
 import { useIsFocused } from "@react-navigation/native";
 import React, { useEffect, useMemo, useRef } from "react";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { StyleSheet, View } from "react-native";
 import { TrilhaArvoreSimple } from "./ArvoreView";
 import { GameHeader } from "./common/GameHeader";
@@ -18,7 +19,8 @@ import { GuideTargetRefs, ModuleHeaderGuideButton } from "./ModuleHeaderTitle";
 
 export const TrilhaBase: React.FC<{
   chatGuideTargetRef?: React.RefObject<View | null>;
-}> = ({ chatGuideTargetRef }) => {
+  onOpenBag?: () => void;
+}> = ({ chatGuideTargetRef, onOpenBag }) => {
   const {
     classeAtual,
     carregando,
@@ -130,7 +132,9 @@ export const TrilhaBase: React.FC<{
         palette={palette}
         progressTargetRef={progressGuideTargetRef}
         rightSlot={
-          <ModuleHeaderGuideButton
+          <View style={st.headerActions}>
+            {onOpenBag ? <MaterialCommunityIcons.Button name="bag-personal-outline" size={20} color={palette.text} backgroundColor="transparent" underlayColor={palette.surface} onPress={onOpenBag} accessibilityLabel="Abrir Bag" /> : null}
+            <ModuleHeaderGuideButton
             profile={perfil}
             title={nome}
             totalBlocks={totalTopicos}
@@ -147,7 +151,8 @@ export const TrilhaBase: React.FC<{
             }}
             perfis={usuario?.perfis ?? null}
             targetRefs={guideTargetRefs}
-          />
+            />
+          </View>
         }
       />
       <View
@@ -165,4 +170,5 @@ export const TrilhaBase: React.FC<{
 
 const st = StyleSheet.create({
   page: { flex: 1, backgroundColor: Color.background },
+  headerActions: { flexDirection: "row", alignItems: "center" },
 });

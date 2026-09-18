@@ -267,22 +267,22 @@ export class Classe {
       materia_descricao: row.materia_descricao ?? null,
       professor_nome: row.professor_nome ?? null,
       professor_descricao: row.professor_descricao ?? null,
-      notaMedia: row.notamedia ?? null,
-      tempoMedioPorAtividade: row.tempomedioporatividade ?? null,
-      acertosPercentual: row.acertospercentual ?? null,
-      porcentagemConcluida: row.porcentagemconcluida ?? null,
-      ultimaAtividade: row.ultimaatividade ?? null,
-      tempoGastoMin: row.tempogastomin ?? null,
-      isComplete: row.iscomplete ?? null,
-      atividadesConcluidas: row.atividadesconcluidas ?? null,
-      recomendacaoTrilha: row.recomendacaotrilha ?? null,
-      modoOperacao: row.modooperacao ?? null,
+      notaMedia: row.notaMedia ?? row.notamedia ?? null,
+      tempoMedioPorAtividade: row.tempoMedioPorAtividade ?? row.tempomedioporatividade ?? null,
+      acertosPercentual: row.acertosPercentual ?? row.acertospercentual ?? null,
+      porcentagemConcluida: row.porcentagemConcluida ?? row.porcentagemconcluida ?? null,
+      ultimaAtividade: row.ultimaAtividade ?? row.ultimaatividade ?? null,
+      tempoGastoMin: row.tempoGastoMin ?? row.tempogastomin ?? null,
+      isComplete: row.isComplete ?? row.iscomplete ?? null,
+      atividadesConcluidas: row.atividadesConcluidas ?? row.atividadesconcluidas ?? null,
+      recomendacaoTrilha: row.recomendacaoTrilha ?? row.recomendacaotrilha ?? null,
+      modoOperacao: row.modoOperacao ?? row.modooperacao ?? null,
       insights: row.insights ?? null,
-      perfisDetectados: row.perfisdetectados ?? null,
+      perfisDetectados: row.perfisDetectados ?? row.perfisdetectados ?? null,
     }
   }
 
-  private static async loadResumo(aluno_id: string, classe_id: number): Promise<ClasseResumo | null> {
+  static async loadResumo(aluno_id: string, classe_id: number): Promise<ClasseResumo | null> {
     const { data, error } = await supabase
       .from('vw_aluno_classe_resumo')
       .select('*')

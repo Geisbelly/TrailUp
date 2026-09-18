@@ -94,6 +94,8 @@ export default function AudioPlayer({
   );
   const [resolvingUrl, setResolvingUrl] = useState(Boolean(sourceUrl));
   const [resolveError, setResolveError] = useState<string | null>(null);
+  const [resolvedCoverUrl, setResolvedCoverUrl] = useState<string | null>(null);
+  const [resolvedCueUrls, setResolvedCueUrls] = useState<ImageCue[]>([]);
   const [loadingAudio, setLoadingAudio] = useState(false);
   const [failed, setFailed] = useState(false);
   const [playback, setPlayback] = useState<PlaybackState>({
@@ -136,15 +138,38 @@ export default function AudioPlayer({
   // microservice - nao e um corte real no audio). Sem cues, cai pra capaUrl
   // estatica (comportamento do D2 preservado).
   const displayedImageUrl = useMemo(() => {
-    if (!imageCues || imageCues.length === 0) return capaUrl;
+    if (!resolvedCueUrls.length) return resolvedCoverUrl;
     const positionSec = playback.positionMillis / 1000;
-    let selected = imageCues[0].imageUrl;
-    for (const cue of imageCues) {
+    let selected = resolvedCueUrls[0].imageUrl;
+    for (const cue of resolvedCueUrls) {
       if (cue.startSec <= positionSec) selected = cue.imageUrl;
       else break;
     }
     return selected;
-  }, [imageCues, playback.positionMillis, capaUrl]);
+  }, [playback.positionMillis, resolvedCoverUrl, resolvedCueUrls]);
+
+  useEffect(() => {
+    let active = true;
+    setResolvedCoverUrl(null);
+    setResolvedCueUrls([]);
+    const resolveVisuals = async () => {
+      if (capaUrl) {
+        try {
+          const cover = await resolveSupabaseStorageUrl(capaUrl, { bucket: bucketHint });
+          if (active) setResolvedCoverUrl(cover);
+        } catch {}
+      }
+      if (imageCues?.length) {
+        const cues = await Promise.all(imageCues.map(async (cue) => {
+          try { return { ...cue, imageUrl: await resolveSupabaseStorageUrl(cue.imageUrl, { bucket: bucketHint }) }; }
+          catch { return cue; }
+        }));
+        if (active) setResolvedCueUrls(cues);
+      }
+    };
+    void resolveVisuals();
+    return () => { active = false; };
+  }, [bucketHint, capaUrl, imageCues]);
 
   const unloadSound = useCallback(async () => {
     const currentSound = soundRef.current;
@@ -400,8 +425,8 @@ export default function AudioPlayer({
   return (
     <View style={styles.wrapper}>
       <View style={styles.header}>
-        {capaUrl ? (
-          <Image source={{ uri: capaUrl }} style={styles.coverImage} accessibilityIgnoresInvertColors />
+        {displayedImageUrl ? (
+          <Image source={{ uri: displayedImageUrl }} style={styles.coverImage} accessibilityIgnoresInvertColors />
         ) : null}
         <View style={styles.titleRow}>
           <View
