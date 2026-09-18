@@ -3,12 +3,14 @@ import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PROFILE_WORLDS } from "@/lib/design-art";
+import { useInView } from "@/hooks/useInView";
 
 export default function BrainHexShowcase() {
   const [selected, setSelected] = useState("mastermind");
+  const { ref, inView } = useInView<HTMLDivElement>();
   return (
     <section className="journey-profiles" id="perfis" aria-labelledby="profiles-title">
-      <div className="journey-width journey-section-heading">
+      <div ref={ref} className="journey-width journey-section-heading" data-revealed={inView}>
         <p className="journey-eyebrow">Os guardiões da trilha</p>
         <h2 id="profiles-title">Encontre <em>seu guia.</em></h2>
         <p>Sete jeitos de aprender. Um caminho que tem a ver com você.</p>

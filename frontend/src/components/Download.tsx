@@ -1,13 +1,21 @@
 import { ArrowRight, Smartphone } from "lucide-react";
 import { Link } from "react-router-dom";
 import { DESIGN_ART } from "@/lib/design-art";
+import { useSceneMotion } from "@/hooks/useSceneMotion";
+import { useInView } from "@/hooks/useInView";
+import SceneNature from "./SceneNature";
 
 export default function Download() {
+  const { ref, active } = useSceneMotion<HTMLElement>();
+  const { ref: contentRef, inView } = useInView<HTMLDivElement>();
   return (
-    <section className="journey-download" id="download" aria-labelledby="download-title">
-      <img className="scene-landscape" src={DESIGN_ART.lanterns} alt="" loading="lazy" width="1600" height="900" />
+    <section ref={ref} className="journey-download" id="download" aria-labelledby="download-title" data-motion-active={active}>
+      <div className="scene-camera download-camera" aria-hidden="true">
+        <img className="scene-landscape" src={DESIGN_ART.lanterns} alt="" loading="lazy" width="1600" height="900" />
+      </div>
+      <SceneNature />
       <div className="download-shade" aria-hidden="true" />
-      <div className="journey-width download-content">
+      <div ref={contentRef} className="journey-width download-content" data-revealed={inView}>
         <p className="journey-eyebrow">O próximo passo é seu</p>
         <h2 id="download-title">Sua jornada.<br /><em>Onde você estiver.</em></h2>
         <p>Leve suas trilhas, descobertas e conquistas com você.</p>

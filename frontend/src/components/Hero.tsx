@@ -1,6 +1,8 @@
 import { ArrowDown, ArrowUpRight, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { DESIGN_ART } from "@/lib/design-art";
+import { useSceneMotion } from "@/hooks/useSceneMotion";
+import SceneNature from "./SceneNature";
 
 const destinations = [
   { href: "#experiencia", label: "Trilhas", art: DESIGN_ART.map },
@@ -10,9 +12,13 @@ const destinations = [
 ];
 
 export default function Hero() {
+  const { ref, active } = useSceneMotion<HTMLElement>();
   return (
-    <section className="journey-hero" aria-labelledby="journey-title">
-      <img className="scene-landscape hero-landscape" src={DESIGN_ART.dawn} alt="" loading="eager" width="1600" height="900" />
+    <section ref={ref} className="journey-hero" aria-labelledby="journey-title" data-motion-active={active}>
+      <div className="scene-camera hero-camera" aria-hidden="true">
+        <img className="scene-landscape hero-landscape" src={DESIGN_ART.dawn} alt="" loading="eager" width="1600" height="900" />
+      </div>
+      <SceneNature />
       <div className="hero-shade" aria-hidden="true" />
       <div className="journey-width hero-content">
         <p className="journey-eyebrow"><span /> Conhecimento é uma aventura</p>
