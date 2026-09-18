@@ -25,24 +25,25 @@ export async function registrarConteudoProgresso(params: {
   percentual?: number;
   tempoGastoMin?: number;
 }) {
-  const { alunoId, conteudoId, percentual = 100, tempoGastoMin = 0 } = params;
+  const { alunoId, conteudoId, percentual = 100, tempoGastoMin } = params;
   if (!alunoId || !conteudoId) return;
   const percentualNormalizado = clampPercent(percentual);
-  const tempoNormalizado = normalizeNonNegativeNumber(tempoGastoMin);
-
   const payload = {
     aluno_id: alunoId,
     conteudo_id: conteudoId,
     status: resolveStatusByPercentual(percentualNormalizado),
     percentual_concluido: percentualNormalizado,
-    tempo_gasto_min: tempoNormalizado,
     ultima_visualizacao: new Date().toISOString(),
     updated_at: new Date().toISOString(),
+    ...(tempoGastoMin == null
+      ? {}
+      : { tempo_gasto_min: normalizeNonNegativeNumber(tempoGastoMin) }),
   };
 
-  await supabase
+  const { error } = await supabase
     .from("conteudo_aluno")
     .upsert(payload, { onConflict: "aluno_id,conteudo_id" });
+  if (error) throw error;
 }
 
 export async function registrarAtividadeProgresso(params: {
@@ -52,47 +53,46 @@ export async function registrarAtividadeProgresso(params: {
   acertosPercentual?: number;
   tempoGastoMin?: number;
 }) {
-  const { alunoId, atividadeId, percentual = 100, acertosPercentual, tempoGastoMin = 0 } = params;
+  const { alunoId, atividadeId, percentual = 100, acertosPercentual, tempoGastoMin } = params;
   if (!alunoId || !atividadeId) return;
   const percentualNormalizado = clampPercent(percentual);
   const acertosNormalizado =
     acertosPercentual == null ? null : clampPercent(acertosPercentual);
-  const tempoNormalizado = normalizeNonNegativeNumber(tempoGastoMin);
-
   const payload = {
     aluno_id: alunoId,
     atividade_id: atividadeId,
     status: resolveStatusByPercentual(percentualNormalizado),
     percentual_concluido: percentualNormalizado,
     acertos_percentual: acertosNormalizado,
-    tempo_gasto_min: tempoNormalizado,
     ultima_visualizacao: new Date().toISOString(),
     updated_at: new Date().toISOString(),
+    ...(tempoGastoMin == null
+      ? {}
+      : { tempo_gasto_min: normalizeNonNegativeNumber(tempoGastoMin) }),
   };
 
-  await supabase
+  const { error } = await supabase
     .from("atividade_aluno")
     .upsert(payload, { onConflict: "aluno_id,atividade_id" });
+  if (error) throw error;
 }
 
 export async function registrarTopicoProgresso(params: {
   alunoId?: string | null;
   topicoId?: number | null;
+  /** Mantido para compatibilidade; o percentual é derivado no banco. */
   percentual?: number;
   ultimaAtividadeId?: number | null;
   ultimaVisualizacao?: string | null;
 }) {
-  const { alunoId, topicoId, percentual = 0, ultimaAtividadeId, ultimaVisualizacao } = params;
+  const { alunoId, topicoId, ultimaAtividadeId, ultimaVisualizacao } = params;
   if (!alunoId || !topicoId) return;
 
-  const percentualNormalizado = clampPercent(percentual);
   const agora = ultimaVisualizacao ?? new Date().toISOString();
 
   const payload = {
     aluno_id: alunoId,
     topico_id: topicoId,
-    status: resolveStatusByPercentual(percentualNormalizado),
-    percentual_concluido: percentualNormalizado,
     ultima_visualizacao: agora,
     updated_at: agora,
     ...(ultimaAtividadeId === undefined ? {} : { ultima_atividade: ultimaAtividadeId }),

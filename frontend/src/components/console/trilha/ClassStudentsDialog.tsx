@@ -126,7 +126,7 @@ export default function ClassStudentsDialog({
   const handleAddStudents = async () => {
     if (!classe?.id) return;
     try {
-      await Promise.all(
+      const enrollmentResults = await Promise.all(
         selectedToAdd.map((alunoId) =>
           supabase.rpc("inscrever_aluno_em_classe", {
             p_aluno_id: alunoId,
@@ -134,6 +134,11 @@ export default function ClassStudentsDialog({
           })
         )
       );
+      const enrollmentError = enrollmentResults.find((result) => result.error)?.error;
+      if (enrollmentError) {
+        await loadStudents();
+        throw enrollmentError;
+      }
 
       let failedEnqueue = 0;
       if (session?.access_token) {

@@ -1,9 +1,10 @@
 import { useTrilha } from "@/context/TrilhaContext";
+import { LockedNodeModal } from "@/components/trilhas/LockedNodeModal";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -212,6 +213,18 @@ export function TrilhaMapaHeroStable({
     () => new Map(nodes.map((node) => [node.id, node] as const)),
     [nodes],
   );
+  const [lockedNode, setLockedNode] = useState<MapNode | null>(null);
+  const prerequisiteTitles = useMemo(() => {
+    const titles = new Map(grafo.nodes.map((node) => [String(node.id), node.titulo]));
+    const result = new Map<string, string[]>();
+    for (const edge of grafo.edges) {
+      const list = result.get(String(edge.to)) ?? [];
+      const title = titles.get(String(edge.from));
+      if (title) list.push(title);
+      result.set(String(edge.to), list);
+    }
+    return result;
+  }, [grafo.edges, grafo.nodes]);
 
   const palette = {
     backgroundTop: shellPalette.background,
@@ -474,7 +487,10 @@ export function TrilhaMapaHeroStable({
                   ref={nodeIndex === 0 ? tourTargetRef : undefined}
                   collapsable={false}
                   onPress={() => {
-                    if (node.locked) return;
+                    if (node.locked) {
+                      setLockedNode(node);
+                      return;
+                    }
                     router.push(
                       `/(tabs)/trilha/${encodeURIComponent(node.id)}`,
                     );
@@ -495,7 +511,7 @@ export function TrilhaMapaHeroStable({
                   ]}
                   accessibilityRole="button"
                   accessibilityLabel={`${node.title}${node.locked ? ", bloqueado" : ""}`}
-                  accessibilityState={{ disabled: node.locked }}
+                  accessibilityHint={node.locked ? "Toque para saber como desbloquear" : "Abre o conteúdo"}
                 >
                   <View style={styles.nodeHeader}>
                     <View
@@ -560,6 +576,13 @@ export function TrilhaMapaHeroStable({
           </View>
         </ScrollView>
       </ScrollView>
+      <LockedNodeModal
+        visible={lockedNode !== null}
+        nodeTitle={lockedNode?.title ?? "Conteúdo"}
+        prerequisiteTitles={lockedNode ? prerequisiteTitles.get(lockedNode.id) : []}
+        profile={perfil}
+        onClose={() => setLockedNode(null)}
+      />
     </View>
   );
 }

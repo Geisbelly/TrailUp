@@ -1,6 +1,7 @@
 // src/models/Classe.ts
 import { getSessionSafe, supabase } from '@/database/supabase'
 import { buildClasseAcademicMetrics } from '@/utils/classeMetrics'
+import { mapClasseResumoRow } from '@/utils/classeResumo'
 import { Atividade } from './Atividade'
 import { ClasseResumo } from './ClasseResumo'
 import { Conteudo } from './Conteudo'
@@ -170,6 +171,12 @@ export class Classe {
     this.topicos = topicos
   }
 
+  /** Recarrega somente o resumo calculado pelo banco. */
+  async refreshResumo(): Promise<ClasseResumo | null> {
+    this.resumo = await Classe.loadResumo(this.aluno_id, this.classe_id)
+    return this.resumo
+  }
+
   /**
    * Registra a visita ao tópico: qual foi a última atividade tocada e quando.
    *
@@ -260,26 +267,7 @@ export class Classe {
   }
 
   private static mapResumoRow(row: any): ClasseResumo {
-    return {
-      aluno_id: row.aluno_id,
-      classe_id: row.classe_id,
-      materia_nome: row.materia_nome ?? null,
-      materia_descricao: row.materia_descricao ?? null,
-      professor_nome: row.professor_nome ?? null,
-      professor_descricao: row.professor_descricao ?? null,
-      notaMedia: row.notamedia ?? null,
-      tempoMedioPorAtividade: row.tempomedioporatividade ?? null,
-      acertosPercentual: row.acertospercentual ?? null,
-      porcentagemConcluida: row.porcentagemconcluida ?? null,
-      ultimaAtividade: row.ultimaatividade ?? null,
-      tempoGastoMin: row.tempogastomin ?? null,
-      isComplete: row.iscomplete ?? null,
-      atividadesConcluidas: row.atividadesconcluidas ?? null,
-      recomendacaoTrilha: row.recomendacaotrilha ?? null,
-      modoOperacao: row.modooperacao ?? null,
-      insights: row.insights ?? null,
-      perfisDetectados: row.perfisdetectados ?? null,
-    }
+    return mapClasseResumoRow(row)
   }
 
   private static async loadResumo(aluno_id: string, classe_id: number): Promise<ClasseResumo | null> {

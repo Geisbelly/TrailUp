@@ -34,7 +34,7 @@ import {
   MapWorldTheme,
   normalizeRemoteMapTheme,
 } from '@/utils/classMapTheme';
-import { buildClasseAcademicMetrics, buildClasseResumoFallback } from '@/utils/classeMetrics';
+import { buildClasseResumoFallback } from '@/utils/classeMetrics';
 import {
   buildSlideBonusDedupeKey,
   computeSlideBonusPercent,
@@ -68,6 +68,7 @@ import {
   mergeUnlockedTopicIds,
   normalizeRemoteTopicLocked,
 } from '@/utils/unlockedTopics';
+import { resolveGraphNodeAccess } from '@/utils/graphNodeAccess';
 
 type Visual = 'mapa' | 'arvore' | 'lista'
 
@@ -738,18 +739,20 @@ function reconcileNodesWithClasse(
 ) {
   const localGraph = buildGraphFromTopicos(classe, topicosPendentes)
   const localNodeMap = new Map(localGraph.nodes.map((node) => [String(node.id), node] as const))
+  const locallyUnlocked = new Set(localGraph.unlocked.map(String))
 
   return nodes.map((node) => {
     const localNode = localNodeMap.get(String(node.id))
     if (!localNode) return node
 
-    return {
-      ...node,
-      completed: !!node.completed || !!localNode.completed,
-      // Quando existe grafo remoto, a API é a autoridade do bloqueio. O estado
-      // local complementa apenas a conclusão e não pode abrir um nó bloqueado.
-      locked: node.locked,
-    }
+    const access = resolveGraphNodeAccess({
+      remoteCompleted: !!node.completed,
+      remoteLocked: !!node.locked,
+      localCompleted: !!localNode.completed,
+      locallyUnlocked: locallyUnlocked.has(String(node.id)),
+    })
+
+    return { ...node, ...access }
   })
 }
 
@@ -798,6 +801,12 @@ type TrilhaContextValue = {
   registrarTempoTopico: (topicoId: number, tempoGastoMin: number) => Promise<void>
   registrarTempoConteudo: (topicoId: number, conteudoId: number, tempoGastoMin: number) => Promise<void>
   registrarTempoAtividade: (topicoId: number, atividadeId: number, tempoGastoMin: number) => Promise<void>
+  registrarTempoDireto: (
+    topicoId: number,
+    conteudoId: number | null,
+    atividadeId: number | null,
+    tempoGastoMin: number
+  ) => Promise<void>
   salvarProgressoItemPersonalizado: (params: {
     topicoId: number
     itemKey: string
@@ -1023,6 +1032,11 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       topicos: [...sourceClasse.topicos],
       resumo: nextResumo ?? sourceClasse.resumo,
     })
+
+    // Mantém o espelho síncrono para operações que continuam na mesma ação
+    // (por exemplo, navegar após concluir um tópico) enxergarem o resultado
+    // recém-recarregado sem precisar esperar outro render.
+    classeAtualRef.current = nextClasse
 
     setClasses((prev) =>
       prev.map((classe) =>
@@ -1589,20 +1603,42 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
 
     let cancelado = false
     ;(async () => {
-      // Antes esta consulta pedia só `topico_id, item_key` e filtrava
-      // `slide:%` -- servia apenas ao bônus de XP e jogava fora status,
-      // percentual, acertos e tempo. Era por isso que "Arquivos lidos",
-      // "Desafios resolvidos" e o tempo de estudo ignoravam tudo que o aluno
-      // fez no material personalizado e nos quizzes da apresentação: o dado
-      // existia no banco e ninguém lia. Agora vem a linha inteira, de TODOS os
-      // itens, e o bônus de slide passa a ser um recorte disso.
+      // O banco só usa a jornada do próprio aluno, do perfil ativo e pronta
+      // (`20260913_15`). Se esta consulta trouxer linhas de outro perfil ou de
+      // uma geração falha, o tópico fica pendente no mobile mesmo quando a
+      // projeção canônica já o liberou.
+      const { data: personalizacoesAtivas, error: personalizacoesError } = await supabase
+        .from('conteudo_personalizado')
+        .select('id')
+        .eq('aluno_id', alunoId)
+        .eq('classe_id', classeId)
+        .eq('brainhex_profile_key', activeProfileKey)
+        .eq('status', 'pronto')
+
+      if (cancelado) return
+      if (personalizacoesError) {
+        console.warn('[TrilhaContext] Falha ao buscar personalizacao ativa:', personalizacoesError)
+        return
+      }
+
+      const personalizacaoIds = (personalizacoesAtivas ?? [])
+        .map((row) => Number(row.id))
+        .filter((id) => Number.isInteger(id) && id > 0)
+
+      if (!personalizacaoIds.length) {
+        setProgressoItens([])
+        setSlideBonusKeys(new Set())
+        return
+      }
+
       const { data, error } = await supabase
         .from('personalizacao_item_progresso')
         .select(
-          'topico_id, item_key, item_kind, status, percentual_concluido, acertos_percentual, tempo_gasto_min'
+          'personalizacao_id, topico_id, item_key, item_kind, status, percentual_concluido, acertos_percentual, tempo_gasto_min'
         )
         .eq('aluno_id', alunoId)
         .eq('classe_id', classeId)
+        .in('personalizacao_id', personalizacaoIds)
 
       if (cancelado) return
       if (error) {
@@ -1624,7 +1660,38 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
     return () => {
       cancelado = true
     }
-  }, [classeAtual?.classe_id, usuario?.id])
+  }, [activeProfileKey, classeAtual?.classe_id, usuario?.id])
+
+  // A conclusão personalizada é salva em uma tabela separada da projeção da
+  // trilha. Recalcular a lista de pendências precisa refletir no grafo atual;
+  // esperar um novo carregamento da classe deixava o próximo tópico travado
+  // até sair e entrar na tela.
+  useEffect(() => {
+    const classe = classeAtualRef.current
+    if (!classe || !nodesState.length) return
+
+    const nodesWithProgress = reconcileNodesWithClasse(
+      nodesState,
+      classe,
+      topicosPendentesPersonalizados,
+    )
+    const nextNodes = decorateNodesWithPersonalization(
+      nodesWithProgress,
+      classe.topicos,
+      personalizedTopics,
+    )
+    const changed = nextNodes.some((node, index) => {
+      const previous = nodesState[index]
+      return (
+        !previous ||
+        previous.id !== node.id ||
+        previous.locked !== node.locked ||
+        previous.completed !== node.completed
+      )
+    })
+    if (changed) setNodesState(nextNodes)
+    showLocalUnlockedIds(nodesWithProgress.filter((node) => node.locked === false).map((node) => node.id))
+  }, [nodesState, personalizedTopics, showLocalUnlockedIds, topicosPendentesPersonalizados])
 
   const trilhaSlideBonusPercent = useMemo(
     () => computeSlideBonusPercent(slideBonusKeys),
@@ -1711,32 +1778,16 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
   const atualizarProgressoClasse = useCallback(async () => {
     if (!classeAtual) return;
     try {
-      const metrics = buildClasseAcademicMetrics(classeAtual)
-      const novoResumo = buildClasseResumoFallback(classeAtual, classeAtual.resumo)
-      if (!novoResumo) return
-
-      const { error } = await supabase
-        .from('classe_aluno')
-        .update({
-          porcentagemConcluida: novoResumo.porcentagemConcluida ?? metrics.progressPct,
-          isComplete: novoResumo.isComplete ?? metrics.isComplete,
-          acertosPercentual: novoResumo.acertosPercentual ?? metrics.acertosPercentual,
-          tempoGastoMin: novoResumo.tempoGastoMin ?? metrics.tempoTotalMin,
-          tempoMedioPorAtividade:
-            novoResumo.tempoMedioPorAtividade ?? metrics.tempoMedioPorAtividade,
-          atividadesConcluidas:
-            novoResumo.atividadesConcluidas ?? metrics.atividadesConcluidasIds,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('aluno_id', classeAtual.aluno_id)
-        .eq('classe_id', classeAtual.classe_id);
-
-      if (error) throw error;
+      // `classe_aluno` é calculada por trigger/function no banco. Depois de
+      // persistir o item-fonte, apenas recarregamos a projeção canônica; uma
+      // conta local não conhece a jornada personalizada nem seus pesos.
+      const resumoCanonico = await classeAtual.refreshResumo()
+      if (!resumoCanonico) return
 
       syncClasseLocally(cloneClasse(classeAtual, {
         topicos: [...classeAtual.topicos],
-        resumo: novoResumo,
-      }));
+        resumo: resumoCanonico,
+      }))
     } catch (err) {
       console.warn('[TrilhaContext] Erro ao atualizar progresso da classe:', err);
     }
@@ -1768,26 +1819,16 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       if (!topico) throw new Error('Tópico não encontrado');
 
       await topico.marcarConcluido(usuario.id);
-      // Reflete a conclusao no estado local ANTES do sync (igual marcarConteudoVisto):
-      // sem isto, isTopicoConcluido(topico) continua false e buildGraphFromTopicos
-      // nao desbloqueia os proximos nos ate o realtime chegar (~2s depois).
-      topico.status = 'concluido';
-      topico.percentual_concluido = 100;
-      syncClasseLocally(cloneClasse(classeAtual, { topicos: [...classeAtual.topicos] }));
+      // A conclusão efetiva vem do recálculo do banco. Não otimista status nem
+      // percentual aqui, pois isso pode liberar o próximo tópico com passos
+      // personalizados ainda pendentes.
+      await refreshTopico(topicoId);
       await atualizarProgressoClasse();
-
-      // Desbloqueia próximos tópicos
-      const desbloqueados = await topico.desbloquearProximos(usuario.id, classeAtual.topicos);
-      // Re-sincroniza o grafo com os proximos ja desbloqueados no estado local.
-      syncClasseLocally(cloneClasse(classeAtual, { topicos: [...classeAtual.topicos] }));
-      
-      console.log('[TrilhaContext] Tópicos desbloqueados:', desbloqueados.map(t => t.nome));
-      
     } catch (err) {
       console.error('[TrilhaContext] Erro ao marcar tópico concluído:', err);
       throw err;
     }
-  }, [classeAtual, usuario, atualizarProgressoClasse, syncClasseLocally]);
+  }, [classeAtual, usuario, atualizarProgressoClasse, refreshTopico]);
 
   const marcarConteudoVisto = useCallback(async (topicoId: number, conteudoId: number) => {
     if (!classeAtual || !usuario) return;
@@ -1969,6 +2010,31 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [atualizarProgressoClasse, classeAtual, syncClasseLocally, usuario])
 
+  const registrarTempoDireto = useCallback(async (
+    topicoId: number,
+    conteudoId: number | null,
+    atividadeId: number | null,
+    tempoGastoMin: number
+  ) => {
+    if (!usuario?.id) return
+    const tempoNormalizado = Math.max(0, Number(tempoGastoMin ?? 0))
+    if (!Number.isFinite(tempoNormalizado) || tempoNormalizado <= 0) return
+
+    try {
+      const { error } = await supabase.rpc('trailup_registrar_tempo_estudo', {
+        p_aluno: usuario.id,
+        p_topico: topicoId,
+        p_conteudo: conteudoId,
+        p_atividade: atividadeId,
+        p_tempo_min: tempoNormalizado,
+      })
+      if (error) throw error
+      await atualizarProgressoClasse()
+    } catch (err) {
+      console.warn('[TrilhaContext] Erro ao registrar tempo direto:', err)
+    }
+  }, [atualizarProgressoClasse, usuario?.id])
+
   const salvarProgressoItemPersonalizado = useCallback(async ({
     topicoId,
     itemKey,
@@ -2077,6 +2143,50 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
           return next
         })
       }
+
+      setProgressoItens((previous) => {
+        const nextLine: LinhaProgressoItem = {
+          topico_id: topicoId,
+          item_key: progressItemKey,
+          item_kind: itemKind,
+          status,
+          percentual_concluido: percentualNormalizado,
+          acertos_percentual: acertosNormalizado,
+          tempo_gasto_min: tempoNormalizado,
+        }
+        const index = previous.findIndex(
+          (line) =>
+            Number(line.topico_id) === topicoId &&
+            String(line.item_key ?? '') === progressItemKey
+        )
+        if (index < 0) return [...previous, nextLine]
+
+        const current = previous[index]
+        const merged = {
+          ...current,
+          ...nextLine,
+          status:
+            current.status === 'concluido' || status === 'concluido'
+              ? 'concluido'
+              : status,
+          percentual_concluido: Math.max(
+            Number(current.percentual_concluido ?? 0),
+            percentualNormalizado,
+          ),
+          acertos_percentual:
+            acertosNormalizado == null
+              ? current.acertos_percentual ?? null
+              : Math.max(Number(current.acertos_percentual ?? 0), acertosNormalizado),
+          tempo_gasto_min: Math.round(
+            (Number(current.tempo_gasto_min ?? 0) + Number(tempoNormalizado ?? 0)) * 100
+          ) / 100,
+        }
+        return previous.map((line, lineIndex) => (lineIndex === index ? merged : line))
+      })
+
+      if (status === 'concluido') {
+        await refreshTopico(topicoId)
+      }
       return
     } catch (directErr) {
       const warnKey = `${usuario.id}:${classeAtual.classe_id}:${topicoId}:${progressItemKey}`
@@ -2094,7 +2204,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       }
       return
     }
-  }, [classeAtual, personalizedTopics, personalizacaoProvider, usuario?.id])
+  }, [classeAtual, personalizedTopics, personalizacaoProvider, refreshTopico, usuario?.id])
 
   const registrarRespostaQuestao = useCallback(async ({
     topicoId,
@@ -2174,16 +2284,17 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [classeAtual, usuario]);
 
   const getProximosTopicos = useCallback((topicoId?: number | null): Topico[] => {
-    if (!classeAtual) return [];
+    const classeAtualRefrescada = classeAtualRef.current ?? classeAtual;
+    if (!classeAtualRefrescada) return [];
 
-    const topicosOrdenados = [...classeAtual.topicos].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+    const topicosOrdenados = [...classeAtualRefrescada.topicos].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
     const atual = topicoId != null ? topicosOrdenados.find((t) => t.id === topicoId) : null;
     const ordemAtual = atual?.ordem ?? (atual ? topicosOrdenados.findIndex((t) => t.id === atual.id) : null);
 
     const restantes = topicosOrdenados.filter((t) => {
       if (topicoId != null && t.id === topicoId) return false;
       return (
-        unlockedState.includes(String(t.id)) ||
+        unlockedStateRef.current.includes(String(t.id)) ||
         isTopicoUnlockedLocal(t, topicosOrdenados, topicosPendentesPersonalizados)
       );
     });
@@ -2220,7 +2331,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       unicos.push(t);
     }
     return unicos;
-  }, [classeAtual, topicosPendentesPersonalizados, unlockedState]);
+  }, [classeAtual, topicosPendentesPersonalizados]);
 
   const value: TrilhaContextValue = useMemo(
     () => ({
@@ -2241,6 +2352,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       registrarTempoTopico,
       registrarTempoConteudo,
       registrarTempoAtividade,
+      registrarTempoDireto,
       salvarProgressoItemPersonalizado,
       registrarRespostaQuestao,
       deveMostrarGabaritoAoErrar,
@@ -2270,6 +2382,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       registrarTempoTopico,
       registrarTempoConteudo,
       registrarTempoAtividade,
+      registrarTempoDireto,
       salvarProgressoItemPersonalizado,
       registrarRespostaQuestao,
       deveMostrarGabaritoAoErrar,

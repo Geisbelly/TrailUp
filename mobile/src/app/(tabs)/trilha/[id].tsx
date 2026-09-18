@@ -21,6 +21,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ActivityCompletePayload, ActivityRenderer } from "@/components/ActivityRenderer";
 import CardSemDados from "@/components/CardSemDados";
 import { ContentRenderer } from "@/components/ContentRenderer";
+import { BagEditorModal } from "@/components/bag/BagEditorModal";
 import { HallBackground, OrnamentDivider } from "@/components/HallTheme";
 import { IABattleHeaderChip } from "@/components/ia/IABattleHeaderChip";
 import { IAHeaderTimer } from "@/components/ia/IAHeaderTimer";
@@ -64,6 +65,8 @@ import { useTelemetryHandlers } from "@/hooks/trilha/useTelemetryHandlers";
 import { useTopicoCompletion } from "@/hooks/trilha/useTopicoCompletion";
 import { usePersonalizationRefresh } from "@/hooks/trilha/usePersonalizationRefresh";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { createBagItem } from "@/services/bag/bagService";
+import { normalizeBagContentId, type BagDraft } from "@/services/bag/bagModel";
 import {
   buildBlocksForTopico,
   calcularProgressoVisualPercurso,
@@ -161,6 +164,7 @@ export default function TrilhaConteudoScreen() {
     registrarTempoTopico,
     registrarTempoConteudo,
     registrarTempoAtividade,
+    registrarTempoDireto,
     salvarProgressoItemPersonalizado,
     getProximosTopicos,
     personalizedTopics,
@@ -187,6 +191,7 @@ export default function TrilhaConteudoScreen() {
     recordScroll,
     recordAppEvent,
     lastAnalysis,
+    isStudySessionActive: telemetrySessionActive,
   } = useMetricas();
 
   const rawId = Array.isArray(params.id) ? params.id[0] : params.id ?? "";
@@ -413,6 +418,8 @@ export default function TrilhaConteudoScreen() {
     visivel: false,
     opcoes: [],
   });
+  const [bagEditorOpen, setBagEditorOpen] = useState(false);
+  const [bagContentId, setBagContentId] = useState<number | null>(null);
 
   const checkpointParams = useMemo(
     () => ({
@@ -946,8 +953,10 @@ export default function TrilhaConteudoScreen() {
     registrarTempoTopico,
     registrarTempoConteudo,
     registrarTempoAtividade,
+    registrarTempoDireto,
     salvarProgressoItemPersonalizado,
     reloadRanking,
+    telemetrySessionActive,
   });
 
   useFocusEffect(
@@ -1780,6 +1789,17 @@ export default function TrilhaConteudoScreen() {
                   topicoId={topicoId}
                   onDeckProgressEvent={handleDeckProgressEvent}
                 />
+                <Pressable
+                  style={[styles.secondaryButton, { borderColor: profilePalette.accent, marginTop: 14 }]}
+                  onPress={() => {
+                    setBagContentId(normalizeBagContentId(atualBlock.conteudo.id));
+                    setBagEditorOpen(true);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Adicionar anotação, resumo ou card à Bag"
+                >
+                  <Text style={[styles.secondaryButtonText, { color: profilePalette.accent }]}>＋ Guardar na Bag</Text>
+                </Pressable>
               </>
             ) : (
               <ActivityRenderer
@@ -1943,6 +1963,16 @@ export default function TrilhaConteudoScreen() {
           guideTargetRef={chatGuideTargetRef}
         />
       ) : null}
+
+      <BagEditorModal
+        visible={bagEditorOpen}
+        context={{ classId: classeAtual?.classe_id ?? null, topicId: topicoId, contentId: bagContentId }}
+        accent={profilePalette.accent}
+        surface={profilePalette.surfaceElevated}
+        muted={profilePalette.textMuted}
+        onClose={() => setBagEditorOpen(false)}
+        onSave={async (draft: BagDraft) => { await createBagItem(draft); }}
+      />
 
       {/* ── Chip de batalha flutuante ── */}
       {!mostrarResumo && isCurrentStudyBlockTrackable && topicoId ? (

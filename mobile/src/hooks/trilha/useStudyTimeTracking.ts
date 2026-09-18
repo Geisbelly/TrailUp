@@ -10,8 +10,15 @@ export function useStudyTimeTracking(args: {
   registrarTempoTopico: (topicoId: number, min: number) => Promise<void>;
   registrarTempoConteudo: (topicoId: number, conteudoId: number, min: number) => Promise<void>;
   registrarTempoAtividade: (topicoId: number, atividadeId: number, min: number) => Promise<void>;
+  registrarTempoDireto: (
+    topicoId: number,
+    conteudoId: number | null,
+    atividadeId: number | null,
+    min: number
+  ) => Promise<void>;
   salvarProgressoItemPersonalizado: (payload: ProgressoItemPersonalizado) => Promise<void>;
   reloadRanking: () => void;
+  telemetrySessionActive: boolean;
 }): {
   activeStudyBlockRef: MutableRefObject<StudyBlockSnapshot | null>;
   persistElapsedStudyBlock: (snap: StudyBlockSnapshot | null) => Promise<void>;
@@ -21,8 +28,10 @@ export function useStudyTimeTracking(args: {
     registrarTempoTopico,
     registrarTempoConteudo,
     registrarTempoAtividade,
+    registrarTempoDireto,
     salvarProgressoItemPersonalizado,
     reloadRanking,
+    telemetrySessionActive,
   } = args;
 
   const activeStudyBlockRef = useRef<StudyBlockSnapshot | null>(null);
@@ -59,7 +68,24 @@ export function useStudyTimeTracking(args: {
         );
       }
 
-      await registrarTempoTopico(snapshot.topicoId, elapsedMin);
+      if (!telemetrySessionActive) {
+        await registrarTempoDireto(
+          snapshot.topicoId,
+          snapshot.conteudoId != null && snapshot.conteudoId > 0 ? snapshot.conteudoId : null,
+          snapshot.atividadeId != null && snapshot.atividadeId > 0 ? snapshot.atividadeId : null,
+          elapsedMin,
+        );
+      } else {
+        await registrarTempoTopico(snapshot.topicoId, elapsedMin);
+
+        if (snapshot.conteudoId != null && snapshot.conteudoId > 0) {
+          await registrarTempoConteudo(snapshot.topicoId, snapshot.conteudoId, elapsedMin);
+        }
+
+        if (snapshot.atividadeId != null && snapshot.atividadeId > 0) {
+          await registrarTempoAtividade(snapshot.topicoId, snapshot.atividadeId, elapsedMin);
+        }
+      }
 
       if (snapshot.isPersonalizedLocal && snapshot.itemKey && snapshot.itemTitle) {
         await salvarProgressoItemPersonalizado({
@@ -79,22 +105,16 @@ export function useStudyTimeTracking(args: {
         return;
       }
 
-      if (snapshot.conteudoId != null && snapshot.conteudoId > 0) {
-        await registrarTempoConteudo(snapshot.topicoId, snapshot.conteudoId, elapsedMin);
-      }
-
-      if (snapshot.atividadeId != null && snapshot.atividadeId > 0) {
-        await registrarTempoAtividade(snapshot.topicoId, snapshot.atividadeId, elapsedMin);
-      }
-
       void reloadRanking();
     },
     [
       registrarTempoTopico,
+      registrarTempoDireto,
       registrarTempoAtividade,
       registrarTempoConteudo,
       reloadRanking,
       salvarProgressoItemPersonalizado,
+      telemetrySessionActive,
     ]
   );
 

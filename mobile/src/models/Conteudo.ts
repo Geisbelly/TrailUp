@@ -1,6 +1,6 @@
 // src/models/Conteudo.ts
 import { supabase } from '@/database/supabase';
-import { clampPercent, normalizeNonNegativeNumber } from '@/utils/dataValidation';
+import { clampPercent } from '@/utils/dataValidation';
 import { Midia } from './Midia';
 
 export class Conteudo {

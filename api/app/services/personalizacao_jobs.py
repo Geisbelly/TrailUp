@@ -799,8 +799,26 @@ async def _build_targets(
             )
         return targets, resolved_topicos, target_profile_map
 
+    if kind == JOB_KIND_ENROLLMENT:
+        selected_aluno_id = str(aluno_id) if aluno_id else None
+        if not selected_aluno_id:
+            return [], resolved_topicos, {}
+
+        selected_profile = profile_by_aluno.get(selected_aluno_id, "mastermind")
+        for current_topico_id in resolved_topicos:
+            scoped_conteudo_ids: list[int | None] = list(
+                conteudos_por_topico.get(current_topico_id) or [None]
+            )
+            for current_conteudo_id in scoped_conteudo_ids:
+                _append_target(
+                    owner_aluno_id=selected_aluno_id,
+                    topico_id=current_topico_id,
+                    conteudo_id=current_conteudo_id,
+                    profile_key=selected_profile,
+                )
+        return targets, resolved_topicos, target_profile_map
+
     if kind in {
-        JOB_KIND_ENROLLMENT,
         JOB_KIND_CLASS_DELTA,
         JOB_KIND_FULL_SYNC,
         JOB_KIND_MANUAL_RETRY,
@@ -1892,14 +1910,18 @@ async def _prewarm_shared_content_enrichments(
     classe_id = int(job["classe_id"])
 
     async def _prepare(target: dict[str, Any]) -> None:
-        aluno_id = str(target["aluno_id"])
+        aluno_id = (
+            str(target["aluno_id"])
+            if target.get("aluno_id") is not None
+            else None
+        )
         topico_id = int(target["topico_id"])
         conteudo_id = (
             int(target["conteudo_id"])
             if target.get("conteudo_id") is not None
             else None
         )
-        context_key = f"{aluno_id}:{topico_id}:{conteudo_id or 0}"
+        context_key = f"{aluno_id or 'base'}:{topico_id}:{conteudo_id or 0}"
 
         async with session_factory() as session:
 

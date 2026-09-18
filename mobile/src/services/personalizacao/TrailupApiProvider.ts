@@ -553,7 +553,7 @@ export class TrailupApiProvider implements IPersonalizacaoProvider {
     let query = this.deps.supabase
       .from("conteudo_personalizado")
       .select(
-        "id, aluno_id, classe_id, conteudo_id, topico_id, ciclo_id, status, source_hash, formato_prioritario, formatos_gerados, plano, materiais, ai_patch, gerado_em, updated_at"
+        "id, aluno_id, classe_id, conteudo_id, topico_id, ciclo_id, status, source_hash, formato_prioritario, formatos_gerados, plano, materiais, ai_patch, brainhex_profile_key, gerado_em, updated_at"
       )
       .eq("classe_id", params.classeId)
       .order("updated_at", { ascending: false })

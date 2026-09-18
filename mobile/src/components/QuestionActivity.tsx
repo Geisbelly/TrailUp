@@ -531,6 +531,11 @@ export default function QuestionActivity({
     return atividadeConcluidaPersistida || questaoJaTemResposta;
   }, [atividadeConcluidaPersistida, respostaAnterior, questao?.resposta_aluno]);
   const scrollRef = useRef<ScrollView | null>(null)
+  const questionStartedAtRef = useRef(Date.now());
+
+  useEffect(() => {
+    questionStartedAtRef.current = Date.now();
+  }, [atividade?.id, questao?.id, questaoIndex]);
 
   useEffect(() => {
     if (reviewMode && respondidaAntes && atividadeConcluidaPersistida) {
@@ -1010,6 +1015,10 @@ export default function QuestionActivity({
           const respostaSelecionada = isFillBlankActivity || isDissertativaActivity
             ? respostaDigitada
             : String(alternativas[escolhido ?? -1] ?? '');
+          const tempoGastoSeg = Math.max(
+            0,
+            Math.round((Date.now() - questionStartedAtRef.current) / 1000)
+          );
 
           // Dissertativa: valida por IA (contexto do enunciado + gabarito do
           // professor) em vez de comparar texto/similaridade — perguntas
@@ -1079,6 +1088,7 @@ export default function QuestionActivity({
                 respondida: true,
                 correta: acertou,
                 acertosPercentual: acertosPercent,
+                tempoGastoSeg,
               };
             }
 
@@ -1297,6 +1307,7 @@ export default function QuestionActivity({
                 resposta: respostaTxt,
                 correta: acertou,
                 acertos_percentual: acertosPercent,
+                tempo_gasto_seg: tempoGastoSeg,
               }).catch((err) => console.warn('[QuestaoAluno] erro ao registrar resposta', err));
             }
           }
