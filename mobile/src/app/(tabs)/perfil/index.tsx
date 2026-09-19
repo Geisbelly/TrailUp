@@ -18,7 +18,7 @@ import tinycolor from "tinycolor2";
 import CardSemDados from "@/components/CardSemDados";
 import { BagModal } from "@/components/bag/BagModal";
 import ConquistaModal from "@/components/ConquistaModal";
-import { OrnamentDivider } from "@/components/HallTheme";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getProfileArtwork, profileEmblems } from "@/constants/designAssets";
 import { getAchievementArtwork } from "@/constants/achievementImages";
 import { ProfileArtwork } from "@/components/ProfileArtwork";
@@ -52,6 +52,7 @@ import { resolveRepresentativeBrainHexProfiles } from "@/utils/brainHex";
 import { buildProfileGuideSteps } from "@/utils/profileSectionGuide";
 
 export default function PerfilHome() {
+  const insets = useSafeAreaInsets();
   const { usuario, selecionarPerfilAtivo } = useUsuario();
   const { classeAtual, perfil, progressoPersonalizado } = useTrilha();
   const { conquistas, carregando, eventos, posicoesDoAluno } =
@@ -279,7 +280,7 @@ export default function PerfilHome() {
         backgroundColor="transparent"
       />
       <View
-        style={[styles.screen, { backgroundColor: shellPalette.background }]}
+        style={[styles.screen, { backgroundColor: shellPalette.background, paddingTop: insets.top }]}
       >
         <ScrollView
           ref={profileScrollRef}
@@ -335,7 +336,7 @@ export default function PerfilHome() {
                 <MaterialCommunityIcons
                   name="cog-outline"
                   size={22}
-                  color={shellPalette.accent}
+                  color={Color.colorWhite}
                 />
               </TouchableOpacity>
             </View>
@@ -352,11 +353,7 @@ export default function PerfilHome() {
                 accessibilityRole="button"
                 accessibilityLabel="Biblioteca de conquistas"
               >
-                <MaterialCommunityIcons
-                  name="trophy-variant-outline"
-                  size={20}
-                  color={shellPalette.accent}
-                />
+                <MaterialCommunityIcons name="trophy-variant-outline" size={20} color={Color.colorWhite} />
               </TouchableOpacity>
             </View>
             <View style={styles.btnBagWrap}>
@@ -366,7 +363,7 @@ export default function PerfilHome() {
                 accessibilityRole="button"
                 accessibilityLabel="Abrir minha Bag"
               >
-                <MaterialCommunityIcons name="bag-personal-outline" size={20} color={shellPalette.accent} />
+                <MaterialCommunityIcons name="bag-personal-outline" size={20} color={Color.colorWhite} />
               </TouchableOpacity>
             </View>
 
@@ -382,9 +379,9 @@ export default function PerfilHome() {
               ]}
             >
               <View style={styles.avatarContainer}>
-                <FramedProfileImage profile={perfil} source={usuario?.foto_url ? { uri: usuario.foto_url } : avatar} size={112} label={`Foto de ${usuario?.nome ?? 'Aluno'}`} />
+                <FramedProfileImage profile={perfil} source={usuario?.foto_url ? { uri: usuario.foto_url } : avatar} size={80} label={`Foto de ${usuario?.nome ?? 'Aluno'}`} />
                 <View style={styles.hexBadgeContainer}>
-                  <ProfileArtwork source={profileEmblems[perfil]} profile={perfil} width={32} />
+                  <ProfileArtwork source={profileEmblems[perfil]} profile={perfil} width={30} />
                 </View>
               </View>
 
@@ -456,7 +453,7 @@ export default function PerfilHome() {
                           },
                         ]}
                       >
-                        <ProfileArtwork source={profileEmblems[profileKey]} profile={perfil} width={28} />
+                        <ProfileArtwork source={profileEmblems[profileKey]} profile={perfil} width={32} height={36} />
                         <View>
                           <Text
                             style={[
@@ -543,7 +540,7 @@ export default function PerfilHome() {
                   },
                 ]}
               >
-                Conquistas
+                Conquistas ({conquistas.length})
               </Text>
               {aba === "conquistas" ? (
                 <View
@@ -554,11 +551,6 @@ export default function PerfilHome() {
                 />
               ) : null}
             </TouchableOpacity>
-          </View>
-
-          {/* Ornamento divisor entre abas e conteúdo */}
-          <View style={[styles.ornamentRow, { paddingHorizontal: 20 }]}>
-            <OrnamentDivider color={Color.colorWhite} />
           </View>
 
           <View ref={profileAchievementsGuideRef} collapsable={false} style={styles.listContainer}>
@@ -600,7 +592,7 @@ export default function PerfilHome() {
                           { borderColor: shellPalette.borderStrong },
                         ]}
                       >
-                        <ProfileArtwork source={getAchievementArtwork(conquista)} profile={perfil} width={50} height={54} />
+                        <ProfileArtwork source={getAchievementArtwork(conquista)} profile={conquista.perfil_alvo ?? perfil} color={conquista.escopo === "perfil" ? undefined : Color.colorWhite} width={50} height={54} />
                       </View>
                       <View style={styles.conquistaTextBlock}>
                         <View style={styles.conquistaHeaderRow}>
@@ -674,6 +666,7 @@ export default function PerfilHome() {
           color={hexConfig.color}
           profile={perfil}
           imageSource={getAchievementArtwork(conquistaSelecionada)}
+          artworkColor={conquistaSelecionada?.escopo === "perfil" ? getProfileShellPalette(conquistaSelecionada.perfil_alvo ?? perfil).accent : Color.colorWhite}
         />
       </View>
     </>
@@ -682,57 +675,63 @@ export default function PerfilHome() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  ornamentRow: { marginTop: 4, opacity: 0.7 },
   scrollContent: { paddingBottom: 40 },
-  headerContainer: { marginBottom: 10, alignItems: "center" },
-  bannerWrapper: { width: "100%", height: 220, position: "relative" },
+  headerContainer: { marginBottom: 4, alignItems: "center" },
+  bannerWrapper: { width: "100%", height: 64, position: "relative" },
   banner: { width: "100%", height: "100%" },
   btnSettings: {
-    padding: 8,
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: Design.radius,
     borderWidth: 1,
   },
   btnSettingsWrap: {
     position: "absolute",
-    top: 50,
+    top: 10,
     right: 20,
     zIndex: 10,
   },
   guideButton: {
     position: "absolute",
-    top: 50,
+    top: 10,
     left: 20,
   },
   btnLibraryWrap: {
     position: "absolute",
-    top: 96,
-    right: 20,
+    top: 10,
+    right: 72,
     zIndex: 10,
   },
   btnBagWrap: {
     position: "absolute",
-    top: 142,
-    right: 20,
+    top: 10,
+    right: 124,
     zIndex: 10,
   },
   btnLibrary: {
-    padding: 8,
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: Design.radius,
     borderWidth: 1,
     zIndex: 10,
   },
   profileCard: {
-    marginTop: -20,
     width: "100%",
+    flexDirection: "row",
     alignItems: "center",
-    paddingTop: 72,
-    paddingBottom: 24,
+    gap: 14,
+    paddingTop: 14,
+    paddingBottom: 14,
     paddingHorizontal: 20,
     borderBottomWidth: 1,
   },
   avatarContainer: {
-    position: "absolute",
-    top: -50,
+    width: 80,
+    height: 80,
     alignItems: "center",
     justifyContent: "center",
     zIndex: 2,
@@ -747,15 +746,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     zIndex: 3,
   },
-  infoContainer: { alignItems: "center", gap: 4 },
+  infoContainer: { flex: 1, minWidth: 0, alignItems: "flex-start", gap: 3 },
   profileSwitcherWrap: {
     width: "100%",
-    marginTop: 14,
+    marginTop: 10,
   },
   profileSwitcherTitle: {
     fontFamily: FontFamily.interMedium,
-    fontSize: 11,
-    marginBottom: 8,
+    fontSize: 12,
+    marginBottom: 6,
     marginLeft: 20,
   },
   profileSwitcherContent: {
@@ -763,7 +762,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   profileOption: {
-    minWidth: 154,
+    minWidth: 144,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
@@ -774,11 +773,11 @@ const styles = StyleSheet.create({
   },
   profileOptionLabel: {
     fontFamily: FontFamily.inikaBold,
-    fontSize: 12,
+    fontSize: 14,
   },
   profileOptionAffinity: {
     fontFamily: FontFamily.interMedium,
-    fontSize: 9,
+    fontSize: 11,
     marginTop: 1,
   },
   username: {
@@ -787,7 +786,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0,
     fontWeight: "700",
   },
-  name: { fontFamily: FontFamily.inikaBold, fontSize: 24, lineHeight: 31, textAlign: "center" },
+  name: { fontFamily: FontFamily.inikaBold, fontSize: 22, lineHeight: 28 },
   tagProfile: {
     borderWidth: 1,
     paddingHorizontal: 8,
@@ -797,20 +796,19 @@ const styles = StyleSheet.create({
   },
   tagProfileText: {
     fontFamily: FontFamily.inikaBold,
-    fontSize: 10,
+    fontSize: 12,
     letterSpacing: 0,
   },
   desc: {
     fontFamily: FontFamily.interMedium,
-    fontSize: 12,
-    textAlign: "center",
+    fontSize: 13,
+    lineHeight: 19,
     marginTop: 4,
-    paddingHorizontal: 10,
   },
   tabsContainer: {
     flexDirection: "row",
     marginHorizontal: 20,
-    marginTop: 15,
+    marginTop: 8,
     borderBottomWidth: 1,
   },
   tabButton: { flex: 1, alignItems: "center", paddingVertical: 12 },

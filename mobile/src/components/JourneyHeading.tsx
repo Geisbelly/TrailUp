@@ -1,5 +1,6 @@
-import { FontFamily } from "@/styles/GlobalStyle";
+import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { ProfileArtwork } from "@/components/ProfileArtwork";
+import { JourneySymbol, type JourneySection } from "@/components/JourneySymbol";
 import type { ProfileShellPalette } from "@/utils/profileShellTheme";
 import {
   type ImageSourcePropType,
@@ -12,7 +13,8 @@ import type { ReactNode } from "react";
 type Props = {
   title: string;
   eyebrow?: string;
-  artwork: ImageSourcePropType;
+  artwork?: ImageSourcePropType;
+  section?: JourneySection;
   palette: ProfileShellPalette;
   right?: ReactNode;
 };
@@ -21,18 +23,23 @@ export function JourneyHeading({
   title,
   eyebrow,
   artwork,
+  section,
   palette,
   right,
 }: Props) {
   return (
     <View style={[styles.root, { borderBottomColor: palette.border }]}>
-      <ProfileArtwork
+      {section ? (
+        <JourneySymbol section={section} profile={palette.profile} size={58} />
+      ) : artwork ? <ProfileArtwork
         source={artwork}
-        color={palette.accent}
+        // Artes de seções compartilhadas (Social, notificações e Bag) não
+        // devem competir com o tom do perfil; branco mantém contraste.
+        color={Color.colorWhite}
         width={58}
         height={64}
         style={styles.art}
-      />
+      /> : null}
       <View style={styles.copy}>
         {eyebrow ? (
           <Text style={[styles.eyebrow, { color: palette.accent }]}>

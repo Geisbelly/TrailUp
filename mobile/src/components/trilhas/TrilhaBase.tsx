@@ -77,7 +77,7 @@ export const TrilhaBase: React.FC<{
       ? (mapTheme?.worldName ?? classeAtual.resumo?.materia_nome ?? "Classe")
       : (classeAtual.resumo?.materia_nome ?? "Classe");
   const subtitulo =
-    visual === "mapa" ? (mapTheme?.classLabel ?? "Reino da classe") : "Trilha";
+    visual === "mapa" ? (mapTheme?.classLabel ?? "Reino da classe") : "";
   // O progresso soma os DOIS livros-caixa. `getProgressoGeral` conta apenas
   // conteudo/atividade do professor, entao a barra ficava parada enquanto o
   // aluno avancava no material personalizado e nos quizzes da apresentacao --

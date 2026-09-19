@@ -19,7 +19,7 @@ import { FirstAccessTour } from "@/components/FirstAccessTour";
 import { useUsuario } from "@/context/SessaoContext";
 import { MetricasProvider } from "@/context/MetricasContext";
 import { user } from "@/database/mockUser";
-import { FontFamily } from "@/styles/GlobalStyle";
+import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMonitorDeSessao } from "@/hooks/useMonitorDeSessao";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
@@ -131,10 +131,10 @@ export default function TabLayout() {
               name="notificacoes"
               options={{
                 title: 'Notificações',
-                tabBarIcon: ({ color, focused }) => <MaterialCommunityIcons 
-                    size={focused ? 28 : 26} 
-                    name={focused ? "bell" : "bell-outline"} 
-                    color={color} 
+                tabBarIcon: ({ focused }) => <MaterialCommunityIcons
+                    size={focused ? 28 : 26}
+                    name={focused ? "bell" : "bell-outline"}
+                    color={Color.colorWhite}
                   />,
               }}
             />
@@ -152,14 +152,14 @@ export default function TabLayout() {
               options={{
                 title: "Social",
                 href: undefined,
-                tabBarIcon: ({ color, focused }) => (
+                tabBarIcon: ({ focused }) => (
                   <View style={{ opacity: aberturas.social ? 1 : 0.5 }}>
                     <MaterialCommunityIcons
                       size={focused ? 28 : 26}
-                      name={focused ? "account-heart" : "account-heart-outline"}
-                      color={color}
+                      name={focused ? "account-group" : "account-group-outline"}
+                      color={Color.colorWhite}
                     />
-                    {!aberturas.social ? <MaterialCommunityIcons name="lock" size={12} color={color} style={{ position: "absolute", right: -5, bottom: -2 }} /> : null}
+                    {!aberturas.social ? <MaterialCommunityIcons name="lock" size={12} color={Color.colorWhite} style={{ position: "absolute", right: -5, bottom: -2 }} /> : null}
                   </View>
                 ),
               }}
@@ -180,14 +180,14 @@ export default function TabLayout() {
                 href: undefined,
                 // Ícone de Pódio (fiel à referência do ranking/liderança)
                 // Outra opção boa seria "trophy-variant" se preferir o troféu detalhado
-                tabBarIcon: ({ color, focused }) => (
+                tabBarIcon: ({ focused }) => (
                   <View style={{ opacity: aberturas.rank ? 1 : 0.5 }}>
                     <MaterialCommunityIcons
                       size={focused ? 28 : 26}
                       name={focused ? "podium" : "podium-bronze"}
-                      color={color}
+                      color={Color.colorWhite}
                     />
-                    {!aberturas.rank ? <MaterialCommunityIcons name="lock" size={12} color={color} style={{ position: "absolute", right: -5, bottom: -2 }} /> : null}
+                    {!aberturas.rank ? <MaterialCommunityIcons name="lock" size={12} color={Color.colorWhite} style={{ position: "absolute", right: -5, bottom: -2 }} /> : null}
                   </View>
                 ),
               }}

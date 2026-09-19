@@ -15,6 +15,7 @@ import CardSemDados from "@/components/CardSemDados";
 import ConquistaModal from "@/components/ConquistaModal";
 import { getAchievementArtwork } from "@/constants/achievementImages";
 import { ProfileArtwork } from "@/components/ProfileArtwork";
+import { JourneySymbol } from "@/components/JourneySymbol";
 import { HallBackground, OrnamentDivider } from "@/components/HallTheme";
 import {
   SectionGuideButton,
@@ -247,9 +248,10 @@ export default function BibliotecaConquistasScreen() {
             },
           ]}
         >
-          <Text style={[styles.summaryTitle, { color: shellPalette.text }]}>
-            Biblioteca de Conquistas
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+            <JourneySymbol section="achievements" profile={perfil} size={48} />
+            <Text style={[styles.summaryTitle, { color: shellPalette.text, flex: 1 }]}>Biblioteca de Conquistas</Text>
+          </View>
           <Text style={[styles.summarySubtitle, { color: shellPalette.textMuted }]}>
             Acompanhe desbloqueios, progresso e metas pendentes.
           </Text>
@@ -374,7 +376,13 @@ export default function BibliotecaConquistasScreen() {
                         { borderColor: shellPalette.borderStrong },
                       ]}
                     >
-                      <ProfileArtwork source={getAchievementArtwork(item.conquista)} profile={perfil} width={48} height={52} />
+                      <ProfileArtwork
+                        source={getAchievementArtwork(item.conquista)}
+                        profile={item.conquista.perfil_alvo ?? perfil}
+                        color={item.conquista.escopo === "perfil" ? getProfileShellPalette(item.conquista.perfil_alvo ?? perfil).accent : Color.colorWhite}
+                        width={48}
+                        height={52}
+                      />
                     </View>
 
                     <View style={styles.itemBody}>
@@ -440,6 +448,7 @@ export default function BibliotecaConquistasScreen() {
         profile={perfil}
         color={shellPalette.accent}
         imageSource={getAchievementArtwork(selected)}
+        artworkColor={selected?.escopo === "perfil" ? getProfileShellPalette(selected.perfil_alvo ?? perfil).accent : Color.colorWhite}
       />
     </View>
   );

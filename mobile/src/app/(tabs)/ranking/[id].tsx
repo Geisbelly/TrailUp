@@ -1,11 +1,11 @@
 import { RankingPodium } from "@/components/ranking/RankingPodium";
-import { ProfileArtwork } from "@/components/ProfileArtwork";
+import { ProfileEmblem } from "@/components/ProfileEmblem";
 import {
   SectionGuideButton,
   type SectionGuideScrollable,
   type SectionGuideStep,
 } from "@/components/SectionGuideButton";
-import { getProfileArtwork, profileEmblems } from "@/constants/designAssets";
+import { getProfileArtwork } from "@/constants/designAssets";
 import { normalizeBrainHexProfile } from "@/constants/profileImages";
 import { useConquistaRank } from "@/context/ConquistaRankContext";
 import { useUsuario } from "@/context/SessaoContext";
@@ -317,9 +317,8 @@ export default function RankDetalheScreen() {
                       s.row,
                       {
                         borderBottomColor: palette.border,
-                        backgroundColor: me
-                          ? palette.surface
-                          : palette.background,
+                        backgroundColor: me ? palette.surfaceElevated : palette.surface,
+                        borderLeftColor: me ? palette.accent : "transparent",
                       },
                     ]}
                   >
@@ -331,23 +330,7 @@ export default function RankDetalheScreen() {
                     >
                       {item.posicao ? `${item.posicao}º` : "--"}
                     </Text>
-                    {personProfile?.key ? (
-                      <ProfileArtwork
-                        source={profileEmblems[personProfile.key]}
-                        profile={profile}
-                        width={32}
-                        height={38}
-                        style={s.emblem}
-                      />
-                    ) : (
-                      <View style={s.emblem}>
-                        <MaterialCommunityIcons
-                          name="account-outline"
-                          color={palette.textSubtle}
-                          size={25}
-                        />
-                      </View>
-                    )}
+                    <ProfileEmblem profile={personProfile?.key} toneProfile={profile} size={52} />
                     <View style={s.student}>
                       <Text style={[s.studentName, { color: palette.text }]}>
                         {item.nome_aluno}
@@ -360,7 +343,7 @@ export default function RankDetalheScreen() {
                     <Text
                       style={[
                         s.score,
-                        { color: me ? palette.accent : palette.text },
+                        { color: palette.text },
                       ]}
                     >
                       {formatRankScore(item.pontuacao, rank.info.criterio)}
@@ -440,11 +423,11 @@ const s = StyleSheet.create({
   listContent: { paddingBottom: 20 },
   hero: { paddingHorizontal: 20, overflow: "hidden" },
   scenery: { ...StyleSheet.absoluteFillObject },
-  sceneryImage: { width: "100%", height: "100%", opacity: 0.75 },
+  sceneryImage: { width: "100%", height: "100%", opacity: 0.4 },
   heading: { paddingTop: 24, gap: 7 },
   eyebrow: { fontSize: 10, fontWeight: "700" },
   title: { fontFamily: FontFamily.inikaBold, fontSize: 27, lineHeight: 34 },
-  subtitle: { fontSize: 12, lineHeight: 18, maxWidth: 300 },
+  subtitle: { fontSize: 14, lineHeight: 21 },
   filtersSection: { paddingHorizontal: 20 },
   sectionTitle: {
     fontFamily: FontFamily.inikaBold,
@@ -459,34 +442,29 @@ const s = StyleSheet.create({
     paddingVertical: 14,
     borderBottomWidth: 2,
   },
-  filterText: { fontSize: 12, fontWeight: "600", textAlign: "center" },
+  filterText: { fontSize: 14, fontWeight: "600", textAlign: "center" },
   listHeading: {
     flexDirection: "row",
     justifyContent: "space-between",
     paddingTop: 20,
     paddingBottom: 10,
   },
-  columnLabel: { fontSize: 10, fontWeight: "600" },
+  columnLabel: { fontSize: 12, fontWeight: "700" },
   row: {
     flexDirection: "row",
     alignItems: "center",
-    minHeight: 80,
-    paddingHorizontal: 20,
+    minHeight: 88,
+    paddingHorizontal: 12,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    gap: 10,
+    borderLeftWidth: 3,
+    gap: 8,
   },
-  position: { width: 26, fontFamily: FontFamily.inikaBold, fontSize: 17 },
-  emblem: {
-    width: 32,
-    height: 38,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  position: { minWidth: 28, fontSize: 17, fontWeight: "700", fontVariant: ["tabular-nums"] },
   student: { flex: 1, minWidth: 0 },
-  studentName: { fontSize: 13, lineHeight: 19, fontWeight: "600" },
-  profile: { fontSize: 10, lineHeight: 15, marginTop: 3 },
-  score: { width: 64, fontSize: 13, fontWeight: "700", textAlign: "right" },
+  studentName: { fontSize: 15, lineHeight: 22, fontWeight: "600" },
+  profile: { fontSize: 12, lineHeight: 18, marginTop: 3 },
+  score: { width: 76, fontSize: 16, lineHeight: 22, fontWeight: "700", textAlign: "right", fontVariant: ["tabular-nums"] },
   myPosition: {
     flexDirection: "row",
     alignItems: "center",
