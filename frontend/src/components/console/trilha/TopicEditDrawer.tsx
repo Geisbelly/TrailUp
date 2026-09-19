@@ -1,14 +1,6 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  ehMissao,
-  formatoDaQuestao,
-  FORMATOS_DE_QUESTAO,
-  TIPO_DE_MISSAO,
-  TIPOS_DE_ATIVIDADE,
-  tipoDeAtividadeDoFormato,
-} from "@/lib/tiposDeAtividade";
 import { useAuth } from "@/hooks/useAuth";
 import { formatSupabaseFunctionError } from "@/lib/supabaseFunctionError";
 import { toast } from "sonner";
@@ -619,15 +611,14 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
     }
   }, [contents.length, setIsCreating, setContentForm]);
 
-  // Era uma cadeia de `if` aqui dentro, com um vocabulario proprio. Agora vem da
-  // lista central (`lib/tiposDeAtividade`): `atividades.tipo` e texto livre no
-  // banco, e duas tabelas de apelidos divergem.
-  //
-  // MISSAO nao passa por aqui: ela nao tem formato implicito, entao converter a
-  // questao dela para um tipo de atividade apagaria justamente o que a missao
-  // tem de proprio -- itens de formatos diferentes na mesma tarefa.
-  const normalizeQuestionTypeToActivityType = (tipo: string | null | undefined) =>
-    ehMissao(activityForm.tipo) ? TIPO_DE_MISSAO : tipoDeAtividadeDoFormato(tipo);
+  const normalizeQuestionTypeToActivityType = (tipo: string | null | undefined) => {
+    const raw = (tipo || "").trim().toLowerCase();
+    if (raw === "quiz" || raw === "multipla" || raw === "multipla_escolha") return "quiz";
+    if (raw === "true_false" || raw === "verdadeiro_falso" || raw === "vf") return "true_false";
+    if (raw === "fill_blank" || raw === "lacuna" || raw === "completar") return "fill_blank";
+    if (raw === "essay" || raw === "dissertativa" || raw === "questao" || raw === "texto") return "essay";
+    return "essay";
+  };
 
   // Efeito para carregar questão existente ao selecionar atividade
   useEffect(() => {
@@ -684,9 +675,9 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
   }, [open, handleEditClose]);
 
   // Estilos Dark Theme
-  const darkInputClass = "bg-[#111827] border-slate-700 text-slate-100 focus:border-violet-500 placeholder:text-slate-600 hover:border-slate-600 transition-colors";
-  const darkLabelClass = "text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-2 block";
-  const darkCardClass = "bg-[#1E293B] border border-slate-700/50";
+  const darkInputClass = "bg-background border-border text-foreground focus:border-violet-500 placeholder:text-muted-foreground hover:border-border transition-colors";
+  const darkLabelClass = "text-muted-foreground text-[11px] font-bold uppercase tracking-wider mb-2 block";
+  const darkCardClass = "bg-card border border-border/50";
 
   const startNewContent = () => {
     setSelectedContentId(null);
@@ -774,14 +765,14 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
 
   // Função de renderização do formulário para evitar perda de foco
   const renderContentForm = (title: string) => (
-    <div className={`p-6 rounded-xl space-y-6 shadow-xl ${darkCardClass}`}>
-      <div className="flex items-center justify-between border-b border-slate-700 pb-4 mb-4">
+    <div className={`p-6 rounded-lg space-y-6 shadow-xl ${darkCardClass}`}>
+      <div className="flex items-center justify-between border-b border-border pb-4 mb-4">
         <h3 className="text-lg font-bold text-white flex items-center gap-2">
           {isCreating ? <Plus className="text-emerald-400 w-5 h-5"/> : <Pencil className="text-violet-400 w-5 h-5"/>}
           {title}
         </h3>
         {isCreating && contents.length > 0 && (
-          <Button variant="ghost" size="sm" onClick={() => setIsCreating(false)} className="text-slate-400 hover:text-white">
+          <Button variant="ghost" size="sm" onClick={() => setIsCreating(false)} className="text-muted-foreground hover:text-white">
             <X size={16} className="mr-1"/> Cancelar
           </Button>
         )}
@@ -802,7 +793,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
           <Label className={darkLabelClass}>Formato</Label>
           <Select value={contentForm.tipo || "texto"} onValueChange={(v) => setContentForm({...contentForm, tipo: v})}>
             <SelectTrigger className={`${darkInputClass} h-11`}><SelectValue/></SelectTrigger>
-            <SelectContent className="bg-[#1E293B] border-slate-700 text-slate-200">
+            <SelectContent className="bg-card border-border text-foreground">
               <SelectItem value="texto">Texto / Artigo</SelectItem>
               <SelectItem value="video">Vídeo (YouTube / Embed)</SelectItem>
               <SelectItem value="link">Link Externo</SelectItem>
@@ -838,7 +829,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
             <Textarea
               value={contentForm.conteudo || ""}
               onChange={(e) => setContentForm({ ...contentForm, conteudo: e.target.value })}
-              className="bg-[#111827] border-slate-700 text-slate-300 min-h-[400px] font-mono text-sm leading-relaxed p-4 focus:ring-1 focus:ring-violet-500/50 resize-y rounded-md"
+              className="bg-background border-border text-muted-foreground min-h-[400px] font-mono text-sm leading-relaxed p-4 focus:ring-1 focus:ring-violet-500/50 resize-y rounded-md"
               placeholder={
                 contentForm.tipo === "texto"
                   ? "# Digite seu conteúdo aqui..."
@@ -848,7 +839,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
               }
             />
             {contentForm.tipo === "texto" && (
-              <div className="absolute bottom-3 right-3 text-[10px] text-slate-500 bg-[#1E293B] px-2 py-1 rounded border border-slate-700">
+              <div className="absolute bottom-3 right-3 text-[10px] text-muted-foreground bg-card px-2 py-1 rounded border border-border">
                 Markdown Suportado
               </div>
             )}
@@ -863,7 +854,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="absolute bottom-3 right-3 h-7 text-[11px] border-violet-500/30 text-violet-400 hover:text-violet-200 hover:bg-violet-900/20 bg-[#1E293B]"
+                  className="absolute bottom-3 right-3 h-7 text-[11px] border-violet-500/30 text-violet-400 hover:text-violet-200 hover:bg-violet-900/20 bg-card"
                   onClick={() =>
                     setContentForm({
                       ...contentForm,
@@ -880,7 +871,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
         </div>
       )}
 
-      <div className="flex items-center justify-between pt-4 border-t border-slate-700 gap-3">
+      <div className="flex flex-wrap items-center justify-between pt-4 border-t border-border gap-3">
         <Button
           type="button"
           variant="outline"
@@ -930,23 +921,20 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
 
   return (
     <>
-    <div className="fixed inset-0 z-40 w-screen h-screen p-0 bg-[#0F172A] flex flex-col overflow-hidden">
+    <div className="console-editor fixed inset-0 z-40 w-full p-0 bg-background flex flex-col overflow-hidden">
 
         {/* HEADER */}
-        <div className="flex items-center justify-between px-6 py-4 bg-[#1E293B] border-b border-slate-800 shrink-0 z-10 shadow-md">
+        <div className="console-editor-header flex items-center justify-between px-6 py-4 bg-card border-b border-border shrink-0 z-10">
           <div>
             <h1 className="text-xl font-bold text-white flex items-center gap-3">
-              <div className="w-8 h-8 rounded bg-violet-600/20 flex items-center justify-center text-violet-400">
+              <div className="w-8 h-8 shrink-0 rounded bg-primary/20 flex items-center justify-center text-primary">
                 <BrainCircuit size={18} />
               </div>
               {editingTopic ? "Editar Trilha de Conhecimento" : "Nova Trilha"}
             </h1>
-            <p className="text-slate-400 text-xs mt-1 pl-11">
-              Gerenciamento avançado de nós de conteúdo e avaliações.
-            </p>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="ghost" onClick={handleEditClose} className="text-slate-400 hover:text-white hover:bg-white/5 border border-transparent hover:border-slate-700">
+            <Button variant="ghost" onClick={handleEditClose} className="text-muted-foreground hover:text-white hover:bg-white/5 border border-transparent hover:border-border">
               Cancelar
             </Button>
             <Button onClick={handleSubmit} disabled={isSaving || !editingTopic} className="bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-900/20 px-6 font-semibold">
@@ -957,10 +945,10 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
         </div>
 
         {/* LAYOUT PRINCIPAL */}
-        <div className="flex flex-1 overflow-hidden text-slate-200 h-full">
+        <div className="console-editor-layout flex flex-1 overflow-hidden text-foreground h-full">
           
           {/* SIDEBAR (Esquerda) */}
-          <aside className="w-[340px] lg:w-[400px] border-r border-slate-800 bg-[#0F172A] flex flex-col shrink-0 h-full overflow-hidden">
+          <aside className="w-[340px] lg:w-[400px] border-r border-border bg-background flex flex-col shrink-0 h-full overflow-hidden">
             <ScrollArea className="h-full w-full">
               <div className="p-5 space-y-8 pb-32"> 
                 <div className="space-y-4">
@@ -974,7 +962,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                         <Label className={darkLabelClass}>Classe</Label>
                         <Select value={formData.classe_id || ""} onValueChange={(v) => setFormData({ ...formData, classe_id: v })}>
                           <SelectTrigger className={darkInputClass}><SelectValue placeholder="Selecione" /></SelectTrigger>
-                          <SelectContent className="bg-[#1E293B] border-slate-700 text-slate-200">
+                          <SelectContent className="bg-card border-border text-foreground">
                             {classes.map((c) => (<SelectItem key={c.id} value={c.id.toString()} className="focus:bg-violet-600 focus:text-white">{c.descricao}</SelectItem>))}
                           </SelectContent>
                         </Select>
@@ -1004,13 +992,13 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                     </div>
                   </div>
                 </div>
-                <Separator className="bg-slate-800" />
+                <Separator className="bg-muted" />
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between sticky top-0 bg-[#0F172A] z-10 py-2">
+                  <div className="flex items-center justify-between sticky top-0 bg-background z-10 py-2">
                     <h3 className={darkLabelClass}>Nós de Conteúdo</h3>
-                    <Badge variant="outline" className="border-slate-700 text-slate-400 bg-slate-900">{contents.length}</Badge>
+                    <Badge variant="outline" className="border-border text-muted-foreground bg-background">{contents.length}</Badge>
                   </div>
-                  <Button variant="outline" onClick={startNewContent} className={`w-full border-dashed border-slate-700 bg-slate-900/30 text-slate-400 hover:text-emerald-400 hover:border-emerald-500/50 hover:bg-emerald-950/10 h-11 text-xs uppercase tracking-wide transition-all mb-2 ${isCreating ? "border-emerald-500/50 bg-emerald-950/20 text-emerald-400 ring-1 ring-emerald-500/20" : ""}`}>
+                  <Button variant="outline" onClick={startNewContent} className={`w-full border-dashed border-border bg-background/30 text-muted-foreground hover:text-emerald-400 hover:border-emerald-500/50 hover:bg-emerald-950/10 h-11 text-xs uppercase tracking-wide transition-all mb-2 ${isCreating ? "border-emerald-500/50 bg-emerald-950/20 text-emerald-400 ring-1 ring-emerald-500/20" : ""}`}>
                     <Plus className="w-4 h-4 mr-2" /> {isCreating ? "Preenchendo Novo..." : "Adicionar Novo Conteúdo"}
                   </Button>
                   
@@ -1026,30 +1014,30 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                         onClick={() => handleSelectContent(c.id, c)} 
                         className={`
                           group flex items-center p-3 rounded-lg border cursor-move transition-all relative overflow-hidden 
-                          ${selectedContentId === c.id ? "bg-violet-600/10 border-violet-500/50 shadow-[inset_4px_0_0_0_#8b5cf6]" : "bg-[#1E293B] border-slate-700/50 hover:border-slate-600 hover:bg-[#26334d]"}
+                          ${selectedContentId === c.id ? "bg-violet-600/10 border-violet-500/50 shadow-[inset_4px_0_0_0_#8b5cf6]" : "bg-card border-border/50 hover:border-border hover:bg-muted"}
                           ${draggedItemIndex === idx ? "opacity-50 border-dashed" : "opacity-100"}
                         `}
                       >
-                        <div className="mr-3 text-slate-600 group-hover:text-slate-400 flex flex-col items-center justify-center w-6"><span className="text-[9px] text-slate-600 font-mono mb-1">{idx + 1}</span><GripVertical size={14}/></div>
+                        <div className="mr-3 text-muted-foreground group-hover:text-muted-foreground flex flex-col items-center justify-center w-6"><span className="text-[9px] text-muted-foreground font-mono mb-1">{idx + 1}</span><GripVertical size={14}/></div>
                         <div className="flex-1 min-w-0 py-1">
-                          <p className={`text-sm font-medium truncate ${selectedContentId === c.id ? "text-violet-200" : "text-slate-300"}`}>{c.titulo || "(Sem título)"}</p>
+                          <p className={`text-sm font-medium truncate ${selectedContentId === c.id ? "text-violet-200" : "text-muted-foreground"}`}>{c.titulo || "(Sem título)"}</p>
                           <div className="flex items-center gap-2 mt-1.5">
-                            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500 bg-[#0F172A] px-1.5 py-0.5 rounded border border-slate-800">{c.tipo}</span>
+                            <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground bg-background px-1.5 py-0.5 rounded border border-border">{c.tipo}</span>
                             {activityLinks[c.id]?.length > 0 && (<span className="text-[10px] text-emerald-400 flex items-center gap-1 bg-emerald-950/30 px-1.5 py-0.5 rounded border border-emerald-900/50"><CheckSquare size={10} /> {activityLinks[c.id].length}</span>)}
                           </div>
                         </div>
                         {selectedContentId === c.id && (<div className="absolute right-0 top-0 bottom-0 w-1 bg-gradient-to-b from-violet-500 to-fuchsia-500"></div>)}
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-600 opacity-0 group-hover:opacity-100 hover:text-red-400 hover:bg-red-950/30 transition-opacity absolute right-2" onClick={(e) => { e.stopPropagation(); void handleDeleteContentWithSync(c.id); }}><Trash2 size={14} /></Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-red-400 hover:bg-red-950/30 transition-opacity absolute right-2" onClick={(e) => { e.stopPropagation(); void handleDeleteContentWithSync(c.id); }}><Trash2 size={14} /></Button>
                       </div>
                     ))}
-                    {contents.length === 0 && (<div className="text-center py-10 px-4 border border-dashed border-slate-800 rounded-lg"><p className="text-sm text-slate-500">Nenhum conteúdo criado.</p></div>)}
+                    {contents.length === 0 && (<div className="text-center py-10 px-4 border border-dashed border-border rounded-lg"><p className="text-sm text-muted-foreground">Nenhum conteúdo criado.</p></div>)}
                   </div>
                 </div>
               </div>
             </ScrollArea>
           </aside>
 
-          <main className="flex-1 bg-[#0b1120] flex flex-col min-w-0 h-full overflow-hidden relative">
+          <main className="flex-1 bg-background flex flex-col min-w-0 h-full overflow-hidden relative">
             <ScrollArea className="h-full w-full">
               <div className="p-6 max-w-5xl mx-auto space-y-6 pb-40">
                 
@@ -1057,7 +1045,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
 
                 {!isCreating && selectedContentId && (
                   <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "conteudo" | "atividades" | "cards")} className="w-full">
-                    <TabsList className="bg-[#1E293B] border border-slate-700/50 p-1 mb-6 h-auto w-full justify-start rounded-lg">
+                    <TabsList className="bg-card border border-border/50 p-1 mb-6 h-auto w-full justify-start rounded-lg">
                       <TabsTrigger value="conteudo" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white flex-1 h-9"><FileText className="w-4 h-4 mr-2"/> Conteúdo</TabsTrigger>
                       <TabsTrigger value="atividades" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white flex-1 h-9"><LayoutList className="w-4 h-4 mr-2"/> Atividades</TabsTrigger>
                       <TabsTrigger value="cards" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white flex-1 h-9"><BrainCircuit className="w-4 h-4 mr-2"/> Cards</TabsTrigger>
@@ -1066,7 +1054,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                     <TabsContent value="conteudo" className="mt-0 outline-none">{renderContentForm("Editar Conteúdo")}</TabsContent>
 
                     <TabsContent value="atividades" className="mt-0 outline-none">
-                      <div className={`p-6 rounded-xl border space-y-6 shadow-lg ${darkCardClass}`}>
+                      <div className={`p-6 rounded-lg border space-y-6 shadow-lg ${darkCardClass}`}>
                         <div className="flex justify-between items-center mb-4">
                           <h4 className="text-lg font-bold text-white flex items-center gap-2"><CheckSquare className="text-violet-400"/> Atividades Vinculadas</h4>
                           <Badge variant="outline" className="border-violet-500 text-violet-400">{(activityLinks[selectedContentId] || []).length} Total</Badge>
@@ -1076,46 +1064,47 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                             const a = activities.find(act => act.id === aid);
                             if(!a) return null;
                             return (
-                              <div key={aid} className="flex items-center justify-between p-3 bg-[#111827] border border-slate-700 rounded-lg">
+                              <div key={aid} className="flex items-center justify-between p-3 bg-background border border-border rounded-lg">
                                 <div className="flex items-center gap-3 overflow-hidden">
                                   <div className="w-8 h-8 rounded bg-violet-900/30 text-violet-400 flex items-center justify-center font-bold border border-violet-500/20">{a.tipo?.slice(0,1).toUpperCase()}</div>
-                                  <div className="truncate"><p className="font-medium text-slate-200 truncate">{a.titulo}</p></div>
+                                  <div className="truncate"><p className="font-medium text-foreground truncate">{a.titulo}</p></div>
                                 </div>
                                 <div className="flex gap-1">
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500 hover:text-white" onClick={() => { setActivityForm({ ...a, id: a.id, descricao: a.descricao || "", tipo: a.tipo || "quiz", data_entrega: a.data_entrega || "" }); setSelectedActivityId(a.id.toString()); props.loadQuestions(a.id); }}><Pencil size={14} /></Button>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500 hover:text-red-400" onClick={() => toggleActivityLink(selectedContentId!, aid, false)}><X size={14} /></Button>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-white" onClick={() => { setActivityForm({ ...a, id: a.id, descricao: a.descricao || "", tipo: a.tipo || "quiz", data_entrega: a.data_entrega || "" }); setSelectedActivityId(a.id.toString()); props.loadQuestions(a.id); }}><Pencil size={14} /></Button>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-400" onClick={() => toggleActivityLink(selectedContentId!, aid, false)}><X size={14} /></Button>
                                 </div>
                               </div>
                             )
                           })}
-                          {(activityLinks[selectedContentId] || []).length === 0 && <div className="col-span-full py-8 text-center border border-dashed border-slate-700 rounded-lg text-slate-500 text-sm">Nenhuma atividade vinculada.</div>}
+                          {(activityLinks[selectedContentId] || []).length === 0 && <div className="col-span-full py-8 text-center border border-dashed border-border rounded-lg text-muted-foreground text-sm">Nenhuma atividade vinculada.</div>}
                         </div>
                         
-                        <Separator className="bg-slate-700"/>
+                        <Separator className="bg-muted"/>
                         
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                           <div className="space-y-3">
                             <Label className={darkLabelClass}>Vincular Existente</Label>
-                            <div className="bg-[#111827] p-3 rounded-lg border border-slate-700 h-[180px] overflow-y-auto">
+                            <div className="bg-background p-3 rounded-lg border border-border h-[180px] overflow-y-auto">
                               <div className="flex flex-wrap gap-2">
                                 {activities.map(a => {
                                   if((activityLinks[selectedContentId] || []).includes(a.id)) return null;
-                                  return <button key={a.id} onClick={() => toggleActivityLink(selectedContentId, a.id, true)} className="px-2 py-1 bg-slate-800 border border-slate-600 rounded text-xs text-slate-300 hover:border-violet-500 transition-colors">+ {a.titulo}</button>
+                                  return <button key={a.id} onClick={() => toggleActivityLink(selectedContentId, a.id, true)} className="px-2 py-1 bg-muted border border-border rounded text-xs text-muted-foreground hover:border-violet-500 transition-colors">+ {a.titulo}</button>
                                 })}
                               </div>
                             </div>
                           </div>
                           
-                          <div className="space-y-3 bg-[#111827] p-4 rounded-lg border border-slate-700">
+                          <div className="space-y-3 bg-background p-4 rounded-lg border border-border">
                             <Label className={darkLabelClass}>Criar Nova Atividade</Label>
                             <Input placeholder="Título..." value={newActivityForm.titulo || ""} onChange={(e) => setNewActivityForm({...newActivityForm, titulo: e.target.value})} className={darkInputClass}/>
                             <div className="grid grid-cols-3 gap-2">
                                 <Select value={newActivityForm.tipo || "quiz"} onValueChange={(v) => setNewActivityForm({...newActivityForm, tipo: v})}>
                                     <SelectTrigger className={darkInputClass}><SelectValue placeholder="Tipo"/></SelectTrigger>
-                                    <SelectContent className="bg-[#1E293B] border-slate-700 text-slate-200">
-                                        {TIPOS_DE_ATIVIDADE.map((t) => (
-                                          <SelectItem key={t.tipo} value={t.tipo}>{t.rotulo}</SelectItem>
-                                        ))}
+                                    <SelectContent className="bg-card border-border text-foreground">
+                                        <SelectItem value="quiz">Quiz (Múltipla)</SelectItem>
+                                        <SelectItem value="fill_blank">Completar</SelectItem>
+                                        <SelectItem value="true_false">V/F</SelectItem>
+                                        <SelectItem value="essay">Dissertação</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 <Input
@@ -1129,14 +1118,14 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                 />
                                 <Input type="datetime-local" className={darkInputClass} value={newActivityForm.data_entrega || ""} onChange={(e) => setNewActivityForm({...newActivityForm, data_entrega: e.target.value})} />
                             </div>
-                            <Button onClick={handleCreateActivityWithQuestionWithSync} className="bg-white text-slate-900 hover:bg-slate-200 w-full mt-2"><Plus size={16} className="mr-2"/> Criar</Button>
+                            <Button onClick={handleCreateActivityWithQuestionWithSync} className="bg-white text-primary-foreground hover:bg-secondary w-full mt-2"><Plus size={16} className="mr-2"/> Criar</Button>
                           </div>
                         </div>
 
                         {/* EDITOR DE ATIVIDADE */}
                         {selectedActivityId && (
-                          <div className="bg-[#111827] p-5 rounded-lg border border-violet-500/30 animate-in fade-in slide-in-from-bottom-4 scroll-mt-20">
-                            <div className="flex justify-between items-center mb-4 border-b border-slate-700 pb-3">
+                          <div className="bg-background p-5 rounded-lg border border-violet-500/30 animate-in fade-in slide-in-from-bottom-4 scroll-mt-20">
+                            <div className="flex justify-between items-center mb-4 border-b border-border pb-3">
                               <h4 className="text-violet-400 font-bold">Editando Atividade</h4>
                               <Button variant="ghost" size="sm" onClick={() => setSelectedActivityId("")} className="h-6 text-xs">Fechar</Button>
                             </div>
@@ -1149,10 +1138,11 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                 <Label className={darkLabelClass}>Tipo de Questão</Label>
                                 <Select value={activityForm.tipo || "quiz"} onValueChange={(v) => setActivityForm({...activityForm, tipo: v})}>
                                     <SelectTrigger className={darkInputClass}><SelectValue/></SelectTrigger>
-                                    <SelectContent className="bg-[#1E293B] border-slate-700 text-slate-200">
-                                        {TIPOS_DE_ATIVIDADE.map((t) => (
-                                          <SelectItem key={t.tipo} value={t.tipo}>{t.rotulo}</SelectItem>
-                                        ))}
+                                    <SelectContent className="bg-card border-border text-foreground">
+                                        <SelectItem value="quiz">Quiz (Múltipla)</SelectItem>
+                                        <SelectItem value="fill_blank">Completar</SelectItem>
+                                        <SelectItem value="true_false">Verdadeiro/Falso</SelectItem>
+                                        <SelectItem value="essay">Dissertação</SelectItem>
                                     </SelectContent>
                                 </Select>
                               </div>
@@ -1161,15 +1151,15 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                 <Textarea value={activityForm.descricao || ""} onChange={e => setActivityForm({...activityForm, descricao: e.target.value})} className={`${darkInputClass} col-span-2`} placeholder="Descrição" rows={2}/>
                               </div>
                             </div>
-                            <Button size="sm" onClick={handleSaveActivityWithSync} className="w-full bg-slate-700 hover:bg-slate-600 mb-4">Salvar Detalhes</Button>
+                            <Button size="sm" onClick={handleSaveActivityWithSync} className="w-full bg-muted hover:bg-muted mb-4">Salvar Detalhes</Button>
                             
                             {/* --- RENDERIZAÇÃO CONDICIONAL DA QUESTÃO --- */}
-                            <div className="space-y-3 pt-4 border-t border-slate-700">
-                              <h5 className="text-slate-300 font-semibold text-sm flex items-center gap-2">
+                            <div className="space-y-3 pt-4 border-t border-border">
+                              <h5 className="text-muted-foreground font-semibold text-sm flex items-center gap-2">
                                 <BrainCircuit size={16}/> Configurar Questão ({activityForm.tipo?.toUpperCase()})
                               </h5>
                               
-                              <div className="mt-2 space-y-3 bg-[#1E293B]/50 p-4 rounded border border-dashed border-slate-700">
+                              <div className="mt-2 space-y-3 bg-card/50 p-4 rounded border border-dashed border-border">
                                 <div>
                                     <Label className={darkLabelClass}>
                                         {activityForm.tipo === 'fill_blank' ? "Frase com Lacuna (Use _ para a lacuna)" : "Enunciado / Pergunta"}
@@ -1177,54 +1167,31 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                     <Textarea value={questionForm.enunciado || ""} onChange={e => setQuestionForm({...questionForm, enunciado: e.target.value})} className={`${darkInputClass} text-sm min-h-[60px]`} placeholder="Digite a pergunta..."/>
                                 </div>
                                 
-                                {/* 0. MISSAO -- o unico tipo em que o formato e de cada ITEM.
-                                       Sem este ramo, `tipo = 'missao'` nao casava nenhuma
-                                       condicao e o professor via formulario VAZIO, sem erro. */}
-                                {ehMissao(activityForm.tipo) && (
-                                    <div className="space-y-1.5">
-                                        <Label className={darkLabelClass}>Formato deste item</Label>
-                                        <Select
-                                            value={questionForm.tipo || "multipla"}
-                                            onValueChange={(v) => setQuestionForm({ ...questionForm, tipo: v })}
-                                        >
-                                            <SelectTrigger className={darkInputClass}><SelectValue/></SelectTrigger>
-                                            <SelectContent className="bg-[#1E293B] border-slate-700 text-slate-200">
-                                                {FORMATOS_DE_QUESTAO.map((f) => (
-                                                    <SelectItem key={f.formato} value={f.formato}>{f.rotulo}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        <p className="text-[11px] text-slate-500">
-                                            Uma missão pode misturar formatos — cada item escolhe o seu.
-                                        </p>
-                                    </div>
-                                )}
-
                                 {/* 1. QUIZ (Multipla Escolha) */}
-                                {formatoDaQuestao(activityForm.tipo, questionForm.tipo) === 'multipla' && (
+                                {activityForm.tipo === 'quiz' && (
                                     <div className="space-y-2">
                                         <Label className={darkLabelClass}>Alternativas</Label>
                                         {questionOptions.map((opt, i) => (
                                         <div key={i} className="flex gap-2 items-center">
                                             <Input value={opt || ""} onChange={e => props.updateQuestionOption(i, e.target.value)} className={`${darkInputClass} h-8 text-xs`} placeholder={`Opção ${i+1}`}/>
-                                            <button onClick={() => setQuestionForm({...questionForm, resposta_correta: opt})} className={`w-5 h-5 flex items-center justify-center rounded-full border ${questionForm.resposta_correta === opt && opt !== "" ? "bg-green-500 border-green-500 text-white" : "border-slate-600 text-transparent hover:border-slate-400"}`} title="Marcar Correta">
+                                            <button onClick={() => setQuestionForm({...questionForm, resposta_correta: opt})} className={`w-5 h-5 flex items-center justify-center rounded-full border ${questionForm.resposta_correta === opt && opt !== "" ? "bg-green-500 border-green-500 text-white" : "border-border text-transparent hover:border-slate-400"}`} title="Marcar Correta">
                                                 <CheckSquare size={12} fill="currentColor" />
                                             </button>
-                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-600 hover:text-red-400" onClick={() => props.removeQuestionOption(i)}><X size={12}/></Button>
+                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-red-400" onClick={() => props.removeQuestionOption(i)}><X size={12}/></Button>
                                         </div>
                                         ))}
-                                        <Button variant="ghost" size="sm" onClick={props.addQuestionOption} className="text-xs h-7 text-slate-400 hover:text-white w-full mt-1 border border-dashed border-slate-700">+ Adicionar Opção</Button>
+                                        <Button variant="ghost" size="sm" onClick={props.addQuestionOption} className="text-xs h-7 text-muted-foreground hover:text-white w-full mt-1 border border-dashed border-border">+ Adicionar Opção</Button>
                                     </div>
                                 )}
 
                                 {/* 2. TRUE / FALSE */}
-                                {formatoDaQuestao(activityForm.tipo, questionForm.tipo) === 'verdadeiro_falso' && (
+                                {activityForm.tipo === 'true_false' && (
                                     <div className="flex gap-4">
                                         {["Verdadeiro", "Falso"].map(opt => (
                                             <button 
                                                 key={opt}
                                                 onClick={() => setQuestionForm({...questionForm, resposta_correta: opt})}
-                                                className={`flex-1 py-3 rounded-lg border text-sm font-semibold transition-all ${questionForm.resposta_correta === opt ? "bg-green-600 border-green-500 text-white" : "bg-slate-800 border-slate-600 text-slate-400 hover:bg-slate-700"}`}
+                                                className={`flex-1 py-3 rounded-lg border text-sm font-semibold transition-all ${questionForm.resposta_correta === opt ? "bg-green-600 border-green-500 text-white" : "bg-muted border-border text-muted-foreground hover:bg-muted"}`}
                                             >
                                                 {opt}
                                             </button>
@@ -1233,7 +1200,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                 )}
 
                                 {/* 3. FILL BLANK */}
-                                {formatoDaQuestao(activityForm.tipo, questionForm.tipo) === 'fill_blank' && (
+                                {activityForm.tipo === 'fill_blank' && (
                                     <div>
                                         <Label className={darkLabelClass}>Palavra/Resposta Correta</Label>
                                         <Input 
@@ -1247,7 +1214,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
 
                                 {/* 4. ESSAY */}
                                 {activityForm.tipo === 'essay' && (
-                                    <div className="p-3 bg-slate-800/50 rounded border border-slate-700 text-xs text-slate-400">
+                                    <div className="p-3 bg-muted/50 rounded border border-border text-xs text-muted-foreground">
                                         <p>Em atividades dissertativas, o aluno escreverá um texto livre. Você pode usar o campo abaixo para salvar um gabarito ou guia de correção (opcional, não visível ao aluno).</p>
                                         <Textarea 
                                             value={questionForm.resposta_correta || ""} 
@@ -1273,7 +1240,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
 
                                 {/* Midia vinculada a questao */}
                                 <div>
-                                  <Label className={darkLabelClass}>Mídia vinculada <span className="normal-case font-normal text-slate-500">(URL de imagem, vídeo ou áudio - opcional)</span></Label>
+                                  <Label className={darkLabelClass}>Mídia vinculada <span className="normal-case font-normal text-muted-foreground">(URL de imagem, vídeo ou áudio - opcional)</span></Label>
                                   <Input
                                     value={questionForm.midia_url || ""}
                                     onChange={e => setQuestionForm({...questionForm, midia_url: e.target.value})}
@@ -1308,7 +1275,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                     </Button>
                                   </div>
                                   {questionForm.midia_url && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(questionForm.midia_url) && (
-                                    <img src={questionForm.midia_url} alt="preview" className="mt-2 max-h-28 rounded border border-slate-700 object-contain" />
+                                    <img src={questionForm.midia_url} alt="preview" className="mt-2 max-h-28 rounded border border-border object-contain" />
                                   )}
                                 </div>
 
@@ -1325,7 +1292,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                     </TabsContent>
 
                     <TabsContent value="cards" className="mt-0 outline-none">
-                      <div className={`p-6 rounded-xl border shadow-lg ${darkCardClass}`}>
+                      <div className={`p-6 rounded-lg border shadow-lg ${darkCardClass}`}>
                         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
                           <div className="space-y-3">
                             <div className="flex items-center justify-between">
@@ -1356,13 +1323,13 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                       className={`p-3 rounded-lg border transition-colors cursor-pointer ${
                                         isSelected
                                           ? "bg-violet-900/20 border-violet-500/40"
-                                          : "bg-[#111827] border-slate-700 hover:border-slate-600"
+                                          : "bg-background border-border hover:border-border"
                                       }`}
                                     >
                                       <div className="flex items-start gap-2 justify-between">
                                         <div className="min-w-0">
-                                          <p className="font-semibold text-sm text-slate-200 truncate">{c.titulo || "(Sem título)"}</p>
-                                          <p className="text-xs text-slate-400 mt-0.5 line-clamp-2">
+                                          <p className="font-semibold text-sm text-foreground truncate">{c.titulo || "(Sem título)"}</p>
+                                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
                                             {c.descricao || "Sem descrição."}
                                           </p>
                                         </div>
@@ -1370,7 +1337,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                           <Button
                                             variant="ghost"
                                             size="icon"
-                                            className="h-7 w-7 text-slate-500 hover:text-white"
+                                            className="h-7 w-7 text-muted-foreground hover:text-white"
                                             onClick={(event) => {
                                               event.stopPropagation();
                                               selectCardForEdit(c);
@@ -1381,7 +1348,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                           <Button
                                             variant="ghost"
                                             size="icon"
-                                            className="h-7 w-7 text-slate-500 hover:text-red-400"
+                                            className="h-7 w-7 text-muted-foreground hover:text-red-400"
                                             onClick={(event) => {
                                               event.stopPropagation();
                                               void handleDeleteCardWithSync(c.id);
@@ -1423,7 +1390,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                   );
                                 })}
                                 {cards.length === 0 && (
-                                  <div className="text-center text-xs text-slate-600 py-10">
+                                  <div className="text-center text-xs text-muted-foreground py-10">
                                     Nenhum card para este tópico.
                                   </div>
                                 )}
@@ -1431,7 +1398,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                             </div>
                           </div>
 
-                          <div className="space-y-4 bg-[#111827] p-4 rounded-lg border border-slate-700 xl:sticky xl:top-4">
+                          <div className="space-y-4 bg-background p-4 rounded-lg border border-border xl:sticky xl:top-4">
                             <div className="flex items-center justify-between">
                               <Label className={darkLabelClass} style={{ marginBottom: 0 }}>
                                 {cardForm.id ? "Editar Card" : "Novo Card"}
@@ -1440,7 +1407,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="h-7 text-xs text-slate-400 hover:text-white"
+                                  className="h-7 text-xs text-muted-foreground hover:text-white"
                                   onClick={resetCardEditor}
                                 >
                                   <Plus size={12} className="mr-1" />
@@ -1469,7 +1436,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                             )}
 
                             <div className="space-y-2">
-                              <Label className="text-[11px] uppercase tracking-wider text-slate-400">Conteúdo vinculado</Label>
+                              <Label className="text-[11px] uppercase tracking-wider text-muted-foreground">Conteúdo vinculado</Label>
                               <select
                                 className={`${darkInputClass} h-9`}
                                 value={resolvedCardConteudoId}
@@ -1498,7 +1465,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                             </div>
 
                             <div className="space-y-2">
-                              <label className="flex items-center gap-2 text-xs text-slate-400">
+                              <label className="flex items-center gap-2 text-xs text-muted-foreground">
                                 <input
                                   type="checkbox"
                                   checked={isCardReuseEnabled}
@@ -1582,7 +1549,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                               {cardForm.id ? (
                                 <Button
                                   variant="outline"
-                                  className="border-slate-600 text-slate-300 hover:text-white"
+                                  className="border-border text-muted-foreground hover:text-white"
                                   onClick={resetCardEditor}
                                 >
                                   Cancelar
@@ -1597,11 +1564,11 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                 )}
 
                 {!isCreating && !selectedContentId && (
-                  <div className="flex flex-col items-center justify-center h-full text-slate-500 opacity-60">
-                    <div className="w-24 h-24 bg-slate-800/50 rounded-full flex items-center justify-center mb-6 animate-pulse">
-                      <FileText className="w-12 h-12 text-slate-600" />
+                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-60">
+                    <div className="w-24 h-24 bg-muted/50 rounded-full flex items-center justify-center mb-6 animate-pulse">
+                      <FileText className="w-12 h-12 text-muted-foreground" />
                     </div>
-                    <h3 className="text-xl font-semibold text-slate-300">Nenhum conteudo selecionado</h3>
+                    <h3 className="text-xl font-semibold text-muted-foreground">Nenhum conteudo selecionado</h3>
                     <p className="text-sm mt-2">Selecione um item a esquerda ou crie um novo.</p>
                   </div>
                 )}
@@ -1614,12 +1581,12 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
 
     {/* -- AI Suggestions Dialog -- */}
     <Dialog open={aiDialogOpen} onOpenChange={setAiDialogOpen}>
-      <DialogContent className="max-w-2xl w-full bg-[#0F172A] border-slate-800 text-slate-200 max-h-[90vh] flex flex-col overflow-hidden">
+      <DialogContent className="max-w-2xl w-full bg-background border-border text-foreground max-h-[90vh] flex flex-col overflow-hidden">
         <DialogTitle className="text-lg font-bold text-white flex items-center gap-2">
           <Wand2 className="w-5 h-5 text-violet-400" />
           Cards e Atividades Sugeridas
         </DialogTitle>
-        <DialogDescription className="text-slate-400 text-sm">
+        <DialogDescription className="text-muted-foreground text-sm">
           Sugestões para o conteúdo selecionado. Selecione em lote o que deseja criar.
         </DialogDescription>
 
@@ -1628,7 +1595,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
             <div className="space-y-6 py-2">
               {/* Cards */}
               <div className="space-y-2">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                   Cards Sugeridos ({aiSuggestions.cards.length})
                 </p>
                 <div className="space-y-2">
@@ -1638,7 +1605,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                       className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
                         selectedCards.has(idx)
                           ? "bg-violet-900/20 border-violet-500/40"
-                          : "bg-[#1E293B] border-slate-700 hover:border-slate-600"
+                          : "bg-card border-border hover:border-border"
                       }`}
                       onClick={() => {
                         const next = new Set(selectedCards);
@@ -1647,12 +1614,12 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                         setSelectedCards(next);
                       }}
                     >
-                      <div className={`w-4 h-4 mt-0.5 rounded border flex items-center justify-center shrink-0 ${selectedCards.has(idx) ? "bg-violet-600 border-violet-600" : "border-slate-600"}`}>
+                      <div className={`w-4 h-4 mt-0.5 rounded border flex items-center justify-center shrink-0 ${selectedCards.has(idx) ? "bg-violet-600 border-violet-600" : "border-border"}`}>
                         {selectedCards.has(idx) && <CheckSquare className="w-3 h-3 text-white" />}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-slate-200">{card.titulo}</p>
-                        <p className="text-xs text-slate-400 mt-0.5">{card.descricao}</p>
+                        <p className="text-sm font-semibold text-foreground">{card.titulo}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{card.descricao}</p>
                       </div>
                     </div>
                   ))}
@@ -1661,7 +1628,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
 
               {/* Atividades */}
               <div className="space-y-2">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                   Atividades Sugeridas ({aiSuggestions.atividades.length})
                 </p>
                 <div className="space-y-2">
@@ -1671,7 +1638,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                       className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
                         selectedAtividades.has(idx)
                           ? "bg-emerald-900/20 border-emerald-500/40"
-                          : "bg-[#1E293B] border-slate-700 hover:border-slate-600"
+                          : "bg-card border-border hover:border-border"
                       }`}
                       onClick={() => {
                         const next = new Set(selectedAtividades);
@@ -1680,19 +1647,19 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                         setSelectedAtividades(next);
                       }}
                     >
-                      <div className={`w-4 h-4 mt-0.5 rounded border flex items-center justify-center shrink-0 ${selectedAtividades.has(idx) ? "bg-emerald-600 border-emerald-600" : "border-slate-600"}`}>
+                      <div className={`w-4 h-4 mt-0.5 rounded border flex items-center justify-center shrink-0 ${selectedAtividades.has(idx) ? "bg-emerald-600 border-emerald-600" : "border-border"}`}>
                         {selectedAtividades.has(idx) && <CheckSquare className="w-3 h-3 text-white" />}
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <p className="text-sm font-semibold text-slate-200">{at.titulo}</p>
-                          <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500 bg-[#0F172A] px-1.5 py-0.5 rounded border border-slate-800">
+                          <p className="text-sm font-semibold text-foreground">{at.titulo}</p>
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground bg-background px-1.5 py-0.5 rounded border border-border">
                             {at.tipo}
                           </span>
                         </div>
-                        <p className="text-xs text-slate-400 mt-0.5">{at.enunciado}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{at.enunciado}</p>
                         {at.alternativas && at.alternativas.length > 0 && (
-                          <p className="text-[10px] text-slate-500 mt-1">
+                          <p className="text-[10px] text-muted-foreground mt-1">
                             Alternativas: {at.alternativas.join(" · ")}{" -> "}<span className="text-emerald-400">{at.resposta_correta}</span>
                           </p>
                         )}
@@ -1705,8 +1672,8 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
           )}
         </ScrollArea>
 
-        <div className="flex justify-end gap-3 pt-4 border-t border-slate-800 shrink-0">
-          <Button variant="ghost" onClick={() => setAiDialogOpen(false)} className="text-slate-400 hover:text-white">
+        <div className="flex justify-end gap-3 pt-4 border-t border-border shrink-0">
+          <Button variant="ghost" onClick={() => setAiDialogOpen(false)} className="text-muted-foreground hover:text-white">
             Cancelar
           </Button>
           <Button

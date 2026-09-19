@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Hexagon, Mail, MailCheck } from "lucide-react";
+import { ArrowLeft, Mail, MailCheck } from "lucide-react";
+import { AuthBrand, AuthScenery } from "@/components/auth/AuthScenery";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,14 +49,11 @@ export default function EsqueciSenha() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background via-secondary/5 to-primary/5">
-      <Card className="w-full max-w-md">
+    <div className="auth-immersive min-h-screen flex items-center justify-center p-4">
+      <AuthScenery />
+      <Card className="auth-panel w-full max-w-md">
         <CardHeader className="space-y-3">
-          <Link to="/" className="mx-auto w-fit">
-            <div className="p-4 bg-zinc-900/50 rounded-2xl border border-white/10 backdrop-blur-md">
-              <Hexagon className="h-8 w-8 text-primary" />
-            </div>
-          </Link>
+          <div className="text-center"><AuthBrand /></div>
           <CardTitle className="text-2xl font-bold text-center">Recuperar senha</CardTitle>
           <CardDescription className="text-center">
             {enviado

@@ -505,23 +505,10 @@ async function generateAfterPrimaryGeminiFailure(
     }
   }
 
-  // O motivo do Gemini precisa entrar na MENSAGEM, não só em `cause`. O que
-  // chega ao banco é `err.message` — `markPersonalizacaoFailed(id,
-  // err?.message ?? String(err), fence)` no handler de /api/personalizar —, e
-  // `cause` não é serializado em nenhum ponto desse caminho. Resultado: a
-  // falha do PRIMÁRIO ficava invisível e só a do fallback aparecia.
-  //
-  // Medido no tópico 128, perfil survivor: o registro dizia apenas
-  // "OpenAI: 429 You have no credits remaining", sem dizer o que derrubou o
-  // Gemini — que é justamente a causa raiz a investigar, já que a OpenAI é só
-  // a rede de segurança. Mesmo padrão do modelo de imagem aposentado, que
-  // mascarava a falha real do primário.
-  const geminiReason = String(reason ?? "").trim() || "motivo não informado";
   const openaiReason = errorDetails(lastOpenAIError).slice(0, 500);
   throw new Error(
     "A geração falhou no Gemini e as tentativas obrigatórias pela OpenAI "
-      + `também falharam. Gemini: ${geminiReason.slice(0, 500)}`
-      + ` | OpenAI: ${openaiReason}`,
+      + `também falharam. OpenAI: ${openaiReason}`,
     {
       cause: {
         gemini: reason,

@@ -954,6 +954,9 @@ export default function QuestionActivity({
               gap: isTrueFalseActivity ? 12 : undefined,
             };
           })()}
+          accessibilityRole="radio"
+          accessibilityState={{ checked: selectedOption === i }}
+          accessibilityLabel={alt}
         >
           {isTrueFalseActivity ? (
             <View
@@ -1306,6 +1309,8 @@ export default function QuestionActivity({
           alignItems: 'center',
           opacity: podeConfirmar && !validandoIA ? 1 : 0.5,
         }}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: !podeConfirmar || validandoIA }}
       >
         <Text style={{ color: '#fff', fontWeight: '700' }}>
           {validandoIA
@@ -1383,6 +1388,7 @@ export default function QuestionActivity({
             borderColor: profilePalette.accent,
             backgroundColor: profilePalette.accentMuted,
           }}
+          accessibilityRole="button"
         >
           <Text style={{ color: profilePalette.accent, fontWeight: '700' }}>
             {isPensante ? 'Tentar novamente (50% dos pontos)' : 'Responder novamente'}
@@ -1408,6 +1414,7 @@ export default function QuestionActivity({
             borderColor: profilePalette.border,
             backgroundColor: profilePalette.surface,
           }}
+          accessibilityRole="button"
         >
           <Text style={{ color: profilePalette.text, fontWeight: '700' }}>
             {mostrarResposta
@@ -1440,6 +1447,8 @@ export default function QuestionActivity({
               backgroundColor:
                 questaoIndex === 0 ? profilePalette.inactive : profilePalette.surface,
             }}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: questaoIndex === 0 }}
           >
             <Text style={{ color: profilePalette.text }}>Anterior</Text>
           </TouchableOpacity>
@@ -1464,6 +1473,8 @@ export default function QuestionActivity({
                   ? profilePalette.inactive
                   : profilePalette.surface,
             }}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: questaoIndex === questoes.length - 1 }}
           >
             <Text style={{ color: profilePalette.text }}>Próxima</Text>
           </TouchableOpacity>
@@ -1530,6 +1541,7 @@ export default function QuestionActivity({
                 borderRadius: 12,
                 alignItems: 'center',
               }}
+              accessibilityRole="button"
             >
               <Text style={{ color: Color.colorWhite, fontFamily: FontFamily.interMedium }}>Fechar</Text>
             </TouchableOpacity>

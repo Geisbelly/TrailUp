@@ -15,8 +15,12 @@ from app.core.settings import Settings, get_settings
 from app.db.migrations import upgrade_database_to_head
 from app.db.session import build_session_factory, execute_with_database_retry
 from app.services.checkpoint_retention import checkpoint_retention_loop, run_checkpoint_retention_once
-from app.services.group_analysis import classe_perfil_summary_loop
 from app.services.personalizacao_jobs import personalizacao_jobs_loop
+
+
+def _configure_windows_event_loop_policy() -> None:
+    if hasattr(asyncio, "WindowsSelectorEventLoopPolicy"):
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -77,28 +81,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             personalizacao_jobs_task = asyncio.create_task(personalizacao_jobs_loop(app))
         app.state.personalizacao_jobs_task = personalizacao_jobs_task
 
-        resumo_perfis_task = None
-        if (
-            app_settings.classe_perfil_summary_refresh_enabled
-            and database_url.startswith("postgres")
-        ):
-            resumo_perfis_task = asyncio.create_task(
-                classe_perfil_summary_loop(
-                    session_factory=app.state.session_factory,
-                    interval_min=app_settings.classe_perfil_summary_interval_min,
-                )
-            )
-        app.state.classe_perfil_summary_task = resumo_perfis_task
-
         try:
             yield
         finally:
-            if resumo_perfis_task is not None:
-                resumo_perfis_task.cancel()
-                try:
-                    await resumo_perfis_task
-                except asyncio.CancelledError:
-                    pass
             if personalizacao_jobs_task is not None:
                 personalizacao_jobs_task.cancel()
                 try:
@@ -130,9 +115,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     return app
 
 
-# A politica de event loop NAO fica aqui, e isso e deliberado. Ela existia neste
-# arquivo desde o commit inicial e nunca teve efeito: o uvicorn 0.43 passa
-# `loop_factory` para `asyncio.run`, e uma fabrica explicita ignora a politica.
-# Quem resolve o caso do Windows e' `app/__main__.py`; ver `app/event_loop.py`
-# para o porque.
+_configure_windows_event_loop_policy()
 app = create_app()

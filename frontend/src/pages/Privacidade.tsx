@@ -1,23 +1,12 @@
-import { Hexagon } from "lucide-react";
 import { Link } from "react-router-dom";
-import { Card } from "@/components/ui/card";
-import Footer from "@/components/Footer";
-import Header from "@/components/Header";
+import { PublicLayout, PublicPageTitle } from "@/components/PublicLayout";
 
 const Privacidade = () => {
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <Header />
-
-      {/* Content */}
-      <div className="py-12 px-4 pt-20">
-        <div className="container mx-auto max-w-4xl">
-          <h1 className="text-4xl md:text-5xl font-bold mb-8 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Política de Privacidade — TrailUp
-          </h1>
-
-          <Card className="p-8 border-primary/20 bg-card/50 backdrop-blur space-y-6">
+    <PublicLayout>
+        <div className="public-article">
+          <PublicPageTitle title="Política de Privacidade" eyebrow="TrailUp" />
+          <article className="space-y-8">
             <section className="bg-accent/10 p-4 rounded-lg border border-accent/20">
               <h2 className="text-xl font-bold mb-3 text-accent">Uso para Pesquisa Acadêmica</h2>
               <p className="text-muted-foreground leading-relaxed">
@@ -198,12 +187,9 @@ const Privacidade = () => {
                 Última atualização: {new Date().toLocaleDateString('pt-BR')}
               </p>
             </div>
-          </Card>
+          </article>
         </div>
-      </div>
-
-      <Footer />
-    </div>
+    </PublicLayout>
   );
 };
 

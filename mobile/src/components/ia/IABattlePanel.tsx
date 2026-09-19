@@ -337,6 +337,7 @@ export function IABattlePanel({ scope, surface = "inline" }: Props) {
             },
           ]}
           onPress={() => void setUserFeaturePreference("battle_mode", false)}
+          accessibilityRole="button"
         >
           <Text style={[styles.ghostButtonText, { color: palette.accentColor }]}>Desativar</Text>
         </Pressable>

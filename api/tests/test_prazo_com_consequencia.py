@@ -19,7 +19,7 @@ from alembic.config import Config
 from app.db import migrations
 
 API_ROOT = Path(__file__).resolve().parents[1]
-MIGRACAO = API_ROOT / "alembic" / "versions" / "20260912_01_prazo_com_consequencia.py"
+MIGRACAO = API_ROOT / "alembic" / "versions" / "20260919_01_prazo_com_consequencia.py"
 
 
 def _offline_alembic_config(output_buffer: StringIO | None = None) -> Config:
@@ -34,7 +34,7 @@ def _offline_alembic_config(output_buffer: StringIO | None = None) -> Config:
 def _sql() -> str:
     output = StringIO()
     migrations.command.upgrade(
-        _offline_alembic_config(output), "20260911_10:20260912_01", sql=True
+        _offline_alembic_config(output), "20260913_01:20260919_01", sql=True
     )
     return output.getvalue()
 

@@ -31,7 +31,7 @@ export default function StudentPresentationStep({
           <MonitorPlay className="w-6 h-6 text-primary" />
         </div>
         <h3 className="text-lg font-medium text-white">Estilo de Feedback</h3>
-        <p className="text-sm text-zinc-400 max-w-sm mx-auto">
+        <p className="text-sm text-muted-foreground max-w-sm mx-auto">
           Como você prefere que o TrailUp reaja quando você responde uma questão?
         </p>
       </div>
@@ -46,17 +46,17 @@ export default function StudentPresentationStep({
               key={opt.value}
               htmlFor={opt.value}
               className={cn(
-                "relative flex flex-col items-start p-5 rounded-xl border cursor-pointer transition-all duration-300 h-full",
-                "hover:bg-zinc-800/50 hover:-translate-y-1",
+                "relative flex flex-col items-start p-5 rounded-lg border cursor-pointer transition-all duration-300 h-full",
+                "hover:bg-muted/50 hover:-translate-y-1",
                 isSelected
                   ? "bg-primary/10 border-primary/50 shadow-[0_0_15px_-3px_rgba(124,58,237,0.3)]"
-                  : "bg-zinc-900/50 border-zinc-800 hover:border-zinc-700"
+                  : "bg-card/50 border-border hover:border-border"
               )}
             >
               <div className="flex justify-between w-full mb-4">
                 <div className={cn(
                   "p-2.5 rounded-lg transition-colors duration-300", 
-                  isSelected ? "bg-primary text-white shadow-lg shadow-primary/25" : "bg-zinc-800 text-zinc-400"
+                  isSelected ? "bg-primary text-white shadow-lg shadow-primary/25" : "bg-muted text-muted-foreground"
                 )}>
                   <Icon className="w-6 h-6" />
                 </div>
@@ -66,7 +66,7 @@ export default function StudentPresentationStep({
                   <div
                     className={cn(
                       "w-5 h-5 rounded-full border flex items-center justify-center transition-all duration-300",
-                      isSelected ? "border-primary bg-primary text-primary-foreground" : "border-zinc-600 bg-transparent"
+                      isSelected ? "border-primary bg-primary text-primary-foreground" : "border-border bg-transparent"
                     )}
                   >
                     {isSelected && <div className="w-2 h-2 rounded-full bg-white animate-in zoom-in duration-300" />}
@@ -75,10 +75,10 @@ export default function StudentPresentationStep({
               </div>
 
               <div className="space-y-2">
-                <span className={cn("text-base font-semibold transition-colors duration-300", isSelected ? "text-primary" : "text-zinc-200")}>
+                <span className={cn("text-base font-semibold transition-colors duration-300", isSelected ? "text-primary" : "text-foreground")}>
                   {opt.label}
                 </span>
-                <p className="text-sm text-zinc-500 leading-relaxed group-hover:text-zinc-400 transition-colors">
+                <p className="text-sm text-muted-foreground leading-relaxed group-hover:text-muted-foreground transition-colors">
                   {opt.description}
                 </p>
               </div>

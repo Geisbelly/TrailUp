@@ -9,16 +9,11 @@ para consumo rapido pelo endpoint docente.
 
 from __future__ import annotations
 
-import asyncio
 import json
-import logging
-from collections.abc import Awaitable, Callable
 from typing import Any
 
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-
-logger = logging.getLogger(__name__)
+from sqlalchemy.ext.asyncio import AsyncSession
 
 # Perfis BrainHex canonicos (chave normalizada -> rotulo de exibicao).
 BRAINHEX_PROFILES: dict[str, str] = {
@@ -240,104 +235,3 @@ class GroupAnalysisService:
         if row is not None:
             summary["atualizado_em"] = row["atualizado_em"]
         return summary
-
-
-# ── Atualizacao automatica ────────────────────────────────────────────────────
-#
-# O retrato da turma era gravado SO quando alguem chamava
-# `GET /personalizar/grupo/{classe_id}` -- a aba "Turma" do console. Sem essa
-# visita ele envelhecia em silencio, e a conta continuava certa enquanto o
-# numero na tela ficava velho.
-#
-# Medido em producao: a classe 32 tinha o retrato de 26/08, mostrando 6.25 de
-# `percentual_concluido` medio quando o unico aluno da turma estava com 99.06
-# em `classe_aluno` -- 16x de diferenca no painel do professor.
-#
-# A conta NAO foi reimplementada aqui nem em SQL: o laco chama o mesmo
-# `upsert_summary` do endpoint. Duas copias da mesma regra discordando foi o
-# defeito que este repo ja pagou caro (ver o merge de materiais e a audiencia
-# de conquista), e as sutilezas aqui convidam a isso -- o percentual da
-# distribuicao usa como denominador os alunos COM perfil, as medias usam
-# TODOS, e `perfil_predominante` e nulo em empate de proposito.
-
-async def classes_com_resumo_desatualizado(session: AsyncSession) -> list[int]:
-    """Classes cujo retrato falta ou e mais velho que a fonte.
-
-    Recalcular tudo a cada volta seria desperdicio; recalcular so o que mudou
-    mantem o laco barato mesmo com muitas turmas. As DUAS fontes contam:
-    `classe_aluno` move o desempenho medio, e `aluno_perfil` move a
-    distribuicao e o perfil predominante -- olhar so a primeira deixaria a
-    distribuicao velha quando um aluno refaz o quiz.
-    """
-    result = await session.execute(
-        text(
-            """
-            WITH fontes AS (
-              SELECT ca.classe_id,
-                     GREATEST(
-                       max(ca.updated_at),
-                       COALESCE(max(ap.atualizado_em), max(ca.updated_at))
-                     ) AS mudou_em
-                FROM classe_aluno ca
-                LEFT JOIN aluno_perfil ap ON ap.aluno_id = ca.aluno_id
-               GROUP BY ca.classe_id
-            )
-            SELECT f.classe_id
-              FROM fontes f
-              LEFT JOIN classe_perfil_summary cs ON cs.classe_id = f.classe_id
-             WHERE cs.classe_id IS NULL
-                OR cs.atualizado_em IS NULL
-                OR cs.atualizado_em < f.mudou_em
-             ORDER BY f.classe_id
-            """
-        )
-    )
-    return [int(valor) for valor in result.scalars().all()]
-
-
-async def run_classe_perfil_summary_once(
-    session_factory: async_sessionmaker[AsyncSession],
-) -> int:
-    """Atualiza o retrato das turmas desatualizadas. Devolve quantas mexeu.
-
-    Uma sessao por classe: um erro numa turma -- perfil sem linha em `perfil`,
-    por exemplo -- nao pode abortar a transacao das outras.
-    """
-    async with session_factory() as session:
-        classes = await classes_com_resumo_desatualizado(session)
-
-    atualizadas = 0
-    for classe_id in classes:
-        try:
-            async with session_factory() as session:
-                await GroupAnalysisService(session).upsert_summary(classe_id)
-                await session.commit()
-            atualizadas += 1
-        except asyncio.CancelledError:
-            raise
-        except Exception:
-            logger.warning(
-                "Falha ao atualizar resumo de perfis da classe %s",
-                classe_id,
-                exc_info=True,
-            )
-    return atualizadas
-
-
-async def classe_perfil_summary_loop(
-    *,
-    session_factory: async_sessionmaker[AsyncSession],
-    interval_min: int,
-    sleep_fn: Callable[[float], Awaitable[None]] = asyncio.sleep,
-) -> None:
-    intervalo = max(1, int(interval_min))
-    while True:
-        try:
-            mexidas = await run_classe_perfil_summary_once(session_factory)
-            if mexidas:
-                logger.info("Resumo de perfis atualizado em %s classe(s)", mexidas)
-        except asyncio.CancelledError:
-            raise
-        except Exception:
-            logger.warning("Falha no laco de resumo de perfis", exc_info=True)
-        await sleep_fn(intervalo * 60)

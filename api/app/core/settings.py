@@ -65,6 +65,15 @@ class Settings(BaseSettings):
         default=None, validation_alias=AliasChoices("arte_base_url", "ARTE_BASE_URL")
     )
 
+    # O retrato da turma (`classe_perfil_summary`) era gravado SO quando alguem
+    # abria a aba "Turma" do console. Sem visita ele envelhecia em silencio --
+    # medido: classe 32 com retrato de 26/08 mostrando 6.25 de percentual medio
+    # onde o aluno estava com 99.06. O laco recalcula apenas as classes cuja
+    # fonte mudou depois do ultimo retrato, entao o custo acompanha o
+    # movimento real da turma, nao o numero de turmas.
+    classe_perfil_summary_refresh_enabled: bool = True
+    classe_perfil_summary_interval_min: int = 15
+
     supabase_jwt_secret: str
     supabase_jwt_audience: str | None = "authenticated"
 
@@ -196,14 +205,6 @@ class Settings(BaseSettings):
     checkpoint_retention_days: int = 3
     checkpoint_retention_enabled: bool = True
     checkpoint_retention_interval_hours: int = 24
-    # O retrato da turma (`classe_perfil_summary`) era gravado SO quando alguem
-    # abria a aba "Turma" do console. Sem visita ele envelhecia em silencio --
-    # medido: classe 32 com retrato de 26/08 mostrando 6.25 de percentual medio
-    # onde o aluno estava com 99.06. O laco recalcula apenas as classes cuja
-    # fonte mudou depois do ultimo retrato, entao o custo acompanha o
-    # movimento real da turma, nao o numero de turmas.
-    classe_perfil_summary_refresh_enabled: bool = True
-    classe_perfil_summary_interval_min: int = 15
     personalizacao_job_concurrency: int = 2
     personalizacao_job_poll_sec: int = 5
     personalizacao_job_max_retries: int = 3

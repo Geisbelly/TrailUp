@@ -1,11 +1,9 @@
-import json
+﻿import json
 import logging
 from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.services.tipos_de_atividade import normalizar_tipo_de_atividade
 
 logger = logging.getLogger(__name__)
 
@@ -348,11 +346,7 @@ class ArtefatosPersonalizadosRepository:
             if not titulo:
                 titulo = "Atividade personalizada"
             descricao = str(atividade.get("descricao") or "").strip() or None
-            # O valor vem do payload do MODELO. Sem normalizar, `multipla_escolha`
-            # e afins entravam na coluna, e o console decide quais campos mostrar
-            # comparando `tipo` com string literal -- a atividade ficava
-            # ineditavel, com formulario vazio e sem erro nenhum.
-            tipo = normalizar_tipo_de_atividade(atividade.get("tipo"))
+            tipo = str(atividade.get("tipo") or "quiz").strip() or "quiz"
             conteudo_texto = self._pick_string(
                 atividade.get("conteudo"),
                 atividade.get("enunciado"),
@@ -452,11 +446,7 @@ class ArtefatosPersonalizadosRepository:
                 continue
             titulo = str(atividade.get("titulo") or "Atividade personalizada").strip() or "Atividade personalizada"
             descricao = str(atividade.get("descricao") or "").strip() or None
-            # O valor vem do payload do MODELO. Sem normalizar, `multipla_escolha`
-            # e afins entravam na coluna, e o console decide quais campos mostrar
-            # comparando `tipo` com string literal -- a atividade ficava
-            # ineditavel, com formulario vazio e sem erro nenhum.
-            tipo = normalizar_tipo_de_atividade(atividade.get("tipo"))
+            tipo = str(atividade.get("tipo") or "quiz").strip() or "quiz"
             pontuacao_maxima = atividade.get("pontuacao_maxima")
             metadata_atividade = json.dumps(
                 {

@@ -147,6 +147,8 @@ export default function StudyCardsBlock({ payload, WebView, progressKey }: Props
             setIndex(0);
             setShowBack(false);
           }}
+          accessibilityRole="button"
+          accessibilityLabel="Recomeçar"
           style={[
             styles.iconButton,
             { backgroundColor: palette.surface, borderColor: palette.border },
@@ -158,6 +160,8 @@ export default function StudyCardsBlock({ payload, WebView, progressKey }: Props
 
       <Pressable
         onPress={() => setShowBack((value) => !value)}
+        accessibilityRole="button"
+        accessibilityLabel="Virar card"
         style={[
           styles.card,
           { backgroundColor: palette.surfaceElevated, borderColor: palette.borderStrong },
@@ -209,6 +213,8 @@ export default function StudyCardsBlock({ payload, WebView, progressKey }: Props
             setIndex((value) => Math.max(0, value - 1));
             setShowBack(false);
           }}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: index === 0 }}
           style={[
             styles.navButton,
             { borderColor: palette.border, backgroundColor: palette.surface },
@@ -221,6 +227,8 @@ export default function StudyCardsBlock({ payload, WebView, progressKey }: Props
 
         <Pressable
           onPress={() => setShowBack((value) => !value)}
+          accessibilityRole="button"
+          accessibilityLabel={showBack ? "Ver frente" : "Virar"}
           style={[styles.flipButton, { backgroundColor: palette.accent }]}
         >
           <Ionicons name="sync" size={18} color={Color.colorWhite} />
@@ -233,6 +241,8 @@ export default function StudyCardsBlock({ payload, WebView, progressKey }: Props
             setIndex((value) => Math.min(cards.length - 1, value + 1));
             setShowBack(false);
           }}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: index >= cards.length - 1 }}
           style={[
             styles.navButton,
             { borderColor: palette.border, backgroundColor: palette.surface },

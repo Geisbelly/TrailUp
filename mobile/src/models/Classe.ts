@@ -1,8 +1,5 @@
 // src/models/Classe.ts
 import { getSessionSafe, supabase } from '@/database/supabase'
-import { construirEscritaDeTopico } from '@/services/progressoEscritas'
-import { gravarProgresso } from '@/services/progressoOutbox'
-import { mapearResumoDaClasse } from "@/utils/resumoDaClasse"
 import { buildClasseAcademicMetrics } from '@/utils/classeMetrics'
 import { Atividade } from './Atividade'
 import { ClasseResumo } from './ClasseResumo'
@@ -218,13 +215,17 @@ export class Classe {
       //
       // O que continua sendo do cliente e' a visita: qual foi a ultima
       // atividade tocada e quando o topico foi visto.
-      await gravarProgresso(
-        construirEscritaDeTopico({
-          alunoId: this.aluno_id,
-          topicoId,
-          ultimaAtividadeId: ultimaAtividade,
-        })
-      );
+      await supabase
+        .from('topico_aluno')
+        .upsert({
+          aluno_id: this.aluno_id,
+          topico_id: topicoId,
+          ultima_atividade: ultimaAtividade,
+          ultima_visualizacao: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'aluno_id,topico_id'
+        });
 
       // Local tambem nao: sobrescrever aqui faria a tela mostrar a conta errada
       // ate o proximo refresh, que e' de onde vem o numero do banco.
@@ -258,16 +259,27 @@ export class Classe {
     return c
   }
 
-  /**
-   * O mapeamento vive em `utils/resumoDaClasse` para ser testavel.
-   *
-   * Esta funcao lia TUDO em minusculo (`row.porcentagemconcluida`), e a view
-   * expoe camelCase (`porcentagemConcluida`) -- ela seleciona as colunas de
-   * `classe_aluno` sem apelidar, e la elas sao citadas. Onze das dezoito
-   * colunas nunca chegavam ao app, e `porcentagemConcluida` era sempre null.
-   */
   private static mapResumoRow(row: any): ClasseResumo {
-    return mapearResumoDaClasse(row) as ClasseResumo
+    return {
+      aluno_id: row.aluno_id,
+      classe_id: row.classe_id,
+      materia_nome: row.materia_nome ?? null,
+      materia_descricao: row.materia_descricao ?? null,
+      professor_nome: row.professor_nome ?? null,
+      professor_descricao: row.professor_descricao ?? null,
+      notaMedia: row.notamedia ?? null,
+      tempoMedioPorAtividade: row.tempomedioporatividade ?? null,
+      acertosPercentual: row.acertospercentual ?? null,
+      porcentagemConcluida: row.porcentagemconcluida ?? null,
+      ultimaAtividade: row.ultimaatividade ?? null,
+      tempoGastoMin: row.tempogastomin ?? null,
+      isComplete: row.iscomplete ?? null,
+      atividadesConcluidas: row.atividadesconcluidas ?? null,
+      recomendacaoTrilha: row.recomendacaotrilha ?? null,
+      modoOperacao: row.modooperacao ?? null,
+      insights: row.insights ?? null,
+      perfisDetectados: row.perfisdetectados ?? null,
+    }
   }
 
   private static async loadResumo(aluno_id: string, classe_id: number): Promise<ClasseResumo | null> {
