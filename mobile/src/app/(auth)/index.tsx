@@ -17,7 +17,7 @@ import {
 import tinycolor from "tinycolor2";
 
 // Paleta estática para telas de autenticação — violeta oficial do logo TrailUp
-const AUTH_PALETTE = buildProfileShellPaletteFromAccent("#a057fd", "magica");
+const AUTH_PALETTE = buildProfileShellPaletteFromAccent("#a057fd");
 
 export default function Entrada() {
   const router = useRouter();

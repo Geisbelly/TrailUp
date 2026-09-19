@@ -1,11 +1,30 @@
 import { getBrainHexConfig } from "@/constants/profileImages";
-import { Color } from "@/styles/GlobalStyle";
+import { Noite, Texto } from "@/styles/identidade";
 import tinycolor from "tinycolor2";
 
-export type SystemVisualTheme = "real" | "medieval" | "magica";
-
+/**
+ * A paleta do app. UMA superficie para os sete perfis; o perfil vira ACENTO.
+ *
+ * Antes daqui havia tres tabelas de tom (`real`, `medieval`, `magica`) e a
+ * cor-assinatura era misturada no fundo, na superficie e na borda: o Socializer
+ * estudava num app arroxeado (`#160c16`), o Conqueror num azul (`#04070e`), o
+ * Achiever num cinza quente (`#08090a`). Eram sete apps.
+ *
+ * A identidade nova (pasta do Drive, medida em
+ * `docs/superpowers/specs/2026-09-16-identidade-visual-design.md`) diz o
+ * contrario: azul-meia-noite para todos, uma luz ambar, e o perfil aparece como
+ * acento e ornamento — moldura, emblema, totem, botao, grafico.
+ *
+ * O ganho nao e' so' estetico. Com a superficie FIXA, o accent de cada perfil
+ * vira UM numero, calculavel uma vez. O `CLAUDE.md` registra que backend,
+ * frontend e mobile partem da mesma cor-assinatura e calculam variantes
+ * diferentes; com o chao constante essa divergencia deixa de ser possivel aqui.
+ *
+ * Medido contra o chao novo: Seeker, Socializer e Achiever passam em AAA SEM
+ * ajuste nenhum — a cor-assinatura oficial sobrevive mais fiel do que sobrevivia
+ * com o chao tingido.
+ */
 export type ProfileShellPalette = {
-  theme: SystemVisualTheme;
   accent: string;
   accentStrong: string;
   accentSoft: string;
@@ -22,48 +41,14 @@ export type ProfileShellPalette = {
   inactive: string;
 };
 
-type ThemeTone = {
-  neutralBase: string;
-  neutralSurface: string;
-  neutralElevated: string;
-  backgroundMix: number;
-  surfaceMix: number;
-  elevatedMix: number;
-};
-
-const THEME_TONES: Record<SystemVisualTheme, ThemeTone> = {
-  real: {
-    neutralBase: "#0e1118",
-    neutralSurface: "#151b26",
-    neutralElevated: "#1c2436",
-    backgroundMix: 3,
-    surfaceMix: 7,
-    elevatedMix: 11,
-  },
-  medieval: {
-    neutralBase: "#080e1a",
-    neutralSurface: "#0f1828",
-    neutralElevated: "#141f33",
-    backgroundMix: 4,
-    surfaceMix: 7,
-    elevatedMix: 10,
-  },
-  magica: {
-    neutralBase: "#0e0b1e",
-    neutralSurface: "#15112e",
-    neutralElevated: "#1e183e",
-    backgroundMix: 8,
-    surfaceMix: 14,
-    elevatedMix: 20,
-  },
-};
-
-export function resolveSystemVisualTheme(profileName?: string | null): SystemVisualTheme {
-  const profile = String(profileName ?? "").trim().toLowerCase();
-  if (["socializer", "socialiser", "seeker"].includes(profile)) return "magica";
-  if (["conqueror", "survivor", "daredevil"].includes(profile)) return "medieval";
-  return "real";
-}
+/**
+ * Contraste minimo de qualquer cor usada como texto, icone ou borda de foco.
+ *
+ * 4.5 e' AAA para texto grande e fica acima do minimo de 3:1 de componente de
+ * UI. A referencia e' sempre `Noite.n700`, a superficie MAIS CLARA em que essas
+ * cores aparecem: quem passa ali passa nas outras duas.
+ */
+export const CONTRASTE_MINIMO = 4.5;
 
 /**
  * Eleva a luminosidade (HSL) de `color` ate atingir `minRatio` de contraste WCAG
@@ -89,51 +74,51 @@ function ensureMinContrast(
   return adjusted.toHexString();
 }
 
+/**
+ * O piso do texto passa pela MESMA correcao que o accent, em vez de ser um hex
+ * escolhido a mao.
+ *
+ * O valor da ficha de identidade (`#7d8794`) da 5,34 sobre o fundo e **4,15**
+ * sobre a superficie elevada: passa onde e' medido e reprova onde e' usado. Sem
+ * esta linha, a regra viveria num comentario e quebraria na primeira legenda
+ * dentro de um modal.
+ */
+const TEXTO_FRACO = ensureMinContrast(Texto.fraco, Noite.n700, CONTRASTE_MINIMO);
+
 export function buildProfileShellPaletteFromAccent(
-  accentSource?: string | null,
-  theme: SystemVisualTheme = "medieval"
+  accentSource?: string | null
 ): ProfileShellPalette {
   const accentBase = tinycolor(accentSource || "#707c88").isValid()
     ? tinycolor(accentSource || "#707c88").toHexString()
     : "#707c88";
-  const tone = THEME_TONES[theme];
-  const backgroundBase = tinycolor
-    .mix(tone.neutralBase, accentBase, tone.backgroundMix)
-    .darken(theme === "magica" ? 3 : 5)
-    .toHexString();
-  const surfaceBase = tinycolor.mix(tone.neutralSurface, accentBase, tone.surfaceMix).toRgbString();
-  const elevatedBase = tinycolor
-    .mix(tone.neutralElevated, accentBase, tone.elevatedMix)
-    .toRgbString();
 
-  // WCAG AAA: o accent (usado como texto/icone/borda) precisa ficar legivel sobre a
-  // superficie MAIS CLARA em que aparece (pior caso = elevatedBase). Garantimos >= 4.5:1
-  // (AAA para texto grande, acima do 3:1 minimo de componentes de UI) elevando apenas a
-  // luminosidade (HSL) do accent — matiz e saturacao ficam intactos, entao a cor
-  // continua vibrante/reconhecivel em vez de "apagada" como um mix com branco deixaria.
-  const accent = ensureMinContrast(accentBase, elevatedBase, 4.5);
+  const accent = ensureMinContrast(accentBase, Noite.n700, CONTRASTE_MINIMO);
 
   return {
-    theme,
     accent,
     accentStrong: tinycolor(accentBase).darken(8).toHexString(),
     accentSoft: tinycolor(accent).setAlpha(0.18).toRgbString(),
     accentMuted: tinycolor(accent).setAlpha(0.12).toRgbString(),
-    background: backgroundBase,
-    surface: surfaceBase,
-    surfaceElevated: elevatedBase,
-    border: tinycolor(accent).setAlpha(0.22).toRgbString(),
+    background: Noite.n900,
+    surface: Noite.n800,
+    surfaceElevated: Noite.n700,
+    // Divisor e' fio solido de 1px, nao caixa e nao sombra — e' o que a
+    // identidade usa. So' `borderStrong` continua tingida de perfil, porque ela
+    // marca FOCO, e foco e' onde o perfil deve aparecer.
+    border: Noite.n600,
     borderStrong: tinycolor(accent).setAlpha(0.4).toRgbString(),
-    text: Color.colorAliceblue,
-    textMuted: tinycolor(Color.colorAliceblue).setAlpha(0.82).toRgbString(),
-    textSubtle: tinycolor(Color.colorAliceblue).setAlpha(0.62).toRgbString(),
-    progressTrack: tinycolor.mix("#172236", accentBase, 9).darken(7).toRgbString(),
-    inactive: tinycolor.mix(Color.colorAliceblue, accentBase, 16).setAlpha(0.6).toRgbString(),
+    text: Texto.forte,
+    textMuted: Texto.medio,
+    textSubtle: TEXTO_FRACO,
+    progressTrack: Noite.n600,
+    // Aba inativa e' rotulo pequeno, entao NAO pode ser o `Aco`: ele da 4,20
+    // sobre o fundo e 3,27 sobre a elevada — passa como icone e reprova como
+    // texto. `Aco` fica reservado para icone e ornamento (ver GlobalStyle).
+    inactive: TEXTO_FRACO,
   };
 }
 
 export function getProfileShellPalette(profileName?: string | null): ProfileShellPalette {
   const config = getBrainHexConfig(profileName ?? undefined);
-  const theme = resolveSystemVisualTheme(profileName);
-  return buildProfileShellPaletteFromAccent(config.color, theme);
+  return buildProfileShellPaletteFromAccent(config.color);
 }

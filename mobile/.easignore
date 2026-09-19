@@ -1,0 +1,79 @@
+# O que NAO sobe para o build do EAS.
+#
+# Existe por um motivo so, e ele e' especifico: **sem este arquivo, o EAS usa o
+# `.gitignore`** para decidir o que enviar. O `.gitignore` ignora `.env`, entao
+# o arquivo nunca chegava ao build na nuvem -- e as `EXPO_PUBLIC_*` sao inlined
+# no bundle em TEMPO DE BUILD, nao lidas em execucao.
+#
+# Consequencia medida (#96/#97): dos 33 lotes de telemetria gravados por um
+# build instalado, ZERO tinham `analysis_ciclo_id` e zero tinham o ponteiro
+# `_r2` -- a assinatura do caminho da API. A API nunca foi alcancada, e como e'
+# o endpoint dela que dispara o pipeline de analise, a analise nunca rodou.
+#
+# Os quatro valores do `.env` sao todos `EXPO_PUBLIC_*`, ou seja, publicos por
+# construcao: eles terminam dentro do APK, legiveis por quem o abrir. Enviar o
+# arquivo ao build nao acrescenta exposicao nenhuma. O que NAO pode acontecer e'
+# eles serem commitados no repositorio, e isso o `.gitignore` continua
+# garantindo -- este arquivo so' fala com o EAS.
+#
+# Espelha o `.gitignore` MENOS a linha do `.env`. Ao acrescentar algo la,
+# acrescente aqui tambem: as duas listas divergindo faz o build engordar sem
+# ninguem notar.
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+#
+# `.env` NAO entra nesta lista -- e' o ponto inteiro do arquivo. Os `.local`
+# ficam de fora do build porque sao sobrescritas da maquina de quem desenvolve.
+.env*.local
+*/.env
+
+# typescript
+*.tsbuildinfo
+
+app-example
+
+# generated native folders
+/ios
+/android
+AGENTS.md
+db.sql
+.history/
+.claude/
+
+# `mobile/graphify-out/` existe e e' grande: e' o grafo de conhecimento, que
+# nao serve ao build. O `.gitignore` nao o exclui porque ele E' versionado.
+graphify-out/
+
+# Nao excluo os `.test.ts` aqui de proposito: eles nao entram no bundle de
+# qualquer forma, e um padrao a mais e' uma chance a mais de o build divergir
+# do que roda na maquina -- num build na nuvem, que eu nao consigo reproduzir.

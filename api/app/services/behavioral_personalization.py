@@ -19,6 +19,7 @@ from app.schemas.ia_patch import (
     IATimerConfig,
     IATriggerSignal,
 )
+from app.services import arte_combate
 from app.services.llm import JsonLLMService
 
 _PROFILE_PRESETS: dict[str, dict[str, Any]] = {
@@ -360,6 +361,7 @@ def _build_enemy(
     dominant_profile: str,
     mental_state: str,
     hp_max: int,
+    settings: Settings,
 ) -> IAEnemySpec | None:
     if not topico or not focus_content:
         return None
@@ -382,10 +384,13 @@ def _build_enemy(
     intro_line = preset_data["intro"]
     defeat_line = preset_data["defeat"]
 
+    arte = arte_combate.urls_do_preset(settings, preset)
+
     return IAEnemySpec(
         id=f"boss:{topico.get('id', 'sem-topico')}:{content_id}",
         name=f"{boss_title} de {content_title}",
         archetype=archetype,
+        avatar_url=arte["avatar_url"],
         image_prompt=(
             f"Vilao educacional maligno para o topico '{topico_name}', associado ao conteudo '{content_title}'. "
             f"Perfil dominante: {dominant_profile}. Archetype: {archetype}. "
@@ -399,12 +404,12 @@ def _build_enemy(
         defeat_line=defeat_line,
         visual=IAEnemyVisualSpec(
             preset=preset,
-            avatar_url=None,
-            background_url=None,
-            frame_url=None,
-            effect_url=None,
             badge_label=badge,
             palette=palette,
+            # As quatro saem do catalogo, nunca do modelo. Sem
+            # `arte_base_url` configurada elas voltam None, que e o
+            # comportamento que o app ja tinha. Ver arte_combate.
+            **arte,
         ),
         content_id=content_id,
         item_key=item_key,
@@ -432,6 +437,7 @@ def _fallback_patch(
     cards: list[dict[str, Any]],
     conteudo_boss_foco_id: int | None,
     emit_legacy_topic_battle: bool,
+    settings: Settings,
 ) -> IAPersonalizationPatch:
     dominant_profile = _dominant_profile(context)
     mode_name = _mode_name(context)
@@ -487,6 +493,7 @@ def _fallback_patch(
                 dominant_profile=dominant_profile,
                 mental_state=mental.kind,
                 hp_max=hp_max,
+                settings=settings,
             )
             if enemy is not None:
                 battle_enabled = _is_battle_enabled(mental.kind, dominant_profile, context)
@@ -690,6 +697,7 @@ def _payload_for_llm(
     fallback_patch: IAPersonalizationPatch,
     conteudo_boss_foco_id: int | None,
     emit_legacy_topic_battle: bool,
+    settings: Settings,
 ) -> dict[str, Any]:
     return {
         "perfil_dominante": _dominant_profile(context),
@@ -739,6 +747,7 @@ def _payload_for_llm(
         "conteudo_boss_foco_id": conteudo_boss_foco_id,
         "emit_legacy_topic_battle": emit_legacy_topic_battle,
         "plano": plano,
+        "arte_de_combate": arte_combate.catalogo_para_prompt(settings),
         "fallback_contract": fallback_patch.model_dump(mode="json", by_alias=True),
     }
 
@@ -771,6 +780,7 @@ async def build_behavioral_personalization(
         cards=cards,
         conteudo_boss_foco_id=focus_content_id,
         emit_legacy_topic_battle=emit_legacy_topic_battle,
+        settings=settings,
     )
 
     llm = JsonLLMService(settings)
@@ -787,10 +797,16 @@ async def build_behavioral_personalization(
             fallback_patch=fallback_patch,
             conteudo_boss_foco_id=focus_content_id,
             emit_legacy_topic_battle=emit_legacy_topic_battle,
+            settings=settings,
         ),
         fallback_factory=lambda: fallback_patch.model_dump(mode="json", by_alias=True),
         provider="gemini",
     )
+
+    # URL de arte que o modelo inventou vira 404, e `Image` do React Native
+    # falha calado: o aluno ve um buraco no lugar do boss. Aqui qualquer valor
+    # fora do catalogo volta para o default do preset, antes de virar patch.
+    raw_patch = arte_combate.sanear_patch(raw_patch, settings)
 
     try:
         return IAPersonalizationPatch.model_validate(raw_patch)
