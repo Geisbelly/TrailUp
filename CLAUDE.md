@@ -882,11 +882,56 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 >   **4** contra o `BETWEEN 2 AND 10` do banco: escondia 6 vagas e, com elas, o
 >   botão de entrar.
 >
-> O que continua em aberto: **guilda contra guilda**. O formato `guilda` v1 é
-> cooperativo (a guilda joga contra a régua do `modo`); PvP entre guildas pede
-> um convite no nível da guilda — quem aceita por ela? —, e
-> `desafio_participantes` já comporta: é popular a equipe 2. Ver
-> `docs/superpowers/specs/2026-09-20-arena-guilda-dupla-solo-design.md`.
+> **Guilda contra guilda entrou na `20260920_06`, e ela fechou um furo que a
+> `20260920_05` tinha deixado.** O cooperativo era DEDUZIDO do placar —
+> `arena_encerrar` olhava "integrantes da equipe 2 = 0" e concluía "então é
+> treino". Duas consequências, e a segunda é grave:
+>
+> 1. Uma partida PvP em que o outro lado ainda não aceitou tem equipe 2 vazia e
+>    fica **idêntica** a um treino. Guilda contra guilda era indizível.
+> 2. **Dava para farmar vitória sozinho.** Medido nesta base: A desafia B em
+>    solo, B nunca aceita, A responde as 3 questões certas e chama
+>    `arena_encerrar` na mão — `vencedor_equipe = 1`, `desafio_vencido = 12`.
+>    Repetível contra qualquer colega, sem a participação dele. `arena_responder`
+>    só fecha sozinho quando não sobra `convidado`, mas `arena_encerrar` aceita
+>    qualquer participante, e o ramo cooperativo dava a vitória.
+>
+> Hoje **cooperativo é `formato = 'guilda' AND guilda_rival_id IS NULL`, nunca o
+> placar**, e toda disputa exige que os DOIS lados tenham alguém que respondeu.
+> Quando não têm, `resultado = 'sem_adversario'`: sem vencedor, sem empate, só
+> `desafio_participou` — o mesmo que a pessoa levaria jogando qualquer rodada.
+> Medido depois: o mesmo roteiro do farm passou de 15 para **3** pontos.
+>
+> `resultado` é coluna (`vitoria`/`empate`/`sem_adversario`) porque o cliente
+> **não consegue deduzir isso** de `vencedor_equipe`: nulo serve para empate e
+> para rodada que não aconteceu, e são coisas diferentes na tela.
+>
+> **E o placar compara APROVEITAMENTO, não acerto bruto.** Pontuação de equipe é
+> soma, então uma guilda de 5 bateria uma de 2 só por ser maior.
+> `acertos / (questões × integrantes)`, comparado por multiplicação cruzada
+> (`p1 * n2 > p2 * n1`) para não sair do inteiro — é a mesma régua de 50% que o
+> ramo cooperativo já usava. Medido: 4 acertos em 2 jogadores (50%) **perde**
+> para 3 acertos em 1 jogador (75%). Em solo e dupla os times têm o mesmo
+> tamanho por construção, então a ordem não muda; só guilda contra guilda de
+> tamanhos diferentes sente. O desempate de `velocidade` virou tempo médio pela
+> mesma razão.
+>
+> **Quem aceita pela guilda rival: cada membro por si.** Não há papel de líder
+> no domínio — `criado_por` é quem criou, não quem manda — e deixar uma pessoa
+> comprometer a guilda inteira num desafio que paga ponto seria inventar um
+> governo que não existe. Cada membro ativo da rival nasce `convidado`; quem não
+> aceitar simplesmente não joga, e o aproveitamento normaliza o tamanho de quem
+> apareceu. A guilda rival é avisada **no chat dela** — sem isso o único sinal
+> seria o convite individual, e guilda parada nunca saberia que foi desafiada.
+>
+> Ver `docs/superpowers/specs/2026-09-20-arena-guilda-dupla-solo-design.md`.
+>
+> Dívida encontrada de passagem, não corrigida: **`guilda_criar` tem duas
+> sobrecargas** (4 e 7 argumentos, as três últimas com default) e uma chamada
+> POSICIONAL de 4 argumentos é ambígua — `function guilda_criar(integer,
+> unknown, unknown, unknown) is not unique`. O app escapa porque o PostgREST
+> resolve por nome de parâmetro. Ao criar sobrecarga, derrube a antiga: a
+> `20260920_06` faz isso com `arena_desafio_criar`.
 >
 > E `guilda_evento_snapshot` segue com **0 linhas**: ele foi desenhado para um
 > motor de eventos da turma que ainda não existe, e `desafio_participantes` não

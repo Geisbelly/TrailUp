@@ -4,6 +4,8 @@ import test from "node:test";
 import {
   ADVERSARIOS_POR_FORMATO,
   alternativasDaQuestao,
+  aproveitamentoDaEquipe,
+  ehCooperativo,
   faltaParaCriar,
   formatarTempo,
   integrantesDaEquipe,
@@ -29,6 +31,9 @@ function desafio(patch: Partial<ArenaDesafio> = {}): ArenaDesafio {
     titulo: "Desafio",
     guildaId: null,
     guildaNome: null,
+    guildaRivalId: null,
+    guildaRivalNome: null,
+    resultado: null,
     criadoPor: "a",
     souCriador: true,
     criadoEm: "2026-09-20T10:00:00Z",
@@ -232,4 +237,67 @@ test("tempo zero vira travessao em vez de 0s", () => {
   assert.equal(formatarTempo(0), "--");
   assert.equal(formatarTempo(4200), "4s");
   assert.equal(formatarTempo(65000), "1min 05s");
+});
+
+test("cooperativo e decidido pela identidade, nunca pelo placar", () => {
+  // Deduzir de "a equipe 2 esta vazia" e o que, no banco, fazia uma rodada em
+  // que o adversario nunca apareceu pagar vitoria. O cliente segue a MESMA
+  // regra: guilda sem rival e treino; guilda com rival e disputa.
+  assert.equal(ehCooperativo(desafio({ formato: "guilda", guildaId: "g1" })), true);
+  assert.equal(
+    ehCooperativo(desafio({ formato: "guilda", guildaId: "g1", guildaRivalId: "g2" })),
+    false,
+  );
+  assert.equal(ehCooperativo(desafio({ formato: "solo" })), false);
+});
+
+test("`sem_adversario` nao vira empate", () => {
+  // Sao coisas diferentes: empate e um resultado, `sem_adversario` e uma
+  // rodada que nao aconteceu. Chamar de empate esconderia o que o aluno
+  // precisa saber.
+  const base = { status: "encerrado" as const, minhasRespostas: 3, vencedorEquipe: null };
+  assert.equal(situacaoDoDesafio(desafio({ ...base, resultado: "sem_adversario" })), "sem_adversario");
+  assert.equal(situacaoDoDesafio(desafio({ ...base, resultado: "empate" })), "empate");
+});
+
+test("desafio encerrado antes da coluna `resultado` ainda se le pelo vencedor", () => {
+  // Linha antiga tem `resultado` nulo. O fallback mantem o card legivel; o que
+  // ele nao consegue e separar `sem_adversario` de empate -- que e exatamente
+  // por que a coluna foi criada.
+  const antigo = desafio({ status: "encerrado", minhasRespostas: 3, resultado: null, vencedorEquipe: 2, minhaEquipe: 2 });
+  assert.equal(situacaoDoDesafio(antigo), "venci");
+});
+
+test("o aproveitamento e a conta que decide o vencedor, nao o acerto bruto", () => {
+  // Medido no banco: 4 acertos em 2 jogadores (50%) PERDE para 3 acertos em 1
+  // jogador (75%). Mostrar o bruto no card faria a tela explicar o resultado
+  // errado.
+  const d = desafio({
+    formato: "guilda", guildaId: "g1", guildaRivalId: "g2", questoes: 4,
+    equipes: [
+      { equipe: 1, pontos: 4, tempoMs: 0, integrantes: 2 },
+      { equipe: 2, pontos: 3, tempoMs: 0, integrantes: 1 },
+    ],
+  });
+  assert.equal(placarDaEquipe(d, 1).pontos > placarDaEquipe(d, 2).pontos, true, "bruto favorece a maior");
+  assert.equal(aproveitamentoDaEquipe(d, 1), 50);
+  assert.equal(aproveitamentoDaEquipe(d, 2), 75);
+});
+
+test("aproveitamento de equipe vazia e nulo, nao zero", () => {
+  // Zero diria "acertou nada"; nulo diz "nao ha o que medir". A tela esconde o
+  // rotulo no segundo caso em vez de escrever 0%.
+  assert.equal(aproveitamentoDaEquipe(desafio({ questoes: 4 }), 2), null);
+  assert.equal(aproveitamentoDaEquipe(desafio({ questoes: 0, equipes: [{ equipe: 1, pontos: 0, tempoMs: 0, integrantes: 2 }] }), 1), null);
+});
+
+test("a rival nao pode ser a propria guilda", () => {
+  // O banco recusa com `arena_rival_invalida` -- a tela nao deve deixar chegar
+  // la, e os mesmos alunos nas duas equipes nao teriam sentido nenhum.
+  assert.match(
+    String(faltaParaCriar({ formato: "guilda", guildaId: "g1", guildaRivalId: "g1", adversarios: [] })),
+    /outra guilda/i,
+  );
+  assert.equal(faltaParaCriar({ formato: "guilda", guildaId: "g1", guildaRivalId: "g2", adversarios: [] }), null);
+  assert.equal(faltaParaCriar({ formato: "guilda", guildaId: "g1", adversarios: [] }), null, "treino continua valendo");
 });

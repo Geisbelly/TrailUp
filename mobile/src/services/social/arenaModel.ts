@@ -15,6 +15,13 @@ export type ArenaFormato = "guilda" | "dupla" | "solo";
 export type ArenaModo = "todos" | "velocidade" | "precisao";
 export type ArenaEstado = "convidado" | "aceito" | "recusado";
 export type ArenaStatus = "aberto" | "encerrado";
+/**
+ * `sem_adversario` nao e empate: e uma rodada que nao aconteceu porque um
+ * dos lados nao jogou. Ela existe como valor proprio porque o cliente NAO
+ * pode deduzir isso do placar -- deduzir foi exatamente o defeito que deixou
+ * desafiar quem nunca aceita pagar vitoria.
+ */
+export type ArenaResultado = "vitoria" | "empate" | "sem_adversario";
 
 export const ARENA_FORMATOS: readonly ArenaFormato[] = ["guilda", "dupla", "solo"];
 export const ARENA_MODOS: readonly ArenaModo[] = ["precisao", "velocidade", "todos"];
@@ -79,6 +86,9 @@ export type ArenaDesafio = {
   titulo: string;
   guildaId: string | null;
   guildaNome: string | null;
+  guildaRivalId: string | null;
+  guildaRivalNome: string | null;
+  resultado: ArenaResultado | null;
   criadoPor: string;
   souCriador: boolean;
   criadoEm: string | null;
@@ -143,6 +153,13 @@ export function normalizarModo(valor: unknown): ArenaModo {
     : "precisao";
 }
 
+function normalizarResultado(valor: unknown): ArenaResultado | null {
+  const bruto = String(valor ?? "").trim().toLowerCase();
+  return bruto === "vitoria" || bruto === "empate" || bruto === "sem_adversario"
+    ? (bruto as ArenaResultado)
+    : null;
+}
+
 function normalizarEstado(valor: unknown): ArenaEstado {
   const bruto = String(valor ?? "").trim().toLowerCase();
   return bruto === "aceito" || bruto === "recusado" ? bruto : "convidado";
@@ -197,6 +214,9 @@ export function normalizarDesafio(valor: unknown): ArenaDesafio | null {
     titulo: texto(linha.titulo) ?? "Desafio",
     guildaId: texto(linha.guilda_id),
     guildaNome: texto(linha.guilda_nome),
+    guildaRivalId: texto(linha.guilda_rival_id),
+    guildaRivalNome: texto(linha.guilda_rival_nome),
+    resultado: normalizarResultado(linha.resultado),
     criadoPor: String(linha.criado_por ?? ""),
     souCriador: Boolean(linha.sou_criador),
     criadoEm: texto(linha.created_at),
@@ -280,6 +300,15 @@ export function alternativasDaQuestao(valor: unknown): string[] {
   return [];
 }
 
+/**
+ * Cooperativo e decidido pela IDENTIDADE do desafio, nunca pelo placar --
+ * mesma regra de `arena_encerrar`. Deduzir de "a equipe 2 esta vazia" e o que
+ * fazia uma rodada em que o adversario nunca apareceu passar por treino.
+ */
+export function ehCooperativo(desafio: ArenaDesafio): boolean {
+  return desafio.formato === "guilda" && desafio.guildaRivalId === null;
+}
+
 /** A rodada acabou para MIM quando respondi tudo. Nao diz nada sobre os outros. */
 export function terminei(desafio: ArenaDesafio): boolean {
   return desafio.questoes > 0 && desafio.minhasRespostas >= desafio.questoes;
@@ -292,7 +321,8 @@ export type ArenaSituacao =
   | "aguardando"
   | "venci"
   | "perdi"
-  | "empate";
+  | "empate"
+  | "sem_adversario";
 
 /**
  * O que o aluno ve no card.
@@ -306,6 +336,10 @@ export function situacaoDoDesafio(desafio: ArenaDesafio): ArenaSituacao {
   if (desafio.meuEstado === "convidado") return "convite";
   if (desafio.meuEstado === "recusado") return "recusado";
   if (desafio.status === "aberto") return terminei(desafio) ? "aguardando" : "jogando";
+  // O `resultado` vem do banco. O fallback por `vencedorEquipe` existe so para
+  // desafio encerrado ANTES da coluna existir; nele `sem_adversario` e
+  // indistinguivel de empate, e e por isso que a coluna foi criada.
+  if (desafio.resultado === "sem_adversario") return "sem_adversario";
   if (desafio.vencedorEquipe === null) return "empate";
   return desafio.vencedorEquipe === desafio.minhaEquipe ? "venci" : "perdi";
 }
@@ -324,6 +358,7 @@ const PESO_DA_SITUACAO: Record<ArenaSituacao, number> = {
   venci: 3,
   empate: 3,
   perdi: 3,
+  sem_adversario: 3,
   recusado: 4,
 };
 
@@ -364,14 +399,22 @@ export function integrantesDaEquipe(
 export function faltaParaCriar(params: {
   formato: ArenaFormato;
   guildaId?: string | null;
+  guildaRivalId?: string | null;
   aliadoId?: string | null;
   adversarios: readonly string[];
 }): string | null {
-  const { formato, guildaId, aliadoId, adversarios } = params;
+  const { formato, guildaId, guildaRivalId, aliadoId, adversarios } = params;
   const exigidos = ADVERSARIOS_POR_FORMATO[formato];
 
   if (formato === "guilda") {
-    return guildaId ? null : "Você precisa estar numa guilda desta turma.";
+    if (!guildaId) return "Você precisa estar numa guilda desta turma.";
+    // Rival igual a própria guilda poria os mesmos alunos nas duas equipes --
+    // o banco recusa com `arena_rival_invalida`, e a tela não deve deixar
+    // chegar lá.
+    if (guildaRivalId && guildaRivalId === guildaId) {
+      return "A rival tem de ser outra guilda.";
+    }
+    return null;
   }
   if (formato === "dupla" && !aliadoId) return "Escolha o seu aliado.";
   if (adversarios.length !== exigidos) {
@@ -384,6 +427,22 @@ export function faltaParaCriar(params: {
     return "Cada pessoa só pode entrar uma vez.";
   }
   return null;
+}
+
+/**
+ * O que o banco compara para decidir o vencedor: `acertos / (questoes x
+ * integrantes)`. Acerto BRUTO nao serve -- pontuacao de equipe e soma, entao
+ * uma guilda de 5 bateria uma de 2 so por ser maior. Medido no banco: 4
+ * acertos em 2 jogadores (50%) perde para 3 acertos em 1 jogador (75%).
+ *
+ * Mostrar o bruto no card enquanto o banco decide pelo aproveitamento faria a
+ * tela explicar o resultado errado.
+ */
+export function aproveitamentoDaEquipe(desafio: ArenaDesafio, numero: 1 | 2): number | null {
+  const equipe = placarDaEquipe(desafio, numero);
+  const base = desafio.questoes * equipe.integrantes;
+  if (base <= 0) return null;
+  return Math.round((100 * equipe.pontos) / base);
 }
 
 export function formatarTempo(ms: number): string {

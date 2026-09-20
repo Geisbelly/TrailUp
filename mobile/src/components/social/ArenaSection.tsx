@@ -2,6 +2,8 @@ import { ArenaRoundModal } from "@/components/social/ArenaRoundModal";
 import {
   ADVERSARIOS_POR_FORMATO,
   ARENA_FORMATOS,
+  aproveitamentoDaEquipe,
+  ehCooperativo,
   ARENA_MODOS,
   EXPLICACAO_DO_FORMATO,
   EXPLICACAO_DO_MODO,
@@ -45,6 +47,10 @@ const SELO: Record<ArenaSituacao, { texto: string; cor: string; icone: keyof typ
   empate: { texto: "EMPATE", cor: "#9db8ff", icone: "equal" },
   perdi: { texto: "DERROTA", cor: "#f87171", icone: "shield-off-outline" },
   recusado: { texto: "RECUSADO", cor: "#6b6a7d", icone: "close-circle-outline" },
+  // Nao e empate: e uma rodada que nao aconteceu porque o outro lado nao
+  // jogou. Chamar de empate esconderia justamente o que o aluno precisa
+  // saber -- que ninguem apareceu.
+  sem_adversario: { texto: "SEM ADVERSÁRIO", cor: "#8f8da3", icone: "account-off-outline" },
 };
 
 function nomeCurto(pessoa: SocialPerson) {
@@ -57,6 +63,7 @@ export function ArenaSection({ desafios, pessoas, guildas, classeId, accent, onR
   const [modo, setModo] = useState<ArenaModo>("precisao");
   const [quantidade, setQuantidade] = useState<number>(3);
   const [aliadoId, setAliadoId] = useState<string | null>(null);
+  const [guildaRivalId, setGuildaRivalId] = useState<string | null>(null);
   const [adversarios, setAdversarios] = useState<string[]>([]);
   const [ocupado, setOcupado] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -66,6 +73,14 @@ export function ArenaSection({ desafios, pessoas, guildas, classeId, accent, onR
   // e a mesma condicao que `arena_desafio_criar` verifica.
   const minhaGuilda = useMemo(() => guildas.find((g) => g.souMembro) ?? null, [guildas]);
 
+  // Rival possível: outra guilda da turma COM gente dentro. Guilda vazia é
+  // recusada pelo banco (`arena_rival_sem_membros`), e oferecer o que vai
+  // falhar é o mesmo defeito que `faltaParaCriar` evita nos outros formatos.
+  const rivaisPossiveis = useMemo(
+    () => guildas.filter((g) => g.id !== minhaGuilda?.id && g.membrosAtivos > 0),
+    [guildas, minhaGuilda],
+  );
+
   // Quem pode ser convocado: colega da turma que nao esta bloqueado. O banco
   // confere de novo; aqui e so para nao oferecer o impossivel.
   const convocaveis = useMemo(
@@ -74,7 +89,13 @@ export function ArenaSection({ desafios, pessoas, guildas, classeId, accent, onR
   );
 
   const ordenados = useMemo(() => ordenarDesafios(desafios), [desafios]);
-  const impedimento = faltaParaCriar({ formato, guildaId: minhaGuilda?.id ?? null, aliadoId, adversarios });
+  const impedimento = faltaParaCriar({
+    formato,
+    guildaId: minhaGuilda?.id ?? null,
+    guildaRivalId,
+    aliadoId,
+    adversarios,
+  });
 
   async function agir(chave: string, operacao: () => Promise<unknown>) {
     setOcupado(chave);
@@ -98,6 +119,7 @@ export function ArenaSection({ desafios, pessoas, guildas, classeId, accent, onR
     // servidor.
     setAliadoId(null);
     setAdversarios([]);
+    setGuildaRivalId(null);
   }
 
   function alternarAdversario(alunoId: string) {
@@ -123,12 +145,14 @@ export function ArenaSection({ desafios, pessoas, guildas, classeId, accent, onR
         modo,
         quantidade,
         guildaId: formato === "guilda" ? minhaGuilda?.id ?? null : null,
+        guildaRivalId: formato === "guilda" ? guildaRivalId : null,
         aliadoId: formato === "dupla" ? aliadoId : null,
         adversarios,
       });
       setCriando(false);
       setAliadoId(null);
       setAdversarios([]);
+      setGuildaRivalId(null);
     });
   }
 
@@ -213,9 +237,46 @@ export function ArenaSection({ desafios, pessoas, guildas, classeId, accent, onR
           </View>
 
           {formato === "guilda" ? (
-            <Text style={s.explicacao}>
-              {minhaGuilda ? `Sua guilda: ${minhaGuilda.nome} (${minhaGuilda.membrosAtivos} membros).` : ""}
-            </Text>
+            <>
+              <Text style={s.explicacao}>
+                {minhaGuilda ? `Sua guilda: ${minhaGuilda.nome} (${minhaGuilda.membrosAtivos} membros).` : ""}
+              </Text>
+              <Text style={s.formTitulo}>CONTRA QUEM</Text>
+              <View style={s.chips}>
+                <Pressable
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: guildaRivalId === null }}
+                  onPress={() => setGuildaRivalId(null)}
+                  style={[s.chip, guildaRivalId === null && { backgroundColor: accent, borderColor: accent }]}
+                >
+                  <Text style={[s.chipTexto, guildaRivalId === null && s.chipTextoAtivo]}>TREINO</Text>
+                </Pressable>
+                {rivaisPossiveis.map((guilda) => {
+                  const ativo = guildaRivalId === guilda.id;
+                  return (
+                    <Pressable
+                      key={guilda.id}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: ativo }}
+                      onPress={() => setGuildaRivalId(ativo ? null : guilda.id)}
+                      style={[s.chip, ativo && { backgroundColor: accent, borderColor: accent }]}
+                    >
+                      <Text numberOfLines={1} style={[s.chipTexto, ativo && s.chipTextoAtivo]}>
+                        {guilda.nome} ({guilda.membrosAtivos})
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <Text style={s.explicacao}>
+                {guildaRivalId === null
+                  ? "Treino: a guilda joga contra a régua do modo. Ninguém perde."
+                  : "Disputa: o placar compara aproveitamento, não acerto bruto — guilda maior não vence só por ser maior."}
+              </Text>
+              {rivaisPossiveis.length === 0 ? (
+                <Text style={s.explicacao}>Nenhuma outra guilda com membros nesta turma.</Text>
+              ) : null}
+            </>
           ) : (
             <>
               {formato === "dupla" ? (
@@ -283,7 +344,18 @@ export function ArenaSection({ desafios, pessoas, guildas, classeId, accent, onR
           const minha = placarDaEquipe(desafio, desafio.minhaEquipe);
           const outraEquipe = desafio.minhaEquipe === 1 ? 2 : 1;
           const outra = placarDaEquipe(desafio, outraEquipe);
-          const temAdversario = desafio.formato !== "guilda";
+          // Guilda em TREINO nao tem adversario; guilda contra guilda tem.
+          // Decidir isto por `formato !== "guilda"` era o mesmo atalho que no
+          // banco pagava vitoria a quem desafiasse alguem que nunca aceitou.
+          const temAdversario = !ehCooperativo(desafio);
+          const meuAprov = aproveitamentoDaEquipe(desafio, desafio.minhaEquipe);
+          const outroAprov = aproveitamentoDaEquipe(desafio, outraEquipe);
+          const rotuloMeu = desafio.formato === "guilda"
+            ? desafio.guildaNome ?? "SUA GUILDA"
+            : desafio.formato === "dupla" ? "SUA DUPLA" : "VOCÊ";
+          const rotuloOutro = desafio.formato === "guilda"
+            ? desafio.guildaRivalNome ?? "RIVAL"
+            : "ADVERSÁRIO";
           return (
             <View key={desafio.id} style={s.card}>
               <View style={s.cardTopo}>
@@ -296,12 +368,19 @@ export function ArenaSection({ desafios, pessoas, guildas, classeId, accent, onR
                 </Text>
               </View>
 
-              {desafio.guildaNome ? <Text style={s.guilda}>Guilda {desafio.guildaNome}</Text> : null}
+              {desafio.guildaNome ? (
+                <Text style={s.guilda}>
+                  {desafio.guildaRivalNome
+                    ? `${desafio.guildaNome} × ${desafio.guildaRivalNome}`
+                    : `Guilda ${desafio.guildaNome} · treino`}
+                </Text>
+              ) : null}
 
               <View style={s.placar}>
                 <View style={s.lado}>
                   <Text style={[s.pontos, { color: accent }]}>{minha.pontos}</Text>
-                  <Text style={s.ladoRotulo}>{temAdversario ? "VOCÊ" : "SUA GUILDA"}</Text>
+                  <Text numberOfLines={1} style={s.ladoRotulo}>{rotuloMeu.toUpperCase()}</Text>
+                  {meuAprov !== null ? <Text style={s.aproveitamento}>{meuAprov}% de acerto</Text> : null}
                   <Text numberOfLines={2} style={s.integrantes}>
                     {integrantesDaEquipe(desafio, desafio.minhaEquipe).map((p) => p.apelido || p.nome).join(", ") || "—"}
                   </Text>
@@ -311,7 +390,8 @@ export function ArenaSection({ desafios, pessoas, guildas, classeId, accent, onR
                     <Text style={s.versus}>×</Text>
                     <View style={s.lado}>
                       <Text style={s.pontos}>{outra.pontos}</Text>
-                      <Text style={s.ladoRotulo}>ADVERSÁRIO</Text>
+                      <Text numberOfLines={1} style={s.ladoRotulo}>{rotuloOutro.toUpperCase()}</Text>
+                      {outroAprov !== null ? <Text style={s.aproveitamento}>{outroAprov}% de acerto</Text> : null}
                       <Text numberOfLines={2} style={s.integrantes}>
                         {integrantesDaEquipe(desafio, outraEquipe).map((p) => p.apelido || p.nome).join(", ") || "—"}
                       </Text>
@@ -319,6 +399,15 @@ export function ArenaSection({ desafios, pessoas, guildas, classeId, accent, onR
                   </>
                 ) : null}
               </View>
+
+              {temAdversario
+                && placarDaEquipe(desafio, 1).integrantes > 0
+                && placarDaEquipe(desafio, 2).integrantes > 0
+                && placarDaEquipe(desafio, 1).integrantes !== placarDaEquipe(desafio, 2).integrantes ? (
+                <Text style={s.tempo}>
+                  Times de tamanhos diferentes — vence o maior aproveitamento, não o total de acertos.
+                </Text>
+              ) : null}
 
               {desafio.modo === "velocidade" ? (
                 <Text style={s.tempo}>
@@ -409,7 +498,8 @@ const s = StyleSheet.create({
   placar: { flexDirection: "row", alignItems: "center", gap: 10 },
   lado: { flex: 1, alignItems: "center", gap: 2 },
   pontos: { color: "#f2f7fa", fontFamily: FontFamily.poppinsExtraBold, fontSize: 28 },
-  ladoRotulo: { color: "#8f8da3", fontSize: 9, fontWeight: "800", letterSpacing: 1 },
+  ladoRotulo: { color: "#8f8da3", fontSize: 9, fontWeight: "800", letterSpacing: 1, textAlign: "center" },
+  aproveitamento: { color: "#9db8ff", fontSize: 10 },
   integrantes: { color: "#c7c5d2", fontSize: 11, textAlign: "center" },
   versus: { color: "#6b6a7d", fontFamily: FontFamily.poppinsExtraBold, fontSize: 18 },
   tempo: { color: "#8f8da3", fontSize: 11, textAlign: "center" },

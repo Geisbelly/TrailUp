@@ -215,10 +215,9 @@ informação sem custar um quarto da barra, e nada fica escondido.
 
 ## O que fica de fora, declarado
 
-- **Guilda contra guilda.** O formato `guilda` v1 é cooperativo: a guilda joga
-  contra a régua. Guilda × guilda pede um convite no nível da guilda (quem
-  aceita por ela?) e é desenho próprio. A tabela de participantes já comporta —
-  é só popular a equipe 2 com a outra guilda.
+- ~~**Guilda contra guilda.**~~ **Entregue na `20260920_06`** — ver a seção
+  abaixo. O que ficou de fora dela: eliminatória entre várias guildas (chaveamento),
+  que é outro desenho.
 - **Tempo real.** O placar atualiza no `refresh` da tela, não por Realtime.
 - **`guilda_evento_snapshot`** continua com 0 linhas. `desafio_participantes`
   congela a composição do desafio; o snapshot foi desenhado para um motor de
@@ -231,3 +230,70 @@ informação sem custar um quarto da barra, e nada fica escondido.
 A migração aplicada, as RPCs fora do alcance do `anon`, a aba ARENA criando e
 resolvendo desafio nos três formatos, e um desafio encerrado movendo o rank da
 turma — medido antes e depois na mesma classe.
+
+
+## Guilda contra guilda (`20260920_06`)
+
+O formato `guilda` passou a ter dois modos de existência, separados por uma
+coluna e não por uma dedução:
+
+| `guilda_rival_id` | O que é | Resultado possível |
+| --- | --- | --- |
+| nulo | **treino** — a guilda joga contra a régua do `modo` | `vitoria` ou `empate`; ninguém perde |
+| preenchido | **disputa** — guilda × guilda | `vitoria`, `empate` ou `sem_adversario` |
+
+### Por que a coluna, e não o placar
+
+A `20260920_05` decidia "é cooperativo" olhando *integrantes da equipe 2 = 0*.
+Isso está errado por dois motivos ao mesmo tempo:
+
+1. Uma disputa em que o outro lado ainda não aceitou tem equipe 2 vazia e fica
+   **idêntica** a um treino. Guilda × guilda era indizível.
+2. **Dava para farmar vitória sozinho.** Medido nesta base, em transação
+   revertida: A desafia B em solo → B nunca aceita → A responde as 3 questões
+   certas → A chama `arena_encerrar` → `vencedor_equipe = 1`,
+   `desafio_vencido = 12`. Repetível contra qualquer colega, sem a participação
+   dele.
+
+Hoje: **cooperativo é `formato = 'guilda' AND guilda_rival_id IS NULL`**, e toda
+disputa exige que os dois lados tenham pelo menos um jogador que respondeu.
+Quando não têm, `resultado = 'sem_adversario'` e paga-se apenas
+`desafio_participou`. O mesmo roteiro do farm passou de 15 para 3 pontos.
+
+`resultado` é coluna própria porque `vencedor_equipe IS NULL` serve para empate
+**e** para rodada que não aconteceu — o cliente não consegue separar os dois.
+
+### Aproveitamento, não acerto bruto
+
+Pontuação de equipe é soma, então guilda grande venceria por ser grande. A
+comparação passou a ser `acertos / (questões × integrantes)`, por multiplicação
+cruzada (`p1 * n2 > p2 * n1`) para ficar no inteiro. É a mesma régua de 50% que
+o treino já usava.
+
+Medido: **4 acertos em 2 jogadores (50%) perde para 3 acertos em 1 jogador
+(75%).** Solo e dupla têm times de tamanho igual por construção, então a ordem
+não muda lá. O desempate de `velocidade` virou tempo médio pela mesma razão.
+
+### Quem aceita pela guilda
+
+**Cada membro por si.** Não há papel de líder no domínio — `criado_por` é quem
+criou, não quem manda —, e deixar uma pessoa comprometer a guilda inteira num
+desafio que paga ponto seria inventar um governo que o produto não tem. Cada
+membro ativo da rival nasce `convidado`; quem não aceitar não joga, e o
+aproveitamento normaliza o tamanho de quem apareceu.
+
+A rival é avisada **no chat dela**, além do convite individual: sem isso, guilda
+parada nunca saberia que foi desafiada.
+
+### Guardas
+
+- A rival tem de estar `ativa`, na **mesma turma** e com ao menos um membro
+  (`arena_rival_sem_membros`).
+- `CHECK (guilda_rival_id IS NULL OR (formato = 'guilda' AND guilda_rival_id <> guilda_id))`
+  — sem a segunda metade, a guilda se enfrentaria com os mesmos alunos nas duas
+  equipes.
+- `dupla` e `solo` recusam `p_guilda_rival` no corpo da RPC, e não só no CHECK:
+  erro de domínio é melhor que erro de constraint.
+- A assinatura antiga de 7 argumentos de `arena_desafio_criar` é **derrubada**.
+  Duas candidatas deixariam o PostgREST escolher — é o defeito que
+  `guilda_criar` tem hoje (chamada posicional de 4 argumentos é ambígua).

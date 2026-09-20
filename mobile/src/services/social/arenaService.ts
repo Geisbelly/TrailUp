@@ -30,6 +30,7 @@ export type CriarDesafioParams = {
   modo: ArenaModo;
   quantidade: number;
   guildaId?: string | null;
+  guildaRivalId?: string | null;
   aliadoId?: string | null;
   adversarios?: readonly string[];
 };
@@ -44,6 +45,7 @@ export async function criarDesafio(params: CriarDesafioParams) {
     p_modo: params.modo,
     p_quantidade: params.quantidade,
     p_guilda_id: params.guildaId ?? null,
+    p_guilda_rival: params.guildaRivalId ?? null,
     p_aliado: params.aliadoId ?? null,
     p_adversarios: params.adversarios?.length ? [...params.adversarios] : null,
   });
@@ -80,6 +82,8 @@ export function mensagemDeErroDaArena(erro: unknown): string {
   if (texto.includes("arena_sem_questoes_liberadas")) {
     return "Ninguém desta rodada abriu conteúdo suficiente ainda. Avance na trilha e tente de novo.";
   }
+  if (texto.includes("arena_rival_sem_membros")) return "Essa guilda não tem ninguém para jogar.";
+  if (texto.includes("arena_rival_invalida")) return "Essa guilda não pode ser a rival.";
   if (texto.includes("arena_participante_bloqueado")) return "Há um bloqueio entre vocês.";
   if (texto.includes("arena_participante_repetido")) return "Cada pessoa só pode entrar uma vez.";
   if (texto.includes("arena_participante_fora_da_turma")) return "Essa pessoa não é da turma.";
