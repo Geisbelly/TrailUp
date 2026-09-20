@@ -189,14 +189,34 @@ def test_o_cansaco_nao_depende_do_intervalo_de_flush():
     assert _ocio_dominou_o_lote(idle_sec=10, dwell_sec=180) is False
 
 
-def test_o_limiar_de_ocio_do_coletor_e_o_mesmo_do_pipeline():
-    # 120s nao e um numero novo: o pipeline ja usava 120 como a fronteira do
-    # "parado". Se alguem mexer num sem mexer no outro, `active_sec` e a
-    # classificacao de emocao passam a falar de coisas diferentes.
+def test_o_limite_de_abandono_do_coletor_nao_e_o_limiar_do_pipeline():
+    # Este teste ja afirmou o CONTRARIO -- que os dois tinham de ser 120s -- e
+    # a afirmacao estava errada. Sao perguntas diferentes:
+    #
+    #   pipeline: "o aluno travou?"            -> classificacao de emocao
+    #   coletor:  "isto conta como estudo?"    -> contabilidade de tempo
+    #
+    # Com 120s dos dois lados, ler um enunciado e pensar numa questao viravam
+    # ocio. Medido na base depois de subir o coletor para 120s: 784 dos 1003
+    # segundos coletados eram ocio, e lotes inteiros chegavam com
+    # `dwell 64 / active 0`.
+    acumulador = (
+        API_ROOT.parent
+        / "mobile"
+        / "src"
+        / "context"
+        / "metricas"
+        / "acumuladorLote.ts"
+    ).read_text(encoding="utf-8")
+    assert "export const LIMITE_DE_ABANDONO_MS = 600_000;" in acumulador
+
+    # E o coletor nao pode voltar a ter um limiar proprio escondido: a
+    # reparticao e uma funcao so, e ela mora no acumulador (testavel em node).
     mobile = (
         API_ROOT.parent / "mobile" / "src" / "context" / "MetricasContext.tsx"
     ).read_text(encoding="utf-8")
-    assert "const IDLE_THRESHOLD_MS = 120_000;" in mobile
+    assert "IDLE_THRESHOLD_MS" not in mobile
+    assert "repartirTempo({" in mobile
 
 
 def test_o_relogio_de_ocio_atravessa_o_flush():

@@ -2,13 +2,15 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  EMPTY_STUDY_CONTEXT,
+  LIMITE_DE_ABANDONO_MS,
   accumulateContextTime,
   buildEmptyBatch,
-  EMPTY_STUDY_CONTEXT,
   markContextVisit,
   proximoContextoDeEstudo,
   registerContextScroll,
   registerContextTouch,
+  repartirTempo,
   serializeTimeMetricEntries,
   type CurrentStudyContext,
 } from "./acumuladorLote";
@@ -351,4 +353,71 @@ test("a questao morre com a atividade dela", () => {
 test("questaoId sozinha ja marca o contexto como ativo", () => {
   const vm = proximoContextoDeEstudo(contexto({ topicoId: 125 }), { questaoId: 1049 });
   assert.equal(vm.studyState, "active");
+});
+
+test("ler sem tocar na tela continua sendo estudo", () => {
+  // O defeito medido em producao: o limiar de 120s tratava leitura e raciocinio
+  // como ocio. 784 dos 1003 segundos coletados viraram ocio, e lotes inteiros
+  // chegaram com `dwell 64 / active 0` -- o aluno parado numa atividade,
+  // pensando na questao.
+  const inicio = 300_000; // 5 min depois da ultima interacao
+  const { ativoMs, ociosoMs } = repartirTempo({
+    inicioMs: inicio,
+    fimMs: inicio + 64_000,
+    ultimaInteracaoMs: 0,
+  });
+  assert.equal(ativoMs, 64_000, "os 64s do lote contam inteiros");
+  assert.equal(ociosoMs, 0);
+});
+
+test("o limite de abandono ainda corta quem foi embora", () => {
+  // A rede embaixo continua existindo: telefone aberto e ninguem na frente.
+  const { ativoMs, ociosoMs } = repartirTempo({
+    inicioMs: 0,
+    fimMs: 900_000, // 15 min
+    ultimaInteracaoMs: 0,
+  });
+  assert.equal(ativoMs, LIMITE_DE_ABANDONO_MS, "para no limite");
+  assert.equal(ociosoMs, 900_000 - LIMITE_DE_ABANDONO_MS);
+});
+
+test("o limite de abandono NAO e o limiar de 120s do pipeline", () => {
+  // Sao perguntas diferentes: o pipeline classifica "o aluno travou?", o
+  // coletor mede "isto conta como tempo de estudo?". Reusar um numero so para
+  // as duas foi exatamente o que zerou a contabilidade.
+  assert.ok(
+    LIMITE_DE_ABANDONO_MS > 120_000,
+    "um limite de 120s aqui reprova quem le um enunciado longo",
+  );
+});
+
+test("intervalo que comeca depois do abandono e ocioso inteiro", () => {
+  const { ativoMs, ociosoMs } = repartirTempo({
+    inicioMs: 700_000,
+    fimMs: 760_000,
+    ultimaInteracaoMs: 0,
+  });
+  assert.equal(ativoMs, 0);
+  assert.equal(ociosoMs, 60_000);
+});
+
+test("intervalo de duracao zero nao inventa tempo", () => {
+  const parado = repartirTempo({ inicioMs: 1_000, fimMs: 1_000, ultimaInteracaoMs: 0 });
+  assert.deepEqual(parado, { ativoMs: 0, ociosoMs: 0 });
+  // fim antes do inicio nao pode virar tempo negativo nem positivo
+  const invertido = repartirTempo({ inicioMs: 5_000, fimMs: 1_000, ultimaInteracaoMs: 0 });
+  assert.deepEqual(invertido, { ativoMs: 0, ociosoMs: 0 });
+});
+
+test("ativo mais ocioso e sempre a duracao do intervalo", () => {
+  // Invariante: nenhum segundo pode sumir nem ser contado duas vezes -- e
+  // `active_sec` e o unico insumo de `trailup_tempo_telemetria_min`.
+  for (const ultima of [0, 100_000, 599_000, 600_000, 1_200_000]) {
+    for (const [ini, fim] of [[0, 60_000], [550_000, 700_000], [600_000, 660_000]]) {
+      const { ativoMs, ociosoMs } = repartirTempo({
+        inicioMs: ini, fimMs: fim, ultimaInteracaoMs: ultima,
+      });
+      assert.equal(ativoMs + ociosoMs, fim - ini, `ultima=${ultima} ${ini}..${fim}`);
+    }
+  }
 });

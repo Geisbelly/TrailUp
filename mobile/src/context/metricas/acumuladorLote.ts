@@ -102,6 +102,46 @@ export const EMPTY_STUDY_CONTEXT: CurrentStudyContext = {
  * assume: o lote carrega o tempo DAQUELE lote, mas o relogio do ocio e da
  * sessao.
  */
+/**
+ * Quanto de um intervalo conta como ESTUDO e quanto conta como abandono.
+ *
+ * O limite não é "há quanto tempo a pessoa não toca na tela". Ler um enunciado,
+ * pensar numa questão e ouvir o Guardião não produzem evento nenhum, e são
+ * estudo. Medido na base depois que o coletor passou a usar 120s aqui: **784 de
+ * 1003 segundos viraram ócio**, e lotes inteiros chegaram com
+ * `dwell 64 / active 0` — o aluno parado numa atividade, pensando.
+ *
+ * O que este limite detecta é ABANDONO: telefone aberto na tela e ninguém na
+ * frente. E esse caso já é coberto antes de chegar aqui — perder o foco da tela
+ * ou mandar o app para segundo plano zera o contexto (`endStudySession`), e o
+ * bloqueio automático do aparelho faz isso sozinho em poucos minutos. Daí o
+ * limite ser generoso: ele é a rede embaixo, não a medida.
+ *
+ * **Não confundir com os 120s do pipeline.** Lá o número responde "o aluno
+ * travou?", que é classificação de emoção. Aqui responde "isto conta como tempo
+ * de estudo?". São perguntas diferentes, e usar um número só para as duas foi o
+ * que zerou a contabilidade.
+ */
+export const LIMITE_DE_ABANDONO_MS = 600_000;
+
+export function repartirTempo(params: {
+  inicioMs: number;
+  fimMs: number;
+  ultimaInteracaoMs: number;
+  limiteMs?: number;
+}): { ativoMs: number; ociosoMs: number } {
+  const { inicioMs, ultimaInteracaoMs } = params;
+  const limiteMs = params.limiteMs ?? LIMITE_DE_ABANDONO_MS;
+  const fimMs = Math.max(params.fimMs, inicioMs);
+
+  const abandonoComecaEm = ultimaInteracaoMs + limiteMs;
+  const ativoAte = Math.min(fimMs, abandonoComecaEm);
+  return {
+    ativoMs: Math.max(0, ativoAte - inicioMs),
+    ociosoMs: Math.max(0, fimMs - Math.max(inicioMs, abandonoComecaEm)),
+  };
+}
+
 export function buildEmptyBatch(
   nowMs: number,
   lastInteractionAtMs?: number

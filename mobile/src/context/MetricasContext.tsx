@@ -1,6 +1,7 @@
 import { useIA } from "@/context/IAContext";
 import {
   accumulateContextTime,
+  repartirTempo,
   buildEmptyBatch,
   EMPTY_STUDY_CONTEXT,
   markContextVisit,
@@ -125,7 +126,10 @@ type MetricasBatchContextValue = {
 // para chamar o aluno de disperso (`idle_sec >= 120`). Ausencia continua sendo
 // detectada — com o app aberto na mesa, o aluno ganha 2 min e para —, so deixou
 // de ser o caso comum.
-const IDLE_THRESHOLD_MS = 120_000;
+// A repartição entre estudo e abandono mora em `acumuladorLote`, junto com
+// o limite e a explicação de por que ele NÃO é o mesmo 120s do pipeline: lá
+// o número responde "o aluno travou?", aqui responde "isto conta como tempo
+// de estudo?". Usar um só para as duas perguntas zerou a contabilidade.
 const MAX_TOUCH_SAMPLES = 25;
 const TOUCH_SAMPLE_THROTTLE_MS = 750;
 // Flush periodico da telemetria. Reduzido de 180s -> 60s para capturar
@@ -403,10 +407,11 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const idleStartsAt = batch.lastInteractionAtMs + IDLE_THRESHOLD_MS;
-    const activeUntil = Math.min(endMs, idleStartsAt);
-    const activeMs = Math.max(0, activeUntil - startMs);
-    const idleMs = Math.max(0, endMs - Math.max(startMs, idleStartsAt));
+    const { ativoMs: activeMs, ociosoMs: idleMs } = repartirTempo({
+      inicioMs: startMs,
+      fimMs: endMs,
+      ultimaInteracaoMs: batch.lastInteractionAtMs,
+    });
     const currentContext = currentContextRef.current;
 
     batch.generalActiveMs += activeMs;
