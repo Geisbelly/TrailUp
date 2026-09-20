@@ -1086,6 +1086,44 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 > enunciado em vez do gabarito. Mover essa validação para o servidor é trabalho
 > próprio — e até lá a qualidade da correção dissertativa é menor.
 
+> **E o material PERSONALIZADO continua corrigindo na tela — de propósito, e há
+> guarda.** Mandar toda questão para `questao_responder` parecia a leitura certa
+> da regra, e quebrava duas coisas de uma vez:
+>
+> 1. **A questão inventada não existe em `questoes`.** Quando o plano não traz
+>    id, `stableNegativeId` (`utils/personalization.ts`) dá a ela um id
+>    **negativo**. A RPC responde `questao_inexistente`, e a tela trata erro de
+>    correção **abortando a resposta**: a questão ficaria impossível de
+>    responder — não erra, não acerta, não registra.
+> 2. **A que herda o id é uma REESCRITA.** `_enriquecer_questao` preserva o
+>    `item.id` da semente (que vem de `buscar_questoes_topico`), então o id é
+>    real e a RPC acharia a linha. Só que `fn_questao_confere` aceita letra e
+>    índice, e a versão personalizada reordena e reescreve as alternativas: a
+>    "A" do aluno não é a "A" do professor. O veredito sairia **errado com cara
+>    de certo** — o pior modo de falha dos três.
+>
+> Há ainda um motivo de contabilidade: `questao_responder` grava em
+> `questao_aluno`, e progresso de personalizado é de
+> `personalizacao_item_progresso`. Registrar nos dois creditaria o percurso do
+> professor por trabalho feito no personalizado.
+>
+> A decisão mora em `utils/correcaoDaQuestao.ts` (`servidorCorrige`), fora da
+> tela porque `QuestionActivity` importa `react-native` e não carrega no harness
+> do node — mesmo motivo de `acumuladorLote.ts` e `perfilDoMaterial.ts`. E o
+> gabarito exibido passou a ter **duas fontes com ordem**: a do servidor primeiro
+> (única que existe para questão do professor), a do payload só quando
+> `servidorCorrige` é falso — sem essa ordem a tela anunciaria "sem gabarito"
+> antes de o servidor responder.
+>
+> **Dívida que fica, e é dormente:** para a questão personalizada a resposta
+> ainda viaja no JSONB que o aluno lê. Medido na base hoje —
+> `conteudo_personalizado` tem 55 linhas e **zero** com `resposta_correta` em
+> `plano`, `materiais` ou `ai_patch`; a única que casa "quiz" casa dentro de
+> `_geracao_falhas`. Ou seja, o caminho existe no código
+> (`_normalize_personalized_activities` emite `resposta_correta`) e nunca
+> produziu dado. Fechar exige o gabarito do personalizado sair do JSONB para
+> uma tabela com RLS, como `questao_gabarito` fez com o do professor.
+
 ## Convenções
 
 - **Encoding: UTF-8 sem BOM, sempre.** Já houve mojibake (UTF-8 salvo como

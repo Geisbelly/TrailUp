@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Image, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { corrigirQuestaoNoServidor, mensagemDeErroDaCorrecao } from "@/services/questaoCorrecao";
+import { servidorCorrige } from "@/utils/correcaoDaQuestao";
 
 type Props = {
   atividade: any;
@@ -756,18 +757,31 @@ export default function QuestionActivity({
         ? String(respostaAnterior)
         : String(respostaAnterior)
       : null;
-  const gabaritoExibido =
-    isDissertativaActivity
-      ? "Avaliação manual"
-      : isFillBlankActivity
+  // O gabarito exibido tem DUAS fontes, e a ordem importa. A do servidor chega
+  // depois de responder (`questao_responder` devolve junto com o veredito) e e a
+  // unica que existe para questao do professor -- o payload dela vem com o campo
+  // nulo desde `20260921_01`. A do payload so serve a questao personalizada
+  // inventada, que nao tem linha em `questoes` e por isso nao tem gabarito no
+  // servidor; para o resto ela e' nula, e cair nela sem a guarda faria a tela
+  // anunciar "sem gabarito" em vez de esperar a resposta do servidor.
+  const gabaritoLocal = !servidorCorrige({ questaoId: questao?.id, personalizada: isPersonalizedLocal })
+    ? isFillBlankActivity
       ? acceptedAnswers.length > 0
         ? acceptedAnswers.join(' ou ')
         : null
-      : gabaritoDoServidor[questaoIndex] != null
-      ? isTrueFalseActivity
-        ? formatTrueFalseLabel(gabaritoDoServidor[questaoIndex] as string)
-        : String(gabaritoDoServidor[questaoIndex])
-      : null;
+      : questao?.resposta_correta != null
+      ? String(questao.resposta_correta)
+      : null
+    : null;
+  const gabaritoBruto = gabaritoDoServidor[questaoIndex] ?? gabaritoLocal;
+  const gabaritoExibido =
+    isDissertativaActivity
+      ? "Avaliação manual"
+      : gabaritoBruto == null
+      ? null
+      : isTrueFalseActivity
+      ? formatTrueFalseLabel(gabaritoBruto)
+      : String(gabaritoBruto);
 
   return (
     <ScrollView
@@ -1108,6 +1122,16 @@ export default function QuestionActivity({
               setValidandoIA(false);
             }
             setFeedbackIA((prev) => ({ ...prev, [questaoIndex]: resultadoIA }));
+          } else if (!servidorCorrige({ questaoId: questao?.id, personalizada: isPersonalizedLocal })) {
+            // Material personalizado corrige na TELA. `servidorCorrige`
+            // explica por que: a questao inventada nao existe em `questoes` (id
+            // negativo -> `questao_inexistente` -> resposta abortada), e a que
+            // herdou o id e uma reescrita, entao corrigir pela letra/indice do
+            // professor daria veredito errado com cara de certo.
+            acertou = isFillBlankActivity
+              ? checkResposta(respostaSelecionada, -1)
+              : checkResposta(alternativas[escolhido ?? -1], escolhido ?? -1);
+            acertosPercentBase = acertou ? 100 : 0;
           } else {
             // QUEM CORRIGE E O SERVIDOR. O gabarito nao chega mais ao cliente
             // (`questoes.resposta_correta` saiu do alcance do aluno), entao
