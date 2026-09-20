@@ -314,3 +314,81 @@ def test_nenhum_literal_vira_bind_parameter_no_search_path():
     for direcao in ("upgrade", "downgrade"):
         suspeitos = re.findall(r"(?<!:):[A-Za-z_]\w*", _sql_sp(direcao))
         assert suspeitos == [], f"{direcao}: {suspeitos}"
+
+
+# ----------------------------------------------------------------------
+# `20260920_03` -- as 26 restantes
+# ----------------------------------------------------------------------
+
+MIGRACAO_26 = "20260920_03_search_path_das_26_restantes.py"
+
+
+def _stmts_26(direcao: str = "upgrade") -> list[str]:
+    module = _carregar(MIGRACAO_26)
+    executado: list[str] = []
+
+    class FakeOp:
+        def execute(self, sql):
+            executado.append(str(sql))
+
+    module.op = FakeOp()
+    getattr(module, direcao)()
+    return executado
+
+
+def test_cadeia_de_revisao_das_26():
+    module = _carregar(MIGRACAO_26)
+    assert module.revision == "20260920_03"
+    assert module.down_revision == "20260920_02"
+
+
+def test_usa_alter_function_e_nunca_create_or_replace():
+    # O PONTO da migracao. `CREATE OR REPLACE` exige reescrever o corpo inteiro
+    # para acrescentar uma clausula, e e' assim que regra some em silencio
+    # (`20260912_01`). `ALTER FUNCTION ... SET` nao toca no corpo: medido numa
+    # transacao revertida sobre as 26, `prosrc`, `proacl`, `prosecdef` e
+    # `provolatile` ficaram identicos nas 26.
+    for direcao in ("upgrade", "downgrade"):
+        sql = "\n".join(_stmts_26(direcao))
+        assert "CREATE OR REPLACE" not in sql.upper()
+        assert "ALTER FUNCTION" in sql.upper()
+
+
+def test_toda_funcao_vem_com_assinatura_completa():
+    # Nome cru quebraria no dia em que alguem criar uma sobrecarga, e
+    # `ALTER FUNCTION` precisa da assinatura para desambiguar.
+    module = _carregar(MIGRACAO_26)
+    assert len(module._FUNCOES) == 26
+    for assinatura in module._FUNCOES:
+        assert assinatura.endswith(")"), assinatura
+        assert "(" in assinatura, assinatura
+
+
+def test_o_upgrade_recusa_deixar_qualquer_funcao_para_tras():
+    # A guarda nao confere "as 26 que eu listei", e sim NENHUMA sobrando -- se
+    # aparecer funcao nova sem a clausula entre a escrita e a aplicacao, e' aqui
+    # que aparece.
+    sql = _sem_comentarios("\n".join(_stmts_26()))
+    assert "proconfig IS NULL" in sql
+    assert "RAISE EXCEPTION" in sql
+    assert "search_path mutavel" in sql
+
+
+def test_sem_if_exists_no_alter():
+    # Funcao que sumiu da base significa lista envelhecida. Seguir em silencio
+    # devolveria o caminho mutavel sem ninguem perceber; falhar e' barato,
+    # porque a migracao e' uma transacao.
+    sql = "\n".join(_stmts_26())
+    assert "IF EXISTS" not in sql.upper()
+
+
+def test_o_downgrade_devolve_o_caminho_mutavel():
+    volta = _stmts_26("downgrade")
+    assert len(volta) == 26
+    assert all("RESET search_path" in s for s in volta)
+
+
+def test_nenhum_literal_vira_bind_parameter_nas_26():
+    for direcao in ("upgrade", "downgrade"):
+        suspeitos = re.findall(r"(?<!:):[A-Za-z_]\w*", "\n".join(_stmts_26(direcao)))
+        assert suspeitos == [], f"{direcao}: {suspeitos}"

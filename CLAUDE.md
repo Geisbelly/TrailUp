@@ -344,13 +344,32 @@ Cada perfil carrega:
   > por isso que `telemetria_resolver_entidade` e `telemetria_id_do_item_key`
   > atravessaram a `20260826_17`, a `20260830_01` e a `20260920_01` sem a
   > cláusula: ela tem de ser **redeclarada a cada replace**, e o linter só a
-  > cobra depois. Corrigidas na `20260920_02` — que reescreve o corpo inteiro,
-  > byte a byte igual, porque `REPLACE` não aceita "só acrescente isto".
+  > cobra depois.
+  >
+  > **Mas para acrescentar a cláusula, a ferramenta certa é `ALTER FUNCTION`.**
+  > `ALTER FUNCTION f(args) SET search_path TO 'public', 'pg_temp'` muda a
+  > configuração **sem tocar no corpo**: medido numa transação revertida sobre
+  > 26 funções, `prosrc`, `proacl`, `prosecdef` e `provolatile` ficaram
+  > idênticos nas 26, e só `proconfig` mudou. A `20260920_02` usou
+  > `CREATE OR REPLACE` nas duas primeiras e teve de provar por md5 que não
+  > perdera nada; a `20260920_03` fez as outras 26 por `ALTER` e não teve o que
+  > provar. Ao pinar função existente, **não reescreva o corpo**.
   >
   > Cuidado ao conferir: `pg_get_functiondef` sempre emite o corpo entre
   > `$function$`, qualquer que tenha sido a tag do `CREATE`. Comparar o texto
   > cru com o da migração acusa diferença onde não há — normalize a tag (e os
-  > comentários) antes de concluir que o corpo divergiu.
+  > comentários) antes de concluir que o corpo divergiu. E note que o próprio
+  > `pg_get_functiondef` passa a incluir a linha do `SET`: para comparar corpo,
+  > use `prosrc`, que é só o corpo e que `ALTER` não altera.
+
+> **Função com cara de viva que está quebrada há tempo.** `fn_trilha_by_classe`
+> (`SECURITY DEFINER`, exposta em `/rest/v1/rpc/`) lê `public.v_trilha_topicos`,
+> **que não existe nesta base** — qualquer chamada estoura com 42P01, e não é
+> `search_path`: a referência está qualificada. Não há um chamador sequer no
+> monorepo (`mobile/src`, `frontend/src`, `api/app`, `docs/**/sql`). Achada ao
+> exercitar as funções depois de pinar o caminho — o teste que só lê catálogo
+> nunca teria encontrado. É o mesmo padrão de `progressoTrilha.ts` e do fallback
+> do rank, agora do lado do banco.
 - **Notificações — motor inteiro no banco.** Quatro tabelas com papéis **não
   intercambiáveis**: `notificacoes_ia` (o que a IA *sugeriu*; a API só insere
   aqui), `notificacoes_pendentes` (a *fila*, com `gatilho`
