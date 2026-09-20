@@ -14,6 +14,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError, InterfaceError, OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.identidade import dono_de
 from app.repositories.artefatos_personalizados import ArtefatosPersonalizadosRepository
 from app.repositories.conteudo_classe import ConteudoClasseRepository
 from app.repositories.conteudo_personalizado import ConteudoPersonalizadoRepository
@@ -735,7 +736,7 @@ async def _build_targets(
     alunos_da_classe = await classe_repo.listar_alunos_classe_com_perfil_dominante(classe_id)
     alunos = [item["aluno_id"] for item in alunos_da_classe]
     profile_by_aluno = {
-        str(item["aluno_id"]): _normalize_profile_key(item.get("perfil_dominante"))
+        dono_de(item): _normalize_profile_key(item.get("perfil_dominante"))
         for item in alunos_da_classe
     }
 
@@ -1022,11 +1023,23 @@ async def _seed_progress(
     session: AsyncSession,
     record: dict[str, Any],
 ) -> None:
+    # Progresso e' por DONO: `personalizacao_item_progresso.aluno_id` e NOT
+    # NULL. Sem esta precondicao a base por perfil chegava aqui e o erro saia
+    # como "invalid UUID 'None'" na borda do asyncpg -- longe da causa e sem
+    # dizer qual regra foi violada. O chamador ja guarda; isto e' a rede.
+    dono = dono_de(record)
+    if dono is None:
+        raise ValueError(
+            "_seed_progress exige dono: personalizacao "
+            f"{record.get('id')} veio com aluno_id nulo. "
+            "Base por perfil nao tem progresso -- progresso e' comportamento."
+        )
+
     progress_repo = PersonalizacaoProgressoRepository(session)
     for step in build_personalizacao_steps(record):
         await progress_repo.upsert(
             personalizacao_id=int(record["id"]),
-            aluno_id=str(record["aluno_id"]),
+            aluno_id=dono,
             classe_id=int(record.get("classe_id") or 0),
             topico_id=int(record.get("topico_id") or 0),
             item_key=str(step.get("key") or step.get("item_key") or f"item:{step.get('index', 0)}"),
@@ -1142,7 +1155,7 @@ async def _process_media_render_target(
 ) -> dict[str, Any]:
     # Target base nao tem dono. str(None) devolveria a string "None" e ela
     # viajaria adiante como se fosse UUID.
-    aluno_id = str(target["aluno_id"]) if target.get("aluno_id") is not None else None
+    aluno_id = dono_de(target)
     topico_id = int(target["topico_id"])
     conteudo_id = int(target["conteudo_id"]) if target.get("conteudo_id") is not None else None
     classe_id = int(job["classe_id"])
@@ -1892,7 +1905,13 @@ async def _prewarm_shared_content_enrichments(
     classe_id = int(job["classe_id"])
 
     async def _prepare(target: dict[str, Any]) -> None:
-        aluno_id = str(target["aluno_id"])
+        # Esta barreira roda para o REPRESENTANTE de um grupo de targets que
+        # dividem a mesma preparacao -- ou seja, justamente o caminho da base
+        # por perfil, que NAO TEM DONO. `str(target["aluno_id"])` com NULL
+        # devolvia a string 'None', que nao e nula e por isso atravessava a
+        # guarda `if aluno_id is None` de fetch_personalizacao_context ate
+        # estourar no asyncpg. Foram 268 alvos assim.
+        aluno_id = dono_de(target)
         topico_id = int(target["topico_id"])
         conteudo_id = (
             int(target["conteudo_id"])
@@ -2019,7 +2038,7 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
                 ciclo_id = str(payload.get("ciclo_id") or "")
                 source_hash = str(payload.get("source_hash") or "")
                 generation_key = _build_generation_key(ciclo_id=ciclo_id, source_hash=source_hash)
-                record = await conteudo_repo.buscar_por_ciclo_id(aluno_id=str(job["aluno_id"]), ciclo_id=ciclo_id)
+                record = await conteudo_repo.buscar_por_ciclo_id(aluno_id=dono_de(job), ciclo_id=ciclo_id)
                 if not record:
                     raise RuntimeError(
                         f"conteudo_personalizado nao encontrado para ciclo_id={ciclo_id} - "
@@ -2028,7 +2047,7 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
                 record_id = int(record["id"])
 
                 ctx = await fetch_personalizacao_context(
-                    aluno_id=str(job["aluno_id"]),
+                    aluno_id=dono_de(job),
                     classe_id=int(job["classe_id"]),
                     topico_id=job.get("topico_id"),
                     conteudo_id=job.get("conteudo_id"),

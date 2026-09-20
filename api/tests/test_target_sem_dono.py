@@ -9,18 +9,26 @@ O material BASE nao tem dono: `_targets_para_job` cria os alvos com
 contexto de aluno, e a string passa por ele: cai no `else` e consulta
 `alunos WHERE id = 'None'`.
 
-Medido em producao, job 6d21ec28 (topico 128, classe 32): 0 completos / 7 falhas
-de 7 alvos, com
+Medido em producao, duas vezes, em jobs diferentes:
 
-    invalid input for query argument $1: 'None' (invalid UUID 'None')
+- job 6d21ec28 (topico 128, classe 32): 0 completos / 7 falhas de 7 alvos, com
+  `invalid input for query argument $1: 'None' (invalid UUID 'None')` e ZERO
+  chamadas de geracao ao microservice -- o pre-aquecimento do cache de contexto
+  estoura antes;
+- varredura de `personalizacao_job_targets` em 2026-09-20: **268 alvos** com a
+  mesma mensagem, a ultima em 13/09 -- ou seja, DEPOIS de `e4d50ae`, que
+  acrescentou a guarda `if aluno_id is None` no consumidor.
 
-e ZERO chamadas de geracao ao microservice -- o pre-aquecimento do cache de
-contexto estoura antes.
+Esse "depois" e a licao, e e por isso que a forma exigida mudou: guarda por
+IDENTIDADE nao pega TEXTO. Enquanto a conversao fosse escrita a mao em cada
+ponto (`str(x) if x is not None else None`), ela protegia so aquele ponto, e
+nada impedia que o valor chegasse ja convertido de outro lugar -- que e
+exatamente o que acontecia. Hoje a conversao e uma so, `dono_de` em
+`app.core.identidade`, e ela trata `'None'`/`'null'`/vazio como ausencia.
 
-A guarda existia em `_process_media_render_target`, com o comentario explicando
-exatamente este caso, e faltava em `_prepare`. Este teste cobre o arquivo todo,
-nao so os dois pontos: e um descuido de uma linha que reaparece a cada caminho
-novo que le `target["aluno_id"]`.
+Este arquivo e o DONO da regra de forma. O comportamento (a base nao busca
+aluno) e provado em `test_base_sem_dono_nao_vira_string_none.py`, por execucao,
+nao por leitura de fonte.
 """
 
 from __future__ import annotations
@@ -35,40 +43,44 @@ FONTE = (
     / "personalizacao_jobs.py"
 )
 
-# `str(target["aluno_id"])` ou `str(target.get("aluno_id"))`, em qualquer forma.
-USO_DE_STR = re.compile(r"""str\(\s*target(?:\[|\.get\(\s*)["']aluno_id["']""")
+# `str(<algo>["aluno_id"])` ou `str(<algo>.get("aluno_id"))`, em qualquer forma
+# e sobre QUALQUER linha -- target, record, job, item. A primeira versao desta
+# regra olhava so `target`, e o defeito reapareceu por `record` e por `job`.
+USO_DE_STR = re.compile(r"""str\(\s*\w+(?:\[|\.get\(\s*)["']aluno_id["']""")
 
 
-def _linhas_com_str_de_aluno() -> list[tuple[int, str]]:
+def _linhas_de_codigo() -> list[tuple[int, str]]:
+    """Comentario nao executa. A regra antiga contava a linha comentada que
+    EXPLICA o defeito como se fosse o defeito."""
     texto = FONTE.read_text(encoding="utf-8")
     return [
         (numero, linha)
         for numero, linha in enumerate(texto.splitlines(), start=1)
+        if not linha.strip().startswith("#")
+    ]
+
+
+def test_nenhuma_conversao_de_dono_e_feita_na_mao() -> None:
+    ofensores = [
+        (numero, linha.strip())
+        for numero, linha in _linhas_de_codigo()
         if USO_DE_STR.search(linha)
     ]
 
-
-def test_existe_pelo_menos_um_uso_para_o_teste_valer() -> None:
-    """Se alguem reescrever o modulo e os usos desaparecerem, o teste passa a
-    nao verificar nada -- e passaria em silencio."""
-    assert _linhas_com_str_de_aluno(), (
-        "nenhum `str(target[\"aluno_id\"])` encontrado: o teste perdeu o alvo"
+    assert not ofensores, (
+        "use `dono_de(linha)` de app.core.identidade em vez de converter a mao: "
+        + "; ".join(f"linha {n}: {t}" for n, t in ofensores)
     )
 
 
-def test_todo_str_de_aluno_id_e_guardado() -> None:
-    """Cada uso precisa checar `is not None` na MESMA linha (a forma que o
-    modulo usa), senao um alvo base grava a string "None"."""
-    sem_guarda = [
-        (numero, linha.strip())
-        for numero, linha in _linhas_com_str_de_aluno()
-        if "is not None" not in linha
-    ]
+def test_o_conversor_esta_importado_e_em_uso() -> None:
+    """Sem isto, apagar todos os usos deixaria o teste acima verde sem que
+    nada estivesse protegido -- ele passaria a nao verificar coisa nenhuma."""
+    texto = FONTE.read_text(encoding="utf-8")
 
-    assert not sem_guarda, (
-        "str(target['aluno_id']) sem guarda de None em: "
-        + "; ".join(f"linha {n}: {t}" for n, t in sem_guarda)
-    )
+    assert "from app.core.identidade import dono_de" in texto
+    usos = len(re.findall(r"\bdono_de\(", texto))
+    assert usos >= 4, f"esperava o conversor nos caminhos de dono, achei {usos}"
 
 
 def test_o_prepare_tem_a_guarda() -> None:
@@ -78,7 +90,7 @@ def test_o_prepare_tem_a_guarda() -> None:
     inicio = texto.index("async def _prepare(target:")
     corpo = texto[inicio : inicio + 1800]
 
-    assert 'str(target["aluno_id"]) if target.get("aluno_id") is not None else None' in corpo
+    assert "aluno_id = dono_de(target)" in corpo
 
 
 def test_a_chave_de_cache_continua_compativel() -> None:

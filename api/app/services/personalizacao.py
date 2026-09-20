@@ -21,6 +21,7 @@ from app.ingestion.semantic_chunker import chunks_to_plain_text as _chunks_to_pl
 from app.repositories.artefatos_personalizados import ArtefatosPersonalizadosRepository
 from app.repositories.conteudo_classe import ConteudoClasseRepository
 from app.repositories.conteudo_personalizado import ConteudoPersonalizadoRepository
+from app.core.identidade import identificador_de_dono
 from app.repositories.context import ContextRepository
 from app.repositories.fontes_personalizacao import FontesPersonalizacaoRepository
 from app.repositories.materiais import MateriaisRepository
@@ -4623,6 +4624,13 @@ async def fetch_personalizacao_context(
     # perfil do proprio target -- e contexto_aluno, que para a base e vazio
     # por definicao. Fontes, conteudo da classe e source_hash ja vinham de
     # classe/topico/conteudo.
+    #
+    # A guarda abaixo testa identidade (`is None`), e por isso ela SO vale se o
+    # valor chegar nulo. Ela existe desde `e4d50ae` e mesmo assim 268 alvos
+    # estouraram depois dela: quem chamava ja havia feito `str(None)`, e a
+    # string 'None' nao e nula. Normalizar aqui e defesa de fronteira -- quem
+    # decide "tem dono?" nao pode depender de o chamador ter convertido certo.
+    aluno_id = identificador_de_dono(aluno_id)
     if aluno_id is None:
         context: dict[str, Any] = {}
     else:

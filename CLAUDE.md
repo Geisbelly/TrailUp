@@ -981,6 +981,58 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 > motor de eventos da turma que ainda não existe, e `desafio_participantes` não
 > o substitui — congela a composição de UM desafio, não a da turma.
 
+> **A geração do personalizado estava parada há semanas, e o culpado era a
+> string `'None'`.** Medido em `personalizacao_job_targets`: **268 alvos** com a
+> mesma falha, a última em 13/09 —
+>
+> ```
+> asyncpg.DataError: invalid input for query argument $1: 'None'
+>   (invalid UUID 'None': length must be between 32..36 characters, got 4)
+> [SQL: SELECT a.id, ... FROM alunos a WHERE a.id = $1]  [parameters: ('None',)]
+> ```
+>
+> Efeito na ponta: classe 54 com **5 linhas, todas `failed`, todas `seeker`**,
+> paradas desde 30-31/08 — ou seja, o aluno abre a trilha e não há material
+> personalizado nenhum, para nenhum perfil.
+>
+> **O detalhe que importa: a guarda já existia.** `fetch_personalizacao_context`
+> tem `if aluno_id is None` desde `e4d50ae` (10/09), e as falhas são de 13/09 —
+> *depois* dela. Guarda por **identidade não pega texto**: `'None'` tem quatro
+> caracteres e não é nulo, então passa batido e o estouro acontece na borda do
+> asyncpg, longe de quem cometeu o erro.
+>
+> Quem convertia era `_prepare`, a **barreira de preparação compartilhada** —
+> que roda justamente para o representante de um grupo de targets que dividem a
+> mesma preparação, isto é, o caminho da base por perfil, que **não tem dono**.
+> Ela fazia `str(target["aluno_id"])` sem guarda, num módulo que já tinha duas
+> ocorrências corrigidas e comentadas ao lado.
+>
+> Por isso a correção não foi a terceira guarda manual: a conversão virou **uma
+> só**, `dono_de` / `identificador_de_dono` em `app/core/identidade.py`, que
+> trata `'None'`, `'null'`, `'undefined'` e vazio como ausência. Enquanto
+> `str(x) if x is not None else None` fosse escrito em cada ponto, ele protegia
+> aquele ponto e nada impedia o valor de chegar já convertido de outro lugar.
+>
+> Três coisas que valem para a próxima:
+>
+> 1. **Conversão de ausência é regra, não idioma.** Se a mesma linha aparece
+>    corrigida em dois lugares com um comentário explicando, o terceiro lugar
+>    já existe — só não foi encontrado ainda.
+> 2. **A regra tinha TRÊS donos e três versões.** `test_target_sem_dono.py`,
+>    `test_personalizacao_jobs_loop.py` e `test_base_sem_aluno_repositorios.py`
+>    afirmavam-na cada um do seu jeito, e dois deles estavam **vermelhos havia
+>    tempo** — teste vermelho que ninguém lê não protege nada. Hoje a regra de
+>    forma tem um dono (`test_target_sem_dono.py`) e o comportamento é provado
+>    por execução, não por leitura de fonte
+>    (`test_base_sem_dono_nao_vira_string_none.py`).
+> 3. **Varredura de fonte que conta comentário mede errado.** A versão anterior
+>    da regra casava com a linha comentada que *explica* o defeito. Filtre
+>    comentário, e exija que o alvo exista (senão apagar os usos deixa o teste
+>    verde sem proteger nada).
+>
+> `_seed_progress` ganhou precondição explícita em vez de estourar no encode:
+> progresso é comportamento, exige dono, e a base por perfil não tem.
+
 > Lacuna real ainda aberta: `MentalStateHistoryRepository.listar_por_aluno`
 > (`api/app/repositories/mental_state.py`) só é exercitado em teste — o
 > histórico em `aluno_mental_state_history` é **gravado** a cada ciclo
