@@ -392,3 +392,94 @@ def test_nenhum_literal_vira_bind_parameter_nas_26():
     for direcao in ("upgrade", "downgrade"):
         suspeitos = re.findall(r"(?<!:):[A-Za-z_]\w*", "\n".join(_stmts_26(direcao)))
         assert suspeitos == [], f"{direcao}: {suspeitos}"
+
+
+# ----------------------------------------------------------------------
+# `20260920_04` -- o `anon` sai das SECURITY DEFINER
+# ----------------------------------------------------------------------
+
+MIGRACAO_ANON = "20260920_04_anon_sai_das_security_definer.py"
+
+
+def _stmts_anon(direcao: str = "upgrade") -> list[str]:
+    module = _carregar(MIGRACAO_ANON)
+    executado: list[str] = []
+
+    class FakeOp:
+        def execute(self, sql):
+            executado.append(str(sql))
+
+    module.op = FakeOp()
+    getattr(module, direcao)()
+    return executado
+
+
+def test_cadeia_de_revisao_do_anon():
+    module = _carregar(MIGRACAO_ANON)
+    assert module.revision == "20260920_04"
+    assert module.down_revision == "20260920_03"
+
+
+def test_revoga_de_PUBLIC_e_de_anon_juntos():
+    # O `anon` tinha o privilegio por DOIS caminhos: grant explicito (`anon=X`)
+    # e `PUBLIC` (`=X`) no mesmo `proacl`. Revogar so de um deixa a funcao
+    # aberta do mesmo jeito. Forma da `20260826_09`.
+    sql = _sem_comentarios("\n".join(_stmts_anon()))
+    assert "FROM PUBLIC, anon" in sql
+
+
+def test_reafirma_authenticated_e_nao_toca_service_role():
+    # `service_role` tem grant proprio no `proacl` e nao e alcancado por
+    # `REVOKE ... FROM PUBLIC, anon` -- por isso a migracao nao precisa (nem
+    # deve) mexer nele. A API, o microservice e o BrainHexPDF dependem disso.
+    sql = _sem_comentarios("\n".join(_stmts_anon()))
+    assert "GRANT EXECUTE ON FUNCTION %s TO authenticated" in sql
+    assert "service_role" not in sql
+
+
+def test_a_unica_excecao_e_a_chamada_pre_login():
+    # Varrendo o monorepo sao 13 RPCs chamadas, e so `fn_auth_email_exists`
+    # roda antes de existir sessao (telas de cadastro). Toda outra excecao
+    # aberta aqui reabre superficie sem chamador que a justifique.
+    module = _carregar(MIGRACAO_ANON)
+    assert module._EXCECOES_PRE_LOGIN == ("fn_auth_email_exists",)
+
+
+def test_o_alvo_e_por_propriedade_e_nao_lista_fixa():
+    # O conjunto e "SECURITY DEFINER que `anon` alcanca", nao uma lista de
+    # nomes: o `CLAUDE.md` registra que funcao nova NASCE executavel por `anon`,
+    # entao lista fixa envelhece na proxima funcao criada.
+    sql = _sem_comentarios("\n".join(_stmts_anon()))
+    assert "p.prosecdef" in sql
+    assert "has_function_privilege('anon'" in sql
+
+
+def test_gatilho_e_event_trigger_tambem_entram():
+    # Oito retornam `trigger` e o Postgres recusa a chamada direta. Mas
+    # `rls_auto_enable` retorna `event_trigger` e EXECUTA quando chamada direto
+    # por anon (vira no-op) -- presumir que caia na mesma regra estava errado.
+    # Revogar nao desliga disparo: gatilho nao consulta EXECUTE.
+    sql = _sem_comentarios("\n".join(_stmts_anon()))
+    assert "NOT IN ('trigger', 'event_trigger')" not in sql
+
+
+def test_o_upgrade_recusa_deixar_qualquer_uma_para_tras():
+    sql = _sem_comentarios("\n".join(_stmts_anon()))
+    assert "RAISE EXCEPTION" in sql
+    assert "ainda alcancavel por anon" in sql
+
+
+def test_o_downgrade_nao_reabre_as_de_gatilho():
+    # Assimetria deliberada: o upgrade revoga de 73, a volta devolve 64.
+    # Devolver `anon` a funcao de gatilho nao restaura comportamento nenhum.
+    volta = _sem_comentarios("\n".join(_stmts_anon("downgrade")))
+    assert "NOT IN ('trigger', 'event_trigger')" in volta
+    # E nao devolve para as internas de `service_role` (motor de notificacoes),
+    # que nunca tiveram `anon` nem `authenticated`.
+    assert "has_function_privilege('authenticated'" in volta
+
+
+def test_nenhum_literal_vira_bind_parameter_no_anon():
+    for direcao in ("upgrade", "downgrade"):
+        suspeitos = re.findall(r"(?<!:):[A-Za-z_]\w*", "\n".join(_stmts_anon(direcao)))
+        assert suspeitos == [], f"{direcao}: {suspeitos}"

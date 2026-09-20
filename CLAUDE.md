@@ -672,6 +672,52 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 >    linter acusa em `anon_security_definer_function_executable`. A forma é a da
 >    `20260826_09`: `REVOKE ALL ON FUNCTION <assinatura completa> FROM PUBLIC, anon`
 >    seguido de `GRANT EXECUTE ... TO authenticated`.
+>
+>    **E a dívida acumulou até 74.** A `20260920_04` limpou; o que ela aprendeu:
+>
+>    - **`FROM PUBLIC, anon` não é redundante.** O `proacl` das expostas era
+>      `{=X/postgres, anon=X/postgres, ...}` — o privilégio chega pelos **dois**
+>      caminhos, e revogar só de `anon` deixa a função aberta por `PUBLIC`.
+>    - **`service_role` não é atingido**, porque tem grant próprio
+>      (`service_role=X`). Medido: 0 funções o perderam. Importa porque a API, o
+>      microservice e o BrainHexPDF usam SERVICE_ROLE_KEY.
+>    - **Revogar não desliga gatilho.** Execução de trigger não consulta
+>      EXECUTE. Medido: com o grant revogado, `CREATE TABLE` ainda fez
+>      `rls_auto_enable` ligar a RLS, e um INSERT ainda fez
+>      `telemetria_resolver_entidade` derivar `entry_key`.
+>    - **Alvo por PROPRIEDADE, não por lista.** Lista fixa envelhece na próxima
+>      função criada — que é exatamente o defeito de nascença acima. A migração
+>      varre o catálogo e termina exigindo que não sobre nenhuma.
+>
+>    Exceção única: **`fn_auth_email_exists`**. É a só RPC pré-login do monorepo
+>    (`CadastroAluno.tsx`, `CadastroProfessor.tsx`), e o custo é enumeração de
+>    usuário — ela lê `auth.users` como dono e responde `true`/`false` para
+>    qualquer e-mail, sem login. Consciente, não resolvido: mitigar pede rate
+>    limit ou uma Edge Function no meio.
+
+> **`SECURITY DEFINER` + `anon` é RLS desligada, e dava para escrever por ela.**
+> Medido assumindo a role `anon` numa transação revertida, antes da
+> `20260920_04`: `provisionar_estrutura_aluno_classe` aceita qualquer aluno e
+> qualquer turma e **inseriu 20 linhas** (4 `topico_aluno` + 4 `conteudo_aluno` +
+> 12 `atividade_aluno`) para um aluno **não matriculado** na turma — sem login.
+> `social_sao_colegas` confirmou que dois alunos específicos são colegas e
+> `social_presenca_turma(32)` devolveu presença, também sem login.
+>
+> Das 65 alcançáveis por RPC, 46 tinham guarda `auth.uid()` e **degradam para
+> vazio** com chamador anônimo (`social_listar_pessoas(32)` → 0 linhas). Esse é
+> o modo de falha certo, e é o que separa "exposta" de "explorável": o furo
+> estava nas 19 sem guarda nenhuma, 8 delas de escrita.
+>
+> Ao criar `SECURITY DEFINER` nova: ou ela tem guarda `auth.uid()` no corpo, ou
+> ela não é de usuário — e nos dois casos o `anon` sai.
+
+> **Nem todo `event_trigger` é inalcançável.** Função que retorna `trigger` o
+> Postgres recusa chamar direto ("trigger functions can only be called as
+> triggers"). Presumi que `event_trigger` caísse na mesma regra: **não cai**.
+> `rls_auto_enable()` chamada direto por `anon` **executa** — vira no-op, porque
+> `pg_event_trigger_ddl_commands()` não devolve linha fora do contexto, mas
+> "hoje não faz nada" depende do corpo continuar como está. Ao classificar
+> superfície exposta, teste em vez de deduzir pelo tipo de retorno.
 
 > **Conquista: o gatilho avalia contra uma lista, e a lista agora tem dono.**
 > `trg_eventos_aluno_after_iud` percorre `conquistas` a cada evento. Desde a
