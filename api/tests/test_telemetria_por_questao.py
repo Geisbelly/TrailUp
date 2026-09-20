@@ -208,3 +208,109 @@ def test_o_relogio_de_ocio_atravessa_o_flush():
     ).read_text(encoding="utf-8")
     assert "buildEmptyBatch(nowMs, batch.lastInteractionAtMs)" in mobile
     assert "buildEmptyBatch(now.getTime(), batchAnterior?.lastInteractionAtMs)" in mobile
+
+
+# ----------------------------------------------------------------------
+# `20260920_02` -- search_path das duas funcoes de telemetria
+# ----------------------------------------------------------------------
+
+MIGRACAO_SP = "20260920_02_search_path_das_funcoes_de_telemetria.py"
+
+
+def _stmts_sp(direcao: str = "upgrade") -> list[str]:
+    module = _carregar(MIGRACAO_SP)
+    executado: list[str] = []
+
+    class FakeOp:
+        def execute(self, sql):
+            executado.append(str(sql))
+
+    module.op = FakeOp()
+    getattr(module, direcao)()
+    return executado
+
+
+def _sql_sp(direcao: str = "upgrade") -> str:
+    return "\n".join(_stmts_sp(direcao))
+
+
+def _so_codigo(sql: str) -> str:
+    """O SQL sem comentarios e sem espaco -- e' a identidade que importa."""
+    return re.sub(r"\s", "", re.sub(r"--[^\n]*", "", sql))
+
+
+def test_cadeia_de_revisao_do_search_path():
+    module = _carregar(MIGRACAO_SP)
+    assert module.revision == "20260920_02"
+    assert module.down_revision == "20260920_01"
+
+
+def test_as_duas_funcoes_ganham_search_path_fixo():
+    executavel = _sem_comentarios(_sql_sp())
+    assert executavel.count("SET search_path TO 'public', 'pg_temp'") == 2
+    assert "public.telemetria_id_do_item_key" in executavel
+    assert "public.telemetria_resolver_entidade" in executavel
+
+
+def test_o_downgrade_devolve_as_duas_sem_a_clausula():
+    # `CREATE OR REPLACE` nao aceita "so tire esta clausula": o que nao for
+    # redeclarado se perde, entao o downgrade tem de reescrever o corpo inteiro
+    # sem o SET -- e com o MESMO corpo, senao ele desfaz mais do que deveria.
+    volta = _stmts_sp("downgrade")
+    ida = _stmts_sp("upgrade")
+
+    assert "SET search_path" not in _sem_comentarios("\n".join(volta))
+
+    sem_clausula = lambda sql: _so_codigo(sql).replace(  # noqa: E731
+        "SETsearch_pathTO'public','pg_temp'", ""
+    )
+    # As duas primeiras sentencas sao as funcoes, nas duas direcoes; a terceira
+    # da ida e a guarda do gatilho, que nao tem par na volta.
+    assert [sem_clausula(s) for s in volta[:2]] == [sem_clausula(s) for s in ida[:2]]
+    assert len(volta) == 2
+
+
+def test_o_corpo_e_o_mesmo_da_20260920_01():
+    # A armadilha que a `20260912_01` documentou: `CREATE OR REPLACE` sobre
+    # funcao que cresceu por emenda apaga regra em silencio. Esta migracao SO
+    # pode mudar o `search_path`; se o corpo divergir do da `20260920_01`,
+    # alguma regra da resolucao de entidade foi junto.
+    corpo_novo = _so_codigo(_sql_sp())
+    corpo_anterior = _so_codigo(_sql())
+
+    for marco in (
+        "NEW.scope='question'",
+        "NEW.scope<>'topic'",
+        "NEW.scopeIN('activity','question','material')",
+        "'question:'||NEW.questao_id::text",
+        "FROMquestoesqWHEREq.id=NEW.questao_id",
+        "FROMatividadesaWHEREa.id=NEW.atividade_id",
+        "ELSE'row:'||gen_random_uuid()::text",
+    ):
+        assert marco in corpo_anterior, f"marco sumiu da 20260920_01: {marco}"
+        assert marco in corpo_novo, f"a 20260920_02 perdeu: {marco}"
+
+
+def test_o_upgrade_confere_que_o_gatilho_sobreviveu():
+    # Sem o gatilho, `entry_key` fica NULO e a chave unica
+    # `(lote_id, scope, entry_key)` deixa de deduplicar -- em silencio.
+    executavel = _sem_comentarios(_sql_sp())
+    assert "trg_telemetria_resolver_entidade" in executavel
+    assert "RAISE EXCEPTION" in executavel
+
+
+def test_search_path_nao_quebra_gen_random_uuid():
+    # `gen_random_uuid()` existe em `pg_catalog` (nucleo, PG13+) E em
+    # `extensions` (pgcrypto) nesta base. Fixar o caminho em `public, pg_temp`
+    # tira `extensions` da busca, e a funcao continua resolvendo porque
+    # `pg_catalog` e pesquisado implicitamente antes de tudo. O corpo nao pode
+    # passar a qualifica-la como `extensions.`, que e o "conserto" errado.
+    executavel = _sem_comentarios(_sql_sp())
+    assert "gen_random_uuid()" in executavel
+    assert "extensions.gen_random_uuid" not in executavel
+
+
+def test_nenhum_literal_vira_bind_parameter_no_search_path():
+    for direcao in ("upgrade", "downgrade"):
+        suspeitos = re.findall(r"(?<!:):[A-Za-z_]\w*", _sql_sp(direcao))
+        assert suspeitos == [], f"{direcao}: {suspeitos}"

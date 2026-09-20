@@ -338,6 +338,19 @@ Cada perfil carrega:
   `scope` é guardado por CHECK — escopo novo sem ampliar o CHECK é recusado com
   23514, e o cliente trata erro não-rede caindo no gravador direto, que grava na
   mesma tabela e leva o mesmo 23514: o escopo novo ficaria invisível e calado.
+
+  > **`CREATE OR REPLACE FUNCTION` também não preserva `SET search_path`** — a
+  > mesma armadilha que `CREATE OR REPLACE VIEW` tem com `security_invoker`. Foi
+  > por isso que `telemetria_resolver_entidade` e `telemetria_id_do_item_key`
+  > atravessaram a `20260826_17`, a `20260830_01` e a `20260920_01` sem a
+  > cláusula: ela tem de ser **redeclarada a cada replace**, e o linter só a
+  > cobra depois. Corrigidas na `20260920_02` — que reescreve o corpo inteiro,
+  > byte a byte igual, porque `REPLACE` não aceita "só acrescente isto".
+  >
+  > Cuidado ao conferir: `pg_get_functiondef` sempre emite o corpo entre
+  > `$function$`, qualquer que tenha sido a tag do `CREATE`. Comparar o texto
+  > cru com o da migração acusa diferença onde não há — normalize a tag (e os
+  > comentários) antes de concluir que o corpo divergiu.
 - **Notificações — motor inteiro no banco.** Quatro tabelas com papéis **não
   intercambiáveis**: `notificacoes_ia` (o que a IA *sugeriu*; a API só insere
   aqui), `notificacoes_pendentes` (a *fila*, com `gatilho`
