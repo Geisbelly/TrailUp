@@ -462,11 +462,32 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 > `tempo_gasto_min`. O WPM saía pelo mesmo fator inflado, o suficiente para
 > classificar como `skimming` quem lia devagar.
 >
-> Hoje `IDLE_THRESHOLD_MS` é **120s**, que é o mesmo número que o pipeline já
-> usava para chamar o aluno de parado. Os dois são a mesma fronteira e há teste
-> ligando um ao outro (`test_o_limiar_de_ocio_do_coletor_e_o_mesmo_do_pipeline`)
-> — mexer num sem mexer no outro faz `active_sec` e a classificação de emoção
-> falarem de coisas diferentes.
+> **A correção seguinte foi para 120s, e 120s também estava errado — pelo motivo
+> oposto.** Eu amarrei o coletor ao número que o pipeline usa, e até escrevi um
+> teste exigindo que fossem iguais. São perguntas diferentes:
+>
+> | quem | pergunta | número |
+> | --- | --- | --- |
+> | pipeline | "o aluno travou?" | 120s, classificação de emoção |
+> | coletor | "isto conta como tempo de estudo?" | limite de **abandono** |
+>
+> Ler um enunciado, pensar numa questão e ouvir o Guardião não produzem evento
+> nenhum — `trackInteraction` só é chamado por toque, scroll e sinal. Depois de
+> 120s parado estudando, o lote inteiro virava ócio, e continuava assim até o
+> próximo toque. Medido na base: **784 dos 1003 segundos viraram ócio**, 42 das
+> 69 linhas sem um único toque, e lotes seguidos chegando com
+> `dwell 64 / active 0`.
+>
+> Hoje o limite chama-se pelo que de fato detecta — `LIMITE_DE_ABANDONO_MS`, em
+> `acumuladorLote.ts` — e vale **10 minutos**. Ele é a rede embaixo, não a
+> medida: perder o foco da tela ou ir para segundo plano já zera o contexto
+> (`endStudySession`), e o bloqueio automático do aparelho faz isso sozinho em
+> poucos minutos.
+>
+> A repartição virou `repartirTempo`, função pura e testada, com a invariante de
+> que `ativo + ocioso` é sempre a duração do intervalo — nenhum segundo some nem
+> é contado duas vezes, e `active_sec` é o único insumo de
+> `trailup_tempo_telemetria_min`.
 >
 > Corolário que a mudança de limiar forçou: **regra de ócio em valor absoluto
 > contra o ócio de UM lote não sobrevive à troca do intervalo de flush.**
