@@ -926,12 +926,35 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 >
 > Ver `docs/superpowers/specs/2026-09-20-arena-guilda-dupla-solo-design.md`.
 >
-> Dívida encontrada de passagem, não corrigida: **`guilda_criar` tem duas
-> sobrecargas** (4 e 7 argumentos, as três últimas com default) e uma chamada
-> POSICIONAL de 4 argumentos é ambígua — `function guilda_criar(integer,
-> unknown, unknown, unknown) is not unique`. O app escapa porque o PostgREST
-> resolve por nome de parâmetro. Ao criar sobrecarga, derrube a antiga: a
-> `20260920_06` faz isso com `arena_desafio_criar`.
+> **`guilda_criar` era ambígua, e não só na chamada posicional.** Ela tinha duas
+> assinaturas — 4 argumentos (uma delegação de uma linha) e 7 (o corpo), com as
+> três últimas por DEFAULT —, então a de 7 também aceitava 4 e o Postgres não
+> conseguia escolher. Medido antes da `20260920_07`, as **duas** formas
+> estouravam com 42725:
+>
+> ```
+> guilda_criar(32,'X','y','constellation')              -> is not unique
+> guilda_criar(p_classe_id => 32, p_nome => 'X', ...)   -> is not unique
+> ```
+>
+> A segunda é a que o cliente usa (`guildService.ts`). O PostgREST faz a própria
+> resolução antes de chegar ao Postgres e pode escolher uma, então não dá para
+> afirmar que "Criar guilda" estava quebrado em produção sem exercitar o caminho
+> REST — o que dá para afirmar é que a chamada era ambígua no banco e dependia
+> de um detalhe de outra camada para funcionar.
+>
+> A de 4 passava `NULL, 'misto', NULL`, que são exatamente os DEFAULTs da de 7:
+> derrubá-la não muda comportamento. Medido depois — a mesma chamada nomeada
+> grava `classe=54 ativa=true modo=misto limite=10`, põe o criador como membro e
+> aparece em `guilda_listar` com `sou_membro = true`.
+>
+> Varri o catálogo atrás de outros pares assim: **é o único** no código da
+> aplicação. O que mais colide por aridade são funções do `pgvector`
+> (`cosine_distance`, `array_to_vector`…), distinguidas por TIPO, e
+> `social_listar_pessoas`, cujas versões de 0 e 1 argumento não se sobrepõem.
+>
+> **Regra: ao dar assinatura nova a uma RPC existente, derrube a antiga na mesma
+> migração.** A `20260920_06` já fez isso com `arena_desafio_criar`.
 >
 > E `guilda_evento_snapshot` segue com **0 linhas**: ele foi desenhado para um
 > motor de eventos da turma que ainda não existe, e `desafio_participantes` não
@@ -944,6 +967,38 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 > serviço para influenciar decisões (ex.: detectar frustração recorrente ao
 > longo de vários ciclos). É plumbing write-only até alguém decidir o que fazer
 > com a leitura.
+
+> **O app não tinha error boundary nenhum, e por isso erro de render virava
+> tela branca.** `componentDidCatch`, `getDerivedStateFromError` e
+> `ErrorBoundary` não apareciam em lugar algum de `mobile/src` — conferido por
+> `grep`. Em desenvolvimento o LogBox mostra o erro; na versão **publicada** ele
+> não roda, e o que sobrava era uma tela sem informação nenhuma: não dava para
+> saber se foi dado que não chegou, componente que estourou ou navegação que foi
+> para lugar nenhum.
+>
+> O expo-router usa o export chamado **`ErrorBoundary`** do arquivo de rota como
+> boundary daquele segmento (`useScreens.js` embrulha em `<Try catch={...}>`).
+> Hoje há dois: um na raiz (`app/_layout.tsx`), que pega o que não tiver um mais
+> próximo, e um em `app/(tabs)/trilha/[id].tsx`, porque é lá que a tela branca
+> foi relatada — e o `retry` do expo-router re-renderiza **só aquela rota**, sem
+> o aluno perder a sessão nem a posição na trilha.
+>
+> Três coisas que não são acidentais em `components/TelaDeErro.tsx`:
+>
+> 1. **Ela não importa contexto, tema, serviço nem dependência nova.** Um
+>    boundary que dependesse de `SessaoContext` ou de `getProfileShellPalette`
+>    pode quebrar exatamente quando é chamado — e boundary que quebra volta a
+>    ser tela branca. As cores são literais.
+> 2. **O texto é `selectable`, e não há botão "copiar".** Copiar exigiria
+>    `expo-clipboard`, que **não está instalado**; instalar pacote para a tela
+>    de emergência funcionar é o acoplamento que o item 1 evita.
+> 3. **A montagem do texto mora em `utils/detalhesDoErro.ts`**, sem import de
+>    `react-native`, porque é a parte que precisa de teste: nem tudo o que é
+>    lançado é `Error` (dá para `throw "texto"`), e a tela de erro estourar
+>    lendo `.name` de uma string a devolveria para a tela branca — agora por
+>    culpa dela mesma. Um caso que só o teste pegou: `String(new Error(""))`
+>    devolve `"Error"`, que não é vazio e não diz nada, então `mensagemDoErro`
+>    sai no ramo de `Error` mesmo com mensagem vazia.
 
 ## Convenções
 

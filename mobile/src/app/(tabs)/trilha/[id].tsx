@@ -78,6 +78,13 @@ import {
   type Conteudo,
 } from "@/utils/trilhaBlocks";
 
+import { TelaDeErro } from "@/components/TelaDeErro";
+
+// Boundary proprio da rota do topico: e aqui que a tela branca foi
+// relatada. O `retry` do expo-router re-renderiza SO esta rota, entao o
+// aluno nao perde a sessao nem a posicao na trilha.
+export { TelaDeErro as ErrorBoundary };
+
 /* --------------------------
    WebView loader (lazy, platform-aware)
    -------------------------- */
