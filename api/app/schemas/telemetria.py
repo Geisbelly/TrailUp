@@ -58,6 +58,7 @@ class TelemetriaTimeMetricEntryPayload(BaseModel):
     topico_id: int | None = None
     atividade_id: int | None = None
     conteudo_id: int | None = None
+    questao_id: int | None = None
     item_key: str | None = None
     material_key: str | None = None
     material_tipo: str | None = None
@@ -113,10 +114,14 @@ class TelemetriaTimeMetricsPayload(BaseModel):
     topics: list[TelemetriaTimeMetricEntryPayload] = Field(default_factory=list)
     contents: list[TelemetriaTimeMetricEntryPayload] = Field(default_factory=list)
     activities: list[TelemetriaTimeMetricEntryPayload] = Field(default_factory=list)
+    # Escopo mais fino, adicionado em `20260919`. `default_factory` cuida do app
+    # publicado que ainda nao manda a chave: lote sem `questions` continua
+    # valido, so nao produz linha de questao.
+    questions: list[TelemetriaTimeMetricEntryPayload] = Field(default_factory=list)
     materials: list[TelemetriaTimeMetricEntryPayload] = Field(default_factory=list)
 
     _aproveita_o_que_der = field_validator(
-        "topics", "contents", "activities", "materials", mode="before"
+        "topics", "contents", "activities", "questions", "materials", mode="before"
     )(_entradas_aproveitaveis)
 
 

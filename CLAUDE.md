@@ -333,6 +333,11 @@ Cada perfil carrega:
   ficaria furada justamente onde vai olhar). Ver
   `docs/superpowers/specs/2026-08-25-sugestao-de-material-por-aluno-design.md`.
 - `telemetria_sessoes`, `telemetria_lotes` — telemetria bruta + payload JSONB.
+- `telemetria_time_metric_entries` — tempo por escopo, **cinco** desde
+  `20260920_01`: `topic`, `content`, `activity`, `question`, `material`. O
+  `scope` é guardado por CHECK — escopo novo sem ampliar o CHECK é recusado com
+  23514, e o cliente trata erro não-rede caindo no gravador direto, que grava na
+  mesma tabela e leva o mesmo 23514: o escopo novo ficaria invisível e calado.
 - **Notificações — motor inteiro no banco.** Quatro tabelas com papéis **não
   intercambiáveis**: `notificacoes_ia` (o que a IA *sugeriu*; a API só insere
   aqui), `notificacoes_pendentes` (a *fila*, com `gatilho`
@@ -370,13 +375,41 @@ de ritmo de leitura (WPM) roda no `linear_analysis_pipeline.py`
 — **não** `dwell_sec`, que inclui tempo parado com o material aberto e sub-
 estimaria o WPM de quem só fez uma pausa no meio da leitura.
 
+> **`active_sec` só passou a medir isso em `20260920`.** O limiar de ócio era
+> 15s depois do último toque, e ler não produz toque: quem rola a tela a cada
+> 20-40s, quem ouve o áudio do Guardião e quem passa slide caíam todos em
+> `idle`. Medido antes da correção: 336s de permanência nos materiais contra
+> 146s de ativo — **57% do tempo de estudo descartado** —, e `active_sec` é o
+> único insumo de `trailup_tempo_telemetria_min`, que é o único escritor de
+> `tempo_gasto_min`. O WPM saía pelo mesmo fator inflado, o suficiente para
+> classificar como `skimming` quem lia devagar.
+>
+> Hoje `IDLE_THRESHOLD_MS` é **120s**, que é o mesmo número que o pipeline já
+> usava para chamar o aluno de parado. Os dois são a mesma fronteira e há teste
+> ligando um ao outro (`test_o_limiar_de_ocio_do_coletor_e_o_mesmo_do_pipeline`)
+> — mexer num sem mexer no outro faz `active_sec` e a classificação de emoção
+> falarem de coisas diferentes.
+>
+> Corolário que a mudança de limiar forçou: **regra de ócio em valor absoluto
+> contra o ócio de UM lote não sobrevive à troca do intervalo de flush.**
+> `idle_sec >= 120` ficou inalcançável quando `BATCH_INTERVAL_MS` caiu de 180s
+> para 60s (`buildTimeMetricsSnapshot` apara `idle_sec` pela duração do lote).
+> Virou fração da duração, com piso — `_ocio_dominou_o_lote`.
+
 > **`dwell_sec`, `active_sec` e `idle_sec` são o tempo DAQUELE lote**, não um
 > acumulado da sessão: `runStudyBatchFlush` troca o acumulador por
-> `buildEmptyBatch(nowMs)` a cada flush. Para totalizar, **some as linhas** — é
+> `buildEmptyBatch(...)` a cada flush. Para totalizar, **some as linhas** — é
 > o que `trailup_tempo_telemetria_min` faz (`20260830_01`). A imunidade a lote
 > duplicado **não** vem da forma da conta; vem da chave única
 > `(lote_id, scope, entry_key)`, preenchida pelo trigger
 > `telemetria_resolver_entidade`.
+>
+> **O que NÃO zera no flush é o relógio do ócio.** `buildEmptyBatch` recebe o
+> `lastInteractionAtMs` do lote anterior. Ele o zerava para o instante do
+> flush, e o limiar de ócio conta a partir dele: cada lote começava com um
+> crédito de tempo ativo que o aluno não produziu. Medido, era exatamente isso
+> que o número parecia — o material mais lido da base tinha `dwell 68s /
+> active 15s`, e 15s era o limiar, não uma medida.
 >
 > Este parágrafo já disse o contrário, e a inversão custou caro: entre 20% e 80%
 > do tempo de estudo sumia. Até `6c1482e` o acumulador só era zerado quando o
@@ -389,11 +422,48 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 >
 > `topic`, `content` e `material` aparecem com o mesmo valor dentro de um lote
 > porque o aninhamento é inclusivo: cada escopo conta o mesmo intervalo. Somar
-> escopos diferentes multiplica o tempo — filtre por `scope` sempre.
+> escopos diferentes multiplica o tempo — filtre por `scope` sempre. São
+> **cinco** escopos desde `20260920`: `question` entrou embaixo de `activity`.
+>
+> **Aninhamento inclusivo não é permissão para carimbar o vizinho.** Uma linha
+> recebe o id dela e o dos ANCESTRAIS, nunca o de algo mais fino. Isso foi
+> violado em dois lugares ao mesmo tempo e o efeito era um só: o contexto de
+> estudo carrega uma `itemKey` (a do bloco aberto), o acumulador a repassava
+> para a entrada de conteúdo, e aí o gatilho lia `activity:1063` e preenchia
+> `atividade_id` numa linha de escopo `content`. Nove linhas assim na base,
+> cada uma com a última atividade do lote — um valor sem significado nenhum.
+> A guarda existe agora nos dois lados (`itemKeyDoEscopo` no cliente, o teste
+> de `scope` no gatilho), porque os apps já publicados continuam mandando a
+> chave contaminada.
+>
+> **E os dois gravadores precisam escrever a MESMA `entry_key`.** O caminho
+> direto do mobile sempre mandou a chave do acumulador; a API não mandava a
+> coluna e deixava o gatilho derivar `content:<conteudo_id>`. Dois passos
+> personalizados do mesmo conteúdo derivam a mesma chave dentro de um lote, e o
+> segundo caía no `ON CONFLICT ... DO NOTHING` — o tempo dele sumia, e só pelo
+> caminho da API.
 >
 > Corolário: `tempo_gasto_min` em `topico_aluno`, `conteudo_aluno` e
 > `atividade_aluno` é **derivado por trigger** a partir da telemetria. Nenhum
 > cliente escreve essa coluna.
+>
+> **`questao_aluno.tempo_gasto_seg` é a exceção, e é de propósito.** Ela NÃO
+> vem do gatilho de telemetria: é a **latência da tentativa** — o intervalo
+> entre a questão aparecer e o aluno confirmar —, medida em `QuestionActivity`
+> e gravada junto com a resposta. `questao_aluno` é por `(aluno, questão,
+> tentativa)`, e espalhar um agregado de lote sobre linhas de tentativa
+> escolheria arbitrariamente uma delas. É essa latência, e não a permanência,
+> que `trailup_core/tempo.py` modela (R² 0,562 sobre o log).
+>
+> A coluna, o campo no model e o parâmetro `tempoGastoSeg` de
+> `registrarRespostaQuestao` existiam desde sempre, e **nenhum chamador o
+> passava**: 35 das 35 linhas da base estavam com NULL, e
+> `resolveAtividadeTempoMin` (`utils/classeMetrics.ts`), que soma essa coluna
+> como reserva, sempre somou zero.
+>
+> O escopo `question` da telemetria é a **outra** medida — permanência por
+> questão, somada por lote, como já se fazia por conteúdo e por atividade. As
+> duas convivem; nenhuma substitui a outra.
 >
 > **E o nível de cima também: `classe_aluno`.** Este parágrafo só falava das três
 > tabelas de baixo, e a omissão custou caro. `classe_aluno` tem duas colunas
@@ -408,6 +478,27 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 > tópicos (cada tópico vale o mesmo) e o tempo é **soma** (estudo acumula).
 > Ao criar agregado novo em `classe_aluno`, derive junto com esses dois.
 
+> **O contexto de estudo tem de VOLTAR, e por muito tempo não voltava.**
+> `accumulateContextTime` descarta tudo que chega com `studyState !== "active"`
+> — de propósito: contar tempo no menu da trilha inflaria o estudo. Só que
+> `endStudySession` zera `currentContextRef` para `EMPTY_STUDY_CONTEXT`, e ela
+> roda em **todo** blur de tela e **toda** ida do app para segundo plano.
+>
+> Na volta, nada reinstalava o contexto: o efeito que chama `updateStudyContext`
+> em `trilha/[id].tsx` era o mesmo que emite `content_open`, e o guard que
+> impede o sinal de ser reemitido (`lastOpenedSignalRef`) vetava os dois juntos.
+> Como as dependências do efeito não mudavam no refoco, ele não rodava, e o
+> contexto ficava `idle` até o aluno trocar de bloco.
+>
+> Medido na base: **127 dos 261 lotes não produziram uma linha sequer de
+> métrica**, e são 33,1 dos 46,8 minutos de permanência medidos — 71% do tempo
+> de estudo do produto, sem escopo nenhum a que ser atribuído.
+>
+> Hoje são dois efeitos: o do CONTEXTO, sem guard e com `isScreenFocused` nas
+> dependências, e o do SINAL, que mantém o guard. E `beginStudySession`
+> **preserva** o bloco quando a sessão volta para o mesmo tópico — sem isso os
+> dois pedidos competem no refoco e quem rodasse por último ganhava.
+>
 > **Quatro armadilhas de tempo/progresso, todas medidas em produção.** O
 > gatilho `trg_telemetria_tempo_gasto` RECALCULA o total a cada INSERT de
 > telemetria (não soma incremental), então toda linha tocada por dado novo
@@ -584,13 +675,24 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 > escapada ou uma tabela explícita de acentos, como `derivarTipo` em
 > `frontend/src/lib/conquistaDaTurma.ts`.
 
-> **Módulo com cara de vivo que ninguém chama.** Já custou tempo três vezes
+> **Módulo com cara de vivo que ninguém chama.** Já custou tempo quatro vezes
 > nesta área: `services/progressoTrilha.ts` existia desde o commit inicial e
 > **nunca** teve um chamador, enquanto as escritas de verdade estavam nos
-> models; o fallback do rank rodava no caminho normal fazendo a conta errada; e
+> models; o fallback do rank rodava no caminho normal fazendo a conta errada;
 > `Rank.loadByRankId` / `getPosicaoDoAluno` / `listRankInfosByClasse`
-> continuam sem uso externo. Antes de corrigir um "gravador" ou "calculador",
-> confirme quem o chama — `grep` pelo nome fora do próprio arquivo.
+> continuam sem uso externo; e `utils/tempoDaClasse.ts` — `escolherTempoDaClasse`
+> e `escolherTempoMedio` — tinha **sete testes passando e zero chamadores**, com
+> `profileMetricsViewModel` decidindo a fonte do tempo sozinho, e decidindo o
+> contrário (conta local na frente do banco). Antes de corrigir um "gravador" ou
+> "calculador", confirme quem o chama — `grep` pelo nome fora do próprio arquivo.
+>
+> **Teste verde não prova que o módulo roda.** Os sete de `tempoDaClasse`
+> passavam o tempo todo. Quem denunciou foi `profileMetricsTempo.test.ts`, que
+> testa o CONSUMIDOR: ele falhava havia tempo, e falhava por duas regressões de
+> uma vez — a fonte errada e a soma de `session_elapsed_sec`, que o próprio
+> `CLAUDE.md` já registrava como corrigida. A correção sobreviveu no documento e
+> no teste, não no código; suspeita de merge (`723a5f8`, `abc7675`). Teste de
+> unidade guarda a função; só o teste do consumidor guarda a ligação.
 
 > **O inverso disso: backend inteiro sem tela, e uma cerimônia que já o
 > prometeu.** Quatro tabelas existem no Supabase com dado dentro —

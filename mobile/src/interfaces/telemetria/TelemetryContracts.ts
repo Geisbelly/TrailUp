@@ -30,6 +30,7 @@ export type TelemetryTimeMetricEntry = {
   topico_id?: number | null;
   conteudo_id?: number | null;
   atividade_id?: number | null;
+  questao_id?: number | null;
   item_key?: string | null;
   material_key?: string | null;
   material_tipo?: string | null;
@@ -55,6 +56,7 @@ export type TelemetryTimeMetrics = {
   topics: TelemetryTimeMetricEntry[];
   contents: TelemetryTimeMetricEntry[];
   activities: TelemetryTimeMetricEntry[];
+  questions: TelemetryTimeMetricEntry[];
   materials: TelemetryTimeMetricEntry[];
 };
 
@@ -163,6 +165,7 @@ export type UpdateStudyContextParams = {
   topicoId?: number | null;
   atividadeId?: number | null;
   conteudoId?: number | null;
+  questaoId?: number | null;
   itemKey?: string | null;
   materialKey?: string | null;
   materialType?: string | null;

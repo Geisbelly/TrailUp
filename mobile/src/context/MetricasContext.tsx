@@ -3,8 +3,10 @@ import {
   accumulateContextTime,
   buildEmptyBatch,
   EMPTY_STUDY_CONTEXT,
-  getOrCreateTimeMetricEntry,
   markContextVisit,
+  proximoContextoDeEstudo,
+  registerContextScroll,
+  registerContextTouch,
   roundSeconds,
   serializeTimeMetricEntries,
   type BatchAccumulator,
@@ -107,7 +109,23 @@ type MetricasBatchContextValue = {
   lastBatchTimeMetrics: TelemetryTimeMetrics | null;
 };
 
-const IDLE_THRESHOLD_MS = 15_000;
+// Quanto tempo sem toque nem scroll ate o aluno ser considerado ausente.
+//
+// Era 15s, e 15s nao mede ausencia — mede leitura. Quem le um texto rola a tela
+// a cada 20-40s, quem ouve o audio do Guardiao nao toca nela nenhuma vez, e
+// quem passa slide fica mais de 15s em cada um. Os tres viravam `idle`, e
+// `idle` nao vira `tempo_gasto_min`: `trailup_tempo_telemetria_min` soma
+// `active_sec` e mais nada.
+//
+// Medido na base antes da correcao: 336s de permanencia nos materiais contra
+// 146s de ativo — 57% do tempo de estudo descartado —, e o material mais lido
+// com `dwell 68s / active 15s`, onde os 15s sao o limiar, nao uma medida.
+//
+// 120s nao e um numero novo: e o mesmo que `linear_analysis_pipeline.py` ja usa
+// para chamar o aluno de disperso (`idle_sec >= 120`). Ausencia continua sendo
+// detectada — com o app aberto na mesa, o aluno ganha 2 min e para —, so deixou
+// de ser o caso comum.
+const IDLE_THRESHOLD_MS = 120_000;
 const MAX_TOUCH_SAMPLES = 25;
 const TOUCH_SAMPLE_THROTTLE_MS = 750;
 // Flush periodico da telemetria. Reduzido de 180s -> 60s para capturar
@@ -237,109 +255,6 @@ function resolveEventTimestampMs(value?: number | string | Date | null) {
 
 
 
-function registerContextTouch(batch: BatchAccumulator, context: CurrentStudyContext) {
-  if (context.studyState !== "active") {
-    return;
-  }
-
-  if (context.topicoId != null) {
-    getOrCreateTimeMetricEntry(batch.timeMetrics.topics, {
-      key: `topic:${context.topicoId}`,
-      topicoId: context.topicoId,
-    }).touchCount += 1;
-  }
-
-  if (context.conteudoId != null) {
-    getOrCreateTimeMetricEntry(batch.timeMetrics.contents, {
-      key: `content:${context.conteudoId}`,
-      topicoId: context.topicoId,
-      conteudoId: context.conteudoId,
-      itemKey: context.itemKey,
-    }).touchCount += 1;
-  }
-
-  if (context.atividadeId != null) {
-    getOrCreateTimeMetricEntry(batch.timeMetrics.activities, {
-      key: `activity:${context.atividadeId}`,
-      topicoId: context.topicoId,
-      conteudoId: context.conteudoId,
-      atividadeId: context.atividadeId,
-      itemKey: context.itemKey,
-    }).touchCount += 1;
-  }
-
-  if (context.materialKey) {
-    getOrCreateTimeMetricEntry(batch.timeMetrics.materials, {
-      key: context.materialKey,
-      topicoId: context.topicoId,
-      conteudoId: context.conteudoId,
-      atividadeId: context.atividadeId,
-      itemKey: context.itemKey,
-      materialKey: context.materialKey,
-      materialType: context.materialType,
-    }).touchCount += 1;
-  }
-}
-
-function registerContextScroll(
-  batch: BatchAccumulator,
-  context: CurrentStudyContext,
-  deltaY: number,
-  depthY: number
-) {
-  if (context.studyState !== "active") {
-    return;
-  }
-
-  if (context.topicoId != null) {
-    const entry = getOrCreateTimeMetricEntry(batch.timeMetrics.topics, {
-      key: `topic:${context.topicoId}`,
-      topicoId: context.topicoId,
-    });
-    entry.scrollDistancePx += deltaY;
-    entry.maxDepthPx = Math.max(entry.maxDepthPx, depthY);
-  }
-
-  if (context.conteudoId != null) {
-    const entry = getOrCreateTimeMetricEntry(batch.timeMetrics.contents, {
-      key: `content:${context.conteudoId}`,
-      topicoId: context.topicoId,
-      conteudoId: context.conteudoId,
-      itemKey: context.itemKey,
-    });
-    entry.scrollDistancePx += deltaY;
-    entry.maxDepthPx = Math.max(entry.maxDepthPx, depthY);
-  }
-
-  if (context.atividadeId != null) {
-    const entry = getOrCreateTimeMetricEntry(batch.timeMetrics.activities, {
-      key: `activity:${context.atividadeId}`,
-      topicoId: context.topicoId,
-      conteudoId: context.conteudoId,
-      atividadeId: context.atividadeId,
-      itemKey: context.itemKey,
-    });
-    entry.scrollDistancePx += deltaY;
-    entry.maxDepthPx = Math.max(entry.maxDepthPx, depthY);
-  }
-
-  if (context.materialKey) {
-    const entry = getOrCreateTimeMetricEntry(batch.timeMetrics.materials, {
-      key: context.materialKey,
-      topicoId: context.topicoId,
-      conteudoId: context.conteudoId,
-      atividadeId: context.atividadeId,
-      itemKey: context.itemKey,
-      materialKey: context.materialKey,
-      materialType: context.materialType,
-    });
-    entry.scrollDistancePx += deltaY;
-    entry.maxDepthPx = Math.max(entry.maxDepthPx, depthY);
-  }
-}
-
-
-
 function buildTimeMetricsSnapshot(
   session: SessionDescriptor,
   batch: BatchAccumulator,
@@ -372,6 +287,7 @@ function buildTimeMetricsSnapshot(
     topics: serializeTimeMetricEntries(batch.timeMetrics.topics),
     contents: serializeTimeMetricEntries(batch.timeMetrics.contents),
     activities: serializeTimeMetricEntries(batch.timeMetrics.activities),
+    questions: serializeTimeMetricEntries(batch.timeMetrics.questions),
     materials: serializeTimeMetricEntries(batch.timeMetrics.materials),
   };
 }
@@ -390,6 +306,7 @@ function buildDisabledUsageTimeMetrics(): TelemetryTimeMetrics {
     topics: [],
     contents: [],
     activities: [],
+    questions: [],
     materials: [],
   };
 }
@@ -667,45 +584,7 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
       syncBatchTimeline(Date.now());
     }
 
-    const nextContext: CurrentStudyContext = {
-      topicoId: params.topicoId ?? previousContext.topicoId ?? null,
-      atividadeId:
-        params.studyState === "idle"
-          ? null
-          : params.atividadeId !== undefined
-          ? params.atividadeId
-          : previousContext.atividadeId ?? null,
-      conteudoId:
-        params.studyState === "idle"
-          ? null
-          : params.conteudoId !== undefined
-          ? params.conteudoId
-          : previousContext.conteudoId ?? null,
-      itemKey:
-        params.studyState === "idle"
-          ? null
-          : params.itemKey !== undefined
-          ? params.itemKey
-          : previousContext.itemKey ?? null,
-      materialKey:
-        params.studyState === "idle"
-          ? null
-          : params.materialKey !== undefined
-          ? params.materialKey
-          : previousContext.materialKey ?? null,
-      materialType:
-        params.studyState === "idle"
-          ? null
-          : params.materialType !== undefined
-          ? params.materialType
-          : previousContext.materialType ?? null,
-      target: params.target ?? previousContext.target ?? "screen",
-      studyState:
-        params.studyState ??
-        (params.atividadeId != null || params.conteudoId != null || params.itemKey != null
-          ? "active"
-          : previousContext.studyState ?? "idle"),
-    };
+    const nextContext = proximoContextoDeEstudo(previousContext, params);
 
     currentContextRef.current = nextContext;
 
@@ -866,7 +745,9 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
         }
       } finally {
         if (assumido) {
-          batchRef.current = buildEmptyBatch(nowMs);
+          // O relogio do ocio atravessa o flush: zera-lo aqui daria ao lote
+          // novo uma interacao que o aluno nao fez. Ver `buildEmptyBatch`.
+          batchRef.current = buildEmptyBatch(nowMs, batch.lastInteractionAtMs);
           // Recria a presenca no lote novo SO se o aluno estava de fato num
           // item. O guard vivia dentro de `markContextVisit` e por isso valia
           // tambem para a abertura da sessao, onde o contexto e `idle` — era
@@ -1017,6 +898,10 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      // Lido ANTES de `endStudySession`, que zera `batchRef`: o relogio do ocio
+      // atravessa a troca de sessao pelo mesmo motivo que atravessa o flush.
+      const batchAnterior = batchRef.current;
+
       if (active) {
         await endStudySession("session_end");
       }
@@ -1027,17 +912,25 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
         sessionId: buildUuid(),
         sessionStartedAt: now.toISOString(),
       };
-      batchRef.current = buildEmptyBatch(now.getTime());
-      currentContextRef.current = {
-        topicoId: params.topicoId,
-        atividadeId: null,
-        conteudoId: null,
-        itemKey: null,
-        materialKey: null,
-        materialType: null,
-        target: "screen",
-        studyState: "idle",
-      };
+      batchRef.current = buildEmptyBatch(now.getTime(), batchAnterior?.lastInteractionAtMs);
+      // Preserva o bloco quando a sessao volta para o MESMO topico.
+      //
+      // Sem isto ha corrida no retorno do foco: a tela reinstala o contexto do
+      // bloco (efeito de `trilha/[id].tsx`) e abre a sessao, e quem rodasse por
+      // ultimo ganhava. Perder para o `idle` daqui custava o lote inteiro, que
+      // e o defeito que a restauracao veio corrigir. Assim os dois pedidos
+      // convergem para o mesmo estado, em qualquer ordem.
+      const contextoAnterior = currentContextRef.current;
+      const mantemBloco =
+        contextoAnterior.studyState === "active" &&
+        contextoAnterior.topicoId != null &&
+        Number(contextoAnterior.topicoId) === Number(params.topicoId);
+      currentContextRef.current = mantemBloco
+        ? contextoAnterior
+        : {
+            ...EMPTY_STUDY_CONTEXT,
+            topicoId: params.topicoId,
+          };
       if (batchRef.current) {
         markContextVisit(batchRef.current, { ...EMPTY_STUDY_CONTEXT }, currentContextRef.current);
       }

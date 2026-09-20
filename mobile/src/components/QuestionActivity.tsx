@@ -407,7 +407,7 @@ export default function QuestionActivity({
   const [questaoIndex, setQuestaoIndex] = useState(0);
   const { usuario } = useUsuario();
   const { registrarRespostaQuestao } = useTrilha();
-  const { recordAppEvent } = useMetricas();
+  const { recordAppEvent, updateStudyContext } = useMetricas();
   const modoResposta = useMemo(
     () => String(usuario?.modoResposta ?? '').toLowerCase(),
     [usuario?.modoResposta]
@@ -521,6 +521,67 @@ export default function QuestionActivity({
   useEffect(() => {
     onQuestionIndexChange?.(questaoIndex);
   }, [onQuestionIndexChange, questaoIndex]);
+
+  // ------------------------------------------------------------------
+  // Tempo por questao
+  // ------------------------------------------------------------------
+  // Duas medidas, de propositos diferentes, e nenhuma das duas existia:
+  //
+  // 1. O ESCOPO `question` da telemetria, que soma permanencia por questao do
+  //    mesmo jeito que ja se soma por conteudo e por atividade. Sem ele, o
+  //    tempo parava na atividade: uma atividade de 8 questoes era um numero so.
+  //
+  // 2. `questao_aluno.tempo_gasto_seg`, a LATENCIA da tentativa — o intervalo
+  //    entre a questao aparecer e o aluno confirmar. A coluna existia, o
+  //    parametro `tempoGastoSeg` de `registrarRespostaQuestao` existia, e
+  //    nenhum chamador o passava: as 35 linhas da base estavam todas com NULL.
+  //    E e essa medida, e nao a permanencia, que `trailup_core/tempo.py`
+  //    modela (R2 0,562 sobre o log da latencia).
+  const questaoId = questao?.id != null ? Number(questao.id) : null;
+  const questaoAbertaEmRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (questaoId == null) return;
+    questaoAbertaEmRef.current = Date.now();
+  }, [questaoId]);
+
+  useEffect(() => {
+    if (topicoId == null || questaoId == null) return;
+
+    updateStudyContext({
+      topicoId,
+      atividadeId: atividade?.id != null ? Number(atividade.id) : null,
+      questaoId,
+      target: "activity",
+      studyState: "active",
+    });
+
+    return () => {
+      // Sair da questao sem sair da atividade: `questaoId: null` zera so o
+      // escopo mais fino. Passar `studyState: "idle"` aqui derrubaria o
+      // contexto inteiro e o tempo da atividade pararia junto.
+      updateStudyContext({ questaoId: null });
+    };
+  }, [atividade?.id, questaoId, topicoId, updateStudyContext]);
+
+  /**
+   * Latencia da tentativa, em segundos, e reinicia o cronometro para a
+   * proxima — cada tentativa e uma linha propria em `questao_aluno`.
+   *
+   * Teto de 1h pelo mesmo motivo do teto por batida da telemetria: o app pode
+   * ficar aberto na questao a noite toda, e uma latencia de 8 horas nao
+   * descreve ninguem respondendo — envenenaria a mediana da questao, que e o
+   * que `trailup_core/tempo` usa como preditor.
+   */
+  const medirLatenciaDaTentativa = useCallback(() => {
+    const abertaEm = questaoAbertaEmRef.current;
+    questaoAbertaEmRef.current = Date.now();
+    if (abertaEm == null) return undefined;
+
+    const decorridoSeg = Math.round((Date.now() - abertaEm) / 1000);
+    if (!Number.isFinite(decorridoSeg) || decorridoSeg <= 0) return undefined;
+    return Math.min(decorridoSeg, 3600);
+  }, []);
   const atividadeConcluidaPersistida = useMemo(() => {
     const statusConcl = String(atividade?.status ?? '').toLowerCase().includes('concl');
     const percentualConcluido = Number(atividade?.percentual_concluido ?? 0);
@@ -1278,6 +1339,10 @@ export default function QuestionActivity({
             questionIndex: questaoIndex,
           })
 
+          // Medida ANTES do ramo: os dois gravam em `questao_aluno`, e so um
+          // deles recebia o tempo deixaria metade das linhas com NULL de novo.
+          const latenciaSeg = medirLatenciaDaTentativa();
+
           if (!isPersonalizedLocal && usuario?.id && questao?.id) {
             const respostaTxt = respostaSelecionada;
             if (topicoId != null) {
@@ -1288,6 +1353,7 @@ export default function QuestionActivity({
                 resposta: respostaTxt,
                 correta: acertou,
                 acertosPercentual: acertosPercent,
+                tempoGastoSeg: latenciaSeg,
               }).catch((err) => console.warn('[QuestaoAluno] erro ao registrar resposta', err));
             } else {
               QuestaoAluno.registrarResposta({
@@ -1297,6 +1363,7 @@ export default function QuestionActivity({
                 resposta: respostaTxt,
                 correta: acertou,
                 acertos_percentual: acertosPercent,
+                tempo_gasto_seg: latenciaSeg,
               }).catch((err) => console.warn('[QuestaoAluno] erro ao registrar resposta', err));
             }
           }

@@ -167,6 +167,7 @@ function sanitizeTimeMetricEntry(entry: TelemetryTimeMetricEntry): TelemetryTime
     topico_id: normalizePositiveInteger(entry.topico_id) ?? null,
     conteudo_id: normalizePositiveInteger(entry.conteudo_id) ?? null,
     atividade_id: normalizePositiveInteger(entry.atividade_id) ?? null,
+    questao_id: normalizePositiveInteger(entry.questao_id) ?? null,
     visits: normalizeMetricInteger(entry.visits),
     dwell_sec: normalizeMetricNumber(entry.dwell_sec),
     active_sec: normalizeMetricNumber(entry.active_sec),
@@ -212,13 +213,14 @@ function sanitizeTelemetryPayload(payload: TelemetryBatchPayload): TelemetryBatc
       topics: (timeMetrics.topics ?? []).map(sanitizeTimeMetricEntry),
       contents: (timeMetrics.contents ?? []).map(sanitizeTimeMetricEntry),
       activities: (timeMetrics.activities ?? []).map(sanitizeTimeMetricEntry),
+      questions: (timeMetrics.questions ?? []).map(sanitizeTimeMetricEntry),
       materials: (timeMetrics.materials ?? []).map(sanitizeTimeMetricEntry),
     },
   };
 }
 
 function buildMetricRowsForScope(params: {
-  scope: "topic" | "content" | "activity" | "material";
+  scope: "topic" | "content" | "activity" | "question" | "material";
   entries: TelemetryTimeMetricEntry[] | null | undefined;
   batchId: string;
   payload: TelemetryBatchPayload;
@@ -242,6 +244,7 @@ function buildMetricRowsForScope(params: {
     topico_id: entry.topico_id ?? null,
     conteudo_id: entry.conteudo_id ?? null,
     atividade_id: entry.atividade_id ?? null,
+    questao_id: entry.questao_id ?? null,
     item_key: entry.item_key ?? null,
     material_key: entry.material_key ?? null,
     material_tipo: entry.material_tipo ?? null,
@@ -287,6 +290,13 @@ function buildAllMetricRows(
     ...buildMetricRowsForScope({
       scope: "activity",
       entries: payload.time_metrics?.activities,
+      batchId,
+      payload,
+      alunoId,
+    }),
+    ...buildMetricRowsForScope({
+      scope: "question",
+      entries: payload.time_metrics?.questions,
       batchId,
       payload,
       alunoId,

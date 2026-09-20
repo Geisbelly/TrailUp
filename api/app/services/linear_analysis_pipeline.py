@@ -77,6 +77,14 @@ def _summarize_reading_pace(materials: list[dict[str, Any]]) -> dict[str, Any]:
     for entry in materials:
         # active_sec exclui tempo parado com o material aberto (idle); dwell_sec
         # sozinho conta esse tempo parado e sub-estima o WPM real do aluno.
+        #
+        # Isso passou a ser verdade em `20260920`. Antes, `active_sec` era o
+        # tempo ate 15s DEPOIS do ultimo toque, e ler nao produz toque: o
+        # material mais lido da base media `dwell 68s / active 15s`, e o WPM
+        # saia 4,5x inflado -- o suficiente para classificar como `skimming`
+        # quem estava lendo devagar. O limiar de ocio foi para 120s
+        # (`MetricasContext.tsx`), e so a partir dai o denominador aqui
+        # descreve leitura.
         active_sec = _safe_float(entry.get("active_sec"))
         dwell_sec = _safe_float(entry.get("dwell_sec"))
         reading_sec = active_sec if active_sec > 0 else dwell_sec
@@ -131,6 +139,7 @@ def _summarize_time_metrics(payload: dict[str, Any] | None) -> dict[str, Any]:
     topics = _safe_list(time_metrics.get("topics"))
     contents = _safe_list(time_metrics.get("contents"))
     activities = _safe_list(time_metrics.get("activities"))
+    questions = _safe_list(time_metrics.get("questions"))
     materials = _safe_list(time_metrics.get("materials"))
 
     # Somar escopos diferentes multiplica o tempo -- o aninhamento e inclusivo,
@@ -151,6 +160,15 @@ def _summarize_time_metrics(payload: dict[str, Any] | None) -> dict[str, Any]:
     content_active = _sum_metric_entries(contents, "active_sec")
     activity_dwell = _sum_metric_entries(activities, "dwell_sec")
     activity_active = _sum_metric_entries(activities, "active_sec")
+    # `question` e o escopo mais fino, e entra FORA de `entity_dwell`/
+    # `entity_idle` de proposito: ele aninha dentro de `activity`, que ja esta
+    # na soma, e a razao acima so tolera o triplo-conta porque o fator aparece
+    # nos dois lados. Acrescentar um quarto escopo nao quebraria a razao, mas
+    # mudaria o peso relativo de quem responde questao contra quem le -- sem
+    # nenhum ganho, ja que a razao e a unica coisa que aquelas duas somas
+    # produzem.
+    question_dwell = _sum_metric_entries(questions, "dwell_sec")
+    question_active = _sum_metric_entries(questions, "active_sec")
 
     return {
         "batch_dwell_sec": _safe_float(general.get("batch_dwell_sec"), _safe_float((payload or {}).get("screen_dwell_sec"))),
@@ -164,16 +182,22 @@ def _summarize_time_metrics(payload: dict[str, Any] | None) -> dict[str, Any]:
         "activity_dwell_sec": activity_dwell,
         "material_active_sec": material_active,
         "material_dwell_sec": material_dwell,
+        "question_active_sec": question_active,
+        "question_dwell_sec": question_dwell,
         "content_switches": _count_switches(contents),
         "activity_switches": _count_switches(activities),
         "material_switches": _count_switches(materials),
         "material_count": len(materials),
         "content_count": len(contents),
         "activity_count": len(activities),
+        "question_count": len(questions),
         "entity_idle_ratio": round(entity_idle / entity_dwell, 2) if entity_dwell > 0 else 0.0,
         "material_focus_ratio": round(material_active / material_dwell, 2) if material_dwell > 0 else 0.0,
         "average_content_dwell_sec": round(content_dwell / len(contents), 2) if contents else 0.0,
         "average_activity_dwell_sec": round(activity_dwell / len(activities), 2) if activities else 0.0,
+        # A latencia tipica por questao, que e o que `trailup_core/tempo` modela
+        # (e que ate agora nao tinha de onde sair).
+        "average_question_dwell_sec": round(question_dwell / len(questions), 2) if questions else 0.0,
         "longest_material_dwell_sec": max((_safe_float(entry.get("dwell_sec")) for entry in materials), default=0.0),
     }
 
@@ -327,6 +351,34 @@ class AdaptiveContentGenerator(Protocol):
     async def generate(self, *, request: Request, state: dict[str, Any], config: dict[str, Any]) -> dict[str, Any]: ...
 
 
+_LOTE_CURTO_DEMAIS_PARA_JULGAR_SEC = 60.0
+_FRACAO_DE_OCIO_QUE_INDICA_CANSACO = 0.5
+
+
+def _ocio_dominou_o_lote(idle_sec: float, dwell_sec: float) -> bool:
+    """O aluno ficou com o material aberto sem estar nele, por boa parte do lote.
+
+    A regra era `idle_sec >= 120`, um ABSOLUTO comparado contra o ocio de UM
+    lote -- e o lote e limitado pelo intervalo de flush. Quando esse intervalo
+    caiu de 180s para 60s (`BATCH_INTERVAL_MS`), 120 deixou de ser alcancavel:
+    `buildTimeMetricsSnapshot` apara `idle_sec` pela duracao do lote, entao o
+    teto virou ~60. Na base, 1 de 261 lotes ainda dispararia, e todos os 1 sao
+    anteriores a mudanca de intervalo.
+
+    Uma FRACAO nao depende do intervalo. E o piso de duracao existe porque um
+    lote de 3s totalmente ocioso nao diz nada -- e o caso de quem abriu a tela e
+    saiu, nao de quem cansou.
+
+    Os dois numeros mudaram de significado junto com o limiar de ocio do
+    coletor, que foi de 15s para 120s: `idle` agora quer dizer "sem toque nem
+    scroll ha dois minutos", e nao mais "ha quinze segundos", que era o
+    comportamento normal de quem le.
+    """
+    if dwell_sec < _LOTE_CURTO_DEMAIS_PARA_JULGAR_SEC:
+        return False
+    return idle_sec >= dwell_sec * _FRACAO_DE_OCIO_QUE_INDICA_CANSACO
+
+
 class DeepFaceEmotionAnalyzer:
     provider_name = "deepface"
 
@@ -341,6 +393,7 @@ class DeepFaceEmotionAnalyzer:
         counts = Counter(evento.tipo for evento in eventos_novos)
         frame_count = len(frames_b64)
         idle_sec = _safe_float((telemetry_payload or {}).get("idle_sec"))
+        dwell_sec = _safe_float((telemetry_payload or {}).get("screen_dwell_sec"))
 
         emocao = "neutro"
         valencia = 0.1
@@ -358,7 +411,7 @@ class DeepFaceEmotionAnalyzer:
             emocao = "focado"
             valencia = 0.54
             confianca = 0.74 if frame_count else 0.46
-        elif idle_sec >= 120:
+        elif _ocio_dominou_o_lote(idle_sec, dwell_sec):
             emocao = "cansado"
             valencia = -0.28
             confianca = 0.61 if frame_count else 0.41
