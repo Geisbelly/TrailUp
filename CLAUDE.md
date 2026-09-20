@@ -302,6 +302,42 @@ Cada perfil carrega:
   > regeração.
 
 - `cards_personalizados`, `atividades_personalizadas`, `questoes_personalizadas` — artefatos desnormalizados (com `ativo`/`obsoleto_em`).
+  > **`ativo` não é enfeite: a regeração APOSENTA a linha velha, não a apaga.**
+  > A consulta do mobile não filtrava, e o aluno recebia a versão obsoleta junto
+  > com a atual, como duplicata. Medido: 48 das 228 linhas inativas, 6 delas no
+  > perfil do aluno contra 18 ativas — um terço a mais de card, todo vencido.
+  > `ativo = false` casa exatamente com `obsoleto_em` preenchido (48/48), a
+  > coluna é NOT NULL com default `true`, e por isso o filtro é `.eq("ativo",
+  > true)` e não `.is`.
+
+> **O perfil de um material sai da COLUNA, e a cadeia de reserva termina num
+> default perigoso.** `conteudo_personalizado.brainhex_profile_key` é a chave do
+> unique `(aluno, tópico, perfil)` e está preenchida em 100% das linhas. Mesmo
+> assim ela ficou **fora do SELECT** do mobile por muito tempo, então o elo mais
+> autoritativo de `perfilDoRegistro` chegava sempre `undefined` e a decisão caía
+> nos fallbacks do `plano` — cuja última saída é `PERFIL_PADRAO = "mastermind"`.
+>
+> O default não é `null` nem erro: uma linha que perca a origem do perfil é
+> arquivada como mastermind, **some para o dono dela e aparece para quem não é**.
+> Na base já há uma linha assim (id 3608, `pronto`, coluna `mastermind`, `plano`
+> sem chave nenhuma) — hoje ela acerta por sorte, porque o default coincide.
+>
+> A lógica mora em `utils/perfilDoMaterial.ts`, extraída de
+> `TrailupApiProvider.ts` pelo mesmo motivo de `acumuladorLote.ts`: o provider
+> importa `@/database/supabase` no topo e não carrega em node, então a regra que
+> decide **o que o aluno vê** não tinha teste nenhum.
+>
+> Ao mexer: a coluna vem primeiro, e ela só serve se estiver no `select()`.
+> Cards não têm coluna — a chave deles mora em `metadata`, que já é selecionado.
+
+> **`alunos.perfil_ativo` e a maior afinidade em `aluno_perfil` podem
+> discordar.** Medido: o aluno da base tem `perfil_ativo = conqueror` com
+> `mastermind=85, conqueror=60` — ou seja, o dominante por afinidade é outro.
+> `resolveActiveBrainHexProfile` (`utils/brainHex.ts`) resolve isso preferindo
+> `perfil_ativo` **quando ele está entre os dois representativos**, e só cai no
+> dominante quando não está. Não é bug, é a regra — mas quem for comparar
+> "o perfil do aluno" com `brainhex_profile_key` precisa usar a MESMA função que
+> o app usa, e não ler `perfil_ativo` cru nem o `max(afinidade)`.
 - `fontes_personalizacao` — fontes do professor (upload/link), `visibilidade` `classe|aluno`.
 - `personalizacao_jobs` + `personalizacao_job_targets` — fila assíncrona
   (`enrollment`, `class-delta`, `class-theme`, `student-cleanup`, `full-sync`).
