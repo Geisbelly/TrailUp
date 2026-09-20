@@ -423,6 +423,16 @@ Cada perfil carrega:
   `20260826_07` por duplicá-la), `aluno_sessoes_app` (histórico de login) e
   `aluno_atividade_diaria` (tempo de uso por dia).
 - `personalizacao_item_progresso` — progresso por item (merge: percentual/acertos = máx, tempo = soma).
+- `guilda_desafios` + `guilda_desafio_questoes` + `guilda_desafio_respostas` +
+  `desafio_participantes` — a **Arena**. `formato` (`guilda`/`dupla`/`solo`) diz
+  quem joga; `modo` (`todos`/`velocidade`/`precisao`) diz como se ganha. O
+  acesso é **só por RPC**: as dez tabelas de guilda têm RLS ligada e **zero
+  policy**, e `authenticated` lendo direto recebe nada. É deliberado — não crie
+  policy aqui, crie RPC `SECURITY DEFINER`, e tire o `anon` dela na mesma
+  migração. `guilda_desafio_respostas.tempo_ms` é a **latência da tentativa**
+  (questão aparece → aluno confirma), a mesma grandeza de
+  `questao_aluno.tempo_gasto_seg`; não é permanência de telemetria, e é ela que
+  desempata o modo `velocidade`.
 - `aluno_perfil`, `perfil` — perfis BrainHex e afinidades.
 
 ## Telemetria → análise → realimentação
@@ -808,19 +818,79 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 > no teste, não no código; suspeita de merge (`723a5f8`, `abc7675`). Teste de
 > unidade guarda a função; só o teste do consumidor guarda a ligação.
 
-> **O inverso disso: backend inteiro sem tela, e uma cerimônia que já o
-> prometeu.** Quatro tabelas existem no Supabase com dado dentro —
-> `social_relacionamentos` (3), `social_mensagens` (2), `guildas` (3),
-> `guilda_convites` (5) — e **nenhuma linha do monorepo lê ou escreve qualquer
-> uma delas** (conferido em `mobile/src`, `frontend/src`, `api/app`). Enquanto
-> isso, `utils/portoes.ts` tem dois portões e só um é consumido:
-> `_layout.tsx` usa `aberturas.rank` para revelar a aba Ranking, mas
-> **`aberturas.social` não é lido por ninguém** — e a cerimônia dele dispara ao
-> concluir o primeiro conteúdo anunciando "Amizades liberadas", com passos que
-> descrevem convite, aceite mútuo e bloqueio. O aluno recebe a promessa e não
-> tem para onde ir. Ao mexer em portão ou em navegação, saiba que essa dívida
-> existe; o desenho de como pagá-la está em
-> `docs/superpowers/specs/2026-09-12-loja-no-mobile-design.md`, §2.
+> **Este parágrafo já afirmou o contrário, e as duas metades estavam erradas.**
+> Ele dizia que "nenhuma linha do monorepo lê ou escreve" as tabelas sociais e
+> que `aberturas.social` "não é lido por ninguém". Não vale mais nenhuma das
+> duas: existe uma aba Social inteira (`app/(tabs)/social/index.tsx`, quatro
+> seções, seis componentes em `components/social/`, oito serviços em
+> `services/social/`), e `_layout.tsx:135` usa `aberturas.social` para revelá-la
+> — exatamente como faz com `aberturas.rank`. Ao ler uma afirmação de "não tem
+> chamador" aqui, **confirme com `grep` antes de agir**: este arquivo sobreviveu
+> à entrega que o contradisse.
+>
+> **O que ERA verdade, e virou a Arena.** O substrato do desafio de guilda
+> estava inteiro no banco e sem um chamador sequer: `guilda_desafios` (3
+> linhas), `guilda_desafio_questoes` (9), `guilda_desafio_respostas` (**zero**),
+> e as RPCs `guilda_desafio_criar` / `guilda_desafio_responder` /
+> `guilda_chat_questao_responder`. O `CHECK` de `modo` já aceitava `duelo` e
+> `duplo` — num lugar onde elas nunca poderiam funcionar, porque `modo`
+> misturava *como se ganha* (`todos`/`velocidade`/`precisao`) com *quem joga*.
+>
+> A `20260920_05` separou: **`formato` (`guilda`/`dupla`/`solo`) diz quem joga,
+> `modo` diz como se ganha**, e `duelo`/`duplo` saíram do CHECK de `modo`. Três
+> coisas que valem para quem estender:
+>
+> 1. **Quem joga sai de `desafio_participantes`, e só de lá.** `guilda_id`
+>    aceita NULL e virou rótulo — duelo entre alunos de guildas diferentes não
+>    cabia numa coluna obrigatória. A composição **congela na abertura**: quem
+>    sair da guilda amanhã continua no placar, quem entrar depois fica de fora.
+>    Sem congelar, `guilda_listar` mudaria o placar de uma rodada já respondida.
+> 2. **O tipo do evento começa com `desafio_`, nunca com `participacao_`.**
+>    `fn_evento_creditado` casa por PREFIXO e devolve o valor que o CHAMADOR
+>    mandou; um `participacao_desafio` deixaria o aluno escolher quanto vale a
+>    própria vitória. E a referência começa pela **classe**
+>    (`classe` / id / `desafio` / uuid), porque
+>    `fn_eventos_aluno_resolve_classe_id` não conhece prefixo de desafio e
+>    classe nula tira o evento do rank inteiro.
+> 3. **Pagar duas vezes é impossível em dois níveis:** o encerramento é
+>    `aberto → encerrado` sob `FOR UPDATE`, e a `idempotencia_key` é **derivada**
+>    de (desafio, aluno, tipo) por md5 — gerada na hora de reenviar, duplicaria.
+>    `desafio_*` não está em `fn_evento_de_conclusao`, então não herda a dedup
+>    por referência: é a chave derivada que protege.
+>
+> `fn_questao_liberada` ganhou a variante `_para(aluno, questão)` com o corpo de
+> verdade e passou a delegar. O pool tem de estar liberado para **todos** os
+> participantes — sortear pelo que o criador abriu daria ao adversário questão
+> que a trilha dele não liberou.
+>
+> Medido em transação revertida: solo de 3 questões com A acertando tudo e B
+> errando tudo encerra sozinho, paga `desafio_participou` (3) e
+> `desafio_vencido` (12) com a classe resolvida, e move o rank de pontuação da
+> view que o mobile lê de 0 para 15. O rank de percentual e o de tempo **não**
+> se mexem, que é o certo: duelo não é progresso de trilha nem tempo de estudo.
+>
+> Duas armadilhas encontradas ao exercitar, as duas invisíveis no código:
+>
+> - **`array_length` de array VAZIO devolve NULL, não zero.** A checagem de
+>   duplicata virava `NULL IS DISTINCT FROM 0` e matava o formato `guilda`
+>   inteiro — ele é o único que não convoca ninguém.
+> - **`guilda_listar` devolve `logo_url`, `modo_perfil`, `perfil_alvo` e
+>   `convites_enviados`, e `normalizeGuild` descartava os quatro.** A guilda
+>   travada num perfil BrainHex aparecia como mista, e `guilda_cancelar_convite`
+>   ficava sem chamador — convite feito por engano nunca saía do `pending`,
+>   bloqueando um novo convite à mesma pessoa. O default de `limiteMembros` era
+>   **4** contra o `BETWEEN 2 AND 10` do banco: escondia 6 vagas e, com elas, o
+>   botão de entrar.
+>
+> O que continua em aberto: **guilda contra guilda**. O formato `guilda` v1 é
+> cooperativo (a guilda joga contra a régua do `modo`); PvP entre guildas pede
+> um convite no nível da guilda — quem aceita por ela? —, e
+> `desafio_participantes` já comporta: é popular a equipe 2. Ver
+> `docs/superpowers/specs/2026-09-20-arena-guilda-dupla-solo-design.md`.
+>
+> E `guilda_evento_snapshot` segue com **0 linhas**: ele foi desenhado para um
+> motor de eventos da turma que ainda não existe, e `desafio_participantes` não
+> o substitui — congela a composição de UM desafio, não a da turma.
 
 > Lacuna real ainda aberta: `MentalStateHistoryRepository.listar_por_aluno`
 > (`api/app/repositories/mental_state.py`) só é exercitado em teste — o
