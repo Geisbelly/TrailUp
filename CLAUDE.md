@@ -1021,6 +1021,71 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 >    devolve `"Error"`, que não é vazio e não diz nada, então `mensagemDoErro`
 >    sai no ramo de `Error` mesmo com mensagem vazia.
 
+> **O gabarito chegava ao aluno, e o problema não era a tela — era o DADO.**
+> Medido assumindo a role `authenticated` com o JWT do aluno, antes da
+> `20260921_01`:
+>
+> ```
+> SELECT id, enunciado, resposta_correta FROM questoes;
+> 1061 | Um sistema distribuido e percebido... | Verdadeiro
+> 1062 | Qual categoria da Taxonomia de Flynn  | SISD
+> ```
+>
+> Com a chave pública do app, qualquer cliente HTTP baixava o gabarito das
+> turmas em que o aluno está matriculado. E o app **corrigia localmente**
+> (`QuestionActivity` lia `questao.resposta_correta`), então a resposta
+> precisava estar no payload: enquanto isso fosse verdade, não havia como
+> fechar.
+>
+> **Tirar da view era cosmético.** `vw_aluno_classe_detalhado` é
+> `security_invoker = on` — lê `questoes` COMO O ALUNO —, e **RLS é por LINHA,
+> não por coluna**: com as duas policies de leitura que ele tem, a linha vem
+> inteira. Bastava consultar a tabela direto.
+>
+> Hoje o gabarito vive em **`questao_gabarito`**, cuja RLS só deixa o professor
+> DONO da turma ler. O aluno não tem policy ali: não vê linha, então não há
+> coluna a vazar.
+>
+> Quatro coisas que não são acidentais:
+>
+> 1. **`REVOKE` de COLUNA não anula `GRANT` de TABELA.** Privilégio de coluna é
+>    **aditivo**: `authenticated` tinha `SELECT` na tabela inteira, que já
+>    implica todas as colunas, e um `REVOKE SELECT (resposta_correta)` por cima
+>    não tira nada. A guarda da própria migração reprovou a primeira tentativa
+>    exatamente assim. A forma certa é derrubar o `SELECT` da tabela e conceder
+>    **coluna a coluna** — com uma guarda que recusa coluna nova sem grant, para
+>    que quem acrescentar campo decida se ele é público.
+> 2. **As ESCRITAS não mudaram em lugar nenhum.** Um gatilho em `questoes`
+>    espelha `resposta_correta` para a tabela protegida a cada INSERT/UPDATE.
+>    Console do professor, API e pipeline continuam gravando onde sempre
+>    gravaram; só as LEITURAS mudaram de lugar — eram três no console, e viraram
+>    uma chamada a `anexarGabarito`.
+> 3. **Aluno e professor são a MESMA role (`authenticated`)**, e privilégio de
+>    coluna não distingue os dois. É por isso que a separação tem de ser por
+>    POSSE — ou seja, por RLS numa tabela onde a linha É o gabarito.
+> 4. **A correção subiu junto, obrigatoriamente.** Tirar a coluna sem mover a
+>    correção faria o cliente comparar contra NULL e marcar **toda** resposta
+>    como errada. `questao_responder` corrige, grava a tentativa e devolve o
+>    gabarito — mas só DEPOIS de responder, que é quando a tela precisa dele.
+>
+> **E a correção do servidor precisou ser tão tolerante quanto a do cliente.**
+> Comparação ingênua reprovaria resposta certa em três casos que
+> `QuestionActivity` aceitava: letra (`A`) e índice (`1`) contra um gabarito
+> gravado como o texto da opção; verdadeiro/falso em várias grafias; acento e
+> caixa. `fn_questao_confere` cobre os três, e `fn_texto_comparavel` usa
+> **tabela explícita de acentos** — não `normalize("NFD")` com range de
+> combining marks, que é invisível no arquivo.
+>
+> Exercitado contra as quatro questões reais da base, por todos os caminhos
+> (literal, maiúscula, espaços, letra, índice): todas verdadeiras; errada e
+> vazia, falsas. E as guardas medidas: sem matrícula → `questao_sem_permissao`,
+> sem sessão → `questao_sem_sessao`.
+>
+> **Dissertativa ficou de fora de propósito.** Não há comparação de texto que
+> decida pergunta aberta; o cliente segue validando por IA, agora julgando pelo
+> enunciado em vez do gabarito. Mover essa validação para o servidor é trabalho
+> próprio — e até lá a qualidade da correção dissertativa é menor.
+
 ## Convenções
 
 - **Encoding: UTF-8 sem BOM, sempre.** Já houve mojibake (UTF-8 salvo como

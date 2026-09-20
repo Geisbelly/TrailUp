@@ -28,6 +28,7 @@ import { PresencaDialog } from "./PresencaDialog";
 import { ClassManagerDialog } from "./trilha/ClassManagerDialog";
 import { deleteClasseCascade } from "./trilha/classDeletion";
 import { enqueueCleanupJob, enqueueEnrollmentJob } from "./trilha/personalizacaoJobsApi";
+import { anexarGabarito } from "@/components/console/trilha/topicsApi";
 
 // Tipos
 type Classe = { id: number; descricao: string | null; materia_id: number | null; created_at: string | null };
@@ -242,9 +243,16 @@ export default function ClassManagementSection({ professorId }: Props) {
       }
       const { data: oldQuestions } = await supabase
         .from("questoes")
-        .select("id, atividade_id, enunciado, tipo, alternativas, resposta_correta, nota_estabelecida")
+        .select("id, atividade_id, enunciado, tipo, alternativas, nota_estabelecida")
         .in("atividade_id", Object.keys(activityIdMap).map(Number));
-      for (const q of (oldQuestions as QuestionRow[]) || []) {
+      // Copiar a turma precisa copiar o gabarito, e ele nao vem mais junto da
+      // questao: `questoes.resposta_correta` deixou de ser legivel por
+      // `authenticated`. A escrita abaixo continua em `questoes` -- o gatilho
+      // espelha para a tabela protegida.
+      const comGabarito = await anexarGabarito(
+        (oldQuestions as Omit<QuestionRow, "resposta_correta">[]) || [],
+      );
+      for (const q of comGabarito) {
         const newActId = activityIdMap[q.atividade_id];
         if (newActId)
           await supabase.from("questoes").insert({

@@ -26,6 +26,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { parseOptionalPositiveScore, scoreToInputString } from "@/lib/question-score";
 import { QUESTION_MEDIA_ACCEPT, isQuestionMediaFileAllowed } from "@/lib/upload-file-policy";
 import EssayQuestionRenderer from "./EssayQuestionRenderer";
+import { anexarGabarito, COLUNAS_DE_QUESTAO_VISIVEIS } from "./topicsApi";
 
 interface Atividade {
   id: number;
@@ -220,14 +221,20 @@ export default function QuestionsManager() {
         atividadeIds.length > 0
           ? await supabase
               .from("questoes")
-              .select("id, atividade_id, enunciado, tipo, alternativas, resposta_correta, nota_estabelecida, midia_url")
+              .select(COLUNAS_DE_QUESTAO_VISIVEIS)
               .in("atividade_id", atividadeIds)
           : { data: [], error: null };
 
       if (questionsError) throw questionsError;
 
       setAtividades((activitiesData as Atividade[]) ?? []);
-      setQuestoes((questionsData as Questao[]) ?? []);
+      // O gabarito vem de `questao_gabarito`: a coluna em `questoes` nao e mais
+      // legivel por `authenticated`.
+      setQuestoes(
+        (await anexarGabarito(
+          (questionsData as Omit<Questao, "resposta_correta">[]) ?? [],
+        )) as Questao[],
+      );
     } catch (error) {
       console.error("Erro ao carregar questoes:", error);
       toast.error("Nao foi possivel carregar as questoes.");

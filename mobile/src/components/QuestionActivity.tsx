@@ -13,6 +13,7 @@ import { EssayValidationResult, validateEssayAnswerWithAi } from '@/utils/essayV
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Image, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { corrigirQuestaoNoServidor, mensagemDeErroDaCorrecao } from "@/services/questaoCorrecao";
 
 type Props = {
   atividade: any;
@@ -502,7 +503,11 @@ export default function QuestionActivity({
   const [reResponder, setReResponder] = useState(false);
   const [timeoutLocked, setTimeoutLocked] = useState<Record<number, boolean>>({});
   const [mostrarResposta, setMostrarResposta] = useState(false);
-  const [validandoIA, setValidandoIA] = useState(false);
+  const [validandoIA, setValidandoIA] = useState(false)
+  // O gabarito nao vem mais no payload da questao: ele chega na resposta da
+  // RPC, ou seja, so DEPOIS de o aluno responder. Guardado por indice porque
+  // a tela navega entre as questoes da atividade.
+  const [gabaritoDoServidor, setGabaritoDoServidor] = useState<Record<number, string | null>>({});
   const [, setFeedbackIA] = useState<Record<number, EssayValidationResult | null>>({});
   const [modalVisivel, setModalVisivel] = useState(false);
   const [modalInfo, setModalInfo] = useState<{ titulo: string; descricao: string; pontos?: number; acerto?: boolean }>({
@@ -758,10 +763,10 @@ export default function QuestionActivity({
       ? acceptedAnswers.length > 0
         ? acceptedAnswers.join(' ou ')
         : null
-      : questao?.resposta_correta != null
+      : gabaritoDoServidor[questaoIndex] != null
       ? isTrueFalseActivity
-        ? formatTrueFalseLabel(questao.resposta_correta)
-        : String(questao.resposta_correta)
+        ? formatTrueFalseLabel(gabaritoDoServidor[questaoIndex] as string)
+        : String(gabaritoDoServidor[questaoIndex])
       : null;
 
   return (
@@ -1079,6 +1084,8 @@ export default function QuestionActivity({
           // (comparacao de texto) pra nao travar o fluxo do aluno.
           let acertou: boolean;
           let acertosPercentBase = 100;
+          // Marcado quando o SERVIDOR corrigiu e ja gravou a tentativa.
+          let registradoNoServidor = false;
           let resultadoIA: EssayValidationResult | null = null;
           if (isDissertativaActivity && respostaDigitada) {
             setValidandoIA(true);
@@ -1086,7 +1093,10 @@ export default function QuestionActivity({
               resultadoIA = await validateEssayAnswerWithAi({
                 enunciado: String(questao?.enunciado ?? ''),
                 respostaAluno: respostaDigitada,
-                respostaProfessor: acceptedAnswers[0] ?? questao?.resposta_correta ?? null,
+                // O gabarito nao vem mais no payload. Para dissertativa a IA
+                // julga pelo enunciado -- e o unico tipo em que o servidor nao
+                // tem como decidir por comparacao de texto.
+                respostaProfessor: acceptedAnswers[0] ?? null,
               });
               acertou = resultadoIA.correta;
               acertosPercentBase = resultadoIA.percentual;
@@ -1099,9 +1109,32 @@ export default function QuestionActivity({
             }
             setFeedbackIA((prev) => ({ ...prev, [questaoIndex]: resultadoIA }));
           } else {
-            acertou = isFillBlankActivity
-              ? checkResposta(respostaSelecionada, -1)
-              : checkResposta(alternativas[escolhido ?? -1], escolhido ?? -1);
+            // QUEM CORRIGE E O SERVIDOR. O gabarito nao chega mais ao cliente
+            // (`questoes.resposta_correta` saiu do alcance do aluno), entao
+            // `checkResposta` nao teria contra o que comparar. A RPC tambem
+            // GRAVA a tentativa -- por isso o registro local abaixo e pulado
+            // para estes tipos, senao seriam duas linhas por resposta.
+            try {
+              const veredito = await corrigirQuestaoNoServidor({
+                questaoId: Number(questao?.id),
+                resposta: respostaSelecionada,
+                tempoGastoSeg: medirLatenciaDaTentativa(),
+              });
+              acertou = veredito.correta;
+              setGabaritoDoServidor((prev) => ({
+                ...prev,
+                [questaoIndex]: veredito.respostaCorreta,
+              }));
+              registradoNoServidor = true;
+            } catch (err) {
+              console.warn('[QuestionActivity] Falha ao corrigir no servidor:', err);
+              setModalInfo({
+                titulo: 'Não deu para registrar',
+                descricao: mensagemDeErroDaCorrecao(err),
+              });
+              setValidandoIA(false);
+              return;
+            }
             acertosPercentBase = acertou ? 100 : 0;
           }
 
@@ -1343,7 +1376,8 @@ export default function QuestionActivity({
           // deles recebia o tempo deixaria metade das linhas com NULL de novo.
           const latenciaSeg = medirLatenciaDaTentativa();
 
-          if (!isPersonalizedLocal && usuario?.id && questao?.id) {
+          // `questao_responder` ja gravou a tentativa quando corrigiu.
+          if (!registradoNoServidor && !isPersonalizedLocal && usuario?.id && questao?.id) {
             const respostaTxt = respostaSelecionada;
             if (topicoId != null) {
               registrarRespostaQuestao({
