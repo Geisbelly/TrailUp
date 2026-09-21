@@ -62,6 +62,7 @@ import { useCheckpointResume } from "@/hooks/trilha/useCheckpointResume";
 import { useMaterialSuggestion } from "@/hooks/trilha/useMaterialSuggestion";
 import { usePersonalizedFlow } from "@/hooks/trilha/usePersonalizedFlow";
 import { useStudyTimeTracking } from "@/hooks/trilha/useStudyTimeTracking";
+import { useTopicScreenTimeTracking } from "@/hooks/trilha/useTopicScreenTimeTracking";
 import { useRememberTrailTopic } from '@/hooks/useTrailResume';
 import { useTelemetryHandlers } from "@/hooks/trilha/useTelemetryHandlers";
 import { useTopicoCompletion } from "@/hooks/trilha/useTopicoCompletion";
@@ -168,6 +169,9 @@ export default function TrilhaConteudoScreen() {
     registrarTempoConteudo,
     registrarTempoAtividade,
     registrarTempoDireto,
+    registrarSessaoConteudo,
+    registrarSessaoAtividade,
+    registrarSessaoTopico,
     salvarProgressoItemPersonalizado,
     getProximosTopicos,
     personalizedTopics,
@@ -904,10 +908,18 @@ export default function TrilhaConteudoScreen() {
     registrarTempoConteudo,
     registrarTempoAtividade,
     registrarTempoDireto,
+    registrarSessaoConteudo,
+    registrarSessaoAtividade,
     salvarProgressoItemPersonalizado,
     reloadRanking,
     telemetrySessionActive,
     flushTelemetryTime: () => flushStudyBatch('interval'),
+  });
+
+  useTopicScreenTimeTracking({
+    topicoId,
+    isScreenFocused,
+    registrarSessaoTopico,
   });
 
   useFocusEffect(
