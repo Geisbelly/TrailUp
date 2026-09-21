@@ -1172,6 +1172,53 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 >    segunda família por causa do selo acrescentaria peso ao bundle para desenhar
 >    o mesmo conceito.
 
+> **Um commit de sync apagou trabalho de outras frentes, e parte do estrago
+> sobreviveu meses.** `1d7ce67` ("feat: sync TrailUp social store and class
+> enrollment", de outro autor) mexeu em **343 arquivos**, com 20.394 deleções.
+> Entre elas: as 24 migrações `20260910_*`/`20260911_*`, utilitários do mobile
+> (`prazoDaAtividade`, `tempoDaClasse`, `pontuacaoDoAluno`…), o bloco de
+> atualização automática de `group_analysis.py`, 85 linhas de
+> `repositories/evento.py` — e a reversão inteira do `f3c5066`.
+>
+> **Quase tudo foi recuperado depois; o que ficou para trás é o perigoso**,
+> porque não parece quebrado: 23 das 24 migrações voltaram e os utilitários do
+> mobile também, então o repo dá a impressão de estar íntegro.
+>
+> O sinal de que uma remoção foi **acidental**, e não decidida, é o que sobrou
+> em volta dela. No caso do `group_analysis.py` sobraram três coisas apontando
+> para o código ausente:
+>
+> - o **teste** (`test_resumo_da_turma_automatico.py`), que importava as três
+>   funções e derrubava a **coleta** inteira do pytest — ou seja, nenhum dos
+>   1201 testes da API rodava no CI;
+> - as **configurações** (`classe_perfil_summary_refresh_enabled: bool = True`,
+>   `classe_perfil_summary_interval_min: int = 15`), intactas em `settings.py`;
+> - este próprio `CLAUDE.md`, que descreve o laço como decisão de arquitetura
+>   viva ("o laço ficou na API, chamando o mesmo `upsert_summary` do endpoint").
+>
+> Remoção deliberada teria levado as três junto. Por isso a restauração foi das
+> **funções E da ligação** no `main.py`: restaurar só as funções deixaria o
+> padrão de "módulo com cara de vivo que ninguém chama" que este arquivo
+> documenta, e ainda deixaria a arquitetura descrita aqui sem implementação.
+>
+> **A quebra do CI escondia-se atrás do filtro de caminhos.** O job `api` só roda
+> quando o `dorny/paths-filter` vê mudança em `api/`, então um merge sem conteúdo
+> deixa a run verde com o job **pulado**. A quebra existia desde `1d7ce67` e só
+> reaparecia quando alguém tocava na API.
+>
+> **Nem toda sobra é restaurável, e o teste é quem diz.** `evento.py` parecia o
+> mesmo caso — subconjunto exato do pré-sync, com `_PREFIXOS_CONHECIDOS`
+> espelhado por uma migração **aplicada** (`20260910_06`). Restaurar consertou
+> `test_referencias_orfas` e **quebrou** `test_evento_referencia`: os dois testes
+> codificam regras **contraditórias** — o prefixo sai do TIPO do evento
+> (`atividade_concluida` + `content:12` → `atividade:12`) ou do VOCABULÁRIO da
+> referência (`content:` → `conteudo:`). Com a migração como terceira voz, isso
+> é decisão de design, não recuperação de arquivo; foi revertido.
+>
+> Regra ao recuperar código perdido em merge: **restaure, rode a suíte inteira e
+> compare a lista de FAILED antes e depois**. Trocar uma falha por outra é
+> resultado, não conserto.
+
 > Lacuna real ainda aberta: `MentalStateHistoryRepository.listar_por_aluno`
 > (`api/app/repositories/mental_state.py`) só é exercitado em teste — o
 > histórico em `aluno_mental_state_history` é **gravado** a cada ciclo
