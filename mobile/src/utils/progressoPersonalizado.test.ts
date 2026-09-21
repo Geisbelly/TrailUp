@@ -5,6 +5,7 @@ import {
   agregarProgressoPersonalizado,
   conteudoIdDaChave,
   itemConcluido,
+  mesclarLinhasProgresso,
   naturezaDoItem,
   topicosComPendenciaPersonalizada,
   unificarContadores,
@@ -312,4 +313,65 @@ test("mesma chave repetida nao conta duas vezes", () => {
   });
 
   assert.deepEqual(pendentes, [125]);
+});
+
+// --- mesclarLinhasProgresso (cache local x leitura do servidor) ------------
+
+test("mesclarLinhasProgresso mantem o maior percentual entre cache e servidor", () => {
+  const cache = [linha({ percentual_concluido: 70 })];
+  const servidor = [linha({ percentual_concluido: 30 })];
+
+  const mesclado = mesclarLinhasProgresso(cache, servidor);
+
+  assert.equal(mesclado.length, 1);
+  assert.equal(mesclado[0].percentual_concluido, 70);
+});
+
+test("mesclarLinhasProgresso preserva status concluido mesmo se o servidor ainda nao sabe", () => {
+  const cache = [linha({ status: "concluido", percentual_concluido: 100 })];
+  const servidor = [linha({ status: "em_andamento", percentual_concluido: 80 })];
+
+  const mesclado = mesclarLinhasProgresso(cache, servidor);
+
+  assert.equal(mesclado[0].status, "concluido");
+});
+
+test("mesclarLinhasProgresso usa o MAXIMO de tempo_gasto_min, nao soma (as duas linhas ja sao totais)", () => {
+  const cache = [linha({ tempo_gasto_min: 12 })];
+  const servidor = [linha({ tempo_gasto_min: 9 })];
+
+  const mesclado = mesclarLinhasProgresso(cache, servidor);
+
+  assert.equal(mesclado[0].tempo_gasto_min, 12);
+});
+
+test("mesclarLinhasProgresso inclui item que so existe de um dos lados", () => {
+  const cache = [linha({ item_key: "content:10" })];
+  const servidor = [linha({ item_key: "content:20" })];
+
+  const mesclado = mesclarLinhasProgresso(cache, servidor);
+
+  assert.deepEqual(
+    mesclado.map((item) => item.item_key).sort(),
+    ["content:10", "content:20"]
+  );
+});
+
+test("mesclarLinhasProgresso trata topico_id diferente como item diferente mesmo com item_key igual", () => {
+  const cache = [linha({ topico_id: 1, item_key: "content:10", percentual_concluido: 100 })];
+  const servidor = [linha({ topico_id: 2, item_key: "content:10", percentual_concluido: 10 })];
+
+  const mesclado = mesclarLinhasProgresso(cache, servidor);
+
+  assert.equal(mesclado.length, 2);
+});
+
+test("mesclarLinhasProgresso com cache vazio devolve so o servidor", () => {
+  const servidor = [linha({ item_key: "content:10" })];
+  assert.deepEqual(mesclarLinhasProgresso([], servidor), servidor);
+});
+
+test("mesclarLinhasProgresso com servidor vazio (offline) preserva o cache", () => {
+  const cache = [linha({ item_key: "content:10", percentual_concluido: 55 })];
+  assert.deepEqual(mesclarLinhasProgresso(cache, []), cache);
 });

@@ -155,6 +155,58 @@ export function agregarProgressoPersonalizado(
   };
 }
 
+/**
+ * Funde duas leituras de `personalizacao_item_progresso` (tipicamente cache
+ * local em `AsyncStorage` x resposta fresca do servidor), sem nunca regredir.
+ *
+ * Diferente da fila de reenvio (`progressoOutbox.ts`), aqui as DUAS linhas já
+ * são totais acumulados -- não incrementos pendentes -- então
+ * `tempo_gasto_min` usa o MÁXIMO entre os dois lados, nunca soma: somar
+ * dobraria o tempo já contabilizado nos dois.
+ */
+export function mesclarLinhasProgresso(
+  base: LinhaProgressoItem[] | null | undefined,
+  incoming: LinhaProgressoItem[] | null | undefined
+): LinhaProgressoItem[] {
+  const chaveDe = (linha: LinhaProgressoItem) => {
+    const topicoId = Number(linha?.topico_id);
+    const chave = String(linha?.item_key ?? "").trim().toLowerCase();
+    return `${Number.isFinite(topicoId) ? topicoId : "?"}|${chave}`;
+  };
+
+  const porChave = new Map<string, LinhaProgressoItem>();
+  for (const linha of base ?? []) {
+    if (!String(linha?.item_key ?? "").trim()) continue;
+    porChave.set(chaveDe(linha), linha);
+  }
+  for (const linha of incoming ?? []) {
+    if (!String(linha?.item_key ?? "").trim()) continue;
+    const id = chaveDe(linha);
+    const atual = porChave.get(id);
+    if (!atual) {
+      porChave.set(id, linha);
+      continue;
+    }
+    porChave.set(id, {
+      ...linha,
+      status:
+        atual.status === "concluido" || linha.status === "concluido"
+          ? "concluido"
+          : linha.status,
+      percentual_concluido: Math.max(
+        numero(atual.percentual_concluido),
+        numero(linha.percentual_concluido)
+      ),
+      acertos_percentual:
+        linha.acertos_percentual == null
+          ? atual.acertos_percentual ?? null
+          : Math.max(numero(atual.acertos_percentual), linha.acertos_percentual),
+      tempo_gasto_min: Math.max(numero(atual.tempo_gasto_min), numero(linha.tempo_gasto_min)),
+    });
+  }
+  return [...porChave.values()];
+}
+
 export type ContadoresUnificados = {
   conteudosConcluidos: number;
   totalConteudos: number;
