@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
 import type { ProgressoItemPersonalizado, StudyBlockSnapshot } from './types';
 import { StudyClock, type StudyInterval } from '@/utils/studyClock';
+import { planSessionRegistrations } from './sessionRegistrationPlan';
 
 type Args = {
   currentStudyBlockSignature: Omit<StudyBlockSnapshot, 'startedAtMs'> | null;
@@ -9,6 +10,8 @@ type Args = {
   registrarTempoConteudo: (topico: number, conteudo: number, min: number) => Promise<void>;
   registrarTempoAtividade: (topico: number, atividade: number, min: number) => Promise<void>;
   registrarTempoDireto: (topico: number, conteudo: number | null, atividade: number | null, min: number) => Promise<void>;
+  registrarSessaoConteudo: (topico: number, conteudo: number, startedAtMs: number, endedAtMs: number) => Promise<void>;
+  registrarSessaoAtividade: (topico: number, atividade: number, startedAtMs: number, endedAtMs: number) => Promise<void>;
   salvarProgressoItemPersonalizado: (payload: ProgressoItemPersonalizado) => Promise<void>;
   reloadRanking: () => void;
   telemetrySessionActive: boolean;
@@ -35,6 +38,16 @@ export function useStudyTimeTracking(args: Args) {
           await current.registrarTempoConteudo(block.topicoId, block.conteudoId, minutes);
         if (block.atividadeId != null && block.atividadeId > 0)
           await current.registrarTempoAtividade(block.topicoId, block.atividadeId, minutes);
+        // A sessão real de abertura/fechamento é o que vale para
+        // tempo_gasto_min (20260921_01) — os dois registros acima são só
+        // bookkeeping de visita, não escrevem mais tempo.
+        for (const plan of planSessionRegistrations(interval)) {
+          if (plan.scope === 'content') {
+            await current.registrarSessaoConteudo(plan.topicoId, plan.conteudoId!, plan.startedAtMs, plan.endedAtMs);
+          } else {
+            await current.registrarSessaoAtividade(plan.topicoId, plan.atividadeId!, plan.startedAtMs, plan.endedAtMs);
+          }
+        }
         // Primeiro entrega os segundos; só então lê as métricas derivadas.
         // Antes a tela recarregava a projeção ANTES de o lote chegar ao banco.
         await current.flushTelemetryTime();
