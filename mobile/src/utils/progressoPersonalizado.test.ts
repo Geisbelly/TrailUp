@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   agregarProgressoPersonalizado,
+  aplicarEventoProgresso,
   conteudoIdDaChave,
   itemConcluido,
   mesclarLinhasProgresso,
@@ -374,4 +375,40 @@ test("mesclarLinhasProgresso com cache vazio devolve so o servidor", () => {
 test("mesclarLinhasProgresso com servidor vazio (offline) preserva o cache", () => {
   const cache = [linha({ item_key: "content:10", percentual_concluido: 55 })];
   assert.deepEqual(mesclarLinhasProgresso(cache, []), cache);
+});
+
+// --- aplicarEventoProgresso (evento novo aplicado ao estado local) ---------
+
+test("aplicarEventoProgresso adiciona linha nova quando o item ainda nao existe", () => {
+  const resultado = aplicarEventoProgresso([], linha({ item_key: "content:10" }));
+  assert.equal(resultado.length, 1);
+  assert.equal(resultado[0].item_key, "content:10");
+});
+
+test("aplicarEventoProgresso mantem o maior percentual entre o que ja tinha e o evento", () => {
+  const anterior = [linha({ item_key: "content:10", percentual_concluido: 80 })];
+  const resultado = aplicarEventoProgresso(anterior, linha({ item_key: "content:10", percentual_concluido: 50 }));
+  assert.equal(resultado[0].percentual_concluido, 80);
+});
+
+test("aplicarEventoProgresso preserva concluido mesmo se o evento novo for em_andamento", () => {
+  const anterior = [linha({ item_key: "content:10", status: "concluido" })];
+  const resultado = aplicarEventoProgresso(anterior, linha({ item_key: "content:10", status: "em_andamento" }));
+  assert.equal(resultado[0].status, "concluido");
+});
+
+test("aplicarEventoProgresso SOMA tempo_gasto_min (o evento e um incremento, nao um total)", () => {
+  const anterior = [linha({ item_key: "content:10", tempo_gasto_min: 2 })];
+  const resultado = aplicarEventoProgresso(anterior, linha({ item_key: "content:10", tempo_gasto_min: 1.5 }));
+  assert.equal(resultado[0].tempo_gasto_min, 3.5);
+});
+
+test("aplicarEventoProgresso nao mexe em linhas de outro topico ou item", () => {
+  const anterior = [
+    linha({ topico_id: 1, item_key: "content:10", percentual_concluido: 20 }),
+    linha({ topico_id: 2, item_key: "content:10", percentual_concluido: 20 }),
+  ];
+  const resultado = aplicarEventoProgresso(anterior, linha({ topico_id: 1, item_key: "content:10", percentual_concluido: 90 }));
+  assert.equal(resultado.find((l) => l.topico_id === 1)!.percentual_concluido, 90);
+  assert.equal(resultado.find((l) => l.topico_id === 2)!.percentual_concluido, 20);
 });

@@ -207,6 +207,42 @@ export function mesclarLinhasProgresso(
   return [...porChave.values()];
 }
 
+/**
+ * Aplica UM evento novo (o que acabou de acontecer no aparelho) ao estado
+ * local de progresso -- usado tanto quando a gravação direta no Supabase dá
+ * certo quanto quando falha e o evento vai para a fila de reenvio.
+ *
+ * Diferente de `mesclarLinhasProgresso`: aqui `evento.tempo_gasto_min` é um
+ * INCREMENTO (o intervalo que acabou de ser vivido), não um total -- por isso
+ * soma em vez de tomar o máximo.
+ */
+export function aplicarEventoProgresso(
+  anterior: LinhaProgressoItem[],
+  evento: LinhaProgressoItem
+): LinhaProgressoItem[] {
+  const index = anterior.findIndex(
+    (linha) =>
+      Number(linha.topico_id) === Number(evento.topico_id) &&
+      String(linha.item_key ?? "") === String(evento.item_key ?? "")
+  );
+  if (index < 0) return [...anterior, evento];
+
+  const atual = anterior[index];
+  const mesclada: LinhaProgressoItem = {
+    ...atual,
+    ...evento,
+    status: atual.status === "concluido" || evento.status === "concluido" ? "concluido" : evento.status,
+    percentual_concluido: Math.max(numero(atual.percentual_concluido), numero(evento.percentual_concluido)),
+    acertos_percentual:
+      evento.acertos_percentual == null
+        ? atual.acertos_percentual ?? null
+        : Math.max(numero(atual.acertos_percentual), evento.acertos_percentual),
+    tempo_gasto_min:
+      Math.round((numero(atual.tempo_gasto_min) + numero(evento.tempo_gasto_min)) * 100) / 100,
+  };
+  return anterior.map((linha, i) => (i === index ? mesclada : linha));
+}
+
 export type ContadoresUnificados = {
   conteudosConcluidos: number;
   totalConteudos: number;
