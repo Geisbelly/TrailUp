@@ -80,9 +80,20 @@ mobile/android/
 .worktrees/
 .superpowers/
 
-# graphify-out fora da raiz e artefato de rodar o graphify dentro de um
-# subdiretorio (o commit 8c409ae ja removeu um lote desses). O grafo do projeto
-# vive so em /graphify-out, que segue rastreado normalmente.
+# O grafo do graphify NAO e versionado -- nem o da raiz, nem os de subdiretorio.
+#
+# Ele e SAIDA GERADA, e o CLAUDE.md manda regerar a cada mudanca de codigo
+# ("After modifying code, run `graphify update .`"). Cada regeracao cria uma
+# pasta datada com um `graph.json` INTEIRO, entao o custo era cumulativo:
+# medido antes da remocao, 1.497 arquivos, 5.654.310 linhas e 262 MB -- 32x todo
+# o `mobile/src`, e 94% disso nos 80 arquivos de snapshot datado.
+#
+# O efeito pratico era esconder trabalho: um PR de redesign visual chegou a
+# +838.493 linhas em 3000+ arquivos, e o conflito de verdade era em 20 arquivos.
+# Diff que ninguem consegue ler nao e revisado.
+#
+# Reconstruir e local e barato: `graphify update .` (AST-only, sem custo de API).
+graphify-out/
 **/*/graphify-out/
 .mcp-tracker.local.json
 .codex

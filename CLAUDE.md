@@ -1540,6 +1540,31 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 
 This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
 
+> **Ele NAO e versionado, e e' por isso que as regras abaixo dizem "when ...
+> exists".** Clone novo nao tem grafo nenhum ate alguem rodar `graphify update .`
+> -- que e' local, AST-only e sem custo de API.
+>
+> Medido antes da remocao: **1.497 arquivos, 5.654.310 linhas, 262 MB**. Isso e'
+> 32x todo o `mobile/src` (173k linhas) e 34x a API (167k). E **94% estava nos 80
+> arquivos de snapshot datado**: cada `graphify update .` cria uma pasta nova com
+> um `graph.json` inteiro (~300 mil linhas), entao o custo era cumulativo e nunca
+> baixava.
+>
+> O dano nao era disco -- era **revisao**. Um PR de redesign visual chegou a
+> `+838.493 / -116.545` em 3000+ arquivos, com o conflito de verdade em 20. Diff
+> que ninguem consegue ler nao e revisado, e ai o que entra junto passa sem
+> olhar. Para comparacao, 19 commits de Arena + gabarito + tres formatos novos de
+> questao + telemetria + RLS couberam em **12.792 linhas**.
+>
+> A regra do `.gitignore` antes mantinha a raiz rastreada de proposito; hoje
+> ignora `graphify-out/` inteiro. **Nao reverta isso para "facilitar" o grafo num
+> clone novo** -- regerar leva um comando.
+>
+> O historico continua pesado: `git rm --cached` tira do futuro, nao do passado.
+> Enxugar de vez pede reescrita de historico (`git filter-repo`), que muda todos
+> os hashes e obriga todo mundo a reclonar -- decisao da equipe, nao efeito
+> colateral de um commit.
+
 Rules:
 - For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
 - If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
