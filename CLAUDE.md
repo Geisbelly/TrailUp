@@ -302,6 +302,42 @@ Cada perfil carrega:
   > regeração.
 
 - `cards_personalizados`, `atividades_personalizadas`, `questoes_personalizadas` — artefatos desnormalizados (com `ativo`/`obsoleto_em`).
+  > **`ativo` não é enfeite: a regeração APOSENTA a linha velha, não a apaga.**
+  > A consulta do mobile não filtrava, e o aluno recebia a versão obsoleta junto
+  > com a atual, como duplicata. Medido: 48 das 228 linhas inativas, 6 delas no
+  > perfil do aluno contra 18 ativas — um terço a mais de card, todo vencido.
+  > `ativo = false` casa exatamente com `obsoleto_em` preenchido (48/48), a
+  > coluna é NOT NULL com default `true`, e por isso o filtro é `.eq("ativo",
+  > true)` e não `.is`.
+
+> **O perfil de um material sai da COLUNA, e a cadeia de reserva termina num
+> default perigoso.** `conteudo_personalizado.brainhex_profile_key` é a chave do
+> unique `(aluno, tópico, perfil)` e está preenchida em 100% das linhas. Mesmo
+> assim ela ficou **fora do SELECT** do mobile por muito tempo, então o elo mais
+> autoritativo de `perfilDoRegistro` chegava sempre `undefined` e a decisão caía
+> nos fallbacks do `plano` — cuja última saída é `PERFIL_PADRAO = "mastermind"`.
+>
+> O default não é `null` nem erro: uma linha que perca a origem do perfil é
+> arquivada como mastermind, **some para o dono dela e aparece para quem não é**.
+> Na base já há uma linha assim (id 3608, `pronto`, coluna `mastermind`, `plano`
+> sem chave nenhuma) — hoje ela acerta por sorte, porque o default coincide.
+>
+> A lógica mora em `utils/perfilDoMaterial.ts`, extraída de
+> `TrailupApiProvider.ts` pelo mesmo motivo de `acumuladorLote.ts`: o provider
+> importa `@/database/supabase` no topo e não carrega em node, então a regra que
+> decide **o que o aluno vê** não tinha teste nenhum.
+>
+> Ao mexer: a coluna vem primeiro, e ela só serve se estiver no `select()`.
+> Cards não têm coluna — a chave deles mora em `metadata`, que já é selecionado.
+
+> **`alunos.perfil_ativo` e a maior afinidade em `aluno_perfil` podem
+> discordar.** Medido: o aluno da base tem `perfil_ativo = conqueror` com
+> `mastermind=85, conqueror=60` — ou seja, o dominante por afinidade é outro.
+> `resolveActiveBrainHexProfile` (`utils/brainHex.ts`) resolve isso preferindo
+> `perfil_ativo` **quando ele está entre os dois representativos**, e só cai no
+> dominante quando não está. Não é bug, é a regra — mas quem for comparar
+> "o perfil do aluno" com `brainhex_profile_key` precisa usar a MESMA função que
+> o app usa, e não ler `perfil_ativo` cru nem o `max(afinidade)`.
 - `fontes_personalizacao` — fontes do professor (upload/link), `visibilidade` `classe|aluno`.
 - `personalizacao_jobs` + `personalizacao_job_targets` — fila assíncrona
   (`enrollment`, `class-delta`, `class-theme`, `student-cleanup`, `full-sync`).
@@ -333,6 +369,43 @@ Cada perfil carrega:
   ficaria furada justamente onde vai olhar). Ver
   `docs/superpowers/specs/2026-08-25-sugestao-de-material-por-aluno-design.md`.
 - `telemetria_sessoes`, `telemetria_lotes` — telemetria bruta + payload JSONB.
+- `telemetria_time_metric_entries` — tempo por escopo, **cinco** desde
+  `20260920_01`: `topic`, `content`, `activity`, `question`, `material`. O
+  `scope` é guardado por CHECK — escopo novo sem ampliar o CHECK é recusado com
+  23514, e o cliente trata erro não-rede caindo no gravador direto, que grava na
+  mesma tabela e leva o mesmo 23514: o escopo novo ficaria invisível e calado.
+
+  > **`CREATE OR REPLACE FUNCTION` também não preserva `SET search_path`** — a
+  > mesma armadilha que `CREATE OR REPLACE VIEW` tem com `security_invoker`. Foi
+  > por isso que `telemetria_resolver_entidade` e `telemetria_id_do_item_key`
+  > atravessaram a `20260826_17`, a `20260830_01` e a `20260920_01` sem a
+  > cláusula: ela tem de ser **redeclarada a cada replace**, e o linter só a
+  > cobra depois.
+  >
+  > **Mas para acrescentar a cláusula, a ferramenta certa é `ALTER FUNCTION`.**
+  > `ALTER FUNCTION f(args) SET search_path TO 'public', 'pg_temp'` muda a
+  > configuração **sem tocar no corpo**: medido numa transação revertida sobre
+  > 26 funções, `prosrc`, `proacl`, `prosecdef` e `provolatile` ficaram
+  > idênticos nas 26, e só `proconfig` mudou. A `20260920_02` usou
+  > `CREATE OR REPLACE` nas duas primeiras e teve de provar por md5 que não
+  > perdera nada; a `20260920_03` fez as outras 26 por `ALTER` e não teve o que
+  > provar. Ao pinar função existente, **não reescreva o corpo**.
+  >
+  > Cuidado ao conferir: `pg_get_functiondef` sempre emite o corpo entre
+  > `$function$`, qualquer que tenha sido a tag do `CREATE`. Comparar o texto
+  > cru com o da migração acusa diferença onde não há — normalize a tag (e os
+  > comentários) antes de concluir que o corpo divergiu. E note que o próprio
+  > `pg_get_functiondef` passa a incluir a linha do `SET`: para comparar corpo,
+  > use `prosrc`, que é só o corpo e que `ALTER` não altera.
+
+> **Função com cara de viva que está quebrada há tempo.** `fn_trilha_by_classe`
+> (`SECURITY DEFINER`, exposta em `/rest/v1/rpc/`) lê `public.v_trilha_topicos`,
+> **que não existe nesta base** — qualquer chamada estoura com 42P01, e não é
+> `search_path`: a referência está qualificada. Não há um chamador sequer no
+> monorepo (`mobile/src`, `frontend/src`, `api/app`, `docs/**/sql`). Achada ao
+> exercitar as funções depois de pinar o caminho — o teste que só lê catálogo
+> nunca teria encontrado. É o mesmo padrão de `progressoTrilha.ts` e do fallback
+> do rank, agora do lado do banco.
 - **Notificações — motor inteiro no banco.** Quatro tabelas com papéis **não
   intercambiáveis**: `notificacoes_ia` (o que a IA *sugeriu*; a API só insere
   aqui), `notificacoes_pendentes` (a *fila*, com `gatilho`
@@ -350,6 +423,16 @@ Cada perfil carrega:
   `20260826_07` por duplicá-la), `aluno_sessoes_app` (histórico de login) e
   `aluno_atividade_diaria` (tempo de uso por dia).
 - `personalizacao_item_progresso` — progresso por item (merge: percentual/acertos = máx, tempo = soma).
+- `guilda_desafios` + `guilda_desafio_questoes` + `guilda_desafio_respostas` +
+  `desafio_participantes` — a **Arena**. `formato` (`guilda`/`dupla`/`solo`) diz
+  quem joga; `modo` (`todos`/`velocidade`/`precisao`) diz como se ganha. O
+  acesso é **só por RPC**: as dez tabelas de guilda têm RLS ligada e **zero
+  policy**, e `authenticated` lendo direto recebe nada. É deliberado — não crie
+  policy aqui, crie RPC `SECURITY DEFINER`, e tire o `anon` dela na mesma
+  migração. `guilda_desafio_respostas.tempo_ms` é a **latência da tentativa**
+  (questão aparece → aluno confirma), a mesma grandeza de
+  `questao_aluno.tempo_gasto_seg`; não é permanência de telemetria, e é ela que
+  desempata o modo `velocidade`.
 - `aluno_perfil`, `perfil` — perfis BrainHex e afinidades.
 
 ## Telemetria → análise → realimentação
@@ -370,13 +453,62 @@ de ritmo de leitura (WPM) roda no `linear_analysis_pipeline.py`
 — **não** `dwell_sec`, que inclui tempo parado com o material aberto e sub-
 estimaria o WPM de quem só fez uma pausa no meio da leitura.
 
+> **`active_sec` só passou a medir isso em `20260920`.** O limiar de ócio era
+> 15s depois do último toque, e ler não produz toque: quem rola a tela a cada
+> 20-40s, quem ouve o áudio do Guardião e quem passa slide caíam todos em
+> `idle`. Medido antes da correção: 336s de permanência nos materiais contra
+> 146s de ativo — **57% do tempo de estudo descartado** —, e `active_sec` é o
+> único insumo de `trailup_tempo_telemetria_min`, que é o único escritor de
+> `tempo_gasto_min`. O WPM saía pelo mesmo fator inflado, o suficiente para
+> classificar como `skimming` quem lia devagar.
+>
+> **A correção seguinte foi para 120s, e 120s também estava errado — pelo motivo
+> oposto.** Eu amarrei o coletor ao número que o pipeline usa, e até escrevi um
+> teste exigindo que fossem iguais. São perguntas diferentes:
+>
+> | quem | pergunta | número |
+> | --- | --- | --- |
+> | pipeline | "o aluno travou?" | 120s, classificação de emoção |
+> | coletor | "isto conta como tempo de estudo?" | limite de **abandono** |
+>
+> Ler um enunciado, pensar numa questão e ouvir o Guardião não produzem evento
+> nenhum — `trackInteraction` só é chamado por toque, scroll e sinal. Depois de
+> 120s parado estudando, o lote inteiro virava ócio, e continuava assim até o
+> próximo toque. Medido na base: **784 dos 1003 segundos viraram ócio**, 42 das
+> 69 linhas sem um único toque, e lotes seguidos chegando com
+> `dwell 64 / active 0`.
+>
+> Hoje o limite chama-se pelo que de fato detecta — `LIMITE_DE_ABANDONO_MS`, em
+> `acumuladorLote.ts` — e vale **10 minutos**. Ele é a rede embaixo, não a
+> medida: perder o foco da tela ou ir para segundo plano já zera o contexto
+> (`endStudySession`), e o bloqueio automático do aparelho faz isso sozinho em
+> poucos minutos.
+>
+> A repartição virou `repartirTempo`, função pura e testada, com a invariante de
+> que `ativo + ocioso` é sempre a duração do intervalo — nenhum segundo some nem
+> é contado duas vezes, e `active_sec` é o único insumo de
+> `trailup_tempo_telemetria_min`.
+>
+> Corolário que a mudança de limiar forçou: **regra de ócio em valor absoluto
+> contra o ócio de UM lote não sobrevive à troca do intervalo de flush.**
+> `idle_sec >= 120` ficou inalcançável quando `BATCH_INTERVAL_MS` caiu de 180s
+> para 60s (`buildTimeMetricsSnapshot` apara `idle_sec` pela duração do lote).
+> Virou fração da duração, com piso — `_ocio_dominou_o_lote`.
+
 > **`dwell_sec`, `active_sec` e `idle_sec` são o tempo DAQUELE lote**, não um
 > acumulado da sessão: `runStudyBatchFlush` troca o acumulador por
-> `buildEmptyBatch(nowMs)` a cada flush. Para totalizar, **some as linhas** — é
+> `buildEmptyBatch(...)` a cada flush. Para totalizar, **some as linhas** — é
 > o que `trailup_tempo_telemetria_min` faz (`20260830_01`). A imunidade a lote
 > duplicado **não** vem da forma da conta; vem da chave única
 > `(lote_id, scope, entry_key)`, preenchida pelo trigger
 > `telemetria_resolver_entidade`.
+>
+> **O que NÃO zera no flush é o relógio do ócio.** `buildEmptyBatch` recebe o
+> `lastInteractionAtMs` do lote anterior. Ele o zerava para o instante do
+> flush, e o limiar de ócio conta a partir dele: cada lote começava com um
+> crédito de tempo ativo que o aluno não produziu. Medido, era exatamente isso
+> que o número parecia — o material mais lido da base tinha `dwell 68s /
+> active 15s`, e 15s era o limiar, não uma medida.
 >
 > Este parágrafo já disse o contrário, e a inversão custou caro: entre 20% e 80%
 > do tempo de estudo sumia. Até `6c1482e` o acumulador só era zerado quando o
@@ -389,11 +521,48 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 >
 > `topic`, `content` e `material` aparecem com o mesmo valor dentro de um lote
 > porque o aninhamento é inclusivo: cada escopo conta o mesmo intervalo. Somar
-> escopos diferentes multiplica o tempo — filtre por `scope` sempre.
+> escopos diferentes multiplica o tempo — filtre por `scope` sempre. São
+> **cinco** escopos desde `20260920`: `question` entrou embaixo de `activity`.
+>
+> **Aninhamento inclusivo não é permissão para carimbar o vizinho.** Uma linha
+> recebe o id dela e o dos ANCESTRAIS, nunca o de algo mais fino. Isso foi
+> violado em dois lugares ao mesmo tempo e o efeito era um só: o contexto de
+> estudo carrega uma `itemKey` (a do bloco aberto), o acumulador a repassava
+> para a entrada de conteúdo, e aí o gatilho lia `activity:1063` e preenchia
+> `atividade_id` numa linha de escopo `content`. Nove linhas assim na base,
+> cada uma com a última atividade do lote — um valor sem significado nenhum.
+> A guarda existe agora nos dois lados (`itemKeyDoEscopo` no cliente, o teste
+> de `scope` no gatilho), porque os apps já publicados continuam mandando a
+> chave contaminada.
+>
+> **E os dois gravadores precisam escrever a MESMA `entry_key`.** O caminho
+> direto do mobile sempre mandou a chave do acumulador; a API não mandava a
+> coluna e deixava o gatilho derivar `content:<conteudo_id>`. Dois passos
+> personalizados do mesmo conteúdo derivam a mesma chave dentro de um lote, e o
+> segundo caía no `ON CONFLICT ... DO NOTHING` — o tempo dele sumia, e só pelo
+> caminho da API.
 >
 > Corolário: `tempo_gasto_min` em `topico_aluno`, `conteudo_aluno` e
 > `atividade_aluno` é **derivado por trigger** a partir da telemetria. Nenhum
 > cliente escreve essa coluna.
+>
+> **`questao_aluno.tempo_gasto_seg` é a exceção, e é de propósito.** Ela NÃO
+> vem do gatilho de telemetria: é a **latência da tentativa** — o intervalo
+> entre a questão aparecer e o aluno confirmar —, medida em `QuestionActivity`
+> e gravada junto com a resposta. `questao_aluno` é por `(aluno, questão,
+> tentativa)`, e espalhar um agregado de lote sobre linhas de tentativa
+> escolheria arbitrariamente uma delas. É essa latência, e não a permanência,
+> que `trailup_core/tempo.py` modela (R² 0,562 sobre o log).
+>
+> A coluna, o campo no model e o parâmetro `tempoGastoSeg` de
+> `registrarRespostaQuestao` existiam desde sempre, e **nenhum chamador o
+> passava**: 35 das 35 linhas da base estavam com NULL, e
+> `resolveAtividadeTempoMin` (`utils/classeMetrics.ts`), que soma essa coluna
+> como reserva, sempre somou zero.
+>
+> O escopo `question` da telemetria é a **outra** medida — permanência por
+> questão, somada por lote, como já se fazia por conteúdo e por atividade. As
+> duas convivem; nenhuma substitui a outra.
 >
 > **E o nível de cima também: `classe_aluno`.** Este parágrafo só falava das três
 > tabelas de baixo, e a omissão custou caro. `classe_aluno` tem duas colunas
@@ -408,6 +577,27 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 > tópicos (cada tópico vale o mesmo) e o tempo é **soma** (estudo acumula).
 > Ao criar agregado novo em `classe_aluno`, derive junto com esses dois.
 
+> **O contexto de estudo tem de VOLTAR, e por muito tempo não voltava.**
+> `accumulateContextTime` descarta tudo que chega com `studyState !== "active"`
+> — de propósito: contar tempo no menu da trilha inflaria o estudo. Só que
+> `endStudySession` zera `currentContextRef` para `EMPTY_STUDY_CONTEXT`, e ela
+> roda em **todo** blur de tela e **toda** ida do app para segundo plano.
+>
+> Na volta, nada reinstalava o contexto: o efeito que chama `updateStudyContext`
+> em `trilha/[id].tsx` era o mesmo que emite `content_open`, e o guard que
+> impede o sinal de ser reemitido (`lastOpenedSignalRef`) vetava os dois juntos.
+> Como as dependências do efeito não mudavam no refoco, ele não rodava, e o
+> contexto ficava `idle` até o aluno trocar de bloco.
+>
+> Medido na base: **127 dos 261 lotes não produziram uma linha sequer de
+> métrica**, e são 33,1 dos 46,8 minutos de permanência medidos — 71% do tempo
+> de estudo do produto, sem escopo nenhum a que ser atribuído.
+>
+> Hoje são dois efeitos: o do CONTEXTO, sem guard e com `isScreenFocused` nas
+> dependências, e o do SINAL, que mantém o guard. E `beginStudySession`
+> **preserva** o bloco quando a sessão volta para o mesmo tópico — sem isso os
+> dois pedidos competem no refoco e quem rodasse por último ganhava.
+>
 > **Quatro armadilhas de tempo/progresso, todas medidas em produção.** O
 > gatilho `trg_telemetria_tempo_gasto` RECALCULA o total a cada INSERT de
 > telemetria (não soma incremental), então toda linha tocada por dado novo
@@ -549,6 +739,52 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 >    linter acusa em `anon_security_definer_function_executable`. A forma é a da
 >    `20260826_09`: `REVOKE ALL ON FUNCTION <assinatura completa> FROM PUBLIC, anon`
 >    seguido de `GRANT EXECUTE ... TO authenticated`.
+>
+>    **E a dívida acumulou até 74.** A `20260920_04` limpou; o que ela aprendeu:
+>
+>    - **`FROM PUBLIC, anon` não é redundante.** O `proacl` das expostas era
+>      `{=X/postgres, anon=X/postgres, ...}` — o privilégio chega pelos **dois**
+>      caminhos, e revogar só de `anon` deixa a função aberta por `PUBLIC`.
+>    - **`service_role` não é atingido**, porque tem grant próprio
+>      (`service_role=X`). Medido: 0 funções o perderam. Importa porque a API, o
+>      microservice e o BrainHexPDF usam SERVICE_ROLE_KEY.
+>    - **Revogar não desliga gatilho.** Execução de trigger não consulta
+>      EXECUTE. Medido: com o grant revogado, `CREATE TABLE` ainda fez
+>      `rls_auto_enable` ligar a RLS, e um INSERT ainda fez
+>      `telemetria_resolver_entidade` derivar `entry_key`.
+>    - **Alvo por PROPRIEDADE, não por lista.** Lista fixa envelhece na próxima
+>      função criada — que é exatamente o defeito de nascença acima. A migração
+>      varre o catálogo e termina exigindo que não sobre nenhuma.
+>
+>    Exceção única: **`fn_auth_email_exists`**. É a só RPC pré-login do monorepo
+>    (`CadastroAluno.tsx`, `CadastroProfessor.tsx`), e o custo é enumeração de
+>    usuário — ela lê `auth.users` como dono e responde `true`/`false` para
+>    qualquer e-mail, sem login. Consciente, não resolvido: mitigar pede rate
+>    limit ou uma Edge Function no meio.
+
+> **`SECURITY DEFINER` + `anon` é RLS desligada, e dava para escrever por ela.**
+> Medido assumindo a role `anon` numa transação revertida, antes da
+> `20260920_04`: `provisionar_estrutura_aluno_classe` aceita qualquer aluno e
+> qualquer turma e **inseriu 20 linhas** (4 `topico_aluno` + 4 `conteudo_aluno` +
+> 12 `atividade_aluno`) para um aluno **não matriculado** na turma — sem login.
+> `social_sao_colegas` confirmou que dois alunos específicos são colegas e
+> `social_presenca_turma(32)` devolveu presença, também sem login.
+>
+> Das 65 alcançáveis por RPC, 46 tinham guarda `auth.uid()` e **degradam para
+> vazio** com chamador anônimo (`social_listar_pessoas(32)` → 0 linhas). Esse é
+> o modo de falha certo, e é o que separa "exposta" de "explorável": o furo
+> estava nas 19 sem guarda nenhuma, 8 delas de escrita.
+>
+> Ao criar `SECURITY DEFINER` nova: ou ela tem guarda `auth.uid()` no corpo, ou
+> ela não é de usuário — e nos dois casos o `anon` sai.
+
+> **Nem todo `event_trigger` é inalcançável.** Função que retorna `trigger` o
+> Postgres recusa chamar direto ("trigger functions can only be called as
+> triggers"). Presumi que `event_trigger` caísse na mesma regra: **não cai**.
+> `rls_auto_enable()` chamada direto por `anon` **executa** — vira no-op, porque
+> `pg_event_trigger_ddl_commands()` não devolve linha fora do contexto, mas
+> "hoje não faz nada" depende do corpo continuar como está. Ao classificar
+> superfície exposta, teste em vez de deduzir pelo tipo de retorno.
 
 > **Conquista: o gatilho avalia contra uma lista, e a lista agora tem dono.**
 > `trg_eventos_aluno_after_iud` percorre `conquistas` a cada evento. Desde a
@@ -584,27 +820,357 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 > escapada ou uma tabela explícita de acentos, como `derivarTipo` em
 > `frontend/src/lib/conquistaDaTurma.ts`.
 
-> **Módulo com cara de vivo que ninguém chama.** Já custou tempo três vezes
+> **Módulo com cara de vivo que ninguém chama.** Já custou tempo quatro vezes
 > nesta área: `services/progressoTrilha.ts` existia desde o commit inicial e
 > **nunca** teve um chamador, enquanto as escritas de verdade estavam nos
-> models; o fallback do rank rodava no caminho normal fazendo a conta errada; e
+> models; o fallback do rank rodava no caminho normal fazendo a conta errada;
 > `Rank.loadByRankId` / `getPosicaoDoAluno` / `listRankInfosByClasse`
-> continuam sem uso externo. Antes de corrigir um "gravador" ou "calculador",
-> confirme quem o chama — `grep` pelo nome fora do próprio arquivo.
+> continuam sem uso externo; e `utils/tempoDaClasse.ts` — `escolherTempoDaClasse`
+> e `escolherTempoMedio` — tinha **sete testes passando e zero chamadores**, com
+> `profileMetricsViewModel` decidindo a fonte do tempo sozinho, e decidindo o
+> contrário (conta local na frente do banco). Antes de corrigir um "gravador" ou
+> "calculador", confirme quem o chama — `grep` pelo nome fora do próprio arquivo.
+>
+> **Teste verde não prova que o módulo roda.** Os sete de `tempoDaClasse`
+> passavam o tempo todo. Quem denunciou foi `profileMetricsTempo.test.ts`, que
+> testa o CONSUMIDOR: ele falhava havia tempo, e falhava por duas regressões de
+> uma vez — a fonte errada e a soma de `session_elapsed_sec`, que o próprio
+> `CLAUDE.md` já registrava como corrigida. A correção sobreviveu no documento e
+> no teste, não no código; suspeita de merge (`723a5f8`, `abc7675`). Teste de
+> unidade guarda a função; só o teste do consumidor guarda a ligação.
 
-> **O inverso disso: backend inteiro sem tela, e uma cerimônia que já o
-> prometeu.** Quatro tabelas existem no Supabase com dado dentro —
-> `social_relacionamentos` (3), `social_mensagens` (2), `guildas` (3),
-> `guilda_convites` (5) — e **nenhuma linha do monorepo lê ou escreve qualquer
-> uma delas** (conferido em `mobile/src`, `frontend/src`, `api/app`). Enquanto
-> isso, `utils/portoes.ts` tem dois portões e só um é consumido:
-> `_layout.tsx` usa `aberturas.rank` para revelar a aba Ranking, mas
-> **`aberturas.social` não é lido por ninguém** — e a cerimônia dele dispara ao
-> concluir o primeiro conteúdo anunciando "Amizades liberadas", com passos que
-> descrevem convite, aceite mútuo e bloqueio. O aluno recebe a promessa e não
-> tem para onde ir. Ao mexer em portão ou em navegação, saiba que essa dívida
-> existe; o desenho de como pagá-la está em
-> `docs/superpowers/specs/2026-09-12-loja-no-mobile-design.md`, §2.
+> **Este parágrafo já afirmou o contrário, e as duas metades estavam erradas.**
+> Ele dizia que "nenhuma linha do monorepo lê ou escreve" as tabelas sociais e
+> que `aberturas.social` "não é lido por ninguém". Não vale mais nenhuma das
+> duas: existe uma aba Social inteira (`app/(tabs)/social/index.tsx`, quatro
+> seções, seis componentes em `components/social/`, oito serviços em
+> `services/social/`), e `_layout.tsx:135` usa `aberturas.social` para revelá-la
+> — exatamente como faz com `aberturas.rank`. Ao ler uma afirmação de "não tem
+> chamador" aqui, **confirme com `grep` antes de agir**: este arquivo sobreviveu
+> à entrega que o contradisse.
+>
+> **O que ERA verdade, e virou a Arena.** O substrato do desafio de guilda
+> estava inteiro no banco e sem um chamador sequer: `guilda_desafios` (3
+> linhas), `guilda_desafio_questoes` (9), `guilda_desafio_respostas` (**zero**),
+> e as RPCs `guilda_desafio_criar` / `guilda_desafio_responder` /
+> `guilda_chat_questao_responder`. O `CHECK` de `modo` já aceitava `duelo` e
+> `duplo` — num lugar onde elas nunca poderiam funcionar, porque `modo`
+> misturava *como se ganha* (`todos`/`velocidade`/`precisao`) com *quem joga*.
+>
+> A `20260920_05` separou: **`formato` (`guilda`/`dupla`/`solo`) diz quem joga,
+> `modo` diz como se ganha**, e `duelo`/`duplo` saíram do CHECK de `modo`. Três
+> coisas que valem para quem estender:
+>
+> 1. **Quem joga sai de `desafio_participantes`, e só de lá.** `guilda_id`
+>    aceita NULL e virou rótulo — duelo entre alunos de guildas diferentes não
+>    cabia numa coluna obrigatória. A composição **congela na abertura**: quem
+>    sair da guilda amanhã continua no placar, quem entrar depois fica de fora.
+>    Sem congelar, `guilda_listar` mudaria o placar de uma rodada já respondida.
+> 2. **O tipo do evento começa com `desafio_`, nunca com `participacao_`.**
+>    `fn_evento_creditado` casa por PREFIXO e devolve o valor que o CHAMADOR
+>    mandou; um `participacao_desafio` deixaria o aluno escolher quanto vale a
+>    própria vitória. E a referência começa pela **classe**
+>    (`classe` / id / `desafio` / uuid), porque
+>    `fn_eventos_aluno_resolve_classe_id` não conhece prefixo de desafio e
+>    classe nula tira o evento do rank inteiro.
+> 3. **Pagar duas vezes é impossível em dois níveis:** o encerramento é
+>    `aberto → encerrado` sob `FOR UPDATE`, e a `idempotencia_key` é **derivada**
+>    de (desafio, aluno, tipo) por md5 — gerada na hora de reenviar, duplicaria.
+>    `desafio_*` não está em `fn_evento_de_conclusao`, então não herda a dedup
+>    por referência: é a chave derivada que protege.
+>
+> `fn_questao_liberada` ganhou a variante `_para(aluno, questão)` com o corpo de
+> verdade e passou a delegar. O pool tem de estar liberado para **todos** os
+> participantes — sortear pelo que o criador abriu daria ao adversário questão
+> que a trilha dele não liberou.
+>
+> Medido em transação revertida: solo de 3 questões com A acertando tudo e B
+> errando tudo encerra sozinho, paga `desafio_participou` (3) e
+> `desafio_vencido` (12) com a classe resolvida, e move o rank de pontuação da
+> view que o mobile lê de 0 para 15. O rank de percentual e o de tempo **não**
+> se mexem, que é o certo: duelo não é progresso de trilha nem tempo de estudo.
+>
+> Duas armadilhas encontradas ao exercitar, as duas invisíveis no código:
+>
+> - **`array_length` de array VAZIO devolve NULL, não zero.** A checagem de
+>   duplicata virava `NULL IS DISTINCT FROM 0` e matava o formato `guilda`
+>   inteiro — ele é o único que não convoca ninguém.
+> - **`guilda_listar` devolve `logo_url`, `modo_perfil`, `perfil_alvo` e
+>   `convites_enviados`, e `normalizeGuild` descartava os quatro.** A guilda
+>   travada num perfil BrainHex aparecia como mista, e `guilda_cancelar_convite`
+>   ficava sem chamador — convite feito por engano nunca saía do `pending`,
+>   bloqueando um novo convite à mesma pessoa. O default de `limiteMembros` era
+>   **4** contra o `BETWEEN 2 AND 10` do banco: escondia 6 vagas e, com elas, o
+>   botão de entrar.
+>
+> **Guilda contra guilda entrou na `20260920_06`, e ela fechou um furo que a
+> `20260920_05` tinha deixado.** O cooperativo era DEDUZIDO do placar —
+> `arena_encerrar` olhava "integrantes da equipe 2 = 0" e concluía "então é
+> treino". Duas consequências, e a segunda é grave:
+>
+> 1. Uma partida PvP em que o outro lado ainda não aceitou tem equipe 2 vazia e
+>    fica **idêntica** a um treino. Guilda contra guilda era indizível.
+> 2. **Dava para farmar vitória sozinho.** Medido nesta base: A desafia B em
+>    solo, B nunca aceita, A responde as 3 questões certas e chama
+>    `arena_encerrar` na mão — `vencedor_equipe = 1`, `desafio_vencido = 12`.
+>    Repetível contra qualquer colega, sem a participação dele. `arena_responder`
+>    só fecha sozinho quando não sobra `convidado`, mas `arena_encerrar` aceita
+>    qualquer participante, e o ramo cooperativo dava a vitória.
+>
+> Hoje **cooperativo é `formato = 'guilda' AND guilda_rival_id IS NULL`, nunca o
+> placar**, e toda disputa exige que os DOIS lados tenham alguém que respondeu.
+> Quando não têm, `resultado = 'sem_adversario'`: sem vencedor, sem empate, só
+> `desafio_participou` — o mesmo que a pessoa levaria jogando qualquer rodada.
+> Medido depois: o mesmo roteiro do farm passou de 15 para **3** pontos.
+>
+> `resultado` é coluna (`vitoria`/`empate`/`sem_adversario`) porque o cliente
+> **não consegue deduzir isso** de `vencedor_equipe`: nulo serve para empate e
+> para rodada que não aconteceu, e são coisas diferentes na tela.
+>
+> **E o placar compara APROVEITAMENTO, não acerto bruto.** Pontuação de equipe é
+> soma, então uma guilda de 5 bateria uma de 2 só por ser maior.
+> `acertos / (questões × integrantes)`, comparado por multiplicação cruzada
+> (`p1 * n2 > p2 * n1`) para não sair do inteiro — é a mesma régua de 50% que o
+> ramo cooperativo já usava. Medido: 4 acertos em 2 jogadores (50%) **perde**
+> para 3 acertos em 1 jogador (75%). Em solo e dupla os times têm o mesmo
+> tamanho por construção, então a ordem não muda; só guilda contra guilda de
+> tamanhos diferentes sente. O desempate de `velocidade` virou tempo médio pela
+> mesma razão.
+>
+> **Quem aceita pela guilda rival: cada membro por si.** Não há papel de líder
+> no domínio — `criado_por` é quem criou, não quem manda — e deixar uma pessoa
+> comprometer a guilda inteira num desafio que paga ponto seria inventar um
+> governo que não existe. Cada membro ativo da rival nasce `convidado`; quem não
+> aceitar simplesmente não joga, e o aproveitamento normaliza o tamanho de quem
+> apareceu. A guilda rival é avisada **no chat dela** — sem isso o único sinal
+> seria o convite individual, e guilda parada nunca saberia que foi desafiada.
+>
+> Ver `docs/superpowers/specs/2026-09-20-arena-guilda-dupla-solo-design.md`.
+>
+> **`guilda_criar` era ambígua, e não só na chamada posicional.** Ela tinha duas
+> assinaturas — 4 argumentos (uma delegação de uma linha) e 7 (o corpo), com as
+> três últimas por DEFAULT —, então a de 7 também aceitava 4 e o Postgres não
+> conseguia escolher. Medido antes da `20260920_07`, as **duas** formas
+> estouravam com 42725:
+>
+> ```
+> guilda_criar(32,'X','y','constellation')              -> is not unique
+> guilda_criar(p_classe_id => 32, p_nome => 'X', ...)   -> is not unique
+> ```
+>
+> A segunda é a que o cliente usa (`guildService.ts`). O PostgREST faz a própria
+> resolução antes de chegar ao Postgres e pode escolher uma, então não dá para
+> afirmar que "Criar guilda" estava quebrado em produção sem exercitar o caminho
+> REST — o que dá para afirmar é que a chamada era ambígua no banco e dependia
+> de um detalhe de outra camada para funcionar.
+>
+> A de 4 passava `NULL, 'misto', NULL`, que são exatamente os DEFAULTs da de 7:
+> derrubá-la não muda comportamento. Medido depois — a mesma chamada nomeada
+> grava `classe=54 ativa=true modo=misto limite=10`, põe o criador como membro e
+> aparece em `guilda_listar` com `sou_membro = true`.
+>
+> Varri o catálogo atrás de outros pares assim: **é o único** no código da
+> aplicação. O que mais colide por aridade são funções do `pgvector`
+> (`cosine_distance`, `array_to_vector`…), distinguidas por TIPO, e
+> `social_listar_pessoas`, cujas versões de 0 e 1 argumento não se sobrepõem.
+>
+> **Regra: ao dar assinatura nova a uma RPC existente, derrube a antiga na mesma
+> migração.** A `20260920_06` já fez isso com `arena_desafio_criar`.
+>
+> E `guilda_evento_snapshot` segue com **0 linhas**: ele foi desenhado para um
+> motor de eventos da turma que ainda não existe, e `desafio_participantes` não
+> o substitui — congela a composição de UM desafio, não a da turma.
+
+> **A geração do personalizado estava parada há semanas, e o culpado era a
+> string `'None'`.** Medido em `personalizacao_job_targets`: **268 alvos** com a
+> mesma falha, a última em 13/09 —
+>
+> ```
+> asyncpg.DataError: invalid input for query argument $1: 'None'
+>   (invalid UUID 'None': length must be between 32..36 characters, got 4)
+> [SQL: SELECT a.id, ... FROM alunos a WHERE a.id = $1]  [parameters: ('None',)]
+> ```
+>
+> Efeito na ponta: classe 54 com **5 linhas, todas `failed`, todas `seeker`**,
+> paradas desde 30-31/08 — ou seja, o aluno abre a trilha e não há material
+> personalizado nenhum, para nenhum perfil.
+>
+> **O detalhe que importa: a guarda já existia.** `fetch_personalizacao_context`
+> tem `if aluno_id is None` desde `e4d50ae` (10/09), e as falhas são de 13/09 —
+> *depois* dela. Guarda por **identidade não pega texto**: `'None'` tem quatro
+> caracteres e não é nulo, então passa batido e o estouro acontece na borda do
+> asyncpg, longe de quem cometeu o erro.
+>
+> Quem convertia era `_prepare`, a **barreira de preparação compartilhada** —
+> que roda justamente para o representante de um grupo de targets que dividem a
+> mesma preparação, isto é, o caminho da base por perfil, que **não tem dono**.
+> Ela fazia `str(target["aluno_id"])` sem guarda, num módulo que já tinha duas
+> ocorrências corrigidas e comentadas ao lado.
+>
+> Por isso a correção não foi a terceira guarda manual: a conversão virou **uma
+> só**, `dono_de` / `identificador_de_dono` em `app/core/identidade.py`, que
+> trata `'None'`, `'null'`, `'undefined'` e vazio como ausência. Enquanto
+> `str(x) if x is not None else None` fosse escrito em cada ponto, ele protegia
+> aquele ponto e nada impedia o valor de chegar já convertido de outro lugar.
+>
+> Três coisas que valem para a próxima:
+>
+> 1. **Conversão de ausência é regra, não idioma.** Se a mesma linha aparece
+>    corrigida em dois lugares com um comentário explicando, o terceiro lugar
+>    já existe — só não foi encontrado ainda.
+> 2. **A regra tinha TRÊS donos e três versões.** `test_target_sem_dono.py`,
+>    `test_personalizacao_jobs_loop.py` e `test_base_sem_aluno_repositorios.py`
+>    afirmavam-na cada um do seu jeito, e dois deles estavam **vermelhos havia
+>    tempo** — teste vermelho que ninguém lê não protege nada. Hoje a regra de
+>    forma tem um dono (`test_target_sem_dono.py`) e o comportamento é provado
+>    por execução, não por leitura de fonte
+>    (`test_base_sem_dono_nao_vira_string_none.py`).
+> 3. **Varredura de fonte que conta comentário mede errado.** A versão anterior
+>    da regra casava com a linha comentada que *explica* o defeito. Filtre
+>    comentário, e exija que o alvo exista (senão apagar os usos deixa o teste
+>    verde sem proteger nada).
+>
+> `_seed_progress` ganhou precondição explícita em vez de estourar no encode:
+> progresso é comportamento, exige dono, e a base por perfil não tem.
+
+> **A alternativa correta morava na primeira posição — e isso é defeito de
+> DADO, nenhuma tela conseguiria corrigir.** Medido nas 21 questões de múltipla
+> escolha da base, antes da `20260921_03`:
+>
+> | posição da correta | 1ª | 2ª | 3ª | 4ª |
+> | --- | --- | --- | --- | --- |
+> | questões | **14** | 7 | **0** | **0** |
+>
+> Nenhuma questão com a resposta na terceira ou quarta posição: dava para
+> gabaritar a trilha inteira sem ler um enunciado. Depois do backfill: 5/8/3/5.
+>
+> **Por que no banco, e não no gerador.** Escrevem `questoes` TRÊS caminhos — o
+> console do professor, a API e o microservice. Corrigir no gerador deixaria os
+> outros dois produzindo o mesmo viés. Ordenar não tem modelo de linguagem no
+> meio, então pela regra de fronteira é do Postgres: um gatilho `BEFORE INSERT
+> OR UPDATE` por onde os três passam.
+>
+> **O segundo defeito, que estava latente.** Há duas formas de `alternativas` no
+> monorepo: a API grava `["texto", ...]` com o gabarito sendo o TEXTO; o console
+> grava `[{id, texto, correta}, ...]` com o gabarito sendo a **LETRA**
+> (`correct.id`, em `QuestionsManager.tsx`). Medido: as 35 linhas com
+> alternativas estão na forma de string — ou seja, **a forma do console nunca
+> foi exercitada**. Ela não está quebrada por sorte: `fn_questao_confere` lê
+> `v_alts ->> v_i`, que sobre um objeto devolve o JSON inteiro, e o mobile
+> renderizaria `[object Object]`. O gatilho normaliza na entrada, o que fecha os
+> dois sem exigir mudança simultânea nos três clientes.
+>
+> Quatro coisas que não são acidentais:
+>
+> 1. **É ORDENAÇÃO, não embaralhamento — e é isso que a torna idempotente.**
+>    Uma permutação aplicada sobre a própria saída embaralha de novo: o console
+>    lê a ordem gravada, edita um texto, grava de volta, e a ordem mudaria a cada
+>    save. A ordem canônica é `ORDER BY md5(id || '|' || texto)`, derivada do
+>    conteúdo. Medido: a segunda passada do backfill alterou **0 linhas**.
+> 2. **O gabarito é resolvido ANTES de reordenar, e a ordem das duas linhas é a
+>    regra inteira.** A letra que o professor escolheu se refere à ordem que
+>    ELE viu; resolver depois faria a letra apontar para a posição nova — outra
+>    alternativa vira gabarito, em silêncio, e a questão continua parecendo
+>    perfeita.
+> 3. **O espelho do gabarito precisou ouvir TODO update.** `UPDATE OF
+>    resposta_correta` dispara pelas colunas que a INSTRUÇÃO lista, não pelo que
+>    um BEFORE trigger alterou. Como o gatilho reescreve `resposta_correta` num
+>    UPDATE que mexeu só em `alternativas`, `questao_gabarito` ficaria com a
+>    letra velha, apontando para a posição antiga.
+> 4. **V/F e âncoras ficam fora.** O par Verdadeiro/Falso tem ordem semântica;
+>    "todas as anteriores" e "nenhuma das alternativas" só fazem sentido no fim
+>    — embaralhá-las quebra a QUESTÃO, não o viés.
+>
+> **O histórico sobreviveu ao reordenamento**, e não por sorte:
+> `questao_aluno.resposta` guarda o TEXTO da opção, e o mobile casa por texto
+> antes de tentar índice ou letra (`norm(alt) === norm(respostaAnterior)`).
+> Medido: todas as respostas gravadas continuam resolvendo para uma posição.
+>
+> **A terceira perna do "sempre dá erro".** Ao reabrir uma atividade concluída,
+> a tela remarcava cada questão chamando `checkResposta` de novo — isto é,
+> re-corrigindo contra um gabarito que hoje chega nulo. Toda questão já
+> respondida aparecia como errada, sem o aluno ter respondido nada. O veredito
+> de questão já respondida é `questao_aluno.correta` (na view,
+> `correta_aluno`), que é o registro autoritativo; recorrigir só poderia
+> divergir dele. Sem veredito gravado e sem gabarito local, `vereditoDaRevisao`
+> devolve `null`: **sem status é melhor que status errado**, porque "errado"
+> aqui é uma afirmação sobre o que o aluno fez.
+
+> **Sete formatos de questão, e os três novos pedem relação.** A base tinha
+> quatro — `multipla` 21, `verdadeiro_falso` 14, `fill_blank` 13, `dissertativa`
+> 8 — e nenhum deles exige ligar, ordenar ou separar um subconjunto. Entraram na
+> `20260921_04`:
+>
+> | tipo | `alternativas` | o aluno |
+> | --- | --- | --- |
+> | `associacao` | `{"termos": [...], "definicoes": [...]}` | liga termo a definição |
+> | `ordenacao` | `["passo", ...]` | põe em ordem |
+> | `multipla_resposta` | `["a", ...]` | marca **todas** as certas |
+>
+> **A decisão que estrutura tudo: o par NÃO mora em `alternativas`.** O caminho
+> óbvio para "ligar termos" seria guardar pares (`[{"termo": "x", "par": "y"}]`)
+> — e isso entrega a resposta, que é exatamente o defeito que a `20260921_01`
+> fechou. As duas listas vão soltas, embaralhadas **com sementes diferentes**, e
+> o pareamento vive só em `questao_gabarito`.
+>
+> **Alinhamento por acaso não é vazamento; alinhamento TOTAL é.** Medido sobre
+> 200 ids com 5 pares: a média de pares alinhados por posição é **0,915** — casar
+> por posição rende o mesmo que chutar, que é a definição de não carregar
+> informação. Mas 1 em 200 saiu com os **cinco** alinhados, e nessa a resposta
+> inteira fica na tela. Por isso o sal avança **só quando a permutação é a
+> identidade**. Recusar mais seria pior: garantir que a posição *i* nunca é o par
+> elimina uma opção por linha, e aí a posição passa a carregar informação de
+> verdade. Medido depois, 300 ids com 3 pares: 0 ou 1 alinhado, **nenhum** com
+> todos.
+>
+> **O gabarito dos três é JSON.** Separador de texto (`a|c`) quebra na
+> alternativa que contém o separador, e não há caractere seguro — uma opção
+> legítima pode ter `|`, `;` ou `,`. `fn_questao_resposta_em_lista` aceita JSON e,
+> como reserva, o texto separado por barra: cliente antigo e professor digitando
+> à mão mandam assim, e recusar seria recusar a resposta certa pela **forma**.
+>
+> **Ordem importa em um, não importa em dois.** `ordenacao` compara SEQUÊNCIA;
+> os outros dois comparam CONJUNTO **com cardinalidade** — sem comparar tamanho,
+> o gabarito estaria contido na resposta e marcar TODAS as alternativas passaria.
+>
+> E reordenar `ordenacao` deixou de ser redução de viés: virou **requisito**. Com
+> as alternativas na ordem certa, a tela mostraria a resposta.
+>
+> Duas regras do lado do cliente:
+>
+> 1. **`ligarPar` mantém 1:1 nos DOIS lados.** Sem remover o vínculo antigo do
+>    termo *e* o da definição, o aluno encosta a mesma definição em dois termos e
+>    a resposta sai com mais pares que itens — o banco reprova por cardinalidade
+>    e o aluno não entende por quê.
+> 2. **`multipla_resposta` NÃO exige marcar o total.** Exigir tantas quantas o
+>    gabarito tem contaria ao aluno quantas são certas, que é metade da resposta.
+>    Associação e ordenação, ao contrário, só confirmam completas.
+
+> **Reforço visual: o que faltava não era o recurso, era o dado.** Medido: **0
+> das 56 questões** têm `midia_url`. A coluna existe, o console tem campo de
+> upload (com `handleUploadMedia`) e `QuestionActivity` já renderiza bloco de
+> mídia (`buildMediaBlocks`) — o caminho está inteiro e ninguém o usa. É o padrão
+> de "módulo com cara de vivo", só que do lado dos dados.
+>
+> Por isso o reforço que entrou não depende de o professor subir nada: é o do
+> **formato**. `identidadeDaQuestao` (`utils/identidadeDaQuestao.ts`) dá a cada
+> tipo um selo com ícone + rótulo e uma instrução em imperativo, exibidos
+> **antes** do enunciado. Com sete tipos, errar por ter entendido o formato
+> errado não mede conhecimento nenhum.
+>
+> Três regras que valem ao mexer:
+>
+> 1. **Ícone nunca sozinho, cor nunca sozinha.** O selo traz o rótulo escrito; o
+>    número do par em `QuestaoDeRelacao` aparece nos dois lados da ligação; a
+>    caixa (não o círculo) é o que diz que dá para marcar mais de uma. Quem não
+>    distingue as cores continua conseguindo responder.
+> 2. **Tipo irreconhecível devolve `null`, não um palpite.** Selo com o formato
+>    errado é pior que selo nenhum: o aluno confia nele e responde no formato que
+>    leu. Há teste exigindo rótulos distintos entre os sete — dois formatos com o
+>    mesmo rótulo não distinguem nada.
+> 3. **Os ícones são `Ionicons`**, a família que a tela já importa. Trazer uma
+>    segunda família por causa do selo acrescentaria peso ao bundle para desenhar
+>    o mesmo conceito.
 
 > Lacuna real ainda aberta: `MentalStateHistoryRepository.listar_por_aluno`
 > (`api/app/repositories/mental_state.py`) só é exercitado em teste — o
@@ -613,6 +1179,141 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 > serviço para influenciar decisões (ex.: detectar frustração recorrente ao
 > longo de vários ciclos). É plumbing write-only até alguém decidir o que fazer
 > com a leitura.
+
+> **O app não tinha error boundary nenhum, e por isso erro de render virava
+> tela branca.** `componentDidCatch`, `getDerivedStateFromError` e
+> `ErrorBoundary` não apareciam em lugar algum de `mobile/src` — conferido por
+> `grep`. Em desenvolvimento o LogBox mostra o erro; na versão **publicada** ele
+> não roda, e o que sobrava era uma tela sem informação nenhuma: não dava para
+> saber se foi dado que não chegou, componente que estourou ou navegação que foi
+> para lugar nenhum.
+>
+> O expo-router usa o export chamado **`ErrorBoundary`** do arquivo de rota como
+> boundary daquele segmento (`useScreens.js` embrulha em `<Try catch={...}>`).
+> Hoje há dois: um na raiz (`app/_layout.tsx`), que pega o que não tiver um mais
+> próximo, e um em `app/(tabs)/trilha/[id].tsx`, porque é lá que a tela branca
+> foi relatada — e o `retry` do expo-router re-renderiza **só aquela rota**, sem
+> o aluno perder a sessão nem a posição na trilha.
+>
+> Três coisas que não são acidentais em `components/TelaDeErro.tsx`:
+>
+> 1. **Ela não importa contexto, tema, serviço nem dependência nova.** Um
+>    boundary que dependesse de `SessaoContext` ou de `getProfileShellPalette`
+>    pode quebrar exatamente quando é chamado — e boundary que quebra volta a
+>    ser tela branca. As cores são literais.
+> 2. **O texto é `selectable`, e não há botão "copiar".** Copiar exigiria
+>    `expo-clipboard`, que **não está instalado**; instalar pacote para a tela
+>    de emergência funcionar é o acoplamento que o item 1 evita.
+> 3. **A montagem do texto mora em `utils/detalhesDoErro.ts`**, sem import de
+>    `react-native`, porque é a parte que precisa de teste: nem tudo o que é
+>    lançado é `Error` (dá para `throw "texto"`), e a tela de erro estourar
+>    lendo `.name` de uma string a devolveria para a tela branca — agora por
+>    culpa dela mesma. Um caso que só o teste pegou: `String(new Error(""))`
+>    devolve `"Error"`, que não é vazio e não diz nada, então `mensagemDoErro`
+>    sai no ramo de `Error` mesmo com mensagem vazia.
+
+> **O gabarito chegava ao aluno, e o problema não era a tela — era o DADO.**
+> Medido assumindo a role `authenticated` com o JWT do aluno, antes da
+> `20260921_01`:
+>
+> ```
+> SELECT id, enunciado, resposta_correta FROM questoes;
+> 1061 | Um sistema distribuido e percebido... | Verdadeiro
+> 1062 | Qual categoria da Taxonomia de Flynn  | SISD
+> ```
+>
+> Com a chave pública do app, qualquer cliente HTTP baixava o gabarito das
+> turmas em que o aluno está matriculado. E o app **corrigia localmente**
+> (`QuestionActivity` lia `questao.resposta_correta`), então a resposta
+> precisava estar no payload: enquanto isso fosse verdade, não havia como
+> fechar.
+>
+> **Tirar da view era cosmético.** `vw_aluno_classe_detalhado` é
+> `security_invoker = on` — lê `questoes` COMO O ALUNO —, e **RLS é por LINHA,
+> não por coluna**: com as duas policies de leitura que ele tem, a linha vem
+> inteira. Bastava consultar a tabela direto.
+>
+> Hoje o gabarito vive em **`questao_gabarito`**, cuja RLS só deixa o professor
+> DONO da turma ler. O aluno não tem policy ali: não vê linha, então não há
+> coluna a vazar.
+>
+> Quatro coisas que não são acidentais:
+>
+> 1. **`REVOKE` de COLUNA não anula `GRANT` de TABELA.** Privilégio de coluna é
+>    **aditivo**: `authenticated` tinha `SELECT` na tabela inteira, que já
+>    implica todas as colunas, e um `REVOKE SELECT (resposta_correta)` por cima
+>    não tira nada. A guarda da própria migração reprovou a primeira tentativa
+>    exatamente assim. A forma certa é derrubar o `SELECT` da tabela e conceder
+>    **coluna a coluna** — com uma guarda que recusa coluna nova sem grant, para
+>    que quem acrescentar campo decida se ele é público.
+> 2. **As ESCRITAS não mudaram em lugar nenhum.** Um gatilho em `questoes`
+>    espelha `resposta_correta` para a tabela protegida a cada INSERT/UPDATE.
+>    Console do professor, API e pipeline continuam gravando onde sempre
+>    gravaram; só as LEITURAS mudaram de lugar — eram três no console, e viraram
+>    uma chamada a `anexarGabarito`.
+> 3. **Aluno e professor são a MESMA role (`authenticated`)**, e privilégio de
+>    coluna não distingue os dois. É por isso que a separação tem de ser por
+>    POSSE — ou seja, por RLS numa tabela onde a linha É o gabarito.
+> 4. **A correção subiu junto, obrigatoriamente.** Tirar a coluna sem mover a
+>    correção faria o cliente comparar contra NULL e marcar **toda** resposta
+>    como errada. `questao_responder` corrige, grava a tentativa e devolve o
+>    gabarito — mas só DEPOIS de responder, que é quando a tela precisa dele.
+>
+> **E a correção do servidor precisou ser tão tolerante quanto a do cliente.**
+> Comparação ingênua reprovaria resposta certa em três casos que
+> `QuestionActivity` aceitava: letra (`A`) e índice (`1`) contra um gabarito
+> gravado como o texto da opção; verdadeiro/falso em várias grafias; acento e
+> caixa. `fn_questao_confere` cobre os três, e `fn_texto_comparavel` usa
+> **tabela explícita de acentos** — não `normalize("NFD")` com range de
+> combining marks, que é invisível no arquivo.
+>
+> Exercitado contra as quatro questões reais da base, por todos os caminhos
+> (literal, maiúscula, espaços, letra, índice): todas verdadeiras; errada e
+> vazia, falsas. E as guardas medidas: sem matrícula → `questao_sem_permissao`,
+> sem sessão → `questao_sem_sessao`.
+>
+> **Dissertativa ficou de fora de propósito.** Não há comparação de texto que
+> decida pergunta aberta; o cliente segue validando por IA, agora julgando pelo
+> enunciado em vez do gabarito. Mover essa validação para o servidor é trabalho
+> próprio — e até lá a qualidade da correção dissertativa é menor.
+
+> **E o material PERSONALIZADO continua corrigindo na tela — de propósito, e há
+> guarda.** Mandar toda questão para `questao_responder` parecia a leitura certa
+> da regra, e quebrava duas coisas de uma vez:
+>
+> 1. **A questão inventada não existe em `questoes`.** Quando o plano não traz
+>    id, `stableNegativeId` (`utils/personalization.ts`) dá a ela um id
+>    **negativo**. A RPC responde `questao_inexistente`, e a tela trata erro de
+>    correção **abortando a resposta**: a questão ficaria impossível de
+>    responder — não erra, não acerta, não registra.
+> 2. **A que herda o id é uma REESCRITA.** `_enriquecer_questao` preserva o
+>    `item.id` da semente (que vem de `buscar_questoes_topico`), então o id é
+>    real e a RPC acharia a linha. Só que `fn_questao_confere` aceita letra e
+>    índice, e a versão personalizada reordena e reescreve as alternativas: a
+>    "A" do aluno não é a "A" do professor. O veredito sairia **errado com cara
+>    de certo** — o pior modo de falha dos três.
+>
+> Há ainda um motivo de contabilidade: `questao_responder` grava em
+> `questao_aluno`, e progresso de personalizado é de
+> `personalizacao_item_progresso`. Registrar nos dois creditaria o percurso do
+> professor por trabalho feito no personalizado.
+>
+> A decisão mora em `utils/correcaoDaQuestao.ts` (`servidorCorrige`), fora da
+> tela porque `QuestionActivity` importa `react-native` e não carrega no harness
+> do node — mesmo motivo de `acumuladorLote.ts` e `perfilDoMaterial.ts`. E o
+> gabarito exibido passou a ter **duas fontes com ordem**: a do servidor primeiro
+> (única que existe para questão do professor), a do payload só quando
+> `servidorCorrige` é falso — sem essa ordem a tela anunciaria "sem gabarito"
+> antes de o servidor responder.
+>
+> **Dívida que fica, e é dormente:** para a questão personalizada a resposta
+> ainda viaja no JSONB que o aluno lê. Medido na base hoje —
+> `conteudo_personalizado` tem 55 linhas e **zero** com `resposta_correta` em
+> `plano`, `materiais` ou `ai_patch`; a única que casa "quiz" casa dentro de
+> `_geracao_falhas`. Ou seja, o caminho existe no código
+> (`_normalize_personalized_activities` emite `resposta_correta`) e nunca
+> produziu dado. Fechar exige o gabarito do personalizado sair do JSONB para
+> uma tabela com RLS, como `questao_gabarito` fez com o do professor.
 
 ## Convenções
 

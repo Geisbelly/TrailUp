@@ -22,10 +22,20 @@ import {
 import { HelpCircle, Loader2, Pencil, Plus, Sparkles, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  listaSalva,
+  motivoDaRecusa,
+  paresSalvos,
+  payloadDeAssociacao,
+  payloadDeMultiplaResposta,
+  payloadDeOrdenacao,
+  type ParDeAssociacao,
+} from "@/lib/questaoDeRelacao";
 import { useAuth } from "@/hooks/useAuth";
 import { parseOptionalPositiveScore, scoreToInputString } from "@/lib/question-score";
 import { QUESTION_MEDIA_ACCEPT, isQuestionMediaFileAllowed } from "@/lib/upload-file-policy";
 import EssayQuestionRenderer from "./EssayQuestionRenderer";
+import { anexarGabarito, COLUNAS_DE_QUESTAO_VISIVEIS } from "./topicsApi";
 
 interface Atividade {
   id: number;
@@ -43,8 +53,23 @@ interface Questao {
   midia_url: string | null;
 }
 
-type UiQuestionType = "multipla" | "verdadeiro_falso" | "fill_blank" | "essay";
-type DbQuestionType = "multipla" | "verdadeiro_falso" | "fill_blank" | "dissertativa";
+type UiQuestionType =
+  | "multipla"
+  | "verdadeiro_falso"
+  | "fill_blank"
+  | "essay"
+  // Os tres de RELACAO (20260921_04). O nome no banco e o mesmo da UI.
+  | "associacao"
+  | "ordenacao"
+  | "multipla_resposta";
+type DbQuestionType =
+  | "multipla"
+  | "verdadeiro_falso"
+  | "fill_blank"
+  | "dissertativa"
+  | "associacao"
+  | "ordenacao"
+  | "multipla_resposta";
 type Alternative = { id: string; texto: string; isCorrect: boolean };
 
 const tiposQuestao: Array<{ value: UiQuestionType; label: string }> = [
@@ -52,6 +77,9 @@ const tiposQuestao: Array<{ value: UiQuestionType; label: string }> = [
   { value: "verdadeiro_falso", label: "Verdadeiro/Falso" },
   { value: "fill_blank", label: "Completar lacuna" },
   { value: "essay", label: "Dissertativa (Essay)" },
+  { value: "multipla_resposta", label: "Marcar todas as certas" },
+  { value: "associacao", label: "Ligar termos" },
+  { value: "ordenacao", label: "Colocar em ordem" },
 ];
 
 const normalizeQuestionTypeForUi = (tipo: string | null | undefined): UiQuestionType => {
@@ -59,6 +87,10 @@ const normalizeQuestionTypeForUi = (tipo: string | null | undefined): UiQuestion
   if (raw === "multipla" || raw === "quiz") return "multipla";
   if (raw === "verdadeiro_falso" || raw === "true_false" || raw === "vf") return "verdadeiro_falso";
   if (raw === "fill_blank" || raw === "lacuna" || raw === "completar") return "fill_blank";
+  if (raw === "associacao" || raw === "ligar_termos" || raw === "matching") return "associacao";
+  if (raw === "ordenacao" || raw === "ordering" || raw === "sequencia") return "ordenacao";
+  if (raw === "multipla_resposta" || raw === "multiple_response" || raw === "multi_select")
+    return "multipla_resposta";
   if (raw === "essay" || raw === "dissertativa" || raw === "questao" || raw === "texto") return "essay";
   return "essay";
 };
@@ -73,6 +105,9 @@ const formatQuestionTypeLabel = (tipo: string | null | undefined): string => {
   if (normalized === "multipla") return "Multipla escolha";
   if (normalized === "verdadeiro_falso") return "Verdadeiro/Falso";
   if (normalized === "fill_blank") return "Completar lacuna";
+  if (normalized === "associacao") return "Ligar termos";
+  if (normalized === "ordenacao") return "Colocar em ordem";
+  if (normalized === "multipla_resposta") return "Marcar todas as certas";
   return "Dissertativa (Essay)";
 };
 
@@ -88,6 +123,25 @@ const buildDefaultAlternatives = (tipo: UiQuestionType): Alternative[] => {
     return [
       { id: "A", texto: "Alternativa A", isCorrect: true },
       { id: "B", texto: "Alternativa B", isCorrect: false },
+    ];
+  }
+
+  // Marcar-todas exige pelo menos 3 opcoes e 2 certas; com menos o formato
+  // vira multipla escolha comum e induz o aluno a marcar mais de uma.
+  if (tipo === "multipla_resposta") {
+    return [
+      { id: "A", texto: "Alternativa A", isCorrect: true },
+      { id: "B", texto: "Alternativa B", isCorrect: true },
+      { id: "C", texto: "Alternativa C", isCorrect: false },
+    ];
+  }
+
+  // Em `ordenacao` a lista E a resposta: o professor monta na ordem certa e o
+  // gatilho do banco embaralha a exibicao.
+  if (tipo === "ordenacao") {
+    return [
+      { id: "1", texto: "Primeira etapa", isCorrect: false },
+      { id: "2", texto: "Segunda etapa", isCorrect: false },
     ];
   }
 
@@ -165,6 +219,13 @@ export default function QuestionsManager() {
     midia_url: "",
   });
   const [alternativasUI, setAlternativasUI] = useState<Alternative[]>([]);
+  // Associacao e o unico formato cuja edicao nao cabe em `alternativasUI`:
+  // ela edita PARES, nao opcoes. Os outros dois reaproveitam a mesma lista --
+  // `multipla_resposta` usa varios `isCorrect`, `ordenacao` usa a posicao.
+  const [paresAssoc, setParesAssoc] = useState<ParDeAssociacao[]>([
+    { termo: "", definicao: "" },
+    { termo: "", definicao: "" },
+  ]);
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
   const [mediaPreviewUrl, setMediaPreviewUrl] = useState<string | null>(null);
   const mediaInputRef = useRef<HTMLInputElement | null>(null);
@@ -220,14 +281,20 @@ export default function QuestionsManager() {
         atividadeIds.length > 0
           ? await supabase
               .from("questoes")
-              .select("id, atividade_id, enunciado, tipo, alternativas, resposta_correta, nota_estabelecida, midia_url")
+              .select(COLUNAS_DE_QUESTAO_VISIVEIS)
               .in("atividade_id", atividadeIds)
           : { data: [], error: null };
 
       if (questionsError) throw questionsError;
 
       setAtividades((activitiesData as Atividade[]) ?? []);
-      setQuestoes((questionsData as Questao[]) ?? []);
+      // O gabarito vem de `questao_gabarito`: a coluna em `questoes` nao e mais
+      // legivel por `authenticated`.
+      setQuestoes(
+        (await anexarGabarito(
+          (questionsData as Omit<Questao, "resposta_correta">[]) ?? [],
+        )) as Questao[],
+      );
     } catch (error) {
       console.error("Erro ao carregar questoes:", error);
       toast.error("Nao foi possivel carregar as questoes.");
@@ -249,6 +316,29 @@ export default function QuestionsManager() {
   const ensureAlternativesForType = (tipo: UiQuestionType) => {
     if (tipo === "essay" || tipo === "fill_blank") {
       setAlternativasUI([]);
+      setParesAssoc([{ termo: "", definicao: "" }]);
+      return;
+    }
+
+    // Associacao edita PARES: a lista de alternativas nao serve, e deixa-la
+    // preenchida faria o formulario salvar restos do formato anterior.
+    if (tipo === "associacao") {
+      setAlternativasUI([]);
+      setParesAssoc([{ termo: "", definicao: "" }]);
+      return;
+    }
+
+    // Trocar ENTRE formatos de lista mantem os textos, mas `isCorrect` muda de
+    // significado (um certo vs. varios certos), entao ele e' recomecado.
+    if (tipo === "multipla_resposta" || tipo === "ordenacao") {
+      setAlternativasUI((prev) => {
+        const base = prev.length >= 2 ? prev : buildDefaultAlternatives(tipo);
+        return base.map((alt, idx) => ({
+          ...alt,
+          id: String(idx + 1),
+          isCorrect: tipo === "multipla_resposta" ? idx < 2 : false,
+        }));
+      });
       return;
     }
 
@@ -324,7 +414,27 @@ export default function QuestionsManager() {
     }
     const notaEstabelecida = scoreParsed.value;
 
-    if (uiType === "multipla") {
+    // Os tres formatos de RELACAO montam o proprio payload. O gabarito deles e
+    // uma LISTA (conjunto ou sequencia), nao o texto de uma opcao, e por isso
+    // eles nao passam pelo resolvedor de alternativa do banco.
+    if (uiType === "associacao" || uiType === "ordenacao" || uiType === "multipla_resposta") {
+      const payload =
+        uiType === "associacao"
+          ? payloadDeAssociacao(paresAssoc)
+          : uiType === "ordenacao"
+          ? payloadDeOrdenacao(alternativasUI.map((a) => a.texto))
+          : payloadDeMultiplaResposta(
+              alternativasUI.map((a) => ({ texto: a.texto, correta: a.isCorrect }))
+            );
+
+      if (!payload) {
+        toast.error(motivoDaRecusa(uiType));
+        return;
+      }
+
+      alternativasPayload = payload.alternativas as Record<string, unknown>[] | null;
+      respostaCorreta = payload.respostaCorreta;
+    } else if (uiType === "multipla") {
       const sanitized = alternativasUI
         .map((a, idx) => ({
           id: (a.id || String.fromCharCode(65 + idx)).trim(),
@@ -410,6 +520,7 @@ export default function QuestionsManager() {
         midia_url: "",
       });
       setAlternativasUI([]);
+      setParesAssoc([{ termo: "", definicao: "" }]);
     } catch (error) {
       console.error("Erro ao salvar questao:", error);
       toast.error("Nao foi possivel salvar a questao.");
@@ -431,7 +542,28 @@ export default function QuestionsManager() {
       resposta = correctAlt.id;
     }
 
-    setAlternativasUI(uiType === "essay" || uiType === "fill_blank" ? [] : parsedAlt);
+    // Reabrir um formato de RELACAO: o que reconstitui a questao e o GABARITO,
+    // nao `alternativas`. Em `associacao` as duas listas vem embaralhadas e sem
+    // vinculo (de proposito), e em `ordenacao` a ordem gravada e justamente a
+    // que NAO e a resposta.
+    if (uiType === "associacao") {
+      const pares = paresSalvos(questao.alternativas, questao.resposta_correta);
+      setParesAssoc(pares.length ? pares : [{ termo: "", definicao: "" }]);
+      setAlternativasUI([]);
+      setParesAssoc([{ termo: "", definicao: "" }]);
+    } else if (uiType === "ordenacao") {
+      const itens = listaSalva(questao.resposta_correta);
+      setAlternativasUI(
+        itens.map((texto, idx) => ({ id: String(idx + 1), texto, isCorrect: false }))
+      );
+    } else if (uiType === "multipla_resposta") {
+      const certas = new Set(listaSalva(questao.resposta_correta).map((t) => t.toLowerCase()));
+      setAlternativasUI(
+        parsedAlt.map((alt) => ({ ...alt, isCorrect: certas.has(alt.texto.toLowerCase()) }))
+      );
+    } else {
+      setAlternativasUI(uiType === "essay" || uiType === "fill_blank" ? [] : parsedAlt);
+    }
     setFormData({
       atividade_ids: [questao.atividade_id.toString()],
       enunciado: questao.enunciado,
@@ -497,6 +629,8 @@ export default function QuestionsManager() {
                   midia_url: "",
                 });
                 setAlternativasUI([]);
+                setParesAssoc([{ termo: "", definicao: "" }]);
+      setParesAssoc([{ termo: "", definicao: "" }]);
               }
             }}
           >
@@ -685,6 +819,192 @@ export default function QuestionsManager() {
                     </div>
                   </div>
                 )}
+                {(formData.tipo === "multipla_resposta" || formData.tipo === "ordenacao") && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label>
+                        {formData.tipo === "ordenacao"
+                          ? "Etapas, na ordem CERTA"
+                          : "Alternativas (marque todas as corretas)"}
+                      </Label>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          setAlternativasUI((prev) => [
+                            ...prev,
+                            {
+                              id: String(prev.length + 1),
+                              texto: "",
+                              isCorrect: false,
+                            },
+                          ])
+                        }
+                      >
+                        Adicionar
+                      </Button>
+                    </div>
+                    {formData.tipo === "ordenacao" && (
+                      <p className="text-xs text-muted-foreground">
+                        Monte na ordem correta. O aluno recebe embaralhado — se a
+                        ordem gravada fosse a de exibição, a tela mostraria a resposta.
+                      </p>
+                    )}
+                    <div className="space-y-2">
+                      {alternativasUI.map((alt, idx) => (
+                        <div key={idx} className="flex items-center gap-2 p-2 border rounded">
+                          {formData.tipo === "multipla_resposta" ? (
+                            <input
+                              type="checkbox"
+                              aria-label={`Alternativa ${idx + 1} correta`}
+                              checked={alt.isCorrect}
+                              onChange={() =>
+                                setAlternativasUI((prev) =>
+                                  prev.map((a, aIdx) =>
+                                    aIdx === idx ? { ...a, isCorrect: !a.isCorrect } : a
+                                  )
+                                )
+                              }
+                            />
+                          ) : (
+                            <span className="w-6 text-center text-sm text-muted-foreground">
+                              {idx + 1}
+                            </span>
+                          )}
+                          <Input
+                            value={alt.texto}
+                            placeholder={
+                              formData.tipo === "ordenacao"
+                                ? `Etapa ${idx + 1}`
+                                : `Alternativa ${idx + 1}`
+                            }
+                            onChange={(e) =>
+                              setAlternativasUI((prev) =>
+                                prev.map((a, aIdx) =>
+                                  aIdx === idx ? { ...a, texto: e.target.value } : a
+                                )
+                              )
+                            }
+                            className="flex-1"
+                          />
+                          {formData.tipo === "ordenacao" && (
+                            <>
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                aria-label="Subir etapa"
+                                disabled={idx === 0}
+                                onClick={() =>
+                                  setAlternativasUI((prev) => {
+                                    const copia = [...prev];
+                                    [copia[idx - 1], copia[idx]] = [copia[idx], copia[idx - 1]];
+                                    return copia;
+                                  })
+                                }
+                              >
+                                ↑
+                              </Button>
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                aria-label="Descer etapa"
+                                disabled={idx === alternativasUI.length - 1}
+                                onClick={() =>
+                                  setAlternativasUI((prev) => {
+                                    const copia = [...prev];
+                                    [copia[idx], copia[idx + 1]] = [copia[idx + 1], copia[idx]];
+                                    return copia;
+                                  })
+                                }
+                              >
+                                ↓
+                              </Button>
+                            </>
+                          )}
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            aria-label="Remover"
+                            onClick={() =>
+                              setAlternativasUI((prev) => prev.filter((_, aIdx) => aIdx !== idx))
+                            }
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {formData.tipo === "associacao" && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label>Pares (termo → definição)</Label>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          setParesAssoc((prev) => [...prev, { termo: "", definicao: "" }])
+                        }
+                      >
+                        Adicionar par
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      O aluno recebe as duas colunas embaralhadas e sem vínculo — o
+                      pareamento fica só no gabarito.
+                    </p>
+                    <div className="space-y-2">
+                      {paresAssoc.map((par, idx) => (
+                        <div key={idx} className="flex items-center gap-2 p-2 border rounded">
+                          <Input
+                            value={par.termo}
+                            placeholder={`Termo ${idx + 1}`}
+                            onChange={(e) =>
+                              setParesAssoc((prev) =>
+                                prev.map((p, pIdx) =>
+                                  pIdx === idx ? { ...p, termo: e.target.value } : p
+                                )
+                              )
+                            }
+                            className="flex-1"
+                          />
+                          <span className="text-muted-foreground">→</span>
+                          <Input
+                            value={par.definicao}
+                            placeholder={`Definição ${idx + 1}`}
+                            onChange={(e) =>
+                              setParesAssoc((prev) =>
+                                prev.map((p, pIdx) =>
+                                  pIdx === idx ? { ...p, definicao: e.target.value } : p
+                                )
+                              )
+                            }
+                            className="flex-1"
+                          />
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            aria-label="Remover par"
+                            onClick={() =>
+                              setParesAssoc((prev) => prev.filter((_, pIdx) => pIdx !== idx))
+                            }
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <Label>Mídia URL (opcional)</Label>
                   <Input

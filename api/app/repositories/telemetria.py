@@ -16,6 +16,20 @@ from app.services.r2_storage import enviar_para_r2, ler_config_r2
 logger = logging.getLogger(__name__)
 
 
+
+def _id_da_entrada(
+    entry: dict[str, Any], chave: str, do_lote: int | None
+) -> int | None:
+    """O id da entrada, com o do lote so como complemento.
+
+    Quem decide se `do_lote` pode ser usado e o chamador, que conhece o escopo:
+    o id do lote descreve o item ABERTO no instante do flush, e so serve de
+    fallback quando esse item e a propria linha ou um ancestral dela.
+    """
+    valor = entry.get(chave)
+    return valor if valor is not None else do_lote
+
+
 class TelemetriaRepository:
     _STATEMENT_TIMEOUT_MS = 15000
 
@@ -515,6 +529,7 @@ class TelemetriaRepository:
             ("topic", time_metrics.get("topics")),
             ("content", time_metrics.get("contents")),
             ("activity", time_metrics.get("activities")),
+            ("question", time_metrics.get("questions")),
             ("material", time_metrics.get("materials")),
         )
 
@@ -526,15 +541,37 @@ class TelemetriaRepository:
                 if not isinstance(entry, dict):
                     continue
 
-                resolved_topico_id = entry.get("topico_id") if entry.get("topico_id") is not None else topico_id
-                resolved_conteudo_id = entry.get("conteudo_id") if entry.get("conteudo_id") is not None else conteudo_id
-                resolved_atividade_id = entry.get("atividade_id") if entry.get("atividade_id") is not None else atividade_id
+                # O id do LOTE so completa o escopo a que ele pertence.
+                #
+                # Antes o fallback valia para os tres ids em todo escopo, e o
+                # lote carrega o item ABERTO no instante do flush: a linha de
+                # escopo `topic` saia com o `conteudo_id` do bloco em que o
+                # aluno estava, e a de `content` com o `atividade_id`. Nenhum
+                # dos dois descreve a linha — o escopo `topic` agrega os
+                # conteudos todos, nao um.
+                #
+                # A ancestralidade continua sendo preenchida (a atividade sabe
+                # de que topico e), porque ali o id do lote de fato descreve a
+                # linha. O que nao desce e o id de um item MAIS FINO que o
+                # escopo.
+                resolved_topico_id = _id_da_entrada(entry, "topico_id", topico_id)
+                resolved_conteudo_id = _id_da_entrada(
+                    entry, "conteudo_id", conteudo_id if scope != "topic" else None
+                )
+                resolved_atividade_id = _id_da_entrada(
+                    entry,
+                    "atividade_id",
+                    atividade_id if scope in ("activity", "question", "material") else None,
+                )
+                resolved_questao_id = entry.get("questao_id")
 
                 if scope == "topic" and resolved_topico_id is None:
                     continue
                 if scope == "content" and resolved_conteudo_id is None:
                     continue
                 if scope == "activity" and resolved_atividade_id is None:
+                    continue
+                if scope == "question" and resolved_questao_id is None:
                     continue
                 if scope == "material" and not (entry.get("material_key") or entry.get("item_key") or entry.get("key")):
                     continue
@@ -550,9 +587,11 @@ class TelemetriaRepository:
                           topico_id,
                           conteudo_id,
                           atividade_id,
+                          questao_id,
                           item_key,
                           material_key,
                           material_tipo,
+                          entry_key,
                           scope,
                           visits,
                           dwell_sec,
@@ -571,9 +610,11 @@ class TelemetriaRepository:
                           :topico_id,
                           :conteudo_id,
                           :atividade_id,
+                          :questao_id,
                           :item_key,
                           :material_key,
                           :material_tipo,
+                          :entry_key,
                           :scope,
                           :visits,
                           :dwell_sec,
@@ -584,10 +625,17 @@ class TelemetriaRepository:
                           :max_depth_px,
                           :captured_at
                         )
-                        -- `entry_key` e preenchido pelo trigger BEFORE INSERT
-                        -- (`telemetria_resolver_entidade`), que roda antes de o
-                        -- conflito ser avaliado -- por isso da para referencia-lo
-                        -- aqui sem o insert precisar conhece-lo.
+                        -- `entry_key` NULO ainda e preenchido pelo trigger
+                        -- BEFORE INSERT (`telemetria_resolver_entidade`), para
+                        -- o app publicado que nao manda a coluna. Mas quando o
+                        -- cliente sabe a chave, ela desce daqui: a derivacao do
+                        -- trigger usa o id da entidade, e dois passos
+                        -- personalizados do MESMO conteudo derivavam
+                        -- `content:<id>` iguais no mesmo lote -- o segundo caia
+                        -- neste `DO NOTHING` e o tempo dele sumia. Pelo caminho
+                        -- direto do mobile isso nao acontecia, porque la a
+                        -- chave sempre foi enviada: os dois gravadores gravavam
+                        -- coisas diferentes.
                         ON CONFLICT (lote_id, scope, entry_key) DO NOTHING
                         """
                     ),
@@ -599,9 +647,11 @@ class TelemetriaRepository:
                         "topico_id": resolved_topico_id,
                         "conteudo_id": resolved_conteudo_id,
                         "atividade_id": resolved_atividade_id,
+                        "questao_id": resolved_questao_id,
                         "item_key": entry.get("item_key") or entry.get("key"),
                         "material_key": entry.get("material_key"),
                         "material_tipo": entry.get("material_tipo"),
+                        "entry_key": entry.get("key") or None,
                         "scope": scope,
                         "visits": max(0, self._coerce_int(entry.get("visits"), 0)),
                         "dwell_sec": max(0.0, self._coerce_float(entry.get("dwell_sec"), 0.0)),

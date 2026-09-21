@@ -17,6 +17,10 @@ export const criarGuilda = (classeId: number, nome: string, descricao?: string, 
 export const convidarParaGuilda = (guildaId: string, alunoId: string) => action("guilda_convidar", { p_guilda_id: guildaId, p_convidado_id: alunoId });
 export const aceitarConviteGuilda = (conviteId: string) => action("guilda_aceitar_convite", { p_convite_id: conviteId });
 export const recusarConviteGuilda = (conviteId: string) => action("guilda_recusar_convite", { p_convite_id: conviteId });
+// `guilda_cancelar_convite` existia no banco e nao tinha chamador: quem
+// convidava por engano nao tinha como desfazer, e o convite ficava `pending`
+// para sempre, bloqueando um novo convite a mesma pessoa.
+export const cancelarConviteGuilda = (conviteId: string) => action("guilda_cancelar_convite", { p_convite_id: conviteId });
 export const entrarGuilda = (guildaId: string) => action("guilda_entrar", { p_guilda_id: guildaId });
 export const sairGuilda = (guildaId: string) => action("guilda_sair", { p_guilda_id: guildaId });
 export const dissolverGuilda = (guildaId: string) => action("guilda_dissolver", { p_guilda_id: guildaId });

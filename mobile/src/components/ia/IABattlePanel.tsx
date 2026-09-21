@@ -1,4 +1,6 @@
 import { useIA } from "@/context/IAContext";
+import { IABossVictoryModal } from "@/components/ia/IABossVictoryModal";
+import { NADA_OBSERVADO, proximaCelebracao } from "@/utils/celebracaoDoBoss";
 import {
   IAEnemyPalette,
   IAEnemyVisualSpec,
@@ -286,6 +288,29 @@ export function IABattlePanel({ scope, surface = "inline" }: Props) {
     return () => clearInterval(timer);
   }, [battleState?.encounterEndsAt, battleState?.defeated, emitSignal, scope]);
 
+  // A CELEBRACAO dispara na TRANSICAO, nunca no estado.
+  //
+  // `battleState?.defeated` e o sinal de verdade: `previewState` nasce sempre
+  // com `defeated: false`. E o primeiro encontro com cada boss so REGISTRA o
+  // estado inicial -- sem isto, voltar a um conteudo ja concluido celebraria de
+  // novo a cada abertura da tela.
+  const chaveDoBoss = String(
+    battleState?.itemKey ??
+      (scope.scope === "item" ? scope.itemKey : `topic:${scope.topicoId}`)
+  );
+  const derrotadoAgora = Boolean(battleState?.defeated);
+  const observacaoDoBossRef = useRef(NADA_OBSERVADO);
+  const [vitoriaVisivel, setVitoriaVisivel] = useState(false);
+
+  useEffect(() => {
+    const { observacao, celebrar } = proximaCelebracao(observacaoDoBossRef.current, {
+      chave: chaveDoBoss,
+      derrotado: derrotadoAgora,
+    });
+    observacaoDoBossRef.current = observacao;
+    if (celebrar) setVitoriaVisivel(true);
+  }, [chaveDoBoss, derrotadoAgora]);
+
   if (!resolvedBattle.enabled || !resolvedBattle.battle) return null;
 
   const effectiveState = battleState ?? previewState;
@@ -420,6 +445,17 @@ export function IABattlePanel({ scope, surface = "inline" }: Props) {
       />
 
       <Text style={[styles.helperText, { color: `${palette.textColor}DD` }]}>{helperText}</Text>
+
+      {/* `Modal` do React Native desenha na camada nativa dele, entao ficar
+          dentro desta `View` nao o prende ao layout do painel. */}
+      <IABossVictoryModal
+        visible={vitoriaVisivel}
+        enemy={enemy}
+        visual={visual ?? null}
+        palette={palette}
+        mensagem={resolvedBattle.battle.victoryMessage}
+        onClose={() => setVitoriaVisivel(false)}
+      />
     </View>
   );
 }

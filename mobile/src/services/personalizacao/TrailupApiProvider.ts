@@ -10,6 +10,11 @@ import {
   resolveApiBaseCandidates,
 } from "@/services/apiBaseUrl";
 import {
+  normalizarPerfilBrainHex,
+  perfilDoCard,
+  perfilDoRegistro,
+} from "@/utils/perfilDoMaterial";
+import {
   PersonalizacaoAuthError,
   PersonalizacaoNetworkError,
   PersonalizacaoRlsError,
@@ -283,127 +288,20 @@ export class TrailupApiProvider implements IPersonalizacaoProvider {
 
   // ─── BrainHex profile helpers ─────────────────────────────────────────────────
 
+  // As cinco funcoes de perfil moravam aqui e agora vivem em
+  // `utils/perfilDoMaterial`, que carrega em node e tem teste. Este arquivo
+  // importa `@/database/supabase` no topo, entao nada aqui dentro e testavel --
+  // e era justamente aqui que estava a regra que decide se o material aparece.
   private normalizeBrainhexProfileKey(value: string | null | undefined) {
-    const normalized = String(value ?? "")
-      .trim()
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/\p{Diacritic}/gu, "")
-      .replace(/\s+/g, "_");
-    if (!normalized) return "mastermind";
-
-    const aliases: Record<string, string> = {
-      seeker: "seeker",
-      explorador: "seeker",
-      buscador: "seeker",
-      survivor: "survivor",
-      sobrevivente: "survivor",
-      daredevil: "daredevil",
-      aventureiro: "daredevil",
-      ousado: "daredevil",
-      mastermind: "mastermind",
-      estrategista: "mastermind",
-      mestre: "mastermind",
-      conqueror: "conqueror",
-      conquistador: "conqueror",
-      socializer: "socializer",
-      socialiser: "socializer",
-      socializador: "socializer",
-      achiever: "achiever",
-      realizador: "achiever",
-    };
-
-    return aliases[normalized] ?? normalized;
-  }
-
-  private extractProfileFromStoragePath(value: unknown) {
-    if (typeof value !== "string") return null;
-    const raw = value.trim();
-    if (!raw) return null;
-
-    const decoded = (() => {
-      try {
-        return decodeURIComponent(raw);
-      } catch {
-        return raw;
-      }
-    })();
-
-    const match = decoded.match(/brainhex\/([^\/?#]+)/i);
-    if (!match?.[1]) return null;
-    return this.normalizeBrainhexProfileKey(match[1]);
-  }
-
-  private findProfileInNestedValue(value: unknown, depth = 0): string | null {
-    if (depth > 6 || value == null) return null;
-
-    const fromPath = this.extractProfileFromStoragePath(value);
-    if (fromPath) return fromPath;
-
-    if (Array.isArray(value)) {
-      for (const item of value) {
-        const found = this.findProfileInNestedValue(item, depth + 1);
-        if (found) return found;
-      }
-      return null;
-    }
-
-    if (typeof value === "object") {
-      for (const nested of Object.values(value as Record<string, unknown>)) {
-        const found = this.findProfileInNestedValue(nested, depth + 1);
-        if (found) return found;
-      }
-    }
-
-    return null;
+    return normalizarPerfilBrainHex(value);
   }
 
   private extractProfileKeyFromPersonalizacaoRecord(record: PersonalizacaoRecord) {
-    const plano =
-      record?.plano && typeof record.plano === "object" ? (record.plano as Record<string, any>) : {};
-    const editorialMetadata =
-      plano?.editorial_metadata && typeof plano.editorial_metadata === "object"
-        ? (plano.editorial_metadata as Record<string, any>)
-        : {};
-    const perfilEditorial =
-      editorialMetadata?.perfil_editorial && typeof editorialMetadata.perfil_editorial === "object"
-        ? (editorialMetadata.perfil_editorial as Record<string, any>)
-        : {};
-    const modeloEditorial =
-      editorialMetadata?.modelo_editorial && typeof editorialMetadata.modelo_editorial === "object"
-        ? (editorialMetadata.modelo_editorial as Record<string, any>)
-        : {};
-    const personalizacaoBrainhex =
-      modeloEditorial?.personalizacao_brainhex &&
-      typeof modeloEditorial.personalizacao_brainhex === "object"
-        ? (modeloEditorial.personalizacao_brainhex as Record<string, any>)
-        : {};
-
-    return this.normalizeBrainhexProfileKey(
-      String(
-        (record as any)?.brainhex_profile_key ??
-          plano?.brainhex_profile_key ??
-          plano?.perfil_dominante ??
-          perfilEditorial?.perfil_dominante ??
-          personalizacaoBrainhex?.perfil_dominante ??
-          this.findProfileInNestedValue(record?.materiais) ??
-          "mastermind"
-      )
-    );
+    return perfilDoRegistro(record);
   }
 
   private extractProfileKeyFromCardRecord(card: CardPersonalizadoRecord) {
-    const metadata =
-      card?.metadata && typeof card.metadata === "object" ? (card.metadata as Record<string, any>) : {};
-    return this.normalizeBrainhexProfileKey(
-      String(
-        metadata?.brainhex_profile_key ??
-          metadata?.perfil_dominante ??
-          metadata?.profile_key ??
-          this.findProfileInNestedValue(metadata) ??
-          "mastermind"
-      )
-    );
+    return perfilDoCard(card);
   }
 
   private mergeCardsIntoPersonalizacaoRecords(
@@ -503,9 +401,18 @@ export class TrailupApiProvider implements IPersonalizacaoProvider {
     let query = this.deps.supabase
       .from("cards_personalizados")
       .select(
-        "id, aluno_id, classe_id, topico_id, conteudo_id, ciclo_id, ordem, titulo, descricao, icone, dificuldade, xp, metadata"
+        "id, aluno_id, classe_id, topico_id, conteudo_id, ciclo_id, ordem, titulo, descricao, icone, dificuldade, xp, metadata, ativo"
       )
       .eq("classe_id", params.classeId)
+      // `cards_personalizados` e' desnormalizada e a regeracao APOSENTA a linha
+      // velha em vez de apaga-la (`ativo`/`obsoleto_em`). Sem este filtro o
+      // aluno recebe a versao obsoleta junto com a atual, como duplicata.
+      // Medido: 48 das 228 linhas estao inativas, 6 delas no perfil do aluno
+      // contra 18 ativas -- um terco a mais de card, todo ele vencido.
+      //
+      // `.eq` e nao `.is`: a coluna e NOT NULL com default `true` (0 nulos na
+      // base), e `ativo = false` casa exatamente com `obsoleto_em` preenchido.
+      .eq("ativo", true)
       .order("ordem", { ascending: true })
       .order("id", { ascending: true })
       .limit(params.limit ?? 300);
@@ -553,7 +460,16 @@ export class TrailupApiProvider implements IPersonalizacaoProvider {
     let query = this.deps.supabase
       .from("conteudo_personalizado")
       .select(
-        "id, aluno_id, classe_id, conteudo_id, topico_id, ciclo_id, status, source_hash, formato_prioritario, formatos_gerados, plano, materiais, ai_patch, gerado_em, updated_at"
+        // `brainhex_profile_key` e a COLUNA, e e' o primeiro elo de
+        // `extractProfileKeyFromPersonalizacaoRecord`. Ela ficou de fora deste
+        // select por muito tempo, entao o elo mais autoritativo chegava sempre
+        // `undefined` e o filtro caia nos fallbacks do `plano` -- cuja ultima
+        // saida e' um DEFAULT de "mastermind". Medido na base: a coluna esta
+        // preenchida em 55 de 55 linhas, e ha 1 em que ela diverge do `plano`
+        // (id 3608, coluna `mastermind`, `plano` sem a chave). Numa linha cujo
+        // `plano` esteja vazio e cuja coluna diga `seeker`, o default esconde o
+        // material do aluno seeker e o entrega a um mastermind.
+        "id, aluno_id, classe_id, conteudo_id, topico_id, ciclo_id, status, brainhex_profile_key, source_hash, formato_prioritario, formatos_gerados, plano, materiais, ai_patch, gerado_em, updated_at"
       )
       .eq("classe_id", params.classeId)
       .order("updated_at", { ascending: false })

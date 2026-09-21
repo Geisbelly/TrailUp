@@ -78,6 +78,13 @@ import {
   type Conteudo,
 } from "@/utils/trilhaBlocks";
 
+import { TelaDeErro } from "@/components/TelaDeErro";
+
+// Boundary proprio da rota do topico: e aqui que a tela branca foi
+// relatada. O `retry` do expo-router re-renderiza SO esta rota, entao o
+// aluno nao perde a sessao nem a posicao na trilha.
+export { TelaDeErro as ErrorBoundary };
+
 /* --------------------------
    WebView loader (lazy, platform-aware)
    -------------------------- */
@@ -954,17 +961,11 @@ export default function TrilhaConteudoScreen() {
     useCallback(() => {
       if (!studySessionParams) return undefined;
 
+      // Sem `updateStudyContext` aqui de proposito. `beginStudySession` ja deixa
+      // o contexto no topico, e a chamada que existia neste ponto forcava
+      // `idle` — competindo, na volta do foco, com o efeito que reinstala o
+      // bloco. Ela nunca acrescentou nada: so podia apagar.
       void beginStudySession(studySessionParams);
-      updateStudyContext({
-        topicoId: studySessionParams.topicoId,
-        atividadeId: null,
-        conteudoId: null,
-        itemKey: null,
-        materialKey: null,
-        materialType: null,
-        target: "screen",
-        studyState: "idle",
-      });
 
       return () => {
         if (activeStudyBlockRef.current) {
@@ -979,7 +980,6 @@ export default function TrilhaConteudoScreen() {
       endStudySession,
       persistElapsedStudyBlock,
       studySessionParams,
-      updateStudyContext,
     ])
   );
 
@@ -1003,6 +1003,7 @@ export default function TrilhaConteudoScreen() {
       topicoId,
       atividadeId: null,
       conteudoId: null,
+      questaoId: null,
       itemKey: null,
       materialKey: null,
       materialType: null,
@@ -1013,20 +1014,92 @@ export default function TrilhaConteudoScreen() {
     lastOpenedSignalRef.current = null;
   }, [topicoId, updateStudyContext]);
 
+  // `isScreenFocused` aqui pelo mesmo motivo do efeito abaixo: sem ele, voltar
+  // para um topico cujo bloco nao e rastreavel (resumo aberto, topico ja
+  // concluido) deixava o contexto inteiramente vazio depois do
+  // `endStudySession` do blur — nem o `topico_id` do lote sobrava.
   useEffect(() => {
-    if (!topicoId || isCurrentStudyBlockTrackable) return;
+    if (!isScreenFocused || !topicoId || isCurrentStudyBlockTrackable) return;
     updateStudyContext({
       topicoId,
       atividadeId: null,
       conteudoId: null,
+      questaoId: null,
       itemKey: null,
       materialKey: null,
       materialType: null,
       target: "screen",
       studyState: "idle",
     });
-  }, [isCurrentStudyBlockTrackable, topicoId, updateStudyContext]);
+  }, [isCurrentStudyBlockTrackable, isScreenFocused, topicoId, updateStudyContext]);
 
+  // O CONTEXTO DE ESTUDO, sem guard de sinal.
+  //
+  // Este efeito e o de baixo eram um so, e o `lastOpenedSignalRef` vetava os
+  // dois juntos. O veto existe para nao reemitir `content_open` a cada render —
+  // mas ele tambem impedia o contexto de VOLTAR.
+  //
+  // E o contexto vai embora com frequencia: `endStudySession` zera
+  // `currentContextRef` para `EMPTY_STUDY_CONTEXT`, e ela roda em todo blur de
+  // tela e toda ida do app para segundo plano. Na volta, `lastOpenedSignalRef`
+  // ainda guardava a chave do bloco aberto e as dependencias do efeito nao
+  // tinham mudado: ninguem chamava `updateStudyContext` de novo, o contexto
+  // ficava `idle`, e `accumulateContextTime` descarta tudo o que chega assim.
+  //
+  // Medido na base: 127 dos 261 lotes nao produziram uma linha sequer de
+  // metrica, e sao 33,1 dos 46,8 minutos de permanencia medidos — 71% do tempo
+  // de estudo do produto, sem escopo nenhum a que ser atribuido.
+  //
+  // Por isso `isScreenFocused` entra nas dependencias: e o retorno do foco que
+  // precisa reinstalar o contexto.
+  useEffect(() => {
+    if (!isScreenFocused || !isCurrentStudyBlockTrackable || !atualBlock || !topicoId) {
+      return;
+    }
+
+    if (atualBlock.kind === "conteudo") {
+      updateStudyContext({
+        topicoId,
+        conteudoId: Number(atualBlock.conteudo.id),
+        atividadeId: null,
+        questaoId: null,
+        itemKey:
+          currentContentItemKey ?? buildIAItemKey("content", Number(atualBlock.conteudo.id)),
+        materialKey: currentMaterialContext.materialKey,
+        materialType: currentMaterialContext.materialType,
+        target: "content",
+        studyState: "active",
+      });
+      return;
+    }
+
+    updateStudyContext({
+      topicoId,
+      atividadeId: Number(atualBlock.atividade.id),
+      conteudoId:
+        atualBlock.vinculadoConteudoId != null ? Number(atualBlock.vinculadoConteudoId) : null,
+      // `questaoId` fica de fora: quem sabe em qual questao o aluno esta e
+      // `QuestionActivity`. Omitir preserva o valor dela quando este efeito
+      // reroda no refoco, e `updateStudyContext` zera sozinho quando a
+      // atividade muda — questao nao sobrevive a propria atividade.
+      itemKey: buildIAItemKey("activity", Number(atualBlock.atividade.id)),
+      materialKey: null,
+      materialType: null,
+      target: "activity",
+      studyState: "active",
+    });
+  }, [
+    atualBlock,
+    currentContentItemKey,
+    currentMaterialContext.materialKey,
+    currentMaterialContext.materialType,
+    isCurrentStudyBlockTrackable,
+    isScreenFocused,
+    topicoId,
+    updateStudyContext,
+  ]);
+
+  // O SINAL de abertura, esse sim uma vez por bloco.
   useEffect(() => {
     if (!isCurrentStudyBlockTrackable || !atualBlock || !topicoId) return;
 
@@ -1039,17 +1112,6 @@ export default function TrilhaConteudoScreen() {
     lastOpenedSignalRef.current = signalKey;
 
     if (atualBlock.kind === "conteudo") {
-      updateStudyContext({
-        topicoId,
-        conteudoId: Number(atualBlock.conteudo.id),
-        atividadeId: null,
-        itemKey:
-          currentContentItemKey ?? buildIAItemKey("content", Number(atualBlock.conteudo.id)),
-        materialKey: currentMaterialContext.materialKey,
-        materialType: currentMaterialContext.materialType,
-        target: "content",
-        studyState: "active",
-      });
       emitSignalRef.current({
         type: "content_open",
         topicoId,
@@ -1062,17 +1124,6 @@ export default function TrilhaConteudoScreen() {
       return;
     }
 
-    updateStudyContext({
-      topicoId,
-      atividadeId: Number(atualBlock.atividade.id),
-      conteudoId:
-        atualBlock.vinculadoConteudoId != null ? Number(atualBlock.vinculadoConteudoId) : null,
-      itemKey: buildIAItemKey("activity", Number(atualBlock.atividade.id)),
-      materialKey: null,
-      materialType: null,
-      target: "activity",
-      studyState: "active",
-    });
     emitSignalRef.current({
       type: "activity_start",
       topicoId,
@@ -1092,12 +1143,9 @@ export default function TrilhaConteudoScreen() {
   }, [
     atualBlock,
     currentContentItemKey,
-    currentMaterialContext.materialKey,
-    currentMaterialContext.materialType,
     isCurrentStudyBlockTrackable,
     moduleDifficulty,
     topicoId,
-    updateStudyContext,
   ]);
 
   const handleMarcarConteudoVisto = useCallback(

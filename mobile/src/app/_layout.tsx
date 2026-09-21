@@ -1,4 +1,5 @@
 import { LoadingState } from "@/components/LoadingState";
+import { TelaDeErro } from "@/components/TelaDeErro";
 import { TelemetryConsentGate } from "@/components/TelemetryConsentGate";
 import LoadingScreen from "@/components/funcionais/Loading";
 import { DialogProvider, useDialog } from "@/context/DialogContext";
@@ -17,6 +18,12 @@ import React, { useEffect, useState } from "react";
 import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
+
+// O expo-router usa o export chamado `ErrorBoundary` como boundary do
+// segmento. Aqui na raiz ele pega tudo que nao tiver um mais proximo: sem
+// isto, erro de render em qualquer tela vira tela branca na versao
+// publicada, onde o LogBox nao roda.
+export { TelaDeErro as ErrorBoundary };
 
 export const unstable_settings = {
   anchor: "(tabs)",
