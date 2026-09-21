@@ -10,7 +10,7 @@ import { achievementArtKey } from '../utils/achievementArtwork';
 test('every bundled design reference is a valid, bounded PNG or WebP asset', () => {
   const source = readFileSync(join(process.cwd(), 'src/constants/designAssets.ts'), 'utf8');
   const references = [...source.matchAll(/require\('(@\/assets\/design\/[^']+)'\)/g)];
-  assert.equal(references.length, 70, 'profile families, arenas, public art and nineteen contextual objects');
+  assert.equal(references.length, 69, 'profile families, arenas and contextual objects; the brand logo lives in assets/images');
   const hashes = new Set<string>();
   for (const [, reference] of references) {
     const data = readFileSync(join(process.cwd(), 'src', reference.slice(2)));
@@ -32,7 +32,7 @@ test('every bundled design reference is a valid, bounded PNG or WebP asset', () 
       assert.equal(data.subarray(8, 12).toString(), 'WEBP', reference);
     }
   }
-  assert.equal(hashes.size, 70, 'different visual roles must use distinct artwork');
+  assert.equal(hashes.size, 69, 'different visual roles must use distinct artwork');
 });
 
 test('all trail layouts share a full background instead of a header-only image', () => {

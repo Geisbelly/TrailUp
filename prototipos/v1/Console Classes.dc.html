@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  body { margin:0; background:hsl(225 32% 8%); font-family:Inter, system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:hsl(266 90% 77%); text-decoration:none; }
+  a:hover { color:hsl(266 95% 76%); }
+  @keyframes tu-rise { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+</style>
+</helmet>
+<div style="min-height:100vh;background:radial-gradient(1100px 520px at 12% -12%, hsl(266 60% 22% / .40), transparent 62%), radial-gradient(900px 480px at 96% 4%, hsl(239 60% 24% / .28), transparent 60%), hsl(225 32% 8%);color:hsl(40 20% 94%);padding-bottom:72px">
+
+  <div style="position:sticky;top:0;z-index:30;display:flex;align-items:center;flex-wrap:wrap;row-gap:10px;gap:24px;padding:12px 32px;background:hsl(225 32% 8% / .88);backdrop-filter:blur(14px);border-bottom:1px solid hsl(226 20% 22%)">
+    <a href="Console%20Dashboard.dc.html" style="display:flex;align-items:center;gap:12px;min-width:0;color:inherit;text-decoration:none">
+      <img src="assets/trailup-logo.png" alt="TrailUp" style="width:26px;height:32px;object-fit:contain;filter:drop-shadow(0 0 10px hsl(266 95% 66% / .55))" />
+      <div style="font-family:Cinzel, serif;font-weight:700;font-size:19px;letter-spacing:.04em">TrailUp</div>
+      <div style="width:1px;height:20px;background:hsl(226 20% 22%)"></div>
+      <div style="font-size:13px;color:hsl(230 10% 72%);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap">Console</div>
+    </a>
+    <div style="display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:6px;margin-left:auto;min-width:0">
+      <a href="Console%20Dashboard.dc.html" style="padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer;text-decoration:none" style-hover="background:hsl(226 20% 20%);color:hsl(40 20% 94%)">Dashboard</a>
+      <a href="Console%20Trilha.dc.html" style="padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer;text-decoration:none" style-hover="background:hsl(226 20% 20%);color:hsl(40 20% 94%)">Trilha</a>
+      <div style="padding:9px 18px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));color:hsl(40 20% 96%);font-size:14px;font-weight:600;box-shadow:0 0 22px hsl(266 95% 66% / .38)">Classes</div>
+      <a href="Console%20Personalizacoes.dc.html" style="padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer;text-decoration:none" style-hover="background:hsl(226 20% 20%);color:hsl(40 20% 94%)">Personalizações</a>
+      <a href="Console%20Ranks.dc.html" style="padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer;text-decoration:none" style-hover="background:hsl(226 20% 20%);color:hsl(40 20% 94%)">Ranks</a>
+      <a href="Console%20Meus%20Dados.dc.html" style="padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer;text-decoration:none" style-hover="background:hsl(226 20% 20%);color:hsl(40 20% 94%)">Meus Dados</a>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;padding-left:16px;border-left:1px solid hsl(226 20% 22%)">
+      <div style="width:34px;height:34px;border-radius:999px;background:hsl(226 20% 20%);border:1px solid hsl(266 95% 66% / .45);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:hsl(266 90% 77%)">JP</div>
+      <div style="font-size:13px;color:hsl(230 10% 72%);cursor:pointer" style-hover="color:hsl(0 70% 62%)">Sair</div>
+    </div>
+  </div>
+
+  <div style="max-width:1240px;margin:0 auto;padding:0 32px">
+
+    <div style="display:flex;align-items:flex-end;gap:24px;row-gap:18px;flex-wrap:wrap;padding:40px 0 26px">
+      <div style="min-width:0">
+        <div style="font-family:Cinzel, serif;font-size:34px;font-weight:700;line-height:1.1">Turmas</div>
+        <div style="font-size:15px;color:hsl(230 10% 72%);margin-top:8px">Crie turmas, matricule alunos e abra a trilha de cada uma.</div>
+      </div>
+      <div onClick="{{ openForm }}" style="display:flex;align-items:center;gap:9px;margin-left:auto;padding:13px 22px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));font-size:14px;font-weight:600;color:hsl(40 20% 96%);cursor:pointer;box-shadow:0 0 26px hsl(266 95% 66% / .38)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" /></svg>
+        Nova turma
+      </div>
+    </div>
+
+    <sc-if value="{{ showToast }}">
+    <div style="display:flex;align-items:center;gap:14px;padding:16px 20px;border-radius:16px;background:hsl(142 40% 14%);border:1px solid hsl(142 65% 50% / .5);margin-bottom:20px;animation:tu-rise .25s ease-out">
+      <div style="width:26px;height:26px;flex:none;border-radius:999px;background:hsl(142 65% 50%);display:flex;align-items:center;justify-content:center">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="hsl(226 32% 10%)" stroke-width="3.4"><path d="M5 13l4 4 10-10" /></svg>
+      </div>
+      <div style="min-width:0">
+        <div style="font-size:14px;font-weight:600">Turma criada</div>
+        <div style="font-size:13px;color:hsl(120 12% 84%);margin-top:2px">Química Geral · 2026/2 já aparece na lista. O próximo passo é matricular os alunos.</div>
+      </div>
+      <div onClick="{{ hideToast }}" style="margin-left:auto;font-size:13px;font-weight:600;color:hsl(120 15% 88%);cursor:pointer">Fechar</div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ showForm }}">
+    <div style="padding:26px 28px;border-radius:20px;background:linear-gradient(140deg, hsl(258 30% 17%), hsl(226 28% 12%));border:1px solid hsl(266 95% 66% / .35);margin-bottom:20px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="font-family:Cinzel, serif;font-size:21px;font-weight:700">{{ formTitle }}</div>
+        <div onClick="{{ closeForm }}" style="margin-left:auto;width:32px;height:32px;border-radius:999px;background:hsl(226 20% 20%);display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="background:hsl(226 20% 26%)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 82%)" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" /></svg>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(230px, 1fr));gap:16px;margin-top:22px">
+        <div>
+          <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 76%);font-weight:600">Nome da turma</div>
+          <div style="margin-top:9px;padding:13px 16px;border-radius:16px;background:hsl(226 22% 16%);border:1px solid hsl(266 95% 66% / .5);font-size:14px">Química Geral</div>
+        </div>
+        <div>
+          <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 76%);font-weight:600">Período</div>
+          <div style="display:flex;align-items:center;margin-top:9px;padding:13px 16px;border-radius:16px;background:hsl(226 22% 16%);border:1px solid hsl(226 20% 26%);font-size:14px">
+            2026/2
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 72%)" stroke-width="2" style="margin-left:auto"><path d="M6 9l6 6 6-6" /></svg>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 76%);font-weight:600">Curso / disciplina</div>
+          <div style="margin-top:9px;padding:13px 16px;border-radius:16px;background:hsl(226 22% 16%);border:1px solid hsl(226 20% 26%);font-size:14px;color:hsl(230 10% 70%)">Ex.: Engenharia Civil</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:22px">
+        <div style="font-size:13px;color:hsl(230 10% 76%);max-width:420px;line-height:1.5">Você pode matricular alunos agora ou depois, pelo botão "Matrículas" no card da turma.</div>
+        <div onClick="{{ closeForm }}" style="margin-left:auto;padding:12px 20px;border-radius:999px;border:1px solid hsl(226 20% 26%);font-size:14px;font-weight:600;color:hsl(230 10% 82%);cursor:pointer" style-hover="border-color:hsl(266 95% 66% / .6)">Cancelar</div>
+        <div onClick="{{ save }}" style="padding:12px 24px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));font-size:14px;font-weight:600;color:hsl(40 20% 96%);cursor:pointer;box-shadow:0 0 24px hsl(266 95% 66% / .35)">Salvar turma</div>
+      </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isEmpty }}">
+    <div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:18px;padding:92px 40px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+      <div style="position:relative;width:104px;height:112px">
+        <div style="position:absolute;inset:0;background:linear-gradient(135deg, hsl(265 65% 50% / .5), hsl(239 84% 67% / .3));clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+        <div style="position:absolute;inset:13px;background:hsl(226 28% 12%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="hsl(266 90% 77%)" stroke-width="1.8"><path d="M3 8l9-4 9 4-9 4z" /><path d="M7 11v5c0 1.3 2.2 2.5 5 2.5s5-1.2 5-2.5v-5" /></svg>
+        </div>
+      </div>
+      <div style="font-family:Cinzel, serif;font-size:24px;font-weight:700">Nenhuma turma ainda</div>
+      <div style="font-size:15px;color:hsl(230 10% 72%);max-width:480px;line-height:1.6">A turma é o ponto de partida: é dela que saem a trilha de conteúdo, as matrículas e o dashboard de desempenho.</div>
+      <div onClick="{{ openForm }}" style="display:flex;align-items:center;gap:9px;margin-top:6px;padding:13px 24px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));font-size:14px;font-weight:600;color:hsl(40 20% 96%);cursor:pointer;box-shadow:0 0 26px hsl(266 95% 66% / .35)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" /></svg>
+        Criar primeira turma
+      </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ hasClasses }}" hint-placeholder-val="{{ true }}">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:20px">
+
+      <div style="padding:24px 26px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+        <div style="display:flex;align-items:flex-start;gap:14px">
+          <div style="width:40px;height:44px;flex:none;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 90% 77%));clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:hsl(266 30% 12%)">FI</div>
+          <div style="min-width:0;flex:1">
+            <div style="font-family:Cinzel, serif;font-size:22px;font-weight:700;line-height:1.15">Física I</div>
+            <div style="font-size:13px;color:hsl(230 10% 74%);margin-top:4px">2026/1 · Engenharia Civil</div>
+          </div>
+          <div style="padding:5px 12px;border-radius:999px;background:hsl(142 40% 16%);font-size:11px;font-weight:600;color:hsl(142 65% 62%)">Ativa</div>
+        </div>
+        <div style="display:flex;gap:26px;margin-top:22px">
+          <div><div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 74%);font-weight:600">Alunos</div><div style="font-size:22px;font-weight:700;margin-top:5px">34</div></div>
+          <div><div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 74%);font-weight:600">Tópicos</div><div style="font-size:22px;font-weight:700;margin-top:5px">8</div></div>
+          <div><div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 74%);font-weight:600">Conclusão</div><div style="font-size:22px;font-weight:700;margin-top:5px">62%</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:22px;padding-top:18px;border-top:1px solid hsl(226 20% 22%)">
+          <div onClick="{{ openEnroll }}" style="padding:10px 18px;border-radius:999px;background:hsl(266 95% 66% / .16);border:1px solid hsl(266 95% 66% / .45);font-size:13px;font-weight:600;color:hsl(266 90% 82%);cursor:pointer" style-hover="background:hsl(266 95% 66% / .26)">Matrículas</div>
+          <a href="Console%20Trilha.dc.html" style="padding:10px 18px;border-radius:999px;border:1px solid hsl(226 20% 26%);font-size:13px;font-weight:600;color:hsl(230 10% 84%);text-decoration:none" style-hover="border-color:hsl(266 95% 66% / .6);color:hsl(40 20% 94%)">Abrir trilha</a>
+          <div onClick="{{ openEdit }}" style="margin-left:auto;font-size:13px;font-weight:600;color:hsl(230 10% 78%);cursor:pointer" style-hover="color:hsl(266 90% 82%)">Editar</div>
+        </div>
+      </div>
+
+      <div style="padding:24px 26px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+        <div style="display:flex;align-items:flex-start;gap:14px">
+          <div style="width:40px;height:44px;flex:none;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 90% 77%));clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:hsl(266 30% 12%)">FII</div>
+          <div style="min-width:0;flex:1">
+            <div style="font-family:Cinzel, serif;font-size:22px;font-weight:700;line-height:1.15">Física II</div>
+            <div style="font-size:13px;color:hsl(230 10% 74%);margin-top:4px">2026/1 · Engenharia Elétrica</div>
+          </div>
+          <div style="padding:5px 12px;border-radius:999px;background:hsl(142 40% 16%);font-size:11px;font-weight:600;color:hsl(142 65% 62%)">Ativa</div>
+        </div>
+        <div style="display:flex;gap:26px;margin-top:22px">
+          <div><div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 74%);font-weight:600">Alunos</div><div style="font-size:22px;font-weight:700;margin-top:5px">28</div></div>
+          <div><div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 74%);font-weight:600">Tópicos</div><div style="font-size:22px;font-weight:700;margin-top:5px">6</div></div>
+          <div><div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 74%);font-weight:600">Conclusão</div><div style="font-size:22px;font-weight:700;margin-top:5px">41%</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:22px;padding-top:18px;border-top:1px solid hsl(226 20% 22%)">
+          <div onClick="{{ openEnroll }}" style="padding:10px 18px;border-radius:999px;background:hsl(266 95% 66% / .16);border:1px solid hsl(266 95% 66% / .45);font-size:13px;font-weight:600;color:hsl(266 90% 82%);cursor:pointer" style-hover="background:hsl(266 95% 66% / .26)">Matrículas</div>
+          <a href="Console%20Trilha.dc.html" style="padding:10px 18px;border-radius:999px;border:1px solid hsl(226 20% 26%);font-size:13px;font-weight:600;color:hsl(230 10% 84%);text-decoration:none" style-hover="border-color:hsl(266 95% 66% / .6);color:hsl(40 20% 94%)">Abrir trilha</a>
+          <div onClick="{{ openEdit }}" style="margin-left:auto;font-size:13px;font-weight:600;color:hsl(230 10% 78%);cursor:pointer" style-hover="color:hsl(266 90% 82%)">Editar</div>
+        </div>
+      </div>
+
+      <div style="padding:24px 26px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+        <div style="display:flex;align-items:flex-start;gap:14px">
+          <div style="width:40px;height:44px;flex:none;background:hsl(226 20% 26%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:hsl(230 10% 84%)">LB</div>
+          <div style="min-width:0;flex:1">
+            <div style="font-family:Cinzel, serif;font-size:22px;font-weight:700;line-height:1.15">Laboratório de Física</div>
+            <div style="font-size:13px;color:hsl(230 10% 74%);margin-top:4px">2026/1 · turma sem trilha montada</div>
+          </div>
+          <div style="padding:5px 12px;border-radius:999px;background:hsl(45 50% 18%);font-size:11px;font-weight:600;color:hsl(45 90% 66%)">Rascunho</div>
+        </div>
+        <div style="display:flex;gap:26px;margin-top:22px">
+          <div><div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 74%);font-weight:600">Alunos</div><div style="font-size:22px;font-weight:700;margin-top:5px">12</div></div>
+          <div><div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 74%);font-weight:600">Tópicos</div><div style="font-size:22px;font-weight:700;margin-top:5px;color:hsl(230 10% 72%)">0</div></div>
+          <div><div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 74%);font-weight:600">Conclusão</div><div style="font-size:22px;font-weight:700;margin-top:5px;color:hsl(230 10% 72%)">—</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:22px;padding-top:18px;border-top:1px solid hsl(226 20% 22%)">
+          <div onClick="{{ openEnroll }}" style="padding:10px 18px;border-radius:999px;background:hsl(266 95% 66% / .16);border:1px solid hsl(266 95% 66% / .45);font-size:13px;font-weight:600;color:hsl(266 90% 82%);cursor:pointer" style-hover="background:hsl(266 95% 66% / .26)">Matrículas</div>
+          <a href="Console%20Trilha.dc.html" style="padding:10px 18px;border-radius:999px;border:1px solid hsl(226 20% 26%);font-size:13px;font-weight:600;color:hsl(230 10% 84%);text-decoration:none" style-hover="border-color:hsl(266 95% 66% / .6);color:hsl(40 20% 94%)">Montar trilha</a>
+          <div onClick="{{ openEdit }}" style="margin-left:auto;font-size:13px;font-weight:600;color:hsl(230 10% 78%);cursor:pointer" style-hover="color:hsl(266 90% 82%)">Editar</div>
+        </div>
+      </div>
+
+      <div onClick="{{ openForm }}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;min-height:220px;border-radius:20px;border:1px dashed hsl(266 95% 66% / .45);background:hsl(266 95% 66% / .05);cursor:pointer" style-hover="background:hsl(266 95% 66% / .1)">
+        <div style="width:44px;height:48px;background:hsl(266 95% 66% / .18);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="hsl(266 90% 82%)" stroke-width="2"><path d="M12 5v14M5 12h14" /></svg>
+        </div>
+        <div style="font-size:14px;font-weight:600;color:hsl(266 90% 82%)">Nova turma</div>
+        <div style="font-size:12px;color:hsl(230 10% 74%)">nome, período e curso</div>
+      </div>
+    </div>
+    </sc-if>
+  </div>
+
+  <sc-if value="{{ showEnroll }}">
+  <div style="position:fixed;inset:0;z-index:60;background:hsl(225 40% 4% / .78);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:32px">
+    <div style="width:100%;max-width:640px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(266 95% 66% / .35);box-shadow:0 30px 90px hsl(225 40% 2% / .8);overflow:hidden">
+      <div style="padding:24px 28px 20px;background:linear-gradient(140deg, hsl(258 30% 18%), hsl(226 28% 12%));border-bottom:1px solid hsl(226 20% 22%)">
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="width:36px;height:40px;flex:none;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 90% 77%));clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:hsl(266 30% 12%)">FI</div>
+          <div style="min-width:0">
+            <div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:hsl(266 90% 80%);font-weight:600">Matrículas</div>
+            <div style="font-family:Cinzel, serif;font-size:22px;font-weight:700;margin-top:3px">Física I · 2026/1</div>
+          </div>
+          <div onClick="{{ closeEnroll }}" style="margin-left:auto;width:32px;height:32px;border-radius:999px;background:hsl(226 20% 20%);display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="background:hsl(226 20% 26%)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 82%)" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:22px 28px 0">
+        <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 76%);font-weight:600">Adicionar aluno</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:10px;padding:12px 16px;border-radius:16px;background:hsl(226 22% 16%);border:1px solid hsl(266 95% 66% / .45)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 76%)" stroke-width="2"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
+          <div style="font-size:14px;flex:1">luc</div>
+          <div style="font-size:12px;color:hsl(230 10% 72%)">3 resultados</div>
+        </div>
+        <div style="margin-top:8px;border-radius:16px;background:hsl(225 32% 7%);border:1px solid hsl(226 20% 22%);overflow:hidden">
+          <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer" style-hover="background:hsl(226 22% 16%)">
+            <div style="width:28px;height:32px;flex:none;background:#22c9bc;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:hsl(226 32% 10%)">LM</div>
+            <div style="min-width:0;flex:1">
+              <div style="font-size:14px;font-weight:600">Lucas Meireles</div>
+              <div style="font-size:12px;color:hsl(230 10% 74%);margin-top:2px">lucas.meireles@ulbra.br · Seeker</div>
+            </div>
+            <div style="padding:7px 14px;border-radius:999px;background:hsl(266 95% 66% / .18);border:1px solid hsl(266 95% 66% / .45);font-size:12px;font-weight:600;color:hsl(266 90% 82%)">Matricular</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid hsl(226 20% 22%);cursor:pointer" style-hover="background:hsl(226 22% 16%)">
+            <div style="width:28px;height:32px;flex:none;background:#f77b57;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:hsl(226 32% 10%)">LC</div>
+            <div style="min-width:0;flex:1">
+              <div style="font-size:14px;font-weight:600">Luciana Braga</div>
+              <div style="font-size:12px;color:hsl(230 10% 74%);margin-top:2px">luciana.braga@ulbra.br · Socializer</div>
+            </div>
+            <div style="padding:7px 14px;border-radius:999px;background:hsl(266 95% 66% / .18);border:1px solid hsl(266 95% 66% / .45);font-size:12px;font-weight:600;color:hsl(266 90% 82%)">Matricular</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid hsl(226 20% 22%)">
+            <div style="width:28px;height:32px;flex:none;background:hsl(226 20% 26%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:hsl(230 10% 80%)">LF</div>
+            <div style="min-width:0;flex:1">
+              <div style="font-size:14px;font-weight:600;color:hsl(230 10% 80%)">Lucas Fontenele</div>
+              <div style="font-size:12px;color:hsl(230 10% 72%);margin-top:2px">já matriculado nesta turma</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:22px 28px 8px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 76%);font-weight:600">Alunos matriculados</div>
+          <div style="padding:3px 10px;border-radius:999px;background:hsl(226 20% 20%);font-size:12px;font-weight:600;color:hsl(230 10% 84%)">34</div>
+        </div>
+      </div>
+      <div style="padding:0 28px 8px;max-height:300px;overflow-y:auto">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:16px;background:hsl(226 22% 16%)">
+            <div style="width:30px;height:34px;flex:none;background:#7a63e8;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:hsl(226 32% 10%)">MC</div>
+            <div style="min-width:0;flex:1">
+              <div style="font-size:14px;font-weight:600">Marina Corrêa</div>
+              <div style="font-size:12px;color:hsl(230 10% 74%);margin-top:2px">Mastermind · desde 04/03/2026</div>
+            </div>
+            <div style="font-size:12px;font-weight:600;color:hsl(230 10% 76%);cursor:pointer;padding:6px 12px;border-radius:999px" style-hover="background:hsl(0 45% 18%);color:hsl(0 75% 70%)">Remover</div>
+          </div>
+
+          <sc-if value="{{ confirming }}">
+          <div style="padding:14px 16px;border-radius:16px;background:hsl(0 40% 15%);border:1px solid hsl(0 70% 55% / .5)">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="width:30px;height:34px;flex:none;background:#8593a2;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:hsl(226 32% 10%)">RA</div>
+              <div style="min-width:0;flex:1">
+                <div style="font-size:14px;font-weight:600">Remover Rafael Antunes da turma?</div>
+                <div style="font-size:12px;color:hsl(30 15% 84%);margin-top:3px;line-height:1.5">Ele perde o acesso à trilha de Física I. O histórico de notas fica guardado por 30 dias.</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:14px">
+              <div onClick="{{ cancelRemove }}" style="margin-left:auto;padding:9px 18px;border-radius:999px;border:1px solid hsl(0 30% 40%);font-size:13px;font-weight:600;color:hsl(30 15% 88%);cursor:pointer">Cancelar</div>
+              <div onClick="{{ cancelRemove }}" style="display:flex;align-items:center;gap:8px;padding:9px 18px;border-radius:999px;background:hsl(0 70% 55%);font-size:13px;font-weight:700;color:hsl(40 20% 96%);cursor:pointer">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13" /></svg>
+                Remover mesmo assim
+              </div>
+            </div>
+          </div>
+          </sc-if>
+
+          <sc-if value="{{ notConfirming }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:16px;background:hsl(226 22% 16%)">
+            <div style="width:30px;height:34px;flex:none;background:#8593a2;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:hsl(226 32% 10%)">RA</div>
+            <div style="min-width:0;flex:1">
+              <div style="font-size:14px;font-weight:600">Rafael Antunes</div>
+              <div style="font-size:12px;color:hsl(230 10% 74%);margin-top:2px">Survivor · desde 04/03/2026</div>
+            </div>
+            <div onClick="{{ askRemove }}" style="font-size:12px;font-weight:600;color:hsl(230 10% 76%);cursor:pointer;padding:6px 12px;border-radius:999px" style-hover="background:hsl(0 45% 18%);color:hsl(0 75% 70%)">Remover</div>
+          </div>
+          </sc-if>
+
+          <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:16px;background:hsl(226 22% 16%)">
+            <div style="width:30px;height:34px;flex:none;background:#22c9bc;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:hsl(226 32% 10%)">BL</div>
+            <div style="min-width:0;flex:1">
+              <div style="font-size:14px;font-weight:600">Beatriz Lemos</div>
+              <div style="font-size:12px;color:hsl(230 10% 74%);margin-top:2px">Seeker · desde 04/03/2026</div>
+            </div>
+            <div onClick="{{ askRemove }}" style="font-size:12px;font-weight:600;color:hsl(230 10% 76%);cursor:pointer;padding:6px 12px;border-radius:999px" style-hover="background:hsl(0 45% 18%);color:hsl(0 75% 70%)">Remover</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:16px;background:hsl(226 22% 16%)">
+            <div style="width:30px;height:34px;flex:none;background:#dfb63a;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:hsl(226 32% 10%)">HV</div>
+            <div style="min-width:0;flex:1">
+              <div style="font-size:14px;font-weight:600">Helena Vasques</div>
+              <div style="font-size:12px;color:hsl(230 10% 74%);margin-top:2px">Achiever · desde 06/03/2026</div>
+            </div>
+            <div onClick="{{ askRemove }}" style="font-size:12px;font-weight:600;color:hsl(230 10% 76%);cursor:pointer;padding:6px 12px;border-radius:999px" style-hover="background:hsl(0 45% 18%);color:hsl(0 75% 70%)">Remover</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:16px;background:hsl(226 22% 16%)">
+            <div style="width:30px;height:34px;flex:none;background:#3e6dea;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:hsl(226 32% 10%)">CB</div>
+            <div style="min-width:0;flex:1">
+              <div style="font-size:14px;font-weight:600">Caio Bertoldo</div>
+              <div style="font-size:12px;color:hsl(230 10% 74%);margin-top:2px">Conqueror · desde 06/03/2026</div>
+            </div>
+            <div onClick="{{ askRemove }}" style="font-size:12px;font-weight:600;color:hsl(230 10% 76%);cursor:pointer;padding:6px 12px;border-radius:999px" style-hover="background:hsl(0 45% 18%);color:hsl(0 75% 70%)">Remover</div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;padding:18px 28px;border-top:1px solid hsl(226 20% 22%)">
+        <div style="font-size:12px;color:hsl(230 10% 74%)">Alterações de matrícula são aplicadas na hora.</div>
+        <div onClick="{{ closeEnroll }}" style="margin-left:auto;padding:11px 22px;border-radius:999px;background:hsl(226 20% 20%);font-size:14px;font-weight:600;cursor:pointer" style-hover="background:hsl(226 20% 26%)">Fechar</div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;estado&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;com turmas&quot;,&quot;nenhuma turma&quot;,&quot;criando turma&quot;,&quot;matrícula aberta&quot;],&quot;default&quot;:&quot;com turmas&quot;,&quot;tsType&quot;:&quot;'com turmas' | 'nenhuma turma' | 'criando turma' | 'matrícula aberta'&quot;,&quot;section&quot;:&quot;Estados da tela&quot;}}">
+class Component extends DCLogic {
+  state = { form: null, enroll: null, toast: false, confirm: false, editing: false };
+
+  estado() {
+    return this.props.estado || 'com turmas';
+  }
+
+  renderVals() {
+    const e = this.estado();
+    const empty = e === 'nenhuma turma';
+    const form = this.state.form === null ? (e === 'criando turma') : this.state.form;
+    const enroll = this.state.enroll === null ? (e === 'matrícula aberta') : this.state.enroll;
+    return {
+      isEmpty: empty && !form,
+      hasClasses: !empty,
+      showForm: form,
+      formTitle: this.state.editing ? 'Editar turma' : 'Nova turma',
+      openForm: () => this.setState({ form: true, editing: false, toast: false }),
+      openEdit: () => this.setState({ form: true, editing: true, toast: false }),
+      closeForm: () => this.setState({ form: false }),
+      save: () => this.setState({ form: false, toast: true }),
+      showToast: this.state.toast,
+      hideToast: () => this.setState({ toast: false }),
+      showEnroll: enroll,
+      openEnroll: () => this.setState({ enroll: true, confirm: false }),
+      closeEnroll: () => this.setState({ enroll: false, confirm: false }),
+      confirming: this.state.confirm,
+      notConfirming: !this.state.confirm,
+      askRemove: () => this.setState({ confirm: true }),
+      cancelRemove: () => this.setState({ confirm: false })
+    };
+  }
+}
+
+</script>
+</body>
+</html>

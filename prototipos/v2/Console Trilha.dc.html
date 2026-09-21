@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  body { margin:0; background:hsl(225 32% 8%); font-family:Inter, system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:hsl(266 90% 77%); text-decoration:none; }
+  a:hover { color:hsl(266 95% 76%); }
+  @keyframes tu-glow { 0%,100% { opacity:.55; } 50% { opacity:1; } }
+  @keyframes tu-dash { to { stroke-dashoffset:-24; } }
+</style>
+</helmet>
+<div style="min-height:100vh;background:radial-gradient(1100px 520px at 12% -12%, hsl(266 60% 22% / .40), transparent 62%), radial-gradient(900px 480px at 96% 4%, hsl(239 60% 24% / .28), transparent 60%), hsl(225 32% 8%);color:hsl(40 20% 94%);padding-bottom:64px">
+
+  <div style="position:sticky;top:0;z-index:30;display:flex;align-items:center;flex-wrap:wrap;row-gap:10px;gap:24px;padding:12px 32px;background:hsl(225 32% 8% / .88);backdrop-filter:blur(14px);border-bottom:1px solid hsl(226 20% 22%)">
+    <a href="Console%20Dashboard.dc.html" style="display:flex;align-items:center;gap:12px;min-width:0;color:inherit;text-decoration:none">
+      <img src="assets/trailup-logo.png" alt="TrailUp" style="width:26px;height:32px;object-fit:contain;filter:drop-shadow(0 0 10px hsl(266 95% 66% / .55))" />
+      <div style="font-family:Cinzel, serif;font-weight:700;font-size:19px;letter-spacing:.04em">TrailUp</div>
+      <div style="width:1px;height:20px;background:hsl(226 20% 22%)"></div>
+      <div style="font-size:13px;color:hsl(230 10% 72%);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap">Console</div>
+    </a>
+    <div style="display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:6px;margin-left:auto;min-width:0">
+      <a href="Console%20Dashboard.dc.html" style="padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer;text-decoration:none" style-hover="background:hsl(226 20% 20%);color:hsl(40 20% 94%)">Dashboard</a>
+      <div style="padding:9px 18px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));color:hsl(40 20% 96%);font-size:14px;font-weight:600;box-shadow:0 0 22px hsl(266 95% 66% / .38)">Trilha</div>
+      <a href="Console%20Classes.dc.html" style="padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer;text-decoration:none" style-hover="background:hsl(226 20% 20%);color:hsl(40 20% 94%)">Classes</a>
+      <a href="Console%20Personalizacoes.dc.html" style="padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer;text-decoration:none" style-hover="background:hsl(226 20% 20%);color:hsl(40 20% 94%)">Personalizações</a>
+      <a href="Console%20Ranks.dc.html" style="padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer;text-decoration:none" style-hover="background:hsl(226 20% 20%);color:hsl(40 20% 94%)">Ranks</a>
+      <a href="Console%20Meus%20Dados.dc.html" style="padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer;text-decoration:none" style-hover="background:hsl(226 20% 20%);color:hsl(40 20% 94%)">Meus Dados</a>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;padding-left:16px;border-left:1px solid hsl(226 20% 22%)">
+      <div style="width:34px;height:34px;border-radius:999px;background:hsl(226 20% 20%);border:1px solid hsl(266 95% 66% / .45);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:hsl(266 90% 77%)">JP</div>
+      <div style="font-size:13px;color:hsl(230 10% 72%);cursor:pointer" style-hover="color:hsl(0 70% 62%)">Sair</div>
+    </div>
+  </div>
+
+  <div style="max-width:1600px;margin:0 auto;padding:0 32px">
+
+    <div style="display:flex;align-items:flex-end;gap:24px;row-gap:18px;flex-wrap:wrap;padding:36px 0 22px">
+      <div style="min-width:0">
+        <div style="font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:hsl(266 90% 77%);font-weight:600;margin-bottom:10px">Editor de trilha</div>
+        <div style="display:flex;align-items:center;gap:14px;padding:10px 20px 10px 16px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%);cursor:pointer" style-hover="border-color:hsl(266 95% 66% / .6)">
+          <div style="width:34px;height:38px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 90% 77%));clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:hsl(266 30% 12%)">FI</div>
+          <div>
+            <div style="font-family:Cinzel, serif;font-size:26px;font-weight:700;line-height:1.1">Física I</div>
+            <div style="font-size:13px;color:hsl(230 10% 72%);margin-top:2px">2026/1 · 8 tópicos · 34 alunos</div>
+          </div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 72%)" stroke-width="2" style="margin-left:8px"><path d="M6 9l6 6 6-6" /></svg>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-left:auto;flex-wrap:wrap">
+        <div onClick="{{ openDialog }}" style="display:flex;align-items:center;gap:9px;padding:12px 20px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));font-size:14px;font-weight:600;color:hsl(40 20% 96%);cursor:pointer;box-shadow:0 0 26px hsl(266 95% 66% / .38)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z" /></svg>
+          Gerar trilha com IA
+        </div>
+        <div style="display:flex;align-items:center;gap:9px;padding:12px 20px;border-radius:999px;border:1px solid hsl(226 20% 22%);background:hsl(226 28% 12%);font-size:14px;font-weight:600;cursor:pointer" style-hover="border-color:hsl(266 95% 66% / .6)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="hsl(266 90% 77%)" stroke-width="2"><path d="M12 5v14M5 12h14" /></svg>
+          Novo tópico
+        </div>
+        <div style="padding:12px 20px;border-radius:999px;border:1px solid hsl(226 20% 22%);background:hsl(226 28% 12%);font-size:14px;font-weight:600;color:hsl(230 10% 78%);cursor:pointer" style-hover="border-color:hsl(266 95% 66% / .6);color:hsl(40 20% 94%)">Salvar dependências</div>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:14px 20px;border-radius:16px;background:hsl(226 28% 12% / .7);border:1px solid hsl(226 20% 22%);margin-bottom:20px">
+      <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:hsl(230 10% 68%);font-weight:600;margin-right:6px">Onde estou</div>
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 14px 6px 8px;border-radius:999px;background:hsl(226 20% 20%)">
+        <div style="width:16px;height:18px;background:hsl(266 90% 77%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:hsl(266 30% 12%)">1</div>
+        <div style="font-size:13px;font-weight:600">Física I</div>
+      </div>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 60%)" stroke-width="2"><path d="M9 6l6 6-6 6" /></svg>
+      <div style="{{ crumb2Style }}">
+        <div style="width:16px;height:18px;background:hsl(266 90% 77%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:hsl(266 30% 12%)">2</div>
+        <div style="font-size:13px;font-weight:600">{{ crumb2 }}</div>
+      </div>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 60%)" stroke-width="2"><path d="M9 6l6 6-6 6" /></svg>
+      <div style="{{ crumb3Style }}">
+        <div style="width:16px;height:18px;background:hsl(239 84% 75%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:hsl(226 30% 12%)">3</div>
+        <div style="font-size:13px;font-weight:600">Conteúdo: {{ crumb3 }}</div>
+      </div>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 60%)" stroke-width="2"><path d="M9 6l6 6-6 6" /></svg>
+      <div style="{{ crumb4Style }}">
+        <div style="width:16px;height:18px;background:hsl(239 84% 75%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:hsl(226 30% 12%)">4</div>
+        <div style="font-size:13px;font-weight:600">{{ crumb4 }}</div>
+      </div>
+      <div style="margin-left:auto;font-size:12px;color:hsl(230 10% 72%)">Rascunho salvo há 1 min</div>
+    </div>
+
+    <sc-if value="{{ isEmpty }}">
+    <div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:18px;padding:92px 40px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+      <div style="position:relative;width:104px;height:112px">
+        <div style="position:absolute;inset:0;background:linear-gradient(135deg, hsl(265 65% 50% / .5), hsl(239 84% 67% / .3));clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+        <div style="position:absolute;inset:13px;background:hsl(226 28% 12%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="hsl(266 90% 77%)" stroke-width="2"><path d="M4 6h6M14 6h6M4 18h6M14 18h6M10 6a2 2 0 004 0M10 18a2 2 0 004 0M7 6v12M17 6v12" /></svg>
+        </div>
+      </div>
+      <div style="font-family:Cinzel, serif;font-size:24px;font-weight:700">Escolha uma turma para abrir o canvas</div>
+      <div style="font-size:15px;color:hsl(230 10% 72%);max-width:520px;line-height:1.6">Cada turma tem a sua própria trilha de tópicos. Selecione a turma acima, ou deixe a IA propor uma trilha inicial a partir do seu plano de ensino.</div>
+      <div style="display:flex;gap:12px;margin-top:6px">
+        <div onClick="{{ openDialog }}" style="padding:12px 22px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));font-size:14px;font-weight:600;color:hsl(40 20% 96%);cursor:pointer;box-shadow:0 0 24px hsl(266 95% 66% / .35)">Gerar trilha com IA</div>
+        <div onClick="{{ closeEmpty }}" style="padding:12px 22px;border-radius:999px;border:1px solid hsl(226 20% 22%);font-size:14px;font-weight:600;cursor:pointer" style-hover="border-color:hsl(266 95% 66% / .6)">Selecionar turma</div>
+      </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isEditor }}" hint-placeholder-val="{{ true }}">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(460px, 1fr));gap:20px;align-items:start">
+
+      <div style="border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%);overflow:hidden">
+        <div style="display:flex;align-items:center;flex-wrap:wrap;row-gap:12px;gap:14px;padding:18px 24px;border-bottom:1px solid hsl(226 20% 22%)">
+          <div>
+            <div style="font-family:Cinzel, serif;font-size:19px;font-weight:700">Mapa da trilha</div>
+            <div style="font-size:12px;color:hsl(230 10% 72%);margin-top:3px">Arraste os nós para reordenar · conecte para criar pré-requisito</div>
+          </div>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:14px;padding:8px 14px;border-radius:999px;background:hsl(226 22% 16%);border:1px solid hsl(226 20% 22%);font-size:12px;color:hsl(230 10% 78%)">
+            <div style="display:flex;align-items:center;gap:7px"><div style="width:16px;height:2px;background:hsl(266 90% 77%)"></div>Sequência</div>
+            <div style="display:flex;align-items:center;gap:7px"><div style="width:16px;height:0;border-top:2px dashed hsl(239 84% 75%)"></div>Pré-requisito</div>
+          </div>
+        </div>
+
+        <div onMouseDown="{{ canvasDown }}" onMouseMove="{{ canvasMove }}" onMouseUp="{{ canvasUp }}" onMouseLeave="{{ canvasUp }}" onWheel="{{ canvasWheel }}" style="{{ viewportStyle }}">
+          <div style="{{ canvasStyle }}">
+            <svg width="1000" height="452" style="position:absolute;inset:0;overflow:visible">
+              <defs>
+                <marker id="tuArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="hsl(266 90% 77%)" />
+                </marker>
+                <marker id="tuArrowDash" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="hsl(239 84% 75%)" />
+                </marker>
+              </defs>
+              <line x1="226" y1="78" x2="252" y2="78" stroke="hsl(266 90% 77%)" stroke-width="2.5" marker-end="url(#tuArrow)" />
+              <line x1="472" y1="78" x2="498" y2="78" stroke="hsl(266 90% 77%)" stroke-width="2.5" marker-end="url(#tuArrow)" />
+              <line x1="718" y1="78" x2="744" y2="78" stroke="hsl(266 90% 77%)" stroke-width="2.5" marker-end="url(#tuArrow)" />
+              <path d="M 859 138 L 859 234" stroke="hsl(266 90% 77%)" stroke-width="2.5" fill="none" marker-end="url(#tuArrow)" />
+              <line x1="744" y1="294" x2="718" y2="294" stroke="hsl(266 90% 77%)" stroke-width="2.5" marker-end="url(#tuArrow)" />
+              <line x1="498" y1="294" x2="472" y2="294" stroke="hsl(266 90% 77%)" stroke-width="2.5" marker-end="url(#tuArrow)" />
+              <line x1="252" y1="294" x2="226" y2="294" stroke="hsl(266 90% 77%)" stroke-width="2.5" marker-end="url(#tuArrow)" />
+              <path d="M 613 146 C 613 190 410 188 367 228" stroke="hsl(239 84% 75%)" stroke-width="2.5" stroke-dasharray="7 7" fill="none" marker-end="url(#tuArrowDash)" />
+            </svg>
+
+            <div onClick="{{ pick1 }}" style="position:absolute;left:16px;top:18px;width:210px;padding:14px 16px;border-radius:20px;background:hsl(226 22% 16%);border:1px solid hsl(226 20% 26%);cursor:pointer" style-hover="border-color:hsl(266 95% 66% / .55)">
+              <div style="display:flex;align-items:center;gap:10px">
+                <div style="width:26px;height:29px;background:hsl(266 90% 77%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:hsl(266 30% 12%)">1</div>
+                <div style="font-size:14px;font-weight:600;line-height:1.25">Introdução à Física</div>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:12px;font-size:11px;color:hsl(230 10% 78%)">
+                <div style="padding:3px 9px;border-radius:999px;background:hsl(226 28% 12%)">3 conteúdos</div>
+                <div style="padding:3px 9px;border-radius:999px;background:hsl(226 28% 12%)">2 atividades</div>
+              </div>
+              <div style="margin-top:10px;font-size:11px;font-weight:600;color:hsl(142 65% 58%)">Publicado</div>
+            </div>
+
+            <div onClick="{{ pick2 }}" style="position:absolute;left:262px;top:18px;width:210px;padding:14px 16px;border-radius:20px;background:hsl(226 22% 16%);border:1px solid hsl(226 20% 26%);cursor:pointer" style-hover="border-color:hsl(266 95% 66% / .55)">
+              <div style="display:flex;align-items:center;gap:10px">
+                <div style="width:26px;height:29px;background:hsl(266 90% 77%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:hsl(266 30% 12%)">2</div>
+                <div style="font-size:14px;font-weight:600;line-height:1.25">Medidas e Unidades</div>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:12px;font-size:11px;color:hsl(230 10% 78%)">
+                <div style="padding:3px 9px;border-radius:999px;background:hsl(226 28% 12%)">2 conteúdos</div>
+                <div style="padding:3px 9px;border-radius:999px;background:hsl(226 28% 12%)">1 atividade</div>
+              </div>
+              <div style="margin-top:10px;font-size:11px;font-weight:600;color:hsl(142 65% 58%)">Publicado</div>
+            </div>
+
+            <div onClick="{{ pick3 }}" style="position:absolute;left:508px;top:14px;width:210px;padding:16px 18px;border-radius:20px;background:linear-gradient(140deg, hsl(258 32% 20%), hsl(226 22% 16%));border:2px solid hsl(266 95% 66%);box-shadow:0 0 34px hsl(266 95% 66% / .45);cursor:pointer">
+              <div style="display:flex;align-items:center;gap:10px">
+                <div style="width:28px;height:31px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 90% 77%));clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:hsl(266 30% 12%)">3</div>
+                <div style="font-size:15px;font-weight:700;line-height:1.25">Cinemática</div>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:12px;font-size:11px;color:hsl(230 10% 84%)">
+                <div style="padding:3px 9px;border-radius:999px;background:hsl(266 95% 66% / .22)">4 conteúdos</div>
+                <div style="padding:3px 9px;border-radius:999px;background:hsl(266 95% 66% / .22)">3 atividades</div>
+              </div>
+              <div style="margin-top:10px;font-size:11px;font-weight:700;color:hsl(266 90% 82%)">Em edição</div>
+            </div>
+
+            <div onClick="{{ pick4 }}" style="position:absolute;left:754px;top:18px;width:210px;padding:14px 16px;border-radius:20px;background:hsl(226 22% 16%);border:1px solid hsl(226 20% 26%);cursor:pointer" style-hover="border-color:hsl(266 95% 66% / .55)">
+              <div style="display:flex;align-items:center;gap:10px">
+                <div style="width:26px;height:29px;background:hsl(266 90% 77%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:hsl(266 30% 12%)">4</div>
+                <div style="font-size:14px;font-weight:600;line-height:1.25">Vetores</div>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:12px;font-size:11px;color:hsl(230 10% 78%)">
+                <div style="padding:3px 9px;border-radius:999px;background:hsl(226 28% 12%)">3 conteúdos</div>
+                <div style="padding:3px 9px;border-radius:999px;background:hsl(226 28% 12%)">2 atividades</div>
+              </div>
+              <div style="margin-top:10px;font-size:11px;font-weight:600;color:hsl(142 65% 58%)">Publicado</div>
+            </div>
+
+            <div onClick="{{ pick5 }}" style="position:absolute;left:754px;top:234px;width:210px;padding:14px 16px;border-radius:20px;background:hsl(226 22% 16%);border:1px solid hsl(226 20% 26%);cursor:pointer" style-hover="border-color:hsl(266 95% 66% / .55)">
+              <div style="display:flex;align-items:center;gap:10px">
+                <div style="width:26px;height:29px;background:hsl(266 90% 77%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:hsl(266 30% 12%)">5</div>
+                <div style="font-size:14px;font-weight:600;line-height:1.25">Dinâmica</div>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:12px;font-size:11px;color:hsl(230 10% 78%)">
+                <div style="padding:3px 9px;border-radius:999px;background:hsl(226 28% 12%)">5 conteúdos</div>
+                <div style="padding:3px 9px;border-radius:999px;background:hsl(226 28% 12%)">3 atividades</div>
+              </div>
+              <div style="margin-top:10px;font-size:11px;font-weight:600;color:hsl(142 65% 58%)">Publicado</div>
+            </div>
+
+            <div onClick="{{ pick6 }}" style="position:absolute;left:508px;top:234px;width:210px;padding:14px 16px;border-radius:20px;background:hsl(226 22% 16%);border:1px solid hsl(226 20% 26%);cursor:pointer" style-hover="border-color:hsl(266 95% 66% / .55)">
+              <div style="display:flex;align-items:center;gap:10px">
+                <div style="width:26px;height:29px;background:hsl(266 90% 77%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:hsl(266 30% 12%)">6</div>
+                <div style="font-size:14px;font-weight:600;line-height:1.25">Trabalho e Energia</div>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:12px;font-size:11px;color:hsl(230 10% 78%)">
+                <div style="padding:3px 9px;border-radius:999px;background:hsl(226 28% 12%)">2 conteúdos</div>
+                <div style="padding:3px 9px;border-radius:999px;background:hsl(226 28% 12%)">1 atividade</div>
+              </div>
+              <div style="margin-top:10px;font-size:11px;font-weight:600;color:hsl(45 90% 62%)">Rascunho</div>
+            </div>
+
+            <div onClick="{{ pick7 }}" style="position:absolute;left:262px;top:234px;width:210px;padding:14px 16px;border-radius:20px;background:hsl(226 22% 16% / .6);border:1px dashed hsl(226 20% 30%);cursor:pointer" style-hover="border-color:hsl(266 95% 66% / .55)">
+              <div style="display:flex;align-items:center;gap:10px">
+                <div style="width:26px;height:29px;background:hsl(226 20% 26%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:hsl(230 10% 78%)">7</div>
+                <div style="font-size:14px;font-weight:600;line-height:1.25;color:hsl(230 10% 84%)">Rotação</div>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:12px;font-size:11px;color:hsl(230 10% 72%)">
+                <div style="padding:3px 9px;border-radius:999px;background:hsl(226 28% 12%)">sem conteúdo</div>
+              </div>
+              <div style="margin-top:10px;font-size:11px;font-weight:600;color:hsl(230 10% 68%)">Vazio · pré-requisito: Cinemática</div>
+            </div>
+
+            <div onClick="{{ pick8 }}" style="position:absolute;left:16px;top:234px;width:210px;padding:14px 16px;border-radius:20px;background:hsl(226 22% 16% / .6);border:1px dashed hsl(226 20% 30%);cursor:pointer" style-hover="border-color:hsl(266 95% 66% / .55)">
+              <div style="display:flex;align-items:center;gap:10px">
+                <div style="width:26px;height:29px;background:hsl(226 20% 26%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:hsl(230 10% 78%)">8</div>
+                <div style="font-size:14px;font-weight:600;line-height:1.25;color:hsl(230 10% 84%)">Fluidos</div>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:12px;font-size:11px;color:hsl(230 10% 72%)">
+                <div style="padding:3px 9px;border-radius:999px;background:hsl(226 28% 12%)">sem conteúdo</div>
+              </div>
+              <div style="margin-top:10px;font-size:11px;font-weight:600;color:hsl(230 10% 68%)">Vazio</div>
+            </div>
+
+            <div style="position:absolute;left:16px;top:382px;display:flex;align-items:center;gap:10px;padding:12px 18px;border-radius:20px;border:1px dashed hsl(266 95% 66% / .5);color:hsl(266 90% 77%);font-size:13px;font-weight:600;cursor:pointer" style-hover="background:hsl(266 95% 66% / .1)">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" /></svg>
+              Adicionar tópico ao final
+            </div>
+          </div>
+
+          <div style="position:absolute;right:16px;bottom:16px;display:flex;align-items:center;gap:2px;padding:4px;border-radius:12px;background:hsl(226 24% 15% / .95);border:1px solid hsl(226 20% 26%);box-shadow:0 8px 24px hsl(225 40% 3% / .5);z-index:5">
+            <div onClick="{{ zoomOut }}" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;font-weight:600;color:hsl(230 10% 82%)" style-hover="background:hsl(226 20% 24%)">−</div>
+            <div style="padding:0 8px;height:28px;display:flex;align-items:center;font-size:11px;font-weight:600;color:hsl(230 10% 80%);white-space:nowrap">{{ zoomLabel }}</div>
+            <div onClick="{{ zoomIn }}" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;font-weight:600;color:hsl(230 10% 82%)" style-hover="background:hsl(226 20% 24%)">+</div>
+            <div style="width:1px;height:18px;background:hsl(226 20% 26%);margin:0 3px"></div>
+            <div onClick="{{ fitToScreen }}" title="Ajustar à tela" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="background:hsl(226 20% 24%)">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 82%)" stroke-width="2"><path d="M4 9V5a1 1 0 011-1h4M20 9V5a1 1 0 00-1-1h-4M4 15v4a1 1 0 001 1h4M20 15v4a1 1 0 01-1 1h-4" /></svg>
+            </div>
+            <div onClick="{{ centerCanvas }}" title="Centralizar" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="background:hsl(226 20% 24%)">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 82%)" stroke-width="2"><circle cx="12" cy="12" r="1.5" fill="hsl(230 10% 82%)" stroke="none" /><path d="M12 3v3M12 18v3M3 12h3M18 12h3" /></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(266 95% 66% / .3);box-shadow:0 24px 60px hsl(225 40% 4% / .6);overflow:hidden">
+        <div style="padding:22px 24px 18px;background:linear-gradient(140deg, hsl(258 30% 17%), hsl(226 28% 12%));border-bottom:1px solid hsl(226 20% 22%)">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:hsl(266 90% 77%);font-weight:600">Nível 2 · Tópico</div>
+            <div style="margin-left:auto;display:flex;gap:8px">
+              <div style="width:30px;height:30px;border-radius:999px;background:hsl(226 20% 20%);display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="background:hsl(226 20% 26%)">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 80%)" stroke-width="2"><path d="M4 20h4l10-10-4-4L4 16z" /></svg>
+              </div>
+              <div style="width:30px;height:30px;border-radius:999px;background:hsl(226 20% 20%);display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="background:hsl(0 45% 18%)">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="hsl(0 75% 68%)" stroke-width="2"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13" /></svg>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:14px;margin-top:12px">
+            <div style="width:38px;height:42px;flex:none;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 90% 77%));clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:hsl(266 30% 12%)">{{ topicNum }}</div>
+            <div style="min-width:0">
+              <div style="font-family:Cinzel, serif;font-size:24px;font-weight:700;line-height:1.15">{{ topicName }}</div>
+              <div style="font-size:12px;color:hsl(230 10% 78%);margin-top:5px;line-height:1.5">{{ topicDesc }}</div>
+              <div style="font-size:11px;color:hsl(230 10% 70%);margin-top:6px">Pré-requisito: Medidas e Unidades · visível para 34 alunos</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:18px;padding:5px;border-radius:999px;background:hsl(225 32% 8% / .6);border:1px solid hsl(226 20% 22%);width:fit-content">
+            <div onClick="{{ tab0 }}" style="{{ tabStyle0 }}">Conteúdos <span style="opacity:.7">4</span></div>
+            <div onClick="{{ tab2 }}" style="{{ tabStyle2 }}">Cards <span style="opacity:.7">6</span></div>
+          </div>
+        </div>
+
+        <div style="padding:22px 24px 26px;max-height:640px;overflow-y:auto">
+
+          <sc-if value="{{ isTab0 }}" hint-placeholder-val="{{ true }}">
+          <div>
+            <sc-if value="{{ noContent }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <sc-for list="{{ contents }}" as="ct" hint-placeholder-count="4">
+                <div onClick="{{ ct.open }}" style="{{ ct.rowStyle }}">
+                  <div style="display:flex;align-items:center;gap:14px">
+                    <div style="{{ ct.iconBox }}">
+                      <sc-if value="{{ ct.isTexto }}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 80%)" stroke-width="2"><path d="M6 4h9l4 4v12H6z" /><path d="M9 12h6M9 16h6" /></svg></sc-if>
+                      <sc-if value="{{ ct.isAtividade }}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="hsl(266 90% 82%)" stroke-width="2"><path d="M9 6l6 6-6 6" /></svg></sc-if>
+                      <sc-if value="{{ ct.isLink }}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="hsl(205 70% 68%)" stroke-width="2"><path d="M10 13a5 5 0 007 0l3-3a5 5 0 00-7-7l-1 1" /><path d="M14 11a5 5 0 00-7 0l-3 3a5 5 0 007 7l1-1" /></svg></sc-if>
+                      <sc-if value="{{ ct.isPdf }}"><span style="font-size:10px;font-weight:800;color:hsl(0 80% 76%)">PDF</span></sc-if>
+                    </div>
+                    <div style="min-width:0;flex:1">
+                      <div style="font-size:14px;font-weight:600">{{ ct.name }}</div>
+                      <div style="font-size:12px;color:hsl(230 10% 78%);margin-top:3px">{{ ct.meta }}</div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:7px;padding:5px 11px;border-radius:999px;background:hsl(226 28% 12%);font-size:11px;font-weight:600;color:hsl(230 10% 80%);white-space:nowrap">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 6l6 6-6 6" /></svg>
+                      {{ ct.qCount }} questões
+                    </div>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 72%)" stroke-width="2"><path d="M9 6l6 6-6 6" /></svg>
+                  </div>
+                </div>
+              </sc-for>
+              <div style="display:flex;align-items:center;justify-content:center;gap:9px;margin-top:2px;padding:13px;border-radius:16px;border:1px dashed hsl(266 95% 66% / .45);color:hsl(266 90% 82%);font-size:13px;font-weight:600;cursor:pointer" style-hover="background:hsl(266 95% 66% / .1)">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" /></svg>
+                Novo conteúdo
+              </div>
+
+              <div style="margin-top:18px;padding:20px 22px;border-radius:16px;border:1px dashed hsl(226 20% 30%);background:hsl(226 22% 15% / .5)">
+                <div style="font-size:13px;font-weight:600;color:hsl(230 10% 86%)">Fonte deste tópico</div>
+                <div style="display:flex;align-items:center;gap:14px;margin-top:12px">
+                  <div style="width:38px;height:44px;flex:none;border-radius:6px;background:hsl(0 55% 22%);border:1px solid hsl(0 70% 55% / .4);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:hsl(0 80% 76%)">PDF</div>
+                  <div style="min-width:0;flex:1">
+                    <div style="font-size:13px;font-weight:600">cinematica-cap3.pdf</div>
+                    <div style="font-size:12px;color:hsl(230 10% 76%);margin-top:2px">2,4 MB · 14 páginas extraídas · usado para gerar os 4 conteúdos acima</div>
+                  </div>
+                  <div style="font-size:11px;font-weight:600;color:hsl(142 65% 58%);padding:5px 11px;border-radius:999px;background:hsl(142 40% 16%);white-space:nowrap">Extraído</div>
+                </div>
+              </div>
+            </div>
+            </sc-if>
+
+            <sc-if value="{{ hasContent }}">
+            <div>
+              <div onClick="{{ closeContent }}" style="display:inline-flex;align-items:center;gap:8px;font-size:12px;color:hsl(230 10% 78%);cursor:pointer;margin-bottom:14px" style-hover="color:hsl(266 90% 77%)">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6" /></svg>
+                Voltar aos 4 conteúdos de Cinemática
+              </div>
+
+              <div style="padding:16px 18px;border-radius:16px;background:hsl(226 24% 17%);border:1px solid hsl(266 95% 66% / .4)">
+                <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:hsl(266 90% 80%);font-weight:600">Nível 3 · Conteúdo</div>
+                <div style="font-family:Cinzel, serif;font-size:19px;font-weight:700;margin-top:8px">{{ sel.name }}</div>
+                <div style="font-size:12px;color:hsl(230 10% 82%);margin-top:6px">{{ sel.meta }}</div>
+              </div>
+
+              <div style="display:flex;align-items:center;gap:10px;margin:20px 0 12px">
+                <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:hsl(230 10% 72%);font-weight:600">Cards vinculados a este conteúdo</div>
+                <div style="flex:1;height:1px;background:hsl(226 20% 22%)"></div>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:8px">
+                <sc-for list="{{ sel.cards }}" as="c" hint-placeholder-count="2">
+                  <div style="display:flex;align-items:center;gap:8px;padding:8px 13px;border-radius:999px;background:hsl(226 22% 16%);border:1px solid hsl(226 20% 28%);font-size:12px;font-weight:600">
+                    {{ c.title }}
+                    <div style="{{ c.reuseBadge }}">{{ c.reuseLabel }}</div>
+                  </div>
+                </sc-for>
+                <div onClick="{{ openLinkCard }}" style="display:flex;align-items:center;gap:7px;padding:8px 13px;border-radius:999px;border:1px dashed hsl(266 95% 66% / .5);color:hsl(266 90% 82%);font-size:12px;font-weight:600;cursor:pointer" style-hover="background:hsl(266 95% 66% / .1)">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14" /></svg>
+                  Vincular card existente
+                </div>
+              </div>
+
+              <div style="display:flex;align-items:center;gap:10px;margin:22px 0 12px">
+                <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:hsl(230 10% 72%);font-weight:600">Nível 4 · Questões deste conteúdo</div>
+                <div style="flex:1;height:1px;background:hsl(226 20% 22%)"></div>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <sc-for list="{{ sel.questions }}" as="q" hint-placeholder-count="3">
+                <div style="padding:16px 18px;border-radius:16px;background:hsl(226 22% 16%);{{ q.border }}">
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <div style="{{ q.numBox }}">{{ q.n }}</div>
+                    <div style="{{ q.kindChip }}">{{ q.kind }}</div>
+                    <div style="margin-left:auto;font-size:11px;color:hsl(230 10% 78%)">{{ q.points }} pontos</div>
+                  </div>
+                  <div style="font-size:14px;line-height:1.55;margin-top:12px;color:hsl(230 10% 90%)">{{ q.text }}</div>
+                  <div style="display:flex;align-items:center;gap:14px;margin-top:14px;padding-top:12px;border-top:1px solid hsl(226 20% 22%)">
+                    <div style="font-size:12px;font-weight:600;color:hsl(266 90% 77%);cursor:pointer">Editar questão</div>
+                    <div style="font-size:12px;font-weight:600;color:hsl(230 10% 78%);cursor:pointer">Duplicar</div>
+                    <div onClick="{{ q.askDel }}" style="margin-left:auto;display:flex;align-items:center;gap:7px;padding:6px 13px;border-radius:999px;border:1px solid hsl(0 70% 55% / .45);color:hsl(0 75% 68%);font-size:12px;font-weight:600;cursor:pointer" style-hover="background:hsl(0 45% 16%)">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13" /></svg>
+                      Excluir…
+                    </div>
+                  </div>
+                  <sc-if value="{{ q.confirming }}">
+                  <div style="margin-top:12px;padding:14px 16px;border-radius:14px;background:hsl(0 40% 15%);border:1px solid hsl(0 70% 55% / .5)">
+                    <div style="font-size:13px;font-weight:600">Excluir esta questão de "{{ sel.name }}"?</div>
+                    <div style="font-size:12px;color:hsl(30 15% 84%);margin-top:6px;line-height:1.5">Ela é removida só deste conteúdo. Se a mesma questão estiver vinculada a outro conteúdo, lá ela continua.</div>
+                    <div style="display:flex;gap:10px;margin-top:12px">
+                      <div onClick="{{ q.cancelDel }}" style="margin-left:auto;padding:8px 16px;border-radius:999px;border:1px solid hsl(0 30% 40%);font-size:12px;font-weight:600;color:hsl(30 15% 88%);cursor:pointer">Cancelar</div>
+                      <div onClick="{{ q.cancelDel }}" style="padding:8px 16px;border-radius:999px;background:hsl(0 70% 55%);font-size:12px;font-weight:700;color:hsl(40 20% 96%);cursor:pointer">Excluir</div>
+                    </div>
+                  </div>
+                  </sc-if>
+                </div>
+                </sc-for>
+                <div style="display:flex;align-items:center;justify-content:center;gap:9px;margin-top:4px;padding:13px;border-radius:16px;border:1px dashed hsl(266 95% 66% / .45);color:hsl(266 90% 82%);font-size:13px;font-weight:600;cursor:pointer" style-hover="background:hsl(266 95% 66% / .1)">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" /></svg>
+                  Nova questão neste conteúdo
+                </div>
+              </div>
+            </div>
+            </sc-if>
+          </div>
+          </sc-if>
+
+          <sc-if value="{{ isTab2 }}">
+          <div>
+            <div style="font-size:13px;color:hsl(230 10% 78%);line-height:1.55;margin-bottom:16px">Cards de estudo do tópico. O mesmo card pode estar vinculado a mais de um conteúdo — a etiqueta mostra em quantos ele aparece.</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(190px, 1fr));gap:12px">
+              <sc-for list="{{ cards }}" as="c" hint-placeholder-count="6">
+              <div style="{{ c.cardStyle }}">
+                <div style="display:flex;align-items:center;justify-content:space-between">
+                  <div style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:{{ c.eyebrowColor }};font-weight:600">Card</div>
+                  <div style="{{ c.reuseBadge }}">{{ c.reuseLabel }}</div>
+                </div>
+                <div style="font-size:14px;font-weight:600;margin-top:10px;line-height:1.4">{{ c.title }}</div>
+                <div style="font-size:12px;color:hsl(230 10% 82%);margin-top:8px;line-height:1.5">{{ c.body }}</div>
+                <div style="margin-top:auto;padding-top:10px">
+                  <div style="font-size:11px;color:hsl(230 10% 74%)">{{ c.usedIn }}</div>
+                  <div style="font-size:11px;color:{{ c.genColor }};margin-top:3px;font-weight:600">{{ c.genLabel }}</div>
+                </div>
+              </div>
+              </sc-for>
+              <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;min-height:132px;border-radius:16px;border:1px dashed hsl(266 95% 66% / .45);color:hsl(266 90% 82%);font-size:13px;font-weight:600;cursor:pointer" style-hover="background:hsl(266 95% 66% / .1)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" /></svg>
+                Novo card
+              </div>
+            </div>
+          </div>
+          </sc-if>
+  </div>
+
+  <sc-if value="{{ showDialog }}">
+  <div style="position:fixed;inset:0;z-index:60;background:hsl(225 40% 4% / .78);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:32px">
+    <div style="width:100%;max-width:620px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(266 95% 66% / .35);box-shadow:0 30px 90px hsl(225 40% 2% / .8);overflow:hidden">
+      <div style="padding:26px 28px 22px;background:linear-gradient(140deg, hsl(258 30% 18%), hsl(226 28% 12%));border-bottom:1px solid hsl(226 20% 22%)">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:34px;height:38px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 90% 77%));clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="hsl(266 30% 12%)" stroke-width="2.4"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z" /></svg>
+          </div>
+          <div style="font-family:Cinzel, serif;font-size:22px;font-weight:700">Gerar trilha com IA</div>
+          <div onClick="{{ closeDialog }}" style="margin-left:auto;width:32px;height:32px;border-radius:999px;background:hsl(226 20% 20%);display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="background:hsl(226 20% 26%)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 82%)" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </div>
+        </div>
+        <div style="font-size:13px;color:hsl(230 10% 80%);margin-top:12px;line-height:1.6">Descreva o plano de ensino de <strong style="font-weight:600">Física I</strong>. A IA propõe os tópicos e a ordem — você revisa antes de aplicar. Nada é publicado sem a sua confirmação.</div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:18px">
+          <div style="{{ step1 }}"></div>
+          <div style="{{ stepLine1 }}"></div>
+          <div style="{{ step2 }}"></div>
+          <div style="{{ stepLine2 }}"></div>
+          <div style="{{ step3 }}"></div>
+          <div style="{{ stepLine3 }}"></div>
+          <div style="{{ step4 }}"></div>
+          <div style="{{ stepLine4 }}"></div>
+          <div style="{{ step5 }}"></div>
+          <div style="{{ stepLine5 }}"></div>
+          <div style="{{ step6 }}"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:hsl(230 10% 66%);margin-top:6px">
+          <div>Configurar</div><div>Gerar</div><div>Processando</div><div>Resultado</div><div>Revisar</div><div>Ajustar</div>
+        </div>
+      </div>
+
+      <sc-if value="{{ isConfig }}" hint-placeholder-val="{{ true }}">
+      <div style="padding:24px 28px 26px">
+        <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 74%);font-weight:600">O que a turma precisa aprender</div>
+        <div style="margin-top:10px;padding:14px 16px;border-radius:16px;background:hsl(226 22% 16%);border:1px solid hsl(226 20% 26%);min-height:96px;font-size:14px;color:hsl(230 10% 68%);line-height:1.6">Ex.: semestre de mecânica clássica para engenharia, da cinemática até trabalho e energia, com ênfase em resolução de problemas…</div>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:14px;padding:14px 16px;border-radius:16px;border:1px dashed hsl(266 95% 66% / .45);cursor:pointer" style-hover="background:hsl(266 95% 66% / .08)">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="hsl(266 90% 80%)" stroke-width="2"><path d="M12 16V4M7 9l5-5 5 5" /><path d="M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3" /></svg>
+          <div style="font-size:13px;color:hsl(230 10% 84%)">Anexar plano de ensino ou ementa (PDF, DOCX)</div>
+        </div>
+        <div style="display:flex;gap:14px;margin-top:18px;flex-wrap:wrap">
+          <div style="flex:1;min-width:180px">
+            <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 74%);font-weight:600">Quantidade de tópicos</div>
+            <div style="display:flex;gap:6px;margin-top:10px">
+              <div style="padding:9px 16px;border-radius:999px;background:hsl(226 22% 16%);font-size:13px;color:hsl(230 10% 80%);cursor:pointer">6</div>
+              <div style="padding:9px 16px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));font-size:13px;font-weight:600;color:hsl(40 20% 96%);cursor:pointer">8</div>
+              <div style="padding:9px 16px;border-radius:999px;background:hsl(226 22% 16%);font-size:13px;color:hsl(230 10% 80%);cursor:pointer">12</div>
+            </div>
+          </div>
+          <div style="flex:1;min-width:180px">
+            <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 74%);font-weight:600">Já gerar atividades?</div>
+            <div style="display:flex;gap:6px;margin-top:10px">
+              <div style="padding:9px 16px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));font-size:13px;font-weight:600;color:hsl(40 20% 96%);cursor:pointer">Sim</div>
+              <div style="padding:9px 16px;border-radius:999px;background:hsl(226 22% 16%);font-size:13px;color:hsl(230 10% 80%);cursor:pointer">Só tópicos</div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:26px">
+          <div onClick="{{ closeDialog }}" style="padding:12px 22px;border-radius:999px;border:1px solid hsl(226 20% 26%);font-size:14px;font-weight:600;color:hsl(230 10% 82%);cursor:pointer" style-hover="border-color:hsl(266 95% 66% / .6)">Cancelar</div>
+          <div onClick="{{ startGenerate }}" style="margin-left:auto;padding:12px 26px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));font-size:14px;font-weight:600;color:hsl(40 20% 96%);cursor:pointer;box-shadow:0 0 26px hsl(266 95% 66% / .4)">Gerar proposta</div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isProcessing }}">
+      <div style="padding:34px 28px 30px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:18px">
+        <div style="position:relative;width:60px;height:66px">
+          <div style="position:absolute;inset:0;background:hsl(266 95% 66% / .18);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);animation:tu-glow 1.6s ease-in-out infinite"></div>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+            <div style="width:22px;height:22px;border-radius:999px;border:2.5px solid hsl(266 90% 80% / .3);border-top-color:hsl(266 90% 82%);animation:tu-spin 1s linear infinite"></div>
+          </div>
+        </div>
+        <div style="font-family:Cinzel, serif;font-size:20px;font-weight:700">{{ processLabel }}</div>
+        <div style="width:100%;max-width:380px;height:8px;border-radius:999px;background:hsl(226 20% 20%);overflow:hidden">
+          <div style="{{ processBar }}"></div>
+        </div>
+        <div style="font-size:13px;color:hsl(230 10% 78%);line-height:1.6">{{ processNote }}</div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isResult }}">
+      <div style="padding:24px 28px 26px">
+        <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:14px;background:hsl(142 40% 14%);border:1px solid hsl(142 65% 50% / .4)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="hsl(142 65% 64%)" stroke-width="3"><path d="M5 13l4 4 10-10" /></svg>
+          <div style="font-size:13px;color:hsl(120 12% 88%)">Proposta gerada: 8 tópicos, 24 conteúdos e 3 atividades iniciais.</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:16px;max-height:280px;overflow-y:auto">
+          <sc-for list="{{ proposal }}" as="p" hint-placeholder-count="8">
+            <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:14px;background:hsl(226 22% 16%)">
+              <div style="width:24px;height:27px;flex:none;background:hsl(266 90% 77%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:hsl(266 30% 12%)">{{ p.n }}</div>
+              <div style="min-width:0;flex:1">
+                <div style="font-size:13px;font-weight:600">{{ p.name }}</div>
+                <div style="font-size:11px;color:hsl(230 10% 76%);margin-top:2px">{{ p.meta }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:20px">
+          <div onClick="{{ discardResult }}" style="padding:12px 22px;border-radius:999px;border:1px solid hsl(226 20% 26%);font-size:14px;font-weight:600;color:hsl(230 10% 82%);cursor:pointer" style-hover="border-color:hsl(266 95% 66% / .6)">Descartar</div>
+          <div onClick="{{ startReview }}" style="margin-left:auto;padding:12px 26px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));font-size:14px;font-weight:600;color:hsl(40 20% 96%);cursor:pointer;box-shadow:0 0 26px hsl(266 95% 66% / .4)">Revisar</div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isReview }}">
+      <div style="padding:24px 28px 26px">
+        <div style="font-size:13px;color:hsl(230 10% 80%);line-height:1.6">Confira a proposta. Se algo não estiver certo, peça um ajuste pontual — não é preciso gerar tudo de novo.</div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:16px;max-height:220px;overflow-y:auto">
+          <sc-for list="{{ proposal }}" as="p" hint-placeholder-count="8">
+            <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:14px;background:hsl(226 22% 16%)">
+              <div style="width:24px;height:27px;flex:none;background:hsl(266 90% 77%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:hsl(266 30% 12%)">{{ p.n }}</div>
+              <div style="min-width:0;flex:1">
+                <div style="font-size:13px;font-weight:600">{{ p.name }}</div>
+                <div style="font-size:11px;color:hsl(230 10% 76%);margin-top:2px">{{ p.meta }}</div>
+              </div>
+              <div onClick="{{ p.adjust }}" style="font-size:12px;font-weight:600;color:hsl(266 90% 82%);cursor:pointer;white-space:nowrap">Pedir ajuste</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:20px">
+          <div onClick="{{ backToResult }}" style="padding:12px 22px;border-radius:999px;border:1px solid hsl(226 20% 26%);font-size:14px;font-weight:600;color:hsl(230 10% 82%);cursor:pointer" style-hover="border-color:hsl(266 95% 66% / .6)">Voltar</div>
+          <div onClick="{{ applyProposal }}" style="margin-left:auto;padding:12px 26px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));font-size:14px;font-weight:600;color:hsl(40 20% 96%);cursor:pointer;box-shadow:0 0 26px hsl(266 95% 66% / .4)">Aplicar trilha</div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isAdjust }}">
+      <div style="padding:24px 28px 26px">
+        <div onClick="{{ backToReview }}" style="display:inline-flex;align-items:center;gap:8px;font-size:12px;color:hsl(230 10% 78%);cursor:pointer;margin-bottom:16px" style-hover="color:hsl(266 90% 77%)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6" /></svg>
+          Voltar para a revisão
+        </div>
+        <div style="padding:14px 16px;border-radius:14px;background:hsl(226 24% 17%);border:1px solid hsl(266 95% 66% / .4)">
+          <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(266 90% 80%);font-weight:600">Ajustando</div>
+          <div style="font-size:15px;font-weight:700;margin-top:6px">{{ adjustTarget }}</div>
+        </div>
+        <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 74%);font-weight:600;margin-top:18px">O que mudar neste tópico</div>
+        <div style="margin-top:10px;padding:14px 16px;border-radius:16px;background:hsl(226 22% 16%);border:1px solid hsl(266 95% 66% / .45);min-height:88px;font-size:14px;color:hsl(230 10% 84%);line-height:1.6">Ex.: trocar o exemplo do carro por algo de esportes, e reduzir para 2 conteúdos em vez de 3.</div>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:20px">
+          <div onClick="{{ backToReview }}" style="padding:12px 22px;border-radius:999px;border:1px solid hsl(226 20% 26%);font-size:14px;font-weight:600;color:hsl(230 10% 82%);cursor:pointer" style-hover="border-color:hsl(266 95% 66% / .6)">Cancelar</div>
+          <div onClick="{{ applyAdjust }}" style="margin-left:auto;padding:12px 26px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));font-size:14px;font-weight:600;color:hsl(40 20% 96%);cursor:pointer;box-shadow:0 0 26px hsl(266 95% 66% / .4)">Regerar só este item</div>
+        </div>
+      </div>
+      </sc-if>
+    </div>
+  </div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;estado&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;editor&quot;,&quot;turma não selecionada&quot;,&quot;gerar trilha (IA)&quot;],&quot;default&quot;:&quot;editor&quot;,&quot;tsType&quot;:&quot;'editor' | 'turma não selecionada' | 'gerar trilha (IA)'&quot;,&quot;section&quot;:&quot;Estados da tela&quot;}}">
+const TOPICS = [
+  '', 'Introdução à Física', 'Medidas e Unidades', 'Cinemática', 'Vetores',
+  'Dinâmica', 'Trabalho e Energia', 'Rotação', 'Fluidos'
+];
+
+const CRUMB_BASE = 'display:flex;align-items:center;gap:8px;padding:6px 14px 6px 8px;border-radius:999px;';
+const CRUMB_ON = CRUMB_BASE + 'background:hsl(266 95% 66% / .22);border:1px solid hsl(266 95% 66% / .55);box-shadow:0 0 16px hsl(266 95% 66% / .25)';
+const CRUMB_PAST = CRUMB_BASE + 'background:hsl(226 20% 20%)';
+const CRUMB_OFF = CRUMB_BASE + 'background:hsl(226 22% 14%);opacity:.42';
+
+const TAB_BASE = 'padding:9px 16px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;';
+const TAB_ON = TAB_BASE + 'background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));color:hsl(40 20% 96%);box-shadow:0 0 18px hsl(266 95% 66% / .35)';
+const TAB_OFF = TAB_BASE + 'color:hsl(230 10% 76%)';
+
+const TOPIC_DESC = {
+  3: 'Como descrever o movimento sem se preocupar com a causa: posição, velocidade e aceleração.'
+};
+
+/* CARDS: reusable study cards, each may be linked to more than one content */
+const CARDS = [
+  { id: 'c1', title: 'Velocidade média = Δs / Δt', body: 'Vale para o trajeto inteiro, não para cada instante.', usedIn: ['Movimento uniforme — leitura', 'Gráficos de posição e velocidade'], genStatus: 'full' },
+  { id: 'c2', title: 'Referencial muda o movimento', body: 'Quem está parado para você pode estar em movimento para outro.', usedIn: ['Movimento uniforme — leitura'], genStatus: 'full' },
+  { id: 'c3', title: 'Unidades: km/h → m/s', body: 'Divida por 3,6. Sempre confira a unidade antes de responder.', usedIn: ['Movimento uniforme — leitura', 'Queda livre — simulação', 'Gráficos de posição e velocidade'], genStatus: 'partial' },
+  { id: 'c4', title: 'Aceleração é a taxa de variação da velocidade', body: 'Não é a velocidade — é o quanto ela muda por segundo.', usedIn: ['Gráficos de posição e velocidade'], genStatus: 'full' },
+  { id: 'c5', title: 'Queda livre: mesma aceleração para todos', body: 'Sem atrito do ar, uma pena e uma bola caem juntas.', usedIn: ['Queda livre — simulação'], genStatus: 'full' },
+  { id: 'c6', title: 'Gráfico x×t: a inclinação é a velocidade', body: 'Quanto mais inclinada a reta, mais rápido o movimento.', usedIn: [], genStatus: 'none' }
+];
+
+/* CONTENTS: each content pulls a subset of the topic's cards and has its own questions */
+const CONTENTS = [
+  { id: 'ct1', name: 'Movimento uniforme — leitura', kind: 'texto', qCount: 3,
+    meta: 'Texto · 820 palavras · fonte: cinematica-cap3.pdf',
+    cardIds: ['c1', 'c2', 'c3'],
+    questions: [
+      { kind: 'Múltipla escolha', points: 2, text: 'Um carro percorre 240 km em 3 h. Qual a velocidade média em m/s?', color: '#a95cf5' },
+      { kind: 'Verdadeiro ou falso', points: 1, text: 'No movimento uniforme a aceleração é constante e diferente de zero.', color: '#6d7c8c' },
+      { kind: 'Dissertativa', points: 3, text: 'Explique por que a velocidade média não descreve bem um trajeto com paradas.', color: '#c98a3e' }
+    ] },
+  { id: 'ct2', name: 'Gráficos de posição e velocidade', kind: 'atividade', qCount: 2,
+    meta: 'Atividade · 6 questões cadastradas (2 exibidas aqui) · vale 10 pontos',
+    cardIds: ['c1', 'c3', 'c4'],
+    questions: [
+      { kind: 'Múltipla escolha', points: 2, text: 'No gráfico posição × tempo, o que representa a inclinação da reta?', color: '#a95cf5' },
+      { kind: 'Múltipla escolha', points: 2, text: 'Uma reta horizontal no gráfico x×t indica que o objeto está:', color: '#a95cf5' }
+    ] },
+  { id: 'ct3', name: 'Queda livre — simulação', kind: 'link', qCount: 1,
+    meta: 'Link externo · phet.colorado.edu',
+    cardIds: ['c3', 'c5'],
+    questions: [
+      { kind: 'Dissertativa', points: 3, text: 'Na simulação, o que muda no tempo de queda ao ligar a resistência do ar?', color: '#c98a3e' }
+    ] },
+  { id: 'ct4', name: 'Lista de exercícios 2026', kind: 'pdf', qCount: 0,
+    meta: 'PDF · extraindo conteúdo (7 de 11 páginas)',
+    cardIds: [],
+    questions: [] }
+];
+
+const KIND_ICON = {
+  texto: { bg: 'hsl(226 28% 12%)', border: '1px solid hsl(226 20% 26%)' },
+  atividade: { bg: 'hsl(266 95% 66% / .18)', border: '1px solid hsl(266 95% 66% / .4)' },
+  link: { bg: 'hsl(226 28% 12%)', border: '1px solid hsl(226 20% 26%)' },
+  pdf: { bg: 'hsl(0 55% 22%)', border: '1px solid hsl(0 70% 55% / .4)' }
+};
+
+const GEN_LABEL = { full: { c: 'hsl(142 65% 62%)', t: '7 de 7 perfis gerados' }, partial: { c: 'hsl(45 90% 66%)', t: '4 de 7 perfis gerados' }, none: { c: 'hsl(230 10% 68%)', t: 'ainda não gerado' } };
+
+const GEN_STEP_ON = 'width:22px;height:22px;border-radius:999px;flex:none;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));display:flex;align-items:center;justify-content:center';
+const GEN_STEP_DONE = 'width:22px;height:22px;border-radius:999px;flex:none;background:hsl(226 20% 26%);display:flex;align-items:center;justify-content:center';
+const GEN_STEP_OFF = 'width:22px;height:22px;border-radius:999px;flex:none;background:hsl(226 20% 18%);border:1px solid hsl(226 20% 26%)';
+const GEN_LINE_ON = 'flex:1;height:2px;background:hsl(266 95% 66% / .6)';
+const GEN_LINE_OFF = 'flex:1;height:2px;background:hsl(226 20% 22%)';
+
+const PROCESS_STAGES = [
+  { at: 0, label: 'Lendo o plano de ensino', note: 'Extraindo os temas principais do que você descreveu e do PDF anexado.' },
+  { at: 30, label: 'Organizando a sequência de tópicos', note: 'Definindo pré-requisitos e a ordem em que os tópicos aparecem no mapa.' },
+  { at: 62, label: 'Rascunhando conteúdos por tópico', note: 'Montando os conteúdos e a contagem inicial de questões de cada um.' },
+  { at: 88, label: 'Finalizando a proposta', note: 'Consolidando tudo antes de mostrar para você revisar.' }
+];
+
+const PROPOSAL = [
+  ['1', 'Introdução à Física', '3 conteúdos · 2 questões'],
+  ['2', 'Medidas e Unidades', '2 conteúdos · 4 questões'],
+  ['3', 'Cinemática', '4 conteúdos · 9 questões'],
+  ['4', 'Vetores', '3 conteúdos · 6 questões'],
+  ['5', 'Dinâmica', '5 conteúdos · 11 questões'],
+  ['6', 'Trabalho e Energia', '2 conteúdos · 3 questões'],
+  ['7', 'Rotação', '3 conteúdos · 5 questões'],
+  ['8', 'Fluidos', '2 conteúdos · 4 questões']
+];
+
+const CANVAS_W = 1000, CANVAS_H = 452, VIEWPORT_H = 480;
+
+class Component extends DCLogic {
+  state = { topic: 3, tab: 0, contentId: null, dialog: false, emptyOverride: null, delQ: null, linkNote: false,
+    genStep: 0, processPct: 0, adjustIdx: null,
+    panX: 40, panY: 20, zoom: 0.9, dragging: false };
+
+  canvasDown(ev) {
+    this._dragStart = { x: ev.clientX, y: ev.clientY, panX: this.state.panX, panY: this.state.panY };
+    this.setState({ dragging: true });
+  }
+  canvasMove(ev) {
+    if (!this.state.dragging || !this._dragStart) return;
+    this.setState({
+      panX: this._dragStart.panX + (ev.clientX - this._dragStart.x),
+      panY: this._dragStart.panY + (ev.clientY - this._dragStart.y)
+    });
+  }
+  canvasUp() { this.setState({ dragging: false }); this._dragStart = null; }
+  canvasWheel(ev) {
+    ev.preventDefault();
+    const delta = ev.deltaY > 0 ? -0.08 : 0.08;
+    const next = Math.min(1.8, Math.max(0.35, this.state.zoom + delta));
+    this.setState({ zoom: next });
+  }
+  zoomIn() { this.setState({ zoom: Math.min(1.8, this.state.zoom + 0.15) }); }
+  zoomOut() { this.setState({ zoom: Math.max(0.35, this.state.zoom - 0.15) }); }
+  fitToScreen() {
+    const scale = Math.min((900 - 20) / CANVAS_W, (VIEWPORT_H - 20) / CANVAS_H);
+    const z = Math.max(0.35, Math.min(1.8, scale));
+    this.setState({ zoom: z, panX: (900 - CANVAS_W * z) / 2, panY: (VIEWPORT_H - CANVAS_H * z) / 2 });
+  }
+  centerCanvas() { this.setState({ panX: 40, panY: 20 }); }
+
+  startGenerate() {
+    this.setState({ genStep: 2, processPct: 0 });
+    this._tick = setInterval(() => {
+      const pct = Math.min(100, this.state.processPct + 9);
+      this.setState({ processPct: pct });
+      if (pct >= 100) { clearInterval(this._tick); this.setState({ genStep: 3 }); }
+    }, 260);
+  }
+
+  estado() {
+    if (this.state.emptyOverride) return this.state.emptyOverride;
+    return this.props.estado || 'editor';
+  }
+
+  renderVals() {
+    const e = this.estado();
+    const t = this.state.tab;
+    const cid = this.state.contentId;
+    const deepest = cid ? 3 : 2;
+    const pick = n => () => this.setState({ topic: n, contentId: null });
+
+    const cardUseCount = id => CONTENTS.filter(c => c.cardIds.includes(id)).length;
+
+    const contents = CONTENTS.map(c => {
+      const ki = KIND_ICON[c.kind];
+      const on = c.id === cid;
+      return {
+        name: c.name, meta: c.meta, qCount: c.qCount,
+        rowStyle: 'padding:14px 16px;border-radius:16px;cursor:pointer;background:' + ki.bg + ';border:' + ki.border + (on ? ';box-shadow:0 0 0 2px hsl(266 95% 66% / .5) inset' : ''),
+        iconBox: 'width:38px;height:44px;flex:none;border-radius:6px;display:flex;align-items:center;justify-content:center;background:' + ki.bg,
+        isTexto: c.kind === 'texto', isAtividade: c.kind === 'atividade', isLink: c.kind === 'link', isPdf: c.kind === 'pdf',
+        open: () => this.setState({ contentId: c.id, delQ: null })
+      };
+    });
+
+    const activeContent = CONTENTS.find(c => c.id === cid);
+    const sel = activeContent ? {
+      name: activeContent.name, meta: activeContent.meta,
+      cards: activeContent.cardIds.map(id => {
+        const card = CARDS.find(x => x.id === id);
+        const n = cardUseCount(id);
+        return {
+          title: card.title,
+          reuseLabel: n > 1 ? 'em ' + n + ' conteúdos' : 'só aqui',
+          reuseBadge: 'padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;' + (n > 1 ? 'background:hsl(266 95% 66% / .2);color:hsl(266 90% 84%)' : 'background:hsl(226 20% 22%);color:hsl(230 10% 74%)')
+        };
+      }),
+      questions: activeContent.questions.map((q, i) => ({
+        n: i + 1, kind: q.kind, points: q.points, text: q.text,
+        numBox: 'width:22px;height:25px;flex:none;background:' + q.color + ';clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:hsl(266 30% 12%)',
+        kindChip: 'padding:4px 11px;border-radius:999px;font-size:11px;font-weight:600;background:hsl(226 28% 12%);color:hsl(230 10% 82%)',
+        border: this.state.delQ === i ? 'border:1px solid hsl(0 70% 55% / .5)' : 'border:1px solid transparent',
+        confirming: this.state.delQ === i,
+        askDel: () => this.setState({ delQ: i }),
+        cancelDel: () => this.setState({ delQ: null })
+      }))
+    } : { name: '', meta: '', cards: [], questions: [] };
+
+    const cards = CARDS.map(c => {
+      const n = cardUseCount(c.id);
+      const g = GEN_LABEL[c.genStatus];
+      return {
+        title: c.title, body: c.body,
+        usedIn: n === 0 ? 'não vinculado a nenhum conteúdo' : ('usado em: ' + c.usedIn.join(' · ')),
+        genColor: g.c, genLabel: g.t,
+        reuseLabel: n === 0 ? 'sem uso' : (n + (n === 1 ? ' conteúdo' : ' conteúdos')),
+        reuseBadge: 'padding:2px 9px;border-radius:999px;font-size:10px;font-weight:700;' + (n > 1 ? 'background:hsl(266 95% 66% / .2);color:hsl(266 90% 84%)' : 'background:hsl(226 20% 22%);color:hsl(230 10% 76%)'),
+        eyebrowColor: n > 0 ? 'hsl(266 90% 80%)' : 'hsl(230 10% 68%)',
+        cardStyle: 'padding:16px;border-radius:16px;min-height:150px;display:flex;flex-direction:column;' + (n > 0 ? 'background:hsl(226 24% 15%);border:1px solid hsl(266 95% 66% / .25)' : 'background:hsl(226 22% 16%);border:1px solid hsl(226 20% 26%)')
+      };
+    });
+
+    const gs = this.state.genStep;
+    const stageStep = n => gs > n ? GEN_STEP_DONE : gs === n ? GEN_STEP_ON : GEN_STEP_OFF;
+    const stage = PROCESS_STAGES.slice().reverse().find(s => this.state.processPct >= s.at) || PROCESS_STAGES[0];
+    const proposal = PROPOSAL.map((p, i) => ({
+      n: p[0], name: p[1], meta: p[2],
+      adjust: () => this.setState({ genStep: 5, adjustIdx: i })
+    }));
+
+    return {
+      isEditor: e === 'editor',
+      isEmpty: e === 'turma não selecionada',
+      showDialog: this.state.dialog || e === 'gerar trilha (IA)',
+      openDialog: () => this.setState({ dialog: true, genStep: 0, processPct: 0 }),
+      closeDialog: () => { clearInterval(this._tick); this.setState({ dialog: false, emptyOverride: 'editor', genStep: 0 }); },
+      closeEmpty: () => this.setState({ emptyOverride: 'editor' }),
+      step1: stageStep(0), step2: stageStep(1), step3: stageStep(2), step4: stageStep(3), step5: stageStep(4), step6: stageStep(5),
+      stepLine1: gs > 0 ? GEN_LINE_ON : GEN_LINE_OFF, stepLine2: gs > 1 ? GEN_LINE_ON : GEN_LINE_OFF,
+      stepLine3: gs > 2 ? GEN_LINE_ON : GEN_LINE_OFF, stepLine4: gs > 3 ? GEN_LINE_ON : GEN_LINE_OFF, stepLine5: gs > 4 ? GEN_LINE_ON : GEN_LINE_OFF,
+      isConfig: gs === 0, isProcessing: gs === 2, isResult: gs === 3, isReview: gs === 4, isAdjust: gs === 5,
+      startGenerate: () => this.startGenerate(),
+      processBar: 'width:' + this.state.processPct + '%;height:100%;border-radius:999px;background:linear-gradient(90deg, hsl(265 65% 50%), hsl(266 90% 77%))',
+      processLabel: stage.label, processNote: stage.note,
+      proposal,
+      discardResult: () => this.setState({ genStep: 0 }),
+      startReview: () => this.setState({ genStep: 4 }),
+      backToResult: () => this.setState({ genStep: 3 }),
+      applyProposal: () => { this.setState({ dialog: false, emptyOverride: 'editor', genStep: 0 }); },
+      backToReview: () => this.setState({ genStep: 4, adjustIdx: null }),
+      adjustTarget: this.state.adjustIdx !== null ? (PROPOSAL[this.state.adjustIdx][0] + ' · ' + PROPOSAL[this.state.adjustIdx][1]) : '',
+      applyAdjust: () => this.setState({ genStep: 4, adjustIdx: null }),
+      viewportStyle: 'position:relative;height:' + VIEWPORT_H + 'px;overflow:hidden;background-image:radial-gradient(hsl(230 15% 30% / .55) 1px, transparent 1px);background-size:26px 26px;cursor:' + (this.state.dragging ? 'grabbing' : 'grab') + ';user-select:none',
+      canvasStyle: 'position:absolute;left:0;top:0;width:' + CANVAS_W + 'px;height:' + CANVAS_H + 'px;transform-origin:0 0;transform:translate(' + this.state.panX + 'px,' + this.state.panY + 'px) scale(' + this.state.zoom + ')',
+      canvasDown: ev => this.canvasDown(ev), canvasMove: ev => this.canvasMove(ev), canvasUp: () => this.canvasUp(), canvasWheel: ev => this.canvasWheel(ev),
+      zoomIn: () => this.zoomIn(), zoomOut: () => this.zoomOut(), fitToScreen: () => this.fitToScreen(), centerCanvas: () => this.centerCanvas(),
+      zoomLabel: Math.round(this.state.zoom * 100) + '%',
+      topicNum: this.state.topic,
+      topicName: TOPICS[this.state.topic],
+      topicDesc: TOPIC_DESC[this.state.topic] || 'Sem descrição cadastrada ainda.',
+      crumb2: TOPICS[this.state.topic],
+      crumb3: cid ? activeContent.name : 'Conteúdo',
+      crumb4: cid ? 'Questão 1 de ' + activeContent.qCount : 'Questão',
+      crumb2Style: deepest === 2 ? CRUMB_ON : CRUMB_PAST,
+      crumb3Style: cid ? CRUMB_ON : CRUMB_OFF,
+      crumb4Style: cid && activeContent.qCount ? CRUMB_PAST : CRUMB_OFF,
+      tab0: () => this.setState({ tab: 0 }),
+      tab2: () => this.setState({ tab: 2, contentId: null }),
+      tabStyle0: t === 0 ? TAB_ON : TAB_OFF,
+      tabStyle2: t === 2 ? TAB_ON : TAB_OFF,
+      isTab0: t === 0,
+      isTab2: t === 2,
+      noContent: !cid,
+      hasContent: !!cid,
+      closeContent: () => this.setState({ contentId: null, delQ: null }),
+      contents, sel, cards,
+      openLinkCard: () => this.setState({ linkNote: true }),
+      pick1: pick(1), pick2: pick(2), pick3: pick(3), pick4: pick(4),
+      pick5: pick(5), pick6: pick(6), pick7: pick(7), pick8: pick(8)
+    };
+  }
+}
+
+</script>
+</body>
+</html>

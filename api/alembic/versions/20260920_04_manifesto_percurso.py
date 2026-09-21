@@ -1,5 +1,6 @@
 """Count the current delivered journey, not historical generated versions."""
 from pathlib import Path
+
 from alembic import op
 
 revision = '20260920_04'

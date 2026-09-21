@@ -1,11 +1,13 @@
 """Validate progress/time migrations against live schema; ALWAYS roll back test data."""
 import argparse
 import importlib.util
+from decimal import Decimal
 from pathlib import Path
 from uuid import uuid4
-from decimal import Decimal
+
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import DBAPIError
+
 from app.core.settings import get_settings
 from app.db.migrations import normalize_database_url_for_alembic
 

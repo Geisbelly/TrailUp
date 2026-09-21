@@ -1,9 +1,11 @@
 """Read-only checks of teacher slide references; no tokens or full URLs logged."""
 import argparse
 import json
-from urllib.parse import urlparse, unquote, quote
+from urllib.parse import quote, unquote, urlparse
+
 import httpx
 from sqlalchemy import create_engine, text
+
 from app.core.settings import get_settings
 from app.db.migrations import normalize_database_url_for_alembic
 

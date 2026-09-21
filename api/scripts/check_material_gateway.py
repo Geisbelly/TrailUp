@@ -1,7 +1,7 @@
 """Read-only checks of persisted material links; never prints signed URLs or keys."""
 import argparse
 from collections import Counter
-from urllib.parse import urlparse, quote
+from urllib.parse import quote, urlparse
 
 import httpx
 from sqlalchemy import create_engine, text

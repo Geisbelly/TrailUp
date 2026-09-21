@@ -1,9 +1,11 @@
 """Reproduce the authenticated topic event inside an always-rolled-back transaction."""
 import argparse
-import json
 import importlib
+import json
+
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import DBAPIError
+
 from app.core.settings import get_settings
 from app.db.migrations import normalize_database_url_for_alembic
 

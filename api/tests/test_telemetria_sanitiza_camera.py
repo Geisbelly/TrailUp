@@ -8,8 +8,8 @@ numa coluna JSONB, exatamente o que a sanitizacao existe para evitar.
 """
 
 from datetime import UTC, datetime
-from typing import Any
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import AsyncMock
 
 from app.api.v1 import telemetria as rota

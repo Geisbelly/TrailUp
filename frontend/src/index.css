@@ -7,111 +7,39 @@ All colors MUST be HSL.
 */
 
 @layer base {
-  :root {
-    /* TrailUp Dark Theme - Mistico Medieval (grimorio + violeta arcano).
-       Primary calibrado por amostragem direta dos pixels do logo oficial
-       (src/assets/trailup-logo.png — faceta clara/estrela ~hsl(266 95% 66%),
-       faceta escura ~hsl(265 65% 50%)), nao mais o indigo do login antigo.
-       Accent fica no indigo (o tom que era primary antes) como par frio
-       complementar, dando o gradiente violeta->indigo usado nos titulos/CTAs.
-       Sem dourado no sistema base — removido por pedido direto (nao
-       representa a identidade real do app). Nao usa uma cor de perfil
-       BrainHex especifica como primary para nao favorecer um perfil sobre
-       os outros na pagina publica — os 7 perfis aparecem com suas cores
-       reais na secao "Conheca os 7 perfis". */
-    --background: 225 32% 8%;
-    --foreground: 40 20% 94%;
-
-    --card: 226 28% 12%;
-    --card-foreground: 40 20% 94%;
-
-    --popover: 225 32% 7%;
-    --popover-foreground: 40 20% 94%;
-
-    /* Primary - Violeta do logo (amostrado direto do PNG oficial) */
-    --primary: 266 95% 66%;
-    --primary-foreground: 266 30% 10%;
-
-    /* Primary variants for gradients (faceta clara / faceta escura do logo) */
-    --primary-light: 266 90% 77%;
-    --primary-dark: 265 65% 50%;
-
-    /* Secondary - Bronze/cobre escuro */
-    --secondary: 25 35% 26%;
-    --secondary-foreground: 40 20% 94%;
-
-    --muted: 226 20% 20%;
-    --muted-foreground: 230 10% 72%;
-
-    /* Accent - Indigo arcano (par frio complementar ao violeta do logo,
-       sem dourado: gradientes/glow secundario ficam na mesma familia) */
-    --accent: 239 84% 67%;
-    --accent-foreground: 226 30% 10%;
-
+  :root, .dark {
+    /* Shared brand surfaces also reach dialogs rendered in body portals. */
+    --background: 264 43% 10%;
+    --foreground: 280 50% 97%;
+    --card: 268 29% 14%;
+    --card-foreground: 280 50% 97%;
+    --popover: 268 29% 14%;
+    --popover-foreground: 280 50% 97%;
+    --primary: 270 57% 73%;
+    --primary-foreground: 264 43% 10%;
+    --primary-light: 270 64% 82%;
+    --primary-dark: 268 38% 43%;
+    --secondary: 12 100% 80%;
+    --secondary-foreground: 333 41% 14%;
+    --muted: 268 23% 20%;
+    --muted-foreground: 272 18% 76%;
+    --accent: 162 54% 73%;
+    --accent-foreground: 165 45% 10%;
     --destructive: 0 70% 55%;
     --destructive-foreground: 40 20% 94%;
-
-    --border: 226 20% 22%;
-    --input: 226 22% 16%;
-    --ring: 266 95% 66%;
-
-    --radius: 1.25rem;
-
-    /* Cores semanticas fixas (nao derivadas do primary/accent) */
+    --border: 268 22% 29%;
+    --input: 268 22% 29%;
+    --ring: 162 54% 73%;
+    --radius: .5rem;
+    /* Semantic colors and individual BrainHex colors remain independent. */
     --success: 142 65% 50%;
     --warning: 45 90% 58%;
     --info: 205 70% 58%;
 
-    /* Glow effects */
-    --glow-primary: 266 95% 66%;
-    --glow-secondary: 239 84% 67%;
-
-    /* Hexagon badge background */
-    --badge-bg: 25 35% 22%;
-    --badge-border: 266 95% 66%;
-  }
-
-  .dark {
-    --background: 225 32% 8%;
-    --foreground: 40 20% 94%;
-
-    --card: 226 28% 12%;
-    --card-foreground: 40 20% 94%;
-
-    --popover: 225 32% 7%;
-    --popover-foreground: 40 20% 94%;
-
-    --primary: 266 95% 66%;
-    --primary-foreground: 266 30% 10%;
-
-    --primary-light: 266 90% 77%;
-    --primary-dark: 265 65% 50%;
-
-    --secondary: 25 35% 26%;
-    --secondary-foreground: 40 20% 94%;
-
-    --muted: 226 20% 20%;
-    --muted-foreground: 230 10% 72%;
-
-    --accent: 239 84% 67%;
-    --accent-foreground: 226 30% 10%;
-
-    --destructive: 0 70% 55%;
-    --destructive-foreground: 40 20% 94%;
-
-    --border: 226 20% 22%;
-    --input: 226 22% 16%;
-    --ring: 266 95% 66%;
-
-    --success: 142 65% 50%;
-    --warning: 45 90% 58%;
-    --info: 205 70% 58%;
-
-    --glow-primary: 266 95% 66%;
-    --glow-secondary: 239 84% 67%;
-
-    --badge-bg: 25 35% 22%;
-    --badge-border: 266 95% 66%;
+    --glow-primary: 270 57% 73%;
+    --glow-secondary: 162 54% 73%;
+    --badge-bg: 268 23% 20%;
+    --badge-border: 270 57% 73%;
   }
 }
 

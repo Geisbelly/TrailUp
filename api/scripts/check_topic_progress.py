@@ -1,7 +1,9 @@
 """Read-only diagnosis of personalized completion; no content or credentials printed."""
-import json
 import argparse
+import json
+
 from sqlalchemy import create_engine, text
+
 from app.core.settings import get_settings
 from app.db.migrations import normalize_database_url_for_alembic
 

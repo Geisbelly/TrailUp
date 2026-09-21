@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&amp;family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:hsl(225 32% 8%); font-family:Inter, system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:hsl(266 90% 77%); text-decoration:none; }
+  a:hover { color:hsl(266 95% 82%); }
+  @keyframes tu-float { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-6px); } }
+  @keyframes tu-rise { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+</style>
+</helmet>
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:48px 24px;background:radial-gradient(900px 520px at 50% -10%, hsl(266 60% 24% / .5), transparent 62%), radial-gradient(700px 420px at 88% 92%, hsl(239 60% 24% / .3), transparent 60%), hsl(225 32% 8%);color:hsl(40 20% 94%)">
+
+  <div style="width:100%;max-width:460px">
+
+    <div style="display:flex;flex-direction:column;align-items:center;gap:16px;margin-bottom:26px">
+      <div style="position:relative;width:74px;height:82px;animation:tu-float 5s ease-in-out infinite">
+        <div style="position:absolute;inset:0;background:linear-gradient(140deg, hsl(265 65% 50% / .55), hsl(239 84% 67% / .35));clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);"></div>
+        <div style="position:absolute;inset:4px;background:hsl(226 28% 12%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center">
+          <img src="assets/trailup-logo.png" alt="TrailUp" style="width:30px;height:36px;object-fit:contain;">
+        </div>
+      </div>
+      <div style="font-family:Cinzel, serif;font-size:15px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:hsl(266 90% 80%)">TrailUp</div>
+    </div>
+
+    <div style="padding:34px 34px 30px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%);box-shadow:0 30px 80px hsl(225 40% 3% / .7)">
+
+      <div style="text-align:center">
+        <div style="font-family:Cinzel, serif;font-size:28px;font-weight:700;line-height:1.15">Login do professor</div>
+        <div style="font-size:14px;color:hsl(230 10% 76%);margin-top:8px">Acesse o console de gerenciamento</div>
+      </div>
+
+      <sc-if value="{{ isPending }}">
+      <div style="display:flex;align-items:flex-start;gap:14px;margin-top:24px;padding:16px 18px;border-radius:16px;background:hsl(45 45% 15%);border:1px solid hsl(45 90% 58% / .5);animation:tu-rise .25s ease-out">
+        <div style="width:26px;height:30px;flex:none;background:hsl(45 90% 58% / .2);border:1px solid hsl(45 90% 58% / .6);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:hsl(45 90% 70%)">!</div>
+        <div style="min-width:0">
+          <div style="font-size:14px;font-weight:700;color:hsl(45 90% 74%)">Conta aguardando aprovação</div>
+          <div style="font-size:13px;color:hsl(45 15% 88%);margin-top:6px;line-height:1.55">Seu cadastro chegou e está na fila de liberação de um administrador. Você recebe um e-mail assim que o acesso for liberado — normalmente em até um dia útil.</div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isResume }}">
+      <div style="display:flex;align-items:flex-start;gap:14px;margin-top:24px;padding:16px 18px;border-radius:16px;background:hsl(266 95% 66% / .12);border:1px solid hsl(266 95% 66% / .45);animation:tu-rise .25s ease-out">
+        <div style="width:26px;height:30px;flex:none;background:hsl(266 95% 66% / .22);border:1px solid hsl(266 95% 66% / .6);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="hsl(266 90% 84%)" stroke-width="2.6"><path d="M9 6l6 6-6 6"></path></svg>
+        </div>
+        <div style="min-width:0">
+          <div style="font-size:14px;font-weight:700;color:hsl(266 90% 84%)">Falta pouco para concluir seu cadastro</div>
+          <div style="font-size:13px;color:hsl(266 25% 90%);margin-top:6px;line-height:1.55">Entre com a senha que você criou. Na sequência pedimos apenas instituição e disciplina para finalizar.</div>
+        </div>
+      </div>
+      </sc-if>
+
+      <div style="margin-top:24px">
+        <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 78%);font-weight:600">E-mail</div>
+        <div style="display:flex;align-items:center;gap:11px;margin-top:9px;padding:14px 16px;border-radius:16px;background:hsl(226 22% 16%);border:1px solid hsl(266 95% 66% / .45)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 74%)" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="3"></rect><path d="M4 7l8 6 8-6"></path></svg>
+          <div style="font-size:14px;flex:1">{{ emailText }}</div>
+        </div>
+      </div>
+
+      <div style="margin-top:18px">
+        <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 78%);font-weight:600">Senha</div>
+        <div style="display:flex;align-items:center;gap:11px;margin-top:9px;padding:14px 16px;border-radius:16px;background:hsl(226 22% 16%);border:1px solid hsl(226 20% 26%)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 74%)" stroke-width="2"><rect x="4" y="10" width="16" height="11" rx="2.5"></rect><path d="M8 10V7a4 4 0 018 0v3"></path></svg>
+          <div style="{{ pwdStyle }}">{{ pwdText }}</div>
+          <div onClick="{{ toggle }}" style="cursor:pointer;display:flex;align-items:center">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 78%)" stroke-width="2"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"></path><circle cx="12" cy="12" r="2.5"></circle></svg>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;margin-top:12px">
+        <a href="#" style="display:inline-flex;align-items:center;gap:7px;padding:7px 14px;border-radius:999px;font-size:13px;font-weight:600;color:hsl(266 90% 80%);background:hsl(266 95% 66% / .1)" style-hover="background:hsl(266 95% 66% / .2);color:hsl(266 90% 86%)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="12" r="4" /><path d="M13 12h8M18 12v3" /></svg>
+          Esqueci minha senha
+        </a>
+      </div>
+      <a href="Console%20Dashboard.dc.html" style="display:block;margin-top:22px;padding:15px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));font-size:15px;font-weight:700;color:hsl(40 20% 96%);text-align:center;text-decoration:none;">{{ cta }}</a>
+
+      <div style="display:flex;align-items:center;gap:14px;margin:22px 0">
+        <div style="flex:1;height:1px;background:hsl(226 20% 22%)"></div>
+        <div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:hsl(230 10% 70%);font-weight:600">ou</div>
+        <div style="flex:1;height:1px;background:hsl(226 20% 22%)"></div>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:center;gap:12px;padding:14px;border-radius:999px;background:hsl(225 32% 9%);border:1px solid hsl(226 20% 26%);font-size:14px;font-weight:600;cursor:pointer" style-hover="border-color:hsl(266 95% 66% / .55)">
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.5 2.3 30.1 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.2 17.7 9.5 24 9.5z"></path><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-2.8-.4-4.1H24v8.3h12.7c-.3 2.1-1.6 5.2-4.7 7.3l7.7 6c4.5-4.2 6.8-10.3 6.8-17.5z"></path><path fill="#FBBC05" d="M10.5 28.7A14.6 14.6 0 019.7 24c0-1.6.3-3.2.8-4.7l-7.9-6.1A24 24 0 000 24c0 3.9.9 7.5 2.6 10.8l7.9-6.1z"></path><path fill="#34A853" d="M24 48c6.1 0 11.3-2 15-5.5l-7.7-6c-2.1 1.4-4.8 2.3-7.3 2.3-6.3 0-11.6-3.7-13.5-9.1l-7.9 6.1C6.5 42.6 14.6 48 24 48z"></path></svg>
+        Continuar com Google
+      </div>
+
+      <div style="text-align:center;font-size:14px;color:hsl(230 10% 78%);margin-top:24px">Não tem uma conta? <a href="#" style="font-weight:600">Cadastre-se como professor</a></div>
+      <div style="height:1px;background:hsl(226 20% 22%);margin:18px 0 16px"></div>
+      <div style="text-align:center;font-size:13px;color:hsl(230 10% 74%)">É aluno? <a href="#" style="font-weight:600">Cadastre-se aqui</a></div>
+    </div>
+
+    <div style="text-align:center;font-size:12px;color:hsl(230 10% 66%);margin-top:22px;line-height:1.6">Ao entrar você concorda com os termos de uso do TrailUp.</div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;aviso&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;nenhum&quot;,&quot;aguardando aprovação&quot;,&quot;finalizar cadastro&quot;],&quot;default&quot;:&quot;nenhum&quot;,&quot;tsType&quot;:&quot;'nenhum' | 'aguardando aprovação' | 'finalizar cadastro'&quot;,&quot;section&quot;:&quot;Estados da tela&quot;}}">
+class Component extends DCLogic {
+  state = { show: false };
+
+  renderVals() {
+    const a = this.props.aviso || 'nenhum';
+    const show = this.state.show;
+    return {
+      isPending: a === 'aguardando aprovação',
+      isResume: a === 'finalizar cadastro',
+      emailText: a === 'nenhum' ? 'jpedro204jp@rede.ulbra.br' : 'claudia.mendes@rede.ulbra.br',
+      cta: a === 'finalizar cadastro' ? 'Entrar e finalizar cadastro' : 'Entrar',
+      pwdText: show ? 'fisica2026' : '••••••••••',
+      pwdStyle: show
+        ? 'font-size:14px;flex:1'
+        : 'font-size:15px;letter-spacing:.2em;color:hsl(230 10% 86%);flex:1',
+      toggle: () => this.setState({ show: !show })
+    };
+  }
+}
+
+</script>
+</body>
+</html>

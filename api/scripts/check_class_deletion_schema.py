@@ -1,6 +1,8 @@
 """Read-only inspection of class/enrollment deletion constraints and triggers."""
 import argparse
+
 from sqlalchemy import create_engine, text
+
 from app.core.settings import get_settings
 from app.db.migrations import normalize_database_url_for_alembic
 

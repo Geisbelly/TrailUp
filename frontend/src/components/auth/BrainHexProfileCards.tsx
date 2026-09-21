@@ -6,13 +6,11 @@ export function BrainHexProfileCards(p:{ title: string; text: string; icon: Reac
     const Icon = p.icon;
   return (
     <div
-              className="group relative overflow-hidden rounded-xl border border-border/50 bg-card/50 p-5 transition-all duration-300 hover:border-primary/50 hover:bg-card/80 hover:shadow-lg hover:shadow-primary/5"
+              className="group relative overflow-hidden rounded-lg border border-border/50 bg-card/50 p-5 transition-all duration-300 hover:border-primary/50 hover:bg-card/80 hover:shadow-lg hover:shadow-primary/5"
             >
               <div className="flex items-start gap-4">
-                {/* Icon Container with Glow Effect */}
                 <div className="shrink-0 relative">
-                  <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                  <div className="relative flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/10 group-hover:scale-105 transition-transform duration-300">
+                  <div className="relative flex h-12 w-12 items-center justify-center rounded-lg bg-muted border border-border">
                     <Icon className="h-6 w-6 text-primary" />
                   </div>
                 </div>

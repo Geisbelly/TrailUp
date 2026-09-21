@@ -1,5 +1,6 @@
 """Count delivered personalized items even when another format failed generation."""
 from pathlib import Path
+
 from alembic import op
 
 revision = '20260920_02'

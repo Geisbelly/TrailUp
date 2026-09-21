@@ -1005,7 +1005,7 @@ export default function TopicsManager() {
             onWheel={handleCanvasWheel}
           >
             {/* Zoom controls */}
-            <div className="absolute bottom-3 right-3 z-50 flex items-center gap-1 bg-card/95 border border-border rounded-lg px-1.5 py-1 shadow-xl backdrop-blur-sm pointer-events-auto">
+            <div className="absolute bottom-3 right-3 z-10 flex items-center gap-1 bg-card/95 border border-border rounded-lg px-1.5 py-1 shadow-xl backdrop-blur-sm pointer-events-auto">
               <button
                 className="w-7 h-7 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 title="Diminuir zoom"

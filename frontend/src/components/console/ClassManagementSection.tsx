@@ -397,7 +397,7 @@ export default function ClassManagementSection({ professorId }: Props) {
       {isLoading && <div className="text-center py-10 text-muted-foreground">Carregando turmas...</div>}
 
       {!isLoading && classes.length === 0 && (
-        <div className="text-center py-20 border-2 border-dashed border-border rounded-xl bg-card/50 space-y-4">
+        <div className="text-center py-20 border-2 border-dashed border-border rounded-lg bg-card/50 space-y-4">
           <BookOpen className="w-12 h-12 mx-auto text-muted-foreground/40" />
           <div>
             <p className="text-foreground font-semibold">Nenhuma turma ainda</p>
@@ -483,36 +483,36 @@ export default function ClassManagementSection({ professorId }: Props) {
       />
 
       <Dialog open={!!selectedClassForStudents} onOpenChange={(open) => !open && setSelectedClassForStudents(null)}>
-        <DialogContent className="max-w-2xl max-h-[85vh] p-0 gap-0 bg-[#0F172A] border-slate-800 flex flex-col overflow-hidden sm:rounded-xl shadow-2xl shadow-black">
-          <div className="px-6 py-4 bg-[#1E293B] border-b border-slate-800">
+        <DialogContent className="max-w-2xl max-h-[85vh] p-0 gap-0 bg-background border-border flex flex-col overflow-hidden sm:rounded-lg shadow-2xl shadow-black">
+          <div className="px-6 py-4 bg-card border-b border-border">
             <DialogHeader>
               <DialogTitle className="text-white flex items-center gap-2">
                 <Users className="w-5 h-5 text-violet-500" /> Gerenciar Alunos
               </DialogTitle>
-              <DialogDescription className="text-slate-400">
+              <DialogDescription className="text-muted-foreground">
                 Turma: <span className="font-semibold text-white">{selectedClassForStudents?.descricao}</span>
               </DialogDescription>
             </DialogHeader>
           </div>
 
-          <div className="flex-1 flex flex-col gap-0 overflow-hidden bg-[#0b1120]">
-            <div className="p-6 border-b border-slate-800 bg-[#111827]">
+          <div className="flex-1 flex flex-col gap-0 overflow-hidden bg-background">
+            <div className="p-6 border-b border-border bg-background">
               <Label className={`${darkLabelClass} mb-2`}>Adicionar Aluno</Label>
               <div className="flex gap-3">
                 <div className="flex-1">
                   <Select value={studentToAdId} onValueChange={setStudentToAddId}>
-                    <SelectTrigger className={`${darkSelectTrigger} h-10 border-slate-600`}>
+                    <SelectTrigger className={`${darkSelectTrigger} h-10 border-border`}>
                       <SelectValue placeholder="Selecione um aluno..." />
                     </SelectTrigger>
                     <SelectContent className={darkSelectContent}>
                       {availableStudents.length > 0 ? (
                         availableStudents.map((s) => (
                           <SelectItem key={s.id} value={s.id} className="focus:bg-violet-600 focus:text-white">
-                            {s.nome} <span className="text-slate-400 ml-2 text-xs">({s.email})</span>
+                            {s.nome} <span className="text-muted-foreground ml-2 text-xs">({s.email})</span>
                           </SelectItem>
                         ))
                       ) : (
-                        <div className="p-3 text-xs text-slate-500 text-center">Todos os alunos já estão nesta turma.</div>
+                        <div className="p-3 text-xs text-muted-foreground text-center">Todos os alunos já estão nesta turma.</div>
                       )}
                     </SelectContent>
                   </Select>
@@ -525,15 +525,15 @@ export default function ClassManagementSection({ professorId }: Props) {
 
             <div className="flex-1 flex flex-col min-h-0 p-6">
               <div className="flex items-center justify-between mb-3">
-                <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Alunos Matriculados</h4>
-                <Badge variant="secondary" className="bg-slate-800 text-slate-300">
+                <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Alunos Matriculados</h4>
+                <Badge variant="secondary" className="bg-muted text-muted-foreground">
                   {(classStudents[selectedClassForStudents?.id || 0] || []).length}
                 </Badge>
               </div>
-              <ScrollArea className="flex-1 border border-slate-700/50 rounded-lg bg-[#1E293B] shadow-inner">
+              <ScrollArea className="flex-1 border border-border/50 rounded-lg bg-card shadow-inner">
                 <div className="p-2 space-y-1">
                   {(classStudents[selectedClassForStudents?.id || 0] || []).length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-16 text-slate-500 opacity-60">
+                    <div className="flex flex-col items-center justify-center py-16 text-muted-foreground opacity-60">
                       <Users className="w-12 h-12 mb-3 opacity-20" />
                       <p className="text-sm">Nenhum aluno matriculado nesta turma.</p>
                     </div>
@@ -542,17 +542,17 @@ export default function ClassManagementSection({ professorId }: Props) {
                       const student = students.find((s) => s.id === studentId);
                       if (!student) return null;
                       return (
-                        <div key={student.id} className="flex items-center justify-between p-3 hover:bg-slate-700/50 rounded-md transition-colors group border border-transparent hover:border-slate-600/50">
+                        <div key={student.id} className="flex items-center justify-between p-3 hover:bg-muted/50 rounded-md transition-colors group border border-transparent hover:border-border/50">
                           <div className="flex items-center gap-3">
-                            <Avatar className="h-9 w-9 bg-slate-800 border border-slate-600 text-slate-300">
+                            <Avatar className="h-9 w-9 bg-muted border border-border text-muted-foreground">
                               <AvatarFallback className="text-xs font-bold">{student.nome.substring(0, 2).toUpperCase()}</AvatarFallback>
                             </Avatar>
                             <div>
-                              <p className="text-sm font-medium text-slate-200">{student.nome}</p>
-                              <p className="text-[11px] text-slate-500">{student.email}</p>
+                              <p className="text-sm font-medium text-foreground">{student.nome}</p>
+                              <p className="text-[11px] text-muted-foreground">{student.email}</p>
                             </div>
                           </div>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500 hover:text-red-400 hover:bg-red-950/20 opacity-70 hover:opacity-100" onClick={() => handleRemoveStudentFromClass(student.id)}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-400 hover:bg-red-950/20 opacity-70 hover:opacity-100" onClick={() => handleRemoveStudentFromClass(student.id)}>
                             <X className="w-4 h-4" />
                           </Button>
                         </div>

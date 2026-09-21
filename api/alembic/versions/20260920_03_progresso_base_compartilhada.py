@@ -1,5 +1,6 @@
 """Include shared profile bases when calculating the consumer's progress."""
 from pathlib import Path
+
 from alembic import op
 
 revision = '20260920_03'

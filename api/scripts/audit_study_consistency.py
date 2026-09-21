@@ -1,7 +1,9 @@
 """Read-only study audit, with canonical recalculation always rolled back."""
 import argparse
 import json
+
 from sqlalchemy import create_engine, text
+
 from app.core.settings import get_settings
 from app.db.migrations import normalize_database_url_for_alembic
 

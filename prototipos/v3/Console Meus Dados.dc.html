@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  body { margin:0; background:hsl(225 32% 8%); font-family:Inter, system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:hsl(266 90% 77%); text-decoration:none; }
+  a:hover { color:hsl(266 95% 76%); }
+  @keyframes tu-rise { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+</style>
+</helmet>
+<div style="min-height:100vh;background-color:hsl(225 32% 8%);background-image:radial-gradient(hsl(230 30% 62% / .10) 1px, transparent 1px), radial-gradient(hsl(230 30% 62% / .06) 1px, transparent 1px), radial-gradient(880px 420px at 14% -8%, hsl(266 45% 26% / .20), transparent 62%);background-size:118px 118px, 47px 47px, 100% 100%;background-position:0 0, 23px 31px, 0 0;color:hsl(40 20% 94%);padding-bottom:80px">
+
+  <div style="position:sticky;top:0;z-index:30;display:flex;align-items:center;flex-wrap:wrap;row-gap:10px;gap:24px;padding:12px 32px;background:hsl(225 32% 8% / .88);backdrop-filter:blur(14px);border-bottom:1px solid hsl(226 20% 22%)">
+    <a href="Console%20Dashboard.dc.html" style="display:flex;align-items:center;gap:12px;min-width:0;color:inherit;text-decoration:none">
+      <img src="assets/trailup-logo.png" alt="TrailUp" style="width:26px;height:32px;object-fit:contain" />
+      <div style="font-family:Cinzel, serif;font-weight:700;font-size:19px;letter-spacing:.04em">TrailUp</div>
+      <div style="width:1px;height:20px;background:hsl(226 20% 22%)"></div>
+      <div style="font-size:13px;color:hsl(230 10% 72%);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap">Console</div>
+    </a>
+    <div style="display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:6px;margin-left:auto;min-width:0">
+      <a href="Console%20Dashboard.dc.html" style="padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer;text-decoration:none" style-hover="background:hsl(226 20% 20%);color:hsl(40 20% 94%)">Dashboard</a>
+      <a href="Console%20Trilha.dc.html" style="padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer;text-decoration:none" style-hover="background:hsl(226 20% 20%);color:hsl(40 20% 94%)">Trilha</a>
+      <a href="Console%20Classes.dc.html" style="padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer;text-decoration:none" style-hover="background:hsl(226 20% 20%);color:hsl(40 20% 94%)">Classes</a>
+      <a href="Console%20Personalizacoes.dc.html" style="padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer;text-decoration:none" style-hover="background:hsl(226 20% 20%);color:hsl(40 20% 94%)">Personalizações</a>
+      <a href="Console%20Ranks.dc.html" style="padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer;text-decoration:none" style-hover="background:hsl(226 20% 20%);color:hsl(40 20% 94%)">Ranks</a>
+      <div style="padding:9px 18px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));color:hsl(40 20% 96%);font-size:14px;font-weight:600">Meus Dados</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;padding-left:16px;border-left:1px solid hsl(226 20% 22%)">
+      <div style="width:34px;height:34px;border-radius:999px;background:hsl(226 20% 20%);border:1px solid hsl(266 95% 66% / .45);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:hsl(266 90% 77%)">JP</div>
+      <div style="font-size:13px;color:hsl(230 10% 72%);cursor:pointer" style-hover="color:hsl(0 70% 62%)">Sair</div>
+    </div>
+  </div>
+
+  <div style="max-width:1120px;margin:0 auto;padding:0 32px">
+
+    <div style="display:flex;align-items:center;gap:20px;row-gap:16px;flex-wrap:wrap;padding:40px 0 26px">
+      <div style="width:56px;height:62px;flex:none;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 90% 77%));clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:hsl(266 30% 12%)">JP</div>
+      <div style="min-width:0">
+        <div style="font-family:Cinzel, serif;font-size:32px;font-weight:700;line-height:1.1">Meus dados</div>
+        <div style="font-size:15px;color:hsl(230 10% 72%);margin-top:6px">jpedro204jp@rede.ulbra.br · professor desde março de 2026</div>
+      </div>
+    </div>
+
+    <sc-if value="{{ showSaved }}">
+    <div style="display:flex;align-items:center;gap:14px;padding:16px 20px;border-radius:16px;background:hsl(142 40% 14%);border:1px solid hsl(142 65% 50% / .5);margin-bottom:20px;animation:tu-rise .25s ease-out">
+      <div style="width:26px;height:26px;flex:none;border-radius:999px;background:hsl(142 65% 50%);display:flex;align-items:center;justify-content:center">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="hsl(226 32% 10%)" stroke-width="3.4"><path d="M5 13l4 4 10-10" /></svg>
+      </div>
+      <div style="font-size:14px;font-weight:600;min-width:0">Alterações salvas</div>
+      <div onClick="{{ hideSaved }}" style="margin-left:auto;font-size:13px;font-weight:600;color:hsl(120 15% 88%);cursor:pointer">Fechar</div>
+    </div>
+    </sc-if>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(340px, 1fr));gap:20px;align-items:start">
+
+      <div style="padding:26px 28px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+        <div style="font-family:Cinzel, serif;font-size:21px;font-weight:700">Informações pessoais</div>
+        <div style="font-size:13px;color:hsl(230 10% 72%);margin-top:4px">Aparecem para os alunos junto do material da sua turma</div>
+
+        <div style="margin-top:24px">
+          <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 78%);font-weight:600">Nome completo</div>
+          <div style="margin-top:9px;padding:13px 16px;border-radius:16px;background:hsl(226 22% 16%);border:1px solid hsl(266 95% 66% / .45);font-size:14px">João Pedro Vasconcelos</div>
+        </div>
+
+        <div style="margin-top:18px">
+          <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 78%);font-weight:600">E-mail</div>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:9px;padding:13px 16px;border-radius:16px;background:hsl(225 32% 9%);border:1px solid hsl(226 20% 20%);font-size:14px;color:hsl(230 10% 72%)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 62%)" stroke-width="2"><rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 018 0v3" /></svg>
+            jpedro204jp@rede.ulbra.br
+          </div>
+          <div style="font-size:12px;color:hsl(230 10% 74%);margin-top:8px;line-height:1.5">O e-mail é a sua identificação de login e está vinculado à instituição, por isso não pode ser alterado aqui. Para trocar, fale com o suporte.</div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:16px;margin-top:18px">
+          <div>
+            <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 78%);font-weight:600">Instituição</div>
+            <div style="margin-top:9px;padding:13px 16px;border-radius:16px;background:hsl(226 22% 16%);border:1px solid hsl(226 20% 26%);font-size:14px">ULBRA Palmas</div>
+          </div>
+          <div>
+            <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 78%);font-weight:600">Disciplina principal</div>
+            <div style="margin-top:9px;padding:13px 16px;border-radius:16px;background:hsl(226 22% 16%);border:1px solid hsl(226 20% 26%);font-size:14px">Física</div>
+          </div>
+        </div>
+
+        <div style="margin-top:18px">
+          <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 78%);font-weight:600">Descrição / apresentação</div>
+          <div style="margin-top:9px;padding:14px 16px;border-radius:16px;background:hsl(226 22% 16%);border:1px solid hsl(226 20% 26%);font-size:14px;line-height:1.6;min-height:92px">Professor de Física I e II na Engenharia. Trabalho com resolução de problemas e experimentos de baixo custo em sala.</div>
+          <div style="display:flex;justify-content:flex-end;font-size:11px;color:hsl(230 10% 70%);margin-top:6px">148 / 400</div>
+        </div>
+
+        <div style="display:flex;align-items:flex-start;gap:16px;margin-top:20px;padding:18px 20px;border-radius:16px;background:hsl(266 95% 66% / .08);border:1px solid hsl(266 95% 66% / .3)">
+          <div style="min-width:0;flex:1">
+            <div style="font-size:14px;font-weight:600">Geração automática de personalização</div>
+            <div style="font-size:13px;color:hsl(230 10% 82%);margin-top:6px;line-height:1.55">{{ autoText }}</div>
+          </div>
+          <div onClick="{{ toggleAuto }}" style="{{ trackStyle }}">
+            <div style="{{ knobStyle }}"></div>
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:22px">
+          <div style="font-size:12px;color:hsl(230 10% 72%)">Última alteração em 02/09/2026</div>
+          <div onClick="{{ save }}" style="margin-left:auto;padding:12px 24px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));font-size:14px;font-weight:600;color:hsl(40 20% 96%);cursor:pointer">Salvar alterações</div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:20px">
+        <div style="padding:26px 28px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:30px;height:34px;flex:none;background:hsl(266 95% 66% / .18);border:1px solid hsl(266 95% 66% / .45);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="hsl(266 90% 82%)" stroke-width="2"><circle cx="9" cy="12" r="4" /><path d="M13 12h8M18 12v3" /></svg>
+            </div>
+            <div style="font-family:Cinzel, serif;font-size:20px;font-weight:700">Alterar senha</div>
+          </div>
+          <div style="font-size:13px;color:hsl(230 10% 72%);margin-top:8px">Confirme a senha atual e escolha uma nova, com pelo menos 6 caracteres.</div>
+
+          <div style="margin-top:20px">
+            <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 78%);font-weight:600">Senha atual</div>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:9px;padding:13px 16px;border-radius:16px;background:hsl(226 22% 16%);border:1px solid hsl(226 20% 26%)">
+              <div style="font-size:15px;letter-spacing:.22em;color:hsl(230 10% 84%);flex:1">••••••••</div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 74%)" stroke-width="2" style="cursor:pointer"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z" /><circle cx="12" cy="12" r="2.5" /></svg>
+            </div>
+          </div>
+          <div style="margin-top:14px">
+            <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 78%);font-weight:600">Nova senha</div>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:9px;padding:13px 16px;border-radius:16px;background:hsl(226 22% 16%);border:1px solid hsl(266 95% 66% / .45)">
+              <div style="font-size:15px;letter-spacing:.22em;color:hsl(230 10% 84%);flex:1">••••••••••</div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 74%)" stroke-width="2" style="cursor:pointer"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z" /><circle cx="12" cy="12" r="2.5" /></svg>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:9px">
+              <div style="flex:1;height:5px;border-radius:999px;background:hsl(142 65% 50%)"></div>
+              <div style="flex:1;height:5px;border-radius:999px;background:hsl(142 65% 50%)"></div>
+              <div style="flex:1;height:5px;border-radius:999px;background:hsl(142 65% 50%)"></div>
+              <div style="flex:1;height:5px;border-radius:999px;background:hsl(226 20% 24%)"></div>
+              <div style="font-size:11px;font-weight:600;color:hsl(142 65% 62%);margin-left:4px">forte</div>
+            </div>
+          </div>
+          <div style="margin-top:14px">
+            <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 78%);font-weight:600">Confirmar nova senha</div>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:9px;padding:13px 16px;border-radius:16px;background:hsl(226 22% 16%);border:1px solid hsl(226 20% 26%)">
+              <div style="font-size:15px;letter-spacing:.22em;color:hsl(230 10% 84%);flex:1">••••••••••</div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 74%)" stroke-width="2" style="cursor:pointer"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z" /><circle cx="12" cy="12" r="2.5" /></svg>
+            </div>
+          </div>
+          <div onClick="{{ save }}" style="margin-top:20px;padding:12px 22px;border-radius:999px;background:hsl(266 95% 66% / .18);border:1px solid hsl(266 95% 66% / .5);font-size:14px;font-weight:600;color:hsl(266 90% 84%);text-align:center;cursor:pointer" style-hover="background:hsl(266 95% 66% / .28)">Alterar senha</div>
+        </div>
+
+        <div style="padding:24px 26px;border-radius:20px;background:hsl(226 28% 12% / .7);border:1px solid hsl(226 20% 22%)">
+          <div style="font-family:Cinzel, serif;font-size:18px;font-weight:700">Sua conta em números</div>
+          <div style="display:flex;gap:26px;margin-top:18px;flex-wrap:wrap">
+            <div><div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 74%);font-weight:600">Turmas</div><div style="font-size:24px;font-weight:800;margin-top:5px">3</div></div>
+            <div><div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 74%);font-weight:600">Alunos</div><div style="font-size:24px;font-weight:800;margin-top:5px">74</div></div>
+            <div><div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 74%);font-weight:600">Tópicos</div><div style="font-size:24px;font-weight:800;margin-top:5px">14</div></div>
+          </div>
+          <div style="font-size:12px;color:hsl(230 10% 74%);margin-top:16px;line-height:1.5">É o que seria removido com a conta.</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="height:1px;background:hsl(226 20% 20%);margin:56px 0 28px"></div>
+
+    <div style="padding:26px 28px;border-radius:20px;background:hsl(226 28% 11%);border:1px solid hsl(226 20% 24%);border-left:4px solid hsl(0 70% 55% / .7)">
+      <div style="display:flex;align-items:flex-start;gap:20px;row-gap:18px;flex-wrap:wrap">
+        <div style="min-width:0;flex:1">
+          <div style="display:flex;align-items:center;gap:11px">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="hsl(0 75% 66%)" stroke-width="2"><path d="M12 4l9 16H3z" /><path d="M12 10v4M12 17v.5" /></svg>
+            <div style="font-family:Cinzel, serif;font-size:19px;font-weight:700;color:hsl(0 72% 72%)">Zona de perigo</div>
+          </div>
+          <div style="font-size:14px;color:hsl(230 10% 80%);margin-top:10px;line-height:1.6;max-width:620px">Excluir a conta é permanente. Suas 3 turmas, 14 tópicos, todo o material gerado pela IA e o histórico de 74 alunos são removidos e não podem ser recuperados. Se quiser apenas pausar o uso, basta não acessar — nada é apagado por inatividade.</div>
+        </div>
+        <div onClick="{{ openDelete }}" style="padding:12px 22px;border-radius:999px;border:1px solid hsl(0 70% 55% / .55);font-size:14px;font-weight:600;color:hsl(0 75% 70%);cursor:pointer;white-space:nowrap" style-hover="background:hsl(0 45% 16%)">Excluir minha conta…</div>
+      </div>
+    </div>
+  </div>
+
+  <sc-if value="{{ showDelete }}">
+  <div style="position:fixed;inset:0;z-index:60;background:hsl(225 40% 4% / .8);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:32px">
+    <div style="width:100%;max-width:560px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(0 70% 55% / .45);box-shadow:0 30px 90px hsl(225 40% 2% / .8);overflow:hidden">
+      <div style="padding:26px 28px 20px;border-bottom:1px solid hsl(226 20% 22%)">
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="width:36px;height:40px;flex:none;background:hsl(0 70% 55% / .18);border:1px solid hsl(0 70% 60% / .5);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="hsl(0 78% 74%)" stroke-width="2"><path d="M12 4l9 16H3z" /><path d="M12 10v4M12 17v.5" /></svg>
+          </div>
+          <div style="font-family:Cinzel, serif;font-size:21px;font-weight:700">Excluir a sua conta</div>
+          <div onClick="{{ closeDelete }}" style="margin-left:auto;width:32px;height:32px;border-radius:999px;background:hsl(226 20% 20%);display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="background:hsl(226 20% 26%)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 82%)" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </div>
+        </div>
+      </div>
+      <div style="padding:24px 28px 26px">
+        <div style="font-size:14px;color:hsl(230 10% 84%);line-height:1.6">Isto remove permanentemente:</div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:14px">
+          <div style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:14px;background:hsl(226 22% 16%);font-size:13px"><div style="width:11px;height:13px;background:hsl(0 70% 58%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>3 turmas e 74 matrículas</div>
+          <div style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:14px;background:hsl(226 22% 16%);font-size:13px"><div style="width:11px;height:13px;background:hsl(0 70% 58%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>14 tópicos, atividades e questões</div>
+          <div style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:14px;background:hsl(226 22% 16%);font-size:13px"><div style="width:11px;height:13px;background:hsl(0 70% 58%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>todo o material personalizado gerado pela IA</div>
+        </div>
+        <div style="font-size:13px;color:hsl(230 10% 78%);margin-top:18px;line-height:1.55">Para confirmar, digite <strong style="font-weight:700;color:hsl(40 20% 94%)">EXCLUIR</strong> no campo abaixo.</div>
+        <div onClick="{{ type }}" style="{{ inputStyle }}">{{ typedText }}</div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:22px">
+          <div onClick="{{ closeDelete }}" style="padding:12px 22px;border-radius:999px;border:1px solid hsl(226 20% 28%);font-size:14px;font-weight:600;color:hsl(230 10% 84%);cursor:pointer" style-hover="border-color:hsl(266 95% 66% / .6)">Manter minha conta</div>
+          <div style="{{ confirmStyle }}">Excluir conta permanentemente</div>
+        </div>
+        <div style="font-size:12px;color:hsl(230 10% 72%);margin-top:14px;line-height:1.5">{{ hint }}</div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;estado&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;padrão&quot;,&quot;excluir conta&quot;],&quot;default&quot;:&quot;padrão&quot;,&quot;tsType&quot;:&quot;'padrão' | 'excluir conta'&quot;,&quot;section&quot;:&quot;Estados da tela&quot;}}">
+const TRACK = 'width:52px;height:30px;flex:none;border-radius:999px;padding:3px;cursor:pointer;display:flex;transition:background .18s;';
+const KNOB = 'width:24px;height:24px;border-radius:999px;background:hsl(40 20% 96%);transition:margin-left .18s;';
+
+const INPUT_BASE = 'margin-top:10px;padding:13px 16px;border-radius:16px;background:hsl(226 22% 16%);font-size:15px;letter-spacing:.14em;font-weight:700;cursor:text;';
+
+class Component extends DCLogic {
+  state = { auto: true, del: null, typed: false, saved: false };
+
+  renderVals() {
+    const e = this.props.estado || 'padrão';
+    const del = this.state.del === null ? e === 'excluir conta' : this.state.del;
+    const typed = this.state.typed;
+    return {
+      autoText: this.state.auto
+        ? 'Ligado: ao criar ou editar um tópico, a IA já gera o material dos 7 perfis. É o padrão recomendado.'
+        : 'Desligado: criar ou editar tópicos não dispara geração nenhuma. Você aciona manualmente em Personalizações, pelo botão "Gerar tudo".',
+      trackStyle: TRACK + (this.state.auto
+        ? 'background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%))'
+        : 'background:hsl(226 20% 26%)'),
+      knobStyle: KNOB + (this.state.auto ? 'margin-left:22px' : 'margin-left:0'),
+      toggleAuto: () => this.setState({ auto: !this.state.auto }),
+      save: () => this.setState({ saved: true }),
+      showSaved: this.state.saved,
+      hideSaved: () => this.setState({ saved: false }),
+      showDelete: del,
+      openDelete: () => this.setState({ del: true, typed: false }),
+      closeDelete: () => this.setState({ del: false, typed: false }),
+      type: () => this.setState({ typed: true }),
+      typedText: typed ? 'EXCLUIR' : 'digite EXCLUIR',
+      inputStyle: INPUT_BASE + (typed
+        ? 'border:1px solid hsl(0 70% 55% / .7);color:hsl(0 78% 76%)'
+        : 'border:1px solid hsl(226 20% 26%);color:hsl(230 10% 60%);font-weight:500;letter-spacing:.04em'),
+      confirmStyle: typed
+        ? 'margin-left:auto;display:flex;align-items:center;gap:9px;padding:12px 22px;border-radius:999px;background:hsl(0 70% 55%);font-size:14px;font-weight:700;color:hsl(40 20% 96%);cursor:pointer'
+        : 'margin-left:auto;padding:12px 22px;border-radius:999px;background:hsl(226 20% 18%);font-size:14px;font-weight:700;color:hsl(230 10% 55%);cursor:not-allowed;border:1px solid hsl(226 20% 24%)',
+      hint: typed
+        ? 'O botão está liberado. A exclusão começa imediatamente e não pode ser desfeita.'
+        : 'O botão de confirmar só é liberado depois que a palavra estiver digitada corretamente.'
+    };
+  }
+}
+
+</script>
+</body>
+</html>

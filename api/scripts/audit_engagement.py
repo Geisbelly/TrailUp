@@ -1,10 +1,12 @@
 """Audit engagement evidence and RLS without retaining test writes."""
 import argparse
 import importlib.util
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import DBAPIError
+
 from app.core.settings import get_settings
 from app.db.migrations import normalize_database_url_for_alembic
 

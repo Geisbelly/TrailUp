@@ -1,13 +1,11 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import ConsoleShell from "@/components/console/ConsoleShell";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { LogOut, Settings, Loader2, Route, LayoutDashboard, Trophy, GraduationCap, Sparkles, ShieldCheck } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 import {
-  CONSOLE_SECTIONS,
   DEFAULT_CONSOLE_VIEW,
   consolePathForView,
   consoleViewFromPathname,
@@ -30,21 +28,6 @@ const ProfessorApprovalSection = lazy(() =>
 // Aba de aprovação de professores só é visível para a dona do projeto (TCC);
 // os demais professores nunca veem nem conseguem acessar essa view.
 const OWNER_EMAIL = "geisbelly19@gmail.com";
-
-// Rotulo e icone de cada aba da barra do console. A ordem aqui e a ordem
-// exibida; o caminho de cada uma vem de CONSOLE_SECTIONS (consoleSections.ts),
-// pra nao existir "/console/..." escrito a mao em botao nenhum.
-const NAV_LABELS: Record<ConsoleView, { label: string; icon: typeof LayoutDashboard; ownerOnly?: boolean }> = {
-  dashboard: { label: "Dashboard", icon: LayoutDashboard },
-  trilha: { label: "Trilha", icon: Route },
-  classes: { label: "Classes", icon: GraduationCap },
-  personalizacoes: { label: "Personalizações", icon: Sparkles },
-  ranks: { label: "Ranks", icon: Trophy },
-  profile: { label: "Meus Dados", icon: Settings },
-  aprovacoes: { label: "Aprovações", icon: ShieldCheck, ownerOnly: true },
-};
-
-const NAV_ITEMS = CONSOLE_SECTIONS.map((secao) => ({ view: secao.view, ...NAV_LABELS[secao.view] }));
 
 export interface ProfessorUpdateData {
   nome: string;
@@ -73,10 +56,6 @@ export default function Console() {
   // console, e o link e compartilhavel. Antes so /console/trilha tinha rota -
   // todas as outras abas viviam em estado local em /console e se perdiam.
   const view: ConsoleView = consoleViewFromPathname(location.pathname) ?? DEFAULT_CONSOLE_VIEW;
-  const irPara = useCallback(
-    (destino: ConsoleView) => navigate(consolePathForView(destino)),
-    [navigate],
-  );
   const isOwner = professorData?.email?.toLowerCase() === OWNER_EMAIL;
 
   useEffect(() => {
@@ -171,14 +150,6 @@ export default function Console() {
     }
   };
 
-  const getInitials = (name: string) =>
-    name
-      ?.split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2) || "PR";
-
   // A tela cheia de loading e so pro primeiro carregamento. Recarregamentos
   // posteriores (troca de aba, refresh de token) mantem o console montado pra
   // nao perder o estado das secoes filhas.
@@ -191,42 +162,7 @@ export default function Console() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-br from-background via-secondary/5 to-primary/5">
-      <header className="border-b bg-background/80 backdrop-blur px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-3">
-          <Avatar className="h-10 w-10">
-            <AvatarFallback className="bg-primary text-primary-foreground">
-              {getInitials(professorData?.nome)}
-            </AvatarFallback>
-          </Avatar>
-          <div>
-            <p className="font-semibold leading-tight">{professorData?.nome || "Professor"}</p>
-            <p className="text-xs text-muted-foreground">{professorData?.instituicao}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          {NAV_ITEMS.filter((item) => !item.ownerOnly || isOwner).map((item) => {
-            const Icone = item.icon;
-            return (
-              <Button
-                key={item.view}
-                variant={view === item.view ? "default" : "outline"}
-                size="sm"
-                onClick={() => irPara(item.view)}
-              >
-                <Icone className="h-4 w-4 mr-2" />
-                {item.label}
-              </Button>
-            );
-          })}
-          <Button variant="ghost" size="sm" onClick={handleLogout}>
-            <LogOut className="h-4 w-4 mr-2" />
-            Sair
-          </Button>
-        </div>
-      </header>
-
-      <main className="flex-1 min-h-0 flex flex-col overflow-hidden">
+    <ConsoleShell view={view} name={professorData?.nome || "Professor"} institution={professorData?.instituicao} isOwner={isOwner} onSignOut={handleLogout}>
         <Suspense
           fallback={
             <div className="flex-1 flex items-center justify-center">
@@ -235,11 +171,11 @@ export default function Console() {
           }
         >
           {view === "trilha" ? (
-            <div className="flex-1 min-h-0 flex flex-col px-6 pt-4 pb-2">
+            <div className="console-trail-content flex-1 min-h-0 flex flex-col">
               <TopicsManager />
             </div>
           ) : (
-            <div className="flex-1 overflow-auto p-6">
+            <div className="console-section-content flex-1 overflow-auto">
               {view === "profile" ? (
                 <ProfileSection professorData={professorData} onUpdate={handleProfileUpdate} isLoading={isLoadingProfessor} />
               ) : view === "dashboard" ? (
@@ -261,7 +197,6 @@ export default function Console() {
             </div>
           )}
         </Suspense>
-      </main>
-    </div>
+    </ConsoleShell>
   );
 }

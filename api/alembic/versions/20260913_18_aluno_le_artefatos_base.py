@@ -10,7 +10,6 @@ personalized material.
 
 from alembic import op
 
-
 revision = "20260913_18"
 down_revision = "20260913_17"
 branch_labels = None
