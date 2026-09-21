@@ -68,7 +68,7 @@ export default function BrainHexQuizStep({
             <div 
               key={q.id} 
               className={cn(
-                "group relative rounded-xl border p-5 transition-all duration-300",
+                "group relative rounded-lg border p-5 transition-all duration-300",
                 "bg-card/40 hover:bg-card/60",
                 isAnswered ? "border-primary/20 shadow-sm" : "border-border/50"
               )}

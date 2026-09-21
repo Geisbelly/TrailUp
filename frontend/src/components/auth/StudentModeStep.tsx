@@ -43,7 +43,7 @@ export default function StudentModeStep({
           <Settings2 className="w-6 h-6 text-primary" />
         </div>
         <h3 className="text-lg font-medium text-white">Como você prefere aprender?</h3>
-        <p className="text-sm text-zinc-400 max-w-sm mx-auto">
+        <p className="text-sm text-muted-foreground max-w-sm mx-auto">
           O TrailUp adapta a ordem dos materiais para combinar com seu estilo cognitivo.
         </p>
       </div>
@@ -58,11 +58,11 @@ export default function StudentModeStep({
               key={opt.value}
               htmlFor={opt.value}
               className={cn(
-                "relative flex items-start gap-4 p-4 rounded-xl border cursor-pointer transition-all duration-300",
-                "hover:bg-zinc-800/50",
+                "relative flex items-start gap-4 p-4 rounded-lg border cursor-pointer transition-all duration-300",
+                "hover:bg-muted/50",
                 isSelected
                   ? "bg-primary/10 border-primary/50 shadow-[0_0_0_1px_rgba(124,58,237,0.5)]"
-                  : "bg-zinc-900/50 border-zinc-800 hover:border-zinc-700"
+                  : "bg-card/50 border-border hover:border-border"
               )}
             >
               <div className="mt-1">
@@ -70,7 +70,7 @@ export default function StudentModeStep({
                 <div
                   className={cn(
                     "w-5 h-5 rounded-full border flex items-center justify-center transition-all duration-300",
-                    isSelected ? "border-primary bg-primary text-primary-foreground" : "border-zinc-600 bg-transparent"
+                    isSelected ? "border-primary bg-primary text-primary-foreground" : "border-border bg-transparent"
                   )}
                 >
                   {isSelected && <div className="w-2 h-2 rounded-full bg-white animate-in zoom-in duration-300" />}
@@ -81,15 +81,15 @@ export default function StudentModeStep({
                 <div className="flex items-center gap-2">
                   <div className={cn(
                     "p-1.5 rounded-md transition-colors duration-300", 
-                    isSelected ? "bg-primary/20 text-primary" : "bg-zinc-800 text-zinc-400"
+                    isSelected ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
                   )}>
                     <Icon className="w-4 h-4" />
                   </div>
-                  <span className={cn("font-medium transition-colors duration-300", isSelected ? "text-primary" : "text-zinc-200")}>
+                  <span className={cn("font-medium transition-colors duration-300", isSelected ? "text-primary" : "text-foreground")}>
                     {opt.label}
                   </span>
                 </div>
-                <p className="text-xs text-zinc-500 leading-relaxed group-hover:text-zinc-400 transition-colors">
+                <p className="text-xs text-muted-foreground leading-relaxed group-hover:text-muted-foreground transition-colors">
                   {opt.description}
                 </p>
               </div>

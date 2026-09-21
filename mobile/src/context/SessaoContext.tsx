@@ -1,4 +1,5 @@
-import { getSessionSafe, supabase } from "@/database/supabase";
+import { getSessionSafe, removerSessaoLocal, supabase } from "@/database/supabase";
+import { encerrarSessaoDoAluno } from "@/services/encerrarSessao";
 import {
   BrainHexProfile,
   normalizeBrainHexProfile,
@@ -45,6 +46,7 @@ type SessionContextType = {
   carregando: boolean;
   atualizarUsuario: () => Promise<void>;
   selecionarPerfilAtivo: (profile: BrainHexProfile) => Promise<void>;
+  sair: () => Promise<{ remotoOk: boolean; localOk: boolean }>;
 };
 
 const UserContext = createContext<SessionContextType>({
@@ -56,6 +58,10 @@ const UserContext = createContext<SessionContextType>({
   },
   selecionarPerfilAtivo: async () => {
     console.warn("UserProvider não montado ou selecionarPerfilAtivo chamado no valor padrão.");
+  },
+  sair: async () => {
+    console.warn("UserProvider não montado ou sair chamado no valor padrão do contexto.");
+    return { remotoOk: false, localOk: false };
   },
 });
 
@@ -367,6 +373,34 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     await syncFromSession();
   }, [syncFromSession]);
 
+  // Derruba o estado de sessao sem esperar nada de fora. Mesmo corpo do ramo
+  // `SIGNED_OUT` do listener, extraido porque o logout precisa dele mesmo
+  // quando o evento nao vem -- e ele nao vem sempre, ver `encerrarSessao.ts`.
+  const limparEstadoDeSessao = useCallback(() => {
+    requestIdRef.current += 1;
+    if (!mountedRef.current) return;
+    hydrationRetryCountRef.current.clear();
+    setAutenticado(false);
+    authUserIdRef.current = null;
+    updateUsuario(null);
+    setCarregando(false);
+  }, [updateUsuario]);
+
+  const sair = useCallback(async () => {
+    const resultado = await encerrarSessaoDoAluno({
+      signOutRemoto: () => supabase.auth.signOut(),
+      limparSessaoLocal: removerSessaoLocal,
+      aoFalhar: (erro) => {
+        console.warn("[UserContext] Falha ao encerrar a sessao remota:", erro);
+      },
+    });
+
+    // Sempre, e nao so quando o remoto deu certo: e esta linha que garante que
+    // a guarda de rota veja `autenticado === false` e deixe o aluno sair.
+    limparEstadoDeSessao();
+    return resultado;
+  }, [limparEstadoDeSessao]);
+
   const selecionarPerfilAtivo = useCallback(
     async (profile: BrainHexProfile) => {
       const current = usuarioRef.current;
@@ -394,14 +428,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_OUT") {
-        requestIdRef.current += 1;
-        if (mountedRef.current) {
-          hydrationRetryCountRef.current.clear();
-          setAutenticado(false);
-          authUserIdRef.current = null;
-          updateUsuario(null);
-          setCarregando(false);
-        }
+        limparEstadoDeSessao();
         return;
       }
 
@@ -415,11 +442,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       mountedRef.current = false;
       listener?.subscription.unsubscribe();
     };
-  }, [syncFromSession, updateUsuario]);
+  }, [limparEstadoDeSessao, syncFromSession]);
 
   return (
     <UserContext.Provider
-      value={{ usuario, autenticado, carregando, atualizarUsuario, selecionarPerfilAtivo }}
+      value={{ usuario, autenticado, carregando, atualizarUsuario, selecionarPerfilAtivo, sair }}
     >
       {children}
     </UserContext.Provider>

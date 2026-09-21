@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  body { margin:0; background:hsl(225 32% 8%); font-family:Inter, system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:hsl(266 90% 77%); text-decoration:none; }
+  a:hover { color:hsl(266 95% 76%); }
+  @keyframes tu-rise { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+</style>
+</helmet>
+<div style="min-height:100vh;background:radial-gradient(1100px 520px at 12% -12%, hsl(266 60% 22% / .40), transparent 62%), radial-gradient(900px 480px at 96% 4%, hsl(239 60% 24% / .28), transparent 60%), hsl(225 32% 8%);color:hsl(40 20% 94%);padding-bottom:80px">
+
+  <div style="position:sticky;top:0;z-index:30;display:flex;align-items:center;flex-wrap:wrap;row-gap:10px;gap:24px;padding:12px 32px;background:hsl(225 32% 8% / .88);backdrop-filter:blur(14px);border-bottom:1px solid hsl(226 20% 22%)">
+    <a href="Console%20Dashboard.dc.html" style="display:flex;align-items:center;gap:12px;min-width:0;color:inherit;text-decoration:none">
+      <img src="assets/trailup-logo.png" alt="TrailUp" style="width:26px;height:32px;object-fit:contain;filter:drop-shadow(0 0 10px hsl(266 95% 66% / .55))" />
+      <div style="font-family:Cinzel, serif;font-weight:700;font-size:19px;letter-spacing:.04em">TrailUp</div>
+      <div style="width:1px;height:20px;background:hsl(226 20% 22%)"></div>
+      <div style="font-size:13px;color:hsl(230 10% 72%);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap">Console</div>
+    </a>
+    <div style="display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:6px;margin-left:auto;min-width:0">
+      <a href="Console%20Dashboard.dc.html" style="padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer;text-decoration:none" style-hover="background:hsl(226 20% 20%);color:hsl(40 20% 94%)">Dashboard</a>
+      <a href="Console%20Trilha.dc.html" style="padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer;text-decoration:none" style-hover="background:hsl(226 20% 20%);color:hsl(40 20% 94%)">Trilha</a>
+      <a href="Console%20Classes.dc.html" style="padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer;text-decoration:none" style-hover="background:hsl(226 20% 20%);color:hsl(40 20% 94%)">Classes</a>
+      <a href="Console%20Personalizacoes.dc.html" style="padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer;text-decoration:none" style-hover="background:hsl(226 20% 20%);color:hsl(40 20% 94%)">Personalizações</a>
+      <a href="Console%20Ranks.dc.html" style="padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer;text-decoration:none" style-hover="background:hsl(226 20% 20%);color:hsl(40 20% 94%)">Ranks</a>
+      <a href="Console%20Meus%20Dados.dc.html" style="padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer;text-decoration:none" style-hover="background:hsl(226 20% 20%);color:hsl(40 20% 94%)">Meus Dados</a>
+      <div style="display:flex;align-items:center;gap:9px;padding:9px 18px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));color:hsl(40 20% 96%);font-size:14px;font-weight:600;box-shadow:0 0 22px hsl(266 95% 66% / .38)">
+        Aprovações
+        <div style="min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:hsl(226 32% 10% / .5);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800">{{ count }}</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;padding-left:16px;border-left:1px solid hsl(226 20% 22%)">
+      <div style="width:34px;height:34px;border-radius:999px;background:hsl(226 20% 20%);border:1px solid hsl(266 95% 66% / .45);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:hsl(266 90% 77%)">AD</div>
+      <div style="font-size:13px;color:hsl(230 10% 72%);cursor:pointer" style-hover="color:hsl(0 70% 62%)">Sair</div>
+    </div>
+  </div>
+
+  <div style="max-width:1000px;margin:0 auto;padding:0 32px">
+
+    <div style="display:flex;align-items:flex-end;gap:24px;row-gap:16px;flex-wrap:wrap;padding:40px 0 22px">
+      <div style="min-width:0">
+        <div style="display:inline-flex;align-items:center;gap:8px;padding:5px 13px;border-radius:999px;background:hsl(25 35% 22%);border:1px solid hsl(25 40% 34%);font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:hsl(25 55% 78%)">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 3l7 4v6c0 4-3 7-7 8-4-1-7-4-7-8V7z" /></svg>
+          Administração interna
+        </div>
+        <div style="font-family:Cinzel, serif;font-size:34px;font-weight:700;line-height:1.1;margin-top:14px">Aprovações de professores</div>
+        <div style="font-size:15px;color:hsl(230 10% 72%);margin-top:8px">Cadastros aguardando liberação de acesso ao console.</div>
+      </div>
+    </div>
+
+    <sc-if value="{{ hasPending }}" hint-placeholder-val="{{ true }}">
+    <div>
+      <div style="display:flex;align-items:center;gap:18px;row-gap:14px;flex-wrap:wrap;padding:20px 24px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(45 90% 58% / .35);margin-bottom:20px">
+        <div style="position:relative;width:52px;height:58px;flex:none">
+          <div style="position:absolute;inset:0;background:hsl(45 90% 58% / .18);border:1px solid hsl(45 90% 58% / .5);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:hsl(45 90% 68%)">{{ count }}</div>
+        </div>
+        <div style="min-width:0">
+          <div style="font-size:17px;font-weight:700">{{ headline }}</div>
+          <div style="font-size:13px;color:hsl(230 10% 78%);margin-top:4px">A pessoa só consegue entrar no console depois da aprovação. O mais antigo espera desde 28/08.</div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:16px">
+
+        <div style="padding:24px 26px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+          <div style="display:flex;align-items:flex-start;gap:16px;row-gap:14px;flex-wrap:wrap">
+            <div style="width:44px;height:48px;flex:none;background:hsl(226 20% 26%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:hsl(40 20% 92%)">CM</div>
+            <div style="min-width:0;flex:1">
+              <div style="font-size:18px;font-weight:700">Cláudia Mendes</div>
+              <div style="font-size:13px;color:hsl(230 10% 78%);margin-top:5px">ULBRA Palmas · Matemática Aplicada</div>
+              <div style="font-size:12px;color:hsl(230 10% 72%);margin-top:3px">claudia.mendes@rede.ulbra.br · cadastro em 28/08/2026</div>
+            </div>
+            <div style="padding:5px 12px;border-radius:999px;background:hsl(45 50% 18%);font-size:11px;font-weight:700;color:hsl(45 90% 68%);white-space:nowrap">aguardando 8 dias</div>
+          </div>
+          <div style="font-size:14px;color:hsl(230 10% 84%);line-height:1.6;margin-top:16px;padding:14px 16px;border-radius:14px;background:hsl(226 22% 16%)">"Dou Cálculo I e Álgebra Linear para Engenharia. Quero testar a trilha personalizada com duas turmas no próximo semestre."</div>
+          <div style="display:flex;align-items:center;gap:12px;row-gap:12px;flex-wrap:wrap;margin-top:20px;padding-top:18px;border-top:1px solid hsl(226 20% 22%)">
+            <div onClick="{{ approve }}" style="display:flex;align-items:center;gap:9px;padding:12px 24px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));font-size:14px;font-weight:600;color:hsl(40 20% 96%);cursor:pointer;box-shadow:0 0 24px hsl(266 95% 66% / .35)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 13l4 4 10-10" /></svg>
+              Aprovar acesso
+            </div>
+            <div style="font-size:12px;color:hsl(230 10% 74%);max-width:280px;line-height:1.45">Aprovar envia um e-mail e libera o console na hora.</div>
+            <div onClick="{{ askReject }}" style="margin-left:auto;font-size:13px;font-weight:600;color:hsl(230 10% 76%);cursor:pointer;padding:10px 16px;border-radius:999px" style-hover="background:hsl(0 45% 16%);color:hsl(0 75% 70%)">Recusar cadastro…</div>
+          </div>
+
+          <sc-if value="{{ rejecting }}">
+          <div style="margin-top:16px;padding:18px 20px;border-radius:16px;background:hsl(0 40% 15%);border:1px solid hsl(0 70% 55% / .5);animation:tu-rise .2s ease-out">
+            <div style="font-size:15px;font-weight:700">Recusar o cadastro de Cláudia Mendes?</div>
+            <div style="font-size:13px;color:hsl(30 15% 86%);margin-top:8px;line-height:1.55">O cadastro é apagado — não fica em uma lista de recusados. Ela precisaria se cadastrar de novo do zero para tentar outra vez.</div>
+            <div style="display:flex;gap:10px;row-gap:10px;flex-wrap:wrap;margin-top:16px">
+              <div onClick="{{ cancelReject }}" style="margin-left:auto;padding:10px 18px;border-radius:999px;border:1px solid hsl(0 30% 42%);font-size:13px;font-weight:600;color:hsl(30 15% 88%);cursor:pointer">Voltar</div>
+              <div onClick="{{ cancelReject }}" style="display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:999px;background:hsl(0 70% 55%);font-size:13px;font-weight:700;color:hsl(40 20% 96%);cursor:pointer">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13" /></svg>
+                Recusar e apagar cadastro
+              </div>
+            </div>
+          </div>
+          </sc-if>
+        </div>
+
+        <div style="padding:24px 26px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+          <div style="display:flex;align-items:flex-start;gap:16px;row-gap:14px;flex-wrap:wrap">
+            <div style="width:44px;height:48px;flex:none;background:hsl(226 20% 26%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:hsl(40 20% 92%)">TR</div>
+            <div style="min-width:0;flex:1">
+              <div style="font-size:18px;font-weight:700">Tiago Rebouças</div>
+              <div style="font-size:13px;color:hsl(230 10% 78%);margin-top:5px">Instituto Federal do Tocantins · Química</div>
+              <div style="font-size:12px;color:hsl(230 10% 72%);margin-top:3px">tiago.reboucas@ifto.edu.br · cadastro em 02/09/2026</div>
+            </div>
+            <div style="padding:5px 12px;border-radius:999px;background:hsl(226 20% 20%);font-size:11px;font-weight:700;color:hsl(230 10% 82%);white-space:nowrap">aguardando 3 dias</div>
+          </div>
+          <div style="font-size:14px;color:hsl(230 10% 84%);line-height:1.6;margin-top:16px;padding:14px 16px;border-radius:14px;background:hsl(226 22% 16%)">"Trabalho com Química Orgânica no ensino técnico. Interesse principal é o material em áudio para os alunos que fazem estágio à tarde."</div>
+          <div style="display:flex;align-items:center;gap:12px;row-gap:12px;flex-wrap:wrap;margin-top:20px;padding-top:18px;border-top:1px solid hsl(226 20% 22%)">
+            <div onClick="{{ approve }}" style="display:flex;align-items:center;gap:9px;padding:12px 24px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));font-size:14px;font-weight:600;color:hsl(40 20% 96%);cursor:pointer;box-shadow:0 0 24px hsl(266 95% 66% / .35)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 13l4 4 10-10" /></svg>
+              Aprovar acesso
+            </div>
+            <div style="font-size:12px;color:hsl(230 10% 74%);max-width:280px;line-height:1.45">E-mail de instituição diferente da sua.</div>
+            <div onClick="{{ askReject }}" style="margin-left:auto;font-size:13px;font-weight:600;color:hsl(230 10% 76%);cursor:pointer;padding:10px 16px;border-radius:999px" style-hover="background:hsl(0 45% 16%);color:hsl(0 75% 70%)">Recusar cadastro…</div>
+          </div>
+        </div>
+
+        <div style="padding:24px 26px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+          <div style="display:flex;align-items:flex-start;gap:16px;row-gap:14px;flex-wrap:wrap">
+            <div style="width:44px;height:48px;flex:none;background:hsl(226 20% 26%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:hsl(40 20% 92%)">RS</div>
+            <div style="min-width:0;flex:1">
+              <div style="font-size:18px;font-weight:700">Renata Sobral</div>
+              <div style="font-size:13px;color:hsl(230 10% 78%);margin-top:5px">ULBRA Palmas · História</div>
+              <div style="font-size:12px;color:hsl(230 10% 72%);margin-top:3px">renata.sobral@rede.ulbra.br · cadastro em 04/09/2026</div>
+            </div>
+            <div style="padding:5px 12px;border-radius:999px;background:hsl(226 20% 20%);font-size:11px;font-weight:700;color:hsl(230 10% 82%);white-space:nowrap">aguardando 1 dia</div>
+          </div>
+          <div style="font-size:14px;color:hsl(230 10% 84%);line-height:1.6;margin-top:16px;padding:14px 16px;border-radius:14px;background:hsl(226 22% 16%)">"Sem descrição preenchida."</div>
+          <div style="display:flex;align-items:center;gap:12px;row-gap:12px;flex-wrap:wrap;margin-top:20px;padding-top:18px;border-top:1px solid hsl(226 20% 22%)">
+            <div onClick="{{ approve }}" style="display:flex;align-items:center;gap:9px;padding:12px 24px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));font-size:14px;font-weight:600;color:hsl(40 20% 96%);cursor:pointer;box-shadow:0 0 24px hsl(266 95% 66% / .35)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 13l4 4 10-10" /></svg>
+              Aprovar acesso
+            </div>
+            <div onClick="{{ askReject }}" style="margin-left:auto;font-size:13px;font-weight:600;color:hsl(230 10% 76%);cursor:pointer;padding:10px 16px;border-radius:999px" style-hover="background:hsl(0 45% 16%);color:hsl(0 75% 70%)">Recusar cadastro…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isEmpty }}">
+    <div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:18px;padding:92px 40px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+      <div style="position:relative;width:100px;height:108px">
+        <div style="position:absolute;inset:0;background:linear-gradient(135deg, hsl(142 65% 50% / .35), hsl(239 84% 67% / .22));clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+        <div style="position:absolute;inset:13px;background:hsl(226 28% 12%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="hsl(142 65% 62%)" stroke-width="2.2"><path d="M5 13l4 4 10-10" /></svg>
+        </div>
+      </div>
+      <div style="font-family:Cinzel, serif;font-size:24px;font-weight:700">Nenhum professor aguardando aprovação</div>
+      <div style="font-size:15px;color:hsl(230 10% 72%);max-width:460px;line-height:1.6">Novos cadastros aparecem aqui automaticamente. Você recebe um e-mail quando alguém entra na fila.</div>
+      <div style="font-size:13px;color:hsl(230 10% 70%);margin-top:4px">Última aprovação: Marcos Aguiar, em 27/08/2026.</div>
+    </div>
+    </sc-if>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;estado&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;pendentes&quot;,&quot;nenhum pendente&quot;],&quot;default&quot;:&quot;pendentes&quot;,&quot;tsType&quot;:&quot;'pendentes' | 'nenhum pendente'&quot;,&quot;section&quot;:&quot;Estados da tela&quot;}}">
+class Component extends DCLogic {
+  state = { reject: false, cleared: null };
+
+  renderVals() {
+    const e = this.props.estado || 'pendentes';
+    const empty = this.state.cleared === null ? e === 'nenhum pendente' : this.state.cleared;
+    return {
+      hasPending: !empty,
+      isEmpty: empty,
+      count: empty ? 0 : 3,
+      headline: '3 cadastros pendentes',
+      approve: () => this.setState({ reject: false }),
+      rejecting: this.state.reject,
+      askReject: () => this.setState({ reject: true }),
+      cancelReject: () => this.setState({ reject: false })
+    };
+  }
+}
+
+</script>
+</body>
+</html>

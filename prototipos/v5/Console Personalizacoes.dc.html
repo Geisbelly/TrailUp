@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  body { margin:0; background:hsl(225 32% 8%); font-family:Inter, system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:hsl(266 90% 77%); text-decoration:none; }
+  a:hover { color:hsl(266 95% 76%); }
+  @keyframes tu-spin { to { transform:rotate(360deg); } }
+  @keyframes tu-pulse { 0%,100% { opacity:.45; } 50% { opacity:1; } }
+  @keyframes tu-ember { 0% { transform:translateY(0) scale(1); opacity:0 } 14% { opacity:.85 } 100% { transform:translateY(-130px) scale(.3); opacity:0 } }
+</style>
+</helmet>
+<div style="min-height:100vh;background:radial-gradient(1100px 520px at 12% -12%, hsl(266 60% 22% / .40), transparent 62%), radial-gradient(900px 480px at 96% 4%, hsl(239 60% 24% / .28), transparent 60%), hsl(225 32% 8%);color:hsl(40 20% 94%);padding-bottom:72px">
+
+  <div style="position:sticky;top:0;z-index:30;display:flex;align-items:center;flex-wrap:wrap;row-gap:10px;gap:24px;padding:12px 32px;background:hsl(225 32% 8% / .88);backdrop-filter:blur(14px);border-bottom:1px solid hsl(226 20% 22%)">
+    <a href="Console%20Dashboard.dc.html" style="display:flex;align-items:center;gap:12px;min-width:0;color:inherit;text-decoration:none">
+      <img src="assets/trailup-logo.png" alt="TrailUp" style="width:26px;height:32px;object-fit:contain;filter:drop-shadow(0 0 10px hsl(266 95% 66% / .55))" />
+      <div style="font-family:Cinzel, serif;font-weight:700;font-size:19px;letter-spacing:.04em">TrailUp</div>
+      <div style="width:1px;height:20px;background:hsl(226 20% 22%)"></div>
+      <div style="font-size:13px;color:hsl(230 10% 72%);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap">Console</div>
+    </a>
+    <div style="display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:6px;margin-left:auto;min-width:0">
+      <a href="Console%20Dashboard.dc.html" style="padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer;text-decoration:none" style-hover="background:hsl(226 20% 20%);color:hsl(40 20% 94%)">Dashboard</a>
+      <a href="Console%20Trilha.dc.html" style="padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer;text-decoration:none" style-hover="background:hsl(226 20% 20%);color:hsl(40 20% 94%)">Trilha</a>
+      <a href="Console%20Classes.dc.html" style="padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer;text-decoration:none" style-hover="background:hsl(226 20% 20%);color:hsl(40 20% 94%)">Classes</a>
+      <div style="padding:9px 18px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));color:hsl(40 20% 96%);font-size:14px;font-weight:600;box-shadow:0 0 22px hsl(266 95% 66% / .38)">Personalizações</div>
+      <a href="Console%20Ranks.dc.html" style="padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer;text-decoration:none" style-hover="background:hsl(226 20% 20%);color:hsl(40 20% 94%)">Ranks</a>
+      <a href="Console%20Meus%20Dados.dc.html" style="padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:hsl(230 10% 72%);cursor:pointer;text-decoration:none" style-hover="background:hsl(226 20% 20%);color:hsl(40 20% 94%)">Meus Dados</a>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;padding-left:16px;border-left:1px solid hsl(226 20% 22%)">
+      <div style="width:34px;height:34px;border-radius:999px;background:hsl(226 20% 20%);border:1px solid hsl(266 95% 66% / .45);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:hsl(266 90% 77%)">JP</div>
+      <div style="font-size:13px;color:hsl(230 10% 72%);cursor:pointer" style-hover="color:hsl(0 70% 62%)">Sair</div>
+    </div>
+  </div>
+
+  <div style="max-width:1420px;margin:0 auto;padding:0 32px">
+
+    <div style="display:flex;align-items:flex-end;gap:24px;row-gap:14px;flex-wrap:wrap;padding:40px 0 24px;position:relative"><div style="position:absolute;left:-70px;top:-46px;width:600px;height:270px;pointer-events:none;background:radial-gradient(closest-side, hsl(266 95% 66% / .17), transparent 72%)"></div><div style="position:absolute;left:-70px;top:-46px;width:340px;height:220px;pointer-events:none;background:radial-gradient(closest-side, hsl(239 84% 67% / .10), transparent 70%)"></div><div style="position:absolute;left:8px;bottom:14px;width:430px;height:88px;pointer-events:none;overflow:hidden"><div style="position:absolute;left:20px;bottom:0;width:3px;height:3px;border-radius:999px;background:hsl(266 90% 80%);animation:tu-ember 6.2s linear infinite 0s"></div><div style="position:absolute;left:104px;bottom:0;width:2px;height:2px;border-radius:999px;background:hsl(239 84% 80%);animation:tu-ember 7.4s linear infinite 1.3s"></div><div style="position:absolute;left:186px;bottom:0;width:3px;height:3px;border-radius:999px;background:hsl(266 90% 84%);animation:tu-ember 6.6s linear infinite 2.5s"></div><div style="position:absolute;left:268px;bottom:0;width:2px;height:2px;border-radius:999px;background:hsl(266 90% 80%);animation:tu-ember 8s linear infinite 3.2s"></div><div style="position:absolute;left:352px;bottom:0;width:2px;height:2px;border-radius:999px;background:hsl(239 84% 82%);animation:tu-ember 7s linear infinite 4.4s"></div></div>
+      <div style="min-width:0">
+        <div style="font-family:Cinzel, serif;font-size:34px;font-weight:700;line-height:1.1">PERSONALIZAÇÕES</div>
+        <div style="font-size:15px;color:hsl(230 10% 72%);margin-top:8px">Compare como o material fica para cada perfil BrainHex e visualize a personalização efetiva por aluno.</div>
+      </div>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%);font-size:12px;color:hsl(230 10% 78%)">
+          <div style="width:8px;height:8px;border-radius:999px;background:hsl(142 65% 50%);animation:tu-pulse 2s ease-in-out infinite"></div>
+          Atualizado há 12 s
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:flex-end;gap:16px;row-gap:16px;flex-wrap:wrap;padding:20px 24px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+      <div style="min-width:190px;flex:1">
+        <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 76%);font-weight:600">Classe</div>
+        <div style="display:flex;align-items:center;margin-top:8px;padding:11px 14px;border-radius:14px;background:hsl(226 22% 16%);border:1px solid hsl(266 95% 66% / .4);font-size:14px;font-weight:600;cursor:pointer">
+          {{ filterClasse }}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 72%)" stroke-width="2" style="margin-left:auto"><path d="M6 9l6 6 6-6" /></svg>
+        </div>
+      </div>
+      <div style="min-width:170px;flex:1">
+        <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 76%);font-weight:600">Tópico</div>
+        <div style="display:flex;align-items:center;margin-top:8px;padding:11px 14px;border-radius:14px;background:hsl(226 22% 16%);border:1px solid hsl(266 95% 66% / .4);font-size:14px;font-weight:600;cursor:pointer">
+          {{ filterTopico }}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 72%)" stroke-width="2" style="margin-left:auto"><path d="M6 9l6 6 6-6" /></svg>
+        </div>
+      </div>
+      <div style="min-width:190px;flex:1">
+        <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 76%);font-weight:600">Conteúdo</div>
+        <div style="display:flex;align-items:center;margin-top:8px;padding:11px 14px;border-radius:14px;background:hsl(226 22% 16%);border:1px solid hsl(226 20% 26%);font-size:14px;cursor:pointer">
+          {{ filterConteudo }}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 72%)" stroke-width="2" style="margin-left:auto"><path d="M6 9l6 6 6-6" /></svg>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:9px;padding:11px 18px;border-radius:14px;border:1px solid hsl(226 20% 26%);font-size:13px;font-weight:600;color:hsl(230 10% 84%);cursor:pointer" style-hover="border-color:hsl(266 95% 66% / .6);color:hsl(40 20% 94%)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 11a8 8 0 10-2.3 5.7" /><path d="M20 5v6h-6" /></svg>
+        Atualizar
+      </div>
+      <div style="width:1px;align-self:stretch;background:hsl(226 20% 22%)"></div>
+      <div style="min-width:150px">
+        <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 76%);font-weight:600">Gerar tudo para o perfil</div>
+        <div style="display:flex;align-items:center;margin-top:8px;padding:11px 14px;border-radius:14px;background:hsl(226 22% 16%);border:1px solid hsl(226 20% 26%);font-size:14px;cursor:pointer">
+          <div style="{{ genProfileDot }}"></div>
+          {{ genProfileName }}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 72%)" stroke-width="2" style="margin-left:auto"><path d="M6 9l6 6 6-6" /></svg>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:9px;padding:12px 20px;border-radius:14px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));font-size:13px;font-weight:600;color:hsl(40 20% 96%);cursor:pointer;box-shadow:0 0 22px hsl(266 95% 66% / .35)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z" /></svg>
+        Gerar tudo
+      </div>
+    </div>
+
+    <sc-if value="{{ isEmpty }}">
+    <div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:18px;padding:86px 40px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%);margin-top:20px">
+      <div style="position:relative;width:100px;height:108px">
+        <div style="position:absolute;inset:0;background:linear-gradient(135deg, hsl(265 65% 50% / .5), hsl(239 84% 67% / .3));clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+        <div style="position:absolute;inset:13px;background:hsl(226 28% 12%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="hsl(266 90% 77%)" stroke-width="1.8"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z" /></svg>
+        </div>
+      </div>
+      <div style="font-family:Cinzel, serif;font-size:23px;font-weight:700">Escolha uma classe e um tópico</div>
+      <div style="font-size:15px;color:hsl(230 10% 72%);max-width:500px;line-height:1.6">O painel mostra o andamento da geração por perfil, por aluno e no agregado da turma. Selecione acima para começar.</div>
+      <div onClick="{{ fill }}" style="margin-top:6px;padding:12px 22px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));font-size:14px;font-weight:600;color:hsl(40 20% 96%);cursor:pointer;box-shadow:0 0 24px hsl(266 95% 66% / .35)">Ver Física I · Cinemática</div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ hasData }}" hint-placeholder-val="{{ true }}">
+    <div>
+
+      <sc-if value="{{ zeroData }}">
+      <div style="display:flex;align-items:center;gap:24px;row-gap:16px;flex-wrap:wrap;padding:20px 26px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%);margin-top:20px">
+        <div style="min-width:0">
+          <div style="font-family:Cinzel, serif;font-size:18px;font-weight:700">{{ filterConteudo }}</div>
+          <div style="font-size:12px;color:hsl(230 10% 72%);margin-top:3px">Conteúdo ampliado e gerado por blocos</div>
+        </div>
+        <div style="flex:1;min-width:220px">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:hsl(230 10% 78%);margin-bottom:7px"><div>Progresso dos perfis</div><div>0%</div></div>
+          <div style="height:7px;border-radius:999px;background:hsl(25 25% 20%);overflow:hidden"><div style="width:0%;height:100%;background:hsl(266 90% 77%)"></div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="padding:7px 14px;border-radius:999px;background:hsl(266 95% 66% / .18);border:1px solid hsl(266 95% 66% / .4);font-size:12px;font-weight:700;color:hsl(266 90% 84%)">0 de 7 pronto(s)</div>
+          <div style="padding:7px 14px;border-radius:999px;border:1px solid hsl(226 20% 30%);font-size:12px;font-weight:600;color:hsl(230 10% 80%)">7 sem material</div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ !zeroData }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;align-items:center;gap:24px;row-gap:18px;flex-wrap:wrap;padding:20px 26px;border-radius:20px;background:linear-gradient(120deg, hsl(0 40% 15%), hsl(226 28% 12%) 60%);border:1px solid hsl(0 70% 55% / .4);margin-top:20px">
+        <div style="display:flex;align-items:center;gap:16px;min-width:0">
+          <div style="width:44px;height:48px;flex:none;background:hsl(0 70% 55% / .22);border:1px solid hsl(0 70% 62% / .5);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:hsl(0 75% 70%)">!</div>
+          <div style="min-width:0">
+            <div style="font-family:Cinzel, serif;font-size:20px;font-weight:700">1 perfil precisa da sua atenção</div>
+            <div style="font-size:13px;color:hsl(30 14% 84%);margin-top:4px">Socializer falhou na geração do áudio de Cinemática. Os outros 6 perfis seguem normalmente.</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-left:auto">
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:hsl(142 40% 16%);border:1px solid hsl(142 65% 50% / .4)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="hsl(142 65% 62%)" stroke-width="3"><path d="M5 13l4 4 10-10" /></svg>
+            <div style="font-size:13px;font-weight:700;color:hsl(142 65% 66%)">3</div>
+            <div style="font-size:12px;color:hsl(120 12% 84%)">prontos</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:hsl(205 45% 18%);border:1px solid hsl(205 70% 58% / .4)">
+            <div style="width:13px;height:13px;border-radius:999px;border:2px solid hsl(205 70% 70% / .35);border-top-color:hsl(205 70% 70%);animation:tu-spin 1s linear infinite"></div>
+            <div style="font-size:13px;font-weight:700;color:hsl(205 70% 72%)">1</div>
+            <div style="font-size:12px;color:hsl(205 20% 86%)">gerando</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:hsl(45 50% 18%);border:1px solid hsl(45 90% 58% / .4)">
+            <div style="width:12px;height:14px;background:hsl(45 90% 62%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+            <div style="font-size:13px;font-weight:700;color:hsl(45 90% 66%)">1</div>
+            <div style="font-size:12px;color:hsl(45 20% 88%)">parcial</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:hsl(0 55% 20%);border:1px solid hsl(0 70% 55% / .5)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="hsl(0 78% 72%)" stroke-width="2.6"><path d="M6 6l12 12M18 6L6 18" /></svg>
+            <div style="font-size:13px;font-weight:700;color:hsl(0 78% 74%)">1</div>
+            <div style="font-size:12px;color:hsl(0 18% 88%)">com falha</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:hsl(226 20% 20%);border:1px solid hsl(226 20% 28%)">
+            <div style="width:12px;height:14px;background:hsl(230 10% 55%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div>
+            <div style="font-size:13px;font-weight:700;color:hsl(230 10% 84%)">1</div>
+            <div style="font-size:12px;color:hsl(230 10% 78%)">sem material</div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin:22px 0 20px;padding:5px;border-radius:999px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%);width:fit-content">
+        <div onClick="{{ tab0 }}" style="{{ tabStyle0 }}">Por perfil</div>
+        <div onClick="{{ tab1 }}" style="{{ tabStyle1 }}">Estrutura e paleta</div>
+        <div onClick="{{ tab2 }}" style="{{ tabStyle2 }}">Por aluno</div>
+        <div onClick="{{ tab3 }}" style="{{ tabStyle3 }}">Turma</div>
+      </div>
+
+      <sc-if value="{{ isTab0 }}">
+      <sc-if value="{{ zeroData }}">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:16px">
+        <sc-for list="{{ zeroProfiles }}" as="zp" hint-placeholder-count="4">
+        <div onClick="{{ zp.openCard }}" style="position:relative;overflow:hidden;padding:20px 22px;border-radius:20px;background:linear-gradient(158deg, hsl(226 26% 15%), hsl(226 28% 12%) 58%);border-top:3px solid {{ zp.color }};border-left:1px solid hsl(226 20% 22%);border-right:1px solid hsl(226 20% 22%);border-bottom:1px solid hsl(226 20% 22%);box-shadow:0 20px 44px -26px hsl(226 55% 3% / .95);cursor:pointer" style-hover="border-top-color:{{ zp.color }};box-shadow:0 20px 44px -22px hsl(226 55% 3%), 0 0 0 1px hsl(266 95% 66% / .3)">
+          <div style="position:absolute;right:-52px;top:-52px;width:180px;height:180px;pointer-events:none;opacity:.20;background:radial-gradient(closest-side, {{ zp.color }}, transparent 70%)"></div>
+          <div style="position:relative;display:flex;align-items:center;gap:12px">
+            <div style="width:30px;height:34px;flex:none;background:{{ zp.color }};clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(226 32% 10%)" stroke-width="2.4"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z" /></svg></div>
+            <div style="font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.02em">{{ zp.name }}</div>
+            <div style="margin-left:auto;padding:5px 12px;border-radius:999px;background:hsl(226 20% 20%);border:1px solid hsl(226 20% 30%);font-size:11px;font-weight:700;color:hsl(230 10% 82%)">Sem material</div>
+          </div>
+          <div style="font-size:12px;color:hsl(230 10% 72%);margin-top:6px">{{ zp.tech }} · 0 aluno(s) com este perfil</div>
+          <sc-if value="{{ zp.isAchiever }}">
+          <div style="margin-top:16px;padding:12px 14px;border-radius:14px;background:hsl(226 22% 16%)">
+            <div style="display:flex;justify-content:space-between;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:hsl(230 10% 74%);font-weight:600"><div>Etapa atual</div><div>0%</div></div>
+            <div style="font-size:13px;font-weight:600;margin-top:8px;color:hsl(230 10% 84%)">Sem material</div>
+            <div style="height:6px;border-radius:999px;background:hsl(226 20% 24%);overflow:hidden;margin-top:8px"><div style="width:0%;height:100%;background:{{ zp.color }}"></div></div>
+          </div>
+          </sc-if>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:16px">
+            <sc-for list="{{ zp.formats }}" as="f" hint-placeholder-count="3">
+            <div style="display:flex;align-items:center;justify-content:space-between;font-size:13px;color:hsl(230 10% 82%)">
+              <div>{{ f }}</div>
+              <div style="padding:2px 9px;border-radius:999px;background:hsl(226 20% 20%);font-size:10px;font-weight:700;color:hsl(230 10% 76%)">Sem material</div>
+            </div>
+            </sc-for>
+          </div>
+          <div style="font-size:12px;color:hsl(230 10% 68%);margin-top:12px;line-height:1.5">Ainda não há personalização gerada para este perfil no conteúdo selecionado.</div>
+          <div onClick="{{ zp.gerar }}" style="margin-top:14px;padding:9px 14px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));font-size:12px;font-weight:700;color:hsl(40 20% 96%);text-align:center;cursor:pointer">Gerar</div>
+        </div>
+        </sc-for>
+      </div>
+      </sc-if>
+      <sc-if value="{{ !zeroData }}" hint-placeholder-val="{{ true }}">
+      <div style="border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%);overflow:hidden">
+        <div style="padding:18px 24px;border-bottom:1px solid hsl(226 20% 22%);display:flex;align-items:center;gap:10px">
+          <div style="font-size:13px;font-weight:600;color:hsl(230 10% 84%)">Comparativo dos 7 perfis — ordenado por alunos matriculados</div>
+          <div style="margin-left:auto;font-size:11px;color:hsl(230 10% 66%)">Cinemática · 4 conteúdos</div>
+        </div>
+        <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead>
+            <tr style="text-align:left;border-bottom:1px solid hsl(226 20% 22%)">
+              <th style="padding:12px 20px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:hsl(230 10% 68%);font-weight:600">Perfil</th>
+              <th style="padding:12px 14px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:hsl(230 10% 68%);font-weight:600">Alunos</th>
+              <th style="padding:12px 14px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:hsl(230 10% 68%);font-weight:600">Status</th>
+              <th style="padding:12px 14px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:hsl(230 10% 68%);font-weight:600">Texto</th>
+              <th style="padding:12px 14px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:hsl(230 10% 68%);font-weight:600">Áudio</th>
+              <th style="padding:12px 14px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:hsl(230 10% 68%);font-weight:600">Apresentação</th>
+              <th style="padding:12px 20px"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <sc-for list="{{ profileRows }}" as="pr" hint-placeholder-count="7">
+            <tr style="{{ pr.rowStyle }}">
+              <td style="padding:14px 20px;white-space:nowrap">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <div style="{{ pr.iconStyle }}">{{ pr.initials }}</div>
+                  <div style="font-weight:700">{{ pr.name }}</div>
+                </div>
+              </td>
+              <td style="padding:14px;white-space:nowrap">
+                <div style="font-weight:700">{{ pr.students }}</div>
+                <div style="font-size:11px;color:hsl(230 10% 66%)">{{ pr.studentsNote }}</div>
+              </td>
+              <td style="padding:14px;white-space:nowrap"><div style="{{ pr.statusPill }}">{{ pr.statusLabel }}</div></td>
+              <td style="padding:14px;white-space:nowrap"><div style="{{ pr.textStyle }}">{{ pr.textLabel }}</div></td>
+              <td style="padding:14px;white-space:nowrap"><div style="{{ pr.audioStyle }}">{{ pr.audioLabel }}</div></td>
+              <td style="padding:14px;white-space:nowrap"><div style="{{ pr.slidesStyle }}">{{ pr.slidesLabel }}</div></td>
+              <td style="padding:14px 20px;white-space:nowrap;text-align:right">
+                <div onClick="{{ pr.action }}" style="{{ pr.actionStyle }}">{{ pr.actionLabel }}</div>
+              </td>
+            </tr>
+            </sc-for>
+          </tbody>
+        </table>
+        </div>
+      </div>
+      </sc-if>
+      </sc-if>
+
+      <sc-if value="{{ isTab1 }}">
+      <div style="border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%);overflow:hidden">
+        <div style="padding:18px 24px;border-bottom:1px solid hsl(226 20% 22%);display:flex;align-items:center;gap:10px">
+          <div style="font-size:13px;font-weight:600;color:hsl(230 10% 84%)">Estrutura e paleta por perfil</div>
+          <div style="margin-left:auto;font-size:11px;color:hsl(230 10% 66%)">Cinemática · 4 conteúdos</div>
+        </div>
+        <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead>
+            <tr style="text-align:left;border-bottom:1px solid hsl(226 20% 22%)">
+              <th style="padding:12px 20px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:hsl(230 10% 68%);font-weight:600">Perfil</th>
+              <th style="padding:12px 14px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:hsl(230 10% 68%);font-weight:600">Tom</th>
+              <th style="padding:12px 14px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:hsl(230 10% 68%);font-weight:600">Estilo</th>
+              <th style="padding:12px 14px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:hsl(230 10% 68%);font-weight:600">Nível</th>
+              <th style="padding:12px 14px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:hsl(230 10% 68%);font-weight:600">Prioritário</th>
+              <th style="padding:12px 20px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:hsl(230 10% 68%);font-weight:600">Paleta</th>
+            </tr>
+          </thead>
+          <tbody>
+            <sc-for list="{{ paletteRows }}" as="pl" hint-placeholder-count="7">
+            <tr style="{{ pl.rowStyle }}">
+              <td style="padding:14px 20px;white-space:nowrap">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <div style="{{ pl.iconStyle }}">{{ pl.initials }}</div>
+                  <div style="font-weight:700">{{ pl.name }}</div>
+                </div>
+              </td>
+              <td style="padding:14px;color:hsl(230 10% 58%)">—</td>
+              <td style="padding:14px;color:hsl(230 10% 58%)">—</td>
+              <td style="padding:14px;color:hsl(230 10% 58%)">—</td>
+              <td style="padding:14px;color:hsl(230 10% 58%)">—</td>
+              <td style="padding:14px 20px">
+                <div style="display:flex;gap:6px">
+                  <sc-for list="{{ pl.tokens }}" as="tk" hint-placeholder-count="5">
+                  <div title="{{ tk.label }}" style="width:16px;height:16px;border-radius:999px;background:{{ tk.color }}"></div>
+                  </sc-for>
+                </div>
+              </td>
+            </tr>
+            </sc-for>
+          </tbody>
+        </table>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isTab2 }}">
+      <sc-if value="{{ zeroData }}">
+      <div style="border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%);padding:26px 28px;max-width:520px">
+        <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 76%);font-weight:600">Aluno</div>
+        <div style="display:flex;align-items:center;margin-top:9px;padding:12px 16px;border-radius:14px;background:hsl(226 22% 16%);border:1px solid hsl(226 20% 28%);font-size:14px;color:hsl(230 10% 62%)">
+          Selecione o aluno
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 72%)" stroke-width="2" style="margin-left:auto"><path d="M6 9l6 6 6-6" /></svg>
+        </div>
+        <div style="margin-top:16px;padding:16px 18px;border-radius:14px;background:hsl(226 22% 16% / .6);font-size:13px;color:hsl(230 10% 74%)">Selecione um aluno para ver a personalização efetiva dele.</div>
+      </div>
+      </sc-if>
+      <sc-if value="{{ !zeroData }}" hint-placeholder-val="{{ true }}">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(340px, 1fr));gap:20px">
+        <div style="padding:24px 26px;border-radius:20px;background:linear-gradient(140deg, hsl(258 30% 17%), hsl(226 28% 12%));border:1px solid hsl(266 95% 66% / .3)">
+          <div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:hsl(266 90% 80%);font-weight:600">Personalização efetiva</div>
+          <div style="display:flex;align-items:center;gap:14px;margin-top:14px">
+            <div style="width:44px;height:48px;flex:none;background:#7a63e8;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:hsl(226 32% 10%)">MC</div>
+            <div style="min-width:0">
+              <div style="font-family:Cinzel, serif;font-size:24px;font-weight:700;line-height:1.15">Marina Corrêa</div>
+              <div style="font-size:13px;color:hsl(230 10% 80%);margin-top:3px">perfil usado: Mastermind (92% de afinidade)</div>
+            </div>
+            <div style="margin-left:auto;display:flex;align-items:center;gap:7px;padding:6px 13px;border-radius:999px;background:hsl(142 40% 16%);border:1px solid hsl(142 65% 50% / .45)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="hsl(142 65% 64%)" stroke-width="3.2"><path d="M5 13l4 4 10-10" /></svg>
+              <div style="font-size:11px;font-weight:700;color:hsl(142 65% 66%)">pronto</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px;margin-top:22px">
+            <div style="display:flex;align-items:center;gap:12px;padding:13px 15px;border-radius:14px;background:hsl(226 22% 16%)">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="hsl(142 65% 62%)" stroke-width="3"><path d="M5 13l4 4 10-10" /></svg>
+              <div style="font-size:13px;font-weight:600;flex:1">Texto personalizado</div>
+              <div style="font-size:12px;color:hsl(230 10% 78%)">4 de 4 · 68% lido</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:13px 15px;border-radius:14px;background:hsl(226 22% 16%)">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="hsl(142 65% 62%)" stroke-width="3"><path d="M5 13l4 4 10-10" /></svg>
+              <div style="font-size:13px;font-weight:600;flex:1">Áudio</div>
+              <div style="font-size:12px;color:hsl(230 10% 78%)">9 min · ouvido</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:13px 15px;border-radius:14px;background:hsl(226 22% 16%)">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="hsl(142 65% 62%)" stroke-width="3"><path d="M5 13l4 4 10-10" /></svg>
+              <div style="font-size:13px;font-weight:600;flex:1">Apresentação</div>
+              <div style="font-size:12px;color:hsl(230 10% 78%)">8 slides · não aberta</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:20px">
+            <a href="Console%20Dashboard.dc.html" style="padding:10px 18px;border-radius:999px;border:1px solid hsl(226 20% 28%);font-size:13px;font-weight:600;color:hsl(230 10% 84%);text-decoration:none" style-hover="border-color:hsl(266 95% 66% / .6)">Abrir no dashboard</a>
+            <div onClick="{{ viewMarina }}" style="padding:10px 18px;border-radius:999px;border:1px solid hsl(226 20% 28%);font-size:13px;font-weight:600;color:hsl(230 10% 86%);cursor:pointer" style-hover="border-color:hsl(266 95% 66% / .6)">Ver material gerado</div>
+            <div onClick="{{ regenMarina }}" style="padding:10px 18px;border-radius:999px;background:hsl(266 95% 66% / .18);border:1px solid hsl(266 95% 66% / .45);font-size:13px;font-weight:600;color:hsl(266 90% 82%);cursor:pointer">Regerar material</div>
+          </div>
+        </div>
+
+        <div style="border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%);overflow:hidden">
+          <div style="display:flex;align-items:center;gap:12px;padding:20px 24px 16px">
+            <div>
+              <div style="font-family:Cinzel, serif;font-size:19px;font-weight:700">Todos os alunos</div>
+              <div style="font-size:12px;color:hsl(230 10% 72%);margin-top:3px">status da personalização de Cinemática</div>
+            </div>
+            <div style="margin-left:auto;display:flex;align-items:center;gap:9px;padding:9px 14px;border-radius:999px;background:hsl(226 22% 16%);border:1px solid hsl(226 20% 26%);font-size:12px;color:hsl(230 10% 78%)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 72%)" stroke-width="2"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
+              Buscar aluno
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column">
+            <div style="display:flex;align-items:center;gap:12px;padding:13px 24px;border-top:1px solid hsl(226 20% 22%);background:hsl(266 95% 66% / .08);cursor:pointer">
+              <div style="width:28px;height:32px;flex:none;background:#7a63e8;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:hsl(226 32% 10%)">MC</div>
+              <div style="min-width:0;flex:1"><div style="font-size:14px;font-weight:600">Marina Corrêa</div><div style="font-size:12px;color:hsl(230 10% 74%);margin-top:2px">Mastermind</div></div>
+              <div style="display:flex;align-items:center;gap:6px;padding:4px 11px;border-radius:999px;background:hsl(142 40% 16%)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="hsl(142 65% 64%)" stroke-width="3.4"><path d="M5 13l4 4 10-10" /></svg><div style="font-size:11px;font-weight:700;color:hsl(142 65% 66%)">pronto</div></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:13px 24px;border-top:1px solid hsl(226 20% 22%);cursor:pointer" style-hover="background:hsl(226 22% 16%)">
+              <div style="width:28px;height:32px;flex:none;background:#8593a2;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:hsl(226 32% 10%)">RA</div>
+              <div style="min-width:0;flex:1"><div style="font-size:14px;font-weight:600">Rafael Antunes</div><div style="font-size:12px;color:hsl(230 10% 74%);margin-top:2px">Survivor</div></div>
+              <div style="display:flex;align-items:center;gap:6px;padding:4px 11px;border-radius:999px;background:hsl(226 20% 20%)"><div style="width:10px;height:12px;background:hsl(230 10% 58%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div><div style="font-size:11px;font-weight:700;color:hsl(230 10% 82%)">sem material</div></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:13px 24px;border-top:1px solid hsl(226 20% 22%);cursor:pointer" style-hover="background:hsl(226 22% 16%)">
+              <div style="width:28px;height:32px;flex:none;background:#22c9bc;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:hsl(226 32% 10%)">BL</div>
+              <div style="min-width:0;flex:1"><div style="font-size:14px;font-weight:600">Beatriz Lemos</div><div style="font-size:12px;color:hsl(230 10% 74%);margin-top:2px">Seeker</div></div>
+              <div style="display:flex;align-items:center;gap:6px;padding:4px 11px;border-radius:999px;background:hsl(142 40% 16%)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="hsl(142 65% 64%)" stroke-width="3.4"><path d="M5 13l4 4 10-10" /></svg><div style="font-size:11px;font-weight:700;color:hsl(142 65% 66%)">pronto</div></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:13px 24px;border-top:1px solid hsl(226 20% 22%);cursor:pointer" style-hover="background:hsl(226 22% 16%)">
+              <div style="width:28px;height:32px;flex:none;background:#f77b57;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:hsl(226 32% 10%)">NS</div>
+              <div style="min-width:0;flex:1"><div style="font-size:14px;font-weight:600">Nina Salgado</div><div style="font-size:12px;color:hsl(230 10% 74%);margin-top:2px">Socializer</div></div>
+              <div style="display:flex;align-items:center;gap:6px;padding:4px 11px;border-radius:999px;background:hsl(0 60% 24%)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="hsl(0 80% 78%)" stroke-width="3"><path d="M6 6l12 12M18 6L6 18" /></svg><div style="font-size:11px;font-weight:700;color:hsl(0 80% 78%)">com falha</div></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:13px 24px;border-top:1px solid hsl(226 20% 22%);cursor:pointer" style-hover="background:hsl(226 22% 16%)">
+              <div style="width:28px;height:32px;flex:none;background:#dfb63a;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:hsl(226 32% 10%)">HV</div>
+              <div style="min-width:0;flex:1"><div style="font-size:14px;font-weight:600">Helena Vasques</div><div style="font-size:12px;color:hsl(230 10% 74%);margin-top:2px">Achiever</div></div>
+              <div style="display:flex;align-items:center;gap:6px;padding:4px 11px;border-radius:999px;background:hsl(205 45% 18%)"><div style="width:11px;height:11px;border-radius:999px;border:2px solid hsl(205 70% 70% / .3);border-top-color:hsl(205 70% 72%);animation:tu-spin 1s linear infinite"></div><div style="font-size:11px;font-weight:700;color:hsl(205 70% 74%)">gerando</div></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:13px 24px;border-top:1px solid hsl(226 20% 22%);cursor:pointer" style-hover="background:hsl(226 22% 16%)">
+              <div style="width:28px;height:32px;flex:none;background:#3e6dea;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:hsl(226 32% 10%)">CB</div>
+              <div style="min-width:0;flex:1"><div style="font-size:14px;font-weight:600">Caio Bertoldo</div><div style="font-size:12px;color:hsl(230 10% 74%);margin-top:2px">Conqueror</div></div>
+              <div style="display:flex;align-items:center;gap:6px;padding:4px 11px;border-radius:999px;background:hsl(45 50% 18%)"><div style="width:10px;height:12px;background:hsl(45 90% 62%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div><div style="font-size:11px;font-weight:700;color:hsl(45 90% 68%)">parcial</div></div>
+            </div>
+          </div>
+          <div style="padding:14px 24px;border-top:1px solid hsl(226 20% 22%);font-size:12px;color:hsl(230 10% 72%)">6 de 34 alunos</div>
+        </div>
+      </div>
+      </sc-if>
+      </sc-if>
+
+      <sc-if value="{{ isTab3 }}">
+      <sc-if value="{{ zeroData }}">
+      <div style="display:flex;flex-direction:column;gap:20px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:16px">
+          <div style="padding:24px 26px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+            <div style="font-family:Cinzel, serif;font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:hsl(230 10% 78%)">Alunos na turma</div>
+            <div style="font-size:44px;font-weight:800;margin-top:12px;line-height:1">0</div>
+          </div>
+          <div style="padding:24px 26px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+            <div style="font-family:Cinzel, serif;font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:hsl(230 10% 78%)">Perfil predominante</div>
+            <div style="font-size:34px;font-weight:800;margin-top:14px;color:hsl(230 10% 58%)">—</div>
+          </div>
+          <div style="padding:24px 26px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+            <div style="font-family:Cinzel, serif;font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:hsl(230 10% 78%)">Média de acertos</div>
+            <div style="font-size:44px;font-weight:800;margin-top:12px;line-height:1">0.0%</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:16px">
+          <div style="padding:24px 26px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+            <div style="font-family:Cinzel, serif;font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:hsl(230 10% 78%)">Conclusão média</div>
+            <div style="font-size:44px;font-weight:800;margin-top:12px;line-height:1">0.0%</div>
+          </div>
+          <div style="padding:24px 26px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+            <div style="font-family:Cinzel, serif;font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:hsl(230 10% 78%)">Nota média</div>
+            <div style="font-size:44px;font-weight:800;margin-top:12px;line-height:1">0.0%</div>
+          </div>
+        </div>
+        <div style="padding:24px 26px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+          <div style="font-family:Cinzel, serif;font-size:20px;font-weight:700">Distribuição de perfis BrainHex</div>
+          <div style="font-size:13px;color:hsl(230 10% 72%);margin-top:4px">Perfil dominante de cada aluno da turma, usado para priorizar os formatos gerados para o grupo.</div>
+          <div style="margin-top:18px;padding:20px;border-radius:14px;background:hsl(226 22% 16% / .6);font-size:13px;color:hsl(230 10% 72%);text-align:center">Nenhum aluno com perfil BrainHex definido nesta turma ainda.</div>
+        </div>
+      </div>
+      </sc-if>
+      <sc-if value="{{ !zeroData }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;gap:20px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:20px">
+          <div style="padding:24px 26px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+            <div style="font-family:Cinzel, serif;font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:hsl(230 10% 78%)">Alunos na turma</div>
+            <div style="font-size:44px;font-weight:800;margin-top:12px;line-height:1">34</div>
+            <div style="font-size:13px;color:hsl(230 10% 74%);margin-top:8px">todos com perfil BrainHex respondido</div>
+          </div>
+          <div style="padding:24px 26px;border-radius:20px;background:linear-gradient(140deg, hsl(258 30% 18%), hsl(226 28% 12%));border:1px solid hsl(266 95% 66% / .3)">
+            <div style="font-family:Cinzel, serif;font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:hsl(230 10% 82%)">Perfil predominante</div>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:14px">
+              <div style="width:36px;height:40px;background:#7a63e8;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:hsl(226 32% 10%)">Ma</div>
+              <div style="font-size:26px;font-weight:800">Mastermind</div>
+            </div>
+            <div style="font-size:13px;color:hsl(230 10% 80%);margin-top:10px">9 de 34 alunos (26%)</div>
+          </div>
+          <div style="padding:24px 26px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+            <div style="font-family:Cinzel, serif;font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:hsl(230 10% 78%)">Material pronto</div>
+            <div style="font-size:44px;font-weight:800;margin-top:12px;line-height:1">78%</div>
+            <div style="height:8px;border-radius:999px;background:hsl(226 20% 20%);margin-top:14px;overflow:hidden"><div style="width:78%;height:100%;background:linear-gradient(90deg, hsl(265 65% 50%), hsl(266 90% 77%))"></div></div>
+            <div style="font-size:13px;color:hsl(230 10% 74%);margin-top:10px">dos itens gerados nos 8 tópicos</div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(340px, 1fr));gap:20px">
+          <div style="padding:24px 26px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+            <div style="font-family:Cinzel, serif;font-size:20px;font-weight:700">Distribuição de perfis</div>
+            <div style="font-size:13px;color:hsl(230 10% 72%);margin-top:4px">Percentual de alunos por perfil dominante</div>
+            <div style="display:flex;gap:3px;margin-top:20px;height:16px;border-radius:999px;overflow:hidden">
+              <div style="width:26%;background:#5b3fd9"></div>
+              <div style="width:21%;background:#17a398"></div>
+              <div style="width:18%;background:#c9a227"></div>
+              <div style="width:12%;background:#1e4fd6"></div>
+              <div style="width:12%;background:#f4623a"></div>
+              <div style="width:8%;background:#d7263d"></div>
+              <div style="width:3%;background:#4e5a66"></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px;margin-top:22px">
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:110px;flex:none;display:flex;align-items:center;gap:9px"><div style="width:14px;height:16px;background:#7a63e8;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div><div style="font-size:13px;font-weight:600">Mastermind</div></div>
+                <div style="flex:1;height:10px;border-radius:999px;background:hsl(226 20% 20%);overflow:hidden"><div style="width:26%;height:100%;border-radius:999px;background:#5b3fd9"></div></div>
+                <div style="width:64px;text-align:right;font-size:13px;font-weight:700">26% · 9</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:110px;flex:none;display:flex;align-items:center;gap:9px"><div style="width:14px;height:16px;background:#22c9bc;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div><div style="font-size:13px;font-weight:500;color:hsl(230 10% 84%)">Seeker</div></div>
+                <div style="flex:1;height:10px;border-radius:999px;background:hsl(226 20% 20%);overflow:hidden"><div style="width:21%;height:100%;border-radius:999px;background:#17a398"></div></div>
+                <div style="width:64px;text-align:right;font-size:13px;font-weight:600;color:hsl(230 10% 84%)">21% · 7</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:110px;flex:none;display:flex;align-items:center;gap:9px"><div style="width:14px;height:16px;background:#dfb63a;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div><div style="font-size:13px;font-weight:500;color:hsl(230 10% 84%)">Achiever</div></div>
+                <div style="flex:1;height:10px;border-radius:999px;background:hsl(226 20% 20%);overflow:hidden"><div style="width:18%;height:100%;border-radius:999px;background:#c9a227"></div></div>
+                <div style="width:64px;text-align:right;font-size:13px;font-weight:600;color:hsl(230 10% 84%)">18% · 6</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:110px;flex:none;display:flex;align-items:center;gap:9px"><div style="width:14px;height:16px;background:#3e6dea;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div><div style="font-size:13px;font-weight:500;color:hsl(230 10% 84%)">Conqueror</div></div>
+                <div style="flex:1;height:10px;border-radius:999px;background:hsl(226 20% 20%);overflow:hidden"><div style="width:12%;height:100%;border-radius:999px;background:#1e4fd6"></div></div>
+                <div style="width:64px;text-align:right;font-size:13px;font-weight:600;color:hsl(230 10% 84%)">12% · 4</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:110px;flex:none;display:flex;align-items:center;gap:9px"><div style="width:14px;height:16px;background:#f77b57;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div><div style="font-size:13px;font-weight:500;color:hsl(230 10% 84%)">Socializer</div></div>
+                <div style="flex:1;height:10px;border-radius:999px;background:hsl(226 20% 20%);overflow:hidden"><div style="width:12%;height:100%;border-radius:999px;background:#f4623a"></div></div>
+                <div style="width:64px;text-align:right;font-size:13px;font-weight:600;color:hsl(230 10% 84%)">12% · 4</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:110px;flex:none;display:flex;align-items:center;gap:9px"><div style="width:14px;height:16px;background:#e8455b;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div><div style="font-size:13px;font-weight:500;color:hsl(230 10% 84%)">Daredevil</div></div>
+                <div style="flex:1;height:10px;border-radius:999px;background:hsl(226 20% 20%);overflow:hidden"><div style="width:8%;height:100%;border-radius:999px;background:#d7263d"></div></div>
+                <div style="width:64px;text-align:right;font-size:13px;font-weight:600;color:hsl(230 10% 84%)">8% · 3</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:110px;flex:none;display:flex;align-items:center;gap:9px"><div style="width:14px;height:16px;background:#8593a2;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div><div style="font-size:13px;font-weight:500;color:hsl(230 10% 84%)">Survivor</div></div>
+                <div style="flex:1;height:10px;border-radius:999px;background:hsl(226 20% 20%);overflow:hidden"><div style="width:3%;height:100%;border-radius:999px;background:#4e5a66"></div></div>
+                <div style="width:64px;text-align:right;font-size:13px;font-weight:600;color:hsl(230 10% 84%)">3% · 1</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="padding:24px 26px;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(226 20% 22%)">
+            <div style="font-family:Cinzel, serif;font-size:20px;font-weight:700">Geração na turma inteira</div>
+            <div style="font-size:13px;color:hsl(230 10% 72%);margin-top:4px">56 combinações de tópico × perfil</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));gap:12px;margin-top:22px">
+              <div style="padding:16px 18px;border-radius:16px;background:hsl(142 40% 14%);border:1px solid hsl(142 65% 50% / .4)">
+                <div style="display:flex;align-items:center;gap:8px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="hsl(142 65% 64%)" stroke-width="3.2"><path d="M5 13l4 4 10-10" /></svg><div style="font-size:12px;font-weight:600;color:hsl(142 65% 68%)">prontos</div></div>
+                <div style="font-size:30px;font-weight:800;margin-top:8px">41</div>
+              </div>
+              <div style="padding:16px 18px;border-radius:16px;background:hsl(205 45% 16%);border:1px solid hsl(205 70% 58% / .4)">
+                <div style="display:flex;align-items:center;gap:8px"><div style="width:13px;height:13px;border-radius:999px;border:2px solid hsl(205 70% 70% / .3);border-top-color:hsl(205 70% 72%);animation:tu-spin 1s linear infinite"></div><div style="font-size:12px;font-weight:600;color:hsl(205 70% 74%)">em andamento</div></div>
+                <div style="font-size:30px;font-weight:800;margin-top:8px">6</div>
+              </div>
+              <div style="padding:16px 18px;border-radius:16px;background:hsl(45 50% 16%);border:1px solid hsl(45 90% 58% / .4)">
+                <div style="display:flex;align-items:center;gap:8px"><div style="width:11px;height:13px;background:hsl(45 90% 62%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div><div style="font-size:12px;font-weight:600;color:hsl(45 90% 68%)">parciais</div></div>
+                <div style="font-size:30px;font-weight:800;margin-top:8px">5</div>
+              </div>
+              <div style="padding:16px 18px;border-radius:16px;background:hsl(0 50% 18%);border:1px solid hsl(0 70% 55% / .5)">
+                <div style="display:flex;align-items:center;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="hsl(0 80% 78%)" stroke-width="3"><path d="M6 6l12 12M18 6L6 18" /></svg><div style="font-size:12px;font-weight:600;color:hsl(0 80% 78%)">com falha</div></div>
+                <div style="font-size:30px;font-weight:800;margin-top:8px">2</div>
+              </div>
+              <div style="padding:16px 18px;border-radius:16px;background:hsl(226 20% 18%);border:1px solid hsl(226 20% 28%)">
+                <div style="display:flex;align-items:center;gap:8px"><div style="width:11px;height:13px;background:hsl(230 10% 58%);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)"></div><div style="font-size:12px;font-weight:600;color:hsl(230 10% 82%)">sem material</div></div>
+                <div style="font-size:30px;font-weight:800;margin-top:8px">2</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:20px;padding:14px 16px;border-radius:14px;background:hsl(226 22% 16%)">
+              <div style="font-size:13px;color:hsl(230 10% 82%);line-height:1.5;flex:1;min-width:0">As 2 falhas estão no serviço de áudio, nos tópicos 3 e 6. Reprocessar leva cerca de 4 minutos.</div>
+              <div onClick="{{ regenTurma }}" style="padding:9px 16px;border-radius:999px;background:hsl(40 20% 94%);color:hsl(226 30% 12%);font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">Reprocessar falhas</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+      </sc-if>
+    </div>
+    </sc-if>
+
+  <sc-if value="{{ showModal }}">
+  <div style="position:fixed;inset:0;z-index:60;background:hsl(225 40% 4% / .8);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:28px">
+    <div style="width:100%;max-width:760px;max-height:88vh;display:flex;flex-direction:column;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(266 95% 66% / .35);overflow:hidden">
+
+      <div style="display:flex;align-items:center;gap:16px;row-gap:10px;flex-wrap:wrap;padding:22px 26px;background:hsl(226 26% 14%);border-bottom:1px solid hsl(226 20% 22%)">
+        <div style="width:36px;height:40px;flex:none;background:{{ modal.color }};clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:hsl(226 32% 10%)">{{ modal.initials }}</div>
+        <div style="min-width:0">
+          <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:hsl(266 90% 80%);font-weight:600">Conteúdo gerado</div>
+          <div style="font-family:Cinzel, serif;font-size:20px;font-weight:700;margin-top:4px">{{ modal.title }}</div>
+        </div>
+        <div onClick="{{ closeModal }}" style="margin-left:auto;width:32px;height:32px;border-radius:999px;background:hsl(226 20% 20%);display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="background:hsl(226 20% 26%)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 82%)" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" /></svg>
+        </div>
+      </div>
+
+      <sc-if value="{{ isEmptyModal }}">
+      <div style="flex:1;overflow-y:auto;padding:26px">
+        <div style="padding:28px;border-radius:16px;background:hsl(226 22% 16%);text-align:center">
+          <div style="font-size:14px;font-weight:600;color:hsl(230 10% 88%)">Nenhum material gerado ainda para este perfil.</div>
+          <div style="font-size:13px;color:hsl(230 10% 70%);margin-top:8px;line-height:1.55">Texto, áudio e apresentação para {{ modal.name }} ainda não foram criados para o conteúdo selecionado.</div>
+          <div onClick="{{ closeModal }}" style="display:inline-block;margin-top:18px;padding:10px 20px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));font-size:13px;font-weight:700;color:hsl(40 20% 96%);cursor:pointer">Gerar</div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ !isEmptyModal }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;gap:6px;padding:14px 26px 0">
+        <div onClick="{{ mTabText }}" style="{{ mTabTextStyle }}">Texto</div>
+        <div onClick="{{ mTabAudio }}" style="{{ mTabAudioStyle }}">Áudio</div>
+        <div onClick="{{ mTabSlides }}" style="{{ mTabSlidesStyle }}">Apresentação</div>
+      </div>
+
+      <div style="flex:1;overflow-y:auto;padding:20px 26px 26px">
+
+        <sc-if value="{{ isViewText }}" hint-placeholder-val="{{ true }}">
+        <div>
+          <div style="font-size:12px;color:hsl(230 10% 76%);margin-bottom:12px">Prévia do texto gerado para o perfil {{ modal.name }} · {{ modal.wordCount }}</div>
+          <div style="padding:18px 20px;border-radius:16px;background:hsl(226 22% 16%);font-size:14px;line-height:1.7;color:hsl(230 10% 88%)">{{ modal.textPreview }}</div>
+          <div style="display:flex;align-items:center;gap:12px;row-gap:10px;flex-wrap:wrap;margin-top:16px">
+            <div onClick="{{ askRegen }}" style="padding:10px 18px;border-radius:999px;background:hsl(266 95% 66% / .18);border:1px solid hsl(266 95% 66% / .45);font-size:13px;font-weight:600;color:hsl(266 90% 84%);cursor:pointer">Regenerar este texto</div>
+          </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ isViewAudio }}">
+        <div>
+          <div style="font-size:12px;color:hsl(230 10% 76%);margin-bottom:12px">Áudio gerado para o perfil {{ modal.name }} · {{ modal.audioDuration }}</div>
+          <div style="display:flex;align-items:center;gap:16px;padding:18px 20px;border-radius:16px;background:hsl(226 22% 16%)">
+            <div style="width:44px;height:44px;flex:none;border-radius:999px;background:hsl(266 95% 66%);display:flex;align-items:center;justify-content:center">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="hsl(266 30% 12%)"><path d="M8 5v14l11-7z" /></svg>
+            </div>
+            <div style="flex:1;min-width:0">
+              <div style="height:5px;border-radius:999px;background:hsl(226 20% 24%);overflow:hidden"><div style="width:38%;height:100%;background:hsl(266 90% 77%)"></div></div>
+              <div style="font-size:12px;color:hsl(230 10% 78%);margin-top:8px">Roteiro: {{ modal.audioNote }}</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;row-gap:10px;flex-wrap:wrap;margin-top:16px">
+            <div onClick="{{ askRegen }}" style="padding:10px 18px;border-radius:999px;background:hsl(266 95% 66% / .18);border:1px solid hsl(266 95% 66% / .45);font-size:13px;font-weight:600;color:hsl(266 90% 84%);cursor:pointer">Regenerar este áudio</div>
+          </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ isViewSlides }}">
+        <div>
+          <div style="display:flex;align-items:center;gap:12px;row-gap:10px;flex-wrap:wrap;margin-bottom:14px">
+            <div style="font-size:12px;color:hsl(230 10% 76%)">{{ modal.slideCount }} slides gerados para o perfil {{ modal.name }} · regenere um slide isolado sem afetar os demais</div>
+            <div onClick="{{ askRegenAll }}" style="margin-left:auto;padding:8px 15px;border-radius:999px;border:1px solid hsl(226 20% 28%);font-size:12px;font-weight:600;color:hsl(230 10% 86%);cursor:pointer;white-space:nowrap" style-hover="border-color:hsl(266 95% 66% / .6)">Regenerar apresentação inteira</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <sc-for list="{{ modal.slides }}" as="sl" hint-placeholder-count="8">
+              <div style="border-radius:14px;background:hsl(226 22% 16%);overflow:hidden">
+                <div onClick="{{ sl.toggle }}" style="display:flex;align-items:center;gap:14px;padding:12px 16px;cursor:pointer">
+                  <div style="width:26px;height:20px;flex:none;border-radius:4px;background:hsl(226 20% 24%);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:hsl(230 10% 78%)">{{ sl.n }}</div>
+                  <div style="min-width:0;flex:1">
+                    <div style="font-size:13px;font-weight:600">{{ sl.title }}</div>
+                    <div style="font-size:11px;color:hsl(230 10% 74%);margin-top:2px">{{ sl.note }}</div>
+                  </div>
+                  <div onClick="{{ sl.regen }}" style="padding:7px 13px;border-radius:999px;border:1px solid hsl(226 20% 28%);font-size:12px;font-weight:600;color:hsl(230 10% 86%);cursor:pointer;white-space:nowrap" style-hover="border-color:hsl(266 95% 66% / .6);color:hsl(266 90% 84%)">Regenerar slide</div>
+                </div>
+                <sc-if value="{{ sl.expanded }}">
+                <div style="margin:0 16px 14px;padding:16px 18px;border-radius:12px;background:hsl(225 32% 8%);aspect-ratio:16/9;display:flex;flex-direction:column;justify-content:center;gap:8px">
+                  <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:hsl(266 90% 78%);font-weight:700">Slide {{ sl.n }}</div>
+                  <div style="font-family:Cinzel, serif;font-size:17px;font-weight:700;line-height:1.3">{{ sl.title }}</div>
+                  <div style="font-size:13px;color:hsl(230 10% 82%);line-height:1.6">{{ sl.body }}</div>
+                </div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ showRegenInstruct }}">
+        <div style="margin-top:20px;padding:18px 20px;border-radius:16px;background:hsl(226 24% 17%);border:1px solid hsl(266 95% 66% / .35)">
+          <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 76%);font-weight:600">O que você quer mudar?</div>
+          <div style="margin-top:10px;padding:12px 14px;border-radius:14px;background:hsl(226 22% 16%);border:1px solid hsl(266 95% 66% / .4);min-height:76px;font-size:13px;color:hsl(230 10% 68%);line-height:1.6">Ex.: deixar o tom menos formal, ou trocar o exemplo do carro por um de esportes…</div>
+          <div style="font-size:11px;color:hsl(230 10% 70%);margin-top:8px">Pode deixar em branco — nesse caso, regenera com o mesmo direcionamento de antes.</div>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:16px">
+            <div onClick="{{ cancelRegen }}" style="padding:9px 16px;border-radius:999px;border:1px solid hsl(226 20% 28%);font-size:13px;font-weight:600;color:hsl(230 10% 84%);cursor:pointer">Cancelar</div>
+            <div onClick="{{ continueRegen }}" style="margin-left:auto;padding:10px 20px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));font-size:13px;font-weight:700;color:hsl(40 20% 96%);cursor:pointer">Continuar</div>
+          </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ showRegenConfirm }}">
+        <div style="margin-top:20px;padding:20px 22px;border-radius:16px;background:hsl(226 24% 17%);border:1px solid hsl(266 95% 66% / .4)">
+          <div style="font-family:Cinzel, serif;font-size:17px;font-weight:700">{{ regen.title }}</div>
+          <div style="margin-top:14px">
+            <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 76%);font-weight:600">Motivo</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+              <div style="{{ regen.reasonChip }}"></div>
+              <div style="font-size:13px;color:hsl(230 10% 88%)">{{ regen.reason }}</div>
+            </div>
+          </div>
+          <div style="margin-top:14px">
+            <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:hsl(230 10% 76%);font-weight:600">O que muda nesta geração</div>
+            <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">
+              <sc-for list="{{ regen.changes }}" as="c" hint-placeholder-count="3">
+                <div style="display:flex;align-items:flex-start;gap:9px;font-size:13px;color:hsl(230 10% 88%);line-height:1.5">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="hsl(266 90% 80%)" stroke-width="2.4" style="flex:none;margin-top:2px"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                  {{ c.text }}
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="font-size:12px;color:hsl(230 10% 74%);margin-top:14px;line-height:1.5">{{ regen.keepNote }}</div>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:18px">
+            <div onClick="{{ cancelRegen }}" style="padding:10px 18px;border-radius:999px;border:1px solid hsl(226 20% 28%);font-size:13px;font-weight:600;color:hsl(230 10% 84%);cursor:pointer" style-hover="border-color:hsl(266 95% 66% / .6)">Cancelar</div>
+            <div onClick="{{ confirmRegen }}" style="margin-left:auto;padding:10px 22px;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));font-size:13px;font-weight:700;color:hsl(40 20% 96%);cursor:pointer">Confirmar regeneração</div>
+          </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ showRegenBusy }}">
+        <div style="margin-top:20px;display:flex;align-items:center;gap:12px;padding:16px 18px;border-radius:16px;background:hsl(205 45% 16%);border:1px solid hsl(205 70% 58% / .4)">
+          <div style="width:16px;height:16px;border-radius:999px;border:2.5px solid hsl(205 70% 70% / .3);border-top-color:hsl(205 70% 72%);animation:tu-spin 1s linear infinite"></div>
+          <div style="font-size:13px;color:hsl(205 20% 88%)">{{ regen.busyLabel }}</div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ showRegenDone }}">
+        <div style="margin-top:20px;display:flex;align-items:flex-start;gap:12px;padding:16px 18px;border-radius:16px;background:hsl(142 40% 14%);border:1px solid hsl(142 65% 50% / .4)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="hsl(142 65% 64%)" stroke-width="3" style="flex:none;margin-top:2px"><path d="M5 13l4 4 10-10" /></svg>
+          <div style="font-size:13px;color:hsl(120 12% 88%);line-height:1.5">{{ regen.doneLabel }}</div>
+        </div>
+        </sc-if>
+      </div>
+      </sc-if>
+    </div>
+  </div>
+  </sc-if>
+</div>
+
+<div onClick="{{ toggleTutor }}" title="Pergunte ao Escriba" style="position:fixed;right:28px;bottom:28px;z-index:70;width:58px;height:58px;border-radius:999px;background:linear-gradient(135deg, #6b4e1e, #d9b56a);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 10px 30px hsl(38 55% 25% / .55)" style-hover="box-shadow:0 12px 36px hsl(38 65% 35% / .65)">
+  <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="hsl(38 45% 12%)" stroke-width="2"><path d="M4 5c3-1.2 6-1.2 8 0v14c-2-1.2-5-1.2-8 0z" /><path d="M20 5c-3-1.2-6-1.2-8 0v14c2-1.2 5-1.2 8 0z" /></svg>
+</div>
+
+<sc-if value="{{ showTutor }}">
+<div style="position:fixed;right:28px;bottom:96px;z-index:70;width:380px;max-height:560px;display:flex;flex-direction:column;border-radius:20px;background:hsl(226 28% 12%);border:1px solid hsl(266 95% 66% / .35);box-shadow:0 24px 70px hsl(225 40% 2% / .8);overflow:hidden">
+  <div style="display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid hsl(226 20% 22%);background:hsl(226 26% 14%)">
+    <div style="width:32px;height:36px;border-radius:999px;background:linear-gradient(135deg, #6b4e1e, #d9b56a);clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;flex:none">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="hsl(38 45% 12%)" stroke-width="2"><path d="M4 5c3-1.2 6-1.2 8 0v14c-2-1.2-5-1.2-8 0z" /><path d="M20 5c-3-1.2-6-1.2-8 0v14c2-1.2 5-1.2 8 0z" /></svg>
+    </div>
+    <div style="min-width:0">
+      <div style="font-size:13px;font-weight:700">Escriba</div>
+      <div style="font-size:11px;color:hsl(230 10% 72%)">O guia do professor · lê as personalizações geradas</div>
+    </div>
+    <div onClick="{{ toggleTutor }}" style="margin-left:auto;width:26px;height:26px;border-radius:999px;display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="background:hsl(226 20% 22%)">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="hsl(230 10% 82%)" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" /></svg>
+    </div>
+  </div>
+  <div style="flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:12px;min-height:220px">
+    <div style="align-self:flex-start;max-width:88%;padding:11px 14px;border-radius:14px;background:hsl(226 22% 16%);font-size:13px;line-height:1.55">Eu sou o Escriba — guardo os registros de geração. Pergunte algo como "que perfil está sem material?".</div>
+    <sc-for list="{{ tutorMessages }}" as="m" hint-placeholder-count="0">
+      <div style="{{ m.bubbleStyle }}">{{ m.text }}</div>
+    </sc-for>
+    <sc-if value="{{ tutorThinking }}">
+    <div style="align-self:flex-start;display:flex;align-items:center;gap:7px;padding:11px 14px;border-radius:14px;background:hsl(226 22% 16%)">
+      <div style="width:14px;height:14px;border-radius:999px;border:2px solid hsl(266 90% 80% / .3);border-top-color:hsl(266 90% 82%);animation:tu-spin 1s linear infinite"></div>
+      <div style="font-size:12px;color:hsl(230 10% 78%)">Consultando os registros…</div>
+    </div>
+    </sc-if>
+  </div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;padding:0 18px 10px">
+    <div onClick="{{ askProfileGap }}" style="padding:6px 12px;border-radius:999px;border:1px solid hsl(226 20% 28%);font-size:11px;color:hsl(230 10% 82%);cursor:pointer" style-hover="border-color:hsl(266 95% 66% / .6)">Perfil sem material?</div>
+    <div onClick="{{ askFailure }}" style="padding:6px 12px;border-radius:999px;border:1px solid hsl(226 20% 28%);font-size:11px;color:hsl(230 10% 82%);cursor:pointer" style-hover="border-color:hsl(266 95% 66% / .6)">Algum erro de geração?</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;padding:12px 16px;border-top:1px solid hsl(226 20% 22%)">
+    <div style="flex:1;padding:10px 13px;border-radius:999px;background:hsl(226 22% 16%);border:1px solid hsl(226 20% 28%);font-size:13px;color:hsl(230 10% 62%)">Pergunte ao Escriba…</div>
+    <div onClick="{{ askProfileGap }}" style="width:34px;height:34px;flex:none;border-radius:999px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));display:flex;align-items:center;justify-content:center;cursor:pointer">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(266 30% 12%)" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;estado&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;turma vazia (sem dados)&quot;,&quot;com dados&quot;,&quot;sem seleção&quot;],&quot;default&quot;:&quot;turma vazia (sem dados)&quot;,&quot;tsType&quot;:&quot;'com dados' | 'sem seleção' | 'turma vazia (sem dados)'&quot;,&quot;section&quot;:&quot;Estados da tela&quot;}}">
+
+function slideBody(title, profile) {
+  const tones = {
+    Seeker: 'Abre com uma pergunta para investigar, não com a resposta pronta.',
+    Mastermind: 'Apresenta o problema antes da fórmula — resolver primeiro, nomear depois.',
+    Daredevil: 'Cenário com risco e cronômetro, para decidir rápido sob pressão.',
+    Marina: 'Apresenta o problema antes da fórmula — resolver primeiro, nomear depois.'
+  };
+  return '“' + title + '” — ' + (tones[profile] || 'Conteúdo do slide, no tom do perfil selecionado.');
+}
+
+const ZERO_PALETTE = [
+  { name: 'Explorador', tech: 'Seeker', color: '#17a398', tokens: [
+    { label: 'Fundo', color: '#0c2a28' }, { label: 'Superfície', color: '#123a37' }, { label: 'Primária', color: '#17a398' }, { label: 'Borda', color: '#1f5a55' }, { label: 'Texto', color: '#ffffff' }
+  ] },
+  { name: 'Sobrevivente', tech: 'Survivor', color: '#4e5a66', tokens: [
+    { label: 'Fundo', color: '#1c2126' }, { label: 'Superfície', color: '#262d33' }, { label: 'Primária', color: '#4e5a66' }, { label: 'Borda', color: '#3a4048' }, { label: 'Texto', color: '#ffffff' }
+  ] },
+  { name: 'Aventureiro', tech: 'Daredevil', color: '#d7263d', tokens: [
+    { label: 'Fundo', color: '#2b0e12' }, { label: 'Superfície', color: '#3d151a' }, { label: 'Primária', color: '#d7263d' }, { label: 'Borda', color: '#5c2229' }, { label: 'Texto', color: '#ffffff' }
+  ] }
+];
+
+const ZERO_PROFILES = [
+  { name: 'Explorador', tech: 'Seeker', color: '#22c9bc', formats: ['PDF', 'Áudio', 'Apresentação'], isAchiever: false },
+  { name: 'Sobrevivente', tech: 'Survivor', color: '#8593a2', formats: ['PDF', 'Áudio', 'Apresentação'], isAchiever: false },
+  { name: 'Aventureiro', tech: 'Daredevil', color: '#e8455b', formats: ['PDF', 'Áudio', 'Apresentação'], isAchiever: false },
+  { name: 'Realizador', tech: 'Achiever', color: '#dfb63a', formats: ['Texto', 'PDF', 'Áudio', 'Apresentação'], isAchiever: true }
+];
+
+const EMPTY_PROFILE_META = {
+  'Sobrevivente': { name: 'Sobrevivente', color: '#8593a2', initials: 'Su' },
+  'Survivor': { name: 'Sobrevivente', color: '#8593a2', initials: 'Su' },
+  'Explorador': { name: 'Explorador', color: '#22c9bc', initials: 'Ex' },
+  'Aventureiro': { name: 'Aventureiro', color: '#e8455b', initials: 'Av' },
+  'Realizador': { name: 'Realizador', color: '#dfb63a', initials: 'Re' }
+};
+
+const PROFILE_DATA = {
+  Seeker: { color: '#22c9bc', initials: 'Se', title: 'Seeker · Cinemática', wordCount: '820 palavras', audioDuration: '11 min',
+    textPreview: '"Antes de aplicar a fórmula, vale abrir o problema como um mistério: o que os números escondem sobre o movimento? Repare que a velocidade média não conta a história toda — ela some com as paradas no meio do caminho..."',
+    audioNote: 'tom exploratório, com perguntas guiando cada trecho',
+    slideCount: 9, slides: [
+      ['Por que estudar cinemática', 'reescrito em 12/09'],
+      ['O que é uma grandeza escalar', 'reescrito em 12/09'],
+      ['Velocidade média: o que ela esconde', 'reescrito em 12/09'],
+      ['Gráfico posição × tempo', 'reescrito em 12/09'],
+      ['Desafio: leitura de gráfico', 'reescrito em 12/09'],
+      ['Aceleração: mudança de ritmo', 'reescrito em 12/09'],
+      ['Queda livre, na prática', 'reescrito em 12/09'],
+      ['Resumo do tópico', 'reescrito em 12/09'],
+      ['Para explorar depois', 'reescrito em 12/09']
+    ] },
+  Mastermind: { color: '#7a63e8', initials: 'Ma', title: 'Mastermind · Cinemática', wordCount: '760 palavras', audioDuration: '9 min',
+    textPreview: '"Um carro percorre 240 km em 3h. Antes de qualquer definição, resolva: qual é a velocidade média em m/s? A resposta guia a regra — não o contrário. Errar aqui custa pouco e ensina rápido..."',
+    audioNote: 'problema primeiro, teoria depois, sem rodeios',
+    slideCount: 8, slides: [
+      ['Problema de abertura', 'gerado em 12/09'],
+      ['Onde a resposta certa esbarra', 'gerado em 12/09'],
+      ['A fórmula, deduzida', 'gerado em 12/09'],
+      ['Segundo problema, mais difícil', 'gerado em 12/09'],
+      ['Gráfico: ler antes de calcular', 'gerado em 12/09'],
+      ['Aceleração como taxa de variação', 'gerado em 12/09'],
+      ['Desafio de fechamento', 'gerado em 12/09'],
+      ['O que praticar a seguir', 'gerado em 12/09']
+    ] },
+  Daredevil: { color: '#e8455b', initials: 'Da', title: 'Daredevil · Cinemática', wordCount: '690 palavras', audioDuration: '10 min',
+    textPreview: '"240 km em 3h — bate ou não bate com o limite de velocidade da BR-153? Calcule antes de checar. Se errar, tenta de novo: o cronômetro da atividade está correndo..."',
+    audioNote: 'ritmo acelerado, cenários de risco e cronômetro',
+    slideCount: 7, slides: [
+      ['Cenário: excesso de velocidade?', 'gerado em 12/09'],
+      ['Calcule contra o relógio', 'gerado em 12/09'],
+      ['O gráfico não perdoa', 'gerado em 12/09'],
+      ['Desafio cronometrado', 'gerado em 12/09'],
+      ['Aceleração em curva', 'gerado em 12/09'],
+      ['Queda livre: quem chega primeiro', 'gerado em 12/09'],
+      ['Placar do tópico', 'gerado em 12/09']
+    ] },
+  Achiever: { color: '#dfb63a', initials: 'Ac', title: 'Achiever · Cinemática', wordCount: '4 de 4 conteúdos', audioDuration: 'sintetizando (62%)',
+    textPreview: '"Checklist de Cinemática: 4 de 4 conceitos revisados. Faltam 2 conquistas para completar o tópico com 100% — continue para não perder a sequência de dias ativos."',
+    audioNote: 'em geração — voz ainda sendo sintetizada',
+    slideCount: 0, slides: [] },
+  Conqueror: { color: '#3e6dea', initials: 'Co', title: 'Conqueror · Cinemática', wordCount: '3 de 4 conteúdos', audioDuration: 'não gerado',
+    textPreview: '"Sua meta nesta semana: dominar o gráfico de posição antes da turma. 3 de 4 conteúdos concluídos — o quarto ainda não tem áudio nem apresentação gerados."',
+    audioNote: 'ainda não gerado para este perfil',
+    slideCount: 0, slides: [] },
+  Socializer: { color: '#f77b57', initials: 'So', title: 'Socializer · Cinemática', wordCount: '4 de 4 conteúdos', audioDuration: 'falhou na síntese',
+    textPreview: '"Compare sua resposta com a de dois colegas antes de confirmar — no chat da turma, quem explica o gráfico primeiro ganha o selo de tutor da semana."',
+    audioNote: 'erro do serviço de voz (timeout), tentado 2 vezes às 09:52',
+    slideCount: 0, slides: [] },
+  Marina: { color: '#7a63e8', initials: 'MC', title: 'Marina Corrêa · Mastermind · Cinemática', wordCount: '4 de 4 conteúdos', audioDuration: '9 min · ouvido',
+    textPreview: '"Um carro percorre 240 km em 3h. Antes de qualquer definição, resolva: qual é a velocidade média em m/s?"',
+    audioNote: 'mesmo áudio gerado para todo o perfil Mastermind',
+    slideCount: 8, slides: [
+      ['Problema de abertura', 'gerado em 12/09'],
+      ['Onde a resposta certa esbarra', 'gerado em 12/09'],
+      ['A fórmula, deduzida', 'gerado em 12/09'],
+      ['Segundo problema, mais difícil', 'gerado em 12/09'],
+      ['Gráfico: ler antes de calcular', 'gerado em 12/09'],
+      ['Aceleração como taxa de variação', 'gerado em 12/09'],
+      ['Desafio de fechamento', 'gerado em 12/09'],
+      ['O que praticar a seguir', 'gerado em 12/09']
+    ] }
+};
+
+const REGEN_REASONS = {
+  Seeker: { reason: 'Pedido manual do professor', chip: 'hsl(230 10% 55%)',
+    changes: ['Novo texto-base a partir do PDF atual de Cinemática', 'Mesmo tom exploratório do perfil Seeker', 'Áudio e apresentação recalculados a partir do novo texto'],
+    keepNote: 'As respostas e o progresso dos alunos neste conteúdo não são afetados.' },
+  Mastermind: { reason: 'Pedido manual do professor', chip: 'hsl(230 10% 55%)',
+    changes: ['Novo texto-base a partir do PDF atual de Cinemática', 'Mesmo tom de resolução de problemas do perfil Mastermind', 'Áudio e apresentação recalculados a partir do novo texto'],
+    keepNote: 'As respostas e o progresso dos alunos neste conteúdo não são afetados.' },
+  Daredevil: { reason: 'Pedido manual do professor', chip: 'hsl(230 10% 55%)',
+    changes: ['Novo texto-base a partir do PDF atual de Cinemática', 'Mesmo ritmo acelerado do perfil Daredevil', 'Áudio e apresentação recalculados a partir do novo texto'],
+    keepNote: 'As respostas e o progresso dos alunos neste conteúdo não são afetados.' },
+  Achiever: { reason: 'Pedido manual do professor', chip: 'hsl(230 10% 55%)',
+    changes: ['Reprocessa os itens já concluídos e os 2 pendentes', 'Mantém a estrutura de checklist do perfil Achiever'],
+    keepNote: 'O progresso e as conquistas já registradas do aluno não são perdidos.' },
+  Conqueror: { reason: 'Material parcial — 1 conteúdo nunca foi gerado', chip: 'hsl(45 90% 60%)',
+    changes: ['Gera o conteúdo que falta (Lista de exercícios 2026)', 'Mantém os 3 conteúdos já prontos como estão', 'Cria o áudio e a apresentação deste perfil, ainda inexistentes'],
+    keepNote: 'Nada do que já está pronto para o Conqueror é reescrito.' },
+  Socializer: { reason: 'Falha anterior — timeout no serviço de síntese de voz', chip: 'hsl(0 72% 60%)',
+    changes: ['Tenta novamente apenas o áudio, que falhou 2 vezes', 'O texto, já gerado com sucesso, não é tocado'],
+    keepNote: 'Se falhar de novo, o motivo exato do erro fica registrado em "Ver detalhes do erro".' },
+  Marina: { reason: 'Conteúdo desatualizado — o professor trocou o PDF-fonte em 04/09', chip: 'hsl(205 70% 60%)',
+    changes: ['Novo texto a partir do PDF atualizado de Cinemática', 'Áudio e apresentação recalculados a partir do novo texto', 'Aplica-se a todos os 7 alunos que usam o perfil Mastermind, não só Marina'],
+    keepNote: 'O progresso e as respostas de Marina nas atividades já feitas continuam guardados.' },
+  Turma: { reason: 'Falha do serviço de áudio nos tópicos 3 e 6', chip: 'hsl(0 72% 60%)',
+    changes: ['Reprocessa somente as 2 combinações tópico × perfil com falha', 'Não afeta os 41 itens já prontos nem os 6 em andamento'],
+    keepNote: 'Estimativa de conclusão: cerca de 4 minutos.' }
+};
+
+const SLIDE_TAB = 'padding:9px 16px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;';
+const SLIDE_ON = SLIDE_TAB + 'background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));color:hsl(40 20% 96%)';
+const SLIDE_OFF = SLIDE_TAB + 'color:hsl(230 10% 74%)';
+
+const TAB_BASE = 'padding:10px 18px;border-radius:999px;font-size:14px;font-weight:600;cursor:pointer;';
+const TAB_ON = TAB_BASE + 'background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));color:hsl(40 20% 96%);box-shadow:0 0 20px hsl(266 95% 66% / .35)';
+const TAB_OFF = TAB_BASE + 'color:hsl(230 10% 74%)';
+
+class Component extends DCLogic {
+  askEscriba(question, answer) {
+    const msgs = this.state.tutorMsgs.slice();
+    msgs.push({ text: question, bubbleStyle: 'align-self:flex-end;max-width:88%;padding:11px 14px;border-radius:14px;background:linear-gradient(135deg, hsl(265 65% 50%), hsl(266 95% 66%));color:hsl(40 20% 96%);font-size:13px;line-height:1.55' });
+    this.setState({ tutorMsgs: msgs, tutorThinking: true });
+    setTimeout(() => {
+      const msgs2 = this.state.tutorMsgs.slice();
+      msgs2.push({ text: answer, bubbleStyle: 'align-self:flex-start;max-width:88%;padding:11px 14px;border-radius:14px;background:hsl(226 22% 16%);font-size:13px;line-height:1.55' });
+      this.setState({ tutorMsgs: msgs2, tutorThinking: false });
+    }, 1100);
+  }
+  state = { tab: 0, filled: null, modalKey: null, mtab: 0, regenTarget: null, regenPhase: 0, regenAllSlides: false, regenSlideIdx: null, instructionTyped: false, expandedSlide: 0, tutorOpen: false, tutorThinking: false, tutorMsgs: [] };
+
+
+  openModal(key) { this.setState({ modalKey: key, mtab: 0, regenPhase: 0 }); }
+
+  modalVals() {
+    const key = this.state.modalKey;
+    const p = key ? PROFILE_DATA[key] : null;
+    const emptyMeta = (!p && key) ? (EMPTY_PROFILE_META[key] || { name: key, color: 'hsl(230 10% 40%)', initials: key.slice(0, 2) }) : null;
+    const mtab = this.state.mtab;
+    const phase = this.state.regenPhase;
+    const target = this.state.regenTarget;
+    const r = target ? REGEN_REASONS[target] : null;
+
+    const slides = p ? p.slides.map((sl, i) => ({
+      n: i + 1, title: sl[0], note: sl[1],
+      body: slideBody(sl[0], key),
+      expanded: this.state.expandedSlide === i,
+      toggle: () => this.setState({ expandedSlide: this.state.expandedSlide === i ? null : i }),
+      regen: () => this.setState({ regenTarget: key, regenAllSlides: false, regenSlideIdx: i, regenPhase: 1 })
+    })) : [];
+
+    const pill = (bg, border, color) => 'display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap;background:' + bg + ';border:1px solid ' + border + ';color:' + color;
+    const fmt = (state, label) => {
+      const c = state === 'ok' ? 'hsl(230 10% 86%)' : state === 'gen' ? 'hsl(205 70% 74%)' : state === 'fail' ? 'hsl(0 80% 78%)' : 'hsl(230 10% 62%)';
+      return 'font-size:12px;color:' + c;
+    };
+    const rowStyle = 'border-bottom:1px solid hsl(226 20% 20%)';
+    const profileRows = [
+      { name: 'Mastermind', initials: 'Ma', iconStyle: 'width:26px;height:29px;flex:none;background:#7a63e8;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:hsl(226 32% 10%)', rowStyle,
+        students: 7, studentsNote: 'maior grupo', statusPill: pill('hsl(142 40% 16%)', 'hsl(142 65% 50% / .45)', 'hsl(142 65% 66%)'), statusLabel: 'pronto',
+        textStyle: fmt('ok'), textLabel: 'Texto · 4', audioStyle: fmt('ok'), audioLabel: 'Áudio · 9 min', slidesStyle: fmt('ok'), slidesLabel: '8 slides',
+        action: () => this.openModal('Mastermind'), actionStyle: 'display:inline-block;padding:7px 14px;border-radius:999px;border:1px solid hsl(226 20% 28%);font-size:12px;font-weight:600;color:hsl(230 10% 86%);cursor:pointer', actionLabel: 'Visualizar' },
+      { name: 'Conqueror', initials: 'Co', iconStyle: 'width:26px;height:29px;flex:none;background:#3e6dea;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:hsl(226 32% 10%)', rowStyle,
+        students: 6, studentsNote: 'material incompleto', statusPill: pill('hsl(45 50% 18%)', 'hsl(45 90% 58% / .5)', 'hsl(45 90% 68%)'), statusLabel: 'parcial',
+        textStyle: fmt('ok'), textLabel: 'Texto · 3 de 4', audioStyle: fmt('none'), audioLabel: 'não gerado', slidesStyle: fmt('none'), slidesLabel: 'não gerada',
+        action: () => this.openModal('Conqueror'), actionStyle: 'display:inline-block;padding:7px 14px;border-radius:999px;background:hsl(266 95% 66% / .18);border:1px solid hsl(266 95% 66% / .45);font-size:12px;font-weight:600;color:hsl(266 90% 82%);cursor:pointer', actionLabel: 'Ver e completar' },
+      { name: 'Seeker', initials: 'Se', iconStyle: 'width:26px;height:29px;flex:none;background:#22c9bc;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:hsl(226 32% 10%)', rowStyle,
+        students: 5, studentsNote: '', statusPill: pill('hsl(142 40% 16%)', 'hsl(142 65% 50% / .45)', 'hsl(142 65% 66%)'), statusLabel: 'pronto',
+        textStyle: fmt('ok'), textLabel: 'Texto · 4', audioStyle: fmt('ok'), audioLabel: 'Áudio · 11 min', slidesStyle: fmt('ok'), slidesLabel: '9 slides',
+        action: () => this.openModal('Seeker'), actionStyle: 'display:inline-block;padding:7px 14px;border-radius:999px;border:1px solid hsl(226 20% 28%);font-size:12px;font-weight:600;color:hsl(230 10% 86%);cursor:pointer', actionLabel: 'Visualizar' },
+      { name: 'Daredevil', initials: 'Da', iconStyle: 'width:26px;height:29px;flex:none;background:#e8455b;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:hsl(226 32% 10%)', rowStyle,
+        students: 4, studentsNote: '', statusPill: pill('hsl(142 40% 16%)', 'hsl(142 65% 50% / .45)', 'hsl(142 65% 66%)'), statusLabel: 'pronto',
+        textStyle: fmt('ok'), textLabel: 'Texto · 4', audioStyle: fmt('ok'), audioLabel: 'Áudio · 10 min', slidesStyle: fmt('ok'), slidesLabel: '7 slides',
+        action: () => this.openModal('Daredevil'), actionStyle: 'display:inline-block;padding:7px 14px;border-radius:999px;border:1px solid hsl(226 20% 28%);font-size:12px;font-weight:600;color:hsl(230 10% 86%);cursor:pointer', actionLabel: 'Visualizar' },
+      { name: 'Achiever', initials: 'Ac', iconStyle: 'width:26px;height:29px;flex:none;background:#dfb63a;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:hsl(226 32% 10%)', rowStyle,
+        students: 3, studentsNote: '', statusPill: pill('hsl(205 45% 18%)', 'hsl(205 70% 58% / .5)', 'hsl(205 70% 74%)'), statusLabel: 'gerando',
+        textStyle: fmt('ok'), textLabel: 'Texto · 4', audioStyle: fmt('gen'), audioLabel: 'sintetizando', slidesStyle: fmt('none'), slidesLabel: 'na fila',
+        action: () => this.openModal('Achiever'), actionStyle: 'display:inline-block;padding:7px 14px;border-radius:999px;border:1px solid hsl(226 20% 28%);font-size:12px;font-weight:600;color:hsl(230 10% 86%);cursor:pointer', actionLabel: 'Ver progresso' },
+      { name: 'Socializer', initials: 'So', iconStyle: 'width:26px;height:29px;flex:none;background:#f77b57;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:hsl(226 32% 10%)', rowStyle,
+        students: 2, studentsNote: '', statusPill: pill('hsl(0 60% 24%)', 'hsl(0 70% 58% / .6)', 'hsl(0 80% 78%)'), statusLabel: 'com falha',
+        textStyle: fmt('ok'), textLabel: 'Texto · 4', audioStyle: fmt('fail'), audioLabel: 'falhou', slidesStyle: fmt('none'), slidesLabel: 'não gerada',
+        action: () => this.setState({ modalKey: 'Socializer', mtab: 1, regenTarget: 'Socializer', regenAllSlides: false, regenSlideIdx: null, regenPhase: 2, instructionTyped: false }),
+        actionStyle: 'display:inline-block;padding:7px 14px;border-radius:999px;background:hsl(40 20% 94%);color:hsl(226 30% 12%);font-size:12px;font-weight:700;cursor:pointer', actionLabel: 'Tentar de novo' },
+      { name: 'Survivor', initials: 'Su', iconStyle: 'width:26px;height:29px;flex:none;background:#8593a2;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:hsl(226 32% 10%)', rowStyle: 'border-bottom:none',
+        students: 0, studentsNote: 'sem alunos', statusPill: pill('hsl(226 20% 20%)', 'hsl(226 20% 30%)', 'hsl(230 10% 82%)'), statusLabel: 'sem material',
+        textStyle: fmt('none'), textLabel: '—', audioStyle: fmt('none'), audioLabel: '—', slidesStyle: fmt('none'), slidesLabel: '—',
+        action: () => this.openModal('Survivor'), actionStyle: 'display:inline-block;padding:7px 14px;border-radius:999px;border:1px solid hsl(226 20% 30%);font-size:12px;font-weight:600;color:hsl(230 10% 84%);cursor:pointer', actionLabel: 'Gerar mesmo assim' }
+    ];
+    const tone = (bg, sur, pri) => [
+      { label: 'Fundo', color: bg }, { label: 'Superfície', color: sur }, { label: 'Primária', color: pri }, { label: 'Borda', color: sur }, { label: 'Texto', color: '#ffffff' }
+    ];
+    const paletteRows = [
+      { name: 'Mastermind', initials: 'Ma', iconStyle: profileRows[0].iconStyle, rowStyle, tokens: tone('#1c1633', '#2a2148', '#7a63e8') },
+      { name: 'Conqueror', initials: 'Co', iconStyle: profileRows[1].iconStyle, rowStyle, tokens: tone('#0f1c33', '#16274a', '#3e6dea') },
+      { name: 'Seeker', initials: 'Se', iconStyle: profileRows[2].iconStyle, rowStyle, tokens: tone('#0c2a28', '#123a37', '#22c9bc') },
+      { name: 'Daredevil', initials: 'Da', iconStyle: profileRows[3].iconStyle, rowStyle, tokens: tone('#2b0e12', '#3d151a', '#e8455b') },
+      { name: 'Achiever', initials: 'Ac', iconStyle: profileRows[4].iconStyle, rowStyle, tokens: tone('#2a2210', '#3d3216', '#dfb63a') },
+      { name: 'Socializer', initials: 'So', iconStyle: profileRows[5].iconStyle, rowStyle, tokens: tone('#2b1710', '#3d221a', '#f77b57') },
+      { name: 'Survivor', initials: 'Su', iconStyle: profileRows[6].iconStyle, rowStyle: 'border-bottom:none', tokens: tone('#1c2126', '#262d33', '#8593a2') }
+    ];
+    return {
+      profileRows, paletteRows,
+      viewSeeker: () => this.openModal('Seeker'),
+      viewMastermind: () => this.openModal('Mastermind'),
+      viewDaredevil: () => this.openModal('Daredevil'),
+      viewAchiever: () => this.openModal('Achiever'),
+      viewConqueror: () => this.openModal('Conqueror'),
+      viewSocializer: () => this.openModal('Socializer'),
+      viewMarina: () => this.openModal('Marina'),
+      viewSeekerText: () => this.setState({ modalKey: 'Seeker', mtab: 0, regenPhase: 0 }),
+      viewSeekerAudio: () => this.setState({ modalKey: 'Seeker', mtab: 1, regenPhase: 0 }),
+      viewSeekerSlides: () => this.setState({ modalKey: 'Seeker', mtab: 2, regenPhase: 0 }),
+      viewDaredevilText: () => this.setState({ modalKey: 'Daredevil', mtab: 0, regenPhase: 0 }),
+      viewDaredevilAudio: () => this.setState({ modalKey: 'Daredevil', mtab: 1, regenPhase: 0 }),
+      viewDaredevilSlides: () => this.setState({ modalKey: 'Daredevil', mtab: 2, regenPhase: 0 }),
+      viewMastermindText: () => this.setState({ modalKey: 'Mastermind', mtab: 0, regenPhase: 0 }),
+      viewMastermindAudio: () => this.setState({ modalKey: 'Mastermind', mtab: 1, regenPhase: 0 }),
+      viewMastermindSlides: () => this.setState({ modalKey: 'Mastermind', mtab: 2, regenPhase: 0 }),
+      regenSocializer: () => this.setState({ modalKey: 'Socializer', mtab: 1, regenTarget: 'Socializer', regenAllSlides: false, regenSlideIdx: null, regenPhase: 2, instructionTyped: false }),
+      regenMarina: () => this.setState({ modalKey: 'Marina', mtab: 0, regenTarget: 'Marina', regenAllSlides: false, regenSlideIdx: null, regenPhase: 1, instructionTyped: false }),
+      regenTurma: () => this.setState({ modalKey: null, regenTarget: 'Turma', regenAllSlides: false, regenSlideIdx: null, regenPhase: 2, instructionTyped: false }),
+      showModal: !!key || (target === 'Turma' && phase > 0),
+      closeModal: () => this.setState({ modalKey: null, regenTarget: null, regenPhase: 0 }),
+      isEmptyModal: !!emptyMeta,
+      modal: p ? {
+        color: p.color, initials: p.initials, title: p.title, name: key,
+        wordCount: p.wordCount, audioDuration: p.audioDuration, audioNote: p.audioNote,
+        textPreview: p.textPreview, slideCount: p.slideCount, slides
+      } : emptyMeta ? {
+        color: emptyMeta.color, initials: emptyMeta.initials, title: emptyMeta.name + ' · sem material', name: emptyMeta.name,
+        wordCount: '', audioDuration: '', audioNote: '', textPreview: '', slideCount: 0, slides: []
+      } : { color: 'hsl(230 10% 40%)', initials: '', title: '', name: '', wordCount: '', audioDuration: '', audioNote: '', textPreview: '', slideCount: 0, slides: [] },
+      mTabText: () => this.setState({ mtab: 0 }),
+      mTabAudio: () => this.setState({ mtab: 1 }),
+      mTabSlides: () => this.setState({ mtab: 2 }),
+      mTabTextStyle: mtab === 0 ? SLIDE_ON : SLIDE_OFF,
+      mTabAudioStyle: mtab === 1 ? SLIDE_ON : SLIDE_OFF,
+      mTabSlidesStyle: mtab === 2 ? SLIDE_ON : SLIDE_OFF,
+      isViewText: mtab === 0,
+      isViewAudio: mtab === 1,
+      isViewSlides: mtab === 2,
+      askRegen: () => this.setState({ regenTarget: key, regenAllSlides: false, regenSlideIdx: null, regenPhase: 1, instructionTyped: false }),
+      askRegenAll: () => this.setState({ regenTarget: key, regenAllSlides: true, regenSlideIdx: null, regenPhase: 1, instructionTyped: false }),
+      showRegenInstruct: phase === 1,
+      continueRegen: () => this.setState({ regenPhase: 2, instructionTyped: true }),
+      showRegenConfirm: phase === 2,
+      showRegenBusy: phase === 3,
+      showRegenDone: phase === 4,
+      cancelRegen: () => this.setState({ regenPhase: 0, regenTarget: null }),
+      confirmRegen: () => { this.setState({ regenPhase: 3 }); setTimeout(() => this.setState({ regenPhase: 4 }), 1200); },
+      regen: r ? {
+        title: this.state.regenSlideIdx !== null
+          ? 'Regenerar slide ' + (this.state.regenSlideIdx + 1) + ' de ' + target
+          : (this.state.regenAllSlides ? 'Regenerar apresentação inteira de ' + target : 'Regenerar material de ' + target),
+        reason: this.state.instructionTyped ? 'Instrução do professor: “deixar o tom menos formal, ou trocar o exemplo do carro por um de esportes”' : r.reason, reasonChip: 'width:9px;height:11px;flex:none;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);background:' + r.chip,
+        changes: (this.state.regenSlideIdx !== null
+          ? ['Reescreve apenas o slide ' + (this.state.regenSlideIdx + 1) + ', mantendo os outros ' + ((p && p.slideCount ? p.slideCount - 1 : 0)) + ' intactos', 'Usa o mesmo texto-base e tom do perfil ' + target]
+          : r.changes).map(text => ({ text })),
+        keepNote: r.keepNote,
+        busyLabel: this.state.regenSlideIdx !== null ? 'Regenerando o slide ' + (this.state.regenSlideIdx + 1) + '…' : 'Regenerando…',
+        doneLabel: this.state.regenSlideIdx !== null
+          ? 'Slide ' + (this.state.regenSlideIdx + 1) + ' regenerado. Os demais slides não foram alterados.'
+          : 'Regeneração concluída. O novo material já está disponível para visualização.'
+      } : { title: '', reason: '', reasonChip: '', changes: [], keepNote: '', busyLabel: '', doneLabel: '' }
+    };
+  }
+
+  renderVals() {
+    const t = this.state.tab;
+    const e = this.props.estado || 'com dados';
+    const filled = this.state.filled === null ? e !== 'sem seleção' : this.state.filled;
+    const zeroData = e !== 'com dados';
+    return {
+      isEmpty: !filled,
+      hasData: filled,
+      zeroData,
+      zeroProfiles: ZERO_PROFILES.map(zp => ({
+        ...zp,
+        openCard: () => this.openModal(zp.name),
+        gerar: (ev) => { if (ev && ev.stopPropagation) ev.stopPropagation(); }
+      })),
+      zeroPaletteProfiles: ZERO_PALETTE,
+      filterClasse: zeroData ? '2N - 2026 (cópia)' : 'Física I · 2026/1',
+      filterTopico: zeroData ? 'Introdução' : '3 · Cinemática',
+      filterConteudo: zeroData ? 'Introdução' : 'Todos os 4 conteúdos',
+      genProfileName: zeroData ? 'seeker' : 'Socializer',
+      genProfileDot: 'width:12px;height:14px;margin-right:9px;clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);background:' + (zeroData ? '#22c9bc' : '#f77b57'),
+      fill: () => this.setState({ filled: true }),
+      tab0: () => this.setState({ tab: 0 }),
+      tab1: () => this.setState({ tab: 1 }),
+      tab2: () => this.setState({ tab: 2 }),
+      tab3: () => this.setState({ tab: 3 }),
+      tabStyle0: t === 0 ? TAB_ON : TAB_OFF,
+      tabStyle1: t === 1 ? TAB_ON : TAB_OFF,
+      tabStyle2: t === 2 ? TAB_ON : TAB_OFF,
+      tabStyle3: t === 3 ? TAB_ON : TAB_OFF,
+      isTab0: t === 0,
+      isTab1: t === 1,
+      isTab2: t === 2,
+      isTab3: t === 3,
+      showTutor: this.state.tutorOpen,
+      toggleTutor: () => this.setState({ tutorOpen: !this.state.tutorOpen }),
+      tutorMessages: this.state.tutorMsgs,
+      tutorThinking: this.state.tutorThinking,
+      askProfileGap: () => this.askEscriba('Que perfil está sem material?', 'Sobrevivente, Explorador e Aventureiro ainda não têm conteúdo gerado para este tópico.'),
+      askFailure: () => this.askEscriba('Algum erro de geração?', 'O áudio do perfil Socializer falhou — você pode tentar regenerar direto no card dele.'),
+      ...this.modalVals()
+    };
+  }
+}
+
+</script>
+</body>
+</html>

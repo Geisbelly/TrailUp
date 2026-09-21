@@ -593,7 +593,7 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
       </div>
 
       <Card>
-        <CardContent className="flex flex-wrap items-end gap-4 pt-6">
+        <CardContent className="console-filters flex flex-wrap items-end gap-4 pt-6">
           <div className="space-y-1">
             <p className="text-xs font-medium text-muted-foreground">Classe</p>
             <Select value={classeId} onValueChange={handleClasseChange}>
@@ -661,7 +661,7 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
             {porPerfilLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Atualizar"}
           </Button>
 
-          <div className="flex items-end gap-2 border-l pl-4 ml-2">
+          <div className="flex flex-wrap items-end gap-2 sm:border-l sm:pl-4 sm:ml-2">
             <div className="space-y-1">
               <p className="text-xs font-medium text-muted-foreground">Gerar tudo para o perfil</p>
               <Select value={perfilParaGerarTudo} onValueChange={setPerfilParaGerarTudo}>
@@ -695,7 +695,7 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
       </Card>
 
       <Tabs defaultValue="por-perfil" className="space-y-4">
-        <TabsList>
+        <TabsList className="flex h-auto w-fit max-w-full flex-wrap justify-start gap-1">
           <TabsTrigger value="por-perfil">
             <Layers className="h-4 w-4 mr-2" />
             Por perfil

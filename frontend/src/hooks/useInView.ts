@@ -11,7 +11,7 @@ export function useInView<T extends HTMLElement>(amount = 0.3) {
 
   useEffect(() => {
     const node = ref.current;
-    if (!node || inView) return;
+    if (!node || inView || typeof IntersectionObserver === "undefined") return;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
