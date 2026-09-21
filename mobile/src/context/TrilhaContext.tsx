@@ -45,10 +45,16 @@ import {
 } from '@/utils/slideXpBonus';
 import {
   agregarProgressoPersonalizado,
+  aplicarEventoProgresso,
+  mesclarLinhasProgresso,
   topicosComPendenciaPersonalizada,
   type LinhaProgressoItem,
   type ProgressoPersonalizado,
 } from '@/utils/progressoPersonalizado';
+import {
+  drenarProgressoOutbox,
+  enfileirarProgressoItem,
+} from '@/services/progressoOutbox';
 import { buildContentBlocks, isUrl } from '@/utils/contentBlocks';
 import { ensureCachedNativeContent } from '@/utils/nativeContentCache';
 import { executarComConcorrencia } from '@/utils/prefetchPool';
@@ -100,6 +106,14 @@ function buildPersonalizacaoCacheKey(
   profile: BrainHexProfile,
 ) {
   return `@trailup/personalizacao-v4/${alunoId}/${classeId}/${profile}`
+}
+
+function buildProgressoItensCacheKey(
+  alunoId: string,
+  classeId: number,
+  profile: BrainHexProfile,
+) {
+  return `@trailup/progresso-itens-v1/${alunoId}/${classeId}/${profile}`
 }
 
 const PREFETCHABLE_TYPES = new Set([
@@ -817,6 +831,22 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [])
 
+  const persistProgressoItensCache = useCallback(async (
+    alunoId: string,
+    classeId: number,
+    profile: BrainHexProfile,
+    linhas: LinhaProgressoItem[]
+  ) => {
+    try {
+      await AsyncStorage.setItem(
+        buildProgressoItensCacheKey(alunoId, classeId, profile),
+        JSON.stringify(linhas)
+      )
+    } catch (err) {
+      console.warn('[TrilhaContext] Erro ao salvar cache de progresso personalizado:', err)
+    }
+  }, [])
+
   useEffect(() => {
     personalizationHydratedClassRef.current = null
     personalizationRequestsRef.current.clear()
@@ -1466,11 +1496,29 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
     const classeId = classeAtual?.classe_id
     const alunoId = usuario?.id
     setSlideBonusKeys(new Set())
-    setProgressoItens([])
-    if (!classeId || !alunoId) return
+    if (!classeId || !alunoId) {
+      setProgressoItens([])
+      return
+    }
 
     let cancelado = false
+    let hidratados: LinhaProgressoItem[] = []
     ;(async () => {
+      // Hidrata do cache primeiro: mantém o último progresso conhecido
+      // visível de imediato, inclusive offline, em vez de zerar a tela até a
+      // rede responder (ou de nunca voltar a mostrar nada, se ela não vier).
+      try {
+        const raw = await AsyncStorage.getItem(
+          buildProgressoItensCacheKey(alunoId, classeId, activeProfileKey)
+        )
+        if (cancelado) return
+        const parsed = raw ? JSON.parse(raw) : []
+        hidratados = Array.isArray(parsed) ? parsed : []
+        setProgressoItens(hidratados)
+      } catch (err) {
+        console.warn('[TrilhaContext] Erro ao carregar cache local de progresso personalizado:', err)
+      }
+
       // A jornada pode usar material-base compartilhado e gerações parciais
       // com arquivos utilizáveis, assim como a projeção canônica do banco.
       const { data: personalizacoesAtivas, error: personalizacoesError } = await supabase
@@ -1482,6 +1530,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
 
       if (cancelado) return
       if (personalizacoesError) {
+        // Sem rede: o que veio do cache continua valendo, não zera.
         console.warn('[TrilhaContext] Falha ao buscar personalizacao ativa:', personalizacoesError)
         return
       }
@@ -1491,8 +1540,12 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
         .filter((id) => Number.isInteger(id) && id > 0)
 
       if (!personalizacaoIds.length) {
+        // Resposta autoritativa do servidor (não uma falha de rede): não há
+        // personalização para esta classe/perfil, então o cache antigo (de
+        // uma classe/perfil anterior) realmente não vale mais.
         setProgressoItens([])
         setSlideBonusKeys(new Set())
+        await persistProgressoItensCache(alunoId, classeId, activeProfileKey, [])
         return
       }
 
@@ -1507,12 +1560,18 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
 
       if (cancelado) return
       if (error) {
+        // Idem: sem rede, o progresso hidratado do cache continua valendo.
         console.warn('[TrilhaContext] Falha ao buscar progresso personalizado:', error)
         return
       }
 
-      const linhas = (data ?? []) as LinhaProgressoItem[]
+      const remoto = (data ?? []) as LinhaProgressoItem[]
+      // Nunca regride: se uma escrita otimista local ainda não chegou ao
+      // servidor (fila de reenvio em progressoOutbox), a leitura fresca não
+      // pode apagá-la.
+      const linhas = mesclarLinhasProgresso(hidratados, remoto)
       setProgressoItens(linhas)
+      await persistProgressoItensCache(alunoId, classeId, activeProfileKey, linhas)
 
       const keys = new Set<string>()
       for (const row of linhas) {
@@ -1525,7 +1584,15 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
     return () => {
       cancelado = true
     }
-  }, [activeProfileKey, classeAtual?.classe_id, usuario?.id])
+  }, [activeProfileKey, classeAtual?.classe_id, persistProgressoItensCache, usuario?.id])
+
+  // O caso que a fila existe para cobrir: o app foi morto ou perdeu rede com
+  // progresso pendente. A tentativa acontece na abertura seguinte, antes de
+  // qualquer gravação nova.
+  useEffect(() => {
+    void drenarProgressoOutbox((p) => personalizacaoProvider.salvarProgressoPersonalizadoDiretoSupabase(p))
+      .catch(() => undefined)
+  }, [])
 
   // A conclusão personalizada é salva em uma tabela separada da projeção da
   // trilha. Recalcular a lista de pendências precisa refletir no grafo atual;
@@ -2058,6 +2125,16 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       },
     }
 
+    const evento: LinhaProgressoItem = {
+      topico_id: topicoId,
+      item_key: progressItemKey,
+      item_kind: itemKind,
+      status,
+      percentual_concluido: percentualNormalizado,
+      acertos_percentual: acertosNormalizado,
+      tempo_gasto_min: tempoNormalizado,
+    }
+
     try {
       await personalizacaoProvider.salvarProgressoPersonalizadoDiretoSupabase({
         ...progressoPayload,
@@ -2073,45 +2150,15 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
         })
       }
 
+      let proximasLinhas: LinhaProgressoItem[] = []
       setProgressoItens((previous) => {
-        const nextLine: LinhaProgressoItem = {
-          topico_id: topicoId,
-          item_key: progressItemKey,
-          item_kind: itemKind,
-          status,
-          percentual_concluido: percentualNormalizado,
-          acertos_percentual: acertosNormalizado,
-          tempo_gasto_min: tempoNormalizado,
-        }
-        const index = previous.findIndex(
-          (line) =>
-            Number(line.topico_id) === topicoId &&
-            String(line.item_key ?? '') === progressItemKey
-        )
-        if (index < 0) return [...previous, nextLine]
-
-        const current = previous[index]
-        const merged = {
-          ...current,
-          ...nextLine,
-          status:
-            current.status === 'concluido' || status === 'concluido'
-              ? 'concluido'
-              : status,
-          percentual_concluido: Math.max(
-            Number(current.percentual_concluido ?? 0),
-            percentualNormalizado,
-          ),
-          acertos_percentual:
-            acertosNormalizado == null
-              ? current.acertos_percentual ?? null
-              : Math.max(Number(current.acertos_percentual ?? 0), acertosNormalizado),
-          tempo_gasto_min: Math.round(
-            (Number(current.tempo_gasto_min ?? 0) + Number(tempoNormalizado ?? 0)) * 100
-          ) / 100,
-        }
-        return previous.map((line, lineIndex) => (lineIndex === index ? merged : line))
+        proximasLinhas = aplicarEventoProgresso(previous, evento)
+        return proximasLinhas
       })
+      await persistProgressoItensCache(usuario.id, classeAtual.classe_id, activeProfileKey, proximasLinhas)
+      // A gravação voltou a funcionar: escoa o que ficou para trás na fila.
+      void drenarProgressoOutbox((p) => personalizacaoProvider.salvarProgressoPersonalizadoDiretoSupabase(p))
+        .catch(() => undefined)
 
       if (status === 'concluido' || percentualNormalizado > 0) {
         await refreshTopico(topicoId)
@@ -2132,9 +2179,25 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
           console.warn('[TrilhaContext] Falha ao salvar progresso personalizado direto no Supabase:', directErr)
         }
       }
+
+      // Sem rede (ou RLS): o progresso não pode se perder. Atualiza o estado
+      // local (mesma regra de nunca regredir) e guarda para reenvio, em vez
+      // de só logar e deixar o evento desaparecer com o catch.
+      let proximasLinhas: LinhaProgressoItem[] = []
+      setProgressoItens((previous) => {
+        proximasLinhas = aplicarEventoProgresso(previous, evento)
+        return proximasLinhas
+      })
+      await persistProgressoItensCache(usuario.id, classeAtual.classe_id, activeProfileKey, proximasLinhas)
+      try {
+        await enfileirarProgressoItem({ ...progressoPayload, aluno_id: usuario.id })
+      } catch (erroFila) {
+        console.warn('[TrilhaContext] Falha ao enfileirar progresso personalizado:', erroFila)
+      }
+
       throw directErr
     }
-  }, [atualizarProgressoClasse, classeAtual, personalizedTopics, personalizacaoProvider, refreshTopico, usuario?.id])
+  }, [activeProfileKey, atualizarProgressoClasse, classeAtual, persistProgressoItensCache, personalizedTopics, personalizacaoProvider, refreshTopico, usuario?.id])
 
   const registrarRespostaQuestao = useCallback(async ({
     topicoId,

@@ -19,9 +19,9 @@ export type ProgressoItemPayload = {
   classe_id: number;
   topico_id: number;
   item_key: string;
-  item_kind: string;
+  item_kind: "content" | "activity" | "cards";
   item_title: string;
-  status: string;
+  status: "nao_iniciado" | "em_andamento" | "concluido";
   percentual_concluido: number;
   acertos_percentual: number | null;
   tempo_gasto_min: number | null;
