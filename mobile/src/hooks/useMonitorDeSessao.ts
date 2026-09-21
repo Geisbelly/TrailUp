@@ -58,6 +58,7 @@ export function useMonitorDeSessao() {
   const alunoAtivoRef = useRef<string | null>(null);
 
   const enviarTempoAcumulado = useCallback(async () => {
+    if (!alunoAtivoRef.current) return;
     const agora = Date.now();
     const segundos = Math.round((agora - ultimaBatidaRef.current) / 1000);
     // O relógio avança sempre, mesmo se a chamada falhar: reaproveitar o mesmo

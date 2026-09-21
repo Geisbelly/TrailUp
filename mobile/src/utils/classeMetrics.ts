@@ -1,5 +1,6 @@
 import { ClasseResumo } from "@/models/ClasseResumo";
 import { Classe } from "@/models/Classe";
+import { isTopicoConcluido, progressoCanonicoTopico } from './topicoProgress';
 
 type QuestaoLike = {
   resposta_aluno?: string | null;
@@ -114,7 +115,7 @@ export function buildClasseAcademicMetrics(classe: Classe | null): ClasseAcademi
   const topicos = (classe?.topicos ?? []) as TopicoLike[];
   const totalTopicos = topicos.length;
   const topicosConcluidos = topicos.filter((topico) =>
-    isDone(topico.status, topico.percentual_concluido)
+    isTopicoConcluido(topico)
   ).length;
   const topicosEmAndamento = topicos.filter((topico) =>
     isDoing(topico.status, topico.percentual_concluido)
@@ -132,13 +133,14 @@ export function buildClasseAcademicMetrics(classe: Classe | null): ClasseAcademi
     isDone(atividade.status, atividade.percentual_concluido ?? null)
   ).length;
 
-  const totalBlocos = totalConteudos + totalAtividades;
-  const blocosConcluidos = conteudosConcluidos + atividadesConcluidas;
+  // Material do professor é bônus quando há personalização. Não substitui
+  // os percentuais derivados pelo banco, nem oculta progresso parcial.
+  const percentualResumo = classe?.resumo?.porcentagemConcluida;
   const progressPct =
-    totalBlocos > 0
-      ? clampPercent((blocosConcluidos / totalBlocos) * 100)
+    percentualResumo != null && Number.isFinite(Number(percentualResumo))
+      ? clampPercent(percentualResumo)
       : totalTopicos > 0
-      ? clampPercent((topicosConcluidos / totalTopicos) * 100)
+      ? topicos.reduce((sum, topico) => sum + (progressoCanonicoTopico(topico) ?? 0), 0) / totalTopicos
       : 0;
 
   const tempoTopicoMin = topicos.reduce((sum, topico) => {
@@ -149,22 +151,21 @@ export function buildClasseAcademicMetrics(classe: Classe | null): ClasseAcademi
     (sum, atividade) => sum + resolveAtividadeTempoMin(atividade),
     0
   );
-  // Tempo de conteudo NAO era calculado em lugar nenhum, e o de atividade era
-  // calculado e descartado (`tempoTotalMin` recebia so o do topico). Os tres
-  // agora existem, e o total usa MAXIMO, nao soma.
-  //
-  // Por que maximo: `registrarTempoTopico` roda a cada flush do rastreio,
-  // inclusive nos blocos personalizados, entao o tempo do topico JA CONTEM o
-  // dos itens -- somar contaria duas vezes. Mas se a escrita em `topico_aluno`
-  // falha (RLS, rede), o tempo do topico fica em zero enquanto os itens tem
-  // tempo gravado, e ai o total zerava mesmo havendo estudo registrado. Era o
-  // "tempo nao contabilizado". O maximo cobre os dois casos.
+  // Os escopos se sobrepõem: use o total canônico; só estime a partir dos
+  // itens quando o carregamento não trouxe nenhum total de classe/tópico.
   const tempoConteudoMin = conteudos.reduce((sum, conteudo) => {
     const tempo = Number((conteudo as any)?.tempo_gasto_min ?? 0);
     return sum + (Number.isFinite(tempo) ? Math.max(0, tempo) : 0);
   }, 0);
-  const tempoItensMin = tempoConteudoMin + tempoAtividadeMin;
-  const tempoTotalMin = roundMetric(Math.max(tempoTopicoMin, tempoItensMin));
+  // Content and activity scopes overlap (a question may be linked to a
+  // content). The stored class/topic totals are authoritative, including 0.
+  const tempoResumo = classe?.resumo?.tempoGastoMin;
+  const hasTopicTime = topicos.some((topico) => topico.tempo_gasto_min != null);
+  const tempoTotalMin = roundMetric(
+    tempoResumo != null && Number.isFinite(Number(tempoResumo))
+      ? Math.max(0, Number(tempoResumo))
+      : hasTopicTime ? tempoTopicoMin : Math.max(tempoConteudoMin, tempoAtividadeMin),
+  );
 
   const acuracias = atividades
     .map(resolveAtividadeAcertos)
@@ -187,9 +188,7 @@ export function buildClasseAcademicMetrics(classe: Classe | null): ClasseAcademi
     totalAtividades,
     atividadesConcluidas,
     progressPct,
-    isComplete:
-      (totalBlocos > 0 && blocosConcluidos >= totalBlocos) ||
-      (totalBlocos === 0 && totalTopicos > 0 && topicosConcluidos >= totalTopicos),
+    isComplete: classe?.resumo?.isComplete ?? (totalTopicos > 0 && progressPct >= 100),
     tempoTotalMin,
     tempoTopicoMin: roundMetric(tempoTopicoMin),
     tempoConteudoMin: roundMetric(tempoConteudoMin),

@@ -1,5 +1,4 @@
 import CardSemDados from "@/components/CardSemDados";
-import { HallBackground } from "@/components/HallTheme";
 import { IAMentorPanel } from "@/components/ia/IAMentorPanel";
 import { LoadingState } from "@/components/LoadingState";
 import { BagModal } from "@/components/bag/BagModal";
@@ -68,6 +67,7 @@ export default function TrilhasIndex() {
   if (carregando) {
     return (
       <SafeAreaView
+        edges={["top", "left", "right"]}
         style={[styles.root, { backgroundColor: palette.background }]}
       >
         <LoadingState
@@ -82,6 +82,7 @@ export default function TrilhasIndex() {
   if (erro) {
     return (
       <SafeAreaView
+        edges={["top", "left", "right"]}
         style={[styles.root, { backgroundColor: palette.background }]}
       >
         <Text style={{ color: "salmon" }}>Erro</Text>
@@ -93,6 +94,7 @@ export default function TrilhasIndex() {
   if (!classes?.length) {
     return (
       <SafeAreaView
+        edges={["top", "left", "right"]}
         style={[styles.root, { backgroundColor: palette.background }]}
       >
         <CardSemDados
@@ -106,12 +108,9 @@ export default function TrilhasIndex() {
 
   return (
     <SafeAreaView
+      edges={["top", "left", "right"]}
       style={[styles.root, { backgroundColor: palette.background }]}
     >
-      {/* Fundo do salão (sutil) */}
-      <View style={[StyleSheet.absoluteFill, { opacity: 0.4, pointerEvents: "none" }]}>
-        <HallBackground palette={palette} />
-      </View>
       <TrilhaBase chatGuideTargetRef={chatGuideTargetRef} onOpenBag={() => setBagOpen(true)} />
       <BagModal visible={bagOpen} classeId={classeAtual?.classe_id ?? null} profile={perfil} onClose={() => setBagOpen(false)} />
       <IAMentorPanel

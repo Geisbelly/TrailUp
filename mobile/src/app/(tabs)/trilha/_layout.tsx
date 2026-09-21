@@ -106,8 +106,7 @@ export default function TrilhaStack() {
       <Stack.Screen
         name="index"
         options={{
-          title: "Trilha",
-          headerShown: true,
+          headerShown: false,
         }}
       />
 

@@ -2,6 +2,7 @@ import { supabase } from "@/database/supabase";
 import { origemDeStorageConfiavel, reancorarNaOrigemDoApp } from "./storageOrigin";
 import {
   buildSupabasePublicStorageUrl,
+  buildPersonalizedMaterialGatewayUrl,
   deckComoUrlPublicaDeStorage,
   getSupabaseOrigin,
   joinUrl,
@@ -23,6 +24,8 @@ export async function resolveSupabaseStorageUrl(
   rawUrl: string,
   options: ResolveStorageUrlOptions = {}
 ) {
+  const gateway = buildPersonalizedMaterialGatewayUrl(rawUrl, options);
+  if (gateway) return gateway;
   const deck = deckComoUrlPublicaDeStorage(rawUrl);
   if (deck) return deck;
 

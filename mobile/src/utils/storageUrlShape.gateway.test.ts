@@ -13,6 +13,7 @@ process.env.EXPO_PUBLIC_SUPABASE_URL = APP;
 
 const CAMINHO = "brainhex/seeker/classe-54/topico-131/apresentacao/material-1.html";
 const GATEWAY = `${APP}/functions/v1/storage-redirect?path=${CAMINHO}`;
+const ENCODED_GATEWAY = `${APP}/functions/v1/storage-redirect?path=${encodeURIComponent(CAMINHO)}`;
 
 // Com os arquivos indo para o R2, o material passa a ser referenciado por uma
 // URL da Edge Function `storage-redirect`, que responde 302. O app NAO pode
@@ -43,15 +44,15 @@ test("gateway: bucket informado nas options nao muda nada", () => {
 
 // --- regressao: o que ja funcionava continua funcionando ---
 
-test("URL publica de storage continua passando intacta", () => {
+test("URL antiga de material no Storage passa pelo gateway do R2", () => {
   const publica = `${APP}/storage/v1/object/public/conteudo_aluno/${CAMINHO}`;
-  assert.equal(buildSupabasePublicStorageUrl(publica), publica);
+  assert.equal(buildSupabasePublicStorageUrl(publica), ENCODED_GATEWAY);
 });
 
-test("caminho cru de objeto continua virando URL publica", () => {
+test("caminho cru de material personalizado usa o gateway", () => {
   assert.equal(
     buildSupabasePublicStorageUrl(CAMINHO, { bucket: "conteudo_aluno" }),
-    `${APP}/storage/v1/object/public/conteudo_aluno/${CAMINHO}`,
+    ENCODED_GATEWAY,
   );
 });
 
@@ -76,5 +77,19 @@ test("deck com host interno continua sendo reancorado no app", () => {
   const saida = buildSupabasePublicStorageUrl(
     `https://trailup-microservice-gmgqkw:3000/api/v1/decks/conteudo_aluno/${CAMINHO}`,
   );
-  assert.equal(saida, `${APP}/storage/v1/object/public/conteudo_aluno/${CAMINHO}`);
+  assert.equal(saida, ENCODED_GATEWAY);
+});
+
+test("uploads do professor e avatares continuam no Storage", () => {
+  const upload = `${APP}/storage/v1/object/public/conteudos/turma/aula.pdf`;
+  const avatar = `${APP}/storage/v1/object/public/conteudo_aluno/aluno/boss/avatar.png`;
+  assert.equal(buildSupabasePublicStorageUrl(upload), upload);
+  assert.equal(buildSupabasePublicStorageUrl(avatar), avatar);
+});
+
+test("caminho com caracteres especiais e flags de apresentação sobrevivem", () => {
+  const url = new URL(buildSupabasePublicStorageUrl('https://interno/api/v1/decks/conteudo_aluno/brainhex/aula%20um.html?hideQuiz=1'));
+  assert.equal(url.pathname, '/functions/v1/storage-redirect');
+  assert.equal(url.searchParams.get('path'), 'brainhex/aula um.html');
+  assert.equal(url.searchParams.get('hideQuiz'), '1');
 });

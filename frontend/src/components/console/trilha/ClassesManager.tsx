@@ -153,13 +153,14 @@ export default function ClassesManager() {
   };
 
   const handleDelete = async (id: number) => {
+    if (!window.confirm("Excluir esta classe, seus conteúdos, matrículas, progressos e dados de guildas da turma? Esta ação não pode ser desfeita.")) return;
     try {
       await deleteClasseCascade(id);
       setClasses((prev) => prev.filter((c) => c.id !== id));
       toast.success("Classe excluída!");
     } catch (error) {
       console.error("Erro ao excluir classe:", error);
-      toast.error("Não foi possível excluir a classe.");
+      toast.error(error instanceof Error ? error.message : "Não foi possível excluir a classe.");
     }
   };
 

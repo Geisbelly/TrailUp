@@ -130,8 +130,8 @@ export default function PresentationSlidesBlock({ payload: rawPayload, progressK
           </Text>
         ) : null}
         <View style={[styles.previewButton, { backgroundColor: palette.accent }]}>
-          <Ionicons name="play" size={16} color={Color.colorWhite} />
-          <Text style={styles.previewButtonText}>
+          <Ionicons name="play" size={16} color={palette.background} />
+          <Text style={[styles.previewButtonText, { color: palette.background }]}>
             {index > 0 ? `Continuar do slide ${index + 1}` : "Ver apresentação"}
           </Text>
         </View>
@@ -178,7 +178,7 @@ export default function PresentationSlidesBlock({ payload: rawPayload, progressK
                 accessibilityRole="button"
                 accessibilityLabel="Fechar"
               >
-                <Ionicons name="close" size={22} color={Color.colorWhite} />
+                <Ionicons name="close" size={22} color={palette.accent} />
               </Pressable>
             </View>
 
@@ -226,7 +226,7 @@ export default function PresentationSlidesBlock({ payload: rawPayload, progressK
                 accessibilityState={{ disabled: isFirst }}
                 style={[styles.navButton, isFirst && styles.navButtonDisabled]}
               >
-                <Ionicons name="chevron-back" size={22} color={Color.colorWhite} />
+                <Ionicons name="chevron-back" size={22} color={palette.accent} />
               </Pressable>
 
               <Text style={styles.progressText}>
@@ -241,7 +241,7 @@ export default function PresentationSlidesBlock({ payload: rawPayload, progressK
                 accessibilityState={{ disabled: isLast }}
                 style={[styles.navButton, isLast && styles.navButtonDisabled]}
               >
-                <Ionicons name="chevron-forward" size={22} color={Color.colorWhite} />
+                <Ionicons name="chevron-forward" size={22} color={palette.accent} />
               </Pressable>
             </View>
           </SafeAreaView>

@@ -329,13 +329,13 @@ async function persistTelemetryBatchDirect(payload: TelemetryBatchPayload) {
   );
   if (sessionError) throw sessionError;
 
-  const batchId = buildUuid();
+  let batchId = buildUuid();
   const frameSent =
     safePayload.camera.enabled === true &&
     Array.isArray(safePayload.camera.frames) &&
     safePayload.camera.frames.length > 0;
 
-  const { error: batchError } = await supabase.from("telemetria_lotes").insert({
+  const { data: persistedBatch, error: batchError } = await supabase.from("telemetria_lotes").upsert({
     id: batchId,
     sessao_id: safePayload.sessao_id,
     aluno_id: alunoId,
@@ -358,8 +358,19 @@ async function persistTelemetryBatchDirect(payload: TelemetryBatchPayload) {
     analysis_ciclo_id: null,
     payload: sanitizarCameraParaBanco(safePayload),
     created_at: nowIso,
-  });
+  }, { onConflict: 'sessao_id,captured_at,flush_reason', ignoreDuplicates: true }).select('id').maybeSingle();
   if (batchError) throw batchError;
+  if (persistedBatch) {
+    batchId = String(persistedBatch.id);
+  } else {
+    // The API may have committed before its response timed out, or an earlier
+    // direct attempt may have saved the batch but failed on its metric rows.
+    const { data: existing, error } = await supabase.from('telemetria_lotes')
+      .select('id').eq('sessao_id', safePayload.sessao_id)
+      .eq('captured_at', safePayload.captured_at).eq('flush_reason', safePayload.flush_reason).single();
+    if (error) throw error;
+    batchId = String(existing.id);
+  }
 
   const events = Array.isArray(safePayload.eventos_app) ? safePayload.eventos_app : [];
   if (events.length > 0) {

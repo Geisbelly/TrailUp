@@ -5,6 +5,7 @@ import { resetPassword } from "@/services/auth";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { buildProfileShellPaletteFromAccent } from "@/utils/profileShellTheme";
 import { LinearGradient } from "expo-linear-gradient";
+import { Design } from "@/styles/design";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
@@ -21,7 +22,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import tinycolor from "tinycolor2";
 
 // Paleta estática para telas de autenticação — violeta oficial do logo TrailUp
-const AUTH_PALETTE = buildProfileShellPaletteFromAccent("#a057fd", "magica");
+const AUTH_PALETTE = buildProfileShellPaletteFromAccent(Design.primary, "magica");
 
 export default function RecuperarSenhaScreen() {
   const [email, setEmail] = useState("");
@@ -119,7 +120,7 @@ export default function RecuperarSenhaScreen() {
             style={[
               styles.button,
               emailValido
-                ? { backgroundColor: tinycolor(AUTH_PALETTE.accent).darken(5).toHexString(), borderColor: gold }
+                ? { backgroundColor: Design.primary, borderColor: gold }
                 : { backgroundColor: goldFaint, borderColor: goldDim },
             ]}
             disabled={!emailValido || enviando}
@@ -127,7 +128,7 @@ export default function RecuperarSenhaScreen() {
             accessibilityRole="button"
             accessibilityLabel="Enviar link"
           >
-            <Text style={[styles.buttonText, { color: emailValido ? "#fff" : AUTH_PALETTE.textMuted }]}>
+            <Text style={[styles.buttonText, { color: emailValido ? Design.ink : AUTH_PALETTE.textMuted }]}>
               {enviando ? "Enviando..." : "Enviar Link"}
             </Text>
           </TouchableOpacity>
@@ -175,7 +176,7 @@ const styles = StyleSheet.create({
   appTitle: {
     fontSize: 34,
     fontFamily: FontFamily.inknutAntiquaMedium,
-    letterSpacing: 3,
+    letterSpacing: 0,
     textShadowColor: "rgba(0,0,0,0.8)",
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 8,
@@ -201,7 +202,7 @@ const styles = StyleSheet.create({
   },
   inputWrap: {
     width: "100%",
-    borderRadius: 10,
+    borderRadius: Design.radius,
     borderWidth: 1,
     paddingHorizontal: 16,
     marginBottom: 14,
@@ -214,7 +215,7 @@ const styles = StyleSheet.create({
   button: {
     width: "100%",
     paddingVertical: 14,
-    borderRadius: 10,
+    borderRadius: Design.radius,
     borderWidth: 1,
     alignItems: "center",
     marginBottom: 18,

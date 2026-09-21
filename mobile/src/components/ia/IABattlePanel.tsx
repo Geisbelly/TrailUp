@@ -1,4 +1,5 @@
 import { useIA } from "@/context/IAContext";
+import { useContentBossVisual } from '@/hooks/useContentBossVisual';
 import {
   IAEnemyPalette,
   IAEnemyVisualSpec,
@@ -132,6 +133,7 @@ function ProgressBar({
 export function IABattlePanel({ scope, surface = "inline" }: Props) {
   const { getBattleState, resolveFeature, setUserFeaturePreference, emitSignal } = useIA();
   const resolvedBattle = resolveFeature(scope, "battle_mode");
+  const teacherBoss = useContentBossVisual(scope.topicoId, scope.scope === 'item' ? scope.itemKey : resolvedBattle.battle?.sourceItemKey, resolvedBattle.battle?.enemy.contentId);
   const battleState = getBattleState(scope);
   const previewState = useMemo(() => {
     if (!resolvedBattle.battle) return null;
@@ -208,7 +210,7 @@ export function IABattlePanel({ scope, surface = "inline" }: Props) {
   const defeated = effectiveState.defeated;
   const artUrl = visual?.avatarUrl ?? enemy.avatarUrl ?? null;
   const backgroundUrl = visual?.backgroundUrl ?? null;
-  const frameUrl = visual?.frameUrl ?? null;
+  const frameUrl = teacherBoss ? null : visual?.frameUrl ?? null;
   const effectUrl = visual?.effectUrl ?? null;
   const helperText = defeated
     ? resolvedBattle.battle.victoryMessage ?? "Inimigo derrotado neste conteúdo."
@@ -266,8 +268,8 @@ export function IABattlePanel({ scope, surface = "inline" }: Props) {
             },
           ]}
         >
-          {artUrl ? (
-            <Image source={{ uri: artUrl }} style={styles.avatarImage} resizeMode="contain" />
+          {teacherBoss || artUrl ? (
+            <Image source={teacherBoss ?? { uri: artUrl! }} style={styles.avatarImage} resizeMode="contain" />
           ) : (
             <MaterialCommunityIcons
               name={defeated ? "chess-king" : "skull-outline"}

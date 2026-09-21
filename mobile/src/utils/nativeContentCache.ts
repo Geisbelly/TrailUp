@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system/legacy";
+import { mediaUrlPath } from './mediaUrlPath';
 
 export type CachedNativeContentFile = {
   cacheKey: string;
@@ -35,7 +36,7 @@ function sanitizeExtension(value?: string | null) {
 function inferExtension(reference: string, hint?: string | null) {
   if (hint) return sanitizeExtension(hint);
 
-  const normalized = reference.split("?")[0].split("#")[0];
+  const normalized = mediaUrlPath(reference);
   const match = normalized.match(/\.([a-z0-9]{2,8})$/i);
   return sanitizeExtension(match?.[1]);
 }
@@ -173,4 +174,3 @@ export async function ensureCachedNativeContent(
     return nextRecord;
   });
 }
-

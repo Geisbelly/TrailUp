@@ -1,8 +1,10 @@
 // src/components/trilhas/common/GameHeader.tsx
 import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { ProfileShellPalette } from "@/utils/profileShellTheme";
+import { Design } from "@/styles/design";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
+import tinycolor from "tinycolor2";
 
 type Props = {
   titulo: string;
@@ -17,8 +19,8 @@ type Props = {
 export const GameHeader = ({
   titulo,
   subtitulo,
-  xp = 120,
-  meta = 200,
+    xp = 0,
+    meta = 100,
   rightSlot,
   palette = null,
   progressTargetRef,
@@ -32,7 +34,7 @@ export const GameHeader = ({
         s.root,
         palette
           ? {
-              backgroundColor: palette.background,
+              backgroundColor: tinycolor(palette.background).setAlpha(0.88).toRgbString(),
               borderColor: palette.border,
             }
           : null,
@@ -53,7 +55,7 @@ export const GameHeader = ({
         </View>
         {rightSlot ? <View style={s.rightSlot}>{rightSlot}</View> : null}
       </View>
-      <View ref={progressTargetRef} collapsable={false} style={s.xpRow}>
+      <View ref={progressTargetRef} collapsable={false} style={s.xpRow} accessibilityRole="progressbar" accessibilityLabel="Progresso da trilha" accessibilityValue={{ min: 0, max: 100, now: Math.round(progresso * 100) }}>
         <View
           style={[
             s.xpBarTrack,
@@ -69,7 +71,7 @@ export const GameHeader = ({
             style={[
               s.xpBarFill,
               { width: `${progresso * 100}%` },
-              palette ? { backgroundColor: palette.accent } : null,
+              { backgroundColor: palette?.accent ?? Design.primary },
             ]}
           />
         </View>
@@ -83,9 +85,11 @@ export const GameHeader = ({
 
 const s = StyleSheet.create({
   root: {
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 14,
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 18,
+    gap: 12,
+    overflow: "hidden",
     backgroundColor: Color.background,
     borderBottomWidth: 1,
     borderColor: Color.colorDarkslategray,
@@ -98,6 +102,7 @@ const s = StyleSheet.create({
   },
   titleBlock: {
     flex: 1,
+    minWidth: 0,
   },
   rightSlot: {
     alignItems: "flex-end",
@@ -111,8 +116,9 @@ const s = StyleSheet.create({
   },
   xpBarTrack: {
     flex: 1,
-    height: 12,
-    borderRadius: 12,
+    height: 8,
+    borderRadius: 2,
+    overflow: "hidden",
     backgroundColor: Color.colorAliceblue200,
     marginRight: 12,
     borderWidth: 1,
@@ -121,7 +127,7 @@ const s = StyleSheet.create({
   xpBarFill: {
     height: "100%",
     backgroundColor: Color.colorSlategray,
-    borderRadius: 12,
+    borderRadius: 1,
   },
   xpText: {
     color: Color.colorAliceblue300,
@@ -130,14 +136,15 @@ const s = StyleSheet.create({
   },
   sub: {
     color: Color.colorSlategray,
-    letterSpacing: 2,
+    letterSpacing: 0,
     fontSize: 12,
     marginTop: 6,
     fontFamily: FontFamily.interMedium,
   },
   title: {
     color: Color.colorAliceblue,
-    fontSize: 24,
+    fontSize: 22,
+    lineHeight: 28,
     marginTop: 2,
     fontFamily: FontFamily.poppinsExtraBold,
   },

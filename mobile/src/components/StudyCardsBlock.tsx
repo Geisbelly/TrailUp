@@ -154,7 +154,7 @@ export default function StudyCardsBlock({ payload, WebView, progressKey }: Props
             { backgroundColor: palette.surface, borderColor: palette.border },
           ]}
         >
-          <Ionicons name="refresh" size={18} color={palette.text} />
+          <Ionicons name="refresh" size={18} color={palette.accent} />
         </Pressable>
       </View>
 
@@ -221,7 +221,7 @@ export default function StudyCardsBlock({ payload, WebView, progressKey }: Props
             index === 0 && styles.navButtonDisabled,
           ]}
         >
-          <Ionicons name="chevron-back" size={18} color={palette.text} />
+          <Ionicons name="chevron-back" size={18} color={palette.accent} />
           <Text style={[styles.navText, { color: palette.text }]}>Anterior</Text>
         </Pressable>
 
@@ -231,8 +231,8 @@ export default function StudyCardsBlock({ payload, WebView, progressKey }: Props
           accessibilityLabel={showBack ? "Ver frente" : "Virar"}
           style={[styles.flipButton, { backgroundColor: palette.accent }]}
         >
-          <Ionicons name="sync" size={18} color={Color.colorWhite} />
-          <Text style={styles.flipText}>{showBack ? "Ver frente" : "Virar"}</Text>
+          <Ionicons name="sync" size={18} color={palette.background} />
+          <Text style={[styles.flipText, { color: palette.background }]}>{showBack ? "Ver frente" : "Virar"}</Text>
         </Pressable>
 
         <Pressable
@@ -250,7 +250,7 @@ export default function StudyCardsBlock({ payload, WebView, progressKey }: Props
           ]}
         >
           <Text style={[styles.navText, { color: palette.text }]}>Próximo</Text>
-          <Ionicons name="chevron-forward" size={18} color={palette.text} />
+          <Ionicons name="chevron-forward" size={18} color={palette.accent} />
         </Pressable>
       </View>
     </View>

@@ -8,6 +8,7 @@ import {
   buildSupabasePublicStorageUrl,
   looksLikeStorageObjectPath,
 } from "./supabaseStorage";
+import { mediaUrlPath } from './mediaUrlPath';
 
 type LooseRecord = Record<string, any>;
 
@@ -180,7 +181,7 @@ export function looksLikeMarkdown(value: unknown) {
 }
 
 function cleanUrl(url: string) {
-  return url.split("?")[0].split("#")[0].toLowerCase();
+  return mediaUrlPath(url).toLowerCase();
 }
 
 export function isPdfUrl(url: string) {

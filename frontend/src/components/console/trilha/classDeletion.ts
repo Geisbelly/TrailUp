@@ -287,20 +287,18 @@ export async function deleteTopicCascade(topicoId: number) {
 }
 
 export async function deleteClasseCascade(classeId: number) {
-  await deleteClassTrail(classeId);
-  await tryDeleteEq("telemetria_lotes", "classe_id", classeId);
-  await tryDeleteEq("telemetria_sessoes", "classe_id", classeId);
-  await tryDeleteEq("personalizacao_item_progresso", "classe_id", classeId);
-  await tryDeleteEq("fontes_personalizacao", "classe_id", classeId);
-  await tryDeleteEq("trilha_checkpoint_navegacao", "classe_id", classeId);
-  await tryDeleteEq("classe_perfil_summary", "classe_id", classeId);
+  // One transaction, including dependencies. Never remove Storage files first.
+  const { data, error } = await supabase.rpc("excluir_classe", { p_classe_id: classeId });
+  if (error) throw new Error(error.message);
+  if (data !== true) throw new Error("A exclusão da classe não foi confirmada.");
+}
 
-  const { error: rankError } = await dynamicSupabase.from("ranks").delete().eq("classe_id", classeId);
-  if (rankError) throw rankError;
-
-  const { error: classeAlunoError } = await supabase.from("classe_aluno").delete().eq("classe_id", classeId);
-  if (classeAlunoError) throw classeAlunoError;
-
-  const { error: classeError } = await supabase.from("classe").delete().eq("id", classeId);
-  if (classeError) throw classeError;
+export async function removeClassStudent(classeId: number, alunoId: string) {
+  // The DELETE trigger performs cleanup in the same transaction, without API jobs.
+  const { data, error } = await supabase.from("classe_aluno").delete()
+    .eq("classe_id", classeId).eq("aluno_id", alunoId).select("aluno_id");
+  if (error) throw new Error(error.message);
+  if (!data?.length) {
+    throw new Error("Matrícula não encontrada ou sem permissão para remover o aluno.");
+  }
 }

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { topicoConcluidoNaTela } from './topicoProgress';
 
 import {
   buildBlocksForTopico,
@@ -9,22 +10,22 @@ import {
   type AtividadeResolvida,
 } from "./trilhaBlocks";
 
-test("retomada no bloco 17 preserva os 16 blocos anteriores na barra", () => {
+test("a barra conta apenas conclusões confirmadas, sem inferir pelo checkpoint", () => {
   assert.deepEqual(
     calcularProgressoVisualPercurso({
       total: 26,
       concluidosConfirmados: 6,
-      maiorIndiceAlcancado: 16,
-      blocoAtualConcluido: false,
     }),
-    { total: 26, concluidos: 16, pct: (16 / 26) * 100 }
+    { total: 26, concluidos: 6, pct: (6 / 26) * 100 }
   );
 });
 
-test("bloco atual so entra no visual depois de concluido", () => {
-  const base = { total: 26, concluidosConfirmados: 6, maiorIndiceAlcancado: 16 };
-  assert.equal(calcularProgressoVisualPercurso({ ...base, blocoAtualConcluido: false }).concluidos, 16);
-  assert.equal(calcularProgressoVisualPercurso({ ...base, blocoAtualConcluido: true }).concluidos, 17);
+test("percentual do tópico é canônico, contagem é da versão carregada", () => {
+  const base = { total: 26, concluidosConfirmados: 6 };
+  assert.deepEqual(calcularProgressoVisualPercurso({ ...base, percentualCanonico: 35 }),
+    { total: 26, concluidos: 6, pct: 35 });
+  assert.equal(calcularProgressoVisualPercurso({ ...base, percentualCanonico: 0 }).pct, 0);
+  assert.equal(calcularProgressoVisualPercurso({ ...base, percentualCanonico: 100 }).pct, 100);
 });
 
 const conteudo = (id: number, extra: Record<string, unknown> = {}) => ({
@@ -117,11 +118,20 @@ test("status vindo do banco conta sem depender do estado local", () => {
   // Quem ja tinha concluido antes de abrir a tela nao volta pra zero.
   const resultado = progresso({
     conteudos: [conteudo(1, { status: "concluido" }), conteudo(2, { percentual_concluido: 100 })],
-    atividades: [atividade(10, { resposta_aluno: "b" })],
+    atividades: [atividade(10, { status: "concluido", resposta_aluno: "b" })],
   });
 
   assert.equal(resultado.concluidos, 3);
   assert.equal(resultado.pct, 100);
+});
+
+test('resposta isolada ou tentativa não confirma conclusão da atividade', () => {
+  const resultado = progresso({ conteudos: [], atividades: [
+    atividade(10, { resposta_aluno: 'b', ultima_tentativa: 1, percentual_concluido: 0 }),
+    atividade(11, { questoes: [{ resposta_aluno: 'a' }, { resposta_aluno: null }] }),
+  ] });
+  assert.equal(resultado.concluidos, 0);
+  assert.equal(resultado.pct, 0);
 });
 
 test("topico sem bloco nenhum nao divide por zero", () => {
@@ -286,7 +296,7 @@ test("quem respondeu em sessao anterior nao e penalizado", () => {
   assert.equal(
     gate({
       conteudos: [conteudo(1, { status: "concluido" })],
-      atividades: [atividade(10, { ultima_tentativa: 1 })],
+       atividades: [atividade(10, { status: 'concluido', ultima_tentativa: 1 })],
     }),
     true
   );
@@ -308,72 +318,38 @@ test("sem bloco nenhum nao trava o aluno", () => {
   assert.equal(gate({ conteudos: [], atividades: [] }), true);
 });
 
-// --- percurso manda na conclusao ------------------------------------------
-//
-// A tela decide `topicoConcluido` pelo PERCURSO, nao pelo status do banco.
-// `Topico.calcularPercentual()` conta so o material do professor, entao ele
-// chega a 100 com os passos personalizados intocados -- e era isso que fazia o
-// checkpoint ser apagado a cada render.
-
-function concluidoPelaTela(params: {
-  statusDoBanco: string | null;
-  pctDoBanco: number;
-  percurso: { total: number; concluidos: number };
-  personalizacaoCarregando?: boolean;
-}) {
-  if (params.personalizacaoCarregando) return false;
-  if (params.percurso.total > 0) {
-    return params.percurso.concluidos >= params.percurso.total;
-  }
-  const status = String(params.statusDoBanco ?? "").toLowerCase();
-  return status.includes("concl") || params.pctDoBanco >= 100;
-}
-
-test("banco dizendo concluido nao encerra topico com percurso pendente", () => {
-  // Caso real observado no aparelho: cabecalho mostrando "6 de 26 blocos" e o
-  // log repetindo "[Checkpoint] apagando (topico concluido)".
-  assert.equal(
-    concluidoPelaTela({
-      statusDoBanco: "concluido",
-      pctDoBanco: 100,
-      percurso: { total: 26, concluidos: 6 },
-    }),
-    false
-  );
+// A tela usa a mesma projeção canônica que o mapa, sem duplicar a regra no teste.
+test("conclusão canônica continua válida com cache de outro guia pendente", () => {
+  assert.equal(topicoConcluidoNaTela({
+    topico: { percentual_concluido: 100 }, personalizacaoCarregando: false,
+    percurso: { total: 26, concluidos: 6 },
+  }), true);
 });
 
-test("percurso completo encerra o topico mesmo com banco atrasado", () => {
-  assert.equal(
-    concluidoPelaTela({
-      statusDoBanco: "em andamento",
-      pctDoBanco: 40,
-      percurso: { total: 26, concluidos: 26 },
-    }),
-    true
-  );
+test("blocos locais completos não sobrescrevem projeção parcial", () => {
+  assert.equal(topicoConcluidoNaTela({
+    topico: { percentual_concluido: 40 }, personalizacaoCarregando: false,
+    percurso: { total: 26, concluidos: 26 },
+  }), false);
 });
 
-test("sem percurso montado o status do banco vale", () => {
-  // Topico sem bloco ou dado ainda nao carregado: e a unica informacao que ha.
-  assert.equal(
-    concluidoPelaTela({
-      statusDoBanco: "concluido",
-      pctDoBanco: 100,
-      percurso: { total: 0, concluidos: 0 },
-    }),
-    true
-  );
+test("sem projeção nem personalização carregada não conclui prematuramente", () => {
+  assert.equal(topicoConcluidoNaTela({
+    topico: {}, personalizacaoCarregando: true,
+    percurso: { total: 4, concluidos: 4 },
+  }), false);
 });
 
-test("personalizacao carregando nunca encerra o topico", () => {
-  // O percurso esta incompleto por definicao nesse momento.
-  assert.equal(
-    concluidoPelaTela({
-      statusDoBanco: "concluido",
-      pctDoBanco: 100,
-      percurso: { total: 4, concluidos: 4 },
-      personalizacaoCarregando: true,
-    }),
-    false
-  );
+test("sem projeção, percurso carregado e completo serve de fallback", () => {
+  assert.equal(topicoConcluidoNaTela({
+    topico: {}, personalizacaoCarregando: false,
+    percurso: { total: 4, concluidos: 4 },
+  }), true);
+});
+
+test("tópico ausente nunca é tratado como concluído", () => {
+  assert.equal(topicoConcluidoNaTela({
+    topico: null, personalizacaoCarregando: false,
+    percurso: { total: 4, concluidos: 4 },
+  }), false);
 });
