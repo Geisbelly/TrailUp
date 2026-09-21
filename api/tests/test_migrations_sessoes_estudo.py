@@ -101,3 +101,47 @@ def test_downgrade_e_manual():
     module = _carregar()
     with pytest.raises(RuntimeError):
         module.downgrade()
+
+
+def test_rpc_antiga_passa_a_usar_a_mesma_fonte():
+    sql = _sql()
+    inicio = sql.index("FUNCTION public.trailup_registrar_intervalo_estudo")
+    # A próxima instrução (o congelamento, passo 5) é o primeiro ponto depois
+    # daqui que legitimamente volta a mencionar trailup_tempo_telemetria_min.
+    fim = sql.index(
+        "UPDATE public.topico_aluno\n           SET tempo_direto_min = tempo_direto_min",
+        inicio,
+    )
+    intervalo = sql[inicio:fim]
+    assert "trailup_tempo_sessao_min" in intervalo
+    assert "trailup_tempo_telemetria_min" not in intervalo
+
+
+def test_congela_a_contribuicao_da_telemetria_antes_de_desligar_o_trigger():
+    sql = _sql()
+    congelamento = sql.index("trailup_tempo_telemetria_min(aluno_id, 'topic'")
+    desligamento = sql.index("DROP TRIGGER IF EXISTS trg_telemetria_tempo_gasto")
+    assert congelamento < desligamento
+
+
+def test_congelamento_cobre_os_tres_escopos():
+    sql = _sql()
+    for tabela, escopo in (
+        ("topico_aluno", "'topic'"),
+        ("conteudo_aluno", "'content'"),
+        ("atividade_aluno", "'activity'"),
+    ):
+        trecho = (
+            f"UPDATE public.{tabela}\n           SET tempo_direto_min = tempo_direto_min\n"
+            f"             + public.trailup_tempo_telemetria_min(aluno_id, {escopo}"
+        )
+        assert trecho in sql, f"congelamento de {tabela} ausente ou fora do formato esperado"
+
+
+def test_trigger_antigo_de_telemetria_e_removido():
+    sql = _sql()
+    assert (
+        "DROP TRIGGER IF EXISTS trg_telemetria_tempo_gasto "
+        "ON public.telemetria_time_metric_entries" in sql
+    )
+    assert "DROP FUNCTION IF EXISTS public.trailup_tempo_after_telemetria()" in sql
