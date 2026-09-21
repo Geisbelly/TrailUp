@@ -107,6 +107,47 @@ export function buildEmptyBatch(nowMs: number): BatchAccumulator {
   };
 }
 
+/** Seal the old batch before network I/O, without manufacturing an interaction. */
+export function nextStudyBatch(previous: BatchAccumulator, nowMs: number): BatchAccumulator {
+  const next = buildEmptyBatch(nowMs);
+  next.lastInteractionAtMs = previous.lastInteractionAtMs;
+  next.lastScrollY = previous.lastScrollY;
+  return next;
+}
+
+/** Put an unacknowledged batch back only if neither DB nor durable queue accepted it. */
+export function restoreUnsentBatch(old: BatchAccumulator, current: BatchAccumulator): BatchAccumulator {
+  const merged: BatchAccumulator = {
+    ...current,
+    batchStartedAtMs: old.batchStartedAtMs,
+    generalActiveMs: old.generalActiveMs + current.generalActiveMs,
+    generalIdleMs: old.generalIdleMs + current.generalIdleMs,
+    touchCount: old.touchCount + current.touchCount,
+    scrollDistancePx: old.scrollDistancePx + current.scrollDistancePx,
+    maxDepthPx: Math.max(old.maxDepthPx, current.maxDepthPx),
+    touchSamples: [...old.touchSamples, ...current.touchSamples],
+    signals: [...old.signals, ...current.signals],
+    appEvents: [...old.appEvents, ...current.appEvents],
+    cameraFrames: [...old.cameraFrames, ...current.cameraFrames],
+    timeMetrics: { topics: {}, contents: {}, activities: {}, materials: {} },
+  };
+  for (const scope of ['topics', 'contents', 'activities', 'materials'] as const) {
+    for (const source of [old.timeMetrics[scope], current.timeMetrics[scope]]) {
+      for (const [key, value] of Object.entries(source)) {
+        const previous = merged.timeMetrics[scope][key];
+        merged.timeMetrics[scope][key] = previous ? {
+          ...value, visits: previous.visits + value.visits,
+          dwellMs: previous.dwellMs + value.dwellMs, activeMs: previous.activeMs + value.activeMs,
+          idleMs: previous.idleMs + value.idleMs, touchCount: previous.touchCount + value.touchCount,
+          scrollDistancePx: previous.scrollDistancePx + value.scrollDistancePx,
+          maxDepthPx: Math.max(previous.maxDepthPx, value.maxDepthPx),
+        } : { ...value };
+      }
+    }
+  }
+  return merged;
+}
+
 type SeedEntrada = {
   key: string;
   topicoId?: number | null;

@@ -295,7 +295,7 @@ export default function VideoPlayer({
                 accessibilityRole="button"
                 accessibilityLabel="Voltar 10 segundos"
               >
-                <Ionicons name="play-back-outline" size={22} color="#fff" />
+                <Ionicons name="play-back-outline" size={22} color={palette.accent} />
                 <Text style={seekStyles.seekLabel}>10s</Text>
               </Pressable>
 
@@ -311,7 +311,7 @@ export default function VideoPlayer({
                 accessibilityRole="button"
                 accessibilityLabel={isPlaying ? "Pausar" : "Reproduzir"}
               >
-                <Ionicons name={isPlaying ? 'pause' : 'play'} size={28} color="#fff" />
+                <Ionicons name={isPlaying ? 'pause' : 'play'} size={28} color={palette.accent} />
               </Pressable>
 
               <Pressable
@@ -320,7 +320,7 @@ export default function VideoPlayer({
                 accessibilityRole="button"
                 accessibilityLabel="Avançar 10 segundos"
               >
-                <Ionicons name="play-forward-outline" size={22} color="#fff" />
+                <Ionicons name="play-forward-outline" size={22} color={palette.accent} />
                 <Text style={seekStyles.seekLabel}>10s</Text>
               </Pressable>
             </View>

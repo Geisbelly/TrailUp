@@ -10,11 +10,13 @@
  */
 
 import { HallBackground, OrnamentDivider } from "@/components/HallTheme";
+import { designStar, profileEmblems } from "@/constants/designAssets";
+import { ProfileArtwork } from "@/components/ProfileArtwork";
+import { normalizeBrainHexProfile } from "@/constants/brainHexProfiles";
+import { Design } from "@/styles/design";
 import {
-  bannerImages,
   getBrainHexConfig,
   getBrainHexGuideName,
-  getProfileImageByString,
 } from "@/constants/profileImages";
 import { useUsuario } from "@/context/SessaoContext";
 import { FontFamily } from "@/styles/GlobalStyle";
@@ -26,8 +28,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
-  Image,
-  ImageSourcePropType,
   StyleSheet,
   View,
   useWindowDimensions,
@@ -38,14 +38,13 @@ interface LoadingScreenProps {
   forceShow?: boolean;
 }
 
-const defaultPalette = buildProfileShellPaletteFromAccent("#a057fd", "magica");
-const defaultAccentGlow = tinycolor(defaultPalette.accent).lighten(12).toHexString();
+const defaultPalette = buildProfileShellPaletteFromAccent(Design.primary, "magica");
 
 // ─── driver: false em TUDO ────────────────────────────────────────────────────
 const ND = { useNativeDriver: false } as const;
 
 const LoadingScreen = ({ forceShow = false }: LoadingScreenProps) => {
-  const { usuario } = useUsuario();
+  const { usuario, autenticado } = useUsuario();
   const { width: screenWidth } = useWindowDimensions();
   const BAR_MAX = screenWidth * 0.72;
 
@@ -58,8 +57,6 @@ const LoadingScreen = ({ forceShow = false }: LoadingScreenProps) => {
   const guideReveal   = useRef(new Animated.Value(0)).current;
 
   // Estado
-  const [defaultImg]  = useState<ImageSourcePropType>(bannerImages[9]);
-  const [profileImg, setProfileImg] = useState<ImageSourcePropType | null>(null);
   const [imageState, setImageState] = useState<"default" | "transitioning" | "profile">("default");
   const [canHide, setCanHide] = useState(false);
 
@@ -69,24 +66,23 @@ const LoadingScreen = ({ forceShow = false }: LoadingScreenProps) => {
     return () => clearTimeout(t);
   }, []);
 
-  // Perfil majoritário
-  const perfilPrincipal = useMemo(() => {
-    if (!usuario?.perfis?.length) return null;
-    return [...usuario.perfis].sort((a, b) => (b.afinidade ?? 0) - (a.afinidade ?? 0))[0];
-  }, [usuario?.perfis]);
+  const activeProfile = autenticado
+    ? normalizeBrainHexProfile(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome)
+    : null;
+  const profileImg = activeProfile ? profileEmblems[activeProfile] : null;
 
   const targetPalette = useMemo(
-    () => getProfileShellPalette(perfilPrincipal?.nome ?? null),
-    [perfilPrincipal?.nome]
+    () => activeProfile ? getProfileShellPalette(activeProfile) : defaultPalette,
+    [activeProfile]
   );
 
   const profileConfig = useMemo(
-    () => getBrainHexConfig(perfilPrincipal?.nome ?? undefined),
-    [perfilPrincipal?.nome]
+    () => getBrainHexConfig(activeProfile ?? undefined),
+    [activeProfile]
   );
 
-  const guideName    = perfilPrincipal ? getBrainHexGuideName(perfilPrincipal.nome) : null;
-  const profileLabel = perfilPrincipal ? profileConfig.label : null;
+  const guideName    = activeProfile ? getBrainHexGuideName(activeProfile) : null;
+  const profileLabel = activeProfile ? profileConfig.label : null;
 
   // Barra pulsante
   useEffect(() => {
@@ -118,38 +114,41 @@ const LoadingScreen = ({ forceShow = false }: LoadingScreenProps) => {
     return () => anim.stop();
   }, [pulseAnim, pulseOpacity]);
 
-  // Flash + crossfade + transição de paleta
+  // Reveal the active profile emblem without flashing the public purple theme.
   useEffect(() => {
-    if (!perfilPrincipal || imageState !== "default") return;
-
-    const nextImage =
-      getProfileImageByString(perfilPrincipal.nome || "") ??
-      profileConfig.image ??
-      bannerImages[9];
-
+    themeProgress.setValue(0);
+    guideReveal.setValue(0);
+    if (!activeProfile) {
+      setImageState("default");
+      return;
+    }
     setImageState("transitioning");
 
     const timer = setTimeout(() => {
-      setProfileImg(nextImage);
-
       Animated.sequence([
         Animated.timing(flashAnim, { toValue: 0.55, duration: 130, ...ND }),
         Animated.timing(flashAnim, { toValue: 0,    duration: 600, ...ND }),
       ]).start();
 
-      Animated.timing(themeProgress, { toValue: 1, duration: 1400, ...ND }).start(() => {
+      Animated.timing(themeProgress, { toValue: 1, duration: 1400, ...ND }).start(({ finished }) => {
+        if (!finished) return;
         setImageState("profile");
         Animated.timing(guideReveal, { toValue: 1, duration: 450, ...ND }).start();
       });
     }, 400);
 
-    return () => clearTimeout(timer);
-  }, [imageState, perfilPrincipal, themeProgress, profileConfig, flashAnim, guideReveal]);
+    return () => {
+      clearTimeout(timer);
+      themeProgress.stopAnimation();
+      flashAnim.stopAnimation();
+      guideReveal.stopAnimation();
+    };
+  }, [activeProfile, themeProgress, flashAnim, guideReveal]);
 
   useEffect(() => {
-    if (!usuario || perfilPrincipal || imageState !== "default") return;
+    if (!usuario || activeProfile || imageState !== "default") return;
     setImageState("profile");
-  }, [imageState, perfilPrincipal, usuario]);
+  }, [imageState, activeProfile, usuario]);
 
   useEffect(() => {
     if (imageState !== "profile" || canHide) return;
@@ -159,18 +158,14 @@ const LoadingScreen = ({ forceShow = false }: LoadingScreenProps) => {
 
   if (!forceShow && canHide) return null;
 
-  // ── Interpolações (todas JS) ──────────────────────────────────────────────
-  const ip = (out: [string, string]) =>
-    themeProgress.interpolate({ inputRange: [0, 1], outputRange: out });
-
-  const backgroundColor    = ip([defaultPalette.background,      targetPalette.background]);
-  const shellColor         = ip([defaultPalette.surfaceElevated, targetPalette.surfaceElevated]);
-  const borderColorAnim    = ip([defaultPalette.borderStrong,    targetPalette.borderStrong]);
-  const progressTrackColor = ip([defaultPalette.progressTrack,   targetPalette.progressTrack]);
-  const progressFillColor  = ip([defaultPalette.accent,          targetPalette.accent]);
-  const textColor          = ip([defaultPalette.text,            targetPalette.text]);
-  const subtleTextColor    = ip([defaultPalette.textMuted,       targetPalette.textMuted]);
-  const accentColor        = ip([defaultPalette.accent,          targetPalette.accent]);
+  const backgroundColor    = targetPalette.background;
+  const shellColor         = targetPalette.surfaceElevated;
+  const borderColorAnim    = targetPalette.borderStrong;
+  const progressTrackColor = targetPalette.progressTrack;
+  const progressFillColor  = targetPalette.accent;
+  const textColor          = targetPalette.text;
+  const subtleTextColor    = targetPalette.textMuted;
+  const accentColor        = targetPalette.accent;
 
   const defaultImageOpacity = themeProgress.interpolate({
     inputRange: [0, 0.6, 1], outputRange: [1, 0.2, 0], extrapolate: "clamp",
@@ -196,7 +191,7 @@ const LoadingScreen = ({ forceShow = false }: LoadingScreenProps) => {
   const loadingText =
     imageState === "transitioning"
       ? "Perfil identificado"
-      : imageState === "profile" && perfilPrincipal
+      : imageState === "profile" && activeProfile
       ? `${profileLabel} detectado`
       : "Preparando sua sessão";
 
@@ -210,14 +205,14 @@ const LoadingScreen = ({ forceShow = false }: LoadingScreenProps) => {
 
       {/* Textura medieval */}
       <View style={[StyleSheet.absoluteFill, { pointerEvents: "none" }]}>
-        <HallBackground palette={defaultPalette} />
+        <HallBackground palette={targetPalette} />
       </View>
 
       {/* Gradiente candelabro */}
       <LinearGradient
         colors={[
-          tinycolor(defaultPalette.accent).setAlpha(0.35).toRgbString(),
-          tinycolor(defaultPalette.accent).setAlpha(0.08).toRgbString(),
+          tinycolor(targetPalette.accent).setAlpha(0.35).toRgbString(),
+          tinycolor(targetPalette.accent).setAlpha(0.08).toRgbString(),
           "transparent",
         ]}
         start={{ x: 0.5, y: 0 }}
@@ -227,7 +222,7 @@ const LoadingScreen = ({ forceShow = false }: LoadingScreenProps) => {
 
       {/* Flash místico (JS driver, opacity) */}
       <Animated.View
-        style={[StyleSheet.absoluteFill, styles.flash, { opacity: flashAnim, pointerEvents: "none" }]}
+        style={[StyleSheet.absoluteFill, styles.flash, { backgroundColor: targetPalette.accent, opacity: flashAnim, pointerEvents: "none" }]}
       />
 
       {/* Ícone do guia */}
@@ -237,13 +232,13 @@ const LoadingScreen = ({ forceShow = false }: LoadingScreenProps) => {
         <Animated.View
           style={[
             styles.pulseRing,
-            { transform: [{ scale: ringScale }], opacity: ringOpacity },
+            { transform: [{ scale: ringScale }], opacity: ringOpacity, borderColor: targetPalette.accent },
           ]}
         />
 
         {/* Glow — views estáticas, sem props animadas */}
-        <View style={styles.glowOuter}>
-          <View style={styles.glowMiddle}>
+        <View style={[styles.glowOuter, { shadowColor: targetPalette.accent }]}>
+          <View style={[styles.glowMiddle, { shadowColor: targetPalette.accent }]}>
 
             {/* Círculo do ícone — JS driver (backgroundColor + borderColor) */}
             <Animated.View
@@ -253,12 +248,12 @@ const LoadingScreen = ({ forceShow = false }: LoadingScreenProps) => {
               ]}
             >
               <Animated.View style={[StyleSheet.absoluteFill, { opacity: defaultImageOpacity }]}>
-                <Image source={defaultImg} style={styles.icon} resizeMode="cover" />
+                <ProfileArtwork source={designStar} profile={activeProfile} width={148} />
               </Animated.View>
 
-              {profileImg && (
+              {autenticado && profileImg && (
                 <Animated.View style={[StyleSheet.absoluteFill, { opacity: profileImageOpacity }]}>
-                  <Image source={profileImg} style={styles.icon} resizeMode="cover" />
+                  <ProfileArtwork source={profileImg} profile={activeProfile} width={148} />
                 </Animated.View>
               )}
             </Animated.View>
@@ -283,7 +278,7 @@ const LoadingScreen = ({ forceShow = false }: LoadingScreenProps) => {
 
       {/* Ornamento */}
       <View style={styles.ornamentWrap}>
-        <OrnamentDivider color={defaultAccentGlow} />
+        <OrnamentDivider color={targetPalette.accent} />
       </View>
 
       {/* Texto de status */}

@@ -1,4 +1,5 @@
 import { supabase } from "@/database/supabase";
+import { loadRankMetadata } from "@/services/rankMetadata";
 import { resolveRankEventClasseId } from "@/utils/rankEventClasse";
 import { PosicaoDoAluno } from "./RankAlunoPosicao";
 import { RankInfo } from "./RankInfo";
@@ -96,48 +97,8 @@ function buildRankInfoFromRow(row: {
 }
 
 async function loadFallbackRankInfosByClasse(classeId: number): Promise<RankInfo[]> {
-  const { data: rankRows, error: rankError } = await supabase
-    .from("ranks")
-    .select("id, classe_id, nome, descricao, tipo_id, icone")
-    .eq("classe_id", classeId)
-    .order("id", { ascending: true });
-  if (rankError) throw rankError;
-
-  const rows = (rankRows ?? []) as {
-    id: number;
-    classe_id: number;
-    nome: string | null;
-    descricao: string | null;
-    tipo_id: number | null;
-    icone: string | number | null;
-  }[];
-  if (!rows.length) return [];
-
-  const tipoIds = [...new Set(rows.map((row) => Number(row.tipo_id ?? 0)).filter((id) => id > 0))];
-  const criterioByTipoId = new Map<number, string | null>();
-
-  if (tipoIds.length) {
-    const { data: tipoRows, error: tipoError } = await supabase
-      .from("rank_tipo")
-      .select("id, criterio")
-      .in("id", tipoIds);
-    if (tipoError) throw tipoError;
-    (tipoRows ?? []).forEach((row: any) => {
-      criterioByTipoId.set(Number(row.id), row.criterio != null ? String(row.criterio) : null);
-    });
-  }
-
-  return rows.map(
-    (row) =>
-      new RankInfo(
-        Number(row.id),
-        Number(row.classe_id),
-        String(row.nome ?? `Rank ${row.id}`),
-        row.descricao ?? null,
-        row.tipo_id != null ? criterioByTipoId.get(Number(row.tipo_id)) ?? null : null,
-        row.icone != null ? String(row.icone) : null
-      )
-  );
+  const rows = await loadRankMetadata(supabase, { classeId });
+  return rows.map(buildRankInfoFromRow);
 }
 
 function buildFallbackRankRows(
@@ -423,32 +384,9 @@ export class RankDaClasse {
     if (!infoError && infoRow) {
       info = buildRankInfoFromRow(infoRow);
     } else {
-      const { data: rankRow, error: rankError } = await supabase
-        .from("ranks")
-        .select("id, classe_id, nome, descricao, tipo_id, icone")
-        .eq("id", rank_id)
-        .maybeSingle();
-      if (rankError) throw rankError;
+      const [rankRow] = await loadRankMetadata(supabase, { rankId: rank_id });
       if (!rankRow) throw infoError ?? new Error("Rank não encontrado");
-
-      let criterio: string | null = null;
-      if (rankRow.tipo_id != null) {
-        const { data: tipoRow } = await supabase
-          .from("rank_tipo")
-          .select("id, criterio")
-          .eq("id", Number(rankRow.tipo_id))
-          .maybeSingle();
-        criterio = tipoRow?.criterio != null ? String(tipoRow.criterio) : null;
-      }
-
-      info = new RankInfo(
-        Number(rankRow.id),
-        Number(rankRow.classe_id),
-        String(rankRow.nome ?? `Rank ${rankRow.id}`),
-        rankRow.descricao ?? null,
-        criterio,
-        rankRow.icone != null ? String(rankRow.icone) : null
-      );
+      info = buildRankInfoFromRow(rankRow);
     }
 
     const rows = await loadRankRowsByClasse(info.classe_id, [info]);

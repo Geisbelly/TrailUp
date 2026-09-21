@@ -1,4 +1,6 @@
-import { HallBackground, OrnamentDivider } from "@/components/HallTheme";
+import { HallBackground } from "@/components/HallTheme";
+import { JourneyHeading } from "@/components/JourneyHeading";
+import { JourneySymbol } from "@/components/JourneySymbol";
 import { SocialInviteCard } from "@/components/social/SocialInviteCard";
 import { SocialPersonCard } from "@/components/social/SocialPersonCard";
 import { SocialProfileModal } from "@/components/social/SocialProfileModal";
@@ -17,7 +19,8 @@ import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, RefreshControl, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 type Section = SocialPeopleSection | "guilds";
 
@@ -30,7 +33,7 @@ function errorMessage(error: unknown) {
 }
 
 export default function SocialScreen() {
-  const { usuario } = useUsuario();
+  const { usuario, autenticado } = useUsuario();
   const { classeAtual } = useTrilha();
   const classeId = Number(classeAtual?.classe_id ?? 0);
   const [fallbackClasseId, setFallbackClasseId] = useState(0);
@@ -38,6 +41,7 @@ export default function SocialScreen() {
   const profile = usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null;
   const palette = getProfileShellPalette(profile);
   const [section, setSection] = useState<Section>("friends");
+  const [search, setSearch] = useState("");
   const [social, setSocial] = useState<Awaited<ReturnType<typeof carregarSocial>> | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
@@ -62,27 +66,44 @@ export default function SocialScreen() {
   }, [classeAtual]);
 
   useEffect(() => {
-    if (classeId > 0 || !usuario?.id) return;
+    if (!autenticado || classeId > 0 || !usuario?.id) return;
     let active = true;
     void Classe.listClasseIdsByAluno(usuario.id).then((ids) => {
       if (active && ids[0]) setFallbackClasseId(Number(ids[0]));
     }).catch((caught) => console.warn("[Social] Não foi possível resolver a turma:", caught));
     return () => { active = false; };
-  }, [classeId, usuario?.id]);
+  }, [autenticado, classeId, usuario?.id]);
 
   const load = useCallback(async () => {
+    if (!autenticado || !usuario?.id) {
+      setSocial(null);
+      setGuilds([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try { const [nextSocial, nextGuilds] = await Promise.all([activeClasseId > 0 ? carregarSocial(activeClasseId) : carregarSocial(), carregarGuildas(activeClasseId)]); setSocial(nextSocial); setGuilds(nextGuilds); }
     catch (caught) { console.warn("[Social] Falha ao carregar:", caught); setError(errorMessage(caught)); }
     finally { setLoading(false); }
-  }, [activeClasseId]);
+  }, [activeClasseId, autenticado, usuario?.id]);
   useEffect(() => { void load(); }, [load]);
 
   const people = useMemo(() => {
     if (!social || section === "guilds") return [];
-    return peopleForSocialSection(social, section);
-  }, [section, social]);
+    const query = search.trim().toLocaleLowerCase("pt-BR");
+    return peopleForSocialSection(social, section).filter((person) =>
+      !query || `${person.nome} ${person.apelido ?? ""} ${person.guildaNome ?? ""}`.toLocaleLowerCase("pt-BR").includes(query),
+    );
+  }, [section, social, search]);
+
+  const sections: { key: Section; label: string; count?: number }[] = [
+    { key: "friends", label: "Amigos", count: social?.friends.length },
+    { key: "invites", label: "Convites", count: social ? social.incoming.length + social.outgoing.length : undefined },
+    { key: "discover", label: "Encontrar", count: social?.candidates.length },
+    { key: "guilds", label: "Guildas", count: social ? guilds.length : undefined },
+    { key: "blocked", label: "Bloqueados" },
+  ];
 
   async function act(key: string, operation: () => Promise<unknown>): Promise<boolean> {
     setBusy(key); setError(null);
@@ -110,20 +131,50 @@ export default function SocialScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: palette.background }]}>
       <HallBackground palette={palette} />
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={loading && social !== null} onRefresh={() => void load()} tintColor={palette.accent} />}>
           <View style={styles.header}>
-            <View style={styles.titleRow}>
-              <View><Text style={[styles.kicker, { color: palette.accent }]}>COMUNIDADE</Text><Text style={styles.title}>SOCIAL</Text><Text style={[styles.subtitle, { color: palette.textSubtle }]}>Sua rede de jornada</Text></View>
-              <StoreLauncher color={palette.accent} onPress={() => setStoreVisible(true)} />
+            <View style={{ marginHorizontal: -20 }}>
+              <JourneyHeading title="Social" eyebrow="CONEXÕES DA JORNADA" section="social" palette={palette} right={<StoreLauncher color={Color.colorWhite} onPress={() => setStoreVisible(true)} />} />
             </View>
-            <OrnamentDivider color={palette.accent} />
-            <View style={styles.tabs}>{(["friends", "invites", "discover", "blocked", "guilds"] as Section[]).map((key) => { const active = section === key; const label = key === "friends" ? "AMIGOS" : key === "invites" ? "CONVITES" : key === "discover" ? "ENCONTRAR" : key === "blocked" ? "BLOQUEADOS" : "GUILDAS"; return <Pressable key={key} accessibilityRole="tab" accessibilityState={{ selected: active }} onPress={() => setSection(key)} style={[styles.tab, active && { borderBottomColor: palette.accent }]}><Text style={[styles.tabText, active && { color: palette.accent }]}>{label}</Text></Pressable>; })}</View>
+            <Text style={[styles.subtitle, { color: palette.textMuted }]}>Encontre sua turma e avance em companhia.</Text>
+            <View style={styles.tabs}>
+              {sections.map(({ key, label, count }) => {
+                const active = section === key;
+                return (
+                  <Pressable key={key} accessibilityRole="tab" accessibilityState={{ selected: active }} onPress={() => { setSection(key); setSearch(""); }}
+                    style={[styles.tab, { borderColor: active ? palette.accent : palette.border, backgroundColor: active ? palette.surfaceElevated : palette.surface }]}>
+                    <Text style={[styles.tabText, { color: active ? palette.text : palette.textMuted }]}>{label}</Text>
+                    {count !== undefined ? <Text style={[styles.count, { color: palette.text }]}>{count}</Text> : null}
+                  </Pressable>
+                );
+              })}
+            </View>
+            {section !== "guilds" ? <View style={[styles.search, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+              <MaterialCommunityIcons name="magnify" size={22} color={Color.colorWhite} />
+              <TextInput value={search} onChangeText={setSearch} accessibilityLabel="Buscar pessoas" placeholder="Buscar por nome ou guilda" placeholderTextColor={palette.textMuted} style={[styles.searchInput, { color: palette.text }]} />
+              {search ? <Pressable onPress={() => setSearch("")} accessibilityRole="button" accessibilityLabel="Limpar busca" style={styles.clearSearch}><MaterialCommunityIcons name="close" size={20} color={Color.colorWhite} /></Pressable> : null}
+            </View> : null}
           </View>
-          {section === "guilds" ? <GuildSection guilds={guilds} people={social ? [...social.friends, ...social.incoming, ...social.outgoing, ...social.candidates] : []} classeId={activeClasseId} accent={palette.accent} profile={profile} shareOptions={shareOptions} onReload={load} /> : loading && !social ? <ActivityIndicator color={palette.accent} style={styles.loader} /> : error ? <View style={styles.empty}><MaterialCommunityIcons name="database-alert-outline" size={42} color={palette.accent} /><Text style={[styles.message, { color: palette.textMuted }]}>{error}</Text><Pressable onPress={() => void load()} style={[styles.retry, { backgroundColor: palette.accent }]}><Text style={styles.retryText}>Tentar novamente</Text></Pressable></View> : people.length === 0 ? <View style={styles.empty}><MaterialCommunityIcons name={section === "friends" ? "account-group-outline" : section === "blocked" ? "account-cancel-outline" : "account-search-outline"} size={44} color={palette.accent} /><Text style={[styles.sectionTitle, { color: palette.text }]}>{section === "friends" ? "AMIGOS" : section === "invites" ? "CONVITES" : section === "discover" ? "ENCONTRAR" : "BLOQUEADOS"}</Text><Text style={[styles.message, { color: palette.textMuted }]}>{emptyMessage}</Text></View> : <View style={styles.list}>{people.map((person) => person.status === "incoming" ? <SocialInviteCard key={person.relationshipId} person={person} accent={palette.accent} onAccept={() => act(person.alunoId, () => aceitarConvite(person.relationshipId!))} onDecline={() => act(person.alunoId, () => recusarConvite(person.relationshipId!))} onPressProfile={() => setSelectedPerson(person)} /> : <SocialPersonCard key={person.relationshipId ?? person.alunoId} person={person} accent={palette.accent} actionLabel={busy === person.alunoId ? "..." : actionFor(person).label} onAction={actionFor(person).fn} onPressProfile={() => setSelectedPerson(person)} onPressChat={() => setChatPerson(person)} secondaryLabel={person.status === "friend" ? "Bloquear" : undefined} onSecondary={() => act(person.alunoId, () => bloquear(person.alunoId))} />)}</View>}
+          {loading && !social ? <ActivityIndicator color={palette.accent} style={styles.loader} /> : error ? (
+            <View style={styles.empty}>
+              <MaterialCommunityIcons name="alert-circle-outline" size={42} color={Color.colorWhite} />
+              <Text style={[styles.message, { color: palette.textMuted }]}>{error}</Text>
+              <Pressable onPress={() => void load()} style={[styles.retry, { backgroundColor: palette.accent }]}><Text style={[styles.retryText, { color: palette.background }]}>Tentar novamente</Text></Pressable>
+            </View>
+          ) : section === "guilds" ? (
+            <GuildSection guilds={guilds} people={social ? [...social.friends, ...social.incoming, ...social.outgoing, ...social.candidates] : []} classeId={activeClasseId} accent={palette.accent} profile={profile} shareOptions={shareOptions} onReload={load} />
+          ) : people.length === 0 ? (
+            <View style={styles.empty}>
+              <JourneySymbol section="social" size={64} />
+              <Text style={[styles.sectionTitle, { color: palette.text }]}>{search.trim() ? "Nenhuma pessoa encontrada" : sections.find((item) => item.key === section)?.label}</Text>
+              <Text style={[styles.message, { color: palette.textMuted }]}>{search.trim() ? "Tente outro nome ou limpe a busca." : emptyMessage}</Text>
+              {section === "friends" && !search.trim() ? <Pressable onPress={() => setSection("discover")} style={[styles.retry, { backgroundColor: palette.surfaceElevated, borderColor: palette.borderStrong, borderWidth: 1 }]}><Text style={styles.retryText}>Encontrar colegas</Text></Pressable> : null}
+            </View>
+          ) : <View style={styles.list}>{people.map((person) => person.status === "incoming" ? <SocialInviteCard key={person.relationshipId} person={person} accent={palette.accent} onAccept={() => act(person.alunoId, () => aceitarConvite(person.relationshipId!))} onDecline={() => act(person.alunoId, () => recusarConvite(person.relationshipId!))} onPressProfile={() => setSelectedPerson(person)} /> : <SocialPersonCard key={person.relationshipId ?? person.alunoId} person={person} accent={palette.accent} actionLabel={busy === person.alunoId ? "..." : actionFor(person).label} onAction={actionFor(person).fn} onPressProfile={() => setSelectedPerson(person)} onPressChat={() => setChatPerson(person)} secondaryLabel={person.status === "friend" ? "Bloquear" : undefined} onSecondary={() => act(person.alunoId, () => bloquear(person.alunoId))} />)}</View>}
         </ScrollView>
       </SafeAreaView>
-      {usuario?.id && classeId > 0 ? <StoreModal visible={storeVisible} alunoId={usuario.id} classeId={classeId} profileName={profile} onClose={() => setStoreVisible(false)} /> : null}
+      {usuario?.id && activeClasseId > 0 ? <StoreModal visible={storeVisible} alunoId={usuario.id} classeId={activeClasseId} profileName={profile} onClose={() => setStoreVisible(false)} /> : null}
       <SocialProfileModal visible={selectedPerson !== null} alunoId={selectedPerson?.alunoId ?? null} classeId={activeClasseId} accent={palette.accent} online={selectedPerson?.online} onPressChat={() => { if (selectedPerson) setChatPerson(selectedPerson); setSelectedPerson(null); }} onClose={() => setSelectedPerson(null)} />
       {chatPerson ? <PrivateChatModal visible={chatPerson !== null} person={chatPerson} accent={palette.accent} profile={profile} onClose={() => setChatPerson(null)} /> : null}
     </View>
@@ -131,5 +182,21 @@ export default function SocialScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 }, safeArea: { flex: 1 }, content: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 120 }, header: { marginBottom: 18 }, titleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" }, kicker: { fontFamily: FontFamily.inikaBold, fontSize: 11, letterSpacing: 2 }, title: { color: Color.colorWhite, fontFamily: FontFamily.poppinsExtraBold, fontSize: 30, letterSpacing: 2 }, subtitle: { fontFamily: FontFamily.interMedium, fontSize: 14, marginTop: 2 }, tabs: { flexDirection: "row", marginTop: 18, borderBottomWidth: 1, borderBottomColor: Color.colorWhite20 }, tab: { flex: 1, alignItems: "center", paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: "transparent" }, tabText: { color: Color.colorWhite70, fontFamily: FontFamily.inikaBold, fontSize: 11, letterSpacing: 0.4 }, loader: { marginTop: 80 }, list: { gap: 4 }, empty: { alignItems: "center", gap: 12, paddingHorizontal: 20, paddingTop: 70 }, sectionTitle: { fontFamily: FontFamily.poppinsExtraBold, fontSize: 15, letterSpacing: 1 }, message: { fontFamily: FontFamily.interMedium, fontSize: 14, lineHeight: 21, textAlign: "center", maxWidth: 310 }, retry: { paddingHorizontal: 18, paddingVertical: 11, borderRadius: 10, marginTop: 4 }, retryText: { color: Color.colorWhite, fontFamily: FontFamily.poppinsExtraBold, fontSize: 13 },
+  screen: { flex: 1 }, safeArea: { flex: 1 },
+  content: { paddingHorizontal: 20, paddingBottom: 28 },
+  header: { marginBottom: 16 },
+  subtitle: { fontFamily: FontFamily.interMedium, fontSize: 14, lineHeight: 21, marginTop: 12 },
+  tabs: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 16 },
+  tab: { flexDirection: "row", gap: 8, minHeight: 44, paddingHorizontal: 12, alignItems: "center", borderRadius: 10, borderWidth: 1 },
+  tabText: { fontSize: 14, fontWeight: "600" },
+  count: { fontSize: 12, fontWeight: "700", backgroundColor: "#ffffff18", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  search: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 14, paddingLeft: 12, paddingRight: 4, borderWidth: 1, borderRadius: 10, minHeight: 48 },
+  searchInput: { flex: 1, minWidth: 0, fontSize: 14, paddingVertical: 12 },
+  clearSearch: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
+  loader: { marginTop: 48 }, list: { gap: 12 },
+  empty: { alignItems: "center", gap: 12, paddingHorizontal: 20, paddingVertical: 32 },
+  sectionTitle: { fontFamily: FontFamily.inikaBold, fontSize: 20, textAlign: "center" },
+  message: { fontSize: 14, lineHeight: 21, textAlign: "center", maxWidth: 310 },
+  retry: { minHeight: 44, justifyContent: "center", paddingHorizontal: 18, paddingVertical: 11, borderRadius: 8, marginTop: 4 },
+  retryText: { color: Color.colorWhite, fontSize: 14, fontWeight: "700" },
 });

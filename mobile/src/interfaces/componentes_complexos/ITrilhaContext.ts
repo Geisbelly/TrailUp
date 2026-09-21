@@ -9,7 +9,7 @@ export interface ITrilhaContextData {
 
   classes: Classe[]
   classeAtual: Classe | null
-  selecionarClasse: (index: number) => void
+  selecionarClasse: (classeId: number) => void
 
   // ainda existe, mas não decide mais o visual
   modoOperacao: ModoOperacao

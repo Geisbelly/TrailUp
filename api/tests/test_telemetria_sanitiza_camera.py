@@ -8,10 +8,33 @@ numa coluna JSONB, exatamente o que a sanitizacao existe para evitar.
 """
 
 from datetime import UTC, datetime
+from types import SimpleNamespace
 from typing import Any
+from unittest.mock import AsyncMock
 
 from app.api.v1 import telemetria as rota
 from app.schemas.telemetria import TelemetriaLotePayload
+
+
+async def test_reenvio_repara_itens_antes_de_confirmar_sem_repetir_analise(monkeypatch):
+    payload = _payload_com_frames(0)
+    repo = SimpleNamespace(
+        upsert_sessao=AsyncMock(),
+        insert_or_get_lote=AsyncMock(return_value=({"id": "22222222-2222-4222-8222-222222222222"}, False)),
+        insert_eventos_app=AsyncMock(),
+        insert_time_metric_entries=AsyncMock(),
+    )
+    analysis = AsyncMock()
+    monkeypatch.setattr(rota, 'TelemetriaRepository', lambda session: repo)
+    monkeypatch.setattr(rota, 'run_analysis', analysis)
+    session = SimpleNamespace(commit=AsyncMock(), rollback=AsyncMock())
+    user = SimpleNamespace(aluno_id='33333333-3333-4333-8333-333333333333')
+    response = await rota.registrar_lote_telemetria(payload, object(), user, session)
+    assert response.persisted is True
+    repo.insert_time_metric_entries.assert_awaited_once()
+    repo.insert_eventos_app.assert_awaited_once()
+    session.commit.assert_awaited_once()
+    analysis.assert_not_awaited()
 
 
 def _payload_com_frames(quantos: int = 3) -> TelemetriaLotePayload:

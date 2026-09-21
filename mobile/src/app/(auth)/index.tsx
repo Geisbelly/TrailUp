@@ -1,206 +1,66 @@
-import { app } from "@/constants/definicoes";
-import { HallBackground, OrnamentDivider } from "@/components/HallTheme";
-import { FontFamily } from "@/styles/GlobalStyle";
-import { buildProfileShellPaletteFromAccent } from "@/utils/profileShellTheme";
-import { LinearGradient } from "expo-linear-gradient";
-import { Image } from "expo-image";
-import { useRouter } from "expo-router";
-import React from "react";
-import {
-  Linking,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import tinycolor from "tinycolor2";
-
-// Paleta estática para telas de autenticação — violeta oficial do logo TrailUp
-const AUTH_PALETTE = buildProfileShellPaletteFromAccent("#a057fd", "magica");
+import { app } from '@/constants/definicoes';
+import { designStar, publicScenery } from '@/constants/designAssets';
+import { FontFamily } from '@/styles/GlobalStyle';
+import { Design } from '@/styles/design';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import React from 'react';
+import { Image, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function Entrada() {
   const router = useRouter();
-  const gold = tinycolor(AUTH_PALETTE.accent).lighten(12).toHexString();
-  const goldDim = tinycolor(AUTH_PALETTE.accent).setAlpha(0.55).toRgbString();
-  const goldFaint = tinycolor(AUTH_PALETTE.accent).setAlpha(0.12).toRgbString();
-
   return (
-    <View style={[style.outer, { backgroundColor: AUTH_PALETTE.background }]}>
-      {/* Fundo do salão */}
-      <View style={[StyleSheet.absoluteFill, { pointerEvents: "none" }]}>
-        <HallBackground palette={AUTH_PALETTE} />
-      </View>
-
-      {/* Gradiente candelabro no topo */}
-      <LinearGradient
-        colors={[
-          tinycolor(AUTH_PALETTE.accent).setAlpha(0.28).toRgbString(),
-          tinycolor(AUTH_PALETTE.accent).setAlpha(0.06).toRgbString(),
-          "transparent",
-        ]}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={[StyleSheet.absoluteFill, { height: "45%", pointerEvents: "none" }]}
-      />
-
-      <SafeAreaView style={style.container}>
-        {/* Título */}
-        <View style={style.header}>
-          <Text style={[style.trailup, { color: "#fff" }]}>
-            {app.name.toLocaleUpperCase()}
-          </Text>
-          <Text style={[style.subtitle, { color: "rgba(255,255,255,0.65)" }]}>
-            SUA JORNADA COMEÇA AQUI
-          </Text>
-        </View>
-
-        {/* Imagem central com glow */}
-        <View style={style.compassContainer}>
-          <View style={[style.glowOuter, { shadowColor: AUTH_PALETTE.accent }]}>
-            <View style={[style.glowMiddle, { shadowColor: AUTH_PALETTE.accent, borderColor: goldDim, backgroundColor: goldFaint }]}>
-              <Image
-                source={require("@/assets/images/trailup-logo.png")}
-                style={style.compassImage}
-                contentFit="contain"
-              />
-            </View>
+    <View style={styles.screen}>
+      <Image source={publicScenery} style={StyleSheet.absoluteFill} resizeMode="cover" accessible={false} />
+      <LinearGradient colors={['rgba(23,14,43,0.08)', 'rgba(23,14,43,0.3)', Design.ink]} locations={[0, 0.45, 0.82]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+      <SafeAreaView style={styles.safe}>
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <View style={styles.brand}>
+            <Image source={designStar} style={styles.mark} resizeMode="contain" accessible={false} />
+            <Text style={styles.name}>{app.name}</Text>
           </View>
-        </View>
-
-        {/* Ornamento divisor */}
-        <View style={style.ornamentRow}>
-          <OrnamentDivider color={gold} />
-        </View>
-
-        {/* Botões ornamentados */}
-        <View style={style.buttonsContainer}>
-          <TouchableOpacity
-            style={[style.button, { borderColor: gold, backgroundColor: tinycolor(AUTH_PALETTE.accent).darken(5).toHexString() }]}
-            onPress={() => Linking.openURL(app.siteCadastro)}
-            accessibilityRole="link"
-            accessibilityLabel="Novato, criar conta"
-          >
-            <Text style={[style.buttonText, { color: "#FFF" }]}>NOVATO(A)</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[style.button, style.buttonSecondary, { borderColor: goldDim, backgroundColor: goldFaint }]}
-            onPress={() => router.replace("/(auth)/tela")}
-            accessibilityRole="button"
-            accessibilityLabel="Já tenho conta"
-          >
-            <Text style={[style.buttonText, { color: gold }]}>JÁ TENHO CONTA</Text>
-          </TouchableOpacity>
-        </View>
+          <View style={styles.scene} />
+          <View style={styles.actions}>
+            <Text style={styles.title}>Sua próxima conquista começa aqui.</Text>
+            <TouchableOpacity
+              style={styles.primary}
+              onPress={() => router.replace('/(auth)/tela')}
+              accessibilityRole="button"
+              accessibilityLabel="Já tenho conta"
+            >
+              <Text style={styles.primaryText}>Já tenho conta</Text>
+              <MaterialCommunityIcons name="arrow-right" size={22} color={Design.ink} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.secondary}
+              onPress={() => Linking.openURL(app.siteCadastro)}
+              accessibilityRole="link"
+              accessibilityLabel="Criar conta"
+            >
+              <MaterialCommunityIcons name="account-plus-outline" size={20} color={Design.primary} />
+              <Text style={styles.secondaryText}>Criar conta</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
       </SafeAreaView>
     </View>
   );
 }
 
-const style = StyleSheet.create({
-  outer: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
-    justifyContent: "space-between",
-  },
-
-  header: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingTop: 40,
-    gap: 6,
-  },
-
-  trailup: {
-    fontSize: 48,
-    fontFamily: FontFamily.inknutAntiquaMedium,
-    fontWeight: "700",
-    textAlign: "center",
-    letterSpacing: 3,
-    textShadowColor: "rgba(0,0,0,0.9)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 12,
-  },
-  subtitle: {
-    fontFamily: FontFamily.inikaBold,
-    fontSize: 11,
-    letterSpacing: 2.5,
-  },
-
-  compassContainer: {
-    flex: 2.5,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  glowOuter: {
-    width: 260,
-    height: 260,
-    borderRadius: 190,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.9,
-    shadowRadius: 80,
-    elevation: 30,
-  },
-
-  glowMiddle: {
-    width: 230,
-    height: 230,
-    borderRadius: 170,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 60,
-  },
-
-  compassImage: {
-    width: 220,
-    height: 220,
-    borderRadius: 200,
-  },
-
-  ornamentRow: {
-    paddingHorizontal: 28,
-    marginVertical: 8,
-  },
-
-  buttonsContainer: {
-    flex: 1.2,
-    width: "100%",
-    alignItems: "center",
-    justifyContent: "flex-end",
-    paddingBottom: 50,
-    gap: 15,
-  },
-
-  button: {
-    width: "85%",
-    height: 56,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-
-  buttonSecondary: {},
-
-  buttonText: {
-    fontSize: 16,
-    fontFamily: FontFamily.inknutAntiquaMedium,
-    fontWeight: "600",
-    letterSpacing: 0.5,
-  },
+const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: Design.ink },
+  safe: { flex: 1 },
+  content: { flexGrow: 1, width: '100%', maxWidth: 560, alignSelf: 'center', padding: 24, paddingBottom: 32 },
+  brand: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingTop: 12 },
+  mark: { width: 40, height: 40 },
+  name: { fontFamily: FontFamily.inikaBold, fontSize: 38, color: Design.text, fontWeight: '700', letterSpacing: 0 },
+  scene: { flex: 1, minHeight: 260 },
+  actions: { width: '100%', gap: 12 },
+  title: { fontFamily: FontFamily.inikaBold, color: Design.text, fontSize: 25, lineHeight: 33, textAlign: 'center', marginBottom: 12 },
+  primary: { minHeight: 56, padding: 16, borderRadius: Design.radius, backgroundColor: Design.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 },
+  secondary: { minHeight: 54, padding: 16, borderRadius: Design.radius, borderWidth: 1, borderColor: Design.borderStrong, backgroundColor: Design.surface, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  primaryText: { fontFamily: FontFamily.interMedium, fontSize: 16, fontWeight: '700', color: Design.ink },
+  secondaryText: { fontFamily: FontFamily.interMedium, fontSize: 16, fontWeight: '600', color: Design.primary },
 });

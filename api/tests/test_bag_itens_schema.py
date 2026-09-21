@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-
 MIGRACAO = (
     Path(__file__).parents[1]
     / "alembic"

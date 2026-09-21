@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from "react";
+import { BossVisualPicker } from './BossVisualPicker';
 import type { Dispatch, SetStateAction } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -83,8 +84,8 @@ type TopicEditDrawerProps = {
   contents: Conteudo[];
   selectedContentId: number | null;
   setSelectedContentId: (id: number | null) => void;
-  contentForm: { titulo: string; tipo: string; conteudo: string };
-  setContentForm: Dispatch<SetStateAction<{ titulo: string; tipo: string; conteudo: string }>>;
+  contentForm: { titulo: string; tipo: string; conteudo: string; boss_visual?: string | null };
+  setContentForm: Dispatch<SetStateAction<{ titulo: string; tipo: string; conteudo: string; boss_visual?: string | null }>>;
   isSavingContent: boolean;
   handleSaveContent: (overrideConteudo?: string, targetId?: number | null) => Promise<Conteudo | null>;
   handleDeleteContent: (id: number) => void;
@@ -690,7 +691,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
   const handleSelectContent = (id: number, c: Conteudo) => {
     setIsCreating(false);
     setSelectedContentId(id);
-    setContentForm({ titulo: c.titulo || "", tipo: c.tipo || "texto", conteudo: c.conteudo || "" });
+    setContentForm({ titulo: c.titulo || "", tipo: c.tipo || "texto", conteudo: c.conteudo || "", boss_visual: c.metadata?.boss_visual ?? null });
     setPendingFiles([]);
     setExtraFiles(c.metadata?.files ?? []);
   };
@@ -803,6 +804,8 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
         </div>
       </div>
       
+      <BossVisualPicker value={contentForm.boss_visual} onChange={(boss_visual) => setContentForm({ ...contentForm, boss_visual })} disabled={isSavingContent || isUploadingFile} />
+
       {contentForm.tipo === "arquivo" ? (
         <div>
           <Label className={darkLabelClass}>Arquivos ou URL</Label>

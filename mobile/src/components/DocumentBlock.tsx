@@ -1227,7 +1227,7 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent, pro
           accessibilityRole="button"
           accessibilityLabel={`${pageLabel} anterior`}
         >
-          <Ionicons name="chevron-back" size={18} color={palette.text} />
+          <Ionicons name="chevron-back" size={18} color={palette.accent} />
         </Pressable>
 
         <View
@@ -1270,7 +1270,7 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent, pro
           accessibilityRole="button"
           accessibilityLabel={`próxima ${pageLabel}`}
         >
-          <Ionicons name="chevron-forward" size={18} color={palette.text} />
+          <Ionicons name="chevron-forward" size={18} color={palette.accent} />
         </Pressable>
       </View>
     );
@@ -1297,7 +1297,7 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent, pro
       <Ionicons
         name={iconName}
         size={18}
-        color={accent ? Color.colorWhite : palette.text}
+        color={accent ? palette.background : palette.accent}
       />
     </Pressable>
   );

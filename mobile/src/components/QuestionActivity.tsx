@@ -8,6 +8,7 @@ import { ContentBlock } from '@/interfaces/componentes_simples/IContentBlock';
 import { Color, FontFamily } from '@/styles/GlobalStyle';
 import { normalizeContentBlock } from '@/utils/contentBlocks';
 import { getProfileShellPalette } from '@/utils/profileShellTheme';
+import { canShowQuestionAnswer, getQuestionPreviousAnswer, hasQuestionAttempt } from '@/utils/questionAnswerVisibility';
 import { QuestaoAluno } from '@/models/QuestaoAluno';
 import { EssayValidationResult, validateEssayAnswerWithAi } from '@/utils/essayValidation';
 import { Ionicons } from '@expo/vector-icons';
@@ -394,6 +395,17 @@ function resolveActivityGradingRules(atividade: any): GradingRules {
   };
 }
 
+function useQuestionFlag(index: number) {
+  const [flags, setFlags] = useState<Record<number, boolean>>({});
+  const setFlag = useCallback((action: React.SetStateAction<boolean>) => {
+    setFlags((previous) => {
+      const value = typeof action === 'function' ? action(!!previous[index]) : action;
+      return !!previous[index] === value ? previous : { ...previous, [index]: value };
+    });
+  }, [index]);
+  return [!!flags[index], setFlag] as const;
+}
+
 export default function QuestionActivity({
   atividade,
   onComplete,
@@ -404,7 +416,7 @@ export default function QuestionActivity({
   reviewMode = false,
 }: Props) {
   const questoes = useMemo(() => (Array.isArray(atividade?.questoes) ? atividade.questoes : []), [atividade?.questoes]);
-  const [questaoIndex, setQuestaoIndex] = useState(0);
+  const [questaoIndex, setQuestaoIndex] = useState(() => Math.min(Math.max(0, initialQuestionIndex), Math.max(0, questoes.length - 1)));
   const { usuario } = useUsuario();
   const { registrarRespostaQuestao } = useTrilha();
   const { recordAppEvent } = useMetricas();
@@ -423,10 +435,7 @@ export default function QuestionActivity({
     return candidato != null ? Number(candidato) : null;
   }, [atividade, topicoIdProp]);
   const gradingRules = useMemo(() => resolveActivityGradingRules(atividade), [atividade]);
-  const respostaAnterior = useMemo(
-    () => questao?.resposta_aluno ?? atividade?.resposta_aluno ?? null,
-    [questao?.resposta_aluno, atividade?.resposta_aluno]
-  );
+  const respostaAnterior = getQuestionPreviousAnswer(questao, atividade);
   const perfilNome = usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? '';
   // Modal de resultado: quem fala com o aluno aqui e o guia do perfil, entao a
   // imagem e o guardiao, nao o simbolo abstrato do perfil.
@@ -499,9 +508,9 @@ export default function QuestionActivity({
   const [stas, setStas] = useState<Record<number, 'certo' | 'errado' | null>>({});
   const [confirmados, setConfirmados] = useState<Record<number, boolean>>({});
   const [viuRespostas, setViuRespostas] = useState<Record<number, boolean>>({});
-  const [reResponder, setReResponder] = useState(false);
+  const [reResponder, setReResponder] = useQuestionFlag(questaoIndex);
   const [timeoutLocked, setTimeoutLocked] = useState<Record<number, boolean>>({});
-  const [mostrarResposta, setMostrarResposta] = useState(false);
+  const [mostrarResposta, setMostrarResposta] = useQuestionFlag(questaoIndex);
   const [validandoIA, setValidandoIA] = useState(false);
   const [, setFeedbackIA] = useState<Record<number, EssayValidationResult | null>>({});
   const [modalVisivel, setModalVisivel] = useState(false);
@@ -526,10 +535,7 @@ export default function QuestionActivity({
     const percentualConcluido = Number(atividade?.percentual_concluido ?? 0);
     return statusConcl || percentualConcluido >= 100;
   }, [atividade?.status, atividade?.percentual_concluido]);
-  const respondidaAntes = useMemo(() => {
-    const questaoJaTemResposta = Boolean(questao?.resposta_aluno ?? respostaAnterior);
-    return atividadeConcluidaPersistida || questaoJaTemResposta;
-  }, [atividadeConcluidaPersistida, respostaAnterior, questao?.resposta_aluno]);
+  const respondidaAntes = hasQuestionAttempt(questao, respostaAnterior);
   const scrollRef = useRef<ScrollView | null>(null)
   const questionStartedAtRef = useRef(Date.now());
 
@@ -538,19 +544,12 @@ export default function QuestionActivity({
   }, [atividade?.id, questao?.id, questaoIndex]);
 
   useEffect(() => {
-    if (reviewMode && respondidaAntes && atividadeConcluidaPersistida) {
+    if (reviewMode && respondidaAntes && atividadeConcluidaPersistida && !reResponder) {
       setConfirmados((prev) => ({ ...prev, [questaoIndex]: true }));
       setMostrarResposta(isImediato);
       setViuRespostas((prev) => ({ ...prev, [questaoIndex]: isImediato || !!prev[questaoIndex] }));
-      setReResponder(false);
-      return;
     }
-
-    if (!reviewMode) {
-      setMostrarResposta(false);
-      setReResponder(false);
-    }
-  }, [reviewMode, respondidaAntes, atividadeConcluidaPersistida, questaoIndex, isImediato]);
+  }, [reviewMode, respondidaAntes, atividadeConcluidaPersistida, questaoIndex, isImediato, reResponder, setMostrarResposta]);
 
   const checkResposta = useCallback((alt: any, idx: number) => {
     if (isDissertativaActivity) {
@@ -600,7 +599,7 @@ export default function QuestionActivity({
   }, [acceptedAnswers, isDissertativaActivity, isFillBlankActivity, isTrueFalseActivity, questao?.resposta_correta])
 
   useEffect(() => {
-    if (!respondidaAntes || respostaAnterior == null) return;
+    if (reResponder || !respondidaAntes || respostaAnterior == null) return;
 
     if (isDissertativaActivity || isFillBlankActivity) {
       const respostaTxt = String(respostaAnterior);
@@ -645,6 +644,7 @@ export default function QuestionActivity({
     isTrueFalseActivity,
     questaoIndex,
     atividadeConcluidaPersistida,
+    reResponder,
   ]);
 
   useEffect(() => {
@@ -663,17 +663,18 @@ export default function QuestionActivity({
     )
   }
 
-  const bloqueioEdicaoPersistida = atividadeConcluidaPersistida && !reResponder;
-  const jaTemTentativa =
-    respondidaAntes || !!confirmados[questaoIndex] || Number(questao?.ultima_tentativa ?? 0) > 0;
-  // So revela a resposta/gabarito quando: o aluno acabou de confirmar
-  // (confirmados), o modo imediato pediu para mostrar (mostrarResposta), ou a
-  // atividade esta concluida E ESTA questao ja tem uma tentativa real
-  // (revisao). Sem o `jaTemTentativa`, uma atividade marcada como "concluida"
-  // (ex.: personalizada) revelava a resposta de questoes ainda nao respondidas.
-  const respostasVisiveis = isImediato
-    ? mostrarResposta || !!confirmados[questaoIndex] || (atividadeConcluidaPersistida && jaTemTentativa)
-    : mostrarResposta;
+  const bloqueioEdicaoPersistida = !reResponder && (
+    (atividadeConcluidaPersistida && respondidaAntes) || !!confirmados[questaoIndex]
+  );
+  const jaTemTentativa = respondidaAntes || !!confirmados[questaoIndex];
+  const respostasVisiveis = canShowQuestionAnswer({
+    attempted: respondidaAntes,
+    confirmed: !!confirmados[questaoIndex],
+    retrying: reResponder,
+    immediate: isImediato,
+    requested: mostrarResposta,
+    reviewing: reviewMode && atividadeConcluidaPersistida,
+  });
   const mostrarRespostaAluno = respostasVisiveis && (respostaAnterior != null || questao?.resposta_aluno);
   const podeVerGabarito = respostasVisiveis;
   const selectedOption = selecionados[questaoIndex] ?? null;
@@ -1128,11 +1129,9 @@ export default function QuestionActivity({
           const atividadeCorreta = atividadeCompleta
             ? respostasRegistradas.every((item: { correta: boolean | null }) => item.correta === true)
             : acertou;
-          if (atividade) {
-            (atividade as any).status = atividadeCompleta
-              ? 'concluido'
-              : (atividade as any).status || 'em andamento';
-          }
+          // Do not mutate atividade.status here. The parent uses the persisted
+          // status to distinguish completion from review; setting it early made
+          // every first answer look like a review and skipped the database write.
           const multiplicador = acertou
             ? viuRespostaAntes
               ? 0.2
@@ -1272,7 +1271,31 @@ export default function QuestionActivity({
               isCorrect: true,
             });
           }
-          onComplete?.({
+          // Persist the answer before asking the parent to complete the activity.
+          // A failed write must remain retryable, not just log in the background.
+          if (!isPersonalizedLocal && usuario?.id && questao?.id) {
+            try {
+              if (topicoId != null) {
+                await registrarRespostaQuestao({
+                  topicoId: Number(topicoId), atividadeId: Number(atividade.id), questaoId: Number(questao.id),
+                  resposta: respostaSelecionada, correta: acertou, acertosPercentual: acertosPercent,
+                  tempoGastoSeg,
+                });
+              } else {
+                await QuestaoAluno.registrarResposta({
+                  alunoId: usuario.id, atividadeId: Number(atividade.id), questaoId: Number(questao.id),
+                  resposta: respostaSelecionada, correta: acertou, acertos_percentual: acertosPercent,
+                  tempo_gasto_seg: tempoGastoSeg,
+                });
+              }
+            } catch (error) {
+              setConfirmados((prev) => ({ ...prev, [questaoIndex]: false }));
+              setModalInfo({ titulo: 'Resposta não salva', descricao: 'Não foi possível salvar sua resposta. Confirme novamente para tentar sincronizar.' });
+              console.warn('[QuestaoAluno] Falha ao salvar resposta:', error);
+              return;
+            }
+          }
+          await onComplete?.({
             correto: atividadeCorreta,
             acertosPercentual: atividadeCompleta ? acertoMedioAtividade : acertosPercent,
             questaoId: questao?.id ? Number(questao.id) : undefined,
@@ -1288,29 +1311,6 @@ export default function QuestionActivity({
             questionIndex: questaoIndex,
           })
 
-          if (!isPersonalizedLocal && usuario?.id && questao?.id) {
-            const respostaTxt = respostaSelecionada;
-            if (topicoId != null) {
-              registrarRespostaQuestao({
-                topicoId: Number(topicoId),
-                atividadeId: Number(atividade?.id ?? 0),
-                questaoId: Number(questao.id),
-                resposta: respostaTxt,
-                correta: acertou,
-                acertosPercentual: acertosPercent,
-              }).catch((err) => console.warn('[QuestaoAluno] erro ao registrar resposta', err));
-            } else {
-              QuestaoAluno.registrarResposta({
-                alunoId: usuario.id,
-                atividadeId: Number(atividade?.id ?? 0),
-                questaoId: Number(questao.id),
-                resposta: respostaTxt,
-                correta: acertou,
-                acertos_percentual: acertosPercent,
-                tempo_gasto_seg: tempoGastoSeg,
-              }).catch((err) => console.warn('[QuestaoAluno] erro ao registrar resposta', err));
-            }
-          }
         }}
         style={{
           marginTop: 14,
@@ -1384,6 +1384,7 @@ export default function QuestionActivity({
         <TouchableOpacity
           onPress={() => {
             setSelecionados((prev) => ({ ...prev, [questaoIndex]: null }));
+            setRespostasTexto((prev) => ({ ...prev, [questaoIndex]: '' }));
             setStas((prev) => ({ ...prev, [questaoIndex]: null }));
             setConfirmados((prev) => ({ ...prev, [questaoIndex]: false }));
             setTimeoutLocked((prev) => ({ ...prev, [questaoIndex]: false }));
@@ -1407,7 +1408,7 @@ export default function QuestionActivity({
         </TouchableOpacity>
       )}
 
-      {jaTemTentativa && (
+      {jaTemTentativa && !reResponder && (
         <TouchableOpacity
           onPress={() =>
             setMostrarResposta((v) => {
@@ -1443,10 +1444,7 @@ export default function QuestionActivity({
             disabled={questaoIndex === 0}
             onPress={() => {
               setQuestaoIndex((i) => Math.max(0, i - 1));
-              setMostrarResposta(isImediato && respondidaAntes ? true : false);
-              if (isImediato && respondidaAntes) {
-                setViuRespostas((prev) => ({ ...prev, [Math.max(0, questaoIndex - 1)]: true }));
-              }
+              setModalVisivel(false);
             }}
             style={{
               minWidth: 112,
@@ -1467,10 +1465,7 @@ export default function QuestionActivity({
             disabled={questaoIndex === questoes.length - 1}
             onPress={() => {
               setQuestaoIndex((i) => Math.min(questoes.length - 1, i + 1));
-              setMostrarResposta(isImediato && respondidaAntes ? true : false);
-              if (isImediato && respondidaAntes) {
-                setViuRespostas((prev) => ({ ...prev, [Math.min(questoes.length - 1, questaoIndex + 1)]: true }));
-              }
+              setModalVisivel(false);
             }}
             style={{
               minWidth: 112,

@@ -58,7 +58,7 @@ export interface Conteudo {
   tipo: string;
   ordem: number | null;
   conteudo: string | null;
-  metadata?: { files?: ConteudoFile[] } | null;
+  metadata?: { files?: ConteudoFile[]; boss_visual?: string | null } | null;
 }
 
 export type TipoAtividade = "quiz" | "true_false" | "fill_blank" | "essay" | "questao" | "video" | "texto";

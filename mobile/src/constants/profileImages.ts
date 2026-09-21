@@ -118,29 +118,9 @@ export const pickBySeed = <T>(
 };
 
 /**
- * Rosto do guardião de cada perfil.
- *
- * A arte de **corpo inteiro** fica em `mobile/src/assets/guardioes/`, e o que
- * está aqui são recortes de rosto gerados a partir dela por
- * `scripts/gerar-rostos-guardioes.py`: todos os slots que mostram o guia no app
- * são avatares — o maior tem 72pt —, e uma figura de corpo inteiro nesse tamanho
- * vira um pontinho irreconhecível.
- *
- * ATENÇÃO à pasta de origem. `microservice/src/assets/guardioes/` também tem a
- * arte e o CLAUDE.md a trata como fonte da verdade dos perfis — mas isso vale
- * para as CONSTANTES (cor-assinatura, nome do guia), não para os arquivos de
- * imagem: a cópia de lá ficou 2 dias atrás (2026-07-25 contra 2026-07-27) numa
- * versão anterior da arte, em que o Sobrevivente era vermelho em vez do
- * cinza-chumbo da cor-assinatura dele. Recortes gerados de lá saíram com as
- * cores erradas (corrigido em 2026-08-26).
- *
- * Divergência ainda aberta: o microservice usa a própria cópia para compor
- * slides/apresentações, então o material gerado continua com a arte antiga até
- * alguém propagar os arquivos novos para lá.
- *
- * O Socializador usa o par (Mateo e Zuri): é o único perfil com dois guardiões,
- * e é o que faz o áudio dele ser diálogo em vez de narração solo. Mostrar só um
- * contradiria o material que o aluno recebe.
+ * Artes facetadas da biblioteca Design, importadas por scripts/import-mobile-design.mjs.
+ * Retratos e corpos usam arquivos separados para manter o rosto legivel nos avatares.
+ * O Socializador preserva o par Mateo e Zuri. As artes do microservice sao independentes.
  */
 export const guardianFaceImages: Record<BrainHexProfile, ImageSourcePropType> = {
   seeker: require("@/assets/guardioes/rosto/seeker.png"),

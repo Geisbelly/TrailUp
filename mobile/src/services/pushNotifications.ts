@@ -29,7 +29,7 @@ const PREFIXO_ROTINA = 'trailup-rotina-';
 
 let handlerConfigurado = false;
 type NotificationsModule = typeof import('expo-notifications');
-let notificationsPromise: Promise<NotificationsModule> | null = null;
+let notificationsModule: NotificationsModule | null = null;
 
 function executandoNoExpoGo() {
   const constants = Constants as typeof Constants & {
@@ -44,8 +44,12 @@ function executandoNoExpoGo() {
 
 async function carregarNotifications(): Promise<NotificationsModule | null> {
   if (Platform.OS === 'web' || executandoNoExpoGo()) return null;
-  notificationsPromise ??= import('expo-notifications');
-  return notificationsPromise;
+  // Só avaliar o módulo depois da verificação: o import estático registra
+  // listeners nativos no Expo Go antes mesmo de chamar qualquer função.
+  // require local também evita o async-require do Metro usado por import().
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  notificationsModule ??= require('expo-notifications') as NotificationsModule;
+  return notificationsModule;
 }
 
 /**

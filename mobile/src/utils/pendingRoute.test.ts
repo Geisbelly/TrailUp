@@ -13,6 +13,12 @@ test("sem rota pendente devolve null", () => {
   assert.equal(consumePendingRoute(), null);
 });
 
+test("a raiz protegida volta para tabs, não para a entrada pública", () => {
+  setPendingRoute("/");
+  assert.equal(consumePendingRoute(), "/(tabs)");
+  assert.equal(consumePendingRoute(), null);
+});
+
 test("limpar com null apaga rota pendente anterior", () => {
   setPendingRoute("/perfil");
   setPendingRoute(null);

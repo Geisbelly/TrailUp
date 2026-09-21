@@ -14,7 +14,7 @@ import {
 } from "react-native";
 
 
-import { avatarImages, pickBySeed } from "@/constants/profileImages";
+import { FramedProfileImage } from "@/components/FramedProfileImage";
 import { useNotifications } from "@/context/NotificacaoContext";
 import { useUsuario } from "@/context/SessaoContext";
 import { supabase } from "@/database/supabase";
@@ -48,11 +48,6 @@ export default function Infor() {
   );
   const [bannerUri, setBannerUri] = useState<string | null>(
     (usuario as any)?.banner_url ?? null
-  );
-
-  const avatarDefault = useMemo(
-    () => pickBySeed(usuario?.id, avatarImages),
-    [usuario?.id]
   );
 
   const handlePickImage = async (type: "foto" | "banner") => {
@@ -199,12 +194,12 @@ export default function Infor() {
             <Feather
               name={editando ? "x" : "edit-2"}
               size={16}
-              color={editando ? Color.colorWhite : palette.text}
+              color={editando ? palette.background : palette.accent}
             />
             <Text
               style={[
                 styles.chipBotaoTexto,
-                { color: editando ? Color.colorWhite : palette.text },
+                { color: editando ? palette.background : palette.text },
               ]}
             >
               {editando ? "Cancelar" : "Editar"}
@@ -232,11 +227,7 @@ export default function Infor() {
 
         {/* Avatar fora do container do banner para não ser cortado */}
         <View style={styles.avatarWrapper}>
-          {fotoUri ? (
-            <Image source={{ uri: fotoUri }} style={[styles.avatar, { borderColor: palette.background }]} />
-          ) : avatarDefault ? (
-            <Image source={avatarDefault} style={[styles.avatar, { borderColor: palette.background }]} />
-          ) : null}
+          <FramedProfileImage profile={palette.profile} source={fotoUri ? { uri: fotoUri } : undefined} size={104} label={`Foto de ${nome || 'Aluno'}`} />
         </View>
 
         {editando && (
@@ -418,7 +409,7 @@ export default function Infor() {
                 size={14}
                 color={
                   modoResposta === "imediato"
-                    ? Color.colorWhite
+                    ? palette.background
                     : palette.textMuted
                 }
               />
@@ -428,7 +419,7 @@ export default function Infor() {
                   {
                     color:
                       modoResposta === "imediato"
-                        ? Color.colorWhite
+                        ? palette.background
                         : palette.text,
                   },
                 ]}
@@ -462,7 +453,7 @@ export default function Infor() {
                 size={14}
                 color={
                   modoResposta === "pensante"
-                    ? Color.colorWhite
+                    ? palette.background
                     : palette.textMuted
                 }
               />
@@ -472,7 +463,7 @@ export default function Infor() {
                   {
                     color:
                       modoResposta === "pensante"
-                        ? Color.colorWhite
+                        ? palette.background
                         : palette.text,
                   },
                 ]}
@@ -620,14 +611,6 @@ const styles = StyleSheet.create({
     marginTop: -32,
     paddingLeft: 16,
     marginBottom: 16,
-  },
-  avatar: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    resizeMode: "cover",
-    borderWidth: 3,
-    borderColor: Color.background,
   },
   bannerActionsRow: {
     flexDirection: "row",
