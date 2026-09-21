@@ -29,6 +29,7 @@ import { QuestaoAluno } from '@/models/QuestaoAluno';
 import { Topico } from '@/models/Topico';
 import { PersonalizacaoRlsError } from "@/services/personalizacao/errors";
 import { saveStudyTime } from '@/services/studyTime';
+import { saveStudySession } from '@/services/studySessions';
 import { usePersonalizacaoProvider } from "@/services/personalizacao/PersonalizacaoProviderContext";
 import {
   buildClassMapTheme,
@@ -623,6 +624,9 @@ type TrilhaContextValue = {
     atividadeId: number | null,
     tempoGastoMin: number
   ) => Promise<void>
+  registrarSessaoConteudo: (topicoId: number, conteudoId: number, startedAtMs: number, endedAtMs: number) => Promise<void>
+  registrarSessaoAtividade: (topicoId: number, atividadeId: number, startedAtMs: number, endedAtMs: number) => Promise<void>
+  registrarSessaoTopico: (topicoId: number, startedAtMs: number, endedAtMs: number) => Promise<void>
   salvarProgressoItemPersonalizado: (params: {
     topicoId: number
     itemKey: string
@@ -1925,6 +1929,41 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [atualizarProgressoClasse, refreshTopico, usuario?.id])
 
+  const registrarSessaoConteudo = useCallback(async (
+    topicoId: number,
+    conteudoId: number,
+    startedAtMs: number,
+    endedAtMs: number
+  ) => {
+    if (!usuario?.id) return
+    await saveStudySession(supabase, {
+      alunoId: usuario.id, scope: 'content', topicoId, conteudoId, atividadeId: null, startedAtMs, endedAtMs,
+    })
+  }, [usuario])
+
+  const registrarSessaoAtividade = useCallback(async (
+    topicoId: number,
+    atividadeId: number,
+    startedAtMs: number,
+    endedAtMs: number
+  ) => {
+    if (!usuario?.id) return
+    await saveStudySession(supabase, {
+      alunoId: usuario.id, scope: 'activity', topicoId, conteudoId: null, atividadeId, startedAtMs, endedAtMs,
+    })
+  }, [usuario])
+
+  const registrarSessaoTopico = useCallback(async (
+    topicoId: number,
+    startedAtMs: number,
+    endedAtMs: number
+  ) => {
+    if (!usuario?.id) return
+    await saveStudySession(supabase, {
+      alunoId: usuario.id, scope: 'topic', topicoId, conteudoId: null, atividadeId: null, startedAtMs, endedAtMs,
+    })
+  }, [usuario])
+
   const salvarProgressoItemPersonalizado = useCallback(async ({
     topicoId,
     itemKey,
@@ -2244,6 +2283,9 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       registrarTempoConteudo,
       registrarTempoAtividade,
       registrarTempoDireto,
+      registrarSessaoConteudo,
+      registrarSessaoAtividade,
+      registrarSessaoTopico,
       salvarProgressoItemPersonalizado,
       registrarRespostaQuestao,
       deveMostrarGabaritoAoErrar,
@@ -2274,6 +2316,9 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       registrarTempoConteudo,
       registrarTempoAtividade,
       registrarTempoDireto,
+      registrarSessaoConteudo,
+      registrarSessaoAtividade,
+      registrarSessaoTopico,
       salvarProgressoItemPersonalizado,
       registrarRespostaQuestao,
       deveMostrarGabaritoAoErrar,
