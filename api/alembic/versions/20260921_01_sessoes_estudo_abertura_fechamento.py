@@ -341,6 +341,11 @@ def upgrade() -> None:
         "ON public.telemetria_time_metric_entries"
     )
     op.execute("DROP FUNCTION IF EXISTS public.trailup_tempo_after_telemetria()")
+    # Sem isto o PostgREST continua servindo do cache antigo de schema e o
+    # cliente recebe PGRST202 ("could not find the function") para a RPC nova
+    # até o próximo reload espontâneo — que pode demorar minutos ou nunca
+    # acontecer sozinho no ambiente de desenvolvimento.
+    op.execute("NOTIFY pgrst, 'reload schema'")
 
 
 def downgrade() -> None:
