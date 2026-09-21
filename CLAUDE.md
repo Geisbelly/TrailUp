@@ -1096,6 +1096,82 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 > devolve `null`: **sem status é melhor que status errado**, porque "errado"
 > aqui é uma afirmação sobre o que o aluno fez.
 
+> **Sete formatos de questão, e os três novos pedem relação.** A base tinha
+> quatro — `multipla` 21, `verdadeiro_falso` 14, `fill_blank` 13, `dissertativa`
+> 8 — e nenhum deles exige ligar, ordenar ou separar um subconjunto. Entraram na
+> `20260921_04`:
+>
+> | tipo | `alternativas` | o aluno |
+> | --- | --- | --- |
+> | `associacao` | `{"termos": [...], "definicoes": [...]}` | liga termo a definição |
+> | `ordenacao` | `["passo", ...]` | põe em ordem |
+> | `multipla_resposta` | `["a", ...]` | marca **todas** as certas |
+>
+> **A decisão que estrutura tudo: o par NÃO mora em `alternativas`.** O caminho
+> óbvio para "ligar termos" seria guardar pares (`[{"termo": "x", "par": "y"}]`)
+> — e isso entrega a resposta, que é exatamente o defeito que a `20260921_01`
+> fechou. As duas listas vão soltas, embaralhadas **com sementes diferentes**, e
+> o pareamento vive só em `questao_gabarito`.
+>
+> **Alinhamento por acaso não é vazamento; alinhamento TOTAL é.** Medido sobre
+> 200 ids com 5 pares: a média de pares alinhados por posição é **0,915** — casar
+> por posição rende o mesmo que chutar, que é a definição de não carregar
+> informação. Mas 1 em 200 saiu com os **cinco** alinhados, e nessa a resposta
+> inteira fica na tela. Por isso o sal avança **só quando a permutação é a
+> identidade**. Recusar mais seria pior: garantir que a posição *i* nunca é o par
+> elimina uma opção por linha, e aí a posição passa a carregar informação de
+> verdade. Medido depois, 300 ids com 3 pares: 0 ou 1 alinhado, **nenhum** com
+> todos.
+>
+> **O gabarito dos três é JSON.** Separador de texto (`a|c`) quebra na
+> alternativa que contém o separador, e não há caractere seguro — uma opção
+> legítima pode ter `|`, `;` ou `,`. `fn_questao_resposta_em_lista` aceita JSON e,
+> como reserva, o texto separado por barra: cliente antigo e professor digitando
+> à mão mandam assim, e recusar seria recusar a resposta certa pela **forma**.
+>
+> **Ordem importa em um, não importa em dois.** `ordenacao` compara SEQUÊNCIA;
+> os outros dois comparam CONJUNTO **com cardinalidade** — sem comparar tamanho,
+> o gabarito estaria contido na resposta e marcar TODAS as alternativas passaria.
+>
+> E reordenar `ordenacao` deixou de ser redução de viés: virou **requisito**. Com
+> as alternativas na ordem certa, a tela mostraria a resposta.
+>
+> Duas regras do lado do cliente:
+>
+> 1. **`ligarPar` mantém 1:1 nos DOIS lados.** Sem remover o vínculo antigo do
+>    termo *e* o da definição, o aluno encosta a mesma definição em dois termos e
+>    a resposta sai com mais pares que itens — o banco reprova por cardinalidade
+>    e o aluno não entende por quê.
+> 2. **`multipla_resposta` NÃO exige marcar o total.** Exigir tantas quantas o
+>    gabarito tem contaria ao aluno quantas são certas, que é metade da resposta.
+>    Associação e ordenação, ao contrário, só confirmam completas.
+
+> **Reforço visual: o que faltava não era o recurso, era o dado.** Medido: **0
+> das 56 questões** têm `midia_url`. A coluna existe, o console tem campo de
+> upload (com `handleUploadMedia`) e `QuestionActivity` já renderiza bloco de
+> mídia (`buildMediaBlocks`) — o caminho está inteiro e ninguém o usa. É o padrão
+> de "módulo com cara de vivo", só que do lado dos dados.
+>
+> Por isso o reforço que entrou não depende de o professor subir nada: é o do
+> **formato**. `identidadeDaQuestao` (`utils/identidadeDaQuestao.ts`) dá a cada
+> tipo um selo com ícone + rótulo e uma instrução em imperativo, exibidos
+> **antes** do enunciado. Com sete tipos, errar por ter entendido o formato
+> errado não mede conhecimento nenhum.
+>
+> Três regras que valem ao mexer:
+>
+> 1. **Ícone nunca sozinho, cor nunca sozinha.** O selo traz o rótulo escrito; o
+>    número do par em `QuestaoDeRelacao` aparece nos dois lados da ligação; a
+>    caixa (não o círculo) é o que diz que dá para marcar mais de uma. Quem não
+>    distingue as cores continua conseguindo responder.
+> 2. **Tipo irreconhecível devolve `null`, não um palpite.** Selo com o formato
+>    errado é pior que selo nenhum: o aluno confia nele e responde no formato que
+>    leu. Há teste exigindo rótulos distintos entre os sete — dois formatos com o
+>    mesmo rótulo não distinguem nada.
+> 3. **Os ícones são `Ionicons`**, a família que a tela já importa. Trazer uma
+>    segunda família por causa do selo acrescentaria peso ao bundle para desenhar
+>    o mesmo conceito.
+
 > Lacuna real ainda aberta: `MentalStateHistoryRepository.listar_por_aluno`
 > (`api/app/repositories/mental_state.py`) só é exercitado em teste — o
 > histórico em `aluno_mental_state_history` é **gravado** a cada ciclo

@@ -16,6 +16,7 @@ import { Image, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } fro
 import { corrigirQuestaoNoServidor, mensagemDeErroDaCorrecao } from "@/services/questaoCorrecao";
 import { servidorCorrige, vereditoDaRevisao } from "@/utils/correcaoDaQuestao";
 import { formatoDeRelacao } from "@/utils/formatosDeQuestao";
+import { identidadeDaQuestao, posicaoNaAtividade } from "@/utils/identidadeDaQuestao";
 import { QuestaoDeRelacao } from "@/components/questao/QuestaoDeRelacao";
 
 type Props = {
@@ -460,6 +461,14 @@ export default function QuestionActivity({
     [questao?.tipo, atividade?.tipo]
   );
   const [respostaRelacional, setRespostaRelacional] = useState<Record<number, string | null>>({});
+  const identidade = useMemo(
+    () => identidadeDaQuestao(questao?.tipo, atividade?.tipo),
+    [questao?.tipo, atividade?.tipo]
+  );
+  const posicao = useMemo(
+    () => posicaoNaAtividade(questaoIndex, questoes.length),
+    [questaoIndex, questoes.length]
+  );
   const acceptedAnswers = useMemo(
     () => getAcceptedAnswers(questao?.resposta_correta),
     [questao?.resposta_correta]
@@ -830,13 +839,66 @@ export default function QuestionActivity({
       nestedScrollEnabled
       showsVerticalScrollIndicator={false}
     >
+      {/* O selo do FORMATO vem antes do enunciado de propósito: errar por ter
+          entendido o formato errado não mede conhecimento nenhum, e com sete
+          tipos -- três deles novos -- o aluno precisa saber se escolhe uma,
+          marca várias, liga pares ou ordena ANTES de ler a pergunta.
+
+          Ícone nunca sozinho: quem não reconhece o símbolo lê o rótulo. */}
+      {identidade ? (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            alignSelf: 'flex-start',
+            gap: 6,
+            paddingHorizontal: 10,
+            paddingVertical: 5,
+            borderRadius: 999,
+            marginBottom: 8,
+            backgroundColor: profilePalette.accentMuted,
+            borderWidth: 1,
+            borderColor: profilePalette.border,
+          }}
+        >
+          <Ionicons name={identidade.icone as never} size={14} color={profilePalette.accent} />
+          <Text
+            style={{
+              color: profilePalette.accent,
+              fontSize: 11,
+              fontWeight: '800',
+              letterSpacing: 0.3,
+            }}
+          >
+            {identidade.rotulo.toUpperCase()}
+          </Text>
+        </View>
+      ) : null}
+
       <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 8, color: profilePalette.text }}>
         {isFillBlankActivity ? 'Complete a lacuna do texto' : questao.enunciado}
       </Text>
 
-      <Text style={{ color: profilePalette.textSubtle, fontFamily: FontFamily.interMedium, marginBottom: 4 }}>
-        Questão {questaoIndex + 1} de {questoes.length}
-      </Text>
+      {identidade ? (
+        <Text
+          style={{
+            color: profilePalette.textSubtle,
+            fontFamily: FontFamily.interMedium,
+            fontSize: 12,
+            marginBottom: 6,
+          }}
+        >
+          {identidade.instrucao}
+        </Text>
+      ) : null}
+
+      {/* `posicaoNaAtividade` devolve null para atividade de uma questão só --
+          "Questão 1 de 1" ocupava espaço para não dizer nada. */}
+      {posicao ? (
+        <Text style={{ color: profilePalette.textSubtle, fontFamily: FontFamily.interMedium, marginBottom: 4 }}>
+          {posicao}
+        </Text>
+      ) : null}
 
       {mediaBlocks.length > 0 ? (
         <View
