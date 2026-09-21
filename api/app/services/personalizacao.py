@@ -15,13 +15,13 @@ import httpx
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.core.identidade import identificador_de_dono
 from app.core.settings import Settings
 from app.ingestion.pipeline import ingest_source as _ingest_source
 from app.ingestion.semantic_chunker import chunks_to_plain_text as _chunks_to_plain_text
 from app.repositories.artefatos_personalizados import ArtefatosPersonalizadosRepository
 from app.repositories.conteudo_classe import ConteudoClasseRepository
 from app.repositories.conteudo_personalizado import ConteudoPersonalizadoRepository
-from app.core.identidade import identificador_de_dono
 from app.repositories.context import ContextRepository
 from app.repositories.fontes_personalizacao import FontesPersonalizacaoRepository
 from app.repositories.materiais import MateriaisRepository

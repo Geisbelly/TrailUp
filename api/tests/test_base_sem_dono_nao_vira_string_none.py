@@ -29,7 +29,6 @@ from app.core.identidade import dono_de, identificador_de_dono
 from app.services import personalizacao as personalizacao_service
 from app.services import personalizacao_jobs
 
-
 # --------------------------------------------------------------------------
 # O conversor
 # --------------------------------------------------------------------------
