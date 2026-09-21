@@ -27,7 +27,7 @@ Documentação que não pertence a um único serviço:
 - API: [arquitetura e fluxos](./api/funcionamento-api-arquitetura-fluxos.md)
 - Banco: [modelagem](./api/modelagem-dados-banco.md) · [Supabase](./api/estrutura-banco-supabase.md) · [Supabase (executivo)](./api/estrutura-banco-supabase-executivo.md)
 - Personalização/gamificação: [visão](./api/funcionamento-personalizacao-gamificacao-recursos-pedagogicos.md) · [detalhado](./api/funcionamento-personalizacao-gamificacao-recursos-pedagogicos-detalhado.md)
-- [Guia de uso](./api/guia-uso-app.md) · [Segurança](./api/seguranca.md) · [Políticas de dados/privacidade](./api/politicas-dados-privacidade.md)
+- [Guia de uso](./api/guia-uso-app.md) · [Segurança](./api/seguranca.md) · [Políticas de dados/privacidade](./api/politicas-dados-privacidade.md) · [Avaliação Jev (TypeSafe)](./api/avaliacao-jev-typesafe.md)
 - [Planos e specs (superpowers)](./api/superpowers/)
 
 ### [`frontend/`](./frontend/) — Web (Vite · React)
