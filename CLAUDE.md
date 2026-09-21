@@ -1206,18 +1206,62 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 > deixa a run verde com o job **pulado**. A quebra existia desde `1d7ce67` e só
 > reaparecia quando alguém tocava na API.
 >
-> **Nem toda sobra é restaurável, e o teste é quem diz.** `evento.py` parecia o
-> mesmo caso — subconjunto exato do pré-sync, com `_PREFIXOS_CONHECIDOS`
-> espelhado por uma migração **aplicada** (`20260910_06`). Restaurar consertou
-> `test_referencias_orfas` e **quebrou** `test_evento_referencia`: os dois testes
-> codificam regras **contraditórias** — o prefixo sai do TIPO do evento
-> (`atividade_concluida` + `content:12` → `atividade:12`) ou do VOCABULÁRIO da
-> referência (`content:` → `conteudo:`). Com a migração como terceira voz, isso
-> é decisão de design, não recuperação de arquivo; foi revertido.
+> **Este parágrafo já disse que `evento.py` era irrestaurável, e a conclusão
+> estava errada — por eu ter olhado só metade.** Restaurar o código consertava
+> `test_referencias_orfas` e quebrava `test_evento_referencia`, e eu li isso
+> como duas regras contraditórias pedindo decisão de design.
 >
-> Regra ao recuperar código perdido em merge: **restaure, rode a suíte inteira e
-> compare a lista de FAILED antes e depois**. Trocar uma falha por outra é
+> O que faltou olhar: **o sync reverteu o TESTE junto**. A versão pré-sync
+> chama-se `test_a_referencia_declarada_vence_o_tipo_do_evento` e diz, no
+> próprio docstring, que a regra antiga (o prefixo sai do TIPO) estava errada —
+> trocar `content:12` por `atividade:12` inventa uma atividade que pode não
+> existir, a view não resolve classe nenhuma e os pontos morrem ali. Medido:
+> **66 ids de referência órfãos**, 4 deles conteúdo do próprio aluno com o
+> prefixo trocado por esse caminho. A view passou a resolver pela FORMA da
+> referência em `20260910_06` — a migração que está **aplicada**.
+>
+> Ou seja: não havia conflito. O teste que estava na `main` era a regra
+> superada, trazida de volta pelo mesmo commit que apagou o código. Restaurar os
+> dois lados junto fecha a questão.
+>
+> **Recuperação parcial é a armadilha desta área.** `723a5f8` ("merge: main sem
+> perder o que o commit de sync apagou") já tinha devolvido
+> `test_referencias_orfas.py` inteiro — e deixado para trás `evento.py` e
+> `test_evento_referencia.py`. Um teste restaurado afirmando sobre uma constante
+> que ninguém restaurou falha de um jeito que parece defeito do teste.
+>
+> Regra ao recuperar código perdido em merge: **restaure o código E os testes
+> que o acompanham, do mesmo ponto da história**. Se o teste que resiste é
+> anterior ao código que você está restaurando, ele provavelmente também foi
+> revertido — confira antes de concluir que há conflito de design. E sempre
+> compare a lista de FAILED antes e depois: trocar uma falha por outra é
 > resultado, não conserto.
+
+> **O mesmo sync tinha revertido três correções com impacto medido, e todas
+> voltaram.** Varrendo as 8 falhas que sobravam no CI, as 8 vieram de
+> `1d7ce67`:
+>
+> - **`finalize_job` não varria os alvos.** `claim_next_job` reivindica job
+>   `pending`, `partial` ou `processing` — `failed` e `completed` não entram em
+>   nenhuma. Então alvo deixado em `pending`/`processing` quando o job termina
+>   **nunca mais é tocado**: nem worker, nem retentativa. Medido: 2 alvos
+>   parados havia duas semanas, e o tópico 128 repetindo com 6 alvos por vez.
+>   `partial` de propósito **não** varre — é o estado que a retomada reivindica.
+> - **A consulta de retomada era erro de sintaxe.**
+>   `media_snapshot_select.replace("media_snapshot", "j.media_snapshot")`
+>   trocava as DUAS ocorrências e gerava `j.media_snapshot AS j.media_snapshot`.
+>   `AS j.media_snapshot` não compila, então `list_resumable_jobs_by_payload`
+>   **nunca rodou** — e é ela que faz a retomada reaproveitar um ciclo aberto.
+>   Com ela quebrada, toda retentativa recomeçava do zero. O parâmetro `alias`
+>   sempre existiu na expressão e não era usado ali.
+> - **`await self.session.commit()` antes de `result.mappings().first()`.** Um
+>   `execute` novo na mesma sessão fecha o cursor anterior; a leitura vinha
+>   vazia.
+>
+> Ao reverter o efeito do sync num arquivo que você também alterou, use
+> `git apply -R -3` (merge de três vias) em vez de `git checkout <commit> --`:
+> o checkout apagaria o seu trabalho. O conflito aparece exatamente onde os dois
+> se encontram, e aí a escolha é consciente.
 
 > Lacuna real ainda aberta: `MentalStateHistoryRepository.listar_por_aluno`
 > (`api/app/repositories/mental_state.py`) só é exercitado em teste — o
