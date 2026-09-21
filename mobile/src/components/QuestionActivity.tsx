@@ -13,8 +13,18 @@ import { EssayValidationResult, validateEssayAnswerWithAi } from '@/utils/essayV
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Image, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { corrigirQuestaoNoServidor, mensagemDeErroDaCorrecao } from "@/services/questaoCorrecao";
-import { servidorCorrige, vereditoDaRevisao } from "@/utils/correcaoDaQuestao";
+import {
+  corrigirQuestaoNoServidor,
+  gabaritoJaLiberado,
+  mensagemDeErroDaCorrecao,
+} from "@/services/questaoCorrecao";
+import {
+  ERROS_PARA_REVELAR,
+  deveRevelarGabarito,
+  servidorCorrige,
+  vereditoDaRevisao,
+  vereditoLocal,
+} from "@/utils/correcaoDaQuestao";
 import { formatoDeRelacao } from "@/utils/formatosDeQuestao";
 import { identidadeDaQuestao, posicaoNaAtividade } from "@/utils/identidadeDaQuestao";
 import { QuestaoDeRelacao } from "@/components/questao/QuestaoDeRelacao";
@@ -529,6 +539,11 @@ export default function QuestionActivity({
   // RPC, ou seja, so DEPOIS de o aluno responder. Guardado por indice porque
   // a tela navega entre as questoes da atividade.
   const [gabaritoDoServidor, setGabaritoDoServidor] = useState<Record<number, string | null>>({});
+  // Erros ACUMULADOS por questao. Quem manda e o servidor (`questao_responder`
+  // devolve `erros` contando as tentativas ja gravadas, entao o numero
+  // sobrevive a fechar e reabrir o app); este estado espelha isso e serve de
+  // contagem local para a questao personalizada, que o servidor nao corrige.
+  const [errosPorQuestao, setErrosPorQuestao] = useState<Record<number, number>>({});
   const [, setFeedbackIA] = useState<Record<number, EssayValidationResult | null>>({});
   const [modalVisivel, setModalVisivel] = useState(false);
   const [modalInfo, setModalInfo] = useState<{ titulo: string; descricao: string; pontos?: number; acerto?: boolean }>({
@@ -758,6 +773,33 @@ export default function QuestionActivity({
     }
   }, [confirmados, stas, respondidaAntes, questaoIndex]);
 
+  // O que o aluno JA conquistou nesta questao: erros acumulados e, se ja
+  // liberado, o gabarito. Sem isto, quem errou duas vezes e fechou o app
+  // voltaria sem a resposta -- ela so viajava na resposta de
+  // `questao_responder`, e pedi-la de novo custaria uma tentativa falsa.
+  const questaoIdNumerico = Number(questao?.id);
+  const corrigidaNoServidor = servidorCorrige({
+    questaoId: questao?.id,
+    personalizada: isPersonalizedLocal,
+  });
+  useEffect(() => {
+    if (!corrigidaNoServidor || !respondidaAntes) return;
+    let vivo = true;
+    void gabaritoJaLiberado(questaoIdNumerico).then((veredito) => {
+      if (!vivo || !veredito) return;
+      setErrosPorQuestao((prev) => ({ ...prev, [questaoIndex]: veredito.erros }));
+      if (veredito.gabaritoLiberado) {
+        setGabaritoDoServidor((prev) => ({
+          ...prev,
+          [questaoIndex]: veredito.respostaCorreta,
+        }));
+      }
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [corrigidaNoServidor, respondidaAntes, questaoIdNumerico, questaoIndex]);
+
   if (!questao) {
     return (
       <View style={{ padding: 12 }}>
@@ -830,6 +872,17 @@ export default function QuestionActivity({
       : isTrueFalseActivity
       ? formatTrueFalseLabel(gabaritoBruto)
       : String(gabaritoBruto);
+  // Quantos erros faltam para o gabarito aparecer. Zero quando ele ja chegou,
+  // e zero tambem quando NAO HA gabarito a esperar -- questao personalizada
+  // sem gabarito no payload nunca vai revelar coisa nenhuma, e prometer que
+  // vai e pior que ficar calado.
+  const haGabaritoAEsperar =
+    servidorCorrige({ questaoId: questao?.id, personalizada: isPersonalizedLocal }) ||
+    gabaritoLocal != null;
+  const errosParaRevelar =
+    gabaritoBruto != null || !haGabaritoAEsperar
+      ? 0
+      : Math.max(0, ERROS_PARA_REVELAR - Number(errosPorQuestao[questaoIndex] ?? 0));
 
   return (
     <ScrollView
@@ -1225,6 +1278,20 @@ export default function QuestionActivity({
           let acertosPercentBase = 100;
           // Marcado quando o SERVIDOR corrigiu e ja gravou a tentativa.
           let registradoNoServidor = false;
+          // O que MOSTRAR. Diferente de `acertou`, que decide progressao e
+          // ponto: quando a tela nao tem gabarito nenhum contra o que comparar,
+          // o veredito e' `null` -- sem status e melhor que status errado,
+          // porque "errado" aqui e uma afirmacao sobre o que o aluno fez.
+          let vereditoDaVez: 'certo' | 'errado' | null = null;
+          // Erros acumulados nesta questao DEPOIS desta resposta. O servidor
+          // manda o numero dele; no caminho local a conta e daqui.
+          let errosDaQuestao = Number(errosPorQuestao[questaoIndex] ?? 0);
+          // A tela so tem contra o que comparar quando o gabarito veio no
+          // payload -- o que hoje so acontece na questao personalizada.
+          const temGabaritoNaTela =
+            isDissertativaActivity || isFillBlankActivity
+              ? acceptedAnswers.length > 0
+              : questao?.resposta_correta != null;
           let resultadoIA: EssayValidationResult | null = null;
           if (isDissertativaActivity && respostaDigitada) {
             setValidandoIA(true);
@@ -1246,6 +1313,8 @@ export default function QuestionActivity({
             } finally {
               setValidandoIA(false);
             }
+            vereditoDaVez = acertou ? 'certo' : 'errado';
+            if (!acertou) errosDaQuestao += 1;
             setFeedbackIA((prev) => ({ ...prev, [questaoIndex]: resultadoIA }));
           } else if (
             !servidorCorrige({ questaoId: questao?.id, personalizada: isPersonalizedLocal })
@@ -1269,9 +1338,24 @@ export default function QuestionActivity({
             // negativo -> `questao_inexistente` -> resposta abortada), e a que
             // herdou o id e uma reescrita, entao corrigir pela letra/indice do
             // professor daria veredito errado com cara de certo.
-            acertou = isFillBlankActivity
-              ? checkResposta(respostaSelecionada, -1)
-              : checkResposta(alternativas[escolhido ?? -1], escolhido ?? -1);
+            // E corrige com `vereditoLocal`, nao com `checkResposta` cru:
+            // `checkResposta` devolve `false` quando NAO HA gabarito, e `false`
+            // e uma afirmacao sobre o que o aluno fez. Medido: 0 das 55 linhas
+            // de `conteudo_personalizado` tem `resposta_correta` em `plano`,
+            // `materiais` ou `ai_patch` -- ou seja, neste caminho o gabarito
+            // nunca existe hoje, e a tela reprovava TODA resposta.
+            vereditoDaVez = vereditoLocal({
+              temGabarito: temGabaritoNaTela,
+              acertouLocalmente: () =>
+                isFillBlankActivity
+                  ? checkResposta(respostaSelecionada, -1)
+                  : checkResposta(alternativas[escolhido ?? -1], escolhido ?? -1),
+            });
+            // Sem veredito, nao reprova: a falta de gabarito e defeito do
+            // material, nao erro do aluno, e travar a questao faria o oposto do
+            // que corrigir na tela existe para evitar.
+            acertou = vereditoDaVez !== 'errado';
+            if (vereditoDaVez === 'errado') errosDaQuestao += 1;
             acertosPercentBase = acertou ? 100 : 0;
           } else {
             // QUEM CORRIGE E O SERVIDOR. O gabarito nao chega mais ao cliente
@@ -1286,10 +1370,20 @@ export default function QuestionActivity({
                 tempoGastoSeg: medirLatenciaDaTentativa(),
               });
               acertou = veredito.correta;
-              setGabaritoDoServidor((prev) => ({
-                ...prev,
-                [questaoIndex]: veredito.respostaCorreta,
-              }));
+              vereditoDaVez = acertou ? 'certo' : 'errado';
+              // O numero de erros vem do SERVIDOR, nao de um contador da tela:
+              // ele conta as tentativas ja gravadas, entao fechar e reabrir o
+              // app nao zera o caminho para a revelacao.
+              errosDaQuestao = veredito.erros;
+              // So guarda o gabarito quando o servidor liberou. Antes disso ele
+              // chega nulo -- de proposito: esconder na tela deixaria o valor no
+              // trafego, e o aluno le o trafego.
+              if (veredito.gabaritoLiberado) {
+                setGabaritoDoServidor((prev) => ({
+                  ...prev,
+                  [questaoIndex]: veredito.respostaCorreta,
+                }));
+              }
               registradoNoServidor = true;
             } catch (err) {
               console.warn('[QuestionActivity] Falha ao corrigir no servidor:', err);
@@ -1310,14 +1404,28 @@ export default function QuestionActivity({
             : reResponder
             ? Math.round(acertosPercentBase * 0.5)
             : Math.round(acertosPercentBase);
-          setStas((prev) => ({ ...prev, [questaoIndex]: acertou ? 'certo' : 'errado' }));
+          setStas((prev) => ({ ...prev, [questaoIndex]: vereditoDaVez }));
           setConfirmados((prev) => ({ ...prev, [questaoIndex]: true }));
+          setErrosPorQuestao((prev) => ({ ...prev, [questaoIndex]: errosDaQuestao }));
           if (isFillBlankActivity || isDissertativaActivity) {
             setRespostasTexto((prev) => ({ ...prev, [questaoIndex]: respostaSelecionada }));
           }
           setReResponder(false)
-          setMostrarResposta(isImediato ? true : false)
-          if (!acertou && isImediato) {
+          // A REGRA DA REVELACAO, e ela vale nos dois modos: o gabarito aparece
+          // ao acertar, ou a partir do SEGUNDO erro. Antes disto o imediato
+          // revelava ja no primeiro erro e o pensante nao revelava nunca
+          // sozinho -- insistir sem saber onde errou nao ensina nada, e
+          // entregar no primeiro erro tira a segunda tentativa de quem quase
+          // acertou. Quem decide de verdade e o servidor: ele so MANDA o
+          // gabarito quando liberado.
+          const revelar = deveRevelarGabarito({
+            errosNaQuestao: errosDaQuestao,
+            acertou,
+          });
+          setMostrarResposta(revelar);
+          // "Viu a resposta" custa ponto na proxima tentativa, entao so marca
+          // quando o gabarito foi de fato revelado sem o aluno ter acertado.
+          if (revelar && !acertou) {
             setViuRespostas((prev) => ({ ...prev, [questaoIndex]: true }));
           }
 
@@ -1626,6 +1734,20 @@ export default function QuestionActivity({
       {podeVerGabarito && gabaritoExibido != null && (
         <Text style={{ marginTop: 6, color: profilePalette.textMuted, fontFamily: FontFamily.interMedium }}>
           Gabarito: {gabaritoExibido}
+        </Text>
+      )}
+
+      {/* "Ainda nao" e "nao existe" sao coisas diferentes, e calar as duas
+          deixa o aluno achando que o app engoliu a resposta. Esta linha so
+          aparece enquanto FALTA erro para a revelacao -- quando o gabarito nao
+          existe mesmo (questao personalizada sem gabarito), `errosParaRevelar`
+          nao se aplica e a tela continua calada em vez de prometer algo que
+          nao vai chegar. */}
+      {podeVerGabarito && gabaritoExibido == null && errosParaRevelar > 0 && (
+        <Text style={{ marginTop: 6, color: profilePalette.textMuted, fontFamily: FontFamily.interMedium }}>
+          {errosParaRevelar === 1
+            ? 'Mais um erro e eu mostro a resposta.'
+            : `Mais ${errosParaRevelar} erros e eu mostro a resposta.`}
         </Text>
       )}
 

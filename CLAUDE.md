@@ -1095,6 +1095,65 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 > divergir dele. Sem veredito gravado e sem gabarito local, `vereditoDaRevisao`
 > devolve `null`: **sem status é melhor que status errado**, porque "errado"
 > aqui é uma afirmação sobre o que o aluno fez.
+>
+> **A QUARTA perna, e ela estava na hora de responder, não só ao reabrir.**
+> `checkResposta` tem `if (correto == null) return false` na primeira linha
+> útil — ou seja, **falta de gabarito virava reprovação**. É o mesmo defeito
+> que o parágrafo acima descreve como corrigido, no caminho vizinho: a
+> correção sobreviveu na revisão e não na resposta.
+>
+> Isso importa porque o único caminho que ainda corrige na tela é o do material
+> personalizado, e lá o gabarito **nunca existe**: medido, **0 das 55 linhas**
+> de `conteudo_personalizado` têm `resposta_correta` em `plano`, `materiais`
+> ou `ai_patch`. Enquanto o pipeline não gerar questão personalizada, o
+> caminho é dormente; no dia em que gerar, toda resposta seria reprovada.
+> Hoje a decisão passa por `vereditoLocal`, que devolve `null` sem gabarito, e
+> `null` **não bloqueia o aluno** — travar a questão faria o oposto do que
+> corrigir na tela existe para evitar.
+>
+> **E o gabarito agora tem preço: acertar, ou errar DUAS vezes** (`20260921_05`).
+> `questao_responder` devolvia `resposta_correta` em toda chamada — medido,
+> `questao_responder(1065,'COMA')` respondia `{"correta": false,
+> "resposta_correta": "UMA"}` na PRIMEIRA tentativa. Errar uma vez entregava a
+> resposta, e entregava no **payload**, que a tela não consegue desfazer:
+> esconder na interface deixa o valor no tráfego, exatamente o modo de falha
+> que a `20260921_01` fechou para a coluna.
+>
+> Quatro coisas que não são acidentais:
+>
+> 1. **A regra mora no servidor.** Cliente não esconde o que já recebeu. A
+>    tela tem a mesma conta (`deveRevelarGabarito`), mas só para saber o que
+>    dizer enquanto espera.
+> 2. **Conta ERRO, não tentativa.** `tentativa` cresce também quando o aluno
+>    acerta e volta para revisar; usá-la faria a segunda visita a uma questão
+>    já acertada parecer o segundo erro. O que a regra pesa é dificuldade, e
+>    dificuldade se mede em erro.
+> 3. **`gabarito_liberado` é campo próprio, não `resposta_correta IS NOT NULL`.**
+>    Questão sem linha em `questao_gabarito` também devolve nulo, e "ainda não"
+>    é uma mensagem diferente de "não existe" — sem o campo a tela anunciaria
+>    ausência de gabarito para quem só precisa errar mais uma vez.
+> 4. **`questao_gabarito_do_aluno` existe por causa do fechar-e-abrir.** O
+>    valor só viajava na resposta da RPC; quem errou duas vezes e fechou o app
+>    perderia o que conquistou, e pedir de novo por `questao_responder`
+>    gravaria uma tentativa falsa. A nova RPC só **lê** o que está gravado e
+>    aplica a mesma regra.
+>
+> Medido depois, com o JWT do aluno, em transação revertida: 1º erro →
+> `{erros: 1, gabarito_liberado: false, resposta_correta: null}`; 2º erro →
+> `{erros: 2, gabarito_liberado: true, resposta_correta: "UMA"}`; acerto →
+> libera na hora. `anon` chamando a nova RPC leva 42501.
+>
+> **Corolário operacional que custou caro: a `20260921_01` só pode subir junto
+> com o app.** Ela tirou o `SELECT` de `questoes.resposta_correta` de
+> `authenticated`, e a versão publicada do app corrigia localmente lendo essa
+> coluna. Com a migração aplicada e o app antigo em campo, o cliente compara
+> contra `null` e **toda** resposta vira erro — foi exatamente o que apareceu
+> em produção. Medido: `questao_resposta_correta` chega `<NULL>` na
+> `vw_aluno_classe_detalhado` para o aluno, e `SELECT q.*` como
+> `authenticated` estoura com `42501: permission denied for table questoes`
+> (o grant é coluna a coluna, então `select=*` do PostgREST não passa mais).
+> Migração que tira dado do payload é **quebra de contrato com o cliente
+> publicado**: ou sai junto com o build, ou fica na gaveta.
 
 > **Sete formatos de questão, e os três novos pedem relação.** A base tinha
 > quatro — `multipla` 21, `verdadeiro_falso` 14, `fill_blank` 13, `dissertativa`

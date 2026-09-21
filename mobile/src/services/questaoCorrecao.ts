@@ -16,7 +16,18 @@ import { supabase } from "@/database/supabase";
 export type VereditoDaQuestao = {
   correta: boolean;
   tentativa: number;
-  /** Só chega depois de responder. */
+  /** Erros ACUMULADOS nesta questão, já contando o desta resposta. */
+  erros: number;
+  /**
+   * O servidor liberou o gabarito? Ele libera ao acertar ou no SEGUNDO erro
+   * (`20260921_05`).
+   *
+   * É campo próprio, e não `respostaCorreta !== null`, porque questão sem
+   * linha em `questao_gabarito` também devolve nulo — e as duas coisas dizem
+   * mensagens diferentes na tela: "ainda não" contra "não existe".
+   */
+  gabaritoLiberado: boolean;
+  /** Só chega quando liberado — antes disso nem viaja na rede. */
   respostaCorreta: string | null;
 };
 
@@ -33,11 +44,20 @@ export async function corrigirQuestaoNoServidor(params: {
   if (error) throw error;
 
   const linha = (data ?? {}) as Record<string, unknown>;
+  const respostaCorreta =
+    typeof linha.resposta_correta === "string" ? linha.resposta_correta : null;
   return {
     correta: linha.correta === true,
     tentativa: Number(linha.tentativa) || 1,
-    respostaCorreta:
-      typeof linha.resposta_correta === "string" ? linha.resposta_correta : null,
+    erros: Number(linha.erros) || 0,
+    // Servidor antigo (antes da `20260921_05`) não manda o campo e mandava o
+    // gabarito sempre. Deduzir dele mantém a tela funcionando contra as duas
+    // versões em vez de esconder um gabarito que já chegou.
+    gabaritoLiberado:
+      typeof linha.gabarito_liberado === "boolean"
+        ? linha.gabarito_liberado
+        : respostaCorreta !== null,
+    respostaCorreta,
   };
 }
 
@@ -48,4 +68,36 @@ export function mensagemDeErroDaCorrecao(erro: unknown): string {
   if (texto.includes("questao_inexistente")) return "Esta questão não existe mais.";
   if (texto.includes("questao_sem_sessao")) return "Sua sessão expirou. Entre de novo.";
   return "Não foi possível registrar sua resposta agora.";
+}
+
+/**
+ * O gabarito que o aluno JÁ ganhou, sem gastar uma tentativa.
+ *
+ * `questao_responder` só devolve o gabarito na resposta da chamada. Quem errou
+ * duas vezes, fechou o app e voltou perderia o que já tinha conquistado — e a
+ * tela não tem como pedir de novo sem responder outra vez, o que gravaria uma
+ * tentativa falsa em `questao_aluno`.
+ *
+ * Esta RPC só LÊ o que já está gravado e aplica a mesma regra do lado de lá
+ * (`20260921_05`). Não insere nada.
+ */
+export async function gabaritoJaLiberado(questaoId: number): Promise<VereditoDaQuestao | null> {
+  const { data, error } = await supabase.rpc("questao_gabarito_do_aluno", {
+    p_questao_id: questaoId,
+  });
+  // Sem sessão, sem matrícula, ou servidor ainda sem a RPC: a tela segue sem
+  // gabarito, que é o estado em que ela já sabe ficar. Silencioso de propósito
+  // — isto roda ao ABRIR a questão, e um alerta aqui interromperia o aluno por
+  // algo que não o impede de responder.
+  if (error) return null;
+
+  const linha = (data ?? {}) as Record<string, unknown>;
+  return {
+    correta: linha.correta === true,
+    tentativa: Number(linha.tentativa) || 0,
+    erros: Number(linha.erros) || 0,
+    gabaritoLiberado: linha.gabarito_liberado === true,
+    respostaCorreta:
+      typeof linha.resposta_correta === "string" ? linha.resposta_correta : null,
+  };
 }

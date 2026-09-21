@@ -68,3 +68,54 @@ export function vereditoDaRevisao(params: {
   if (!params.podeCorrigirLocalmente) return null;
   return params.acertouLocalmente() ? "certo" : "errado";
 }
+
+/**
+ * O veredito de uma resposta que a TELA teve de corrigir.
+ *
+ * `checkResposta` devolvia `false` quando não havia gabarito — e `false` é uma
+ * afirmação sobre o que o aluno fez. Medido na base: **0 das 55 linhas** de
+ * `conteudo_personalizado` têm `resposta_correta` em `plano`, `materiais` ou
+ * `ai_patch`. Ou seja, no único caminho que corrige na tela o gabarito nunca
+ * existe, e a tela reprovava **toda** resposta — "não importa o que você
+ * responde, sempre dá erro" na forma mais literal possível.
+ *
+ * Sem gabarito a resposta certa é `null`: sem status é melhor que status
+ * errado. É a mesma regra de `vereditoDaRevisao`, e agora ela vale também na
+ * hora de responder, não só ao reabrir.
+ *
+ * `null` **não** bloqueia o aluno: quem chama trata como respondida e segue.
+ * Travar a questão faria o oposto do que a decisão de corrigir na tela existe
+ * para evitar — que a questão fique impossível de responder.
+ */
+export function vereditoLocal(params: {
+  temGabarito: boolean;
+  acertouLocalmente: () => boolean;
+}): "certo" | "errado" | null {
+  if (!params.temGabarito) return null;
+  return params.acertouLocalmente() ? "certo" : "errado";
+}
+
+/** Quantos ERROS liberam o gabarito. Espelha `questao_responder`. */
+export const ERROS_PARA_REVELAR = 2;
+
+/**
+ * Mostrar o gabarito agora?
+ *
+ * Conta ERRO, não tentativa: `tentativa` cresce também quando o aluno acerta e
+ * volta para revisar, e usar esse número faria a segunda visita a uma questão
+ * já acertada parecer o segundo erro. O que a regra pesa é dificuldade, e
+ * dificuldade se mede em erro.
+ *
+ * Quem decide de verdade é o servidor — ele só MANDA o gabarito quando
+ * liberado, porque esconder na tela deixaria o valor no tráfego. Esta função é
+ * a mesma conta do lado do cliente, para a questão personalizada (que o
+ * servidor não corrige) e para a tela saber o que dizer enquanto não há
+ * gabarito: "erre de novo e eu mostro" é diferente de "não há gabarito".
+ */
+export function deveRevelarGabarito(params: {
+  errosNaQuestao: number;
+  acertou: boolean;
+}): boolean {
+  if (params.acertou) return true;
+  return Number(params.errosNaQuestao) >= ERROS_PARA_REVELAR;
+}
