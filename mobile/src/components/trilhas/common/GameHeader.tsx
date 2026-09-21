@@ -1,8 +1,6 @@
 // src/components/trilhas/common/GameHeader.tsx
 import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { ProfileShellPalette } from "@/utils/profileShellTheme";
-import { designStar } from "@/constants/designAssets";
-import { ProfileArtwork } from "@/components/ProfileArtwork";
 import { Design } from "@/styles/design";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
@@ -42,10 +40,6 @@ export const GameHeader = ({
           : null,
       ]}
     >
-      <View style={s.brandRow}>
-        <ProfileArtwork source={designStar} color={palette?.accent ?? Design.primary} width={22} />
-        <Text style={[s.brand, { color: palette?.accent ?? Design.primary }]}>TrailUp</Text>
-      </View>
       <View style={s.titleRow}>
         <View style={s.titleBlock}>
           {subtitulo ? (
@@ -100,9 +94,6 @@ const s = StyleSheet.create({
     borderBottomWidth: 1,
     borderColor: Color.colorDarkslategray,
   },
-  brandRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  brandMark: { width: 22, height: 22 },
-  brand: { fontFamily: FontFamily.inikaBold, fontSize: 15, color: Design.gold },
   titleRow: {
     flexDirection: "row",
     alignItems: "flex-start",

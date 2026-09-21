@@ -7,8 +7,8 @@ import {
   SectionGuideButton,
   type SectionGuideStep,
 } from "@/components/SectionGuideButton";
-import { journeyObjects } from "@/constants/designAssets";
-import { ProfileArtwork } from "@/components/ProfileArtwork";
+import { JourneySymbol } from "@/components/JourneySymbol";
+import { UtilityIcon } from "@/components/UtilityIcon";
 import { useConquistaRank } from "@/context/ConquistaRankContext";
 import { useUsuario } from "@/context/SessaoContext";
 import { FontFamily } from "@/styles/GlobalStyle";
@@ -100,13 +100,7 @@ export default function RankingHome() {
                 targetRefs={targets}
               />
             </View>
-            <ProfileArtwork
-              source={journeyObjects.trophy}
-              profile={profile}
-              width={94}
-              height={104}
-              style={s.trophy}
-            />
+            <View style={s.trophy}><JourneySymbol section="ranking" size={80} /></View>
             <Text style={[s.title, { color: palette.text }]}>
               Sala de honra
             </Text>
@@ -117,19 +111,18 @@ export default function RankingHome() {
           </View>
           <View ref={categoriesRef} collapsable={false} style={s.categories}>
             {ranks.map((rank, index) => {
-              const wide = ranks.length % 2 !== 0 && index === ranks.length - 1;
               const artwork =
                 rank.info.criterio === "tempo"
-                  ? journeyObjects.deadline
+                  ? "deadline"
                   : rank.info.criterio === "percentual"
-                    ? journeyObjects.book
-                    : journeyObjects.gold;
+                    ? "book"
+                    : "medal";
               return (
                 <View
                   ref={index === 0 ? sampleRef : undefined}
                   collapsable={false}
                   key={rank.info.rank_id}
-                  style={wide ? s.full : s.half}
+                  style={s.full}
                 >
                   <Pressable
                     accessibilityRole="button"
@@ -142,7 +135,6 @@ export default function RankingHome() {
                     }
                     style={({ pressed }) => [
                       s.category,
-                      wide && s.categoryWide,
                       {
                         borderColor: palette.borderStrong,
                         backgroundColor: pressed
@@ -153,24 +145,21 @@ export default function RankingHome() {
                   >
                     <Corner pos="TL" color={palette.accent} />
                     <Corner pos="BR" color={palette.accent} />
-                    <ProfileArtwork
-                      source={artwork}
-                      profile={profile}
-                      width={wide ? 70 : 86}
-                      height={wide ? 78 : 92}
-                      style={wide ? s.wideArt : s.categoryArt}
+                    <UtilityIcon
+                      kind={artwork}
+                      size={60}
+                      height={68}
                     />
-                    <View style={wide ? s.wideCopy : s.copy}>
+                    <View style={s.copy}>
                       <Text
                         style={[
                           s.categoryTitle,
                           { color: palette.text },
-                          wide && s.leftText,
                         ]}
                       >
                         {rank.info.nome_rank}
                       </Text>
-                      {wide ? (
+                      {rank.info.descricao ? (
                         <Text
                           style={[s.description, { color: palette.textMuted }]}
                         >
@@ -213,38 +202,33 @@ const s = StyleSheet.create({
     paddingTop: 8,
   },
   eyebrow: { fontSize: 11, fontWeight: "700" },
-  trophy: { width: 94, height: 104, marginTop: 4, marginBottom: 8 },
+  trophy: { marginVertical: 10 },
   title: { fontFamily: FontFamily.inikaBold, fontSize: 28 },
-  subtitle: { fontSize: 13, marginTop: 6, marginBottom: 16 },
+  subtitle: { fontSize: 14, marginTop: 6, marginBottom: 12 },
   categories: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
     rowGap: 14,
   },
-  half: { width: "48%" },
   full: { width: "100%" },
   category: {
-    minHeight: 220,
+    flexDirection: "row",
+    minHeight: 112,
     borderWidth: 1,
     borderRadius: 6,
-    padding: 18,
+    padding: 14,
     alignItems: "center",
     justifyContent: "space-between",
     gap: 14,
   },
-  categoryWide: { flexDirection: "row", minHeight: 128, gap: 14 },
-  categoryArt: { width: 86, height: 92 },
-  wideArt: { width: 70, height: 78 },
-  copy: { flex: 1, justifyContent: "center" },
-  wideCopy: { flex: 1, minWidth: 0 },
+  copy: { flex: 1, minWidth: 0, justifyContent: "center" },
   categoryTitle: {
     fontFamily: FontFamily.inikaBold,
     fontSize: 19,
     lineHeight: 25,
-    textAlign: "center",
+    textAlign: "left",
   },
-  leftText: { textAlign: "left" },
-  description: { fontSize: 12, lineHeight: 18, marginTop: 6 },
+  description: { fontSize: 14, lineHeight: 20, marginTop: 6 },
   empty: { marginTop: 40, textAlign: "center" },
 });

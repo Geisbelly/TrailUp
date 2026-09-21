@@ -31,7 +31,6 @@ import {
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import { JourneyHeading } from '@/components/JourneyHeading';
-import { journeyObjects } from '@/constants/designAssets';
 
 type FilterTab = "todas" | "nao_lidas" | "lidas";
 
@@ -238,7 +237,7 @@ export default function PerfilHome() {
           ref={notificationsHeaderGuideRef}
           collapsable={false}
         >
-          <JourneyHeading title="Notificações" eyebrow="CAIXA DE ENTRADA" artwork={journeyObjects.bell} palette={palette} right={<SectionGuideButton
+          <JourneyHeading title="Notificações" eyebrow="CAIXA DE ENTRADA" section="notifications" palette={palette} right={<SectionGuideButton
             profile={usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome}
             sectionTitle="Notificações"
             steps={notificationsGuideSteps}
@@ -286,7 +285,7 @@ export default function PerfilHome() {
               scrollOffsetRef.current = e.nativeEvent.contentOffset.y;
             }}
           data={data}
-          keyExtractor={(n) => String(n.id)}
+          keyExtractor={(n, index) => `${n.id}-${index}`}
           style={{ flex: 1, alignSelf: "stretch" }}
           renderItem={renderRow}
           ItemSeparatorComponent={() => (

@@ -1,6 +1,7 @@
 import { FramedProfileImage } from "@/components/FramedProfileImage";
-import { ProfileArtwork } from "@/components/ProfileArtwork";
-import { journeyObjects } from "@/constants/designAssets";
+import { JourneySymbol } from "@/components/JourneySymbol";
+import { ProfileEmblem } from "@/components/ProfileEmblem";
+import { UtilityIcon } from "@/components/UtilityIcon";
 import { FontFamily } from "@/styles/GlobalStyle";
 import type { ProfileShellPalette } from "@/utils/profileShellTheme";
 import type { RankingProfileMeta } from "@/utils/rankingProfiles";
@@ -22,11 +23,6 @@ type Props = {
   profiles: Record<string, RankingProfileMeta>;
   photos: Record<string, string>;
 };
-const medals = [
-  journeyObjects.gold,
-  journeyObjects.silver,
-  journeyObjects.bronze,
-];
 
 export function RankingPodium({
   rows,
@@ -40,13 +36,7 @@ export function RankingPodium({
   if (!leaders.length)
     return (
       <View style={s.empty}>
-        <ProfileArtwork
-          source={journeyObjects.trophy}
-          profile={palette.profile}
-          width={84}
-          height={92}
-          style={s.emptyArt}
-        />
+        <JourneySymbol section="ranking" size={84} />
         <Text style={[s.emptyTitle, { color: palette.text }]}>
           O pódio está em aberto
         </Text>
@@ -60,7 +50,7 @@ export function RankingPodium({
         {columns.map((row) => {
           const position = row.posicao!;
           const winner = position === 1;
-          const color = palette.accent;
+          const color = palette.text;
           const size = winner ? 88 : 66;
           const profile = profiles[row.id_aluno]?.key;
           const photo = photos[row.id_aluno];
@@ -105,19 +95,20 @@ export function RankingPodium({
                     </Text>
                   </View>
                 )}
-                <ProfileArtwork
-                  source={medals[position - 1]}
+                <UtilityIcon
+                  kind="medal"
                   profile={palette.profile}
-                  width={36}
+                  size={44}
                   style={s.medal}
                 />
               </View>
-              <Text numberOfLines={2} style={[s.name, { color: palette.text }]}>
+              <Text style={[s.name, { color: palette.text }]}>
                 {row.nome_aluno}
               </Text>
               <Text style={[s.score, { color }]}>
                 {formatRankScore(row.pontuacao, criterion)}
               </Text>
+              <ProfileEmblem profile={profile} toneProfile={palette.profile} size={44} />
               <View style={s.pedestal}>
                 <Svg
                   width="100%"
@@ -161,6 +152,7 @@ export function RankingPodium({
           <Text style={[s.tiePlace, { color: palette.accent }]}>
             {row.posicao}º
           </Text>
+          <ProfileEmblem profile={profiles[row.id_aluno]?.key} toneProfile={palette.profile} size={40} />
           <Text style={[s.tieName, { color: palette.text }]}>
             {row.nome_aluno}
           </Text>
@@ -184,7 +176,7 @@ const s = StyleSheet.create({
   portrait: {
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 18,
+    marginBottom: 28,
   },
   initialsCircle: {
     borderWidth: 2,
@@ -193,23 +185,24 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
   initials: { fontFamily: FontFamily.inikaBold, fontSize: 22 },
-  medal: { width: 36, height: 36, position: "absolute", bottom: -14 },
+  medal: { width: 44, height: 44, position: "absolute", bottom: -22 },
   name: {
     paddingHorizontal: 4,
     minHeight: 40,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "600",
-    lineHeight: 19,
+    lineHeight: 20,
     textAlign: "center",
   },
   score: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: "700",
     marginTop: 7,
     marginBottom: 10,
     textAlign: "center",
   },
   pedestal: {
+    marginTop: 8,
     width: "100%",
     height: 64,
     alignItems: "center",

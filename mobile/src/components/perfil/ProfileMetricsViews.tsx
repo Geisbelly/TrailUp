@@ -8,6 +8,7 @@ import { BrainHexProfile, getBrainHexConfig } from "@/constants/profileImages";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { MetricsThemeResolved, getMetricsThemeOption } from "@/utils/profileMetricThemes";
 import { ProfileMetricsViewModel } from "./profileMetricsViewModel";
+import { formatStudyMinutes as formatMinutes } from '@/utils/studyTimeFormat';
 import { buildProfileShellPaletteFromAccent } from "@/utils/profileShellTheme";
 
 const CHART_W = 280;
@@ -48,14 +49,6 @@ function guideRef(guideRefs: ProfileMetricsGuideRefs, id: string) {
 
 function formatPercent(value?: number | null) {
   return `${Math.round(Number(value ?? 0))}%`;
-}
-
-function formatMinutes(value?: number | null) {
-  const minutes = Math.max(0, Math.round(Number(value ?? 0)));
-  if (minutes < 60) return `${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  return rest > 0 ? `${hours}h ${rest}min` : `${hours}h`;
 }
 
 function formatLastEvent(value?: string | null) {
@@ -387,7 +380,7 @@ function TimeDistributionBars({
   const BAR_H = 16;
   const GAP = 14;
   const LABEL_W = 76;
-  const BAR_AREA = CHART_W - LABEL_W;
+  const BAR_AREA = CHART_W - LABEL_W - 82;
   const maxVal = Math.max(tempoTopico, tempoConteudo, tempoAtividade, 1);
   const bars = [
     { label: "Tópico", value: tempoTopico, color: accent },
@@ -927,8 +920,8 @@ function TempoEstudoSection({ vm, palette, accent, targetRef }: { vm: ProfileMet
         title="Tempo de estudo"
         subtitle={
           vm.temTempoAcumulado
-            ? "Tempo acumulado por tipo de material, e o ritmo desta sessão."
-            : "Tempo médio ativo por tipo de conteúdo nesta sessão."
+            ? "Tempo acumulado na turma. Conteúdos e atividades já estão incluídos no tempo dos tópicos."
+            : "Tempo ativo no intervalo recente de estudo."
         }
         icon="timer-outline"
         palette={palette}
@@ -944,9 +937,9 @@ function TempoEstudoSection({ vm, palette, accent, targetRef }: { vm: ProfileMet
 
       {vm.hasSessionMetrics ? (
         <View style={s.statRow}>
-          <StatTile icon="timer-outline" label="Tópicos (sessão)" value={formatSeconds(vm.tempoTopico)} palette={palette} accent={accent} />
-          <StatTile icon="book-open-outline" label="Conteúdos (sessão)" value={formatSeconds(vm.tempoConteudo)} palette={palette} accent={accent} />
-          <StatTile icon="pencil-outline" label="Atividades (sessão)" value={formatSeconds(vm.tempoAtividade)} palette={palette} accent={accent} />
+          <StatTile icon="timer-outline" label="Tópicos (recente)" value={formatSeconds(vm.tempoTopico)} palette={palette} accent={accent} />
+          <StatTile icon="book-open-outline" label="Conteúdos (recente)" value={formatSeconds(vm.tempoConteudo)} palette={palette} accent={accent} />
+          <StatTile icon="pencil-outline" label="Atividades (recente)" value={formatSeconds(vm.tempoAtividade)} palette={palette} accent={accent} />
         </View>
       ) : null}
     </SurfaceCard>
@@ -1170,11 +1163,11 @@ function GoalsDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dashboar
               />
             </View>
           </SurfaceCard>
-          {vm.hasSessionMetrics && (
+          {vm.temTempoAcumulado && (
             <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "goals-time")}>
-              <SectionTitle title="Tempo investido por tipo" subtitle="Distribuição do tempo ativo nesta sessão." icon="clock-check-outline" palette={palette} />
+              <SectionTitle title="Tempo investido por tipo" subtitle="Tempo acumulado na turma, sem somar escopos sobrepostos." icon="clock-check-outline" palette={palette} />
               <View style={s.chartWrap}>
-                <TimeDistributionBars tempoTopico={vm.tempoTopico} tempoConteudo={vm.tempoConteudo} tempoAtividade={vm.tempoAtividade} accent={accent} palette={palette} />
+                <TimeDistributionBars tempoTopico={Math.round(vm.tempoTopicoAcumuladoMin * 60)} tempoConteudo={Math.round(vm.tempoConteudoAcumuladoMin * 60)} tempoAtividade={Math.round(vm.tempoAtividadeAcumuladoMin * 60)} accent={accent} palette={palette} />
               </View>
               {vm.materialFocadoTipo ? (
                 <Text style={[s.storyBody, { color: palette.muted }]}>
@@ -1377,7 +1370,7 @@ function AnalyticsDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dash
           </SurfaceCard>
           {vm.hasSessionMetrics && (
             <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "analytics-session")}>
-              <SectionTitle title="Análise da sessão" subtitle="Distribuição de tempo ativo por entidade de estudo." icon="chart-timeline-variant" palette={palette} />
+              <SectionTitle title="Intervalo recente" subtitle="Tempo ativo do último intervalo registrado, não da sessão inteira." icon="chart-timeline-variant" palette={palette} />
               <EngagementBar activeSec={vm.sessionActiveSec} idleSec={vm.sessionIdleSec} accent={accent} palette={palette} />
               <View style={[s.chartWrap, { marginTop: 14 }]}>
                 <TimeDistributionBars tempoTopico={vm.tempoTopico} tempoConteudo={vm.tempoConteudo} tempoAtividade={vm.tempoAtividade} accent={accent} palette={palette} />

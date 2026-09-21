@@ -67,7 +67,7 @@ const NotificationItem = memo(function NotificationItem({
         <MaterialCommunityIcons
           name={read ? "email-open-outline" : "email-outline"}
           size={21}
-          color={read ? palette.textSubtle : palette.accent}
+          color="#ffffff"
         />
       </View>
       <View style={s.content}>

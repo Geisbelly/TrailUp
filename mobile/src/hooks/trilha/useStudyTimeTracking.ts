@@ -1,201 +1,80 @@
-import { MutableRefObject, useCallback, useEffect, useRef } from "react";
-import { AppState } from "react-native";
+import { useCallback, useEffect, useRef } from 'react';
+import { AppState } from 'react-native';
+import type { ProgressoItemPersonalizado, StudyBlockSnapshot } from './types';
+import { StudyClock, type StudyInterval } from '@/utils/studyClock';
 
-import type { ProgressoItemPersonalizado, StudyBlockSnapshot } from "@/hooks/trilha/types";
-
-const ACTIVE_STUDY_FLUSH_INTERVAL_MS = 60_000;
-
-export function useStudyTimeTracking(args: {
-  currentStudyBlockSignature: Omit<StudyBlockSnapshot, "startedAtMs"> | null;
-  registrarTempoTopico: (topicoId: number, min: number) => Promise<void>;
-  registrarTempoConteudo: (topicoId: number, conteudoId: number, min: number) => Promise<void>;
-  registrarTempoAtividade: (topicoId: number, atividadeId: number, min: number) => Promise<void>;
-  registrarTempoDireto: (
-    topicoId: number,
-    conteudoId: number | null,
-    atividadeId: number | null,
-    min: number
-  ) => Promise<void>;
+type Args = {
+  currentStudyBlockSignature: Omit<StudyBlockSnapshot, 'startedAtMs'> | null;
+  registrarTempoTopico: (id: number, min: number) => Promise<void>;
+  registrarTempoConteudo: (topico: number, conteudo: number, min: number) => Promise<void>;
+  registrarTempoAtividade: (topico: number, atividade: number, min: number) => Promise<void>;
+  registrarTempoDireto: (topico: number, conteudo: number | null, atividade: number | null, min: number) => Promise<void>;
   salvarProgressoItemPersonalizado: (payload: ProgressoItemPersonalizado) => Promise<void>;
   reloadRanking: () => void;
   telemetrySessionActive: boolean;
-}): {
-  activeStudyBlockRef: MutableRefObject<StudyBlockSnapshot | null>;
-  persistElapsedStudyBlock: (snap: StudyBlockSnapshot | null) => Promise<void>;
-} {
-  const {
-    currentStudyBlockSignature,
-    registrarTempoTopico,
-    registrarTempoConteudo,
-    registrarTempoAtividade,
-    registrarTempoDireto,
-    salvarProgressoItemPersonalizado,
-    reloadRanking,
-    telemetrySessionActive,
-  } = args;
+  flushTelemetryTime: () => Promise<unknown>;
+};
 
-  const activeStudyBlockRef = useRef<StudyBlockSnapshot | null>(null);
-
-  const persistElapsedStudyBlock = useCallback(
-    async (
-      snapshot: StudyBlockSnapshot | null
-    ) => {
-      if (!snapshot) return;
-
-      const elapsedMs = Date.now() - snapshot.startedAtMs;
-      if (!Number.isFinite(elapsedMs) || elapsedMs < 1_000) {
-        return;
-      }
-
-      const elapsedMin = Math.max(0.01, Number((elapsedMs / 60_000).toFixed(2)));
-      if (!Number.isFinite(elapsedMin) || elapsedMin <= 0) return;
-
-      // Todo este pipeline ficava DESLIGADO quando `topicoConcluido` era true:
-      // `isCurrentStudyBlockTrackable` (trilha/[id].tsx) o usa como veto, e o
-      // banco reportava 'concluido' contando so o material do professor. Uma
-      // hora de estudo nao gravava um minuto. Este log torna a gravacao
-      // observavel -- silencio aqui significa que nem tentou.
-      if (__DEV__) {
-        console.log(
-          "[Tempo] gravando",
-          JSON.stringify({
-            topicoId: snapshot.topicoId,
-            min: elapsedMin,
-            conteudoId: snapshot.conteudoId ?? null,
-            atividadeId: snapshot.atividadeId ?? null,
-            personalizado: Boolean(snapshot.isPersonalizedLocal),
-          })
-        );
-      }
-
-      if (!telemetrySessionActive) {
-        await registrarTempoDireto(
-          snapshot.topicoId,
-          snapshot.conteudoId != null && snapshot.conteudoId > 0 ? snapshot.conteudoId : null,
-          snapshot.atividadeId != null && snapshot.atividadeId > 0 ? snapshot.atividadeId : null,
-          elapsedMin,
-        );
+export function useStudyTimeTracking(args: Args) {
+  const callbacks = useRef(args);
+  const previousArgs = useRef(args);
+  callbacks.current = args;
+  const clock = useRef(new StudyClock(AppState.currentState !== 'background' && AppState.currentState !== 'inactive'));
+  const persist = useCallback(async (interval: StudyInterval | null, owner?: Args) => {
+    if (!interval) return;
+    // Capture callbacks before awaiting: changing topic/profile cannot reassign this interval.
+    const current = owner ?? callbacks.current;
+    const { block, minutes } = interval;
+    try {
+      if (!current.telemetrySessionActive) {
+        await current.registrarTempoDireto(block.topicoId,
+          block.conteudoId != null && block.conteudoId > 0 ? block.conteudoId : null,
+          block.atividadeId != null && block.atividadeId > 0 ? block.atividadeId : null, minutes);
       } else {
-        await registrarTempoTopico(snapshot.topicoId, elapsedMin);
-
-        if (snapshot.conteudoId != null && snapshot.conteudoId > 0) {
-          await registrarTempoConteudo(snapshot.topicoId, snapshot.conteudoId, elapsedMin);
-        }
-
-        if (snapshot.atividadeId != null && snapshot.atividadeId > 0) {
-          await registrarTempoAtividade(snapshot.topicoId, snapshot.atividadeId, elapsedMin);
-        }
+        if (block.conteudoId != null && block.conteudoId > 0)
+          await current.registrarTempoConteudo(block.topicoId, block.conteudoId, minutes);
+        if (block.atividadeId != null && block.atividadeId > 0)
+          await current.registrarTempoAtividade(block.topicoId, block.atividadeId, minutes);
+        // Primeiro entrega os segundos; só então lê as métricas derivadas.
+        // Antes a tela recarregava a projeção ANTES de o lote chegar ao banco.
+        await current.flushTelemetryTime();
+        await current.registrarTempoTopico(block.topicoId, minutes);
       }
-
-      if (snapshot.isPersonalizedLocal && snapshot.itemKey && snapshot.itemTitle) {
-        await salvarProgressoItemPersonalizado({
-          topicoId: snapshot.topicoId,
-          itemKey: snapshot.itemKey,
-          itemKind: snapshot.itemKind,
-          itemTitle: snapshot.itemTitle,
-          status: "em_andamento",
-          percentualConcluido: 0,
-          tempoGastoMin: elapsedMin,
-          metadata: {
-            source: "mobile_trilha_tempo",
-            personalized: true,
-          },
+      if (block.isPersonalizedLocal && block.itemKey && block.itemTitle) {
+        await current.salvarProgressoItemPersonalizado({
+          topicoId: block.topicoId, itemKey: block.itemKey, itemKind: block.itemKind,
+          itemTitle: block.itemTitle, status: 'em_andamento', percentualConcluido: 0,
+          tempoGastoMin: minutes, metadata: { source: 'mobile_trilha_tempo', personalized: true },
         });
-        void reloadRanking();
-        return;
       }
-
-      void reloadRanking();
-    },
-    [
-      registrarTempoTopico,
-      registrarTempoDireto,
-      registrarTempoAtividade,
-      registrarTempoConteudo,
-      reloadRanking,
-      salvarProgressoItemPersonalizado,
-      telemetrySessionActive,
-    ]
-  );
-
-  const currentStudyBlockKey = currentStudyBlockSignature?.key ?? null;
-
-  // Effect: manage ref based on signature changes
-  useEffect(() => {
-    const previous = activeStudyBlockRef.current;
-
-    if (previous && previous.key !== currentStudyBlockKey) {
-      void persistElapsedStudyBlock(previous);
-      activeStudyBlockRef.current = null;
+    } catch (error) {
+      console.warn('[Tempo] Falha ao salvar intervalo de estudo:', error);
     }
+  }, []);
 
-    if (currentStudyBlockSignature) {
-      activeStudyBlockRef.current = {
-        ...currentStudyBlockSignature,
-        startedAtMs:
-          previous?.key === currentStudyBlockSignature.key
-            ? previous.startedAtMs
-            : Date.now(),
-      };
-      return;
+  const flushStudyTime = useCallback(() => persist(clock.current.flush(Date.now())), [persist]);
+  useEffect(() => {
+    const previous = previousArgs.current;
+    const now = Date.now();
+    if (previous.telemetrySessionActive !== args.telemetrySessionActive) {
+      void persist(clock.current.flush(now), previous);
     }
+    void persist(clock.current.setBlock(args.currentStudyBlockSignature, now), previous);
+    previousArgs.current = args;
+  }, [args, persist]);
 
-    activeStudyBlockRef.current = null;
-  }, [currentStudyBlockKey, currentStudyBlockSignature, persistElapsedStudyBlock]);
-
-  // Effect: periodic flush
   useEffect(() => {
-    if (!currentStudyBlockKey) return;
-
-    const intervalId = setInterval(() => {
-      const snapshot = activeStudyBlockRef.current;
-      if (!snapshot) return;
-
-      const elapsedMs = Date.now() - snapshot.startedAtMs;
-      if (!Number.isFinite(elapsedMs) || elapsedMs < 1_000) return;
-
-      const flushSnapshot = { ...snapshot };
-      activeStudyBlockRef.current = {
-        ...snapshot,
-        startedAtMs: Date.now(),
-      };
-
-      void persistElapsedStudyBlock(flushSnapshot);
-    }, ACTIVE_STUDY_FLUSH_INTERVAL_MS);
-
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, [currentStudyBlockKey, persistElapsedStudyBlock]);
-
-  // Effect: flush on unmount
-  useEffect(() => {
-    return () => {
-      if (activeStudyBlockRef.current) {
-        void persistElapsedStudyBlock(activeStudyBlockRef.current);
-        activeStudyBlockRef.current = null;
-      }
-    };
-  }, [persistElapsedStudyBlock]);
-
-  // Effect: flush when app goes to background/inactive
-  useEffect(() => {
-    const subscription = AppState.addEventListener("change", (nextState) => {
-      if (nextState === "inactive" || nextState === "background") {
-        const snapshot = activeStudyBlockRef.current;
-        if (!snapshot) return;
-        activeStudyBlockRef.current = {
-          ...snapshot,
-          startedAtMs: Date.now(),
-        };
-        void persistElapsedStudyBlock(snapshot);
-      }
+    const currentClock = clock.current;
+    const interval = setInterval(() => { void flushStudyTime(); }, 60_000);
+    const subscription = AppState.addEventListener('change', (state) => {
+      void persist(currentClock.setForeground(state === 'active', Date.now()));
     });
-
     return () => {
+      clearInterval(interval);
       subscription.remove();
+      void persist(currentClock.setBlock(null, Date.now()));
     };
-  }, [persistElapsedStudyBlock]);
+  }, [flushStudyTime, persist]);
 
-  return { activeStudyBlockRef, persistElapsedStudyBlock };
+  return { flushStudyTime };
 }

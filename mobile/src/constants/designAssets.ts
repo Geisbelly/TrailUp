@@ -1,7 +1,7 @@
 import type { ImageSourcePropType } from 'react-native';
 import { normalizeBrainHexProfile, type BrainHexProfile } from './brainHexProfiles';
 
-export const designStar: ImageSourcePropType = require('@/assets/design/trailup-star.png');
+export const designStar: ImageSourcePropType = require('@/assets/images/trailup-brand-logo.png');
 export const publicScenery: ImageSourcePropType = require('@/assets/design/entry-world.webp');
 
 export const journeyObjects = {

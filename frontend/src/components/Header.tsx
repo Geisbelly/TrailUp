@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import trailupLogo from "@/assets/trailup-logo.png";
+import trailupLogo from "@/assets/trailup-brand-logo.png";
 
 const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -86,7 +86,9 @@ const Header = () => {
           <img
             src={trailupLogo}
             alt="TrailUp"
-            className="w-7 h-7 group-hover:rotate-12 transition-transform duration-500"
+            width={36}
+            height={36}
+            className="w-9 h-9 shrink-0 object-contain group-hover:rotate-12 transition-transform duration-500"
           />
           <span className="font-display text-lg font-bold tracking-tight text-foreground group-hover:text-primary transition-colors">TrailUp</span>
         </Link>

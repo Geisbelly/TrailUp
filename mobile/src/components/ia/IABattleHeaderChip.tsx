@@ -1,4 +1,5 @@
 import { useIA } from "@/context/IAContext";
+import { useContentBossVisual } from '@/hooks/useContentBossVisual';
 import { useUsuario } from "@/context/SessaoContext";
 import { IAFeatureSelectorScope } from "@/interfaces/personalizacao/IAContracts";
 import { FontFamily } from "@/styles/GlobalStyle";
@@ -128,6 +129,7 @@ export function IABattleHeaderChip({ topicoId = null, itemKey = null }: Props) {
 
   const battleState = battleScope ? getBattleState(battleScope) : null;
   const resolvedBattle = battleScope ? resolveFeature(battleScope, "battle_mode") : null;
+  const teacherBoss = useContentBossVisual(topicoId, battleScope?.scope === 'item' ? battleScope.itemKey : resolvedBattle?.battle?.sourceItemKey, resolvedBattle?.battle?.enemy.contentId);
 
   if (
     !hasBattleSignal ||
@@ -189,8 +191,8 @@ export function IABattleHeaderChip({ topicoId = null, itemKey = null }: Props) {
             },
           ]}
         >
-          {avatarUrl ? (
-            <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+          {teacherBoss || avatarUrl ? (
+            <Image source={teacherBoss ?? { uri: avatarUrl! }} style={styles.avatar} resizeMode="contain" />
           ) : (
             <MaterialCommunityIcons
               name={battleState?.defeated ? "shield-check" : "sword-cross"}

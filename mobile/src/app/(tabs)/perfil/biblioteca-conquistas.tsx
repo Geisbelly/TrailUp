@@ -3,6 +3,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { Stack } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,7 +15,7 @@ import tinycolor from "tinycolor2";
 import CardSemDados from "@/components/CardSemDados";
 import ConquistaModal from "@/components/ConquistaModal";
 import { getAchievementArtwork } from "@/constants/achievementImages";
-import { ProfileArtwork } from "@/components/ProfileArtwork";
+import { JourneySymbol } from "@/components/JourneySymbol";
 import { HallBackground, OrnamentDivider } from "@/components/HallTheme";
 import {
   SectionGuideButton,
@@ -247,9 +248,10 @@ export default function BibliotecaConquistasScreen() {
             },
           ]}
         >
-          <Text style={[styles.summaryTitle, { color: shellPalette.text }]}>
-            Biblioteca de Conquistas
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+            <JourneySymbol section="achievements" size={48} />
+            <Text style={[styles.summaryTitle, { color: shellPalette.text, flex: 1 }]}>Biblioteca de Conquistas</Text>
+          </View>
           <Text style={[styles.summarySubtitle, { color: shellPalette.textMuted }]}>
             Acompanhe desbloqueios, progresso e metas pendentes.
           </Text>
@@ -374,7 +376,12 @@ export default function BibliotecaConquistasScreen() {
                         { borderColor: shellPalette.borderStrong },
                       ]}
                     >
-                      <ProfileArtwork source={getAchievementArtwork(item.conquista)} profile={perfil} width={48} height={52} />
+                      <Image
+                        source={getAchievementArtwork(item.conquista)}
+                        resizeMode="contain"
+                        style={{ width: 48, height: 52 }}
+                        accessible={false}
+                      />
                     </View>
 
                     <View style={styles.itemBody}>

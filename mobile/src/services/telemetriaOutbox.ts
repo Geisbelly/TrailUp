@@ -60,7 +60,10 @@ export async function escoarLotes(
   let enviados = 0;
   for (const lote of fila) {
     try {
-      await enviar(lote.payload);
+      const response = await enviar(lote.payload);
+      if (response && typeof response === 'object' && 'persisted' in response && response.persisted !== true) {
+        throw new Error('Lote ainda não persistido');
+      }
       enviados += 1;
     } catch {
       break;
@@ -80,13 +83,8 @@ function parsearFila(bruto: string | null): LoteEnfileirado[] {
 }
 
 async function ler(): Promise<LoteEnfileirado[]> {
-  try {
-    return parsearFila(await AsyncStorage.getItem(CHAVE));
-  } catch {
-    // Fila corrompida não pode derrubar a telemetria viva. Perder a fila é
-    // ruim; travar a coleta em curso é pior.
-    return [];
-  }
+  // Falhar não significa fila vazia: sobrescrevê-la perderia lotes pendentes.
+  return parsearFila(await AsyncStorage.getItem(CHAVE));
 }
 
 async function gravar(lotes: LoteEnfileirado[]): Promise<void> {
@@ -94,31 +92,53 @@ async function gravar(lotes: LoteEnfileirado[]): Promise<void> {
     await AsyncStorage.setItem(CHAVE, JSON.stringify(lotes));
   } catch (erro) {
     console.warn("[telemetriaOutbox] Não foi possível gravar a fila:", erro);
+    throw erro;
   }
+}
+
+let queueWrite: Promise<unknown> = Promise.resolve();
+function mutateQueue<T>(action: () => Promise<T>): Promise<T> {
+  const result = queueWrite.catch(() => undefined).then(action);
+  queueWrite = result.catch(() => undefined);
+  return result;
+}
+function identity(payload: TelemetryBatchPayload) {
+  return `${payload.sessao_id}:${payload.captured_at}:${payload.flush_reason}`;
 }
 
 /** Guarda um lote que não pôde ser gravado, para tentar de novo mais tarde. */
 export async function enfileirarLoteTelemetria(
   payload: TelemetryBatchPayload
 ): Promise<void> {
-  const fila = await ler();
-  fila.push({ enfileiradoEm: Date.now(), payload });
-  await gravar(podarLotes(fila, Date.now()));
+  await mutateQueue(async () => {
+    const fila = await ler();
+    if (!fila.some((item) => identity(item.payload) === identity(payload))) {
+      fila.push({ enfileiradoEm: Date.now(), payload });
+    }
+    await gravar(podarLotes(fila, Date.now()));
+  });
 }
 
 export async function contarLotesPendentes(): Promise<number> {
   return podarLotes(await ler(), Date.now()).length;
 }
 
-export async function drenarLotesTelemetria(
+let drainInFlight: Promise<{ enviados: number; pendentes: number }> | null = null;
+export function drenarLotesTelemetria(
   enviar: (payload: TelemetryBatchPayload) => Promise<unknown>
 ): Promise<{ enviados: number; pendentes: number }> {
-  const fila = podarLotes(await ler(), Date.now());
-  if (fila.length === 0) {
-    return { enviados: 0, pendentes: 0 };
-  }
-
-  const { enviados, restante } = await escoarLotes(fila, enviar);
-  await gravar(restante);
-  return { enviados, pendentes: restante.length };
+  if (drainInFlight) return drainInFlight;
+  drainInFlight = (async () => {
+    const fila = await mutateQueue(async () => podarLotes(await ler(), Date.now()));
+    const { enviados } = await escoarLotes(fila, enviar);
+    const sent = new Set(fila.slice(0, enviados).map((item) => identity(item.payload)));
+    const pendentes = await mutateQueue(async () => {
+      // Keep batches appended while network delivery was in flight.
+      const remaining = podarLotes(await ler(), Date.now()).filter((item) => !sent.has(identity(item.payload)));
+      await gravar(remaining);
+      return remaining.length;
+    });
+    return { enviados, pendentes };
+  })().finally(() => { drainInFlight = null; });
+  return drainInFlight;
 }

@@ -126,12 +126,38 @@ export function encodeObjectPath(path: string) {
     .join("/");
 }
 
+/** Materiais BrainHex vivem no R2; o Supabase resolve o arquivo via 302.
+ * Não encaminha uploads, avatares ou URLs assinadas de outros buckets.
+ */
+export function buildPersonalizedMaterialGatewayUrl(
+  rawUrl: string,
+  options: Pick<ResolveStorageUrlOptions, "bucket"> = {},
+): string | null {
+  const origin = getSupabaseOrigin();
+  if (!origin) return null;
+  const trimmed = rawUrl.trim();
+  const parsed = parseSupabaseStorageUrl(trimmed);
+  if (parsed && parsed.mode !== 'public') return null;
+  const reference = extrairReferenciaDeDeck(trimmed) ?? parsed ?? normalizeObjectPath(trimmed, options.bucket);
+  if (!reference || reference.bucket !== 'conteudo_aluno') return null;
+  const [objectPath, rawSearch = ''] = reference.objectPath.split('?');
+  if (!objectPath.startsWith('brainhex/')) return null;
+  if (objectPath.split('/').some((segment) => !segment || segment === '.' || segment === '..')) return null;
+  const search = 'search' in reference && typeof reference.search === 'string' ? reference.search : rawSearch;
+  const query = new URLSearchParams(search);
+  query.set('path', objectPath);
+  return `${origin}/functions/v1/storage-redirect?${query.toString()}`;
+}
+
 export function buildSupabasePublicStorageUrl(
   rawUrl: string,
   options: Pick<ResolveStorageUrlOptions, "bucket"> = {}
 ) {
   const trimmed = String(rawUrl ?? "").trim();
   if (!trimmed) return trimmed;
+
+  const gateway = buildPersonalizedMaterialGatewayUrl(trimmed, options);
+  if (gateway) return gateway;
 
   const deck = deckComoUrlPublicaDeStorage(trimmed);
   if (deck) return deck;

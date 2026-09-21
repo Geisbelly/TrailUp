@@ -281,16 +281,8 @@ async def registrar_lote_telemetria(
         payload=persisted_payload,
     )
 
-    if not created:
-        await session.commit()
-        return TelemetriaLoteResponse(
-            batch_id=str(lote["id"]),
-            sessao_id=payload.sessao_id,
-            persisted=True,
-            normalized_events=[evento.tipo for evento in normalized_events],
-            analysis=TelemetriaAnalysisResponse(ciclo_id=lote.get("analysis_ciclo_id")),
-        )
-
+    # O fallback direto pode ter salvo o lote e falhado antes dos seus itens.
+    # Repare os filhos idempotentes antes de confirmar um reenvio como salvo.
     await repo.insert_eventos_app(
         sessao_id=payload.sessao_id,
         aluno_id=aluno_id,
@@ -311,6 +303,15 @@ async def registrar_lote_telemetria(
         time_metrics=payload.time_metrics.model_dump(mode="json"),
     )
     await session.commit()
+
+    if not created:
+        return TelemetriaLoteResponse(
+            batch_id=str(lote["id"]),
+            sessao_id=payload.sessao_id,
+            persisted=True,
+            normalized_events=[evento.tipo for evento in normalized_events],
+            analysis=TelemetriaAnalysisResponse(ciclo_id=lote.get("analysis_ciclo_id")),
+        )
 
     evento_repo = EventoRepository(session)
     for evento in normalized_events:

@@ -83,7 +83,7 @@ export default function TopicsManager() {
   const [newMateria, setNewMateria] = useState({ nome: "", descricao: "" });
   const [contents, setContents] = useState<Conteudo[]>([]);
   const [selectedContentId, setSelectedContentId] = useState<number | null>(null);
-  const [contentForm, setContentForm] = useState({ titulo: "", tipo: "texto", conteudo: "" });
+  const [contentForm, setContentForm] = useState<{ titulo: string; tipo: string; conteudo: string; boss_visual?: string | null }>({ titulo: "", tipo: "texto", conteudo: "" });
   const [isSavingContent, setIsSavingContent] = useState(false);
   const [activities, setActivities] = useState<Atividade[]>([]);
   const [activityForm, setActivityForm] = useState({
@@ -531,7 +531,7 @@ export default function TopicsManager() {
           : contentForm;
       const saved = await createContentHandler(form, targetId);
       if (saved) {
-        setContentForm({ titulo: "", tipo: "texto", conteudo: "" });
+        setContentForm(targetId ? { titulo: saved.titulo, tipo: saved.tipo, conteudo: saved.conteudo ?? "", boss_visual: saved.metadata?.boss_visual ?? null } : { titulo: "", tipo: "texto", conteudo: "" });
       }
       return saved ?? null;
     } finally {

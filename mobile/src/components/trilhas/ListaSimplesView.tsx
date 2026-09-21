@@ -6,7 +6,8 @@ import { Design } from "@/styles/design";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useIsFocused } from '@react-navigation/native';
 import {
   FlatList,
   Pressable,
@@ -29,12 +30,18 @@ type Row = {
 };
 
 export const TrilhaLinearList: React.FC<{
+  currentTopicId: string | null;
   tourTargetRef?: React.RefObject<View | null>;
-}> = ({ tourTargetRef }) => {
+}> = ({ currentTopicId, tourTargetRef }) => {
   const { grafo, perfil } = useTrilha();
   const palette = getProfileShellPalette(perfil);
   const { width: winW } = useWindowDimensions();
   const [lockedRow, setLockedRow] = useState<Row | null>(null);
+  const list = useRef<FlatList<Row>>(null);
+  const focused = useIsFocused();
+  const [ready, setReady] = useState(false);
+  const retry = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const attempts = useRef(0);
 
   const data: Row[] = useMemo(
     () =>
@@ -59,6 +66,13 @@ export const TrilhaLinearList: React.FC<{
   );
 
   const keyExtractor = useCallback((r: Row) => r.id, []);
+  const currentIndex = data.findIndex((row) => String(row.id) === currentTopicId);
+  useEffect(() => {
+    if (!focused || !ready || currentIndex < 0) return;
+    attempts.current = 0;
+    const frame = requestAnimationFrame(() => list.current?.scrollToIndex({ index: currentIndex, viewPosition: 0.5, animated: false }));
+    return () => { cancelAnimationFrame(frame); if (retry.current) clearTimeout(retry.current); };
+  }, [currentIndex, currentTopicId, focused, ready]);
 
   return (
     <View
@@ -72,12 +86,20 @@ export const TrilhaLinearList: React.FC<{
       ]}
     >
       <FlatList
+        ref={list}
+        onLayout={() => setReady(true)}
+        onScrollToIndexFailed={({ index, averageItemLength }) => {
+          if (!focused || attempts.current++ >= 5) return;
+          list.current?.scrollToOffset({ offset: index * averageItemLength, animated: false });
+          retry.current = setTimeout(() => list.current?.scrollToIndex({ index, viewPosition: 0.5, animated: false }), 120);
+        }}
         contentContainerStyle={s.listContent}
         data={data}
         keyExtractor={keyExtractor}
         renderItem={({ item, index }) => (
           <ItemCard
             row={item}
+            current={String(item.id) === currentTopicId}
             palette={palette}
             targetRef={index === 0 ? tourTargetRef : undefined}
             onLockedPress={() => setLockedRow(item)}
@@ -110,11 +132,13 @@ const hexPoints = (cx: number, cy: number, r: number) => {
 
 const ItemCard = ({
   row,
+  current,
   palette,
   targetRef,
   onLockedPress,
 }: {
   row: Row;
+  current: boolean;
   palette: ReturnType<typeof getProfileShellPalette>;
   targetRef?: React.RefObject<View | null>;
   onLockedPress: () => void;
@@ -155,7 +179,7 @@ const ItemCard = ({
         ? palette.border
         : gold;
 
-  const statusText =
+  const statusText = current ? "Você parou aqui · Continuar" :
     row.estado === "concluido"
       ? "Concluído"
       : row.estado === "bloqueado"

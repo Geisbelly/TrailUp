@@ -6,6 +6,7 @@ import { EventoAluno } from '@/models/Evento';
 import { ClasseRanking } from '@/models/Rank';
 import { PosicaoDoAluno } from '@/models/RankAlunoPosicao';
 import { supabase } from '@/database/supabase';
+import { loadStudyPresence, type StudyPresence } from '@/services/studyPresence';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useUsuario } from './SessaoContext';
 import { useTrilha } from './TrilhaContext';
@@ -33,6 +34,7 @@ type ConquistaRankState = {
   ranking: ClasseRanking | null;
   posicoesDoAluno: PosicaoDoAluno[];
   eventos: EventoAluno[];
+  presenca: StudyPresence | null;
   conquistas: Conquista[];
   reloadRanking: () => Promise<void>;
   reloadEventos: (limit?: number) => Promise<void>;
@@ -46,6 +48,7 @@ const ConquistaRankContext = createContext<ConquistaRankState>({
   ranking: null,
   posicoesDoAluno: [],
   eventos: [],
+  presenca: null,
   conquistas: [],
   reloadRanking: async () => console.warn('ConquistaRankProvider nao montado (reloadRanking)'),
   reloadEventos: async () => console.warn('ConquistaRankProvider nao montado (reloadEventos)'),
@@ -63,9 +66,16 @@ export function ConquistaRankProvider({ children }: { children: React.ReactNode 
   const [ranking, setRanking] = useState<ClasseRanking | null>(null);
   const [posicoesDoAluno, setPosicoes] = useState<PosicaoDoAluno[]>([]);
   const [eventos, setEventos] = useState<EventoAluno[]>([]);
+  const [presenca, setPresenca] = useState<StudyPresence | null>(null);
+  const currentUserRef = useRef<string | null>(null);
   const [conquistas, setConquistas] = useState<Conquista[]>([]);
 
   const uid = usuario?.id ?? null;
+  currentUserRef.current = uid;
+  useEffect(() => {
+    setPresenca(null);
+    setEventos([]);
+  }, [uid]);
   const perfisRepresentativos = useMemo(() => {
     const representativos = resolveRepresentativeBrainHexProfiles(usuario?.perfis);
     if (representativos.length > 0) return representativos;
@@ -104,16 +114,23 @@ export function ConquistaRankProvider({ children }: { children: React.ReactNode 
   const reloadEventos = useCallback(async (limit = 10000) => {
     if (!uid) {
       setEventos([]);
+      setPresenca(null);
       return;
     }
 
-    try {
-      const lista = await EventoAluno.listByAluno(uid, limit);
-      setEventos(lista);
-    } catch (err) {
-      console.warn('[ConquistaRank] Erro ao recarregar eventos:', err);
-      setEventos([]);
-    }
+    await Promise.all([
+      EventoAluno.listByAluno(uid, limit).then((lista) => {
+        if (currentUserRef.current === uid) setEventos(lista);
+      }).catch((err) => {
+        if (currentUserRef.current === uid) console.warn('[ConquistaRank] Erro ao recarregar eventos:', err);
+      }),
+      loadStudyPresence(uid).then((resumo) => {
+        if (currentUserRef.current === uid) setPresenca(resumo);
+      }).catch((err) => {
+        if (currentUserRef.current === uid) console.warn('[ConquistaRank] Erro ao recarregar presença:', err);
+      }),
+    ]);
+    // Uma falha transitória preserva o último resumo e não bloqueia os eventos.
   }, [uid]);
 
   const scheduleRankingRefresh = useCallback(() => {
@@ -186,6 +203,7 @@ export function ConquistaRankProvider({ children }: { children: React.ReactNode 
     setRanking(null);
     setPosicoes([]);
     setEventos([]);
+    setPresenca(null);
     setConquistas([]);
     setCarregando(false);
   }, [autenticado, uid]);
@@ -283,6 +301,7 @@ export function ConquistaRankProvider({ children }: { children: React.ReactNode 
       ranking,
       posicoesDoAluno,
       eventos,
+      presenca,
       conquistas,
       reloadRanking,
       reloadEventos,
@@ -294,6 +313,7 @@ export function ConquistaRankProvider({ children }: { children: React.ReactNode 
       carregando,
       conquistas,
       eventos,
+      presenca,
       posicoesDoAluno,
       ranking,
       registrarEvento,

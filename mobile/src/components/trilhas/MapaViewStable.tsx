@@ -1,4 +1,5 @@
 import { useTrilha } from "@/context/TrilhaContext";
+import { useTrailAutoFocus } from '@/hooks/useTrailAutoFocus';
 import { LockedNodeModal } from "@/components/trilhas/LockedNodeModal";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { Design } from "@/styles/design";
@@ -104,7 +105,9 @@ function buildContinentBackdrop(
 
 export function TrilhaMapaHeroStable({
   tourTargetRef,
+  currentTopicId,
 }: {
+  currentTopicId: string | null;
   tourTargetRef?: React.RefObject<View | null>;
 }) {
   const { grafo, mapTheme, perfil } = useTrilha();
@@ -123,10 +126,7 @@ export function TrilhaMapaHeroStable({
     const cellH = 200;
 
     const allNodes = grafo.levels.flatMap((level) => level);
-    const currentId =
-      allNodes.find((node) => !node.locked && !node.completed)?.id ??
-      allNodes.find((node) => !node.locked)?.id ??
-      null;
+    const currentId = currentTopicId;
 
     // Sort nodes globally by sequence for left-to-right, top-to-bottom grid
     const sortedNodes = [...allNodes].sort(
@@ -184,7 +184,7 @@ export function TrilhaMapaHeroStable({
         plateWidth,
       };
     });
-  }, [grafo.levels, mapTheme, screenWidth]);
+  }, [currentTopicId, grafo.levels, mapTheme, screenWidth]);
 
   const worldWidth = useMemo(() => {
     if (!nodes.length) return screenWidth;
@@ -211,6 +211,9 @@ export function TrilhaMapaHeroStable({
 
   const canvasWidth = Math.max(1, Math.round(worldWidth * mapScale));
   const canvasHeight = Math.max(1, Math.round(worldHeight * mapScale));
+  const currentNode = nodes.find((node) => node.current);
+  const horizontalFocus = useTrailAutoFocus(currentTopicId, currentNode ? (currentNode.x + currentNode.width / 2) * mapScale : null, true);
+  const verticalFocus = useTrailAutoFocus(currentTopicId, currentNode ? (currentNode.y + currentNode.height / 2) * mapScale : null);
 
   const nodeById = useMemo(
     () => new Map(nodes.map((node) => [node.id, node] as const)),
@@ -273,11 +276,13 @@ export function TrilhaMapaHeroStable({
       </View>
 
       <ScrollView
+        {...horizontalFocus}
         horizontal
         showsHorizontalScrollIndicator={false}
         bounces={false}
       >
         <ScrollView
+          {...verticalFocus}
           showsVerticalScrollIndicator={false}
           bounces={false}
           contentContainerStyle={styles.scrollContent}

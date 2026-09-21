@@ -34,7 +34,7 @@ import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { registrarAlvoTour } from "@/utils/tourTargets";
 
 // Verifique se o caminho da imagem está correto
-const appLogoSource = require("@/assets/ImagensReferencia/rosa_dos_ventos_filter.png");
+const appLogoSource = require("@/assets/images/trailup-brand-logo.png");
 
 function formatRankValue(valor: number, criterio: string | null | undefined) {
   if (criterio === "percentual") {

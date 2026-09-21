@@ -10,6 +10,11 @@ const sourcePath = resolve(
 );
 const source = readFileSync(sourcePath, "utf8");
 
+test("falhas de geração de mídia preservam o cooldown de retentativa", () => {
+  assert.doesNotMatch(source, /mediaGenerationRetryRef\.current\.delete\(retryKey\)/);
+  assert.match(source, /now - lastAttempt < MEDIA_GENERATION_COOLDOWN_MS/);
+});
+
 test("TrilhaContext não grava progresso agregado diretamente em classe_aluno", () => {
   assert.doesNotMatch(
     source,

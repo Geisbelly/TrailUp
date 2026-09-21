@@ -1,11 +1,11 @@
 import { OrnamentDivider } from "@/components/HallTheme";
-import { FramedProfileImage } from "@/components/FramedProfileImage";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { buildProfileShellPaletteFromAccent } from "@/utils/profileShellTheme";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import {
+  Image,
   ImageSourcePropType,
   Modal,
   ScrollView,
@@ -40,7 +40,6 @@ export default function ConquistaModal({
   imageSource,
   buttonText = "Fechar",
   category,
-  profile,
 }: ConquistaModalProps) {
   const palette = buildProfileShellPaletteFromAccent(color);
   const gold = tinycolor(color).lighten(10).toHexString();
@@ -88,7 +87,7 @@ export default function ConquistaModal({
               <View style={[s.corner, s.cornerBL, { borderColor: gold }]} />
               <View style={[s.corner, s.cornerBR, { borderColor: gold }]} />
 
-              <FramedProfileImage profile={profile} source={imageSource} size={112} fit="contain" artworkTone />
+              <Image source={imageSource} resizeMode="contain" style={{ width: 112, height: 112 }} accessibilityLabel={title} />
 
               {/* Categoria badge */}
               {category && (

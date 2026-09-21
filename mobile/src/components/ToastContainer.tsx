@@ -1,6 +1,5 @@
 import { getBrainHexConfig } from '@/constants/profileImages';
-import { ProfileArtwork } from '@/components/ProfileArtwork';
-import { journeyObjects } from '@/constants/designAssets';
+import { UtilityIcon } from '@/components/UtilityIcon';
 import { ToastMessage, useNotifications } from '@/context/NotificacaoContext';
 import { useUsuario } from '@/context/SessaoContext';
 import { FontFamily } from '@/styles/GlobalStyle';
@@ -63,7 +62,7 @@ const RankBanner = ({
             { backgroundColor: palette.accentMuted },
           ]}
         >
-          <ProfileArtwork source={journeyObjects.trophy} color={palette.accent} width={36} />
+          <UtilityIcon kind="ranking" size={36} />
         </View>
         <View style={styles.bannerTextContainer}>
           <Text style={[styles.bannerTitle, { color: palette.accent }]}>{item.title}</Text>
@@ -195,7 +194,7 @@ const NotificationModal = ({ item, onRemove }: { item: ToastMessage; onRemove: (
           {/* Badge de conquista mantido */}
           {config.isProfileThemed && (
             <View style={[styles.badgeIcon, { backgroundColor: palette.surfaceElevated }]}>
-              <ProfileArtwork source={journeyObjects.gold} color={palette.accent} width={26} />
+              <UtilityIcon kind="medal" size={26} />
             </View>
           )}
         </View>

@@ -1,4 +1,5 @@
 import { useTrilha } from "@/context/TrilhaContext";
+import { useTrailAutoFocus } from '@/hooks/useTrailAutoFocus';
 import { LockedNodeModal } from "@/components/trilhas/LockedNodeModal";
 import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
@@ -144,7 +145,7 @@ function clipToHex(cx: number, cy: number, r: number, tx: number, ty: number) {
   return { x: best.x, y: best.y };
 }
 
-export const TrilhaArvoreSimple: React.FC = () => {
+export const TrilhaArvoreSimple: React.FC<{ currentTopicId: string | null }> = ({ currentTopicId }) => {
   const { grafo, perfil } = useTrilha();
   const router = useRouter();
   const { width: winW, height: winH } = useWindowDimensions();
@@ -153,16 +154,7 @@ export const TrilhaArvoreSimple: React.FC = () => {
     [perfil]
   );
 
-  // ===== Nó foco (primeiro jogável) =====
-  const currentId = useMemo<string | null>(() => {
-    const nodes = grafo?.nodes ?? [];
-    if (!nodes.length) return null;
-    const playable = nodes.find((n) => !n.locked && !n.completed)?.id;
-    if (playable) return String(playable);
-    const unlocked = nodes.find((n) => !n.locked)?.id;
-    if (unlocked) return String(unlocked);
-    return String(nodes[0]?.id ?? "");
-  }, [grafo.nodes]);
+  const currentId = currentTopicId;
 
   // ===== Bounds reais do grafo =====
   const bounds = useMemo(() => {
@@ -421,30 +413,13 @@ const adjustedPositions = useMemo(() => {
     return adjustedPositions.get(currentId) ?? null;
   }, [adjustedPositions, currentId]);
 
-  // ===== recentraliza no nó atual (somente vertical) =====
-  const vScrollRef = useRef<ScrollView>(null);
-  const lastScrollTargetRef = useRef<number | null>(null);
-  useEffect(() => {
-    if (!currentNodePosition) return;
-
-    const cy = (currentNodePosition.y - vbSafeY) * scale;
-    const targetY = Math.max(0, cy - winH * 0.4);
-
-    if (
-      lastScrollTargetRef.current != null &&
-      Math.abs(lastScrollTargetRef.current - targetY) < 2
-    ) {
-      return;
-    }
-
-    lastScrollTargetRef.current = targetY;
-    vScrollRef.current?.scrollTo({ y: targetY, animated: true });
-  }, [currentNodePosition, scale, vbSafeY, winH]);
+  const autoFocus = useTrailAutoFocus(currentId,
+    currentNodePosition ? (currentNodePosition.y - vbSafeY) * scale : null);
 
   return (
     <View style={[styles.root, { width: winW, flex: 1, backgroundColor: "transparent" }]}>
       <ScrollView
-        ref={vScrollRef}
+        {...autoFocus}
         contentContainerStyle={[
           styles.container,
           {

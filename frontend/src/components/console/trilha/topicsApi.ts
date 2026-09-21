@@ -130,13 +130,24 @@ export async function saveContent(params: {
   tipo: string;
   conteudo: string;
   ordem?: number;
+  boss_visual?: string | null;
 }) {
+  let bossMetadata: { [key: string]: import('@/integrations/supabase/types').Json | undefined } | undefined;
+  if (params.boss_visual !== undefined) {
+    if (params.id) {
+      const { data: current, error } = await supabase.from("conteudos").select("metadata").eq("id", params.id).single();
+      if (error) throw error;
+      bossMetadata = { ...(current.metadata && typeof current.metadata === 'object' && !Array.isArray(current.metadata) ? current.metadata : {}), boss_visual: params.boss_visual };
+    } else {
+      bossMetadata = { boss_visual: params.boss_visual };
+    }
+  }
   if (params.id) {
     const { data, error } = await supabase
       .from("conteudos")
-      .update({ titulo: params.titulo, tipo: params.tipo, conteudo: params.conteudo })
+      .update({ titulo: params.titulo, tipo: params.tipo, conteudo: params.conteudo, ...(bossMetadata ? { metadata: bossMetadata } : {}) })
       .eq("id", params.id)
-      .select("id, titulo, tipo, ordem, conteudo")
+      .select("id, titulo, tipo, ordem, conteudo, metadata")
       .single();
     if (error) throw error;
     return data as Conteudo;
@@ -150,8 +161,9 @@ export async function saveContent(params: {
       tipo: params.tipo,
       conteudo: params.conteudo,
       ordem: params.ordem ?? 1,
+      ...(bossMetadata ? { metadata: bossMetadata } : {}),
     })
-    .select("id, titulo, tipo, ordem, conteudo")
+    .select("id, titulo, tipo, ordem, conteudo, metadata")
     .single();
   if (error) throw error;
   return data as Conteudo;
@@ -510,7 +522,10 @@ export async function updateContentMetadata(
   id: number,
   metadata: { files?: Array<{ path: string; name: string; size: number }> }
 ) {
-  const { error } = await supabase.from("conteudos").update({ metadata }).eq("id", id);
+  const { data: current, error: readError } = await supabase.from("conteudos").select("metadata").eq("id", id).single();
+  if (readError) throw readError;
+  const merged = { ...(current.metadata as Record<string, unknown> ?? {}), ...metadata };
+  const { error } = await supabase.from("conteudos").update({ metadata: merged }).eq("id", id);
   if (error) throw error;
 }
 
@@ -522,6 +537,11 @@ export async function updateContent(
     metadata?: { files?: Array<{ path: string; name: string; size: number }> } | null;
   }
 ) {
+  if (patch.metadata) {
+    const { data: current, error } = await supabase.from("conteudos").select("metadata").eq("id", id).single();
+    if (error) throw error;
+    patch = { ...patch, metadata: { ...(current.metadata as Record<string, unknown> ?? {}), ...patch.metadata } };
+  }
   const { error } = await supabase.from("conteudos").update(patch).eq("id", id);
   if (error) throw error;
 }

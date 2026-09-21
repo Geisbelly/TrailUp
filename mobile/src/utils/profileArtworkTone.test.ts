@@ -27,6 +27,21 @@ function pixel(matrix: number[], channels: number[]) {
       ),
   );
 }
+test("silver-white shared artwork preserves relief, restrained highlights and transparent edges", () => {
+  const matrix = buildArtworkToneMatrix("#ffffff");
+  const shadow = pixel(matrix, [0.05, 0.05, 0.05, 0.5]);
+  const highlight = pixel(matrix, [1, 1, 1, 1]);
+  assert.equal(shadow[3], 0.5);
+  assert.equal(pixel(matrix, [0, 0, 0, 0])[3], 0);
+  assert.ok(shadow[0] < 0.4);
+  assert.equal(shadow[0], shadow[1]);
+  assert.equal(shadow[1], shadow[2]);
+  assert.ok(highlight[0] > shadow[0]);
+  assert.ok(highlight[0] - shadow[0] > 0.6);
+  assert.ok(highlight[0] < 0.95);
+  const mid = pixel(matrix, [0.5, 0.5, 0.5, 1]);
+  assert.ok(tinycolor.readability(tinycolor({ r: mid[0] * 255, g: mid[1] * 255, b: mid[2] * 255 }), "#11131d") >= 4.5);
+});
 test("artwork recoloring preserves alpha and faceted lightness differences", () => {
   const matrix = buildArtworkToneMatrix("#5b3fd9");
   assert.equal(matrix.length, 20);

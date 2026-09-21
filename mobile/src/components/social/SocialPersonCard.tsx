@@ -6,6 +6,7 @@ import {
 import type { SocialPerson } from "@/services/social/socialModel";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { buildProfileShellPaletteFromAccent, getProfileShellPalette } from "@/utils/profileShellTheme";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 type Props = {
@@ -30,8 +31,9 @@ export function SocialPersonCard({
 }: Props) {
   const canChat = person.status === "friend" || person.status === "candidate";
   const profile = normalizeBrainHexProfile(person.perfilAtivo);
+  const palette = buildProfileShellPaletteFromAccent(accent);
   return (
-    <View style={[s.card, { borderColor: `${accent}50` }]}>
+    <View style={[s.card, { borderColor: palette.border, backgroundColor: palette.surface }]}>
       <View style={s.top}>
         <Pressable
           accessibilityRole="button"
@@ -50,13 +52,13 @@ export function SocialPersonCard({
               <MaterialCommunityIcons
                 name="account-outline"
                 size={28}
-                color={accent}
+                color="#ffffff"
               />
             </View>
           )}
           <View style={s.info}>
             <Text style={s.name}>{person.apelido || person.nome}</Text>
-            <Text style={[s.profile, { color: accent }]}>
+            <Text style={[s.profile, { color: profile ? getProfileShellPalette(profile).accent : palette.textMuted }]}>
               {profile ? getBrainHexConfig(profile).label : "Aluno"}
             </Text>
             {person.guildaNome ? (
@@ -74,7 +76,7 @@ export function SocialPersonCard({
             <MaterialCommunityIcons
               name="message-text-outline"
               size={20}
-              color={accent}
+              color="#ffffff"
             />
           </Pressable>
         ) : null}
@@ -119,7 +121,7 @@ export function SocialPersonCard({
 }
 
 const s = StyleSheet.create({
-  card: { paddingVertical: 16, borderBottomWidth: 1, marginBottom: 4 },
+  card: { padding: 14, borderWidth: 1, borderRadius: 12 },
   top: { flexDirection: "row", alignItems: "center", gap: 12 },
   identity: {
     flex: 1,
@@ -168,7 +170,7 @@ const s = StyleSheet.create({
     marginRight: "auto",
   },
   dot: { width: 6, height: 6, borderRadius: 3 },
-  presenceText: { color: "#d2d4df", fontSize: 11 },
+  presenceText: { color: "#d2d4df", fontSize: 12 },
   action: {
     minHeight: 44,
     paddingHorizontal: 14,

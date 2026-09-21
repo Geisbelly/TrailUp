@@ -32,6 +32,12 @@ function LoadingOverlay() {
   return <LoadingScreen forceShow />;
 }
 
+function AuthenticatedRedirect() {
+  // Consuma uma vez por transição, não a cada render durante a hidratação.
+  const [destination] = useState(() => consumePendingRoute() ?? "/(tabs)");
+  return <Redirect href={destination as Href} />;
+}
+
 function VerificacaoDeRota() {
   const segments = useSegments();
   const pathname = usePathname();
@@ -64,8 +70,7 @@ function VerificacaoDeRota() {
   // depois do commit e deixava a barra de enderecos presa na rota protegida
   // (issue #27).
   if (autenticado) {
-    const destino = consumePendingRoute();
-    return <Redirect href={(destino ?? "/(tabs)") as Href} />;
+    return <AuthenticatedRedirect />;
   }
 
   if (inTabsGroup && pathname) {

@@ -9,7 +9,6 @@ import { BagEditorModal } from "./BagEditorModal";
 import { BagItemCard } from "./BagItemCard";
 import { BagStoreItem } from "./BagStoreItem";
 import { JourneyHeading } from "@/components/JourneyHeading";
-import { journeyObjects } from "@/constants/designAssets";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
 type Props = {
@@ -77,7 +76,7 @@ export function BagModal({ visible, classeId, topicId, contentId, profile, onClo
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <SafeAreaProvider>
       <SafeAreaView style={[styles.screen, { backgroundColor: palette.background }]}>
-        <JourneyHeading title="Bag" eyebrow="SEU INVENTÁRIO" artwork={journeyObjects.bag} palette={palette} right={<Pressable accessibilityRole="button" accessibilityLabel="Fechar Bag" onPress={onClose} style={[styles.close, { borderColor: palette.border }]}><MaterialCommunityIcons name="close" size={22} color={palette.accent} /></Pressable>} />
+        <JourneyHeading title="Bag" eyebrow="SEU INVENTÁRIO" section="bag" palette={palette} right={<Pressable accessibilityRole="button" accessibilityLabel="Fechar Bag" onPress={onClose} style={[styles.close, { borderColor: palette.border }]}><MaterialCommunityIcons name="close" size={22} color="#ffffff" /></Pressable>} />
         <View style={styles.tabs}>
           <Pressable onPress={() => selectOrigin(null)} style={[styles.tab, { borderBottomColor: origin === null ? palette.accent : "transparent" }]}><Text style={[styles.tabText, { color: origin === null ? palette.accent : palette.inactive }]}>Todos</Text></Pressable>
           <Pressable onPress={() => selectOrigin("aluno")} style={[styles.tab, { borderBottomColor: origin === "aluno" ? palette.accent : "transparent" }]}><Text style={[styles.tabText, { color: origin === "aluno" ? palette.accent : palette.inactive }]}>Salvos</Text></Pressable>

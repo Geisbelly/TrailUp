@@ -1,7 +1,6 @@
 import { JourneyHeading } from "@/components/JourneyHeading";
 import { StoreItemIcon } from "@/components/loja/StoreItemIcon";
-import { journeyObjects } from "@/constants/designAssets";
-import { ProfileArtwork } from "@/components/ProfileArtwork";
+import { UtilityIcon } from "@/components/UtilityIcon";
 import type { StoreItem, StoreSnapshot } from "@/services/loja/lojaService";
 import { comprarItem, carregarLoja } from "@/services/loja/lojaService";
 import { FontFamily } from "@/styles/GlobalStyle";
@@ -104,7 +103,7 @@ export function StoreModal({
           <JourneyHeading
             title="Loja"
             eyebrow="RECURSOS DA JORNADA"
-            artwork={journeyObjects.chest}
+            section="store"
             palette={palette}
             right={
               <Pressable
@@ -141,10 +140,10 @@ export function StoreModal({
                   {snapshot?.balance ?? "--"}
                 </Text>
               </View>
-              <ProfileArtwork
-                source={journeyObjects.coin}
+              <UtilityIcon
+                kind="coin"
                 profile={profileName}
-                width={70}
+                size={70}
                 height={76}
                 style={s.coin}
               />
@@ -268,10 +267,10 @@ function StoreCard({
       <View style={[s.actionRow, { borderTopColor: palette.border }]}>
         <View style={s.priceRow}>
           {item.price > 0 ? (
-            <ProfileArtwork
-              source={journeyObjects.coin}
-              color={palette.accent}
-              width={24}
+            <UtilityIcon
+              kind="coin"
+              profile={palette.profile}
+              size={24}
               height={28}
               style={s.priceIcon}
             />
