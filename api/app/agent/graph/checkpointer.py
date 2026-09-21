@@ -1,6 +1,7 @@
 from typing import Any
 
 from app.core.settings import Settings
+from app.event_loop import explicar_incompatibilidade, loop_incompativel_com_psycopg
 
 try:
     from langgraph.checkpoint.memory import MemorySaver
@@ -16,6 +17,13 @@ except ImportError:  # pragma: no cover
 
 async def get_checkpointer(settings: Settings) -> tuple[Any, str, Any | None]:
     if settings.langgraph_db_url and AsyncPostgresSaver is not None and AsyncConnection is not None and dict_row is not None:
+        # O psycopg estoura aqui com uma mensagem que diz o que esta errado e
+        # nao diz o que fazer. Conferir antes troca isso por instrucao -- e a
+        # diferenca entre "Application startup failed" cru e saber que basta
+        # subir por `python -m app`.
+        if loop_incompativel_com_psycopg():
+            raise RuntimeError(explicar_incompatibilidade())
+
         connection = await AsyncConnection.connect(
             settings.langgraph_db_url,
             autocommit=True,

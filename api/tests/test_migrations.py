@@ -53,8 +53,8 @@ def test_alembic_tem_uma_unica_cabeca_e_cadeia_continua() -> None:
     """Duas cabecas fazem `upgrade head` falhar -- e o nome antigo deste teste
     ("idempotent_generated_materials_is_the_only_alembic_head") ja nao dizia a
     verdade: ele fixava uma revisao qualquer, que virava divida a cada migracao
-    nova. O invariante que importa e este: uma cabeca so, e caminho continuo
-    dela ate a base.
+    nova. O invariante e uma cabeca so, sem ciclos, alcancando todas as revisoes.
+    Revisoes de merge podem ter varios pais ja aplicados em bancos diferentes.
     """
     scripts = ScriptDirectory.from_config(_offline_alembic_config())
 
@@ -62,15 +62,22 @@ def test_alembic_tem_uma_unica_cabeca_e_cadeia_continua() -> None:
     assert len(heads) == 1, f"cadeia ramificada: {heads}"
 
     visitadas = set()
-    atual = scripts.get_revision(heads[0])
-    while atual is not None:
-        assert atual.revision not in visitadas, f"ciclo em {atual.revision}"
-        visitadas.add(atual.revision)
+    em_visita = set()
+
+    def visitar(revision: str) -> None:
+        assert revision not in em_visita, f"ciclo em {revision}"
+        if revision in visitadas:
+            return
+        em_visita.add(revision)
+        atual = scripts.get_revision(revision)
         anterior = atual.down_revision
-        if anterior is None:
-            break
-        assert isinstance(anterior, str), f"merge inesperado em {atual.revision}"
-        atual = scripts.get_revision(anterior)
+        pais = (anterior,) if isinstance(anterior, str) else (anterior or ())
+        for pai in pais:
+            visitar(pai)
+        em_visita.remove(revision)
+        visitadas.add(revision)
+
+    visitar(heads[0])
 
     # Toda migracao no diretorio precisa estar nesse caminho; uma solta nunca
     # roda e passa despercebida.

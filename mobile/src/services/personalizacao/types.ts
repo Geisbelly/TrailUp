@@ -6,6 +6,12 @@ export type PersonalizacaoRecord = {
   topico_id?: number | null;
   ciclo_id: string;
   status?: string | null;
+  /**
+   * A chave do perfil BrainHex a que este registro pertence — a coluna do
+   * banco, e nao uma leitura do `plano`. E ela que decide se o material aparece
+   * para o aluno; ver `extractProfileKeyFromPersonalizacaoRecord`.
+   */
+  brainhex_profile_key?: string | null;
   source_hash?: string | null;
   formato_prioritario?: string | null;
   formatos_gerados?: string[] | null;

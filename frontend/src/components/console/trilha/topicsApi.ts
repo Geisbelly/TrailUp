@@ -83,14 +83,49 @@ export async function fetchCards(topicId: number) {
   return Array.from(dedup.values());
 }
 
+/** Colunas de `questoes` que `authenticated` ainda pode ler. */
+export const COLUNAS_DE_QUESTAO_VISIVEIS =
+  "id, atividade_id, enunciado, tipo, alternativas, nota_estabelecida, midia_url";
+
+/**
+ * Anexa o gabarito vindo de `questao_gabarito`.
+ *
+ * `questoes.resposta_correta` deixou de ser legivel por `authenticated`: aluno
+ * e professor sao a MESMA role, e privilegio de coluna nao distingue os dois.
+ * O gabarito mora numa tabela cuja RLS so deixa o professor DONO da turma ler.
+ *
+ * A ESCRITA continua em `questoes` -- um gatilho espelha --, entao so a leitura
+ * mudou de lugar. Esta funcao existe para que essa regra tenha um dono so: ela
+ * e chamada dos tres pontos do console que carregam questao.
+ */
+export async function anexarGabarito<T extends { id: number }>(
+  questoes: T[],
+): Promise<(T & { resposta_correta: string | null })[]> {
+  if (questoes.length === 0) return [];
+  const { data, error } = await supabase
+    .from("questao_gabarito")
+    .select("questao_id, resposta_correta")
+    .in("questao_id", questoes.map((q) => q.id));
+  if (error) throw error;
+
+  const porQuestao = new Map<number, string | null>(
+    ((data as { questao_id: number; resposta_correta: string | null }[]) ?? []).map(
+      (g) => [g.questao_id, g.resposta_correta],
+    ),
+  );
+  return questoes.map((q) => ({ ...q, resposta_correta: porQuestao.get(q.id) ?? null }));
+}
+
 export async function fetchQuestions(atividadeId: number) {
   const { data, error } = await supabase
     .from("questoes")
-    .select("id, atividade_id, enunciado, tipo, alternativas, resposta_correta, nota_estabelecida, midia_url")
+    .select(COLUNAS_DE_QUESTAO_VISIVEIS)
     .eq("atividade_id", atividadeId)
     .order("created_at", { ascending: true });
   if (error) throw error;
-  return (data as Questao[]) ?? [];
+  return (await anexarGabarito(
+    (data as Omit<Questao, "resposta_correta">[]) ?? [],
+  )) as Questao[];
 }
 
 // ===== Mutations ======================================================

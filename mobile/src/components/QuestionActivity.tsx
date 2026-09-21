@@ -13,6 +13,11 @@ import { EssayValidationResult, validateEssayAnswerWithAi } from '@/utils/essayV
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Image, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { corrigirQuestaoNoServidor, mensagemDeErroDaCorrecao } from "@/services/questaoCorrecao";
+import { servidorCorrige, vereditoDaRevisao } from "@/utils/correcaoDaQuestao";
+import { formatoDeRelacao } from "@/utils/formatosDeQuestao";
+import { identidadeDaQuestao, posicaoNaAtividade } from "@/utils/identidadeDaQuestao";
+import { QuestaoDeRelacao } from "@/components/questao/QuestaoDeRelacao";
 
 type Props = {
   atividade: any;
@@ -407,7 +412,7 @@ export default function QuestionActivity({
   const [questaoIndex, setQuestaoIndex] = useState(0);
   const { usuario } = useUsuario();
   const { registrarRespostaQuestao } = useTrilha();
-  const { recordAppEvent } = useMetricas();
+  const { recordAppEvent, updateStudyContext } = useMetricas();
   const modoResposta = useMemo(
     () => String(usuario?.modoResposta ?? '').toLowerCase(),
     [usuario?.modoResposta]
@@ -446,6 +451,23 @@ export default function QuestionActivity({
   const isDissertativaActivity = useMemo(
     () => isDissertativaType(atividade?.tipo) || isDissertativaType(questao?.tipo),
     [atividade?.tipo, questao?.tipo]
+  );
+  // Os tres formatos de RELACAO (ligar termos, ordenar, marcar todas) nao
+  // respondem por indice de alternativa: a resposta e uma lista, e viaja como
+  // JSON. `formatoDeRelacao` devolve null para os quatro formatos antigos, que
+  // seguem pelo caminho de sempre.
+  const formatoRelacional = useMemo(
+    () => formatoDeRelacao(questao?.tipo) ?? formatoDeRelacao(atividade?.tipo),
+    [questao?.tipo, atividade?.tipo]
+  );
+  const [respostaRelacional, setRespostaRelacional] = useState<Record<number, string | null>>({});
+  const identidade = useMemo(
+    () => identidadeDaQuestao(questao?.tipo, atividade?.tipo),
+    [questao?.tipo, atividade?.tipo]
+  );
+  const posicao = useMemo(
+    () => posicaoNaAtividade(questaoIndex, questoes.length),
+    [questaoIndex, questoes.length]
   );
   const acceptedAnswers = useMemo(
     () => getAcceptedAnswers(questao?.resposta_correta),
@@ -502,7 +524,11 @@ export default function QuestionActivity({
   const [reResponder, setReResponder] = useState(false);
   const [timeoutLocked, setTimeoutLocked] = useState<Record<number, boolean>>({});
   const [mostrarResposta, setMostrarResposta] = useState(false);
-  const [validandoIA, setValidandoIA] = useState(false);
+  const [validandoIA, setValidandoIA] = useState(false)
+  // O gabarito nao vem mais no payload da questao: ele chega na resposta da
+  // RPC, ou seja, so DEPOIS de o aluno responder. Guardado por indice porque
+  // a tela navega entre as questoes da atividade.
+  const [gabaritoDoServidor, setGabaritoDoServidor] = useState<Record<number, string | null>>({});
   const [, setFeedbackIA] = useState<Record<number, EssayValidationResult | null>>({});
   const [modalVisivel, setModalVisivel] = useState(false);
   const [modalInfo, setModalInfo] = useState<{ titulo: string; descricao: string; pontos?: number; acerto?: boolean }>({
@@ -521,6 +547,67 @@ export default function QuestionActivity({
   useEffect(() => {
     onQuestionIndexChange?.(questaoIndex);
   }, [onQuestionIndexChange, questaoIndex]);
+
+  // ------------------------------------------------------------------
+  // Tempo por questao
+  // ------------------------------------------------------------------
+  // Duas medidas, de propositos diferentes, e nenhuma das duas existia:
+  //
+  // 1. O ESCOPO `question` da telemetria, que soma permanencia por questao do
+  //    mesmo jeito que ja se soma por conteudo e por atividade. Sem ele, o
+  //    tempo parava na atividade: uma atividade de 8 questoes era um numero so.
+  //
+  // 2. `questao_aluno.tempo_gasto_seg`, a LATENCIA da tentativa — o intervalo
+  //    entre a questao aparecer e o aluno confirmar. A coluna existia, o
+  //    parametro `tempoGastoSeg` de `registrarRespostaQuestao` existia, e
+  //    nenhum chamador o passava: as 35 linhas da base estavam todas com NULL.
+  //    E e essa medida, e nao a permanencia, que `trailup_core/tempo.py`
+  //    modela (R2 0,562 sobre o log da latencia).
+  const questaoId = questao?.id != null ? Number(questao.id) : null;
+  const questaoAbertaEmRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (questaoId == null) return;
+    questaoAbertaEmRef.current = Date.now();
+  }, [questaoId]);
+
+  useEffect(() => {
+    if (topicoId == null || questaoId == null) return;
+
+    updateStudyContext({
+      topicoId,
+      atividadeId: atividade?.id != null ? Number(atividade.id) : null,
+      questaoId,
+      target: "activity",
+      studyState: "active",
+    });
+
+    return () => {
+      // Sair da questao sem sair da atividade: `questaoId: null` zera so o
+      // escopo mais fino. Passar `studyState: "idle"` aqui derrubaria o
+      // contexto inteiro e o tempo da atividade pararia junto.
+      updateStudyContext({ questaoId: null });
+    };
+  }, [atividade?.id, questaoId, topicoId, updateStudyContext]);
+
+  /**
+   * Latencia da tentativa, em segundos, e reinicia o cronometro para a
+   * proxima — cada tentativa e uma linha propria em `questao_aluno`.
+   *
+   * Teto de 1h pelo mesmo motivo do teto por batida da telemetria: o app pode
+   * ficar aberto na questao a noite toda, e uma latencia de 8 horas nao
+   * descreve ninguem respondendo — envenenaria a mediana da questao, que e o
+   * que `trailup_core/tempo` usa como preditor.
+   */
+  const medirLatenciaDaTentativa = useCallback(() => {
+    const abertaEm = questaoAbertaEmRef.current;
+    questaoAbertaEmRef.current = Date.now();
+    if (abertaEm == null) return undefined;
+
+    const decorridoSeg = Math.round((Date.now() - abertaEm) / 1000);
+    if (!Number.isFinite(decorridoSeg) || decorridoSeg <= 0) return undefined;
+    return Math.min(decorridoSeg, 3600);
+  }, []);
   const atividadeConcluidaPersistida = useMemo(() => {
     const statusConcl = String(atividade?.status ?? '').toLowerCase().includes('concl');
     const percentualConcluido = Number(atividade?.percentual_concluido ?? 0);
@@ -531,11 +618,6 @@ export default function QuestionActivity({
     return atividadeConcluidaPersistida || questaoJaTemResposta;
   }, [atividadeConcluidaPersistida, respostaAnterior, questao?.resposta_aluno]);
   const scrollRef = useRef<ScrollView | null>(null)
-  const questionStartedAtRef = useRef(Date.now());
-
-  useEffect(() => {
-    questionStartedAtRef.current = Date.now();
-  }, [atividade?.id, questao?.id, questaoIndex]);
 
   useEffect(() => {
     if (reviewMode && respondidaAntes && atividadeConcluidaPersistida) {
@@ -608,8 +690,19 @@ export default function QuestionActivity({
         prev[questaoIndex] === respostaTxt ? prev : { ...prev, [questaoIndex]: respostaTxt }
       );
       if (atividadeConcluidaPersistida) {
-        const acertou = checkResposta(respostaTxt, -1);
-        setStas((prev) => ({ ...prev, [questaoIndex]: acertou ? 'certo' : 'errado' }));
+        // NAO recorrige: usa o veredito que o servidor gravou. Ver
+        // `vereditoDaRevisao`.
+        const veredito = vereditoDaRevisao({
+          corretaGravada: questao?.correta_aluno,
+          podeCorrigirLocalmente: !servidorCorrige({
+            questaoId: questao?.id,
+            personalizada: isPersonalizedLocal,
+          }),
+          acertouLocalmente: () => checkResposta(respostaTxt, -1),
+        });
+        if (veredito) {
+          setStas((prev) => ({ ...prev, [questaoIndex]: veredito }));
+        }
       }
       return;
     }
@@ -631,8 +724,17 @@ export default function QuestionActivity({
     if (idx >= 0) {
       setSelecionados((prev) => ({ ...prev, [questaoIndex]: idx }));
       if (atividadeConcluidaPersistida) {
-        const acertou = checkResposta(alternativas[idx], idx);
-        setStas((prev) => ({ ...prev, [questaoIndex]: acertou ? 'certo' : 'errado' }));
+        const veredito = vereditoDaRevisao({
+          corretaGravada: questao?.correta_aluno,
+          podeCorrigirLocalmente: !servidorCorrige({
+            questaoId: questao?.id,
+            personalizada: isPersonalizedLocal,
+          }),
+          acertouLocalmente: () => checkResposta(alternativas[idx], idx),
+        });
+        if (veredito) {
+          setStas((prev) => ({ ...prev, [questaoIndex]: veredito }));
+        }
       }
     }
   }, [
@@ -643,7 +745,10 @@ export default function QuestionActivity({
     isDissertativaActivity,
     isFillBlankActivity,
     isTrueFalseActivity,
+    isPersonalizedLocal,
     questaoIndex,
+    questao?.id,
+    questao?.correta_aluno,
     atividadeConcluidaPersistida,
   ]);
 
@@ -684,7 +789,12 @@ export default function QuestionActivity({
   const podeConfirmar =
     !blockedByTimeout &&
     !bloqueioEdicaoPersistida &&
-    (isFillBlankActivity || isDissertativaActivity
+    (formatoRelacional
+      // `QuestaoDeRelacao` so emite JSON quando a resposta esta COMPLETA --
+      // associacao e ordenacao com todos os itens. Confirmar incompleto
+      // gastaria uma tentativa num erro que a tela sabia prever.
+      ? Boolean(respostaRelacional[questaoIndex])
+      : isFillBlankActivity || isDissertativaActivity
       ? respostaTextoAtual.trim().length > 0
       : selecionados[questaoIndex] != null);
   const respostaAnteriorExibida =
@@ -695,18 +805,31 @@ export default function QuestionActivity({
         ? String(respostaAnterior)
         : String(respostaAnterior)
       : null;
-  const gabaritoExibido =
-    isDissertativaActivity
-      ? "Avaliação manual"
-      : isFillBlankActivity
+  // O gabarito exibido tem DUAS fontes, e a ordem importa. A do servidor chega
+  // depois de responder (`questao_responder` devolve junto com o veredito) e e a
+  // unica que existe para questao do professor -- o payload dela vem com o campo
+  // nulo desde `20260921_01`. A do payload so serve a questao personalizada
+  // inventada, que nao tem linha em `questoes` e por isso nao tem gabarito no
+  // servidor; para o resto ela e' nula, e cair nela sem a guarda faria a tela
+  // anunciar "sem gabarito" em vez de esperar a resposta do servidor.
+  const gabaritoLocal = !servidorCorrige({ questaoId: questao?.id, personalizada: isPersonalizedLocal })
+    ? isFillBlankActivity
       ? acceptedAnswers.length > 0
         ? acceptedAnswers.join(' ou ')
         : null
       : questao?.resposta_correta != null
-      ? isTrueFalseActivity
-        ? formatTrueFalseLabel(questao.resposta_correta)
-        : String(questao.resposta_correta)
-      : null;
+      ? String(questao.resposta_correta)
+      : null
+    : null;
+  const gabaritoBruto = gabaritoDoServidor[questaoIndex] ?? gabaritoLocal;
+  const gabaritoExibido =
+    isDissertativaActivity
+      ? "Avaliação manual"
+      : gabaritoBruto == null
+      ? null
+      : isTrueFalseActivity
+      ? formatTrueFalseLabel(gabaritoBruto)
+      : String(gabaritoBruto);
 
   return (
     <ScrollView
@@ -716,13 +839,66 @@ export default function QuestionActivity({
       nestedScrollEnabled
       showsVerticalScrollIndicator={false}
     >
+      {/* O selo do FORMATO vem antes do enunciado de propósito: errar por ter
+          entendido o formato errado não mede conhecimento nenhum, e com sete
+          tipos -- três deles novos -- o aluno precisa saber se escolhe uma,
+          marca várias, liga pares ou ordena ANTES de ler a pergunta.
+
+          Ícone nunca sozinho: quem não reconhece o símbolo lê o rótulo. */}
+      {identidade ? (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            alignSelf: 'flex-start',
+            gap: 6,
+            paddingHorizontal: 10,
+            paddingVertical: 5,
+            borderRadius: 999,
+            marginBottom: 8,
+            backgroundColor: profilePalette.accentMuted,
+            borderWidth: 1,
+            borderColor: profilePalette.border,
+          }}
+        >
+          <Ionicons name={identidade.icone as never} size={14} color={profilePalette.accent} />
+          <Text
+            style={{
+              color: profilePalette.accent,
+              fontSize: 11,
+              fontWeight: '800',
+              letterSpacing: 0.3,
+            }}
+          >
+            {identidade.rotulo.toUpperCase()}
+          </Text>
+        </View>
+      ) : null}
+
       <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 8, color: profilePalette.text }}>
         {isFillBlankActivity ? 'Complete a lacuna do texto' : questao.enunciado}
       </Text>
 
-      <Text style={{ color: profilePalette.textSubtle, fontFamily: FontFamily.interMedium, marginBottom: 4 }}>
-        Questão {questaoIndex + 1} de {questoes.length}
-      </Text>
+      {identidade ? (
+        <Text
+          style={{
+            color: profilePalette.textSubtle,
+            fontFamily: FontFamily.interMedium,
+            fontSize: 12,
+            marginBottom: 6,
+          }}
+        >
+          {identidade.instrucao}
+        </Text>
+      ) : null}
+
+      {/* `posicaoNaAtividade` devolve null para atividade de uma questão só --
+          "Questão 1 de 1" ocupava espaço para não dizer nada. */}
+      {posicao ? (
+        <Text style={{ color: profilePalette.textSubtle, fontFamily: FontFamily.interMedium, marginBottom: 4 }}>
+          {posicao}
+        </Text>
+      ) : null}
 
       {mediaBlocks.length > 0 ? (
         <View
@@ -918,7 +1094,29 @@ export default function QuestionActivity({
         </View>
       )}
 
-      {!isFillBlankActivity && !isDissertativaActivity && alternativas.map((alt, i) => (
+      {formatoRelacional ? (
+        <QuestaoDeRelacao
+          formato={formatoRelacional}
+          alternativas={questao?.alternativas}
+          bloqueado={bloqueioEdicaoPersistida || blockedByTimeout}
+          status={statusAtual}
+          palette={{
+            accent: profilePalette.accent,
+            accentMuted: profilePalette.accentMuted,
+            surface: profilePalette.surface,
+            border: profilePalette.border,
+            text: profilePalette.text,
+            textMuted: profilePalette.textMuted,
+          }}
+          onChange={(json) => {
+            setRespostaRelacional((prev) => ({ ...prev, [questaoIndex]: json }));
+            setStas((prev) => ({ ...prev, [questaoIndex]: null }));
+            setConfirmados((prev) => ({ ...prev, [questaoIndex]: false }));
+          }}
+        />
+      ) : null}
+
+      {!formatoRelacional && !isFillBlankActivity && !isDissertativaActivity && alternativas.map((alt, i) => (
         <TouchableOpacity
           key={i}
           onPress={() => {
@@ -1012,13 +1210,12 @@ export default function QuestionActivity({
           const respostaDigitada = respostaTextoAtual.trim();
           if (!podeConfirmar || validandoIA) return;
 
-          const respostaSelecionada = isFillBlankActivity || isDissertativaActivity
+          const respostaSelecionada = formatoRelacional
+            ? String(respostaRelacional[questaoIndex] ?? '')
+            : isFillBlankActivity || isDissertativaActivity
             ? respostaDigitada
             : String(alternativas[escolhido ?? -1] ?? '');
-          const tempoGastoSeg = Math.max(
-            0,
-            Math.round((Date.now() - questionStartedAtRef.current) / 1000)
-          );
+          const tempoGastoSeg = medirLatenciaDaTentativa();
 
           // Dissertativa: valida por IA (contexto do enunciado + gabarito do
           // professor) em vez de comparar texto/similaridade — perguntas
@@ -1027,6 +1224,8 @@ export default function QuestionActivity({
           // (comparacao de texto) pra nao travar o fluxo do aluno.
           let acertou: boolean;
           let acertosPercentBase = 100;
+          // Marcado quando o SERVIDOR corrigiu e ja gravou a tentativa.
+          let registradoNoServidor = false;
           let resultadoIA: EssayValidationResult | null = null;
           if (isDissertativaActivity && respostaDigitada) {
             setValidandoIA(true);
@@ -1034,7 +1233,10 @@ export default function QuestionActivity({
               resultadoIA = await validateEssayAnswerWithAi({
                 enunciado: String(questao?.enunciado ?? ''),
                 respostaAluno: respostaDigitada,
-                respostaProfessor: acceptedAnswers[0] ?? questao?.resposta_correta ?? null,
+                // O gabarito nao vem mais no payload. Para dissertativa a IA
+                // julga pelo enunciado -- e o unico tipo em que o servidor nao
+                // tem como decidir por comparacao de texto.
+                respostaProfessor: acceptedAnswers[0] ?? null,
               });
               acertou = resultadoIA.correta;
               acertosPercentBase = resultadoIA.percentual;
@@ -1046,10 +1248,59 @@ export default function QuestionActivity({
               setValidandoIA(false);
             }
             setFeedbackIA((prev) => ({ ...prev, [questaoIndex]: resultadoIA }));
-          } else {
+          } else if (
+            !servidorCorrige({ questaoId: questao?.id, personalizada: isPersonalizedLocal })
+          ) {
+            // Formato de RELACAO nao tem correcao local: a resposta e uma lista
+            // em JSON, e `checkResposta` compara texto contra uma opcao. Ele
+            // devolveria `false` para toda resposta -- errado com cara de certo.
+            // Hoje o pipeline nao gera esses formatos no personalizado; se
+            // passar a gerar, o gabarito deles precisa sair do JSONB primeiro.
+            if (formatoRelacional) {
+              setModalInfo({
+                titulo: 'Não deu para corrigir',
+                descricao:
+                  'Esta questão precisa do servidor para ser corrigida. Tente de novo com conexão.',
+              });
+              setValidandoIA(false);
+              return;
+            }
+            // Material personalizado corrige na TELA. `servidorCorrige`
+            // explica por que: a questao inventada nao existe em `questoes` (id
+            // negativo -> `questao_inexistente` -> resposta abortada), e a que
+            // herdou o id e uma reescrita, entao corrigir pela letra/indice do
+            // professor daria veredito errado com cara de certo.
             acertou = isFillBlankActivity
               ? checkResposta(respostaSelecionada, -1)
               : checkResposta(alternativas[escolhido ?? -1], escolhido ?? -1);
+            acertosPercentBase = acertou ? 100 : 0;
+          } else {
+            // QUEM CORRIGE E O SERVIDOR. O gabarito nao chega mais ao cliente
+            // (`questoes.resposta_correta` saiu do alcance do aluno), entao
+            // `checkResposta` nao teria contra o que comparar. A RPC tambem
+            // GRAVA a tentativa -- por isso o registro local abaixo e pulado
+            // para estes tipos, senao seriam duas linhas por resposta.
+            try {
+              const veredito = await corrigirQuestaoNoServidor({
+                questaoId: Number(questao?.id),
+                resposta: respostaSelecionada,
+                tempoGastoSeg,
+              });
+              acertou = veredito.correta;
+              setGabaritoDoServidor((prev) => ({
+                ...prev,
+                [questaoIndex]: veredito.respostaCorreta,
+              }));
+              registradoNoServidor = true;
+            } catch (err) {
+              console.warn('[QuestionActivity] Falha ao corrigir no servidor:', err);
+              setModalInfo({
+                titulo: 'Não deu para registrar',
+                descricao: mensagemDeErroDaCorrecao(err),
+              });
+              setValidandoIA(false);
+              return;
+            }
             acertosPercentBase = acertou ? 100 : 0;
           }
 
@@ -1288,7 +1539,8 @@ export default function QuestionActivity({
             questionIndex: questaoIndex,
           })
 
-          if (!isPersonalizedLocal && usuario?.id && questao?.id) {
+          // `questao_responder` ja gravou a tentativa quando corrigiu.
+          if (!registradoNoServidor && !isPersonalizedLocal && usuario?.id && questao?.id) {
             const respostaTxt = respostaSelecionada;
             if (topicoId != null) {
               registrarRespostaQuestao({
@@ -1298,6 +1550,7 @@ export default function QuestionActivity({
                 resposta: respostaTxt,
                 correta: acertou,
                 acertosPercentual: acertosPercent,
+                tempoGastoSeg,
               }).catch((err) => console.warn('[QuestaoAluno] erro ao registrar resposta', err));
             } else {
               QuestaoAluno.registrarResposta({

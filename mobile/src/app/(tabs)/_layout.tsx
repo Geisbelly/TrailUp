@@ -132,17 +132,17 @@ export default function TabLayout() {
 
             <Tabs.Screen
               name="social"
+              listeners={{
+                tabPress: (event) => {
+                  if (!aberturas.social) {
+                    event.preventDefault();
+                    setPortaoBloqueado("social");
+                  }
+                },
+              }}
               options={{
                 title: "Social",
                 href: undefined,
-                listeners: {
-                  tabPress: (event) => {
-                    if (!aberturas.social) {
-                      event.preventDefault();
-                      setPortaoBloqueado("social");
-                    }
-                  },
-                },
                 tabBarIcon: ({ color, focused }) => (
                   <View style={{ opacity: aberturas.social ? 1 : 0.5 }}>
                     <MaterialCommunityIcons
@@ -158,17 +158,17 @@ export default function TabLayout() {
 
              <Tabs.Screen 
               name="ranking"
+              listeners={{
+                tabPress: (event) => {
+                  if (!aberturas.rank) {
+                    event.preventDefault();
+                    setPortaoBloqueado("rank");
+                  }
+                },
+              }}
               options={{
                 title: "Ranking",
                 href: undefined,
-                listeners: {
-                  tabPress: (event) => {
-                    if (!aberturas.rank) {
-                      event.preventDefault();
-                      setPortaoBloqueado("rank");
-                    }
-                  },
-                },
                 // Ícone de Pódio (fiel à referência do ranking/liderança)
                 // Outra opção boa seria "trophy-variant" se preferir o troféu detalhado
                 tabBarIcon: ({ color, focused }) => (

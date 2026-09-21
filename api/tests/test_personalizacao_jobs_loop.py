@@ -3279,4 +3279,8 @@ def test_target_base_nao_vira_string_none() -> None:
 
     fonte = inspect.getsource(personalizacao_jobs._process_media_render_target)
     assert 'aluno_id = str(target["aluno_id"])\n' not in fonte
-    assert 'if target.get("aluno_id") is not None else None' in fonte
+    # A conversao a mao (`str(x) if x is not None else None`) protegia so este
+    # ponto: nada impedia o valor de chegar ja como 'None' de outro caminho, e
+    # foi assim que 268 alvos cairam DEPOIS da guarda existir. Hoje ha um
+    # conversor so. A regra de forma mora em `test_target_sem_dono.py`.
+    assert "aluno_id = dono_de(target)" in fonte

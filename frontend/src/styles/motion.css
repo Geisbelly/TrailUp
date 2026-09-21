@@ -1,0 +1,343 @@
+.journey-opening, .journey-download, .auth-scenery { overflow: clip; }
+.scene-nature {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: clip;
+}
+.journey-hero > .scene-nature { height: calc(100% + var(--hero-scene-tail)); }
+.nature-foliage { position: absolute; width: min(24%, 280px); aspect-ratio: 1; }
+.nature-foliage-left { left: -5%; bottom: 12%; }
+.nature-foliage-right { right: -5%; top: 9%; transform: scaleX(-1); }
+.nature-sprig, .nature-wing, .nature-body, .nature-leaf {
+  display: block;
+  background-image: var(--nature-atlas);
+  background-size: 200% 200%;
+  background-repeat: no-repeat;
+}
+.nature-sprig { width: 100%; height: 100%; background-position: 0 0; transform-origin: 6% 94%; }
+.nature-flight-field { position: absolute; left: 54%; top: 23%; width: 36%; height: 38%; }
+.nature-flight, .nature-leaf-path { position: absolute; inset: 0; }
+.nature-flight { --wing-cycle: 320ms; --butterfly-tile: 100% 0; }
+.nature-flight-2 { --wing-cycle: 390ms; --butterfly-tile: 100% 100%; }
+.nature-flight-3 { --wing-cycle: 280ms; }
+.nature-butterfly {
+  display: block;
+  position: relative;
+  width: 38px;
+  aspect-ratio: 1;
+  filter: drop-shadow(0 0 3px #ffe576) drop-shadow(0 0 7px #ffc94c99);
+}
+.nature-flight-2 .nature-butterfly { width: 30px; }
+.nature-flight-3 .nature-butterfly { width: 24px; }
+.nature-wing, .nature-body {
+  position: absolute;
+  inset: 0;
+  background-image: none;
+  background-color: #fff1a6;
+  mask-image: var(--nature-atlas);
+  mask-size: 200% 200%;
+  mask-position: var(--butterfly-tile);
+  mask-repeat: no-repeat;
+}
+/* Each wing hinges on the body in the shared sprite, rather than scaling the whole insect. */
+.nature-wing { transform-origin: 50% 50%; }
+.nature-wing-left { clip-path: inset(0 50% 0 0); }
+.nature-wing-right { clip-path: inset(0 0 0 50%); }
+.nature-body { clip-path: inset(0 48% 0 48%); }
+.nature-leaf-field { position: absolute; left: 80%; top: 14%; width: 15%; height: 51%; }
+.nature-leaf { width: 24px; aspect-ratio: 1; background-position: 0 100%; }
+.nature-leaf-path-2 .nature-leaf { width: 17px; }
+.scene-nature[data-quiet="true"] { opacity: .65; }
+.scene-nature[data-quiet="true"] .nature-foliage { width: min(20%, 210px); }
+.scene-nature[data-quiet="true"] .nature-flight-field { left: 77%; width: 17%; height: 45%; top: 18%; }
+.public-scenery .scene-nature { mask-image: linear-gradient(#000 55%, transparent); }
+.journey-download .nature-foliage-left { bottom: -6%; }
+.journey-download .nature-foliage-right { top: -3%; width: min(20%, 180px); }
+.journey-download .nature-flight-field { left: 82%; top: 18%; width: 12%; height: 42%; }
+
+@media (max-width: 800px) {
+  .nature-foliage { width: 140px; }
+  .nature-foliage-left { left: -36px; bottom: 8%; }
+  .nature-foliage-right { right: -36px; top: 12%; }
+  .journey-hero .nature-flight-field { left: 54%; top: 60%; width: 36%; height: 8%; }
+  .nature-butterfly { width: 30px; }
+  .nature-flight-2 .nature-butterfly { width: 25px; }
+  .nature-flight-3, .nature-leaf-path-2 { display: none; }
+  .nature-leaf-field { left: 89%; width: 8%; top: 19%; height: 42%; }
+  .nature-leaf { width: 18px; }
+  .scene-nature[data-quiet="true"] .nature-foliage { width: 120px; }
+  .scene-nature[data-quiet="true"] .nature-flight-field { left: 91%; top: 12%; width: 3%; height: 60%; }
+  .scene-nature[data-quiet="true"] .nature-butterfly { width: 20px; }
+  .journey-download .nature-flight-field { left: 54%; top: 3%; width: 32%; height: 8%; }
+  .journey-download .nature-foliage-right { width: 104px; }
+}
+@media (max-width: 800px) and (max-height: 740px) {
+  .journey-hero .nature-flight-field { left: 66%; top: 13%; width: 24%; height: 7%; }
+  .journey-hero .nature-flight-2 { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nature-flight-field, .nature-leaf-field { display: none; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* CSS-only motion pauses when its owning scene is offscreen or the tab is hidden. */
+  .nature-sprig { animation: foliage-sway 7s ease-in-out infinite alternate paused; }
+  .nature-foliage-right .nature-sprig { animation-duration: 9s; animation-delay: -4s; }
+  .nature-flight { animation: butterfly-flight 19s ease-in-out infinite paused; }
+  .nature-flight-2 { animation-duration: 23s; animation-delay: -9s; animation-direction: reverse; }
+  .nature-flight-3 { animation-duration: 27s; animation-delay: -18s; }
+  .nature-butterfly { animation: butterfly-bank 5s ease-in-out infinite alternate paused; }
+  .nature-wing { animation: butterfly-wing var(--wing-cycle) ease-in-out infinite alternate paused; }
+  .nature-wing-right { animation-delay: -40ms; }
+  .nature-leaf-path { animation: leaf-fall 15s linear infinite paused; }
+  .nature-leaf-path-2 { animation-duration: 19s; animation-delay: -8s; }
+  .nature-leaf { animation: leaf-turn 4s ease-in-out infinite alternate paused; }
+  [data-motion-active="true"] > .scene-nature :is(.nature-sprig, .nature-flight, .nature-butterfly, .nature-wing, .nature-leaf-path, .nature-leaf) { animation-play-state: running; }
+  .auth-immersive:focus-within .scene-nature * { animation-play-state: paused; }
+
+  .hero-content > *, .hero-bottom { animation: journey-arrive 650ms cubic-bezier(.2, .7, .2, 1) both; }
+  .hero-content > :nth-child(2) { animation-delay: 70ms; }
+  .hero-content > :nth-child(3) { animation-delay: 140ms; }
+  .hero-content > :nth-child(4) { animation-delay: 210ms; }
+  .hero-content > :nth-child(5), .hero-bottom { animation-delay: 280ms; }
+
+  .journey-features[data-revealed="true"] .journey-section-heading,
+  .journey-section-heading[data-revealed="true"], .download-content[data-revealed="true"] {
+    animation: journey-arrive 650ms cubic-bezier(.2, .7, .2, 1) backwards;
+  }
+  .journey-feature[data-revealed="true"] { animation: scroll-reveal 800ms cubic-bezier(.2, .7, .2, 1) backwards; }
+  .journey-feature[data-revealed="true"] .feature-art { animation: scroll-art 950ms cubic-bezier(.2, .7, .2, 1) backwards; }
+
+  /* Fade the complete composition together so feet never detach from terrain. */
+  .profile-world-panel[data-state="active"] .profile-world-visual { animation: scene-enter 500ms ease-out; }
+  .profile-world-panel[data-state="active"] .profile-world-copy { animation: journey-arrive 500ms ease-out backwards; }
+  .profile-world-tab[data-state="active"] img { animation: emblem-select 450ms ease-out; }
+
+  .journey-feature .feature-art img, .journey-link svg, .journey-button svg,
+  .public-post, .console-navigation a, .console-navigation a svg { transition: transform 220ms ease, border-color 180ms ease, background-color 180ms ease; }
+  .journey-link:is(:hover, :focus-visible) svg, .journey-button:is(:hover, :focus-visible) svg { transform: translateX(3px); }
+  .journey-button:active { transform: translateY(1px); }
+  .journey-dock a:focus-visible img { transform: translateY(-3px); }
+  .console-navigation a[aria-current="page"] svg { animation: scene-enter 200ms ease-out; }
+  .public-page-title, .public-article > h1, .auth-panel { animation: journey-arrive 500ms ease-out backwards; }
+  .public-main > :not(.public-page-title), .console-main > * { animation: scene-enter 300ms ease-out; }
+
+  @media (hover: hover) and (pointer: fine) {
+    .journey-feature:hover .feature-art img { transform: translateY(-4px) rotate(-3deg); }
+    .public-post:hover { transform: translateY(-3px); }
+    .console-navigation a:hover svg { transform: translateX(2px); }
+  }
+}
+
+.scene-camera { position: absolute; inset: 0; overflow: clip; pointer-events: none; }
+/* The mask stays fixed while the picture moves, preserving section continuity. */
+.hero-camera { height: calc(100% + var(--hero-scene-tail)); mask-image: linear-gradient(#000 72%, transparent); }
+.download-camera { mask-image: linear-gradient(transparent, #000 24%, #000 72%, transparent); }
+.scene-camera .scene-landscape { height: 100%; mask-image: none; }
+.immersive-site .journey-header.is-scrolled { background: #180f26; }
+.journey-feature { --reveal-x: -64px; }
+.journey-feature:nth-child(even) { --reveal-x: 64px; }
+.journey-hero { --hero-depth: -96px; --foliage-depth: -190px; --camera-depth: 90px; --camera-zoom: 1.14; }
+.nature-foliage { --foliage-facing: 1; }
+.nature-foliage-right { --foliage-facing: -1; }
+.profile-guide-stage { --guide-anchor: -50%; --guide-zoom: 1.12; }
+.profile-world-tab:nth-child(2) { --emblem-entry: 7%; }
+.profile-world-tab:nth-child(3) { --emblem-entry: 14%; }
+.profile-world-tab:nth-child(4) { --emblem-entry: 21%; }
+.profile-world-tab:nth-child(5) { --emblem-entry: 28%; }
+.profile-world-tab:nth-child(6) { --emblem-entry: 35%; }
+.profile-world-tab:nth-child(7) { --emblem-entry: 42%; }
+@media (max-width: 800px) {
+  .journey-hero { --hero-depth: -48px; --foliage-depth: -110px; --camera-depth: 46px; --camera-zoom: 1.09; }
+  .journey-feature { --reveal-x: -28px; }
+  .journey-feature:nth-child(even) { --reveal-x: 28px; }
+  .profile-guide-stage { --guide-anchor: -64%; --guide-zoom: 1.07; }
+}
+
+/* Unsupported browsers keep the intersection-based entrances above. */
+@supports (animation-timeline: view()) and (animation-range: entry 0% entry 100%) {
+  @media (prefers-reduced-motion: no-preference) {
+    .journey-hero { view-timeline: --hero-scroll block; }
+    .hero-camera .hero-landscape {
+      animation: scroll-camera linear both;
+      animation-timeline: --hero-scroll;
+      animation-range: exit 0% exit 100%;
+      transform-origin: 62% 80%;
+    }
+    .journey-hero .hero-content {
+      animation: scroll-hero linear both;
+      animation-timeline: --hero-scroll;
+      animation-range: exit 0% exit 100%;
+    }
+    .journey-hero .nature-foliage {
+      animation: scroll-foliage linear both;
+      animation-timeline: --hero-scroll;
+      animation-range: exit 0% exit 100%;
+    }
+    .journey-hero .nature-leaf-field {
+      animation: scroll-wind linear both;
+      animation-timeline: --hero-scroll;
+      animation-range: exit 0% exit 100%;
+    }
+    .immersive-site > .journey-header::after {
+      content: "";
+      position: absolute;
+      inset: auto 0 -1px;
+      height: 2px;
+      background: #ffb898;
+      transform-origin: left;
+      pointer-events: none;
+      animation: scroll-progress linear both;
+      animation-timeline: scroll(root block);
+    }
+    .immersive-site .journey-brand > img {
+      animation: scroll-brand linear both;
+      animation-timeline: scroll(root block);
+    }
+    .immersive-site .journey-features .journey-section-heading,
+    .immersive-site .journey-feature[data-revealed],
+    .immersive-site .journey-profiles > .journey-section-heading,
+    .immersive-site .profile-world-panel[data-state="active"] .profile-world-copy,
+    .immersive-site .download-content[data-revealed],
+    .immersive-site .footer-main > * {
+      animation: scroll-reveal linear both;
+      animation-timeline: view(block 0 12%);
+      animation-range: entry 0% entry 100%;
+    }
+    .journey-feature { view-timeline: --feature-scroll block; view-timeline-inset: 0 12%; }
+    .immersive-site .journey-feature[data-revealed] .feature-art {
+      animation: scroll-art-pass linear both;
+      animation-timeline: --feature-scroll;
+      animation-range: entry 0% exit 100%;
+    }
+    .profile-world-tabs { view-timeline: --profile-tabs-scroll block; view-timeline-inset: 0 12%; }
+    .profile-world-tabs .profile-world-tab {
+      animation: scroll-emblem-wave linear both;
+      animation-timeline: --profile-tabs-scroll;
+      animation-range: entry var(--emblem-entry, 0%) entry 100%;
+    }
+    .profile-world-visual { view-timeline: --guide-scroll block; }
+    .profile-guide-stage {
+      animation: scroll-guide linear both;
+      animation-timeline: --guide-scroll;
+      animation-range: entry 0% exit 100%;
+      transform-origin: 64% 75%;
+    }
+    .profile-world-panel { view-timeline: --profile-scroll block; }
+    .profile-panel-emblem {
+      animation: scroll-emblem-turn linear both;
+      animation-timeline: --profile-scroll;
+      animation-range: entry 0% exit 100%;
+    }
+    .journey-download { view-timeline: --download-scroll block; }
+    .download-camera .scene-landscape {
+      animation: scroll-download-camera linear both;
+      animation-timeline: --download-scroll;
+      animation-range: entry 0% exit 100%;
+    }
+    .immersive-site :is(.journey-feature:target, .download-content:focus-within, .hero-content:focus-within),
+    .immersive-site .profile-world-panel[data-state="active"] .profile-world-copy:focus-within,
+    .immersive-site .profile-world-tabs:focus-within .profile-world-tab {
+      animation: none;
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+@keyframes scroll-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes scroll-brand { from { transform: rotate(0); } to { transform: rotate(180deg); } }
+@keyframes scroll-camera {
+  from { transform: translateY(0) scale(1); }
+  to { transform: translateY(var(--camera-depth)) scale(var(--camera-zoom)); }
+}
+@keyframes scroll-download-camera {
+  from { transform: translateY(-24px) scale(1.16); }
+  55% { transform: translateY(0) scale(1.04); }
+  to { transform: translateY(24px) scale(1.12); }
+}
+@keyframes scroll-hero {
+  from { transform: translateY(0); opacity: 1; }
+  to { transform: translateY(var(--hero-depth)); opacity: .55; }
+}
+@keyframes scroll-foliage {
+  from { transform: translateY(0) scaleX(var(--foliage-facing)); }
+  to { transform: translateY(var(--foliage-depth)) scaleX(var(--foliage-facing)); }
+}
+@keyframes scroll-wind {
+  from { transform: translate(0, 0) rotate(0); }
+  55% { transform: translate(-28px, -50px) rotate(-12deg); }
+  to { transform: translate(0, -110px) rotate(6deg); }
+}
+@keyframes scroll-reveal {
+  from { opacity: .3; transform: translate(var(--reveal-x, 0px), 76px); }
+  to { opacity: 1; transform: translate(0, 0); }
+}
+@keyframes scroll-art {
+  from { transform: translateY(24px) rotate(-26deg) scale(.65); }
+  to { transform: rotate(0) scale(1); }
+}
+@keyframes scroll-art-pass {
+  from { transform: translateY(28px) rotate(-26deg) scale(.68); }
+  35% { transform: translateY(-10px) rotate(7deg) scale(1.12); }
+  70% { transform: translateY(6px) rotate(-5deg) scale(1.04); }
+  to { transform: translateY(-24px) rotate(12deg) scale(.92); }
+}
+@keyframes scroll-emblem-wave {
+  from { opacity: .3; transform: translateY(34px) scale(.65); }
+  75% { opacity: 1; transform: translateY(-7px) scale(1.04); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes scroll-emblem-turn {
+  from { transform: translateY(14px) rotate(-18deg) scale(.8); }
+  50% { transform: translateY(-8px) rotate(8deg) scale(1.06); }
+  to { transform: translateY(0) rotate(-6deg) scale(1); }
+}
+@keyframes scroll-guide {
+  from { transform: translateX(var(--guide-anchor)) scale(1); }
+  55% { transform: translateX(var(--guide-anchor)) scale(var(--guide-zoom)); }
+  to { transform: translateX(var(--guide-anchor)) scale(1.025); }
+}
+
+@keyframes foliage-sway {
+  from { transform: rotate(-3deg); }
+  to { transform: rotate(4deg); }
+}
+@keyframes butterfly-flight {
+  0%, 100% { transform: translate(5%, 65%); }
+  20% { transform: translate(28%, 15%); }
+  45% { transform: translate(78%, 30%); }
+  65% { transform: translate(63%, 75%); }
+  85% { transform: translate(22%, 85%); }
+}
+@keyframes butterfly-bank {
+  from { transform: rotate(-28deg); }
+  to { transform: rotate(32deg); }
+}
+@keyframes butterfly-wing {
+  from { transform: scaleX(.18); }
+  to { transform: scaleX(1); }
+}
+@keyframes leaf-fall {
+  0% { opacity: 0; transform: translate(20%, -5%); }
+  12% { opacity: .8; }
+  30% { transform: translate(70%, 25%); }
+  55% { transform: translate(15%, 50%); }
+  80% { opacity: .65; transform: translate(60%, 75%); }
+  100% { opacity: 0; transform: translate(25%, 100%); }
+}
+@keyframes leaf-turn {
+  from { transform: rotate(-30deg) scaleX(.5); }
+  to { transform: rotate(65deg) scaleX(1); }
+}
+@keyframes journey-arrive {
+  from { opacity: 0; transform: translate3d(0, 14px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+@keyframes scene-enter { from { opacity: 0; } to { opacity: 1; } }
+@keyframes emblem-select {
+  from { transform: translateY(-4px) scale(.92); }
+  60% { transform: translateY(-4px) scale(1.08); }
+  to { transform: translateY(-4px) scale(1); }
+}

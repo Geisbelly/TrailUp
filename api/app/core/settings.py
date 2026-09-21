@@ -56,6 +56,23 @@ class Settings(BaseSettings):
     r2_bucket: str | None = Field(
         default=None, validation_alias=AliasChoices("r2_bucket", "R2_BUCKET")
     )
+    # Base publica da arte de identidade (boss, cenario, moldura) servida pelo
+    # R2 ou por um CDN na frente dele - ex.: "https://pub-<hash>.r2.dev".
+    # NAO aponte para o Supabase Storage: o projeto esta em overage de egress e
+    # o Storage e 99,9% dele. Sem esta base, as URLs de arte do combate ficam
+    # None, que e o comportamento que o app ja tinha.
+    arte_base_url: str | None = Field(
+        default=None, validation_alias=AliasChoices("arte_base_url", "ARTE_BASE_URL")
+    )
+
+    # O retrato da turma (`classe_perfil_summary`) era gravado SO quando alguem
+    # abria a aba "Turma" do console. Sem visita ele envelhecia em silencio --
+    # medido: classe 32 com retrato de 26/08 mostrando 6.25 de percentual medio
+    # onde o aluno estava com 99.06. O laco recalcula apenas as classes cuja
+    # fonte mudou depois do ultimo retrato, entao o custo acompanha o
+    # movimento real da turma, nao o numero de turmas.
+    classe_perfil_summary_refresh_enabled: bool = True
+    classe_perfil_summary_interval_min: int = 15
 
     supabase_jwt_secret: str
     supabase_jwt_audience: str | None = "authenticated"

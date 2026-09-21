@@ -15,6 +15,7 @@ import httpx
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.core.identidade import identificador_de_dono
 from app.core.settings import Settings
 from app.ingestion.pipeline import ingest_source as _ingest_source
 from app.ingestion.semantic_chunker import chunks_to_plain_text as _chunks_to_plain_text
@@ -4623,6 +4624,13 @@ async def fetch_personalizacao_context(
     # perfil do proprio target -- e contexto_aluno, que para a base e vazio
     # por definicao. Fontes, conteudo da classe e source_hash ja vinham de
     # classe/topico/conteudo.
+    #
+    # A guarda abaixo testa identidade (`is None`), e por isso ela SO vale se o
+    # valor chegar nulo. Ela existe desde `e4d50ae` e mesmo assim 268 alvos
+    # estouraram depois dela: quem chamava ja havia feito `str(None)`, e a
+    # string 'None' nao e nula. Normalizar aqui e defesa de fronteira -- quem
+    # decide "tem dono?" nao pode depender de o chamador ter convertido certo.
+    aluno_id = identificador_de_dono(aluno_id)
     if aluno_id is None:
         context: dict[str, Any] = {}
     else:

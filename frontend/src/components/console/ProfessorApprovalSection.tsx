@@ -82,34 +82,34 @@ export function ProfessorApprovalSection() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-semibold text-white">Aprovações de Professor</h2>
-          <p className="text-sm text-zinc-400 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Professores aguardando liberação de acesso ao console
           </p>
         </div>
-        <Badge variant="outline" className="text-zinc-400 border-zinc-700">
+        <Badge variant="outline" className="text-muted-foreground border-border">
           {professors.length} pendente{professors.length !== 1 ? "s" : ""}
         </Badge>
       </div>
 
       {professors.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center space-y-3">
-          <UserCheck className="w-10 h-10 text-zinc-600" />
-          <p className="text-zinc-500">Nenhum professor aguardando aprovação.</p>
+          <UserCheck className="w-10 h-10 text-muted-foreground" />
+          <p className="text-muted-foreground">Nenhum professor aguardando aprovação.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4">
           {professors.map((prof) => (
-            <Card key={prof.id} className="bg-zinc-900/50 border-zinc-800">
+            <Card key={prof.id} className="bg-card/50 border-border">
               <CardContent className="p-5">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                   <div className="space-y-2 flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-white font-medium truncate">{prof.nome}</span>
                     </div>
-                    <div className="flex flex-wrap gap-3 text-sm text-zinc-400">
+                    <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
                       {prof.instituicao && (
                         <span className="flex items-center gap-1">
                           <Building2 className="w-3.5 h-3.5 flex-shrink-0" />
@@ -128,7 +128,7 @@ export function ProfessorApprovalSection() {
                       </span>
                     </div>
                     {prof.descricao && (
-                      <p className="text-sm text-zinc-500 line-clamp-2">{prof.descricao}</p>
+                      <p className="text-sm text-muted-foreground line-clamp-2">{prof.descricao}</p>
                     )}
                   </div>
 

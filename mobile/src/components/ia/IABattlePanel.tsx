@@ -1,4 +1,6 @@
 import { useIA } from "@/context/IAContext";
+import { IABossVictoryModal } from "@/components/ia/IABossVictoryModal";
+import { NADA_OBSERVADO, proximaCelebracao } from "@/utils/celebracaoDoBoss";
 import {
   IAEnemyPalette,
   IAEnemyVisualSpec,
@@ -26,66 +28,153 @@ function formatCountdown(totalSeconds: number) {
   return `${minutes}:${seconds}`;
 }
 
-function buildFallbackVisual(archetype?: string | null): IAEnemyVisualSpec {
-  const normalized = String(archetype ?? "").trim().toLowerCase();
-
-  if (normalized.includes("mech")) {
-    return {
-      preset: "mech",
-      badgeLabel: "Boss mecânico",
-      palette: {
-        primaryColor: "#38bdf8",
-        secondaryColor: "#0f172a",
-        accentColor: "#f8fafc",
-        hpColor: "#fb7185",
-        shieldColor: "#38bdf8",
-        textColor: "#e2e8f0",
-      },
-    };
-  }
-
-  if (normalized.includes("scholar") || normalized.includes("mage")) {
-    return {
-      preset: "scholar",
-      badgeLabel: "Boss arcano",
-      palette: {
-        primaryColor: "#a78bfa",
-        secondaryColor: "#1e1b4b",
-        accentColor: "#fef08a",
-        hpColor: "#f97316",
-        shieldColor: "#60a5fa",
-        textColor: "#f8fafc",
-      },
-    };
-  }
-
-  if (normalized.includes("beast")) {
-    return {
-      preset: "beast",
-      badgeLabel: "Boss selvagem",
-      palette: {
-        primaryColor: "#fb7185",
-        secondaryColor: "#3f1d2e",
-        accentColor: "#fde68a",
-        hpColor: "#ef4444",
-        shieldColor: "#60a5fa",
-        textColor: "#fff7ed",
-      },
-    };
-  }
-
-  return {
-    preset: "phantom",
-    badgeLabel: "Boss",
+// Espelho de `_PROFILE_PRESETS` e `_PALETTES` em
+// `api/app/services/behavioral_personalization.py`, que e a fonte da verdade.
+// Isto so roda quando o patch chega SEM `visual` — patch abreviado, mock local,
+// app ainda sem resposta da API. Ha teste do lado da API conferindo que os dois
+// nao divergiram (`api/tests/test_arte_combate.py`).
+//
+// Cores e rotulos sao copia literal do Python, inclusive a falta de acento nos
+// rotulos: o fallback tem de ser indistinguivel do que a API manda, e nao uma
+// segunda versao "melhorada" que faz o boss mudar de cara conforme o patch
+// chegou ou nao.
+//
+// Sem URL de arte de proposito: quem monta URL e o catalogo da API
+// (`app/services/arte_combate.py`), que conhece a base publica. O app nao.
+const BOSS_PRESETS: Record<string, IAEnemyVisualSpec> = {
+  // Conqueror: O Tirano da Arena
+  arena: {
+    preset: "arena",
+    badgeLabel: "Tirano",
     palette: {
-      primaryColor: "#f97316",
-      secondaryColor: "#26162b",
-      accentColor: "#fcd34d",
-      hpColor: "#f97316",
-      shieldColor: "#60a5fa",
-      textColor: "#f8fafc",
+      primaryColor: "#d24c33",
+      secondaryColor: "#4f1710",
+      accentColor: "#ffd27d",
+      hpColor: "#ff5d5d",
+      shieldColor: "#94f7c5",
+      textColor: "#fff8f2",
     },
-  };
+  },
+  // Achiever: O Usurpador de Ouro
+  duelist: {
+    preset: "duelist",
+    badgeLabel: "Rival",
+    palette: {
+      primaryColor: "#7a2137",
+      secondaryColor: "#221019",
+      accentColor: "#ffd166",
+      hpColor: "#ff6b6b",
+      shieldColor: "#93efcf",
+      textColor: "#fff7f7",
+    },
+  },
+  // Mastermind: O Marionetista Frio
+  oracle: {
+    preset: "oracle",
+    badgeLabel: "Mente Sombria",
+    palette: {
+      primaryColor: "#355b68",
+      secondaryColor: "#101b22",
+      accentColor: "#d7f171",
+      hpColor: "#f46d75",
+      shieldColor: "#81f2df",
+      textColor: "#f2fffb",
+    },
+  },
+  // Socialiser: O Demagogo de Ferro
+  parade: {
+    preset: "parade",
+    badgeLabel: "Demagogo",
+    palette: {
+      primaryColor: "#7a2f58",
+      secondaryColor: "#24111d",
+      accentColor: "#ffd57a",
+      hpColor: "#ff7b7b",
+      shieldColor: "#83efdf",
+      textColor: "#f8fbff",
+    },
+  },
+  // Daredevil: O Sabotador do Rift
+  rift: {
+    preset: "rift",
+    badgeLabel: "Sabotador",
+    palette: {
+      primaryColor: "#dd6b20",
+      secondaryColor: "#5a250a",
+      accentColor: "#ffe08a",
+      hpColor: "#ff6d61",
+      shieldColor: "#8bf2b7",
+      textColor: "#fff8ef",
+    },
+  },
+  // Survivor: O Perseguidor Escarlate
+  sentinel: {
+    preset: "sentinel",
+    badgeLabel: "Ameaca",
+    palette: {
+      primaryColor: "#7d1d30",
+      secondaryColor: "#240913",
+      accentColor: "#f5b173",
+      hpColor: "#ff7b7b",
+      shieldColor: "#75d7c8",
+      textColor: "#fff3f1",
+    },
+  },
+  // Seeker: A Entidade do Vazio
+  veil: {
+    preset: "veil",
+    badgeLabel: "Abismo",
+    palette: {
+      primaryColor: "#4e3286",
+      secondaryColor: "#171225",
+      accentColor: "#8fe5ff",
+      hpColor: "#ff7f90",
+      shieldColor: "#74f0d3",
+      textColor: "#f6f7ff",
+    },
+  },
+};
+
+// `archetype` e o que viaja no patch; `preset` nomeia o visual. A API manda os
+// dois, e os vocabularios sao diferentes de proposito.
+//
+// Antes desta tabela o casamento era por substring (`includes("mech")`,
+// `includes("beast")`), e NENHUM dos sete archetypes da API casava: todo boss
+// caia no default laranja, qualquer que fosse o perfil do aluno.
+const PRESET_POR_ARCHETYPE: Record<string, string> = {
+  "arena-tyrant": "arena",
+  "fallen-usurper": "duelist",
+  "shadow-puppeteer": "oracle",
+  "toxic-demagogue": "parade",
+  "chaos-saboteur": "rift",
+  "night-stalker": "sentinel",
+  "void-entity": "veil",
+};
+
+// Archetype desconhecido: o mock local de `IAContext`, ou um patch de versao
+// futura. As cores sao as mesmas de `mergePalette`, entao nao ha salto visual
+// entre "sem visual nenhum" e "visual sem preset conhecido".
+const VISUAL_NEUTRO: IAEnemyVisualSpec = {
+  preset: "phantom",
+  badgeLabel: "Boss",
+  palette: {
+    primaryColor: "#f97316",
+    secondaryColor: "#26162b",
+    accentColor: "#fcd34d",
+    hpColor: "#f97316",
+    shieldColor: "#60a5fa",
+    textColor: "#f8fafc",
+  },
+};
+
+function buildFallbackVisual(archetype?: string | null): IAEnemyVisualSpec {
+  const normalized = String(archetype ?? "")
+    .trim()
+    .toLowerCase();
+  // Aceita as duas chaves: o campo que viaja e o `archetype`, mas um patch que
+  // so tenha o nome do preset tambem resolve.
+  const preset = PRESET_POR_ARCHETYPE[normalized] ?? normalized;
+  return BOSS_PRESETS[preset] ?? VISUAL_NEUTRO;
 }
 
 function mergePalette(palette?: IAEnemyPalette | null) {
@@ -198,6 +287,29 @@ export function IABattlePanel({ scope, surface = "inline" }: Props) {
     const timer = setInterval(updateTime, 1000);
     return () => clearInterval(timer);
   }, [battleState?.encounterEndsAt, battleState?.defeated, emitSignal, scope]);
+
+  // A CELEBRACAO dispara na TRANSICAO, nunca no estado.
+  //
+  // `battleState?.defeated` e o sinal de verdade: `previewState` nasce sempre
+  // com `defeated: false`. E o primeiro encontro com cada boss so REGISTRA o
+  // estado inicial -- sem isto, voltar a um conteudo ja concluido celebraria de
+  // novo a cada abertura da tela.
+  const chaveDoBoss = String(
+    battleState?.itemKey ??
+      (scope.scope === "item" ? scope.itemKey : `topic:${scope.topicoId}`)
+  );
+  const derrotadoAgora = Boolean(battleState?.defeated);
+  const observacaoDoBossRef = useRef(NADA_OBSERVADO);
+  const [vitoriaVisivel, setVitoriaVisivel] = useState(false);
+
+  useEffect(() => {
+    const { observacao, celebrar } = proximaCelebracao(observacaoDoBossRef.current, {
+      chave: chaveDoBoss,
+      derrotado: derrotadoAgora,
+    });
+    observacaoDoBossRef.current = observacao;
+    if (celebrar) setVitoriaVisivel(true);
+  }, [chaveDoBoss, derrotadoAgora]);
 
   if (!resolvedBattle.enabled || !resolvedBattle.battle) return null;
 
@@ -333,6 +445,17 @@ export function IABattlePanel({ scope, surface = "inline" }: Props) {
       />
 
       <Text style={[styles.helperText, { color: `${palette.textColor}DD` }]}>{helperText}</Text>
+
+      {/* `Modal` do React Native desenha na camada nativa dele, entao ficar
+          dentro desta `View` nao o prende ao layout do painel. */}
+      <IABossVictoryModal
+        visible={vitoriaVisivel}
+        enemy={enemy}
+        visual={visual ?? null}
+        palette={palette}
+        mensagem={resolvedBattle.battle.victoryMessage}
+        onClose={() => setVitoriaVisivel(false)}
+      />
     </View>
   );
 }

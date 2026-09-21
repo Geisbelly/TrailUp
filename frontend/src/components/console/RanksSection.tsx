@@ -329,7 +329,7 @@ export default function RanksSection() {
       </div>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
           <div>
             <CardTitle className="text-lg">Tipos de Ranking</CardTitle>
             <CardDescription>Configure os critérios de classificação</CardDescription>
@@ -421,7 +421,7 @@ export default function RanksSection() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
             <div>
               <CardTitle className="text-lg">Rankings Ativos</CardTitle>
               <CardDescription>Clique para ver posições</CardDescription>

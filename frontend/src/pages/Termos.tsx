@@ -1,23 +1,12 @@
-import { Hexagon } from "lucide-react";
 import { Link } from "react-router-dom";
-import { Card } from "@/components/ui/card";
-import Footer from "@/components/Footer";
-import Header from "@/components/Header";
+import { PublicLayout, PublicPageTitle } from "@/components/PublicLayout";
 
 const Termos = () => {
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <Header />
-
-      {/* Content */}
-      <div className="py-12 px-4 pt-20">
-        <div className="container mx-auto max-w-4xl">
-          <h1 className="text-4xl md:text-5xl font-bold mb-8 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Termos de Uso
-          </h1>
-
-          <Card className="p-8 border-primary/20 bg-card/50 backdrop-blur space-y-6">
+    <PublicLayout>
+        <div className="public-article">
+          <PublicPageTitle title="Termos de Uso" eyebrow="TrailUp" />
+          <article className="space-y-8">
             <section>
               <h2 className="text-2xl font-bold mb-4 text-primary">1. Aceitação dos Termos</h2>
               <p className="text-muted-foreground leading-relaxed">
@@ -207,12 +196,9 @@ const Termos = () => {
                 Última atualização: 15 de janeiro de 2025
               </p>
             </div>
-          </Card>
+          </article>
         </div>
-      </div>
-
-      <Footer />
-    </div>
+    </PublicLayout>
   );
 };
 

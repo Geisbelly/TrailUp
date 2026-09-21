@@ -2,10 +2,15 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  EMPTY_STUDY_CONTEXT,
+  LIMITE_DE_ABANDONO_MS,
   accumulateContextTime,
   buildEmptyBatch,
-  EMPTY_STUDY_CONTEXT,
   markContextVisit,
+  proximoContextoDeEstudo,
+  registerContextScroll,
+  registerContextTouch,
+  repartirTempo,
   serializeTimeMetricEntries,
   type CurrentStudyContext,
 } from "./acumuladorLote";
@@ -129,4 +134,290 @@ test("tempo negativo nao subtrai do acumulado", () => {
   assert.equal(entrada?.activeMs, 0);
   assert.equal(entrada?.idleMs, 0);
   assert.equal(entrada?.dwellMs, 0);
+});
+
+test("a entrada de conteudo nao recebe a item_key da atividade aberta dentro dela", () => {
+  // O contexto carrega UMA `itemKey`, a do bloco aberto. Dentro de uma
+  // atividade ela vale `activity:<id>`, e o escopo `content` a recebia junto —
+  // dai o gatilho `telemetria_resolver_entidade` lia `activity:1063` e
+  // carimbava `atividade_id = 1063` numa linha que AGREGA as atividades do
+  // conteudo. Nove linhas assim na base, cada uma com a ultima atividade do
+  // lote.
+  const batch = buildEmptyBatch(T0);
+  const dentroDaAtividade = contexto({
+    topicoId: 125,
+    conteudoId: 174,
+    atividadeId: 1063,
+    itemKey: "activity:1063",
+    studyState: "active",
+  });
+
+  accumulateContextTime(batch, dentroDaAtividade, 5_000, 0);
+
+  assert.equal(batch.timeMetrics.contents["content:174"]?.itemKey, null);
+  assert.equal(batch.timeMetrics.contents["content:174"]?.atividadeId, null);
+  assert.equal(batch.timeMetrics.activities["activity:1063"]?.itemKey, "activity:1063");
+  assert.equal(batch.timeMetrics.activities["activity:1063"]?.conteudoId, 174);
+});
+
+test("a entrada de atividade nao recebe a item_key da questao aberta dentro dela", () => {
+  const batch = buildEmptyBatch(T0);
+
+  accumulateContextTime(
+    batch,
+    contexto({
+      topicoId: 125,
+      atividadeId: 1063,
+      questaoId: 1049,
+      itemKey: "question:1049",
+      studyState: "active",
+    }),
+    5_000,
+    0
+  );
+
+  assert.equal(batch.timeMetrics.activities["activity:1063"]?.itemKey, null);
+  assert.equal(batch.timeMetrics.questions["question:1049"]?.itemKey, "question:1049");
+});
+
+test("tempo e visita por QUESTAO, o escopo que nao existia", () => {
+  // Uma atividade de varias questoes era um numero so: o escopo mais fino
+  // parava na atividade.
+  const batch = buildEmptyBatch(T0);
+  const base = { topicoId: 125, atividadeId: 1063, studyState: "active" as const };
+
+  markContextVisit(batch, EMPTY_STUDY_CONTEXT, contexto({ ...base, questaoId: 1049 }));
+  accumulateContextTime(batch, contexto({ ...base, questaoId: 1049 }), 30_000, 0);
+
+  markContextVisit(
+    batch,
+    contexto({ ...base, questaoId: 1049 }),
+    contexto({ ...base, questaoId: 1050 })
+  );
+  accumulateContextTime(batch, contexto({ ...base, questaoId: 1050 }), 12_000, 0);
+
+  assert.equal(batch.timeMetrics.questions["question:1049"]?.activeMs, 30_000);
+  assert.equal(batch.timeMetrics.questions["question:1050"]?.activeMs, 12_000);
+  assert.equal(batch.timeMetrics.questions["question:1049"]?.visits, 1);
+  assert.equal(batch.timeMetrics.questions["question:1050"]?.visits, 1);
+
+  // A atividade continua somando as duas: o aninhamento e inclusivo.
+  assert.equal(batch.timeMetrics.activities["activity:1063"]?.activeMs, 42_000);
+
+  const linhas = serializeTimeMetricEntries(batch.timeMetrics.questions);
+  assert.equal(linhas[0].questao_id, 1049);
+  assert.equal(linhas[0].atividade_id, 1063);
+});
+
+test("sair da questao nao derruba o tempo da atividade", () => {
+  const batch = buildEmptyBatch(T0);
+  const naQuestao = contexto({
+    topicoId: 125,
+    atividadeId: 1063,
+    questaoId: 1049,
+    studyState: "active",
+  });
+  const foraDaQuestao = contexto({ topicoId: 125, atividadeId: 1063, studyState: "active" });
+
+  accumulateContextTime(batch, naQuestao, 10_000, 0);
+  accumulateContextTime(batch, foraDaQuestao, 7_000, 0);
+
+  assert.equal(batch.timeMetrics.questions["question:1049"]?.activeMs, 10_000);
+  assert.equal(batch.timeMetrics.activities["activity:1063"]?.activeMs, 17_000);
+});
+
+test("o relogio do ocio atravessa o flush, em vez de fabricar uma interacao", () => {
+  // `buildEmptyBatch` zerava `lastInteractionAtMs` para o instante do flush, e
+  // o limiar de ocio conta a partir dele: cada lote comecava com um credito de
+  // tempo ativo que o aluno nao produziu. E `active_sec` e o que vira
+  // `tempo_gasto_min` — `trailup_tempo_telemetria_min` nao soma mais nada.
+  const ultimaInteracao = T0 - 90_000;
+  const proximo = buildEmptyBatch(T0, ultimaInteracao);
+
+  assert.equal(proximo.lastInteractionAtMs, ultimaInteracao);
+  assert.equal(proximo.batchStartedAtMs, T0);
+
+  // Sem o argumento o comportamento antigo se mantem, para quem abre a sessao.
+  assert.equal(buildEmptyBatch(T0).lastInteractionAtMs, T0);
+
+  // E nunca no futuro: um relogio adiantado daria tempo ativo infinito.
+  assert.equal(buildEmptyBatch(T0, T0 + 60_000).lastInteractionAtMs, T0);
+});
+
+test("toque e scroll usam as MESMAS sementes que tempo e visita", () => {
+  // As quatro contas percorriam os cinco escopos em copias separadas do mesmo
+  // `if`, e as copias divergiram — as de toque e scroll nem sabiam da questao.
+  const batch = buildEmptyBatch(T0);
+  const ctx = contexto({
+    topicoId: 125,
+    conteudoId: 174,
+    atividadeId: 1063,
+    questaoId: 1049,
+    itemKey: "question:1049",
+    materialKey: "material:content:174:markdown:x",
+    studyState: "active",
+  });
+
+  registerContextTouch(batch, ctx);
+  registerContextScroll(batch, ctx, 40, 120);
+
+  for (const colecao of [
+    batch.timeMetrics.topics,
+    batch.timeMetrics.contents,
+    batch.timeMetrics.activities,
+    batch.timeMetrics.questions,
+    batch.timeMetrics.materials,
+  ]) {
+    const entrada = Object.values(colecao)[0];
+    assert.equal(entrada?.touchCount, 1);
+    assert.equal(entrada?.scrollDistancePx, 40);
+    assert.equal(entrada?.maxDepthPx, 120);
+  }
+
+  assert.equal(batch.timeMetrics.contents["content:174"]?.itemKey, null);
+  assert.equal(batch.timeMetrics.questions["question:1049"]?.itemKey, "question:1049");
+});
+
+test("toque e scroll seguem vetados fora de um item", () => {
+  const batch = buildEmptyBatch(T0);
+  const ocioso = contexto({ topicoId: 125, studyState: "idle" });
+
+  registerContextTouch(batch, ocioso);
+  registerContextScroll(batch, ocioso, 40, 120);
+
+  assert.deepEqual(batch.timeMetrics.topics, {});
+});
+
+test("campo omitido preserva o anterior; idle zera tudo abaixo do topico", () => {
+  const atual = contexto({
+    topicoId: 125,
+    conteudoId: 174,
+    atividadeId: 1063,
+    questaoId: 1049,
+    itemKey: "question:1049",
+    materialKey: "material:x",
+    studyState: "active",
+  });
+
+  // Reenviar so o material nao pode apagar o resto: o efeito que abre o bloco
+  // reroda no retorno do foco e nem sempre conhece tudo.
+  const soMaterial = proximoContextoDeEstudo(atual, { materialKey: "material:y" });
+  assert.equal(soMaterial.conteudoId, 174);
+  assert.equal(soMaterial.atividadeId, 1063);
+  assert.equal(soMaterial.questaoId, 1049);
+  assert.equal(soMaterial.materialKey, "material:y");
+
+  const ocioso = proximoContextoDeEstudo(atual, { topicoId: 125, studyState: "idle" });
+  assert.equal(ocioso.topicoId, 125);
+  assert.equal(ocioso.conteudoId, null);
+  assert.equal(ocioso.atividadeId, null);
+  assert.equal(ocioso.questaoId, null);
+  assert.equal(ocioso.materialKey, null);
+});
+
+test("a questao morre com a atividade dela", () => {
+  // Trocar de atividade sem mandar `questaoId` deixava a questao da atividade
+  // ANTERIOR viva — e o tempo dela ia parar num bloco onde ela nem existe.
+  const naQuestao = contexto({
+    topicoId: 125,
+    atividadeId: 1063,
+    questaoId: 1049,
+    studyState: "active",
+  });
+
+  const outraAtividade = proximoContextoDeEstudo(naQuestao, {
+    topicoId: 125,
+    atividadeId: 1070,
+    studyState: "active",
+  });
+  assert.equal(outraAtividade.atividadeId, 1070);
+  assert.equal(outraAtividade.questaoId, null);
+
+  // A MESMA atividade preserva: e o caso do efeito rerodando no refoco, e
+  // zerar ali apagaria a questao sem que nada a reinstalasse.
+  const mesmaAtividade = proximoContextoDeEstudo(naQuestao, {
+    topicoId: 125,
+    atividadeId: 1063,
+    studyState: "active",
+  });
+  assert.equal(mesmaAtividade.questaoId, 1049);
+
+  // E quem sabe da questao continua mandando explicitamente.
+  assert.equal(
+    proximoContextoDeEstudo(naQuestao, { questaoId: 1050 }).questaoId,
+    1050
+  );
+  assert.equal(proximoContextoDeEstudo(naQuestao, { questaoId: null }).questaoId, null);
+});
+
+test("questaoId sozinha ja marca o contexto como ativo", () => {
+  const vm = proximoContextoDeEstudo(contexto({ topicoId: 125 }), { questaoId: 1049 });
+  assert.equal(vm.studyState, "active");
+});
+
+test("ler sem tocar na tela continua sendo estudo", () => {
+  // O defeito medido em producao: o limiar de 120s tratava leitura e raciocinio
+  // como ocio. 784 dos 1003 segundos coletados viraram ocio, e lotes inteiros
+  // chegaram com `dwell 64 / active 0` -- o aluno parado numa atividade,
+  // pensando na questao.
+  const inicio = 300_000; // 5 min depois da ultima interacao
+  const { ativoMs, ociosoMs } = repartirTempo({
+    inicioMs: inicio,
+    fimMs: inicio + 64_000,
+    ultimaInteracaoMs: 0,
+  });
+  assert.equal(ativoMs, 64_000, "os 64s do lote contam inteiros");
+  assert.equal(ociosoMs, 0);
+});
+
+test("o limite de abandono ainda corta quem foi embora", () => {
+  // A rede embaixo continua existindo: telefone aberto e ninguem na frente.
+  const { ativoMs, ociosoMs } = repartirTempo({
+    inicioMs: 0,
+    fimMs: 900_000, // 15 min
+    ultimaInteracaoMs: 0,
+  });
+  assert.equal(ativoMs, LIMITE_DE_ABANDONO_MS, "para no limite");
+  assert.equal(ociosoMs, 900_000 - LIMITE_DE_ABANDONO_MS);
+});
+
+test("o limite de abandono NAO e o limiar de 120s do pipeline", () => {
+  // Sao perguntas diferentes: o pipeline classifica "o aluno travou?", o
+  // coletor mede "isto conta como tempo de estudo?". Reusar um numero so para
+  // as duas foi exatamente o que zerou a contabilidade.
+  assert.ok(
+    LIMITE_DE_ABANDONO_MS > 120_000,
+    "um limite de 120s aqui reprova quem le um enunciado longo",
+  );
+});
+
+test("intervalo que comeca depois do abandono e ocioso inteiro", () => {
+  const { ativoMs, ociosoMs } = repartirTempo({
+    inicioMs: 700_000,
+    fimMs: 760_000,
+    ultimaInteracaoMs: 0,
+  });
+  assert.equal(ativoMs, 0);
+  assert.equal(ociosoMs, 60_000);
+});
+
+test("intervalo de duracao zero nao inventa tempo", () => {
+  const parado = repartirTempo({ inicioMs: 1_000, fimMs: 1_000, ultimaInteracaoMs: 0 });
+  assert.deepEqual(parado, { ativoMs: 0, ociosoMs: 0 });
+  // fim antes do inicio nao pode virar tempo negativo nem positivo
+  const invertido = repartirTempo({ inicioMs: 5_000, fimMs: 1_000, ultimaInteracaoMs: 0 });
+  assert.deepEqual(invertido, { ativoMs: 0, ociosoMs: 0 });
+});
+
+test("ativo mais ocioso e sempre a duracao do intervalo", () => {
+  // Invariante: nenhum segundo pode sumir nem ser contado duas vezes -- e
+  // `active_sec` e o unico insumo de `trailup_tempo_telemetria_min`.
+  for (const ultima of [0, 100_000, 599_000, 600_000, 1_200_000]) {
+    for (const [ini, fim] of [[0, 60_000], [550_000, 700_000], [600_000, 660_000]]) {
+      const { ativoMs, ociosoMs } = repartirTempo({
+        inicioMs: ini, fimMs: fim, ultimaInteracaoMs: ultima,
+      });
+      assert.equal(ativoMs + ociosoMs, fim - ini, `ultima=${ultima} ${ini}..${fim}`);
+    }
+  }
 });

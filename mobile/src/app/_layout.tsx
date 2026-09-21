@@ -1,4 +1,5 @@
 import { LoadingState } from "@/components/LoadingState";
+import { TelaDeErro } from "@/components/TelaDeErro";
 import { TelemetryConsentGate } from "@/components/TelemetryConsentGate";
 import LoadingScreen from "@/components/funcionais/Loading";
 import { DialogProvider, useDialog } from "@/context/DialogContext";
@@ -8,13 +9,21 @@ import { SessionProvider, useUsuario } from "@/context/SessaoContext";
 import { PortoesProvider } from "@/context/PortoesContext";
 import { consumeSupabaseUrlAuthError, getSessionSafe, supabase } from "@/database/supabase";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { FONTES_DA_IDENTIDADE } from "@/styles/fontes";
 import { consumePendingRoute, setPendingRoute } from "@/utils/pendingRoute";
 import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
+import { useFonts } from "expo-font";
 import { Redirect, Stack, usePathname, useSegments, type Href } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
+
+// O expo-router usa o export chamado `ErrorBoundary` como boundary do
+// segmento. Aqui na raiz ele pega tudo que nao tiver um mais proximo: sem
+// isto, erro de render em qualquer tela vira tela branca na versao
+// publicada, onde o LogBox nao roda.
+export { TelaDeErro as ErrorBoundary };
 
 export const unstable_settings = {
   anchor: "(tabs)",
@@ -76,6 +85,9 @@ function VerificacaoDeRota() {
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [sessionChecked, setSessionChecked] = useState(false);
+  // `erroDeFonte` NAO trava o app: o React Native cai na fonte do sistema
+  // sozinho. Travar aqui transformaria uma falha cosmetica em tela branca.
+  const [fontesCarregadas, erroDeFonte] = useFonts(FONTES_DA_IDENTIDADE);
 
   useEffect(() => {
     const verificarSessao = async () => {
@@ -100,7 +112,7 @@ export default function RootLayout() {
     };
   }, []);
 
-  if (!sessionChecked) {
+  if (!sessionChecked || (!fontesCarregadas && !erroDeFonte)) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <LoadingState title="Preparando sessão" message="Validando suas credenciais..." />

@@ -11,6 +11,7 @@ import {
   unificarContadores,
   type ProgressoPersonalizado,
 } from "@/utils/progressoPersonalizado";
+import { escolherTempoDaClasse, escolherTempoMedio } from "@/utils/tempoDaClasse";
 
 export type MetricsCameraPermissionState = "unknown" | "granted" | "denied" | "unavailable";
 
@@ -347,16 +348,25 @@ export function buildProfileMetricsViewModel({
   const acertos = hasAtividades
     ? academicMetrics.acertosPercentual
     : resumoConfiavel?.acertosPercentual ?? 0;
-  // MAXIMO, nao soma: o tempo do topico ja inclui o dos itens (o rastreio grava
-  // topico em todo flush, inclusive nos blocos personalizados). O maximo evita
-  // contar duas vezes e ao mesmo tempo recupera o numero quando a escrita de um
-  // dos lados falha -- era o caso do total zerado com estudo registrado.
-  const tempoPersistido = hasEstruturaDaClasse
-    ? Math.max(academicMetrics.tempoTotalMin, unificado.tempoMin)
-    : Math.max(resumoConfiavel?.tempoGastoMin ?? 0, unificado.tempoMin);
-  const tempoMedio = hasAtividades
-    ? academicMetrics.tempoMedioPorAtividade
-    : resumoConfiavel?.tempoMedioPorAtividade ?? 0;
+  // O BANCO manda, e a conta local e reserva. `escolherTempoDaClasse` existia
+  // com essa regra e sete testes passando, e NINGUEM a chamava: o unico lugar
+  // que decidia a fonte era esta linha, e ela decidia o contrario -- com
+  // estrutura carregada (o caso normal) o valor do banco nem era consultado.
+  //
+  // Enquanto isso o rank "Tempo de Estudo" le `classe_aluno."tempoGastoMin"`,
+  // que e o banco. Os dois numeros aparecem na mesma tela e divergiam por
+  // construcao.
+  const tempoPersistido = escolherTempoDaClasse({
+    doBanco: resumoConfiavel?.tempoGastoMin,
+    academicoMin: academicMetrics.tempoTotalMin,
+    unificadoMin: unificado.tempoMin,
+    temEstrutura: hasEstruturaDaClasse,
+  });
+  const tempoMedio = escolherTempoMedio({
+    doBanco: resumoConfiavel?.tempoMedioPorAtividade,
+    localMin: academicMetrics.tempoMedioPorAtividade,
+    temAtividades: hasAtividades,
+  });
   const seteDias = Date.now() - 7 * 24 * 60 * 60 * 1000;
   const eventosRecentes = eventos.filter((evento) => {
     const time = evento.criado_em ? new Date(evento.criado_em).getTime() : NaN;
@@ -423,13 +433,16 @@ export function buildProfileMetricsViewModel({
   const tm = lastBatchTimeMetrics ?? null;
   const sessionActiveSec = tm?.general.batch_active_sec ?? 0;
   const sessionIdleSec = tm?.general.batch_idle_sec ?? 0;
-  const sessionElapsedSec = tm?.general.session_elapsed_sec ?? 0;
   const tempoAtivoMin = Math.max(0, Math.round(sessionActiveSec / 60));
   const sessionEngajamento =
     sessionActiveSec + sessionIdleSec > 0
       ? clampPercent((sessionActiveSec / (sessionActiveSec + sessionIdleSec)) * 100)
       : 0;
-  const tempo = Math.max(0, Number(tempoPersistido) + sessionElapsedSec / 60);
+  // SEM a sessao ao vivo. `session_elapsed_sec` e `now - sessionStartedAt`, a
+  // sessao inteira, e o tempo do banco ja inclui tudo o que os lotes DESTA
+  // sessao gravaram: somar contava a sessao duas vezes, e o erro crescia com a
+  // duracao. O dado ao vivo continua exposto, separado, em `tempoAtivoMin`.
+  const tempo = Math.max(0, Number(tempoPersistido));
   const topicsArr = tm?.topics ?? [];
   const contentsArr = tm?.contents ?? [];
   const activitiesArr = tm?.activities ?? [];
