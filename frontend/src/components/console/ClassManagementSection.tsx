@@ -26,8 +26,8 @@ import {
 } from "lucide-react";
 import { PresencaDialog } from "./PresencaDialog";
 import { ClassManagerDialog } from "./trilha/ClassManagerDialog";
-import { deleteClasseCascade, removeClassStudent } from "./trilha/classDeletion";
-import { enqueueEnrollmentJob } from "./trilha/personalizacaoJobsApi";
+import { deleteClasseCascade } from "./trilha/classDeletion";
+import { enqueueCleanupJob, enqueueEnrollmentJob } from "./trilha/personalizacaoJobsApi";
 
 // Tipos
 type Classe = { id: number; descricao: string | null; materia_id: number | null; created_at: string | null };
@@ -190,14 +190,13 @@ export default function ClassManagementSection({ professorId }: Props) {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm("Excluir esta classe, seus conteúdos, matrículas, progressos e dados de guildas da turma? Esta ação não pode ser desfeita.")) return;
+    if (!window.confirm("Remover esta classe?")) return;
     try {
       await deleteClasseCascade(id);
       toast.success("Classe removida.");
       setClasses((prev) => prev.filter((c) => c.id !== id));
-    } catch (error) {
-      console.error("Erro ao remover classe:", error);
-      toast.error(error instanceof Error ? error.message : "Erro ao remover classe.");
+    } catch {
+      toast.error("Erro ao remover classe.");
     }
   };
 
@@ -326,10 +325,25 @@ export default function ClassManagementSection({ professorId }: Props) {
   };
 
   const handleRemoveStudentFromClass = async (alunoId: string) => {
-    if (!selectedClassForStudents || !confirm("Remover este aluno da turma e limpar seu progresso nesta turma?")) return;
+    if (!selectedClassForStudents || !confirm("Remover este aluno da turma?")) return;
     const classId = selectedClassForStudents.id;
     try {
-      await removeClassStudent(classId, alunoId);
+      await supabase.from("classe_aluno").delete().eq("classe_id", classId).eq("aluno_id", alunoId);
+      const { data: authData } = await supabase.auth.getSession();
+      if (authData.session?.access_token) {
+        const { topico_ids, conteudo_ids } = await fetchClassContextIds(classId);
+        await enqueueCleanupJob(authData.session.access_token, {
+          classe_id: classId,
+          aluno_id: alunoId,
+          topico_ids,
+          conteudo_ids,
+          reason: "remocao_aluno_console",
+        });
+      } else {
+        toast.error(
+          "Aluno removido, mas a limpeza de personalização não pôde ser agendada (sessão expirada)."
+        );
+      }
       setClassStudents((prev) => ({ ...prev, [classId]: (prev[classId] || []).filter((id) => id !== alunoId) }));
       toast.success("Aluno removido.");
     } catch (e) {

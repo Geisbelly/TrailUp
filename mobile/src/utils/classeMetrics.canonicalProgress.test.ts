@@ -7,50 +7,7 @@ const supabaseModulePath = require.resolve("@/database/supabase");
   exports: { supabase: {} },
 };
 
-const { buildClasseResumoFallback, buildClasseAcademicMetrics } = require("./classeMetrics") as typeof import("./classeMetrics");
-
-test('tempos de conteúdo e atividade inclusivos não duplicam o total canônico', () => {
-  const metrics=buildClasseAcademicMetrics({resumo:{tempoGastoMin:1},topicos:[{
-    tempo_gasto_min:1,conteudos:[{tempo_gasto_min:1}],atividades:[{id:1,tempo_gasto_min:1}],
-  }]} as any);
-  assert.equal(metrics.tempoTotalMin,1);
-});
-
-test('tempo canônico zero não é trocado por tempo antigo do cache', () => {
-  const metrics=buildClasseAcademicMetrics({resumo:{tempoGastoMin:0},topicos:[{
-    tempo_gasto_min:20,conteudos:[],atividades:[],
-  }]} as any);
-  assert.equal(metrics.tempoTotalMin,0);
-});
-
-test('métricas não mostram 100% só porque o material do professor foi concluído', () => {
-  const metrics = buildClasseAcademicMetrics({ topicos: [{ percentual_concluido: 25,
-    conteudos: [{ status: 'concluido' }], atividades: [] }] } as any);
-  assert.equal(metrics.progressPct, 25);
-  assert.equal(metrics.isComplete, false);
-});
-
-test('sem resumo, a média inclui o progresso parcial de cada tópico', () => {
-  const metrics = buildClasseAcademicMetrics({ topicos: [
-    { percentual_concluido: 100, conteudos: [], atividades: [] },
-    { percentual_concluido: 50, conteudos: [], atividades: [] },
-  ] } as any);
-  assert.equal(metrics.progressPct, 75);
-});
-
-test('resumo confirmado em zero vence materiais e tópicos do cache', () => {
-  const metrics = buildClasseAcademicMetrics({ resumo: { porcentagemConcluida: 0, isComplete: false },
-    topicos: [{ percentual_concluido: 100, conteudos: [{ status: 'concluido' }], atividades: [] }] } as any);
-  assert.equal(metrics.progressPct, 0);
-  assert.equal(metrics.isComplete, false);
-});
-
-test('tópico completo não exige material bônus do professor para mostrar 100%', () => {
-  const metrics = buildClasseAcademicMetrics({ topicos: [{ percentual_concluido: 100,
-    conteudos: [{ percentual_concluido: 0 }], atividades: [] }] } as any);
-  assert.equal(metrics.progressPct, 100);
-  assert.equal(metrics.isComplete, true);
-});
+const { buildClasseResumoFallback } = require("./classeMetrics") as typeof import("./classeMetrics");
 
 test("resumo remoto continua sendo a autoridade dos agregados da classe", () => {
   const classe = {

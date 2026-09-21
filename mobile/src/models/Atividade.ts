@@ -161,6 +161,7 @@ export class Atividade {
         {
           aluno_id,
           atividade_id: this.id,
+          status: this.status ?? "em andamento",
           ultima_visualizacao: agora,
           updated_at: agora,
         },

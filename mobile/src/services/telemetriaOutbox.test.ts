@@ -94,10 +94,3 @@ test("escoarLotes com fila vazia não chama o envio", async () => {
   assert.equal(chamadas, 0);
   assert.equal(r.enviados, 0);
 });
-
-test('resposta persisted:false não remove o lote pendente', async () => {
-  const fila = [lote(AGORA, 'a')];
-  const result = await escoarLotes(fila, async () => ({ persisted: false }));
-  assert.equal(result.enviados, 0);
-  assert.deepEqual(result.restante, fila);
-});

@@ -8,13 +8,13 @@ const source = readFileSync(
   "utf8",
 );
 
-test("botão da Bag tem alvo próprio na linha de atalhos do perfil compacto", () => {
+test("botão da Bag no perfil fica em uma camada absoluta própria", () => {
   assert.match(
     source,
     /<View[^>]*style=\{styles\.btnBagWrap\}[^>]*>[\s\S]*?accessibilityLabel="Abrir minha Bag"[\s\S]*?<\/View>/,
   );
   assert.match(
     source,
-    /btnBagWrap:\s*\{[\s\S]*?position:\s*"absolute"[\s\S]*?top:\s*10[\s\S]*?right:\s*124[\s\S]*?zIndex:\s*10/,
+    /btnBagWrap:\s*\{[\s\S]*?position:\s*"absolute"[\s\S]*?right:\s*20[\s\S]*?zIndex:\s*10/,
   );
 });

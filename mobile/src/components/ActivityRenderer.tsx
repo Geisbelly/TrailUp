@@ -1,8 +1,6 @@
 // src/components/activities/ActivityRenderer.tsx
 import React from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import { useUsuario } from '@/context/SessaoContext'
-import { questionActivityScope } from '@/utils/questionAnswerVisibility'
 
 import QuestionActivity from './QuestionActivity'
 import TextoActivity from './TextoActivity'
@@ -108,14 +106,7 @@ function normalizeActivityType(value: unknown) {
   return tipo;
 }
 
-export function ActivityRenderer(props: Props) {
-  const { usuario } = useUsuario();
-  if (!props.atividade) return null;
-  const scope = questionActivityScope(props.atividade, usuario?.id, usuario?.perfilAtivo, props.topicoId);
-  return <ActivityRendererContent key={scope} {...props} />;
-}
-
-function ActivityRendererContent({
+export function ActivityRenderer({
   atividade,
   onComplete,
   topicoId,
@@ -193,7 +184,7 @@ function ActivityRendererContent({
   if (!Component) {
     return (
       <TextoActivity
-        atividade={{ titulo: 'Atividade indisponível', conteudo: 'Não foi possível abrir esta atividade. Tente carregar o tópico novamente.' }}
+        atividade={{ titulo: 'Tipo não suportado', conteudo: JSON.stringify(atividade, null, 2) }}
       />
     );
   }

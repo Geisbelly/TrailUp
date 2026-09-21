@@ -1,7 +1,21 @@
-import { Tabs } from 'expo-router';
+import { getSessionSafe } from '@/database/supabase';
+import { Tabs, useRouter } from 'expo-router';
+import { useEffect } from 'react';
 
 export default function TabLayout() {
-  // O layout raiz controla a sessão e o destino após o login.
+  const router = useRouter();
+
+  useEffect(() => {
+    const verificarSessao = async () => {
+      const session = await getSessionSafe();
+
+      if (!session) {
+        router.replace('/(auth)'); // redireciona se não tiver logado
+      }
+    };
+
+    void verificarSessao();
+  }, [router]);
 
   return (
     <Tabs

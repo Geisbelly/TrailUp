@@ -6,9 +6,6 @@ import { EventoAluno } from "@/models/Evento";
 import { PerfilDoAluno } from "@/models/PerfilAluno";
 import { PosicaoDoAluno } from "@/models/RankAlunoPosicao";
 import { buildClasseAcademicMetrics, buildClasseResumoFallback } from "@/utils/classeMetrics";
-import type { StudyPresence } from '@/services/studyPresence';
-import { summarizeStudyDates } from '@/utils/studyPresence';
-import { buildGraphFromTopicos } from '@/utils/topicoGraph';
 import {
   agregarProgressoPersonalizado,
   unificarContadores,
@@ -178,16 +175,10 @@ function buildNextMilestone(
   concluidos: number,
   totalTopicos: number,
   atividadesConcluidas: number,
-  totalAtividades: number,
-  classe: Classe | null,
+  totalAtividades: number
 ) {
   if (totalTopicos === 0) return "Entre em uma classe para liberar a trilha.";
-  if (concluidos < totalTopicos) {
-    const graph = buildGraphFromTopicos({ topicos: classe?.topicos ?? [] });
-    const next = graph.nodes.find((node) => !node.locked && !node.completed);
-    return next ? `Continue em ${next.titulo}. ${concluidos} de ${totalTopicos} tópicos concluídos.`
-      : 'Os próximos tópicos aguardam a conclusão dos pré-requisitos.';
-  }
+  if (concluidos < totalTopicos) return `Feche ${concluidos + 1} de ${totalTopicos} tópicos da campanha.`;
   if (atividadesConcluidas < totalAtividades) return "Finalize as últimas atividades para consolidar a trilha.";
   return "Trilha concluída. Hora de manter o ritmo.";
 }
@@ -277,8 +268,6 @@ type BuildMetricsViewModelParams = {
   cameraOptIn: boolean;
   cameraPermission: MetricsCameraPermissionState;
   battleState?: IABattleRuntimeState | null;
-  battleStates?: IABattleRuntimeState[];
-  presenca?: StudyPresence | null;
   /**
    * Agregado de `personalizacao_item_progresso` (ver TrilhaContext). Opcional
    * para nao quebrar chamadas antigas -- ausente, os contadores voltam a
@@ -316,8 +305,6 @@ export function buildProfileMetricsViewModel({
   cameraOptIn,
   cameraPermission,
   battleState,
-  battleStates,
-  presenca,
   progressoPersonalizado,
 }: BuildMetricsViewModelParams): ProfileMetricsViewModel {
   const resumoConfiavel = buildClasseResumoFallback(classeAtual, classeAtual?.resumo ?? null);
@@ -360,16 +347,43 @@ export function buildProfileMetricsViewModel({
   const acertos = hasAtividades
     ? academicMetrics.acertosPercentual
     : resumoConfiavel?.acertosPercentual ?? 0;
-  // O total canônico já inclui os intervalos e os itens personalizados.
+  // MAXIMO, nao soma: o tempo do topico ja inclui o dos itens (o rastreio grava
+  // topico em todo flush, inclusive nos blocos personalizados). O maximo evita
+  // contar duas vezes e ao mesmo tempo recupera o numero quando a escrita de um
+  // dos lados falha -- era o caso do total zerado com estudo registrado.
   const tempoPersistido = hasEstruturaDaClasse
-    ? academicMetrics.tempoTotalMin
-    : resumoConfiavel?.tempoGastoMin ?? 0;
+    ? Math.max(academicMetrics.tempoTotalMin, unificado.tempoMin)
+    : Math.max(resumoConfiavel?.tempoGastoMin ?? 0, unificado.tempoMin);
   const tempoMedio = hasAtividades
     ? academicMetrics.tempoMedioPorAtividade
     : resumoConfiavel?.tempoMedioPorAtividade ?? 0;
-  const presence = presenca ?? summarizeStudyDates(eventos.map((event) => event.criado_em));
-  const diasAtivos = presence.dias_ativos;
-  const semanaDiaria = presence.semana_diaria;
+  const seteDias = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const eventosRecentes = eventos.filter((evento) => {
+    const time = evento.criado_em ? new Date(evento.criado_em).getTime() : NaN;
+    return Number.isFinite(time) && time >= seteDias;
+  });
+
+  const diasAtivos = new Set(
+    eventos
+      .map((evento) => {
+        const time = evento.criado_em ? new Date(evento.criado_em).getTime() : NaN;
+        return Number.isFinite(time) ? new Date(time).toISOString().slice(0, 10) : null;
+      })
+      .filter(Boolean)
+  ).size;
+
+  const todayMidnight = new Date();
+  todayMidnight.setHours(0, 0, 0, 0);
+  const semanaDiaria = Array.from({ length: 7 }, (_, i) => {
+    const dayStart = new Date(todayMidnight);
+    dayStart.setDate(todayMidnight.getDate() - (6 - i));
+    const dayEnd = new Date(dayStart);
+    dayEnd.setDate(dayStart.getDate() + 1);
+    return eventos.filter((e) => {
+      const t = e.criado_em ? new Date(e.criado_em).getTime() : NaN;
+      return Number.isFinite(t) && t >= dayStart.getTime() && t < dayEnd.getTime();
+    }).length;
+  });
 
   const melhorPosicao =
     [...posicoesDoAluno].sort(
@@ -409,26 +423,25 @@ export function buildProfileMetricsViewModel({
   const tm = lastBatchTimeMetrics ?? null;
   const sessionActiveSec = tm?.general.batch_active_sec ?? 0;
   const sessionIdleSec = tm?.general.batch_idle_sec ?? 0;
+  const sessionElapsedSec = tm?.general.session_elapsed_sec ?? 0;
   const tempoAtivoMin = Math.max(0, Math.round(sessionActiveSec / 60));
   const sessionEngajamento =
     sessionActiveSec + sessionIdleSec > 0
       ? clampPercent((sessionActiveSec / (sessionActiveSec + sessionIdleSec)) * 100)
       : 0;
-  // O último lote não é tempo ainda não salvo; somá-lo duplica a sessão.
-  const tempo = Math.max(0, Number(tempoPersistido));
+  const tempo = Math.max(0, Number(tempoPersistido) + sessionElapsedSec / 60);
   const topicsArr = tm?.topics ?? [];
   const contentsArr = tm?.contents ?? [];
   const activitiesArr = tm?.activities ?? [];
   const materialsArr = tm?.materials ?? [];
-  const totalActiveSec = (arr: { active_sec: number }[]) =>
-    Math.round(arr.reduce((sum, entry) => sum + Math.max(0, Number(entry.active_sec) || 0), 0));
+  const avgActiveSec = (arr: { active_sec: number }[]) =>
+    arr.length ? Math.round(arr.reduce((s, e) => s + e.active_sec, 0) / arr.length) : 0;
   const topicosVisitados = topicsArr.filter((e) => e.visits > 0).length;
   const bestMaterial = [...materialsArr].sort((a, b) => b.active_sec - a.active_sec)[0] ?? null;
   const analysisView = buildAnalysisView(lastAnalysis, emotionLabel);
 
-  const danoTotal = battleStates?.length
-    ? battleStates.reduce((sum, state) => sum + Math.max(0, Math.round(state.totalDamage || 0)), 0)
-    : battleState?.totalDamage != null && Number.isFinite(battleState.totalDamage)
+  const danoTotal =
+    battleState?.totalDamage != null && Number.isFinite(battleState.totalDamage)
       ? Math.round(battleState.totalDamage)
       : null;
 
@@ -460,9 +473,9 @@ export function buildProfileMetricsViewModel({
     atividadesConcluidas,
     totalConquistas: conquistas.length,
     diasAtivos,
-    eventosRecentes: presence.registros_recentes,
+    eventosRecentes: eventosRecentes.length,
     semanaDiaria,
-    ultimoEvento: presence.ultimo_registro,
+    ultimoEvento: eventos[0]?.criado_em ?? null,
     melhorPosicao,
     afinidades,
     materiaNome: resumoConfiavel?.materia_nome ?? null,
@@ -479,16 +492,16 @@ export function buildProfileMetricsViewModel({
     taxaExploracao,
     taxaConteudo,
     taxaAtividade,
-    proximoMarco: buildNextMilestone(concluidos, totalTopicos, atividadesConcluidas, totalAtividades, classeAtual),
+    proximoMarco: buildNextMilestone(concluidos, totalTopicos, atividadesConcluidas, totalAtividades),
     missaoResumo: buildMissionSummary(clampPercent(progresso), clampPercent(acertos)),
-    presencaResumo: buildPresenceSummary(diasAtivos, presence.registros_recentes),
+    presencaResumo: buildPresenceSummary(diasAtivos, eventosRecentes.length),
     hasAnyData: totalTopicos > 0 || eventos.length > 0 || conquistas.length > 0 || Boolean(lastAnalysis?.ciclo_id),
     sessionActiveSec,
     sessionIdleSec,
     sessionEngajamento,
-    tempoTopico: totalActiveSec(topicsArr),
-    tempoConteudo: totalActiveSec(contentsArr),
-    tempoAtividade: totalActiveSec(activitiesArr),
+    tempoTopico: avgActiveSec(topicsArr),
+    tempoConteudo: avgActiveSec(contentsArr),
+    tempoAtividade: avgActiveSec(activitiesArr),
     tempoTopicoAcumuladoMin: academicMetrics.tempoTopicoMin,
     tempoConteudoAcumuladoMin: academicMetrics.tempoConteudoMin,
     tempoAtividadeAcumuladoMin: academicMetrics.tempoAtividadeMin,

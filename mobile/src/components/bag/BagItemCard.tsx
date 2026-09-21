@@ -4,7 +4,6 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { actionsForBagItem } from "@/services/bag/bagModel";
 import type { BagItem } from "@/services/bag/bagModel";
-import { FontFamily } from "@/styles/GlobalStyle";
 
 type Props = {
   item: BagItem;
@@ -27,7 +26,7 @@ export function BagItemCard({ item, accent, muted, surface, border, onEdit, onDe
 
   return (
     <View style={[styles.card, { backgroundColor: surface, borderColor: border }]}>
-      <Pressable accessibilityRole="button" accessibilityState={{ expanded }} onPress={() => setExpanded((value) => !value)} style={styles.header}>
+      <Pressable onPress={() => setExpanded((value) => !value)} style={styles.header}>
         <View style={[styles.typeIcon, { backgroundColor: `${accent}22` }]}>
           <MaterialCommunityIcons name={icons[item.type]} size={20} color={accent} />
         </View>
@@ -50,7 +49,7 @@ export function BagItemCard({ item, accent, muted, surface, border, onEdit, onDe
         </Pressable> : <Text style={styles.bodyText}>{item.content}</Text>}
         <View style={styles.actions}>
           {actions.includes("editar") ? <Pressable accessibilityLabel="Editar item da Bag" onPress={() => onEdit?.(item)} style={[styles.action, { borderColor: border }]}><MaterialCommunityIcons name="pencil-outline" size={18} color={accent} /><Text style={[styles.actionText, { color: accent }]}>Editar</Text></Pressable> : null}
-          {actions.includes("excluir") ? <Pressable accessibilityLabel="Excluir item da Bag" onPress={() => onDelete?.(item)} style={[styles.action, { borderColor: border }]}><MaterialCommunityIcons name="trash-can-outline" size={18} color={accent} /><Text style={styles.deleteText}>Excluir</Text></Pressable> : null}
+          {actions.includes("excluir") ? <Pressable accessibilityLabel="Excluir item da Bag" onPress={() => onDelete?.(item)} style={[styles.action, { borderColor: border }]}><MaterialCommunityIcons name="trash-can-outline" size={18} color="#ef8888" /><Text style={styles.deleteText}>Excluir</Text></Pressable> : null}
           {actions.includes("compartilhar") && onShare ? <Pressable accessibilityLabel="Compartilhar item da Bag" onPress={() => onShare(item)} style={[styles.action, { borderColor: border }]}><MaterialCommunityIcons name="share-variant-outline" size={18} color={accent} /><Text style={[styles.actionText, { color: accent }]}>Compartilhar</Text></Pressable> : null}
         </View>
       </View> : null}
@@ -59,22 +58,22 @@ export function BagItemCard({ item, accent, muted, surface, border, onEdit, onDe
 }
 
 const styles = StyleSheet.create({
-  card: { borderWidth: 1, borderRadius: 6, marginBottom: 12, overflow: "hidden" },
+  card: { borderWidth: 1, borderRadius: 16, marginBottom: 12, overflow: "hidden" },
   header: { minHeight: 78, padding: 14, flexDirection: "row", alignItems: "center", gap: 10 },
-  typeIcon: { width: 40, height: 40, borderRadius: 6, alignItems: "center", justifyContent: "center" },
+  typeIcon: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   titleArea: { flex: 1, gap: 4 },
-  metaRow: { flexDirection: "row", gap: 8, alignItems: "center", flexWrap: "wrap" },
-  type: { fontSize: 10, fontWeight: "800", letterSpacing: 0 },
-  origin: { fontSize: 9, fontWeight: "700", letterSpacing: 0 },
-  title: { color: "#fff", fontFamily: FontFamily.inikaBold, fontSize: 17 },
+  metaRow: { flexDirection: "row", gap: 8, alignItems: "center" },
+  type: { fontSize: 10, fontWeight: "800", letterSpacing: 1 },
+  origin: { fontSize: 9, fontWeight: "700", letterSpacing: 0.8 },
+  title: { color: "#fff", fontSize: 16, fontWeight: "700" },
   link: { fontSize: 11 },
   body: { paddingHorizontal: 14, paddingBottom: 14, gap: 14 },
   bodyText: { color: "#f3f2fa", fontSize: 15, lineHeight: 22 },
-  flashcard: { minHeight: 130, borderWidth: 1, borderRadius: 6, padding: 16, justifyContent: "center", gap: 8 },
-  sideLabel: { fontSize: 10, fontWeight: "800", letterSpacing: 0 },
+  flashcard: { minHeight: 130, borderWidth: 1, borderRadius: 12, padding: 16, justifyContent: "center", gap: 8 },
+  sideLabel: { fontSize: 10, fontWeight: "800", letterSpacing: 1 },
   flipHint: { fontSize: 11, alignSelf: "flex-end" },
   actions: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  action: { minHeight: 44, borderWidth: 1, borderRadius: 6, paddingHorizontal: 10, flexDirection: "row", alignItems: "center", gap: 5 },
+  action: { minHeight: 36, borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, flexDirection: "row", alignItems: "center", gap: 5 },
   actionText: { fontSize: 12, fontWeight: "700" },
   deleteText: { color: "#ef8888", fontSize: 12, fontWeight: "700" },
 });

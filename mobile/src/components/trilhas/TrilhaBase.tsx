@@ -1,8 +1,6 @@
 // src/components/trilhas/TrilhaBase.tsx
 import { useTrilha } from "@/context/TrilhaContext";
-import { useTrailResumeTopic } from '@/hooks/useTrailResume';
 import { useUsuario } from "@/context/SessaoContext";
-import { getProfileArtwork } from "@/constants/designAssets";
 import { Color } from "@/styles/GlobalStyle";
 import { buildClasseAcademicMetrics } from "@/utils/classeMetrics";
 import { getBrainHexProfileCapabilities } from "@/utils/brainHexCapabilities";
@@ -10,9 +8,9 @@ import { unificarContadores } from "@/utils/progressoPersonalizado";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { registrarAlvoTour } from "@/utils/tourTargets";
 import { useIsFocused } from "@react-navigation/native";
-import { UtilityIcon } from "@/components/UtilityIcon";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useEffect, useMemo, useRef } from "react";
-import { Image, Pressable, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { TrilhaArvoreSimple } from "./ArvoreView";
 import { GameHeader } from "./common/GameHeader";
 import { TrilhaLinearList } from "./ListaSimplesView";
@@ -34,7 +32,6 @@ export const TrilhaBase: React.FC<{
     perfil,
   } = useTrilha();
   const { usuario } = useUsuario();
-  const currentTopicId = useTrailResumeTopic();
   const isFocused = useIsFocused();
   const palette = getProfileShellPalette(perfil);
   const capabilities = getBrainHexProfileCapabilities(perfil);
@@ -79,7 +76,7 @@ export const TrilhaBase: React.FC<{
       ? (mapTheme?.worldName ?? classeAtual.resumo?.materia_nome ?? "Classe")
       : (classeAtual.resumo?.materia_nome ?? "Classe");
   const subtitulo =
-    visual === "mapa" ? (mapTheme?.classLabel ?? "Reino da classe") : "";
+    visual === "mapa" ? (mapTheme?.classLabel ?? "Reino da classe") : "Trilha";
   // O progresso soma os DOIS livros-caixa. `getProgressoGeral` conta apenas
   // conteudo/atividade do professor, entao a barra ficava parada enquanto o
   // aluno avancava no material personalizado e nos quizzes da apresentacao --
@@ -122,15 +119,6 @@ export const TrilhaBase: React.FC<{
 
   return (
     <View style={[st.page, { backgroundColor: palette.background }]}>
-      <View pointerEvents="none" accessible={false} style={StyleSheet.absoluteFill}>
-        <Image
-          key={perfil}
-          source={getProfileArtwork(perfil, 'trail')}
-          resizeMode="cover"
-          style={st.scenery}
-        />
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: palette.background, opacity: 0.3 }]} />
-      </View>
       <GameHeader
         titulo={nome}
         subtitulo={subtitulo}
@@ -145,7 +133,7 @@ export const TrilhaBase: React.FC<{
         progressTargetRef={progressGuideTargetRef}
         rightSlot={
           <View style={st.headerActions}>
-            {onOpenBag ? <Pressable onPress={onOpenBag} accessibilityRole="button" accessibilityLabel="Abrir Bag" style={({ pressed }) => ({ width: 44, height: 44, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}><UtilityIcon kind="bag" size={34} /></Pressable> : null}
+            {onOpenBag ? <MaterialCommunityIcons.Button name="bag-personal-outline" size={20} color={palette.text} backgroundColor="transparent" underlayColor={palette.surface} onPress={onOpenBag} accessibilityLabel="Abrir Bag" /> : null}
             <ModuleHeaderGuideButton
               profile={perfil}
               title={nome}
@@ -172,9 +160,9 @@ export const TrilhaBase: React.FC<{
         collapsable={false}
         style={{ flex: 1 }}
       >
-        {visual === "mapa" && <TrilhaMapaHeroStable currentTopicId={currentTopicId} tourTargetRef={journeyGuideTargetRef} />}
-        {visual === "arvore" && <TrilhaArvoreSimple currentTopicId={currentTopicId} />}
-        {visual === "lista" && <TrilhaLinearList currentTopicId={currentTopicId} tourTargetRef={journeyGuideTargetRef} />}
+        {visual === "mapa" && <TrilhaMapaHeroStable tourTargetRef={journeyGuideTargetRef} />}
+        {visual === "arvore" && <TrilhaArvoreSimple />}
+        {visual === "lista" && <TrilhaLinearList tourTargetRef={journeyGuideTargetRef} />}
       </View>
     </View>
   );
@@ -182,6 +170,5 @@ export const TrilhaBase: React.FC<{
 
 const st = StyleSheet.create({
   page: { flex: 1, backgroundColor: Color.background },
-  scenery: { width: '100%', height: '100%' },
   headerActions: { flexDirection: "row", alignItems: "center" },
 });

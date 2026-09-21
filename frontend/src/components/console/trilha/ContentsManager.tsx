@@ -1,6 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { BossVisualPicker } from './BossVisualPicker';
-import { normalizeBossVisual } from '@/lib/bossVisuals';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -61,7 +59,6 @@ export default function ContentsManager() {
   const [selectedTopicFilter, setSelectedTopicFilter] = useState<string>("all");
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [bossVisual, setBossVisual] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     titulo: "",
     tipo: "texto",
@@ -152,7 +149,7 @@ export default function ContentsManager() {
             conteudo: formData.conteudo,
             topico_id: parseInt(formData.topico_id, 10),
             ordem: parseInt(formData.ordem, 10),
-            metadata: { ...(formData.metadata ? JSON.parse(formData.metadata) : {}), boss_visual: bossVisual },
+            metadata: formData.metadata ? JSON.parse(formData.metadata) : null,
           })
           .eq("id", editingContent.id)
           .select("id, topico_id, titulo, tipo, conteudo, ordem, metadata")
@@ -173,7 +170,7 @@ export default function ContentsManager() {
             conteudo: formData.conteudo,
             topico_id: parseInt(formData.topico_id, 10),
             ordem: parseInt(formData.ordem, 10),
-            metadata: { ...(formData.metadata ? JSON.parse(formData.metadata) : {}), boss_visual: bossVisual },
+            metadata: formData.metadata ? JSON.parse(formData.metadata) : null,
           })
           .select("id, topico_id, titulo, tipo, conteudo, ordem, metadata")
           .single();
@@ -187,7 +184,6 @@ export default function ContentsManager() {
       await loadData();
       setIsDialogOpen(false);
       setEditingContent(null);
-      setBossVisual(null);
       setFormData({ titulo: "", tipo: "texto", conteudo: "", topico_id: "", ordem: "1", metadata: "" });
     } catch (error) {
       console.error("Erro ao salvar conteúdo:", error);
@@ -198,7 +194,6 @@ export default function ContentsManager() {
   };
 
   const handleEdit = (content: Conteudo) => {
-    setBossVisual(normalizeBossVisual(content.metadata?.boss_visual));
     setEditingContent(content);
     setFormData({
       titulo: content.titulo,
@@ -264,7 +259,6 @@ export default function ContentsManager() {
             onOpenChange={(open) => {
               setIsDialogOpen(open);
               if (!open) {
-                setBossVisual(null);
                 setEditingContent(null);
                 setFormData({ titulo: "", tipo: "texto", conteudo: "", topico_id: "", ordem: "1", metadata: "" });
               }
@@ -276,7 +270,7 @@ export default function ContentsManager() {
                 Novo Conteudo
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+            <DialogContent>
               <DialogHeader>
                 <DialogTitle>{editingContent ? "Editar Conteúdo" : "Novo Conteúdo"}</DialogTitle>
                 <DialogDescription>
@@ -329,7 +323,6 @@ export default function ContentsManager() {
                 </div>
 
                 <div>
-                  <BossVisualPicker value={bossVisual} onChange={setBossVisual} disabled={isSaving} />
                   <Label>Conteudo</Label>
                   <Textarea
                     value={formData.conteudo}

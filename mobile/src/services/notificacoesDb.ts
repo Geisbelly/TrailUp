@@ -51,11 +51,6 @@ export type RotinaNotificacao = {
  */
 async function chamar<T>(fn: string, args: Record<string, unknown>): Promise<T | null> {
   try {
-    // O cleanup do monitor pode ocorrer depois de SIGNED_OUT. Não chamar
-    // RPCs restritas a authenticated com a sessão já encerrada.
-    const { data: auth, error: authError } = await supabase.auth.getSession();
-    if (authError) throw authError;
-    if (!auth.session) return null;
     const { data, error } = await supabase.rpc(fn, args);
     if (error) {
       console.warn(`[notificacoesDb] ${fn} falhou:`, error.message);

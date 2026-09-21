@@ -5,8 +5,7 @@
 let pendingRoute: string | null = null;
 
 export function setPendingRoute(path: string | null): void {
-  // Os grupos (auth) e (tabs) compartilham a URL /. Preserve o grupo protegido.
-  pendingRoute = path === "/" ? "/(tabs)" : path;
+  pendingRoute = path;
 }
 
 export function consumePendingRoute(): string | null {

@@ -7,6 +7,7 @@ count time but nothing reaches ``tempo_gasto_min``.
 
 from alembic import op
 
+
 revision = "20260913_25"
 down_revision = "20260913_24"
 branch_labels = None

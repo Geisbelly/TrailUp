@@ -1,10 +1,9 @@
 import { useUsuario } from "@/context/SessaoContext";
-import { FontFamily } from "@/styles/GlobalStyle";
-import { formatSmartTime, type TimeInput } from "@/utils/Formatacoes";
+import { Color, FontFamily } from "@/styles/GlobalStyle";
+import { formatSmartTime, TimeInput } from "@/utils/Formatacoes";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { memo } from "react";
+import * as React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 type Props = {
@@ -19,121 +18,154 @@ type Props = {
   relativeThresholdHours?: number;
 };
 
-const NotificationItem = memo(function NotificationItem({
-  id,
-  title,
-  description = "",
-  time,
-  read = false,
-  href,
-  onPress,
-  testID = "notification-item",
-  relativeThresholdHours,
-}: Props) {
-  const router = useRouter();
-  const { usuario } = useUsuario();
-  const palette = getProfileShellPalette(
-    usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome,
-  );
-  const open = () => {
-    if (onPress) return onPress();
-    const target = href ?? (id ? `/notificacoes/${id}` : undefined);
-    if (target) router.push(target as never);
-  };
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${read ? "Lida" : "Não lida"}: ${title}`}
-      onPress={open}
-      testID={testID}
-      style={({ pressed }) => [
-        s.row,
-        {
-          backgroundColor: read ? palette.background : palette.surface,
-          borderLeftColor: read ? "transparent" : palette.accent,
-          opacity: pressed ? 0.7 : 1,
-        },
-      ]}
-    >
-      <View
-        style={[
-          s.icon,
+const NotificationItem: React.FC<Props> = React.memo(
+  ({
+    id,
+    title,
+    description = "",
+    time,
+    read = false,
+    href,
+    onPress,
+    testID = "notification-item",
+    relativeThresholdHours,
+  }) => {
+    const router = useRouter();
+    const { usuario } = useUsuario();
+    const palette = React.useMemo(
+      () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
+      [usuario?.perfilAtivo, usuario?.perfis],
+    );
+
+    const handlePress = React.useCallback(() => {
+      if (onPress) return onPress();
+      const target = href ?? (id ? `/notificacoes/${id}` : undefined);
+      if (target) router.push(target as never);
+    }, [href, id, onPress, router]);
+
+    const formattedTime = React.useMemo(
+      () => formatSmartTime(time, { thresholdHours: relativeThresholdHours }),
+      [time, relativeThresholdHours],
+    );
+
+    return (
+      <Pressable
+        onPress={handlePress}
+        android_ripple={{
+          color: "rgba(228, 161, 161, 0.05)",
+          foreground: true,
+        }}
+        accessibilityRole="button"
+        accessibilityLabel={`${read ? "Lido" : "Não lido"}: ${title}`}
+        accessibilityHint="Abrir detalhes da notificação"
+        style={({ pressed }) => [
+          styles.container,
           {
-            borderColor: palette.border,
-            backgroundColor: palette.surfaceElevated,
+            backgroundColor: read
+              ? palette.accentMuted
+              : palette.surfaceElevated,
+            borderColor: read ? palette.border : palette.borderStrong,
           },
+          pressed && styles.pressed,
         ]}
+        testID={testID}
       >
-        <MaterialCommunityIcons
-          name={read ? "email-open-outline" : "email-outline"}
-          size={21}
-          color="#ffffff"
-        />
-      </View>
-      <View style={s.content}>
-        <View style={s.meta}>
-          <Text
+        <View style={styles.row}>
+          <View
             style={[
-              s.state,
-              { color: read ? palette.textSubtle : palette.accent },
+              styles.statusDot,
+              read
+                ? {
+                    borderColor: Color.colorWhite20,
+                    backgroundColor: "transparent",
+                  }
+                : {
+                    backgroundColor: Color.colorWhite,
+                    borderColor: Color.colorWhite,
+                  },
+            ]}
+          />
+          <Text
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            style={[
+              styles.title,
+              { color: read ? palette.textSubtle : palette.text },
             ]}
           >
-            {read ? "LIDA" : "NOVA"}
+            {title}
           </Text>
-          <Text style={[s.time, { color: palette.textMuted }]}>
-            {formatSmartTime(time, { thresholdHours: relativeThresholdHours })}
+          <Text
+            style={[
+              styles.time,
+              { color: read ? palette.textSubtle : palette.textMuted },
+            ]}
+            numberOfLines={1}
+          >
+            {formattedTime}
           </Text>
         </View>
-        <Text numberOfLines={2} style={[s.title, { color: palette.text }]}>
-          {title}
-        </Text>
+
         {description ? (
           <Text
             numberOfLines={2}
-            style={[s.description, { color: palette.textMuted }]}
+            ellipsizeMode="tail"
+            style={[
+              styles.description,
+              { color: read ? palette.textSubtle : palette.textMuted },
+            ]}
           >
             {description}
           </Text>
         ) : null}
-      </View>
-      <MaterialCommunityIcons
-        name="chevron-right"
-        size={18}
-        color={palette.textSubtle}
-      />
-    </Pressable>
-  );
-});
+      </Pressable>
+    );
+  },
+);
 
-const s = StyleSheet.create({
+NotificationItem.displayName = "NotificationItem";
+
+const styles = StyleSheet.create({
+  container: {
+    alignSelf: "stretch",
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderWidth: 0.2,
+  },
+  pressed: { opacity: 0.92 },
   row: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 18,
-    gap: 12,
-    borderLeftWidth: 3,
+    gap: 10,
   },
-  icon: {
-    width: 40,
-    height: 44,
+  statusDot: {
+    width: 12,
+    height: 12,
     borderRadius: 6,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
+    alignSelf: "center",
+    borderWidth: 2,
   },
-  content: { flex: 1, minWidth: 0 },
-  meta: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    flexWrap: "wrap",
-    gap: 4,
-    marginBottom: 5,
+  title: {
+    flex: 1,
+    fontFamily: FontFamily.inikaBold,
+    fontWeight: "700",
+    fontSize: 16,
+    letterSpacing: -0.24,
   },
-  state: { fontSize: 9, fontWeight: "700" },
-  time: { fontSize: 11 },
-  title: { fontFamily: FontFamily.inikaBold, fontSize: 17, lineHeight: 23 },
-  description: { fontSize: 13, lineHeight: 19, marginTop: 5 },
+  description: {
+    marginTop: 4,
+    fontFamily: FontFamily.inikaBold,
+    fontWeight: "400",
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  time: {
+    textAlign: "right",
+    minWidth: 64,
+    fontFamily: FontFamily.inikaBold,
+    fontWeight: "700",
+    fontSize: 13,
+  },
 });
+
 export default NotificationItem;

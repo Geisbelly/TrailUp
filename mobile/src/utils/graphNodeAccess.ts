@@ -11,8 +11,7 @@ export type GraphNodeAccess = {
 };
 
 export function resolveGraphNodeAccess(input: GraphNodeAccessInput): GraphNodeAccess {
-  // O grafo remoto é uma sugestão da IA; a classe local vem do Supabase.
-  const completed = input.localCompleted;
+  const completed = input.remoteCompleted || input.localCompleted;
   return {
     completed,
     locked: completed ? false : !input.locallyUnlocked,

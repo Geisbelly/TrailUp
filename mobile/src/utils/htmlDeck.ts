@@ -14,9 +14,11 @@
 //    pro deck continuar lendo as flags de visibilidade de location.search
 //    (hideQuiz/hideChecklist/hideNotes, ver deckExportUtils no BrainHexPDF).
 
-import { mediaUrlPath } from './mediaUrlPath';
+function semQueryNemHash(url: string): string {
+  return url.split(/[?#]/, 1)[0].trim();
+}
 
 export function isHtmlDeckUrl(url: string | null | undefined): boolean {
   if (!url) return false;
-  return /\.html?$/i.test(mediaUrlPath(url));
+  return /\.html?$/i.test(semQueryNemHash(url));
 }

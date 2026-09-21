@@ -1,9 +1,9 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Stack } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,8 +14,6 @@ import tinycolor from "tinycolor2";
 
 import CardSemDados from "@/components/CardSemDados";
 import ConquistaModal from "@/components/ConquistaModal";
-import { getAchievementArtwork } from "@/constants/achievementImages";
-import { JourneySymbol } from "@/components/JourneySymbol";
 import { HallBackground, OrnamentDivider } from "@/components/HallTheme";
 import {
   SectionGuideButton,
@@ -56,6 +54,7 @@ export default function BibliotecaConquistasScreen() {
   const shellPalette = useMemo(() => getProfileShellPalette(perfil), [perfil]);
   const accent = tinycolor(hexConfig.color).lighten(4).toHexString();
   const gold = tinycolor(shellPalette.accent).lighten(10).toHexString();
+  const commonDark = tinycolor(gold).darken(24).toHexString();
 
   const loadBiblioteca = useCallback(async () => {
     if (!usuario?.id) {
@@ -141,6 +140,8 @@ export default function BibliotecaConquistasScreen() {
     ].filter((section) => section.groups.length > 0);
   }, [conquistasComuns, conquistasPerfil, perfisRepresentativos]);
 
+  const selectedProfile = normalizeBrainHexProfile(selected?.perfil_alvo) ?? perfil;
+  const selectedProfileConfig = getBrainHexConfig(selectedProfile);
   const profileEmphasis = getProfileGuideEmphasis(perfil, "achievements");
   const guideSteps = useMemo<SectionGuideStep[]>(
     () => [
@@ -248,10 +249,9 @@ export default function BibliotecaConquistasScreen() {
             },
           ]}
         >
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-            <JourneySymbol section="achievements" size={48} />
-            <Text style={[styles.summaryTitle, { color: shellPalette.text, flex: 1 }]}>Biblioteca de Conquistas</Text>
-          </View>
+          <Text style={[styles.summaryTitle, { color: shellPalette.text }]}>
+            Biblioteca de Conquistas
+          </Text>
           <Text style={[styles.summarySubtitle, { color: shellPalette.textMuted }]}>
             Acompanhe desbloqueios, progresso e metas pendentes.
           </Text>
@@ -266,7 +266,7 @@ export default function BibliotecaConquistasScreen() {
                       key={profileKey}
                       name={profileConfig.icon}
                       size={13}
-                      color={shellPalette.accent}
+                      color={tinycolor(profileConfig.color).lighten(4).toHexString()}
                     />
                   );
                 })}
@@ -355,6 +355,7 @@ export default function BibliotecaConquistasScreen() {
                   item.status === "concluida"
                     ? gold
                     : itemProfileAccent;
+                const isProfileAchievement = item.conquista.escopo === "perfil";
 
                 return (
                   <TouchableOpacity
@@ -376,12 +377,20 @@ export default function BibliotecaConquistasScreen() {
                         { borderColor: shellPalette.borderStrong },
                       ]}
                     >
-                      <Image
-                        source={getAchievementArtwork(item.conquista)}
-                        resizeMode="contain"
-                        style={{ width: 48, height: 52 }}
-                        accessible={false}
-                      />
+                      <LinearGradient
+                        colors={
+                          isProfileAchievement
+                            ? [itemProfileAccent, itemProfileConfig.color]
+                            : [gold, commonDark]
+                        }
+                        style={styles.itemIconGradient}
+                      >
+                        <MaterialCommunityIcons
+                          name={isProfileAchievement ? itemProfileConfig.icon : "earth"}
+                          size={20}
+                          color={shellPalette.text}
+                        />
+                      </LinearGradient>
                     </View>
 
                     <View style={styles.itemBody}>
@@ -444,9 +453,16 @@ export default function BibliotecaConquistasScreen() {
         category={selected?.categoria ?? ""}
         description={selected?.descricao ?? "Detalhes da conquista."}
         date={selected?.data_conquista}
-        profile={perfil}
-        color={shellPalette.accent}
-        imageSource={getAchievementArtwork(selected)}
+        color={
+          selected?.escopo === "perfil"
+            ? selectedProfileConfig.color
+            : shellPalette.accent
+        }
+        imageSource={
+          selected?.icone_url
+            ? { uri: selected.icone_url }
+            : selectedProfileConfig.image
+        }
       />
     </View>
   );

@@ -1,5 +1,4 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { progressoCanonicoTopico, topicoConcluidoNaTela } from '@/utils/topicoProgress';
 import { useFocusEffect, useIsFocused, useNavigation } from "@react-navigation/native";
 import React, {
   useCallback,
@@ -62,8 +61,6 @@ import { useCheckpointResume } from "@/hooks/trilha/useCheckpointResume";
 import { useMaterialSuggestion } from "@/hooks/trilha/useMaterialSuggestion";
 import { usePersonalizedFlow } from "@/hooks/trilha/usePersonalizedFlow";
 import { useStudyTimeTracking } from "@/hooks/trilha/useStudyTimeTracking";
-import { useTopicScreenTimeTracking } from "@/hooks/trilha/useTopicScreenTimeTracking";
-import { useRememberTrailTopic } from '@/hooks/useTrailResume';
 import { useTelemetryHandlers } from "@/hooks/trilha/useTelemetryHandlers";
 import { useTopicoCompletion } from "@/hooks/trilha/useTopicoCompletion";
 import { usePersonalizationRefresh } from "@/hooks/trilha/usePersonalizationRefresh";
@@ -151,7 +148,6 @@ function normalizeModuleDifficulty(value: unknown): "facil" | "medio" | "dificil
    -------------------------- */
 
 export default function TrilhaConteudoScreen() {
-  const isScreenFocused = useIsFocused();
   const router = useRouter();
   const navigation = useNavigation();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
@@ -169,9 +165,6 @@ export default function TrilhaConteudoScreen() {
     registrarTempoConteudo,
     registrarTempoAtividade,
     registrarTempoDireto,
-    registrarSessaoConteudo,
-    registrarSessaoAtividade,
-    registrarSessaoTopico,
     salvarProgressoItemPersonalizado,
     getProximosTopicos,
     personalizedTopics,
@@ -187,6 +180,7 @@ export default function TrilhaConteudoScreen() {
     registerTopicPayload,
     setActiveTopic,
     emitSignal,
+    resetBattleState,
   } = useIA();
   const {
     beginStudySession,
@@ -197,7 +191,7 @@ export default function TrilhaConteudoScreen() {
     recordScroll,
     recordAppEvent,
     lastAnalysis,
-    isStudyTimeTelemetryActive: telemetrySessionActive,
+    isStudySessionActive: telemetrySessionActive,
   } = useMetricas();
 
   const rawId = Array.isArray(params.id) ? params.id[0] : params.id ?? "";
@@ -409,6 +403,7 @@ export default function TrilhaConteudoScreen() {
     Record<number, AtividadeResolvida>
   >({});
   const [pulouConteudos, setPulouConteudos] = useState(false);
+  const [maiorIndiceAlcancado, setMaiorIndiceAlcancado] = useState(-1);
 
   // So reseta "pulou trilha" quando o TOPICO muda, nao a cada vez que
   // conteudos/atividades trocam de referencia (ex.: um refresh de
@@ -462,10 +457,43 @@ export default function TrilhaConteudoScreen() {
     [atividadesResolvidasLocal, blocks, conteudosVistosLocal]
   );
 
-  const percentualCanonico = progressoCanonicoTopico(topico);
-  const topicoConcluido = topicoConcluidoNaTela({
-    topico, personalizacaoCarregando, percurso: progressoPercurso,
-  });
+  const topicoConcluido = useMemo(() => {
+    if (!topico) return false;
+
+    // Enquanto a personalizacao carrega, o percurso ainda esta incompleto por
+    // definicao: declarar concluido aqui fecharia o modulo antes de o aluno ver
+    // o material que esta a caminho.
+    if (personalizacaoCarregando) return false;
+
+    // O PERCURSO decide, nao o status do banco.
+    //
+    // `topico_aluno.status`/`percentual_concluido` vem de
+    // `Topico.calcularPercentual()`, que conta SO conteudo/atividade do
+    // professor. Terminando esses, o topico era gravado como 'concluido' com o
+    // material personalizado intocado -- e a tela, que confiava nesse status
+    // antes de olhar qualquer coisa, dava o topico por encerrado exibindo
+    // "6 de 26 blocos concluidos" no cabecalho.
+    //
+    // Pior que a contradicao: `topicoConcluido` dispara
+    // `clearTrilhaCheckpoint`, entao o checkpoint era APAGADO a cada render. A
+    // trilha "sempre voltava pro inicio" porque o ponto de parada era deletado,
+    // nao porque falhava ao gravar. (Confirmado no log do aparelho:
+    // "[Checkpoint] apagando (topico concluido)" repetindo sem parar.)
+    if (progressoPercurso.total > 0) {
+      return progressoPercurso.concluidos >= progressoPercurso.total;
+    }
+
+    // Sem percurso montado (topico sem bloco, ou dado ainda nao carregado), o
+    // status do banco e a unica informacao disponivel -- ai ele vale.
+    const status = String(topico.status ?? "").toLowerCase();
+    const pct = Number(topico.percentual_concluido ?? 0);
+    return status.includes("concl") || pct >= 100;
+  }, [
+    personalizacaoCarregando,
+    progressoPercurso.concluidos,
+    progressoPercurso.total,
+    topico,
+  ]);
 
   const topicoJaIniciado = useMemo(() => {
     if (!topico) return false;
@@ -559,6 +587,7 @@ export default function TrilhaConteudoScreen() {
   useEffect(() => {
     setActivityQuestionIndices({});
     setActivityTimeoutMap({});
+    setMaiorIndiceAlcancado(-1);
   }, [topicoId, setActivityQuestionIndices]);
 
   const total = displayedBlocks.length;
@@ -576,7 +605,7 @@ export default function TrilhaConteudoScreen() {
   }, [index, total, setIndex]);
 
   useEffect(() => {
-    if (!isScreenFocused || !checkpointHydratedRef.current || !topicoId) return;
+    if (!checkpointHydratedRef.current || !topicoId) return;
 
     if (topicoConcluido) {
       // Apagar aqui e o que faz a proxima abertura comecar do inicio. Se o
@@ -627,7 +656,6 @@ export default function TrilhaConteudoScreen() {
   }, [
     atualBlock,
     checkpointHydratedRef,
-    isScreenFocused,
     checkpointParams,
     currentActivityQuestionIndex,
     index,
@@ -647,6 +675,10 @@ export default function TrilhaConteudoScreen() {
     return isConteudoConcluido(atualBlock.conteudo, conteudosVistosLocal);
   }, [atualBlock, conteudosVistosLocal]);
 
+  useEffect(() => {
+    if (mostrarResumo || index < 0) return;
+    setMaiorIndiceAlcancado((anterior) => Math.max(anterior, index));
+  }, [index, mostrarResumo]);
 
   const bloqueiaAvanco =
     topicoConcluido ? false : atualBlock?.kind === "atividade" && !atividadeAtualResolvida;
@@ -664,12 +696,26 @@ export default function TrilhaConteudoScreen() {
   }, [displayedBlocks, conteudosVistosLocal, atividadesResolvidasLocal, topicoConcluido]);
 
   const progressoVisual = useMemo(
-    () => calcularProgressoVisualPercurso({
-      total: progressoPercurso.total,
-      concluidosConfirmados: progressoPercurso.concluidos,
-      percentualCanonico,
-    }),
-    [percentualCanonico, progressoPercurso.concluidos, progressoPercurso.total]
+    () =>
+      calcularProgressoVisualPercurso({
+        total: progressoPercurso.total,
+        concluidosConfirmados: progressoPercurso.concluidos,
+        maiorIndiceAlcancado,
+        blocoAtualConcluido:
+          atualBlock?.kind === "conteudo"
+            ? conteudoAtualConcluido
+            : atualBlock?.kind === "atividade"
+            ? atividadeAtualResolvida
+            : false,
+      }),
+    [
+      atividadeAtualResolvida,
+      atualBlock?.kind,
+      conteudoAtualConcluido,
+      maiorIndiceAlcancado,
+      progressoPercurso.concluidos,
+      progressoPercurso.total,
+    ]
   );
 
   const sugestaoMaterial = useMaterialSuggestion({
@@ -714,9 +760,9 @@ export default function TrilhaConteudoScreen() {
     );
   }, [atualBlock, conteudoBlocks, currentContentItemKey]);
   const isCurrentStudyBlockTrackable = useMemo(() => {
-    if (mostrarResumo || index < 0 || !atualBlock) return false;
+    if (mostrarResumo || index < 0 || !atualBlock || topicoConcluido) return false;
     return true;
-  }, [atualBlock, index, mostrarResumo]);
+  }, [atualBlock, index, mostrarResumo, topicoConcluido]);
   const currentOverlayItemKey = useMemo(() => {
     if (!isCurrentStudyBlockTrackable || !atualBlock) return null;
     if (atualBlock.kind === "conteudo") {
@@ -755,7 +801,7 @@ export default function TrilhaConteudoScreen() {
     currentTimedOutActivityId,
     isCurrentStudyBlockTrackable,
   ]);
-  useRememberTrailTopic(topicoId);
+  const isScreenFocused = useIsFocused();
   const currentStudyBlockSignature = useMemo(() => {
     // Ao perder o foco (sair do modulo), zera a assinatura. Isso faz o
     // setInterval de tempo ser limpo e impede que o ref seja recriado no
@@ -902,24 +948,15 @@ export default function TrilhaConteudoScreen() {
   const blocoTagColor =
     atualBlock?.kind === "atividade" ? "#2ecc71" : profilePalette.accent;
 
-  const { flushStudyTime } = useStudyTimeTracking({
+  const { activeStudyBlockRef, persistElapsedStudyBlock } = useStudyTimeTracking({
     currentStudyBlockSignature,
     registrarTempoTopico,
     registrarTempoConteudo,
     registrarTempoAtividade,
     registrarTempoDireto,
-    registrarSessaoConteudo,
-    registrarSessaoAtividade,
     salvarProgressoItemPersonalizado,
     reloadRanking,
     telemetrySessionActive,
-    flushTelemetryTime: () => flushStudyBatch('interval'),
-  });
-
-  useTopicScreenTimeTracking({
-    topicoId,
-    isScreenFocused,
-    registrarSessaoTopico,
   });
 
   useFocusEffect(
@@ -927,16 +964,31 @@ export default function TrilhaConteudoScreen() {
       if (!studySessionParams) return undefined;
 
       void beginStudySession(studySessionParams);
+      updateStudyContext({
+        topicoId: studySessionParams.topicoId,
+        atividadeId: null,
+        conteudoId: null,
+        itemKey: null,
+        materialKey: null,
+        materialType: null,
+        target: "screen",
+        studyState: "idle",
+      });
 
       return () => {
-        void flushStudyTime();
+        if (activeStudyBlockRef.current) {
+          void persistElapsedStudyBlock(activeStudyBlockRef.current);
+          activeStudyBlockRef.current = null;
+        }
         void endStudySession("screen_blur");
       };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- activeStudyBlockRef is a stable ref object
     }, [
       beginStudySession,
       endStudySession,
-      flushStudyTime,
+      persistElapsedStudyBlock,
       studySessionParams,
+      updateStudyContext,
     ])
   );
 
@@ -951,18 +1003,11 @@ export default function TrilhaConteudoScreen() {
   }, [personalizedTopic, registerTopicPayload]);
 
   useEffect(() => {
-    if (!isScreenFocused) return;
     setActiveTopic(topicoId, personalizedTopic?.planMeta.cycleId ?? null);
-  }, [isScreenFocused, personalizedTopic?.planMeta.cycleId, setActiveTopic, topicoId]);
+  }, [personalizedTopic?.planMeta.cycleId, setActiveTopic, topicoId]);
 
   useEffect(() => {
-    if (!isScreenFocused || !topicoId) return;
-    emitSignalRef.current({ type: "topic_open", topicoId });
-    lastOpenedSignalRef.current = null;
-  }, [isScreenFocused, topicoId]);
-
-  useEffect(() => {
-    if (!isScreenFocused || !topicoId || isCurrentStudyBlockTrackable) return;
+    if (!topicoId) return;
     updateStudyContext({
       topicoId,
       atividadeId: null,
@@ -973,28 +1018,26 @@ export default function TrilhaConteudoScreen() {
       target: "screen",
       studyState: "idle",
     });
-  }, [isScreenFocused, isCurrentStudyBlockTrackable, topicoId, updateStudyContext]);
+    emitSignalRef.current({ type: "topic_open", topicoId });
+    lastOpenedSignalRef.current = null;
+  }, [topicoId, updateStudyContext]);
 
-  // Contexto de estudo é estado, não evento: precisa ser reposto após a sessão
-  // iniciar/retomar, mesmo sem um novo content_open/activity_start.
   useEffect(() => {
-    if (!isScreenFocused || !isCurrentStudyBlockTrackable || !atualBlock || !topicoId) return;
-    const content = atualBlock.kind === 'conteudo';
+    if (!topicoId || isCurrentStudyBlockTrackable) return;
     updateStudyContext({
       topicoId,
-      conteudoId: content ? Number(atualBlock.conteudo.id) : atualBlock.vinculadoConteudoId ?? null,
-      atividadeId: content ? null : Number(atualBlock.atividade.id),
-      itemKey: content ? currentContentItemKey : buildIAItemKey('activity', Number(atualBlock.atividade.id)),
-      materialKey: content ? currentMaterialContext.materialKey : null,
-      materialType: content ? currentMaterialContext.materialType : null,
-      target: content ? 'content' : 'activity', studyState: 'active',
+      atividadeId: null,
+      conteudoId: null,
+      itemKey: null,
+      materialKey: null,
+      materialType: null,
+      target: "screen",
+      studyState: "idle",
     });
-  }, [atualBlock, currentContentItemKey, currentMaterialContext.materialKey,
-    currentMaterialContext.materialType, isCurrentStudyBlockTrackable, isScreenFocused,
-    telemetrySessionActive, topicoId, updateStudyContext]);
+  }, [isCurrentStudyBlockTrackable, topicoId, updateStudyContext]);
 
   useEffect(() => {
-    if (!isScreenFocused || !isCurrentStudyBlockTrackable || !atualBlock || !topicoId) return;
+    if (!isCurrentStudyBlockTrackable || !atualBlock || !topicoId) return;
 
     const signalKey =
       atualBlock.kind === "conteudo"
@@ -1005,6 +1048,17 @@ export default function TrilhaConteudoScreen() {
     lastOpenedSignalRef.current = signalKey;
 
     if (atualBlock.kind === "conteudo") {
+      updateStudyContext({
+        topicoId,
+        conteudoId: Number(atualBlock.conteudo.id),
+        atividadeId: null,
+        itemKey:
+          currentContentItemKey ?? buildIAItemKey("content", Number(atualBlock.conteudo.id)),
+        materialKey: currentMaterialContext.materialKey,
+        materialType: currentMaterialContext.materialType,
+        target: "content",
+        studyState: "active",
+      });
       emitSignalRef.current({
         type: "content_open",
         topicoId,
@@ -1017,6 +1071,17 @@ export default function TrilhaConteudoScreen() {
       return;
     }
 
+    updateStudyContext({
+      topicoId,
+      atividadeId: Number(atualBlock.atividade.id),
+      conteudoId:
+        atualBlock.vinculadoConteudoId != null ? Number(atualBlock.vinculadoConteudoId) : null,
+      itemKey: buildIAItemKey("activity", Number(atualBlock.atividade.id)),
+      materialKey: null,
+      materialType: null,
+      target: "activity",
+      studyState: "active",
+    });
     emitSignalRef.current({
       type: "activity_start",
       topicoId,
@@ -1036,10 +1101,12 @@ export default function TrilhaConteudoScreen() {
   }, [
     atualBlock,
     currentContentItemKey,
+    currentMaterialContext.materialKey,
+    currentMaterialContext.materialType,
     isCurrentStudyBlockTrackable,
-    isScreenFocused,
     moduleDifficulty,
     topicoId,
+    updateStudyContext,
   ]);
 
   const handleMarcarConteudoVisto = useCallback(
@@ -1240,7 +1307,19 @@ export default function TrilhaConteudoScreen() {
         ? { ...resultadosAtividades, [atividadeId]: novoResultado }
         : resultadosAtividades;
 
-      let conclusaoPersistida = revisao;
+      setAtividadesResolvidasLocal((prev) => {
+        if (!atividadeCompleta) return prev;
+        const next = new Map(prev);
+        next.set(atividadeId, novoResultado);
+        return next;
+      });
+      if (atividadeCompleta) {
+        setResultadosAtividades(proximosResultados);
+      }
+      if (!revisao && atividadeCompleta) {
+        atividade.status = "concluido";
+      }
+
       try {
         if (!atividadeCompleta) {
           return;
@@ -1259,12 +1338,18 @@ export default function TrilhaConteudoScreen() {
           linkedContentId != null ? buildIAItemKey("content", linkedContentId) : null;
 
         if (!revisao && !isPersonalizedLocal) {
-          await registrarAtividadeConcluida(topicoId, atividadeId, percentual, {
-            pontuacaoObtida: scoreAwarded,
-            pontuacaoMaxima: scoreMaximo,
-            avaliacaoMetadata,
-          });
-          conclusaoPersistida = true;
+          try {
+            await registrarAtividadeConcluida(topicoId, atividadeId, percentual, {
+              pontuacaoObtida: scoreAwarded,
+              pontuacaoMaxima: scoreMaximo,
+              avaliacaoMetadata,
+            });
+          } catch (error) {
+            console.warn(
+              "[TrilhaConteudo] Falha ao persistir atividade concluída. Evento será enviado mesmo assim:",
+              error
+            );
+          }
         }
 
         const baseValor = Number(atividade.pontuacao_maxima ?? 100) || 100;
@@ -1341,16 +1426,7 @@ export default function TrilhaConteudoScreen() {
               personalized: true,
             },
           });
-          conclusaoPersistida = true;
         }
-
-        setAtividadesResolvidasLocal((prev) => {
-          const next = new Map(prev);
-          next.set(atividadeId, novoResultado);
-          return next;
-        });
-        setResultadosAtividades(proximosResultados);
-        if (!revisao) atividade.status = "concluido";
 
         emitSignalRef.current({
           type: acertou ? "activity_correct" : "activity_wrong",
@@ -1413,13 +1489,6 @@ export default function TrilhaConteudoScreen() {
         });
       } catch (err) {
         console.error("[TrilhaConteudo] Erro ao processar atividade:", err);
-        if (!conclusaoPersistida) {
-          showDialog({
-            title: "Resposta não sincronizada",
-            description: "Não conseguimos salvar a conclusão desta atividade. Tente confirmar novamente antes de avançar.",
-            tone: "error",
-          });
-        }
       }
     },
     [
@@ -1479,6 +1548,7 @@ export default function TrilhaConteudoScreen() {
     marcarTopicoConcluido,
     handleMarcarConteudoVisto,
     flushStudyBatch,
+    resetBattleState,
     reloadRanking,
     reloadConquistas,
     registrarEvento,
@@ -1589,7 +1659,7 @@ export default function TrilhaConteudoScreen() {
                   />
                 </View>
                 <Text style={[styles.progressCounter, { color: profilePalette.textSubtle }]}>
-Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos concluídos
+                  {progressoVisual.concluidos} de {progressoVisual.total} blocos concluídos
                 </Text>
               </>
             ) : null}
@@ -1913,9 +1983,7 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
         >
           <IABattleHeaderChip
             topicoId={topicoId}
-            itemKey={atualBlock?.kind === 'atividade' && atualBlock.vinculadoConteudoId != null
-              ? buildIAItemKey('content', Number(atualBlock.vinculadoConteudoId))
-              : currentOverlayItemKey}
+            itemKey={currentOverlayItemKey}
           />
         </View>
       ) : null}

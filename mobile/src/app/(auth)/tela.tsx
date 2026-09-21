@@ -1,6 +1,4 @@
 import { HallBackground } from "@/components/HallTheme";
-import { designStar } from "@/constants/designAssets";
-import { Design } from "@/styles/design";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { buildProfileShellPaletteFromAccent } from "@/utils/profileShellTheme";
 import { Image } from "expo-image";
@@ -11,7 +9,7 @@ import { SafeAreaView, StyleSheet, Text, View } from "react-native";
 import tinycolor from "tinycolor2";
 
 // Paleta estática para telas de autenticação — violeta oficial do logo TrailUp
-const AUTH_PALETTE = buildProfileShellPaletteFromAccent(Design.primary, "magica");
+const AUTH_PALETTE = buildProfileShellPaletteFromAccent("#a057fd", "magica");
 
 const Tela_De_Rosto = () => {
   const navigation = useRouter();
@@ -54,7 +52,7 @@ const Tela_De_Rosto = () => {
 
           <View style={[styles.imageRing, { borderColor: goldDim }]}>
             <Image
-              source={designStar}
+              source={require("@/assets/images/trailup-logo.png")}
               style={styles.image}
               contentFit="contain"
             />
@@ -84,7 +82,7 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.inknutAntiquaMedium,
     fontWeight: "700",
     textAlign: "center",
-    letterSpacing: 0,
+    letterSpacing: 0.5,
     textShadowColor: "rgba(0,0,0,0.8)",
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 8,
@@ -99,12 +97,14 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   imageRing: {
-    borderRadius: Design.radius,
+    borderRadius: 100,
+    borderWidth: 1.5,
     padding: 4,
   },
   image: {
     width: 180,
     height: 180,
+    borderRadius: 200,
   },
 });
 

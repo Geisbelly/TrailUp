@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Menu } from "lucide-react";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import trailupLogo from "@/assets/trailup-brand-logo.png";
+import { DESIGN_ART } from "@/lib/design-art";
 
 const links = [
   { href: "/#experiencia", label: "A jornada" },
@@ -25,7 +25,7 @@ export default function Header() {
     <header className={`journey-header${scrolled ? " is-scrolled" : ""}`}>
       <div className="journey-width header-inner">
         <Link to="/" className="journey-brand" aria-label="TrailUp, início">
-          <img src={trailupLogo} alt="" width="44" height="44" /><span>TrailUp</span>
+          <img src={DESIGN_ART.star} alt="" width="44" height="44" /><span>TrailUp</span>
         </Link>
         <nav className="journey-desktop-nav" aria-label="Navegação principal">
           {links.map(link => <a key={link.href} href={link.href}>{link.label}</a>)}
@@ -39,7 +39,7 @@ export default function Header() {
             <button className="journey-menu-button" type="button" aria-label="Abrir menu" title="Abrir menu"><Menu size={24} /></button>
           </SheetTrigger>
           <SheetContent className="journey-mobile-menu">
-            <SheetTitle className="journey-brand"><img src={trailupLogo} alt="" width="40" height="40" />TrailUp</SheetTitle>
+            <SheetTitle className="journey-brand"><img src={DESIGN_ART.star} alt="" width="40" height="40" />TrailUp</SheetTitle>
             <SheetDescription className="sr-only">Navegação principal</SheetDescription>
             <nav aria-label="Navegação mobile">
               {links.map(link => <SheetClose asChild key={link.href}><a href={link.href}>{link.label}<ArrowRight size={16} /></a></SheetClose>)}

@@ -19,15 +19,6 @@ export interface ToastMessage {
 
 type StatusFiltro = 'todas' | 'pendente' | 'enviada' | 'lida' | 'falhou';
 
-function manterNotificacoesUnicas(notificacoes: Notificacao[]): Notificacao[] {
-  const ids = new Set<number>();
-  return notificacoes.filter((notificacao) => {
-    if (ids.has(notificacao.id)) return false;
-    ids.add(notificacao.id);
-    return true;
-  });
-}
-
 type NotificationsState = {
   carregando: boolean;
   alunoId: string | null;
@@ -167,7 +158,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
 
       const novas = (data ?? []).map(Notificacao.fromRow);
 
-      setItens(prev => manterNotificacoesUnicas(append ? [...prev, ...novas] : novas));
+      setItens(prev => (append ? [...prev, ...novas] : novas));
       setHasMore(novas.length === PAGE_SIZE);
     },
     [getAlunoFromSession, filtroStatus]
@@ -219,7 +210,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
           status: input.status ?? 'pendente',
         });
         // otimista: injeta no topo da lista atual
-        setItens(prev => manterNotificacoesUnicas([n, ...prev]));
+        setItens(prev => [n, ...prev]);
         return n;
       } catch (e) {
         console.warn('[NotificationsContext] create erro:', e);
@@ -332,7 +323,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
             
               // Atualiza lista
               if (filtroStatus === 'todas' || n.status === filtroStatus) {
-                setItens(prev => manterNotificacoesUnicas([n, ...prev]));
+                setItens(prev => [n, ...prev]);
               }
 
               // Mapeamento de Tipos e Comportamento

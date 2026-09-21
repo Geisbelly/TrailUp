@@ -164,7 +164,7 @@ export function useTopicCrud({
     }
   };
   const handleCreateContent = async (
-    contentForm: { titulo: string; tipo: string; conteudo: string; boss_visual?: string | null },
+    contentForm: { titulo: string; tipo: string; conteudo: string },
     id?: number | null
   ) => {
     const targetTopicId = editingTopic?.id;

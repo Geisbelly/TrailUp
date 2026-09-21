@@ -68,10 +68,10 @@ function heroMetricSteps(theme: MetricsThemeResolved): SectionGuideStep[] {
 
   if (theme === "squad") {
     return [
-      metricStep("squad-presence-hero", "Presença", "Conta dias de estudo nos últimos sete dias, usando respostas, visitas, progresso e tempo confirmados no banco. Não depende apenas dos eventos de pontos.", "account-group-outline"),
+      metricStep("squad-presence-hero", "Presença", "Conta quantas datas distintas possuem eventos de estudo registrados. O resumo classifica o ritmo como alto, consistente, em retomada ou sem movimento recente.", "account-group-outline"),
       metricStep("squad-ranking", "Ranking", "Mostra a melhor posição registrada para você. Sem posição significa que ainda não existe uma colocação válida salva.", "podium"),
       metricStep("squad-achievements", "Conquistas", "Conta os emblemas já obtidos, comuns da plataforma ou relacionados aos seus perfis representativos.", "trophy-outline"),
-      metricStep("squad-movement", "Movimento", "Conta registros de estudo confirmados nos últimos sete dias. Várias ações no mesmo dia contam separadamente.", "pulse"),
+      metricStep("squad-movement", "Movimento", "Conta todos os eventos de estudo registrados nos últimos sete dias. Várias ações no mesmo dia contam separadamente.", "pulse"),
     ];
   }
 
@@ -175,8 +175,8 @@ function themeMetricSteps(
 
   if (theme === "squad") {
     return [
-      metricStep("squad-energy", "Energia do grupo", "Progresso mede avanço na classe, Acertos mede respostas corretas e Tempo mostra o estudo persistido. O último pulso mostra a data do registro de estudo mais recente.", "star-circle-outline"),
-      metricStep("squad-presence", "Presença na semana", "Cada dia mostra registros de estudo confirmados nos últimos sete dias, no seu fuso horário. Dias ativos contam datas distintas com atividade.", "calendar-week"),
+      metricStep("squad-energy", "Energia do grupo", "Progresso mede avanço na classe, Acertos mede respostas corretas e Tempo reúne o estudo persistido com a sessão atual. O último pulso mostra a data do evento mais recente.", "star-circle-outline"),
+      metricStep("squad-presence", "Presença na semana", "Cada dia mostra quantos eventos de estudo foram registrados nos últimos sete dias. Dias ativos contam datas distintas com atividade.", "calendar-week"),
       ...(vm.hasSessionMetrics
         ? [metricStep("squad-session", "Energia da sessão", "Tempo ativo exclui períodos ociosos; Interações contam toques; Engajamento é tempo ativo ÷ (ativo + ocioso), em porcentagem.", "lightning-bolt-circle")]
         : []),

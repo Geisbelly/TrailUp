@@ -582,10 +582,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      excluir_classe: {
-        Args: { p_classe_id: number }
-        Returns: boolean
-      }
       fn_cadastrar_aluno_com_perfis: {
         Args: {
           p_auth_user_id: string

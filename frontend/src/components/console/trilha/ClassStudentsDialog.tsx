@@ -14,8 +14,7 @@ import { Plus, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { enqueueEnrollmentJob } from "./personalizacaoJobsApi";
-import { removeClassStudent } from "./classDeletion";
+import { enqueueCleanupJob, enqueueEnrollmentJob } from "./personalizacaoJobsApi";
 
 interface Aluno {
   id: string;
@@ -176,15 +175,42 @@ export default function ClassStudentsDialog({
   };
 
   const handleRemoveStudent = async (alunoId: string) => {
-    if (!window.confirm("Remover este aluno da classe e limpar seu progresso nesta turma?")) return;
     try {
-      await removeClassStudent(classe.id, alunoId);
-      toast.success("Aluno removido da classe!");
+      const { error } = await supabase
+        .from("classe_aluno")
+        .delete()
+        .eq("classe_id", classe.id)
+        .eq("aluno_id", alunoId);
+
+      if (error) throw error;
+
+      let enqueueFailed = false;
+      if (session?.access_token) {
+        try {
+          const { topico_ids, conteudo_ids } = await fetchClassContextIds();
+          await enqueueCleanupJob(session.access_token, {
+            classe_id: classe.id,
+            aluno_id: alunoId,
+            topico_ids,
+            conteudo_ids,
+            reason: "remocao_aluno_console",
+          });
+        } catch (enqueueError) {
+          enqueueFailed = true;
+          console.error("[ClassStudentsDialog] Falha ao enfileirar cleanup:", enqueueError);
+        }
+      }
+
+      if (enqueueFailed) {
+        toast.warning("Aluno removido da classe, mas o job de limpeza falhou ao enfileirar. Tente novamente.");
+      } else {
+        toast.success("Aluno removido da classe!");
+      }
       await loadStudents();
       onStudentsChanged?.();
     } catch (error) {
       console.error("Erro ao remover aluno:", error);
-      toast.error(error instanceof Error ? error.message : "Não foi possível remover o aluno.");
+      toast.error("Não foi possível remover o aluno.");
     }
   };
 

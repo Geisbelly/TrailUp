@@ -14,8 +14,10 @@ import {
   type TrilhaCheckpointKeyParams,
 } from "@/utils/trilhaCheckpoint";
 import type { TelemetryFlushReason, TelemetryAppEventGroup } from "@/interfaces/telemetria/TelemetryContracts";
+import type { IAFeatureSelectorScope } from "@/interfaces/personalizacao/IAContracts";
 import type { Topico } from "@/models/Topico";
-import { returnToTrail } from "@/utils/returnToTrail";
+
+type BattleScope = Extract<IAFeatureSelectorScope, { scope: "topic" | "item" }>;
 
 type ShowDialog = (opts: {
   title: string;
@@ -63,6 +65,7 @@ export function useTopicoCompletion(args: {
   marcarTopicoConcluido: (topicoId: number) => Promise<void>;
   handleMarcarConteudoVisto: (conteudoId: number, itemKeyOverride?: string | null) => Promise<void>;
   flushStudyBatch: (reason: TelemetryFlushReason) => Promise<any>;
+  resetBattleState: (scope: BattleScope) => Promise<void>;
   reloadRanking: () => Promise<void>;
   reloadConquistas: () => Promise<void>;
   registrarEvento: (tipo: string, referencia?: string | null, valor?: number | null) => Promise<void>;
@@ -107,6 +110,7 @@ export function useTopicoCompletion(args: {
     marcarTopicoConcluido,
     handleMarcarConteudoVisto,
     flushStudyBatch,
+    resetBattleState,
     reloadRanking,
     reloadConquistas,
     registrarEvento,
@@ -229,7 +233,7 @@ export function useTopicoCompletion(args: {
         title: "Parabéns!",
         description: "Você concluiu este módulo.",
         tone: "success",
-        actions: [{ label: "OK", onPress: () => returnToTrail(router) }],
+        actions: [{ label: "OK", onPress: () => router.back() }],
       });
       return;
     }
@@ -319,16 +323,11 @@ export function useTopicoCompletion(args: {
       void flushStudyBatch("topic_complete").catch((erro) => {
         console.warn("[TrilhaConteudo] Falha ao enviar telemetria da conclusao:", erro);
       });
-      // Concluir o tópico preserva dano e vitória para o perfil e revisões.
-      // Reiniciar uma batalha deve ser uma ação explícita, não um efeito da navegação.
+      await resetBattleState({ scope: "topic", topicoId });
       await navegarAposConclusao();
     } catch (err) {
       console.error("[TrilhaConteudo] Erro ao concluir topico:", err);
-      showDialog({
-        title: "Não foi possível concluir o módulo",
-        description: err instanceof Error ? err.message : "Não conseguimos confirmar a conclusão. Tente novamente; seu progresso salvo foi mantido.",
-        tone: "error",
-      });
+      router.back();
     }
   }, [
     topicoId,
@@ -345,9 +344,11 @@ export function useTopicoCompletion(args: {
     marcarTopicoConcluido,
     flushStudyBatch,
     recordAppEvent,
+    resetBattleState,
     reloadRanking,
     reloadConquistas,
     navegarAposConclusao,
+    router,
     showDialog,
     checkpointParams,
   ]);

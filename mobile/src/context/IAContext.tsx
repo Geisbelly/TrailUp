@@ -1,5 +1,4 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { applyDamageToBattleState, buildBattleRuntimeKey, findStoredBattle, restoreBattleStates } from '@/utils/battleRuntime';
 import { getBrainHexGuideName } from "@/constants/profileImages";
 import { useUsuario } from "@/context/SessaoContext";
 import {
@@ -54,7 +53,6 @@ type IAResolvedFeaturesState = {
 };
 
 type BattleScope = Extract<IAFeatureSelectorScope, { scope: "topic" | "item" }>;
-export type BattleVictory = { id: string; userId: string | null; state: IABattleRuntimeState; message: string };
 export type IATriggerSignalListener = (signal: IATriggerSignal) => void;
 
 type IAContextValue = {
@@ -64,8 +62,6 @@ type IAContextValue = {
   runtimeStates: IARuntimeStates;
   userPreferences: Partial<Record<IAFeatureKey, boolean>>;
   pendingCharacterCues: IACharacterCue[];
-  pendingBattleVictories: BattleVictory[];
-  dismissBattleVictory: (id: string) => void;
   registerTopicPayload: (payload: PersonalizedTopicPayload | null | undefined) => void;
   setActiveTopic: (topicoId: number | null, cycleId?: string | null) => void;
   hasFeaturePatch: (scope: IAFeatureSelectorScope, key: IAFeatureKey) => boolean;
@@ -252,6 +248,19 @@ function buildScopeFeatureKey(scope: IAFeatureSelectorScope, key: IAFeatureKey) 
   return `item:${scope.itemKey}:${key}`;
 }
 
+function buildBattleRuntimeKey(
+  userId: string,
+  scope: BattleScope,
+  enemyId: string,
+  cycleId?: string | null,
+  persistKey?: string | null
+) {
+  const topicoId = scope.scope === "topic" ? scope.topicoId : scope.topicoId ?? 0;
+  const scopeKey = scope.scope === "item" ? scope.itemKey : "topic";
+  const suffix = persistKey ?? cycleId ?? "default";
+  return `${userId}:${topicoId}:${scopeKey}:${suffix}:${enemyId}`;
+}
+
 function mergeCopy(base?: IAFeatureCopy | null, patch?: IAFeatureCopy | null) {
   if (!base && !patch) return null;
   return {
@@ -391,6 +400,37 @@ function deriveItemKey(signal: IATriggerSignal) {
 
 function buildDefaultCueId() {
   return `cue-${getNow()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function applyDamageToBattleState(state: IABattleRuntimeState, damage: number) {
+  const normalizedDamage = Math.max(0, Math.round(damage));
+  if (normalizedDamage <= 0 || state.defeated) {
+    return { nextState: state, defeatedNow: false };
+  }
+
+  let remainingDamage = normalizedDamage;
+  const shield = Math.max(0, state.currentShield);
+  const hp = Math.max(0, state.currentHp);
+
+  const shieldAfter = Math.max(0, shield - remainingDamage);
+  remainingDamage = Math.max(0, remainingDamage - shield);
+  const hpAfter = Math.max(0, hp - remainingDamage);
+  const defeatedNow = hp > 0 && hpAfter <= 0;
+
+  return {
+    defeatedNow,
+    nextState: {
+      ...state,
+      currentShield: shieldAfter,
+      currentHp: hpAfter,
+      totalDamage: state.totalDamage + normalizedDamage,
+      defeated: hpAfter <= 0,
+      defeatedAt: defeatedNow ? getNow() : state.defeatedAt ?? null,
+      lastDamageAt: getNow(),
+      encounterEndsAt: hpAfter <= 0 ? null : state.encounterEndsAt ?? null,
+      updatedAt: getNow(),
+    },
+  };
 }
 
 type BattleDifficultyKey = "easy" | "medium" | "hard";
@@ -541,27 +581,13 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
   const [activeCycleId, setActiveCycleId] = useState<string | null>(null);
   const [userPreferences, setUserPreferences] = useState<Partial<Record<IAFeatureKey, boolean>>>({});
   const [pendingCharacterCues, setPendingCharacterCues] = useState<IACharacterCue[]>([]);
-  const [pendingBattleVictories, setPendingBattleVictories] = useState<BattleVictory[]>([]);
-  const dismissBattleVictory = useCallback((id: string) => {
-    setPendingBattleVictories((items) => items.filter((item) => item.id !== id));
-  }, []);
-  const [runtimeStates, setRuntimeSnapshot] = useState<IARuntimeStates>({
+  const [runtimeStates, setRuntimeStates] = useState<IARuntimeStates>({
     wrongStreaks: {},
     triggerCooldowns: {},
     suppressedUntil: {},
     battleStates: {},
     lastSignals: [],
   });
-  const runtimeRef = useRef(runtimeStates);
-  // Correct + complete can arrive before React renders again. Every update
-  // must see the previous signal's result, not the render's stale snapshot.
-  const setRuntimeStates = useCallback((update: (prev: IARuntimeStates) => IARuntimeStates) => {
-    const next = update(runtimeRef.current);
-    runtimeRef.current = next;
-    setRuntimeSnapshot(next);
-  }, []);
-  const [hydratedUserId, setHydratedUserId] = useState<string | null>(null);
-  const storageWriteRef = useRef<Promise<unknown>>(Promise.resolve());
   const signalListenersRef = useRef<Set<IATriggerSignalListener>>(
     new Set<IATriggerSignalListener>()
   );
@@ -590,9 +616,6 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let active = true;
-    setHydratedUserId(null);
-    setPendingBattleVictories([]);
-    setRuntimeStates(() => ({ wrongStreaks: {}, triggerCooldowns: {}, suppressedUntil: {}, battleStates: {}, lastSignals: [] }));
 
     async function hydratePreferences() {
       if (!userId) {
@@ -605,7 +628,6 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        await storageWriteRef.current;
         const [rawPrefs, rawBattles] = await Promise.all([
           AsyncStorage.getItem(getFeaturePreferenceStorageKey(userId)),
           AsyncStorage.getItem(getBattleStateStorageKey(userId)),
@@ -616,13 +638,11 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
         setUserPreferences(rawPrefs ? JSON.parse(rawPrefs) : {});
         setRuntimeStates((prev) => ({
           ...prev,
-          battleStates: restoreBattleStates(rawBattles ? JSON.parse(rawBattles) : {}, prev.battleStates),
+          battleStates: rawBattles ? JSON.parse(rawBattles) : {},
         }));
-        setHydratedUserId(userId);
-      } catch (error) {
+      } catch {
         if (!active) return;
         setUserPreferences({});
-        console.warn('[IA] Não foi possível recuperar a batalha salva; o histórico não será sobrescrito:', error);
       }
     }
 
@@ -631,24 +651,23 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
     return () => {
       active = false;
     };
-  }, [setRuntimeStates, userId]);
+  }, [userId]);
 
   useEffect(() => {
-    if (!userId || hydratedUserId !== userId) return;
+    if (!userId) return;
     void AsyncStorage.setItem(
       getFeaturePreferenceStorageKey(userId),
       JSON.stringify(userPreferences)
-    ).catch((error) => console.warn('[IA] Falha ao salvar preferências:', error));
-  }, [hydratedUserId, userId, userPreferences]);
+    );
+  }, [userId, userPreferences]);
 
   useEffect(() => {
-    if (!userId || hydratedUserId !== userId) return;
-    const key = getBattleStateStorageKey(userId);
-    const snapshot = JSON.stringify(runtimeStates.battleStates);
-    storageWriteRef.current = storageWriteRef.current.catch(() => undefined)
-      .then(() => AsyncStorage.setItem(key, snapshot))
-      .catch((error) => console.warn('[IA] Falha ao salvar batalha:', error));
-  }, [hydratedUserId, runtimeStates.battleStates, userId]);
+    if (!userId) return;
+    void AsyncStorage.setItem(
+      getBattleStateStorageKey(userId),
+      JSON.stringify(runtimeStates.battleStates)
+    );
+  }, [runtimeStates.battleStates, userId]);
 
   const registerTopicPayload = useCallback((payload: PersonalizedTopicPayload | null | undefined) => {
     if (!payload?.topicoId) return;
@@ -951,9 +970,9 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
         battle.persistKey
       );
 
-      return findStoredBattle(runtimeRef.current.battleStates, battleKey);
+      return runtimeStates.battleStates[battleKey] ?? null;
     },
-    [getCycleIdForTopico, resolveBattleScope, resolveFeature, userId]
+    [getCycleIdForTopico, resolveBattleScope, resolveFeature, runtimeStates.battleStates, userId]
   );
 
   const ensureBattleState = useCallback(
@@ -975,7 +994,7 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
         battle.persistKey
       );
 
-      const existing = findStoredBattle(runtimeRef.current.battleStates, battleKey);
+      const existing = runtimeStates.battleStates[battleKey];
       const difficulty = normalizeBattleDifficulty(moduleDifficultyHint ?? existing?.moduleDifficulty);
       const rule = BATTLE_DIFFICULTY_RULES[difficulty];
 
@@ -1017,9 +1036,6 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
           return adjustedState;
         }
 
-        if (!runtimeRef.current.battleStates[battleKey]) {
-          setRuntimeStates((prev) => ({ ...prev, battleStates: { ...prev.battleStates, [battleKey]: existing } }));
-        }
         return existing;
       }
 
@@ -1066,7 +1082,7 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
 
       return nextBattleState;
     },
-    [activeTopicId, getCycleIdForTopico, resolveBattleScope, resolveFeature, setRuntimeStates, userId]
+    [activeTopicId, getCycleIdForTopico, resolveBattleScope, resolveFeature, runtimeStates.battleStates, userId]
   );
 
   const dismissCharacterCue = useCallback((id: string) => {
@@ -1143,7 +1159,7 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
         };
       });
     },
-    [activeTopicId, setRuntimeStates, userId]
+    [activeTopicId, userId]
   );
 
   const resolveBattleScopeFromSignal = useCallback(
@@ -1207,7 +1223,7 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
         itemKey ??
         (signal.activityId != null ? buildIAItemKey("activity", signal.activityId) : null);
       const previousWrongStreak =
-        wrongStreakKey != null ? runtimeRef.current.wrongStreaks[wrongStreakKey] ?? 0 : 0;
+        wrongStreakKey != null ? runtimeStates.wrongStreaks[wrongStreakKey] ?? 0 : 0;
 
       let nextWrongStreak = previousWrongStreak;
       if (signal.type === "activity_wrong") {
@@ -1342,7 +1358,7 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
               battleStates: {
                 ...prev.battleStates,
                 [battleKey]: {
-                  ...(prev.battleStates[battleKey] ?? battleState),
+                  ...battleState,
                   introShown: true,
                   updatedAt: getNow(),
                 },
@@ -1382,7 +1398,7 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
                 battleStates: {
                   ...prev.battleStates,
                   [battleKey]: {
-                    ...(prev.battleStates[battleKey] ?? battleState),
+                    ...battleState,
                     warningSent: true,
                     updatedAt: getNow(),
                   },
@@ -1393,25 +1409,33 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
 
           const damage = getDefaultBattleDamage(signal, resolvedBattle.battle);
           if (damage > 0) {
-            const latest = runtimeRef.current.battleStates[battleKey] ?? battleState;
-            const { nextState, defeatedNow } = applyDamageToBattleState(latest, damage);
+            const { nextState, defeatedNow } = applyDamageToBattleState(battleState, damage);
             setRuntimeStates((prev) => ({
               ...prev,
               battleStates: {
                 ...prev.battleStates,
                 [battleKey]: {
                   ...nextState,
-                  warningSent: latest.warningSent || warningTriggered,
+                  warningSent: battleState.warningSent || warningTriggered,
                 },
               },
             }));
 
             if (defeatedNow) {
-              const victory: BattleVictory = {
-                id: `${battleKey}:${nextState.defeatedAt}`, userId, state: nextState,
-                message: resolvedBattle.battle.victoryMessage ?? 'Seu esforço venceu este desafio. Continue sua jornada!',
-              };
-              setPendingBattleVictories((items) => items.some((item) => item.id === victory.id) ? items : [...items, victory]);
+              enqueueCue({
+                message:
+                  nextState.enemy.defeatLine ??
+                  resolvedBattle.battle.victoryMessage ??
+                  "O inimigo foi derrotado.",
+                title: `${nextState.enemy.name} derrotado`,
+                speakerName: nextState.enemy.name,
+                avatarUrl:
+                  nextState.enemy.visual?.avatarUrl ??
+                  nextState.enemy.avatarUrl,
+                topicoId: signal.topicoId,
+                itemKey: nextState.itemKey ?? null,
+                featureKey: "battle_mode",
+              });
             }
           }
         }
@@ -1521,10 +1545,10 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
       enqueueCue,
       ensureBattleState,
       getCycleIdForTopico,
-      setRuntimeStates,
       resolveBattleScopeFromSignal,
       resolveFeature,
       runtimeStates.triggerCooldowns,
+      runtimeStates.wrongStreaks,
       topicPatches,
       guideName,
       userId,
@@ -1580,8 +1604,6 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
       runtimeStates,
       userPreferences,
       pendingCharacterCues,
-      pendingBattleVictories,
-      dismissBattleVictory,
       registerTopicPayload,
       setActiveTopic,
       hasFeaturePatch,
@@ -1602,8 +1624,6 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
       getBattleState,
       hasFeaturePatch,
       pendingCharacterCues,
-      pendingBattleVictories,
-      dismissBattleVictory,
       pushMentorCue,
       registerTopicPayload,
       resetBattleState,

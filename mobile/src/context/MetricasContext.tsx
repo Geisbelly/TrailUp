@@ -1,10 +1,7 @@
 import { useIA } from "@/context/IAContext";
-import { initialStudyContext } from '@/utils/studyContext';
 import {
   accumulateContextTime,
   buildEmptyBatch,
-  nextStudyBatch,
-  restoreUnsentBatch,
   EMPTY_STUDY_CONTEXT,
   getOrCreateTimeMetricEntry,
   markContextVisit,
@@ -17,6 +14,7 @@ import { IATriggerSignal } from "@/interfaces/personalizacao/IAContracts";
 import {
   BeginStudySessionParams,
   TelemetryAppEventGroup,
+  TelemetryAppEventPayload,
   TelemetryBatchPayload,
   ScrollTelemetryMetrics,
   TelemetryBatchResponse,
@@ -24,8 +22,10 @@ import {
   TelemetryChatRole,
   TelemetryFlushReason,
   TelemetrySignalPayload,
+  TelemetryStudyState,
   TelemetryTimeMetrics,
   TelemetryTriggerContext,
+  TelemetryTouchSample,
   TelemetryTouchTarget,
   UpdateStudyContextParams,
 } from "@/interfaces/telemetria/TelemetryContracts";
@@ -102,7 +102,6 @@ type MetricasContextValue = {
   cameraOptIn: boolean;
   cameraPermission: CameraPermissionState;
   isStudySessionActive: boolean;
-  isStudyTimeTelemetryActive: boolean;
 };
 
 type MetricasBatchContextValue = {
@@ -480,11 +479,6 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
     const batch = batchRef.current;
     if (!batch) return;
 
-    if (appStateRef.current !== 'active') {
-      batch.lastAccruedAtMs = atMs;
-      return;
-    }
-
     const startMs = batch.lastAccruedAtMs;
     const endMs = Math.max(atMs, startMs);
     const deltaMs = endMs - startMs;
@@ -836,14 +830,6 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
 
       setLastBatchTimeMetrics(timeMetrics);
 
-      // The UI keeps collecting while a request is in flight. Swapping only
-      // after the await discarded those new interactions and seconds.
-      batchRef.current = nextStudyBatch(batch, nowMs);
-      if (currentContext.studyState === 'active') {
-        markContextVisit(batchRef.current, { ...EMPTY_STUDY_CONTEXT }, currentContext);
-      }
-      lastTouchSampleAtRef.current = 0;
-
       let response: TelemetryBatchResponse | null = null;
       let persisted = false;
       // Diferente de `persisted`: significa que o lote saiu das mãos deste
@@ -855,7 +841,6 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
       try {
         response = await enviarLoteTelemetria(payload);
         persisted = response?.persisted === true;
-        if (!persisted) throw new Error('Lote de telemetria não confirmado pelo servidor');
         assumido = persisted;
         if (response?.analysis) {
           setLastAnalysis(response.analysis);
@@ -881,13 +866,21 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
           console.warn("[MetricasContext] Falha ao enfileirar lote:", erroFila);
         }
       } finally {
-        if (!assumido && sessionRef.current === session && batchRef.current) {
-          batchRef.current = restoreUnsentBatch(batch, batchRef.current);
+        if (assumido) {
+          batchRef.current = buildEmptyBatch(nowMs);
+          // Recria a presenca no lote novo SO se o aluno estava de fato num
+          // item. O guard vivia dentro de `markContextVisit` e por isso valia
+          // tambem para a abertura da sessao, onde o contexto e `idle` — era
+          // ali que a visita ao topico se perdia. Aqui ele continua fazendo
+          // sentido: sem ele, cada flush contaria uma visita nova do mesmo
+          // item, a cada 60s.
+          if (currentContext.studyState === "active") {
+            markContextVisit(batchRef.current, { ...EMPTY_STUDY_CONTEXT }, currentContext);
+          }
+          lastTouchSampleAtRef.current = 0;
         }
         resetFrameCaptureTimer();
       }
-
-      if (!assumido) throw new Error('Lote não foi salvo nem enfileirado; dados mantidos em memória');
 
       return response;
     },
@@ -902,8 +895,11 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
     ]
   );
 
-  // O acumulador gira antes do envio. Serialize os flushes para preservar a
-  // ordem dos deltas e dos eventos finais quando blur/background coincidem.
+  // `batchRef` so e zerado DEPOIS que o envio volta, e o envio pode levar ate
+  // 120s. Sem serializar, um segundo flush nesse intervalo monta o payload a
+  // partir do mesmo acumulado e grava o tempo de novo -- e o tempo de topico,
+  // conteudo e questao aparece inflado no banco. Acontece de verdade: sair do
+  // app pela tela da trilha dispara `screen_blur` e `app_background` juntos.
   const flushStudyBatch = useCallback(
     (reason: TelemetryFlushReason) => {
       const emAndamento = flushInFlightRef.current;
@@ -958,8 +954,7 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
         sessionRef.current = null;
         batchRef.current = null;
         wrongStreaksRef.current = {};
-        // O retorno do background deve retomar o item, sem recontar a pausa.
-        if (!shouldPreserveResume) currentContextRef.current = { ...EMPTY_STUDY_CONTEXT };
+        currentContextRef.current = { ...EMPTY_STUDY_CONTEXT };
         lastAppEventAtRef.current = null;
         seenTopicIdsRef.current = new Set();
         seenContentIdsRef.current = new Set();
@@ -1034,7 +1029,16 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
         sessionStartedAt: now.toISOString(),
       };
       batchRef.current = buildEmptyBatch(now.getTime());
-      currentContextRef.current = initialStudyContext(params.topicoId, currentContextRef.current);
+      currentContextRef.current = {
+        topicoId: params.topicoId,
+        atividadeId: null,
+        conteudoId: null,
+        itemKey: null,
+        materialKey: null,
+        materialType: null,
+        target: "screen",
+        studyState: "idle",
+      };
       if (batchRef.current) {
         markContextVisit(batchRef.current, { ...EMPTY_STUDY_CONTEXT }, currentContextRef.current);
       }
@@ -1383,21 +1387,13 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
       const previousState = appStateRef.current;
-      if (previousState === 'active') syncBatchTimeline(Date.now());
       appStateRef.current = nextState;
 
       if (
         previousState === "active" &&
         (nextState === "background" || nextState === "inactive")
       ) {
-        const resumeContext = { ...currentContextRef.current };
-        void endStudySession("app_background").then(async () => {
-          // The foreground event can arrive before the network flush finishes.
-          if (appStateRef.current === 'active' && resumeDescriptorRef.current && !sessionRef.current) {
-            await beginStudySession(resumeDescriptorRef.current);
-            updateStudyContext(resumeContext);
-          }
-        }).catch((error) => console.warn('[MetricasContext] Falha ao pausar sessão:', error));
+        void endStudySession("app_background");
         return;
       }
 
@@ -1409,11 +1405,10 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
       ) {
         void beginStudySession(resumeDescriptorRef.current);
       }
-      if (nextState === 'active' && batchRef.current) batchRef.current.lastAccruedAtMs = Date.now();
     });
 
     return () => subscription.remove();
-  }, [beginStudySession, endStudySession, syncBatchTimeline, updateStudyContext]);
+  }, [beginStudySession, endStudySession]);
 
   useEffect(() => {
     return () => {
@@ -1484,7 +1479,6 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
       cameraOptIn,
       cameraPermission,
       isStudySessionActive: isSessionActive,
-      isStudyTimeTelemetryActive: isSessionActive && telemetryPreferences.usageEnabled,
     }),
     [
       beginStudySessionEstavel,

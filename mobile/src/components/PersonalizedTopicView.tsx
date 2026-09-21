@@ -1488,9 +1488,7 @@ export default function PersonalizedTopicView({
                 <View style={styles.activeHeaderActions}>
                   <IABattleHeaderChip
                     topicoId={topico?.id ? Number(topico.id) : null}
-                    itemKey={currentStep.kind === 'activity' && currentStep.linkedConteudoId != null
-                      ? buildIAItemKey('content', currentStep.linkedConteudoId)
-                      : currentItemKey}
+                    itemKey={currentItemKey}
                   />
                 </View>
               </View>

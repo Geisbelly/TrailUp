@@ -11,7 +11,6 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { consumePendingRoute, setPendingRoute } from "@/utils/pendingRoute";
 import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { Redirect, Stack, usePathname, useSegments, type Href } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useState } from "react";
 import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -30,12 +29,6 @@ function LoadingOverlay() {
   const blockByGlobalLoading = loading && (!autenticado || inAuthGroup);
   if (!blockByGlobalLoading && !blockBySession) return null;
   return <LoadingScreen forceShow />;
-}
-
-function AuthenticatedRedirect() {
-  // Consuma uma vez por transição, não a cada render durante a hidratação.
-  const [destination] = useState(() => consumePendingRoute() ?? "/(tabs)");
-  return <Redirect href={destination as Href} />;
 }
 
 function VerificacaoDeRota() {
@@ -70,7 +63,8 @@ function VerificacaoDeRota() {
   // depois do commit e deixava a barra de enderecos presa na rota protegida
   // (issue #27).
   if (autenticado) {
-    return <AuthenticatedRedirect />;
+    const destino = consumePendingRoute();
+    return <Redirect href={(destino ?? "/(tabs)") as Href} />;
   }
 
   if (inTabsGroup && pathname) {
@@ -116,7 +110,6 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <StatusBar style="light" />
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
         <LoadingProvider>
           <SessionProvider>

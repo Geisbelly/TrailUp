@@ -1,15 +1,14 @@
 import { useTrilha } from "@/context/TrilhaContext";
 import { LockedNodeModal } from "@/components/trilhas/LockedNodeModal";
-import { ProfileArtwork } from "@/components/ProfileArtwork";
 import { Color, FontFamily, FontSize } from "@/styles/GlobalStyle";
-import { Design } from "@/styles/design";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import tinycolor from "tinycolor2";
 import { useRouter } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useIsFocused } from '@react-navigation/native';
+import React, { useCallback, useMemo, useState } from "react";
 import {
   FlatList,
+  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -30,18 +29,12 @@ type Row = {
 };
 
 export const TrilhaLinearList: React.FC<{
-  currentTopicId: string | null;
   tourTargetRef?: React.RefObject<View | null>;
-}> = ({ currentTopicId, tourTargetRef }) => {
+}> = ({ tourTargetRef }) => {
   const { grafo, perfil } = useTrilha();
   const palette = getProfileShellPalette(perfil);
   const { width: winW } = useWindowDimensions();
   const [lockedRow, setLockedRow] = useState<Row | null>(null);
-  const list = useRef<FlatList<Row>>(null);
-  const focused = useIsFocused();
-  const [ready, setReady] = useState(false);
-  const retry = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const attempts = useRef(0);
 
   const data: Row[] = useMemo(
     () =>
@@ -66,13 +59,6 @@ export const TrilhaLinearList: React.FC<{
   );
 
   const keyExtractor = useCallback((r: Row) => r.id, []);
-  const currentIndex = data.findIndex((row) => String(row.id) === currentTopicId);
-  useEffect(() => {
-    if (!focused || !ready || currentIndex < 0) return;
-    attempts.current = 0;
-    const frame = requestAnimationFrame(() => list.current?.scrollToIndex({ index: currentIndex, viewPosition: 0.5, animated: false }));
-    return () => { cancelAnimationFrame(frame); if (retry.current) clearTimeout(retry.current); };
-  }, [currentIndex, currentTopicId, focused, ready]);
 
   return (
     <View
@@ -81,25 +67,17 @@ export const TrilhaLinearList: React.FC<{
         {
           width: winW,
 
-          backgroundColor: "transparent",
+          backgroundColor: palette.background,
         },
       ]}
     >
       <FlatList
-        ref={list}
-        onLayout={() => setReady(true)}
-        onScrollToIndexFailed={({ index, averageItemLength }) => {
-          if (!focused || attempts.current++ >= 5) return;
-          list.current?.scrollToOffset({ offset: index * averageItemLength, animated: false });
-          retry.current = setTimeout(() => list.current?.scrollToIndex({ index, viewPosition: 0.5, animated: false }), 120);
-        }}
         contentContainerStyle={s.listContent}
         data={data}
         keyExtractor={keyExtractor}
         renderItem={({ item, index }) => (
           <ItemCard
             row={item}
-            current={String(item.id) === currentTopicId}
             palette={palette}
             targetRef={index === 0 ? tourTargetRef : undefined}
             onLockedPress={() => setLockedRow(item)}
@@ -132,36 +110,33 @@ const hexPoints = (cx: number, cy: number, r: number) => {
 
 const ItemCard = ({
   row,
-  current,
   palette,
   targetRef,
   onLockedPress,
 }: {
   row: Row;
-  current: boolean;
   palette: ReturnType<typeof getProfileShellPalette>;
   targetRef?: React.RefObject<View | null>;
   onLockedPress: () => void;
 }) => {
   const router = useRouter();
   const disabled = row.estado === "bloqueado";
-  const iconColor = disabled ? palette.textMuted : palette.background;
-  const gold = palette.accent;
-  const goldDim = palette.borderStrong;
+  const gold = tinycolor(palette.accent).lighten(10).toHexString();
+  const goldDim = tinycolor(palette.accent).setAlpha(0.5).toRgbString();
 
   // base da paleta sem verde
   const bg =
     row.estado === "concluido"
       ? palette.surface
       : row.estado === "bloqueado"
-        ? palette.surface
+        ? Color.colorDarkslategray // cinza-azulado fechado
         : palette.surfaceElevated;
 
   const border =
     row.estado === "concluido"
       ? gold
       : row.estado === "bloqueado"
-        ? palette.border
+        ? "#3b3e55"
         : goldDim;
 
   // tons do hex
@@ -169,17 +144,17 @@ const ItemCard = ({
     row.estado === "concluido"
       ? palette.accentStrong
       : row.estado === "bloqueado"
-        ? palette.surface
+        ? "#292c44"
         : palette.accent;
 
   const hexStroke =
     row.estado === "concluido"
       ? gold
       : row.estado === "bloqueado"
-        ? palette.border
+        ? "#3b435e"
         : gold;
 
-  const statusText = current ? "Você parou aqui · Continuar" :
+  const statusText =
     row.estado === "concluido"
       ? "Concluído"
       : row.estado === "bloqueado"
@@ -196,12 +171,12 @@ const ItemCard = ({
 
   const FallbackIcon = () => {
     if (row.estado === "bloqueado")
-      return <MaterialCommunityIcons name="lock" size={18} color={iconColor} />;
+      return <MaterialCommunityIcons name="lock" size={18} color="#e8f5ff" />;
     if (row.estado === "concluido")
       return (
-        <MaterialCommunityIcons name="check-bold" size={18} color={iconColor} />
+        <MaterialCommunityIcons name="check-bold" size={18} color="#e8f5ff" />
       );
-    return <MaterialCommunityIcons name="gift" size={18} color={iconColor} />;
+    return <MaterialCommunityIcons name="gift" size={18} color="#e8f5ff" />;
   };
 
   return (
@@ -215,8 +190,9 @@ const ItemCard = ({
         {
           backgroundColor: bg,
           borderColor: border,
-          opacity: pressed ? 0.85 : 1,
-          borderLeftColor: disabled ? palette.border : palette.accent,
+          opacity: disabled ? 0.5 : pressed ? 0.9 : 1,
+          shadowColor: row.estado === "disponivel" ? gold : "#000",
+          shadowOpacity: row.estado === "disponivel" ? 0.28 : 0.18,
         },
       ]}
       accessibilityRole="button"
@@ -238,16 +214,16 @@ const ItemCard = ({
         </Svg>
         <View style={s.hexIcon}>
           {row.icon?.startsWith?.("http") ? (
-            <ProfileArtwork
+            <Image
               source={{ uri: row.icon }}
-              profile={palette.profile}
-              width={30}
+              style={s.iconImg}
+              resizeMode="contain"
             />
           ) : row.icon ? (
             <MaterialCommunityIcons
               name={row.icon as any}
               size={18}
-              color={iconColor}
+              color="#e8f5ff"
             />
           ) : (
             <FallbackIcon />
@@ -272,7 +248,7 @@ const ItemCard = ({
             </Text>
           </View>
         ) : null}
-        <Text style={[s.title, { color: palette.text }]}>
+        <Text numberOfLines={1} style={[s.title, { color: palette.text }]}>
           {row.titulo}
         </Text>
         <Text style={[s.sub, { color: palette.textSubtle }]}>{statusText}</Text>
@@ -303,22 +279,21 @@ const ItemCard = ({
 
 const s = StyleSheet.create({
   screen: {
-    flex: 1,
+    height: "109%",
     backgroundColor: Color.background,
   },
   listContent: {
-    padding: 16,
-    paddingBottom: 100,
+    padding: 12,
+    paddingBottom: 20,
   },
   card: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
     padding: 14,
-    borderRadius: Design.radius,
+    borderRadius: 14,
     marginVertical: 6,
-    borderWidth: 1,
-    borderLeftWidth: 3,
+    borderWidth: 2,
     shadowColor: "#000",
     shadowOpacity: 0.18,
     shadowRadius: 6,
@@ -342,8 +317,7 @@ const s = StyleSheet.create({
   title: {
     color: Color.colorAliceblue,
     fontFamily: FontFamily.inikaBold,
-    fontSize: FontSize.fs_18,
-    lineHeight: 24,
+    fontSize: FontSize.fs_20,
   },
   sub: {
     color: Color.colorSlategray,
@@ -363,7 +337,7 @@ const s = StyleSheet.create({
     marginBottom: 6,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 3,
+    borderRadius: 999,
     backgroundColor: "rgba(164, 141, 255, 0.18)",
     borderWidth: 1,
     borderColor: "rgba(164, 141, 255, 0.35)",

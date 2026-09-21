@@ -28,8 +28,6 @@ import { Classe } from '@/models/Classe';
 import { QuestaoAluno } from '@/models/QuestaoAluno';
 import { Topico } from '@/models/Topico';
 import { PersonalizacaoRlsError } from "@/services/personalizacao/errors";
-import { saveStudyTime } from '@/services/studyTime';
-import { saveStudySession } from '@/services/studySessions';
 import { usePersonalizacaoProvider } from "@/services/personalizacao/PersonalizacaoProviderContext";
 import {
   buildClassMapTheme,
@@ -37,7 +35,6 @@ import {
   normalizeRemoteMapTheme,
 } from '@/utils/classMapTheme';
 import { buildClasseResumoFallback } from '@/utils/classeMetrics';
-import { findSelectedClass } from '@/utils/classSelection';
 import {
   buildSlideBonusDedupeKey,
   computeSlideBonusPercent,
@@ -72,9 +69,6 @@ import {
   normalizeRemoteTopicLocked,
 } from '@/utils/unlockedTopics';
 import { resolveGraphNodeAccess } from '@/utils/graphNodeAccess';
-import { buildGraphFromTopicos, isTopicoUnlockedLocal } from '@/utils/topicoGraph';
-import { progressoCanonicoTopico } from '@/utils/topicoProgress';
-import { buildPersonalizedProgressSeed, seedPersonalizedProgress } from '@/utils/personalizedProgressSeed';
 
 type Visual = 'mapa' | 'arvore' | 'lista'
 
@@ -99,7 +93,7 @@ function buildPersonalizacaoCacheKey(
   classeId: number,
   profile: BrainHexProfile,
 ) {
-  return `@trailup/personalizacao-v4/${alunoId}/${classeId}/${profile}`
+  return `@trailup/personalizacao-v3/${alunoId}/${classeId}/${profile}`
 }
 
 const PREFETCHABLE_TYPES = new Set([
@@ -298,6 +292,83 @@ async function prefetchPersonalizedPayload(payload: PersonalizedTopicPayload | n
   );
 }
 
+function isTopicoConcluido(t: any, topicosPendentes?: Set<number>): boolean {
+  // Passo personalizado pendente impede a conclusao, e vem ANTES de qualquer
+  // outra checagem -- inclusive do status do banco.
+  //
+  // `topico_aluno.status`/`percentual_concluido` saem de
+  // `Topico.calcularPercentual()`, que conta so conteudo/atividade do professor:
+  // com os academicos feitos e os passos personalizados intocados, o topico era
+  // dado por concluido e LIBERAVA O PROXIMO antes da hora. Mesma raiz do
+  // checkpoint que era apagado.
+  //
+  // O conjunto so contem topico cujo payload personalizado esta carregado; sem
+  // saber quantos passos existem, nao ha pendencia declarada (ver
+  // topicosComPendenciaPersonalizada).
+  if (topicosPendentes?.has(Number(t?.id))) return false
+
+  const st = (t?.status ?? '')
+    .toString()
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+  const pct = Number(t?.percentual_concluido ?? 0)
+  if (
+    st.includes('concl') ||
+    st.includes('finaliz') ||
+    st === 'done' ||
+    st === 'complete' ||
+    st === 'finished'
+  ) return true
+  if (pct >= 100) return true
+
+  const conteudos = Array.isArray(t?.conteudos) ? t.conteudos : []
+  const atividades = Array.isArray(t?.atividades) ? t.atividades : []
+
+  if (!conteudos.length && !atividades.length) return false
+
+  const conteudosConcluidos =
+    conteudos.length === 0 ||
+    conteudos.every((c: any) => {
+      const sc = (c?.status ?? '').toString().toLowerCase()
+      const pcc = Number(c?.percentual_concluido ?? 0)
+      return sc.includes('concl') || sc === 'done' || pcc >= 100
+    })
+
+  const atividadesConcluidas =
+    atividades.length === 0 ||
+    atividades.every((a: any) => {
+      const sa = (a?.status ?? '').toString().toLowerCase()
+      const pac = Number(a?.percentual_concluido ?? 0)
+      return sa.includes('concl') || sa === 'done' || pac >= 100
+    })
+
+  return conteudosConcluidos && atividadesConcluidas
+}
+
+function isTopicoUnlockedLocal(
+  t: Topico,
+  todos: Topico[],
+  topicosPendentes?: Set<number>,
+): boolean {
+  if (!t.depende || (Array.isArray(t.depende) && t.depende.length === 0)) return true
+
+  const deps: number[] =
+    Array.isArray(t.depende)
+      ? t.depende.map(Number).filter(Boolean)
+      : []
+
+  if (!deps.length) return true
+
+  return deps.every((id) => {
+    const dep = todos.find((x) => x.id === id)
+    // Uma dependência ausente não pode ser tratada como concluída. Isso evita
+    // abrir o restante da trilha quando o payload local chega incompleto.
+    if (!dep) return false
+    return isTopicoConcluido(dep, topicosPendentes)
+  })
+}
 
 function cloneClasse(classe: Classe, patch: Partial<Classe> = {}): Classe {
   const copy = Object.assign(Object.create(Object.getPrototypeOf(classe)), classe) as Classe
@@ -423,7 +494,10 @@ function mergeAtividadeLocalState(persistedAtividade: any, localAtividade: any) 
   )
   merged.status = mergedProgress.status
   merged.percentual_concluido = mergedProgress.percentual
-  merged.tempo_gasto_min = persistedAtividade.tempo_gasto_min ?? localAtividade.tempo_gasto_min ?? 0
+  merged.tempo_gasto_min = Math.max(
+    Number(persistedAtividade.tempo_gasto_min ?? 0),
+    Number(localAtividade.tempo_gasto_min ?? 0)
+  )
 
   return merged
 }
@@ -444,7 +518,10 @@ function mergeConteudoLocalState(persistedConteudo: any, localConteudo: any) {
   )
   merged.status = mergedProgress.status
   merged.percentual_concluido = mergedProgress.percentual
-  merged.tempo_gasto_min = persistedConteudo.tempo_gasto_min ?? localConteudo.tempo_gasto_min ?? 0
+  merged.tempo_gasto_min = Math.max(
+    Number(persistedConteudo.tempo_gasto_min ?? 0),
+    Number(localConteudo.tempo_gasto_min ?? 0)
+  )
   merged.ultima_visualizacao =
     localConteudo.ultima_visualizacao ??
     persistedConteudo.ultima_visualizacao ??
@@ -471,16 +548,122 @@ function mergeTopicoLocalState(persistedTopico: Topico, localTopico?: Topico | n
     atividades: atividadesAtualizadas,
   }) as Topico
 
-  // O agregado do tópico é o da projeção persistida, não o máximo do cache.
+  const mergedProgress = mergeProgressState(
+    persistedTopico.status,
+    persistedTopico.percentual_concluido,
+    localTopico.status,
+    localTopico.percentual_concluido
+  )
+  mergedTopico.status = mergedProgress.status as any
+  mergedTopico.percentual_concluido = mergedProgress.percentual
   mergedTopico.ultima_atividade =
     localTopico.ultima_atividade ?? persistedTopico.ultima_atividade ?? null
   mergedTopico.ultima_visualizacao =
     localTopico.ultima_visualizacao ?? persistedTopico.ultima_visualizacao ?? null
-  mergedTopico.tempo_gasto_min = persistedTopico.tempo_gasto_min ?? localTopico.tempo_gasto_min ?? 0
+  mergedTopico.tempo_gasto_min = Math.max(
+    Number(persistedTopico.tempo_gasto_min ?? 0),
+    Number(localTopico.tempo_gasto_min ?? 0)
+  )
 
+  // Aqui havia um "puxao para cima" pelo `calcularPercentual()`: se a conta
+  // sobre o material do professor desse mais que o valor do banco, ela vencia,
+  // e >= 100 marcava o topico como concluido.
+  //
+  // Isso inverte a regra: o conteudo do professor e opcional (vale bonus), e o
+  // percurso e o material personalizado. Terminar so os academicos passava o
+  // topico para 'concluido' com os passos personalizados intocados -- o que
+  // liberava o proximo topico antes da hora e apagava o checkpoint de
+  // navegacao. A guarda por `topicosPendentes` em `isTopicoConcluido` existe
+  // justamente para remendar esse efeito; agora a causa saiu.
+  //
+  // O valor do banco manda: ele e calculado por trigger sobre o percurso
+  // inteiro (ver a migracao 20260826_18).
   return mergedTopico
 }
 
+function buildGraphFromTopicos(
+  classe: Classe,
+  topicosPendentes?: Set<number>
+): {
+  nodes: NodeItem[]
+  unlocked: NodeId[]
+} {
+  const ts = [...classe.topicos].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0))
+  const doneById = new Map<number, boolean>()
+  for (const t of ts) {
+    doneById.set(t.id, isTopicoConcluido(t, topicosPendentes))
+  }
+
+  const nodes: NodeItem[] = ts.map((t, i) => ({
+    id: `${t.id}`,
+    titulo: t.nome ?? `Tópico ${i + 1}`,
+    next: [],
+    locked: true,
+    completed: !!doneById.get(t.id),
+    sequence: i + 1,
+  }))
+
+  const byId = new Map(nodes.map((n) => [n.id, n] as const))
+  const parents = new Map<string, Set<string>>()
+  const ensureParents = (child: string) => {
+    let set = parents.get(child)
+    if (!set) { set = new Set(); parents.set(child, set) }
+    return set
+  }
+
+  for (const t of ts) {
+    const childId = `${t.id}`
+
+    const deps: number[] =
+      Array.isArray(t.depende) ? (t.depende as number[]) :
+      typeof t.depende === 'object' && t.depende !== null ? Object.values(t.depende as any).map(Number).filter(Boolean) :
+      []
+
+    for (const d of deps) {
+      const parentId = `${d}`
+      const parentNode = byId.get(parentId)
+      if (parentNode) {
+        parentNode.next = [...(parentNode.next ?? []), childId]
+      }
+      ensureParents(childId).add(parentId)
+    }
+
+    const nexts: number[] =
+      Array.isArray(t.next) ? (t.next as number[]) :
+      typeof t.next === 'object' && t.next !== null ? Object.values(t.next as any).map(Number).filter(Boolean) :
+      []
+
+    if (nexts.length) {
+      const fromNode = byId.get(childId)
+      if (fromNode) {
+        const toIds = nexts.map((n) => `${n}`)
+        fromNode.next = [...(fromNode.next ?? []), ...toIds]
+        for (const to of toIds) ensureParents(to).add(childId)
+      }
+    }
+  }
+
+  if (!nodes.some((n) => (n.next?.length ?? 0) > 0) && nodes.length > 1) {
+    for (let i = 0; i < nodes.length - 1; i++) nodes[i].next = [nodes[i + 1].id]
+    for (let i = 1; i < nodes.length; i++) ensureParents(nodes[i].id).add(nodes[i - 1].id)
+  }
+
+  const unlocked: NodeId[] = []
+  for (const n of nodes) {
+    const pset = parents.get(n.id)
+    if (!pset || pset.size === 0) {
+      unlocked.push(n.id)
+    } else {
+      const allParentsDone = Array.from(pset).every((pid) => {
+        const num = Number(pid)
+        return doneById.get(num) === true
+      })
+      if (allParentsDone) unlocked.push(n.id)
+    }
+  }
+
+  return { nodes, unlocked }
+}
 
 function formatToIconName(heroFormat?: string | null) {
   const format = String(heroFormat ?? '').toLowerCase()
@@ -594,7 +777,7 @@ type TrilhaContextValue = {
   erro: Error | null
   classes: Classe[]
   classeAtual: Classe | null
-  selecionarClasse: (classeId: number) => void
+  selecionarClasse: (index: number) => void
   perfil: BrainHexProfile
   visual: Visual
   grafo: GraphLayout
@@ -624,9 +807,6 @@ type TrilhaContextValue = {
     atividadeId: number | null,
     tempoGastoMin: number
   ) => Promise<void>
-  registrarSessaoConteudo: (topicoId: number, conteudoId: number, startedAtMs: number, endedAtMs: number) => Promise<void>
-  registrarSessaoAtividade: (topicoId: number, atividadeId: number, startedAtMs: number, endedAtMs: number) => Promise<void>
-  registrarSessaoTopico: (topicoId: number, startedAtMs: number, endedAtMs: number) => Promise<void>
   salvarProgressoItemPersonalizado: (params: {
     topicoId: number
     itemKey: string
@@ -666,7 +846,6 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
   const [classeAtual, setClasseAtual] = useState<Classe | null>(null)
   const [carregando, setCarregando] = useState<boolean>(true)
   const [erro, setErro] = useState<Error | null>(null)
-  const classesRequestRef = useRef(0)
   const [slideBonusKeys, setSlideBonusKeys] = useState<Set<string>>(new Set())
   const [progressoItens, setProgressoItens] = useState<LinhaProgressoItem[]>([])
 
@@ -682,9 +861,6 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
   )
   const visual: Visual = pickVisual(perfil)
   const activeProfileKey = perfil
-  const personalizationScope = `${usuario?.id ?? ''}:${classeAtual?.classe_id ?? ''}:${activeProfileKey}`
-  const personalizationScopeRef = useRef(personalizationScope)
-  personalizationScopeRef.current = personalizationScope
 
   const [nodesState, setNodesState] = useState<NodeItem[]>([])
   const [unlockedState, setUnlockedState] = useState<NodeId[]>([])
@@ -725,7 +901,6 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
   const personalizationHydratedClassRef = useRef<string | null>(null)
   const mediaGenerationRetryRef = useRef<Map<string, number>>(new Map())
   const progressSaveWarnRef = useRef<Map<string, number>>(new Map())
-  const progressSeedRef = useRef(new Set<string>())
   const rtDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const unlockedScope =
@@ -822,23 +997,21 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
     personalizationRequestsRef.current.clear()
     personalizationAttemptedRef.current.clear()
     setPersonalizedTopics({})
-  }, [personalizationScope])
+  }, [perfil])
 
   useEffect(() => {
-    const classeId = classeAtual?.classe_id
-    if (!classeId || !usuario?.id) return
+    if (!classeAtual || !usuario?.id) return
 
     let ativo = true
     ;(async () => {
       try {
         const raw = await AsyncStorage.getItem(
-          buildPersonalizacaoCacheKey(usuario.id, classeId, perfil)
+          buildPersonalizacaoCacheKey(usuario.id, classeAtual.classe_id, perfil)
         )
         if (!raw || !ativo) return
         const parsed = JSON.parse(raw) as Record<number, PersonalizedTopicPayload>
         if (parsed && typeof parsed === 'object') {
-          // Remote data may have arrived while AsyncStorage was being read.
-          setPersonalizedTopics((prev) => ({ ...parsed, ...prev }))
+          setPersonalizedTopics((prev) => ({ ...prev, ...parsed }))
           Object.values(parsed).forEach((payload) => {
             void prefetchPersonalizedPayload(payload)
           })
@@ -851,7 +1024,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
     return () => {
       ativo = false
     }
-  }, [classeAtual?.classe_id, perfil, usuario?.id])
+  }, [classeAtual, perfil, usuario?.id])
 
   const syncClasseLocally = useCallback((sourceClasse: Classe) => {
     const nextResumo = buildClasseResumoFallback(sourceClasse, sourceClasse.resumo)
@@ -890,7 +1063,6 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [personalizedTopics, showLocalUnlockedIds, topicosPendentesPersonalizados])
 
   const carregarClasses = useCallback(async () => {
-    const requestId = ++classesRequestRef.current
     if (!usuario?.id) {
       setClasses([])
       setClasseAtual(null)
@@ -906,34 +1078,26 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
     setErro(null)
     try {
       const lista = await Classe.findAllByAluno(usuario.id, { withDetalhe: true })
-      if (requestId !== classesRequestRef.current) return
       setClasses(lista)
-      // O login exige escolha, inclusive com uma única matrícula. Um refresh
-      // conserva a escolha, mas nunca escolhe outra turma se ela foi removida.
-      const selected = findSelectedClass(lista, classeAtualRef.current?.classe_id, usuario.id)
-      classeAtualRef.current = selected
-      setClasseAtual(selected)
+      if (lista.length > 0) setClasseAtual(lista[0])
     } catch (e: any) {
-      if (requestId === classesRequestRef.current) setErro(e)
+      setErro(e)
     } finally {
-      if (requestId === classesRequestRef.current) setCarregando(false)
+      setCarregando(false)
     }
   }, [usuario?.id])
 
   useEffect(() => {
-    void carregarClasses()
-    // Ignora respostas de uma sessão encerrada ou de uma busca ultrapassada.
-    return () => { classesRequestRef.current += 1 }
+    carregarClasses()
   }, [carregarClasses])
 
   const selecionarClasse = useCallback(
-    (classeId: number) => {
-      const selected = findSelectedClass(classes, classeId, usuario?.id)
-      if (!selected) return
-      classeAtualRef.current = selected
-      setClasseAtual(selected)
+    (index: number) => {
+      if (index >= 0 && index < classes.length) {
+        setClasseAtual(classes[index])
+      }
     },
-    [classes, usuario?.id]
+    [classes]
   )
 
   const buildPayloadForTopico = useCallback(
@@ -1022,8 +1186,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
           );
         })
         .catch((err) => {
-          // Falhas também respeitam o cooldown: remover a tentativa daqui
-          // disparava novas requisições a cada hidratação com a API offline.
+          mediaGenerationRetryRef.current.delete(retryKey);
           console.warn(
             '[TrilhaContext] Falha ao disparar retentativa de personalizacao para midias faltantes:',
             err
@@ -1049,7 +1212,6 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
         brainhexProfileKey: activeProfileKey,
         limit: Math.max(20, expectedContentCount * 2),
       })
-      if (personalizationScopeRef.current !== hydrationKey) return
 
       const byTopico: Record<number, PersonalizedTopicPayload> = {}
       const topicosById = new Map(classeAtual.topicos.map((topico) => [topico.id, topico] as const))
@@ -1094,7 +1256,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
         )
       }
     } catch (err) {
-      if (personalizationScopeRef.current === hydrationKey) personalizationHydratedClassRef.current = null
+      personalizationHydratedClassRef.current = null
       console.warn('[TrilhaContext] Erro ao hidratar personalizacoes:', err)
     }
   }, [activeProfileKey, buildPayloadForTopico, classeAtual, maybeRequestMissingMediaForRecord, persistPersonalizedTopicsCache, personalizacaoProvider, usuario?.id])
@@ -1145,7 +1307,6 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
           brainhexProfileKey: activeProfileKey,
           limit: Math.max(10, (topico.conteudos?.length ?? 0) * 2),
         })
-        if (personalizationScopeRef.current !== personalizationScope) return null
 
         const records = orderPersonalizationRecordsByTeacherContent(
           listResponse?.itens ?? [],
@@ -1175,7 +1336,6 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
         }
         return payload
       } catch (err) {
-        personalizationAttemptedRef.current.delete(key)
         console.warn('[TrilhaContext] Erro ao garantir personalizacao:', err)
         try {
           const jobs = await personalizacaoProvider.listarJobsPersistidosAluno({
@@ -1206,7 +1366,6 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
     maybeRequestMissingMediaForRecord,
     persistPersonalizedTopicsCache,
     personalizedTopics,
-    personalizationScope,
     personalizacaoProvider,
     usuario?.id,
   ])
@@ -1216,9 +1375,8 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [personalizedTopics])
 
   const fetchGraphData = useCallback(async () => {
-    let classeAtual = classeAtualRef.current
-    let personalizedTopics = personalizedTopicsRef.current
-    const requestedScope = personalizationScopeRef.current
+    const classeAtual = classeAtualRef.current
+    const personalizedTopics = personalizedTopicsRef.current
     if (!classeAtual) return
     setCarregando(true)
     setErro(null)
@@ -1270,13 +1428,6 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       if (dbThemeError) {
         console.warn('[TrilhaContext] Falha ao carregar classe_mapa_tema:', dbThemeError)
       }
-
-      const latestClasse = classeAtualRef.current
-      if (!latestClasse || requestedScope !== personalizationScopeRef.current) return
-      // Theme/layout requests can finish after a completed activity refreshed
-      // progress. Never restore the older lock state captured before the await.
-      classeAtual = latestClasse
-      personalizedTopics = personalizedTopicsRef.current
 
       const dbMapTheme =
         dbThemeRaw
@@ -1342,10 +1493,6 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
         setRemoteMapThemeState(incomingMapTheme)
       }
     } catch (e: any) {
-      const latestClasse = classeAtualRef.current
-      if (!latestClasse || requestedScope !== personalizationScopeRef.current) return
-      classeAtual = latestClasse
-      personalizedTopics = personalizedTopicsRef.current
       console.warn('[TrilhaContext] Erro ao buscar grafo, usando fallback:', e)
       const { nodes, unlocked } = buildGraphFromTopicos(
         classeAtual!,
@@ -1356,7 +1503,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       setRemoteMapThemeState(null)
       setErro(e)
     } finally {
-      if (requestedScope === personalizationScopeRef.current) setCarregando(false)
+      setCarregando(false)
     }
     // Depende só de classe_id/perfil/usuario/visual (nao do objeto classeAtual nem de
     // personalizedTopics inteiros): esses sao lidos via ref dentro da funcao para nao recriar
@@ -1405,46 +1552,31 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       const classeAtual = classeAtualRef.current
       if (!userId || !classeAtual) return
 
-      const refreshCanonicalGraph = () => {
-        if (rtDebounceRef.current) clearTimeout(rtDebounceRef.current)
-        rtDebounceRef.current = setTimeout(() => {
-          void (async () => {
-            try {
-              const [topicos, resumo] = await Promise.all([
-                Classe.loadDetalhado(userId, classeAtual.classe_id),
-                cloneClasse(classeAtual).refreshResumo(),
-              ])
-              const current = classeAtualRef.current
-              if (!current || personalizationScopeRef.current !== personalizationScope) return
-              syncClasseLocally(cloneClasse(current, {
-                topicos: topicos.map((topico) => mergeTopicoLocalState(
-                  topico, current.topicos.find((item) => item.id === topico.id) ?? null,
-                )),
-                resumo: resumo ?? current.resumo,
-              }))
-            } catch (error) {
-              console.warn('[TrilhaContext] Falha ao sincronizar progresso remoto:', error)
-            }
-          })()
-        }, 500)
-      }
-
       channel = supabase
         .channel('rt_trilha')
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'conteudo_aluno', filter: `aluno_id=eq.${userId}` },
-          refreshCanonicalGraph
+          () => {
+            if (rtDebounceRef.current) clearTimeout(rtDebounceRef.current)
+            rtDebounceRef.current = setTimeout(() => void fetchGraphData(), 2000)
+          }
         )
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'atividade_aluno', filter: `aluno_id=eq.${userId}` },
-          refreshCanonicalGraph
+          () => {
+            if (rtDebounceRef.current) clearTimeout(rtDebounceRef.current)
+            rtDebounceRef.current = setTimeout(() => void fetchGraphData(), 2000)
+          }
         )
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'topico_aluno', filter: `aluno_id=eq.${userId}` },
-          refreshCanonicalGraph
+          () => {
+            if (rtDebounceRef.current) clearTimeout(rtDebounceRef.current)
+            rtDebounceRef.current = setTimeout(() => void fetchGraphData(), 2000)
+          }
         )
         .on(
           'postgres_changes',
@@ -1460,7 +1592,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
     }
     // classe_id (nao o objeto classeAtual) evita recriar o canal realtime a cada progresso
     // local salvo - so precisa reabrir quando a classe/usuario realmente mudam.
-  }, [classeAtual?.classe_id, fetchGraphData, personalizationScope, syncClasseLocally, usuario?.id])
+  }, [classeAtual?.classe_id, fetchGraphData, usuario?.id])
 
   useEffect(() => {
     const classeId = classeAtual?.classe_id
@@ -1471,14 +1603,17 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
 
     let cancelado = false
     ;(async () => {
-      // A jornada pode usar material-base compartilhado e gerações parciais
-      // com arquivos utilizáveis, assim como a projeção canônica do banco.
+      // O banco só usa a jornada do próprio aluno, do perfil ativo e pronta
+      // (`20260913_15`). Se esta consulta trouxer linhas de outro perfil ou de
+      // uma geração falha, o tópico fica pendente no mobile mesmo quando a
+      // projeção canônica já o liberou.
       const { data: personalizacoesAtivas, error: personalizacoesError } = await supabase
         .from('conteudo_personalizado')
         .select('id')
-        .or(`aluno_id.eq.${alunoId},aluno_id.is.null`)
+        .eq('aluno_id', alunoId)
         .eq('classe_id', classeId)
         .eq('brainhex_profile_key', activeProfileKey)
+        .eq('status', 'pronto')
 
       if (cancelado) return
       if (personalizacoesError) {
@@ -1611,21 +1746,17 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [carregarClasses, fetchGraphData])
 
   const refreshTopico = useCallback(async (topicoId: number) => {
-    const requestedClasse = classeAtualRef.current;
-    if (!requestedClasse) return;
+    if (!classeAtual) return;
 
     try {
       console.log('[TrilhaContext] Atualizando tópico:', topicoId);
 
       const topicoAtualizado = await Classe.loadDetalhado(
-        requestedClasse.aluno_id,
-        requestedClasse.classe_id
+        classeAtual.aluno_id, 
+        classeAtual.classe_id
       );
 
-      const currentClasse = classeAtualRef.current;
-      if (!currentClasse || currentClasse.classe_id !== requestedClasse.classe_id ||
-          currentClasse.aluno_id !== requestedClasse.aluno_id) return;
-      const topicoLocal = currentClasse.topicos.find((t) => t.id === topicoId) ?? null
+      const topicoLocal = classeAtual.topicos.find((t) => t.id === topicoId) ?? null
       const novoTopicoPersistido = topicoAtualizado.find((t: Topico) => t.id === topicoId);
       const novoTopico = novoTopicoPersistido
         ? mergeTopicoLocalState(novoTopicoPersistido, topicoLocal)
@@ -1635,69 +1766,34 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
         return;
       }
 
-      const topicosAtualizados = currentClasse.topicos.map((t) => t.id === topicoId ? novoTopico : t)
-      syncClasseLocally(cloneClasse(currentClasse, { topicos: topicosAtualizados }));
+      const topicosAtualizados = classeAtual.topicos.map((t) => t.id === topicoId ? novoTopico : t)
+      syncClasseLocally(cloneClasse(classeAtual, { topicos: topicosAtualizados }));
 
       console.log('[TrilhaContext] Tópico atualizado com sucesso');
     } catch (err) {
       console.warn('[TrilhaContext] Erro ao atualizar tópico:', err);
     }
-  }, [syncClasseLocally]);
+  }, [classeAtual, syncClasseLocally]);
 
   const atualizarProgressoClasse = useCallback(async () => {
-    const requestedClasse = classeAtualRef.current;
-    if (!requestedClasse) return;
+    if (!classeAtual) return;
     try {
       // `classe_aluno` é calculada por trigger/function no banco. Depois de
       // persistir o item-fonte, apenas recarregamos a projeção canônica; uma
       // conta local não conhece a jornada personalizada nem seus pesos.
-      const resumoCanonico = await cloneClasse(requestedClasse).refreshResumo()
+      const resumoCanonico = await classeAtual.refreshResumo()
       if (!resumoCanonico) return
 
-      // Uma resposta tardia do resumo não pode restaurar tópicos do render
-      // anterior e desfazer o refresh que acabou de liberar o próximo módulo.
-      const currentClasse = classeAtualRef.current;
-      if (!currentClasse || currentClasse.classe_id !== requestedClasse.classe_id ||
-          currentClasse.aluno_id !== requestedClasse.aluno_id) return;
-      syncClasseLocally(cloneClasse(currentClasse, {
-        topicos: [...currentClasse.topicos],
+      syncClasseLocally(cloneClasse(classeAtual, {
+        topicos: [...classeAtual.topicos],
         resumo: resumoCanonico,
       }))
     } catch (err) {
       console.warn('[TrilhaContext] Erro ao atualizar progresso da classe:', err);
     }
-  }, [syncClasseLocally]);
+  }, [classeAtual, syncClasseLocally]);
 
   // ✅ NOVOS MÉTODOS usando Models
-
-  useEffect(() => {
-    if (!usuario?.id || !classeAtual?.classe_id) return;
-    const alunoId = usuario.id;
-    const classeId = classeAtual.classe_id;
-    let active = true;
-    void (async () => {
-      for (const payload of Object.values(personalizedTopics)) {
-        if (!active || payload.classeId !== classeId) continue;
-        const rows = buildPersonalizedProgressSeed(alunoId, payload);
-        if (!rows.length) continue;
-        const seedKey = `percurso-v1:${alunoId}:${classeId}:${activeProfileKey}:${JSON.stringify(rows.map((row) => [row.personalizacao_id, row.item_key]))}`;
-        if (progressSeedRef.current.has(seedKey)) continue;
-        progressSeedRef.current.add(seedKey);
-        try {
-          await seedPersonalizedProgress(supabase, rows);
-          // A new render may cancel this effect while the write is running.
-          // Do not lose the canonical refresh of an already-completed write.
-          if (personalizationScopeRef.current !== personalizationScope) return;
-          await refreshTopico(payload.topicoId);
-          await atualizarProgressoClasse();
-        } catch (error) {
-          progressSeedRef.current.delete(seedKey);
-          console.warn('[TrilhaContext] Falha ao registrar passos do percurso:', error);
-        }
-      }
-    })();
-    return () => { active = false; };
-  }, [activeProfileKey, atualizarProgressoClasse, classeAtual?.classe_id, personalizationScope, personalizedTopics, refreshTopico, usuario?.id]);
 
   const marcarTopicoIniciado = useCallback(async (topicoId: number) => {
     if (!classeAtual || !usuario) return;
@@ -1728,10 +1824,6 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       // personalizados ainda pendentes.
       await refreshTopico(topicoId);
       await atualizarProgressoClasse();
-      const atualizado = classeAtualRef.current?.topicos.find((item) => item.id === topicoId);
-      if (progressoCanonicoTopico(atualizado) !== 100) {
-        throw new Error('Ainda existem etapas sem conclusão confirmada no Supabase. Revise as atividades pendentes e tente novamente.');
-      }
     } catch (err) {
       console.error('[TrilhaContext] Erro ao marcar tópico concluído:', err);
       throw err;
@@ -1786,8 +1878,18 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       const atividade = topico.atividades.find(a => a.id === atividadeId);
       if (!atividade) throw new Error('Atividade não encontrada');
 
-      // Only mark the activity locally after Supabase confirms the write.
-      // Otherwise a retry is mistaken for a review and never saves completion.
+      // Atualiza estado local imediatamente
+      atividade.status = 'concluido';
+      atividade.percentual_concluido = 100;
+      atividade.acertos_percentual = acertosPercentual;
+      // Sem palpite otimista do percentual: `calcularPercentual` so conhece o
+      // material do professor, e mostrar o numero dele aqui faria a barra
+      // pular para um valor errado por meio segundo ate o `refreshTopico`
+      // abaixo trazer o que o banco calculou sobre o percurso inteiro. Manter
+      // o valor anterior por um instante e menos pior que mostrar o errado.
+      syncClasseLocally(cloneClasse(classeAtual, { topicos: [...classeAtual.topicos] }));
+
+      // Persiste no banco
       await atividade.registrarConclusao(
         usuario.id,
         acertosPercentual,
@@ -1798,12 +1900,13 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       );
       await topico.atualizarProgresso(usuario.id);
       await atualizarProgressoClasse();
-      await refreshTopico(topicoId);
+
+      setTimeout(() => void refreshTopico(topicoId), 500);
     } catch (err) {
       console.error('[TrilhaContext] Erro ao registrar atividade:', err);
       throw err;
     }
-  }, [classeAtual, usuario, atualizarProgressoClasse, refreshTopico]);
+  }, [classeAtual, usuario, atualizarProgressoClasse, refreshTopico, syncClasseLocally]);
 
   const registrarTempoConteudo = useCallback(async (
     topicoId: number,
@@ -1900,12 +2003,12 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
         )
 
       if (error) throw error
-      await refreshTopico(topicoId)
+      syncClasseLocally(cloneClasse(classeAtual, { topicos: [...classeAtual.topicos] }))
       await atualizarProgressoClasse()
     } catch (err) {
       console.warn('[TrilhaContext] Erro ao registrar tempo do topico:', err)
     }
-  }, [atualizarProgressoClasse, classeAtual, refreshTopico, usuario])
+  }, [atualizarProgressoClasse, classeAtual, syncClasseLocally, usuario])
 
   const registrarTempoDireto = useCallback(async (
     topicoId: number,
@@ -1918,51 +2021,19 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
     if (!Number.isFinite(tempoNormalizado) || tempoNormalizado <= 0) return
 
     try {
-      await saveStudyTime(supabase, {
-        alunoId: usuario.id, topicoId, conteudoId, atividadeId, minutes: tempoNormalizado,
+      const { error } = await supabase.rpc('trailup_registrar_tempo_estudo', {
+        p_aluno: usuario.id,
+        p_topico: topicoId,
+        p_conteudo: conteudoId,
+        p_atividade: atividadeId,
+        p_tempo_min: tempoNormalizado,
       })
-      await refreshTopico(topicoId)
+      if (error) throw error
       await atualizarProgressoClasse()
     } catch (err) {
       console.warn('[TrilhaContext] Erro ao registrar tempo direto:', err)
-      throw err
     }
-  }, [atualizarProgressoClasse, refreshTopico, usuario?.id])
-
-  const registrarSessaoConteudo = useCallback(async (
-    topicoId: number,
-    conteudoId: number,
-    startedAtMs: number,
-    endedAtMs: number
-  ) => {
-    if (!usuario?.id) return
-    await saveStudySession(supabase, {
-      alunoId: usuario.id, scope: 'content', topicoId, conteudoId, atividadeId: null, startedAtMs, endedAtMs,
-    })
-  }, [usuario])
-
-  const registrarSessaoAtividade = useCallback(async (
-    topicoId: number,
-    atividadeId: number,
-    startedAtMs: number,
-    endedAtMs: number
-  ) => {
-    if (!usuario?.id) return
-    await saveStudySession(supabase, {
-      alunoId: usuario.id, scope: 'activity', topicoId, conteudoId: null, atividadeId, startedAtMs, endedAtMs,
-    })
-  }, [usuario])
-
-  const registrarSessaoTopico = useCallback(async (
-    topicoId: number,
-    startedAtMs: number,
-    endedAtMs: number
-  ) => {
-    if (!usuario?.id) return
-    await saveStudySession(supabase, {
-      alunoId: usuario.id, scope: 'topic', topicoId, conteudoId: null, atividadeId: null, startedAtMs, endedAtMs,
-    })
-  }, [usuario])
+  }, [atualizarProgressoClasse, usuario?.id])
 
   const salvarProgressoItemPersonalizado = useCallback(async ({
     topicoId,
@@ -2113,9 +2184,8 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
         return previous.map((line, lineIndex) => (lineIndex === index ? merged : line))
       })
 
-      if (status === 'concluido' || percentualNormalizado > 0) {
+      if (status === 'concluido') {
         await refreshTopico(topicoId)
-        await atualizarProgressoClasse()
       }
       return
     } catch (directErr) {
@@ -2132,9 +2202,9 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
           console.warn('[TrilhaContext] Falha ao salvar progresso personalizado direto no Supabase:', directErr)
         }
       }
-      throw directErr
+      return
     }
-  }, [atualizarProgressoClasse, classeAtual, personalizedTopics, personalizacaoProvider, refreshTopico, usuario?.id])
+  }, [classeAtual, personalizedTopics, personalizacaoProvider, refreshTopico, usuario?.id])
 
   const registrarRespostaQuestao = useCallback(async ({
     topicoId,
@@ -2283,9 +2353,6 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       registrarTempoConteudo,
       registrarTempoAtividade,
       registrarTempoDireto,
-      registrarSessaoConteudo,
-      registrarSessaoAtividade,
-      registrarSessaoTopico,
       salvarProgressoItemPersonalizado,
       registrarRespostaQuestao,
       deveMostrarGabaritoAoErrar,
@@ -2316,9 +2383,6 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       registrarTempoConteudo,
       registrarTempoAtividade,
       registrarTempoDireto,
-      registrarSessaoConteudo,
-      registrarSessaoAtividade,
-      registrarSessaoTopico,
       salvarProgressoItemPersonalizado,
       registrarRespostaQuestao,
       deveMostrarGabaritoAoErrar,

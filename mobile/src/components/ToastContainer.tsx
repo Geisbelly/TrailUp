@@ -1,5 +1,4 @@
 import { getBrainHexConfig } from '@/constants/profileImages';
-import { UtilityIcon } from '@/components/UtilityIcon';
 import { ToastMessage, useNotifications } from '@/context/NotificacaoContext';
 import { useUsuario } from '@/context/SessaoContext';
 import { FontFamily } from '@/styles/GlobalStyle';
@@ -48,7 +47,7 @@ const RankBanner = ({
         style={[
           styles.bannerContainer,
           {
-            borderColor: profileColor || palette.accent,
+            borderColor: profileColor || '#FFD700',
             backgroundColor: palette.surfaceElevated,
           },
         ]}
@@ -62,10 +61,10 @@ const RankBanner = ({
             { backgroundColor: palette.accentMuted },
           ]}
         >
-          <UtilityIcon kind="ranking" size={36} />
+          <MaterialCommunityIcons name="podium-gold" size={28} color="#FFD700" />
         </View>
         <View style={styles.bannerTextContainer}>
-          <Text style={[styles.bannerTitle, { color: palette.accent }]}>{item.title}</Text>
+          <Text style={[styles.bannerTitle, { color: profileColor || '#FFD700' }]}>{item.title}</Text>
           <Text style={[styles.bannerDesc, { color: palette.textMuted }]} numberOfLines={1}>
             {item.description}
           </Text>
@@ -73,7 +72,7 @@ const RankBanner = ({
         <MaterialCommunityIcons
           name="chevron-right"
           size={24}
-          color={palette.accent}
+          color={palette.text}
           style={{ opacity: 0.5 }}
         />
       </TouchableOpacity>
@@ -194,7 +193,7 @@ const NotificationModal = ({ item, onRemove }: { item: ToastMessage; onRemove: (
           {/* Badge de conquista mantido */}
           {config.isProfileThemed && (
             <View style={[styles.badgeIcon, { backgroundColor: palette.surfaceElevated }]}>
-              <UtilityIcon kind="medal" size={26} />
+              <MaterialCommunityIcons name="trophy" size={22} color="#FFD700" />
             </View>
           )}
         </View>

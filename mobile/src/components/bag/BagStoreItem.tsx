@@ -1,5 +1,5 @@
 import { StoreItemIcon } from "@/components/loja/StoreItemIcon";
-import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { resolveStoreAccent } from "@/services/loja/storeTheme";
 import type { BagItem } from "@/services/bag/bagModel";
 import { FontFamily } from "@/styles/GlobalStyle";
 import React from "react";
@@ -26,7 +26,7 @@ function metadataText(item: BagItem, key: string): string | null {
 }
 
 export function BagStoreItem({ item, profile, muted, surface, border }: Props) {
-  const accent = getProfileShellPalette(profile).accent;
+  const accent = resolveStoreAccent(profile);
   const effect = metadataText(item, "efeito");
   const status = metadataText(item, "status") === "consumida" ? "CONSUMIDO" : "DISPONÍVEL";
   const price = Number(item.metadata.preco_pago);
@@ -54,15 +54,15 @@ export function BagStoreItem({ item, profile, muted, surface, border }: Props) {
 }
 
 const styles = StyleSheet.create({
-  item: { flexDirection: "row", gap: 12, borderWidth: 1, borderRadius: 6, padding: 16, marginBottom: 12 },
-  iconBox: { width: 60, height: 64, alignItems: "center", justifyContent: "center" },
+  item: { flexDirection: "row", gap: 12, borderWidth: 1, borderRadius: 14, padding: 12, marginBottom: 12 },
+  iconBox: { width: 64, height: 64, borderWidth: 1, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   info: { flex: 1, minWidth: 0, gap: 4 },
-  heading: { gap: 6 },
-  title: { fontFamily: FontFamily.inikaBold, fontSize: 17 },
-  status: { fontFamily: FontFamily.interMedium, fontSize: 10, letterSpacing: 0 },
-  kind: { fontFamily: FontFamily.interMedium, fontSize: 10, letterSpacing: 0 },
+  heading: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  title: { flex: 1, fontFamily: FontFamily.poppinsExtraBold, fontSize: 14 },
+  status: { fontFamily: FontFamily.inikaBold, fontSize: 9, letterSpacing: 0.5 },
+  kind: { fontFamily: FontFamily.inikaBold, fontSize: 9, letterSpacing: 1 },
   description: { fontFamily: FontFamily.interMedium, fontSize: 12, lineHeight: 17 },
   footer: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 4 },
   price: { fontFamily: FontFamily.poppinsExtraBold, fontSize: 12 },
-  purchased: { fontFamily: FontFamily.interMedium, fontSize: 10, letterSpacing: 0 },
+  purchased: { fontFamily: FontFamily.inikaBold, fontSize: 9, letterSpacing: 0.8 },
 });

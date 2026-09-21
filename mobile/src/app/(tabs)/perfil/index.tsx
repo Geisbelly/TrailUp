@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
+  Dimensions,
   Image,
   ScrollView,
   StatusBar,
@@ -18,13 +19,7 @@ import tinycolor from "tinycolor2";
 import CardSemDados from "@/components/CardSemDados";
 import { BagModal } from "@/components/bag/BagModal";
 import ConquistaModal from "@/components/ConquistaModal";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { getProfileArtwork, profileEmblems } from "@/constants/designAssets";
-import { getAchievementArtwork } from "@/constants/achievementImages";
-import { ProfileArtwork } from "@/components/ProfileArtwork";
-import { UtilityIcon } from "@/components/UtilityIcon";
-import { FramedProfileImage } from "@/components/FramedProfileImage";
-import { Design } from "@/styles/design";
+import { HallBackground, OrnamentDivider } from "@/components/HallTheme";
 import { ProfileMetricsViews } from "@/components/perfil/ProfileMetricsViews";
 import { buildProfileMetricsViewModel } from "@/components/perfil/profileMetricsViewModel";
 import {
@@ -32,9 +27,11 @@ import {
   type SectionGuideStep,
 } from "@/components/SectionGuideButton";
 import {
-  getGuardianFaceImage,
+  avatarImages,
+  bannerImages,
   getBrainHexConfig,
   normalizeBrainHexProfile,
+  pickBySeed,
 } from "@/constants/profileImages";
 import { useConquistaRank } from "@/context/ConquistaRankContext";
 import { useIA } from "@/context/IAContext";
@@ -42,7 +39,7 @@ import { useMetricas, useMetricasBatch } from "@/context/MetricasContext";
 import { useUsuario } from "@/context/SessaoContext";
 import { useTrilha } from "@/context/TrilhaContext";
 import { Conquista } from "@/models/Conquista";
-import { FontFamily } from "@/styles/GlobalStyle";
+import { Color, FontFamily } from "@/styles/GlobalStyle";
 import {
   getMetricsThemePreference,
   resolveMetricsTheme,
@@ -51,17 +48,17 @@ import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { registrarAlvoTour } from "@/utils/tourTargets";
 import { resolveRepresentativeBrainHexProfiles } from "@/utils/brainHex";
 import { buildProfileGuideSteps } from "@/utils/profileSectionGuide";
-import { selectClassBattles } from '@/utils/battleRuntime';
+
+const { width } = Dimensions.get("window");
 
 export default function PerfilHome() {
-  const insets = useSafeAreaInsets();
   const { usuario, selecionarPerfilAtivo } = useUsuario();
-  const { classeAtual, perfil, progressoPersonalizado, reload: reloadTrilha } = useTrilha();
-  const { conquistas, carregando, eventos, posicoesDoAluno, presenca, reloadAll } =
+  const { classeAtual, perfil, progressoPersonalizado } = useTrilha();
+  const { conquistas, carregando, eventos, posicoesDoAluno } =
     useConquistaRank();
   const { lastAnalysis, cameraOptIn, cameraPermission } = useMetricas();
   const { lastBatchTimeMetrics } = useMetricasBatch();
-  const { runtimeStates } = useIA();
+  const { getBattleState } = useIA();
   const router = useRouter();
   const [bagOpen, setBagOpen] = useState(false);
 
@@ -80,12 +77,6 @@ export default function PerfilHome() {
   const [themeOverride, setThemeOverride] = useState<
     "auto" | "arena" | "goals" | "mystery" | "analytics" | "squad"
   >("auto");
-  const refreshProfileRef = useRef({ reloadAll, reloadTrilha });
-  refreshProfileRef.current = { reloadAll, reloadTrilha };
-  useFocusEffect(useCallback(() => {
-    void Promise.all([refreshProfileRef.current.reloadAll(), refreshProfileRef.current.reloadTrilha()])
-      .catch((error) => console.warn('[Perfil] Falha ao atualizar métricas:', error));
-  }, []));
 
   useFocusEffect(
     useCallback(() => {
@@ -106,16 +97,21 @@ export default function PerfilHome() {
     }, [usuario?.id]),
   );
 
-  const battleStates = useMemo(() => selectClassBattles(runtimeStates.battleStates, usuario?.id ?? null,
-    (classeAtual?.topicos ?? []).map((topic) => topic.id)), [classeAtual, runtimeStates.battleStates, usuario?.id]);
+  const battleState = useMemo(() => {
+    for (const topico of classeAtual?.topicos ?? []) {
+      const state = getBattleState({ scope: "topic", topicoId: topico.id });
+      if (state) return state;
+    }
+    return null;
+  }, [classeAtual, getBattleState]);
 
   const banner = useMemo(
-    () => getProfileArtwork(perfil, 'banner'),
-    [perfil],
+    () => pickBySeed(usuario?.id, bannerImages),
+    [usuario?.id],
   );
   const avatar = useMemo(
-    () => getGuardianFaceImage(perfil),
-    [perfil],
+    () => pickBySeed(usuario?.id, avatarImages),
+    [usuario?.id],
   );
 
   const perfisRepresentativos = useMemo(
@@ -124,7 +120,7 @@ export default function PerfilHome() {
   );
   const hexConfig = getBrainHexConfig(perfil);
   const shellPalette = useMemo(() => getProfileShellPalette(perfil), [perfil]);
-  const accent = shellPalette.accent;
+  const accent = tinycolor(hexConfig.color).lighten(3).toString();
   const accentSoft = tinycolor(hexConfig.color)
     .lighten(18)
     .setAlpha(0.18)
@@ -143,13 +139,11 @@ export default function PerfilHome() {
         lastBatchTimeMetrics,
         cameraOptIn,
         cameraPermission,
-        battleStates,
-        presenca,
+        battleState,
         progressoPersonalizado,
       }),
     [
-      battleStates,
-      presenca,
+      battleState,
       cameraOptIn,
       cameraPermission,
       classeAtual,
@@ -285,8 +279,14 @@ export default function PerfilHome() {
         backgroundColor="transparent"
       />
       <View
-        style={[styles.screen, { backgroundColor: shellPalette.background, paddingTop: insets.top }]}
+        style={[styles.screen, { backgroundColor: shellPalette.background }]}
       >
+        {/* ── Fundo do salão (sutil) ── */}
+        <View
+          style={[StyleSheet.absoluteFill, { opacity: 0.45, pointerEvents: "none" }]}
+        >
+          <HallBackground palette={shellPalette} />
+        </View>
         <ScrollView
           ref={profileScrollRef}
           showsVerticalScrollIndicator={false}
@@ -327,32 +327,52 @@ export default function PerfilHome() {
 
             <View ref={profileSettingsGuideRef} collapsable={false} style={styles.btnSettingsWrap}>
               <TouchableOpacity
-                style={styles.btnSettings}
+                style={[
+                  styles.btnSettings,
+                  {
+                    backgroundColor: shellPalette.surfaceElevated,
+                    borderColor: shellPalette.border,
+                  },
+                ]}
                 onPress={() => router.push("/(tabs)/perfil/settings")}
                 accessibilityRole="button"
                 accessibilityLabel="Configurações"
               >
-                <UtilityIcon kind="settings" size={34} />
+                <MaterialCommunityIcons
+                  name="cog-outline"
+                  size={22}
+                  color={shellPalette.text}
+                />
               </TouchableOpacity>
             </View>
             <View ref={profileLibraryGuideRef} collapsable={false} style={styles.btnLibraryWrap}>
               <TouchableOpacity
-                style={styles.btnLibrary}
+                style={[
+                  styles.btnLibrary,
+                  {
+                    backgroundColor: shellPalette.surfaceElevated,
+                    borderColor: shellPalette.border,
+                  },
+                ]}
                 onPress={() => router.push("/(tabs)/perfil/biblioteca-conquistas")}
                 accessibilityRole="button"
                 accessibilityLabel="Biblioteca de conquistas"
               >
-                <UtilityIcon kind="achievements" size={34} />
+                <MaterialCommunityIcons
+                  name="trophy-variant-outline"
+                  size={20}
+                  color={shellPalette.text}
+                />
               </TouchableOpacity>
             </View>
             <View style={styles.btnBagWrap}>
               <TouchableOpacity
-                style={styles.btnLibrary}
+                style={[styles.btnLibrary, { backgroundColor: shellPalette.surfaceElevated, borderColor: shellPalette.border }]}
                 onPress={() => setBagOpen(true)}
                 accessibilityRole="button"
                 accessibilityLabel="Abrir minha Bag"
               >
-                <UtilityIcon kind="bag" size={34} />
+                <MaterialCommunityIcons name="bag-personal-outline" size={20} color={shellPalette.text} />
               </TouchableOpacity>
             </View>
 
@@ -362,15 +382,36 @@ export default function PerfilHome() {
               style={[
                 styles.profileCard,
                 {
-                  backgroundColor: shellPalette.background,
+                  backgroundColor: shellPalette.surfaceElevated,
                   borderColor: shellPalette.border,
                 },
               ]}
             >
               <View style={styles.avatarContainer}>
-                <FramedProfileImage profile={perfil} source={usuario?.foto_url ? { uri: usuario.foto_url } : avatar} size={104} label={`Foto de ${usuario?.nome ?? 'Aluno'}`} />
+                {usuario?.foto_url ? (
+                  <Image
+                    source={{ uri: usuario.foto_url }}
+                    style={[styles.avatar, { borderColor: accent }]}
+                  />
+                ) : (
+                  <Image
+                    source={avatar}
+                    style={[styles.avatar, { borderColor: accent }]}
+                  />
+                )}
                 <View style={styles.hexBadgeContainer}>
-                  <ProfileArtwork source={profileEmblems[perfil]} profile={perfil} width={30} />
+                  <View
+                    style={[
+                      styles.hexBadgeShape,
+                      { backgroundColor: hexConfig.color },
+                    ]}
+                  />
+                  <MaterialCommunityIcons
+                    name={hexConfig.icon}
+                    size={14}
+                    color="#FFF"
+                    style={{ zIndex: 2 }}
+                  />
                 </View>
               </View>
 
@@ -391,7 +432,7 @@ export default function PerfilHome() {
                   ]}
                 >
                   <Text
-                    style={[styles.tagProfileText, { color: shellPalette.accent }]}
+                    style={[styles.tagProfileText, { color: hexConfig.color }]}
                   >
                     {hexConfig.label.toUpperCase()}
                   </Text>
@@ -442,12 +483,16 @@ export default function PerfilHome() {
                           },
                         ]}
                       >
-                        <ProfileArtwork source={profileEmblems[profileKey]} profile={perfil} width={32} height={36} />
+                        <MaterialCommunityIcons
+                          name={config.icon}
+                          size={17}
+                          color={selected ? config.color : shellPalette.textMuted}
+                        />
                         <View>
                           <Text
                             style={[
                               styles.profileOptionLabel,
-                              { color: selected ? getProfileShellPalette(profileKey).accent : shellPalette.text },
+                              { color: selected ? config.color : shellPalette.text },
                             ]}
                           >
                             {config.label}
@@ -465,7 +510,7 @@ export default function PerfilHome() {
                           <MaterialCommunityIcons
                             name="check-circle"
                             size={16}
-                            color={getProfileShellPalette(profileKey).accent}
+                            color={config.color}
                           />
                         ) : null}
                       </TouchableOpacity>
@@ -529,7 +574,7 @@ export default function PerfilHome() {
                   },
                 ]}
               >
-                Conquistas ({conquistas.length})
+                Conquistas
               </Text>
               {aba === "conquistas" ? (
                 <View
@@ -540,6 +585,11 @@ export default function PerfilHome() {
                 />
               ) : null}
             </TouchableOpacity>
+          </View>
+
+          {/* Ornamento divisor entre abas e conteúdo */}
+          <View style={[styles.ornamentRow, { paddingHorizontal: 20 }]}>
+            <OrnamentDivider color={Color.colorWhite} />
           </View>
 
           <View ref={profileAchievementsGuideRef} collapsable={false} style={styles.listContainer}>
@@ -581,7 +631,16 @@ export default function PerfilHome() {
                           { borderColor: shellPalette.borderStrong },
                         ]}
                       >
-                        <Image source={getAchievementArtwork(conquista)} resizeMode="contain" style={{ width: 50, height: 54 }} accessible={false} />
+                        <LinearGradient
+                          colors={[accent, hexConfig.color]}
+                          style={styles.iconGradient}
+                        >
+                          <MaterialCommunityIcons
+                            name={hexConfig.icon}
+                            size={24}
+                            color={shellPalette.text}
+                          />
+                        </LinearGradient>
                       </View>
                       <View style={styles.conquistaTextBlock}>
                         <View style={styles.conquistaHeaderRow}>
@@ -653,8 +712,7 @@ export default function PerfilHome() {
           }
           date={conquistaSelecionada?.data_conquista}
           color={hexConfig.color}
-          profile={perfil}
-          imageSource={getAchievementArtwork(conquistaSelecionada)}
+          imageSource={hexConfig.image}
         />
       </View>
     </>
@@ -663,83 +721,98 @@ export default function PerfilHome() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
+  ornamentRow: { marginTop: 4, opacity: 0.7 },
   scrollContent: { paddingBottom: 40 },
-  headerContainer: { marginBottom: 4, alignItems: "center" },
-  bannerWrapper: { width: "100%", height: 64, position: "relative" },
+  headerContainer: { marginBottom: 10, alignItems: "center" },
+  bannerWrapper: { width: "100%", height: 180, position: "relative" },
   banner: { width: "100%", height: "100%" },
   btnSettings: {
-    width: 44,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
+    padding: 8,
+    borderRadius: 20,
+    borderWidth: 1,
   },
   btnSettingsWrap: {
     position: "absolute",
-    top: 10,
+    top: 50,
     right: 20,
     zIndex: 10,
   },
   guideButton: {
     position: "absolute",
-    top: 10,
+    top: 50,
     left: 20,
   },
   btnLibraryWrap: {
     position: "absolute",
-    top: 10,
-    right: 72,
+    top: 96,
+    right: 20,
     zIndex: 10,
   },
   btnBagWrap: {
     position: "absolute",
-    top: 10,
-    right: 124,
+    top: 142,
+    right: 20,
     zIndex: 10,
   },
   btnLibrary: {
-    width: 44,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
+    padding: 8,
+    borderRadius: 20,
+    borderWidth: 1,
     zIndex: 10,
   },
   profileCard: {
-    width: "100%",
-    flexDirection: "row",
+    marginTop: -50,
+    width: width * 0.9,
+    borderRadius: 24,
     alignItems: "center",
-    gap: 14,
-    paddingTop: 14,
-    paddingBottom: 14,
+    paddingTop: 55,
+    paddingBottom: 24,
     paddingHorizontal: 20,
-    borderBottomWidth: 1,
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.14,
+    shadowRadius: 15,
+    elevation: 6,
   },
   avatarContainer: {
-    width: 104,
-    height: 104,
-    flexShrink: 0,
+    position: "absolute",
+    top: -50,
     alignItems: "center",
     justifyContent: "center",
     zIndex: 2,
   },
+  avatar: { width: 100, height: 100, borderRadius: 50, borderWidth: 4 },
   hexBadgeContainer: {
     position: "absolute",
-    bottom: 0,
+    top: 0,
     right: 0,
+    marginTop: -5,
+    marginRight: -5,
     width: 34,
     height: 34,
     alignItems: "center",
     justifyContent: "center",
     zIndex: 3,
   },
-  infoContainer: { flex: 1, minWidth: 0, alignItems: "flex-start", gap: 3 },
+  hexBadgeShape: {
+    position: "absolute",
+    width: 26,
+    height: 26,
+    borderRadius: 4,
+    transform: [{ rotate: "45deg" }],
+    borderWidth: 2,
+    borderColor: "#F4F7FC",
+  },
+  infoContainer: { alignItems: "center", gap: 4 },
   profileSwitcherWrap: {
     width: "100%",
-    marginTop: 10,
+    marginTop: 14,
   },
   profileSwitcherTitle: {
     fontFamily: FontFamily.interMedium,
-    fontSize: 12,
-    marginBottom: 6,
+    fontSize: 11,
+    marginBottom: 8,
     marginLeft: 20,
   },
   profileSwitcherContent: {
@@ -747,53 +820,54 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   profileOption: {
-    minWidth: 144,
+    minWidth: 154,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
     borderWidth: 1,
-    borderRadius: Design.radius,
+    borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 9,
   },
   profileOptionLabel: {
     fontFamily: FontFamily.inikaBold,
-    fontSize: 14,
+    fontSize: 12,
   },
   profileOptionAffinity: {
     fontFamily: FontFamily.interMedium,
-    fontSize: 11,
+    fontSize: 9,
     marginTop: 1,
   },
   username: {
     fontFamily: FontFamily.inikaBold,
     fontSize: 13,
-    letterSpacing: 0,
+    letterSpacing: 1,
     fontWeight: "700",
   },
-  name: { fontFamily: FontFamily.inikaBold, fontSize: 22, lineHeight: 28 },
+  name: { fontFamily: FontFamily.inikaBold, fontSize: 18, textAlign: "center" },
   tagProfile: {
     borderWidth: 1,
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 4,
+    borderRadius: 8,
     marginVertical: 4,
   },
   tagProfileText: {
     fontFamily: FontFamily.inikaBold,
-    fontSize: 12,
-    letterSpacing: 0,
+    fontSize: 10,
+    letterSpacing: 0.5,
   },
   desc: {
     fontFamily: FontFamily.interMedium,
-    fontSize: 13,
-    lineHeight: 19,
+    fontSize: 12,
+    textAlign: "center",
     marginTop: 4,
+    paddingHorizontal: 10,
   },
   tabsContainer: {
     flexDirection: "row",
     marginHorizontal: 20,
-    marginTop: 8,
+    marginTop: 15,
     borderBottomWidth: 1,
   },
   tabButton: { flex: 1, alignItems: "center", paddingVertical: 12 },
@@ -817,6 +891,8 @@ const styles = StyleSheet.create({
   },
   conquistaIconContainer: {
     marginRight: 15,
+    borderWidth: 1,
+    borderRadius: 26,
   },
   iconGradient: {
     width: 44,

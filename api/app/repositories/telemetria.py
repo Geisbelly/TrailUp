@@ -554,7 +554,6 @@ class TelemetriaRepository:
                           material_key,
                           material_tipo,
                           scope,
-                          entry_key,
                           visits,
                           dwell_sec,
                           active_sec,
@@ -576,7 +575,6 @@ class TelemetriaRepository:
                           :material_key,
                           :material_tipo,
                           :scope,
-                          :entry_key,
                           :visits,
                           :dwell_sec,
                           :active_sec,
@@ -586,8 +584,10 @@ class TelemetriaRepository:
                           :max_depth_px,
                           :captured_at
                         )
-                        -- Mesma identidade usada pelo fallback Supabase.
-                        -- O trigger resolve clientes antigos sem `key`.
+                        -- `entry_key` e preenchido pelo trigger BEFORE INSERT
+                        -- (`telemetria_resolver_entidade`), que roda antes de o
+                        -- conflito ser avaliado -- por isso da para referencia-lo
+                        -- aqui sem o insert precisar conhece-lo.
                         ON CONFLICT (lote_id, scope, entry_key) DO NOTHING
                         """
                     ),
@@ -603,7 +603,6 @@ class TelemetriaRepository:
                         "material_key": entry.get("material_key"),
                         "material_tipo": entry.get("material_tipo"),
                         "scope": scope,
-                        "entry_key": entry.get("key") or None,
                         "visits": max(0, self._coerce_int(entry.get("visits"), 0)),
                         "dwell_sec": max(0.0, self._coerce_float(entry.get("dwell_sec"), 0.0)),
                         "active_sec": max(0.0, self._coerce_float(entry.get("active_sec"), 0.0)),

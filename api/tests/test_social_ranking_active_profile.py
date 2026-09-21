@@ -1,5 +1,6 @@
 from pathlib import Path
 
+
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATION = ROOT / "api/alembic/versions/20260913_19_social_perfil_ativo_ranking.py"
 

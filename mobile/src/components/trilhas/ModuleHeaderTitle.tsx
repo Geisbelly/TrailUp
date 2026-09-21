@@ -5,7 +5,6 @@ import {
   normalizeBrainHexProfile,
 } from "@/constants/profileImages";
 import { Color, FontFamily } from "@/styles/GlobalStyle";
-import { FramedProfileImage } from "@/components/FramedProfileImage";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { registrarAlvoTour } from "@/utils/tourTargets";
 import {
@@ -17,6 +16,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -630,7 +630,21 @@ function GuideModalContent({
                 },
               ]}
             >
-              <FramedProfileImage profile={profile} source={guideProfile.image} size={72} />
+              <View
+                style={[
+                  styles.iconWrap,
+                  {
+                    backgroundColor: palette.accentSoft,
+                    borderColor: palette.borderStrong,
+                  },
+                ]}
+              >
+                <Image
+                  source={guideProfile.image}
+                  style={styles.avatarImage}
+                  resizeMode="cover"
+                />
+              </View>
               <View style={styles.avatarCopy}>
                 <Text
                   style={[styles.avatarEyebrow, { color: guide.accentColor }]}
@@ -974,6 +988,15 @@ const styles = StyleSheet.create({
     gap: 14,
     paddingBottom: 6,
   },
+  iconWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    overflow: "hidden",
+  },
   avatarRow: {
     alignSelf: "stretch",
     borderRadius: 20,
@@ -983,6 +1006,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
+  },
+  avatarImage: {
+    width: "100%",
+    height: "100%",
   },
   avatarCopy: {
     flex: 1,

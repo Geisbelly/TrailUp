@@ -32,7 +32,6 @@ import {
 } from "@/utils/contentBlocks";
 import { buildSupabasePublicStorageUrl } from "@/utils/supabaseStorage";
 import { parseImageCues } from "@/utils/audioImageCues";
-import { personalizedAvailabilityScore } from './personalizationAvailability';
 
 const DEFAULT_REPERSONALIZATION_ACTIONS = [
   "simplificar_conteudo",
@@ -161,16 +160,13 @@ export function orderPersonalizationRecordsByTeacherContent<
     conteudo_id?: number | null;
     updated_at?: string | null;
     gerado_em?: string | null;
-    materiais?: unknown;
   }
 >(records: T[], teacherContents: TeacherContentOrder[]) {
   const timestamp = (record: T) => {
     const parsed = new Date(record.updated_at ?? record.gerado_em ?? 0).getTime();
     return Number.isFinite(parsed) ? parsed : 0;
   };
-  const preferredFirst = (left: T, right: T) => {
-    const byAvailability = personalizedAvailabilityScore(right) - personalizedAvailabilityScore(left);
-    if (byAvailability !== 0) return byAvailability;
+  const newestFirst = (left: T, right: T) => {
     const byTime = timestamp(right) - timestamp(left);
     if (byTime !== 0) return byTime;
     return Number(right.id ?? 0) - Number(left.id ?? 0);
@@ -180,11 +176,11 @@ export function orderPersonalizationRecordsByTeacherContent<
     Boolean(pickPositiveInt(record?.conteudo_id))
   );
   if (scopedRecords.length === 0) {
-    return records.slice().sort(preferredFirst).slice(0, 1);
+    return records.slice().sort(newestFirst).slice(0, 1);
   }
 
   const latestByContent = new Map<number, T>();
-  for (const record of scopedRecords.slice().sort(preferredFirst)) {
+  for (const record of scopedRecords.slice().sort(newestFirst)) {
     const conteudoId = pickPositiveInt(record.conteudo_id);
     if (conteudoId && !latestByContent.has(conteudoId)) {
       latestByContent.set(conteudoId, record);
@@ -670,8 +666,8 @@ function normalizeQuizActivity(rawQuiz: unknown, topicoId: number, prefix: strin
   const baseActivity =
     activityCandidates.find((item) => item && typeof item === "object") ?? quizObject;
   const questionSource =
-    asArray<any>(baseActivity?.questoes ?? baseActivity?.questions).length > 0
-      ? asArray<any>(baseActivity?.questoes ?? baseActivity?.questions)
+    asArray<any>(baseActivity?.questoes).length > 0
+      ? asArray<any>(baseActivity?.questoes)
       : activityCandidates.length > 0
       ? activityCandidates
       : asArray<any>(parsedRawQuiz);
@@ -782,23 +778,6 @@ function normalizeQuizActivity(rawQuiz: unknown, topicoId: number, prefix: strin
   return activity;
 }
 
-function normalizeQuizActivities(rawQuiz: unknown, topicoId: number, prefix: string) {
-  const parsed = parseJsonIfString(rawQuiz);
-  const quiz = asLooseRecord(parsed);
-  const candidates = asArray<unknown>(quiz.atividades ?? quiz.activities);
-  const hasNestedQuestions = candidates.some((candidate) => {
-    const activity = asLooseRecord(candidate);
-    return Array.isArray(activity.questoes ?? activity.questions);
-  });
-  // Preserva também o formato legado em que atividades contém questões diretas.
-  const activities = hasNestedQuestions ? candidates : [parsed];
-  return activities
-    .map((activity, index) => normalizeQuizActivity(
-      activity, topicoId, index === 0 ? prefix : `${prefix}-${index + 1}`
-    ))
-    .filter((activity): activity is PersonalizedActivity => Boolean(activity));
-}
-
 interface MediaParte {
   ordem: number;
   titulo: string;
@@ -881,10 +860,6 @@ function normalizeMediaBlocksSemRevisao(
       ? (payload.metadata as LooseRecord)
       : {};
   const rawTextAsFileRef = looksLikeFileReference(rawText) ? rawText : null;
-  // Alguns registros só guardam o arquivo na única parte. Preserva o ID
-  // singular existente, sem criar uma nova etapa para o mesmo material.
-  const singlePart = Array.isArray(rawObject.partes) && rawObject.partes.length === 1
-    ? asLooseRecord(rawObject.partes[0]) : {};
   const urlFromMetadata = pickString(
     metadataFromRaw.arquivo_url,
     metadataFromRaw.storage_path,
@@ -925,9 +900,7 @@ function normalizeMediaBlocksSemRevisao(
     payload.uri,
     payload.src,
     urlFromMetadata,
-    rawTextAsFileRef,
-    singlePart.arquivo_url,
-    singlePart.storage_path
+    rawTextAsFileRef
   );
   const bucketValue =
     pickString(
@@ -1948,7 +1921,7 @@ export function normalizePersonalizedTopicPayload({
   const refreshPolicy = extractRefreshPolicy(record, aiPatch);
   const studyCards = normalizeStudyCards(materiais.cards?.payload, `cards-${topicoId}-${record.id}`);
   const cardsBlock = createCardsBlock(studyCards, `cards-block-${topicoId}-${record.id}`);
-  const quizActivities = normalizeQuizActivities(
+  const quizActivity = normalizeQuizActivity(
     materiais.quiz?.payload,
     topicoId,
     `quiz-${topicoId}-${record.id}`
@@ -2073,10 +2046,11 @@ export function normalizePersonalizedTopicPayload({
           ? ((block.payload as any).metadata as Record<string, unknown>)
           : null,
     })),
-    ...quizActivities.map((quizActivity, index) => (
+    ...(quizActivity
+      ? [
           {
-            item_key: quizActivity.personalizationKey ?? `personalized:${topicoId}:activity:${index + 1}`,
-            ordem: derivedPrimaryBlocks.length + index,
+            item_key: quizActivity.personalizationKey ?? `personalized:${topicoId}:activity:1`,
+            ordem: derivedPrimaryBlocks.length,
             kind: "activity" as const,
             title: quizActivity.titulo,
             description: quizActivity.descricao,
@@ -2085,8 +2059,9 @@ export function normalizePersonalizedTopicPayload({
             blocks: [],
             activity: quizActivity,
             metadata: null,
-          }
-        )),
+          },
+        ]
+      : []),
   ];
   const steps = scopePersonalizedStepsToContent({
     steps: remoteSteps.length > 0 ? remoteSteps : derivedSteps,
@@ -2217,14 +2192,16 @@ export function normalizePersonalizedTopicPayload({
             source: "personalizado" as const,
           }
         : null,
-      ...quizActivities.map((quizActivity) => ({
+      quizActivity
+        ? {
             id: String(quizActivity.id),
             tipo: "quiz",
             title: quizActivity.titulo,
             description: quizActivity.descricao,
             hasArquivoUrl: Boolean(materiais.quiz?.arquivo_url),
             source: "personalizado" as const,
-          })),
+          }
+        : null,
     ].filter(Boolean) as any[],
     planMeta: {
       recordId,

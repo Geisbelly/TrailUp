@@ -1,5 +1,4 @@
 import { FontFamily } from "@/styles/GlobalStyle";
-import { Design } from "@/styles/design";
 import {
   getProfileShellPalette,
   ProfileShellPalette,
@@ -34,6 +33,11 @@ export function LoadingState({
           {
             backgroundColor: effectivePalette.surfaceElevated,
             borderColor: goldDim,
+            shadowColor: effectivePalette.accent,
+            shadowOpacity: 0.35,
+            shadowRadius: 18,
+            shadowOffset: { width: 0, height: 0 },
+            elevation: 8,
           },
         ]}
       >
@@ -58,7 +62,7 @@ const styles = StyleSheet.create({
   indicatorShell: {
     width: 82,
     height: 82,
-    borderRadius: Design.radius,
+    borderRadius: 26,
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",

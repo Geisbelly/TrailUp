@@ -1,6 +1,4 @@
 import { HapticTab } from "@/components/haptic-tab";
-import { BossVictoryModal } from '@/components/ia/BossVictoryModal';
-import { ClassSelectionGate } from "@/components/ClassSelectionGate";
 import { bannerImages, brainHexConfig, brainHexImageMap, getProfileImageByString, normalizeBrainHexProfile } from "@/constants/profileImages";
 import { ConquistaRankProvider } from "@/context/ConquistaRankContext";
 import { IAProvider } from "@/context/IAContext";
@@ -21,8 +19,7 @@ import { FirstAccessTour } from "@/components/FirstAccessTour";
 import { useUsuario } from "@/context/SessaoContext";
 import { MetricasProvider } from "@/context/MetricasContext";
 import { user } from "@/database/mockUser";
-import { Color, FontFamily } from "@/styles/GlobalStyle";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { FontFamily } from "@/styles/GlobalStyle";
 import { useMonitorDeSessao } from "@/hooks/useMonitorDeSessao";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { estaNaTrilhaDeEstudo } from "@/utils/presencaDeEstudo";
@@ -41,7 +38,6 @@ function TourAwareTabBar(props: BottomTabBarProps) {
 }
 
 export default function TabLayout() {
-  const insets = useSafeAreaInsets();
   const { usuario } = useUsuario();
   const segments = useSegments() as string[];
 
@@ -75,26 +71,23 @@ export default function TabLayout() {
       <VigiaDePresenca>
       <MetricasProvider>
         <NotificationsProvider>
-          <TrilhaProvider key={usuario?.id ?? "sem-aluno"}>
-            <ClassSelectionGate>
+          <TrilhaProvider>
             <ConquistaRankProvider>
               <Tabs
             tabBar={(props) => <TourAwareTabBar {...props} />}
             screenOptions={{
               tabBarActiveTintColor: palette.accent,
               tabBarInactiveTintColor: palette.inactive,
-              tabBarActiveBackgroundColor: palette.accentMuted,
-              tabBarItemStyle: { borderRadius: 6, marginHorizontal: 2 },
               sceneStyle: {
                 backgroundColor: palette.background,
               },
               tabBarStyle: {
-                backgroundColor: palette.surface,
-                borderTopColor: palette.borderStrong,
+                backgroundColor: palette.background,
+                borderTopColor: palette.border,
                 borderTopWidth: hideTabBarOnModule ? 0 : 1,
-                height: hideTabBarOnModule ? 0 : 66 + insets.bottom,
-                paddingBottom: hideTabBarOnModule ? 0 : Math.max(insets.bottom, 8),
-                paddingTop: hideTabBarOnModule ? 0 : 8,
+                height: hideTabBarOnModule ? 0 : 100,
+                marginBottom: hideTabBarOnModule ? 0 : 10,
+                paddingTop: hideTabBarOnModule ? 0 : 10,
                 display: hideTabBarOnModule ? "none" : "flex",
               },
               headerStyle: { backgroundColor: palette.background },
@@ -102,10 +95,9 @@ export default function TabLayout() {
                 , fontFamily: FontFamily.poppinsExtraBold
               },
               tabBarLabelStyle: {
-                fontFamily: FontFamily.interMedium,
-                fontSize: 10,
-                fontWeight: "600",
-                letterSpacing: 0,
+                fontFamily: FontFamily.inikaBold,
+                fontSize: 12,
+                letterSpacing: 0.2,
               },
               headerShown: false,
               tabBarButton: HapticTab,
@@ -117,11 +109,7 @@ export default function TabLayout() {
                 title: 'Trilha',
                 tabBarIcon: ({ color, focused }) =>
                   perfilConfig ? (
-                    <MaterialCommunityIcons
-                      name={focused ? perfilConfig.icon : perfilConfig.icon_focus}
-                      size={focused ? 28 : 26}
-                      color={color}
-                    />
+                    <MaterialCommunityIcons name={focused ? perfilConfig.icon : perfilConfig.icon_focus} size={focused ? 28 : 26} color={color} />
                   ) : (
                     // 2. Usando 'bookshelf' para representar uma biblioteca cheia e visual
                     // Outra opção boa seria 'library-shelves' ou 'book-open-variant'
@@ -134,35 +122,35 @@ export default function TabLayout() {
               name="notificacoes"
               options={{
                 title: 'Notificações',
-                tabBarIcon: ({ focused }) => <MaterialCommunityIcons
-                    size={focused ? 28 : 26}
-                    name={focused ? "bell" : "bell-outline"}
-                    color={Color.colorWhite}
+                tabBarIcon: ({ color, focused }) => <MaterialCommunityIcons 
+                    size={focused ? 28 : 26} 
+                    name={focused ? "bell" : "bell-outline"} 
+                    color={color} 
                   />,
               }}
             />
 
             <Tabs.Screen
               name="social"
-              listeners={{
-                tabPress: (event) => {
-                  if (!aberturas.social) {
-                    event.preventDefault();
-                    setPortaoBloqueado("social");
-                  }
-                },
-              }}
               options={{
                 title: "Social",
                 href: undefined,
-                tabBarIcon: ({ focused }) => (
+                listeners: {
+                  tabPress: (event) => {
+                    if (!aberturas.social) {
+                      event.preventDefault();
+                      setPortaoBloqueado("social");
+                    }
+                  },
+                },
+                tabBarIcon: ({ color, focused }) => (
                   <View style={{ opacity: aberturas.social ? 1 : 0.5 }}>
                     <MaterialCommunityIcons
                       size={focused ? 28 : 26}
-                      name={focused ? "account-group" : "account-group-outline"}
-                      color={Color.colorWhite}
+                      name={focused ? "account-heart" : "account-heart-outline"}
+                      color={color}
                     />
-                    {!aberturas.social ? <MaterialCommunityIcons name="lock" size={12} color={Color.colorWhite} style={{ position: "absolute", right: -5, bottom: -2 }} /> : null}
+                    {!aberturas.social ? <MaterialCommunityIcons name="lock" size={12} color={color} style={{ position: "absolute", right: -5, bottom: -2 }} /> : null}
                   </View>
                 ),
               }}
@@ -170,27 +158,27 @@ export default function TabLayout() {
 
              <Tabs.Screen 
               name="ranking"
-              listeners={{
-                tabPress: (event) => {
-                  if (!aberturas.rank) {
-                    event.preventDefault();
-                    setPortaoBloqueado("rank");
-                  }
-                },
-              }}
               options={{
                 title: "Ranking",
                 href: undefined,
+                listeners: {
+                  tabPress: (event) => {
+                    if (!aberturas.rank) {
+                      event.preventDefault();
+                      setPortaoBloqueado("rank");
+                    }
+                  },
+                },
                 // Ícone de Pódio (fiel à referência do ranking/liderança)
                 // Outra opção boa seria "trophy-variant" se preferir o troféu detalhado
-                tabBarIcon: ({ focused }) => (
+                tabBarIcon: ({ color, focused }) => (
                   <View style={{ opacity: aberturas.rank ? 1 : 0.5 }}>
                     <MaterialCommunityIcons
                       size={focused ? 28 : 26}
                       name={focused ? "podium" : "podium-bronze"}
-                      color={Color.colorWhite}
+                      color={color}
                     />
-                    {!aberturas.rank ? <MaterialCommunityIcons name="lock" size={12} color={Color.colorWhite} style={{ position: "absolute", right: -5, bottom: -2 }} /> : null}
+                    {!aberturas.rank ? <MaterialCommunityIcons name="lock" size={12} color={color} style={{ position: "absolute", right: -5, bottom: -2 }} /> : null}
                   </View>
                 ),
               }}
@@ -231,7 +219,6 @@ export default function TabLayout() {
               }}
             />
               </Tabs>
-              <BossVictoryModal />
               <FirstAccessTour
                 userId={usuario?.id}
                 profile={activeProfileName}
@@ -248,7 +235,6 @@ export default function TabLayout() {
                 onClose={() => setPortaoBloqueado(null)}
               />
             </ConquistaRankProvider>
-            </ClassSelectionGate>
             <ToastContainer />
           </TrilhaProvider>
         </NotificationsProvider>

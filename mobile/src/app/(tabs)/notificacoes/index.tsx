@@ -1,7 +1,6 @@
 import NotificationItem from "@/components/CardNotificacao";
 import CardSemDados from "@/components/CardSemDados";
-import { HallBackground, OrnamentDivider } from "@/components/HallTheme";
-import { Design } from "@/styles/design";
+import { OrnamentDivider } from "@/components/HallTheme";
 import {
   SectionGuideButton,
   SectionGuideScrollable,
@@ -30,7 +29,6 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
-import { JourneyHeading } from '@/components/JourneyHeading';
 
 type FilterTab = "todas" | "nao_lidas" | "lidas";
 
@@ -229,22 +227,26 @@ export default function PerfilHome() {
 
   return (
     <View style={[styles.screenOuter, { backgroundColor: palette.background }]}>
-      <HallBackground palette={palette} />
       <SafeAreaView style={styles.screen} edges={["top", "left", "right"]}>
         <StatusBar style="light" translucent backgroundColor="transparent" />
 
         <View
           ref={notificationsHeaderGuideRef}
           collapsable={false}
+          style={[styles.header, { borderBottomColor: palette.border }]}
         >
-          <JourneyHeading title="Notificações" eyebrow="CAIXA DE ENTRADA" section="notifications" palette={palette} right={<SectionGuideButton
+          <Text style={[styles.headerTitle, { color: Color.colorWhite }]}>
+            Notificações
+          </Text>
+          <SectionGuideButton
             profile={usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome}
             sectionTitle="Notificações"
             steps={notificationsGuideSteps}
             targetRefs={notificationsGuideTargets}
             scrollRef={listaRef as unknown as React.RefObject<SectionGuideScrollable | null>}
           scrollOffsetRef={scrollOffsetRef}
-          />} />
+          style={styles.guideButton}
+          />
         </View>
 
         <View
@@ -273,6 +275,10 @@ export default function PerfilHome() {
         </View>
 
         {/* Ornamento divisor */}
+        <View style={styles.ornamentRow}>
+          <OrnamentDivider color={Color.colorWhite70} />
+        </View>
+
         <View
           ref={notificationsListGuideRef}
           collapsable={false}
@@ -285,7 +291,7 @@ export default function PerfilHome() {
               scrollOffsetRef.current = e.nativeEvent.contentOffset.y;
             }}
           data={data}
-          keyExtractor={(n, index) => `${n.id}-${index}`}
+          keyExtractor={(n) => String(n.id)}
           style={{ flex: 1, alignSelf: "stretch" }}
           renderItem={renderRow}
           ItemSeparatorComponent={() => (
@@ -365,7 +371,7 @@ function FilterPill({
       <Text
         style={[
           active
-            ? [styles.pillTextActive, { color: palette.background }]
+            ? [styles.pillTextActive, { color: Color.colorWhite }]
             : [styles.pillTextInactive, { color: palette.textMuted }],
         ]}
       >
@@ -385,16 +391,14 @@ const styles = StyleSheet.create({
   },
   header: {
     minHeight: 62,
-    alignItems: "flex-start",
+    alignItems: "center",
     justifyContent: "center",
-    paddingLeft: 20,
-    paddingRight: 68,
     borderBottomWidth: 1,
   },
   headerTitle: {
     fontSize: 22,
     fontFamily: FontFamily.inikaBold,
-    letterSpacing: 0,
+    letterSpacing: 2,
     textShadowColor: "rgba(0,0,0,0.8)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 6,
@@ -419,11 +423,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   pill: {
-    flex: 1,
-    alignItems: "center",
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: Design.radius,
+    borderRadius: 999,
     borderWidth: 1,
   },
   pillTextActive: {
@@ -433,7 +435,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   separator: {
-    height: 1,
+    height: 1.5,
   },
   swipeAction: {
     justifyContent: "center",

@@ -1,9 +1,6 @@
 import * as React from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { designStar } from "@/constants/designAssets";
-import { Design } from "@/styles/design";
-import { FontFamily } from "@/styles/GlobalStyle";
-import { ProfileArtwork } from "@/components/ProfileArtwork";
+import { ImagemFilter } from "./ImageFiltro";
 
 type Props = {
   title: string;
@@ -15,8 +12,8 @@ type Props = {
 const CardSemDados: React.FC<Props> = React.memo(({ title, description = "", accentColor }) => {
   return (
     <View style={styles.wrapper}>
-      <ProfileArtwork source={designStar} color={accentColor ?? Design.primary} width={64} />
       <Text style={styles.emptyTitle}>{title}</Text>
+      <ImagemFilter tintColor={accentColor} />
       <Text style={styles.emptyText}>{description}</Text>
     </View>
   );
@@ -30,21 +27,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     width: "100%",
-    minHeight: 260,
-    paddingHorizontal: 24,
+    minHeight: "100%",
+    paddingHorizontal: 1,
     gap: 14,
   },
   emptyText: {
-    color: Design.muted,
-    fontFamily: FontFamily.interMedium,
-    lineHeight: 21,
+    color: "rgba(255,255,255,0.6)",
     fontSize: 14,
     textAlign: "center",
   },
   emptyTitle: {
-    color: Design.text,
-    fontFamily: FontFamily.inikaBold,
-    fontSize: 22,
+    color: "rgba(255,255,255,0.8)",
+    fontSize: 24,
     fontWeight: "700",
     textAlign: "center",
   },

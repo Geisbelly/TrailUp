@@ -190,9 +190,22 @@ export function isAtividadeConcluida(
 ) {
   const status = String(atividade?.status ?? "").toLowerCase();
   const pct = Number(atividade?.percentual_concluido ?? 0);
+  const tentativaAtividade =
+    atividade?.resposta_aluno != null ||
+    Number(atividade?.ultima_tentativa ?? 0) > 0;
+  const questoes = Array.isArray((atividade as any)?.questoes)
+    ? (atividade as any).questoes
+    : [];
+  const tentativaQuestao = questoes.some(
+    (questao: any) =>
+      questao?.resposta_aluno != null ||
+      Number(questao?.ultima_tentativa ?? 0) > 0
+  );
   return (
     status.includes("concl") ||
     pct >= 100 ||
+    tentativaAtividade ||
+    tentativaQuestao ||
     atividadesResolvidasLocal.has(Number(atividade?.id))
   );
 }
@@ -238,20 +251,23 @@ export function contarProgressoDeBlocos(params: {
 }
 
 /**
- * A porcentagem é a projeção canônica do tópico. A contagem descreve os
- * blocos desta versão carregada; posição de navegação não comprova conclusão.
+ * Progresso mostrado durante a navegacao. Um checkpoint no bloco N confirma
+ * que os N blocos anteriores foram atravessados pelos gates da tela. Isso
+ * evita restaurar no bloco 17 com a barra visual ainda presa em 6/26 quando o
+ * estado local foi recriado depois de fechar o app.
  */
 export function calcularProgressoVisualPercurso(params: {
   total: number;
   concluidosConfirmados: number;
-  percentualCanonico?: number | null;
+  maiorIndiceAlcancado: number;
+  blocoAtualConcluido: boolean;
 }) {
   const total = Math.max(0, Math.round(params.total));
   const confirmados = Math.max(0, Math.round(params.concluidosConfirmados));
-  const concluidos = Math.min(total, confirmados);
-  const pct = params.percentualCanonico != null && Number.isFinite(params.percentualCanonico)
-    ? Math.max(0, Math.min(100, params.percentualCanonico))
-    : total > 0 ? (concluidos / total) * 100 : 0;
+  const anterioresPercorridos = Math.max(0, Math.round(params.maiorIndiceAlcancado));
+  const percorridos = anterioresPercorridos + (params.blocoAtualConcluido ? 1 : 0);
+  const concluidos = Math.min(total, Math.max(confirmados, percorridos));
+  const pct = total > 0 ? (concluidos / total) * 100 : 0;
   return { total, concluidos, pct };
 }
 

@@ -577,17 +577,12 @@ export class TrailupApiProvider implements IPersonalizacaoProvider {
           this.extractProfileKeyFromPersonalizacaoRecord(record) === normalizedProfile
       )
       .slice(0, requestedLimit);
-    // Cards are supplemental. Their failure must not hide available texts,
-    // audio, presentations and questions from conteudo_personalizado.
     const cards = await this.listarCardsPersonalizadosPersistidosPerfil({
       classeId: params.classeId,
       topicoId: params.topicoId,
       conteudoId: params.conteudoId,
       brainhexProfileKey: normalizedProfile,
       limit: 500,
-    }).catch((error) => {
-      console.warn('[personalizacao] Cards indisponíveis; mantendo os demais materiais:', error);
-      return [];
     });
     const merged = this.mergeCardsIntoPersonalizacaoRecords(profileRecords, cards);
 

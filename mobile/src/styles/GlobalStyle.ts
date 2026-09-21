@@ -1,5 +1,4 @@
 import { Platform } from "react-native";
-import { Design } from "./design";
 
 const ornamentalSerif =
   Platform.select({
@@ -11,11 +10,11 @@ const ornamentalSerif =
 
 const readableSerif =
   Platform.select({
-    ios: "System",
-    android: "sans-serif",
-    web: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-    default: "sans-serif",
-  }) ?? "sans-serif";
+    ios: "Palatino",
+    android: "serif",
+    web: "Georgia",
+    default: "serif",
+  }) ?? "serif";
 
 /* Fonts */
 export const FontFamily = {
@@ -31,21 +30,21 @@ export const FontSize = {
 };
 /* Colors */
 export const Color = {
-  colorAliceblue: Design.text,
+  colorAliceblue: "#f2f7fa",
   colorBlueviolet100: "#9747ff",
   colorBlueviolet200: "rgba(76, 64, 246, 0.25)",
   colorDarkslateblue: "#191541",
   colorMidnightblue100: "#211d5f",
   colorMidnightblue200: "rgba(28, 24, 77, 0.91)",
-  background: Design.ink,
-  colorDarkslategray: Design.surface,
+  background: "#111936",
+  colorDarkslategray: "#292c44",
   colorAliceblueCinza: "rgba(242, 247, 250, 0.1)",
   colorAliceblue100: "#f2f7fa",
   colorAliceblue200: "rgba(242, 247, 250, 0.1)",
   colorAliceblue300: "rgba(242, 247, 250, 0.98)",
   colorDarkslategray100: "#455154",
-  colorDarkslategray200: Design.surface,
-  colorGray: Design.ink,
+  colorDarkslategray200: "#292c44",
+  colorGray: "#13112e",
   colorSlategray: "#5d6579",
   colorWhite: "#fff",
   colorWhite70: "#ffffff70",
