@@ -15,6 +15,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Image, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { corrigirQuestaoNoServidor, mensagemDeErroDaCorrecao } from "@/services/questaoCorrecao";
 import { servidorCorrige, vereditoDaRevisao } from "@/utils/correcaoDaQuestao";
+import { formatoDeRelacao } from "@/utils/formatosDeQuestao";
+import { QuestaoDeRelacao } from "@/components/questao/QuestaoDeRelacao";
 
 type Props = {
   atividade: any;
@@ -449,6 +451,15 @@ export default function QuestionActivity({
     () => isDissertativaType(atividade?.tipo) || isDissertativaType(questao?.tipo),
     [atividade?.tipo, questao?.tipo]
   );
+  // Os tres formatos de RELACAO (ligar termos, ordenar, marcar todas) nao
+  // respondem por indice de alternativa: a resposta e uma lista, e viaja como
+  // JSON. `formatoDeRelacao` devolve null para os quatro formatos antigos, que
+  // seguem pelo caminho de sempre.
+  const formatoRelacional = useMemo(
+    () => formatoDeRelacao(questao?.tipo) ?? formatoDeRelacao(atividade?.tipo),
+    [questao?.tipo, atividade?.tipo]
+  );
+  const [respostaRelacional, setRespostaRelacional] = useState<Record<number, string | null>>({});
   const acceptedAnswers = useMemo(
     () => getAcceptedAnswers(questao?.resposta_correta),
     [questao?.resposta_correta]
@@ -769,7 +780,12 @@ export default function QuestionActivity({
   const podeConfirmar =
     !blockedByTimeout &&
     !bloqueioEdicaoPersistida &&
-    (isFillBlankActivity || isDissertativaActivity
+    (formatoRelacional
+      // `QuestaoDeRelacao` so emite JSON quando a resposta esta COMPLETA --
+      // associacao e ordenacao com todos os itens. Confirmar incompleto
+      // gastaria uma tentativa num erro que a tela sabia prever.
+      ? Boolean(respostaRelacional[questaoIndex])
+      : isFillBlankActivity || isDissertativaActivity
       ? respostaTextoAtual.trim().length > 0
       : selecionados[questaoIndex] != null);
   const respostaAnteriorExibida =
@@ -1016,7 +1032,29 @@ export default function QuestionActivity({
         </View>
       )}
 
-      {!isFillBlankActivity && !isDissertativaActivity && alternativas.map((alt, i) => (
+      {formatoRelacional ? (
+        <QuestaoDeRelacao
+          formato={formatoRelacional}
+          alternativas={questao?.alternativas}
+          bloqueado={bloqueioEdicaoPersistida || blockedByTimeout}
+          status={statusAtual}
+          palette={{
+            accent: profilePalette.accent,
+            accentMuted: profilePalette.accentMuted,
+            surface: profilePalette.surface,
+            border: profilePalette.border,
+            text: profilePalette.text,
+            textMuted: profilePalette.textMuted,
+          }}
+          onChange={(json) => {
+            setRespostaRelacional((prev) => ({ ...prev, [questaoIndex]: json }));
+            setStas((prev) => ({ ...prev, [questaoIndex]: null }));
+            setConfirmados((prev) => ({ ...prev, [questaoIndex]: false }));
+          }}
+        />
+      ) : null}
+
+      {!formatoRelacional && !isFillBlankActivity && !isDissertativaActivity && alternativas.map((alt, i) => (
         <TouchableOpacity
           key={i}
           onPress={() => {
@@ -1110,7 +1148,9 @@ export default function QuestionActivity({
           const respostaDigitada = respostaTextoAtual.trim();
           if (!podeConfirmar || validandoIA) return;
 
-          const respostaSelecionada = isFillBlankActivity || isDissertativaActivity
+          const respostaSelecionada = formatoRelacional
+            ? String(respostaRelacional[questaoIndex] ?? '')
+            : isFillBlankActivity || isDissertativaActivity
             ? respostaDigitada
             : String(alternativas[escolhido ?? -1] ?? '');
 
@@ -1145,7 +1185,23 @@ export default function QuestionActivity({
               setValidandoIA(false);
             }
             setFeedbackIA((prev) => ({ ...prev, [questaoIndex]: resultadoIA }));
-          } else if (!servidorCorrige({ questaoId: questao?.id, personalizada: isPersonalizedLocal })) {
+          } else if (
+            !servidorCorrige({ questaoId: questao?.id, personalizada: isPersonalizedLocal })
+          ) {
+            // Formato de RELACAO nao tem correcao local: a resposta e uma lista
+            // em JSON, e `checkResposta` compara texto contra uma opcao. Ele
+            // devolveria `false` para toda resposta -- errado com cara de certo.
+            // Hoje o pipeline nao gera esses formatos no personalizado; se
+            // passar a gerar, o gabarito deles precisa sair do JSONB primeiro.
+            if (formatoRelacional) {
+              setModalInfo({
+                titulo: 'Não deu para corrigir',
+                descricao:
+                  'Esta questão precisa do servidor para ser corrigida. Tente de novo com conexão.',
+              });
+              setValidandoIA(false);
+              return;
+            }
             // Material personalizado corrige na TELA. `servidorCorrige`
             // explica por que: a questao inventada nao existe em `questoes` (id
             // negativo -> `questao_inexistente` -> resposta abortada), e a que
