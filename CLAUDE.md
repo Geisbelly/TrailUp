@@ -1033,6 +1033,69 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 > `_seed_progress` ganhou precondição explícita em vez de estourar no encode:
 > progresso é comportamento, exige dono, e a base por perfil não tem.
 
+> **A alternativa correta morava na primeira posição — e isso é defeito de
+> DADO, nenhuma tela conseguiria corrigir.** Medido nas 21 questões de múltipla
+> escolha da base, antes da `20260921_03`:
+>
+> | posição da correta | 1ª | 2ª | 3ª | 4ª |
+> | --- | --- | --- | --- | --- |
+> | questões | **14** | 7 | **0** | **0** |
+>
+> Nenhuma questão com a resposta na terceira ou quarta posição: dava para
+> gabaritar a trilha inteira sem ler um enunciado. Depois do backfill: 5/8/3/5.
+>
+> **Por que no banco, e não no gerador.** Escrevem `questoes` TRÊS caminhos — o
+> console do professor, a API e o microservice. Corrigir no gerador deixaria os
+> outros dois produzindo o mesmo viés. Ordenar não tem modelo de linguagem no
+> meio, então pela regra de fronteira é do Postgres: um gatilho `BEFORE INSERT
+> OR UPDATE` por onde os três passam.
+>
+> **O segundo defeito, que estava latente.** Há duas formas de `alternativas` no
+> monorepo: a API grava `["texto", ...]` com o gabarito sendo o TEXTO; o console
+> grava `[{id, texto, correta}, ...]` com o gabarito sendo a **LETRA**
+> (`correct.id`, em `QuestionsManager.tsx`). Medido: as 35 linhas com
+> alternativas estão na forma de string — ou seja, **a forma do console nunca
+> foi exercitada**. Ela não está quebrada por sorte: `fn_questao_confere` lê
+> `v_alts ->> v_i`, que sobre um objeto devolve o JSON inteiro, e o mobile
+> renderizaria `[object Object]`. O gatilho normaliza na entrada, o que fecha os
+> dois sem exigir mudança simultânea nos três clientes.
+>
+> Quatro coisas que não são acidentais:
+>
+> 1. **É ORDENAÇÃO, não embaralhamento — e é isso que a torna idempotente.**
+>    Uma permutação aplicada sobre a própria saída embaralha de novo: o console
+>    lê a ordem gravada, edita um texto, grava de volta, e a ordem mudaria a cada
+>    save. A ordem canônica é `ORDER BY md5(id || '|' || texto)`, derivada do
+>    conteúdo. Medido: a segunda passada do backfill alterou **0 linhas**.
+> 2. **O gabarito é resolvido ANTES de reordenar, e a ordem das duas linhas é a
+>    regra inteira.** A letra que o professor escolheu se refere à ordem que
+>    ELE viu; resolver depois faria a letra apontar para a posição nova — outra
+>    alternativa vira gabarito, em silêncio, e a questão continua parecendo
+>    perfeita.
+> 3. **O espelho do gabarito precisou ouvir TODO update.** `UPDATE OF
+>    resposta_correta` dispara pelas colunas que a INSTRUÇÃO lista, não pelo que
+>    um BEFORE trigger alterou. Como o gatilho reescreve `resposta_correta` num
+>    UPDATE que mexeu só em `alternativas`, `questao_gabarito` ficaria com a
+>    letra velha, apontando para a posição antiga.
+> 4. **V/F e âncoras ficam fora.** O par Verdadeiro/Falso tem ordem semântica;
+>    "todas as anteriores" e "nenhuma das alternativas" só fazem sentido no fim
+>    — embaralhá-las quebra a QUESTÃO, não o viés.
+>
+> **O histórico sobreviveu ao reordenamento**, e não por sorte:
+> `questao_aluno.resposta` guarda o TEXTO da opção, e o mobile casa por texto
+> antes de tentar índice ou letra (`norm(alt) === norm(respostaAnterior)`).
+> Medido: todas as respostas gravadas continuam resolvendo para uma posição.
+>
+> **A terceira perna do "sempre dá erro".** Ao reabrir uma atividade concluída,
+> a tela remarcava cada questão chamando `checkResposta` de novo — isto é,
+> re-corrigindo contra um gabarito que hoje chega nulo. Toda questão já
+> respondida aparecia como errada, sem o aluno ter respondido nada. O veredito
+> de questão já respondida é `questao_aluno.correta` (na view,
+> `correta_aluno`), que é o registro autoritativo; recorrigir só poderia
+> divergir dele. Sem veredito gravado e sem gabarito local, `vereditoDaRevisao`
+> devolve `null`: **sem status é melhor que status errado**, porque "errado"
+> aqui é uma afirmação sobre o que o aluno fez.
+
 > Lacuna real ainda aberta: `MentalStateHistoryRepository.listar_por_aluno`
 > (`api/app/repositories/mental_state.py`) só é exercitado em teste — o
 > histórico em `aluno_mental_state_history` é **gravado** a cada ciclo

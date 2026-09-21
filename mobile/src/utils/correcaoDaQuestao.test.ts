@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { servidorCorrige } from "./correcaoDaQuestao";
+import { servidorCorrige, vereditoDaRevisao } from "./correcaoDaQuestao";
 
 test("questao do professor vai para o servidor", () => {
   assert.equal(servidorCorrige({ questaoId: 1061 }), true);
@@ -34,4 +34,54 @@ test("id ausente ou sem sentido nao vira chamada de rede", () => {
       `deveria ser local: ${String(valor)}`
     );
   }
+});
+
+test("revisao usa o veredito GRAVADO, nunca uma nova correcao", () => {
+  let recorrigiu = false;
+  const acertouLocalmente = () => {
+    recorrigiu = true;
+    return false; // o que `checkResposta` devolve com gabarito nulo
+  };
+
+  assert.equal(
+    vereditoDaRevisao({ corretaGravada: true, podeCorrigirLocalmente: true, acertouLocalmente }),
+    "certo"
+  );
+  assert.equal(recorrigiu, false, "nao pode recorrigir quando ha veredito gravado");
+
+  assert.equal(
+    vereditoDaRevisao({ corretaGravada: false, podeCorrigirLocalmente: true, acertouLocalmente }),
+    "errado"
+  );
+});
+
+test("sem veredito gravado e sem gabarito local, nao inventa status", () => {
+  // O caso que marcava TUDO como errado ao reabrir atividade concluida.
+  assert.equal(
+    vereditoDaRevisao({
+      corretaGravada: null,
+      podeCorrigirLocalmente: false,
+      acertouLocalmente: () => false,
+    }),
+    null
+  );
+  assert.equal(
+    vereditoDaRevisao({
+      corretaGravada: undefined,
+      podeCorrigirLocalmente: false,
+      acertouLocalmente: () => false,
+    }),
+    null
+  );
+});
+
+test("personalizada sem veredito gravado ainda corrige localmente", () => {
+  assert.equal(
+    vereditoDaRevisao({
+      corretaGravada: null,
+      podeCorrigirLocalmente: true,
+      acertouLocalmente: () => true,
+    }),
+    "certo"
+  );
 });

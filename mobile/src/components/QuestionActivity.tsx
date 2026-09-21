@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Image, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { corrigirQuestaoNoServidor, mensagemDeErroDaCorrecao } from "@/services/questaoCorrecao";
-import { servidorCorrige } from "@/utils/correcaoDaQuestao";
+import { servidorCorrige, vereditoDaRevisao } from "@/utils/correcaoDaQuestao";
 
 type Props = {
   atividade: any;
@@ -670,8 +670,19 @@ export default function QuestionActivity({
         prev[questaoIndex] === respostaTxt ? prev : { ...prev, [questaoIndex]: respostaTxt }
       );
       if (atividadeConcluidaPersistida) {
-        const acertou = checkResposta(respostaTxt, -1);
-        setStas((prev) => ({ ...prev, [questaoIndex]: acertou ? 'certo' : 'errado' }));
+        // NAO recorrige: usa o veredito que o servidor gravou. Ver
+        // `vereditoDaRevisao`.
+        const veredito = vereditoDaRevisao({
+          corretaGravada: questao?.correta_aluno,
+          podeCorrigirLocalmente: !servidorCorrige({
+            questaoId: questao?.id,
+            personalizada: isPersonalizedLocal,
+          }),
+          acertouLocalmente: () => checkResposta(respostaTxt, -1),
+        });
+        if (veredito) {
+          setStas((prev) => ({ ...prev, [questaoIndex]: veredito }));
+        }
       }
       return;
     }
@@ -693,8 +704,17 @@ export default function QuestionActivity({
     if (idx >= 0) {
       setSelecionados((prev) => ({ ...prev, [questaoIndex]: idx }));
       if (atividadeConcluidaPersistida) {
-        const acertou = checkResposta(alternativas[idx], idx);
-        setStas((prev) => ({ ...prev, [questaoIndex]: acertou ? 'certo' : 'errado' }));
+        const veredito = vereditoDaRevisao({
+          corretaGravada: questao?.correta_aluno,
+          podeCorrigirLocalmente: !servidorCorrige({
+            questaoId: questao?.id,
+            personalizada: isPersonalizedLocal,
+          }),
+          acertouLocalmente: () => checkResposta(alternativas[idx], idx),
+        });
+        if (veredito) {
+          setStas((prev) => ({ ...prev, [questaoIndex]: veredito }));
+        }
       }
     }
   }, [
@@ -705,7 +725,10 @@ export default function QuestionActivity({
     isDissertativaActivity,
     isFillBlankActivity,
     isTrueFalseActivity,
+    isPersonalizedLocal,
     questaoIndex,
+    questao?.id,
+    questao?.correta_aluno,
     atividadeConcluidaPersistida,
   ]);
 
