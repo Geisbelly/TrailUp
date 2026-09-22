@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #0d0b16; font-family: 'Inter', sans-serif; }
+  @keyframes tu8-rise { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+</style>
+</helmet>
+
+<div style="position:relative; min-height:100vh; background:#0d0b16; overflow:hidden;">
+
+  <div style="position:fixed; inset:0; pointer-events:none; z-index:0; opacity:0.5;
+    background: radial-gradient(ellipse 900px 500px at 75% 10%, rgba(155,93,229,0.10), transparent 60%),
+      repeating-linear-gradient(115deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 90px);">
+  </div>
+
+  <header style="position:fixed; top:0; left:0; right:0; height:68px; z-index:30; background:#23192e; border-bottom:1px solid #2b2438; display:flex; align-items:center; justify-content:space-between; padding:0 32px;">
+    <div style="display:flex; align-items:center; gap:14px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f4f2f8" stroke-width="1.4"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8L12 2z"/></svg>
+      <span style="font-family:'Cinzel',serif; font-weight:700; font-size:22px; color:#f4f2f8;">TrailUp</span>
+      <span style="width:1px; height:20px; background:#2b2438; margin:0 6px;"></span>
+      <span style="font-size:14px; color:#a29cb3;">Console do professor</span>
+    </div>
+    <div style="display:flex; align-items:center; gap:14px;">
+      <div style="width:38px; height:38px; border-radius:50%; background:#9b5de5; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:13px;">AD</div>
+      <div style="display:flex; flex-direction:column; line-height:1.3;">
+        <span style="font-size:14px; font-weight:700; color:#f4f2f8;">Admin Ulbra</span>
+        <span style="font-size:12px; color:#a29cb3;">Ulbra</span>
+      </div>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a29cb3" stroke-width="1.6" style="margin-left:6px;"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/></svg>
+    </div>
+  </header>
+
+  <nav style="position:fixed; top:68px; left:0; bottom:0; width:264px; z-index:20; background:#170e24; border-right:1px solid #2b2438; padding:24px 16px; display:flex; flex-direction:column; gap:4px;">
+    <sc-for list="{{ navItems }}" as="item" hint-placeholder-count="7">
+      <a href="{{ item.href }}" style="{{ item.style }} text-decoration:none;">
+        <div style="width:20px; height:20px; color:{{ item.color }}; flex:none;" dangerouslySetInnerHTML="{{ item.iconHtml }}"></div>
+        <span style="font-size:14.5px; color:{{ item.color }}; flex:1;">{{ item.label }}</span>
+        <sc-if value="{{ item.badge }}" hint-placeholder-val="{{ false }}">
+        <div style="min-width:19px; height:19px; padding:0 5px; border-radius:999px; background:#4fd1c5; color:#0d0b16; font-size:10.5px; font-weight:800; display:flex; align-items:center; justify-content:center;">{{ item.badge }}</div>
+        </sc-if>
+      </a>
+    </sc-for>
+  </nav>
+
+  <main style="position:relative; z-index:1; margin-left:264px; padding:108px 40px 60px 40px; max-width:900px;">
+
+    <div style="display:inline-flex; align-items:center; gap:6px; background:#1b1728; border:1px solid #2b2438; border-radius:999px; padding:6px; font-size:11px; margin-bottom:20px;">
+      <span style="color:#a29cb3; padding:0 8px; white-space:nowrap;">Pré-visualização de estado:</span>
+      <sc-for list="{{ estadoOptions }}" as="opt" hint-placeholder-count="2">
+        <div onClick="{{ opt.select }}" style="{{ opt.style }} white-space:nowrap;">{{ opt.label }}</div>
+      </sc-for>
+    </div>
+
+    <div style="margin-bottom:24px;">
+      <div style="display:inline-flex; align-items:center; gap:8px; padding:5px 13px; border-radius:999px; background:#3a2f1a; border:1px solid #6b5330; font-size:10.5px; letter-spacing:0.1em; text-transform:uppercase; font-weight:700; color:#d9ac6e; white-space:nowrap; flex:none;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" style="flex:none;"><path d="M12 3l7 4v6c0 4-3 7-7 8-4-1-7-4-7-8V7z"/></svg>
+        Administração interna
+      </div>
+      <div style="font-family:'Cinzel',serif; font-size:30px; font-weight:700; color:#f4f2f8; line-height:1.1; margin-top:13px;">Aprovações de professores</div>
+      <div style="font-size:14px; color:#a29cb3; margin-top:8px;">Cadastros aguardando liberação de acesso ao console.</div>
+    </div>
+
+    <sc-if value="{{ hasPending }}" hint-placeholder-val="{{ true }}">
+    <div>
+      <div style="display:flex; align-items:center; gap:18px; flex-wrap:wrap; padding:18px 22px; border-radius:20px; background:#1b1728; border:1px solid #6b5330; margin-bottom:20px;">
+        <div style="width:48px; height:48px; flex:none; border-radius:50%; background:rgba(224,179,77,0.18); border:1px solid #6b5330; display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:800; color:#e0b34d;">{{ count }}</div>
+        <div style="min-width:0;">
+          <div style="font-size:16px; font-weight:700; color:#f4f2f8;">{{ headline }}</div>
+          <div style="font-size:12.5px; color:#c9c4d4; margin-top:4px;">A pessoa só consegue entrar no console depois da aprovação. O mais antigo espera desde 28/08.</div>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:16px;">
+        <sc-for list="{{ pending }}" as="p" hint-placeholder-count="3">
+          <div style="padding:22px 24px; border-radius:20px; background:#1b1728; border:1px solid #2b2438;">
+            <div style="display:flex; align-items:flex-start; gap:15px; flex-wrap:wrap;">
+              <div style="width:42px; height:42px; flex:none; border-radius:50%; background:#2b2438; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800; color:#e5e1ec;">{{ p.initials }}</div>
+              <div style="min-width:0; flex:1;">
+                <div style="font-size:16.5px; font-weight:700; color:#f4f2f8;">{{ p.name }}</div>
+                <div style="font-size:12.5px; color:#c9c4d4; margin-top:5px;">{{ p.instMeta }}</div>
+                <div style="font-size:11.5px; color:#a29cb3; margin-top:3px;">{{ p.email }} · cadastro em {{ p.date }}</div>
+              </div>
+              <div style="{{ p.waitStyle }}">aguardando {{ p.waitDays }}</div>
+            </div>
+            <div style="font-size:13.5px; color:#c9c4d4; line-height:1.6; margin-top:15px; padding:13px 15px; border-radius:14px; background:#231d33;">{{ p.quote }}</div>
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:18px; padding-top:16px; border-top:1px solid #2b2438;">
+              <div onClick="{{ p.approve }}" style="display:flex; align-items:center; gap:8px; padding:11px 22px; border-radius:999px; background:#9b5de5; font-size:13.5px; font-weight:700; color:#fff; cursor:pointer; white-space:nowrap;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 13l4 4 10-10"/></svg>
+                Aprovar acesso
+              </div>
+              <sc-if value="{{ p.note }}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:11.5px; color:{{ p.noteColor }}; max-width:260px; line-height:1.45;">{{ p.note }}</div>
+              </sc-if>
+              <div onClick="{{ p.askReject }}" style="margin-left:auto; font-size:12.5px; font-weight:600; color:#a29cb3; cursor:pointer; padding:9px 15px; border-radius:999px; white-space:nowrap;">Recusar cadastro…</div>
+            </div>
+
+            <sc-if value="{{ p.rejecting }}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top:15px; padding:17px 19px; border-radius:16px; background:#3a1e22; border:1px solid #7a3a3a; animation:tu8-rise .2s ease-out;">
+              <div style="font-size:14px; font-weight:700; color:#f4f2f8;">Recusar o cadastro de {{ p.name }}?</div>
+              <div style="font-size:12.5px; color:#e8d8d8; margin-top:7px; line-height:1.55;">O cadastro é apagado — não fica em uma lista de recusados. Ela precisaria se cadastrar de novo do zero para tentar outra vez.</div>
+              <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:14px;">
+                <div onClick="{{ p.cancelReject }}" style="margin-left:auto; padding:9px 17px; border-radius:999px; border:1px solid #7a3a3a; font-size:12.5px; font-weight:600; color:#f0d5d5; cursor:pointer;">Voltar</div>
+                <div onClick="{{ p.confirmReject }}" style="display:flex; align-items:center; gap:8px; padding:9px 17px; border-radius:999px; background:#e2574c; font-size:12.5px; font-weight:700; color:#fff; cursor:pointer;">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg>
+                  Recusar e apagar cadastro
+                </div>
+              </div>
+            </div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; flex-direction:column; align-items:center; text-align:center; gap:16px; padding:88px 40px; border-radius:20px; background:#1b1728; border:1px solid #2b2438;">
+      <div style="width:64px; height:64px; border-radius:50%; background:rgba(52,199,123,0.16); display:flex; align-items:center; justify-content:center;">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#5fd99a" stroke-width="2.2"><path d="M5 13l4 4 10-10"/></svg>
+      </div>
+      <div style="font-family:'Cinzel',serif; font-size:22px; font-weight:700; color:#f4f2f8;">Nenhum professor aguardando aprovação</div>
+      <div style="font-size:14px; color:#a29cb3; max-width:440px; line-height:1.6;">Novos cadastros aparecem aqui automaticamente. Você recebe um e-mail quando alguém entra na fila.</div>
+      <div style="font-size:12.5px; color:#7a7488; margin-top:4px;">Última aprovação: Marcos Aguiar, em 27/08/2026.</div>
+    </div>
+    </sc-if>
+
+  </main>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const PENDING = [
+  { initials:'CM', name:'Cláudia Mendes', instMeta:'ULBRA Palmas · Matemática Aplicada', email:'claudia.mendes@rede.ulbra.br', date:'28/08/2026',
+    waitDays:'8 dias', urgent:true, quote:'"Dou Cálculo I e Álgebra Linear para Engenharia. Quero testar a trilha personalizada com duas turmas no próximo semestre."',
+    note:'Aprovar envia um e-mail e libera o console na hora.', noteType:'info' },
+  { initials:'TR', name:'Tiago Rebouças', instMeta:'Instituto Federal do Tocantins · Química', email:'tiago.reboucas@ifto.edu.br', date:'02/09/2026',
+    waitDays:'3 dias', urgent:false, quote:'"Trabalho com Química Orgânica no ensino técnico. Interesse principal é o material em áudio para os alunos que fazem estágio à tarde."',
+    note:'E-mail de instituição diferente da sua.', noteType:'warn' },
+  { initials:'RS', name:'Renata Sobral', instMeta:'ULBRA Palmas · História', email:'renata.sobral@rede.ulbra.br', date:'04/09/2026',
+    waitDays:'1 dia', urgent:false, quote:'"Sem descrição preenchida."', note:null, noteType:null }
+];
+
+const NAV_HREFS = {
+  visao: 'Console%20Visao%20Geral%20(Fase%202).dc.html',
+  trilhas: 'Console%20Trilhas%20(Fase%202).dc.html',
+  turmas: 'Console%20Turmas%20(Fase%202).dc.html',
+  personalizacoes: 'Console%20Personalizacoes%20(Fase%202).dc.html',
+  rankings: 'Console%20Rankings%20(Fase%202).dc.html',
+  meusdados: 'Console%20Meus%20Dados%20(Fase%202).dc.html',
+  aprovacoes: 'Console%20Aprovacoes%20(Fase%202).dc.html'
+};
+
+class Component extends DCLogic {
+  state = { view: 'pendentes', rejectingId: null };
+
+  navIcon(name) {
+    const icons = {
+      visao: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
+      trilhas: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8 7.5C10 10 14 14 16 16.5"/></svg>',
+      turmas: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/></svg>',
+      personalizacoes: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/><path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2z"/></svg>',
+      rankings: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 6H4a2 2 0 0 0 2 4"/><path d="M17 6h3a2 2 0 0 1-2 4"/></svg>',
+      meusdados: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+      aprovacoes: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2l8 3v6c0 5-3.5 8.5-8 11-4.5-2.5-8-6-8-11V5l8-3z"/><path d="M9 12l2 2 4-4"/></svg>'
+    };
+    return { __html: icons[name] };
+  }
+
+  renderVals() {
+    const view = this.state.view;
+    const isEmpty = view === 'vazio';
+    const count = isEmpty ? 0 : PENDING.length;
+
+    const navItems = [
+      { key:'visao', label:'Visão geral', active:false },
+      { key:'trilhas', label:'Trilhas', active:false },
+      { key:'turmas', label:'Turmas', active:false },
+      { key:'personalizacoes', label:'Personalizações', active:false },
+      { key:'rankings', label:'Rankings', active:false },
+      { key:'meusdados', label:'Meus dados', active:false },
+      { key:'aprovacoes', label:'Aprovações', active:true, badge: count }
+    ].map(n => ({
+      label: n.label, iconHtml: this.navIcon(n.key), color: n.active ? '#4fd1c5' : '#a29cb3', badge: n.badge || 0, href: NAV_HREFS[n.key],
+      style: `display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;white-space:nowrap;${n.active ? 'background:rgba(79,209,197,0.08);font-weight:600;' : ''}`
+    }));
+
+    const estadoOptions = [
+      { k:'pendentes', l:'Pendentes' }, { k:'vazio', l:'Nenhum pendente' }
+    ].map(o => ({
+      label: o.l, select: () => this.setState({ view: o.k, rejectingId: null }),
+      style: `padding:6px 12px;border-radius:999px;font-size:11px;cursor:pointer;font-weight:600;${view===o.k ? 'background:#9b5de5;color:#fff;' : 'color:#a29cb3;'}`
+    }));
+
+    const pending = PENDING.map((p,i) => ({
+      initials: p.initials, name: p.name, instMeta: p.instMeta, email: p.email, date: p.date,
+      waitDays: p.waitDays,
+      waitStyle: `padding:5px 12px;border-radius:999px;font-size:10.5px;font-weight:700;white-space:nowrap;${p.urgent ? 'background:rgba(224,179,77,0.18);color:#e0b34d;' : 'background:#2b2438;color:#c9c4d4;'}`,
+      quote: p.quote,
+      note: p.note, noteColor: p.noteType === 'warn' ? '#e0b34d' : '#a29cb3',
+      rejecting: this.state.rejectingId === i,
+      approve: () => {},
+      askReject: () => this.setState({ rejectingId: i }),
+      cancelReject: () => this.setState({ rejectingId: null }),
+      confirmReject: () => this.setState({ rejectingId: null })
+    }));
+
+    return {
+      navItems, estadoOptions,
+      hasPending: !isEmpty, isEmpty,
+      count, headline: count + ' cadastros pendentes',
+      pending
+    };
+  }
+}
+
+</script>
+</body>
+</html>
