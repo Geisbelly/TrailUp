@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #0d0b16; font-family: 'Inter', sans-serif; }
+  @keyframes tu2-shimmer { 0% { background-position: -600px 0; } 100% { background-position: 600px 0; } }
+  @keyframes tu2-pulse { 0%,100% { opacity: .55; } 50% { opacity: 1; } }
+</style>
+</helmet>
+
+<div style="position:relative; min-height:100vh; background:#0d0b16; overflow:hidden;">
+
+  <div style="position:fixed; inset:0; pointer-events:none; z-index:0; opacity:0.5;
+    background:
+      radial-gradient(ellipse 900px 500px at 75% 10%, rgba(155,93,229,0.10), transparent 60%),
+      repeating-linear-gradient(115deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 90px);">
+  </div>
+
+  <header style="position:fixed; top:0; left:0; right:0; height:68px; z-index:30;
+    background:#23192e; border-bottom:1px solid #2b2438;
+    display:flex; align-items:center; justify-content:space-between; padding:0 32px;">
+    <div style="display:flex; align-items:center; gap:14px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f4f2f8" stroke-width="1.4"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8L12 2z"/></svg>
+      <span style="font-family:'Cinzel',serif; font-weight:700; font-size:22px; color:#f4f2f8;">TrailUp</span>
+      <span style="width:1px; height:20px; background:#2b2438; margin:0 6px;"></span>
+      <span style="font-size:14px; color:#a29cb3;">Console do professor</span>
+    </div>
+    <div style="display:flex; align-items:center; gap:14px;">
+      <div style="width:38px; height:38px; border-radius:50%; background:#9b5de5; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:13px;">GA</div>
+      <div style="display:flex; flex-direction:column; line-height:1.3;">
+        <span style="font-size:14px; font-weight:700; color:#f4f2f8;">Geisbelly Admin Prof</span>
+        <span style="font-size:12px; color:#a29cb3;">Ulbra</span>
+      </div>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a29cb3" stroke-width="1.6" style="margin-left:6px;"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/></svg>
+    </div>
+  </header>
+
+  <nav style="position:fixed; top:68px; left:0; bottom:0; width:264px; z-index:20;
+    background:#170e24; border-right:1px solid #2b2438; padding:24px 16px; display:flex; flex-direction:column; gap:4px;">
+    <sc-for list="{{ navItems }}" as="item" hint-placeholder-count="7">
+      <a href="{{ item.href }}" style="{{ item.style }} text-decoration:none;">
+        <div style="width:20px; height:20px; color:{{ item.color }}; flex:none;" dangerouslySetInnerHTML="{{ item.iconHtml }}"></div>
+        <span style="font-size:14.5px; color:{{ item.color }};">{{ item.label }}</span>
+      </a>
+    </sc-for>
+  </nav>
+
+  <main style="position:relative; z-index:1; margin-left:264px; padding:108px 40px 60px 40px;">
+
+    <!-- dev-only preview switcher -->
+    <div style="display:inline-flex; align-items:center; gap:6px; background:#1b1728; border:1px solid #2b2438; border-radius:999px; padding:6px; font-size:11px; margin-bottom:20px;">
+      <span style="color:#a29cb3; padding:0 8px; white-space:nowrap;">Pré-visualização de estado:</span>
+      <sc-for list="{{ estadoOptions }}" as="opt" hint-placeholder-count="4">
+        <div onClick="{{ opt.select }}" style="{{ opt.style }}">{{ opt.label }}</div>
+      </sc-for>
+    </div>
+
+    <sc-if value="{{ isClassView }}" hint-placeholder-val="{{ true }}">
+    <div>
+    <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:28px; flex-wrap:wrap; gap:20px;">
+      <div>
+        <div style="font-size:12px; letter-spacing:0.1em; text-transform:uppercase; color:#9b5de5; font-weight:600; margin-bottom:10px;">Turma selecionada</div>
+        <div style="display:flex; align-items:center; gap:14px; padding:10px 20px 10px 14px; border-radius:16px; background:#1b1728; border:1px solid #2b2438; cursor:pointer; width:fit-content;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9b5de5" stroke-width="1.6"><rect x="3" y="4" width="7" height="7" rx="1.5"/><rect x="14" y="4" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+          <div>
+            <div style="font-family:'Cinzel',serif; font-weight:700; font-size:24px; color:#f4f2f8; line-height:1.1;">Todas as turmas</div>
+            <div style="font-size:13px; color:#a29cb3; margin-top:2px;">3 turmas · 74 alunos</div>
+          </div>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#a29cb3" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div style="display:flex; gap:4px; padding:4px; border-radius:999px; background:#1b1728; border:1px solid #2b2438;">
+          <sc-for list="{{ timeRanges }}" as="tr" hint-placeholder-count="3">
+            <div style="{{ tr.style }}">{{ tr.label }}</div>
+          </sc-for>
+        </div>
+        <span style="font-size:12px; color:#a29cb3;">Atualizado há 4 min</span>
+      </div>
+    </div>
+
+    <!-- estado: carregando -->
+    <sc-if value="{{ isLoading }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; flex-direction:column; gap:20px;">
+        <div style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:20px;">
+          <sc-for list="{{ skeletons3 }}" as="s" hint-placeholder-count="3">
+            <div style="height:150px; border-radius:20px; border:1px solid #2b2438; background:linear-gradient(90deg,#1b1728 0%,#231d33 50%,#1b1728 100%); background-size:600px 100%; animation:tu2-shimmer 1.4s linear infinite;"></div>
+          </sc-for>
+        </div>
+        <div style="display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:20px;">
+          <div style="height:300px; border-radius:20px; border:1px solid #2b2438; background:linear-gradient(90deg,#1b1728 0%,#231d33 50%,#1b1728 100%); background-size:600px 100%; animation:tu2-shimmer 1.4s linear infinite .2s;"></div>
+          <div style="height:300px; border-radius:20px; border:1px solid #2b2438; background:linear-gradient(90deg,#1b1728 0%,#231d33 50%,#1b1728 100%); background-size:600px 100%; animation:tu2-shimmer 1.4s linear infinite .35s;"></div>
+        </div>
+        <div style="display:flex; align-items:center; justify-content:center; gap:12px; padding:18px; border-radius:16px; border:1px dashed #2b2438; color:#a29cb3; font-size:14px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9b5de5" stroke-width="2" style="animation:tu2-pulse 1.3s ease-in-out infinite;"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8L12 2z"/></svg>
+          Consultando o desempenho da turma…
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- estado: vazio -->
+    <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; flex-direction:column; align-items:center; text-align:center; gap:16px; padding:80px 40px; border-radius:20px; background:#1b1728; border:1px solid #2b2438;">
+        <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#a29cb3" stroke-width="1.4"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="17" y1="11" x2="23" y2="11"/></svg>
+        <div style="font-family:'Cinzel',serif; font-size:24px; font-weight:700; color:#f4f2f8;">Nenhum aluno nesta turma ainda</div>
+        <div style="font-size:15px; color:#a29cb3; max-width:480px; line-height:1.6;">Os indicadores aparecem assim que os alunos aceitarem a matrícula e começarem a percorrer a trilha. Convide sua turma para começar.</div>
+        <div style="display:flex; gap:12px; margin-top:6px;">
+          <div style="padding:12px 22px; border-radius:999px; background:#9b5de5; font-size:14px; font-weight:700; color:#fff; cursor:pointer;">Convidar alunos</div>
+          <div style="padding:12px 22px; border-radius:999px; border:1px solid #2b2438; font-size:14px; font-weight:600; color:#f4f2f8; cursor:pointer;">Montar a trilha</div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- estado: erro -->
+    <sc-if value="{{ isError }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; align-items:flex-start; gap:20px; padding:30px; border-radius:20px; background:#3a1e22; border:1px solid #7a3a3a;">
+        <div style="width:40px; height:40px; flex:none; border-radius:50%; background:rgba(224,87,76,0.18); border:1px solid #e2574c; display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:800; color:#f0847c;">!</div>
+        <div>
+          <div style="font-family:'Cinzel',serif; font-size:20px; font-weight:700; color:#f4f2f8; margin-bottom:8px;">Não foi possível carregar os indicadores</div>
+          <div style="font-size:14px; color:#e8d8d8; line-height:1.6; max-width:600px;">O serviço de métricas não respondeu. Os dados da turma estão salvos — nada foi perdido. Tente de novo em alguns segundos.</div>
+          <div style="display:flex; gap:12px; margin-top:16px;">
+            <div onClick="{{ retry }}" style="padding:10px 20px; border-radius:999px; background:#f4f2f8; color:#2b1620; font-size:14px; font-weight:700; cursor:pointer;">Tentar novamente</div>
+            <div style="padding:10px 20px; border-radius:999px; border:1px solid #7a3a3a; color:#f0d5d5; font-size:14px; font-weight:600; cursor:pointer;">Ver status do serviço</div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- estado: com dados -->
+    <sc-if value="{{ isData }}" hint-placeholder-val="{{ true }}">
+    <div>
+      <div style="display:flex; gap:6px; margin-bottom:20px; padding:5px; border-radius:999px; background:#1b1728; border:1px solid #2b2438; width:fit-content;">
+        <sc-for list="{{ dashTabs }}" as="t" hint-placeholder-count="3">
+          <div onClick="{{ t.select }}" style="{{ t.style }} white-space:nowrap;">{{ t.label }}</div>
+        </sc-for>
+      </div>
+
+      <!-- aba Visão geral -->
+      <sc-if value="{{ isTab0 }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex; flex-direction:column; gap:20px;">
+
+        <div style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:20px;">
+          <sc-for list="{{ kpiRow1 }}" as="k" hint-placeholder-count="3">
+            <div style="padding:24px 26px; border-radius:20px; background:#1b1728; border:1px solid #2b2438;">
+              <div style="display:flex; align-items:flex-start; justify-content:space-between;">
+                <div style="font-size:12px; letter-spacing:0.1em; text-transform:uppercase; color:#a29cb3; font-weight:600;">{{ k.label }}</div>
+                <div style="width:18px; height:18px; color:#9b5de5;" dangerouslySetInnerHTML="{{ k.iconHtml }}"></div>
+              </div>
+              <div style="display:flex; align-items:flex-end; gap:10px; margin-top:14px;">
+                <div style="font-size:44px; font-weight:800; color:#f4f2f8; line-height:1;">{{ k.value }}</div>
+                <div style="font-size:13px; color:#a29cb3; padding-bottom:6px;">{{ k.unit }}</div>
+              </div>
+              <sc-if value="{{ k.progress }}" hint-placeholder-val="{{ false }}">
+                <div style="position:relative; height:7px; border-radius:999px; background:#2b2438; margin-top:18px;">
+                  <div style="width:{{ k.progress }}%; height:100%; border-radius:999px; background:#9b5de5;"></div>
+                  <div style="position:absolute; left:{{ k.target }}%; top:-3px; width:2px; height:13px; background:#f4f2f8;"></div>
+                </div>
+              </sc-if>
+              <div style="display:flex; align-items:center; gap:9px; margin-top:16px;">
+                <div style="display:flex; align-items:center; gap:5px; padding:4px 10px; border-radius:999px; background:rgba(52,199,123,0.14); border:1px solid rgba(52,199,123,0.4); font-size:12px; font-weight:700; color:#5fd99a;">{{ k.badge }}</div>
+                <div style="font-size:12px; color:#a29cb3;">{{ k.badgeNote }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="border-radius:20px; background:#1b1728; border:1px solid #9c6b4f; overflow:hidden;">
+          <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap; padding:22px 26px 18px;">
+            <div style="width:38px; height:38px; flex:none; border-radius:50%; background:rgba(156,107,79,0.22); border:1px solid #9c6b4f; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:800; color:#d9a67f;">5</div>
+            <div>
+              <div style="font-family:'Cinzel',serif; font-size:19px; font-weight:700; color:#f4f2f8;">Precisam de atenção</div>
+              <div style="font-size:13px; color:#a29cb3; margin-top:3px;">5 de 34 alunos fora da curva da turma. A média esconde estes casos.</div>
+            </div>
+            <div style="margin-left:auto; padding:9px 14px; border-radius:999px; background:#231d33; border:1px solid #2b2438; font-size:12px; color:#a29cb3; max-width:340px;">Critério: abandono acima de 30%, nota abaixo de 5,0, progresso 20 pontos abaixo do previsto ou 7 dias sem atividade</div>
+          </div>
+          <sc-for list="{{ atRisk }}" as="r" hint-placeholder-count="5">
+            <div onClick="{{ r.open }}" style="display:flex; align-items:center; gap:16px; flex-wrap:wrap; padding:14px 26px; border-top:1px solid #2b2438; cursor:pointer;">
+              <div style="width:34px; height:34px; flex:none; border-radius:50%; background:{{ r.color }}; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; color:#1b1120;">{{ r.initials }}</div>
+              <div style="min-width:150px;">
+                <div style="font-size:14.5px; font-weight:600; color:#f4f2f8;">{{ r.name }}</div>
+                <div style="font-size:12px; color:#a29cb3; margin-top:2px;">{{ r.profile }}</div>
+              </div>
+              <div style="display:flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; background:{{ r.chipBg }}; font-size:12px; font-weight:700; color:{{ r.chipText }};">
+                <div style="width:6px; height:6px; border-radius:50%; background:{{ r.chipText }};"></div>{{ r.severity }}
+              </div>
+              <div style="min-width:220px; flex:1;">
+                <div style="font-size:13px; font-weight:600; color:#f4f2f8;">{{ r.reason }}</div>
+                <div style="font-size:12px; color:#a29cb3; margin-top:3px;">{{ r.compare }}</div>
+              </div>
+              <div style="font-size:12px; font-weight:700; color:#c1a7ec; white-space:nowrap;">Abrir jornada</div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px;">
+          <sc-for list="{{ metrics2 }}" as="m" hint-placeholder-count="4">
+            <div style="padding:18px 20px; border-radius:16px; background:#1b1728; border:1px solid #2b2438;">
+              <div style="display:flex; align-items:center; justify-content:space-between;">
+                <div style="font-size:11.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">{{ m.label }}</div>
+                <div style="width:15px; height:15px; color:{{ m.toneColor }};" dangerouslySetInnerHTML="{{ m.iconHtml }}"></div>
+              </div>
+              <div style="font-size:26px; font-weight:700; color:#f4f2f8; margin-top:8px;">{{ m.value }}<span style="font-size:13px; font-weight:600; color:#a29cb3; margin-left:4px;">{{ m.unit }}</span></div>
+              <sc-if value="{{ m.pct }}" hint-placeholder-val="{{ false }}">
+                <div style="height:5px; border-radius:999px; background:#2b2438; margin-top:12px; overflow:hidden;"><div style="width:{{ m.pct }}%; height:100%; background:{{ m.toneColor }};"></div></div>
+              </sc-if>
+              <div style="font-size:12px; color:{{ m.toneColor }}; margin-top:10px; font-weight:600;">{{ m.note }}</div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:20px; align-items:start;">
+          <div style="padding:24px 26px 20px; border-radius:20px; background:#1b1728; border:1px solid #2b2438;">
+            <div style="display:flex; align-items:flex-start; gap:16px;">
+              <div>
+                <div style="font-family:'Cinzel',serif; font-size:18px; font-weight:700; color:#f4f2f8;">Abandono por perfil</div>
+                <div style="font-size:12.5px; color:#a29cb3; margin-top:4px;">Percentual de atividades abandonadas, por perfil BrainHex dominante</div>
+              </div>
+              <div style="margin-left:auto; display:flex; align-items:center; gap:8px; padding:8px 14px; border-radius:999px; background:#0d0b16; border:1px solid #2b2438; font-size:13px; color:#f4f2f8; white-space:nowrap;">
+                Majoritário<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a29cb3" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+              </div>
+            </div>
+            <div style="margin-top:22px; position:relative; padding-bottom:6px; overflow-x:auto;">
+              <div style="min-width:520px; position:relative;">
+                <div style="position:absolute; left:0; right:0; bottom:70px; border-top:1px dashed rgba(162,156,179,0.4);"></div>
+                <div style="position:absolute; right:0; bottom:74px; font-size:10.5px; color:#a29cb3; background:#1b1728; padding:0 6px;">média 18,5%</div>
+                <div style="display:grid; grid-template-columns:repeat(7,minmax(64px,1fr)); gap:10px; align-items:end; height:190px;">
+                  <sc-for list="{{ brainhexBars }}" as="b" hint-placeholder-count="7">
+                    <div style="display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%;">
+                      <div style="font-size:12.5px; font-weight:700; color:#f4f2f8; margin-bottom:6px;">{{ b.val }}%</div>
+                      <div style="width:100%; max-width:44px; height:{{ b.height }}px; border-radius:8px 8px 3px 3px; background:{{ b.color }};"></div>
+                      <div style="width:10px; height:10px; border-radius:50%; margin-top:10px; background:{{ b.color }};"></div>
+                      <div style="font-size:11px; color:#a29cb3; margin-top:6px; text-align:center;">{{ b.label }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="padding:24px 26px; border-radius:20px; background:#1b1728; border:1px solid #2b2438;">
+            <div style="font-family:'Cinzel',serif; font-size:18px; font-weight:700; color:#f4f2f8;">Distribuição de notas</div>
+            <div style="font-size:12.5px; color:#a29cb3; margin-top:4px;">34 alunos por faixa de nota</div>
+            <div style="display:flex; align-items:center; gap:22px; margin-top:22px; flex-wrap:wrap;">
+              <div style="position:relative; width:150px; height:150px; flex:none; border-radius:50%; background:{{ donutGradient }};">
+                <div style="position:absolute; inset:22px; border-radius:50%; background:#1b1728; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                  <div style="font-size:26px; font-weight:800; color:#f4f2f8; line-height:1;">7.4</div>
+                  <div style="font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; margin-top:3px;">média</div>
+                </div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:12px; min-width:0;">
+                <sc-for list="{{ donutSegments }}" as="d" hint-placeholder-count="4">
+                  <div style="display:flex; align-items:center; gap:9px;">
+                    <div style="width:10px; height:10px; border-radius:50%; background:{{ d.color }}; flex:none;"></div>
+                    <div style="font-size:12.5px; color:#a29cb3;">{{ d.label }}</div>
+                    <div style="margin-left:auto; font-size:13.5px; font-weight:700; color:#f4f2f8;">{{ d.count }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="margin-top:20px; padding:13px 16px; border-radius:12px; background:#231d33; font-size:12.5px; color:#a29cb3; line-height:1.5;">4 alunos na faixa baixa concentram 62% do abandono da turma.</div>
+          </div>
+        </div>
+
+        <div style="border-radius:20px; background:#1b1728; border:1px solid #2b2438; overflow-x:auto;">
+          <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap; padding:22px 26px 18px; min-width:900px;">
+            <div>
+              <div style="font-family:'Cinzel',serif; font-size:18px; font-weight:700; color:#f4f2f8;">Alunos da turma</div>
+              <div style="font-size:12.5px; color:#a29cb3; margin-top:4px;">Clique em um aluno para abrir o detalhe e a trilha dele</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; margin-left:auto;">
+              <div style="display:flex; align-items:center; gap:9px; padding:9px 15px; border-radius:999px; background:#0d0b16; border:1px solid #2b2438; min-width:240px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a29cb3" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                <span style="font-size:13px; color:#a29cb3;">Buscar por nome ou e-mail…</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px; padding:9px 15px; border-radius:999px; background:#0d0b16; border:1px solid #2b2438; font-size:13px; color:#f4f2f8; white-space:nowrap;">
+                Todos os perfis<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a29cb3" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+              </div>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:2.3fr 1.5fr .8fr 1.5fr .8fr .9fr 24px; min-width:900px; gap:14px; padding:12px 26px; background:#231d33; font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">
+            <div>Aluno</div><div>Perfil dominante</div><div>Nota</div><div>Progresso na trilha</div><div>Acertos</div><div>Abandono</div><div></div>
+          </div>
+          <sc-for list="{{ students }}" as="s" hint-placeholder-count="8">
+            <div onClick="{{ s.open }}" style="display:grid; grid-template-columns:2.3fr 1.5fr .8fr 1.5fr .8fr .9fr 24px; min-width:900px; gap:14px; align-items:center; padding:15px 26px; border-top:1px solid #2b2438; cursor:pointer;">
+              <div style="display:flex; align-items:center; gap:13px; min-width:0;">
+                <div style="width:32px; height:32px; flex:none; border-radius:50%; background:{{ s.color }}; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; color:#1b1120;">{{ s.initials }}</div>
+                <div style="min-width:0;">
+                  <div style="font-size:14.5px; font-weight:600; color:#f4f2f8;">{{ s.name }}</div>
+                  <div style="font-size:12px; color:#a29cb3; margin-top:2px;">{{ s.email }}</div>
+                </div>
+              </div>
+              <div>
+                <div style="display:inline-flex; align-items:center; gap:7px; padding:5px 12px 5px 8px; border-radius:999px; background:{{ s.chipBg }};">
+                  <div style="width:9px; height:9px; border-radius:50%; background:{{ s.color }};"></div>
+                  <div style="font-size:12px; font-weight:600; color:{{ s.chipText }};">{{ s.profile }}</div>
+                </div>
+              </div>
+              <div style="font-size:14.5px; font-weight:700; color:#f4f2f8;">{{ s.nota }}</div>
+              <div style="display:flex; align-items:center; gap:9px;">
+                <div style="flex:1; height:6px; border-radius:999px; background:#2b2438; overflow:hidden;"><div style="width:{{ s.prog }}%; height:100%; background:#9b5de5;"></div></div>
+                <div style="font-size:12px; color:#a29cb3; width:32px; text-align:right;">{{ s.prog }}%</div>
+              </div>
+              <div style="font-size:13.5px; color:#c9c4d4;">{{ s.acertos }}%</div>
+              <div>
+                <div style="font-size:13.5px; font-weight:600; color:{{ s.abColor }};">{{ s.abandono }}%</div>
+                <div style="font-size:10.5px; color:#a29cb3; margin-top:2px;">{{ s.abLabel }}</div>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a29cb3" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+            </div>
+          </sc-for>
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:15px 26px; border-top:1px solid #2b2438; font-size:13px; color:#a29cb3; min-width:900px;">
+            <div>Mostrando 8 de 34 alunos</div>
+            <div style="display:flex; gap:8px;">
+              <div style="padding:7px 14px; border-radius:999px; border:1px solid #2b2438; cursor:pointer;">Anterior</div>
+              <div style="padding:7px 14px; border-radius:999px; border:1px solid #2b2438; cursor:pointer;">Próxima</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isTab1 }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; flex-direction:column; gap:20px;">
+        <div style="display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px;">
+          <sc-for list="{{ evoKpis }}" as="e" hint-placeholder-count="4">
+            <div style="padding:18px 20px; border-radius:16px; background:#1b1728; border:1px solid #2b2438;">
+              <div style="font-size:11.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">{{ e.label }}</div>
+              <div style="display:flex; align-items:baseline; gap:8px; margin-top:8px;">
+                <div style="font-size:26px; font-weight:700; color:#f4f2f8;">{{ e.value }}</div>
+                <div style="font-size:12.5px; font-weight:700; color:{{ e.deltaColor }};">{{ e.delta }}</div>
+              </div>
+              <div style="font-size:12px; color:#a29cb3; margin-top:9px;">{{ e.note }}</div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="padding:24px 26px; border-radius:20px; background:#1b1728; border:1px solid #2b2438;">
+          <div style="display:flex; align-items:flex-start; gap:16px; flex-wrap:wrap;">
+            <div>
+              <div style="font-family:'Cinzel',serif; font-size:18px; font-weight:700; color:#f4f2f8;">Evolução da turma</div>
+              <div style="font-size:12.5px; color:#a29cb3; margin-top:4px;">Semana a semana · 10 semanas de Física I</div>
+            </div>
+            <div style="margin-left:auto; display:flex; align-items:center; gap:16px; flex-wrap:wrap; font-size:12px; color:#a29cb3;">
+              <div style="display:flex; align-items:center; gap:7px;"><div style="width:16px; height:3px; border-radius:2px; background:#9b5de5;"></div>Conclusão da trilha (%)</div>
+              <div style="display:flex; align-items:center; gap:7px;"><div style="width:16px; height:3px; border-radius:2px; background:#c1a7ec;"></div>Nota média (0–10)</div>
+              <div style="display:flex; align-items:center; gap:7px;"><div style="width:12px; height:8px; border-radius:2px; background:#3a3350;"></div>Atividades entregues</div>
+            </div>
+          </div>
+          <svg viewBox="0 0 660 260" style="width:100%; height:280px; margin-top:18px; overflow:visible;">
+            <line x1="0" y1="20" x2="660" y2="20" stroke="#2b2438" stroke-width="1"/>
+            <line x1="0" y1="70" x2="660" y2="70" stroke="#2b2438" stroke-width="1"/>
+            <line x1="0" y1="120" x2="660" y2="120" stroke="#2b2438" stroke-width="1"/>
+            <line x1="0" y1="170" x2="660" y2="170" stroke="#2b2438" stroke-width="1"/>
+            <line x1="0" y1="220" x2="660" y2="220" stroke="#3a3350" stroke-width="1"/>
+            <rect x="14" y="196" width="30" height="24" rx="3" fill="#3a3350"/>
+            <rect x="82" y="188" width="30" height="32" rx="3" fill="#3a3350"/>
+            <rect x="150" y="180" width="30" height="40" rx="3" fill="#3a3350"/>
+            <rect x="218" y="172" width="30" height="48" rx="3" fill="#3a3350"/>
+            <rect x="286" y="184" width="30" height="36" rx="3" fill="#3a3350"/>
+            <rect x="354" y="164" width="30" height="56" rx="3" fill="#3a3350"/>
+            <rect x="422" y="200" width="30" height="20" rx="3" fill="#7a3a3a"/>
+            <rect x="490" y="176" width="30" height="44" rx="3" fill="#3a3350"/>
+            <rect x="558" y="168" width="30" height="52" rx="3" fill="#3a3350"/>
+            <rect x="620" y="160" width="30" height="60" rx="3" fill="#3a3350"/>
+            <polyline points="29,186 97,174 165,158 233,150 301,138 369,120 437,116 505,96 573,80 635,68" fill="none" stroke="#9b5de5" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+            <polyline points="29,150 97,146 165,140 233,132 301,136 369,120 437,126 505,110 573,102 635,92" fill="none" stroke="#c1a7ec" stroke-width="2.5" stroke-dasharray="6 5" stroke-linejoin="round"/>
+            <circle cx="437" cy="116" r="5" fill="#e0b34d" stroke="#1b1728" stroke-width="3"/>
+            <circle cx="635" cy="68" r="6" fill="#9b5de5" stroke="#1b1728" stroke-width="3"/>
+            <text x="404" y="104" fill="#e0b34d" font-size="11" font-family="Inter, sans-serif" font-weight="700">semana da prova</text>
+            <text x="14" y="248" fill="#a29cb3" font-size="11" font-family="Inter, sans-serif">sem 1</text>
+            <text x="300" y="248" fill="#a29cb3" font-size="11" font-family="Inter, sans-serif">sem 5</text>
+            <text x="608" y="248" fill="#a29cb3" font-size="11" font-family="Inter, sans-serif">sem 10</text>
+          </svg>
+        </div>
+
+        <div style="padding:24px 26px; border-radius:20px; background:#1b1728; border:1px solid #2b2438;">
+          <div style="font-family:'Cinzel',serif; font-size:18px; font-weight:700; color:#f4f2f8;">Mudanças relevantes</div>
+          <div style="font-size:12.5px; color:#a29cb3; margin-top:4px;">Eventos que explicam as curvas acima</div>
+          <div style="display:flex; flex-direction:column; gap:10px; margin-top:20px;">
+            <sc-for list="{{ timelineEvents }}" as="ev" hint-placeholder-count="4">
+              <div style="display:flex; align-items:flex-start; gap:14px; flex-wrap:wrap; padding:14px 16px; border-radius:14px; background:#231d33;">
+                <div style="font-size:12px; font-weight:700; color:#a29cb3; width:70px; flex:none;">{{ ev.date }}</div>
+                <div style="display:flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; background:{{ ev.tagBg }}; font-size:11px; font-weight:700; color:{{ ev.tagColor }}; flex:none;">{{ ev.tag }}</div>
+                <div style="min-width:200px; flex:1;">
+                  <div style="font-size:14px; font-weight:600; color:#f4f2f8;">{{ ev.title }}</div>
+                  <div style="font-size:12px; color:#a29cb3; margin-top:3px;">{{ ev.desc }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isTab2 }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; flex-direction:column; gap:20px;">
+        <div style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:20px;">
+          <div style="padding:22px 24px; border-radius:20px; background:#1b1728; border:1px solid #2b2438;">
+            <div style="font-size:11.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Mais consumido</div>
+            <div style="font-size:17px; font-weight:700; color:#f4f2f8; margin-top:10px;">Áudio · Cinemática</div>
+            <div style="display:flex; align-items:baseline; gap:8px; margin-top:10px;"><div style="font-size:28px; font-weight:800; color:#f4f2f8;">31</div><div style="font-size:12.5px; color:#a29cb3;">de 34 alunos abriram</div></div>
+            <div style="font-size:12px; color:#a29cb3; margin-top:9px; line-height:1.5;">Áudio é o formato mais consumido da turma (81% contra 59% da leitura).</div>
+          </div>
+          <div style="padding:22px 24px; border-radius:20px; background:#1b1728; border:1px solid #7a3a3a;">
+            <div style="font-size:11.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Maior dificuldade</div>
+            <div style="font-size:17px; font-weight:700; color:#f4f2f8; margin-top:10px;">Leitura · Vetores (parte 2)</div>
+            <div style="display:flex; align-items:baseline; gap:8px; margin-top:10px;"><div style="font-size:28px; font-weight:800; color:#e2574c;">54%</div><div style="font-size:12.5px; color:#a29cb3;">de erro nas questões ligadas</div></div>
+            <div style="font-size:12px; font-weight:700; color:#f0847c; margin-top:9px;">Pior que a média da turma (29%) — revisar</div>
+          </div>
+          <div style="padding:22px 24px; border-radius:20px; background:#1b1728; border:1px solid #2f6b4a;">
+            <div style="font-size:11.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Maior conclusão</div>
+            <div style="font-size:17px; font-weight:700; color:#f4f2f8; margin-top:10px;">Quiz · Leis de Newton</div>
+            <div style="display:flex; align-items:baseline; gap:8px; margin-top:10px;"><div style="font-size:28px; font-weight:800; color:#5fd99a;">94%</div><div style="font-size:12.5px; color:#a29cb3;">concluíram até o fim</div></div>
+            <div style="font-size:12px; font-weight:700; color:#5fd99a; margin-top:9px;">Formato curto funciona nesta turma</div>
+          </div>
+        </div>
+
+        <div style="border-radius:20px; background:#1b1728; border:1px solid #2b2438; overflow-x:auto;">
+          <div style="padding:22px 26px 16px; min-width:860px;">
+            <div style="font-family:'Cinzel',serif; font-size:18px; font-weight:700; color:#f4f2f8;">Conteúdo por tópico</div>
+            <div style="font-size:12.5px; color:#a29cb3; margin-top:4px;">Consumo, dificuldade e conclusão de cada material da trilha</div>
+          </div>
+          <div style="display:grid; grid-template-columns:2.2fr 1fr 1.4fr 1.4fr 1.2fr; min-width:860px; gap:14px; padding:12px 26px; background:#231d33; font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">
+            <div>Conteúdo</div><div>Formato</div><div>Consumo</div><div>Dificuldade (erro)</div><div>Conclusão</div>
+          </div>
+          <sc-for list="{{ contents }}" as="c" hint-placeholder-count="6">
+            <div style="display:grid; grid-template-columns:2.2fr 1fr 1.4fr 1.4fr 1.2fr; min-width:860px; gap:14px; align-items:center; padding:14px 26px; border-top:1px solid #2b2438;">
+              <div>
+                <div style="font-size:13.5px; font-weight:600; color:#f4f2f8;">{{ c.name }}</div>
+                <div style="font-size:11.5px; color:#a29cb3; margin-top:2px;">{{ c.topic }}</div>
+              </div>
+              <div style="font-size:12px; color:#c9c4d4;">{{ c.format }}</div>
+              <div>
+                <div style="height:6px; border-radius:999px; background:#2b2438; overflow:hidden;"><div style="width:{{ c.use }}%; height:100%; background:#9b5de5;"></div></div>
+                <div style="font-size:11px; color:#a29cb3; margin-top:5px;">{{ c.useLabel }}</div>
+              </div>
+              <div>
+                <div style="font-size:13.5px; font-weight:700; color:{{ c.diffColor }};">{{ c.err }}%</div>
+                <div style="font-size:11px; color:#a29cb3; margin-top:3px;">{{ c.diffNote }}</div>
+              </div>
+              <div>
+                <div style="font-size:13.5px; font-weight:700; color:#f4f2f8;">{{ c.done }}%</div>
+                <div style="font-size:11px; color:#a29cb3; margin-top:3px;">{{ c.doneLabel }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      </sc-if>
+    </div>
+    </sc-if>
+    </div>
+    </sc-if>
+
+    <!-- detalhe do aluno -->
+    <sc-if value="{{ isStudentView }}" hint-placeholder-val="{{ false }}">
+    <div>
+      <div onClick="{{ back }}" style="display:inline-flex; align-items:center; gap:8px; font-size:13px; color:#a29cb3; cursor:pointer; margin-bottom:22px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg>
+        Física I · todos os alunos
+      </div>
+
+      <div style="display:flex; align-items:center; gap:28px; flex-wrap:wrap; padding:26px 30px; border-radius:20px; background:#1b1728; border:1px solid #2b2438;">
+        <div style="min-width:0; flex:1;">
+          <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+            <div style="width:52px; height:52px; flex:none; border-radius:50%; background:{{ sel.stuColor }}; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:800; color:#1b1120;">{{ sel.stuInitials }}</div>
+            <div>
+              <div style="font-family:'Cinzel',serif; font-size:26px; font-weight:700; color:#f4f2f8; line-height:1.15;">{{ sel.stuName }}</div>
+              <div style="font-size:12.5px; color:#a29cb3; margin-top:4px;">{{ sel.stuEmail }} · matriculada em 04/03/2026</div>
+            </div>
+            <div style="display:inline-flex; align-items:center; gap:8px; padding:6px 14px 6px 9px; border-radius:999px; background:{{ sel.stuColor }};">
+              <div style="width:9px; height:9px; border-radius:50%; background:#fff;"></div>
+              <div style="font-size:12.5px; font-weight:700; color:#1b1120;">{{ sel.stuProfile }}</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:34px; margin-top:22px; flex-wrap:wrap;">
+            <div><div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Nota média</div><div style="font-size:24px; font-weight:800; color:#f4f2f8; margin-top:6px;">8.2</div></div>
+            <div><div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Trilha concluída</div><div style="font-size:24px; font-weight:800; color:#f4f2f8; margin-top:6px;">74%</div></div>
+            <div><div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Acertos</div><div style="font-size:24px; font-weight:800; color:#f4f2f8; margin-top:6px;">79%</div></div>
+            <div>
+              <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Abandono</div>
+              <div style="display:flex; align-items:baseline; gap:8px; margin-top:6px;"><div style="font-size:24px; font-weight:800; color:#5fd99a;">11%</div><div style="font-size:11px; font-weight:700; color:#5fd99a;">saudável</div></div>
+              <div style="font-size:11px; color:#a29cb3; margin-top:3px;">turma: 18,5%</div>
+            </div>
+            <div><div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Tempo/sessão</div><div style="font-size:24px; font-weight:800; color:#f4f2f8; margin-top:6px;">31min</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:6px; margin:24px 0 20px; padding:5px; border-radius:999px; background:#1b1728; border:1px solid #2b2438; width:fit-content;">
+        <sc-for list="{{ stuTabs }}" as="t" hint-placeholder-count="4">
+          <div onClick="{{ t.select }}" style="{{ t.style }} white-space:nowrap;">{{ t.label }}</div>
+        </sc-for>
+      </div>
+
+      <sc-if value="{{ isStuTab0 }}" hint-placeholder-val="{{ true }}">
+      <div style="display:grid; grid-template-columns:2fr 1fr; gap:20px; align-items:start;">
+        <div style="padding:24px 26px; border-radius:20px; background:#1b1728; border:1px solid #2b2438;">
+          <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+            <div>
+              <div style="font-family:'Cinzel',serif; font-size:18px; font-weight:700; color:#f4f2f8;">Evolução do aluno</div>
+              <div style="font-size:12.5px; color:#a29cb3; margin-top:4px;">Nota média por semana · últimos 10 encontros</div>
+            </div>
+            <div style="margin-left:auto; display:flex; align-items:center; gap:14px; font-size:12px; color:#a29cb3;">
+              <div style="display:flex; align-items:center; gap:6px;"><div style="width:16px; height:3px; border-radius:2px; background:#9b5de5;"></div>Marina</div>
+              <div style="display:flex; align-items:center; gap:6px;"><div style="width:16px; height:3px; border-radius:2px; background:#5c5468;"></div>Média da turma</div>
+            </div>
+          </div>
+          <svg viewBox="0 0 620 240" style="width:100%; height:240px; margin-top:16px; overflow:visible;">
+            <line x1="0" y1="20" x2="620" y2="20" stroke="#2b2438" stroke-width="1"/>
+            <line x1="0" y1="80" x2="620" y2="80" stroke="#2b2438" stroke-width="1"/>
+            <line x1="0" y1="140" x2="620" y2="140" stroke="#2b2438" stroke-width="1"/>
+            <line x1="0" y1="200" x2="620" y2="200" stroke="#2b2438" stroke-width="1"/>
+            <polyline points="10,150 78,138 146,142 214,118 282,124 350,96 418,88 486,70 554,62 610,48" fill="none" stroke="#5c5468" stroke-width="2" stroke-dasharray="5 5"/>
+            <polyline points="10,168 78,152 146,120 214,128 282,96 350,78 418,84 486,56 554,44 610,30" fill="none" stroke="#9b5de5" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+            <circle cx="610" cy="30" r="6" fill="#9b5de5" stroke="#1b1728" stroke-width="3"/>
+            <text x="0" y="236" fill="#a29cb3" font-size="11" font-family="Inter, sans-serif">sem 1</text>
+            <text x="290" y="236" fill="#a29cb3" font-size="11" font-family="Inter, sans-serif">sem 5</text>
+            <text x="580" y="236" fill="#a29cb3" font-size="11" font-family="Inter, sans-serif">sem 10</text>
+          </svg>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:20px;">
+          <div style="padding:22px 24px; border-radius:20px; background:#1b1728; border:1px solid #2b2438;">
+            <div style="font-family:'Cinzel',serif; font-size:16px; font-weight:700; color:#f4f2f8;">Última atividade</div>
+            <div style="display:flex; align-items:center; gap:10px; margin-top:16px;">
+              <div style="width:9px; height:9px; border-radius:50%; background:#5fd99a;"></div>
+              <div style="font-size:13.5px; font-weight:600; color:#f4f2f8;">Quiz · Dinâmica: leis de Newton</div>
+            </div>
+            <div style="font-size:12.5px; color:#a29cb3; margin-top:11px; line-height:1.6;">Concluído hoje, 14:32 · 8 de 10 acertos · 12 min<br/>Usou o chat de apoio 1 vez após erro</div>
+            <div style="height:1px; background:#2b2438; margin:16px 0;"></div>
+            <div style="font-size:12.5px; color:#a29cb3; line-height:1.7;">
+              <div>Antes: Áudio personalizado · Vetores</div>
+              <div>Antes: Leitura · Cinemática (parte 2)</div>
+            </div>
+          </div>
+          <div style="padding:20px 22px; border-radius:16px; background:#3a2f1a; border:1px solid #9c6b4f;">
+            <div style="display:flex; align-items:center; gap:9px;">
+              <div style="width:9px; height:9px; border-radius:50%; background:#e0b34d;"></div>
+              <div style="font-size:13.5px; font-weight:700; color:#f4f2f8;">Atenção</div>
+            </div>
+            <div style="font-size:12.5px; color:#e8d8c0; margin-top:9px; line-height:1.6;">Dois tópicos consecutivos ficaram sem atividade nos últimos 9 dias.</div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isStuTab1 }}" hint-placeholder-val="{{ false }}">
+      <div style="display:grid; grid-template-columns:1.3fr 1fr; gap:20px; align-items:start;">
+        <div style="padding:26px 28px; border-radius:20px; background:#1b1728; border:1px solid #2b2438;">
+          <div style="font-family:'Cinzel',serif; font-size:18px; font-weight:700; color:#f4f2f8;">Afinidade entre os 7 perfis</div>
+          <div style="font-size:12.5px; color:#a29cb3; margin-top:4px;">Vetor BrainHex do questionário inicial (0–100% por perfil)</div>
+          <div style="display:flex; flex-direction:column; gap:14px; margin-top:22px;">
+            <sc-for list="{{ brainhexAffinity }}" as="a" hint-placeholder-count="7">
+              <div style="display:flex; align-items:center; gap:14px;">
+                <div style="width:112px; flex:none; display:flex; align-items:center; gap:9px;"><div style="width:11px; height:11px; border-radius:50%; background:{{ a.color }}; flex:none;"></div><div style="font-size:12.5px; font-weight:600; color:#f4f2f8;">{{ a.label }}</div></div>
+                <div style="flex:1; height:10px; border-radius:999px; background:#2b2438; overflow:hidden;"><div style="width:{{ a.val }}%; height:100%; background:{{ a.color }};"></div></div>
+                <div style="width:40px; text-align:right; font-size:13px; font-weight:700; color:#f4f2f8;">{{ a.val }}%</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="padding:26px 28px; border-radius:20px; background:#1b1728; border:1px solid #2b2438; display:flex; flex-direction:column; align-items:center; text-align:center;">
+          <div style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:#9b5de5; font-weight:600;">Perfil dominante</div>
+          <div style="width:64px; height:64px; border-radius:50%; background:#5b3fd9; display:flex; align-items:center; justify-content:center; margin:16px 0 6px;">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/></svg>
+          </div>
+          <div style="font-family:'Cinzel',serif; font-size:22px; font-weight:700; color:#f4f2f8;">Mastermind</div>
+          <div style="font-size:12.5px; color:#c9c4d4; line-height:1.65; margin-top:10px;">Aprende resolvendo: prefere material com desafio lógico, poucos passos guiados e feedback explicativo. O conteúdo gerado para Marina prioriza problemas antes da teoria.</div>
+          <div style="display:flex; gap:8px; margin-top:16px; flex-wrap:wrap; justify-content:center;">
+            <div style="padding:6px 12px; border-radius:999px; background:#231d33; font-size:12px; font-weight:600; color:#c9c4d4;">Estratégia</div>
+            <div style="padding:6px 12px; border-radius:999px; background:#231d33; font-size:12px; font-weight:600; color:#c9c4d4;">Quebra-cabeças</div>
+            <div style="padding:6px 12px; border-radius:999px; background:#231d33; font-size:12px; font-weight:600; color:#c9c4d4;">Autonomia</div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isStuTab2 }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; flex-direction:column; gap:20px;">
+        <div style="padding:24px 28px 28px; border-radius:20px; background:#1b1728; border:1px solid #2b2438;">
+          <div style="display:flex; align-items:flex-end; gap:20px; flex-wrap:wrap;">
+            <div>
+              <div style="font-family:'Cinzel',serif; font-size:20px; font-weight:700; color:#f4f2f8;">Jornada real de Marina</div>
+              <div style="font-size:12.5px; color:#a29cb3; margin-top:5px;">Na ordem em que ela realmente percorreu — não na ordem cadastrada da trilha. Clique em um passo para investigar.</div>
+            </div>
+            <div style="margin-left:auto; min-width:240px; flex:1; max-width:380px;">
+              <div style="display:flex; justify-content:space-between; font-size:12px; color:#a29cb3; margin-bottom:7px;"><div style="font-weight:600; letter-spacing:0.08em; text-transform:uppercase;">XP</div><div>3.480 / 5.000</div></div>
+              <div style="height:11px; border-radius:999px; background:#2b2438; overflow:hidden;"><div style="width:70%; height:100%; background:#9b5de5;"></div></div>
+            </div>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:18px; padding:13px 16px; border-radius:14px; background:#231d33;">
+            <div style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Desvios detectados</div>
+            <div style="padding:5px 12px; border-radius:999px; background:rgba(224,179,77,0.16); font-size:12px; font-weight:700; color:#e0b34d;">2 retornos a tópico anterior</div>
+            <div style="padding:5px 12px; border-radius:999px; background:rgba(111,179,224,0.16); font-size:12px; font-weight:700; color:#6fb3e0;">1 tópico feito fora de ordem</div>
+            <div style="padding:5px 12px; border-radius:999px; background:rgba(224,87,76,0.16); font-size:12px; font-weight:700; color:#f0847c;">1 abandono no meio do conteúdo</div>
+            <div style="margin-left:auto; font-size:12px; color:#a29cb3;">10 passos registrados · 04/03 a hoje</div>
+          </div>
+
+          <div style="display:flex; align-items:flex-start; flex-wrap:wrap; row-gap:20px; margin-top:24px; overflow-x:auto;">
+            <sc-for list="{{ journey }}" as="j" hint-placeholder-count="10">
+              <div style="display:flex; align-items:flex-start;">
+                <sc-if value="{{ j.hasConn }}" hint-placeholder-val="{{ false }}">
+                <div style="width:40px; padding-top:24px; display:flex; flex-direction:column; align-items:center; gap:4px;">
+                  <div style="width:100%; height:2px; background:{{ j.connColor }};"></div>
+                  <div style="font-size:8.5px; font-weight:700; letter-spacing:0.03em; text-transform:uppercase; color:{{ j.connColor }}; text-align:center; line-height:1.2;">{{ j.connLabel }}</div>
+                </div>
+                </sc-if>
+                <div onClick="{{ j.select }}" style="{{ j.wrap }}">
+                  <div style="width:52px; height:52px; border-radius:50%; background:{{ j.color }}; display:flex; align-items:center; justify-content:center; font-size:17px; font-weight:800; color:{{ j.ink }};">{{ j.topicNum }}</div>
+                  <div style="font-size:9.5px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:#a29cb3; margin-top:8px;">{{ j.orderLabel }}</div>
+                  <div style="font-size:11.5px; font-weight:600; color:#f4f2f8; text-align:center; line-height:1.25; margin-top:3px; max-width:90px;">{{ j.topicName }}</div>
+                  <div style="{{ j.chip }}">{{ j.chipLabel }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="display:flex; gap:22px; row-gap:12px; margin-top:24px; padding-top:18px; border-top:1px solid #2b2438; font-size:12px; color:#a29cb3; flex-wrap:wrap;">
+            <div style="display:flex; align-items:center; gap:8px;"><div style="width:12px; height:12px; border-radius:50%; background:#9b5de5;"></div>Passo concluído</div>
+            <div style="display:flex; align-items:center; gap:8px;"><div style="width:12px; height:12px; border-radius:50%; background:#e2574c;"></div>Errou ou abandonou</div>
+            <div style="display:flex; align-items:center; gap:8px;"><div style="width:12px; height:12px; border-radius:50%; background:#e0b34d;"></div>Retorno / repetição</div>
+            <div style="display:flex; align-items:center; gap:8px;"><div style="width:12px; height:12px; border-radius:50%; border:2px solid #9b5de5;"></div>Passo selecionado</div>
+          </div>
+        </div>
+
+        <div style="border-radius:20px; background:#1b1728; border:1px solid #2b2438; overflow:hidden;">
+          <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap; padding:22px 26px 18px; border-bottom:1px solid #2b2438;">
+            <div style="width:40px; height:40px; flex:none; border-radius:50%; background:rgba(155,93,229,0.18); border:1px solid #9b5de5; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:800; color:#c1a7ec;">{{ sel.topicNum }}</div>
+            <div style="min-width:0;">
+              <div style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:#c1a7ec; font-weight:600;">{{ sel.orderLabel }} · {{ sel.topicName }}</div>
+              <div style="font-family:'Cinzel',serif; font-size:20px; font-weight:700; color:#f4f2f8; margin-top:5px; line-height:1.2;">{{ sel.title }}</div>
+            </div>
+            <div style="{{ sel.statusChip }}">{{ sel.statusLabel }}</div>
+            <div style="margin-left:auto; font-size:12px; color:#a29cb3; white-space:nowrap;">{{ sel.when }}</div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:repeat(4,minmax(200px,1fr)); gap:1px; background:#2b2438;">
+            <div style="padding:16px 20px; background:#1b1728;"><div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Conteúdo acessado</div><div style="font-size:13.5px; font-weight:600; color:#f4f2f8; margin-top:7px; line-height:1.4;">{{ sel.content }}</div><div style="font-size:11.5px; color:#a29cb3; margin-top:4px;">{{ sel.contentNote }}</div></div>
+            <div style="padding:16px 20px; background:#1b1728;"><div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Atividade</div><div style="font-size:13.5px; font-weight:600; color:#f4f2f8; margin-top:7px; line-height:1.4;">{{ sel.activity }}</div><div style="font-size:11.5px; color:#a29cb3; margin-top:4px;">{{ sel.activityNote }}</div></div>
+            <div style="padding:16px 20px; background:#1b1728;"><div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Resposta dada</div><div style="font-size:13.5px; font-weight:600; color:#f4f2f8; margin-top:7px; line-height:1.4;">{{ sel.answer }}</div><div style="font-size:11.5px; color:#a29cb3; margin-top:4px;">{{ sel.expected }}</div></div>
+            <div style="padding:16px 20px; background:#1b1728;">
+              <div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Resultado</div>
+              <div style="display:flex; align-items:center; gap:8px; margin-top:7px;"><div style="{{ sel.resultIconBox }}">{{ sel.resultIcon }}</div><div style="font-size:13.5px; font-weight:700; color:{{ sel.resultColor }};">{{ sel.result }}</div></div>
+              <div style="font-size:11.5px; color:#a29cb3; margin-top:5px;">{{ sel.resultNote }}</div>
+            </div>
+            <div style="padding:16px 20px; background:#1b1728;"><div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Tempo gasto</div><div style="font-size:20px; font-weight:800; color:#f4f2f8; margin-top:7px;">{{ sel.time }}</div><div style="font-size:11.5px; color:#a29cb3; margin-top:4px;">{{ sel.timeNote }}</div></div>
+            <div style="padding:16px 20px; background:#1b1728;"><div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Tentativa</div><div style="font-size:20px; font-weight:800; color:#f4f2f8; margin-top:7px;">{{ sel.attempt }}</div><div style="font-size:11.5px; color:#a29cb3; margin-top:4px;">{{ sel.attemptNote }}</div></div>
+            <div style="padding:16px 20px; background:#1b1728;"><div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Ordem em que foi feito</div><div style="font-size:20px; font-weight:800; color:#f4f2f8; margin-top:7px;">{{ sel.order }}</div><div style="font-size:11.5px; color:#a29cb3; margin-top:4px;">{{ sel.orderNote }}</div></div>
+            <div style="padding:16px 20px; background:#1b1728;"><div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Progresso neste ponto</div><div style="font-size:20px; font-weight:800; color:#f4f2f8; margin-top:7px;">{{ sel.progress }}%</div><div style="height:6px; border-radius:999px; background:#2b2438; margin-top:9px; overflow:hidden;"><div style="{{ sel.progressBar }}"></div></div></div>
+          </div>
+
+          <div style="display:flex; align-items:flex-start; gap:14px; flex-wrap:wrap; padding:18px 26px; border-top:1px solid #2b2438; background:#211a2e;">
+            <div style="{{ sel.noteIconBox }}">{{ sel.noteIcon }}</div>
+            <div style="min-width:220px; flex:1;">
+              <div style="font-size:13px; font-weight:700; color:{{ sel.noteColor }};">{{ sel.noteTitle }}</div>
+              <div style="font-size:13px; color:#c9c4d4; margin-top:5px; line-height:1.55;">{{ sel.note }}</div>
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <div style="padding:10px 18px; border-radius:999px; border:1px solid #2b2438; font-size:13px; font-weight:600; color:#f4f2f8; cursor:pointer; white-space:nowrap;">Ver conteúdo entregue</div>
+              <div style="padding:10px 18px; border-radius:999px; background:rgba(155,93,229,0.18); border:1px solid #9b5de5; font-size:13px; font-weight:600; color:#c1a7ec; cursor:pointer; white-space:nowrap;">Abrir conversa do chat</div>
+            </div>
+          </div>
+
+          <div style="padding:18px 26px; border-top:1px solid #2b2438;">
+            <div style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Intervenções do professor neste passo</div>
+            <div style="display:flex; align-items:flex-start; gap:10px; margin-top:12px;">
+              <div style="{{ noteInputStyle }}">{{ noteInputText }}</div>
+              <div onClick="{{ saveNote }}" style="padding:11px 18px; border-radius:999px; background:#9b5de5; font-size:13px; font-weight:700; color:#fff; cursor:pointer; white-space:nowrap;">Salvar comentário</div>
+            </div>
+            <div style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:#a29cb3; font-weight:600; margin-top:18px;">Histórico deste passo</div>
+            <sc-if value="{{ sel.hasNotes }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex; flex-direction:column; gap:8px; margin-top:12px;">
+              <sc-for list="{{ sel.interventions }}" as="iv" hint-placeholder-count="1">
+                <div style="padding:12px 14px; border-radius:12px; background:#231d33;">
+                  <div style="display:flex; align-items:center; gap:8px; font-size:11px; color:#a29cb3;">
+                    <div style="{{ iv.avatarStyle }}">{{ iv.avatar }}</div>{{ iv.when }}
+                  </div>
+                  <div style="font-size:13px; color:#e5e1ec; margin-top:6px; line-height:1.5;">{{ iv.text }}</div>
+                </div>
+              </sc-for>
+            </div>
+            </sc-if>
+            <sc-if value="{{ sel.noNotes }}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top:12px; padding:14px; border-radius:12px; background:#231d33; font-size:13px; color:#a29cb3; text-align:center;">Nenhuma intervenção registrada ainda neste passo.</div>
+            </sc-if>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isStuTab3 }}" hint-placeholder-val="{{ false }}">
+      <div style="display:grid; grid-template-columns:1.3fr 1fr; gap:20px; align-items:start;">
+        <div style="padding:26px 28px; border-radius:20px; background:#1b1728; border:1px solid #2b2438;">
+          <div style="font-family:'Cinzel',serif; font-size:18px; font-weight:700; color:#f4f2f8;">Material personalizado</div>
+          <div style="font-size:12.5px; color:#a29cb3; margin-top:4px;">Gerado pela IA para o perfil Mastermind · consumo por tópico</div>
+          <div style="display:flex; flex-direction:column; gap:12px; margin-top:22px;">
+            <sc-for list="{{ personalMaterials }}" as="pm" hint-placeholder-count="5">
+              <div style="display:flex; align-items:center; gap:16px; padding:15px 18px; border-radius:14px; background:{{ pm.bg }}; border:{{ pm.border }};">
+                <div style="min-width:0; flex:1;">
+                  <div style="font-size:13.5px; font-weight:600; color:{{ pm.titleColor }};">{{ pm.name }}</div>
+                  <div style="font-size:11.5px; color:#a29cb3; margin-top:3px;">{{ pm.detail }}</div>
+                </div>
+                <sc-if value="{{ pm.hasBar }}" hint-placeholder-val="{{ true }}">
+                <div style="width:150px; height:7px; border-radius:999px; background:#2b2438; overflow:hidden;"><div style="width:{{ pm.pct }}%; height:100%; background:{{ pm.barColor }};"></div></div>
+                </sc-if>
+                <div style="width:88px; text-align:right; font-size:11.5px; font-weight:700; color:{{ pm.statusColor }};">{{ pm.status }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:20px;">
+          <div style="padding:22px 24px; border-radius:20px; background:#1b1728; border:1px solid #2b2438;">
+            <div style="font-family:'Cinzel',serif; font-size:16px; font-weight:700; color:#f4f2f8;">Consumo total</div>
+            <div style="display:flex; align-items:flex-end; gap:10px; margin-top:14px;"><div style="font-size:38px; font-weight:800; color:#f4f2f8;">68%</div><div style="font-size:12.5px; color:#a29cb3; padding-bottom:5px;">do material gerado</div></div>
+            <div style="height:7px; border-radius:999px; background:#2b2438; margin-top:16px; overflow:hidden;"><div style="width:68%; height:100%; background:#9b5de5;"></div></div>
+            <div style="font-size:12.5px; color:#a29cb3; margin-top:14px; line-height:1.6;">13 de 19 itens · áudio tem consumo maior (81%) que leitura (59%).</div>
+          </div>
+          <div style="padding:22px 24px; border-radius:20px; background:#1b1728; border:1px solid #2b2438;">
+            <div style="font-family:'Cinzel',serif; font-size:16px; font-weight:700; color:#f4f2f8;">Ações</div>
+            <div style="display:flex; flex-direction:column; gap:10px; margin-top:14px;">
+              <div style="padding:11px 18px; border-radius:999px; background:#9b5de5; font-size:13px; font-weight:700; color:#fff; text-align:center; cursor:pointer;">Regerar material pendente</div>
+              <div style="padding:11px 18px; border-radius:999px; border:1px solid #2b2438; font-size:13px; font-weight:600; color:#f4f2f8; text-align:center; cursor:pointer;">Ver conteúdo gerado</div>
+              <div style="height:1px; background:#2b2438; margin:6px 0;"></div>
+              <div style="padding:11px 18px; border-radius:999px; border:1px solid #7a3a3a; color:#f0847c; font-size:13px; font-weight:600; text-align:center; cursor:pointer;">Descartar personalizações…</div>
+              <div style="font-size:11px; color:#7a7488; text-align:center; line-height:1.5;">Pede confirmação por escrito. Apaga todo o material já gerado para esta aluna.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+    </div>
+    </sc-if>
+
+  </main>
+
+  <!-- Escriba -->
+  <div style="position:fixed; right:32px; bottom:28px; z-index:50;">
+    <sc-if value="{{ escribaOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute; bottom:70px; right:0; width:340px; border-radius:20px; background:#1b1728; border:1px solid #2b2438; box-shadow:0 20px 50px rgba(0,0,0,0.5); overflow:hidden;">
+        <div style="display:flex; align-items:center; gap:12px; padding:16px 18px; border-bottom:1px solid #2b2438; background:linear-gradient(135deg,#c9924f,#9c6b4f);">
+          <div style="width:34px; height:34px; border-radius:50%; background:rgba(0,0,0,0.2); display:flex; align-items:center; justify-content:center;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          </div>
+          <div>
+            <div style="font-family:'Cinzel',serif; font-size:14px; font-weight:700; color:#fff;">Escriba</div>
+            <div style="font-size:11px; color:rgba(255,255,255,0.85);">O guia do professor · lê os dados desta turma</div>
+          </div>
+        </div>
+        <div style="padding:16px 18px; display:flex; flex-direction:column; gap:12px; max-height:260px; overflow-y:auto;">
+          <div style="font-size:13px; color:#e5e1ec; line-height:1.5;">Olá! Posso te ajudar a entender o desempenho da turma. O que você quer saber?</div>
+          <div style="display:flex; flex-wrap:wrap; gap:8px;">
+            <div style="padding:7px 12px; border-radius:999px; background:#231d33; border:1px solid #2b2438; font-size:12px; color:#c9c4d4; cursor:pointer;">Quem precisa de atenção?</div>
+            <div style="padding:7px 12px; border-radius:999px; background:#231d33; border:1px solid #2b2438; font-size:12px; color:#c9c4d4; cursor:pointer;">Onde a turma mais erra?</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; padding:12px 14px; border-top:1px solid #2b2438;">
+          <input placeholder="Pergunte ao Escriba…" style="flex:1; background:#0d0b16; border:1px solid #2b2438; border-radius:999px; padding:9px 14px; color:#f4f2f8; font-size:13px; outline:none;"/>
+          <div style="width:32px; height:32px; border-radius:50%; background:#9c6b4f; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+    <div onClick="{{ toggleEscriba }}" title="Pergunte ao Escriba" style="width:56px; height:56px; border-radius:50%; background:linear-gradient(135deg,#c9924f,#9c6b4f); display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 12px 30px rgba(0,0,0,0.45);">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+    </div>
+  </div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const JOURNEY = [
+  { t:1, topic:'Introdução', kind:'ok', title:'Leitura · O que a Física descreve', content:'Leitura personalizada (Mastermind)', contentNote:'4 blocos · 820 palavras', activity:'Nenhuma atividade neste passo', activityNote:'conteúdo de abertura do tópico', answer:'—', expected:'sem questões vinculadas', result:'Concluído', resultNote:'leu até o último bloco', time:'6 min', timeNote:'média da turma: 8 min', attempt:'1ª', attemptNote:'sem repetição', orderNote:'coincide com a ordem da trilha', progress:8, noteTitle:'Sem desvio', note:'Marina começou pelo início previsto da trilha, em 04/03 às 19:12.', when:'04/03 · 19:12' },
+  { t:1, topic:'Introdução', kind:'ok', title:'Quiz de entrada · 5 questões', content:'Retomou a leitura antes de responder', contentNote:'voltou 1 bloco por 40 s', activity:'Quiz de entrada', activityNote:'5 questões · vale 5 pontos', answer:'4 de 5 corretas (errou a Q3)', expected:'Q3 esperava “grandeza escalar”; respondeu “vetorial”', result:'Acertou 80%', resultNote:'acima do corte de 60%', time:'9 min', timeNote:'média da turma: 11 min', attempt:'1ª', attemptNote:'aprovada na primeira', orderNote:'na ordem da trilha', progress:11, noteTitle:'Sem desvio', note:'Consultou o conteúdo durante o quiz, comportamento típico do perfil Mastermind.', when:'04/03 · 19:28' },
+  { t:2, topic:'Medidas', kind:'ok', title:'Áudio · Unidades e conversões', content:'Áudio personalizado (Mastermind)', contentNote:'11 min · ouviu 100%', activity:'Nenhuma atividade neste passo', activityNote:'material de apoio', answer:'—', expected:'sem questões vinculadas', result:'Concluído', resultNote:'ouviu sem pausas longas', time:'11 min', timeNote:'igual à duração do áudio', attempt:'1ª', attemptNote:'sem repetição', orderNote:'na ordem da trilha', progress:18, noteTitle:'Sem desvio', note:'Áudio é o formato que ela consome mais: 81% contra 59% da leitura.', when:'07/03 · 08:41' },
+  { t:2, topic:'Medidas', kind:'err', title:'Conversão de unidades · tentativa 1', content:'Não reabriu o conteúdo antes', contentNote:'foi direto para a atividade', activity:'Conversão de unidades', activityNote:'6 questões · vale 10 pontos', answer:'3 de 6 corretas', expected:'erros concentrados em notação científica', result:'Reprovada (50%)', resultNote:'corte da atividade: 60%', time:'7 min', timeNote:'média da turma: 13 min — respondeu rápido', attempt:'1ª', attemptNote:'liberou nova tentativa', orderNote:'na ordem da trilha', progress:22, noteTitle:'Erro relevante', note:'Respondeu em metade do tempo médio e errou metade. Indício de tentativa apressada, não de falta de material.', when:'07/03 · 09:02' },
+  { t:2, topic:'Medidas', kind:'retry', title:'Conversão de unidades · tentativa 2', content:'Reabriu o áudio no trecho de notação', contentNote:'ouviu 3 min do minuto 6 ao 9', activity:'Conversão de unidades', activityNote:'mesma atividade, nova tentativa', answer:'6 de 6 corretas', expected:'corrigiu as três de notação científica', result:'Aprovada (100%)', resultNote:'ganho de 50 pontos percentuais', time:'15 min', timeNote:'mais que o dobro da 1ª tentativa', attempt:'2ª', attemptNote:'repetição por reprovação', orderNote:'repetiu o mesmo ponto da trilha', progress:26, noteTitle:'Repetição com retorno ao conteúdo', note:'Voltou ao áudio antes de repetir e acertou tudo. O material resolveu o problema — não foi preciso intervenção.', when:'07/03 · 09:34' },
+  { t:3, topic:'Cinemática', kind:'ok', title:'Leitura · Movimento uniforme', content:'Leitura personalizada (Mastermind)', contentNote:'2 de 4 blocos lidos', activity:'Nenhuma atividade neste passo', activityNote:'atividade do tópico ficou pendente', answer:'—', expected:'sem questões vinculadas', result:'Parcial', resultNote:'saiu antes do último bloco', time:'12 min', timeNote:'média da turma: 15 min', attempt:'1ª', attemptNote:'sem repetição', orderNote:'na ordem da trilha', progress:34, noteTitle:'Conteúdo deixado no meio', note:'Parou na metade da leitura e saiu do tópico 3 — é aqui que começa o desvio dos dois passos seguintes.', when:'11/03 · 20:05' },
+  { t:4, topic:'Vetores', kind:'skip', title:'Áudio · Soma de vetores', content:'Áudio personalizado (Mastermind)', contentNote:'9 min · ouviu 100%', activity:'Nenhuma atividade neste passo', activityNote:'apenas conteúdo', answer:'—', expected:'sem questões vinculadas', result:'Concluído', resultNote:'consumiu o áudio inteiro', time:'9 min', timeNote:'igual à duração do áudio', attempt:'1ª', attemptNote:'sem repetição', orderNote:'fora de ordem — pulou o tópico 3 inacabado', progress:41, noteTitle:'Fora de ordem', note:'Entrou no tópico 4 com a leitura e a atividade do tópico 3 ainda abertas. A trilha permitia, porque Vetores não tinha Cinemática como pré-requisito.', when:'12/03 · 07:58' },
+  { t:3, topic:'Cinemática', kind:'back', title:'Gráficos de posição e velocidade', content:'Terminou os 2 blocos que faltavam', contentNote:'leitura concluída 4 dias depois', activity:'Gráficos de posição e velocidade', activityNote:'6 questões · vale 10 pontos', answer:'5 de 6 corretas', expected:'errou a leitura do gráfico com velocidade negativa', result:'Aprovada (83%)', resultNote:'acima da média da turma (71%)', time:'18 min', timeNote:'média da turma: 16 min', attempt:'1ª', attemptNote:'sem repetição', orderNote:'retorno ao tópico 3 depois do tópico 4', progress:52, noteTitle:'Retorno a tópico anterior', note:'Voltou por conta própria para fechar o que tinha deixado aberto. Usou o chat de apoio 1 vez, na questão do gráfico negativo.', when:'15/03 · 21:14' },
+  { t:5, topic:'Dinâmica', kind:'ok', title:'Quiz · Leis de Newton', content:'Leitura + áudio de Dinâmica', contentNote:'material regerado em 28/08', activity:'Quiz · Leis de Newton', activityNote:'10 questões · vale 10 pontos', answer:'8 de 10 corretas', expected:'erros na Q6 e Q9 (terceira lei)', result:'Aprovada (80%)', resultNote:'melhor nota dela em atividade longa', time:'12 min', timeNote:'média da turma: 14 min', attempt:'1ª', attemptNote:'sem repetição', orderNote:'na ordem da trilha', progress:68, noteTitle:'Sem desvio', note:'Usou o chat de apoio 1 vez após errar a Q6. Passo mais recente concluído.', when:'hoje · 14:32' },
+  { t:6, topic:'Trabalho e Energia', kind:'drop', title:'Leitura · Trabalho de uma força', content:'Leitura personalizada (Mastermind)', contentNote:'1 de 3 blocos · saiu no bloco 2', activity:'Atividade não iniciada', activityNote:'3 questões aguardando', answer:'—', expected:'nenhuma resposta registrada', result:'Abandonado', resultNote:'saiu sem concluir e não voltou', time:'3 min', timeNote:'média da turma: 14 min', attempt:'1ª', attemptNote:'nenhuma retomada em 9 dias', orderNote:'na ordem da trilha', progress:74, noteTitle:'Abandono em aberto', note:'É o ponto onde a jornada parou. Nove dias sem atividade — o mesmo alerta que aparece na Visão geral do aluno.', when:'29/08 · 22:40' }
+];
+const JK = {
+  ok:    { color:'#9b5de5', ink:'#fff', chipBg:'rgba(155,93,229,0.18)', chipFg:'#c1a7ec', chip:'concluído',     connColor:'#5c5468', connLabel:'seguiu' },
+  err:   { color:'#e2574c', ink:'#fff', chipBg:'rgba(224,87,76,0.16)',  chipFg:'#f0847c', chip:'errou',         connColor:'#5c5468', connLabel:'seguiu' },
+  retry: { color:'#e0b34d', ink:'#3a2f1a', chipBg:'rgba(224,179,77,0.16)', chipFg:'#e0b34d', chip:'2ª tentativa', connColor:'#e0b34d', connLabel:'repetiu' },
+  skip:  { color:'#6fb3e0', ink:'#1b2a33', chipBg:'rgba(111,179,224,0.16)', chipFg:'#6fb3e0', chip:'fora de ordem', connColor:'#6fb3e0', connLabel:'pulou' },
+  back:  { color:'#e0b34d', ink:'#3a2f1a', chipBg:'rgba(224,179,77,0.16)', chipFg:'#e0b34d', chip:'retorno',      connColor:'#e0b34d', connLabel:'voltou' },
+  drop:  { color:'#e2574c', ink:'#fff', chipBg:'rgba(224,87,76,0.16)',  chipFg:'#f0847c', chip:'abandonou',    connColor:'#5c5468', connLabel:'seguiu' }
+};
+
+class Component extends DCLogic {
+  state = { estado: 'data', tab: 0, escribaOpen: false, timeRange: 0, view: 'class', stuTab: 0, step: 7, noteDraft: false,
+    notesByStep: { 7: [
+      { when:'10/09 · IA', author:'ia', text:'Sugestão automática: aluno errou 2 vezes o mesmo tipo de conversão de unidade — recomendo revisar "Medidas e Unidades" antes de avançar.' },
+      { when:'11/09 · você', author:'professor', text:'Conversei com o aluno na aula; ele disse que confundiu km/h com m/s. Vou observar o próximo exercício.' }
+    ] } };
+
+  navIcon(name) {
+    const icons = {
+      visao: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
+      trilhas: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8 7.5C10 10 14 14 16 16.5"/></svg>',
+      turmas: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/></svg>',
+      personalizacoes: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/><path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2z"/></svg>',
+      rankings: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 6H4a2 2 0 0 0 2 4"/><path d="M17 6h3a2 2 0 0 1-2 4"/></svg>',
+      meusdados: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+      aprovacoes: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2l8 3v6c0 5-3.5 8.5-8 11-4.5-2.5-8-6-8-11V5l8-3z"/><path d="M9 12l2 2 4-4"/></svg>'
+    };
+    return { __html: icons[name] };
+  }
+  kpiIcon(name) {
+    const icons = {
+      people: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="18" height="18"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+      target: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="18" height="18"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="0.5"/></svg>',
+      trending: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="18" height="18"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="15 7 21 7 21 13"/></svg>',
+      check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="14" height="14"><path d="M5 13l4 4 10-10"/></svg>',
+      alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="14" height="14"><path d="M12 9v4"/><circle cx="12" cy="12" r="9"/><path d="M12 16.5v.01"/></svg>',
+      chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M4 4h16v12H8l-4 4z"/></svg>',
+      clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l4 2"/></svg>'
+    };
+    return { __html: icons[name] };
+  }
+  select(key, val) { this.setState({ [key]: val }); }
+
+  renderVals() {
+    const estado = this.state.estado;
+    const tone = { success: '#5fd99a', warning: '#e0b34d', info: '#6fb3e0' };
+    const HREFS = {
+      visao: 'Console%20Visao%20Geral%20(Fase%202).dc.html',
+      trilhas: 'Console%20Trilhas%20(Fase%202).dc.html',
+      turmas: 'Console%20Turmas%20(Fase%202).dc.html',
+      personalizacoes: 'Console%20Personalizacoes%20(Fase%202).dc.html',
+      rankings: 'Console%20Rankings%20(Fase%202).dc.html',
+      meusdados: 'Console%20Meus%20Dados%20(Fase%202).dc.html',
+      aprovacoes: 'Console%20Aprovacoes%20(Fase%202).dc.html'
+    };
+    const navItems = ['visao','trilhas','turmas','personalizacoes','rankings','meusdados','aprovacoes'].map((k,i) => {
+      const active = k === 'visao';
+      return {
+        label: ['Visão geral','Trilhas','Turmas','Personalizações','Rankings','Meus dados','Aprovações'][i],
+        iconHtml: this.navIcon(k), href: HREFS[k], color: active ? '#4fd1c5' : '#a29cb3',
+        style: `display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;white-space:nowrap;${active ? 'background:rgba(79,209,197,0.08);font-weight:600;' : ''}`
+      };
+    });
+
+    const estadoOptions = ['loading','empty','error','data'].map(k => ({
+      label: { loading:'Carregando', empty:'Vazio', error:'Erro', data:'Com dados' }[k],
+      select: () => this.select('estado', k),
+      style: `padding:6px 12px;border-radius:999px;font-size:11px;cursor:pointer;font-weight:600;white-space:nowrap;${estado===k ? 'background:#9b5de5;color:#fff;' : 'color:#a29cb3;'}`
+    }));
+
+    const timeRanges = ['30 dias','Semestre','Tudo'].map((l,i) => ({
+      label: l,
+      style: `padding:7px 15px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;${this.state.timeRange===i ? 'background:#231d33;color:#f4f2f8;' : 'color:#a29cb3;'}`
+    }));
+
+    const dashTabs = ['Visão geral','Evolução','Conteúdo'].map((l,i) => ({
+      label: l,
+      select: () => this.select('tab', i),
+      style: `padding:8px 18px;border-radius:999px;font-size:13.5px;font-weight:600;cursor:pointer;white-space:nowrap;${this.state.tab===i ? 'background:#9b5de5;color:#fff;' : 'color:#a29cb3;'}`
+    }));
+
+    const kpiRow1 = [
+      { label:'Total de alunos', value:'34', unit:'com acesso liberado', badge:'+3', badgeNote:'matrículas aceitas nesta semana', iconHtml:this.kpiIcon('people'), progress:null },
+      { label:'Média de notas', value:'7.4', unit:'de 10', badge:'+0,3', badgeNote:'subindo · era 7,1 no período anterior', iconHtml:this.kpiIcon('target'), progress:null },
+      { label:'Conclusão média', value:'62%', unit:'da trilha', badge:'No previsto', badgeNote:'marca: 60% esperado nesta semana', iconHtml:this.kpiIcon('trending'), progress:62, target:60 }
+    ];
+
+    const metrics2 = [
+      { label:'Taxa de acertos', value:'71', unit:'%', pct:71, toneColor:tone.success, note:'Bom · meta 70%', iconHtml:this.kpiIcon('check') },
+      { label:'Abandono médio', value:'18.5', unit:'%', pct:18.5, toneColor:tone.warning, note:'Atenção · acima da meta de 15%', iconHtml:this.kpiIcon('alert') },
+      { label:'Chat após erro', value:'43', unit:'%', pct:43, toneColor:tone.info, note:'Informativo · quem pede ajuda erra menos depois', iconHtml:this.kpiIcon('chat') },
+      { label:'Tempo médio de uso', value:'24.8', unit:'min/sessão', pct:null, toneColor:'#a29cb3', note:'mediana 21 min · estável vs. período anterior', iconHtml:this.kpiIcon('clock') }
+    ];
+
+    const atRisk = [
+      { initials:'RA', name:'Rafael Antunes', profile:'Survivor', color:'#5c6875', chipBg:'rgba(224,87,76,0.16)', chipText:'#f0847c', severity:'Crítico', reason:'Abandono em 38%', compare:'turma: 18,5%' },
+      { initials:'OP', name:'Otávio Prado', profile:'Daredevil', color:'#d7263d', chipBg:'rgba(224,87,76,0.16)', chipText:'#f0847c', severity:'Crítico', reason:'34% de abandono, 7 dias sem atividade', compare:'turma: 18,5%' },
+      { initials:'BL', name:'Bianca Lopes', profile:'Achiever', color:'#c9a227', chipBg:'rgba(224,179,77,0.16)', chipText:'#e0b34d', severity:'Atenção', reason:'Nota 4,6, abaixo da média', compare:'turma: 7,4' },
+      { initials:'FS', name:'Felipe Souza', profile:'Mastermind', color:'#5b3fd9', chipBg:'rgba(224,179,77,0.16)', chipText:'#e0b34d', severity:'Atenção', reason:'Progresso 20 pts abaixo do previsto', compare:'esperado: 62%' },
+      { initials:'CV', name:'Camila Vaz', profile:'Socializer', color:'#f4623a', chipBg:'rgba(224,179,77,0.16)', chipText:'#e0b34d', severity:'Atenção', reason:'8 dias sem atividade', compare:'turma ativa: 2 dias' }
+    ];
+
+    const bhVals = [9,31,24,12,15,21,18];
+    const bhColors = ['#17a398','#5c6875','#d7263d','#5b3fd9','#1e4fd6','#f4623a','#c9a227'];
+    const bhLabels = ['Seeker','Survivor','Daredevil','Mastermind','Conqueror','Socializer','Achiever'];
+    const brainhexBars = bhVals.map((v,i) => ({ val:v, height: 20 + v*3.2, color: bhColors[i], label: bhLabels[i] }));
+
+    const donutSegments = [
+      { label:'9–10 alta', count:11, color:'#3a8b5f' },
+      { label:'7–8 média-alta', count:12, color:'#5fa8d3' },
+      { label:'5–6 média', count:7, color:'#c9a227' },
+      { label:'0–4 baixa', count:4, color:'#c0524a' }
+    ];
+    const donutGradient = 'conic-gradient(#3a8b5f 0 32.35%, #5fa8d3 32.35% 67.65%, #c9a227 67.65% 88.24%, #c0524a 88.24% 100%)';
+
+    const studentsData = [
+      ['Marina Corrêa','marina.correa@ulbra.br','Mastermind','#5b3fd9','8.2',74,79,11,'saudável'],
+      ['Lucas Ferreira','lucas.ferreira@ulbra.br','Conqueror','#1e4fd6','7.8',68,75,14,'saudável'],
+      ['Rafael Antunes','rafael.antunes@ulbra.br','Survivor','#5c6875','5.1',30,52,38,'crítico'],
+      ['Bianca Lopes','bianca.lopes@ulbra.br','Achiever','#c9a227','4.6',44,58,26,'atenção'],
+      ['Otávio Prado','otavio.prado@ulbra.br','Daredevil','#d7263d','6.0',28,60,34,'crítico'],
+      ['Felipe Souza','felipe.souza@ulbra.br','Mastermind','#5b3fd9','6.9',42,63,29,'atenção'],
+      ['Camila Vaz','camila.vaz@ulbra.br','Socializer','#f4623a','7.1',58,68,20,'atenção'],
+      ['Aluno Demo','aluno.demo@ulbra.br','Seeker','#17a398','8.9',91,88,6,'saudável']
+    ];
+    const students = studentsData.map(d => ({
+      name:d[0], email:d[1], profile:d[2], color:d[3], chipBg:d[3]+'22', chipText:d[3], nota:d[4], prog:d[5], acertos:d[6], abandono:d[7], abLabel:d[8],
+      abColor: d[7] >= 30 ? tone.warning : '#5fd99a',
+      initials: d[0].split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase()
+    }));
+
+    const evoKpis = [
+      { label:'Conclusão da trilha', value:'62%', delta:'+11 pts', deltaColor:tone.success, note:'nos últimos 30 dias · era 51%' },
+      { label:'Nota média', value:'7,4', delta:'+0,3', deltaColor:tone.success, note:'tendência de alta há 4 semanas' },
+      { label:'Atividades entregues', value:'216', delta:'−18%', deltaColor:'#e2574c', note:'queda na semana da prova de Cálculo' },
+      { label:'Abandono', value:'18,5%', delta:'−2,4 pts', deltaColor:tone.success, note:'caindo, mas ainda acima da meta de 15%' }
+    ];
+
+    const timelineEvents = [
+      { date:'04/09', tag:'Melhora', tagBg:'rgba(52,199,123,0.14)', tagColor:'#5fd99a', title:'Acertos em Dinâmica subiram de 58% para 74%', desc:'Depois da regeração do material de Dinâmica para os 7 perfis, em 28/08.' },
+      { date:'27/08', tag:'Queda', tagBg:'rgba(224,179,77,0.14)', tagColor:'#e0b34d', title:'Entregas caíram 18% na semana', desc:'Coincide com a prova de Cálculo I da mesma turma. Recuperou na semana seguinte.' },
+      { date:'19/08', tag:'Estrutura', tagBg:'rgba(111,179,224,0.14)', tagColor:'#6fb3e0', title:'Tópico "Trabalho e Energia" liberado', desc:'A conclusão média caiu 6 pontos no dia — efeito esperado ao abrir um tópico novo.' },
+      { date:'12/08', tag:'Risco', tagBg:'rgba(224,87,76,0.14)', tagColor:'#f0847c', title:'2 alunos passaram de 30% de abandono', desc:'Rafael Antunes e Otávio Prado entraram na lista de atenção e seguem lá.' }
+    ];
+
+    const contentsData = [
+      ['Áudio · Cinemática','Introdução','Áudio',91,'31 de 34 alunos',9,'melhor que a média',94,'concluíram'],
+      ['Vídeo · Leis de Newton','Leis de Newton','Vídeo',85,'29 de 34 alunos',18,'na média',88,'concluíram'],
+      ['Quiz · Leis de Newton','Leis de Newton','Quiz',97,'33 de 34 alunos',6,'melhor que a média',94,'concluíram'],
+      ['Leitura · Vetores (parte 2)','Vetores','Leitura',62,'21 de 34 alunos',54,'pior que a média',48,'concluíram'],
+      ['Áudio · Trabalho e Energia','Trabalho e Energia','Áudio',68,'23 de 34 alunos',24,'na média',57,'concluíram'],
+      ['Vídeo · Dinâmica','Dinâmica','Vídeo',79,'27 de 34 alunos',26,'melhorou',71,'concluíram']
+    ];
+    const contents = contentsData.map(d => ({
+      name:d[0], topic:d[1], format:d[2], use:d[3], useLabel:d[4], err:d[5], diffNote:d[6],
+      diffColor: d[5] >= 40 ? '#e2574c' : (d[5] <= 15 ? '#5fd99a' : '#e0b34d'),
+      done:d[7], doneLabel:d[8]
+    }));
+
+    atRisk.forEach(r => { r.open = () => this.setState({ view: 'student', stuTab: 0 }); });
+    students.forEach(s => { s.open = () => this.setState({ view: 'student', stuTab: 0 }); });
+
+    const step = this.state.step;
+    const journey = JOURNEY.map((ev, n) => {
+      const k = JK[ev.kind];
+      const on = n === step;
+      const prev = JOURNEY[n - 1];
+      return {
+        topicNum: ev.t, topicName: ev.topic, orderLabel: 'passo ' + (n + 1),
+        hasConn: n > 0, color: k.color, ink: k.ink,
+        connColor: k.connColor,
+        connLabel: prev && ev.t < prev.t ? 'voltou p/ ' + ev.t : (prev && ev.t > prev.t + 1 ? 'pulou p/ ' + ev.t : k.connLabel),
+        wrap: 'display:flex;flex-direction:column;align-items:center;width:96px;padding:8px 4px 10px;border-radius:14px;cursor:pointer;' + (on ? 'background:#231d33;border:2px solid #9b5de5;' : 'border:2px solid transparent;'),
+        chip: 'margin-top:7px;padding:3px 9px;border-radius:999px;font-size:10px;font-weight:700;white-space:nowrap;background:' + k.chipBg + ';color:' + k.chipFg,
+        chipLabel: k.chip,
+        select: () => this.setState({ step: n })
+      };
+    });
+    const evt = JOURNEY[step] || JOURNEY[0];
+    const ek = JK[evt.kind];
+    const good = evt.kind === 'ok' || evt.kind === 'retry';
+    const resColor = (evt.kind === 'err' || evt.kind === 'drop') ? '#f0847c' : (evt.kind === 'ok' ? '#5fd99a' : '#e0b34d');
+    const iconBox = (bg,c) => 'width:24px;height:24px;flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;background:' + bg + ';color:' + c;
+    const sel = {
+      topicNum: evt.t, topicName: evt.topic, title: evt.title, orderLabel: 'passo ' + (step + 1) + ' de 10',
+      order: (step + 1) + 'º de 10', orderNote: evt.orderNote, when: evt.when,
+      statusChip: 'padding:5px 13px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap;background:' + ek.chipBg + ';color:' + ek.chipFg,
+      statusLabel: ek.chip,
+      content: evt.content, contentNote: evt.contentNote, activity: evt.activity, activityNote: evt.activityNote,
+      answer: evt.answer, expected: evt.expected, result: evt.result, resultNote: evt.resultNote, resultColor: resColor,
+      resultIcon: (evt.kind === 'err' || evt.kind === 'drop') ? '✕' : (good ? '✓' : '!'),
+      resultIconBox: iconBox(evt.kind === 'err' || evt.kind === 'drop' ? 'rgba(224,87,76,0.2)' : (evt.kind === 'ok' ? 'rgba(95,217,154,0.2)' : 'rgba(224,179,77,0.2)'), resColor),
+      time: evt.time, timeNote: evt.timeNote, attempt: evt.attempt, attemptNote: evt.attemptNote, progress: evt.progress,
+      progressBar: 'width:' + evt.progress + '%;height:100%;border-radius:999px;background:#9b5de5;',
+      noteTitle: evt.noteTitle, note: evt.note,
+      noteColor: evt.kind === 'ok' ? '#f4f2f8' : ((evt.kind === 'err' || evt.kind === 'drop') ? '#f0847c' : '#e0b34d'),
+      noteIcon: evt.kind === 'ok' ? '=' : ((evt.kind === 'err' || evt.kind === 'drop') ? '!' : '↺'),
+      noteIconBox: iconBox(evt.kind === 'ok' ? '#2b2438' : (evt.kind === 'err' || evt.kind === 'drop' ? 'rgba(224,87,76,0.2)' : 'rgba(224,179,77,0.2)'), evt.kind === 'ok' ? '#c9c4d4' : ((evt.kind === 'err' || evt.kind === 'drop') ? '#f0847c' : '#e0b34d')),
+      interventions: (this.state.notesByStep[step] || []).map(iv => ({
+        when: iv.when, text: iv.text, avatar: iv.author === 'ia' ? 'IA' : 'JP',
+        avatarStyle: 'width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;' + (iv.author === 'ia' ? 'background:rgba(111,179,224,0.22);color:#6fb3e0' : 'background:rgba(155,93,229,0.22);color:#c1a7ec')
+      })),
+      hasNotes: !!(this.state.notesByStep[step] && this.state.notesByStep[step].length),
+      noNotes: !(this.state.notesByStep[step] && this.state.notesByStep[step].length),
+      stuColor: '#5b3fd9', stuInitials: 'MC', stuName: 'Marina Corrêa', stuEmail: 'marina.correa@ulbra.br', stuProfile: 'Mastermind'
+    };
+
+    const brainhexAffinity = [
+      { label:'Mastermind', val:92, color:'#5b3fd9' }, { label:'Seeker', val:68, color:'#17a398' },
+      { label:'Achiever', val:61, color:'#c9a227' }, { label:'Conqueror', val:44, color:'#1e4fd6' },
+      { label:'Socializer', val:29, color:'#f4623a' }, { label:'Daredevil', val:22, color:'#d7263d' },
+      { label:'Survivor', val:15, color:'#5c6875' }
+    ];
+
+    const materialsData = [
+      ['Cinemática · texto + áudio','2 leituras, 1 áudio (8 min)',100,'#5fd99a','Consumido','#5fd99a', true],
+      ['Vetores · texto + áudio','3 leituras, 1 áudio (11 min)',100,'#5fd99a','Consumido','#5fd99a', true],
+      ['Dinâmica · texto','4 leituras · áudio pendente de geração',75,'#9b5de5','3 de 4','#c1a7ec', true],
+      ['Trabalho e Energia · texto + áudio','2 leituras, 1 áudio (9 min)',33,'#e0b34d','1 de 3','#e0b34d', true],
+      ['Rotação · aguardando liberação do tópico','Material já gerado, será liberado com o tópico',0,'#5c5468','Em espera','#a29cb3', false]
+    ];
+    const personalMaterials = materialsData.map(m => ({
+      name:m[0], detail:m[1], pct:m[2], barColor:m[3], status:m[4], statusColor:m[5], hasBar:m[6],
+      bg: m[6] ? '#231d33' : '#1f1a2a', border: m[6] ? '1px solid transparent' : '1px dashed #3a3350',
+      titleColor: m[6] ? '#f4f2f8' : '#a29cb3'
+    }));
+
+    const stuTabs = ['Visão geral','Perfil BrainHex','Trilha visual','Personalização'].map((l,i) => ({
+      label: l, select: () => this.setState({ stuTab: i }),
+      style: `padding:9px 16px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;${this.state.stuTab===i ? 'background:#9b5de5;color:#fff;' : 'color:#a29cb3;'}`
+    }));
+
+    return {
+      navItems, estadoOptions, timeRanges, dashTabs, evoKpis, timelineEvents, contents,
+      isLoading: estado === 'loading', isEmpty: estado === 'empty', isError: estado === 'error', isData: estado === 'data',
+      isTab0: this.state.tab === 0, isTab1: this.state.tab === 1, isTab2: this.state.tab === 2,
+      skeletons3: [1,2,3],
+      retry: () => this.select('estado','data'),
+      kpiRow1, metrics2, atRisk, brainhexBars, donutSegments, donutGradient, students,
+      escribaOpen: this.state.escribaOpen,
+      toggleEscriba: () => this.setState(s => ({ escribaOpen: !s.escribaOpen })),
+      isClassView: this.state.view === 'class', isStudentView: this.state.view === 'student',
+      back: () => this.setState({ view: 'class' }),
+      stuTabs, isStuTab0: this.state.stuTab===0, isStuTab1: this.state.stuTab===1, isStuTab2: this.state.stuTab===2, isStuTab3: this.state.stuTab===3,
+      journey, sel, brainhexAffinity, personalMaterials,
+      noteInputStyle: 'flex:1;min-width:200px;padding:11px 14px;border-radius:14px;background:#231d33;border:1px solid #2b2438;font-size:13px;color:' + (this.state.noteDraft ? '#f4f2f8' : '#7a7488') + ';cursor:text;',
+      noteInputText: this.state.noteDraft ? 'Reforçar leitura do gráfico antes da próxima atividade de queda livre.' : 'Escrever um comentário, sugestão de estudo ou guia para este passo…',
+      saveNote: () => {
+        if (!this.state.noteDraft) { this.setState({ noteDraft: true }); return; }
+        const list = (this.state.notesByStep[step] || []).slice();
+        list.push({ when: 'agora · você', author: 'professor', text: 'Reforçar leitura do gráfico antes da próxima atividade de queda livre.' });
+        this.setState({ notesByStep: { ...this.state.notesByStep, [step]: list }, noteDraft: false });
+      }
+    };
+  }
+}
+
+</script>
+</body>
+</html>
