@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #0d0b16; font-family: 'Inter', sans-serif; }
+  @keyframes tu5-spin { to { transform: rotate(360deg); } }
+  @keyframes tu5-pulse { 0%,100% { opacity: .45; } 50% { opacity: 1; } }
+</style>
+</helmet>
+
+<div style="position:relative; min-height:100vh; background:#0d0b16; overflow:hidden;">
+
+  <div style="position:fixed; inset:0; pointer-events:none; z-index:0; opacity:0.5;
+    background: radial-gradient(ellipse 900px 500px at 75% 10%, rgba(155,93,229,0.10), transparent 60%),
+      repeating-linear-gradient(115deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 90px);">
+  </div>
+
+  <header style="position:fixed; top:0; left:0; right:0; height:68px; z-index:30; background:#23192e; border-bottom:1px solid #2b2438; display:flex; align-items:center; justify-content:space-between; padding:0 32px;">
+    <div style="display:flex; align-items:center; gap:14px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f4f2f8" stroke-width="1.4"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8L12 2z"/></svg>
+      <span style="font-family:'Cinzel',serif; font-weight:700; font-size:22px; color:#f4f2f8;">TrailUp</span>
+      <span style="width:1px; height:20px; background:#2b2438; margin:0 6px;"></span>
+      <span style="font-size:14px; color:#a29cb3;">Console do professor</span>
+    </div>
+    <div style="display:flex; align-items:center; gap:14px;">
+      <div style="width:38px; height:38px; border-radius:50%; background:#9b5de5; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:13px;">GA</div>
+      <div style="display:flex; flex-direction:column; line-height:1.3;">
+        <span style="font-size:14px; font-weight:700; color:#f4f2f8;">Geisbelly Admin Prof</span>
+        <span style="font-size:12px; color:#a29cb3;">Ulbra</span>
+      </div>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a29cb3" stroke-width="1.6" style="margin-left:6px;"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/></svg>
+    </div>
+  </header>
+
+  <nav style="position:fixed; top:68px; left:0; bottom:0; width:264px; z-index:20; background:#170e24; border-right:1px solid #2b2438; padding:24px 16px; display:flex; flex-direction:column; gap:4px;">
+    <sc-for list="{{ navItems }}" as="item" hint-placeholder-count="7">
+      <a href="{{ item.href }}" style="{{ item.style }} text-decoration:none;">
+        <div style="width:20px; height:20px; color:{{ item.color }}; flex:none;" dangerouslySetInnerHTML="{{ item.iconHtml }}"></div>
+        <span style="font-size:14.5px; color:{{ item.color }};">{{ item.label }}</span>
+      </a>
+    </sc-for>
+  </nav>
+
+  <main style="position:relative; z-index:1; margin-left:264px; padding:108px 40px 60px 40px;">
+
+    <div style="display:inline-flex; align-items:center; gap:6px; background:#1b1728; border:1px solid #2b2438; border-radius:999px; padding:6px; font-size:11px; margin-bottom:20px;">
+      <span style="color:#a29cb3; padding:0 8px; white-space:nowrap;">Pré-visualização de estado:</span>
+      <sc-for list="{{ estadoOptions }}" as="opt" hint-placeholder-count="3">
+        <div onClick="{{ opt.select }}" style="{{ opt.style }} white-space:nowrap;">{{ opt.label }}</div>
+      </sc-for>
+    </div>
+
+    <div style="display:flex; align-items:flex-end; gap:24px; flex-wrap:wrap; margin-bottom:24px;">
+      <div>
+        <div style="font-family:'Cinzel',serif; font-size:30px; font-weight:700; color:#f4f2f8; line-height:1.1; letter-spacing:0.02em;">PERSONALIZAÇÕES</div>
+        <div style="font-size:14px; color:#a29cb3; margin-top:8px; max-width:640px;">Compare como o material fica para cada perfil BrainHex e visualize a personalização efetiva por aluno.</div>
+      </div>
+      <div style="margin-left:auto; display:flex; align-items:center; gap:8px; padding:8px 14px; border-radius:999px; background:#1b1728; border:1px solid #2b2438; font-size:12px; color:#a29cb3; white-space:nowrap;">
+        <div style="width:8px; height:8px; border-radius:50%; background:#5fd99a; animation:tu5-pulse 2s ease-in-out infinite;"></div>
+        Atualizado há 12 s
+      </div>
+    </div>
+
+    <sc-if value="{{ !isEmpty }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex; align-items:flex-end; gap:14px; flex-wrap:wrap; padding:18px 22px; border-radius:20px; background:#1b1728; border:1px solid #2b2438;">
+      <div style="min-width:170px; flex:1;">
+        <div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Classe</div>
+        <div style="display:flex; align-items:center; margin-top:8px; padding:10px 13px; border-radius:14px; background:#231d33; border:1px solid #9b5de5; font-size:13.5px; font-weight:600; color:#f4f2f8; cursor:pointer;">
+          Física I<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a29cb3" stroke-width="2" style="margin-left:auto;"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+      </div>
+      <div style="min-width:150px; flex:1;">
+        <div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Tópico</div>
+        <div style="display:flex; align-items:center; margin-top:8px; padding:10px 13px; border-radius:14px; background:#231d33; border:1px solid #9b5de5; font-size:13.5px; font-weight:600; color:#f4f2f8; cursor:pointer;">
+          Cinemática<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a29cb3" stroke-width="2" style="margin-left:auto;"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+      </div>
+      <div style="min-width:170px; flex:1;">
+        <div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Conteúdo</div>
+        <div style="display:flex; align-items:center; margin-top:8px; padding:10px 13px; border-radius:14px; background:#231d33; border:1px solid #2b2438; font-size:13.5px; color:#c9c4d4; cursor:pointer;">
+          {{ contentName }}<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a29cb3" stroke-width="2" style="margin-left:auto;"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; padding:10px 16px; border-radius:14px; border:1px solid #2b2438; font-size:12.5px; font-weight:600; color:#c9c4d4; cursor:pointer; white-space:nowrap;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 11a8 8 0 10-2.3 5.7"/><path d="M20 5v6h-6"/></svg>
+        Atualizar
+      </div>
+      <div style="width:1px; align-self:stretch; background:#2b2438;"></div>
+      <div style="min-width:140px;">
+        <div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Gerar tudo para o perfil</div>
+        <div style="display:flex; align-items:center; gap:8px; margin-top:8px; padding:10px 13px; border-radius:14px; background:#231d33; border:1px solid #2b2438; font-size:13.5px; color:#c9c4d4; cursor:pointer;">
+          <div style="width:9px; height:9px; border-radius:50%; background:#5b3fd9; flex:none;"></div>
+          Mastermind
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a29cb3" stroke-width="2" style="margin-left:auto;"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; padding:11px 18px; border-radius:14px; background:#9b5de5; font-size:12.5px; font-weight:700; color:#fff; cursor:pointer; white-space:nowrap;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg>
+        Gerar tudo
+      </div>
+    </div>
+    </sc-if>
+
+    <!-- estado: sem seleção -->
+    <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; flex-direction:column; align-items:center; text-align:center; gap:16px; padding:84px 40px; border-radius:20px; background:#1b1728; border:1px solid #2b2438; margin-top:4px;">
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#a29cb3" stroke-width="1.4"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg>
+        <div style="font-family:'Cinzel',serif; font-size:22px; font-weight:700; color:#f4f2f8;">Escolha uma classe e um tópico</div>
+        <div style="font-size:14.5px; color:#a29cb3; max-width:480px; line-height:1.6;">O painel mostra o andamento da geração por perfil, por aluno e no agregado da turma. Selecione acima para começar.</div>
+        <div onClick="{{ fillExample }}" style="margin-top:6px; padding:12px 22px; border-radius:999px; background:#9b5de5; font-size:13.5px; font-weight:700; color:#fff; cursor:pointer;">Ver Física I · Cinemática</div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ !isEmpty }}" hint-placeholder-val="{{ true }}">
+    <div>
+
+      <!-- resumo zeroData -->
+      <sc-if value="{{ zeroData }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; align-items:center; gap:22px; flex-wrap:wrap; padding:18px 24px; border-radius:20px; background:#1b1728; border:1px solid #2b2438; margin-top:20px;">
+        <div style="min-width:0;">
+          <div style="font-family:'Cinzel',serif; font-size:17px; font-weight:700; color:#f4f2f8;">{{ contentName }}</div>
+          <div style="font-size:11.5px; color:#a29cb3; margin-top:3px;">Conteúdo ampliado e gerado por blocos</div>
+        </div>
+        <div style="flex:1; min-width:200px;">
+          <div style="display:flex; justify-content:space-between; font-size:11.5px; color:#c9c4d4; margin-bottom:6px;"><div>Progresso dos perfis</div><div>0%</div></div>
+          <div style="height:7px; border-radius:999px; background:#2b2438; overflow:hidden;"><div style="width:0%; height:100%; background:#9b5de5;"></div></div>
+        </div>
+        <div style="display:flex; align-items:center; gap:9px;">
+          <div style="padding:6px 13px; border-radius:999px; background:rgba(155,93,229,0.16); border:1px solid #9b5de5; font-size:11.5px; font-weight:700; color:#c1a7ec; white-space:nowrap;">0 de 7 pronto(s)</div>
+          <div style="padding:6px 13px; border-radius:999px; border:1px solid #2b2438; font-size:11.5px; font-weight:600; color:#c9c4d4; white-space:nowrap;">7 sem material</div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- resumo com dados -->
+      <sc-if value="{{ !zeroData }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex; align-items:center; gap:22px; flex-wrap:wrap; padding:18px 24px; border-radius:20px; background:#3a1e22; border:1px solid #7a3a3a; margin-top:20px;">
+        <div style="display:flex; align-items:center; gap:14px; min-width:0;">
+          <div style="width:40px; height:40px; flex:none; border-radius:50%; background:rgba(224,87,76,0.2); border:1px solid #7a3a3a; display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:800; color:#f0847c;">!</div>
+          <div style="min-width:0;">
+            <div style="font-family:'Cinzel',serif; font-size:18px; font-weight:700; color:#f4f2f8;">1 perfil precisa da sua atenção</div>
+            <div style="font-size:12.5px; color:#e8d8d8; margin-top:4px;">Socializer falhou na geração do áudio de Cinemática. Os outros 6 perfis seguem normalmente.</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-left:auto;">
+          <div style="display:flex; align-items:center; gap:7px; padding:7px 13px; border-radius:999px; background:rgba(52,199,123,0.14); border:1px solid rgba(52,199,123,0.4);">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5fd99a" stroke-width="3"><path d="M5 13l4 4 10-10"/></svg>
+            <div style="font-size:12.5px; font-weight:700; color:#5fd99a;">3</div><div style="font-size:11.5px; color:#d6e8dc;">prontos</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:7px; padding:7px 13px; border-radius:999px; background:rgba(111,179,224,0.14); border:1px solid rgba(111,179,224,0.4);">
+            <div style="width:11px; height:11px; border-radius:50%; border:2px solid rgba(111,179,224,0.35); border-top-color:#6fb3e0; animation:tu5-spin 1s linear infinite;"></div>
+            <div style="font-size:12.5px; font-weight:700; color:#6fb3e0;">1</div><div style="font-size:11.5px; color:#cfe4f0;">gerando</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:7px; padding:7px 13px; border-radius:999px; background:rgba(224,179,77,0.14); border:1px solid rgba(224,179,77,0.4);">
+            <div style="width:9px; height:9px; border-radius:50%; background:#e0b34d;"></div>
+            <div style="font-size:12.5px; font-weight:700; color:#e0b34d;">1</div><div style="font-size:11.5px; color:#e8dcc4;">parcial</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:7px; padding:7px 13px; border-radius:999px; background:rgba(224,87,76,0.16); border:1px solid #7a3a3a;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f0847c" stroke-width="2.6"><path d="M6 6l12 12M18 6L6 18"/></svg>
+            <div style="font-size:12.5px; font-weight:700; color:#f0847c;">1</div><div style="font-size:11.5px; color:#e8d8d8;">com falha</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:7px; padding:7px 13px; border-radius:999px; background:#231d33; border:1px solid #2b2438;">
+            <div style="width:9px; height:9px; border-radius:50%; background:#7a7488;"></div>
+            <div style="font-size:12.5px; font-weight:700; color:#c9c4d4;">1</div><div style="font-size:11.5px; color:#a29cb3;">sem material</div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <div style="display:flex; gap:6px; flex-wrap:wrap; margin:22px 0 20px; padding:5px; border-radius:999px; background:#1b1728; border:1px solid #2b2438; width:fit-content;">
+        <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4">
+          <div onClick="{{ t.select }}" style="{{ t.style }} white-space:nowrap;">{{ t.label }}</div>
+        </sc-for>
+      </div>
+
+      <!-- aba Por perfil -->
+      <sc-if value="{{ isTab0 }}" hint-placeholder-val="{{ true }}">
+
+        <sc-if value="{{ zeroData }}" hint-placeholder-val="{{ false }}">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(290px,1fr)); gap:16px;">
+          <sc-for list="{{ zeroProfiles }}" as="zp" hint-placeholder-count="7">
+          <div style="position:relative; padding:18px 20px; border-radius:18px; background:#1b1728; border-top:3px solid {{ zp.color }}; border-left:1px solid #2b2438; border-right:1px solid #2b2438; border-bottom:1px solid #2b2438;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div style="width:26px; height:26px; flex:none; border-radius:50%; background:{{ zp.color }}; display:flex; align-items:center; justify-content:center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#1b1120" stroke-width="2.4"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg></div>
+              <div style="font-size:14.5px; font-weight:700; text-transform:uppercase; color:#f4f2f8; letter-spacing:0.02em;">{{ zp.name }}</div>
+              <div style="margin-left:auto; padding:4px 11px; border-radius:999px; background:#231d33; border:1px solid #2b2438; font-size:10.5px; font-weight:700; color:#c9c4d4; white-space:nowrap;">Sem material</div>
+            </div>
+            <div style="font-size:11.5px; color:#a29cb3; margin-top:6px;">{{ zp.tech }} · 0 aluno(s) com este perfil</div>
+            <sc-if value="{{ zp.isAchiever }}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top:14px; padding:11px 13px; border-radius:14px; background:#231d33;">
+              <div style="display:flex; justify-content:space-between; font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:#a29cb3; font-weight:600;"><div>Etapa atual</div><div>0%</div></div>
+              <div style="font-size:12.5px; font-weight:600; margin-top:7px; color:#c9c4d4;">Sem material</div>
+              <div style="height:6px; border-radius:999px; background:#2b2438; overflow:hidden; margin-top:7px;"><div style="width:0%; height:100%; background:{{ zp.color }};"></div></div>
+            </div>
+            </sc-if>
+            <div style="display:flex; flex-direction:column; gap:7px; margin-top:14px;">
+              <sc-for list="{{ zp.formats }}" as="f" hint-placeholder-count="3">
+              <div style="display:flex; align-items:center; justify-content:space-between; font-size:12.5px; color:#c9c4d4;">
+                <div>{{ f }}</div>
+                <div style="padding:2px 9px; border-radius:999px; background:#231d33; font-size:9.5px; font-weight:700; color:#a29cb3;">Sem material</div>
+              </div>
+              </sc-for>
+            </div>
+            <div style="font-size:11px; color:#7a7488; margin-top:11px; line-height:1.5;">Ainda não há personalização gerada para este perfil no conteúdo selecionado.</div>
+            <div style="margin-top:13px; padding:9px 14px; border-radius:999px; background:#9b5de5; font-size:12px; font-weight:700; color:#fff; text-align:center; cursor:pointer;">Gerar</div>
+          </div>
+          </sc-for>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ !zeroData }}" hint-placeholder-val="{{ true }}">
+        <div style="border-radius:20px; background:#1b1728; border:1px solid #2b2438; overflow:hidden;">
+          <div style="padding:16px 22px; border-bottom:1px solid #2b2438; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <div style="font-size:13px; font-weight:600; color:#c9c4d4;">Comparativo dos 7 perfis — ordenado por alunos matriculados</div>
+            <div style="margin-left:auto; font-size:11px; color:#7a7488;">Cinemática · 4 conteúdos</div>
+          </div>
+          <div style="overflow-x:auto;">
+          <table style="width:100%; border-collapse:collapse; font-size:13px; min-width:760px;">
+            <thead>
+              <tr style="text-align:left; border-bottom:1px solid #2b2438;">
+                <th style="padding:11px 20px; font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:#7a7488; font-weight:600;">Perfil</th>
+                <th style="padding:11px 14px; font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:#7a7488; font-weight:600;">Alunos</th>
+                <th style="padding:11px 14px; font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:#7a7488; font-weight:600;">Status</th>
+                <th style="padding:11px 14px; font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:#7a7488; font-weight:600;">Texto</th>
+                <th style="padding:11px 14px; font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:#7a7488; font-weight:600;">Áudio</th>
+                <th style="padding:11px 14px; font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:#7a7488; font-weight:600;">Apresentação</th>
+                <th style="padding:11px 20px;"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <sc-for list="{{ profileRows }}" as="pr" hint-placeholder-count="7">
+              <tr style="border-top:1px solid #2b2438;">
+                <td style="padding:13px 20px; white-space:nowrap;">
+                  <div style="display:flex; align-items:center; gap:9px;">
+                    <div style="width:24px; height:24px; border-radius:50%; background:{{ pr.color }}; flex:none;"></div>
+                    <div style="font-weight:700; color:#f4f2f8;">{{ pr.name }}</div>
+                  </div>
+                </td>
+                <td style="padding:13px 14px; white-space:nowrap;">
+                  <div style="font-weight:700; color:#f4f2f8;">{{ pr.students }}</div>
+                  <div style="font-size:11px; color:#7a7488;">{{ pr.studentsNote }}</div>
+                </td>
+                <td style="padding:13px 14px; white-space:nowrap;"><div style="{{ pr.statusPill }}">{{ pr.statusLabel }}</div></td>
+                <td style="padding:13px 14px; white-space:nowrap; color:{{ pr.textColor }};">{{ pr.textLabel }}</td>
+                <td style="padding:13px 14px; white-space:nowrap; color:{{ pr.audioColor }};">{{ pr.audioLabel }}</td>
+                <td style="padding:13px 14px; white-space:nowrap; color:{{ pr.slidesColor }};">{{ pr.slidesLabel }}</td>
+                <td style="padding:13px 20px; white-space:nowrap; text-align:right;">
+                  <div onClick="{{ pr.action }}" style="{{ pr.actionStyle }}">{{ pr.actionLabel }}</div>
+                </td>
+              </tr>
+              </sc-for>
+            </tbody>
+          </table>
+          </div>
+        </div>
+        </sc-if>
+
+      </sc-if>
+
+      <sc-if value="{{ isTab1 }}" hint-placeholder-val="{{ false }}">
+      <div style="border-radius:20px; background:#1b1728; border:1px solid #2b2438; overflow:hidden;">
+        <div style="padding:16px 22px; border-bottom:1px solid #2b2438; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <div style="font-size:13px; font-weight:600; color:#c9c4d4;">Estrutura e paleta por perfil</div>
+          <div style="margin-left:auto; font-size:11px; color:#7a7488;">Cinemática · 4 conteúdos</div>
+        </div>
+        <div style="overflow-x:auto;">
+        <table style="width:100%; border-collapse:collapse; font-size:13px; min-width:760px;">
+          <thead>
+            <tr style="text-align:left; border-bottom:1px solid #2b2438;">
+              <th style="padding:11px 20px; font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:#7a7488; font-weight:600;">Perfil</th>
+              <th style="padding:11px 14px; font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:#7a7488; font-weight:600;">Tom</th>
+              <th style="padding:11px 14px; font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:#7a7488; font-weight:600;">Estilo</th>
+              <th style="padding:11px 14px; font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:#7a7488; font-weight:600;">Nível</th>
+              <th style="padding:11px 14px; font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:#7a7488; font-weight:600;">Prioritário</th>
+              <th style="padding:11px 20px; font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:#7a7488; font-weight:600;">Paleta</th>
+            </tr>
+          </thead>
+          <tbody>
+            <sc-for list="{{ paletteRows }}" as="pl" hint-placeholder-count="7">
+            <tr style="border-top:1px solid #2b2438;">
+              <td style="padding:13px 20px; white-space:nowrap;">
+                <div style="display:flex; align-items:center; gap:9px;">
+                  <div style="width:24px; height:24px; border-radius:50%; background:{{ pl.color }}; flex:none;"></div>
+                  <div style="font-weight:700; color:#f4f2f8;">{{ pl.name }}</div>
+                </div>
+              </td>
+              <td style="padding:13px 14px; color:#5c5468;">—</td>
+              <td style="padding:13px 14px; color:#5c5468;">—</td>
+              <td style="padding:13px 14px; color:#5c5468;">—</td>
+              <td style="padding:13px 14px; color:#5c5468;">—</td>
+              <td style="padding:13px 20px;">
+                <div style="display:flex; gap:6px;">
+                  <sc-for list="{{ pl.tokens }}" as="tk" hint-placeholder-count="5">
+                    <div title="{{ tk.label }}" style="width:15px; height:15px; border-radius:50%; background:{{ tk.color }};"></div>
+                  </sc-for>
+                </div>
+              </td>
+            </tr>
+            </sc-for>
+          </tbody>
+        </table>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isTab2 }}" hint-placeholder-val="{{ false }}">
+        <sc-if value="{{ zeroData }}" hint-placeholder-val="{{ false }}">
+        <div style="border-radius:20px; background:#1b1728; border:1px solid #2b2438; padding:24px 26px; max-width:500px;">
+          <div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Aluno</div>
+          <div style="display:flex; align-items:center; margin-top:8px; padding:11px 14px; border-radius:14px; background:#231d33; border:1px solid #2b2438; font-size:13.5px; color:#7a7488;">
+            Selecione o aluno<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a29cb3" stroke-width="2" style="margin-left:auto;"><path d="M6 9l6 6 6-6"/></svg>
+          </div>
+          <div style="margin-top:14px; padding:14px 16px; border-radius:14px; background:#231d33; font-size:12.5px; color:#a29cb3;">Selecione um aluno para ver a personalização efetiva dele.</div>
+        </div>
+        </sc-if>
+        <sc-if value="{{ !zeroData }}" hint-placeholder-val="{{ true }}">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:18px;">
+          <div style="padding:22px 24px; border-radius:20px; background:#1b1728; border:1px solid #9b5de5;">
+            <div style="font-size:10.5px; letter-spacing:0.1em; text-transform:uppercase; color:#c1a7ec; font-weight:600;">Personalização efetiva</div>
+            <div style="display:flex; align-items:center; gap:13px; margin-top:13px;">
+              <div style="width:42px; height:42px; flex:none; border-radius:50%; background:#5b3fd9; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:800; color:#fff;">MC</div>
+              <div style="min-width:0;">
+                <div style="font-family:'Cinzel',serif; font-size:20px; font-weight:700; color:#f4f2f8; line-height:1.15;">Marina Corrêa</div>
+                <div style="font-size:12px; color:#c9c4d4; margin-top:3px;">perfil usado: Mastermind (92% de afinidade)</div>
+              </div>
+              <div style="margin-left:auto; display:flex; align-items:center; gap:6px; padding:5px 12px; border-radius:999px; background:rgba(52,199,123,0.14); border:1px solid rgba(52,199,123,0.4); white-space:nowrap;">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#5fd99a" stroke-width="3.2"><path d="M5 13l4 4 10-10"/></svg>
+                <div style="font-size:10.5px; font-weight:700; color:#5fd99a;">pronto</div>
+              </div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:9px; margin-top:18px;">
+              <div style="display:flex; align-items:center; gap:11px; padding:12px 14px; border-radius:14px; background:#231d33;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5fd99a" stroke-width="3"><path d="M5 13l4 4 10-10"/></svg>
+                <div style="font-size:12.5px; font-weight:600; color:#f4f2f8; flex:1;">Texto personalizado</div>
+                <div style="font-size:11.5px; color:#a29cb3;">4 de 4 · 68% lido</div>
+              </div>
+              <div style="display:flex; align-items:center; gap:11px; padding:12px 14px; border-radius:14px; background:#231d33;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5fd99a" stroke-width="3"><path d="M5 13l4 4 10-10"/></svg>
+                <div style="font-size:12.5px; font-weight:600; color:#f4f2f8; flex:1;">Áudio</div>
+                <div style="font-size:11.5px; color:#a29cb3;">9 min · ouvido</div>
+              </div>
+              <div style="display:flex; align-items:center; gap:11px; padding:12px 14px; border-radius:14px; background:#231d33;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5fd99a" stroke-width="3"><path d="M5 13l4 4 10-10"/></svg>
+                <div style="font-size:12.5px; font-weight:600; color:#f4f2f8; flex:1;">Apresentação</div>
+                <div style="font-size:11.5px; color:#a29cb3;">8 slides · não aberta</div>
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-top:18px;">
+              <div style="padding:9px 16px; border-radius:999px; border:1px solid #2b2438; font-size:12.5px; font-weight:600; color:#c9c4d4; cursor:pointer;">Abrir no dashboard</div>
+              <div onClick="{{ openModal }}" style="padding:9px 16px; border-radius:999px; border:1px solid #2b2438; font-size:12.5px; font-weight:600; color:#f4f2f8; cursor:pointer;">Ver material gerado</div>
+              <div style="padding:9px 16px; border-radius:999px; background:rgba(155,93,229,0.16); border:1px solid #9b5de5; font-size:12.5px; font-weight:600; color:#c1a7ec; cursor:pointer;">Regerar material</div>
+            </div>
+          </div>
+
+          <div style="border-radius:20px; background:#1b1728; border:1px solid #2b2438; overflow:hidden;">
+            <div style="padding:18px 22px 14px;">
+              <div style="font-family:'Cinzel',serif; font-size:17px; font-weight:700; color:#f4f2f8;">Todos os alunos</div>
+              <div style="font-size:11.5px; color:#a29cb3; margin-top:3px;">status da personalização de Cinemática</div>
+              <div style="display:flex; align-items:center; gap:9px; margin-top:12px; padding:9px 14px; border-radius:999px; background:#231d33; border:1px solid #2b2438;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a29cb3" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                <span style="font-size:12px; color:#a29cb3;">Buscar aluno</span>
+              </div>
+            </div>
+            <sc-for list="{{ allStudents }}" as="s" hint-placeholder-count="6">
+              <div style="display:flex; align-items:center; gap:11px; padding:12px 22px; border-top:1px solid #2b2438; cursor:pointer;">
+                <div style="width:26px; height:26px; flex:none; border-radius:50%; background:{{ s.color }}; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:800; color:#1b1120;">{{ s.initials }}</div>
+                <div style="min-width:0; flex:1;">
+                  <div style="font-size:13px; font-weight:600; color:#f4f2f8;">{{ s.name }}</div>
+                  <div style="font-size:11px; color:#a29cb3; margin-top:2px;">{{ s.profile }}</div>
+                </div>
+                <div style="{{ s.statusPill }}">{{ s.statusLabel }}</div>
+              </div>
+            </sc-for>
+            <div style="padding:12px 22px; border-top:1px solid #2b2438; font-size:11.5px; color:#7a7488;">6 de 34 alunos</div>
+          </div>
+        </div>
+        </sc-if>
+      </sc-if>
+
+      <sc-if value="{{ isTab3 }}" hint-placeholder-val="{{ false }}">
+        <sc-if value="{{ zeroData }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex; flex-direction:column; gap:16px;">
+          <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px;">
+            <div style="padding:20px 22px; border-radius:20px; background:#1b1728; border:1px solid #2b2438;"><div style="font-family:'Cinzel',serif; font-size:11.5px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3;">Alunos na turma</div><div style="font-size:36px; font-weight:800; color:#f4f2f8; margin-top:10px;">0</div></div>
+            <div style="padding:20px 22px; border-radius:20px; background:#1b1728; border:1px solid #2b2438;"><div style="font-family:'Cinzel',serif; font-size:11.5px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3;">Perfil predominante</div><div style="font-size:28px; font-weight:800; color:#5c5468; margin-top:12px;">—</div></div>
+            <div style="padding:20px 22px; border-radius:20px; background:#1b1728; border:1px solid #2b2438;"><div style="font-family:'Cinzel',serif; font-size:11.5px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3;">Média de acertos</div><div style="font-size:36px; font-weight:800; color:#f4f2f8; margin-top:10px;">0.0%</div></div>
+            <div style="padding:20px 22px; border-radius:20px; background:#1b1728; border:1px solid #2b2438;"><div style="font-family:'Cinzel',serif; font-size:11.5px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3;">Conclusão média</div><div style="font-size:36px; font-weight:800; color:#f4f2f8; margin-top:10px;">0.0%</div></div>
+            <div style="padding:20px 22px; border-radius:20px; background:#1b1728; border:1px solid #2b2438;"><div style="font-family:'Cinzel',serif; font-size:11.5px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3;">Nota média</div><div style="font-size:36px; font-weight:800; color:#f4f2f8; margin-top:10px;">0.0%</div></div>
+          </div>
+          <div style="padding:22px 24px; border-radius:20px; background:#1b1728; border:1px solid #2b2438;">
+            <div style="font-family:'Cinzel',serif; font-size:17px; font-weight:700; color:#f4f2f8;">Distribuição de perfis BrainHex</div>
+            <div style="font-size:12.5px; color:#a29cb3; margin-top:4px;">Perfil dominante de cada aluno da turma, usado para priorizar os formatos gerados para o grupo.</div>
+            <div style="margin-top:16px; padding:18px; border-radius:14px; background:#231d33; font-size:12.5px; color:#a29cb3; text-align:center;">Nenhum aluno com perfil BrainHex definido nesta turma ainda.</div>
+          </div>
+        </div>
+        </sc-if>
+        <sc-if value="{{ !zeroData }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; flex-direction:column; gap:18px;">
+          <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:18px;">
+            <div style="padding:22px 24px; border-radius:20px; background:#1b1728; border:1px solid #2b2438;">
+              <div style="font-family:'Cinzel',serif; font-size:11.5px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3;">Alunos na turma</div>
+              <div style="font-size:36px; font-weight:800; color:#f4f2f8; margin-top:10px;">34</div>
+              <div style="font-size:12px; color:#a29cb3; margin-top:8px;">todos com perfil BrainHex respondido</div>
+            </div>
+            <div style="padding:22px 24px; border-radius:20px; background:#1b1728; border:1px solid #9b5de5;">
+              <div style="font-family:'Cinzel',serif; font-size:11.5px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#c1a7ec;">Perfil predominante</div>
+              <div style="display:flex; align-items:center; gap:11px; margin-top:12px;">
+                <div style="width:30px; height:30px; border-radius:50%; background:#5b3fd9;"></div>
+                <div style="font-size:22px; font-weight:800; color:#f4f2f8;">Mastermind</div>
+              </div>
+              <div style="font-size:12px; color:#c9c4d4; margin-top:9px;">9 de 34 alunos (26%)</div>
+            </div>
+            <div style="padding:22px 24px; border-radius:20px; background:#1b1728; border:1px solid #2b2438;">
+              <div style="font-family:'Cinzel',serif; font-size:11.5px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3;">Material pronto</div>
+              <div style="font-size:36px; font-weight:800; color:#f4f2f8; margin-top:10px;">78%</div>
+              <div style="height:7px; border-radius:999px; background:#2b2438; margin-top:12px; overflow:hidden;"><div style="width:78%; height:100%; background:#9b5de5;"></div></div>
+              <div style="font-size:12px; color:#a29cb3; margin-top:9px;">dos itens gerados nos 8 tópicos</div>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:18px;">
+            <div style="padding:22px 24px; border-radius:20px; background:#1b1728; border:1px solid #2b2438;">
+              <div style="font-family:'Cinzel',serif; font-size:17px; font-weight:700; color:#f4f2f8;">Distribuição de perfis</div>
+              <div style="font-size:12.5px; color:#a29cb3; margin-top:4px;">Percentual de alunos por perfil dominante</div>
+              <div style="display:flex; gap:3px; margin-top:16px; height:14px; border-radius:999px; overflow:hidden;">
+                <sc-for list="{{ profileDistribution }}" as="pd" hint-placeholder-count="7">
+                  <div style="width:{{ pd.pct }}%; background:{{ pd.color }};"></div>
+                </sc-for>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:10px; margin-top:16px;">
+                <sc-for list="{{ profileDistribution }}" as="pd" hint-placeholder-count="7">
+                  <div style="display:flex; align-items:center; gap:11px;">
+                    <div style="width:100px; flex:none; display:flex; align-items:center; gap:8px;"><div style="width:12px; height:12px; border-radius:50%; background:{{ pd.color }}; flex:none;"></div><div style="font-size:12.5px; color:#f4f2f8;">{{ pd.name }}</div></div>
+                    <div style="flex:1; height:9px; border-radius:999px; background:#2b2438; overflow:hidden;"><div style="width:{{ pd.pct }}%; height:100%; background:{{ pd.color }};"></div></div>
+                    <div style="width:64px; text-align:right; font-size:12px; font-weight:600; color:#c9c4d4;">{{ pd.pct }}% · {{ pd.count }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="padding:22px 24px; border-radius:20px; background:#1b1728; border:1px solid #2b2438;">
+              <div style="font-family:'Cinzel',serif; font-size:17px; font-weight:700; color:#f4f2f8;">Geração na turma inteira</div>
+              <div style="font-size:12.5px; color:#a29cb3; margin-top:4px;">56 combinações de tópico × perfil</div>
+              <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:10px; margin-top:16px;">
+                <sc-for list="{{ genCounts }}" as="g" hint-placeholder-count="5">
+                  <div style="padding:13px 15px; border-radius:14px; background:{{ g.bg }}; border:1px solid {{ g.border }};">
+                    <div style="font-size:11px; font-weight:600; color:{{ g.color }};">{{ g.label }}</div>
+                    <div style="font-size:24px; font-weight:800; color:#f4f2f8; margin-top:7px;">{{ g.count }}</div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:16px; padding:13px 15px; border-radius:14px; background:#231d33;">
+                <div style="font-size:12.5px; color:#c9c4d4; line-height:1.5; flex:1; min-width:180px;">As 2 falhas estão no serviço de áudio, nos tópicos 3 e 6. Reprocessar leva cerca de 4 minutos.</div>
+                <div style="padding:8px 15px; border-radius:999px; background:#f4f2f8; color:#1b1120; font-size:12.5px; font-weight:700; cursor:pointer; white-space:nowrap;">Reprocessar falhas</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        </sc-if>
+      </sc-if>
+
+    </div>
+    </sc-if>
+
+  </main>
+
+  <!-- modal ver conteúdo gerado -->
+  <sc-if value="{{ showModal }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed; inset:0; z-index:60; background:rgba(5,3,10,0.8); backdrop-filter:blur(6px); display:flex; align-items:center; justify-content:center; padding:28px;">
+    <div style="width:100%; max-width:720px; max-height:88vh; display:flex; flex-direction:column; border-radius:20px; background:#1b1728; border:1px solid #9b5de5; overflow:hidden;">
+      <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; padding:20px 24px; background:#211a2e; border-bottom:1px solid #2b2438; flex:none;">
+        <div style="width:34px; height:34px; flex:none; border-radius:50%; background:{{ modal.color }}; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; color:#fff;">{{ modal.initials }}</div>
+        <div style="min-width:0;">
+          <div style="font-size:10.5px; letter-spacing:0.1em; text-transform:uppercase; color:#c1a7ec; font-weight:600;">Conteúdo gerado</div>
+          <div style="font-family:'Cinzel',serif; font-size:19px; font-weight:700; color:#f4f2f8; margin-top:3px;">{{ modal.title }}</div>
+        </div>
+        <div onClick="{{ closeModal }}" style="margin-left:auto; width:30px; height:30px; border-radius:50%; background:#231d33; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c9c4d4" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </div>
+      </div>
+
+      <sc-if value="{{ isEmptyModal }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1; overflow-y:auto; padding:26px;">
+        <div style="padding:26px; border-radius:16px; background:#231d33; text-align:center;">
+          <div style="font-size:13.5px; font-weight:600; color:#f4f2f8;">Nenhum material gerado ainda para este perfil.</div>
+          <div style="font-size:12.5px; color:#a29cb3; margin-top:8px; line-height:1.55;">Texto, áudio e apresentação para {{ modal.name }} ainda não foram criados para o conteúdo selecionado.</div>
+          <div onClick="{{ closeModal }}" style="display:inline-block; margin-top:16px; padding:10px 20px; border-radius:999px; background:#9b5de5; font-size:13px; font-weight:700; color:#fff; cursor:pointer;">Gerar</div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ !isEmptyModal }}" hint-placeholder-val="{{ true }}">
+      <div style="flex:1; overflow-y:auto; padding:0 24px 24px;">
+        <div style="display:flex; gap:6px; padding:14px 0 0;">
+          <sc-for list="{{ mTabs }}" as="mt" hint-placeholder-count="3">
+            <div onClick="{{ mt.select }}" style="{{ mt.style }}">{{ mt.label }}</div>
+          </sc-for>
+        </div>
+
+        <div style="margin-top:16px;">
+          <sc-if value="{{ isViewText }}" hint-placeholder-val="{{ true }}">
+          <div>
+            <div style="font-size:11.5px; color:#a29cb3; margin-bottom:10px;">Prévia do texto gerado para o perfil {{ modal.name }} · {{ modal.wordCount }}</div>
+            <div style="padding:16px 18px; border-radius:14px; background:#231d33; font-size:13.5px; line-height:1.65; color:#e5e1ec;">{{ modal.textPreview }}</div>
+            <div onClick="{{ askRegenText }}" style="display:inline-block; margin-top:14px; padding:9px 16px; border-radius:999px; background:rgba(155,93,229,0.16); border:1px solid #9b5de5; font-size:12.5px; font-weight:600; color:#c1a7ec; cursor:pointer;">Regenerar este texto</div>
+          </div>
+          </sc-if>
+
+          <sc-if value="{{ isViewAudio }}" hint-placeholder-val="{{ false }}">
+          <div>
+            <div style="font-size:11.5px; color:#a29cb3; margin-bottom:10px;">Áudio gerado para o perfil {{ modal.name }} · {{ modal.audioDuration }}</div>
+            <div style="display:flex; align-items:center; gap:14px; padding:16px 18px; border-radius:14px; background:#231d33;">
+              <div style="width:40px; height:40px; flex:none; border-radius:50%; background:#9b5de5; display:flex; align-items:center; justify-content:center;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>
+              </div>
+              <div style="flex:1; min-width:0;">
+                <div style="height:5px; border-radius:999px; background:#2b2438; overflow:hidden;"><div style="width:38%; height:100%; background:#9b5de5;"></div></div>
+                <div style="font-size:11.5px; color:#a29cb3; margin-top:7px;">Roteiro: {{ modal.audioNote }}</div>
+              </div>
+            </div>
+            <div onClick="{{ askRegenAudio }}" style="display:inline-block; margin-top:14px; padding:9px 16px; border-radius:999px; background:rgba(155,93,229,0.16); border:1px solid #9b5de5; font-size:12.5px; font-weight:600; color:#c1a7ec; cursor:pointer;">Regenerar este áudio</div>
+          </div>
+          </sc-if>
+
+          <sc-if value="{{ isViewSlides }}" hint-placeholder-val="{{ false }}">
+          <div>
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
+              <div style="font-size:11.5px; color:#a29cb3;">{{ modal.slideCount }} slides gerados para o perfil {{ modal.name }} · regenere um slide isolado sem afetar os demais</div>
+              <div onClick="{{ askRegenAll }}" style="margin-left:auto; padding:7px 14px; border-radius:999px; border:1px solid #2b2438; font-size:11.5px; font-weight:600; color:#c9c4d4; cursor:pointer; white-space:nowrap;">Regenerar apresentação inteira</div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <sc-for list="{{ modal.slides }}" as="sl" hint-placeholder-count="8">
+                <div style="border-radius:14px; background:#231d33; overflow:hidden;">
+                  <div onClick="{{ sl.toggle }}" style="display:flex; align-items:center; gap:13px; padding:11px 14px; cursor:pointer;">
+                    <div style="width:24px; height:20px; flex:none; border-radius:4px; background:#2b2438; display:flex; align-items:center; justify-content:center; font-size:10.5px; font-weight:700; color:#c9c4d4;">{{ sl.n }}</div>
+                    <div style="min-width:0; flex:1;">
+                      <div style="font-size:12.5px; font-weight:600; color:#f4f2f8;">{{ sl.title }}</div>
+                      <div style="font-size:10.5px; color:#a29cb3; margin-top:2px;">{{ sl.note }}</div>
+                    </div>
+                    <div onClick="{{ sl.regen }}" style="padding:6px 12px; border-radius:999px; border:1px solid #2b2438; font-size:11px; font-weight:600; color:#c9c4d4; cursor:pointer; white-space:nowrap;">Regenerar slide</div>
+                  </div>
+                  <sc-if value="{{ sl.expanded }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin:0 14px 13px; padding:16px 18px; border-radius:12px; background:#0d0b16; aspect-ratio:16/9; display:flex; flex-direction:column; justify-content:center; gap:8px;">
+                    <div style="font-size:9.5px; letter-spacing:0.08em; text-transform:uppercase; color:#c1a7ec; font-weight:700;">Slide {{ sl.n }}</div>
+                    <div style="font-family:'Cinzel',serif; font-size:16px; font-weight:700; color:#f4f2f8; line-height:1.3;">{{ sl.title }}</div>
+                    <div style="font-size:12.5px; color:#c9c4d4; line-height:1.6;">{{ sl.body }}</div>
+                  </div>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          </sc-if>
+        </div>
+
+        <sc-if value="{{ showRegenInstruct }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:18px; padding:16px 18px; border-radius:14px; background:#231d33; border:1px solid #9b5de5;">
+          <div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">O que você quer mudar?</div>
+          <div style="margin-top:9px; padding:11px 13px; border-radius:12px; background:#0d0b16; border:1px solid #9b5de5; min-height:68px; font-size:12.5px; color:#7a7488; line-height:1.6;">Ex.: deixar o tom menos formal, ou trocar o exemplo do carro por um de esportes…</div>
+          <div style="font-size:10.5px; color:#7a7488; margin-top:8px;">Pode deixar em branco — nesse caso, regenera com o mesmo direcionamento de antes.</div>
+          <div style="display:flex; align-items:center; gap:12px; margin-top:14px;">
+            <div onClick="{{ cancelRegen }}" style="padding:9px 16px; border-radius:999px; border:1px solid #2b2438; font-size:12.5px; font-weight:600; color:#c9c4d4; cursor:pointer;">Cancelar</div>
+            <div onClick="{{ continueRegen }}" style="margin-left:auto; padding:10px 20px; border-radius:999px; background:#9b5de5; font-size:12.5px; font-weight:700; color:#fff; cursor:pointer;">Continuar</div>
+          </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ showRegenConfirm }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:18px; padding:18px 20px; border-radius:14px; background:#231d33; border:1px solid #9b5de5;">
+          <div style="font-family:'Cinzel',serif; font-size:16px; font-weight:700; color:#f4f2f8;">{{ regen.title }}</div>
+          <div style="margin-top:13px;">
+            <div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Motivo</div>
+            <div style="display:flex; align-items:center; gap:8px; margin-top:7px;">
+              <div style="width:9px; height:9px; border-radius:50%; background:{{ regen.reasonColor }}; flex:none;"></div>
+              <div style="font-size:12.5px; color:#e5e1ec;">{{ regen.reason }}</div>
+            </div>
+          </div>
+          <div style="margin-top:13px;">
+            <div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">O que muda nesta geração</div>
+            <div style="display:flex; flex-direction:column; gap:6px; margin-top:7px;">
+              <sc-for list="{{ regen.changes }}" as="c" hint-placeholder-count="3">
+                <div style="display:flex; align-items:flex-start; gap:8px; font-size:12.5px; color:#e5e1ec; line-height:1.5;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#c1a7ec" stroke-width="2.4" style="flex:none; margin-top:2px;"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                  {{ c }}
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="font-size:11.5px; color:#a29cb3; margin-top:13px; line-height:1.5;">{{ regen.keepNote }}</div>
+          <div style="display:flex; align-items:center; gap:12px; margin-top:16px;">
+            <div onClick="{{ cancelRegen }}" style="padding:9px 16px; border-radius:999px; border:1px solid #2b2438; font-size:12.5px; font-weight:600; color:#c9c4d4; cursor:pointer;">Cancelar</div>
+            <div onClick="{{ confirmRegen }}" style="margin-left:auto; padding:10px 20px; border-radius:999px; background:#9b5de5; font-size:12.5px; font-weight:700; color:#fff; cursor:pointer;">Confirmar regeneração</div>
+          </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ showRegenBusy }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:18px; display:flex; align-items:center; gap:12px; padding:15px 17px; border-radius:14px; background:rgba(111,179,224,0.14); border:1px solid rgba(111,179,224,0.4);">
+          <div style="width:15px; height:15px; border-radius:50%; border:2.5px solid rgba(111,179,224,0.3); border-top-color:#6fb3e0; animation:tu5-spin 1s linear infinite;"></div>
+          <div style="font-size:12.5px; color:#cfe4f0;">{{ regen.busyLabel }}</div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ showRegenDone }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:18px; display:flex; align-items:flex-start; gap:11px; padding:15px 17px; border-radius:14px; background:rgba(52,199,123,0.14); border:1px solid rgba(52,199,123,0.4);">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5fd99a" stroke-width="3" style="flex:none; margin-top:2px;"><path d="M5 13l4 4 10-10"/></svg>
+          <div style="font-size:12.5px; color:#d6f2e2; line-height:1.5;">{{ regen.doneLabel }}</div>
+        </div>
+        </sc-if>
+      </div>
+      </sc-if>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- Escriba -->
+  <div style="position:fixed; right:32px; bottom:28px; z-index:50;">
+    <sc-if value="{{ escribaOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute; bottom:70px; right:0; width:340px; border-radius:20px; background:#1b1728; border:1px solid #2b2438; box-shadow:0 20px 50px rgba(0,0,0,0.5); overflow:hidden;">
+        <div style="display:flex; align-items:center; gap:12px; padding:16px 18px; border-bottom:1px solid #2b2438; background:linear-gradient(135deg,#c9924f,#9c6b4f);">
+          <div style="width:34px; height:34px; border-radius:50%; background:rgba(0,0,0,0.2); display:flex; align-items:center; justify-content:center;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          </div>
+          <div>
+            <div style="font-family:'Cinzel',serif; font-size:14px; font-weight:700; color:#fff;">Escriba</div>
+            <div style="font-size:11px; color:rgba(255,255,255,0.85);">O guia do professor · lê as personalizações geradas</div>
+          </div>
+        </div>
+        <div style="padding:16px 18px; display:flex; flex-direction:column; gap:12px;">
+          <div style="font-size:13px; color:#e5e1ec; line-height:1.5;">Olá! Posso te ajudar a entender as personalizações geradas. O que você quer saber?</div>
+          <div style="display:flex; flex-wrap:wrap; gap:8px;">
+            <div style="padding:7px 12px; border-radius:999px; background:#231d33; border:1px solid #2b2438; font-size:12px; color:#c9c4d4; cursor:pointer;">Perfil sem material?</div>
+            <div style="padding:7px 12px; border-radius:999px; background:#231d33; border:1px solid #2b2438; font-size:12px; color:#c9c4d4; cursor:pointer;">Algum erro de geração?</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; padding:12px 14px; border-top:1px solid #2b2438;">
+          <input placeholder="Pergunte ao Escriba…" style="flex:1; background:#0d0b16; border:1px solid #2b2438; border-radius:999px; padding:9px 14px; color:#f4f2f8; font-size:13px; outline:none;"/>
+          <div style="width:32px; height:32px; border-radius:50%; background:#9c6b4f; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+    <div onClick="{{ toggleEscriba }}" title="Pergunte ao Escriba" style="width:56px; height:56px; border-radius:50%; background:linear-gradient(135deg,#c9924f,#9c6b4f); display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 12px 30px rgba(0,0,0,0.45);">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+    </div>
+  </div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const PROFILES = [
+  { key:'seeker', name:'SEEKER', tech:'Explorador · Seeker', color:'#17a398' },
+  { key:'survivor', name:'SURVIVOR', tech:'Sobrevivente · Survivor', color:'#5c6875' },
+  { key:'daredevil', name:'DAREDEVIL', tech:'Aventureiro · Daredevil', color:'#d7263d' },
+  { key:'mastermind', name:'MASTERMIND', tech:'Estrategista · Mastermind', color:'#5b3fd9' },
+  { key:'conqueror', name:'CONQUEROR', tech:'Conquistador · Conqueror', color:'#1e4fd6' },
+  { key:'socializer', name:'SOCIALIZER', tech:'Socializador · Socializer', color:'#f4623a' },
+  { key:'achiever', name:'ACHIEVER', tech:'Realizador · Achiever', color:'#c9a227' }
+];
+
+const PROFILE_DATA = {
+  Seeker: { color:'#17a398', initials:'Se', title:'Seeker · Cinemática', wordCount:'820 palavras', audioDuration:'11 min',
+    textPreview:'"Antes de aplicar a fórmula, vale abrir o problema como um mistério: o que os números escondem sobre o movimento? Repare que a velocidade média não conta a história toda — ela some com as paradas no meio do caminho..."',
+    audioNote:'tom exploratório, com perguntas guiando cada trecho',
+    slides: [['Por que estudar cinemática','reescrito em 12/09'],['O que é uma grandeza escalar','reescrito em 12/09'],['Velocidade média: o que ela esconde','reescrito em 12/09'],['Gráfico posição × tempo','reescrito em 12/09'],['Desafio: leitura de gráfico','reescrito em 12/09'],['Aceleração: mudança de ritmo','reescrito em 12/09'],['Queda livre, na prática','reescrito em 12/09'],['Resumo do tópico','reescrito em 12/09'],['Para explorar depois','reescrito em 12/09']] },
+  Mastermind: { color:'#5b3fd9', initials:'Ma', title:'Mastermind · Cinemática', wordCount:'760 palavras', audioDuration:'9 min',
+    textPreview:'"Um carro percorre 240 km em 3h. Antes de qualquer definição, resolva: qual é a velocidade média em m/s? A resposta guia a regra — não o contrário. Errar aqui custa pouco e ensina rápido..."',
+    audioNote:'problema primeiro, teoria depois, sem rodeios',
+    slides: [['Problema de abertura','gerado em 12/09'],['Onde a resposta certa esbarra','gerado em 12/09'],['A fórmula, deduzida','gerado em 12/09'],['Segundo problema, mais difícil','gerado em 12/09'],['Gráfico: ler antes de calcular','gerado em 12/09'],['Aceleração como taxa de variação','gerado em 12/09'],['Desafio de fechamento','gerado em 12/09'],['O que praticar a seguir','gerado em 12/09']] },
+  Daredevil: { color:'#d7263d', initials:'Da', title:'Daredevil · Cinemática', wordCount:'690 palavras', audioDuration:'10 min',
+    textPreview:'"240 km em 3h — bate ou não bate com o limite de velocidade da BR-153? Calcule antes de checar. Se errar, tenta de novo: o cronômetro da atividade está correndo..."',
+    audioNote:'ritmo acelerado, cenários de risco e cronômetro',
+    slides: [['Cenário: excesso de velocidade?','gerado em 12/09'],['Calcule contra o relógio','gerado em 12/09'],['O gráfico não perdoa','gerado em 12/09'],['Desafio cronometrado','gerado em 12/09'],['Aceleração em curva','gerado em 12/09'],['Queda livre: quem chega primeiro','gerado em 12/09'],['Placar do tópico','gerado em 12/09']] },
+  Achiever: { color:'#c9a227', initials:'Ac', title:'Achiever · Cinemática', wordCount:'4 de 4 conteúdos', audioDuration:'sintetizando (62%)',
+    textPreview:'"Checklist de Cinemática: 4 de 4 conceitos revisados. Faltam 2 conquistas para completar o tópico com 100% — continue para não perder a sequência de dias ativos."',
+    audioNote:'em geração — voz ainda sendo sintetizada', slides: [] },
+  Conqueror: { color:'#1e4fd6', initials:'Co', title:'Conqueror · Cinemática', wordCount:'3 de 4 conteúdos', audioDuration:'não gerado',
+    textPreview:'"Sua meta nesta semana: dominar o gráfico de posição antes da turma. 3 de 4 conteúdos concluídos — o quarto ainda não tem áudio nem apresentação gerados."',
+    audioNote:'ainda não gerado para este perfil', slides: [] },
+  Socializer: { color:'#f4623a', initials:'So', title:'Socializer · Cinemática', wordCount:'4 de 4 conteúdos', audioDuration:'falhou na síntese',
+    textPreview:'"Compare sua resposta com a de dois colegas antes de confirmar — no chat da turma, quem explica o gráfico primeiro ganha o selo de tutor da semana."',
+    audioNote:'erro do serviço de voz (timeout), tentado 2 vezes às 09:52', slides: [] },
+  Survivor: null,
+  Marina: { color:'#5b3fd9', initials:'MC', title:'Marina Corrêa · Mastermind · Cinemática', wordCount:'4 de 4 conteúdos', audioDuration:'9 min · ouvido',
+    textPreview:'"Um carro percorre 240 km em 3h. Antes de qualquer definição, resolva: qual é a velocidade média em m/s?"',
+    audioNote:'mesmo áudio gerado para todo o perfil Mastermind',
+    slides: [['Problema de abertura','gerado em 12/09'],['Onde a resposta certa esbarra','gerado em 12/09'],['A fórmula, deduzida','gerado em 12/09'],['Segundo problema, mais difícil','gerado em 12/09'],['Gráfico: ler antes de calcular','gerado em 12/09'],['Aceleração como taxa de variação','gerado em 12/09'],['Desafio de fechamento','gerado em 12/09'],['O que praticar a seguir','gerado em 12/09']] }
+};
+const EMPTY_META = { Survivor: { name:'Survivor', color:'#5c6875', initials:'Su' } };
+const REGEN_REASONS = {
+  Seeker: { reason:'Pedido manual do professor', reasonColor:'#a29cb3', changes:['Novo texto-base a partir do PDF atual de Cinemática','Mesmo tom exploratório do perfil Seeker','Áudio e apresentação recalculados a partir do novo texto'], keepNote:'As respostas e o progresso dos alunos neste conteúdo não são afetados.' },
+  Mastermind: { reason:'Pedido manual do professor', reasonColor:'#a29cb3', changes:['Novo texto-base a partir do PDF atual de Cinemática','Mesmo tom de resolução de problemas do perfil Mastermind','Áudio e apresentação recalculados a partir do novo texto'], keepNote:'As respostas e o progresso dos alunos neste conteúdo não são afetados.' },
+  Daredevil: { reason:'Pedido manual do professor', reasonColor:'#a29cb3', changes:['Novo texto-base a partir do PDF atual de Cinemática','Mesmo ritmo acelerado do perfil Daredevil','Áudio e apresentação recalculados a partir do novo texto'], keepNote:'As respostas e o progresso dos alunos neste conteúdo não são afetados.' },
+  Achiever: { reason:'Pedido manual do professor', reasonColor:'#a29cb3', changes:['Reprocessa os itens já concluídos e os 2 pendentes','Mantém a estrutura de checklist do perfil Achiever'], keepNote:'O progresso e as conquistas já registradas do aluno não são perdidos.' },
+  Conqueror: { reason:'Material parcial — 1 conteúdo nunca foi gerado', reasonColor:'#e0b34d', changes:['Gera o conteúdo que falta (Lista de exercícios 2026)','Mantém os 3 conteúdos já prontos como estão','Cria o áudio e a apresentação deste perfil, ainda inexistentes'], keepNote:'Nada do que já está pronto para o Conqueror é reescrito.' },
+  Socializer: { reason:'Falha anterior — timeout no serviço de síntese de voz', reasonColor:'#f0847c', changes:['Tenta novamente apenas o áudio, que falhou 2 vezes','O texto, já gerado com sucesso, não é tocado'], keepNote:'Se falhar de novo, o motivo exato do erro fica registrado em "Ver detalhes do erro".' },
+  Marina: { reason:'Conteúdo desatualizado — o professor trocou o PDF-fonte em 04/09', reasonColor:'#6fb3e0', changes:['Novo texto a partir do PDF atualizado de Cinemática','Áudio e apresentação recalculados a partir do novo texto','Aplica-se a todos os 7 alunos que usam o perfil Mastermind, não só Marina'], keepNote:'O progresso e as respostas de Marina nas atividades já feitas continuam guardados.' }
+};
+
+const NAV_HREFS = {
+  visao: 'Console%20Visao%20Geral%20(Fase%202).dc.html',
+  trilhas: 'Console%20Trilhas%20(Fase%202).dc.html',
+  turmas: 'Console%20Turmas%20(Fase%202).dc.html',
+  personalizacoes: 'Console%20Personalizacoes%20(Fase%202).dc.html',
+  rankings: 'Console%20Rankings%20(Fase%202).dc.html',
+  meusdados: 'Console%20Meus%20Dados%20(Fase%202).dc.html',
+  aprovacoes: 'Console%20Aprovacoes%20(Fase%202).dc.html'
+};
+
+class Component extends DCLogic {
+  state = { view: 'zero', tab: 0, escribaOpen: false,
+    modalKey: null, mtab: 0, regenPhase: 0, regenTarget: null, expandedSlide: null };
+
+  navIcon(name) {
+    const icons = {
+      visao: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
+      trilhas: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8 7.5C10 10 14 14 16 16.5"/></svg>',
+      turmas: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/></svg>',
+      personalizacoes: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/><path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2z"/></svg>',
+      rankings: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 6H4a2 2 0 0 0 2 4"/><path d="M17 6h3a2 2 0 0 1-2 4"/></svg>',
+      meusdados: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+      aprovacoes: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2l8 3v6c0 5-3.5 8.5-8 11-4.5-2.5-8-6-8-11V5l8-3z"/><path d="M9 12l2 2 4-4"/></svg>'
+    };
+    return { __html: icons[name] };
+  }
+
+  openModal(key) { this.setState({ modalKey: key, mtab: 0, regenPhase: 0, expandedSlide: null }); }
+  closeModal() { this.setState({ modalKey: null, regenPhase: 0 }); }
+  startRegenBusyThenDone(label, done) {
+    this.setState({ regenPhase: 3 });
+    setTimeout(() => this.setState({ regenPhase: 4 }), 1400);
+  }
+  modalVals() {
+    const key = this.state.modalKey;
+    const p = key ? PROFILE_DATA[key] : null;
+    const emptyMeta = (!p && key) ? (EMPTY_META[key] || { name: key, color: '#5c5468', initials: key.slice(0,2) }) : null;
+    const mtab = this.state.mtab;
+    const phase = this.state.regenPhase;
+    const target = this.state.regenTarget;
+    const r = target ? REGEN_REASONS[target] : null;
+    const slides = p ? p.slides.map((sl,i) => ({
+      n: i+1, title: sl[0], note: sl[1],
+      body: '“' + sl[0] + '” — conteúdo do slide, no tom do perfil ' + key + '.',
+      expanded: this.state.expandedSlide === i,
+      toggle: () => this.setState({ expandedSlide: this.state.expandedSlide === i ? null : i }),
+      regen: (e) => { e && e.stopPropagation && e.stopPropagation(); this.setState({ regenTarget: key, regenPhase: 1 }); }
+    })) : [];
+    return {
+      showModal: !!key,
+      isEmptyModal: !!key && !p,
+      modal: p ? { color:p.color, initials:p.initials, title:p.title, name:key, wordCount:p.wordCount, audioDuration:p.audioDuration, textPreview:p.textPreview, audioNote:p.audioNote, slideCount:p.slides.length, slides }
+             : (emptyMeta ? { color:emptyMeta.color, initials:emptyMeta.initials, title: emptyMeta.name + ' · Cinemática', name: emptyMeta.name } : {}),
+      closeModal: () => this.closeModal(),
+      mTabs: ['Texto','Áudio','Apresentação'].map((l,i) => ({
+        label: l, select: () => this.setState({ mtab: i }),
+        style: `padding:8px 15px;border-radius:999px;font-size:12.5px;font-weight:600;cursor:pointer;${mtab===i ? 'background:#9b5de5;color:#fff;' : 'color:#a29cb3;'}`
+      })),
+      isViewText: mtab===0, isViewAudio: mtab===1, isViewSlides: mtab===2,
+      askRegenText: () => this.setState({ regenTarget: key, regenPhase: 1 }),
+      askRegenAudio: () => this.setState({ regenTarget: key, regenPhase: 1 }),
+      askRegenAll: () => this.setState({ regenTarget: key, regenPhase: 1 }),
+      showRegenInstruct: phase===1, showRegenConfirm: phase===2, showRegenBusy: phase===3, showRegenDone: phase===4,
+      cancelRegen: () => this.setState({ regenPhase: 0, regenTarget: null }),
+      continueRegen: () => this.setState({ regenPhase: 2 }),
+      confirmRegen: () => this.startRegenBusyThenDone(),
+      regen: r ? {
+        title: 'Regenerar para ' + target, reason: r.reason, reasonColor: r.reasonColor, changes: r.changes, keepNote: r.keepNote,
+        busyLabel: 'Regenerando material de ' + target + '…',
+        doneLabel: 'Material de ' + target + ' regenerado com sucesso.'
+      } : {}
+    };
+  }
+
+  statusStyle(status) {
+    const map = {
+      pronto: 'background:rgba(52,199,123,0.14);color:#5fd99a;border:1px solid rgba(52,199,123,0.4);',
+      parcial: 'background:rgba(224,179,77,0.14);color:#e0b34d;border:1px solid rgba(224,179,77,0.4);',
+      gerando: 'background:rgba(111,179,224,0.14);color:#6fb3e0;border:1px solid rgba(111,179,224,0.4);',
+      falha: 'background:rgba(224,87,76,0.16);color:#f0847c;border:1px solid #7a3a3a;',
+      sem: 'background:#231d33;color:#a29cb3;border:1px solid #2b2438;'
+    };
+    return `display:inline-block;padding:5px 12px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap;${map[status]}`;
+  }
+
+  renderVals() {
+    const view = this.state.view;
+    const zeroData = view === 'zero';
+    const isEmpty = view === 'empty';
+
+    const navItems = [
+      { key:'visao', label:'Visão geral', active:false },
+      { key:'trilhas', label:'Trilhas', active:false },
+      { key:'turmas', label:'Turmas', active:false },
+      { key:'personalizacoes', label:'Personalizações', active:true },
+      { key:'rankings', label:'Rankings', active:false },
+      { key:'meusdados', label:'Meus dados', active:false },
+      { key:'aprovacoes', label:'Aprovações', active:false }
+    ].map(n => ({
+      label: n.label, iconHtml: this.navIcon(n.key), color: n.active ? '#4fd1c5' : '#a29cb3', href: NAV_HREFS[n.key],
+      style: `display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;white-space:nowrap;${n.active ? 'background:rgba(79,209,197,0.08);font-weight:600;' : ''}`
+    }));
+
+    const estadoOptions = [
+      { k:'zero', l:'Sem material (zeroData)' },
+      { k:'data', l:'Com dados' },
+      { k:'empty', l:'Sem seleção' }
+    ].map(o => ({
+      label: o.l, select: () => this.setState({ view: o.k }),
+      style: `padding:6px 12px;border-radius:999px;font-size:11px;cursor:pointer;font-weight:600;${view===o.k ? 'background:#9b5de5;color:#fff;' : 'color:#a29cb3;'}`
+    }));
+
+    const tabs = ['Por perfil','Estrutura e paleta','Por aluno','Turma'].map((l,i) => ({
+      label: l, select: () => this.setState({ tab: i }),
+      style: `padding:8px 16px;border-radius:999px;font-size:12.5px;font-weight:600;cursor:pointer;${this.state.tab===i ? 'background:#9b5de5;color:#fff;' : 'color:#a29cb3;'}`
+    }));
+
+    const zeroProfiles = PROFILES.map(p => ({
+      name: p.name, tech: p.tech, color: p.color, isAchiever: p.key === 'achiever',
+      formats: p.key === 'achiever' ? ['Texto','PDF','Áudio','Apresentação'] : ['PDF','Áudio','Apresentação']
+    }));
+
+    const rowData = [
+      { name:'Mastermind', color:'#5b3fd9', students:7, status:'pronto', text:'4', audio:'9 min', slides:'8 slides' },
+      { name:'Conqueror', color:'#1e4fd6', students:6, status:'parcial', text:'3 de 4', audio:'não gerado', slides:'não gerado' },
+      { name:'Seeker', color:'#17a398', students:5, status:'pronto', text:'4', audio:'11 min', slides:'9 slides' },
+      { name:'Daredevil', color:'#d7263d', students:4, status:'pronto', text:'4', audio:'10 min', slides:'7 slides' },
+      { name:'Achiever', color:'#c9a227', students:3, status:'pronto', text:'4', audio:'8 min', slides:'6 slides' },
+      { name:'Socializer', color:'#f4623a', students:2, status:'falha', text:'4', audio:'falhou', slides:'4 slides' },
+      { name:'Survivor', color:'#5c6875', students:1, status:'sem', text:'—', audio:'—', slides:'—' }
+    ];
+    const profileRows = rowData.map(r => ({
+      name: r.name, color: r.color, students: r.students, studentsNote: 'alunos matriculados',
+      statusPill: this.statusStyle(r.status),
+      statusLabel: { pronto:'pronto', parcial:'parcial', gerando:'gerando', falha:'com falha', sem:'sem material' }[r.status],
+      textLabel: r.text, audioLabel: r.audio, slidesLabel: r.slides,
+      textColor: '#c9c4d4', audioColor: r.audio === 'falhou' ? '#f0847c' : (r.audio === 'não gerado' || r.audio === '—' ? '#7a7488' : '#c9c4d4'),
+      slidesColor: r.slides === 'não gerado' || r.slides === '—' ? '#7a7488' : '#c9c4d4',
+      actionLabel: r.status === 'parcial' ? 'Ver e completar' : 'Visualizar',
+      actionStyle: `display:inline-block;padding:7px 14px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;${r.status === 'parcial' ? 'background:rgba(224,179,77,0.16);border:1px solid #e0b34d;color:#e0b34d;' : 'border:1px solid #2b2438;color:#c9c4d4;'}`,
+      action: () => this.openModal(r.name)
+    }));
+
+    const TOKENS = ['Fundo','Superfície','Primária','Borda','Texto'];
+    const paletteRows = PROFILES.map(p => ({
+      name: p.name.charAt(0) + p.name.slice(1).toLowerCase(), color: p.color,
+      tokens: TOKENS.map((label,i) => ({
+        label, color: i===0 ? '#1b1728' : i===1 ? '#231d33' : i===2 ? p.color : i===3 ? '#2b2438' : '#f4f2f8'
+      }))
+    }));
+
+    const studentStatusData = [
+      ['Marina Corrêa','MC','#5b3fd9','Mastermind','pronto'],
+      ['Rafael Antunes','RA','#5c6875','Survivor','sem'],
+      ['Beatriz Lemos','BL','#17a398','Seeker','pronto'],
+      ['Nina Salgado','NS','#f4623a','Socializer','falha'],
+      ['Helena Vasques','HV','#c9a227','Achiever','gerando'],
+      ['Caio Bertoldo','CB','#1e4fd6','Conqueror','parcial']
+    ];
+    const allStudents = studentStatusData.map(s => ({
+      name: s[0], initials: s[1], color: s[2], profile: s[3],
+      statusPill: this.statusStyle(s[4]),
+      statusLabel: { pronto:'pronto', parcial:'parcial', gerando:'gerando', falha:'com falha', sem:'sem material' }[s[4]]
+    }));
+
+    const profileDistribution = [
+      { name:'Mastermind', color:'#5b3fd9', pct:26, count:9 },
+      { name:'Seeker', color:'#17a398', pct:21, count:7 },
+      { name:'Achiever', color:'#c9a227', pct:18, count:6 },
+      { name:'Conqueror', color:'#1e4fd6', pct:12, count:4 },
+      { name:'Socializer', color:'#f4623a', pct:12, count:4 },
+      { name:'Daredevil', color:'#d7263d', pct:8, count:3 },
+      { name:'Survivor', color:'#5c6875', pct:3, count:1 }
+    ];
+
+    const genCounts = [
+      { label:'prontos', count:41, bg:'rgba(52,199,123,0.14)', border:'rgba(52,199,123,0.4)', color:'#5fd99a' },
+      { label:'em andamento', count:6, bg:'rgba(111,179,224,0.14)', border:'rgba(111,179,224,0.4)', color:'#6fb3e0' },
+      { label:'parciais', count:5, bg:'rgba(224,179,77,0.14)', border:'rgba(224,179,77,0.4)', color:'#e0b34d' },
+      { label:'com falha', count:2, bg:'rgba(224,87,76,0.16)', border:'#7a3a3a', color:'#f0847c' },
+      { label:'sem material', count:2, bg:'#231d33', border:'#2b2438', color:'#c9c4d4' }
+    ];
+
+    return {
+      navItems, estadoOptions, tabs,
+      isEmpty, zeroData,
+      fillExample: () => this.setState({ view: 'zero' }),
+      contentName: 'Cinemática · Introdução',
+      isTab0: this.state.tab===0, isTab1: this.state.tab===1, isTab2: this.state.tab===2, isTab3: this.state.tab===3,
+      zeroProfiles, profileRows, paletteRows, allStudents, profileDistribution, genCounts,
+      openModal: (key) => this.openModal(key || 'Marina'),
+      escribaOpen: this.state.escribaOpen,
+      toggleEscriba: () => this.setState(s => ({ escribaOpen: !s.escribaOpen })),
+      ...this.modalVals()
+    };
+  }
+}
+
+</script>
+</body>
+</html>
