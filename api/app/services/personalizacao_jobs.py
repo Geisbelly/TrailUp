@@ -2041,7 +2041,11 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
                 ciclo_id = str(payload.get("ciclo_id") or "")
                 source_hash = str(payload.get("source_hash") or "")
                 generation_key = _build_generation_key(ciclo_id=ciclo_id, source_hash=source_hash)
-                record = await conteudo_repo.buscar_por_ciclo_id(aluno_id=str(job["aluno_id"]), ciclo_id=ciclo_id)
+                # Job de base por perfil (20260827_04) nao tem aluno dono:
+                # str(None) virava a string "None" e estourava "invalid UUID"
+                # tanto aqui quanto em fetch_aluno_context (fetch_personalizacao_context).
+                job_aluno_id = str(job["aluno_id"]) if job.get("aluno_id") is not None else None
+                record = await conteudo_repo.buscar_por_ciclo_id(aluno_id=job_aluno_id, ciclo_id=ciclo_id)
                 if not record:
                     raise RuntimeError(
                         f"conteudo_personalizado nao encontrado para ciclo_id={ciclo_id} - "
@@ -2050,7 +2054,7 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
                 record_id = int(record["id"])
 
                 ctx = await fetch_personalizacao_context(
-                    aluno_id=str(job["aluno_id"]),
+                    aluno_id=job_aluno_id,
                     classe_id=int(job["classe_id"]),
                     topico_id=job.get("topico_id"),
                     conteudo_id=job.get("conteudo_id"),

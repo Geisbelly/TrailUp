@@ -719,7 +719,7 @@ class ConteudoPersonalizadoRepository:
         row = result.mappings().first()
         return self._hydrate_record(dict(row)) if row else None
 
-    async def buscar_por_ciclo_id(self, *, aluno_id: str, ciclo_id: str) -> dict[str, Any] | None:
+    async def buscar_por_ciclo_id(self, *, aluno_id: str | None, ciclo_id: str) -> dict[str, Any] | None:
         has_ai_patch = await self._table_has_column("ai_patch")
         has_classe_id = await self._table_has_column("classe_id")
         has_status = await self._table_has_column("status")
@@ -746,7 +746,7 @@ class ConteudoPersonalizadoRepository:
                        plano, materiais, {ai_patch_sql}, {status_sql}, {source_hash_sql},
                        formato_prioritario, formatos_gerados, gerado_em, {updated_at_sql}
                 FROM conteudo_personalizado
-                WHERE aluno_id = :aluno_id
+                WHERE aluno_id IS NOT DISTINCT FROM CAST(:aluno_id AS UUID)
                   AND ciclo_id = :ciclo_id
                 ORDER BY gerado_em DESC
                 LIMIT 1
