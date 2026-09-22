@@ -74,6 +74,13 @@ _DEFAULT_MAX_ATTEMPTS = 3
 _DEFAULT_MAX_OUTPUT_TOKENS = 8_192
 _DEFAULT_QUOTA_COOLDOWN_SEC = 300
 _DEFAULT_GEMINI_QUOTA_COOLDOWN_SEC = 300
+# Cota diaria (RequestsPerDay) so reseta amanha, nao em minutos — cooldown
+# curto so faz o worker martelar a mesma chave/modelo esgotado a cada poll
+# pelo resto do dia, sem chance nenhuma de suceder. 6h e um meio-termo: nao
+# exige calcular o horario exato de reset da Google (varia por regiao/produto)
+# e ainda deixa o circuito reabrir sozinho antes do fim do dia caso o teto
+# tenha sido elevado ou o erro tenha sido mal classificado.
+_DEFAULT_GEMINI_DAILY_QUOTA_COOLDOWN_SEC = 6 * 3_600
 _DEFAULT_OPENAI_SPEND_CAP_USD = 1.0
 
 # gpt-4o-mini, preco por token em USD (conferir preco atual antes de confiar
@@ -229,6 +236,17 @@ def _is_gemini_quota_error(exc: BaseException) -> bool:
     if status in {"429", "RESOURCE_EXHAUSTED"}:
         return True
     return "resource_exhausted" in text or "quota" in text
+
+
+def _is_gemini_daily_quota_error(exc: BaseException) -> bool:
+    """Distingue RequestsPerDay (so reseta amanha) de RequestsPerMinute (reseta
+    em segundos) dentro dos erros de cota — a mensagem do Google inclui o
+    quotaId, ex. 'GenerateRequestsPerDayPerProjectPerModel-FreeTier'. Chamar
+    so depois de confirmar _is_gemini_quota_error(exc); usada pra escolher um
+    cooldown compativel em vez do fixo de minutos (ver
+    _DEFAULT_GEMINI_DAILY_QUOTA_COOLDOWN_SEC)."""
+    text = str(exc).lower()
+    return "perday" in text.replace(" ", "")
 
 
 def _is_gemini_model_unavailable_error(exc: BaseException) -> bool:
@@ -988,6 +1006,7 @@ async def _generate_gemini_batch(
     attempt: int,
     feedback: str,
     quota_cooldown_sec: int,
+    daily_quota_cooldown_sec: int,
 ) -> tuple[dict[str, Any], str]:
     correction = (
         f"\n\nCORREÇÕES OBRIGATÓRIAS DA TENTATIVA ANTERIOR:\n{feedback}"
@@ -1028,11 +1047,15 @@ async def _generate_gemini_batch(
                 )
             except Exception as exc:
                 last_exc = exc
-                if (
-                    _is_gemini_quota_error(exc)
-                    or _is_gemini_model_unavailable_error(exc)
-                    or _is_gemini_transient_error(exc)
-                ):
+                if _is_gemini_quota_error(exc):
+                    cooldown = (
+                        daily_quota_cooldown_sec
+                        if _is_gemini_daily_quota_error(exc)
+                        else quota_cooldown_sec
+                    )
+                    _gemini_enrichment_unavailable_until[(key, model)] = time.time() + cooldown
+                    continue
+                if _is_gemini_model_unavailable_error(exc) or _is_gemini_transient_error(exc):
                     _gemini_enrichment_unavailable_until[(key, model)] = time.time() + quota_cooldown_sec
                     continue
                 raise ContentEnrichmentError(
@@ -1106,6 +1129,16 @@ async def _enrich_base_blocks_with_gemini(
         1,
         3_600,
     )
+    daily_quota_cooldown_sec = _bounded_int(
+        getattr(
+            settings,
+            "content_enrichment_gemini_daily_quota_cooldown_sec",
+            _DEFAULT_GEMINI_DAILY_QUOTA_COOLDOWN_SEC,
+        ),
+        _DEFAULT_GEMINI_DAILY_QUOTA_COOLDOWN_SEC,
+        1,
+        86_400,
+    )
     if ChatGoogleGenerativeAI is None:
         raise ContentEnrichmentError(
             "langchain-google-genai não está instalado: a API não pode "
@@ -1131,6 +1164,7 @@ async def _enrich_base_blocks_with_gemini(
                 attempt=attempt,
                 feedback=feedback,
                 quota_cooldown_sec=quota_cooldown_sec,
+                daily_quota_cooldown_sec=daily_quota_cooldown_sec,
             )
             calls += 1
             models.add(used_model)
