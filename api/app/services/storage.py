@@ -176,10 +176,34 @@ class SupabaseStorage:
             return None
         return self.public_url_for_bucket(bucket_name, normalized_path)
 
+    async def _download_via_gateway(self, path: str) -> bytes | None:
+        """Baixa via `storage-redirect` (Edge Function): ela sabe se o objeto
+        foi migrado pro R2 (sem egress do Supabase) ou ainda vive no Storage,
+        e resolve isso sozinha via `vw_material_storage_paths`. Sem passar
+        por aqui, qualquer arquivo ja copiado pro R2 (e removido do bucket de
+        origem) vira 404/400 pro download direto abaixo."""
+        gateway_url = f"{self._base_url}/functions/v1/storage-redirect"
+        try:
+            async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+                resp = await client.get(gateway_url, params={"path": path})
+                resp.raise_for_status()
+                logger.info(
+                    "DEBUG_PERSONALIZACAO.storage_download=%s",
+                    {"mode": "gateway", "path": path, "bytes": len(resp.content or b"")},
+                )
+                return resp.content
+        except Exception as exc:
+            logger.info("Gateway storage-redirect nao serviu %s: %s", path, exc)
+            return None
+
     async def download_bytes(self, *, bucket: str, path: str) -> bytes | None:
         bucket_name, normalized_path = _normalize_bucket_and_path(bucket, path)
         if not self._base_url or not bucket_name or not normalized_path:
             return None
+
+        gateway_result = await self._download_via_gateway(normalized_path)
+        if gateway_result is not None:
+            return gateway_result
 
         if self._enabled:
             url = f"{self._base_url}/storage/v1/object/{bucket_name}/{normalized_path}"
