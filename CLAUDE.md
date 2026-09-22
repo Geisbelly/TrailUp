@@ -56,6 +56,43 @@ modelo de linguagem, **não é na API**.
 > mesmo endpoint dispara o pipeline de análise (que é IA), mas a **persistência**
 > deveria descer para o banco. Não use como precedente.
 
+> Dívida conhecida (a mesma raiz derrubou o console em produção, 2026-09-22):
+> `GET /api/v1/personalizar/grupo/{classe_id}`, `.../perfis/{classe_id}/{topico_id}`
+> e `.../contexto/{aluno_id}` são **leitura pura de banco** (join, filtro,
+> formatação) sem LLM no meio — encanamento clássico que a regra proíbe. Quando
+> a API do Render hiberna ou cai, o console inteiro (aba Personalizações) para
+> de funcionar com 502, mesmo o dado já existindo no Supabase.
+>
+> `grupo/{classe_id}` **já foi corrigido**: `personalizacoesApi.ts` lê
+> `classe_perfil_summary` direto do Supabase (RLS confirmada em produção —
+> `professor_all_classe_perfil_summary`, via `classe.professor_id = auth.uid()`)
+> e só dispara o recálculo (`GroupAnalysisService.upsert_summary`) na API em
+> segundo plano, best-effort — API fora do ar mostra o último resumo em vez de
+> tela quebrada.
+>
+> `perfis/{classe_id}/{topico_id}` **tem fallback direto no Supabase agora**:
+> `RLS de personalizacao_job_targets` estava ligada sem NENHUMA policy —
+> verificado ao vivo, nem professor lia — corrigido em `20260922_01_job_targets_professor_sel`
+> (precisa `alembic upgrade head`, não foi aplicada daqui). Com isso confirmado,
+> `personalizacaoFallback.ts` porta `_build_design_tokens`/`_ensure_min_contrast`
+> (contraste WCAG) 1:1 — os 7 perfis foram conferidos rodando a função Python
+> original e batem byte a byte (`personalizacaoFallback.test.ts`) — e
+> `personalizacoesApi.ts` tenta a API primeiro, cai pro Supabase só se ela
+> falhar. **Não** portou `_build_generation_status`: aquele cruzamento
+> job×target tem estado demais (fila/enriquecendo/mídias/parcial, staleness por
+> target) pra replicar às cegas sem o banco pra comparar resultado — o
+> fallback manda `geracao: null` e deixa `statusGeracaoDoPerfil` (já existente
+> em `generationStatus.ts`) cair pro status legado, que é exatamente o que essa
+> função já foi escrita pra fazer. Também não conta alunos por perfil no
+> fallback (precisaria RLS em `aluno_perfil`/`perfil`, não confirmada) — fica
+> 0, é só cosmético.
+>
+> `contexto/{aluno_id}` **fica na API de propósito**: `contexto_aluno` vem de
+> `ContextRepository.fetch_aluno_context`, que já é a leitura agregada do
+> estado do aluno (emoção, mental state, telemetria) pro *raciocínio* da IA —
+> mais perto de "contexto pra IA" do que de encanamento puro. Não force esse
+> pro banco sem entender se essa fronteira realmente foi cruzada.
+
 ## Sistema de personalização — decisões de arquitetura
 
 Estas decisões são **fixas**; sigam-nas ao corrigir/estender.

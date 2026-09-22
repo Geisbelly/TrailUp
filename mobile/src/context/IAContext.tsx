@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { AppState } from "react-native";
 import { applyDamageToBattleState, buildBattleRuntimeKey, findStoredBattle, restoreBattleStates } from '@/utils/battleRuntime';
 import { getBrainHexGuideName } from "@/constants/profileImages";
 import { useUsuario } from "@/context/SessaoContext";
@@ -649,6 +650,24 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
       .then(() => AsyncStorage.setItem(key, snapshot))
       .catch((error) => console.warn('[IA] Falha ao salvar batalha:', error));
   }, [hydratedUserId, runtimeStates.battleStates, userId]);
+
+  // O efeito acima só agenda a escrita quando o estado muda; se o app for
+  // suspenso pelo SO logo depois de um golpe no boss (fechar/trocar de app),
+  // o AsyncStorage.setItem encadeado pode não terminar a tempo e o dano mais
+  // recente some ao reabrir. Igual ao flush de tempo de estudo em
+  // useStudyTimeTracking/useTopicScreenTimeTracking, aqui força o flush do
+  // snapshot mais atual (via ref) assim que o app sai de foreground.
+  useEffect(() => {
+    if (!userId || hydratedUserId !== userId) return;
+    const key = getBattleStateStorageKey(userId);
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') return;
+      storageWriteRef.current = storageWriteRef.current.catch(() => undefined)
+        .then(() => AsyncStorage.setItem(key, JSON.stringify(runtimeRef.current.battleStates)))
+        .catch((error) => console.warn('[IA] Falha ao salvar batalha ao sair do app:', error));
+    });
+    return () => subscription.remove();
+  }, [hydratedUserId, userId]);
 
   const registerTopicPayload = useCallback((payload: PersonalizedTopicPayload | null | undefined) => {
     if (!payload?.topicoId) return;

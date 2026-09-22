@@ -1380,7 +1380,7 @@ export default function QuestionActivity({
         </Text>
       )}
 
-      {(respondidaAntes || confirmados[questaoIndex]) && (
+      {(respondidaAntes || confirmados[questaoIndex]) && !respostasVisiveis && !viuRespostaAntes && (
         <TouchableOpacity
           onPress={() => {
             setSelecionados((prev) => ({ ...prev, [questaoIndex]: null }));
