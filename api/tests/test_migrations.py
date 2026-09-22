@@ -242,6 +242,24 @@ def test_merge_materiais_valida_storage_antes_de_completar_offline_sql() -> None
     assert "UPDATE alembic_version SET version_num='20260922_03'" in rendered
 
 
+def test_authenticated_le_conteudo_aluno_storage_offline_sql() -> None:
+    output = StringIO()
+    config = _offline_alembic_config(output)
+
+    migrations.command.upgrade(
+        config,
+        "20260922_03:20260922_04",
+        sql=True,
+    )
+    rendered = output.getvalue()
+
+    assert 'CREATE POLICY "authenticated_le_conteudo_aluno_storage" ON storage.objects' in rendered
+    assert "FOR SELECT TO authenticated" in rendered
+    assert "bucket_id = 'conteudo_aluno'" in rendered
+    assert "NOTIFY pgrst, 'reload schema'" in rendered
+    assert "UPDATE alembic_version SET version_num='20260922_04'" in rendered
+
+
 def test_sugestao_material_tables_render_idempotent_offline_sql() -> None:
     output = StringIO()
     config = _offline_alembic_config(output)
