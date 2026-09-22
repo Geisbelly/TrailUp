@@ -140,8 +140,12 @@ export async function deleteClassTrail(classeId: number) {
   const { topicIds, conteudoIds, atividadeIds, questionIds, storagePaths } = await fetchTrailIds(classeId);
   if (topicIds.length === 0) return;
 
-  await deleteStoragePaths(storagePaths);
-
+  // Storage so e removido no final, depois que TODAS as linhas do banco
+  // confirmarem exclusao. Antes o Storage era limpo primeiro: qualquer erro no
+  // meio do cascade (ex.: FK NO ACTION de uma tabela nao coberta aqui) deixava
+  // `conteudos`/`topicos` intactos apontando para arquivo ja apagado do bucket
+  // — corrupcao permanente, silenciosa, so descoberta quando a personalizacao
+  // tentava baixar o material e recebia 400.
   await tryDeleteEq("telemetria_lotes", "classe_id", classeId);
   await tryDeleteEq("telemetria_sessoes", "classe_id", classeId);
   await tryDeleteEq("personalizacao_item_progresso", "classe_id", classeId);
@@ -163,6 +167,11 @@ export async function deleteClassTrail(classeId: number) {
   await tryDeleteIn("cards_personalizados", "topico_id", topicIds);
   await tryDeleteIn("cards_personalizados", "conteudo_id", conteudoIds);
   await tryDeleteIn("personalizacao_item_progresso", "topico_id", topicIds);
+  // bag_itens tem FK NO ACTION para conteudos.id/topicos.id e nao tinha
+  // nenhuma limpeza aqui — bastava um aluno ter guardado o conteudo na
+  // mochila para o DELETE final em `topicos`/`conteudos` estourar 409.
+  await tryDeleteIn("bag_itens", "topico_id", topicIds);
+  await tryDeleteIn("bag_itens", "conteudo_id", conteudoIds);
 
   if (atividadeIds.length > 0) {
     const { error: e1 } = await supabase.from("questoes").delete().in("atividade_id", atividadeIds);
@@ -190,6 +199,8 @@ export async function deleteClassTrail(classeId: number) {
 
   const { error: e7 } = await supabase.from("topicos").delete().in("id", topicIds);
   if (e7) throw e7;
+
+  await deleteStoragePaths(storagePaths);
 }
 
 async function fetchTopicDependencyIds(topicoId: number) {
@@ -231,6 +242,7 @@ export async function deleteContentCascade(conteudoId: number) {
   await tryDeleteEq("cards_personalizados", "conteudo_id", conteudoId);
   await tryDeleteEq("cards", "conteudo_id", conteudoId);
   await tryDeleteEq("atividade_conteudos", "conteudo_id", conteudoId);
+  await tryDeleteEq("bag_itens", "conteudo_id", conteudoId);
 
   const { error } = await supabase.from("conteudos").delete().eq("id", conteudoId);
   if (error) throw error;
@@ -257,6 +269,8 @@ export async function deleteTopicCascade(topicoId: number) {
   await tryDeleteIn("cards_personalizados", "conteudo_id", conteudoIds);
   await tryDeleteIn("atividade_aluno", "atividade_id", atividadeIds);
   await tryDeleteIn("questao_aluno", "questao_id", questionIds);
+  await tryDeleteEq("bag_itens", "topico_id", topicoId);
+  await tryDeleteIn("bag_itens", "conteudo_id", conteudoIds);
 
   if (atividadeIds.length > 0) {
     const { error: e1 } = await supabase.from("questoes").delete().in("atividade_id", atividadeIds);
