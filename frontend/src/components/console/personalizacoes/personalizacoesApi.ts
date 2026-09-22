@@ -2,6 +2,7 @@ import { apiRequest } from "@/lib/apiTraiupClient";
 import { supabase } from "@/integrations/supabase/client";
 import {
   BRAINHEX_PROFILES,
+  PROFILE_COLOR_MAP,
   PROFILE_LABEL_MAP,
   buildDesignTokensForProfile,
   extractProfileKeyFromRecord,
