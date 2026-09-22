@@ -21,7 +21,7 @@ const GOLDEN_DESIGN_TOKENS: Record<string, ReturnType<typeof buildDesignTokensFo
       locked: "#5a676b",
     },
     sombra_primary: "rgba(26, 181, 169, 0.30)",
-  } as any,
+  },
   survivor: {
     cores: {
       background: "#0e1522",
@@ -38,7 +38,7 @@ const GOLDEN_DESIGN_TOKENS: Record<string, ReturnType<typeof buildDesignTokensFo
       locked: "#5a676b",
     },
     sombra_primary: "rgba(137, 151, 165, 0.30)",
-  } as any,
+  },
   daredevil: {
     cores: {
       background: "#161220",
@@ -55,7 +55,7 @@ const GOLDEN_DESIGN_TOKENS: Record<string, ReturnType<typeof buildDesignTokensFo
       locked: "#5a676b",
     },
     sombra_primary: "rgba(229, 106, 122, 0.30)",
-  } as any,
+  },
   mastermind: {
     cores: {
       background: "#0f1429",
@@ -72,7 +72,7 @@ const GOLDEN_DESIGN_TOKENS: Record<string, ReturnType<typeof buildDesignTokensFo
       locked: "#5a676b",
     },
     sombra_primary: "rgba(149, 131, 230, 0.30)",
-  } as any,
+  },
   conqueror: {
     cores: {
       background: "#0b1529",
@@ -89,7 +89,7 @@ const GOLDEN_DESIGN_TOKENS: Record<string, ReturnType<typeof buildDesignTokensFo
       locked: "#5a676b",
     },
     sombra_primary: "rgba(111, 144, 235, 0.30)",
-  } as any,
+  },
   socializer: {
     cores: {
       background: "#181620",
@@ -106,7 +106,7 @@ const GOLDEN_DESIGN_TOKENS: Record<string, ReturnType<typeof buildDesignTokensFo
       locked: "#5a676b",
     },
     sombra_primary: "rgba(245, 113, 77, 0.30)",
-  } as any,
+  },
   achiever: {
     cores: {
       background: "#151a1e",
@@ -123,7 +123,7 @@ const GOLDEN_DESIGN_TOKENS: Record<string, ReturnType<typeof buildDesignTokensFo
       locked: "#5a676b",
     },
     sombra_primary: "rgba(201, 162, 39, 0.30)",
-  } as any,
+  },
 };
 
 describe("buildDesignTokensForProfile", () => {
@@ -168,7 +168,7 @@ describe("hydrateMateriaisPublicUrls", () => {
     const result = hydrateMateriaisPublicUrls("https://xyz.supabase.co", {
       audio: { storage_path: "aluno1/topico1/audio.mp3", metadata: {} },
     });
-    expect((result?.audio as any).arquivo_url).toBe(
+    expect((result?.audio as { arquivo_url?: string } | undefined)?.arquivo_url).toBe(
       "https://xyz.supabase.co/storage/v1/object/public/conteudo_aluno/aluno1/topico1/audio.mp3"
     );
   });
@@ -177,7 +177,7 @@ describe("hydrateMateriaisPublicUrls", () => {
     const result = hydrateMateriaisPublicUrls("https://xyz.supabase.co", {
       markdown: { arquivo_url: "https://ja.com/m.md" },
     });
-    expect((result?.markdown as any).arquivo_url).toBe("https://ja.com/m.md");
+    expect((result?.markdown as { arquivo_url?: string } | undefined)?.arquivo_url).toBe("https://ja.com/m.md");
   });
 
   it("materiais nulo retorna nulo", () => {
