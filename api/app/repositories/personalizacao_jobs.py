@@ -671,7 +671,7 @@ class PersonalizacaoJobsRepository:
         if not await self._jobs_exists() or not await self._targets_exists():
             return []
         media_snapshot_select = self._media_snapshot_select_expr(
-            enabled=await self._jobs_has_media_snapshot()
+            enabled=await self._jobs_has_media_snapshot(), alias="j"
         )
 
         result = await self.session.execute(
@@ -680,7 +680,7 @@ class PersonalizacaoJobsRepository:
                 SELECT
                   j.id, j.kind, j.status, j.classe_id, j.aluno_id, j.topico_id,
                   j.conteudo_id, j.trigger_source, j.payload,
-                  {media_snapshot_select.replace("media_snapshot", "j.media_snapshot")},
+                  {media_snapshot_select},
                   j.total_targets, j.processed_targets, j.error_count, j.last_error,
                   j.created_at, j.updated_at, j.started_at, j.finished_at
                 FROM personalizacao_jobs j

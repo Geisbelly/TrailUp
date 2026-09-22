@@ -12,14 +12,14 @@ A tabela nao tem `classe_id` proprio (so `job_id`), entao a posse vem de
 mais.
 
 Revision ID: 20260922_01
-Revises: 20260921_01
+Revises: 20260921_02
 Create Date: 2026-09-22
 """
 
 from alembic import op
 
 revision = "20260922_01"
-down_revision = "20260921_01"
+down_revision = "20260921_02"
 branch_labels = None
 depends_on = None
 
