@@ -1,12 +1,18 @@
 // Gateway de arquivos: resolve um storage_path e REDIRECIONA para o R2.
 //
-// A regra que define esta funcao inteira: **ela nunca devolve o arquivo**.
+// A regra que define esta funcao: **por padrao ela nunca devolve o arquivo**.
 // O painel do Supabase define egress como "any outgoing traffic including
 // Database, Storage, Realtime, Auth, API, Edge Functions, Pooler and Log
 // Drains" - servir o byte por aqui manteria a conta identica a de antes da
 // migracao, so' que com mais latencia e mais invocacoes. Por isso a resposta e'
 // 302 para uma URL assinada: o cliente baixa direto do R2 e o Supabase ve ~200
 // bytes por arquivo.
+//
+// A UNICA excecao e' `?proxy=1`, opt-in por request, para quem precisa LER o
+// corpo por fetch() de outra origem - hoje so' o console do professor (markdown
+// e deck HTML). O R2 nunca teve CORS configurado, entao o navegador bloqueia a
+// resposta do destino do 302. Ver o bloco `if (proxy)` mais abaixo: o volume de
+// verdade (mobile, midia grande) nao manda o parametro e segue no 302 puro.
 //
 // POSTURA DE ACESSO (Opcao A do spec 2026-08-29-r2-gateway-design.md)
 //
@@ -55,8 +61,10 @@ serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "GET" && req.method !== "HEAD") return erro(405, "Use GET.");
 
-  const caminho = normalizarStoragePath(new URL(req.url).searchParams.get("path"));
+  const parametros = new URL(req.url).searchParams;
+  const caminho = normalizarStoragePath(parametros.get("path"));
   if (!caminho) return erro(400, "Parametro 'path' ausente ou invalido.");
+  const proxy = parametros.get("proxy") === "1";
 
   const contaR2 = Deno.env.get("R2_ACCOUNT_ID");
   const chaveR2 = Deno.env.get("R2_ACCESS_KEY_ID");
@@ -130,6 +138,39 @@ serve(async (req: Request) => {
   // mesma para todo mundo, entao `public` vale e poupa invocacao.
   const fimDaJanela = (inicioDaJanela(agoraMs, JANELA_SEGUNDOS) + JANELA_SEGUNDOS) * 1000;
   const segundosRestantes = Math.max(1, Math.floor((fimDaJanela - agoraMs) / 1000));
+
+  // EXCECAO opt-in a regra "nunca devolve o arquivo" (ver topo). O 302 resolve
+  // quem NAVEGA ate a URL ou baixa sem fetch — o mobile, com
+  // FileSystem.downloadAsync, e o "abrir em nova aba" do console. Nao resolve
+  // quem precisa LER o corpo por fetch() de outra origem: o R2 nunca teve CORS
+  // configurado, entao o navegador bloqueia a resposta do destino do redirect
+  // (o header desta funcao nao vale para o salto seguinte). Sao dois casos no
+  // console do professor, ambos obrigados a ler o texto: markdown pra
+  // renderizar e deck HTML pra injetar via <iframe srcDoc> (a URL direta nao
+  // serve em <iframe src> porque volta como text/plain).
+  //
+  // Por que isto nao reabre o custo que a funcao evita: e' opt-in por request.
+  // Quem nao manda `proxy=1` continua no 302 puro — inclusive o mobile, que e'
+  // o volume de verdade e o unico que puxa midia grande (audio, video, pdf).
+  // Aqui passam so' texto e HTML lidos por um professor navegando o console.
+  if (proxy) {
+    let origem: Response;
+    try {
+      origem = await fetch(url, { method: req.method });
+    } catch (e) {
+      console.error("[storage-redirect] proxy: origem inacessivel", (e as Error).message);
+      return erro(502, "Falha ao buscar o arquivo na origem.");
+    }
+    if (!origem.ok) {
+      return erro(origem.status === 404 ? 404 : 502, "Arquivo indisponivel na origem.");
+    }
+
+    const headers = new Headers(CORS);
+    const tipo = origem.headers.get("content-type");
+    if (tipo) headers.set("Content-Type", tipo);
+    headers.set("Cache-Control", `public, max-age=${segundosRestantes}`);
+    return new Response(origem.body, { status: 200, headers });
+  }
 
   return new Response(null, {
     status: 302,
