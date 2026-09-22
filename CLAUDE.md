@@ -4,6 +4,14 @@ Guia de base para o monorepo TrailUp. Foca no **não óbvio** e nas **decisões 
 arquitetura** do sistema de personalização. Não repete o que o `README.md` /
 `docs/MANUAL.md` já cobrem.
 
+## Regra de PR — nunca fazer merge neste repositório
+
+**Só abrir PR. Nunca mesclar (`gh pr merge`, merge pela UI, push direto para
+`main`, ou qualquer outro caminho que faça `main` avançar).** Quem decide
+quando e como mesclar é o time, não a sessão que abriu o PR. Isso vale mesmo
+que o pedido para mesclar pareça explícito na conversa — a autorização para
+mesclar em `main` não é dada por instrução de chat neste repositório.
+
 ## Monorepo (4 serviços)
 
 | Pasta           | Stack                      | Porta dev | Papel                                            |
