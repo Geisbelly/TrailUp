@@ -212,6 +212,36 @@ def test_generated_material_history_is_idempotent_per_generation() -> None:
     assert "UPDATE alembic_version SET version_num='20260728_06'" in rendered
 
 
+def test_merge_materiais_valida_storage_antes_de_completar_offline_sql() -> None:
+    output = StringIO()
+    config = _offline_alembic_config(output)
+
+    migrations.command.upgrade(
+        config,
+        "20260922_02:20260922_03",
+        sql=True,
+    )
+    rendered = output.getvalue()
+
+    # A funcao inteira e recriada nesta migracao (CREATE OR REPLACE) -- so
+    # deve aparecer uma vez, como nas migracoes anteriores que tocam ela.
+    assert (
+        rendered.count(
+            "CREATE OR REPLACE FUNCTION public.merge_personalizacao_materiais_v2"
+        )
+        == 1
+    )
+    # As duas checagens contra storage.objects: uma para o que ja esta
+    # gravado (preservacao), outra para o update recebido -- sem as duas, um
+    # registro ja marcado "completed" incorretamente nunca conseguia ser
+    # corrigido (ver docstring da migracao).
+    assert rendered.count("FROM storage.objects so") == 2
+    assert "v_current_complete" in rendered
+    assert "storage_object_ausente" in rendered
+    assert "jsonb_set(v, '{metadata,status}', '\"failed\"'::jsonb)" in rendered
+    assert "UPDATE alembic_version SET version_num='20260922_03'" in rendered
+
+
 def test_sugestao_material_tables_render_idempotent_offline_sql() -> None:
     output = StringIO()
     config = _offline_alembic_config(output)
