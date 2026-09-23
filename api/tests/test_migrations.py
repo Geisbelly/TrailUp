@@ -260,6 +260,35 @@ def test_authenticated_le_conteudo_aluno_storage_offline_sql() -> None:
     assert "UPDATE alembic_version SET version_num='20260922_04'" in rendered
 
 
+def test_remove_checagem_storage_objects_pos_r2_offline_sql() -> None:
+    output = StringIO()
+    config = _offline_alembic_config(output)
+
+    migrations.command.upgrade(
+        config,
+        "20260922_04:20260922_05",
+        sql=True,
+    )
+    rendered = output.getvalue()
+
+    assert (
+        rendered.count(
+            "CREATE OR REPLACE FUNCTION public.merge_personalizacao_materiais_v2"
+        )
+        == 1
+    )
+    # Depois do R2, `storage.objects` nao ve a escrita nova: consultar esse
+    # catalogo aqui reprova toda geracao valida. A funcao nao pode voltar a
+    # faze-lo -- so' a mencao em comentario e' aceitavel.
+    assert "FROM storage.objects" not in rendered
+    assert "jsonb_set(v, '{metadata,status}', '\"failed\"'::jsonb)" not in rendered
+    # O que a 20260922_03 marcou errado volta a 'completed', filtrado pelo
+    # texto de erro que so' ela escrevia.
+    assert "storage_object_ausente%" in rendered
+    assert "jsonb_build_object('status', 'completed')" in rendered
+    assert "UPDATE alembic_version SET version_num='20260922_05'" in rendered
+
+
 def test_sugestao_material_tables_render_idempotent_offline_sql() -> None:
     output = StringIO()
     config = _offline_alembic_config(output)
