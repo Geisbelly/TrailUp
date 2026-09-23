@@ -257,6 +257,15 @@ análise (`api/app/services/linear_analysis_pipeline.py`: emoção → leitura �
 interação → desempenho → atenção → decisão) → `usePersonalizationRefresh` no
 mobile dispara novo ciclo quando uma ação casa com `refresh_policy.trigger_actions`.
 
+> **O fim da sessão de telemetria é local e imediato** (`mobile/src/context/metricas/cicloSessao.ts`).
+> Sair da tela fecha a sessão na hora e tira o retrato do lote final; só o
+> envio desse retrato espera a fila de envio (que é serializada). Não volte a
+> fazer o encerramento esperar a rede: com a API inalcançável cada lote levava
+> ~64 s, o fim ficou 24 min na fila, e nesse meio-tempo uma guarda anulava todo
+> outro encerramento, a sessão do tópico seguinte nascia por cima da velha e o
+> `screen_blur` saiu com o id de OUTRA sessão (23/09). Pedidos `interval` ainda
+> não iniciados são fundidos — dois fariam o trabalho de um.
+
 Fase 4 (`23b38ef`): endpoint `GET /personalizar/grupo/{classe_id}`
 (`app/services/group_analysis.py`) computa e persiste a distribuição de perfis
 BrainHex + desempenho médio da turma em `classe_perfil_summary`, consumido pelo
