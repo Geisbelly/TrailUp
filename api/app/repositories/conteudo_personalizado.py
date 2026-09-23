@@ -10,7 +10,7 @@ from app.services.media_contract import (
     PRESENTATION_DESIGN_VERSION,
     PRESENTATION_ENGINE_VERSION,
 )
-from app.services.storage import BUCKET, build_public_storage_url
+from app.services.storage import BUCKET, build_material_url
 
 
 class ConteudoPersonalizadoRepository:
@@ -120,7 +120,7 @@ class ConteudoPersonalizadoRepository:
             resolved_url = raw_url if is_http_url else None
             resolved_storage_path = raw_storage_path or path_candidate
             if path_candidate and bucket:
-                public_url = build_public_storage_url(self._public_base_url, bucket, path_candidate)
+                public_url = build_material_url(self._public_base_url, bucket, path_candidate)
                 if public_url:
                     resolved_url = public_url
                     resolved_storage_path = path_candidate

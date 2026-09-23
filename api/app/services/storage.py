@@ -53,6 +53,30 @@ def build_public_storage_url(base_url: str | None, bucket: str | None, path: str
     return f"{base}/storage/v1/object/public/{bucket_name}/{encoded_path}"
 
 
+def build_material_url(base_url: str | None, bucket: str | None, path: str | None) -> str | None:
+    """URL de material gerado para gravar/devolver em `arquivo_url`.
+
+    Material do bucket `conteudo_aluno` aponta para o gateway `storage-redirect`,
+    igual ao `urlDoGateway` do microservice: o arquivo novo so' existe no R2, e a
+    URL publica do Storage da' 404. O gateway serve do R2 e cai no Supabase se o
+    objeto ainda nao foi copiado, entao vale para material antigo e novo.
+
+    Outros buckets (fonte do professor) ficam com a URL publica direta: o
+    gateway so' conhece caminhos de `vw_material_storage_paths`.
+    """
+    base = str(base_url or "").strip().rstrip("/")
+    bucket_name, raw_path = _normalize_bucket_and_path(bucket, path)
+    if not base or not bucket_name or not raw_path:
+        return None
+    if raw_path.startswith("http://") or raw_path.startswith("https://"):
+        return raw_path
+    if bucket_name != BUCKET:
+        return build_public_storage_url(base, bucket_name, raw_path)
+    # Os caminhos gerados usam so' [A-Za-z0-9/_.-], que `quote` preserva; a URL
+    # sai identica a do microservice e da migracao 20260829_02.
+    return f"{base}/functions/v1/storage-redirect?path={quote(raw_path, safe='/')}"
+
+
 def _truncate_extracted(text: str | None, limit: int = 4000) -> str | None:
     if not text:
         return None
