@@ -333,6 +333,19 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
   aluno não pode fazer lendo `eventos_aluno` linha a linha, então mantém o
   bypass e é filtrada na saída pelas classes do chamador. **Toda view nova
   nasce com `security_invoker = on`.**
+- **`storage.objects` não diz mais se um material existe.** Depois da
+  migração para o Cloudflare R2
+  (`docs/superpowers/specs/2026-08-29-r2-gateway-design.md`), **escrita nova
+  vai só para o R2**; o Storage do Supabase guarda apenas o que já estava lá,
+  e é lido por fallback do gateway (`storage-redirect`). Então: nada de
+  `supabase.storage.from(...).download(...)` no cliente, nada de
+  `SELECT ... FROM storage.objects` para validar existência no banco, e nada
+  de montar URL pública direta — ela dá 404 para todo material novo. Quem
+  sabe se o upload deu certo é quem sobe o arquivo, no momento em que sobe.
+  Essa premissa errada já quebrou o console duas vezes no mesmo dia: o deck
+  baixado do Storage (corrigido em `htmlDeckSource.ts`) e uma checagem em SQL
+  que marcou 100% das gerações novas como `failed` (`20260922_03`, revertida
+  em `20260922_05`).
 - **`text()` do SQLAlchemy não aceita `:param::tipo`** — o `::` do Postgres
   colide com a sintaxe de bind e o parâmetro deixa de ser reconhecido (erro em
   tempo de execução, não de import). Use `CAST(:param AS TIPO)`. E parâmetro
