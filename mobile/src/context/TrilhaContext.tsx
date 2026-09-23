@@ -28,7 +28,6 @@ import { Classe } from '@/models/Classe';
 import { QuestaoAluno } from '@/models/QuestaoAluno';
 import { Topico } from '@/models/Topico';
 import { PersonalizacaoRlsError } from "@/services/personalizacao/errors";
-import { saveStudyTime } from '@/services/studyTime';
 import { saveStudySession } from '@/services/studySessions';
 import { usePersonalizacaoProvider } from "@/services/personalizacao/PersonalizacaoProviderContext";
 import {
@@ -632,12 +631,6 @@ type TrilhaContextValue = {
   registrarTempoTopico: (topicoId: number, tempoGastoMin: number) => Promise<void>
   registrarTempoConteudo: (topicoId: number, conteudoId: number, tempoGastoMin: number) => Promise<void>
   registrarTempoAtividade: (topicoId: number, atividadeId: number, tempoGastoMin: number) => Promise<void>
-  registrarTempoDireto: (
-    topicoId: number,
-    conteudoId: number | null,
-    atividadeId: number | null,
-    tempoGastoMin: number
-  ) => Promise<void>
   registrarSessaoConteudo: (topicoId: number, conteudoId: number, startedAtMs: number, endedAtMs: number) => Promise<void>
   registrarSessaoAtividade: (topicoId: number, atividadeId: number, startedAtMs: number, endedAtMs: number) => Promise<void>
   registrarSessaoTopico: (topicoId: number, startedAtMs: number, endedAtMs: number) => Promise<void>
@@ -1974,28 +1967,6 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [atualizarProgressoClasse, classeAtual, refreshTopico, usuario])
 
-  const registrarTempoDireto = useCallback(async (
-    topicoId: number,
-    conteudoId: number | null,
-    atividadeId: number | null,
-    tempoGastoMin: number
-  ) => {
-    if (!usuario?.id) return
-    const tempoNormalizado = Math.max(0, Number(tempoGastoMin ?? 0))
-    if (!Number.isFinite(tempoNormalizado) || tempoNormalizado <= 0) return
-
-    try {
-      await saveStudyTime(supabase, {
-        alunoId: usuario.id, topicoId, conteudoId, atividadeId, minutes: tempoNormalizado,
-      })
-      await refreshTopico(topicoId)
-      await atualizarProgressoClasse()
-    } catch (err) {
-      console.warn('[TrilhaContext] Erro ao registrar tempo direto:', err)
-      throw err
-    }
-  }, [atualizarProgressoClasse, refreshTopico, usuario?.id])
-
   const registrarSessaoConteudo = useCallback(async (
     topicoId: number,
     conteudoId: number,
@@ -2345,7 +2316,6 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       registrarTempoTopico,
       registrarTempoConteudo,
       registrarTempoAtividade,
-      registrarTempoDireto,
       registrarSessaoConteudo,
       registrarSessaoAtividade,
       registrarSessaoTopico,
@@ -2378,7 +2348,6 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       registrarTempoTopico,
       registrarTempoConteudo,
       registrarTempoAtividade,
-      registrarTempoDireto,
       registrarSessaoConteudo,
       registrarSessaoAtividade,
       registrarSessaoTopico,
