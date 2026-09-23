@@ -665,3 +665,27 @@ def test_rag_schema_pgvector_downgrade_renders_drop_sequence() -> None:
     assert "t.typname = 'vector'" in rendered
 
     assert "UPDATE alembic_version SET version_num='20260829_02'" in rendered
+
+
+def test_reaponta_url_material_para_gateway_renderiza_offline(monkeypatch) -> None:
+    monkeypatch.setenv("SUPABASE_URL", "https://proj.supabase.co/")
+    output = StringIO()
+    config = _offline_alembic_config(output)
+
+    migrations.command.upgrade(config, "20260922_05:20260922_06", sql=True)
+    rendered = output.getvalue()
+
+    direta = "https://proj.supabase.co/storage/v1/object/public/conteudo_aluno/"
+    # So' troca URL direta do bucket de material, casada pelo prefixo literal
+    # (LIKE trataria o `_` de conteudo_aluno como curinga).
+    assert f"= '{direta}'" in rendered
+    assert f"left(arquivo_url, {len(direta)})" in rendered
+    assert " LIKE " not in rendered
+    assert "'https://proj.supabase.co/functions/v1/storage-redirect?path=' || " in rendered
+    # Os tres lugares: tabela, nivel da midia e partes[] - com a ordem preservada.
+    assert "UPDATE public.materiais_gerados" in rendered
+    assert "(e.v ->> 'storage_path')" in rendered
+    assert "(p ->> 'storage_path')" in rendered
+    assert "ORDER BY ord" in rendered
+
+    assert "UPDATE alembic_version SET version_num='20260922_06'" in rendered

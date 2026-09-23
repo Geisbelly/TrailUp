@@ -91,7 +91,7 @@ from app.services.personalizacao_jobs import (
     enqueue_personalizacao_job,
     get_job_detail,
 )
-from app.services.storage import BUCKET, SupabaseStorage, build_public_storage_url
+from app.services.storage import BUCKET, SupabaseStorage, build_material_url
 from app.services.sugestao_ciclo import garantir_sugestao_do_aluno
 from app.services.sugestao_metrica import montar_registros_do_log, resumo_efetividade
 
@@ -176,7 +176,7 @@ def _resolve_public_asset_fields(
     resolved_url = raw_url if is_http_url else None
     resolved_storage_path = raw_storage_path or path_candidate
     if path_candidate and bucket:
-        public_url = build_public_storage_url(_SUPABASE_PUBLIC_BASE_URL, bucket, path_candidate)
+        public_url = build_material_url(_SUPABASE_PUBLIC_BASE_URL, bucket, path_candidate)
         if public_url:
             resolved_url = public_url
             resolved_storage_path = path_candidate
