@@ -13,6 +13,7 @@ import {
   type BatchAccumulator,
   type CurrentStudyContext,
 } from "@/context/metricas/acumuladorLote";
+import { criarCicloSessao, type CicloSessao } from "@/context/metricas/cicloSessao";
 import { IATriggerSignal } from "@/interfaces/personalizacao/IAContracts";
 import {
   BeginStudySessionParams,
@@ -60,6 +61,20 @@ type CameraPermissionState = "unknown" | "granted" | "denied" | "unavailable";
 type SessionDescriptor = BeginStudySessionParams & {
   sessionId: string;
   sessionStartedAt: string;
+};
+
+/** Retrato de um lote tirado na hora do pedido: a sessão e o acumulador que ele leva. */
+type LoteCapturado = {
+  session: SessionDescriptor;
+  batch: BatchAccumulator;
+  payload: TelemetryBatchPayload;
+};
+
+type CicloDeps = {
+  capturar: (motivo: TelemetryFlushReason) => LoteCapturado | null;
+  enviar: (lote: LoteCapturado) => Promise<TelemetryBatchResponse | null>;
+  registrarFim: (motivo: TelemetryFlushReason) => void;
+  limpar: (motivo: TelemetryFlushReason) => void;
 };
 
 
@@ -435,16 +450,28 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
   const lastAppEventAtRef = useRef<number | null>(null);
   const seenTopicIdsRef = useRef<Set<number>>(new Set());
   const seenContentIdsRef = useRef<Set<number>>(new Set());
-  const flushTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const flushStudyBatchRef = useRef<
-    ((reason: TelemetryFlushReason) => Promise<TelemetryBatchResponse | null>) | null
-  >(null);
   const lastFlushErrorAtRef = useRef(0);
-  // O envio do lote e assincrono e demorado (o endpoint roda o pipeline de
-  // analise na mesma requisicao). Sem estes dois, duas chamadas concorrentes
-  // leem o MESMO `batchRef` e mandam o mesmo tempo duas vezes.
-  const flushInFlightRef = useRef<Promise<TelemetryBatchResponse | null> | null>(null);
-  const endingSessionRef = useRef(false);
+  // Fila de envio (serializada: duas chamadas concorrentes nao podem ler o
+  // MESMO `batchRef`), timer e encerramento da sessao vivem em
+  // `metricas/cicloSessao.ts`. As dependencias trocam de identidade com
+  // consentimento e preferencias; o ciclo e criado uma vez e sempre chama a
+  // versao mais recente delas (`cicloDepsRef`, atualizado a cada render).
+  const cicloDepsRef = useRef<CicloDeps | null>(null);
+  const cicloRef = useRef<CicloSessao<TelemetryBatchResponse> | null>(null);
+  if (!cicloRef.current) {
+    cicloRef.current = criarCicloSessao<SessionDescriptor, LoteCapturado, TelemetryBatchResponse>({
+      sessao: sessionRef,
+      capturar: (motivo) => cicloDepsRef.current?.capturar(motivo as TelemetryFlushReason) ?? null,
+      enviar: (lote) =>
+        cicloDepsRef.current ? cicloDepsRef.current.enviar(lote) : Promise.resolve(null),
+      registrarFim: (motivo) => cicloDepsRef.current?.registrarFim(motivo as TelemetryFlushReason),
+      limpar: (motivo) => cicloDepsRef.current?.limpar(motivo as TelemetryFlushReason),
+      agendar: (fn, ms) => setInterval(fn, ms),
+      cancelar: (id) => clearInterval(id as ReturnType<typeof setInterval>),
+      intervaloMs: BATCH_INTERVAL_MS,
+    });
+  }
+  const ciclo = cicloRef.current;
   const appStateRef = useRef(AppState.currentState);
   const resumeDescriptorRef = useRef<BeginStudySessionParams | null>(null);
   const captureRef = useRef<any>(null);
@@ -514,19 +541,6 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
     if (!batch) return;
     batch.lastInteractionAtMs = atMs;
   }, [syncBatchTimeline]);
-
-  const resetFlushTimer = useCallback(() => {
-    if (flushTimerRef.current) {
-      clearInterval(flushTimerRef.current);
-      flushTimerRef.current = null;
-    }
-
-    if (!sessionRef.current) return;
-
-    flushTimerRef.current = setInterval(() => {
-      void flushStudyBatchRef.current?.("interval");
-    }, BATCH_INTERVAL_MS);
-  }, []);
 
   const stopFrameCaptureTimer = useCallback(() => {
     if (frameCaptureTimerRef.current) {
@@ -770,8 +784,13 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
     }
   }, [recordAppEvent, syncBatchTimeline, telemetryPreferences.usageEnabled]);
 
-  const runStudyBatchFlush = useCallback(
-    async (reason: TelemetryFlushReason) => {
+  /**
+   * Retrato síncrono do lote da sessão ativa: fecha o tempo até agora, monta o
+   * payload e gira o acumulador. O envio usa ESTE retrato — nunca a sessão que
+   * estiver ativa quando a vez dele chegar na fila (ver `cicloSessao.ts`).
+   */
+  const capturarLote = useCallback(
+    (reason: TelemetryFlushReason): LoteCapturado | null => {
       const session = sessionRef.current;
       const batch = batchRef.current;
       if (!session || !batch) return null;
@@ -844,6 +863,20 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
       }
       lastTouchSampleAtRef.current = 0;
 
+      return { session, batch, payload };
+    },
+    [
+      cameraOptIn,
+      cameraPermission,
+      stopFrameCaptureTimer,
+      syncBatchTimeline,
+      telemetryConsentStatus,
+      telemetryPreferences,
+    ]
+  );
+
+  const enviarLoteCapturado = useCallback(
+    async ({ session, batch, payload }: LoteCapturado) => {
       let response: TelemetryBatchResponse | null = null;
       let persisted = false;
       // Diferente de `persisted`: significa que o lote saiu das mãos deste
@@ -891,91 +924,69 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
 
       return response;
     },
-    [
-      cameraOptIn,
-      cameraPermission,
-      resetFrameCaptureTimer,
-      stopFrameCaptureTimer,
-      syncBatchTimeline,
-      telemetryConsentStatus,
-      telemetryPreferences,
-    ]
+    [resetFrameCaptureTimer]
   );
 
-  // O acumulador gira antes do envio. Serialize os flushes para preservar a
-  // ordem dos deltas e dos eventos finais quando blur/background coincidem.
+  // O acumulador gira antes do envio, e os envios sao serializados para
+  // preservar a ordem dos deltas (`cicloSessao.ts`).
   const flushStudyBatch = useCallback(
-    (reason: TelemetryFlushReason) => {
-      const emAndamento = flushInFlightRef.current;
-      // Encadear em vez de descartar: o segundo motivo pode trazer dado que o
-      // primeiro ainda nao tinha (o evento de fim de sessao, por exemplo).
-      const proximo = emAndamento
-        ? emAndamento.catch(() => null).then(() => runStudyBatchFlush(reason))
-        : runStudyBatchFlush(reason);
+    (reason: TelemetryFlushReason) => ciclo.descarregar(reason),
+    [ciclo]
+  );
 
-      flushInFlightRef.current = proximo;
-      return proximo.finally(() => {
-        if (flushInFlightRef.current === proximo) {
-          flushInFlightRef.current = null;
-        }
+  const registrarFimDeSessao = useCallback(
+    (reason: TelemetryFlushReason) => {
+      recordAppEvent({
+        eventGroup: "session",
+        eventName: reason === "session_end" ? "session_end" : "session_interrupt",
+        topicoId: currentContextRef.current.topicoId,
+        conteudoId: currentContextRef.current.conteudoId,
+        atividadeId: currentContextRef.current.atividadeId,
+        itemKey: currentContextRef.current.itemKey,
+        payload: { reason },
       });
     },
-    [runStudyBatchFlush]
+    [recordAppEvent]
   );
 
+  const limparSessao = useCallback(
+    (reason: TelemetryFlushReason) => {
+      stopFrameCaptureTimer();
+
+      const shouldPreserveResume = reason === "app_background";
+      if (!shouldPreserveResume) {
+        resumeDescriptorRef.current = null;
+      }
+
+      sessionRef.current = null;
+      batchRef.current = null;
+      wrongStreaksRef.current = {};
+      // O retorno do background deve retomar o item, sem recontar a pausa.
+      if (!shouldPreserveResume) currentContextRef.current = { ...EMPTY_STUDY_CONTEXT };
+      lastAppEventAtRef.current = null;
+      seenTopicIdsRef.current = new Set();
+      seenContentIdsRef.current = new Set();
+      setIsSessionActive(false);
+    },
+    [stopFrameCaptureTimer]
+  );
+
+  cicloDepsRef.current = {
+    capturar: capturarLote,
+    enviar: enviarLoteCapturado,
+    registrarFim: registrarFimDeSessao,
+    limpar: limparSessao,
+  };
+
+  // A sessao fecha NA HORA; so o envio do lote final espera a fila. Antes o
+  // fim esperava a vez na fila para fechar (24 min, medido em 23/09) e, nesse
+  // meio-tempo, todo outro encerramento voltava sem fazer nada.
   const endStudySession = useCallback(
     async (reason: TelemetryFlushReason) => {
-      // A guarda por `sessionRef` sozinha nao segura nada: ela so e limpa
-      // depois do `await` abaixo, entao dois motivos concorrentes passam os
-      // dois. Este sinalizador e ligado de forma sincrona, antes de qualquer
-      // await, e por isso fecha a janela.
-      if (!sessionRef.current || endingSessionRef.current) return;
-      endingSessionRef.current = true;
-      try {
-        recordAppEvent({
-          eventGroup: "session",
-          eventName: reason === "session_end" ? "session_end" : "session_interrupt",
-          topicoId: currentContextRef.current.topicoId,
-          conteudoId: currentContextRef.current.conteudoId,
-          atividadeId: currentContextRef.current.atividadeId,
-          itemKey: currentContextRef.current.itemKey,
-          payload: { reason },
-        });
-
-        await flushStudyBatch(reason);
-        stopFrameCaptureTimer();
-
-        if (flushTimerRef.current) {
-          clearInterval(flushTimerRef.current);
-          flushTimerRef.current = null;
-        }
-
-        const shouldPreserveResume = reason === "app_background";
-        if (!shouldPreserveResume) {
-          resumeDescriptorRef.current = null;
-        }
-
-        sessionRef.current = null;
-        batchRef.current = null;
-        wrongStreaksRef.current = {};
-        // O retorno do background deve retomar o item, sem recontar a pausa.
-        if (!shouldPreserveResume) currentContextRef.current = { ...EMPTY_STUDY_CONTEXT };
-        lastAppEventAtRef.current = null;
-        seenTopicIdsRef.current = new Set();
-        seenContentIdsRef.current = new Set();
-        setIsSessionActive(false);
-      } finally {
-        // No `finally`: se o envio falhar, a sessao precisa poder ser
-        // encerrada de novo, senao o aluno fica com a sessao presa aberta.
-        endingSessionRef.current = false;
-      }
+      await ciclo.encerrar(reason);
     },
-    [flushStudyBatch, recordAppEvent, stopFrameCaptureTimer]
+    [ciclo]
   );
-
-  useEffect(() => {
-    flushStudyBatchRef.current = flushStudyBatch;
-  }, [flushStudyBatch]);
 
   // O caso que a fila existe para cobrir: o app foi morto com lote pendente.
   // A tentativa acontece na abertura seguinte, antes de qualquer sessão nova,
@@ -1023,54 +1034,54 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      if (active) {
-        await endStudySession("session_end");
-      }
-
-      const now = new Date();
-      sessionRef.current = {
-        ...params,
-        sessionId: buildUuid(),
-        sessionStartedAt: now.toISOString(),
-      };
-      batchRef.current = buildEmptyBatch(now.getTime());
-      currentContextRef.current = initialStudyContext(params.topicoId, currentContextRef.current);
-      if (batchRef.current) {
-        markContextVisit(batchRef.current, { ...EMPTY_STUDY_CONTEXT }, currentContextRef.current);
-      }
-      wrongStreaksRef.current = {};
-      lastTouchSampleAtRef.current = 0;
-      lastAppEventAtRef.current = null;
-      seenTopicIdsRef.current = new Set(
-        params.topicoId != null ? [Number(params.topicoId)] : []
-      );
-      seenContentIdsRef.current = new Set();
-      resumeDescriptorRef.current = params;
-      setCameraOptInState(consent.cameraPermissionGranted && consent.preferences.cameraEnabled);
-      setIsSessionActive(true);
-      recordAppEvent({
-        eventGroup: "session",
-        eventName: "session_start",
-        topicoId: params.topicoId,
-        payload: {
-          screen_name: params.screenName,
-          route_name: params.routeName,
-        },
+      // `abrir` encerra a sessao ativa (se houver) NA HORA, sem esperar a rede,
+      // e so entao cria a nova. Antes esperava o encerramento com `await` — que
+      // voltava vazio quando outro fim ainda aguardava a fila, e a sessao nova
+      // nascia por cima da velha, que nunca era encerrada.
+      ciclo.abrir(() => {
+        const now = new Date();
+        sessionRef.current = {
+          ...params,
+          sessionId: buildUuid(),
+          sessionStartedAt: now.toISOString(),
+        };
+        batchRef.current = buildEmptyBatch(now.getTime());
+        currentContextRef.current = initialStudyContext(params.topicoId, currentContextRef.current);
+        if (batchRef.current) {
+          markContextVisit(batchRef.current, { ...EMPTY_STUDY_CONTEXT }, currentContextRef.current);
+        }
+        wrongStreaksRef.current = {};
+        lastTouchSampleAtRef.current = 0;
+        lastAppEventAtRef.current = null;
+        seenTopicIdsRef.current = new Set(
+          params.topicoId != null ? [Number(params.topicoId)] : []
+        );
+        seenContentIdsRef.current = new Set();
+        resumeDescriptorRef.current = params;
+        setCameraOptInState(consent.cameraPermissionGranted && consent.preferences.cameraEnabled);
+        setIsSessionActive(true);
+        recordAppEvent({
+          eventGroup: "session",
+          eventName: "session_start",
+          topicoId: params.topicoId,
+          payload: {
+            screen_name: params.screenName,
+            route_name: params.routeName,
+          },
+        });
+        recordAppEvent({
+          eventGroup: "navigation",
+          eventName: "topic_open",
+          topicoId: params.topicoId,
+        });
       });
-      recordAppEvent({
-        eventGroup: "navigation",
-        eventName: "topic_open",
-        topicoId: params.topicoId,
-      });
-      resetFlushTimer();
       resetFrameCaptureTimer();
     },
     [
       cameraOptIn,
-      endStudySession,
+      ciclo,
       loadConsentState,
       recordAppEvent,
-      resetFlushTimer,
       resetFrameCaptureTimer,
       telemetryConsentStatus,
       telemetryPreferences,
@@ -1417,13 +1428,10 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     return () => {
-      if (flushTimerRef.current) {
-        clearInterval(flushTimerRef.current);
-        flushTimerRef.current = null;
-      }
+      ciclo.pararTimer();
       stopFrameCaptureTimer();
     };
-  }, [stopFrameCaptureTimer]);
+  }, [ciclo, stopFrameCaptureTimer]);
 
   // ------------------------------------------------------------------
   // Identidade estavel para quem consome o ciclo de sessao
