@@ -65,12 +65,12 @@ export function getBrainHexBorderCss(theme?: Partial<ThemeConfig>): string {
       border-radius: 16px;
     }
 
-    /* 4. CONQUEROR: Imperial Warlord Crimson Frame */
+    /* 4. CONQUEROR: Imperial Royal Blue Frame */
     .brainhex-border-conqueror {
       position: relative;
-      border: 2px solid #DC2626;
+      border: 2px solid #1E4FD6;
       box-shadow:
-        0 0 25px rgba(220, 38, 38, 0.25),
+        0 0 25px rgba(30, 79, 214, 0.25),
         inset 0 0 25px rgba(0, 0, 0, 0.85),
         0 20px 45px rgba(0, 0, 0, 0.95);
       border-radius: 14px;
