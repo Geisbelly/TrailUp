@@ -29,10 +29,11 @@ import {
   DEFAULT_SLIDES_PER_BATCH,
   describeGenerationFailure,
   isTruncationFailure,
+  planejarRetomada,
   planSlideBatches,
-  splitBatch,
   type SlideBatch,
 } from './src/utils/slideBatchPlanner';
+import { salvarSlidesCompletos } from './src/utils/slidesSalvage';
 import { canSendAsGeminiInlineData } from './src/utils/geminiInlineImageMimes';
 import { sanitizeQuizContent, shuffleQuizOptions } from './src/utils/quizSanitize';
 import { persistApresentacaoResult, type SupabaseClientLike } from './src/services/materialsPersistence';
@@ -1547,16 +1548,46 @@ ${isLast ? `Este é o bloco final: inclua o clímax da aula e o desfecho dinâmi
       houveTruncamento = houveTruncamento || truncou;
       houveCotaEsgotada = houveCotaEsgotada || cota;
 
-      const partes = truncou ? splitBatch(b) : null;
+      // O texto cortado nao e lixo: tudo o que veio ANTES do corte e JSON
+      // valido. Aproveitar os slides que fecharam resolve os dois furos que o
+      // log de 2026-09-28 mostrou:
+      //   - bloco de 1 slide que trunca era DESCARTADO (splitBatch devolve null
+      //     para count=1) e o deck saia com furo, sem nenhum registro do que
+      //     faltou;
+      //   - bloco de 4 que truncava no terceiro jogava os dois primeiros fora e
+      //     re-pedia tudo, pagando de novo ~78k tokens de ENTRADA - o consumo
+      //     que dispara o 429 em cascata.
+      const salvos = truncou ? salvarSlidesCompletos(String(genResult?.text ?? '')) : [];
+      const { aproveitar, reenfileirar } = planejarRetomada({
+        bloco: b,
+        recuperados: salvos.length,
+        truncou,
+      });
+      const aproveitados = salvos.slice(0, aproveitar);
+      if (aproveitados.length > 0) {
+        // deckMeta (titulo, guia, conclusao) fica FORA do array de slides e nao
+        // sobreviveu ao corte, entao `primeiroBlocoPendente` continua de pe: o
+        // proximo bloco ainda e o primeiro e traz esses campos. Os slides daqui
+        // ja estao salvos e nao serao pedidos outra vez.
+        slides.push(...aproveitados);
+        lastModelUsed = genResult?.modelUsed ?? lastModelUsed;
+        lastKeyIndexUsed = genResult?.keyIndexUsed ?? lastKeyIndexUsed;
+      }
+
       console.warn(
         `[Batch ${b.start + 1}-${b.start + b.count}] ${truncou ? 'resposta truncada' : 'erro'}: ${err?.message}` +
-          (partes ? ` — dividindo em ${partes[0].count}+${partes[1].count} slides` : ' — bloco descartado'),
+          (aproveitados.length > 0
+            ? ` — ${aproveitados.length} slide(s) recuperado(s) do texto cortado`
+            : '') +
+          (reenfileirar.length > 0
+            ? ` — refazendo ${reenfileirar.map((p) => p.count).join('+')} slide(s)`
+            : aproveitados.length > 0
+              ? ' — bloco completo'
+              : ' — bloco descartado'),
         { finishReason: genResult?.finishReason, usageMetadata: genResult?.usageMetadata }
       );
 
-      // So volta pra fila quando da pra pedir MENOS: bloco de 1 slide que
-      // trunca (ou erro que nao e de tamanho) nao melhora com nova tentativa.
-      if (partes) fila.unshift(partes[0], partes[1]);
+      if (reenfileirar.length > 0) fila.unshift(...reenfileirar);
     }
   }
 
