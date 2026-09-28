@@ -575,15 +575,29 @@ export default function TrilhaConteudoScreen() {
     }
   }, [index, total, setIndex]);
 
+  const checkpointLimpoRef = useRef<number | null>(null);
+
   useEffect(() => {
     if (!isScreenFocused || !checkpointHydratedRef.current || !topicoId) return;
 
     if (topicoConcluido) {
+      // Uma vez por topico. O efeito depende de `atualBlock`, que troca de
+      // referencia a cada render da lista de blocos, entao sem esta guarda o
+      // apagamento repetia em cadeia -- escrita no AsyncStorage e log a cada
+      // render, com o topico ja concluido e nada novo para apagar.
+      if (checkpointLimpoRef.current === topicoId) return;
+      checkpointLimpoRef.current = topicoId;
       // Apagar aqui e o que faz a proxima abertura comecar do inicio. Se o
       // topico esta sendo considerado concluido cedo, este log mostra.
       if (__DEV__) console.log("[Checkpoint] apagando (topico concluido)", JSON.stringify({ topicoId }));
       void clearTrilhaCheckpoint(checkpointParams);
       return;
+    }
+
+    // Deixou de estar concluido (reabriu para revisao, personalizacao chegou e
+    // acrescentou passos): volta a valer o apagamento na proxima conclusao.
+    if (checkpointLimpoRef.current === topicoId) {
+      checkpointLimpoRef.current = null;
     }
 
     if (mostrarResumo) {
