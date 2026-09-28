@@ -211,3 +211,34 @@ def test_seed_progress_guardado_pelo_fato_e_nao_por_coluna_paralela() -> None:
 
     fonte = inspect.getsource(personalizacao_jobs._process_media_render_target)
     assert 'record.get("aluno_id") is not None' in fonte
+
+
+def test_buscar_por_ciclo_id_usa_predicado_seguro_para_base_sem_dono() -> None:
+    """`aluno_id = :aluno_id` nunca casa com NULL -- a mesma classe de bug de
+    test_on_conflict_repete_o_predicado_do_indice_por_aluno, agora em
+    buscar_por_ciclo_id: o registro de base existia mas a busca sempre
+    devolvia None, e o caller levantava 'conteudo_personalizado nao
+    encontrado' mesmo com o registro presente."""
+    fonte = inspect.getsource(ConteudoPersonalizadoRepository.buscar_por_ciclo_id)
+
+    assert "aluno_id IS NOT DISTINCT FROM CAST(:aluno_id AS UUID)" in fonte
+    assert "WHERE aluno_id = :aluno_id" not in fonte
+
+
+def test_job_media_generation_nao_fabrica_a_string_none() -> None:
+    """JOB_KIND_MEDIA_GENERATION (process_personalizacao_job_once) processa
+    tambem jobs de base (aluno_id NULL): job["aluno_id"] chega como None e
+    str(None) vira a string "None", que viaja adiante como se fosse UUID --
+    estourava em producao com 'invalid UUID (None): length must be between
+    32..36 characters' ao buscar o aluno em ContextRepository._fetch_aluno.
+    Corrigir so o predicado do repositorio (teste acima) nao adianta se o
+    PARAMETRO ja chega fabricado como a string 'None'."""
+    from app.services import personalizacao_jobs
+
+    fonte = inspect.getsource(personalizacao_jobs.process_personalizacao_job_once)
+
+    assert 'buscar_por_ciclo_id(aluno_id=str(job["aluno_id"])' not in fonte
+    assert (
+        'job_aluno_id = str(job["aluno_id"]) if job.get("aluno_id") is not None else None'
+        in fonte
+    )

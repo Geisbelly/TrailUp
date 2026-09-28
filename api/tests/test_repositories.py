@@ -972,6 +972,43 @@ def test_conteudo_personalizado_repository_hydrates_materials_public_urls() -> N
 
 
 @pytest.mark.asyncio
+async def test_buscar_por_ciclo_id_aceita_aluno_none_para_base_sem_dono() -> None:
+    """Job de base (classe x topico x perfil) nao tem aluno dono: aluno_id
+    chega como None. `aluno_id = :aluno_id` nunca casa com NULL em SQL --
+    o registro da base existia mas a busca sempre devolvia None, e o caller
+    (JOB_KIND_MEDIA_GENERATION em personalizacao_jobs.py) levantava
+    "conteudo_personalizado nao encontrado" mesmo com o registro presente."""
+    session = RecordingSession(
+        [
+            MappingResult(
+                [
+                    {
+                        "id": 42,
+                        "aluno_id": None,
+                        "plano": {},
+                        "materiais": {},
+                        "ai_patch": None,
+                    }
+                ]
+            )
+        ]
+    )
+    repo = ConteudoPersonalizadoRepository(session)
+    repo._column_cache = {
+        "__loaded__": True,
+        **{column: True for column in repo._known_columns},
+    }
+
+    record = await repo.buscar_por_ciclo_id(aluno_id=None, ciclo_id="cycle-1")
+
+    assert record is not None
+    assert record["id"] == 42
+    sql, params = session.calls[0]
+    assert "IS NOT DISTINCT FROM" in sql
+    assert params["aluno_id"] is None
+
+
+@pytest.mark.asyncio
 async def test_access_repository_admin_queries_and_updates() -> None:
     session = RecordingSession(
         [
