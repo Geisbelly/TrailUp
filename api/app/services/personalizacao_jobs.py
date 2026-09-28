@@ -46,6 +46,7 @@ from app.services.media_generation_jobs import (
 from app.services.personalizacao import (
     _build_profile_editorial_context,
     _materialize_and_upload_media_assets,
+    _resolve_personalizacao_status_from_materiais,
     build_personalizacao_steps,
     fetch_personalizacao_context,
     gerar_cards_direto,
@@ -1400,10 +1401,14 @@ async def _process_media_render_target(
             job_id=str(job["id"]),
             media_snapshot={},
         )
+        # O status sai do que os materiais REALMENTE ficaram. Marcar "pronto"
+        # aqui era incondicional: bastava o caminho legado rodar para o registro
+        # virar pronto mesmo com midia `failed` ou ainda `pending`, e o mobile
+        # entao servia um material quebrado como se estivesse completo.
         updated = await repo_cp.atualizar_materiais_e_status(
             record_id=personalizacao_id,
             materiais=new_materiais,
-            status="pronto",
+            status=_resolve_personalizacao_status_from_materiais(new_materiais),
         )
         return {"record": updated}
 
