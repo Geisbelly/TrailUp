@@ -13,7 +13,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test": "node --import tsx --test src/utils/capitalizeProfile.test.ts src/utils/deckExportUtils.test.ts src/utils/slideIllustrations.test.ts src/utils/imageGenerationErrors.test.ts src/utils/geminiInlineImageMimes.test.ts src/utils/reflectionCheckpoints.test.ts src/utils/finalReflectionSlide.test.ts src/utils/slidePagination.test.ts src/utils/slideBatchPlanner.test.ts src/utils/slidesSalvage.test.ts src/utils/quizSanitize.test.ts src/utils/interactiveElementGenerator.test.ts src/utils/profileCoverCopy.test.ts src/security/checkSupabaseSecretGuard.test.ts src/services/renderAndStoreValidation.test.ts src/services/materialsPersistence.test.ts src/components/ThematicDecorations.test.ts"
+    "test": "node --import tsx --test src/utils/capitalizeProfile.test.ts src/utils/deckExportUtils.test.ts src/utils/slideIllustrations.test.ts src/utils/imageGenerationErrors.test.ts src/utils/geminiInlineImageMimes.test.ts src/utils/reflectionCheckpoints.test.ts src/utils/finalReflectionSlide.test.ts src/utils/slidePagination.test.ts src/utils/slideBatchPlanner.test.ts src/utils/slidesSalvage.test.ts src/utils/slideTextBudget.test.ts src/utils/quizSanitize.test.ts src/utils/interactiveElementGenerator.test.ts src/utils/profileCoverCopy.test.ts src/security/checkSupabaseSecretGuard.test.ts src/services/renderAndStoreValidation.test.ts src/services/materialsPersistence.test.ts src/components/ThematicDecorations.test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

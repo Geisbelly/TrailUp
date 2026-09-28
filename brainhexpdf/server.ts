@@ -36,6 +36,15 @@ import {
 import { salvarSlidesCompletos } from './src/utils/slidesSalvage';
 import { canSendAsGeminiInlineData } from './src/utils/geminiInlineImageMimes';
 import { sanitizeQuizContent, shuffleQuizOptions } from './src/utils/quizSanitize';
+import {
+  MAX_CONCEPT_TITLE_CHARS,
+  MAX_GUIDE_ANALOGY_CHARS,
+  MAX_GUIDE_SPEECH_CHARS,
+  MAX_NARRATIVE_BEAT_CHARS,
+  MAX_PARAGRAPH_CHARS,
+  MAX_TAKEAWAY_CHARS,
+  sanitizeSlideTextBudget,
+} from './src/utils/slideTextBudget';
 import { persistApresentacaoResult, type SupabaseClientLike } from './src/services/materialsPersistence';
 
 
@@ -648,26 +657,32 @@ const DECK_RESPONSE_SCHEMA = {
               },
               narrativeBeat: {
                 type: Type.STRING,
+                maxLength: MAX_NARRATIVE_BEAT_CHARS,
                 description: 'Ponte narrativa imersiva de 1 a 2 frases conectando a ambientação ao tema técnico deste slide',
               },
             },
             required: ['storyArcPhase', 'environmentSetting', 'voiceTone', 'narrativeBeat'],
           },
-          conceptTitle: { type: Type.STRING },
+          conceptTitle: { type: Type.STRING, maxLength: MAX_CONCEPT_TITLE_CHARS },
+          // maxLength aqui e' best-effort, igual ao do quiz (ver o comentario
+          // em quiz.question). A diferenca e' o que ele evita: sem teto nenhum,
+          // o modelo gastou os 32768 tokens de saida num unico paragrafo
+          // (log 2026-09-28, corte na coluna 160638 de uma linha). O piso
+          // garantido vem de sanitizeSlideTextBudget().
           contentParagraphs: {
             type: Type.ARRAY,
-            items: { type: Type.STRING },
+            items: { type: Type.STRING, maxLength: MAX_PARAGRAPH_CHARS },
             description: 'De 2 a 4 parágrafos densos, aprofundados e explicativos sobre este subtópico, com substância técnica real, sem textos curtos ou resumos superficiais.',
           },
-          keyTakeaways: { type: Type.ARRAY, items: { type: Type.STRING } },
+          keyTakeaways: { type: Type.ARRAY, items: { type: Type.STRING, maxLength: MAX_TAKEAWAY_CHARS } },
           
           // Character Guide & Storytelling
           characterGuide: {
             type: Type.OBJECT,
             properties: {
               name: { type: Type.STRING },
-              speechText: { type: Type.STRING, description: 'Fala explicativa imersiva do personagem guia contextualizando o tema na sua voz e tom característicos' },
-              analogy: { type: Type.STRING, description: 'Analogia rica e clara conectando o conceito com o mundo real ou universo temático' },
+              speechText: { type: Type.STRING, maxLength: MAX_GUIDE_SPEECH_CHARS, description: 'Fala explicativa imersiva do personagem guia contextualizando o tema na sua voz e tom característicos' },
+              analogy: { type: Type.STRING, maxLength: MAX_GUIDE_ANALOGY_CHARS, description: 'Analogia rica e clara conectando o conceito com o mundo real ou universo temático' },
               tone: { type: Type.STRING },
             },
             required: ['name', 'speechText'],
@@ -2187,6 +2202,11 @@ app.post('/api/v1/render-and-store', requireSecret, async (req: Request, res: Re
     // por densidade pra que o peso do slide (proximo commit) ja reflita o
     // texto truncado, nao o bruto.
     fullDeck.slides = sanitizeQuizContent(fullDeck.slides);
+    // Mesma rede, para os campos livres que tinham ficado sem teto nenhum:
+    // contentParagraphs, keyTakeaways, fala do guia e beat narrativo - ver
+    // src/utils/slideTextBudget.ts. Tambem antes da paginacao, pelo mesmo
+    // motivo: a densidade tem que pesar o texto final, nao o bruto.
+    fullDeck.slides = sanitizeSlideTextBudget(fullDeck.slides);
     // Corrige o vies do modelo de sempre colocar a resposta certa na
     // primeira alternativa - ver shuffleQuizOptions em quizSanitize.ts.
     fullDeck.slides = shuffleQuizOptions(fullDeck.slides);

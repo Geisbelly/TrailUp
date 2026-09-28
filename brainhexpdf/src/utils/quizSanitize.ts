@@ -11,7 +11,12 @@ export const MAX_QUIZ_QUESTION_CHARS = 220;
 export const MAX_QUIZ_OPTION_TEXT_CHARS = 140;
 export const MAX_QUIZ_OPTION_EXPLANATION_CHARS = 260;
 
-function truncate(value: string | undefined, maxChars: number): string | undefined {
+/**
+ * Trunca na ultima quebra de palavra antes do limite, com reticencias.
+ * Exportado porque `slideTextBudget` precisa exatamente da mesma aritmetica -
+ * duas copias dela divergiriam no detalhe do -1 reservado pras reticencias.
+ */
+export function truncarNoLimite(value: string | undefined, maxChars: number): string | undefined {
   if (typeof value !== 'string') return value;
   const trimmed = value.trim();
   if (trimmed.length <= maxChars) return trimmed;
@@ -39,11 +44,11 @@ export function sanitizeQuizContent(slides: SlideData[]): SlideData[] {
     const next: SlideData = { ...slide };
 
     if (slide.quiz) {
-      const truncatedQuestion = truncate(slide.quiz.question, MAX_QUIZ_QUESTION_CHARS);
+      const truncatedQuestion = truncarNoLimite(slide.quiz.question, MAX_QUIZ_QUESTION_CHARS);
       const truncatedOptions = (slide.quiz.options || []).map((option) => ({
         ...option,
-        text: truncate(option.text, MAX_QUIZ_OPTION_TEXT_CHARS) ?? option.text,
-        explanation: truncate(option.explanation, MAX_QUIZ_OPTION_EXPLANATION_CHARS) ?? option.explanation,
+        text: truncarNoLimite(option.text, MAX_QUIZ_OPTION_TEXT_CHARS) ?? option.text,
+        explanation: truncarNoLimite(option.explanation, MAX_QUIZ_OPTION_EXPLANATION_CHARS) ?? option.explanation,
       }));
       next.quiz = { question: truncatedQuestion ?? slide.quiz.question, options: truncatedOptions };
       changed = true;
@@ -54,9 +59,9 @@ export function sanitizeQuizContent(slides: SlideData[]): SlideData[] {
         ...slide.interactiveElement,
         quizOptions: slide.interactiveElement.quizOptions.map((option) => ({
           ...option,
-          text: truncate(option.text, MAX_QUIZ_OPTION_TEXT_CHARS) ?? option.text,
-          explanation: truncate(option.explanation, MAX_QUIZ_OPTION_EXPLANATION_CHARS),
-          feedback: truncate(option.feedback, MAX_QUIZ_OPTION_EXPLANATION_CHARS),
+          text: truncarNoLimite(option.text, MAX_QUIZ_OPTION_TEXT_CHARS) ?? option.text,
+          explanation: truncarNoLimite(option.explanation, MAX_QUIZ_OPTION_EXPLANATION_CHARS),
+          feedback: truncarNoLimite(option.feedback, MAX_QUIZ_OPTION_EXPLANATION_CHARS),
         })),
       };
       changed = true;
