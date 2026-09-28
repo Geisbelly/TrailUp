@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #0d0b16; font-family: 'Inter', sans-serif; }
+  @keyframes tu7-rise { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+</style>
+</helmet>
+
+<div style="position:relative; min-height:100vh; background:#0d0b16; overflow:hidden;">
+
+  <div style="position:fixed; inset:0; pointer-events:none; z-index:0; opacity:0.5;
+    background: radial-gradient(ellipse 900px 500px at 75% 10%, rgba(155,93,229,0.10), transparent 60%),
+      repeating-linear-gradient(115deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 90px);">
+  </div>
+
+  <header style="position:fixed; top:0; left:0; right:0; height:68px; z-index:30; background:#23192e; border-bottom:1px solid #2b2438; display:flex; align-items:center; justify-content:space-between; padding:0 32px;">
+    <div style="display:flex; align-items:center; gap:14px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f4f2f8" stroke-width="1.4"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8L12 2z"/></svg>
+      <span style="font-family:'Cinzel',serif; font-weight:700; font-size:22px; color:#f4f2f8;">TrailUp</span>
+      <span style="width:1px; height:20px; background:#2b2438; margin:0 6px;"></span>
+      <span style="font-size:14px; color:#a29cb3;">Console do professor</span>
+    </div>
+    <div style="display:flex; align-items:center; gap:14px;">
+      <div style="width:38px; height:38px; border-radius:50%; background:#9b5de5; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:13px;">GA</div>
+      <div style="display:flex; flex-direction:column; line-height:1.3;">
+        <span style="font-size:14px; font-weight:700; color:#f4f2f8;">Geisbelly Admin Prof</span>
+        <span style="font-size:12px; color:#a29cb3;">Ulbra</span>
+      </div>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a29cb3" stroke-width="1.6" style="margin-left:6px;"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/></svg>
+    </div>
+  </header>
+
+  <nav style="position:fixed; top:68px; left:0; bottom:0; width:264px; z-index:20; background:#170e24; border-right:1px solid #2b2438; padding:24px 16px; display:flex; flex-direction:column; gap:4px;">
+    <sc-for list="{{ navItems }}" as="item" hint-placeholder-count="7">
+      <a href="{{ item.href }}" style="{{ item.style }} text-decoration:none;">
+        <div style="width:20px; height:20px; color:{{ item.color }}; flex:none;" dangerouslySetInnerHTML="{{ item.iconHtml }}"></div>
+        <span style="font-size:14.5px; color:{{ item.color }};">{{ item.label }}</span>
+      </a>
+    </sc-for>
+  </nav>
+
+  <main style="position:relative; z-index:1; margin-left:264px; padding:108px 40px 60px 40px;">
+
+    <div style="display:inline-flex; align-items:center; gap:6px; background:#1b1728; border:1px solid #2b2438; border-radius:999px; padding:6px; font-size:11px; margin-bottom:20px;">
+      <span style="color:#a29cb3; padding:0 8px; white-space:nowrap;">Pré-visualização de estado:</span>
+      <sc-for list="{{ estadoOptions }}" as="opt" hint-placeholder-count="2">
+        <div onClick="{{ opt.select }}" style="{{ opt.style }} white-space:nowrap;">{{ opt.label }}</div>
+      </sc-for>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:18px; flex-wrap:wrap; margin-bottom:24px;">
+      <div style="width:50px; height:50px; flex:none; border-radius:50%; background:#9b5de5; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:800; color:#fff;">GA</div>
+      <div style="min-width:0;">
+        <div style="font-family:'Cinzel',serif; font-size:28px; font-weight:700; color:#f4f2f8; line-height:1.1;">Meus dados</div>
+        <div style="font-size:13.5px; color:#a29cb3; margin-top:6px;">geisbelly19@gmail.com · professora desde março de 2026</div>
+      </div>
+    </div>
+
+    <sc-if value="{{ showSaved }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; align-items:center; gap:14px; padding:15px 20px; border-radius:16px; background:rgba(52,199,123,0.14); border:1px solid rgba(52,199,123,0.4); margin-bottom:20px; animation:tu7-rise .25s ease-out;">
+      <div style="width:24px; height:24px; flex:none; border-radius:50%; background:#5fd99a; display:flex; align-items:center; justify-content:center;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0d0b16" stroke-width="3.4"><path d="M5 13l4 4 10-10"/></svg>
+      </div>
+      <div style="font-size:13.5px; font-weight:700; color:#f4f2f8;">Alterações salvas</div>
+      <div onClick="{{ hideSaved }}" style="margin-left:auto; font-size:12.5px; font-weight:600; color:#c9e8d5; cursor:pointer;">Fechar</div>
+    </div>
+    </sc-if>
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:20px; align-items:start;">
+
+      <div style="padding:24px 26px; border-radius:20px; background:#1b1728; border:1px solid #9b5de5;">
+        <div style="font-family:'Cinzel',serif; font-size:19px; font-weight:700; color:#f4f2f8;">Informações pessoais</div>
+        <div style="font-size:12.5px; color:#a29cb3; margin-top:4px;">Aparecem para os alunos junto do material da sua turma</div>
+
+        <div style="margin-top:20px;">
+          <div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Nome completo</div>
+          <div style="margin-top:8px; padding:12px 15px; border-radius:14px; background:#231d33; border:1px solid #9b5de5; font-size:13.5px; color:#f4f2f8;">Geisbelly Admin Prof</div>
+        </div>
+
+        <div style="margin-top:16px;">
+          <div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">E-mail</div>
+          <div style="display:flex; align-items:center; gap:9px; margin-top:8px; padding:12px 15px; border-radius:14px; background:#0d0b16; border:1px solid #2b2438; font-size:13.5px; color:#a29cb3;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7a7488" stroke-width="2"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>
+            geisbelly19@gmail.com
+          </div>
+          <div style="font-size:11px; color:#7a7488; margin-top:7px; line-height:1.5;">O e-mail é a sua identificação de login e está vinculado à instituição, por isso não pode ser alterado aqui. Para trocar, fale com o suporte.</div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-top:16px;">
+          <div>
+            <div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Instituição</div>
+            <div style="margin-top:8px; padding:12px 15px; border-radius:14px; background:#231d33; border:1px solid #2b2438; font-size:13.5px; color:#c9c4d4;">Ulbra</div>
+          </div>
+          <div>
+            <div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Disciplina principal</div>
+            <div style="margin-top:8px; padding:12px 15px; border-radius:14px; background:#231d33; border:1px solid #2b2438; font-size:13.5px; color:#c9c4d4;">Física</div>
+          </div>
+        </div>
+
+        <div style="margin-top:16px;">
+          <div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Descrição / apresentação</div>
+          <div style="margin-top:8px; padding:13px 15px; border-radius:14px; background:#231d33; border:1px solid #2b2438; font-size:13.5px; color:#c9c4d4; line-height:1.6; min-height:84px;">Professora de Física I e II na Engenharia. Trabalho com resolução de problemas e experimentos de baixo custo em sala.</div>
+          <div style="display:flex; justify-content:flex-end; font-size:10.5px; color:#7a7488; margin-top:6px;">148 / 400</div>
+        </div>
+
+        <div style="display:flex; align-items:flex-start; gap:14px; margin-top:18px; padding:16px 18px; border-radius:14px; background:rgba(155,93,229,0.08); border:1px solid #9b5de5;">
+          <div style="min-width:0; flex:1;">
+            <div style="font-size:13.5px; font-weight:700; color:#f4f2f8;">Geração automática de personalização</div>
+            <div style="font-size:12.5px; color:#c9c4d4; margin-top:6px; line-height:1.55;">{{ autoText }}</div>
+          </div>
+          <div onClick="{{ toggleAuto }}" style="{{ trackStyle }}">
+            <div style="{{ knobStyle }}"></div>
+          </div>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:20px;">
+          <div style="font-size:11.5px; color:#a29cb3;">Última alteração em 02/09/2026</div>
+          <div onClick="{{ save }}" style="margin-left:auto; padding:11px 22px; border-radius:999px; background:#9b5de5; font-size:13px; font-weight:700; color:#fff; cursor:pointer;">Salvar alterações</div>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:20px;">
+        <div style="padding:24px 26px; border-radius:20px; background:#1b1728; border:1px solid #2b2438;">
+          <div style="display:flex; align-items:center; gap:11px;">
+            <div style="width:28px; height:28px; flex:none; border-radius:50%; background:rgba(155,93,229,0.18); border:1px solid #9b5de5; display:flex; align-items:center; justify-content:center;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c1a7ec" stroke-width="2"><circle cx="9" cy="12" r="4"/><path d="M13 12h8M18 12v3"/></svg>
+            </div>
+            <div style="font-family:'Cinzel',serif; font-size:18px; font-weight:700; color:#f4f2f8;">Alterar senha</div>
+          </div>
+          <div style="font-size:12.5px; color:#a29cb3; margin-top:8px;">Confirme a senha atual e escolha uma nova, com pelo menos 6 caracteres.</div>
+
+          <sc-for list="{{ pwFields }}" as="pf" hint-placeholder-count="3">
+          <div style="margin-top:14px;">
+            <div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">{{ pf.label }}</div>
+            <div style="display:flex; align-items:center; gap:9px; margin-top:8px; padding:12px 15px; border-radius:14px; background:#231d33; border:1px solid {{ pf.border }};">
+              <div style="font-size:14px; letter-spacing:0.2em; color:#c9c4d4; flex:1;">{{ pf.dots }}</div>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#a29cb3" stroke-width="2" style="cursor:pointer;"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.5"/></svg>
+            </div>
+            <sc-if value="{{ pf.hasStrength }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; align-items:center; gap:7px; margin-top:8px;">
+              <div style="flex:1; height:5px; border-radius:999px; background:#5fd99a;"></div>
+              <div style="flex:1; height:5px; border-radius:999px; background:#5fd99a;"></div>
+              <div style="flex:1; height:5px; border-radius:999px; background:#5fd99a;"></div>
+              <div style="flex:1; height:5px; border-radius:999px; background:#2b2438;"></div>
+              <div style="font-size:10.5px; font-weight:700; color:#5fd99a; margin-left:3px; white-space:nowrap;">forte</div>
+            </div>
+            </sc-if>
+          </div>
+          </sc-for>
+
+          <div onClick="{{ save }}" style="margin-top:18px; padding:11px 22px; border-radius:999px; background:rgba(155,93,229,0.16); border:1px solid #9b5de5; font-size:13px; font-weight:700; color:#c1a7ec; text-align:center; cursor:pointer;">Alterar senha</div>
+        </div>
+
+        <div style="padding:22px 24px; border-radius:20px; background:#1b1728; border:1px solid #2b2438;">
+          <div style="font-family:'Cinzel',serif; font-size:16px; font-weight:700; color:#f4f2f8;">Sua conta em números</div>
+          <div style="display:flex; gap:24px; margin-top:16px; flex-wrap:wrap;">
+            <div><div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Turmas</div><div style="font-size:22px; font-weight:800; color:#f4f2f8; margin-top:5px;">3</div></div>
+            <div><div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Alunos</div><div style="font-size:22px; font-weight:800; color:#f4f2f8; margin-top:5px;">74</div></div>
+            <div><div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Tópicos</div><div style="font-size:22px; font-weight:800; color:#f4f2f8; margin-top:5px;">14</div></div>
+          </div>
+          <div style="font-size:11.5px; color:#a29cb3; margin-top:14px; line-height:1.5;">É o que seria removido com a conta.</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="height:1px; background:#2b2438; margin:44px 0 26px;"></div>
+
+    <div style="padding:24px 26px; border-radius:20px; background:#1b1728; border:1px solid #2b2438; border-left:4px solid #e2574c;">
+      <div style="display:flex; align-items:flex-start; gap:20px; flex-wrap:wrap;">
+        <div style="min-width:0; flex:1;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f0847c" stroke-width="2"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.5"/></svg>
+            <div style="font-family:'Cinzel',serif; font-size:18px; font-weight:700; color:#f0847c;">Zona de perigo</div>
+          </div>
+          <div style="font-size:13px; color:#c9c4d4; margin-top:9px; line-height:1.6; max-width:600px;">Excluir a conta é permanente. Suas 3 turmas, 14 tópicos, todo o material gerado pela IA e o histórico de 74 alunos são removidos e não podem ser recuperados. Se quiser apenas pausar o uso, basta não acessar — nada é apagado por inatividade.</div>
+        </div>
+        <div onClick="{{ openDelete }}" style="padding:11px 20px; border-radius:999px; border:1px solid #7a3a3a; font-size:13px; font-weight:600; color:#f0847c; cursor:pointer; white-space:nowrap;">Excluir minha conta…</div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- modal excluir conta -->
+  <sc-if value="{{ showDelete }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed; inset:0; z-index:60; background:rgba(5,3,10,0.8); backdrop-filter:blur(6px); display:flex; align-items:center; justify-content:center; padding:32px;">
+    <div style="width:100%; max-width:520px; border-radius:20px; background:#1b1728; border:1px solid #7a3a3a; overflow:hidden;">
+      <div style="padding:22px 26px 18px; border-bottom:1px solid #2b2438;">
+        <div style="display:flex; align-items:center; gap:13px;">
+          <div style="width:32px; height:32px; flex:none; border-radius:50%; background:rgba(224,87,76,0.18); border:1px solid #7a3a3a; display:flex; align-items:center; justify-content:center;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f0847c" stroke-width="2"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.5"/></svg>
+          </div>
+          <div style="font-family:'Cinzel',serif; font-size:19px; font-weight:700; color:#f4f2f8;">Excluir a sua conta</div>
+          <div onClick="{{ closeDelete }}" style="margin-left:auto; width:30px; height:30px; border-radius:50%; background:#231d33; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c9c4d4" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </div>
+        </div>
+      </div>
+      <div style="padding:22px 26px 24px;">
+        <div style="font-size:13.5px; color:#c9c4d4; line-height:1.6;">Isto remove permanentemente:</div>
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top:13px;">
+          <div style="display:flex; align-items:center; gap:10px; padding:11px 14px; border-radius:14px; background:#231d33; font-size:12.5px; color:#e5e1ec;"><div style="width:7px; height:7px; border-radius:50%; background:#e2574c; flex:none;"></div>3 turmas e 74 matrículas</div>
+          <div style="display:flex; align-items:center; gap:10px; padding:11px 14px; border-radius:14px; background:#231d33; font-size:12.5px; color:#e5e1ec;"><div style="width:7px; height:7px; border-radius:50%; background:#e2574c; flex:none;"></div>14 tópicos, atividades e questões</div>
+          <div style="display:flex; align-items:center; gap:10px; padding:11px 14px; border-radius:14px; background:#231d33; font-size:12.5px; color:#e5e1ec;"><div style="width:7px; height:7px; border-radius:50%; background:#e2574c; flex:none;"></div>todo o material personalizado gerado pela IA</div>
+        </div>
+        <div style="font-size:12.5px; color:#c9c4d4; margin-top:16px; line-height:1.55;">Para confirmar, digite <strong style="font-weight:700; color:#f4f2f8;">EXCLUIR</strong> no campo abaixo.</div>
+        <div onClick="{{ typeConfirm }}" style="{{ inputStyle }}">{{ typedText }}</div>
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:18px;">
+          <div onClick="{{ closeDelete }}" style="padding:11px 20px; border-radius:999px; border:1px solid #2b2438; font-size:13px; font-weight:600; color:#f4f2f8; cursor:pointer;">Manter minha conta</div>
+          <div style="{{ confirmStyle }}">Excluir conta permanentemente</div>
+        </div>
+        <div style="font-size:11.5px; color:#a29cb3; margin-top:13px; line-height:1.5;">{{ hint }}</div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- Escriba -->
+  <div style="position:fixed; right:32px; bottom:28px; z-index:50;">
+    <sc-if value="{{ escribaOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute; bottom:70px; right:0; width:340px; border-radius:20px; background:#1b1728; border:1px solid #2b2438; box-shadow:0 20px 50px rgba(0,0,0,0.5); overflow:hidden;">
+        <div style="display:flex; align-items:center; gap:12px; padding:16px 18px; border-bottom:1px solid #2b2438; background:linear-gradient(135deg,#c9924f,#9c6b4f);">
+          <div style="width:34px; height:34px; border-radius:50%; background:rgba(0,0,0,0.2); display:flex; align-items:center; justify-content:center;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          </div>
+          <div>
+            <div style="font-family:'Cinzel',serif; font-size:14px; font-weight:700; color:#fff;">Escriba</div>
+            <div style="font-size:11px; color:rgba(255,255,255,0.85);">O guia do professor · lê os dados da sua conta</div>
+          </div>
+        </div>
+        <div style="padding:16px 18px; display:flex; flex-direction:column; gap:12px;">
+          <div style="font-size:13px; color:#e5e1ec; line-height:1.5;">Olá! Posso te ajudar com os dados da sua conta. O que você quer saber?</div>
+          <div style="display:flex; flex-wrap:wrap; gap:8px;">
+            <div style="padding:7px 12px; border-radius:999px; background:#231d33; border:1px solid #2b2438; font-size:12px; color:#c9c4d4; cursor:pointer;">Como está meu uso?</div>
+            <div style="padding:7px 12px; border-radius:999px; background:#231d33; border:1px solid #2b2438; font-size:12px; color:#c9c4d4; cursor:pointer;">Alguma pendência?</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; padding:12px 14px; border-top:1px solid #2b2438;">
+          <input placeholder="Pergunte ao Escriba…" style="flex:1; background:#0d0b16; border:1px solid #2b2438; border-radius:999px; padding:9px 14px; color:#f4f2f8; font-size:13px; outline:none;"/>
+          <div style="width:32px; height:32px; border-radius:50%; background:#9c6b4f; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+    <div onClick="{{ toggleEscriba }}" title="Pergunte ao Escriba" style="width:56px; height:56px; border-radius:50%; background:linear-gradient(135deg,#c9924f,#9c6b4f); display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 12px 30px rgba(0,0,0,0.45);">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+    </div>
+  </div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const NAV_HREFS = {
+  visao: 'Console%20Visao%20Geral%20(Fase%202).dc.html',
+  trilhas: 'Console%20Trilhas%20(Fase%202).dc.html',
+  turmas: 'Console%20Turmas%20(Fase%202).dc.html',
+  personalizacoes: 'Console%20Personalizacoes%20(Fase%202).dc.html',
+  rankings: 'Console%20Rankings%20(Fase%202).dc.html',
+  meusdados: 'Console%20Meus%20Dados%20(Fase%202).dc.html',
+  aprovacoes: 'Console%20Aprovacoes%20(Fase%202).dc.html'
+};
+
+class Component extends DCLogic {
+  state = { view: 'padrao', auto: true, saved: false, del: false, typed: false, escribaOpen: false };
+
+  navIcon(name) {
+    const icons = {
+      visao: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
+      trilhas: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8 7.5C10 10 14 14 16 16.5"/></svg>',
+      turmas: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/></svg>',
+      personalizacoes: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/><path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2z"/></svg>',
+      rankings: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 6H4a2 2 0 0 0 2 4"/><path d="M17 6h3a2 2 0 0 1-2 4"/></svg>',
+      meusdados: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+      aprovacoes: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2l8 3v6c0 5-3.5 8.5-8 11-4.5-2.5-8-6-8-11V5l8-3z"/><path d="M9 12l2 2 4-4"/></svg>'
+    };
+    return { __html: icons[name] };
+  }
+
+  renderVals() {
+    const view = this.state.view;
+    const del = view === 'excluir' || this.state.del;
+    const typed = this.state.typed;
+
+    const navItems = [
+      { key:'visao', label:'Visão geral', active:false },
+      { key:'trilhas', label:'Trilhas', active:false },
+      { key:'turmas', label:'Turmas', active:false },
+      { key:'personalizacoes', label:'Personalizações', active:false },
+      { key:'rankings', label:'Rankings', active:false },
+      { key:'meusdados', label:'Meus dados', active:true },
+      { key:'aprovacoes', label:'Aprovações', active:false }
+    ].map(n => ({
+      label: n.label, iconHtml: this.navIcon(n.key), color: n.active ? '#4fd1c5' : '#a29cb3', href: NAV_HREFS[n.key],
+      style: `display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;white-space:nowrap;${n.active ? 'background:rgba(79,209,197,0.08);font-weight:600;' : ''}`
+    }));
+
+    const estadoOptions = [
+      { k:'padrao', l:'Padrão' }, { k:'excluir', l:'Excluir conta' }
+    ].map(o => ({
+      label: o.l, select: () => this.setState({ view: o.k, del: o.k === 'excluir' }),
+      style: `padding:6px 12px;border-radius:999px;font-size:11px;cursor:pointer;font-weight:600;${view===o.k ? 'background:#9b5de5;color:#fff;' : 'color:#a29cb3;'}`
+    }));
+
+    const pwFields = [
+      { label:'Senha atual', dots:'••••••••', border:'#2b2438', hasStrength:false },
+      { label:'Nova senha', dots:'••••••••••', border:'#9b5de5', hasStrength:true },
+      { label:'Confirmar nova senha', dots:'••••••••••', border:'#2b2438', hasStrength:false }
+    ];
+
+    return {
+      navItems, estadoOptions, pwFields,
+      autoText: this.state.auto
+        ? 'Ligado: ao criar ou editar um tópico, a IA já gera o material dos 7 perfis. É o padrão recomendado.'
+        : 'Desligado: criar ou editar tópicos não dispara geração nenhuma. Você aciona manualmente em Personalizações, pelo botão "Gerar tudo".',
+      trackStyle: `width:48px;height:28px;flex:none;border-radius:999px;padding:3px;cursor:pointer;display:flex;transition:background .18s;${this.state.auto ? 'background:#9b5de5;' : 'background:#2b2438;'}`,
+      knobStyle: `width:22px;height:22px;border-radius:50%;background:#fff;transition:margin-left .18s;${this.state.auto ? 'margin-left:20px;' : 'margin-left:0;'}`,
+      toggleAuto: () => this.setState(s => ({ auto: !s.auto })),
+      save: () => this.setState({ saved: true }),
+      showSaved: this.state.saved,
+      hideSaved: () => this.setState({ saved: false }),
+      showDelete: del,
+      openDelete: () => this.setState({ del: true, typed: false }),
+      closeDelete: () => this.setState({ del: false, typed: false, view: 'padrao' }),
+      typeConfirm: () => this.setState({ typed: true }),
+      typedText: typed ? 'EXCLUIR' : 'digite EXCLUIR',
+      inputStyle: `margin-top:10px;padding:12px 15px;border-radius:14px;background:#231d33;font-size:14px;letter-spacing:0.12em;font-weight:700;cursor:text;${typed ? 'border:1px solid #e2574c;color:#f0847c;' : 'border:1px solid #2b2438;color:#7a7488;font-weight:500;'}`,
+      confirmStyle: typed
+        ? 'margin-left:auto;display:flex;align-items:center;gap:9px;padding:11px 20px;border-radius:999px;background:#e2574c;font-size:13px;font-weight:700;color:#fff;cursor:pointer;white-space:nowrap;'
+        : 'margin-left:auto;padding:11px 20px;border-radius:999px;background:#231d33;font-size:13px;font-weight:700;color:#5c5468;cursor:not-allowed;border:1px solid #2b2438;white-space:nowrap;',
+      hint: typed
+        ? 'O botão está liberado. A exclusão começa imediatamente e não pode ser desfeita.'
+        : 'O botão de confirmar só é liberado depois que a palavra estiver digitada corretamente.',
+      escribaOpen: this.state.escribaOpen,
+      toggleEscriba: () => this.setState(s => ({ escribaOpen: !s.escribaOpen }))
+    };
+  }
+}
+
+</script>
+</body>
+</html>
