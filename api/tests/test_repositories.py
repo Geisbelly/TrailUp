@@ -17,7 +17,10 @@ from app.repositories.ia_descricao import IADescricaoRepository
 from app.repositories.materiais import MateriaisRepository
 from app.repositories.notificacao import NotificacaoRepository
 from app.repositories.perfil import PerfilRepository
-from app.repositories.personalizacao_jobs import PersonalizacaoJobsRepository
+from app.repositories.personalizacao_jobs import (
+    _KINDS_COM_TARGET_POR_PERFIL,
+    PersonalizacaoJobsRepository,
+)
 from app.repositories.telemetria import TelemetriaRepository
 from app.repositories.trilha import TrilhaRepository
 from app.schemas.notificacao import NotificacaoPayload
@@ -375,6 +378,29 @@ async def test_latest_personalization_targets_are_scoped_exactly_by_content() ->
         "topico_id": 121,
         "conteudo_id": 125,
     }
+    for kind in _KINDS_COM_TARGET_POR_PERFIL:
+        assert f"'{kind}'" in query
+
+
+def test_whitelist_targets_por_perfil_cobre_kinds_de_base() -> None:
+    """A whitelist da query de status tem que cobrir TODO kind que monta target
+    de base por perfil. Ficar de fora nao levanta erro: o console deixa de ver
+    a geracao e passa a exibir o job whitelistado anterior. Foi o que aconteceu
+    com `manual_profile_generate`/`manual_profile_generate_all` -- os dois kinds
+    criados pelos botoes "gerar"/"gerar tudo" DESSA MESMA tela: cada clique
+    gerava normalmente e a tela seguia mostrando o stacktrace de um
+    student_enrollment de duas semanas antes, dando a impressao de que o clique
+    tinha falhado."""
+    from app.services.personalizacao_jobs import KINDS_BASE_POR_PERFIL
+
+    faltando = KINDS_BASE_POR_PERFIL - set(_KINDS_COM_TARGET_POR_PERFIL)
+    assert not faltando, (
+        "kinds que criam target por perfil e a query de status nao enxerga: "
+        f"{sorted(faltando)}"
+    )
+    # student_enrollment nao esta em KINDS_BASE_POR_PERFIL (o target dele tem
+    # aluno dono), mas tambem e' 1-por-perfil e precisa continuar na whitelist.
+    assert "student_enrollment" in _KINDS_COM_TARGET_POR_PERFIL
 
 
 @pytest.mark.asyncio

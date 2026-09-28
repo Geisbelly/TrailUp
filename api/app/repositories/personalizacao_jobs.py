@@ -5,6 +5,30 @@ from uuid import uuid4
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+# Kinds cujos targets sao 1 por (topico x conteudo x perfil) -- os mesmos que
+# `_build_targets` monta pelo caminho de base por perfil em
+# `services/personalizacao_jobs.py`. Um kind desses ficar de fora daqui nao
+# levanta erro: `buscar_targets_mais_recentes_por_perfil` simplesmente nao ve a
+# geracao e cai no job whitelistado ANTERIOR, que pode ser de semanas atras --
+# foi assim que o console ficou exibindo o stacktrace de um enrollment morto
+# depois de cada clique em "gerar", que cria kind=manual_profile_generate.
+# `test_whitelist_targets_por_perfil_cobre_kinds_de_base` guarda essa paridade.
+_KINDS_COM_TARGET_POR_PERFIL: tuple[str, ...] = (
+    "student_enrollment",
+    "class_delta_sync",
+    "full_class_sync",
+    "manual_retry",
+    "manual_profile_generate",
+    "manual_profile_generate_all",
+)
+
+# Renderizado como lista literal, nao como bind: `= ANY(CAST(:kinds AS TEXT[]))`
+# depende do asyncpg inferir o tipo do array e falharia so' em tempo de execucao.
+# Sao constantes deste modulo (identificadores ASCII), nao entrada de usuario.
+_KINDS_COM_TARGET_POR_PERFIL_SQL = ", ".join(
+    f"'{kind}'" for kind in _KINDS_COM_TARGET_POR_PERFIL
+)
+
 
 class PersonalizacaoJobsRepository:
     def __init__(self, session: AsyncSession) -> None:
@@ -876,12 +900,9 @@ class PersonalizacaoJobsRepository:
                   FROM personalizacao_job_targets target
                   JOIN personalizacao_jobs job ON job.id = target.job_id
                   WHERE job.classe_id = CAST(:classe_id AS BIGINT)
-                    AND job.kind IN (
-                      'student_enrollment',
-                      'class_delta_sync',
-                      'full_class_sync',
-                      'manual_retry'
-                    )
+                    AND job.kind IN ("""
+                + _KINDS_COM_TARGET_POR_PERFIL_SQL
+                + """)
                     AND target.topico_id = CAST(:topico_id AS BIGINT)
                     AND target.conteudo_id
                           IS NOT DISTINCT FROM CAST(:conteudo_id AS BIGINT)

@@ -71,6 +71,21 @@ _KINDS_MANUAIS = {
     JOB_KIND_MANUAL_PROFILE_GENERATE,
     JOB_KIND_MANUAL_PROFILE_GENERATE_ALL,
 }
+# Kinds que montam targets de BASE POR PERFIL: um target por
+# (topico x conteudo x perfil), sem aluno dono. O console le esses targets para
+# mostrar o status de geracao de cada perfil, e a whitelist que ele usa
+# (`_KINDS_COM_TARGET_POR_PERFIL` em repositories/personalizacao_jobs.py) tem
+# que cobrir todos eles -- manter as duas em paridade e' o que
+# `test_whitelist_targets_por_perfil_cobre_kinds_de_base` verifica.
+KINDS_BASE_POR_PERFIL = frozenset(
+    {
+        JOB_KIND_CLASS_DELTA,
+        JOB_KIND_FULL_SYNC,
+        JOB_KIND_MANUAL_RETRY,
+        JOB_KIND_MANUAL_PROFILE_GENERATE,
+        JOB_KIND_MANUAL_PROFILE_GENERATE_ALL,
+    }
+)
 _JOB_KIND_MEDIA_RENDER = "media_render"
 _JOB_KIND_MEDIA_RENDER_LEGACY = "personalizacao_media_render"
 _MEDIA_RENDER_KINDS = {_JOB_KIND_MEDIA_RENDER, _JOB_KIND_MEDIA_RENDER_LEGACY}
@@ -819,13 +834,7 @@ async def _build_targets(
                 )
         return targets, resolved_topicos, target_profile_map
 
-    if kind in {
-        JOB_KIND_CLASS_DELTA,
-        JOB_KIND_FULL_SYNC,
-        JOB_KIND_MANUAL_RETRY,
-        JOB_KIND_MANUAL_PROFILE_GENERATE,
-        JOB_KIND_MANUAL_PROFILE_GENERATE_ALL,
-    }:
+    if kind in KINDS_BASE_POR_PERFIL:
         # A base nao tem dono: ela e material de (classe x topico x conteudo x
         # perfil), e existe com ou sem aluno matriculado. Antes, cada perfil era
         # pendurado num aluno representante -- e turma sem aluno nao gerava nada
