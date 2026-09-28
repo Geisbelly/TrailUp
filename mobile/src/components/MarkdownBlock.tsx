@@ -8,13 +8,29 @@ import {
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { resolveSupabaseStorageUrl } from "@/utils/supabaseStorage";
 import React, { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
-import Markdown from "react-native-markdown-display";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import Markdown, { MarkdownIt } from "react-native-markdown-display";
 import FitImage from "react-native-fit-image";
 import { SvgXml } from "react-native-svg";
 import { decodeInlineSvgDataUri } from "@/utils/inlineSvgDataUri";
+import { conteudoDeBloco, liberarImagensEmbutidas } from "@/utils/markdownDataUri";
 import tinycolor from "tinycolor2";
 import { resolveMediaUrl } from "@/utils/mediaPayload";
+
+// Fora do componente: a biblioteca memoiza o parser pela IDENTIDADE da
+// instancia (`useMemo(() => markdownit, [markdownit])`), entao uma instancia
+// nova a cada render refaria o parse do material inteiro toda vez.
+// `typographer: true` e' o mesmo default da biblioteca — so a politica de data
+// URI muda, para o diagrama em SVG nao ser descartado no parser
+// (ver utils/markdownDataUri.ts).
+const parserComDiagramas = liberarImagensEmbutidas(new MarkdownIt({ typographer: true }));
 
 type Props = {
   payload: any;
@@ -79,6 +95,52 @@ function criarMarkdownRules(palette: ReturnType<typeof getProfileShellPalette>) 
       </View>
     );
   },
+
+  // Bloco cercado por ``` e tabela sao desenhados por POSICAO horizontal: arte
+  // ASCII emoldurada ("+-----+"), arvore de diretorio, codigo indentado, coluna
+  // de tabela. A biblioteca poe o bloco num <Text> comum, que quebra linha na
+  // largura da tela — e quebra de linha em desenho alinhado nao degrada, destroi.
+  //
+  // O microservice converte em SVG so o que consegue LER como fluxo ou raia; o
+  // resto ele devolve intacto de proposito (ver microservice/src/utils/
+  // asciiDiagram.ts: bloco emoldurado e linguagem de codigo real nunca viram
+  // imagem). Tudo isso chega aqui, e e' aqui que precisa caber.
+  //
+  // `flexGrow: 1` no conteudo mantem a moldura ocupando a largura toda quando o
+  // bloco e' estreito; quando e' largo, rola em vez de quebrar.
+  fence: (node: any, _children: any, _parent: any, estilos: any) => (
+    <ScrollView
+      key={node.key}
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={styles.blocoRolavel}
+      contentContainerStyle={styles.blocoRolavelConteudo}
+    >
+      <Text style={estilos.fence}>{conteudoDeBloco(node.content)}</Text>
+    </ScrollView>
+  ),
+  code_block: (node: any, _children: any, _parent: any, estilos: any) => (
+    <ScrollView
+      key={node.key}
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={styles.blocoRolavel}
+      contentContainerStyle={styles.blocoRolavelConteudo}
+    >
+      <Text style={estilos.code_block}>{conteudoDeBloco(node.content)}</Text>
+    </ScrollView>
+  ),
+  table: (node: any, children: any, _parent: any, estilos: any) => (
+    <ScrollView
+      key={node.key}
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={styles.blocoRolavel}
+      contentContainerStyle={styles.blocoRolavelConteudo}
+    >
+      <View style={estilos._VIEW_SAFE_table}>{children}</View>
+    </ScrollView>
+  ),
   };
 }
 
@@ -237,16 +299,26 @@ export function MarkdownBlock({ payload }: Props) {
       borderColor: palette.border,
       borderRadius: 8,
     },
+    // A biblioteca da `flex: 1` a toda celula. Numa tela de celular isso divide
+    // a largura em partes iguais e some com a tabela: quatro colunas viram
+    // quatro tiras de ~80px, cada palavra numa linha. Dentro da rolagem
+    // horizontal nao ha largura a dividir, entao o piso e o teto e que mandam —
+    // o piso impede coluna espremida, o teto impede que uma celula com frase
+    // longa estique a tabela a ponto de ninguem achar o fim.
     th: {
       backgroundColor: palette.surface,
       color: palette.text,
       padding: 8,
+      minWidth: 96,
+      maxWidth: 260,
     },
     td: {
       color: palette.textMuted,
       padding: 8,
       borderTopWidth: 1,
       borderTopColor: palette.border,
+      minWidth: 96,
+      maxWidth: 260,
     },
   }), [palette]);
 
@@ -273,7 +345,9 @@ export function MarkdownBlock({ payload }: Props) {
 
   return (
     <View style={styles.wrapper}>
-      <Markdown style={mdStyles} rules={markdownRules}>{currentPage}</Markdown>
+      <Markdown style={mdStyles} rules={markdownRules} markdownit={parserComDiagramas}>
+        {currentPage}
+      </Markdown>
 
       {totalPages > 1 && (
         <View style={[styles.pagination, { borderTopColor: palette.border }]}>
@@ -324,6 +398,12 @@ const styles = StyleSheet.create({
     padding: 6,
     borderWidth: 1,
     borderRadius: 14,
+  },
+  blocoRolavel: {
+    marginVertical: 8,
+  },
+  blocoRolavelConteudo: {
+    flexGrow: 1,
   },
   wrapper: {
     marginTop: 6,
