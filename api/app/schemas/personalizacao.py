@@ -158,7 +158,7 @@ class PlanoPersonalizacao(BaseModel):
 
 class PersonalizacaoResponse(BaseModel):
     id: int
-    aluno_id: str
+    aluno_id: str | None = None
     classe_id: int | None = None
     conteudo_id: int | None = None
     topico_id: int | None = None
@@ -393,7 +393,7 @@ class PersonalizacaoManualGenerateAllPayload(BaseModel):
 class PersonalizacaoJobTargetResponse(BaseModel):
     id: int
     job_id: str
-    aluno_id: str
+    aluno_id: str | None = None
     topico_id: int
     conteudo_id: int | None = None
     brainhex_profile_key: str | None = None
