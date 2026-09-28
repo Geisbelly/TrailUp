@@ -25,7 +25,6 @@
     "android": {
       "package": "com.seuprojeto.trailup",
       "versionCode": 5,
-      "usesCleartextTraffic": true,
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.POST_NOTIFICATIONS",
