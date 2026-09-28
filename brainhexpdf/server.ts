@@ -29,12 +29,22 @@ import {
   DEFAULT_SLIDES_PER_BATCH,
   describeGenerationFailure,
   isTruncationFailure,
+  planejarRetomada,
   planSlideBatches,
-  splitBatch,
   type SlideBatch,
 } from './src/utils/slideBatchPlanner';
+import { salvarSlidesCompletos } from './src/utils/slidesSalvage';
 import { canSendAsGeminiInlineData } from './src/utils/geminiInlineImageMimes';
 import { sanitizeQuizContent, shuffleQuizOptions } from './src/utils/quizSanitize';
+import {
+  MAX_CONCEPT_TITLE_CHARS,
+  MAX_GUIDE_ANALOGY_CHARS,
+  MAX_GUIDE_SPEECH_CHARS,
+  MAX_NARRATIVE_BEAT_CHARS,
+  MAX_PARAGRAPH_CHARS,
+  MAX_TAKEAWAY_CHARS,
+  sanitizeSlideTextBudget,
+} from './src/utils/slideTextBudget';
 import { persistApresentacaoResult, type SupabaseClientLike } from './src/services/materialsPersistence';
 
 
@@ -647,26 +657,32 @@ const DECK_RESPONSE_SCHEMA = {
               },
               narrativeBeat: {
                 type: Type.STRING,
+                maxLength: MAX_NARRATIVE_BEAT_CHARS,
                 description: 'Ponte narrativa imersiva de 1 a 2 frases conectando a ambientação ao tema técnico deste slide',
               },
             },
             required: ['storyArcPhase', 'environmentSetting', 'voiceTone', 'narrativeBeat'],
           },
-          conceptTitle: { type: Type.STRING },
+          conceptTitle: { type: Type.STRING, maxLength: MAX_CONCEPT_TITLE_CHARS },
+          // maxLength aqui e' best-effort, igual ao do quiz (ver o comentario
+          // em quiz.question). A diferenca e' o que ele evita: sem teto nenhum,
+          // o modelo gastou os 32768 tokens de saida num unico paragrafo
+          // (log 2026-09-28, corte na coluna 160638 de uma linha). O piso
+          // garantido vem de sanitizeSlideTextBudget().
           contentParagraphs: {
             type: Type.ARRAY,
-            items: { type: Type.STRING },
+            items: { type: Type.STRING, maxLength: MAX_PARAGRAPH_CHARS },
             description: 'De 2 a 4 parágrafos densos, aprofundados e explicativos sobre este subtópico, com substância técnica real, sem textos curtos ou resumos superficiais.',
           },
-          keyTakeaways: { type: Type.ARRAY, items: { type: Type.STRING } },
+          keyTakeaways: { type: Type.ARRAY, items: { type: Type.STRING, maxLength: MAX_TAKEAWAY_CHARS } },
           
           // Character Guide & Storytelling
           characterGuide: {
             type: Type.OBJECT,
             properties: {
               name: { type: Type.STRING },
-              speechText: { type: Type.STRING, description: 'Fala explicativa imersiva do personagem guia contextualizando o tema na sua voz e tom característicos' },
-              analogy: { type: Type.STRING, description: 'Analogia rica e clara conectando o conceito com o mundo real ou universo temático' },
+              speechText: { type: Type.STRING, maxLength: MAX_GUIDE_SPEECH_CHARS, description: 'Fala explicativa imersiva do personagem guia contextualizando o tema na sua voz e tom característicos' },
+              analogy: { type: Type.STRING, maxLength: MAX_GUIDE_ANALOGY_CHARS, description: 'Analogia rica e clara conectando o conceito com o mundo real ou universo temático' },
               tone: { type: Type.STRING },
             },
             required: ['name', 'speechText'],
@@ -1547,16 +1563,46 @@ ${isLast ? `Este é o bloco final: inclua o clímax da aula e o desfecho dinâmi
       houveTruncamento = houveTruncamento || truncou;
       houveCotaEsgotada = houveCotaEsgotada || cota;
 
-      const partes = truncou ? splitBatch(b) : null;
+      // O texto cortado nao e lixo: tudo o que veio ANTES do corte e JSON
+      // valido. Aproveitar os slides que fecharam resolve os dois furos que o
+      // log de 2026-09-28 mostrou:
+      //   - bloco de 1 slide que trunca era DESCARTADO (splitBatch devolve null
+      //     para count=1) e o deck saia com furo, sem nenhum registro do que
+      //     faltou;
+      //   - bloco de 4 que truncava no terceiro jogava os dois primeiros fora e
+      //     re-pedia tudo, pagando de novo ~78k tokens de ENTRADA - o consumo
+      //     que dispara o 429 em cascata.
+      const salvos = truncou ? salvarSlidesCompletos(String(genResult?.text ?? '')) : [];
+      const { aproveitar, reenfileirar } = planejarRetomada({
+        bloco: b,
+        recuperados: salvos.length,
+        truncou,
+      });
+      const aproveitados = salvos.slice(0, aproveitar);
+      if (aproveitados.length > 0) {
+        // deckMeta (titulo, guia, conclusao) fica FORA do array de slides e nao
+        // sobreviveu ao corte, entao `primeiroBlocoPendente` continua de pe: o
+        // proximo bloco ainda e o primeiro e traz esses campos. Os slides daqui
+        // ja estao salvos e nao serao pedidos outra vez.
+        slides.push(...aproveitados);
+        lastModelUsed = genResult?.modelUsed ?? lastModelUsed;
+        lastKeyIndexUsed = genResult?.keyIndexUsed ?? lastKeyIndexUsed;
+      }
+
       console.warn(
         `[Batch ${b.start + 1}-${b.start + b.count}] ${truncou ? 'resposta truncada' : 'erro'}: ${err?.message}` +
-          (partes ? ` — dividindo em ${partes[0].count}+${partes[1].count} slides` : ' — bloco descartado'),
+          (aproveitados.length > 0
+            ? ` — ${aproveitados.length} slide(s) recuperado(s) do texto cortado`
+            : '') +
+          (reenfileirar.length > 0
+            ? ` — refazendo ${reenfileirar.map((p) => p.count).join('+')} slide(s)`
+            : aproveitados.length > 0
+              ? ' — bloco completo'
+              : ' — bloco descartado'),
         { finishReason: genResult?.finishReason, usageMetadata: genResult?.usageMetadata }
       );
 
-      // So volta pra fila quando da pra pedir MENOS: bloco de 1 slide que
-      // trunca (ou erro que nao e de tamanho) nao melhora com nova tentativa.
-      if (partes) fila.unshift(partes[0], partes[1]);
+      if (reenfileirar.length > 0) fila.unshift(...reenfileirar);
     }
   }
 
@@ -2156,6 +2202,11 @@ app.post('/api/v1/render-and-store', requireSecret, async (req: Request, res: Re
     // por densidade pra que o peso do slide (proximo commit) ja reflita o
     // texto truncado, nao o bruto.
     fullDeck.slides = sanitizeQuizContent(fullDeck.slides);
+    // Mesma rede, para os campos livres que tinham ficado sem teto nenhum:
+    // contentParagraphs, keyTakeaways, fala do guia e beat narrativo - ver
+    // src/utils/slideTextBudget.ts. Tambem antes da paginacao, pelo mesmo
+    // motivo: a densidade tem que pesar o texto final, nao o bruto.
+    fullDeck.slides = sanitizeSlideTextBudget(fullDeck.slides);
     // Corrige o vies do modelo de sempre colocar a resposta certa na
     // primeira alternativa - ver shuffleQuizOptions em quizSanitize.ts.
     fullDeck.slides = shuffleQuizOptions(fullDeck.slides);

@@ -55,6 +55,43 @@ export function splitBatch(batch: SlideBatch): [SlideBatch, SlideBatch] | null {
 }
 
 /**
+ * O que fazer com um bloco que falhou, dado quantos slides deu para recuperar do
+ * texto cortado (ver `salvarSlidesCompletos`).
+ *
+ * A regra antiga era so' `splitBatch`, e ela tem um ponto cego: bloco de 1 slide
+ * nao encolhe, entao truncar num bloco de 1 significava descartar o slide e o
+ * deck sair com furo (log de producao 2026-09-28, `[Batch 7-7] ... bloco
+ * descartado`). Com slide recuperado, a fila recebe SO o que falta - nunca o que
+ * ja veio, que custaria de novo os ~78k tokens de entrada da chamada.
+ */
+export function planejarRetomada(params: {
+  bloco: SlideBatch;
+  /** Slides completos recuperados do texto truncado deste bloco. */
+  recuperados: number;
+  truncou: boolean;
+}): { aproveitar: number; reenfileirar: SlideBatch[] } {
+  const { bloco, truncou } = params;
+  const aproveitar = Math.max(
+    0,
+    Math.min(Math.floor(params.recuperados) || 0, bloco.count),
+  );
+  const faltam = bloco.count - aproveitar;
+
+  if (faltam <= 0) return { aproveitar, reenfileirar: [] };
+
+  if (aproveitar > 0) {
+    return {
+      aproveitar,
+      reenfileirar: [{ start: bloco.start + aproveitar, count: faltam }],
+    };
+  }
+
+  // Nada recuperado: o unico caminho que muda o resultado segue sendo pedir
+  // menos por chamada. Erro que nao e de tamanho nao melhora repetindo.
+  return { aproveitar, reenfileirar: truncou ? (splitBatch(bloco) ?? []) : [] };
+}
+
+/**
  * A resposta veio cortada por falta de orcamento de saida?
  *
  * Duas evidencias, porque nem sempre as duas aparecem: finishReason=MAX_TOKENS
