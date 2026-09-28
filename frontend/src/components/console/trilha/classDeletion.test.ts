@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/integrations/supabase/client', () => ({ supabase: {
   rpc: mocks.rpc, from: mocks.from, storage: { from: mocks.remove },
 } }));
-import { deleteClasseCascade, removeClassStudent } from './classDeletion';
+import { deleteClassTrail, deleteClasseCascade, removeClassStudent } from './classDeletion';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -23,6 +23,72 @@ beforeEach(() => {
     };
     return query;
   });
+});
+
+// deleteClassTrail apaga o topico/classe inteiros: precisa de um mock por
+// tabela (select para levantar ids, delete para o cascade) em vez do stub
+// generico acima, que so serve para o RPC unico de deleteClasseCascade.
+const callOrder: string[] = [];
+
+function makeTrailSupabaseMock(deleteErrors: Record<string, unknown> = {}) {
+  return (table: string) => ({
+    select: () => ({
+      eq: () => {
+        callOrder.push(`select:${table}`);
+        if (table === 'topicos') return Promise.resolve({ data: [{ id: 10 }], error: null });
+        return Promise.resolve({ data: [], error: null });
+      },
+      in: () => {
+        callOrder.push(`select:${table}`);
+        if (table === 'conteudos') {
+          return Promise.resolve({
+            data: [{ id: 20, conteudo: 'prof-1/10/aula.pdf', metadata: null }],
+            error: null,
+          });
+        }
+        return Promise.resolve({ data: [], error: null });
+      },
+    }),
+    delete: () => ({
+      eq: () => {
+        callOrder.push(`delete:${table}`);
+        return Promise.resolve({ error: deleteErrors[table] ?? null });
+      },
+      in: () => {
+        callOrder.push(`delete:${table}`);
+        return Promise.resolve({ error: deleteErrors[table] ?? null });
+      },
+    }),
+  });
+}
+
+it('so remove arquivos do Storage depois que o cascade inteiro no banco for confirmado', async () => {
+  callOrder.length = 0;
+  mocks.from.mockImplementation(makeTrailSupabaseMock());
+  const removeFn = vi.fn().mockImplementation(() => {
+    callOrder.push('storage:remove');
+    return Promise.resolve({ error: null });
+  });
+  mocks.remove.mockReturnValue({ remove: removeFn });
+
+  await deleteClassTrail(54);
+
+  expect(removeFn).toHaveBeenCalledExactlyOnceWith(['prof-1/10/aula.pdf']);
+  const lastDbDeleteIndex = callOrder.lastIndexOf('delete:topicos');
+  const storageRemoveIndex = callOrder.indexOf('storage:remove');
+  expect(lastDbDeleteIndex).toBeGreaterThanOrEqual(0);
+  expect(storageRemoveIndex).toBeGreaterThan(lastDbDeleteIndex);
+});
+
+it('nao apaga arquivos do Storage quando o cascade no banco falha (ex.: FK nao coberta)', async () => {
+  callOrder.length = 0;
+  mocks.from.mockImplementation(makeTrailSupabaseMock({ topicos: { message: 'violates foreign key constraint' } }));
+  const removeFn = vi.fn().mockResolvedValue({ error: null });
+  mocks.remove.mockReturnValue({ remove: removeFn });
+
+  await expect(deleteClassTrail(54)).rejects.toBeTruthy();
+
+  expect(removeFn).not.toHaveBeenCalled();
 });
 
 it('exclui a classe com uma única RPC, sem excluir tabelas ou arquivos antecipadamente', async () => {
