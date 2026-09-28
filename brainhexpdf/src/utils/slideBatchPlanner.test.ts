@@ -5,6 +5,7 @@ import {
   DEFAULT_SLIDES_PER_BATCH,
   describeGenerationFailure,
   isTruncationFailure,
+  planejarRetomada,
   planSlideBatches,
   splitBatch,
 } from './slideBatchPlanner';
@@ -102,4 +103,51 @@ test('cota esgotada tem mensagem propria', () => {
 
 test('sem causa identificada, mantem a orientacao sobre configuracao', () => {
   assert.match(describeGenerationFailure({ truncou: false, cotaEsgotada: false }), /chaves/i);
+});
+
+test('bloco de 1 slide que trunca sem nada recuperado é descartado (regra antiga preservada)', () => {
+  const plano = planejarRetomada({ bloco: { start: 6, count: 1 }, recuperados: 0, truncou: true });
+
+  assert.equal(plano.aproveitar, 0);
+  assert.deepEqual(plano.reenfileirar, []);
+});
+
+test('bloco de 1 slide COM o slide recuperado nao volta pra fila', () => {
+  // Era o furo: splitBatch(count=1) devolve null, o slide ia pro lixo e o deck
+  // saia sem ele. Recuperado, o bloco esta completo.
+  const plano = planejarRetomada({ bloco: { start: 6, count: 1 }, recuperados: 1, truncou: true });
+
+  assert.equal(plano.aproveitar, 1);
+  assert.deepEqual(plano.reenfileirar, []);
+});
+
+test('bloco de 4 que truncou no terceiro reenfileira SO os 2 que faltam', () => {
+  const plano = planejarRetomada({ bloco: { start: 4, count: 4 }, recuperados: 2, truncou: true });
+
+  assert.equal(plano.aproveitar, 2);
+  assert.deepEqual(plano.reenfileirar, [{ start: 6, count: 2 }]);
+});
+
+test('sem nada recuperado, segue dividindo ao meio como antes', () => {
+  const plano = planejarRetomada({ bloco: { start: 0, count: 4 }, recuperados: 0, truncou: true });
+
+  assert.equal(plano.aproveitar, 0);
+  assert.deepEqual(plano.reenfileirar, [
+    { start: 0, count: 2 },
+    { start: 2, count: 2 },
+  ]);
+});
+
+test('erro que nao e de tamanho nao volta pra fila', () => {
+  // Repetir o mesmo prompt depois de um 429 so' queima cota.
+  const plano = planejarRetomada({ bloco: { start: 0, count: 4 }, recuperados: 0, truncou: false });
+
+  assert.deepEqual(plano.reenfileirar, []);
+});
+
+test('nunca aproveita mais slides do que o bloco pediu', () => {
+  const plano = planejarRetomada({ bloco: { start: 0, count: 2 }, recuperados: 9, truncou: true });
+
+  assert.equal(plano.aproveitar, 2);
+  assert.deepEqual(plano.reenfileirar, []);
 });
