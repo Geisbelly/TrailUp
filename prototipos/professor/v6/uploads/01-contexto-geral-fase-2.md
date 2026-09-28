@@ -2,7 +2,7 @@
 
 > **Fonte de verdade desta fase:** 6 prints do console do professor (Visão geral, Trilhas, Turmas, Personalizações — estado de carregamento, Rankings, Meus Dados). Nenhum arquivo original (código, assets, Figma, design tokens) foi fornecido. Tudo abaixo é observado ou inferido diretamente desses prints — quando algo não pôde ser determinado, isso é dito explicitamente em vez de presumido.
 >
-> **Relação com a Fase 1:** a Fase 1 (pasta `prototipos/prompts/`, exceto esta) fica como referência histórica/funcional. Em qualquer conflito visual, **Fase 2 vence**. Uma mudança visual não implica automaticamente mudança de função — quando uma tela da Fase 2 não mostra um elemento que existia na Fase 1 (ex.: ações de editar/duplicar nos cards de turma), isso é registrado como "não observado neste print", não como "removido".
+> **Relação com a Fase 1:** a Fase 1 (pasta `prototipos/professor/prompts/`, exceto esta) fica como referência histórica/funcional. Em qualquer conflito visual, **Fase 2 vence**. Uma mudança visual não implica automaticamente mudança de função — quando uma tela da Fase 2 não mostra um elemento que existia na Fase 1 (ex.: ações de editar/duplicar nos cards de turma), isso é registrado como "não observado neste print", não como "removido".
 
 ## Identidade visual
 
