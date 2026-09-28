@@ -1877,10 +1877,10 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
 
     try {
       const topico = classeAtual.topicos.find((t) => t.id === topicoId)
-      if (!topico) throw new Error('TÃ³pico nÃ£o encontrado')
+      if (!topico) throw new Error('Tópico não encontrado')
 
       const conteudo = topico.conteudos.find((c) => c.id === conteudoId)
-      if (!conteudo) throw new Error('ConteÃºdo nÃ£o encontrado')
+      if (!conteudo) throw new Error('Conteúdo não encontrado')
 
       // O tempo em si nao e mais gravado aqui: vem da telemetria, por
       // trigger (`20260826_19`). Este acumulo era leitura-soma-escrita sobre
@@ -1889,7 +1889,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       await conteudo.registrarVisita(usuario.id)
       await atualizarProgressoClasse()
     } catch (err) {
-      console.warn('[TrilhaContext] Erro ao registrar tempo do conteÃºdo:', err)
+      console.warn('[TrilhaContext] Erro ao registrar tempo do conteúdo:', err)
     }
   }, [classeAtual, usuario, atualizarProgressoClasse])
 
@@ -1905,10 +1905,10 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
 
     try {
       const topico = classeAtual.topicos.find((t) => t.id === topicoId)
-      if (!topico) throw new Error('TÃ³pico nÃ£o encontrado')
+      if (!topico) throw new Error('Tópico não encontrado')
 
       const atividade = topico.atividades.find((a) => a.id === atividadeId)
-      if (!atividade) throw new Error('Atividade nÃ£o encontrada')
+      if (!atividade) throw new Error('Atividade não encontrada')
 
       // Idem conteudo: o tempo vem da telemetria. E este caminho ainda
       // zerava `acertos_percentual` de quebra.
