@@ -218,7 +218,7 @@ def test_authenticated_le_conteudo_aluno_storage_offline_sql() -> None:
 
     migrations.command.upgrade(
         config,
-        "20260922_02:20260922_03b",
+        "20260922_03:20260922_03b",
         sql=True,
     )
     rendered = output.getvalue()
@@ -613,7 +613,7 @@ def test_reaponta_url_material_para_gateway_renderiza_offline(monkeypatch) -> No
     output = StringIO()
     config = _offline_alembic_config(output)
 
-    migrations.command.upgrade(config, "20260922_02:20260922_06", sql=True)
+    migrations.command.upgrade(config, "20260922_03b:20260922_06", sql=True)
     rendered = output.getvalue()
 
     direta = "https://proj.supabase.co/storage/v1/object/public/conteudo_aluno/"

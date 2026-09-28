@@ -1,7 +1,7 @@
 """authenticated ganha SELECT no bucket conteudo_aluno do Storage
 
 Revision ID: 20260922_03b
-Revises: 20260922_02
+Revises: 20260922_03
 
 `conteudo_aluno` (onde ficam os decks HTML/audio/PDF gerados pela
 personalizacao) nunca teve nenhuma policy de SELECT em `storage.objects`.
@@ -47,7 +47,7 @@ mesmo banco.
 from alembic import op
 
 revision = "20260922_03b"
-down_revision = "20260922_02"
+down_revision = "20260922_03"
 branch_labels = None
 depends_on = None
 

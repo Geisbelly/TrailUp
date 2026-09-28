@@ -21,7 +21,7 @@ tem `storage_path` ao lado - a URL nova e' funcao pura do caminho, igual a
 Sem downgrade de dados: a URL direta e' justamente a quebrada.
 
 Revision ID: 20260922_06
-Revises: 20260922_02
+Revises: 20260922_03b
 """
 
 import os
@@ -29,7 +29,7 @@ import os
 from alembic import op
 
 revision = "20260922_06"
-down_revision = "20260922_02"
+down_revision = "20260922_03b"
 branch_labels = None
 depends_on = None
 
