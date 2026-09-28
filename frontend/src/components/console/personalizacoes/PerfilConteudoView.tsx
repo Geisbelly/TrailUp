@@ -18,9 +18,8 @@ import {
   type DocumentPreviewMode,
 } from "./materialPreview";
 import { getMaterialPartes } from "./materialParts";
-import { fetchHtmlDeckSource, createHtmlBlobUrl } from "./htmlDeckSource";
-import { resolverBucketDoMaterial } from "./materialBucket";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchHtmlDeckSource, createHtmlBlobUrl, comProxyDoGateway } from "./htmlDeckSource";
+import { resolverStatusDeGeracao } from "./materialGenerationStatus";
 
 export type MaterialTipo = "markdown" | "pdf" | "audio" | "apresentacao";
 
@@ -42,12 +41,6 @@ function materialUrl(material: Record<string, unknown> | null): string | null {
   const url = material.arquivo_url;
   return typeof url === "string" && url.trim() ? url.trim() : null;
 }
-
-// O bucket vive no nivel do material (nao por parte - ver
-// persistApresentacaoResult no BrainHexPDF), ao contrario de storage_path
-// (que MaterialPartInfo ja traz por parte). Mas ele e' gravado de forma
-// INCONSISTENTE: metade das apresentacoes chega sem o campo, e ai o preview
-// caia num <iframe src> que nunca renderiza. Ver materialBucket.ts.
 
 // ReactMarkdown + remark-gfm (tabelas, listas numeradas, links, blocos de
 // codigo, imagens) - o renderizador anterior era escrito a mao e so
@@ -113,7 +106,9 @@ function TextoMaterialContent({ url, corDoPerfil }: { url: string; corDoPerfil?:
   useEffect(() => {
     let active = true;
     setState({ loading: true, text: null, error: null });
-    fetch(url)
+    // Mesmo motivo do deck HTML: ler o corpo por fetch() exige o modo proxy do
+    // gateway, senao o CORS do R2 bloqueia no salto do 302 (ver htmlDeckSource).
+    fetch(comProxyDoGateway(url))
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.text();
@@ -220,13 +215,11 @@ function EmbedMaterialContent({ url, mode }: { url: string; mode: "pdf" | "offic
   );
 }
 
-// Deck HTML autocontido do BrainHexPDF: baixado direto do Supabase (bucket +
-// storage_path), sem depender do proxy de reescrita do BrainHexPDF
-// (/api/v1/decks/...) nem da sua disponibilidade. Renderizado via
-// iframe.srcDoc (ver htmlDeckSource.ts) porque a URL publica do Supabase
-// serve .html como text/plain, e um <iframe src> direto so mostraria o
-// codigo-fonte como texto.
-function HtmlDeckEmbed({ bucket, storagePath, fallbackUrl }: { bucket: string; storagePath: string; fallbackUrl: string }) {
+// Deck HTML autocontido do BrainHexPDF: lido pelo gateway em modo proxy e
+// injetado via iframe.srcDoc — ver htmlDeckSource.ts para os dois motivos
+// (Content-Type text/plain da URL publica, e escrita nova que hoje so' existe
+// no R2).
+function HtmlDeckEmbed({ url }: { url: string }) {
   const [state, setState] = useState<
     { status: "loading" } | { status: "ready"; html: string } | { status: "error"; message: string }
   >({ status: "loading" });
@@ -234,7 +227,7 @@ function HtmlDeckEmbed({ bucket, storagePath, fallbackUrl }: { bucket: string; s
   useEffect(() => {
     let cancelled = false;
     setState({ status: "loading" });
-    fetchHtmlDeckSource(supabase.storage, bucket, storagePath).then((result) => {
+    fetchHtmlDeckSource(url).then((result) => {
       if (cancelled) return;
       if ("error" in result) {
         setState({ status: "error", message: result.error });
@@ -245,7 +238,7 @@ function HtmlDeckEmbed({ bucket, storagePath, fallbackUrl }: { bucket: string; s
     return () => {
       cancelled = true;
     };
-  }, [bucket, storagePath]);
+  }, [url]);
 
   if (state.status === "loading") {
     return <div className="py-8 text-center text-sm text-muted-foreground">Carregando apresentação…</div>;
@@ -254,10 +247,10 @@ function HtmlDeckEmbed({ bucket, storagePath, fallbackUrl }: { bucket: string; s
   if (state.status === "error") {
     return (
       <div className="space-y-2 py-8 text-center">
-        <p className="text-sm text-muted-foreground">Não foi possível carregar a apresentação do Supabase.</p>
+        <p className="text-sm text-muted-foreground">Não foi possível carregar a apresentação aqui.</p>
         <p className="text-xs text-muted-foreground">{state.message}</p>
         <Button variant="outline" size="sm" asChild>
-          <a href={fallbackUrl} target="_blank" rel="noreferrer">
+          <a href={url} target="_blank" rel="noreferrer">
             <ExternalLink className="h-3.5 w-3.5 mr-2" /> Abrir em nova aba
           </a>
         </Button>
@@ -468,11 +461,26 @@ function MaterialTabContent({
     ? versionedMaterialUrl(rawUrl, material, fallbackUpdatedAt)
     : null;
   const previewMode = resolveDocumentPreviewMode(material, tipo === "pdf" ? "pdf" : "apresentacao");
-  const bucket = resolverBucketDoMaterial(material);
-  const storagePath = activeParte?.storage_path ?? null;
 
   const payload = material && typeof material.payload === "object" ? (material.payload as Record<string, unknown>) : null;
   const slides = Array.isArray(payload?.slides) ? (payload.slides as unknown[]) : null;
+
+  const { status: geracaoStatus, erro: geracaoErro } = resolverStatusDeGeracao(material);
+
+  if (geracaoStatus === "failed") {
+    return (
+      <div className="space-y-1 py-8 text-center">
+        <p className="text-sm text-muted-foreground">A geração deste material falhou.</p>
+        {geracaoErro && <p className="text-xs text-muted-foreground/70">{geracaoErro}</p>}
+        <p className="text-xs text-muted-foreground/70">
+          Tente gerar novamente na tela de progresso dos perfis.
+        </p>
+      </div>
+    );
+  }
+  if (geracaoStatus && geracaoStatus !== "completed") {
+    return <p className="text-sm text-muted-foreground py-8 text-center">Este material ainda está sendo gerado.</p>;
+  }
 
   if (partes.length === 0 || !partes.some((parte) => parte.arquivo_url)) {
     return <p className="text-sm text-muted-foreground py-8 text-center">Este material ainda não está disponível.</p>;
@@ -507,24 +515,7 @@ function MaterialTabContent({
       ) : (
         <div>
           {previewMode === "html" ? (
-            bucket && storagePath ? (
-              <HtmlDeckEmbed bucket={bucket} storagePath={storagePath} fallbackUrl={url} />
-            ) : (
-              <div className="space-y-2">
-                <iframe
-                  src={url}
-                  title="Pré-visualização da apresentação"
-                  className="w-full h-[55vh] rounded-md border"
-                />
-                <div className="flex justify-end">
-                  <Button variant="ghost" size="sm" asChild>
-                    <a href={url} target="_blank" rel="noreferrer">
-                      <ExternalLink className="h-3.5 w-3.5 mr-2" /> Abrir em nova aba
-                    </a>
-                  </Button>
-                </div>
-              </div>
-            )
+            <HtmlDeckEmbed url={url} />
           ) : (
             <EmbedMaterialContent url={url} mode={previewMode} />
           )}
