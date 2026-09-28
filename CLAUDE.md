@@ -287,9 +287,21 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 > porque o aninhamento é inclusivo: cada escopo conta o mesmo intervalo. Somar
 > escopos diferentes multiplica o tempo — filtre por `scope` sempre.
 >
-> Corolário: `tempo_gasto_min` em `topico_aluno`, `conteudo_aluno` e
-> `atividade_aluno` é **derivado por trigger** a partir da telemetria. Nenhum
-> cliente escreve essa coluna.
+> Corolário (desde `20260921_01`): `tempo_gasto_min` em `topico_aluno`,
+> `conteudo_aluno` e `atividade_aluno` é `tempo_direto_min` + a soma de
+> `estudo_sessoes` (abertura/fechamento reais). A telemetria **não entra mais
+> na conta** — o trigger que derivava dela foi removido. Nenhum cliente escreve
+> essa coluna; quem escreve são `trailup_registrar_sessao_estudo` (app atual) e
+> `trailup_registrar_intervalo_estudo` (apps antigos).
+>
+> Duas armadilhas que já custaram tempo real (`20260923_01`):
+> - **A RPC trava a linha de progresso ANTES de somar.** O UPDATE com a soma
+>   usa o snapshot do início do comando; sem o lock, duas gravações simultâneas
+>   na mesma linha faziam a segunda apagar a sessão da primeira.
+> - **O destino do intervalo não depende da telemetria.** O tópico tem relógio
+>   próprio (`useTopicScreenTimeTracking`); mandar o intervalo de conteúdo/
+>   atividade pela RPC antiga quando a telemetria estava desligada contava o
+>   mesmo minuto duas vezes no tópico (e no conteúdo, para atividade vinculada).
 
 > Lacuna real ainda aberta: `MentalStateHistoryRepository.listar_por_aluno`
 > (`api/app/repositories/mental_state.py`) só é exercitado em teste — o
