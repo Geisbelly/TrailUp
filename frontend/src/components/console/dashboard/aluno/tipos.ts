@@ -1,3 +1,5 @@
+import type { Risco } from "../risco";
+
 export interface AlunoPerfil {
   nome: string;
   afinidade: number;
@@ -12,9 +14,13 @@ export interface Aluno {
   /** created_at da linha de classe_aluno: quando o aluno entrou na turma. */
   naTurmaDesde: string | null;
   notaMedia: number;
+  /** classe_aluno.notaMedia veio preenchida (notaMedia vira 0 quando é nula). */
+  temNota: boolean;
   porcentagemConcluida: number;
   tempoGastoMin: number;
   acertosPercentual: number;
+  /** classe_aluno.acertosPercentual veio preenchido (acertosPercentual vira 0 quando é nulo). */
+  temAcertos: boolean;
   ultimaAtividade: string | null;
   perfilDominante: string;
   perfis: AlunoPerfil[];
@@ -26,6 +32,11 @@ export interface Aluno {
     percentual: number;
   }[];
 }
+
+export type AlunoAnalisado = Aluno & {
+  abandonoPct: number | null;
+  risco: Risco | null;
+};
 
 export type Personalizacao = {
   id: number;

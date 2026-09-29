@@ -56,16 +56,14 @@ function KpiSecundarioCard({ kpi }: { kpi: KpiSecundario }) {
 
 export default function KpisSecundarios({
   mediaAcertos,
-  temDadosAlunos,
   turmaResumo,
   temDadosTurma,
 }: {
-  mediaAcertos: number;
-  temDadosAlunos: boolean;
+  mediaAcertos: number | null;
   turmaResumo: TurmaResumo;
   temDadosTurma: boolean;
 }) {
-  const tomAcertos = tomDaMetrica(mediaAcertos, META_ACERTOS_PCT, "maior_melhor");
+  const tomAcertos = tomDaMetrica(mediaAcertos ?? 0, META_ACERTOS_PCT, "maior_melhor");
   const abandono = turmaResumo.taxa_media_abandono_pct;
   const tomAbandono = tomDaMetrica(abandono, META_ABANDONO_PCT, "menor_melhor");
 
@@ -73,7 +71,7 @@ export default function KpisSecundarios({
     {
       label: "Taxa de acertos",
       icon: Check,
-      valor: temDadosAlunos ? mediaAcertos : null,
+      valor: mediaAcertos,
       casas: 0,
       unidade: "%",
       tom: tomAcertos,

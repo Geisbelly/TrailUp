@@ -50,13 +50,13 @@ export default function KpisPrincipais({
   temDados,
 }: {
   totalAlunos: number;
-  mediaNotas: number;
+  mediaNotas: number | null;
   mediaConclusao: number;
   temDados: boolean;
 }) {
   const kpis: KpiPrincipal[] = [
     { label: "Total de alunos", icon: Users, valor: String(totalAlunos), unidade: "com acesso liberado" },
-    { label: "Média de notas", icon: Target, valor: temDados ? mediaNotas.toFixed(1) : null, unidade: "de 10" },
+    { label: "Média de notas", icon: Target, valor: mediaNotas === null ? null : mediaNotas.toFixed(1), unidade: "de 10" },
     {
       label: "Conclusão média",
       icon: TrendingUp,

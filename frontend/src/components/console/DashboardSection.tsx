@@ -17,7 +17,12 @@ import DistribuicaoNotas from "./dashboard/DistribuicaoNotas";
 import TabelaAlunos from "./dashboard/TabelaAlunos";
 import type { SegmentoPerfil } from "./dashboard/graficos";
 import DetalheAluno from "./dashboard/aluno/DetalheAluno";
-import type { Aluno, AlunoPerfil, EvolucaoAluno, PersonalizacaoDocenteResponse } from "./dashboard/aluno/tipos";
+import type { Aluno, AlunoAnalisado, AlunoPerfil, EvolucaoAluno, PersonalizacaoDocenteResponse } from "./dashboard/aluno/tipos";
+import PrecisamDeAtencao, { type AlunoEmRisco } from "./dashboard/PrecisamDeAtencao";
+import { avaliarRisco, inatividade, notaParaRisco, observacaoNotaEAbandono, type Criterio } from "./dashboard/risco";
+import { chaveAlunoTurma } from "./dashboard/sinais";
+import { mediaDosPreenchidos } from "./dashboard/medias";
+import { useSinaisDosAlunos } from "./dashboard/useSinaisDosAlunos";
 
 export default function DashboardSection() {
   const { user, session } = useAuth();
@@ -47,6 +52,7 @@ export default function DashboardSection() {
   const turmaNaUrl = searchParams.get("turma");
   const kpiClassIds = useMemo(() => classes.map((c) => c.id), [classes]);
   const { turmaMetricas, perfilMetricas, distribuicaoMetricas } = useTurmaKpis(kpiClassIds);
+  const { sinais, temAbandono } = useSinaisDosAlunos(kpiClassIds);
 
   const mapStatus = (status?: string | null): "concluido" | "disponivel" | "bloqueado" => {
     if (!status) return "disponivel";
@@ -235,9 +241,11 @@ export default function DashboardSection() {
               classe_nome: classeMap.get(ca.classe_id) || "Classe",
               naTurmaDesde: ca.created_at ?? null,
               notaMedia: Number(ca.notaMedia ?? 0),
+              temNota: ca.notaMedia != null,
               porcentagemConcluida: Number(ca.porcentagemConcluida ?? 0),
               tempoGastoMin: Number(ca.tempoGastoMin ?? 0),
               acertosPercentual: Number(ca.acertosPercentual ?? 0),
+              temAcertos: ca.acertosPercentual != null,
               ultimaAtividade: ultimaAtividadeNome,
               perfilDominante,
               perfis,
@@ -267,11 +275,42 @@ export default function DashboardSection() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [professorId]);
 
+  const abandonoMedioPorTurma = useMemo(
+    () => new Map(turmaMetricas.map((linha) => [Number(linha.classe_id), Number(linha.taxa_media_abandono_pct)])),
+    [turmaMetricas]
+  );
+  const alunosAnalisados: AlunoAnalisado[] = useMemo(() => {
+    const hoje = new Date();
+    const notasPorTurma = new Map<number, number[]>();
+    for (const a of alunos) {
+      const nota = a.temNota ? notaParaRisco(a.notaMedia, a.porcentagemConcluida) : null;
+      if (nota !== null) notasPorTurma.set(a.classe_id, [...(notasPorTurma.get(a.classe_id) ?? []), nota]);
+    }
+    const mediaDaTurma = (classeId: number) => {
+      const notas = notasPorTurma.get(classeId);
+      return notas?.length ? notas.reduce((s, n) => s + n, 0) / notas.length : null;
+    };
+    return alunos.map((a) => {
+      const sinal = sinais.get(chaveAlunoTurma(a.id, a.classe_id));
+      const abandonoPct = sinal?.abandonoPct ?? null;
+      const risco = avaliarRisco(
+        {
+          abandonoPct,
+          nota: a.temNota ? notaParaRisco(a.notaMedia, a.porcentagemConcluida) : null,
+          inatividade: inatividade(sinal?.ultimaSessao ?? null, a.naTurmaDesde, hoje),
+        },
+        { abandonoMedioPct: abandonoMedioPorTurma.get(a.classe_id) ?? null, notaMedia: mediaDaTurma(a.classe_id) }
+      );
+      return { ...a, abandonoPct, risco };
+    });
+  }, [alunos, sinais, abandonoMedioPorTurma]);
+  const criteriosLigados: Criterio[] = temAbandono ? ["abandono", "nota", "inatividade"] : ["nota", "inatividade"];
+
   const selectedAluno = useMemo(() => {
     if (!alunoNaUrl) return null;
-    const candidatos = alunos.filter((a) => a.id === alunoNaUrl);
+    const candidatos = alunosAnalisados.filter((a) => a.id === alunoNaUrl);
     return candidatos.find((a) => String(a.classe_id) === turmaNaUrl) ?? candidatos[0] ?? null;
-  }, [alunos, alunoNaUrl, turmaNaUrl]);
+  }, [alunosAnalisados, alunoNaUrl, turmaNaUrl]);
 
   // A visao da turma continua montada (so escondida) enquanto o aluno esta
   // aberto, para voltar com a mesma pagina, busca e filtros da tabela; a
@@ -329,17 +368,21 @@ export default function DashboardSection() {
   // A turma selecionada define o escopo da tela inteira (KPIs, graficos e
   // tabela); a busca filtra so a tabela. Antes os KPIs usavam a lista ja
   // filtrada pela busca, e digitar um nome mudava "Total de alunos".
-  const alunosDaTurma = useMemo(() => filtrarAlunosDaTurma(alunos, selectedClassFilter), [alunos, selectedClassFilter]);
+  const alunosDaTurma = useMemo(
+    () => filtrarAlunosDaTurma(alunosAnalisados, selectedClassFilter),
+    [alunosAnalisados, selectedClassFilter]
+  );
+  const alunosEmRisco = useMemo(
+    () => alunosDaTurma.filter((a): a is AlunoAnalisado & AlunoEmRisco => a.risco !== null),
+    [alunosDaTurma]
+  );
 
   const totalAlunos = alunosDaTurma.length;
-  const mediaNotas =
-    alunosDaTurma.reduce((acc, a) => acc + (isNaN(a.notaMedia) ? 0 : a.notaMedia), 0) / (totalAlunos || 1);
+  const mediaNotas = mediaDosPreenchidos(alunosDaTurma.map((a) => (a.temNota ? a.notaMedia : null)));
   const mediaConclusao =
     alunosDaTurma.reduce((acc, a) => acc + (isNaN(a.porcentagemConcluida) ? 0 : a.porcentagemConcluida), 0) /
     (totalAlunos || 1);
-  const mediaAcertos =
-    alunosDaTurma.reduce((acc, a) => acc + (isNaN(a.acertosPercentual) ? 0 : a.acertosPercentual), 0) /
-    (totalAlunos || 1);
+  const mediaAcertos = mediaDosPreenchidos(alunosDaTurma.map((a) => (a.temAcertos ? a.acertosPercentual : null)));
   // Sem alunos no escopo, as médias acima são 0/(0||1) = 0 — um zero
   // fabricado, nao um dado real. Usa essa flag pra mostrar estado vazio
   // em vez do numero, senao "0% de acertos" parece um resultado de verdade.
@@ -373,6 +416,15 @@ export default function DashboardSection() {
   // mesmo problema do hasAlunoKpis, mas pra fonte de dado separada (view de
   // metricas de turma).
   const hasTurmaKpis = turmaMetricasEscopo.length > 0;
+  const observacaoDaRosca = temAbandono
+    ? observacaoNotaEAbandono(
+        alunosDaTurma.map((a) => ({
+          nota: a.temNota ? notaParaRisco(a.notaMedia, a.porcentagemConcluida) : null,
+          abandonoPct: a.abandonoPct,
+        })),
+        hasTurmaKpis ? turmaResumo.taxa_media_abandono_pct : null
+      )
+    : null;
   const rotuloVoltar = `${selectedAluno?.classe_nome ?? "Turma"} · todos os alunos`;
 
   let visaoDoAluno = null;
@@ -386,6 +438,7 @@ export default function DashboardSection() {
     ) : (
       <DetalheAluno
         aluno={selectedAluno}
+        abandonoDaTurmaPct={abandonoMedioPorTurma.get(selectedAluno.classe_id) ?? null}
         rotuloVoltar={rotuloVoltar}
         onVoltar={voltarParaTurma}
         evolucaoAluno={alunoEvolucao}
@@ -424,7 +477,15 @@ export default function DashboardSection() {
           <>
             <KpisPrincipais totalAlunos={totalAlunos} mediaNotas={mediaNotas} mediaConclusao={mediaConclusao} temDados={hasAlunoKpis} />
 
-            <KpisSecundarios mediaAcertos={mediaAcertos} temDadosAlunos={hasAlunoKpis} turmaResumo={turmaResumo} temDadosTurma={hasTurmaKpis} />
+            <PrecisamDeAtencao<AlunoAnalisado & AlunoEmRisco>
+              alunos={alunosEmRisco}
+              totalDaTurma={totalAlunos}
+              criterios={criteriosLigados}
+              mostrarTurma={selectedClassFilter === TODAS_AS_TURMAS}
+              onAbrir={abrirAluno}
+            />
+
+            <KpisSecundarios mediaAcertos={mediaAcertos} turmaResumo={turmaResumo} temDadosTurma={hasTurmaKpis} />
 
             <div className="grid items-start gap-5 lg:grid-cols-2">
               <AbandonoPorPerfil
@@ -433,10 +494,15 @@ export default function DashboardSection() {
                 onSegmentoChange={setPerfilSegmentFilter}
                 media={hasTurmaKpis ? turmaResumo.taxa_media_abandono_pct : null}
               />
-              <DistribuicaoNotas linhas={distribuicaoEscopo} mediaNotas={hasAlunoKpis ? mediaNotas : null} />
+              <DistribuicaoNotas linhas={distribuicaoEscopo} mediaNotas={mediaNotas} observacao={observacaoDaRosca} />
             </div>
 
-            <TabelaAlunos alunos={alunosDaTurma} mostrarClasse={selectedClassFilter === TODAS_AS_TURMAS} onAbrir={abrirAluno} />
+            <TabelaAlunos
+              alunos={alunosDaTurma}
+              mostrarClasse={selectedClassFilter === TODAS_AS_TURMAS}
+              mostrarAbandono={temAbandono}
+              onAbrir={abrirAluno}
+            />
           </>
         )}
       </div>

@@ -5,7 +5,7 @@ import AbaPersonalizacao from "./AbaPersonalizacao";
 import AbaTrilha from "./AbaTrilha";
 import AbaVisaoGeral from "./AbaVisaoGeral";
 import CabecalhoAluno from "./CabecalhoAluno";
-import type { Aluno, EvolucaoAluno, Personalizacao, ProgressoItem } from "./tipos";
+import type { AlunoAnalisado, EvolucaoAluno, Personalizacao, ProgressoItem } from "./tipos";
 
 type Aba = "visao" | "perfil" | "trilha" | "personalizacao";
 
@@ -18,13 +18,15 @@ const ABAS: { value: Aba; label: string }[] = [
 
 export default function DetalheAluno({
   aluno,
+  abandonoDaTurmaPct,
   rotuloVoltar,
   onVoltar,
   evolucaoAluno,
   evolucaoTurma,
   personalizacao,
 }: {
-  aluno: Aluno;
+  aluno: AlunoAnalisado;
+  abandonoDaTurmaPct: number | null;
   rotuloVoltar: string;
   onVoltar: () => void;
   evolucaoAluno: EvolucaoAluno[];
@@ -42,9 +44,9 @@ export default function DetalheAluno({
 
   return (
     <div ref={topo} className="space-y-6">
-      <CabecalhoAluno aluno={aluno} rotuloVoltar={rotuloVoltar} onVoltar={onVoltar} />
+      <CabecalhoAluno aluno={aluno} abandonoDaTurmaPct={abandonoDaTurmaPct} rotuloVoltar={rotuloVoltar} onVoltar={onVoltar} />
       <SegmentedPills ariaLabel="Seções do aluno" opcoes={ABAS} valor={aba} onChange={(a) => setAba(a)} className="w-fit" />
-      {aba === "visao" && <AbaVisaoGeral aluno={aluno} evolucaoAluno={evolucaoAluno} evolucaoTurma={evolucaoTurma} />}
+      {aba === "visao" && <AbaVisaoGeral aluno={aluno} evolucaoAluno={evolucaoAluno} evolucaoTurma={evolucaoTurma} onVerTrilha={() => setAba("trilha")} />}
       {aba === "perfil" && <AbaPerfil aluno={aluno} />}
       {aba === "trilha" && <AbaTrilha aluno={aluno} />}
       {aba === "personalizacao" && (

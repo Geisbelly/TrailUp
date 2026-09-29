@@ -1,6 +1,6 @@
 import { ChevronLeft } from "lucide-react";
 import { PerfilAvatar, PerfilChip } from "../PerfilVisual";
-import type { Aluno } from "./tipos";
+import type { AlunoAnalisado } from "./tipos";
 
 const dataCurta = (iso: string) => new Date(iso).toLocaleDateString("pt-BR");
 
@@ -11,11 +11,30 @@ function formatarTempo(minutos: number): string {
   return m ? `${h}h ${m}min` : `${h}h`;
 }
 
-export default function CabecalhoAluno({ aluno, rotuloVoltar, onVoltar }: { aluno: Aluno; rotuloVoltar: string; onVoltar: () => void }) {
-  const numeros = [
-    { rotulo: "Nota média", valor: aluno.notaMedia.toFixed(1) },
+export default function CabecalhoAluno({
+  aluno,
+  abandonoDaTurmaPct,
+  rotuloVoltar,
+  onVoltar,
+}: {
+  aluno: AlunoAnalisado;
+  abandonoDaTurmaPct: number | null;
+  rotuloVoltar: string;
+  onVoltar: () => void;
+}) {
+  const numeros: { rotulo: string; valor: string; nota?: string }[] = [
+    { rotulo: "Nota média", valor: aluno.temNota ? aluno.notaMedia.toFixed(1) : "—" },
     { rotulo: "Trilha concluída", valor: `${aluno.porcentagemConcluida.toFixed(0)}%` },
-    { rotulo: "Acertos", valor: `${aluno.acertosPercentual.toFixed(0)}%` },
+    { rotulo: "Acertos", valor: aluno.temAcertos ? `${aluno.acertosPercentual.toFixed(0)}%` : "—" },
+    ...(aluno.abandonoPct === null
+      ? []
+      : [
+          {
+            rotulo: "Abandono",
+            valor: `${Math.round(aluno.abandonoPct)}%`,
+            nota: abandonoDaTurmaPct === null ? undefined : `turma: ${Math.round(abandonoDaTurmaPct * 10) / 10}%`,
+          },
+        ]),
     { rotulo: "Tempo total", valor: formatarTempo(aluno.tempoGastoMin) },
   ];
 
@@ -51,6 +70,7 @@ export default function CabecalhoAluno({ aluno, rotuloVoltar, onVoltar }: { alun
             <div key={n.rotulo}>
               <dt className="console-label-sm !text-[11px]">{n.rotulo}</dt>
               <dd className="mt-1.5 text-2xl font-extrabold text-foreground">{n.valor}</dd>
+              {n.nota && <dd className="mt-0.5 text-[11px] text-muted-foreground">{n.nota}</dd>}
             </div>
           ))}
         </dl>

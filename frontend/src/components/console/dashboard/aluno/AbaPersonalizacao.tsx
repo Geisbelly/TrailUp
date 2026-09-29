@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { nomeExibidoDoPerfil } from "../perfilCores";
 import { PerfilChip } from "../PerfilVisual";
 import { consumoTotal, itemConcluido } from "./calculos";
 import type { Aluno, Personalizacao, ProgressoItem } from "./tipos";
@@ -125,7 +126,7 @@ export default function AbaPersonalizacao({
             <div className="mt-3 flex flex-wrap gap-2">
               {aluno.perfis.map((perfil) => (
                 <Etiqueta key={perfil.nome}>
-                  {perfil.nome} {Math.round(perfil.afinidade)}%
+                  {nomeExibidoDoPerfil(perfil.nome)} {Math.round(perfil.afinidade)}%
                 </Etiqueta>
               ))}
             </div>

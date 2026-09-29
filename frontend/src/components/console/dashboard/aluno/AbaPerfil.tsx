@@ -1,6 +1,6 @@
 import { PROFILES } from "@/features/signup/brainhex";
 import { PROFILE_WORLDS } from "@/lib/design-art";
-import { chaveDoPerfil, COR_DO_PERFIL, NOME_DO_PERFIL } from "../perfilCores";
+import { chaveDoPerfil, COR_DO_PERFIL, NOME_DO_PERFIL, nomeExibidoDoPerfil } from "../perfilCores";
 import type { Aluno } from "./tipos";
 
 export default function AbaPerfil({ aluno }: { aluno: Aluno }) {
@@ -29,7 +29,7 @@ export default function AbaPerfil({ aluno }: { aluno: Aluno }) {
                       className="h-[11px] w-[11px] shrink-0 rounded-full"
                       style={{ background: cor?.marca ?? "hsl(var(--muted-foreground))" }}
                     />
-                    <span className="truncate text-[12.5px] font-semibold text-foreground">{perfil.nome}</span>
+                    <span className="truncate text-[12.5px] font-semibold text-foreground">{nomeExibidoDoPerfil(perfil.nome)}</span>
                     {dominante && <span className="console-label-sm !text-[10px] !text-[hsl(var(--console-violet-text))]">dominante</span>}
                   </div>
                   <div

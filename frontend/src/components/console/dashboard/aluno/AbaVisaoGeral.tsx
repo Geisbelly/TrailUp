@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { montarSerieEvolucao } from "./calculos";
-import type { Aluno, EvolucaoAluno } from "./tipos";
+import SinalDeAtencao from "./SinalDeAtencao";
+import type { AlunoAnalisado, EvolucaoAluno } from "./tipos";
 
 // Cores de série já elevadas para >= 7:1 contra o card, porque o recharts
 // reaproveita a cor da linha no texto da legenda.
@@ -13,10 +14,12 @@ export default function AbaVisaoGeral({
   aluno,
   evolucaoAluno,
   evolucaoTurma,
+  onVerTrilha,
 }: {
-  aluno: Aluno;
+  aluno: AlunoAnalisado;
   evolucaoAluno: EvolucaoAluno[];
   evolucaoTurma: EvolucaoAluno[];
+  onVerTrilha: () => void;
 }) {
   const serie = useMemo(() => montarSerieEvolucao(evolucaoAluno, evolucaoTurma), [evolucaoAluno, evolucaoTurma]);
   const temTurma = serie.some((p) => p.notaTurma !== null);
@@ -66,15 +69,20 @@ export default function AbaVisaoGeral({
         )}
       </div>
 
-      <div className="rounded-[20px] border border-border bg-card px-6 py-[22px]">
-        <h3 className="text-base text-foreground">Última atividade</h3>
-        {aluno.ultimaAtividade ? (
-          <div className="mt-4 flex items-center gap-2.5">
-            <span aria-hidden="true" className="h-[9px] w-[9px] shrink-0 rounded-full bg-[hsl(var(--success))]" />
-            <span className="text-[13.5px] font-semibold text-foreground">{aluno.ultimaAtividade}</span>
-          </div>
-        ) : (
-          <p className="mt-4 text-[13px] text-muted-foreground">Nenhuma atividade registrada ainda.</p>
+      <div className="flex flex-col gap-5">
+        <div className="rounded-[20px] border border-border bg-card px-6 py-[22px]">
+          <h3 className="text-base text-foreground">Última atividade</h3>
+          {aluno.ultimaAtividade ? (
+            <div className="mt-4 flex items-center gap-2.5">
+              <span aria-hidden="true" className="h-[9px] w-[9px] shrink-0 rounded-full bg-[hsl(var(--success))]" />
+              <span className="text-[13.5px] font-semibold text-foreground">{aluno.ultimaAtividade}</span>
+            </div>
+          ) : (
+            <p className="mt-4 text-[13px] text-muted-foreground">Nenhuma atividade registrada ainda.</p>
+          )}
+        </div>
+        {aluno.risco && (
+          <SinalDeAtencao risco={aluno.risco} primeiroNome={aluno.nome.split(" ")[0]} onVerTrilha={onVerTrilha} />
         )}
       </div>
     </div>

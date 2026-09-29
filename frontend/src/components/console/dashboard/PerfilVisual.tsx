@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { chaveDoPerfil, COR_DO_PERFIL, iniciaisDe } from "./perfilCores";
+import { chaveDoPerfil, COR_DO_PERFIL, iniciaisDe, nomeExibidoDoPerfil } from "./perfilCores";
 
 // Fundo = marca do perfil a 13% (o "22" hex do protótipo), iniciais na
 // variante de texto. O protótipo usa a marca sólida com iniciais escuras, mas
@@ -40,7 +40,7 @@ export function PerfilChip({ perfil }: { perfil: string }) {
       style={cor ? { background: fundoTintado(cor.marca), color: cor.texto } : undefined}
     >
       {cor && <span aria-hidden="true" className="h-[9px] w-[9px] rounded-full" style={{ background: cor.marca }} />}
-      {perfil}
+      {nomeExibidoDoPerfil(perfil)}
     </span>
   );
 }

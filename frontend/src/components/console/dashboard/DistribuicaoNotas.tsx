@@ -8,7 +8,15 @@ const corDoTom = (tom: TomDaFaixa | null) => (tom ? `hsl(var(--${tom}))` : "hsl(
 
 const primeiraMaiuscula = (texto: string) => texto.charAt(0).toUpperCase() + texto.slice(1);
 
-export default function DistribuicaoNotas({ linhas, mediaNotas }: { linhas: TurmaDistribuicao[]; mediaNotas: number | null }) {
+export default function DistribuicaoNotas({
+  linhas,
+  mediaNotas,
+  observacao = null,
+}: {
+  linhas: TurmaDistribuicao[];
+  mediaNotas: number | null;
+  observacao?: string | null;
+}) {
   const faixas = useMemo(() => distribuicaoDeNotas(linhas), [linhas]);
   const total = faixas.reduce((soma, f) => soma + f.total, 0);
 
@@ -62,6 +70,9 @@ export default function DistribuicaoNotas({ linhas, mediaNotas }: { linhas: Turm
         </div>
       ) : (
         <div className="flex h-[172px] items-center justify-center text-sm text-muted-foreground">Sem dados suficientes ainda</div>
+      )}
+      {observacao && total > 0 && (
+        <p className="mt-5 rounded-xl bg-muted px-4 py-3 text-[12.5px] leading-relaxed text-muted-foreground">{observacao}</p>
       )}
     </div>
   );

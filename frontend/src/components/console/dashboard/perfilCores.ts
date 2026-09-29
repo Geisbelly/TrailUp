@@ -86,6 +86,12 @@ export function corDoIconeSobre(marca: string): string {
   return contraste(ICONE_CLARO, marca) >= contraste(ICONE_ESCURO, marca) ? ICONE_CLARO : ICONE_ESCURO;
 }
 
+/** Nome do perfil como deve aparecer: o oficial quando reconhecido (o banco devolve em minúsculas). */
+export function nomeExibidoDoPerfil(nome: string): string {
+  const chave = chaveDoPerfil(nome);
+  return chave ? NOME_DO_PERFIL[chave] : nome;
+}
+
 export function iniciaisDe(nome: string): string {
   return (
     nome
