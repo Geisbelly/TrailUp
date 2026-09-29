@@ -9,7 +9,6 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Search,
-  Users,
   TrendingUp,
   Clock,
   CheckCircle,
@@ -32,6 +31,11 @@ import { createRequestGuard, type RequestToken } from "@/lib/requestGuard";
 import { computeTurmaResumo } from "@/lib/turmaResumo";
 import { selectView } from "@/lib/supabaseViews";
 import { useTurmaKpis, type TurmaDistribuicao } from "./useTurmaKpis";
+import DashboardHeader, { type JanelaTemporal } from "./dashboard/DashboardHeader";
+import KpisPrincipais from "./dashboard/KpisPrincipais";
+import KpisSecundarios from "./dashboard/KpisSecundarios";
+import { DashboardCarregando, DashboardErro, DashboardVazio } from "./dashboard/DashboardEstados";
+import { alunosDaTurma as filtrarAlunosDaTurma, filtrarPorBusca } from "./dashboard/filtros";
 import {
   Bar,
   BarChart,
@@ -142,12 +146,10 @@ export default function DashboardSection() {
   const [selectedAluno, setSelectedAluno] = useState<Aluno | null>(null);
   const [trailViewMode, setTrailViewMode] = useState<"hexagon" | "list">("hexagon");
   const [perfilSegmentFilter, setPerfilSegmentFilter] = useState<"majoritario" | "segundo" | "afinidade_20_plus">("majoritario");
-  // So a UI por enquanto — nao filtra nada ainda. Os KPIs agregados (turma,
-  // perfil, distribuicao) vem de views que nao tem coluna de data por
-  // evento, entao janela temporal real depende do endpoint de KPIs da #12.
-  const [janelaTemporal, setJanelaTemporal] = useState<"7d" | "30d" | "mes_atual" | "tudo">("30d");
+  const [janelaTemporal, setJanelaTemporal] = useState<JanelaTemporal>("30d");
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [ultimaCarga, setUltimaCarga] = useState<Date | null>(null);
   const [personalizacaoData, setPersonalizacaoData] = useState<PersonalizacaoDocenteResponse | null>(null);
   const [personalizacaoLoading, setPersonalizacaoLoading] = useState(false);
   const [personalizacaoError, setPersonalizacaoError] = useState<string | null>(null);
@@ -216,6 +218,7 @@ export default function DashboardSection() {
 
       if (classIds.length === 0) {
         setAlunos([]);
+        setUltimaCarga(new Date());
         setIsLoading(false);
         return;
       }
@@ -351,6 +354,7 @@ export default function DashboardSection() {
           .filter(Boolean) as Aluno[];
 
       setAlunos(alunosFormatados);
+      setUltimaCarga(new Date());
     } catch (error) {
       console.error("Erro ao carregar dashboard:", error);
       setAlunos([]);
@@ -386,26 +390,20 @@ export default function DashboardSection() {
     ]);
   }, [loadAlunoEvolucao, loadPersonalizacaoContexto, selectedAluno, session?.access_token]);
 
-  const filteredAlunos = useMemo(
-    () =>
-      alunos.filter((a) => {
-        const matchesSearch =
-          a.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          a.email.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesClass = selectedClassFilter === "all" || a.classe_id.toString() === selectedClassFilter;
-        return matchesSearch && matchesClass;
-      }),
-    [alunos, searchTerm, selectedClassFilter]
-  );
+  // A turma selecionada define o escopo da tela inteira (KPIs, graficos e
+  // tabela); a busca filtra so a tabela. Antes os KPIs usavam a lista ja
+  // filtrada pela busca, e digitar um nome mudava "Total de alunos".
+  const alunosDaTurma = useMemo(() => filtrarAlunosDaTurma(alunos, selectedClassFilter), [alunos, selectedClassFilter]);
+  const filteredAlunos = useMemo(() => filtrarPorBusca(alunosDaTurma, searchTerm), [alunosDaTurma, searchTerm]);
 
-  const totalAlunos = filteredAlunos.length;
+  const totalAlunos = alunosDaTurma.length;
   const mediaNotas =
-    filteredAlunos.reduce((acc, a) => acc + (isNaN(a.notaMedia) ? 0 : a.notaMedia), 0) / (totalAlunos || 1);
+    alunosDaTurma.reduce((acc, a) => acc + (isNaN(a.notaMedia) ? 0 : a.notaMedia), 0) / (totalAlunos || 1);
   const mediaConclusao =
-    filteredAlunos.reduce((acc, a) => acc + (isNaN(a.porcentagemConcluida) ? 0 : a.porcentagemConcluida), 0) /
+    alunosDaTurma.reduce((acc, a) => acc + (isNaN(a.porcentagemConcluida) ? 0 : a.porcentagemConcluida), 0) /
     (totalAlunos || 1);
   const mediaAcertos =
-    filteredAlunos.reduce((acc, a) => acc + (isNaN(a.acertosPercentual) ? 0 : a.acertosPercentual), 0) /
+    alunosDaTurma.reduce((acc, a) => acc + (isNaN(a.acertosPercentual) ? 0 : a.acertosPercentual), 0) /
     (totalAlunos || 1);
   // Sem alunos no escopo, as médias acima são 0/(0||1) = 0 — um zero
   // fabricado, nao um dado real. Usa essa flag pra mostrar estado vazio
@@ -478,330 +476,200 @@ export default function DashboardSection() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold">Dashboard de Alunos</h2>
-          <p className="text-muted-foreground">Acompanhe o desempenho dos alunos com permissao de acesso</p>
-        </div>
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-muted-foreground">Janela temporal</span>
-          <Select
-            value={janelaTemporal}
-            onValueChange={(value) =>
-              setJanelaTemporal(value as "7d" | "30d" | "mes_atual" | "tudo")
-            }
-          >
-            <SelectTrigger className="w-44">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7d">Últimos 7 dias</SelectItem>
-              <SelectItem value="30d">Últimos 30 dias</SelectItem>
-              <SelectItem value="mes_atual">Este mês</SelectItem>
-              <SelectItem value="tudo">Todo o período</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      <DashboardHeader
+        classes={classes}
+        turmaSelecionada={selectedClassFilter}
+        onTurmaChange={setSelectedClassFilter}
+        totalAlunos={totalAlunos}
+        janela={janelaTemporal}
+        onJanelaChange={setJanelaTemporal}
+        ultimaCarga={ultimaCarga}
+      />
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total de Alunos</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalAlunos}</div>
-            <p className="text-xs text-muted-foreground">com acesso liberado</p>
-          </CardContent>
-        </Card>
+      {loadError ? (
+        <DashboardErro detalhe={loadError} onTentarNovamente={loadData} />
+      ) : isLoading || !ultimaCarga ? (
+        <DashboardCarregando />
+      ) : alunosDaTurma.length === 0 ? (
+        <DashboardVazio semTurmas={classes.length === 0} />
+      ) : (
+        <>
+        <KpisPrincipais
+          totalAlunos={totalAlunos}
+          mediaNotas={mediaNotas}
+          mediaConclusao={mediaConclusao}
+          temDados={hasAlunoKpis}
+        />
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Média de Notas</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {hasAlunoKpis ? (
-              <div className="text-2xl font-bold">{mediaNotas.toFixed(1)}</div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Sem dados ainda</p>
-            )}
-          </CardContent>
-        </Card>
+        <KpisSecundarios
+          mediaAcertos={mediaAcertos}
+          temDadosAlunos={hasAlunoKpis}
+          turmaResumo={turmaResumo}
+          temDadosTurma={hasTurmaKpis}
+        />
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Conclusão Média</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {hasAlunoKpis ? (
-              <div className="text-2xl font-bold">{mediaConclusao.toFixed(0)}%</div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Sem dados ainda</p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Taxa de Acertos</CardTitle>
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {hasAlunoKpis ? (
-              <div className="text-2xl font-bold">{mediaAcertos.toFixed(0)}%</div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Sem dados ainda</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Abandono Médio</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {hasTurmaKpis ? (
-              <div className="text-2xl font-bold">{turmaResumo.taxa_media_abandono_pct.toFixed(1)}%</div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Sem dados ainda</p>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Conclusão Média</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {hasTurmaKpis ? (
-              <div className="text-2xl font-bold">{turmaResumo.taxa_media_conclusao_pct.toFixed(1)}%</div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Sem dados ainda</p>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Uso do Chat após Erro</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {hasTurmaKpis ? (
-              <div className="text-2xl font-bold">{turmaResumo.uso_chat_apos_erro_pct.toFixed(1)}%</div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Sem dados ainda</p>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Tempo Médio de Uso</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {hasTurmaKpis ? (
-              <div className="text-2xl font-bold">
-                {(turmaResumo.tempo_medio_uso_seg / 60).toFixed(1)}min
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <CardTitle>Abandono por Perfil</CardTitle>
+                  <CardDescription>Segmentação por perfil da turma selecionada</CardDescription>
+                </div>
+                <Select
+                  value={perfilSegmentFilter}
+                  onValueChange={(value) =>
+                    setPerfilSegmentFilter(
+                      value as "majoritario" | "segundo" | "afinidade_20_plus"
+                    )
+                  }
+                >
+                  <SelectTrigger className="w-44">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="majoritario">Majoritário</SelectItem>
+                    <SelectItem value="segundo">2º Perfil</SelectItem>
+                    <SelectItem value="afinidade_20_plus">Afinidade ≥ 20%</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Sem dados ainda</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <CardTitle>Abandono por Perfil</CardTitle>
-                <CardDescription>Segmentação por perfil da turma selecionada</CardDescription>
-              </div>
-              <Select
-                value={perfilSegmentFilter}
-                onValueChange={(value) =>
-                  setPerfilSegmentFilter(
-                    value as "majoritario" | "segundo" | "afinidade_20_plus"
-                  )
-                }
-              >
-                <SelectTrigger className="w-44">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="majoritario">Majoritário</SelectItem>
-                  <SelectItem value="segundo">2º Perfil</SelectItem>
-                  <SelectItem value="afinidade_20_plus">Afinidade ≥ 20%</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardHeader>
-          <CardContent className="h-72">
-            {abandonoPorPerfilData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={abandonoPorPerfilData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="perfil" tick={{ ...CHART_TICK_STYLE, fontSize: 11 }} />
-                  <YAxis tick={CHART_TICK_STYLE} />
-                  <Tooltip />
-                  <Bar dataKey="abandono" fill={CHART_COLOR_DANGER} radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                Sem dados suficientes ainda
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Distribuição de Notas</CardTitle>
-            <CardDescription>Faixas baixa, média e alta</CardDescription>
-          </CardHeader>
-          <CardContent className="h-72">
-            {distribuicaoNotasData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={distribuicaoNotasData}
-                    dataKey="percentual"
-                    nameKey="faixa"
-                    outerRadius={100}
-                    label={(entry) => {
-                      const item = entry as Partial<TurmaDistribuicao>;
-                      return `${item.faixa ?? "faixa"}: ${Number(item.percentual ?? 0).toFixed(1)}%`;
-                    }}
-                  >
-                    {distribuicaoNotasData.map((entry, idx) => (
-                      <Cell
-                        key={`${entry.faixa}-${idx}`}
-                        fill={
-                          idx % 3 === 0
-                            ? CHART_COLOR_DANGER
-                            : idx % 3 === 1
-                            ? CHART_COLOR_WARNING
-                            : CHART_COLOR_SUCCESS
-                        }
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                Sem dados suficientes ainda
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Lista de Alunos</CardTitle>
-          <CardDescription>Clique em um aluno para ver detalhes e visualizar sua trilha</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-4 mb-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nome ou email..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <Select value={selectedClassFilter} onValueChange={setSelectedClassFilter}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Filtrar por classe" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas as classes</SelectItem>
-                {classes.map((c) => (
-                  <SelectItem key={c.id} value={c.id.toString()}>
-                    {c.descricao}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {loadError ? (
-            <div className="flex flex-col items-center gap-3 py-8 text-center">
-              <p className="text-sm text-destructive">{loadError}</p>
-              <Button variant="outline" size="sm" onClick={loadData}>
-                Tentar novamente
-              </Button>
-            </div>
-          ) : isLoading ? (
-            <p className="text-sm text-muted-foreground">Carregando alunos...</p>
-          ) : (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Aluno</TableHead>
-                    <TableHead>Classe</TableHead>
-                    <TableHead>Perfil</TableHead>
-                    <TableHead>Nota Média</TableHead>
-                    <TableHead>Progresso</TableHead>
-                    <TableHead>Acertos</TableHead>
-                    <TableHead className="w-20">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredAlunos.map((aluno) => (
-                    <TableRow key={aluno.id}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{aluno.nome}</p>
-                          <p className="text-xs text-muted-foreground">{aluno.email}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>{aluno.classe_nome}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{aluno.perfilDominante}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={aluno.notaMedia >= 7 ? "default" : "destructive"}>
-                          {aluno.notaMedia.toFixed(1)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Progress value={aluno.porcentagemConcluida} className="w-16 h-2" />
-                          <span className="text-xs">{aluno.porcentagemConcluida.toFixed(1)}%</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>{aluno.acertosPercentual.toFixed(1)}%</TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="sm" onClick={() => setSelectedAluno(aluno)}>
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-
-              {filteredAlunos.length === 0 && (
-                <p className="text-center text-muted-foreground py-8">
-                  {alunos.length === 0
-                    ? "Nenhum aluno matriculado ainda."
-                    : "Nenhum aluno encontrado com esse filtro."}
-                </p>
+            </CardHeader>
+            <CardContent className="h-72">
+              {abandonoPorPerfilData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={abandonoPorPerfilData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="perfil" tick={{ ...CHART_TICK_STYLE, fontSize: 11 }} />
+                    <YAxis tick={CHART_TICK_STYLE} />
+                    <Tooltip />
+                    <Bar dataKey="abandono" fill={CHART_COLOR_DANGER} radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                  Sem dados suficientes ainda
+                </div>
               )}
-            </>
-          )}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Distribuição de Notas</CardTitle>
+              <CardDescription>Faixas baixa, média e alta</CardDescription>
+            </CardHeader>
+            <CardContent className="h-72">
+              {distribuicaoNotasData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={distribuicaoNotasData}
+                      dataKey="percentual"
+                      nameKey="faixa"
+                      outerRadius={100}
+                      label={(entry) => {
+                        const item = entry as Partial<TurmaDistribuicao>;
+                        return `${item.faixa ?? "faixa"}: ${Number(item.percentual ?? 0).toFixed(1)}%`;
+                      }}
+                    >
+                      {distribuicaoNotasData.map((entry, idx) => (
+                        <Cell
+                          key={`${entry.faixa}-${idx}`}
+                          fill={
+                            idx % 3 === 0
+                              ? CHART_COLOR_DANGER
+                              : idx % 3 === 1
+                              ? CHART_COLOR_WARNING
+                              : CHART_COLOR_SUCCESS
+                          }
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                  Sem dados suficientes ainda
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Lista de Alunos</CardTitle>
+            <CardDescription>Clique em um aluno para ver detalhes e visualizar sua trilha</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-4 mb-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nome ou email..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+            </div>
+
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Aluno</TableHead>
+                  <TableHead>Classe</TableHead>
+                  <TableHead>Perfil</TableHead>
+                  <TableHead>Nota Média</TableHead>
+                  <TableHead>Progresso</TableHead>
+                  <TableHead>Acertos</TableHead>
+                  <TableHead className="w-20">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredAlunos.map((aluno) => (
+                  <TableRow key={aluno.id}>
+                    <TableCell>
+                      <div>
+                        <p className="font-medium">{aluno.nome}</p>
+                        <p className="text-xs text-muted-foreground">{aluno.email}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell>{aluno.classe_nome}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{aluno.perfilDominante}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={aluno.notaMedia >= 7 ? "default" : "destructive"}>
+                        {aluno.notaMedia.toFixed(1)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Progress value={aluno.porcentagemConcluida} className="w-16 h-2" />
+                        <span className="text-xs">{aluno.porcentagemConcluida.toFixed(1)}%</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>{aluno.acertosPercentual.toFixed(1)}%</TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="sm" onClick={() => setSelectedAluno(aluno)}>
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+
+            {filteredAlunos.length === 0 && (
+              <p className="text-center text-muted-foreground py-8">Nenhum aluno encontrado com essa busca.</p>
+            )}
+          </CardContent>
+        </Card>
+        </>
+      )}
 
       <Dialog open={!!selectedAluno} onOpenChange={() => setSelectedAluno(null)}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
