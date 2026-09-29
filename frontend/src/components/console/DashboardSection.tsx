@@ -26,14 +26,15 @@ import { useSinaisDosAlunos } from "./dashboard/useSinaisDosAlunos";
 import SegmentedPills from "./dashboard/SegmentedPills";
 import AbaConteudo from "./dashboard/AbaConteudo";
 import AbaEvolucao from "./dashboard/AbaEvolucao";
+import AbaInsights from "./dashboard/AbaInsights";
 
-type AbaDaTurma = "visao" | "evolucao" | "conteudo";
+type AbaDaTurma = "visao" | "evolucao" | "conteudo" | "insights";
 
-// Insights entra quando a fase 8 existir — sem aba vazia.
 const ABAS_DA_TURMA: { value: AbaDaTurma; label: string }[] = [
   { value: "visao", label: "Visão geral" },
   { value: "evolucao", label: "Evolução" },
   { value: "conteudo", label: "Conteúdo" },
+  { value: "insights", label: "Insights" },
 ];
 
 export default function DashboardSection() {
@@ -65,7 +66,7 @@ export default function DashboardSection() {
   // Mesmo padrão do aluno: a aba vive na URL (?aba=conteudo) e o voltar do
   // navegador volta para a aba anterior.
   const abaNaUrl = searchParams.get("aba");
-  const abaDaTurma: AbaDaTurma = abaNaUrl === "conteudo" || abaNaUrl === "evolucao" ? abaNaUrl : "visao";
+  const abaDaTurma: AbaDaTurma = abaNaUrl === "conteudo" || abaNaUrl === "evolucao" || abaNaUrl === "insights" ? abaNaUrl : "visao";
   const trocarAba = (aba: AbaDaTurma) => {
     const proximo = new URLSearchParams(searchParams);
     if (aba === "visao") proximo.delete("aba");
@@ -554,6 +555,16 @@ export default function DashboardSection() {
                 matriculas={matriculasDaTurma}
                 mostrarTurma={selectedClassFilter === TODAS_AS_TURMAS}
                 nomeDaTurma={nomeDaTurma}
+              />
+            )}
+
+            {abaDaTurma === "insights" && (
+              <AbaInsights
+                classIds={classScopeIds}
+                alunos={alunosDaTurma}
+                mostrarTurma={selectedClassFilter === TODAS_AS_TURMAS}
+                nomeDaTurma={nomeDaTurma}
+                onAbrirAluno={abrirAluno}
               />
             )}
           </>
