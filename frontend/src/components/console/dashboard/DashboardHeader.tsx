@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { LayoutGrid } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
 import { formatarAtualizadoHa } from "./atualizadoHa";
+import SegmentedPills from "./SegmentedPills";
 
 export type JanelaTemporal = "7d" | "30d" | "mes_atual" | "tudo";
 
@@ -79,25 +79,7 @@ export default function DashboardHeader({
         {/* So a UI por enquanto — nao filtra nada ainda. Os KPIs agregados (turma,
             perfil, distribuicao) vem de views que nao tem coluna de data por
             evento, entao janela temporal real depende do endpoint de KPIs da #12. */}
-        <div role="group" aria-label="Janela temporal" className="flex max-w-full gap-1 overflow-x-auto rounded-full border border-border bg-card p-1">
-          {JANELAS.map((j) => {
-            const ativa = janela === j.value;
-            return (
-              <button
-                key={j.value}
-                type="button"
-                aria-pressed={ativa}
-                onClick={() => onJanelaChange(j.value)}
-                className={cn(
-                  "whitespace-nowrap rounded-full px-[15px] py-[7px] text-[13px] font-semibold transition-colors",
-                  ativa ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {j.label}
-              </button>
-            );
-          })}
-        </div>
+        <SegmentedPills ariaLabel="Janela temporal" opcoes={JANELAS} valor={janela} onChange={onJanelaChange} />
         {ultimaCarga && <span className="text-xs text-muted-foreground">{formatarAtualizadoHa(ultimaCarga, agora)}</span>}
       </div>
     </div>

@@ -1,18 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Search,
   TrendingUp,
   Clock,
   CheckCircle,
-  Eye,
   BarChart3,
   Brain,
   GraduationCap,
@@ -30,22 +26,21 @@ import { useAuth } from "@/hooks/useAuth";
 import { createRequestGuard, type RequestToken } from "@/lib/requestGuard";
 import { computeTurmaResumo } from "@/lib/turmaResumo";
 import { selectView } from "@/lib/supabaseViews";
-import { useTurmaKpis, type TurmaDistribuicao } from "./useTurmaKpis";
+import { useTurmaKpis } from "./useTurmaKpis";
 import DashboardHeader, { type JanelaTemporal } from "./dashboard/DashboardHeader";
 import KpisPrincipais from "./dashboard/KpisPrincipais";
 import KpisSecundarios from "./dashboard/KpisSecundarios";
 import { DashboardCarregando, DashboardErro, DashboardVazio } from "./dashboard/DashboardEstados";
-import { alunosDaTurma as filtrarAlunosDaTurma, filtrarPorBusca } from "./dashboard/filtros";
+import { alunosDaTurma as filtrarAlunosDaTurma, TODAS_AS_TURMAS } from "./dashboard/filtros";
+import AbandonoPorPerfil from "./dashboard/AbandonoPorPerfil";
+import DistribuicaoNotas from "./dashboard/DistribuicaoNotas";
+import TabelaAlunos from "./dashboard/TabelaAlunos";
+import type { SegmentoPerfil } from "./dashboard/graficos";
 import {
-  Bar,
-  BarChart,
   CartesianGrid,
-  Cell,
   Legend,
   Line,
   LineChart,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -58,11 +53,9 @@ import {
 // casos, entao a cor "de dado" precisa por si so ja atender AAA.
 // Mesma tecnica do CLAUDE.md para as cores-assinatura BrainHex: eleva a
 // luminosidade em HSL preservando matiz/saturacao, sem misturar com branco.
-const CHART_COLOR_DANGER = "hsl(0, 84%, 78%)"; // ~8.1:1 (original #ef4444 dava ~4.6:1)
 const CHART_COLOR_INFO = "hsl(221, 83%, 75%)"; // ~7.7:1 (original #2563eb dava ~3.4:1)
 const CHART_COLOR_PROGRESS = "hsl(142, 76%, 44%)"; // ~7.6:1 (original #16a34a dava ~5.3:1)
 const CHART_COLOR_WARNING = "#f59e0b"; // ja atende AAA (~8.1:1)
-const CHART_COLOR_SUCCESS = "#22c55e"; // ja atende AAA (~7.6:1)
 const CHART_TICK_STYLE = { fill: "hsl(var(--muted-foreground))" }; // ~8.3:1
 
 interface AlunoPerfil {
@@ -141,11 +134,10 @@ export default function DashboardSection() {
 
   const [alunos, setAlunos] = useState<Aluno[]>([]);
   const [classes, setClasses] = useState<{ id: number; descricao: string | null }[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
   const [selectedClassFilter, setSelectedClassFilter] = useState<string>("all");
   const [selectedAluno, setSelectedAluno] = useState<Aluno | null>(null);
   const [trailViewMode, setTrailViewMode] = useState<"hexagon" | "list">("hexagon");
-  const [perfilSegmentFilter, setPerfilSegmentFilter] = useState<"majoritario" | "segundo" | "afinidade_20_plus">("majoritario");
+  const [perfilSegmentFilter, setPerfilSegmentFilter] = useState<SegmentoPerfil>("majoritario");
   const [janelaTemporal, setJanelaTemporal] = useState<JanelaTemporal>("30d");
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -394,7 +386,6 @@ export default function DashboardSection() {
   // tabela); a busca filtra so a tabela. Antes os KPIs usavam a lista ja
   // filtrada pela busca, e digitar um nome mudava "Total de alunos".
   const alunosDaTurma = useMemo(() => filtrarAlunosDaTurma(alunos, selectedClassFilter), [alunos, selectedClassFilter]);
-  const filteredAlunos = useMemo(() => filtrarPorBusca(alunosDaTurma, searchTerm), [alunosDaTurma, searchTerm]);
 
   const totalAlunos = alunosDaTurma.length;
   const mediaNotas =
@@ -439,30 +430,6 @@ export default function DashboardSection() {
   // mesmo problema do hasAlunoKpis, mas pra fonte de dado separada (view de
   // metricas de turma).
   const hasTurmaKpis = turmaMetricasEscopo.length > 0;
-  const abandonoPorPerfilData = useMemo(
-    () =>
-      perfilMetricasEscopo
-        .filter((row) => row.segmento === perfilSegmentFilter)
-        .sort((a, b) => Number(b.taxa_abandono_pct ?? 0) - Number(a.taxa_abandono_pct ?? 0))
-        .slice(0, 8)
-        .map((row) => ({
-          perfil: row.perfil_nome,
-          abandono: Number(row.taxa_abandono_pct ?? 0),
-          acertos: Number(row.taxa_acertos_pct ?? 0),
-        })),
-    [perfilMetricasEscopo, perfilSegmentFilter]
-  );
-  const distribuicaoNotasData = useMemo(
-    () =>
-      distribuicaoEscopo
-        .filter((row) => row.metrica === "nota_media")
-        .map((row) => ({
-          faixa: row.faixa,
-          percentual: Number(row.percentual ?? 0),
-          total: Number(row.total_alunos ?? 0),
-        })),
-    [distribuicaoEscopo]
-  );
   const evolucaoAlunoData = useMemo(
     () =>
       alunoEvolucao.map((row) => ({
@@ -508,166 +475,17 @@ export default function DashboardSection() {
           temDadosTurma={hasTurmaKpis}
         />
 
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <CardTitle>Abandono por Perfil</CardTitle>
-                  <CardDescription>Segmentação por perfil da turma selecionada</CardDescription>
-                </div>
-                <Select
-                  value={perfilSegmentFilter}
-                  onValueChange={(value) =>
-                    setPerfilSegmentFilter(
-                      value as "majoritario" | "segundo" | "afinidade_20_plus"
-                    )
-                  }
-                >
-                  <SelectTrigger className="w-44">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="majoritario">Majoritário</SelectItem>
-                    <SelectItem value="segundo">2º Perfil</SelectItem>
-                    <SelectItem value="afinidade_20_plus">Afinidade ≥ 20%</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardHeader>
-            <CardContent className="h-72">
-              {abandonoPorPerfilData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={abandonoPorPerfilData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="perfil" tick={{ ...CHART_TICK_STYLE, fontSize: 11 }} />
-                    <YAxis tick={CHART_TICK_STYLE} />
-                    <Tooltip />
-                    <Bar dataKey="abandono" fill={CHART_COLOR_DANGER} radius={[6, 6, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                  Sem dados suficientes ainda
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Distribuição de Notas</CardTitle>
-              <CardDescription>Faixas baixa, média e alta</CardDescription>
-            </CardHeader>
-            <CardContent className="h-72">
-              {distribuicaoNotasData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={distribuicaoNotasData}
-                      dataKey="percentual"
-                      nameKey="faixa"
-                      outerRadius={100}
-                      label={(entry) => {
-                        const item = entry as Partial<TurmaDistribuicao>;
-                        return `${item.faixa ?? "faixa"}: ${Number(item.percentual ?? 0).toFixed(1)}%`;
-                      }}
-                    >
-                      {distribuicaoNotasData.map((entry, idx) => (
-                        <Cell
-                          key={`${entry.faixa}-${idx}`}
-                          fill={
-                            idx % 3 === 0
-                              ? CHART_COLOR_DANGER
-                              : idx % 3 === 1
-                              ? CHART_COLOR_WARNING
-                              : CHART_COLOR_SUCCESS
-                          }
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                  Sem dados suficientes ainda
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        <div className="grid items-start gap-5 lg:grid-cols-2">
+          <AbandonoPorPerfil
+            linhas={perfilMetricasEscopo}
+            segmento={perfilSegmentFilter}
+            onSegmentoChange={setPerfilSegmentFilter}
+            media={hasTurmaKpis ? turmaResumo.taxa_media_abandono_pct : null}
+          />
+          <DistribuicaoNotas linhas={distribuicaoEscopo} mediaNotas={hasAlunoKpis ? mediaNotas : null} />
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Lista de Alunos</CardTitle>
-            <CardDescription>Clique em um aluno para ver detalhes e visualizar sua trilha</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex gap-4 mb-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por nome ou email..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-            </div>
-
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Aluno</TableHead>
-                  <TableHead>Classe</TableHead>
-                  <TableHead>Perfil</TableHead>
-                  <TableHead>Nota Média</TableHead>
-                  <TableHead>Progresso</TableHead>
-                  <TableHead>Acertos</TableHead>
-                  <TableHead className="w-20">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredAlunos.map((aluno) => (
-                  <TableRow key={aluno.id}>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{aluno.nome}</p>
-                        <p className="text-xs text-muted-foreground">{aluno.email}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>{aluno.classe_nome}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">{aluno.perfilDominante}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={aluno.notaMedia >= 7 ? "default" : "destructive"}>
-                        {aluno.notaMedia.toFixed(1)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Progress value={aluno.porcentagemConcluida} className="w-16 h-2" />
-                        <span className="text-xs">{aluno.porcentagemConcluida.toFixed(1)}%</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>{aluno.acertosPercentual.toFixed(1)}%</TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="sm" onClick={() => setSelectedAluno(aluno)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-
-            {filteredAlunos.length === 0 && (
-              <p className="text-center text-muted-foreground py-8">Nenhum aluno encontrado com essa busca.</p>
-            )}
-          </CardContent>
-        </Card>
+        <TabelaAlunos alunos={alunosDaTurma} mostrarClasse={selectedClassFilter === TODAS_AS_TURMAS} onAbrir={(aluno) => setSelectedAluno(aluno)} />
         </>
       )}
 
