@@ -23,6 +23,16 @@ import { avaliarRisco, inatividade, notaParaRisco, observacaoNotaEAbandono, type
 import { chaveAlunoTurma } from "./dashboard/sinais";
 import { mediaDosPreenchidos } from "./dashboard/medias";
 import { useSinaisDosAlunos } from "./dashboard/useSinaisDosAlunos";
+import SegmentedPills from "./dashboard/SegmentedPills";
+import AbaConteudo from "./dashboard/AbaConteudo";
+
+type AbaDaTurma = "visao" | "conteudo";
+
+// Evolução e Insights entram quando as fases 7 e 8 existirem — sem aba vazia.
+const ABAS_DA_TURMA: { value: AbaDaTurma; label: string }[] = [
+  { value: "visao", label: "Visão geral" },
+  { value: "conteudo", label: "Conteúdo" },
+];
 
 export default function DashboardSection() {
   const { user, session } = useAuth();
@@ -50,6 +60,15 @@ export default function DashboardSection() {
   const navigate = useNavigate();
   const alunoNaUrl = searchParams.get("aluno");
   const turmaNaUrl = searchParams.get("turma");
+  // Mesmo padrão do aluno: a aba vive na URL (?aba=conteudo) e o voltar do
+  // navegador volta para a aba anterior.
+  const abaDaTurma: AbaDaTurma = searchParams.get("aba") === "conteudo" ? "conteudo" : "visao";
+  const trocarAba = (aba: AbaDaTurma) => {
+    const proximo = new URLSearchParams(searchParams);
+    if (aba === "visao") proximo.delete("aba");
+    else proximo.set("aba", aba);
+    setSearchParams(proximo);
+  };
   const kpiClassIds = useMemo(() => classes.map((c) => c.id), [classes]);
   const { turmaMetricas, perfilMetricas, distribuicaoMetricas } = useTurmaKpis(kpiClassIds);
   const { sinais, temAbandono } = useSinaisDosAlunos(kpiClassIds);
@@ -389,6 +408,14 @@ export default function DashboardSection() {
   const hasAlunoKpis = totalAlunos > 0;
   const personalizacoes = personalizacaoData?.personalizacoes ?? [];
   const progressoItens = personalizacaoData?.progresso_itens ?? [];
+  const matriculasDaTurma = useMemo(
+    () => alunosDaTurma.map((a) => ({ aluno_id: a.id, classe_id: a.classe_id })),
+    [alunosDaTurma]
+  );
+  const nomeDaTurma = useCallback(
+    (id: number) => classes.find((c) => c.id === id)?.descricao || `Turma ${id}`,
+    [classes]
+  );
   const classScopeIds = useMemo(
     () =>
       selectedClassFilter === "all"
@@ -475,34 +502,48 @@ export default function DashboardSection() {
           <DashboardVazio semTurmas={classes.length === 0} />
         ) : (
           <>
-            <KpisPrincipais totalAlunos={totalAlunos} mediaNotas={mediaNotas} mediaConclusao={mediaConclusao} temDados={hasAlunoKpis} />
+            <SegmentedPills ariaLabel="Seções da turma" opcoes={ABAS_DA_TURMA} valor={abaDaTurma} onChange={(a) => trocarAba(a)} className="w-fit" />
 
-            <PrecisamDeAtencao<AlunoAnalisado & AlunoEmRisco>
-              alunos={alunosEmRisco}
-              totalDaTurma={totalAlunos}
-              criterios={criteriosLigados}
-              mostrarTurma={selectedClassFilter === TODAS_AS_TURMAS}
-              onAbrir={abrirAluno}
-            />
+            {/* Visão geral fica montada (só escondida) para a tabela manter página e busca ao trocar de aba. */}
+            <div hidden={abaDaTurma !== "visao"} className="space-y-6">
+              <KpisPrincipais totalAlunos={totalAlunos} mediaNotas={mediaNotas} mediaConclusao={mediaConclusao} temDados={hasAlunoKpis} />
 
-            <KpisSecundarios mediaAcertos={mediaAcertos} turmaResumo={turmaResumo} temDadosTurma={hasTurmaKpis} />
-
-            <div className="grid items-start gap-5 lg:grid-cols-2">
-              <AbandonoPorPerfil
-                linhas={perfilMetricasEscopo}
-                segmento={perfilSegmentFilter}
-                onSegmentoChange={setPerfilSegmentFilter}
-                media={hasTurmaKpis ? turmaResumo.taxa_media_abandono_pct : null}
+              <PrecisamDeAtencao<AlunoAnalisado & AlunoEmRisco>
+                alunos={alunosEmRisco}
+                totalDaTurma={totalAlunos}
+                criterios={criteriosLigados}
+                mostrarTurma={selectedClassFilter === TODAS_AS_TURMAS}
+                onAbrir={abrirAluno}
               />
-              <DistribuicaoNotas linhas={distribuicaoEscopo} mediaNotas={mediaNotas} observacao={observacaoDaRosca} />
+
+              <KpisSecundarios mediaAcertos={mediaAcertos} turmaResumo={turmaResumo} temDadosTurma={hasTurmaKpis} />
+
+              <div className="grid items-start gap-5 lg:grid-cols-2">
+                <AbandonoPorPerfil
+                  linhas={perfilMetricasEscopo}
+                  segmento={perfilSegmentFilter}
+                  onSegmentoChange={setPerfilSegmentFilter}
+                  media={hasTurmaKpis ? turmaResumo.taxa_media_abandono_pct : null}
+                />
+                <DistribuicaoNotas linhas={distribuicaoEscopo} mediaNotas={mediaNotas} observacao={observacaoDaRosca} />
+              </div>
+
+              <TabelaAlunos
+                alunos={alunosDaTurma}
+                mostrarClasse={selectedClassFilter === TODAS_AS_TURMAS}
+                mostrarAbandono={temAbandono}
+                onAbrir={abrirAluno}
+              />
             </div>
 
-            <TabelaAlunos
-              alunos={alunosDaTurma}
-              mostrarClasse={selectedClassFilter === TODAS_AS_TURMAS}
-              mostrarAbandono={temAbandono}
-              onAbrir={abrirAluno}
-            />
+            {abaDaTurma === "conteudo" && (
+              <AbaConteudo
+                classIds={classScopeIds}
+                matriculas={matriculasDaTurma}
+                mostrarTurma={selectedClassFilter === TODAS_AS_TURMAS}
+                nomeDaTurma={nomeDaTurma}
+              />
+            )}
           </>
         )}
       </div>

@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 // client) — este builder minimo cobre so os filtros que o console usa contra o
 // client generico. O builder do supabase-js e "thenable": pode ser aguardado
 // direto ou continuar recebendo filtros.
-type Resultado = { data: unknown[] | null };
+type Resultado = { data: unknown[] | null; error?: { message: string } | null };
 
 type ViewFiltravel = PromiseLike<Resultado> & {
   eq: (column: string, value: string | number) => ViewFiltravel;
