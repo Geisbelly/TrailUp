@@ -25,12 +25,14 @@ import { mediaDosPreenchidos } from "./dashboard/medias";
 import { useSinaisDosAlunos } from "./dashboard/useSinaisDosAlunos";
 import SegmentedPills from "./dashboard/SegmentedPills";
 import AbaConteudo from "./dashboard/AbaConteudo";
+import AbaEvolucao from "./dashboard/AbaEvolucao";
 
-type AbaDaTurma = "visao" | "conteudo";
+type AbaDaTurma = "visao" | "evolucao" | "conteudo";
 
-// Evolução e Insights entram quando as fases 7 e 8 existirem — sem aba vazia.
+// Insights entra quando a fase 8 existir — sem aba vazia.
 const ABAS_DA_TURMA: { value: AbaDaTurma; label: string }[] = [
   { value: "visao", label: "Visão geral" },
+  { value: "evolucao", label: "Evolução" },
   { value: "conteudo", label: "Conteúdo" },
 ];
 
@@ -62,7 +64,8 @@ export default function DashboardSection() {
   const turmaNaUrl = searchParams.get("turma");
   // Mesmo padrão do aluno: a aba vive na URL (?aba=conteudo) e o voltar do
   // navegador volta para a aba anterior.
-  const abaDaTurma: AbaDaTurma = searchParams.get("aba") === "conteudo" ? "conteudo" : "visao";
+  const abaNaUrl = searchParams.get("aba");
+  const abaDaTurma: AbaDaTurma = abaNaUrl === "conteudo" || abaNaUrl === "evolucao" ? abaNaUrl : "visao";
   const trocarAba = (aba: AbaDaTurma) => {
     const proximo = new URLSearchParams(searchParams);
     if (aba === "visao") proximo.delete("aba");
@@ -535,6 +538,15 @@ export default function DashboardSection() {
                 onAbrir={abrirAluno}
               />
             </div>
+
+            {abaDaTurma === "evolucao" && (
+              <AbaEvolucao
+                classIds={classScopeIds}
+                matriculas={matriculasDaTurma}
+                conclusaoAtualPct={hasAlunoKpis ? mediaConclusao : null}
+                abandonoAtualPct={hasTurmaKpis ? turmaResumo.taxa_media_abandono_pct : null}
+              />
+            )}
 
             {abaDaTurma === "conteudo" && (
               <AbaConteudo
