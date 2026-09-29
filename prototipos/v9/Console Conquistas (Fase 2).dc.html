@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #0d0b16; font-family: 'Inter', sans-serif; }
+  @keyframes tu10-rise { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+</style>
+</helmet>
+
+<div style="position:relative; min-height:100vh; background:#0d0b16; overflow:hidden;">
+
+  <div style="position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image: url('assets/bg-forest-crystal.webp');
+    background-size: cover; background-position: center 30%; opacity:0.34;">
+  </div>
+  <div style="position:fixed; inset:0; pointer-events:none; z-index:0;
+    background: linear-gradient(180deg, rgba(13,11,22,0.55), rgba(13,11,22,0.88)),
+      radial-gradient(ellipse 900px 500px at 75% 10%, rgba(155,93,229,0.10), transparent 60%);">
+  </div>
+
+  <header style="position:fixed; top:0; left:0; right:0; height:68px; z-index:30; background:#23192e; border-bottom:1px solid #2b2438; display:flex; align-items:center; justify-content:space-between; padding:0 32px;">
+    <div style="display:flex; align-items:center; gap:14px;">
+      <img src="assets/trailup-logo.png" width="30" height="30" style="display:block; object-fit:contain;"/>
+      <span style="font-family:'Cinzel',serif; font-weight:700; font-size:22px; color:#f4f2f8;">TrailUp</span>
+      <span style="width:1px; height:20px; background:#2b2438; margin:0 6px;"></span>
+      <span style="font-size:14px; color:#a29cb3;">Console do professor</span>
+    </div>
+    <div style="display:flex; align-items:center; gap:14px;">
+      <div style="width:38px; height:38px; border-radius:50%; background:#9b5de5; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:13px;">GA</div>
+      <div style="display:flex; flex-direction:column; line-height:1.3;">
+        <span style="font-size:14px; font-weight:700; color:#f4f2f8;">Geisbelly Admin Prof</span>
+        <span style="font-size:12px; color:#a29cb3;">Ulbra</span>
+      </div>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a29cb3" stroke-width="1.6" style="margin-left:6px;"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/></svg>
+    </div>
+  </header>
+
+  <nav style="position:fixed; top:68px; left:0; bottom:0; width:264px; z-index:20; background:#170e24; border-right:1px solid #2b2438; padding:20px 16px; display:flex; flex-direction:column; gap:2px; overflow-y:auto;">
+    <sc-for list="{{ navItems }}" as="item" hint-placeholder-count="12">
+      <a href="{{ item.href }}" style="{{ item.style }} text-decoration:none;">
+        <div style="width:20px; height:20px; color:{{ item.color }}; flex:none;" dangerouslySetInnerHTML="{{ item.iconHtml }}"></div>
+        <span style="font-size:14.5px; color:{{ item.color }};">{{ item.label }}</span>
+      </a>
+    </sc-for>
+  </nav>
+
+  <main style="position:relative; z-index:1; margin-left:264px; padding:108px 40px 60px 40px;">
+
+    <div>
+      <div style="font-family:'Cinzel',serif; font-size:32px; font-weight:700; color:#f4f2f8; line-height:1.1;">Conquistas</div>
+      <div style="font-size:14.5px; color:#a29cb3; margin-top:8px;">Marcos que a turma desbloqueia ao atingir um limiar.</div>
+    </div>
+
+    <!-- ============ ABA EVENTOS ============ -->
+    <sc-if value="{{ isMainTab0 }}" hint-placeholder-val="{{ true }}">
+    <div style="margin-top:18px;">
+      <div style="display:flex; justify-content:flex-end; margin-bottom:16px;">
+        <div onClick="{{ openForm }}" style="display:flex; align-items:center; gap:8px; padding:13px 22px; border-radius:999px; background:#9b5de5; font-size:14px; font-weight:700; color:#fff; cursor:pointer; white-space:nowrap;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          Novo evento
+        </div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        <sc-for list="{{ events }}" as="ev" hint-placeholder-count="3">
+          <div style="padding:20px 90px 20px 24px; border-radius:18px; background:#1b1728; border:1px solid #2b2438; position:relative;">
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+              <div style="font-family:'Cinzel',serif; font-size:18px; font-weight:700; color:#f4f2f8;">{{ ev.name }}</div>
+              <div style="{{ ev.statusStyle }}">{{ ev.statusLabel }}</div>
+            </div>
+            <div style="font-size:12.5px; color:#a29cb3; margin-top:6px;">{{ ev.scope }} · {{ ev.window }}</div>
+            <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap; margin-top:16px;">
+              <div style="font-size:13px; color:#c9c4d4;">{{ ev.participation }}</div>
+              <sc-if value="{{ ev.hasGuilds }}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:13px; color:#c9c4d4;">{{ ev.guildSummary }}</div>
+              </sc-if>
+              <sc-if value="{{ ev.isClosed }}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:13px; color:#c1a7ec;">Destaque: {{ ev.highlight }}</div>
+              </sc-if>
+              <div onClick="{{ ev.openDetail }}" style="margin-left:auto; padding:8px 15px; border-radius:999px; border:1px solid #2b2438; font-size:12.5px; font-weight:600; color:#f4f2f8; cursor:pointer; white-space:nowrap;">{{ ev.detailCta }}</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    </sc-if>
+
+    <!-- ============ ABA RANK DE BATALHAS ============ -->
+    <sc-if value="{{ isMainTab1 }}" hint-placeholder-val="{{ false }}">
+    <div style="margin-top:18px;">
+      <sc-if value="{{ !hasBattleEvent }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; flex-direction:column; align-items:center; text-align:center; gap:14px; padding:70px 30px; border-radius:20px; background:#1b1728; border:1px solid #2b2438;">
+        <div style="font-family:'Cinzel',serif; font-size:19px; font-weight:700; color:#f4f2f8;">Nenhuma arena ativa no momento</div>
+        <div style="font-size:13px; color:#a29cb3; max-width:420px; line-height:1.6;">Arenas só existem dentro de um evento aberto com batalha habilitada. Abra ou edite um evento na aba "Eventos" para habilitar a arena.</div>
+        <div onClick="{{ goToEventos }}" style="margin-top:4px; padding:10px 20px; border-radius:999px; background:#9b5de5; font-size:13px; font-weight:700; color:#fff; cursor:pointer;">Ir para Eventos</div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ hasBattleEvent }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:22px 26px; border-radius:20px; background:#1b1728; border:1px solid #9b5de5;">
+        <div style="font-size:13px; color:#a29cb3;">Arena de: <strong style="color:#f4f2f8;">{{ battleEventName }}</strong></div>
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:14px;">
+          <div style="font-size:11.5px; color:#c9c4d4;">Critério: <strong style="color:#f4f2f8;">{{ arenaCriterionLabel }}</strong></div>
+          <div style="margin-left:auto; padding:4px 11px; border-radius:999px; background:#231d33; font-size:11px; color:#a29cb3;">{{ arenaEnrolled }} inscritos · opt-in</div>
+        </div>
+        <div style="padding:9px 13px; border-radius:12px; background:rgba(155,93,229,0.1); border:1px solid rgba(155,93,229,0.35); font-size:11.5px; color:#c1a7ec; margin-top:10px; line-height:1.5;">Este ranking não afeta o rank principal da turma. Vitória é definida por acerto — tempo entra só como critério de desempate.</div>
+
+        <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600; margin-top:18px;">Pódio</div>
+        <div style="display:flex; align-items:flex-end; gap:10px; margin-top:10px;">
+          <sc-for list="{{ arenaPodium }}" as="p" hint-placeholder-count="3">
+            <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px;">
+              <div style="width:32px; height:32px; border-radius:50%; background:{{ p.color }}; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; color:#1b1120;">{{ p.initials }}</div>
+              <div style="font-size:11.5px; font-weight:600; color:#f4f2f8; text-align:center;">{{ p.name }}</div>
+              <div style="width:100%; border-radius:10px 10px 0 0; background:#231d33; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:#f4f2f8; {{ p.barStyle }}">{{ p.value }}</div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600; margin-top:20px;">Classificação</div>
+        <div style="display:flex; flex-direction:column; gap:7px; margin-top:9px;">
+          <sc-for list="{{ arenaTable }}" as="at" hint-placeholder-count="5">
+            <div style="display:flex; align-items:center; gap:12px; padding:10px 13px; border-radius:12px; background:#231d33;">
+              <div style="width:22px; font-size:12.5px; font-weight:700; color:#a29cb3;">{{ at.pos }}</div>
+              <div style="font-size:13px; color:#f4f2f8; flex:1;">{{ at.name }}</div>
+              <div style="font-size:12.5px; color:#c9c4d4;">{{ at.value }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="font-size:10.5px; color:#7a7488; margin-top:8px; line-height:1.5;">Poucos participantes: mostrando posição e valor bruto, sem barra de progresso normalizado — evita distorcer o quão perto alguém ficou do líder.</div>
+
+        <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600; margin-top:20px;">Confrontos</div>
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top:9px;">
+          <sc-for list="{{ arenaMatches }}" as="am" hint-placeholder-count="3">
+            <div style="display:flex; align-items:center; gap:10px; padding:11px 14px; border-radius:12px; background:#231d33;">
+              <div style="flex:1; text-align:right; font-size:12.5px; color:{{ am.aColor }}; font-weight:{{ am.aWeight }};">{{ am.a }} <span style="color:#a29cb3; font-weight:400;">({{ am.aScore }})</span></div>
+              <div style="font-size:10.5px; color:#7a7488; padding:0 4px;">vs</div>
+              <div style="flex:1; text-align:left; font-size:12.5px; color:{{ am.bColor }}; font-weight:{{ am.bWeight }};">{{ am.b }} <span style="color:#a29cb3; font-weight:400;">({{ am.bScore }})</span></div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="font-size:10.5px; color:#7a7488; margin-top:8px; line-height:1.5;">Pareamento por proximidade de desempenho — nunca aleatório. Quem perde não perde pontos, só ganha menos que quem venceu.</div>
+      </div>
+      </sc-if>
+    </div>
+    </sc-if>
+
+    <!-- ============ ABA CONQUISTAS ============ -->
+    <sc-if value="{{ isMainTab2 }}" hint-placeholder-val="{{ false }}">
+    <div style="margin-top:18px;">
+      <div style="display:flex; align-items:center; gap:14px; margin-bottom:8px;">
+        <div style="font-size:12.5px; color:#a29cb3; white-space:nowrap;">{{ capLabel }}</div>
+        <div onClick="{{ achOpenForm }}" style="display:flex; align-items:center; gap:8px; margin-left:auto; padding:13px 22px; border-radius:999px; background:#9b5de5; font-size:14px; font-weight:700; color:#fff; cursor:pointer; white-space:nowrap;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          Nova conquista
+        </div>
+      </div>
+      <div style="font-size:11.5px; color:#7a7488; margin-bottom:16px; line-height:1.5;">A plataforma já traz 27 conquistas globais — as conquistas abaixo são adicionais, só desta turma.</div>
+
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <sc-for list="{{ achievements }}" as="a" hint-placeholder-count="4">
+          <div style="display:flex; align-items:center; gap:16px; padding:16px 20px; border-radius:16px; background:#1b1728; border:1px solid #2b2438; opacity:{{ a.rowOpacity }};">
+            <div style="width:40px; height:40px; flex:none; border-radius:50%; background:{{ a.iconBg }}; display:flex; align-items:center; justify-content:center;" dangerouslySetInnerHTML="{{ a.iconHtml }}"></div>
+            <div style="min-width:0; flex:1;">
+              <div style="display:flex; align-items:center; gap:9px; flex-wrap:wrap;">
+                <div style="font-size:14.5px; font-weight:700; color:#f4f2f8;">{{ a.name }}</div>
+                <div style="{{ a.scopeStyle }}">{{ a.scopeLabel }}</div>
+                <div style="{{ a.statusStyle }}">{{ a.statusLabel }}</div>
+              </div>
+              <div style="font-size:12px; color:#a29cb3; margin-top:4px;">{{ a.description }}</div>
+              <div style="font-size:12px; color:#c9c4d4; margin-top:4px;">{{ a.criterionLabel }} · +{{ a.points }} pts</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px; flex:none;">
+              <div onClick="{{ a.openEdit }}" title="Editar" style="width:30px; height:30px; border-radius:50%; background:#231d33; border:1px solid #2b2438; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#c9c4d4" stroke-width="2"><path d="M4 20h4l10-10-4-4L4 16z"/></svg>
+              </div>
+              <div onClick="{{ a.askToggle }}" style="{{ a.toggleBtnStyle }}">{{ a.toggleLabel }}</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    </sc-if>
+
+  </main>
+
+  <!-- modal novo/editar evento -->
+  <sc-if value="{{ showForm }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed; inset:0; z-index:60; background:rgba(5,3,10,0.78); backdrop-filter:blur(6px); display:flex; align-items:center; justify-content:center; padding:32px;">
+    <div style="width:100%; max-width:640px; max-height:88vh; display:flex; flex-direction:column; border-radius:20px; background:#1b1728; border:1px solid #9b5de5; overflow:hidden;">
+      <div style="padding:22px 26px 18px; border-bottom:1px solid #2b2438; flex:none; display:flex; align-items:center; gap:12px;">
+        <div style="font-family:'Cinzel',serif; font-size:19px; font-weight:700; color:#f4f2f8;">Novo evento</div>
+        <div onClick="{{ closeForm }}" style="margin-left:auto; width:30px; height:30px; border-radius:50%; background:#231d33; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c9c4d4" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </div>
+      </div>
+      <div style="overflow-y:auto; flex:1; padding:20px 26px 8px;">
+        <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Nome</div>
+        <div style="margin-top:8px; padding:12px 15px; border-radius:14px; background:#231d33; border:1px solid #9b5de5; font-size:13.5px; color:#f4f2f8;">Ex.: Semana da Dinâmica</div>
+
+        <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600; margin-top:16px;">Descrição / regras</div>
+        <div style="margin-top:8px; padding:12px 15px; border-radius:14px; background:#231d33; border:1px solid #2b2438; min-height:60px; font-size:13.5px; color:#7a7488; line-height:1.6;">Explique o desafio e como ele funciona…</div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:16px;">
+          <div>
+            <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Turma</div>
+            <div style="display:flex; align-items:center; margin-top:8px; padding:12px 15px; border-radius:14px; background:#231d33; border:1px solid #2b2438; font-size:13.5px; color:#f4f2f8;">Física I<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a29cb3" stroke-width="2" style="margin-left:auto;"><path d="M6 9l6 6 6-6"/></svg></div>
+          </div>
+          <div>
+            <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Tópico vinculado (opcional)</div>
+            <div style="display:flex; align-items:center; margin-top:8px; padding:12px 15px; border-radius:14px; background:#231d33; border:1px solid #2b2438; font-size:13.5px; color:#7a7488;">Nenhum<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a29cb3" stroke-width="2" style="margin-left:auto;"><path d="M6 9l6 6 6-6"/></svg></div>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:16px;">
+          <div>
+            <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Início</div>
+            <div style="margin-top:8px; padding:12px 15px; border-radius:14px; background:#231d33; border:1px solid #2b2438; font-size:13.5px; color:#f4f2f8;">29/09/2026 · 08:00</div>
+          </div>
+          <div>
+            <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Fim</div>
+            <div style="margin-top:8px; padding:12px 15px; border-radius:14px; background:#231d33; border:1px solid #2b2438; font-size:13.5px; color:#f4f2f8;">05/10/2026 · 23:59</div>
+          </div>
+        </div>
+
+        <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600; margin-top:18px;">Modalidades habilitadas</div>
+        <div style="display:flex; gap:8px; margin-top:9px; flex-wrap:wrap;">
+          <div style="padding:9px 15px; border-radius:999px; background:#9b5de5; font-size:12.5px; font-weight:600; color:#fff; cursor:not-allowed; opacity:0.9;">✓ Individual (obrigatória)</div>
+          <div onClick="{{ toggleGuild }}" style="{{ guildToggleStyle }}">{{ guildToggleLabel }}</div>
+        </div>
+        <div style="font-size:11px; color:#7a7488; margin-top:8px; line-height:1.5;">A modalidade individual não pode ser desabilitada, para que nenhum aluno fique sem forma de participar.</div>
+
+        <sc-if value="{{ guildEnabled }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:14px;">
+          <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Tamanho máximo de guilda</div>
+          <div style="display:flex; gap:6px; margin-top:9px;">
+            <sc-for list="{{ guildSizeOptions }}" as="gs" hint-placeholder-count="3">
+              <div onClick="{{ gs.select }}" style="{{ gs.style }}">{{ gs.label }}</div>
+            </sc-for>
+          </div>
+        </div>
+        </sc-if>
+
+        <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600; margin-top:18px;">Arena de batalhas (opcional)</div>
+        <div style="display:flex; gap:8px; margin-top:9px;">
+          <div onClick="{{ toggleBattle }}" style="{{ battleToggleStyle }}">{{ battleToggleLabel }}</div>
+        </div>
+        <sc-if value="{{ battleEnabled }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:10px;">
+          <div style="font-size:11.5px; color:#c9c4d4; margin-bottom:8px;">Critério da arena</div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <sc-for list="{{ arenaCriteriaOptions }}" as="ac" hint-placeholder-count="3">
+              <div onClick="{{ ac.select }}" style="{{ ac.style }}">{{ ac.label }}</div>
+            </sc-for>
+          </div>
+        </div>
+        </sc-if>
+        <div style="font-size:11px; color:#7a7488; margin-top:8px; line-height:1.5;">Entrar na arena é sempre opt-in — participação e resultado não afetam o rank principal da turma.</div>
+
+        <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600; margin-top:18px;">Pontuação</div>
+        <div style="margin-top:8px; padding:12px 15px; border-radius:14px; background:#231d33; border:1px solid #2b2438; font-size:13.5px; color:#f4f2f8;">Ex.: até 60 pts, por desempenho individual no evento</div>
+        <div style="font-size:11px; color:#7a7488; margin-top:8px; line-height:1.5;">A pontuação individual do evento entra no rank principal da turma. O resultado agregado da guilda não entra no rank — ele existe só dentro do evento.</div>
+
+        <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600; margin-top:18px;">Medalhas concedidas</div>
+        <div style="display:flex; align-items:center; gap:10px; margin-top:9px; padding:11px 14px; border-radius:12px; background:#231d33; border:1px solid #9b5de5;">
+          <div style="width:8px; height:8px; border-radius:50%; background:#9b5de5;"></div>
+          <div style="font-size:13px; color:#f4f2f8; flex:1;">Participação — todo aluno que participar</div>
+          <div style="font-size:10.5px; color:#c1a7ec; font-weight:600;">obrigatória</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; margin-top:7px; padding:11px 14px; border-radius:12px; background:#231d33; border:1px solid #2b2438;">
+          <div style="width:8px; height:8px; border-radius:50%; background:#e0b34d;"></div>
+          <div style="font-size:13px; color:#f4f2f8; flex:1;">Destaque — melhor resultado do evento</div>
+        </div>
+        <div style="font-size:11px; color:#7a7488; margin-top:8px; line-height:1.5;">A medalha de participação é sempre concedida junto com a de destaque — um evento não pode premiar só quem venceu.</div>
+
+        <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600; margin-top:18px; margin-bottom:6px;">Recompensa (opcional)</div>
+        <div style="padding:12px 15px; border-radius:14px; background:#231d33; border:1px solid #2b2438; font-size:13.5px; color:#7a7488; margin-bottom:6px;">Ex.: moedas na carteira do aluno</div>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px; padding:16px 26px; border-top:1px solid #2b2438; flex:none;">
+        <div onClick="{{ closeForm }}" style="padding:11px 20px; border-radius:999px; border:1px solid #2b2438; font-size:13.5px; font-weight:600; color:#f4f2f8; cursor:pointer;">Cancelar</div>
+        <div onClick="{{ saveForm }}" style="margin-left:auto; padding:11px 22px; border-radius:999px; background:#9b5de5; font-size:13.5px; font-weight:700; color:#fff; cursor:pointer;">Salvar como rascunho</div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- modal confirmar abertura -->
+  <sc-if value="{{ showOpenConfirm }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed; inset:0; z-index:60; background:rgba(5,3,10,0.78); backdrop-filter:blur(6px); display:flex; align-items:center; justify-content:center; padding:32px;">
+    <div style="width:100%; max-width:480px; border-radius:20px; background:#1b1728; border:1px solid #9b5de5; padding:24px 26px;">
+      <div style="font-family:'Cinzel',serif; font-size:19px; font-weight:700; color:#f4f2f8;">Abrir "{{ openTargetName }}"?</div>
+      <div style="display:flex; flex-direction:column; gap:9px; margin-top:16px;">
+        <div style="display:flex; justify-content:space-between; padding:10px 13px; border-radius:12px; background:#231d33; font-size:13px; color:#c9c4d4;"><div>Alunos elegíveis</div><div style="color:#f4f2f8; font-weight:600;">34</div></div>
+        <div style="display:flex; justify-content:space-between; padding:10px 13px; border-radius:12px; background:#231d33; font-size:13px; color:#c9c4d4;"><div>Guildas existentes hoje (serão congeladas)</div><div style="color:#f4f2f8; font-weight:600;">4</div></div>
+      </div>
+      <div style="font-size:12px; color:#a29cb3; margin-top:12px; line-height:1.6;">A composição das guildas é fixada no momento da abertura — trocar de guilda depois não altera este evento. Quem não estiver em nenhuma guilda participa individualmente, sem perder pontuação por isso.</div>
+      <div style="display:flex; align-items:center; gap:12px; margin-top:20px;">
+        <div onClick="{{ cancelOpen }}" style="padding:11px 20px; border-radius:999px; border:1px solid #2b2438; font-size:13.5px; font-weight:600; color:#f4f2f8; cursor:pointer;">Cancelar</div>
+        <div onClick="{{ confirmOpen }}" style="margin-left:auto; padding:11px 22px; border-radius:999px; background:#9b5de5; font-size:13.5px; font-weight:700; color:#fff; cursor:pointer;">Abrir evento</div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- modal durante o evento -->
+  <sc-if value="{{ showDuring }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed; inset:0; z-index:60; background:rgba(5,3,10,0.78); backdrop-filter:blur(6px); display:flex; align-items:center; justify-content:center; padding:32px;">
+    <div style="width:100%; max-width:560px; max-height:85vh; overflow-y:auto; border-radius:20px; background:#1b1728; border:1px solid #9b5de5; padding:26px 28px;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div style="font-family:'Cinzel',serif; font-size:19px; font-weight:700; color:#f4f2f8;">Durante o evento</div>
+        <div style="padding:4px 11px; border-radius:999px; background:rgba(52,199,123,0.16); color:#5fd99a; font-size:11px; font-weight:700;">Aberto</div>
+        <div onClick="{{ closeDuring }}" style="margin-left:auto; width:30px; height:30px; border-radius:50%; background:#231d33; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c9c4d4" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </div>
+      </div>
+      <div style="font-size:13px; color:#a29cb3; margin-top:4px;">{{ duringName }}</div>
+
+      <sc-if value="{{ duringHasBattle }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; align-items:center; gap:6px; margin-top:18px; border-bottom:1px solid #2b2438;">
+        <sc-for list="{{ duringTabs }}" as="dt" hint-placeholder-count="2">
+          <div onClick="{{ dt.select }}" style="{{ dt.style }}">{{ dt.label }}</div>
+        </sc-for>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isDuringPanel }}" hint-placeholder-val="{{ true }}">
+      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-top:18px;">
+        <div style="padding:13px 15px; border-radius:14px; background:#231d33;"><div style="font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Ainda não começaram</div><div style="font-size:20px; font-weight:700; color:#f4f2f8; margin-top:6px;">9</div></div>
+        <div style="padding:13px 15px; border-radius:14px; background:#231d33;"><div style="font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Começaram e pararam</div><div style="font-size:20px; font-weight:700; color:#e0b34d; margin-top:6px;">5</div></div>
+        <div style="padding:13px 15px; border-radius:14px; background:#231d33;"><div style="font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Guildas ativas</div><div style="font-size:20px; font-weight:700; color:#f4f2f8; margin-top:6px;">4</div></div>
+      </div>
+
+      <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600; margin-top:20px;">Participação por modalidade</div>
+      <div style="display:flex; flex-direction:column; gap:8px; margin-top:9px;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div style="font-size:12.5px; color:#c9c4d4; width:110px;">Individual</div>
+          <div style="flex:1; height:8px; border-radius:999px; background:#2b2438; overflow:hidden;"><div style="width:35%; height:100%; background:#9b5de5;"></div></div>
+          <div style="font-size:12.5px; color:#f4f2f8; width:40px; text-align:right;">12</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div style="font-size:12.5px; color:#c9c4d4; width:110px;">Em guilda</div>
+          <div style="flex:1; height:8px; border-radius:999px; background:#2b2438; overflow:hidden;"><div style="width:56%; height:100%; background:#4fd1c5;"></div></div>
+          <div style="font-size:12.5px; color:#f4f2f8; width:40px; text-align:right;">19</div>
+        </div>
+      </div>
+      <div style="font-size:11px; color:#7a7488; margin-top:12px; line-height:1.5;">Um aluno fora de guilda participa individualmente por escolha própria — não é uma falha de composição.</div>
+      </sc-if>
+
+      <sc-if value="{{ isDuringArena }}" hint-placeholder-val="{{ false }}">
+      <div style="margin-top:18px;">
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+          <div style="font-size:11.5px; color:#c9c4d4;">Critério: <strong style="color:#f4f2f8;">{{ arenaCriterionLabel }}</strong></div>
+          <div style="margin-left:auto; padding:4px 11px; border-radius:999px; background:#231d33; font-size:11px; color:#a29cb3;">{{ arenaEnrolled }} inscritos · opt-in</div>
+        </div>
+        <div style="padding:9px 13px; border-radius:12px; background:rgba(155,93,229,0.1); border:1px solid rgba(155,93,229,0.35); font-size:11.5px; color:#c1a7ec; margin-top:10px; line-height:1.5;">Este ranking não afeta o rank principal da turma. Vitória é definida por acerto — tempo entra só como critério de desempate.</div>
+
+        <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600; margin-top:18px;">Pódio</div>
+        <div style="display:flex; align-items:flex-end; gap:10px; margin-top:10px;">
+          <sc-for list="{{ arenaPodium }}" as="p" hint-placeholder-count="3">
+            <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px;">
+              <div style="width:32px; height:32px; border-radius:50%; background:{{ p.color }}; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; color:#1b1120;">{{ p.initials }}</div>
+              <div style="font-size:11.5px; font-weight:600; color:#f4f2f8; text-align:center;">{{ p.name }}</div>
+              <div style="width:100%; border-radius:10px 10px 0 0; background:#231d33; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:#f4f2f8; {{ p.barStyle }}">{{ p.value }}</div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600; margin-top:20px;">Classificação</div>
+        <div style="display:flex; flex-direction:column; gap:7px; margin-top:9px;">
+          <sc-for list="{{ arenaTable }}" as="at" hint-placeholder-count="5">
+            <div style="display:flex; align-items:center; gap:12px; padding:10px 13px; border-radius:12px; background:#231d33;">
+              <div style="width:22px; font-size:12.5px; font-weight:700; color:#a29cb3;">{{ at.pos }}</div>
+              <div style="font-size:13px; color:#f4f2f8; flex:1;">{{ at.name }}</div>
+              <div style="font-size:12.5px; color:#c9c4d4;">{{ at.value }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="font-size:10.5px; color:#7a7488; margin-top:8px; line-height:1.5;">Poucos participantes: mostrando posição e valor bruto, sem barra de progresso normalizado — evita distorcer o quão perto alguém ficou do líder.</div>
+
+        <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600; margin-top:20px;">Confrontos</div>
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top:9px;">
+          <sc-for list="{{ arenaMatches }}" as="am" hint-placeholder-count="3">
+            <div style="display:flex; align-items:center; gap:10px; padding:11px 14px; border-radius:12px; background:#231d33;">
+              <div style="flex:1; text-align:right; font-size:12.5px; color:{{ am.aColor }}; font-weight:{{ am.aWeight }};">{{ am.a }} <span style="color:#a29cb3; font-weight:400;">({{ am.aScore }})</span></div>
+              <div style="font-size:10.5px; color:#7a7488; padding:0 4px;">vs</div>
+              <div style="flex:1; text-align:left; font-size:12.5px; color:{{ am.bColor }}; font-weight:{{ am.bWeight }};">{{ am.b }} <span style="color:#a29cb3; font-weight:400;">({{ am.bScore }})</span></div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="font-size:10.5px; color:#7a7488; margin-top:8px; line-height:1.5;">Pareamento por proximidade de desempenho — nunca aleatório. Quem perde não perde pontos, só ganha menos que quem venceu.</div>
+      </div>
+      </sc-if>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- modal resultado -->
+  <sc-if value="{{ showResult }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed; inset:0; z-index:60; background:rgba(5,3,10,0.78); backdrop-filter:blur(6px); display:flex; align-items:center; justify-content:center; padding:32px;">
+    <div style="width:100%; max-width:560px; max-height:85vh; overflow-y:auto; border-radius:20px; background:#1b1728; border:1px solid #9b5de5; padding:26px 28px;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div style="font-family:'Cinzel',serif; font-size:19px; font-weight:700; color:#f4f2f8;">Resultado</div>
+        <div style="padding:4px 11px; border-radius:999px; background:#231d33; color:#a29cb3; font-size:11px; font-weight:700;">Encerrado</div>
+        <div onClick="{{ closeResult }}" style="margin-left:auto; width:30px; height:30px; border-radius:50%; background:#231d33; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c9c4d4" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </div>
+      </div>
+      <div style="font-size:13px; color:#a29cb3; margin-top:4px;">{{ resultName }}</div>
+
+      <div style="display:flex; align-items:center; gap:14px; margin-top:18px; padding:16px 18px; border-radius:14px; background:#231d33;">
+        <div style="width:36px; height:36px; flex:none; border-radius:50%; background:#e0b34d; display:flex; align-items:center; justify-content:center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1b1120" stroke-width="2.4"><path d="M12 2l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 15.3l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"/></svg></div>
+        <div>
+          <div style="font-size:13.5px; font-weight:700; color:#f4f2f8;">Marina Corrêa — destaque do evento</div>
+          <div style="font-size:11.5px; color:#a29cb3; margin-top:3px;">18% acima da média da turma no período</div>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px;">
+        <div style="padding:13px 15px; border-radius:14px; background:#231d33;"><div style="font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Medalhas de participação</div><div style="font-size:20px; font-weight:700; color:#f4f2f8; margin-top:6px;">28</div></div>
+        <div style="padding:13px 15px; border-radius:14px; background:#231d33;"><div style="font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Medalhas de destaque</div><div style="font-size:20px; font-weight:700; color:#e0b34d; margin-top:6px;">1</div></div>
+      </div>
+
+      <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600; margin-top:20px;">Ranking de guildas (separado do rank individual)</div>
+      <div style="display:flex; flex-direction:column; gap:7px; margin-top:9px;">
+        <sc-for list="{{ guildRanking }}" as="g" hint-placeholder-count="4">
+          <div style="display:flex; align-items:center; gap:12px; padding:10px 13px; border-radius:12px; background:#231d33;">
+            <div style="width:24px; height:24px; flex:none; border-radius:50%; background:#4fd1c5; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; color:#0d0b16;">{{ g.n }}</div>
+            <div style="font-size:13px; color:#f4f2f8; flex:1;">{{ g.name }}</div>
+            <div style="font-size:12.5px; color:#a29cb3;">{{ g.members }} membros</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- modal nova/editar conquista -->
+  <sc-if value="{{ achShowForm }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed; inset:0; z-index:60; background:rgba(5,3,10,0.78); backdrop-filter:blur(6px); display:flex; align-items:center; justify-content:center; padding:32px;">
+    <div style="width:100%; max-width:600px; max-height:88vh; display:flex; flex-direction:column; border-radius:20px; background:#1b1728; border:1px solid #9b5de5; overflow:hidden;">
+      <div style="padding:22px 26px 18px; border-bottom:1px solid #2b2438; flex:none; display:flex; align-items:center; gap:12px;">
+        <div style="font-family:'Cinzel',serif; font-size:19px; font-weight:700; color:#f4f2f8;">{{ achFormTitle }}</div>
+        <div onClick="{{ achCloseForm }}" style="margin-left:auto; width:30px; height:30px; border-radius:50%; background:#231d33; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c9c4d4" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </div>
+      </div>
+
+      <sc-if value="{{ achShowCriterionWarning }}" hint-placeholder-val="{{ false }}">
+      <div style="margin:16px 26px 0; padding:12px 15px; border-radius:12px; background:rgba(224,179,77,0.12); border:1px solid #e0b34d; font-size:12px; color:#e8d4a0; line-height:1.55;">Alterar o critério não afeta quem já ganhou esta conquista — a concessão nunca é revogada. Passa a valer um critério diferente só para quem ainda não ganhou.</div>
+      </sc-if>
+
+      <div style="overflow-y:auto; flex:1; padding:20px 26px 8px;">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+          <div>
+            <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Nome</div>
+            <div style="margin-top:8px; padding:12px 15px; border-radius:14px; background:#231d33; border:1px solid #9b5de5; font-size:13.5px; color:#f4f2f8;">{{ achFormName }}</div>
+          </div>
+          <div>
+            <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Descrição</div>
+            <div style="margin-top:8px; padding:12px 15px; border-radius:14px; background:#231d33; border:1px solid #2b2438; font-size:13.5px; color:#c9c4d4;">{{ achFormDescription }}</div>
+          </div>
+        </div>
+
+        <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600; margin-top:16px;">Ícone</div>
+        <div style="display:flex; gap:8px; margin-top:9px; flex-wrap:wrap;">
+          <sc-for list="{{ achIconOptions }}" as="io" hint-placeholder-count="6">
+            <div onClick="{{ io.select }}" style="{{ io.style }}" dangerouslySetInnerHTML="{{ io.iconHtml }}"></div>
+          </sc-for>
+        </div>
+
+        <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600; margin-top:16px;">Cor</div>
+        <sc-if value="{{ achIsScopeProfile }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:12.5px; color:#c9c4d4; margin-top:9px; display:flex; align-items:center; gap:10px; padding:11px 14px; border-radius:12px; background:#231d33;">
+          <div style="width:16px; height:16px; border-radius:50%; background:{{ achProfileColorPreview }};"></div>
+          Cor-assinatura do(s) perfil(is) selecionado(s) — aplicada automaticamente
+        </div>
+        </sc-if>
+        <sc-if value="{{ !achIsScopeProfile }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; gap:8px; margin-top:9px;">
+          <sc-for list="{{ achColorOptions }}" as="co" hint-placeholder-count="6">
+            <div onClick="{{ co.select }}" style="{{ co.style }}"></div>
+          </sc-for>
+        </div>
+        </sc-if>
+
+        <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600; margin-top:16px;">Métrica</div>
+        <div style="display:flex; gap:8px; margin-top:9px; flex-wrap:wrap;">
+          <sc-for list="{{ achMetricOptions }}" as="mo" hint-placeholder-count="6">
+            <div onClick="{{ mo.select }}" style="{{ mo.style }}">{{ mo.label }}</div>
+          </sc-for>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
+          <div style="font-size:12.5px; color:#c9c4d4;">{{ achThresholdLabel }}</div>
+          <div style="padding:9px 14px; border-radius:12px; background:#231d33; border:1px solid #9b5de5; font-size:13px; color:#f4f2f8;">{{ achThresholdValue }}</div>
+        </div>
+
+        <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600; margin-top:16px;">Escopo</div>
+        <div style="display:flex; gap:8px; margin-top:9px;">
+          <sc-for list="{{ achScopeOptions }}" as="so" hint-placeholder-count="2">
+            <div onClick="{{ so.select }}" style="{{ so.style }}">{{ so.label }}</div>
+          </sc-for>
+        </div>
+        <sc-if value="{{ achIsScopeProfile }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:10px;">
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <sc-for list="{{ achProfileOptions }}" as="po" hint-placeholder-count="7">
+              <div onClick="{{ po.select }}" style="{{ po.style }}">{{ po.label }}</div>
+            </sc-for>
+          </div>
+          <sc-if value="{{ achMultipleProfilesSelected }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex; gap:8px; margin-top:10px;">
+            <sc-for list="{{ achPerProfileThresholdOptions }}" as="pt" hint-placeholder-count="2">
+              <div onClick="{{ pt.select }}" style="{{ pt.style }}">{{ pt.label }}</div>
+            </sc-for>
+          </div>
+          <div style="font-size:11px; color:#7a7488; margin-top:8px; line-height:1.5;">Se configurar um limiar por perfil, cada perfil selecionado vira uma conquista separada — uma linha por perfil, não um único registro com vários valores.</div>
+          </sc-if>
+        </div>
+        </sc-if>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:16px; margin-bottom:6px;">
+          <div>
+            <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Pontos</div>
+            <div style="margin-top:8px; padding:12px 15px; border-radius:14px; background:#231d33; border:1px solid #2b2438; font-size:13.5px; color:#f4f2f8;">{{ achFormPoints }} pts</div>
+          </div>
+          <div>
+            <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Bônus na carteira (opcional)</div>
+            <div style="margin-top:8px; padding:12px 15px; border-radius:14px; background:#231d33; border:1px solid #2b2438; font-size:13.5px; color:#7a7488;">Ex.: 10 moedas</div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px; padding:16px 26px; border-top:1px solid #2b2438; flex:none;">
+        <div onClick="{{ achCloseForm }}" style="padding:11px 20px; border-radius:999px; border:1px solid #2b2438; font-size:13.5px; font-weight:600; color:#f4f2f8; cursor:pointer;">Cancelar</div>
+        <div onClick="{{ achSaveForm }}" style="margin-left:auto; padding:11px 22px; border-radius:999px; background:#9b5de5; font-size:13.5px; font-weight:700; color:#fff; cursor:pointer;">Salvar conquista</div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- modal desativar conquista -->
+  <sc-if value="{{ achShowToggleConfirm }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed; inset:0; z-index:60; background:rgba(5,3,10,0.78); backdrop-filter:blur(6px); display:flex; align-items:center; justify-content:center; padding:32px;">
+    <div style="width:100%; max-width:460px; border-radius:20px; background:#1b1728; border:1px solid {{ achToggleBorder }}; padding:24px 26px;">
+      <div style="font-family:'Cinzel',serif; font-size:19px; font-weight:700; color:#f4f2f8;">{{ achToggleModalTitle }}</div>
+      <div style="font-size:14px; font-weight:600; color:#f4f2f8; margin-top:14px;">{{ achToggleModalQuestion }}</div>
+      <div style="font-size:13px; color:#c9c4d4; margin-top:8px; line-height:1.6;">{{ achToggleModalBody }}</div>
+      <div style="display:flex; align-items:center; gap:12px; margin-top:20px;">
+        <div onClick="{{ achCancelToggle }}" style="padding:11px 20px; border-radius:999px; border:1px solid #2b2438; font-size:13.5px; font-weight:600; color:#f4f2f8; cursor:pointer;">Cancelar</div>
+        <div onClick="{{ achConfirmToggle }}" style="{{ achConfirmToggleStyle }}">{{ achConfirmToggleLabel }}</div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- Escriba -->
+  <div style="position:fixed; right:32px; bottom:28px; z-index:50;">
+    <sc-if value="{{ escribaOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute; bottom:70px; right:0; width:340px; border-radius:20px; background:#1b1728; border:1px solid #2b2438; box-shadow:0 20px 50px rgba(0,0,0,0.5); overflow:hidden;">
+        <div style="display:flex; align-items:center; gap:12px; padding:16px 18px; border-bottom:1px solid #2b2438; background:linear-gradient(135deg,#c9924f,#9c6b4f);">
+          <div style="width:34px; height:34px; border-radius:50%; background:rgba(0,0,0,0.2); display:flex; align-items:center; justify-content:center;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          </div>
+          <div>
+            <div style="font-family:'Cinzel',serif; font-size:14px; font-weight:700; color:#fff;">Escriba</div>
+            <div style="font-size:11px; color:rgba(255,255,255,0.85);">O guia do professor · lê os dados dos seus eventos</div>
+          </div>
+        </div>
+        <div style="padding:16px 18px; display:flex; flex-direction:column; gap:12px;">
+          <div style="font-size:13px; color:#e5e1ec; line-height:1.5;">Olá! Posso te ajudar com os seus eventos. O que você quer saber?</div>
+          <div style="display:flex; flex-wrap:wrap; gap:8px;">
+            <div style="padding:7px 12px; border-radius:999px; background:#231d33; border:1px solid #2b2438; font-size:12px; color:#c9c4d4; cursor:pointer;">Quem ainda não participou?</div>
+            <div style="padding:7px 12px; border-radius:999px; background:#231d33; border:1px solid #2b2438; font-size:12px; color:#c9c4d4; cursor:pointer;">Qual guilda está na frente?</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; padding:12px 14px; border-top:1px solid #2b2438;">
+          <input placeholder="Pergunte ao Escriba…" style="flex:1; background:#0d0b16; border:1px solid #2b2438; border-radius:999px; padding:9px 14px; color:#f4f2f8; font-size:13px; outline:none;"/>
+          <div style="width:32px; height:32px; border-radius:50%; background:#9c6b4f; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+    <div onClick="{{ toggleEscriba }}" title="Pergunte ao Escriba" style="width:56px; height:56px; border-radius:50%; background:linear-gradient(135deg,#c9924f,#9c6b4f); display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 12px 30px rgba(0,0,0,0.45);">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+    </div>
+  </div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+
+const EVENTS = [
+  { id:1, name:'Semana da Dinâmica', scope:'Física I', window:'29/09–05/10', status:'draft', participation:'Ainda não aberto', hasGuilds:false },
+  { id:2, name:'Desafio de Vetores', scope:'Física I · Vetores', window:'01/10–08/10', status:'open', participation:'18 de 34 alunos participando', hasGuilds:true, guildSummary:'4 guildas formadas', battleEnabled:true },
+  { id:3, name:'Maratona de Cinemática', scope:'Física II', window:'10/09–17/09', status:'closed', participation:'28 de 28 alunos participaram', hasGuilds:true, guildSummary:'5 guildas participaram', highlight:'Marina Corrêa' }
+];
+const ARENA_CRITERIA = [
+  { key:'pontuacao', label:'Pontuação' },
+  { key:'tempo', label:'Tempo de estudo' },
+  { key:'percentual', label:'Percentual concluído' }
+];
+const ARENA_TABLE = [
+  { pos:1, name:'Rafael Antunes', value:'92 pts' },
+  { pos:2, name:'Beatriz Lemos', value:'88 pts' },
+  { pos:3, name:'Caio Bertoldo', value:'81 pts' },
+  { pos:4, name:'Helena Vasques', value:'74 pts' },
+  { pos:5, name:'Marina Corrêa', value:'70 pts' }
+];
+const ARENA_MATCHES = [
+  { a:'Rafael Antunes', aScore:'92', b:'Beatriz Lemos', bScore:'88', aWins:true },
+  { a:'Caio Bertoldo', aScore:'81', b:'Helena Vasques', bScore:'74', aWins:true },
+  { a:'Marina Corrêa', aScore:'70', b:'Guilda Vórtex', bScore:'70', aWins:null }
+];
+const GUILD_RANKING = [
+  { n:1, name:'Guilda Fóton', members:5 },
+  { n:2, name:'Guilda Quark', members:4 },
+  { n:3, name:'Guilda Vórtex', members:6 },
+  { n:4, name:'Guilda Nêutron', members:4 }
+];
+
+const PROFILE_COLORS = {
+  seeker:'#17a398', survivor:'#5c6875', daredevil:'#d7263d', mastermind:'#5b3fd9',
+  conqueror:'#1e4fd6', socializer:'#f4623a', achiever:'#c9a227'
+};
+const PALETTE_COLORS = ['#9b5de5','#4fd1c5','#e0b34d','#e2574c','#5fd99a','#6fb3e0'];
+const ACH_ICONS = [
+  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f4f2f8" stroke-width="2"><path d="M12 2l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 15.3l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"/></svg>',
+  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f4f2f8" stroke-width="2"><path d="M12 2l3.5 7 7.5 1-5.5 5 1.5 7.5L12 18l-6.5 3.5L7 14l-5.5-5 7.5-1z"/></svg>',
+  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f4f2f8" stroke-width="2"><circle cx="12" cy="8" r="5"/><path d="M8 21l4-4 4 4"/><path d="M9 12l3 3 3-3"/></svg>',
+  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f4f2f8" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f4f2f8" stroke-width="2"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg>',
+  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f4f2f8" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg>'
+];
+const METRICS = [
+  { key:'activities', label:'Atividades concluídas', unit:'atividades' },
+  { key:'streak', label:'Dias seguidos de estudo', unit:'dias' },
+  { key:'minutes', label:'Minutos acumulados', unit:'min' },
+  { key:'accuracy', label:'Acertos (%)', unit:'%' },
+  { key:'topics', label:'Tópicos distintos visitados', unit:'tópicos' },
+  { key:'speed', label:'Conclusão rápida', unit:'min (máx.)' }
+];
+const ACHIEVEMENTS = [
+  { id:1, name:'Maratonista de Física', description:'Estudou 5 dias seguidos sem falhar', icon:0, color:'#9b5de5', scope:'Geral', metricKey:'streak', threshold:5, points:20, active:true, hasBeenGranted:true },
+  { id:2, name:'Estrategista de Vetores', description:'90% de acerto nas questões de Vetores', icon:2, color:PROFILE_COLORS.mastermind, scope:'perfil', profile:'Mastermind', metricKey:'accuracy', threshold:90, points:30, active:true, hasBeenGranted:true },
+  { id:3, name:'Exploradora incansável', description:'Visitou todos os tópicos da trilha', icon:1, color:PROFILE_COLORS.seeker, scope:'perfil', profile:'Seeker', metricKey:'topics', threshold:8, points:25, active:true, hasBeenGranted:false },
+  { id:4, name:'Relâmpago da Cinemática', description:'Concluiu o tópico em menos de 30 min', icon:4, color:'#e0b34d', scope:'Geral', metricKey:'speed', threshold:30, points:15, active:false, hasBeenGranted:true }
+];
+
+const NAV_HREFS = {
+  visao: 'Console%20Visao%20Geral%20(Fase%202).dc.html',
+  trilhas: 'Console%20Trilhas%20(Fase%202).dc.html',
+  missoes: 'Console%20Missoes%20(Fase%202).dc.html',
+  notas: 'Console%20Notas%20(Fase%202).dc.html',
+  eventos: 'Console%20Eventos%20(Fase%202).dc.html',
+  rankbatalhas: 'Console%20Rank%20de%20Batalhas%20(Fase%202).dc.html',
+  conquistas: 'Console%20Conquistas%20(Fase%202).dc.html',
+  turmas: 'Console%20Turmas%20(Fase%202).dc.html',
+  personalizacoes: 'Console%20Personalizacoes%20(Fase%202).dc.html',
+  rankings: 'Console%20Rankings%20(Fase%202).dc.html',
+  meusdados: 'Console%20Meus%20Dados%20(Fase%202).dc.html',
+  aprovacoes: 'Console%20Aprovacoes%20(Fase%202).dc.html'
+};
+
+class Component extends DCLogic {
+  state = {
+    escribaOpen: false, showForm: false, guildEnabled: false, guildSize: 4,
+    battleEnabled: false, arenaCriterion: 'pontuacao',
+    openTargetId: null, duringId: null, resultId: null, duringTab: 0,
+    mainTab: 2, achShowForm: false, editingId: null, formIcon: 0, formColor: '#9b5de5', formMetric: 'accuracy', formScope: 'geral', formProfiles: [], perProfileMode: 'same', toggleTargetId: null
+  };
+
+  navIcon(name) {
+    const icons = {
+      visao: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
+      trilhas: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8 7.5C10 10 14 14 16 16.5"/></svg>',
+      missoes: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r="1"/></svg>',
+      notas: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 3h9l4 4v13a1 1 0 01-1 1H6a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M8 12h6M8 16h4"/></svg>',
+      eventos: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18"/><path d="M8 2v4M16 2v4"/></svg>',
+      turmas: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/></svg>',
+      personalizacoes: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/><path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2z"/></svg>',
+      rankings: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 6H4a2 2 0 0 0 2 4"/><path d="M17 6h3a2 2 0 0 1-2 4"/></svg>',
+      conquistas: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 15.3l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"/></svg>',
+      meusdados: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+      notas: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 3h9l4 4v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M9 13l2 2 4-4"/></svg>',
+      rankbatalhas: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M16 16l4 4"/><path d="M19 21l2-2"/><path d="M9.5 6.5L13 3h3v3l-3.5 3.5"/><path d="M5 14l4 4"/><path d="M7 17l-3 3"/></svg>',
+      aprovacoes: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2l8 3v6c0 5-3.5 8.5-8 11-4.5-2.5-8-6-8-11V5l8-3z"/><path d="M9 12l2 2 4-4"/></svg>'
+    };
+    return { __html: icons[name] };
+  }
+
+  renderVals() {
+    const navItems = [
+      { key:'visao', label:'Visão geral', active:false },
+      { key:'trilhas', label:'Trilhas', active:false },
+      { key:'missoes', label:'Missões', active:false },
+      { key:'notas', label:'Notas', active:false },
+      { key:'eventos', label:'Eventos', active:false },
+      { key:'rankbatalhas', label:'Rank de batalhas', active:false },
+      { key:'conquistas', label:'Conquistas', active:true },
+      { key:'turmas', label:'Turmas', active:false },
+      { key:'personalizacoes', label:'Personalizações', active:false },
+      { key:'rankings', label:'Rankings', active:false },
+      { key:'meusdados', label:'Meus dados', active:false },
+      { key:'aprovacoes', label:'Aprovações', active:false }
+    ].map(n => ({
+      label: n.label, iconHtml: this.navIcon(n.key), color: n.active ? '#4fd1c5' : '#a29cb3', href: NAV_HREFS[n.key],
+      style: `display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;white-space:nowrap;${n.active ? 'background:rgba(79,209,197,0.08);font-weight:600;' : ''}`
+    }));
+
+    const statusMeta = {
+      draft: { label:'Rascunho', style:'background:#231d33; color:#a29cb3;' },
+      open: { label:'Aberto', style:'background:rgba(52,199,123,0.16); color:#5fd99a;' },
+      closed: { label:'Encerrado', style:'background:#231d33; color:#a29cb3;' }
+    };
+    const events = EVENTS.map(ev => ({
+      id: ev.id, name: ev.name, scope: ev.scope, window: ev.window,
+      statusLabel: statusMeta[ev.status].label,
+      statusStyle: `padding:4px 11px; border-radius:999px; font-size:10.5px; font-weight:700; white-space:nowrap; ${statusMeta[ev.status].style}`,
+      participation: ev.participation, hasGuilds: !!ev.hasGuilds, guildSummary: ev.guildSummary || '',
+      isClosed: ev.status === 'closed', highlight: ev.highlight || '',
+      detailCta: ev.status === 'draft' ? 'Abrir evento' : (ev.status === 'open' ? 'Ver durante o evento' : 'Ver resultado'),
+      openDetail: () => {
+        if (ev.status === 'draft') this.setState({ openTargetId: ev.id });
+        else if (ev.status === 'open') this.setState({ duringId: ev.id });
+        else this.setState({ resultId: ev.id });
+      }
+    }));
+
+    const openTarget = EVENTS.find(e => e.id === this.state.openTargetId);
+    const duringEv = EVENTS.find(e => e.id === this.state.duringId);
+    const resultEv = EVENTS.find(e => e.id === this.state.resultId);
+
+    const guildSizeOptions = [3,4,5].map(n => ({
+      label: String(n), select: () => this.setState({ guildSize: n }),
+      style: `width:38px; height:38px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:13.5px; font-weight:700; cursor:pointer; ${this.state.guildSize===n ? 'background:#9b5de5; color:#fff;' : 'background:#231d33; border:1px solid #2b2438; color:#c9c4d4;'}`
+    }));
+
+    const btn = (on) => `padding:8px 14px; border-radius:999px; font-size:12px; font-weight:600; cursor:pointer; ${on ? 'background:#9b5de5; color:#fff;' : 'background:#231d33; border:1px solid #2b2438; color:#c9c4d4;'}`;
+    const achievements = ACHIEVEMENTS.map(a => {
+      const metric = METRICS.find(m => m.key === a.metricKey);
+      return {
+        name: a.name, description: a.description,
+        iconHtml: { __html: ACH_ICONS[a.icon] }, iconBg: a.color,
+        scopeLabel: a.scope === 'Geral' ? 'Geral' : a.profile,
+        scopeStyle: `padding:3px 10px; border-radius:999px; font-size:10px; font-weight:700; ${a.scope === 'Geral' ? 'background:#231d33; color:#a29cb3;' : `background:${a.color}25; color:${a.color};`}`,
+        statusLabel: a.active ? 'Ativa' : 'Desativada',
+        statusStyle: `padding:3px 10px; border-radius:999px; font-size:10px; font-weight:700; ${a.active ? 'background:rgba(52,199,123,0.16); color:#5fd99a;' : 'background:#231d33; color:#7a7488;'}`,
+        criterionLabel: `${metric.label} ≥ ${a.threshold}${metric.key==='accuracy' ? '%' : ''}`,
+        points: a.points, rowOpacity: a.active ? 1 : 0.6,
+        toggleLabel: a.active ? 'Desativar' : 'Reativar',
+        toggleBtnStyle: `padding:7px 14px; border-radius:999px; font-size:12px; font-weight:600; cursor:pointer; ${a.active ? 'border:1px solid #7a3a3a; color:#f0847c;' : 'border:1px solid #2f6b4a; color:#5fd99a;'}`,
+        openEdit: () => this.setState({ achShowForm: true, editingId: a.id, formIcon: a.icon, formColor: a.color, formMetric: a.metricKey, formScope: a.scope === 'Geral' ? 'geral' : 'perfil' }),
+        askToggle: () => this.setState({ toggleTargetId: a.id })
+      };
+    });
+    const target = ACHIEVEMENTS.find(a => a.id === this.state.toggleTargetId);
+    const editing = ACHIEVEMENTS.find(a => a.id === this.state.editingId);
+    const curMetric = METRICS.find(m => m.key === this.state.formMetric);
+    const battleEv = EVENTS.find(x => x.status === 'open' && x.battleEnabled);
+    const mainTab = this.state.mainTab;
+
+    return {
+      mainTabs: ['Eventos','Rank de batalhas','Conquistas'].map((l,i) => ({
+        label: l, select: () => this.setState({ mainTab: i }),
+        style: `padding:12px 4px; margin-right:24px; font-size:14px; font-weight:600; cursor:pointer; white-space:nowrap; border-bottom:2px solid ${mainTab===i ? '#9b5de5' : 'transparent'}; color:${mainTab===i ? '#f4f2f8' : '#a29cb3'};`
+      })),
+      isMainTab0: mainTab===0, isMainTab1: mainTab===1, isMainTab2: mainTab===2,
+      hasBattleEvent: !!battleEv, battleEventName: battleEv ? battleEv.name : '',
+      goToEventos: () => { window.location.href = NAV_HREFS.eventos; },
+      achievements, capLabel: `${ACHIEVEMENTS.length} de 20 conquistas desta turma`,
+      achOpenForm: () => this.setState({ achShowForm: true, editingId: null }),
+      achShowForm: this.state.achShowForm,
+      achFormTitle: editing ? 'Editar conquista' : 'Nova conquista',
+      achFormName: editing ? editing.name : 'Ex.: Maratonista de Física',
+      achFormDescription: editing ? editing.description : 'Ex.: descreva o que o aluno precisa fazer',
+      achFormPoints: editing ? editing.points : 20,
+      achCloseForm: () => this.setState({ achShowForm: false, editingId: null, formProfiles: [] }),
+      achSaveForm: () => this.setState({ achShowForm: false, editingId: null, formProfiles: [] }),
+      achShowCriterionWarning: !!(editing && editing.hasBeenGranted),
+      achIconOptions: ACH_ICONS.map((ic,i) => ({
+        iconHtml: { __html: ic }, select: () => this.setState({ formIcon: i }),
+        style: `width:38px; height:38px; border-radius:12px; display:flex; align-items:center; justify-content:center; cursor:pointer; ${this.state.formIcon===i ? 'background:#9b5de5;' : 'background:#231d33; border:1px solid #2b2438;'}`
+      })),
+      achColorOptions: PALETTE_COLORS.map(col => ({
+        select: () => this.setState({ formColor: col }),
+        style: `width:28px; height:28px; border-radius:50%; background:${col}; cursor:pointer; ${this.state.formColor===col ? 'outline:2px solid #fff; outline-offset:2px;' : ''}`
+      })),
+      achIsScopeProfile: this.state.formScope === 'perfil',
+      achProfileColorPreview: this.state.formProfiles.length ? PROFILE_COLORS[this.state.formProfiles[0]] : '#5c5468',
+      achMetricOptions: METRICS.map(m => ({ label: m.label, select: () => this.setState({ formMetric: m.key }), style: btn(this.state.formMetric===m.key) })),
+      achThresholdLabel: `Limiar (${curMetric.unit})`, achThresholdValue: editing ? editing.threshold : 5,
+      achScopeOptions: [{ key:'geral', label:'Geral' }, { key:'perfil', label:'Por perfil' }].map(s => ({ label: s.label, select: () => this.setState({ formScope: s.key }), style: btn(this.state.formScope===s.key) })),
+      achProfileOptions: Object.keys(PROFILE_COLORS).map(k => ({
+        label: k[0].toUpperCase()+k.slice(1),
+        select: () => this.setState(s => ({ formProfiles: s.formProfiles.includes(k) ? s.formProfiles.filter(x=>x!==k) : [...s.formProfiles, k] })),
+        style: `padding:8px 14px; border-radius:999px; font-size:12px; font-weight:600; cursor:pointer; ${this.state.formProfiles.includes(k) ? `background:${PROFILE_COLORS[k]}; color:#fff;` : 'background:#231d33; border:1px solid #2b2438; color:#c9c4d4;'}`
+      })),
+      achMultipleProfilesSelected: this.state.formProfiles.length > 1,
+      achPerProfileThresholdOptions: [{ key:'same', label:'Mesmo limiar para todos' }, { key:'each', label:'Configurar um por um' }].map(p => ({ label: p.label, select: () => this.setState({ perProfileMode: p.key }), style: btn(this.state.perProfileMode===p.key) })),
+      achShowToggleConfirm: !!target,
+      achToggleBorder: target && target.active ? '#7a3a3a' : '#9b5de5',
+      achToggleModalTitle: target && target.active ? 'Desativar conquista' : 'Reativar conquista',
+      achToggleModalQuestion: target ? `${target.active ? 'Desativar' : 'Reativar'} "${target.name}"?` : '',
+      achToggleModalBody: target && target.active ? 'Quem já ganhou esta conquista continua com ela na biblioteca. Ela só deixa de ser avaliada para novos alunos.' : 'A conquista volta a ser avaliada para novos alunos a partir de agora.',
+      achCancelToggle: () => this.setState({ toggleTargetId: null }),
+      achConfirmToggle: () => this.setState({ toggleTargetId: null }),
+      achConfirmToggleStyle: `margin-left:auto; padding:11px 22px; border-radius:999px; font-size:13.5px; font-weight:700; color:#fff; cursor:pointer; ${target && target.active ? 'background:#e2574c;' : 'background:#9b5de5;'}`,
+      achConfirmToggleLabel: target && target.active ? 'Desativar' : 'Reativar',
+      navItems, events, guildRanking: GUILD_RANKING,
+      showForm: this.state.showForm,
+      openForm: () => this.setState({ showForm: true }),
+      closeForm: () => this.setState({ showForm: false }),
+      saveForm: () => this.setState({ showForm: false }),
+      guildEnabled: this.state.guildEnabled,
+      guildToggleLabel: this.state.guildEnabled ? '✓ Em guilda (habilitada)' : 'Em guilda (opcional)',
+      guildToggleStyle: `padding:9px 15px; border-radius:999px; font-size:12.5px; font-weight:600; cursor:pointer; ${this.state.guildEnabled ? 'background:#9b5de5; color:#fff;' : 'background:#231d33; border:1px solid #2b2438; color:#c9c4d4;'}`,
+      toggleGuild: () => this.setState(s => ({ guildEnabled: !s.guildEnabled })),
+      guildSizeOptions,
+      battleEnabled: this.state.battleEnabled,
+      battleToggleLabel: this.state.battleEnabled ? '✓ Arena de batalhas (habilitada)' : 'Habilitar arena de batalhas',
+      battleToggleStyle: `padding:9px 15px; border-radius:999px; font-size:12.5px; font-weight:600; cursor:pointer; ${this.state.battleEnabled ? 'background:#9b5de5; color:#fff;' : 'background:#231d33; border:1px solid #2b2438; color:#c9c4d4;'}`,
+      toggleBattle: () => this.setState(s => ({ battleEnabled: !s.battleEnabled })),
+      showOpenConfirm: !!openTarget, openTargetName: openTarget ? openTarget.name : '',
+      cancelOpen: () => this.setState({ openTargetId: null }),
+      confirmOpen: () => this.setState({ openTargetId: null }),
+      showDuring: !!duringEv, duringName: duringEv ? duringEv.name + ' · ' + duringEv.scope : '',
+      closeDuring: () => this.setState({ duringId: null, duringTab: 0 }),
+      duringHasBattle: !!(duringEv && duringEv.battleEnabled),
+      duringTabs: ['Painel', 'Arena de batalhas'].map((l,i) => ({
+        label: l, select: () => this.setState({ duringTab: i }),
+        style: `padding:10px 4px; margin-right:20px; font-size:13px; font-weight:600; cursor:pointer; border-bottom:2px solid ${this.state.duringTab===i ? '#9b5de5' : 'transparent'}; color:${this.state.duringTab===i ? '#f4f2f8' : '#a29cb3'};`
+      })),
+      isDuringPanel: !duringEv || !duringEv.battleEnabled || this.state.duringTab === 0,
+      isDuringArena: !!(duringEv && duringEv.battleEnabled && this.state.duringTab === 1),
+      arenaCriteriaOptions: ARENA_CRITERIA.map(c => ({
+        label: c.label, select: () => this.setState({ arenaCriterion: c.key }),
+        style: `padding:8px 14px; border-radius:999px; font-size:12px; font-weight:600; cursor:pointer; ${this.state.arenaCriterion===c.key ? 'background:#9b5de5; color:#fff;' : 'background:#231d33; border:1px solid #2b2438; color:#c9c4d4;'}`
+      })),
+      arenaCriterionLabel: ARENA_CRITERIA.find(c => c.key === this.state.arenaCriterion).label,
+      arenaEnrolled: 12,
+      arenaPodium: [
+        { initials:'BL', name:'Beatriz Lemos', color:'#c9c4d4', value:'88', barStyle:'height:44px;' },
+        { initials:'RA', name:'Rafael Antunes', color:'#e0b34d', value:'92', barStyle:'height:58px;' },
+        { initials:'CB', name:'Caio Bertoldo', color:'#9c6b4f', value:'81', barStyle:'height:34px;' }
+      ],
+      arenaTable: ARENA_TABLE,
+      arenaMatches: ARENA_MATCHES.map(m => ({
+        a: m.a, aScore: m.aScore, b: m.b, bScore: m.bScore,
+        aColor: m.aWins === true ? '#5fd99a' : (m.aWins === false ? '#a29cb3' : '#f4f2f8'),
+        bColor: m.aWins === false ? '#5fd99a' : (m.aWins === true ? '#a29cb3' : '#f4f2f8'),
+        aWeight: m.aWins === true ? 700 : 500, bWeight: m.aWins === false ? 700 : 500
+      })),
+      showResult: !!resultEv, resultName: resultEv ? resultEv.name + ' · ' + resultEv.scope : '',
+      closeResult: () => this.setState({ resultId: null }),
+      escribaOpen: this.state.escribaOpen,
+      toggleEscriba: () => this.setState(s => ({ escribaOpen: !s.escribaOpen }))
+    };
+  }
+}
+
+</script>
+</body>
+</html>
