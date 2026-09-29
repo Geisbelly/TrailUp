@@ -1,4 +1,5 @@
 import type { BrainHexProfileKey } from "@/features/signup/brainhex";
+import { contraste } from "./contraste";
 
 // Espelho de microservice/src/constants/brainHex.ts (fonte oficial, ver
 // CLAUDE.md) — mudou lá, muda aqui. `marca` é a cor oficial, para
@@ -71,6 +72,18 @@ export function chaveDoPerfil(nome: string | null | undefined): BrainHexProfileK
     .toLowerCase()
     .split(/[\s(]/)[0];
   return APELIDOS[limpo] ?? null;
+}
+
+const ICONE_CLARO = "#ffffff";
+const ICONE_ESCURO = "#0d0b16";
+
+/**
+ * Ícone sobre a marca sólida: branco ou escuro, o que contrastar mais. Serve
+ * para ícone (gráfico, limite 3:1), não para texto — em 5 dos 7 perfis nenhuma
+ * das duas chega aos 7:1 de texto AAA.
+ */
+export function corDoIconeSobre(marca: string): string {
+  return contraste(ICONE_CLARO, marca) >= contraste(ICONE_ESCURO, marca) ? ICONE_CLARO : ICONE_ESCURO;
 }
 
 export function iniciaisDe(nome: string): string {

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { chaveDoPerfil, COR_DO_PERFIL, iniciaisDe, OPACIDADE_FUNDO_PERFIL, PERFIS_EM_ORDEM } from "./perfilCores";
+import { chaveDoPerfil, COR_DO_PERFIL, corDoIconeSobre, iniciaisDe, OPACIDADE_FUNDO_PERFIL, PERFIS_EM_ORDEM } from "./perfilCores";
 import { contraste, misturar } from "./contraste";
 
 const SUPERFICIES = { pagina: "#0d0b16", card: "#1b1728", interna: "#231d33" };
@@ -24,6 +24,18 @@ describe("COR_DO_PERFIL", () => {
     for (const fundo of [...Object.values(SUPERFICIES), fundoDoChip]) {
       expect(contraste(texto, fundo)).toBeGreaterThanOrEqual(7);
     }
+  });
+});
+
+describe("corDoIconeSobre", () => {
+  it.each(PERFIS_EM_ORDEM)("ícone sobre a marca de %s passa com folga do limite de 3:1 de gráfico", (perfil) => {
+    const marca = COR_DO_PERFIL[perfil].marca;
+    expect(contraste(corDoIconeSobre(marca), marca)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("escolhe o lado que contrasta mais", () => {
+    expect(corDoIconeSobre("#4e5a66")).toBe("#ffffff");
+    expect(corDoIconeSobre("#c9a227")).toBe("#0d0b16");
   });
 });
 

@@ -46,6 +46,18 @@ export function DashboardVazio({ semTurmas }: { semTurmas: boolean }) {
   );
 }
 
+export function AlunoNaoEncontrado({ onVoltar }: { onVoltar: () => void }) {
+  return (
+    <div className="flex flex-col items-center gap-4 rounded-[20px] border border-border bg-card px-10 py-16 text-center">
+      <h2 className="text-2xl text-foreground">Aluno não encontrado</h2>
+      <p className="max-w-[480px] text-[15px] leading-relaxed text-muted-foreground">
+        Este aluno não está em nenhuma das suas turmas, ou o link está incompleto.
+      </p>
+      <Button onClick={onVoltar}>Voltar para as turmas</Button>
+    </div>
+  );
+}
+
 export function DashboardErro({ detalhe, onTentarNovamente }: { detalhe: string; onTentarNovamente: () => void }) {
   return (
     <div
