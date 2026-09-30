@@ -10,6 +10,7 @@ import trophy from "@/assets/design/object-trophy.png";
 import community from "@/assets/design/object-community.png";
 import compass from "@/assets/design/object-compass.png";
 import chest from "@/assets/design/object-chest.png";
+import consoleScenery from "@/assets/design/console-forest-crystal.webp";
 import seekerWorld from "@/assets/design/world-seeker.webp";
 import survivorWorld from "@/assets/design/world-survivor.webp";
 import daredevilWorld from "@/assets/design/world-daredevil.webp";
@@ -40,7 +41,7 @@ import socializerScene from "@/assets/design/guide-world-socializer.webp";
 import achieverScene from "@/assets/design/guide-world-achiever.webp";
 
 // Optimized copies of the user's Downloads/Design artwork, also used in mobile.
-export const DESIGN_ART = { star, landscape, trail, dawn, forest, lanterns, map, book, trophy, community, compass, chest };
+export const DESIGN_ART = { star, landscape, trail, dawn, forest, lanterns, map, book, trophy, community, compass, chest, consoleScenery };
 
 type GuideGrounding = {
   width: number;

@@ -1,0 +1,64 @@
+/* Tema do console do professor (redesign Fase 2, protótipo V9).
+   Fica em escopo: .console-shell cobre a moldura e as seções, e
+   html[data-console-theme] (ligado pelo ConsoleShell enquanto está montado)
+   cobre o que o Radix renderiza em portal no <body> — Dialog, Select,
+   Popover —, que ficaria fora de .console-shell. Páginas públicas e o app do
+   aluno não recebem nada disto.
+
+   Todo token de texto passa de 7:1 (AAA) contra as cinco superfícies do
+   console (página, barra lateral, topo, card, superfície interna). Onde a cor
+   do protótipo não passava, a luminosidade HSL foi elevada mantendo matiz e
+   saturação — nunca misturada com branco (CLAUDE.md). É por isso que
+   --primary é mais claro que o #9b5de5 do protótipo: nenhuma cor de texto
+   chega a 7:1 sobre aquele violeta, então o violeta original fica em
+   --console-violet, só para preenchimento sem texto (barras, marcas). */
+.console-shell,
+:root[data-console-theme] {
+  --background: 251 33% 6%;
+  --foreground: 260 30% 96%;
+  --card: 254 27% 12%;
+  --card-foreground: 260 30% 96%;
+  --popover: 254 27% 12%;
+  --popover-foreground: 260 30% 96%;
+  --primary: 267 72% 77%;
+  --primary-foreground: 251 33% 6%;
+  --primary-light: 263 64% 79%;
+  --primary-dark: 267 72% 63%;
+  --secondary: 256 28% 16%;
+  --secondary-foreground: 260 30% 96%;
+  --muted: 256 28% 16%;
+  --muted-foreground: 256 13% 70%;
+  --accent: 174 59% 56%;
+  --accent-foreground: 251 33% 6%;
+  --destructive: 4 79% 75%;
+  --destructive-foreground: 251 33% 6%;
+  /* Borda de card é decorativa e pode ser discreta como no protótipo; a de
+     campo de formulário precisa de 3:1 contra o card (WCAG 1.4.11). */
+  --border: 261 22% 18%;
+  --input: 261 22% 49%;
+  --ring: 174 59% 56%;
+  /* rounded-lg = 20px (cards, modais); rounded-md = 18px, que num controle de
+     40px de altura (botão, input, select, trilho de abas) fica em pílula. */
+  --radius: 20px;
+  --success: 149 62% 61%;
+  --warning: 42 70% 59%;
+  --info: 204 65% 66%;
+
+  --glow-primary: 267 72% 63%;
+  --glow-secondary: 174 59% 56%;
+  --badge-bg: 256 28% 16%;
+  --badge-border: 267 72% 77%;
+
+  --console-sidebar: 265 44% 10%;
+  --console-topbar: 269 30% 14%;
+  --console-violet: 267 72% 63%;
+  --console-violet-text: 263 64% 79%;
+  --console-bronze: 22 33% 46%;
+  --console-bronze-light: 33 53% 55%;
+  --console-bronze-text: 26 54% 67%;
+}
+
+.console-shell :is(h1, h2, h3, h4),
+:root[data-console-theme] :is(h1, h2, h3, h4) {
+  font-weight: 700;
+}

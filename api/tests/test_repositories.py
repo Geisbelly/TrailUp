@@ -940,6 +940,68 @@ async def test_resolver_ids_por_tipo_recente_ignora_linhas_ja_vinculadas_a_outra
 
 
 @pytest.mark.asyncio
+async def test_resolver_id_por_generation_mira_a_linha_da_geracao() -> None:
+    # Continuacao da regressao acima, pelo caminho PRINCIPAL. O filtro de
+    # orfaos protege so o fallback: quando a personalizacao ja tem linhas,
+    # `_processar_job_midias` usa `listar_por_personalizacao`, que e
+    # DISTINCT ON (tipo) -- "a linha mais recente deste tipo". Como a tabela
+    # guarda UMA LINHA POR GERACAO (indice unico (personalizacao_id, tipo,
+    # generation_key); ha personalizacao com 3 linhas do mesmo tipo em
+    # producao), gravar nela o metadata de outra geracao recalculava a coluna
+    # gerada e colidia com a linha dona daquela chave -- UniqueViolationError
+    # derrubando o target (28/09/2026, audio do perfil seeker).
+    session = RecordingSession([MappingResult([{"id": 4242}])])
+    repo = MateriaisRepository(session)
+
+    material_id = await repo.resolver_id_por_generation(
+        personalizacao_id=3680,
+        tipo="audio",
+        generation_key="40f73db22b379c8e",
+    )
+
+    assert material_id == 4242
+    sql, params = session.calls[-1]
+    assert "generation_key = :generation_key" in sql
+    assert params["personalizacao_id"] == 3680
+    assert params["tipo"] == "audio"
+    assert params["generation_key"] == "40f73db22b379c8e"
+
+
+@pytest.mark.asyncio
+async def test_resolver_id_por_generation_sem_linha_devolve_none() -> None:
+    # Geracao ainda sem linha: devolver None e o comportamento correto, porque
+    # o chamador pula o patch. Devolver "a linha mais parecida" e exatamente o
+    # que causava a colisao.
+    session = RecordingSession([MappingResult([])])
+    repo = MateriaisRepository(session)
+
+    assert (
+        await repo.resolver_id_por_generation(
+            personalizacao_id=3680,
+            tipo="audio",
+            generation_key="geracao-que-ainda-nao-existe",
+        )
+        is None
+    )
+
+
+@pytest.mark.asyncio
+async def test_resolver_id_por_generation_ignora_chave_vazia() -> None:
+    # Sem generation_key nao ha como mirar a linha certa; consultar com string
+    # vazia casaria com qualquer coisa. Nao consulta o banco.
+    session = RecordingSession([])
+    repo = MateriaisRepository(session)
+
+    assert (
+        await repo.resolver_id_por_generation(
+            personalizacao_id=3680, tipo="audio", generation_key="   "
+        )
+        is None
+    )
+    assert session.calls == []
+
+
+@pytest.mark.asyncio
 async def test_materiais_repository_builds_public_url_from_storage_path() -> None:
     session = RecordingSession(
         [
