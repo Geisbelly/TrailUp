@@ -18,6 +18,7 @@ Documentação que não pertence a um único serviço:
 - **[`tcc/`](./tcc/)** — documento do TCC (versão única).
 - **[`ecossistema/`](./ecossistema/)** — fluxo completo do ecossistema, com a
   versão detalhada e as perspectivas resumidas por serviço.
+- **[Política de conjuntos sensíveis](./rag/politica-conjuntos-sensiveis.md)** — o que pode e o que é vedado com dado sensível de terceiros (#74).
 
 ## Índice por projeto
 
