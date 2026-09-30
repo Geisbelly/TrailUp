@@ -61,29 +61,30 @@
 .download-identity { display: flex; justify-content: center; margin-bottom: 20px; }
 .download-identity img { width: 80px; height: 80px; object-fit: contain; }
 
-.console-shell { position: relative; isolation: isolate; display: grid; grid-template-columns: 212px minmax(0, 1fr); grid-template-rows: 68px minmax(0, 1fr); height: 100dvh; min-height: 0; overflow: hidden; background: hsl(var(--background)); }
-.console-scenery { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; opacity: .12; pointer-events: none; }
-.console-topbar { grid-column: 1 / -1; display: flex; align-items: center; gap: 28px; padding: 12px 24px; background: hsl(var(--card)); border-bottom: 1px solid hsl(var(--border)); min-width: 0; }
-.console-topbar .journey-brand { font-size: 24px; }
-.console-topbar .journey-brand img { width: 38px; height: 38px; }
-.console-workspace-name { color: hsl(var(--muted-foreground)); font-size: 12px; }
-.console-account { margin-left: auto; display: flex; align-items: center; gap: 10px; min-width: 0; }
-.console-account-copy { display: grid; gap: 2px; max-width: 260px; min-width: 0; }
-.console-account-copy strong { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.console-account-copy span { color: hsl(var(--muted-foreground)); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.console-icon-button { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 6px; flex: none; color: hsl(var(--muted-foreground)); }
+.console-shell { position: relative; isolation: isolate; display: grid; grid-template-columns: 264px minmax(0, 1fr); grid-template-rows: 68px minmax(0, 1fr); height: 100dvh; min-height: 0; overflow: hidden; background: hsl(var(--background)); }
+.console-scenery { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; object-position: center 30%; opacity: .34; pointer-events: none; }
+.console-shell::after { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(180deg, hsl(var(--background) / .55), hsl(var(--background) / .88)), radial-gradient(ellipse 900px 500px at 75% 10%, hsl(var(--console-violet) / .10), transparent 60%); }
+.console-topbar { grid-column: 1 / -1; display: flex; align-items: center; gap: 14px; padding: 0 32px; background: hsl(var(--console-topbar)); border-bottom: 1px solid hsl(var(--border)); min-width: 0; }
+.console-topbar .journey-brand { font-family: "Cinzel", Georgia, serif; font-size: 22px; font-weight: 700; color: hsl(var(--foreground)); gap: 14px; }
+.console-topbar .journey-brand img { width: 30px; height: 30px; }
+.console-topbar-divider { width: 1px; height: 20px; margin-inline: 6px; flex: none; background: hsl(var(--border)); }
+.console-workspace-name { color: hsl(var(--muted-foreground)); font-size: 14px; }
+.console-account { margin-left: auto; display: flex; align-items: center; gap: 14px; min-width: 0; }
+.console-account-copy { display: grid; gap: 2px; max-width: 260px; min-width: 0; line-height: 1.3; }
+.console-account-copy strong { font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.console-account-copy span { color: hsl(var(--muted-foreground)); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.console-icon-button { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 999px; flex: none; color: hsl(var(--muted-foreground)); }
 .console-icon-button:hover { color: hsl(var(--foreground)); background: hsl(var(--muted)); }
-.console-navigation { padding: 20px 12px; display: flex; flex-direction: column; gap: 6px; border-right: 1px solid hsl(var(--border)); background: hsl(var(--background) / .85); overflow-y: auto; }
-.console-navigation a { display: flex; align-items: center; gap: 12px; padding: 13px 14px; border-radius: 6px; border: 1px solid transparent; color: hsl(var(--muted-foreground)); font-size: 13px; }
+.console-navigation { padding: 20px 16px; display: flex; flex-direction: column; gap: 2px; border-right: 1px solid hsl(var(--border)); background: hsl(var(--console-sidebar)); overflow-y: auto; }
+.console-navigation a { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 12px; color: hsl(var(--muted-foreground)); font-size: 14.5px; white-space: nowrap; }
 .console-navigation a svg { flex: none; }
 .console-navigation a:hover { color: hsl(var(--foreground)); background: hsl(var(--muted) / .6); }
-.console-navigation a[aria-current="page"] { color: hsl(var(--foreground)); background: hsl(var(--primary) / .13); border-color: hsl(var(--primary) / .3); }
+.console-navigation a[aria-current="page"] { color: hsl(var(--accent)); background: hsl(var(--accent) / .08); font-weight: 600; }
 .console-navigation a[aria-current="page"] svg { color: hsl(var(--accent)); }
 .console-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
 .console-section-content, .console-trail-content { padding: 24px; min-width: 0; }
 .console-trail-content { padding-bottom: 12px; }
 .console-filters > div, .console-filters [role="combobox"] { max-width: 100%; }
-.console-shell :is(h1, h2, h3, h4), .console-editor :is(h1, h2, h3, h4) { font-family: Inter, ui-sans-serif, sans-serif; letter-spacing: 0; }
 .console-shell :is(button, a):focus-visible { outline: 2px solid hsl(var(--accent)); outline-offset: 3px; }
 .console-editor { height: 100dvh; }
 .console-editor-header { flex-wrap: wrap; gap: 16px; }
@@ -96,7 +97,7 @@
   .public-posts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .console-shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: 64px auto minmax(0, 1fr); }
   .console-topbar { padding: 10px 16px; gap: 16px; }
-  .console-workspace-name { display: none; }
+  .console-workspace-name, .console-topbar-divider { display: none; }
   .console-navigation { flex-direction: row; gap: 4px; padding: 8px 12px; overflow-x: auto; border-right: 0; border-bottom: 1px solid hsl(var(--border)); }
   .console-navigation a { flex: none; padding: 11px 12px; gap: 8px; font-size: 12px; }
   .console-editor-layout { overflow-y: auto; flex-direction: column; }
