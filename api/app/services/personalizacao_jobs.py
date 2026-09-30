@@ -1399,6 +1399,25 @@ async def _process_media_render_target(
             if not isinstance(mat, dict):
                 continue
             mat_id = existing_ids.get(fmt)
+            # `existing_ids` vem de listar_por_personalizacao, que e DISTINCT ON
+            # (tipo): "a linha mais recente deste tipo". Quando o material novo
+            # declara a sua geracao, a linha certa e a DAQUELA geracao -- gravar
+            # o metadata dela na linha de outra geracao recalcula a coluna
+            # gerada `generation_key` e estoura
+            # uq_materiais_gerados_personalizacao_tipo_generation, derrubando o
+            # target inteiro (visto em producao em 23/09 e 28/09).
+            geracao_nova = None
+            if isinstance(mat.get("metadata"), dict):
+                bruto = mat["metadata"].get("generation_key")
+                geracao_nova = str(bruto).strip() if bruto else None
+            if geracao_nova:
+                # None aqui significa "esta geracao ainda nao tem linha": pular
+                # o patch e melhor do que sequestrar a linha de outra geracao.
+                mat_id = await materiais_repo.resolver_id_por_generation(
+                    personalizacao_id=personalizacao_id,
+                    tipo=fmt,
+                    generation_key=geracao_nova,
+                )
             if mat_id:
                 await materiais_repo.patch_materiais_media(
                     material_id=int(mat_id),
