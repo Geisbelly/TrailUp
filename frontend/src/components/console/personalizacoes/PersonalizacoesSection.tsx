@@ -39,6 +39,7 @@ import {
   statusGeracaoDoPerfil,
   temGeracaoAtiva,
 } from "./generationStatus";
+import { descreverErroDatado } from "./erroDatado";
 
 type ClasseRow = { id: number; descricao: string | null };
 type TopicoRow = { id: number; classe_id: number; nome: string | null; ordem: number | null };
@@ -1133,6 +1134,7 @@ function PerfilMaterialCard({
   const etapaLabel =
     String(geracao?.etapa_label || geracao?.label || "").trim() ||
     statusBadge.label;
+  const erroDatado = descreverErroDatado(geracao?.erro, geracao?.updated_at);
 
   return (
     <Card className="overflow-hidden" aria-label={`Geração para o perfil ${item.perfil_label}`}>
@@ -1194,9 +1196,9 @@ function PerfilMaterialCard({
                 {blocosPreparados} de {blocosTotal} blocos preparados
               </p>
             )}
-            {geracao.erro && (
+            {erroDatado && (
               <p className="text-xs text-destructive" role="alert">
-                {geracao.erro}
+                {erroDatado}
               </p>
             )}
           </div>
