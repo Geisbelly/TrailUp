@@ -604,6 +604,77 @@ class RandomForestAttentionAnalyzer:
         )
 
 
+class M2GatedDecisionEngine:
+    """Regras atuais + gate M2 (issue #215).
+
+    O M2 decide QUANDO vale a pena chamar a LLM: `p_gate` alto mantém o
+    caminho de reforço (que aciona `gerar_materiais`/conteúdo adaptado);
+    `p_gate` baixo pula para `manter_fluxo_atual` sem recomendar geração.
+    Sem M2 disponível (`origem="regra"`), o comportamento é idêntico ao
+    `XGBoostDecisionEngine`.
+
+    `p_gate`/`p_dominio` entram no `resumo` para auditoria
+    (`ia_decision_logs`); o mobile consome o efeito via `acoes_aplicadas`
+    e `materiais_gerados`, nunca as probabilidades.
+    """
+
+    provider_name = "m2gated"
+    # Gate por ranking até recalibrar diff/global em dado próprio: abaixo
+    # disso o aluno quase certamente não trava — pular a LLM é seguro.
+    # Limiar absoluto (.45 etc.) fica bloqueado (m2_calibrated=false).
+    GATE_SKIP_BELOW = 0.15
+
+    async def decide(
+        self,
+        *,
+        attention: AttentionStageResult,
+        performance: PerformanceStageResult,
+        m2_gate: float | None = None,
+        m2_dominio: float | None = None,
+        m2_origem: str = "regra",
+    ) -> DecisionStageResult:
+        acoes: list[str] = []
+        modo_sugerido: str | None = None
+
+        if attention.frustracao == "alta" or performance.dominio_estimado < 0.45:
+            acoes.extend(["simplificar_conteudo", "mostrar_exemplos"])
+            modo_sugerido = "reforco"
+        if attention.estado_atencao == "baixa":
+            acoes.extend(["reduzir_ruido_visual", "sugerir_pausa_curta"])
+        if attention.engajamento == "alto" and performance.dominio_estimado > 0.78:
+            acoes.append("aumentar_dificuldade")
+            modo_sugerido = modo_sugerido or "desafio"
+        # Gate M2: só pula a geração quando o modelo diz — com confiança —
+        # que o aluno NÃO vai travar. Qualquer outro caso mantém as regras.
+        m2_skipped = False
+        if m2_gate is not None and m2_gate < self.GATE_SKIP_BELOW and modo_sugerido == "reforco":
+            acoes = ["manter_fluxo_atual"]
+            modo_sugerido = "imediato"
+            m2_skipped = True
+        if not acoes:
+            acoes.append("manter_fluxo_atual")
+            modo_sugerido = "imediato"
+
+        resumo: dict[str, Any] = {
+            "estado_atencao": attention.estado_atencao,
+            "dificuldade": attention.dificuldade,
+            "dominio_estimado": performance.dominio_estimado,
+            "m2_origem": m2_origem,
+            "m2_skipped": m2_skipped,
+        }
+        if m2_gate is not None:
+            resumo["m2_gate"] = round(m2_gate, 4)
+        if m2_dominio is not None:
+            resumo["m2_dominio"] = round(m2_dominio, 4)
+
+        return DecisionStageResult(
+            provider_name=self.provider_name,
+            acoes=_dedupe_preserve_order(acoes),
+            modo_sugerido=modo_sugerido,
+            resumo=resumo,
+        )
+
+
 class XGBoostDecisionEngine:
     provider_name = "xgboost"
 
@@ -693,9 +764,23 @@ class LinearAnalysisOrchestrator:
             performance=performance,
             telemetry_payload=telemetry_payload,
         )
+        m2_gate: float | None = None
+        m2_dominio: float | None = None
+        m2_origem = "regra"
+        decide_kwargs: dict[str, Any] = {}
+        if isinstance(self.decision_engine, M2GatedDecisionEngine):
+            from app.services.m2_inference import get_m2_inference
+
+            inference = get_m2_inference()
+            overrides = state.get("m2_overrides") or {}
+            m2_dominio, origem_dom = inference.score_dominio(overrides)
+            m2_gate, origem_gate = inference.score_gate(overrides)
+            m2_origem = origem_gate if origem_gate == origem_dom else f"{origem_dom}/{origem_gate}"
+            decide_kwargs = {"m2_gate": m2_gate, "m2_dominio": m2_dominio, "m2_origem": m2_origem}
         decision = await self.decision_engine.decide(
             attention=attention,
             performance=performance,
+            **decide_kwargs,  # type: ignore[arg-type]
         )
 
         state["emocao_atual"] = emotion.as_schema()
@@ -776,6 +861,7 @@ def build_linear_analysis_orchestrator(settings: Settings) -> LinearAnalysisOrch
     }
     decision_factory = {
         "xgboost": XGBoostDecisionEngine,
+        "m2gated": M2GatedDecisionEngine,
     }
 
     return LinearAnalysisOrchestrator(
