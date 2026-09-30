@@ -18,6 +18,9 @@ Documentação que não pertence a um único serviço:
 - **[`tcc/`](./tcc/)** — documento do TCC (versão única).
 - **[`ecossistema/`](./ecossistema/)** — fluxo completo do ecossistema, com a
   versão detalhada e as perspectivas resumidas por serviço.
+- **[Inventário de fontes do RAG](./rag/inventario-fontes.md)** — proveniência,
+  licença e elegibilidade das fontes candidatas à indexação.
+- **[Triagem corpus × pesquisa](./rag/triagem-corpus.md)** — o que vai ao índice, o que fica fora e a reconciliação #63 × #165.
 
 ## Índice por projeto
 
