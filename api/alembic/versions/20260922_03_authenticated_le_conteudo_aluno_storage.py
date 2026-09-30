@@ -23,13 +23,17 @@ true`) e o path nao carrega aluno_id (base por perfil tambem vive aqui),
 entao nao ha uma chave de posse pra restringir por linha sem quebrar o
 caso de uso.
 
-Revision ID termina em "b" de proposito: outro PR aberto em paralelo
-(fix/merge-materiais-confere-storage-antes-de-completar, #227) ja usa
-"20260922_03" como proximo revision id a partir do mesmo 20260922_02.
-Quem mesclar o segundo dos dois precisa renumerar/rebasear esta cadeia
-para o outro virar down_revision desta (ou vice-versa) antes do merge --
-sem isso o teste test_alembic_tem_uma_unica_cabeca_e_cadeia_continua
-acusa duas cabecas.
+Revision ID termina em "b" de proposito: o PR paralelo
+(fix/merge-materiais-confere-storage-antes-de-completar, #227) ja usava
+"20260922_03" a partir do mesmo 20260922_02. O rebase que aquele aviso
+pedia NAO foi feito no merge: os dois entraram na main como irmaos, e a
+"20260922_06" tambem, deixando TRES cabecas e quebrando o
+test_alembic_tem_uma_unica_cabeca_e_cadeia_continua em todo PR seguinte.
+O down_revision foi corrigido depois, aqui: esta revisao desce da
+"20260922_03", e a "20260922_06" desce desta. A ordem entre as tres e'
+indiferente - uma policy de Storage, uma funcao SQL de merge e uma
+reescrita de URL nao se tocam -- e as tres sao idempotentes, entao
+linearizar nao muda o que cada banco ja tem.
 
 CREATE POLICY guardado por IF NOT EXISTS via pg_policies: a mesma policy
 ja foi aplicada direto em producao (fora do fluxo de migration, pra

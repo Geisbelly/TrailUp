@@ -398,6 +398,60 @@ class MateriaisRepository:
             resolved[tipo] = int(material_id)
         return resolved
 
+    async def resolver_id_por_generation(
+        self,
+        *,
+        personalizacao_id: int,
+        tipo: str,
+        generation_key: str,
+    ) -> int | None:
+        """Id da linha de (personalizacao, tipo, generation_key) -- a chave real.
+
+        `listar_por_personalizacao` devolve DISTINCT ON (tipo): UMA linha por
+        tipo, a mais recente. Mas a tabela guarda uma linha POR GERACAO -- o
+        indice unico e (personalizacao_id, tipo, generation_key), e ha
+        personalizacao com 3 linhas do mesmo tipo em producao. Pegar "a mais
+        recente do tipo" e gravar nela o metadata de OUTRA geracao recalcula a
+        coluna gerada `generation_key` (derivada de metadata->>'generation_key')
+        e colide com a linha que ja e dona daquela chave.
+
+        E o mesmo acidente que o filtro de orfaos (`personalizacao_id IS NULL`)
+        ja evita em `resolver_ids_por_tipo_recente` -- mas aquele e o fallback,
+        e nao chega a rodar quando a personalizacao ja tem linhas. Aqui e o
+        caminho principal.
+
+        Devolve None quando aquela geracao ainda nao tem linha: o chamador deve
+        pular o patch em vez de escrever por cima da linha de outra geracao.
+        """
+        if not await self._supports_personalizacao_id():
+            return None
+        if not await self._supports_generation_key():
+            return None
+
+        chave = str(generation_key or "").strip()
+        if not chave:
+            return None
+
+        result = await self.session.execute(
+            text(
+                """
+                SELECT id
+                FROM materiais_gerados
+                WHERE personalizacao_id = :personalizacao_id
+                  AND tipo = :tipo
+                  AND generation_key = :generation_key
+                LIMIT 1
+                """
+            ),
+            {
+                "personalizacao_id": personalizacao_id,
+                "tipo": tipo,
+                "generation_key": chave,
+            },
+        )
+        row = result.mappings().first()
+        return int(row["id"]) if row and row.get("id") is not None else None
+
     async def patch_materiais_media(
         self,
         *,

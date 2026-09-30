@@ -218,7 +218,7 @@ def test_authenticated_le_conteudo_aluno_storage_offline_sql() -> None:
 
     migrations.command.upgrade(
         config,
-        "20260922_03:20260922_03b",
+        "20260922_02:20260922_03b",
         sql=True,
     )
     rendered = output.getvalue()
@@ -613,6 +613,11 @@ def test_reaponta_url_material_para_gateway_renderiza_offline(monkeypatch) -> No
     output = StringIO()
     config = _offline_alembic_config(output)
 
+    # Renderiza SO' a 20260922_06. O intervalo comecava em 20260922_02 porque a
+    # 06 descendia direto dela; quando a cadeia foi linearizada
+    # (02 -> 03 -> 03b -> 06), o mesmo intervalo passou a incluir a 03 - que usa
+    # `LIKE 'storage_object_ausente%%'` legitimamente - e o `" LIKE " not in`
+    # abaixo acusava a migration errada. O alvo do teste sempre foi a 06.
     migrations.command.upgrade(config, "20260922_03b:20260922_06", sql=True)
     rendered = output.getvalue()
 
