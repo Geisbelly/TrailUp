@@ -53,6 +53,36 @@ cinco ações booleanas e o modo (`reforco`, `desafio` ou `imediato`).
 | Manter: sinais moderados, domínio 0,60 | 6/6 | 586 ms | 630 / 132 |
 | **Total** | **24/24** | **344–1.458 ms** | **2.519 / 527** |
 
+**Custo calculado, não faturado:** a documentação oficial lista Jev 1.13 a
+US$ 0,042 por milhão de tokens de entrada e saída gratuita
+([preços e modelos](https://docs.typesafe.ai/models)). Aplicando a tarifa aos
+2.519 tokens de entrada medidos nesta PoC, o custo estimado é
+US$ 0,000105798; os 527 tokens de saída não acrescentam custo. Não é uma fatura
+nem uma medição de produção.
+
+**Comparação operacional:** a regra `XGBoostDecisionEngine` é local e
+determinística (`linear_analysis_pipeline.py:607-640`), sem chamada externa
+nesse passo. A latência dela não foi medida nesta PoC; portanto, não há
+comparação observada de latência/custo entre regra e Jev. A latência 344–1.458
+ms acima é apenas a observação do serviço Jev nos quatro casos sintéticos.
+
+## Estado dos critérios da issue #216
+
+| Critério | Estado e evidência |
+| --- | --- |
+| Inventário de decisões tipadas, custo e latência atuais | **Parcial:** os pontos e recomendações estão listados acima; o custo/latência local não foram medidos. |
+| PoC com estados do TrailUp | **Parcial:** quatro estados sintéticos sem dados pessoais; não são exemplos rotulados ou representativos validados pedagogicamente. |
+| Comparação de acurácia com a regra atual e com M2 onde houver alvo comum | **Parcial:** 24/24 coincidências com a regra que gerou os casos; não é medida de acurácia independente. M2 tem alvos diferentes (domínio e risco de travar), então não há comparação comum nesta PoC. |
+| Latência, custo e calibração no domínio TrailUp | **Parcial:** latência observada e custo calculado acima; calibração/qualidade pedagógica não avaliadas sem conjunto rotulado independente. |
+| Dependência, privacidade de menores e custo de saída | **Analisado qualitativamente** em “Riscos e condições para novo experimento”; não houve envio de dado real nem custo de migração medido. |
+| Recomendação explícita com evidência | **Concluído:** não substituir produção nesta etapa; manter regra local e não usar Jev em decisões sensíveis. |
+| Sem alteração de produção | **Concluído:** avaliação e recomendação documentais, sem integração de Jev no runtime. |
+
+Assim, este documento fecha a **avaliação exploratória e a decisão de não
+substituir**; não afirma que a PoC prove acurácia, calibração ou benefício no
+domínio TrailUp. Os critérios quantitativos em aberto exigem conjunto rotulado
+independente e medição da regra atual antes de uma decisão de promoção.
+
 O modelo retornado foi `jev-1.13.0`. A confiança do `Choice` de modo foi 1,0
 nos quatro casos, mas isso **não** valida a calibração: os casos foram
 construídos a partir da própria regra comparada. Não há exemplos rotulados do
