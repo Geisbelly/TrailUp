@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #0d0b16; font-family: 'Inter', sans-serif; }
+  @keyframes tu3-spin { to { transform: rotate(360deg); } }
+</style>
+</helmet>
+
+<div style="position:relative; min-height:100vh; background:#0d0b16; overflow:hidden;">
+
+  <div style="position:fixed; inset:0; pointer-events:none; z-index:0; opacity:0.5;
+    background: radial-gradient(ellipse 900px 500px at 75% 10%, rgba(155,93,229,0.10), transparent 60%),
+      repeating-linear-gradient(115deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 90px);">
+  </div>
+
+  <header style="position:fixed; top:0; left:0; right:0; height:68px; z-index:30; background:#23192e; border-bottom:1px solid #2b2438; display:flex; align-items:center; justify-content:space-between; padding:0 32px;">
+    <div style="display:flex; align-items:center; gap:14px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f4f2f8" stroke-width="1.4"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8L12 2z"/></svg>
+      <span style="font-family:'Cinzel',serif; font-weight:700; font-size:22px; color:#f4f2f8;">TrailUp</span>
+      <span style="width:1px; height:20px; background:#2b2438; margin:0 6px;"></span>
+      <span style="font-size:14px; color:#a29cb3;">Console do professor</span>
+    </div>
+    <div style="display:flex; align-items:center; gap:14px;">
+      <div style="width:38px; height:38px; border-radius:50%; background:#9b5de5; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:13px;">GA</div>
+      <div style="display:flex; flex-direction:column; line-height:1.3;">
+        <span style="font-size:14px; font-weight:700; color:#f4f2f8;">Geisbelly Admin Prof</span>
+        <span style="font-size:12px; color:#a29cb3;">Ulbra</span>
+      </div>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a29cb3" stroke-width="1.6" style="margin-left:6px;"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/></svg>
+    </div>
+  </header>
+
+  <nav style="position:fixed; top:68px; left:0; bottom:0; width:264px; z-index:20; background:#170e24; border-right:1px solid #2b2438; padding:24px 16px; display:flex; flex-direction:column; gap:4px;">
+    <sc-for list="{{ navItems }}" as="item" hint-placeholder-count="7">
+      <a href="{{ item.href }}" style="{{ item.style }} text-decoration:none;">
+        <div style="width:20px; height:20px; color:{{ item.color }}; flex:none;" dangerouslySetInnerHTML="{{ item.iconHtml }}"></div>
+        <span style="font-size:14.5px; color:{{ item.color }};">{{ item.label }}</span>
+      </a>
+    </sc-for>
+  </nav>
+
+  <main style="position:relative; z-index:{{ mainZ }}; margin-left:264px; padding:108px 40px 60px 40px;">
+
+    <div style="display:inline-flex; align-items:center; gap:6px; background:#1b1728; border:1px solid #2b2438; border-radius:999px; padding:6px; font-size:11px; margin-bottom:20px;">
+      <span style="color:#a29cb3; padding:0 8px; white-space:nowrap;">Pré-visualização de estado:</span>
+      <sc-for list="{{ estadoOptions }}" as="opt" hint-placeholder-count="2">
+        <div onClick="{{ opt.select }}" style="{{ opt.style }} white-space:nowrap;">{{ opt.label }}</div>
+      </sc-for>
+    </div>
+
+    <!-- estado: turma não selecionada -->
+    <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; flex-direction:column; align-items:center; text-align:center; gap:16px; padding:88px 40px; border-radius:20px; background:#1b1728; border:1px solid #2b2438;">
+        <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#a29cb3" stroke-width="1.4"><path d="M4 6h6M14 6h6M4 18h6M14 18h6M10 6a2 2 0 004 0M10 18a2 2 0 004 0M7 6v12M17 6v12"/></svg>
+        <div style="font-family:'Cinzel',serif; font-size:24px; font-weight:700; color:#f4f2f8;">Escolha uma turma para abrir o canvas</div>
+        <div style="font-size:15px; color:#a29cb3; max-width:500px; line-height:1.6;">Cada turma tem a sua própria trilha de tópicos. Selecione a turma acima, ou deixe a IA propor uma trilha inicial a partir do seu plano de ensino.</div>
+        <div style="display:flex; gap:12px; margin-top:6px;">
+          <div style="padding:12px 22px; border-radius:999px; background:#9b5de5; font-size:14px; font-weight:700; color:#fff; cursor:pointer;">Gerar trilha com IA</div>
+          <div onClick="{{ closeEmpty }}" style="padding:12px 22px; border-radius:999px; border:1px solid #2b2438; font-size:14px; font-weight:600; color:#f4f2f8; cursor:pointer;">Selecionar turma</div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- estado: editor / mapa -->
+    <sc-if value="{{ isEditor }}" hint-placeholder-val="{{ true }}">
+    <div>
+    <sc-if value="{{ !editingTopicId }}" hint-placeholder-val="{{ true }}">
+    <div>
+      <div style="display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; margin-bottom:40px; gap:16px;">
+        <div>
+          <div style="font-size:12px; letter-spacing:0.1em; text-transform:uppercase; color:#9b5de5; font-weight:600; margin-bottom:10px;">Editor de trilha</div>
+          <div style="display:flex; align-items:center; gap:14px; padding:10px 20px 10px 14px; border-radius:16px; background:#1b1728; border:1px solid #2b2438; cursor:pointer; width:fit-content;">
+            <div style="width:32px; height:32px; border-radius:50%; background:#9b5de5; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; color:#fff;">FI</div>
+            <div>
+              <div style="font-family:'Cinzel',serif; font-weight:700; font-size:22px; color:#f4f2f8; line-height:1.1;">Física I</div>
+              <div style="font-size:13px; color:#a29cb3; margin-top:2px;">2026/1 · 8 tópicos · 34 alunos</div>
+            </div>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#a29cb3" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; flex:1; justify-content:flex-end;">
+          <div onClick="{{ openDialog }}" style="display:flex; align-items:center; gap:8px; padding:12px 20px; border-radius:999px; background:#9b5de5; font-size:14px; font-weight:700; color:#fff; cursor:pointer; white-space:nowrap;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg>
+            Gerar trilha com IA
+          </div>
+          <div onClick="{{ newTopic }}" style="display:flex; align-items:center; gap:8px; padding:12px 20px; border-radius:999px; border:1px solid #2b2438; background:#1b1728; font-size:14px; font-weight:600; color:#f4f2f8; cursor:pointer; white-space:nowrap;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9b5de5" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            Novo tópico
+          </div>
+          <div style="padding:12px 20px; border-radius:999px; background:#9c6b4f; font-size:14px; font-weight:700; color:#fff; cursor:pointer; white-space:nowrap;">Salvar dependências</div>
+        </div>
+      </div>
+
+      <div style="border-radius:20px; background:#1b1728; border:1px solid #2b2438; overflow:hidden; margin-top:8px;">
+        <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; padding:18px 100px 18px 24px; border-bottom:1px solid #2b2438;">
+          <div style="font-family:'Cinzel',serif; font-size:18px; font-weight:700; color:#f4f2f8;">Trilha de Tópicos</div>
+          <div title="Arraste o fundo para navegar (pan). Arraste um cartão para reposicionar o tópico. Clique num cartão para editar." style="width:18px; height:18px; border-radius:50%; border:1px solid #3a3350; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#a29cb3; cursor:help;">?</div>
+          <div style="display:flex; align-items:center; gap:8px; padding:6px 13px; border-radius:999px; background:#1c2f3a; border:1px solid #2c5164; font-size:12px; font-weight:600; color:#6fb3e0;">
+            <div style="width:12px; height:12px; border-radius:50%; border:2px solid rgba(111,179,224,0.3); border-top-color:#6fb3e0; animation:tu3-spin 1s linear infinite;"></div>
+            2 gerações em andamento · 5/8 alvos · 1 erro
+          </div>
+          <div style="margin-left:auto; display:flex; align-items:center; gap:14px; padding:8px 14px; border-radius:999px; background:#231d33; border:1px solid #2b2438; font-size:12px; color:#a29cb3; white-space:nowrap;">
+            <div style="display:flex; align-items:center; gap:7px;"><div style="width:16px; height:2px; background:#9b5de5;"></div>Sequência</div>
+            <div style="display:flex; align-items:center; gap:7px;"><div style="width:16px; height:2px; background:#3b82c4; background-image:repeating-linear-gradient(90deg,#3b82c4 0 4px,transparent 4px 8px);"></div>Pré-requisito</div>
+          </div>
+        </div>
+
+        <div onMouseDown="{{ canvasDown }}" onMouseMove="{{ canvasMove }}" onMouseUp="{{ canvasUp }}" onMouseLeave="{{ canvasUp }}" onWheel="{{ canvasWheel }}" style="position:relative; height:600px; overflow:hidden; cursor:grab; background:radial-gradient(circle at 1px 1px, rgba(255,255,255,0.05) 1px, transparent 1px); background-size:26px 26px;">
+          <div style="{{ canvasStyle }}">
+            <svg width="1400" height="700" style="position:absolute; inset:0; overflow:visible;">
+              <defs>
+                <marker id="arrowSeq" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#9b5de5"/></marker>
+                <marker id="arrowDep" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#3b82c4"/></marker>
+              </defs>
+              <sc-for list="{{ connectors }}" as="cn" hint-placeholder-count="7">
+                <path d="{{ cn.d }}" fill="none" stroke="{{ cn.stroke }}" stroke-width="2.5" stroke-dasharray="{{ cn.dash }}" marker-end="{{ cn.marker }}"/>
+              </sc-for>
+            </svg>
+            <sc-for list="{{ nodes }}" as="nd" hint-placeholder-count="8">
+              <div onMouseDown="{{ nd.down }}" style="{{ nd.wrap }}">
+                <div style="position:absolute; top:-10px; left:-10px; padding:2px 8px; border-radius:999px; background:#0d0b16; border:1px solid #2b2438; font-size:10px; font-weight:700; color:#a29cb3;">#{{ nd.seq }}</div>
+                <div>
+                  <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="width:34px; height:34px; flex:none; border-radius:50%; background:#9b5de5; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:800; color:#fff;">{{ nd.seq }}</div>
+                    <div style="font-size:14.5px; font-weight:700; color:#f4f2f8; line-height:1.25;">{{ nd.title }}</div>
+                  </div>
+                  <div style="display:flex; gap:6px; margin-top:12px; flex-wrap:wrap;">
+                    <sc-if value="{{ nd.dep }}" hint-placeholder-val="{{ false }}">
+                    <div style="padding:3px 9px; border-radius:999px; background:#1c2f3a; font-size:10.5px; font-weight:700; color:#7fb8c9;">DEP {{ nd.dep }}</div>
+                    </sc-if>
+                    <sc-if value="{{ nd.next }}" hint-placeholder-val="{{ false }}">
+                    <div style="padding:3px 9px; border-radius:999px; background:#1c2f3a; font-size:10.5px; font-weight:700; color:#7fb8c9;">NEXT {{ nd.next }}</div>
+                    </sc-if>
+                  </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:5px; margin-top:12px; padding-top:10px; border-top:1px solid #2b2438;">
+                  <div onMouseDown="{{ nd.stop }}" onClick="{{ nd.open }}" title="Editar tópico" style="display:flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px; background:rgba(155,93,229,0.16); border:1px solid #9b5de5; font-size:11px; font-weight:600; color:#c1a7ec; cursor:pointer; margin-right:auto;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h4l10-10-4-4L4 16z"/></svg>
+                    Editar tópico
+                  </div>
+                  <div onMouseDown="{{ nd.stop }}" onClick="{{ nd.askDup }}" title="Duplicar" style="width:26px; height:26px; border-radius:7px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a29cb3" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>
+                  </div>
+                  <div onMouseDown="{{ nd.stop }}" onClick="{{ nd.askDel }}" title="Excluir" style="width:26px; height:26px; border-radius:7px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#e2574c" stroke-width="2"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg>
+                  </div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="position:absolute; left:16px; bottom:16px; display:flex; align-items:center; gap:9px; padding:12px 18px; border-radius:16px; border:1px dashed rgba(155,93,229,0.5); background:#1b1728; color:#c1a7ec; font-size:13px; font-weight:600; cursor:pointer; z-index:5;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            Adicionar tópico ao final
+          </div>
+
+          <div style="position:absolute; right:16px; bottom:16px; display:flex; align-items:center; gap:2px; padding:4px; border-radius:12px; background:#1b1728; border:1px solid #2b2438; z-index:5;">
+            <div onClick="{{ zoomOut }}" style="width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:15px; font-weight:700; color:#c9c4d4;">−</div>
+            <div style="padding:0 8px; height:28px; display:flex; align-items:center; font-size:11px; font-weight:600; color:#a29cb3; white-space:nowrap;">{{ zoomLabel }}</div>
+            <div onClick="{{ zoomIn }}" style="width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:15px; font-weight:700; color:#c9c4d4;">+</div>
+            <div style="width:1px; height:18px; background:#2b2438; margin:0 3px;"></div>
+            <div onClick="{{ fitToScreen }}" title="Ajustar à tela" style="width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#c9c4d4" stroke-width="2"><path d="M4 9V5a1 1 0 011-1h4M20 9V5a1 1 0 00-1-1h-4M4 15v4a1 1 0 001 1h4M20 15v4a1 1 0 01-1 1h-4"/></svg>
+            </div>
+            <div onClick="{{ centerCanvas }}" title="Centralizar" style="width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#c9c4d4" stroke-width="2"><circle cx="12" cy="12" r="1.5" fill="#c9c4d4" stroke="none"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+    </sc-if>
+
+    <!-- editor de tópico -->
+    <sc-if value="{{ editingTopicId }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed; inset:0; z-index:40; background:#0d0b16; display:flex; flex-direction:column;">
+      <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap; padding:18px 26px; border-bottom:1px solid #2b2438; background:#211a2e; flex:none;">
+        <div onClick="{{ closeTopicEditor }}" style="display:flex; align-items:center; gap:7px; font-size:13px; font-weight:600; color:#c9c4d4; cursor:pointer;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg>
+          Voltar à trilha
+        </div>
+        <div style="width:1px; align-self:stretch; background:#2b2438;"></div>
+        <div>
+          <div style="font-family:'Cinzel',serif; font-size:19px; font-weight:700; color:#f4f2f8;">Editar Trilha de Conhecimento</div>
+          <div style="font-size:12px; color:#a29cb3; margin-top:3px;">Física I › {{ editingTopicName }} · gerenciamento de nós de conteúdo e avaliações</div>
+        </div>
+        <div style="margin-left:auto; display:flex; align-items:center; gap:8px; font-size:12px; color:#a29cb3;">
+          <div style="width:7px; height:7px; border-radius:50%; background:#5fd99a;"></div>
+          Salvo às 15:47
+        </div>
+      </div>
+
+      <div style="display:flex; min-height:0; flex:1;">
+        <div style="width:320px; flex:none; padding:20px 18px; border-right:1px solid #2b2438; overflow-y:auto;">
+          <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Título do tópico</div>
+          <div style="margin-top:8px; padding:11px 13px; border-radius:14px; background:#231d33; border:1px solid #9b5de5; font-size:13.5px; font-weight:600; color:#f4f2f8;">{{ editingTopicName }}</div>
+
+          <div style="display:flex; gap:10px; margin-top:14px;">
+            <div style="flex:1;">
+              <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Classe</div>
+              <div style="margin-top:8px; padding:11px 13px; border-radius:14px; background:#231d33; border:1px solid #2b2438; font-size:13px; color:#c9c4d4;">Física I</div>
+            </div>
+            <div style="width:70px;">
+              <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Ordem</div>
+              <div style="margin-top:8px; padding:11px 13px; border-radius:14px; background:#231d33; border:1px solid #2b2438; font-size:13px; color:#c9c4d4;">{{ editingTopicSeq }}</div>
+            </div>
+          </div>
+
+          <div style="margin-top:14px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Descrição rápida</div>
+              <div style="margin-left:auto; display:flex; align-items:center; gap:5px; font-size:11px; font-weight:600; color:#c1a7ec; cursor:pointer;">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg>
+                Gerar com IA
+              </div>
+            </div>
+            <div style="margin-top:8px; padding:11px 13px; border-radius:14px; background:#231d33; border:1px solid #2b2438; font-size:12.5px; color:#c9c4d4; line-height:1.55; min-height:64px;">Conceitos fundamentais de {{ editingTopicName }}, com exemplos aplicados e exercícios de fixação.</div>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:8px; margin-top:20px;">
+            <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Nós de conteúdo</div>
+            <div style="padding:2px 8px; border-radius:999px; background:#2b2438; font-size:11px; font-weight:700; color:#c9c4d4;">{{ topicContents.length }}</div>
+          </div>
+          <div style="display:flex; align-items:center; justify-content:center; gap:7px; margin-top:9px; padding:10px; border-radius:14px; border:1px dashed rgba(155,93,229,0.5); color:#c1a7ec; font-size:12px; font-weight:600; cursor:pointer;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>
+            Adicionar novo conteúdo
+          </div>
+          <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">
+            <sc-for list="{{ topicContents }}" as="ct" hint-placeholder-count="4">
+              <div onClick="{{ ct.select }}" style="{{ ct.rowStyle }}">
+                <div style="color:#7a7488; cursor:grab; font-size:12px; letter-spacing:1px;">⋮⋮</div>
+                <div style="width:18px; font-size:11px; font-weight:700; color:#7a7488;">{{ ct.n }}</div>
+                <div style="min-width:0; flex:1;">
+                  <div style="font-size:13px; font-weight:600; color:#f4f2f8;">{{ ct.name }}</div>
+                  <div style="display:flex; align-items:center; gap:6px; margin-top:5px;">
+                    <div style="padding:2px 8px; border-radius:999px; background:#2b2438; font-size:9.5px; font-weight:700; letter-spacing:0.04em; color:#a29cb3;">{{ ct.kindLabel }}</div>
+                    <sc-if value="{{ ct.qCount }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex; align-items:center; gap:3px; font-size:10px; font-weight:700; color:#5fd99a;">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4 10-10"/></svg>
+                      {{ ct.qCount }}
+                    </div>
+                    </sc-if>
+                  </div>
+                </div>
+                <div title="Editar" style="width:24px; height:24px; flex:none; border-radius:8px; display:flex; align-items:center; justify-content:center;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#a29cb3" stroke-width="2"><path d="M4 20h4l10-10-4-4L4 16z"/></svg>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="margin-top:16px; padding:13px 15px; border-radius:14px; border:1px dashed #3a3350; background:rgba(35,29,51,0.5);">
+            <div style="font-size:11.5px; font-weight:600; color:#c9c4d4;">Fonte deste tópico</div>
+            <div style="display:flex; align-items:center; gap:10px; margin-top:9px;">
+              <div style="width:28px; height:34px; flex:none; border-radius:6px; background:#3a1e1e; border:1px solid #7a3a3a; display:flex; align-items:center; justify-content:center; font-size:8px; font-weight:800; color:#f0847c;">PDF</div>
+              <div style="min-width:0; flex:1;">
+                <div style="font-size:12px; font-weight:600; color:#f4f2f8;">cinematica-cap3.pdf</div>
+                <div style="font-size:10.5px; color:#a29cb3; margin-top:2px;">2,4 MB · 14 páginas extraídas</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="flex:1; padding:20px 24px; overflow-y:auto; min-width:0;">
+          <sc-if value="{{ !selectedContentId }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:60px; text-align:center; color:#a29cb3; font-size:14px; border-radius:16px; background:#231d33;">Selecione um nó de conteúdo na lista à esquerda.</div>
+          </sc-if>
+          <sc-if value="{{ selectedContentId }}" hint-placeholder-val="{{ true }}">
+          <div>
+            <div style="display:flex; gap:6px; padding:5px; border-radius:999px; background:#0d0b16; border:1px solid #2b2438; width:fit-content; margin-bottom:18px;">
+              <sc-for list="{{ rtabs }}" as="rt" hint-placeholder-count="3">
+                <div onClick="{{ rt.select }}" style="{{ rt.style }} white-space:nowrap;">{{ rt.label }}</div>
+              </sc-for>
+            </div>
+
+            <sc-if value="{{ isRTab0 }}" hint-placeholder-val="{{ true }}">
+            <div style="border-radius:16px; background:#231d33; border:1px solid #2b2438; padding:22px 24px;">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c1a7ec" stroke-width="2"><path d="M4 20h4l10-10-4-4L4 16z"/></svg>
+                <div style="font-family:'Cinzel',serif; font-size:17px; font-weight:700; color:#f4f2f8;">Editar Conteúdo</div>
+              </div>
+              <div style="height:1px; background:#2b2438; margin:15px 0;"></div>
+              <div style="display:flex; gap:16px; flex-wrap:wrap;">
+                <div style="flex:2; min-width:220px;">
+                  <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Título do conteúdo</div>
+                  <div style="margin-top:8px; padding:11px 13px; border-radius:14px; background:#0d0b16; border:1px solid #9b5de5; font-size:13.5px; font-weight:600; color:#f4f2f8;">{{ sel.name }}</div>
+                </div>
+                <div style="flex:1; min-width:150px;">
+                  <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Formato</div>
+                  <div style="display:flex; align-items:center; margin-top:8px; padding:11px 13px; border-radius:14px; background:#0d0b16; border:1px solid #2b2438; font-size:13px; color:#c9c4d4;">
+                    {{ sel.kindLabel }}
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a29cb3" stroke-width="2" style="margin-left:auto;"><path d="M6 9l6 6 6-6"/></svg>
+                  </div>
+                </div>
+              </div>
+
+              <sc-if value="{{ sel.isFile }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top:16px;">
+                <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Arquivos ou URL</div>
+                <div style="display:flex; gap:14px; align-items:flex-start; margin-top:8px; padding:14px; border-radius:14px; background:#0d0b16; border:1px solid #2b2438;">
+                  <div style="position:relative; width:70px; height:92px; flex:none; border-radius:8px; overflow:hidden; background:#f4f2f8; padding:8px 7px; display:flex; flex-direction:column; gap:4px;">
+                    <div style="height:4px; width:70%; border-radius:2px; background:#8a8296;"></div>
+                    <div style="height:3px; width:100%; border-radius:2px; background:#c9c4d4;"></div>
+                    <div style="height:3px; width:92%; border-radius:2px; background:#c9c4d4;"></div>
+                    <div style="height:20px; width:100%; border-radius:3px; background:#d9d6e0; margin:2px 0;"></div>
+                    <div style="height:3px; width:88%; border-radius:2px; background:#c9c4d4;"></div>
+                    <div style="position:absolute; left:0; bottom:0; padding:2px 6px; background:#7a3a3a; font-size:7px; font-weight:800; color:#fff;">PDF</div>
+                  </div>
+                  <div style="min-width:0; flex:1; align-self:center;">
+                    <div style="font-size:13px; font-weight:600; color:#f4f2f8;">{{ sel.fileName }}</div>
+                    <div style="font-size:11px; color:#a29cb3; margin-top:3px;">{{ sel.fileSize }} · PDF · fonte deste conteúdo</div>
+                    <div style="font-size:11px; color:#7a7488; margin-top:3px;">Pré-visualização da primeira página</div>
+                    <div style="display:inline-flex; align-items:center; gap:7px; margin-top:10px; padding:8px 15px; border-radius:999px; border:1px solid #9b5de5; background:rgba(155,93,229,0.14); color:#c1a7ec; font-size:12px; font-weight:700; cursor:pointer;">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.5"/></svg>
+                      Abrir arquivo
+                    </div>
+                  </div>
+                </div>
+                <div style="display:flex; flex-direction:column; align-items:center; gap:7px; margin-top:10px; padding:20px; border-radius:14px; border:1px dashed #3a3350;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c9c4d4" stroke-width="2"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3"/></svg>
+                  <div style="font-size:12.5px; font-weight:600; color:#c9c4d4;">Adicionar mais arquivos</div>
+                  <div style="font-size:10.5px; color:#7a7488;">PDF · DOC/DOCX · PPT/PPTX · vídeo · áudio · máx. 200 MB</div>
+                </div>
+                <div style="text-align:center; margin-top:8px; font-size:11.5px; color:#c1a7ec; cursor:pointer;">Ou cole uma URL direta</div>
+              </div>
+              </sc-if>
+
+              <sc-if value="{{ sel.isText }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top:16px;">
+                <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Material (markdown)</div>
+                <div style="margin-top:8px; padding:15px 17px; border-radius:14px; background:#0d0b16; border:1px solid #2b2438; font-family:monospace; font-size:12.5px; line-height:1.7; color:#c9c4d4; min-height:150px;">{{ sel.body }}</div>
+              </div>
+              </sc-if>
+
+              <sc-if value="{{ sel.isLink }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top:16px;">
+                <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">URL do link externo</div>
+                <div style="margin-top:8px; padding:11px 13px; border-radius:14px; background:#0d0b16; border:1px solid #2b2438; font-size:13px; color:#6fb3e0; word-break:break-all;">{{ sel.url }}</div>
+
+                <div style="margin-top:13px; font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Descrição do link <span style="text-transform:none; letter-spacing:0; font-weight:500; color:#7a7488;">(opcional)</span></div>
+                <div style="margin-top:8px; padding:11px 13px; border-radius:14px; background:#0d0b16; border:1px solid #2b2438; font-size:13px; line-height:1.55; color:#c9c4d4;">{{ sel.linkDesc }}</div>
+
+                <div style="margin-top:15px; font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Pré-visualização</div>
+                <div style="display:flex; gap:14px; align-items:flex-start; margin-top:8px; padding:15px; border-radius:14px; background:#0d0b16; border:1px solid #2b2438;">
+                  <div style="width:36px; height:36px; flex:none; border-radius:10px; background:#1c2f3a; border:1px solid #2c5164; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:800; color:#6fb3e0; font-family:'Cinzel',serif;">{{ sel.linkInitial }}</div>
+                  <div style="min-width:0; flex:1;">
+                    <div style="font-size:11px; color:#7a7488; display:flex; align-items:center; gap:6px;">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#7a7488" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.8 2.5 15.2 0 18M12 3c-2.5 2.8-2.5 15.2 0 18"/></svg>
+                      {{ sel.linkDomain }}
+                    </div>
+                    <div style="font-size:13.5px; font-weight:700; color:#f4f2f8; margin-top:5px; line-height:1.35;">{{ sel.linkTitle }}</div>
+                    <div style="font-size:12px; line-height:1.55; color:#c9c4d4; margin-top:6px;">{{ sel.linkDesc }}</div>
+                    <div style="display:inline-flex; align-items:center; gap:7px; margin-top:11px; padding:8px 15px; border-radius:999px; border:1px solid #9b5de5; background:rgba(155,93,229,0.14); color:#c1a7ec; font-size:12px; font-weight:700; cursor:pointer;">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 01-1 1H5a1 1 0 01-1-1V7a1 1 0 011-1h5"/></svg>
+                      Abrir página externa
+                    </div>
+                  </div>
+                </div>
+              </div>
+              </sc-if>
+
+              <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:18px; padding-top:15px; border-top:1px solid #2b2438;">
+                <div style="display:flex; align-items:center; gap:7px; padding:9px 15px; border-radius:999px; border:1px dashed rgba(155,93,229,0.5); color:#c1a7ec; font-size:12px; font-weight:600; cursor:pointer;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg>
+                  Sugerir cards e atividades
+                </div>
+                <div style="margin-left:auto; padding:11px 22px; border-radius:999px; background:#9b5de5; font-size:13px; font-weight:700; color:#fff; cursor:pointer;">Atualizar conteúdo</div>
+              </div>
+            </div>
+            </sc-if>
+
+            <sc-if value="{{ isRTab1 }}" hint-placeholder-val="{{ false }}">
+            <div style="border-radius:16px; background:#231d33; border:1px solid #2b2438; padding:22px 24px;">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#c1a7ec" stroke-width="2.4"><path d="M5 13l4 4 10-10"/></svg>
+                <div style="font-family:'Cinzel',serif; font-size:17px; font-weight:700; color:#f4f2f8;">Atividades vinculadas</div>
+                <div style="margin-left:auto; padding:3px 11px; border-radius:999px; background:#2b2438; font-size:11px; font-weight:700; color:#c9c4d4;">{{ sel.qCount }} total</div>
+              </div>
+              <div style="height:1px; background:#2b2438; margin:15px 0;"></div>
+
+              <sc-if value="{{ sel.hasQ }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex; flex-direction:column; gap:10px;">
+                <sc-for list="{{ sel.questions }}" as="q" hint-placeholder-count="3">
+                <div style="padding:16px 18px; border-radius:14px; background:#0d0b16; border:1px solid #2b2438;">
+                  <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="width:22px; height:22px; flex:none; border-radius:50%; background:#2b2438; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#c9c4d4;">{{ q.n }}</div>
+                    <div style="padding:3px 10px; border-radius:999px; background:rgba(155,93,229,0.16); font-size:11px; font-weight:700; color:#c1a7ec;">{{ q.kind }}</div>
+                    <div style="margin-left:auto; font-size:11px; color:#a29cb3;">{{ q.points }} pontos</div>
+                  </div>
+                  <div style="font-size:13.5px; line-height:1.55; margin-top:12px; color:#e5e1ec;">{{ q.text }}</div>
+                  <div style="display:flex; align-items:center; gap:14px; margin-top:13px; padding-top:11px; border-top:1px solid #2b2438;">
+                    <div onClick="{{ q.toggleEdit }}" style="font-size:12px; font-weight:600; color:#c1a7ec; cursor:pointer;">Editar</div>
+                    <div style="font-size:12px; font-weight:600; color:#a29cb3; cursor:pointer;">Duplicar</div>
+                    <div onClick="{{ q.askDel }}" style="margin-left:auto; display:flex; align-items:center; gap:6px; padding:6px 13px; border-radius:999px; border:1px solid #7a3a3a; color:#f0847c; font-size:12px; font-weight:600; cursor:pointer;">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg>
+                      Excluir…
+                    </div>
+                  </div>
+
+                  <sc-if value="{{ q.editing }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-top:12px; padding:14px 16px; border-radius:14px; background:#1b1728; border:1px solid #9b5de5;">
+                    <div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Enunciado</div>
+                    <div style="margin-top:7px; padding:10px 12px; border-radius:12px; background:#0d0b16; border:1px solid #9b5de5; font-size:13px; color:#e5e1ec; line-height:1.5;">{{ q.text }}</div>
+                    <div style="display:flex; gap:16px; flex-wrap:wrap; margin-top:13px;">
+                      <div style="flex:2; min-width:200px;">
+                        <div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Tipo da questão</div>
+                        <div style="display:flex; gap:7px; flex-wrap:wrap; margin-top:7px;">
+                          <sc-for list="{{ q.kindTypes }}" as="kt" hint-placeholder-count="3">
+                            <div style="{{ kt.pill }}">{{ kt.label }}</div>
+                          </sc-for>
+                        </div>
+                      </div>
+                      <div style="flex:none; min-width:80px;">
+                        <div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Pontuação</div>
+                        <div style="margin-top:7px; padding:9px 12px; border-radius:12px; background:#0d0b16; border:1px solid #2b2438; font-size:13px; font-weight:600; color:#f4f2f8; text-align:center;">{{ q.points }}</div>
+                      </div>
+                    </div>
+
+                    <sc-if value="{{ q.hasOptions }}" hint-placeholder-val="{{ true }}">
+                    <div style="margin-top:13px;">
+                      <div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Alternativas · gabarito</div>
+                      <div style="display:flex; flex-direction:column; gap:7px; margin-top:7px;">
+                        <sc-for list="{{ q.options }}" as="opt" hint-placeholder-count="4">
+                          <div style="display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:12px; background:#0d0b16; border:1px solid #2b2438;">
+                            <div style="{{ opt.radio }}"><sc-if value="{{ opt.isCorrect }}" hint-placeholder-val="{{ false }}"><div style="width:7px;height:7px;border-radius:50%;background:#5fd99a;"></div></sc-if></div>
+                            <div style="font-size:11px; font-weight:700; color:#7a7488; width:14px;">{{ opt.letter }}</div>
+                            <div style="font-size:12.5px; color:#e5e1ec; flex:1;">{{ opt.text }}</div>
+                          </div>
+                        </sc-for>
+                      </div>
+                    </div>
+                    </sc-if>
+
+                    <div style="display:flex; gap:10px; margin-top:13px;">
+                      <div onClick="{{ q.toggleEdit }}" style="margin-left:auto; padding:8px 16px; border-radius:999px; border:1px solid #2b2438; font-size:12px; font-weight:600; color:#c9c4d4; cursor:pointer;">Cancelar</div>
+                      <div onClick="{{ q.toggleEdit }}" style="padding:8px 18px; border-radius:999px; background:#9b5de5; font-size:12px; font-weight:700; color:#fff; cursor:pointer;">Salvar questão</div>
+                    </div>
+                  </div>
+                  </sc-if>
+
+                  <sc-if value="{{ q.confirming }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-top:12px; padding:14px 16px; border-radius:14px; background:#3a1e22; border:1px solid #7a3a3a;">
+                    <div style="font-size:13px; font-weight:700; color:#f4f2f8;">Excluir esta questão de "{{ sel.name }}"?</div>
+                    <div style="font-size:12px; color:#e8d8d8; margin-top:6px; line-height:1.5;">Ela é removida só deste conteúdo. Se a mesma questão estiver vinculada a outro conteúdo, lá ela continua.</div>
+                    <div style="display:flex; gap:10px; margin-top:12px;">
+                      <div onClick="{{ q.cancelDel }}" style="margin-left:auto; padding:8px 16px; border-radius:999px; border:1px solid #7a3a3a; font-size:12px; font-weight:600; color:#f0d5d5; cursor:pointer;">Cancelar</div>
+                      <div onClick="{{ q.confirmDel }}" style="padding:8px 16px; border-radius:999px; background:#e2574c; font-size:12px; font-weight:700; color:#fff; cursor:pointer;">Excluir</div>
+                    </div>
+                  </div>
+                  </sc-if>
+                </div>
+                </sc-for>
+              </div>
+              </sc-if>
+              <sc-if value="{{ sel.noQ }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:22px; text-align:center; font-size:13px; color:#a29cb3; border-radius:14px; background:#0d0b16;">Nenhuma atividade vinculada.</div>
+              </sc-if>
+
+              <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:16px; margin-top:18px;">
+                <div style="padding:16px; border-radius:14px; background:#0d0b16; border:1px solid #2b2438;">
+                  <div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Vincular existente</div>
+                  <div style="margin-top:10px; min-height:100px; border-radius:10px; background:rgba(155,93,229,0.05); border:1px dashed #3a3350; display:flex; align-items:center; justify-content:center; font-size:12px; color:#7a7488; text-align:center; padding:12px;">Escolha uma questão já cadastrada em outro conteúdo deste tópico para reaproveitar aqui.</div>
+                </div>
+                <div style="padding:16px; border-radius:14px; background:#0d0b16; border:1px solid #2b2438;">
+                  <div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Criar nova questão</div>
+                  <div style="margin-top:10px; padding:11px 13px; border-radius:12px; background:#1b1728; border:1px solid #2b2438; font-size:12.5px; color:#7a7488;">Enunciado…</div>
+                  <div style="display:flex; gap:8px; margin-top:8px;">
+                    <div style="flex:1; padding:9px 12px; border-radius:12px; background:#1b1728; border:1px solid #2b2438; font-size:12px; color:#a29cb3;">Múltipla escolha ▾</div>
+                    <div style="width:70px; padding:9px 12px; border-radius:12px; background:#1b1728; border:1px solid #2b2438; font-size:12px; color:#7a7488;">Pontos</div>
+                  </div>
+                  <div style="margin-top:10px; font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Alternativas · gabarito</div>
+                  <div style="display:flex; flex-direction:column; gap:6px; margin-top:7px;">
+                    <div style="display:flex; align-items:center; gap:9px; padding:8px 12px; border-radius:12px; background:#1b1728; border:1px solid #2b2438;">
+                      <div style="width:15px; height:15px; flex:none; border-radius:50%; border:2px solid #3a3350;"></div>
+                      <div style="font-size:11px; font-weight:700; color:#7a7488; width:12px;">A</div>
+                      <div style="font-size:12px; color:#7a7488; flex:1;">Alternativa A…</div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:9px; padding:8px 12px; border-radius:12px; background:#1b1728; border:1px solid #2b2438;">
+                      <div style="width:15px; height:15px; flex:none; border-radius:50%; border:2px solid #3a3350;"></div>
+                      <div style="font-size:11px; font-weight:700; color:#7a7488; width:12px;">B</div>
+                      <div style="font-size:12px; color:#7a7488; flex:1;">Alternativa B…</div>
+                    </div>
+                    <div style="font-size:11px; color:#c1a7ec; cursor:pointer; margin-top:2px;">+ Adicionar alternativa</div>
+                  </div>
+                  <div style="margin-top:12px; padding:10px; border-radius:999px; background:#f4f2f8; color:#1b1120; font-size:13px; font-weight:700; text-align:center; cursor:pointer;">+ Criar</div>
+                </div>
+              </div>
+            </div>
+            </sc-if>
+            <sc-if value="{{ isRTab2 }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; gap:18px; flex-wrap:wrap;">
+              <div style="flex:1.3; min-width:280px; border-radius:16px; background:#231d33; border:1px solid #2b2438; padding:20px 22px;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <div style="font-family:'Cinzel',serif; font-size:16px; font-weight:700; color:#f4f2f8;">Cards existentes</div>
+                  <div style="padding:2px 9px; border-radius:999px; background:#2b2438; font-size:11px; font-weight:700; color:#c9c4d4;">{{ sel.cardCount }}</div>
+                </div>
+                <div style="margin-top:14px; display:flex; flex-direction:column; gap:9px;">
+                  <sc-if value="{{ sel.hasCards }}" hint-placeholder-val="{{ true }}">
+                  <sc-for list="{{ sel.cards }}" as="c" hint-placeholder-count="2">
+                    <div>
+                    <div style="display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:12px; background:#0d0b16; border:1px solid #2b2438;">
+                      <div style="min-width:0; flex:1;">
+                        <div style="font-size:13px; font-weight:600; color:#f4f2f8;">{{ c.title }}</div>
+                        <div style="font-size:11.5px; color:#a29cb3; margin-top:3px;">{{ c.body }}</div>
+                      </div>
+                      <div style="{{ c.reuseBadge }}">{{ c.reuseLabel }}</div>
+                      <div onClick="{{ c.toggleEdit }}" title="Editar" style="width:26px; height:26px; flex:none; border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#a29cb3" stroke-width="2"><path d="M4 20h4l10-10-4-4L4 16z"/></svg>
+                      </div>
+                      <div title="Duplicar" style="width:26px; height:26px; flex:none; border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#a29cb3" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>
+                      </div>
+                      <div onClick="{{ c.askDel }}" title="Excluir" style="width:26px; height:26px; flex:none; border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#e2574c" stroke-width="2"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg>
+                      </div>
+                    </div>
+
+                    <sc-if value="{{ c.editing }}" hint-placeholder-val="{{ false }}">
+                    <div style="margin-top:8px; padding:14px 16px; border-radius:14px; background:#0d0b16; border:1px solid #9b5de5;">
+                      <div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Título do card</div>
+                      <div style="margin-top:7px; padding:9px 12px; border-radius:12px; background:#1b1728; border:1px solid #9b5de5; font-size:13px; font-weight:600; color:#f4f2f8;">{{ c.title }}</div>
+                      <div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600; margin-top:11px;">Descrição</div>
+                      <div style="margin-top:7px; padding:9px 12px; border-radius:12px; background:#1b1728; border:1px solid #2b2438; font-size:12.5px; color:#c9c4d4; line-height:1.5;">{{ c.body }}</div>
+                      <div style="display:flex; gap:10px; margin-top:12px;">
+                        <div onClick="{{ c.toggleEdit }}" style="margin-left:auto; padding:8px 16px; border-radius:999px; border:1px solid #2b2438; font-size:12px; font-weight:600; color:#c9c4d4; cursor:pointer;">Cancelar</div>
+                        <div onClick="{{ c.toggleEdit }}" style="padding:8px 18px; border-radius:999px; background:#9b5de5; font-size:12px; font-weight:700; color:#fff; cursor:pointer;">Salvar card</div>
+                      </div>
+                    </div>
+                    </sc-if>
+
+                    <sc-if value="{{ c.confirming }}" hint-placeholder-val="{{ false }}">
+                    <div style="margin-top:8px; padding:14px 16px; border-radius:14px; background:#3a1e22; border:1px solid #7a3a3a;">
+                      <div style="font-size:13px; font-weight:700; color:#f4f2f8;">Excluir o card "{{ c.title }}" deste conteúdo?</div>
+                      <div style="font-size:12px; color:#e8d8d8; margin-top:6px; line-height:1.5;">Ele é removido só daqui. Se estiver vinculado a outro conteúdo, lá ele continua.</div>
+                      <div style="display:flex; gap:10px; margin-top:12px;">
+                        <div onClick="{{ c.cancelDel }}" style="margin-left:auto; padding:8px 16px; border-radius:999px; border:1px solid #7a3a3a; font-size:12px; font-weight:600; color:#f0d5d5; cursor:pointer;">Cancelar</div>
+                        <div onClick="{{ c.confirmDel }}" style="padding:8px 16px; border-radius:999px; background:#e2574c; font-size:12px; font-weight:700; color:#fff; cursor:pointer;">Excluir</div>
+                      </div>
+                    </div>
+                    </sc-if>
+                    </div>
+                  </sc-for>
+                  </sc-if>
+                  <sc-if value="{{ sel.noCards }}" hint-placeholder-val="{{ false }}">
+                  <div style="padding:22px; text-align:center; font-size:13px; color:#a29cb3; border-radius:14px; background:#0d0b16;">Nenhum card para este conteúdo.</div>
+                  </sc-if>
+                </div>
+              </div>
+
+              <div style="width:280px; flex:none; border-radius:16px; background:#231d33; border:1px solid #2b2438; padding:20px 22px;">
+                <div style="font-family:'Cinzel',serif; font-size:16px; font-weight:700; color:#f4f2f8;">Novo card</div>
+                <div style="font-size:11.5px; color:#a29cb3; margin-top:8px; line-height:1.5;">Vinculado a <strong style="color:#c9c4d4; font-weight:600;">{{ sel.name }}</strong></div>
+                <div style="display:flex; align-items:center; gap:8px; margin-top:13px; padding:9px 12px; border-radius:12px; background:#0d0b16; border:1px dashed #3a3350; cursor:pointer;">
+                  <div style="width:14px; height:14px; border-radius:4px; border:1.5px solid #7a7488; flex:none;"></div>
+                  <div style="font-size:11.5px; color:#c9c4d4;">Reaproveitar card de outro conteúdo</div>
+                </div>
+                <div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600; margin-top:15px;">Frente (título)</div>
+                <div style="margin-top:7px; padding:10px 12px; border-radius:12px; background:#0d0b16; border:1px solid #2b2438; font-size:12.5px; color:#7a7488;">Ex.: Deslocamento</div>
+                <div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600; margin-top:12px;">Verso (resposta)</div>
+                <div style="margin-top:7px; padding:10px 12px; border-radius:12px; background:#0d0b16; border:1px solid #2b2438; font-size:12.5px; color:#7a7488; min-height:64px;">Ex.: Variação de posição entre o ponto final e o inicial, considerando a trajetória em linha reta.</div>
+                <div style="margin-top:13px; padding:10px; border-radius:999px; background:#9b5de5; color:#fff; font-size:13px; font-weight:700; text-align:center; cursor:pointer;">Salvar card</div>
+              </div>
+            </div>
+            </sc-if>
+          </div>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+
+  </main>
+
+  <!-- modal gerar trilha com IA -->
+  <sc-if value="{{ showDialog }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed; inset:0; z-index:60; background:rgba(5,3,10,0.78); backdrop-filter:blur(6px); display:flex; align-items:center; justify-content:center; padding:32px;">
+    <div style="width:100%; max-width:620px; border-radius:20px; background:#1b1728; border:1px solid #9b5de5; box-shadow:0 30px 90px rgba(0,0,0,0.6); overflow:hidden;">
+      <div style="padding:24px 28px 20px; border-bottom:1px solid #2b2438;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="width:36px; height:36px; border-radius:50%; background:#9b5de5; display:flex; align-items:center; justify-content:center; flex:none;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg>
+          </div>
+          <div style="font-family:'Cinzel',serif; font-size:20px; font-weight:700; color:#f4f2f8;">Gerar trilha com IA</div>
+          <div onClick="{{ closeDialog }}" style="margin-left:auto; width:30px; height:30px; border-radius:50%; background:#231d33; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c9c4d4" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </div>
+        </div>
+        <div style="font-size:13px; color:#c9c4d4; margin-top:12px; line-height:1.6;">Descreva o plano de ensino de <strong style="font-weight:700; color:#f4f2f8;">Física I</strong>. A IA propõe os tópicos e a ordem — você revisa antes de aplicar. Nada é publicado sem a sua confirmação.</div>
+        <div style="display:flex; align-items:center; gap:5px; margin-top:18px;">
+          <sc-for list="{{ dialogSteps }}" as="st" hint-placeholder-count="6">
+            <div style="{{ st.dot }}"></div>
+            <sc-if value="{{ st.hasLine }}" hint-placeholder-val="{{ true }}"><div style="{{ st.line }}"></div></sc-if>
+          </sc-for>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:9.5px; color:#7a7488; margin-top:6px;">
+          <div>Configurar</div><div>Gerar</div><div>Processando</div><div>Resultado</div><div>Revisar</div><div>Ajustar</div>
+        </div>
+      </div>
+
+      <sc-if value="{{ isConfig }}" hint-placeholder-val="{{ true }}">
+      <div style="padding:22px 28px 24px;">
+        <div style="font-size:11.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">O que a turma precisa aprender</div>
+        <div style="margin-top:9px; padding:13px 15px; border-radius:14px; background:#231d33; border:1px solid #2b2438; min-height:90px; font-size:13.5px; color:#7a7488; line-height:1.6;">Ex.: semestre de mecânica clássica para engenharia, da cinemática até trabalho e energia, com ênfase em resolução de problemas…</div>
+        <div style="display:flex; align-items:center; gap:12px; margin-top:13px; padding:13px 15px; border-radius:14px; border:1px dashed rgba(155,93,229,0.5); cursor:pointer;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c1a7ec" stroke-width="2"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3"/></svg>
+          <div style="font-size:13px; color:#c9c4d4;">Anexar plano de ensino ou ementa (PDF, DOCX)</div>
+        </div>
+        <div style="display:flex; gap:14px; margin-top:16px; flex-wrap:wrap;">
+          <div style="flex:1; min-width:170px;">
+            <div style="font-size:11.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Quantidade de tópicos</div>
+            <div style="display:flex; gap:6px; margin-top:9px;">
+              <sc-for list="{{ topicCountOptions }}" as="tc" hint-placeholder-count="3">
+                <div onClick="{{ tc.select }}" style="{{ tc.style }}">{{ tc.label }}</div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="flex:1; min-width:170px;">
+            <div style="font-size:11.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Já gerar atividades?</div>
+            <div style="display:flex; gap:6px; margin-top:9px;">
+              <sc-for list="{{ genActivitiesOptions }}" as="ga" hint-placeholder-count="2">
+                <div onClick="{{ ga.select }}" style="{{ ga.style }}">{{ ga.label }}</div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px; margin-top:22px;">
+          <div onClick="{{ closeDialog }}" style="padding:11px 20px; border-radius:999px; border:1px solid #2b2438; font-size:13.5px; font-weight:600; color:#f4f2f8; cursor:pointer;">Cancelar</div>
+          <div onClick="{{ startGenerate }}" style="margin-left:auto; padding:11px 24px; border-radius:999px; background:#9b5de5; font-size:13.5px; font-weight:700; color:#fff; cursor:pointer;">Gerar proposta</div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isProcessing }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:34px 28px 30px; display:flex; flex-direction:column; align-items:center; text-align:center; gap:16px;">
+        <div style="position:relative; width:56px; height:56px;">
+          <div style="position:absolute; inset:0; border-radius:50%; background:rgba(155,93,229,0.18);"></div>
+          <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
+            <div style="width:22px; height:22px; border-radius:50%; border:2.5px solid rgba(193,167,236,0.3); border-top-color:#c1a7ec; animation:tu3-spin 1s linear infinite;"></div>
+          </div>
+        </div>
+        <div style="font-family:'Cinzel',serif; font-size:18px; font-weight:700; color:#f4f2f8;">{{ processLabel }}</div>
+        <div style="width:100%; max-width:360px; height:8px; border-radius:999px; background:#2b2438; overflow:hidden;">
+          <div style="{{ processBar }}"></div>
+        </div>
+        <div style="font-size:13px; color:#a29cb3; line-height:1.6;">A IA está montando os tópicos, a ordem e o material inicial a partir do que você descreveu.</div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isResult }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:22px 28px 24px;">
+        <div style="display:flex; align-items:center; gap:10px; padding:12px 16px; border-radius:14px; background:rgba(52,199,123,0.14); border:1px solid rgba(52,199,123,0.4);">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5fd99a" stroke-width="3"><path d="M5 13l4 4 10-10"/></svg>
+          <div style="font-size:13px; color:#d6f2e2;">Proposta gerada: 8 tópicos, 24 conteúdos e 3 atividades iniciais.</div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top:15px; max-height:270px; overflow-y:auto;">
+          <sc-for list="{{ proposal }}" as="p" hint-placeholder-count="8">
+            <div style="display:flex; align-items:center; gap:12px; padding:11px 14px; border-radius:14px; background:#231d33;">
+              <div style="width:26px; height:26px; flex:none; border-radius:50%; background:#9b5de5; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; color:#fff;">{{ p.n }}</div>
+              <div style="min-width:0; flex:1;">
+                <div style="font-size:13px; font-weight:600; color:#f4f2f8;">{{ p.name }}</div>
+                <div style="font-size:11px; color:#a29cb3; margin-top:2px;">{{ p.meta }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px; margin-top:20px;">
+          <div onClick="{{ discardResult }}" style="padding:11px 20px; border-radius:999px; border:1px solid #2b2438; font-size:13.5px; font-weight:600; color:#f4f2f8; cursor:pointer;">Descartar</div>
+          <div onClick="{{ startReview }}" style="margin-left:auto; padding:11px 24px; border-radius:999px; background:#9b5de5; font-size:13.5px; font-weight:700; color:#fff; cursor:pointer;">Revisar</div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isReview }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:22px 28px 24px;">
+        <div style="font-size:13px; color:#c9c4d4; line-height:1.6;">Confira a proposta. Se algo não estiver certo, peça um ajuste pontual — não é preciso gerar tudo de novo.</div>
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top:15px; max-height:220px; overflow-y:auto;">
+          <sc-for list="{{ proposal }}" as="p" hint-placeholder-count="8">
+            <div style="display:flex; align-items:center; gap:12px; padding:11px 14px; border-radius:14px; background:#231d33;">
+              <div style="width:26px; height:26px; flex:none; border-radius:50%; background:#9b5de5; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; color:#fff;">{{ p.n }}</div>
+              <div style="min-width:0; flex:1;">
+                <div style="font-size:13px; font-weight:600; color:#f4f2f8;">{{ p.name }}</div>
+                <div style="font-size:11px; color:#a29cb3; margin-top:2px;">{{ p.meta }}</div>
+              </div>
+              <div onClick="{{ p.adjust }}" style="font-size:12px; font-weight:600; color:#c1a7ec; cursor:pointer; white-space:nowrap;">Pedir ajuste</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px; margin-top:20px;">
+          <div onClick="{{ backToResult }}" style="padding:11px 20px; border-radius:999px; border:1px solid #2b2438; font-size:13.5px; font-weight:600; color:#f4f2f8; cursor:pointer;">Voltar</div>
+          <div onClick="{{ applyProposal }}" style="margin-left:auto; padding:11px 24px; border-radius:999px; background:#9b5de5; font-size:13.5px; font-weight:700; color:#fff; cursor:pointer;">Aplicar trilha</div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isAdjust }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:22px 28px 24px;">
+        <div onClick="{{ backToReview }}" style="display:inline-flex; align-items:center; gap:7px; font-size:12px; color:#a29cb3; cursor:pointer; margin-bottom:14px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg>
+          Voltar para a revisão
+        </div>
+        <div style="padding:13px 15px; border-radius:14px; background:#231d33; border:1px solid #9b5de5;">
+          <div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#c1a7ec; font-weight:600;">Ajustando</div>
+          <div style="font-size:14.5px; font-weight:700; color:#f4f2f8; margin-top:5px;">{{ adjustTarget }}</div>
+        </div>
+        <div style="font-size:11.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600; margin-top:17px;">O que mudar neste tópico</div>
+        <div style="margin-top:9px; padding:13px 15px; border-radius:14px; background:#231d33; border:1px solid #9b5de5; min-height:82px; font-size:13.5px; color:#c9c4d4; line-height:1.6;">Ex.: trocar o exemplo do carro por algo de esportes, e reduzir para 2 conteúdos em vez de 3.</div>
+        <div style="display:flex; align-items:center; gap:12px; margin-top:20px;">
+          <div onClick="{{ backToReview }}" style="padding:11px 20px; border-radius:999px; border:1px solid #2b2438; font-size:13.5px; font-weight:600; color:#f4f2f8; cursor:pointer;">Cancelar</div>
+          <div onClick="{{ applyAdjust }}" style="margin-left:auto; padding:11px 24px; border-radius:999px; background:#9b5de5; font-size:13.5px; font-weight:700; color:#fff; cursor:pointer;">Regerar só este item</div>
+        </div>
+      </div>
+      </sc-if>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- modal duplicar tópico -->
+  <sc-if value="{{ showDupTopic }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed; inset:0; z-index:60; background:rgba(5,3,10,0.78); backdrop-filter:blur(6px); display:flex; align-items:center; justify-content:center; padding:32px;">
+    <div style="width:100%; max-width:460px; border-radius:20px; background:#1b1728; border:1px solid #9b5de5; padding:26px 28px;">
+      <div style="font-family:'Cinzel',serif; font-size:19px; font-weight:700; color:#f4f2f8;">Duplicar tópico</div>
+      <div style="font-size:13.5px; color:#c9c4d4; margin-top:10px; line-height:1.6;">Cria uma cópia de "{{ dupTopicName }}" com os mesmos conteúdos, cards e questões associados. A cópia entra sem nenhum progresso de aluno vinculado.</div>
+      <div style="display:flex; align-items:center; gap:12px; margin-top:22px;">
+        <div onClick="{{ cancelDupTopic }}" style="padding:11px 20px; border-radius:999px; border:1px solid #2b2438; font-size:14px; font-weight:600; color:#f4f2f8; cursor:pointer;">Cancelar</div>
+        <div onClick="{{ confirmDupTopic }}" style="margin-left:auto; padding:11px 22px; border-radius:999px; background:#9b5de5; font-size:14px; font-weight:700; color:#fff; cursor:pointer;">Duplicar tópico</div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- modal excluir tópico -->
+  <sc-if value="{{ showDelTopic }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed; inset:0; z-index:60; background:rgba(5,3,10,0.78); backdrop-filter:blur(6px); display:flex; align-items:center; justify-content:center; padding:32px;">
+    <div style="width:100%; max-width:460px; border-radius:20px; background:#1b1728; border:1px solid #7a3a3a; padding:26px 28px;">
+      <div style="font-family:'Cinzel',serif; font-size:19px; font-weight:700; color:#f4f2f8;">Excluir tópico</div>
+      <div style="font-size:13.5px; color:#c9c4d4; margin-top:10px; line-height:1.6;">Excluir "{{ delTopicName }}" remove permanentemente seus conteúdos, cards e questões associados. Esta ação não pode ser desfeita.</div>
+      <div style="display:flex; align-items:center; gap:12px; margin-top:22px;">
+        <div onClick="{{ cancelDelTopic }}" style="padding:11px 20px; border-radius:999px; border:1px solid #2b2438; font-size:14px; font-weight:600; color:#f4f2f8; cursor:pointer;">Cancelar</div>
+        <div onClick="{{ confirmDelTopic }}" style="margin-left:auto; padding:11px 22px; border-radius:999px; background:#e2574c; font-size:14px; font-weight:700; color:#fff; cursor:pointer;">Excluir tópico</div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- Escriba -->
+  <div style="position:fixed; right:32px; bottom:28px; z-index:50;">
+    <sc-if value="{{ escribaOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute; bottom:70px; right:0; width:340px; border-radius:20px; background:#1b1728; border:1px solid #2b2438; box-shadow:0 20px 50px rgba(0,0,0,0.5); overflow:hidden;">
+        <div style="display:flex; align-items:center; gap:12px; padding:16px 18px; border-bottom:1px solid #2b2438; background:linear-gradient(135deg,#c9924f,#9c6b4f);">
+          <div style="width:34px; height:34px; border-radius:50%; background:rgba(0,0,0,0.2); display:flex; align-items:center; justify-content:center;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          </div>
+          <div>
+            <div style="font-family:'Cinzel',serif; font-size:14px; font-weight:700; color:#fff;">Escriba</div>
+            <div style="font-size:11px; color:rgba(255,255,255,0.85);">O guia do professor · lê os dados desta trilha</div>
+          </div>
+        </div>
+        <div style="padding:16px 18px; display:flex; flex-direction:column; gap:12px;">
+          <div style="font-size:13px; color:#e5e1ec; line-height:1.5;">Olá! Posso te ajudar a entender esta trilha. O que você quer saber?</div>
+          <div style="display:flex; flex-wrap:wrap; gap:8px;">
+            <div style="padding:7px 12px; border-radius:999px; background:#231d33; border:1px solid #2b2438; font-size:12px; color:#c9c4d4; cursor:pointer;">Que tópico trava mais?</div>
+            <div style="padding:7px 12px; border-radius:999px; background:#231d33; border:1px solid #2b2438; font-size:12px; color:#c9c4d4; cursor:pointer;">O que falta revisar?</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; padding:12px 14px; border-top:1px solid #2b2438;">
+          <input placeholder="Pergunte ao Escriba…" style="flex:1; background:#0d0b16; border:1px solid #2b2438; border-radius:999px; padding:9px 14px; color:#f4f2f8; font-size:13px; outline:none;"/>
+          <div style="width:32px; height:32px; border-radius:50%; background:#9c6b4f; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+    <div onClick="{{ toggleEscriba }}" title="Pergunte ao Escriba" style="width:56px; height:56px; border-radius:50%; background:linear-gradient(135deg,#c9924f,#9c6b4f); display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 12px 30px rgba(0,0,0,0.45);">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+    </div>
+  </div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const TOPICS = [
+  { id:1, title:'Introdução à Física', x:40,  y:20  },
+  { id:2, title:'Medidas e Unidades',  x:320, y:20  },
+  { id:3, title:'Cinemática',          x:600, y:20  },
+  { id:4, title:'Vetores',             x:880, y:20  },
+  { id:5, title:'Dinâmica',            x:880, y:280 },
+  { id:6, title:'Trabalho e Energia',  x:600, y:280 },
+  { id:7, title:'Rotação',             x:320, y:280 },
+  { id:8, title:'Fluidos',             x:40,  y:280 }
+];
+const NODE_W = 230, NODE_H = 150;
+const TOPIC_CONTENTS = [
+  { id:1, name:'Introdução ao tema', kindLabel:'TEXTO', format:'text', qCount:0,
+    body:'A cinemática estuda o movimento dos corpos sem se preocupar com suas causas. Nesta introdução, distinguimos posição, deslocamento e trajetória, e situamos o tópico dentro do curso de Física I.' },
+  { id:2, name:'Simulador de queda livre', kindLabel:'LINK EXTERNO', format:'link', qCount:0,
+    url:'https://phet.colorado.edu/pt/simulations/gravity-and-orbits', linkDomain:'phet.colorado.edu', linkInitial:'P',
+    linkTitle:'Gravidade e Órbitas — PhET Interactive Simulations', linkDesc:'Simulação interativa de queda livre, órbitas e força gravitacional para uso em sala.' },
+  { id:3, name:'Capítulo 3 do livro-texto', kindLabel:'PDF', format:'file', qCount:0, fileName:'cinematica-cap3.pdf', fileSize:'2,4 MB' },
+  { id:4, name:'Quiz de fixação', kindLabel:'ATIVIDADE', format:'text', qCount:3,
+    body:'Questões de fixação sobre posição, velocidade média e aceleração — usadas na aba Atividades deste conteúdo.' }
+];
+const QUESTIONS = [
+  { id:1, contentId:4, kind:'Múltipla escolha', points:2, text:'Um carro percorre 120 km em 2 horas, em linha reta e sem inverter o sentido. Qual é a sua velocidade média?',
+    options: [ {letter:'A', text:'40 km/h', correct:false}, {letter:'B', text:'60 km/h', correct:true}, {letter:'C', text:'80 km/h', correct:false}, {letter:'D', text:'120 km/h', correct:false} ] },
+  { id:2, contentId:4, kind:'Verdadeiro-falso', points:1, text:'A velocidade média de um percurso pode ser calculada dividindo o deslocamento total pelo tempo total, mesmo que a velocidade tenha variado ao longo do trajeto.',
+    options: [ {letter:'A', text:'Verdadeiro', correct:true}, {letter:'B', text:'Falso', correct:false} ] },
+  { id:3, contentId:4, kind:'Dissertativa', points:3, text:'Explique, com suas palavras, a diferença entre velocidade média e velocidade instantânea, dando um exemplo do cotidiano.', options: [] }
+];
+const KIND_TYPES = ['Múltipla escolha','Verdadeiro-falso','Dissertativa'];
+const CARDS = [
+  { id:1, contentId:1, title:'Deslocamento', body:'Variação de posição entre o ponto final e o inicial, em linha reta.', reuseCount:2 },
+  { id:2, contentId:1, title:'Trajetória', body:'Conjunto de posições ocupadas pelo corpo ao longo do movimento.', reuseCount:1 },
+  { id:3, contentId:1, title:'Referencial', body:'Ponto ou sistema em relação ao qual se descreve o movimento de um corpo.', reuseCount:1 }
+];
+
+const NAV_HREFS = {
+  visao: 'Console%20Visao%20Geral%20(Fase%202).dc.html',
+  trilhas: 'Console%20Trilhas%20(Fase%202).dc.html',
+  turmas: 'Console%20Turmas%20(Fase%202).dc.html',
+  personalizacoes: 'Console%20Personalizacoes%20(Fase%202).dc.html',
+  rankings: 'Console%20Rankings%20(Fase%202).dc.html',
+  meusdados: 'Console%20Meus%20Dados%20(Fase%202).dc.html',
+  aprovacoes: 'Console%20Aprovacoes%20(Fase%202).dc.html'
+};
+
+class Component extends DCLogic {
+  state = {
+    estado: 'editor',
+    pan: { x: 30, y: 10 }, zoom: 1, drag: null,
+    positions: TOPICS.reduce((acc,t) => { acc[t.id] = { x: t.x, y: t.y }; return acc; }, {}),
+    topics: TOPICS.map(t => t.id),
+    escribaOpen: false,
+    showDupTopic: false, showDelTopic: false, dupTopicId: null, delTopicId: null,
+    showDialog: false, dialogPhase: 'config', topicCount: 8, genActivities: true, processPct: 0, adjustTargetId: null,
+    editingTopicId: null, selectedContentId: null, rtab: 0,
+    qEditingId: null, qConfirmingId: null, qKindOverride: {},
+    cardEditingId: null, cardConfirmingId: null
+  };
+
+  navIcon(name) {
+    const icons = {
+      visao: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
+      trilhas: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8 7.5C10 10 14 14 16 16.5"/></svg>',
+      turmas: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/></svg>',
+      personalizacoes: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/><path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2z"/></svg>',
+      rankings: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 6H4a2 2 0 0 0 2 4"/><path d="M17 6h3a2 2 0 0 1-2 4"/></svg>',
+      meusdados: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+      aprovacoes: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2l8 3v6c0 5-3.5 8.5-8 11-4.5-2.5-8-6-8-11V5l8-3z"/><path d="M9 12l2 2 4-4"/></svg>'
+    };
+    return { __html: icons[name] };
+  }
+
+  connectorPath(a, b) {
+    const p = this.state.positions;
+    const ax = p[a].x + NODE_W, ay = p[a].y + 70;
+    const bx = p[b].x, by = p[b].y + 70;
+    if (Math.abs(ay - by) < 5) {
+      const mx = (ax + bx) / 2;
+      return `M ${ax} ${ay} C ${mx} ${ay}, ${mx} ${by}, ${bx} ${by}`;
+    }
+    return `M ${ax} ${ay} C ${ax+120} ${ay}, ${bx-120} ${by}, ${bx} ${by}`;
+  }
+
+  onCanvasDown(e) {
+    this.setState({ drag: { type:'pan', sx:e.clientX, sy:e.clientY, px:this.state.pan.x, py:this.state.pan.y } });
+  }
+  onCanvasMove(e) {
+    const d = this.state.drag;
+    if (!d) return;
+    if (d.type === 'pan') {
+      this.setState({ pan: { x: d.px + (e.clientX - d.sx), y: d.py + (e.clientY - d.sy) } });
+    } else if (d.type === 'node') {
+      const z = this.state.zoom;
+      const nx = d.nx + (e.clientX - d.sx) / z;
+      const ny = d.ny + (e.clientY - d.sy) / z;
+      this.setState({ positions: { ...this.state.positions, [d.id]: { x: nx, y: ny } } });
+    }
+  }
+  onCanvasUp() { this.setState({ drag: null }); }
+  onCanvasWheel(e) {
+    const delta = e.deltaY > 0 ? -0.08 : 0.08;
+    this.setState(s => ({ zoom: Math.max(0.5, Math.min(1.6, s.zoom + delta)) }));
+  }
+  onNodeDown(id, e) {
+    e.stopPropagation();
+    this.setState({ drag: { type:'node', id, sx:e.clientX, sy:e.clientY, nx:this.state.positions[id].x, ny:this.state.positions[id].y } });
+  }
+
+  startGenerateFn() {
+    this.setState({ dialogPhase: 'processing', processPct: 8 });
+    const labels = ['Analisando o material enviado…', 'Identificando os tópicos principais…', 'Ordenando a sequência da trilha…', 'Gerando o material inicial…'];
+    let i = 0;
+    const tick = () => {
+      i++;
+      if (i >= labels.length) { this.setState({ dialogPhase: 'result' }); return; }
+      this.setState({ processPct: Math.round((i / labels.length) * 100), processLabelIdx: i });
+      setTimeout(tick, 550);
+    };
+    setTimeout(tick, 550);
+  }
+
+  renderVals() {
+    const estado = this.state.estado;
+    const topics = this.state.topics;
+    const titleOf = id => TOPICS.find(t => t.id === id).title;
+
+    const navItems = [
+      { key:'visao', label:'Visão geral', active:false },
+      { key:'trilhas', label:'Trilhas', active:true },
+      { key:'turmas', label:'Turmas', active:false },
+      { key:'personalizacoes', label:'Personalizações', active:false },
+      { key:'rankings', label:'Rankings', active:false },
+      { key:'meusdados', label:'Meus dados', active:false },
+      { key:'aprovacoes', label:'Aprovações', active:false }
+    ].map(n => ({
+      label: n.label, iconHtml: this.navIcon(n.key), color: n.active ? '#4fd1c5' : '#a29cb3', href: NAV_HREFS[n.key],
+      style: `display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;white-space:nowrap;${n.active ? 'background:rgba(79,209,197,0.08);font-weight:600;' : ''}`
+    }));
+
+    const estadoOptions = ['editor','empty'].map(k => ({
+      label: k === 'editor' ? 'Editor (mapa)' : 'Turma não selecionada',
+      select: () => this.setState({ estado: k }),
+      style: `padding:6px 12px;border-radius:999px;font-size:11px;cursor:pointer;font-weight:600;${estado===k ? 'background:#9b5de5;color:#fff;' : 'color:#a29cb3;'}`
+    }));
+
+    const nodes = topics.map((id, i) => {
+      const pos = this.state.positions[id];
+      const prevId = topics[i-1];
+      const nextId = topics[i+1];
+      return {
+        seq: i + 1, title: titleOf(id),
+        dep: prevId ? titleOf(prevId) : null,
+        next: nextId ? titleOf(nextId) : null,
+        wrap: `position:absolute; left:${pos.x}px; top:${pos.y}px; width:${NODE_W}px; padding:16px; border-radius:16px; background:#1b1728; border:1px solid #2b2438; cursor:grab; user-select:none;`,
+        down: (e) => this.onNodeDown(id, e),
+        stop: (e) => e.stopPropagation(),
+        open: () => this.setState({ editingTopicId: id, selectedContentId: null, rtab: 0 }),
+        askDup: () => this.setState({ showDupTopic: true, dupTopicId: id }),
+        askDel: () => this.setState({ showDelTopic: true, delTopicId: id })
+      };
+    });
+
+    const connectors = [];
+    for (let i = 0; i < topics.length - 1; i++) {
+      connectors.push({ d: this.connectorPath(topics[i], topics[i+1]), stroke:'#9b5de5', dash:'0', marker:'url(#arrowSeq)' });
+    }
+
+    const PROC_LABELS = ['Configurando a proposta…', 'Analisando o material enviado…', 'Identificando os tópicos principais…', 'Ordenando a sequência da trilha…', 'Gerando o material inicial…'];
+    const phase = this.state.dialogPhase;
+    const dialogStepIndex = { config:1, processing:3, result:4, review:5, adjust:6 }[phase] || 1;
+    const dialogSteps = [1,2,3,4,5,6].map(n => ({
+      dot: `width:12px;height:12px;border-radius:50%;flex:none;${n <= dialogStepIndex ? 'background:#9b5de5;' : 'background:#2b2438;'}`,
+      hasLine: n < 6,
+      line: `flex:1;height:2px;${n < dialogStepIndex ? 'background:#9b5de5;' : 'background:#2b2438;'}`
+    }));
+    const proposal = topics.map((id,i) => ({ n: i+1, name: titleOf(id), meta: (i%3===0 ? '2 conteúdos' : (i%3===1 ? '3 conteúdos · 1 atividade' : '4 conteúdos')), adjust: () => this.setState({ dialogPhase:'adjust', adjustTargetId:id }) }));
+
+    return {
+      navItems, estadoOptions,
+      isEmpty: estado === 'empty', isEditor: estado === 'editor',
+      closeEmpty: () => this.setState({ estado: 'editor' }),
+      openDialog: () => this.setState({ showDialog: true, dialogPhase: 'config' }), newTopic: () => {},
+      showDialog: this.state.showDialog,
+      closeDialog: () => this.setState({ showDialog: false }),
+      dialogSteps,
+      isConfig: phase === 'config', isProcessing: phase === 'processing', isResult: phase === 'result', isReview: phase === 'review', isAdjust: phase === 'adjust',
+      topicCountOptions: [6,8,12].map(n => ({
+        label: String(n), select: () => this.setState({ topicCount: n }),
+        style: `padding:8px 15px;border-radius:999px;font-size:12.5px;font-weight:600;cursor:pointer;${this.state.topicCount===n ? 'background:#9b5de5;color:#fff;' : 'background:#231d33;color:#c9c4d4;'}`
+      })),
+      genActivitiesOptions: [{v:true,l:'Sim'},{v:false,l:'Só tópicos'}].map(o => ({
+        label: o.l, select: () => this.setState({ genActivities: o.v }),
+        style: `padding:8px 15px;border-radius:999px;font-size:12.5px;font-weight:600;cursor:pointer;${this.state.genActivities===o.v ? 'background:#9b5de5;color:#fff;' : 'background:#231d33;color:#c9c4d4;'}`
+      })),
+      startGenerate: () => this.startGenerateFn(),
+      processLabel: PROC_LABELS[this.state.processLabelIdx || 0],
+      processBar: `width:${this.state.processPct}%;height:100%;border-radius:999px;background:#9b5de5;transition:width .4s;`,
+      proposal,
+      discardResult: () => this.setState({ showDialog: false }),
+      startReview: () => this.setState({ dialogPhase: 'review' }),
+      backToResult: () => this.setState({ dialogPhase: 'result' }),
+      applyProposal: () => this.setState({ showDialog: false }),
+      backToReview: () => this.setState({ dialogPhase: 'review' }),
+      applyAdjust: () => this.setState({ dialogPhase: 'review' }),
+      adjustTarget: this.state.adjustTargetId ? titleOf(this.state.adjustTargetId) : '',
+      canvasStyle: `position:absolute; inset:0; transform: translate(${this.state.pan.x}px, ${this.state.pan.y}px) scale(${this.state.zoom}); transform-origin: 0 0;`,
+      canvasDown: (e) => this.onCanvasDown(e),
+      canvasMove: (e) => this.onCanvasMove(e),
+      canvasUp: () => this.onCanvasUp(),
+      canvasWheel: (e) => this.onCanvasWheel(e),
+      nodes, connectors,
+      zoomLabel: Math.round(this.state.zoom * 100) + '%',
+      zoomIn: () => this.setState(s => ({ zoom: Math.min(1.6, s.zoom + 0.1) })),
+      zoomOut: () => this.setState(s => ({ zoom: Math.max(0.5, s.zoom - 0.1) })),
+      fitToScreen: () => this.setState({ zoom: 1, pan: { x: 30, y: 10 } }),
+      centerCanvas: () => this.setState({ pan: { x: 30, y: 10 } }),
+      showDupTopic: this.state.showDupTopic, showDelTopic: this.state.showDelTopic,
+      dupTopicName: this.state.dupTopicId ? titleOf(this.state.dupTopicId) : '',
+      delTopicName: this.state.delTopicId ? titleOf(this.state.delTopicId) : '',
+      cancelDupTopic: () => this.setState({ showDupTopic: false }),
+      cancelDelTopic: () => this.setState({ showDelTopic: false }),
+      confirmDupTopic: () => this.setState({ showDupTopic: false }),
+      confirmDelTopic: () => this.setState(s => ({ showDelTopic: false, topics: s.topics.filter(t => t !== s.delTopicId) })),
+      escribaOpen: this.state.escribaOpen,
+      toggleEscriba: () => this.setState(s => ({ escribaOpen: !s.escribaOpen })),
+
+      mainZ: this.state.editingTopicId ? 45 : 1,
+      editingTopicId: this.state.editingTopicId,
+      editingTopicName: this.state.editingTopicId ? titleOf(this.state.editingTopicId) : '',
+      editingTopicSeq: this.state.editingTopicId ? (topics.indexOf(this.state.editingTopicId) + 1) : '',
+      closeTopicEditor: () => this.setState({ editingTopicId: null }),
+      topicContents: TOPIC_CONTENTS.map(ct => ({
+        n: ct.id, name: ct.name, kindLabel: ct.kindLabel, qCount: ct.qCount,
+        select: () => this.setState({ selectedContentId: ct.id, rtab: 0 }),
+        rowStyle: `display:flex;align-items:center;gap:9px;padding:10px 10px;border-radius:12px;cursor:pointer;${this.state.selectedContentId===ct.id ? 'background:#231d33;border:1px solid #9b5de5;' : 'border:1px solid transparent;'}`
+      })),
+      selectedContentId: this.state.selectedContentId,
+      rtabs: ['Conteúdo','Atividades','Cards'].map((l,i) => ({
+        label: l, select: () => this.setState({ rtab: i }),
+        style: `padding:8px 16px;border-radius:999px;font-size:12.5px;font-weight:600;cursor:pointer;${this.state.rtab===i ? 'background:#9b5de5;color:#fff;' : 'color:#a29cb3;'}`
+      })),
+      isRTab0: this.state.rtab===0, isRTab1: this.state.rtab===1, isRTab2: this.state.rtab===2,
+      sel: (() => {
+        const ct = TOPIC_CONTENTS.find(c => c.id === this.state.selectedContentId) || TOPIC_CONTENTS[0];
+        const qs = QUESTIONS.filter(q => q.contentId === ct.id).map((q,i) => {
+          const kind = this.state.qKindOverride[q.id] || q.kind;
+          return {
+            n: i+1, kind, points: q.points, text: q.text,
+            editing: this.state.qEditingId === q.id, confirming: this.state.qConfirmingId === q.id,
+            hasOptions: kind !== 'Dissertativa',
+            options: q.options.map(o => ({ letter:o.letter, text:o.text, isCorrect:o.correct, radio:'width:15px;height:15px;flex:none;border-radius:50%;border:2px solid #3a3350;display:flex;align-items:center;justify-content:center;' + (o.correct ? 'border-color:#5fd99a;' : '') })),
+            kindTypes: KIND_TYPES.map(k => ({ label:k, pill: `padding:7px 14px;border-radius:999px;font-size:11.5px;font-weight:600;cursor:pointer;${k===kind ? 'background:#9b5de5;color:#fff;' : 'background:#0d0b16;color:#c9c4d4;border:1px solid #2b2438;'}` })),
+            toggleEdit: () => this.setState(s => ({ qEditingId: s.qEditingId === q.id ? null : q.id, qConfirmingId: null })),
+            askDel: () => this.setState({ qConfirmingId: q.id, qEditingId: null }),
+            cancelDel: () => this.setState({ qConfirmingId: null }),
+            confirmDel: () => this.setState({ qConfirmingId: null })
+          };
+        });
+        const cds = CARDS.filter(c => c.contentId === ct.id).map(c => ({
+          title: c.title, body: c.body,
+          reuseLabel: c.reuseCount > 1 ? `em ${c.reuseCount} conteúdos` : 'só aqui',
+          reuseBadge: `padding:3px 10px;border-radius:999px;font-size:10.5px;font-weight:700;white-space:nowrap;${c.reuseCount > 1 ? 'background:rgba(155,93,229,0.16);color:#c1a7ec;' : 'background:#2b2438;color:#a29cb3;'}`,
+          editing: this.state.cardEditingId === c.id, confirming: this.state.cardConfirmingId === c.id,
+          toggleEdit: () => this.setState(s => ({ cardEditingId: s.cardEditingId === c.id ? null : c.id, cardConfirmingId: null })),
+          askDel: () => this.setState({ cardConfirmingId: c.id, cardEditingId: null }),
+          cancelDel: () => this.setState({ cardConfirmingId: null }),
+          confirmDel: () => this.setState({ cardConfirmingId: null })
+        }));
+        return { name: ct.name, kindLabel: ct.kindLabel, isFile: ct.format==='file', isText: ct.format==='text', isLink: ct.format==='link',
+          body: ct.body, fileName: ct.fileName, fileSize: ct.fileSize, url: ct.url, linkDomain: ct.linkDomain, linkInitial: ct.linkInitial, linkTitle: ct.linkTitle, linkDesc: ct.linkDesc,
+          qCount: qs.length, hasQ: qs.length > 0, noQ: qs.length === 0, questions: qs,
+          cardCount: cds.length, hasCards: cds.length > 0, noCards: cds.length === 0, cards: cds };
+      })()
+    };
+  }
+}
+
+</script>
+</body>
+</html>

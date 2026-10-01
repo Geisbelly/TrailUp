@@ -1,4 +1,4 @@
-﻿# Fluxo Completo do Ecossistema (Visao Mobile)
+# Fluxo Completo do Ecossistema (Visao Mobile)
 
 1. Estrutura pedagogica criada no Web.
 2. API gera personalizacao e midias.

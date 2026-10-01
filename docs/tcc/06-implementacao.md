@@ -1,4 +1,4 @@
-﻿# 06. Implementacao
+# 06. Implementacao
 
 Data de atualizacao: 2026-04-19
 

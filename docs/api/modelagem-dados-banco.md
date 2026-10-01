@@ -1,4 +1,4 @@
-﻿# Modelagem de Dados - API
+# Modelagem de Dados - API
 
 ## Entidades centrais
 - Academico: classe, topicos, conteudos, atividades, questoes.

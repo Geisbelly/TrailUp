@@ -1,4 +1,4 @@
-﻿# Guia de Uso do Ecossistema TrailUp
+# Guia de Uso do Ecossistema TrailUp
 
 Atualizado em: 2026-04-13
 

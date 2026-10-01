@@ -1,4 +1,4 @@
-﻿# Modelagem de Dados - Mobile (Consumo)
+# Modelagem de Dados - Mobile (Consumo)
 
 ## Leitura
 - classe, topicos, conteudos, atividades

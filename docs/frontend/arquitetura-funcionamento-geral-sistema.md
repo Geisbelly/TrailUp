@@ -1,4 +1,4 @@
-﻿# Arquitetura e Funcionamento Geral do Sistema TrailUp
+# Arquitetura e Funcionamento Geral do Sistema TrailUp
 
 Atualizado em: 2026-04-13
 
@@ -20,13 +20,13 @@ Este documento descreve a arquitetura geral do ecossistema TrailUp e o funcionam
 
 ## 2. Escopo do ecossistema
 
-RepositÃ³rios:
+Repositórios:
 - Web Professor: `brainhex-navigator`
 - API Backend: `ApiTraiUp`
 - Mobile Aluno: `trailup-app-dsm-2502`
 - Plataforma de dados: Supabase (Postgres, Storage, Realtime, Auth)
 
-## 3. VisÃ£o de alto nivel
+## 3. Visão de alto nivel
 
 ```mermaid
 flowchart LR
@@ -75,13 +75,13 @@ flowchart LR
 ## 4.1 Web (professor)
 
 Responsabilidades:
-- autenticaÃ§Ã£o e autorizaÃ§Ã£o do professor
-- modelagem pedagÃ³gica (classe, tÃ³picos, conteÃºdos, atividades, questÃµes)
-- disparo de jobs de personalizaÃ§Ã£o na API
-- uso de edge functions para geraÃ§Ã£o/avaliaÃ§Ã£o com IA
+- autenticação e autorização do professor
+- modelagem pedagógica (classe, tópicos, conteúdos, atividades, questões)
+- disparo de jobs de personalização na API
+- uso de edge functions para geração/avaliação com IA
 
 Camadas:
-- Presentation: pÃ¡ginas e componentes de console
+- Presentation: páginas e componentes de console
 - Application: hooks/features de fluxo docente
 - Domain/UI Rules: normalizadores e validacoes
 - Infrastructure: Supabase client + chamadas API/edge
@@ -91,9 +91,9 @@ Camadas:
 Responsabilidades:
 - expor contratos HTTP para Web/Mobile
 - aplicar regras de acesso por role e ownership
-- executar workflow de personalizaÃ§Ã£o por aluno/tÃ³pico
-- processar telemetria e registrar anÃ¡lises
-- manter worker assÃ­ncrono de jobs de personalizaÃ§Ã£o
+- executar workflow de personalização por aluno/tópico
+- processar telemetria e registrar análises
+- manter worker assíncrono de jobs de personalização
 
 Camadas:
 - API Layer (`app/api`)
@@ -105,9 +105,9 @@ Camadas:
 ## 4.3 Mobile (aluno)
 
 Responsabilidades:
-- experiÃªncia de estudo do aluno
-- leitura de trilha e conteÃºdo personalizado
-- registro de progresso acadÃªmico
+- experiência de estudo do aluno
+- leitura de trilha e conteúdo personalizado
+- registro de progresso acadêmico
 - envio de telemetria por lotes
 - chat e interacoes de apoio via API
 
@@ -122,12 +122,12 @@ Camadas:
 Responsabilidades:
 - persist?ncia principal do dominio
 - armazenamento de artefatos
-- realtime para propagacao de atualizaÃ§Ãµes
+- realtime para propagacao de atualizações
 - auth e identidade base
 
 ## 5. Fluxos operacionais principais
 
-## 5.1 Fluxo de personalizaÃ§Ã£o por aluno
+## 5.1 Fluxo de personalização por aluno
 
 ```mermaid
 sequenceDiagram
@@ -191,11 +191,11 @@ sequenceDiagram
 
 | Capacidade | Web | API | Mobile | Supabase |
 |---|---|---|---|---|
-| CRUD pedagÃ³gico | principal | apoio | leitura | persist?ncia |
-| Jobs de personalizaÃ§Ã£o | dispara | principal | consome | persist?ncia |
-| ConteÃºdo personalizado | leitura docente | gera e persiste | consumo | storage+db |
+| CRUD pedagógico | principal | apoio | leitura | persist?ncia |
+| Jobs de personalização | dispara | principal | consome | persist?ncia |
+| Conteúdo personalizado | leitura docente | gera e persiste | consumo | storage+db |
 | Progresso personalizado | visualizacao | valida e grava | envia | persist?ncia |
-| Telemetria | nÃ£o principal | processa | gera sinais | persist?ncia |
+| Telemetria | não principal | processa | gera sinais | persist?ncia |
 | Auth base | cliente auth | valida token | cliente auth | principal |
 
 ## 7. Ciclo de vida dos dados
@@ -216,16 +216,16 @@ flowchart TD
 
 Modelo:
 - token JWT Supabase como credencial de entrada
-- resoluÃ§Ã£o de identidade (aluno/professor)
-- validaÃ§Ã£o de ownership por classe/aluno quando necessario
+- resolução de identidade (aluno/professor)
+- validação de ownership por classe/aluno quando necessario
 - rotas administrativas protegidas por basic auth
 
 Principio:
 - menor privilegio por endpoint
 - professor so acessa alunos/classes permitidos
-- aluno so manipula dados do prÃ³prio contexto
+- aluno so manipula dados do próprio contexto
 
-## 9. Escalabilidade e operaÃ§Ã£o
+## 9. Escalabilidade e operação
 
 Mecanismos principais:
 - fila de jobs com targets atomicos
@@ -234,7 +234,7 @@ Mecanismos principais:
 - checkpointers para workflows
 - retention para limpeza de checkpoint
 
-## 10. DependÃªncias criticas
+## 10. Dependências criticas
 
 - API depende de:
   - `DATABASE_URL`
@@ -242,18 +242,18 @@ Mecanismos principais:
   - `SUPABASE_SERVICE_KEY`
   - `SUPABASE_JWT_SECRET`
   - provider LLM (`OPENAI_API_KEY` ou `GEMINI_API_KEY`)
-- Web/Mobile dependem de chaves pÃºblicas e URL da API
-- consistencia do schema Supabase e requisito para os tres repositÃ³rios
+- Web/Mobile dependem de chaves públicas e URL da API
+- consistencia do schema Supabase e requisito para os tres repositórios
 
-## 11. ConclusÃ£o operacional
+## 11. Conclusão operacional
 
-O sistema foi desenhado com separaÃ§Ã£o clara:
-- Web governa modelagem pedagÃ³gica e orquestracao docente
-- API centraliza regras de neg?cio, workflows e processamento assÃ­nc
-- Mobile executa experiÃªncia de aprendizagem e coleta sinais de uso
+O sistema foi desenhado com separação clara:
+- Web governa modelagem pedagógica e orquestracao docente
+- API centraliza regras de neg?cio, workflows e processamento assínc
+- Mobile executa experiência de aprendizagem e coleta sinais de uso
 - Supabase sustenta persist?ncia, realtime, storage e identidade
 
-Esse desenho permite evoluÃ§Ã£o independente por repositÃ³rio, mantendo contrato de dados e fluxos sincronizados.
+Esse desenho permite evolução independente por repositório, mantendo contrato de dados e fluxos sincronizados.
 
 
 ## Atualizacoes (2026-04-13)

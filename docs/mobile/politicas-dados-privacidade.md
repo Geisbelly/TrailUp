@@ -1,4 +1,4 @@
-﻿# Politicas de Dados e Privacidade - Mobile
+# Politicas de Dados e Privacidade - Mobile
 
 ## Diretrizes
 - Coleta de telemetria depende de consentimento.

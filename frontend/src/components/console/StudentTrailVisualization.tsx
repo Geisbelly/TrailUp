@@ -1,314 +1,153 @@
-import { Check, Star, Lock, Gift, ChevronRight } from "lucide-react";
+import { Check, ChevronRight, Gift, Lock, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
+import { chaveDoPerfil, COR_DO_PERFIL, corDoIconeSobre } from "./dashboard/perfilCores";
+import { PerfilChip } from "./dashboard/PerfilVisual";
 
 interface TopicoStatus {
   id: number;
   nome: string;
-  status: 'concluido' | 'disponivel' | 'bloqueado';
+  status: "concluido" | "disponivel" | "bloqueado";
   percentual: number;
 }
 
 interface StudentTrailVisualizationProps {
   studentName: string;
   classeName: string;
-  xp: number;
-  xpTotal: number;
   topicos: TopicoStatus[];
   perfilDominante: string;
-  viewMode?: 'hexagon' | 'list';
+  viewMode?: "hexagon" | "list";
 }
 
-// Cores baseadas no perfil BrainHex dominante
-const PROFILE_COLORS: Record<string, { primary: string; glow: string; bg: string }> = {
-  Achiever: { primary: 'hsl(142 76% 36%)', glow: 'hsl(142 76% 50%)', bg: 'hsl(142 76% 36% / 0.2)' },
-  Seeker: { primary: 'hsl(217 91% 60%)', glow: 'hsl(217 91% 70%)', bg: 'hsl(217 91% 60% / 0.2)' },
-  Mastermind: { primary: 'hsl(262 83% 58%)', glow: 'hsl(262 83% 70%)', bg: 'hsl(262 83% 58% / 0.2)' },
-  Conqueror: { primary: 'hsl(0 72% 51%)', glow: 'hsl(0 72% 65%)', bg: 'hsl(0 72% 51% / 0.2)' },
-  Socializer: { primary: 'hsl(330 81% 60%)', glow: 'hsl(330 81% 75%)', bg: 'hsl(330 81% 60% / 0.2)' },
-  Daredevil: { primary: 'hsl(32 95% 44%)', glow: 'hsl(32 95% 60%)', bg: 'hsl(32 95% 44% / 0.2)' },
-  Survivor: { primary: 'hsl(199 89% 48%)', glow: 'hsl(199 89% 60%)', bg: 'hsl(199 89% 48% / 0.2)' },
+type Cores = { marca: string; texto: string; icone: string };
+
+const HEXAGONO = "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)";
+
+const ROTULO_DO_STATUS: Record<TopicoStatus["status"], string> = {
+  concluido: "Concluído",
+  disponivel: "Disponível",
+  bloqueado: "Bloqueado",
 };
 
-const HexagonNode = ({ 
-  topico, 
-  colors, 
-  isLast 
-}: { 
-  topico: TopicoStatus; 
-  colors: typeof PROFILE_COLORS.Achiever;
-  isLast: boolean;
-}) => {
-  const getStatusIcon = () => {
-    switch (topico.status) {
-      case 'concluido':
-        return <Check className="w-8 h-8 text-white" />;
-      case 'disponivel':
-        return <Star className="w-8 h-8 text-white" />;
-      case 'bloqueado':
-        return <Lock className="w-6 h-6 text-muted-foreground" />;
-    }
-  };
+function IconeDoStatus({ status, className, color }: { status: TopicoStatus["status"]; className: string; color: string }) {
+  const Icone = status === "concluido" ? Check : status === "disponivel" ? Star : Lock;
+  return <Icone className={className} style={{ color }} aria-hidden="true" />;
+}
 
-  const getStatusStyles = () => {
-    switch (topico.status) {
-      case 'concluido':
-        return {
-          bg: colors.primary,
-          border: colors.glow,
-          shadow: `0 0 20px ${colors.glow}`,
-          opacity: 1,
-        };
-      case 'disponivel':
-        return {
-          bg: colors.bg,
-          border: colors.primary,
-          shadow: `0 0 30px ${colors.glow}`,
-          opacity: 1,
-        };
-      case 'bloqueado':
-        return {
-          bg: 'hsl(var(--muted))',
-          border: 'hsl(var(--border))',
-          shadow: 'none',
-          opacity: 0.5,
-        };
-    }
-  };
+function corDoRotulo(status: TopicoStatus["status"], cores: Cores) {
+  if (status === "concluido") return "hsl(var(--success))";
+  if (status === "disponivel") return cores.texto;
+  return "hsl(var(--muted-foreground))";
+}
 
-  const styles = getStatusStyles();
-
+function HexagonNode({ topico, cores, isLast }: { topico: TopicoStatus; cores: Cores; isLast: boolean }) {
+  const bloqueado = topico.status === "bloqueado";
+  const concluido = topico.status === "concluido";
   return (
     <div className="flex flex-col items-center">
-      {/* Hexagon Container */}
-      <div 
-        className="relative"
-        style={{ opacity: styles.opacity }}
-      >
-        {/* Hexagon Shape */}
-        <div 
-          className="w-24 h-24 flex items-center justify-center relative"
-          style={{
-            clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
-            backgroundColor: styles.bg,
-            boxShadow: styles.shadow,
-          }}
-        >
-          {/* Inner border effect */}
-          <div 
-            className="absolute inset-1 flex items-center justify-center"
-            style={{
-              clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
-              border: `2px solid ${styles.border}`,
-            }}
-          >
-            {getStatusIcon()}
-          </div>
-        </div>
-        
-        {/* Glow effect for disponivel */}
-        {topico.status === 'disponivel' && (
-          <div 
-            className="absolute inset-0 animate-pulse"
-            style={{
-              clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
-              background: `linear-gradient(to bottom, ${colors.glow} 0%, transparent 100%)`,
-              opacity: 0.3,
-            }}
-          />
-        )}
-      </div>
-
-      {/* Topic Name Badge */}
-      <div 
-        className={cn(
-          "mt-2 px-4 py-2 rounded-lg text-sm font-medium text-center max-w-[140px]",
-          topico.status === 'bloqueado' ? "bg-muted text-muted-foreground" : "text-white"
-        )}
+      <div
+        className={cn("flex h-24 w-24 items-center justify-center", bloqueado && "opacity-60")}
         style={{
-          backgroundColor: topico.status !== 'bloqueado' ? colors.primary : undefined,
+          clipPath: HEXAGONO,
+          background: bloqueado ? "hsl(var(--muted))" : concluido ? cores.marca : `${cores.marca}33`,
         }}
+      >
+        {/* Ícone pede 3:1: sobre a marca sólida decide pela luminância; nos
+            outros casos o fundo é escuro e a variante de texto passa. */}
+        <IconeDoStatus
+          status={topico.status}
+          className="h-8 w-8"
+          color={bloqueado ? "hsl(var(--muted-foreground))" : concluido ? cores.icone : cores.texto}
+        />
+      </div>
+      <div
+        className={cn(
+          "mt-2 max-w-[160px] rounded-full px-4 py-1.5 text-center text-sm font-semibold",
+          bloqueado && "bg-muted text-muted-foreground",
+        )}
+        style={bloqueado ? undefined : { background: `${cores.marca}22`, color: cores.texto }}
       >
         {topico.nome}
       </div>
-
-      {/* Status Label */}
-      <span className={cn(
-        "text-xs mt-1",
-        topico.status === 'concluido' && "text-green-500",
-        topico.status === 'disponivel' && "text-primary",
-        topico.status === 'bloqueado' && "text-muted-foreground"
-      )}>
-        {topico.status === 'concluido' && 'Concluído'}
-        {topico.status === 'disponivel' && 'Disponível'}
-        {topico.status === 'bloqueado' && 'Bloqueado'}
+      <span className="mt-1 text-xs font-semibold" style={{ color: corDoRotulo(topico.status, cores) }}>
+        {ROTULO_DO_STATUS[topico.status]}
       </span>
-
-      {/* Connection Line */}
       {!isLast && (
-        <div 
-          className="w-0.5 h-8 mt-2"
-          style={{ 
-            backgroundColor: topico.status !== 'bloqueado' ? colors.primary : 'hsl(var(--border))',
-          }}
-        >
-          <div 
-            className="w-2 h-2 rounded-full mx-auto mt-6"
-            style={{ 
-              backgroundColor: topico.status !== 'bloqueado' ? colors.primary : 'hsl(var(--border))',
-            }}
-          />
+        <div aria-hidden="true" className="mt-2 flex flex-col items-center">
+          <div className="h-6 w-0.5" style={{ background: bloqueado ? "hsl(var(--border))" : cores.marca }} />
+          <div className="h-2 w-2 rounded-full" style={{ background: bloqueado ? "hsl(var(--border))" : cores.marca }} />
         </div>
       )}
     </div>
   );
-};
+}
 
-const ListNode = ({ 
-  topico, 
-  colors 
-}: { 
-  topico: TopicoStatus; 
-  colors: typeof PROFILE_COLORS.Achiever;
-}) => {
-  const getStatusIcon = () => {
-    switch (topico.status) {
-      case 'concluido':
-        return <Check className="w-5 h-5" />;
-      case 'disponivel':
-        return <Gift className="w-5 h-5" />;
-      case 'bloqueado':
-        return <Lock className="w-5 h-5" />;
-    }
-  };
-
+function ListNode({ topico, cores }: { topico: TopicoStatus; cores: Cores }) {
+  const bloqueado = topico.status === "bloqueado";
+  const Icone = topico.status === "concluido" ? Check : topico.status === "disponivel" ? Gift : Lock;
   return (
-    <div 
-      className={cn(
-        "flex items-center gap-4 p-4 rounded-xl border-2 transition-all",
-        topico.status === 'concluido' && "border-primary/50 bg-primary/10",
-        topico.status === 'disponivel' && "border-primary bg-primary/20 shadow-lg",
-        topico.status === 'bloqueado' && "border-muted bg-muted/30 opacity-60"
-      )}
-      style={{
-        borderColor: topico.status !== 'bloqueado' ? colors.primary : undefined,
-        boxShadow: topico.status === 'disponivel' ? `0 0 20px ${colors.glow}` : undefined,
-      }}
+    <div
+      className={cn("flex items-center gap-4 rounded-2xl border p-4", bloqueado ? "border-border bg-muted/40" : "bg-muted")}
+      style={bloqueado ? undefined : { borderColor: cores.marca }}
     >
-      {/* Hexagon Icon */}
-      <div 
-        className={cn(
-          "w-14 h-14 flex items-center justify-center",
-          topico.status === 'bloqueado' && "text-muted-foreground"
-        )}
-        style={{
-          clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
-          backgroundColor: topico.status !== 'bloqueado' ? colors.primary : 'hsl(var(--muted))',
-          color: topico.status !== 'bloqueado' ? 'white' : undefined,
-        }}
+      <div
+        className="flex h-14 w-14 shrink-0 items-center justify-center"
+        style={{ clipPath: HEXAGONO, background: bloqueado ? "hsl(var(--border))" : cores.marca }}
       >
-        {getStatusIcon()}
+        <Icone className="h-5 w-5" aria-hidden="true" style={{ color: bloqueado ? "hsl(var(--muted-foreground))" : cores.icone }} />
       </div>
-
-      {/* Content */}
-      <div className="flex-1">
-        <h4 className={cn(
-          "font-semibold",
-          topico.status === 'bloqueado' && "text-muted-foreground"
-        )}>
+      <div className="min-w-0 flex-1">
+        <h4 className={cn("truncate font-sans text-base font-semibold", bloqueado ? "text-muted-foreground" : "text-foreground")}>
           {topico.nome}
         </h4>
-        <p className="text-sm text-muted-foreground">
-          {topico.status === 'concluido' && 'Concluído'}
-          {topico.status === 'disponivel' && 'Disponível'}
-          {topico.status === 'bloqueado' && 'Bloqueado'}
+        <p className="text-sm font-semibold" style={{ color: corDoRotulo(topico.status, cores) }}>
+          {ROTULO_DO_STATUS[topico.status]}
         </p>
       </div>
-
-      {/* Arrow */}
-      <ChevronRight className={cn(
-        "w-5 h-5",
-        topico.status === 'bloqueado' && "text-muted-foreground"
-      )} />
+      <ChevronRight className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
     </div>
   );
-};
+}
 
 export default function StudentTrailVisualization({
   studentName,
   classeName,
-  xp,
-  xpTotal,
   topicos,
   perfilDominante,
-  viewMode = 'hexagon',
+  viewMode = "hexagon",
 }: StudentTrailVisualizationProps) {
-  const colors = PROFILE_COLORS[perfilDominante] || PROFILE_COLORS.Mastermind;
-  const xpPercentage = (xp / xpTotal) * 100;
+  const chave = chaveDoPerfil(perfilDominante) ?? "mastermind";
+  const { marca, texto } = COR_DO_PERFIL[chave];
+  const cores: Cores = { marca, texto, icone: corDoIconeSobre(marca) };
 
   return (
-    <Card className="overflow-hidden">
-      <CardHeader 
-        className="text-white"
-        style={{ backgroundColor: colors.primary }}
-      >
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm opacity-80">TRILHA</p>
-            <CardTitle className="text-2xl">{classeName}</CardTitle>
-          </div>
-          <Badge 
-            variant="secondary" 
-            className="text-sm"
-            style={{ backgroundColor: colors.bg, color: colors.primary }}
-          >
-            {perfilDominante}
-          </Badge>
+    <div className="rounded-[20px] border border-border bg-card">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-[26px] py-5">
+        <div className="min-w-0">
+          <div className="console-label">Trilha</div>
+          <h3 className="mt-1 truncate text-xl text-foreground">{classeName}</h3>
         </div>
-        
-        {/* XP Progress */}
-        <div className="mt-4">
-          <div className="flex justify-between text-sm mb-1">
-            <span>Progresso</span>
-            <span>XP {Math.round(xp)}/{xpTotal}</span>
-          </div>
-          <Progress 
-            value={xpPercentage} 
-            className="h-2 bg-white/20"
-          />
-        </div>
-      </CardHeader>
-
-      <CardContent className="p-6">
-        <p className="text-sm text-muted-foreground mb-4">
-          Visualizando trilha de <strong>{studentName}</strong>
+        <PerfilChip perfil={perfilDominante} />
+      </div>
+      <div className="p-6">
+        <p className="mb-4 text-sm text-muted-foreground">
+          Visualizando trilha de <strong className="text-foreground">{studentName}</strong>
         </p>
-
-        {viewMode === 'hexagon' ? (
+        {topicos.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">Nenhum tópico registrado para este aluno nesta turma.</p>
+        ) : viewMode === "hexagon" ? (
           <div className="flex flex-col items-center gap-2 py-6">
             {topicos.map((topico, index) => (
-              <HexagonNode 
-                key={topico.id} 
-                topico={topico} 
-                colors={colors}
-                isLast={index === topicos.length - 1}
-              />
+              <HexagonNode key={topico.id} topico={topico} cores={cores} isLast={index === topicos.length - 1} />
             ))}
           </div>
         ) : (
           <div className="space-y-3">
             {topicos.map((topico) => (
-              <ListNode 
-                key={topico.id} 
-                topico={topico} 
-                colors={colors}
-              />
+              <ListNode key={topico.id} topico={topico} cores={cores} />
             ))}
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

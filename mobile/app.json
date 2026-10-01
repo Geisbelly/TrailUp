@@ -25,7 +25,6 @@
     "android": {
       "package": "com.seuprojeto.trailup",
       "versionCode": 5,
-      "usesCleartextTraffic": true,
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.POST_NOTIFICATIONS",
@@ -44,7 +43,15 @@
       "name": "TrailUp Plataforma"
     },
     "plugins": [
-      "expo-router",
+      [
+        "expo-router",
+        {
+          "asyncRoutes": {
+            "web": "production",
+            "default": "development"
+          }
+        }
+      ],
       [
         "expo-camera",
         {

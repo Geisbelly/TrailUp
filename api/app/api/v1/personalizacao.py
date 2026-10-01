@@ -1049,7 +1049,10 @@ def _to_response(record: dict) -> PersonalizacaoResponse:
 
     return PersonalizacaoResponse(
         id=record["id"],
-        aluno_id=str(record["aluno_id"]),
+        # Material BASE por perfil nao tem dono (aluno_id NULL). str(None)
+        # devolvia a string "None" ao cliente -- um valor que passa por
+        # string e nao e' nenhum aluno.
+        aluno_id=str(record["aluno_id"]) if record.get("aluno_id") is not None else None,
         classe_id=record.get("classe_id"),
         conteudo_id=record.get("conteudo_id"),
         topico_id=record.get("topico_id"),
@@ -1160,7 +1163,8 @@ def _to_job_target_response(record: dict) -> PersonalizacaoJobTargetResponse:
     return PersonalizacaoJobTargetResponse(
         id=int(record["id"]),
         job_id=str(record["job_id"]),
-        aluno_id=str(record["aluno_id"]),
+        # Target de base por perfil nao tem dono -- ver _build_targets.
+        aluno_id=str(record["aluno_id"]) if record.get("aluno_id") is not None else None,
         topico_id=int(record["topico_id"]),
         conteudo_id=record.get("conteudo_id"),
         brainhex_profile_key=record.get("brainhex_profile_key"),

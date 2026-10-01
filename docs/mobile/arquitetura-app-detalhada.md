@@ -1,4 +1,4 @@
-﻿# Arquitetura do App Mobile - Versão Detalhada
+# Arquitetura do App Mobile - Versão Detalhada
 
 ## 1. Objetivo
 Documentar arquitetura completa do app do aluno, separada da arquitetura do microserviço de mídia.

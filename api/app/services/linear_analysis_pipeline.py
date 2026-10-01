@@ -1,3 +1,21 @@
+"""Pipeline linear de analise adaptativa.
+
+NOTA SOBRE OS NOMES DAS CLASSES: os seis estagios se chamam DeepFace,
+IsolationForest, HiddenMarkovModel, DeepKnowledgeTracing, RandomForest e
+XGBoost, e nenhum deles roda o algoritmo que o nome anuncia. Todos sao
+heuristicas por regra -- comparacoes e somas de constantes escritas a mao.
+
+Isto nao e acidente de leitura: a API nao tem NENHUMA biblioteca de ML ou visao
+nas dependencias (sem scikit-learn, xgboost, hmmlearn, deepface, opencv,
+torch, tensorflow), este modulo importa apenas `Counter`, `dataclass`, `typing`
+e `fastapi`, e usa `numpy` zero vezes.
+
+Os nomes indicam o algoritmo PRETENDIDO para cada estagio, e ficaram como
+marcadores do desenho. Cada classe diz na propria docstring o que faz de fato.
+Ao ler medicao ou documentacao que cite "o modelo de emocao", confira aqui
+antes: o que existe e uma regra.
+"""
+
 from __future__ import annotations
 
 from collections import Counter
@@ -318,6 +336,20 @@ class AdaptiveContentGenerator(Protocol):
 
 
 class DeepFaceEmotionAnalyzer:
+    """Heuristica por regra. NAO roda DeepFace, nem olha para a imagem.
+
+    O nome diz o algoritmo PRETENDIDO, nao o implementado -- vale para os seis
+    estagios deste modulo (ver nota no topo do arquivo).
+
+    `frames_b64` entra aqui e vira `len()`: a contagem so empurra `confianca`
+    em `+ min(frame_count, 30) * 0.01`. Os bytes nunca sao decodificados, e nao
+    ha deepface/opencv/mediapipe/torch nas dependencias da API. A emocao sai de
+    contagem de eventos (`erro_recorrente`, `atividade_errada`,
+    `atividade_acertada`) e de `idle_sec`.
+
+    Consequencia pratica: desligar a camera nao muda a emocao estimada, so
+    reduz a confianca declarada.
+    """
     provider_name = "deepface"
 
     async def analyze(
@@ -366,6 +398,13 @@ class DeepFaceEmotionAnalyzer:
 
 
 class IsolationForestReadingAnalyzer:
+    """Heuristica por limiar. NAO roda Isolation Forest.
+
+    Compara razoes calculadas do payload contra constantes escritas a mao --
+    `active_ratio < 0.35 and scroll < 180` vira "anomalo",
+    `switch_pressure >= 4` com dwell medio baixo vira "fragmentado". Nao ha
+    modelo treinado, nem deteccao de outlier: sao comparacoes fixas.
+    """
     provider_name = "isolation_forest"
 
     async def analyze(
@@ -426,6 +465,12 @@ class IsolationForestReadingAnalyzer:
 
 
 class HiddenMarkovInteractionAnalyzer:
+    """Heuristica por regra. NAO ha cadeia de Markov nem estado latente.
+
+    O estado de interacao sai de contagem de eventos e de razoes do lote atual.
+    Nao existe matriz de transicao, nem probabilidade de emissao, nem memoria
+    entre lotes -- cada chamada decide olhando so o que recebeu.
+    """
     provider_name = "hidden_markov_model"
 
     async def analyze(
@@ -486,6 +531,12 @@ class HiddenMarkovInteractionAnalyzer:
 
 
 class DeepKnowledgeTracingAnalyzer:
+    """Heuristica por regra. NAO e Deep Knowledge Tracing.
+
+    DKT real estima dominio por habilidade com rede recorrente sobre a sequencia
+    historica de respostas. Aqui o dominio sai de contagem de acerto e erro dos
+    eventos do lote, sem modelo, sem habilidade e sem historico.
+    """
     provider_name = "deep_knowledge_tracing"
 
     async def analyze(
@@ -532,6 +583,16 @@ class DeepKnowledgeTracingAnalyzer:
 
 
 class RandomForestAttentionAnalyzer:
+    """Placar aditivo com pesos fixos. NAO e Random Forest.
+
+    `score` comeca num valor base e recebe somas e subtracoes de constantes
+    escritas a mao (`+0.16` engajado, `-0.18` disperso, `emotion.valencia *
+    0.22`, ...), depois e cortado por limiar em alta/moderada/baixa. E um
+    scorecard linear: nao ha arvore, ensemble nem treino.
+
+    Mexer nesses pesos muda o comportamento direto, sem retreinar nada -- o que
+    e a vantagem real desta abordagem, e a razao de ela nao ter sido trocada.
+    """
     provider_name = "random_forest"
 
     async def analyze(
@@ -604,7 +665,83 @@ class RandomForestAttentionAnalyzer:
         )
 
 
+class M2GatedDecisionEngine:
+    """Regras atuais + gate M2 (issue #215).
+
+    O M2 decide QUANDO vale a pena chamar a LLM: `p_gate` alto mantém o
+    caminho de reforço (que aciona `gerar_materiais`/conteúdo adaptado);
+    `p_gate` baixo pula para `manter_fluxo_atual` sem recomendar geração.
+    Sem M2 disponível (`origem="regra"`), o comportamento é idêntico ao
+    `XGBoostDecisionEngine`.
+
+    `p_gate`/`p_dominio` entram no `resumo` para auditoria
+    (`ia_decision_logs`); o mobile consome o efeito via `acoes_aplicadas`
+    e `materiais_gerados`, nunca as probabilidades.
+    """
+
+    provider_name = "m2gated"
+    # Gate por ranking até recalibrar diff/global em dado próprio: abaixo
+    # disso o aluno quase certamente não trava — pular a LLM é seguro.
+    # Limiar absoluto (.45 etc.) fica bloqueado (m2_calibrated=false).
+    GATE_SKIP_BELOW = 0.15
+
+    async def decide(
+        self,
+        *,
+        attention: AttentionStageResult,
+        performance: PerformanceStageResult,
+        m2_gate: float | None = None,
+        m2_dominio: float | None = None,
+        m2_origem: str = "regra",
+    ) -> DecisionStageResult:
+        acoes: list[str] = []
+        modo_sugerido: str | None = None
+
+        if attention.frustracao == "alta" or performance.dominio_estimado < 0.45:
+            acoes.extend(["simplificar_conteudo", "mostrar_exemplos"])
+            modo_sugerido = "reforco"
+        if attention.estado_atencao == "baixa":
+            acoes.extend(["reduzir_ruido_visual", "sugerir_pausa_curta"])
+        if attention.engajamento == "alto" and performance.dominio_estimado > 0.78:
+            acoes.append("aumentar_dificuldade")
+            modo_sugerido = modo_sugerido or "desafio"
+        # Gate M2: só pula a geração quando o modelo diz — com confiança —
+        # que o aluno NÃO vai travar. Qualquer outro caso mantém as regras.
+        m2_skipped = False
+        if m2_gate is not None and m2_gate < self.GATE_SKIP_BELOW and modo_sugerido == "reforco":
+            acoes = ["manter_fluxo_atual"]
+            modo_sugerido = "imediato"
+            m2_skipped = True
+        if not acoes:
+            acoes.append("manter_fluxo_atual")
+            modo_sugerido = "imediato"
+
+        resumo: dict[str, Any] = {
+            "estado_atencao": attention.estado_atencao,
+            "dificuldade": attention.dificuldade,
+            "dominio_estimado": performance.dominio_estimado,
+            "m2_origem": m2_origem,
+            "m2_skipped": m2_skipped,
+        }
+        if m2_gate is not None:
+            resumo["m2_gate"] = round(m2_gate, 4)
+        if m2_dominio is not None:
+            resumo["m2_dominio"] = round(m2_dominio, 4)
+
+        return DecisionStageResult(
+            provider_name=self.provider_name,
+            acoes=_dedupe_preserve_order(acoes),
+            modo_sugerido=modo_sugerido,
+            resumo=resumo,
+        )
+
+
 class XGBoostDecisionEngine:
+    """Quatro `if`. NAO e gradient boosting.
+
+    Mapeia (atencao, dominio) para uma lista de acoes por condicao explicita.
+    Nao ha modelo, feature importance nem score aprendido.
+    """
     provider_name = "xgboost"
 
     async def decide(
@@ -693,9 +830,23 @@ class LinearAnalysisOrchestrator:
             performance=performance,
             telemetry_payload=telemetry_payload,
         )
+        m2_gate: float | None = None
+        m2_dominio: float | None = None
+        m2_origem = "regra"
+        decide_kwargs: dict[str, Any] = {}
+        if isinstance(self.decision_engine, M2GatedDecisionEngine):
+            from app.services.m2_inference import get_m2_inference
+
+            inference = get_m2_inference()
+            overrides = state.get("m2_overrides") or {}
+            m2_dominio, origem_dom = inference.score_dominio(overrides)
+            m2_gate, origem_gate = inference.score_gate(overrides)
+            m2_origem = origem_gate if origem_gate == origem_dom else f"{origem_dom}/{origem_gate}"
+            decide_kwargs = {"m2_gate": m2_gate, "m2_dominio": m2_dominio, "m2_origem": m2_origem}
         decision = await self.decision_engine.decide(
             attention=attention,
             performance=performance,
+            **decide_kwargs,  # type: ignore[arg-type]
         )
 
         state["emocao_atual"] = emotion.as_schema()
@@ -776,6 +927,7 @@ def build_linear_analysis_orchestrator(settings: Settings) -> LinearAnalysisOrch
     }
     decision_factory = {
         "xgboost": XGBoostDecisionEngine,
+        "m2gated": M2GatedDecisionEngine,
     }
 
     return LinearAnalysisOrchestrator(

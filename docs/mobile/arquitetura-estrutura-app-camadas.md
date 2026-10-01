@@ -1,4 +1,4 @@
-﻿# Arquitetura de Estrutura e Camadas - Mobile
+# Arquitetura de Estrutura e Camadas - Mobile
 
 ## Camadas
 - Navegacao e telas (`src/app`, `src/screens`).

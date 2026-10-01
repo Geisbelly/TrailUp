@@ -362,10 +362,21 @@ async def registrar_lote_telemetria(
     except Exception as exc:  # pragma: no cover
         await session.rollback()
         analysis = TelemetriaAnalysisResponse(erros=[str(exc)])
+        logger.warning(
+            "telemetria.analise_falhou: batch_id=%s aluno_id=%s erro=%s",
+            lote["id"],
+            aluno_id,
+            exc,
+        )
 
+    # Guardar o erro junto do lote e o que torna a falha investigavel depois do
+    # fato. Ate aqui ele so voltava na resposta HTTP, que ninguem guarda: o
+    # lote ficava com ciclo nulo e o banco nao distinguia "nao produziu ciclo"
+    # de "explodiu". Os 290 lotes de 20-27/09 estao todos nesse limbo.
     await repo.update_lote_analysis(
         batch_id=lote["id"],
         analysis_ciclo_id=analysis.ciclo_id,
+        analysis_error=analysis.erros[0] if analysis.erros else None,
     )
     await session.commit()
 

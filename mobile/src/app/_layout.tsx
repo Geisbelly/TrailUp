@@ -9,6 +9,7 @@ import { PortoesProvider } from "@/context/PortoesContext";
 import { consumeSupabaseUrlAuthError, getSessionSafe, supabase } from "@/database/supabase";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { consumePendingRoute, setPendingRoute } from "@/utils/pendingRoute";
+import { preloadIconFontsWithSwap } from "@/utils/preloadIconFonts";
 import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { Redirect, Stack, usePathname, useSegments, type Href } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -20,6 +21,8 @@ import "react-native-reanimated";
 export const unstable_settings = {
   anchor: "(tabs)",
 };
+
+preloadIconFontsWithSwap();
 
 function LoadingOverlay() {
   const { loading } = useLoading();

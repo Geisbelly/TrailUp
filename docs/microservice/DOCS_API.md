@@ -1,4 +1,4 @@
-﻿# DOCS API - ApiBrainHex
+# DOCS API - ApiBrainHex
 
 ## 1. GET /api/health
 Verifica se servico esta online.

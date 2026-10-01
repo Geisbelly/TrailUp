@@ -23,6 +23,7 @@ jobs:
       microservice: ${{ steps.filter.outputs.microservice }}
       frontend: ${{ steps.filter.outputs.frontend }}
       mobile: ${{ steps.filter.outputs.mobile }}
+      docs: ${{ steps.filter.outputs.docs }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -37,6 +38,21 @@ jobs:
               - 'frontend/**'
             mobile:
               - 'mobile/**'
+            docs:
+              - 'docs/**'
+              - 'scripts/verifica_encoding_docs.py'
+
+  docs:
+    needs: changes
+    if: ${{ needs.changes.outputs.docs == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Encoding da documentacao (UTF-8 sem BOM, sem mojibake)
+        run: python scripts/verifica_encoding_docs.py
 
   api:
     needs: changes

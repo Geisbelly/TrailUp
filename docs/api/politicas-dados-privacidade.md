@@ -1,4 +1,4 @@
-﻿# Politicas de Dados e Privacidade - API
+# Politicas de Dados e Privacidade - API
 
 ## Principios
 - Minimizacao de dados no payload.

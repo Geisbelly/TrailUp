@@ -1,4 +1,4 @@
-﻿# Arquitetura do Microserviço (consumo pelo Mobile) - Versão Detalhada
+# Arquitetura do Microserviço (consumo pelo Mobile) - Versão Detalhada
 
 ## 1. Objetivo
 Descrever como o app mobile consome resultados produzidos pelo microserviço ApiBrainHex sem acoplamento direto de implementação.

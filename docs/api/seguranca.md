@@ -1,4 +1,4 @@
-﻿# Seguranca - API TrailUp
+# Seguranca - API TrailUp
 
 ## Controles
 - Autenticacao por JWT Supabase.

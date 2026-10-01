@@ -1,4 +1,4 @@
-﻿# Arquitetura do Microservico e do App (Contexto Mobile)
+# Arquitetura do Microservico e do App (Contexto Mobile)
 
 ## Objetivo
 Descrever como o app mobile consome personalizacao direto do Supabase e como API TrailUp + microservico ApiBrainHex orquestram a geracao de artefatos.

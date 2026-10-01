@@ -1,4 +1,4 @@
-﻿# Arquitetura e Funcionamento Geral (Ecossistema TrailUp)
+# Arquitetura e Funcionamento Geral (Ecossistema TrailUp)
 
 ## Componentes
 - Web Professor: cria e mantem estrutura pedagogica.

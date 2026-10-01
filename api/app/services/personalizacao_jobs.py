@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import asyncio
 import copy
@@ -46,6 +46,7 @@ from app.services.media_generation_jobs import (
 from app.services.personalizacao import (
     _build_profile_editorial_context,
     _materialize_and_upload_media_assets,
+    _resolve_personalizacao_status_from_materiais,
     build_personalizacao_steps,
     fetch_personalizacao_context,
     gerar_cards_direto,
@@ -70,6 +71,21 @@ _KINDS_MANUAIS = {
     JOB_KIND_MANUAL_PROFILE_GENERATE,
     JOB_KIND_MANUAL_PROFILE_GENERATE_ALL,
 }
+# Kinds que montam targets de BASE POR PERFIL: um target por
+# (topico x conteudo x perfil), sem aluno dono. O console le esses targets para
+# mostrar o status de geracao de cada perfil, e a whitelist que ele usa
+# (`_KINDS_COM_TARGET_POR_PERFIL` em repositories/personalizacao_jobs.py) tem
+# que cobrir todos eles -- manter as duas em paridade e' o que
+# `test_whitelist_targets_por_perfil_cobre_kinds_de_base` verifica.
+KINDS_BASE_POR_PERFIL = frozenset(
+    {
+        JOB_KIND_CLASS_DELTA,
+        JOB_KIND_FULL_SYNC,
+        JOB_KIND_MANUAL_RETRY,
+        JOB_KIND_MANUAL_PROFILE_GENERATE,
+        JOB_KIND_MANUAL_PROFILE_GENERATE_ALL,
+    }
+)
 _JOB_KIND_MEDIA_RENDER = "media_render"
 _JOB_KIND_MEDIA_RENDER_LEGACY = "personalizacao_media_render"
 _MEDIA_RENDER_KINDS = {_JOB_KIND_MEDIA_RENDER, _JOB_KIND_MEDIA_RENDER_LEGACY}
@@ -818,13 +834,7 @@ async def _build_targets(
                 )
         return targets, resolved_topicos, target_profile_map
 
-    if kind in {
-        JOB_KIND_CLASS_DELTA,
-        JOB_KIND_FULL_SYNC,
-        JOB_KIND_MANUAL_RETRY,
-        JOB_KIND_MANUAL_PROFILE_GENERATE,
-        JOB_KIND_MANUAL_PROFILE_GENERATE_ALL,
-    }:
+    if kind in KINDS_BASE_POR_PERFIL:
         # A base nao tem dono: ela e material de (classe x topico x conteudo x
         # perfil), e existe com ou sem aluno matriculado. Antes, cada perfil era
         # pendurado num aluno representante -- e turma sem aluno nao gerava nada
@@ -1389,6 +1399,25 @@ async def _process_media_render_target(
             if not isinstance(mat, dict):
                 continue
             mat_id = existing_ids.get(fmt)
+            # `existing_ids` vem de listar_por_personalizacao, que e DISTINCT ON
+            # (tipo): "a linha mais recente deste tipo". Quando o material novo
+            # declara a sua geracao, a linha certa e a DAQUELA geracao -- gravar
+            # o metadata dela na linha de outra geracao recalcula a coluna
+            # gerada `generation_key` e estoura
+            # uq_materiais_gerados_personalizacao_tipo_generation, derrubando o
+            # target inteiro (visto em producao em 23/09 e 28/09).
+            geracao_nova = None
+            if isinstance(mat.get("metadata"), dict):
+                bruto = mat["metadata"].get("generation_key")
+                geracao_nova = str(bruto).strip() if bruto else None
+            if geracao_nova:
+                # None aqui significa "esta geracao ainda nao tem linha": pular
+                # o patch e melhor do que sequestrar a linha de outra geracao.
+                mat_id = await materiais_repo.resolver_id_por_generation(
+                    personalizacao_id=personalizacao_id,
+                    tipo=fmt,
+                    generation_key=geracao_nova,
+                )
             if mat_id:
                 await materiais_repo.patch_materiais_media(
                     material_id=int(mat_id),
@@ -1400,10 +1429,14 @@ async def _process_media_render_target(
             job_id=str(job["id"]),
             media_snapshot={},
         )
+        # O status sai do que os materiais REALMENTE ficaram. Marcar "pronto"
+        # aqui era incondicional: bastava o caminho legado rodar para o registro
+        # virar pronto mesmo com midia `failed` ou ainda `pending`, e o mobile
+        # entao servia um material quebrado como se estivesse completo.
         updated = await repo_cp.atualizar_materiais_e_status(
             record_id=personalizacao_id,
             materiais=new_materiais,
-            status="pronto",
+            status=_resolve_personalizacao_status_from_materiais(new_materiais),
         )
         return {"record": updated}
 

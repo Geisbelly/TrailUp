@@ -1203,24 +1203,20 @@ function normalizeMediaBlocksSemRevisao(
       return block ? [block] : [];
     }
 
-    return [
-      buildMarkdownContentBlock({
-        id: `${key}-intro`,
-        title: title ?? "Áudio personalizado",
-        lines: [
-          payload.duracao_estimada_seg
-            ? `Duração estimada: ${payload.duracao_estimada_seg}s`
-            : "",
-        ],
-        metadata,
-      }),
-      buildMarkdownContentBlock({
-        id: `${key}-roteiro`,
-        title: "Roteiro guiado",
-        lines: [roteiro ?? ""],
-        metadata,
-      }),
-    ].filter((block): block is ContentBlock => Boolean(block));
+    // Sem arquivo reproduzivel, o material de audio simplesmente nao entra.
+    //
+    // Antes daqui saiam dois blocos de TEXTO: "Audio personalizado" e
+    // "Roteiro guiado". O roteiro e o script do TTS -- insumo de geracao, com
+    // marcacoes de direcao de voz do tipo "[Tom: Majestoso e Firme]" --, e
+    // nao material de leitura. Quando a geracao do audio falhava (arquivo_url
+    // nulo nas partes), o aluno recebia esse script cru como se fosse um
+    // conteudo do topico.
+    //
+    // O roteiro continua servindo de `fallbackText` nos dois caminhos acima,
+    // que e o uso legitimo: o player mostra o texto se o arquivo existir no
+    // registro mas falhar ao carregar. O que nao se faz e' inventar um bloco
+    // de conteudo a partir dele.
+    return [];
   }
 
   if (tipo === "video") {

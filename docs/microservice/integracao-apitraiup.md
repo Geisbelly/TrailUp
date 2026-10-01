@@ -1,4 +1,4 @@
-﻿# Integracao com ApiTraiUp
+# Integracao com ApiTraiUp
 
 ## Objetivo
 Receber dados de personalizacao prontos para gerar artefatos multimidia.

@@ -1,4 +1,4 @@
-﻿# Funcionamento da API e Fluxos
+# Funcionamento da API e Fluxos
 
 ## Visao geral
 A API coordena a personalizacao e a telemetria do ecossistema TrailUp.

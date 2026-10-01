@@ -1,4 +1,4 @@
-﻿# Fluxo Completo (Resumo para Apresentacao)
+# Fluxo Completo (Resumo para Apresentacao)
 
 - Mobile e camada de entrega ao aluno.
 - Personalizacao e lida direto do Supabase (conteudo/cards por perfil).

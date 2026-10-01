@@ -1,4 +1,4 @@
-﻿# 10. Metricas e analise de resultados
+# 10. Metricas e analise de resultados
 
 Data de atualizacao: 2026-04-19
 
