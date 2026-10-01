@@ -302,7 +302,7 @@ flowchart TD
 
 ## 6.1 Fontes de dados para montar estado
 
-`build_personalizacao_state` combina:
+`fetch_personalizacao_context` combina:
 - contexto do aluno (`ContextRepository`)
 - estrutura da classe/tÃ³pico/conteÃºdo (`ConteudoClasseRepository`)
 - fontes estruturadas (`fontes_personalizacao`)
@@ -317,7 +317,7 @@ No final, gera `source_hash` (sha256) para deduplicacao.
 sequenceDiagram
   participant MOB as Mobile (aluno)
   participant API as /personalizar
-  participant SRV as build_personalizacao_state
+  participant SRV as fetch_personalizacao_context
   participant G as graph_personalizacao
   participant DB as conteudo_personalizado
 
@@ -344,7 +344,7 @@ sequenceDiagram
   loop polling
     WK->>DB: claim_next_job
     loop cada target aluno x topico
-      WK->>WK: build_personalizacao_state
+      WK->>WK: fetch_personalizacao_context
       WK->>DB: ler ultimo conteudo_personalizado
       alt source_hash igual
         WK->>DB: target status = skipped
