@@ -1,4 +1,4 @@
-﻿import secrets
+import secrets
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 
