@@ -1,7 +1,7 @@
 """authenticated ganha SELECT no bucket conteudo_aluno do Storage
 
 Revision ID: 20260922_03b
-Revises: 20260922_03
+Revises: 20260922_05
 
 `conteudo_aluno` (onde ficam os decks HTML/audio/PDF gerados pela
 personalizacao) nunca teve nenhuma policy de SELECT em `storage.objects`.
@@ -29,11 +29,18 @@ Revision ID termina em "b" de proposito: o PR paralelo
 pedia NAO foi feito no merge: os dois entraram na main como irmaos, e a
 "20260922_06" tambem, deixando TRES cabecas e quebrando o
 test_alembic_tem_uma_unica_cabeca_e_cadeia_continua em todo PR seguinte.
-O down_revision foi corrigido depois, aqui: esta revisao desce da
+O down_revision foi corrigido depois, aqui: esta revisao descia da
 "20260922_03", e a "20260922_06" desce desta. A ordem entre as tres e'
 indiferente - uma policy de Storage, uma funcao SQL de merge e uma
 reescrita de URL nao se tocam -- e as tres sao idempotentes, entao
 linearizar nao muda o que cada banco ja tem.
+
+O espelho Geisbelly manteve, entre a "20260922_03" e a "20260922_06",
+as revisoes "20260922_04" (a mesma policy, sem IF NOT EXISTS) e
+"20260922_05" (a funcao sem a checagem de storage). Elas entram na
+cadeia antes desta, que ja e idempotente: 03 -> 04 -> 05 -> 03b -> 06.
+Se a "20260922_04" ja criou a policy, o IF NOT EXISTS abaixo nao faz
+nada.
 
 CREATE POLICY guardado por IF NOT EXISTS via pg_policies: a mesma policy
 ja foi aplicada direto em producao (fora do fluxo de migration, pra
@@ -51,7 +58,7 @@ mesmo banco.
 from alembic import op
 
 revision = "20260922_03b"
-down_revision = "20260922_03"
+down_revision = "20260922_05"
 branch_labels = None
 depends_on = None
 
