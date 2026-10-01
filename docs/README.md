@@ -18,6 +18,12 @@ Documentação que não pertence a um único serviço:
 - **[`tcc/`](./tcc/)** — documento do TCC (versão única).
 - **[`ecossistema/`](./ecossistema/)** — fluxo completo do ecossistema, com a
   versão detalhada e as perspectivas resumidas por serviço.
+
+- **[Schema não versionado](./architecture/schema-nao-versionado.md)** —
+  inventário do que existe no banco de produção e não está descrito por
+  migration nenhuma (26% das funções, medido em 2026-09-30). Leia antes de
+  escrever migration ou de supor que a `main` reproduz produção.
+
 - **[Pipeline do corpus RAG](./rag/pipeline-corpus.md)** — extração, curadoria e golden set (#72, #73, #75).
 
 - **[Política de conjuntos sensíveis](./rag/politica-conjuntos-sensiveis.md)** — o que pode e o que é vedado com dado sensível de terceiros (#74).
