@@ -21,12 +21,7 @@ tem `storage_path` ao lado - a URL nova e' funcao pura do caminho, igual a
 Sem downgrade de dados: a URL direta e' justamente a quebrada.
 
 Revision ID: 20260922_06
-Revises: 20260922_03b
-
-Nasceu apontando para a 20260922_02, igual a "20260922_03" e a
-"20260922_03b" - as tres viraram irmas na main e o
-test_alembic_tem_uma_unica_cabeca_e_cadeia_continua passou a falhar em
-todo PR. Reparentada para fechar a cadeia: 02 -> 03 -> 03b -> 06.
+Revises: 20260922_05
 """
 
 import os
@@ -34,7 +29,7 @@ import os
 from alembic import op
 
 revision = "20260922_06"
-down_revision = "20260922_03b"
+down_revision = "20260922_05"
 branch_labels = None
 depends_on = None
 

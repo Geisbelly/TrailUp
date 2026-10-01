@@ -1,10 +1,9 @@
-"""merge_personalizacao_materiais_v2 nao pode validar Storage depois do R2
+"""remove a checagem de storage.objects, que reprovava toda geracao nova pos-R2
 
-Esta revisao existia antes com o conteudo oposto: fazia
-`merge_personalizacao_materiais_v2` conferir em `storage.objects` que os
-arquivos reportados existem antes de aceitar `status = "completed"`, e marcar
-`failed` quando nao existissem. Essa versao chegou a rodar em producao (foi
-aplicada a mao, fora do alembic) e marcou material BOM como falho.
+Desfaz o que a `20260922_03` fez. Aquela revisao passou a exigir que
+`merge_personalizacao_materiais_v2` confirmasse em `storage.objects` que os
+arquivos reportados existem antes de aceitar `status = "completed"`, marcando
+`failed` quando nao existissem.
 
 ## Por que a checagem esta errada
 
@@ -17,16 +16,17 @@ existencia do arquivo. A checagem nao reprovava um caso raro: reprovava
 material com `arquivo_url`, as 6 tinham o objeto ausente de `storage.objects`,
 e 3 ja haviam sido marcadas `failed` (ids 3675, 3680, 3832) — os tres arquivos
 existiam, com 4411, 4500 e 3357 bytes de conteudo real, baixados pelo gateway.
+O professor via "A geracao deste material falhou" em material perfeito.
 
-## Por que o diagnostico original estava errado
+## Por que o diagnostico da 20260922_03 estava errado
 
-A versao anterior foi escrita para explicar por que `id=3680` aparecia no
-console como "nao foi possivel carregar ... {}" com 400 do Storage. A conclusao
-foi "o upload falhou silenciosamente e a RPC aceitou um completed mentiroso".
-Nao era isso. O arquivo estava no R2, inteiro; quem procurava no lugar errado
-era o FRONTEND, que baixava o material com `supabase.storage.from(...)
-.download(...)` em vez de passar pelo gateway. Esse era o bug, e ele foi
-corrigido separadamente em `htmlDeckSource.ts`/`PerfilConteudoView.tsx`.
+Ela foi escrita para explicar por que `id=3680` aparecia no console como
+"nao foi possivel carregar ... {}" com 400 do Storage, e concluiu que o upload
+tinha falhado em silencio e a RPC aceitara um `completed` mentiroso. Nao era
+isso. O arquivo estava no R2, inteiro; quem procurava no lugar errado era o
+FRONTEND, que baixava o material com `supabase.storage.from(...).download(...)`
+em vez de passar pelo gateway. Esse era o bug, corrigido em
+`htmlDeckSource.ts`/`PerfilConteudoView.tsx`.
 
 A licao, que vale para qualquer checagem futura: **`storage.objects` nao e'
 mais fonte de verdade sobre a existencia de material.** Quem sabe se o upload
@@ -34,26 +34,30 @@ deu certo e' quem sobe o arquivo (microservice/BrainHexPDF), no momento em que
 sobe — nao o banco, depois. Validar isso em SQL nao e' defesa em profundidade,
 e' um falso negativo garantido.
 
-Esta migracao entao:
+## O que esta revisao faz
 
-  1. Reescreve a funcao SEM a checagem (nos dois pontos onde ela tinha sido
-     posta: no update recebido e no ramo de "preservar o que ja esta
-     completo"), preservando o que veio de outras migracoes e nao tem relacao
-     com isso — `SET search_path` e o acumulo de `formatos_gerados`.
-  2. Repara as linhas marcadas `failed` por este motivo. O filtro e' o texto
-     exato do erro que so' esta versao escrevia, entao nao ha risco de
-     ressuscitar uma falha legitima (de geracao, de quota da IA, de limite de
-     resposta) — essas tem `error` diferente ou nenhum.
+  1. Reescreve a funcao SEM a checagem, nos dois pontos onde a `20260922_03` a
+     tinha posto (no update recebido e no ramo de "preservar o que ja esta
+     completo"), preservando o que nao tem relacao com isso — `SET search_path`
+     e o acumulo de `formatos_gerados`.
+  2. Repara as linhas marcadas por este motivo. O filtro e' o texto exato do
+     erro que so' a `20260922_03` escrevia, entao nao ha risco de ressuscitar
+     falha legitima (quota da IA, limite de resposta, upload que de fato nao
+     aconteceu) — essas tem `error` diferente ou nenhum.
 
-Revision ID: 20260922_03
-Revises: 20260922_02
+Ambos os passos ja foram aplicados a mao no banco de producao antes deste
+arquivo existir; o SQL descreve o estado final, entao rodar sobre o banco ja
+corrigido e' inocuo.
+
+Revision ID: 20260922_05
+Revises: 20260922_04
 Create Date: 2026-09-22
 """
 
 from alembic import op
 
-revision = "20260922_03"
-down_revision = "20260922_02"
+revision = "20260922_05"
+down_revision = "20260922_04"
 branch_labels = None
 depends_on = None
 
@@ -226,7 +230,7 @@ def upgrade() -> None:
         """
     )
 
-    # Repara so' o que ESTA versao marcou: o texto do erro e' exclusivo dela.
+    # Repara so' o que a 20260922_03 marcou: o texto do erro e' exclusivo dela.
     # Falha legitima (quota da IA, limite de resposta, upload que realmente
     # nao aconteceu) tem outro `error`, ou nenhum, e fica intocada.
     op.execute(

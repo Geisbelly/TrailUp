@@ -308,9 +308,21 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 > porque o aninhamento é inclusivo: cada escopo conta o mesmo intervalo. Somar
 > escopos diferentes multiplica o tempo — filtre por `scope` sempre.
 >
-> Corolário: `tempo_gasto_min` em `topico_aluno`, `conteudo_aluno` e
-> `atividade_aluno` é **derivado por trigger** a partir da telemetria. Nenhum
-> cliente escreve essa coluna.
+> Corolário (desde `20260921_01`): `tempo_gasto_min` em `topico_aluno`,
+> `conteudo_aluno` e `atividade_aluno` é `tempo_direto_min` + a soma de
+> `estudo_sessoes` (abertura/fechamento reais). A telemetria **não entra mais
+> na conta** — o trigger que derivava dela foi removido. Nenhum cliente escreve
+> essa coluna; quem escreve são `trailup_registrar_sessao_estudo` (app atual) e
+> `trailup_registrar_intervalo_estudo` (apps antigos).
+>
+> Duas armadilhas que já custaram tempo real (`20260923_01`):
+> - **A RPC trava a linha de progresso ANTES de somar.** O UPDATE com a soma
+>   usa o snapshot do início do comando; sem o lock, duas gravações simultâneas
+>   na mesma linha faziam a segunda apagar a sessão da primeira.
+> - **O destino do intervalo não depende da telemetria.** O tópico tem relógio
+>   próprio (`useTopicScreenTimeTracking`); mandar o intervalo de conteúdo/
+>   atividade pela RPC antiga quando a telemetria estava desligada contava o
+>   mesmo minuto duas vezes no tópico (e no conteúdo, para atividade vinculada).
 
 > O histórico em `aluno_mental_state_history` **é lido de volta** (isto já foi
 > descrito aqui como lacuna aberta; não é mais). `memoria_aluno.ler_memoria`
@@ -379,8 +391,8 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
   sabe se o upload deu certo é quem sobe o arquivo, no momento em que sobe.
   Essa premissa errada já quebrou o console duas vezes no mesmo dia: o deck
   baixado do Storage (corrigido em `htmlDeckSource.ts`) e uma checagem em SQL
-  que marcou 100% das gerações novas como `failed` (revertida em
-  `20260922_03`).
+  que marcou 100% das gerações novas como `failed` (`20260922_03`, revertida
+  em `20260922_05`).
 - **`text()` do SQLAlchemy não aceita `:param::tipo`** — o `::` do Postgres
   colide com a sintaxe de bind e o parâmetro deixa de ser reconhecido (erro em
   tempo de execução, não de import). Use `CAST(:param AS TIPO)`. E parâmetro

@@ -21,14 +21,14 @@ professor — o aluno nao le. O professor le e atualiza so as das classes dele
 (`app_classes_do_professor()`); quem insere e a API, fora do RLS.
 
 Revision ID: 20260929_01
-Revises: 20260922_06
+Revises: 20260927_02
 Create Date: 2026-09-29
 """
 
 from alembic import op
 
 revision = "20260929_01"
-down_revision = "20260922_06"
+down_revision = "20260927_02"
 branch_labels = None
 depends_on = None
 
