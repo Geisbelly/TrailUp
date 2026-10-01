@@ -1,4 +1,4 @@
-﻿# Estrutura do Banco Supabase (Consumo Mobile)
+# Estrutura do Banco Supabase (Consumo Mobile)
 
 ## Leitura principal
 - `vw_aluno_classe_detalhado`

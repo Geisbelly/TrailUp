@@ -1,4 +1,4 @@
-﻿# Funcionamento Detalhado - Personalização, Gamificação e Recursos Pedagógicos (API TrailUp)
+# Funcionamento Detalhado - Personalização, Gamificação e Recursos Pedagógicos (API TrailUp)
 
 ## 1. Objetivo do documento
 Detalhar como o backend executa personalização e sustenta mecânicas de gamificação e recursos pedagógicos com rastreabilidade técnica e intencionalidade pedagógica.

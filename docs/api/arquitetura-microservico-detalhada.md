@@ -1,4 +1,4 @@
-﻿# Arquitetura do Microserviço (ApiBrainHex) - Integração a partir da API TrailUp
+# Arquitetura do Microserviço (ApiBrainHex) - Integração a partir da API TrailUp
 
 ## 1. Propósito
 Este documento descreve a arquitetura do microserviço de mídia **separadamente** da arquitetura da API principal, com foco em contrato, integração, execução e governança operacional.

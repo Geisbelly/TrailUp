@@ -1,4 +1,4 @@
-﻿# 11. Contribuicoes, limitacoes e trabalhos futuros
+# 11. Contribuicoes, limitacoes e trabalhos futuros
 
 Data de atualizacao: 2026-04-19
 

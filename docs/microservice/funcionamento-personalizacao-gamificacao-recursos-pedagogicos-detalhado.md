@@ -1,4 +1,4 @@
-﻿# Funcionamento Detalhado - Personalização, Gamificação e Recursos Pedagógicos (ApiBrainHex)
+# Funcionamento Detalhado - Personalização, Gamificação e Recursos Pedagógicos (ApiBrainHex)
 
 ## 1. Objetivo
 Explicar como o microserviço transforma contexto pedagógico em artefatos personalizados e como isso sustenta gamificação no ecossistema.

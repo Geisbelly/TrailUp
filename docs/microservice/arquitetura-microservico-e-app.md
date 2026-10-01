@@ -1,4 +1,4 @@
-﻿# Arquitetura do Microservico e do App (Contexto ApiBrainHex)
+# Arquitetura do Microservico e do App (Contexto ApiBrainHex)
 
 ## Objetivo
 Descrever a arquitetura do microservico de midia e sua relacao com os apps (mobile/web), separando o papel da API TrailUp e do Supabase.

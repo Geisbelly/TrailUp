@@ -1,4 +1,4 @@
-﻿# Estrutura do Banco Supabase
+# Estrutura do Banco Supabase
 
 ## Tabelas de dominio
 - `classe`, `topicos`, `conteudos`, `atividades`, `questoes`

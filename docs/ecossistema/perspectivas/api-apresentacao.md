@@ -1,4 +1,4 @@
-﻿# Fluxo Completo (Resumo para Apresentacao)
+# Fluxo Completo (Resumo para Apresentacao)
 
 - Entrada docente: Web.
 - Orquestracao: API TrailUp.

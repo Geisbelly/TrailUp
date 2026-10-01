@@ -1,4 +1,4 @@
-﻿# Guia de Uso - ApiBrainHex
+# Guia de Uso - ApiBrainHex
 
 ## Modo 1: Integrado com ApiTraiUp (principal)
 1. Subir o servico ApiBrainHex.

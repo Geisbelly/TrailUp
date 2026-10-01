@@ -1,4 +1,4 @@
-﻿# Estrutura do Banco (Supabase) - Resumo Executivo
+# Estrutura do Banco (Supabase) - Resumo Executivo
 
 ## Objetivo
 Documentar as tabelas e views criticas para operacao do ecossistema TrailUp.

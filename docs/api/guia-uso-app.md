@@ -1,4 +1,4 @@
-﻿# Guia de Uso - API TrailUp
+# Guia de Uso - API TrailUp
 
 ## Passos
 1. Configurar `.env`.

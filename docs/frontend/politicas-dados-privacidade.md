@@ -1,4 +1,4 @@
-﻿# Políticas de Dados e Privacidade
+# Políticas de Dados e Privacidade
 
 Atualizado em: 2026-04-13
 

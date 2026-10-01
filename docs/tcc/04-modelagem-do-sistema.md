@@ -1,4 +1,4 @@
-﻿# 04. Modelagem do sistema
+# 04. Modelagem do sistema
 
 Data de atualizacao: 2026-04-19
 

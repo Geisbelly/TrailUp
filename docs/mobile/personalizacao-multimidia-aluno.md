@@ -1,4 +1,4 @@
-﻿# Personalizacao e Multimidia no App
+# Personalizacao e Multimidia no App
 
 ## Objetivo
 Padronizar como o app renderiza materiais personalizados e como persiste progresso/tempo durante o estudo.

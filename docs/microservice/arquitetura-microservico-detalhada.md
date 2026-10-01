@@ -1,4 +1,4 @@
-﻿# Arquitetura do Microserviço ApiBrainHex - Versão Detalhada
+# Arquitetura do Microserviço ApiBrainHex - Versão Detalhada
 
 ## 1. Objetivo
 Documentar arquitetura interna do microserviço responsável por geração multimídia pedagógica por perfil BrainHex.

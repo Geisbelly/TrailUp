@@ -1,4 +1,4 @@
-﻿# Funcionamento detalhado: Personalizacao, Gamificacao e Recursos Pedagogicos (API)
+# Funcionamento detalhado: Personalizacao, Gamificacao e Recursos Pedagogicos (API)
 
 ## Objetivo
 Explicar o fluxo funcional e pedagogico coordenado pela API TrailUp, incluindo motivacoes e metas de aprendizagem.

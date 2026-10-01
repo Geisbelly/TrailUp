@@ -1,4 +1,4 @@
-﻿# Arquitetura e Funcionamento Geral (Ecossistema TrailUp)
+# Arquitetura e Funcionamento Geral (Ecossistema TrailUp)
 
 ## Componentes
 1. Web Professor (`brainhex-navigator`)

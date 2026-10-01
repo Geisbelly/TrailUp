@@ -1,4 +1,4 @@
-﻿# 07. Documento de UX
+# 07. Documento de UX
 
 Data de atualizacao: 2026-04-19
 

@@ -1,4 +1,4 @@
-﻿# Fluxo Completo do Ecossistema
+# Fluxo Completo do Ecossistema
 
 1. Professor cria estrutura pedagogica no Web.
 2. Web grava no Supabase.

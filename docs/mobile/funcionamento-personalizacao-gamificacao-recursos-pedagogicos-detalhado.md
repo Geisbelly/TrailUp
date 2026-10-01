@@ -1,4 +1,4 @@
-﻿# Funcionamento Detalhado - Personalização, Gamificação e Recursos Pedagógicos (Mobile)
+# Funcionamento Detalhado - Personalização, Gamificação e Recursos Pedagógicos (Mobile)
 
 ## 1. Objetivo
 Descrever com granularidade como o app aplica personalização e gamificação no fluxo real de estudo.
