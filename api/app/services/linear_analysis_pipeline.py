@@ -1,3 +1,21 @@
+"""Pipeline linear de analise adaptativa.
+
+NOTA SOBRE OS NOMES DAS CLASSES: os seis estagios se chamam DeepFace,
+IsolationForest, HiddenMarkovModel, DeepKnowledgeTracing, RandomForest e
+XGBoost, e nenhum deles roda o algoritmo que o nome anuncia. Todos sao
+heuristicas por regra -- comparacoes e somas de constantes escritas a mao.
+
+Isto nao e acidente de leitura: a API nao tem NENHUMA biblioteca de ML ou visao
+nas dependencias (sem scikit-learn, xgboost, hmmlearn, deepface, opencv,
+torch, tensorflow), este modulo importa apenas `Counter`, `dataclass`, `typing`
+e `fastapi`, e usa `numpy` zero vezes.
+
+Os nomes indicam o algoritmo PRETENDIDO para cada estagio, e ficaram como
+marcadores do desenho. Cada classe diz na propria docstring o que faz de fato.
+Ao ler medicao ou documentacao que cite "o modelo de emocao", confira aqui
+antes: o que existe e uma regra.
+"""
+
 from __future__ import annotations
 
 from collections import Counter
@@ -318,6 +336,20 @@ class AdaptiveContentGenerator(Protocol):
 
 
 class DeepFaceEmotionAnalyzer:
+    """Heuristica por regra. NAO roda DeepFace, nem olha para a imagem.
+
+    O nome diz o algoritmo PRETENDIDO, nao o implementado -- vale para os seis
+    estagios deste modulo (ver nota no topo do arquivo).
+
+    `frames_b64` entra aqui e vira `len()`: a contagem so empurra `confianca`
+    em `+ min(frame_count, 30) * 0.01`. Os bytes nunca sao decodificados, e nao
+    ha deepface/opencv/mediapipe/torch nas dependencias da API. A emocao sai de
+    contagem de eventos (`erro_recorrente`, `atividade_errada`,
+    `atividade_acertada`) e de `idle_sec`.
+
+    Consequencia pratica: desligar a camera nao muda a emocao estimada, so
+    reduz a confianca declarada.
+    """
     provider_name = "deepface"
 
     async def analyze(
@@ -366,6 +398,13 @@ class DeepFaceEmotionAnalyzer:
 
 
 class IsolationForestReadingAnalyzer:
+    """Heuristica por limiar. NAO roda Isolation Forest.
+
+    Compara razoes calculadas do payload contra constantes escritas a mao --
+    `active_ratio < 0.35 and scroll < 180` vira "anomalo",
+    `switch_pressure >= 4` com dwell medio baixo vira "fragmentado". Nao ha
+    modelo treinado, nem deteccao de outlier: sao comparacoes fixas.
+    """
     provider_name = "isolation_forest"
 
     async def analyze(
@@ -426,6 +465,12 @@ class IsolationForestReadingAnalyzer:
 
 
 class HiddenMarkovInteractionAnalyzer:
+    """Heuristica por regra. NAO ha cadeia de Markov nem estado latente.
+
+    O estado de interacao sai de contagem de eventos e de razoes do lote atual.
+    Nao existe matriz de transicao, nem probabilidade de emissao, nem memoria
+    entre lotes -- cada chamada decide olhando so o que recebeu.
+    """
     provider_name = "hidden_markov_model"
 
     async def analyze(
@@ -486,6 +531,12 @@ class HiddenMarkovInteractionAnalyzer:
 
 
 class DeepKnowledgeTracingAnalyzer:
+    """Heuristica por regra. NAO e Deep Knowledge Tracing.
+
+    DKT real estima dominio por habilidade com rede recorrente sobre a sequencia
+    historica de respostas. Aqui o dominio sai de contagem de acerto e erro dos
+    eventos do lote, sem modelo, sem habilidade e sem historico.
+    """
     provider_name = "deep_knowledge_tracing"
 
     async def analyze(
@@ -532,6 +583,16 @@ class DeepKnowledgeTracingAnalyzer:
 
 
 class RandomForestAttentionAnalyzer:
+    """Placar aditivo com pesos fixos. NAO e Random Forest.
+
+    `score` comeca num valor base e recebe somas e subtracoes de constantes
+    escritas a mao (`+0.16` engajado, `-0.18` disperso, `emotion.valencia *
+    0.22`, ...), depois e cortado por limiar em alta/moderada/baixa. E um
+    scorecard linear: nao ha arvore, ensemble nem treino.
+
+    Mexer nesses pesos muda o comportamento direto, sem retreinar nada -- o que
+    e a vantagem real desta abordagem, e a razao de ela nao ter sido trocada.
+    """
     provider_name = "random_forest"
 
     async def analyze(
@@ -676,6 +737,11 @@ class M2GatedDecisionEngine:
 
 
 class XGBoostDecisionEngine:
+    """Quatro `if`. NAO e gradient boosting.
+
+    Mapeia (atencao, dominio) para uma lista de acoes por condicao explicita.
+    Nao ha modelo, feature importance nem score aprendido.
+    """
     provider_name = "xgboost"
 
     async def decide(
