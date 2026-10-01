@@ -38,6 +38,7 @@ dependencies = [
   "lameenc>=1.8.1",
   "reportlab>=4.0.0",
   "numpy>=1.26.0",
+  "pandas>=2.0.0",
   "scikit-learn>=1.4.0",
 ]
 

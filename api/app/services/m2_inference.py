@@ -17,10 +17,13 @@ Qualquer falha (pickle ausente, sha divergente, feature faltando) devolve
 from __future__ import annotations
 
 import hashlib
+import logging
 import pickle
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 # Features que só existem DEPOIS da resposta (latência/trocas da questão
 # atual). O modelo de domínio nunca pode recebê-las — é vazamento
@@ -71,6 +74,16 @@ EXPECTED_SHA256 = {
 MODEL_DIR = Path(__file__).resolve().parents[3] / "models" / "m2_knowledge_tracing" / "v3"
 
 
+def _to_diff_dict(diff: object) -> dict[int, float]:
+    """Converte a Series de dificuldade (pandas é dep da API)."""
+    to_dict = getattr(diff, "to_dict", None)
+    if callable(to_dict):
+        diff = to_dict()
+    if hasattr(diff, "items"):
+        return {int(k): float(v) for k, v in (diff.items())}  # type: ignore[union-attr]
+    return {int(k): float(v) for k, v in dict(diff).items()}
+
+
 @dataclass(slots=True)
 class M2Bundle:
     name: str
@@ -119,7 +132,7 @@ class M2Inference:
             with path.open("rb") as fh:
                 pacote = pickle.load(fh)
             feats = list(pacote["feats"])
-            diff = {int(k): float(v) for k, v in dict(pacote["diff"]).items()}
+            diff = _to_diff_dict(pacote["diff"])
             return M2Bundle(
                 name=filename,
                 feats=feats,
@@ -127,7 +140,8 @@ class M2Inference:
                 global_rate=float(pacote["global"]),
                 _model=pacote["model"],
             )
-        except Exception:
+        except Exception as exc:
+            logger.warning("M2 %s indisponivel: %s", filename, exc)
             return None
 
     def build_row(self, bundle: M2Bundle, overrides: dict[str, float]) -> dict[str, float]:
