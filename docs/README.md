@@ -18,6 +18,7 @@ Documentação que não pertence a um único serviço:
 - **[`tcc/`](./tcc/)** — documento do TCC (versão única).
 - **[`ecossistema/`](./ecossistema/)** — fluxo completo do ecossistema, com a
   versão detalhada e as perspectivas resumidas por serviço.
+- **[Pipeline do corpus RAG](./rag/pipeline-corpus.md)** — extração, curadoria e golden set (#72, #73, #75).
 
 - **[Política de conjuntos sensíveis](./rag/politica-conjuntos-sensiveis.md)** — o que pode e o que é vedado com dado sensível de terceiros (#74).
 
