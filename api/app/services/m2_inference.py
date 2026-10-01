@@ -114,6 +114,8 @@ class M2Inference:
         if digest != EXPECTED_SHA256.get(filename):
             return None
         try:
+            import sklearn.ensemble  # noqa: F401 — registra HistGradientBoostingClassifier p/ o unpickle.
+
             with path.open("rb") as fh:
                 pacote = pickle.load(fh)
             feats = list(pacote["feats"])

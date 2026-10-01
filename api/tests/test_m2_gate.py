@@ -12,6 +12,8 @@ import asyncio
 
 import pytest
 
+pytest.importorskip("sklearn", reason="gate M2 exige scikit-learn")
+
 from app.services.linear_analysis_pipeline import (
     AttentionStageResult,
     M2GatedDecisionEngine,
