@@ -18,6 +18,10 @@ Documentação que não pertence a um único serviço:
 - **[`tcc/`](./tcc/)** — documento do TCC (versão única).
 - **[`ecossistema/`](./ecossistema/)** — fluxo completo do ecossistema, com a
   versão detalhada e as perspectivas resumidas por serviço.
+- **[Mapa da coleta de métricas](./architecture/coleta-de-metricas.md)** — o
+  que a telemetria coleta, com que limites, o que vira `tempo_gasto_min` e o
+  estado medido da realimentação (2026-09-30). Leia antes de interpretar
+  qualquer número de tempo de estudo.
 
 - **[Schema não versionado](./architecture/schema-nao-versionado.md)** —
   inventário do que existe no banco de produção e não está descrito por
