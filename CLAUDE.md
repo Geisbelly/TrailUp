@@ -41,9 +41,13 @@ com o Supabase, como `notificacoes` e `topico_aluno` já fazem.
 
 Dois motivos concretos, não estilo:
 
-1. **A API dorme.** Ela roda no free tier do Render e hiberna. Qualquer coisa
-   com relógio (rotina diária, fila, expiração) simplesmente **para** enquanto
-   ela está fria. O banco não hiberna.
+1. **A API pode estar fora do ar.** Ela é auto-hospedada no **Dokploy**, no
+   mesmo VPS do `microservice-slides`. Deploy, restart, falha ou esgotamento de
+   recurso a derrubam — e qualquer coisa com relógio (rotina diária, fila,
+   expiração) simplesmente **para** enquanto ela não responde. O banco não.
+   (Este item já dizia "ela roda no free tier do Render e hiberna". Era falso,
+   e virou explicação pronta para indisponibilidade que ninguém mediu. Não há
+   hibernação por ociosidade aqui; quando a API cair, procure a causa real.)
 2. **Um salto a menos.** `mobile → Supabase` já é o caminho autenticado e com
    Realtime. Passar por `mobile → API → Supabase` adiciona latência, um ponto de
    falha e uma segunda cópia das regras de acesso.
@@ -60,8 +64,8 @@ modelo de linguagem, **não é na API**.
 > `GET /api/v1/personalizar/grupo/{classe_id}`, `.../perfis/{classe_id}/{topico_id}`
 > e `.../contexto/{aluno_id}` são **leitura pura de banco** (join, filtro,
 > formatação) sem LLM no meio — encanamento clássico que a regra proíbe. Quando
-> a API do Render hiberna ou cai, o console inteiro (aba Personalizações) para
-> de funcionar com 502, mesmo o dado já existindo no Supabase.
+> a API fica fora do ar, o console inteiro (aba Personalizações) para de
+> funcionar com 502, mesmo o dado já existindo no Supabase.
 >
 > `grupo/{classe_id}` **já foi corrigido**: `personalizacoesApi.ts` lê
 > `classe_perfil_summary` direto do Supabase (RLS confirmada em produção —
