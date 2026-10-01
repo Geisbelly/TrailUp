@@ -1754,3 +1754,74 @@ async def test_aluno_topico_dominio_upsert_sends_on_conflict_update() -> None:
     assert "INSERT INTO aluno_topico_dominio" in sql
     assert "ON CONFLICT (aluno_id, topico_id) DO UPDATE" in sql
     assert params["dominio_estimado"] == 0.8
+
+
+@pytest.mark.asyncio
+async def test_update_lote_analysis_guarda_o_erro_junto_do_lote() -> None:
+    # Os 290 lotes de 20-27/09/2026 ficaram com `analysis_ciclo_id` NULL e
+    # nenhum registro do motivo: `run_analysis` e chamada dentro de um
+    # try/except que mandava o erro so na resposta HTTP, que ninguem guarda.
+    # Sem a coluna, o banco nao distingue "nao produziu ciclo" de "explodiu".
+    session = RecordingSession([])
+    repo = TelemetriaRepository(session)
+
+    await repo.update_lote_analysis(
+        batch_id="batch-1",
+        analysis_ciclo_id=None,
+        analysis_error="TimeoutError: graph_ephemeral nao respondeu",
+    )
+
+    sql, params = session.calls[-1]
+    assert "analysis_error = :analysis_error" in sql
+    assert params["analysis_error"] == "TimeoutError: graph_ephemeral nao respondeu"
+    assert params["analysis_ciclo_id"] is None
+
+
+@pytest.mark.asyncio
+async def test_update_lote_analysis_sem_erro_grava_null() -> None:
+    # Ciclo bem-sucedido limpa a coluna: o default do parametro nao pode deixar
+    # um erro antigo colado num lote que depois deu certo (o endpoint reusa o
+    # mesmo UPDATE nos dois caminhos).
+    session = RecordingSession([])
+    repo = TelemetriaRepository(session)
+
+    await repo.update_lote_analysis(batch_id="batch-1", analysis_ciclo_id="ciclo-9")
+
+    _sql, params = session.calls[-1]
+    assert params["analysis_error"] is None
+    assert params["analysis_ciclo_id"] == "ciclo-9"
+
+
+@pytest.mark.asyncio
+async def test_update_lote_analysis_trunca_e_normaliza_o_erro() -> None:
+    # Traceback de driver vem com SQL e parametros dentro e quebras de linha.
+    # Interessa distinguir um erro do outro, nao reproduzi-lo: normaliza espaco
+    # e corta, para a coluna nao virar deposito de payload.
+    session = RecordingSession([])
+    repo = TelemetriaRepository(session)
+
+    await repo.update_lote_analysis(
+        batch_id="batch-1",
+        analysis_ciclo_id=None,
+        analysis_error="linha um\n\n   linha dois\t" + ("x" * 900),
+    )
+
+    _sql, params = session.calls[-1]
+    gravado = params["analysis_error"]
+    assert len(gravado) == TelemetriaRepository.ANALYSIS_ERROR_MAX_LEN
+    assert gravado.startswith("linha um linha dois ")
+    assert gravado.endswith("…")
+
+
+@pytest.mark.asyncio
+async def test_update_lote_analysis_erro_em_branco_vira_null() -> None:
+    # String vazia gravada seria indistinguivel de "houve erro sem mensagem".
+    session = RecordingSession([])
+    repo = TelemetriaRepository(session)
+
+    await repo.update_lote_analysis(
+        batch_id="batch-1", analysis_ciclo_id=None, analysis_error="   \n  "
+    )
+
+    _sql, params = session.calls[-1]
+    assert params["analysis_error"] is None

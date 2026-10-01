@@ -344,18 +344,42 @@ class TelemetriaRepository:
 
         return {"_r2": caminho, "_bucket": cfg.bucket}
 
-    async def update_lote_analysis(self, *, batch_id: str, analysis_ciclo_id: str | None) -> None:
+    # A mensagem inteira pode ser um traceback de driver com SQL e parametros
+    # dentro. Aqui interessa distinguir UM erro do outro, nao reproduzi-lo: o
+    # prefixo ja separa "timeout", "connection refused" e "KeyError" entre si.
+    ANALYSIS_ERROR_MAX_LEN = 500
+
+    @classmethod
+    def _truncar_erro(cls, erro: str | None) -> str | None:
+        if erro is None:
+            return None
+        normalizado = " ".join(str(erro).split()).strip()
+        if not normalizado:
+            return None
+        if len(normalizado) <= cls.ANALYSIS_ERROR_MAX_LEN:
+            return normalizado
+        return normalizado[: cls.ANALYSIS_ERROR_MAX_LEN - 1] + "\u2026"
+
+    async def update_lote_analysis(
+        self,
+        *,
+        batch_id: str,
+        analysis_ciclo_id: str | None,
+        analysis_error: str | None = None,
+    ) -> None:
         await self.session.execute(
             text(
                 """
                 UPDATE telemetria_lotes
-                SET analysis_ciclo_id = :analysis_ciclo_id
+                SET analysis_ciclo_id = :analysis_ciclo_id,
+                    analysis_error = :analysis_error
                 WHERE id = :batch_id
                 """
             ),
             {
                 "batch_id": batch_id,
                 "analysis_ciclo_id": analysis_ciclo_id,
+                "analysis_error": self._truncar_erro(analysis_error),
             },
         )
 
