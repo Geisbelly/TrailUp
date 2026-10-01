@@ -1,135 +1,41 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Search,
-  Users,
-  TrendingUp,
-  Clock,
-  CheckCircle,
-  Eye,
-  BarChart3,
-  Brain,
-  GraduationCap,
-  LayoutGrid,
-  List,
-  Sparkles,
-  FileText,
-  Target,
-} from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import StudentTrailVisualization from "./StudentTrailVisualization";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchContextoDocente } from "./personalizacoes/personalizacoesApi";
 import { useAuth } from "@/hooks/useAuth";
 import { createRequestGuard, type RequestToken } from "@/lib/requestGuard";
 import { computeTurmaResumo } from "@/lib/turmaResumo";
 import { selectView } from "@/lib/supabaseViews";
-import { useTurmaKpis, type TurmaDistribuicao } from "./useTurmaKpis";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Legend,
-  Line,
-  LineChart,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { useTurmaKpis } from "./useTurmaKpis";
+import DashboardHeader, { type JanelaTemporal } from "./dashboard/DashboardHeader";
+import KpisPrincipais from "./dashboard/KpisPrincipais";
+import KpisSecundarios from "./dashboard/KpisSecundarios";
+import { AlunoNaoEncontrado, DashboardCarregando, DashboardErro, DashboardVazio } from "./dashboard/DashboardEstados";
+import { alunosDaTurma as filtrarAlunosDaTurma, TODAS_AS_TURMAS } from "./dashboard/filtros";
+import AbandonoPorPerfil from "./dashboard/AbandonoPorPerfil";
+import DistribuicaoNotas from "./dashboard/DistribuicaoNotas";
+import TabelaAlunos from "./dashboard/TabelaAlunos";
+import type { SegmentoPerfil } from "./dashboard/graficos";
+import DetalheAluno from "./dashboard/aluno/DetalheAluno";
+import type { Aluno, AlunoAnalisado, AlunoPerfil, EvolucaoAluno, PersonalizacaoDocenteResponse } from "./dashboard/aluno/tipos";
+import PrecisamDeAtencao, { type AlunoEmRisco } from "./dashboard/PrecisamDeAtencao";
+import { avaliarRisco, inatividade, notaParaRisco, observacaoNotaEAbandono, type Criterio } from "./dashboard/risco";
+import { chaveAlunoTurma } from "./dashboard/sinais";
+import { mediaDosPreenchidos } from "./dashboard/medias";
+import { useSinaisDosAlunos } from "./dashboard/useSinaisDosAlunos";
+import SegmentedPills from "./dashboard/SegmentedPills";
+import AbaConteudo from "./dashboard/AbaConteudo";
+import AbaEvolucao from "./dashboard/AbaEvolucao";
+import AbaInsights from "./dashboard/AbaInsights";
 
-// Cores de grafico elevadas para manter contraste >= 7:1 (AAA) quando usadas
-// como texto (rotulo de pizza, legenda) contra o fundo escuro do card — o
-// recharts reaproveita a cor de preenchimento/linha como cor do texto nesses
-// casos, entao a cor "de dado" precisa por si so ja atender AAA.
-// Mesma tecnica do CLAUDE.md para as cores-assinatura BrainHex: eleva a
-// luminosidade em HSL preservando matiz/saturacao, sem misturar com branco.
-const CHART_COLOR_DANGER = "hsl(0, 84%, 78%)"; // ~8.1:1 (original #ef4444 dava ~4.6:1)
-const CHART_COLOR_INFO = "hsl(221, 83%, 75%)"; // ~7.7:1 (original #2563eb dava ~3.4:1)
-const CHART_COLOR_PROGRESS = "hsl(142, 76%, 44%)"; // ~7.6:1 (original #16a34a dava ~5.3:1)
-const CHART_COLOR_WARNING = "#f59e0b"; // ja atende AAA (~8.1:1)
-const CHART_COLOR_SUCCESS = "#22c55e"; // ja atende AAA (~7.6:1)
-const CHART_TICK_STYLE = { fill: "hsl(var(--muted-foreground))" }; // ~8.3:1
+type AbaDaTurma = "visao" | "evolucao" | "conteudo" | "insights";
 
-interface AlunoPerfil {
-  nome: string;
-  afinidade: number;
-}
-
-interface Aluno {
-  id: string;
-  nome: string;
-  email: string;
-  classe_id: number;
-  classe_nome: string;
-  notaMedia: number;
-  porcentagemConcluida: number;
-  tempoGastoMin: number;
-  acertosPercentual: number;
-  ultimaAtividade: string | null;
-  perfilDominante: string;
-  perfis: AlunoPerfil[];
-  modoOperacao: string;
-  topicos: {
-    id: number;
-    nome: string;
-    status: "concluido" | "disponivel" | "bloqueado";
-    percentual: number;
-  }[];
-}
-
-type PersonalizacaoDocenteResponse = {
-  aluno_id: string;
-  classe_id: number;
-  topico_id?: number | null;
-  contexto_aluno?: Record<string, unknown> | null;
-  personalizacoes?: Array<{
-    id: number;
-    ciclo_id: string;
-    topico_id?: number | null;
-    formato_prioritario?: string | null;
-    formatos_gerados?: string[];
-    plano?: Record<string, unknown> | null;
-    materials?: Record<string, unknown> | null;
-    materiais?: Record<string, unknown> | null;
-    steps?: Array<Record<string, unknown>>;
-    gerado_em?: string | null;
-  }>;
-  progresso_itens?: Array<{
-    id: number;
-    item_key: string;
-    item_kind: string;
-    item_title: string;
-    status: string;
-    percentual_concluido: number;
-    acertos_percentual?: number | null;
-    tempo_gasto_min: number;
-    pontuacao_obtida?: number | null;
-    pontuacao_maxima?: number | null;
-    updated_at?: string | null;
-  }>;
-};
-
-type EvolucaoAluno = {
-  classe_id: number;
-  aluno_id: string;
-  dia: string;
-  nota_media_desempenho: number;
-  taxa_acertos_pct: number;
-  taxa_acertos_sem_erro_pct: number;
-  eficiencia_aprendizagem: number;
-  progresso_trilha_pct: number;
-};
+const ABAS_DA_TURMA: { value: AbaDaTurma; label: string }[] = [
+  { value: "visao", label: "Visão geral" },
+  { value: "evolucao", label: "Evolução" },
+  { value: "conteudo", label: "Conteúdo" },
+  { value: "insights", label: "Insights" },
+];
 
 export default function DashboardSection() {
   const { user, session } = useAuth();
@@ -137,24 +43,39 @@ export default function DashboardSection() {
 
   const [alunos, setAlunos] = useState<Aluno[]>([]);
   const [classes, setClasses] = useState<{ id: number; descricao: string | null }[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
   const [selectedClassFilter, setSelectedClassFilter] = useState<string>("all");
-  const [selectedAluno, setSelectedAluno] = useState<Aluno | null>(null);
-  const [trailViewMode, setTrailViewMode] = useState<"hexagon" | "list">("hexagon");
-  const [perfilSegmentFilter, setPerfilSegmentFilter] = useState<"majoritario" | "segundo" | "afinidade_20_plus">("majoritario");
-  // So a UI por enquanto — nao filtra nada ainda. Os KPIs agregados (turma,
-  // perfil, distribuicao) vem de views que nao tem coluna de data por
-  // evento, entao janela temporal real depende do endpoint de KPIs da #12.
-  const [janelaTemporal, setJanelaTemporal] = useState<"7d" | "30d" | "mes_atual" | "tudo">("30d");
+  const [perfilSegmentFilter, setPerfilSegmentFilter] = useState<SegmentoPerfil>("majoritario");
+  const [janelaTemporal, setJanelaTemporal] = useState<JanelaTemporal>("30d");
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [ultimaCarga, setUltimaCarga] = useState<Date | null>(null);
   const [personalizacaoData, setPersonalizacaoData] = useState<PersonalizacaoDocenteResponse | null>(null);
   const [personalizacaoLoading, setPersonalizacaoLoading] = useState(false);
   const [personalizacaoError, setPersonalizacaoError] = useState<string | null>(null);
   const alunoRequestGuard = useRef(createRequestGuard());
   const [alunoEvolucao, setAlunoEvolucao] = useState<EvolucaoAluno[]>([]);
+  const [turmaEvolucao, setTurmaEvolucao] = useState<EvolucaoAluno[]>([]);
+  // O aluno aberto vive na URL (/console?aluno=<id>&turma=<classe>): refresh
+  // reabre no aluno e o voltar do navegador volta para a turma. A turma
+  // desempata o aluno matriculado em mais de uma classe.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const alunoNaUrl = searchParams.get("aluno");
+  const turmaNaUrl = searchParams.get("turma");
+  // Mesmo padrão do aluno: a aba vive na URL (?aba=conteudo) e o voltar do
+  // navegador volta para a aba anterior.
+  const abaNaUrl = searchParams.get("aba");
+  const abaDaTurma: AbaDaTurma = abaNaUrl === "conteudo" || abaNaUrl === "evolucao" || abaNaUrl === "insights" ? abaNaUrl : "visao";
+  const trocarAba = (aba: AbaDaTurma) => {
+    const proximo = new URLSearchParams(searchParams);
+    if (aba === "visao") proximo.delete("aba");
+    else proximo.set("aba", aba);
+    setSearchParams(proximo);
+  };
   const kpiClassIds = useMemo(() => classes.map((c) => c.id), [classes]);
   const { turmaMetricas, perfilMetricas, distribuicaoMetricas } = useTurmaKpis(kpiClassIds);
+  const { sinais, temAbandono } = useSinaisDosAlunos(kpiClassIds);
 
   const mapStatus = (status?: string | null): "concluido" | "disponivel" | "bloqueado" => {
     if (!status) return "disponivel";
@@ -190,13 +111,16 @@ export default function DashboardSection() {
   }, [session?.access_token]);
 
   const loadAlunoEvolucao = useCallback(async (aluno: Aluno, request: RequestToken) => {
+    // Todos os alunos da classe, para a linha de nota media da turma; a serie
+    // do aluno sai do mesmo resultado.
     const { data } = await selectView("vw_metricas_evolucao_desempenho_aluno_dia")
       .eq("classe_id", aluno.classe_id)
-      .eq("aluno_id", aluno.id)
       .order("dia", { ascending: true });
 
     if (!request.isCurrent()) return;
-    setAlunoEvolucao((data ?? []) as EvolucaoAluno[]);
+    const linhas = (data ?? []) as EvolucaoAluno[];
+    setTurmaEvolucao(linhas);
+    setAlunoEvolucao(linhas.filter((linha) => linha.aluno_id === aluno.id));
   }, []);
 
   const loadData = async () => {
@@ -216,6 +140,7 @@ export default function DashboardSection() {
 
       if (classIds.length === 0) {
         setAlunos([]);
+        setUltimaCarga(new Date());
         setIsLoading(false);
         return;
       }
@@ -223,7 +148,7 @@ export default function DashboardSection() {
       const { data: classeAlunoData, error: caError } = await supabase
         .from("classe_aluno")
         .select(
-          "classe_id, aluno_id, notaMedia, porcentagemConcluida, tempoGastoMin, acertosPercentual, ultimaAtividade"
+          "classe_id, aluno_id, notaMedia, porcentagemConcluida, tempoGastoMin, acertosPercentual, ultimaAtividade, created_at"
         )
         .in("classe_id", classIds);
 
@@ -337,10 +262,13 @@ export default function DashboardSection() {
               email: aluno.email,
               classe_id: ca.classe_id,
               classe_nome: classeMap.get(ca.classe_id) || "Classe",
+              naTurmaDesde: ca.created_at ?? null,
               notaMedia: Number(ca.notaMedia ?? 0),
+              temNota: ca.notaMedia != null,
               porcentagemConcluida: Number(ca.porcentagemConcluida ?? 0),
               tempoGastoMin: Number(ca.tempoGastoMin ?? 0),
               acertosPercentual: Number(ca.acertosPercentual ?? 0),
+              temAcertos: ca.acertosPercentual != null,
               ultimaAtividade: ultimaAtividadeNome,
               perfilDominante,
               perfis,
@@ -351,6 +279,7 @@ export default function DashboardSection() {
           .filter(Boolean) as Aluno[];
 
       setAlunos(alunosFormatados);
+      setUltimaCarga(new Date());
     } catch (error) {
       console.error("Erro ao carregar dashboard:", error);
       setAlunos([]);
@@ -369,6 +298,78 @@ export default function DashboardSection() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [professorId]);
 
+  const abandonoMedioPorTurma = useMemo(
+    () => new Map(turmaMetricas.map((linha) => [Number(linha.classe_id), Number(linha.taxa_media_abandono_pct)])),
+    [turmaMetricas]
+  );
+  const alunosAnalisados: AlunoAnalisado[] = useMemo(() => {
+    const hoje = new Date();
+    const notasPorTurma = new Map<number, number[]>();
+    for (const a of alunos) {
+      const nota = a.temNota ? notaParaRisco(a.notaMedia, a.porcentagemConcluida) : null;
+      if (nota !== null) notasPorTurma.set(a.classe_id, [...(notasPorTurma.get(a.classe_id) ?? []), nota]);
+    }
+    const mediaDaTurma = (classeId: number) => {
+      const notas = notasPorTurma.get(classeId);
+      return notas?.length ? notas.reduce((s, n) => s + n, 0) / notas.length : null;
+    };
+    return alunos.map((a) => {
+      const sinal = sinais.get(chaveAlunoTurma(a.id, a.classe_id));
+      const abandonoPct = sinal?.abandonoPct ?? null;
+      const risco = avaliarRisco(
+        {
+          abandonoPct,
+          nota: a.temNota ? notaParaRisco(a.notaMedia, a.porcentagemConcluida) : null,
+          inatividade: inatividade(sinal?.ultimaSessao ?? null, a.naTurmaDesde, hoje),
+        },
+        { abandonoMedioPct: abandonoMedioPorTurma.get(a.classe_id) ?? null, notaMedia: mediaDaTurma(a.classe_id) }
+      );
+      return { ...a, abandonoPct, risco };
+    });
+  }, [alunos, sinais, abandonoMedioPorTurma]);
+  const criteriosLigados: Criterio[] = temAbandono ? ["abandono", "nota", "inatividade"] : ["nota", "inatividade"];
+
+  const selectedAluno = useMemo(() => {
+    if (!alunoNaUrl) return null;
+    const candidatos = alunosAnalisados.filter((a) => a.id === alunoNaUrl);
+    return candidatos.find((a) => String(a.classe_id) === turmaNaUrl) ?? candidatos[0] ?? null;
+  }, [alunosAnalisados, alunoNaUrl, turmaNaUrl]);
+
+  // A visao da turma continua montada (so escondida) enquanto o aluno esta
+  // aberto, para voltar com a mesma pagina, busca e filtros da tabela; a
+  // rolagem e guardada aqui e devolvida na volta.
+  const raiz = useRef<HTMLDivElement>(null);
+  const rolagemDaLista = useRef(0);
+  const areaRolavel = () => raiz.current?.closest(".console-section-content") ?? null;
+
+  useEffect(() => {
+    if (alunoNaUrl) return;
+    const area = areaRolavel();
+    if (area) area.scrollTop = rolagemDaLista.current;
+  }, [alunoNaUrl]);
+
+  const abrirAluno = (aluno: Aluno) => {
+    rolagemDaLista.current = areaRolavel()?.scrollTop ?? 0;
+    const proximo = new URLSearchParams(searchParams);
+    proximo.set("aluno", aluno.id);
+    proximo.set("turma", String(aluno.classe_id));
+    setSearchParams(proximo, { state: { abertoPelaLista: true } });
+  };
+
+  // Aberto pela lista: volta no historico, igual ao voltar do navegador.
+  // Aberto por link ou refresh nao tem pagina anterior do console, entao so
+  // tira o aluno da URL.
+  const voltarParaTurma = () => {
+    if ((location.state as { abertoPelaLista?: boolean } | null)?.abertoPelaLista) {
+      navigate(-1);
+      return;
+    }
+    const proximo = new URLSearchParams(searchParams);
+    proximo.delete("aluno");
+    proximo.delete("turma");
+    setSearchParams(proximo, { replace: true });
+  };
+
   useEffect(() => {
     const request = alunoRequestGuard.current.next();
 
@@ -377,6 +378,7 @@ export default function DashboardSection() {
       setPersonalizacaoError(null);
       setPersonalizacaoLoading(false);
       setAlunoEvolucao([]);
+      setTurmaEvolucao([]);
       return;
     }
 
@@ -386,34 +388,38 @@ export default function DashboardSection() {
     ]);
   }, [loadAlunoEvolucao, loadPersonalizacaoContexto, selectedAluno, session?.access_token]);
 
-  const filteredAlunos = useMemo(
-    () =>
-      alunos.filter((a) => {
-        const matchesSearch =
-          a.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          a.email.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesClass = selectedClassFilter === "all" || a.classe_id.toString() === selectedClassFilter;
-        return matchesSearch && matchesClass;
-      }),
-    [alunos, searchTerm, selectedClassFilter]
+  // A turma selecionada define o escopo da tela inteira (KPIs, graficos e
+  // tabela); a busca filtra so a tabela. Antes os KPIs usavam a lista ja
+  // filtrada pela busca, e digitar um nome mudava "Total de alunos".
+  const alunosDaTurma = useMemo(
+    () => filtrarAlunosDaTurma(alunosAnalisados, selectedClassFilter),
+    [alunosAnalisados, selectedClassFilter]
+  );
+  const alunosEmRisco = useMemo(
+    () => alunosDaTurma.filter((a): a is AlunoAnalisado & AlunoEmRisco => a.risco !== null),
+    [alunosDaTurma]
   );
 
-  const totalAlunos = filteredAlunos.length;
-  const mediaNotas =
-    filteredAlunos.reduce((acc, a) => acc + (isNaN(a.notaMedia) ? 0 : a.notaMedia), 0) / (totalAlunos || 1);
+  const totalAlunos = alunosDaTurma.length;
+  const mediaNotas = mediaDosPreenchidos(alunosDaTurma.map((a) => (a.temNota ? a.notaMedia : null)));
   const mediaConclusao =
-    filteredAlunos.reduce((acc, a) => acc + (isNaN(a.porcentagemConcluida) ? 0 : a.porcentagemConcluida), 0) /
+    alunosDaTurma.reduce((acc, a) => acc + (isNaN(a.porcentagemConcluida) ? 0 : a.porcentagemConcluida), 0) /
     (totalAlunos || 1);
-  const mediaAcertos =
-    filteredAlunos.reduce((acc, a) => acc + (isNaN(a.acertosPercentual) ? 0 : a.acertosPercentual), 0) /
-    (totalAlunos || 1);
+  const mediaAcertos = mediaDosPreenchidos(alunosDaTurma.map((a) => (a.temAcertos ? a.acertosPercentual : null)));
   // Sem alunos no escopo, as médias acima são 0/(0||1) = 0 — um zero
   // fabricado, nao um dado real. Usa essa flag pra mostrar estado vazio
   // em vez do numero, senao "0% de acertos" parece um resultado de verdade.
   const hasAlunoKpis = totalAlunos > 0;
-  const contextoAluno = personalizacaoData?.contexto_aluno ?? {};
   const personalizacoes = personalizacaoData?.personalizacoes ?? [];
   const progressoItens = personalizacaoData?.progresso_itens ?? [];
+  const matriculasDaTurma = useMemo(
+    () => alunosDaTurma.map((a) => ({ aluno_id: a.id, classe_id: a.classe_id })),
+    [alunosDaTurma]
+  );
+  const nomeDaTurma = useCallback(
+    (id: number) => classes.find((c) => c.id === id)?.descricao || `Turma ${id}`,
+    [classes]
+  );
   const classScopeIds = useMemo(
     () =>
       selectedClassFilter === "all"
@@ -441,776 +447,129 @@ export default function DashboardSection() {
   // mesmo problema do hasAlunoKpis, mas pra fonte de dado separada (view de
   // metricas de turma).
   const hasTurmaKpis = turmaMetricasEscopo.length > 0;
-  const abandonoPorPerfilData = useMemo(
-    () =>
-      perfilMetricasEscopo
-        .filter((row) => row.segmento === perfilSegmentFilter)
-        .sort((a, b) => Number(b.taxa_abandono_pct ?? 0) - Number(a.taxa_abandono_pct ?? 0))
-        .slice(0, 8)
-        .map((row) => ({
-          perfil: row.perfil_nome,
-          abandono: Number(row.taxa_abandono_pct ?? 0),
-          acertos: Number(row.taxa_acertos_pct ?? 0),
+  const observacaoDaRosca = temAbandono
+    ? observacaoNotaEAbandono(
+        alunosDaTurma.map((a) => ({
+          nota: a.temNota ? notaParaRisco(a.notaMedia, a.porcentagemConcluida) : null,
+          abandonoPct: a.abandonoPct,
         })),
-    [perfilMetricasEscopo, perfilSegmentFilter]
-  );
-  const distribuicaoNotasData = useMemo(
-    () =>
-      distribuicaoEscopo
-        .filter((row) => row.metrica === "nota_media")
-        .map((row) => ({
-          faixa: row.faixa,
-          percentual: Number(row.percentual ?? 0),
-          total: Number(row.total_alunos ?? 0),
-        })),
-    [distribuicaoEscopo]
-  );
-  const evolucaoAlunoData = useMemo(
-    () =>
-      alunoEvolucao.map((row) => ({
-        dia: new Date(row.dia).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
-        acertos: Number(row.taxa_acertos_pct ?? 0),
-        nota: Number(row.nota_media_desempenho ?? 0),
-        progresso: Number(row.progresso_trilha_pct ?? 0),
-      })),
-    [alunoEvolucao]
-  );
+        hasTurmaKpis ? turmaResumo.taxa_media_abandono_pct : null
+      )
+    : null;
+  const rotuloVoltar = `${selectedAluno?.classe_nome ?? "Turma"} · todos os alunos`;
+
+  let visaoDoAluno = null;
+  if (alunoNaUrl) {
+    visaoDoAluno = loadError ? (
+      <DashboardErro detalhe={loadError} onTentarNovamente={loadData} />
+    ) : isLoading || !ultimaCarga ? (
+      <DashboardCarregando />
+    ) : !selectedAluno ? (
+      <AlunoNaoEncontrado onVoltar={voltarParaTurma} />
+    ) : (
+      <DetalheAluno
+        aluno={selectedAluno}
+        abandonoDaTurmaPct={abandonoMedioPorTurma.get(selectedAluno.classe_id) ?? null}
+        rotuloVoltar={rotuloVoltar}
+        onVoltar={voltarParaTurma}
+        evolucaoAluno={alunoEvolucao}
+        evolucaoTurma={turmaEvolucao}
+        personalizacao={{
+          carregando: personalizacaoLoading,
+          erro: personalizacaoError,
+          personalizacoes,
+          progressoItens,
+        }}
+      />
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold">Dashboard de Alunos</h2>
-          <p className="text-muted-foreground">Acompanhe o desempenho dos alunos com permissao de acesso</p>
-        </div>
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-muted-foreground">Janela temporal</span>
-          <Select
-            value={janelaTemporal}
-            onValueChange={(value) =>
-              setJanelaTemporal(value as "7d" | "30d" | "mes_atual" | "tudo")
-            }
-          >
-            <SelectTrigger className="w-44">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7d">Últimos 7 dias</SelectItem>
-              <SelectItem value="30d">Últimos 30 dias</SelectItem>
-              <SelectItem value="mes_atual">Este mês</SelectItem>
-              <SelectItem value="tudo">Todo o período</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+    <div ref={raiz}>
+      {visaoDoAluno}
+      <div hidden={!!alunoNaUrl} className="space-y-6">
+        <DashboardHeader
+          classes={classes}
+          turmaSelecionada={selectedClassFilter}
+          onTurmaChange={setSelectedClassFilter}
+          totalAlunos={totalAlunos}
+          janela={janelaTemporal}
+          onJanelaChange={setJanelaTemporal}
+          ultimaCarga={ultimaCarga}
+        />
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total de Alunos</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalAlunos}</div>
-            <p className="text-xs text-muted-foreground">com acesso liberado</p>
-          </CardContent>
-        </Card>
+        {loadError ? (
+          <DashboardErro detalhe={loadError} onTentarNovamente={loadData} />
+        ) : isLoading || !ultimaCarga ? (
+          <DashboardCarregando />
+        ) : alunosDaTurma.length === 0 ? (
+          <DashboardVazio semTurmas={classes.length === 0} />
+        ) : (
+          <>
+            <SegmentedPills ariaLabel="Seções da turma" opcoes={ABAS_DA_TURMA} valor={abaDaTurma} onChange={(a) => trocarAba(a)} className="w-fit" />
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Média de Notas</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {hasAlunoKpis ? (
-              <div className="text-2xl font-bold">{mediaNotas.toFixed(1)}</div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Sem dados ainda</p>
-            )}
-          </CardContent>
-        </Card>
+            {/* Visão geral fica montada (só escondida) para a tabela manter página e busca ao trocar de aba. */}
+            <div hidden={abaDaTurma !== "visao"} className="space-y-6">
+              <KpisPrincipais totalAlunos={totalAlunos} mediaNotas={mediaNotas} mediaConclusao={mediaConclusao} temDados={hasAlunoKpis} />
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Conclusão Média</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {hasAlunoKpis ? (
-              <div className="text-2xl font-bold">{mediaConclusao.toFixed(0)}%</div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Sem dados ainda</p>
-            )}
-          </CardContent>
-        </Card>
+              <PrecisamDeAtencao<AlunoAnalisado & AlunoEmRisco>
+                alunos={alunosEmRisco}
+                totalDaTurma={totalAlunos}
+                criterios={criteriosLigados}
+                mostrarTurma={selectedClassFilter === TODAS_AS_TURMAS}
+                onAbrir={abrirAluno}
+              />
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Taxa de Acertos</CardTitle>
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {hasAlunoKpis ? (
-              <div className="text-2xl font-bold">{mediaAcertos.toFixed(0)}%</div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Sem dados ainda</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+              <KpisSecundarios mediaAcertos={mediaAcertos} turmaResumo={turmaResumo} temDadosTurma={hasTurmaKpis} />
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Abandono Médio</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {hasTurmaKpis ? (
-              <div className="text-2xl font-bold">{turmaResumo.taxa_media_abandono_pct.toFixed(1)}%</div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Sem dados ainda</p>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Conclusão Média</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {hasTurmaKpis ? (
-              <div className="text-2xl font-bold">{turmaResumo.taxa_media_conclusao_pct.toFixed(1)}%</div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Sem dados ainda</p>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Uso do Chat após Erro</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {hasTurmaKpis ? (
-              <div className="text-2xl font-bold">{turmaResumo.uso_chat_apos_erro_pct.toFixed(1)}%</div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Sem dados ainda</p>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Tempo Médio de Uso</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {hasTurmaKpis ? (
-              <div className="text-2xl font-bold">
-                {(turmaResumo.tempo_medio_uso_seg / 60).toFixed(1)}min
+              <div className="grid items-start gap-5 lg:grid-cols-2">
+                <AbandonoPorPerfil
+                  linhas={perfilMetricasEscopo}
+                  segmento={perfilSegmentFilter}
+                  onSegmentoChange={setPerfilSegmentFilter}
+                  media={hasTurmaKpis ? turmaResumo.taxa_media_abandono_pct : null}
+                />
+                <DistribuicaoNotas linhas={distribuicaoEscopo} mediaNotas={mediaNotas} observacao={observacaoDaRosca} />
               </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Sem dados ainda</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <CardTitle>Abandono por Perfil</CardTitle>
-                <CardDescription>Segmentação por perfil da turma selecionada</CardDescription>
-              </div>
-              <Select
-                value={perfilSegmentFilter}
-                onValueChange={(value) =>
-                  setPerfilSegmentFilter(
-                    value as "majoritario" | "segundo" | "afinidade_20_plus"
-                  )
-                }
-              >
-                <SelectTrigger className="w-44">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="majoritario">Majoritário</SelectItem>
-                  <SelectItem value="segundo">2º Perfil</SelectItem>
-                  <SelectItem value="afinidade_20_plus">Afinidade ≥ 20%</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardHeader>
-          <CardContent className="h-72">
-            {abandonoPorPerfilData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={abandonoPorPerfilData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="perfil" tick={{ ...CHART_TICK_STYLE, fontSize: 11 }} />
-                  <YAxis tick={CHART_TICK_STYLE} />
-                  <Tooltip />
-                  <Bar dataKey="abandono" fill={CHART_COLOR_DANGER} radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                Sem dados suficientes ainda
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Distribuição de Notas</CardTitle>
-            <CardDescription>Faixas baixa, média e alta</CardDescription>
-          </CardHeader>
-          <CardContent className="h-72">
-            {distribuicaoNotasData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={distribuicaoNotasData}
-                    dataKey="percentual"
-                    nameKey="faixa"
-                    outerRadius={100}
-                    label={(entry) => {
-                      const item = entry as Partial<TurmaDistribuicao>;
-                      return `${item.faixa ?? "faixa"}: ${Number(item.percentual ?? 0).toFixed(1)}%`;
-                    }}
-                  >
-                    {distribuicaoNotasData.map((entry, idx) => (
-                      <Cell
-                        key={`${entry.faixa}-${idx}`}
-                        fill={
-                          idx % 3 === 0
-                            ? CHART_COLOR_DANGER
-                            : idx % 3 === 1
-                            ? CHART_COLOR_WARNING
-                            : CHART_COLOR_SUCCESS
-                        }
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                Sem dados suficientes ainda
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Lista de Alunos</CardTitle>
-          <CardDescription>Clique em um aluno para ver detalhes e visualizar sua trilha</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-4 mb-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nome ou email..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
+              <TabelaAlunos
+                alunos={alunosDaTurma}
+                mostrarClasse={selectedClassFilter === TODAS_AS_TURMAS}
+                mostrarAbandono={temAbandono}
+                onAbrir={abrirAluno}
               />
             </div>
-            <Select value={selectedClassFilter} onValueChange={setSelectedClassFilter}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Filtrar por classe" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas as classes</SelectItem>
-                {classes.map((c) => (
-                  <SelectItem key={c.id} value={c.id.toString()}>
-                    {c.descricao}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
 
-          {loadError ? (
-            <div className="flex flex-col items-center gap-3 py-8 text-center">
-              <p className="text-sm text-destructive">{loadError}</p>
-              <Button variant="outline" size="sm" onClick={loadData}>
-                Tentar novamente
-              </Button>
-            </div>
-          ) : isLoading ? (
-            <p className="text-sm text-muted-foreground">Carregando alunos...</p>
-          ) : (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Aluno</TableHead>
-                    <TableHead>Classe</TableHead>
-                    <TableHead>Perfil</TableHead>
-                    <TableHead>Nota Média</TableHead>
-                    <TableHead>Progresso</TableHead>
-                    <TableHead>Acertos</TableHead>
-                    <TableHead className="w-20">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredAlunos.map((aluno) => (
-                    <TableRow key={aluno.id}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{aluno.nome}</p>
-                          <p className="text-xs text-muted-foreground">{aluno.email}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>{aluno.classe_nome}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{aluno.perfilDominante}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={aluno.notaMedia >= 7 ? "default" : "destructive"}>
-                          {aluno.notaMedia.toFixed(1)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Progress value={aluno.porcentagemConcluida} className="w-16 h-2" />
-                          <span className="text-xs">{aluno.porcentagemConcluida.toFixed(1)}%</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>{aluno.acertosPercentual.toFixed(1)}%</TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="sm" onClick={() => setSelectedAluno(aluno)}>
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+            {abaDaTurma === "evolucao" && (
+              <AbaEvolucao
+                classIds={classScopeIds}
+                matriculas={matriculasDaTurma}
+                conclusaoAtualPct={hasAlunoKpis ? mediaConclusao : null}
+                abandonoAtualPct={hasTurmaKpis ? turmaResumo.taxa_media_abandono_pct : null}
+              />
+            )}
 
-              {filteredAlunos.length === 0 && (
-                <p className="text-center text-muted-foreground py-8">
-                  {alunos.length === 0
-                    ? "Nenhum aluno matriculado ainda."
-                    : "Nenhum aluno encontrado com esse filtro."}
-                </p>
-              )}
-            </>
-          )}
-        </CardContent>
-      </Card>
+            {abaDaTurma === "conteudo" && (
+              <AbaConteudo
+                classIds={classScopeIds}
+                matriculas={matriculasDaTurma}
+                mostrarTurma={selectedClassFilter === TODAS_AS_TURMAS}
+                nomeDaTurma={nomeDaTurma}
+              />
+            )}
 
-      <Dialog open={!!selectedAluno} onOpenChange={() => setSelectedAluno(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <GraduationCap className="h-5 w-5" />
-              {selectedAluno?.nome}
-            </DialogTitle>
-          </DialogHeader>
-
-          {selectedAluno && (
-            <Tabs defaultValue="overview" className="space-y-4">
-              <TabsList>
-                <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-                <TabsTrigger value="perfil">Perfil BrainHex</TabsTrigger>
-                <TabsTrigger value="trilha">Trilha Visual</TabsTrigger>
-                <TabsTrigger value="personalizacao">Personalização</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="overview" className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Email</p>
-                    <p className="font-medium">{selectedAluno.email}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Classe</p>
-                    <p className="font-medium">{selectedAluno.classe_nome}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Modo de Operação</p>
-                    <p className="font-medium">{selectedAluno.modoOperacao}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Perfil Dominante</p>
-                    <Badge variant="secondary">{selectedAluno.perfilDominante}</Badge>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  <Card>
-                    <CardContent className="pt-4">
-                      <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                        <TrendingUp className="h-4 w-4" />
-                        <span className="text-xs">Nota Média</span>
-                      </div>
-                      <p className="text-2xl font-bold">{selectedAluno.notaMedia.toFixed(1)}</p>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardContent className="pt-4">
-                      <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                        <CheckCircle className="h-4 w-4" />
-                        <span className="text-xs">Concluído</span>
-                      </div>
-                      <p className="text-2xl font-bold">{selectedAluno.porcentagemConcluida.toFixed(1)}%</p>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardContent className="pt-4">
-                      <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                        <BarChart3 className="h-4 w-4" />
-                        <span className="text-xs">Acertos</span>
-                      </div>
-                      <p className="text-2xl font-bold">{selectedAluno.acertosPercentual.toFixed(1)}%</p>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardContent className="pt-4">
-                      <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                        <Clock className="h-4 w-4" />
-                        <span className="text-xs">Tempo Total</span>
-                      </div>
-                      <p className="text-2xl font-bold">{selectedAluno.tempoGastoMin}min</p>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Evolução do aluno</CardTitle>
-                    <CardDescription>Nota, acertos e progresso ao longo dos dias</CardDescription>
-                  </CardHeader>
-                  <CardContent className="h-72">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={evolucaoAlunoData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="dia" tick={CHART_TICK_STYLE} />
-                        <YAxis tick={CHART_TICK_STYLE} />
-                        <Tooltip />
-                        <Legend />
-                        <Line
-                          type="monotone"
-                          dataKey="acertos"
-                          name="Acertos (%)"
-                          stroke={CHART_COLOR_INFO}
-                          strokeWidth={2}
-                          dot={false}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="progresso"
-                          name="Progresso (%)"
-                          stroke={CHART_COLOR_PROGRESS}
-                          strokeWidth={2}
-                          strokeDasharray="6 4"
-                          dot={false}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="nota"
-                          name="Nota"
-                          stroke={CHART_COLOR_WARNING}
-                          strokeWidth={2}
-                          strokeDasharray="2 3"
-                          dot={false}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-
-                {selectedAluno.ultimaAtividade && (
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm">Última Atividade</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="font-medium">{selectedAluno.ultimaAtividade}</p>
-                    </CardContent>
-                  </Card>
-                )}
-              </TabsContent>
-
-              <TabsContent value="perfil" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Brain className="h-5 w-5" />
-                      Perfil BrainHex
-                    </CardTitle>
-                    <CardDescription>Distribuição dos 7 perfis de aprendizagem</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {selectedAluno.perfis
-                      .sort((a, b) => b.afinidade - a.afinidade)
-                      .map((perfil) => (
-                        <div key={perfil.nome} className="space-y-2">
-                          <div className="flex justify-between text-sm">
-                            <span className="font-medium flex items-center gap-2">
-                              {perfil.nome}
-                              {perfil.nome === selectedAluno.perfilDominante && (
-                                <Badge variant="default" className="text-xs">
-                                  Dominante
-                                </Badge>
-                              )}
-                            </span>
-                            <span className="text-muted-foreground">{perfil.afinidade}%</span>
-                          </div>
-                          <Progress value={perfil.afinidade} className="h-3" />
-                        </div>
-                      ))}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="trilha" className="space-y-4">
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant={trailViewMode === "hexagon" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setTrailViewMode("hexagon")}
-                  >
-                    <LayoutGrid className="h-4 w-4 mr-1" />
-                    Hexagonos
-                  </Button>
-                  <Button
-                    variant={trailViewMode === "list" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setTrailViewMode("list")}
-                  >
-                    <List className="h-4 w-4 mr-1" />
-                    Lista
-                  </Button>
-                </div>
-
-                <StudentTrailVisualization
-                  studentName={selectedAluno.nome}
-                  classeName={selectedAluno.classe_nome}
-                  xp={selectedAluno.porcentagemConcluida * 10}
-                  xpTotal={1000}
-                  topicos={selectedAluno.topicos}
-                  perfilDominante={selectedAluno.perfilDominante}
-                  viewMode={trailViewMode}
-                />
-              </TabsContent>
-
-              <TabsContent value="personalizacao" className="space-y-4">
-                {personalizacaoLoading ? (
-                  <Card>
-                    <CardContent className="pt-6 text-sm text-muted-foreground">
-                      Carregando histórico de personalização...
-                    </CardContent>
-                  </Card>
-                ) : personalizacaoError ? (
-                  <Card>
-                    <CardContent className="pt-6 text-sm text-destructive">
-                      {personalizacaoError}
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <>
-                    <div className="grid gap-4 lg:grid-cols-3">
-                      <Card className="lg:col-span-2">
-                        <CardHeader>
-                          <CardTitle className="flex items-center gap-2">
-                            <Sparkles className="h-4 w-4" />
-                            Contexto central do aluno
-                          </CardTitle>
-                          <CardDescription>
-                            Perfis, preferencias, historico e sinais usados pela API para personalizar o modulo.
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          <div className="flex flex-wrap gap-2">
-                            {(selectedAluno.perfis ?? []).map((perfil) => (
-                              <Badge key={perfil.nome} variant="secondary">
-                                {perfil.nome} {perfil.afinidade}%
-                              </Badge>
-                            ))}
-                          </div>
-                          <div className="grid gap-4 md:grid-cols-2">
-                            <div>
-                              <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                                Modo de operacao
-                              </p>
-                              <p className="font-medium">{selectedAluno.modoOperacao}</p>
-                            </div>
-                            <div>
-                              <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                                Perfil dominante
-                              </p>
-                              <p className="font-medium">{selectedAluno.perfilDominante}</p>
-                            </div>
-                          </div>
-                          <div className="rounded-lg border bg-muted/30 p-3">
-                            <pre className="whitespace-pre-wrap break-words text-xs text-muted-foreground">
-                              {JSON.stringify(contextoAluno, null, 2)}
-                            </pre>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="flex items-center gap-2">
-                            <Target className="h-4 w-4" />
-                            Resumo de uso
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          <div>
-                            <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                              Personalizacoes
-                            </p>
-                            <p className="text-2xl font-bold">{personalizacoes.length}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                              Itens persistidos
-                            </p>
-                            <p className="text-2xl font-bold">{progressoItens.length}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                              Tempo personalizado
-                            </p>
-                            <p className="text-2xl font-bold">
-                              {progressoItens
-                                .reduce((acc, item) => acc + Number(item.tempo_gasto_min ?? 0), 0)
-                                .toFixed(1)}
-                              min
-                            </p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <FileText className="h-4 w-4" />
-                          Historico de personalizacoes
-                        </CardTitle>
-                        <CardDescription>
-                          Justificativa, formatos gerados e sequencia entregue ao aluno.
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        {personalizacoes.length === 0 ? (
-                          <p className="text-sm text-muted-foreground">
-                            Nenhuma personalizacao encontrada para este aluno nesta classe.
-                          </p>
-                        ) : (
-                          personalizacoes.map((item) => (
-                            <div key={item.id} className="rounded-lg border p-4 space-y-3">
-                              <div className="flex flex-wrap items-start justify-between gap-3">
-                                <div>
-                                  <p className="font-semibold">
-                                    Personalização #{item.id} · Tópico {item.topico_id ?? "geral"}
-                                  </p>
-                                  <p className="text-sm text-muted-foreground">
-                                    {item.plano?.justificativa || "Sem justificativa registrada."}
-                                  </p>
-                                </div>
-                                <Badge variant="outline">{item.formato_prioritario || "misto"}</Badge>
-                              </div>
-                              <div className="flex flex-wrap gap-2">
-                                {(item.formatos_gerados ?? []).map((formato) => (
-                                  <Badge key={`${item.id}-${formato}`} variant="secondary">
-                                    {formato}
-                                  </Badge>
-                                ))}
-                              </div>
-                              <div className="grid gap-4 md:grid-cols-2">
-                                <div>
-                                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                                    Etapas geradas
-                                  </p>
-                                  <p className="font-medium">{item.steps?.length ?? 0}</p>
-                                </div>
-                                <div>
-                                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                                    Gerado em
-                                  </p>
-                                  <p className="font-medium">
-                                    {item.gerado_em
-                                      ? new Date(item.gerado_em).toLocaleString("pt-BR")
-                                      : "Sem data"}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Progresso dos itens personalizados</CardTitle>
-                        <CardDescription>
-                          Tempo, pontuacao e status persistidos por passo do modulo personalizado.
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        {progressoItens.length === 0 ? (
-                          <p className="text-sm text-muted-foreground">
-                            Ainda nao ha itens personalizados persistidos para este aluno.
-                          </p>
-                        ) : (
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>Item</TableHead>
-                                <TableHead>Tipo</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead>Tempo</TableHead>
-                                <TableHead>Pontos</TableHead>
-                                <TableHead>Atualizado</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {progressoItens.map((item) => (
-                                <TableRow key={item.id}>
-                                  <TableCell className="font-medium">{item.item_title}</TableCell>
-                                  <TableCell>{item.item_kind}</TableCell>
-                                  <TableCell>
-                                    <Badge variant={item.status === "concluido" ? "default" : "secondary"}>
-                                      {item.status}
-                                    </Badge>
-                                  </TableCell>
-                                  <TableCell>{Number(item.tempo_gasto_min ?? 0).toFixed(1)} min</TableCell>
-                                  <TableCell>
-                                    {item.pontuacao_obtida ?? 0}
-                                    {item.pontuacao_maxima ? ` / ${item.pontuacao_maxima}` : ""}
-                                  </TableCell>
-                                  <TableCell>
-                                    {item.updated_at
-                                      ? new Date(item.updated_at).toLocaleString("pt-BR")
-                                      : "-"}
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </>
-                )}
-              </TabsContent>
-            </Tabs>
-          )}
-        </DialogContent>
-      </Dialog>
+            {abaDaTurma === "insights" && (
+              <AbaInsights
+                classIds={classScopeIds}
+                alunos={alunosDaTurma}
+                mostrarTurma={selectedClassFilter === TODAS_AS_TURMAS}
+                nomeDaTurma={nomeDaTurma}
+                onAbrirAluno={abrirAluno}
+              />
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }

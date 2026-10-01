@@ -228,6 +228,14 @@ Cada perfil carrega:
   opera se **as duas** tabelas existirem (sem log, a métrica de efetividade
   ficaria furada justamente onde vai olhar). Ver
   `docs/superpowers/specs/2026-08-25-sugestao-de-material-por-aluno-design.md`.
+- `intervencoes` — insights da turma (aba Insights do console, `20260929_01`):
+  sugestões/observações que a IA escreve, em lotes (`geracao_id`), por turma
+  ou por aluno. **Só a geração passa pela API**
+  (`POST /api/v1/insights/turma/{classe_id}/gerar`, em segundo plano, com
+  intervalo mínimo de 5 min); listar, aceitar e ignorar é Supabase direto. O
+  aluno não lê; o professor só atualiza `status`/`motivo_descarte`/`resolved_at`
+  (GRANT por coluna) — nunca o texto que a IA gravou. Sem modelo disponível,
+  nada é gravado: não existe insight "de reserva".
 - `telemetria_sessoes`, `telemetria_lotes` — telemetria bruta + payload JSONB.
 - **Notificações — motor inteiro no banco.** Quatro tabelas com papéis **não
   intercambiáveis**: `notificacoes_ia` (o que a IA *sugeriu*; a API só insere
