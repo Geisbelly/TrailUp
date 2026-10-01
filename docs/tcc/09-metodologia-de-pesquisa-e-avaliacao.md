@@ -1,4 +1,4 @@
-﻿# 09. Metodologia de pesquisa e avaliacao
+# 09. Metodologia de pesquisa e avaliacao
 
 Data de atualizacao: 2026-04-19
 

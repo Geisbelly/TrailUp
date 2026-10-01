@@ -1,4 +1,4 @@
-﻿# Arquitetura do App (Studio/Frontend do ApiBrainHex) - Versão Detalhada
+# Arquitetura do App (Studio/Frontend do ApiBrainHex) - Versão Detalhada
 
 ## 1. Objetivo
 Descrever arquitetura do app frontend interno do repositório, separado da arquitetura do microserviço backend.

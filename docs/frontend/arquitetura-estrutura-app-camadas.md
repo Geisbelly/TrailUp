@@ -1,4 +1,4 @@
-﻿# Arquitetura e Estrutura do App: Camadas e Responsabilidades
+# Arquitetura e Estrutura do App: Camadas e Responsabilidades
 
 Atualizado em: 2026-04-13
 
@@ -6,7 +6,7 @@ Atualizado em: 2026-04-13
 
 Este documento explica a arquitetura do ecossistema TrailUp (Web, API e Mobile), a divisao em camadas e a responsabilidade de cada camada.
 
-## 2. VisÃ£o macro do ecossistema
+## 2. Visão macro do ecossistema
 
 ```mermaid
 flowchart LR
@@ -44,16 +44,16 @@ flowchart LR
   DB --> RT --> MSVC
 ```
 
-## 3. Camadas por repositÃ³rio
+## 3. Camadas por repositório
 
 ## 3.1 Web (brainhex-navigator)
 
 Estrutura principal:
-- `src/pages`: roteamento e pÃ¡ginas
-- `src/components`: UI e mÃ³dulos de tela
-- `src/hooks`: auth e hooks de aplicaÃ§Ã£o
+- `src/pages`: roteamento e páginas
+- `src/components`: UI e módulos de tela
+- `src/hooks`: auth e hooks de aplicação
 - `src/features`: fluxos de neg?cio do frontend
-- `src/lib`: regras, normalizadores e utilitÃ¡rios
+- `src/lib`: regras, normalizadores e utilitários
 - `src/integrations/supabase`: cliente e tipos
 - `supabase/functions/*`: edge functions da Web
 
@@ -61,9 +61,9 @@ Estrutura principal:
 
 | Camada | Diretorios | Responsabilidade |
 |---|---|---|
-| Presentation | `src/pages`, `src/components` | render, interaÃ§Ã£o e fluxo visual do professor |
+| Presentation | `src/pages`, `src/components` | render, interação e fluxo visual do professor |
 | Application | `src/hooks`, `src/features` | orquestracao de casos de uso da tela |
-| Domain/UI Rules | `src/lib` | regras de validaÃ§Ã£o/normalizaÃ§Ã£o e contratos locais |
+| Domain/UI Rules | `src/lib` | regras de validação/normalização e contratos locais |
 | Infrastructure | `src/integrations/supabase`, `supabase/functions` | acesso a banco/edge function e IO externo |
 
 ```mermaid
@@ -89,11 +89,11 @@ Estrutura principal:
 
 | Camada | Diretorios | Responsabilidade |
 |---|---|---|
-| Interface/API | `app/api`, `app/schemas` | endpoints, validaÃ§Ã£o e serializaÃ§Ã£o de contratos |
-| Application Services | `app/services` | casos de uso (personalizaÃ§Ã£o, chat, telemetria, jobs) |
-| Workflow/Agent | `app/agent` | decisÃ£o e execuÃ§Ã£o de workflows com LangGraph |
-| Data Access | `app/repositories` | queries SQL, transaÃ§Ãµes e mapeamento de entidades |
-| Infrastructure | `app/db`, `app/core` | conexÃ£o DB, configuraÃ§Ã£o, runtime de app |
+| Interface/API | `app/api`, `app/schemas` | endpoints, validação e serialização de contratos |
+| Application Services | `app/services` | casos de uso (personalização, chat, telemetria, jobs) |
+| Workflow/Agent | `app/agent` | decisão e execução de workflows com LangGraph |
+| Data Access | `app/repositories` | queries SQL, transações e mapeamento de entidades |
+| Infrastructure | `app/db`, `app/core` | conexão DB, configuração, runtime de app |
 
 ```mermaid
 flowchart LR
@@ -114,14 +114,14 @@ Estrutura principal:
 - `src/services`: chamadas API e Supabase
 - `src/models`, `src/interfaces`: contratos e modelos
 - `src/database`: cliente Supabase
-- `src/utils`: adaptadores utilitÃ¡rios
+- `src/utils`: adaptadores utilitários
 
 ### Camadas e responsabilidades (Mobile)
 
 | Camada | Diretorios | Responsabilidade |
 |---|---|---|
-| Presentation | `src/app`, `src/screens`, `src/components` | experiÃªncia do aluno e navegaÃ§Ã£o |
-| State/Application | `src/context` | sessao, trilha, IA, mÃ©tricas e sincronizacao |
+| Presentation | `src/app`, `src/screens`, `src/components` | experiência do aluno e navegação |
+| State/Application | `src/context` | sessao, trilha, IA, métricas e sincronizacao |
 | Domain Model | `src/models`, `src/interfaces` | tipos de neg?cio e contratos de dados |
 | Infrastructure | `src/services`, `src/database`, `src/utils` | integracao externa e persist?ncia local/remota |
 
@@ -140,23 +140,23 @@ flowchart TD
 
 | Assunto | Web | API | Mobile |
 |---|---|---|---|
-| CRUD pedagÃ³gico | dono principal | consumidor indireto | leitura |
-| GeraÃ§Ã£o de personalizaÃ§Ã£o em lote | dispara jobs | dono principal (worker) | consome resultado |
+| CRUD pedagógico | dono principal | consumidor indireto | leitura |
+| Geração de personalização em lote | dispara jobs | dono principal (worker) | consome resultado |
 | Progresso de item personalizado | suporte visual | valida e persiste | envia dados |
-| Telemetria comportamental | nÃ£o principal | processa e analisa | produz e envia |
-| CorreÃ§Ã£o dissertativa IA | chama edge function | nÃ£o principal | nÃ£o principal |
+| Telemetria comportamental | não principal | processa e analisa | produz e envia |
+| Correção dissertativa IA | chama edge function | não principal | não principal |
 
-## 5. Principios de separaÃ§Ã£o de camadas
+## 5. Principios de separação de camadas
 
-1. Camada visual nÃ£o escreve SQL nem conhece schema detalhado.
-2. Regras de neg?cio ficam em services (API) e utilitÃ¡rios de dominio (Web/Mobile), nÃ£o em componente visual.
-3. RepositÃ³rios encapsulam acesso a dados e evitam SQL espalhado.
-4. Contratos de entrada/saida sÃ£o tipados (`schemas`, `interfaces`, `types`).
-5. IntegraÃ§Ãµes externas (Supabase/API/LLM/Storage) ficam na infraestrutura.
+1. Camada visual não escreve SQL nem conhece schema detalhado.
+2. Regras de neg?cio ficam em services (API) e utilitários de dominio (Web/Mobile), não em componente visual.
+3. Repositórios encapsulam acesso a dados e evitam SQL espalhado.
+4. Contratos de entrada/saida são tipados (`schemas`, `interfaces`, `types`).
+5. Integrações externas (Supabase/API/LLM/Storage) ficam na infraestrutura.
 
 ## 6. Fluxos chave entre camadas
 
-## 6.1 PersonalizaÃ§Ã£o assÃ­nc
+## 6.1 Personalização assínc
 
 ```mermaid
 sequenceDiagram
@@ -196,9 +196,9 @@ sequenceDiagram
 
 ## 7. Resultado esperado dessa arquitetura
 
-- EvoluÃ§Ã£o desacoplada dos 3 repositÃ³rios.
-- Menor risco de regressÃ£o por isolamento de responsabilidade.
-- OperaÃ§Ã£o mais previsivel (jobs, retries, estados).
+- Evolução desacoplada dos 3 repositórios.
+- Menor risco de regressão por isolamento de responsabilidade.
+- Operação mais previsivel (jobs, retries, estados).
 - Observabilidade melhor por camada (UI, API, DB, worker).
 
 

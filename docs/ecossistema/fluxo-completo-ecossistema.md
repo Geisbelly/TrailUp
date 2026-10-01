@@ -1,19 +1,19 @@
-﻿# Fluxo Completo do Ecossistema TrailUp
+# Fluxo Completo do Ecossistema TrailUp
 
 Atualizado em: 2026-04-13
 
 ## Indice
 - [1. Objetivo](#sec-01)
 - [2. Arquitetura de alto nivel](#sec-02)
-- [3. Fluxo principal de personalizaÃ§Ã£o por aluno](#sec-03)
+- [3. Fluxo principal de personalização por aluno](#sec-03)
 - [4. Fluxos de job por tipo](#sec-04)
-- [5. Pipeline interno de geraÃ§Ã£o personalizada](#sec-05)
+- [5. Pipeline interno de geração personalizada](#sec-05)
 - [6. Tipos de material personalizado](#sec-06)
-- [7. Persist?ncia canÃ´nica da personalizaÃ§Ã£o](#sec-07)
+- [7. Persist?ncia canônica da personalização](#sec-07)
 - [8. Progresso personalizado por item](#sec-08)
-- [9. Telemetria e analÃ­tica](#sec-09)
+- [9. Telemetria e analítica](#sec-09)
 - [10. Estados de processamento](#sec-10)
-- [11. Regra de nota opcional em questÃµes](#sec-11)
+- [11. Regra de nota opcional em questões](#sec-11)
 - [12. Artefatos de plataforma (SQL e Edge)](#sec-12)
 - [13. Tabela de rastreabilidade rapida](#sec-13)
 - [14. Referencias de codigo](#sec-14)
@@ -29,8 +29,8 @@ Este documento explica o fluxo completo do TrailUp, do ponto de vista operaciona
 - App Mobile do aluno
 - Edge Functions
 
-TambÃ©m detalha:
-- quando a personalizaÃ§Ã£o por aluno e gerada
+Também detalha:
+- quando a personalização por aluno e gerada
 - quando ela e reaproveitada por `source_hash`
 - como o mobile consome e persiste progresso
 - como a telemetria entra no pipeline
@@ -98,7 +98,7 @@ flowchart LR
 ```
 
 <a id="sec-03"></a>
-## 3. Fluxo principal de personalizaÃ§Ã£o por aluno
+## 3. Fluxo principal de personalização por aluno
 
 ### 3.1 Professor altera estrutura e dispara job
 
@@ -114,7 +114,7 @@ sequenceDiagram
   A->>S: INSERT personalizacao_job_targets
 ```
 
-### 3.2 Worker processa cada target (aluno x tÃ³pico)
+### 3.2 Worker processa cada target (aluno x tópico)
 
 ```mermaid
 sequenceDiagram
@@ -141,7 +141,7 @@ sequenceDiagram
   W->>S: Atualiza counters e status final do job
 ```
 
-### 3.3 Mobile consome personalizaÃ§Ã£o persistida
+### 3.3 Mobile consome personalização persistida
 
 ```mermaid
 sequenceDiagram
@@ -174,7 +174,7 @@ sequenceDiagram
   A->>S: Cria targets para topicos da classe
 ```
 
-### 4.2 Class delta (mudanca de conteÃºdo)
+### 4.2 Class delta (mudanca de conteúdo)
 
 ```mermaid
 sequenceDiagram
@@ -206,7 +206,7 @@ sequenceDiagram
 ```
 
 <a id="sec-05"></a>
-## 5. Pipeline interno de geraÃ§Ã£o personalizada
+## 5. Pipeline interno de geração personalizada
 
 ```mermaid
 flowchart TD
@@ -272,7 +272,7 @@ mindmap
 ```
 
 <a id="sec-07"></a>
-## 7. Persist?ncia canÃ´nica da personalizaÃ§Ã£o
+## 7. Persist?ncia canônica da personalização
 
 Tabela central: `conteudo_personalizado`
 
@@ -291,7 +291,7 @@ Campos mais importantes:
 - `formatos_gerados`
 
 Regra estrutural importante:
-- indice unico por `(aluno_id, topico_id)` para estratÃ©gia de upsert.
+- indice unico por `(aluno_id, topico_id)` para estratégia de upsert.
 
 <a id="sec-08"></a>
 ## 8. Progresso personalizado por item
@@ -304,12 +304,12 @@ Tabela: `personalizacao_item_progresso`
 - `cards`
 
 Fluxo:
-1. Worker semeia registros iniciais apos gerar personalizaÃ§Ã£o.
+1. Worker semeia registros iniciais apos gerar personalização.
 2. Mobile envia progresso via API `/api/v1/personalizar/progresso`.
-3. API valida ownership da personalizaÃ§Ã£o e faz upsert do item.
+3. API valida ownership da personalização e faz upsert do item.
 
 <a id="sec-09"></a>
-## 9. Telemetria e analÃ­tica
+## 9. Telemetria e analítica
 
 ### 9.1 Ingestao de telemetria
 
@@ -330,7 +330,7 @@ sequenceDiagram
   end
 ```
 
-### 9.2 Views para anÃ¡lise
+### 9.2 Views para análise
 
 Principais views:
 - `vw_metricas_sessoes_aluno_dia`
@@ -376,18 +376,18 @@ stateDiagram-v2
 ```
 
 <a id="sec-11"></a>
-## 11. Regra de nota opcional em questÃµes
+## 11. Regra de nota opcional em questões
 
 Campo: `public.questoes.nota_estabelecida`
 
-SemÃ¢ntica atual:
+Semântica atual:
 - opcional (`NULL` permitido)
 - sem `DEFAULT`
 - `NULL` = sem nota definida
 
-Impacto no fluxo de correÃ§Ã£o dissertativa:
+Impacto no fluxo de correção dissertativa:
 - se nota enviada e valida, IA corrige na escala informada
-- se nota ausente/invalida, IA corrige em escala padrÃ£o 100
+- se nota ausente/invalida, IA corrige em escala padrão 100
 
 ```mermaid
 flowchart TD
@@ -424,9 +424,9 @@ flowchart TD
 
 | Etapa | Endpoint/acao | Tabelas tocadas |
 |---|---|---|
-| Mudanca pedagÃ³gica | CRUD Web | `topicos`, `conteudos`, `atividades`, `questoes`, etc |
-| Disparo de personalizaÃ§Ã£o | `POST /api/v1/personalizar/jobs/*` | `personalizacao_jobs`, `personalizacao_job_targets` |
-| GeraÃ§Ã£o por target | Worker | `conteudo_personalizado`, `personalizacao_item_progresso` |
+| Mudanca pedagógica | CRUD Web | `topicos`, `conteudos`, `atividades`, `questoes`, etc |
+| Disparo de personalização | `POST /api/v1/personalizar/jobs/*` | `personalizacao_jobs`, `personalizacao_job_targets` |
+| Geração por target | Worker | `conteudo_personalizado`, `personalizacao_item_progresso` |
 | Consumo no aluno | SELECT mobile + realtime | `conteudo_personalizado`, `personalizacao_jobs` |
 | Progresso personalizado | `POST /api/v1/personalizar/progresso` | `personalizacao_item_progresso` |
 | Telemetria | `POST /api/v1/telemetria/lotes` | tabelas `telemetria_*` |

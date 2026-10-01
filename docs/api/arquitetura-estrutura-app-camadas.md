@@ -1,4 +1,4 @@
-﻿# Arquitetura de Estrutura e Camadas - API TrailUp
+# Arquitetura de Estrutura e Camadas - API TrailUp
 
 ## Camadas
 - API HTTP (`app/api`): endpoints e validacao de contrato.

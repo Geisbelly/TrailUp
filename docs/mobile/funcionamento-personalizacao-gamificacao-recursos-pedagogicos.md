@@ -1,4 +1,4 @@
-﻿# Funcionamento detalhado: Personalizacao, Gamificacao e Recursos Pedagogicos (Mobile)
+# Funcionamento detalhado: Personalizacao, Gamificacao e Recursos Pedagogicos (Mobile)
 
 ## Objetivo
 Documentar como o app entrega personalizacao e gamificacao no estudo diario, com foco em motivo, objetivo e comportamento esperado.

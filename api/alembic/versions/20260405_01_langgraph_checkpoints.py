@@ -1,4 +1,4 @@
-﻿"""create langgraph checkpoint tables"""
+"""create langgraph checkpoint tables"""
 
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql

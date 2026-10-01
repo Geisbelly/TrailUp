@@ -1,4 +1,4 @@
-﻿# Operacao e Observabilidade
+# Operacao e Observabilidade
 
 ## Logs criticos
 - entrada de chamada `/api/personalizar`

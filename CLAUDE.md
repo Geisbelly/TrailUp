@@ -41,9 +41,13 @@ com o Supabase, como `notificacoes` e `topico_aluno` já fazem.
 
 Dois motivos concretos, não estilo:
 
-1. **A API dorme.** Ela roda no free tier do Render e hiberna. Qualquer coisa
-   com relógio (rotina diária, fila, expiração) simplesmente **para** enquanto
-   ela está fria. O banco não hiberna.
+1. **A API pode estar fora do ar.** Ela é auto-hospedada no **Dokploy**, no
+   mesmo VPS do `microservice-slides`. Deploy, restart, falha ou esgotamento de
+   recurso a derrubam — e qualquer coisa com relógio (rotina diária, fila,
+   expiração) simplesmente **para** enquanto ela não responde. O banco não.
+   (Este item já dizia "ela roda no free tier do Render e hiberna". Era falso,
+   e virou explicação pronta para indisponibilidade que ninguém mediu. Não há
+   hibernação por ociosidade aqui; quando a API cair, procure a causa real.)
 2. **Um salto a menos.** `mobile → Supabase` já é o caminho autenticado e com
    Realtime. Passar por `mobile → API → Supabase` adiciona latência, um ponto de
    falha e uma segunda cópia das regras de acesso.
@@ -60,8 +64,8 @@ modelo de linguagem, **não é na API**.
 > `GET /api/v1/personalizar/grupo/{classe_id}`, `.../perfis/{classe_id}/{topico_id}`
 > e `.../contexto/{aluno_id}` são **leitura pura de banco** (join, filtro,
 > formatação) sem LLM no meio — encanamento clássico que a regra proíbe. Quando
-> a API do Render hiberna ou cai, o console inteiro (aba Personalizações) para
-> de funcionar com 502, mesmo o dado já existindo no Supabase.
+> a API fica fora do ar, o console inteiro (aba Personalizações) para de
+> funcionar com 502, mesmo o dado já existindo no Supabase.
 >
 > `grupo/{classe_id}` **já foi corrigido**: `personalizacoesApi.ts` lê
 > `classe_perfil_summary` direto do Supabase (RLS confirmada em produção —
@@ -228,6 +232,14 @@ Cada perfil carrega:
   opera se **as duas** tabelas existirem (sem log, a métrica de efetividade
   ficaria furada justamente onde vai olhar). Ver
   `docs/superpowers/specs/2026-08-25-sugestao-de-material-por-aluno-design.md`.
+- `intervencoes` — insights da turma (aba Insights do console, `20260929_01`):
+  sugestões/observações que a IA escreve, em lotes (`geracao_id`), por turma
+  ou por aluno. **Só a geração passa pela API**
+  (`POST /api/v1/insights/turma/{classe_id}/gerar`, em segundo plano, com
+  intervalo mínimo de 5 min); listar, aceitar e ignorar é Supabase direto. O
+  aluno não lê; o professor só atualiza `status`/`motivo_descarte`/`resolved_at`
+  (GRANT por coluna) — nunca o texto que a IA gravou. Sem modelo disponível,
+  nada é gravado: não existe insight "de reserva".
 - `telemetria_sessoes`, `telemetria_lotes` — telemetria bruta + payload JSONB.
 - **Notificações — motor inteiro no banco.** Quatro tabelas com papéis **não
   intercambiáveis**: `notificacoes_ia` (o que a IA *sugeriu*; a API só insere
@@ -296,29 +308,31 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 > porque o aninhamento é inclusivo: cada escopo conta o mesmo intervalo. Somar
 > escopos diferentes multiplica o tempo — filtre por `scope` sempre.
 >
-> Corolário (desde `20260921_01`): `tempo_gasto_min` em `topico_aluno`,
-> `conteudo_aluno` e `atividade_aluno` é `tempo_direto_min` + a soma de
-> `estudo_sessoes` (abertura/fechamento reais). A telemetria **não entra mais
-> na conta** — o trigger que derivava dela foi removido. Nenhum cliente escreve
-> essa coluna; quem escreve são `trailup_registrar_sessao_estudo` (app atual) e
-> `trailup_registrar_intervalo_estudo` (apps antigos).
->
-> Duas armadilhas que já custaram tempo real (`20260923_01`):
-> - **A RPC trava a linha de progresso ANTES de somar.** O UPDATE com a soma
->   usa o snapshot do início do comando; sem o lock, duas gravações simultâneas
->   na mesma linha faziam a segunda apagar a sessão da primeira.
-> - **O destino do intervalo não depende da telemetria.** O tópico tem relógio
->   próprio (`useTopicScreenTimeTracking`); mandar o intervalo de conteúdo/
->   atividade pela RPC antiga quando a telemetria estava desligada contava o
->   mesmo minuto duas vezes no tópico (e no conteúdo, para atividade vinculada).
+> Corolário: `tempo_gasto_min` em `topico_aluno`, `conteudo_aluno` e
+> `atividade_aluno` é **derivado por trigger** a partir da telemetria. Nenhum
+> cliente escreve essa coluna.
 
-> Lacuna real ainda aberta: `MentalStateHistoryRepository.listar_por_aluno`
-> (`api/app/repositories/mental_state.py`) só é exercitado em teste — o
-> histórico em `aluno_mental_state_history` é **gravado** a cada ciclo
-> (`analysis_runner.py`) mas **nunca lido de volta** por nenhum nó do grafo ou
-> serviço para influenciar decisões (ex.: detectar frustração recorrente ao
-> longo de vários ciclos). É plumbing write-only até alguém decidir o que fazer
-> com a leitura.
+> O histórico em `aluno_mental_state_history` **é lido de volta** (isto já foi
+> descrito aqui como lacuna aberta; não é mais). `memoria_aluno.ler_memoria`
+> chama `MentalStateHistoryRepository.listar_por_aluno` e
+> `state_builder.build_initial_state` põe o resultado no estado inicial do
+> grafo. Três detalhes que não são óbvios:
+>
+> - **A leitura é uma janela, não o histórico.** `listar_por_aluno` vem com
+>   `limit=_JANELA_RECORRENCIA` (5). Recorrência é 3 dos **últimos 5** registros
+>   com o mesmo `kind` negativo (`frustrated`, `anxious`, `overwhelmed`,
+>   `tired`) — não "3 vezes desde sempre". Aumentar a janela muda o significado
+>   do sinal, não só a sensibilidade.
+> - **`_detectar_recorrencia` é pura e assume ordenação do mais recente para o
+>   mais antigo**, que é o que o repositório devolve. Trocar o `ORDER BY` lá
+>   inverte o sentido da janela sem erro nenhum — os 5 mais **antigos**
+>   passariam a decidir.
+> - **`ler_memoria` nunca levanta:** falha de leitura vira memória vazia
+>   (mesmo princípio de fallback dos guardrails de pipeline). O efeito colateral
+>   é que tabela indisponível é indistinguível de "aluno sem recorrência" — o
+>   grafo decide como se estivesse tudo bem. Ao investigar recorrência que não
+>   dispara, confira o log de `Falha ao ler memoria do aluno` antes de suspeitar
+>   do limiar.
 
 ## Convenções
 
@@ -365,8 +379,8 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
   sabe se o upload deu certo é quem sobe o arquivo, no momento em que sobe.
   Essa premissa errada já quebrou o console duas vezes no mesmo dia: o deck
   baixado do Storage (corrigido em `htmlDeckSource.ts`) e uma checagem em SQL
-  que marcou 100% das gerações novas como `failed` (`20260922_03`, revertida
-  em `20260922_05`).
+  que marcou 100% das gerações novas como `failed` (revertida em
+  `20260922_03`).
 - **`text()` do SQLAlchemy não aceita `:param::tipo`** — o `::` do Postgres
   colide com a sintaxe de bind e o parâmetro deixa de ser reconhecido (erro em
   tempo de execução, não de import). Use `CAST(:param AS TIPO)`. E parâmetro

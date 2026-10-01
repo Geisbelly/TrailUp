@@ -1,4 +1,4 @@
-﻿# Guia de Uso - TrailUp Mobile
+# Guia de Uso - TrailUp Mobile
 
 ## Setup rapido
 1. Copiar `.env.example` para `.env`.

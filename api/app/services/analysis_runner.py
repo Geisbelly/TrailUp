@@ -115,6 +115,19 @@ async def run_analysis(
         atividade_id=atividade_id,
     )
     state = await build_initial_state(session, aluno_id, payload)
+    try:
+        from app.services.m2_features import build_m2_overrides
+
+        state["m2_overrides"] = await build_m2_overrides(
+            session,
+            aluno_id=aluno_id,
+            atividade_id=atividade_id,
+            sessao_id=sessao_id,
+        )
+    except Exception as exc:  # M2 nunca derruba o ciclo; engine cai p/ regra.
+        await session.rollback()
+        logger.warning("Falha ao montar overrides M2: %s", exc)
+        state["m2_overrides"] = None
 
     await EventoRepository(session).log(
         aluno_id=aluno_id,

@@ -6,6 +6,7 @@ import { useUsuario } from '@/context/SessaoContext';
 import { useTrilha } from '@/context/TrilhaContext';
 import { ContentBlock } from '@/interfaces/componentes_simples/IContentBlock';
 import { Color, FontFamily } from '@/styles/GlobalStyle';
+import { restaApenasUmaAlternativa } from '@/utils/questionRetryPolicy';
 import { normalizeContentBlock } from '@/utils/contentBlocks';
 import { getProfileShellPalette } from '@/utils/profileShellTheme';
 import { canShowQuestionAnswer, getQuestionPreviousAnswer, hasQuestionAttempt } from '@/utils/questionAnswerVisibility';
@@ -508,6 +509,11 @@ export default function QuestionActivity({
   const [stas, setStas] = useState<Record<number, 'certo' | 'errado' | null>>({});
   const [confirmados, setConfirmados] = useState<Record<number, boolean>>({});
   const [viuRespostas, setViuRespostas] = useState<Record<number, boolean>>({});
+  // Indices de alternativa ja confirmados nesta questao. Sem este registro,
+  // "tentar novamente" nao tinha como saber quantas opcoes sobraram -- e em
+  // Verdadeiro/Falso, que tem duas, a segunda tentativa era acerto por
+  // eliminacao valendo metade dos pontos.
+  const [opcoesTentadas, setOpcoesTentadas] = useState<Record<number, number[]>>({});
   const [reResponder, setReResponder] = useQuestionFlag(questaoIndex);
   const [timeoutLocked, setTimeoutLocked] = useState<Record<number, boolean>>({});
   const [mostrarResposta, setMostrarResposta] = useQuestionFlag(questaoIndex);
@@ -680,6 +686,13 @@ export default function QuestionActivity({
   const selectedOption = selecionados[questaoIndex] ?? null;
   const statusAtual = respostasVisiveis ? stas[questaoIndex] : null;
   const viuRespostaAntes = !!viuRespostas[questaoIndex];
+  // Dissertativa e lacuna nao tem alternativas (length 0), entao a regra so
+  // vale de duas opcoes para cima.
+  const restaApenasUmaOpcao = restaApenasUmaAlternativa(
+    alternativas.length,
+    opcoesTentadas[questaoIndex] ?? [],
+    Number((questao as any)?.ultima_tentativa ?? 0)
+  );
   const blockedByTimeout = !!timeoutLocked[questaoIndex];
   const respostaTextoAtual = String(respostasTexto[questaoIndex] ?? '');
   const podeConfirmar =
@@ -1063,6 +1076,14 @@ export default function QuestionActivity({
             : Math.round(acertosPercentBase);
           setStas((prev) => ({ ...prev, [questaoIndex]: acertou ? 'certo' : 'errado' }));
           setConfirmados((prev) => ({ ...prev, [questaoIndex]: true }));
+          if (!isFillBlankActivity && !isDissertativaActivity && escolhido != null && escolhido >= 0) {
+            setOpcoesTentadas((prev) => {
+              const atual = prev[questaoIndex] ?? [];
+              return atual.includes(escolhido)
+                ? prev
+                : { ...prev, [questaoIndex]: [...atual, escolhido] };
+            });
+          }
           if (isFillBlankActivity || isDissertativaActivity) {
             setRespostasTexto((prev) => ({ ...prev, [questaoIndex]: respostaSelecionada }));
           }
@@ -1150,10 +1171,15 @@ export default function QuestionActivity({
           const gatilhoRespostaRevelada = viuRespostaAntes;
           const gatilhoReTentativa = reResponder;
           const gatilhoErro = !atividadeCorreta;
+          // Sobrando uma alternativa, acertar nao demonstra nada: e' eliminacao.
+          // O botao de nova tentativa some nesse caso; isto aqui e' a rede de
+          // seguranca para a pontuacao, e zera em vez de apenas descontar.
+          const gatilhoEliminacao = restaApenasUmaOpcao;
           const zeradoPorRegra =
             (gradingRules.zero_if_timeout && gatilhoTimeout) ||
             (gradingRules.zero_if_wrong && gatilhoErro) ||
-            (gradingRules.zero_if_answer_revealed && gatilhoRespostaRevelada);
+            (gradingRules.zero_if_answer_revealed && gatilhoRespostaRevelada) ||
+            gatilhoEliminacao;
 
           let pontosGanhos = pontosBrutos;
           if (zeradoPorRegra) {
@@ -1190,6 +1216,7 @@ export default function QuestionActivity({
               retry_used: gatilhoReTentativa,
               answer_revealed: gatilhoRespostaRevelada,
               wrong_answer: gatilhoErro,
+              single_option_left: gatilhoEliminacao,
             },
             zeroed_by_rule: zeradoPorRegra,
             score_bruto: pontosBrutos,
@@ -1358,7 +1385,9 @@ export default function QuestionActivity({
 
       {stas[questaoIndex] && isPensante && !respostasVisiveis && (
         <Text style={{ marginTop: 6, color: profilePalette.textSubtle, fontFamily: FontFamily.interMedium }}>
-          Gabarito oculto. Use o botao abaixo para ver sua resposta e o correto ou tente novamente (50% dos pontos).
+          {restaApenasUmaOpcao
+            ? 'Gabarito oculto. Resta uma única alternativa, então não há nova tentativa: use o botao abaixo para ver sua resposta e o correto.'
+            : 'Gabarito oculto. Use o botao abaixo para ver sua resposta e o correto ou tente novamente (50% dos pontos).'}
         </Text>
       )}
 
@@ -1376,11 +1405,13 @@ export default function QuestionActivity({
 
       {jaTemTentativa && isPensante && !respostasVisiveis && (
         <Text style={{ marginTop: 10, color: profilePalette.textSubtle, fontFamily: FontFamily.interMedium }}>
-          Modo pensante: clique para ver sua resposta e o gabarito ou tente novamente (vale metade da pontuação).
+          {restaApenasUmaOpcao
+            ? 'Modo pensante: resta uma única alternativa, então não há nova tentativa. Clique para ver sua resposta e o gabarito.'
+            : 'Modo pensante: clique para ver sua resposta e o gabarito ou tente novamente (vale metade da pontuação).'}
         </Text>
       )}
 
-      {(respondidaAntes || confirmados[questaoIndex]) && !respostasVisiveis && !viuRespostaAntes && (
+      {(respondidaAntes || confirmados[questaoIndex]) && !respostasVisiveis && !viuRespostaAntes && !restaApenasUmaOpcao && (
         <TouchableOpacity
           onPress={() => {
             setSelecionados((prev) => ({ ...prev, [questaoIndex]: null }));

@@ -1,4 +1,4 @@
-﻿# Estrutura do Banco de Dados - TrailUp (Supabase)
+# Estrutura do Banco de Dados - TrailUp (Supabase)
 
 Atualizado em: 2026-04-13
 
@@ -75,7 +75,7 @@ flowchart LR
   M3 -. fallback .-> DB
 ```
 
-### 2.2 DistribuiÃ§Ã£o de tabelas por dominio (aproximada)
+### 2.2 Distribuição de tabelas por dominio (aproximada)
 
 ```mermaid
 pie showData
@@ -91,12 +91,12 @@ pie showData
 
 ### 2.3 Matriz de responsabilidade por sistema
 
-| Componente | Escreve em tabelas base | Escreve personalizaÃ§Ã£o | Escreve telemetria | Le personalizaÃ§Ã£o | Dispara IA |
+| Componente | Escreve em tabelas base | Escreve personalização | Escreve telemetria | Le personalização | Dispara IA |
 |---|---|---|---|---|---|
-| Web | Sim | Indireto (via API jobs) | NÃ£o | Parcial (contexto docente) | Sim (Edge Functions) |
-| API | NÃ£o (CRUD pedagÃ³gico principal) | Sim | Sim | Sim | Sim |
-| Mobile | Sim (progresso do aluno) | Sim (progresso item via API) | Sim | Sim | NÃ£o direto (usa API/edge) |
-| Edge Functions | Parcial | NÃ£o | NÃ£o | NÃ£o | Sim |
+| Web | Sim | Indireto (via API jobs) | Não | Parcial (contexto docente) | Sim (Edge Functions) |
+| API | Não (CRUD pedagógico principal) | Sim | Sim | Sim | Sim |
+| Mobile | Sim (progresso do aluno) | Sim (progresso item via API) | Sim | Sim | Não direto (usa API/edge) |
+| Edge Functions | Parcial | Não | Não | Não | Sim |
 
 ## 3. Modelo por dominio (com tabelas)
 
@@ -104,17 +104,17 @@ pie showData
 
 | Dominio | Tabelas principais | Finalidade operacional |
 |---|---|---|
-| Identidade e acesso | `alunos`, `professor`, `perfil`, `aluno_perfil`, `professor_aluno`, `modoOperacao`, `expo_tokens`, `solicitacoes_exclusao` | Identidade acadÃªmica, v?nculos e perfis |
-| Estrutura pedagÃ³gica | `materia`, `classe`, `classe_aluno`, `topicos`, `topico_edges`, `conteudos`, `midias`, `cards`, `atividades`, `atividade_conteudos`, `questoes` | Grafo pedagÃ³gico da turma |
-| Progresso acadÃªmico | `topico_aluno`, `conteudo_aluno`, `atividade_aluno`, `questao_aluno`, `trilha_checkpoint_navegacao`, `trilha_aluno`, `trilha_modelo`, `eventos_aluno` | Estado de estudo e histÃ³rico |
-| PersonalizaÃ§Ã£o | `conteudo_personalizado`, `fontes_personalizacao`, `personalizacao_jobs`, `personalizacao_job_targets`, `personalizacao_item_progresso`, `materiais_gerados`, `iaDescricao`, `ia_decision_logs`, `classe_mapa_tema` | Motor adaptativo persistido |
-| Telemetria | `telemetria_sessoes`, `telemetria_lotes`, `telemetria_eventos_app`, `telemetria_time_metric_entries` | Coleta comportamental e anÃ¡lise |
-| Gamificacao e notificaÃ§Ãµes | `conquistas`, `conquistas_aluno`, `rank_tipo`, `ranks`, `rank_posicoes`, `notificacoes`, `notificacoes_agendamentos`, `notificacoes_ia`, `notificacoes_pendentes` | Engajamento e comunicaÃ§Ã£o |
+| Identidade e acesso | `alunos`, `professor`, `perfil`, `aluno_perfil`, `professor_aluno`, `modoOperacao`, `expo_tokens`, `solicitacoes_exclusao` | Identidade acadêmica, v?nculos e perfis |
+| Estrutura pedagógica | `materia`, `classe`, `classe_aluno`, `topicos`, `topico_edges`, `conteudos`, `midias`, `cards`, `atividades`, `atividade_conteudos`, `questoes` | Grafo pedagógico da turma |
+| Progresso acadêmico | `topico_aluno`, `conteudo_aluno`, `atividade_aluno`, `questao_aluno`, `trilha_checkpoint_navegacao`, `trilha_aluno`, `trilha_modelo`, `eventos_aluno` | Estado de estudo e histórico |
+| Personalização | `conteudo_personalizado`, `fontes_personalizacao`, `personalizacao_jobs`, `personalizacao_job_targets`, `personalizacao_item_progresso`, `materiais_gerados`, `iaDescricao`, `ia_decision_logs`, `classe_mapa_tema` | Motor adaptativo persistido |
+| Telemetria | `telemetria_sessoes`, `telemetria_lotes`, `telemetria_eventos_app`, `telemetria_time_metric_entries` | Coleta comportamental e análise |
+| Gamificacao e notificações | `conquistas`, `conquistas_aluno`, `rank_tipo`, `ranks`, `rank_posicoes`, `notificacoes`, `notificacoes_agendamentos`, `notificacoes_ia`, `notificacoes_pendentes` | Engajamento e comunicação |
 | Infra/runtime | `checkpoints`, `checkpoint_blobs`, `checkpoint_writes`, `checkpoint_migrations`, `alembic_version` | Persist?ncia do runtime LangGraph |
 
-## 4. Diagramas ER (visÃ£o simplificada)
+## 4. Diagramas ER (visão simplificada)
 
-### 4.1 ER pedagÃ³gico
+### 4.1 ER pedagógico
 
 ```mermaid
 erDiagram
@@ -140,7 +140,7 @@ erDiagram
   }
 ```
 
-### 4.2 ER de personalizaÃ§Ã£o e jobs
+### 4.2 ER de personalização e jobs
 
 ```mermaid
 erDiagram
@@ -185,7 +185,7 @@ erDiagram
 
 ## 5. Fluxos operacionais (sequencias)
 
-### 5.1 Fluxo de personalizaÃ§Ã£o por alteracao pedagÃ³gica
+### 5.1 Fluxo de personalização por alteracao pedagógica
 
 ```mermaid
 sequenceDiagram
@@ -235,7 +235,7 @@ sequenceDiagram
   end
 ```
 
-### 5.3 Fluxo de correÃ§Ã£o dissertativa com nota opcional
+### 5.3 Fluxo de correção dissertativa com nota opcional
 
 ```mermaid
 sequenceDiagram
@@ -297,23 +297,23 @@ stateDiagram-v2
 | Target | `completed` | regenerado e persistido | final |
 | Target | `failed` | excedeu tentativas | final |
 
-## 7. Regra de `nota_estabelecida` (questÃµes)
+## 7. Regra de `nota_estabelecida` (questões)
 
 Campo: `public.questoes.nota_estabelecida numeric(10,2)`
 
-SemÃ¢ntica vigente:
+Semântica vigente:
 - campo opcional (`NULL` permitido)
 - sem `DEFAULT` fixo
 - `NULL` representa explicitamente "sem nota definida"
 
-### 7.1 EvoluÃ§Ã£o de migration
+### 7.1 Evolução de migration
 
 | Etapa | Definicao | Efeito |
 |---|---|---|
-| Migration inicial | `NOT NULL DEFAULT 1` | nota sempre forÃ§ada para 1 quando ausente |
+| Migration inicial | `NOT NULL DEFAULT 1` | nota sempre forçada para 1 quando ausente |
 | Migration atual | remove `NOT NULL` + remove `DEFAULT` | nota passa a ser realmente opcional |
 
-### 7.2 Diagrama de decisÃ£o (semÃ¢ntica atual)
+### 7.2 Diagrama de decisão (semântica atual)
 
 ```mermaid
 flowchart TD
@@ -324,14 +324,14 @@ flowchart TD
   D -- Nao --> F[Erro de validacao no formulario]
 ```
 
-### 7.3 Exemplo de comportamento de correÃ§Ã£o dissertativa
+### 7.3 Exemplo de comportamento de correção dissertativa
 
-| CenÃ¡rio | `notaEstabelecida` no request | `nota_maxima` no retorno |
+| Cenário | `notaEstabelecida` no request | `nota_maxima` no retorno |
 |---|---|---|
-| QuestÃ£o com nota definida | `10` | `10` |
-| QuestÃ£o sem nota definida | ausente ou `null` | `100` |
+| Questão com nota definida | `10` | `10` |
+| Questão sem nota definida | ausente ou `null` | `100` |
 
-## 8. Constraints e indexes crÃ­ticos
+## 8. Constraints e indexes críticos
 
 ### 8.1 Unicidade/deduplicacao
 
@@ -339,7 +339,7 @@ flowchart TD
 |---|---|---|
 | `uq_conteudo_personalizado_aluno_topico_perfil` | `conteudo_personalizado` | garantir 1 registro por aluno/tópico/perfil BrainHex |
 | `UNIQUE(job_id, aluno_id, topico_id)` | `personalizacao_job_targets` | evitar duplicidade de alvo no mesmo job |
-| `uq_personalizacao_item_progresso` | `personalizacao_item_progresso` | evitar item duplicado por aluno/personalizaÃ§Ã£o |
+| `uq_personalizacao_item_progresso` | `personalizacao_item_progresso` | evitar item duplicado por aluno/personalização |
 | `uq_telemetria_lotes_sessao_captured_at_flush_reason` | `telemetria_lotes` | dedupe de lote |
 | `uq_telemetria_eventos_app(sessao_id, client_event_id)` | `telemetria_eventos_app` | dedupe de evento |
 
@@ -350,10 +350,10 @@ flowchart TD
 | `idx_personalizacao_jobs_contexto` | `personalizacao_jobs` | listagem por classe/status/tempo |
 | `idx_personalizacao_jobs_aluno` | `personalizacao_jobs` | listagem por aluno/status |
 | `idx_personalizacao_job_targets_job_status` | `personalizacao_job_targets` | processamento e monitoramento de targets |
-| `idx_conteudo_personalizado_aluno_topico` | `conteudo_personalizado` | busca do payload do tÃ³pico personalizado |
+| `idx_conteudo_personalizado_aluno_topico` | `conteudo_personalizado` | busca do payload do tópico personalizado |
 | `idx_telemetria_*` | telemetria | cortes por sessao/contexto/tempo |
 
-### 8.3 Integridade semÃ¢ntica
+### 8.3 Integridade semântica
 
 - checks de percentual (0-100) em tabelas de progresso
 - checks de dominio em `telemetria_eventos_app`:
@@ -366,21 +366,21 @@ flowchart TD
 
 | View | Tema | Uso principal |
 |---|---|---|
-| `vw_rank_posicoes_por_classe` | ranking | consolidar pontuaÃ§Ã£o/posição por classe |
+| `vw_rank_posicoes_por_classe` | ranking | consolidar pontuação/posição por classe |
 | `vw_metricas_sessoes_aluno_dia` | sessoes | volume de estudo por dia |
 | `vw_metricas_engajamento_aluno_classe` | engajamento | sinais de uso por aluno/classe |
 | `vw_metricas_desempenho_aluno_classe` | desempenho | acertos, progresso e eficiencia |
-| `vw_metricas_comportamento_aluno_classe` | comportamento | padrÃ£o de interaÃ§Ã£o e uso |
+| `vw_metricas_comportamento_aluno_classe` | comportamento | padrão de interação e uso |
 | `vw_metricas_chat_aluno_classe` | chat | uso e qualidade de interacoes no mentor |
 | `vw_metricas_evolucao_desempenho_aluno_dia` | tendencia | serie temporal de desempenho |
-| `vw_sequencia_navegacao_aluno` | navegaÃ§Ã£o | trilha percorrida por aluno |
-| `vw_ia_decision_logs_resumo` | auditoria IA | resumo de decisÃµes adaptativas |
+| `vw_sequencia_navegacao_aluno` | navegação | trilha percorrida por aluno |
+| `vw_ia_decision_logs_resumo` | auditoria IA | resumo de decisões adaptativas |
 | `vw_aluno_perfil_segmentos` | perfil | segmento de aluno por afinidade |
-| `vw_metricas_turma_geral_classe` | turma | visÃ£o consolidada de classe |
+| `vw_metricas_turma_geral_classe` | turma | visão consolidada de classe |
 | `vw_metricas_turma_perfil_classe` | turma x perfil | comparacao por segmentos |
-| `vw_metricas_distribuicao_turma_classe` | distribuiÃ§Ã£o | faixas de nota/tempo/progresso |
-| `vw_telemetria_tempo_topico_aluno` | tempo tÃ³pico | tempo ativo por tÃ³pico |
-| `vw_telemetria_tempo_conteudo_aluno` | tempo conteÃºdo | tempo ativo por conteÃºdo |
+| `vw_metricas_distribuicao_turma_classe` | distribuição | faixas de nota/tempo/progresso |
+| `vw_telemetria_tempo_topico_aluno` | tempo tópico | tempo ativo por tópico |
+| `vw_telemetria_tempo_conteudo_aluno` | tempo conteúdo | tempo ativo por conteúdo |
 | `vw_telemetria_tempo_atividade_aluno` | tempo atividade | tempo ativo por atividade |
 
 ## 10. RLS e seguran?a
@@ -399,21 +399,21 @@ Policies presentes no SQL manual:
 
 | Tabela | Leitura aluno | Leitura professor | Escrita API worker |
 |---|---|---|---|
-| `conteudo_personalizado` | prÃ³pria | via endpoint/API de contexto | sim |
-| `personalizacao_item_progresso` | prÃ³pria | via endpoint/API de contexto | sim |
-| `personalizacao_jobs` | prÃ³pria/v?nculo classe | sim (com permissÃ£o de classe) | sim |
+| `conteudo_personalizado` | própria | via endpoint/API de contexto | sim |
+| `personalizacao_item_progresso` | própria | via endpoint/API de contexto | sim |
+| `personalizacao_jobs` | própria/v?nculo classe | sim (com permissão de classe) | sim |
 
 ## 11. Fluxos de escrita/leitura entre sistemas
 
 ### 11.1 Quadro de comandos por fluxo
 
-| Fluxo | Sistema de origem | OperaÃ§Ã£o | Destino |
+| Fluxo | Sistema de origem | Operação | Destino |
 |---|---|---|---|
-| CriaÃ§Ã£o/edicao pedagÃ³gica | Web | INSERT/UPDATE | tabelas base |
-| Disparo de personalizaÃ§Ã£o | Web | POST `/api/v1/personalizar/jobs/*` | API |
-| ExecuÃ§Ã£o de personalizaÃ§Ã£o | API worker | UPSERT | `conteudo_personalizado` |
+| Criação/edicao pedagógica | Web | INSERT/UPDATE | tabelas base |
+| Disparo de personalização | Web | POST `/api/v1/personalizar/jobs/*` | API |
+| Execução de personalização | API worker | UPSERT | `conteudo_personalizado` |
 | Seed de progresso personalizado | API worker | UPSERT | `personalizacao_item_progresso` |
-| Consumo de personalizaÃ§Ã£o | Mobile | SELECT + realtime | `conteudo_personalizado` |
+| Consumo de personalização | Mobile | SELECT + realtime | `conteudo_personalizado` |
 | Progresso personalizado | Mobile | POST `/api/v1/personalizar/progresso` | API -> DB |
 | Telemetria normal | Mobile | POST `/api/v1/telemetria/lotes` | API -> DB |
 | Telemetria fallback | Mobile | UPSERT/INSERT direto | tabelas de telemetria |
@@ -455,7 +455,7 @@ flowchart TB
   MTEL --> STEL
 ```
 
-## 12. Checklist de consistencia para evoluÃ§Ã£o de schema
+## 12. Checklist de consistencia para evolução de schema
 
 Antes de mudar schema, validar:
 1. `src/integrations/supabase/types.ts` (Web)
@@ -463,7 +463,7 @@ Antes de mudar schema, validar:
 3. repositories SQL da API (`app/repositories/*.py`)
 4. SQL manual (`sql/manual_supabase_migration.sql`)
 5. RLS/policies para tabelas novas de leitura pelo aluno
-6. migrações Supabase e semÃ¢ntica de defaults/null
+6. migrações Supabase e semântica de defaults/null
 
 ## 13. Estado recomendado para deploy (nota opcional)
 
@@ -485,24 +485,24 @@ Esse estado preserva dados antigos e elimina coercao automatica para `1` em novo
 
 ## 14. Edge Functions, RPCs, Functions e Triggers
 
-Esta seÃ§Ã£o consolida os artefatos de plataforma que conectam o schema ao comportamento em runtime.
+Esta seção consolida os artefatos de plataforma que conectam o schema ao comportamento em runtime.
 
 ### 14.1 Edge Functions consumidas
 
 | Edge Function | Consumidor | Papel |
 |---|---|---|
-| `generate-content-ai` | Web | Gera sugestÃµes de trilha/conteÃºdo/cards/atividades para autoria docente |
-| `validate-essay-answer-ai` | Web | Corrige questÃµes dissertativas com IA |
+| `generate-content-ai` | Web | Gera sugestões de trilha/conteúdo/cards/atividades para autoria docente |
+| `validate-essay-answer-ai` | Web | Corrige questões dissertativas com IA |
 | `personalize_path` | Mobile | Retorna topologia da trilha para renderizacao de nodes/edges |
 
 ### 14.2 RPCs consumidas no ecossistema
 
 | RPC | Camada consumidora | Finalidade |
 |---|---|---|
-| `fn_auth_email_exists` | Web | ValidaÃ§Ã£o de email no cadastro |
+| `fn_auth_email_exists` | Web | Validação de email no cadastro |
 | `fn_cadastrar_aluno_com_perfis` | Web | Onboarding de aluno + perfis BrainHex |
 | `inscrever_aluno_em_classe` | Web | Matricula de aluno na classe |
-| `fn_atualizar_aluno_perfil` | Mobile | AtualizaÃ§Ã£o de dados/perfil do aluno |
+| `fn_atualizar_aluno_perfil` | Mobile | Atualização de dados/perfil do aluno |
 | `fn_enviar_contato_sendgrid` | Mobile | Acionamento de contato por email |
 | `fn_trilha_by_classe` | Banco (identificada no dump) | Consulta de trilha por classe/aluno |
 
@@ -510,10 +510,10 @@ Esta seÃ§Ã£o consolida os artefatos de plataforma que conectam o schema ao c
 
 | Nome | Papel operacional |
 |---|---|
-| `prevent_topico_cycle` | Evita ciclos no grafo de tÃ³picos (`topico_edges`) |
+| `prevent_topico_cycle` | Evita ciclos no grafo de tópicos (`topico_edges`) |
 | `provisionar_estrutura_aluno_classe` | Semeia progresso inicial (`topico_aluno`, `conteudo_aluno`, `atividade_aluno`) |
 | `rls_auto_enable` | Habilita RLS automaticamente para novas tabelas em `public` |
-| `set_trilha_checkpoint_navegacao_updated_at` | Mantem `updated_at` do checkpoint de navegaÃ§Ã£o |
+| `set_trilha_checkpoint_navegacao_updated_at` | Mantem `updated_at` do checkpoint de navegação |
 | `set_updated_at_timestamp` | Helper generico para `updated_at` |
 | `update_updated_at_column` | Helper generico para `updated_at` |
 | `trg_alunos_after_insert` | Cria v?nculos em `professor_aluno` apos novo aluno |
@@ -523,7 +523,7 @@ Esta seÃ§Ã£o consolida os artefatos de plataforma que conectam o schema ao c
 | `trg_conteudos_after_insert` | Semeia `conteudo_aluno` para matriculados |
 | `trg_atividades_after_insert` | Semeia `atividade_aluno` para matriculados |
 | `trg_limpar_dados_aluno_classe` | Limpa progresso ao remover matricula do aluno |
-| `trg_eventos_aluno_after_ins` | Recalcula ranking e emite notificaÃ§Ãµes/conquistas |
+| `trg_eventos_aluno_after_ins` | Recalcula ranking e emite notificações/conquistas |
 
 ### 14.4 Diagrama das automacoes por trigger
 
@@ -554,11 +554,11 @@ flowchart TB
   T8 --> O8[notificacoes]
 ```
 
-### 14.5 ObservaÃ§Ãµes de governan?a
+### 14.5 Observações de governan?a
 
 - Parte das rotinas SQL foi identificada no dump de banco e no contrato de consumo do codigo cliente.
-- O dump utilizado contem os nomes/corpos de varias routines, mas pode nÃ£o refletir 100% dos `CREATE FUNCTION/CREATE TRIGGER` originais de migração.
-- Para auditoria completa de DDL de routines, manter como fonte primÃ¡ria o histÃ³rico de migrações SQL do ambiente Supabase.
+- O dump utilizado contem os nomes/corpos de varias routines, mas pode não refletir 100% dos `CREATE FUNCTION/CREATE TRIGGER` originais de migração.
+- Para auditoria completa de DDL de routines, manter como fonte primária o histórico de migrações SQL do ambiente Supabase.
 
 
 ## Atualizacoes (2026-04-13)

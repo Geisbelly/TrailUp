@@ -17,7 +17,10 @@ from app.repositories.ia_descricao import IADescricaoRepository
 from app.repositories.materiais import MateriaisRepository
 from app.repositories.notificacao import NotificacaoRepository
 from app.repositories.perfil import PerfilRepository
-from app.repositories.personalizacao_jobs import PersonalizacaoJobsRepository
+from app.repositories.personalizacao_jobs import (
+    _KINDS_COM_TARGET_POR_PERFIL,
+    PersonalizacaoJobsRepository,
+)
 from app.repositories.telemetria import TelemetriaRepository
 from app.repositories.trilha import TrilhaRepository
 from app.schemas.notificacao import NotificacaoPayload
@@ -375,6 +378,29 @@ async def test_latest_personalization_targets_are_scoped_exactly_by_content() ->
         "topico_id": 121,
         "conteudo_id": 125,
     }
+    for kind in _KINDS_COM_TARGET_POR_PERFIL:
+        assert f"'{kind}'" in query
+
+
+def test_whitelist_targets_por_perfil_cobre_kinds_de_base() -> None:
+    """A whitelist da query de status tem que cobrir TODO kind que monta target
+    de base por perfil. Ficar de fora nao levanta erro: o console deixa de ver
+    a geracao e passa a exibir o job whitelistado anterior. Foi o que aconteceu
+    com `manual_profile_generate`/`manual_profile_generate_all` -- os dois kinds
+    criados pelos botoes "gerar"/"gerar tudo" DESSA MESMA tela: cada clique
+    gerava normalmente e a tela seguia mostrando o stacktrace de um
+    student_enrollment de duas semanas antes, dando a impressao de que o clique
+    tinha falhado."""
+    from app.services.personalizacao_jobs import KINDS_BASE_POR_PERFIL
+
+    faltando = KINDS_BASE_POR_PERFIL - set(_KINDS_COM_TARGET_POR_PERFIL)
+    assert not faltando, (
+        "kinds que criam target por perfil e a query de status nao enxerga: "
+        f"{sorted(faltando)}"
+    )
+    # student_enrollment nao esta em KINDS_BASE_POR_PERFIL (o target dele tem
+    # aluno dono), mas tambem e' 1-por-perfil e precisa continuar na whitelist.
+    assert "student_enrollment" in _KINDS_COM_TARGET_POR_PERFIL
 
 
 @pytest.mark.asyncio
@@ -911,6 +937,68 @@ async def test_resolver_ids_por_tipo_recente_ignora_linhas_ja_vinculadas_a_outra
 
     sql, _params = session.calls[-1]
     assert "personalizacao_id IS NULL" in sql
+
+
+@pytest.mark.asyncio
+async def test_resolver_id_por_generation_mira_a_linha_da_geracao() -> None:
+    # Continuacao da regressao acima, pelo caminho PRINCIPAL. O filtro de
+    # orfaos protege so o fallback: quando a personalizacao ja tem linhas,
+    # `_processar_job_midias` usa `listar_por_personalizacao`, que e
+    # DISTINCT ON (tipo) -- "a linha mais recente deste tipo". Como a tabela
+    # guarda UMA LINHA POR GERACAO (indice unico (personalizacao_id, tipo,
+    # generation_key); ha personalizacao com 3 linhas do mesmo tipo em
+    # producao), gravar nela o metadata de outra geracao recalculava a coluna
+    # gerada e colidia com a linha dona daquela chave -- UniqueViolationError
+    # derrubando o target (28/09/2026, audio do perfil seeker).
+    session = RecordingSession([MappingResult([{"id": 4242}])])
+    repo = MateriaisRepository(session)
+
+    material_id = await repo.resolver_id_por_generation(
+        personalizacao_id=3680,
+        tipo="audio",
+        generation_key="40f73db22b379c8e",
+    )
+
+    assert material_id == 4242
+    sql, params = session.calls[-1]
+    assert "generation_key = :generation_key" in sql
+    assert params["personalizacao_id"] == 3680
+    assert params["tipo"] == "audio"
+    assert params["generation_key"] == "40f73db22b379c8e"
+
+
+@pytest.mark.asyncio
+async def test_resolver_id_por_generation_sem_linha_devolve_none() -> None:
+    # Geracao ainda sem linha: devolver None e o comportamento correto, porque
+    # o chamador pula o patch. Devolver "a linha mais parecida" e exatamente o
+    # que causava a colisao.
+    session = RecordingSession([MappingResult([])])
+    repo = MateriaisRepository(session)
+
+    assert (
+        await repo.resolver_id_por_generation(
+            personalizacao_id=3680,
+            tipo="audio",
+            generation_key="geracao-que-ainda-nao-existe",
+        )
+        is None
+    )
+
+
+@pytest.mark.asyncio
+async def test_resolver_id_por_generation_ignora_chave_vazia() -> None:
+    # Sem generation_key nao ha como mirar a linha certa; consultar com string
+    # vazia casaria com qualquer coisa. Nao consulta o banco.
+    session = RecordingSession([])
+    repo = MateriaisRepository(session)
+
+    assert (
+        await repo.resolver_id_por_generation(
+            personalizacao_id=3680, tipo="audio", generation_key="   "
+        )
+        is None
+    )
+    assert session.calls == []
 
 
 @pytest.mark.asyncio
@@ -1666,3 +1754,74 @@ async def test_aluno_topico_dominio_upsert_sends_on_conflict_update() -> None:
     assert "INSERT INTO aluno_topico_dominio" in sql
     assert "ON CONFLICT (aluno_id, topico_id) DO UPDATE" in sql
     assert params["dominio_estimado"] == 0.8
+
+
+@pytest.mark.asyncio
+async def test_update_lote_analysis_guarda_o_erro_junto_do_lote() -> None:
+    # Os 290 lotes de 20-27/09/2026 ficaram com `analysis_ciclo_id` NULL e
+    # nenhum registro do motivo: `run_analysis` e chamada dentro de um
+    # try/except que mandava o erro so na resposta HTTP, que ninguem guarda.
+    # Sem a coluna, o banco nao distingue "nao produziu ciclo" de "explodiu".
+    session = RecordingSession([])
+    repo = TelemetriaRepository(session)
+
+    await repo.update_lote_analysis(
+        batch_id="batch-1",
+        analysis_ciclo_id=None,
+        analysis_error="TimeoutError: graph_ephemeral nao respondeu",
+    )
+
+    sql, params = session.calls[-1]
+    assert "analysis_error = :analysis_error" in sql
+    assert params["analysis_error"] == "TimeoutError: graph_ephemeral nao respondeu"
+    assert params["analysis_ciclo_id"] is None
+
+
+@pytest.mark.asyncio
+async def test_update_lote_analysis_sem_erro_grava_null() -> None:
+    # Ciclo bem-sucedido limpa a coluna: o default do parametro nao pode deixar
+    # um erro antigo colado num lote que depois deu certo (o endpoint reusa o
+    # mesmo UPDATE nos dois caminhos).
+    session = RecordingSession([])
+    repo = TelemetriaRepository(session)
+
+    await repo.update_lote_analysis(batch_id="batch-1", analysis_ciclo_id="ciclo-9")
+
+    _sql, params = session.calls[-1]
+    assert params["analysis_error"] is None
+    assert params["analysis_ciclo_id"] == "ciclo-9"
+
+
+@pytest.mark.asyncio
+async def test_update_lote_analysis_trunca_e_normaliza_o_erro() -> None:
+    # Traceback de driver vem com SQL e parametros dentro e quebras de linha.
+    # Interessa distinguir um erro do outro, nao reproduzi-lo: normaliza espaco
+    # e corta, para a coluna nao virar deposito de payload.
+    session = RecordingSession([])
+    repo = TelemetriaRepository(session)
+
+    await repo.update_lote_analysis(
+        batch_id="batch-1",
+        analysis_ciclo_id=None,
+        analysis_error="linha um\n\n   linha dois\t" + ("x" * 900),
+    )
+
+    _sql, params = session.calls[-1]
+    gravado = params["analysis_error"]
+    assert len(gravado) == TelemetriaRepository.ANALYSIS_ERROR_MAX_LEN
+    assert gravado.startswith("linha um linha dois ")
+    assert gravado.endswith("…")
+
+
+@pytest.mark.asyncio
+async def test_update_lote_analysis_erro_em_branco_vira_null() -> None:
+    # String vazia gravada seria indistinguivel de "houve erro sem mensagem".
+    session = RecordingSession([])
+    repo = TelemetriaRepository(session)
+
+    await repo.update_lote_analysis(
+        batch_id="batch-1", analysis_ciclo_id=None, analysis_error="   \n  "
+    )
+
+    _sql, params = session.calls[-1]
+    assert params["analysis_error"] is None

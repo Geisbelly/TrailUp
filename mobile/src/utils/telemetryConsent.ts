@@ -1,6 +1,12 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-export const TELEMETRY_CONSENT_VERSION = "2026-04-10-v2";
+// Subir esta versao reexibe o modal e pede consentimento de novo
+// (`TelemetryConsentGate` compara `record.version` com ela). A v3 corrige uma
+// afirmacao falsa da v2: ela dizia que os frames da camera eram "usados para
+// analise", e nenhum codigo os analisa -- `frames_b64` so vira `len()` no
+// `DeepFaceEmotionAnalyzer`, e nao ha biblioteca de visao na API. Consentimento
+// dado sobre premissa errada nao se aproveita, entao a versao sobe.
+export const TELEMETRY_CONSENT_VERSION = "2026-09-30-v3";
 const TELEMETRY_CONSENT_STORAGE_KEY = "trailup:telemetry-consent";
 
 type TelemetryConsentListener = (record: TelemetryConsentRecord | null) => void;

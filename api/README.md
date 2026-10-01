@@ -1,4 +1,4 @@
-﻿# TrailUp API
+# TrailUp API
 
 API principal do ecossistema TrailUp (FastAPI + LangGraph + Supabase).
 

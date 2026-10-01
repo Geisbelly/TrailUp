@@ -128,12 +128,25 @@ export function TelemetryConsentGate() {
             </Text>
             <Text style={styles.sectionTitle}>Como os dados são usados</Text>
             <Text style={styles.body}>
-              Os dados são enviados para a API para análise de atenção, dificuldade,
-              frustração e engajamento, com geração de recomendações e conteúdo adaptativo.
+              Atenção, dificuldade, frustração e engajamento são estimados a partir do
+              seu comportamento no app: tempo ativo e inativo, toques, rolagem,
+              respostas e acertos. É isso que gera as recomendações e o conteúdo
+              adaptativo.
+            </Text>
+            <Text style={styles.sectionTitle}>Sobre a câmera, especificamente</Text>
+            <Text style={styles.body}>
+              Hoje as imagens da câmera não são analisadas. Elas são enviadas à API,
+              contadas e descartadas: a quantidade de frames recebidos apenas aumenta
+              um índice de confiança das estimativas acima, que são calculadas sem
+              olhar para a imagem. Não há reconhecimento facial nem de emoção.
             </Text>
             <Text style={styles.body}>
-              Os frames da câmera são usados para análise e não são persistidos brutos
-              no backend.
+              As imagens não são gravadas em lugar nenhum — nem no registro do lote,
+              nem no log de decisão. Fica guardado apenas quantas foram recebidas.
+            </Text>
+            <Text style={styles.body}>
+              Se a análise de imagem passar a existir, estes termos mudam e seu
+              consentimento será pedido de novo antes disso valer.
             </Text>
             <Text style={styles.sectionTitle}>Sua escolha</Text>
             <Text style={styles.body}>

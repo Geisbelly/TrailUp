@@ -1,4 +1,4 @@
-﻿# Estrutura de Banco - Resumo Executivo (Mobile)
+# Estrutura de Banco - Resumo Executivo (Mobile)
 
 ## Objetivo
 Dar visao rapida das entidades usadas pelo app.

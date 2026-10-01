@@ -1,4 +1,4 @@
-﻿# 01. Visao geral do projeto
+# 01. Visao geral do projeto
 
 Data de atualizacao: 2026-04-19
 

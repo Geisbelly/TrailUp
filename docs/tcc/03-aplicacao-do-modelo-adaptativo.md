@@ -1,4 +1,4 @@
-﻿# 03. Aplicacao do modelo adaptativo
+# 03. Aplicacao do modelo adaptativo
 
 Data de atualizacao: 2026-04-19
 

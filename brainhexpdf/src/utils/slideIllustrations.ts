@@ -40,7 +40,7 @@ const PROFILE_PALETTES: Record<string, { bg: string; stroke: string; accent: str
   achiever: { bg: '#1c1508', stroke: '#d97706', accent: '#f59e0b', node: '#fbbf24', name: 'Alvorada Dourada', env: 'Câmara Real & Tronos de Ouro' },
   seeker: { bg: '#081c15', stroke: '#059669', accent: '#10b981', node: '#34d399', name: 'Observatório Místico', env: 'Santuário Cósmico & Astrolábio' },
   mastermind: { bg: '#150824', stroke: '#7c3aed', accent: '#8b5cf6', node: '#a78bfa', name: 'Torre Arcana', env: 'Laboratório Alquímico & Runas Celestiais' },
-  conqueror: { bg: '#240808', stroke: '#dc2626', accent: '#ef4444', node: '#f87171', name: 'Fortaleza Imperial', env: 'Sala de Guerra & Estandartes de Aço' },
+  conqueror: { bg: '#08132a', stroke: '#1e40af', accent: '#1e4fd6', node: '#60a5fa', name: 'Fortaleza Imperial', env: 'Sala de Guerra & Estandartes de Aço' },
   socializer: { bg: '#081c24', stroke: '#0284c7', accent: '#0ea5e9', node: '#38bdf8', name: 'Guilda da Távola', env: 'Távola Redonda & Salão dos Bardos' },
   daredevil: { bg: '#241008', stroke: '#ea580c', accent: '#f97316', node: '#fb923c', name: 'Forja do Dragão', env: 'Fornalha Vulcânica & Lâminas Flamejantes' },
   survivor: { bg: '#18181b', stroke: '#71717a', accent: '#a1a1aa', node: '#e4e4e7', name: 'Baluarte de Ferro', env: 'Bastilha Inexpugnável & Escudos de Pedra' },

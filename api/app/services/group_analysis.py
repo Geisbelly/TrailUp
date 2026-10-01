@@ -184,6 +184,10 @@ class GroupAnalysisService:
         result = await self.session.execute(text(query), {"classe_id": classe_id})
         return [dict(row) for row in result.mappings()]
 
+    async def fetch_alunos(self, classe_id: int) -> list[dict[str, Any]]:
+        """Uma linha por aluno da classe: perfil dominante e desempenho agregado."""
+        return await self._fetch_rows(classe_id)
+
     async def compute_summary(self, classe_id: int) -> dict[str, Any]:
         rows = await self._fetch_rows(classe_id)
         summary = compute_distribuicao(rows)

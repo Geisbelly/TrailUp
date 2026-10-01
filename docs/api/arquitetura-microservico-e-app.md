@@ -1,4 +1,4 @@
-﻿# Arquitetura do Microservico e do App (Contexto API TrailUp)
+# Arquitetura do Microservico e do App (Contexto API TrailUp)
 
 ## Objetivo
 Documentar como a API TrailUp, o microservico de midia (ApiBrainHex) e os apps (mobile e web) se conectam para entregar personalizacao de estudo.

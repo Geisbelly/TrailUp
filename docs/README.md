@@ -18,6 +18,24 @@ Documentação que não pertence a um único serviço:
 - **[`tcc/`](./tcc/)** — documento do TCC (versão única).
 - **[`ecossistema/`](./ecossistema/)** — fluxo completo do ecossistema, com a
   versão detalhada e as perspectivas resumidas por serviço.
+- **[Mapa da coleta de métricas](./architecture/coleta-de-metricas.md)** — o
+  que a telemetria coleta, com que limites, o que vira `tempo_gasto_min` e o
+  estado medido da realimentação (2026-09-30). Leia antes de interpretar
+  qualquer número de tempo de estudo.
+
+- **[Schema não versionado](./architecture/schema-nao-versionado.md)** —
+  inventário do que existe no banco de produção e não está descrito por
+  migration nenhuma (26% das funções, medido em 2026-09-30). Leia antes de
+  escrever migration ou de supor que a `main` reproduz produção.
+
+- **[Pipeline do corpus RAG](./rag/pipeline-corpus.md)** — extração, curadoria e golden set (#72, #73, #75).
+
+- **[Política de conjuntos sensíveis](./rag/politica-conjuntos-sensiveis.md)** — o que pode e o que é vedado com dado sensível de terceiros (#74).
+
+- **[Inventário de fontes do RAG](./rag/inventario-fontes.md)** — proveniência,
+  licença e elegibilidade das fontes candidatas à indexação.
+- **[Triagem corpus × pesquisa](./rag/triagem-corpus.md)** — o que vai ao índice, o que fica fora e a reconciliação #63 × #165.
+
 
 ## Índice por projeto
 
@@ -27,7 +45,7 @@ Documentação que não pertence a um único serviço:
 - API: [arquitetura e fluxos](./api/funcionamento-api-arquitetura-fluxos.md)
 - Banco: [modelagem](./api/modelagem-dados-banco.md) · [Supabase](./api/estrutura-banco-supabase.md) · [Supabase (executivo)](./api/estrutura-banco-supabase-executivo.md)
 - Personalização/gamificação: [visão](./api/funcionamento-personalizacao-gamificacao-recursos-pedagogicos.md) · [detalhado](./api/funcionamento-personalizacao-gamificacao-recursos-pedagogicos-detalhado.md)
-- [Guia de uso](./api/guia-uso-app.md) · [Segurança](./api/seguranca.md) · [Políticas de dados/privacidade](./api/politicas-dados-privacidade.md)
+- [Guia de uso](./api/guia-uso-app.md) · [Segurança](./api/seguranca.md) · [Políticas de dados/privacidade](./api/politicas-dados-privacidade.md) · [Avaliação Jev (TypeSafe)](./api/avaliacao-jev-typesafe.md)
 - [Planos e specs (superpowers)](./api/superpowers/)
 
 ### [`frontend/`](./frontend/) — Web (Vite · React)

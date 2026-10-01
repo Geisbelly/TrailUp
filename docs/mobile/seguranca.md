@@ -1,4 +1,4 @@
-﻿# Seguranca - Mobile
+# Seguranca - Mobile
 
 ## Controles
 - Sessao Supabase com armazenamento seguro.

@@ -1,4 +1,4 @@
-﻿import functools
+import functools
 from dataclasses import dataclass, field
 from typing import Any
 

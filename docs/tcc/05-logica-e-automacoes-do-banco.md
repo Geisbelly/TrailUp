@@ -1,4 +1,4 @@
-﻿# 05. Logica e automacoes do banco
+# 05. Logica e automacoes do banco
 
 Data de atualizacao: 2026-04-19
 

@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #0d0b16; font-family: 'Inter', sans-serif; }
+  @keyframes tu9-rise { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes tu9-spin { to { transform:rotate(360deg); } }
+</style>
+</helmet>
+
+<div style="position:relative; min-height:100vh; background:#0d0b16; overflow:hidden;">
+
+  <div style="position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image: url('assets/bg-forest-crystal.webp');
+    background-size: cover; background-position: center 30%; opacity:0.34;">
+  </div>
+  <div style="position:fixed; inset:0; pointer-events:none; z-index:0;
+    background: linear-gradient(180deg, rgba(13,11,22,0.55), rgba(13,11,22,0.88)),
+      radial-gradient(ellipse 900px 500px at 75% 10%, rgba(155,93,229,0.10), transparent 60%);">
+  </div>
+
+  <header style="position:fixed; top:0; left:0; right:0; height:68px; z-index:30; background:#23192e; border-bottom:1px solid #2b2438; display:flex; align-items:center; justify-content:space-between; padding:0 32px;">
+    <div style="display:flex; align-items:center; gap:14px;">
+      <img src="assets/trailup-logo.png" width="30" height="30" style="display:block; object-fit:contain;"/>
+      <span style="font-family:'Cinzel',serif; font-weight:700; font-size:22px; color:#f4f2f8;">TrailUp</span>
+      <span style="width:1px; height:20px; background:#2b2438; margin:0 6px;"></span>
+      <span style="font-size:14px; color:#a29cb3;">Console do professor</span>
+    </div>
+    <div style="display:flex; align-items:center; gap:14px;">
+      <div style="width:38px; height:38px; border-radius:50%; background:#9b5de5; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:13px;">GA</div>
+      <div style="display:flex; flex-direction:column; line-height:1.3;">
+        <span style="font-size:14px; font-weight:700; color:#f4f2f8;">Geisbelly Admin Prof</span>
+        <span style="font-size:12px; color:#a29cb3;">Ulbra</span>
+      </div>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a29cb3" stroke-width="1.6" style="margin-left:6px;"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/></svg>
+    </div>
+  </header>
+
+  <nav style="position:fixed; top:68px; left:0; bottom:0; width:264px; z-index:20; background:#170e24; border-right:1px solid #2b2438; padding:20px 16px; display:flex; flex-direction:column; gap:2px; overflow-y:auto;">
+    <sc-for list="{{ navItems }}" as="item" hint-placeholder-count="12">
+      <a href="{{ item.href }}" style="{{ item.style }} text-decoration:none;">
+        <div style="width:20px; height:20px; color:{{ item.color }}; flex:none;" dangerouslySetInnerHTML="{{ item.iconHtml }}"></div>
+        <span style="font-size:14.5px; color:{{ item.color }};">{{ item.label }}</span>
+      </a>
+    </sc-for>
+  </nav>
+
+  <main style="position:relative; z-index:1; margin-left:264px; padding:108px 40px 60px 40px;">
+
+    <div style="display:flex; align-items:flex-end; gap:24px; flex-wrap:wrap; margin-bottom:8px;">
+      <div>
+        <div style="font-family:'Cinzel',serif; font-size:32px; font-weight:700; color:#f4f2f8; line-height:1.1;">Missões</div>
+        <div style="font-size:14.5px; color:#a29cb3; margin-top:8px;">{{ pageSubtitle }}</div>
+      </div>
+      <sc-if value="{{ isMainTab0 }}" hint-placeholder-val="{{ true }}">
+      <div onClick="{{ openForm }}" style="display:flex; align-items:center; gap:8px; margin-left:auto; padding:13px 22px; border-radius:999px; background:#9b5de5; font-size:14px; font-weight:700; color:#fff; cursor:pointer; white-space:nowrap;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        Nova missão
+      </div>
+      </sc-if>
+    </div>
+
+    <!-- ============ ABA MISSÕES ============ -->
+    <sc-if value="{{ isMainTab0 }}" hint-placeholder-val="{{ true }}">
+    <div>
+
+    <div style="display:flex; align-items:center; gap:6px; margin-top:16px;">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="2">
+        <div onClick="{{ t.select }}" style="{{ t.style }}">{{ t.label }}</div>
+      </sc-for>
+    </div>
+
+    <sc-if value="{{ isTabList }}" hint-placeholder-val="{{ true }}">
+    <div style="margin-top:18px; display:flex; flex-direction:column; gap:14px;">
+      <sc-for list="{{ missions }}" as="m" hint-placeholder-count="4">
+        <div style="padding:20px 24px; border-radius:18px; background:#1b1728; border:1px solid #2b2438;">
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <div style="font-family:'Cinzel',serif; font-size:18px; font-weight:700; color:#f4f2f8;">{{ m.title }}</div>
+            <div style="{{ m.timeBadgeStyle }}">{{ m.timeBadge }}</div>
+          </div>
+          <div style="font-size:12.5px; color:#a29cb3; margin-top:6px;">{{ m.scope }}</div>
+          <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap; margin-top:16px;">
+            <div><div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Prazo</div><div style="font-size:13.5px; font-weight:600; color:#f4f2f8; margin-top:5px;">{{ m.deadline }}</div></div>
+            <div><div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Pontuação</div><div style="font-size:13.5px; font-weight:600; color:#f4f2f8; margin-top:5px;">{{ m.points }} pts</div></div>
+            <div><div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Entregas</div><div style="font-size:13.5px; font-weight:600; margin-top:5px; color:{{ m.deliveryColor }};">{{ m.delivered }}/{{ m.total }}</div></div>
+            <div style="display:flex; align-items:center; gap:6px; margin-left:auto;">
+              <div onClick="{{ m.askDup }}" title="Duplicar" style="width:30px; height:30px; border-radius:50%; background:#231d33; border:1px solid #2b2438; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#c9c4d4" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>
+              </div>
+              <div onClick="{{ m.openEdit }}" title="Editar" style="width:30px; height:30px; border-radius:50%; background:#231d33; border:1px solid #2b2438; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#c9c4d4" stroke-width="2"><path d="M4 20h4l10-10-4-4L4 16z"/></svg>
+              </div>
+              <div onClick="{{ m.askDel }}" title="Excluir" style="width:30px; height:30px; border-radius:50%; background:#231d33; border:1px solid #2b2438; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#e2574c" stroke-width="2"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg>
+              </div>
+            </div>
+          </div>
+          <sc-if value="{{ m.hasPending }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex; align-items:center; gap:10px; margin-top:14px; padding:14px 90px 0 0; border-top:1px solid #2b2438;">
+            <div style="font-size:12px; color:#e0b34d;">{{ m.pendingCount }} entrega(s) aguardando correção</div>
+            <div onClick="{{ m.goToNotas }}" style="margin-left:auto; padding:7px 14px; border-radius:999px; background:rgba(224,179,77,0.16); border:1px solid #e0b34d; font-size:12px; font-weight:600; color:#e0b34d; cursor:pointer;">Corrigir entregas</div>
+          </div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isTabAI }}" hint-placeholder-val="{{ false }}">
+    <div style="margin-top:18px;">
+      <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap; padding:18px 22px; border-radius:18px; background:#1b1728; border:1px solid #2b2438;">
+        <div style="min-width:0;">
+          <div style="font-size:13.5px; font-weight:600; color:#f4f2f8;">Taxa de aprovação das sugestões</div>
+          <div style="font-size:12px; color:#a29cb3; margin-top:4px;">{{ approvalStat }}</div>
+        </div>
+        <div onClick="{{ openAiDialog }}" style="display:flex; align-items:center; gap:8px; margin-left:auto; padding:12px 20px; border-radius:999px; background:#9b5de5; font-size:13.5px; font-weight:700; color:#fff; cursor:pointer; white-space:nowrap;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg>
+          Pedir sugestões da IA
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:16px; margin-top:18px;">
+        <sc-for list="{{ suggestions }}" as="s" hint-placeholder-count="3">
+        <div>
+        <sc-if value="{{ !s.refusing }}" hint-placeholder-val="{{ true }}">
+        <div style="padding:20px 22px; border-radius:18px; background:#1b1728; border:1px solid #2b2438; display:flex; flex-direction:column; height:100%;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c1a7ec" stroke-width="2"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg>
+            <div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#c1a7ec; font-weight:600;">Sugestão da IA</div>
+          </div>
+          <div style="font-family:'Cinzel',serif; font-size:16.5px; font-weight:700; color:#f4f2f8; margin-top:10px;">{{ s.title }}</div>
+          <div style="font-size:12.5px; color:#c9c4d4; margin-top:6px; line-height:1.55;">{{ s.objective }}</div>
+          <div style="font-size:11.5px; color:#a29cb3; margin-top:10px;">{{ s.items }} itens propostos · prazo sugerido {{ s.deadline }} · {{ s.points }} pts</div>
+          <div style="display:flex; align-items:center; gap:8px; margin-top:16px; padding-top:14px; border-top:1px solid #2b2438;">
+            <div onClick="{{ s.approve }}" style="padding:8px 15px; border-radius:999px; background:rgba(52,199,123,0.16); border:1px solid #34c77b; font-size:12px; font-weight:600; color:#7fe0ab; cursor:pointer;">Aprovar</div>
+            <div onClick="{{ s.editApprove }}" style="padding:8px 15px; border-radius:999px; border:1px solid #2b2438; font-size:12px; font-weight:600; color:#f4f2f8; cursor:pointer;">Editar antes</div>
+            <div onClick="{{ s.startRefuse }}" style="margin-left:auto; padding:8px 15px; border-radius:999px; font-size:12px; font-weight:600; color:#a29cb3; cursor:pointer;">Recusar</div>
+          </div>
+        </div>
+        </sc-if>
+        <sc-if value="{{ s.refusing }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:20px 22px; border-radius:18px; background:#3a1e22; border:1px solid #7a3a3a; display:flex; flex-direction:column; height:100%;">
+          <div style="font-size:13.5px; font-weight:700; color:#f4f2f8;">Recusar "{{ s.title }}"</div>
+          <div style="font-size:11.5px; color:#e8d8d8; margin-top:6px;">Informe o motivo — isso ajuda a medir a qualidade das sugestões.</div>
+          <div style="display:flex; flex-direction:column; gap:6px; margin-top:12px;">
+            <sc-for list="{{ s.reasons }}" as="r" hint-placeholder-count="4">
+              <div onClick="{{ r.select }}" style="{{ r.style }}">{{ r.label }}</div>
+            </sc-for>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px; margin-top:auto; padding-top:14px;">
+            <div onClick="{{ s.cancelRefuse }}" style="padding:8px 15px; border-radius:999px; border:1px solid #7a3a3a; font-size:12px; font-weight:600; color:#f0d5d5; cursor:pointer;">Cancelar</div>
+            <div onClick="{{ s.confirmRefuse }}" style="{{ s.confirmRefuseStyle }}">Confirmar recusa</div>
+          </div>
+        </div>
+        </sc-if>
+        </div>
+        </sc-for>
+      </div>
+    </div>
+    </sc-if>
+
+    </div>
+    </sc-if>
+
+    <!-- ============ ABA NOTAS ============ -->
+    <sc-if value="{{ isMainTab1 }}" hint-placeholder-val="{{ false }}">
+    <div>
+
+    <sc-if value="{{ !notasPanelOpen }}" hint-placeholder-val="{{ true }}">
+    <div style="margin-top:18px;">
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <div style="display:flex; align-items:center; padding:10px 14px; border-radius:12px; background:#1b1728; border:1px solid #2b2438; font-size:13px; color:#f4f2f8;">Física I<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a29cb3" stroke-width="2" style="margin-left:10px;"><path d="M6 9l6 6 6-6"/></svg></div>
+        <div style="display:flex; align-items:center; padding:10px 14px; border-radius:12px; background:#1b1728; border:1px solid #2b2438; font-size:13px; color:#f4f2f8;">Todos os tópicos/missões<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a29cb3" stroke-width="2" style="margin-left:10px;"><path d="M6 9l6 6 6-6"/></svg></div>
+        <div style="display:flex; gap:6px; margin-left:auto;">
+          <sc-for list="{{ notasStatusOptions }}" as="so" hint-placeholder-count="3">
+            <div onClick="{{ so.select }}" style="{{ so.style }}">{{ so.label }}</div>
+          </sc-for>
+        </div>
+      </div>
+
+      <sc-if value="{{ notasQueueEmpty }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; flex-direction:column; align-items:center; text-align:center; gap:10px; padding:70px 30px; margin-top:20px; border-radius:20px; background:#1b1728; border:1px solid #2b2438;">
+        <div style="font-family:'Cinzel',serif; font-size:18px; font-weight:700; color:#f4f2f8;">Nenhuma entrega aguardando correção.</div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ !notasQueueEmpty }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex; flex-direction:column; gap:10px; margin-top:20px;">
+        <sc-for list="{{ notasQueue }}" as="q" hint-placeholder-count="5">
+          <div onClick="{{ q.open }}" style="display:flex; align-items:center; gap:16px; padding:16px 20px; border-radius:16px; background:#1b1728; border:1px solid {{ q.borderColor }}; cursor:pointer;">
+            <div style="width:34px; height:34px; flex:none; border-radius:50%; background:{{ q.color }}; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; color:#1b1120;">{{ q.initials }}</div>
+            <div style="min-width:0; flex:1;">
+              <div style="font-size:13.5px; font-weight:600; color:#f4f2f8;">{{ q.student }}</div>
+              <div style="font-size:12px; color:#a29cb3; margin-top:2px;">{{ q.item }} · {{ q.typeLabel }}</div>
+            </div>
+            <div style="text-align:right; flex:none;">
+              <div style="font-size:12px; color:#c9c4d4;">entregue {{ q.deliveredDate }}</div>
+              <div style="{{ q.waitStyle }}">{{ q.waitLabel }}</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+      </sc-if>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ notasPanelOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="margin-top:18px;">
+      <div onClick="{{ notasClosePanel }}" style="display:inline-flex; align-items:center; gap:8px; font-size:13px; color:#a29cb3; cursor:pointer; margin-bottom:20px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg>
+        Fila de correção
+      </div>
+
+      <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap; padding:22px 26px; border-radius:20px; background:#1b1728; border:1px solid #9b5de5;">
+        <div style="width:44px; height:44px; flex:none; border-radius:50%; background:{{ notasCur.color }}; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:800; color:#1b1120;">{{ notasCur.initials }}</div>
+        <div style="min-width:0;">
+          <div style="font-family:'Cinzel',serif; font-size:19px; font-weight:700; color:#f4f2f8;">{{ notasCur.student }}</div>
+          <div style="font-size:12.5px; color:#a29cb3; margin-top:4px;">{{ notasCur.item }} · {{ notasCur.typeLabel }}</div>
+        </div>
+        <div style="margin-left:auto; text-align:right;">
+          <div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Pontuação máxima</div>
+          <div style="font-size:18px; font-weight:700; color:#f4f2f8; margin-top:3px;">{{ notasCur.maxPoints }} pts</div>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:2fr 1fr; gap:18px; margin-top:18px; align-items:start;">
+        <div style="display:flex; flex-direction:column; gap:14px;">
+          <div style="padding:18px 20px; border-radius:16px; background:#1b1728; border:1px solid #2b2438;">
+            <div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Enunciado</div>
+            <div style="font-size:14px; color:#f4f2f8; margin-top:9px; line-height:1.6;">{{ notasCur.prompt }}</div>
+          </div>
+
+          <div style="padding:18px 20px; border-radius:16px; background:#1b1728; border:1px solid #2b2438;">
+            <div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Resposta do aluno</div>
+            <sc-if value="{{ notasCur.hasSubmission }}" hint-placeholder-val="{{ true }}">
+              <sc-if value="{{ notasCur.isFile }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex; align-items:center; gap:12px; margin-top:12px; padding:13px 15px; border-radius:12px; background:#231d33; border:1px solid #2b2438;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c1a7ec" stroke-width="1.6" style="flex:none;"><path d="M6 3h9l4 4v13a1 1 0 01-1 1H6a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M8 12h6M8 16h4"/></svg>
+                <div style="min-width:0; flex:1;">
+                  <div style="font-size:13px; font-weight:600; color:#f4f2f8;">{{ notasCur.fileName }}</div>
+                  <div style="font-size:11px; color:#a29cb3; margin-top:2px;">{{ notasCur.fileSize }}</div>
+                </div>
+                <div style="padding:7px 13px; border-radius:999px; border:1px solid #2b2438; font-size:12px; font-weight:600; color:#c9c4d4; cursor:pointer; white-space:nowrap;">Abrir / baixar</div>
+              </div>
+              </sc-if>
+              <sc-if value="{{ !notasCur.isFile }}" hint-placeholder-val="{{ true }}">
+              <div style="font-size:14px; color:#e5e1ec; margin-top:10px; line-height:1.65; white-space:pre-wrap;">{{ notasCur.answerText }}</div>
+              </sc-if>
+            </sc-if>
+            <sc-if value="{{ !notasCur.hasSubmission }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex; align-items:center; gap:10px; margin-top:12px; padding:13px 15px; border-radius:12px; background:rgba(224,87,76,0.1); border:1px solid #7a3a3a;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f0847c" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L2.9 17a2 2 0 001.7 3h14.8a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>
+                <div style="font-size:13px; color:#f0d5d5;">O prazo venceu e o aluno não enviou resposta. Ainda é preciso decidir uma nota para esta entrega.</div>
+              </div>
+            </sc-if>
+          </div>
+
+          <div style="padding:18px 20px; border-radius:16px; background:#1b1728; border:1px solid #2b2438;">
+            <div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Nota</div>
+            <div style="display:flex; align-items:center; gap:10px; margin-top:9px;">
+              <div style="width:90px; padding:10px 13px; border-radius:12px; background:#231d33; border:1px solid #9b5de5; font-size:14px; color:#f4f2f8; text-align:center;">{{ notasCur.gradeDraft }}</div>
+              <div style="font-size:13px; color:#a29cb3;">de {{ notasCur.maxPoints }} pts</div>
+            </div>
+
+            <div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600; margin-top:16px;">Feedback ao aluno</div>
+            <div style="margin-top:9px; padding:13px 15px; border-radius:12px; background:#231d33; border:1px solid #2b2438; min-height:64px; font-size:13.5px; color:#7a7488; line-height:1.6;">Ex.: sua explicação está correta, mas faltou distinguir velocidade média de instantânea…</div>
+
+            <div style="padding:10px 13px; border-radius:12px; background:rgba(155,93,229,0.1); border:1px solid rgba(155,93,229,0.35); font-size:12px; color:#c1a7ec; margin-top:14px; line-height:1.5;">Isso soma {{ notasCur.gradeDraft }} pontos ao desempenho de {{ notasCur.student }} na turma.</div>
+
+            <div onClick="{{ notasSaveGrade }}" style="margin-top:14px; padding:12px; border-radius:999px; background:#9b5de5; font-size:13.5px; font-weight:700; color:#fff; cursor:pointer; text-align:center;">Salvar avaliação</div>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:14px;">
+          <sc-if value="{{ notasCur.hasGabarito }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:16px 18px; border-radius:16px; background:#1b1728; border:1px solid #2b2438;">
+            <div style="font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Gabarito de referência</div>
+            <div style="font-size:12.5px; color:#c9c4d4; margin-top:9px; line-height:1.6;">{{ notasCur.gabarito }}</div>
+            <div style="font-size:10.5px; color:#7a7488; margin-top:9px; line-height:1.5;">Referência para orientar a correção — questão dissertativa não tem resposta certa/errada binária.</div>
+          </div>
+          </sc-if>
+
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div onClick="{{ notasPrevEntry }}" style="{{ notasPrevStyle }}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg>
+              Anterior
+            </div>
+            <div onClick="{{ notasNextEntry }}" style="{{ notasNextStyle }}">
+              Próxima
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+
+    </div>
+    </sc-if>
+
+  </main>
+
+  <!-- modal nova/editar missão -->
+  <sc-if value="{{ showForm }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed; inset:0; z-index:60; background:rgba(5,3,10,0.78); backdrop-filter:blur(6px); display:flex; align-items:center; justify-content:center; padding:32px;">
+    <div style="width:100%; max-width:640px; max-height:88vh; display:flex; flex-direction:column; border-radius:20px; background:#1b1728; border:1px solid #9b5de5; overflow:hidden;">
+      <div style="padding:22px 26px 18px; border-bottom:1px solid #2b2438; flex:none; display:flex; align-items:center; gap:12px;">
+        <div style="font-family:'Cinzel',serif; font-size:19px; font-weight:700; color:#f4f2f8;">{{ formTitle }}</div>
+        <div onClick="{{ closeForm }}" style="margin-left:auto; width:30px; height:30px; border-radius:50%; background:#231d33; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c9c4d4" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </div>
+      </div>
+      <div style="overflow-y:auto; flex:1; padding:20px 26px 8px;">
+        <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Título</div>
+        <div style="margin-top:8px; padding:12px 15px; border-radius:14px; background:#231d33; border:1px solid #9b5de5; font-size:13.5px; color:#f4f2f8;">{{ formTitleValue }}</div>
+
+        <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600; margin-top:16px;">Objetivo</div>
+        <div style="margin-top:8px; padding:12px 15px; border-radius:14px; background:#231d33; border:1px solid #2b2438; min-height:60px; font-size:13.5px; color:#c9c4d4; line-height:1.6;">{{ formObjective }}</div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:16px;">
+          <div>
+            <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Turma</div>
+            <div style="display:flex; align-items:center; margin-top:8px; padding:12px 15px; border-radius:14px; background:#231d33; border:1px solid #2b2438; font-size:13.5px; color:#f4f2f8;">Física I<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a29cb3" stroke-width="2" style="margin-left:auto;"><path d="M6 9l6 6 6-6"/></svg></div>
+          </div>
+          <div>
+            <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Tópico vinculado (opcional)</div>
+            <div style="display:flex; align-items:center; margin-top:8px; padding:12px 15px; border-radius:14px; background:#231d33; border:1px solid #2b2438; font-size:13.5px; color:#7a7488;">Nenhum<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a29cb3" stroke-width="2" style="margin-left:auto;"><path d="M6 9l6 6 6-6"/></svg></div>
+          </div>
+        </div>
+
+        <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600; margin-top:16px;">Itens da missão</div>
+        <div style="display:flex; flex-direction:column; gap:7px; margin-top:9px;">
+          <sc-for list="{{ formItems }}" as="fi" hint-placeholder-count="2">
+            <div style="display:flex; align-items:center; gap:10px; padding:10px 13px; border-radius:12px; background:#231d33;">
+              <div style="font-size:12.5px; color:#f4f2f8; flex:1;">{{ fi.name }}</div>
+              <div style="padding:2px 9px; border-radius:999px; background:#2b2438; font-size:9.5px; font-weight:700; color:#a29cb3;">{{ fi.kind }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:8px;">
+          <div style="padding:8px 14px; border-radius:999px; border:1px solid #2b2438; font-size:12px; font-weight:600; color:#c9c4d4; cursor:pointer;">Vincular existente</div>
+          <div style="padding:8px 14px; border-radius:999px; border:1px dashed rgba(155,93,229,0.5); font-size:12px; font-weight:600; color:#c1a7ec; cursor:pointer;">+ Criar novo item</div>
+        </div>
+
+        <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600; margin-top:18px;">Prazo de resposta</div>
+        <div style="display:flex; gap:8px; margin-top:9px;">
+          <sc-for list="{{ timeModeOptions }}" as="tm" hint-placeholder-count="2">
+            <div onClick="{{ tm.select }}" style="{{ tm.style }}">{{ tm.label }}</div>
+          </sc-for>
+        </div>
+        <sc-if value="{{ isTimedMode }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:10px; display:flex; align-items:center; gap:10px;">
+          <div style="font-size:12.5px; color:#c9c4d4;">Limite por questão:</div>
+          <div style="padding:9px 14px; border-radius:12px; background:#231d33; border:1px solid #9b5de5; font-size:13px; color:#f4f2f8;">90 segundos</div>
+        </div>
+        </sc-if>
+        <div style="font-size:11px; color:#7a7488; margin-top:8px; line-height:1.5;">Pressão de tempo não é adequada para todos os perfis — por isso as duas opções coexistem.</div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:18px; margin-bottom:6px;">
+          <div>
+            <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Pontuação máxima</div>
+            <div style="margin-top:8px; padding:12px 15px; border-radius:14px; background:#231d33; border:1px solid #2b2438; font-size:13.5px; color:#f4f2f8;">50 pts</div>
+          </div>
+          <div>
+            <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Moedas (opcional)</div>
+            <div style="margin-top:8px; padding:12px 15px; border-radius:14px; background:#231d33; border:1px solid #2b2438; font-size:13.5px; color:#7a7488;">Ex.: 30 moedas</div>
+          </div>
+          <div style="grid-column:1 / -1;">
+            <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600;">Recompensa (opcional)</div>
+            <div style="margin-top:8px; padding:12px 15px; border-radius:14px; background:#231d33; border:1px solid #2b2438; font-size:13.5px; color:#7a7488;">Ex.: badge "Explorador de Cinemática"</div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px; padding:16px 26px; border-top:1px solid #2b2438; flex:none;">
+        <div onClick="{{ closeForm }}" style="padding:11px 20px; border-radius:999px; border:1px solid #2b2438; font-size:13.5px; font-weight:600; color:#f4f2f8; cursor:pointer;">Cancelar</div>
+        <div onClick="{{ saveForm }}" style="margin-left:auto; padding:11px 22px; border-radius:999px; background:#9b5de5; font-size:13.5px; font-weight:700; color:#fff; cursor:pointer;">Salvar missão</div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- modal pedir sugestões da IA -->
+  <sc-if value="{{ showAiDialog }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed; inset:0; z-index:60; background:rgba(5,3,10,0.78); backdrop-filter:blur(6px); display:flex; align-items:center; justify-content:center; padding:32px;">
+    <div style="width:100%; max-width:520px; border-radius:20px; background:#1b1728; border:1px solid #9b5de5; box-shadow:0 30px 90px rgba(0,0,0,0.6); overflow:hidden;">
+      <div style="padding:24px 28px 18px; border-bottom:1px solid #2b2438; display:flex; align-items:center; gap:12px;">
+        <div style="width:36px; height:36px; border-radius:50%; background:#9b5de5; display:flex; align-items:center; justify-content:center; flex:none;">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg>
+        </div>
+        <div style="font-family:'Cinzel',serif; font-size:19px; font-weight:700; color:#f4f2f8;">Pedir sugestões da IA</div>
+        <div onClick="{{ closeAiDialog }}" style="margin-left:auto; width:30px; height:30px; border-radius:50%; background:#231d33; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c9c4d4" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </div>
+      </div>
+
+      <sc-if value="{{ isAiConfig }}" hint-placeholder-val="{{ true }}">
+      <div style="padding:22px 28px 24px;">
+        <div style="font-size:13px; color:#c9c4d4; line-height:1.6;">A IA propõe missões a partir do conteúdo do tópico, do perfil da turma e da telemetria de uso.</div>
+        <div style="font-size:11.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600; margin-top:18px;">Turma / tópico</div>
+        <div style="display:flex; align-items:center; margin-top:9px; padding:12px 15px; border-radius:14px; background:#231d33; border:1px solid #2b2438; font-size:13.5px; color:#f4f2f8;">Física I · Cinemática<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a29cb3" stroke-width="2" style="margin-left:auto;"><path d="M6 9l6 6 6-6"/></svg></div>
+        <div style="font-size:11.5px; letter-spacing:0.08em; text-transform:uppercase; color:#a29cb3; font-weight:600; margin-top:18px;">Quantidade de sugestões</div>
+        <div style="display:flex; gap:8px; margin-top:9px;">
+          <sc-for list="{{ countOptions }}" as="co" hint-placeholder-count="4">
+            <div onClick="{{ co.select }}" style="{{ co.style }}">{{ co.label }}</div>
+          </sc-for>
+        </div>
+        <div style="font-size:11px; color:#7a7488; margin-top:9px; line-height:1.5;">Sujeito a uma cota do sistema — em alguns momentos pode retornar menos sugestões do que o pedido.</div>
+        <div style="display:flex; align-items:center; gap:12px; margin-top:22px;">
+          <div onClick="{{ closeAiDialog }}" style="padding:11px 20px; border-radius:999px; border:1px solid #2b2438; font-size:13.5px; font-weight:600; color:#f4f2f8; cursor:pointer;">Cancelar</div>
+          <div onClick="{{ startAiGenerate }}" style="margin-left:auto; padding:11px 24px; border-radius:999px; background:#9b5de5; font-size:13.5px; font-weight:700; color:#fff; cursor:pointer;">Pedir sugestões</div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isAiProcessing }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:36px 28px 32px; display:flex; flex-direction:column; align-items:center; text-align:center; gap:16px;">
+        <div style="position:relative; width:56px; height:56px;">
+          <div style="position:absolute; inset:0; border-radius:50%; background:rgba(155,93,229,0.18);"></div>
+          <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
+            <div style="width:22px; height:22px; border-radius:50%; border:2.5px solid rgba(193,167,236,0.3); border-top-color:#c1a7ec; animation:tu9-spin 1s linear infinite;"></div>
+          </div>
+        </div>
+        <div style="font-family:'Cinzel',serif; font-size:18px; font-weight:700; color:#f4f2f8;">Gerando sugestões…</div>
+        <div style="font-size:13px; color:#a29cb3; line-height:1.6; max-width:340px;">Isso pode levar alguns instantes. O job continua em segundo plano — as sugestões aparecem na aba quando ficarem prontas.</div>
+        <div onClick="{{ closeAiDialog }}" style="margin-top:6px; padding:10px 20px; border-radius:999px; border:1px solid #2b2438; font-size:13px; font-weight:600; color:#c9c4d4; cursor:pointer;">Continuar em segundo plano</div>
+      </div>
+      </sc-if>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- modal duplicar/excluir missão -->
+  <sc-if value="{{ showDupConfirm }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed; inset:0; z-index:60; background:rgba(5,3,10,0.78); backdrop-filter:blur(6px); display:flex; align-items:center; justify-content:center; padding:32px;">
+    <div style="width:100%; max-width:460px; border-radius:20px; background:#1b1728; border:1px solid #9b5de5; padding:24px 26px;">
+      <div style="font-family:'Cinzel',serif; font-size:19px; font-weight:700; color:#f4f2f8;">Duplicar missão</div>
+      <div style="font-size:14px; font-weight:600; color:#f4f2f8; margin-top:14px;">Duplicar "{{ dupName }}"?</div>
+      <div style="font-size:13px; color:#c9c4d4; margin-top:8px; line-height:1.6;">A cópia mantém os mesmos itens, prazo e pontuação, sem nenhuma entrega vinculada.</div>
+      <div style="display:flex; align-items:center; gap:12px; margin-top:20px;">
+        <div onClick="{{ cancelDup }}" style="padding:11px 20px; border-radius:999px; border:1px solid #2b2438; font-size:13.5px; font-weight:600; color:#f4f2f8; cursor:pointer;">Cancelar</div>
+        <div onClick="{{ confirmDup }}" style="margin-left:auto; padding:11px 22px; border-radius:999px; background:#9b5de5; font-size:13.5px; font-weight:700; color:#fff; cursor:pointer;">Duplicar</div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ showDelConfirm }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed; inset:0; z-index:60; background:rgba(5,3,10,0.78); backdrop-filter:blur(6px); display:flex; align-items:center; justify-content:center; padding:32px;">
+    <div style="width:100%; max-width:460px; border-radius:20px; background:#1b1728; border:1px solid #7a3a3a; padding:24px 26px;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div style="width:32px; height:32px; flex:none; border-radius:50%; background:rgba(224,87,76,0.18); border:1px solid #7a3a3a; display:flex; align-items:center; justify-content:center;">
+          <svg width="15" height="15" viewBox="0 24 24" fill="none" stroke="#f0847c" stroke-width="2"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg>
+        </div>
+        <div style="font-family:'Cinzel',serif; font-size:19px; font-weight:700; color:#f4f2f8;">Excluir missão</div>
+      </div>
+      <div style="font-size:14px; font-weight:600; color:#f4f2f8; margin-top:16px;">Excluir "{{ delName }}"?</div>
+      <div style="font-size:13px; color:#c9c4d4; margin-top:8px; line-height:1.6;">Isso remove permanentemente a missão e as entregas dos alunos vinculadas a ela. Esta ação não pode ser desfeita.</div>
+      <div style="display:flex; align-items:center; gap:12px; margin-top:20px;">
+        <div onClick="{{ cancelDel }}" style="padding:11px 20px; border-radius:999px; border:1px solid #2b2438; font-size:13.5px; font-weight:600; color:#f4f2f8; cursor:pointer;">Cancelar</div>
+        <div onClick="{{ confirmDel }}" style="margin-left:auto; display:flex; align-items:center; gap:7px; padding:11px 22px; border-radius:999px; background:#e2574c; font-size:13.5px; font-weight:700; color:#fff; cursor:pointer;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg>
+          Excluir missão
+        </div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- Escriba -->
+  <div style="position:fixed; right:32px; bottom:28px; z-index:50;">
+    <sc-if value="{{ escribaOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute; bottom:70px; right:0; width:340px; border-radius:20px; background:#1b1728; border:1px solid #2b2438; box-shadow:0 20px 50px rgba(0,0,0,0.5); overflow:hidden;">
+        <div style="display:flex; align-items:center; gap:12px; padding:16px 18px; border-bottom:1px solid #2b2438; background:linear-gradient(135deg,#c9924f,#9c6b4f);">
+          <div style="width:34px; height:34px; border-radius:50%; background:rgba(0,0,0,0.2); display:flex; align-items:center; justify-content:center;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          </div>
+          <div>
+            <div style="font-family:'Cinzel',serif; font-size:14px; font-weight:700; color:#fff;">Escriba</div>
+            <div style="font-size:11px; color:rgba(255,255,255,0.85);">O guia do professor · lê os dados das suas missões e correções</div>
+          </div>
+        </div>
+        <div style="padding:16px 18px; display:flex; flex-direction:column; gap:12px;">
+          <div style="font-size:13px; color:#e5e1ec; line-height:1.5;">Olá! Posso te ajudar com missões e correções. O que você quer saber?</div>
+          <div style="display:flex; flex-wrap:wrap; gap:8px;">
+            <div style="padding:7px 12px; border-radius:999px; background:#231d33; border:1px solid #2b2438; font-size:12px; color:#c9c4d4; cursor:pointer;">Quais missões estão atrasadas?</div>
+            <div style="padding:7px 12px; border-radius:999px; background:#231d33; border:1px solid #2b2438; font-size:12px; color:#c9c4d4; cursor:pointer;">Quem está esperando correção há mais tempo?</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; padding:12px 14px; border-top:1px solid #2b2438;">
+          <input placeholder="Pergunte ao Escriba…" style="flex:1; background:#0d0b16; border:1px solid #2b2438; border-radius:999px; padding:9px 14px; color:#f4f2f8; font-size:13px; outline:none;"/>
+          <div style="width:32px; height:32px; border-radius:50%; background:#9c6b4f; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+    <div onClick="{{ toggleEscriba }}" title="Pergunte ao Escriba" style="width:56px; height:56px; border-radius:50%; background:linear-gradient(135deg,#c9924f,#9c6b4f); display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 12px 30px rgba(0,0,0,0.45);">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+    </div>
+  </div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+
+const MISSIONS = [
+  { id:1, title:'Cinemática em movimento', scope:'Física I · Cinemática', deadline:'28/09 · sem tempo limite', points:50, delivered:19, total:34, pendingCount:6 },
+  { id:2, title:'Vetores no cotidiano', scope:'Física I · sem tópico vinculado', deadline:'02/10 · cronômetro por questão', points:30, delivered:34, total:34, pendingCount:0 },
+  { id:3, title:'Trabalho e energia — projeto em grupo', scope:'Física II · Trabalho e Energia', deadline:'10/10 · sem tempo limite', points:80, delivered:5, total:28, pendingCount:5 }
+];
+const SUGGESTIONS = [
+  { key:'s1', title:'Desafio de queda livre', objective:'Levar o aluno a prever e comparar tempos de queda de objetos com massas diferentes.', items:4, deadline:'05/10', points:40 },
+  { key:'s2', title:'Relatório de simulação de órbitas', objective:'Aplicar conceitos de gravitação usando o simulador já vinculado ao tópico.', items:3, deadline:'12/10', points:35 },
+  { key:'s3', title:'Diário de observação do movimento', objective:'Registrar, por uma semana, situações do cotidiano com aceleração constante.', items:5, deadline:'19/10', points:25 }
+];
+const REFUSE_REASONS = ['Fora do nível da turma','Prazo incompatível com o calendário','Conteúdo já coberto por outra atividade','Outro motivo'];
+
+const NOTAS_QUEUE = [
+  { id:1, student:'Caio Bertoldo', initials:'CB', color:'#1e4fd6', item:'Explique aceleração vetorial', typeLabel:'Dissertativa', deliveredDate:'19/09', waitDays:3, maxPoints:10, prompt:'Explique, com suas palavras, a diferença entre velocidade média e velocidade instantânea, dando um exemplo do cotidiano.', hasSubmission:true, isFile:false, answerText:'Velocidade média é a razão entre o deslocamento total e o tempo total do percurso, sem levar em conta as variações no meio do caminho. Já a velocidade instantânea é o valor da velocidade em um exato momento, como o que o velocímetro de um carro mostra durante uma freada.', hasGabarito:true, gabarito:'Espera-se que o aluno diferencie a média (deslocamento/tempo total) da instantânea (limite quando o intervalo de tempo tende a zero), com um exemplo concreto.' },
+  { id:2, student:'Rafael Antunes', initials:'RA', color:'#5c6875', item:'Trabalho: relatório de queda livre', typeLabel:'Trabalho (arquivo)', deliveredDate:'20/09', waitDays:2, maxPoints:20, prompt:'Entregue um relatório com a medição experimental do tempo de queda de um objeto e a comparação com o valor teórico.', hasSubmission:true, isFile:true, fileName:'relatorio-queda-livre-rafael.pdf', fileSize:'1,8 MB', hasGabarito:false },
+  { id:3, student:'Helena Vasques', initials:'HV', color:'#c9a227', item:'Missão: Vetores no cotidiano', typeLabel:'Dissertativa', deliveredDate:'21/09', waitDays:1, maxPoints:15, prompt:'Descreva uma situação do seu dia a dia em que um vetor com direção e sentido específicos faz diferença no resultado.', hasSubmission:true, isFile:false, answerText:'Quando ando de bicicleta contra o vento, a força do vento tem direção contrária à minha, o que exige mais esforço do que quando o vento sopra a favor.', hasGabarito:true, gabarito:'Qualquer exemplo válido que demonstre entendimento de módulo, direção e sentido de um vetor aplicado a uma situação real.' },
+  { id:4, student:'Beatriz Lemos', initials:'BL', color:'#17a398', item:'Quiz de fixação · questão 3', typeLabel:'Dissertativa', deliveredDate:'—', waitDays:5, maxPoints:5, prompt:'O prazo desta questão venceu em 18/09 e não há resposta registrada.', hasSubmission:false, isFile:false, hasGabarito:false }
+];
+
+const NAV_HREFS = {
+  visao: 'Console%20Visao%20Geral%20(Fase%202).dc.html',
+  trilhas: 'Console%20Trilhas%20(Fase%202).dc.html',
+  missoes: 'Console%20Missoes%20(Fase%202).dc.html',
+  notas: 'Console%20Notas%20(Fase%202).dc.html',
+  eventos: 'Console%20Eventos%20(Fase%202).dc.html',
+  rankbatalhas: 'Console%20Rank%20de%20Batalhas%20(Fase%202).dc.html',
+  conquistas: 'Console%20Conquistas%20(Fase%202).dc.html',
+  turmas: 'Console%20Turmas%20(Fase%202).dc.html',
+  personalizacoes: 'Console%20Personalizacoes%20(Fase%202).dc.html',
+  rankings: 'Console%20Rankings%20(Fase%202).dc.html',
+  meusdados: 'Console%20Meus%20Dados%20(Fase%202).dc.html',
+  aprovacoes: 'Console%20Aprovacoes%20(Fase%202).dc.html'
+};
+
+class Component extends DCLogic {
+  state = {
+    mainTab: 0,
+    tab: 0, escribaOpen: false,
+    showForm: false, editing: false,
+    showAiDialog: false, aiPhase: 'config', aiCount: 3,
+    dupId: null, delId: null,
+    timeMode: 'notimer',
+    refusing: {}, refuseReason: {},
+    notasStatus: 0, notasPanelId: null, notasGradeDraft: {}
+  };
+
+  navIcon(name) {
+    const icons = {
+      visao: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
+      trilhas: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8 7.5C10 10 14 14 16 16.5"/></svg>',
+      missoes: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r="1"/></svg>',
+      eventos: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18"/><path d="M8 2v4M16 2v4"/></svg>',
+      turmas: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/></svg>',
+      personalizacoes: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/><path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2z"/></svg>',
+      rankings: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 6H4a2 2 0 0 0 2 4"/><path d="M17 6h3a2 2 0 0 1-2 4"/></svg>',
+      conquistas: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 15.3l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"/></svg>',
+      meusdados: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+      notas: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 3h9l4 4v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M9 13l2 2 4-4"/></svg>',
+      rankbatalhas: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M16 16l4 4"/><path d="M19 21l2-2"/><path d="M9.5 6.5L13 3h3v3l-3.5 3.5"/><path d="M5 14l4 4"/><path d="M7 17l-3 3"/></svg>',
+      aprovacoes: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2l8 3v6c0 5-3.5 8.5-8 11-4.5-2.5-8-6-8-11V5l8-3z"/><path d="M9 12l2 2 4-4"/></svg>'
+    };
+    return { __html: icons[name] };
+  }
+
+  notasWaitLabel(days) {
+    if (days === 0) return 'entregue hoje';
+    return `esperando há ${days} dia${days > 1 ? 's' : ''}`;
+  }
+
+  renderVals() {
+    const navItems = [
+      { key:'visao', label:'Visão geral', active:false },
+      { key:'trilhas', label:'Trilhas', active:false },
+      { key:'missoes', label:'Missões', active:true },
+      { key:'notas', label:'Notas', active:false },
+      { key:'eventos', label:'Eventos', active:false },
+      { key:'rankbatalhas', label:'Rank de batalhas', active:false },
+      { key:'conquistas', label:'Conquistas', active:false },
+      { key:'turmas', label:'Turmas', active:false },
+      { key:'personalizacoes', label:'Personalizações', active:false },
+      { key:'rankings', label:'Rankings', active:false },
+      { key:'meusdados', label:'Meus dados', active:false },
+      { key:'aprovacoes', label:'Aprovações', active:false }
+    ].map(n => ({
+      label: n.label, iconHtml: this.navIcon(n.key), color: n.active ? '#4fd1c5' : '#a29cb3', href: NAV_HREFS[n.key],
+      style: `display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;white-space:nowrap;${n.active ? 'background:rgba(79,209,197,0.08);font-weight:600;' : ''}`
+    }));
+
+    const mainTab = this.state.mainTab;
+    const mainTabs = ['Missões','Notas'].map((l,i) => ({
+      label: l, select: () => this.setState({ mainTab: i }),
+      style: `padding:12px 4px; margin-right:24px; font-size:14px; font-weight:600; cursor:pointer; border-bottom:2px solid ${mainTab===i ? '#9b5de5' : 'transparent'}; color:${mainTab===i ? '#f4f2f8' : '#a29cb3'};`
+    }));
+    const isMainTab0 = mainTab === 0, isMainTab1 = mainTab === 1;
+
+    const tab = this.state.tab;
+    const tabs = ['Missões','Sugestões da IA'].map((l,i) => ({
+      label: l, select: () => this.setState({ tab: i }),
+      style: `padding:9px 4px; margin-right:20px; font-size:13.5px; font-weight:600; cursor:pointer; border-bottom:2px solid ${tab===i ? '#9b5de5' : 'transparent'}; color:${tab===i ? '#f4f2f8' : '#a29cb3'};`
+    }));
+
+    const missions = MISSIONS.map(m => ({
+      title: m.title, scope: m.scope, deadline: m.deadline, points: m.points, delivered: m.delivered, total: m.total,
+      deliveryColor: m.delivered === m.total ? '#5fd99a' : '#f4f2f8',
+      timeBadge: m.deadline.includes('cronômetro') ? 'Com cronômetro' : 'Sem tempo limite',
+      timeBadgeStyle: `padding:3px 10px; border-radius:999px; font-size:10px; font-weight:700; white-space:nowrap; ${m.deadline.includes('cronômetro') ? 'background:rgba(224,179,77,0.16); color:#e0b34d;' : 'background:#231d33; color:#a29cb3;'}`,
+      hasPending: m.pendingCount > 0, pendingCount: m.pendingCount,
+      askDup: () => this.setState({ dupId: m.title }),
+      askDel: () => this.setState({ delId: m.title }),
+      openEdit: () => this.setState({ showForm: true, editing: true }),
+      goToNotas: () => { window.location.href = NAV_HREFS.notas; }
+    }));
+
+    const suggestions = SUGGESTIONS.map(s => ({
+      title: s.title, objective: s.objective, items: s.items, deadline: s.deadline, points: s.points,
+      refusing: !!this.state.refusing[s.key],
+      reasons: REFUSE_REASONS.map(r => ({
+        label: r, select: () => this.setState({ refuseReason: { ...this.state.refuseReason, [s.key]: r } }),
+        style: `padding:9px 12px; border-radius:12px; font-size:12.5px; cursor:pointer; ${this.state.refuseReason[s.key]===r ? 'background:#9b5de5; color:#fff; font-weight:600;' : 'background:#231d33; border:1px solid #2b2438; color:#c9c4d4;'}`
+      })),
+      approve: () => {},
+      editApprove: () => this.setState({ showForm: true, editing: true }),
+      startRefuse: () => this.setState({ refusing: { ...this.state.refusing, [s.key]: true } }),
+      cancelRefuse: () => this.setState({ refusing: { ...this.state.refusing, [s.key]: false } }),
+      confirmRefuseStyle: `padding:8px 15px; border-radius:999px; background:#e2574c; font-size:12px; font-weight:700; color:#fff; cursor:pointer; ${this.state.refuseReason[s.key] ? '' : 'opacity:0.5; pointer-events:none;'}`,
+      confirmRefuse: () => this.setState({ refusing: { ...this.state.refusing, [s.key]: false } })
+    }));
+
+    const timeModeOptions = [
+      { key:'timed', label:'Com cronômetro por questão' },
+      { key:'notimer', label:'Sem tempo, tentativas ilimitadas' }
+    ].map(t => ({
+      label: t.label, select: () => this.setState({ timeMode: t.key }),
+      style: `padding:9px 15px; border-radius:999px; font-size:12.5px; font-weight:600; cursor:pointer; ${this.state.timeMode===t.key ? 'background:#9b5de5; color:#fff;' : 'background:#231d33; border:1px solid #2b2438; color:#c9c4d4;'}`
+    }));
+
+    const countOptions = [2,3,4,5].map(n => ({
+      label: String(n), select: () => this.setState({ aiCount: n }),
+      style: `width:38px; height:38px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:13.5px; font-weight:700; cursor:pointer; ${this.state.aiCount===n ? 'background:#9b5de5; color:#fff;' : 'background:#231d33; border:1px solid #2b2438; color:#c9c4d4;'}`
+    }));
+
+    // ---- Notas tab ----
+    const notasStatusOptions = ['Pendentes de correção','Já corrigidas','Todas'].map((l,i) => ({
+      label: l, select: () => this.setState({ notasStatus: i }),
+      style: `padding:8px 15px; border-radius:999px; font-size:12.5px; font-weight:600; cursor:pointer; white-space:nowrap; ${this.state.notasStatus===i ? 'background:#9b5de5; color:#fff;' : 'background:#1b1728; border:1px solid #2b2438; color:#c9c4d4;'}`
+    }));
+
+    const notasSorted = [...NOTAS_QUEUE].sort((a,b) => b.waitDays - a.waitDays);
+    const notasQueue = notasSorted.map(q => ({
+      student: q.student, initials: q.initials, color: q.color, item: q.item, typeLabel: q.typeLabel, deliveredDate: q.deliveredDate,
+      waitLabel: this.notasWaitLabel(q.waitDays),
+      waitStyle: `font-size:11.5px; font-weight:700; margin-top:3px; color:${q.waitDays >= 3 ? '#e0b34d' : '#a29cb3'};`,
+      borderColor: !q.hasSubmission ? '#7a3a3a' : '#2b2438',
+      open: () => this.setState({ notasPanelId: q.id })
+    }));
+
+    const notasCurRaw = NOTAS_QUEUE.find(q => q.id === this.state.notasPanelId) || NOTAS_QUEUE[0];
+    const notasIdx = NOTAS_QUEUE.findIndex(q => q.id === notasCurRaw.id);
+    const notasCur = {
+      student: notasCurRaw.student, initials: notasCurRaw.initials, color: notasCurRaw.color, item: notasCurRaw.item, typeLabel: notasCurRaw.typeLabel,
+      maxPoints: notasCurRaw.maxPoints, prompt: notasCurRaw.prompt, hasSubmission: notasCurRaw.hasSubmission, isFile: !!notasCurRaw.isFile,
+      answerText: notasCurRaw.answerText || '', fileName: notasCurRaw.fileName || '', fileSize: notasCurRaw.fileSize || '',
+      hasGabarito: !!notasCurRaw.hasGabarito, gabarito: notasCurRaw.gabarito || '',
+      gradeDraft: this.state.notasGradeDraft[notasCurRaw.id] ?? Math.round(notasCurRaw.maxPoints * 0.8)
+    };
+
+    return {
+      navItems, mainTabs, isMainTab0, isMainTab1,
+      pageSubtitle: isMainTab1 ? 'Correção de questões dissertativas, trabalhos e entregas que dependem de leitura.' : 'Objetivos avaliativos com prazo, pontuação e recompensa própria.',
+      tabs, isTabList: tab === 0, isTabAI: tab === 1,
+      missions, suggestions,
+      approvalStat: '7 de 10 sugestões aprovadas até agora',
+      showForm: this.state.showForm,
+      formTitle: this.state.editing ? 'Editar missão' : 'Nova missão',
+      formTitleValue: this.state.editing ? 'Cinemática em movimento' : 'Ex.: Desafio de queda livre',
+      formObjective: this.state.editing ? 'Levar o aluno a comparar previsão e resultado real de um experimento de cinemática.' : 'Ex.: o que se espera que o aluno atinja ao concluir esta missão.',
+      formItems: this.state.editing ? [{ name:'Quiz de fixação — cinemática', kind:'ATIVIDADE' }, { name:'Vídeo: queda livre no cotidiano', kind:'LINK' }] : [],
+      timeModeOptions, isTimedMode: this.state.timeMode === 'timed',
+      openForm: () => this.setState({ showForm: true, editing: false }),
+      closeForm: () => this.setState({ showForm: false }),
+      saveForm: () => this.setState({ showForm: false }),
+      showAiDialog: this.state.showAiDialog,
+      isAiConfig: this.state.aiPhase === 'config', isAiProcessing: this.state.aiPhase === 'processing',
+      countOptions,
+      openAiDialog: () => this.setState({ showAiDialog: true, aiPhase: 'config' }),
+      closeAiDialog: () => this.setState({ showAiDialog: false }),
+      startAiGenerate: () => this.setState({ aiPhase: 'processing' }),
+      showDupConfirm: !!this.state.dupId, dupName: this.state.dupId || '',
+      cancelDup: () => this.setState({ dupId: null }), confirmDup: () => this.setState({ dupId: null }),
+      showDelConfirm: !!this.state.delId, delName: this.state.delId || '',
+      cancelDel: () => this.setState({ delId: null }), confirmDel: () => this.setState({ delId: null }),
+      escribaOpen: this.state.escribaOpen,
+      toggleEscriba: () => this.setState(s => ({ escribaOpen: !s.escribaOpen })),
+
+      notasStatusOptions, notasQueue,
+      notasQueueEmpty: notasQueue.length === 0 && this.state.notasStatus === 0,
+      notasPanelOpen: !!this.state.notasPanelId,
+      notasClosePanel: () => this.setState({ notasPanelId: null }),
+      notasCur,
+      notasSaveGrade: () => this.setState({ notasPanelId: null }),
+      notasPrevEntry: () => { if (notasIdx > 0) this.setState({ notasPanelId: NOTAS_QUEUE[notasIdx-1].id }); },
+      notasNextEntry: () => { if (notasIdx < NOTAS_QUEUE.length-1) this.setState({ notasPanelId: NOTAS_QUEUE[notasIdx+1].id }); },
+      notasPrevStyle: `flex:1; display:flex; align-items:center; justify-content:center; gap:6px; padding:11px; border-radius:999px; border:1px solid #2b2438; font-size:13px; font-weight:600; cursor:pointer; ${notasIdx===0 ? 'opacity:0.4; pointer-events:none;' : ''} color:#f4f2f8;`,
+      notasNextStyle: `flex:1; display:flex; align-items:center; justify-content:center; gap:6px; padding:11px; border-radius:999px; background:#9b5de5; font-size:13px; font-weight:700; cursor:pointer; ${notasIdx===NOTAS_QUEUE.length-1 ? 'opacity:0.4; pointer-events:none;' : ''} color:#fff;`
+    };
+  }
+}
+
+</script>
+</body>
+</html>

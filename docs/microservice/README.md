@@ -1,4 +1,4 @@
-﻿# Documentacao tecnica
+# Documentacao tecnica
 
 ## Como navegar neste diretorio
 1. Leia o `README.md` da raiz do repositorio para contexto rapido.

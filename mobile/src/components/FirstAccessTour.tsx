@@ -308,7 +308,7 @@ export function FirstAccessTour({
           </View>
         ) : null}
 
-        <View style={[styles.topBar, { paddingTop: Math.max(18, height * 0.025) }]}>
+        <View style={[styles.topBar, { paddingTop: insets.top + Math.max(8, height * 0.012) }]}>
           <View style={[styles.pageChip, { backgroundColor: palette.surfaceElevated, borderColor: bubbleBorder }]}>
             <MaterialCommunityIcons name="map-marker-path" size={15} color={accent} />
             <Text style={[styles.pageChipText, { color: palette.text }]}>{currentStep.page}</Text>

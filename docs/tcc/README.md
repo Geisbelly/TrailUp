@@ -1,4 +1,4 @@
-﻿# Pacote TCC - Documentacao estruturada
+# Pacote TCC - Documentacao estruturada
 
 Data de atualizacao: 2026-04-19
 

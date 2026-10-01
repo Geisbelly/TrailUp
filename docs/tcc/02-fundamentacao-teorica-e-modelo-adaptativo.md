@@ -1,4 +1,4 @@
-﻿# 02. Fundamentacao teorica e modelo adaptativo
+# 02. Fundamentacao teorica e modelo adaptativo
 
 Data de atualizacao: 2026-04-19
 

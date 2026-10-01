@@ -1,4 +1,4 @@
-﻿# Arquitetura do App (API TrailUp) - Versão Detalhada
+# Arquitetura do App (API TrailUp) - Versão Detalhada
 
 ## 1. Propósito deste documento
 Este documento descreve a arquitetura **do app backend principal** (API TrailUp), separada da arquitetura do microserviço de mídia. O foco é explicar responsabilidades, limites, fluxos, decisões técnicas, pontos críticos de operação e evolução.

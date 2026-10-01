@@ -1,4 +1,4 @@
-﻿# Segurança do Ecossistema TrailUp
+# Segurança do Ecossistema TrailUp
 
 Atualizado em: 2026-04-13
 

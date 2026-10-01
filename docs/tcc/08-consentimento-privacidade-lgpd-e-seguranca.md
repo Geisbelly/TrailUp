@@ -1,4 +1,4 @@
-﻿# 08. Consentimento, privacidade, LGPD e seguranca
+# 08. Consentimento, privacidade, LGPD e seguranca
 
 Data de atualizacao: 2026-04-19
 
