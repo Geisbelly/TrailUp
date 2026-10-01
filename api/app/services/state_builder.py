@@ -56,7 +56,7 @@ async def build_initial_state(
         "conteudo_adaptado": None,
         "materiais_gerados": None,
         "gerar_materiais": gerar_materiais,
-        "materiais_cache_hit": False,
+        "m2_overrides": None,
         "notificacao_payload": None,
         "ui_config": None,
         "textos_gerados": [],

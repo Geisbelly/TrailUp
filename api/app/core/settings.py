@@ -173,7 +173,7 @@ class Settings(BaseSettings):
     interaction_model_provider: str = "hidden_markov_model"
     performance_model_provider: str = "deep_knowledge_tracing"
     attention_model_provider: str = "random_forest"
-    decision_model_provider: str = "xgboost"
+    decision_model_provider: str = "xgboost"  # "xgboost" | "m2gated" (gate M2, issue #215; opt-in)
     adaptive_content_provider: str = "graph_llm"
 
     @property
