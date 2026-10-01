@@ -58,6 +58,7 @@ class TrailUpState(TypedDict, total=False):
     pipeline_stage_outputs: dict[str, Any] | None
     attention_snapshot: dict[str, Any] | None
     decision_snapshot: dict[str, Any] | None
+    m2_overrides: dict[str, float] | None
 
     next: list[str]
     ciclo_id: str

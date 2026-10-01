@@ -300,13 +300,27 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 > `atividade_aluno` é **derivado por trigger** a partir da telemetria. Nenhum
 > cliente escreve essa coluna.
 
-> Lacuna real ainda aberta: `MentalStateHistoryRepository.listar_por_aluno`
-> (`api/app/repositories/mental_state.py`) só é exercitado em teste — o
-> histórico em `aluno_mental_state_history` é **gravado** a cada ciclo
-> (`analysis_runner.py`) mas **nunca lido de volta** por nenhum nó do grafo ou
-> serviço para influenciar decisões (ex.: detectar frustração recorrente ao
-> longo de vários ciclos). É plumbing write-only até alguém decidir o que fazer
-> com a leitura.
+> O histórico em `aluno_mental_state_history` **é lido de volta** (isto já foi
+> descrito aqui como lacuna aberta; não é mais). `memoria_aluno.ler_memoria`
+> chama `MentalStateHistoryRepository.listar_por_aluno` e
+> `state_builder.build_initial_state` põe o resultado no estado inicial do
+> grafo. Três detalhes que não são óbvios:
+>
+> - **A leitura é uma janela, não o histórico.** `listar_por_aluno` vem com
+>   `limit=_JANELA_RECORRENCIA` (5). Recorrência é 3 dos **últimos 5** registros
+>   com o mesmo `kind` negativo (`frustrated`, `anxious`, `overwhelmed`,
+>   `tired`) — não "3 vezes desde sempre". Aumentar a janela muda o significado
+>   do sinal, não só a sensibilidade.
+> - **`_detectar_recorrencia` é pura e assume ordenação do mais recente para o
+>   mais antigo**, que é o que o repositório devolve. Trocar o `ORDER BY` lá
+>   inverte o sentido da janela sem erro nenhum — os 5 mais **antigos**
+>   passariam a decidir.
+> - **`ler_memoria` nunca levanta:** falha de leitura vira memória vazia
+>   (mesmo princípio de fallback dos guardrails de pipeline). O efeito colateral
+>   é que tabela indisponível é indistinguível de "aluno sem recorrência" — o
+>   grafo decide como se estivesse tudo bem. Ao investigar recorrência que não
+>   dispara, confira o log de `Falha ao ler memoria do aluno` antes de suspeitar
+>   do limiar.
 
 ## Convenções
 
