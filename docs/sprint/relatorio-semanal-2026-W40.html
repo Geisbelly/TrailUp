@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Relatório semanal TrailUp · 2026-W40 · 26/09–02/10/2026</title>
+<style>
+:root { --bg:#0f1419; --card:#1a2332; --ink:#e8eef7; --muted:#9aa8bc; --accent:#5b9fd4; --ok:#3ecf8e; --warn:#f0b429; --line:#2a3648; }
+* { box-sizing: border-box; }
+body { margin:0; font-family: "Segoe UI", system-ui, sans-serif; background:var(--bg); color:var(--ink); line-height:1.5; }
+.wrap { max-width:980px; margin:0 auto; padding:32px 20px 64px; }
+h1 { font-size:1.75rem; margin:0 0 8px; }
+h2 { font-size:1.25rem; margin:28px 0 12px; border-bottom:1px solid var(--line); padding-bottom:6px; color:var(--accent); }
+h3 { font-size:1.05rem; margin:18px 0 8px; }
+.meta { color:var(--muted); font-size:0.95rem; margin-bottom:24px; }
+.kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; margin:16px 0 28px; }
+.kpi { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 16px; }
+.kpi .n { font-size:1.6rem; font-weight:700; color:var(--ok); }
+.kpi .l { font-size:0.8rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+table { width:100%; border-collapse:collapse; font-size:0.92rem; margin:8px 0 16px; }
+th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+th { color:var(--muted); font-weight:600; font-size:0.8rem; text-transform:uppercase; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px 18px; margin:12px 0; }
+ul.compact { margin:6px 0; padding-left:18px; }
+ul.compact li { margin:2px 0; }
+a { color:var(--accent); text-decoration:none; }
+a:hover { text-decoration:underline; }
+.tag { display:inline-block; font-size:0.75rem; padding:2px 8px; border-radius:999px; background:#243044; color:var(--muted); margin-right:4px; }
+.note { color:var(--muted); font-size:0.9rem; }
+footer { margin-top:40px; color:var(--muted); font-size:0.85rem; border-top:1px solid var(--line); padding-top:16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Relatório semanal TrailUp</h1>
+  <p class="meta">Semana <strong>2026-W40</strong> · 26/09/2026 00:00 – 02/10/2026 ~17:00 America/Sao_Paulo<br/>
+  Fonte: <a href="https://github.com/BitStudioLabs/trail-up">BitStudioLabs/trail-up</a> · Gerado em 02/10/2026 ~17:00 BRT · Dados via GitHub API (sem métricas inventadas)</p>
+
+  <div class="kpis">
+    <div class="kpi"><div class="n">65</div><div class="l">PRs merged</div></div>
+    <div class="kpi"><div class="n">24</div><div class="l">PRs abertos</div></div>
+    <div class="kpi"><div class="n">80</div><div class="l">Commits (total)</div></div>
+    <div class="kpi"><div class="n">61</div><div class="l">Commits não-merge</div></div>
+    <div class="kpi"><div class="n">14</div><div class="l">Issues fechadas</div></div>
+  </div>
+
+  <h2>Resumo por participante</h2>
+  <table>
+    <thead><tr><th>Pessoa</th><th>PRs merged</th><th>PRs abertos</th><th>Commits</th><th>Issues fechadas</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Geisbelly</strong></td><td>36</td><td>22</td><td>36 <span class='note'>(50 c/ merges)</span></td><td>7</td></tr><tr><td><strong>JP-batista (JP)</strong></td><td>21</td><td>0</td><td>14 <span class='note'>(16 c/ merges)</span></td><td>0</td></tr><tr><td><strong>0spura (Luís)</strong></td><td>4</td><td>2</td><td>9 <span class='note'>(9 c/ merges)</span></td><td>7</td></tr><tr><td><strong>rafantavares (Rafinha / gaRafinha)</strong></td><td>4</td><td>0</td><td>2 <span class='note'>(5 c/ merges)</span></td><td>0</td></tr>
+    </tbody>
+  </table>
+  <p class="note">Guilherme: nenhum commit/PR identificado nesta janela no Lab. Bots: não apareceram como autores.</p>
+
+  <h2>Objetivos alcançados (vs Sprint Planning 2)</h2>
+  <div class="card">
+    <p>Mapeamento das issues/PRs da semana contra as frentes A–E de <code>docs/sprint/sprint-planning-2.md</code>:</p>
+    <ul class="compact">
+      <li><strong>Frente B (console professor)</strong> — avanço forte: JP entregou e mergeou as fases do redesign/dashboard/turmas (#258–#268, #273–#284, #256–#257). Alinha com #214 / #6 / #15 / #56 / #156 (ainda podem estar abertas no board; o código das fases 2–10 + turmas entrou em main).</li>
+      <li><strong>Frente C (ML/LLM)</strong> — issue <a href="https://github.com/BitStudioLabs/trail-up/issues/215">#215</a> fechada; PR <a href="https://github.com/BitStudioLabs/trail-up/pull/275">#275</a> (gate M2). #216 (Jev) segue com PR aberto de docs <a href="https://github.com/BitStudioLabs/trail-up/pull/271">#271</a>.</li>
+      <li><strong>Frente D (RAG dados)</strong> — fechadas #70–#75 (inventário, triagem, extração, curadoria, política sensíveis, golden set) via PRs #277–#279. Tasks de integração #63/#64/#66/#67 continuam abertas; reconciliação #63×#165 documentada na triagem.</li>
+      <li><strong>Frente E (web aluno)</strong> — Rafinha: perf code-splitting mobile/web (#232) e protótipos v1/v2 da área web do aluno (#233, #239, #269) — progresso em #29/#219 (protótipo, não DoD completo).</li>
+      <li><strong>Frente A (bugs aluno)</strong> — vários fixes mobile/API/telemetria merged por Geisbelly (#234–#252 etc.), mas as issues canônicas da frente (#27, #28, #157, #177, #186, #189, #217) <em>não</em> aparecem na lista de fechadas desta semana.</li>
+      <li><strong>Fora da sprint (dívidas)</strong> — telemetria #89, #90, #92, #93, #99 e docs mental-state #18/#38 fechadas.</li>
+    </ul>
+    <h4>Issues da sprint fechadas na semana</h4>
+    <ul class="compact"><li><a href='https://github.com/BitStudioLabs/trail-up/issues/70'>#70</a> [Dados] Inventário e proveniência do Dataset_TrailUp</li><li><a href='https://github.com/BitStudioLabs/trail-up/issues/71'>#71</a> [Dados] Triagem: o que é corpus de RAG e o que é conjunto de pesquisa</li><li><a href='https://github.com/BitStudioLabs/trail-up/issues/72'>#72</a> [Dados] Extração e normalização dos PDFs de literatura</li><li><a href='https://github.com/BitStudioLabs/trail-up/issues/73'>#73</a> [Dados] Curadoria pedagógica: metadados que tornam o chunk acionável</li><li><a href='https://github.com/BitStudioLabs/trail-up/issues/74'>#74</a> [Dados] Política de uso dos conjuntos sensíveis (saúde mental, neurodivergência, facial)</li><li><a href='https://github.com/BitStudioLabs/trail-up/issues/75'>#75</a> [Dados] Golden set para avaliar o retrieval</li><li><a href='https://github.com/BitStudioLabs/trail-up/issues/215'>#215</a> [API/Mobile] Integrar os modelos M2 (.pkl) do core-trailup na API e no mobile</li></ul>
+    <h4>Outras issues fechadas</h4>
+    <ul class="compact"><li><a href='https://github.com/BitStudioLabs/trail-up/issues/18'>#18</a> [Docs] CLAUDE.md aponta lacuna de mental state que já foi fechada</li><li><a href='https://github.com/BitStudioLabs/trail-up/issues/38'>#38</a> aluno_mental_state_history e gravada mas nunca lida</li><li><a href='https://github.com/BitStudioLabs/trail-up/issues/89'>#89</a> Telemetria: a conta de tempo le um contador cumulativo que o app nao envia mais</li><li><a href='https://github.com/BitStudioLabs/trail-up/issues/90'>#90</a> Telemetria: reenvio pelo fallback duplica as metricas granulares</li><li><a href='https://github.com/BitStudioLabs/trail-up/issues/92'>#92</a> Telemetria: frames da camera em base64 sao gravados em ia_decision_logs</li><li><a href='https://github.com/BitStudioLabs/trail-up/issues/93'>#93</a> Telemetria: o fallback grava os frames da camera no payload do lote</li><li><a href='https://github.com/BitStudioLabs/trail-up/issues/99'>#99</a> Telemetria: a sessao de estudo morre em segundos e a visita ao topico nunca conta</li></ul>
+  </div>
+
+  <h2>Meta da próxima semana</h2>
+  <div class="card">
+    <p>Há <strong>24 PRs abertos</strong> no Lab (22 de Geisbelly + #270/#271 de 0spura). Prioridade sugerida:</p>
+    <ol>
+      <li>Revisar/mergear fila Geisbelly (#293–#314): CI/segurança (#299, #303, #308), console/KPIs (#298, #301, #304, #307), mobile/LGPD (#306, #309), signup BrainHex (#310–#314), FER+ (#305).</li>
+      <li>Fechar #270 (OAuth Google + PKCE — ligado a #217) e #271 (evidência Jev / #216).</li>
+      <li>Frente A: puxar e fechar bugs canônicos ainda em backlog (#27, #28, #157, #177, #186, #189, #217).</li>
+      <li>Frente D: decidir caminho canônico RAG (#63 vs #165) e avançar #63/#64/#66/#67.</li>
+      <li>Frente E: levar protótipo web do aluno (#219) para implementação após aprovação; manter pressão em #29 (code splitting).</li>
+      <li>Amostra de CI em abertos (#270, #294, #299, #314): checks verdes nos jobs amostrados — não disponível um varredura completa de CI vermelho para todos os 24; checar antes do merge item a item.</li>
+    </ol>
+  </div>
+
+  <h2>Detalhe por participante</h2>
+  
+    <div class="card">
+      <h3>Geisbelly</h3>
+      <p><span class="tag">merged 36</span>
+         <span class="tag">abertos 22</span>
+         <span class="tag">commits 36</span>
+         <span class="tag">issues 7</span></p>
+      <h4>PRs merged</h4>
+      <ul class="compact"><li><a href='https://github.com/BitStudioLabs/trail-up/pull/226'>#226</a> fix(frontend): apagar Storage só após o cascade do banco confirmar</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/227'>#227</a> fix(db): remove a checagem de storage.objects, que reprovava toda geração nova pós-R2</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/228'>#228</a> test(api): trava a correção de aluno_id=None em buscar_por_ciclo_id</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/229'>#229</a> fix(db): bucket conteudo_aluno ganha policy de SELECT no Storage</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/230'>#230</a> fix(console): renderiza material pelo gateway (proxy) e mostra falha de geração</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/234'>#234</a> fix(mobile): diagrama em SVG era descartado pelo parser, não renderizado errado</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/235'>#235</a> fix(api): URL de material aponta para o gateway, não para o Storage direto</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/236'>#236</a> fix(tempo): coleta de tempo sem dobro no tópico/conteúdo e sem perder sessão concorrente</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/237'>#237</a> fix(telemetria): sessão encerra ao sair do tópico, sem esperar a fila de envio</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/238'>#238</a> fix(mobile): corrige mojibake nas mensagens de erro do TrilhaContext</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/240'>#240</a> fix(mobile): remove usesCleartextTraffic inerte do app.json</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/241'>#241</a> fix(mobile): botão "Pular" do tutorial inicial fica sob a barra de status</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/242'>#242</a> fix(brainhexpdf): cor-assinatura do Conqueror nos slides era vermelha</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/243'>#243</a> fix(api): status "pronto" gravado sobre mídia falhada ou pendente</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/244'>#244</a> fix(api): respostas devolviam a string "None" como aluno_id</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/245'>#245</a> fix(mobile): V ou F permitia nova tentativa por eliminação valendo metade</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/246'>#246</a> fix(mobile): roteiro do TTS deixa de virar bloco de conteúdo do aluno</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/247'>#247</a> fix(mobile): checkpoint do tópico concluído era apagado a cada render</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/248'>#248</a> chore(pipeline): MEDIA_PIPELINE_VERSION 2026-08-24.3 → 2026-09-27.1</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/249'>#249</a> fix(api): console volta a ver a geração disparada pelo botão "gerar"</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/250'>#250</a> fix(api): declara sqlalchemy[asyncio], que traz o greenlet de volta</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/251'>#251</a> fix(brainhexpdf): resposta truncada deixa de jogar os slides fora</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/252'>#252</a> fix(brainhexpdf): teto de texto nos campos livres do slide</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/253'>#253</a> fix(api): patch de mídia mira a linha da geração, não "a mais recente do tipo"</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/254'>#254</a> fix(api): serializa as 3 cabeças de alembic que a main acumulou</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/255'>#255</a> fix(console): erro de geração passa a dizer quando foi registrado</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/272'>#272</a> docs: mental state deixou de ser lacuna, e vira o que é preciso saber dela</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/283'>#283</a> docs: inventaria o schema de produção que não está no git</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/285'>#285</a> fix(telemetria): a falha da análise deixa de ser invisível</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/286'>#286</a> fix(mobile): o termo de coleta deixa de dizer que a câmera é analisada</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/287'>#287</a> docs(api): cada estágio de análise diz que é heurística, não o algoritmo do nome</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/288'>#288</a> docs: mapeia a coleta de métricas, da captura até a realimentação</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/289'>#289</a> docs: a API roda no Dokploy, não no Render</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/290'>#290</a> fix: aplica a regra de UTF-8 sem BOM na api, e corrige um mojibake real</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/291'>#291</a> chore(api): remove build_personalizacao_state, morta desde abril</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/292'>#292</a> fix(docs): repara mojibake e tira o BOM de toda a documentação</li></ul>
+      <h4>PRs abertos agora</h4>
+      <ul class="compact"><li><a href='https://github.com/BitStudioLabs/trail-up/pull/293'>#293</a> fix(microservice): tira o crypto do módulo de contrato de versões</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/294'>#294</a> fix(mobile): o CI passa a rodar os testes, e 24 arquivos órfãos entram na suíte</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/295'>#295</a> fix(mobile): escrita no Supabase que falha deixa de sumir sem rastro</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/296'>#296</a> fix(frontend): regenera os tipos do Supabase, e corrige um título que nunca aparecia</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/297'>#297</a> fix(frontend): zera os 13 erros de tipo e liga o type-check no CI</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/298'>#298</a> fix(console): duplicar classe e gerar trilha param de anunciar sucesso parcial</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/299'>#299</a> chore(api): tira a chave anon real do .env.example e adiciona guard</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/300'>#300</a> fix(frontend): corrige premissa falsa sobre a cor oficial do mastermind</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/301'>#301</a> fix(console): fallback nao rebaixa URL de material do gateway para a direta</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/302'>#302</a> docs: sao duas as views sem security_invoker, e o que as separa e o GRANT</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/303'>#303</a> fix(ci): merges em sequencia deixam de cancelar o CI da main</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/304'>#304</a> fix(console): fallback volta a contar alunos por perfil, em vez de mostrar 0</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/305'>#305</a> feat(api): estagio de emocao que de fato olha para a imagem (FER+ local)</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/306'>#306</a> feat(mobile): termo v4 descreve a analise de expressao facial</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/307'>#307</a> feat(console): presenca ao lado do tempo ativo, com os dois rotulados</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/308'>#308</a> fix(api): advisory lock serializa as migracoes entre instancias</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/309'>#309</a> fix(mobile): camera desligada por padrao, e aceitar o termo nao a liga</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/310'>#310</a> feat(signup): instrumento BrainHex com estilo de resposta controlado</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/311'>#311</a> feat(signup): bloco de ordenacao forcada, a parte ipsativa do BrainHex</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/312'>#312</a> feat(signup): tela de ordenacao no cadastro, com setas em vez de arrastar</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/313'>#313</a> feat(signup): guarda a MEDIDA do perfil, e corrige um vies dos pesos</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/314'>#314</a> feat(signup): atualizacao do perfil por evidencia, sem piso nem teto</li></ul>
+      <h4>Issues fechadas (assignee/autor)</h4>
+      <ul class="compact"><li><a href='https://github.com/BitStudioLabs/trail-up/issues/18'>#18</a> [Docs] CLAUDE.md aponta lacuna de mental state que já foi fechada</li><li><a href='https://github.com/BitStudioLabs/trail-up/issues/38'>#38</a> aluno_mental_state_history e gravada mas nunca lida</li><li><a href='https://github.com/BitStudioLabs/trail-up/issues/89'>#89</a> Telemetria: a conta de tempo le um contador cumulativo que o app nao envia mais</li><li><a href='https://github.com/BitStudioLabs/trail-up/issues/90'>#90</a> Telemetria: reenvio pelo fallback duplica as metricas granulares</li><li><a href='https://github.com/BitStudioLabs/trail-up/issues/92'>#92</a> Telemetria: frames da camera em base64 sao gravados em ia_decision_logs</li><li><a href='https://github.com/BitStudioLabs/trail-up/issues/93'>#93</a> Telemetria: o fallback grava os frames da camera no payload do lote</li><li><a href='https://github.com/BitStudioLabs/trail-up/issues/99'>#99</a> Telemetria: a sessao de estudo morre em segundos e a visita ao topico nunca conta</li></ul>
+      <h4>Commits (amostra não-merge)</h4>
+      <ul class="compact"><li>fix(api): lineariza Alembic — 20260930_01 após 20260929_02</li><li>fix(docs): repara mojibake e tira o BOM de toda a documentacao (#292)</li><li>chore(api): remove build_personalizacao_state, morta desde abril (#291)</li><li>fix: aplica a regra de UTF-8 sem BOM na api, e corrige um mojibake real (#290)</li><li>docs: a API roda no Dokploy, nao no Render (#289)</li><li>docs: mapeia a coleta de metricas, da captura ate a realimentacao (#288)</li><li>docs(api): cada estagio de analise diz que e heuristica, nao o algoritmo do nome (#287)</li><li>fix(mobile): o termo de coleta deixa de dizer que a camera e analisada (#286)</li><li>fix(telemetria): a falha da analise deixa de ser invisivel (#285)</li><li>docs: inventaria o schema de producao que nao esta no git (#283)</li><li>docs: mental state deixou de ser lacuna, e vira o que e preciso saber dela (#272)</li><li>fix(alembic): lineariza as tres cabecas de 2026-09-22</li><li class='note'>+ 18 outros commits (não-merge)</li></ul>
+    </div>
+    <div class="card">
+      <h3>JP-batista (JP)</h3>
+      <p><span class="tag">merged 21</span>
+         <span class="tag">abertos 0</span>
+         <span class="tag">commits 14</span>
+         <span class="tag">issues 0</span></p>
+      <h4>PRs merged</h4>
+      <ul class="compact"><li><a href='https://github.com/BitStudioLabs/trail-up/pull/231'>#231</a> docs(prototipos): protótipo V7 — correções pós-geração aplicadas</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/256'>#256</a> docs(prototipos): protótipo V9 — telas novas de gamificação incluídas</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/257'>#257</a> docs(prototipos): move prompts fase-1/fase-2 e v7 para dentro de professor/</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/258'>#258</a> feat(console): fundação visual do redesign Fase 2</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/259'>#259</a> feat(dashboard): estrutura, indicadores e estados da visão da turma (Fase 2)</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/260'>#260</a> feat(dashboard): gráficos por perfil e tabela de alunos no estilo novo (Fase 3)</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/261'>#261</a> feat(dashboard): detalhe do aluno vira página, com o aluno na URL (Fase 4)</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/262'>#262</a> feat(dashboard): "Precisam de atenção", abandono por aluno e sinal de atenção (Fase 5)</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/263'>#263</a> feat(dashboard): abas da visão da turma e aba Conteúdo (Fase 6)</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/264'>#264</a> feat(dashboard): aba Evolução da visão da turma (Fase 7)</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/265'>#265</a> feat(insights): banco e API dos insights da turma (Fase 8a)</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/266'>#266</a> feat(dashboard): aba Insights da visão da turma (Fase 8)</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/267'>#267</a> feat(dashboard): jornada real do aluno e intervenções por passo (Fase 9)</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/268'>#268</a> feat(console): Escriba, o assistente de IA do professor (Fase 10)</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/273'>#273</a> feat(turmas): cabeçalho, cards e estados da tela Turmas (Fase 1)</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/274'>#274</a> feat(turmas): formulário de turma e exclusão confirmada (Fase 2)</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/276'>#276</a> feat(turmas): atalho "Abrir trilha" / "Montar trilha" no card (Fase 3)</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/280'>#280</a> feat(turmas): modal de matrículas e visual da presença (Fase 4)</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/281'>#281</a> feat(turmas): duplicar turma com confirmação, numa função do banco (Fase 5)</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/282'>#282</a> feat(turmas): matrícula enfileira a personalização pelo banco (Fase 6)</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/284'>#284</a> chore(dashboard): leva ao main as fases 2 a 8 já aprovadas (#259–#266)</li></ul>
+      <h4>PRs abertos agora</h4>
+      <ul class="compact"><li class="note">nenhum</li></ul>
+      <h4>Issues fechadas (assignee/autor)</h4>
+      <ul class="compact"><li class="note">nenhuma</li></ul>
+      <h4>Commits (amostra não-merge)</h4>
+      <ul class="compact"><li>feat(dashboard): jornada real do aluno e intervenções por passo (Fase 9)</li><li>feat(dashboard): aba Insights da visão da turma (Fase 8)</li><li>feat(insights): banco e API dos insights da turma (Fase 8a)</li><li>feat(dashboard): aba Evolução da visão da turma (Fase 7)</li><li>feat(dashboard): abas da visão da turma e aba Conteúdo (Fase 6)</li><li>feat(dashboard): "Precisam de atenção", abandono por aluno e sinal de atenção (Fase 5)</li><li>feat(dashboard): detalhe do aluno vira página, com o aluno na URL (Fase 4)</li><li>feat(dashboard): gráficos por perfil e tabela de alunos no estilo novo (Fase 3)</li><li>feat(dashboard): estrutura, indicadores e estados da visão da turma (Fase 2)</li><li>feat(console): fundação visual do redesign Fase 2 (tokens, moldura, fundo)</li><li>docs(prototipos): move v9 para dentro de professor/, alinhado ao padrão novo</li><li>docs(prototipos): move prompts fase-1/fase-2 e v7 para dentro de professor/</li><li class='note'>+ 2 outros commits (não-merge)</li></ul>
+    </div>
+    <div class="card">
+      <h3>0spura (Luís)</h3>
+      <p><span class="tag">merged 4</span>
+         <span class="tag">abertos 2</span>
+         <span class="tag">commits 9</span>
+         <span class="tag">issues 7</span></p>
+      <h4>PRs merged</h4>
+      <ul class="compact"><li><a href='https://github.com/BitStudioLabs/trail-up/pull/275'>#275</a> feat(api): gate M2 decide quando chamar a LLM</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/277'>#277</a> docs(rag): triagem corpus x pesquisa e reconciliacao #63 x #165</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/278'>#278</a> docs(rag): politica de uso dos conjuntos sensiveis</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/279'>#279</a> docs(rag): contrato do pipeline extracao-curadoria-golden</li></ul>
+      <h4>PRs abertos agora</h4>
+      <ul class="compact"><li><a href='https://github.com/BitStudioLabs/trail-up/pull/270'>#270</a> fix(auth): derive Google OAuth callback and require PKCE</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/271'>#271</a> docs(api): document Jev evaluation evidence and cost limits</li></ul>
+      <h4>Issues fechadas (assignee/autor)</h4>
+      <ul class="compact"><li><a href='https://github.com/BitStudioLabs/trail-up/issues/70'>#70</a> [Dados] Inventário e proveniência do Dataset_TrailUp</li><li><a href='https://github.com/BitStudioLabs/trail-up/issues/71'>#71</a> [Dados] Triagem: o que é corpus de RAG e o que é conjunto de pesquisa</li><li><a href='https://github.com/BitStudioLabs/trail-up/issues/72'>#72</a> [Dados] Extração e normalização dos PDFs de literatura</li><li><a href='https://github.com/BitStudioLabs/trail-up/issues/73'>#73</a> [Dados] Curadoria pedagógica: metadados que tornam o chunk acionável</li><li><a href='https://github.com/BitStudioLabs/trail-up/issues/74'>#74</a> [Dados] Política de uso dos conjuntos sensíveis (saúde mental, neurodivergência, facial)</li><li><a href='https://github.com/BitStudioLabs/trail-up/issues/75'>#75</a> [Dados] Golden set para avaliar o retrieval</li><li><a href='https://github.com/BitStudioLabs/trail-up/issues/215'>#215</a> [API/Mobile] Integrar os modelos M2 (.pkl) do core-trailup na API e no mobile</li></ul>
+      <h4>Commits (amostra não-merge)</h4>
+      <ul class="compact"><li>fix(api): pandas como dep real do gate M2 (#215)</li><li>fix(api): registra classe sklearn antes do unpickle M2 (#215)</li><li>fix(api): inclui numpy+sklearn no requirements do CI/deploy (#215)</li><li>feat(api): gate M2 decide quando chamar a LLM (#215)</li><li>docs(api): document Jev evaluation evidence and cost limits</li><li>docs(api): registra avaliação inicial do Jev</li><li>docs(rag): contrato do pipeline extracao-curadoria-golden (#72, #73, #75)</li><li>docs(rag): politica de uso dos conjuntos sensiveis (#74)</li><li>docs(rag): triagem corpus x pesquisa e reconciliacao #63 x #165 (#70, #71)</li></ul>
+    </div>
+    <div class="card">
+      <h3>rafantavares (Rafinha / gaRafinha)</h3>
+      <p><span class="tag">merged 4</span>
+         <span class="tag">abertos 0</span>
+         <span class="tag">commits 2</span>
+         <span class="tag">issues 0</span></p>
+      <h4>PRs merged</h4>
+      <ul class="compact"><li><a href='https://github.com/BitStudioLabs/trail-up/pull/232'>#232</a> perf(mobile): code splitting por rota na web + font-display swap nos …</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/233'>#233</a> docs(prototipos): separa professor/aluno e inicia prompts da web do a…</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/239'>#239</a> docs(prototipos): protótipo v1 da área web do aluno + prompts da revisão 01</li><li><a href='https://github.com/BitStudioLabs/trail-up/pull/269'>#269</a> docs(prototipos): v2 da área web do aluno — trilha com mapa + prompts da revisão 02</li></ul>
+      <h4>PRs abertos agora</h4>
+      <ul class="compact"><li class="note">nenhum</li></ul>
+      <h4>Issues fechadas (assignee/autor)</h4>
+      <ul class="compact"><li class="note">nenhuma</li></ul>
+      <h4>Commits (amostra não-merge)</h4>
+      <ul class="compact"><li>perf(mobile): code splitting por rota na web + font-display swap nos icones (#232)</li><li>docs(prototipos): separa professor/aluno e inicia prompts da web do aluno (#233)</li></ul>
+    </div>
+
+  <footer>
+    Relatório automatizado · rotina sexta ~17h BRT · não faz merge em repositórios Geisbelly · branch de docs: docs/relatorio-semanal-2026-W40
+  </footer>
+</div>
+</body>
+</html>
