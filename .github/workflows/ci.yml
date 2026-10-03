@@ -32,6 +32,10 @@ jobs:
           filters: |
             api:
               - 'api/**'
+              # test_env_example_sem_segredo_real.py varre os .env.example de
+              # TODOS os servicos, mas mora em api/tests — sem esta linha, uma
+              # chave colada em mobile/.env.example nao acionaria o guard.
+              - '**/.env.example'
             microservice:
               - 'microservice/**'
             frontend:
