@@ -225,9 +225,28 @@ export function isAllAnswered(answers: BrainHexAnswers) {
 // paleta (script com sharp: hue-shift so nos pixels do figurino/manto,
 // identificados por faixa de matiz+saturacao, preservando pele/cabelo/dourado
 // intactos) — nao o contrario. Isso foi feito para seeker, survivor,
-// conqueror, socializer e mastermind (nesse ultimo o matiz ja estava certo,
-// so a saturacao precisou baixar — a arte usava um azul vivido, o oficial e
-// um azul-acinzentado quase neutro).
+// conqueror e socializer.
+//
+// mastermind e um caso NAO RESOLVIDO, e o comentario que estava aqui dizia o
+// contrario do que a fonte diz. Ele afirmava que "a arte usava um azul vivido,
+// o oficial e um azul-acinzentado quase neutro" e usava isso para justificar
+// BAIXAR a saturacao. A fonte oficial
+// (microservice/src/constants/brainHex.ts) traz #5b3fd9: violeta com S=67% em
+// HSL — vivido, nao neutro. A premissa era falsa, e o badge abaixo (#827b9d,
+// S=14.8%) e o resultado dela: uma queda de 52 pontos de saturacao, que e
+// exatamente o que o CLAUDE.md proibe ("misturar com branco apaga a cor mesmo
+// passando no contraste").
+//
+// O hex NAO foi corrigido aqui de proposito. A arte do guardiao
+// (assets/guardioes/mastermind.webp) tambem esta no azul-escuro dessaturado, e
+// trocar so o badge o deixaria em desacordo com ela. Qual dos dois cede e
+// decisao de design do time, nao desta correcao:
+//   (a) recolorir a arte para o violeta oficial, como foi feito nos outros
+//       quatro — e entao o badge vira #b3a6ed, valor que
+//       console/dashboard/perfilCores.ts ja deriva corretamente de #5b3fd9; ou
+//   (b) declarar mastermind excecao documentada, como daredevil ja e.
+// Ate la, brainhexPaletaOficial.test.ts registra a excecao com este motivo,
+// para que ela seja uma decisao visivel e nao um acidente que se repete.
 //
 // daredevil e a unica excecao: na arte dela o cabelo e a capa usam
 // exatamente a mesma faixa de matiz/saturacao (o tema "fogo laranja" e
