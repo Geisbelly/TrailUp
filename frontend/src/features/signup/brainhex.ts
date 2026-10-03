@@ -8,6 +8,8 @@ import {
   Box,
 } from "lucide-react";
 
+import { pontuarItem } from "./brainhexScoring";
+
 // src/features/signup/brainhex.ts
 
 export type BrainHexAxis =
@@ -44,6 +46,18 @@ export interface BrainHexQuestion {
   text: string;
   axis: BrainHexAxis;
   weight?: number; // default 1
+  /**
+   * Item reverso: concordar com ele e evidencia CONTRA o eixo. Pontuado como
+   * `SCALE_MAX - resposta` (ver brainhexScoring.ts).
+   *
+   * Existe um por eixo, de proposito. Sem reverso nao da' para separar
+   * preferencia de aquiescencia: quem marca 5 em tudo recebia um perfil
+   * decidido pelos pesos do mapeamento, nao pela propria preferencia.
+   * `reversoDe` aponta o item direto que forma o par, usado pelo indice de
+   * qualidade da resposta.
+   */
+  reverse?: boolean;
+  reversoDe?: string;
 }
 
 /**
@@ -71,48 +85,49 @@ export const BRAINHEX_QUESTIONS: BrainHexQuestion[] = [
   { id: "c1", axis: "curiosity", text: "Gosto de explorar caminhos diferentes para chegar ao mesmo objetivo." },
   { id: "c2", axis: "curiosity", text: "Me empolgo quando encontro conteúdos extras ou “segredos”." },
   { id: "c3", axis: "curiosity", text: "Costumo investigar além do necessário só por curiosidade." },
-  { id: "c4", axis: "curiosity", text: "Prefiro ter liberdade para explorar em vez de seguir sempre um roteiro fixo." },
+  { id: "c4", axis: "curiosity", reverse: true, reversoDe: "c1", text: "Prefiro seguir exatamente o roteiro indicado, sem desviar para explorar." },
 
   // challenge (Survivor)
   { id: "ch1", axis: "challenge", text: "Desafios difíceis me motivam mais do que tarefas fáceis." },
   { id: "ch2", axis: "challenge", text: "Eu continuo tentando mesmo depois de errar várias vezes." },
   { id: "ch3", axis: "challenge", text: "Sinto satisfação real ao superar algo que parecia impossível." },
-  { id: "ch4", axis: "challenge", text: "Eu consigo manter foco mesmo sob pressão (prazo curto, dificuldade alta)." },
+  { id: "ch4", axis: "challenge", reverse: true, reversoDe: "ch1", text: "Quando a tarefa fica difícil demais, prefiro trocar por outra mais fácil." },
 
   // risk (Daredevil) — separa de challenge
   { id: "r1", axis: "risk", text: "Eu gosto de testar na prática antes de ler todas as instruções." },
   { id: "r2", axis: "risk", text: "Me animo com situações intensas, rápidas e cheias de ação." },
   { id: "r3", axis: "risk", text: "Eu não travo com a chance de errar; eu prefiro experimentar." },
-  { id: "r4", axis: "risk", text: "Eu tomo decisões mais ousadas quando estou empolgado com o desafio." },
+  { id: "r4", axis: "risk", reverse: true, reversoDe: "r1", text: "Só começo a fazer depois de ler todas as instruções com calma." },
 
   // mastery (Mastermind)
   { id: "m1", axis: "mastery", text: "Prefiro entender a lógica e a teoria antes de executar." },
   { id: "m2", axis: "mastery", text: "Gosto de planejar etapas e estratégias para fazer melhor." },
   { id: "m3", axis: "mastery", text: "Eu curto sistemas complexos e otimizar soluções." },
-  { id: "m4", axis: "mastery", text: "Me sinto bem quando consigo prever resultados por entender o funcionamento." },
+  { id: "m4", axis: "mastery", reverse: true, reversoDe: "m1", text: "Entender a teoria por trás me parece perda de tempo; prefiro ir direto ao exercício." },
 
   // competition (Conqueror)
   { id: "cp1", axis: "competition", text: "Rankings e classificações aumentam meu esforço." },
   { id: "cp2", axis: "competition", text: "Eu gosto de comparar meu desempenho com o de outras pessoas." },
   { id: "cp3", axis: "competition", text: "Eu me motivo ao tentar ser melhor que ontem (ou que outros)." },
-  { id: "cp4", axis: "competition", text: "Competição me deixa mais focado e produtivo." },
+  { id: "cp4", axis: "competition", reverse: true, reversoDe: "cp1", text: "Comparar meu desempenho com o dos outros me atrapalha mais do que ajuda." },
 
   // social (Socializer)
   { id: "s1", axis: "social", text: "Aprendo melhor quando posso discutir ideias com outras pessoas." },
   { id: "s2", axis: "social", text: "Trabalhar em grupo me dá mais energia para continuar." },
   { id: "s3", axis: "social", text: "Gosto de ajudar colegas e trocar feedback." },
-  { id: "s4", axis: "social", text: "Interação social aumenta meu engajamento nas atividades." },
+  { id: "s4", axis: "social", reverse: true, reversoDe: "s2", text: "Rendo mais quando estudo sozinho do que em grupo." },
 
   // completion (Achiever)
   { id: "cc1", axis: "completion", text: "Me incomoda deixar tarefas pela metade." },
   { id: "cc2", axis: "completion", text: "Ver progresso (percentual/checklist) me incentiva bastante." },
   { id: "cc3", axis: "completion", text: "Eu gosto de completar tudo (100%) antes de passar adiante." },
-  { id: "cc4", axis: "completion", text: "Eu me sinto bem quando concluo coleções, metas e objetivos." },
+  { id: "cc4", axis: "completion", reverse: true, reversoDe: "cc1", text: "Não me incomoda deixar uma atividade pela metade e seguir para a próxima." },
 
   // immersion (apoio) — entra como tempero no Seeker/Daredevil/Mastermind (leve)
   { id: "i1", axis: "immersion", text: "Um contexto/história torna a experiência muito mais interessante." },
   { id: "i2", axis: "immersion", text: "Eu me envolvo mais quando existe um propósito claro por trás do que faço." },
   { id: "i3", axis: "immersion", text: "Narrativa/estética influenciam minha motivação." },
+  { id: "i4", axis: "immersion", reverse: true, reversoDe: "i1", text: "História e contexto são enfeite; o que importa é o conteúdo direto." },
 ];
 
 export function clampScale(n: number) {
@@ -133,7 +148,10 @@ export function calculateAxisScores(answers: BrainHexAnswers): AxisScores {
   };
 
   for (const q of BRAINHEX_QUESTIONS) {
-    const v = clampScale(answers[q.id] ?? 0);
+    // `pontuarItem` inverte o item reverso. Somar a resposta crua aqui faria o
+    // reverso empurrar o eixo para o lado ERRADO — quem discorda de "prefiro
+    // seguir o roteiro" somaria pouco em curiosity, quando e o contrario.
+    const v = pontuarItem(answers[q.id], q.reverse === true, SCALE_MAX);
     const w = q.weight ?? 1;
     scores[q.axis] += v * w;
   }
