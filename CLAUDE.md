@@ -363,11 +363,28 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
   dono (`postgres`), então as policies das tabelas base **não se aplicam** —
   era um segundo bypass, paralelo ao das policies, e por ele dava para ler
   ranking, métricas e telemetria sem login. Todas foram para
-  `security_invoker = on` em `20260826_10`. A única exceção deliberada é
-  `vw_rank_posicoes_por_classe`: ela soma eventos de vários alunos, o que um
-  aluno não pode fazer lendo `eventos_aluno` linha a linha, então mantém o
-  bypass e é filtrada na saída pelas classes do chamador. **Toda view nova
-  nasce com `security_invoker = on`.**
+  `security_invoker = on` em `20260826_10`. As exceções deliberadas são **duas**,
+  e formam um par — este texto já disse "a única exceção", o que leva a tratar a
+  segunda como defeito e a "consertá-la":
+
+  - `vw_rank_posicoes_por_classe_todas` é a agregação **crua**: posição, nome e
+    pontuação de todas as classes, sem filtro nenhum. Ela mantém o bypass porque
+    somar `eventos_aluno` de vários alunos é justamente o que um aluno não pode
+    fazer linha a linha. **O que a torna segura não é o invoker — é o GRANT:**
+    só `service_role` a enxerga, e nem `anon` nem `authenticated` têm qualquer
+    privilégio nela (verificado em produção). Ligar `security_invoker` aqui
+    quebra a agregação sem ganho de segurança.
+  - `vw_rank_posicoes_por_classe` é a que os clientes leem (`authenticated`;
+    `anon` não). Ela faz `SELECT` da `_todas` e aplica o filtro de saída:
+    `app_minhas_classes()`, o limite de posições visíveis, o próprio
+    `auth.uid()` e as classes do professor.
+
+  Corolário que vale para qualquer view nova com bypass: a pergunta não é se ela
+  tem `security_invoker`, é **quem tem GRANT nela**. Uma view sem invoker e sem
+  GRANT para `anon`/`authenticated` é inalcançável pelo cliente; com GRANT, ela
+  é um bypass de RLS completo. **Toda view nova nasce com
+  `security_invoker = on`** — e se precisar do bypass, nasce sem GRANT para os
+  papéis de cliente.
 - **`storage.objects` não diz mais se um material existe.** Depois da
   migração para o Cloudflare R2
   (`docs/superpowers/specs/2026-08-29-r2-gateway-design.md`), **escrita nova
