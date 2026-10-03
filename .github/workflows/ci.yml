@@ -136,3 +136,18 @@ jobs:
       - run: npm ci
       - name: Lint (expo)
         run: npm run lint
+      - name: Testes
+        run: npm test
+      # Grupos a parte porque compartilham estado entre si: rodados juntos com
+      # a suite principal, um polui o outro. `test:engagement` e
+      # `test:trail-resume` NAO entram -- os dois incluem
+      # `IAContext.battle.test.tsx`, que importa `react-native`, e o esbuild do
+      # tsx nao transforma a sintaxe Flow do `node_modules/react-native`
+      # ("Unexpected typeof"). Falha de carregamento, nao de logica; sair disso
+      # exige extrair a parte pura, como ja foi feito em
+      # `context/metricas/acumuladorLote.ts`.
+      - name: Testes (grupos isolados)
+        run: |
+          npm run test:social-chat
+          npm run test:class-selection
+          npm run test:presence
