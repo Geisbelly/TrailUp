@@ -5,10 +5,15 @@ on:
     branches: [main]
   pull_request:
 
-# cancela execuções antigas do mesmo ref quando há um novo push
+# Cancela execuções antigas do mesmo ref quando há um novo push — mas SÓ em pull
+# request. Em `main` o ref é sempre `refs/heads/main`, então merges em sequência
+# cancelavam uns aos outros: em 2026-10-01, sete PRs entraram em dois minutos e
+# seis execuções foram canceladas. A que sobrou era de docs, e o filtro de
+# caminhos pulou o job `api` — foi assim que a `main` ficou com duas cabeças de
+# alembic sem nenhum CI vermelho. Cada commit em `main` agora termina a sua.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
