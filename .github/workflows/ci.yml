@@ -5,10 +5,15 @@ on:
     branches: [main]
   pull_request:
 
-# cancela execuções antigas do mesmo ref quando há um novo push
+# Cancela execuções antigas do mesmo ref quando há um novo push — mas SÓ em pull
+# request. Em `main` o ref é sempre `refs/heads/main`, então merges em sequência
+# cancelavam uns aos outros: em 2026-10-01, sete PRs entraram em dois minutos e
+# seis execuções foram canceladas. A que sobrou era de docs, e o filtro de
+# caminhos pulou o job `api` — foi assim que a `main` ficou com duas cabeças de
+# alembic sem nenhum CI vermelho. Cada commit em `main` agora termina a sua.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -32,6 +37,10 @@ jobs:
           filters: |
             api:
               - 'api/**'
+              # test_env_example_sem_segredo_real.py varre os .env.example de
+              # TODOS os servicos, mas mora em api/tests — sem esta linha, uma
+              # chave colada em mobile/.env.example nao acionaria o guard.
+              - '**/.env.example'
             microservice:
               - 'microservice/**'
             frontend:
@@ -136,3 +145,18 @@ jobs:
       - run: npm ci
       - name: Lint (expo)
         run: npm run lint
+      - name: Testes
+        run: npm test
+      # Grupos a parte porque compartilham estado entre si: rodados juntos com
+      # a suite principal, um polui o outro. `test:engagement` e
+      # `test:trail-resume` NAO entram -- os dois incluem
+      # `IAContext.battle.test.tsx`, que importa `react-native`, e o esbuild do
+      # tsx nao transforma a sintaxe Flow do `node_modules/react-native`
+      # ("Unexpected typeof"). Falha de carregamento, nao de logica; sair disso
+      # exige extrair a parte pura, como ja foi feito em
+      # `context/metricas/acumuladorLote.ts`.
+      - name: Testes (grupos isolados)
+        run: |
+          npm run test:social-chat
+          npm run test:class-selection
+          npm run test:presence

@@ -9,11 +9,11 @@ import {
   PRESENTATION_SCHEMA_VERSION,
   buildPresentationMaterialMetadata,
 } from "../server";
+import { buildPresentationVersionMetadata } from "./constants/pipelineVersions";
 import {
-  buildPresentationVersionMetadata,
   generationStorageSegment,
   versionStoragePath,
-} from "./constants/pipelineVersions";
+} from "./constants/generationStorage";
 if (!process.env.OPENAI_API_KEY?.trim()) {
   process.env.OPENAI_API_KEY = "test-openai-key";
 }

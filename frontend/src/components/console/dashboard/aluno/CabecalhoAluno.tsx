@@ -35,7 +35,19 @@ export default function CabecalhoAluno({
             nota: abandonoDaTurmaPct === null ? undefined : `turma: ${Math.round(abandonoDaTurmaPct * 10) / 10}%`,
           },
         ]),
-    { rotulo: "Tempo total", valor: formatarTempo(aluno.tempoGastoMin) },
+    // "Tempo total" era o rotulo de um numero que conta so' o tempo ATIVO:
+    // material aberto e parado ficava de fora, e num topico medido em producao
+    // isso era 6,40 min contra 35,38 de presenca. Dois numeros, dois nomes.
+    { rotulo: "Tempo ativo", valor: formatarTempo(aluno.tempoGastoMin) },
+    ...(aluno.tempoPresencaMin === null
+      ? []
+      : [
+          {
+            rotulo: "Presença",
+            valor: formatarTempo(aluno.tempoPresencaMin),
+            nota: "com o material aberto",
+          },
+        ]),
   ];
 
   return (

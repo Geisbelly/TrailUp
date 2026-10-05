@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { buildDesignTokensForProfile, hydrateMateriaisPublicUrls, resolvePublicStorageUrl } from "./personalizacaoFallback";
+import { buildDesignTokensForProfile, hydrateMateriaisPublicUrls, resolvePublicStorageUrl,
+  resolveMaterialUrl,
+} from "./personalizacaoFallback";
 
 // Valores conferidos rodando `_build_design_tokens` (api/app/api/v1/personalizacao.py)
 // diretamente em Python para os 7 perfis BrainHex. Qualquer divergencia aqui
@@ -163,14 +165,63 @@ describe("resolvePublicStorageUrl", () => {
   });
 });
 
+describe("resolveMaterialUrl (porte de build_material_url)", () => {
+  it("material do bucket conteudo_aluno vai pro gateway", () => {
+    expect(resolveMaterialUrl("https://xyz.supabase.co", "conteudo_aluno", "a/b/c.mp3")).toBe(
+      "https://xyz.supabase.co/functions/v1/storage-redirect?path=a/b/c.mp3"
+    );
+  });
+
+  it("outro bucket (fonte do professor) fica na URL publica direta", () => {
+    // O gateway so' conhece caminhos de `vw_material_storage_paths`.
+    expect(resolveMaterialUrl("https://xyz.supabase.co", "conteudos", "prof/slide.pptx")).toBe(
+      "https://xyz.supabase.co/storage/v1/object/public/conteudos/prof/slide.pptx"
+    );
+  });
+
+  it("path ja absoluto e devolvido como veio", () => {
+    expect(resolveMaterialUrl("https://xyz.supabase.co", "conteudo_aluno", "https://outro.com/a.mp3")).toBe(
+      "https://outro.com/a.mp3"
+    );
+  });
+
+  it("sem bucket ou path retorna null", () => {
+    expect(resolveMaterialUrl("https://xyz.supabase.co", null, "a.mp3")).toBeNull();
+    expect(resolveMaterialUrl("https://xyz.supabase.co", "conteudo_aluno", null)).toBeNull();
+  });
+});
+
 describe("hydrateMateriaisPublicUrls", () => {
-  it("resolve arquivo_url a partir de storage_path quando nao ha URL http", () => {
+  // Expectativa ATUALIZADA: este teste exigia a URL publica direta
+  // (`/storage/v1/object/public/...`), que e' justamente a que da' 404 depois da
+  // migracao para o R2. Material do bucket `conteudo_aluno` vai pro gateway.
+  it("resolve arquivo_url a partir de storage_path apontando pro gateway", () => {
     const result = hydrateMateriaisPublicUrls("https://xyz.supabase.co", {
       audio: { storage_path: "aluno1/topico1/audio.mp3", metadata: {} },
     });
     expect((result?.audio as { arquivo_url?: string } | undefined)?.arquivo_url).toBe(
-      "https://xyz.supabase.co/storage/v1/object/public/conteudo_aluno/aluno1/topico1/audio.mp3"
+      "https://xyz.supabase.co/functions/v1/storage-redirect?path=aluno1/topico1/audio.mp3"
     );
+  });
+
+  // A regressao que motivou a correcao. O microservice grava `storage_path`
+  // EXATAMENTE quando grava `arquivo_url` (server.ts: `storage_path: audioMp3Url
+  // ? audioPath : null`), entao todo material real cai neste caso — e a
+  // hidratacao sobrescrevia a URL do gateway com a direta, que e' morta.
+  // E' o mesmo defeito que a migracao 20260922_06 corrigiu no lado Python.
+  it("nao rebaixa para URL direta quando ha arquivo_url do gateway E storage_path", () => {
+    const gateway =
+      "https://xyz.supabase.co/functions/v1/storage-redirect?path=aluno1/topico1/audio.mp3";
+    const result = hydrateMateriaisPublicUrls("https://xyz.supabase.co", {
+      audio: {
+        arquivo_url: gateway,
+        storage_path: "aluno1/topico1/audio.mp3",
+        metadata: { bucket: "conteudo_aluno" },
+      },
+    });
+    const url = (result?.audio as { arquivo_url?: string } | undefined)?.arquivo_url;
+    expect(url).toBe(gateway);
+    expect(url).not.toContain("/object/public/");
   });
 
   it("preserva arquivo_url ja absoluto", () => {

@@ -204,6 +204,40 @@ export function resolvePublicStorageUrl(
   return `${base}/storage/v1/object/public/${bucketName}/${encodedPath}`;
 }
 
+/**
+ * Porte 1:1 de `build_material_url` (api/app/services/storage.py).
+ *
+ * Material do bucket `conteudo_aluno` aponta para o gateway `storage-redirect`:
+ * depois da migracao para o R2 o arquivo novo so' existe la', e a URL publica
+ * do Storage da' 404 (ver CLAUDE.md, "`storage.objects` nao diz mais se um
+ * material existe"). O gateway serve do R2 e cai no Supabase quando o objeto
+ * ainda nao foi copiado, entao vale para material antigo e novo.
+ *
+ * Outros buckets (fonte do professor) ficam com a URL publica direta — o
+ * gateway so' conhece caminhos de `vw_material_storage_paths`.
+ */
+export function resolveMaterialUrl(
+  baseUrl: string | null | undefined,
+  bucket: string | null | undefined,
+  path: string | null | undefined
+): string | null {
+  const base = String(baseUrl ?? "").trim().replace(/\/+$/, "");
+  const [bucketName, rawPath] = normalizeBucketAndPath(bucket ?? null, path ?? null);
+  if (!base || !bucketName || !rawPath) return null;
+  if (rawPath.startsWith("http://") || rawPath.startsWith("https://")) return rawPath;
+  if (bucketName !== FALLBACK_BUCKET) return resolvePublicStorageUrl(base, bucketName, rawPath);
+  // Os caminhos gerados usam so' [A-Za-z0-9/_.-], que `encodeURIComponent`
+  // preserva; a URL sai identica a do Python, a do microservice e a da
+  // migracao 20260829_02.
+  const encoded = rawPath
+    .split("/")
+    .filter(Boolean)
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+  if (!encoded) return null;
+  return `${base}/functions/v1/storage-redirect?path=${encoded}`;
+}
+
 function resolvePublicAssetFields(
   supabaseUrl: string,
   arquivoUrl: unknown,
@@ -226,7 +260,7 @@ function resolvePublicAssetFields(
   let resolvedUrl = isHttpUrl ? rawUrl : null;
   let resolvedStoragePath = rawStoragePath ?? pathCandidate;
   if (pathCandidate && bucket) {
-    const publicUrl = resolvePublicStorageUrl(supabaseUrl, bucket, pathCandidate);
+    const publicUrl = resolveMaterialUrl(supabaseUrl, bucket, pathCandidate);
     if (publicUrl) {
       resolvedUrl = publicUrl;
       resolvedStoragePath = pathCandidate;
