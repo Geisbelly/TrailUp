@@ -87,9 +87,16 @@ modelo de linguagem, **não é na API**.
 > target) pra replicar às cegas sem o banco pra comparar resultado — o
 > fallback manda `geracao: null` e deixa `statusGeracaoDoPerfil` (já existente
 > em `generationStatus.ts`) cair pro status legado, que é exatamente o que essa
-> função já foi escrita pra fazer. Também não conta alunos por perfil no
-> fallback (precisaria RLS em `aluno_perfil`/`perfil`, não confirmada) — fica
-> 0, é só cosmético.
+> função já foi escrita pra fazer. A contagem de alunos por perfil no fallback
+> **já existe**: a RLS que faltava foi confirmada em produção
+> (`aluno_perfil_posse_sel` via `app_alunos_do_professor()`, `perfil_posse_sel`
+> com predicado `true`, `classe_aluno_posse_sel` via
+> `app_classes_do_professor()`). `contarAlunosPorPerfilDominante` em
+> `personalizacaoFallback.ts` porta o `ORDER BY afinidade DESC NULLS LAST,
+> nome ASC` de `listar_alunos_classe_com_perfil_dominante` — o desempate por
+> nome e o `NULLS LAST` mudam o resultado, e aluno sem linha em `aluno_perfil`
+> conta como `mastermind` em vez de sumir. Conferido rodando a window function
+> original no Postgres e comparando a saída.
 >
 > `contexto/{aluno_id}` **fica na API de propósito**: `contexto_aluno` vem de
 > `ContextRepository.fetch_aluno_context`, que já é a leitura agregada do

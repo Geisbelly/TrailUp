@@ -8,6 +8,8 @@ import {
   extractProfileKeyFromRecord,
   mapConteudoPersonalizadoRowToResponse,
   type ConteudoPersonalizadoFallbackRow,
+  contarAlunosPorPerfilDominante,
+  type LinhaAlunoPerfil,
 } from "./personalizacaoFallback";
 
 // ── Tipos compartilhados ──────────────────────────────────────────────────────
@@ -183,12 +185,68 @@ export function buildPersonalizacaoPorPerfilPath(params: {
  * Le direto do Supabase quando a API esta fora do ar. Fidelidade reduzida de
  * proposito (ver personalizacaoFallback.ts): sem status de geracao
  * (`personalizacao_jobs`/`personalizacao_job_targets`, cruzamento com
- * estado/target que nao vale a pena replicar as cegas) e sem a contagem de
- * alunos por perfil (precisaria de RLS em `aluno_perfil`/`perfil` que nao foi
- * confirmada). `statusGeracaoDoPerfil` em generationStatus.ts ja sabe cair
+ * estado/target que nao vale a pena replicar as cegas).
+ * `statusGeracaoDoPerfil` em generationStatus.ts ja sabe cair
  * pro status legado quando `geracao` vem null, entao o badge continua
  * mostrando algo util (so menos granular).
  */
+/**
+ * Conta os alunos da classe pelo perfil BrainHex dominante, direto do Supabase.
+ *
+ * Duas consultas em vez do window function do SQL original: o PostgREST nao
+ * expoe `ROW_NUMBER()`, entao o desempate vai em `contarAlunosPorPerfilDominante`,
+ * que copia o `ORDER BY afinidade DESC NULLS LAST, nome ASC` do repositorio.
+ *
+ * Falhar aqui nao pode derrubar a tela: a contagem e' um numero ao lado do
+ * perfil, e o resto do fallback vale sem ela. Erro vira aviso e contagem vazia
+ * — o mesmo 0 de antes, mas agora por excecao e nao por padrao.
+ */
+async function contarAlunosDaClassePorPerfil(classeId: number): Promise<Record<string, number>> {
+  try {
+    const { data: matriculas, error: erroMatriculas } = await supabase
+      .from("classe_aluno" as never)
+      .select("aluno_id")
+      .eq("classe_id", classeId);
+    if (erroMatriculas) throw erroMatriculas;
+
+    const alunos = Array.from(
+      new Set(
+        ((matriculas ?? []) as unknown as { aluno_id: string | null }[])
+          .map((linha) => linha.aluno_id)
+          .filter((id): id is string => typeof id === "string" && id.length > 0)
+      )
+    );
+    if (alunos.length === 0) return {};
+
+    const { data: perfis, error: erroPerfis } = await supabase
+      .from("aluno_perfil" as never)
+      .select("aluno_id, afinidade, perfil(nome)")
+      .in("aluno_id", alunos);
+    if (erroPerfis) throw erroPerfis;
+
+    const linhas: LinhaAlunoPerfil[] = (
+      (perfis ?? []) as unknown as {
+        aluno_id: string | null;
+        afinidade: number | null;
+        perfil?: { nome?: string | null } | { nome?: string | null }[] | null;
+      }[]
+    ).map((linha) => {
+      // PostgREST devolve objeto ou array conforme a cardinalidade detectada.
+      const relacao = Array.isArray(linha.perfil) ? linha.perfil[0] : linha.perfil;
+      return {
+        aluno_id: String(linha.aluno_id ?? ""),
+        afinidade: typeof linha.afinidade === "number" ? linha.afinidade : null,
+        perfil_nome: relacao?.nome ?? null,
+      };
+    });
+
+    return contarAlunosPorPerfilDominante(alunos, linhas);
+  } catch (erro) {
+    console.warn("[personalizacoes] nao foi possivel contar alunos por perfil:", erro);
+    return {};
+  }
+}
+
 async function fetchPersonalizacaoPorPerfilFallback(
   params: { classeId: number; topicoId: number; conteudoId?: number }
 ): Promise<PersonalizacaoPorPerfilResponse> {
@@ -228,6 +286,8 @@ async function fetchPersonalizacaoPorPerfilFallback(
     conteudoTitulo = (conteudoRow as unknown as { titulo?: string } | null)?.titulo ?? null;
   }
 
+  const contagemPorPerfil = await contarAlunosDaClassePorPerfil(params.classeId);
+
   let totalComMaterial = 0;
   const perfis: PersonalizacaoPerfilItem[] = BRAINHEX_PROFILES.map((perfil) => {
     const row = byProfile.get(perfil);
@@ -245,8 +305,7 @@ async function fetchPersonalizacaoPorPerfilFallback(
       formato_prioritario: personalizacao?.formato_prioritario ?? null,
       formatos_gerados: personalizacao?.formatos_gerados ?? [],
       materiais: personalizacao?.materiais ?? null,
-      // Precisaria de RLS confirmada em aluno_perfil/perfil pra contar aqui.
-      total_alunos: 0,
+      total_alunos: contagemPorPerfil[perfil] ?? 0,
       gerado_em: personalizacao?.gerado_em ?? null,
       geracao: null,
     } satisfies PersonalizacaoPerfilItem;

@@ -35,3 +35,8 @@ pytest-cov>=5.0.0
 anyio>=4.3.0
 aiosqlite>=0.20.0
 ruff>=0.4.0
+# Analise de emocao por visao local (app/services/emotion_vision.py).
+# Alternativa deliberada ao DeepFace, que puxaria TensorFlow (~500 MB) para
+# o mesmo VPS que roda API, microservice e BrainHexPDF.
+onnxruntime>=1.18.0
+opencv-python-headless>=4.9.0

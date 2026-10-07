@@ -26,6 +26,7 @@ from fastapi import Request
 
 from app.core.settings import Settings
 from app.schemas.common import Evento
+from app.services.emotion_vision import LocalVisionEmotionAnalyzer
 
 
 def _safe_float(value: Any, default: float = 0.0) -> float:
@@ -912,6 +913,11 @@ class LinearAnalysisOrchestrator:
 def build_linear_analysis_orchestrator(settings: Settings) -> LinearAnalysisOrchestrator:
     emotion_factory = {
         "deepface": DeepFaceEmotionAnalyzer,
+        # lambda, e nao a classe: LocalVisionEmotionAnalyzer recebe o
+        # analisador heuristico por injecao para nao fechar ciclo de import.
+        "local_vision": lambda: LocalVisionEmotionAnalyzer(
+            fallback=DeepFaceEmotionAnalyzer()
+        ),
     }
     reading_factory = {
         "isolation_forest": IsolationForestReadingAnalyzer,

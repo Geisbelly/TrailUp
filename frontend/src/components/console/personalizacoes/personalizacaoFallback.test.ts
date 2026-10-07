@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildDesignTokensForProfile, hydrateMateriaisPublicUrls, resolvePublicStorageUrl,
+  contarAlunosPorPerfilDominante,
+  normalizarChaveDePerfil,
   resolveMaterialUrl,
 } from "./personalizacaoFallback";
 
@@ -233,5 +235,92 @@ describe("hydrateMateriaisPublicUrls", () => {
 
   it("materiais nulo retorna nulo", () => {
     expect(hydrateMateriaisPublicUrls("https://xyz.supabase.co", null)).toBeNull();
+  });
+});
+
+describe("contarAlunosPorPerfilDominante", () => {
+  // Espelha `listar_alunos_classe_com_perfil_dominante`:
+  // ROW_NUMBER() OVER (PARTITION BY aluno_id ORDER BY afinidade DESC NULLS LAST, nome ASC)
+
+  it("conta o perfil de maior afinidade de cada aluno", () => {
+    expect(
+      contarAlunosPorPerfilDominante(
+        ["a", "b"],
+        [
+          { aluno_id: "a", afinidade: 80, perfil_nome: "seeker" },
+          { aluno_id: "a", afinidade: 30, perfil_nome: "achiever" },
+          { aluno_id: "b", afinidade: 90, perfil_nome: "seeker" },
+        ]
+      )
+    ).toEqual({ seeker: 2 });
+  });
+
+  it("afinidade nula perde de qualquer numero, inclusive de zero (NULLS LAST)", () => {
+    expect(
+      contarAlunosPorPerfilDominante(
+        ["a"],
+        [
+          { aluno_id: "a", afinidade: null, perfil_nome: "achiever" },
+          { aluno_id: "a", afinidade: 0, perfil_nome: "survivor" },
+        ]
+      )
+    ).toEqual({ survivor: 1 });
+  });
+
+  it("empate de afinidade desempata por nome ASC, nao pela ordem de chegada", () => {
+    const linhas = [
+      { aluno_id: "a", afinidade: 50, perfil_nome: "seeker" },
+      { aluno_id: "a", afinidade: 50, perfil_nome: "achiever" },
+    ];
+    expect(contarAlunosPorPerfilDominante(["a"], linhas)).toEqual({ achiever: 1 });
+    // invertendo a ordem de entrada, o resultado tem que ser o mesmo
+    expect(contarAlunosPorPerfilDominante(["a"], [...linhas].reverse())).toEqual({ achiever: 1 });
+  });
+
+  it("aluno sem nenhuma linha de perfil conta como mastermind, nao some", () => {
+    expect(contarAlunosPorPerfilDominante(["a", "b"], [
+      { aluno_id: "a", afinidade: 70, perfil_nome: "conqueror" },
+    ])).toEqual({ conqueror: 1, mastermind: 1 });
+  });
+
+  it("ignora linhas de aluno que nao e da turma", () => {
+    expect(
+      contarAlunosPorPerfilDominante(
+        ["a"],
+        [
+          { aluno_id: "a", afinidade: 10, perfil_nome: "seeker" },
+          { aluno_id: "intruso", afinidade: 99, perfil_nome: "daredevil" },
+        ]
+      )
+    ).toEqual({ seeker: 1 });
+  });
+
+  it("turma vazia nao inventa contagem", () => {
+    expect(contarAlunosPorPerfilDominante([], [
+      { aluno_id: "a", afinidade: 10, perfil_nome: "seeker" },
+    ])).toEqual({});
+  });
+
+  it("o total conferido bate com o numero de alunos da turma", () => {
+    const alunos = ["a", "b", "c", "d"];
+    const contagem = contarAlunosPorPerfilDominante(alunos, [
+      { aluno_id: "a", afinidade: 10, perfil_nome: "seeker" },
+      { aluno_id: "b", afinidade: 20, perfil_nome: "SOCIALISER" },
+      { aluno_id: "c", afinidade: null, perfil_nome: "survivor" },
+    ]);
+    expect(Object.values(contagem).reduce((s, n) => s + n, 0)).toBe(alunos.length);
+    expect(contagem.socializer).toBe(1); // apelido normalizado
+    expect(contagem.mastermind).toBe(1); // o "d", sem perfil
+  });
+});
+
+describe("normalizarChaveDePerfil", () => {
+  it("espelha _normalize_profile_key", () => {
+    expect(normalizarChaveDePerfil("Socialiser")).toBe("socializer");
+    expect(normalizarChaveDePerfil("  SEEKER ")).toBe("seeker");
+    expect(normalizarChaveDePerfil(null)).toBe("mastermind");
+    expect(normalizarChaveDePerfil("")).toBe("mastermind");
+    // chave desconhecida passa como veio, igual ao Python
+    expect(normalizarChaveDePerfil("inventado")).toBe("inventado");
   });
 });

@@ -44,6 +44,7 @@ import {
   type TelemetryConsentRecord,
   type TelemetryConsentPreferences,
   type TelemetryConsentStatus,
+  consentimentoEstaVigente,
 } from "@/utils/telemetryConsent";
 import React, {
   createContext,
@@ -479,7 +480,12 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
   const isCapturingFrameRef = useRef(false);
 
   const applyConsentRecord = useCallback((record: TelemetryConsentRecord | null) => {
-    const status = record?.status ?? null;
+    // Termo de versao antiga NAO conta como consentimento para coletar. Aceitar
+    // a v3 (que dizia que a imagem nao era analisada) nao e aceitar a v4. Sem
+    // isto, o registro velho seguia valendo enquanto o termo novo estava na
+    // tela esperando resposta.
+    const status =
+      record == null || consentimentoEstaVigente(record) ? record?.status ?? null : null;
     const preferences = record?.preferences ?? DEFAULT_TELEMETRY_PREFERENCES;
     const granted = record?.cameraPermissionGranted === true;
     const nextCameraOptIn = status === "accepted" && granted && preferences.cameraEnabled;

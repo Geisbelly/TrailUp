@@ -129,30 +129,46 @@ export function TelemetryConsentGate() {
             <Text style={styles.sectionTitle}>Como os dados são usados</Text>
             <Text style={styles.body}>
               Atenção, dificuldade, frustração e engajamento são estimados a partir do
-              seu comportamento no app: tempo ativo e inativo, toques, rolagem,
-              respostas e acertos. É isso que gera as recomendações e o conteúdo
-              adaptativo.
+              seu comportamento no app — tempo ativo e inativo, toques, rolagem,
+              respostas e acertos — e também da sua expressão facial, quando a câmera
+              está ligada. É isso que gera as recomendações e o conteúdo adaptativo.
             </Text>
             <Text style={styles.sectionTitle}>Sobre a câmera, especificamente</Text>
             <Text style={styles.body}>
-              Hoje as imagens da câmera não são analisadas. Elas são enviadas à API,
-              contadas e descartadas: a quantidade de frames recebidos apenas aumenta
-              um índice de confiança das estimativas acima, que são calculadas sem
-              olhar para a imagem. Não há reconhecimento facial nem de emoção.
+              As imagens da câmera são analisadas para estimar sua expressão no
+              momento do estudo. O programa localiza o rosto na imagem e classifica a
+              expressão em categorias como neutro, concentrado, frustrado, ansioso ou
+              cansado. Isso influencia o conteúdo e a dificuldade que o app te mostra
+              depois.
             </Text>
             <Text style={styles.body}>
-              As imagens não são gravadas em lugar nenhum — nem no registro do lote,
-              nem no log de decisão. Fica guardado apenas quantas foram recebidas.
+              A análise é feita no servidor do próprio TrailUp, não em serviço de
+              terceiros, e a imagem não sai dele para lugar nenhum.
             </Text>
             <Text style={styles.body}>
-              Se a análise de imagem passar a existir, estes termos mudam e seu
-              consentimento será pedido de novo antes disso valer.
+              A imagem é usada e descartada na mesma hora. Não é gravada em lugar
+              nenhum — nem no registro do lote, nem no log de decisão. Fica guardado
+              só o resultado: a categoria estimada e o quanto o programa confia nela.
+            </Text>
+            <Text style={styles.body}>
+              O que você faz vale mais do que a sua cara. Se você errar várias vezes
+              seguidas, por exemplo, isso conta mais do que a expressão de um
+              instante — e a estimativa pela imagem é descartada nesse caso.
+            </Text>
+            <Text style={styles.body}>
+              A expressão estimada é um palpite, não um diagnóstico. Ela não vira
+              nota, não é mostrada para o professor como avaliação sua, e pode errar.
             </Text>
             <Text style={styles.sectionTitle}>Sua escolha</Text>
             <Text style={styles.body}>
               Se você aceitar, o app solicitará acesso aos recursos necessários,
               principalmente à câmera. Se recusar, o app continua funcionando sem a
               coleta comportamental adaptativa.
+            </Text>
+            <Text style={styles.body}>
+              Recusar não tira nenhum conteúdo de você e não muda sua nota. Você
+              também pode aceitar o resto e desligar só a câmera, agora ou depois, em
+              Perfil → Coleta e acessos.
             </Text>
           </ScrollView>
           <View style={styles.actions}>
