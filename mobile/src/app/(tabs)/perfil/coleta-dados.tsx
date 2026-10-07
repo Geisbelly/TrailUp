@@ -24,8 +24,11 @@ type ToggleItem = {
 const TOGGLE_ITEMS: ToggleItem[] = [
   {
     key: "cameraEnabled",
-    title: "Câmera",
-    description: "Permite captura de frames para análise de atenção durante o estudo.",
+    // O rotulo diz o que acontece, nao o sensor usado: quem le "Camera" nao
+    // deduz que a propria expressao sera classificada.
+    title: "Câmera e expressão facial",
+    description:
+      "Captura imagens durante o estudo e estima sua expressão (neutro, concentrado, frustrado…) para adaptar o conteúdo. A imagem é descartada após a análise; só o resultado é guardado.",
     icon: "camera-outline",
   },
   {
