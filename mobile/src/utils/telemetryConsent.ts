@@ -34,7 +34,11 @@ export type TelemetryConsentRecord = {
 };
 
 export const DEFAULT_TELEMETRY_PREFERENCES: TelemetryConsentPreferences = {
-  cameraEnabled: true,
+  // DESLIGADA por padrao. Consentimento para dado biometrico nao pode vir
+  // pre-marcado (LGPD art. 11), e o publico e escolar (art. 14). Ligar e acao
+  // explicita do aluno no toggle de Perfil -> Coleta e acessos, que e quem
+  // pede a permissao do SO. Ver issue #195.
+  cameraEnabled: false,
   usageEnabled: true,
   performanceEnabled: true,
   chatEnabled: true,
@@ -79,7 +83,11 @@ export async function getTelemetryConsentRecord(): Promise<TelemetryConsentRecor
             chatEnabled: false,
           }
         : {
-            cameraEnabled: parsed.cameraPermissionGranted === true,
+            // Permissao do SO concedida NAO e consentimento para analisar: o
+            // aparelho deixar a camera disponivel e outra coisa de o aluno
+            // querer que ela seja usada. Registro sem preferencia explicita
+            // entra desligado.
+            cameraEnabled: false,
             usageEnabled: true,
             performanceEnabled: true,
             chatEnabled: true,
@@ -127,10 +135,9 @@ export async function setTelemetryConsentAccepted(params: {
   cameraPermissionGranted: boolean;
   preferences?: Partial<TelemetryConsentPreferences>;
 }) {
-  const safePreferences = sanitizePreferences(params.preferences, {
-    ...DEFAULT_TELEMETRY_PREFERENCES,
-    cameraEnabled: params.cameraPermissionGranted === true,
-  });
+  // O fallback NAO deriva mais `cameraEnabled` da permissao do SO: aceitar os
+  // termos deixa de ligar a camera. Quem liga e o toggle, por acao explicita.
+  const safePreferences = sanitizePreferences(params.preferences, DEFAULT_TELEMETRY_PREFERENCES);
 
   const record: TelemetryConsentRecord = {
     version: TELEMETRY_CONSENT_VERSION,

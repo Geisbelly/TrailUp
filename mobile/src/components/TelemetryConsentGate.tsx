@@ -7,7 +7,6 @@ import {
 import React, { useEffect, useState } from "react";
 import {
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -15,27 +14,9 @@ import {
   View,
 } from "react-native";
 
-type CameraPermissionResponse = {
-  granted?: boolean;
-  status?: string;
-};
-
-const cameraModule =
-  Platform.OS !== "web"
-    ? (() => {
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-require-imports
-          return require("expo-camera");
-        } catch {
-          return null;
-        }
-      })()
-    : null;
-
-const requestCameraPermissionsAsync =
-  cameraModule?.requestCameraPermissionsAsync ??
-  cameraModule?.Camera?.requestCameraPermissionsAsync ??
-  null;
+// O modulo da camera saiu daqui junto com o pedido de permissao: aceitar os
+// termos nao toca na camera. Quem carrega `expo-camera` e pede a permissao e
+// `MetricasContext.setCameraOptIn`, acionado pelo toggle explicito.
 
 export function TelemetryConsentGate() {
   const [visible, setVisible] = useState(false);
@@ -65,27 +46,20 @@ export function TelemetryConsentGate() {
   const handleAccept = async () => {
     setSaving(true);
 
-    let cameraPermissionRequested = false;
-    let cameraPermissionGranted = false;
-
-    if (Platform.OS !== "web" && requestCameraPermissionsAsync) {
-      cameraPermissionRequested = true;
-      try {
-        const permission = (await requestCameraPermissionsAsync()) as
-          | CameraPermissionResponse
-          | undefined;
-        cameraPermissionGranted =
-          permission?.granted === true || permission?.status === "granted";
-      } catch {
-        cameraPermissionGranted = false;
-      }
-    }
-
+    // Aceitar os termos NAO pede a camera nem a liga. Pedir a permissao aqui
+    // tinha dois problemas: o aluno recebia o pedido do sistema no meio de um
+    // fluxo em que so' estava lendo e aceitando, e conceder a permissao ligava
+    // a captura sozinha — consentimento biometrico pre-marcado, que a LGPD
+    // nao admite (art. 11, e art. 14 por ser publico escolar).
+    //
+    // Quem pede a permissao agora e `setCameraOptIn`, acionado pelo toggle em
+    // Perfil -> Coleta e acessos: so' liga se o aluno for ate la' e, ai sim, o
+    // sistema perguntar. Ver issue #195.
     await setTelemetryConsentAccepted({
-      cameraPermissionRequested,
-      cameraPermissionGranted,
+      cameraPermissionRequested: false,
+      cameraPermissionGranted: false,
       preferences: {
-        cameraEnabled: cameraPermissionGranted,
+        cameraEnabled: false,
         usageEnabled: true,
         performanceEnabled: true,
         chatEnabled: true,
@@ -161,9 +135,11 @@ export function TelemetryConsentGate() {
             </Text>
             <Text style={styles.sectionTitle}>Sua escolha</Text>
             <Text style={styles.body}>
-              Se você aceitar, o app solicitará acesso aos recursos necessários,
-              principalmente à câmera. Se recusar, o app continua funcionando sem a
-              coleta comportamental adaptativa.
+              Se você aceitar, a coleta de uso, desempenho e chat começa — mas a
+              câmera continua desligada. Ela só liga se você for em Perfil →
+              Coleta e acessos e ativar; é lá que o aparelho pede a permissão. Se
+              recusar, o app continua funcionando sem a coleta comportamental
+              adaptativa.
             </Text>
             <Text style={styles.body}>
               Recusar não tira nenhum conteúdo de você e não muda sua nota. Você
