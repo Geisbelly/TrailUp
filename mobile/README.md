@@ -48,6 +48,13 @@ npm run ios
 npm run web
 npm run lint
 ```
+Os testes são registrados em `testes/*.txt`, com um caminho por linha. Ao criar
+um teste, adicione-o ao manifesto do grupo adequado; não junte grupos que
+precisam de isolamento. `npm test` executa o grupo principal. Os grupos
+`test:social-chat`, `test:class-selection`, `test:engagement`, `test:presence`
+e `test:trail-resume` rodam separadamente. A guarda
+`src/utils/testesRegistrados.test.ts` falha quando um teste fica sem grupo,
+aparece em mais de um manifesto ou aponta para arquivo inexistente.
 
 ## Diagnostico rapido
 Erro repetido `TypeError: Network request failed` geralmente indica:

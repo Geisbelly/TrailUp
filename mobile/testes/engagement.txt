@@ -1,0 +1,4 @@
+src/utils/battleRuntime.test.ts
+src/context/IAContext.battle.test.tsx
+src/utils/studyPresence.test.ts
+src/components/perfil/profileMetricsViewModel.test.ts

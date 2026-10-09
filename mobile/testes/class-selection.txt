@@ -1,0 +1,2 @@
+src/utils/classSelection.test.ts
+src/components/ClassSelectionGate.test.tsx
