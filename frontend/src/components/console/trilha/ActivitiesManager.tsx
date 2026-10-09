@@ -51,6 +51,41 @@ interface Conteudo {
   topico_id: number;
 }
 
+/**
+ * `atividades.metadata.grading_rules`, na forma exata que este formulario
+ * grava (ver o `metadata:` do insert/update abaixo). `metadata` e JSONB, logo
+ * `metadata.grading_rules` chega como `unknown` -- ler campo direto dali nao
+ * compila, e era esse o erro nos tres `penalty_*` do cartao.
+ */
+type RegrasDeCorrecao = {
+  penalty_timeout_pct?: number;
+  penalty_retry_pct?: number;
+  penalty_answer_reveal_pct?: number;
+  zero_if_timeout?: boolean;
+  zero_if_wrong?: boolean;
+  zero_if_answer_revealed?: boolean;
+};
+
+/** Estreita `metadata.grading_rules` uma vez, em vez de castar em cada leitura. */
+function regrasDeCorrecao(metadata: Atividade["metadata"]): RegrasDeCorrecao | null {
+  const bruto = metadata?.grading_rules;
+  if (!bruto || typeof bruto !== "object" || Array.isArray(bruto)) return null;
+  return bruto as RegrasDeCorrecao;
+}
+
+/** O selo de penalidades do cartao. Nao renderiza nada sem `grading_rules`. */
+function SeloDeRegras({ metadata }: { metadata: Atividade["metadata"] }) {
+  const regras = regrasDeCorrecao(metadata);
+  if (!regras) return null;
+  return (
+    <div className="mb-3 rounded-md border bg-muted/30 p-2 text-xs text-muted-foreground">
+      Timeout: {Number(regras.penalty_timeout_pct ?? 0)}% · Retry:{" "}
+      {Number(regras.penalty_retry_pct ?? 0)}% · Ver resposta:{" "}
+      {Number(regras.penalty_answer_reveal_pct ?? 0)}%
+    </div>
+  );
+}
+
 const tiposAtividade = [
   { value: "quiz", label: "Quiz" },
   { value: "exercicio", label: "Exercicio" },
@@ -304,7 +339,7 @@ export default function ActivitiesManager() {
   };
 
   const handleEdit = (activity: Atividade) => {
-    const gradingRules = (activity.metadata?.grading_rules ?? {}) as Record<string, unknown>;
+    const gradingRules = regrasDeCorrecao(activity.metadata) ?? {};
     setEditingActivity(activity);
     setFormData({
       titulo: activity.titulo,
@@ -638,13 +673,7 @@ export default function ActivitiesManager() {
                       </span>
                     )}
                   </div>
-                  {activity.metadata?.grading_rules ? (
-                    <div className="mb-3 rounded-md border bg-muted/30 p-2 text-xs text-muted-foreground">
-                      Timeout: {Number(activity.metadata.grading_rules.penalty_timeout_pct ?? 0)}% · Retry:{" "}
-                      {Number(activity.metadata.grading_rules.penalty_retry_pct ?? 0)}% · Ver resposta:{" "}
-                      {Number(activity.metadata.grading_rules.penalty_answer_reveal_pct ?? 0)}%
-                    </div>
-                  ) : null}
+                  <SeloDeRegras metadata={activity.metadata} />
                   <div className="flex gap-2">
                     <Button variant="outline" size="sm" onClick={() => handleEdit(activity)}>
                       <Pencil className="h-4 w-4" />

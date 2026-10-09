@@ -915,7 +915,7 @@ export default function TopicsManager() {
               setSelectedClassFilter(v);
             }}
           >
-            <SelectTrigger className="w-56" size="sm">
+            <SelectTrigger className="w-56 h-8 text-xs">
               <SelectValue placeholder="Selecione a classe" />
             </SelectTrigger>
             <SelectContent>

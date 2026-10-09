@@ -49,25 +49,40 @@ jobs:
       frontend: ${{ steps.filter.outputs.frontend }}
       mobile: ${{ steps.filter.outputs.mobile }}
       docs: ${{ steps.filter.outputs.docs }}
+      brainhexpdf: ${{ steps.filter.outputs.brainhexpdf }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
         id: filter
         with:
           filters: |
+            # Mexer no proprio CI exercita TODOS os jobs. Sem esta ancora,
+            # editar este arquivo roda so o job `changes` e mais nada — foi
+            # assim que o passo de type-check do frontend entrou sem nunca
+            # ter rodado.
+            ci: &ci
+              - '.github/workflows/ci.yml'
             api:
+              - *ci
               - 'api/**'
               # test_env_example_sem_segredo_real.py varre os .env.example de
               # TODOS os servicos, mas mora em api/tests — sem esta linha, uma
               # chave colada em mobile/.env.example nao acionaria o guard.
               - '**/.env.example'
             microservice:
+              - *ci
               - 'microservice/**'
             frontend:
+              - *ci
               - 'frontend/**'
             mobile:
+              - *ci
               - 'mobile/**'
+            brainhexpdf:
+              - *ci
+              - 'brainhexpdf/**'
             docs:
+              - *ci
               - 'docs/**'
               - 'scripts/verifica_encoding_docs.py'
 
@@ -126,6 +141,39 @@ jobs:
       - name: Testes
         run: npm test
 
+  # `brainhexpdf/` e versionado aqui (90 arquivos) e nunca teve job: os 18
+  # arquivos de teste e o `tsc --noEmit` dele nao rodavam em PR nenhum. Usa
+  # bun (tem `bun.lock` versionado, e nenhum package-lock), por isso o setup
+  # e diferente dos outros; o `node` do setup-node serve para os scripts, que
+  # chamam `node --import tsx --test`.
+  brainhexpdf:
+    needs: changes
+    if: ${{ needs.changes.outputs.brainhexpdf == 'true' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: brainhexpdf
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      # Sem `--frozen-lockfile` de proposito, por ora: `bun.lock` esta
+      # DESATUALIZADO — `d3` e `@types/d3` estao no package.json (e `d3` e
+      # usado por src/components/VisualKnowledgeGraph.tsx) mas nao constam do
+      # lock. Com `--frozen-lockfile` este job nasceria vermelho. Regenerar o
+      # lock precisa do bun na mao de quem commita; quando isso acontecer,
+      # troque por `bun install --frozen-lockfile`, que e o que a gente quer.
+      - name: Instala dependencias
+        run: bun install
+      - name: Type-check (tsc)
+        run: bun run lint
+      - name: Testes
+        run: bun run test
+
   frontend:
     needs: changes
     if: ${{ needs.changes.outputs.frontend == 'true' }}
@@ -143,6 +191,11 @@ jobs:
       - run: npm ci
       - name: Lint (eslint)
         run: npm run lint
+      # `vite build` nao checa tipo -- o esbuild so apaga as anotacoes. Sem
+      # este passo, erro de tipo no frontend nao reprova PR nenhum: eram 13
+      # vivendo na main.
+      - name: Type-check (tsc)
+        run: npm run typecheck
       - name: Testes (vitest)
         run: npm test
       - name: Build
@@ -165,6 +218,10 @@ jobs:
       - run: npm ci
       - name: Lint (expo)
         run: npm run lint
+      # `expo lint` e eslint, nao checa tipo. O mobile esta com zero erro
+      # hoje; o passo existe para que continue assim.
+      - name: Type-check (tsc)
+        run: npm run typecheck
       - name: Testes
         run: npm test
       # Grupos a parte porque compartilham estado entre si: rodados juntos com

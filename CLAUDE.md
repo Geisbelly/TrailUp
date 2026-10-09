@@ -22,9 +22,16 @@ mesclar em `main` não é dada por instrução de chat neste repositório.
 | `mobile/`       | Expo · React Native        | 8081      | App do aluno (consome personalização)             |
 
 Rodar tudo: `npm run dev` (Windows, abre uma janela por serviço via
-`scripts/dev.ps1`). A API é iniciada por `python -m uvicorn` (não pelo
-`uvicorn.exe` da venv — a venv foi movida e os `.exe` apontam para caminho
-antigo). Banco: **Supabase** (externo, via `.env`).
+`scripts/dev.ps1`). A API é iniciada por **`python run_api.py`**, não por
+`python -m uvicorn` (e nunca pelo `uvicorn.exe` da venv — a venv foi movida e
+os `.exe` apontam para caminho antigo).
+
+> O launcher não é conveniência: no Windows o `psycopg` async do checkpointer
+> do LangGraph exige `SelectorEventLoop`, e o padrão é `ProactorEventLoop`.
+> Trocar a política no topo de `app/main.py` **não funciona** — medido: o
+> uvicorn cria o loop e só depois importa o módulo do app, já dentro dele.
+> Por isso a troca tem de acontecer num processo que rode antes do uvicorn.
+> Ver `api/run_api.py` e a issue #173. Banco: **Supabase** (externo, via `.env`).
 
 > Existe um app **BrainHex** separado (`../BrainHex`, Google AI Studio) e um
 > `../ApiBrainHex` (origem do `microservice/`). São repositórios externos ao
