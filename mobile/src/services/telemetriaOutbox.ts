@@ -34,7 +34,29 @@ export const VALIDADE_OUTBOX_MS = 7 * 24 * 60 * 60 * 1000;
 export type LoteEnfileirado = {
   enfileiradoEm: number;
   payload: TelemetryBatchPayload;
+  /**
+   * Quantas vezes este lote especifico ja' falhou. Opcional para a fila que ja'
+   * esta' em disco continuar valendo — ausente conta como zero.
+   */
+  tentativas?: number;
 };
+
+/**
+ * Teto de tentativas por lote.
+ *
+ * O `break` do `escoarLotes` esta' certo para falha TRANSITORIA: se a rede
+ * caiu, insistir nos seguintes so' gasta bateria. Mas ele nao distingue isso de
+ * falha PERMANENTE -- um lote que o servidor sempre recusa fica na cabeca da
+ * fila e bloqueia todos os de tras ate vencer, sete dias depois.
+ *
+ * O contador resolve sem desfazer o `break`: enquanto o lote estiver abaixo do
+ * teto, a fila continua parando nele (comportamento atual, bateria preservada).
+ * Ao passar do teto, ele e' descartado e a fila volta a andar.
+ *
+ * 5 e' generoso de proposito: uma queda de rede comum nao chega la', e quem
+ * chega provavelmente nao vai passar nunca.
+ */
+export const MAX_TENTATIVAS_POR_LOTE = 5;
 
 /** Descarta o que venceu e depois o excedente mais antigo. */
 export function podarLotes(
@@ -56,7 +78,7 @@ export function podarLotes(
 export async function escoarLotes(
   fila: LoteEnfileirado[],
   enviar: (payload: TelemetryBatchPayload) => Promise<unknown>
-): Promise<{ enviados: number; restante: LoteEnfileirado[] }> {
+): Promise<{ enviados: number; restante: LoteEnfileirado[]; falhou: LoteEnfileirado | null }> {
   let enviados = 0;
   for (const lote of fila) {
     try {
@@ -66,20 +88,61 @@ export async function escoarLotes(
       }
       enviados += 1;
     } catch {
-      break;
+      // Continua parando aqui — quem decide se este lote sobrevive e'
+      // `registrarFalha`, com o contador de tentativas.
+      return { enviados, restante: fila.slice(enviados), falhou: lote };
     }
   }
-  return { enviados, restante: fila.slice(enviados) };
+  return { enviados, restante: [], falhou: null };
+}
+
+/**
+ * Soma uma tentativa ao lote que falhou e descarta se passou do teto.
+ *
+ * Pura de proposito: a decisao de jogar fora dado do aluno nao pode depender de
+ * AsyncStorage para ser testada.
+ */
+export function registrarFalha(
+  fila: LoteEnfileirado[],
+  falhou: LoteEnfileirado | null,
+  limite: number = MAX_TENTATIVAS_POR_LOTE
+): { fila: LoteEnfileirado[]; descartado: LoteEnfileirado | null } {
+  if (!falhou) return { fila, descartado: null };
+
+  const alvo = identity(falhou.payload);
+  let descartado: LoteEnfileirado | null = null;
+
+  const proxima = fila.flatMap((item) => {
+    if (identity(item.payload) !== alvo) return [item];
+    const tentativas = (item.tentativas ?? 0) + 1;
+    if (tentativas >= limite) {
+      descartado = { ...item, tentativas };
+      return [];
+    }
+    return [{ ...item, tentativas }];
+  });
+
+  return { fila: proxima, descartado };
 }
 
 function parsearFila(bruto: string | null): LoteEnfileirado[] {
   if (!bruto) return [];
   const dados = JSON.parse(bruto);
   if (!Array.isArray(dados)) return [];
-  return dados.filter(
-    (item): item is LoteEnfileirado =>
-      !!item && typeof item.enfileiradoEm === "number" && !!item.payload
-  );
+  return dados
+    .filter(
+      (item): item is LoteEnfileirado =>
+        !!item && typeof item.enfileiradoEm === "number" && !!item.payload
+    )
+    .map((item) => ({
+      ...item,
+      // Valor estranho vira 0 em vez de descartar o lote: perder dado do aluno
+      // por causa de um campo de controle seria pior que recomecar a contagem.
+      tentativas:
+        typeof item.tentativas === "number" && Number.isFinite(item.tentativas) && item.tentativas > 0
+          ? Math.floor(item.tentativas)
+          : 0,
+    }));
 }
 
 async function ler(): Promise<LoteEnfileirado[]> {
@@ -130,13 +193,22 @@ export function drenarLotesTelemetria(
   if (drainInFlight) return drainInFlight;
   drainInFlight = (async () => {
     const fila = await mutateQueue(async () => podarLotes(await ler(), Date.now()));
-    const { enviados } = await escoarLotes(fila, enviar);
+    const { enviados, falhou } = await escoarLotes(fila, enviar);
     const sent = new Set(fila.slice(0, enviados).map((item) => identity(item.payload)));
     const pendentes = await mutateQueue(async () => {
       // Keep batches appended while network delivery was in flight.
       const remaining = podarLotes(await ler(), Date.now()).filter((item) => !sent.has(identity(item.payload)));
-      await gravar(remaining);
-      return remaining.length;
+      const { fila: atualizada, descartado } = registrarFalha(remaining, falhou);
+      if (descartado) {
+        // Descarte de dado do aluno nunca acontece em silencio.
+        console.warn(
+          `[telemetriaOutbox] lote descartado apos ${descartado.tentativas} tentativas; ` +
+            "a fila estava travada nele.",
+          identity(descartado.payload)
+        );
+      }
+      await gravar(atualizada);
+      return atualizada.length;
     });
     return { enviados, pendentes };
   })().finally(() => { drainInFlight = null; });

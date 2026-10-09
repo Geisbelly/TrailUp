@@ -123,16 +123,53 @@ Atualização bayesiana simples, por ciclo:
 posterior(perfil) ∝ prior(perfil) × Π verossimilhança(indicador | perfil)
 ```
 
-Com três salvaguardas:
+### 3.5 Correção: nem piso de evidência, nem teto de deslocamento
 
-1. **Piso de evidência.** Abaixo de N sessões, o posterior não se afasta do
-   prior — aluno novo não é reclassificado por dois cliques.
-2. **Teto de deslocamento por ciclo.** A afinidade muda no máximo X pontos por
-   atualização: o material gerado é caro (`source_hash`), e perfil oscilante
-   regeraria tudo sem parar.
-3. **Confiança explícita.** `confianca` acompanha a afinidade. Com confiança
-   baixa, a personalização usa o perfil como *tendência* (tom, ordem), não como
-   *determinação* (trocar toda a mídia).
+> A primeira versão desta seção trazia três "salvaguardas": piso de evidência
+> (abaixo de N sessões o posterior não se move), teto de deslocamento por ciclo,
+> e confiança explícita. **As duas primeiras estavam erradas** e foram
+> removidas.
+
+**O piso era muleta de uma formulação errada.** Numa combinação ponderada por
+*precisão*, "pouco dado quase não move o posterior" não é uma regra que se
+escreve — é o resultado. Com zero observações o posterior é **exatamente** o
+prior. O piso só escondia que a conta não estava formulada assim.
+
+**O teto misturava custo com inferência.** "Regerar mídia é caro" é verdade, mas
+o lugar de tratar isso é em **quem consome** o perfil — só regerar quando o
+dominante muda *e* a confiança é alta —, não distorcendo a estimativa. Estimador
+que mente para economizar processamento é estimador quebrado.
+
+Consequência que importa para o planejamento: **isto não depende de volume de
+telemetria para ser implementado.** Funciona com zero observações, com uma e com
+mil. O que depende de dado é *validar* se os indicadores discriminam bem — e
+isso é calibrar `pesoPorUnidade`, não pré-requisito para existir.
+
+A formulação:
+
+```
+tau = c / (1 - c)                 c = tau / (1 + tau)
+
+posterior = (tau_prior·mu_prior + Σ tau_i·mu_i) / (tau_prior + Σ tau_i)
+tau_posterior = tau_prior + Σ tau_i
+```
+
+Confiança e precisão são a mesma coisa em unidades diferentes, então a confiança
+posterior **sai da mesma conta** em vez de ser um número escolhido ao lado da
+estimativa.
+
+Propriedades que os testes fixam, e que tornam piso e teto desnecessários:
+
+- sem observação, posterior **idêntico** ao prior;
+- deslocamento **monótono** no volume;
+- posterior **sempre entre** prior e evidência — média ponderada não extrapola,
+  então não há o que capar;
+- prior mais confiante resiste mais à mesma evidência.
+
+**Limitação conhecida, e não resolvida aqui:** evidências contraditórias puxam
+para o ponto médio *e* somam precisão — ou seja, discordância aumenta a
+confiança. O tratamento correto alargaria a variância diante de inconsistência.
+Fica registrado em vez de escondido.
 
 ## 4. O que NÃO está neste desenho
 
@@ -149,9 +186,14 @@ Com três salvaguardas:
 | fase | entrega | depende de |
 | --- | --- | --- |
 | 1 | instrumento corrigido + escore centrado + confiança | nada |
-| 2 | bloco de ordenação forçada | fase 1 |
-| 3 | indicadores comportamentais calculados do que já é coletado | telemetria com volume |
-| 4 | atualização bayesiana + salvaguardas | fase 3 |
+| 2 | bloco de ordenação forçada ✅ | fase 1 |
+| 3 | indicadores comportamentais calculados do que já é coletado ✅ | nada — roda com zero linhas |
+| 4 | atualização ponderada por precisão ✅ | fase 3 |
+
+A **concordância** entre a escala e a ordenação virou entrada da confiança
+(`concordanciaEntreMetodos`): dois métodos que dizem a mesma coisa é
+convergência; divergência significa prior fraco, e isso aparece em vez de
+sumir numa média.
 
 A fase 1 é o que destrava a issue #1: o cadastro passa a entregar um perfil com
 incerteza honesta em vez de um rótulo com confiança fingida.

@@ -7,12 +7,15 @@ import StudentBasicsStep, { StudentBasics } from "./StudentBasicsStep";
 import StudentModeStep from "./StudentModeStep";
 import StudentPresentationStep from "./StudentPresentationStep";
 import BrainHexIntroStep from "./BrainHexIntroStep";
+import BrainHexOrdenacaoStep from "./BrainHexOrdenacaoStep";
 import BrainHexQuizStep from "./BrainHexQuizStep";
 import BrainHexResultStep from "./BrainHexResultStep";
+import { ordemInicial } from "@/features/signup/brainhexOrdenacao";
+import type { QualidadeDaResposta } from "@/features/signup/brainhexScoring";
+import { computarPerfil } from "@/features/signup/priorDoPerfil";
 import {
   BrainHexAnswers,
   BrainHexProfileKey,
-  computeBrainHexResult,
   isAllAnswered,
   resolveRepresentativeBrainHexResults,
 } from "@/features/signup/brainhex";
@@ -23,6 +26,7 @@ type StepKey =
   | "modo_apresentacao"
   | "brainhex_intro"
   | "brainhex_quiz"
+  | "brainhex_ordenacao"
   | "brainhex_result";
 
 export function AlunoSignupWizard({
@@ -37,11 +41,25 @@ export function AlunoSignupWizard({
     brainhexPercent: Record<string, number>;
     brainhexRaw: Record<string, number>;
     perfilInicial: BrainHexProfileKey;
+    /** Ordem declarada no bloco ipsativo — o prior que a fase 3 vai comparar
+     *  com o comportamento. Sem guardar, nao ha' com o que comparar. */
+    ordenacao: BrainHexProfileKey[];
+    confiancaDoPerfil: number;
+    concordanciaDoPerfil: number;
+    qualidadeDaResposta: QualidadeDaResposta;
   }) => Promise<void> | void;
   isSaving?: boolean;
 }) {
   const steps: StepKey[] = useMemo(
-    () => ["basics", "modo_operacao", "modo_apresentacao", "brainhex_intro", "brainhex_quiz", "brainhex_result"],
+    () => [
+      "basics",
+      "modo_operacao",
+      "modo_apresentacao",
+      "brainhex_intro",
+      "brainhex_quiz",
+      "brainhex_ordenacao",
+      "brainhex_result",
+    ],
     []
   );
 
@@ -53,6 +71,21 @@ export function AlunoSignupWizard({
   const [brainhexAnswers, setBrainhexAnswers] = useState<BrainHexAnswers>({});
   const [perfilInicial, setPerfilInicial] = useState<BrainHexProfileKey | null>(null);
   const [quizPage, setQuizPage] = useState(0);
+
+  // Ordem embaralhada uma vez por sessao de cadastro. Comecar sempre na mesma
+  // ordem criaria ancoragem: quem nao mexe entregaria a ordem do sistema, nao a
+  // dele. A semente fica no estado inicial para a ordem nao mudar a cada
+  // re-render.
+  const [ordenacao, setOrdenacao] = useState<BrainHexProfileKey[]>(() =>
+    ordemInicial(Date.now()),
+  );
+
+  // UMA conta para a tela e para o banco. Recalcular em dois lugares foi
+  // exatamente como o percentual mostrado e o percentual salvo divergiram.
+  const perfilComputado = useMemo(
+    () => computarPerfil({ answers: brainhexAnswers, ordenacao }),
+    [brainhexAnswers, ordenacao],
+  );
 
   const progress = Math.round(((stepIndex + 1) / steps.length) * 100);
   const step = steps[stepIndex];
@@ -82,8 +115,13 @@ export function AlunoSignupWizard({
       toast.error("Conclua o questionário BrainHex antes de confirmar.");
       return;
     }
-    const result = computeBrainHexResult(brainhexAnswers);
-    const perfisRepresentativos = resolveRepresentativeBrainHexResults(result.sorted);
+    // UMA conta so': o que a tela mostra e o que o banco guarda saem daqui.
+    // Antes, `aluno_perfil` recebia o percentual do `computeBrainHexResult`
+    // antigo -- sem normalizacao de peso, sem centragem e sem a ordenacao --
+    // enquanto o pipeline corrigido alimentava so' a tabela de medida. O
+    // formulario calculava a correcao e nao a usava.
+    const prior = perfilComputado;
+    const perfisRepresentativos = resolveRepresentativeBrainHexResults(prior.ordenado);
     const perfilEscolhido =
       perfisRepresentativos.find((profile) => profile.key === perfilInicial)?.key ??
       perfisRepresentativos[0]?.key;
@@ -97,8 +135,12 @@ export function AlunoSignupWizard({
       apelido: basics.apelido.trim(),
       modoOperacao,
       modoApresentacao,
-      brainhexPercent: result.percent,
-      brainhexRaw: result.raw,
+      brainhexPercent: prior.percentual,
+      ordenacao,
+      confiancaDoPerfil: prior.confianca,
+      concordanciaDoPerfil: prior.concordancia,
+      qualidadeDaResposta: prior.qualidade,
+      brainhexRaw: prior.afinidade,
       perfilInicial: perfilEscolhido,
     });
   };
@@ -135,9 +177,18 @@ export function AlunoSignupWizard({
         />
       )}
 
+      {step === "brainhex_ordenacao" && (
+        <BrainHexOrdenacaoStep
+          ordem={ordenacao}
+          onChange={setOrdenacao}
+          onBack={back}
+          onFinish={next}
+        />
+      )}
+
       {step === "brainhex_result" && (
         <BrainHexResultStep
-          answers={brainhexAnswers}
+          resultado={perfilComputado}
           selectedProfile={perfilInicial}
           onSelectProfile={setPerfilInicial}
         />
@@ -146,7 +197,7 @@ export function AlunoSignupWizard({
       {/* O quiz tem sua própria navegação (Anterior / Próximo página / Finalizar Análise);
           o rodapé abaixo ficaria duplicado e com "Próximo" fazendo algo diferente do botão
           interno, então só aparece nas demais etapas. */}
-      {step !== "brainhex_quiz" && (
+      {step !== "brainhex_quiz" && step !== "brainhex_ordenacao" && (
         <div className="flex gap-3 pt-2">
           <Button variant="outline" onClick={back} disabled={stepIndex === 0 || Boolean(isSaving)}>
             Voltar
