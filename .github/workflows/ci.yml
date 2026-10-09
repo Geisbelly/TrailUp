@@ -143,6 +143,11 @@ jobs:
       - run: npm ci
       - name: Lint (eslint)
         run: npm run lint
+      # `vite build` nao checa tipo -- o esbuild so apaga as anotacoes. Sem
+      # este passo, erro de tipo no frontend nao reprova PR nenhum: eram 13
+      # vivendo na main.
+      - name: Type-check (tsc)
+        run: npm run typecheck
       - name: Testes (vitest)
         run: npm test
       - name: Build
@@ -165,6 +170,10 @@ jobs:
       - run: npm ci
       - name: Lint (expo)
         run: npm run lint
+      # `expo lint` e eslint, nao checa tipo. O mobile esta com zero erro
+      # hoje; o passo existe para que continue assim.
+      - name: Type-check (tsc)
+        run: npm run typecheck
       - name: Testes
         run: npm test
       # Grupos a parte porque compartilham estado entre si: rodados juntos com

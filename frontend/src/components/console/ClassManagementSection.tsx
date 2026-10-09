@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -42,7 +43,7 @@ type QuestionRow = {
   atividade_id: number;
   enunciado: string | null;
   tipo: string | null;
-  alternativas: unknown;
+  alternativas: Json;
   resposta_correta: string | null;
   nota_estabelecida: number | null;
 };
