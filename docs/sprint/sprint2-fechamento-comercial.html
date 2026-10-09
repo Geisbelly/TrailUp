@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TrailUp · Fechamento da Sprint 2 (18/09–09/10)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+:root{
+  color-scheme:dark;
+  --seeker:#3fc8bb; --survivor:#8f9bab; --daredevil:#f5788a;
+  --mastermind:#a08df5; --conqueror:#6b8ff0; --socializer:#ff8a63; --achiever:#e3bd4e;
+  --ground:#0b0a14; --ground-2:#131120; --surface:#1c1930; --surface-sub:#252140;
+  --ink:#f1eef9; --ink-soft:#cfc9e3; --muted:#8d87ab; --rule:#322c4d; --rule-strong:#4a4270;
+  --accent:#a08df5; --accent-2:#e3bd4e; --accent-wash:#241f47;
+  --ok:#4fd1c0; --risk:#f5788a;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--ground);color:var(--ink)}
+body{font-family:"Literata",Georgia,serif;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:"Bricolage Grotesque",system-ui,sans-serif;margin:0;letter-spacing:-0.02em;text-wrap:balance}
+p{margin:0} strong,b{color:var(--ink);font-weight:600}
+.mono{font-family:"JetBrains Mono",monospace}
+
+/* ---------- canvas 1600x900 ---------- */
+.slide{position:relative;width:1600px;height:900px;overflow:hidden;
+  background:radial-gradient(900px 600px at 85% -10%,color-mix(in srgb,var(--accent) 16%,transparent),transparent 60%),
+             radial-gradient(800px 520px at -8% 110%,color-mix(in srgb,var(--seeker) 10%,transparent),transparent 60%),
+             linear-gradient(180deg,var(--ground) 0%,var(--ground-2) 100%);
+  padding:112px 96px 84px;display:flex;flex-direction:column;gap:26px}
+.slide::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.45;
+  background-image:radial-gradient(1.5px 1.5px at 10% 20%,#fff 60%,transparent),radial-gradient(1.5px 1.5px at 80% 12%,#fff 50%,transparent),radial-gradient(1px 1px at 60% 82%,#fff 50%,transparent),radial-gradient(1px 1px at 30% 65%,#fff 45%,transparent),radial-gradient(1.5px 1.5px at 93% 55%,#fff 55%,transparent),radial-gradient(1px 1px at 45% 30%,#fff 40%,transparent),radial-gradient(1.5px 1.5px at 15% 88%,#fff 45%,transparent)}
+.slide>*{position:relative}
+.top{position:absolute;top:40px;left:96px;right:96px;display:flex;justify-content:space-between;align-items:center}
+.wordmark{display:flex;align-items:center;gap:12px;font-family:"JetBrains Mono",monospace;font-size:15px;font-weight:700;letter-spacing:.26em;color:var(--ink-soft)}
+.wordmark i{font-style:normal;font-weight:400;color:var(--muted);letter-spacing:.14em}
+.diamond{width:14px;height:14px;background:var(--accent);transform:rotate(45deg);display:inline-block;flex:none;box-shadow:0 0 16px 1px color-mix(in srgb,var(--accent) 55%,transparent)}
+.pg{font-family:"JetBrains Mono",monospace;font-size:14px;color:var(--muted);letter-spacing:.08em}
+.foot{position:absolute;bottom:34px;left:96px;right:96px;display:flex;justify-content:space-between;font-family:"JetBrains Mono",monospace;font-size:13px;color:var(--muted);letter-spacing:.04em}
+.eyebrow{font-family:"JetBrains Mono",monospace;font-size:15px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--accent-2);display:flex;align-items:center;gap:12px}
+.eyebrow .diamond{width:11px;height:11px}
+h2{font-size:52px;line-height:1.06}
+h1{font-size:84px;line-height:1.0;font-weight:800}
+.lede{font-size:25px;line-height:1.5;color:var(--ink-soft);max-width:1250px}
+.fine{font-size:18px;color:var(--muted);line-height:1.45}
+.chip{display:inline-flex;align-items:center;font-family:"JetBrains Mono",monospace;font-size:13px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:4px 11px;border-radius:20px;white-space:nowrap;border:1px solid transparent}
+.chip.ok{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok);border-color:color-mix(in srgb,var(--ok) 40%,transparent)}
+.chip.warn{background:color-mix(in srgb,var(--accent-2) 18%,transparent);color:var(--accent-2);border-color:color-mix(in srgb,var(--accent-2) 40%,transparent)}
+.chip.risk{background:color-mix(in srgb,var(--risk) 18%,transparent);color:var(--risk);border-color:color-mix(in srgb,var(--risk) 40%,transparent)}
+.chip.flat{background:var(--surface-sub);color:var(--ink-soft)}
+
+.ficha{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--rule);border-radius:14px;overflow:hidden;background:color-mix(in srgb,var(--surface) 72%,transparent)}
+.ficha>div{padding:24px 24px 26px;border-right:1px solid var(--rule);display:grid;gap:6px;align-content:start}
+.ficha>div:last-child{border-right:0}
+.ficha .v{font-family:"Bricolage Grotesque",sans-serif;font-size:62px;font-weight:800;letter-spacing:-.03em;line-height:1}
+.ficha .k{font-size:19px;color:var(--ink-soft);font-family:"Bricolage Grotesque",sans-serif;font-weight:500}
+.ficha .sub{font-size:13px;color:var(--muted);font-family:"JetBrains Mono",monospace}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.card{border:1px solid var(--rule);background:color-mix(in srgb,var(--surface) 70%,transparent);border-radius:14px;padding:22px 24px 24px;display:grid;gap:10px;align-content:start;
+  clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px))}
+.card h3{font-size:27px;display:flex;align-items:center;gap:12px}
+.card p{font-size:20px;line-height:1.45;color:var(--ink-soft)}
+.card .ref{font-family:"JetBrains Mono",monospace;font-size:14.5px;color:var(--muted)}
+.dot{width:12px;height:12px;border-radius:50%;flex:none;display:inline-block}
+.risk-card{border:1px solid color-mix(in srgb,var(--risk) 45%,var(--rule));background:color-mix(in srgb,var(--risk) 8%,var(--surface));border-radius:14px;padding:22px 24px;display:grid;gap:6px;align-content:start}
+.risk-card h3{font-size:24px;color:var(--risk)}
+.risk-card p{font-size:19px;line-height:1.42;color:var(--ink-soft)}
+.risk-card .way{color:var(--ok)}
+.warn-card{border-color:color-mix(in srgb,var(--accent-2) 45%,var(--rule));background:color-mix(in srgb,var(--accent-2) 7%,var(--surface))}
+.warn-card h3{color:var(--accent-2)}
+
+ul.list{list-style:none;margin:0;padding:0;display:grid;gap:14px}
+ul.list li{display:grid;grid-template-columns:22px 1fr;gap:12px;align-items:baseline;font-size:22px;line-height:1.42;color:var(--ink-soft)}
+ul.list li::before{content:"";width:11px;height:11px;background:var(--accent-2);transform:rotate(45deg) translateY(-2px);display:inline-block}
+ul.list.sm li{font-size:20px}
+
+.bars{display:grid;gap:26px}
+.bar{display:grid;grid-template-columns:330px 1fr 92px;gap:20px;align-items:center}
+.bar .n{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:24px}
+.bar .n small{display:block;font-family:"JetBrains Mono",monospace;font-weight:400;font-size:14px;color:var(--muted);margin-top:4px}
+.track{height:20px;background:var(--surface-sub);border-radius:9px;overflow:hidden}
+.track>i{display:block;height:100%;border-radius:9px}
+.bar .p{font-family:"JetBrains Mono",monospace;font-size:23px;text-align:right;font-weight:700}
+
+table{border-collapse:collapse;width:100%}
+th,td{text-align:right;padding:13px 16px;border-bottom:1px solid var(--rule);font-family:"JetBrains Mono",monospace;font-size:19px}
+th{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+th:first-child,td:first-child{text-align:left}
+.tbl{border:1px solid var(--rule);border-radius:12px;overflow:hidden;background:color-mix(in srgb,var(--surface) 68%,transparent)}
+
+.big{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:150px;line-height:.9;letter-spacing:-.05em;color:var(--accent-2)}
+.replace-note{font-family:"JetBrains Mono",monospace;font-size:15.5px;color:var(--muted);border-left:3px solid var(--accent);padding:6px 0 6px 14px;max-width:1100px;line-height:1.5}
+
+/* ---------- screen: scaled deck ---------- */
+@media screen{
+  html,body{height:100%;overflow:hidden}
+  #stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+  #deck{width:1600px;height:900px;position:relative;transform-origin:center center;flex:none}
+  #deck .slide{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity .35s}
+  #deck .slide.on{opacity:1;pointer-events:auto}
+  .nav{position:fixed;bottom:10px;left:0;right:0;display:flex;justify-content:center;gap:10px;z-index:9}
+  .nav button{width:38px;height:38px;border-radius:50%;border:1px solid var(--rule-strong);background:color-mix(in srgb,var(--surface) 85%,transparent);color:var(--ink-soft);cursor:pointer;font-size:16px}
+  .nav button:hover{border-color:var(--accent);color:var(--ink)}
+}
+@media print{
+  @page{size:1600px 900px;margin:0}
+  html,body{width:1600px;background:var(--ground)}
+  #stage,#deck{display:block;transform:none!important}
+  .slide{break-after:page;page-break-after:always}
+  .slide:last-child{break-after:auto;page-break-after:auto}
+  .nav{display:none}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+<div id="stage"><div id="deck">
+
+<!-- 01 CAPA -->
+<section class="slide" id="s1">
+  <div class="top"><div class="wordmark"><span class="diamond"></span>TRAILUP <i>· SPRINT 2 · FECHAMENTO</i></div><div class="pg">01 / 13</div></div>
+  <p class="eyebrow"><span class="diamond"></span> Fechamento da Sprint 2 · 3 semanas · 18/09 – 09/10/2026 (BRT)</p>
+  <h1>Do protótipo ao produto:<br><span style="color:var(--accent)">o TrailUp passou a decidir,<br>proteger e acompanhar.</span></h1>
+  <p class="lede">Modelos treinados escolhendo quando acionar a IA, login Google no app do aluno, um console do professor com visão de turma e assistente de IA, e os primeiros passos concretos de LGPD.</p>
+  <div class="ficha" style="margin-top:6px">
+    <div><div class="v">133</div><div class="k">PRs integrados na main</div><div class="sub">18/09–09/10 · gh</div></div>
+    <div><div class="v">26</div><div class="k">issues fechadas no repositório</div><div class="sub">10 delas eram metas da sprint</div></div>
+    <div><div class="v" style="color:var(--mastermind)">100%</div><div class="k">Frente C · modelos ML/LLM</div><div class="sub">#215 + #216 fechadas</div></div>
+    <div><div class="v" style="color:var(--accent-2)">36,6%</div><div class="k">da meta da sprint (Done)</div><div class="sub">peso igual nas frentes A–E</div></div>
+  </div>
+  <p class="replace-note">Este relatório de fechamento substitui o semanal W41 (enviado hoje como “meio de sprint”, 37%): a Sprint 2 foi encerrada hoje, após 3 semanas.</p>
+  <div class="foot"><span>BitStudioLabs/trail-up · Lab TrailUp + Prof. Fábio</span><span>gerado em 09/10/2026 · BRT</span></div>
+</section>
+
+<!-- 02 RESUMO EXECUTIVO -->
+<section class="slide" id="s2">
+  <div class="top"><div class="wordmark"><span class="diamond"></span>TRAILUP <i>· SPRINT 2 · FECHAMENTO</i></div><div class="pg">02 / 13</div></div>
+  <p class="eyebrow"><span class="diamond"></span> Resumo executivo</p>
+  <h2>Em três semanas, o produto ganhou cérebro, console e base de confiança</h2>
+  <div class="grid2" style="margin-top:6px">
+    <div class="card"><h3><span class="dot" style="background:var(--mastermind)"></span>A IA ficou mais inteligente e mais barata</h3>
+      <p>O gate M2 decide <b>quando vale chamar a LLM</b> e o Jev foi avaliado com evidência de custo. Frente de modelos fechada em <b>100%</b>.</p><span class="ref">#275 · #271 · issues #215 #216</span></div>
+    <div class="card"><h3><span class="dot" style="background:var(--conqueror)"></span>O professor ganhou um console de verdade</h3>
+      <p>Visão da turma (fases 2–9), gestão de turmas (6 fases) e o <b>Escriba</b>, assistente de IA do professor, já estão na main.</p><span class="ref">#259–#267 · #268 · #273–#282</span></div>
+    <div class="card"><h3><span class="dot" style="background:var(--achiever)"></span>O aluno tropeça menos</h3>
+      <p>Login Google no app com PKCE, conquistas que pagam pontos, prazo correto, fim do ponto duplicado e cadastro BrainHex corrigido.</p><span class="ref">#270 · #157 · #321 · #322 · #310–#315</span></div>
+    <div class="card"><h3><span class="dot" style="background:var(--seeker)"></span>Confiança e LGPD saíram do papel</h3>
+      <p>Câmera desligada por padrão, consentimento provável pelo servidor e retenção do texto livre do aluno. O gate #195 segue aberto.</p><span class="ref">#309 · #339 · #338</span></div>
+  </div>
+  <p class="fine"><b style="color:var(--accent-2)">Leitura honesta:</b> pelo critério estrito de Done (issue fechada), a sprint fechou em <b>36,6%</b>. Boa parte do console e dos bugs do aluno já está em código, mas as issues nominadas ainda não passaram pelo DoD. Esse é o primeiro trabalho da Sprint 3.</p>
+  <div class="foot"><span>Fontes: gh (BitStudioLabs/trail-up), summary W40/W41, analise_prs_lab_3semanas</span><span>02</span></div>
+</section>
+
+<!-- 03 META E % -->
+<section class="slide" id="s3">
+  <div class="top"><div class="wordmark"><span class="diamond"></span>TRAILUP <i>· SPRINT 2 · FECHAMENTO</i></div><div class="pg">03 / 13</div></div>
+  <p class="eyebrow"><span class="diamond"></span> Meta da sprint e % atingido</p>
+  <div style="display:grid;grid-template-columns:400px 1fr;gap:56px;align-items:start">
+    <div style="display:grid;gap:14px">
+      <div class="big">36,6%</div>
+      <p style="font-size:21px;color:var(--ink-soft);line-height:1.45">da meta da Sprint 2 entregue em <b>Done</b> no fechamento (09/10).</p>
+      <p class="fine">Método: média com peso igual das 5 frentes A–E do planning (§3). Done = issue fechada, conforme o DoD (§4).<br>Por contagem simples: <b>10 de 29</b> issues das frentes (34,5%).<br>Evolução: 20,9% no fim da W40, 36,6% no fechamento. Nenhuma issue da sprint fechou após a coleta da W41, por isso o número coincide.</p>
+    </div>
+    <div class="bars" style="margin-top:8px">
+      <div class="bar"><div class="n">C · Modelos ML/LLM<small>Luís · 2/2 issues</small></div><div class="track"><i style="width:100%;background:var(--mastermind)"></i></div><div class="p" style="color:var(--ok)">100%</div></div>
+      <div class="bar"><div class="n">D · RAG corpus e retrieval<small>Luís · 6/11 issues</small></div><div class="track"><i style="width:54.5%;background:var(--seeker)"></i></div><div class="p">54,5%</div></div>
+      <div class="bar"><div class="n">A · Bugs do aluno<small>Geisbelly · 2/7 issues</small></div><div class="track"><i style="width:28.6%;background:var(--achiever)"></i></div><div class="p">28,6%</div></div>
+      <div class="bar"><div class="n">B · Console do professor<small>JP · 0/7 issues</small></div><div class="track"><i style="width:0.6%;background:var(--conqueror)"></i></div><div class="p" style="color:var(--risk)">0%</div></div>
+      <div class="bar"><div class="n">E · Web do aluno<small>Rafa · 0/2 issues</small></div><div class="track"><i style="width:0.6%;background:var(--socializer)"></i></div><div class="p" style="color:var(--risk)">0%</div></div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px">
+        <span class="chip flat">Transversal #218 · aberta</span><span class="chip warn">Gate LGPD #195 · aberto (não é entregável)</span>
+      </div>
+      <p class="fine" style="margin-top:4px">Propósito (planning §1): destravar o aluno no mobile · protótipo em console · modelos decidindo · fechar corpus do RAG · consolidar web do aluno.</p>
+    </div>
+  </div>
+  <div class="foot"><span>Fonte: docs/sprint/sprint-planning-2.md (triagem 18/09) · estado das issues via gh em 09/10 ~17h BRT</span><span>03</span></div>
+</section>
+
+<!-- 04 ALUNO -->
+<section class="slide" id="s4">
+  <div class="top"><div class="wordmark"><span class="diamond"></span>TRAILUP <i>· SPRINT 2 · FECHAMENTO</i></div><div class="pg">04 / 13</div></div>
+  <p class="eyebrow"><span class="diamond"></span> O que muda para o aluno</p>
+  <h2>Menos atrito do primeiro login à última conquista</h2>
+  <div class="grid3">
+    <div class="card"><h3><span class="dot" style="background:var(--ok)"></span>Login Google no app</h3><p>Fluxo nativo com <b>PKCE</b>: só código de autorização é aceito, deep link com token solto é recusado.</p><span class="chip ok" style="justify-self:start">#217 fechada · PR #270</span></div>
+    <div class="card"><h3><span class="dot" style="background:var(--ok)"></span>Conquistas que pagam</h3><p>Corrige o cenário em que 21 das 27 conquistas nunca destravavam e as 6 restantes não pagavam pontos.</p><span class="chip ok" style="justify-self:start">#157 fechada</span></div>
+    <div class="card"><h3><span class="dot" style="background:var(--achiever)"></span>Perfil BrainHex correto</h3><p>Cadastro com bloco de ordenação forçada e viés dos pesos corrigido. O app passa a <b>usar</b> o perfil, não só calculá-lo.</p><span class="chip flat" style="justify-self:start">PRs #310–#313, #315</span></div>
+    <div class="card"><h3><span class="dot" style="background:var(--achiever)"></span>Prazo que o aluno vê</h3><p>O prazo deixa de vencer um dia antes e passa a aparecer para o aluno.</p><span class="chip warn" style="justify-self:start">PR #321 · issue #177 aberta</span></div>
+    <div class="card"><h3><span class="dot" style="background:var(--achiever)"></span>Ponto justo</h3><p>O acerto em atividade personalizada deixa de pagar N vezes (dedup no servidor).</p><span class="chip warn" style="justify-self:start">PR #322 · issue #186 aberta</span></div>
+    <div class="card"><h3><span class="dot" style="background:var(--achiever)"></span>Material alcançável</h3><p>O banco recusa URL de loopback (localhost) em material do aluno.</p><span class="chip warn" style="justify-self:start">PR #337 · issue #189 aberta</span></div>
+  </div>
+  <p class="fine"><span class="chip ok">verde</span> issue fechada (Done) &nbsp; <span class="chip warn">amarelo</span> código na main em 09/10, issue aguardando DoD. Login Google ainda <b>não testado em aparelho</b>: depende de liberar o callback no Supabase Auth.</p>
+  <div class="foot"><span>Fontes: gh pr/issue view · validacao_prs_3semanas · testes_qualidade_3semanas</span><span>04</span></div>
+</section>
+
+<!-- 05 PROFESSOR -->
+<section class="slide" id="s5">
+  <div class="top"><div class="wordmark"><span class="diamond"></span>TRAILUP <i>· SPRINT 2 · FECHAMENTO</i></div><div class="pg">05 / 13</div></div>
+  <p class="eyebrow"><span class="diamond"></span> O que muda para o professor</p>
+  <h2>Um console que mostra a turma, aponta quem precisa de atenção e responde perguntas</h2>
+  <div class="grid3">
+    <div class="card"><h3><span class="dot" style="background:var(--conqueror)"></span>Visão da turma</h3>
+      <p>Indicadores, gráficos por perfil, detalhe do aluno com URL própria, <b>“Precisam de atenção”</b>, abas Conteúdo, Evolução e Insights, e jornada real do aluno com intervenções por passo.</p><span class="ref">JP · fases 2–9 · #259–#267 (+#284)</span></div>
+    <div class="card"><h3><span class="dot" style="background:var(--mastermind)"></span>Escriba, a IA do professor</h3>
+      <p>Assistente que responde sobre a turma. Confere a posse da turma <b>antes</b> de ler qualquer dado (turma alheia recebe 403) e não grava nada no banco.</p><span class="ref">JP · fase 10 · #268</span></div>
+    <div class="card"><h3><span class="dot" style="background:var(--seeker)"></span>Gestão de turmas</h3>
+      <p>Cards e estados, formulário, exclusão confirmada, atalho para a trilha, matrículas e presença, duplicar turma e personalização enfileirada na matrícula.</p><span class="ref">JP · 6 fases · #273–#282 · ajustes #298 #301 #304 #307 #334</span></div>
+  </div>
+  <div class="card warn-card" style="clip-path:none;border:1px solid color-mix(in srgb,var(--accent-2) 45%,var(--rule));background:color-mix(in srgb,var(--accent-2) 7%,var(--surface))">
+    <p style="font-size:18px"><b style="color:var(--accent-2)">Por que a Frente B aparece com 0%:</b> o código acima está na main, mas nenhuma das 7 issues nominadas (#6 #15 #56 #147 #150 #156 #214) foi fechada. Elas exigem verificação final pela Geisbelly, não foram vinculadas aos PRs entregues e a #214 está sem responsável. O valor existe; falta comprovar contra o DoD.</p>
+  </div>
+  <div class="foot"><span>Fontes: gh (títulos/corpo dos PRs) · analise_prs_lab_3semanas (entregas_destaque) · planning §3</span><span>05</span></div>
+</section>
+
+<!-- 06 INTELIGENCIA -->
+<section class="slide" id="s6">
+  <div class="top"><div class="wordmark"><span class="diamond"></span>TRAILUP <i>· SPRINT 2 · FECHAMENTO</i></div><div class="pg">06 / 13</div></div>
+  <p class="eyebrow"><span class="diamond"></span> Inteligência · modelos e RAG</p>
+  <h2>A IA agora decide quando falar, e o RAG tem base para ser medido</h2>
+  <div class="grid2">
+    <div style="display:grid;gap:18px;align-content:start">
+      <div style="display:flex;align-items:center;gap:14px"><span class="chip ok">Frente C · 100%</span><span class="fine">Luís (0spura)</span></div>
+      <ul class="list">
+        <li><span><b>Gate M2 na API</b> (#275): carrega os modelos M2 versionados com sha256 fixo e <b>pula o reforço da LLM</b> quando o modelo prevê pouco ganho, com auditoria (<span class="mono" style="font-size:16px">m2_skipped</span>). Se o modelo falha, volta às regras. Fecha #215.</span></li>
+        <li><span><b>Jev (TypeSafe) avaliado</b> (#271): 24/24 saídas iguais às regras em 4 casos sintéticos, latência de 344–1.458 ms, custo estimado documentado. Recomendação: <b>não substituir</b> a produção. Fecha #216.</span></li>
+      </ul>
+    </div>
+    <div style="display:grid;gap:18px;align-content:start">
+      <div style="display:flex;align-items:center;gap:14px"><span class="chip warn">Frente D · 54,5%</span><span class="fine">6 de 11 issues</span></div>
+      <ul class="list">
+        <li><span><b>Corpus do RAG documentado</b>: inventário e proveniência, triagem corpus × pesquisa, extração dos PDFs e curadoria pedagógica (#70–#73).</span></li>
+        <li><span><b>Política para dados sensíveis</b> (saúde mental, neurodivergência, facial) e <b>golden set</b> para avaliar o retrieval (#74, #75).</span></li>
+        <li><span>Base nos PRs #277–#279. A integração (#63 #64 #66 #67 #165) fica para a Sprint 3, depois de decidir o caminho canônico.</span></li>
+      </ul>
+    </div>
+  </div>
+  <p class="fine">Ressalvas do próprio PR: o M2 usa <span class="mono">diff/global</span> calibrados no EdNet (thresholds absolutos bloqueados) e a avaliação do Jev não usa conjunto rotulado independente do TrailUp.</p>
+  <div class="foot"><span>Fontes: gh pr view #275 #271 #277–#279 · issues #70–#75 (fechadas em 01/10)</span><span>06</span></div>
+</section>
+
+<!-- 07 CONFIANCA -->
+<section class="slide" id="s7">
+  <div class="top"><div class="wordmark"><span class="diamond"></span>TRAILUP <i>· SPRINT 2 · FECHAMENTO</i></div><div class="pg">07 / 13</div></div>
+  <p class="eyebrow"><span class="diamond"></span> Confiança · LGPD e segurança</p>
+  <h2>Público escolar exige prova, não promessa. Avançamos nas duas frentes</h2>
+  <div class="grid3">
+    <div class="card"><h3><span class="dot" style="background:var(--ok)"></span>Câmera desligada</h3><p>Aceitar o termo não liga mais a câmera: ela só liga por ação explícita do aluno (LGPD arts. 11 e 14).</p><span class="ref">#309 · critério 2 da #195</span></div>
+    <div class="card"><h3><span class="dot" style="background:var(--ok)"></span>Consentimento provável</h3><p>O aceite passa a ser registrado no servidor, com carimbo de tempo não forjável, versão do termo e finalidade.</p><span class="ref">#339 · item 1 da #195</span></div>
+    <div class="card"><h3><span class="dot" style="background:var(--ok)"></span>Retenção do texto livre</h3><p>A mensagem digitada pelo aluno deixa de ficar para sempre nos logs de decisão da IA.</p><span class="ref">#338 · item 4 da #195</span></div>
+    <div class="card"><h3><span class="dot" style="background:var(--mastermind)"></span>Expressão facial local</h3><p>Pipeline FER+ local (sem enviar o rosto a terceiros), entregue <b>desligado</b> por padrão, com termo v4 descrevendo a análise.</p><span class="ref">#305 · #306</span></div>
+    <div class="card"><h3><span class="dot" style="background:var(--seeker)"></span>Segurança do banco</h3><p>Fechada a issue de 4 funções SECURITY DEFINER que escreviam sem checar <span class="mono" style="font-size:15px">auth.uid()</span>.</p><span class="ref">issue #317 · 08/10</span></div>
+    <div class="card"><h3><span class="dot" style="background:var(--survivor)"></span>Dívida de telemetria</h3><p>Fora do escopo da sprint (§6), mas quitada: 7 issues de telemetria fechadas, incluindo frames da câmera gravados em log.</p><span class="ref">#43 #89 #90 #92 #93 #95 #99 · #38</span></div>
+  </div>
+  <p class="fine"><span class="chip warn">Gate #195 continua aberto</span>&nbsp; Houve progresso real em 3 dos itens, mas a decisão que fecha o gate ainda não foi registrada.</p>
+  <div class="foot"><span>Fontes: gh pr view #305 #306 #309 #338 #339 · closed issues 18/09–09/10</span><span>07</span></div>
+</section>
+
+<!-- 08 VELOCIDADE -->
+<section class="slide" id="s8">
+  <div class="top"><div class="wordmark"><span class="diamond"></span>TRAILUP <i>· SPRINT 2 · FECHAMENTO</i></div><div class="pg">08 / 13</div></div>
+  <p class="eyebrow"><span class="diamond"></span> Velocidade do time</p>
+  <h2>133 PRs em 3 semanas, com pico na semana 2 e 47 na reta final</h2>
+  <div style="display:grid;grid-template-columns:1.05fr 1fr;gap:40px;align-items:start">
+    <div style="display:grid;gap:16px">
+      <div class="tbl"><table>
+        <tr><th>Semana (BRT)</th><th>PRs merged</th><th>Commits main</th><th>Issues fechadas</th></tr>
+        <tr><td>S1 · 18–25/09</td><td>21</td><td>49</td><td>4</td></tr>
+        <tr><td>S2 · 26/09–02/10</td><td>65</td><td>80</td><td>17</td></tr>
+        <tr><td>S3 · 03–09/10</td><td><b style="color:var(--accent-2)">47</b></td><td>39</td><td>5</td></tr>
+        <tr><td><b>Total</b></td><td><b>133</b></td><td><b>168</b></td><td><b>26</b></td></tr>
+      </table></div>
+      <p class="fine">Mix dos 133 PRs: 59 fix · 30 feat · 31 docs · 6 chore · 2 perf · 2 test · 1 ci · 2 sem prefixo. Fila no fechamento: 1 PR aberto (#345, relatório W41). Main com CI verde em 09/10.</p>
+    </div>
+    <div class="tbl"><table>
+      <tr><th>Pessoa</th><th>PRs merged</th><th>Commits</th></tr>
+      <tr><td><span class="dot" style="background:var(--achiever)"></span>&nbsp; Geisbelly</td><td>88</td><td>113</td></tr>
+      <tr><td><span class="dot" style="background:var(--conqueror)"></span>&nbsp; JP (JP-batista)</td><td>33</td><td>28</td></tr>
+      <tr><td><span class="dot" style="background:var(--mastermind)"></span>&nbsp; Luís (0spura)</td><td>8</td><td>14</td></tr>
+      <tr><td><span class="dot" style="background:var(--socializer)"></span>&nbsp; Rafa (rafantavares)</td><td>4</td><td>7</td></tr>
+      <tr><td><span class="dot" style="background:var(--survivor)"></span>&nbsp; GuilhermeDomiciano</td><td>0</td><td>6</td></tr>
+      <tr><td><b>Total</b></td><td><b>133</b></td><td><b>168</b></td></tr>
+    </table>
+    <p class="fine" style="padding:10px 14px">Commits na main (squash), por autor GitHub. JP concentrou as entregas nas S1–S2 (0 PRs na S3), e Rafa entregou na S2 (#232, #233).</p></div>
+  </div>
+  <div class="foot"><span>Fonte: gh pr list --state merged / gh api commits (since 18/09 00:00 BRT) · confere com analise_prs_lab_3semanas</span><span>08</span></div>
+</section>
+
+<!-- 09 METAS NAO BATIDAS -->
+<section class="slide" id="s9">
+  <div class="top"><div class="wordmark"><span class="diamond"></span>TRAILUP <i>· SPRINT 2 · FECHAMENTO</i></div><div class="pg">09 / 13</div></div>
+  <p class="eyebrow"><span class="diamond"></span> Metas não batidas e por quê</p>
+  <h2>Onde a meta não fechou e o que explica cada gap</h2>
+  <div class="grid2">
+    <div class="card"><h3><span class="chip warn">A · 28,6%</span> Bugs do aluno</h3><p>Os fixes de #177, #186 e #189 entraram na main só no último dia (09/10), sem tempo de fechar as issues pelo DoD. #27 e #28 (web) ficaram sem movimento desde o planning. Parte do esforço da dona foi para LGPD, cadastro BrainHex e telemetria, fora da lista nominada.</p></div>
+    <div class="card"><h3><span class="chip risk">B · 0%</span> Console do professor</h3><p>Muito código entregue (dashboard, Escriba, turmas), mas as issues nominadas não foram vinculadas nem verificadas. #214 sem responsável e 4 issues fora do board (risco já previsto no §5). Sem PRs de JP na S3.</p></div>
+    <div class="card"><h3><span class="chip warn">D · 54,5%</span> RAG</h3><p>Fase de dados concluída. A integração depende de decidir #63 (pgvector/LangGraph) × #165 (OpenAI Vector Store), que o planning exige <b>antes</b> de marcar as duas como prontas.</p></div>
+    <div class="card"><h3><span class="chip risk">E · 0%</span> Web do aluno</h3><p>Avanço parcial em #29: bundle de 4,75 para ~3,25 MB (#232), mas o critério da issue não foi fechado. #219 só tem prompts iniciais (#233). Nenhum PR de Rafa depois de 28/09.</p></div>
+  </div>
+  <p class="fine">Transversal #218 (avaliação dos documentos do RAG + ajustes visuais mobile) também ficou aberta, sem atualização desde 18/09.</p>
+  <div class="foot"><span>Fontes: gh issue view (updatedAt) · summary W40/W41 (partial_progress) · gh pr view #232</span><span>09</span></div>
+</section>
+
+<!-- 10 TRAVADAS -->
+<section class="slide" id="s10">
+  <div class="top"><div class="wordmark"><span class="diamond"></span>TRAILUP <i>· SPRINT 2 · FECHAMENTO</i></div><div class="pg">10 / 13</div></div>
+  <p class="eyebrow"><span class="diamond"></span> Issues travadas</p>
+  <h2>16 issues da sprint sem progresso há mais de 3 dias</h2>
+  <div class="tbl"><table>
+    <tr><th>Frente</th><th style="text-align:left">Issues</th><th style="text-align:left">Última atualização</th><th style="text-align:left">Responsável</th></tr>
+    <tr><td>B · Console</td><td style="text-align:left">#6 #15 #56 #147 #150 #156 #214</td><td style="text-align:left">18/09 (planning)</td><td style="text-align:left">JP · #214 sem dono</td></tr>
+    <tr><td>D · RAG</td><td style="text-align:left">#64 #66 #67 · #165</td><td style="text-align:left">30/09 · 09/09</td><td style="text-align:left">Luís</td></tr>
+    <tr><td>A · Bugs</td><td style="text-align:left">#27 #28</td><td style="text-align:left">18/09 (planning)</td><td style="text-align:left">Geisbelly</td></tr>
+    <tr><td>E · Web</td><td style="text-align:left">#29 · #219</td><td style="text-align:left">01/09 · 18/09</td><td style="text-align:left">Rafa</td></tr>
+    <tr><td>Transversal</td><td style="text-align:left">#218</td><td style="text-align:left">18/09</td><td style="text-align:left">Geisbelly, Rafa</td></tr>
+  </table></div>
+  <div class="grid2">
+    <p class="fine"><b style="color:var(--ink-soft)">Fora da lista, mas em movimento:</b> #63 (atualizada 09/10) e #177/#186/#189 (PRs de correção em 09/10, aguardando fechamento).</p>
+    <p class="fine"><b style="color:var(--ink-soft)">Padrão:</b> 10 das 16 não tiveram nenhuma atualização desde a triagem de 18/09. São issues “órfãs” no board, e não bloqueios técnicos.</p>
+  </div>
+  <div class="foot"><span>Fonte: gh issue view (updatedAt) em 09/10 · stuck_issues do summary W41</span><span>10</span></div>
+</section>
+
+<!-- 11 RISCOS -->
+<section class="slide" id="s11">
+  <div class="top"><div class="wordmark"><span class="diamond"></span>TRAILUP <i>· SPRINT 2 · FECHAMENTO</i></div><div class="pg">11 / 13</div></div>
+  <p class="eyebrow"><span class="diamond"></span> Riscos, gates e ressalvas</p>
+  <h2>O que ainda não pode ser vendido como garantia</h2>
+  <div class="grid3" style="gap:16px">
+    <div class="risk-card"><h3>Licença EdNet CC BY-NC</h3><p>Os pesos do M2 vêm de dado não comercial. A decisão de uso precisa ser registrada antes de qualquer deploy.</p><p class="way">Caminho: registrar a decisão em RELATORIO_M2 §10.7</p></div>
+    <div class="risk-card"><h3>Calibração do M2</h3><p><span class="mono" style="font-size:14px">diff/global</span> calibrados no EdNet: thresholds absolutos estão bloqueados.</p><p class="way">Caminho: recalibrar com dado próprio</p></div>
+    <div class="risk-card"><h3>RAG #63 × #165</h3><p>Duas trilhas para o mesmo problema, ambas abertas. Os docs (#277) apontam #165 como canônico.</p><p class="way">Caminho: decidir e fechar uma delas</p></div>
+    <div class="risk-card"><h3>Gate LGPD #195</h3><p>Avançou com #309, #338 e #339, mas segue aberto. Nada que persista inferência de estado avança sem decisão.</p><p class="way">Caminho: fechar os itens restantes e registrar</p></div>
+    <div class="risk-card warn-card"><h3>Banco atrás do código</h3><p>Produção na migration <span class="mono" style="font-size:14px">20261003_06</span>; o git vai até <span class="mono" style="font-size:14px">_10</span>. Faltam 4 (_07 a _10).</p><p class="way">Caminho: aplicar com o ok da Geisbelly</p></div>
+    <div class="risk-card warn-card"><h3>Testes e infra</h3><p>P0 18/18 é de <b>01/10</b> (sem rodada depois). Login Google mobile não testado em aparelho. Storage do Supabase Free em <b>74%</b>. Espelho 39 commits atrás até o merge do #127.</p><p class="way">Caminho: nova rodada P0 + teste em device</p></div>
+  </div>
+  <div class="foot"><span>Fontes: planning §5 · testes_qualidade · validacao_prs · supabase_infra · sync_espelho (3 semanas) · gh</span><span>11</span></div>
+</section>
+
+<!-- 12 PROXIMOS PASSOS -->
+<section class="slide" id="s12">
+  <div class="top"><div class="wordmark"><span class="diamond"></span>TRAILUP <i>· SPRINT 2 · FECHAMENTO</i></div><div class="pg">12 / 13</div></div>
+  <p class="eyebrow"><span class="diamond"></span> Próximos passos · Sprint 3</p>
+  <h2>Converter o que já está em código em Done comprovado, e destravar o resto</h2>
+  <div class="grid2" style="gap:22px 40px">
+    <div style="display:grid;gap:12px;align-content:start">
+      <p class="eyebrow" style="color:var(--ok);font-size:13px">1 · Colher o que já foi entregue</p>
+      <ul class="list sm">
+        <li><span>Fechar #177, #186 e #189 pelo DoD (os PRs #321, #322 e #337 já estão na main).</span></li>
+        <li><span>Mapear dashboard, Escriba e turmas contra #6, #15, #56, #156 e #214, fazer a verificação final da Geisbelly e dar dono à #214.</span></li>
+        <li><span>Mover as issues da Frente B para o board (planning §5).</span></li>
+      </ul>
+      <p class="eyebrow" style="color:var(--ok);font-size:13px;margin-top:8px">2 · Decidir para destravar</p>
+      <ul class="list sm">
+        <li><span>Escolher o caminho canônico do RAG (#63 × #165) e puxar #64, #66 e #67.</span></li>
+        <li><span>Registrar a decisão da licença EdNet e o plano de recalibração do M2.</span></li>
+      </ul>
+    </div>
+    <div style="display:grid;gap:12px;align-content:start">
+      <p class="eyebrow" style="color:var(--ok);font-size:13px">3 · Garantir qualidade e confiança</p>
+      <ul class="list sm">
+        <li><span>Aplicar as migrations _07 a _10 em produção, com ok explícito.</span></li>
+        <li><span>Liberar o callback no Supabase Auth e testar o login Google em Android e iOS.</span></li>
+        <li><span>Nova rodada Reflect P0, merge do sync #127 e smoke pós-merge.</span></li>
+        <li><span>Plano para o Storage (74%): limpeza ou Pro.</span></li>
+        <li><span>Fechar os itens restantes do gate LGPD #195.</span></li>
+      </ul>
+      <p class="eyebrow" style="color:var(--ok);font-size:13px;margin-top:8px">4 · Retomar as frentes paradas</p>
+      <ul class="list sm">
+        <li><span>Web do aluno: concluir #29 e prototipar #219. #27 e #28 na web. #218 transversal.</span></li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span>Propostas a validar no Sprint Planning 3</span><span>12</span></div>
+</section>
+
+<!-- 13 ANEXO -->
+<section class="slide" id="s13">
+  <div class="top"><div class="wordmark"><span class="diamond"></span>TRAILUP <i>· SPRINT 2 · FECHAMENTO</i></div><div class="pg">13 / 13</div></div>
+  <p class="eyebrow"><span class="diamond"></span> Anexo numérico e fontes</p>
+  <h2>De onde vem cada número</h2>
+  <div class="grid2" style="gap:24px 36px">
+    <div class="tbl"><table>
+      <tr><th>Indicador</th><th>Valor</th><th style="text-align:left">Fonte</th></tr>
+      <tr><td>Janela</td><td>18/09–09/10</td><td style="text-align:left;font-size:15px">planning (triagem 18/09)</td></tr>
+      <tr><td>PRs merged</td><td>133</td><td style="text-align:left;font-size:15px">gh pr list · analise</td></tr>
+      <tr><td>Issues fechadas</td><td>26</td><td style="text-align:left;font-size:15px">gh issue list · analise</td></tr>
+      <tr><td>Commits na main</td><td>168</td><td style="text-align:left;font-size:15px">gh api commits</td></tr>
+      <tr><td>Meta (peso igual)</td><td>36,6%</td><td style="text-align:left;font-size:15px">planning §3 + gh</td></tr>
+      <tr><td>Issues meta Done</td><td>10/29</td><td style="text-align:left;font-size:15px">gh issue view</td></tr>
+      <tr><td>PRs última semana</td><td>47</td><td style="text-align:left;font-size:15px">summary W41 · gh</td></tr>
+      <tr><td>Supabase storage</td><td>74,4%</td><td style="text-align:left;font-size:15px">supabase_infra</td></tr>
+      <tr><td>Supabase banco</td><td>10,8%</td><td style="text-align:left;font-size:15px">supabase_infra</td></tr>
+    </table></div>
+    <div style="display:grid;gap:14px;align-content:start">
+      <p class="fine"><b style="color:var(--ink-soft)">Método.</b> Janela de 18/09 00:00 a 09/10 ~17h BRT. Done = issue fechada. O aceite item a item do DoD (§4) não foi reauditado nas issues fechadas. A % de fechamento usa o mesmo método do W40 e do W41, mas sobre o estado final de 09/10.</p>
+      <p class="fine"><b style="color:var(--ink-soft)">Período.</b> O planning deixa o período “a definir (sugestão: 2 semanas)”. A duração de 3 semanas (18/09–09/10) foi informada pela equipe e ainda não está registrada no documento.</p>
+      <p class="fine"><b style="color:var(--ink-soft)">Fora do ledger.</b> Reuniões, design e pesquisa não aparecem no GitHub e não foram medidos aqui. Commits por pessoa refletem squash-merge, o que superestima quem integra.</p>
+      <p class="fine"><b style="color:var(--ink-soft)">Infra.</b> O produto rodou inteiro no plano Free do Supabase (status ACTIVE_HEALTHY, 8 usuários de auth). O egress não é medido automaticamente.</p>
+    </div>
+  </div>
+  <div class="foot"><span>BitStudioLabs/trail-up · espelho Geisbelly/TrailUp é só leitura</span><span>13</span></div>
+</section>
+
+</div></div>
+<nav class="nav"><button id="prev" aria-label="Anterior">‹</button><button id="next" aria-label="Próximo">›</button></nav>
+<script>
+(function(){
+  var s=[].slice.call(document.querySelectorAll('#deck .slide')),i=0,deck=document.getElementById('deck');
+  function fit(){var k=Math.min(innerWidth/1600,innerHeight/900);deck.style.transform='scale('+k+')';}
+  function go(n){i=Math.max(0,Math.min(s.length-1,n));s.forEach(function(x,j){x.classList.toggle('on',j===i)});try{history.replaceState(null,'','#s'+(i+1))}catch(e){}}
+  addEventListener('resize',fit);
+  document.getElementById('prev').onclick=function(){go(i-1)};document.getElementById('next').onclick=function(){go(i+1)};
+  addEventListener('keydown',function(e){if(['ArrowRight','PageDown',' '].indexOf(e.key)>=0){go(i+1);e.preventDefault()}else if(['ArrowLeft','PageUp'].indexOf(e.key)>=0){go(i-1);e.preventDefault()}else if(e.key==='Home')go(0);else if(e.key==='End')go(s.length-1)});
+  var m=location.hash.match(/^#s(\d+)$/);fit();go(m?parseInt(m[1],10)-1:0);
+})();
+</script>
+</body>
+</html>
