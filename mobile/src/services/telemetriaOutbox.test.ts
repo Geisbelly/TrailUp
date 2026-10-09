@@ -6,6 +6,7 @@ import {
   VALIDADE_OUTBOX_MS,
   escoarLotes,
   podarLotes,
+  registrarFalha,
   type LoteEnfileirado,
 } from "./telemetriaOutbox";
 
@@ -100,4 +101,85 @@ test('resposta persisted:false não remove o lote pendente', async () => {
   const result = await escoarLotes(fila, async () => ({ persisted: false }));
   assert.equal(result.enviados, 0);
   assert.deepEqual(result.restante, fila);
+});
+
+// --- Teto de tentativas (issue #94, metade que faltava) ---------------------
+
+test("escoarLotes diz QUAL lote falhou, nao so quantos passaram", async () => {
+  const fila = [lote(AGORA, "a"), lote(AGORA, "b"), lote(AGORA, "c")];
+  const r = await escoarLotes(fila, async (p) => {
+    if (p.sessao_id === "b") throw new Error("recusado");
+    return { persisted: true };
+  });
+  assert.equal(r.enviados, 1);
+  assert.equal(r.falhou?.payload.sessao_id, "b");
+});
+
+test("sem falha, nao ha quem culpar", async () => {
+  const r = await escoarLotes([lote(AGORA, "a")], async () => ({ persisted: true }));
+  assert.equal(r.falhou, null);
+  assert.equal(r.enviados, 1);
+});
+
+test("a fila CONTINUA parando no primeiro erro", async () => {
+  // O `break` e deliberado: se a rede caiu, insistir so gasta bateria.
+  const tentados: string[] = [];
+  const fila = [lote(AGORA, "a"), lote(AGORA, "b"), lote(AGORA, "c")];
+  await escoarLotes(fila, async (p) => {
+    tentados.push(p.sessao_id);
+    throw new Error("rede fora");
+  });
+  assert.deepEqual(tentados, ["a"]);
+});
+
+test("falha abaixo do teto apenas conta, e o lote permanece", () => {
+  const fila = [lote(AGORA, "a"), lote(AGORA, "b")];
+  const r = registrarFalha(fila, fila[0], 5);
+  assert.equal(r.descartado, null);
+  assert.equal(r.fila.length, 2);
+  assert.equal(r.fila[0].tentativas, 1);
+  assert.equal(r.fila[1].tentativas ?? 0, 0, "o lote de tras nao e penalizado");
+});
+
+test("ao passar do teto, o lote sai e a fila volta a andar", () => {
+  // O defeito da issue: um lote ruim bloqueava os de tras por sete dias.
+  let fila = [{ ...lote(AGORA, "ruim"), tentativas: 4 }, lote(AGORA, "bom")];
+  const r = registrarFalha(fila, fila[0], 5);
+  assert.equal(r.descartado?.payload.sessao_id, "ruim");
+  assert.equal(r.fila.length, 1);
+  assert.equal(r.fila[0].payload.sessao_id, "bom");
+});
+
+test("cinco falhas seguidas descartam; quatro nao", () => {
+  let fila = [lote(AGORA, "x"), lote(AGORA, "y")];
+  for (let i = 1; i <= 4; i += 1) {
+    const r = registrarFalha(fila, fila[0], 5);
+    assert.equal(r.descartado, null, `tentativa ${i} nao deveria descartar`);
+    assert.equal(r.fila[0].tentativas, i);
+    fila = r.fila;
+  }
+  const quinta = registrarFalha(fila, fila[0], 5);
+  assert.equal(quinta.descartado?.payload.sessao_id, "x");
+  assert.equal(quinta.fila.length, 1);
+});
+
+test("sucesso nao e punido: lote que nao falhou nao acumula tentativa", () => {
+  const fila = [lote(AGORA, "a"), lote(AGORA, "b")];
+  const r = registrarFalha(fila, fila[1], 5);
+  assert.equal(r.fila[0].tentativas ?? 0, 0);
+  assert.equal(r.fila[1].tentativas, 1);
+});
+
+test("falha em lote que ja saiu da fila nao quebra nem inventa linha", () => {
+  const fila = [lote(AGORA, "a")];
+  const r = registrarFalha(fila, lote(AGORA, "sumiu"), 5);
+  assert.equal(r.descartado, null);
+  assert.deepEqual(r.fila.map((i) => i.payload.sessao_id), ["a"]);
+});
+
+test("falha nula e no-op", () => {
+  const fila = [lote(AGORA, "a")];
+  const r = registrarFalha(fila, null, 5);
+  assert.equal(r.fila, fila);
+  assert.equal(r.descartado, null);
 });
