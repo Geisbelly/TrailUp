@@ -88,3 +88,4 @@ src/utils/supabaseStorage.deck.test.ts
 src/utils/topicoGraph.test.ts
 src/utils/trilhaCheckpointResume.test.ts
 src/utils/testesRegistrados.test.ts
+src/services/googleRedirect.core.test.ts
