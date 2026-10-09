@@ -46,7 +46,6 @@ type TopicoRow = { id: number; classe_id: number; nome: string | null; ordem: nu
 type ConteudoRow = { id: number; topico_id: number; titulo: string | null; ordem: number | null };
 type AlunoRow = { id: string; nome: string | null; email: string | null; perfil_dominante: string };
 
-type MaterialTipo = "markdown" | "pdf" | "audio" | "apresentacao";
 
 const BRAINHEX_PROFILE_KEYS = [
   "seeker",
@@ -558,7 +557,7 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
           initialTab={materialRouteParams.aba as MaterialTipo | undefined}
           classeId={Number(classeId) || undefined}
           topicoId={Number(topicoId) || undefined}
-          topicoTitulo={topicos.find((t) => String(t.id) === topicoId)?.titulo}
+          topicoTitulo={topicos.find((t) => String(t.id) === topicoId)?.nome ?? undefined}
           conteudoTitulo={conteudoSelecionado?.titulo}
           resolveToken={resolveToken}
           onRegenerated={() => void loadPorPerfil({ silent: true })}

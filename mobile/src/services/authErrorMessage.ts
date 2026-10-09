@@ -13,6 +13,10 @@ export function getAuthErrorMessage(error: unknown) {
     return "Muitas tentativas de login. Tente novamente em alguns minutos.";
   }
 
+  if (message.includes("scheme do aplicativo não configurado")) {
+    return "Não foi possível iniciar o login. Atualize o app e tente novamente.";
+  }
+
   if (message.includes("cancel") || message.includes("dismiss")) {
     return "Login com Google cancelado.";
   }

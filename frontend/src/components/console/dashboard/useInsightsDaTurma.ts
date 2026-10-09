@@ -33,7 +33,13 @@ const LIMITE_DE_ESPERA_MS = 3 * 60_000;
 
 // intervencoes não está nos tipos gerados do Supabase (a coluna nova ainda
 // nem existe no banco até a migration ser aplicada).
-const tabela = () => supabase.from("intervencoes" as never) as unknown as ReturnType<typeof supabase.from>;
+// `intervencoes` ESTA nos tipos gerados (types.ts). O `as never` seguido do
+// cast para `ReturnType<typeof supabase.from>` jogava fora essa tipagem e
+// punha no lugar a UNIAO dos builders de todas as 208 tabelas -- e e ela
+// que fazia o TS estourar a profundidade (TS2589) em todo `.select()` e
+// `.update()` daqui. Usar a tabela tipada direto resolve e ainda devolve
+// checagem de verdade nas colunas.
+const tabela = () => supabase.from("intervencoes");
 
 /**
  * Insights da turma: LÊ e DECIDE direto no Supabase (RLS
@@ -168,7 +174,7 @@ export function useInsightsDaTurma(classIds: number[]) {
       setLote((atual) => atual.map(aplicar));
       setRecentes((atual) => [...atual.filter((l) => l.id !== id), aplicar(anterior)]);
 
-      const { data, error } = await tabela().update(mudanca as never).eq("id", id).select("id");
+      const { data, error } = await tabela().update(mudanca).eq("id", id).select("id");
       // Sem erro e sem linha = a policy barrou em silêncio.
       if (error || !data || (data as unknown[]).length === 0) {
         setLote((atual) => atual.map((l) => (l.id === id ? anterior : l)));

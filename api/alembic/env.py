@@ -4,7 +4,7 @@ from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 from app.core.settings import get_settings
-from app.db.migrations import normalize_database_url_for_alembic
+from app.db.migrations import normalize_database_url_for_alembic, trava_de_migracao
 
 config = context.config
 
@@ -46,10 +46,17 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata, compare_type=True)
+        # A trava fica AQUI, e nao em `upgrade_database_to_head`, para valer
+        # tambem para quem roda `alembic upgrade` na mao — nao so' para a subida
+        # da API. Modo offline (`sql=True`) nao passa por aqui: ele so' imprime
+        # SQL, nao disputa banco com ninguem.
+        with trava_de_migracao(connection):
+            context.configure(
+                connection=connection, target_metadata=target_metadata, compare_type=True
+            )
 
-        with context.begin_transaction():
-            context.run_migrations()
+            with context.begin_transaction():
+                context.run_migrations()
 
 
 if context.is_offline_mode():

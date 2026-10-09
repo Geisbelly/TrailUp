@@ -22,9 +22,16 @@ mesclar em `main` não é dada por instrução de chat neste repositório.
 | `mobile/`       | Expo · React Native        | 8081      | App do aluno (consome personalização)             |
 
 Rodar tudo: `npm run dev` (Windows, abre uma janela por serviço via
-`scripts/dev.ps1`). A API é iniciada por `python -m uvicorn` (não pelo
-`uvicorn.exe` da venv — a venv foi movida e os `.exe` apontam para caminho
-antigo). Banco: **Supabase** (externo, via `.env`).
+`scripts/dev.ps1`). A API é iniciada por **`python run_api.py`**, não por
+`python -m uvicorn` (e nunca pelo `uvicorn.exe` da venv — a venv foi movida e
+os `.exe` apontam para caminho antigo).
+
+> O launcher não é conveniência: no Windows o `psycopg` async do checkpointer
+> do LangGraph exige `SelectorEventLoop`, e o padrão é `ProactorEventLoop`.
+> Trocar a política no topo de `app/main.py` **não funciona** — medido: o
+> uvicorn cria o loop e só depois importa o módulo do app, já dentro dele.
+> Por isso a troca tem de acontecer num processo que rode antes do uvicorn.
+> Ver `api/run_api.py` e a issue #173. Banco: **Supabase** (externo, via `.env`).
 
 > Existe um app **BrainHex** separado (`../BrainHex`, Google AI Studio) e um
 > `../ApiBrainHex` (origem do `microservice/`). São repositórios externos ao
@@ -87,9 +94,16 @@ modelo de linguagem, **não é na API**.
 > target) pra replicar às cegas sem o banco pra comparar resultado — o
 > fallback manda `geracao: null` e deixa `statusGeracaoDoPerfil` (já existente
 > em `generationStatus.ts`) cair pro status legado, que é exatamente o que essa
-> função já foi escrita pra fazer. Também não conta alunos por perfil no
-> fallback (precisaria RLS em `aluno_perfil`/`perfil`, não confirmada) — fica
-> 0, é só cosmético.
+> função já foi escrita pra fazer. A contagem de alunos por perfil no fallback
+> **já existe**: a RLS que faltava foi confirmada em produção
+> (`aluno_perfil_posse_sel` via `app_alunos_do_professor()`, `perfil_posse_sel`
+> com predicado `true`, `classe_aluno_posse_sel` via
+> `app_classes_do_professor()`). `contarAlunosPorPerfilDominante` em
+> `personalizacaoFallback.ts` porta o `ORDER BY afinidade DESC NULLS LAST,
+> nome ASC` de `listar_alunos_classe_com_perfil_dominante` — o desempate por
+> nome e o `NULLS LAST` mudam o resultado, e aluno sem linha em `aluno_perfil`
+> conta como `mastermind` em vez de sumir. Conferido rodando a window function
+> original no Postgres e comparando a saída.
 >
 > `contexto/{aluno_id}` **fica na API de propósito**: `contexto_aluno` vem de
 > `ContextRepository.fetch_aluno_context`, que já é a leitura agregada do
@@ -347,7 +361,31 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 - **RLS é a autorização, não defesa extra.** `anon` e `authenticated` têm GRANT
   de SELECT/INSERT/UPDATE/DELETE nas 84 tabelas — RLS é a única barreira. A
   posse está implementada (`20260826_08` a `20260826_10`):
-  - **anônimo não lê nada** — nem tabela nem view;
+  - **anônimo lê exatamente três linhas, e nada mais.** Este texto já disse
+    "anônimo não lê nada — nem tabela nem view", e é o mesmo erro que o
+    parágrafo das views descreve: afirmação categórica errada faz alguém tratar
+    a exceção como defeito e "consertá-la".
+
+    A exceção é `app_config`, pela policy `app_config_sel`
+    (`USING (publico)`, só `SELECT`, para `anon` e `authenticated`). Hoje são
+    três chaves públicas, todas parâmetro de UI que o cliente precisa antes do
+    login: `prazo_atraso_fator`, `presenca_aula_pontos` e
+    `rank_limite_visivel`.
+
+    **O que está `publico = false` é que importa:** `contato_envios_por_hora`,
+    `credito_extra_maximo` e `conquista_recompensa_maxima` são tetos
+    anti-abuso, e saber o teto ajuda a burlá-lo. Ao acrescentar chave em
+    `app_config`, o default é `false` — marcar `publico` é decisão, não
+    conveniência.
+
+    Varredura que sustenta isso, de 2026-10-08 (dá para repetir): para cada um
+    dos **121** objetos de `public` (tabela, view e matview), contar as linhas
+    como `postgres` e como `anon`, dentro de `BEGIN/ROLLBACK`. Dos 49 com dado,
+    o único em que `anon` vê linha é `app_config` (3 de 6); 38 devolvem zero
+    por RLS e 38 nem chegam lá (`42501`, sem GRANT). Os 72 vazios não provam
+    nada — a varredura só conclui onde existe dado, e a base de personalização
+    está vazia hoje.
+
   - **aluno** vê o próprio dado, os colegas da sua turma (o ranking depende
     disso) e o conteúdo das classes em que está matriculado; escreve só o que é
     dele;
@@ -359,15 +397,64 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
   `app_alunos_do_professor()`, `app_colegas_de_turma()`…) **de propósito**: uma
   policy em `classe_aluno` que consultasse `classe_aluno` entraria em recursão
   de RLS. Ao criar policy nova, use os helpers em vez de repetir o `EXISTS`.
+- **Tabela nova nasce com RLS ligada e, sem policy, invisível para o cliente.**
+  Existe um event trigger `ensure_rls` → `rls_auto_enable` no banco que liga RLS
+  em **todo** `CREATE TABLE` do schema `public`. Ele não está no Alembic — é
+  schema não versionado (ver `docs/architecture/schema-nao-versionado.md`), e
+  confirmado ao vivo: uma tabela criada agora já vem `relrowsecurity = true`.
+
+  Consequência: RLS ligada **sem nenhuma policy** não é "aberta com cuidado", é
+  **fechada para todos** menos o `service_role`. E fecha em silêncio — o
+  `supabase-js` devolve lista vazia ou `null`, não exceção, então o cliente
+  desenha o estado padrão e ninguém percebe. Já aconteceu três vezes:
+  `personalizacao_job_targets` (`20260922_01`), `classe_mapa_tema`
+  (`20261003_03`, onde quem perdia era o aluno) e 22 outras tabelas que só
+  escapam porque o acesso delas é por RPC `SECURITY DEFINER`, nunca direto.
+
+  Então: **criar tabela e criar a policy são o mesmo commit.** Se a tabela for
+  mesmo só de RPC/`service_role`, diga isso no docstring da migração — a
+  ausência de policy passa a ser decisão registrada em vez de esquecimento. E
+  confira com o papel de verdade, não por leitura de código, porque é o único
+  jeito de ver a RLS agir:
+
+  ```sql
+  BEGIN;
+  SET LOCAL ROLE authenticated;
+  SET LOCAL request.jwt.claims = '{"sub":"<uuid do aluno>","role":"authenticated"}';
+  SELECT count(*) FROM public.<tabela>;   -- 0 aqui é o bug
+  ROLLBACK;
+  ```
+
+  O mesmo vale para **Realtime**: assinar `postgres_changes` numa tabela exige
+  policy de SELECT **e** a tabela na publicação `supabase_realtime` (ver
+  `20261003_04`). Faltando qualquer um dos dois, o canal assina, o
+  `.subscribe()` não reclama e evento nenhum chega — nunca.
 - **View sem `security_invoker` ignora RLS.** Ela roda com os privilégios do
   dono (`postgres`), então as policies das tabelas base **não se aplicam** —
   era um segundo bypass, paralelo ao das policies, e por ele dava para ler
   ranking, métricas e telemetria sem login. Todas foram para
-  `security_invoker = on` em `20260826_10`. A única exceção deliberada é
-  `vw_rank_posicoes_por_classe`: ela soma eventos de vários alunos, o que um
-  aluno não pode fazer lendo `eventos_aluno` linha a linha, então mantém o
-  bypass e é filtrada na saída pelas classes do chamador. **Toda view nova
-  nasce com `security_invoker = on`.**
+  `security_invoker = on` em `20260826_10`. As exceções deliberadas são **duas**,
+  e formam um par — este texto já disse "a única exceção", o que leva a tratar a
+  segunda como defeito e a "consertá-la":
+
+  - `vw_rank_posicoes_por_classe_todas` é a agregação **crua**: posição, nome e
+    pontuação de todas as classes, sem filtro nenhum. Ela mantém o bypass porque
+    somar `eventos_aluno` de vários alunos é justamente o que um aluno não pode
+    fazer linha a linha. **O que a torna segura não é o invoker — é o GRANT:**
+    só `service_role` a enxerga, e nem `anon` nem `authenticated` têm qualquer
+    privilégio nela (verificado em produção). Ligar `security_invoker` aqui
+    quebra a agregação sem ganho de segurança.
+  - `vw_rank_posicoes_por_classe` é a que os clientes leem (`authenticated`;
+    `anon` não). Ela faz `SELECT` da `_todas` e aplica o filtro de saída:
+    `app_minhas_classes()`, o limite de posições visíveis, o próprio
+    `auth.uid()` e as classes do professor.
+
+  Corolário que vale para qualquer view nova com bypass: a pergunta não é se ela
+  tem `security_invoker`, é **quem tem GRANT nela**. Uma view sem invoker e sem
+  GRANT para `anon`/`authenticated` é inalcançável pelo cliente; com GRANT, ela
+  é um bypass de RLS completo. **Toda view nova nasce com
+  `security_invoker = on`** — e se precisar do bypass, nasce sem GRANT para os
+  papéis de cliente.
 - **`storage.objects` não diz mais se um material existe.** Depois da
   migração para o Cloudflare R2
   (`docs/superpowers/specs/2026-08-29-r2-gateway-design.md`), **escrita nova

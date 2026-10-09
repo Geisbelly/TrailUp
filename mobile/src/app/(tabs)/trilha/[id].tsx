@@ -1,3 +1,4 @@
+import { referenciaDeAtividade } from "@/utils/referenciaDeEvento";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { progressoCanonicoTopico, topicoConcluidoNaTela } from '@/utils/topicoProgress';
 import { useFocusEffect, useIsFocused, useNavigation } from "@react-navigation/native";
@@ -1300,16 +1301,18 @@ export default function TrilhaConteudoScreen() {
           ? "atividade_acertada"
           : "atividade_errada";
 
-        const temReferenciaAtividadeValida =
-          !isPersonalizedLocal &&
-          Number.isInteger(atividadeId) &&
-          Number(atividadeId) > 0;
-        const eventoReferencia = temReferenciaAtividadeValida
-          ? `atividade:${atividadeId}`
-          : `topico:${topicoId}`;
-        const eventoTipo = temReferenciaAtividadeValida
-          ? eventoTipoBase
-          : `topico_${eventoTipoBase}`;
+        // `item:<topico>:<chave>` no caminho personalizado, em vez de
+        // `topico:<id>`: a referencia passa a identificar a ATIVIDADE, que e' a
+        // granularidade em que a dedup do servidor precisa agir. Com a
+        // referencia no topico, ou nao dedupava, ou quatro acertos pagariam um.
+        // Ver issue #186 e a migracao 20261003_01.
+        const { tipo: eventoTipo, referencia: eventoReferencia } = referenciaDeAtividade({
+          tipoBase: eventoTipoBase,
+          atividadeId,
+          topicoId,
+          itemKey: activityItemKey,
+          personalizada: isPersonalizedLocal,
+        });
 
         try {
           await registrarEvento(eventoTipo, eventoReferencia, valorEvento);

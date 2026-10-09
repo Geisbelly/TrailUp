@@ -1,0 +1,3 @@
+src/services/studyPresence.test.ts
+src/utils/studyPresence.test.ts
+src/components/perfil/profileMetricsViewModel.test.ts

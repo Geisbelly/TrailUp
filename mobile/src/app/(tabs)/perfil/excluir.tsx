@@ -30,7 +30,7 @@ export default function ExcluirContaScreen() {
       const alunoId = data.user?.id ?? null;
 
       try {
-        const { error: rpcError } = await supabase.rpc("fn_enviar_contato_sendgrid", {
+        const { error: rpcError } = await supabase.rpc("fn_enviar_contato", {
           p_nome: email || alunoId || "Usuário",
           p_email: email,
           p_assunto: "Solicitação de exclusão de conta",
@@ -40,10 +40,10 @@ export default function ExcluirContaScreen() {
         });
 
         if (rpcError) {
-          console.warn("Erro RPC fn_enviar_contato_sendgrid:", rpcError);
+          console.warn("Erro RPC fn_enviar_contato:", rpcError);
         }
       } catch (err) {
-        console.warn("Falha ao acionar fn_enviar_contato_sendgrid:", err);
+        console.warn("Falha ao acionar fn_enviar_contato:", err);
       }
 
       try {
