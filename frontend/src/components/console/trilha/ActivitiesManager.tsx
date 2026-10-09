@@ -1,3 +1,4 @@
+import { prazoParaBanco, prazoParaFormulario } from "@/lib/prazoDaAtividade";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -210,7 +211,7 @@ export default function ActivitiesManager() {
             tipo: formData.tipo,
             topico_id: parseInt(formData.topico_id, 10),
             pontuacao_maxima: parseInt(formData.pontuacao_maxima, 10),
-            data_entrega: formData.data_entrega || null,
+            data_entrega: prazoParaBanco(formData.data_entrega),
             metadata: {
               grading_rules: {
                 penalty_timeout_pct: Number(formData.penalty_timeout_pct || 0),
@@ -247,7 +248,7 @@ export default function ActivitiesManager() {
             tipo: formData.tipo,
             topico_id: parseInt(formData.topico_id, 10),
             pontuacao_maxima: parseInt(formData.pontuacao_maxima, 10),
-            data_entrega: formData.data_entrega || null,
+            data_entrega: prazoParaBanco(formData.data_entrega),
             metadata: {
               grading_rules: {
                 penalty_timeout_pct: Number(formData.penalty_timeout_pct || 0),
@@ -311,7 +312,7 @@ export default function ActivitiesManager() {
       tipo: activity.tipo || "quiz",
       topico_id: activity.topico_id.toString(),
       pontuacao_maxima: (activity.pontuacao_maxima ?? 10).toString(),
-      data_entrega: activity.data_entrega || "",
+      data_entrega: prazoParaFormulario(activity.data_entrega),
       conteudo_ids: activity.conteudo_ids || [],
       penalty_timeout_pct: String(Number(gradingRules.penalty_timeout_pct ?? 20)),
       penalty_retry_pct: String(Number(gradingRules.penalty_retry_pct ?? 50)),

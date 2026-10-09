@@ -354,7 +354,31 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 - **RLS é a autorização, não defesa extra.** `anon` e `authenticated` têm GRANT
   de SELECT/INSERT/UPDATE/DELETE nas 84 tabelas — RLS é a única barreira. A
   posse está implementada (`20260826_08` a `20260826_10`):
-  - **anônimo não lê nada** — nem tabela nem view;
+  - **anônimo lê exatamente três linhas, e nada mais.** Este texto já disse
+    "anônimo não lê nada — nem tabela nem view", e é o mesmo erro que o
+    parágrafo das views descreve: afirmação categórica errada faz alguém tratar
+    a exceção como defeito e "consertá-la".
+
+    A exceção é `app_config`, pela policy `app_config_sel`
+    (`USING (publico)`, só `SELECT`, para `anon` e `authenticated`). Hoje são
+    três chaves públicas, todas parâmetro de UI que o cliente precisa antes do
+    login: `prazo_atraso_fator`, `presenca_aula_pontos` e
+    `rank_limite_visivel`.
+
+    **O que está `publico = false` é que importa:** `contato_envios_por_hora`,
+    `credito_extra_maximo` e `conquista_recompensa_maxima` são tetos
+    anti-abuso, e saber o teto ajuda a burlá-lo. Ao acrescentar chave em
+    `app_config`, o default é `false` — marcar `publico` é decisão, não
+    conveniência.
+
+    Varredura que sustenta isso, de 2026-10-08 (dá para repetir): para cada um
+    dos **121** objetos de `public` (tabela, view e matview), contar as linhas
+    como `postgres` e como `anon`, dentro de `BEGIN/ROLLBACK`. Dos 49 com dado,
+    o único em que `anon` vê linha é `app_config` (3 de 6); 38 devolvem zero
+    por RLS e 38 nem chegam lá (`42501`, sem GRANT). Os 72 vazios não provam
+    nada — a varredura só conclui onde existe dado, e a base de personalização
+    está vazia hoje.
+
   - **aluno** vê o próprio dado, os colegas da sua turma (o ranking depende
     disso) e o conteúdo das classes em que está matriculado; escreve só o que é
     dele;
@@ -366,6 +390,38 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
   `app_alunos_do_professor()`, `app_colegas_de_turma()`…) **de propósito**: uma
   policy em `classe_aluno` que consultasse `classe_aluno` entraria em recursão
   de RLS. Ao criar policy nova, use os helpers em vez de repetir o `EXISTS`.
+- **Tabela nova nasce com RLS ligada e, sem policy, invisível para o cliente.**
+  Existe um event trigger `ensure_rls` → `rls_auto_enable` no banco que liga RLS
+  em **todo** `CREATE TABLE` do schema `public`. Ele não está no Alembic — é
+  schema não versionado (ver `docs/architecture/schema-nao-versionado.md`), e
+  confirmado ao vivo: uma tabela criada agora já vem `relrowsecurity = true`.
+
+  Consequência: RLS ligada **sem nenhuma policy** não é "aberta com cuidado", é
+  **fechada para todos** menos o `service_role`. E fecha em silêncio — o
+  `supabase-js` devolve lista vazia ou `null`, não exceção, então o cliente
+  desenha o estado padrão e ninguém percebe. Já aconteceu três vezes:
+  `personalizacao_job_targets` (`20260922_01`), `classe_mapa_tema`
+  (`20261003_03`, onde quem perdia era o aluno) e 22 outras tabelas que só
+  escapam porque o acesso delas é por RPC `SECURITY DEFINER`, nunca direto.
+
+  Então: **criar tabela e criar a policy são o mesmo commit.** Se a tabela for
+  mesmo só de RPC/`service_role`, diga isso no docstring da migração — a
+  ausência de policy passa a ser decisão registrada em vez de esquecimento. E
+  confira com o papel de verdade, não por leitura de código, porque é o único
+  jeito de ver a RLS agir:
+
+  ```sql
+  BEGIN;
+  SET LOCAL ROLE authenticated;
+  SET LOCAL request.jwt.claims = '{"sub":"<uuid do aluno>","role":"authenticated"}';
+  SELECT count(*) FROM public.<tabela>;   -- 0 aqui é o bug
+  ROLLBACK;
+  ```
+
+  O mesmo vale para **Realtime**: assinar `postgres_changes` numa tabela exige
+  policy de SELECT **e** a tabela na publicação `supabase_realtime` (ver
+  `20261003_04`). Faltando qualquer um dos dois, o canal assina, o
+  `.subscribe()` não reclama e evento nenhum chega — nunca.
 - **View sem `security_invoker` ignora RLS.** Ela roda com os privilégios do
   dono (`postgres`), então as policies das tabelas base **não se aplicam** —
   era um segundo bypass, paralelo ao das policies, e por ele dava para ler

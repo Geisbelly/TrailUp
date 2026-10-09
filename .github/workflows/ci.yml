@@ -6,13 +6,33 @@ on:
   pull_request:
 
 # Cancela execuções antigas do mesmo ref quando há um novo push — mas SÓ em pull
-# request. Em `main` o ref é sempre `refs/heads/main`, então merges em sequência
-# cancelavam uns aos outros: em 2026-10-01, sete PRs entraram em dois minutos e
-# seis execuções foram canceladas. A que sobrou era de docs, e o filtro de
-# caminhos pulou o job `api` — foi assim que a `main` ficou com duas cabeças de
-# alembic sem nenhum CI vermelho. Cada commit em `main` agora termina a sua.
+# request. Em `main`, cada commit tem a SUA PRÓPRIA fila.
+#
+# O `cancel-in-progress: false` sozinho NÃO bastava, e isto foi medido: ele
+# protege a execução EM CURSO, mas o GitHub mantém no máximo uma execução
+# PENDENTE por grupo e cancela as pendentes mais antigas quando uma nova chega.
+# Com todos os merges em `main` dividindo o grupo `ci-refs/heads/main`, uma
+# rajada deixava a primeira (em curso) e a última (pendente) e matava o meio.
+#
+# Em 2026-10-07, com este bloco já no lugar, quatro das últimas oito execuções
+# em `main` foram canceladas — e cada uma morreu de 1 a 4 segundos depois de a
+# próxima nascer:
+#
+#   criado 17:32:37 -> cancelado 17:32:53  (4s após a de 17:32:49 nascer)
+#   criado 15:41:57 -> cancelado 15:42:06  (1s após a de 15:42:05)
+#   criado 15:42:05 -> cancelado 15:43:52  (2s após a de 15:43:50)
+#   criado 15:43:50 -> cancelado 15:44:03  (1s após a de 15:44:02)
+#
+# Duas delas eram `fix(api): advisory lock serializa as migracoes` e
+# `fix(seguranca): aluno deixa de poder enviar push para outro aluno`: entraram
+# em `main` sem um único job ter rodado. É assim que a `main` ficou com duas
+# cabeças de alembic sem nenhum CI vermelho — e continuava sendo.
+#
+# Agrupar por `github.sha` em push dá a cada commit uma fila de um, então não há
+# pendente para deslocar. Em PR o agrupamento segue por ref, que é o
+# comportamento desejado: push novo no PR cancela a execução antiga.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
