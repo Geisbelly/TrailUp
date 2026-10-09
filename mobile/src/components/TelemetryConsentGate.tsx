@@ -4,9 +4,15 @@ import {
   setTelemetryConsentRejected,
   TELEMETRY_CONSENT_VERSION,
 } from "@/utils/telemetryConsent";
-import React, { useEffect, useState } from "react";
+import { supabase } from "@/database/supabase";
+import {
+  registrarConsentimento,
+  TABELA_DE_CONSENTIMENTO,
+} from "@/services/consentimentoRemoto";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -32,6 +38,10 @@ export function TelemetryConsentGate() {
         const shouldShow =
           !record || record.version !== TELEMETRY_CONSENT_VERSION;
         setVisible(shouldShow);
+        // Retentativa: o aceite pode ter sido gravado localmente sem a rede
+        // responder. Repetir e inofensivo -- a tabela tem UNIQUE por
+        // (aluno, versao, decisao) e o 23505 volta como sucesso.
+        if (record) void registrarNoServidor(record);
       })
       .finally(() => {
         if (!active) return;
@@ -42,6 +52,33 @@ export function TelemetryConsentGate() {
       active = false;
     };
   }, []);
+
+  /**
+   * Manda a decisao para `consentimento_telemetria`.
+   *
+   * Nao bloqueia nem desfaz nada da UI: o aceite local e o que governa a
+   * coleta, e esta linha e a PROVA (item 1 da #195). Falha aqui vira aviso, e
+   * a proxima montagem do Gate tenta de novo.
+   */
+  const registrarNoServidor = useCallback(
+    async (record: Awaited<ReturnType<typeof getTelemetryConsentRecord>>) => {
+      try {
+        const { data } = await supabase.auth.getUser();
+        const resultado = await registrarConsentimento({
+          inserir: (linha) => supabase.from(TABELA_DE_CONSENTIMENTO).insert(linha),
+          record,
+          alunoId: data.user?.id ?? null,
+          origem: { plataforma: Platform.OS },
+        });
+        if (!resultado.ok) {
+          console.warn("[Consentimento] nao registrado no servidor:", resultado.detalhe);
+        }
+      } catch (erro) {
+        console.warn("[Consentimento] falha ao registrar no servidor:", erro);
+      }
+    },
+    []
+  );
 
   const handleAccept = async () => {
     setSaving(true);
@@ -65,6 +102,7 @@ export function TelemetryConsentGate() {
         chatEnabled: true,
       },
     });
+    void registrarNoServidor(await getTelemetryConsentRecord());
     setVisible(false);
     setSaving(false);
   };
@@ -72,6 +110,9 @@ export function TelemetryConsentGate() {
   const handleReject = async () => {
     setSaving(true);
     await setTelemetryConsentRejected();
+    // Recusa tambem e registrada: revogar nao e apagar, e o historico
+    // append-only e o que permite responder "o que estava aceito no dia X".
+    void registrarNoServidor(await getTelemetryConsentRecord());
     setVisible(false);
     setSaving(false);
   };

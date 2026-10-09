@@ -92,9 +92,12 @@ export default function Login() {
       setLoading(true);
       await autenticarComGoogle();
     } catch (error: unknown) {
+      const authMessage = getAuthErrorMessage(error);
+      const errorType = error instanceof Error ? error.name : "UnknownError";
+      console.warn(`[Login] Falha no Google OAuth (${errorType}).`);
       showDialog({
         title: "Não foi possível entrar",
-        description: getAuthErrorMessage(error),
+        description: authMessage,
         tone: "error",
       });
     } finally {
