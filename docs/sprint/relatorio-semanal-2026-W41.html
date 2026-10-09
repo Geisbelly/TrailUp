@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TrailUp · Relatório semanal 2026-W41</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+
+:root{
+  color-scheme:dark;
+  --seeker:#3fc8bb; --survivor:#8f9bab; --daredevil:#f5788a;
+  --mastermind:#a08df5; --conqueror:#6b8ff0; --socializer:#ff8a63; --achiever:#e3bd4e;
+  --ground:#0b0a14; --ground-2:#131120; --surface:#1c1930; --surface-sub:#252140;
+  --ink:#f1eef9; --ink-soft:#cfc9e3; --muted:#8d87ab; --rule:#322c4d; --rule-strong:#4a4270;
+  --accent:#a08df5; --accent-2:#e3bd4e; --accent-wash:#241f47;
+  --ok:#4fd1c0; --risk:#f5788a;
+  --pad-x:clamp(1.1rem,5.5vw,4.4rem); --pad-y:clamp(1.2rem,3.6vh,2.4rem);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;background:var(--ground);color:var(--ink)}
+body{font-family:"Literata",Georgia,serif;font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+h1,h2,h3,.display{font-family:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;margin:0;text-wrap:balance;letter-spacing:-0.02em}
+p{margin:0} strong{color:var(--ink);font-weight:600}
+a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
+.eyebrow{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:0.66rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--accent-2);display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap}
+.eyebrow .num{color:var(--muted)}
+code{font-family:"JetBrains Mono",monospace;font-size:0.86em;background:var(--surface-sub);padding:0.06em 0.34em;border-radius:3px;color:var(--ink-soft);word-break:break-word}
+.wordmark{display:flex;align-items:center;gap:0.5rem;font-family:"JetBrains Mono",monospace;font-size:0.68rem;font-weight:700;letter-spacing:0.26em;text-transform:uppercase;color:var(--ink-soft);white-space:nowrap}
+.diamond{width:0.8rem;height:0.8rem;background:var(--accent);transform:rotate(45deg);flex:none;display:inline-block;box-shadow:0 0 14px 1px color-mix(in srgb,var(--accent) 55%,transparent)}
+.bg-glow{position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(60rem 40rem at 82% -10%,color-mix(in srgb,var(--accent) 15%,transparent),transparent 60%),radial-gradient(50rem 34rem at -10% 108%,color-mix(in srgb,var(--seeker) 9%,transparent),transparent 60%),linear-gradient(180deg,var(--ground) 0%,var(--ground-2) 100%)}
+.bg-stars{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:0.5;background-image:radial-gradient(1.5px 1.5px at 10% 20%,#fff 60%,transparent),radial-gradient(1.5px 1.5px at 80% 10%,#fff 50%,transparent),radial-gradient(1px 1px at 60% 80%,#fff 50%,transparent),radial-gradient(1px 1px at 30% 65%,#fff 45%,transparent),radial-gradient(1.5px 1.5px at 92% 55%,#fff 55%,transparent),radial-gradient(1px 1px at 45% 30%,#fff 40%,transparent),radial-gradient(1.5px 1.5px at 15% 85%,#fff 45%,transparent),radial-gradient(1px 1px at 70% 40%,#fff 40%,transparent);background-size:100% 100%}
+.chip{display:inline-flex;align-items:center;gap:0.35rem;font-family:"JetBrains Mono",monospace;font-size:0.62rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;padding:0.15rem 0.48rem;border-radius:20px;white-space:nowrap;border:1px solid transparent}
+.chip.ok{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok);border-color:color-mix(in srgb,var(--ok) 40%,transparent)}
+.chip.warn{background:color-mix(in srgb,var(--accent-2) 18%,transparent);color:var(--accent-2);border-color:color-mix(in srgb,var(--accent-2) 40%,transparent)}
+.chip.risk{background:color-mix(in srgb,var(--risk) 18%,transparent);color:var(--risk);border-color:color-mix(in srgb,var(--risk) 40%,transparent)}
+.chip.flat{background:var(--surface-sub);color:var(--muted)}
+.ficha{display:grid;grid-template-columns:repeat(auto-fit,minmax(8.4rem,1fr));border:1px solid var(--rule);border-radius:10px;overflow:hidden;background:color-mix(in srgb,var(--surface) 70%,transparent)}
+.ficha>div{padding:0.95rem 0.9rem 1.05rem;border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);display:grid;gap:0.18rem;align-content:start;min-width:0}
+.ficha .v{font-family:"Bricolage Grotesque",sans-serif;font-size:clamp(1.5rem,3.2vw,2.15rem);font-weight:800;letter-spacing:-0.03em;line-height:1;color:var(--ink)}
+.ficha .k{font-size:0.75rem;color:var(--ink-soft);font-family:"Bricolage Grotesque",sans-serif;font-weight:500}
+.ficha .sub{font-size:0.66rem;color:var(--muted);font-family:"JetBrains Mono",monospace}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(12.5rem,1fr));gap:0.8rem}
+.card{position:relative;min-width:0;border:1px solid var(--rule);background:color-mix(in srgb,var(--surface) 68%,transparent);border-radius:10px;padding:0.95rem 1rem 1.05rem;display:grid;gap:0.5rem;align-content:start;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))}
+.card .top{display:flex;align-items:center;gap:0.5rem}
+.card .dot2{width:0.6rem;height:0.6rem;border-radius:50%;flex:none}
+.card .name{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:0.96rem}
+.card .handle{font-family:"JetBrains Mono",monospace;font-size:0.65rem;color:var(--muted)}
+.panel{border:1px solid var(--rule-strong);background:color-mix(in srgb,var(--surface) 65%,transparent);border-radius:10px;padding:0.95rem 1.05rem;min-width:0}
+.panel h3{font-size:0.98rem;margin-bottom:0.4rem}
+.panel p{font-size:0.87rem;color:var(--ink-soft)}
+.track2{height:0.42rem;background:var(--surface-sub);border-radius:6px;overflow:hidden}
+.track2>i{display:block;height:100%;background:var(--ok)}
+.lede{font-size:clamp(0.92rem,1.7vw,1.1rem);color:var(--ink-soft);max-width:42rem}
+.fine{font-size:0.82rem;color:var(--muted)}
+ul.star-list{list-style:none;margin:0;padding:0;display:grid;gap:0.5rem}
+ul.star-list li{display:flex;gap:0.55rem;align-items:baseline;font-size:0.95rem;color:var(--ink-soft)}
+ul.star-list li .star{color:var(--accent-2);flex:none;transform:translateY(0.15em);width:0.68rem;height:0.68rem}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:1rem 1.8rem}
+@media (max-width:44rem){.grid2{grid-template-columns:1fr}}
+.stories{display:grid;gap:0;border-top:1px solid var(--rule)}
+.story{display:grid;grid-template-columns:2.8rem 1fr auto;gap:0.35rem 0.8rem;align-items:baseline;padding:0.55rem 0;border-bottom:1px solid var(--rule)}
+.story .id{font-family:"JetBrains Mono",monospace;font-size:0.72rem;color:var(--muted)}
+.story .t b{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:0.85rem}
+.scrollbox{overflow-x:auto;border:1px solid var(--rule);border-radius:8px;background:color-mix(in srgb,var(--surface) 65%,transparent)}
+table{border-collapse:collapse;width:100%;min-width:34rem}
+th,td{text-align:right;padding:0.5rem 0.7rem;border-bottom:1px solid var(--rule);font-family:"JetBrains Mono",monospace;font-size:0.74rem;white-space:nowrap}
+th{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:0.62rem;letter-spacing:0.05em;text-transform:uppercase;color:var(--muted)}
+th:first-child,td:first-child{text-align:left}
+td:nth-child(2){text-align:left;white-space:normal;max-width:28rem}
+.risk-card{border:1px solid color-mix(in srgb,var(--risk) 45%,var(--rule));background:color-mix(in srgb,var(--risk) 8%,var(--surface));border-radius:10px;padding:0.85rem 1rem;display:grid;gap:0.3rem}
+.risk-card h3{font-size:0.9rem;color:var(--risk)}
+.risk-card p{font-size:0.82rem;color:var(--ink-soft)}
+
+body{overflow:auto;min-height:100vh}
+.wrap{position:relative;z-index:1;max-width:62rem;margin:0 auto;padding:2.4rem var(--pad-x) 4rem;display:grid;gap:2.2rem}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:0.6rem;margin-bottom:0.4rem}
+h1{font-size:clamp(1.8rem,4.8vw,2.8rem);margin:0.35rem 0 0.5rem}
+h2{font-size:clamp(1.25rem,3.2vw,1.7rem);margin-bottom:0.7rem}
+section{display:grid;gap:0.9rem}
+</style>
+</head>
+<body>
+<div class="bg-glow"></div><div class="bg-stars"></div>
+<div class="wrap">
+  <header>
+    <div class="topbar">
+      <div class="wordmark"><span style="color:var(--accent-2);width:0.85rem;height:0.85rem;display:inline-block"><span class="star"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 0l1.5 4.5H12l-3.6 2.7L9.9 12 6 9.2 2.1 12l1.5-4.8L0 4.5h4.5z"/></svg></span></span> TRAILUP <span style="font-weight:400;letter-spacing:0.14em;color:var(--muted);font-size:0.85em">· LAB</span></div>
+      <span class="fine" style="font-family:JetBrains Mono,monospace">2026-W41</span>
+    </div>
+    <p class="eyebrow"><span class="diamond"></span> Relatório semanal <span class="num">· 03/10–09/10/2026 BRT</span></p>
+    <h1>Sprint 2 em andamento — 37% da meta</h1>
+    <p class="lede">Progresso semanal dentro da Sprint 2 (não é fechamento). Meta: as 5 frentes do <code>sprint-planning-2.md</code>. Done = issue fechada com DoD.</p>
+  </header>
+
+  <section>
+    <div class="ficha">
+      <div><div class="v" style="color:var(--accent-2)">37%</div><div class="k">Meta Sprint 2</div><div class="sub">peso igual A–E · 36.6%</div></div>
+      <div><div class="v">47</div><div class="k">PRs merged</div><div class="sub">na janela</div></div>
+      <div><div class="v">39</div><div class="k">Commits</div><div class="sub">main</div></div>
+      <div><div class="v">0</div><div class="k">PRs abertas</div><div class="sub">0 draft</div></div>
+      <div><div class="v">2</div><div class="k">Issues Done</div><div class="sub">#216, #217 na janela</div></div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow"><span class="diamond"></span> 01 <span class="num">Meta / frentes</span></p>
+    <h2>As cinco frentes da Sprint 2</h2>
+    <div class="cards">
+    <div class="card">
+      <div class="top"><span class="dot2" style="background:var(--daredevil)"></span>
+        <span class="name">Frente A · Bugs do aluno</span></div>
+      <div class="handle">owner Geisbelly · 2/7 Done</div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <span style="font-family:Bricolage Grotesque,sans-serif;font-weight:800;font-size:1.8rem">28.6%</span>
+        <span class="chip warn">início</span>
+      </div>
+      <div class="track2"><i style="width:28.6%;background:var(--daredevil)"></i></div>
+      <p class="fine">Done: #157, #217<br>Abertas: #27, #28, #177, #186, #189</p>
+      <p class="fine" style="color:var(--ink-soft)">28.6% Done (#157+#217 fechadas). PRs #321 (prazo→#177), #322 (dedup→#186), #337 (loopback→#189) na main sem fechar as issues. #27/#28 sem movimento.</p>
+    </div>    <div class="card">
+      <div class="top"><span class="dot2" style="background:var(--conqueror)"></span>
+        <span class="name">Frente B · Console do professor</span></div>
+      <div class="handle">owner JP · 0/7 Done</div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <span style="font-family:Bricolage Grotesque,sans-serif;font-weight:800;font-size:1.8rem">0%</span>
+        <span class="chip risk">atrasada</span>
+      </div>
+      <div class="track2"><i style="width:0.0%;background:var(--conqueror)"></i></div>
+      <p class="fine">Done: —<br>Abertas: #6, #15, #56, #147, #150, #156 +1</p>
+      <p class="fine" style="color:var(--ink-soft)">0.0% Done; console segue sem fechar #6/#15/#56/#147/#150/#156/#214. Fixes pontuais (#298/#301/#304/#307/#334) sem fechar nominadas.</p>
+    </div>    <div class="card">
+      <div class="top"><span class="dot2" style="background:var(--mastermind)"></span>
+        <span class="name">Frente C · Modelos ML/LLM (M2/Jev)</span></div>
+      <div class="handle">owner Luís · 2/2 Done</div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <span style="font-family:Bricolage Grotesque,sans-serif;font-weight:800;font-size:1.8rem">100%</span>
+        <span class="chip ok">pronta</span>
+      </div>
+      <div class="track2"><i style="width:100.0%;background:var(--mastermind)"></i></div>
+      <p class="fine">Done: #215, #216<br>Abertas: </p>
+      <p class="fine" style="color:var(--ink-soft)">100.0% — #215 (W40) + #216 fechada via #271 (evidência Jev). Frente C completa em Done de issue.</p>
+    </div>    <div class="card">
+      <div class="top"><span class="dot2" style="background:var(--seeker)"></span>
+        <span class="name">Frente D · RAG corpus e retrieval</span></div>
+      <div class="handle">owner Luís · 6/11 Done</div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <span style="font-family:Bricolage Grotesque,sans-serif;font-weight:800;font-size:1.8rem">54.5%</span>
+        <span class="chip ok">parcial</span>
+      </div>
+      <div class="track2"><i style="width:54.5%;background:var(--seeker)"></i></div>
+      <p class="fine">Done: #70, #71, #72, #73, #74, #75<br>Abertas: #63, #64, #66, #67, #165</p>
+      <p class="fine" style="color:var(--ink-soft)">54.5% — #70–#75 Done (W40); integração #63/#64/#66/#67/#165 ainda abertas (#63 atualizada 09/10).</p>
+    </div>    <div class="card">
+      <div class="top"><span class="dot2" style="background:var(--socializer)"></span>
+        <span class="name">Frente E · Web do aluno</span></div>
+      <div class="handle">owner Rafa · 0/2 Done</div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <span style="font-family:Bricolage Grotesque,sans-serif;font-weight:800;font-size:1.8rem">0%</span>
+        <span class="chip risk">atrasada</span>
+      </div>
+      <div class="track2"><i style="width:0.0%;background:var(--socializer)"></i></div>
+      <p class="fine">Done: —<br>Abertas: #29, #219</p>
+      <p class="fine" style="color:var(--ink-soft)">0.0% Done; #29/#219 sem fechamento nesta semana (code split parcial ficou na W40).</p>
+    </div></div>
+    <p class="fine">Transversal #218: 0.0% · Gate LGPD #195: 0.0% (não conta no % global das 5 frentes).</p>
+  </section>
+
+  <section>
+    <p class="eyebrow"><span class="diamond"></span> 02 <span class="num">Ritmo da semana</span></p>
+    <h2>Quem moveu o que</h2>
+    <div class="cards"><div class="card"><div class="top"><span class="dot2" style="background:var(--achiever)"></span>
+      <span class="name">Geisbelly</span></div><span class="handle">@Geisbelly</span>
+      <div style="display:grid;gap:0.25rem;font-size:0.82rem;color:var(--ink-soft)">
+        <div style="display:flex;justify-content:space-between"><span>commits</span><b style="font-family:JetBrains Mono,monospace;color:var(--ink)">36</b></div>
+        <div style="display:flex;justify-content:space-between"><span>PRs merged</span><b style="font-family:JetBrains Mono,monospace;color:var(--ink)">44</b></div>
+      </div></div><div class="card"><div class="top"><span class="dot2" style="background:var(--mastermind)"></span>
+      <span class="name">Luís</span></div><span class="handle">@0spura</span>
+      <div style="display:grid;gap:0.25rem;font-size:0.82rem;color:var(--ink-soft)">
+        <div style="display:flex;justify-content:space-between"><span>commits</span><b style="font-family:JetBrains Mono,monospace;color:var(--ink)">3</b></div>
+        <div style="display:flex;justify-content:space-between"><span>PRs merged</span><b style="font-family:JetBrains Mono,monospace;color:var(--ink)">3</b></div>
+      </div></div><div class="card"><div class="top"><span class="dot2" style="background:var(--socializer)"></span>
+      <span class="name">Rafa</span></div><span class="handle">@rafantavares</span>
+      <div style="display:grid;gap:0.25rem;font-size:0.82rem;color:var(--ink-soft)">
+        <div style="display:flex;justify-content:space-between"><span>commits</span><b style="font-family:JetBrains Mono,monospace;color:var(--ink)">0</b></div>
+        <div style="display:flex;justify-content:space-between"><span>PRs merged</span><b style="font-family:JetBrains Mono,monospace;color:var(--ink)">0</b></div>
+      </div></div><div class="card"><div class="top"><span class="dot2" style="background:var(--conqueror)"></span>
+      <span class="name">JP</span></div><span class="handle">@JP-batista</span>
+      <div style="display:grid;gap:0.25rem;font-size:0.82rem;color:var(--ink-soft)">
+        <div style="display:flex;justify-content:space-between"><span>commits</span><b style="font-family:JetBrains Mono,monospace;color:var(--ink)">0</b></div>
+        <div style="display:flex;justify-content:space-between"><span>PRs merged</span><b style="font-family:JetBrains Mono,monospace;color:var(--ink)">0</b></div>
+      </div></div></div>
+    <p class="fine">Commits na main: 39 (Geisbelly 36 · Luís 3). Squash merges atribuem commit ao merge author — PRs merged refletem autoria melhor. Fila aberta: 0 PRs (zerada nesta semana).</p>
+  </section>
+
+  <section>
+    <p class="eyebrow"><span class="diamond"></span> 03 <span class="num">Destaques</span></p>
+    <h2>O que avançou de verdade</h2>
+    <ul class="star-list">
+      <li><span class="star"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 0l1.5 4.5H12l-3.6 2.7L9.9 12 6 9.2 2.1 12l1.5-4.8L0 4.5h4.5z"/></svg></span><span><strong>Frente C 100%</strong> — #216 fechada via #271 (Jev documentado); soma a #215 (W40).</span></li>
+      <li><span class="star"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 0l1.5 4.5H12l-3.6 2.7L9.9 12 6 9.2 2.1 12l1.5-4.8L0 4.5h4.5z"/></svg></span><span><strong>Login Google mobile (#217)</strong> — fechado via #270 (OAuth callback + PKCE).</span></li>
+      <li><span class="star"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 0l1.5 4.5H12l-3.6 2.7L9.9 12 6 9.2 2.1 12l1.5-4.8L0 4.5h4.5z"/></svg></span><span><strong>Conquistas (#157)</strong> — Done cumulativo (fechada 02/10 23:04 BRT, fora da janela W41).</span></li>
+      <li><span class="star"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 0l1.5 4.5H12l-3.6 2.7L9.9 12 6 9.2 2.1 12l1.5-4.8L0 4.5h4.5z"/></svg></span><span><strong>Fixes nominados A</strong> — prazo (#321→#177), dedup (#322→#186), loopback (#337→#189) no main; issues ainda abertas.</span></li>
+      <li><span class="star"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 0l1.5 4.5H12l-3.6 2.7L9.9 12 6 9.2 2.1 12l1.5-4.8L0 4.5h4.5z"/></svg></span><span><strong>LGPD parcial</strong> — câmera off (#309), retenção (#338), consentimento (#339); gate #195 aberto.</span></li>
+      <li><span class="star"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 0l1.5 4.5H12l-3.6 2.7L9.9 12 6 9.2 2.1 12l1.5-4.8L0 4.5h4.5z"/></svg></span><span><strong>47 PRs merged</strong> — fila aberta zerada; CI/auto-merge Lab e estabilidade (mobile testes #344).</span></li>
+    </ul>
+  </section>
+
+  <section>
+    <p class="eyebrow"><span class="diamond"></span> 04 <span class="num">Gaps</span></p>
+    <h2>Metas ainda não batidas — por quê</h2>
+    <div class="grid2">
+      <div class="panel"><h3>Frente A · 28.6%</h3><p>#157 e #217 Done. Fixes #321/#322/#337 na main para #177/#186/#189 sem fechar as issues (DoD/board). #27/#28 sem movimento desde o planning.</p></div>
+      <div class="panel"><h3>Frente B · 0%</h3><p>Todas as 7 issues nominadas abertas desde 18/09. Fixes pontuais de console (#298/#301/#304/#307/#334) não fecharam #6/#15/#56/#147/#150/#156/#214.</p></div>
+      <div class="panel"><h3>Frente C · 100%</h3><p>#215 (W40) + #216 fechada nesta semana via #271 (evidência Jev). Frente completa em Done de issue — gate EdNet de deploy prod permanece.</p></div>
+      <div class="panel"><h3>Frente D · 54,5%</h3><p>#70–#75 Done (W40). Integração #63/#64/#66/#67/#165 aberta; #63 atualizada em 09/10; reconciliação #63×#165 ainda aberta.</p></div>
+      <div class="panel"><h3>Frente E · 0%</h3><p>#29/#219 sem fechamento. Code split parcial ficou na W40; Rafa/JP sem PRs merged nesta janela.</p></div>
+      <div class="panel"><h3>Gate #195</h3><p>Ainda OPEN. Progresso real: câmera off (#309), retenção (#338), consentimento (#339), FER+/termo (#305/#306) merged — gate não fecha só com PRs parciais.</p></div>
+</div>
+  </section>
+
+  <section>
+    <p class="eyebrow"><span class="diamond"></span> 05 <span class="num">Travadas</span></p>
+    <h2>Issues da sprint sem progresso &gt;3 dias</h2>
+    <div class="stories"><div class="story"><span class="id">#6</span><div class="t"><b>[Story] Professor acompanha indicadores da turma</b>
+        <div class="fine">Frente B · atualizada 2026-09-18 · Geisbelly, JP-batista</div></div>
+        <span class="chip risk">travada</span></div><div class="story"><span class="id">#15</span><div class="t"><b>[Frontend] Painel do professor com os KPIs de engajamento e gargalos</b>
+        <div class="fine">Frente B · atualizada 2026-09-18 · JP-batista</div></div>
+        <span class="chip risk">travada</span></div><div class="story"><span class="id">#27</span><div class="t"><b>[Web] URL não reflete a tela em rotas protegidas</b>
+        <div class="fine">Frente A · atualizada 2026-09-18 · Geisbelly</div></div>
+        <span class="chip risk">travada</span></div><div class="story"><span class="id">#28</span><div class="t"><b>[Web] Relatório do aluno falha em silêncio na web</b>
+        <div class="fine">Frente A · atualizada 2026-09-18 · Geisbelly</div></div>
+        <span class="chip risk">travada</span></div><div class="story"><span class="id">#29</span><div class="t"><b>[Perf] Code splitting: 4,75 MB na web do aluno e 1,67 MB no console</b>
+        <div class="fine">Frente E · atualizada 2026-09-01 · rafantavares</div></div>
+        <span class="chip risk">travada</span></div><div class="story"><span class="id">#56</span><div class="t"><b>[Frontend] Preparar DashboardSection para KPIs: estados vazio/erro/loading + acessibilidad</b>
+        <div class="fine">Frente B · atualizada 2026-09-18 · JP-batista, rafantavares</div></div>
+        <span class="chip risk">travada</span></div><div class="story"><span class="id">#64</span><div class="t"><b>[Task] Tabela e nó de intervenções psicopedagógicas</b>
+        <div class="fine">Frente D · atualizada 2026-09-30 · 0spura</div></div>
+        <span class="chip risk">travada</span></div><div class="story"><span class="id">#66</span><div class="t"><b>[Task] Sugestão de material e notificações com RAG</b>
+        <div class="fine">Frente D · atualizada 2026-09-30 · 0spura</div></div>
+        <span class="chip risk">travada</span></div><div class="story"><span class="id">#67</span><div class="t"><b>[Task] Observabilidade e testes do RAG</b>
+        <div class="fine">Frente D · atualizada 2026-09-30 · 0spura</div></div>
+        <span class="chip risk">travada</span></div><div class="story"><span class="id">#147</span><div class="t"><b>[Docs] Guia do professor</b>
+        <div class="fine">Frente B · atualizada 2026-09-18 · JP-batista</div></div>
+        <span class="chip risk">travada</span></div><div class="story"><span class="id">#150</span><div class="t"><b>[API] Missões criadas pelo professor</b>
+        <div class="fine">Frente B · atualizada 2026-09-18 · JP-batista</div></div>
+        <span class="chip risk">travada</span></div><div class="story"><span class="id">#156</span><div class="t"><b>[Frontend] Painel do professor para eventos, batalhas e métricas</b>
+        <div class="fine">Frente B · atualizada 2026-09-18 · JP-batista</div></div>
+        <span class="chip risk">travada</span></div><div class="story"><span class="id">#165</span><div class="t"><b>[Task] RAG com OpenAI Vector Store integrado ao mentor</b>
+        <div class="fine">Frente D · atualizada 2026-09-09 · 0spura</div></div>
+        <span class="chip risk">travada</span></div><div class="story"><span class="id">#214</span><div class="t"><b>[Frontend] Finalizar o redesign do console do professor a partir do protótipo V5</b>
+        <div class="fine">Frente B · atualizada 2026-09-18 · sem assignee</div></div>
+        <span class="chip risk">travada</span></div><div class="story"><span class="id">#218</span><div class="t"><b>[Dados/Mobile] Avaliação dos documentos do RAG e ajustes visuais no mobile</b>
+        <div class="fine">transversal · atualizada 2026-09-18 · Geisbelly, rafantavares</div></div>
+        <span class="chip warn">transversal</span></div><div class="story"><span class="id">#219</span><div class="t"><b>[Web] Prototipar a área web do aluno a partir do método do console</b>
+        <div class="fine">Frente E · atualizada 2026-09-18 · rafantavares</div></div>
+        <span class="chip risk">travada</span></div></div>
+    <p class="fine">Não listadas como travadas (há PR na janela): #177←#321, #186←#322, #189←#337, #195←#309/#338/#339, #63 atualizada 09/10.</p>
+  </section>
+
+  <section>
+    <p class="eyebrow"><span class="diamond"></span> 06 <span class="num">Riscos</span></p>
+    <h2>Bugs e problemas complexos</h2>
+    <div class="cards" style="grid-template-columns:1fr"><div class="risk-card"><h3>Licença CC BY-NC 4.0 do EdNet KT3 nos pesos M2</h3><p><code>#215</code> — issue #215 fechada; decisão de uso prod ainda documentada como gate pré-deploy</p></div><div class="risk-card"><h3>Reconciliação #63 × #165</h3><p><code>#63,#165</code> — ambas abertas; #63 atualizada 09/10; caminho canônico ainda não fechado no board</p></div><div class="risk-card"><h3>Gate LGPD #195</h3><p><code>#195</code> — ainda OPEN; PRs #309 (câmera off), #338/#339 (retenção/consentimento) merged — progresso sem fechar gate</p></div><div class="risk-card"><h3>Calibração diff/global do M2 no EdNet</h3><p><code>#215</code> — thresholds absolutos bloqueados até recalibrar com dado próprio</p></div><div class="risk-card"><h3>Issues A nominadas abertas apesar de fixes</h3><p><code>#177,#186,#189</code> — PRs na main (#321,#322,#337) sem fechar issues — DoD/board pendente</p></div></div>
+  </section>
+
+  <section>
+    <p class="eyebrow"><span class="diamond"></span> 07 <span class="num">Próximos</span></p>
+    <h2>Próximos passos (sugestão)</h2>
+    <ul class="star-list"><li><span class="star"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 0l1.5 4.5H12l-3.6 2.7L9.9 12 6 9.2 2.1 12l1.5-4.8L0 4.5h4.5z"/></svg></span><span>Fechar DoD/board de #177, #186 e #189 — código já está no main (#321/#322/#337).</span></li><li><span class="star"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 0l1.5 4.5H12l-3.6 2.7L9.9 12 6 9.2 2.1 12l1.5-4.8L0 4.5h4.5z"/></svg></span><span>Priorizar #27/#28 (web aluno) e amarrar Frente B (#214/#6/#15) ao que já está no main.</span></li><li><span class="star"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 0l1.5 4.5H12l-3.6 2.7L9.9 12 6 9.2 2.1 12l1.5-4.8L0 4.5h4.5z"/></svg></span><span>Resolver reconciliação #63×#165 (fechar #63 como superseded ou executar) e puxar #64/#66/#67/#165.</span></li><li><span class="star"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 0l1.5 4.5H12l-3.6 2.7L9.9 12 6 9.2 2.1 12l1.5-4.8L0 4.5h4.5z"/></svg></span><span>Registrar decisão de licença EdNet e calibração M2 antes de qualquer deploy prod.</span></li><li><span class="star"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 0l1.5 4.5H12l-3.6 2.7L9.9 12 6 9.2 2.1 12l1.5-4.8L0 4.5h4.5z"/></svg></span><span>Fechar gate #195 com checklist DoD após #309/#338/#339 — ou reabrir critérios pendentes.</span></li><li><span class="star"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 0l1.5 4.5H12l-3.6 2.7L9.9 12 6 9.2 2.1 12l1.5-4.8L0 4.5h4.5z"/></svg></span><span>Reativar Frente E (#29/#219) — Rafa sem merges nesta semana.</span></li></ul>
+  </section>
+
+  <section>
+    <p class="eyebrow"><span class="diamond"></span> 08 <span class="num">Anexo</span></p>
+    <h2>PRs merged (amostra recente)</h2>
+    <div class="scrollbox"><table>
+      <thead><tr><th>#</th><th>Título</th><th>Autor</th><th>Merged</th></tr></thead>
+      <tbody><tr><td>#339</td><td>fix(#195): consentimento de telemetria passa a ser provavel pelo servido</td><td>Geisbelly</td><td>2026-10-09</td></tr><tr><td>#271</td><td>docs(api): document Jev evaluation evidence and cost limits</td><td>Luís</td><td>2026-10-09</td></tr><tr><td>#270</td><td>fix(auth): derive Google OAuth callback and require PKCE</td><td>Luís</td><td>2026-10-09</td></tr><tr><td>#344</td><td>test(mobile): manifestos por linha eliminam conflito recorrente</td><td>Luís</td><td>2026-10-09</td></tr><tr><td>#341</td><td>fix(#173): a API sobe no Windows — e a correcao sugerida na issue nao se</td><td>Geisbelly</td><td>2026-10-09</td></tr><tr><td>#334</td><td>fix(console): duplicar turma para de deixar copia parcial e de errar as </td><td>Geisbelly</td><td>2026-10-09</td></tr><tr><td>#338</td><td>fix(#195): texto livre do aluno deixa de ficar para sempre em ia_decisio</td><td>Geisbelly</td><td>2026-10-09</td></tr><tr><td>#337</td><td>fix(#189): o banco recusa URL de loopback em material do aluno</td><td>Geisbelly</td><td>2026-10-09</td></tr><tr><td>#336</td><td>fix(#172): envio de contato entra em migracao e perde o nome errado</td><td>Geisbelly</td><td>2026-10-09</td></tr><tr><td>#333</td><td>ci: brainhexpdf passa a rodar no CI, e mexer no CI passa a exercitar os </td><td>Geisbelly</td><td>2026-10-09</td></tr><tr><td>#332</td><td>fix(frontend): 13 erros de tipo, e o portao de CI que deixava eles entra</td><td>Geisbelly</td><td>2026-10-09</td></tr><tr><td>#330</td><td>perf(banco): tira indice duplicado das tabelas de progresso</td><td>Geisbelly</td><td>2026-10-09</td></tr><tr><td>#328</td><td>chore(seguranca): funcao de trigger sai da superficie REST do cliente</td><td>Geisbelly</td><td>2026-10-09</td></tr><tr><td>#326</td><td>fix(realtime): as tabelas que o app assina entram na publicacao</td><td>Geisbelly</td><td>2026-10-09</td></tr><tr><td>#325</td><td>fix(rls): quem esta na classe volta a ler o tema do mapa</td><td>Geisbelly</td><td>2026-10-09</td></tr><tr><td>#324</td><td>fix(signup): reaplica a pilha da issue #1, que nao chegou na main</td><td>Geisbelly</td><td>2026-10-09</td></tr><tr><td>#323</td><td>fix(telemetria): lote ruim deixa de travar a fila em disco</td><td>Geisbelly</td><td>2026-10-09</td></tr><tr><td>#322</td><td>fix(pontos): acerto em atividade personalizada deixa de pagar N vezes</td><td>Geisbelly</td><td>2026-10-09</td></tr><tr><td>#340</td><td>fix(ci): merge em main deixa de perder a propria execucao</td><td>Geisbelly</td><td>2026-10-09</td></tr><tr><td>#342</td><td>docs: anonimo le tres linhas de app_config, nao &quot;nada&quot;</td><td>Geisbelly</td><td>2026-10-09</td></tr><tr><td>#327</td><td>docs: tabela nova nasce com RLS ligada e, sem policy, invisivel</td><td>Geisbelly</td><td>2026-10-09</td></tr><tr><td>#321</td><td>fix(prazo): o prazo deixa de vencer um dia antes, e o aluno passa a ve-l</td><td>Geisbelly</td><td>2026-10-09</td></tr></tbody>
+    </table></div>
+    <p class="fine" style="margin-top:0.8rem">Total na janela: 47 PRs · Fonte: <code>gh</code> BitStudioLabs/trail-up · 2026-10-03 → 2026-10-09 BRT · gerado 09/10/2026 · estética TrailUp / BrainHex · Issues fechadas contam como Done; aceite item-a-item do planning §4 não foi reauditado nesta rotina semanal.</p>
+  </section>
+</div>
+</body>
+</html>
