@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { remapearReferencias, type MapaDeTopicos } from "./duplicacaoDeClasse";
 import type { Json } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -202,53 +203,136 @@ export default function ClassManagementSection({ professorId }: Props) {
     }
   };
 
+  /**
+   * Estoura com contexto em vez de deixar o erro do Supabase cair no chão.
+   *
+   * A duplicação ignorava o `error` de TODOS os inserts menos o primeiro. Com
+   * isso `data` vinha `null`, e o `(created as { id: number }).id` seguinte
+   * estourava um `TypeError` sem relação com a causa — que o `catch {}` vazio
+   * então descartava, sem nem um `console.error`.
+   */
+  const exigir = <T,>(
+    resposta: { data: T | null; error: { message: string } | null },
+    oque: string,
+  ): T => {
+    if (resposta.error) throw new Error(`${oque}: ${resposta.error.message}`);
+    if (resposta.data === null) throw new Error(`${oque}: o banco não devolveu dado`);
+    return resposta.data;
+  };
+
+  /** Para insert sem `select`: aí `data` é `null` mesmo quando deu certo. */
+  const exigirOk = (resposta: { error: { message: string } | null }, oque: string) => {
+    if (resposta.error) throw new Error(`${oque}: ${resposta.error.message}`);
+  };
+
+  /**
+   * Desfaz a cópia parcial. O REST não tem transação, então a atomicidade vem
+   * por compensação.
+   *
+   * Usa `deleteClasseCascade`, não um `delete` na `classe`: apagar a classe
+   * direto NÃO basta. `atividade_conteudos_atividade_id_fkey` é `NO ACTION`
+   * (as outras FKs da trilha são `CASCADE`), então, havendo vínculo
+   * atividade↔conteúdo, o Postgres recusa com
+   * `23503 ... still referenced from table "atividade_conteudos"` — conferido
+   * ao vivo. O helper apaga os filhos na ordem certa e ainda limpa o bucket.
+   */
+  const removerClasseParcial = async (id: number) => {
+    try {
+      await deleteClasseCascade(id);
+      return true;
+    } catch (error) {
+      console.error("Falha ao remover a classe parcial:", error);
+      return false;
+    }
+  };
+
   const handleDuplicate = async (cls: Classe) => {
     if (!professorId) return;
     setIsSaving(true);
+    let newClassId: number | null = null;
     try {
-      const { data: clsData, error: clsErr } = await supabase
-        .from("classe")
-        .insert({
-          descricao: `${cls.descricao} (copia)`,
-          materia_id: cls.materia_id ?? null,
-          professor_id: professorId,
-        })
-        .select("id")
-        .single();
-      if (clsErr) throw clsErr;
-      const newClassId = (clsData as { id: number }).id;
-      const { data: oldTopics } = await supabase.from("topicos").select("id, nome, descricao, ordem, next, depende").eq("classe_id", cls.id);
-      const topicIdMap: Record<number, number> = {};
-      for (const t of (oldTopics as TopicRow[]) || []) {
-        const { data: created } = await supabase.from("topicos").insert({ classe_id: newClassId, nome: t.nome, descricao: t.descricao, ordem: t.ordem, next: t.next, depende: t.depende }).select("id").single();
-        topicIdMap[t.id] = (created as { id: number }).id;
+      const criada = exigir(
+        await supabase
+          .from("classe")
+          .insert({
+            descricao: `${cls.descricao} (copia)`,
+            materia_id: cls.materia_id ?? null,
+            professor_id: professorId,
+          })
+          .select("id")
+          .single(),
+        "criar a classe",
+      );
+      newClassId = (criada as { id: number }).id;
+
+      const oldTopics = exigir(
+        await supabase.from("topicos").select("id, nome, descricao, ordem, next, depende").eq("classe_id", cls.id),
+        "ler os tópicos",
+      ) as TopicRow[];
+
+      const topicIdMap: MapaDeTopicos = {};
+      for (const t of oldTopics) {
+        const criado = exigir(
+          await supabase.from("topicos").insert({ classe_id: newClassId, nome: t.nome, descricao: t.descricao, ordem: t.ordem, next: t.next, depende: t.depende }).select("id").single(),
+          `copiar o tópico "${t.nome ?? t.id}"`,
+        );
+        topicIdMap[t.id] = (criado as { id: number }).id;
       }
-      for (const t of (oldTopics as TopicRow[]) || []) {
-        const newId = topicIdMap[t.id];
-        const mapArr = (arr?: number[] | string | null) =>
-          Array.isArray(arr) ? arr.map((n) => topicIdMap[n] || n)
-            : arr ? (typeof arr === "string" ? JSON.parse(arr) : arr).map((n: number) => topicIdMap[n] || n) : [];
-        await supabase.from("topicos").update({ next: mapArr(t.next), depende: mapArr(t.depende) }).eq("id", newId);
+
+      // As arestas só podem ser reescritas depois que o mapa está completo. Id
+      // fora do mapa é DESCARTADO, não mantido — ver `duplicacaoDeClasse.ts`.
+      for (const t of oldTopics) {
+        exigirOk(
+          await supabase
+            .from("topicos")
+            .update({
+              next: remapearReferencias(t.next, topicIdMap),
+              depende: remapearReferencias(t.depende, topicIdMap),
+            })
+            .eq("id", topicIdMap[t.id]),
+          `religar o tópico "${t.nome ?? t.id}"`,
+        );
       }
-      const { data: oldContents } = await supabase.from("conteudos").select("id, topico_id, titulo, tipo, conteudo, ordem").in("topico_id", Object.keys(topicIdMap).map(Number));
+
+      const idsDeTopico = Object.keys(topicIdMap).map(Number);
+      const oldContents = exigir(
+        await supabase.from("conteudos").select("id, topico_id, titulo, tipo, conteudo, ordem").in("topico_id", idsDeTopico),
+        "ler os conteúdos",
+      ) as ContentRow[];
       const contentIdMap: Record<number, number> = {};
-      for (const c of (oldContents as ContentRow[]) || []) {
-        const { data: created } = await supabase.from("conteudos").insert({ topico_id: topicIdMap[c.topico_id], titulo: c.titulo, tipo: c.tipo, conteudo: c.conteudo, ordem: c.ordem }).select("id").single();
-        contentIdMap[c.id] = (created as { id: number }).id;
+      for (const c of oldContents) {
+        const criado = exigir(
+          await supabase.from("conteudos").insert({ topico_id: topicIdMap[c.topico_id], titulo: c.titulo, tipo: c.tipo, conteudo: c.conteudo, ordem: c.ordem }).select("id").single(),
+          `copiar o conteúdo "${c.titulo ?? c.id}"`,
+        );
+        contentIdMap[c.id] = (criado as { id: number }).id;
       }
-      const { data: oldActs } = await supabase.from("atividades").select("id, topico_id, titulo, descricao, tipo, data_entrega").in("topico_id", Object.keys(topicIdMap).map(Number));
+
+      const oldActs = exigir(
+        await supabase.from("atividades").select("id, topico_id, titulo, descricao, tipo, data_entrega").in("topico_id", idsDeTopico),
+        "ler as atividades",
+      ) as ActivityRow[];
       const activityIdMap: Record<number, number> = {};
-      for (const a of (oldActs as ActivityRow[]) || []) {
-        const { data: created } = await supabase.from("atividades").insert({ topico_id: topicIdMap[a.topico_id], titulo: a.titulo, descricao: a.descricao, tipo: a.tipo, data_entrega: a.data_entrega }).select("id").single();
-        activityIdMap[a.id] = (created as { id: number }).id;
+      for (const a of oldActs) {
+        const criado = exigir(
+          await supabase.from("atividades").insert({ topico_id: topicIdMap[a.topico_id], titulo: a.titulo, descricao: a.descricao, tipo: a.tipo, data_entrega: a.data_entrega }).select("id").single(),
+          `copiar a atividade "${a.titulo ?? a.id}"`,
+        );
+        activityIdMap[a.id] = (criado as { id: number }).id;
       }
-      const { data: oldQuestions } = await supabase
-        .from("questoes")
-        .select("id, atividade_id, enunciado, tipo, alternativas, resposta_correta, nota_estabelecida")
-        .in("atividade_id", Object.keys(activityIdMap).map(Number));
-      for (const q of (oldQuestions as QuestionRow[]) || []) {
+
+      const idsDeAtividade = Object.keys(activityIdMap).map(Number);
+      const oldQuestions = exigir(
+        await supabase
+          .from("questoes")
+          .select("id, atividade_id, enunciado, tipo, alternativas, resposta_correta, nota_estabelecida")
+          .in("atividade_id", idsDeAtividade),
+        "ler as questões",
+      ) as QuestionRow[];
+      for (const q of oldQuestions) {
         const newActId = activityIdMap[q.atividade_id];
-        if (newActId)
+        if (!newActId) continue;
+        exigirOk(
           await supabase.from("questoes").insert({
             atividade_id: newActId,
             enunciado: q.enunciado,
@@ -256,23 +340,50 @@ export default function ClassManagementSection({ professorId }: Props) {
             alternativas: q.alternativas,
             resposta_correta: q.resposta_correta,
             nota_estabelecida: q.nota_estabelecida,
-          });
+          }),
+          `copiar a questão ${q.id}`,
+        );
       }
-      const { data: oldLinks } = await supabase.from("atividade_conteudos").select("atividade_id, conteudo_id").in("atividade_id", Object.keys(activityIdMap).map(Number)).in("conteudo_id", Object.keys(contentIdMap).map(Number));
-      for (const l of (oldLinks as LinkRow[]) || []) {
+
+      const oldLinks = exigir(
+        await supabase.from("atividade_conteudos").select("atividade_id, conteudo_id").in("atividade_id", idsDeAtividade).in("conteudo_id", Object.keys(contentIdMap).map(Number)),
+        "ler os vínculos atividade-conteúdo",
+      ) as LinkRow[];
+      for (const l of oldLinks) {
         const newActId = activityIdMap[l.atividade_id];
         const newContId = contentIdMap[l.conteudo_id];
-        if (newActId && newContId) await supabase.from("atividade_conteudos").insert({ atividade_id: newActId, conteudo_id: newContId });
+        if (!newActId || !newContId) continue;
+        exigirOk(
+          await supabase.from("atividade_conteudos").insert({ atividade_id: newActId, conteudo_id: newContId }),
+          `vincular atividade ${newActId} ao conteúdo ${newContId}`,
+        );
       }
-      const { data: oldCards } = await supabase.from("cards").select("conteudo_id, titulo, descricao, imagem_url").in("conteudo_id", Object.keys(contentIdMap).map(Number));
-      for (const c of (oldCards as CardRow[]) || []) {
+
+      const oldCards = exigir(
+        await supabase.from("cards").select("conteudo_id, titulo, descricao, imagem_url").in("conteudo_id", Object.keys(contentIdMap).map(Number)),
+        "ler os cards",
+      ) as CardRow[];
+      for (const c of oldCards) {
         const newContId = contentIdMap[c.conteudo_id];
-        if (newContId) await supabase.from("cards").insert({ conteudo_id: newContId, titulo: c.titulo, descricao: c.descricao, imagem_url: c.imagem_url });
+        if (!newContId) continue;
+        exigirOk(
+          await supabase.from("cards").insert({ conteudo_id: newContId, titulo: c.titulo, descricao: c.descricao, imagem_url: c.imagem_url }),
+          `copiar o card "${c.titulo ?? c.conteudo_id}"`,
+        );
       }
+
       toast.success("Classe duplicada com estrutura.");
       await loadData();
-    } catch {
-      toast.error("Não foi possível duplicar classe.");
+    } catch (error) {
+      console.error("Erro ao duplicar classe:", error);
+      const sobrouLixo = newClassId !== null && !(await removerClasseParcial(newClassId));
+      toast.error(
+        sobrouLixo
+          ? `A duplicação falhou e a cópia parcial (classe ${newClassId}) ficou no banco — remova-a pelo botão de excluir.`
+          : error instanceof Error
+            ? `Não foi possível duplicar: ${error.message}`
+            : "Não foi possível duplicar classe.",
+      );
     } finally {
       setIsSaving(false);
     }
