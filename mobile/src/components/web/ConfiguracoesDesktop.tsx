@@ -13,6 +13,7 @@ import LembreteDiario from "@/app/(tabs)/perfil/lembrete-diario";
 import { MetricasEstilo } from "@/app/(tabs)/perfil/metricas-estilo";
 import ResetarSenha from "@/app/(tabs)/perfil/resetar-senha";
 import { HallBackground } from "@/components/HallTheme";
+import { ResumoColeta } from "@/components/web/ResumoColeta";
 import { useUsuario } from "@/context/SessaoContext";
 import { useAcoesConta } from "@/hooks/useAcoesConta";
 import { FontFamily } from "@/styles/GlobalStyle";
@@ -130,7 +131,24 @@ export function ConfiguracoesDesktop() {
           <Text style={[s.painelTitulo, { color: palette.text }]}>{aberta.titulo}</Text>
           {aberta.descricao ? <Text style={[s.descricao, { color: palette.textMuted }]}>{aberta.descricao}</Text> : null}
         </View>
-        <View style={s.conteudo}>{Tela ? <Tela key={aberta.id} /> : null}</View>
+        <View style={s.conteudo}>
+          <View style={s.subtela}>{Tela ? <Tela key={aberta.id} /> : null}</View>
+          {/* Coleta e acessos: o resumo da coleta fica ao lado dos interruptores. */}
+          {aberta.id === "coleta" ? (
+            <ResumoColeta
+              palette={palette}
+              atalhos={[
+                { rotulo: "Gerar relatório dos dados", onPress: () => router.push("/(tabs)/perfil/relatorio") },
+                {
+                  rotulo: "Política de privacidade",
+                  onPress: () =>
+                    abrirLink("https://trailup.vercel.app/privacidade", "Não foi possível abrir a política de privacidade."),
+                },
+                { rotulo: "Solicitar exclusão da conta", onPress: () => router.setParams({ sub: "excluir" }), perigo: true },
+              ]}
+            />
+          ) : null}
+        </View>
       </View>
     </View>
   );
@@ -156,5 +174,6 @@ const s = StyleSheet.create({
   eyebrow: { fontFamily: FontFamily.interMedium, fontSize: 11, letterSpacing: 1.1, marginBottom: 6 },
   painelTitulo: { fontFamily: FontFamily.inikaBold, fontSize: 24, marginBottom: 6 },
   descricao: { fontFamily: FontFamily.interMedium, fontSize: 13.5, lineHeight: 20 },
-  conteudo: { flex: 1, paddingHorizontal: 12 },
+  conteudo: { flex: 1, flexDirection: "row", gap: 12, paddingHorizontal: 12 },
+  subtela: { flex: 1, minWidth: 0 },
 });
