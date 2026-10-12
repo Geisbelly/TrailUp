@@ -84,6 +84,7 @@ type IAContextValue = {
     topicoId?: number | null;
     itemKey?: string | null;
     actionLabel?: string | null;
+    abrir?: boolean;
   }) => void;
   getBattleState: (scope: BattleScope) => IABattleRuntimeState | null;
   resetBattleState: (scope: BattleScope) => Promise<void>;
@@ -1099,6 +1100,7 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
       topicoId?: number | null;
       itemKey?: string | null;
       actionLabel?: string | null;
+      abrir?: boolean;
     }) => {
       const message = String(cue.message ?? "").trim();
       if (!message) return;
@@ -1112,6 +1114,7 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
         itemKey: cue.itemKey ?? null,
         featureKey: "mentor_character",
         actionLabel: cue.actionLabel ?? "Entendi",
+        ...(cue.abrir ? { abrir: true } : {}),
       });
     },
     [enqueueCue, guideName]

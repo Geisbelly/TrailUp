@@ -214,6 +214,8 @@ export function IAMentorPanel({
 
   const cue = useMemo(
     () =>
+      // Uma dica pedida pelo aluno (abrir) vence as automáticas e vale para qualquer tópico.
+      [...pendingCharacterCues].reverse().find((entry) => entry.abrir && (!entry.featureKey || entry.featureKey === "mentor_character")) ??
       pendingCharacterCues.find((entry) => {
         if (entry.featureKey && entry.featureKey !== "mentor_character") return false;
         if (topicoId == null) return true;
@@ -245,6 +247,21 @@ export function IAMentorPanel({
   useEffect(() => {
     setDraft("");
 
+    // Dica pedida pelo aluno: entra no fim da conversa, o painel abre e a dica sai da
+    // fila (senão o painel reabriria sozinho a cada vez que a tela montasse).
+    if (cue?.abrir) {
+      const anterior = scopeHistoryRef.current[scopeKey] ?? [];
+      const dica: ChatMessage = { id: `${cue.id}:assistant`, role: "assistant", content: cue.message.trim() };
+      const proximo = anterior.some((m) => m.id === dica.id) ? anterior : [...anterior, dica];
+      scopeHistoryRef.current[scopeKey] = proximo;
+      setMessages(proximo);
+      if (scope === "trilha_home") hasManualHomeOpenRef.current = true;
+      setIsOpen(true);
+      setHasUnreadCue(false);
+      dismissCharacterCue(cue.id);
+      return;
+    }
+
     const baseIntro: ChatMessage = {
       id: cueId ? `${cueId}:assistant` : `${scope}:assistant:intro`,
       role: "assistant",
@@ -264,6 +281,7 @@ export function IAMentorPanel({
     if (scope === "trilha_home" && !hasManualHomeOpenRef.current) {
       setIsOpen(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- cue e dismissCharacterCue acompanham cueId
   }, [cueId, guideIntroMessage, hasCue, scope, scopeKey]);
 
   useEffect(() => {

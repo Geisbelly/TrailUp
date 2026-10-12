@@ -1,8 +1,9 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useId, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
+import { HexagonoTopico } from "@/components/web/HexagonoTopico";
 import { FontFamily } from "@/styles/GlobalStyle";
 import type { EstadoTopico, PainelTopico } from "@/utils/painelTopicoTrilha";
 import type { ProfileShellPalette } from "@/utils/profileShellTheme";
@@ -16,7 +17,9 @@ const ICONE: Record<EstadoTopico, keyof typeof MaterialCommunityIcons.glyphMap> 
   locked: "lock-outline",
 };
 
-type ItemLista = { id: string; titulo: string; estado: EstadoTopico; percentual: number };
+type ItemLista = { id: string; titulo: string; estado: EstadoTopico; percentual: number; numero: number };
+/** Tópico personalizado: a justificativa do plano e o nome do guia do perfil. */
+type Personalizacao = { texto: string; guia: string };
 
 /**
  * Painel de 300 px à direita da Trilha na web em tela larga (#346, protótipo
@@ -28,13 +31,25 @@ export function PainelTopicoTrilha({
   todos,
   palette,
   onSelecionar,
+  numero,
+  local,
+  personalizacao,
+  onConversar,
 }: {
   painel: PainelTopico | null;
   todos: ItemLista[];
   palette: ProfileShellPalette;
   onSelecionar: (id: string) => void;
+  /** Posição do tópico na trilha (o número do hexágono). */
+  numero?: number;
+  /** No mapa: "País · Capital: …". */
+  local?: string | null;
+  personalizacao?: Personalizacao | null;
+  onConversar?: () => void;
 }) {
-  const [listaAberta, setListaAberta] = useState(false);
+  // Aberta por padrão, como no protótipo.
+  const [listaAberta, setListaAberta] = useState(true);
+  const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "");
   const corEstado = (e: EstadoTopico) => (e === "done" ? SUCESSO : e === "locked" ? palette.textSubtle : palette.accent);
 
   return (
@@ -46,12 +61,11 @@ export function PainelTopicoTrilha({
         {painel ? (
           <>
             <View style={s.cabeca}>
-              <View style={[s.selo, { borderColor: corEstado(painel.estado), backgroundColor: palette.surfaceElevated }]}>
-                <MaterialCommunityIcons name={ICONE[painel.estado]} size={26} color={corEstado(painel.estado)} />
-              </View>
+              <HexagonoTopico estado={painel.estado} numero={numero ?? 0} tamanho={56} palette={palette} idBase={`painel-${uid}`} />
               <View style={s.cabecaTexto}>
                 <Text style={[s.eyebrow, { color: corEstado(painel.estado) }]}>{painel.eyebrow.toUpperCase()}</Text>
                 <Text style={[s.titulo, { color: palette.text }]}>{painel.titulo}</Text>
+                {local ? <Text style={[s.local, { color: palette.textMuted }]}>{local}</Text> : null}
               </View>
             </View>
 
@@ -97,6 +111,22 @@ export function PainelTopicoTrilha({
                     <Text style={[s.pequeno, { color: palette.textMuted }]}>atividades</Text>
                   </View>
                 </View>
+                {personalizacao ? (
+                  <View style={s.secao}>
+                    <View style={[s.perso, { backgroundColor: palette.surfaceElevated, borderColor: palette.border }]}>
+                      <View style={[s.persoChip, { backgroundColor: palette.accentMuted, borderColor: palette.border }]}>
+                        <MaterialCommunityIcons name="star-four-points" size={11} color={palette.accent} />
+                        <Text style={[s.persoChipTexto, { color: palette.accent }]}>Módulo personalizado</Text>
+                      </View>
+                      <Text style={[s.texto, { color: palette.text }]}>{personalizacao.texto}</Text>
+                      {onConversar ? (
+                        <Pressable accessibilityRole="button" onPress={onConversar}>
+                          <Text style={[s.link, { color: palette.accent }]}>Conversar com {personalizacao.guia} →</Text>
+                        </Pressable>
+                      ) : null}
+                    </View>
+                  </View>
+                ) : null}
               </>
             )}
           </>
@@ -129,7 +159,7 @@ export function PainelTopicoTrilha({
                         atual || hovered ? { backgroundColor: palette.surfaceElevated } : null,
                       ]}
                     >
-                      <MaterialCommunityIcons name={ICONE[item.estado]} size={16} color={corEstado(item.estado)} />
+                      <HexagonoTopico estado={item.estado} numero={item.numero} tamanho={24} palette={palette} idBase={`lista-${uid}-${item.id}`} />
                       <Text style={[s.itemNome, { color: atual ? palette.text : palette.textMuted }]} numberOfLines={1}>
                         {item.titulo}
                       </Text>
@@ -157,6 +187,7 @@ export function PainelTopicoTrilha({
             ]}
           >
             <Text style={[s.botaoTexto, { color: painel.estado === "done" ? palette.text : palette.background }]}>{painel.acao}</Text>
+            {painel.estado !== "done" ? <MaterialCommunityIcons name="arrow-right" size={18} color={palette.background} /> : null}
           </Pressable>
         </View>
       ) : null}
@@ -191,6 +222,10 @@ const s = StyleSheet.create({
   item: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8 },
   itemNome: { flex: 1, fontFamily: FontFamily.interMedium, fontSize: 13 },
   pe: { padding: 18, paddingHorizontal: 22, borderTopWidth: 1 },
-  botao: { borderRadius: 999, paddingVertical: 12, alignItems: "center" },
+  botao: { borderRadius: 999, paddingVertical: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
+  local: { fontFamily: FontFamily.interMedium, fontSize: 12.5, lineHeight: 18, marginTop: 2 },
+  perso: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 10 },
+  persoChip: { flexDirection: "row", alignItems: "center", gap: 5, alignSelf: "flex-start", borderRadius: 999, borderWidth: 1, paddingHorizontal: 9, paddingVertical: 3 },
+  persoChipTexto: { fontFamily: FontFamily.interMedium, fontSize: 11, fontWeight: "700" },
   botaoTexto: { fontFamily: FontFamily.interMedium, fontSize: 14, fontWeight: "700" },
 });

@@ -1,14 +1,17 @@
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Image, StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 import { ProfileEmblem } from "@/components/ProfileEmblem";
 import { TrilhaArvoreSimple } from "@/components/trilhas/ArvoreView";
 import { TrilhaLinearList } from "@/components/trilhas/ListaSimplesView";
-import { TrilhaMapaHeroStable } from "@/components/trilhas/MapaViewStable";
 import { type GuideTargetRefs, ModuleHeaderGuideButton } from "@/components/trilhas/ModuleHeaderTitle";
+import { MapaPaisesDesktop } from "@/components/web/MapaPaisesDesktop";
 import { PainelTopicoTrilha } from "@/components/web/PainelTopicoTrilha";
 import { getProfileArtwork } from "@/constants/designAssets";
+import { getBrainHexGuideName } from "@/constants/profileImages";
+import { useIA } from "@/context/IAContext";
 import { useUsuario } from "@/context/SessaoContext";
 import { useTrilha } from "@/context/TrilhaContext";
 import { useTrailResumeTopic } from "@/hooks/useTrailResume";
@@ -43,8 +46,14 @@ export function TrilhaDesktop({ chatGuideTargetRef }: { chatGuideTargetRef?: Rea
   useEffect(() => (isFocused ? registrarAlvoTour("trilha_mapa", jornadaRef) : undefined), [isFocused]);
 
   const [selecionado, setSelecionado] = useState<string | null>(null);
-  // As vistas medem pelo tabuleiro, não pela janela; só aparecem depois da primeira medida.
-  const [quadro, setQuadro] = useState<{ largura: number; altura: number } | null>(null);
+  // As vistas medem pelo tabuleiro, não pela janela. Até a primeira medida vale uma
+  // estimativa pela janela (moldura, cartão de progresso e painel descontados).
+  const janela = useWindowDimensions();
+  const [medido, setMedido] = useState<{ largura: number; altura: number } | null>(null);
+  const quadro = medido ?? {
+    largura: Math.max(320, janela.width - 212 - 32 - 300 - 64),
+    altura: Math.max(240, janela.height - 68 - 28 - 88 - 20 - 28),
+  };
   const nos = grafo.nodes;
   const idPainel =
     selecionado !== null && nos.some((n) => String(n.id) === selecionado) ? selecionado : topicoInicial(nos, atualId);
@@ -53,25 +62,76 @@ export function TrilhaDesktop({ chatGuideTargetRef }: { chatGuideTargetRef?: Rea
   const painel = noPainel ? montarPainelTopico(noPainel, topicoDe(noPainel.id), atualId, nos, grafo.edges) : null;
   const todos = [...nos]
     .sort((a, b) => a.sequence - b.sequence)
-    .map((n) => {
+    .map((n, i) => {
       const estado = estadoDoTopico(n, atualId);
       const pct = Number(topicoDe(n.id)?.percentual_concluido ?? 0);
-      return { id: String(n.id), titulo: n.titulo, estado, percentual: estado === "done" ? 100 : Math.round(pct) || 0 };
+      return { id: String(n.id), titulo: n.titulo, estado, percentual: estado === "done" ? 100 : Math.round(pct) || 0, numero: i + 1 };
     });
+  // Detalhes do painel como no protótipo: o número, "País · Capital" no mapa e o
+  // bloco do módulo personalizado, que abre a conversa com o guia.
+  const { pushMentorCue, resolveFeature } = useIA();
+  // Nem todo perfil tem o guia (mentor_character); sem ele, o link não aparece.
+  const guiaDisponivel = resolveFeature({ scope: "session" }, "mentor_character").enabled;
+  const itemPainel = todos.find((t) => t.id === idPainel);
+  const paisPainel = idPainel ? mapTheme?.countries?.[idPainel] : undefined;
+  const localPainel =
+    visual === "mapa" && paisPainel ? `${paisPainel.countryName} · Capital: ${paisPainel.capitalName}` : null;
+  const justificativa = idPainel
+    ? String(personalizedTopics?.[Number(idPainel)]?.planMeta?.justification ?? "").trim()
+    : "";
+  const personalizacao = justificativa ? { texto: justificativa, guia: getBrainHexGuideName(perfil) } : null;
+  const conversar = () =>
+    idPainel &&
+    pushMentorCue({
+      message: justificativa,
+      title: itemPainel?.titulo ?? null,
+      topicoId: Number(idPainel),
+      actionLabel: "Conversar",
+      abrir: true,
+    });
+  // No mapa, cada tópico é um país do tema da turma (sem tema, o próprio título).
+  const paises = todos.map((t) => ({
+    id: t.id,
+    nome: mapTheme?.countries?.[t.id]?.countryName ?? t.titulo,
+    estado: t.estado,
+    percentual: t.percentual,
+    personalizado: Boolean(personalizedTopics?.[Number(t.id)]),
+  }));
 
   if (carregando || erro || !classeAtual) return <View style={[s.tela, { backgroundColor: palette.background }]} />;
 
   const ehMapa = visual === "mapa";
+  const cenario = (
+    <View pointerEvents="none" accessible={false} style={StyleSheet.absoluteFill}>
+      <Image key={perfil} source={getProfileArtwork(perfil, ehMapa ? "map" : "trail")} resizeMode="cover" style={s.cenario} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: palette.background, opacity: 0.35 }]} />
+    </View>
+  );
+
+  // Turma sem tópicos publicados: o protótipo troca cartão, tabuleiro e painel por um aviso no centro.
+  if (nos.length === 0) {
+    return (
+      <View style={[s.tela, s.centro, { backgroundColor: palette.background }]}>
+        {cenario}
+        <View style={[s.vazio, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+          <MaterialCommunityIcons name="map-outline" size={46} color={palette.textSubtle} />
+          <Text accessibilityRole="header" style={[s.vazioTitulo, { color: palette.text }]}>Sem trilhas</Text>
+          <Text style={[s.vazioTexto, { color: palette.textSubtle }]}>Nenhuma trilha disponível no momento.</Text>
+          <Text style={[s.vazioTexto, s.vazioNota, { color: palette.textSubtle }]}>
+            Quando a trilha da turma for publicada, ela aparece aqui.
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
   const nome = ehMapa ? (mapTheme?.worldName ?? classeAtual.resumo?.materia_nome ?? "Classe") : (classeAtual.resumo?.materia_nome ?? "Classe");
   const { progresso, totalTopicos, concluidos } = calcularProgressoTrilha(classeAtual, progressoPersonalizado);
   const pct = Math.round(progresso);
 
   return (
     <View style={[s.tela, { backgroundColor: palette.background }]}>
-      <View pointerEvents="none" accessible={false} style={StyleSheet.absoluteFill}>
-        <Image key={perfil} source={getProfileArtwork(perfil, ehMapa ? "map" : "trail")} resizeMode="cover" style={s.cenario} />
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: palette.background, opacity: 0.35 }]} />
-      </View>
+      {cenario}
 
       <View style={s.esquerda}>
         <View
@@ -122,12 +182,22 @@ export function TrilhaDesktop({ chatGuideTargetRef }: { chatGuideTargetRef?: Rea
           collapsable={false}
           onLayout={(e) => {
             const { width, height } = e.nativeEvent.layout;
-            if (width !== quadro?.largura || height !== quadro?.altura) setQuadro({ largura: width, altura: height });
+            if (width !== medido?.largura || height !== medido?.altura) setMedido({ largura: width, altura: height });
           }}
-          style={[s.tabuleiro, { borderColor: palette.border }]}
+          // O mapa fica direto sobre o cenário, como no protótipo; árvore e lista ficam na caixa.
+          style={[s.tabuleiro, visual === "mapa" ? s.tabuleiroMapa : { borderColor: palette.border }]}
         >
           {quadro && visual === "mapa" && (
-            <TrilhaMapaHeroStable currentTopicId={atualId} tourTargetRef={jornadaRef} onSelecionarTopico={setSelecionado} quadro={quadro} />
+            <View ref={jornadaRef} collapsable={false} style={s.preenche}>
+              <MapaPaisesDesktop
+                topicos={paises}
+                quadro={quadro}
+                selecionado={idPainel}
+                perfil={perfil}
+                palette={palette}
+                onSelecionar={setSelecionado}
+              />
+            </View>
           )}
           {quadro && visual === "arvore" && <TrilhaArvoreSimple currentTopicId={atualId} onSelecionarTopico={setSelecionado} quadro={quadro} />}
           {quadro && visual === "lista" && (
@@ -137,7 +207,16 @@ export function TrilhaDesktop({ chatGuideTargetRef }: { chatGuideTargetRef?: Rea
       </View>
 
       <View style={s.direita}>
-        <PainelTopicoTrilha painel={painel} todos={todos} palette={palette} onSelecionar={setSelecionado} />
+        <PainelTopicoTrilha
+          painel={painel}
+          todos={todos}
+          palette={palette}
+          onSelecionar={setSelecionado}
+          numero={itemPainel?.numero}
+          local={localPainel}
+          personalizacao={personalizacao}
+          onConversar={guiaDisponivel ? conversar : undefined}
+        />
       </View>
     </View>
   );
@@ -158,6 +237,13 @@ const s = StyleSheet.create({
   trilho: { height: 8, borderRadius: 4, overflow: "hidden" },
   preenchido: { height: "100%", borderRadius: 4 },
   separador: { width: 1, height: 40 },
+  tabuleiroMapa: { borderWidth: 0, borderRadius: 0, overflow: "visible" },
+  preenche: { flex: 1 },
   tabuleiro: { flex: 1, minHeight: 0, borderRadius: 20, borderWidth: 1, overflow: "hidden" },
   direita: { paddingHorizontal: 32, paddingTop: 28, paddingBottom: 28 },
+  centro: { alignItems: "center", justifyContent: "center", padding: 40 },
+  vazio: { width: 520, maxWidth: "100%", alignItems: "center", gap: 16, paddingVertical: 64, paddingHorizontal: 40, borderRadius: 20, borderWidth: 1 },
+  vazioTitulo: { fontFamily: FontFamily.inikaBold, fontSize: 24, textAlign: "center" },
+  vazioTexto: { fontFamily: FontFamily.interMedium, fontSize: 15, lineHeight: 24, textAlign: "center", maxWidth: 480 },
+  vazioNota: { fontSize: 13, lineHeight: 20 },
 });

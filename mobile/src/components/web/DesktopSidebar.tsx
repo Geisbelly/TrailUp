@@ -4,10 +4,11 @@ import { usePathname, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { StoreModal } from "@/components/loja/StoreModal";
 import { useDialog } from "@/context/DialogContext";
+import { UtilityIcon } from "@/components/UtilityIcon";
+import { useNotifications } from "@/context/NotificacaoContext";
 import { useUsuario } from "@/context/SessaoContext";
-import { useTrilha } from "@/context/TrilhaContext";
+import { supabase } from "@/database/supabase";
 import { FontFamily } from "@/styles/GlobalStyle";
 import type { ProfileShellPalette } from "@/utils/profileShellPalette";
 import type { Aberturas, Funcionalidade } from "@/utils/portoes";
@@ -36,14 +37,28 @@ export function DesktopSidebar({ state, navigation, palette, aberturas, onBloque
   const router = useRouter();
   const pathname = usePathname();
   const { showDialog } = useDialog();
-  const { usuario, sair } = useUsuario();
-  const { classeAtual, perfil } = useTrilha();
-  const [lojaAberta, setLojaAberta] = useState(false);
+  const { sair } = useUsuario();
   const alvoTour = useRef<View | null>(null);
   useEffect(() => registrarAlvoTour("abas_principais", alvoTour), []);
 
   const rotaAtual = state.routes[state.index]?.name;
   const naConfiguracao = pathname.startsWith("/perfil/settings");
+  const naLoja = pathname.startsWith("/perfil/loja");
+
+  // Contadores do protótipo v4: não lidas ao lado de Notificações e o saldo ao lado de Loja.
+  const { itens: notificacoes } = useNotifications();
+  const naoLidas = notificacoes.filter((n) => !(n.read ?? n.status === "lida")).length;
+  const [saldo, setSaldo] = useState<number | null>(null);
+  useEffect(() => {
+    // Relido a cada troca de tela: o saldo muda com o estudo e com as compras.
+    let ativo = true;
+    void supabase.rpc("loja_saldo").then(({ data, error }) => {
+      if (ativo && !error) setSaldo(Number(data ?? 0));
+    });
+    return () => {
+      ativo = false;
+    };
+  }, [pathname]);
 
   const abrir = (rota: string) => {
     const alvo = state.routes.find((r) => r.name === rota);
@@ -67,7 +82,14 @@ export function DesktopSidebar({ state, navigation, palette, aberturas, onBloque
     }
   };
 
-  const item = (chave: string, rotulo: string, icone: IconName, ativo: boolean, onPress: () => void, opcoes?: { bloqueado?: boolean; perigo?: boolean }) => (
+  const item = (
+    chave: string,
+    rotulo: string,
+    icone: IconName,
+    ativo: boolean,
+    onPress: () => void,
+    opcoes?: { bloqueado?: boolean; perigo?: boolean; fim?: React.ReactNode },
+  ) => (
     <Pressable
       key={chave}
       accessibilityRole="link"
@@ -83,6 +105,7 @@ export function DesktopSidebar({ state, navigation, palette, aberturas, onBloque
       <MaterialCommunityIcons name={icone} size={20} color={ativo ? palette.accent : palette.textMuted} />
       <Text style={[s.rotulo, { color: ativo ? palette.text : palette.textMuted }, opcoes?.bloqueado && { opacity: 0.55 }]}>{rotulo}</Text>
       {opcoes?.bloqueado ? <MaterialCommunityIcons name="lock" size={14} color={palette.textSubtle} style={s.fim} /> : null}
+      {!opcoes?.bloqueado && opcoes?.fim ? <View style={s.fim}>{opcoes.fim}</View> : null}
     </Pressable>
   );
 
@@ -90,12 +113,29 @@ export function DesktopSidebar({ state, navigation, palette, aberturas, onBloque
     <View ref={alvoTour} collapsable={false} style={[s.barra, { backgroundColor: palette.surface, borderRightColor: palette.border }]}>
       {ITENS.map(({ rota, rotulo, icone, portao }) => {
         const bloqueado = portao ? !aberturas[portao] : false;
-        const elemento = item(rota, rotulo, icone, rota === rotaAtual && !naConfiguracao, () =>
+        const contador =
+          rota === "notificacoes" && naoLidas > 0 ? (
+            <View accessibilityLabel={`${naoLidas} não lidas`} style={[s.contador, { backgroundColor: palette.accent }]}>
+              <Text style={[s.contadorTexto, { color: palette.background }]}>{naoLidas > 99 ? "99+" : naoLidas}</Text>
+            </View>
+          ) : null;
+        const elemento = item(rota, rotulo, icone, rota === rotaAtual && !naConfiguracao && !naLoja, () =>
           bloqueado && portao ? onBloqueado(portao) : abrir(rota),
-          { bloqueado });
-        // A Loja ainda não é uma rota (vira página na fase 3 da #346): por ora abre o mesmo modal do Social.
+          { bloqueado, fim: contador });
+        // A Loja é uma página da pilha do Perfil (perfil/loja.tsx), só na tela larga.
         return rota === "social"
-          ? [elemento, item("loja", "Loja", "storefront-outline", false, () => setLojaAberta(true))]
+          ? [
+              elemento,
+              item("loja", "Loja", "storefront-outline", naLoja, () => router.push("/perfil/loja"), {
+                fim:
+                  saldo !== null ? (
+                    <View accessibilityLabel={`Saldo: ${saldo} moedas`} style={s.saldo}>
+                      <Text style={[s.saldoTexto, { color: palette.textMuted }]}>{saldo}</Text>
+                      <UtilityIcon kind="coin" profile={palette.profile} size={16} height={18} />
+                    </View>
+                  ) : null,
+              }),
+            ]
           : elemento;
       })}
 
@@ -103,10 +143,6 @@ export function DesktopSidebar({ state, navigation, palette, aberturas, onBloque
         {item("configuracoes", "Configurações", "cog-outline", naConfiguracao, () => router.push("/perfil/settings"))}
         {item("sair", "Sair", "logout", false, () => void sairDoApp())}
       </View>
-
-      {usuario?.id && classeAtual?.classe_id ? (
-        <StoreModal visible={lojaAberta} alunoId={usuario.id} classeId={classeAtual.classe_id} profileName={perfil} onClose={() => setLojaAberta(false)} />
-      ) : null}
     </View>
   );
 }
@@ -115,6 +151,10 @@ const s = StyleSheet.create({
   barra: { width: 212, paddingVertical: 20, paddingHorizontal: 12, gap: 6, borderRightWidth: 1 },
   item: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 6, borderWidth: 1, borderColor: "transparent" },
   rotulo: { fontFamily: FontFamily.interMedium, fontSize: 13.5 },
+  contador: { minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 6, alignItems: "center", justifyContent: "center" },
+  contadorTexto: { fontFamily: FontFamily.interMedium, fontSize: 11, fontWeight: "700" },
+  saldo: { flexDirection: "row", alignItems: "center", gap: 4 },
+  saldoTexto: { fontFamily: FontFamily.interMedium, fontSize: 12.5, fontWeight: "700" },
   fim: { marginLeft: "auto" },
   pe: { marginTop: "auto", paddingTop: 12, borderTopWidth: 1, gap: 6 },
 });

@@ -91,13 +91,15 @@ src/utils/webShadow.test.ts
 src/utils/webviewSpeechBridge.test.ts
 src/services/googleRedirect.core.test.ts
 src/utils/desktopWeb.test.ts
+src/utils/painelTopicoTrilha.test.ts
+src/utils/gradeMapaTrilha.test.ts
+src/utils/mapaPaises.test.ts
+src/utils/rolagemTematica.test.ts
 src/utils/tourTelaLarga.test.ts
 src/utils/destaqueConquistas.test.ts
 src/services/loja/ganhoMoedasModel.test.ts
 src/utils/compraLoja.test.ts
 src/services/loja/extratoModel.test.ts
-src/utils/painelTopicoTrilha.test.ts
-src/utils/gradeMapaTrilha.test.ts
 src/utils/subtelasConfiguracao.test.ts
 src/utils/resumoColeta.test.ts
 src/utils/minhaPosicaoRank.test.ts
