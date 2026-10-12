@@ -90,16 +90,22 @@ export function ConquistasDestaque({
 
       {r.quaseLa.length ? (
         <View style={s.quase}>
-          <Text style={[s.quaseTitulo, { color: palette.text }]}>Quase lá</Text>
-          {r.quaseLa.map(({ conquista, progressoPercentual }) => (
-            <View key={conquista.conquista_id} style={s.quaseLinha}>
-              <Text style={[s.texto, s.quaseNome, { color: palette.textMuted }]} numberOfLines={1}>{conquista.nome}</Text>
-              <View style={[s.trilhoPequeno, { backgroundColor: palette.progressTrack }]}>
-                <View style={[s.preenchido, { width: `${Math.round(progressoPercentual)}%`, backgroundColor: palette.accent }]} />
+          <Text style={[s.quaseTitulo, { color: palette.textMuted }]}>QUASE LÁ</Text>
+          {/* Em grade de 3, como no protótipo: arte, nome, barra e o quanto falta. */}
+          <View style={s.quaseGrade}>
+            {r.quaseLa.map(({ conquista, progressoPercentual }) => (
+              <View key={conquista.conquista_id} style={[s.quaseCartao, { backgroundColor: palette.background }]}>
+                <Image source={getAchievementArtwork(conquista)} resizeMode="contain" style={s.quaseArte} />
+                <View style={s.flex}>
+                  <Text style={[s.quaseNome, { color: palette.text }]} numberOfLines={2}>{conquista.nome}</Text>
+                  <View style={[s.trilhoPequeno, { backgroundColor: palette.progressTrack }]}>
+                    <View style={[s.preenchido, { width: `${Math.round(progressoPercentual)}%`, backgroundColor: palette.accent }]} />
+                  </View>
+                </View>
+                <Text style={[s.data, { color: palette.textSubtle }]}>{Math.round(progressoPercentual)}%</Text>
               </View>
-              <Text style={[s.data, s.quasePct, { color: palette.textSubtle }]}>{Math.round(progressoPercentual)}%</Text>
-            </View>
-          ))}
+            ))}
+          </View>
         </View>
       ) : null}
     </View>
@@ -115,7 +121,7 @@ const s = StyleSheet.create({
   parte: { fontFamily: FontFamily.interMedium, fontSize: 14 },
   link: { fontFamily: FontFamily.interMedium, fontSize: 13, fontWeight: "700" },
   trilho: { height: 8, borderRadius: 4, overflow: "hidden" },
-  trilhoPequeno: { flex: 1, height: 6, borderRadius: 3, overflow: "hidden" },
+  trilhoPequeno: { height: 5, borderRadius: 3, overflow: "hidden", marginTop: 6 },
   preenchido: { height: "100%", borderRadius: 4 },
   recentes: { flexDirection: "row", gap: 12 },
   recente: { flex: 1, minWidth: 0, borderRadius: 14, borderWidth: 1, padding: 12, alignItems: "center", gap: 6 },
@@ -123,9 +129,10 @@ const s = StyleSheet.create({
   nome: { fontFamily: FontFamily.interMedium, fontSize: 13, fontWeight: "700", textAlign: "center" },
   data: { fontFamily: FontFamily.interMedium, fontSize: 11.5 },
   texto: { fontFamily: FontFamily.interMedium, fontSize: 13 },
-  quase: { gap: 8 },
-  quaseTitulo: { fontFamily: FontFamily.interMedium, fontSize: 13, fontWeight: "700" },
-  quaseLinha: { flexDirection: "row", alignItems: "center", gap: 12 },
-  quaseNome: { width: 220 },
-  quasePct: { width: 40, textAlign: "right" },
+  quase: { gap: 10 },
+  quaseTitulo: { fontFamily: FontFamily.interMedium, fontSize: 11, fontWeight: "700", letterSpacing: 1.2 },
+  quaseGrade: { flexDirection: "row", gap: 12 },
+  quaseCartao: { flex: 1, minWidth: 0, maxWidth: "33%", flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 12 },
+  quaseArte: { width: 36, height: 36, opacity: 0.75 },
+  quaseNome: { fontFamily: FontFamily.interMedium, fontSize: 12.5, fontWeight: "700" },
 });

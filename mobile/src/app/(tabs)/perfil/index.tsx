@@ -26,6 +26,7 @@ import { UtilityIcon } from "@/components/UtilityIcon";
 import { FramedProfileImage } from "@/components/FramedProfileImage";
 import { Design } from "@/styles/design";
 import { ProfileMetricsViews } from "@/components/perfil/ProfileMetricsViews";
+import { AcoesBannerPerfil } from "@/components/web/AcoesBannerPerfil";
 import { ConquistasDestaque } from "@/components/web/ConquistasDestaque";
 import { IdentidadePerfilDesktop } from "@/components/web/IdentidadePerfilDesktop";
 import { useDesktopWeb } from "@/hooks/useDesktopWeb";
@@ -645,6 +646,14 @@ export default function PerfilHome() {
                 colors={["rgba(0,0,0,0.34)", "transparent"]}
                 style={StyleSheet.absoluteFill}
               />
+              {desktop ? (
+                <AcoesBannerPerfil
+                  palette={shellPalette}
+                  configuracoesRef={profileSettingsGuideRef}
+                  bibliotecaRef={profileLibraryGuideRef}
+                  onAbrirBag={() => setBagOpen(true)}
+                />
+              ) : null}
             </View>
             {desktop ? (
               <View style={styles.retrato}>
@@ -652,6 +661,9 @@ export default function PerfilHome() {
               </View>
             ) : null}
 
+            {/* Na tela larga estes botões ficam dentro do banner (AcoesBannerPerfil). */}
+            {desktop ? null : (
+            <>
             <View ref={profileSettingsGuideRef} collapsable={false} style={styles.btnSettingsWrap}>
               <TouchableOpacity
                 style={styles.btnSettings}
@@ -682,6 +694,8 @@ export default function PerfilHome() {
                 <UtilityIcon kind="bag" size={34} />
               </TouchableOpacity>
             </View>
+            </>
+            )}
 
             {desktop ? null : identidade}
           </View>
