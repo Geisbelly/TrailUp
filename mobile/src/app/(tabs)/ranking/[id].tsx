@@ -41,12 +41,21 @@ const filters: { key: Filter; label: string }[] = [
 
 export default function RankDetalheScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
+  return <RankDetalhe rankId={Number(id)} />;
+}
+
+/**
+ * Categoria aberta do ranking. `embutido`: dentro do Ranking da web em tela
+ * larga (#346), ao lado das categorias — sem a barra de voltar, porque as
+ * categorias continuam visíveis na coluna da esquerda.
+ */
+export function RankDetalhe({ rankId, embutido = false }: { rankId: number; embutido?: boolean }) {
   const router = useRouter();
   const { ranking, carregando, reloadRanking } = useConquistaRank();
   const { usuario } = useUsuario();
   const profile = usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome;
   const palette = getProfileShellPalette(profile);
-  const rank = ranking?.ranks.find((item) => item.info.rank_id === Number(id));
+  const rank = ranking?.ranks.find((item) => item.info.rank_id === rankId);
   const [filter, setFilter] = useState<Filter>("geral");
   const [total, setTotal] = useState<number | null>(null);
   const ids = useMemo(
@@ -152,8 +161,9 @@ export default function RankDetalheScreen() {
         : "Pontos";
   return (
     <View style={[s.screen, { backgroundColor: palette.background }]}>
-      <Stack.Screen options={{ headerShown: false }} />
+      {!embutido ? <Stack.Screen options={{ headerShown: false }} /> : null}
       <SafeAreaView style={s.screen} edges={["top", "left", "right"]}>
+        {!embutido ? (
         <View style={[s.topbar, { borderBottomColor: palette.border }]}>
           <Pressable
             onPress={() => router.back()}
@@ -179,6 +189,7 @@ export default function RankDetalheScreen() {
             scrollOffsetRef={scrollOffsetRef}
           />
         </View>
+        ) : null}
         {!rank ? (
           carregando ? (
             <ActivityIndicator color={palette.accent} style={s.empty} />
