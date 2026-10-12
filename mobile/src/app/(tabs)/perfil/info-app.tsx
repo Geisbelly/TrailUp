@@ -7,6 +7,10 @@ import { useUsuario } from "@/context/SessaoContext";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { useEmbutidoConfiguracoes } from "@/context/EmbutidoConfiguracoesContext";
+import { ApoioConfig, CartaoConfig, DuasColunasConfig, TextoApoio } from "@/components/web/SecaoConfigDesktop";
+
+const pkg = require("../../../../package.json");
+const appJson = require("../../../../app.json");
 
 export default function InfoAppScreen() {
   const embutido = useEmbutidoConfiguracoes();
@@ -15,6 +19,38 @@ export default function InfoAppScreen() {
     () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
     [usuario?.perfilAtivo, usuario?.perfis]
   );
+
+  // Embutida nas Configurações da web em tela larga (#346, protótipo v4): os dados do app num cartão, a versão ao lado.
+  if (embutido) {
+    const linhas: [string, string][] = [
+      ["Nome", app?.name ?? "TrailUp"],
+      ["Descrição", app?.descricao ?? "Plataforma mobile para gerenciar trilhas, módulos, conteúdos e gamificação (ranking, eventos e conquistas)."],
+      ["Autor / Organização", app?.author ?? "TrailUp"],
+    ];
+    return (
+      <DuasColunasConfig
+        apoio={
+          <ApoioConfig titulo="Informação de versão" palette={palette}>
+            {[["Versão", String(pkg?.version ?? "N/D")], ["Versão do build", String(pkg?.buildNumber ?? appJson?.expo?.version ?? "N/D")]].map(([k, v]) => (
+              <View key={k} style={styles.versaoLinha}>
+                <TextoApoio palette={palette}>{k}</TextoApoio>
+                <Text style={[styles.versaoValor, { color: palette.text }]}>{v}</Text>
+              </View>
+            ))}
+          </ApoioConfig>
+        }
+      >
+        <CartaoConfig palette={palette}>
+          {linhas.map(([k, v], i) => (
+            <View key={k} style={[styles.infoLinha, i > 0 && { borderTopWidth: 1, borderTopColor: palette.border }]}>
+              <Text style={[styles.infoRotulo, { color: palette.textMuted }]}>{k.toUpperCase()}</Text>
+              <Text style={[styles.infoValor, { color: palette.text }]}>{v}</Text>
+            </View>
+          ))}
+        </CartaoConfig>
+      </DuasColunasConfig>
+    );
+  }
 
   return (
     <View style={[styles.outer, { backgroundColor: palette.background }]}>
@@ -71,6 +107,11 @@ export default function InfoAppScreen() {
 }
 
 const styles = StyleSheet.create({
+  infoLinha: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 24, paddingVertical: 12 },
+  infoRotulo: { fontFamily: FontFamily.interMedium, fontSize: 11.5, letterSpacing: 1 },
+  infoValor: { flex: 1, textAlign: "right", fontFamily: FontFamily.inikaBold, fontSize: 14 },
+  versaoLinha: { flexDirection: "row", justifyContent: "space-between" },
+  versaoValor: { fontFamily: FontFamily.inikaBold, fontSize: 13 },
   outer: {
     flex: 1,
   },

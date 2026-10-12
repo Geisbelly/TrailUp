@@ -7,6 +7,8 @@ import { useUsuario } from "@/context/SessaoContext";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { useEmbutidoConfiguracoes } from "@/context/EmbutidoConfiguracoesContext";
+import { ApoioConfig, CartaoConfig, DuasColunasConfig, TextoApoio } from "@/components/web/SecaoConfigDesktop";
+import { getBrainHexConfig } from "@/constants/profileImages";
 
 const ITEMS = [
   { label: "Perfil", value: "Automático" },
@@ -21,6 +23,35 @@ export default function Aparen() {
     () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
     [usuario?.perfilAtivo, usuario?.perfis]
   );
+
+  // Embutida nas Configurações da web em tela larga (#346, protótipo v4): as opções num cartão, o perfil automático ao lado.
+  if (embutido) {
+    return (
+      <DuasColunasConfig
+        apoio={
+          <ApoioConfig titulo="Perfil automático" palette={palette}>
+            <TextoApoio palette={palette}>
+              As cores, as artes e o guia seguem o seu perfil BrainHex ativo ({getBrainHexConfig(palette.profile).label}). A
+              troca de perfil fica no seu Perfil.
+            </TextoApoio>
+          </ApoioConfig>
+        }
+      >
+        <CartaoConfig palette={palette} style={styles.cartaoLista}>
+          {ITEMS.map((item, index) => (
+            <View
+              key={item.label}
+              style={[styles.linhaLarga, index > 0 && { borderTopWidth: 1, borderTopColor: palette.border }]}
+            >
+              <Text style={[styles.rotuloLargo, { color: palette.textMuted }]}>{item.label.toUpperCase()}</Text>
+              <Text style={[styles.value, { color: palette.text }]}>{item.value}</Text>
+            </View>
+          ))}
+        </CartaoConfig>
+        <Text style={[styles.infoText, { color: palette.textSubtle }]}>Mais opções de aparência estarão disponíveis em breve.</Text>
+      </DuasColunasConfig>
+    );
+  }
 
   return (
     <View style={[styles.outer, { backgroundColor: palette.background }]}>
@@ -53,6 +84,9 @@ export default function Aparen() {
 }
 
 const styles = StyleSheet.create({
+  cartaoLista: { gap: 0, paddingVertical: 6 },
+  linhaLarga: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 12 },
+  rotuloLargo: { fontFamily: FontFamily.interMedium, fontSize: 11.5, letterSpacing: 1 },
   outer: { flex: 1 },
   container: { flex: 1 },
   content: { padding: 20, gap: 12 },
