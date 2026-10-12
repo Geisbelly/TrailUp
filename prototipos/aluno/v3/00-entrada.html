@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TrailUp — Entrada</title>
+<style>
+  :root{
+    --bg:#110b28; --surface:#1b123f; --elevated:#241957;
+    --border:#3a288a; --border-strong:#644dcb;
+    --text:#f4f3f7; --text-muted:rgba(244,243,247,.82); --text-subtle:rgba(244,243,247,.62);
+    --accent:#9583e6; --accent-strong:#4528c8;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  .title-font{font-family:Georgia,"Times New Roman",serif}
+  .screen{position:relative;min-height:100vh;overflow:hidden;display:flex;flex-direction:column}
+  .scenery{position:absolute;inset:0;z-index:0}
+  .scenery img{width:100%;height:100%;object-fit:cover}
+  .scenery::after{content:"";position:absolute;inset:0;background:linear-gradient(to bottom, rgba(17,11,40,.08) 0%, rgba(17,11,40,.35) 45%, #110b28 82%)}
+  .content{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:space-between;max-width:640px;margin:0 auto;width:100%;padding:28px 24px 40px;min-height:100vh}
+  .brand{display:flex;align-items:center;gap:10px;padding-top:8px}
+  .brand img{width:34px;height:auto}
+  .brand span{font-size:26px;font-weight:700;letter-spacing:.02em}
+  .hero-copy{text-align:center;max-width:420px;margin:auto 0}
+  .hero-copy h1{font-size:30px;line-height:1.28;margin:0 0 6px;font-weight:700}
+  .hero-copy p{font-size:15px;color:var(--text-muted);margin:0}
+  .actions{width:100%;display:flex;flex-direction:column;gap:12px}
+  .btn{min-height:56px;border-radius:6px;display:flex;align-items:center;justify-content:center;gap:10px;font-size:16px;font-weight:700;cursor:pointer;border:1px solid transparent;text-decoration:none}
+  .btn-primary{background:var(--accent);color:#110b28}
+  .btn-secondary{background:var(--surface);border-color:var(--border-strong);color:var(--accent)}
+  .btn svg{width:20px;height:20px}
+
+  /* Painel lateral com o estado "Bem-vindo(a) de volta" — mostrado como variação, lado a lado */
+  .wrap{display:flex;min-height:100vh}
+  .wrap > .screen{flex:1;min-height:100vh}
+  .divider-label{position:absolute;top:16px;left:50%;transform:translateX(-50%);z-index:5;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-subtle);background:rgba(17,11,40,.6);padding:4px 12px;border-radius:100px;border:1px solid var(--border)}
+
+  .welcome-back{align-items:center;justify-content:center;text-align:center;gap:18px}
+  .welcome-back h1{font-size:24px;margin:0 0 6px}
+  .welcome-back p{font-size:15px;color:var(--text-muted);max-width:300px;line-height:1.5}
+  .ring{width:180px;height:180px;border-radius:12px;padding:4px;border:1px solid rgba(149,131,230,.45);display:flex;align-items:center;justify-content:center;margin-top:8px}
+  .ring img{width:120px;height:120px;object-fit:contain;filter:drop-shadow(0 0 18px rgba(149,131,230,.5))}
+
+  /* barras de rolagem no tema (revisão 03): finas, na cor da borda do perfil, sem a barra cinza do sistema */
+  *{scrollbar-width:thin;scrollbar-color:var(--border-strong,#4d6fcb) transparent}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--border-strong,#4d6fcb);border-radius:999px;border:3px solid transparent;background-clip:padding-box}
+  ::-webkit-scrollbar-thumb:hover{background:var(--accent,#6f90eb);background-clip:padding-box;border:3px solid transparent}
+  ::-webkit-scrollbar-corner{background:transparent}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div class="screen">
+    <div class="divider-label">Estado principal — Entrada</div>
+    <div class="scenery"><img src="assets/entry-world.webp" alt="" /></div>
+    <div class="content">
+      <div class="brand">
+        <img src="assets/trailup-brand-logo.png" alt="TrailUp" />
+        <span class="title-font">TrailUp</span>
+      </div>
+      <div class="hero-copy">
+        <h1 class="title-font">Sua próxima conquista começa aqui.</h1>
+      </div>
+      <div class="actions">
+        <a class="btn btn-primary" href="01-login.html">
+          Já tenho conta
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+        <button class="btn btn-secondary" type="button" title="Fora de escopo do protótipo — leva ao site externo do TrailUp">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
+          Criar conta <span style="font-size:11px;opacity:.65;font-weight:500">(abre o site do TrailUp)</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen welcome-back" style="align-items:center;">
+    <div class="divider-label">Estado de transição (~2s) — Bem-vindo(a) de volta</div>
+    <div class="scenery"><img src="assets/entry-world.webp" alt="" /></div>
+    <div class="content" style="justify-content:center;">
+      <div>
+        <h1 class="title-font welcome-back">BEM VINDO(A) DE VOLTA!</h1>
+        <p>Sentimos sua falta, ficamos felizes<br/>que tenha voltado.</p>
+        <div class="ring">
+          <img src="assets/trailup-brand-logo.png" alt="" />
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

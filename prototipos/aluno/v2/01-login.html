@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TrailUp — Login</title>
+<style>
+  /* Estilo do site da Geis (#211, frontend/src/styles/immersive.css + motion.css):
+     floresta roxa em tela cheia, natureza animada (borboletas, galhos, folhas) e painel de vidro escuro. */
+  :root{
+    --bg:#180f26; --panel:#20142fee; --panel-border:#b496d678;
+    --input-bg:#170f23; --input-border:#82669f70; --placeholder:#9b87ae;
+    --text:#fbf6ff; --text-muted:#e5d4f3; --text-subtle:#b9a6cc;
+    --primary:#ab80dd; --primary-ink:#190d27; --link:#d5b3ff; --link-hover:#ffbda8; --cta:#ffb59a;
+    --danger:#f0847c; --danger-bg:#3a1e2a; --danger-border:#8a4250; --warning:#e0b34d;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--link);outline-offset:2px}
+
+  /* ---------- cena (igual ao AuthScenery/Hero do site) ---------- */
+  .scene{position:fixed;inset:0;z-index:0;overflow:clip;pointer-events:none}
+  .scene > img{width:100%;height:100%;object-fit:cover;object-position:center}
+  .scene::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#160e2899 0%,#160e2833 45%,#160e2866 70%,#160e28aa 100%)}
+  .scene-nature{position:absolute;inset:0;z-index:1;overflow:clip;--nature-atlas:url("assets/forest-life.webp")}
+  .nature-foliage{position:absolute;width:min(24%,280px);aspect-ratio:1}
+  .nature-foliage-left{left:-5%;bottom:6%}
+  .nature-foliage-right{right:-5%;top:9%;transform:scaleX(-1)}
+  .nature-sprig,.nature-wing,.nature-body,.nature-leaf{display:block;background-image:var(--nature-atlas);background-size:200% 200%;background-repeat:no-repeat}
+  .nature-sprig{width:100%;height:100%;background-position:0 0;transform-origin:6% 94%}
+  .nature-flight-field{position:absolute;left:30%;top:22%;width:30%;height:42%}
+  .nature-flight,.nature-leaf-path{position:absolute;inset:0}
+  .nature-flight{--wing-cycle:320ms;--butterfly-tile:100% 0}
+  .nature-flight-2{--wing-cycle:390ms;--butterfly-tile:100% 100%}
+  .nature-flight-3{--wing-cycle:280ms}
+  .nature-butterfly{display:block;position:relative;width:38px;aspect-ratio:1;filter:drop-shadow(0 0 3px #ffe576) drop-shadow(0 0 7px #ffc94c99)}
+  .nature-flight-2 .nature-butterfly{width:30px}
+  .nature-flight-3 .nature-butterfly{width:24px}
+  .nature-wing,.nature-body{position:absolute;inset:0;background-image:none;background-color:#fff1a6;-webkit-mask-image:var(--nature-atlas);mask-image:var(--nature-atlas);-webkit-mask-size:200% 200%;mask-size:200% 200%;-webkit-mask-position:var(--butterfly-tile);mask-position:var(--butterfly-tile);-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat}
+  .nature-wing{transform-origin:50% 50%}
+  .nature-wing-left{clip-path:inset(0 50% 0 0)}
+  .nature-wing-right{clip-path:inset(0 0 0 50%)}
+  .nature-body{clip-path:inset(0 48% 0 48%)}
+  .nature-leaf-field{position:absolute;left:50%;top:10%;width:14%;height:60%}
+  .nature-leaf{width:24px;aspect-ratio:1;background-position:0 100%}
+  .nature-leaf-path-2 .nature-leaf{width:17px}
+  /* vagalumes: os pontos dourados que já existem na arte, agora piscando */
+  .fireflies span{position:absolute;width:5px;height:5px;border-radius:50%;background:#ffe9a3;box-shadow:0 0 8px 3px #ffc94c88;opacity:0}
+  @media (prefers-reduced-motion:no-preference){
+    .nature-sprig{animation:foliage-sway 7s ease-in-out infinite alternate}
+    .nature-foliage-right .nature-sprig{animation-duration:9s;animation-delay:-4s}
+    .nature-flight{animation:butterfly-flight 19s ease-in-out infinite}
+    .nature-flight-2{animation-duration:23s;animation-delay:-9s;animation-direction:reverse}
+    .nature-flight-3{animation-duration:27s;animation-delay:-18s}
+    .nature-butterfly{animation:butterfly-bank 5s ease-in-out infinite alternate}
+    .nature-wing{animation:butterfly-wing var(--wing-cycle) ease-in-out infinite alternate}
+    .nature-wing-right{animation-delay:-40ms}
+    .nature-leaf-path{animation:leaf-fall 15s linear infinite}
+    .nature-leaf-path-2{animation-duration:19s;animation-delay:-8s}
+    .nature-leaf{animation:leaf-turn 4s ease-in-out infinite alternate}
+    .fireflies span{animation:twinkle 3.6s ease-in-out infinite}
+    /* como no site: a natureza pausa enquanto o aluno digita, para não distrair */
+    body:has(form:focus-within) .scene *{animation-play-state:paused}
+    .hero > *{animation:arrive 650ms cubic-bezier(.2,.7,.2,1) both}
+    .hero > :nth-child(2){animation-delay:70ms}
+    .hero > :nth-child(3){animation-delay:140ms}
+    .panel{animation:arrive 650ms 120ms cubic-bezier(.2,.7,.2,1) both}
+  }
+  @media (prefers-reduced-motion:reduce){.nature-flight-field,.nature-leaf-field,.fireflies{display:none}}
+  @keyframes foliage-sway{from{transform:rotate(-3deg)}to{transform:rotate(4deg)}}
+  @keyframes butterfly-flight{0%,100%{transform:translate(5%,65%)}20%{transform:translate(28%,15%)}45%{transform:translate(78%,30%)}65%{transform:translate(63%,75%)}85%{transform:translate(22%,85%)}}
+  @keyframes butterfly-bank{from{transform:rotate(-28deg)}to{transform:rotate(32deg)}}
+  @keyframes butterfly-wing{from{transform:scaleX(.18)}to{transform:scaleX(1)}}
+  @keyframes leaf-fall{0%{opacity:0;transform:translate(20%,-5%)}12%{opacity:.8}30%{transform:translate(70%,25%)}55%{transform:translate(15%,50%)}80%{opacity:.65;transform:translate(60%,75%)}100%{opacity:0;transform:translate(25%,100%)}}
+  @keyframes leaf-turn{from{transform:rotate(-30deg) scaleX(.5)}to{transform:rotate(65deg) scaleX(1)}}
+  @keyframes twinkle{0%,100%{opacity:0;transform:scale(.6)}50%{opacity:1;transform:scale(1)}}
+  @keyframes arrive{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+  /* ---------- página ---------- */
+  .page{position:relative;z-index:2;min-height:100vh;display:grid;grid-template-columns:minmax(0,1fr) 460px;align-items:center;gap:56px;padding:40px 7vw}
+  .topbar{position:absolute;top:28px;left:7vw;display:flex;align-items:center;gap:10px;color:#fff4ff;text-decoration:none;font-family:Georgia,serif;font-size:24px;font-weight:700;text-shadow:0 2px 10px #201131}
+  .topbar img{width:34px;height:34px}
+  .hero{max-width:560px}
+  .hero .kicker{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--text-muted);margin:0 0 18px}
+  .hero .kicker::before{content:"";width:7px;height:7px;transform:rotate(45deg);background:#7fe0d0}
+  .hero h1{font-family:Georgia,serif;font-weight:400;font-size:58px;line-height:1.08;margin:0 0 18px;color:#fff;text-shadow:0 2px 18px #201131}
+  .hero p{font-size:17px;line-height:1.6;color:#f3e8ff;margin:0;text-shadow:0 1px 10px #201131;max-width:460px}
+
+  .panel{background:var(--panel);border:1px solid var(--panel-border);border-radius:8px;box-shadow:0 20px 80px #10091999;padding:34px 34px 28px;backdrop-filter:blur(6px)}
+  .panel .star{display:block;width:56px;height:56px;margin:0 auto 10px;object-fit:contain}
+  .panel h2{font-family:Georgia,serif;font-size:26px;line-height:1.3;margin:0;text-align:center;font-variant:small-caps;letter-spacing:.02em}
+  .panel .lead{text-align:center;font-size:14px;color:var(--text-subtle);margin:6px 0 24px}
+
+  label.lbl{display:block;font-size:14px;font-weight:600;color:var(--text);margin:0 0 7px}
+  .field{margin-bottom:16px}
+  .input{position:relative}
+  .input > svg.lead-ic{position:absolute;left:13px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--placeholder)}
+  .input input{width:100%;height:46px;padding:0 14px 0 40px;border-radius:6px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);font-size:14px;font-family:inherit}
+  .input input::placeholder{color:var(--placeholder)}
+  .input input:focus{outline:none;border-color:var(--link);box-shadow:0 0 0 3px #d5b3ff33}
+  .input input[readonly]{opacity:.7}
+  .input.has-eye input{padding-right:46px}
+  .input.invalid input{border-color:var(--danger)}
+  .eye{position:absolute;right:5px;top:5px;width:36px;height:36px;border-radius:6px;border:0;background:none;color:#cebadf;display:grid;place-items:center;cursor:pointer}
+  .eye svg{width:17px;height:17px}
+  .forgot{display:flex;justify-content:flex-end;margin:-6px 0 18px}
+  a{color:var(--link);text-decoration:none;font-weight:600}
+  a:hover{color:var(--link-hover)}
+  .forgot a{font-size:13px;font-weight:500}
+
+  .alert{display:flex;gap:10px;align-items:flex-start;padding:13px 15px;border-radius:8px;margin-bottom:14px;background:var(--danger-bg);border:1px solid var(--danger-border)}
+  .alert svg{width:16px;height:16px;flex:none;color:var(--danger);margin-top:2px}
+  .alert strong{display:block;font-size:14px;margin-bottom:2px}
+  .alert span{font-size:13px;color:#f3d9e0;line-height:1.45}
+  .alert.warn{background:#3a2e1a;border-color:#8a6d32}
+  .alert.warn svg{color:var(--warning)}
+
+  .btn{width:100%;height:46px;border-radius:6px;border:1px solid transparent;font-size:15px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;text-decoration:none;font-family:inherit;color:inherit}
+  .btn-primary{background:var(--primary);color:var(--primary-ink)}
+  .btn-primary:hover:not(:disabled){filter:brightness(1.07)}
+  .btn-primary:disabled{opacity:.5;cursor:not-allowed}
+  .btn-secondary{background:var(--input-bg);border-color:var(--input-border);color:var(--text)}
+  .btn-secondary:hover{border-color:var(--link);color:var(--text)}
+  .btn svg{width:18px;height:18px}
+  .spin{width:18px;height:18px;border-radius:50%;border:2.5px solid #190d2744;border-top-color:#190d27;animation:sp .8s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .or{display:flex;align-items:center;gap:12px;margin:16px 0;font-size:12px;color:var(--text-subtle);text-transform:uppercase;letter-spacing:.06em}
+  .or::before,.or::after{content:"";flex:1;height:1px;background:#82669f55}
+  .foot{text-align:center;font-size:14px;color:var(--text-muted);margin:20px 0 0}
+  .foot svg{width:12px;height:12px;vertical-align:-1px;margin-left:3px}
+
+  .preview{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:40;display:flex;align-items:center;gap:10px;padding:6px 8px 6px 14px;border-radius:100px;background:#180f26e6;border:1px solid var(--panel-border);font-size:12px;color:var(--text-muted)}
+  .preview select{background:var(--primary);color:var(--primary-ink);border:0;border-radius:100px;padding:6px 10px;font-weight:600;font-family:inherit}
+
+  @media (max-width:980px){.page{grid-template-columns:1fr;padding-top:100px}.hero h1{font-size:40px}.panel{max-width:460px;width:100%;justify-self:center}}
+</style>
+</head>
+<body>
+<div class="scene" aria-hidden="true">
+  <img src="assets/journey-dawn.webp" alt="" />
+  <div class="scene-nature">
+    <div class="nature-foliage nature-foliage-left"><span class="nature-sprig"></span></div>
+    <div class="nature-foliage nature-foliage-right"><span class="nature-sprig"></span></div>
+    <div class="nature-flight-field">
+      <span class="nature-flight nature-flight-1"><span class="nature-butterfly"><span class="nature-wing nature-wing-left"></span><span class="nature-wing nature-wing-right"></span><span class="nature-body"></span></span></span>
+      <span class="nature-flight nature-flight-2"><span class="nature-butterfly"><span class="nature-wing nature-wing-left"></span><span class="nature-wing nature-wing-right"></span><span class="nature-body"></span></span></span>
+      <span class="nature-flight nature-flight-3"><span class="nature-butterfly"><span class="nature-wing nature-wing-left"></span><span class="nature-wing nature-wing-right"></span><span class="nature-body"></span></span></span>
+    </div>
+    <div class="nature-leaf-field">
+      <span class="nature-leaf-path nature-leaf-path-1"><span class="nature-leaf"></span></span>
+      <span class="nature-leaf-path nature-leaf-path-2"><span class="nature-leaf"></span></span>
+    </div>
+    <div class="fireflies" id="fireflies"></div>
+  </div>
+</div>
+
+<div class="page">
+  <a class="topbar" href="00-entrada.html" aria-label="TrailUp, voltar ao início"><img src="assets/trailup-star.png" alt="" />TrailUp</a>
+
+  <section class="hero">
+    <p class="kicker">Conhecimento é uma aventura</p>
+    <h1>Sua próxima conquista começa aqui.</h1>
+    <p>Entre para continuar sua trilha. Ela se adapta ao seu jeito de aprender.</p>
+  </section>
+
+  <main class="panel">
+    <form id="form" novalidate>
+      <img class="star" src="assets/trailup-star.png" alt="" />
+      <h2>Acesse sua conta</h2>
+      <p class="lead">Continue de onde você parou</p>
+
+      <div class="field">
+        <label class="lbl" for="email">E-mail</label>
+        <div class="input"><svg class="lead-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/></svg>
+          <input id="email" type="email" placeholder="voce@escola.com" autocomplete="username" autofocus /></div>
+      </div>
+      <div class="field">
+        <label class="lbl" for="senha">Senha</label>
+        <div class="input has-eye" id="senhaBox"><svg class="lead-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+          <input id="senha" type="password" placeholder="Sua senha" autocomplete="current-password" />
+          <button type="button" class="eye" id="eye" aria-label="Mostrar senha"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+      </div>
+      <div class="forgot"><a href="02-recuperar-senha.html">Esqueci minha senha</a></div>
+
+      <div id="alert"></div>
+      <button class="btn btn-primary" type="submit" id="entrar">Entrar</button>
+      <div class="or">ou</div>
+      <a class="btn btn-secondary" id="google" href="03-trilha.html"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>Continuar com Google</a>
+      <p class="foot">Não tem uma conta? <a href="#" title="Abre o site do TrailUp em nova aba">Cadastre-se<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg></a></p>
+    </form>
+  </main>
+</div>
+
+<div class="preview"><span>Pré-visualização de estado:</span><select id="stateSel" aria-label="Estado da tela"></select></div>
+
+<script>
+// vagalumes em posições fixas, sobre as áreas claras da arte
+document.getElementById('fireflies').innerHTML=[[34,58,0],[41,46,1.1],[47,63,2.3],[55,41,.6],[60,55,1.8],[38,70,2.9],[66,48,.3],[52,72,1.5],[44,34,2.6],[70,62,.9]]
+  .map(([x,y,d])=>`<span style="left:${x}%;top:${y}%;animation-delay:${d}s"></span>`).join('');
+
+const STATES=[['empty','Vazio'],['filled','Preenchido'],['loading','Entrando...'],['cred','Erro de credenciais'],['invalid','Dados inválidos'],['net','Erro de conexão']];
+const ALERT_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>';
+const $=id=>document.getElementById(id);
+let estado='empty';
+const valido=()=>/^\S+@\S+\.\S+$/.test($('email').value.trim())&&$('senha').value.length>0; // regra dadosValidos do app
+function sync(){if(estado!=='loading')$('entrar').disabled=!valido()}
+function alerta(tipo,t,m){$('alert').innerHTML=tipo?`<div class="alert ${tipo==='warn'?'warn':''}" role="alert">${ALERT_ICON}<div><strong>${t}</strong><span>${m}</span></div></div>`:''}
+function set(st){
+  estado=st; $('stateSel').innerHTML=STATES.map(([k,l])=>`<option value="${k}" ${st===k?'selected':''}>${l}</option>`).join('');
+  const filled=st!=='empty';
+  $('email').value=filled?(st==='invalid'?'aluno@escola':'aluno@escola.edu.br'):'';
+  $('senha').value=filled?'senha1234':'';
+  const busy=st==='loading';
+  $('email').readOnly=$('senha').readOnly=busy;
+  $('google').style.pointerEvents=busy?'none':'';$('google').style.opacity=busy?.5:'';
+  $('entrar').innerHTML=busy?'<span class="spin"></span>Entrando...':'Entrar';
+  $('senhaBox').classList.toggle('invalid',st==='cred');
+  alerta(...({cred:['err','Erro no login','E-mail ou senha incorretos. Confira os dados e tente novamente.'],
+    invalid:['warn','Dados inválidos','Preencha os dados corretamente.'],
+    net:['err','Não foi possível entrar','Verifique sua conexão e tente novamente.']}[st]||[]));
+  $('entrar').disabled=busy||(st!=='invalid'&&!valido());
+  if(st==='cred')$('senha').focus();
+}
+$('email').addEventListener('input',()=>{if(estado==='cred'||estado==='invalid')alerta();sync()});
+$('senha').addEventListener('input',()=>{$('senhaBox').classList.remove('invalid');if(estado==='cred')alerta();sync()});
+$('eye').addEventListener('click',()=>{const s=$('senha'),show=s.type==='password';s.type=show?'text':'password';$('eye').setAttribute('aria-label',show?'Ocultar senha':'Mostrar senha')});
+$('form').addEventListener('submit',e=>{e.preventDefault();if(!valido()){set('invalid');return}set('loading');setTimeout(()=>location.href='03-trilha.html',900)});
+$('stateSel').addEventListener('change',e=>{history.replaceState(null,'',location.pathname+'?estado='+e.target.value);set(e.target.value)});
+set(new URLSearchParams(location.search).get('estado')||'empty');
+</script>
+</body>
+</html>

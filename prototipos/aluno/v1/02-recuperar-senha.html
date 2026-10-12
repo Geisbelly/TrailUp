@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TrailUp — Recuperar Senha</title>
+<style>
+  :root{
+    --bg:#110b28; --surface:#1b123f; --elevated:#241957;
+    --border:#3a288a; --border-strong:#644dcb;
+    --text:#f4f3f7; --text-muted:rgba(244,243,247,.82); --text-subtle:rgba(244,243,247,.62);
+    --accent:#9583e6; --success:#3fbf6b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  .title-font{font-family:Georgia,"Times New Roman",serif}
+  .screen{position:relative;min-height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .scenery{position:absolute;inset:0;z-index:0}
+  .scenery img{width:100%;height:100%;object-fit:cover;opacity:.4}
+  .scenery::after{content:"";position:absolute;inset:0;background:linear-gradient(to bottom, rgba(17,11,40,.35), var(--bg) 78%)}
+  .glow{position:absolute;top:0;left:0;right:0;height:45%;background:radial-gradient(ellipse at top, rgba(149,131,230,.22), transparent 70%);pointer-events:none;z-index:0}
+  .card{position:relative;z-index:1;width:100%;max-width:400px;padding:36px 30px;text-align:center}
+  h1.appname{font-size:26px;margin:0 0 10px;letter-spacing:.06em}
+  .ornament{display:flex;align-items:center;gap:10px;opacity:.7;margin:0 0 20px}
+  .ornament .line{flex:1;height:1px;background:rgba(149,131,230,.45)}
+  h2{font-size:20px;margin:0 0 6px}
+  .subtitle{font-size:13px;color:var(--text-muted);margin:0 0 22px;line-height:1.5}
+  .field input{width:100%;height:50px;padding:0 16px;border-radius:6px;border:1px solid rgba(149,131,230,.4);background:var(--elevated);color:var(--text);font-size:14px;font-family:inherit;margin-bottom:16px}
+  .btn{width:100%;height:52px;border-radius:6px;border:1px solid transparent;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .btn-primary{background:var(--accent);color:#110b28}
+  .links{margin-top:18px;font-size:13px;color:var(--text-muted)}
+  .links a{color:#b3a4f2;text-decoration:underline}
+
+  .success-toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);width:calc(100% - 48px);max-width:380px;background:#0f2a1c;border:1px solid var(--success);border-radius:10px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;box-shadow:0 12px 32px rgba(0,0,0,.4)}
+  .success-toast svg{width:20px;height:20px;color:var(--success);flex-shrink:0;margin-top:1px}
+  .success-toast strong{display:block;font-size:14px;margin-bottom:2px}
+  .success-toast span{font-size:13px;color:var(--text-muted)}
+  .tag{position:absolute;top:14px;left:14px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-subtle);z-index:2}
+</style>
+</head>
+<body>
+<div class="screen">
+  <span class="tag">Recuperar senha — com estado de sucesso</span>
+  <div class="scenery"><img src="assets/entry-world.webp" alt="" /></div>
+  <div class="glow"></div>
+  <div class="card">
+    <h1 class="appname title-font">— TRAILUP —</h1>
+    <div class="ornament"><div class="line"></div><div class="line"></div></div>
+    <h2 class="title-font">Recuperar Senha</h2>
+    <p class="subtitle">Informe seu e-mail para receber o link de redefinição.</p>
+    <div class="field"><input type="email" placeholder="Digite seu e-mail" value="aluno@escola.edu.br" /></div>
+    <button class="btn btn-primary" type="button">Enviar Link</button>
+    <div class="links">Lembrou da senha? <a href="01-login.html">Fazer login</a></div>
+  </div>
+  <div class="success-toast">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+    <div><strong>Link enviado</strong><span>Um link de recuperação foi enviado para seu e-mail.</span></div>
+  </div>
+</div>
+</body>
+</html>
