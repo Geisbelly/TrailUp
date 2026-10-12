@@ -7,8 +7,10 @@ import { useUsuario } from "@/context/SessaoContext";
 import { supabase } from "@/database/supabase";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { useEmbutidoConfiguracoes } from "@/context/EmbutidoConfiguracoesContext";
 
 export default function ExcluirContaScreen() {
+  const embutido = useEmbutidoConfiguracoes();
   const { usuario } = useUsuario();
   const [motivo, setMotivo] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -91,7 +93,7 @@ export default function ExcluirContaScreen() {
       style={styles.container}
       contentContainerStyle={styles.content}
     >
-      <Text style={[styles.title, { color: palette.text }]}>Solicitar exclusão da conta</Text>
+      {embutido ? null : <Text style={[styles.title, { color: palette.text }]}>Solicitar exclusão da conta</Text>}
       <Text style={[styles.subtitle, { color: palette.textMuted }]}>
         Informe o motivo e confirmaremos a exclusão dos seus dados. Você receberá um e-mail
         para prosseguir.

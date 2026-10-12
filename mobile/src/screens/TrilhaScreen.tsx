@@ -129,6 +129,8 @@ export default function TrilhasIndex() {
         scope="trilha_home"
         bottomOffset={10}
         guideTargetRef={chatGuideTargetRef}
+        // Na tela larga o guia fica no canto do mapa, à esquerda do painel do tópico, como no protótipo v4.
+        ancora={desktop ? { direita: 380, base: 44, largura: 380 } : undefined}
       />
     </SafeAreaView>
   );

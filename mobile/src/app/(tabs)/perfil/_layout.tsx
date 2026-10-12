@@ -62,11 +62,13 @@ export default function PerfilStack() {
       <Stack.Screen name="loja" options={{ title: "LOJA", headerShown: false }} />
       <Stack.Screen
         name="relatorio"
-        options={{ title: "RELATÓRIO DO USUÁRIO" }}
+        // Na web em tela larga (#346) o título está na própria página.
+        options={{ title: "RELATÓRIO DO USUÁRIO", headerShown: !desktop }}
       />
       <Stack.Screen
         name="biblioteca-conquistas"
-        options={{ title: "BIBLIOTECA DE CONQUISTAS" }}
+        // Na web em tela larga (#346) o título está na própria página.
+        options={{ title: "BIBLIOTECA DE CONQUISTAS", headerShown: !desktop }}
       />
     </Stack>
   );

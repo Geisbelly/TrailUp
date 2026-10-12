@@ -6,6 +6,7 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useUsuario } from "@/context/SessaoContext";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { useEmbutidoConfiguracoes } from "@/context/EmbutidoConfiguracoesContext";
 
 const ITEMS = [
   { label: "Perfil", value: "Automático" },
@@ -14,6 +15,7 @@ const ITEMS = [
 ];
 
 export default function Aparen() {
+  const embutido = useEmbutidoConfiguracoes();
   const { usuario } = useUsuario();
   const palette = useMemo(
     () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
@@ -26,7 +28,7 @@ export default function Aparen() {
         <HallBackground palette={palette} />
       </View>
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        <Text style={[styles.title, { color: palette.text }]}>Aparência</Text>
+        {embutido ? null : <Text style={[styles.title, { color: palette.text }]}>Aparência</Text>}
         <Text style={[styles.subtitle, { color: palette.textMuted }]}>
           Personalize a aparência do aplicativo.
         </Text>

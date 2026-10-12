@@ -13,6 +13,7 @@ import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { TelemetryConsentPreferences } from "@/utils/telemetryConsent";
 import { registrarAlvoTour } from "@/utils/tourTargets";
+import { useEmbutidoConfiguracoes } from "@/context/EmbutidoConfiguracoesContext";
 
 type ToggleItem = {
   key: keyof TelemetryConsentPreferences;
@@ -52,6 +53,7 @@ const TOGGLE_ITEMS: ToggleItem[] = [
 ];
 
 export default function ColetaDadosScreen() {
+  const embutido = useEmbutidoConfiguracoes();
   const { usuario } = useUsuario();
   const scrollRef = useRef<ScrollView | null>(null);
   const scrollOffsetRef = useRef(0);
@@ -177,10 +179,14 @@ export default function ColetaDadosScreen() {
       }}
       scrollEventThrottle={16}
     >
-      <Text style={[styles.title, { color: palette.text }]}>Coleta e acessos</Text>
-      <Text style={[styles.subtitle, { color: palette.textMuted }]}>
-        Você controla quais grupos de dados o app pode coletar. As alterações valem para este dispositivo.
-      </Text>
+      {embutido ? null : (
+        <>
+          <Text style={[styles.title, { color: palette.text }]}>Coleta e acessos</Text>
+          <Text style={[styles.subtitle, { color: palette.textMuted }]}>
+            Você controla quais grupos de dados o app pode coletar. As alterações valem para este dispositivo.
+          </Text>
+        </>
+      )}
 
       <View style={[styles.card, { backgroundColor: palette.surfaceElevated, borderColor: palette.border }]}>
         {TOGGLE_ITEMS.map((item) => {

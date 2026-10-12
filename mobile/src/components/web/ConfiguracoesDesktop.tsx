@@ -6,6 +6,7 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-
 import Aparencia from "@/app/(tabs)/perfil/appearance";
 import ColetaDados from "@/app/(tabs)/perfil/coleta-dados";
 import ExcluirConta from "@/app/(tabs)/perfil/excluir";
+import { EmbutidoConfiguracoes } from "@/context/EmbutidoConfiguracoesContext";
 import InformacoesPessoais from "@/app/(tabs)/perfil/info";
 import InfoApp from "@/app/(tabs)/perfil/info-app";
 import InfoVersao from "@/app/(tabs)/perfil/info-versao";
@@ -22,6 +23,23 @@ import { filtrarGrupos, subtelaDaUrl, type IdSubtela, type Subtela } from "@/uti
 
 const pkg = require("../../../package.json");
 const PERIGO = "#ff8f8f";
+
+// Ícone de cada linha da lista, como no protótipo v4 (11-configuracoes.html).
+const ICONES: Partial<Record<IdSubtela, React.ComponentProps<typeof Feather>["name"]>> = {
+  info: "user",
+  senha: "lock",
+  coleta: "users",
+  relatorio: "book",
+  privacidade: "shield",
+  termos: "file-text",
+  excluir: "trash-2",
+  lembrete: "bell",
+  aparencia: "sun",
+  metricas: "bar-chart-2",
+  tutorial: "help-circle",
+  app: "info",
+  versao: "tag",
+};
 
 // A subtela aberta é a própria tela do app, embutida no painel da direita.
 const TELAS: Partial<Record<IdSubtela, () => React.ReactElement>> = {
@@ -47,7 +65,7 @@ export function ConfiguracoesDesktop() {
   const { sub } = useLocalSearchParams<{ sub?: string }>();
   const aberta = subtelaDaUrl(sub);
   const [busca, setBusca] = useState("");
-  const { sairDoAparelho, abrirLink, reverTutorial } = useAcoesConta();
+  const { sairDoAparelho, abrirLink, reverTutorialComAbrirAgora } = useAcoesConta();
   const grupos = filtrarGrupos(busca);
   const Tela = TELAS[aberta.id];
 
@@ -56,7 +74,7 @@ export function ConfiguracoesDesktop() {
     if (s.id === "privacidade")
       return abrirLink("https://trailup.vercel.app/privacidade", "Não foi possível abrir a política de privacidade.");
     if (s.id === "termos") return abrirLink("https://trailup.vercel.app/termos", "Não foi possível abrir os termos de uso.");
-    if (s.id === "tutorial") return void reverTutorial();
+    if (s.id === "tutorial") return void reverTutorialComAbrirAgora();
     router.setParams({ sub: s.id });
   };
 
@@ -93,6 +111,9 @@ export function ConfiguracoesDesktop() {
                       ativa || hovered ? { backgroundColor: palette.surfaceElevated } : null,
                     ]}
                   >
+                    {ICONES[item.id] ? (
+                      <Feather name={ICONES[item.id]} size={16} color={item.perigo ? PERIGO : palette.accent} />
+                    ) : null}
                     <Text
                       style={[
                         s.linhaTexto,
@@ -102,7 +123,7 @@ export function ConfiguracoesDesktop() {
                     >
                       {rotulo}
                     </Text>
-                    {item.acao ? <Feather name="arrow-up-right" size={14} color={palette.textSubtle} /> : null}
+                    <Feather name={item.acao ? "arrow-up-right" : "chevron-right"} size={14} color={palette.textSubtle} />
                   </Pressable>
                 );
               })}
@@ -132,7 +153,10 @@ export function ConfiguracoesDesktop() {
           {aberta.descricao ? <Text style={[s.descricao, { color: palette.textMuted }]}>{aberta.descricao}</Text> : null}
         </View>
         <View style={s.conteudo}>
-          <View style={s.subtela}>{Tela ? <Tela key={aberta.id} /> : null}</View>
+          <View style={s.subtela}>
+            {/* O painel já mostra título e descrição; a tela embutida não repete. */}
+            <EmbutidoConfiguracoes.Provider value>{Tela ? <Tela key={aberta.id} /> : null}</EmbutidoConfiguracoes.Provider>
+          </View>
           {/* Coleta e acessos: o resumo da coleta fica ao lado dos interruptores. */}
           {aberta.id === "coleta" ? (
             <ResumoColeta
