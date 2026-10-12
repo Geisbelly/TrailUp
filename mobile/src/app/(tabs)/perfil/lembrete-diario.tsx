@@ -21,6 +21,7 @@ import {
   View,
 } from "react-native";
 import { useEmbutidoConfiguracoes } from "@/context/EmbutidoConfiguracoesContext";
+import { ApoioConfig, DuasColunasConfig, TextoApoio } from "@/components/web/SecaoConfigDesktop";
 
 // Mesmo `tipo` que o login cria automaticamente para todo aluno (ver
 // `notificacoes_registrar_login` / migracao 20260826_04) — salvar com esse
@@ -122,27 +123,8 @@ export default function LembreteDiarioScreen() {
     }
   };
 
-  return (
-    <View style={[styles.outer, { backgroundColor: palette.background }]}>
-      <View style={[StyleSheet.absoluteFill, { opacity: 0.35, pointerEvents: "none" }]}>
-        <HallBackground palette={palette} />
-      </View>
-
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.content}
-      >
-        {embutido ? null : (
-          <Text style={[styles.title, { color: palette.text }]}>
-            Lembrete diário
-          </Text>
-        )}
-        <Text style={[styles.subtitle, { color: palette.textMuted }]}>
-          Escolha o horário em que o TrailUp te avisa para continuar a
-          trilha. Funciona mesmo com o app fechado
-          {Platform.OS === "web" ? " (no navegador, só quando o app está aberto)" : ""}.
-        </Text>
-
+  const controles = (
+    <>
         {carregando ? (
           <ActivityIndicator color={palette.accent} style={{ marginTop: 24 }} />
         ) : (
@@ -207,7 +189,12 @@ export default function LembreteDiarioScreen() {
             </TouchableOpacity>
 
             {ativado ? (
-              <View style={styles.horariosWrap}>
+              <View
+                style={[
+                  styles.horariosWrap,
+                  embutido && [styles.cartaoHorarios, { backgroundColor: palette.surface, borderColor: palette.border }],
+                ]}
+              >
                 <Text style={[styles.sectionLabel, { color: palette.textMuted }]}>
                   Horário
                 </Text>
@@ -246,12 +233,56 @@ export default function LembreteDiarioScreen() {
             ) : null}
           </>
         )}
+    </>
+  );
+
+  // Embutida nas Configurações da web em tela larga (#346, protótipo v4): os controles à esquerda, como o aviso chega ao lado.
+  if (embutido) {
+    return (
+      <DuasColunasConfig
+        apoio={
+          <ApoioConfig titulo="Como chega" palette={palette}>
+            <TextoApoio palette={palette}>
+              Com o app aberto no navegador, o aviso aparece como notificação; ele também fica em Notificações, como
+              revisão diária. Um lembrete por dia.
+            </TextoApoio>
+          </ApoioConfig>
+        }
+      >
+        {controles}
+      </DuasColunasConfig>
+    );
+  }
+
+  return (
+    <View style={[styles.outer, { backgroundColor: palette.background }]}>
+      <View style={[StyleSheet.absoluteFill, { opacity: 0.35, pointerEvents: "none" }]}>
+        <HallBackground palette={palette} />
+      </View>
+
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+      >
+        {embutido ? null : (
+          <Text style={[styles.title, { color: palette.text }]}>
+            Lembrete diário
+          </Text>
+        )}
+        <Text style={[styles.subtitle, { color: palette.textMuted }]}>
+          Escolha o horário em que o TrailUp te avisa para continuar a
+          trilha. Funciona mesmo com o app fechado
+          {Platform.OS === "web" ? " (no navegador, só quando o app está aberto)" : ""}.
+        </Text>
+
+        {controles}
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  cartaoHorarios: { borderRadius: 14, borderWidth: 1, padding: 18 },
   outer: {
     flex: 1,
   },
