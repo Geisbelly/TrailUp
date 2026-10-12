@@ -91,6 +91,43 @@ export function MetricasEstilo({ embutido = false }: { embutido?: boolean }) {
     if (!embutido) router.back();
   };
 
+  // Embutido nas Configurações da web em tela larga (#346, protótipo v4): grade de 3 colunas e a explicação embaixo.
+  if (embutido) {
+    return (
+      <View style={styles.larga}>
+        <View ref={optionsGuideRef} collapsable={false} style={styles.grade}>
+          {METRICS_THEME_OPTIONS.map((option) => {
+            const active = option.key === selectedTheme;
+            return (
+              <TouchableOpacity
+                key={option.key}
+                style={[
+                  styles.opcaoLarga,
+                  { backgroundColor: active ? palette.accentSoft : palette.surface, borderColor: active ? palette.borderStrong : palette.border },
+                ]}
+                activeOpacity={0.86}
+                onPress={() => void handleSelect(option.key)}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: active }}
+                accessibilityLabel={option.label}
+              >
+                <View style={styles.opcaoTopo}>
+                  <Text style={[styles.optionTitle, { color: palette.text }]}>{option.label}</Text>
+                  {active ? <MaterialCommunityIcons name="check-circle" size={18} color={palette.accent} /> : null}
+                </View>
+                <Text style={[styles.optionDescription, { color: palette.textMuted }]}>{option.description}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        <Text style={[styles.optionDescription, { color: palette.textMuted }]}>
+          <Text style={{ color: palette.text, fontWeight: "700" }}>Automático ou estilo fixo. </Text>
+          Automático acompanha o perfil BrainHex ativo. Escolher outro estilo fixa aquela visualização neste aparelho até você mudar novamente.
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.outer, { backgroundColor: palette.background }]}>
       <View style={[StyleSheet.absoluteFill, { opacity: 0.35, pointerEvents: "none" }]}>
@@ -202,6 +239,10 @@ export function MetricasEstilo({ embutido = false }: { embutido?: boolean }) {
 }
 
 const styles = StyleSheet.create({
+  larga: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 24, gap: 16 },
+  grade: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  opcaoLarga: { width: "32%", flexGrow: 1, minWidth: 220, borderRadius: 12, borderWidth: 1, padding: 16, gap: 6 },
+  opcaoTopo: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   outer: {
     flex: 1,
   },

@@ -106,7 +106,14 @@ export const GRUPOS_CONFIGURACAO: GrupoSubtelas[] = [
     titulo: SOBRE,
     itens: [
       { id: "tutorial", rotulo: "Rever tutorial inicial", grupo: SOBRE, titulo: "Rever tutorial inicial", acao: true },
-      { id: "app", rotulo: "Informações do app", grupo: SOBRE, titulo: "Informações do app" },
+      {
+        id: "app",
+        rotulo: "Informações do app",
+        grupo: SOBRE,
+        titulo: "Informações do app",
+        descricao:
+          "TrailUp ajuda você a acompanhar sua trilha de aprendizado, módulos, atividades e conquistas em um só lugar. Aqui estão alguns detalhes técnicos e de produto.",
+      },
       { id: "versao", rotulo: "Versão", grupo: SOBRE, titulo: "Informação de versão" },
     ],
   },
