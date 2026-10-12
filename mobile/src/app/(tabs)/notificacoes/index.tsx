@@ -31,10 +31,19 @@ import {
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import { JourneyHeading } from '@/components/JourneyHeading';
+import { NotificacoesDesktop } from "@/components/web/NotificacoesDesktop";
+import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 
 type FilterTab = "todas" | "nao_lidas" | "lidas";
 
-export default function PerfilHome() {
+// Web em tela larga (#346): caixa de entrada do protótipo v4. Nos demais
+// casos (iOS/Android e web estreita) a tela é exatamente a de antes.
+export default function Notificacoes() {
+  const desktop = useDesktopWeb();
+  return desktop ? <NotificacoesDesktop /> : <NotificacoesLista />;
+}
+
+function NotificacoesLista() {
   const { itens, marcarLida, deletar, reload, carregando } = useNotifications();
 
   // Entregue ao guia: sem isso ele descreve itens que ficaram fora da tela.
