@@ -28,7 +28,9 @@ import { Design } from "@/styles/design";
 import { ProfileMetricsViews } from "@/components/perfil/ProfileMetricsViews";
 import { AcoesBannerPerfil } from "@/components/web/AcoesBannerPerfil";
 import { ConquistasDestaque } from "@/components/web/ConquistasDestaque";
+import { AfinidadesPerfilDesktop } from "@/components/web/AfinidadesPerfilDesktop";
 import { IdentidadePerfilDesktop } from "@/components/web/IdentidadePerfilDesktop";
+import { sequenciaDeDias } from "@/utils/sequenciaDias";
 import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { buildProfileMetricsViewModel } from "@/components/perfil/profileMetricsViewModel";
 import {
@@ -294,9 +296,10 @@ export default function PerfilHome() {
               nome={usuario?.nome ?? "Aluno"}
               apelido={username}
               descricao={usuario?.descricao}
-              perfilDominante={dominante}
-              afinidadeDominante={
-                usuario?.perfis.find((item) => normalizeBrainHexProfile(item.nome) === dominante)?.afinidade ?? null
+              perfilAtivo={perfil}
+              ehDominante={perfil === dominante}
+              afinidadeAtivo={
+                usuario?.perfis.find((item) => normalizeBrainHexProfile(item.nome) === perfil)?.afinidade ?? null
               }
               turma={classeAtual?.resumo?.materia_nome}
               professor={classeAtual?.resumo?.professor_nome}
@@ -357,7 +360,23 @@ export default function PerfilHome() {
         </View>
         )}
 
-        {perfisRepresentativos.length > 1 ? (
+        {desktop ? (
+          // Tela larga (#346, protótipo v4): troca em lista, barra das afinidades e os números da jornada.
+          <AfinidadesPerfilDesktop
+            afinidades={perfisRepresentativos.map((profileKey) => ({
+              perfil: profileKey,
+              afinidade: usuario?.perfis.find((item) => normalizeBrainHexProfile(item.nome) === profileKey)?.afinidade ?? 0,
+            }))}
+            ativo={perfil}
+            salvando={perfilSalvando}
+            onSelecionar={(profileKey) => void handleSelecionarPerfil(profileKey)}
+            trocaRef={profileSwitcherGuideRef}
+            turma={classeAtual?.resumo?.materia_nome}
+            sequencia={sequenciaDeDias(metricsViewModel.semanaDiaria)}
+            posicao={metricsViewModel.melhorPosicao?.posicao ?? null}
+            palette={shellPalette}
+          />
+        ) : perfisRepresentativos.length > 1 ? (
           <View ref={profileSwitcherGuideRef} collapsable={false} style={styles.profileSwitcherWrap}>
             <Text style={[styles.profileSwitcherTitle, { color: shellPalette.textMuted }]}>
               Alternar perfil ativo

@@ -22,15 +22,17 @@ export function formatarJornadaDesde(criadoEm: string | null | undefined): strin
 /**
  * Coluna de identidade do Perfil na web em tela larga (#346, protótipo v4,
  * 08-perfil-hub.html): nome, @, bio, informações (turma, guilda, e-mail, desde
- * quando está na jornada) e o chip do perfil dominante. O retrato fica sobre o
- * banner, desenhado pela tela.
+ * quando está na jornada) e o chip do perfil ativo ("Perfil dominante" quando
+ * ele é também o de maior afinidade, "Perfil ativo" quando não), como no v4.
+ * O retrato fica sobre o banner, desenhado pela tela.
  */
 export function IdentidadePerfilDesktop({
   nome,
   apelido,
   descricao,
-  perfilDominante,
-  afinidadeDominante,
+  perfilAtivo,
+  ehDominante,
+  afinidadeAtivo,
   turma,
   professor,
   email,
@@ -40,8 +42,9 @@ export function IdentidadePerfilDesktop({
   nome: string;
   apelido: string;
   descricao: string | null | undefined;
-  perfilDominante: BrainHexProfile;
-  afinidadeDominante: number | null;
+  perfilAtivo: BrainHexProfile;
+  ehDominante: boolean;
+  afinidadeAtivo: number | null;
   turma: string | null | undefined;
   professor: string | null | undefined;
   email: string | null | undefined;
@@ -76,7 +79,8 @@ export function IdentidadePerfilDesktop({
     };
   }, []);
 
-  const dominante = getBrainHexConfig(perfilDominante);
+  const ativo = getBrainHexConfig(perfilAtivo);
+  const rotuloChip = ehDominante ? "PERFIL DOMINANTE" : "PERFIL ATIVO";
   return (
     <View style={s.bloco}>
       <Text style={[s.nome, { color: palette.text }]}>{nome}</Text>
@@ -91,13 +95,13 @@ export function IdentidadePerfilDesktop({
         palette={palette}
       />
       <View
-        accessibilityLabel={`Perfil dominante: ${dominante.label}${afinidadeDominante !== null ? `, ${Math.round(afinidadeDominante)}% de afinidade` : ""}`}
+        accessibilityLabel={`${ehDominante ? "Perfil dominante" : "Perfil ativo"}: ${ativo.label}${afinidadeAtivo !== null ? `, ${Math.round(afinidadeAtivo)}% de afinidade` : ""}`}
         style={[s.chip, { backgroundColor: palette.surface, borderColor: palette.borderStrong }]}
       >
-        <ProfileArtwork source={profileEmblems[perfilDominante]} profile={perfilDominante} width={30} height={30} />
+        <ProfileArtwork source={profileEmblems[perfilAtivo]} profile={perfilAtivo} width={30} height={30} />
         <View>
-          <Text style={[s.chipNome, { color: palette.text }]}>{dominante.label}</Text>
-          <Text style={[s.chipRotulo, { color: palette.accent }]}>PERFIL DOMINANTE</Text>
+          <Text style={[s.chipNome, { color: palette.text }]}>{ativo.label}</Text>
+          <Text style={[s.chipRotulo, { color: palette.accent }]}>{rotuloChip}</Text>
         </View>
       </View>
     </View>
