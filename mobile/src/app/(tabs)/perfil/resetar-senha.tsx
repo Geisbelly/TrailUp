@@ -8,14 +8,6 @@ import { supabase } from "@/database/supabase";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { useEmbutidoConfiguracoes } from "@/context/EmbutidoConfiguracoesContext";
-import { ApoioConfig, CartaoConfig, DuasColunasConfig, TextoApoio } from "@/components/web/SecaoConfigDesktop";
-
-// Passos da tela larga, como no protótipo.
-const PASSOS = [
-  'Clique em "Solicitar alteração".',
-  "Abra o e-mail enviado e clique no link de redefinição.",
-  "Defina sua nova senha.",
-];
 
 export default function ResetarSenhaScreen() {
   const embutido = useEmbutidoConfiguracoes();
@@ -55,8 +47,62 @@ export default function ResetarSenhaScreen() {
     }
   };
 
-  const modais = (
-    <>
+  return (
+    <View style={[styles.outer, { backgroundColor: palette.background }]}>
+      <View style={[StyleSheet.absoluteFill, { opacity: 0.35, pointerEvents: "none" }]}>
+        <HallBackground palette={palette} />
+      </View>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+    >
+      {embutido ? null : <Text style={[styles.title, { color: palette.text }]}>Redefinir senha</Text>}
+      <Text style={[styles.subtitle, { color: palette.textMuted }]}>
+        Enviaremos um e-mail com as instruções para redefinir sua senha. Verifique sua caixa
+        de entrada e siga o link recebido.
+      </Text>
+
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: palette.surfaceElevated, borderColor: palette.border },
+        ]}
+      >
+        <Text style={[styles.label, { color: palette.text }]}>E-mail da conta</Text>
+        <Text style={[styles.value, { color: palette.textMuted }]}>
+          {usuario?.email ?? "-"}
+        </Text>
+      </View>
+
+      <Text style={[styles.stepsTitle, { color: palette.text }]}>Passos</Text>
+      <View
+        style={[
+          styles.list,
+          { backgroundColor: palette.surface, borderColor: palette.border },
+        ]}
+      >
+        <Text style={[styles.step, { color: palette.textMuted }]}>
+          1. Clique em &quot;Solicitar alteração&quot;.
+        </Text>
+        <Text style={[styles.step, { color: palette.textMuted }]}>
+          2. Abra o e-mail enviado e clique no link de redefinição.
+        </Text>
+        <Text style={[styles.step, { color: palette.textMuted }]}>
+          3. Defina sua nova senha na página do Supabase.
+        </Text>
+      </View>
+
+      <TouchableOpacity
+        style={[
+          styles.button,
+          { backgroundColor: palette.accent, borderColor: palette.borderStrong },
+        ]}
+        onPress={() => setConfirmVisible(true)}
+        accessibilityRole="button"
+      >
+        <Text style={styles.buttonText}>Solicitar alteração</Text>
+      </TouchableOpacity>
+
       <Modal
         transparent
         visible={confirmVisible}
@@ -135,118 +181,12 @@ export default function ResetarSenhaScreen() {
           </View>
         </View>
       </Modal>
-    </>
-  );
-
-  // Embutida nas Configurações da web em tela larga (#346, protótipo v4): e-mail e botão num cartão, os passos ao lado.
-  if (embutido) {
-    return (
-      <>
-        <DuasColunasConfig
-          apoio={
-            <ApoioConfig titulo="Passos" palette={palette}>
-              {PASSOS.map((passo, i) => (
-                <View key={passo} style={styles.passoLinha}>
-                  <View style={[styles.passoNumero, { borderColor: palette.accent }]}>
-                    <Text style={[styles.passoNumeroTexto, { color: palette.accent }]}>{i + 1}</Text>
-                  </View>
-                  <View style={styles.passoTexto}>
-                    <TextoApoio palette={palette}>{passo}</TextoApoio>
-                  </View>
-                </View>
-              ))}
-            </ApoioConfig>
-          }
-        >
-          <CartaoConfig palette={palette}>
-            <Text style={[styles.label, { color: palette.text }]}>E-mail da conta</Text>
-            <View style={[styles.caixa, { backgroundColor: palette.background, borderColor: palette.border }]}>
-              <Text style={[styles.value, { color: palette.textMuted }]}>{usuario?.email ?? "-"}</Text>
-            </View>
-            <TouchableOpacity
-              style={[styles.botaoLargo, { backgroundColor: palette.accent }]}
-              onPress={() => setConfirmVisible(true)}
-              accessibilityRole="button"
-            >
-              <Text style={[styles.botaoLargoTexto, { color: palette.background }]}>Solicitar alteração</Text>
-            </TouchableOpacity>
-          </CartaoConfig>
-        </DuasColunasConfig>
-        {modais}
-      </>
-    );
-  }
-
-  return (
-    <View style={[styles.outer, { backgroundColor: palette.background }]}>
-      <View style={[StyleSheet.absoluteFill, { opacity: 0.35, pointerEvents: "none" }]}>
-        <HallBackground palette={palette} />
-      </View>
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-    >
-      {embutido ? null : <Text style={[styles.title, { color: palette.text }]}>Redefinir senha</Text>}
-      <Text style={[styles.subtitle, { color: palette.textMuted }]}>
-        Enviaremos um e-mail com as instruções para redefinir sua senha. Verifique sua caixa
-        de entrada e siga o link recebido.
-      </Text>
-
-      <View
-        style={[
-          styles.card,
-          { backgroundColor: palette.surfaceElevated, borderColor: palette.border },
-        ]}
-      >
-        <Text style={[styles.label, { color: palette.text }]}>E-mail da conta</Text>
-        <Text style={[styles.value, { color: palette.textMuted }]}>
-          {usuario?.email ?? "-"}
-        </Text>
-      </View>
-
-      <Text style={[styles.stepsTitle, { color: palette.text }]}>Passos</Text>
-      <View
-        style={[
-          styles.list,
-          { backgroundColor: palette.surface, borderColor: palette.border },
-        ]}
-      >
-        <Text style={[styles.step, { color: palette.textMuted }]}>
-          1. Clique em &quot;Solicitar alteração&quot;.
-        </Text>
-        <Text style={[styles.step, { color: palette.textMuted }]}>
-          2. Abra o e-mail enviado e clique no link de redefinição.
-        </Text>
-        <Text style={[styles.step, { color: palette.textMuted }]}>
-          3. Defina sua nova senha na página do Supabase.
-        </Text>
-      </View>
-
-      <TouchableOpacity
-        style={[
-          styles.button,
-          { backgroundColor: palette.accent, borderColor: palette.borderStrong },
-        ]}
-        onPress={() => setConfirmVisible(true)}
-        accessibilityRole="button"
-      >
-        <Text style={styles.buttonText}>Solicitar alteração</Text>
-      </TouchableOpacity>
-
-      {modais}
     </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  caixa: { borderRadius: 8, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10 },
-  botaoLargo: { alignSelf: "flex-end", borderRadius: 999, paddingVertical: 10, paddingHorizontal: 18 },
-  botaoLargoTexto: { fontFamily: FontFamily.interMedium, fontSize: 13.5, fontWeight: "700" },
-  passoLinha: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
-  passoNumero: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
-  passoNumeroTexto: { fontFamily: FontFamily.interMedium, fontSize: 11, fontWeight: "700" },
-  passoTexto: { flex: 1, paddingTop: 2 },
   outer: {
     flex: 1,
   },

@@ -8,6 +8,8 @@ import { PrivateChatModal } from "@/components/social/PrivateChatModal";
 import { GuildSection } from "@/components/social/GuildSection";
 import type { GuildShareOption } from "@/components/social/GuildChatModal";
 import { StoreLauncher } from "@/components/loja/StoreLauncher";
+import { SocialLateralDesktop } from "@/components/web/SocialLateralDesktop";
+import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { StoreModal } from "@/components/loja/StoreModal";
 import { useUsuario } from "@/context/SessaoContext";
 import { useTrilha } from "@/context/TrilhaContext";
@@ -33,6 +35,8 @@ function errorMessage(error: unknown) {
 }
 
 export default function SocialScreen() {
+  // Web em tela larga (#346, protótipo v4): cabeçalho como o da Loja, pílulas, lista em grade e coluna lateral.
+  const desktop = useDesktopWeb();
   const { usuario, autenticado } = useUsuario();
   const { classeAtual } = useTrilha();
   const classeId = Number(classeAtual?.classe_id ?? 0);
@@ -118,6 +122,10 @@ export default function SocialScreen() {
     if (succeeded) setChatPerson({ ...person, status: "candidate" });
   }
 
+  // Na tela larga a lista é uma grade de duas colunas; no celular o cartão segue sem invólucro.
+  const Envolve: React.ElementType = desktop ? View : React.Fragment;
+  const celula = (chave: string, cartao: React.ReactElement) => (desktop ? <View key={chave} style={styles.celula}>{cartao}</View> : cartao);
+
   function actionFor(person: SocialPerson) {
     if (person.status === "blocked") return { label: "Desbloquear", fn: () => void unblockAndOpenChat(person) };
     if (person.status === "candidate") return { label: "Convidar", fn: () => act(person.alunoId, () => enviarConvite(person.alunoId)) };
@@ -134,17 +142,24 @@ export default function SocialScreen() {
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={loading && social !== null} onRefresh={() => void load()} tintColor={palette.accent} />}>
           <View style={styles.header}>
-            <View style={{ marginHorizontal: -20 }}>
-              <JourneyHeading title="Social" eyebrow="CONEXÕES DA JORNADA" section="social" palette={palette} right={<StoreLauncher color={Color.colorWhite} onPress={() => setStoreVisible(true)} />} />
-            </View>
+            {desktop ? (
+              <View style={styles.cabecalhoLargo}>
+                <Text style={[styles.eyebrowLargo, { color: palette.accent }]}>CONEXÕES DA JORNADA</Text>
+                <Text accessibilityRole="header" style={[styles.tituloLargo, { color: palette.text }]}>Social</Text>
+              </View>
+            ) : (
+              <View style={{ marginHorizontal: -20 }}>
+                <JourneyHeading title="Social" eyebrow="CONEXÕES DA JORNADA" section="social" palette={palette} right={<StoreLauncher color={Color.colorWhite} onPress={() => setStoreVisible(true)} />} />
+              </View>
+            )}
             <Text style={[styles.subtitle, { color: palette.textMuted }]}>Encontre sua turma e avance em companhia.</Text>
             <View style={styles.tabs}>
               {sections.map(({ key, label, count }) => {
                 const active = section === key;
                 return (
                   <Pressable key={key} accessibilityRole="tab" accessibilityState={{ selected: active }} onPress={() => { setSection(key); setSearch(""); }}
-                    style={[styles.tab, { borderColor: active ? palette.accent : palette.border, backgroundColor: active ? palette.surfaceElevated : palette.surface }]}>
-                    <Text style={[styles.tabText, { color: active ? palette.text : palette.textMuted }]}>{label}</Text>
+                    style={[styles.tab, desktop && styles.pilula, { borderColor: active ? palette.accent : palette.border, backgroundColor: desktop ? (active ? palette.accent : palette.accentMuted) : active ? palette.surfaceElevated : palette.surface }]}>
+                    <Text style={[styles.tabText, { color: desktop && active ? palette.background : active ? palette.text : palette.textMuted }]}>{label}</Text>
                     {count !== undefined ? <Text style={[styles.count, { color: palette.text }]}>{count}</Text> : null}
                   </Pressable>
                 );
@@ -156,6 +171,8 @@ export default function SocialScreen() {
               {search ? <Pressable onPress={() => setSearch("")} accessibilityRole="button" accessibilityLabel="Limpar busca" style={styles.clearSearch}><MaterialCommunityIcons name="close" size={20} color={Color.colorWhite} /></Pressable> : null}
             </View> : null}
           </View>
+          <Envolve {...(desktop ? { style: styles.colunas } : {})}>
+          <Envolve {...(desktop ? { style: styles.principal } : {})}>
           {loading && !social ? <ActivityIndicator color={palette.accent} style={styles.loader} /> : error ? (
             <View style={styles.empty}>
               <MaterialCommunityIcons name="alert-circle-outline" size={42} color={Color.colorWhite} />
@@ -171,7 +188,10 @@ export default function SocialScreen() {
               <Text style={[styles.message, { color: palette.textMuted }]}>{search.trim() ? "Tente outro nome ou limpe a busca." : emptyMessage}</Text>
               {section === "friends" && !search.trim() ? <Pressable onPress={() => setSection("discover")} style={[styles.retry, { backgroundColor: palette.surfaceElevated, borderColor: palette.borderStrong, borderWidth: 1 }]}><Text style={styles.retryText}>Encontrar colegas</Text></Pressable> : null}
             </View>
-          ) : <View style={styles.list}>{people.map((person) => person.status === "incoming" ? <SocialInviteCard key={person.relationshipId} person={person} accent={palette.accent} onAccept={() => act(person.alunoId, () => aceitarConvite(person.relationshipId!))} onDecline={() => act(person.alunoId, () => recusarConvite(person.relationshipId!))} onPressProfile={() => setSelectedPerson(person)} /> : <SocialPersonCard key={person.relationshipId ?? person.alunoId} person={person} accent={palette.accent} actionLabel={busy === person.alunoId ? "..." : actionFor(person).label} onAction={actionFor(person).fn} onPressProfile={() => setSelectedPerson(person)} onPressChat={() => setChatPerson(person)} secondaryLabel={person.status === "friend" ? "Bloquear" : undefined} onSecondary={() => act(person.alunoId, () => bloquear(person.alunoId))} />)}</View>}
+          ) : <View style={[styles.list, desktop && styles.grade]}>{people.map((person) => celula(person.relationshipId ?? person.alunoId, person.status === "incoming" ? <SocialInviteCard key={person.relationshipId} person={person} accent={palette.accent} onAccept={() => act(person.alunoId, () => aceitarConvite(person.relationshipId!))} onDecline={() => act(person.alunoId, () => recusarConvite(person.relationshipId!))} onPressProfile={() => setSelectedPerson(person)} /> : <SocialPersonCard key={person.relationshipId ?? person.alunoId} person={person} accent={palette.accent} actionLabel={busy === person.alunoId ? "..." : actionFor(person).label} onAction={actionFor(person).fn} onPressProfile={() => setSelectedPerson(person)} onPressChat={() => setChatPerson(person)} secondaryLabel={person.status === "friend" ? "Bloquear" : undefined} onSecondary={() => act(person.alunoId, () => bloquear(person.alunoId))} />))}</View>}
+          </Envolve>
+          {desktop ? <SocialLateralDesktop social={social} guildas={guilds} palette={palette} onAbrirGuildas={() => { setSection("guilds"); setSearch(""); }} /> : null}
+          </Envolve>
         </ScrollView>
       </SafeAreaView>
       {usuario?.id && activeClasseId > 0 ? <StoreModal visible={storeVisible} alunoId={usuario.id} classeId={activeClasseId} profileName={profile} onClose={() => setStoreVisible(false)} /> : null}
@@ -184,6 +204,14 @@ export default function SocialScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1 }, safeArea: { flex: 1 },
   content: { paddingHorizontal: 20, paddingBottom: 28 },
+  cabecalhoLargo: { gap: 4, paddingTop: 8 },
+  eyebrowLargo: { fontFamily: FontFamily.interMedium, fontSize: 11, fontWeight: "700", letterSpacing: 1.2 },
+  tituloLargo: { fontFamily: FontFamily.inikaBold, fontSize: 30 },
+  pilula: { borderRadius: 999, minHeight: 36, paddingHorizontal: 16 },
+  colunas: { flexDirection: "row", gap: 20, alignItems: "flex-start" },
+  principal: { flex: 1, minWidth: 0 },
+  grade: { flexDirection: "row", flexWrap: "wrap" },
+  celula: { width: "49%", minWidth: 320 },
   header: { marginBottom: 16 },
   subtitle: { fontFamily: FontFamily.interMedium, fontSize: 14, lineHeight: 21, marginTop: 12 },
   tabs: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 16 },
