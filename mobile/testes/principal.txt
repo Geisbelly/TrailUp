@@ -90,3 +90,4 @@ src/utils/unlockedTopics.test.ts
 src/utils/webShadow.test.ts
 src/utils/webviewSpeechBridge.test.ts
 src/services/googleRedirect.core.test.ts
+src/utils/desktopWeb.test.ts
