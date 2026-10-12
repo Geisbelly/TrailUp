@@ -47,7 +47,13 @@ export const GRUPOS_CONFIGURACAO: GrupoSubtelas[] = [
         titulo: "Informações pessoais",
         descricao: "Seu nome, apelido e descrição aparecem no seu perfil público para a turma.",
       },
-      { id: "senha", rotulo: "Resetar senha", grupo: CONTA, titulo: "Redefinir senha" },
+      {
+        id: "senha",
+        rotulo: "Resetar senha",
+        grupo: CONTA,
+        titulo: "Redefinir senha",
+        descricao: "Enviaremos um e-mail com as instruções para redefinir sua senha. Verifique sua caixa de entrada e siga o link recebido.",
+      },
     ],
   },
   {
@@ -64,7 +70,14 @@ export const GRUPOS_CONFIGURACAO: GrupoSubtelas[] = [
       { id: "relatorio", rotulo: "Gerar relatório dos dados", grupo: PRIVACIDADE, titulo: "Gerar relatório dos dados", acao: true },
       { id: "privacidade", rotulo: "Política de privacidade", grupo: PRIVACIDADE, titulo: "Política de privacidade", acao: true },
       { id: "termos", rotulo: "Termos de uso", grupo: PRIVACIDADE, titulo: "Termos de uso", acao: true },
-      { id: "excluir", rotulo: "Solicitar exclusão da conta", grupo: PRIVACIDADE, titulo: "Solicitar exclusão da conta", perigo: true },
+      {
+        id: "excluir",
+        rotulo: "Solicitar exclusão da conta",
+        grupo: PRIVACIDADE,
+        titulo: "Solicitar exclusão da conta",
+        descricao: "Informe o motivo e confirmaremos a exclusão dos seus dados. Você receberá um e-mail para prosseguir.",
+        perigo: true,
+      },
     ],
   },
   {

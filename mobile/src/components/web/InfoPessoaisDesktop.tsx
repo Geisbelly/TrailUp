@@ -140,7 +140,7 @@ export function InfoPessoaisDesktop({ form, palette }: { form: Form; palette: Pr
 }
 
 const s = StyleSheet.create({
-  tela: { flexDirection: "row", gap: 16, alignItems: "flex-start", paddingBottom: 24 },
+  tela: { flexDirection: "row", gap: 16, alignItems: "flex-start", paddingHorizontal: 20, paddingTop: 24, paddingBottom: 24 },
   principal: { flex: 1, minWidth: 0, gap: 16 },
   lado: { width: 260, gap: 12 },
   cartao: { borderRadius: 14, borderWidth: 1, padding: 18 },
