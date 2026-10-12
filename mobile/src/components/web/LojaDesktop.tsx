@@ -1,22 +1,24 @@
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import React, { useCallback, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { StoreCard } from "@/components/loja/StoreModal";
 import { UtilityIcon } from "@/components/UtilityIcon";
+import { CartaoItemLoja } from "@/components/web/CartaoItemLoja";
+import { useDialog } from "@/context/DialogContext";
 import { useUsuario } from "@/context/SessaoContext";
 import { useTrilha } from "@/context/TrilhaContext";
 import { carregarGanhoMoedas, carregarLoja, comprarItem, type StoreItem, type StoreSnapshot } from "@/services/loja/lojaService";
 import { FontFamily } from "@/styles/GlobalStyle";
+import { avisoCompraFeita, textoConfirmacao } from "@/utils/compraLoja";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 
 type Ganho = Awaited<ReturnType<typeof carregarGanhoMoedas>>;
 
 /**
  * Loja como página na web em tela larga (#346, protótipo v4, `12-loja.html`):
- * cabeçalho, o saldo com "Como ganhar" e os itens em duas colunas. No celular
- * a Loja continua sendo o modal aberto pelo Social.
+ * cabeçalho, o saldo com "Como ganhar" e os itens em duas colunas. Comprar
+ * pede confirmação, e o resultado aparece dentro do card. No celular a Loja
+ * continua sendo o modal aberto pelo Social.
  */
 export function LojaDesktop() {
   const { usuario } = useUsuario();
@@ -28,7 +30,10 @@ export function LojaDesktop() {
   const [ganho, setGanho] = useState<Ganho | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  const [aviso, setAviso] = useState<string | null>(null);
+  // Aviso e erro da compra ficam no card do item (id do item → texto).
+  const [aviso, setAviso] = useState<{ id: string; texto: string } | null>(null);
+  const [erroCompra, setErroCompra] = useState<{ id: string; texto: string } | null>(null);
+  const { showConfirm } = useDialog();
   const [comprando, setComprando] = useState<string | null>(null);
   const trava = useRef(false);
   const pedido = useRef(0);
@@ -57,6 +62,7 @@ export function LojaDesktop() {
   useFocusEffect(
     useCallback(() => {
       setAviso(null);
+      setErroCompra(null);
       void carregar();
       return () => {
         pedido.current += 1;
@@ -64,19 +70,31 @@ export function LojaDesktop() {
     }, [carregar]),
   );
 
+  const pedirCompra = (item: StoreItem) => {
+    if (!loja) return;
+    const texto = textoConfirmacao(item, loja.balance);
+    showConfirm({
+      title: texto.titulo,
+      description: texto.descricao,
+      tone: "info",
+      confirmLabel: texto.confirmar,
+      onConfirm: () => comprar(item),
+    });
+  };
+
   // Mesma trava de compra do modal do app: uma compra por vez.
   async function comprar(item: StoreItem) {
     if (!classeId || item.state !== "available" || trava.current) return;
     trava.current = true;
     setComprando(item.id);
-    setErro(null);
     setAviso(null);
+    setErroCompra(null);
     try {
       await comprarItem(item.id, classeId);
-      setAviso(`${item.name} adquirido.`);
+      setAviso({ id: item.id, texto: avisoCompraFeita(item) });
       await carregar();
     } catch (caught) {
-      setErro(caught instanceof Error ? caught.message : "Não foi possível concluir a compra.");
+      setErroCompra({ id: item.id, texto: caught instanceof Error ? caught.message : "Não foi possível concluir a compra." });
     } finally {
       trava.current = false;
       setComprando(null);
@@ -118,12 +136,6 @@ export function LojaDesktop() {
         ) : null}
       </View>
 
-      {aviso ? (
-        <View accessibilityLiveRegion="polite" style={[s.faixa, { borderColor: palette.accent }]}>
-          <MaterialCommunityIcons name="check-circle-outline" size={20} color={palette.accent} />
-          <Text style={[s.texto, { color: palette.text }]}>{aviso}</Text>
-        </View>
-      ) : null}
       {erro ? (
         <View accessibilityRole="alert" style={[s.faixa, { borderColor: palette.borderStrong }]}>
           <Text style={[s.texto, s.flex, { color: palette.text }]}>{erro}</Text>
@@ -147,12 +159,15 @@ export function LojaDesktop() {
         <View style={s.grade}>
           {loja.items.map((item) => (
             <View key={item.id} style={s.celula}>
-              <StoreCard
+              <CartaoItemLoja
                 item={item}
+                saldo={loja.balance}
                 palette={palette}
-                buying={comprando === item.id}
-                busy={!!comprando || carregando}
-                onBuy={() => void comprar(item)}
+                comprando={comprando === item.id}
+                ocupado={!!comprando || carregando}
+                aviso={aviso?.id === item.id ? aviso.texto : null}
+                erro={erroCompra?.id === item.id ? erroCompra.texto : null}
+                onComprar={() => pedirCompra(item)}
               />
             </View>
           ))}
