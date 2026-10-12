@@ -24,6 +24,23 @@ import { filtrarGrupos, subtelaDaUrl, type IdSubtela, type Subtela } from "@/uti
 const pkg = require("../../../package.json");
 const PERIGO = "#ff8f8f";
 
+// Ícone de cada linha da lista, como no protótipo v4 (11-configuracoes.html).
+const ICONES: Partial<Record<IdSubtela, React.ComponentProps<typeof Feather>["name"]>> = {
+  info: "user",
+  senha: "lock",
+  coleta: "users",
+  relatorio: "book",
+  privacidade: "shield",
+  termos: "file-text",
+  excluir: "trash-2",
+  lembrete: "bell",
+  aparencia: "sun",
+  metricas: "bar-chart-2",
+  tutorial: "help-circle",
+  app: "info",
+  versao: "tag",
+};
+
 // A subtela aberta é a própria tela do app, embutida no painel da direita.
 const TELAS: Partial<Record<IdSubtela, () => React.ReactElement>> = {
   info: () => <InformacoesPessoais />,
@@ -94,6 +111,9 @@ export function ConfiguracoesDesktop() {
                       ativa || hovered ? { backgroundColor: palette.surfaceElevated } : null,
                     ]}
                   >
+                    {ICONES[item.id] ? (
+                      <Feather name={ICONES[item.id]} size={16} color={item.perigo ? PERIGO : palette.accent} />
+                    ) : null}
                     <Text
                       style={[
                         s.linhaTexto,
@@ -103,7 +123,7 @@ export function ConfiguracoesDesktop() {
                     >
                       {rotulo}
                     </Text>
-                    {item.acao ? <Feather name="arrow-up-right" size={14} color={palette.textSubtle} /> : null}
+                    <Feather name={item.acao ? "arrow-up-right" : "chevron-right"} size={14} color={palette.textSubtle} />
                   </Pressable>
                 );
               })}
