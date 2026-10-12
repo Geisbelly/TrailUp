@@ -145,7 +145,11 @@ function clipToHex(cx: number, cy: number, r: number, tx: number, ty: number) {
   return { x: best.x, y: best.y };
 }
 
-export const TrilhaArvoreSimple: React.FC<{ currentTopicId: string | null }> = ({ currentTopicId }) => {
+export const TrilhaArvoreSimple: React.FC<{
+  currentTopicId: string | null;
+  /** Web em tela larga (#346): o toque seleciona o tópico no painel ao lado, em vez de abrir. */
+  onSelecionarTopico?: (id: string) => void;
+}> = ({ currentTopicId, onSelecionarTopico }) => {
   const { grafo, perfil } = useTrilha();
   const router = useRouter();
   const { width: winW, height: winH } = useWindowDimensions();
@@ -374,6 +378,10 @@ const adjustedPositions = useMemo(() => {
   }, [grafo.edges, grafo.nodes]);
 
   const go = (id: string, locked: boolean, title: string) => {
+    if (onSelecionarTopico) {
+      onSelecionarTopico(String(id));
+      return;
+    }
     if (locked) {
       setLockedNode({ title, prerequisites: prerequisiteTitles.get(String(id)) ?? [] });
       return;

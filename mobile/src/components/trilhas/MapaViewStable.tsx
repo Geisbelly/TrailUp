@@ -106,9 +106,12 @@ function buildContinentBackdrop(
 export function TrilhaMapaHeroStable({
   tourTargetRef,
   currentTopicId,
+  onSelecionarTopico,
 }: {
   currentTopicId: string | null;
   tourTargetRef?: React.RefObject<View | null>;
+  /** Web em tela larga (#346): o toque seleciona o tópico no painel ao lado, em vez de abrir. */
+  onSelecionarTopico?: (id: string) => void;
 }) {
   const { grafo, mapTheme, perfil } = useTrilha();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
@@ -496,6 +499,10 @@ export function TrilhaMapaHeroStable({
                   ref={nodeIndex === 0 ? tourTargetRef : undefined}
                   collapsable={false}
                   onPress={() => {
+                    if (onSelecionarTopico) {
+                      onSelecionarTopico(node.id);
+                      return;
+                    }
                     if (node.locked) {
                       setLockedNode(node);
                       return;

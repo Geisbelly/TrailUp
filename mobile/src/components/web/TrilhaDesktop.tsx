@@ -116,9 +116,9 @@ export function TrilhaDesktop({ chatGuideTargetRef }: { chatGuideTargetRef?: Rea
         </View>
 
         <View ref={visual === "arvore" ? jornadaRef : undefined} collapsable={false} style={[s.tabuleiro, { borderColor: palette.border }]}>
-          {visual === "mapa" && <TrilhaMapaHeroStable currentTopicId={atualId} tourTargetRef={jornadaRef} />}
-          {visual === "arvore" && <TrilhaArvoreSimple currentTopicId={atualId} />}
-          {visual === "lista" && <TrilhaLinearList currentTopicId={atualId} tourTargetRef={jornadaRef} />}
+          {visual === "mapa" && <TrilhaMapaHeroStable currentTopicId={atualId} tourTargetRef={jornadaRef} onSelecionarTopico={setSelecionado} />}
+          {visual === "arvore" && <TrilhaArvoreSimple currentTopicId={atualId} onSelecionarTopico={setSelecionado} />}
+          {visual === "lista" && <TrilhaLinearList currentTopicId={atualId} tourTargetRef={jornadaRef} onSelecionarTopico={setSelecionado} />}
         </View>
       </View>
 
