@@ -3,8 +3,10 @@ import { IAMentorPanel } from "@/components/ia/IAMentorPanel";
 import { LoadingState } from "@/components/LoadingState";
 import { BagModal } from "@/components/bag/BagModal";
 import { TrilhaBase } from "@/components/trilhas/TrilhaBase";
+import { TrilhaDesktop } from "@/components/web/TrilhaDesktop";
 import { useIA } from "@/context/IAContext";
 import { useTrilha } from "@/context/TrilhaContext";
+import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { Color } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -19,6 +21,7 @@ export default function TrilhasIndex() {
   const personalizationCueKeyRef = useRef<string | null>(null);
   const chatGuideTargetRef = useRef<View | null>(null);
   const [bagOpen, setBagOpen] = useState(false);
+  const desktop = useDesktopWeb();
 
   const trailMentorCue = useMemo(() => {
     const currentClass = classeAtual;
@@ -111,8 +114,15 @@ export default function TrilhasIndex() {
       edges={["top", "left", "right"]}
       style={[styles.root, { backgroundColor: palette.background }]}
     >
-      <TrilhaBase chatGuideTargetRef={chatGuideTargetRef} onOpenBag={() => setBagOpen(true)} />
-      <BagModal visible={bagOpen} classeId={classeAtual?.classe_id ?? null} profile={perfil} onClose={() => setBagOpen(false)} />
+      {/* Na web em tela larga (#346) a Trilha tem o painel do tópico ao lado, e a Bag fica na barra superior. */}
+      {desktop ? (
+        <TrilhaDesktop chatGuideTargetRef={chatGuideTargetRef} />
+      ) : (
+        <>
+          <TrilhaBase chatGuideTargetRef={chatGuideTargetRef} onOpenBag={() => setBagOpen(true)} />
+          <BagModal visible={bagOpen} classeId={classeAtual?.classe_id ?? null} profile={perfil} onClose={() => setBagOpen(false)} />
+        </>
+      )}
       <IAMentorPanel
         classeId={classeAtual?.classe_id ?? null}
         topicoId={trailMentorCue?.topicoId ?? null}

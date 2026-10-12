@@ -32,10 +32,15 @@ type Row = {
 export const TrilhaLinearList: React.FC<{
   currentTopicId: string | null;
   tourTargetRef?: React.RefObject<View | null>;
-}> = ({ currentTopicId, tourTargetRef }) => {
+  /** Web em tela larga (#346): o toque seleciona o tópico no painel ao lado, em vez de abrir. */
+  onSelecionarTopico?: (id: string) => void;
+  /** Web em tela larga (#346): tamanho do tabuleiro, usado no lugar do tamanho da janela. */
+  quadro?: { largura: number; altura: number };
+}> = ({ currentTopicId, tourTargetRef, onSelecionarTopico, quadro }) => {
   const { grafo, perfil } = useTrilha();
   const palette = getProfileShellPalette(perfil);
-  const { width: winW } = useWindowDimensions();
+  const janela = useWindowDimensions();
+  const winW = quadro?.largura ?? janela.width;
   const [lockedRow, setLockedRow] = useState<Row | null>(null);
   const list = useRef<FlatList<Row>>(null);
   const focused = useIsFocused();
@@ -103,6 +108,7 @@ export const TrilhaLinearList: React.FC<{
             palette={palette}
             targetRef={index === 0 ? tourTargetRef : undefined}
             onLockedPress={() => setLockedRow(item)}
+            onSelecionar={onSelecionarTopico ? () => onSelecionarTopico(String(item.id)) : undefined}
           />
         )}
         showsVerticalScrollIndicator={false}
@@ -136,12 +142,14 @@ const ItemCard = ({
   palette,
   targetRef,
   onLockedPress,
+  onSelecionar,
 }: {
   row: Row;
   current: boolean;
   palette: ReturnType<typeof getProfileShellPalette>;
   targetRef?: React.RefObject<View | null>;
   onLockedPress: () => void;
+  onSelecionar?: () => void;
 }) => {
   const router = useRouter();
   const disabled = row.estado === "bloqueado";
@@ -187,12 +195,16 @@ const ItemCard = ({
         : "Disponível";
 
   const onPress = useCallback(() => {
+    if (onSelecionar) {
+      onSelecionar();
+      return;
+    }
     if (disabled) {
       onLockedPress();
       return;
     }
     router.push({ pathname: "/(tabs)/trilha/[id]", params: { id: row.id } });
-  }, [router, row.id, disabled, onLockedPress]);
+  }, [router, row.id, disabled, onLockedPress, onSelecionar]);
 
   const FallbackIcon = () => {
     if (row.estado === "bloqueado")
