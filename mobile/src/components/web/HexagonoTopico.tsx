@@ -4,10 +4,10 @@ import { StyleSheet, Text, View } from "react-native";
 import Svg, { Defs, LinearGradient, Path, Stop } from "react-native-svg";
 import tinycolor from "tinycolor2";
 
-import { FontFamily } from "@/styles/GlobalStyle";
 import { caminhoHexagono } from "@/utils/mapaPaises";
 import type { EstadoTopico } from "@/utils/painelTopicoTrilha";
 import type { ProfileShellPalette } from "@/utils/profileShellTheme";
+import { FONTE_TITULO_TRILHA } from "@/components/web/fonteCinzel";
 
 const HEX_FORA = caminhoHexagono(50, 50, 46, 9);
 const HEX_DENTRO = caminhoHexagono(50, 50, 37, 7);
@@ -78,5 +78,5 @@ export function HexagonoTopico({
 
 const s = StyleSheet.create({
   glifo: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center" },
-  numero: { fontFamily: FontFamily.inikaBold },
+  numero: { fontFamily: FONTE_TITULO_TRILHA },
 });

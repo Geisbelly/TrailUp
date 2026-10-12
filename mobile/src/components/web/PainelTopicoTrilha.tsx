@@ -7,15 +7,9 @@ import { HexagonoTopico } from "@/components/web/HexagonoTopico";
 import { FontFamily } from "@/styles/GlobalStyle";
 import type { EstadoTopico, PainelTopico } from "@/utils/painelTopicoTrilha";
 import type { ProfileShellPalette } from "@/utils/profileShellTheme";
+import { FONTE_TITULO_TRILHA } from "@/components/web/fonteCinzel";
 
 const SUCESSO = "#62db9b";
-
-const ICONE: Record<EstadoTopico, keyof typeof MaterialCommunityIcons.glyphMap> = {
-  current: "map-marker-radius",
-  done: "check-decagram",
-  open: "play-circle-outline",
-  locked: "lock-outline",
-};
 
 type ItemLista = { id: string; titulo: string; estado: EstadoTopico; percentual: number; numero: number };
 /** Tópico personalizado: a justificativa do plano e o nome do guia do perfil. */
@@ -203,7 +197,7 @@ const s = StyleSheet.create({
   selo: { width: 56, height: 56, borderRadius: 16, borderWidth: 2, alignItems: "center", justifyContent: "center" },
   cabecaTexto: { flex: 1, minWidth: 0, gap: 4 },
   eyebrow: { fontFamily: FontFamily.interMedium, fontSize: 10.5, fontWeight: "700", letterSpacing: 1 },
-  titulo: { fontFamily: FontFamily.inikaBold, fontSize: 19, lineHeight: 24 },
+  titulo: { fontFamily: FONTE_TITULO_TRILHA, fontSize: 19, lineHeight: 24 },
   secao: { paddingHorizontal: 22, paddingBottom: 18 },
   bloqueado: { marginHorizontal: 22, paddingHorizontal: 14, paddingTop: 14, paddingBottom: 14, borderRadius: 12, gap: 8 },
   bloqueadoTitulo: { fontFamily: FontFamily.interMedium, fontSize: 13.5, fontWeight: "700" },

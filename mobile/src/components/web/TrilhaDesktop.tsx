@@ -21,6 +21,7 @@ import { estadoDoTopico, montarPainelTopico, topicoInicial } from "@/utils/paine
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { calcularProgressoTrilha } from "@/utils/progressoTrilha";
 import { registrarAlvoTour } from "@/utils/tourTargets";
+import { FONTE_TITULO_TRILHA, useFonteCinzel } from "@/components/web/fonteCinzel";
 
 /**
  * Trilha na web em tela larga (#346, protótipo v4, `03-trilha.html`): o cartão
@@ -32,6 +33,7 @@ export function TrilhaDesktop({ chatGuideTargetRef }: { chatGuideTargetRef?: Rea
   const { classeAtual, carregando, erro, visual, mapTheme, personalizedTopics, progressoPersonalizado, perfil, grafo } =
     useTrilha();
   const { usuario } = useUsuario();
+  useFonteCinzel();
   const atualId = useTrailResumeTopic();
   const isFocused = useIsFocused();
   const palette = getProfileShellPalette(perfil);
@@ -229,7 +231,7 @@ const s = StyleSheet.create({
   hud: { height: 88, borderRadius: 20, borderWidth: 1, paddingLeft: 18, paddingRight: 20, flexDirection: "row", alignItems: "center", gap: 18 },
   hudTitulo: { flex: 1, minWidth: 0, gap: 2 },
   eyebrow: { fontFamily: FontFamily.interMedium, fontSize: 10.5, fontWeight: "700", letterSpacing: 1.1 },
-  titulo: { fontFamily: FontFamily.inikaBold, fontSize: 22 },
+  titulo: { fontFamily: FONTE_TITULO_TRILHA, fontSize: 22 },
   hudProgresso: { width: 260 },
   hudLinha: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 },
   pequeno: { fontFamily: FontFamily.interMedium, fontSize: 12.5 },
@@ -243,7 +245,7 @@ const s = StyleSheet.create({
   direita: { paddingHorizontal: 32, paddingTop: 28, paddingBottom: 28 },
   centro: { alignItems: "center", justifyContent: "center", padding: 40 },
   vazio: { width: 520, maxWidth: "100%", alignItems: "center", gap: 16, paddingVertical: 64, paddingHorizontal: 40, borderRadius: 20, borderWidth: 1 },
-  vazioTitulo: { fontFamily: FontFamily.inikaBold, fontSize: 24, textAlign: "center" },
+  vazioTitulo: { fontFamily: FONTE_TITULO_TRILHA, fontSize: 24, textAlign: "center" },
   vazioTexto: { fontFamily: FontFamily.interMedium, fontSize: 15, lineHeight: 24, textAlign: "center", maxWidth: 480 },
   vazioNota: { fontSize: 13, lineHeight: 20 },
 });
