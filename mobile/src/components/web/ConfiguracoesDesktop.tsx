@@ -6,6 +6,7 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-
 import Aparencia from "@/app/(tabs)/perfil/appearance";
 import ColetaDados from "@/app/(tabs)/perfil/coleta-dados";
 import ExcluirConta from "@/app/(tabs)/perfil/excluir";
+import { EmbutidoConfiguracoes } from "@/context/EmbutidoConfiguracoesContext";
 import InformacoesPessoais from "@/app/(tabs)/perfil/info";
 import InfoApp from "@/app/(tabs)/perfil/info-app";
 import InfoVersao from "@/app/(tabs)/perfil/info-versao";
@@ -132,7 +133,10 @@ export function ConfiguracoesDesktop() {
           {aberta.descricao ? <Text style={[s.descricao, { color: palette.textMuted }]}>{aberta.descricao}</Text> : null}
         </View>
         <View style={s.conteudo}>
-          <View style={s.subtela}>{Tela ? <Tela key={aberta.id} /> : null}</View>
+          <View style={s.subtela}>
+            {/* O painel já mostra título e descrição; a tela embutida não repete. */}
+            <EmbutidoConfiguracoes.Provider value>{Tela ? <Tela key={aberta.id} /> : null}</EmbutidoConfiguracoes.Provider>
+          </View>
           {/* Coleta e acessos: o resumo da coleta fica ao lado dos interruptores. */}
           {aberta.id === "coleta" ? (
             <ResumoColeta

@@ -5,11 +5,13 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useUsuario } from "@/context/SessaoContext";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { useEmbutidoConfiguracoes } from "@/context/EmbutidoConfiguracoesContext";
 
 const pkg = require("../../../../package.json");
 const appJson = require("../../../../app.json");
 
 export default function InfoVersaoScreen() {
+  const embutido = useEmbutidoConfiguracoes();
   const { usuario } = useUsuario();
   const palette = useMemo(
     () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
@@ -25,7 +27,7 @@ export default function InfoVersaoScreen() {
       style={styles.container}
       contentContainerStyle={styles.content}
     >
-      <Text style={[styles.title, { color: palette.text }]}>Informação de versão</Text>
+      {embutido ? null : <Text style={[styles.title, { color: palette.text }]}>Informação de versão</Text>}
 
       <View
         style={[

@@ -6,8 +6,10 @@ import { app } from "@/constants/definicoes";
 import { useUsuario } from "@/context/SessaoContext";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { useEmbutidoConfiguracoes } from "@/context/EmbutidoConfiguracoesContext";
 
 export default function InfoAppScreen() {
+  const embutido = useEmbutidoConfiguracoes();
   const { usuario } = useUsuario();
   const palette = useMemo(
     () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
@@ -23,7 +25,7 @@ export default function InfoAppScreen() {
       style={styles.container}
       contentContainerStyle={styles.content}
     >
-      <Text style={[styles.title, { color: palette.text }]}>Informações do app</Text>
+      {embutido ? null : <Text style={[styles.title, { color: palette.text }]}>Informações do app</Text>}
       <Text style={[styles.paragraph, { color: palette.textMuted }]}>
         {app.informs ??
           "TrailUp ajuda você a acompanhar sua trilha de aprendizado, módulos, atividades e conquistas em um só lugar. Aqui estão alguns detalhes técnicos e de produto."}

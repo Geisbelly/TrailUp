@@ -21,8 +21,10 @@ import { supabase } from "@/database/supabase";
 import { Aluno } from "@/models/Aluno";
 import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { useEmbutidoConfiguracoes } from "@/context/EmbutidoConfiguracoesContext";
 
 export default function Infor() {
+  const embutido = useEmbutidoConfiguracoes();
   const { usuario, atualizarUsuario } = useUsuario();
   const { addToast } = useNotifications();
   const palette = useMemo(
@@ -162,12 +164,14 @@ export default function Infor() {
       keyboardShouldPersistTaps="handled"
       contentContainerStyle={{ paddingBottom: 24 }}
     >
-      <View style={styles.pageHeader}>
-        <Text style={[styles.pageTitle, { color: palette.text }]}>Seu perfil</Text>
-        <Text style={[styles.pageSubtitle, { color: palette.textMuted }]}>
-          Revise suas informações e preferências de estudo.
-        </Text>
-      </View>
+      {embutido ? null : (
+        <View style={styles.pageHeader}>
+          <Text style={[styles.pageTitle, { color: palette.text }]}>Seu perfil</Text>
+          <Text style={[styles.pageSubtitle, { color: palette.textMuted }]}>
+            Revise suas informações e preferências de estudo.
+          </Text>
+        </View>
+      )}
 
       <View
         style={[

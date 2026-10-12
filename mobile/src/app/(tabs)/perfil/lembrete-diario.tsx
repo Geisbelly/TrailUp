@@ -20,6 +20,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useEmbutidoConfiguracoes } from "@/context/EmbutidoConfiguracoesContext";
 
 // Mesmo `tipo` que o login cria automaticamente para todo aluno (ver
 // `notificacoes_registrar_login` / migracao 20260826_04) — salvar com esse
@@ -37,6 +38,7 @@ function formatarHora(hora: number, minuto: number) {
 }
 
 export default function LembreteDiarioScreen() {
+  const embutido = useEmbutidoConfiguracoes();
   const { usuario } = useUsuario();
   const { showDialog } = useDialog();
   const palette = useMemo(
@@ -130,9 +132,11 @@ export default function LembreteDiarioScreen() {
         style={styles.container}
         contentContainerStyle={styles.content}
       >
-        <Text style={[styles.title, { color: palette.text }]}>
-          Lembrete diário
-        </Text>
+        {embutido ? null : (
+          <Text style={[styles.title, { color: palette.text }]}>
+            Lembrete diário
+          </Text>
+        )}
         <Text style={[styles.subtitle, { color: palette.textMuted }]}>
           Escolha o horário em que o TrailUp te avisa para continuar a
           trilha. Funciona mesmo com o app fechado
