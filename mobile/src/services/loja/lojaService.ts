@@ -1,6 +1,7 @@
 import { normalizeBrainHexProfile, type BrainHexProfile } from "@/constants/brainHexProfiles";
 import { supabase } from "@/database/supabase";
 import { normalizeStoreItem, type StoreItem, type StoreProfileTheme, type StoreSection, type StoreSnapshot } from "@/services/loja/storeModel";
+import { ACOES_QUE_RENDEM, resolverGanhoMoedas } from "@/services/loja/ganhoMoedasModel";
 import { purchaseErrorMessage } from "@/services/loja/storeTheme";
 
 export type { StoreItem, StoreProfileTheme, StoreSection, StoreSnapshot } from "@/services/loja/storeModel";
@@ -49,4 +50,16 @@ export async function comprarItem(itemCode: string, classeId: number) {
 
 export function profileThemeKey(profileName?: string | null): BrainHexProfile | "default" {
   return normalizeBrainHexProfile(profileName) ?? "default";
+}
+
+/** Quanto cada ação rende em moedas nesta turma (global, com a sobreposição da turma). */
+export async function carregarGanhoMoedas(classeId: number) {
+  const tipos = ACOES_QUE_RENDEM.map((a) => a.tipo);
+  const [globais, daTurma] = await Promise.all([
+    supabase.from("eventos_pontuacao").select("tipo,moedas").in("tipo", tipos),
+    supabase.from("eventos_pontuacao_classe").select("tipo,moedas").eq("classe_id", classeId).in("tipo", tipos),
+  ]);
+  if (globais.error) throw globais.error;
+  if (daTurma.error) throw daTurma.error;
+  return resolverGanhoMoedas(globais.data ?? [], daTurma.data ?? []);
 }

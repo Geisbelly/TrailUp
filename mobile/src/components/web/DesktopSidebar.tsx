@@ -1,13 +1,11 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { usePathname, useRouter } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { StoreModal } from "@/components/loja/StoreModal";
 import { useDialog } from "@/context/DialogContext";
 import { useUsuario } from "@/context/SessaoContext";
-import { useTrilha } from "@/context/TrilhaContext";
 import { FontFamily } from "@/styles/GlobalStyle";
 import type { ProfileShellPalette } from "@/utils/profileShellPalette";
 import type { Aberturas, Funcionalidade } from "@/utils/portoes";
@@ -36,14 +34,13 @@ export function DesktopSidebar({ state, navigation, palette, aberturas, onBloque
   const router = useRouter();
   const pathname = usePathname();
   const { showDialog } = useDialog();
-  const { usuario, sair } = useUsuario();
-  const { classeAtual, perfil } = useTrilha();
-  const [lojaAberta, setLojaAberta] = useState(false);
+  const { sair } = useUsuario();
   const alvoTour = useRef<View | null>(null);
   useEffect(() => registrarAlvoTour("abas_principais", alvoTour), []);
 
   const rotaAtual = state.routes[state.index]?.name;
   const naConfiguracao = pathname.startsWith("/perfil/settings");
+  const naLoja = pathname.startsWith("/perfil/loja");
 
   const abrir = (rota: string) => {
     const alvo = state.routes.find((r) => r.name === rota);
@@ -90,12 +87,12 @@ export function DesktopSidebar({ state, navigation, palette, aberturas, onBloque
     <View ref={alvoTour} collapsable={false} style={[s.barra, { backgroundColor: palette.surface, borderRightColor: palette.border }]}>
       {ITENS.map(({ rota, rotulo, icone, portao }) => {
         const bloqueado = portao ? !aberturas[portao] : false;
-        const elemento = item(rota, rotulo, icone, rota === rotaAtual && !naConfiguracao, () =>
+        const elemento = item(rota, rotulo, icone, rota === rotaAtual && !naConfiguracao && !naLoja, () =>
           bloqueado && portao ? onBloqueado(portao) : abrir(rota),
           { bloqueado });
-        // A Loja ainda não é uma rota (vira página na fase 3 da #346): por ora abre o mesmo modal do Social.
+        // A Loja é uma página da pilha do Perfil (perfil/loja.tsx), só na tela larga.
         return rota === "social"
-          ? [elemento, item("loja", "Loja", "storefront-outline", false, () => setLojaAberta(true))]
+          ? [elemento, item("loja", "Loja", "storefront-outline", naLoja, () => router.push("/perfil/loja"))]
           : elemento;
       })}
 
@@ -103,10 +100,6 @@ export function DesktopSidebar({ state, navigation, palette, aberturas, onBloque
         {item("configuracoes", "Configurações", "cog-outline", naConfiguracao, () => router.push("/perfil/settings"))}
         {item("sair", "Sair", "logout", false, () => void sairDoApp())}
       </View>
-
-      {usuario?.id && classeAtual?.classe_id ? (
-        <StoreModal visible={lojaAberta} alunoId={usuario.id} classeId={classeAtual.classe_id} profileName={perfil} onClose={() => setLojaAberta(false)} />
-      ) : null}
     </View>
   );
 }

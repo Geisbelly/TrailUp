@@ -58,6 +58,8 @@ export default function PerfilStack() {
         name="resetar-senha"
         options={{ title: "REDEFINIR SENHA" }}
       />
+      {/* Só existe na web em tela larga (#346); lá o título está na própria página. */}
+      <Stack.Screen name="loja" options={{ title: "LOJA", headerShown: false }} />
       <Stack.Screen
         name="relatorio"
         options={{ title: "RELATÓRIO DO USUÁRIO" }}
