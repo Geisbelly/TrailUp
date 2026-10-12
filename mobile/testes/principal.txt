@@ -61,6 +61,7 @@ src/utils/personalization.loading.test.ts
 src/utils/personalization.multicontent.test.ts
 src/utils/personalizedProgressSeed.test.ts
 src/utils/portoes.test.ts
+src/utils/posicaoBalaoTour.test.ts
 src/utils/prefetchPool.test.ts
 src/utils/presencaDeEstudo.test.ts
 src/utils/profileArtworkTone.test.ts

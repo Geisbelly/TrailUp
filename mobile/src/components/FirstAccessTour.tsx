@@ -18,9 +18,11 @@ import tinycolor from "tinycolor2";
 import {
   getBrainHexConfig,
   getBrainHexGuideName,
+  guardianFaceImages,
   guardianFullImages,
   normalizeBrainHexProfile,
 } from "@/constants/profileImages";
+import { BalaoTourDesktop } from "@/components/web/BalaoTourDesktop";
 import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { adaptarTourParaTelaLarga } from "@/utils/tourTelaLarga";
@@ -302,6 +304,45 @@ export function FirstAccessTour({
       onRequestClose={() => void finish()}
     >
       <View style={styles.root}>
+        {desktop ? (
+          // Web em tela larga (#346, protótipo v4): recorte no alvo e o balão de 380 px ao lado dele;
+          // na apresentação, o cartão de 760 px no centro. Sem a faixa no rodapé, a seta e o guia grande.
+          <>
+            {!isIntroduction && alvoRect ? (
+              <TourSpotlight
+                rect={alvoRect}
+                screenWidth={width}
+                screenHeight={height}
+                scrim={`${palette.background}b8`}
+                accent={accent}
+              />
+            ) : (
+              <View style={[StyleSheet.absoluteFill, { backgroundColor: `${palette.background}b8`, pointerEvents: "none" }]} />
+            )}
+            <BalaoTourDesktop
+              apresentacao={isIntroduction}
+              pagina={currentStep.page}
+              titulo={currentStep.title}
+              descricao={currentStep.description}
+              indice={index}
+              total={steps.length}
+              alvo={alvoRect}
+              tela={{ width, height }}
+              cor={accent}
+              palette={palette}
+              rosto={guardianFaceImages[normalizedProfile]}
+              arte={guardianFullImages[normalizedProfile]}
+              nomeGuia={guideName}
+              onPular={() => void finish()}
+              onVoltar={() => setIndex((value) => Math.max(0, value - 1))}
+              onProximo={() => {
+                if (isLast) void finish();
+                else setIndex((value) => Math.min(steps.length - 1, value + 1));
+              }}
+            />
+          </>
+        ) : (
+        <>
         {highlightRect ? (
           <TourSpotlight
             rect={highlightRect}
@@ -457,6 +498,8 @@ export function FirstAccessTour({
             </Pressable>
           </View>
         </View>
+        </>
+        )}
       </View>
     </Modal>
   );
