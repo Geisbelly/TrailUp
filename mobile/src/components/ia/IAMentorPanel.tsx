@@ -27,6 +27,8 @@ type Props = {
   scope?: "modulo" | "trilha_home";
   bottomOffset?: number;
   guideTargetRef?: React.RefObject<View | null>;
+  /** Web em tela larga: botão e conversa presos a este canto, com esta largura, em vez de ocupar a largura toda. */
+  ancora?: { direita: number; base: number; largura: number };
 };
 
 type ChatMessage = {
@@ -164,9 +166,11 @@ export function IAMentorPanel({
   classeId,
   scope = "modulo",
   bottomOffset = 110,
+  ancora,
   guideTargetRef,
 }: Props) {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const posicao = ancora ? { right: ancora.direita, bottom: ancora.base } : { bottom: bottomOffset };
   const { usuario } = useUsuario();
   const {
     pendingCharacterCues,
@@ -303,7 +307,7 @@ export function IAMentorPanel({
 
   if (mentorSilencedByUser) {
     return (
-      <View style={[styles.overlay, { bottom: bottomOffset, pointerEvents: "box-none" }]}>
+      <View style={[styles.overlay, posicao, { pointerEvents: "box-none" }]}>
         <View style={styles.launcherColumn}>
           <Pressable
             ref={guideTargetRef}
@@ -350,7 +354,9 @@ export function IAMentorPanel({
     cue?.speakerName ?? resolvedMentor.character?.speakerName ?? guideName;
   const canChat = Boolean(classeId);
   const panelWidth =
-    scope === "modulo"
+    ancora
+      ? ancora.largura
+      : scope === "modulo"
       ? Math.min(windowWidth - 16, 496)
       : Math.min(windowWidth - 16, 438);
   const panelMaxHeight =
@@ -558,8 +564,8 @@ export function IAMentorPanel({
     <View
       style={[
         styles.overlay,
-        { bottom: bottomOffset },
-        isOpen ? styles.overlayOpen : null,
+        posicao,
+        isOpen && !ancora ? styles.overlayOpen : null,
         { pointerEvents: "box-none" },
       ]}
     >
