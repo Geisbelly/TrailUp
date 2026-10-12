@@ -21,7 +21,9 @@ import {
   guardianFullImages,
   normalizeBrainHexProfile,
 } from "@/constants/profileImages";
+import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { adaptarTourParaTelaLarga } from "@/utils/tourTelaLarga";
 import { obterAlvoTour, revelarAlvoTour } from "@/utils/tourTargets";
 import {
   buildFirstAccessTourSteps,
@@ -53,7 +55,12 @@ export function FirstAccessTour({
   const insets = useSafeAreaInsets();
   const normalizedProfile = normalizeBrainHexProfile(profile);
   const storageKey = userId ? buildFirstAccessTourStorageKey(userId) : null;
-  const steps = useMemo(() => buildFirstAccessTourSteps(profile), [profile]);
+  // Na web em tela larga (#346) os textos falam das 6 áreas da barra lateral, não das 4 abas.
+  const desktop = useDesktopWeb();
+  const steps = useMemo(() => {
+    const passos = buildFirstAccessTourSteps(profile);
+    return desktop ? adaptarTourParaTelaLarga(passos, profile) : passos;
+  }, [desktop, profile]);
   const palette = useMemo(() => getProfileShellPalette(profile), [profile]);
   const guideConfig = useMemo(() => getBrainHexConfig(profile ?? undefined), [profile]);
   const guideName = useMemo(() => getBrainHexGuideName(profile), [profile]);
