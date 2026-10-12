@@ -27,7 +27,7 @@ import { FramedProfileImage } from "@/components/FramedProfileImage";
 import { Design } from "@/styles/design";
 import { ProfileMetricsViews } from "@/components/perfil/ProfileMetricsViews";
 import { ConquistasDestaque } from "@/components/web/ConquistasDestaque";
-import { InfoAlunoDesktop } from "@/components/web/InfoAlunoDesktop";
+import { IdentidadePerfilDesktop } from "@/components/web/IdentidadePerfilDesktop";
 import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { buildProfileMetricsViewModel } from "@/components/perfil/profileMetricsViewModel";
 import {
@@ -283,8 +283,28 @@ export default function PerfilHome() {
   );
 
   // Foto, nome, informações e troca de perfil. Na tela larga (#346) vão para a coluna da esquerda.
+  const dominante = perfisRepresentativos[0] ?? perfil;
   const identidade = (
     <>
+        {desktop ? (
+          // Tela larga (#346, protótipo v4): o retrato vai para cima do banner e aqui ficam nome, @, bio e informações.
+          <View ref={profileSummaryGuideRef} collapsable={false}>
+            <IdentidadePerfilDesktop
+              nome={usuario?.nome ?? "Aluno"}
+              apelido={username}
+              descricao={usuario?.descricao}
+              perfilDominante={dominante}
+              afinidadeDominante={
+                usuario?.perfis.find((item) => normalizeBrainHexProfile(item.nome) === dominante)?.afinidade ?? null
+              }
+              turma={classeAtual?.resumo?.materia_nome}
+              professor={classeAtual?.resumo?.professor_nome}
+              email={usuario?.email}
+              classeId={classeAtual?.classe_id}
+              palette={shellPalette}
+            />
+          </View>
+        ) : (
         <View
           ref={profileSummaryGuideRef}
           collapsable={false}
@@ -332,16 +352,9 @@ export default function PerfilHome() {
                 {usuario.descricao}
               </Text>
             ) : null}
-            {desktop ? (
-              <InfoAlunoDesktop
-                turma={classeAtual?.resumo?.materia_nome}
-                professor={classeAtual?.resumo?.professor_nome}
-                email={usuario?.email}
-                palette={shellPalette}
-              />
-            ) : null}
           </View>
         </View>
+        )}
 
         {perfisRepresentativos.length > 1 ? (
           <View ref={profileSwitcherGuideRef} collapsable={false} style={styles.profileSwitcherWrap}>
@@ -633,6 +646,11 @@ export default function PerfilHome() {
                 style={StyleSheet.absoluteFill}
               />
             </View>
+            {desktop ? (
+              <View style={styles.retrato}>
+                <FramedProfileImage profile={perfil} source={usuario?.foto_url ? { uri: usuario.foto_url } : avatar} size={160} label={`Foto de ${usuario?.nome ?? "Aluno"}`} />
+              </View>
+            ) : null}
 
             <View ref={profileSettingsGuideRef} collapsable={false} style={styles.btnSettingsWrap}>
               <TouchableOpacity
@@ -713,6 +731,8 @@ const styles = StyleSheet.create({
   bannerLargo: { height: 240, borderRadius: 20, overflow: "hidden" },
   colunas: { flexDirection: "row", gap: 20, alignItems: "flex-start", paddingHorizontal: 32, marginTop: 8 },
   colunaIdentidade: { flex: 4, minWidth: 0 },
+  // Retrato de 160 px sobre o canto do banner: 72 px dele descem abaixo da borda, como no protótipo.
+  retrato: { position: "absolute", left: 64, top: 28 + 240 - 88, zIndex: 5 },
   colunaPrincipal: { flex: 8, minWidth: 0 },
   bannerWrapper: { width: "100%", height: 64, position: "relative" },
   banner: { width: "100%", height: "100%" },

@@ -7,23 +7,30 @@ import type { ProfileShellPalette } from "@/utils/profileShellTheme";
 
 /**
  * Informações do aluno embaixo do nome, no Perfil da web em tela larga (#346,
- * protótipo v4, 08-perfil-hub.md §2): turma e e-mail, e o atalho para
- * editar, que abre "Informações pessoais" nas Configurações.
+ * protótipo v4, 08-perfil-hub.md §2): turma, guilda, e-mail e desde quando
+ * está na jornada, e o atalho para editar, que abre "Informações pessoais"
+ * nas Configurações. Linha sem dado não aparece.
  */
 export function InfoAlunoDesktop({
   turma,
   professor,
+  guilda,
   email,
+  desde,
   palette,
 }: {
   turma: string | null | undefined;
   professor: string | null | undefined;
+  guilda?: string | null;
   email: string | null | undefined;
+  desde?: string | null;
   palette: ProfileShellPalette;
 }) {
   const linhas: [string, string][] = [];
   if (turma) linhas.push(["Turma", professor ? `${turma} · Prof. ${professor}` : turma]);
+  if (guilda) linhas.push(["Guilda", guilda]);
   if (email) linhas.push(["E-mail", email]);
+  if (desde) linhas.push(["Na jornada desde", desde]);
   return (
     <View style={s.bloco}>
       {linhas.map(([rotulo, valor]) => (
@@ -40,9 +47,9 @@ export function InfoAlunoDesktop({
 }
 
 const s = StyleSheet.create({
-  bloco: { gap: 6, marginTop: 10 },
-  linha: { flexDirection: "row", gap: 10 },
-  rotulo: { width: 64, fontFamily: FontFamily.interMedium, fontSize: 12.5 },
-  valor: { flex: 1, fontFamily: FontFamily.interMedium, fontSize: 12.5 },
+  bloco: { gap: 8, marginTop: 10 },
+  linha: { flexDirection: "row", gap: 8 },
+  rotulo: { width: 118, fontFamily: FontFamily.interMedium, fontSize: 13 },
+  valor: { flex: 1, fontFamily: FontFamily.interMedium, fontSize: 13 },
   editar: { fontFamily: FontFamily.interMedium, fontSize: 13, fontWeight: "700", marginTop: 4 },
 });
