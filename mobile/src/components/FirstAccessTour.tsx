@@ -192,6 +192,22 @@ export function FirstAccessTour({
     router.navigate("/(tabs)" as never);
   }, [router, steps.length, storageKey]);
 
+  // Web em tela larga (#346): Esc pula o tutorial; as setas avançam e voltam.
+  useEffect(() => {
+    if (!desktop || !visible || typeof window === "undefined") return;
+    const teclas = (evento: KeyboardEvent) => {
+      if (evento.key === "Escape") void finish();
+      else if (evento.key === "ArrowRight") {
+        if (index >= steps.length - 1) void finish();
+        else setIndex((valor) => Math.min(steps.length - 1, valor + 1));
+      } else if (evento.key === "ArrowLeft") setIndex((valor) => Math.max(0, valor - 1));
+      else return;
+      evento.preventDefault();
+    };
+    window.addEventListener("keydown", teclas);
+    return () => window.removeEventListener("keydown", teclas);
+  }, [desktop, finish, index, steps.length, visible]);
+
   if (!normalizedProfile || !currentStep) return null;
 
   const isLast = index >= steps.length - 1;
