@@ -1,7 +1,6 @@
 import { HallBackground } from "@/components/HallTheme";
 import { Feather } from "@expo/vector-icons";
-import * as ImagePicker from "expo-image-picker";
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import {
   Alert,
   Image,
@@ -15,144 +14,46 @@ import {
 
 
 import { FramedProfileImage } from "@/components/FramedProfileImage";
-import { useNotifications } from "@/context/NotificacaoContext";
-import { useUsuario } from "@/context/SessaoContext";
-import { supabase } from "@/database/supabase";
-import { Aluno } from "@/models/Aluno";
+import { InfoPessoaisDesktop } from "@/components/web/InfoPessoaisDesktop";
+import { useDialog } from "@/context/DialogContext";
+import { useInfoPessoais } from "@/hooks/useInfoPessoais";
 import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { useEmbutidoConfiguracoes } from "@/context/EmbutidoConfiguracoesContext";
 
 export default function Infor() {
   const embutido = useEmbutidoConfiguracoes();
-  const { usuario, atualizarUsuario } = useUsuario();
-  const { addToast } = useNotifications();
+  const { showDialog } = useDialog();
+  // A lógica mora em useInfoPessoais; na web em tela larga (#346) a mesma lógica ganha o layout do v4.
+  // Embutida no painel de lá, o recado vai pelo diálogo do app: na web o Alert não aparece.
+  const form = useInfoPessoais((titulo, texto) =>
+    embutido ? showDialog({ title: titulo, description: texto }) : Alert.alert(titulo, texto)
+  );
+  const {
+    usuario,
+    editando,
+    setEditando,
+    salvando,
+    nome,
+    setNome,
+    apelido,
+    setApelido,
+    descricao,
+    setDescricao,
+    modoNome,
+    modoResposta,
+    setModoResposta,
+    fotoUri,
+    bannerUri,
+    handlePickImage,
+    salvar,
+  } = form;
   const palette = useMemo(
     () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
     [usuario?.perfilAtivo, usuario?.perfis]
   );
 
-  const [editando, setEditando] = useState(false);
-  const [salvando, setSalvando] = useState(false);
-
-  const [nome, setNome] = useState(usuario?.nome ?? "");
-  const [apelido, setApelido] = useState(
-    (usuario as any)?.apelido ??
-      (usuario?.email ? `@${usuario.email.split("@")[0]}` : "")
-  );
-  const [descricao, setDescricao] = useState(usuario?.descricao ?? "");
-  const [modoNome] = useState(usuario?.modoOperacao_nome ?? "");
-  const [modoResposta, setModoResposta] = useState(
-    (usuario as any)?.modoResposta ?? "imediato"
-  );
-  const [fotoUri, setFotoUri] = useState<string | null>(
-    (usuario as any)?.foto_url ?? null
-  );
-  const [bannerUri, setBannerUri] = useState<string | null>(
-    (usuario as any)?.banner_url ?? null
-  );
-
-  const handlePickImage = async (type: "foto" | "banner") => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert(
-        "Permissão negada",
-        "Autorize o acesso às fotos para escolher uma imagem."
-      );
-      return;
-    }
-
-    const pickerMediaTypes = ["images"];
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: pickerMediaTypes as any,
-      allowsEditing: true,
-      aspect: type === "banner" ? [3, 1] : [1, 1],
-      quality: 0.85,
-    });
-
-    if (result.canceled || !result.assets?.length) return;
-
-    const uri = result.assets[0].uri;
-    if (type === "foto") {
-      setFotoUri(uri);
-    } else {
-      setBannerUri(uri);
-    }
-
-    await uploadToStorage(uri, type);
-  };
-
-  const uploadToStorage = async (uri: string, type: "foto" | "banner") => {
-    try {
-      const response = await fetch(uri);
-      const ext = uri.split(".").pop() || "jpg";
-      const mime = response.headers.get("content-type") || `image/${ext}`;
-      const arrayBuffer = await response.arrayBuffer();
-      const file = new Uint8Array(arrayBuffer);
-      const fileName = `${usuario?.id ?? "user"}-${Date.now()}.${ext}`;
-      const bucket = type === "foto" ? "perfil_fotos" : "banners_fotos";
-
-      const { data, error } = await supabase.storage
-        .from(bucket)
-        .upload(fileName, file, { contentType: mime, upsert: false });
-      if (error) throw error;
-
-      const { data: publicUrl } = supabase.storage
-        .from(bucket)
-        .getPublicUrl(data.path);
-
-      if (type === "foto") {
-        setFotoUri(publicUrl.publicUrl);
-      } else {
-        setBannerUri(publicUrl.publicUrl);
-      }
-
-      Alert.alert("Upload concluído", "Imagem atualizada com sucesso.");
-    } catch (err) {
-      console.warn("Erro ao subir imagem:", err);
-      Alert.alert("Erro", "Não foi possível enviar a imagem agora.");
-    }
-  };
-
-  const salvar = async () => {
-    if (!usuario?.id || salvando) {
-      if (!usuario?.id) {
-        Alert.alert("Aviso", "Sessão inválida.");
-      }
-      return;
-    }
-
-    if (!nome.trim()) {
-      Alert.alert("Atenção", "Informe seu nome.");
-      return;
-    }
-
-    try {
-      setSalvando(true);
-      await (usuario as Aluno).atualizarPerfilViaFuncao({
-        nome,
-        apelido,
-        modoResposta,
-        descricao,
-        foto_url: fotoUri,
-        banner_url: bannerUri,
-      });
-      await atualizarUsuario();
-      setEditando(false);
-      addToast({
-        type: "achievement",
-        title: "Perfil atualizado",
-        description:
-          "Suas preferencias de estudo foram salvas e ja entram no proximo ciclo do app.",
-      });
-    } catch (err) {
-      console.warn(err);
-      Alert.alert("Erro", "Não foi possível salvar agora.");
-    } finally {
-      setSalvando(false);
-    }
-  };
+  if (embutido) return <InfoPessoaisDesktop form={form} palette={palette} />;
 
   return (
     <View style={[styles.outer, { backgroundColor: palette.background }]}>
