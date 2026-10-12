@@ -5,7 +5,7 @@ import { Linking } from "react-native";
 
 import { useDialog } from "@/context/DialogContext";
 import { useUsuario } from "@/context/SessaoContext";
-import { buildFirstAccessTourStorageKey } from "@/utils/firstAccessTour";
+import { buildFirstAccessTourStorageKey, pedirTutorialAgora } from "@/utils/firstAccessTour";
 
 /**
  * Ações das Configurações que não abrem tela: sair, rever o tutorial e abrir
@@ -77,5 +77,24 @@ export function useAcoesConta() {
     }
   }, [showDialog, usuario?.id]);
 
-  return { sairDoAparelho, abrirLink, reverTutorial };
+  // Web em tela larga (#346, protótipo v4): o mesmo reinício, e o aviso ganha "Abrir agora".
+  const reverTutorialComAbrirAgora = useCallback(async () => {
+    if (!usuario?.id) return;
+    try {
+      await AsyncStorage.removeItem(buildFirstAccessTourStorageKey(usuario.id));
+      showDialog({
+        title: "Tutorial reiniciado",
+        description: "Ele aparece de novo na próxima vez que você abrir a Trilha.",
+        tone: "success",
+        actions: [
+          { label: "Depois", variant: "secondary" },
+          { label: "Abrir agora", variant: "primary", onPress: pedirTutorialAgora },
+        ],
+      });
+    } catch {
+      showDialog({ title: "Aviso", description: "Não foi possível reiniciar o tutorial agora.", tone: "warning" });
+    }
+  }, [showDialog, usuario?.id]);
+
+  return { sairDoAparelho, abrirLink, reverTutorial, reverTutorialComAbrirAgora };
 }

@@ -28,6 +28,7 @@ import { obterAlvoTour, revelarAlvoTour } from "@/utils/tourTargets";
 import {
   buildFirstAccessTourSteps,
   buildFirstAccessTourStorageKey,
+  ouvirPedidoDeTutorial,
 } from "@/utils/firstAccessTour";
 
 type StoredTourState = {
@@ -70,6 +71,17 @@ export function FirstAccessTour({
   const loadedKeyRef = useRef<string | null>(null);
   const persistQueueRef = useRef<Promise<void>>(Promise.resolve());
   const currentStep = steps[index] ?? steps[0];
+
+  // "Abrir agora" nas Configurações: começa do primeiro passo na hora.
+  useEffect(
+    () =>
+      ouvirPedidoDeTutorial(() => {
+        rotaAtualRef.current = null;
+        setIndex(0);
+        setVisible(true);
+      }),
+    [],
+  );
 
   useEffect(() => {
     if (!storageKey || !normalizedProfile || loadedKeyRef.current === storageKey) return;

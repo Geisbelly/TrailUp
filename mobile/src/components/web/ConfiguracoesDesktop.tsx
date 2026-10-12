@@ -48,7 +48,7 @@ export function ConfiguracoesDesktop() {
   const { sub } = useLocalSearchParams<{ sub?: string }>();
   const aberta = subtelaDaUrl(sub);
   const [busca, setBusca] = useState("");
-  const { sairDoAparelho, abrirLink, reverTutorial } = useAcoesConta();
+  const { sairDoAparelho, abrirLink, reverTutorialComAbrirAgora } = useAcoesConta();
   const grupos = filtrarGrupos(busca);
   const Tela = TELAS[aberta.id];
 
@@ -57,7 +57,7 @@ export function ConfiguracoesDesktop() {
     if (s.id === "privacidade")
       return abrirLink("https://trailup.vercel.app/privacidade", "Não foi possível abrir a política de privacidade.");
     if (s.id === "termos") return abrirLink("https://trailup.vercel.app/termos", "Não foi possível abrir os termos de uso.");
-    if (s.id === "tutorial") return void reverTutorial();
+    if (s.id === "tutorial") return void reverTutorialComAbrirAgora();
     router.setParams({ sub: s.id });
   };
 
