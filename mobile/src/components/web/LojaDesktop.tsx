@@ -1,9 +1,10 @@
 import { useFocusEffect } from "@react-navigation/native";
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { UtilityIcon } from "@/components/UtilityIcon";
 import { CartaoItemLoja } from "@/components/web/CartaoItemLoja";
+import { LateralLoja } from "@/components/web/LateralLoja";
 import { useDialog } from "@/context/DialogContext";
 import { useUsuario } from "@/context/SessaoContext";
 import { useTrilha } from "@/context/TrilhaContext";
@@ -35,6 +36,8 @@ export function LojaDesktop() {
   const [erroCompra, setErroCompra] = useState<{ id: string; texto: string } | null>(null);
   const { showConfirm } = useDialog();
   const [comprando, setComprando] = useState<string | null>(null);
+  // Muda a cada carga da loja (inclusive depois de uma compra), para a coluna lateral recarregar junto.
+  const [versao, setVersao] = useState(0);
   const trava = useRef(false);
   const pedido = useRef(0);
 
@@ -52,6 +55,7 @@ export function LojaDesktop() {
       if (atual !== pedido.current) return;
       setLoja(dados);
       setGanho(rendimento);
+      setVersao((v) => v + 1);
     } catch (caught) {
       if (atual === pedido.current) setErro(caught instanceof Error ? caught.message : "Não foi possível carregar a loja.");
     } finally {
@@ -101,6 +105,8 @@ export function LojaDesktop() {
     }
   }
 
+  const nomesItens = useMemo(() => new Map((loja?.items ?? []).map((i) => [i.id, i.name])), [loja]);
+
   return (
     <ScrollView style={{ backgroundColor: palette.background }} contentContainerStyle={s.pagina}>
       <View style={s.cabecalho}>
@@ -109,6 +115,8 @@ export function LojaDesktop() {
         <Text style={[s.subtitulo, { color: palette.textMuted }]}>Troque moedas por recursos que ajudam no estudo.</Text>
       </View>
 
+      <View style={s.colunas}>
+      <View style={s.principal}>
       <View style={[s.heroi, { backgroundColor: palette.surfaceElevated, borderColor: palette.border }]}>
         <View style={s.metade}>
           <Text style={[s.rotulo, { color: palette.textMuted }]}>SEU SALDO</Text>
@@ -175,6 +183,22 @@ export function LojaDesktop() {
       ) : !erro ? (
         <Text style={[s.vazio, { color: palette.textMuted }]}>Nenhum item disponível no momento.</Text>
       ) : null}
+      </View>
+
+      {alunoId && classeId ? (
+        <View style={s.lateral}>
+          <LateralLoja
+            alunoId={alunoId}
+            classeId={classeId}
+            nomeTurma={classeAtual?.resumo?.materia_nome ?? null}
+            perfil={perfil}
+            palette={palette}
+            nomesItens={nomesItens}
+            versao={versao}
+          />
+        </View>
+      ) : null}
+      </View>
     </ScrollView>
   );
 }
@@ -182,6 +206,9 @@ export function LojaDesktop() {
 const s = StyleSheet.create({
   pagina: { paddingHorizontal: 32, paddingTop: 28, paddingBottom: 40, gap: 20, maxWidth: 1164, width: "100%" },
   cabecalho: { gap: 4 },
+  colunas: { flexDirection: "row", gap: 20, alignItems: "flex-start" },
+  principal: { flex: 8, minWidth: 0, gap: 20 },
+  lateral: { flex: 4, minWidth: 300 },
   eyebrow: { fontFamily: FontFamily.interMedium, fontSize: 11, fontWeight: "700", letterSpacing: 1.2 },
   titulo: { fontFamily: FontFamily.inikaBold, fontSize: 30 },
   subtitulo: { fontFamily: FontFamily.interMedium, fontSize: 14 },
@@ -204,6 +231,6 @@ const s = StyleSheet.create({
   chip: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
   chipTexto: { fontFamily: FontFamily.interMedium, fontSize: 12 },
   grade: { flexDirection: "row", flexWrap: "wrap", gap: 16 },
-  celula: { flexBasis: "48%", flexGrow: 1, minWidth: 320 },
+  celula: { flexBasis: "48%", flexGrow: 1, minWidth: 300 },
   vazio: { marginVertical: 40, textAlign: "center" },
 });

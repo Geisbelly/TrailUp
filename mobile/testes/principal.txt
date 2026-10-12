@@ -93,6 +93,7 @@ src/services/googleRedirect.core.test.ts
 src/utils/desktopWeb.test.ts
 src/services/loja/ganhoMoedasModel.test.ts
 src/utils/compraLoja.test.ts
+src/services/loja/extratoModel.test.ts
 src/utils/painelTopicoTrilha.test.ts
 src/utils/gradeMapaTrilha.test.ts
 src/utils/subtelasConfiguracao.test.ts
