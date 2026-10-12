@@ -204,7 +204,8 @@ export function LojaDesktop() {
 }
 
 const s = StyleSheet.create({
-  pagina: { paddingHorizontal: 32, paddingTop: 28, paddingBottom: 40, gap: 20, maxWidth: 1164, width: "100%" },
+  // Sem largura máxima: no protótipo v4 (12-loja.html) a página ocupa a área toda, só com o respiro lateral.
+  pagina: { paddingHorizontal: 32, paddingTop: 28, paddingBottom: 40, gap: 20, width: "100%" },
   cabecalho: { gap: 4 },
   colunas: { flexDirection: "row", gap: 20, alignItems: "flex-start" },
   principal: { flex: 8, minWidth: 0, gap: 20 },
