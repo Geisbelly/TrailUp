@@ -4,13 +4,13 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import CardSemDados from "@/components/CardSemDados";
 import { HallBackground } from "@/components/HallTheme";
-import { JourneyHeading } from "@/components/JourneyHeading";
 import { useDialog } from "@/context/DialogContext";
 import { useNotifications } from "@/context/NotificacaoContext";
 import { useUsuario } from "@/context/SessaoContext";
 import type { Notificacao } from "@/models/Notificacoes";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { agruparPorData } from "@/utils/gruposNotificacao";
+import { iconeDaNotificacao } from "@/utils/iconeNotificacao";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { registrarAlvoTour } from "@/utils/tourTargets";
 
@@ -44,6 +44,8 @@ function enviadaEm(quando: string | null): string {
  * entrar), grupos Hoje / Esta semana / Anteriores e "Marcar todas como lidas"
  * na linha dos filtros. Mesmas ações do app: abrir marca como lida; "Marcar
  * como não lida" e "Excluir" (com confirmação) como na página da notificação.
+ * Cabeçalho, contagem nos três filtros, ícone por tipo, selo "NOVA" ao lado da
+ * hora e a faixa de destaque nas não lidas seguem `07-notificacoes.html` do v4.
  */
 export function NotificacoesDesktop() {
   const { itens, marcarLida, marcarTodasLidas, deletar, reload } = useNotifications();
@@ -61,6 +63,7 @@ export function NotificacoesDesktop() {
 
   const agora = new Date();
   const naoLidas = itens.filter((n) => !estaLida(n)).length;
+  const contagem: Record<Filtro, number> = { todas: itens.length, nao_lidas: naoLidas, lidas: itens.length - naoLidas };
   const visiveis = itens.filter((n) =>
     filtro === "todas" ? true : filtro === "lidas" ? estaLida(n) : !estaLida(n),
   );
@@ -107,9 +110,15 @@ export function NotificacoesDesktop() {
   return (
     <View style={[s.tela, { backgroundColor: palette.background }]}>
       <HallBackground palette={palette} />
-      <JourneyHeading title="Notificações" eyebrow="CAIXA DE ENTRADA" section="notifications" palette={palette} />
+      <View style={s.cabecalho}>
+        <Text style={[s.eyebrow, { color: palette.accent }]}>CAIXA DE ENTRADA</Text>
+        <Text accessibilityRole="header" style={[s.tituloPagina, { color: palette.text }]}>Notificações</Text>
+        <Text style={[s.subtitulo, { color: palette.textMuted }]}>
+          Aqui ficam avisos da plataforma, atualizações acadêmicas e eventos importantes.
+        </Text>
+      </View>
 
-      <View style={[s.filtros, { borderBottomColor: palette.border }]}>
+      <View style={s.filtros}>
         {FILTROS.map(({ id, rotulo }) => {
           const ativo = filtro === id;
           return (
@@ -122,7 +131,7 @@ export function NotificacoesDesktop() {
             >
               <Text style={[s.pillTexto, { color: ativo ? palette.background : palette.textMuted }]}>
                 {rotulo}
-                {id === "nao_lidas" && naoLidas > 0 ? ` · ${naoLidas}` : ""}
+                <Text style={s.pillContagem}>{`  ${contagem[id]}`}</Text>
               </Text>
             </Pressable>
           );
@@ -162,6 +171,8 @@ export function NotificacoesDesktop() {
                       style={[
                         s.item,
                         { borderColor: expandida ? palette.borderStrong : palette.border, backgroundColor: expandida ? palette.surfaceElevated : palette.surface },
+                        // Não lida: faixa na cor do perfil à esquerda, como no protótipo.
+                        !lida && { borderLeftWidth: 3, borderLeftColor: palette.accent },
                       ]}
                     >
                       <Pressable
@@ -171,13 +182,17 @@ export function NotificacoesDesktop() {
                         style={({ hovered }: { hovered?: boolean; pressed: boolean }) => [s.linha, hovered && !expandida && { backgroundColor: palette.accentMuted }]}
                       >
                         <View style={[s.icone, { backgroundColor: palette.accentMuted }]}>
-                          <MaterialCommunityIcons name={lida ? "email-open-outline" : "email-outline"} size={18} color={palette.accent} />
+                          <MaterialCommunityIcons name={iconeDaNotificacao(n.tipo, n.titulo)} size={18} color={palette.accent} />
                         </View>
                         <View style={s.textos}>
-                          {!lida ? <Text style={[s.nova, { color: palette.accent }]}>NOVA</Text> : null}
                           <Text style={[s.titulo, { color: palette.text, fontWeight: lida ? "500" : "700" }]} numberOfLines={1}>{n.titulo}</Text>
                           {!expandida ? <Text style={[s.previa, { color: palette.textMuted }]} numberOfLines={1}>{n.corpo}</Text> : null}
                         </View>
+                        {!lida ? (
+                          <View style={[s.nova, { backgroundColor: palette.accent }]}>
+                            <Text style={[s.novaTexto, { color: palette.background }]}>NOVA</Text>
+                          </View>
+                        ) : null}
                         <Text style={[s.hora, { color: palette.textSubtle }]}>{horaCurta(dataDe(n), agora)}</Text>
                         <MaterialCommunityIcons name={expandida ? "chevron-up" : "chevron-down"} size={20} color={palette.textSubtle} />
                       </Pressable>
@@ -211,12 +226,17 @@ export function NotificacoesDesktop() {
 
 const s = StyleSheet.create({
   tela: { flex: 1 },
-  filtros: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 24, paddingVertical: 12, borderBottomWidth: 1 },
+  cabecalho: { gap: 4, paddingHorizontal: 32, paddingTop: 28 },
+  eyebrow: { fontFamily: FontFamily.interMedium, fontSize: 11, fontWeight: "700", letterSpacing: 1.2 },
+  tituloPagina: { fontFamily: FontFamily.inikaBold, fontSize: 30 },
+  subtitulo: { fontFamily: FontFamily.interMedium, fontSize: 14 },
+  filtros: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 32, paddingTop: 18, paddingBottom: 6 },
   pill: { paddingHorizontal: 18, paddingVertical: 8, borderRadius: 999, borderWidth: 1 },
   pillTexto: { fontFamily: FontFamily.interMedium, fontSize: 13, fontWeight: "600" },
+  pillContagem: { fontSize: 11.5, fontWeight: "700", opacity: 0.8 },
   marcarTodas: { marginLeft: "auto", flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 8 },
   marcarTodasTexto: { fontFamily: FontFamily.interMedium, fontSize: 13, fontWeight: "600" },
-  conteudo: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 40 },
+  conteudo: { paddingHorizontal: 32, paddingTop: 16, paddingBottom: 40 },
   aviso: { flexDirection: "row", alignItems: "center", gap: 8, padding: 12, borderRadius: 12, borderWidth: 1, marginBottom: 16 },
   avisoTexto: { fontFamily: FontFamily.interMedium, fontSize: 13.5 },
   grupo: { marginBottom: 20, gap: 8 },
@@ -225,7 +245,8 @@ const s = StyleSheet.create({
   linha: { flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 14, paddingHorizontal: 16 },
   icone: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   textos: { flex: 1, minWidth: 0, gap: 2 },
-  nova: { fontFamily: FontFamily.interMedium, fontSize: 10, fontWeight: "800", letterSpacing: 1 },
+  nova: { borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 },
+  novaTexto: { fontFamily: FontFamily.interMedium, fontSize: 10, fontWeight: "800", letterSpacing: 0.8 },
   titulo: { fontFamily: FontFamily.interMedium, fontSize: 14.5 },
   previa: { fontFamily: FontFamily.interMedium, fontSize: 13 },
   hora: { fontFamily: FontFamily.interMedium, fontSize: 12 },

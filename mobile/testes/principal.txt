@@ -49,6 +49,7 @@ src/utils/estadoDoPrazo.test.ts
 src/utils/firstAccessTour.test.ts
 src/utils/graphNodeAccess.test.ts
 src/utils/htmlDeck.test.ts
+src/utils/iconeNotificacao.test.ts
 src/utils/inlineSvgDataUri.test.ts
 src/utils/lockedNodeMessage.test.ts
 src/utils/markdownDataUri.test.ts
