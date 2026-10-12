@@ -9,6 +9,8 @@ import { type GuideTargetRefs, ModuleHeaderGuideButton } from "@/components/tril
 import { MapaPaisesDesktop } from "@/components/web/MapaPaisesDesktop";
 import { PainelTopicoTrilha } from "@/components/web/PainelTopicoTrilha";
 import { getProfileArtwork } from "@/constants/designAssets";
+import { getBrainHexGuideName } from "@/constants/profileImages";
+import { useIA } from "@/context/IAContext";
 import { useUsuario } from "@/context/SessaoContext";
 import { useTrilha } from "@/context/TrilhaContext";
 import { useTrailResumeTopic } from "@/hooks/useTrailResume";
@@ -59,10 +61,32 @@ export function TrilhaDesktop({ chatGuideTargetRef }: { chatGuideTargetRef?: Rea
   const painel = noPainel ? montarPainelTopico(noPainel, topicoDe(noPainel.id), atualId, nos, grafo.edges) : null;
   const todos = [...nos]
     .sort((a, b) => a.sequence - b.sequence)
-    .map((n) => {
+    .map((n, i) => {
       const estado = estadoDoTopico(n, atualId);
       const pct = Number(topicoDe(n.id)?.percentual_concluido ?? 0);
-      return { id: String(n.id), titulo: n.titulo, estado, percentual: estado === "done" ? 100 : Math.round(pct) || 0 };
+      return { id: String(n.id), titulo: n.titulo, estado, percentual: estado === "done" ? 100 : Math.round(pct) || 0, numero: i + 1 };
+    });
+  // Detalhes do painel como no protótipo: o número, "País · Capital" no mapa e o
+  // bloco do módulo personalizado, que abre a conversa com o guia.
+  const { pushMentorCue, resolveFeature } = useIA();
+  // Nem todo perfil tem o guia (mentor_character); sem ele, o link não aparece.
+  const guiaDisponivel = resolveFeature({ scope: "session" }, "mentor_character").enabled;
+  const itemPainel = todos.find((t) => t.id === idPainel);
+  const paisPainel = idPainel ? mapTheme?.countries?.[idPainel] : undefined;
+  const localPainel =
+    visual === "mapa" && paisPainel ? `${paisPainel.countryName} · Capital: ${paisPainel.capitalName}` : null;
+  const justificativa = idPainel
+    ? String(personalizedTopics?.[Number(idPainel)]?.planMeta?.justification ?? "").trim()
+    : "";
+  const personalizacao = justificativa ? { texto: justificativa, guia: getBrainHexGuideName(perfil) } : null;
+  const conversar = () =>
+    idPainel &&
+    pushMentorCue({
+      message: justificativa,
+      title: itemPainel?.titulo ?? null,
+      topicoId: Number(idPainel),
+      actionLabel: "Conversar",
+      abrir: true,
     });
   // No mapa, cada tópico é um país do tema da turma (sem tema, o próprio título).
   const paises = todos.map((t) => ({
@@ -161,7 +185,16 @@ export function TrilhaDesktop({ chatGuideTargetRef }: { chatGuideTargetRef?: Rea
       </View>
 
       <View style={s.direita}>
-        <PainelTopicoTrilha painel={painel} todos={todos} palette={palette} onSelecionar={setSelecionado} />
+        <PainelTopicoTrilha
+          painel={painel}
+          todos={todos}
+          palette={palette}
+          onSelecionar={setSelecionado}
+          numero={itemPainel?.numero}
+          local={localPainel}
+          personalizacao={personalizacao}
+          onConversar={guiaDisponivel ? conversar : undefined}
+        />
       </View>
     </View>
   );

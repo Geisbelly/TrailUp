@@ -1,13 +1,14 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useEffect, useId, useMemo, useRef } from "react";
 import { Image, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import Svg, { Circle, Defs, G, LinearGradient, Path, Pattern, RadialGradient, Stop } from "react-native-svg";
+import Svg, { Circle, Defs, G, Path, Pattern, RadialGradient, Stop } from "react-native-svg";
 import tinycolor from "tinycolor2";
 
+import { HexagonoTopico } from "@/components/web/HexagonoTopico";
 import { guardianFaceImages } from "@/constants/profileImages";
 import { normalizeBrainHexProfile } from "@/constants/brainHexProfiles";
 import { FontFamily } from "@/styles/GlobalStyle";
-import { caminhoCelula, caminhoHexagono, layoutMapa, MAPA_TOPO, trechoEstrada } from "@/utils/mapaPaises";
+import { caminhoCelula, layoutMapa, MAPA_TOPO, trechoEstrada } from "@/utils/mapaPaises";
 import type { EstadoTopico } from "@/utils/painelTopicoTrilha";
 import type { ProfileShellPalette } from "@/utils/profileShellTheme";
 
@@ -20,9 +21,6 @@ export type TopicoMapa = {
   personalizado: boolean;
 };
 
-const HEX_FORA = caminhoHexagono(50, 50, 46, 9);
-const HEX_DENTRO = caminhoHexagono(50, 50, 37, 7);
-const HEX_SELECAO = caminhoHexagono(50, 50, 53, 11);
 const TAMANHO_HEX = 68;
 const LARGURA_NO = 170;
 
@@ -257,12 +255,6 @@ function NoPais({
   onPress: () => void;
 }) {
   const e = topico.estado;
-  const hex = {
-    done: { de: palette.accent, ate: palette.accentStrong, stroke: cores.accentHi, sw: 2, dentro: "rgba(255,255,255,0.28)", glifo: cores.bg, brilho: true, dash: undefined },
-    current: { de: cores.accentHi, ate: palette.accent, stroke: palette.text, sw: 3, dentro: "rgba(255,255,255,0.45)", glifo: cores.bg, brilho: true, dash: undefined },
-    open: { de: cores.elevHi, ate: palette.surface, stroke: palette.accent, sw: 2, dentro: cores.accentSoft, glifo: palette.text, brilho: false, dash: undefined },
-    locked: { de: palette.surface, ate: cores.bg, stroke: palette.border, sw: 2, dentro: "rgba(255,255,255,0.05)", glifo: palette.inactive, brilho: false, dash: "5 5" },
-  }[e];
   const chip = CHIP[e];
   const chipAceso = e === "done" || e === "current";
   const idGrad = `hex-${uid}-${topico.id}`;
@@ -293,31 +285,7 @@ function NoPais({
             <Circle cx="50%" cy="50%" r="50%" fill={`url(#${idGrad}-halo)`} />
           </Svg>
         ) : null}
-        <Svg width={TAMANHO_HEX} height={TAMANHO_HEX} viewBox="0 0 100 100">
-          <Defs>
-            <LinearGradient id={idGrad} x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor={hex.de} />
-              <Stop offset="1" stopColor={hex.ate} />
-            </LinearGradient>
-            <LinearGradient id={`${idGrad}-brilho`} x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor="#ffffff" stopOpacity={0.35} />
-              <Stop offset="0.5" stopColor="#ffffff" stopOpacity={0} />
-            </LinearGradient>
-          </Defs>
-          {selecionado ? <Path d={HEX_SELECAO} fill="none" stroke={palette.text} strokeWidth={2} strokeDasharray="3 5" /> : null}
-          <Path d={HEX_FORA} fill={`url(#${idGrad})`} stroke={hex.stroke} strokeWidth={hex.sw} strokeDasharray={hex.dash} />
-          <Path d={HEX_DENTRO} fill="none" stroke={hex.dentro} strokeWidth={1.5} />
-          {hex.brilho ? <Path d={HEX_DENTRO} fill={`url(#${idGrad}-brilho)`} opacity={0.55} /> : null}
-        </Svg>
-        <View style={s.glifo} pointerEvents="none">
-          {e === "done" ? (
-            <MaterialCommunityIcons name="check-bold" size={24} color={hex.glifo} />
-          ) : e === "locked" ? (
-            <MaterialCommunityIcons name="lock-outline" size={22} color={hex.glifo} />
-          ) : (
-            <Text style={[s.numero, { color: hex.glifo }]}>{numero}</Text>
-          )}
-        </View>
+        <HexagonoTopico estado={e} numero={numero} tamanho={TAMANHO_HEX} palette={palette} idBase={idGrad} selecionado={selecionado} />
         {topico.personalizado ? (
           <View style={[s.persoPonto, { backgroundColor: palette.accent, borderColor: cores.bg }]}>
             <MaterialCommunityIcons name="star-four-points" size={12} color={cores.bg} />
@@ -367,8 +335,6 @@ const s = StyleSheet.create({
   noHover: { transform: [{ translateY: -3 }] },
   hex: { width: TAMANHO_HEX, height: TAMANHO_HEX },
   halo: { position: "absolute", left: -TAMANHO_HEX * 0.45, top: -TAMANHO_HEX * 0.45 },
-  glifo: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center" },
-  numero: { fontFamily: FontFamily.inikaBold, fontSize: 24, lineHeight: 26 },
   persoPonto: { position: "absolute", right: 0, bottom: 2, width: 24, height: 24, borderRadius: 12, borderWidth: 3, alignItems: "center", justifyContent: "center" },
   rotulo: { marginTop: 10, alignItems: "center", gap: 6, maxWidth: LARGURA_NO },
   nome: {
