@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TrailUp — Login</title>
+<style>
+  :root{
+    --bg:#110b28; --surface:#1b123f; --elevated:#241957;
+    --border:#3a288a; --border-strong:#644dcb;
+    --text:#f4f3f7; --text-muted:rgba(244,243,247,.82); --text-subtle:rgba(244,243,247,.62);
+    --accent:#9583e6;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  .title-font{font-family:Georgia,"Times New Roman",serif}
+  .screen{position:relative;min-height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .scenery{position:absolute;inset:0;z-index:0}
+  .scenery img{width:100%;height:100%;object-fit:cover;opacity:.4}
+  .scenery::after{content:"";position:absolute;inset:0;background:linear-gradient(to bottom, rgba(17,11,40,.35), var(--bg) 78%)}
+  .glow{position:absolute;top:0;left:0;right:0;height:50%;background:radial-gradient(ellipse at top, rgba(149,131,230,.22), transparent 70%);pointer-events:none;z-index:0}
+  .card{position:relative;z-index:1;width:100%;max-width:420px;padding:36px 30px 32px;text-align:center}
+  h1.appname{font-size:34px;margin:0 0 2px;letter-spacing:.01em;text-shadow:0 2px 10px rgba(0,0,0,.7)}
+  .subtitle{font-size:16px;color:var(--text-muted);margin:0 0 18px}
+  .ornament{display:flex;align-items:center;gap:10px;margin:0 0 22px}
+  .ornament .line{flex:1;height:1px;background:rgba(149,131,230,.45)}
+  .ornament svg{width:26px;height:11px}
+  .field{width:100%;margin-bottom:14px;text-align:left}
+  .field input{width:100%;height:50px;padding:0 16px;border-radius:6px;border:1px solid rgba(149,131,230,.4);background:var(--elevated);color:var(--text);font-size:14px;font-family:inherit}
+  .field input::placeholder{color:var(--text-subtle)}
+  .btn{width:100%;height:52px;border-radius:6px;border:1.5px solid transparent;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-top:4px;text-decoration:none;box-sizing:border-box}
+  .btn-primary{background:var(--accent);border-color:#b3a4f2;color:#110b28}
+  .btn-google{background:var(--elevated);border-color:rgba(149,131,230,.4);color:var(--text);margin-top:12px}
+  .links{margin-top:18px;font-size:13px;color:var(--text-muted)}
+  .links a{color:#b3a4f2;text-decoration:underline;cursor:pointer}
+  .footer{margin-top:36px;font-size:12px;color:var(--text-subtle)}
+  .footer a{color:#b3a4f2;text-decoration:underline}
+
+  .error-toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:5;width:calc(100% - 48px);max-width:380px;background:#2a1116;border:1px solid #b4202f;border-radius:10px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;box-shadow:0 12px 32px rgba(0,0,0,.4)}
+  .error-toast svg{width:20px;height:20px;flex-shrink:0;color:#e8798a;margin-top:1px}
+  .error-toast strong{display:block;font-size:14px;margin-bottom:2px}
+  .error-toast span{font-size:13px;color:var(--text-muted)}
+  .tag{position:absolute;top:14px;left:14px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-subtle);z-index:2}
+</style>
+</head>
+<body>
+<div class="screen">
+  <span class="tag">Login — com estado de erro</span>
+  <div class="scenery"><img src="assets/entry-world.webp" alt="" /></div>
+  <div class="glow"></div>
+  <div class="card">
+    <h1 class="appname title-font">TrailUp</h1>
+    <p class="subtitle title-font">Acesse sua conta</p>
+    <div class="ornament">
+      <div class="line"></div>
+      <svg viewBox="0 0 52 22"><path d="M26 1 L31 11 L26 21 L21 11 Z" fill="#c9bdf5"/><path d="M26 1 L26 21 L21 11 Z" fill="rgba(149,131,230,.55)"/></svg>
+      <div class="line"></div>
+    </div>
+    <div class="field"><input type="email" placeholder="E-mail" value="aluno@escola.edu.br" /></div>
+    <div class="field"><input type="password" placeholder="Senha" value="••••••••" /></div>
+    <a class="btn btn-primary" href="03-trilha.html">Entrar</a>
+    <a class="btn btn-google" href="03-trilha.html">Entrar com Google</a>
+    <div class="links">Esqueceu a senha? <a href="02-recuperar-senha.html">Recuperar senha</a></div>
+    <div class="footer">Não tem uma conta? <a title="Fora de escopo do protótipo — leva ao site externo do TrailUp">Cadastre-se.</a> <span style="opacity:.7">(site externo)</span></div>
+  </div>
+
+  <div class="error-toast">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <div>
+      <strong>Erro no login</strong>
+      <span>E-mail ou senha incorretos. Confira os dados e tente novamente.</span>
+    </div>
+  </div>
+</div>
+</body>
+</html>

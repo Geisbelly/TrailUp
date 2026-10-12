@@ -9,6 +9,8 @@ import {
 } from "@/components/SectionGuideButton";
 import { JourneySymbol } from "@/components/JourneySymbol";
 import { UtilityIcon } from "@/components/UtilityIcon";
+import { RankingDesktop } from "@/components/web/RankingDesktop";
+import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { useConquistaRank } from "@/context/ConquistaRankContext";
 import { useUsuario } from "@/context/SessaoContext";
 import { FontFamily } from "@/styles/GlobalStyle";
@@ -28,7 +30,14 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-export default function RankingHome() {
+// Web em tela larga (#346): categorias fixas à esquerda e a categoria aberta
+// à direita. Nos demais casos (iOS/Android e web estreita) a tela é a de antes.
+export default function Ranking() {
+  const desktop = useDesktopWeb();
+  return desktop ? <RankingDesktop /> : <RankingHome />;
+}
+
+function RankingHome() {
   const { ranking, carregando, reloadRanking } = useConquistaRank();
   const { usuario } = useUsuario();
   const router = useRouter();

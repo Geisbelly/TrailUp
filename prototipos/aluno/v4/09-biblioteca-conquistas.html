@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TrailUp — Biblioteca de Conquistas (Conqueror)</title>
+<style>
+  :root{
+    --bg:#0b1328; --surface:#121e3f; --elevated:#192a57;
+    --border:#28428a; --border-strong:#4d6fcb;
+    --text:#f3f4f7; --text-muted:rgba(243,244,247,.82); --text-subtle:rgba(243,244,247,.62);
+    --accent:#6f90eb;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  .title-font{font-family:Georgia,"Times New Roman",serif}
+  /* Estrutura identica ao console-shell do professor (ConsoleShell.tsx / page-surfaces.css) */
+  .console-shell{display:grid;grid-template-columns:212px minmax(0,1fr);grid-template-rows:68px minmax(0,1fr);height:100vh;overflow:hidden}
+  .console-topbar{grid-column:1/-1;display:flex;align-items:center;gap:28px;padding:12px 24px;background:var(--surface);border-bottom:1px solid var(--border);min-width:0}
+  .journey-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text);font-size:20px}
+  .journey-brand img{width:32px;height:32px}
+  .journey-brand span{font-family:Georgia,serif;font-weight:700}
+  .console-workspace-name{color:var(--text-subtle);font-size:12px}
+  .console-account{margin-left:auto;display:flex;align-items:center;gap:10px;min-width:0}
+  .console-account img.avatar{width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--accent)}
+  .console-account-copy{display:grid;gap:2px}
+  .console-account-copy strong{font-size:13px;font-weight:600}
+  .console-account-copy span{font-size:11px;color:var(--text-subtle)}
+  .console-icon-button{display:grid;place-items:center;width:40px;height:40px;border-radius:6px;color:var(--text-muted);background:none;border:none;cursor:pointer;flex:none}
+  .console-icon-button:hover{color:var(--text);background:var(--elevated)}
+  .console-icon-button img{width:20px;height:20px}
+  .console-icon-button svg{width:18px;height:18px}
+  .console-navigation{padding:20px 12px;display:flex;flex-direction:column;gap:6px;border-right:1px solid var(--border);background:rgba(0,0,0,.15);overflow-y:auto}
+  .console-navigation a{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:6px;border:1px solid transparent;color:var(--text-muted);font-size:13px;text-decoration:none}
+  .console-navigation a svg{flex:none;width:18px;height:18px}
+  .console-navigation a:hover{color:var(--text);background:rgba(255,255,255,.06)}
+  .console-navigation a[aria-current="page"]{color:var(--text);background:rgba(111,144,235,.13);border-color:var(--border-strong)}
+  .console-navigation a[aria-current="page"] svg{color:var(--accent)}
+  .console-navigation .nb{margin-left:auto;background:var(--accent);color:var(--bg);font-size:10px;font-weight:800;padding:1px 6px;border-radius:100px}
+  .console-main{grid-column:2;grid-row:2;overflow-y:auto;position:relative}
+
+  .page-content{max-width:1080px;margin:0 auto;padding:28px 32px 60px;position:relative}
+  .tag{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-subtle);margin-bottom:14px}
+  .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:0 0 4px}
+  h1{font-family:Georgia,serif;font-size:28px;margin:0 0 18px}
+
+  .summary{display:flex;gap:14px;margin-bottom:24px}
+  .s-card{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px}
+  .s-num{font-family:Georgia,serif;font-size:28px;color:var(--accent);margin:0}
+  .s-label{font-size:12px;color:var(--text-subtle);margin:2px 0 0}
+
+  .filters{display:flex;gap:8px;margin-bottom:20px}
+  .filter{padding:8px 16px;border-radius:100px;border:1px solid var(--border-strong);font-size:13px;color:var(--text-muted);cursor:pointer}
+  .filter.active{background:var(--accent);color:#0b1328;border-color:var(--accent);font-weight:700}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(120px, 1fr));gap:14px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 10px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;position:relative}
+  .card.unlocked{border-color:var(--accent);background:var(--elevated)}
+  .card img{width:40px;height:40px;object-fit:contain}
+  .card.locked img{opacity:.3;filter:grayscale(1)}
+  .card .cname{font-size:11.5px;font-weight:700;line-height:1.3}
+  .card.locked .cname{color:var(--text-subtle)}
+  .bar-track{width:100%;height:5px;border-radius:100px;background:rgba(255,255,255,.08);overflow:hidden}
+  .bar-fill{height:100%;background:var(--accent)}
+  .pct{font-size:10px;color:var(--text-subtle)}
+  .lock-badge{position:absolute;top:10px;right:10px;width:14px;height:14px;color:var(--text-subtle)}
+
+  .detail-section{margin-top:40px;padding-top:28px;border-top:1px solid var(--border);display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}
+  .detail-label{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-subtle);margin-bottom:14px;flex-basis:100%}
+  .modal{width:340px;background:var(--elevated);border:1px solid var(--accent);border-radius:16px;padding:28px 24px;text-align:center;position:relative;flex-shrink:0}
+  .modal img{width:64px;height:64px;object-fit:contain;margin-bottom:14px;filter:drop-shadow(0 0 20px rgba(111,144,235,.5))}
+  .modal h3{font-family:Georgia,serif;font-size:18px;margin:0 0 8px}
+  .modal p{font-size:13px;color:var(--text-muted);line-height:1.5;margin:0 0 16px}
+  .modal .status{display:inline-block;font-size:11px;background:rgba(63,191,107,.18);color:#3fbf6b;padding:4px 10px;border-radius:100px;font-weight:700}
+  .modal-close{position:absolute;top:14px;right:14px;width:28px;height:28px;background:var(--surface);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .modal-note{flex:1;font-size:13px;color:var(--text-muted);line-height:1.6;padding-top:20px}
+
+  /* barras de rolagem no tema (revisão 03): finas, na cor da borda do perfil, sem a barra cinza do sistema */
+  *{scrollbar-width:thin;scrollbar-color:var(--border-strong,#4d6fcb) transparent}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--border-strong,#4d6fcb);border-radius:999px;border:3px solid transparent;background-clip:padding-box}
+  ::-webkit-scrollbar-thumb:hover{background:var(--accent,#6f90eb);background-clip:padding-box;border:3px solid transparent}
+  ::-webkit-scrollbar-corner{background:transparent}
+
+  /* revisão 04 (pedido da Geis): Bag antes do perfil, maior e com a arte do perfil ativo (assets/bag.js troca a arte);
+     Configurações e Sair no pé da barra lateral */
+  .console-icon-button.bag-btn{width:48px;height:48px;padding:0;border:0;border-radius:50%;background:none;overflow:visible}
+  .console-icon-button.bag-btn:hover{background:none}
+  .console-icon-button.bag-btn img{width:46px;height:46px;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(0,0,0,.45));transition:transform .15s,filter .15s}
+  .console-icon-button.bag-btn:hover img{transform:translateY(-1px) scale(1.06);filter:drop-shadow(0 0 10px var(--accent))}
+  .console-account{gap:14px}
+  .nav-foot{margin-top:auto;padding-top:12px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:6px}
+  .console-navigation .nav-foot a.nav-exit:hover{color:var(--danger,#e15b64)}
+</style>
+</head>
+<body>
+<div class="console-shell">
+  <header class="console-topbar">
+    <a class="journey-brand" href="03-trilha.html"><img src="assets/trailup-brand-logo.png" alt="" /><span>TrailUp</span></a>
+    <span class="console-workspace-name">Área do aluno</span>
+    <div class="console-account">
+      <button class="console-icon-button bag-btn" title="Minha Bag" aria-label="Abrir minha Bag"><img src="assets/bag-conqueror.png" alt="" /></button>
+      <a href="08-perfil-hub.html" title="Meu perfil" aria-label="Meu perfil" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit">
+        <img class="avatar" src="assets/rosto-conqueror.png" alt="" />
+        <div class="console-account-copy"><strong>Amina T.</strong><span>Conqueror</span></div>
+      </a>
+    </div>
+  </header>
+  <nav class="console-navigation" aria-label="Seções da área do aluno">
+    <a href="03-trilha.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 20l-5.5 2V6L9 4l6 2 5.5-2v16L15 22l-6-2z"/><path d="M9 4v16M15 6v16"/></svg>Trilha</a>
+    <a href="07-notificacoes.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Notificações<span class="nb">2</span></a>
+    <a href="06-social.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Social</a>
+    <a href="12-loja.html" aria-label="Loja, saldo de 38 moedas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 9l1.5-5h15L21 9"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/><path d="M5 12v8h14v-8"/><path d="M10 20v-5h4v5"/></svg>Loja<span class="nav-coins" style="margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;color:var(--text-subtle)">38<img src="assets/coin-conqueror.png" alt="" style="width:16px;height:16px;object-fit:contain" /></span></a>
+    <a href="05-ranking.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 21h16M6 21V10M12 21V3M18 21v-7"/></svg>Ranking</a>
+    <a href="08-perfil-hub.html" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0 1 16 0v1"/></svg>Perfil</a>
+  <div class="nav-foot">
+      <a href="11-configuracoes.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Configurações</a>
+      <a href="00-entrada.html" class="nav-exit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg>Sair</a>
+    </div>
+  </nav>
+  <main class="console-main">
+<div class="page-content">
+  <div class="tag">Biblioteca de conquistas — concluída / em progresso / bloqueada</div>
+  <div class="eyebrow">Perfil</div>
+  <h1 class="title-font">Biblioteca de Conquistas</h1>
+
+  <div class="summary">
+    <div class="s-card"><p class="s-num">14</p><p class="s-label">Conquistadas</p></div>
+    <div class="s-card"><p class="s-num">3</p><p class="s-label">Em progresso</p></div>
+    <div class="s-card"><p class="s-num">42%</p><p class="s-label">Completo</p></div>
+  </div>
+
+  <div class="filters">
+    <div class="filter active">Todas</div>
+    <div class="filter">Concluídas</div>
+    <div class="filter">Em progresso</div>
+    <div class="filter">Bloqueadas</div>
+  </div>
+
+  <div class="grid">
+    <div class="card unlocked"><img src="assets/object-trophy.png" alt="" /><span class="cname">Fronteira Avançada</span></div>
+    <div class="card unlocked"><img src="assets/object-completion.png" alt="" /><span class="cname">Primeiro Tópico</span></div>
+    <div class="card unlocked"><img src="assets/object-book.png" alt="" /><span class="cname">Leitor Dedicado</span></div>
+    <div class="card unlocked"><img src="assets/object-coin.png" alt="" /><span class="cname">Coletor de Moedas</span></div>
+    <div class="card unlocked"><img src="assets/object-deadline.png" alt="" /><span class="cname">Pontual</span></div>
+    <div class="card unlocked"><img src="assets/object-hint.png" alt="" onerror="this.src='assets/object-book.png'" /><span class="cname">Primeira Dica</span></div>
+
+    <div class="card"><img src="assets/object-bolt.png" alt="" /><span class="cname">Sequência de 7 dias</span>
+      <div class="bar-track"><div class="bar-fill" style="width:70%"></div></div><span class="pct">5/7 dias</span></div>
+    <div class="card"><img src="assets/object-compass.png" alt="" /><span class="cname">Explorador de Perfis</span>
+      <div class="bar-track"><div class="bar-fill" style="width:40%"></div></div><span class="pct">2/5 turmas</span></div>
+    <div class="card"><img src="assets/object-calendar.png" alt="" /><span class="cname">Um Mês de Estudo</span>
+      <div class="bar-track"><div class="bar-fill" style="width:55%"></div></div><span class="pct">17/30 dias</span></div>
+
+    <div class="card locked"><img src="assets/object-community.png" alt="" /><span class="cname">Mentor da Turma</span>
+      <svg class="lock-badge" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
+    <div class="card locked"><img src="assets/object-chest.png" alt="" /><span class="cname">Baú Lendário</span>
+      <svg class="lock-badge" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
+    <div class="card locked"><img src="assets/object-steps.png" alt="" onerror="this.src='assets/object-compass.png'" /><span class="cname">Maratonista</span>
+      <svg class="lock-badge" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
+  </div>
+
+  <div class="detail-section">
+    <span class="detail-label">Estado adicional — modal de detalhe ao abrir uma conquista</span>
+    <div class="modal">
+      <div class="modal-close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
+      <img src="assets/object-trophy.png" alt="" />
+      <h3 class="title-font">Fronteira Avançada</h3>
+      <p>Complete 2 tópicos seguidos sem errar nenhuma questão de atividade.</p>
+      <span class="status">Concluída em 14 de setembro</span>
+    </div>
+    <p class="modal-note">Ao tocar em qualquer conquista da grade acima, este cartão aparece centralizado sobre a tela (com a grade escurecida ao fundo) — mostrado aqui ao lado, fora desse estado de sobreposição, só para não esconder o restante da tela neste protótipo.</p>
+  </div>
+</div>
+  </main>
+</div>
+<script src="assets/bag.js"></script>
+<script src="assets/tour.js"></script>
+</body>
+</html>

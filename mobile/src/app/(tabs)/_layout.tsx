@@ -1,4 +1,7 @@
 import { HapticTab } from "@/components/haptic-tab";
+import { DesktopSidebar } from "@/components/web/DesktopSidebar";
+import { DesktopTopBar } from "@/components/web/DesktopTopBar";
+import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { BossVictoryModal } from '@/components/ia/BossVictoryModal';
 import { ClassSelectionGate } from "@/components/ClassSelectionGate";
 import { bannerImages, brainHexConfig, brainHexImageMap, getProfileImageByString, normalizeBrainHexProfile } from "@/constants/profileImages";
@@ -40,6 +43,18 @@ function TourAwareTabBar(props: BottomTabBarProps) {
   );
 }
 
+// Fora do desktop devolve só os filhos (fragmento): a árvore do iOS/Android e da
+// web estreita fica idêntica à de antes da #346.
+function ComMolduraDesktop({ ativo, topo, children }: { ativo: boolean; topo: React.ReactNode; children: React.ReactNode }) {
+  if (!ativo) return <>{children}</>;
+  return (
+    <View style={{ flex: 1 }}>
+      {topo}
+      {children}
+    </View>
+  );
+}
+
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const { usuario } = useUsuario();
@@ -69,6 +84,11 @@ export default function TabLayout() {
   // está estudando: esconder a barra e "não perguntar agora" respondem à mesma
   // pergunta, e duas cópias divergiriam.
   const hideTabBarOnModule = estaNaTrilhaDeEstudo(segments as readonly string[]);
+  // Web em tela larga (#346): barra lateral no lugar da barra de abas e barra
+  // superior acima das telas. No iOS/Android e na web estreita, nada muda.
+  // No modo de estudo a moldura some, como a barra de abas.
+  const desktop = useDesktopWeb();
+  const molduraDesktop = desktop && !hideTabBarOnModule;
 
   return (
     <IAProvider>
@@ -78,9 +98,22 @@ export default function TabLayout() {
           <TrilhaProvider key={usuario?.id ?? "sem-aluno"}>
             <ClassSelectionGate>
             <ConquistaRankProvider>
+              <ComMolduraDesktop
+                ativo={desktop}
+                topo={molduraDesktop ? (
+                  <DesktopTopBar palette={palette} nome={usuario?.nome ?? "Aluno"} perfilAtivo={activeProfileName} foto={perfilFoto || user.avatar} />
+                ) : null}
+              >
               <Tabs
-            tabBar={(props) => <TourAwareTabBar {...props} />}
+            tabBar={(props) =>
+              desktop ? (
+                molduraDesktop ? <DesktopSidebar {...props} palette={palette} aberturas={aberturas} onBloqueado={setPortaoBloqueado} /> : null
+              ) : (
+                <TourAwareTabBar {...props} />
+              )
+            }
             screenOptions={{
+              ...(desktop ? { tabBarPosition: "left" as const } : null),
               tabBarActiveTintColor: palette.accent,
               tabBarInactiveTintColor: palette.inactive,
               tabBarActiveBackgroundColor: palette.accentMuted,
@@ -231,6 +264,7 @@ export default function TabLayout() {
               }}
             />
               </Tabs>
+              </ComMolduraDesktop>
               <BossVictoryModal />
               <FirstAccessTour
                 userId={usuario?.id}

@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TrailUp — Social (Conqueror)</title>
+<style>
+  :root{
+    --bg:#0b1328; --surface:#121e3f; --elevated:#192a57;
+    --border:#28428a; --border-strong:#4d6fcb;
+    --text:#f3f4f7; --text-muted:rgba(243,244,247,.82); --text-subtle:rgba(243,244,247,.62);
+    --accent:#6f90eb; --success:#3fbf6b; --danger:#e15b64;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  .title-font{font-family:Georgia,"Times New Roman",serif}
+  /* Estrutura identica ao console-shell do professor (ConsoleShell.tsx / page-surfaces.css) */
+  .console-shell{display:grid;grid-template-columns:212px minmax(0,1fr);grid-template-rows:68px minmax(0,1fr);height:100vh;overflow:hidden}
+  .console-topbar{grid-column:1/-1;display:flex;align-items:center;gap:28px;padding:12px 24px;background:var(--surface);border-bottom:1px solid var(--border);min-width:0}
+  .journey-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text);font-size:20px}
+  .journey-brand img{width:32px;height:32px}
+  .journey-brand span{font-family:Georgia,serif;font-weight:700}
+  .console-workspace-name{color:var(--text-subtle);font-size:12px}
+  .console-account{margin-left:auto;display:flex;align-items:center;gap:10px;min-width:0}
+  .console-account img.avatar{width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--accent)}
+  .console-account-copy{display:grid;gap:2px}
+  .console-account-copy strong{font-size:13px;font-weight:600}
+  .console-account-copy span{font-size:11px;color:var(--text-subtle)}
+  .console-icon-button{display:grid;place-items:center;width:40px;height:40px;border-radius:6px;color:var(--text-muted);background:none;border:none;cursor:pointer;flex:none}
+  .console-icon-button:hover{color:var(--text);background:var(--elevated)}
+  .console-icon-button img{width:20px;height:20px}
+  .console-icon-button svg{width:18px;height:18px}
+  .console-navigation{padding:20px 12px;display:flex;flex-direction:column;gap:6px;border-right:1px solid var(--border);background:rgba(0,0,0,.15);overflow-y:auto}
+  .console-navigation a{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:6px;border:1px solid transparent;color:var(--text-muted);font-size:13px;text-decoration:none}
+  .console-navigation a svg{flex:none;width:18px;height:18px}
+  .console-navigation a:hover{color:var(--text);background:rgba(255,255,255,.06)}
+  .console-navigation a[aria-current="page"]{color:var(--text);background:rgba(111,144,235,.13);border-color:var(--border-strong)}
+  .console-navigation a[aria-current="page"] svg{color:var(--accent)}
+  .console-navigation .nb{margin-left:auto;background:var(--accent);color:var(--bg);font-size:10px;font-weight:800;padding:1px 6px;border-radius:100px}
+  .console-main{grid-column:2;grid-row:2;overflow-y:auto;position:relative}
+
+  /* cabeçalho, chips, pílulas e seletor: os mesmos da tela de Notificações */
+  .wrap{padding:28px 32px 48px}
+  .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:0 0 4px}
+  h1{font-family:Georgia,serif;font-size:28px;margin:0}
+  .sub{font-size:14px;color:var(--text-subtle);margin:6px 0 0}
+  .page-head{display:flex;align-items:flex-end;gap:16px;margin-bottom:20px}
+  .page-head .tools{margin-left:auto;display:flex;align-items:center;gap:10px}
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:100px;font-size:12.5px;font-weight:600;background:var(--elevated);color:var(--text-muted);white-space:nowrap}
+  .chip img{width:20px;height:20px}
+  .chip-accent{background:rgba(111,144,235,.16);color:var(--accent)}
+  .icon-btn{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;background:var(--surface);border:1px solid var(--border);color:var(--text-muted);cursor:pointer}
+  .icon-btn svg{width:17px;height:17px}
+  a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .filters{display:flex;gap:8px;margin-bottom:18px}
+  .filter{padding:8px 16px;border-radius:100px;border:1px solid var(--border-strong);font-size:13px;color:var(--text-muted);text-decoration:none;display:inline-flex;gap:7px;align-items:center}
+  .filter:hover{background:var(--elevated);color:var(--text)}
+  .filter .n{font-size:11.5px;font-weight:700;opacity:.8}
+  .preview{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:40;display:flex;align-items:center;gap:10px;padding:6px 8px 6px 14px;border-radius:100px;background:var(--bg);border:1px solid var(--border);font-size:12px;color:var(--text-muted)}
+  .preview select{background:var(--accent);color:var(--bg);border:0;border-radius:100px;padding:6px 10px;font-weight:600;font-family:inherit}
+
+  /* 8/12 + 4/12: a coluna lateral é um card sticky encostado na borda direita, sem faixa vazia */
+  .md{display:grid;grid-template-columns:8fr 4fr;gap:20px;align-items:start}
+  .main-col{min-width:0}
+  .block-title{display:flex;align-items:center;gap:10px;font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin:28px 0 12px;scroll-margin-top:16px}
+  .block-title .chip{font-size:11px;padding:2px 9px;letter-spacing:0}
+
+  .search{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:0 12px;height:46px}
+  .search svg{width:18px;height:18px;color:var(--text-subtle)}
+  .search input{flex:1;background:none;border:none;outline:none;color:var(--text);font-size:14px;font-family:inherit}
+
+  .invite-card{display:flex;flex-wrap:wrap;align-items:center;gap:12px;background:var(--elevated);border:1px solid var(--accent);border-radius:12px;padding:14px 16px}
+  .invite-card .pc-actions{flex:none}
+  .grid-people{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .person-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px}
+  .pc-top{display:flex;align-items:center;gap:10px}
+  .avatar{position:relative;width:44px;height:44px;flex-shrink:0}
+  .avatar img{width:100%;height:100%;border-radius:50%;object-fit:cover;border:2px solid var(--border-strong)}
+  .online-dot{position:absolute;bottom:0;right:0;width:11px;height:11px;border-radius:50%;background:var(--success);border:2px solid var(--surface)}
+  .p-info{flex:1;min-width:0}
+  .p-name{font-size:14px;font-weight:700;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .p-sub{font-size:12px;color:var(--text-subtle);margin:2px 0 0}
+  .pc-actions{display:flex;gap:8px;align-items:center}
+  .pill-btn{flex:1;text-align:center;padding:8px 12px;border-radius:100px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;border:1px solid transparent;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+  .pill-btn.primary{background:var(--accent);color:#0b1328}
+  .pill-btn.ghost{background:transparent;border-color:var(--border-strong);color:var(--text-muted)}
+  .pill-btn.ghost-wide{flex:none;background:transparent;border-color:var(--border-strong);color:var(--text)}
+  .pill-btn.ghost-wide:disabled{opacity:.5;cursor:not-allowed}
+  .pill-btn.accept{flex:none;background:var(--success);color:#0b1328}
+  .pill-btn.decline{flex:none;background:transparent;border-color:var(--danger);color:var(--danger)}
+  .pill-btn.danger{flex:none;background:var(--danger);color:#fff}
+  .pill-btn.chat{flex:none;width:38px;padding:8px 0;background:var(--elevated);border-color:var(--border-strong);color:var(--accent)}
+  .pill-btn.small{flex:none;padding:6px 10px;font-size:11px;background:transparent;border-color:var(--border-strong);color:var(--text)}
+  .pill-btn svg{width:16px;height:16px}
+  .chip.sent{flex:1;justify-content:center;padding:8px 12px}
+  .link{background:none;border:0;color:var(--accent);font-weight:600;font-size:13px;cursor:pointer;margin-top:12px;display:inline-flex;align-items:center;gap:4px;font-family:inherit;padding:0}
+  .link svg{width:14px;height:14px}
+  .empty{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;background:var(--surface);border:1px dashed var(--border-strong);border-radius:12px;padding:26px;color:var(--text-subtle);font-size:13.5px}
+  .empty svg{width:36px;height:36px}
+  .empty p{margin:0}
+  .empty strong{color:var(--text)}
+
+  .rail{position:sticky;top:28px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:22px 20px}
+  .rail h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);margin:0 0 14px;scroll-margin-top:16px}
+  .guild-card{background:var(--elevated);border:1px solid var(--border-strong);border-radius:14px;padding:18px;margin-bottom:24px;text-align:center}
+  .guild-card img{width:52px;height:52px;object-fit:contain;margin-bottom:10px;filter:drop-shadow(0 0 14px rgba(111,144,235,.4))}
+  .guild-card h4{font-family:Georgia,serif;font-size:16px;margin:0 0 4px}
+  .guild-card p{font-size:12px;color:var(--text-muted);margin:0 0 12px;line-height:1.4}
+  .guild-card .members{display:flex;justify-content:center;margin-bottom:14px}
+  .guild-card .members img{width:28px;height:28px;border-radius:50%;border:2px solid var(--elevated);margin-left:-8px;filter:none;margin-bottom:0}
+  .guild-btn{width:100%;padding:10px;border-radius:8px;background:var(--accent);color:#0b1328;font-size:12px;font-weight:700;cursor:pointer;border:0;font-family:inherit}
+  .stat-row{display:flex;justify-content:space-between;align-items:center;width:100%;padding:10px 8px;margin:0 -8px;border-radius:8px;border:0;border-bottom:1px solid rgba(255,255,255,.06);font-size:13px;color:var(--text);text-decoration:none;background:none;cursor:pointer;font-family:inherit;box-sizing:content-box}
+  .stat-row:hover{background:var(--elevated)}
+  .stat-row span:last-child{color:var(--accent);font-weight:700;display:inline-flex;align-items:center;gap:6px}
+  .stat-row svg{width:14px;height:14px}
+  .guild-row{display:flex;align-items:center;gap:10px;min-height:56px;border-bottom:1px solid rgba(255,255,255,.06)}
+  .guild-row img{width:32px;height:32px;object-fit:contain}
+  .guild-row div{flex:1;min-width:0}
+  .guild-row strong{display:block;font-size:13px}
+  .guild-row div span{font-size:11.5px;color:var(--text-subtle)}
+  .help{font-size:11.5px;color:var(--text-subtle);margin:6px 0 0;text-align:center}
+  .store-mini{display:flex;align-items:center;gap:10px;margin-top:20px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;color:var(--text);text-decoration:none}
+  .store-mini img{width:30px;height:30px}
+  .store-mini div{flex:1}
+  .store-mini strong{display:block;font-size:12.5px}
+  .store-mini span{font-size:11px;color:var(--text-subtle)}
+  .store-mini svg{width:14px;height:14px;color:var(--text-subtle)}
+
+  .error{grid-column:1/-1;display:flex;gap:14px;align-items:center;background:rgba(225,91,100,.1);border:1px solid rgba(225,91,100,.5);border-radius:16px;padding:18px 20px}
+  .error svg{width:22px;height:22px;color:var(--danger);flex:none}
+  .error p{margin:0;flex:1}
+  .skel{border-radius:12px;background:linear-gradient(90deg,var(--surface),var(--elevated),var(--surface));background-size:200% 100%;animation:sh 1.3s linear infinite}
+  @keyframes sh{to{background-position:-200% 0}}
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:grid;place-items:center;z-index:50}
+  .modal{width:420px;background:var(--surface);border:1px solid var(--border-strong);border-radius:18px;padding:22px 24px}
+  .modal h3{margin:0 0 8px;font-size:17px}
+  .modal p{margin:0 0 18px;color:var(--text-muted);font-size:14px;line-height:1.5}
+  .modal .actions{display:flex;gap:10px;justify-content:flex-end}
+</style>
+</head>
+<body>
+<div class="console-shell">
+  <header class="console-topbar">
+    <a class="journey-brand" href="03-trilha.html"><img src="assets/trailup-brand-logo.png" alt="" /><span>TrailUp</span></a>
+    <span class="console-workspace-name">Área do aluno</span>
+    <div class="console-account">
+      <img class="avatar" src="assets/rosto-conqueror.png" alt="" />
+      <div class="console-account-copy"><strong>Amina T.</strong><span>Conqueror</span></div>
+      <button class="console-icon-button" title="Minha Bag"><img src="assets/object-bag.png" alt="" /></button>
+      <button class="console-icon-button" title="Sair"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg></button>
+    </div>
+  </header>
+  <nav class="console-navigation" aria-label="Seções da área do aluno">
+    <a href="03-trilha.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 20l-5.5 2V6L9 4l6 2 5.5-2v16L15 22l-6-2z"/><path d="M9 4v16M15 6v16"/></svg>Trilha</a>
+    <a href="07-notificacoes.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Notificações<span class="nb">2</span></a>
+    <a href="06-social.html" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Social</a>
+    <a href="05-ranking.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 21h16M6 21V10M12 21V3M18 21v-7"/></svg>Ranking</a>
+    <a href="08-perfil-hub.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0 1 16 0v1"/></svg>Perfil</a>
+  </nav>
+  <main class="console-main" id="main">
+<div class="wrap">
+  <div class="page-head">
+    <div>
+      <div class="eyebrow">Conexões da jornada</div>
+      <h1>Social</h1>
+      <p class="sub">Encontre sua turma e avance em companhia.</p>
+    </div>
+  </div>
+  <!-- atalhos: mesma fileira dos filtros das Notificações, mas cada pílula ROLA até o bloco (não é aba) -->
+  <nav class="filters" aria-label="Ir para" id="jumps"></nav>
+  <div class="md" id="md"></div>
+</div>
+  </main>
+</div>
+
+<div class="preview"><span>Pré-visualização de estado:</span><select id="stateSel" aria-label="Estado da tela"></select></div>
+<div id="modal"></div>
+
+<script>
+const I={
+  chat:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+  search:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>',
+  arrow:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>',
+  users:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  alert:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.5"/></svg>',
+};
+const AMIGOS=[
+  {n:'Marina S.',p:'seeker',s:'Exploradores do Norte',on:true},
+  {n:'Zuri & Mateo',p:'socializer',s:'offline há 2h',on:false},
+  {n:'Diego A.',p:'conqueror',s:'Legião Azul',on:true},
+  {n:'Bianca L.',p:'achiever',s:'Exploradores do Norte',on:true},
+  {n:'Théo M.',p:'seeker',s:'offline há 1 dia',on:false},
+  {n:'Rafael N.',p:'conqueror',s:'Legião Azul',on:true},
+];
+const COLEGAS=[
+  {n:'Kenji O.',p:'survivor',s:'Survivor · 6º ano B'},{n:'Lara P.',p:'mastermind',s:'Mastermind · 6º ano B',env:true},{n:'Iago F.',p:'daredevil',s:'Daredevil · 6º ano B'},
+  {n:'Sofia R.',p:'achiever',s:'Achiever · 6º ano B'},{n:'Nina C.',p:'seeker',s:'Seeker · 6º ano B'},{n:'Caio B.',p:'conqueror',s:'Conqueror · 6º ano B'},
+  {n:'Luísa M.',p:'socializer',s:'Socializer · 6º ano B'},{n:'Pedro H.',p:'survivor',s:'Survivor · 6º ano B'},{n:'Ana J.',p:'mastermind',s:'Mastermind · 6º ano B'},
+];
+const STATES=[['data','Com dados'],['noinv','Sem convites'],['nofriends','Sem amigos'],['nosearch','Busca sem resultado'],['loading','Carregando'],['error','Erro']];
+let estado='data', busca='', verTodos=false, convite=true, amigos=AMIGOS.slice(), colegas=COLEGAS.map(c=>({...c})), modalHTML='';
+const esc=s=>s.replace(/&/g,'&amp;');
+
+function pessoa(x,acao){
+  return `<div class="person-card">
+    <div class="pc-top"><div class="avatar"><img src="assets/rosto-${x.p}.png" alt="" />${x.on?'<span class="online-dot" title="online"></span>':''}</div>
+      <div class="p-info"><p class="p-name">${esc(x.n)}</p><p class="p-sub">${x.s}</p></div></div>
+    <div class="pc-actions">${acao}</div></div>`;
+}
+const titulo=(id,t,n)=>`<h2 class="block-title" id="${id}">${t}${n!=null?`<span class="chip">${n}</span>`:''}</h2>`;
+
+function principal(){
+  const q=busca.trim().toLowerCase(), F=amigos.filter(a=>!q||a.n.toLowerCase().includes(q)||a.s.toLowerCase().includes(q));
+  let h=`<label class="search">${I.search}<input id="busca" placeholder="Buscar por nome ou guilda" value="${esc(busca)}" aria-label="Buscar por nome ou guilda" /></label>`;
+  if(convite){
+    h+=titulo('convites','Convites',1)+`<div class="invite-card">
+      <div class="avatar"><img src="assets/rosto-achiever.png" alt="" /></div>
+      <div class="p-info"><p class="p-name">Kwame R.</p><p class="p-sub">quer se conectar com você</p></div>
+      <div class="pc-actions"><button class="pill-btn accept" data-inv="ok">Aceitar</button><button class="pill-btn decline" data-inv="no">Recusar</button></div></div>`;
+  }
+  h+=titulo('amigos','Amigos',amigos.length);
+  if(!amigos.length) h+=`<div class="empty">${I.users}<p>Você ainda não tem amigos na jornada.</p><a class="pill-btn primary" href="#encontrar">Encontrar colegas</a></div>`;
+  else if(!F.length) h+=`<div class="empty">${I.search}<p><strong>Nenhuma pessoa encontrada</strong><br>Tente outro nome ou limpe a busca.</p><button class="pill-btn ghost-wide" data-clear>Limpar busca</button></div>`;
+  else h+=`<div class="grid-people">${F.map(a=>pessoa(a,`<button class="pill-btn chat" aria-label="Conversar com ${esc(a.n)}">${I.chat}</button><button class="pill-btn ghost" data-undo="${esc(a.n)}">Desfazer</button>`)).join('')}</div>`;
+  const C=verTodos?colegas:colegas.slice(0,3);
+  h+=titulo('encontrar','Encontrar colegas',colegas.length)+`<div class="grid-people">${C.map((c,i)=>pessoa(c,c.env?'<span class="chip sent">Enviado</span>':`<button class="pill-btn primary" data-invite="${i}">Convidar</button>`)).join('')}</div>`;
+  if(!verTodos)h+=`<button class="link" data-all>Ver todos os ${colegas.length} colegas ${I.arrow}</button>`;
+  return `<div class="main-col">${h}</div>`;
+}
+function lateral(){
+  return `<aside class="rail">
+    <h3>Guilda em destaque</h3>
+    <div class="guild-card">
+      <img src="assets/emblem-conqueror.png" alt="" />
+      <h4>Legião Azul</h4>
+      <p>8 membros · 3 desafios compartilhados esta semana</p>
+      <div class="members"><img src="assets/rosto-conqueror.png" alt="" /><img src="assets/rosto-seeker.png" alt="" /><img src="assets/rosto-achiever.png" alt="" /><img src="assets/rosto-socializer.png" alt="" /></div>
+      <button class="guild-btn">Abrir chat da guilda</button>
+    </div>
+    <h3>Sua rede</h3>
+    <a class="stat-row" href="#amigos"><span>Amigos</span><span>${amigos.length}${I.arrow}</span></a>
+    <a class="stat-row" href="#guildas"><span>Guildas</span><span>2${I.arrow}</span></a>
+    ${convite?`<a class="stat-row" href="#convites"><span>Convites pendentes</span><span>1${I.arrow}</span></a>`:''}
+    <button class="stat-row" data-blocked><span>Bloqueados</span><span>0${I.arrow}</span></button>
+    <h3 id="guildas" style="margin-top:24px">Guildas da turma</h3>
+    <div class="guild-row"><img src="assets/emblem-conqueror.png" alt="" /><div><strong>Legião Azul</strong><span>8/10 membros</span></div><span class="chip chip-accent">Sua guilda</span></div>
+    <div class="guild-row"><img src="assets/emblem-seeker.png" alt="" /><div><strong>Exploradores do Norte</strong><span>7/10 membros</span></div><button class="pill-btn small">Pedir para entrar</button></div>
+    <button class="pill-btn ghost-wide" disabled style="margin-top:10px;width:100%">+ Criar guilda</button>
+    <p class="help">Você já participa de uma guilda nesta turma.</p>
+    <a class="store-mini" href="#"><img src="assets/object-coin.png" alt="" /><div><strong>Loja</strong><span>240 moedas disponíveis</span></div>${I.arrow}</a>
+  </aside>`;
+}
+function render(){
+  document.getElementById('stateSel').innerHTML=STATES.map(([k,l])=>`<option value="${k}" ${estado===k?'selected':''}>${l}</option>`).join('');
+  const J=[['#convites','Convites',convite?1:null],['#amigos','Amigos',amigos.length],['#encontrar','Encontrar',colegas.length],['#guildas','Guildas',2]].filter(j=>j[2]!=null);
+  document.getElementById('jumps').innerHTML=J.map(([h,l,n])=>`<a class="filter" href="${h}">${l}<span class="n">${n}</span></a>`).join('');
+  const md=document.getElementById('md');
+  if(estado==='error'){md.innerHTML=`<div class="error" role="alert">${I.alert}<p>Não foi possível carregar o Social.</p><button class="pill-btn ghost-wide" data-retry>Tentar novamente</button></div>`;return}
+  if(estado==='loading'){md.innerHTML=`<div class="main-col"><div class="skel" style="height:46px"></div><div class="skel" style="height:74px;margin-top:40px"></div><div class="grid-people" style="margin-top:40px">${'<div class="skel" style="height:116px"></div>'.repeat(9)}</div></div><div class="skel" style="height:620px;border-radius:16px"></div>`;return}
+  const foco=document.activeElement&&document.activeElement.id==='busca';
+  md.innerHTML=principal()+lateral();
+  if(foco){const b=document.getElementById('busca');b.focus();b.setSelectionRange(b.value.length,b.value.length)}
+}
+function set(st){estado=st;busca='';verTodos=false;convite=st!=='noinv';amigos=st==='nofriends'?[]:AMIGOS.slice();colegas=COLEGAS.map(c=>({...c}));if(st==='nosearch')busca='Joaquim';render()}
+function abrirModal(h){document.getElementById('modal').innerHTML=h?`<div class="modal-bg" data-close><div class="modal" role="dialog" aria-modal="true">${h}</div></div>`:''}
+document.addEventListener('input',e=>{if(e.target.id==='busca'){busca=e.target.value;render()}});
+document.addEventListener('click',e=>{
+  const q=s=>e.target.closest(s);
+  if(e.target.classList.contains('modal-bg')||q('[data-close].pill-btn')){abrirModal('');return}
+  if(q('[data-confirm-undo]')){const n=q('[data-confirm-undo]').dataset.confirmUndo;amigos=amigos.filter(a=>a.n!==n);abrirModal('');render();return}
+  if(q('[data-undo]')){const n=q('[data-undo]').dataset.undo;abrirModal(`<h3>Desfazer amizade com ${n}?</h3><p>Vocês deixam de acompanhar o avanço um do outro. Dá para convidar de novo depois.</p><div class="actions"><button class="pill-btn ghost-wide" data-close>Manter amizade</button><button class="pill-btn danger" data-confirm-undo="${n}">Desfazer</button></div>`);return}
+  if(q('[data-blocked]')){abrirModal(`<h3>Pessoas bloqueadas</h3><p>Você não bloqueou ninguém.</p><div class="actions"><button class="pill-btn ghost-wide" data-close>Fechar</button></div>`);return}
+  if(q('[data-inv]')){if(q('[data-inv]').dataset.inv==='ok')amigos.unshift({n:'Kwame R.',p:'achiever',s:'online agora',on:true});convite=false;render();return}
+  if(q('[data-invite]')){colegas[+q('[data-invite]').dataset.invite].env=true;render();return}
+  if(q('[data-all]')){verTodos=true;render();return}
+  if(q('[data-clear]')){busca='';render();return}
+  if(q('[data-retry]')){set('data');return}
+  const a=q('a[href^="#"]');if(a&&a.getAttribute('href').length>1){const t=document.querySelector(a.getAttribute('href'));if(t){e.preventDefault();t.scrollIntoView({behavior:'smooth',block:'start'})}}
+});
+document.getElementById('stateSel').addEventListener('change',e=>{history.replaceState(null,'',location.pathname+'?estado='+e.target.value);set(e.target.value)});
+set(new URLSearchParams(location.search).get('estado')||'data');
+</script>
+</body>
+</html>

@@ -1,5 +1,6 @@
 import { RankingPodium } from "@/components/ranking/RankingPodium";
 import { ProfileEmblem } from "@/components/ProfileEmblem";
+import { SocialProfileModal } from "@/components/social/SocialProfileModal";
 import {
   SectionGuideButton,
   type SectionGuideScrollable,
@@ -41,14 +42,27 @@ const filters: { key: Filter; label: string }[] = [
 
 export default function RankDetalheScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
+  return <RankDetalhe rankId={Number(id)} />;
+}
+
+/**
+ * Categoria aberta do ranking. `embutido`: dentro do Ranking da web em tela
+ * larga (#346), ao lado das categorias — sem a barra de voltar, porque as
+ * categorias continuam visíveis na coluna da esquerda. Embutido, o aluno
+ * clicado (pódio ou lista) abre o perfil público; a própria linha leva ao Perfil.
+ */
+export function RankDetalhe({ rankId, embutido = false }: { rankId: number; embutido?: boolean }) {
   const router = useRouter();
   const { ranking, carregando, reloadRanking } = useConquistaRank();
   const { usuario } = useUsuario();
   const profile = usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome;
   const palette = getProfileShellPalette(profile);
-  const rank = ranking?.ranks.find((item) => item.info.rank_id === Number(id));
+  const rank = ranking?.ranks.find((item) => item.info.rank_id === rankId);
   const [filter, setFilter] = useState<Filter>("geral");
   const [total, setTotal] = useState<number | null>(null);
+  const [perfilAberto, setPerfilAberto] = useState<string | null>(null);
+  const abrirAluno = (idAluno: string) =>
+    idAluno === usuario?.id ? router.push("/perfil") : setPerfilAberto(idAluno);
   const ids = useMemo(
     () => (rank?.posicoes ?? []).map((row) => row.id_aluno),
     [rank?.posicoes],
@@ -152,8 +166,9 @@ export default function RankDetalheScreen() {
         : "Pontos";
   return (
     <View style={[s.screen, { backgroundColor: palette.background }]}>
-      <Stack.Screen options={{ headerShown: false }} />
+      {!embutido ? <Stack.Screen options={{ headerShown: false }} /> : null}
       <SafeAreaView style={s.screen} edges={["top", "left", "right"]}>
+        {!embutido ? (
         <View style={[s.topbar, { borderBottomColor: palette.border }]}>
           <Pressable
             onPress={() => router.back()}
@@ -179,6 +194,7 @@ export default function RankDetalheScreen() {
             scrollOffsetRef={scrollOffsetRef}
           />
         </View>
+        ) : null}
         {!rank ? (
           carregando ? (
             <ActivityIndicator color={palette.accent} style={s.empty} />
@@ -248,6 +264,7 @@ export default function RankDetalheScreen() {
                       userId={usuario?.id}
                       profiles={profiles}
                       photos={photos}
+                      onPressAluno={embutido ? abrirAluno : undefined}
                     />
                   </View>
                   <View
@@ -311,8 +328,16 @@ export default function RankDetalheScreen() {
               renderItem={({ item }) => {
                 const me = item.id_aluno === usuario?.id;
                 const personProfile = profiles[item.id_aluno];
+                const Linha = embutido ? Pressable : View;
                 return (
-                  <View
+                  <Linha
+                    {...(embutido
+                      ? {
+                          onPress: () => abrirAluno(item.id_aluno),
+                          accessibilityRole: "button" as const,
+                          accessibilityLabel: me ? "Ir para o seu perfil" : `Ver perfil de ${item.nome_aluno}`,
+                        }
+                      : null)}
                     style={[
                       s.row,
                       {
@@ -348,7 +373,7 @@ export default function RankDetalheScreen() {
                     >
                       {formatRankScore(item.pontuacao, rank.info.criterio)}
                     </Text>
-                  </View>
+                  </Linha>
                 );
               }}
               ListEmptyComponent={
@@ -368,7 +393,8 @@ export default function RankDetalheScreen() {
                 ) : null
               }
             />
-            {cutoff.minhaLinha ? (
+            {/* Embutido no Ranking de tela larga, a posição fica no card da coluna da esquerda. */}
+            {cutoff.minhaLinha && !embutido ? (
               <View
                 ref={myRef}
                 collapsable={false}
@@ -403,6 +429,16 @@ export default function RankDetalheScreen() {
             ) : null}
           </>
         )}
+        {embutido && classeId ? (
+          <SocialProfileModal
+            visible={perfilAberto !== null}
+            alunoId={perfilAberto}
+            classeId={classeId}
+            accent={palette.accent}
+            centralizado
+            onClose={() => setPerfilAberto(null)}
+          />
+        ) : null}
       </SafeAreaView>
     </View>
   );

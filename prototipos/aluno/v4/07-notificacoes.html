@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TrailUp — Notificações (Conqueror)</title>
+<style>
+  :root{
+    --bg:#0b1328; --surface:#121e3f; --elevated:#192a57;
+    --border:#28428a; --border-strong:#4d6fcb;
+    --text:#f3f4f7; --text-muted:rgba(243,244,247,.82); --text-subtle:rgba(243,244,247,.62);
+    --accent:#6f90eb; --gold:#dab43f;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  .title-font{font-family:Georgia,"Times New Roman",serif}
+  /* Estrutura identica ao console-shell do professor (ConsoleShell.tsx / page-surfaces.css) */
+  .console-shell{display:grid;grid-template-columns:212px minmax(0,1fr);grid-template-rows:68px minmax(0,1fr);height:100vh;overflow:hidden}
+  .console-topbar{grid-column:1/-1;display:flex;align-items:center;gap:28px;padding:12px 24px;background:var(--surface);border-bottom:1px solid var(--border);min-width:0}
+  .journey-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text);font-size:20px}
+  .journey-brand img{width:32px;height:32px}
+  .journey-brand span{font-family:Georgia,serif;font-weight:700}
+  .console-workspace-name{color:var(--text-subtle);font-size:12px}
+  .console-account{margin-left:auto;display:flex;align-items:center;gap:10px;min-width:0}
+  .console-account img.avatar{width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--accent)}
+  .console-account-copy{display:grid;gap:2px}
+  .console-account-copy strong{font-size:13px;font-weight:600}
+  .console-account-copy span{font-size:11px;color:var(--text-subtle)}
+  .console-icon-button{display:grid;place-items:center;width:40px;height:40px;border-radius:6px;color:var(--text-muted);background:none;border:none;cursor:pointer;flex:none}
+  .console-icon-button:hover{color:var(--text);background:var(--elevated)}
+  .console-icon-button img{width:20px;height:20px}
+  .console-icon-button svg{width:18px;height:18px}
+  .console-navigation{padding:20px 12px;display:flex;flex-direction:column;gap:6px;border-right:1px solid var(--border);background:rgba(0,0,0,.15);overflow-y:auto}
+  .console-navigation a{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:6px;border:1px solid transparent;color:var(--text-muted);font-size:13px;text-decoration:none}
+  .console-navigation a svg{flex:none;width:18px;height:18px}
+  .console-navigation a:hover{color:var(--text);background:rgba(255,255,255,.06)}
+  .console-navigation a[aria-current="page"]{color:var(--text);background:rgba(111,144,235,.13);border-color:var(--border-strong)}
+  .console-navigation a[aria-current="page"] svg{color:var(--accent)}
+  .console-navigation .nb{margin-left:auto;background:var(--accent);color:var(--bg);font-size:10px;font-weight:800;padding:1px 6px;border-radius:100px}
+  .console-main{grid-column:2;grid-row:2;overflow-y:auto;position:relative}
+
+  .wrap{padding:28px 32px 48px}
+  .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:0 0 4px}
+  h1{font-family:Georgia,serif;font-size:28px;margin:0}
+  .sub{font-size:14px;color:var(--text-subtle);margin:6px 0 0}
+  .page-head{display:flex;align-items:flex-end;gap:16px;margin-bottom:20px}
+  .page-head .tools{margin-left:auto;display:flex;align-items:center;gap:10px}
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:100px;font-size:12.5px;font-weight:600;background:var(--elevated);color:var(--text-muted);white-space:nowrap}
+  .chip img{width:18px;height:18px}
+  .chip-accent{background:rgba(111,144,235,.16);color:var(--accent)}
+  .btn{height:40px;padding:0 16px;border-radius:100px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:8px;cursor:pointer;border:1px solid transparent;text-decoration:none;font-family:inherit}
+  .btn svg{width:16px;height:16px}
+  .btn-primary{background:var(--accent);color:var(--bg);font-weight:700}
+  .btn-secondary{background:none;color:var(--text);border-color:var(--border-strong)}
+  .btn-ghost{background:none;color:var(--accent);border:0;padding:0 8px}
+  .btn-ghost:disabled{color:var(--text-subtle);opacity:.6;cursor:not-allowed}
+  .btn-danger{background:none;color:#fca5a5;border-color:rgba(248,113,113,.55)}
+  .btn-danger-solid{background:#dc2626;color:#fff}
+  .icon-btn{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;background:var(--surface);border:1px solid var(--border);color:var(--text-muted);cursor:pointer}
+  .icon-btn svg{width:17px;height:17px}
+  a:focus-visible,button:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  .filters{display:flex;gap:8px;margin-bottom:18px}
+  .filter{padding:8px 16px;border-radius:100px;border:1px solid var(--border-strong);font-size:13px;color:var(--text-muted);cursor:pointer;background:none;font-family:inherit;display:inline-flex;gap:7px;align-items:center}
+  .filter .n{font-size:11.5px;font-weight:700;opacity:.8}
+  .filter[aria-pressed="true"]{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:700}
+
+  /* mestre-detalhe: lista (5/12) + detalhe (7/12) começando na mesma linha; o detalhe é sticky, então não sobra área vazia */
+  /* revisão 03: sem painel fixo ao lado; a notificação abre no próprio item, como um e-mail */
+  .md{display:block}
+  .filters{align-items:center}
+  .read-all{margin-left:auto;display:inline-flex;align-items:center;gap:6px}
+  .read-all svg{width:15px;height:15px}
+  .group{font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-subtle);font-weight:600;margin:18px 4px 8px}
+  .group:first-child{margin-top:4px}
+  .i-head{display:flex;gap:14px;align-items:center;width:100%;padding:14px 16px;background:none;border:0;color:inherit;font:inherit;text-align:left;cursor:pointer;border-radius:16px}
+  .i-head .chev{width:18px;height:18px;color:var(--text-subtle);flex:none;transition:transform .15s}
+  .item.is-open .chev{transform:rotate(180deg)}
+  .i-open{padding:0 18px 16px 70px}
+  .i-open .msg{font-size:15px;line-height:1.65;margin:0 0 14px;color:var(--text)}
+  .i-foot{display:flex;align-items:center;gap:16px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--text-subtle)}
+  .i-foot span{margin-right:auto}
+  .lnk{background:none;border:0;padding:0;font:inherit;font-size:12.5px;font-weight:600;color:var(--text-muted);cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+  .lnk:hover{color:var(--text)}
+  .lnk.danger{color:#fca5a5}
+  .lnk svg{width:13px;height:13px}
+  .notice{display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:10px 14px;border-radius:12px;border:1px solid var(--border-strong);background:var(--surface);font-size:13px}
+  .notice svg{width:15px;height:15px;color:#86efac}
+  .list{display:flex;flex-direction:column;gap:8px}
+  .item{position:relative;display:block;border-radius:16px;border:1px solid var(--border);background:transparent;color:inherit}
+  .item:hover{border-color:var(--border-strong)}
+  .item.unread{background:var(--surface);border-color:rgba(111,144,235,.45)}
+  .item.unread::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:3px;border-radius:3px;background:var(--accent)}
+  .item.is-open{background:var(--elevated);border-color:var(--border-strong)}
+  .icon{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;flex-shrink:0}
+  .icon.lembrete,.icon.ia{background:rgba(111,144,235,.18);color:var(--accent)}
+  .icon.rank,.icon.conquista{background:rgba(218,180,63,.18);color:var(--gold)}
+  .icon svg{width:19px;height:19px}
+  .icon img{width:22px}
+  .i-body{flex:1;min-width:0;display:block}
+  .i-row{display:flex;align-items:center;gap:8px}
+  .i-title{font-size:14.5px;font-weight:500;color:var(--text-muted);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .item.unread .i-title{font-weight:700;color:var(--text)}
+  .badge{font-size:9.5px;letter-spacing:.06em;background:var(--accent);color:var(--bg);padding:2px 7px;border-radius:100px;font-weight:800;flex:none}
+  .i-time{font-size:11px;color:var(--text-subtle);flex:none;white-space:nowrap}
+  .i-desc{display:block;font-size:13px;color:var(--text-subtle);margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .i-actions{position:absolute;right:12px;bottom:10px;display:none;gap:6px}
+  .item:hover .i-actions,.item:focus-within .i-actions{display:flex}
+  .i-actions button{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;background:var(--bg);border:1px solid var(--border);color:var(--text-muted);cursor:pointer}
+  .i-actions button.del{color:#fca5a5}
+  .i-actions svg{width:15px;height:15px}
+
+  .detail{position:sticky;top:28px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:26px 28px}
+  .sec{border-top:1px solid var(--border);padding:18px 0}
+  .sec:first-child{border-top:0;padding-top:0}
+  .sec .eyebrow{color:var(--text-subtle);margin-bottom:10px}
+  .d-title{display:flex;align-items:center;gap:14px}
+  .d-title .icon{width:48px;height:48px;border-radius:14px}
+  .d-title .icon svg{width:22px;height:22px}
+  .d-title h2{font-family:Georgia,serif;font-size:22px;margin:0;flex:1;line-height:1.25}
+  .when{font-size:15px;font-weight:600;margin:0}
+  .when-full{font-size:13px;color:var(--text-subtle);margin:4px 0 0}
+  .content{font-size:15px;line-height:1.7;margin:0 0 16px}
+  .actions{display:flex;gap:10px;flex-wrap:wrap}
+  .foot{font-size:12px;color:var(--text-subtle);margin:4px 0 0;line-height:1.5}
+
+  .state{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:8px;padding:40px 20px;color:var(--text-subtle)}
+  .state h3{color:var(--text);font-size:17px;margin:6px 0 0}
+  .state p{margin:0;font-size:13.5px}
+  .state svg{width:46px;height:46px}
+  .full{grid-column:1/-1;background:var(--surface);border:1px solid var(--border);border-radius:20px}
+  .error{grid-column:1/-1;display:flex;gap:14px;align-items:center;background:rgba(220,38,38,.1);border:1px solid rgba(248,113,113,.45);border-radius:16px;padding:18px 20px}
+  .error svg{width:22px;height:22px;color:#fca5a5;flex:none}
+  .error p{margin:0;flex:1}
+  .skel{border-radius:16px;background:linear-gradient(90deg,var(--surface),var(--elevated),var(--surface));background-size:200% 100%;animation:sh 1.3s linear infinite}
+  @keyframes sh{to{background-position:-200% 0}}
+
+  /* seletor de pré-visualização flutuante (o mesmo da Trilha) */
+  .preview{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:40;display:flex;align-items:center;gap:10px;padding:6px 8px 6px 14px;border-radius:100px;background:var(--bg);border:1px solid var(--border);font-size:12px;color:var(--text-muted)}
+  .preview select{background:var(--accent);color:var(--bg);border:0;border-radius:100px;padding:6px 10px;font-weight:600;font-family:inherit}
+
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:grid;place-items:center;z-index:50}
+  .modal{width:400px;background:var(--surface);border:1px solid rgba(248,113,113,.55);border-radius:18px;padding:22px 24px}
+  .modal h3{margin:0 0 8px;font-size:17px}
+  .modal p{margin:0 0 18px;color:var(--text-muted);font-size:14px}
+  .modal .actions{justify-content:flex-end}
+
+  /* barras de rolagem no tema (revisão 03): finas, na cor da borda do perfil, sem a barra cinza do sistema */
+  *{scrollbar-width:thin;scrollbar-color:var(--border-strong,#4d6fcb) transparent}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--border-strong,#4d6fcb);border-radius:999px;border:3px solid transparent;background-clip:padding-box}
+  ::-webkit-scrollbar-thumb:hover{background:var(--accent,#6f90eb);background-clip:padding-box;border:3px solid transparent}
+  ::-webkit-scrollbar-corner{background:transparent}
+
+  /* revisão 04 (pedido da Geis): Bag antes do perfil, maior e com a arte do perfil ativo (assets/bag.js troca a arte);
+     Configurações e Sair no pé da barra lateral */
+  .console-icon-button.bag-btn{width:48px;height:48px;padding:0;border:0;border-radius:50%;background:none;overflow:visible}
+  .console-icon-button.bag-btn:hover{background:none}
+  .console-icon-button.bag-btn img{width:46px;height:46px;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(0,0,0,.45));transition:transform .15s,filter .15s}
+  .console-icon-button.bag-btn:hover img{transform:translateY(-1px) scale(1.06);filter:drop-shadow(0 0 10px var(--accent))}
+  .console-account{gap:14px}
+  .nav-foot{margin-top:auto;padding-top:12px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:6px}
+  .console-navigation .nav-foot a.nav-exit:hover{color:var(--danger,#e15b64)}
+</style>
+</head>
+<body>
+<div class="console-shell">
+  <header class="console-topbar">
+    <a class="journey-brand" href="03-trilha.html"><img src="assets/trailup-brand-logo.png" alt="" /><span>TrailUp</span></a>
+    <span class="console-workspace-name">Área do aluno</span>
+    <div class="console-account">
+      <button class="console-icon-button bag-btn" title="Minha Bag" aria-label="Abrir minha Bag"><img src="assets/bag-conqueror.png" alt="" /></button>
+      <a href="08-perfil-hub.html" title="Meu perfil" aria-label="Meu perfil" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit">
+        <img class="avatar" src="assets/rosto-conqueror.png" alt="" />
+        <div class="console-account-copy"><strong>Amina T.</strong><span>Conqueror</span></div>
+      </a>
+    </div>
+  </header>
+  <nav class="console-navigation" aria-label="Seções da área do aluno">
+    <a href="03-trilha.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 20l-5.5 2V6L9 4l6 2 5.5-2v16L15 22l-6-2z"/><path d="M9 4v16M15 6v16"/></svg>Trilha</a>
+    <a href="07-notificacoes.html" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Notificações<span class="nb">2</span></a>
+    <a href="06-social.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Social</a>
+    <a href="12-loja.html" aria-label="Loja, saldo de 38 moedas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 9l1.5-5h15L21 9"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/><path d="M5 12v8h14v-8"/><path d="M10 20v-5h4v5"/></svg>Loja<span class="nav-coins" style="margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;color:var(--text-subtle)">38<img src="assets/coin-conqueror.png" alt="" style="width:16px;height:16px;object-fit:contain" /></span></a>
+    <a href="05-ranking.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 21h16M6 21V10M12 21V3M18 21v-7"/></svg>Ranking</a>
+    <a href="08-perfil-hub.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0 1 16 0v1"/></svg>Perfil</a>
+  <div class="nav-foot">
+      <a href="11-configuracoes.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Configurações</a>
+      <a href="00-entrada.html" class="nav-exit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg>Sair</a>
+    </div>
+  </nav>
+  <main class="console-main">
+<div class="wrap">
+  <div class="page-head">
+    <div>
+      <div class="eyebrow">Caixa de entrada</div>
+      <h1>Notificações</h1>
+      <p class="sub">Aqui ficam avisos da plataforma, atualizações acadêmicas e eventos importantes.</p>
+    </div>
+  </div>
+  <div class="filters" role="group" aria-label="Filtrar notificações" id="filters"></div>
+  <div class="md" id="md"></div>
+</div>
+  </main>
+</div>
+
+<div class="preview"><span>Pré-visualização de estado:</span><select id="stateSel" aria-label="Estado da tela"></select></div>
+<div id="modal"></div>
+
+<script>
+const I={
+  lembrete:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="9"/></svg>',
+  amigo:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
+  rank:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21h16M6 21V10M12 21V3M18 21v-7"/></svg>',
+  medalha:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/><path d="M8.5 15.5 5 22l7-3 7 3-3.5-6.5"/></svg>',
+  ia:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+  trofeu:'<img src="assets/object-trophy.png" alt="" />',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg>',
+  trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg>',
+  bell:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
+  ok:'<svg viewBox="0 0 24 24" fill="none" stroke="#86efac" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-6"/></svg>',
+  alert:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.5"/></svg>',
+  arrow:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+};
+const BASE=[
+  {id:1,g:'Hoje',lida:false,tipo:'lembrete',ic:'lembrete',t:'Hora de estudar',x:'20 minutos em "Equações do 1º grau" mantêm sua sequência viva.',h:'Hoje, 19:00',d:'29/09/2026 às 19:00',go:['Abrir Equações do 1º grau','04-topico.html']},
+  {id:2,g:'Esta semana',lida:false,tipo:'rank',ic:'rank',t:'Você subiu no ranking!',x:'12ª posição em Tempo de Estudo da turma. Continue assim!',h:'Ontem, 21:14',d:'28/09/2026 às 21:14',go:['Ver ranking','05-ranking.html']},
+  {id:3,g:'Esta semana',lida:true,tipo:'ia',ic:'ia',t:'Percebi que "Frações" te tomou mais tempo',x:'Que tal revisar com os cards rápidos antes de seguir?',h:'Segunda, 14:02',d:'22/09/2026 às 14:02',go:null},
+  {id:4,g:'Anteriores',lida:true,tipo:'conquista',ic:'trofeu',t:'Conquista: "Fronteira Avançada"',x:'2 tópicos seguidos sem errar nenhuma questão.',h:'Sexta passada',d:'19/09/2026 às 16:40',go:['Ver conquista','09-biblioteca-conquistas.html']},
+  {id:5,g:'Anteriores',lida:true,tipo:'lembrete',ic:'amigo',t:'Marina S. aceitou seu convite',x:'Vocês agora são amigos na jornada.',h:'Quarta passada',d:'17/09/2026 às 10:05',go:['Ver amigos','06-social.html']},
+  {id:6,g:'Anteriores',lida:true,tipo:'rank',ic:'medalha',t:'Nova categoria de ranking disponível',x:'"Pontos" já está valendo pra turma inteira.',h:'2 semanas atrás',d:'15/09/2026 às 08:00',go:['Ver ranking','05-ranking.html']},
+];
+const STATES=[['data','Com dados'],['unread','Filtro: Não lidas'],['allread','Tudo lido'],['empty','Vazio'],['loading','Carregando'],['removed','Notificação removida'],['error','Erro']];
+let N, filtro, sel, estado, toDelete=null;
+function reset(st){
+  estado=st; N=BASE.map(n=>({...n})); filtro='todas'; sel=null;
+  if(st==='unread')filtro='naolidas';
+  if(st==='allread'){N.forEach(n=>n.lida=true);filtro='naolidas';sel=null}
+  if(st==='empty')N=[];
+  if(st==='removed')N=N.filter(n=>n.id!==3); // a excluída some da lista
+  const h=+(location.hash.match(/^#n-(\d+)$/)||[])[1]; if(h&&N.some(n=>n.id===h))sel=h;
+}
+const visiveis=()=>N.filter(n=>filtro==='todas'||(filtro==='naolidas'?!n.lida:n.lida));
+function syncNav(){const b=document.querySelector('.console-navigation .nb'),k=N.filter(n=>!n.lida).length;if(b){b.textContent=k;b.style.display=k?'':'none'}}
+
+function itemHTML(n){
+  const open=sel===n.id;
+  const head=`<button class="i-head" data-id="${n.id}" aria-expanded="${open}" aria-controls="nb-${n.id}">
+      <span class="icon ${n.tipo}">${I[n.ic]}</span>
+      <span class="i-body"><span class="i-row"><span class="i-title">${n.t}</span>${n.lida?'':'<span class="badge">NOVA</span>'}<span class="i-time">${n.h}</span></span>
+      ${open?'':`<span class="i-desc">${n.x}</span>`}</span>
+      <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </button>`;
+  const body=open?`<div class="i-open" id="nb-${n.id}">
+      <p class="msg">${n.x}</p>
+      ${n.go?`<a class="btn btn-primary" href="${n.go[1]}">${n.go[0]} ${I.arrow}</a>`:''}
+      <div class="i-foot"><span>Enviada em ${n.d}</span>
+        <button class="lnk" data-unread="${n.id}">Marcar como não lida</button>
+        <button class="lnk danger" data-del="${n.id}">${I.trash}Excluir</button></div>
+    </div>`:'';
+  return `<article class="item ${n.lida?'':'unread'} ${open?'is-open':''}" id="n-${n.id}">${head}${body}</article>`;
+}
+function render(){
+  document.getElementById('stateSel').innerHTML=STATES.map(([k,l])=>`<option value="${k}" ${estado===k?'selected':''}>${l}</option>`).join('');
+  const naoLidas=N.filter(n=>!n.lida).length;
+  const F=[['todas','Todas',N.length],['naolidas','Não lidas',naoLidas],['lidas','Lidas',N.length-naoLidas]];
+  document.getElementById('filters').innerHTML=F.map(([k,l,c])=>`<button class="filter" aria-pressed="${filtro===k}" data-f="${k}">${l}<span class="n">${c}</span></button>`).join('')
+    +`<button class="btn btn-ghost read-all" id="readAll" ${naoLidas?'':'disabled'}>${I.check}Marcar todas como lidas</button>`;
+  const md=document.getElementById('md');
+  if(estado==='error'){md.innerHTML=`<div class="error" role="alert">${I.alert}<p>Não foi possível carregar suas notificações.</p><button class="btn btn-secondary" data-retry>Tentar novamente</button></div>`;syncNav();return}
+  if(estado==='loading'){md.innerHTML=`<div class="list">${'<div class="skel" style="height:72px"></div>'.repeat(6)}</div>`;return}
+  if(!N.length){md.innerHTML=`<div class="full"><div class="state" style="min-height:360px">${I.bell}<h3>Sem notificações</h3><p>Você ainda não tem notificações por aqui.</p></div></div>`;syncNav();return}
+  const V=visiveis();
+  const G=['Hoje','Esta semana','Anteriores'].map(g=>[g,V.filter(n=>n.g===g)]).filter(([,l])=>l.length);
+  const list=V.length?G.map(([g,l])=>`<h2 class="group">${g}</h2>${l.map(itemHTML).join('')}`).join(''):(filtro==='naolidas'?`<div class="state">${I.ok}<h3>Tudo em dia</h3><p>Você leu todas as notificações.</p></div>`:`<div class="state">${I.bell}<h3>Nada neste filtro</h3></div>`);
+  const removida=estado==='removed'?`<div class="notice" role="status">${I.check}<span>Notificação excluída.</span></div>`:'';
+  md.innerHTML=`${removida}<div class="list" aria-label="Lista de notificações">${list}</div>`;
+  syncNav();
+}
+function abrir(id){if(sel===id){sel=null;history.replaceState(null,'',location.pathname+location.search);render();return}sel=id;const n=N.find(x=>x.id===id);if(n)n.lida=true;history.replaceState(null,'',`#n-${id}`);render()}
+function modal(){
+  document.getElementById('modal').innerHTML=toDelete==null?'':`<div class="modal-bg"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt">
+    <h3 id="mt">Excluir notificação</h3><p>Tem certeza de que deseja excluir esta notificação?</p>
+    <div class="actions"><button class="btn btn-secondary" data-cancel>Cancelar</button><button class="btn btn-danger-solid" data-confirm>Excluir</button></div></div></div>`;
+}
+document.addEventListener('click',e=>{
+  const q=s=>e.target.closest(s);
+  if(q('[data-del]')){e.preventDefault();toDelete=+q('[data-del]').dataset.del;modal();return}
+  if(q('[data-read]')){e.preventDefault();N.find(n=>n.id===+q('[data-read]').dataset.read).lida=true;render();return}
+  if(q('[data-unread]')){e.preventDefault();N.find(n=>n.id===+q('[data-unread]').dataset.unread).lida=false;sel=null;render();return}
+  if(q('[data-confirm]')){N=N.filter(n=>n.id!==toDelete);if(sel===toDelete){sel=null;estado='removed'}toDelete=null;modal();render();return}
+  if(q('[data-cancel]')||(e.target.classList&&e.target.classList.contains('modal-bg'))){toDelete=null;modal();return}
+  if(q('[data-f]')){filtro=q('[data-f]').dataset.f;render();return}
+  if(q('[data-back]')){sel=null;estado='data';render();return}
+  if(q('[data-retry]')){reset('data');render();return}
+  if(q('#readAll')){N.forEach(n=>n.lida=true);render();return}
+  const it=q('.i-head[data-id]');if(it){e.preventDefault();abrir(+it.dataset.id)}
+});
+document.getElementById('stateSel').addEventListener('change',e=>{history.replaceState(null,'',location.pathname+'?estado='+e.target.value);reset(e.target.value);render()});
+reset(new URLSearchParams(location.search).get('estado')||'data');
+render();
+</script>
+<script src="assets/bag.js"></script>
+<script src="assets/tour.js"></script>
+</body>
+</html>

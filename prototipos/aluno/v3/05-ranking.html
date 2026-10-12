@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TrailUp — Ranking (Conqueror)</title>
+<style>
+  :root{
+    --bg:#0b1328; --surface:#121e3f; --elevated:#192a57;
+    --border:#28428a; --border-strong:#4d6fcb;
+    --text:#f3f4f7; --text-muted:rgba(243,244,247,.82); --text-subtle:rgba(243,244,247,.62);
+    --accent:#6f90eb; --accent-strong:#1942b2; --gold:#dab43f;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  .title-font{font-family:Georgia,"Times New Roman",serif}
+  /* Estrutura identica ao console-shell do professor (ConsoleShell.tsx / page-surfaces.css) */
+  .console-shell{display:grid;grid-template-columns:212px minmax(0,1fr);grid-template-rows:68px minmax(0,1fr);height:100vh;overflow:hidden}
+  .console-topbar{grid-column:1/-1;display:flex;align-items:center;gap:28px;padding:12px 24px;background:var(--surface);border-bottom:1px solid var(--border);min-width:0}
+  .journey-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text);font-size:20px}
+  .journey-brand img{width:32px;height:32px}
+  .journey-brand span{font-family:Georgia,serif;font-weight:700}
+  .console-workspace-name{color:var(--text-subtle);font-size:12px}
+  .console-account{margin-left:auto;display:flex;align-items:center;gap:10px;min-width:0}
+  .console-account img.avatar{width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--accent)}
+  .console-account-copy{display:grid;gap:2px}
+  .console-account-copy strong{font-size:13px;font-weight:600}
+  .console-account-copy span{font-size:11px;color:var(--text-subtle)}
+  .console-icon-button{display:grid;place-items:center;width:40px;height:40px;border-radius:6px;color:var(--text-muted);background:none;border:none;cursor:pointer;flex:none}
+  .console-icon-button:hover{color:var(--text);background:var(--elevated)}
+  .console-icon-button img{width:20px;height:20px}
+  .console-icon-button svg{width:18px;height:18px}
+  .console-navigation{padding:20px 12px;display:flex;flex-direction:column;gap:6px;border-right:1px solid var(--border);background:rgba(0,0,0,.15);overflow-y:auto}
+  .console-navigation a{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:6px;border:1px solid transparent;color:var(--text-muted);font-size:13px;text-decoration:none}
+  .console-navigation a svg{flex:none;width:18px;height:18px}
+  .console-navigation a:hover{color:var(--text);background:rgba(255,255,255,.06)}
+  .console-navigation a[aria-current="page"]{color:var(--text);background:rgba(111,144,235,.13);border-color:var(--border-strong)}
+  .console-navigation a[aria-current="page"] svg{color:var(--accent)}
+  .console-navigation .nb{margin-left:auto;background:var(--accent);color:var(--bg);font-size:10px;font-weight:800;padding:1px 6px;border-radius:100px}
+  .console-main{grid-column:2;grid-row:2;overflow-y:auto;position:relative}
+
+  /* cabeçalho e seletor: o mesmo padrão de Notificações e Social */
+  .wrap{padding:28px 32px 48px}
+  .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:0 0 4px}
+  h1{font-family:Georgia,serif;font-size:28px;margin:0}
+  .sub{font-size:14px;color:var(--text-subtle);margin:6px 0 0}
+  .page-head{margin-bottom:20px}
+  a:focus-visible,button:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .preview{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:40;display:flex;align-items:center;gap:10px;padding:6px 10px 6px 14px;border-radius:100px;background:var(--bg);border:1px solid var(--border);font-size:12px;color:var(--text-muted)}
+  .preview select{background:var(--accent);color:var(--bg);border:0;border-radius:100px;padding:6px 10px;font-weight:600;font-family:inherit}
+  .preview .sep{width:1px;height:20px;background:var(--border)}
+  .dot{width:16px;height:16px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0}
+  .dot[aria-pressed="true"]{border-color:var(--text)}
+
+  /* mestre-detalhe: categorias 4/12 (sticky) + categoria aberta 8/12 */
+  .md{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,8fr);gap:20px;align-items:start}
+  .cats{position:sticky;top:28px;display:flex;flex-direction:column;gap:12px}
+  .cat-card{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;color:inherit;text-decoration:none}
+  .cat-card:hover{border-color:var(--border-strong)}
+  .cat-card[aria-current="true"]{background:rgba(111,144,235,.12);border-color:var(--accent)}
+  .cat-card img{width:60px;height:68px;object-fit:contain;flex:none}
+  .cat-copy{flex:1;min-width:0}
+  .cat-copy .ctitle{font-family:Georgia,serif;font-size:18px;margin:0 0 3px}
+  .cat-copy .cdesc{font-size:12.5px;color:var(--text-subtle);margin:0;line-height:1.4}
+  .cat-copy .cyou{font-size:12px;color:var(--text-muted);margin:6px 0 0;font-weight:600}
+  .cat-copy .cyou b{color:var(--accent)}
+  .cat-card > svg{width:20px;height:20px;color:var(--accent);flex:none}
+  .legend{font-size:12.5px;color:var(--text-subtle);margin:4px 2px 0;line-height:1.5}
+
+  .open{position:relative;border:1px solid var(--border);border-radius:20px;overflow:hidden;background:var(--bg)}
+  .arena{position:absolute;inset:0;z-index:0}
+  .arena img{width:100%;height:520px;object-fit:cover;opacity:.55;display:block}
+  .arena::after{content:"";position:absolute;inset:0;background:linear-gradient(to bottom,rgba(11,19,40,.35),var(--bg) 480px)}
+  .open > *:not(.arena){position:relative;z-index:1}
+  .open-head{display:flex;align-items:flex-end;gap:16px;padding:22px 26px;border-bottom:1px solid var(--border);background:rgba(11,19,40,.45);backdrop-filter:blur(6px)}
+  .open-head h2{font-family:Georgia,serif;font-size:22px;margin:0}
+  .open-head p{font-size:13px;color:var(--text-subtle);margin:4px 0 0}
+  .filters{margin-left:auto;display:flex;gap:8px}
+  .filter{padding:7px 14px;border-radius:100px;border:1px solid var(--border-strong);font-size:12px;color:var(--text-muted);cursor:pointer;background:rgba(11,19,40,.6);font-family:inherit;white-space:nowrap}
+  .filter[aria-pressed="true"]{background:var(--accent);color:#0b1328;border-color:var(--accent);font-weight:700}
+  .fnote{font-size:12px;color:var(--text-subtle);padding:10px 26px 0;margin:0;text-align:right}
+
+  .podium{display:flex;align-items:flex-end;justify-content:center;gap:16px;padding:22px 26px 0}
+  .p-item{display:flex;flex-direction:column;align-items:center;width:180px}
+  .p-item.first{width:220px}
+  .p-item.third{width:160px}
+  .p-avatar{position:relative;margin-bottom:10px}
+  .p-avatar img.face{width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid var(--border-strong);background:var(--elevated)}
+  .p-item.first .p-avatar img.face{width:84px;height:84px;border:3px solid var(--gold);box-shadow:0 0 24px rgba(218,180,63,.35)}
+  .p-avatar img.medal{position:absolute;bottom:-6px;right:-10px;width:30px;height:30px}
+  .p-name{font-size:13.5px;font-weight:700;text-align:center}
+  .p-name .you{color:var(--accent)}
+  .p-metric{font-size:12.5px;color:var(--text-muted);margin-top:2px;font-weight:600}
+  .p-emblem{width:40px;height:40px;object-fit:contain;margin:6px 0 8px}
+  .p-emblem.none{display:grid;place-items:center;border-radius:50%;border:1px dashed var(--border-strong);font-size:10px;color:var(--text-subtle)}
+  .pedestal{width:100%;display:grid;place-items:center;border-radius:12px 12px 0 0;font-family:Georgia,serif;font-weight:700}
+  .first .pedestal{height:120px;font-size:40px;background:linear-gradient(180deg,rgba(111,144,235,.45),var(--elevated));border:1px solid var(--accent);border-bottom:0;color:var(--text)}
+  .second .pedestal{height:86px;font-size:28px;background:var(--elevated);border:1px solid var(--border-strong);border-bottom:0;color:var(--text-muted)}
+  .third .pedestal{height:64px;font-size:24px;background:var(--surface);border:1px solid var(--border);border-bottom:0;color:var(--text-muted)}
+  .pnote{text-align:center;font-size:12px;color:var(--text-subtle);margin:0;padding:12px 26px 0;border-top:1px solid var(--border)}
+
+  .table-title{font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin:22px 26px 8px}
+  table{width:calc(100% - 52px);margin:0 26px 18px;border-collapse:collapse}
+  th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);font-weight:600;text-align:left;padding:8px 6px;border-bottom:1px solid var(--border)}
+  td{height:56px;padding:0 6px;border-bottom:1px solid rgba(255,255,255,.06);font-size:14px}
+  th.n,td.n{width:48px}
+  th.pf,td.pf{width:180px}
+  th.v,td.v{width:100px;text-align:right}
+  td.n{font-weight:700;color:var(--text-muted)}
+  td.v{font-weight:700;font-variant-numeric:tabular-nums}
+  .who{display:flex;align-items:center;gap:10px}
+  .who img,.who .initials{width:32px;height:32px;border-radius:50%;object-fit:cover}
+  .initials{display:inline-grid;place-items:center;background:var(--elevated);border:1px dashed var(--border-strong);font-size:12px;font-weight:700;color:var(--text-muted)}
+  .pdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px;vertical-align:middle}
+  td.pf{font-size:13px;color:var(--text-muted)}
+  td.pf.none{color:var(--text-subtle);font-style:italic}
+  .nores{text-align:center;color:var(--text-subtle);padding:30px 0}
+
+  /* Sua posição (revisão 03): sai do rodapé da tabela e vai para a coluna das categorias, que é sticky */
+  .mypos{margin-top:6px;padding:18px 18px 16px;border-radius:16px;border:1px solid var(--accent);background:linear-gradient(160deg,rgba(111,144,235,.22),var(--elevated));box-shadow:0 0 0 1px rgba(111,144,235,.15),0 12px 30px rgba(0,0,0,.35)}
+  .mypos .eyebrow{margin:0 0 10px}
+  .mp-main{display:flex;align-items:center;gap:14px}
+  .mp-main img{width:56px;height:56px;border-radius:50%;object-fit:cover;border:3px solid var(--accent);box-shadow:0 0 18px rgba(111,144,235,.45)}
+  .mp-pos{font-family:Georgia,serif;font-size:44px;font-weight:700;line-height:1;color:var(--accent);font-variant-numeric:tabular-nums}
+  .mp-of{font-size:14px;color:var(--text-muted);margin-left:6px}
+  .mp-val{margin-left:auto;font-size:16px;font-variant-numeric:tabular-nums}
+  .mp-next{margin-top:14px;padding:12px 14px;border-radius:12px;background:rgba(11,19,40,.55)}
+  .mp-next .lbl{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);margin-bottom:8px}
+  .mp-next .who{display:flex;align-items:center;gap:8px;font-size:13px}
+  .mp-next .who img,.mp-next .who .initials{width:28px;height:28px;border-radius:50%;object-fit:cover}
+  .mp-next p{margin:8px 0 0;font-size:13px;color:var(--text-muted)}
+  .mp-next p b{color:var(--text)}
+  .mp-note{font-size:12px;color:var(--text-subtle);margin:10px 0 0}
+
+  .empty{display:flex;flex-direction:column;align-items:center;gap:8px;padding:70px 20px;text-align:center;background:var(--surface);border:1px solid var(--border);border-radius:20px;color:var(--text-subtle);grid-column:1/-1}
+  .empty h3{color:var(--text);margin:6px 0 0}
+  .skel{border-radius:12px;background:linear-gradient(90deg,var(--surface),var(--elevated),var(--surface));background-size:200% 100%;animation:sh 1.3s linear infinite}
+  @keyframes sh{to{background-position:-200% 0}}
+
+  /* barras de rolagem no tema (revisão 03): finas, na cor da borda do perfil, sem a barra cinza do sistema */
+  *{scrollbar-width:thin;scrollbar-color:var(--border-strong,#4d6fcb) transparent}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--border-strong,#4d6fcb);border-radius:999px;border:3px solid transparent;background-clip:padding-box}
+  ::-webkit-scrollbar-thumb:hover{background:var(--accent,#6f90eb);background-clip:padding-box;border:3px solid transparent}
+  ::-webkit-scrollbar-corner{background:transparent}
+</style>
+</head>
+<body>
+<div class="console-shell">
+  <header class="console-topbar">
+    <a class="journey-brand" href="03-trilha.html"><img src="assets/trailup-brand-logo.png" alt="" /><span>TrailUp</span></a>
+    <span class="console-workspace-name">Área do aluno</span>
+    <div class="console-account">
+      <a href="08-perfil-hub.html" title="Meu perfil" aria-label="Meu perfil" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit">
+        <img class="avatar" src="assets/rosto-conqueror.png" alt="" />
+        <div class="console-account-copy"><strong>Amina T.</strong><span>Conqueror</span></div>
+      </a>
+      <button class="console-icon-button" title="Minha Bag"><img src="assets/object-bag.png" alt="" /></button>
+      <a class="console-icon-button" href="00-entrada.html" title="Sair" aria-label="Sair"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg></a>
+    </div>
+  </header>
+  <nav class="console-navigation" aria-label="Seções da área do aluno">
+    <a href="03-trilha.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 20l-5.5 2V6L9 4l6 2 5.5-2v16L15 22l-6-2z"/><path d="M9 4v16M15 6v16"/></svg>Trilha</a>
+    <a href="07-notificacoes.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Notificações<span class="nb">2</span></a>
+    <a href="06-social.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Social</a>
+    <a href="12-loja.html" aria-label="Loja, saldo de 38 moedas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 9l1.5-5h15L21 9"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/><path d="M5 12v8h14v-8"/><path d="M10 20v-5h4v5"/></svg>Loja<span class="nav-coins" style="margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;color:var(--text-subtle)">38<img src="assets/coin-conqueror.png" alt="" style="width:16px;height:16px;object-fit:contain" /></span></a>
+    <a href="05-ranking.html" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 21h16M6 21V10M12 21V3M18 21v-7"/></svg>Ranking</a>
+    <a href="08-perfil-hub.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0 1 16 0v1"/></svg>Perfil</a>
+  </nav>
+  <main class="console-main">
+<div class="wrap">
+  <div class="page-head">
+    <div class="eyebrow">Ranking</div>
+    <h1>Sala de honra</h1>
+    <p class="sub">Classificações da turma</p>
+  </div>
+  <div class="md" id="md"></div>
+</div>
+  </main>
+</div>
+
+<div class="preview"><span>Pré-visualização de estado:</span><select id="stateSel" aria-label="Estado da tela"></select><span class="sep"></span><span>Perfil:</span><span id="dots" style="display:flex;gap:6px"></span></div>
+
+<script>
+const PERFIS={seeker:['Seeker','#17a398'],survivor:['Survivor','#4e5a66'],daredevil:['Daredevil','#d7263d'],mastermind:['Mastermind','#5b3fd9'],conqueror:['Conqueror','#1e4fd6'],socializer:['Socializer','#f4623a'],achiever:['Achiever','#c9a227']};
+const P={k:['Kwame R.','achiever'],m:['Marina S.','seeker'],z:['Zuri & Mateo','socializer'],b:['Bianca L.','achiever'],t:['Théo M.','seeker'],d:['Diego A.','conqueror'],l:['Lara P.','mastermind'],i:['Iago F.','daredevil'],ke:['Kenji O.','survivor'],r:['Rafael N.','conqueror'],a:['Ana C.',null],me:['Amina T.','conqueror']};
+// ícone por critério, como no app (ranking/index.tsx): tempo → deadline, percentual → book, o resto → medal
+const CATS={
+  tempo:{t:'Tempo de Estudo',d:'Quem mais dedicou tempo ativo à trilha este mês',ic:'deadline',col:'Tempo',
+    rows:[['k','9h 15min'],['m','7h 40min'],['z','6h 55min'],['b','6h 10min'],['t','5h 48min'],['d','5h 20min'],['l','4h 52min'],['i','4h 30min'],['ke','4h 30min'],['r','4h 05min'],['a','3h 41min'],['me','3h 20min']]},
+  progresso:{t:'Progresso',d:'Percentual da trilha concluído',ic:'book',col:'Progresso',
+    rows:[['m','92%'],['k','88%'],['b','81%'],['l','74%'],['z','70%'],['t','66%'],['d','61%'],['r','58%'],['me','56%'],['ke','49%'],['i','43%'],['a','31%']]},
+  pontos:{t:'Pontos',d:'Conquistas e acertos acumulados',ic:'medal',col:'Pontos',
+    rows:[['k','1.980'],['z','1.710'],['m','1.655'],['l','1.420'],['b','1.390'],['d','1.310'],['me','1.240'],['t','1.180'],['r','1.050'],['ke','990'],['i','870'],['a','610']]},
+};
+const STATES=[['data','Com dados'],['meu','Filtro: Meu perfil'],['nores','Filtro sem resultado'],['podio','Você no pódio'],['dois','Pódio com 2 alunos'],['loading','Carregando'],['empty','Vazio']];
+const TOTAL=28;
+let estado='data', cat='tempo', filtro='geral', viewer='conqueror';
+
+// posição com empate: empatados mantêm a posição e o seguinte pula (regra do app)
+function ranked(c){
+  let rows=CATS[c].rows.map(([id,v])=>({id,v}));
+  if(estado==='podio'&&c==='pontos'){rows=[['k','1.980'],['z','1.710'],['me','1.690'],['m','1.655'],['l','1.420'],['b','1.390'],['d','1.310'],['t','1.180'],['r','1.050'],['ke','990'],['i','870'],['a','610']].map(([id,v])=>({id,v}))}
+  if(estado==='dois')rows=rows.filter(r=>r.id==='k'||r.id==='m'); // só dois pontuaram; ninguém vira 3º por acidente
+  let pos=0;rows.forEach((r,i)=>{if(i===0||r.v!==rows[i-1].v)pos=i+1;r.pos=pos});
+  return rows;
+}
+// sem perfil definido não há retrato: mostra as iniciais (nada de rosto de outro perfil)
+const avatar=(id,cls='')=>P[id][1]?`<img class="${cls}" src="assets/rosto-${P[id][1]}.png" alt="" />`:`<span class="initials ${cls}">${P[id][0].split(' ').map(w=>w[0]).join('').slice(0,2)}</span>`;
+const nome=id=>P[id][0].replace(/&/g,'&amp;');
+// valor numérico de cada critério (para calcular quanto falta até a posição de cima)
+const num=(c,v)=>c==='tempo'?(()=>{const m=v.match(/(\d+)h\s*(\d+)min/);return m?+m[1]*60+ +m[2]:0})():c==='progresso'?parseFloat(v):+v.replace(/\./g,'');
+const fmt=(c,d)=>c==='tempo'?(d>=60?`${Math.floor(d/60)}h ${String(d%60).padStart(2,'0')}min`:`${d}min`):c==='progresso'?`${d} pontos percentuais`:`${d.toLocaleString('pt-BR')} pontos`;
+function minhaPosicaoHTML(){
+  const c=CATS[cat], R=ranked(cat), me=R.find(r=>r.id==='me');
+  if(!me)return `<section class="mypos" aria-label="Sua posição em ${c.t}"><div class="eyebrow">Sua posição · ${c.t}</div>
+    <div class="mp-main"><img src="assets/rosto-conqueror.png" alt="" /><div><span class="mp-of" style="margin:0;font-size:15px;color:var(--text)">Você ainda não pontuou nesta categoria.</span></div></div>
+    <p class="mp-note">Assim que você pontuar, sua posição aparece aqui.</p></section>`;
+  const acima=R.filter(r=>r.pos<me.pos).pop();
+  const prox=acima?`<div class="mp-next"><span class="lbl">Próximo acima</span><div class="who">${avatar(acima.id)}<span><b>${nome(acima.id)}</b> · ${acima.pos}º</span></div>
+      <p>Faltam <b>${fmt(cat,num(cat,acima.v)-num(cat,me.v))}</b> para passar.</p></div>`
+    :`<div class="mp-next"><p><b>Você lidera esta categoria.</b></p></div>`;
+  return `<section class="mypos" aria-label="Sua posição em ${c.t}">
+    <div class="eyebrow">Sua posição · ${c.t}</div>
+    <div class="mp-main"><img src="assets/rosto-conqueror.png" alt="" /><div><span class="mp-pos">${me.pos}º</span><span class="mp-of">de ${TOTAL}</span></div><b class="mp-val">${me.v}</b></div>
+    ${prox}
+    <p class="mp-note">Sua posição continua aqui mesmo quando você filtra os colegas.</p>
+  </section>`;
+}
+
+function catsHTML(){
+  return `<div class="cats">${Object.entries(CATS).map(([k,c])=>{const me=ranked(k).find(r=>r.id==='me');
+    return `<a class="cat-card" href="#${k}" data-cat="${k}" ${cat===k?'aria-current="true"':''}>
+      <img src="assets/${c.ic}-${viewer}.png" alt="" />
+      <div class="cat-copy"><p class="ctitle">${c.t}</p><p class="cdesc">${c.d}</p><p class="cyou">${me?`Você: <b>${me.pos}º</b> · ${me.v}`:'Você ainda não pontuou'}</p></div>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></a>`}).join('')}
+    <p class="legend">Abra uma categoria para ver o pódio, sua posição e os resultados da turma.</p>${minhaPosicaoHTML()}</div>`;
+}
+function openHTML(){
+  const c=CATS[cat], R=ranked(cat), me=R.find(r=>r.id==='me'), top=R.slice(0,3);
+  const pod=(r,cls)=>r?`<div class="p-item ${cls}">
+      <div class="p-avatar">${avatar(r.id,'face')}<img class="medal" src="assets/rank-${r.pos}.png" alt="" /></div>
+      <div class="p-name">${nome(r.id)}${r.id==='me'?' <span class="you">(você)</span>':''}</div>
+      <div class="p-metric">${r.v}</div>
+      ${P[r.id][1]?`<img class="p-emblem" src="assets/emblem-${P[r.id][1]}.png" alt="Perfil ${PERFIS[P[r.id][1]][0]}" title="${PERFIS[P[r.id][1]][0]}" />`:'<span class="p-emblem none">?</span>'}
+      <div class="pedestal">${r.pos}º</div></div>`:'';
+  const sameProfile=r=>P[r.id][1]===P.me[1];
+  let lista=R.slice(3).filter(r=>r.id!=='me');
+  if(filtro==='meu'||estado==='meu')lista=lista.filter(sameProfile);
+  if(filtro==='outros')lista=lista.filter(r=>!sameProfile(r));
+  if(estado==='nores')lista=[];
+  const rows=lista.map(r=>`<tr><td class="n">${r.pos}º</td><td><span class="who">${avatar(r.id)}${nome(r.id)}</span></td>
+    <td class="pf ${P[r.id][1]?'':'none'}">${P[r.id][1]?`<span class="pdot" style="background:${PERFIS[P[r.id][1]][1]}"></span>${PERFIS[P[r.id][1]][0]}`:'Perfil não definido'}</td><td class="v">${r.v}</td></tr>`).join('');
+  const F=[['geral','Geral'],['meu','Meu perfil'],['outros','Outros perfis']];
+  const fAtivo=estado==='meu'?'meu':filtro;
+  return `<section class="open" id="${cat}" aria-label="Categoria aberta: ${c.t}">
+    <div class="arena"><img src="assets/arena-conqueror.webp" alt="" /></div>
+    <div class="open-head"><div><div class="eyebrow">Categoria</div><h2>${c.t}</h2><p>${c.d}</p></div>
+      <div class="filters" role="group" aria-label="Filtrar a lista">${F.map(([k,l])=>`<button class="filter" data-f="${k}" aria-pressed="${fAtivo===k}">${l}</button>`).join('')}</div></div>
+    <p class="fnote">Os filtros se aplicam à lista. As posições originais da categoria são preservadas.</p>
+    <div class="podium">${pod(top[1],'second')}${pod(top[0],'first')}${pod(top[2],'third')}</div>
+    <p class="pnote">Os três primeiros lugares seguem a classificação geral desta categoria. Empates mantêm a mesma posição.</p>
+    ${R.length>3?`<div class="table-title">Classificação</div>
+    <table><thead><tr><th class="n">#</th><th>Aluno</th><th class="pf">Perfil</th><th class="v">${c.col}</th></tr></thead>
+    <tbody>${rows||`<tr><td colspan="4" class="nores">Nenhum aluno neste recorte.</td></tr>`}</tbody></table>`:'<div style="height:18px"></div>'}
+  </section>`;
+}
+function render(){
+  document.getElementById('stateSel').innerHTML=STATES.map(([k,l])=>`<option value="${k}" ${estado===k?'selected':''}>${l}</option>`).join('');
+  document.getElementById('dots').innerHTML=Object.entries(PERFIS).map(([k,[l,c]])=>`<button class="dot" style="background:${c}" title="Ícones do perfil ${l}" aria-label="Perfil ${l}" aria-pressed="${viewer===k}" data-viewer="${k}"></button>`).join('');
+  const md=document.getElementById('md');
+  if(estado==='empty'){md.innerHTML=`<div class="empty"><img src="assets/medal-${viewer}.png" alt="" style="width:60px;height:68px;object-fit:contain;opacity:.7" /><h3>Nenhum ranking ainda</h3><p>Nenhum ranking disponível nesta turma.</p></div>`;return}
+  if(estado==='loading'){md.innerHTML=`<div class="cats">${'<div class="skel" style="height:96px"></div>'.repeat(3)}</div><div><div class="skel" style="height:300px;border-radius:20px"></div>${'<div class="skel" style="height:56px;margin-top:8px"></div>'.repeat(6)}</div>`;return}
+  md.innerHTML=catsHTML()+openHTML();
+}
+function setState(st){estado=st;filtro='geral';cat=st==='podio'?'pontos':(location.hash.slice(1) in CATS?location.hash.slice(1):'tempo');render()}
+document.addEventListener('click',e=>{
+  const q=s=>e.target.closest(s);
+  if(q('[data-cat]')){e.preventDefault();cat=q('[data-cat]').dataset.cat;filtro='geral';if(estado==='meu')estado='data';history.replaceState(null,'','#'+cat);render();return}
+  if(q('[data-f]')){filtro=q('[data-f]').dataset.f;if(estado==='meu'||estado==='nores')estado='data';render();return}
+  if(q('[data-viewer]')){viewer=q('[data-viewer]').dataset.viewer;render();return}
+});
+document.getElementById('stateSel').addEventListener('change',e=>{history.replaceState(null,'',location.pathname+'?estado='+e.target.value);setState(e.target.value)});
+setState(new URLSearchParams(location.search).get('estado')||'data');
+</script>
+</body>
+</html>
