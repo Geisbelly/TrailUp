@@ -282,6 +282,310 @@ export default function PerfilHome() {
     [perfil, perfilSalvando, selecionarPerfilAtivo],
   );
 
+  // Foto, nome, informações e troca de perfil. Na tela larga (#346) vão para a coluna da esquerda.
+  const identidade = (
+    <>
+        <View
+          ref={profileSummaryGuideRef}
+          collapsable={false}
+          style={[
+            styles.profileCard,
+            {
+              backgroundColor: shellPalette.background,
+              borderColor: shellPalette.border,
+            },
+          ]}
+        >
+          <View style={styles.avatarContainer}>
+            <FramedProfileImage profile={perfil} source={usuario?.foto_url ? { uri: usuario.foto_url } : avatar} size={104} label={`Foto de ${usuario?.nome ?? 'Aluno'}`} />
+            <View style={styles.hexBadgeContainer}>
+              <ProfileArtwork source={profileEmblems[perfil]} profile={perfil} width={30} />
+            </View>
+          </View>
+
+          <View style={styles.infoContainer}>
+            <Text style={[styles.username, { color: accent }]}>
+              {username}
+            </Text>
+            <Text style={[styles.name, { color: shellPalette.text }]}>
+              {usuario?.nome ?? "Aluno"}
+            </Text>
+            <View
+              style={[
+                styles.tagProfile,
+                {
+                  borderColor: hexConfig.color,
+                  backgroundColor: accentSoft,
+                },
+              ]}
+            >
+              <Text
+                style={[styles.tagProfileText, { color: shellPalette.accent }]}
+              >
+                {hexConfig.label.toUpperCase()}
+              </Text>
+            </View>
+            {usuario?.descricao ? (
+              <Text
+                style={[styles.desc, { color: shellPalette.textMuted }]}
+              >
+                {usuario.descricao}
+              </Text>
+            ) : null}
+            {desktop ? (
+              <InfoAlunoDesktop
+                turma={classeAtual?.resumo?.materia_nome}
+                professor={classeAtual?.resumo?.professor_nome}
+                email={usuario?.email}
+                palette={shellPalette}
+              />
+            ) : null}
+          </View>
+        </View>
+
+        {perfisRepresentativos.length > 1 ? (
+          <View ref={profileSwitcherGuideRef} collapsable={false} style={styles.profileSwitcherWrap}>
+            <Text style={[styles.profileSwitcherTitle, { color: shellPalette.textMuted }]}>
+              Alternar perfil ativo
+            </Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.profileSwitcherContent}
+            >
+              {perfisRepresentativos.map((profileKey) => {
+                const config = getBrainHexConfig(profileKey);
+                const afinidade = usuario?.perfis.find(
+                  (item) => normalizeBrainHexProfile(item.nome) === profileKey,
+                )?.afinidade;
+                const selected = profileKey === perfil;
+                const saving = profileKey === perfilSalvando;
+
+                return (
+                  <TouchableOpacity
+                    key={profileKey}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected, busy: saving }}
+                    disabled={Boolean(perfilSalvando)}
+                    onPress={() => void handleSelecionarPerfil(profileKey)}
+                    style={[
+                      styles.profileOption,
+                      {
+                        borderColor: selected ? config.color : shellPalette.border,
+                        backgroundColor: selected
+                          ? tinycolor(config.color).setAlpha(0.2).toRgbString()
+                          : shellPalette.surface,
+                        opacity: perfilSalvando && !saving ? 0.55 : 1,
+                      },
+                    ]}
+                  >
+                    <ProfileArtwork source={profileEmblems[profileKey]} profile={perfil} width={32} height={36} />
+                    <View>
+                      <Text
+                        style={[
+                          styles.profileOptionLabel,
+                          { color: selected ? getProfileShellPalette(profileKey).accent : shellPalette.text },
+                        ]}
+                      >
+                        {config.label}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.profileOptionAffinity,
+                          { color: shellPalette.textSubtle },
+                        ]}
+                      >
+                        {saving ? "Salvando..." : `${Math.round(afinidade ?? 0)}% de afinidade`}
+                      </Text>
+                    </View>
+                    {selected ? (
+                      <MaterialCommunityIcons
+                        name="check-circle"
+                        size={16}
+                        color={getProfileShellPalette(profileKey).accent}
+                      />
+                    ) : null}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        ) : null}
+    </>
+  );
+
+  // Conquistas, abas e conteúdo. Na tela larga ficam na coluna da direita.
+  const principal = (
+    <>
+      {desktop && usuario?.id ? (
+        <ConquistasDestaque
+          alunoId={usuario.id}
+          perfis={perfisRepresentativos.length ? perfisRepresentativos : [perfil]}
+          palette={shellPalette}
+          onAbrir={setConquistaSelecionada}
+        />
+      ) : null}
+
+      <View
+        ref={profileTabsGuideRef}
+        collapsable={false}
+        style={[
+          styles.tabsContainer,
+          { borderBottomColor: shellPalette.border },
+        ]}
+      >
+        <TouchableOpacity
+          onPress={() => setAba("metricas")}
+          style={styles.tabButton}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: aba === "metricas" }}
+        >
+          <Text
+            style={[
+              styles.tabText,
+              {
+                color:
+                  aba === "metricas"
+                    ? shellPalette.text
+                    : shellPalette.textSubtle,
+              },
+            ]}
+          >
+            Métricas
+          </Text>
+          {aba === "metricas" ? (
+            <View
+              style={[
+                styles.tabIndicator,
+                { backgroundColor: shellPalette.accent },
+              ]}
+            />
+          ) : null}
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setAba("conquistas")}
+          style={styles.tabButton}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: aba === "conquistas" }}
+        >
+          <Text
+            style={[
+              styles.tabText,
+              {
+                color:
+                  aba === "conquistas"
+                    ? shellPalette.text
+                    : shellPalette.textSubtle,
+              },
+            ]}
+          >
+            Conquistas ({conquistas.length})
+          </Text>
+          {aba === "conquistas" ? (
+            <View
+              style={[
+                styles.tabIndicator,
+                { backgroundColor: shellPalette.accent },
+              ]}
+            />
+          ) : null}
+        </TouchableOpacity>
+      </View>
+
+      <View ref={profileAchievementsGuideRef} collapsable={false} style={styles.listContainer}>
+        {aba === "conquistas" ? (
+          <>
+            {carregando ? (
+              <Text
+                style={[
+                  styles.helperText,
+                  { color: shellPalette.textMuted },
+                ]}
+              >
+                Carregando conquistas...
+              </Text>
+            ) : conquistas.length === 0 ? (
+              <View style={styles.emptyWrap}>
+                <CardSemDados
+                  title="Sem conquistas"
+                  description="Você ainda não ganhou emblemas."
+                  accentColor={shellPalette.accent}
+                />
+              </View>
+            ) : (
+              conquistas.map((conquista, idx) => (
+                <TouchableOpacity
+                  key={`${conquista.conquista_id ?? idx}`}
+                  style={[
+                    styles.conquistaItem,
+                    { borderBottomColor: shellPalette.border },
+                  ]}
+                  activeOpacity={0.7}
+                  onPress={() => setConquistaSelecionada(conquista)}
+                  accessibilityRole="button"
+                  accessibilityLabel={conquista.nome ?? "Conquista"}
+                >
+                  <View
+                    style={[
+                      styles.conquistaIconContainer,
+                      { borderColor: shellPalette.borderStrong },
+                    ]}
+                  >
+                    <Image source={getAchievementArtwork(conquista)} resizeMode="contain" style={{ width: 50, height: 54 }} accessible={false} />
+                  </View>
+                  <View style={styles.conquistaTextBlock}>
+                    <View style={styles.conquistaHeaderRow}>
+                      <Text
+                        style={[
+                          styles.conquistaTitulo,
+                          { color: shellPalette.text },
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {conquista.nome ?? "Conquista"}
+                      </Text>
+                      {conquista.data_conquista ? (
+                        <Text
+                          style={[
+                            styles.conquistaData,
+                            { color: shellPalette.textSubtle },
+                          ]}
+                        >
+                          {new Date(
+                            conquista.data_conquista,
+                          ).toLocaleDateString("pt-BR", {
+                            day: "2-digit",
+                            month: "2-digit",
+                          })}
+                        </Text>
+                      ) : null}
+                    </View>
+                    <Text
+                      style={[
+                        styles.conquistaDesc,
+                        { color: shellPalette.textMuted },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {conquista.descricao ?? "Toque para ver detalhes."}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ))
+            )}
+          </>
+        ) : (
+          <ProfileMetricsViews
+            profile={perfil}
+            theme={resolvedTheme}
+            vm={metricsViewModel}
+            guideRefs={profileGuideTargets}
+          />
+        )}
+      </View>
+    </>
+  );
+
   return (
     <>
       <StatusBar
@@ -301,7 +605,7 @@ export default function PerfilHome() {
             profileScrollYRef.current = event.nativeEvent.contentOffset.y;
           }}
         >
-          <View style={styles.headerContainer}>
+          <View style={[styles.headerContainer, desktop && styles.headerLargo]}>
             <SectionGuideButton
               profile={perfil}
               sectionTitle="Perfil"
@@ -310,7 +614,7 @@ export default function PerfilHome() {
               onStepFocus={prepareProfileGuideStep}
               style={styles.guideButton}
             />
-            <View style={styles.bannerWrapper}>
+            <View style={[styles.bannerWrapper, desktop && styles.bannerLargo]}>
               {usuario?.banner_url ? (
                 <Image
                   source={{ uri: usuario.banner_url }}
@@ -361,300 +665,17 @@ export default function PerfilHome() {
               </TouchableOpacity>
             </View>
 
-            <View
-              ref={profileSummaryGuideRef}
-              collapsable={false}
-              style={[
-                styles.profileCard,
-                {
-                  backgroundColor: shellPalette.background,
-                  borderColor: shellPalette.border,
-                },
-              ]}
-            >
-              <View style={styles.avatarContainer}>
-                <FramedProfileImage profile={perfil} source={usuario?.foto_url ? { uri: usuario.foto_url } : avatar} size={104} label={`Foto de ${usuario?.nome ?? 'Aluno'}`} />
-                <View style={styles.hexBadgeContainer}>
-                  <ProfileArtwork source={profileEmblems[perfil]} profile={perfil} width={30} />
-                </View>
-              </View>
+            {desktop ? null : identidade}
+          </View>
 
-              <View style={styles.infoContainer}>
-                <Text style={[styles.username, { color: accent }]}>
-                  {username}
-                </Text>
-                <Text style={[styles.name, { color: shellPalette.text }]}>
-                  {usuario?.nome ?? "Aluno"}
-                </Text>
-                <View
-                  style={[
-                    styles.tagProfile,
-                    {
-                      borderColor: hexConfig.color,
-                      backgroundColor: accentSoft,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[styles.tagProfileText, { color: shellPalette.accent }]}
-                  >
-                    {hexConfig.label.toUpperCase()}
-                  </Text>
-                </View>
-                {usuario?.descricao ? (
-                  <Text
-                    style={[styles.desc, { color: shellPalette.textMuted }]}
-                  >
-                    {usuario.descricao}
-                  </Text>
-                ) : null}
-                {desktop ? (
-                  <InfoAlunoDesktop
-                    turma={classeAtual?.resumo?.materia_nome}
-                    professor={classeAtual?.resumo?.professor_nome}
-                    email={usuario?.email}
-                    palette={shellPalette}
-                  />
-                ) : null}
-              </View>
+          {desktop ? (
+            <View style={styles.colunas}>
+              <View style={styles.colunaIdentidade}>{identidade}</View>
+              <View style={styles.colunaPrincipal}>{principal}</View>
             </View>
-
-            {perfisRepresentativos.length > 1 ? (
-              <View ref={profileSwitcherGuideRef} collapsable={false} style={styles.profileSwitcherWrap}>
-                <Text style={[styles.profileSwitcherTitle, { color: shellPalette.textMuted }]}>
-                  Alternar perfil ativo
-                </Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.profileSwitcherContent}
-                >
-                  {perfisRepresentativos.map((profileKey) => {
-                    const config = getBrainHexConfig(profileKey);
-                    const afinidade = usuario?.perfis.find(
-                      (item) => normalizeBrainHexProfile(item.nome) === profileKey,
-                    )?.afinidade;
-                    const selected = profileKey === perfil;
-                    const saving = profileKey === perfilSalvando;
-
-                    return (
-                      <TouchableOpacity
-                        key={profileKey}
-                        accessibilityRole="button"
-                        accessibilityState={{ selected, busy: saving }}
-                        disabled={Boolean(perfilSalvando)}
-                        onPress={() => void handleSelecionarPerfil(profileKey)}
-                        style={[
-                          styles.profileOption,
-                          {
-                            borderColor: selected ? config.color : shellPalette.border,
-                            backgroundColor: selected
-                              ? tinycolor(config.color).setAlpha(0.2).toRgbString()
-                              : shellPalette.surface,
-                            opacity: perfilSalvando && !saving ? 0.55 : 1,
-                          },
-                        ]}
-                      >
-                        <ProfileArtwork source={profileEmblems[profileKey]} profile={perfil} width={32} height={36} />
-                        <View>
-                          <Text
-                            style={[
-                              styles.profileOptionLabel,
-                              { color: selected ? getProfileShellPalette(profileKey).accent : shellPalette.text },
-                            ]}
-                          >
-                            {config.label}
-                          </Text>
-                          <Text
-                            style={[
-                              styles.profileOptionAffinity,
-                              { color: shellPalette.textSubtle },
-                            ]}
-                          >
-                            {saving ? "Salvando..." : `${Math.round(afinidade ?? 0)}% de afinidade`}
-                          </Text>
-                        </View>
-                        {selected ? (
-                          <MaterialCommunityIcons
-                            name="check-circle"
-                            size={16}
-                            color={getProfileShellPalette(profileKey).accent}
-                          />
-                        ) : null}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-              </View>
-            ) : null}
-          </View>
-
-          {desktop && usuario?.id ? (
-            <ConquistasDestaque
-              alunoId={usuario.id}
-              perfis={perfisRepresentativos.length ? perfisRepresentativos : [perfil]}
-              palette={shellPalette}
-              onAbrir={setConquistaSelecionada}
-            />
-          ) : null}
-
-          <View
-            ref={profileTabsGuideRef}
-            collapsable={false}
-            style={[
-              styles.tabsContainer,
-              { borderBottomColor: shellPalette.border },
-            ]}
-          >
-            <TouchableOpacity
-              onPress={() => setAba("metricas")}
-              style={styles.tabButton}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: aba === "metricas" }}
-            >
-              <Text
-                style={[
-                  styles.tabText,
-                  {
-                    color:
-                      aba === "metricas"
-                        ? shellPalette.text
-                        : shellPalette.textSubtle,
-                  },
-                ]}
-              >
-                Métricas
-              </Text>
-              {aba === "metricas" ? (
-                <View
-                  style={[
-                    styles.tabIndicator,
-                    { backgroundColor: shellPalette.accent },
-                  ]}
-                />
-              ) : null}
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => setAba("conquistas")}
-              style={styles.tabButton}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: aba === "conquistas" }}
-            >
-              <Text
-                style={[
-                  styles.tabText,
-                  {
-                    color:
-                      aba === "conquistas"
-                        ? shellPalette.text
-                        : shellPalette.textSubtle,
-                  },
-                ]}
-              >
-                Conquistas ({conquistas.length})
-              </Text>
-              {aba === "conquistas" ? (
-                <View
-                  style={[
-                    styles.tabIndicator,
-                    { backgroundColor: shellPalette.accent },
-                  ]}
-                />
-              ) : null}
-            </TouchableOpacity>
-          </View>
-
-          <View ref={profileAchievementsGuideRef} collapsable={false} style={styles.listContainer}>
-            {aba === "conquistas" ? (
-              <>
-                {carregando ? (
-                  <Text
-                    style={[
-                      styles.helperText,
-                      { color: shellPalette.textMuted },
-                    ]}
-                  >
-                    Carregando conquistas...
-                  </Text>
-                ) : conquistas.length === 0 ? (
-                  <View style={styles.emptyWrap}>
-                    <CardSemDados
-                      title="Sem conquistas"
-                      description="Você ainda não ganhou emblemas."
-                      accentColor={shellPalette.accent}
-                    />
-                  </View>
-                ) : (
-                  conquistas.map((conquista, idx) => (
-                    <TouchableOpacity
-                      key={`${conquista.conquista_id ?? idx}`}
-                      style={[
-                        styles.conquistaItem,
-                        { borderBottomColor: shellPalette.border },
-                      ]}
-                      activeOpacity={0.7}
-                      onPress={() => setConquistaSelecionada(conquista)}
-                      accessibilityRole="button"
-                      accessibilityLabel={conquista.nome ?? "Conquista"}
-                    >
-                      <View
-                        style={[
-                          styles.conquistaIconContainer,
-                          { borderColor: shellPalette.borderStrong },
-                        ]}
-                      >
-                        <Image source={getAchievementArtwork(conquista)} resizeMode="contain" style={{ width: 50, height: 54 }} accessible={false} />
-                      </View>
-                      <View style={styles.conquistaTextBlock}>
-                        <View style={styles.conquistaHeaderRow}>
-                          <Text
-                            style={[
-                              styles.conquistaTitulo,
-                              { color: shellPalette.text },
-                            ]}
-                            numberOfLines={1}
-                          >
-                            {conquista.nome ?? "Conquista"}
-                          </Text>
-                          {conquista.data_conquista ? (
-                            <Text
-                              style={[
-                                styles.conquistaData,
-                                { color: shellPalette.textSubtle },
-                              ]}
-                            >
-                              {new Date(
-                                conquista.data_conquista,
-                              ).toLocaleDateString("pt-BR", {
-                                day: "2-digit",
-                                month: "2-digit",
-                              })}
-                            </Text>
-                          ) : null}
-                        </View>
-                        <Text
-                          style={[
-                            styles.conquistaDesc,
-                            { color: shellPalette.textMuted },
-                          ]}
-                          numberOfLines={1}
-                        >
-                          {conquista.descricao ?? "Toque para ver detalhes."}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  ))
-                )}
-              </>
-            ) : (
-              <ProfileMetricsViews
-                profile={perfil}
-                theme={resolvedTheme}
-                vm={metricsViewModel}
-                guideRefs={profileGuideTargets}
-              />
-            )}
-          </View>
+          ) : (
+            principal
+          )}
         </ScrollView>
 
         <BagModal
@@ -687,6 +708,12 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   scrollContent: { paddingBottom: 40 },
   headerContainer: { marginBottom: 4, alignItems: "center" },
+  // Web em tela larga (#346, protótipo v4): banner de 240 px e, embaixo, identidade (4/12) e conteúdo (8/12).
+  headerLargo: { paddingHorizontal: 32, paddingTop: 28 },
+  bannerLargo: { height: 240, borderRadius: 20, overflow: "hidden" },
+  colunas: { flexDirection: "row", gap: 20, alignItems: "flex-start", paddingHorizontal: 32, marginTop: 8 },
+  colunaIdentidade: { flex: 4, minWidth: 0 },
+  colunaPrincipal: { flex: 8, minWidth: 0 },
   bannerWrapper: { width: "100%", height: 64, position: "relative" },
   banner: { width: "100%", height: "100%" },
   btnSettings: {
