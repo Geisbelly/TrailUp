@@ -26,6 +26,9 @@ import { UtilityIcon } from "@/components/UtilityIcon";
 import { FramedProfileImage } from "@/components/FramedProfileImage";
 import { Design } from "@/styles/design";
 import { ProfileMetricsViews } from "@/components/perfil/ProfileMetricsViews";
+import { ConquistasDestaque } from "@/components/web/ConquistasDestaque";
+import { InfoAlunoDesktop } from "@/components/web/InfoAlunoDesktop";
+import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { buildProfileMetricsViewModel } from "@/components/perfil/profileMetricsViewModel";
 import {
   SectionGuideButton,
@@ -63,6 +66,8 @@ export default function PerfilHome() {
   const { lastBatchTimeMetrics } = useMetricasBatch();
   const { runtimeStates } = useIA();
   const router = useRouter();
+  // Na web em tela larga (#346): informações do aluno e conquistas em destaque.
+  const desktop = useDesktopWeb();
   const [bagOpen, setBagOpen] = useState(false);
 
   const [aba, setAba] = useState<"metricas" | "conquistas">("metricas");
@@ -403,6 +408,14 @@ export default function PerfilHome() {
                     {usuario.descricao}
                   </Text>
                 ) : null}
+                {desktop ? (
+                  <InfoAlunoDesktop
+                    turma={classeAtual?.resumo?.materia_nome}
+                    professor={classeAtual?.resumo?.professor_nome}
+                    email={usuario?.email}
+                    palette={shellPalette}
+                  />
+                ) : null}
               </View>
             </View>
 
@@ -475,6 +488,15 @@ export default function PerfilHome() {
               </View>
             ) : null}
           </View>
+
+          {desktop && usuario?.id ? (
+            <ConquistasDestaque
+              alunoId={usuario.id}
+              perfis={perfisRepresentativos.length ? perfisRepresentativos : [perfil]}
+              palette={shellPalette}
+              onAbrir={setConquistaSelecionada}
+            />
+          ) : null}
 
           <View
             ref={profileTabsGuideRef}
