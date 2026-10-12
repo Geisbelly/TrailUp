@@ -1,4 +1,7 @@
 import { HallBackground, OrnamentDivider } from "@/components/HallTheme";
+import { BotaoAuth, CabecaPainelAuth, CampoAuth, COR_AUTH, MolduraAuthDesktop } from "@/components/web/AuthDesktop";
+import { useDesktopWeb } from "@/hooks/useDesktopWeb";
+import { Feather } from "@expo/vector-icons";
 import { app } from "@/constants/definicoes";
 import { useDialog } from "@/context/DialogContext";
 import { resetPassword } from "@/services/auth";
@@ -12,6 +15,7 @@ import {
   KeyboardAvoidingView,
   Linking,
   Platform,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -30,6 +34,9 @@ export default function RecuperarSenhaScreen() {
   const router = useRouter();
   const { showDialog } = useDialog();
   const insets = useSafeAreaInsets();
+  const desktop = useDesktopWeb();
+  // Tela larga (#346, protótipo v4): e-mail inválido avisa no cartão e o envio troca o formulário pela confirmação.
+  const [estadoLargo, setEstadoLargo] = useState<"form" | "invalido" | "enviado">("form");
 
   const gold = tinycolor(AUTH_PALETTE.accent).lighten(12).toHexString();
   const goldDim = tinycolor(AUTH_PALETTE.accent).setAlpha(0.55).toRgbString();
@@ -37,6 +44,23 @@ export default function RecuperarSenhaScreen() {
 
   const validarEmail = (valor: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valor);
   const emailValido = validarEmail(email);
+
+  const enviarLargo = async () => {
+    if (!emailValido) {
+      setEstadoLargo("invalido");
+      return;
+    }
+    setEnviando(true);
+    try {
+      await resetPassword(email);
+      setEstadoLargo("enviado");
+    } catch (error) {
+      showDialog({ title: "Erro ao enviar", description: "Não foi possível enviar o e-mail.", tone: "error" });
+      console.error(error);
+    } finally {
+      setEnviando(false);
+    }
+  };
 
   const handleReset = async () => {
     if (!emailValido) {
@@ -59,6 +83,69 @@ export default function RecuperarSenhaScreen() {
       setEnviando(false);
     }
   };
+
+  if (desktop) {
+    return (
+      <MolduraAuthDesktop
+        titulo="Todo caminho tem volta."
+        texto="Enviamos um link para você criar uma nova senha e seguir a trilha de onde parou."
+      >
+        {estadoLargo === "enviado" ? (
+          <View accessibilityRole="alert" style={styles.feito}>
+            <View style={styles.feitoIcone}>
+              <Feather name="mail" size={24} color={COR_AUTH.link} />
+            </View>
+            <Text style={styles.feitoTitulo}>Link enviado</Text>
+            <Text style={styles.feitoTexto}>
+              Um link de recuperação foi enviado para <Text style={styles.forte}>{email}</Text>. Confira também a caixa de spam.
+            </Text>
+            <View style={styles.feitoBotao}>
+              <BotaoAuth secundario rotulo="Voltar para o login" onPress={() => router.replace("/(auth)/login")} />
+            </View>
+          </View>
+        ) : (
+          <>
+            <Pressable accessibilityRole="link" onPress={() => router.replace("/(auth)/login")} style={styles.voltar}>
+              <Feather name="arrow-left" size={14} color={COR_AUTH.link} />
+              <Text style={styles.voltarTexto}>Voltar para o login</Text>
+            </Pressable>
+            <CabecaPainelAuth titulo="Recuperar senha" apoio="Informe seu e-mail para receber o link de redefinição." />
+            <CampoAuth
+              rotulo="E-mail"
+              icone="mail"
+              placeholder="voce@escola.com"
+              value={email}
+              onChangeText={(v) => {
+                setEmail(v);
+                if (estadoLargo === "invalido") setEstadoLargo("form");
+              }}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+              editable={!enviando}
+              onSubmitEditing={() => void enviarLargo()}
+            />
+            {estadoLargo === "invalido" ? (
+              <View accessibilityRole="alert" style={styles.alerta}>
+                <Feather name="alert-triangle" size={16} color="#e0b34d" />
+                <View style={styles.alertaTextos}>
+                  <Text style={styles.alertaTitulo}>E-mail inválido</Text>
+                  <Text style={styles.alertaTexto}>Confira o endereço e tente novamente.</Text>
+                </View>
+              </View>
+            ) : null}
+            <BotaoAuth rotulo={enviando ? "Enviando..." : "Enviar link"} carregando={enviando} onPress={() => void enviarLargo()} />
+            <Text style={styles.rodapeLargo}>
+              Lembrou da senha?{" "}
+              <Text style={styles.rodapeLink} accessibilityRole="link" onPress={() => router.replace("/(auth)/login")}>
+                Fazer login
+              </Text>
+            </Text>
+          </>
+        )}
+      </MolduraAuthDesktop>
+    );
+  }
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
@@ -166,6 +253,20 @@ export default function RecuperarSenhaScreen() {
 }
 
 const styles = StyleSheet.create({
+  voltar: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", marginBottom: 6 },
+  voltarTexto: { fontSize: 13, fontWeight: "600", color: COR_AUTH.link },
+  alerta: { flexDirection: "row", gap: 10, padding: 13, borderRadius: 8, borderWidth: 1, borderColor: "#8a6d32", backgroundColor: "#3a2e1a", marginBottom: 14 },
+  alertaTextos: { flex: 1, gap: 2 },
+  alertaTitulo: { fontSize: 14, fontWeight: "700", color: COR_AUTH.texto },
+  alertaTexto: { fontSize: 13, color: "#f3d9e0" },
+  rodapeLargo: { textAlign: "center", fontSize: 14, color: COR_AUTH.textoMuted, marginTop: 20 },
+  rodapeLink: { color: COR_AUTH.link, fontWeight: "600" },
+  feito: { alignItems: "center", gap: 10, paddingVertical: 8 },
+  feitoIcone: { width: 56, height: 56, borderRadius: 28, borderWidth: 1, borderColor: COR_AUTH.bordaPainel, alignItems: "center", justifyContent: "center" },
+  feitoTitulo: { fontFamily: "Georgia, serif", fontSize: 26, color: COR_AUTH.texto, fontVariant: ["small-caps"] },
+  feitoTexto: { fontSize: 14, lineHeight: 21, color: COR_AUTH.textoMuted, textAlign: "center" },
+  forte: { fontWeight: "700", color: COR_AUTH.texto },
+  feitoBotao: { alignSelf: "stretch", marginTop: 10 },
   outer: { flex: 1 },
   safe: {
     flex: 1,
