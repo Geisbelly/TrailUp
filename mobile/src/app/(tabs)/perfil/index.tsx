@@ -30,6 +30,7 @@ import { AcoesBannerPerfil } from "@/components/web/AcoesBannerPerfil";
 import { ConquistasDestaque } from "@/components/web/ConquistasDestaque";
 import { AfinidadesPerfilDesktop } from "@/components/web/AfinidadesPerfilDesktop";
 import { IdentidadePerfilDesktop } from "@/components/web/IdentidadePerfilDesktop";
+import { UltimaAtividadeDesktop } from "@/components/web/UltimaAtividadeDesktop";
 import { sequenciaDeDias } from "@/utils/sequenciaDias";
 import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { buildProfileMetricsViewModel } from "@/components/perfil/profileMetricsViewModel";
@@ -459,6 +460,8 @@ export default function PerfilHome() {
         />
       ) : null}
 
+      {/* Tela larga (#346, protótipo v4): sem as abas; as métricas vêm direto e as conquistas já estão no cartão acima. */}
+      {desktop ? null : (
       <View
         ref={profileTabsGuideRef}
         collapsable={false}
@@ -524,9 +527,10 @@ export default function PerfilHome() {
           ) : null}
         </TouchableOpacity>
       </View>
+      )}
 
-      <View ref={profileAchievementsGuideRef} collapsable={false} style={styles.listContainer}>
-        {aba === "conquistas" ? (
+      <View ref={profileAchievementsGuideRef} collapsable={false} style={[styles.listContainer, desktop && styles.listaLarga]}>
+        {!desktop && aba === "conquistas" ? (
           <>
             {carregando ? (
               <Text
@@ -608,12 +612,16 @@ export default function PerfilHome() {
             )}
           </>
         ) : (
+          <>
           <ProfileMetricsViews
             profile={perfil}
             theme={resolvedTheme}
             vm={metricsViewModel}
             guideRefs={profileGuideTargets}
+            larga={desktop}
           />
+          {desktop ? <UltimaAtividadeDesktop eventos={eventos} palette={shellPalette} /> : null}
+          </>
         )}
       </View>
     </>
@@ -909,6 +917,8 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 3,
   },
   listContainer: { paddingHorizontal: 20, marginTop: 10 },
+  // Na tela larga os cartões encostam nas bordas da coluna, como no protótipo.
+  listaLarga: { paddingHorizontal: 0, marginTop: 0, gap: 16 },
   helperText: { textAlign: "center", marginTop: 30 },
   emptyWrap: { marginTop: 20 },
   conquistaItem: {

@@ -113,7 +113,7 @@ export function ConquistasDestaque({
 }
 
 const s = StyleSheet.create({
-  card: { borderRadius: 18, borderWidth: 1, padding: 22, gap: 14, marginHorizontal: 20, marginTop: 16 },
+  card: { borderRadius: 18, borderWidth: 1, padding: 22, gap: 14 },
   cabeca: { flexDirection: "row", alignItems: "flex-end", gap: 16 },
   flex: { flex: 1, minWidth: 0, gap: 4 },
   eyebrow: { fontFamily: FontFamily.interMedium, fontSize: 11, fontWeight: "700", letterSpacing: 1.2 },

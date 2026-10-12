@@ -89,6 +89,7 @@ src/utils/testesRegistrados.test.ts
 src/utils/topicoGraph.test.ts
 src/utils/trilhaCheckpointResume.test.ts
 src/utils/trilhaProgresso.test.ts
+src/utils/ultimaAtividade.test.ts
 src/utils/unlockedTopics.test.ts
 src/utils/webShadow.test.ts
 src/utils/webviewSpeechBridge.test.ts
