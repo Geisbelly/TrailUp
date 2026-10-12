@@ -1,5 +1,6 @@
 import { RankingPodium } from "@/components/ranking/RankingPodium";
 import { ProfileEmblem } from "@/components/ProfileEmblem";
+import { SocialProfileModal } from "@/components/social/SocialProfileModal";
 import {
   SectionGuideButton,
   type SectionGuideScrollable,
@@ -47,7 +48,8 @@ export default function RankDetalheScreen() {
 /**
  * Categoria aberta do ranking. `embutido`: dentro do Ranking da web em tela
  * larga (#346), ao lado das categorias — sem a barra de voltar, porque as
- * categorias continuam visíveis na coluna da esquerda.
+ * categorias continuam visíveis na coluna da esquerda. Embutido, o aluno
+ * clicado (pódio ou lista) abre o perfil público; a própria linha leva ao Perfil.
  */
 export function RankDetalhe({ rankId, embutido = false }: { rankId: number; embutido?: boolean }) {
   const router = useRouter();
@@ -58,6 +60,9 @@ export function RankDetalhe({ rankId, embutido = false }: { rankId: number; embu
   const rank = ranking?.ranks.find((item) => item.info.rank_id === rankId);
   const [filter, setFilter] = useState<Filter>("geral");
   const [total, setTotal] = useState<number | null>(null);
+  const [perfilAberto, setPerfilAberto] = useState<string | null>(null);
+  const abrirAluno = (idAluno: string) =>
+    idAluno === usuario?.id ? router.push("/perfil") : setPerfilAberto(idAluno);
   const ids = useMemo(
     () => (rank?.posicoes ?? []).map((row) => row.id_aluno),
     [rank?.posicoes],
@@ -259,6 +264,7 @@ export function RankDetalhe({ rankId, embutido = false }: { rankId: number; embu
                       userId={usuario?.id}
                       profiles={profiles}
                       photos={photos}
+                      onPressAluno={embutido ? abrirAluno : undefined}
                     />
                   </View>
                   <View
@@ -322,8 +328,16 @@ export function RankDetalhe({ rankId, embutido = false }: { rankId: number; embu
               renderItem={({ item }) => {
                 const me = item.id_aluno === usuario?.id;
                 const personProfile = profiles[item.id_aluno];
+                const Linha = embutido ? Pressable : View;
                 return (
-                  <View
+                  <Linha
+                    {...(embutido
+                      ? {
+                          onPress: () => abrirAluno(item.id_aluno),
+                          accessibilityRole: "button" as const,
+                          accessibilityLabel: me ? "Ir para o seu perfil" : `Ver perfil de ${item.nome_aluno}`,
+                        }
+                      : null)}
                     style={[
                       s.row,
                       {
@@ -359,7 +373,7 @@ export function RankDetalhe({ rankId, embutido = false }: { rankId: number; embu
                     >
                       {formatRankScore(item.pontuacao, rank.info.criterio)}
                     </Text>
-                  </View>
+                  </Linha>
                 );
               }}
               ListEmptyComponent={
@@ -415,6 +429,16 @@ export function RankDetalhe({ rankId, embutido = false }: { rankId: number; embu
             ) : null}
           </>
         )}
+        {embutido && classeId ? (
+          <SocialProfileModal
+            visible={perfilAberto !== null}
+            alunoId={perfilAberto}
+            classeId={classeId}
+            accent={palette.accent}
+            centralizado
+            onClose={() => setPerfilAberto(null)}
+          />
+        ) : null}
       </SafeAreaView>
     </View>
   );

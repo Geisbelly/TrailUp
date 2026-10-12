@@ -6,7 +6,7 @@ import { FontFamily } from "@/styles/GlobalStyle";
 import type { ProfileShellPalette } from "@/utils/profileShellTheme";
 import type { RankingProfileMeta } from "@/utils/rankingProfiles";
 import { formatRankScore, selectPodium } from "@/utils/rankingPodium";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Polygon } from "react-native-svg";
 
 type Row = {
@@ -22,6 +22,8 @@ type Props = {
   userId?: string;
   profiles: Record<string, RankingProfileMeta>;
   photos: Record<string, string>;
+  /** Só no Ranking da web em tela larga (#346): o lugar do pódio vira botão. */
+  onPressAluno?: (idAluno: string) => void;
 };
 
 export function RankingPodium({
@@ -31,6 +33,7 @@ export function RankingPodium({
   userId,
   profiles,
   photos,
+  onPressAluno,
 }: Props) {
   const leaders = selectPodium(rows);
   if (!leaders.length)
@@ -42,6 +45,7 @@ export function RankingPodium({
         </Text>
       </View>
     );
+  const Coluna = onPressAluno ? Pressable : View;
   const first = leaders.slice(0, 3);
   const columns = first.length === 3 ? [first[1], first[0], first[2]] : first;
   return (
@@ -55,8 +59,11 @@ export function RankingPodium({
           const profile = profiles[row.id_aluno]?.key;
           const photo = photos[row.id_aluno];
           return (
-            <View
+            <Coluna
               key={row.id_aluno}
+              {...(onPressAluno
+                ? { onPress: () => onPressAluno(row.id_aluno), accessibilityRole: "button" as const }
+                : null)}
               style={[
                 s.column,
                 {
@@ -140,7 +147,7 @@ export function RankingPodium({
                   <Text style={s.ordinal}>º</Text>
                 </Text>
               </View>
-            </View>
+            </Coluna>
           );
         })}
       </View>
