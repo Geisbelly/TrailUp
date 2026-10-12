@@ -242,9 +242,11 @@ export function RankDetalhe({ rankId, embutido = false }: { rankId: number; embu
                         style={StyleSheet.absoluteFill}
                       />
                     </View>
-                    <View style={s.heading}>
+                    {/* Embutido na tela larga (#346, protótipo v4): "CATEGORIA" e os filtros como pílulas ao lado do título. */}
+                    <View style={[s.heading, embutido && s.headingLargo]}>
+                    <View style={embutido ? s.headingTextos : null}>
                       <Text style={[s.eyebrow, { color: palette.accent }]}>
-                        SALA DE HONRA
+                        {embutido ? "CATEGORIA" : "SALA DE HONRA"}
                       </Text>
                       <Text style={[s.title, { color: palette.text }]}>
                         {rank.info.nome_rank}
@@ -256,6 +258,31 @@ export function RankDetalhe({ rankId, embutido = false }: { rankId: number; embu
                           {rank.info.descricao}
                         </Text>
                       ) : null}
+                    </View>
+                    {embutido ? (
+                      <View style={s.pilulas}>
+                        {filters.map((item) => {
+                          const ativo = filter === item.key;
+                          return (
+                            <Pressable
+                              key={item.key}
+                              accessibilityRole="tab"
+                              accessibilityState={{ selected: ativo }}
+                              onPress={() => setFilter(item.key)}
+                              style={[
+                                s.pilula,
+                                {
+                                  borderColor: ativo ? palette.accent : palette.border,
+                                  backgroundColor: ativo ? palette.accent : palette.surface,
+                                },
+                              ]}
+                            >
+                              <Text style={[s.pilulaTexto, { color: ativo ? palette.background : palette.textMuted }]}>{item.label}</Text>
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    ) : null}
                     </View>
                     <RankingPodium
                       rows={rank.posicoes}
@@ -275,6 +302,7 @@ export function RankDetalhe({ rankId, embutido = false }: { rankId: number; embu
                     <Text style={[s.sectionTitle, { color: palette.text }]}>
                       Classificação
                     </Text>
+                    {embutido ? null : (
                     <View
                       style={[s.filters, { borderBottomColor: palette.border }]}
                     >
@@ -310,6 +338,7 @@ export function RankDetalhe({ rankId, embutido = false }: { rankId: number; embu
                         </Pressable>
                       ))}
                     </View>
+                    )}
                     <View style={s.listHeading}>
                       <Text
                         style={[s.columnLabel, { color: palette.textSubtle }]}
@@ -461,6 +490,11 @@ const s = StyleSheet.create({
   scenery: { ...StyleSheet.absoluteFillObject },
   sceneryImage: { width: "100%", height: "100%", opacity: 0.4 },
   heading: { paddingTop: 24, gap: 7 },
+  headingLargo: { flexDirection: "row", alignItems: "flex-start", gap: 16 },
+  headingTextos: { flex: 1, minWidth: 0, gap: 7 },
+  pilulas: { flexDirection: "row", gap: 6, paddingTop: 14 },
+  pilula: { borderRadius: 999, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 7 },
+  pilulaTexto: { fontFamily: FontFamily.interMedium, fontSize: 12.5, fontWeight: "700" },
   eyebrow: { fontSize: 10, fontWeight: "700" },
   title: { fontFamily: FontFamily.inikaBold, fontSize: 27, lineHeight: 34 },
   subtitle: { fontSize: 14, lineHeight: 21 },

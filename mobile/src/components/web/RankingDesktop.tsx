@@ -49,6 +49,8 @@ export function RankingDesktop() {
         <View ref={alvoTour} collapsable={false} style={s.categorias}>
           {ranks.map((rank) => {
             const ativo = rank.info.rank_id === idAberto;
+            // "Você: 12º · 3h 20min", como no protótipo: a sua posição em cada categoria.
+            const minha = resumirMinhaPosicao(rank.posicoes, usuario?.id, rank.info.criterio).minha;
             return (
               <Pressable
                 key={rank.info.rank_id}
@@ -69,6 +71,11 @@ export function RankingDesktop() {
                   <Text style={[s.nomeCategoria, { color: palette.text }]} numberOfLines={1}>{rank.info.nome_rank}</Text>
                   {rank.info.descricao ? (
                     <Text style={[s.descricao, { color: palette.textSubtle }]} numberOfLines={1}>{rank.info.descricao}</Text>
+                  ) : null}
+                  {minha?.posicao ? (
+                    <Text style={[s.voce, { color: palette.textMuted }]} numberOfLines={1}>
+                      Você: <Text style={[s.negrito, { color: palette.text }]}>{minha.posicao}º</Text> · {formatRankScore(minha.pontuacao, rank.info.criterio)}
+                    </Text>
                   ) : null}
                 </View>
                 <MaterialCommunityIcons name="chevron-right" size={16} color={palette.accent} />
@@ -113,7 +120,8 @@ export function RankingDesktop() {
         ) : null}
       </View>
 
-      <View style={s.direita}>
+      {/* A categoria aberta fica num cartão, como no protótipo v4. */}
+      <View style={[s.direita, { borderColor: palette.border, backgroundColor: palette.background }]}>
         {idAberto !== null ? <RankDetalhe key={idAberto} rankId={idAberto} embutido /> : null}
       </View>
     </View>
@@ -132,8 +140,10 @@ const s = StyleSheet.create({
   nomeCategoria: { fontFamily: FontFamily.inikaBold, fontSize: 15.5 },
   descricao: { fontFamily: FontFamily.interMedium, fontSize: 12, marginTop: 1 },
   vazio: { marginTop: 24 },
-  direita: { flex: 1, minWidth: 0 },
-  posicao: { marginTop: "auto", padding: 16, borderRadius: 16, borderWidth: 1, gap: 10 },
+  voce: { fontFamily: FontFamily.interMedium, fontSize: 11.5, marginTop: 2 },
+  direita: { flex: 1, minWidth: 0, marginTop: 24, marginRight: 24, marginBottom: 24, borderRadius: 20, borderWidth: 1, overflow: "hidden" },
+  // Logo abaixo das categorias, como no protótipo (antes ficava presa ao pé da coluna).
+  posicao: { marginTop: 20, padding: 16, borderRadius: 16, borderWidth: 1, gap: 10 },
   posLinha: { flexDirection: "row", alignItems: "center", gap: 12 },
   posFoto: { width: 44, height: 44, borderRadius: 22, borderWidth: 3 },
   posNumero: { fontFamily: FontFamily.inikaBold, fontSize: 34 },
