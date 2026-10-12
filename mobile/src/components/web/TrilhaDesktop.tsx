@@ -1,12 +1,12 @@
 import { useIsFocused } from "@react-navigation/native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Image, StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 import { ProfileEmblem } from "@/components/ProfileEmblem";
 import { TrilhaArvoreSimple } from "@/components/trilhas/ArvoreView";
 import { TrilhaLinearList } from "@/components/trilhas/ListaSimplesView";
-import { TrilhaMapaHeroStable } from "@/components/trilhas/MapaViewStable";
 import { type GuideTargetRefs, ModuleHeaderGuideButton } from "@/components/trilhas/ModuleHeaderTitle";
+import { MapaPaisesDesktop } from "@/components/web/MapaPaisesDesktop";
 import { PainelTopicoTrilha } from "@/components/web/PainelTopicoTrilha";
 import { getProfileArtwork } from "@/constants/designAssets";
 import { useUsuario } from "@/context/SessaoContext";
@@ -43,8 +43,14 @@ export function TrilhaDesktop({ chatGuideTargetRef }: { chatGuideTargetRef?: Rea
   useEffect(() => (isFocused ? registrarAlvoTour("trilha_mapa", jornadaRef) : undefined), [isFocused]);
 
   const [selecionado, setSelecionado] = useState<string | null>(null);
-  // As vistas medem pelo tabuleiro, não pela janela; só aparecem depois da primeira medida.
-  const [quadro, setQuadro] = useState<{ largura: number; altura: number } | null>(null);
+  // As vistas medem pelo tabuleiro, não pela janela. Até a primeira medida vale uma
+  // estimativa pela janela (moldura, cartão de progresso e painel descontados).
+  const janela = useWindowDimensions();
+  const [medido, setMedido] = useState<{ largura: number; altura: number } | null>(null);
+  const quadro = medido ?? {
+    largura: Math.max(320, janela.width - 212 - 32 - 300 - 64),
+    altura: Math.max(240, janela.height - 68 - 28 - 88 - 20 - 28),
+  };
   const nos = grafo.nodes;
   const idPainel =
     selecionado !== null && nos.some((n) => String(n.id) === selecionado) ? selecionado : topicoInicial(nos, atualId);
@@ -58,6 +64,14 @@ export function TrilhaDesktop({ chatGuideTargetRef }: { chatGuideTargetRef?: Rea
       const pct = Number(topicoDe(n.id)?.percentual_concluido ?? 0);
       return { id: String(n.id), titulo: n.titulo, estado, percentual: estado === "done" ? 100 : Math.round(pct) || 0 };
     });
+  // No mapa, cada tópico é um país do tema da turma (sem tema, o próprio título).
+  const paises = todos.map((t) => ({
+    id: t.id,
+    nome: mapTheme?.countries?.[t.id]?.countryName ?? t.titulo,
+    estado: t.estado,
+    percentual: t.percentual,
+    personalizado: Boolean(personalizedTopics?.[Number(t.id)]),
+  }));
 
   if (carregando || erro || !classeAtual) return <View style={[s.tela, { backgroundColor: palette.background }]} />;
 
@@ -122,12 +136,22 @@ export function TrilhaDesktop({ chatGuideTargetRef }: { chatGuideTargetRef?: Rea
           collapsable={false}
           onLayout={(e) => {
             const { width, height } = e.nativeEvent.layout;
-            if (width !== quadro?.largura || height !== quadro?.altura) setQuadro({ largura: width, altura: height });
+            if (width !== medido?.largura || height !== medido?.altura) setMedido({ largura: width, altura: height });
           }}
-          style={[s.tabuleiro, { borderColor: palette.border }]}
+          // O mapa fica direto sobre o cenário, como no protótipo; árvore e lista ficam na caixa.
+          style={[s.tabuleiro, visual === "mapa" ? s.tabuleiroMapa : { borderColor: palette.border }]}
         >
           {quadro && visual === "mapa" && (
-            <TrilhaMapaHeroStable currentTopicId={atualId} tourTargetRef={jornadaRef} onSelecionarTopico={setSelecionado} quadro={quadro} />
+            <View ref={jornadaRef} collapsable={false} style={s.preenche}>
+              <MapaPaisesDesktop
+                topicos={paises}
+                quadro={quadro}
+                selecionado={idPainel}
+                perfil={perfil}
+                palette={palette}
+                onSelecionar={setSelecionado}
+              />
+            </View>
           )}
           {quadro && visual === "arvore" && <TrilhaArvoreSimple currentTopicId={atualId} onSelecionarTopico={setSelecionado} quadro={quadro} />}
           {quadro && visual === "lista" && (
@@ -158,6 +182,8 @@ const s = StyleSheet.create({
   trilho: { height: 8, borderRadius: 4, overflow: "hidden" },
   preenchido: { height: "100%", borderRadius: 4 },
   separador: { width: 1, height: 40 },
+  tabuleiroMapa: { borderWidth: 0, borderRadius: 0, overflow: "visible" },
+  preenche: { flex: 1 },
   tabuleiro: { flex: 1, minHeight: 0, borderRadius: 20, borderWidth: 1, overflow: "hidden" },
   direita: { paddingHorizontal: 32, paddingTop: 28, paddingBottom: 28 },
 });
