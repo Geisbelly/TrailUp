@@ -21,6 +21,14 @@ import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { registrarAlvoTour } from "@/utils/tourTargets";
 
 export default function PerfilMetricasEstilo() {
+  return <MetricasEstilo />;
+}
+
+/**
+ * `embutido`: no painel das Configurações da web em tela larga (#346). Lá a
+ * escolha fica marcada na própria tela, em vez de voltar para a lista.
+ */
+export function MetricasEstilo({ embutido = false }: { embutido?: boolean }) {
   const { usuario } = useUsuario();
   const [selectedTheme, setSelectedTheme] = useState<MetricsThemeOverride>("auto");
   const headerGuideRef = useRef<View | null>(null);
@@ -80,7 +88,7 @@ export default function PerfilMetricasEstilo() {
   const handleSelect = async (theme: MetricsThemeOverride) => {
     setSelectedTheme(theme);
     await setMetricsThemePreference(usuario?.id, theme);
-    router.back();
+    if (!embutido) router.back();
   };
 
   return (

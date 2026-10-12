@@ -1,11 +1,14 @@
 import { Stack } from "expo-router";
 
 import { useUsuario } from "@/context/SessaoContext";
+import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 
 export default function PerfilStack() {
   const { usuario } = useUsuario();
+  // Na web em tela larga (#346) as Configurações têm título próprio no painel.
+  const desktop = useDesktopWeb();
   const palette = getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null);
 
   return (
@@ -31,7 +34,7 @@ export default function PerfilStack() {
       />
       <Stack.Screen
         name="settings"
-        options={{ title: "CONFIGURAÇÕES GERAIS" }}
+        options={{ title: "CONFIGURAÇÕES GERAIS", headerShown: !desktop }}
       />
       <Stack.Screen
         name="coleta-dados"
