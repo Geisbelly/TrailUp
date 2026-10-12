@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { RankDetalhe } from "@/app/(tabs)/ranking/[id]";
 import { HallBackground } from "@/components/HallTheme";
@@ -8,6 +8,8 @@ import { UtilityIcon } from "@/components/UtilityIcon";
 import { useConquistaRank } from "@/context/ConquistaRankContext";
 import { useUsuario } from "@/context/SessaoContext";
 import { FontFamily } from "@/styles/GlobalStyle";
+import { resumirMinhaPosicao } from "@/utils/minhaPosicaoRank";
+import { formatRankScore } from "@/utils/rankingPodium";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { registrarAlvoTour } from "@/utils/tourTargets";
 
@@ -32,6 +34,9 @@ export function RankingDesktop() {
 
   // Abre a primeira categoria quando o ranking chega (ou se a aberta sumir).
   const idAberto = aberto !== null && ranks.some((r) => r.info.rank_id === aberto) ? aberto : ranks[0]?.info.rank_id ?? null;
+  const rankAberto = ranks.find((r) => r.info.rank_id === idAberto);
+  const criterio = rankAberto?.info.criterio ?? null;
+  const resumo = resumirMinhaPosicao(rankAberto?.posicoes ?? [], usuario?.id, criterio);
 
   return (
     <View style={[s.tela, { backgroundColor: palette.background }]}>
@@ -76,6 +81,36 @@ export function RankingDesktop() {
         {!carregando && !ranks.length ? (
           <Text style={[s.vazio, { color: palette.textMuted }]}>Nenhum ranking disponível nesta turma.</Text>
         ) : null}
+
+        {/* Sua posição: sai do rodapé da tabela e fica aqui, sempre visível enquanto a classificação rola. */}
+        {rankAberto && resumo.minha ? (
+          <View style={[s.posicao, { borderColor: palette.accent, backgroundColor: palette.surfaceElevated }]}>
+            <Text style={[s.eyebrow, { color: palette.accent }]} numberOfLines={1}>
+              SUA POSIÇÃO · {rankAberto.info.nome_rank.toUpperCase()}
+            </Text>
+            <View style={s.posLinha}>
+              {usuario?.foto_url ? <Image source={{ uri: usuario.foto_url }} style={[s.posFoto, { borderColor: palette.accent }]} /> : null}
+              <Text style={[s.posNumero, { color: palette.accent }]}>{resumo.minha.posicao ? `${resumo.minha.posicao}º` : "--"}</Text>
+              <Text style={[s.posValor, { color: palette.text }]}>{formatRankScore(resumo.minha.pontuacao, criterio)}</Text>
+            </View>
+            <View style={[s.acima, { backgroundColor: palette.background }]}>
+              {resumo.acima ? (
+                <>
+                  <Text style={[s.acimaRotulo, { color: palette.textSubtle }]}>PRÓXIMO ACIMA</Text>
+                  <Text style={[s.acimaTexto, { color: palette.text }]}>
+                    <Text style={s.negrito}>{resumo.acima.nome_aluno}</Text> · {resumo.acima.posicao}º
+                  </Text>
+                  <Text style={[s.acimaTexto, { color: palette.textMuted }]}>
+                    Faltam <Text style={[s.negrito, { color: palette.text }]}>{resumo.falta}</Text> para passar.
+                  </Text>
+                </>
+              ) : (
+                <Text style={[s.acimaTexto, s.negrito, { color: palette.text }]}>Você lidera esta categoria.</Text>
+              )}
+            </View>
+            <Text style={[s.posNota, { color: palette.textSubtle }]}>Sua posição continua aqui mesmo quando você filtra os colegas.</Text>
+          </View>
+        ) : null}
       </View>
 
       <View style={s.direita}>
@@ -98,4 +133,14 @@ const s = StyleSheet.create({
   descricao: { fontFamily: FontFamily.interMedium, fontSize: 12, marginTop: 1 },
   vazio: { marginTop: 24 },
   direita: { flex: 1, minWidth: 0 },
+  posicao: { marginTop: "auto", padding: 16, borderRadius: 16, borderWidth: 1, gap: 10 },
+  posLinha: { flexDirection: "row", alignItems: "center", gap: 12 },
+  posFoto: { width: 44, height: 44, borderRadius: 22, borderWidth: 3 },
+  posNumero: { fontFamily: FontFamily.inikaBold, fontSize: 34 },
+  posValor: { marginLeft: "auto", fontFamily: FontFamily.interMedium, fontSize: 16, fontWeight: "700" },
+  acima: { padding: 12, borderRadius: 12, gap: 4 },
+  acimaRotulo: { fontFamily: FontFamily.interMedium, fontSize: 10.5, fontWeight: "700", letterSpacing: 1 },
+  acimaTexto: { fontFamily: FontFamily.interMedium, fontSize: 13 },
+  negrito: { fontWeight: "700" },
+  posNota: { fontFamily: FontFamily.interMedium, fontSize: 11.5 },
 });

@@ -379,7 +379,8 @@ export function RankDetalhe({ rankId, embutido = false }: { rankId: number; embu
                 ) : null
               }
             />
-            {cutoff.minhaLinha ? (
+            {/* Embutido no Ranking de tela larga, a posição fica no card da coluna da esquerda. */}
+            {cutoff.minhaLinha && !embutido ? (
               <View
                 ref={myRef}
                 collapsable={false}
