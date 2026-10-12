@@ -43,6 +43,8 @@ export function TrilhaDesktop({ chatGuideTargetRef }: { chatGuideTargetRef?: Rea
   useEffect(() => (isFocused ? registrarAlvoTour("trilha_mapa", jornadaRef) : undefined), [isFocused]);
 
   const [selecionado, setSelecionado] = useState<string | null>(null);
+  // As vistas medem pelo tabuleiro, não pela janela; só aparecem depois da primeira medida.
+  const [quadro, setQuadro] = useState<{ largura: number; altura: number } | null>(null);
   const nos = grafo.nodes;
   const idPainel =
     selecionado !== null && nos.some((n) => String(n.id) === selecionado) ? selecionado : topicoInicial(nos, atualId);
@@ -115,10 +117,22 @@ export function TrilhaDesktop({ chatGuideTargetRef }: { chatGuideTargetRef?: Rea
           />
         </View>
 
-        <View ref={visual === "arvore" ? jornadaRef : undefined} collapsable={false} style={[s.tabuleiro, { borderColor: palette.border }]}>
-          {visual === "mapa" && <TrilhaMapaHeroStable currentTopicId={atualId} tourTargetRef={jornadaRef} onSelecionarTopico={setSelecionado} />}
-          {visual === "arvore" && <TrilhaArvoreSimple currentTopicId={atualId} onSelecionarTopico={setSelecionado} />}
-          {visual === "lista" && <TrilhaLinearList currentTopicId={atualId} tourTargetRef={jornadaRef} onSelecionarTopico={setSelecionado} />}
+        <View
+          ref={visual === "arvore" ? jornadaRef : undefined}
+          collapsable={false}
+          onLayout={(e) => {
+            const { width, height } = e.nativeEvent.layout;
+            if (width !== quadro?.largura || height !== quadro?.altura) setQuadro({ largura: width, altura: height });
+          }}
+          style={[s.tabuleiro, { borderColor: palette.border }]}
+        >
+          {quadro && visual === "mapa" && (
+            <TrilhaMapaHeroStable currentTopicId={atualId} tourTargetRef={jornadaRef} onSelecionarTopico={setSelecionado} quadro={quadro} />
+          )}
+          {quadro && visual === "arvore" && <TrilhaArvoreSimple currentTopicId={atualId} onSelecionarTopico={setSelecionado} quadro={quadro} />}
+          {quadro && visual === "lista" && (
+            <TrilhaLinearList currentTopicId={atualId} tourTargetRef={jornadaRef} onSelecionarTopico={setSelecionado} quadro={quadro} />
+          )}
         </View>
       </View>
 

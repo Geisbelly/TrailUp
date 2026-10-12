@@ -149,10 +149,14 @@ export const TrilhaArvoreSimple: React.FC<{
   currentTopicId: string | null;
   /** Web em tela larga (#346): o toque seleciona o tópico no painel ao lado, em vez de abrir. */
   onSelecionarTopico?: (id: string) => void;
-}> = ({ currentTopicId, onSelecionarTopico }) => {
+  /** Web em tela larga (#346): tamanho do tabuleiro, usado no lugar do tamanho da janela. */
+  quadro?: { largura: number; altura: number };
+}> = ({ currentTopicId, onSelecionarTopico, quadro }) => {
   const { grafo, perfil } = useTrilha();
   const router = useRouter();
-  const { width: winW, height: winH } = useWindowDimensions();
+  const janela = useWindowDimensions();
+  const winW = quadro?.largura ?? janela.width;
+  const winH = quadro?.altura ?? janela.height;
   const palette = useMemo(
     () => getProfileShellPalette(perfil),
     [perfil]

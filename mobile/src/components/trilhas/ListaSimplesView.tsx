@@ -34,10 +34,13 @@ export const TrilhaLinearList: React.FC<{
   tourTargetRef?: React.RefObject<View | null>;
   /** Web em tela larga (#346): o toque seleciona o tópico no painel ao lado, em vez de abrir. */
   onSelecionarTopico?: (id: string) => void;
-}> = ({ currentTopicId, tourTargetRef, onSelecionarTopico }) => {
+  /** Web em tela larga (#346): tamanho do tabuleiro, usado no lugar do tamanho da janela. */
+  quadro?: { largura: number; altura: number };
+}> = ({ currentTopicId, tourTargetRef, onSelecionarTopico, quadro }) => {
   const { grafo, perfil } = useTrilha();
   const palette = getProfileShellPalette(perfil);
-  const { width: winW } = useWindowDimensions();
+  const janela = useWindowDimensions();
+  const winW = quadro?.largura ?? janela.width;
   const [lockedRow, setLockedRow] = useState<Row | null>(null);
   const list = useRef<FlatList<Row>>(null);
   const focused = useIsFocused();

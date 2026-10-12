@@ -4,12 +4,14 @@ import { LockedNodeModal } from "@/components/trilhas/LockedNodeModal";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { Design } from "@/styles/design";
 import { getProfileArtwork } from "@/constants/designAssets";
+import { colunasDoMapa } from "@/utils/gradeMapaTrilha";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Image,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -107,14 +109,21 @@ export function TrilhaMapaHeroStable({
   tourTargetRef,
   currentTopicId,
   onSelecionarTopico,
+  quadro,
 }: {
   currentTopicId: string | null;
   tourTargetRef?: React.RefObject<View | null>;
   /** Web em tela larga (#346): o toque seleciona o tópico no painel ao lado, em vez de abrir. */
   onSelecionarTopico?: (id: string) => void;
+  /** Web em tela larga (#346): tamanho do tabuleiro, usado no lugar do tamanho da janela.
+   * No quadro, o mapa não repete o cabeçalho (o cartão de progresso já mostra)
+   * e as fileiras cabem na altura: ele cresce e rola só na horizontal. */
+  quadro?: { largura: number; altura: number };
 }) {
   const { grafo, mapTheme, perfil } = useTrilha();
-  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const janela = useWindowDimensions();
+  const screenWidth = quadro?.largura ?? janela.width;
+  const screenHeight = quadro?.altura ?? janela.height;
   const shellPalette = useMemo(
     () => getProfileShellPalette(perfil),
     [perfil],
@@ -137,7 +146,8 @@ export function TrilhaMapaHeroStable({
     );
 
     const availWidth = Math.max(screenWidth, 360) - paddingX * 2;
-    const gridCols = Math.max(2, Math.floor(availWidth / 270));
+    // No quadro, as fileiras que cabem na altura decidem as colunas.
+    const gridCols = colunasDoMapa(sortedNodes.length, screenWidth, screenHeight, Boolean(quadro));
     const cellW = Math.max(270, availWidth / gridCols);
 
     return sortedNodes.map((node, flatIndex) => {
@@ -187,7 +197,7 @@ export function TrilhaMapaHeroStable({
         plateWidth,
       };
     });
-  }, [currentTopicId, grafo.levels, mapTheme, screenWidth]);
+  }, [currentTopicId, grafo.levels, mapTheme, quadro, screenHeight, screenWidth]);
 
   const worldWidth = useMemo(() => {
     if (!nodes.length) return screenWidth;
@@ -217,6 +227,20 @@ export function TrilhaMapaHeroStable({
   const currentNode = nodes.find((node) => node.current);
   const horizontalFocus = useTrailAutoFocus(currentTopicId, currentNode ? (currentNode.x + currentNode.width / 2) * mapScale : null, true);
   const verticalFocus = useTrailAutoFocus(currentTopicId, currentNode ? (currentNode.y + currentNode.height / 2) * mapScale : null);
+  // No quadro da web, a roda do mouse rola o mapa na horizontal (ele não rola na vertical).
+  const horizontalRef = horizontalFocus.ref;
+  useEffect(() => {
+    if (!quadro || Platform.OS !== "web") return;
+    const no = (horizontalRef.current as unknown as { getScrollableNode?: () => HTMLElement } | null)?.getScrollableNode?.();
+    if (!no) return;
+    const rolar = (evento: WheelEvent) => {
+      if (Math.abs(evento.deltaY) <= Math.abs(evento.deltaX)) return;
+      no.scrollLeft += evento.deltaY;
+      evento.preventDefault();
+    };
+    no.addEventListener("wheel", rolar, { passive: false });
+    return () => no.removeEventListener("wheel", rolar);
+  }, [quadro, horizontalRef]);
 
   const nodeById = useMemo(
     () => new Map(nodes.map((node) => [node.id, node] as const)),
@@ -260,6 +284,7 @@ export function TrilhaMapaHeroStable({
 
   return (
     <View style={[styles.root, { backgroundColor: palette.seaDeep }]}>
+      {quadro ? null : (
       <View
         style={[
           styles.headerCard,
@@ -277,6 +302,7 @@ export function TrilhaMapaHeroStable({
           {nodes.filter((node) => node.completed).length} de {nodes.length} módulos concluídos
         </Text>
       </View>
+      )}
 
       <ScrollView
         {...horizontalFocus}
@@ -286,6 +312,7 @@ export function TrilhaMapaHeroStable({
       >
         <ScrollView
           {...verticalFocus}
+          scrollEnabled={!quadro}
           showsVerticalScrollIndicator={false}
           bounces={false}
           contentContainerStyle={styles.scrollContent}
