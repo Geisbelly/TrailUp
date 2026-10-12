@@ -1,3 +1,4 @@
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Image, StyleSheet, Text, useWindowDimensions, View } from "react-native";
@@ -100,16 +101,37 @@ export function TrilhaDesktop({ chatGuideTargetRef }: { chatGuideTargetRef?: Rea
   if (carregando || erro || !classeAtual) return <View style={[s.tela, { backgroundColor: palette.background }]} />;
 
   const ehMapa = visual === "mapa";
+  const cenario = (
+    <View pointerEvents="none" accessible={false} style={StyleSheet.absoluteFill}>
+      <Image key={perfil} source={getProfileArtwork(perfil, ehMapa ? "map" : "trail")} resizeMode="cover" style={s.cenario} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: palette.background, opacity: 0.35 }]} />
+    </View>
+  );
+
+  // Turma sem tópicos publicados: o protótipo troca cartão, tabuleiro e painel por um aviso no centro.
+  if (nos.length === 0) {
+    return (
+      <View style={[s.tela, s.centro, { backgroundColor: palette.background }]}>
+        {cenario}
+        <View style={[s.vazio, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+          <MaterialCommunityIcons name="map-outline" size={46} color={palette.textSubtle} />
+          <Text accessibilityRole="header" style={[s.vazioTitulo, { color: palette.text }]}>Sem trilhas</Text>
+          <Text style={[s.vazioTexto, { color: palette.textSubtle }]}>Nenhuma trilha disponível no momento.</Text>
+          <Text style={[s.vazioTexto, s.vazioNota, { color: palette.textSubtle }]}>
+            Quando a trilha da turma for publicada, ela aparece aqui.
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
   const nome = ehMapa ? (mapTheme?.worldName ?? classeAtual.resumo?.materia_nome ?? "Classe") : (classeAtual.resumo?.materia_nome ?? "Classe");
   const { progresso, totalTopicos, concluidos } = calcularProgressoTrilha(classeAtual, progressoPersonalizado);
   const pct = Math.round(progresso);
 
   return (
     <View style={[s.tela, { backgroundColor: palette.background }]}>
-      <View pointerEvents="none" accessible={false} style={StyleSheet.absoluteFill}>
-        <Image key={perfil} source={getProfileArtwork(perfil, ehMapa ? "map" : "trail")} resizeMode="cover" style={s.cenario} />
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: palette.background, opacity: 0.35 }]} />
-      </View>
+      {cenario}
 
       <View style={s.esquerda}>
         <View
@@ -219,4 +241,9 @@ const s = StyleSheet.create({
   preenche: { flex: 1 },
   tabuleiro: { flex: 1, minHeight: 0, borderRadius: 20, borderWidth: 1, overflow: "hidden" },
   direita: { paddingHorizontal: 32, paddingTop: 28, paddingBottom: 28 },
+  centro: { alignItems: "center", justifyContent: "center", padding: 40 },
+  vazio: { width: 520, maxWidth: "100%", alignItems: "center", gap: 16, paddingVertical: 64, paddingHorizontal: 40, borderRadius: 20, borderWidth: 1 },
+  vazioTitulo: { fontFamily: FontFamily.inikaBold, fontSize: 24, textAlign: "center" },
+  vazioTexto: { fontFamily: FontFamily.interMedium, fontSize: 15, lineHeight: 24, textAlign: "center", maxWidth: 480 },
+  vazioNota: { fontSize: 13, lineHeight: 20 },
 });
