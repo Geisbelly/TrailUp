@@ -49,6 +49,7 @@ export default function Console() {
     disciplina: string | null;
     descricao: string | null;
     geracaoAutomatica: boolean;
+    criadoEm: string | null;
   } | null>(null);
   const [isLoadingProfessor, setIsLoadingProfessor] = useState(false);
   // A URL e a unica fonte da verdade da aba ativa (ver consoleSections.ts):
@@ -65,7 +66,7 @@ export default function Console() {
       try {
         const { data, error } = await supabase
           .from("professor")
-          .select("id, nome, descricao, instituicao, disciplina, geracao_automatica")
+          .select("id, nome, descricao, instituicao, disciplina, geracao_automatica, created_at")
           .eq("id", user.id)
           .maybeSingle();
 
@@ -79,6 +80,7 @@ export default function Console() {
           disciplina: data?.disciplina ?? user.user_metadata?.disciplina ?? "",
           descricao: data?.descricao ?? user.user_metadata?.descricao ?? "",
           geracaoAutomatica: data?.geracao_automatica ?? true,
+          criadoEm: data?.created_at ?? user.created_at ?? null,
         });
       } catch (err) {
         console.error("Erro ao carregar dados do professor:", err);
@@ -92,6 +94,7 @@ export default function Console() {
             disciplina: user.user_metadata?.disciplina || "",
             descricao: user.user_metadata?.descricao || "",
             geracaoAutomatica: true,
+            criadoEm: user.created_at ?? null,
           });
         }
       } finally {
@@ -115,8 +118,8 @@ export default function Console() {
     navigate("/login");
   };
 
-  const handleProfileUpdate = async (updatedData: ProfessorUpdateData) => {
-    if (!professorData?.id) return;
+  const handleProfileUpdate = async (updatedData: ProfessorUpdateData): Promise<boolean> => {
+    if (!professorData?.id) return false;
     try {
       const { error } = await supabase
         .from("professor")
@@ -144,9 +147,11 @@ export default function Console() {
           : prev
       );
       toast.success("Dados atualizados com sucesso!");
+      return true;
     } catch (err) {
       console.error("Erro ao atualizar dados do professor:", err);
       toast.error("Nao foi possivel salvar os dados.");
+      return false;
     }
   };
 

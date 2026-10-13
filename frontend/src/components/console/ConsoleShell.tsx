@@ -4,6 +4,7 @@ import { GraduationCap, LayoutDashboard, LogOut, Route, Settings, ShieldCheck, S
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DESIGN_ART } from "@/lib/design-art";
 import { CONSOLE_SECTIONS, consolePathForView, type ConsoleView } from "@/pages/consoleSections";
+import Escriba from "./escriba/Escriba";
 
 const navigation = {
   dashboard: { label: "Visão geral", icon: LayoutDashboard },
@@ -58,6 +59,8 @@ export default function ConsoleShell({ view, name, institution, isOwner, onSignO
         })}
       </nav>
       <main className="console-main" aria-label={navigation[view].label}>{children}</main>
+      {/* O Escriba acompanha as 6 telas de trabalho; Aprovações é administração, não turma. */}
+      {view !== "aprovacoes" && <Escriba />}
     </div>
   );
 }

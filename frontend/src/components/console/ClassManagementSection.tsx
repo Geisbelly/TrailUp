@@ -4,54 +4,31 @@ import { supabase } from "@/integrations/supabase/client";
 import { remapearReferencias, type MapaDeTopicos } from "./duplicacaoDeClasse";
 import type { Json } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import {
-  Plus,
-  Pencil,
-  Trash2,
-  Copy,
-  Users,
-  BookOpen,
-  UserPlus,
-  X,
-  Loader2,
-  GraduationCap,
-  Save,
-  CalendarCheck,
-} from "lucide-react";
+import { Plus } from "lucide-react";
 import { PresencaDialog } from "./PresencaDialog";
-import { ClassManagerDialog } from "./trilha/ClassManagerDialog";
+import { CardDaTurma, CardNovaTurma } from "./turmas/CardDaTurma";
+import { TurmasCarregando, TurmasErro, TurmasVazio } from "./turmas/TurmasEstados";
+import { ConfirmarExclusao } from "./turmas/ConfirmarExclusao";
+import { ConfirmarDuplicacao, FaixaTurmaDuplicada } from "./turmas/ConfirmarDuplicacao";
+import { idDaCopia, mensagemDeErroDaDuplicacao } from "./turmas/duplicacao";
+import { ModalMatriculas } from "./turmas/ModalMatriculas";
+import { FaixaTurmaCriada, FormularioDeTurma } from "./turmas/FormularioDeTurma";
+import { CAMPOS_VAZIOS, criarTurma, nomeDaTurma, type BancoDeTurmas, type DadosDaTurma } from "./turmas/formulario";
+import { resumirTurmas, type MatriculaDaTurma, type ResumoDaTurma, type TopicoDaTurma } from "./turmas/resumo";
 import { deleteClasseCascade, removeClassStudent } from "./trilha/classDeletion";
-import { enqueueEnrollmentJob } from "./trilha/personalizacaoJobsApi";
 
 // Tipos
 type Classe = { id: number; descricao: string | null; materia_id: number | null; created_at: string | null };
 type Materia = { id: number; nome: string | null; descricao: string | null };
 type Student = { id: string; nome: string; email?: string | null };
 type ProfessorAlunoRow = { aluno_id: string; has_acesso: boolean; alunos: { id: string; nome: string; email?: string | null } | null };
-type TopicRow = { id: number; nome: string | null; descricao: string | null; ordem: number | null; next: number[] | string | null; depende: number[] | string | null };
-type ContentRow = { id: number; topico_id: number; titulo: string | null; tipo: string | null; conteudo: string | null; ordem: number | null };
-type ActivityRow = { id: number; topico_id: number; titulo: string | null; descricao: string | null; tipo: string | null; data_entrega: string | null };
-type QuestionRow = {
-  id: number;
-  atividade_id: number;
-  enunciado: string | null;
-  tipo: string | null;
-  alternativas: Json;
-  resposta_correta: string | null;
-  nota_estabelecida: number | null;
-};
-type LinkRow = { atividade_id: number; conteudo_id: number };
-type CardRow = { conteudo_id: number; titulo: string | null; descricao: string | null; imagem_url: string | null };
 
 type Props = { professorId?: string };
+// duplicar_classe (migration 20261011_01) ainda não está nos tipos gerados do Supabase.
+type RpcDuplicar = (
+  fn: "duplicar_classe",
+  args: { p_classe_id: number },
+) => Promise<{ data: unknown; error: { code?: string; message: string } | null }>;
 
 export default function ClassManagementSection({ professorId }: Props) {
   // --- Dados ---
@@ -60,80 +37,77 @@ export default function ClassManagementSection({ professorId }: Props) {
   const [students, setStudents] = useState<Student[]>([]);
   const [classStudents, setClassStudents] = useState<Record<number, string[]>>({});
 
-  // --- UI ---
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editForm, setEditForm] = useState({ descricao: "", materia_id: "" });
+  // Alunos, tópicos e conclusão de cada turma (mesma conta do dashboard).
+  const [resumos, setResumos] = useState<Map<number, ResumoDaTurma>>(new Map());
 
-  // --- Criar turma (modal) ---
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [classForm, setClassForm] = useState({ descricao: "", materia_id: "" });
-  const [newMateria, setNewMateria] = useState({ nome: "", descricao: "" });
+  // --- UI ---
+  const [isLoading, setIsLoading] = useState(true);
+  const [erroDeCarga, setErroDeCarga] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  // --- Formulário (criar e editar no mesmo card) e exclusão ---
+  const [formulario, setFormulario] = useState<{ modo: "criar" } | { modo: "editar"; turma: Classe } | null>(null);
+  const [turmaCriada, setTurmaCriada] = useState<{ id: number; nome: string; aviso: string | null } | null>(null);
+  const [paraExcluir, setParaExcluir] = useState<Classe | null>(null);
+  const [paraDuplicar, setParaDuplicar] = useState<Classe | null>(null);
+  const [duplicando, setDuplicando] = useState(false);
+  const [turmaDuplicada, setTurmaDuplicada] = useState<{ id: number; nome: string } | null>(null);
+  const [excluindo, setExcluindo] = useState(false);
 
   // --- Alunos ---
   const [selectedClassForStudents, setSelectedClassForStudents] = useState<Classe | null>(null);
   const [classeParaPresenca, setClasseParaPresenca] = useState<Classe | null>(null);
-  const [studentToAdId, setStudentToAddId] = useState<string>("");
-  const [isProcessingStudent, setIsProcessingStudent] = useState(false);
 
-  const darkInputClass = "bg-input border-border text-foreground focus:border-ring placeholder:text-muted-foreground transition-colors";
-  const darkLabelClass = "text-muted-foreground text-xs font-bold uppercase tracking-wider mb-1.5 block";
-  const darkSelectTrigger = "bg-input border-border text-foreground";
-  const darkSelectContent = "bg-popover border-border text-popover-foreground";
-
-  const fetchClassContextIds = async (classeId: number) => {
-    const { data: topicoRows, error: topicoError } = await supabase
-      .from("topicos")
-      .select("id")
-      .eq("classe_id", classeId);
-    if (topicoError) throw topicoError;
-
-    const topico_ids = (topicoRows ?? []).map((row) => row.id);
-    if (topico_ids.length === 0) return { topico_ids, conteudo_ids: [] as number[] };
-
-    const { data: conteudoRows, error: conteudoError } = await supabase
-      .from("conteudos")
-      .select("id")
-      .in("topico_id", topico_ids);
-    if (conteudoError) throw conteudoError;
-
-    const conteudo_ids = (conteudoRows ?? []).map((row) => row.id);
-    return { topico_ids, conteudo_ids };
-  };
 
   // --- Carregamento ---
-  const loadData = useCallback(async () => {
+  // Cada leitura confere o `error` do Supabase: uma falha vira estado de erro,
+  // nunca "Nenhuma turma ainda" (análise 03, seção 2.3-1). `silencioso` recarrega
+  // os números sem trocar a grade pelo skeleton (depois de matricular/remover).
+  const loadData = useCallback(async (silencioso = false) => {
     if (!professorId) return;
-    setIsLoading(true);
+    if (!silencioso) setIsLoading(true);
+    setErroDeCarga(null);
     try {
-      const [{ data: cls }, { data: mats }, { data: profAlunos }] = await Promise.all([
+      const [cls, mats, profAlunos] = await Promise.all([
         supabase.from("classe").select("id, descricao, materia_id, created_at").eq("professor_id", professorId).order("created_at", { ascending: false }),
         supabase.from("materia").select("id, nome, descricao"),
         supabase.from("professor_aluno").select("aluno_id, has_acesso, alunos(id, nome, email)").eq("professor_id", professorId).eq("has_acesso", true),
       ]);
-      setClasses((cls as Classe[]) ?? []);
-      setMaterias((mats as Materia[]) ?? []);
-      const parsedStudents = ((profAlunos as ProfessorAlunoRow[]) ?? []).map((row) => ({
-        id: row.aluno_id,
-        nome: row.alunos?.nome || "Aluno",
-        email: row.alunos?.email || "",
-      }));
-      setStudents(parsedStudents);
-      const classIds = ((cls as Classe[]) ?? []).map((c) => c.id);
+      const erro = cls.error ?? mats.error ?? profAlunos.error;
+      if (erro) throw new Error(erro.message);
+
+      const turmas = (cls.data as Classe[]) ?? [];
+      const classIds = turmas.map((c) => c.id);
+      let matriculas: MatriculaDaTurma[] = [];
+      let topicos: TopicoDaTurma[] = [];
       if (classIds.length > 0) {
-        const { data: clsAlunos } = await supabase.from("classe_aluno").select("classe_id, aluno_id").in("classe_id", classIds);
-        const map: Record<number, string[]> = {};
-        (clsAlunos as { classe_id: number; aluno_id: string }[] | null)?.forEach((row) => {
-          map[row.classe_id] = map[row.classe_id] || [];
-          if (!map[row.classe_id].includes(row.aluno_id)) map[row.classe_id].push(row.aluno_id);
-        });
-        setClassStudents(map);
-      } else {
-        setClassStudents({});
+        const [clsAlunos, tops] = await Promise.all([
+          supabase.from("classe_aluno").select("classe_id, aluno_id, porcentagemConcluida").in("classe_id", classIds),
+          supabase.from("topicos").select("classe_id").in("classe_id", classIds),
+        ]);
+        const erroDasTurmas = clsAlunos.error ?? tops.error;
+        if (erroDasTurmas) throw new Error(erroDasTurmas.message);
+        matriculas = (clsAlunos.data ?? []) as MatriculaDaTurma[];
+        topicos = (tops.data ?? []) as TopicoDaTurma[];
       }
-    } catch {
-      toast.error("Erro ao carregar dados.");
+
+      setClasses(turmas);
+      setMaterias((mats.data as Materia[]) ?? []);
+      setStudents(
+        ((profAlunos.data as ProfessorAlunoRow[]) ?? []).map((row) => ({
+          id: row.aluno_id,
+          nome: row.alunos?.nome || "Aluno",
+          email: row.alunos?.email || "",
+        })),
+      );
+      const map: Record<number, string[]> = {};
+      matriculas.forEach((row) => {
+        map[row.classe_id] = map[row.classe_id] || [];
+        if (!map[row.classe_id].includes(row.aluno_id)) map[row.classe_id].push(row.aluno_id);
+      });
+      setClassStudents(map);
+      setResumos(resumirTurmas(classIds, matriculas, topicos));
+    } catch (e) {
+      setErroDeCarga(e instanceof Error ? e.message : "Erro desconhecido ao carregar as turmas.");
     } finally {
       setIsLoading(false);
     }
@@ -141,251 +115,111 @@ export default function ClassManagementSection({ professorId }: Props) {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  // --- Criar turma (chamado pelo ClassManagerDialog) ---
-  const handleCreateClass = async () => {
-    if (!professorId || !classForm.descricao) {
-      toast.error("Informe uma descrição.");
-      return null;
-    }
-    setIsSaving(true);
-    try {
-      let materiaId = classForm.materia_id ? Number(classForm.materia_id) : null;
-      if (!materiaId && newMateria.nome) {
-        const { data } = await supabase.from("materia").insert({ nome: newMateria.nome, descricao: newMateria.descricao }).select("id").single();
-        if (data) materiaId = (data as { id: number }).id;
-      }
-      const { data: created, error } = await supabase
-        .from("classe")
-        .insert({ descricao: classForm.descricao, materia_id: materiaId, professor_id: professorId })
-        .select("id, descricao")
-        .single();
-      if (error) throw error;
-      toast.success("Classe criada.");
-      await loadData();
-      setClassForm({ descricao: "", materia_id: "" });
-      setNewMateria({ nome: "", descricao: "" });
-      setIsCreateOpen(false);
-      return created as { id: number; descricao: string | null };
-    } catch {
-      toast.error("Erro ao salvar classe.");
-      return null;
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  // --- Editar turma ---
-  const handleUpdate = async () => {
-    if (!editingId || !editForm.descricao) return toast.error("Informe uma descrição.");
-    setIsSaving(true);
-    try {
-      const materiaId = editForm.materia_id ? Number(editForm.materia_id) : null;
-      await supabase.from("classe").update({ descricao: editForm.descricao, materia_id: materiaId }).eq("id", editingId);
-      toast.success("Classe atualizada.");
-      await loadData();
-      setEditingId(null);
-    } catch {
-      toast.error("Erro ao atualizar classe.");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleDelete = async (id: number) => {
-    if (!window.confirm("Excluir esta classe, seus conteúdos, matrículas, progressos e dados de guildas da turma? Esta ação não pode ser desfeita.")) return;
-    try {
-      await deleteClasseCascade(id);
-      toast.success("Classe removida.");
-      setClasses((prev) => prev.filter((c) => c.id !== id));
-    } catch (error) {
-      console.error("Erro ao remover classe:", error);
-      toast.error(error instanceof Error ? error.message : "Erro ao remover classe.");
-    }
-  };
-
-  /**
-   * Estoura com contexto em vez de deixar o erro do Supabase cair no chão.
-   *
-   * A duplicação ignorava o `error` de TODOS os inserts menos o primeiro. Com
-   * isso `data` vinha `null`, e o `(created as { id: number }).id` seguinte
-   * estourava um `TypeError` sem relação com a causa — que o `catch {}` vazio
-   * então descartava, sem nem um `console.error`.
-   */
-  const exigir = <T,>(
-    resposta: { data: T | null; error: { message: string } | null },
-    oque: string,
-  ): T => {
-    if (resposta.error) throw new Error(`${oque}: ${resposta.error.message}`);
-    if (resposta.data === null) throw new Error(`${oque}: o banco não devolveu dado`);
-    return resposta.data;
-  };
-
-  /** Para insert sem `select`: aí `data` é `null` mesmo quando deu certo. */
-  const exigirOk = (resposta: { error: { message: string } | null }, oque: string) => {
-    if (resposta.error) throw new Error(`${oque}: ${resposta.error.message}`);
-  };
-
-  /**
-   * Desfaz a cópia parcial. O REST não tem transação, então a atomicidade vem
-   * por compensação.
-   *
-   * Usa `deleteClasseCascade`, não um `delete` na `classe`: apagar a classe
-   * direto NÃO basta. `atividade_conteudos_atividade_id_fkey` é `NO ACTION`
-   * (as outras FKs da trilha são `CASCADE`), então, havendo vínculo
-   * atividade↔conteúdo, o Postgres recusa com
-   * `23503 ... still referenced from table "atividade_conteudos"` — conferido
-   * ao vivo. O helper apaga os filhos na ordem certa e ainda limpa o bucket.
-   */
-  const removerClasseParcial = async (id: number) => {
-    try {
-      await deleteClasseCascade(id);
-      return true;
-    } catch (error) {
-      console.error("Falha ao remover a classe parcial:", error);
-      return false;
-    }
-  };
-
-  const handleDuplicate = async (cls: Classe) => {
-    if (!professorId) return;
-    setIsSaving(true);
-    let newClassId: number | null = null;
-    try {
-      const criada = exigir(
-        await supabase
+  // --- Criar e editar turma ---
+  const bancoDeTurmas = useMemo<BancoDeTurmas>(
+    () => ({
+      inserirTurma: async ({ descricao, materia_id }) => {
+        const { data, error } = await supabase
           .from("classe")
-          .insert({
-            descricao: `${cls.descricao} (copia)`,
-            materia_id: cls.materia_id ?? null,
-            professor_id: professorId,
-          })
-          .select("id")
-          .single(),
-        "criar a classe",
-      );
-      newClassId = (criada as { id: number }).id;
+          .insert({ descricao, materia_id, professor_id: professorId! })
+          .select("id, descricao")
+          .single();
+        if (error) throw new Error(error.message);
+        return data as { id: number; descricao: string | null };
+      },
+      inserirMateria: async ({ nome, descricao }) => {
+        const { data, error } = await supabase.from("materia").insert({ nome, descricao }).select("id").single();
+        if (error) throw new Error(error.message);
+        return data as { id: number };
+      },
+      vincularMateria: async (turmaId, materiaId) => {
+        const { data, error } = await supabase.from("classe").update({ materia_id: materiaId }).eq("id", turmaId).select("id");
+        if (error) throw new Error(error.message);
+        if (!data?.length) throw new Error("sem permissão para alterar a turma");
+      },
+    }),
+    [professorId],
+  );
 
-      const oldTopics = exigir(
-        await supabase.from("topicos").select("id, nome, descricao, ordem, next, depende").eq("classe_id", cls.id),
-        "ler os tópicos",
-      ) as TopicRow[];
+  const abrirCriar = () => {
+    setTurmaCriada(null);
+    setFormulario({ modo: "criar" });
+  };
 
-      const topicIdMap: MapaDeTopicos = {};
-      for (const t of oldTopics) {
-        const criado = exigir(
-          await supabase.from("topicos").insert({ classe_id: newClassId, nome: t.nome, descricao: t.descricao, ordem: t.ordem, next: t.next, depende: t.depende }).select("id").single(),
-          `copiar o tópico "${t.nome ?? t.id}"`,
-        );
-        topicIdMap[t.id] = (criado as { id: number }).id;
+  const salvarTurma = async (dados: DadosDaTurma) => {
+    if (!professorId || !formulario) return;
+    setIsSaving(true);
+    try {
+      if (formulario.modo === "criar") {
+        const criada = await criarTurma(bancoDeTurmas, dados);
+        setFormulario(null);
+        setTurmaDuplicada(null);
+        setTurmaCriada({ id: criada.id, nome: nomeDaTurma(criada), aviso: criada.avisoDeMateria });
+        await loadData(true);
+      } else {
+        // Sem linha de volta = o RLS barrou em silêncio; não dizer "atualizada".
+        const { data, error } = await supabase
+          .from("classe")
+          .update({ descricao: dados.descricao, materia_id: dados.materiaId })
+          .eq("id", formulario.turma.id)
+          .select("id");
+        if (error) throw new Error(error.message);
+        if (!data?.length) throw new Error("sem permissão para alterar esta turma");
+        toast.success("Turma atualizada.");
+        setFormulario(null);
+        await loadData(true);
       }
-
-      // As arestas só podem ser reescritas depois que o mapa está completo. Id
-      // fora do mapa é DESCARTADO, não mantido — ver `duplicacaoDeClasse.ts`.
-      for (const t of oldTopics) {
-        exigirOk(
-          await supabase
-            .from("topicos")
-            .update({
-              next: remapearReferencias(t.next, topicIdMap),
-              depende: remapearReferencias(t.depende, topicIdMap),
-            })
-            .eq("id", topicIdMap[t.id]),
-          `religar o tópico "${t.nome ?? t.id}"`,
-        );
-      }
-
-      const idsDeTopico = Object.keys(topicIdMap).map(Number);
-      const oldContents = exigir(
-        await supabase.from("conteudos").select("id, topico_id, titulo, tipo, conteudo, ordem").in("topico_id", idsDeTopico),
-        "ler os conteúdos",
-      ) as ContentRow[];
-      const contentIdMap: Record<number, number> = {};
-      for (const c of oldContents) {
-        const criado = exigir(
-          await supabase.from("conteudos").insert({ topico_id: topicIdMap[c.topico_id], titulo: c.titulo, tipo: c.tipo, conteudo: c.conteudo, ordem: c.ordem }).select("id").single(),
-          `copiar o conteúdo "${c.titulo ?? c.id}"`,
-        );
-        contentIdMap[c.id] = (criado as { id: number }).id;
-      }
-
-      const oldActs = exigir(
-        await supabase.from("atividades").select("id, topico_id, titulo, descricao, tipo, data_entrega").in("topico_id", idsDeTopico),
-        "ler as atividades",
-      ) as ActivityRow[];
-      const activityIdMap: Record<number, number> = {};
-      for (const a of oldActs) {
-        const criado = exigir(
-          await supabase.from("atividades").insert({ topico_id: topicIdMap[a.topico_id], titulo: a.titulo, descricao: a.descricao, tipo: a.tipo, data_entrega: a.data_entrega }).select("id").single(),
-          `copiar a atividade "${a.titulo ?? a.id}"`,
-        );
-        activityIdMap[a.id] = (criado as { id: number }).id;
-      }
-
-      const idsDeAtividade = Object.keys(activityIdMap).map(Number);
-      const oldQuestions = exigir(
-        await supabase
-          .from("questoes")
-          .select("id, atividade_id, enunciado, tipo, alternativas, resposta_correta, nota_estabelecida")
-          .in("atividade_id", idsDeAtividade),
-        "ler as questões",
-      ) as QuestionRow[];
-      for (const q of oldQuestions) {
-        const newActId = activityIdMap[q.atividade_id];
-        if (!newActId) continue;
-        exigirOk(
-          await supabase.from("questoes").insert({
-            atividade_id: newActId,
-            enunciado: q.enunciado,
-            tipo: q.tipo,
-            alternativas: q.alternativas,
-            resposta_correta: q.resposta_correta,
-            nota_estabelecida: q.nota_estabelecida,
-          }),
-          `copiar a questão ${q.id}`,
-        );
-      }
-
-      const oldLinks = exigir(
-        await supabase.from("atividade_conteudos").select("atividade_id, conteudo_id").in("atividade_id", idsDeAtividade).in("conteudo_id", Object.keys(contentIdMap).map(Number)),
-        "ler os vínculos atividade-conteúdo",
-      ) as LinkRow[];
-      for (const l of oldLinks) {
-        const newActId = activityIdMap[l.atividade_id];
-        const newContId = contentIdMap[l.conteudo_id];
-        if (!newActId || !newContId) continue;
-        exigirOk(
-          await supabase.from("atividade_conteudos").insert({ atividade_id: newActId, conteudo_id: newContId }),
-          `vincular atividade ${newActId} ao conteúdo ${newContId}`,
-        );
-      }
-
-      const oldCards = exigir(
-        await supabase.from("cards").select("conteudo_id, titulo, descricao, imagem_url").in("conteudo_id", Object.keys(contentIdMap).map(Number)),
-        "ler os cards",
-      ) as CardRow[];
-      for (const c of oldCards) {
-        const newContId = contentIdMap[c.conteudo_id];
-        if (!newContId) continue;
-        exigirOk(
-          await supabase.from("cards").insert({ conteudo_id: newContId, titulo: c.titulo, descricao: c.descricao, imagem_url: c.imagem_url }),
-          `copiar o card "${c.titulo ?? c.conteudo_id}"`,
-        );
-      }
-
-      toast.success("Classe duplicada com estrutura.");
-      await loadData();
-    } catch (error) {
-      console.error("Erro ao duplicar classe:", error);
-      const sobrouLixo = newClassId !== null && !(await removerClasseParcial(newClassId));
-      toast.error(
-        sobrouLixo
-          ? `A duplicação falhou e a cópia parcial (classe ${newClassId}) ficou no banco — remova-a pelo botão de excluir.`
-          : error instanceof Error
-            ? `Não foi possível duplicar: ${error.message}`
-            : "Não foi possível duplicar classe.",
-      );
+    } catch (e) {
+      const detalhe = e instanceof Error ? e.message : "";
+      toast.error(`${formulario.modo === "criar" ? "Não foi possível criar a turma" : "Não foi possível salvar a turma"}${detalhe ? `: ${detalhe}` : "."}`);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const confirmarExclusao = async () => {
+    if (!paraExcluir) return;
+    const id = paraExcluir.id;
+    setExcluindo(true);
+    try {
+      await deleteClasseCascade(id);
+      toast.success("Turma excluída.");
+      setClasses((prev) => prev.filter((c) => c.id !== id));
+      setResumos((prev) => {
+        const proximo = new Map(prev);
+        proximo.delete(id);
+        return proximo;
+      });
+      if (formulario?.modo === "editar" && formulario.turma.id === id) setFormulario(null);
+      if (turmaCriada?.id === id) setTurmaCriada(null);
+      setParaExcluir(null);
+    } catch (error) {
+      console.error("Erro ao excluir turma:", error);
+      toast.error(error instanceof Error ? error.message : "Erro ao excluir a turma.");
+    } finally {
+      setExcluindo(false);
+    }
+  };
+
+  // --- Duplicar turma: uma função no banco copia a trilha numa transação só ---
+  const confirmarDuplicacao = async () => {
+    if (!paraDuplicar) return;
+    setDuplicando(true);
+    try {
+      const { data, error } = await (supabase.rpc as unknown as RpcDuplicar)("duplicar_classe", { p_classe_id: paraDuplicar.id });
+      const id = idDaCopia(data);
+      if (error || id === null) {
+        toast.error(mensagemDeErroDaDuplicacao(error ?? { message: "o banco não devolveu a turma nova" }));
+        return;
+      }
+      // O nome da cópia ("(cópia)", "(cópia 2)"…) é o banco que decide.
+      const { data: copia } = await supabase.from("classe").select("id, descricao").eq("id", id).maybeSingle();
+      setTurmaCriada(null);
+      setTurmaDuplicada({ id, nome: nomeDaTurma(copia ?? { id, descricao: null }) });
+      setParaDuplicar(null);
+      await loadData(true);
+    } finally {
+      setDuplicando(false);
     }
   };
 
@@ -399,193 +233,130 @@ export default function ClassManagementSection({ professorId }: Props) {
       .map((s) => ({ id: s.id, nome: s.nome }));
   }, [classeParaPresenca, classStudents, students]);
 
-  const handleAddStudentToClass = async () => {
-    if (!selectedClassForStudents || !studentToAdId) return;
+  const handleAddStudentToClass = async (alunoId: string) => {
+    if (!selectedClassForStudents) return;
     const classId = selectedClassForStudents.id;
-    if (classStudents[classId]?.includes(studentToAdId)) return toast.error("Aluno já está na turma.");
-    setIsProcessingStudent(true);
-    try {
-      const { error: enrollmentError } = await supabase
-        .from("classe_aluno")
-        .insert({ classe_id: classId, aluno_id: studentToAdId });
-      if (enrollmentError) throw enrollmentError;
-      const { data: authData } = await supabase.auth.getSession();
-      if (authData.session?.access_token) {
-        const { topico_ids, conteudo_ids } = await fetchClassContextIds(classId);
-        await enqueueEnrollmentJob(authData.session.access_token, {
-          classe_id: classId,
-          aluno_id: studentToAdId,
-          topico_ids,
-          conteudo_ids,
-          reason: "matricula_aluno_console",
-        });
-      } else {
-        // Matricula ja foi persistida acima; sem sessao valida so a
-        // geracao de personalizacao fica pendente — o professor precisa
-        // saber disso, senao o aluno fica sem material sem nenhum aviso.
-        toast.error(
-          "Aluno matriculado, mas a personalização não pôde ser agendada (sessão expirada). Atualize a página e tente novamente."
-        );
-      }
-      setClassStudents((prev) => ({ ...prev, [classId]: [...(prev[classId] || []), studentToAdId] }));
-      setStudentToAddId("");
-      toast.success("Aluno adicionado!");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao adicionar.");
-    } finally {
-      setIsProcessingStudent(false);
+    if (classStudents[classId]?.includes(alunoId)) {
+      toast.error("Aluno já está na turma.");
+      return;
     }
+    const { error: enrollmentError } = await supabase.from("classe_aluno").insert({ classe_id: classId, aluno_id: alunoId });
+    if (enrollmentError) {
+      toast.error(`Não foi possível matricular: ${enrollmentError.message}`);
+      return;
+    }
+    // O material do aluno é enfileirado pelo próprio banco, no mesmo INSERT
+    // (trigger trg_classe_aluno_enrollment_job, migration 20261011_02): não
+    // depende da API estar acordada nem da sessão do console.
+    setClassStudents((prev) => ({ ...prev, [classId]: [...(prev[classId] || []), alunoId] }));
+    toast.success("Aluno matriculado.");
+    void loadData(true);
   };
 
   const handleRemoveStudentFromClass = async (alunoId: string) => {
-    if (!selectedClassForStudents || !confirm("Remover este aluno da turma e limpar seu progresso nesta turma?")) return;
+    if (!selectedClassForStudents) return;
     const classId = selectedClassForStudents.id;
     try {
       await removeClassStudent(classId, alunoId);
       setClassStudents((prev) => ({ ...prev, [classId]: (prev[classId] || []).filter((id) => id !== alunoId) }));
-      toast.success("Aluno removido.");
+      toast.success("Aluno removido da turma.");
+      void loadData(true);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao remover.");
     }
   };
 
-  const availableStudents = useMemo(() => {
-    if (!selectedClassForStudents) return [];
-    const current = classStudents[selectedClassForStudents.id] || [];
-    return students.filter((s) => !current.includes(s.id));
-  }, [students, classStudents, selectedClassForStudents]);
-
   return (
-    <div className="space-y-8 p-1">
+    <div className="space-y-6 p-1">
 
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight text-foreground">Turmas</h2>
-          <p className="text-muted-foreground text-sm">Gerencie suas turmas e os alunos vinculados.</p>
+      {/* Cabeçalho */}
+      <div className="flex flex-wrap items-end gap-6">
+        <div className="min-w-0">
+          <h2 className="text-[32px] leading-tight text-foreground">Turmas</h2>
+          <p className="mt-2 text-[14.5px] text-muted-foreground">Crie turmas, matricule alunos e abra a trilha de cada uma.</p>
         </div>
-        <Button
-          onClick={() => setIsCreateOpen(true)}
-          className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
-        >
-          <Plus className="w-4 h-4 mr-2" /> Nova Turma
+        <Button onClick={() => abrirCriar()} className="ml-auto h-auto rounded-full px-[22px] py-[13px] text-sm font-bold">
+          <Plus className="mr-2 h-4 w-4" aria-hidden="true" /> Nova turma
         </Button>
       </div>
 
-      {/* Edit form (shown inline when editing) */}
-      {editingId && (
-        <Card className="bg-card border-primary/35 shadow-md">
-          <CardHeader className="pb-3 border-b border-border/50">
-            <CardTitle className="text-base text-foreground flex items-center gap-2">
-              <Pencil className="w-4 h-4 text-primary" /> Editando turma
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-4 space-y-3">
-            <div>
-              <Label className={darkLabelClass}>Nome da Turma</Label>
-              <Input value={editForm.descricao} onChange={(e) => setEditForm({ ...editForm, descricao: e.target.value })} className={darkInputClass} />
-            </div>
-            <div>
-              <Label className={darkLabelClass}>Matéria</Label>
-              <Select value={editForm.materia_id || "none"} onValueChange={(v) => setEditForm({ ...editForm, materia_id: v === "none" ? "" : v })}>
-                <SelectTrigger className={darkSelectTrigger}><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                <SelectContent className={darkSelectContent}>
-                  <SelectItem value="none">Geral / Sem Matéria</SelectItem>
-                  {materias.map((m) => <SelectItem key={m.id} value={m.id.toString()}>{m.nome}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex gap-2 pt-1">
-              <Button onClick={handleUpdate} disabled={isSaving} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                <Save className="w-4 h-4 mr-2" /> Salvar
-              </Button>
-              <Button variant="ghost" onClick={() => setEditingId(null)} className="text-muted-foreground hover:text-foreground">Cancelar</Button>
-            </div>
-          </CardContent>
-        </Card>
+      {turmaDuplicada && <FaixaTurmaDuplicada nome={turmaDuplicada.nome} onFechar={() => setTurmaDuplicada(null)} />}
+
+      {turmaCriada && (
+        <FaixaTurmaCriada
+          nome={turmaCriada.nome}
+          aviso={turmaCriada.aviso}
+          onMatricular={() => {
+            // A lista pode não ter recarregado ainda; o modal só precisa do id e do nome.
+            setSelectedClassForStudents(
+              classes.find((c) => c.id === turmaCriada.id) ?? { id: turmaCriada.id, descricao: turmaCriada.nome, materia_id: null, created_at: null },
+            );
+          }}
+          onFechar={() => setTurmaCriada(null)}
+        />
       )}
 
-      {/* Class list */}
-      {isLoading && <div className="text-center py-10 text-muted-foreground">Carregando turmas...</div>}
+      {formulario && (
+        <FormularioDeTurma
+          key={formulario.modo === "editar" ? `editar-${formulario.turma.id}` : "criar"}
+          modo={formulario.modo}
+          inicial={
+            formulario.modo === "editar"
+              ? { ...CAMPOS_VAZIOS, nome: formulario.turma.descricao ?? "", materiaId: formulario.turma.materia_id?.toString() ?? "" }
+              : CAMPOS_VAZIOS
+          }
+          materias={materias}
+          salvando={isSaving}
+          onSalvar={(dados) => void salvarTurma(dados)}
+          onCancelar={() => setFormulario(null)}
+        />
+      )}
 
-      {!isLoading && classes.length === 0 && (
-        <div className="text-center py-20 border-2 border-dashed border-border rounded-lg bg-card/50 space-y-4">
-          <BookOpen className="w-12 h-12 mx-auto text-muted-foreground/40" />
-          <div>
-            <p className="text-foreground font-semibold">Nenhuma turma ainda</p>
-            <p className="text-muted-foreground text-sm mt-1">Crie sua primeira turma para comecar.</p>
-          </div>
-          <Button onClick={() => setIsCreateOpen(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-            <Plus className="w-4 h-4 mr-2" /> Criar primeira turma
-          </Button>
+      {/* Lista de turmas */}
+      {erroDeCarga ? (
+        <TurmasErro detalhe={erroDeCarga} onTentarNovamente={() => void loadData()} />
+      ) : isLoading ? (
+        <TurmasCarregando />
+      ) : classes.length === 0 ? (
+        <TurmasVazio onCriar={() => abrirCriar()} />
+      ) : (
+        <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(min(320px,100%),1fr))]">
+          {classes.map((c) => (
+            <CardDaTurma
+              key={c.id}
+              turma={{ id: c.id, descricao: c.descricao, materiaNome: materias.find((m) => m.id === c.materia_id)?.nome ?? null }}
+              resumo={resumos.get(c.id) ?? { alunos: (classStudents[c.id] || []).length, topicos: 0, conclusaoPct: null }}
+              ocupado={isSaving || duplicando}
+              onMatriculas={() => setSelectedClassForStudents(c)}
+              onPresenca={() => setClasseParaPresenca(c)}
+              onEditar={() => {
+                setTurmaCriada(null);
+                setFormulario({ modo: "editar", turma: c });
+              }}
+              onDuplicar={() => setParaDuplicar(c)}
+              onExcluir={() => setParaExcluir(c)}
+            />
+          ))}
+          <CardNovaTurma onCriar={() => abrirCriar()} />
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {classes.map((c) => {
-          const enrolledCount = (classStudents[c.id] || []).length;
-          const materiaNome = materias.find((m) => m.id === c.materia_id)?.nome;
-          return (
-            <Card key={c.id} className="bg-card border-border shadow-md group hover:border-primary/40 transition-all hover:shadow-lg">
-              <CardHeader className="pb-3">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1 min-w-0 pr-2">
-                    <p className="font-bold text-foreground truncate">{c.descricao}</p>
-                    <div className="mt-1.5">
-                      {materiaNome
-                        ? <span className="bg-primary/15 text-primary border border-primary/30 px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wide">{materiaNome}</span>
-                        : <span className="bg-muted text-muted-foreground px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wide">Geral</span>
-                      }
-                    </div>
-                  </div>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10" onClick={() => { setEditingId(c.id); setEditForm({ descricao: c.descricao || "", materia_id: c.materia_id?.toString() || "" }); }}>
-                      <Pencil className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted" onClick={() => handleDuplicate(c)} title="Duplicar">
-                      <Copy className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => handleDelete(c.id)}>
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center justify-between pt-3 border-t border-border/50">
-                  <div className="text-xs text-muted-foreground flex items-center gap-1.5">
-                    <Users className="w-3.5 h-3.5" />
-                    <span>{enrolledCount} alunos</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => setClasseParaPresenca(c)}>
-                      <CalendarCheck className="w-3 h-3 mr-1.5" /> Presença
-                    </Button>
-                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => setSelectedClassForStudents(c)}>
-                      <UserPlus className="w-3 h-3 mr-1.5" /> Alunos
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      {/* -- Modal: Criar Turma -- */}
-      <ClassManagerDialog
-        open={isCreateOpen}
-        onOpenChange={(v) => { setIsCreateOpen(v); if (!v) { setClassForm({ descricao: "", materia_id: "" }); setNewMateria({ nome: "", descricao: "" }); } }}
-        classForm={classForm}
-        setClassForm={setClassForm}
-        newMateria={newMateria}
-        setNewMateria={setNewMateria}
-        materias={materias}
-        isSaving={isSaving}
-        handleCreateClass={handleCreateClass}
+      <ConfirmarDuplicacao
+        nome={paraDuplicar ? nomeDaTurma(paraDuplicar) : ""}
+        aberto={!!paraDuplicar}
+        duplicando={duplicando}
+        onConfirmar={() => void confirmarDuplicacao()}
+        onCancelar={() => setParaDuplicar(null)}
       />
 
-      {/* -- Modal: Gerenciar Alunos -- */}
+      <ConfirmarExclusao
+        nome={paraExcluir ? nomeDaTurma(paraExcluir) : ""}
+        aberto={!!paraExcluir}
+        excluindo={excluindo}
+        onConfirmar={() => void confirmarExclusao()}
+        onCancelar={() => setParaExcluir(null)}
+      />
+
       <PresencaDialog
         classeId={classeParaPresenca?.id ?? null}
         classeDescricao={classeParaPresenca?.descricao}
@@ -594,89 +365,14 @@ export default function ClassManagementSection({ professorId }: Props) {
         onOpenChange={(aberto) => !aberto && setClasseParaPresenca(null)}
       />
 
-      <Dialog open={!!selectedClassForStudents} onOpenChange={(open) => !open && setSelectedClassForStudents(null)}>
-        <DialogContent className="max-w-2xl max-h-[85vh] p-0 gap-0 bg-background border-border flex flex-col overflow-hidden sm:rounded-lg shadow-2xl shadow-black">
-          <div className="px-6 py-4 bg-card border-b border-border">
-            <DialogHeader>
-              <DialogTitle className="text-white flex items-center gap-2">
-                <Users className="w-5 h-5 text-violet-500" /> Gerenciar Alunos
-              </DialogTitle>
-              <DialogDescription className="text-muted-foreground">
-                Turma: <span className="font-semibold text-white">{selectedClassForStudents?.descricao}</span>
-              </DialogDescription>
-            </DialogHeader>
-          </div>
-
-          <div className="flex-1 flex flex-col gap-0 overflow-hidden bg-background">
-            <div className="p-6 border-b border-border bg-background">
-              <Label className={`${darkLabelClass} mb-2`}>Adicionar Aluno</Label>
-              <div className="flex gap-3">
-                <div className="flex-1">
-                  <Select value={studentToAdId} onValueChange={setStudentToAddId}>
-                    <SelectTrigger className={`${darkSelectTrigger} h-10 border-border`}>
-                      <SelectValue placeholder="Selecione um aluno..." />
-                    </SelectTrigger>
-                    <SelectContent className={darkSelectContent}>
-                      {availableStudents.length > 0 ? (
-                        availableStudents.map((s) => (
-                          <SelectItem key={s.id} value={s.id} className="focus:bg-violet-600 focus:text-white">
-                            {s.nome} <span className="text-muted-foreground ml-2 text-xs">({s.email})</span>
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <div className="p-3 text-xs text-muted-foreground text-center">Todos os alunos já estão nesta turma.</div>
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button onClick={handleAddStudentToClass} disabled={!studentToAdId || isProcessingStudent} className="bg-emerald-600 hover:bg-emerald-700 text-white min-w-[100px]">
-                  {isProcessingStudent ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Plus className="w-4 h-4 mr-2" /> Adicionar</>}
-                </Button>
-              </div>
-            </div>
-
-            <div className="flex-1 flex flex-col min-h-0 p-6">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Alunos Matriculados</h4>
-                <Badge variant="secondary" className="bg-muted text-muted-foreground">
-                  {(classStudents[selectedClassForStudents?.id || 0] || []).length}
-                </Badge>
-              </div>
-              <ScrollArea className="flex-1 border border-border/50 rounded-lg bg-card shadow-inner">
-                <div className="p-2 space-y-1">
-                  {(classStudents[selectedClassForStudents?.id || 0] || []).length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-16 text-muted-foreground opacity-60">
-                      <Users className="w-12 h-12 mb-3 opacity-20" />
-                      <p className="text-sm">Nenhum aluno matriculado nesta turma.</p>
-                    </div>
-                  ) : (
-                    (classStudents[selectedClassForStudents?.id || 0] || []).map((studentId) => {
-                      const student = students.find((s) => s.id === studentId);
-                      if (!student) return null;
-                      return (
-                        <div key={student.id} className="flex items-center justify-between p-3 hover:bg-muted/50 rounded-md transition-colors group border border-transparent hover:border-border/50">
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-9 w-9 bg-muted border border-border text-muted-foreground">
-                              <AvatarFallback className="text-xs font-bold">{student.nome.substring(0, 2).toUpperCase()}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="text-sm font-medium text-foreground">{student.nome}</p>
-                              <p className="text-[11px] text-muted-foreground">{student.email}</p>
-                            </div>
-                          </div>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-400 hover:bg-red-950/20 opacity-70 hover:opacity-100" onClick={() => handleRemoveStudentFromClass(student.id)}>
-                            <X className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </ScrollArea>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ModalMatriculas
+        turma={selectedClassForStudents}
+        candidatos={students}
+        matriculadosIds={selectedClassForStudents ? classStudents[selectedClassForStudents.id] || [] : []}
+        onMatricular={handleAddStudentToClass}
+        onRemover={handleRemoveStudentFromClass}
+        onFechar={() => setSelectedClassForStudents(null)}
+      />
     </div>
   );
 }

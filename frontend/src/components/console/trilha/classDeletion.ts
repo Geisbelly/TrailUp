@@ -36,9 +36,57 @@ function collectMetadataFilePaths(metadata: unknown): string[] {
     .filter((path): path is string => path !== null);
 }
 
+type ConteudoComArquivo = { id: number; conteudo?: string | null; metadata?: unknown };
+
+/** Caminho do Storage -> conteúdos que apontam para ele (no `conteudo` ou em metadata.files). */
+export function referenciasPorCaminho(linhas: ConteudoComArquivo[]): Map<string, Set<number>> {
+  const refs = new Map<string, Set<number>>();
+  const marcar = (caminho: string, id: number) => refs.set(caminho, (refs.get(caminho) ?? new Set()).add(id));
+  for (const l of linhas) {
+    if (typeof l.conteudo === "string" && looksLikeStoragePath(l.conteudo)) marcar(l.conteudo, l.id);
+    collectMetadataFilePaths(l.metadata).forEach((caminho) => marcar(caminho, l.id));
+  }
+  return refs;
+}
+
+/**
+ * Quantos conteúdos AINDA apontam para cada caminho. Uma turma duplicada
+ * (duplicar_classe) aponta para os mesmos arquivos da original — SQL não copia
+ * objeto do Storage —, então apagar o arquivo de uma quebraria a outra. O RLS
+ * mostra só os conteúdos do próprio professor, que é quem duplica.
+ */
+export async function contarReferencias(caminhos: string[]): Promise<Map<string, number>> {
+  const unicos = Array.from(new Set(caminhos));
+  const contagem = new Map(unicos.map((c) => [c, 0]));
+  if (unicos.length === 0) return contagem;
+  const [porConteudo, porMetadata] = await Promise.all([
+    supabase.from("conteudos").select("id, conteudo").in("conteudo", unicos),
+    supabase.from("conteudos").select("id, metadata").not("metadata", "is", null),
+  ]);
+  const erro = porConteudo.error ?? porMetadata.error;
+  if (erro) throw erro;
+  const refs = referenciasPorCaminho([
+    ...((porConteudo.data ?? []) as ConteudoComArquivo[]),
+    ...((porMetadata.data ?? []) as ConteudoComArquivo[]),
+  ]);
+  for (const c of unicos) contagem.set(c, refs.get(c)?.size ?? 0);
+  return contagem;
+}
+
 async function deleteStoragePaths(paths: string[]) {
   if (paths.length === 0) return;
-  const uniquePaths = Array.from(new Set(paths));
+  // Chamado depois que as linhas da turma saíram do banco: qualquer
+  // referência que sobrar é de outra turma (uma cópia) e o arquivo fica.
+  let uniquePaths = Array.from(new Set(paths));
+  try {
+    const refs = await contarReferencias(uniquePaths);
+    uniquePaths = uniquePaths.filter((caminho) => (refs.get(caminho) ?? 0) === 0);
+  } catch (error) {
+    // Sem saber se o arquivo é compartilhado, não apagar: sobra um arquivo
+    // órfão, mas nenhum conteúdo de outra turma quebra.
+    console.warn("[ClassDeletion] Não foi possível conferir arquivos compartilhados; nada será removido do Storage:", error);
+    return;
+  }
 
   for (let i = 0; i < uniquePaths.length; i += 100) {
     const chunk = uniquePaths.slice(i, i + 100);

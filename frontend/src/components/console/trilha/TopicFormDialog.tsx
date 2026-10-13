@@ -39,9 +39,9 @@ export function TopicFormDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
-        <Button size="sm">
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Tópico
+        <Button variant="outline" className="rounded-full font-semibold">
+          <Plus className="mr-2 h-4 w-4 text-primary" aria-hidden="true" />
+          Novo tópico
         </Button>
       </DialogTrigger>
       <DialogContent>

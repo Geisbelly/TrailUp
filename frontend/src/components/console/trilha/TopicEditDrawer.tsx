@@ -31,6 +31,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { formatFileSize } from "@/lib/utils";
+import { fonteDoTopico } from "./fonteDoTopico";
+import { prazoDaAtividade, rotuloDoTipoDeAtividade } from "./atividades";
+import { duplicateActivity, duplicateCard } from "./topicsApi";
 import {
   Plus,
   Pencil,
@@ -47,6 +51,8 @@ import {
   Loader2,
   Wand2,
   Upload,
+  ArrowLeft,
+  Copy,
 } from "lucide-react";
 import type {
   Atividade,
@@ -177,6 +183,10 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
 
   const { user, session } = useAuth();
   const [isCreating, setIsCreating] = useState(false);
+  const [desvinculando, setDesvinculando] = useState<number | null>(null);
+  const [cardParaExcluir, setCardParaExcluir] = useState<number | null>(null);
+  const [duplicandoCard, setDuplicandoCard] = useState<number | null>(null);
+  const [duplicandoAtividade, setDuplicandoAtividade] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<"conteudo" | "atividades" | "cards">("conteudo");
   const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
   // Preview local da reordenacao durante o arrasto — so persiste (setContents
@@ -676,9 +686,9 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
   }, [open, handleEditClose]);
 
   // Estilos Dark Theme
-  const darkInputClass = "bg-background border-border text-foreground focus:border-violet-500 placeholder:text-muted-foreground hover:border-border transition-colors";
-  const darkLabelClass = "text-muted-foreground text-[11px] font-bold uppercase tracking-wider mb-2 block";
-  const darkCardClass = "bg-card border border-border/50";
+  const darkInputClass = "rounded-[14px] bg-background border-border text-foreground focus:border-primary placeholder:text-muted-foreground hover:border-border transition-colors";
+  const darkLabelClass = "text-muted-foreground text-[10.5px] font-semibold uppercase tracking-[0.08em] mb-2 block";
+  const darkCardClass = "rounded-[20px] bg-card border border-border";
 
   const startNewContent = () => {
     setSelectedContentId(null);
@@ -768,12 +778,12 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
   const renderContentForm = (title: string) => (
     <div className={`p-6 rounded-lg space-y-6 shadow-xl ${darkCardClass}`}>
       <div className="flex items-center justify-between border-b border-border pb-4 mb-4">
-        <h3 className="text-lg font-bold text-white flex items-center gap-2">
-          {isCreating ? <Plus className="text-emerald-400 w-5 h-5"/> : <Pencil className="text-violet-400 w-5 h-5"/>}
+        <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+          {isCreating ? <Plus className="text-success w-5 h-5"/> : <Pencil className="text-primary w-5 h-5"/>}
           {title}
         </h3>
         {isCreating && contents.length > 0 && (
-          <Button variant="ghost" size="sm" onClick={() => setIsCreating(false)} className="text-muted-foreground hover:text-white">
+          <Button variant="ghost" size="sm" onClick={() => setIsCreating(false)} className="text-muted-foreground hover:text-foreground">
             <X size={16} className="mr-1"/> Cancelar
           </Button>
         )}
@@ -832,7 +842,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
             <Textarea
               value={contentForm.conteudo || ""}
               onChange={(e) => setContentForm({ ...contentForm, conteudo: e.target.value })}
-              className="bg-background border-border text-muted-foreground min-h-[400px] font-mono text-sm leading-relaxed p-4 focus:ring-1 focus:ring-violet-500/50 resize-y rounded-md"
+              className="bg-background border-border text-muted-foreground min-h-[400px] font-mono text-sm leading-relaxed p-4 focus:ring-1 focus:ring-primary/50 resize-y rounded-md"
               placeholder={
                 contentForm.tipo === "texto"
                   ? "# Digite seu conteúdo aqui..."
@@ -857,7 +867,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="absolute bottom-3 right-3 h-7 text-[11px] border-violet-500/30 text-violet-400 hover:text-violet-200 hover:bg-violet-900/20 bg-card"
+                  className="absolute bottom-3 right-3 h-7 text-[11px] border-primary/30 text-primary hover:text-primary hover:bg-primary/20 bg-card"
                   onClick={() =>
                     setContentForm({
                       ...contentForm,
@@ -874,6 +884,27 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
         </div>
       )}
 
+      {contentForm.tipo === "link" && /^https?:\/\//i.test((contentForm.conteudo || "").trim()) && (() => {
+        const url = (contentForm.conteudo || "").trim();
+        let dominio = "";
+        try { dominio = new URL(url).hostname.replace(/^www\./, ""); } catch { return null; }
+        return (
+          <div>
+            <Label className={darkLabelClass}>Pré-visualização</Label>
+            <div className="flex items-center gap-4 rounded-[14px] border bg-muted p-4">
+              <span aria-hidden="true" className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-primary/20 text-sm font-extrabold uppercase text-primary">{dominio.charAt(0)}</span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold">{dominio}</p>
+                <p className="truncate text-xs text-muted-foreground">{url}</p>
+              </div>
+              <Button type="button" variant="outline" size="sm" className="rounded-full" onClick={() => window.open(url, "_blank", "noopener,noreferrer")}>
+                Abrir página externa
+              </Button>
+            </div>
+          </div>
+        );
+      })()}
+
       <div className="flex flex-wrap items-center justify-between pt-4 border-t border-border gap-3">
         <Button
           type="button"
@@ -881,7 +912,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
           size="sm"
           onClick={handleGenerateForCurrentContent}
           disabled={isGeneratingContentAi || !contentForm.titulo}
-          className="h-9 text-xs border-violet-500/30 text-violet-400 hover:text-violet-200 hover:bg-violet-900/20 hover:border-violet-500/50 shrink-0"
+          className="h-9 text-xs border-primary/30 text-primary hover:text-primary hover:bg-primary/20 hover:border-primary/50 shrink-0"
         >
           {isGeneratingContentAi ? (
             <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Gerando...</>
@@ -893,10 +924,10 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
           onClick={handleSaveWithUpload}
           disabled={isSavingContent || isUploadingFile}
           className={`
-            text-white min-w-[170px] h-11 text-sm font-semibold shadow-lg transition-all shrink-0
+            text-foreground min-w-[170px] h-11 text-sm font-semibold shadow-lg transition-all shrink-0
             ${!isCreating
-              ? "bg-violet-600 hover:bg-violet-700 shadow-violet-900/20"
-              : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-900/20 hover:scale-105"
+              ? "bg-primary hover:bg-primary shadow-primary/20"
+              : "bg-success hover:bg-success/90 text-background shadow-success/20 hover:scale-105"
             }
           `}
         >
@@ -922,29 +953,35 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
   // pai sinaliza "aberto" — sem o gating automatico que o Radix Dialog fazia.
   if (!open) return null;
 
+  const nomeDaTurma = classes.find((c) => c.id.toString() === (formData.classe_id || editingTopic?.classe_id.toString()))?.descricao ?? "";
+  const fonte = fonteDoTopico(contents);
+
   return (
     <>
     <div className="console-editor fixed inset-0 z-40 w-full p-0 bg-background flex flex-col overflow-hidden">
 
         {/* HEADER */}
-        <div className="console-editor-header flex items-center justify-between px-6 py-4 bg-card border-b border-border shrink-0 z-10">
-          <div>
-            <h1 className="text-xl font-bold text-white flex items-center gap-3">
-              <div className="w-8 h-8 shrink-0 rounded bg-primary/20 flex items-center justify-center text-primary">
+        <div className="console-editor-header flex shrink-0 items-center gap-4 border-b bg-card px-6 py-4 z-10">
+          <Button variant="ghost" onClick={handleEditClose} className="rounded-full text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />
+            Voltar à trilha
+          </Button>
+          <span aria-hidden="true" className="h-7 w-px bg-border" />
+          <div className="min-w-0">
+            <h1 className="flex items-center gap-3 text-xl font-bold">
+              <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary">
                 <BrainCircuit size={18} />
-              </div>
+              </span>
               {editingTopic ? "Editar Trilha de Conhecimento" : "Nova Trilha"}
             </h1>
+            <p className="mt-1 truncate text-xs text-muted-foreground">
+              {[nomeDaTurma, formData.nome || "Sem título"].filter(Boolean).join(" › ")} · gerenciamento de nós de conteúdo e avaliações
+            </p>
           </div>
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" onClick={handleEditClose} className="text-muted-foreground hover:text-white hover:bg-white/5 border border-transparent hover:border-border">
-              Cancelar
-            </Button>
-            <Button onClick={handleSubmit} disabled={isSaving || !editingTopic} className="bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-900/20 px-6 font-semibold">
-              <Save className="w-4 h-4 mr-2" />
-              {isSaving ? "Salvando..." : "Salvar Trilha"}
-            </Button>
-          </div>
+          <Button onClick={handleSubmit} disabled={isSaving || !editingTopic} className="ml-auto rounded-full px-6 font-bold">
+            <Save className="mr-2 h-4 w-4" aria-hidden="true" />
+            {isSaving ? "Salvando..." : "Salvar tópico"}
+          </Button>
         </div>
 
         {/* LAYOUT PRINCIPAL */}
@@ -966,7 +1003,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                         <Select value={formData.classe_id || ""} onValueChange={(v) => setFormData({ ...formData, classe_id: v })}>
                           <SelectTrigger className={darkInputClass}><SelectValue placeholder="Selecione" /></SelectTrigger>
                           <SelectContent className="bg-card border-border text-foreground">
-                            {classes.map((c) => (<SelectItem key={c.id} value={c.id.toString()} className="focus:bg-violet-600 focus:text-white">{c.descricao}</SelectItem>))}
+                            {classes.map((c) => (<SelectItem key={c.id} value={c.id.toString()} className="focus:bg-primary focus:text-primary-foreground">{c.descricao}</SelectItem>))}
                           </SelectContent>
                         </Select>
                       </div>
@@ -982,7 +1019,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                           type="button"
                           onClick={handleGenerateDescription}
                           disabled={isGeneratingDescription || !formData.nome}
-                          className="flex items-center gap-1 text-[10px] text-violet-400/70 hover:text-violet-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                          className="flex items-center gap-1 text-[10px] text-primary/70 hover:text-primary transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                         >
                           {isGeneratingDescription ? (
                             <><Loader2 className="w-3 h-3 animate-spin" /> Gerando...</>
@@ -1001,7 +1038,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                     <h3 className={darkLabelClass}>Nós de Conteúdo</h3>
                     <Badge variant="outline" className="border-border text-muted-foreground bg-background">{contents.length}</Badge>
                   </div>
-                  <Button variant="outline" onClick={startNewContent} className={`w-full border-dashed border-border bg-background/30 text-muted-foreground hover:text-emerald-400 hover:border-emerald-500/50 hover:bg-emerald-950/10 h-11 text-xs uppercase tracking-wide transition-all mb-2 ${isCreating ? "border-emerald-500/50 bg-emerald-950/20 text-emerald-400 ring-1 ring-emerald-500/20" : ""}`}>
+                  <Button variant="outline" onClick={startNewContent} className={`w-full border-dashed border-border bg-background/30 text-muted-foreground hover:text-success hover:border-success/50 hover:bg-success/10 h-11 text-xs uppercase tracking-wide transition-all mb-2 ${isCreating ? "border-success/50 bg-success/20 text-success ring-1 ring-success/20" : ""}`}>
                     <Plus className="w-4 h-4 mr-2" /> {isCreating ? "Preenchendo Novo..." : "Adicionar Novo Conteúdo"}
                   </Button>
                   
@@ -1017,24 +1054,37 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                         onClick={() => handleSelectContent(c.id, c)} 
                         className={`
                           group flex items-center p-3 rounded-lg border cursor-move transition-all relative overflow-hidden 
-                          ${selectedContentId === c.id ? "bg-violet-600/10 border-violet-500/50 shadow-[inset_4px_0_0_0_#8b5cf6]" : "bg-card border-border/50 hover:border-border hover:bg-muted"}
+                          ${selectedContentId === c.id ? "bg-primary/10 border-primary/50 shadow-[inset_4px_0_0_0_hsl(var(--primary))]" : "bg-card border-border/50 hover:border-border hover:bg-muted"}
                           ${draggedItemIndex === idx ? "opacity-50 border-dashed" : "opacity-100"}
                         `}
                       >
                         <div className="mr-3 text-muted-foreground group-hover:text-muted-foreground flex flex-col items-center justify-center w-6"><span className="text-[9px] text-muted-foreground font-mono mb-1">{idx + 1}</span><GripVertical size={14}/></div>
                         <div className="flex-1 min-w-0 py-1">
-                          <p className={`text-sm font-medium truncate ${selectedContentId === c.id ? "text-violet-200" : "text-muted-foreground"}`}>{c.titulo || "(Sem título)"}</p>
+                          <p className={`text-sm font-medium truncate ${selectedContentId === c.id ? "text-primary" : "text-muted-foreground"}`}>{c.titulo || "(Sem título)"}</p>
                           <div className="flex items-center gap-2 mt-1.5">
                             <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground bg-background px-1.5 py-0.5 rounded border border-border">{c.tipo}</span>
-                            {activityLinks[c.id]?.length > 0 && (<span className="text-[10px] text-emerald-400 flex items-center gap-1 bg-emerald-950/30 px-1.5 py-0.5 rounded border border-emerald-900/50"><CheckSquare size={10} /> {activityLinks[c.id].length}</span>)}
+                            {activityLinks[c.id]?.length > 0 && (<span className="text-[10px] text-success flex items-center gap-1 bg-success/30 px-1.5 py-0.5 rounded border border-success/50"><CheckSquare size={10} /> {activityLinks[c.id].length}</span>)}
                           </div>
                         </div>
-                        {selectedContentId === c.id && (<div className="absolute right-0 top-0 bottom-0 w-1 bg-gradient-to-b from-violet-500 to-fuchsia-500"></div>)}
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-red-400 hover:bg-red-950/30 transition-opacity absolute right-2" onClick={(e) => { e.stopPropagation(); void handleDeleteContentWithSync(c.id); }}><Trash2 size={14} /></Button>
+                        {selectedContentId === c.id && (<div className="absolute right-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary to-primary/60"></div>)}
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground  absolute right-2" onClick={(e) => { e.stopPropagation(); void handleDeleteContentWithSync(c.id); }}><Trash2 size={14} /></Button>
                       </div>
                     ))}
                     {contents.length === 0 && (<div className="text-center py-10 px-4 border border-dashed border-border rounded-lg"><p className="text-sm text-muted-foreground">Nenhum conteúdo criado.</p></div>)}
                   </div>
+
+                  {fonte && (
+                    <div className="rounded-[14px] border bg-card p-4">
+                      <h3 className={darkLabelClass}>Fonte deste tópico</h3>
+                      <div className="flex items-center gap-3">
+                        <span aria-hidden="true" className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-primary/20 text-[10px] font-extrabold uppercase text-primary">{fonte.extensao}</span>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold" title={fonte.nome}>{fonte.nome}</p>
+                          <p className="text-[11.5px] text-muted-foreground">{formatFileSize(fonte.tamanho)}{fonte.total > 1 ? ` · +${fonte.total - 1} ${fonte.total - 1 === 1 ? "arquivo" : "arquivos"}` : ""}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </ScrollArea>
@@ -1048,10 +1098,10 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
 
                 {!isCreating && selectedContentId && (
                   <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "conteudo" | "atividades" | "cards")} className="w-full">
-                    <TabsList className="bg-card border border-border/50 p-1 mb-6 h-auto w-full justify-start rounded-lg">
-                      <TabsTrigger value="conteudo" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white flex-1 h-9"><FileText className="w-4 h-4 mr-2"/> Conteúdo</TabsTrigger>
-                      <TabsTrigger value="atividades" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white flex-1 h-9"><LayoutList className="w-4 h-4 mr-2"/> Atividades</TabsTrigger>
-                      <TabsTrigger value="cards" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white flex-1 h-9"><BrainCircuit className="w-4 h-4 mr-2"/> Cards</TabsTrigger>
+                    <TabsList className="bg-card border border-border p-1.5 mb-6 h-auto w-full justify-start rounded-full">
+                      <TabsTrigger value="conteudo" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground flex-1 h-9 rounded-full"><FileText className="w-4 h-4 mr-2"/> Conteúdo</TabsTrigger>
+                      <TabsTrigger value="atividades" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground flex-1 h-9 rounded-full"><LayoutList className="w-4 h-4 mr-2"/> Atividades</TabsTrigger>
+                      <TabsTrigger value="cards" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground flex-1 h-9 rounded-full"><BrainCircuit className="w-4 h-4 mr-2"/> Cards</TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="conteudo" className="mt-0 outline-none">{renderContentForm("Editar Conteúdo")}</TabsContent>
@@ -1059,22 +1109,50 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                     <TabsContent value="atividades" className="mt-0 outline-none">
                       <div className={`p-6 rounded-lg border space-y-6 shadow-lg ${darkCardClass}`}>
                         <div className="flex justify-between items-center mb-4">
-                          <h4 className="text-lg font-bold text-white flex items-center gap-2"><CheckSquare className="text-violet-400"/> Atividades Vinculadas</h4>
-                          <Badge variant="outline" className="border-violet-500 text-violet-400">{(activityLinks[selectedContentId] || []).length} Total</Badge>
+                          <h4 className="text-lg font-bold text-foreground flex items-center gap-2"><CheckSquare className="text-primary"/> Atividades Vinculadas</h4>
+                          <Badge variant="outline" className="border-primary text-primary">{(activityLinks[selectedContentId] || []).length} Total</Badge>
                         </div>
                         <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-                          {(activityLinks[selectedContentId] || []).map((aid) => {
+                          {(activityLinks[selectedContentId] || []).map((aid, indice) => {
                             const a = activities.find(act => act.id === aid);
                             if(!a) return null;
+                            const prazo = prazoDaAtividade(a.data_entrega);
+                            if (desvinculando === aid) {
+                              return (
+                                <div key={aid} role="alertdialog" aria-label={`Remover ${a.titulo} deste conteúdo`} className="col-span-full rounded-[14px] border border-destructive/50 bg-destructive/15 p-4">
+                                  <p className="text-sm font-bold">Tirar “{a.titulo}” deste conteúdo?</p>
+                                  <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">Ela é removida só deste conteúdo. Se a mesma atividade estiver vinculada a outro conteúdo, lá ela continua.</p>
+                                  <div className="mt-3 flex justify-end gap-2">
+                                    <Button variant="outline" size="sm" className="rounded-full border-destructive/50" onClick={() => setDesvinculando(null)}>Cancelar</Button>
+                                    <Button variant="destructive" size="sm" className="rounded-full font-bold" onClick={async () => { try { await toggleActivityLink(selectedContentId!, aid, false); setDesvinculando(null); } catch { /* o toast já foi mostrado */ } }}>Remover daqui</Button>
+                                  </div>
+                                </div>
+                              );
+                            }
                             return (
-                              <div key={aid} className="flex items-center justify-between p-3 bg-background border border-border rounded-lg">
-                                <div className="flex items-center gap-3 overflow-hidden">
-                                  <div className="w-8 h-8 rounded bg-violet-900/30 text-violet-400 flex items-center justify-center font-bold border border-violet-500/20">{a.tipo?.slice(0,1).toUpperCase()}</div>
-                                  <div className="truncate"><p className="font-medium text-foreground truncate">{a.titulo}</p></div>
+                              <div key={aid} className="col-span-full flex flex-wrap items-center gap-3 rounded-[14px] border bg-background p-3">
+                                <span aria-hidden="true" className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-primary/20 text-xs font-extrabold text-primary">{indice + 1}</span>
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate font-semibold text-foreground">{a.titulo}</p>
+                                  <p className="mt-0.5 flex flex-wrap items-center gap-2 text-[11.5px] text-muted-foreground">
+                                    <span className="rounded-full bg-muted px-2 py-0.5 font-semibold">{rotuloDoTipoDeAtividade(a.tipo)}</span>
+                                    {prazo && <span>{prazo}</span>}
+                                  </p>
                                 </div>
                                 <div className="flex gap-1">
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-white" onClick={() => { setActivityForm({ ...a, id: a.id, descricao: a.descricao || "", tipo: a.tipo || "quiz", data_entrega: a.data_entrega || "" }); setSelectedActivityId(a.id.toString()); props.loadQuestions(a.id); }}><Pencil size={14} /></Button>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-400" onClick={() => toggleActivityLink(selectedContentId!, aid, false)}><X size={14} /></Button>
+                                  <Button variant="ghost" size="sm" className="rounded-full text-muted-foreground hover:text-foreground" onClick={() => { setActivityForm({ ...a, id: a.id, descricao: a.descricao || "", tipo: a.tipo || "quiz", data_entrega: a.data_entrega || "" }); setSelectedActivityId(a.id.toString()); props.loadQuestions(a.id); }}><Pencil size={13} className="mr-1.5" />Editar</Button>
+                                  <Button variant="ghost" size="sm" className="rounded-full text-muted-foreground hover:text-foreground" disabled={duplicandoAtividade === aid} onClick={async () => {
+                                    setDuplicandoAtividade(aid);
+                                    try {
+                                      await duplicateActivity(aid, selectedContentId!);
+                                      if (editingTopic) { await loadActivities(editingTopic.id); await loadActivityLinks(editingTopic.id); }
+                                      toast.success("Atividade duplicada.");
+                                    } catch (error) {
+                                      console.error("Erro ao duplicar atividade:", error);
+                                      toast.error("Não foi possível duplicar a atividade.");
+                                    } finally { setDuplicandoAtividade(null); }
+                                  }}><Copy size={13} className="mr-1.5" />{duplicandoAtividade === aid ? "Duplicando…" : "Duplicar"}</Button>
+                                  <Button variant="ghost" size="sm" className="rounded-full text-muted-foreground hover:text-destructive" onClick={() => setDesvinculando(aid)}><X size={13} className="mr-1.5" />Remover…</Button>
                                 </div>
                               </div>
                             )
@@ -1086,19 +1164,20 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                         
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                           <div className="space-y-3">
-                            <Label className={darkLabelClass}>Vincular Existente</Label>
+                            <Label className={darkLabelClass}>Vincular existente</Label>
+                          <p className="-mt-1 text-xs text-muted-foreground">Escolha uma atividade já cadastrada em outro conteúdo deste tópico para reaproveitar aqui.</p>
                             <div className="bg-background p-3 rounded-lg border border-border h-[180px] overflow-y-auto">
                               <div className="flex flex-wrap gap-2">
                                 {activities.map(a => {
                                   if((activityLinks[selectedContentId] || []).includes(a.id)) return null;
-                                  return <button key={a.id} onClick={() => toggleActivityLink(selectedContentId, a.id, true)} className="px-2 py-1 bg-muted border border-border rounded text-xs text-muted-foreground hover:border-violet-500 transition-colors">+ {a.titulo}</button>
+                                  return <button key={a.id} onClick={() => toggleActivityLink(selectedContentId, a.id, true)} className="px-2 py-1 bg-muted border border-border rounded text-xs text-muted-foreground hover:border-primary transition-colors">+ {a.titulo}</button>
                                 })}
                               </div>
                             </div>
                           </div>
                           
                           <div className="space-y-3 bg-background p-4 rounded-lg border border-border">
-                            <Label className={darkLabelClass}>Criar Nova Atividade</Label>
+                            <Label className={darkLabelClass}>Criar nova atividade</Label>
                             <Input placeholder="Título..." value={newActivityForm.titulo || ""} onChange={(e) => setNewActivityForm({...newActivityForm, titulo: e.target.value})} className={darkInputClass}/>
                             <div className="grid grid-cols-3 gap-2">
                                 <Select value={newActivityForm.tipo || "quiz"} onValueChange={(v) => setNewActivityForm({...newActivityForm, tipo: v})}>
@@ -1127,9 +1206,9 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
 
                         {/* EDITOR DE ATIVIDADE */}
                         {selectedActivityId && (
-                          <div className="bg-background p-5 rounded-lg border border-violet-500/30 animate-in fade-in slide-in-from-bottom-4 scroll-mt-20">
+                          <div className="bg-background p-5 rounded-lg border border-primary/30 animate-in fade-in slide-in-from-bottom-4 scroll-mt-20">
                             <div className="flex justify-between items-center mb-4 border-b border-border pb-3">
-                              <h4 className="text-violet-400 font-bold">Editando Atividade</h4>
+                              <h4 className="text-primary font-bold">Editando Atividade</h4>
                               <Button variant="ghost" size="sm" onClick={() => setSelectedActivityId("")} className="h-6 text-xs">Fechar</Button>
                             </div>
                             <div className="grid grid-cols-2 gap-4 mb-4">
@@ -1177,13 +1256,13 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                         {questionOptions.map((opt, i) => (
                                         <div key={i} className="flex gap-2 items-center">
                                             <Input value={opt || ""} onChange={e => props.updateQuestionOption(i, e.target.value)} className={`${darkInputClass} h-8 text-xs`} placeholder={`Opção ${i+1}`}/>
-                                            <button onClick={() => setQuestionForm({...questionForm, resposta_correta: opt})} className={`w-5 h-5 flex items-center justify-center rounded-full border ${questionForm.resposta_correta === opt && opt !== "" ? "bg-green-500 border-green-500 text-white" : "border-border text-transparent hover:border-slate-400"}`} title="Marcar Correta">
+                                            <button onClick={() => setQuestionForm({...questionForm, resposta_correta: opt})} className={`w-5 h-5 flex items-center justify-center rounded-full border ${questionForm.resposta_correta === opt && opt !== "" ? "bg-green-500 border-green-500 text-foreground" : "border-border text-transparent hover:border-slate-400"}`} title="Marcar Correta">
                                                 <CheckSquare size={12} fill="currentColor" />
                                             </button>
-                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-red-400" onClick={() => props.removeQuestionOption(i)}><X size={12}/></Button>
+                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => props.removeQuestionOption(i)}><X size={12}/></Button>
                                         </div>
                                         ))}
-                                        <Button variant="ghost" size="sm" onClick={props.addQuestionOption} className="text-xs h-7 text-muted-foreground hover:text-white w-full mt-1 border border-dashed border-border">+ Adicionar Opção</Button>
+                                        <Button variant="ghost" size="sm" onClick={props.addQuestionOption} className="text-xs h-7 text-muted-foreground hover:text-foreground w-full mt-1 border border-dashed border-border">+ Adicionar Opção</Button>
                                     </div>
                                 )}
 
@@ -1194,7 +1273,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                             <button 
                                                 key={opt}
                                                 onClick={() => setQuestionForm({...questionForm, resposta_correta: opt})}
-                                                className={`flex-1 py-3 rounded-lg border text-sm font-semibold transition-all ${questionForm.resposta_correta === opt ? "bg-green-600 border-green-500 text-white" : "bg-muted border-border text-muted-foreground hover:bg-muted"}`}
+                                                className={`flex-1 py-3 rounded-lg border text-sm font-semibold transition-all ${questionForm.resposta_correta === opt ? "bg-green-600 border-green-500 text-foreground" : "bg-muted border-border text-muted-foreground hover:bg-muted"}`}
                                             >
                                                 {opt}
                                             </button>
@@ -1283,7 +1362,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                 </div>
 
                                 <div className="flex justify-end pt-2">
-                                  <Button size="sm" onClick={handleSaveQuestionWithSync} className="bg-violet-600 h-8 text-xs px-4">
+                                  <Button size="sm" onClick={handleSaveQuestionWithSync} className="bg-primary h-8 text-xs px-4">
                                     {questionForm.id ? "Atualizar Questão" : "Salvar Questão"}
                                   </Button>
                                 </div>
@@ -1300,7 +1379,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                           <div className="space-y-3">
                             <div className="flex items-center justify-between">
                               <Label className={darkLabelClass}>Cards Existentes</Label>
-                              <Badge variant="outline" className="border-violet-500/40 text-violet-300">
+                              <Badge variant="outline" className="border-primary/40 text-primary">
                                 {cards.length}
                               </Badge>
                             </div>
@@ -1319,13 +1398,26 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                       ? `Origem: ${contentTitleById.get(c.conteudo_origem_id) ?? `Conteudo ${c.conteudo_origem_id}`}`
                                       : null;
 
+                      if (cardParaExcluir === c.id) {
+                        return (
+                          <div key={c.id} role="alertdialog" aria-label={`Excluir o card ${c.titulo ?? ""}`} className="rounded-[14px] border border-destructive/50 bg-destructive/15 p-4">
+                            <p className="text-sm font-bold">Excluir o card “{c.titulo || "Sem título"}”?</p>
+                            <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">O card é excluído {c.conteudo_id ? "deste conteúdo" : "do tópico"}. Cards reaproveitados a partir dele em outros conteúdos continuam lá.</p>
+                            <div className="mt-3 flex justify-end gap-2">
+                              <Button variant="outline" size="sm" className="rounded-full border-destructive/50" onClick={() => setCardParaExcluir(null)}>Cancelar</Button>
+                              <Button variant="destructive" size="sm" className="rounded-full font-bold" onClick={async () => { await handleDeleteCardWithSync(c.id); setCardParaExcluir(null); }}>Excluir</Button>
+                            </div>
+                          </div>
+                        );
+                      }
+
                                   return (
                                     <div
                                       key={c.id}
                                       onClick={() => selectCardForEdit(c)}
                                       className={`p-3 rounded-lg border transition-colors cursor-pointer ${
                                         isSelected
-                                          ? "bg-violet-900/20 border-violet-500/40"
+                                          ? "bg-primary/20 border-primary/40"
                                           : "bg-background border-border hover:border-border"
                                       }`}
                                     >
@@ -1340,7 +1432,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                           <Button
                                             variant="ghost"
                                             size="icon"
-                                            className="h-7 w-7 text-muted-foreground hover:text-white"
+                                            className="h-7 w-7 text-muted-foreground hover:text-foreground"
                                             onClick={(event) => {
                                               event.stopPropagation();
                                               selectCardForEdit(c);
@@ -1348,13 +1440,35 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                           >
                                             <Pencil size={12} />
                                           </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                            title="Duplicar card"
+                            aria-label="Duplicar card"
+                            disabled={duplicandoCard === c.id}
+                            onClick={async (event) => {
+                              event.stopPropagation();
+                              setDuplicandoCard(c.id);
+                              try {
+                                await duplicateCard(c.id);
+                                if (editingTopic) await props.loadCards(editingTopic.id);
+                                toast.success("Card duplicado.");
+                              } catch (error) {
+                                console.error("Erro ao duplicar card:", error);
+                                toast.error("Não foi possível duplicar o card.");
+                              } finally { setDuplicandoCard(null); }
+                            }}
+                          >
+                            <Copy size={12} />
+                          </Button>
                                           <Button
                                             variant="ghost"
                                             size="icon"
-                                            className="h-7 w-7 text-muted-foreground hover:text-red-400"
+                                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
                                             onClick={(event) => {
                                               event.stopPropagation();
-                                              void handleDeleteCardWithSync(c.id);
+                                              setCardParaExcluir(c.id);
                                             }}
                                           >
                                             <Trash2 size={12} />
@@ -1373,18 +1487,18 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                           >
                                             <Badge
                                               variant="outline"
-                                              className="border-emerald-500/40 text-emerald-400 text-[10px] py-0 hover:bg-emerald-500/10 hover:border-emerald-400 transition-colors cursor-pointer"
+                                              className="border-success/40 text-success text-[10px] py-0 hover:bg-success/10 hover:border-success transition-colors cursor-pointer"
                                             >
                                               {linkedLabel} →
                                             </Badge>
                                           </button>
                                         ) : (
-                                          <Badge variant="outline" className="border-emerald-500/40 text-emerald-400 text-[10px] py-0">
+                                          <Badge variant="outline" className="border-success/40 text-success text-[10px] py-0">
                                             {linkedLabel}
                                           </Badge>
                                         )}
                                         {originLabel && (
-                                          <Badge variant="outline" className="border-amber-500/40 text-amber-400 text-[10px] py-0">
+                                          <Badge variant="outline" className="border-warning/40 text-warning text-[10px] py-0">
                                             {originLabel}
                                           </Badge>
                                         )}
@@ -1410,7 +1524,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="h-7 text-xs text-muted-foreground hover:text-white"
+                                  className="h-7 text-xs text-muted-foreground hover:text-foreground"
                                   onClick={resetCardEditor}
                                 >
                                   <Plus size={12} className="mr-1" />
@@ -1421,14 +1535,14 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
 
                             {selectedCard && (
                               <div className="flex flex-wrap gap-1.5">
-                                <Badge variant="outline" className="border-emerald-500/40 text-emerald-400 text-[10px] py-0">
+                                <Badge variant="outline" className="border-success/40 text-success text-[10px] py-0">
                                   {selectedCard.conteudo_id
                                     ? `Vinculado a ${contentTitleById.get(selectedCard.conteudo_id) ?? `Conteudo ${selectedCard.conteudo_id}`}`
                                     : "Reutilizável do tópico"}
                                 </Badge>
                                 {selectedCard.conteudo_origem_id &&
                                   selectedCard.conteudo_origem_id !== selectedCard.conteudo_id && (
-                                    <Badge variant="outline" className="border-amber-500/40 text-amber-400 text-[10px] py-0">
+                                    <Badge variant="outline" className="border-warning/40 text-warning text-[10px] py-0">
                                       {`Origem: ${
                                         contentTitleById.get(selectedCard.conteudo_origem_id) ??
                                         `Conteudo ${selectedCard.conteudo_origem_id}`
@@ -1546,13 +1660,13 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                             />
 
                             <div className="flex items-center gap-2">
-                              <Button className="flex-1 bg-violet-600 hover:bg-violet-700" onClick={handleSaveCardWithSync}>
+                              <Button className="flex-1 bg-primary hover:bg-primary" onClick={handleSaveCardWithSync}>
                                 {cardForm.id ? "Atualizar Card" : "Salvar Card"}
                               </Button>
                               {cardForm.id ? (
                                 <Button
                                   variant="outline"
-                                  className="border-border text-muted-foreground hover:text-white"
+                                  className="border-border text-muted-foreground hover:text-foreground"
                                   onClick={resetCardEditor}
                                 >
                                   Cancelar
@@ -1585,8 +1699,8 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
     {/* -- AI Suggestions Dialog -- */}
     <Dialog open={aiDialogOpen} onOpenChange={setAiDialogOpen}>
       <DialogContent className="max-w-2xl w-full bg-background border-border text-foreground max-h-[90vh] flex flex-col overflow-hidden">
-        <DialogTitle className="text-lg font-bold text-white flex items-center gap-2">
-          <Wand2 className="w-5 h-5 text-violet-400" />
+        <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
+          <Wand2 className="w-5 h-5 text-primary" />
           Cards e Atividades Sugeridas
         </DialogTitle>
         <DialogDescription className="text-muted-foreground text-sm">
@@ -1607,7 +1721,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                       key={idx}
                       className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
                         selectedCards.has(idx)
-                          ? "bg-violet-900/20 border-violet-500/40"
+                          ? "bg-primary/20 border-primary/40"
                           : "bg-card border-border hover:border-border"
                       }`}
                       onClick={() => {
@@ -1617,8 +1731,8 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                         setSelectedCards(next);
                       }}
                     >
-                      <div className={`w-4 h-4 mt-0.5 rounded border flex items-center justify-center shrink-0 ${selectedCards.has(idx) ? "bg-violet-600 border-violet-600" : "border-border"}`}>
-                        {selectedCards.has(idx) && <CheckSquare className="w-3 h-3 text-white" />}
+                      <div className={`w-4 h-4 mt-0.5 rounded border flex items-center justify-center shrink-0 ${selectedCards.has(idx) ? "bg-primary border-primary" : "border-border"}`}>
+                        {selectedCards.has(idx) && <CheckSquare className="w-3 h-3 text-foreground" />}
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-foreground">{card.titulo}</p>
@@ -1640,7 +1754,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                       key={idx}
                       className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
                         selectedAtividades.has(idx)
-                          ? "bg-emerald-900/20 border-emerald-500/40"
+                          ? "bg-success/20 border-success/40"
                           : "bg-card border-border hover:border-border"
                       }`}
                       onClick={() => {
@@ -1650,8 +1764,8 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                         setSelectedAtividades(next);
                       }}
                     >
-                      <div className={`w-4 h-4 mt-0.5 rounded border flex items-center justify-center shrink-0 ${selectedAtividades.has(idx) ? "bg-emerald-600 border-emerald-600" : "border-border"}`}>
-                        {selectedAtividades.has(idx) && <CheckSquare className="w-3 h-3 text-white" />}
+                      <div className={`w-4 h-4 mt-0.5 rounded border flex items-center justify-center shrink-0 ${selectedAtividades.has(idx) ? "bg-success border-success" : "border-border"}`}>
+                        {selectedAtividades.has(idx) && <CheckSquare className="w-3 h-3 text-foreground" />}
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
@@ -1663,7 +1777,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                         <p className="text-xs text-muted-foreground mt-0.5">{at.enunciado}</p>
                         {at.alternativas && at.alternativas.length > 0 && (
                           <p className="text-[10px] text-muted-foreground mt-1">
-                            Alternativas: {at.alternativas.join(" · ")}{" -> "}<span className="text-emerald-400">{at.resposta_correta}</span>
+                            Alternativas: {at.alternativas.join(" · ")}{" -> "}<span className="text-success">{at.resposta_correta}</span>
                           </p>
                         )}
                       </div>
@@ -1676,13 +1790,13 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
         </ScrollArea>
 
         <div className="flex justify-end gap-3 pt-4 border-t border-border shrink-0">
-          <Button variant="ghost" onClick={() => setAiDialogOpen(false)} className="text-muted-foreground hover:text-white">
+          <Button variant="ghost" onClick={() => setAiDialogOpen(false)} className="text-muted-foreground hover:text-foreground">
             Cancelar
           </Button>
           <Button
             onClick={handleApplySuggestions}
             disabled={isCreatingSuggestions || (selectedCards.size === 0 && selectedAtividades.size === 0)}
-            className="bg-violet-600 hover:bg-violet-700 text-white"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground"
           >
             {isCreatingSuggestions ? (
               <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Criando...</>

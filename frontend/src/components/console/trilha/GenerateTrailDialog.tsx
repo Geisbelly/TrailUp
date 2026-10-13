@@ -9,60 +9,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Wand2, Loader2, ArrowRight, CheckCircle2, Plus, X, Upload, FileText, AlertTriangle, BrainCircuit, LayoutList, Clapperboard } from "lucide-react";
+import { Wand2, Loader2, ArrowRight, CheckCircle2, X, Upload, FileText, AlertTriangle } from "lucide-react";
 import type { Topico, StagedFile } from "./types";
 import { formatFileSize } from "@/lib/utils";
-import { deleteClassTrail as deleteClassTrailCascade, deleteTopicCascade } from "./classDeletion";
+import { deleteTopicCascade } from "./classDeletion";
 
 const ACCEPTED_EXT = ".pdf,.doc,.docx,.ppt,.pptx,.txt,.md,.mp4,.mov,.webm,.mp3,.wav,.m4a";
-type Step = "form" | "confirm-delete" | "preview" | "creating";
-type MediaType = "video" | "audio" | "pdf" | "documento" | "apresentacao";
+type Step = "configurar" | "processando" | "resultado" | "revisar" | "ajustar" | "aplicando";
 
-type AiCard = {
-  titulo: string;
-  descricao: string;
-  conteudo_ref?: string | null;
-  conteudo_origem_ref?: string | null;
-};
-type AiAtividade = {
-  titulo: string;
-  enunciado: string;
-  tipo: string;
-  alternativas: string[] | null;
-  resposta_correta: string;
-  conteudo_ref?: string | null;
-};
-type AiMidia = {
-  tipo: MediaType;
-  titulo: string;
-  descricao: string;
-  roteiro?: string | null;
-  transcricao?: string | null;
-  url?: string | null;
-  sourceRef?: string | null;
-};
-type AiConteudo = {
-  ref?: string | null;
-  sourceRef?: string | null;
-  titulo: string;
-  tipo: string;
-  conteudo: string;
-  cards?: AiCard[];
-  atividades?: AiAtividade[];
-  midias?: AiMidia[];
-};
-type AiTopico = {
-  nome: string;
-  descricao: string;
-  ordem: number;
-  depende: number[];
-  next: number[];
-  conteudos: AiConteudo[];
-  cards?: AiCard[];
-  atividades?: AiAtividade[];
-};
+const PASSOS = ["Configurar", "Gerar", "Processando", "Resultado", "Revisar", "Ajustar"] as const;
+// Qual rótulo do indicador cada tela acende (o "Gerar" é o instante do envio das fontes).
+const PASSO_ATIVO: Record<Step, number> = { configurar: 0, processando: 2, resultado: 3, revisar: 4, ajustar: 5, aplicando: 4 };
+import type { AiAtividade, AiTopico, MediaType } from "./proposta";
+import { contagemDaProposta, removerDaProposta, semAtividades, substituirNaProposta } from "./proposta";
 
 type Props = {
   open: boolean;
@@ -118,33 +77,20 @@ async function readStagedText(staged: StagedFile[]) {
   return parts.join("\n\n");
 }
 
-async function deletePrefix(bucket: string, prefix: string) {
-  const folder = prefix.replace(/^\/+|\/+$/g, "");
-  if (!folder) return;
-  const { data } = await supabase.storage.from(bucket).list(folder, { limit: 1000, offset: 0 });
-  const files = (data ?? []).filter((item: { id?: string | null }) => Boolean(item.id)).map((item: { name: string }) => `${folder}/${item.name}`);
-  if (files.length > 0) await supabase.storage.from(bucket).remove(files);
-}
-
-// deleteClassTrailCascade (classDeletion.ts) cobre TODAS as tabelas
-// dependentes de conteudos/topicos (conteudo_personalizado, materiais_gerados,
-// conteudo_aluno, atividade_aluno, questao_aluno, etc). Uma versao local
-// incompleta desta funcao existia so aqui e faltava justamente essas tabelas —
-// causava 409 (violacao de FK) sempre que a turma ja tinha alguma
-// personalizacao/progresso gerado para o conteudo antigo.
-async function deleteClassTrail(classeId: number, userId?: string) {
-  await deleteClassTrailCascade(classeId);
-  if (userId) await deletePrefix("conteudos", `${userId}/classes/${classeId}/materials`);
-}
-
 export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, initialFileNames = [], initialDescription = "", initialFileContents = "" }: Props) {
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [step, setStep] = useState<Step>("form");
+  const [step, setStep] = useState<Step>("configurar");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [existingCount, setExistingCount] = useState(0);
+  const [gerarAtividades, setGerarAtividades] = useState(true);
+  const [mostrarAvancado, setMostrarAvancado] = useState(false);
+  const [ajusteOrdem, setAjusteOrdem] = useState<number | null>(null);
+  const [ajusteTexto, setAjusteTexto] = useState("");
+  const [isAdjusting, setIsAdjusting] = useState(false);
+  const [confirmouSubstituir, setConfirmouSubstituir] = useState(false);
   const [creatingStatus, setCreatingStatus] = useState("");
   const [description, setDescription] = useState(initialDescription);
   const [numTopics, setNumTopics] = useState(6);
@@ -205,57 +151,106 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
     }
   };
 
-  const reset = () => { setStep("form"); setPreview([]); setDescription(initialDescription); setNumTopics(6); setTopicNamesRaw(""); setSyllabus(""); setStagedFiles([]); setStagedFileContents(""); setCreatingStatus(""); };
-  const close = () => { if (step === "creating") return; reset(); onOpenChange(false); };
+  const reset = () => {
+    setStep("configurar");
+    setPreview([]);
+    setDescription(initialDescription);
+    setNumTopics(6);
+    setTopicNamesRaw("");
+    setSyllabus("");
+    setStagedFiles([]);
+    setStagedFileContents("");
+    setCreatingStatus("");
+    setGerarAtividades(true);
+    setMostrarAvancado(false);
+    setAjusteOrdem(null);
+    setAjusteTexto("");
+    setConfirmouSubstituir(false);
+    setExistingCount(0);
+  };
+  const close = () => { if (step === "aplicando" || step === "processando") return; reset(); onOpenChange(false); };
 
-  const runGeneration = async (deleteExisting: boolean) => {
-    if (deleteExisting) {
-      try { await deleteClassTrail(classeId, user?.id); toast.success("Trilha anterior removida."); } catch { toast.error("Falha ao remover trilha anterior."); return; }
-    }
-    setIsGenerating(true);
-    try {
-      const topicNames = topicNamesRaw.split("\n").map((line) => line.trim()).filter(Boolean);
-      const { data, error } = await supabase.functions.invoke("generate-content-ai", { body: {
-        mode: "trail", topicName: description, topicDescription: description, contents: [], sources: await buildSources(),
-        trailDescription: description, numTopics, topicNames, syllabus, fileContents: allFileContents || undefined, fileNames: allFileNames.length ? allFileNames : undefined,
-      }});
-      if (error) throw new Error(await formatSupabaseFunctionError(error));
-      if (!Array.isArray(data?.topicos)) throw new Error("Resposta invalida da IA.");
-      setPreview(data.topicos as AiTopico[]);
-      setStep("preview");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao gerar trilha.");
-      setStep("form");
-    } finally { setIsGenerating(false); }
+  // Gerar NÃO apaga nada: a proposta só existe na tela até o professor aplicar.
+  const callTrail = async (body: Record<string, unknown>) => {
+    const { data, error } = await supabase.functions.invoke("generate-content-ai", { body });
+    if (error) throw new Error(await formatSupabaseFunctionError(error));
+    if (!Array.isArray(data?.topicos)) throw new Error("Resposta invalida da IA.");
+    return data.topicos as AiTopico[];
   };
 
   const handleGenerate = async () => {
-    if (!description.trim()) return toast.error("Descreva a disciplina.");
+    if (!description.trim()) return toast.error("Descreva o que a turma precisa aprender.");
+    setStep("processando");
+    setIsGenerating(true);
+    try {
+      const topicNames = topicNamesRaw.split("\n").map((line) => line.trim()).filter(Boolean);
+      const topicos = await callTrail({
+        mode: "trail", topicName: description, topicDescription: description, contents: [], sources: await buildSources(),
+        trailDescription: description, numTopics, topicNames, syllabus, fileContents: allFileContents || undefined, fileNames: allFileNames.length ? allFileNames : undefined,
+      });
+      setPreview(topicos);
+      setStep("resultado");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao gerar trilha.");
+      setStep("configurar");
+    } finally { setIsGenerating(false); }
+  };
+
+  // "Pedir ajuste": regera SÓ este item pelo mesmo modo "trail" (1 tópico, com o nome dele e a instrução),
+  // e o novo tópico assume o lugar do antigo no grafo. Os demais ficam como estão.
+  const handleAdjust = async () => {
+    const alvo = preview.find((t) => t.ordem === ajusteOrdem);
+    if (!alvo) return;
+    if (!ajusteTexto.trim()) return toast.error("Descreva o que mudar neste tópico.");
+    setIsAdjusting(true);
+    try {
+      const [novo] = await callTrail({
+        mode: "trail", topicName: alvo.nome, topicDescription: alvo.descricao, contents: [], sources: await buildSources(),
+        trailDescription: `${description}\n\nGere apenas o tópico "${alvo.nome}". Ajuste pedido pelo professor: ${ajusteTexto.trim()}`,
+        numTopics: 1, topicNames: [alvo.nome], syllabus, fileContents: allFileContents || undefined, fileNames: allFileNames.length ? allFileNames : undefined,
+      });
+      if (!novo) throw new Error("A IA não devolveu o tópico ajustado.");
+      setPreview((atual) => substituirNaProposta(atual, alvo.ordem, novo));
+      setAjusteOrdem(null);
+      setAjusteTexto("");
+      setStep("revisar");
+      toast.success(`“${alvo.nome}” foi regerado.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao ajustar o tópico.");
+    } finally { setIsAdjusting(false); }
+  };
+
+  const abrirAplicar = async () => {
     const { count } = await supabase.from("topicos").select("id", { count: "exact", head: true }).eq("classe_id", classeId);
-    if ((count ?? 0) > 0) { setExistingCount(count ?? 0); setStep("confirm-delete"); return; }
-    await runGeneration(false);
+    setExistingCount(count ?? 0);
+    setConfirmouSubstituir(false);
+    setStep("revisar");
   };
 
   const handleCreate = async () => {
     if (preview.length === 0) return;
-    setStep("creating");
+    const plano = gerarAtividades ? preview : semAtividades(preview);
+    // Tópicos que já existem: só saem DEPOIS de a trilha nova estar criada por inteiro.
+    const { data: antigosRows } = await supabase.from("topicos").select("id").eq("classe_id", classeId);
+    const antigos = (antigosRows ?? []).map((r) => (r as { id: number }).id);
+    setStep("aplicando");
     // Declarado fora do try para o catch poder reverter os topicos ja
     // inseridos: sem isso, uma falha no meio do loop (rede, validacao de um
     // bloco especifico etc.) deixava topicos/conteudos/cards orfaos, e
-    // clicar em "Criar trilha" de novo reprocessava o mesmo preview do
+    // clicar em "Criar trilha" de novo reprocessava o mesmo plano do
     // zero, duplicando tudo que ja tinha sido criado com sucesso.
     const created: Array<{ ai: number; real: number }> = [];
     try {
       setCreatingStatus("Enviando arquivos...");
       const uploadedFiles = await uploadStagedFiles();
       setCreatingStatus("Criando topicos...");
-      for (const t of preview) {
+      for (const t of plano) {
         const { data, error } = await supabase.from("topicos").insert({ classe_id: classeId, nome: t.nome, descricao: t.descricao, ordem: t.ordem, next: [], depende: [] }).select("id").single();
         if (error) throw error;
         created.push({ ai: t.ordem, real: (data as { id: number }).id });
       }
       const map = new Map(created.map((i) => [i.ai, i.real]));
-      await Promise.all(preview.map((t) => supabase.from("topicos").update({ next: t.next.map((o) => map.get(o)).filter(Boolean), depende: t.depende.map((o) => map.get(o)).filter(Boolean) }).eq("id", map.get(t.ordem)!)));
+      await Promise.all(plano.map((t) => supabase.from("topicos").update({ next: t.next.map((o) => map.get(o)).filter(Boolean), depende: t.depende.map((o) => map.get(o)).filter(Boolean) }).eq("id", map.get(t.ordem)!)));
 
       const insertCards = async (rows: Array<{ conteudo_id: number; conteudo_origem_id: number; titulo: string; descricao: string }>) => {
         if (!rows.length) return;
@@ -267,7 +262,7 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
         if (fallback) throw fallback;
       };
 
-      for (const t of preview) {
+      for (const t of plano) {
         const topicId = map.get(t.ordem)!;
         const contentMap = new Map<string, number>();
         let order = 1;
@@ -318,8 +313,17 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
         if ((t.conteudos ?? []).every((c) => (c.atividades?.length ?? 0) === 0)) for (const a of t.atividades ?? []) await createActivity(a, contentMap.get(a.conteudo_ref ?? "") ?? primary);
       }
 
-      const out: Topico[] = preview.map((t) => ({ id: map.get(t.ordem)!, classe_id: classeId, nome: t.nome, descricao: t.descricao, ordem: t.ordem, next: t.next.map((o) => map.get(o)!).filter(Boolean), depende: t.depende.map((o) => map.get(o)!).filter(Boolean), created_at: null }));
-      toast.success(`Trilha criada: ${out.length} topicos, ${preview.reduce((s, t) => s + (t.conteudos?.length ?? 0), 0)} conteudos, ${preview.reduce((s, t) => s + countCards(t), 0)} cards, ${preview.reduce((s, t) => s + countActivities(t), 0)} atividades, ${preview.reduce((s, t) => s + countMedia(t), 0)} midias.`);
+      const out: Topico[] = plano.map((t) => ({ id: map.get(t.ordem)!, classe_id: classeId, nome: t.nome, descricao: t.descricao, ordem: t.ordem, next: t.next.map((o) => map.get(o)!).filter(Boolean), depende: t.depende.map((o) => map.get(o)!).filter(Boolean), created_at: null }));
+      toast.success(`Trilha criada: ${out.length} topicos, ${plano.reduce((s, t) => s + (t.conteudos?.length ?? 0), 0)} conteudos, ${plano.reduce((s, t) => s + countCards(t), 0)} cards, ${plano.reduce((s, t) => s + countActivities(t), 0)} atividades, ${plano.reduce((s, t) => s + countMedia(t), 0)} midias.`);
+      if (antigos.length > 0) {
+        setCreatingStatus("Removendo a trilha anterior...");
+        try {
+          for (const id of antigos) await deleteTopicCascade(id);
+        } catch (removeError) {
+          console.error("Falha ao remover tópicos antigos:", removeError);
+          toast.warning("A trilha nova foi criada, mas alguns tópicos antigos não puderam ser removidos.");
+        }
+      }
       onCreated(out);
       close();
     } catch (e) {
@@ -332,45 +336,221 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
         }
       }
       toast.error(e instanceof Error ? e.message : "Erro ao criar trilha.");
-      setStep("preview");
+      setStep("revisar");
     }
+  };
+
+  const rotuloCampo = "mb-2 block text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground";
+  const totais = contagemDaProposta(gerarAtividades ? preview : semAtividades(preview));
+  const alvoDoAjuste = preview.find((t) => t.ordem === ajusteOrdem) ?? null;
+  const ocupado = step === "aplicando" || step === "processando";
+
+  const itemDaProposta = (t: AiTopico, acoes?: React.ReactNode) => {
+    const c = contagemDaProposta([t]);
+    return (
+      <li key={t.ordem} className="flex items-center gap-3.5 rounded-[14px] bg-muted px-4 py-3">
+        <span aria-hidden="true" className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-primary/20 text-[13px] font-extrabold text-primary">{t.ordem}</span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-bold">{t.nome}</p>
+          <p className="mt-0.5 text-[11.5px] text-muted-foreground">
+            {c.conteudos} {c.conteudos === 1 ? "conteúdo" : "conteúdos"} · {c.cards} cards · {c.atividades} {c.atividades === 1 ? "atividade" : "atividades"}
+          </p>
+        </div>
+        {acoes}
+      </li>
+    );
   };
 
   return (
     <Dialog open={open} onOpenChange={close}>
-      <DialogContent className="max-w-2xl bg-background border-border text-foreground max-h-[90vh] flex flex-col overflow-hidden">
-        <div className="flex items-center gap-3 pb-2">
-          <div className="w-9 h-9 rounded-lg bg-violet-600/20 flex items-center justify-center text-violet-400 shrink-0"><Wand2 size={18} /></div>
-          <div><DialogTitle className="text-lg font-bold text-white">Gerar Trilha com IA</DialogTitle><DialogDescription className="text-muted-foreground text-xs mt-0.5">Arquivos são enviados ao bucket somente ao confirmar a criação.</DialogDescription></div>
+      <DialogContent className="flex max-h-[90vh] max-w-2xl flex-col overflow-hidden rounded-[20px] bg-card">
+        <div className="flex items-center gap-3">
+          <span aria-hidden="true" className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-primary/20 text-primary"><Wand2 size={18} /></span>
+          <div>
+            <DialogTitle className="text-xl">Gerar trilha com IA</DialogTitle>
+            <DialogDescription className="mt-1 text-[12.5px]">
+              Descreva o plano de ensino. A IA propõe os tópicos e a ordem — você revisa antes de aplicar. Nada é publicado nem apagado sem a sua confirmação.
+            </DialogDescription>
+          </div>
         </div>
+
+        <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]" aria-label="Etapas">
+          {PASSOS.map((nome, i) => {
+            const atual = PASSO_ATIVO[step];
+            const estado = i < atual ? "feito" : i === atual ? "atual" : "falta";
+            return (
+              <li key={nome} aria-current={estado === "atual" ? "step" : undefined} className="flex items-center gap-2">
+                {i > 0 && <span aria-hidden="true" className="h-px w-4 bg-border" />}
+                <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${estado === "falta" ? "bg-muted text-muted-foreground" : "bg-primary text-primary-foreground"}`}>
+                  {estado === "feito" ? <CheckCircle2 className="h-3 w-3" aria-hidden="true" /> : i + 1}
+                </span>
+                <span className={estado === "atual" ? "font-bold" : "text-muted-foreground"}>{nome}</span>
+              </li>
+            );
+          })}
+        </ol>
+
         <ScrollArea className="flex-1 overflow-y-auto pr-1">
-          {(step === "form" || step === "confirm-delete") && <div className="space-y-5 py-2">
-            <div><Label className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider mb-1 block">Descrição *</Label><Textarea value={description} onChange={(e) => setDescription(e.target.value)} className="bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-violet-500 min-h-[72px] resize-none" /></div>
-            <div><Label className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider mb-1 block">Qtd. tópicos</Label><Input type="number" min={2} max={20} value={numTopics} onChange={(e) => setNumTopics(Math.min(20, Math.max(2, Number(e.target.value) || 2)))} className="bg-background border-border text-foreground focus:border-violet-500 w-24" /></div>
-            <div><Label className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider mb-1 block">Tópicos (opcional)</Label><Textarea value={topicNamesRaw} onChange={(e) => setTopicNamesRaw(e.target.value)} className="bg-background border-border text-foreground min-h-[80px] resize-none font-mono text-sm" /></div>
-            <div><Label className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider mb-1 block">Ementa (opcional)</Label><Textarea value={syllabus} onChange={(e) => setSyllabus(e.target.value)} className="bg-background border-border text-foreground min-h-[80px] resize-none" /></div>
-            <Separator className="bg-muted" />
-            <div className="space-y-3">
-              <Label className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider mb-1 block">Arquivos (opcional)</Label>
-              {initialFileNames.map((name, i) => <div key={`${name}-${i}`} className="flex items-center gap-2 px-3 py-2 bg-card border border-border/50 rounded-lg"><FileText className="w-3.5 h-3.5 text-emerald-400 shrink-0" /><span className="text-xs text-muted-foreground truncate">{name}</span></div>)}
-              <div className={`border-2 border-dashed rounded-lg p-5 text-center cursor-pointer transition-all ${isDragging ? "border-violet-500 bg-violet-900/10" : "border-border hover:border-border hover:bg-muted/20"}`} onClick={() => fileInputRef.current?.click()} onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }} onDragLeave={() => setIsDragging(false)} onDrop={(e) => { e.preventDefault(); setIsDragging(false); void addFiles(e.dataTransfer.files); }}>
-                <Upload className="w-6 h-6 text-muted-foreground mx-auto mb-2" /><p className="text-sm text-muted-foreground">Arraste arquivos ou <span className="text-violet-400">clique</span></p><p className="text-[11px] text-muted-foreground mt-1">PDF DOC DOCX PPT PPTX TXT MD MP4 MP3...</p><input ref={fileInputRef} type="file" multiple accept={ACCEPTED_EXT} className="hidden" onChange={(e) => void addFiles(e.target.files)} />
+          {step === "configurar" && (
+            <div className="space-y-5 py-2">
+              <div>
+                <Label htmlFor="trilha-descricao" className={rotuloCampo}>O que a turma precisa aprender *</Label>
+                <Textarea id="trilha-descricao" value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className="rounded-[14px] bg-background" placeholder="Ex.: semestre de mecânica clássica para engenharia, da cinemática até trabalho e energia, com ênfase em resolução de problemas…" />
               </div>
-              {stagedFiles.map((s) => <div key={s.id} className="flex items-center gap-3 p-2.5 bg-card border border-amber-500/20 rounded-lg"><FileText className="w-4 h-4 text-amber-400 shrink-0" /><div className="flex-1 min-w-0"><p className="text-xs text-foreground truncate">{s.file.name}</p><p className="text-[10px] text-muted-foreground">{formatFileSize(s.file.size)}</p></div><button onClick={() => void removeFile(s.id)} className="text-muted-foreground hover:text-red-400 transition-colors"><X size={13} /></button></div>)}
+
+              <div>
+                <span className={rotuloCampo}>Plano de ensino ou ementa (opcional)</span>
+                {initialFileNames.map((name, i) => (
+                  <div key={`${name}-${i}`} className="mb-2 flex items-center gap-2 rounded-[14px] bg-muted px-3 py-2"><FileText className="h-3.5 w-3.5 flex-none text-success" aria-hidden="true" /><span className="truncate text-xs text-muted-foreground">{name}</span></div>
+                ))}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  className={`cursor-pointer rounded-[14px] border-2 border-dashed p-5 text-center transition-colors ${isDragging ? "border-primary bg-primary/10" : "border-border hover:bg-muted/40"}`}
+                  onClick={() => fileInputRef.current?.click()}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInputRef.current?.click(); } }}
+                  onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={(e) => { e.preventDefault(); setIsDragging(false); void addFiles(e.dataTransfer.files); }}
+                >
+                  <Upload className="mx-auto mb-2 h-6 w-6 text-muted-foreground" aria-hidden="true" />
+                  <p className="text-sm text-muted-foreground">Arraste arquivos ou <span className="font-semibold text-primary">clique para escolher</span></p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">PDF · DOC/DOCX · PPT/PPTX · TXT · MD · vídeo · áudio</p>
+                  <input ref={fileInputRef} type="file" multiple accept={ACCEPTED_EXT} className="hidden" onChange={(e) => void addFiles(e.target.files)} />
+                </div>
+                {stagedFiles.map((sf) => (
+                  <div key={sf.id} className="mt-2 flex items-center gap-3 rounded-[14px] bg-muted p-2.5">
+                    <FileText className="h-4 w-4 flex-none text-primary" aria-hidden="true" />
+                    <div className="min-w-0 flex-1"><p className="truncate text-xs">{sf.file.name}</p><p className="text-[10px] text-muted-foreground">{formatFileSize(sf.file.size)}</p></div>
+                    <button type="button" aria-label={`Remover ${sf.file.name}`} onClick={() => void removeFile(sf.id)} className="text-muted-foreground hover:text-destructive"><X size={13} /></button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div role="radiogroup" aria-label="Quantidade de tópicos">
+                  <span className={rotuloCampo}>Quantidade de tópicos</span>
+                  <div className="flex flex-wrap gap-2">
+                    {[4, 6, 8, 12].map((n) => (
+                      <button key={n} type="button" role="radio" aria-checked={numTopics === n} onClick={() => setNumTopics(n)} className={`rounded-full border px-4 py-1.5 text-[12.5px] font-semibold ${numTopics === n ? "border-primary bg-primary/20" : "border-border text-muted-foreground hover:text-foreground"}`}>{n}</button>
+                    ))}
+                  </div>
+                </div>
+                <div role="radiogroup" aria-label="Já gerar atividades?">
+                  <span className={rotuloCampo}>Já gerar atividades?</span>
+                  <div className="flex gap-2">
+                    {[{ v: true, l: "Sim, com a proposta" }, { v: false, l: "Não, depois" }].map((o) => (
+                      <button key={String(o.v)} type="button" role="radio" aria-checked={gerarAtividades === o.v} onClick={() => setGerarAtividades(o.v)} className={`rounded-full border px-4 py-1.5 text-[12.5px] font-semibold ${gerarAtividades === o.v ? "border-primary bg-primary/20" : "border-border text-muted-foreground hover:text-foreground"}`}>{o.l}</button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <button type="button" onClick={() => setMostrarAvancado((v) => !v)} aria-expanded={mostrarAvancado} className="text-xs font-semibold text-primary">
+                  {mostrarAvancado ? "Ocultar opções avançadas" : "Opções avançadas (nomes dos tópicos, ementa)"}
+                </button>
+                {mostrarAvancado && (
+                  <div className="mt-3 space-y-4">
+                    <div><Label htmlFor="trilha-nomes" className={rotuloCampo}>Tópicos que você já tem em mente (um por linha)</Label><Textarea id="trilha-nomes" value={topicNamesRaw} onChange={(e) => setTopicNamesRaw(e.target.value)} rows={3} className="rounded-[14px] bg-background" /></div>
+                    <div><Label htmlFor="trilha-ementa" className={rotuloCampo}>Ementa complementar</Label><Textarea id="trilha-ementa" value={syllabus} onChange={(e) => setSyllabus(e.target.value)} rows={3} className="rounded-[14px] bg-background" /></div>
+                  </div>
+                )}
+              </div>
             </div>
-            {step === "confirm-delete" && <div className="p-4 bg-red-950/30 border border-red-500/30 rounded-lg space-y-3"><div className="flex items-start gap-3"><AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" /><div><p className="text-sm font-semibold text-red-300">Já existem {existingCount} tópicos</p><p className="text-xs text-red-400/80 mt-1">Ao apagar, a trilha atual e seus arquivos da classe serão removidos.</p></div></div><div className="flex gap-2"><Button size="sm" className="bg-red-600 hover:bg-red-700 text-white flex-1" onClick={() => void runGeneration(true)}>Apagar e gerar</Button><Button size="sm" variant="outline" className="border-border text-muted-foreground hover:text-white flex-1" onClick={() => void runGeneration(false)}>Manter e adicionar</Button></div></div>}
-          </div>}
-          {step === "preview" && preview.length > 0 && <div className="space-y-3 py-2">
-            <div className="flex items-center gap-4 text-xs text-muted-foreground bg-card px-4 py-2.5 rounded-lg border border-border"><span className="flex items-center gap-1.5"><BrainCircuit size={13} className="text-violet-400" /> {preview.length} tópicos</span><span className="flex items-center gap-1.5"><FileText size={13} className="text-blue-400" /> {preview.reduce((s, t) => s + (t.conteudos?.length ?? 0), 0)} conteúdos</span><span className="flex items-center gap-1.5"><BrainCircuit size={13} className="text-emerald-400" /> {preview.reduce((s, t) => s + countCards(t), 0)} cards</span><span className="flex items-center gap-1.5"><LayoutList size={13} className="text-orange-400" /> {preview.reduce((s, t) => s + countActivities(t), 0)} atividades</span><span className="flex items-center gap-1.5"><Clapperboard size={13} className="text-cyan-400" /> {preview.reduce((s, t) => s + countMedia(t), 0)} mídias</span></div>
-            {preview.map((t, idx) => <div key={idx} className="p-4 bg-card border border-border rounded-lg space-y-3"><div className="flex items-start gap-3"><div className="w-7 h-7 rounded-full bg-violet-600/20 border border-violet-500/30 text-violet-400 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{t.ordem}</div><div className="flex-1 min-w-0"><div className="flex items-center gap-2 flex-wrap"><p className="font-semibold text-white text-sm">{t.nome}</p><button className="text-muted-foreground hover:text-red-400 transition-colors" onClick={() => setPreview((p) => p.filter((_, i) => i !== idx))}><X size={13} /></button></div><p className="text-xs text-muted-foreground mt-0.5">{t.descricao}</p>{(t.depende.length > 0 || t.next.length > 0) && <div className="flex flex-wrap gap-1.5 mt-2">{t.depende.map((d) => { const dep = preview.find((p) => p.ordem === d); return dep ? <Badge key={d} variant="outline" className="border-blue-500/40 text-blue-400 text-[10px] py-0">Requer: {dep.nome}</Badge> : null; })}{t.next.map((n) => { const nxt = preview.find((p) => p.ordem === n); return nxt ? <Badge key={n} variant="outline" className="border-emerald-500/40 text-emerald-400 text-[10px] py-0 flex items-center gap-1"><ArrowRight size={9} />{nxt.nome}</Badge> : null; })}</div>}<div className="flex gap-3 mt-2 text-[11px] text-muted-foreground"><span className="text-blue-400/70">{t.conteudos?.length ?? 0} conteúdos</span><span className="text-emerald-400/70">{countCards(t)} cards</span><span className="text-orange-400/70">{countActivities(t)} atividades</span><span className="text-cyan-400/70">{countMedia(t)} mídias</span></div></div></div></div>)}
-            <button onClick={() => setStep("form")} className="text-xs text-violet-400 hover:text-violet-300 flex items-center gap-1 mt-1"><Plus size={12} /> Regenerar</button>
-          </div>}
-          {step === "creating" && <div className="py-16 flex flex-col items-center gap-4 text-center"><Loader2 className="w-10 h-10 text-violet-400 animate-spin" /><p className="text-sm font-semibold text-white">Criando trilha...</p><p className="text-xs text-muted-foreground">{creatingStatus}</p></div>}
+          )}
+
+          {step === "processando" && (
+            <div className="flex flex-col items-center gap-4 py-16 text-center" role="status">
+              <Loader2 className="h-10 w-10 animate-spin text-primary" aria-hidden="true" />
+              <p className="text-sm font-bold">{isUploadingFiles ? "Enviando arquivos…" : "Gerando a proposta…"}</p>
+              <p className="max-w-sm text-[12.5px] text-muted-foreground">A IA está montando os tópicos, a ordem e o material inicial a partir do que você descreveu. Pode levar alguns instantes.</p>
+            </div>
+          )}
+
+          {step === "resultado" && (
+            <div className="space-y-3 py-2">
+              <div className="flex items-center gap-3 rounded-[14px] border border-success/40 bg-success/10 px-4 py-3 text-[13px] font-semibold">
+                <CheckCircle2 className="h-4 w-4 flex-none text-success" aria-hidden="true" />
+                Proposta gerada: {totais.topicos} tópicos, {totais.conteudos} conteúdos{gerarAtividades ? ` e ${totais.atividades} atividades iniciais` : ""}.
+              </div>
+              <ul className="space-y-2">{preview.map((t) => itemDaProposta(t))}</ul>
+            </div>
+          )}
+
+          {step === "revisar" && (
+            <div className="space-y-3 py-2">
+              <p className="text-[13px] text-muted-foreground">Confira a proposta. Se algo não estiver certo, peça um ajuste pontual — não é preciso gerar tudo de novo.</p>
+              <ul className="space-y-2">
+                {preview.map((t) =>
+                  itemDaProposta(
+                    t,
+                    <span className="flex gap-1.5">
+                      <Button variant="outline" size="sm" className="rounded-full" onClick={() => { setAjusteOrdem(t.ordem); setAjusteTexto(""); setStep("ajustar"); }}>Pedir ajuste</Button>
+                      <button type="button" aria-label={`Tirar “${t.nome}” da proposta`} title="Tirar da proposta" disabled={preview.length <= 1} onClick={() => setPreview((atual) => removerDaProposta(atual, t.ordem))} className="flex h-8 w-8 items-center justify-center rounded-full bg-background text-muted-foreground hover:text-destructive disabled:opacity-40"><X size={13} /></button>
+                    </span>,
+                  ),
+                )}
+              </ul>
+              {existingCount > 0 && (
+                <div className="space-y-3 rounded-[14px] border border-warning/40 bg-warning/10 p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="mt-0.5 h-5 w-5 flex-none text-warning" aria-hidden="true" />
+                    <div>
+                      <p className="text-sm font-bold">A turma já tem {existingCount} {existingCount === 1 ? "tópico" : "tópicos"}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Aplicar cria a trilha nova primeiro e só depois remove os tópicos atuais, com seus conteúdos, cards e questões. Se a criação falhar, a trilha atual continua como está.</p>
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-2 text-xs font-semibold"><input type="checkbox" checked={confirmouSubstituir} onChange={(e) => setConfirmouSubstituir(e.target.checked)} />Entendi: a trilha atual será substituída.</label>
+                </div>
+              )}
+            </div>
+          )}
+
+          {step === "ajustar" && alvoDoAjuste && (
+            <div className="space-y-4 py-2">
+              <button type="button" onClick={() => setStep("revisar")} disabled={isAdjusting} className="text-xs font-semibold text-primary">← Voltar para a revisão</button>
+              <div className="rounded-[14px] bg-muted px-4 py-3"><p className={rotuloCampo + " !mb-1"}>Ajustando</p><p className="text-sm font-bold">{alvoDoAjuste.ordem}. {alvoDoAjuste.nome}</p></div>
+              <div>
+                <Label htmlFor="trilha-ajuste" className={rotuloCampo}>O que mudar neste tópico</Label>
+                <Textarea id="trilha-ajuste" value={ajusteTexto} onChange={(e) => setAjusteTexto(e.target.value)} rows={4} className="rounded-[14px] bg-background" placeholder="Ex.: trocar o exemplo do carro por algo de esportes, e reduzir para 2 conteúdos em vez de 3." />
+                <p className="mt-2 text-[11.5px] text-muted-foreground">Só este tópico é regerado; os outros e a ordem não mudam.</p>
+              </div>
+            </div>
+          )}
+
+          {step === "aplicando" && (
+            <div className="flex flex-col items-center gap-4 py-16 text-center" role="status">
+              <Loader2 className="h-10 w-10 animate-spin text-primary" aria-hidden="true" />
+              <p className="text-sm font-bold">Criando a trilha…</p>
+              <p className="text-xs text-muted-foreground">{creatingStatus}</p>
+            </div>
+          )}
         </ScrollArea>
-        <div className="flex justify-between items-center pt-4 border-t border-border shrink-0 gap-3">
-          <Button variant="ghost" onClick={close} disabled={step === "creating"} className="text-muted-foreground hover:text-white">Cancelar</Button>
-          {step === "form" && <Button onClick={() => void handleGenerate()} disabled={isGenerating || isUploadingFiles || !description.trim()} className="bg-violet-600 hover:bg-violet-700 text-white">{isGenerating ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Gerando...</> : <><Wand2 className="w-4 h-4 mr-2" />Gerar estrutura</>}</Button>}
-          {step === "preview" && <Button onClick={() => void handleCreate()} disabled={preview.length === 0 || isUploadingFiles} className="bg-emerald-600 hover:bg-emerald-700 text-white">{isUploadingFiles ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Enviando arquivos...</> : <><CheckCircle2 className="w-4 h-4 mr-2" />Criar trilha ({preview.length})</>}</Button>}
+
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t pt-4">
+          <Button variant="ghost" className="rounded-full" onClick={close} disabled={ocupado}>
+            {step === "resultado" ? "Descartar" : "Cancelar"}
+          </Button>
+          {step === "configurar" && (
+            <Button className="rounded-full font-bold" onClick={() => void handleGenerate()} disabled={isGenerating || isUploadingFiles || !description.trim()}>
+              <Wand2 className="mr-2 h-4 w-4" aria-hidden="true" />Gerar proposta
+            </Button>
+          )}
+          {step === "resultado" && (
+            <Button className="rounded-full font-bold" onClick={() => void abrirAplicar()}>Revisar <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></Button>
+          )}
+          {step === "revisar" && (
+            <div className="flex gap-2">
+              <Button variant="outline" className="rounded-full" onClick={() => setStep("configurar")}>Voltar</Button>
+              <Button className="rounded-full font-bold" onClick={() => void handleCreate()} disabled={preview.length === 0 || isUploadingFiles || (existingCount > 0 && !confirmouSubstituir)}>Aplicar trilha</Button>
+            </div>
+          )}
+          {step === "ajustar" && (
+            <Button className="rounded-full font-bold" onClick={() => void handleAdjust()} disabled={isAdjusting || !ajusteTexto.trim()}>
+              {isAdjusting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />Regerando…</> : "Regerar só este item"}
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>

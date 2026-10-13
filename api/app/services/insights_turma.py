@@ -161,7 +161,9 @@ class InsightsTurmaService:
             raise InsightsIndisponiveis(str(exc)) from exc
         return result.scalar()
 
-    async def coletar_contexto(self, classe_id: int, agora: datetime) -> tuple[dict[str, Any], dict[str, str]]:
+    async def coletar_contexto(
+        self, classe_id: int, agora: datetime, *, incluir_descartados: bool = True
+    ) -> tuple[dict[str, Any], dict[str, str]]:
         try:
             alunos = await GroupAnalysisService(self.session).fetch_alunos(classe_id)
         except Exception as exc:
@@ -252,7 +254,8 @@ class InsightsTurmaService:
                 {**params, "desde": desde},
             )
         ]
-        descartados = [
+        # O Escriba reaproveita este retrato e não precisa do que foi descartado.
+        descartados = [] if not incluir_descartados else [
             {"texto": r["texto"], "motivo": r["motivo_descarte"]}
             for r in await self._ler(
                 "descartados",
