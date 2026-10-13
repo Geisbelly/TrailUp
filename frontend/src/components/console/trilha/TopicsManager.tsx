@@ -557,21 +557,6 @@ export default function TopicsManager() {
     }
   };
 
-  const saveOrder = async () => {
-    setIsSaving(true);
-    try {
-      const updates = topicsForSelected.map((t, idx) => ({ id: t.id, ordem: idx + 1 }));
-      await Promise.all(updates.map((u) => supabase.from("topicos").update({ ordem: u.ordem }).eq("id", u.id)));
-      refreshJobsSoon();
-      toast.success("Ordem dos tópicos salva!");
-    } catch (error) {
-      console.error("Erro ao salvar ordem:", error);
-      toast.error("Não foi possivel salvar a ordem.");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   const handleCreateClass = async () => {
     setIsSaving(true);
     try {
