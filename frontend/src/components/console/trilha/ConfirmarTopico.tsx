@@ -103,7 +103,7 @@ export function ConfirmarExcluirTopico({
           <AlertDialogDescription asChild>
             <div className="space-y-3 pt-2 text-left">
               <p className="text-[13px] leading-relaxed text-muted-foreground">
-                Excluir “{visivel}” remove permanentemente seus conteúdos, cards e questões associados. Esta ação não pode ser desfeita.
+                Excluir “{visivel}” remove permanentemente seus conteúdos, cards e questões associados e tira as ligações de sequência e pré-requisito que os outros tópicos tinham com ele. Esta ação não pode ser desfeita.
               </p>
               <label className="block text-[12.5px] text-muted-foreground" htmlFor="confirmar-nome-topico">
                 Para confirmar, digite o nome do tópico: <strong className="text-foreground">{visivel}</strong>
