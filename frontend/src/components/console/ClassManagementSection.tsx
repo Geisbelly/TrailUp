@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { remapearReferencias, type MapaDeTopicos } from "./duplicacaoDeClasse";
-import type { Json } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { PresencaDialog } from "./PresencaDialog";
