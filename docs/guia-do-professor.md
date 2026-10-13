@@ -91,7 +91,7 @@ Quem decide quanto vale cada coisa é o **sistema**, não o aplicativo do aluno.
 | Só abre/começa algo | 0 |
 | Presença em aula | 10 (padrão) |
 
-**Quem ajusta:** a equipe técnica. Não há tela. Se achar que um valor está desbalanceado (por exemplo, revisar vale demais), peça a mudança.
+**Quem ajusta:** os valores acima são o padrão do sistema, e a equipe técnica os muda para todas as turmas. **Por turma, você mesmo tem permissão** para sobrepor quanto vale cada ação (e quantas moedas rende) só na sua turma; o que você não sobrepõe herda o padrão. **Ainda não há tela para isso**: enquanto o painel não existe, peça à equipe técnica. Se achar que um valor está desbalanceado (por exemplo, revisar vale demais), diga qual e em qual turma.
 
 ### 6.2 Limite do ranking
 
@@ -147,6 +147,7 @@ Onde estão os ajustes da seção 6 (nenhum tem tela hoje; alterar exige acesso 
 | Ajuste | Onde | Observação |
 |---|---|---|
 | Pontos por evento | tabela `eventos_pontuacao` (`tipo`, `pontos`) | `pontos >= 0`. Tipo desconhecido vale 0 |
+| Pontos e moedas por evento, **só numa turma** | tabela `eventos_pontuacao_classe` (`classe_id`, `tipo`, `pontos`, `moedas`; `NULL` herda o global) | O professor tem permissão de escrita nas turmas dele (policy `eventos_pontuacao_classe_professor`); falta a tela |
 | Moedas por evento | coluna `moedas` da mesma tabela | `atividade_revisada` paga 0 de propósito |
 | Limite do ranking | `app_config`, chave `rank_limite_visivel` (padrão 15) | Vale para todas as turmas. O professor vê a turma inteira |
 | Pontos de presença | `app_config`, chave `presenca_aula_pontos` (padrão 10) | Participação não tem padrão: o professor informa |
