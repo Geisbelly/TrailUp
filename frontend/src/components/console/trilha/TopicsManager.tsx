@@ -749,8 +749,7 @@ export default function TopicsManager() {
   };
 
   const handleDeleteCard = async (id: number) => {
-    const confirmDelete = window.confirm("Remover este card?");
-    if (!confirmDelete) return false;
+    // Sem window.confirm: o editor já pergunta no cartão (confirmação inline) antes de chamar isto.
     const removed = await deleteCardHandler(id);
     if (!removed) return false;
     await loadCards(editingTopic?.id ?? 0);
