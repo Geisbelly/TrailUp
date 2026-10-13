@@ -3,6 +3,7 @@ import {
   socialChatEnviar,
   socialChatPresenca,
 } from "@/services/social/socialService";
+import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -49,6 +50,8 @@ export function PrivateChatModal({
   onClose,
 }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
+  // Web em tela larga (#346, protótipo v4 06-social): painel à direita, mensagens em balões.
+  const desktop = useDesktopWeb();
   const [text, setText] = useState("");
   const [online, setOnline] = useState(Boolean(person.online));
   const [loading, setLoading] = useState(false);
@@ -102,10 +105,11 @@ export function PrivateChatModal({
     }
   }
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent={desktop} animationType={desktop ? "fade" : "slide"} onRequestClose={onClose}>
       <SafeAreaProvider>
+        {desktop ? <Pressable accessibilityLabel="Fechar conversa" onPress={onClose} style={s.fundoLateral} /> : null}
         <SafeAreaView
-          style={[s.screen, { backgroundColor: palette.background }]}
+          style={[s.screen, desktop && [s.painelLateral, { borderLeftColor: palette.border }], { backgroundColor: palette.background }]}
         >
           <KeyboardAvoidingView
             style={s.screen}
@@ -164,8 +168,9 @@ export function PrivateChatModal({
                       key={message.id}
                       style={[
                         s.message,
+                        desktop && (message.remetente_id === person.alunoId ? s.balaoOutro : s.balaoMeu),
                         {
-                          backgroundColor: palette.surface,
+                          backgroundColor: desktop && message.remetente_id !== person.alunoId ? palette.accentSoft : palette.surface,
                           borderColor: palette.border,
                         },
                       ]}
@@ -234,6 +239,10 @@ export function PrivateChatModal({
 }
 const s = StyleSheet.create({
   screen: { flex: 1 },
+  fundoLateral: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,.55)" },
+  painelLateral: { position: "absolute", top: 0, right: 0, bottom: 0, width: 440, flex: 0, borderLeftWidth: 1 },
+  balaoMeu: { alignSelf: "flex-end", maxWidth: "85%", borderRadius: 12 },
+  balaoOutro: { alignSelf: "flex-start", maxWidth: "85%", borderRadius: 12 },
   header: {
     flexDirection: "row",
     alignItems: "center",
