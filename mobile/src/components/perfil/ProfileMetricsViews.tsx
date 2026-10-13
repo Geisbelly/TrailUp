@@ -98,15 +98,17 @@ function SectionTitle({
   icon?: keyof typeof MaterialCommunityIcons.glyphMap;
   palette: ThemePalette;
 }) {
+  // Tela larga (protótipo v4): título sem serifa e sem o ícone redondo.
+  const larga = useMetricasLargas();
   return (
     <View style={s.sectionTitleWrap}>
       <View style={s.sectionTitleRow}>
-        {icon ? (
+        {icon && !larga ? (
           <View style={[s.sectionIconWrap, { backgroundColor: palette.soft }]}>
             <MaterialCommunityIcons name={icon} size={16} color={palette.accent} />
           </View>
         ) : null}
-        <Text style={[s.sectionTitle, { color: palette.text }]}>{title}</Text>
+        <Text style={[s.sectionTitle, larga && s.sectionTitleLargo, { color: palette.text }]}>{title}</Text>
       </View>
       {subtitle ? <Text style={[s.sectionSubtitle, { color: palette.muted }]}>{subtitle}</Text> : null}
     </View>
@@ -155,7 +157,7 @@ function StatTile({
         <MaterialCommunityIcons name={icon} size={18} color={accent} />
       </View>
       <Text style={[s.statLabel, { color: palette.muted }]}>{label}</Text>
-      <Text style={[s.statValue, { color: palette.text }]}>{value}</Text>
+      <Text style={[s.statValue, larga && s.statValueLargo, { color: palette.text }]}>{value}</Text>
       {helper ? <Text style={[s.statHelper, { color: palette.muted }]}>{helper}</Text> : null}
     </View>
   );
@@ -488,16 +490,20 @@ function RadarChart({
   palette: ThemePalette;
   glowStyle?: "neon" | "plain";
 }) {
+  // Tela larga (protótipo v4): cada eixo com o valor ao lado ("Precisão 81"), em letra maior e sem serifa.
+  const larga = useMetricasLargas();
   const N = axes.length;
   if (N < 3) return null;
   const SIZE = 300;
-  const cx = SIZE / 2;
+  // Com o valor junto do rótulo, os eixos dos lados precisam de mais espaço na horizontal.
+  const LARGURA = larga ? 400 : SIZE;
+  const cx = LARGURA / 2;
   const cy = SIZE / 2;
   const R = 84;
   const allZero = axes.every((a) => a.value === 0);
 
   return (
-    <Svg width={SIZE} height={SIZE}>
+    <Svg width={LARGURA} height={SIZE}>
       {/* Grid rings */}
       {[0.25, 0.5, 0.75, 1].map((frac) => (
         <Polygon
@@ -589,10 +595,11 @@ function RadarChart({
             x={lx}
             y={ly + 4}
             textAnchor={anchor}
-            fontSize={10}
-            fill={palette.muted}
+            fontSize={larga ? 12 : 10}
+            fontFamily={larga ? FontFamily.interMedium : undefined}
+            fill={larga ? palette.text : palette.muted}
           >
-            {a.label}
+            {larga ? `${a.label} ${Math.round(Math.max(0, Math.min(100, a.value)))}` : a.label}
           </SvgText>
         );
       })}
@@ -1632,12 +1639,14 @@ const s = StyleSheet.create({
   statIconWrap: { width: 34, height: 34, borderRadius: 6, alignItems: "center", justifyContent: "center", marginBottom: 10 },
   statLabel: { fontFamily: FontFamily.interMedium, fontSize: 12, marginBottom: 4 },
   statValue: { fontFamily: FontFamily.inikaBold, fontSize: 20, marginBottom: 4 },
+  statValueLargo: { fontFamily: FontFamily.interMedium, fontWeight: "700", fontSize: 24 },
   statHelper: { fontFamily: FontFamily.interMedium, fontSize: 11, lineHeight: 16 },
   surfaceCard: { paddingVertical: 20, paddingHorizontal: 4, borderBottomWidth: 1 },
   sectionTitleWrap: { marginBottom: 14 },
   sectionTitleRow: { flexDirection: "row", alignItems: "center", marginBottom: 6 },
   sectionIconWrap: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", marginRight: 10 },
   sectionTitle: { fontFamily: FontFamily.inikaBold, fontSize: 16 },
+  sectionTitleLargo: { fontFamily: FontFamily.interMedium, fontWeight: "700" },
   sectionSubtitle: { fontFamily: FontFamily.interMedium, fontSize: 12, lineHeight: 18 },
   tripleRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
   doubleRow: { flexDirection: "row", gap: 10, marginBottom: 12 },

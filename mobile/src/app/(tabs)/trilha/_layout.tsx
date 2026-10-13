@@ -4,6 +4,7 @@ import {
 } from "@/components/trilhas/ModuleHeaderTitle";
 import { useUsuario } from "@/context/SessaoContext";
 import { useTrilha } from "@/context/TrilhaContext";
+import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { HeaderBackButton } from "@react-navigation/elements";
 import { router, Stack } from "expo-router";
@@ -37,6 +38,8 @@ export default function TrilhaStack() {
   const { grafo, classeAtual, perfil, personalizedTopics } = useTrilha();
   const { usuario } = useUsuario();
   const palette = getProfileShellPalette(perfil);
+  // Web em tela larga (#346): o Tópico desenha o próprio cabeçalho (CabecalhoTopicoDesktop).
+  const desktop = useDesktopWeb();
 
   const headerForId = ({ route }: any) => {
     const { id }: any = route.params || {};
@@ -110,7 +113,7 @@ export default function TrilhaStack() {
         }}
       />
 
-      <Stack.Screen name="[id]" options={headerForId} />
+      <Stack.Screen name="[id]" options={desktop ? { headerShown: false } : headerForId} />
     </Stack>
   );
 }

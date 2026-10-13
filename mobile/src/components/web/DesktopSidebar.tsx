@@ -1,5 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import { CommonActions } from "@react-navigation/native";
 import { usePathname, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
@@ -66,7 +67,21 @@ export function DesktopSidebar({ state, navigation, palette, aberturas, onBloque
     // Mesmo evento que a barra de abas dispara: os bloqueios de Social e
     // Ranking são `listeners.tabPress` em (tabs)/_layout.tsx.
     const evento = navigation.emit({ type: "tabPress", target: alvo.key, canPreventDefault: true });
-    if (!evento.defaultPrevented) navigation.navigate(alvo.name as never);
+    if (evento.defaultPrevented) return;
+    // Loja e Configurações são telas da pilha do Perfil: sem refazer a pilha,
+    // o item Perfil reabria a última delas em vez da página do perfil. É reset
+    // e não popToTop porque, aberta direto pela URL (/perfil/loja), a pilha
+    // nasce sem o índice embaixo — e com estado parcial, sem `key`, até a
+    // primeira troca de tela; aí só dá para pedir o índice pela navegação.
+    const pilha = alvo.state;
+    if (rota === "perfil" && pilha && (pilha.routes.length > 1 || pilha.routes[0]?.name !== "index")) {
+      if (!pilha.key) {
+        navigation.dispatch(CommonActions.navigate({ name: "perfil", params: { screen: "index" } }));
+        return;
+      }
+      navigation.dispatch({ ...CommonActions.reset({ index: 0, routes: [{ name: "index" }] }), target: pilha.key });
+    }
+    navigation.navigate(alvo.name as never);
   };
 
   // Mesmo fluxo de "Sair deste aparelho" em perfil/settings.tsx.

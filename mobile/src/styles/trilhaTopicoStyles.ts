@@ -12,6 +12,101 @@ export const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+  // Web em tela larga (#346, protótipo v4 04-topico): coluna de leitura centralizada,
+  // rodapé sem borda e botões de largura fixa no centro.
+  colunaLeituraDesktop: {
+    width: "100%",
+    maxWidth: 772,
+    alignSelf: "center",
+    paddingTop: 20,
+  },
+  // Com o confronto aberto à direita: 740 de leitura + 32 + 360 de coluna.
+  colunaLeituraComLateralDesktop: {
+    maxWidth: 1172,
+  },
+  colunaUnica: {},
+  // Bloco de conteúdo na tela larga: sem card, rótulo em linha, título maior e
+  // "Guardar na Bag" como botão de contorno pequeno.
+  cardLeituraDesktop: {
+    backgroundColor: "transparent",
+    borderWidth: 0,
+    shadowOpacity: 0,
+    elevation: 0,
+    paddingHorizontal: 0,
+    paddingTop: 0,
+  },
+  rotuloLeituraDesktop: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 10,
+  },
+  rotuloLeituraDesktopTexto: {
+    fontFamily: FontFamily.interMedium,
+    fontSize: 12.5,
+    letterSpacing: 0.8,
+  },
+  cardTitleLeituraDesktop: {
+    fontSize: 22,
+    marginBottom: 12,
+  },
+  botaoBagDesktop: {
+    flexGrow: 0,
+    flexBasis: "auto",
+    alignSelf: "flex-start",
+    minHeight: 38,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: "transparent",
+  },
+  botaoBagDesktopTexto: {
+    fontFamily: FontFamily.interMedium,
+    fontSize: 13.5,
+    fontWeight: "600",
+  },
+  colunasDesktop: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 32,
+    paddingHorizontal: 16,
+  },
+  colunaPrincipalDesktop: {
+    flex: 1,
+    minWidth: 0,
+    marginHorizontal: -16,
+  },
+  lateralBatalhaDesktop: {
+    width: 360,
+    // O IABattlePanel já traz 12 px de margem em cima: alinha com o card do bloco.
+    marginTop: 0,
+    position: "sticky" as "absolute",
+    top: 12,
+  },
+  footerDesktop: {
+    borderTopWidth: 0,
+    backgroundColor: "transparent",
+    paddingBottom: 20,
+  },
+  footerRowDesktop: {
+    justifyContent: "center",
+    gap: 12,
+  },
+  botaoPrincipalDesktop: {
+    // `flex: 0` vira `0 1 0%` no react-native-web e anula a largura.
+    flexGrow: 0,
+    flexBasis: "auto",
+    width: 400,
+    minHeight: 52,
+    borderRadius: 10,
+  },
+  botaoSecundarioDesktop: {
+    // `flex: 0` vira `0 1 0%` no react-native-web e anula a largura.
+    flexGrow: 0,
+    flexBasis: "auto",
+    width: 160,
+    minHeight: 52,
+    borderRadius: 10,
+  },
   header: {
     paddingHorizontal: 16,
     // 60 aqui vinha de quando a tela nao tinha cabecalho de navegacao. Hoje a

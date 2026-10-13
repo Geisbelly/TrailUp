@@ -24,6 +24,8 @@ type BattleScope = Extract<IAFeatureSelectorScope, { scope: "topic" | "item" }>;
 type Props = {
   topicoId?: number | null;
   itemKey?: string | null;
+  /** "painel": o IABattlePanel direto, sem chip nem janela (coluna lateral do Tópico na web em tela larga, #346). */
+  variante?: "chip" | "painel";
 };
 
 function formatBattleDate(value?: number | null) {
@@ -93,7 +95,7 @@ function BattleMetaStat({
   );
 }
 
-export function IABattleHeaderChip({ topicoId = null, itemKey = null }: Props) {
+export function IABattleHeaderChip({ topicoId = null, itemKey = null, variante = "chip" }: Props) {
   const [open, setOpen] = useState(false);
   const { getBattleState, resolveFeature } = useIA();
   const { usuario } = useUsuario();
@@ -140,6 +142,9 @@ export function IABattleHeaderChip({ topicoId = null, itemKey = null }: Props) {
   ) {
     return null;
   }
+
+  // Mesmo confronto que o chip abriria (conteúdo ou módulo), já aberto.
+  if (variante === "painel") return <IABattlePanel scope={battleScope} surface="lateral" />;
 
   const enemy = battleState?.enemy ?? resolvedBattle.battle.enemy;
   const hpMax = Math.max(1, Number(enemy.hpMax ?? 1));
