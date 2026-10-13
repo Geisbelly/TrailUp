@@ -36,6 +36,9 @@ mockModule("react-native-safe-area-context", { SafeAreaView: Host });
 mockModule("@expo/vector-icons", { MaterialCommunityIcons: () => null });
 mockModule("@/styles/GlobalStyle", { FontFamily: {} });
 mockModule("@/utils/profileShellTheme", { getProfileShellPalette: () => ({}) });
+// A versão de tela larga (#346) fica fora deste teste: o portão aqui é o do celular.
+mockModule("@/hooks/useDesktopWeb", { useDesktopWeb: () => false });
+mockModule("@/components/web/EscolhaTurmaDesktop", { EscolhaTurmaDesktop: () => null });
 mockModule("@/database/supabase", { supabase: { auth: { signOut: async ({ scope }: { scope: string }) => { logoutScope = scope; return { error: null }; } } } });
 mockModule("expo-router", {
   usePathname: () => pathname,
