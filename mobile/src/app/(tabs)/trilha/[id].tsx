@@ -1,4 +1,5 @@
 import { referenciaDeAtividade } from "@/utils/referenciaDeEvento";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { progressoCanonicoTopico, topicoConcluidoNaTela } from '@/utils/topicoProgress';
 import { useFocusEffect, useIsFocused, useNavigation } from "@react-navigation/native";
@@ -938,6 +939,9 @@ export default function TrilhaConteudoScreen() {
   // para os perfis com batalha e nos blocos que contam para ela.
   const lateralBatalha =
     desktop && !mostrarResumo && isCurrentStudyBlockTrackable && topicoId != null && getBrainHexProfileCapabilities(perfil).hasBattle;
+  // Conteúdo na tela larga (protótipo v4): texto direto sobre o fundo, sem o card.
+  // Atividades seguem em card.
+  const leituraLarga = desktop && atualBlock?.kind === "conteudo";
   const numeroTopico = grafo?.nodes?.find((n) => String(n.id) === String(topicoId))?.sequence ?? null;
   const regiaoTopico = topicoId != null ? mapTheme?.countries?.[String(topicoId)]?.countryName ?? null : null;
 
@@ -1722,8 +1726,17 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
                 backgroundColor: profilePalette.surfaceElevated,
                 borderColor: profilePalette.border,
               },
+              leituraLarga && styles.cardLeituraDesktop,
             ]}
           >
+            {leituraLarga ? (
+              <View style={styles.rotuloLeituraDesktop}>
+                <MaterialCommunityIcons name="book-open-page-variant-outline" size={15} color={profilePalette.accent} />
+                <Text style={[styles.rotuloLeituraDesktopTexto, { color: profilePalette.textMuted }]}>
+                  {[blocoLabel, formatConteudoTipo(atualBlock.conteudo.tipo)].filter(Boolean).join(" — ").toUpperCase()}
+                </Text>
+              </View>
+            ) : (
             <View
               style={[
                 styles.cardHeader,
@@ -1753,11 +1766,13 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
                 Bloco {index + 1} / {total}
               </Text>
             </View>
+            )}
 
             <Text
               style={[
                 styles.cardTitle,
                 conteudoComFocoEmArquivo && styles.cardTitleFileFocus,
+                leituraLarga && styles.cardTitleLeituraDesktop,
                 { color: profilePalette.text },
               ]}
             >
@@ -1768,7 +1783,7 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
                 : atualBlock.atividade.titulo ?? "Atividade"}
             </Text>
 
-            {atualBlock.kind === "conteudo" && formatConteudoTipo(atualBlock.conteudo.tipo) ? (
+            {atualBlock.kind === "conteudo" && !leituraLarga && formatConteudoTipo(atualBlock.conteudo.tipo) ? (
               <Text
                 style={[
                   styles.cardType,
@@ -1789,7 +1804,11 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
                   onDeckProgressEvent={handleDeckProgressEvent}
                 />
                 <Pressable
-                  style={[styles.secondaryButton, { borderColor: profilePalette.accent, marginTop: 14 }]}
+                  style={[
+                    styles.secondaryButton,
+                    { borderColor: profilePalette.accent, marginTop: 14 },
+                    leituraLarga && [styles.botaoBagDesktop, { borderColor: profilePalette.borderStrong }],
+                  ]}
                   onPress={() => {
                     setBagContentId(normalizeBagContentId(atualBlock.conteudo.id));
                     setBagEditorOpen(true);
@@ -1797,7 +1816,15 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
                   accessibilityRole="button"
                   accessibilityLabel="Adicionar anotação, resumo ou card à Bag"
                 >
-                  <Text style={[styles.secondaryButtonText, { color: profilePalette.accent }]}>＋ Guardar na Bag</Text>
+                  <Text
+                    style={[
+                      styles.secondaryButtonText,
+                      { color: profilePalette.accent },
+                      leituraLarga && [styles.botaoBagDesktopTexto, { color: profilePalette.text }],
+                    ]}
+                  >
+                    ＋ Guardar na Bag
+                  </Text>
                 </Pressable>
               </>
             ) : (

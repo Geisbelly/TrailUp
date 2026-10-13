@@ -25,6 +25,45 @@ export const styles = StyleSheet.create({
     maxWidth: 1172,
   },
   colunaUnica: {},
+  // Bloco de conteúdo na tela larga: sem card, rótulo em linha, título maior e
+  // "Guardar na Bag" como botão de contorno pequeno.
+  cardLeituraDesktop: {
+    backgroundColor: "transparent",
+    borderWidth: 0,
+    shadowOpacity: 0,
+    elevation: 0,
+    paddingHorizontal: 0,
+    paddingTop: 0,
+  },
+  rotuloLeituraDesktop: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 10,
+  },
+  rotuloLeituraDesktopTexto: {
+    fontFamily: FontFamily.interMedium,
+    fontSize: 12.5,
+    letterSpacing: 0.8,
+  },
+  cardTitleLeituraDesktop: {
+    fontSize: 22,
+    marginBottom: 12,
+  },
+  botaoBagDesktop: {
+    flexGrow: 0,
+    flexBasis: "auto",
+    alignSelf: "flex-start",
+    minHeight: 38,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: "transparent",
+  },
+  botaoBagDesktopTexto: {
+    fontFamily: FontFamily.interMedium,
+    fontSize: 13.5,
+    fontWeight: "600",
+  },
   colunasDesktop: {
     flexDirection: "row",
     alignItems: "flex-start",
