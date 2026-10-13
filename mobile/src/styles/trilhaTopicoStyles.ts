@@ -20,10 +20,28 @@ export const styles = StyleSheet.create({
     alignSelf: "center",
     paddingTop: 20,
   },
-  // Abaixo do cabeçalho da tela larga (68 px), sem cobrir o cronômetro e o guia.
-  floatingBattleWrapDesktop: {
-    top: 80,
-    right: 24,
+  // Com o confronto aberto à direita: 740 de leitura + 32 + 360 de coluna.
+  colunaLeituraComLateralDesktop: {
+    maxWidth: 1172,
+  },
+  colunaUnica: {},
+  colunasDesktop: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 32,
+    paddingHorizontal: 16,
+  },
+  colunaPrincipalDesktop: {
+    flex: 1,
+    minWidth: 0,
+    marginHorizontal: -16,
+  },
+  lateralBatalhaDesktop: {
+    width: 360,
+    // O IABattlePanel já traz 12 px de margem em cima: alinha com o card do bloco.
+    marginTop: 0,
+    position: "sticky" as "absolute",
+    top: 12,
   },
   footerDesktop: {
     borderTopWidth: 0,

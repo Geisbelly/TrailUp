@@ -930,6 +930,14 @@ export default function TrilhaConteudoScreen() {
       }),
     [atividadesResolvidasLocal, conteudosVistosLocal, displayedBlocks, index]
   );
+  const chaveBatalha =
+    atualBlock?.kind === "atividade" && atualBlock.vinculadoConteudoId != null
+      ? buildIAItemKey("content", Number(atualBlock.vinculadoConteudoId))
+      : currentOverlayItemKey;
+  // Na tela larga o confronto fica aberto numa coluna à direita (protótipo v4), só
+  // para os perfis com batalha e nos blocos que contam para ela.
+  const lateralBatalha =
+    desktop && !mostrarResumo && isCurrentStudyBlockTrackable && topicoId != null && getBrainHexProfileCapabilities(perfil).hasBattle;
   const numeroTopico = grafo?.nodes?.find((n) => String(n.id) === String(topicoId))?.sequence ?? null;
   const regiaoTopico = topicoId != null ? mapTheme?.countries?.[String(topicoId)]?.countryName ?? null : null;
 
@@ -1621,6 +1629,7 @@ export default function TrilhaConteudoScreen() {
           // avatar flutuante do mentor (IAMentorPanel) sem sobrar espaco.
           { paddingBottom: 56 },
           desktop && styles.colunaLeituraDesktop,
+          lateralBatalha && styles.colunaLeituraComLateralDesktop,
         ]}
       >
         {/* Na tela larga o progresso fica nos pontos do cabeçalho. */}
@@ -1659,6 +1668,8 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
           </View>
         </View>
 
+        <View style={lateralBatalha ? styles.colunasDesktop : styles.colunaUnica}>
+        <View style={lateralBatalha ? styles.colunaPrincipalDesktop : styles.colunaUnica}>
         {mostrarResumo && index === -1 && (
           <>
             <View style={[styles.ornamentWrap, { opacity: 0.6 }]}>
@@ -1809,6 +1820,13 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
             )}
           </View>
         ) : null}
+        </View>
+        {lateralBatalha ? (
+          <View ref={battleGuideTargetRef} collapsable={false} style={styles.lateralBatalhaDesktop}>
+            <IABattleHeaderChip variante="painel" topicoId={topicoId} itemKey={chaveBatalha} />
+          </View>
+        ) : null}
+        </View>
       </ScrollView>
 
       <View
@@ -1968,17 +1986,15 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
       />
 
       {/* ── Chip de batalha flutuante ── */}
-      {!mostrarResumo && isCurrentStudyBlockTrackable && topicoId ? (
+      {!desktop && !mostrarResumo && isCurrentStudyBlockTrackable && topicoId ? (
         <View
           ref={battleGuideTargetRef}
           collapsable={false}
-          style={[styles.floatingBattleWrap, desktop && styles.floatingBattleWrapDesktop, { pointerEvents: "box-none" }]}
+          style={[styles.floatingBattleWrap, { pointerEvents: "box-none" }]}
         >
           <IABattleHeaderChip
             topicoId={topicoId}
-            itemKey={atualBlock?.kind === 'atividade' && atualBlock.vinculadoConteudoId != null
-              ? buildIAItemKey('content', Number(atualBlock.vinculadoConteudoId))
-              : currentOverlayItemKey}
+            itemKey={chaveBatalha}
           />
         </View>
       ) : null}
