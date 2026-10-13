@@ -460,7 +460,6 @@ export default function TopicsManager() {
     }
     setIsSaving(true);
     try {
-      let savedTopicoId: number;
       if (editingTopic) {
         const { error } = await supabase
           .from("topicos")
@@ -474,7 +473,6 @@ export default function TopicsManager() {
           })
           .eq("id", editingTopic.id);
         if (error) throw error;
-        savedTopicoId = editingTopic.id;
         toast.success("Tópico atualizado!");
       } else {
         const { data, error } = await supabase
@@ -491,7 +489,6 @@ export default function TopicsManager() {
           .single();
         if (error) throw error;
         setTopicos((prev) => [...prev, { ...(data as Topico), next: [], depende: [] }]);
-        savedTopicoId = (data as Topico).id;
         toast.success("Tópico criado!");
       }
       // O trigger no banco ja enfileirou o class-delta escopado neste topico
