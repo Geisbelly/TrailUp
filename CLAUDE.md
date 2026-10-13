@@ -238,6 +238,18 @@ Cada perfil carrega:
   (e deduplica contra o job do trigger, porque o escopo é idêntico) — não use
   como precedente.
 
+- **Duplicar turma, tópico e atividade são funções do banco**, cada uma numa
+  transação (`20261011_01`, `_03`, `_04`): `duplicar_classe`, `duplicar_topico`,
+  `duplicar_atividade`. O console só chama `supabase.rpc(...)`. Antes a cópia era
+  dezenas de INSERT no cliente, sem transação, e perdia colunas (anexos em
+  `conteudos.metadata`, pontuação e regras das atividades, mídia das questões, cor
+  e ordem dos cards). Todas conferem a posse **antes** de ler (`NOT EXISTS` sobre
+  `app_classes_do_professor()`, nunca `NOT IN`). **Não copiam** matrícula, progresso,
+  telemetria, personalização, nem as ligações `next`/`depende` do tópico. Os arquivos
+  no Storage também não são copiados: a cópia aponta para os mesmos caminhos.
+  Ao criar uma função de cópia nova, copie o molde de `duplicar_classe` e acrescente
+  o teste de estrutura (`api/tests/test_migration_duplicar_*.py`).
+
   Dois detalhes que não são acidentais. **Coalescência:** o trigger funde o
   evento no job `pending` da classe (travando a linha com `FOR UPDATE`) em vez
   de criar um por linha — sem isso, a reordenação de tópicos (um `UPDATE` por
