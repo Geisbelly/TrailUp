@@ -46,8 +46,6 @@ import {
   BrainCircuit,
   CheckSquare,
   GripVertical,
-  Calendar,
-  AlignLeft,
   Loader2,
   Wand2,
   Upload,
@@ -172,7 +170,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
     open, handleEditClose, handleSubmit, isSaving,
     formData, setFormData, classes, materias, editingTopic,
     contents, selectedContentId, setSelectedContentId,
-    contentForm, setContentForm, isSavingContent, handleSaveContent, handleDeleteContent, onReorderContents,
+    contentForm, setContentForm, isSavingContent, handleDeleteContent, onReorderContents,
     loadActivities, loadActivityLinks,
     activities, activityForm, setActivityForm, handleSaveActivity: handleSaveActivityProp, selectedActivityId, setSelectedActivityId,
     activityLinks, toggleActivityLink,
@@ -181,7 +179,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
     cards, cardForm, setCardForm, handleSaveCard: handleSaveCardProp, handleDeleteCard: handleDeleteCardProp
   } = props;
 
-  const { user, session } = useAuth();
+  const { user } = useAuth();
   const [isCreating, setIsCreating] = useState(false);
   const [desvinculando, setDesvinculando] = useState<number | null>(null);
   const [cardParaExcluir, setCardParaExcluir] = useState<number | null>(null);
@@ -441,7 +439,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
     if (selectedContentId && !isCreating) {
       await updateContent(selectedContentId, { metadata: { files: extraFiles } }).catch(console.error);
     }
-    const saved = await props.handleSaveContent(
+    await props.handleSaveContent(
       undefined,
       selectedContentId && !isCreating ? selectedContentId : undefined
     );
