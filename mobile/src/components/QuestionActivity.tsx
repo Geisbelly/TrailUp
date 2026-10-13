@@ -5,6 +5,7 @@ import { useMetricas } from '@/context/MetricasContext';
 import { useUsuario } from '@/context/SessaoContext';
 import { useTrilha } from '@/context/TrilhaContext';
 import { ContentBlock } from '@/interfaces/componentes_simples/IContentBlock';
+import { useDesktopWeb } from '@/hooks/useDesktopWeb';
 import { Color, FontFamily } from '@/styles/GlobalStyle';
 import { restaApenasUmaAlternativa } from '@/utils/questionRetryPolicy';
 import { normalizeContentBlock } from '@/utils/contentBlocks';
@@ -441,6 +442,8 @@ export default function QuestionActivity({
   // Modal de resultado: quem fala com o aluno aqui e o guia do perfil, entao a
   // imagem e o guardiao, nao o simbolo abstrato do perfil.
   const perfilImage = getGuardianFaceImage(perfilNome);
+  // Web em tela larga (#346, protótipo v4 04-topico): alternativas com o círculo de marcação à esquerda.
+  const desktop = useDesktopWeb();
   const profilePalette = useMemo(
     () => getProfileShellPalette(perfilNome || null),
     [perfilNome]
@@ -957,6 +960,21 @@ export default function QuestionActivity({
                 ? '#ef4444'
                 : profilePalette.accent;
 
+            if (desktop) {
+              return {
+                paddingVertical: 13,
+                paddingHorizontal: 14,
+                marginTop: 10,
+                backgroundColor: isSelected ? selectedBackground : profilePalette.surface,
+                borderRadius: 10,
+                borderWidth: 1,
+                borderColor: isSelected ? selectedBorder : profilePalette.border,
+                flexDirection: 'row' as const,
+                alignItems: 'center' as const,
+                gap: 12,
+              };
+            }
+
             return {
               padding: 12,
               marginTop: 6,
@@ -994,6 +1012,38 @@ export default function QuestionActivity({
                 size={22}
                 color={i === 0 ? '#22c55e' : '#ef4444'}
               />
+            </View>
+          ) : desktop ? (
+            // Círculo de marcação do protótipo: vazio, preenchido ao escolher e com ✓/✗ depois de confirmar.
+            <View
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: 11,
+                borderWidth: 2,
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderColor:
+                  selectedOption !== i
+                    ? profilePalette.borderStrong
+                    : statusAtual === 'certo'
+                    ? '#22c55e'
+                    : statusAtual === 'errado'
+                    ? '#ef4444'
+                    : profilePalette.accent,
+                backgroundColor:
+                  selectedOption !== i
+                    ? 'transparent'
+                    : statusAtual === 'certo'
+                    ? '#22c55e'
+                    : statusAtual === 'errado'
+                    ? '#ef4444'
+                    : profilePalette.accent,
+              }}
+            >
+              {selectedOption === i && (statusAtual === 'certo' || statusAtual === 'errado') ? (
+                <Ionicons name={statusAtual === 'certo' ? 'checkmark' : 'close'} size={14} color={profilePalette.background} />
+              ) : null}
             </View>
           ) : null}
 
@@ -1531,11 +1581,13 @@ export default function QuestionActivity({
           <View
             style={{
               width: '100%',
+              // Tela larga (#346): cartão no centro, como os outros avisos do protótipo v4.
+              maxWidth: desktop ? 420 : undefined,
               backgroundColor: profilePalette.surfaceElevated,
-              borderRadius: 16,
-              padding: 20,
+              borderRadius: desktop ? 22 : 16,
+              padding: desktop ? 26 : 20,
               borderWidth: 1,
-              borderColor: profilePalette.borderStrong,
+              borderColor: desktop ? profilePalette.accent : profilePalette.borderStrong,
             }}
           >
             <View style={{ alignItems: 'center', marginBottom: 12 }}>
@@ -1560,12 +1612,13 @@ export default function QuestionActivity({
                 fontFamily: FontFamily.interMedium,
                 fontSize: 14,
                 lineHeight: 20,
+                textAlign: desktop ? 'center' : undefined,
               }}
             >
               {modalInfo.descricao}
             </Text>
             {modalInfo.pontos ? (
-              <Text style={{ marginTop: 10, color: profilePalette.accent, fontFamily: FontFamily.interMedium }}>
+              <Text style={{ marginTop: 10, color: profilePalette.accent, fontFamily: FontFamily.interMedium, textAlign: desktop ? 'center' : undefined }}>
                 Pontos: +{modalInfo.pontos}
               </Text>
             ) : null}
@@ -1575,8 +1628,11 @@ export default function QuestionActivity({
                 marginTop: 16,
                 paddingVertical: 12,
                 backgroundColor: profilePalette.accent,
-                borderRadius: 12,
+                borderRadius: desktop ? 999 : 12,
                 alignItems: 'center',
+                alignSelf: desktop ? 'center' : undefined,
+                minWidth: desktop ? 160 : undefined,
+                paddingHorizontal: desktop ? 28 : undefined,
               }}
               accessibilityRole="button"
             >

@@ -21,7 +21,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { ActivityCompletePayload, ActivityRenderer } from "@/components/ActivityRenderer";
+import { ActivityCompletePayload, ActivityRenderer, normalizeActivityType } from "@/components/ActivityRenderer";
 import CardSemDados from "@/components/CardSemDados";
 import { ContentRenderer } from "@/components/ContentRenderer";
 import { BagEditorModal } from "@/components/bag/BagEditorModal";
@@ -941,6 +941,21 @@ export default function TrilhaConteudoScreen() {
   // Conteúdo na tela larga (protótipo v4): texto direto sobre o fundo, sem o card.
   // Atividades seguem em card.
   const leituraLarga = desktop && atualBlock?.kind === "conteudo";
+  // Atividade na tela larga: card próprio com o rótulo em linha ("ATIVIDADE — MÚLTIPLA ESCOLHA").
+  const atividadeLarga = desktop && atualBlock?.kind === "atividade";
+  const rotuloAtividade =
+    atualBlock?.kind === "atividade"
+      ? // Mesma normalização que escolhe o componente da atividade (ActivityRenderer).
+        ({
+          quiz: "Múltipla escolha",
+          questao: "Múltipla escolha",
+          true_false: "Verdadeiro ou falso",
+          fill_blank: "Completar",
+          essay: "Dissertativa",
+          video: "Vídeo",
+          texto: "Leitura",
+        } as Record<string, string>)[normalizeActivityType(atualBlock.atividade.tipo)] ?? null
+      : null;
   const numeroTopico = grafo?.nodes?.find((n) => String(n.id) === String(topicoId))?.sequence ?? null;
   const regiaoTopico = topicoId != null ? mapTheme?.countries?.[String(topicoId)]?.countryName ?? null : null;
 
@@ -1725,9 +1740,14 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
                 borderColor: profilePalette.border,
               },
               leituraLarga && styles.cardLeituraDesktop,
+              atividadeLarga && [styles.cardAtividadeDesktop, { backgroundColor: profilePalette.surface }],
             ]}
           >
-            {leituraLarga ? (
+            {atividadeLarga ? (
+              <Text style={[styles.rotuloAtividadeDesktop, { color: profilePalette.accent }]}>
+                {["Atividade", rotuloAtividade].filter(Boolean).join(" — ").toUpperCase()}
+              </Text>
+            ) : leituraLarga ? (
               <View style={styles.rotuloLeituraDesktop}>
                 <MaterialCommunityIcons name="book-open-page-variant-outline" size={15} color={profilePalette.accent} />
                 <Text style={[styles.rotuloLeituraDesktopTexto, { color: profilePalette.textMuted }]}>
