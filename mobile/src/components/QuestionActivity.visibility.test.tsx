@@ -18,6 +18,8 @@ mockModule('@/context/SessaoContext', { useUsuario: () => ({ usuario: { id: 'alu
 mockModule('@/styles/GlobalStyle', { Color: {}, FontFamily: {} });
 mockModule('@/utils/contentBlocks', { normalizeContentBlock: () => null });
 mockModule('@/utils/profileShellTheme', { getProfileShellPalette: () => ({}) });
+// A versão de tela larga (#346) fica fora deste teste.
+mockModule('@/hooks/useDesktopWeb', { useDesktopWeb: () => false });
 mockModule('@/models/QuestaoAluno', { QuestaoAluno: {} });
 mockModule('@/utils/essayValidation', { validateEssayAnswerWithAi: async () => ({}) });
 const { default: QuestionActivity } = require('./QuestionActivity');

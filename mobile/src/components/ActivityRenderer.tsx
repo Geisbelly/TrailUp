@@ -30,7 +30,7 @@ type Props = {
   reviewMode?: boolean;
 };
 
-function normalizeActivityType(value: unknown) {
+export function normalizeActivityType(value: unknown) {
   const tipo = String(value ?? '').trim().toLowerCase();
 
   if (!tipo) return "quiz";

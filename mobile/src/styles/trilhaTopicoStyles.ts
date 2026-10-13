@@ -35,6 +35,20 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 0,
     paddingTop: 0,
   },
+  cardAtividadeDesktop: {
+    marginHorizontal: 0,
+    marginTop: 24,
+    padding: 22,
+    borderRadius: 14,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  rotuloAtividadeDesktop: {
+    fontFamily: FontFamily.interMedium,
+    fontSize: 11,
+    letterSpacing: 0.9,
+    marginBottom: 8,
+  },
   rotuloLeituraDesktop: {
     flexDirection: "row",
     alignItems: "center",
