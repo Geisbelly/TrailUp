@@ -28,6 +28,8 @@ import { HallBackground, OrnamentDivider } from "@/components/HallTheme";
 import { IABattleHeaderChip } from "@/components/ia/IABattleHeaderChip";
 import { IAHeaderTimer } from "@/components/ia/IAHeaderTimer";
 import { IAMentorPanel } from "@/components/ia/IAMentorPanel";
+import { CabecalhoTopicoDesktop, type EstadoBlocoTopico } from "@/components/web/CabecalhoTopicoDesktop";
+import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { LoadingState } from "@/components/LoadingState";
 import { TopicoIntroSummary } from "@/components/TopicoIntroSummary";
 import {
@@ -178,7 +180,11 @@ export default function TrilhaConteudoScreen() {
     personalizedTopics,
     ensureTopicoPersonalizado,
     perfil,
+    grafo,
+    mapTheme,
   } = useTrilha();
+  // Web em tela larga (#346, protótipo v4 04-topico): cabeçalho próprio e coluna de leitura.
+  const desktop = useDesktopWeb();
 
   const { setLoading } = useLoading();
   const { usuario } = useUsuario();
@@ -854,14 +860,15 @@ export default function TrilhaConteudoScreen() {
     showDialog,
   });
 
-  useEffect(() => {
+  // Cronômetro e guia: no celular ficam no cabeçalho de navegação; na tela larga,
+  // no CabecalhoTopicoDesktop.
+  const renderAcoesCabecalho = useCallback(() => {
     const titulo = String(topico?.nome ?? "Detalhes");
     const totalBlocos = progressoVisual.total;
     const concluidos = progressoVisual.concluidos;
     const capabilities = getBrainHexProfileCapabilities(perfil);
 
-    navigation.setOptions({
-      headerRight: () => (
+    return (
         <View style={styles.headerRightActions}>
           <View ref={timerGuideTargetRef} collapsable={false}>
             <IAHeaderTimer
@@ -890,15 +897,13 @@ export default function TrilhaConteudoScreen() {
             targetRefs={guideTargetRefs}
           />
         </View>
-      ),
-    });
+    );
   }, [
     currentOverlayItemKey,
     currentOverlayTimerFeature,
     guideTargetRefs,
     handleOverlayTimerTimeout,
     isOverlayTimerActive,
-    navigation,
     perfil,
     personalizedTopic,
     progressoVisual.concluidos,
@@ -907,6 +912,26 @@ export default function TrilhaConteudoScreen() {
     topicoId,
     usuario?.perfis,
   ]);
+
+  useEffect(() => {
+    navigation.setOptions({ headerRight: renderAcoesCabecalho });
+  }, [navigation, renderAcoesCabecalho]);
+
+  // Estado de cada bloco para os pontos do cabeçalho da tela larga.
+  const estadosBlocos = useMemo<EstadoBlocoTopico[]>(
+    () =>
+      displayedBlocks.map((bloco, i) => {
+        if (i === index) return "atual";
+        const feito =
+          bloco.kind === "conteudo"
+            ? isConteudoConcluido(bloco.conteudo, conteudosVistosLocal)
+            : isAtividadeConcluida(bloco.atividade, atividadesResolvidasLocal);
+        return feito ? "feito" : "pendente";
+      }),
+    [atividadesResolvidasLocal, conteudosVistosLocal, displayedBlocks, index]
+  );
+  const numeroTopico = grafo?.nodes?.find((n) => String(n.id) === String(topicoId))?.sequence ?? null;
+  const regiaoTopico = topicoId != null ? mapTheme?.countries?.[String(topicoId)]?.countryName ?? null : null;
 
   const blocoLabel = atualBlock
     ? atualBlock.kind === "conteudo"
@@ -1568,6 +1593,20 @@ export default function TrilhaConteudoScreen() {
         <HallBackground palette={profilePalette} />
       </View>
 
+      {desktop ? (
+        <CabecalhoTopicoDesktop
+          palette={profilePalette}
+          regiao={regiaoTopico}
+          numero={numeroTopico}
+          titulo={String(topico.nome ?? "Tópico")}
+          blocos={estadosBlocos}
+          atual={!mostrarResumo && atualBlock ? index + 1 : 0}
+          aviso={personalizacaoCarregando ? "Atualizando conteúdo personalizado..." : null}
+          acoes={renderAcoesCabecalho()}
+          onVoltar={() => router.push("/(tabs)")}
+        />
+      ) : null}
+
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
@@ -1581,9 +1620,11 @@ export default function TrilhaConteudoScreen() {
           // pra preencher a tela toda. 56 ainda da folga suficiente pro
           // avatar flutuante do mentor (IAMentorPanel) sem sobrar espaco.
           { paddingBottom: 56 },
+          desktop && styles.colunaLeituraDesktop,
         ]}
       >
-        <View style={styles.header}>
+        {/* Na tela larga o progresso fica nos pontos do cabeçalho. */}
+        <View style={[styles.header, desktop && { display: "none" }]}>
           <View ref={progressGuideTargetRef} collapsable={false} style={styles.headerTopMeta}>
             {progressoPercurso.total > 0 ? (
               <>
@@ -1779,15 +1820,17 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
             paddingTop: 12,
             paddingBottom: 8,
           },
+          desktop && styles.footerDesktop,
         ]}
       >
-        <View style={styles.footerRow}>
+        <View style={[styles.footerRow, desktop && styles.footerRowDesktop]}>
           {index === -1 ? (
             <>
               <Pressable
                 hitSlop={12}
                 style={[
                   styles.button,
+                  desktop && styles.botaoPrincipalDesktop,
                   {
                     backgroundColor: profilePalette.accent,
                     borderColor: profilePalette.borderStrong,
@@ -1824,6 +1867,7 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
                   hitSlop={12}
                   style={[
                     styles.secondaryButton,
+                  desktop && styles.botaoSecundarioDesktop,
                     {
                       backgroundColor: profilePalette.surfaceElevated,
                       borderColor: profilePalette.border,
@@ -1848,6 +1892,7 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
                 hitSlop={12}
                 style={[
                   styles.secondaryButton,
+                  desktop && styles.botaoSecundarioDesktop,
                   {
                     backgroundColor: profilePalette.surfaceElevated,
                     borderColor: profilePalette.border,
@@ -1866,6 +1911,7 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
                 hitSlop={12}
                 style={[
                   styles.button,
+                  desktop && styles.botaoPrincipalDesktop,
                   {
                     backgroundColor: profilePalette.accent,
                     borderColor: profilePalette.borderStrong,
@@ -1926,7 +1972,7 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
         <View
           ref={battleGuideTargetRef}
           collapsable={false}
-          style={[styles.floatingBattleWrap, { pointerEvents: "box-none" }]}
+          style={[styles.floatingBattleWrap, desktop && styles.floatingBattleWrapDesktop, { pointerEvents: "box-none" }]}
         >
           <IABattleHeaderChip
             topicoId={topicoId}

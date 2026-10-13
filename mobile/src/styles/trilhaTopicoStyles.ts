@@ -12,6 +12,44 @@ export const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+  // Web em tela larga (#346, protótipo v4 04-topico): coluna de leitura centralizada,
+  // rodapé sem borda e botões de largura fixa no centro.
+  colunaLeituraDesktop: {
+    width: "100%",
+    maxWidth: 772,
+    alignSelf: "center",
+    paddingTop: 20,
+  },
+  // Abaixo do cabeçalho da tela larga (68 px), sem cobrir o cronômetro e o guia.
+  floatingBattleWrapDesktop: {
+    top: 80,
+    right: 24,
+  },
+  footerDesktop: {
+    borderTopWidth: 0,
+    backgroundColor: "transparent",
+    paddingBottom: 20,
+  },
+  footerRowDesktop: {
+    justifyContent: "center",
+    gap: 12,
+  },
+  botaoPrincipalDesktop: {
+    // `flex: 0` vira `0 1 0%` no react-native-web e anula a largura.
+    flexGrow: 0,
+    flexBasis: "auto",
+    width: 400,
+    minHeight: 52,
+    borderRadius: 10,
+  },
+  botaoSecundarioDesktop: {
+    // `flex: 0` vira `0 1 0%` no react-native-web e anula a largura.
+    flexGrow: 0,
+    flexBasis: "auto",
+    width: 160,
+    minHeight: 52,
+    borderRadius: 10,
+  },
   header: {
     paddingHorizontal: 16,
     // 60 aqui vinha de quando a tela nao tinha cabecalho de navegacao. Hoje a
