@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState, useCallback } from "react";
 import type { Topico } from "./types";
+import { centralizar, enquadrar } from "./mapa";
 
 type ConnectorType = "next" | "depende";
 
@@ -110,6 +111,29 @@ export function useTopicGraph(
     setZoom(1);
     setCanvasOffset({ x: 0, y: 0 });
   }, []);
+
+  const janelaDoCanvas = () => {
+    const rect = canvasRef.current?.getBoundingClientRect();
+    return rect ? { largura: rect.width, altura: rect.height } : null;
+  };
+
+  /** "Ajustar à tela": todos os cartões da turma visíveis de uma vez. */
+  const fitToScreen = useCallback((ids: number[]) => {
+    const janela = janelaDoCanvas();
+    if (!janela) return;
+    const pontos = ids.map((id) => positions[id]).filter(Boolean);
+    const vista = enquadrar(pontos, janela, { largura: NODE_WIDTH, altura: NODE_HEIGHT });
+    setZoom(vista.zoom);
+    setCanvasOffset(vista.offset);
+  }, [positions]);
+
+  /** "Centralizar": mantém o zoom, leva o conjunto ao meio da janela. */
+  const centerCanvas = useCallback((ids: number[]) => {
+    const janela = janelaDoCanvas();
+    if (!janela) return;
+    const pontos = ids.map((id) => positions[id]).filter(Boolean);
+    setCanvasOffset(centralizar(pontos, zoom, janela, { largura: NODE_WIDTH, altura: NODE_HEIGHT }));
+  }, [positions, zoom]);
 
   // ── Wheel zoom ───────────────────────────────────────────────────────────
   const handleCanvasWheel = useCallback((e: React.WheelEvent) => {
@@ -257,6 +281,8 @@ export function useTopicGraph(
     zoomIn,
     zoomOut,
     resetView,
+    fitToScreen,
+    centerCanvas,
     applyZoom,
     handleCanvasWheel,
     selectedEdge,

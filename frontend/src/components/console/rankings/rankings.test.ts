@@ -1,0 +1,37 @@
+import { describe, expect, it } from "vitest";
+import { criterioValido, formatarPontos, perfisDominantes, podio, rotuloDoCriterio } from "./rankings";
+
+const p = (n: number) => ({ aluno_id: `a${n}`, aluno_nome: `Aluno ${n}`, posicao: n, pontuacao: n * 10 });
+
+describe("podio", () => {
+  it("ordena visualmente 2º, 1º, 3º", () => {
+    expect(podio([p(1), p(2), p(3), p(4)]).map((x) => x.aluno?.aluno_id)).toEqual(["a2", "a1", "a3"]);
+  });
+  it("mantém a coluna quando faltam alunos", () => {
+    const r = podio([p(1)]);
+    expect(r.map((x) => x.lugar)).toEqual([2, 1, 3]);
+    expect(r[0].aluno).toBeNull();
+  });
+});
+
+describe("critério", () => {
+  it("desconhecido vira pontuação", () => expect(criterioValido("xyz")).toBe("pontuacao"));
+  it("rótulo em minúsculas", () => expect(rotuloDoCriterio("tempo")).toBe("tempo"));
+});
+
+describe("perfisDominantes", () => {
+  it("escolhe a maior afinidade e ignora perfil desconhecido", () => {
+    const m = perfisDominantes([
+      { aluno_id: "a", afinidade: 30, perfil: { nome: "Seeker" } },
+      { aluno_id: "a", afinidade: 70, perfil: { nome: "Achiever" } },
+      { aluno_id: "b", afinidade: 90, perfil: { nome: "Outro" } },
+    ]);
+    expect(m.get("a")).toBe("achiever");
+    expect(m.has("b")).toBe(false);
+  });
+});
+
+describe("formatarPontos", () => {
+  it("nulo vira traço", () => expect(formatarPontos(null)).toBe("—"));
+  it("separa milhar", () => expect(formatarPontos(2940)).toBe("2.940"));
+});

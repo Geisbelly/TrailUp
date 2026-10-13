@@ -562,3 +562,39 @@ export async function insertFontesPersonalizacao(
   const { error } = await supabase.from("fontes_personalizacao").insert(fontes);
   if (error) throw error;
 }
+
+/** Copia a atividade (com questões) e vincula a cópia ao conteúdo — numa transação, no banco (duplicar_atividade). */
+export async function duplicateActivity(atividadeId: number, conteudoId: number): Promise<number> {
+  const { data, error } = await supabase.rpc("duplicar_atividade" as never, {
+    p_atividade_id: atividadeId,
+    p_conteudo_id: conteudoId,
+  } as never);
+  if (error) throw error;
+  return data as unknown as number;
+}
+
+/** Duplica um card (mesmo conteúdo e origem, cor e ordem preservadas, título com "(cópia)"). Uma linha só: não precisa de transação. */
+export async function duplicateCard(cardId: number): Promise<number> {
+  const { data, error } = await supabase
+    .from("cards" as never)
+    .select("conteudo_id, conteudo_origem_id, titulo, descricao, imagem_url, cor, ordem")
+    .eq("id", cardId)
+    .single();
+  if (error) throw error;
+  const origem = data as unknown as {
+    conteudo_id: number | null;
+    conteudo_origem_id: number | null;
+    titulo: string | null;
+    descricao: string | null;
+    imagem_url: string | null;
+    cor: string | null;
+    ordem: number | null;
+  };
+  const { data: novo, error: erroInsert } = await supabase
+    .from("cards" as never)
+    .insert({ ...origem, titulo: `${(origem.titulo ?? "Card").replace(/\s*\(cópia\)$/, "")} (cópia)` } as never)
+    .select("id")
+    .single();
+  if (erroInsert) throw erroInsert;
+  return (novo as unknown as { id: number }).id;
+}

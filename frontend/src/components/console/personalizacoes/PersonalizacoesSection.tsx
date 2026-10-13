@@ -5,7 +5,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, Layers, Palette, UserSearch, Users, FileText, Music, FileImage, NotebookPen } from "lucide-react";
+import { Loader2, Layers, Palette, UserSearch, Users, FileText, Music, FileImage, NotebookPen, RefreshCw, Sparkles, AlertTriangle, Check } from "lucide-react";
+import { COR_DO_PERFIL, NOME_DO_PERFIL } from "../dashboard/perfilCores";
+import type { BrainHexProfileKey } from "@/features/signup/brainhex";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -40,11 +42,22 @@ import {
   temGeracaoAtiva,
 } from "./generationStatus";
 import { descreverErroDatado } from "./erroDatado";
+import { toast } from "sonner";
+import { enqueueManualRetryJob } from "../trilha/personalizacaoJobsApi";
+import { formatarAtualizadoHa } from "../dashboard/atualizadoHa";
+import { iniciais } from "../meusdados/conta";
+import { fetchRegistrosPorAluno } from "./statusPorAlunoApi";
+import {
+  filtrarPorNome,
+  montarStatusPorAluno,
+  type LinhaPersonalizacaoAluno,
+  type LinhaStatusAluno,
+} from "./statusPorAluno";
 
 type ClasseRow = { id: number; descricao: string | null };
 type TopicoRow = { id: number; classe_id: number; nome: string | null; ordem: number | null };
 type ConteudoRow = { id: number; topico_id: number; titulo: string | null; ordem: number | null };
-type AlunoRow = { id: string; nome: string | null; email: string | null; perfil_dominante: string };
+type AlunoRow = { id: string; nome: string | null; email: string | null; perfil_dominante: string; afinidade?: number };
 
 
 const BRAINHEX_PROFILE_KEYS = [
@@ -67,6 +80,23 @@ const MATERIAL_TIPOS: Array<{ key: MaterialTipo; label: string; icon: typeof Fil
 ];
 
 const POR_PERFIL_POLL_INTERVAL_MS = 4_000;
+
+const ROTULO = "text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground";
+const ABA = "rounded-full px-4 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground";
+
+function corDoPerfil(chave: string): string {
+  return COR_DO_PERFIL[chave.toLowerCase() as BrainHexProfileKey]?.marca ?? "hsl(var(--muted-foreground))";
+}
+
+function EstadoVazio({ titulo, texto }: { titulo: string; texto: string }) {
+  return (
+    <div className="flex flex-col items-center rounded-[20px] border bg-card px-6 py-14 text-center">
+      <Sparkles className="h-11 w-11 text-muted-foreground" strokeWidth={1.4} aria-hidden="true" />
+      <p className="mt-4 text-lg font-bold">{titulo}</p>
+      <p className="mt-2 max-w-md text-[13.5px] text-muted-foreground">{texto}</p>
+    </div>
+  );
+}
 
 function getMaterial(materiais: Record<string, unknown> | null | undefined, tipo: string): Record<string, unknown> | null {
   if (!materiais || typeof materiais !== "object") return null;
@@ -150,6 +180,13 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
     const { data } = await supabase.auth.getSession();
     return String(data.session?.access_token ?? "").trim();
   }, []);
+
+  const [carregadoEm, setCarregadoEm] = useState<Date | null>(null);
+  const [agora, setAgora] = useState(() => new Date());
+  const [registrosAluno, setRegistrosAluno] = useState<LinhaPersonalizacaoAluno[]>([]);
+  const [registrosAlunoLoading, setRegistrosAlunoLoading] = useState(false);
+  const [buscaAluno, setBuscaAluno] = useState("");
+  const [reprocessando, setReprocessando] = useState(false);
 
   const [perfilParaGerarTudo, setPerfilParaGerarTudo] = useState<string>(BRAINHEX_PROFILE_KEYS[0]);
   const [gerarTudoJob, setGerarTudoJob] = useState<PersonalizacaoJobResumo | null>(null);
@@ -241,6 +278,7 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
           nome: a.nome,
           email: a.email,
           perfil_dominante: (dominanteMap.get(a.id)?.nome || "mastermind").toLowerCase(),
+          afinidade: dominanteMap.get(a.id)?.afinidade,
         })
       );
       setAlunos(alunoRows);
@@ -376,6 +414,7 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
         selectionKey === porPerfilSelectionKey.current
       ) {
         setPorPerfil(data);
+        setCarregadoEm(new Date());
       }
     } catch (error) {
       if (
@@ -533,6 +572,53 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [materialRouteParams?.classeId, materialRouteParams?.topicoId, materialRouteParams?.conteudoId]);
 
+  // "Atualizado há N min" envelhece sozinho.
+  useEffect(() => {
+    const t = window.setInterval(() => setAgora(new Date()), 30_000);
+    return () => window.clearInterval(t);
+  }, []);
+
+  // Status da personalização de cada aluno no conteúdo aberto (leitura direta do banco).
+  useEffect(() => {
+    const cid = Number(classeId);
+    const coid = Number(conteudoId);
+    if (!cid || !coid) {
+      setRegistrosAluno([]);
+      return;
+    }
+    let ativo = true;
+    setRegistrosAlunoLoading(true);
+    fetchRegistrosPorAluno(cid, coid)
+      .then((r) => ativo && setRegistrosAluno(r))
+      .catch(() => ativo && setRegistrosAluno([]))
+      .finally(() => ativo && setRegistrosAlunoLoading(false));
+    return () => {
+      ativo = false;
+    };
+  }, [classeId, conteudoId, porPerfil]);
+
+  const statusAlunos = useMemo(() => montarStatusPorAluno(alunos, registrosAluno, agora), [alunos, registrosAluno, agora]);
+
+  const handleReprocessarFalhas = useCallback(async () => {
+    const token = session?.access_token || (await resolveToken());
+    if (!token || !classeId || reprocessando) return;
+    setReprocessando(true);
+    try {
+      await enqueueManualRetryJob(token, {
+        classe_id: Number(classeId),
+        topico_ids: topicoId ? [Number(topicoId)] : undefined,
+        conteudo_ids: conteudoId ? [Number(conteudoId)] : undefined,
+        reason: "retry_manual_console",
+      });
+      toast.success("Nova tentativa enfileirada para os perfis com falha.");
+      void loadPorPerfil({ silent: true, queueIfBusy: true });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Falha ao reprocessar.");
+    } finally {
+      setReprocessando(false);
+    }
+  }, [session, resolveToken, classeId, topicoId, conteudoId, reprocessando, loadPorPerfil]);
+
   const alunoSelecionado = useMemo(() => alunos.find((a) => a.id === alunoId) ?? null, [alunos, alunoId]);
   const conteudoSelecionado = useMemo(
     () => conteudos.find((item) => String(item.id) === conteudoId) ?? null,
@@ -585,19 +671,27 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold">Personalizações</h2>
-        <p className="text-muted-foreground">
-          Compare como o material fica para cada perfil BrainHex e visualize a personalização efetiva por aluno.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-[32px] font-bold uppercase leading-tight tracking-wide">Personalizações</h2>
+          <p className="mt-2 text-[14.5px] text-muted-foreground">
+            Compare como o material fica para cada perfil BrainHex e visualize a personalização efetiva por aluno.
+          </p>
+        </div>
+        {carregadoEm && (
+          <span role="status" className="flex items-center gap-2 rounded-full border bg-card px-3.5 py-1.5 text-xs text-muted-foreground">
+            <span aria-hidden="true" className={`h-2 w-2 rounded-full bg-success ${geracaoPorPerfilAtiva ? "animate-pulse" : ""}`} />
+            {geracaoPorPerfilAtiva ? "Atualizando automaticamente" : formatarAtualizadoHa(carregadoEm, agora)}
+          </span>
+        )}
       </div>
 
-      <Card>
+      <Card className="rounded-[20px]">
         <CardContent className="console-filters flex flex-wrap items-end gap-4 pt-6">
           <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground">Classe</p>
+            <p className={ROTULO}>Classe</p>
             <Select value={classeId} onValueChange={handleClasseChange}>
-              <SelectTrigger className="w-56">
+              <SelectTrigger className="w-56 rounded-[14px]">
                 <SelectValue placeholder="Selecione a classe" />
               </SelectTrigger>
               <SelectContent>
@@ -610,9 +704,9 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
             </Select>
           </div>
           <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground">Tópico</p>
+            <p className={ROTULO}>Tópico</p>
             <Select value={topicoId} onValueChange={handleTopicoChange} disabled={topicos.length === 0}>
-              <SelectTrigger className="w-56">
+              <SelectTrigger className="w-56 rounded-[14px]">
                 <SelectValue placeholder="Selecione o tópico" />
               </SelectTrigger>
               <SelectContent>
@@ -625,7 +719,7 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
             </Select>
           </div>
           <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground">Conteúdo</p>
+            <p className={ROTULO}>Conteúdo</p>
             <Select
               value={conteudoId}
               onValueChange={(value) => {
@@ -637,7 +731,7 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
               }}
               disabled={conteudosLoading || conteudos.length === 0}
             >
-              <SelectTrigger className="w-64">
+              <SelectTrigger className="w-64 rounded-[14px]">
                 <SelectValue
                   placeholder={conteudosLoading ? "Carregando conteúdos..." : "Nenhum conteúdo neste tópico"}
                 />
@@ -654,32 +748,34 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
           </div>
           <Button
             variant="outline"
-            size="sm"
+            className="rounded-full"
             onClick={() => void loadPorPerfil()}
             disabled={porPerfilLoading || conteudosLoading || Boolean(conteudosError)}
           >
-            {porPerfilLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Atualizar"}
+            {porPerfilLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><RefreshCw className="mr-2 h-3.5 w-3.5" aria-hidden="true" />Atualizar</>}
           </Button>
 
           <div className="flex flex-wrap items-end gap-2 sm:border-l sm:pl-4 sm:ml-2">
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">Gerar tudo para o perfil</p>
+              <p className={ROTULO}>Gerar tudo para o perfil</p>
               <Select value={perfilParaGerarTudo} onValueChange={setPerfilParaGerarTudo}>
-                <SelectTrigger className="w-40">
+                <SelectTrigger className="w-44 rounded-[14px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {BRAINHEX_PROFILE_KEYS.map((perfil) => (
                     <SelectItem key={perfil} value={perfil}>
-                      {perfil}
+                      <span className="flex items-center gap-2">
+                        <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full" style={{ background: COR_DO_PERFIL[perfil].marca }} />
+                        {NOME_DO_PERFIL[perfil]}
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <Button
-              variant="outline"
-              size="sm"
+              className="rounded-full font-bold"
               onClick={() => void handleGerarTudo()}
               disabled={!classeId || gerarTudoAtivo}
             >
@@ -687,7 +783,7 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
                 ? `Gerando ${gerarTudoJob!.processed_targets}/${gerarTudoJob!.total_targets}${
                     gerarTudoJob!.error_count > 0 ? ` (${gerarTudoJob!.error_count} erro(s))` : ""
                   }`
-                : "Gerar tudo"}
+                : <><Sparkles className="mr-2 h-3.5 w-3.5" aria-hidden="true" />Gerar tudo</>}
             </Button>
           </div>
           {gerarTudoError && <p className="w-full text-xs text-destructive">{gerarTudoError}</p>}
@@ -695,20 +791,20 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
       </Card>
 
       <Tabs defaultValue="por-perfil" className="space-y-4">
-        <TabsList className="flex h-auto w-fit max-w-full flex-wrap justify-start gap-1">
-          <TabsTrigger value="por-perfil">
+        <TabsList className="flex h-auto w-fit max-w-full flex-wrap justify-start gap-1 rounded-full border bg-card p-1.5">
+          <TabsTrigger value="por-perfil" className={ABA}>
             <Layers className="h-4 w-4 mr-2" />
             Por perfil
           </TabsTrigger>
-          <TabsTrigger value="estrutura">
+          <TabsTrigger value="estrutura" className={ABA}>
             <Palette className="h-4 w-4 mr-2" />
             Estrutura e paleta
           </TabsTrigger>
-          <TabsTrigger value="por-aluno">
+          <TabsTrigger value="por-aluno" className={ABA}>
             <UserSearch className="h-4 w-4 mr-2" />
             Por aluno
           </TabsTrigger>
-          <TabsTrigger value="grupo">
+          <TabsTrigger value="grupo" className={ABA}>
             <Users className="h-4 w-4 mr-2" />
             Turma
           </TabsTrigger>
@@ -727,11 +823,10 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
               </CardContent>
             </Card>
           ) : !porPerfil ? (
-            <Card>
-              <CardContent className="pt-6 text-sm text-muted-foreground">
-                Selecione uma classe e um tópico para comparar os perfis.
-              </CardContent>
-            </Card>
+            <EstadoVazio
+              titulo="Escolha uma classe e um tópico"
+              texto="O painel mostra o andamento da geração por perfil, por aluno e no agregado da turma. Selecione acima para começar."
+            />
           ) : (
             <>
               {porPerfilError && (
@@ -748,20 +843,36 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
                   (conteudoSelecionado ? `Conteúdo ${conteudoSelecionado.id}` : "Conteúdo selecionado")
                 }
                 atualizando={geracaoPorPerfilAtiva}
+                onReprocessar={() => void handleReprocessarFalhas()}
+                reprocessando={reprocessando}
               />
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {porPerfil.perfis.map((item) => (
-                  <PerfilMaterialCard
-                    key={item.perfil}
-                    item={item}
-                    classeId={Number(classeId)}
-                    topicoId={Number(topicoId)}
-                    conteudoId={conteudoId ? Number(conteudoId) : undefined}
-                    resolveToken={resolveToken}
-                    onRegenerated={() => void loadPorPerfil({ silent: true, queueIfBusy: true })}
-                  />
-                ))}
-              </div>
+              {porPerfil.perfis.some(
+                (p) => p.tem_personalizacao || MATERIAL_TIPOS.some(({ key }) => getMaterial(p.materiais, key)),
+              ) ? (
+                <PerfisTabela
+                  perfis={porPerfil.perfis}
+                  classeId={Number(classeId)}
+                  topicoId={Number(topicoId)}
+                  conteudoId={conteudoId ? Number(conteudoId) : undefined}
+                  conteudoTitulo={porPerfil.conteudo_titulo || conteudoSelecionado?.titulo || "Conteúdo selecionado"}
+                  resolveToken={resolveToken}
+                  onRegenerated={() => void loadPorPerfil({ silent: true, queueIfBusy: true })}
+                />
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  {porPerfil.perfis.map((item) => (
+                    <PerfilMaterialCard
+                      key={item.perfil}
+                      item={item}
+                      classeId={Number(classeId)}
+                      topicoId={Number(topicoId)}
+                      conteudoId={conteudoId ? Number(conteudoId) : undefined}
+                      resolveToken={resolveToken}
+                      onRegenerated={() => void loadPorPerfil({ silent: true, queueIfBusy: true })}
+                    />
+                  ))}
+                </div>
+              )}
             </>
           )}
         </TabsContent>
@@ -769,17 +880,49 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
         {/* Visao 2: plano (estrutura de apresentacao) + design tokens */}
         <TabsContent value="estrutura" className="space-y-4">
           {!porPerfil ? (
-            <Card>
-              <CardContent className="pt-6 text-sm text-muted-foreground">
-                Selecione uma classe, um tópico e um conteúdo para ver a estrutura de apresentação por perfil.
-              </CardContent>
-            </Card>
+            <EstadoVazio
+              titulo="Escolha uma classe, um tópico e um conteúdo"
+              texto="Aqui aparecem o tom, o estilo e a paleta que cada perfil recebe."
+            />
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {porPerfil.perfis.map((item) => (
-                <PerfilEstruturaCard key={item.perfil} item={item} />
-              ))}
-            </div>
+            <Card className="overflow-hidden rounded-[20px]">
+              <div className="flex flex-wrap items-center gap-3 px-6 pb-3 pt-5">
+                <h3 className="text-[17px] font-bold">Estrutura e paleta por perfil</h3>
+                <span className="ml-auto text-xs text-muted-foreground">{porPerfil.conteudo_titulo || conteudoSelecionado?.titulo}</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[720px] text-left">
+                  <thead>
+                    <tr className="bg-muted text-[10.5px] uppercase tracking-[0.08em] text-muted-foreground">
+                      {["Perfil", "Tom", "Estilo", "Nível", "Prioritário", "Paleta"].map((c, i) => (
+                        <th key={c} className={`py-[11px] font-semibold ${i === 0 ? "px-6" : ""}`}>
+                          {c}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {porPerfil.perfis.map((item) => (
+                      <tr key={item.perfil} className="border-t align-middle">
+                        <td className="px-6 py-3.5">
+                          <span className="flex items-center gap-2.5 text-sm font-bold capitalize">
+                            <span aria-hidden="true" className="h-3 w-3 rounded-full" style={{ background: item.cor || corDoPerfil(item.perfil) }} />
+                            {item.perfil_label}
+                          </span>
+                        </td>
+                        <td className="py-3.5 pr-3 text-[12.5px]">{planoText(item.plano, "tom") || "—"}</td>
+                        <td className="py-3.5 pr-3 text-[12.5px]">{planoText(item.plano, "estilo") || "—"}</td>
+                        <td className="py-3.5 pr-3 text-[12.5px]">{planoText(item.plano, "nivel") || "—"}</td>
+                        <td className="py-3.5 pr-3 text-[12.5px] capitalize">{item.formato_prioritario || "—"}</td>
+                        <td className="py-3.5 pr-6">
+                          <PaletaPreview item={item} compacta />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
           )}
         </TabsContent>
 
@@ -788,9 +931,9 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
           <Card>
             <CardContent className="flex flex-wrap items-end gap-4 pt-6">
               <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground">Aluno</p>
+                <p className={ROTULO}>Aluno</p>
                 <Select value={alunoId} onValueChange={setAlunoId} disabled={alunos.length === 0}>
-                  <SelectTrigger className="w-72">
+                  <SelectTrigger className="w-72 rounded-[14px]">
                     <SelectValue placeholder="Selecione o aluno" />
                   </SelectTrigger>
                   <SelectContent>
@@ -804,6 +947,17 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
               </div>
             </CardContent>
           </Card>
+
+          <ListaAlunos
+            linhas={filtrarPorNome(statusAlunos, buscaAluno)}
+            total={statusAlunos.length}
+            busca={buscaAluno}
+            onBusca={setBuscaAluno}
+            carregando={registrosAlunoLoading}
+            semConteudo={!conteudoId}
+            selecionado={alunoId}
+            onSelecionar={setAlunoId}
+          />
 
           {contextoError ? (
             <Card>
@@ -828,6 +982,23 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
                 contexto={contextoAluno}
                 perfilDoAluno={perfilDoAluno}
                 conteudoId={conteudoSelecionado?.id}
+                onAbrirDashboard={() =>
+                  navigate(`${consolePathForView("dashboard")}?turma=${classeId}&aluno=${alunoSelecionado.id}`)
+                }
+                onVerMaterial={
+                  conteudoSelecionado
+                    ? () =>
+                        navigate(
+                          buildMaterialPath({
+                            classeId,
+                            topicoId,
+                            conteudoId: String(conteudoSelecionado.id),
+                            perfil: alunoSelecionado.perfil_dominante,
+                            aba: "markdown",
+                          })
+                        )
+                    : undefined
+                }
               />
               <SugestaoMaterialCard
                 alunoId={alunoSelecionado.id}
@@ -916,12 +1087,24 @@ function GrupoResumo({ resumo }: { resumo: ClassePerfilSummaryResponse }) {
             perfis.map(([chave, item]) => (
               <div key={chave} className="space-y-1">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium capitalize">{item.perfil}</span>
+                  <span className="flex items-center gap-2 font-medium capitalize">
+                    <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full" style={{ background: corDoPerfil(chave) }} />
+                    {item.perfil}
+                  </span>
                   <span className="text-muted-foreground">
                     {item.quantidade} aluno(s) · {item.percentual.toFixed(1)}%
                   </span>
                 </div>
-                <Progress value={item.percentual} />
+                <div
+                  role="progressbar"
+                  aria-valuenow={Math.round(item.percentual)}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-label={`${item.perfil}: ${item.percentual.toFixed(1)}%`}
+                  className="h-2 overflow-hidden rounded-full bg-secondary"
+                >
+                  <div className="h-full rounded-full" style={{ width: `${Math.min(100, item.percentual)}%`, background: corDoPerfil(chave) }} />
+                </div>
               </div>
             ))
           )}
@@ -935,10 +1118,14 @@ function ConteudoGeracaoResumo({
   response,
   tituloFallback,
   atualizando,
+  onReprocessar,
+  reprocessando,
 }: {
   response: PersonalizacaoPorPerfilResponse;
   tituloFallback: string;
   atualizando: boolean;
+  onReprocessar: () => void;
+  reprocessando: boolean;
 }) {
   const calculado = resumirGeracaoConteudo(response.perfis);
   const recebido =
@@ -963,59 +1150,69 @@ function ConteudoGeracaoResumo({
   );
   const atualizadoEm = recebido?.updated_at;
 
+  const comFalha = response.perfis.filter((p) => statusGeracaoDoPerfil(p) === "falhou");
+
   return (
-    <Card aria-labelledby="resumo-geracao-conteudo">
-      <CardHeader className="pb-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="space-y-1">
-            <CardTitle id="resumo-geracao-conteudo" className="text-base">
-              {response.conteudo_titulo || tituloFallback}
-            </CardTitle>
-            <CardDescription>Conteúdo ampliado e gerado por blocos</CardDescription>
+    <div className="space-y-3" role="region" aria-labelledby="resumo-geracao-conteudo">
+      {comFalha.length > 0 && (
+        <div role="alert" className="flex items-start gap-3.5 rounded-2xl border border-destructive/50 bg-destructive/15 px-5 py-4">
+          <span aria-hidden="true" className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-destructive text-destructive-foreground">
+            <AlertTriangle className="h-4 w-4" />
+          </span>
+          <div>
+            <p className="text-sm font-bold">
+              {comFalha.length === 1 ? "1 perfil precisa da sua atenção" : `${comFalha.length} perfis precisam da sua atenção`}
+            </p>
+            <p className="mt-1 text-[12.5px] text-muted-foreground">
+              {comFalha.map((p) => p.perfil_label).join(", ")} {comFalha.length === 1 ? "falhou" : "falharam"} na geração. Os demais perfis seguem normalmente.
+            </p>
           </div>
-          {atualizando && (
-            <Badge
-              variant="secondary"
-              className="gap-1 bg-blue-100 text-blue-800 hover:bg-blue-100 dark:bg-blue-950 dark:text-blue-200"
-              role="status"
-              aria-live="polite"
-            >
-              <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
-              Atualizando automaticamente
-            </Badge>
+          <Button variant="outline" size="sm" className="ml-auto flex-none rounded-full border-destructive/50" onClick={onReprocessar} disabled={reprocessando || atualizando}>
+            {reprocessando ? "Enfileirando…" : "Reprocessar falhas"}
+          </Button>
+        </div>
+      )}
+      <Card className="rounded-[20px]">
+        <CardContent className="space-y-3 pt-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 id="resumo-geracao-conteudo" className="text-lg font-bold">
+                {response.conteudo_titulo || tituloFallback}
+              </h3>
+              <p className="mt-1 text-xs text-muted-foreground">Conteúdo ampliado e gerado por blocos</p>
+            </div>
+            {atualizando && (
+              <Badge variant="secondary" className="gap-1" role="status" aria-live="polite">
+                <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                Atualizando automaticamente
+              </Badge>
+            )}
+          </div>
+          <div className="flex items-center justify-between gap-4 text-sm">
+            <span className="font-medium">Progresso dos perfis</span>
+            <span className="tabular-nums text-muted-foreground">{progresso}%</span>
+          </div>
+          <Progress value={progresso} className="h-2" aria-label={`Progresso geral da geração: ${progresso}%`} />
+          <div className="flex flex-wrap gap-2 text-xs font-semibold">
+            <span className="flex items-center gap-1.5 rounded-full bg-success/15 px-3 py-1 text-success">
+              <Check className="h-3 w-3" aria-hidden="true" />
+              {perfisProntos} de {totalPerfis} pronto(s)
+            </span>
+            {perfisAtivos > 0 && <span className="rounded-full bg-primary/15 px-3 py-1 text-primary">{perfisAtivos} gerando</span>}
+            {perfisParciais > 0 && <span className="rounded-full bg-warning/15 px-3 py-1 text-warning">{perfisParciais} parcial(is)</span>}
+            {perfisFalhos > 0 && <span className="rounded-full bg-destructive/15 px-3 py-1 text-destructive">{perfisFalhos} com falha</span>}
+            {perfisSemMaterial > 0 && <span className="rounded-full border px-3 py-1 text-muted-foreground">{perfisSemMaterial} sem material</span>}
+          </div>
+          {atualizadoEm && (
+            <p className="text-xs text-muted-foreground">Atualizado em {new Date(atualizadoEm).toLocaleString("pt-BR")}</p>
           )}
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="flex items-center justify-between gap-4 text-sm">
-          <span className="font-medium">Progresso dos perfis</span>
-          <span className="tabular-nums text-muted-foreground">{progresso}%</span>
-        </div>
-        <Progress
-          value={progresso}
-          className="h-2"
-          aria-label={`Progresso geral da geração: ${progresso}%`}
-        />
-        <div className="flex flex-wrap gap-2 text-xs">
-          <Badge variant="default">
-            {perfisProntos} de {totalPerfis} pronto(s)
-          </Badge>
-          {perfisAtivos > 0 && <Badge variant="secondary">{perfisAtivos} em andamento</Badge>}
-          {perfisParciais > 0 && <Badge variant="secondary">{perfisParciais} parcial(is)</Badge>}
-          {perfisFalhos > 0 && <Badge variant="destructive">{perfisFalhos} com falha</Badge>}
-          {perfisSemMaterial > 0 && <Badge variant="outline">{perfisSemMaterial} sem material</Badge>}
-        </div>
-        {atualizadoEm && (
-          <p className="text-xs text-muted-foreground">
-            Atualizado em {new Date(atualizadoEm).toLocaleString("pt-BR")}
-          </p>
-        )}
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
-function PaletaPreview({ item }: { item: PersonalizacaoPerfilItem }) {
+function PaletaPreview({ item, compacta = false }: { item: PersonalizacaoPerfilItem; compacta?: boolean }) {
   const cores = item.design_tokens?.cores;
   if (!cores) return null;
   const swatches: Array<{ label: string; value: string }> = [
@@ -1030,18 +1227,78 @@ function PaletaPreview({ item }: { item: PersonalizacaoPerfilItem }) {
       {swatches.map((s) => (
         <div key={s.label} className="flex flex-col items-center gap-1">
           <div
-            className="h-8 w-8 rounded-md border"
+            className={compacta ? "h-[18px] w-[18px] rounded-full border" : "h-8 w-8 rounded-md border"}
             style={{ backgroundColor: s.value }}
             title={`${s.label}: ${s.value}`}
           />
-          <span className="text-[10px] text-muted-foreground">{s.label}</span>
+          {!compacta && <span className="text-[10px] text-muted-foreground">{s.label}</span>}
         </div>
       ))}
     </div>
   );
 }
 
-function PerfilMaterialCard({
+function PerfisTabela({
+  perfis,
+  classeId,
+  topicoId,
+  conteudoId,
+  conteudoTitulo,
+  resolveToken,
+  onRegenerated,
+}: {
+  perfis: PersonalizacaoPerfilItem[];
+  classeId: number;
+  topicoId: number;
+  conteudoId?: number;
+  conteudoTitulo: string;
+  resolveToken: () => Promise<string>;
+  onRegenerated: () => void;
+}) {
+  const ordenados = [...perfis].sort((a, b) => (b.total_alunos ?? 0) - (a.total_alunos ?? 0));
+  return (
+    <Card className="overflow-hidden rounded-[20px]">
+      <div className="flex flex-wrap items-center gap-3 px-6 pb-3 pt-5">
+        <h3 className="text-[17px] font-bold">Comparativo dos 7 perfis — ordenado por alunos matriculados</h3>
+        <span className="ml-auto text-xs text-muted-foreground">{conteudoTitulo}</span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[820px] text-left">
+          <thead>
+            <tr className="bg-muted text-[10.5px] uppercase tracking-[0.08em] text-muted-foreground">
+              <th className="px-6 py-[11px] font-semibold">Perfil</th>
+              <th className="py-[11px] font-semibold">Alunos</th>
+              <th className="py-[11px] font-semibold">Status</th>
+              {MATERIAL_TIPOS.map(({ key, label }) => (
+                <th key={key} className="py-[11px] font-semibold">
+                  {label}
+                </th>
+              ))}
+              <th className="px-6 py-[11px]">
+                <span className="sr-only">Ações</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {ordenados.map((item) => (
+              <PerfilLinha
+                key={item.perfil}
+                item={item}
+                classeId={classeId}
+                topicoId={topicoId}
+                conteudoId={conteudoId}
+                resolveToken={resolveToken}
+                onRegenerated={onRegenerated}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  );
+}
+
+function PerfilLinha({
   item,
   classeId,
   topicoId,
@@ -1057,9 +1314,26 @@ function PerfilMaterialCard({
   onRegenerated: () => void;
 }) {
   const navigate = useNavigate();
-  // Abre a pagina do material (era um modal): a URL carrega a selecao inteira,
-  // entao link direto, refresh e botao voltar funcionam.
-  const abrirMaterial = (aba: MaterialTipo) =>
+  const { manualJob, manualJobError, manualJobAtivo, handleGerar } = useGerarPerfil({
+    item,
+    classeId,
+    topicoId,
+    conteudoId,
+    resolveToken,
+    onRegenerated,
+  });
+  const geracao = item.geracao;
+  const geracaoAtiva = isGeracaoStatusAtivo(statusGeracaoDoPerfil(item));
+  const statusBadge = getPersonalizacaoStatusBadge({
+    temPersonalizacao: item.tem_personalizacao,
+    geracaoStatus: geracao?.status,
+    status: item.personalizacao?.status,
+    updatedAt: item.personalizacao?.updated_at,
+    geradoEm: item.personalizacao?.gerado_em ?? item.gerado_em,
+  });
+  const erro = descreverErroDatado(geracao?.erro, geracao?.updated_at);
+  const temAlgumMaterial = MATERIAL_TIPOS.some(({ key }) => getMaterial(item.materiais, key));
+  const abrir = (aba: MaterialTipo) =>
     navigate(
       buildMaterialPath({
         classeId: String(classeId),
@@ -1069,6 +1343,95 @@ function PerfilMaterialCard({
         aba,
       })
     );
+  const corStatus =
+    statusBadge.variant === "default"
+      ? "bg-success/15 text-success"
+      : statusBadge.variant === "destructive"
+        ? "bg-destructive/15 text-destructive"
+        : statusBadge.variant === "secondary"
+          ? "bg-primary/15 text-primary"
+          : "border text-muted-foreground";
+
+  return (
+    <tr className="border-t align-top" aria-label={`Geração para o perfil ${item.perfil_label}`}>
+      <td className="px-6 py-3.5">
+        <span className="flex items-center gap-2.5 text-sm font-bold capitalize">
+          <span aria-hidden="true" className="h-3 w-3 rounded-full" style={{ background: item.cor || corDoPerfil(item.perfil) }} />
+          {item.perfil_label}
+        </span>
+      </td>
+      <td className="py-3.5 text-sm tabular-nums">{item.total_alunos}</td>
+      <td className="py-3.5 pr-3">
+        <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-3 py-1 text-[11px] font-bold ${corStatus}`}>
+          {geracaoAtiva && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}
+          {statusBadge.label}
+        </span>
+        {erro && (
+          <p className="mt-1.5 max-w-[220px] text-[11px] text-destructive" role="alert">
+            {erro}
+          </p>
+        )}
+        {manualJobError && (
+          <p className="mt-1.5 max-w-[220px] text-[11px] text-destructive" role="alert">
+            {manualJobError}
+          </p>
+        )}
+      </td>
+      {MATERIAL_TIPOS.map(({ key }) => {
+        const material = getMaterial(item.materiais, key);
+        const formato = resolverGeracaoFormato(item, key, Boolean(material));
+        const ativo = formato.status === "na_fila" || formato.status === "gerando";
+        return (
+          <td key={key} className="py-3.5 pr-3 text-[12.5px]">
+            <span className={formato.status === "pronto" ? "text-foreground" : formato.status === "falhou" ? "text-destructive" : "text-muted-foreground"}>
+              {ativo && <Loader2 className="mr-1 inline h-3 w-3 animate-spin" aria-hidden="true" />}
+              {getFormatoStatusBadge(formato.status, formato.label).label}
+            </span>
+            {material && (
+              <button type="button" onClick={() => abrir(key)} className="ml-2 text-xs text-primary underline underline-offset-2">
+                {formato.status === "pronto" ? "ver" : "ver anterior"}
+              </button>
+            )}
+          </td>
+        );
+      })}
+      <td className="px-6 py-3 text-right">
+        <div className="flex justify-end gap-2">
+          {temAlgumMaterial && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="rounded-full"
+              onClick={() => abrir(MATERIAL_TIPOS.find(({ key }) => getMaterial(item.materiais, key))?.key ?? "markdown")}
+            >
+              Ver
+            </Button>
+          )}
+          <Button variant="outline" size="sm" className="rounded-full" onClick={() => void handleGerar()} disabled={manualJobAtivo}>
+            {manualJobAtivo ? `Gerando ${manualJob!.processed_targets}/${manualJob!.total_targets}` : temAlgumMaterial ? "Regerar" : "Gerar"}
+          </Button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+/** Geração manual de um perfil: enfileira o job e acompanha até terminar. Usada pelo cartão e pela linha da tabela. */
+function useGerarPerfil({
+  item,
+  classeId,
+  topicoId,
+  conteudoId,
+  resolveToken,
+  onRegenerated,
+}: {
+  item: PersonalizacaoPerfilItem;
+  classeId: number;
+  topicoId: number;
+  conteudoId?: number;
+  resolveToken: () => Promise<string>;
+  onRegenerated: () => void;
+}) {
   const [manualJob, setManualJob] = useState<PersonalizacaoJobResumo | null>(null);
   const [manualJobError, setManualJobError] = useState<string | null>(null);
   const manualJobAtivo = Boolean(manualJob && ACTIVE_JOB_STATUSES.has(manualJob.status));
@@ -1112,6 +1475,46 @@ function PerfilMaterialCard({
       setManualJobError(error instanceof Error ? error.message : "Falha ao enfileirar geração.");
     }
   };
+
+  return { manualJob, manualJobError, manualJobAtivo, handleGerar };
+}
+
+function PerfilMaterialCard({
+  item,
+  classeId,
+  topicoId,
+  conteudoId,
+  resolveToken,
+  onRegenerated,
+}: {
+  item: PersonalizacaoPerfilItem;
+  classeId: number;
+  topicoId: number;
+  conteudoId?: number;
+  resolveToken: () => Promise<string>;
+  onRegenerated: () => void;
+}) {
+  const navigate = useNavigate();
+  // Abre a pagina do material (era um modal): a URL carrega a selecao inteira,
+  // entao link direto, refresh e botao voltar funcionam.
+  const abrirMaterial = (aba: MaterialTipo) =>
+    navigate(
+      buildMaterialPath({
+        classeId: String(classeId),
+        topicoId: String(topicoId),
+        conteudoId: conteudoId != null ? String(conteudoId) : undefined,
+        perfil: item.perfil,
+        aba,
+      })
+    );
+  const { manualJob, manualJobError, manualJobAtivo, handleGerar } = useGerarPerfil({
+    item,
+    classeId,
+    topicoId,
+    conteudoId,
+    resolveToken,
+    onRegenerated,
+  });
 
   const temAlgumMaterial = MATERIAL_TIPOS.some(({ key }) => getMaterial(item.materiais, key));
   const geracaoStatus = statusGeracaoDoPerfil(item);
@@ -1297,48 +1700,94 @@ function PerfilMaterialCard({
   );
 }
 
-function PerfilEstruturaCard({ item }: { item: PersonalizacaoPerfilItem }) {
-  const formatos = item.formatos_gerados ?? [];
+const TOM_CLASSE: Record<LinhaStatusAluno["tom"], string> = {
+  pronto: "bg-success/15 text-success",
+  andamento: "bg-primary/15 text-primary",
+  falha: "bg-destructive/15 text-destructive",
+  sem_material: "border text-muted-foreground",
+};
+const POR_PAGINA_ALUNOS = 10;
+
+function ListaAlunos({
+  linhas,
+  total,
+  busca,
+  onBusca,
+  carregando,
+  semConteudo,
+  selecionado,
+  onSelecionar,
+}: {
+  linhas: LinhaStatusAluno[];
+  total: number;
+  busca: string;
+  onBusca: (v: string) => void;
+  carregando: boolean;
+  semConteudo: boolean;
+  selecionado: string;
+  onSelecionar: (id: string) => void;
+}) {
+  const [verTodos, setVerTodos] = useState(false);
+  if (total === 0) return null;
+  const visiveis = verTodos ? linhas : linhas.slice(0, POR_PAGINA_ALUNOS);
   return (
-    <Card className="overflow-hidden">
-      <div className="h-1.5 w-full" style={{ backgroundColor: item.cor }} />
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base capitalize">{item.perfil_label}</CardTitle>
-        <CardDescription className="capitalize">{item.perfil}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Tom</p>
-            <p className="font-medium">{planoText(item.plano, "tom") || "—"}</p>
-          </div>
-          <div>
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Estilo</p>
-            <p className="font-medium">{planoText(item.plano, "estilo") || "—"}</p>
-          </div>
-          <div>
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Nível</p>
-            <p className="font-medium">{planoText(item.plano, "nivel") || "—"}</p>
-          </div>
-          <div>
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Prioritário</p>
-            <p className="font-medium capitalize">{item.formato_prioritario || "—"}</p>
-          </div>
+    <Card className="overflow-hidden rounded-[20px]">
+      <div className="flex flex-wrap items-center gap-3 px-6 pb-3 pt-5">
+        <div>
+          <h3 className="text-[17px] font-bold">Todos os alunos</h3>
+          <p className="mt-1 text-xs text-muted-foreground">status da personalização do conteúdo selecionado</p>
         </div>
-        {formatos.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {formatos.map((f) => (
-              <Badge key={f} variant="secondary" className="capitalize">
-                {f}
-              </Badge>
-            ))}
-          </div>
+        <input
+          type="search"
+          value={busca}
+          onChange={(e) => onBusca(e.target.value)}
+          placeholder="Buscar aluno"
+          aria-label="Buscar aluno"
+          className="ml-auto h-9 w-52 rounded-full border bg-background px-4 text-[12.5px] outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        />
+      </div>
+      {semConteudo ? (
+        <p className="border-t px-6 py-8 text-center text-sm text-muted-foreground">Escolha um conteúdo para ver o status de cada aluno.</p>
+      ) : (
+        <ul>
+          {visiveis.map((l) => (
+            <li key={l.alunoId} className="border-t">
+              <button
+                type="button"
+                onClick={() => onSelecionar(l.alunoId)}
+                aria-pressed={selecionado === l.alunoId}
+                className={`flex w-full items-center gap-3.5 px-6 py-3 text-left hover:bg-muted ${selecionado === l.alunoId ? "bg-primary/10" : ""}`}
+              >
+                <span
+                  aria-hidden="true"
+                  className="flex h-9 w-9 flex-none items-center justify-center rounded-full text-xs font-extrabold"
+                  style={{ background: `${corDoPerfil(l.perfil)}33`, color: corDoPerfil(l.perfil) }}
+                >
+                  {iniciais(l.nome)}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13.5px] font-semibold">{l.nome}</span>
+                  <span className="block text-[11.5px] capitalize text-muted-foreground">{l.perfil}</span>
+                </span>
+                <span className={`whitespace-nowrap rounded-full px-3 py-1 text-[11px] font-bold ${TOM_CLASSE[l.tom]}`}>
+                  {carregando ? "…" : l.rotulo}
+                </span>
+              </button>
+            </li>
+          ))}
+          {linhas.length === 0 && <li className="border-t px-6 py-6 text-center text-sm text-muted-foreground">Nenhum aluno encontrado.</li>}
+        </ul>
+      )}
+      <div className="flex items-center gap-3 border-t px-6 py-3.5 text-[11.5px] text-muted-foreground">
+        <span>
+          {Math.min(visiveis.length, linhas.length)} de {total} alunos
+        </span>
+        {linhas.length > POR_PAGINA_ALUNOS && (
+          <Button variant="outline" size="sm" className="ml-auto rounded-full" onClick={() => setVerTodos((v) => !v)}>
+            {verTodos ? "Ver menos" : "Ver todos"}
+          </Button>
         )}
-        <div className="space-y-2">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Paleta (design tokens)</p>
-          <PaletaPreview item={item} />
-        </div>
-      </CardContent>
+      </div>
     </Card>
   );
 }
@@ -1348,11 +1797,15 @@ function AlunoPreview({
   contexto,
   perfilDoAluno,
   conteudoId,
+  onAbrirDashboard,
+  onVerMaterial,
 }: {
   aluno: AlunoRow;
   contexto: PersonalizacaoContextoDocenteResponse | null;
   perfilDoAluno: PersonalizacaoPerfilItem | null;
   conteudoId?: number;
+  onAbrirDashboard: () => void;
+  onVerMaterial?: () => void;
 }) {
   const personalizacoes = contexto?.personalizacoes ?? [];
   const efetiva = (
@@ -1379,9 +1832,22 @@ function AlunoPreview({
               {perfilDoAluno?.perfil_label || aluno.perfil_dominante}
             </Badge>
           </CardTitle>
-          <CardDescription>Perfil dominante e personalização efetiva entregue ao aluno.</CardDescription>
+          <CardDescription>
+            Perfil usado: <span className="capitalize">{perfilDoAluno?.perfil_label || aluno.perfil_dominante}</span>
+            {aluno.afinidade != null ? ` (${Math.round(aluno.afinidade)}% de afinidade)` : ""}
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" className="rounded-full" onClick={onAbrirDashboard}>
+              Abrir no dashboard
+            </Button>
+            {onVerMaterial && (
+              <Button variant="outline" size="sm" className="rounded-full" onClick={onVerMaterial}>
+                Ver material gerado
+              </Button>
+            )}
+          </div>
           {perfilDoAluno && (
             <div className="space-y-2">
               <p className="text-xs uppercase tracking-wide text-muted-foreground">

@@ -228,6 +228,16 @@ Cada perfil carrega:
   linguagem no meio, e a API hibernando fazia todo save do professor falhar
   com 502. Quem **processa** a fila continua na API — isso é geração, é IA.
 
+  **`student_enrollment` também é enfileirado pelo BANCO** (`20261011_02`):
+  `fn_enqueue_student_enrollment_job`, AFTER INSERT em `classe_aluno`. Grava o
+  mesmo job que a API criava para o console (escopo, alvos com o aluno e o
+  perfil dominante, `target_profile_map`), só com `trigger_source`/`reason`
+  próprios. Não duplica com job `pending`/`processing` do mesmo aluno e turma,
+  e falha ao enfileirar não desfaz a matrícula. O console não chama mais
+  `POST /personalizar/jobs/enrollment`. Dívida: o endpoint continua existindo
+  (e deduplica contra o job do trigger, porque o escopo é idêntico) — não use
+  como precedente.
+
   Dois detalhes que não são acidentais. **Coalescência:** o trigger funde o
   evento no job `pending` da classe (travando a linha com `FOR UPDATE`) em vez
   de criar um por linha — sem isso, a reordenação de tópicos (um `UPDATE` por

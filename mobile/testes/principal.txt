@@ -108,4 +108,5 @@ src/utils/tourTelaLarga.test.ts
 src/utils/rolagemTematica.test.ts
 src/utils/minhaPosicaoRank.test.ts
 src/utils/gruposNotificacao.test.ts
+src/utils/activityType.test.ts
 src/hooks/trilha/studyIntervalPersistence.test.ts

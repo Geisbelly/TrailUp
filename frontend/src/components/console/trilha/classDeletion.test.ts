@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/integrations/supabase/client', () => ({ supabase: {
   rpc: mocks.rpc, from: mocks.from, storage: { from: mocks.remove },
 } }));
-import { deleteClassTrail, deleteClasseCascade, removeClassStudent } from './classDeletion';
+import { deleteClassTrail, deleteClasseCascade, referenciasPorCaminho, removeClassStudent } from './classDeletion';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -30,15 +30,24 @@ beforeEach(() => {
 // generico acima, que so serve para o RPC unico de deleteClasseCascade.
 const callOrder: string[] = [];
 
-function makeTrailSupabaseMock(deleteErrors: Record<string, unknown> = {}) {
+function makeTrailSupabaseMock(deleteErrors: Record<string, unknown> = {}, referencias: unknown[] = []) {
   return (table: string) => ({
     select: () => ({
+      // Conferência de arquivo compartilhado (contarReferencias), depois do cascade.
+      not: () => {
+        callOrder.push(`refs:${table}`);
+        return Promise.resolve({ data: referencias, error: null });
+      },
       eq: () => {
         callOrder.push(`select:${table}`);
         if (table === 'topicos') return Promise.resolve({ data: [{ id: 10 }], error: null });
         return Promise.resolve({ data: [], error: null });
       },
-      in: () => {
+      in: (coluna: string) => {
+        if (coluna === 'conteudo') {
+          callOrder.push(`refs:${table}`);
+          return Promise.resolve({ data: referencias, error: null });
+        }
         callOrder.push(`select:${table}`);
         if (table === 'conteudos') {
           return Promise.resolve({
@@ -78,6 +87,29 @@ it('so remove arquivos do Storage depois que o cascade inteiro no banco for conf
   const storageRemoveIndex = callOrder.indexOf('storage:remove');
   expect(lastDbDeleteIndex).toBeGreaterThanOrEqual(0);
   expect(storageRemoveIndex).toBeGreaterThan(lastDbDeleteIndex);
+});
+
+it('mantém no Storage o arquivo que outra turma (uma cópia) ainda usa', async () => {
+  callOrder.length = 0;
+  mocks.from.mockImplementation(makeTrailSupabaseMock({}, [{ id: 77, conteudo: 'prof-1/10/aula.pdf' }]));
+  const removeFn = vi.fn().mockResolvedValue({ error: null });
+  mocks.remove.mockReturnValue({ remove: removeFn });
+
+  await deleteClassTrail(54);
+
+  expect(removeFn).not.toHaveBeenCalled();
+});
+
+it('referências contam o campo conteudo e os arquivos de metadata, por conteúdo', () => {
+  const refs = referenciasPorCaminho([
+    { id: 1, conteudo: 'prof/a.pdf', metadata: { files: [{ path: 'prof/b.png' }] } },
+    { id: 2, conteudo: 'texto livre sem caminho', metadata: { files: [{ path: 'prof/a.pdf' }, { path: 'https://x/y' }] } },
+    { id: 3, conteudo: 'https://externo/c.pdf', metadata: null },
+  ]);
+  expect([...(refs.get('prof/a.pdf') ?? [])]).toEqual([1, 2]);
+  expect([...(refs.get('prof/b.png') ?? [])]).toEqual([1]);
+  expect(refs.has('https://externo/c.pdf')).toBe(false);
+  expect(refs.has('https://x/y')).toBe(false);
 });
 
 it('nao apaga arquivos do Storage quando o cascade no banco falha (ex.: FK nao coberta)', async () => {
