@@ -144,7 +144,7 @@ export function IABattleHeaderChip({ topicoId = null, itemKey = null, variante =
   }
 
   // Mesmo confronto que o chip abriria (conteúdo ou módulo), já aberto.
-  if (variante === "painel") return <IABattlePanel scope={battleScope} surface="inline" />;
+  if (variante === "painel") return <IABattlePanel scope={battleScope} surface="lateral" />;
 
   const enemy = battleState?.enemy ?? resolvedBattle.battle.enemy;
   const hpMax = Math.max(1, Number(enemy.hpMax ?? 1));
