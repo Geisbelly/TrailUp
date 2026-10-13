@@ -460,7 +460,6 @@ export default function TopicsManager() {
     }
     setIsSaving(true);
     try {
-      let savedTopicoId: number;
       if (editingTopic) {
         const { error } = await supabase
           .from("topicos")
@@ -474,7 +473,6 @@ export default function TopicsManager() {
           })
           .eq("id", editingTopic.id);
         if (error) throw error;
-        savedTopicoId = editingTopic.id;
         toast.success("Tópico atualizado!");
       } else {
         const { data, error } = await supabase
@@ -491,7 +489,6 @@ export default function TopicsManager() {
           .single();
         if (error) throw error;
         setTopicos((prev) => [...prev, { ...(data as Topico), next: [], depende: [] }]);
-        savedTopicoId = (data as Topico).id;
         toast.success("Tópico criado!");
       }
       // O trigger no banco ja enfileirou o class-delta escopado neste topico
@@ -552,21 +549,6 @@ export default function TopicsManager() {
     } catch (error) {
       console.error("Erro ao salvar grafo:", error);
       toast.error("Não foi possivel salvar as dependências.");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const saveOrder = async () => {
-    setIsSaving(true);
-    try {
-      const updates = topicsForSelected.map((t, idx) => ({ id: t.id, ordem: idx + 1 }));
-      await Promise.all(updates.map((u) => supabase.from("topicos").update({ ordem: u.ordem }).eq("id", u.id)));
-      refreshJobsSoon();
-      toast.success("Ordem dos tópicos salva!");
-    } catch (error) {
-      console.error("Erro ao salvar ordem:", error);
-      toast.error("Não foi possivel salvar a ordem.");
     } finally {
       setIsSaving(false);
     }
@@ -767,8 +749,7 @@ export default function TopicsManager() {
   };
 
   const handleDeleteCard = async (id: number) => {
-    const confirmDelete = window.confirm("Remover este card?");
-    if (!confirmDelete) return false;
+    // Sem window.confirm: o editor já pergunta no cartão (confirmação inline) antes de chamar isto.
     const removed = await deleteCardHandler(id);
     if (!removed) return false;
     await loadCards(editingTopic?.id ?? 0);
