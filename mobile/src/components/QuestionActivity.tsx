@@ -1581,11 +1581,13 @@ export default function QuestionActivity({
           <View
             style={{
               width: '100%',
+              // Tela larga (#346): cartão no centro, como os outros avisos do protótipo v4.
+              maxWidth: desktop ? 420 : undefined,
               backgroundColor: profilePalette.surfaceElevated,
-              borderRadius: 16,
-              padding: 20,
+              borderRadius: desktop ? 22 : 16,
+              padding: desktop ? 26 : 20,
               borderWidth: 1,
-              borderColor: profilePalette.borderStrong,
+              borderColor: desktop ? profilePalette.accent : profilePalette.borderStrong,
             }}
           >
             <View style={{ alignItems: 'center', marginBottom: 12 }}>
@@ -1610,12 +1612,13 @@ export default function QuestionActivity({
                 fontFamily: FontFamily.interMedium,
                 fontSize: 14,
                 lineHeight: 20,
+                textAlign: desktop ? 'center' : undefined,
               }}
             >
               {modalInfo.descricao}
             </Text>
             {modalInfo.pontos ? (
-              <Text style={{ marginTop: 10, color: profilePalette.accent, fontFamily: FontFamily.interMedium }}>
+              <Text style={{ marginTop: 10, color: profilePalette.accent, fontFamily: FontFamily.interMedium, textAlign: desktop ? 'center' : undefined }}>
                 Pontos: +{modalInfo.pontos}
               </Text>
             ) : null}
@@ -1625,8 +1628,11 @@ export default function QuestionActivity({
                 marginTop: 16,
                 paddingVertical: 12,
                 backgroundColor: profilePalette.accent,
-                borderRadius: 12,
+                borderRadius: desktop ? 999 : 12,
                 alignItems: 'center',
+                alignSelf: desktop ? 'center' : undefined,
+                minWidth: desktop ? 160 : undefined,
+                paddingHorizontal: desktop ? 28 : undefined,
               }}
               accessibilityRole="button"
             >
