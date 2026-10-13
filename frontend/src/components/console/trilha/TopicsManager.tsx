@@ -159,7 +159,6 @@ export default function TopicsManager() {
     zoom,
     zoomIn,
     zoomOut,
-    resetView,
     fitToScreen,
     centerCanvas,
     handleCanvasWheel,
@@ -776,7 +775,6 @@ export default function TopicsManager() {
     return true;
   };
 
-  const hasData = useMemo(() => topicos.length > 0, [topicos.length]);
   const jobsSummary = useMemo(() => summarizePersonalizacaoJobs(recentJobs), [recentJobs]);
   const latestJobStatus = recentJobs[0]?.status?.trim().toLowerCase() ?? "";
   const failedJobTopicoIds = useMemo(
@@ -837,10 +835,6 @@ export default function TopicsManager() {
     const x = draggingConnector.type === "next" ? pos.x + NODE_WIDTH : pos.x;
     return { x, y };
   }, [draggingConnector, positions, NODE_HEIGHT, NODE_WIDTH]);
-
-  const handleNodeClick = (topic: Topico) => {
-    window.open(`/topico/${topic.id}`, "_blank");
-  };
 
   const handleEditOpen = async (topic: Topico) => {
     setEditingTopic(topic);
