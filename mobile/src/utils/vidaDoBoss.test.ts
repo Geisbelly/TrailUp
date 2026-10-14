@@ -4,6 +4,7 @@ import { BATTLE_DIFFICULTY_RULES, type BattleDifficultyKey } from './batalhaRegr
 import {
   EMPENHO_POR_PERFIL,
   composicaoDeBlocos,
+  composicaoPorConteudo,
   dimensionarBoss,
   empenhoDoPerfil,
   orcamentoDeDano,
@@ -122,4 +123,81 @@ test('bloco de tipo desconhecido não entra na conta', () => {
     composicaoDeBlocos([{ kind: 'separador' }, { kind: 'conteudo' }]),
     { conteudos: 1, atividades: 0, questoes: 0 }
   );
+});
+
+test('cada conteúdo leva só o que lhe pertence: ele mesmo e as atividades vinculadas', () => {
+  const porConteudo = composicaoPorConteudo([
+    { kind: 'conteudo', conteudo: { id: 10 } },
+    { kind: 'atividade', atividade: { questoes: [1, 2] }, vinculadoConteudoId: 10 },
+    { kind: 'atividade', atividade: { questoes: [1] }, vinculadoConteudoId: 10 },
+    { kind: 'conteudo', conteudo: { id: 20 } },
+    { kind: 'atividade', atividade: { questoes: [1, 2, 3, 4] }, vinculadoConteudoId: 20 },
+    { kind: 'atividade', atividade: { questoes: [1] } },
+  ]);
+  assert.deepEqual(porConteudo, {
+    'content:10': { conteudos: 1, atividades: 2, questoes: 3 },
+    'content:20': { conteudos: 1, atividades: 1, questoes: 4 },
+  });
+});
+
+/**
+ * O erro que o módulo existe para evitar: dimensionar o boss de conteúdo pelo
+ * percurso do TÓPICO. Com 6 conteúdos o teto do tópico é 6× maior que o do
+ * conteúdo, e nenhum boss de conteúdo seria derrubável sozinho.
+ */
+test('o boss do conteúdo é menor que o do tópico que o contém', () => {
+  const blocos = [
+    { kind: 'conteudo', conteudo: { id: 1 } },
+    { kind: 'atividade', atividade: { questoes: [1, 2] }, vinculadoConteudoId: 1 },
+    { kind: 'conteudo', conteudo: { id: 2 } },
+    { kind: 'atividade', atividade: { questoes: [1, 2] }, vinculadoConteudoId: 2 },
+    { kind: 'conteudo', conteudo: { id: 3 } },
+  ];
+  const doTopico = dimensionarBoss({
+    composicao: composicaoDeBlocos(blocos), dificuldade: 'medium', perfil: 'conqueror',
+  });
+  const doConteudo = dimensionarBoss({
+    composicao: composicaoPorConteudo(blocos)['content:1'], dificuldade: 'medium', perfil: 'conqueror',
+  });
+  assert.ok(doConteudo.hpMax + doConteudo.shieldMax < doTopico.hpMax + doTopico.shieldMax);
+  assert.ok(doConteudo.hpMax > 0);
+});
+
+test('cada boss de conteúdo cabe no dano que aquele conteúdo entrega', () => {
+  const blocos = [
+    { kind: 'conteudo', conteudo: { id: 1 } },
+    { kind: 'conteudo', conteudo: { id: 2 } },
+    { kind: 'atividade', atividade: { questoes: [1, 2, 3, 4, 5, 6] }, vinculadoConteudoId: 2 },
+  ];
+  for (const [chave, composicao] of Object.entries(composicaoPorConteudo(blocos))) {
+    for (const dificuldade of DIFICULDADES) {
+      for (const perfil of PERFIS) {
+        const boss = dimensionarBoss({ composicao, dificuldade, perfil });
+        assert.ok(
+          boss.hpMax + boss.shieldMax <= boss.orcamento,
+          `${chave} ${perfil}/${dificuldade}: ${boss.hpMax}+${boss.shieldMax} > ${boss.orcamento}`
+        );
+      }
+    }
+  }
+});
+
+test('conteúdo sem atividade morre no próprio content_complete', () => {
+  const composicao = composicaoPorConteudo([{ kind: 'conteudo', conteudo: { id: 7 } }])['content:7'];
+  const danoDoContentComplete = BATTLE_DIFFICULTY_RULES.medium.damage.contentComplete;
+  for (const perfil of PERFIS) {
+    const boss = dimensionarBoss({ composicao, dificuldade: 'medium', perfil });
+    assert.ok(
+      boss.hpMax + boss.shieldMax <= danoDoContentComplete,
+      `${perfil}: ${boss.hpMax}+${boss.shieldMax} nao cabe no unico evento de dano (${danoDoContentComplete})`
+    );
+  }
+});
+
+test('atividade vinculada a conteúdo que não está no percurso não some para lugar nenhum', () => {
+  const porConteudo = composicaoPorConteudo([
+    { kind: 'conteudo', conteudo: { id: 1 } },
+    { kind: 'atividade', atividade: { questoes: [1] }, vinculadoConteudoId: 999 },
+  ]);
+  assert.deepEqual(porConteudo, { 'content:1': { conteudos: 1, atividades: 0, questoes: 0 } });
 });

@@ -71,7 +71,11 @@ type IAContextValue = {
   dismissBattleVictory: (id: string) => void;
   registerTopicPayload: (payload: PersonalizedTopicPayload | null | undefined) => void;
   setActiveTopic: (topicoId: number | null, cycleId?: string | null) => void;
-  registrarComposicaoDoTopico: (topicoId: number, composicao: ComposicaoDoTopico) => void;
+  registrarComposicaoDoTopico: (
+    topicoId: number,
+    composicao: ComposicaoDoTopico,
+    porConteudo?: Record<string, ComposicaoDoTopico>
+  ) => void;
   hasFeaturePatch: (scope: IAFeatureSelectorScope, key: IAFeatureKey) => boolean;
   resolveFeature: (
     scope: IAFeatureSelectorScope,
@@ -408,6 +412,10 @@ function buildDefaultCueId() {
  * topico sem percurso nenhum: um boss de 0 de vida ja nasceria derrotado, e
  * `applyDamageToBattleState` trata `currentHp === 0` como morto.
  */
+function chaveDeComposicaoDeItem(topicoId: number, itemKey: string) {
+  return `${topicoId}:${itemKey}`;
+}
+
 function dimensionarRegraDoBoss(
   difficulty: BattleDifficultyKey,
   composicao: ComposicaoDoTopico | undefined,
@@ -643,7 +651,19 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
   // agora, nao do snapshot do render em que o callback foi criado.
   const composicoesRef = useRef(composicoesDeTopico);
 
-  const registrarComposicaoDoTopico = useCallback((topicoId: number, composicao: ComposicaoDoTopico) => {
+  /**
+   * Mesma coisa para os bosses de CONTEUDO, indexado por
+   * `${topicoId}:${itemKey}`. Dois topicos podem ter `content:12`? Nao, o id e
+   * global -- mas o topico no indice deixa a entrada obvia e barata de limpar.
+   */
+  const [composicoesDeItem, setComposicoesDeItem] = useState<Record<string, ComposicaoDoTopico>>({});
+  const composicoesDeItemRef = useRef(composicoesDeItem);
+
+  const registrarComposicaoDoTopico = useCallback((
+    topicoId: number,
+    composicao: ComposicaoDoTopico,
+    porConteudo?: Record<string, ComposicaoDoTopico>
+  ) => {
     if (!Number.isFinite(topicoId)) return;
     setComposicoesDeTopico((prev) => {
       const anterior = prev[topicoId];
@@ -653,6 +673,25 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
       }
       const proximo = { ...prev, [topicoId]: composicao };
       composicoesRef.current = proximo;
+      return proximo;
+    });
+
+    if (!porConteudo) return;
+    setComposicoesDeItem((prev) => {
+      let mudou = false;
+      const proximo = { ...prev };
+      for (const [itemKey, valor] of Object.entries(porConteudo)) {
+        const chave = chaveDeComposicaoDeItem(topicoId, itemKey);
+        const anterior = prev[chave];
+        if (anterior && anterior.conteudos === valor.conteudos &&
+          anterior.atividades === valor.atividades && anterior.questoes === valor.questoes) {
+          continue;
+        }
+        proximo[chave] = valor;
+        mudou = true;
+      }
+      if (!mudou) return prev;
+      composicoesDeItemRef.current = proximo;
       return proximo;
     });
   }, []);
@@ -990,11 +1029,16 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
       // isso todo topico do app nascia com os mesmos 180 de vida, o que deixa
       // o topico curto com um boss que nao morre e o longo com um que morre
       // cedo demais.
-      const rule = dimensionarRegraDoBoss(
-        difficulty,
-        composicoesRef.current[selectedScope.topicoId ?? activeTopicId ?? 0],
-        profileName
-      );
+      // Escopo `item` e o boss do CONTEUDO: ele so recebe dano do proprio
+      // conteudo e das atividades penduradas nele, entao dimensiona-lo pelo
+      // percurso do topico daria a cada conteudo um boss do tamanho do topico
+      // -- nenhum deles seria derrubavel sozinho.
+      const topicoDaBatalha = selectedScope.topicoId ?? activeTopicId ?? 0;
+      const composicao =
+        selectedScope.scope === "item"
+          ? composicoesDeItemRef.current[chaveDeComposicaoDeItem(topicoDaBatalha, selectedScope.itemKey)]
+          : composicoesRef.current[topicoDaBatalha];
+      const rule = dimensionarRegraDoBoss(difficulty, composicao, profileName);
 
       if (existing) {
         const previousHpMax = Math.max(1, Number(existing.enemy.hpMax ?? 1));
@@ -1552,12 +1596,26 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (activeTopicId == null) return;
-    // `composicoesDeTopico` entra nas dependencias de proposito: a
-    // personalizacao carrega depois da primeira montagem, e e a chegada dela
-    // que permite redimensionar o boss. `ensureBattleState` reescala o estado
-    // existente preservando a proporcao de vida ja tirada.
+    // As composicoes entram nas dependencias de proposito: a personalizacao
+    // carrega depois da primeira montagem, e e a chegada dela que permite
+    // redimensionar. `ensureBattleState` reescala o estado existente
+    // preservando a proporcao de vida ja tirada.
     void ensureBattleState({ scope: "topic", topicoId: activeTopicId });
-  }, [activeTopicId, composicoesDeTopico, ensureBattleState]);
+
+    // O boss de CONTEUDO nasce no primeiro sinal daquele conteudo, que pode
+    // chegar antes de a tela registrar a composicao -- nesse caso ele nasceu
+    // com a tabela fixa. Reexecutar por item aqui e o que o corrige. Item sem
+    // patch de batalha devolve null sem efeito nenhum.
+    const prefixo = `${activeTopicId}:`;
+    for (const chave of Object.keys(composicoesDeItem)) {
+      if (!chave.startsWith(prefixo)) continue;
+      void ensureBattleState({
+        scope: "item",
+        topicoId: activeTopicId,
+        itemKey: chave.slice(prefixo.length),
+      });
+    }
+  }, [activeTopicId, composicoesDeItem, composicoesDeTopico, ensureBattleState]);
 
   const resolvedFeatures = useMemo<IAResolvedFeaturesState>(() => {
     const session = FEATURE_KEYS.reduce((acc, key) => {
