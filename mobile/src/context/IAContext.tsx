@@ -1,6 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppState } from "react-native";
 import { applyDamageToBattleState, buildBattleRuntimeKey, findStoredBattle, restoreBattleStates } from '@/utils/battleRuntime';
+import { BATTLE_DIFFICULTY_RULES, type BattleDifficultyKey, type BattleDifficultyRule, normalizeBattleDifficulty } from '@/utils/batalhaRegras';
+import { dimensionarBoss, type ComposicaoDoTopico } from '@/utils/vidaDoBoss';
 import { getBrainHexGuideName } from "@/constants/profileImages";
 import { useUsuario } from "@/context/SessaoContext";
 import {
@@ -69,6 +71,7 @@ type IAContextValue = {
   dismissBattleVictory: (id: string) => void;
   registerTopicPayload: (payload: PersonalizedTopicPayload | null | undefined) => void;
   setActiveTopic: (topicoId: number | null, cycleId?: string | null) => void;
+  registrarComposicaoDoTopico: (topicoId: number, composicao: ComposicaoDoTopico) => void;
   hasFeaturePatch: (scope: IAFeatureSelectorScope, key: IAFeatureKey) => boolean;
   resolveFeature: (
     scope: IAFeatureSelectorScope,
@@ -395,71 +398,26 @@ function buildDefaultCueId() {
   return `cue-${getNow()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-type BattleDifficultyKey = "easy" | "medium" | "hard";
-
-type BattleDifficultyRule = {
-  hpMax: number;
-  shieldMax: number;
-  damage: {
-    contentComplete: number;
-    activityCorrect: number;
-    activityComplete: number;
-    min: number;
-    max: number;
-  };
-};
-
-const BATTLE_DIFFICULTY_RULES: Record<BattleDifficultyKey, BattleDifficultyRule> = {
-  easy: {
-    hpMax: 120,
-    shieldMax: 24,
-    damage: {
-      contentComplete: 8,
-      activityCorrect: 14,
-      activityComplete: 18,
-      min: 4,
-      max: 24,
-    },
-  },
-  medium: {
-    hpMax: 180,
-    shieldMax: 36,
-    damage: {
-      contentComplete: 12,
-      activityCorrect: 18,
-      activityComplete: 24,
-      min: 6,
-      max: 36,
-    },
-  },
-  hard: {
-    hpMax: 260,
-    shieldMax: 52,
-    damage: {
-      contentComplete: 16,
-      activityCorrect: 24,
-      activityComplete: 32,
-      min: 8,
-      max: 52,
-    },
-  },
-};
-
-function normalizeBattleDifficulty(input: unknown): BattleDifficultyKey {
-  const normalized = String(input ?? "")
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .replace(/\s+/g, "_");
-
-  if (["facil", "easy", "beginner", "iniciante"].includes(normalized)) {
-    return "easy";
-  }
-  if (["dificil", "hard", "avancado", "advanced"].includes(normalized)) {
-    return "hard";
-  }
-  return "medium";
+/**
+ * A regra efetiva do boss: a tabela por dificuldade, com vida e escudo
+ * substituidos pelo dimensionamento por percurso quando ele e conhecido.
+ *
+ * Sem composicao (personalizacao ainda carregando, tela que nao registrou)
+ * devolve a tabela crua -- o comportamento de antes, que e o unico seguro
+ * quando nao se sabe o tamanho do topico. Tambem devolve a tabela crua para
+ * topico sem percurso nenhum: um boss de 0 de vida ja nasceria derrotado, e
+ * `applyDamageToBattleState` trata `currentHp === 0` como morto.
+ */
+function dimensionarRegraDoBoss(
+  difficulty: BattleDifficultyKey,
+  composicao: ComposicaoDoTopico | undefined,
+  profileName: string | null | undefined
+): BattleDifficultyRule {
+  const base = BATTLE_DIFFICULTY_RULES[difficulty];
+  if (!composicao) return base;
+  const dimensionado = dimensionarBoss({ composicao, dificuldade: difficulty, perfil: profileName });
+  if (dimensionado.hpMax <= 0) return base;
+  return { ...base, hpMax: dimensionado.hpMax, shieldMax: dimensionado.shieldMax };
 }
 
 function readSignalMetaNumber(signal: IATriggerSignal, ...keys: string[]) {
@@ -669,6 +627,35 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
     });
     return () => subscription.remove();
   }, [hydratedUserId, userId]);
+
+  /**
+   * O tamanho do percurso de cada topico, para dimensionar o boss.
+   *
+   * Vem da tela (`[id].tsx`), que e quem monta os blocos ja unindo material do
+   * professor e personalizado. O contexto nao tem como derivar isso sozinho, e
+   * chegar DEPOIS da primeira montagem do boss e o caso normal: a
+   * personalizacao carrega em segundo plano. Por isso e estado, nao ref -- a
+   * chegada precisa reexecutar o efeito que dimensiona, e `ensureBattleState`
+   * ja sabe reescalar um boss existente preservando a proporcao de vida.
+   */
+  const [composicoesDeTopico, setComposicoesDeTopico] = useState<Record<number, ComposicaoDoTopico>>({});
+  // Mesmo padrao de `runtimeRef`: `ensureBattleState` precisa do valor de
+  // agora, nao do snapshot do render em que o callback foi criado.
+  const composicoesRef = useRef(composicoesDeTopico);
+
+  const registrarComposicaoDoTopico = useCallback((topicoId: number, composicao: ComposicaoDoTopico) => {
+    if (!Number.isFinite(topicoId)) return;
+    setComposicoesDeTopico((prev) => {
+      const anterior = prev[topicoId];
+      if (anterior && anterior.conteudos === composicao.conteudos &&
+        anterior.atividades === composicao.atividades && anterior.questoes === composicao.questoes) {
+        return prev;
+      }
+      const proximo = { ...prev, [topicoId]: composicao };
+      composicoesRef.current = proximo;
+      return proximo;
+    });
+  }, []);
 
   const registerTopicPayload = useCallback((payload: PersonalizedTopicPayload | null | undefined) => {
     if (!payload?.topicoId) return;
@@ -997,7 +984,17 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
 
       const existing = findStoredBattle(runtimeRef.current.battleStates, battleKey);
       const difficulty = normalizeBattleDifficulty(moduleDifficultyHint ?? existing?.moduleDifficulty);
-      const rule = BATTLE_DIFFICULTY_RULES[difficulty];
+      // A regra por dificuldade e o PISO: vale enquanto nao se sabe o tamanho
+      // do percurso. Com a composicao em maos, o boss passa a ser uma fracao
+      // do dano que a trilha consegue entregar -- ver `vidaDoBoss.ts`. Sem
+      // isso todo topico do app nascia com os mesmos 180 de vida, o que deixa
+      // o topico curto com um boss que nao morre e o longo com um que morre
+      // cedo demais.
+      const rule = dimensionarRegraDoBoss(
+        difficulty,
+        composicoesRef.current[selectedScope.topicoId ?? activeTopicId ?? 0],
+        profileName
+      );
 
       if (existing) {
         const previousHpMax = Math.max(1, Number(existing.enemy.hpMax ?? 1));
@@ -1086,7 +1083,7 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
 
       return nextBattleState;
     },
-    [activeTopicId, getCycleIdForTopico, resolveBattleScope, resolveFeature, setRuntimeStates, userId]
+    [activeTopicId, getCycleIdForTopico, profileName, resolveBattleScope, resolveFeature, setRuntimeStates, userId]
   );
 
   const dismissCharacterCue = useCallback((id: string) => {
@@ -1555,8 +1552,12 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (activeTopicId == null) return;
+    // `composicoesDeTopico` entra nas dependencias de proposito: a
+    // personalizacao carrega depois da primeira montagem, e e a chegada dela
+    // que permite redimensionar o boss. `ensureBattleState` reescala o estado
+    // existente preservando a proporcao de vida ja tirada.
     void ensureBattleState({ scope: "topic", topicoId: activeTopicId });
-  }, [activeTopicId, ensureBattleState]);
+  }, [activeTopicId, composicoesDeTopico, ensureBattleState]);
 
   const resolvedFeatures = useMemo<IAResolvedFeaturesState>(() => {
     const session = FEATURE_KEYS.reduce((acc, key) => {
@@ -1606,6 +1607,7 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
       dismissBattleVictory,
       registerTopicPayload,
       setActiveTopic,
+      registrarComposicaoDoTopico,
       hasFeaturePatch,
       resolveFeature,
       emitSignal,
@@ -1633,6 +1635,7 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
       resolvedFeatures,
       runtimeStates,
       setActiveTopic,
+      registrarComposicaoDoTopico,
       setUserFeaturePreference,
       subscribeToSignals,
       userPreferences,
