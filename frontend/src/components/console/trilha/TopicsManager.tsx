@@ -54,6 +54,7 @@ import {
   type PersonalizacaoJobStatus,
 } from "./personalizacaoJobsApi";
 import { parseOptionalPositiveScore } from "@/lib/question-score";
+import { deleteActivityCascade } from "@/components/console/trilha/classDeletion";
 
 export default function TopicsManager() {
   const { user, session } = useAuth();
@@ -211,9 +212,7 @@ export default function TopicsManager() {
     handleCreateContent: createContentHandler,
     handleDeleteContent: deleteContentHandler,
     handleSaveActivity: saveActivityHandler,
-    handleDeleteActivityApi,
     handleSaveQuestion: saveQuestionHandler,
-    handleDeleteQuestionApi,
     toggleActivityLink: toggleActivityLinkApi,
     handleSaveCard: saveCardHandler,
     handleDeleteCard: deleteCardHandler,
@@ -620,10 +619,24 @@ export default function TopicsManager() {
 
   const handleDeleteActivity = async (id: number) => {
     if (!editingTopic) return;
-    const confirmDelete = window.confirm("Remover esta atividade? Isso removera questões vinculadas.");
-    if (!confirmDelete) return;
-    await handleDeleteActivityApi(id);
+    // Sem window.confirm: quem chama (TopicEditDrawer) ja confirmou no cartao,
+    // com o nome da atividade. Um confirm a mais pedia a mesma coisa duas
+    // vezes, em janelas diferentes — mesma correcao de #441 e #442.
+    //
+    // E nao usa mais `handleDeleteActivityApi`: aquele e um DELETE direto em
+    // `atividades`, que nunca funcionou para atividade nenhuma que apareca na
+    // tela. Toda atividade listada esta vinculada a um conteudo, e
+    // `atividade_conteudos` referencia `atividades` com NO ACTION.
+    try {
+      await deleteActivityCascade(id);
+      toast.success("Atividade excluída.");
+    } catch (error) {
+      console.error("Erro ao excluir atividade:", error);
+      toast.error("Não foi possível excluir a atividade.");
+      return;
+    }
     await loadActivities(editingTopic.id);
+    await loadActivityLinks(editingTopic.id);
   };
 
   const handleSaveQuestion = async () => {
@@ -660,14 +673,6 @@ export default function TopicsManager() {
       });
       setQuestionOptions([""]);
     }
-  };
-
-  const handleDeleteQuestion = async (id: number) => {
-    if (!questionForm.atividade_id) return;
-    const confirmDelete = window.confirm("Remover esta questao?");
-    if (!confirmDelete) return;
-    await handleDeleteQuestionApi(id);
-    await loadQuestions(parseInt(questionForm.atividade_id, 10));
   };
 
   const toggleActivityLink = async (conteudoId: number, atividadeId: number, link: boolean) => {
@@ -1324,7 +1329,7 @@ export default function TopicsManager() {
         updateQuestionOption={updateQuestionOption}
         removeQuestionOption={removeQuestionOption}
         handleSaveQuestion={handleSaveQuestion}
-        handleDeleteQuestion={handleDeleteQuestion}
+        handleDeleteActivity={handleDeleteActivity}
         loadQuestions={loadQuestions}
         cards={cards}
         cardForm={cardForm}

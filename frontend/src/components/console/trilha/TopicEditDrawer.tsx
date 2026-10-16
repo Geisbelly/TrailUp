@@ -130,7 +130,7 @@ type TopicEditDrawerProps = {
   updateQuestionOption: (index: number, value: string) => void;
   removeQuestionOption: (index: number) => void;
   handleSaveQuestion: () => void;
-  handleDeleteQuestion: (id: number) => void;
+  handleDeleteActivity: (id: number) => Promise<void>;
   loadQuestions: (atividadeId: number) => void;
   
   // Cards
@@ -176,13 +176,16 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
     activityLinks, toggleActivityLink,
     newActivityForm, setNewActivityForm, handleCreateActivityWithQuestion: handleCreateActivityWithQuestionProp,
     questions, questionForm, setQuestionForm, questionOptions, setQuestionOptions, handleSaveQuestion: handleSaveQuestionProp,
-    cards, cardForm, setCardForm, handleSaveCard: handleSaveCardProp, handleDeleteCard: handleDeleteCardProp
+    cards, cardForm, setCardForm, handleSaveCard: handleSaveCardProp, handleDeleteCard: handleDeleteCardProp,
+    handleDeleteActivity: handleDeleteActivityProp
   } = props;
 
   const { user } = useAuth();
   const [isCreating, setIsCreating] = useState(false);
   const [desvinculando, setDesvinculando] = useState<number | null>(null);
   const [cardParaExcluir, setCardParaExcluir] = useState<number | null>(null);
+  const [atividadeParaExcluir, setAtividadeParaExcluir] = useState<number | null>(null);
+  const [excluindoAtividade, setExcluindoAtividade] = useState<number | null>(null);
   const [duplicandoCard, setDuplicandoCard] = useState<number | null>(null);
   const [duplicandoAtividade, setDuplicandoAtividade] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<"conteudo" | "atividades" | "cards">("conteudo");
@@ -1115,6 +1118,27 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                             const a = activities.find(act => act.id === aid);
                             if(!a) return null;
                             const prazo = prazoDaAtividade(a.data_entrega);
+                            if (atividadeParaExcluir === aid) {
+                              return (
+                                <div key={aid} role="alertdialog" aria-label={`Excluir a atividade ${a.titulo ?? ""}`} className="col-span-full rounded-[14px] border border-destructive/50 bg-destructive/15 p-4">
+                                  <p className="text-sm font-bold">Excluir “{a.titulo || "Sem título"}”?</p>
+                                  <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+                                    Sai do tópico inteiro, com as questões dela e o que os alunos já responderam. Para tirá-la só deste conteúdo, use “Remover…”. Esta ação não pode ser desfeita.
+                                  </p>
+                                  <div className="mt-3 flex justify-end gap-2">
+                                    <Button variant="outline" size="sm" className="rounded-full border-destructive/50" onClick={() => setAtividadeParaExcluir(null)}>Cancelar</Button>
+                                    <Button variant="destructive" size="sm" className="rounded-full font-bold" disabled={excluindoAtividade === aid} onClick={async () => {
+                                      setExcluindoAtividade(aid);
+                                      try {
+                                        await handleDeleteActivityProp(aid);
+                                        if (editingTopic) { await loadActivities(editingTopic.id); await loadActivityLinks(editingTopic.id); }
+                                        setAtividadeParaExcluir(null);
+                                      } finally { setExcluindoAtividade(null); }
+                                    }}>{excluindoAtividade === aid ? "Excluindo…" : "Excluir"}</Button>
+                                  </div>
+                                </div>
+                              );
+                            }
                             if (desvinculando === aid) {
                               return (
                                 <div key={aid} role="alertdialog" aria-label={`Remover ${a.titulo} deste conteúdo`} className="col-span-full rounded-[14px] border border-destructive/50 bg-destructive/15 p-4">
@@ -1151,6 +1175,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                     } finally { setDuplicandoAtividade(null); }
                                   }}><Copy size={13} className="mr-1.5" />{duplicandoAtividade === aid ? "Duplicando…" : "Duplicar"}</Button>
                                   <Button variant="ghost" size="sm" className="rounded-full text-muted-foreground hover:text-destructive" onClick={() => setDesvinculando(aid)}><X size={13} className="mr-1.5" />Remover…</Button>
+                                  <Button variant="ghost" size="sm" className="rounded-full text-muted-foreground hover:text-destructive" onClick={() => setAtividadeParaExcluir(aid)}><Trash2 size={13} className="mr-1.5" />Excluir…</Button>
                                 </div>
                               </div>
                             )
