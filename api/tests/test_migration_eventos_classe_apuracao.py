@@ -39,6 +39,8 @@ def test_pontos_so_da_janela_do_evento_e_nunca_negativos() -> None:
     assert "ea.criado_em >= v_evento.inicio" in sql
     assert "ea.criado_em <= v_evento.fim" in sql
     assert "ea.classe_id = v_evento.classe_id" in sql
+    # linhas antigas sem classe_id são resolvidas pela mesma função do gatilho e da view de rank
+    assert "ea.classe_id IS NULL AND public.fn_eventos_aluno_resolve_classe_id(ea.tipo, ea.referencia) = v_evento.classe_id" in sql
     assert "CHECK (pontos >= 0)" in sql
 
 
@@ -74,3 +76,14 @@ def test_downgrade_restaura_o_encerrar_anterior() -> None:
     sql = output.getvalue()
     assert "DROP TABLE IF EXISTS public.eventos_classe_resultado" in sql
     assert "fn_evento_classe_apurar(p_evento_id)" not in sql
+
+
+def test_moedas_creditadas_uma_vez_por_participante() -> None:
+    sql = _upgrade_sql()
+
+    assert "IF v_evento.moedas > 0 THEN" in sql
+    assert "INSERT INTO public.moedas_ledger" in sql
+    assert "'evento', 'evento_classe', 'evento_classe:' || p_evento_id::text" in sql
+    assert "WHERE r.evento_id = p_evento_id AND r.participou" in sql
+    # o predicado do índice parcial precisa ser repetido, senão o Postgres não casa o índice
+    assert "ON CONFLICT (aluno_id, evento_tipo, referencia) WHERE motivo = 'evento' DO NOTHING" in sql

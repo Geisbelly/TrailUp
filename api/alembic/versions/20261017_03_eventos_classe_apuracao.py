@@ -15,11 +15,13 @@ então excluir uma conta mudaria o total de um evento encerrado.
   rank individual (decisão da #152).
 
 Padrões PROVISÓRIOS (trocar aqui sem refazer a tela): destaque = os 3 primeiros colocados com
-pontos > 0, e só quando o evento concede medalha de destaque; a pontuação do evento
-(`eventos_classe.pontos`) e as moedas NÃO são creditadas ainda (carteira #142 inexistente) e a
-medalha ainda não vira `conquistas_aluno` — esta migration só registra quem a merece. Eventos
-de `eventos_aluno` sem `classe_id` preenchido não contam (a view de rank os resolve por
-`referencia`; aqui seria chute).
+pontos > 0, e só quando o evento concede medalha de destaque. As **moedas** do evento são
+creditadas a cada participante em `moedas_ledger` (motivo `evento`, tipo `evento_classe`,
+referência `evento_classe:<id>`; o índice único `moedas_ledger_ganho_unico` impede dobrar).
+A pontuação do evento (`eventos_classe.pontos`) e a medalha como `conquistas_aluno` NÃO são
+creditadas ainda — a medalha só é registrada em `destaque`. A classe de cada `eventos_aluno`
+é a gravada ou, se nula, a resolvida por `fn_eventos_aluno_resolve_classe_id` (a mesma que o
+gatilho de inserção e a view de rank usam; ~70% das linhas antigas não têm `classe_id`).
 
 RLS: professor lê o resultado das turmas dele; aluno lê a PRÓPRIA linha e as 10 primeiras
 posições (o corte de visibilidade do #134: não expor quem está em desvantagem). Ninguém escreve
@@ -134,9 +136,12 @@ BEGIN
       FROM public.classe_aluno ca
       LEFT JOIN public.eventos_aluno ea
         ON ea.aluno_id = ca.aluno_id
-       AND ea.classe_id = v_evento.classe_id
        AND ea.criado_em >= v_evento.inicio
        AND ea.criado_em <= v_evento.fim
+       AND (
+         ea.classe_id = v_evento.classe_id
+         OR (ea.classe_id IS NULL AND public.fn_eventos_aluno_resolve_classe_id(ea.tipo, ea.referencia) = v_evento.classe_id)
+       )
       WHERE ca.classe_id = v_evento.classe_id
       GROUP BY ca.aluno_id
     ) b
@@ -158,6 +163,17 @@ BEGIN
 
   SELECT COUNT(*)::integer INTO v_participantes
   FROM public.eventos_classe_resultado WHERE evento_id = p_evento_id AND participou;
+
+  -- Moedas do evento: uma vez por participante. O índice parcial `moedas_ledger_ganho_unico`
+  -- (aluno, evento_tipo, referencia, motivo = 'evento') torna reapurar inofensivo.
+  IF v_evento.moedas > 0 THEN
+    INSERT INTO public.moedas_ledger (aluno_id, delta, motivo, evento_tipo, referencia, classe_id)
+    SELECT r.aluno_id, v_evento.moedas, 'evento', 'evento_classe', 'evento_classe:' || p_evento_id::text, v_evento.classe_id
+    FROM public.eventos_classe_resultado r
+    WHERE r.evento_id = p_evento_id AND r.participou
+    ON CONFLICT (aluno_id, evento_tipo, referencia) WHERE motivo = 'evento' DO NOTHING;
+  END IF;
+
   RETURN v_participantes;
 END
 $function$;
