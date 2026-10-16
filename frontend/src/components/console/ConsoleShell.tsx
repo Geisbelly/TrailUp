@@ -1,6 +1,6 @@
 import { useEffect, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { GraduationCap, LayoutDashboard, LogOut, Route, Settings, ShieldCheck, Sparkles, Trophy } from "lucide-react";
+import { Award, ClipboardCheck, GraduationCap, LayoutDashboard, LogOut, Route, Settings, ShieldCheck, Sparkles, Trophy } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DESIGN_ART } from "@/lib/design-art";
 import { CONSOLE_SECTIONS, consolePathForView, type ConsoleView } from "@/pages/consoleSections";
@@ -9,6 +9,8 @@ import Escriba from "./escriba/Escriba";
 const navigation = {
   dashboard: { label: "Visão geral", icon: LayoutDashboard },
   trilha: { label: "Trilhas", icon: Route },
+  conquistas: { label: "Conquistas", icon: Award },
+  notas: { label: "Notas", icon: ClipboardCheck },
   classes: { label: "Turmas", icon: GraduationCap },
   personalizacoes: { label: "Personalizações", icon: Sparkles },
   ranks: { label: "Rankings", icon: Trophy },
