@@ -34,7 +34,9 @@ export function PainelDeCorrecao({
   onVoltar: () => void;
 }) {
   const jaCorrigida = estadoDaEntrega(linha) === "corrigida";
-  const [nota, setNota] = useState(jaCorrigida && linha.pontuacaoObtida !== null ? formatar(linha.pontuacaoObtida) : "");
+  const semEntregaInicial = estadoDaEntrega(linha) === "sem_entrega";
+  const notaDaIa = estadoDaEntrega(linha) === "revisar";
+  const [nota, setNota] = useState(linha.pontuacaoObtida !== null && !semEntregaInicial ? formatar(linha.pontuacaoObtida) : "");
   const [feedback, setFeedback] = useState(linha.feedback ?? "");
   const [erro, setErro] = useState<string | null>(null);
   const semEntrega = estadoDaEntrega(linha) === "sem_entrega";
@@ -86,6 +88,17 @@ export function PainelDeCorrecao({
             <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{linha.gabarito}</p>
             <p className="mt-1 text-[11.5px] text-muted-foreground">Referência para orientar a correção — questão dissertativa não tem resposta certa/errada binária.</p>
           </div>
+        )}
+
+        {notaDaIa && (
+          <p role="note" className="rounded-[14px] border border-primary/40 bg-primary/10 p-4 text-[13px]">
+            A IA sugeriu <strong>{formatar(linha.pontuacaoObtida)} pts</strong>. Confira a resposta e confirme a nota ou ajuste.
+          </p>
+        )}
+        {estadoDaEntrega(linha) === "sem_nota" && (
+          <p role="note" className="rounded-[14px] border border-destructive/40 bg-destructive/10 p-4 text-[13px]">
+            A IA não conseguiu corrigir esta resposta. Dê a nota.
+          </p>
         )}
 
         <div className="grid gap-4 sm:grid-cols-[160px_1fr]">

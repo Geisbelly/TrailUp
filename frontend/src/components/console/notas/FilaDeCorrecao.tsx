@@ -3,7 +3,8 @@ import { estadoDaEntrega, rotuloDeEspera, type LinhaDaFila } from "./fila";
 import { formatar, iniciais } from "./nota";
 
 const SELO: Record<ReturnType<typeof estadoDaEntrega>, { tom: TomDoSelo; texto: (l: LinhaDaFila) => string }> = {
-  pendente: { tom: "alerta", texto: () => "Aguardando correção" },
+  revisar: { tom: "alerta", texto: (l) => `Revisar nota da IA · ${formatar(l.pontuacaoObtida)}` },
+  sem_nota: { tom: "perigo", texto: () => "A IA não corrigiu" },
   sem_entrega: { tom: "perigo", texto: () => "Não entregou" },
   corrigida: { tom: "ativo", texto: (l) => (l.pontuacaoObtida !== null ? `Corrigida · ${formatar(l.pontuacaoObtida)}` : "Corrigida") },
 };

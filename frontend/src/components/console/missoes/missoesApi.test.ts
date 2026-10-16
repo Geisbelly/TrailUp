@@ -13,7 +13,7 @@ vi.mock("@/integrations/supabase/client", () => ({
     rpc: sb.rpc,
     from: (tabela: string) => {
       const q: Record<string, unknown> = {};
-      for (const m of ["select", "eq", "in", "order", "delete"]) {
+      for (const m of ["select", "eq", "in", "order", "delete", "update", "maybeSingle"]) {
         q[m] = (...args: unknown[]) => (sb.chamadas.push([tabela, m, ...args]), q);
       }
       q.then = (resolve: (v: unknown) => unknown) => Promise.resolve(sb.respostas[tabela] ?? { data: [], error: null, count: 0 }).then(resolve);
@@ -23,7 +23,7 @@ vi.mock("@/integrations/supabase/client", () => ({
 }));
 vi.mock("../trilha/topicsApi", () => ({ saveActivity: sb.saveActivity }));
 
-import { contarEntregas, duplicarMissao, excluirMissao, foiEntregue, listarMissoes, mapearMissao, salvarMissao } from "./missoesApi";
+import { contarEntregas, duplicarMissao, excluirMissao, foiEntregue, gravarMoedas, listarMissoes, mapearMissao, moedasDe, salvarMissao } from "./missoesApi";
 
 const ativ = (id: number, extra: Record<string, unknown> = {}) => ({
   id,
@@ -99,7 +99,7 @@ describe("listarMissoes", () => {
 describe("salvarMissao / duplicarMissao / excluirMissao", () => {
   it("salvar usa saveActivity com o tipo e a pontuação da missão", async () => {
     sb.saveActivity.mockResolvedValue(9);
-    const payload = { topico_id: 4, titulo: "M", descricao: "obj", tipo: "missao" as const, data_entrega: null, pontuacao_maxima: 50 };
+    const payload = { topico_id: 4, titulo: "M", descricao: "obj", tipo: "missao" as const, data_entrega: null, pontuacao_maxima: 50, moedas: 0 };
     await expect(salvarMissao(payload, 9)).resolves.toBe(9);
     expect(sb.saveActivity).toHaveBeenCalledWith({ id: 9, topico_id: 4, titulo: "M", descricao: "obj", tipo: "missao", data_entrega: null, pontuacao_maxima: 50 });
   });
@@ -126,5 +126,45 @@ describe("salvarMissao / duplicarMissao / excluirMissao", () => {
   it("propaga o erro do banco ao apagar a atividade (ex.: entregas de alunos)", async () => {
     sb.respostas.atividades = { error: new Error("23503") };
     await expect(excluirMissao(3)).rejects.toThrow("23503");
+  });
+});
+
+describe("moedas da missão", () => {
+  it("moedasDe lê só inteiro positivo", () => {
+    expect(moedasDe({ moedas: 5 })).toBe(5);
+    expect(moedasDe({ moedas: "7" })).toBe(7);
+    for (const v of [null, {}, { moedas: -1 }, { moedas: 1.5 }, { moedas: "x" }, [], "texto"]) expect(moedasDe(v)).toBe(0);
+  });
+
+  it("gravar mescla no metadata existente sem apagar o resto", async () => {
+    sb.respostas.atividades = { data: { metadata: { grading_rules: { a: 1 }, moedas: 3 } }, error: null };
+    await gravarMoedas(9, 10);
+    const upd = sb.chamadas.find((c) => c[0] === "atividades" && c[1] === "update");
+    expect(upd[2]).toEqual({ metadata: { grading_rules: { a: 1 }, moedas: 10 } });
+    expect(sb.chamadas).toContainEqual(["atividades", "eq", "id", 9]);
+  });
+
+  it("zero remove a chave e metadata inválido vira objeto novo", async () => {
+    sb.respostas.atividades = { data: { metadata: { grading_rules: 1, moedas: 3 } }, error: null };
+    await gravarMoedas(9, 0);
+    expect(sb.chamadas.find((c) => c[1] === "update")[2]).toEqual({ metadata: { grading_rules: 1 } });
+    sb.chamadas = [];
+    sb.respostas.atividades = { data: { metadata: ["x"] }, error: null };
+    await gravarMoedas(9, 4);
+    expect(sb.chamadas.find((c) => c[1] === "update")[2]).toEqual({ metadata: { moedas: 4 } });
+  });
+
+  it("propaga erro de leitura e de escrita", async () => {
+    sb.respostas.atividades = { data: null, error: new Error("ler") };
+    await expect(gravarMoedas(9, 1)).rejects.toThrow("ler");
+    sb.respostas.atividades = { data: { metadata: {} }, error: new Error("gravar") };
+    await expect(gravarMoedas(9, 1)).rejects.toThrow("gravar");
+  });
+
+  it("salvar grava as moedas depois da atividade", async () => {
+    sb.saveActivity.mockResolvedValue(9);
+    sb.respostas.atividades = { data: { metadata: {} }, error: null };
+    await salvarMissao({ topico_id: 4, titulo: "M", descricao: "o", tipo: "missao", data_entrega: null, pontuacao_maxima: 50, moedas: 12 }, 9);
+    expect(sb.chamadas.find((c) => c[1] === "update")[2]).toEqual({ metadata: { moedas: 12 } });
   });
 });

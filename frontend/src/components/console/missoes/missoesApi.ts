@@ -10,6 +10,7 @@ export type Missao = {
   topicoNome: string;
   prazo: string | null;
   pontos: number;
+  moedas: number;
   entregues: number;
   total: number;
 };
@@ -20,6 +21,7 @@ type LinhaDeAtividade = {
   descricao: string | null;
   data_entrega: string | null;
   pontuacao_maxima: number | string | null;
+  metadata?: unknown;
   topico_id: number;
   topicos: { nome: string | null; classe_id: number } | { nome: string | null; classe_id: number }[] | null;
 };
@@ -43,6 +45,13 @@ export function contarEntregas(linhas: LinhaDeEntrega[]): Map<number, number> {
   return new Map([...porAtividade].map(([id, alunos]) => [id, alunos.size]));
 }
 
+/** `atividades.metadata.moedas` (inteiro >= 0). Qualquer outra coisa conta como nenhuma. */
+export function moedasDe(metadata: unknown): number {
+  const v = metadata && typeof metadata === "object" ? (metadata as Record<string, unknown>).moedas : undefined;
+  const n = Number(v);
+  return Number.isInteger(n) && n > 0 ? n : 0;
+}
+
 export function mapearMissao(a: LinhaDeAtividade, entregues: number, total: number): Missao {
   const topico = Array.isArray(a.topicos) ? a.topicos[0] : a.topicos;
   return {
@@ -53,6 +62,7 @@ export function mapearMissao(a: LinhaDeAtividade, entregues: number, total: numb
     topicoNome: topico?.nome?.trim() || `Tópico ${a.topico_id}`,
     prazo: a.data_entrega,
     pontos: Number(a.pontuacao_maxima ?? 0),
+    moedas: moedasDe(a.metadata),
     entregues,
     total,
   };
@@ -61,7 +71,7 @@ export function mapearMissao(a: LinhaDeAtividade, entregues: number, total: numb
 export async function listarMissoes(classeId: number): Promise<Missao[]> {
   const { data, error } = await supabase
     .from("atividades")
-    .select("id, titulo, descricao, data_entrega, pontuacao_maxima, topico_id, topicos!inner(nome, classe_id)")
+    .select("id, titulo, descricao, data_entrega, pontuacao_maxima, metadata, topico_id, topicos!inner(nome, classe_id)")
     .eq("tipo", TIPO_DA_MISSAO)
     .eq("topicos.classe_id", classeId)
     .order("created_at", { ascending: false });
@@ -83,7 +93,7 @@ export async function listarMissoes(classeId: number): Promise<Missao[]> {
 }
 
 export async function salvarMissao(payload: PayloadDaMissao, id?: number): Promise<number> {
-  return saveActivity({
+  const salvoId = await saveActivity({
     id,
     topico_id: payload.topico_id,
     titulo: payload.titulo,
@@ -92,6 +102,22 @@ export async function salvarMissao(payload: PayloadDaMissao, id?: number): Promi
     data_entrega: payload.data_entrega,
     pontuacao_maxima: payload.pontuacao_maxima,
   });
+  await gravarMoedas(salvoId, payload.moedas);
+  return salvoId;
+}
+
+/**
+ * Grava `metadata.moedas` sem apagar o resto do JSON (regras de correção, anexos…): lê, mescla e escreve.
+ * O banco paga estas moedas só quando o professor aprova a entrega (`avaliar_entrega`).
+ */
+export async function gravarMoedas(atividadeId: number, moedas: number): Promise<void> {
+  const lida = await supabase.from("atividades").select("metadata").eq("id", atividadeId).maybeSingle();
+  if (lida.error) throw lida.error;
+  const atual = lida.data?.metadata && typeof lida.data.metadata === "object" && !Array.isArray(lida.data.metadata) ? (lida.data.metadata as Record<string, unknown>) : {};
+  const { moedas: _antiga, ...resto } = atual;
+  const novo = moedas > 0 ? { ...resto, moedas } : resto;
+  const { error } = await supabase.from("atividades").update({ metadata: novo as never }).eq("id", atividadeId);
+  if (error) throw error;
 }
 
 /** Copia a missão (atividade + questões) sem vínculo a conteúdo e sem entregas — função do banco `duplicar_atividade`. */

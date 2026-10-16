@@ -2,10 +2,10 @@
 // que `notas_fila()` devolve (migration 20261016_04), para que a pergunta de produto
 // "o que é pendente de correção?" tenha UM lugar para mudar.
 //
-// DEFINIÇÃO ADOTADA (decisão 1 da análise 05, ainda a confirmar): é pendente toda
-// entrega — ou ausência de entrega com prazo vencido — que o professor ainda não
-// avaliou. Como a IA já corrige a dissertativa na hora do aluno, "pendente" aqui quer
-// dizer "sem revisão do professor", não "sem nota".
+// DEFINIÇÃO (decisão 1 da análise 05, confirmada pela coordenação em 2026-10-16): pendente é
+// "o que o professor precisa olhar" — a nota que a IA preencheu e ele ainda não revisou, ou a
+// resposta que a IA não conseguiu corrigir. Quem não entregou NÃO é pendente de correção (não há o
+// que corrigir): aparece num filtro próprio, "Sem entrega".
 
 export type LinhaDaFila = {
   alunoId: string;
@@ -24,22 +24,37 @@ export type LinhaDaFila = {
   feedback: string | null;
 };
 
-export type EstadoDaEntrega = "pendente" | "sem_entrega" | "corrigida";
-export type FiltroDeStatus = "pendentes" | "corrigidas" | "todas";
+/** `revisar`: a IA deu nota e o professor ainda não conferiu. `sem_nota`: há resposta mas a IA não deu nota. */
+export type EstadoDaEntrega = "revisar" | "sem_nota" | "sem_entrega" | "corrigida";
+export type FiltroDeStatus = "pendentes" | "sem_entrega" | "corrigidas" | "todas";
 
 const DIA_MS = 86_400_000;
 
 export function estadoDaEntrega(l: LinhaDaFila): EstadoDaEntrega {
   if (l.avaliadoEm) return "corrigida";
-  return l.resposta && l.resposta.trim() ? "pendente" : "sem_entrega";
+  if (!l.resposta || !l.resposta.trim()) return "sem_entrega";
+  return l.pontuacaoObtida !== null && l.pontuacaoObtida !== undefined ? "revisar" : "sem_nota";
 }
 
-/** "Pendentes" inclui quem não entregou: o professor precisa decidir o que fazer com ele. */
+/** Precisa do olhar do professor agora. */
+export const precisaDeRevisao = (l: LinhaDaFila): boolean => {
+  const e = estadoDaEntrega(l);
+  return e === "revisar" || e === "sem_nota";
+};
+
 export function passaNoFiltro(l: LinhaDaFila, filtro: FiltroDeStatus): boolean {
   const e = estadoDaEntrega(l);
   if (filtro === "todas") return true;
-  return filtro === "corrigidas" ? e === "corrigida" : e !== "corrigida";
+  if (filtro === "corrigidas") return e === "corrigida";
+  if (filtro === "sem_entrega") return e === "sem_entrega";
+  return precisaDeRevisao(l);
 }
+
+/** Pendentes primeiro, depois quem não entregou, corrigidas por último. */
+const ordemDoEstado = (l: LinhaDaFila): number => {
+  const e = estadoDaEntrega(l);
+  return e === "corrigida" ? 2 : e === "sem_entrega" ? 1 : 0;
+};
 
 /** Dias de calendário desde a data de referência (entrega, ou prazo quando não houve entrega). */
 export function diasDeEspera(l: LinhaDaFila, agora: Date = new Date()): number {
@@ -58,11 +73,11 @@ export function rotuloDeEspera(l: LinhaDaFila, agora: Date = new Date()): string
   return estadoDaEntrega(l) === "sem_entrega" ? `prazo venceu ${quando}` : `entregue ${quando}`;
 }
 
-/** Quem espera há mais tempo vem primeiro; corrigidas por último; desempate pelo nome. */
+/** Quem espera há mais tempo vem primeiro (pendentes, depois sem entrega, depois corrigidas); desempate pelo nome. */
 export function ordenarFila(linhas: LinhaDaFila[], agora: Date = new Date()): LinhaDaFila[] {
   return [...linhas].sort((a, b) => {
-    const ca = estadoDaEntrega(a) === "corrigida" ? 1 : 0;
-    const cb = estadoDaEntrega(b) === "corrigida" ? 1 : 0;
+    const ca = ordemDoEstado(a);
+    const cb = ordemDoEstado(b);
     if (ca !== cb) return ca - cb;
     const d = diasDeEspera(b, agora) - diasDeEspera(a, agora);
     return d !== 0 ? d : a.alunoNome.localeCompare(b.alunoNome, "pt-BR");
@@ -79,7 +94,7 @@ export function filtrarFila(linhas: LinhaDaFila[], f: FiltrosDaFila, agora: Date
 }
 
 export function contarPendentes(linhas: LinhaDaFila[]): number {
-  return linhas.filter((l) => estadoDaEntrega(l) !== "corrigida").length;
+  return linhas.filter(precisaDeRevisao).length;
 }
 
 /** Próxima/anterior dentro da lista já filtrada (para corrigir em sequência). */

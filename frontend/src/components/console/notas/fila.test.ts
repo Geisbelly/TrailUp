@@ -23,12 +23,15 @@ const linha = (extra: Partial<LinhaDaFila> = {}): LinhaDaFila => ({
 });
 
 describe("estadoDaEntrega", () => {
-  it("com resposta e sem avaliação é pendente", () => {
-    expect(estadoDaEntrega(linha())).toBe("pendente");
+  it("resposta sem nota: a IA não conseguiu corrigir", () => {
+    expect(estadoDaEntrega(linha())).toBe("sem_nota");
+  });
+  it("resposta com nota da IA e sem revisão do professor é para revisar (nota 0 também)", () => {
+    expect(estadoDaEntrega(linha({ pontuacaoObtida: 8 }))).toBe("revisar");
+    expect(estadoDaEntrega(linha({ pontuacaoObtida: 0 }))).toBe("revisar");
   });
   it("já avaliada pelo professor é corrigida, mesmo que a IA tenha dado nota", () => {
     expect(estadoDaEntrega(linha({ avaliadoEm: dia(1), pontuacaoObtida: 8 }))).toBe("corrigida");
-    expect(estadoDaEntrega(linha({ pontuacaoObtida: 8 }))).toBe("pendente");
   });
   it("sem resposta (ou só espaços) é sem_entrega", () => {
     expect(estadoDaEntrega(linha({ resposta: null }))).toBe("sem_entrega");
@@ -62,9 +65,13 @@ describe("filtrarFila e ordenarFila", () => {
     linha({ alunoId: "f", alunoNome: "Fábio", topicoId: 99, entregueEm: dia(9) }),
   ];
 
-  it("pendentes inclui quem não entregou e exclui as corrigidas; a mais antiga primeiro", () => {
+  it("pendentes é só o que o professor precisa olhar: sem quem não entregou nem as corrigidas; a mais antiga primeiro", () => {
     const r = filtrarFila(fila, { topicoId: null, status: "pendentes" }, AGORA);
-    expect(r.map((l) => l.alunoNome)).toEqual(["Fábio", "Caio", "Eva", "Bia"]);
+    expect(r.map((l) => l.alunoNome)).toEqual(["Fábio", "Caio", "Bia"]);
+  });
+
+  it("quem não entregou tem filtro próprio", () => {
+    expect(filtrarFila(fila, { topicoId: null, status: "sem_entrega" }, AGORA).map((l) => l.alunoNome)).toEqual(["Eva"]);
   });
 
   it("corrigidas e todas", () => {
@@ -72,6 +79,7 @@ describe("filtrarFila e ordenarFila", () => {
     const todas = filtrarFila(fila, { topicoId: null, status: "todas" }, AGORA);
     expect(todas).toHaveLength(5);
     expect(todas[todas.length - 1].alunoNome).toBe("Davi"); // corrigida vai para o fim
+    expect(todas.map((l) => l.alunoNome).indexOf("Eva")).toBeGreaterThan(todas.map((l) => l.alunoNome).indexOf("Bia")); // sem entrega depois das pendentes
   });
 
   it("filtra por tópico", () => {
@@ -87,8 +95,8 @@ describe("filtrarFila e ordenarFila", () => {
 });
 
 describe("contarPendentes e vizinhas", () => {
-  it("conta pendentes e sem entrega", () => {
-    expect(contarPendentes([linha(), linha({ resposta: null }), linha({ avaliadoEm: dia(1) })])).toBe(2);
+  it("conta só o que precisa de revisão (IA com nota ou sem nota), não sem entrega nem corrigidas", () => {
+    expect(contarPendentes([linha(), linha({ pontuacaoObtida: 5 }), linha({ resposta: null }), linha({ avaliadoEm: dia(1) })])).toBe(2);
   });
 
   it("anterior e próxima dentro da lista; pontas viram null; fora da lista também", () => {
