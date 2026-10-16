@@ -1,6 +1,8 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { FramedProfileImage } from "@/components/FramedProfileImage";
+import { normalizeBrainHexProfile } from "@/constants/profileImages";
 import type { Guild } from "@/services/social/guildModel";
 import type { SocialSnapshot } from "@/services/social/socialModel";
 import { FontFamily } from "@/styles/GlobalStyle";
@@ -23,7 +25,8 @@ export function SocialLateralDesktop({
   palette: ProfileShellPalette;
   onAbrirGuildas: () => void;
 }) {
-  const online = social?.friends.filter((p) => p.online).length ?? 0;
+  const amigosOnline = social?.friends.filter((p) => p.online) ?? [];
+  const online = amigosOnline.length;
   const rede: [string, number][] = [
     ["Amigos", social?.friends.length ?? 0],
     ["Guildas", guildas.filter((g) => g.souMembro).length],
@@ -37,7 +40,26 @@ export function SocialLateralDesktop({
       <View style={[s.cartao, cartao]}>
         <Text style={[s.titulo, { color: palette.textMuted }]}>ONLINE AGORA</Text>
         <View style={s.linhaOnline}>
-          <View style={[s.ponto, { backgroundColor: online ? "#62db9b" : "#90949d" }]} />
+          {/* Como no protótipo: os retratos de quem está online (até cinco), antes do total. */}
+          {online ? (
+            <View style={s.retratos}>
+              {amigosOnline.slice(0, 5).map((amigo, i) => (
+                <View
+                  key={amigo.alunoId}
+                  accessibilityLabel={amigo.apelido || amigo.nome}
+                  style={[s.retrato, i > 0 && s.retratoSobreposto, { borderColor: "#62db9b", backgroundColor: palette.surfaceElevated }]}
+                >
+                  <FramedProfileImage
+                    profile={normalizeBrainHexProfile(amigo.perfilAtivo)}
+                    source={amigo.fotoUrl ? { uri: amigo.fotoUrl } : undefined}
+                    size={26}
+                  />
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View style={[s.ponto, { backgroundColor: "#90949d" }]} />
+          )}
           <Text style={[s.texto, { color: palette.text }]}>
             {online === 0 ? "Nenhum amigo online" : online === 1 ? "1 amigo online" : `${online} amigos online`}
           </Text>
@@ -88,6 +110,9 @@ const s = StyleSheet.create({
   texto: { fontFamily: FontFamily.interMedium, fontSize: 13 },
   nota: { fontFamily: FontFamily.interMedium, fontSize: 12, lineHeight: 18 },
   linhaOnline: { flexDirection: "row", alignItems: "center", gap: 8 },
+  retratos: { flexDirection: "row", alignItems: "center" },
+  retrato: { width: 30, height: 30, borderRadius: 15, borderWidth: 2, alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  retratoSobreposto: { marginLeft: -6 },
   ponto: { width: 8, height: 8, borderRadius: 4 },
   linhaRede: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 9, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1 },
   valor: { fontFamily: FontFamily.interMedium, fontSize: 13, fontWeight: "700" },
