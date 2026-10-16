@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { CabecalhoDePagina, EstadoVazioDaPagina, ErroDaPagina } from "../comum/PaginaDoConsole";
 import { useTurmasDoProfessor } from "../comum/useTurmasDoProfessor";
 import { CartaoDoEvento } from "./CartaoDoEvento";
+import { DuranteDoEventoDialog } from "./DuranteDoEvento";
 import { ResultadoDoEventoDialog } from "./ResultadoDoEvento";
 import { FormularioDoEvento } from "./FormularioDoEvento";
 import { FORMULARIO_DE_EVENTO_VAZIO, dataParaCampo, resumoDeAbertura, type ChaveDePeca, type FormularioDeEvento, type PayloadDoEvento } from "./evento";
@@ -59,6 +60,7 @@ export default function EventosSection({ professorId }: { professorId?: string }
   const [acao, setAcao] = useState<Acao | null>(null);
   const [executando, setExecutando] = useState(false);
   const [resultadoDe, setResultadoDe] = useState<Evento | null>(null);
+  const [duranteDe, setDuranteDe] = useState<Evento | null>(null);
 
   const carregar = useCallback(async (id: number) => {
     setEstado("carregando");
@@ -171,6 +173,7 @@ export default function EventosSection({ professorId }: { professorId?: string }
                   onEncerrar={() => setAcao({ tipo: "encerrar", evento: e })}
                   onExcluir={() => setAcao({ tipo: "excluir", evento: e })}
                   onVerResultado={() => setResultadoDe(e)}
+                  onVerDurante={() => setDuranteDe(e)}
                 />
               ))}
             </ul>
@@ -178,6 +181,7 @@ export default function EventosSection({ professorId }: { professorId?: string }
         </div>
       )}
 
+      {duranteDe && <DuranteDoEventoDialog evento={duranteDe} onFechar={() => setDuranteDe(null)} />}
       {resultadoDe && <ResultadoDoEventoDialog evento={resultadoDe} onFechar={() => setResultadoDe(null)} />}
 
       {form && (

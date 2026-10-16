@@ -165,3 +165,33 @@ describe("listarResultado", () => {
     await expect(listarResultado("e1")).rejects.toThrow("rls");
   });
 });
+
+describe("painel Durante", () => {
+  it("mapearDurante normaliza números, nomes e situações", async () => {
+    const { mapearDurante } = await import("./eventosApi");
+    const p = mapearDurante({
+      total: "10", comecaram: 6, pararam: null, nao_comecaram: 4, guildas_ativas: 2, guildas_total: 3,
+      por_modalidade: { individual: 6, guilda: "4" },
+      alunos: [{ aluno_id: "a", nome: " Ana ", situacao: "parou" }, { aluno_id: "b", nome: "", situacao: "xyz" }],
+    });
+    expect(p).toMatchObject({ total: 10, comecaram: 6, pararam: 0, naoComecaram: 4, guildasAtivas: 2, guildasTotal: 3, porModalidade: { individual: 6, guilda: 4 } });
+    expect(p.alunos).toEqual([
+      { alunoId: "a", nome: "Ana", situacao: "parou" },
+      { alunoId: "b", nome: "Aluno", situacao: "nao_comecou" },
+    ]);
+  });
+
+  it("resposta vazia vira painel zerado", async () => {
+    const { mapearDurante } = await import("./eventosApi");
+    expect(mapearDurante(null)).toMatchObject({ total: 0, alunos: [], porModalidade: { individual: 0, guilda: 0 } });
+  });
+
+  it("lerDurante chama a função do banco pelo evento e propaga erro", async () => {
+    const { lerDurante } = await import("./eventosApi");
+    sb.rpc.mockResolvedValue({ data: { total: 3, alunos: [] }, error: null });
+    await expect(lerDurante("e1")).resolves.toMatchObject({ total: 3 });
+    expect(sb.rpc).toHaveBeenCalledWith("evento_classe_durante", { p_evento_id: "e1" });
+    sb.rpc.mockResolvedValue({ data: null, error: new Error("O evento ainda não foi aberto.") });
+    await expect(lerDurante("e1")).rejects.toThrow("não foi aberto");
+  });
+});

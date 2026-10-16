@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { PayloadDoEvento, StatusDoEvento } from "./evento";
+import type { AlunoNoEvento, PainelDurante, SituacaoDoAluno } from "./durante";
 import type { LinhaDeGuilda, LinhaDeResultado } from "./resultado";
 
 // `eventos_classe` e as funções `evento_classe_*` são novas (migrations 20261017_01/02) e não estão
@@ -177,4 +178,36 @@ export async function listarResultado(eventoId: string): Promise<ResultadoApurad
       .map((g) => ({ guildaId: g.guilda_id, nome: nomeDaGuilda.get(g.guilda_id)?.trim() || "Guilda", pontos: Number(g.pontos ?? 0), membros: g.membros ?? 0, posicao: g.posicao }))
       .sort((a, b) => (a.posicao ?? Infinity) - (b.posicao ?? Infinity) || a.nome.localeCompare(b.nome, "pt-BR")),
   };
+}
+
+const SITUACOES: SituacaoDoAluno[] = ["comecou", "parou", "nao_comecou"];
+
+/** Normaliza o JSON de `evento_classe_durante`; número ou situação fora do esperado vira o valor mais seguro. */
+export function mapearDurante(b: Record<string, unknown> | null): PainelDurante {
+  const n = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+  const mod = (b?.por_modalidade ?? {}) as Record<string, unknown>;
+  const alunos = Array.isArray(b?.alunos) ? (b.alunos as Record<string, unknown>[]) : [];
+  return {
+    total: n(b?.total),
+    comecaram: n(b?.comecaram),
+    pararam: n(b?.pararam),
+    naoComecaram: n(b?.nao_comecaram),
+    guildasAtivas: n(b?.guildas_ativas),
+    guildasTotal: n(b?.guildas_total),
+    porModalidade: { individual: n(mod.individual), guilda: n(mod.guilda) },
+    alunos: alunos.map(
+      (a): AlunoNoEvento => ({
+        alunoId: String(a.aluno_id),
+        nome: typeof a.nome === "string" && a.nome.trim() ? a.nome.trim() : "Aluno",
+        situacao: SITUACOES.includes(a.situacao as SituacaoDoAluno) ? (a.situacao as SituacaoDoAluno) : "nao_comecou",
+      }),
+    ),
+  };
+}
+
+/** Painel "Durante": quem começou, parou e as guildas ativas. Evento em rascunho o banco recusa. */
+export async function lerDurante(eventoId: string): Promise<PainelDurante> {
+  const { data, error } = await supabase.rpc("evento_classe_durante" as never, { p_evento_id: eventoId } as never);
+  if (error) throw error;
+  return mapearDurante((data ?? null) as Record<string, unknown> | null);
 }
