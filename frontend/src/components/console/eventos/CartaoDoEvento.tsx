@@ -77,6 +77,7 @@ export function CartaoDoEvento({
 
       <p className="mt-3 text-[12.5px] text-muted-foreground">
         <span className="font-semibold text-foreground">Inclui:</span> {rotuloDasPecas(evento.pecas)}
+        {evento.missoes.length > 0 && ` · ${evento.missoes.length === 1 ? "1 missão ligada" : `${evento.missoes.length} missões ligadas`}`}
       </p>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">

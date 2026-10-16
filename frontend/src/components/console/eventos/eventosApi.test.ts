@@ -13,7 +13,7 @@ vi.mock("@/integrations/supabase/client", () => ({
     rpc: sb.rpc,
     from: (tabela: string) => {
       const q: Record<string, unknown> = {};
-      for (const m of ["select", "eq", "in", "order", "update", "insert", "delete"]) {
+      for (const m of ["select", "eq", "in", "order", "update", "insert", "delete", "single"]) {
         q[m] = (...args: unknown[]) => (sb.chamadas.push([tabela, m, ...args]), q);
       }
       q.then = (resolve: (v: unknown) => unknown) => Promise.resolve(sb.porTabela[tabela] ?? sb.resposta).then(resolve);
@@ -75,14 +75,15 @@ describe("listarEventos / salvarEvento", () => {
     await expect(listarEventos(7)).rejects.toThrow("rls");
   });
 
-  it("criar leva a turma; editar não leva turma nem status", async () => {
-    await salvarEvento(7, payload);
+  it("criar leva a turma e devolve o id; editar não leva turma nem status e devolve o mesmo id", async () => {
+    sb.resposta = { data: { id: "novo" }, error: null };
+    await expect(salvarEvento(7, payload)).resolves.toBe("novo");
     const ins = sb.chamadas.find((c) => c[1] === "insert");
     expect(ins[2]).toMatchObject({ classe_id: 7, titulo: "S" });
     expect(ins[2]).not.toHaveProperty("status");
 
     sb.chamadas = [];
-    await salvarEvento(7, payload, "e1");
+    await expect(salvarEvento(7, payload, "e1")).resolves.toBe("e1");
     const upd = sb.chamadas.find((c) => c[1] === "update");
     expect(upd[2]).not.toHaveProperty("classe_id");
     expect(upd[2]).not.toHaveProperty("status");
@@ -193,5 +194,50 @@ describe("painel Durante", () => {
     expect(sb.rpc).toHaveBeenCalledWith("evento_classe_durante", { p_evento_id: "e1" });
     sb.rpc.mockResolvedValue({ data: null, error: new Error("O evento ainda não foi aberto.") });
     await expect(lerDurante("e1")).rejects.toThrow("não foi aberto");
+  });
+});
+
+describe("missões do evento", () => {
+  it("listarEventos junta as missões ligadas de todos os eventos numa consulta", async () => {
+    sb.porTabela = {
+      eventos_classe: { data: [linha({ id: "e1" }), linha({ id: "e2" })], error: null },
+      eventos_classe_missoes: { data: [{ evento_id: "e1", atividade_id: 5 }, { evento_id: "e1", atividade_id: "6" }], error: null },
+    };
+    const r = await listarEventos(7);
+    expect(r.map((e) => [e.id, e.missoes])).toEqual([["e1", [5, 6]], ["e2", []]]);
+    expect(sb.chamadas.filter((c) => c[0] === "eventos_classe_missoes" && c[1] === "in")).toHaveLength(1);
+  });
+
+  it("sem eventos não consulta as ligações", async () => {
+    sb.porTabela = { eventos_classe: { data: [], error: null } };
+    await listarEventos(7);
+    expect(sb.chamadas.some((c) => c[0] === "eventos_classe_missoes")).toBe(false);
+  });
+
+  it("definirMissoes chama a função do banco e devolve quantas ficaram; propaga erro", async () => {
+    const { definirMissoes } = await import("./eventosApi");
+    sb.rpc.mockResolvedValue({ data: 2, error: null });
+    await expect(definirMissoes("e1", [5, 6])).resolves.toBe(2);
+    expect(sb.rpc).toHaveBeenCalledWith("evento_classe_definir_missoes", { p_evento_id: "e1", p_atividades: [5, 6] });
+    sb.rpc.mockResolvedValue({ data: null, error: new Error("Só missões desta turma podem entrar no evento.") });
+    await expect(definirMissoes("e1", [9])).rejects.toThrow("desta turma");
+  });
+
+  it("listarMissoesDaTurma filtra por tipo missão e turma e aceita tópico em lista ou nulo", async () => {
+    const { listarMissoesDaTurma } = await import("./eventosApi");
+    sb.porTabela = {
+      atividades: {
+        data: [
+          { id: 1, titulo: "A", topicos: { nome: "Cinemática" } },
+          { id: 2, titulo: "B", topicos: [{ nome: " " }] },
+          { id: 3, titulo: "C", topicos: null },
+        ],
+        error: null,
+      },
+    };
+    const r = await listarMissoesDaTurma(7);
+    expect(sb.chamadas).toContainEqual(["atividades", "eq", "tipo", "missao"]);
+    expect(sb.chamadas).toContainEqual(["atividades", "eq", "topicos.classe_id", 7]);
+    expect(r.map((m) => m.topicoNome)).toEqual(["Cinemática", "Sem tópico", "Sem tópico"]);
   });
 });

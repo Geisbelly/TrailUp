@@ -21,7 +21,7 @@ import { DuranteDoEventoDialog } from "./DuranteDoEvento";
 import { ResultadoDoEventoDialog } from "./ResultadoDoEvento";
 import { FormularioDoEvento } from "./FormularioDoEvento";
 import { FORMULARIO_DE_EVENTO_VAZIO, dataParaCampo, resumoDeAbertura, type ChaveDePeca, type FormularioDeEvento, type PayloadDoEvento } from "./evento";
-import { abrirEvento, encerrarEvento, excluirEvento, listarEventos, salvarEvento, salvarTextoDoEvento, traduzirErroDeEvento, type Evento } from "./eventosApi";
+import { abrirEvento, encerrarEvento, excluirEvento, definirMissoes, listarEventos, listarMissoesDaTurma, salvarEvento, salvarTextoDoEvento, traduzirErroDeEvento, type Evento, type MissaoDisponivel } from "./eventosApi";
 
 type FormAberto = { inicial: FormularioDeEvento; editando: Evento | null; chave: number };
 type Acao = { tipo: "abrir" | "encerrar" | "excluir"; evento: Evento };
@@ -33,6 +33,7 @@ const formularioDe = (e: Evento): FormularioDeEvento => ({
   fim: dataParaCampo(e.fim),
   topicoId: e.topicoId ? String(e.topicoId) : "",
   pecas: e.pecas as ChaveDePeca[],
+  missoesIds: e.missoes,
   modalidadeGuilda: e.modalidadeGuilda,
   guildaTamanhoMax: e.guildaTamanhoMax ? String(e.guildaTamanhoMax) : "",
   pontos: String(e.pontos),
@@ -52,6 +53,7 @@ export default function EventosSection({ professorId }: { professorId?: string }
   const { turmas, turmaId, setTurmaId, carregando: carregandoTurmas, erro: erroTurmas, recarregar } = useTurmasDoProfessor(professorId);
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [topicos, setTopicos] = useState<{ id: number; nome: string | null }[]>([]);
+  const [missoesDisponiveis, setMissoesDisponiveis] = useState<MissaoDisponivel[]>([]);
   const [estado, setEstado] = useState<"carregando" | "ok" | "erro">("carregando");
   const [detalhe, setDetalhe] = useState("");
   const [form, setForm] = useState<FormAberto | null>(null);
@@ -65,8 +67,9 @@ export default function EventosSection({ professorId }: { professorId?: string }
   const carregar = useCallback(async (id: number) => {
     setEstado("carregando");
     try {
-      const [lista, t] = await Promise.all([listarEventos(id), supabase.from("topicos").select("id, nome").eq("classe_id", id).order("ordem")]);
+      const [lista, t, missoes] = await Promise.all([listarEventos(id), supabase.from("topicos").select("id, nome").eq("classe_id", id).order("ordem"), listarMissoesDaTurma(id)]);
       setEventos(lista);
+      setMissoesDisponiveis(missoes);
       setTopicos((t.data ?? []) as { id: number; nome: string | null }[]);
       setEstado("ok");
     } catch (e) {
@@ -84,14 +87,17 @@ export default function EventosSection({ professorId }: { professorId?: string }
     setForm({ inicial: FORMULARIO_DE_EVENTO_VAZIO, editando: null, chave: Date.now() });
   };
 
-  const salvar = async (payload: PayloadDoEvento) => {
+  const salvar = async (payload: PayloadDoEvento, missoes: number[]) => {
     if (!turmaId) return;
     const editando = form?.editando ?? null;
     setSalvando(true);
     setErroDoServidor(null);
     try {
       if (editando && editando.status !== "rascunho") await salvarTextoDoEvento(editando.id, payload.titulo, payload.descricao);
-      else await salvarEvento(turmaId, payload, editando?.id);
+      else {
+        const id = await salvarEvento(turmaId, payload, editando?.id);
+        await definirMissoes(id, missoes);
+      }
       setForm(null);
       toast.success(editando ? "Evento atualizado." : "Rascunho criado. Abra o evento quando estiver pronto.");
       await carregar(turmaId);
@@ -191,9 +197,10 @@ export default function EventosSection({ professorId }: { professorId?: string }
           editando={form.editando !== null}
           somenteTexto={form.editando !== null && form.editando.status !== "rascunho"}
           topicos={topicos}
+          missoesDisponiveis={missoesDisponiveis}
           salvando={salvando}
           erroDoServidor={erroDoServidor}
-          onSalvar={(p) => void salvar(p)}
+          onSalvar={(p, m) => void salvar(p, m)}
           onCancelar={() => setForm(null)}
         />
       )}

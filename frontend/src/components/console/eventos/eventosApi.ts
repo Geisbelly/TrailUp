@@ -18,6 +18,8 @@ export type Evento = {
   modalidadeGuilda: boolean;
   guildaTamanhoMax: number | null;
   pecas: string[];
+  /** Ids das missões ligadas (peça "Missões"). */
+  missoes: number[];
   pontos: number;
   moedas: number;
   medalhaParticipacao: boolean;
@@ -49,7 +51,7 @@ const COLUNAS =
 
 const STATUS: StatusDoEvento[] = ["rascunho", "aberto", "encerrado"];
 
-export function mapearEvento(l: LinhaDeEvento): Evento {
+export function mapearEvento(l: LinhaDeEvento, missoes: number[] = []): Evento {
   return {
     id: l.id,
     classeId: l.classe_id,
@@ -63,6 +65,7 @@ export function mapearEvento(l: LinhaDeEvento): Evento {
     modalidadeGuilda: !!l.modalidade_guilda,
     guildaTamanhoMax: l.guilda_tamanho_max,
     pecas: Array.isArray(l.pecas) ? l.pecas.filter((p): p is string => typeof p === "string") : [],
+    missoes,
     pontos: Number(l.pontos ?? 0),
     moedas: Number(l.moedas ?? 0),
     medalhaParticipacao: !!l.medalha_participacao,
@@ -78,21 +81,63 @@ export async function listarEventos(classeId: number): Promise<Evento[]> {
     .eq("classe_id", classeId)
     .order("inicio", { ascending: false });
   if (error) throw error;
-  return ((data ?? []) as unknown as LinhaDeEvento[]).map(mapearEvento);
+  const linhas = (data ?? []) as unknown as LinhaDeEvento[];
+  const ligadas = await listarMissoesLigadas(linhas.map((l) => l.id));
+  return linhas.map((l) => mapearEvento(l, ligadas.get(l.id) ?? []));
 }
 
-/** Cria (sem `id`) ou atualiza um evento. O status NUNCA vai no payload: só as funções abrir/encerrar o mudam. */
-export async function salvarEvento(classeId: number, payload: PayloadDoEvento, id?: string): Promise<void> {
+/** Cria (sem `id`) ou atualiza um evento e devolve o id. O status NUNCA vai no payload: só as funções abrir/encerrar o mudam. */
+export async function salvarEvento(classeId: number, payload: PayloadDoEvento, id?: string): Promise<string> {
   const tabela = () => supabase.from("eventos_classe" as never);
   if (id) {
     const { error } = await tabela()
       .update(payload as never)
       .eq("id", id);
     if (error) throw error;
-    return;
+    return id;
   }
-  const { error } = await tabela().insert({ ...payload, classe_id: classeId } as never);
+  const { data, error } = await tabela()
+    .insert({ ...payload, classe_id: classeId } as never)
+    .select("id")
+    .single();
   if (error) throw error;
+  return String((data as { id: string }).id);
+}
+
+/** Ligações evento → missões, em lote (uma consulta para a lista toda). */
+export async function listarMissoesLigadas(eventoIds: string[]): Promise<Map<string, number[]>> {
+  const mapa = new Map<string, number[]>();
+  if (eventoIds.length === 0) return mapa;
+  const { data, error } = await supabase.from("eventos_classe_missoes" as never).select("evento_id, atividade_id").in("evento_id", eventoIds);
+  if (error) throw error;
+  for (const l of (data ?? []) as unknown as { evento_id: string; atividade_id: number }[]) {
+    mapa.set(l.evento_id, [...(mapa.get(l.evento_id) ?? []), Number(l.atividade_id)]);
+  }
+  return mapa;
+}
+
+/** Troca a lista de missões do evento (só rascunho; o banco confere a posse e que as missões são da turma). */
+export async function definirMissoes(eventoId: string, atividadeIds: number[]): Promise<number> {
+  const { data, error } = await supabase.rpc("evento_classe_definir_missoes" as never, { p_evento_id: eventoId, p_atividades: atividadeIds } as never);
+  if (error) throw error;
+  return Number(data ?? 0);
+}
+
+export type MissaoDisponivel = { id: number; titulo: string; topicoNome: string };
+
+/** Missões da turma que podem entrar num evento. */
+export async function listarMissoesDaTurma(classeId: number): Promise<MissaoDisponivel[]> {
+  const { data, error } = await supabase
+    .from("atividades")
+    .select("id, titulo, topicos!inner(nome, classe_id)")
+    .eq("tipo", "missao")
+    .eq("topicos.classe_id", classeId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return ((data ?? []) as unknown as { id: number; titulo: string; topicos: { nome: string | null } | { nome: string | null }[] | null }[]).map((a) => {
+    const t = Array.isArray(a.topicos) ? a.topicos[0] : a.topicos;
+    return { id: a.id, titulo: a.titulo, topicoNome: t?.nome?.trim() || "Sem tópico" };
+  });
 }
 
 /** Evento já aberto/encerrado: o banco só aceita título e descrição, então só eles vão no UPDATE. */

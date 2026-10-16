@@ -17,6 +17,7 @@ const valido: FormularioDeEvento = {
   inicio: "2026-10-20T08:00",
   fim: "2026-10-27T23:59",
   pecas: ["arena", "missoes"],
+  missoesIds: [4],
   pontos: "50",
 };
 
@@ -98,5 +99,26 @@ describe("rótulos", () => {
     const base = { titulo: "E", modalidadeGuilda: false, pecas: ["arena"], inicio: "2026-10-20T12:00:00Z", fim: "2026-10-27T12:00:00Z" };
     expect(resumoDeAbertura(base).join(" ")).not.toMatch(/congeladas/);
     expect(resumoDeAbertura({ ...base, modalidadeGuilda: true }).join(" ")).toMatch(/congeladas/);
+  });
+});
+
+describe("missões do evento", () => {
+  it("peça Missões exige ao menos uma missão; sem a peça, a lista é ignorada", () => {
+    const sem = validarEvento({ ...valido, pecas: ["missoes"], missoesIds: [] });
+    expect(sem.ok).toBe(false);
+    expect(sem.erros.missoes).toMatch(/missões do evento/);
+
+    const com = validarEvento({ ...valido, pecas: ["missoes", "arena"], missoesIds: [4, 4, 9] });
+    expect(com.ok).toBe(true);
+    expect(com.missoes).toEqual([4, 9]);
+
+    const semPeca = validarEvento({ ...valido, pecas: ["arena"], missoesIds: [4] });
+    expect(semPeca.ok).toBe(true);
+    expect(semPeca.missoes).toEqual([]);
+  });
+
+  it("no máximo 20 missões", () => {
+    const muitas = Array.from({ length: 21 }, (_, i) => i + 1);
+    expect(validarEvento({ ...valido, pecas: ["missoes"], missoesIds: muitas }).erros.missoes).toMatch(/No máximo 20/);
   });
 });
