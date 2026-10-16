@@ -30,6 +30,7 @@ const formularioDe = (m: Missao): FormularioDeMissao => ({
   topicoId: String(m.topicoId),
   prazo: prazoParaCampo(m.prazo),
   pontos: String(m.pontos),
+  moedas: m.moedas > 0 ? String(m.moedas) : "",
 });
 
 const mensagem = (e: unknown, padrao: string) => (e as { message?: string })?.message?.trim() || padrao;

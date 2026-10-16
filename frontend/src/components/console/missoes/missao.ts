@@ -10,6 +10,7 @@ export const TIPO_DA_MISSAO = "missao";
 export const TITULO_MAX = 80;
 export const OBJETIVO_MAX = 600;
 export const PONTOS_MAX = 1000;
+export const MOEDAS_MAX = 1000;
 
 export type FormularioDeMissao = {
   titulo: string;
@@ -19,9 +20,11 @@ export type FormularioDeMissao = {
   /** `datetime-local`: "2026-10-20T23:59", ou vazio para sem prazo. */
   prazo: string;
   pontos: string;
+  /** Moedas pagas ao aluno quando o professor aprova a entrega; vazio = nenhuma. */
+  moedas: string;
 };
 
-export const FORMULARIO_DE_MISSAO_VAZIO: FormularioDeMissao = { titulo: "", objetivo: "", topicoId: "", prazo: "", pontos: "" };
+export const FORMULARIO_DE_MISSAO_VAZIO: FormularioDeMissao = { titulo: "", objetivo: "", topicoId: "", prazo: "", pontos: "", moedas: "" };
 
 export type PayloadDaMissao = {
   topico_id: number;
@@ -30,9 +33,10 @@ export type PayloadDaMissao = {
   tipo: typeof TIPO_DA_MISSAO;
   data_entrega: string | null;
   pontuacao_maxima: number;
+  moedas: number;
 };
 
-export type ErrosDaMissao = Partial<Record<"titulo" | "objetivo" | "topicoId" | "prazo" | "pontos", string>>;
+export type ErrosDaMissao = Partial<Record<"titulo" | "objetivo" | "topicoId" | "prazo" | "pontos" | "moedas", string>>;
 
 // Duas chaves exclusivas: strictNullChecks está desligado no projeto.
 export type ResultadoDaMissao = { ok: boolean; payload: PayloadDaMissao | null; erros: ErrosDaMissao | null };
@@ -63,11 +67,15 @@ export function validarMissao(form: FormularioDeMissao): ResultadoDaMissao {
     erros.pontos = `Informe a pontuação máxima (inteiro de 1 a ${PONTOS_MAX}).`;
   }
 
+  const moedasTexto = form.moedas.trim();
+  const moedas = moedasTexto === "" ? 0 : Number(moedasTexto.replace(",", "."));
+  if (!Number.isInteger(moedas) || moedas < 0 || moedas > MOEDAS_MAX) erros.moedas = `Moedas: inteiro de 0 a ${MOEDAS_MAX}, ou deixe vazio.`;
+
   if (Object.keys(erros).length > 0) return { ok: false, payload: null, erros };
   return {
     ok: true,
     erros: null,
-    payload: { topico_id: topico, titulo, descricao: objetivo, tipo: TIPO_DA_MISSAO, data_entrega: dataEntrega, pontuacao_maxima: pontos },
+    payload: { topico_id: topico, titulo, descricao: objetivo, tipo: TIPO_DA_MISSAO, data_entrega: dataEntrega, pontuacao_maxima: pontos, moedas },
   };
 }
 

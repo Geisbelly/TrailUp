@@ -83,6 +83,13 @@ export function FormularioDaMissao({
               {erros.pontos && <p className="mt-1 text-xs text-destructive">{erros.pontos}</p>}
             </div>
           </div>
+
+          <div className="max-w-[240px]">
+            <Label htmlFor="mis-moedas" className={rotulo}>Moedas ao ser aprovada (opcional)</Label>
+            <Input id="mis-moedas" inputMode="numeric" className={campo} value={form.moedas} onChange={(e) => alterar({ moedas: e.target.value })} aria-invalid={!!erros.moedas} />
+            <p className="mt-1 text-[11.5px] text-muted-foreground">O aluno recebe as moedas só depois que você aprovar a entrega (nota de pelo menos 60%).</p>
+            {erros.moedas && <p className="mt-1 text-xs text-destructive">{erros.moedas}</p>}
+          </div>
         </div>
 
         {erroDoServidor && <p role="alert" className="text-sm text-destructive">{erroDoServidor}</p>}

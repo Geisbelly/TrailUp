@@ -46,7 +46,7 @@ export function CartaoDaMissao({
         </div>
         <div>
           <dt className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Pontuação</dt>
-          <dd className="mt-1 text-sm font-semibold">{missao.pontos} pts</dd>
+          <dd className="mt-1 text-sm font-semibold">{missao.pontos} pts{missao.moedas > 0 && ` · ${missao.moedas} moedas`}</dd>
         </div>
         <div>
           <dt className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Entregas</dt>

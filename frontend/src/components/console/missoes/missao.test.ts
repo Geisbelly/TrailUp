@@ -6,6 +6,7 @@ const base = (extra: Partial<FormularioDeMissao> = {}): FormularioDeMissao => ({
   objetivo: "Prever e comparar tempos de queda.",
   topicoId: "12",
   prazo: "",
+  moedas: "",
   pontos: "50",
   ...extra,
 });
@@ -14,7 +15,7 @@ describe("validarMissao", () => {
   it("monta um payload de atividade com tipo 'missao', objetivo na descrição e pontuação máxima", () => {
     const r = validarMissao(base({ titulo: "  Missão  Um ", objetivo: " alvo " }));
     expect(r.ok).toBe(true);
-    expect(r.payload).toEqual({ topico_id: 12, titulo: "Missão  Um", descricao: "alvo", tipo: "missao", data_entrega: null, pontuacao_maxima: 50 });
+    expect(r.payload).toEqual({ topico_id: 12, titulo: "Missão  Um", descricao: "alvo", tipo: "missao", data_entrega: null, pontuacao_maxima: 50, moedas: 0 });
     expect(r.erros).toBeNull();
   });
 
@@ -69,5 +70,16 @@ describe("entregas", () => {
     expect(percentualDeEntrega(17, 34)).toBe(50);
     expect(percentualDeEntrega(0, 0)).toBe(0);
     expect(percentualDeEntrega(50, 34)).toBe(100);
+  });
+});
+
+describe("moedas", () => {
+  it("vazio é nenhuma; inteiro de 0 a 1000 passa", () => {
+    expect(validarMissao(base()).payload.moedas).toBe(0);
+    expect(validarMissao(base({ moedas: "25" })).payload.moedas).toBe(25);
+    expect(validarMissao(base({ moedas: "1000" })).ok).toBe(true);
+  });
+  it("rejeita negativo, decimal, texto e acima do teto", () => {
+    for (const m of ["-1", "2,5", "abc", "1001"]) expect(validarMissao(base({ moedas: m })).erros.moedas).toBeTruthy();
   });
 });
