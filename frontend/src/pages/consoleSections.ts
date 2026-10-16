@@ -9,8 +9,10 @@
 export const CONSOLE_SECTIONS = [
   { view: "dashboard", slug: "" },
   { view: "trilha", slug: "trilha" },
+  { view: "missoes", slug: "missoes" },
   { view: "conquistas", slug: "conquistas" },
   { view: "notas", slug: "notas" },
+  { view: "eventos", slug: "eventos" },
   { view: "classes", slug: "turmas" },
   { view: "personalizacoes", slug: "personalizacoes" },
   { view: "ranks", slug: "ranks" },
