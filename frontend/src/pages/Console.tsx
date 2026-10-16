@@ -19,6 +19,7 @@ const TopicsManager = lazy(() => import("@/components/console/trilha/TopicsManag
 const ProfileSection = lazy(() => import("@/components/console/ProfileSection"));
 const DashboardSection = lazy(() => import("@/components/console/DashboardSection"));
 const RanksSection = lazy(() => import("@/components/console/RanksSection"));
+const MissoesSection = lazy(() => import("@/components/console/missoes/MissoesSection"));
 const ConquistasSection = lazy(() => import("@/components/console/conquistas/ConquistasSection"));
 const NotasSection = lazy(() => import("@/components/console/notas/NotasSection"));
 const ClassManagementSection = lazy(() => import("@/components/console/ClassManagementSection"));
@@ -189,6 +190,8 @@ export default function Console() {
                 <DashboardSection />
               ) : view === "ranks" ? (
                 <RanksSection />
+              ) : view === "missoes" ? (
+                <MissoesSection professorId={professorData?.id} />
               ) : view === "conquistas" ? (
                 <ConquistasSection professorId={professorData?.id} />
               ) : view === "notas" ? (
