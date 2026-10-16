@@ -21,6 +21,7 @@ const DashboardSection = lazy(() => import("@/components/console/DashboardSectio
 const RanksSection = lazy(() => import("@/components/console/RanksSection"));
 const MissoesSection = lazy(() => import("@/components/console/missoes/MissoesSection"));
 const ConquistasSection = lazy(() => import("@/components/console/conquistas/ConquistasSection"));
+const BatalhasSection = lazy(() => import("@/components/console/batalhas/BatalhasSection"));
 const NotasSection = lazy(() => import("@/components/console/notas/NotasSection"));
 const EventosSection = lazy(() => import("@/components/console/eventos/EventosSection"));
 const ClassManagementSection = lazy(() => import("@/components/console/ClassManagementSection"));
@@ -191,6 +192,8 @@ export default function Console() {
                 <DashboardSection />
               ) : view === "ranks" ? (
                 <RanksSection />
+              ) : view === "batalhas" ? (
+                <BatalhasSection professorId={professorData?.id} />
               ) : view === "missoes" ? (
                 <MissoesSection professorId={professorData?.id} />
               ) : view === "conquistas" ? (
