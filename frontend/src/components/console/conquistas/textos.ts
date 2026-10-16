@@ -1,7 +1,7 @@
 import type { ConquistaDaTurma } from "./conquistasApi";
 
 /**
- * O gatilho que concede conquistas passou a ler `conquistas.ativa` (migration 20261017_05). Se a migration
+ * O gatilho que concede conquistas passou a ler `conquistas.ativa` (migration 20261017_06). Se a migration
  * ainda não foi aplicada no banco, volte para `false`: o texto deixa de prometer o que o banco não faz.
  */
 export const GATILHO_RESPEITA_ATIVA = true;
