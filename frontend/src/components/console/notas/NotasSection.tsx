@@ -11,7 +11,8 @@ import { contarPendentes, filtrarFila, vizinhas, type FiltroDeStatus, type Linha
 import { avaliarEntrega, listarFila, traduzirErroDeNota } from "./notasApi";
 
 const STATUS: { valor: FiltroDeStatus; rotulo: string }[] = [
-  { valor: "pendentes", rotulo: "Pendentes de correção" },
+  { valor: "pendentes", rotulo: "Para revisar" },
+  { valor: "sem_entrega", rotulo: "Sem entrega" },
   { valor: "corrigidas", rotulo: "Já corrigidas" },
   { valor: "todas", rotulo: "Todas" },
 ];
@@ -113,7 +114,7 @@ export default function NotasSection({ professorId }: { professorId?: string }) 
                   </button>
                 ))}
               </div>
-              {estado === "ok" && <span className="ml-auto text-xs text-muted-foreground">{pendentes === 1 ? "1 entrega pendente" : `${pendentes} entregas pendentes`}</span>}
+              {estado === "ok" && <span className="ml-auto text-xs text-muted-foreground">{pendentes === 1 ? "1 entrega para revisar" : `${pendentes} entregas para revisar`}</span>}
             </div>
           )}
 
@@ -138,7 +139,7 @@ export default function NotasSection({ professorId }: { professorId?: string }) 
 
           {estado === "ok" && !aberta &&
             (visiveis.length === 0 ? (
-              <EstadoVazioDaPagina icone={ClipboardCheck} titulo={status === "pendentes" ? "Nenhuma entrega aguardando correção." : "Nada por aqui"} texto={status === "pendentes" ? "Quando um aluno responder uma dissertativa, ou o prazo de uma vencer sem resposta, ela aparece nesta fila." : "Mude o filtro para ver outras entregas."} />
+              <EstadoVazioDaPagina icone={ClipboardCheck} titulo={status === "pendentes" ? "Nada para revisar." : "Nada por aqui"} texto={status === "pendentes" ? "Quando a IA corrigir uma dissertativa, ou não conseguir corrigir, ela aparece aqui para você olhar." : "Mude o filtro para ver outras entregas."} />
             ) : (
               <FilaDeCorrecao linhas={visiveis} onAbrir={(l) => { setErroDoServidor(null); setAberta(l); }} />
             ))}
