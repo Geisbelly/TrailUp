@@ -9,6 +9,7 @@
 export const CONSOLE_SECTIONS = [
   { view: "dashboard", slug: "" },
   { view: "trilha", slug: "trilha" },
+  { view: "conquistas", slug: "conquistas" },
   { view: "classes", slug: "turmas" },
   { view: "personalizacoes", slug: "personalizacoes" },
   { view: "ranks", slug: "ranks" },
