@@ -263,7 +263,8 @@ export function IABattlePanel({ scope, surface = "inline" }: Props) {
           </Pressable>
         </View>
 
-        <View style={styles.arteLateral}>
+        {/* Derrotado: a arte fica apagada, como no protótipo v4. */}
+        <View style={[styles.arteLateral, defeated && styles.arteDerrotada]}>
           {teacherBoss || artUrl ? (
             <Image
               source={teacherBoss ?? { uri: artUrl! }}
@@ -483,6 +484,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  arteDerrotada: { opacity: 0.35 },
   nomeLateral: {
     fontFamily: FontFamily.inikaBold,
     fontSize: 20,
