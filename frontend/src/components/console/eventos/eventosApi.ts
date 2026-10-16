@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { PayloadDoEvento, StatusDoEvento } from "./evento";
+import type { LinhaDeGuilda, LinhaDeResultado } from "./resultado";
 
 // `eventos_classe` e as funções `evento_classe_*` são novas (migrations 20261017_01/02) e não estão
 // nos tipos gerados do Supabase, por isso as chamadas passam por `as never`.
@@ -136,4 +137,44 @@ export function traduzirErroDeEvento(e: unknown, padrao: string): string {
   if (/destaque_com_participacao/.test(msg)) return "A medalha de destaque vem sempre junto com a de participação.";
   if (/guilda_com_tamanho/.test(msg)) return "Informe o tamanho da guilda só quando houver modalidade de guilda.";
   return msg && msg.length < 160 ? msg : padrao;
+}
+
+export type ResultadoApurado = { alunos: LinhaDeResultado[]; guildas: LinhaDeGuilda[] };
+
+type ResultadoBruto = { aluno_id: string; pontos: number | string | null; participou: boolean; posicao: number | null; destaque: boolean };
+type ResultadoGuildaBruto = { guilda_id: string; pontos: number | string | null; membros: number | null; posicao: number | null };
+
+/** Resultado gravado na apuração (ao encerrar). Os nomes vêm de `alunos` e `guildas`; sem nome, rótulo neutro. */
+export async function listarResultado(eventoId: string): Promise<ResultadoApurado> {
+  const [alunosR, guildasR] = await Promise.all([
+    supabase.from("eventos_classe_resultado" as never).select("aluno_id, pontos, participou, posicao, destaque").eq("evento_id", eventoId),
+    supabase.from("eventos_classe_resultado_guilda" as never).select("guilda_id, pontos, membros, posicao").eq("evento_id", eventoId),
+  ]);
+  if (alunosR.error) throw alunosR.error;
+  if (guildasR.error) throw guildasR.error;
+  const alunos = (alunosR.data ?? []) as unknown as ResultadoBruto[];
+  const guildas = (guildasR.data ?? []) as unknown as ResultadoGuildaBruto[];
+
+  const [nomesAlunos, nomesGuildas] = await Promise.all([
+    alunos.length > 0 ? supabase.from("alunos").select("id, nome").in("id", alunos.map((a) => a.aluno_id)) : Promise.resolve({ data: [], error: null }),
+    guildas.length > 0 ? supabase.from("guildas").select("id, nome").in("id", guildas.map((g) => g.guilda_id)) : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (nomesAlunos.error) throw nomesAlunos.error;
+  if (nomesGuildas.error) throw nomesGuildas.error;
+  const nomeDoAluno = new Map(((nomesAlunos.data ?? []) as { id: string; nome: string | null }[]).map((a) => [a.id, a.nome]));
+  const nomeDaGuilda = new Map(((nomesGuildas.data ?? []) as { id: string; nome: string | null }[]).map((g) => [g.id, g.nome]));
+
+  return {
+    alunos: alunos.map((a) => ({
+      alunoId: a.aluno_id,
+      nome: nomeDoAluno.get(a.aluno_id)?.trim() || "Aluno",
+      pontos: Number(a.pontos ?? 0),
+      participou: !!a.participou,
+      posicao: a.posicao,
+      destaque: !!a.destaque,
+    })),
+    guildas: guildas
+      .map((g) => ({ guildaId: g.guilda_id, nome: nomeDaGuilda.get(g.guilda_id)?.trim() || "Guilda", pontos: Number(g.pontos ?? 0), membros: g.membros ?? 0, posicao: g.posicao }))
+      .sort((a, b) => (a.posicao ?? Infinity) - (b.posicao ?? Infinity) || a.nome.localeCompare(b.nome, "pt-BR")),
+  };
 }

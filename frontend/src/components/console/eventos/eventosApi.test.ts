@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 type Resp = { data?: unknown; error?: unknown };
 const sb = vi.hoisted(() => ({
   resposta: { data: [], error: null } as Resp,
+  porTabela: {} as Record<string, Resp>,
   chamadas: [] as unknown[][],
   rpc: vi.fn(),
 }));
@@ -12,10 +13,10 @@ vi.mock("@/integrations/supabase/client", () => ({
     rpc: sb.rpc,
     from: (tabela: string) => {
       const q: Record<string, unknown> = {};
-      for (const m of ["select", "eq", "order", "update", "insert", "delete"]) {
+      for (const m of ["select", "eq", "in", "order", "update", "insert", "delete"]) {
         q[m] = (...args: unknown[]) => (sb.chamadas.push([tabela, m, ...args]), q);
       }
-      q.then = (resolve: (v: unknown) => unknown) => Promise.resolve(sb.resposta).then(resolve);
+      q.then = (resolve: (v: unknown) => unknown) => Promise.resolve(sb.porTabela[tabela] ?? sb.resposta).then(resolve);
       return q;
     },
   },
@@ -51,6 +52,7 @@ const payload = {
 beforeEach(() => {
   sb.resposta = { data: [], error: null };
   sb.chamadas = [];
+  sb.porTabela = {};
   sb.rpc.mockReset();
 });
 
@@ -138,5 +140,28 @@ describe("salvarTextoDoEvento", () => {
     expect(upd[2]).toEqual({ titulo: "T", descricao: "D" });
     sb.resposta = { error: new Error("x") };
     await expect(salvarTextoDoEvento("e1", "T", "D")).rejects.toThrow("x");
+  });
+});
+
+describe("listarResultado", () => {
+  it("junta nomes, ordena guildas por posição e cai em rótulo neutro sem nome", async () => {
+    const { listarResultado } = await import("./eventosApi");
+    sb.porTabela = {
+      eventos_classe_resultado: { data: [{ aluno_id: "a1", pontos: "30", participou: true, posicao: 1, destaque: true }, { aluno_id: "a2", pontos: 0, participou: false, posicao: null, destaque: false }], error: null },
+      eventos_classe_resultado_guilda: { data: [{ guilda_id: "g2", pontos: 5, membros: 2, posicao: 2 }, { guilda_id: "g1", pontos: 9, membros: 3, posicao: 1 }], error: null },
+      alunos: { data: [{ id: "a1", nome: " Ana " }], error: null },
+      guildas: { data: [{ id: "g1", nome: "Lobos" }], error: null },
+    };
+    const r = await listarResultado("e1");
+    expect(r.alunos.map((a) => [a.nome, a.pontos, a.destaque])).toEqual([["Ana", 30, true], ["Aluno", 0, false]]);
+    expect(r.guildas.map((g) => [g.nome, g.posicao])).toEqual([["Lobos", 1], ["Guilda", 2]]);
+  });
+
+  it("sem linhas não consulta nomes e propaga erro", async () => {
+    const { listarResultado } = await import("./eventosApi");
+    await expect(listarResultado("e1")).resolves.toEqual({ alunos: [], guildas: [] });
+    expect(sb.chamadas.some((c) => c[0] === "alunos")).toBe(false);
+    sb.porTabela = { eventos_classe_resultado: { data: null, error: new Error("rls") } };
+    await expect(listarResultado("e1")).rejects.toThrow("rls");
   });
 });

@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { CabecalhoDePagina, EstadoVazioDaPagina, ErroDaPagina } from "../comum/PaginaDoConsole";
 import { useTurmasDoProfessor } from "../comum/useTurmasDoProfessor";
 import { CartaoDoEvento } from "./CartaoDoEvento";
+import { ResultadoDoEventoDialog } from "./ResultadoDoEvento";
 import { FormularioDoEvento } from "./FormularioDoEvento";
 import { FORMULARIO_DE_EVENTO_VAZIO, dataParaCampo, resumoDeAbertura, type ChaveDePeca, type FormularioDeEvento, type PayloadDoEvento } from "./evento";
 import { abrirEvento, encerrarEvento, excluirEvento, listarEventos, salvarEvento, salvarTextoDoEvento, traduzirErroDeEvento, type Evento } from "./eventosApi";
@@ -57,6 +58,7 @@ export default function EventosSection({ professorId }: { professorId?: string }
   const [erroDoServidor, setErroDoServidor] = useState<string | null>(null);
   const [acao, setAcao] = useState<Acao | null>(null);
   const [executando, setExecutando] = useState(false);
+  const [resultadoDe, setResultadoDe] = useState<Evento | null>(null);
 
   const carregar = useCallback(async (id: number) => {
     setEstado("carregando");
@@ -168,12 +170,15 @@ export default function EventosSection({ professorId }: { professorId?: string }
                   onAbrir={() => setAcao({ tipo: "abrir", evento: e })}
                   onEncerrar={() => setAcao({ tipo: "encerrar", evento: e })}
                   onExcluir={() => setAcao({ tipo: "excluir", evento: e })}
+                  onVerResultado={() => setResultadoDe(e)}
                 />
               ))}
             </ul>
           )}
         </div>
       )}
+
+      {resultadoDe && <ResultadoDoEventoDialog evento={resultadoDe} onFechar={() => setResultadoDe(null)} />}
 
       {form && (
         <FormularioDoEvento
@@ -203,7 +208,7 @@ export default function EventosSection({ professorId }: { professorId?: string }
                     </ul>
                   </>
                 )}
-                {acao?.tipo === "encerrar" && <p>Encerrar “{acao.evento.titulo}” fecha o evento. Isso não pode ser desfeito. O resultado e as medalhas ainda não são apurados automaticamente.</p>}
+                {acao?.tipo === "encerrar" && <p>Encerrar “{acao.evento.titulo}” fecha o evento. Isso não pode ser desfeito. O resultado (pontos na janela, placar e guildas) é apurado e guardado agora.</p>}
                 {acao?.tipo === "excluir" && <p>Excluir o rascunho “{acao.evento.titulo}” remove o evento para sempre. Esta ação não pode ser desfeita.</p>}
               </div>
             </AlertDialogDescription>
