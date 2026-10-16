@@ -1,3 +1,8 @@
+import {
+  chavePresenca,
+  somarPresencaPorAluno,
+  type LinhaPresenca,
+} from "./dashboard/presencaPorAluno";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -158,6 +163,38 @@ export default function DashboardSection() {
         new Set((classeAlunoData ?? []).map((c) => c.aluno_id).filter(Boolean)),
       ) as string[];
 
+      // PRESENCA x TEMPO ATIVO. `classe_aluno.tempoGastoMin` soma so' o
+      // `active_sec` da telemetria: tempo com o material aberto mas parado fica
+      // de fora. A diferenca nao e' detalhe — num topico medido em producao
+      // foram 6,40 min ativos contra 35,38 de presenca.
+      //
+      // A presenca sai de `vw_telemetria_tempo_topico_aluno` (`tempo_total_seg`
+      // = soma de `dwell_sec`), que ja' filtra `scope = 'topic'`. Filtrar o
+      // escopo e' obrigatorio: os escopos sao aninhados de forma inclusiva e
+      // somar topic+content+material multiplicaria o tempo (ver CLAUDE.md).
+      let presencaPorAlunoClasse = new Map<string, number>();
+      if (alunoIds.length > 0) {
+        const { data: presencaData, error: presencaError } = await supabase
+          // `as never`: os tipos gerados na main cobrem 26 entidades e nao
+          // incluem as views. O #296 regenera para 208 — quando entrar, este
+          // cast sai. Mesma convencao ja usada em personalizacoesApi.ts.
+          .from("vw_telemetria_tempo_topico_aluno" as never)
+          .select("aluno_id, classe_id, tempo_total_seg")
+          .in("classe_id", classIds)
+          .in("aluno_id", alunoIds);
+
+        if (presencaError) {
+          // Metrica secundaria: a tela vale sem ela. Sumir em silencio seria
+          // pior — viraria "0 min de presenca", indistinguivel do aluno que
+          // nunca abriu o app.
+          console.warn("[dashboard] presenca indisponivel:", presencaError);
+        } else {
+          presencaPorAlunoClasse = somarPresencaPorAluno(
+            (presencaData ?? []) as unknown as LinhaPresenca[],
+          );
+        }
+      }
+
       const [
         { data: alunosData, error: alunosError },
         { data: modoOperacaoData, error: modoError },
@@ -267,6 +304,8 @@ export default function DashboardSection() {
               temNota: ca.notaMedia != null,
               porcentagemConcluida: Number(ca.porcentagemConcluida ?? 0),
               tempoGastoMin: Number(ca.tempoGastoMin ?? 0),
+              tempoPresencaMin:
+                presencaPorAlunoClasse.get(chavePresenca(ca.classe_id, ca.aluno_id)) ?? null,
               acertosPercentual: Number(ca.acertosPercentual ?? 0),
               temAcertos: ca.acertosPercentual != null,
               ultimaAtividade: ultimaAtividadeNome,

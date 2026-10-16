@@ -27,6 +27,8 @@ type Props = {
   scope?: "modulo" | "trilha_home";
   bottomOffset?: number;
   guideTargetRef?: React.RefObject<View | null>;
+  /** Web em tela larga: botão e conversa presos a este canto, com esta largura, em vez de ocupar a largura toda. */
+  ancora?: { direita: number; base: number; largura: number };
 };
 
 type ChatMessage = {
@@ -164,9 +166,11 @@ export function IAMentorPanel({
   classeId,
   scope = "modulo",
   bottomOffset = 110,
+  ancora,
   guideTargetRef,
 }: Props) {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const posicao = ancora ? { right: ancora.direita, bottom: ancora.base } : { bottom: bottomOffset };
   const { usuario } = useUsuario();
   const {
     pendingCharacterCues,
@@ -214,6 +218,8 @@ export function IAMentorPanel({
 
   const cue = useMemo(
     () =>
+      // Uma dica pedida pelo aluno (abrir) vence as automáticas e vale para qualquer tópico.
+      [...pendingCharacterCues].reverse().find((entry) => entry.abrir && (!entry.featureKey || entry.featureKey === "mentor_character")) ??
       pendingCharacterCues.find((entry) => {
         if (entry.featureKey && entry.featureKey !== "mentor_character") return false;
         if (topicoId == null) return true;
@@ -245,6 +251,21 @@ export function IAMentorPanel({
   useEffect(() => {
     setDraft("");
 
+    // Dica pedida pelo aluno: entra no fim da conversa, o painel abre e a dica sai da
+    // fila (senão o painel reabriria sozinho a cada vez que a tela montasse).
+    if (cue?.abrir) {
+      const anterior = scopeHistoryRef.current[scopeKey] ?? [];
+      const dica: ChatMessage = { id: `${cue.id}:assistant`, role: "assistant", content: cue.message.trim() };
+      const proximo = anterior.some((m) => m.id === dica.id) ? anterior : [...anterior, dica];
+      scopeHistoryRef.current[scopeKey] = proximo;
+      setMessages(proximo);
+      if (scope === "trilha_home") hasManualHomeOpenRef.current = true;
+      setIsOpen(true);
+      setHasUnreadCue(false);
+      dismissCharacterCue(cue.id);
+      return;
+    }
+
     const baseIntro: ChatMessage = {
       id: cueId ? `${cueId}:assistant` : `${scope}:assistant:intro`,
       role: "assistant",
@@ -264,6 +285,7 @@ export function IAMentorPanel({
     if (scope === "trilha_home" && !hasManualHomeOpenRef.current) {
       setIsOpen(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- cue e dismissCharacterCue acompanham cueId
   }, [cueId, guideIntroMessage, hasCue, scope, scopeKey]);
 
   useEffect(() => {
@@ -285,7 +307,7 @@ export function IAMentorPanel({
 
   if (mentorSilencedByUser) {
     return (
-      <View style={[styles.overlay, { bottom: bottomOffset, pointerEvents: "box-none" }]}>
+      <View style={[styles.overlay, posicao, { pointerEvents: "box-none" }]}>
         <View style={styles.launcherColumn}>
           <Pressable
             ref={guideTargetRef}
@@ -332,7 +354,9 @@ export function IAMentorPanel({
     cue?.speakerName ?? resolvedMentor.character?.speakerName ?? guideName;
   const canChat = Boolean(classeId);
   const panelWidth =
-    scope === "modulo"
+    ancora
+      ? ancora.largura
+      : scope === "modulo"
       ? Math.min(windowWidth - 16, 496)
       : Math.min(windowWidth - 16, 438);
   const panelMaxHeight =
@@ -540,8 +564,8 @@ export function IAMentorPanel({
     <View
       style={[
         styles.overlay,
-        { bottom: bottomOffset },
-        isOpen ? styles.overlayOpen : null,
+        posicao,
+        isOpen && !ancora ? styles.overlayOpen : null,
         { pointerEvents: "box-none" },
       ]}
     >

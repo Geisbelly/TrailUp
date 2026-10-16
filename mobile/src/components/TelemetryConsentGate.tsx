@@ -4,7 +4,12 @@ import {
   setTelemetryConsentRejected,
   TELEMETRY_CONSENT_VERSION,
 } from "@/utils/telemetryConsent";
-import React, { useEffect, useState } from "react";
+import { supabase } from "@/database/supabase";
+import {
+  registrarConsentimento,
+  TABELA_DE_CONSENTIMENTO,
+} from "@/services/consentimentoRemoto";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Modal,
   Platform,
@@ -15,27 +20,9 @@ import {
   View,
 } from "react-native";
 
-type CameraPermissionResponse = {
-  granted?: boolean;
-  status?: string;
-};
-
-const cameraModule =
-  Platform.OS !== "web"
-    ? (() => {
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-require-imports
-          return require("expo-camera");
-        } catch {
-          return null;
-        }
-      })()
-    : null;
-
-const requestCameraPermissionsAsync =
-  cameraModule?.requestCameraPermissionsAsync ??
-  cameraModule?.Camera?.requestCameraPermissionsAsync ??
-  null;
+// O modulo da camera saiu daqui junto com o pedido de permissao: aceitar os
+// termos nao toca na camera. Quem carrega `expo-camera` e pede a permissao e
+// `MetricasContext.setCameraOptIn`, acionado pelo toggle explicito.
 
 export function TelemetryConsentGate() {
   const [visible, setVisible] = useState(false);
@@ -51,6 +38,10 @@ export function TelemetryConsentGate() {
         const shouldShow =
           !record || record.version !== TELEMETRY_CONSENT_VERSION;
         setVisible(shouldShow);
+        // Retentativa: o aceite pode ter sido gravado localmente sem a rede
+        // responder. Repetir e inofensivo -- a tabela tem UNIQUE por
+        // (aluno, versao, decisao) e o 23505 volta como sucesso.
+        if (record) void registrarNoServidor(record);
       })
       .finally(() => {
         if (!active) return;
@@ -62,35 +53,56 @@ export function TelemetryConsentGate() {
     };
   }, []);
 
+  /**
+   * Manda a decisao para `consentimento_telemetria`.
+   *
+   * Nao bloqueia nem desfaz nada da UI: o aceite local e o que governa a
+   * coleta, e esta linha e a PROVA (item 1 da #195). Falha aqui vira aviso, e
+   * a proxima montagem do Gate tenta de novo.
+   */
+  const registrarNoServidor = useCallback(
+    async (record: Awaited<ReturnType<typeof getTelemetryConsentRecord>>) => {
+      try {
+        const { data } = await supabase.auth.getUser();
+        const resultado = await registrarConsentimento({
+          inserir: (linha) => supabase.from(TABELA_DE_CONSENTIMENTO).insert(linha),
+          record,
+          alunoId: data.user?.id ?? null,
+          origem: { plataforma: Platform.OS },
+        });
+        if (!resultado.ok) {
+          console.warn("[Consentimento] nao registrado no servidor:", resultado.detalhe);
+        }
+      } catch (erro) {
+        console.warn("[Consentimento] falha ao registrar no servidor:", erro);
+      }
+    },
+    []
+  );
+
   const handleAccept = async () => {
     setSaving(true);
 
-    let cameraPermissionRequested = false;
-    let cameraPermissionGranted = false;
-
-    if (Platform.OS !== "web" && requestCameraPermissionsAsync) {
-      cameraPermissionRequested = true;
-      try {
-        const permission = (await requestCameraPermissionsAsync()) as
-          | CameraPermissionResponse
-          | undefined;
-        cameraPermissionGranted =
-          permission?.granted === true || permission?.status === "granted";
-      } catch {
-        cameraPermissionGranted = false;
-      }
-    }
-
+    // Aceitar os termos NAO pede a camera nem a liga. Pedir a permissao aqui
+    // tinha dois problemas: o aluno recebia o pedido do sistema no meio de um
+    // fluxo em que so' estava lendo e aceitando, e conceder a permissao ligava
+    // a captura sozinha — consentimento biometrico pre-marcado, que a LGPD
+    // nao admite (art. 11, e art. 14 por ser publico escolar).
+    //
+    // Quem pede a permissao agora e `setCameraOptIn`, acionado pelo toggle em
+    // Perfil -> Coleta e acessos: so' liga se o aluno for ate la' e, ai sim, o
+    // sistema perguntar. Ver issue #195.
     await setTelemetryConsentAccepted({
-      cameraPermissionRequested,
-      cameraPermissionGranted,
+      cameraPermissionRequested: false,
+      cameraPermissionGranted: false,
       preferences: {
-        cameraEnabled: cameraPermissionGranted,
+        cameraEnabled: false,
         usageEnabled: true,
         performanceEnabled: true,
         chatEnabled: true,
       },
     });
+    void registrarNoServidor(await getTelemetryConsentRecord());
     setVisible(false);
     setSaving(false);
   };
@@ -98,6 +110,9 @@ export function TelemetryConsentGate() {
   const handleReject = async () => {
     setSaving(true);
     await setTelemetryConsentRejected();
+    // Recusa tambem e registrada: revogar nao e apagar, e o historico
+    // append-only e o que permite responder "o que estava aceito no dia X".
+    void registrarNoServidor(await getTelemetryConsentRecord());
     setVisible(false);
     setSaving(false);
   };
@@ -129,30 +144,48 @@ export function TelemetryConsentGate() {
             <Text style={styles.sectionTitle}>Como os dados são usados</Text>
             <Text style={styles.body}>
               Atenção, dificuldade, frustração e engajamento são estimados a partir do
-              seu comportamento no app: tempo ativo e inativo, toques, rolagem,
-              respostas e acertos. É isso que gera as recomendações e o conteúdo
-              adaptativo.
+              seu comportamento no app — tempo ativo e inativo, toques, rolagem,
+              respostas e acertos — e também da sua expressão facial, quando a câmera
+              está ligada. É isso que gera as recomendações e o conteúdo adaptativo.
             </Text>
             <Text style={styles.sectionTitle}>Sobre a câmera, especificamente</Text>
             <Text style={styles.body}>
-              Hoje as imagens da câmera não são analisadas. Elas são enviadas à API,
-              contadas e descartadas: a quantidade de frames recebidos apenas aumenta
-              um índice de confiança das estimativas acima, que são calculadas sem
-              olhar para a imagem. Não há reconhecimento facial nem de emoção.
+              As imagens da câmera são analisadas para estimar sua expressão no
+              momento do estudo. O programa localiza o rosto na imagem e classifica a
+              expressão em categorias como neutro, concentrado, frustrado, ansioso ou
+              cansado. Isso influencia o conteúdo e a dificuldade que o app te mostra
+              depois.
             </Text>
             <Text style={styles.body}>
-              As imagens não são gravadas em lugar nenhum — nem no registro do lote,
-              nem no log de decisão. Fica guardado apenas quantas foram recebidas.
+              A análise é feita no servidor do próprio TrailUp, não em serviço de
+              terceiros, e a imagem não sai dele para lugar nenhum.
             </Text>
             <Text style={styles.body}>
-              Se a análise de imagem passar a existir, estes termos mudam e seu
-              consentimento será pedido de novo antes disso valer.
+              A imagem é usada e descartada na mesma hora. Não é gravada em lugar
+              nenhum — nem no registro do lote, nem no log de decisão. Fica guardado
+              só o resultado: a categoria estimada e o quanto o programa confia nela.
+            </Text>
+            <Text style={styles.body}>
+              O que você faz vale mais do que a sua cara. Se você errar várias vezes
+              seguidas, por exemplo, isso conta mais do que a expressão de um
+              instante — e a estimativa pela imagem é descartada nesse caso.
+            </Text>
+            <Text style={styles.body}>
+              A expressão estimada é um palpite, não um diagnóstico. Ela não vira
+              nota, não é mostrada para o professor como avaliação sua, e pode errar.
             </Text>
             <Text style={styles.sectionTitle}>Sua escolha</Text>
             <Text style={styles.body}>
-              Se você aceitar, o app solicitará acesso aos recursos necessários,
-              principalmente à câmera. Se recusar, o app continua funcionando sem a
-              coleta comportamental adaptativa.
+              Se você aceitar, a coleta de uso, desempenho e chat começa — mas a
+              câmera continua desligada. Ela só liga se você for em Perfil →
+              Coleta e acessos e ativar; é lá que o aparelho pede a permissão. Se
+              recusar, o app continua funcionando sem a coleta comportamental
+              adaptativa.
+            </Text>
+            <Text style={styles.body}>
+              Recusar não tira nenhum conteúdo de você e não muda sua nota. Você
+              também pode aceitar o resto e desligar só a câmera, agora ou depois, em
+              Perfil → Coleta e acessos.
             </Text>
           </ScrollView>
           <View style={styles.actions}>

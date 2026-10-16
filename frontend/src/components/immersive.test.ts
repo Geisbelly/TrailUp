@@ -3,13 +3,31 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { StaticRouter } from "react-router-dom/server";
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { parse, type Declaration, type Rule } from "postcss";
+import { parse, type AtRule, type Declaration, type Node, type Rule } from "postcss";
 import Hero from "./Hero";
 import BrainHexShowcase from "./BrainHexShowcase";
 import Header from "./Header";
 import Features from "./Features";
 import Index from "@/pages/Index";
 import { AuthBrand } from "./auth/AuthScenery";
+
+/**
+ * Sobe a arvore do PostCSS ate a at-rule mais proxima (opcionalmente com um
+ * nome). O acumulador tem de ser `Node`, nao o tipo de `declaration.parent`:
+ * `parent` de um no e `Document | Container | undefined`, mais largo que
+ * `Container | undefined`, e por isso o `ancestor = ancestor.parent` do laco
+ * manual nao compilava.
+ */
+function atRuleAncestral(no: Node | undefined, nome?: string): AtRule | undefined {
+  let atual: Node | undefined = no;
+  while (atual) {
+    if (atual.type === "atrule" && (nome === undefined || (atual as AtRule).name === nome)) {
+      return atual as AtRule;
+    }
+    atual = atual.parent as Node | undefined;
+  }
+  return undefined;
+}
 import { PROFILE_WORLDS } from "@/lib/design-art";
 
 describe("immersive public homepage", () => {
@@ -74,9 +92,7 @@ describe("immersive public homepage", () => {
       rule.walkDecls(declaration => expect(["transform", "opacity"]).toContain(declaration.prop));
     });
     css.walkDecls(/^animation/, declaration => {
-      let ancestor = declaration.parent;
-      while (ancestor && ancestor.type !== "atrule") ancestor = ancestor.parent;
-      expect(ancestor).toMatchObject({ type: "atrule", name: "media", params: "(prefers-reduced-motion: no-preference)" });
+      expect(atRuleAncestral(declaration.parent)).toMatchObject({ type: "atrule", name: "media", params: "(prefers-reduced-motion: no-preference)" });
     });
   });
 
@@ -88,12 +104,12 @@ describe("immersive public homepage", () => {
   it("progressively enhances scrolling without animating guides apart from their terrain", () => {
     const css = parse(readFileSync(new URL("../styles/motion.css", import.meta.url), "utf8"));
     const timelines: string[] = [];
-    css.walkDecls("animation-timeline", declaration => timelines.push(declaration.value));
+    css.walkDecls("animation-timeline", declaration => {
+      timelines.push(declaration.value);
+    });
     expect(timelines).toEqual(expect.arrayContaining(["--hero-scroll", "--guide-scroll", "view(block 0 12%)", "scroll(root block)"]));
     css.walkDecls("animation-timeline", declaration => {
-      let ancestor = declaration.parent;
-      while (ancestor && !(ancestor.type === "atrule" && ancestor.name === "supports")) ancestor = ancestor.parent;
-      expect(ancestor).toBeDefined();
+      expect(atRuleAncestral(declaration.parent, "supports")).toBeDefined();
     });
     css.walkRules(rule => {
       if (rule.selector.includes(".profile-guide-art") || rule.selector.includes(".profile-guide-figure")) {

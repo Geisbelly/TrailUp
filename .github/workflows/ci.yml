@@ -5,10 +5,35 @@ on:
     branches: [main]
   pull_request:
 
-# cancela execuções antigas do mesmo ref quando há um novo push
+# Cancela execuções antigas do mesmo ref quando há um novo push — mas SÓ em pull
+# request. Em `main`, cada commit tem a SUA PRÓPRIA fila.
+#
+# O `cancel-in-progress: false` sozinho NÃO bastava, e isto foi medido: ele
+# protege a execução EM CURSO, mas o GitHub mantém no máximo uma execução
+# PENDENTE por grupo e cancela as pendentes mais antigas quando uma nova chega.
+# Com todos os merges em `main` dividindo o grupo `ci-refs/heads/main`, uma
+# rajada deixava a primeira (em curso) e a última (pendente) e matava o meio.
+#
+# Em 2026-10-07, com este bloco já no lugar, quatro das últimas oito execuções
+# em `main` foram canceladas — e cada uma morreu de 1 a 4 segundos depois de a
+# próxima nascer:
+#
+#   criado 17:32:37 -> cancelado 17:32:53  (4s após a de 17:32:49 nascer)
+#   criado 15:41:57 -> cancelado 15:42:06  (1s após a de 15:42:05)
+#   criado 15:42:05 -> cancelado 15:43:52  (2s após a de 15:43:50)
+#   criado 15:43:50 -> cancelado 15:44:03  (1s após a de 15:44:02)
+#
+# Duas delas eram `fix(api): advisory lock serializa as migracoes` e
+# `fix(seguranca): aluno deixa de poder enviar push para outro aluno`: entraram
+# em `main` sem um único job ter rodado. É assim que a `main` ficou com duas
+# cabeças de alembic sem nenhum CI vermelho — e continuava sendo.
+#
+# Agrupar por `github.sha` em push dá a cada commit uma fila de um, então não há
+# pendente para deslocar. Em PR o agrupamento segue por ref, que é o
+# comportamento desejado: push novo no PR cancela a execução antiga.
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -24,21 +49,40 @@ jobs:
       frontend: ${{ steps.filter.outputs.frontend }}
       mobile: ${{ steps.filter.outputs.mobile }}
       docs: ${{ steps.filter.outputs.docs }}
+      brainhexpdf: ${{ steps.filter.outputs.brainhexpdf }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
         id: filter
         with:
           filters: |
+            # Mexer no proprio CI exercita TODOS os jobs. Sem esta ancora,
+            # editar este arquivo roda so o job `changes` e mais nada — foi
+            # assim que o passo de type-check do frontend entrou sem nunca
+            # ter rodado.
+            ci: &ci
+              - '.github/workflows/ci.yml'
             api:
+              - *ci
               - 'api/**'
+              # test_env_example_sem_segredo_real.py varre os .env.example de
+              # TODOS os servicos, mas mora em api/tests — sem esta linha, uma
+              # chave colada em mobile/.env.example nao acionaria o guard.
+              - '**/.env.example'
             microservice:
+              - *ci
               - 'microservice/**'
             frontend:
+              - *ci
               - 'frontend/**'
             mobile:
+              - *ci
               - 'mobile/**'
+            brainhexpdf:
+              - *ci
+              - 'brainhexpdf/**'
             docs:
+              - *ci
               - 'docs/**'
               - 'scripts/verifica_encoding_docs.py'
 
@@ -97,6 +141,39 @@ jobs:
       - name: Testes
         run: npm test
 
+  # `brainhexpdf/` e versionado aqui (90 arquivos) e nunca teve job: os 18
+  # arquivos de teste e o `tsc --noEmit` dele nao rodavam em PR nenhum. Usa
+  # bun (tem `bun.lock` versionado, e nenhum package-lock), por isso o setup
+  # e diferente dos outros; o `node` do setup-node serve para os scripts, que
+  # chamam `node --import tsx --test`.
+  brainhexpdf:
+    needs: changes
+    if: ${{ needs.changes.outputs.brainhexpdf == 'true' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: brainhexpdf
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      # Sem `--frozen-lockfile` de proposito, por ora: `bun.lock` esta
+      # DESATUALIZADO — `d3` e `@types/d3` estao no package.json (e `d3` e
+      # usado por src/components/VisualKnowledgeGraph.tsx) mas nao constam do
+      # lock. Com `--frozen-lockfile` este job nasceria vermelho. Regenerar o
+      # lock precisa do bun na mao de quem commita; quando isso acontecer,
+      # troque por `bun install --frozen-lockfile`, que e o que a gente quer.
+      - name: Instala dependencias
+        run: bun install
+      - name: Type-check (tsc)
+        run: bun run lint
+      - name: Testes
+        run: bun run test
+
   frontend:
     needs: changes
     if: ${{ needs.changes.outputs.frontend == 'true' }}
@@ -114,6 +191,11 @@ jobs:
       - run: npm ci
       - name: Lint (eslint)
         run: npm run lint
+      # `vite build` nao checa tipo -- o esbuild so apaga as anotacoes. Sem
+      # este passo, erro de tipo no frontend nao reprova PR nenhum: eram 13
+      # vivendo na main.
+      - name: Type-check (tsc)
+        run: npm run typecheck
       - name: Testes (vitest)
         run: npm test
       - name: Build
@@ -136,3 +218,22 @@ jobs:
       - run: npm ci
       - name: Lint (expo)
         run: npm run lint
+      # `expo lint` e eslint, nao checa tipo. O mobile esta com zero erro
+      # hoje; o passo existe para que continue assim.
+      - name: Type-check (tsc)
+        run: npm run typecheck
+      - name: Testes
+        run: npm test
+      # Grupos a parte porque compartilham estado entre si: rodados juntos com
+      # a suite principal, um polui o outro. `test:engagement` e
+      # `test:trail-resume` NAO entram -- os dois incluem
+      # `IAContext.battle.test.tsx`, que importa `react-native`, e o esbuild do
+      # tsx nao transforma a sintaxe Flow do `node_modules/react-native`
+      # ("Unexpected typeof"). Falha de carregamento, nao de logica; sair disso
+      # exige extrair a parte pura, como ja foi feito em
+      # `context/metricas/acumuladorLote.ts`.
+      - name: Testes (grupos isolados)
+        run: |
+          npm run test:social-chat
+          npm run test:class-selection
+          npm run test:presence

@@ -196,6 +196,8 @@ export type IACharacterCue = {
   featureKey?: IAFeatureKey | null;
   action?: IATimerTimeoutAction | "dismiss" | null;
   actionLabel?: string | null;
+  /** Pedido explícito do aluno (ex.: "Conversar com o guia" na web larga): o painel do guia abre já com a dica. */
+  abrir?: boolean;
 };
 
 export type IATriggerRule = {

@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TrailUp — Loja (Conqueror)</title>
+<style>
+  :root{
+    --bg:#0b1328; --surface:#121e3f; --elevated:#192a57;
+    --border:#28428a; --border-strong:#4d6fcb;
+    --text:#f3f4f7; --text-muted:rgba(243,244,247,.82); --text-subtle:rgba(243,244,247,.62);
+    --accent:#6f90eb; --success:#3fbf6b; --danger:#e15b64;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  .title-font{font-family:Georgia,"Times New Roman",serif}
+  /* Estrutura identica ao console-shell do professor (ConsoleShell.tsx / page-surfaces.css) */
+  .console-shell{display:grid;grid-template-columns:212px minmax(0,1fr);grid-template-rows:68px minmax(0,1fr);height:100vh;overflow:hidden}
+  .console-topbar{grid-column:1/-1;display:flex;align-items:center;gap:28px;padding:12px 24px;background:var(--surface);border-bottom:1px solid var(--border);min-width:0}
+  .journey-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text);font-size:20px}
+  .journey-brand img{width:32px;height:32px}
+  .journey-brand span{font-family:Georgia,serif;font-weight:700}
+  .console-workspace-name{color:var(--text-subtle);font-size:12px}
+  .console-account{margin-left:auto;display:flex;align-items:center;gap:10px;min-width:0}
+  .console-account img.avatar{width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--accent)}
+  .console-account-copy{display:grid;gap:2px}
+  .console-account-copy strong{font-size:13px;font-weight:600}
+  .console-account-copy span{font-size:11px;color:var(--text-subtle)}
+  .console-icon-button{display:grid;place-items:center;width:40px;height:40px;border-radius:6px;color:var(--text-muted);background:none;border:none;cursor:pointer;flex:none}
+  .console-icon-button:hover{color:var(--text);background:var(--elevated)}
+  .console-icon-button img{width:20px;height:20px}
+  .console-icon-button svg{width:18px;height:18px}
+  .console-navigation{padding:20px 12px;display:flex;flex-direction:column;gap:6px;border-right:1px solid var(--border);background:rgba(0,0,0,.15);overflow-y:auto}
+  .console-navigation a{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:6px;border:1px solid transparent;color:var(--text-muted);font-size:13px;text-decoration:none}
+  .console-navigation a svg{flex:none;width:18px;height:18px}
+  .console-navigation a:hover{color:var(--text);background:rgba(255,255,255,.06)}
+  .console-navigation a[aria-current="page"]{color:var(--text);background:rgba(111,144,235,.13);border-color:var(--border-strong)}
+  .console-navigation a[aria-current="page"] svg{color:var(--accent)}
+  .console-navigation .nb{margin-left:auto;background:var(--accent);color:var(--bg);font-size:10px;font-weight:800;padding:1px 6px;border-radius:100px}
+  .console-main{grid-column:2;grid-row:2;overflow-y:auto;position:relative}
+
+  /* cabeçalho, seletor e coluna lateral: o mesmo padrão de Social, Ranking e Perfil */
+  .wrap{padding:28px 32px 48px}
+  .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:0 0 4px;font-weight:600}
+  h1{font-family:Georgia,serif;font-size:28px;margin:0}
+  .sub{font-size:14px;color:var(--text-subtle);margin:6px 0 0}
+  .page-head{margin-bottom:20px}
+  a:focus-visible,button:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .preview{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:40;display:flex;align-items:center;gap:10px;padding:6px 10px 6px 14px;border-radius:100px;background:var(--bg);border:1px solid var(--border);font-size:12px;color:var(--text-muted)}
+  .preview select{background:var(--accent);color:var(--bg);border:0;border-radius:100px;padding:6px 10px;font-weight:600;font-family:inherit}
+  .preview .sep{width:1px;height:20px;background:var(--border)}
+  .dot{width:16px;height:16px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0}
+  .dot[aria-pressed="true"]{border-color:var(--text)}
+
+  .md{display:grid;grid-template-columns:minmax(0,8fr) minmax(0,4fr);gap:20px;align-items:start}
+  .main-col{min-width:0}
+  .chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:100px;font-size:12px;font-weight:600;background:var(--elevated);color:var(--text-muted);white-space:nowrap}
+  .chip img{width:14px;height:14px;object-fit:contain}
+  .chip-accent{background:var(--accent-soft);color:var(--accent)}
+  .coin{object-fit:contain;flex:none}
+
+  /* saldo */
+  .hero{display:grid;grid-template-columns:1fr 1fr;gap:24px;padding:24px 26px;border-radius:16px;border:1px solid var(--border);background:linear-gradient(160deg,var(--elevated),var(--surface))}
+  .bal .big{display:flex;align-items:center;gap:12px;margin:6px 0 10px}
+  .bal .num{font-family:Georgia,serif;font-weight:700;font-size:48px;line-height:1;font-variant-numeric:tabular-nums}
+  .bal p{font-size:13px;line-height:1.55;color:var(--text-muted);margin:0;max-width:340px}
+  .earn{border-left:1px solid var(--line);padding-left:24px}
+  .earn h3{font-size:13px;margin:0 0 6px}
+  .earn-row{display:flex;justify-content:space-between;align-items:center;height:32px;font-size:13.5px;border-bottom:1px solid var(--line)}
+  .earn-row b{color:var(--accent);font-variant-numeric:tabular-nums}
+  .earn small{display:block;font-size:12px;color:var(--text-subtle);margin-top:10px;line-height:1.45}
+
+  /* itens */
+  .block-title{display:flex;align-items:center;gap:10px;font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin:28px 0 12px}
+  .block-title .chip{font-size:11px;padding:2px 9px;letter-spacing:0}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .item{display:flex;flex-direction:column;gap:12px;padding:18px 20px;border-radius:16px;border:1px solid var(--border);background:var(--surface)}
+  .item.is-muted .item-top img{opacity:.55;filter:grayscale(.4)}
+  .item-top{display:flex;gap:14px;align-items:flex-start}
+  .item-top img{width:60px;height:68px;object-fit:contain;flex:none}
+  .item-top h3{font-family:Georgia,serif;font-size:18px;margin:2px 0 4px}
+  .item-top p{font-size:13px;line-height:1.5;color:var(--text-muted);margin:0}
+  .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .gate{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:12px;background:var(--elevated);font-size:13px;line-height:1.45}
+  .gate svg{width:16px;height:16px;flex:none;margin-top:2px;color:var(--text-subtle)}
+  .gate a{display:block;margin-top:6px;color:var(--accent);font-weight:600;text-decoration:none}
+  .muted{font-size:12px;color:var(--text-subtle);margin:0;line-height:1.45}
+  .track{height:6px;border-radius:999px;background:var(--bg);border:1px solid var(--border);overflow:hidden}
+  .track i{display:block;height:100%;background:linear-gradient(90deg,var(--accent-strong),var(--accent))}
+  .notice{display:flex;gap:8px;align-items:center;padding:10px 12px;border-radius:10px;font-size:13px;font-weight:600}
+  .notice svg{width:16px;height:16px;flex:none}
+  .notice.ok{border:1px solid var(--accent);background:var(--accent-muted)}
+  .notice.ok svg{color:var(--accent)}
+  .notice.err{border:1px solid rgba(225,91,100,.6);background:rgba(225,91,100,.12)}
+  .notice.err svg{color:var(--danger)}
+  .item-foot{margin-top:auto;display:flex;align-items:center;gap:12px;padding-top:12px;border-top:1px solid var(--line)}
+  .price{flex:1;min-width:0;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .price strong{font-size:16px;font-variant-numeric:tabular-nums}
+  .price small{flex-basis:100%;font-size:11.5px;color:var(--text-subtle)}
+  .note{font-size:12px;color:var(--text-subtle);margin:-4px 0 0}
+  .btn{height:38px;padding:0 16px;border-radius:100px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;border:1px solid var(--border-strong);background:transparent;color:var(--text-muted);font-family:inherit;white-space:nowrap}
+  .btn svg{width:14px;height:14px}
+  .btn img{width:18px;height:18px;object-fit:contain}
+  .btn-primary{background:var(--accent);border-color:var(--accent);color:#0b1328}
+  .btn-primary:hover:not(:disabled){filter:brightness(1.08)}
+  .btn-secondary{color:var(--text)}
+  .btn:disabled{cursor:not-allowed}
+  .btn:not(.btn-primary):disabled{opacity:.75}
+  .btn-primary:disabled{opacity:.7}
+  .wide{width:100%;margin-top:6px}
+  .spin{width:14px;height:14px;border-radius:50%;border:2px solid rgba(11,19,40,.3);border-top-color:#0b1328;animation:sp .8s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+
+  /* lateral */
+  .rail{position:sticky;top:28px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:22px 20px}
+  .rail h4{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);margin:22px 0 10px}
+  .rail h4:first-child{margin-top:0}
+  .bag-row{display:flex;align-items:center;gap:10px;min-height:48px;border-bottom:1px solid var(--line);font-size:13.5px}
+  .bag-row img{width:32px;height:32px;object-fit:contain}
+  .bag-row span{flex:1}
+  .limit{margin-bottom:12px}
+  .limit .lbl{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px}
+  .limit .lbl b{font-variant-numeric:tabular-nums}
+  .limit small{display:block;font-size:11.5px;color:var(--text-subtle);margin-top:5px}
+  .ext-row{display:grid;grid-template-columns:38px 1fr auto;gap:8px;align-items:center;min-height:44px;border-bottom:1px solid var(--line);font-size:12.5px}
+  .ext-row b{font-variant-numeric:tabular-nums}
+  .ext-row b.in{color:var(--success)}
+  .ext-row b.out{color:var(--text-muted)}
+  .ext-row b.zero{color:var(--text-subtle)}
+  .ext-row small{font-size:11px;color:var(--text-subtle);white-space:nowrap}
+  .link{background:none;border:0;color:var(--accent);font-weight:600;font-size:13px;cursor:pointer;margin-top:10px;padding:0;font-family:inherit}
+
+  .error{grid-column:1/-1;display:flex;gap:14px;align-items:center;background:rgba(225,91,100,.1);border:1px solid rgba(225,91,100,.5);border-radius:16px;padding:18px 20px}
+  .error svg{width:22px;height:22px;color:var(--danger);flex:none}
+  .error p{margin:0;flex:1}
+  .skel{border-radius:16px;background:linear-gradient(90deg,var(--surface),var(--elevated),var(--surface));background-size:200% 100%;animation:sh 1.3s linear infinite}
+  .main-col .grid{margin-top:20px}
+  @keyframes sh{to{background-position:-200% 0}}
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:grid;place-items:center;z-index:50}
+  .modal{width:400px;background:var(--surface);border:1px solid var(--border-strong);border-radius:18px;padding:24px;text-align:center}
+  .modal > img{width:60px;height:68px;object-fit:contain}
+  .modal h3{font-family:Georgia,serif;font-size:20px;margin:8px 0 6px}
+  .modal p{margin:0 0 14px;color:var(--text-muted);font-size:14px;line-height:1.5}
+  .modal .sum{display:inline-block;padding:8px 14px;border-radius:10px;background:var(--elevated);font-size:14px;font-variant-numeric:tabular-nums;margin-bottom:18px}
+  .modal .actions{display:flex;gap:10px;justify-content:center}
+
+  /* barras de rolagem no tema (revisão 03): finas, na cor da borda do perfil, sem a barra cinza do sistema */
+  *{scrollbar-width:thin;scrollbar-color:var(--border-strong,#4d6fcb) transparent}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--border-strong,#4d6fcb);border-radius:999px;border:3px solid transparent;background-clip:padding-box}
+  ::-webkit-scrollbar-thumb:hover{background:var(--accent,#6f90eb);background-clip:padding-box;border:3px solid transparent}
+  ::-webkit-scrollbar-corner{background:transparent}
+</style>
+</head>
+<body>
+<div class="console-shell">
+  <header class="console-topbar">
+    <a class="journey-brand" href="03-trilha.html"><img src="assets/trailup-brand-logo.png" alt="" /><span>TrailUp</span></a>
+    <span class="console-workspace-name">Área do aluno</span>
+    <div class="console-account">
+      <a href="08-perfil-hub.html" title="Meu perfil" aria-label="Meu perfil" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit">
+        <img class="avatar" src="assets/rosto-conqueror.png" alt="" />
+        <div class="console-account-copy"><strong>Amina T.</strong><span>Conqueror</span></div>
+      </a>
+      <button class="console-icon-button" title="Minha Bag"><img src="assets/object-bag.png" alt="" /></button>
+      <a class="console-icon-button" href="00-entrada.html" title="Sair" aria-label="Sair"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg></a>
+    </div>
+  </header>
+  <nav class="console-navigation" aria-label="Seções da área do aluno">
+    <a href="03-trilha.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 20l-5.5 2V6L9 4l6 2 5.5-2v16L15 22l-6-2z"/><path d="M9 4v16M15 6v16"/></svg>Trilha</a>
+    <a href="07-notificacoes.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Notificações<span class="nb">2</span></a>
+    <a href="06-social.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Social</a>
+    <a href="12-loja.html" aria-current="page" aria-label="Loja, saldo de 38 moedas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 9l1.5-5h15L21 9"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/><path d="M5 12v8h14v-8"/><path d="M10 20v-5h4v5"/></svg>Loja<span class="nav-coins" style="margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;color:var(--text-subtle)">38<img src="assets/coin-conqueror.png" alt="" style="width:16px;height:16px;object-fit:contain" /></span></a>
+    <a href="05-ranking.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 21h16M6 21V10M12 21V3M18 21v-7"/></svg>Ranking</a>
+    <a href="08-perfil-hub.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0 1 16 0v1"/></svg>Perfil</a>
+  </nav>
+  <main class="console-main">
+<div class="wrap">
+  <div class="page-head">
+    <div class="eyebrow">Recursos da jornada</div>
+    <h1>Loja</h1>
+    <p class="sub">Troque moedas por recursos que ajudam no estudo.</p>
+  </div>
+  <div class="md" id="md"></div>
+</div>
+  </main>
+</div>
+
+<div class="preview"><span>Pré-visualização de estado:</span><select id="stateSel" aria-label="Estado da tela"></select><span class="sep"></span><span>Perfil:</span><span id="dots" style="display:flex;gap:6px"></span></div>
+<div id="modal"></div>
+
+<script>
+/* paletas: as mesmas das outras telas do v2/v3 (bg, surface, elev, border, border-strong, text, accent, accent-strong) */
+const PROFILES={
+  seeker:{l:'Seeker',sig:'#17a398',p:['#0b2825','#123f3c','#195752','#288a83','#4dcbc1','#f3f7f6','#1fd9ca','#127f77']},
+  survivor:{l:'Survivor',sig:'#4e5a66',p:['#16191d','#23292e','#313840','#4d5965','#7d8c9c','#f3f5f6','#95a1ae','#3c464f']},
+  daredevil:{l:'Daredevil',sig:'#d7263d',p:['#280b0f','#3f1218','#571921','#8a2835','#cb4d5e','#f7f3f3','#e87b89','#b42033']},
+  mastermind:{l:'Mastermind',sig:'#5b3fd9',p:['#110b28','#1b123f','#241957','#3a288a','#644dcb','#f4f3f7','#9583e6','#4528c8']},
+  conqueror:{l:'Conqueror',sig:'#1e4fd6',p:['#0b1328','#121e3f','#192a57','#28428a','#4d6fcb','#f3f4f7','#6f90eb','#1942b2']},
+  socializer:{l:'Socializer',sig:'#f4623a',p:['#28120b','#3f1c12','#572719','#8a3d28','#cb684d','#f7f4f3','#f68161','#f24313']},
+  achiever:{l:'Achiever',sig:'#c9a227',p:['#28210b','#3f3412','#574819','#8a7328','#cbad4d','#f7f6f3','#dab43f','#a78620']},
+};
+/* catálogo: textos e preços de api/alembic/versions/20260912_03_loja_catalogo.py; arte = storeIconKind do app */
+const CATALOGO=[
+  {cod:'prazo_extra',nome:'Prazo extra',desc:'Adia a entrega de uma atividade em 24 horas, sem penalidade.',arte:'deadline',preco:10,fator:2,uso:'até você usar numa atividade com prazo.'},
+  {cod:'segunda_chance',nome:'Segunda chance',desc:'Refaz a atividade valendo nota: 90% da melhor tentativa mais 10% da pior.',arte:'retry',preco:12,fator:2,uso:'até você refazer uma atividade.',nota:'Também aparece quando você revisa uma atividade.'},
+  {cod:'dica',nome:'Dica',desc:'Explica por que a alternativa errada está errada. Não entrega a resposta.',arte:'hint',preco:5,fator:1,uso:'até você usar numa questão.',fem:true},
+  {cod:'troca_formato',nome:'Trocar formato',desc:'Escolhe como receber o próximo material: áudio, texto ou slides.',arte:'book',preco:4,fator:1,uso:'até o próximo material.'},
+];
+const GANHOS=[['Concluir um conteúdo',2],['Concluir uma atividade',3],['Acertar uma atividade',1],['Revisar uma atividade',0]];
+const EXTRATO_BASE=[
+  [3,'Atividade concluída · Equações do 1º grau','Hoje, 18:40'],[1,'Acerto · Equações do 1º grau','Hoje, 18:38'],
+  [2,'Conteúdo concluído · Equações do 1º grau','Hoje, 18:10'],[-4,'Compra · Trocar formato','Ontem'],
+  [3,'Atividade concluída · Expressões algébricas','Segunda'],[-5,'Compra · Dica','Sexta passada'],
+  [2,'Conteúdo concluído · Expressões algébricas','Sexta passada'],[3,'Atividade concluída · Frações','Quinta passada'],
+  [1,'Acerto · Frações','Quinta passada'],[0,'Dotação inicial · 2 Prazos extras e 1 Segunda chance','Início da turma'],
+];
+const STATES=[['data','Com dados'],['low','Saldo baixo'],['buying','Comprando'],['bought','Compra concluída'],['nofunds','Saldo insuficiente'],['off','Item desligado'],['cap','Limite de prazo atingido'],['loading','Carregando'],['error','Erro ao carregar']];
+const I={
+  lock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg>',
+  alert:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>',
+};
+let viewer='conqueror', estado='data', S;
+
+function rgba(h,a){const n=parseInt(h.slice(1),16);return `rgba(${n>>16},${(n>>8)&255},${n&255},${a})`}
+function applyTheme(){
+  const [bg,su,el,bo,bs,tx,ac,as]=PROFILES[viewer].p,st=document.documentElement.style,set=(k,v)=>st.setProperty(k,v);
+  set('--bg',bg);set('--surface',su);set('--elevated',el);set('--border',bo);set('--border-strong',bs);set('--text',tx);set('--accent',ac);set('--accent-strong',as);
+  set('--accent-soft',rgba(ac,.18));set('--accent-muted',rgba(ac,.12));set('--text-muted',rgba(tx,.82));set('--text-subtle',rgba(tx,.62));set('--line',rgba(bs,.35));
+  document.querySelectorAll('.nav-coins img').forEach(i=>i.src=`assets/coin-${viewer}.png`);
+  document.querySelectorAll('.nav-coins').forEach(n=>n.firstChild.nodeValue=S.saldo);
+  document.querySelector('a[href="12-loja.html"]').setAttribute('aria-label',`Loja, saldo de ${S.saldo} moedas`);
+}
+const art=k=>`assets/${k}-${viewer}.png`;
+const coin=(sz=20)=>`<img class="coin" src="${art('coin')}" alt="" style="width:${sz}px;height:${sz}px" />`;
+
+// estado de dados da Amina; cada pré-visualização ajusta a partir daqui
+function reset(st){
+  estado=st;
+  S={saldo:38,
+     itens:{prazo_extra:{grat:1,compras:0,bag:0},segunda_chance:{grat:1,compras:0,bag:0,gate:true},dica:{grat:0,compras:1,bag:0},troca_formato:{grat:0,compras:1,bag:1}},
+     prazoUsado:1, prazoTeto:4, extrato:EXTRATO_BASE.map(x=>x.slice()), verTudo:false, aviso:{}, comprando:null, desligado:null};
+  if(st==='low')S.saldo=3;
+  if(st==='buying')S.comprando='dica';
+  if(st==='bought'){S.saldo=33;S.itens.dica.bag=1;S.itens.dica.compras=2;S.extrato.unshift([-5,'Compra · Dica','Agora']);S.aviso.dica=['ok','Dica guardada na sua Bag.']}
+  if(st==='nofunds'){S.saldo=3;S.aviso.dica=['err','Saldo insuficiente para este item.']}
+  if(st==='off')S.desligado='troca_formato';
+  if(st==='cap'){S.prazoUsado=4;S.itens.prazo_extra.grat=0}
+}
+const precoAtual=(c)=>{const x=S.itens[c.cod];return x.grat>0?0:Math.round(c.preco*Math.pow(c.fator,c.fator>1?x.compras:0))};
+const nItem=c=>c.fem?'guardada':'guardado';
+
+function cardHTML(c){
+  const x=S.itens[c.cod], preco=precoAtual(c), gratis=preco===0, busy=!!S.comprando;
+  let estadoCard='ok', btn;
+  if(S.desligado===c.cod)estadoCard='off';
+  else if(c.cod==='prazo_extra'&&S.prazoUsado>=S.prazoTeto)estadoCard='cap';
+  else if(x.gate)estadoCard='gate';
+  else if(!gratis&&S.saldo<preco)estadoCard='poor';
+  if(S.comprando===c.cod)btn=`<button class="btn btn-primary" disabled><span class="spin"></span>Comprando...</button>`;
+  else if(estadoCard==='off')btn=`<button class="btn" disabled>Indisponível</button>`;
+  else if(estadoCard==='cap')btn=`<button class="btn" disabled>Limite atingido</button>`;
+  else if(estadoCard==='gate')btn=`<button class="btn" disabled>${I.lock}Bloqueado</button>`;
+  else if(estadoCard==='poor'){const f=preco-S.saldo;btn=`<button class="btn" disabled>${f===1?'Falta 1 moeda':`Faltam ${f} moedas`}</button>`}
+  else btn=`<button class="btn btn-primary" data-buy="${c.cod}" ${busy?'disabled':''}>${gratis?'Pegar grátis':'Comprar'}</button>`;
+  const chips=[x.grat>0?`<span class="chip chip-accent">${x.grat} grátis restante${x.grat>1?'s':''}</span>`:'',x.bag>0?`<span class="chip"><img src="${art('bag')}" alt="" />${x.bag} na sua Bag</span>`:''].join('');
+  const extra=estadoCard==='gate'?`<div class="gate">${I.lock}<div>Libera depois que você revisar o material do tópico por pelo menos 2 minutos.<a href="03-trilha.html">Revisar Frações →</a></div></div>`
+    :estadoCard==='off'?`<p class="muted">Seu professor desligou este item nesta turma.</p>`
+    :estadoCard==='cap'?`<p class="muted">Você já usou os ${S.prazoTeto} dias de prazo extra do semestre.</p>`
+    :estadoCard==='poor'?`<div class="track" role="progressbar" aria-valuenow="${S.saldo}" aria-valuemin="0" aria-valuemax="${preco}" aria-label="Saldo contra o preço"><i style="width:${Math.min(100,S.saldo/preco*100)}%"></i></div>`:'';
+  const av=S.aviso[c.cod];
+  const aviso=av?`<div class="notice ${av[0]}" role="${av[0]==='err'?'alert':'status'}">${av[0]==='ok'?I.check:I.alert}<span>${av[1]}</span></div>`:'';
+  const proxima=gratis&&c.fator>1?`<small>Depois: ${c.preco} moedas, dobrando a cada unidade</small>`:'';
+  return `<article class="item ${estadoCard!=='ok'&&estadoCard!=='poor'?'is-muted':''}" aria-label="${c.nome}">
+    <div class="item-top"><img src="${art(c.arte)}" alt="" /><div><h3>${c.nome}</h3><p>${c.desc}</p></div></div>
+    ${chips?`<div class="chips">${chips}</div>`:''}
+    ${extra}${aviso}
+    <div class="item-foot"><div class="price">${gratis?'<strong>Grátis</strong>':`${coin()}<strong>${preco}</strong>`}${proxima}</div>${btn}</div>
+    ${c.nota?`<p class="note">${c.nota}</p>`:''}
+  </article>`;
+}
+function lateralHTML(){
+  const bag=CATALOGO.filter(c=>S.itens[c.cod].bag>0);
+  const ext=S.verTudo?S.extrato:S.extrato.slice(0,6);
+  const pct=S.prazoUsado/S.prazoTeto*100;
+  return `<aside class="rail">
+    <h4>Na sua Bag</h4>
+    ${bag.length?bag.map(c=>`<div class="bag-row"><img src="${art(c.arte)}" alt="" /><span>${c.nome}</span><b>×${S.itens[c.cod].bag}</b></div>`).join(''):'<p class="muted">Nada guardado ainda. O que você comprar fica aqui até usar.</p>'}
+    <button class="btn btn-secondary wide" title="Abre a mesma Bag do botão da barra superior"><img src="${art('bag')}" alt="" />Abrir Bag</button>
+    <h4>Limites · 6º ano B</h4>
+    <div class="limit"><div class="lbl"><span>Prazo extra</span><b>${S.prazoUsado} de ${S.prazoTeto} dias</b></div>
+      <div class="track" role="progressbar" aria-valuenow="${S.prazoUsado}" aria-valuemin="0" aria-valuemax="${S.prazoTeto}" aria-label="Dias de prazo extra usados no semestre"><i style="width:${pct}%"></i></div>
+      <small>usados neste semestre · até 2 dias por atividade</small></div>
+    <div class="limit"><div class="lbl"><span>Segunda chance</span><b>até 1 por tópico</b></div><small>24 horas entre uma tentativa e outra</small></div>
+    <p class="muted">Quem define esses limites é seu professor.</p>
+    <h4>Extrato</h4>
+    ${ext.map(([v,d,q])=>`<div class="ext-row"><b class="${v>0?'in':v<0?'out':'zero'}">${v>0?'+'+v:v<0?'−'+(-v):'—'}</b><span>${d}</span><small>${q}</small></div>`).join('')}
+    ${S.verTudo?'':'<button class="link" data-all>Ver extrato completo</button>'}
+  </aside>`;
+}
+function render(){
+  applyTheme();
+  document.getElementById('stateSel').innerHTML=STATES.map(([k,l])=>`<option value="${k}" ${estado===k?'selected':''}>${l}</option>`).join('');
+  document.getElementById('dots').innerHTML=Object.entries(PROFILES).map(([k,P])=>`<button class="dot" style="background:${P.sig}" title="${P.l}" aria-label="Perfil ${P.l}" aria-pressed="${viewer===k}" data-dot="${k}"></button>`).join('');
+  const md=document.getElementById('md');
+  if(estado==='loading'){md.innerHTML=`<div class="main-col"><div class="skel" style="height:180px"></div><div class="grid">${'<div class="skel" style="height:220px"></div>'.repeat(4)}</div></div><div class="skel" style="height:600px"></div>`;return}
+  if(estado==='error'){md.innerHTML=`<div class="error" role="alert">${I.alert}<p>Não foi possível carregar a loja.</p><button class="btn btn-secondary" data-retry>Tentar novamente</button></div>`;return}
+  md.innerHTML=`<div class="main-col">
+    <section class="hero" aria-label="Seu saldo">
+      <div class="bal"><div class="eyebrow">Seu saldo</div><div class="big"><span class="num">${S.saldo}</span>${coin(56)}</div>
+        <p>Suas moedas vêm do estudo. Gastar nunca muda seu XP nem sua posição no ranking.</p></div>
+      <div class="earn"><h3>Como ganhar</h3>${GANHOS.map(([l,v])=>`<div class="earn-row"><span>${l}</span><b>+${v}</b></div>`).join('')}
+        <small>Cada ação paga uma vez só. Revisar não paga, para refazer não virar fonte de moedas.</small></div>
+    </section>
+    <h2 class="block-title">Itens<span class="chip">${CATALOGO.length}</span></h2>
+    <div class="grid">${CATALOGO.map(cardHTML).join('')}</div>
+  </div>${lateralHTML()}`;
+}
+function confirmar(c){
+  const preco=precoAtual(c), gratis=preco===0;
+  document.getElementById('modal').innerHTML=`<div class="modal-bg" data-close><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt">
+    <img src="${art(c.arte)}" alt="" /><h3 id="mt">${gratis?'Pegar':'Comprar'} ${c.nome}?</h3>
+    <p>Fica ${nItem(c)} na sua Bag ${c.uso}</p>
+    <div class="sum">${gratis?'Não gasta moedas':`Saldo: <b>${S.saldo}</b> → <b>${S.saldo-preco}</b>`}</div>
+    <div class="actions"><button class="btn btn-secondary" data-close>Cancelar</button><button class="btn btn-primary" data-confirm="${c.cod}">${gratis?'Pegar':'Comprar'}</button></div></div></div>`;
+  document.querySelector('[data-confirm]').focus();
+}
+function comprar(cod){
+  const c=CATALOGO.find(x=>x.cod===cod), x=S.itens[cod], preco=precoAtual(c);
+  document.getElementById('modal').innerHTML='';
+  S.aviso={}; S.comprando=cod; render();
+  setTimeout(()=>{
+    S.comprando=null;
+    if(preco>S.saldo){S.aviso[cod]=['err','Saldo insuficiente para este item.'];render();return}
+    if(preco===0){x.grat--; if(cod==='prazo_extra')S.prazoUsado=Math.min(S.prazoTeto,S.prazoUsado);}
+    else {x.compras++; S.saldo-=preco; S.extrato.unshift([-preco,'Compra · '+c.nome,'Agora'])}
+    if(preco===0)S.extrato.unshift([0,'Dotação · '+c.nome+' (grátis)','Agora']);
+    x.bag++; S.aviso[cod]=['ok',`${c.nome} ${nItem(c)} na sua Bag.`]; render();
+  },800);
+}
+document.addEventListener('click',e=>{
+  const q=s=>e.target.closest(s);
+  if(q('[data-dot]')){viewer=q('[data-dot]').dataset.dot;render();return}
+  if(q('[data-buy]')){confirmar(CATALOGO.find(c=>c.cod===q('[data-buy]').dataset.buy));return}
+  if(q('[data-confirm]')){comprar(q('[data-confirm]').dataset.confirm);return}
+  if(e.target.classList.contains('modal-bg')||q('.btn[data-close]')){document.getElementById('modal').innerHTML='';return}
+  if(q('[data-all]')){S.verTudo=true;render();return}
+  if(q('[data-retry]')){reset('data');render();return}
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementById('modal').innerHTML=''});
+document.getElementById('stateSel').addEventListener('change',e=>{history.replaceState(null,'',location.pathname+'?estado='+e.target.value);reset(e.target.value);render()});
+reset(new URLSearchParams(location.search).get('estado')||'data');
+render();
+</script>
+</body>
+</html>

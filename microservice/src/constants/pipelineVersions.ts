@@ -1,7 +1,13 @@
-import { createHash } from "crypto";
-
 /**
  * Contrato público entre a ApiTraiUp e este microserviço.
+ *
+ * SEM import de módulo do Node, de propósito: `presentationThemes.ts` importa
+ * `PRESENTATION_DESIGN_VERSION` daqui, e ele é alcançado pelo bundle do
+ * navegador (`main.tsx` -> `App.tsx` -> `geminiService.ts` ->
+ * `presentationThemes.ts`). Um `import ... from "crypto"` no topo quebrava o
+ * `vite build` inteiro com "createHash is not exported by
+ * __vite-browser-external". As funções que precisam de hash moram em
+ * `generationStorage.ts`.
  *
  * Alterações incompatíveis no pipeline ou no renderizador de apresentações
  * devem incrementar estas versões antes do deploy.
@@ -17,23 +23,6 @@ export function getRenderGitCommit(
 ): string | null {
   const commit = environment.RENDER_GIT_COMMIT?.trim();
   return commit || null;
-}
-
-/**
- * Usa somente caracteres seguros para nomes de objetos do Storage e mantém
- * uma relação determinística 1:1 com a generation_key.
- */
-export function generationStorageSegment(generationKey: string): string {
-  const normalized = generationKey.trim();
-  if (!normalized) {
-    throw new Error("generation_key ausente para versionar o caminho de Storage");
-  }
-  const digest = createHash("sha256").update(normalized, "utf8").digest("hex");
-  return `generation-${digest}`;
-}
-
-export function versionStoragePath(basePath: string, generationKey: string): string {
-  return `${basePath.replace(/\/+$/, "")}/${generationStorageSegment(generationKey)}`;
 }
 
 export function buildPresentationVersionMetadata(generationKey: string) {

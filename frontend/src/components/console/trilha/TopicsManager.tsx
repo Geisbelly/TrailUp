@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type {
   Atividade,
   CardItem,
@@ -10,7 +10,6 @@ import type {
   Topico,
 } from "./types";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -21,13 +20,12 @@ import {
 import {
   AlertTriangle,
   CheckCircle2,
-  FileText,
   LoaderCircle,
   Maximize2,
-  Pencil,
+  Crosshair,
+  Sparkles,
   Plus,
   RotateCcw,
-  Trash2,
   Workflow,
   ZoomIn,
   ZoomOut,
@@ -36,11 +34,16 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { TopicEditDrawer } from "./TopicEditDrawer";
+import { CartaoDoTopico } from "./CartaoDoTopico";
+import { GenerateTrailDialog } from "./GenerateTrailDialog";
+import { ConfirmarDuplicarTopico, ConfirmarExcluirTopico } from "./ConfirmarTopico";
+import { numeroNaSequencia, resumoDaTurma } from "./mapa";
 import { ClassManagerDialog } from "./ClassManagerDialog";
 import { TopicFormDialog } from "./TopicFormDialog";
 import { useTopicGraph } from "./useTopicGraph";
 import { useTopicDataLoaders } from "./useTopicDataLoaders";
 import { useTopicCrud } from "./useTopicCrud";
+import { PARAMETRO_DA_TURMA, turmaInicialDaTrilha } from "./turmaDaUrl";
 import { updateContentOrder } from "./topicsApi";
 import {
   enqueueManualRetryJob,
@@ -65,6 +68,9 @@ export default function TopicsManager() {
   const [editingTopic, setEditingTopic] = useState<Topico | null>(null);
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
   const [selectedClassFilter, setSelectedClassFilter] = useState<string>("");
+  // ?turma=<id> escolhe a turma (atalho "Abrir trilha" do card em Turmas).
+  const [searchParams, setSearchParams] = useSearchParams();
+  const turmaNaUrl = searchParams.get(PARAMETRO_DA_TURMA);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isClassDialogOpen, setIsClassDialogOpen] = useState(false);
@@ -153,7 +159,8 @@ export default function TopicsManager() {
     zoom,
     zoomIn,
     zoomOut,
-    resetView,
+    fitToScreen,
+    centerCanvas,
     handleCanvasWheel,
     selectedEdge,
     setSelectedEdge,
@@ -236,6 +243,57 @@ export default function TopicsManager() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Contagem de alunos da turma para o cartão do seletor (só head: nenhuma linha trafega).
+  const [alunosDaTurma, setAlunosDaTurma] = useState<number | null>(null);
+  useEffect(() => {
+    const cid = Number(selectedClassFilter);
+    if (!cid) {
+      setAlunosDaTurma(null);
+      return;
+    }
+    let ativo = true;
+    supabase
+      .from("classe_aluno")
+      .select("*", { count: "exact", head: true })
+      .eq("classe_id", cid)
+      .then(({ count, error }) => {
+        if (ativo) setAlunosDaTurma(error ? null : count ?? 0);
+      });
+    return () => {
+      ativo = false;
+    };
+  }, [selectedClassFilter]);
+
+  const [topicoParaDuplicar, setTopicoParaDuplicar] = useState<Topico | null>(null);
+  const [topicoParaExcluir, setTopicoParaExcluir] = useState<Topico | null>(null);
+  const [iaAberta, setIaAberta] = useState(false);
+  const [duplicando, setDuplicando] = useState(false);
+  const [excluindoTopico, setExcluindoTopico] = useState(false);
+
+  const handleDuplicarTopico = async () => {
+    if (!topicoParaDuplicar) return;
+    setDuplicando(true);
+    // Transação única no banco (duplicar_topico): falha no meio não deixa cópia pela metade.
+    const { error } = await supabase.rpc("duplicar_topico" as never, { p_topico_id: topicoParaDuplicar.id } as never);
+    setDuplicando(false);
+    if (error) {
+      toast.error("Não foi possível duplicar o tópico.");
+      return;
+    }
+    toast.success("Tópico duplicado.");
+    setTopicoParaDuplicar(null);
+    await loadData();
+    refreshJobsSoon();
+  };
+
+  const handleConfirmarExclusao = async () => {
+    if (!topicoParaExcluir) return;
+    setExcluindoTopico(true);
+    await handleDelete(topicoParaExcluir);
+    setExcluindoTopico(false);
+    setTopicoParaExcluir(null);
+  };
 
   // topicos acabou de vir do banco (loadData terminou) — nao ha mais nada
   // pendente pra salvar no grafo de dependencias ate a proxima edicao.
@@ -360,11 +418,35 @@ export default function TopicsManager() {
     return list;
   }, [topicsForSelected, topicos]);
 
+  // Escolha inicial pela URL; turma alheia ou inválida cai na primeira, como
+  // antes. Se o ?turma= mudar com a tela aberta (link de outra aba do console),
+  // a trilha segue a URL.
+  // Só segue a URL quando ELA mudou: ao trocar no seletor, a URL ainda tem a
+  // turma antiga no mesmo render e desfaria a troca.
+  const ultimaTurmaDaUrl = useRef<string | null>(null);
   useEffect(() => {
-    if (!selectedClassFilter && classes.length > 0) {
-      setSelectedClassFilter(classes[0].id.toString());
+    if (classes.length === 0) return;
+    const urlMudou = turmaNaUrl !== ultimaTurmaDaUrl.current;
+    ultimaTurmaDaUrl.current = turmaNaUrl;
+    if (!selectedClassFilter || urlMudou) {
+      const pedida = turmaInicialDaTrilha(turmaNaUrl, classes);
+      if (pedida && pedida !== selectedClassFilter && (!selectedClassFilter || pedida === turmaNaUrl)) setSelectedClassFilter(pedida);
     }
-  }, [classes, selectedClassFilter]);
+  }, [classes, selectedClassFilter, turmaNaUrl]);
+
+  // E o caminho de volta: a turma escolhida vai para a URL (replace, sem empilhar
+  // histórico), para refresh e link compartilhado abrirem na mesma turma.
+  useEffect(() => {
+    if (!selectedClassFilter || turmaNaUrl === selectedClassFilter) return;
+    setSearchParams(
+      (atual) => {
+        const proximo = new URLSearchParams(atual);
+        proximo.set(PARAMETRO_DA_TURMA, selectedClassFilter);
+        return proximo;
+      },
+      { replace: true },
+    );
+  }, [selectedClassFilter, turmaNaUrl, setSearchParams]);
 
   const handleSubmit = async () => {
     const targetClasseId =
@@ -378,7 +460,6 @@ export default function TopicsManager() {
     }
     setIsSaving(true);
     try {
-      let savedTopicoId: number;
       if (editingTopic) {
         const { error } = await supabase
           .from("topicos")
@@ -392,7 +473,6 @@ export default function TopicsManager() {
           })
           .eq("id", editingTopic.id);
         if (error) throw error;
-        savedTopicoId = editingTopic.id;
         toast.success("Tópico atualizado!");
       } else {
         const { data, error } = await supabase
@@ -409,7 +489,6 @@ export default function TopicsManager() {
           .single();
         if (error) throw error;
         setTopicos((prev) => [...prev, { ...(data as Topico), next: [], depende: [] }]);
-        savedTopicoId = (data as Topico).id;
         toast.success("Tópico criado!");
       }
       // O trigger no banco ja enfileirou o class-delta escopado neste topico
@@ -442,18 +521,6 @@ export default function TopicsManager() {
     }
   };
 
-  const handleDeleteWithConfirm = async (topic: Topico) => {
-    const confirmation = window.prompt(
-      `Para excluir o tópico "${topic.nome}", digite exatamente o nome do tópico. Esta ação não pode ser desfeita.`
-    );
-    if (!confirmation) return;
-    if (confirmation !== topic.nome) {
-      toast.error("O nome digitado não confere. O tópico não foi removido.");
-      return;
-    }
-    await handleDelete(topic);
-  };
-
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
       if (!selectedEdge) return;
@@ -482,21 +549,6 @@ export default function TopicsManager() {
     } catch (error) {
       console.error("Erro ao salvar grafo:", error);
       toast.error("Não foi possivel salvar as dependências.");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const saveOrder = async () => {
-    setIsSaving(true);
-    try {
-      const updates = topicsForSelected.map((t, idx) => ({ id: t.id, ordem: idx + 1 }));
-      await Promise.all(updates.map((u) => supabase.from("topicos").update({ ordem: u.ordem }).eq("id", u.id)));
-      refreshJobsSoon();
-      toast.success("Ordem dos tópicos salva!");
-    } catch (error) {
-      console.error("Erro ao salvar ordem:", error);
-      toast.error("Não foi possivel salvar a ordem.");
     } finally {
       setIsSaving(false);
     }
@@ -697,15 +749,13 @@ export default function TopicsManager() {
   };
 
   const handleDeleteCard = async (id: number) => {
-    const confirmDelete = window.confirm("Remover este card?");
-    if (!confirmDelete) return false;
+    // Sem window.confirm: o editor já pergunta no cartão (confirmação inline) antes de chamar isto.
     const removed = await deleteCardHandler(id);
     if (!removed) return false;
     await loadCards(editingTopic?.id ?? 0);
     return true;
   };
 
-  const hasData = useMemo(() => topicos.length > 0, [topicos.length]);
   const jobsSummary = useMemo(() => summarizePersonalizacaoJobs(recentJobs), [recentJobs]);
   const latestJobStatus = recentJobs[0]?.status?.trim().toLowerCase() ?? "";
   const failedJobTopicoIds = useMemo(
@@ -767,10 +817,6 @@ export default function TopicsManager() {
     return { x, y };
   }, [draggingConnector, positions, NODE_HEIGHT, NODE_WIDTH]);
 
-  const handleNodeClick = (topic: Topico) => {
-    window.open(`/topico/${topic.id}`, "_blank");
-  };
-
   const handleEditOpen = async (topic: Topico) => {
     setEditingTopic(topic);
     setFormData({
@@ -829,16 +875,16 @@ export default function TopicsManager() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [topicoIdParam, topicos]);
 
-  return (
-    <div className="h-full flex flex-col gap-3">
-      <div className="flex flex-wrap gap-2 justify-between items-center">
-        <div>
-          <h3 className="text-lg font-semibold">Trilha de Tópicos</h3>
-          <p className="text-sm text-muted-foreground">
-            Escolha a classe, cadastre tópicos e defina dependências/pré-requisitos visualmente.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2 items-center">
+  const turmaSelecionada = classes.find((c) => c.id.toString() === selectedClassFilter) ?? null;
+  const nomeDaTurma = turmaSelecionada?.descricao || (turmaSelecionada ? `Turma ${turmaSelecionada.id}` : "");
+  const abrirNovoTopico = () => {
+    setIsDialogOpen(true);
+    const preClass = selectedClassFilter || classes[0]?.id?.toString() || "";
+    setFormData((prev) => ({ ...prev, classe_id: preClass }));
+  };
+  const idsDoMapa = topicsForSelected.map((t) => t.id);
+  const statusGeracoes = (
+    <>
           {(recentJobs.length > 0 || jobsStatusError) && (
             <div
               role="status"
@@ -905,29 +951,57 @@ export default function TopicsManager() {
               Tentar novamente
             </Button>
           )}
-          <Select
-            value={selectedClassFilter}
-            onValueChange={(v) => {
-              if (v === "__new__") {
-                setIsClassDialogOpen(true);
-                return;
-              }
-              setSelectedClassFilter(v);
-            }}
-          >
-            <SelectTrigger className="w-56" size="sm">
-              <SelectValue placeholder="Selecione a classe" />
-            </SelectTrigger>
-            <SelectContent>
-              {classes.map((c) => (
-                <SelectItem key={c.id} value={c.id.toString()}>
-                  {c.descricao}
-                </SelectItem>
-              ))}
-              <SelectItem value="__new__">+ Nova classe</SelectItem>
-            </SelectContent>
-          </Select>
+    </>
+  );
 
+  return (
+    <div className="h-full flex flex-col gap-4">
+      <div className="flex flex-wrap items-end gap-3">
+        <div>
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Editor de trilha</p>
+          <div className="mt-2">
+            <Select
+              value={selectedClassFilter}
+              onValueChange={(v) => {
+                if (v === "__new__") {
+                  setIsClassDialogOpen(true);
+                  return;
+                }
+                setSelectedClassFilter(v);
+              }}
+            >
+              <SelectTrigger className="h-auto min-w-[280px] gap-3 rounded-2xl bg-card px-4 py-2.5" aria-label="Turma">
+                <SelectValue placeholder="Selecione a turma">
+                  {turmaSelecionada && (
+                    <span className="flex items-center gap-3 text-left">
+                      <span aria-hidden="true" className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-primary text-xs font-extrabold text-primary-foreground">
+                        {nomeDaTurma.trim().slice(0, 2).toUpperCase()}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-bold">{nomeDaTurma}</span>
+                        <span className="block text-[11.5px] text-muted-foreground">{resumoDaTurma(topicsForSelected.length, alunosDaTurma)}</span>
+                      </span>
+                    </span>
+                  )}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {classes.map((c) => (
+                  <SelectItem key={c.id} value={c.id.toString()}>
+                    {c.descricao}
+                  </SelectItem>
+                ))}
+                <SelectItem value="__new__">+ Nova classe</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="ml-auto flex flex-wrap items-center gap-2.5">
+          <Button className="rounded-full font-bold" onClick={() => setIaAberta(true)} disabled={!selectedClassFilter}>
+            <Sparkles className="mr-2 h-4 w-4" aria-hidden="true" />
+            Gerar trilha com IA
+          </Button>
           <TopicFormDialog
             open={isDialogOpen}
             onOpenChange={(open) => {
@@ -951,8 +1025,8 @@ export default function TopicsManager() {
             classes={classes}
             selectedClassFilter={selectedClassFilter}
           />
-          <Button variant="secondary" size="sm" onClick={saveGraph} disabled={isSaving || !hasPendingChanges}>
-            {hasPendingChanges && <span className="w-1.5 h-1.5 rounded-full bg-warning mr-2" aria-hidden="true" />}
+          <Button variant="outline" className="rounded-full font-semibold" onClick={saveGraph} disabled={isSaving || !hasPendingChanges}>
+            {hasPendingChanges && <span className="mr-2 h-1.5 w-1.5 rounded-full bg-warning" aria-hidden="true" />}
             Salvar dependências
           </Button>
         </div>
@@ -961,36 +1035,50 @@ export default function TopicsManager() {
       {isLoading ? (
         <div className="text-sm text-muted-foreground">Carregando tópicos...</div>
       ) : !selectedClassFilter ? (
-        <div className="text-center py-20 border-2 border-dashed border-border rounded-xl bg-card/50 space-y-4">
-          <Workflow className="w-12 h-12 mx-auto text-muted-foreground/40" />
-          <div>
-            <p className="text-foreground font-semibold">Nenhuma classe selecionada</p>
-            <p className="text-muted-foreground text-sm mt-1">Selecione uma classe para visualizar o canvas.</p>
-          </div>
+        <div className="flex flex-col items-center rounded-[20px] border bg-card px-6 py-20 text-center">
+          <Workflow className="h-12 w-12 text-muted-foreground/60" aria-hidden="true" />
+          <h3 className="mt-4 text-xl font-bold">Escolha uma turma para abrir o canvas</h3>
+          <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
+            Cada turma tem a sua própria trilha de tópicos. Selecione a turma acima para ver e editar o mapa.
+          </p>
+          <Button
+            className="mt-5 rounded-full font-bold"
+            onClick={() => (classes.length > 0 ? setSelectedClassFilter(classes[0].id.toString()) : setIsClassDialogOpen(true))}
+          >
+            {classes.length > 0 ? "Selecionar turma" : "Criar a primeira turma"}
+          </Button>
+          <p className="mt-3 text-xs text-muted-foreground">Ou escolha uma turma e deixe a IA propor uma trilha inicial a partir do seu plano de ensino.</p>
         </div>
       ) : (
-        <div className="flex-1 min-h-0 flex flex-col gap-2">
-          {/* Legend */}
-          <div className="flex flex-wrap items-center gap-4 px-1 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1.5">
-              <Workflow className="h-3.5 w-3.5" />
-              <span>Arraste o fundo para navegar · arraste o nó para reposicionar</span>
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[20px] border bg-card">
+          <div className="flex flex-wrap items-center gap-3 border-b px-5 py-3.5">
+            <h3 className="text-[17px] font-bold">Trilha de Tópicos</h3>
+            <span
+              role="img"
+              tabIndex={0}
+              aria-label="Ajuda do mapa"
+              title="Arraste o fundo para navegar. Arraste um cartão para reposicionar o tópico. Arraste de uma bolinha D ou N para ligar tópicos. Clique numa seta para removê-la."
+              className="flex h-5 w-5 cursor-help items-center justify-center rounded-full bg-muted text-[11px] font-bold text-muted-foreground"
+            >
+              ?
+            </span>
+            {statusGeracoes}
+            <div className="ml-auto flex items-center gap-4 text-xs text-muted-foreground">
+              <span className="flex items-center gap-2">
+                <span aria-hidden="true" className="h-0 w-6 border-t-2 border-primary" />
+                Sequência
+              </span>
+              <span className="flex items-center gap-2">
+                <span aria-hidden="true" className="h-0 w-6 border-t-2 border-dashed border-info" />
+                Pré-requisito
+              </span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-full bg-info shrink-0" />
-              <span>Conector esquerdo (D) → Pré-requisito</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-full bg-success shrink-0" />
-              <span>Conector direito (N) → Próximo</span>
-            </div>
-            <span className="opacity-50">Clique numa seta para removê-la</span>
           </div>
 
           {/* Canvas viewport */}
           <div
             ref={canvasRef}
-            className="relative flex-1 min-h-0 rounded-xl border border-border bg-background overflow-hidden"
+            className="relative min-h-0 flex-1 overflow-hidden bg-background"
             style={{
               backgroundImage: `radial-gradient(circle at 1px 1px, hsl(var(--primary) / 0.07) 1px, transparent 0)`,
               backgroundSize: `${24 * zoom}px ${24 * zoom}px`,
@@ -1004,36 +1092,37 @@ export default function TopicsManager() {
             onPointerLeave={handleCanvasPointerUp}
             onWheel={handleCanvasWheel}
           >
-            {/* Zoom controls */}
-            <div className="absolute bottom-3 right-3 z-10 flex items-center gap-1 bg-card/95 border border-border rounded-lg px-1.5 py-1 shadow-xl backdrop-blur-sm pointer-events-auto">
-              <button
-                className="w-7 h-7 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                title="Diminuir zoom"
-                onClick={zoomOut}
-              >
-                <ZoomOut className="w-3.5 h-3.5" />
-              </button>
-              <span className="text-[11px] font-mono text-muted-foreground w-10 text-center select-none">
-                {Math.round(zoom * 100)}%
-              </span>
-              <button
-                className="w-7 h-7 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                title="Aumentar zoom"
-                onClick={zoomIn}
-              >
-                <ZoomIn className="w-3.5 h-3.5" />
-              </button>
-              <div className="w-px h-4 bg-border mx-0.5" />
-              <button
-                className="w-7 h-7 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                title="Resetar visualização"
-                onClick={resetView}
-              >
-                <Maximize2 className="w-3.5 h-3.5" />
-              </button>
-            </div>
+            <button
+            type="button"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={abrirNovoTopico}
+            className="absolute bottom-3 left-3 z-10 flex items-center gap-2 rounded-full border-2 border-dashed border-border bg-card/90 px-4 py-2 text-xs font-semibold text-muted-foreground backdrop-blur-sm hover:border-primary hover:text-primary"
+          >
+            <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+            Adicionar tópico ao final
+          </button>
 
-            {/* Inner world */}
+          {/* Zoom controls */}
+          <div className="pointer-events-auto absolute bottom-3 right-3 z-10 flex items-center gap-1 rounded-full border bg-card/95 px-2 py-1 shadow-xl backdrop-blur-sm" onPointerDown={(e) => e.stopPropagation()}>
+            <button className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" title="Diminuir zoom" aria-label="Diminuir zoom" onClick={zoomOut}>
+              <ZoomOut className="h-3.5 w-3.5" />
+            </button>
+            <span className="w-11 select-none text-center font-mono text-[11px] text-muted-foreground" aria-live="polite">
+              {Math.round(zoom * 100)}%
+            </span>
+            <button className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" title="Aumentar zoom" aria-label="Aumentar zoom" onClick={zoomIn}>
+              <ZoomIn className="h-3.5 w-3.5" />
+            </button>
+            <div className="mx-0.5 h-4 w-px bg-border" />
+            <button className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" title="Ajustar à tela" aria-label="Ajustar à tela" onClick={() => fitToScreen(idsDoMapa)}>
+              <Maximize2 className="h-3.5 w-3.5" />
+            </button>
+            <button className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" title="Centralizar" aria-label="Centralizar" onClick={() => centerCanvas(idsDoMapa)}>
+              <Crosshair className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          {/* Inner world */}
             <div
               className="absolute top-0 left-0 origin-top-left"
               style={{ transform: `translate(${canvasOffset.x}px, ${canvasOffset.y}px) scale(${zoom})`, width: 4000, height: 4000 }}
@@ -1042,10 +1131,10 @@ export default function TopicsManager() {
               <svg className="absolute top-0 left-0 overflow-visible pointer-events-none" width="4000" height="4000">
                 <defs>
                   <marker id="arrow-next" markerWidth="10" markerHeight="10" refX="7" refY="5" orient="auto">
-                    <path d="M0,0 L10,5 L0,10 z" fill="hsl(142 70% 55%)" />
+                    <path d="M0,0 L10,5 L0,10 z" fill="hsl(var(--primary))" />
                   </marker>
                   <marker id="arrow-depende" markerWidth="10" markerHeight="10" refX="7" refY="5" orient="auto">
-                    <path d="M0,0 L10,5 L0,10 z" fill="hsl(200 70% 60%)" />
+                    <path d="M0,0 L10,5 L0,10 z" fill="hsl(var(--info))" />
                   </marker>
                   <marker id="arrow-warning" markerWidth="10" markerHeight="10" refX="7" refY="5" orient="auto">
                     <path d="M0,0 L10,5 L0,10 z" fill="hsl(45 90% 60%)" />
@@ -1056,7 +1145,7 @@ export default function TopicsManager() {
                   const { start, end } = getDynamicAnchors(edge.from, edge.to);
                   const isNext = edge.type === "next";
                   const isSelected = selectedEdge?.from === edge.from && selectedEdge?.to === edge.to && selectedEdge?.type === edge.type;
-                  const color = isSelected ? "hsl(45 90% 60%)" : isNext ? "hsl(142 70% 55%)" : "hsl(200 70% 60%)";
+                  const color = isSelected ? "hsl(45 90% 60%)" : isNext ? "hsl(var(--primary))" : "hsl(var(--info))";
                   const marker = isSelected ? "url(#arrow-warning)" : isNext ? "url(#arrow-next)" : "url(#arrow-depende)";
                   return (
                     <g key={`${edge.from}-${edge.to}-${idx}`} style={{ pointerEvents: "auto" }}>
@@ -1071,7 +1160,8 @@ export default function TopicsManager() {
                       <path
                         d={buildPath(start, end)}
                         stroke={color}
-                        strokeWidth={isSelected ? 3 : 2}
+                        strokeWidth={isSelected ? 3 : 2.5}
+                        strokeDasharray={isNext ? undefined : "7 5"}
                         fill="none"
                         markerEnd={marker}
                         opacity={0.85}
@@ -1084,7 +1174,7 @@ export default function TopicsManager() {
                 {draggingConnector.fromId && draggingConnector.type && activeConnectorStart && (
                   <path
                     d={buildPath(activeConnectorStart, connectorPos)}
-                    stroke={draggingConnector.type === "next" ? "hsl(142 70% 55%)" : "hsl(200 70% 60%)"}
+                    stroke={draggingConnector.type === "next" ? "hsl(var(--primary))" : "hsl(var(--info))"}
                     strokeWidth={2}
                     fill="none"
                     strokeDasharray="7 4"
@@ -1098,8 +1188,7 @@ export default function TopicsManager() {
                 const pos = positions[topic.id] ?? { x: 20, y: 20 };
                 const depNames = topic.depende.map((id) => topicos.find((t) => t.id === id)?.nome).filter(Boolean) as string[];
                 const nextNames = topic.next.map((id) => topicos.find((t) => t.id === id)?.nome).filter(Boolean) as string[];
-                const hasLinks = depNames.length > 0 || nextNames.length > 0;
-                return (
+                                return (
                   <div
                     key={topic.id}
                     data-node
@@ -1121,94 +1210,20 @@ export default function TopicsManager() {
                     </button>
 
                     {/* Node card */}
-                    <div
-                      className={`rounded-xl border shadow-lg overflow-hidden transition-colors ${
-                        hasLinks
-                          ? "border-primary/40 bg-card"
-                          : "border-border bg-card"
-                      }`}
-                      style={{ cursor: "grab" }}
-                    >
-                      {/* Accent bar top */}
-                      {hasLinks && (
-                        <div className="h-0.5 bg-gradient-to-r from-primary/60 via-accent/40 to-transparent" />
-                      )}
-
-                      {/* Header */}
-                      <div className="px-3 pt-2.5 pb-2 flex items-start gap-2.5">
-                        <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center text-primary shrink-0 mt-0.5">
-                          <FileText className="w-3.5 h-3.5" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-foreground leading-tight line-clamp-2">{topic.nome}</p>
-                          {topic.descricao && (
-                            <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{topic.descricao}</p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-0.5 shrink-0">
-                          <button
-                            className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                            title="Editar tópico"
-                            onClick={(e) => { e.stopPropagation(); navigate(`/console/trilha/${topic.id}/editar`); }}
-                            onPointerDown={(e) => e.stopPropagation()}
-                          >
-                            <Pencil className="w-3 h-3" />
-                          </button>
-                          <button
-                            className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                            title="Excluir tópico"
-                            onClick={(e) => { e.stopPropagation(); handleDeleteWithConfirm(topic); }}
-                            onPointerDown={(e) => e.stopPropagation()}
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Dep/Next chips */}
-                      {(depNames.length > 0 || nextNames.length > 0) && (
-                        <div className="px-3 pb-2.5 space-y-1.5 border-t border-border/50 pt-2">
-                          {depNames.length > 0 && (
-                            <div className="flex flex-wrap gap-1 items-start">
-                              <span className="text-[9px] font-bold uppercase tracking-wider text-info/70 mt-0.5 shrink-0 leading-tight">? Dep</span>
-                              {depNames.map((name) => (
-                                <span
-                                  key={name}
-                                  className="text-[10px] bg-info/10 text-info border border-info/25 rounded px-1.5 py-0.5 leading-tight max-w-[110px] truncate"
-                                  title={name}
-                                >
-                                  {name}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                          {nextNames.length > 0 && (
-                            <div className="flex flex-wrap gap-1 items-start">
-                              <span className="text-[9px] font-bold uppercase tracking-wider text-success/70 mt-0.5 shrink-0 leading-tight">? Next</span>
-                              {nextNames.map((name) => (
-                                <span
-                                  key={name}
-                                  className="text-[10px] bg-success/10 text-success border border-success/25 rounded px-1.5 py-0.5 leading-tight max-w-[110px] truncate"
-                                  title={name}
-                                >
-                                  {name}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Footer */}
-                      <div className="px-3 py-1.5 border-t border-border/40 flex items-center justify-between">
-                        <span className="text-[10px] text-muted-foreground/50 font-mono">#{topic.ordem ?? "-"}</span>
-                        <span className="text-[9px] text-muted-foreground/30 font-mono">id:{topic.id}</span>
-                      </div>
-                    </div>
+                    <CartaoDoTopico
+                      numero={numeroNaSequencia(topic.ordem, topicsForSelected.indexOf(topic))}
+                      nome={topic.nome}
+                      descricao={topic.descricao}
+                      dependeDe={depNames}
+                      proximos={nextNames}
+                      onEditar={() => navigate(`/console/trilha/${topic.id}/editar`)}
+                      onDuplicar={() => setTopicoParaDuplicar(topic)}
+                      onExcluir={() => setTopicoParaExcluir(topic)}
+                    />
 
                     {/* Right connector — next */}
                     <button
-                      className="absolute -right-2.5 top-[48px] w-5 h-5 rounded-full bg-success border-2 border-background shadow-lg hover:scale-125 transition-transform z-20 cursor-crosshair flex items-center justify-center"
+                      className="absolute -right-2.5 top-[48px] w-5 h-5 rounded-full bg-primary border-2 border-background shadow-lg hover:scale-125 transition-transform z-20 cursor-crosshair flex items-center justify-center"
                       title="Arraste para definir próximo tópico"
                       onMouseDown={startConnector(topic.id, "next")}
                       onPointerDown={(e) => e.stopPropagation()}
@@ -1223,6 +1238,32 @@ export default function TopicsManager() {
 
         </div>
       )}
+
+      {selectedClassFilter && (
+        <GenerateTrailDialog
+          open={iaAberta}
+          onOpenChange={setIaAberta}
+          classeId={Number(selectedClassFilter)}
+          onCreated={() => {
+            void loadData();
+            refreshJobsSoon();
+          }}
+        />
+      )}
+      <ConfirmarDuplicarTopico
+        nome={topicoParaDuplicar?.nome ?? ""}
+        aberto={topicoParaDuplicar !== null}
+        duplicando={duplicando}
+        onConfirmar={handleDuplicarTopico}
+        onCancelar={() => setTopicoParaDuplicar(null)}
+      />
+      <ConfirmarExcluirTopico
+        nome={topicoParaExcluir?.nome ?? ""}
+        aberto={topicoParaExcluir !== null}
+        excluindo={excluindoTopico}
+        onConfirmar={handleConfirmarExclusao}
+        onCancelar={() => setTopicoParaExcluir(null)}
+      />
 
       <ClassManagerDialog
         open={isClassDialogOpen}

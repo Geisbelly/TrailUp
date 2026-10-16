@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TrailUp — Perfil (Conqueror)</title>
+<style>
+  :root{
+    --bg:#0b1328; --surface:#121e3f; --elevated:#192a57;
+    --border:#28428a; --border-strong:#4d6fcb;
+    --text:#f3f4f7; --text-muted:rgba(243,244,247,.82); --text-subtle:rgba(243,244,247,.62);
+    --accent:#6f90eb; --accent-strong:#1942b2; --accent-soft:rgba(111,144,235,.18);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  .title-font{font-family:Georgia,"Times New Roman",serif}
+  .tag{position:fixed;bottom:10px;left:16px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-subtle);z-index:3;background:rgba(11,19,40,.7);padding:4px 10px;border-radius:100px}
+
+  /* Estrutura identica ao console-shell do professor (ConsoleShell.tsx / page-surfaces.css) */
+  .console-shell{display:grid;grid-template-columns:212px minmax(0,1fr);grid-template-rows:68px minmax(0,1fr);height:100vh;overflow:hidden}
+  .console-topbar{grid-column:1/-1;display:flex;align-items:center;gap:28px;padding:12px 24px;background:var(--surface);border-bottom:1px solid var(--border);min-width:0}
+  .journey-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text);font-size:20px}
+  .journey-brand img{width:32px;height:32px}
+  .journey-brand span{font-family:Georgia,serif;font-weight:700}
+  .console-workspace-name{color:var(--text-subtle);font-size:12px}
+  .console-account{margin-left:auto;display:flex;align-items:center;gap:10px;min-width:0}
+  .console-account img.avatar{width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--accent)}
+  .console-account-copy{display:grid;gap:2px}
+  .console-account-copy strong{font-size:13px;font-weight:600}
+  .console-account-copy span{font-size:11px;color:var(--text-subtle)}
+  .console-icon-button{display:grid;place-items:center;width:40px;height:40px;border-radius:6px;color:var(--text-muted);background:none;border:none;cursor:pointer;flex:none}
+  .console-icon-button:hover{color:var(--text);background:var(--elevated)}
+  .console-icon-button img{width:20px;height:20px}
+  .console-icon-button svg{width:18px;height:18px}
+  .console-navigation{padding:20px 12px;display:flex;flex-direction:column;gap:6px;border-right:1px solid var(--border);background:rgba(0,0,0,.15);overflow-y:auto}
+  .console-navigation a{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:6px;border:1px solid transparent;color:var(--text-muted);font-size:13px;text-decoration:none}
+  .console-navigation a svg{flex:none;width:18px;height:18px}
+  .console-navigation a:hover{color:var(--text);background:rgba(255,255,255,.06)}
+  .console-navigation a[aria-current="page"]{color:var(--text);background:rgba(111,144,235,.13);border-color:var(--border-strong)}
+  .console-navigation a[aria-current="page"] svg{color:var(--accent)}
+  .console-navigation .nb{margin-left:auto;background:var(--accent);color:var(--bg);font-size:10px;font-weight:800;padding:1px 6px;border-radius:100px}
+  .console-main{grid-column:2;grid-row:2;overflow-y:auto;position:relative}
+  a:focus-visible,button:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .wrap{padding:28px 32px 48px}
+
+  /* seletor flutuante (estado + perfil), igual às outras telas */
+  .preview{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:40;display:flex;align-items:center;gap:10px;padding:6px 10px 6px 14px;border-radius:100px;background:var(--bg);border:1px solid var(--border);font-size:12px;color:var(--text-muted)}
+  .preview select{background:var(--accent);color:var(--bg);border:0;border-radius:100px;padding:6px 10px;font-weight:600;font-family:inherit}
+  .preview .sep{width:1px;height:20px;background:var(--border)}
+  .dot{width:16px;height:16px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0}
+  .dot[aria-pressed="true"]{border-color:var(--text)}
+
+  /* banner 3:1 nítido, com o retrato sobreposto */
+  .banner{position:relative;height:240px;border-radius:20px;overflow:visible}
+  .banner .img{position:absolute;inset:0;border-radius:20px;overflow:hidden;border:1px solid var(--border)}
+  .banner .img img{width:100%;height:100%;object-fit:cover;display:block}
+  .banner .img::after{content:"";position:absolute;left:0;right:0;bottom:0;height:80px;background:linear-gradient(to bottom,transparent,var(--bg-a40))}
+  .banner .actions{position:absolute;top:14px;right:14px;display:flex;gap:8px}
+  .glass-btn{height:40px;padding:0 14px;border-radius:10px;display:inline-flex;align-items:center;gap:8px;background:var(--bg-a70);backdrop-filter:blur(8px);border:1px solid var(--border-strong);color:var(--text);font-size:13px;font-weight:600;text-decoration:none;cursor:pointer;font-family:inherit}
+  .glass-btn.icon{width:40px;padding:0;justify-content:center}
+  .glass-btn svg,.glass-btn img{width:18px;height:18px;object-fit:contain}
+  .portrait{position:absolute;left:32px;bottom:-72px;width:160px;height:160px}
+  .portrait img.face{position:absolute;inset:17px;width:calc(100% - 34px);height:calc(100% - 34px);border-radius:50%;object-fit:cover;background:var(--elevated)}
+  .portrait img.deco{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 0 18px var(--accent-soft))}
+
+  .md{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,8fr);gap:20px;align-items:start;margin-top:20px}
+  .id-block{position:sticky;top:28px;padding-top:68px}
+  .name{font-family:Georgia,serif;font-size:26px;margin:0 0 10px}
+  .profile-chip{display:inline-flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border-strong);border-radius:100px;padding:6px 16px 6px 6px}
+  .profile-chip img{width:30px;height:30px;object-fit:contain}
+  .profile-chip strong{display:block;font-size:13.5px}
+  .profile-chip .dom{font-size:10px;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;font-weight:700}
+  .switch{margin-top:18px}
+  .switch-label{font-size:13px;color:var(--text-muted);margin:0 0 8px}
+  .opts{display:flex;flex-direction:column;gap:8px}
+  .opt{display:flex;align-items:center;gap:10px;height:44px;padding:0 12px 0 8px;border-radius:100px;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;font-family:inherit;text-align:left;transition:opacity .2s}
+  .opt:hover{background:var(--elevated)}
+  .opt img{width:28px;height:28px;object-fit:contain}
+  .opt .nm{font-size:13px;font-weight:700;flex:1}
+  .opt .af{font-size:11.5px;color:var(--text-subtle)}
+  .opt svg{width:16px;height:16px}
+  .opt.dim{opacity:.55}
+  .switch-err{margin-top:10px;padding:10px 12px;border-radius:10px;background:rgba(225,91,100,.12);border:1px solid rgba(225,91,100,.5);font-size:12.5px;line-height:1.4}
+  .switch-err strong{display:block}
+  .affinity{display:flex;gap:4px;margin-top:20px}
+  .affinity .seg{height:6px;border-radius:100px;background:rgba(255,255,255,.08)}
+  .affinity-label{font-size:11.5px;color:var(--text-subtle);margin-top:8px;line-height:1.5}
+  .stat-mini{display:flex;flex-direction:column;gap:8px;margin-top:18px}
+  .stat-mini .row{display:flex;justify-content:space-between;font-size:12.5px;padding:9px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px}
+  .stat-mini .row span:last-child{color:var(--accent);font-weight:700}
+
+  .main-col{display:flex;flex-direction:column;gap:16px;min-width:0}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px 22px}
+  .card h3{font-size:15px;margin:0}
+  .card .cap{font-size:12.5px;color:var(--text-subtle);margin:3px 0 14px}
+  .hero{position:relative;background:linear-gradient(160deg,var(--elevated),var(--surface));padding:24px 26px}
+  .hero .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:0 0 6px;font-weight:700}
+  .hero h2{font-family:Georgia,serif;font-size:22px;margin:0 0 6px}
+  .hero p{font-size:13px;color:var(--text-muted);margin:0;max-width:520px;line-height:1.5}
+  .seal{position:absolute;top:18px;right:18px;display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:100px;background:var(--bg-a40);border:1px solid var(--border);font-size:11.5px;font-weight:700;color:var(--text-muted)}
+  .seal svg{width:14px;height:14px;color:var(--accent)}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:18px}
+  .kpi{height:100px;border-radius:16px;background:var(--bg-a60);padding:14px;display:flex;flex-direction:column;justify-content:space-between}
+  .kpi svg{width:18px;height:18px;color:var(--accent)}
+  .kpi span{font-size:12px;color:var(--text-subtle)}
+  .kpi strong{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1}
+  .note{font-size:12px;color:var(--text-subtle);margin-top:14px;font-style:italic}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .bar-row{margin-bottom:14px}
+  .bar-row:last-child{margin-bottom:0}
+  .bar-row .lbl{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px}
+  .bar-row .lbl b{font-variant-numeric:tabular-nums}
+  .bar{height:8px;border-radius:100px;background:var(--bg);border:1px solid var(--border);overflow:hidden}
+  .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent-strong),var(--accent))}
+  .radar{display:block;margin:0 auto;overflow:visible}
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+  .read-head{display:flex;align-items:center;gap:10px}
+  .read-head svg{width:20px;height:20px;color:var(--accent)}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 10px}
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:100px;font-size:12.5px;font-weight:600;background:var(--elevated);color:var(--text-muted)}
+  .chip svg{width:14px;height:14px}
+  .chip.acc{background:var(--accent-soft);color:var(--accent)}
+  .cycle{font-size:13px;color:var(--text-subtle);margin:0}
+  .summary{font-size:14px;line-height:1.6;margin:6px 0 14px}
+  .boxes{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .box{background:var(--elevated);border-radius:14px;padding:14px 16px}
+  .box.warn{background:var(--accent-a08);border:1px solid var(--accent-a22)}
+  .box h4{font-size:12.5px;margin:0 0 8px;color:var(--text)}
+  .box ul{margin:0;padding-left:16px;font-size:12.5px;color:var(--text-muted);line-height:1.55}
+  .empty-read{font-size:13.5px;color:var(--text-subtle);margin:14px 0 0}
+
+  .section-head{display:flex;align-items:center;justify-content:space-between;margin:8px 0 12px}
+  .section-head h2{font-size:16px;margin:0;font-weight:700}
+  .section-head .see-all{font-size:12px;color:var(--accent);text-decoration:none}
+  .conquistas{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:12px}
+  .conquista{aspect-ratio:1;border-radius:12px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;position:relative}
+  .conquista.unlocked{border-color:var(--accent-strong);background:var(--elevated)}
+  .conquista img{width:52%;height:52%;object-fit:contain}
+  .conquista.locked img{opacity:.25;filter:grayscale(1)}
+  .conquista.locked::after{content:"";position:absolute;bottom:8px;right:8px;width:16px;height:16px;background:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%239aa3c4%22 stroke-width=%222.5%22%3E%3Crect x=%225%22 y=%2211%22 width=%2214%22 height=%2210%22 rx=%222%22/%3E%3Cpath d=%228 11V7a4 4 0 0 1 8 0v4%22/%3E%3C/svg%3E') center/contain no-repeat}
+  .recent-row{display:flex;align-items:center;gap:14px;padding:13px 16px;border-radius:10px;border:1px solid var(--border);background:var(--surface);margin-bottom:10px}
+  .recent-row .ricon{width:36px;height:36px;border-radius:8px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .recent-row .ricon svg{width:18px;height:18px;color:var(--accent)}
+  .recent-row .rbody{flex:1;font-size:13px}
+  .recent-row .rtime{font-size:11px;color:var(--text-subtle)}
+  .skel{border-radius:16px;background:linear-gradient(90deg,var(--surface),var(--elevated),var(--surface));background-size:200% 100%;animation:sh 1.3s linear infinite}
+  @keyframes sh{to{background-position:-200% 0}}
+</style>
+</head>
+<body>
+<div class="console-shell">
+  <header class="console-topbar">
+    <a class="journey-brand" href="03-trilha.html"><img src="assets/trailup-brand-logo.png" alt="" /><span>TrailUp</span></a>
+    <span class="console-workspace-name">Área do aluno</span>
+    <div class="console-account">
+      <img class="avatar" id="hdrAvatar" src="assets/rosto-conqueror.png" alt="" />
+      <div class="console-account-copy"><strong>Amina T.</strong><span id="hdrProfile">Conqueror</span></div>
+      <button class="console-icon-button" title="Minha Bag"><img src="assets/object-bag.png" alt="" /></button>
+      <button class="console-icon-button" title="Sair"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg></button>
+    </div>
+  </header>
+  <nav class="console-navigation" aria-label="Seções da área do aluno">
+    <a href="03-trilha.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 20l-5.5 2V6L9 4l6 2 5.5-2v16L15 22l-6-2z"/><path d="M9 4v16M15 6v16"/></svg>Trilha</a>
+    <a href="07-notificacoes.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Notificações<span class="nb">2</span></a>
+    <a href="06-social.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Social</a>
+    <a href="05-ranking.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 21h16M6 21V10M12 21V3M18 21v-7"/></svg>Ranking</a>
+    <a href="08-perfil-hub.html" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0 1 16 0v1"/></svg>Perfil</a>
+  </nav>
+  <main class="console-main"><div class="wrap" id="page"></div></main>
+</div>
+
+<div class="preview"><span>Pré-visualização de estado:</span><select id="stateSel" aria-label="Estado da tela"></select><span class="sep"></span><span>Perfil:</span><span id="dots" style="display:flex;gap:6px"></span></div>
+
+<script>
+/* paletas: as mesmas da Trilha (bg, surface, elev, border, border-strong, text, accent, accent-strong) */
+const PROFILES={
+  seeker:{l:'Seeker',sig:'#17a398',st:'misterio',p:['#0b2825','#123f3c','#195752','#288a83','#4dcbc1','#f3f7f6','#1fd9ca','#127f77']},
+  survivor:{l:'Survivor',sig:'#4e5a66',st:'arena',p:['#16191d','#23292e','#313840','#4d5965','#7d8c9c','#f3f5f6','#95a1ae','#3c464f']},
+  daredevil:{l:'Daredevil',sig:'#d7263d',st:'arena',p:['#280b0f','#3f1218','#571921','#8a2835','#cb4d5e','#f7f3f3','#e87b89','#b42033']},
+  mastermind:{l:'Mastermind',sig:'#5b3fd9',st:'analitico',p:['#110b28','#1b123f','#241957','#3a288a','#644dcb','#f4f3f7','#9583e6','#4528c8']},
+  conqueror:{l:'Conqueror',sig:'#1e4fd6',st:'arena',p:['#0b1328','#121e3f','#192a57','#28428a','#4d6fcb','#f3f4f7','#6f90eb','#1942b2']},
+  socializer:{l:'Socializer',sig:'#f4623a',st:'squad',p:['#28120b','#3f1c12','#572719','#8a3d28','#cb684d','#f7f4f3','#f68161','#f24313']},
+  achiever:{l:'Achiever',sig:'#c9a227',st:'metas',p:['#28210b','#3f3412','#574819','#8a7328','#cbad4d','#f7f6f3','#dab43f','#a78620']},
+};
+/* estilos do painel de métricas (rótulo e descrição de utils/profileMetricThemes.ts) */
+const STYLES={
+  arena:{l:'Arena Tática',d:'HUD competitivo com operação, ritmo, rank e status de missão.'},
+  metas:{l:'Metas',d:'Painel focado em marcos, checklist, progresso e próximos objetivos.'},
+  misterio:{l:'Mistério',d:'Transforma progresso em mapa, pistas, descobertas e exploração.'},
+  analitico:{l:'Painel Analítico',d:'Leitura clara e direta do desempenho, atenção e evolução do aluno.'},
+  squad:{l:'Squad',d:'Destaque para presença, ranking, conquistas e energia de grupo.'},
+};
+const AFF=[['conqueror',58],['mastermind',24],['achiever',12]];
+const STATES=[['data','Com dados'],['banner','Banner próprio'],['one','Um só perfil'],['switching','Trocando perfil'],['switcherr','Erro ao trocar perfil'],['nometrics','Sem métricas'],['noread','Sem leitura recente'],['loading','Carregando']];
+let estado='data', ativo='conqueror', salvando=null;
+
+function rgba(h,a){const n=parseInt(h.slice(1),16);return `rgba(${n>>16},${(n>>8)&255},${n&255},${a})`}
+function applyTheme(){
+  const [bg,su,el,bo,bs,tx,ac,as]=PROFILES[ativo].p, s=document.documentElement.style, set=(k,v)=>s.setProperty(k,v);
+  set('--bg',bg);set('--surface',su);set('--elevated',el);set('--border',bo);set('--border-strong',bs);set('--text',tx);
+  set('--accent',ac);set('--accent-strong',as);set('--accent-soft',rgba(ac,.18));set('--accent-a08',rgba(ac,.08));set('--accent-a22',rgba(ac,.22));
+  set('--text-muted',rgba(tx,.82));set('--text-subtle',rgba(tx,.62));set('--bg-a40',rgba(bg,.4));set('--bg-a60',rgba(bg,.6));set('--bg-a70',rgba(bg,.7));
+  document.getElementById('hdrAvatar').src=`assets/rosto-${ativo}.png`;document.getElementById('hdrProfile').textContent=PROFILES[ativo].l;
+}
+const ICON={
+  cam:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>',
+  gear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+  medal:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/><path d="M8.5 15.5 5 22l7-3 7 3-3.5-6.5"/></svg>',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6 9 17l-5-5"/></svg>',
+  target:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>',
+  rank:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21h16M6 21V10M12 21V3M18 21v-7"/></svg>',
+  clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  flag:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 22V4h12l-2 4 2 4H4"/></svg>',
+  radar:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><path d="M12 12l6-6"/></svg>',
+  face:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9h.01M15 9h.01"/></svg>',
+};
+
+function idHTML(){
+  const P=PROFILES[ativo], one=estado==='one';
+  const opts=AFF.map(([k,a])=>{const on=k===ativo,S=PROFILES[k],busy=salvando===k;
+    return `<button class="opt ${salvando&&!busy?'dim':''}" data-switch="${k}" aria-pressed="${on}" style="${on?`border-color:${S.sig};background:${rgba(S.sig,.2)}`:''}">
+      <img src="assets/emblem-${k}.png" alt="" /><span class="nm">${S.l}</span><span class="af">${busy?'Salvando...':a+'%'}</span>${on?ICON.check:''}</button>`}).join('');
+  const segs=one?`<div class="seg" style="flex:1;background:${P.sig}"></div>`:AFF.map(([k,a])=>`<div class="seg" style="flex:${a};background:${k===ativo?'var(--accent)':rgba(PROFILES[k].sig,.85)}"></div>`).join('')+'<div class="seg" style="flex:6"></div>';
+  return `<div class="id-block">
+    <h1 class="name">Amina T.</h1>
+    <div class="profile-chip"><img src="assets/emblem-${ativo}.png" alt="" /><div><strong>${P.l}</strong><span class="dom">Perfil ${ativo===AFF[0][0]?'dominante':'ativo'}</span></div></div>
+    ${one?'':`<div class="switch"><p class="switch-label">Alternar perfil ativo</p><div class="opts" role="group" aria-label="Alternar perfil ativo">${opts}</div>
+      ${estado==='switcherr'?'<div class="switch-err" role="alert"><strong>Não foi possível trocar o perfil</strong>Tente novamente em instantes.</div>':''}</div>`}
+    <div class="affinity">${segs}</div>
+    <div class="affinity-label">${one?`${P.l} 100%`:'Conqueror 58% · Mastermind 24%<br>Achiever 12% · outros 6%'}</div>
+    <div class="stat-mini"><div class="row"><span>Turma</span><span>6º ano B</span></div><div class="row"><span>Sequência</span><span>5 dias</span></div><div class="row"><span>Posição no rank</span><span>12º</span></div></div>
+  </div>`;
+}
+function radarSVG(){
+  const ax=[["Precisão",81],["Progresso",56],["Exploração",54],["Atividades",60],["Presença",71]],c=140,R=84;
+  const pt=(i,r)=>{const a=-Math.PI/2+i*2*Math.PI/5;return [c+Math.cos(a)*r,c+Math.sin(a)*r]};
+  let s=`<svg class="radar" width="280" height="280" viewBox="0 0 280 280" aria-hidden="true">`;
+  for(let k=1;k<=4;k++)s+=`<polygon points="${ax.map((_,i)=>pt(i,R*k/4).join(',')).join(' ')}" fill="none" stroke="var(--border)"/>`;
+  ax.forEach((_,i)=>{const [x,y]=pt(i,R);s+=`<line x1="${c}" y1="${c}" x2="${x}" y2="${y}" stroke="var(--border)"/>`});
+  s+=`<polygon points="${ax.map(([,v],i)=>pt(i,R*v/100).join(',')).join(' ')}" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>`;
+  ax.forEach(([l,v],i)=>{const [x,y]=pt(i,R+22);s+=`<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle" fill="var(--text-muted)" font-size="11">${l} ${v}</text>`});
+  return s+`</svg><table class="sr"><caption>Desempenho nos 5 eixos</caption>${ax.map(([l,v])=>`<tr><th>${l}</th><td>${v}</td></tr>`).join('')}</table>`;
+}
+function metricsHTML(){
+  const st=PROFILES[ativo].st, S=STYLES[st];
+  const seal=`<span class="seal">${ICON.target}${S.l}</span>`;
+  if(estado==='nometrics')return `<div class="card hero">${seal}<div class="eyebrow">Métricas do perfil</div><h2>Nenhuma missão em campo</h2><p>As métricas aparecerão aqui conforme você avançar nos conteúdos, atividades e leituras adaptativas.</p></div>`;
+  if(st!=='arena')return `<div class="card hero">${seal}<div class="eyebrow">Métricas do perfil</div><h2>${S.l}</h2><p>${S.d}</p><p class="note">Estrutura completa deste estilo em revisão futura. O estilo Arena Tática (Conqueror, Daredevil, Survivor) já está desenhado.</p></div>`;
+  return `<div class="card hero">${seal}
+      <div class="eyebrow">Central de domínio</div><h2>Sua campanha está sob controle</h2>
+      <p>Rank, precisão e avanço da classe aparecem como uma operação em andamento.</p>
+      <div class="kpis">
+        <div class="kpi">${ICON.target}<div><span>Precisão</span><br><strong>81%</strong></div></div>
+        <div class="kpi">${ICON.rank}<div><span>Posição</span><br><strong>12º</strong></div></div>
+        <div class="kpi">${ICON.clock}<div><span>Tempo ativo</span><br><strong>11h 20min</strong></div></div>
+        <div class="kpi">${ICON.flag}<div><span>Campanha</span><br><strong>56%</strong></div></div>
+      </div></div>
+    <div class="two">
+      <div class="card"><h3>Status da operação</h3><p class="cap">Visão rápida da campanha atual.</p>
+        ${[['Tópicos dominados',4,8],['Conteúdos explorados',14,26],['Atividades concluídas',9,15]].map(([l,a,b])=>`<div class="bar-row"><div class="lbl"><span>${l}</span><b>${a}/${b}</b></div><div class="bar"><i style="width:${a/b*100}%"></i></div></div>`).join('')}</div>
+      <div class="card"><h3>Inteligência de combate</h3><p class="cap">Visão tática do desempenho nos 5 eixos.</p>${radarSVG()}</div>
+    </div>`;
+}
+function readHTML(){
+  const head=`<div class="read-head">${ICON.radar}<h3>Leitura adaptativa</h3></div><p class="cap" style="margin-bottom:0">Última interpretação da IA durante sua sessão de estudo.</p>`;
+  if(estado==='noread'||estado==='nometrics')return `<div class="card">${head}<p class="empty-read">Ainda não há leitura recente. Estude um tópico para gerar análise adaptativa.</p></div>`;
+  return `<div class="card">${head}
+    <div class="chips"><span class="chip acc">${ICON.face}Concentrada</span><span class="chip">${ICON.cam}Coleta visual desligada</span></div>
+    <p class="cycle">Ciclo atual: 14</p>
+    <p class="summary">A IA percebeu concentração e respondeu com desafios curtos antes da leitura.</p>
+    <div class="boxes">
+      <div class="box"><h4>Leituras da IA</h4><ul><li>Você rende mais quando começa praticando.</li><li>Seu ritmo de leitura caiu no fim da sessão.</li></ul></div>
+      <div class="box"><h4>Ajustes aplicados</h4><ul><li>Equações do 1º grau começa por desafios curtos.</li><li>Textos divididos em blocos menores.</li></ul></div>
+      <div class="box warn"><h4>Pontos de atenção</h4><ul><li>Frações levou o dobro do tempo médio.</li></ul></div>
+    </div></div>`;
+}
+function conquistasHTML(){
+  const C=[['trophy',1],['completion',1],['book',1],['bolt',0],['compass',0],['coin',1],['community',0],['calendar',0],['deadline',1],['chest',0],['book',1],['community',0]];
+  return `<div><div class="section-head"><h2>Conquistas</h2><a class="see-all" href="09-biblioteca-conquistas.html">Ver biblioteca completa →</a></div>
+    <div class="conquistas">${C.map(([o,u])=>`<div class="conquista ${u?'unlocked':'locked'}"><img src="assets/object-${o}.png" alt="" /></div>`).join('')}</div></div>
+  <div><div class="section-head"><h2>Última atividade</h2></div>
+    <div class="recent-row"><div class="ricon">${ICON.check}</div><div class="rbody"><strong>Equações do 1º grau</strong> — acertou 4 de 5 na atividade</div><div class="rtime">Hoje, 18:40</div></div>
+    <div class="recent-row"><div class="ricon">${ICON.rank}</div><div class="rbody">Subiu para a <strong>12ª posição</strong> no ranking de Tempo de Estudo</div><div class="rtime">Ontem</div></div></div>`;
+}
+function render(){
+  applyTheme();
+  document.getElementById('stateSel').innerHTML=STATES.map(([k,l])=>`<option value="${k}" ${estado===k?'selected':''}>${l}</option>`).join('');
+  document.getElementById('dots').innerHTML=Object.entries(PROFILES).map(([k,P])=>`<button class="dot" style="background:${P.sig}" title="${P.l}" aria-label="Perfil ${P.l}" aria-pressed="${ativo===k}" data-dot="${k}"></button>`).join('');
+  const pg=document.getElementById('page');
+  if(estado==='loading'){pg.innerHTML=`<div class="skel" style="height:240px;border-radius:20px"></div><div class="md"><div class="skel" style="height:420px;margin-top:68px"></div><div style="display:flex;flex-direction:column;gap:16px"><div class="skel" style="height:220px"></div><div class="skel" style="height:300px"></div><div class="skel" style="height:220px"></div></div></div>`;return}
+  const banner=estado==='banner'?'assets/entry-world.webp':`assets/world-${ativo}.webp`;
+  pg.innerHTML=`<div class="banner">
+      <div class="img"><img src="${banner}" alt="Banner do perfil" /></div>
+      <div class="actions">
+        <a class="glass-btn" href="11-configuracoes.html#informacoes">${ICON.cam}Trocar banner</a>
+        <a class="glass-btn icon" href="11-configuracoes.html" title="Configurações" aria-label="Configurações">${ICON.gear}</a>
+        <a class="glass-btn icon" href="09-biblioteca-conquistas.html" title="Biblioteca de conquistas" aria-label="Biblioteca de conquistas">${ICON.medal}</a>
+        <button class="glass-btn icon" title="Abrir minha Bag" aria-label="Abrir minha Bag"><img src="assets/object-bag.png" alt="" /></button>
+      </div>
+      <div class="portrait"><img class="face" src="assets/rosto-${ativo}.png" alt="Amina T." /><img class="deco" src="assets/frame-${ativo}.png" alt="" /></div>
+    </div>
+    <div class="md">${idHTML()}<div class="main-col">${metricsHTML()}${readHTML()}${conquistasHTML()}</div></div>`;
+}
+document.addEventListener('click',e=>{
+  const q=s=>e.target.closest(s);
+  if(q('[data-dot]')){ativo=q('[data-dot]').dataset.dot;render();return}
+  const sw=q('[data-switch]');
+  if(sw&&!salvando){const k=sw.dataset.switch;if(k===ativo)return;
+    salvando=k;render();
+    setTimeout(()=>{if(estado==='switcherr'){salvando=null;render();return}ativo=k;salvando=null;render()},800);}
+});
+document.getElementById('stateSel').addEventListener('change',e=>{history.replaceState(null,'',location.pathname+'?estado='+e.target.value);estado=e.target.value;salvando=estado==='switching'?'mastermind':null;render()});
+estado=new URLSearchParams(location.search).get('estado')||'data';
+if(estado==='switching')salvando='mastermind';
+render();
+</script>
+</body>
+</html>

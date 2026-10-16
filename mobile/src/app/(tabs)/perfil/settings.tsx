@@ -3,13 +3,11 @@ import {
   SectionGuideButton,
   SectionGuideStep,
 } from "@/components/SectionGuideButton";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Linking,
   ScrollView,
   StyleSheet,
   Text,
@@ -18,14 +16,15 @@ import {
   View,
 } from "react-native";
 
-import { useDialog } from "@/context/DialogContext";
+import { ConfiguracoesDesktop } from "@/components/web/ConfiguracoesDesktop";
 import { useUsuario } from "@/context/SessaoContext";
+import { useAcoesConta } from "@/hooks/useAcoesConta";
+import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { FontFamily } from "@/styles/GlobalStyle";
 import {
   getMetricsThemeLabel,
   getMetricsThemePreference,
 } from "@/utils/profileMetricThemes";
-import { buildFirstAccessTourStorageKey } from "@/utils/firstAccessTour";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { registrarAlvoTour } from "@/utils/tourTargets";
 
@@ -35,10 +34,15 @@ type MenuItem = { label: string; render: React.ReactNode };
 type MenuAction = { label: string; onPress: () => void };
 
 export default function Settings() {
+  const desktop = useDesktopWeb();
+  return desktop ? <ConfiguracoesDesktop /> : <SettingsLista />;
+}
+
+function SettingsLista() {
   const [busca, setBusca] = useState("");
   const [metricsThemeLabel, setMetricsThemeLabel] = useState("Automático");
-  const { showDialog } = useDialog();
-  const { usuario, sair } = useUsuario();
+  const { usuario } = useUsuario();
+  const { sairDoAparelho: handleLogout, abrirLink: openLink, reverTutorial } = useAcoesConta();
   const settingsListGuideRef = useRef<View | null>(null);
   const settingsScrollRef = useRef<ScrollView | null>(null);
   const settingsScrollOffsetRef = useRef(0);
@@ -74,40 +78,6 @@ export default function Settings() {
         mounted = false;
       };
     }, [usuario?.id]),
-  );
-
-  const handleLogout = async () => {
-    // `sair()` derruba o estado de sessao mesmo quando o Supabase nao responde.
-    // Antes daqui saia um `supabase.auth.signOut()` cru, e a tela dependia do
-    // evento `SIGNED_OUT` para a guarda de rota liberar a saida -- evento que
-    // nao vem quando o POST /logout falha ou o refresh token ja venceu. O
-    // `router.replace` ate rodava, e a guarda devolvia o aluno para as abas.
-    const { remotoOk } = await sair();
-    router.replace("/(auth)/login");
-
-    if (!remotoOk) {
-      // A sessao deste aparelho ja caiu; o que pode ter sobrado e o token vivo
-      // no servidor, valido nos outros aparelhos do aluno.
-      showDialog({
-        title: "Você saiu deste aparelho",
-        description:
-          "Não deu para avisar o servidor, então a sua sessão pode continuar aberta em outros aparelhos.",
-        tone: "warning",
-      });
-    }
-  };
-
-  const openLink = useCallback(
-    (url: string, fallbackMsg: string) => {
-      Linking.openURL(url).catch(() =>
-        showDialog({
-          title: "Aviso",
-          description: fallbackMsg,
-          tone: "warning",
-        }),
-      );
-    },
-    [showDialog],
   );
 
   const appVersion = pkg?.version ?? "-";
@@ -270,33 +240,6 @@ export default function Settings() {
       ].filter((item) => textoMatches(item.label)),
     [openLink, textoMatches],
   );
-
-  /**
-   * Apaga a marca de "tutorial concluido" deste aluno.
-   *
-   * A conclusao vive numa chave do AsyncStorage que inclui a versao do
-   * roteiro; a alternativa seria subir `FIRST_ACCESS_TOUR_VERSION` a cada
-   * teste, o que reapresentaria o tutorial para TODOS os alunos e exigiria um
-   * deploy por rodada de teste.
-   */
-  const reverTutorial = useCallback(async () => {
-    if (!usuario?.id) return;
-    try {
-      await AsyncStorage.removeItem(buildFirstAccessTourStorageKey(usuario.id));
-      showDialog({
-        title: "Tutorial reiniciado",
-        description:
-          "Ele aparece de novo na proxima vez que voce abrir a Trilha.",
-        tone: "success",
-      });
-    } catch {
-      showDialog({
-        title: "Aviso",
-        description: "Nao foi possivel reiniciar o tutorial agora.",
-        tone: "warning",
-      });
-    }
-  }, [showDialog, usuario?.id]);
 
   const sobreLinks: MenuItem[] = useMemo(
     () =>

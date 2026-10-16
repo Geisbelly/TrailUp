@@ -2,6 +2,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { FontFamily } from "@/styles/GlobalStyle";
 
 import { validateBagDraft, type BagDraft, type BagDraftType, type BagItem } from "@/services/bag/bagModel";
@@ -26,6 +27,8 @@ export function BagEditorModal({ visible, initialItem, context, accent, surface,
   const [back, setBack] = useState(initialItem?.back ?? "");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // Web em tela larga (#346): cartão no centro, em vez da folha que sobe de baixo.
+  const desktop = useDesktopWeb();
 
   useEffect(() => {
     if (!visible) return;
@@ -45,8 +48,8 @@ export function BagEditorModal({ visible, initialItem, context, accent, surface,
     try { await onSave(draft, initialItem); onClose(); } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível salvar o item."); } finally { setSaving(false); }
   };
 
-  return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.backdrop}><View style={[styles.modal, { backgroundColor: surface, paddingBottom: Math.max(insets.bottom, 20) }]}>
+  return <Modal visible={visible} transparent animationType={desktop ? "fade" : "slide"} onRequestClose={onClose}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[styles.backdrop, desktop && styles.backdropCentro]}><View style={[styles.modal, desktop && styles.modalCentro, { backgroundColor: surface, paddingBottom: Math.max(insets.bottom, 20) }]}>
       <View style={styles.header}><View><Text style={[styles.kicker, { color: accent }]}>BAG</Text><Text style={styles.title}>{initialItem ? "Editar item" : "Novo item"}</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Fechar editor da Bag" onPress={onClose} style={styles.close}><MaterialCommunityIcons name="close" size={25} color={accent} /></Pressable></View>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Text style={[styles.label, { color: muted }]}>TIPO</Text><View style={styles.types}>{(["anotacao", "resumo", "card"] as BagDraftType[]).map((option) => <Pressable key={option} accessibilityRole="tab" accessibilityState={{ selected: type === option }} onPress={() => setType(option)} style={[styles.typeButton, { borderColor: type === option ? accent : muted }]}><Text style={{ color: type === option ? accent : "#fff" }}>{option === "anotacao" ? "Anotação" : option === "resumo" ? "Resumo" : "Card"}</Text></Pressable>)}</View>
@@ -62,6 +65,8 @@ export function BagEditorModal({ visible, initialItem, context, accent, surface,
 const styles = StyleSheet.create({
   backdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.72)" },
   modal: { maxHeight: "92%", borderTopLeftRadius: 6, borderTopRightRadius: 6, padding: 20 },
+  backdropCentro: { justifyContent: "center", alignItems: "center", padding: 24 },
+  modalCentro: { width: 640, maxWidth: "100%", borderRadius: 18 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingBottom: 16 },
   close: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   kicker: { fontSize: 11, fontWeight: "800", letterSpacing: 0 },

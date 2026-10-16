@@ -6,27 +6,30 @@ import { Progress } from "@/components/ui/progress";
 import {
   BrainHexAnswers,
   BrainHexProfileKey,
-  computeBrainHexResult,
   PROFILES,
   resolveRepresentativeBrainHexResults,
 } from "@/features/signup/brainhex";
 import { cn } from "@/lib/utils";
 
 type BrainHexResultStepProps = {
-  answers: BrainHexAnswers;
+  /** Resultado JA' computado pelo wizard. Recalcular aqui foi como a tela e o
+   *  banco passaram a mostrar numeros diferentes. */
+  resultado: PerfilComputado;
   selectedProfile: BrainHexProfileKey | null;
   onSelectProfile: (profile: BrainHexProfileKey) => void;
 };
 
+import type { PerfilComputado } from "@/features/signup/priorDoPerfil";
+
 export default function BrainHexResultStep({
-  answers,
+  resultado,
   selectedProfile,
   onSelectProfile,
 }: BrainHexResultStepProps) {
-  const result = useMemo(() => computeBrainHexResult(answers), [answers]);
+  const result = resultado;
   const representativeProfiles = useMemo(
-    () => resolveRepresentativeBrainHexResults(result.sorted),
-    [result.sorted],
+    () => resolveRepresentativeBrainHexResults(result.ordenado),
+    [result.ordenado],
   );
   const activeProfile =
     representativeProfiles.find((profile) => profile.key === selectedProfile) ??
@@ -143,7 +146,7 @@ export default function BrainHexResultStep({
       <div className="space-y-4">
         <h3 className="pl-1 text-sm font-medium text-muted-foreground">Composição detalhada</h3>
         <div className="grid gap-3">
-          {result.sorted.map((profile) => {
+          {result.ordenado.map((profile) => {
             const profileConfig = PROFILES[profile.key];
             const ProfileIcon = profileConfig.icon;
             return (

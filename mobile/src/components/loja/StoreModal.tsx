@@ -212,7 +212,8 @@ export function StoreModal({
   );
 }
 
-function StoreCard({
+// Exportado para a página da Loja na web em tela larga (#346).
+export function StoreCard({
   item,
   palette,
   buying,

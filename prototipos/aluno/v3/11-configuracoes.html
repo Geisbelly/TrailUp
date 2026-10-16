@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TrailUp — Configurações (Conqueror)</title>
+<style>
+  :root{
+    --bg:#0b1328; --surface:#121e3f; --elevated:#192a57;
+    --border:#28428a; --border-strong:#4d6fcb;
+    --text:#f3f4f7; --text-muted:rgba(243,244,247,.82); --text-subtle:rgba(243,244,247,.62);
+    --accent:#6f90eb; --danger:#e15b64;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  .title-font{font-family:Georgia,"Times New Roman",serif}
+  .tag{position:fixed;bottom:10px;left:16px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-subtle);z-index:20;background:rgba(11,19,40,.7);padding:4px 10px;border-radius:100px}
+  /* Estrutura identica ao console-shell do professor (ConsoleShell.tsx / page-surfaces.css) */
+  .console-shell{display:grid;grid-template-columns:212px minmax(0,1fr);grid-template-rows:68px minmax(0,1fr);height:100vh;overflow:hidden}
+  .console-topbar{grid-column:1/-1;display:flex;align-items:center;gap:28px;padding:12px 24px;background:var(--surface);border-bottom:1px solid var(--border);min-width:0}
+  .journey-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text);font-size:20px}
+  .journey-brand img{width:32px;height:32px}
+  .journey-brand span{font-family:Georgia,serif;font-weight:700}
+  .console-workspace-name{color:var(--text-subtle);font-size:12px}
+  .console-account{margin-left:auto;display:flex;align-items:center;gap:10px;min-width:0}
+  .console-account img.avatar{width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--accent)}
+  .console-account-copy{display:grid;gap:2px}
+  .console-account-copy strong{font-size:13px;font-weight:600}
+  .console-account-copy span{font-size:11px;color:var(--text-subtle)}
+  .console-icon-button{display:grid;place-items:center;width:40px;height:40px;border-radius:6px;color:var(--text-muted);background:none;border:none;cursor:pointer;flex:none}
+  .console-icon-button:hover{color:var(--text);background:var(--elevated)}
+  .console-icon-button img{width:20px;height:20px}
+  .console-icon-button svg{width:18px;height:18px}
+  .console-navigation{padding:20px 12px;display:flex;flex-direction:column;gap:6px;border-right:1px solid var(--border);background:rgba(0,0,0,.15);overflow-y:auto}
+  .console-navigation a{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:6px;border:1px solid transparent;color:var(--text-muted);font-size:13px;text-decoration:none}
+  .console-navigation a svg{flex:none;width:18px;height:18px}
+  .console-navigation a:hover{color:var(--text);background:rgba(255,255,255,.06)}
+  .console-navigation a[aria-current="page"]{color:var(--text);background:rgba(111,144,235,.13);border-color:var(--border-strong)}
+  .console-navigation a[aria-current="page"] svg{color:var(--accent)}
+  .console-navigation .nb{margin-left:auto;background:var(--accent);color:var(--bg);font-size:10px;font-weight:800;padding:1px 6px;border-radius:100px}
+  .console-main{grid-column:2;grid-row:2;overflow-y:auto;position:relative}
+  .wrap{position:relative;display:grid;grid-template-columns:320px 1fr;min-height:100%}
+
+  .side{border-right:1px solid var(--border);padding:28px 20px 40px;overflow:auto}
+  .row{text-decoration:none}
+  h1{font-family:Georgia,serif;font-size:24px;margin:0 0 16px}
+  .search{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:0 12px;height:42px;margin-bottom:20px}
+  .search svg{width:16px;height:16px;color:var(--text-subtle)}
+  .search input{flex:1;background:none;border:none;outline:none;color:var(--text);font-size:13px}
+  .group-title{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);margin:18px 0 8px}
+  .row{display:flex;align-items:center;gap:10px;padding:11px 10px;border-radius:8px;cursor:pointer;font-size:13.5px;color:var(--text-muted)}
+  .row.active{background:var(--elevated);color:var(--text);font-weight:600}
+  .row svg{width:17px;height:17px;color:var(--accent);flex-shrink:0}
+  .row .chev{margin-left:auto;color:var(--text-subtle);width:14px;height:14px}
+  .row.danger{color:var(--danger)}
+  .row.danger svg{color:var(--danger)}
+  .logout{margin-top:24px;padding:12px;border-radius:8px;border:1px solid var(--border-strong);text-align:center;font-size:13px;color:var(--text-muted);cursor:pointer}
+
+  /* revisão 03 ("aproveitar melhor o espaço"): o painel usa a largura toda — interruptores + resumo ao lado */
+  .detail{padding:28px 32px 40px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:24px;align-items:start}
+  .detail-head{grid-column:1/-1}
+  .aside{position:sticky;top:28px;display:flex;flex-direction:column;gap:14px}
+  .box{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px}
+  .box h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);margin:0 0 10px}
+  .box p{margin:0;font-size:13px;line-height:1.55;color:var(--text-muted)}
+  .meter{display:flex;align-items:baseline;gap:6px;margin-bottom:8px}
+  .meter b{font-family:Georgia,serif;font-size:30px}
+  .meter span{font-size:13px;color:var(--text-subtle)}
+  .sig{display:flex;gap:10px;padding:8px 0;border-top:1px solid rgba(255,255,255,.06);font-size:12.5px;line-height:1.45}
+  .sig:first-of-type{border-top:0}
+  .sig strong{display:block;color:var(--text);font-size:13px}
+  .sig span{color:var(--text-muted)}
+  .dot-st{width:8px;height:8px;border-radius:50%;margin-top:5px;flex:none}
+  .dot-st.on{background:#3fbf6b}
+  .dot-st.off{background:rgba(255,255,255,.25)}
+  .links a{display:flex;justify-content:space-between;padding:9px 0;border-top:1px solid rgba(255,255,255,.06);font-size:13px;color:var(--text);text-decoration:none}
+  .links a:first-of-type{border-top:0}
+  .links a.danger{color:var(--danger)}
+  .term{font-size:12px;color:var(--text-subtle);margin-top:8px}
+  .d-eyebrow{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin:0 0 6px}
+  .d-title{font-family:Georgia,serif;font-size:24px;margin:0 0 6px}
+  .d-desc{font-size:14px;color:var(--text-muted);margin:0 0 26px;line-height:1.5}
+  .toggle-row{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:12px}
+  .toggle-row svg{width:22px;height:22px;color:var(--accent);flex-shrink:0}
+  .t-copy{flex:1}
+  .t-title{font-size:14px;font-weight:700;margin:0}
+  .t-sub{font-size:12px;color:var(--text-subtle);margin:3px 0 0}
+  .switch{width:44px;height:26px;border-radius:100px;position:relative;flex-shrink:0;cursor:pointer}
+  .switch.on{background:var(--accent)}
+  .switch.off{background:rgba(255,255,255,.12)}
+  .switch::after{content:"";position:absolute;top:3px;width:20px;height:20px;border-radius:50%;background:#fff}
+  .switch.on::after{right:3px}
+  .switch.off::after{left:3px}
+  .perm-note{font-size:11px;color:var(--text-subtle);margin-top:4px}
+  .perm-note.denied{color:var(--danger)}
+
+  /* barras de rolagem no tema (revisão 03): finas, na cor da borda do perfil, sem a barra cinza do sistema */
+  *{scrollbar-width:thin;scrollbar-color:var(--border-strong,#4d6fcb) transparent}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--border-strong,#4d6fcb);border-radius:999px;border:3px solid transparent;background-clip:padding-box}
+  ::-webkit-scrollbar-thumb:hover{background:var(--accent,#6f90eb);background-clip:padding-box;border:3px solid transparent}
+  ::-webkit-scrollbar-corner{background:transparent}
+</style>
+</head>
+<body>
+<div class="console-shell">
+  <header class="console-topbar">
+    <a class="journey-brand" href="03-trilha.html"><img src="assets/trailup-brand-logo.png" alt="" /><span>TrailUp</span></a>
+    <span class="console-workspace-name">Área do aluno</span>
+    <div class="console-account">
+      <a href="08-perfil-hub.html" title="Meu perfil" aria-label="Meu perfil" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit">
+        <img class="avatar" src="assets/rosto-conqueror.png" alt="" />
+        <div class="console-account-copy"><strong>Amina T.</strong><span>Conqueror</span></div>
+      </a>
+      <button class="console-icon-button" title="Minha Bag"><img src="assets/object-bag.png" alt="" /></button>
+      <a class="console-icon-button" href="00-entrada.html" title="Sair" aria-label="Sair"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg></a>
+    </div>
+  </header>
+  <nav class="console-navigation" aria-label="Seções da área do aluno">
+    <a href="03-trilha.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 20l-5.5 2V6L9 4l6 2 5.5-2v16L15 22l-6-2z"/><path d="M9 4v16M15 6v16"/></svg>Trilha</a>
+    <a href="07-notificacoes.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Notificações<span class="nb">2</span></a>
+    <a href="06-social.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Social</a>
+    <a href="12-loja.html" aria-label="Loja, saldo de 38 moedas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 9l1.5-5h15L21 9"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/><path d="M5 12v8h14v-8"/><path d="M10 20v-5h4v5"/></svg>Loja<span class="nav-coins" style="margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;color:var(--text-subtle)">38<img src="assets/coin-conqueror.png" alt="" style="width:16px;height:16px;object-fit:contain" /></span></a>
+    <a href="05-ranking.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 21h16M6 21V10M12 21V3M18 21v-7"/></svg>Ranking</a>
+    <a href="08-perfil-hub.html" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0 1 16 0v1"/></svg>Perfil</a>
+  </nav>
+  <main class="console-main">
+<div class="wrap">
+  <div class="side">
+    <h1 class="title-font">Configurações</h1>
+    <div class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input placeholder="Pesquisar" />
+    </div>
+
+    <div class="group-title">Conta</div>
+    <div class="row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0 1 16 0v1"/></svg>Informações pessoais<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div>
+    <div class="row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Resetar senha<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div>
+
+    <div class="group-title">Privacidade e termos</div>
+    <div class="row active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/><path d="M1 19a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4M8 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg>Coleta e acessos<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div>
+    <a class="row" href="10-relatorio-dados.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V2H6.5A2.5 2.5 0 0 0 4 4.5z"/></svg>Gerar relatório dos dados<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></a>
+    <div class="row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Política de privacidade<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div>
+    <div class="row danger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg>Solicitar exclusão da conta</div>
+
+    <div class="group-title">Preferências</div>
+    <div class="row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Lembrete diário<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div>
+    <div class="row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>Aparência<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div>
+    <div class="row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/></svg>Estilo das métricas<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div>
+
+    <div class="group-title">Tutorial e informações do app</div>
+    <div class="row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 2-3 4M12 17h.01"/></svg>Rever tutorial inicial<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div>
+    <div class="row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>Informações do app · v1.0.4<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div>
+
+    <div class="logout">Sair deste aparelho</div>
+  </div>
+
+  <div class="detail">
+    <div class="detail-head">
+    <p class="d-eyebrow">Privacidade e termos</p>
+    <h2 class="d-title title-font">Coleta e acessos</h2>
+    <p class="d-desc">Você decide o que a plataforma pode observar durante seu estudo. Desativar um item não te tira do app — só reduz a personalização baseada naquele sinal.</p>
+    </div>
+    <div class="toggles">
+
+    <div class="toggle-row">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+      <div class="t-copy">
+        <p class="t-title">Câmera</p>
+        <p class="t-sub">Captura comportamental durante sessões de estudo (10 frames/min)</p>
+        <p class="perm-note denied">Permissão negada no navegador — reative nas configurações do site</p>
+      </div>
+      <div class="switch off"></div>
+    </div>
+
+    <div class="toggle-row">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h20M12 2a15.3 15.3 0 0 1 0 20 15.3 15.3 0 0 1 0-20z"/></svg>
+      <div class="t-copy"><p class="t-title">Uso e navegação</p><p class="t-sub">Tempo ativo, toques, rolagem e navegação recente</p></div>
+      <div class="switch on"></div>
+    </div>
+
+    <div class="toggle-row">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      <div class="t-copy"><p class="t-title">Desempenho acadêmico</p><p class="t-sub">Respostas e resultado em atividades, para ajuste pedagógico</p></div>
+      <div class="switch on"></div>
+    </div>
+
+    <div class="toggle-row">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <div class="t-copy"><p class="t-title">Chat com a IA</p><p class="t-sub">Permite conversar com o mentor do seu perfil sobre o material</p></div>
+      <div class="switch on"></div>
+    </div>
+    </div>
+
+    <aside class="aside" aria-label="Resumo da coleta">
+      <div class="box">
+        <h3>Sua coleta agora</h3>
+        <div class="meter"><b>3</b><span>de 4 sinais ativos</span></div>
+        <p>A câmera começa desligada para todo mundo e só liga se você ligar. Aceitar o termo não a liga.</p>
+        <p class="term">Termo de consentimento v4 · aceito em 07/10/2026</p>
+      </div>
+      <div class="box">
+        <h3>O que a IA faz com cada sinal</h3>
+        <div class="sig"><i class="dot-st off"></i><div><strong>Câmera</strong><span>Estima sua expressão (concentração, cansaço) para ajustar o ritmo. Desligada: nada é capturado.</span></div></div>
+        <div class="sig"><i class="dot-st on"></i><div><strong>Uso e navegação</strong><span>Mede o tempo ativo de estudo; é o que alimenta o Tempo de Estudo do ranking.</span></div></div>
+        <div class="sig"><i class="dot-st on"></i><div><strong>Desempenho acadêmico</strong><span>Escolhe a ordem do material e onde reforçar, como em Frações.</span></div></div>
+        <div class="sig"><i class="dot-st on"></i><div><strong>Chat com a IA</strong><span>Libera o guia do seu perfil para explicar a trilha; ele não entrega respostas.</span></div></div>
+      </div>
+      <div class="box links">
+        <h3>Seus dados</h3>
+        <a href="10-relatorio-dados.html">Gerar relatório dos dados <span>→</span></a>
+        <a href="#">Política de privacidade <span>→</span></a>
+        <a href="#" class="danger">Solicitar exclusão da conta <span>→</span></a>
+      </div>
+    </aside>
+  </div>
+</div>
+  </main>
+</div>
+</body>
+</html>

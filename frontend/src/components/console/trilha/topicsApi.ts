@@ -176,7 +176,11 @@ export async function saveActivity(params: {
   descricao: string;
   tipo?: string | null;
   data_entrega?: string | null;
+  /** Só é gravada quando informada: `undefined` NÃO apaga a pontuação que a atividade já tem. */
+  pontuacao_maxima?: number | null;
 }) {
+  // Atividade sem pontuação informada não mexe na coluna (editar o título não pode zerá-la).
+  const pontuacao = params.pontuacao_maxima === undefined ? {} : { pontuacao_maxima: params.pontuacao_maxima };
   if (params.id) {
     const { error } = await supabase
       .from("atividades")
@@ -185,6 +189,7 @@ export async function saveActivity(params: {
         descricao: params.descricao,
         tipo: params.tipo || null,
         data_entrega: params.data_entrega || null,
+        ...pontuacao,
       })
       .eq("id", params.id);
     if (error) throw error;
@@ -199,6 +204,7 @@ export async function saveActivity(params: {
       descricao: params.descricao,
       tipo: params.tipo || null,
       data_entrega: params.data_entrega || null,
+      ...pontuacao,
     })
     .select("id")
     .single();
@@ -561,4 +567,40 @@ export async function insertFontesPersonalizacao(
   if (fontes.length === 0) return;
   const { error } = await supabase.from("fontes_personalizacao").insert(fontes);
   if (error) throw error;
+}
+
+/** Copia a atividade (com questões) e vincula a cópia ao conteúdo — numa transação, no banco (duplicar_atividade). */
+export async function duplicateActivity(atividadeId: number, conteudoId: number): Promise<number> {
+  const { data, error } = await supabase.rpc("duplicar_atividade" as never, {
+    p_atividade_id: atividadeId,
+    p_conteudo_id: conteudoId,
+  } as never);
+  if (error) throw error;
+  return data as unknown as number;
+}
+
+/** Duplica um card (mesmo conteúdo e origem, cor e ordem preservadas, título com "(cópia)"). Uma linha só: não precisa de transação. */
+export async function duplicateCard(cardId: number): Promise<number> {
+  const { data, error } = await supabase
+    .from("cards" as never)
+    .select("conteudo_id, conteudo_origem_id, titulo, descricao, imagem_url, cor, ordem")
+    .eq("id", cardId)
+    .single();
+  if (error) throw error;
+  const origem = data as unknown as {
+    conteudo_id: number | null;
+    conteudo_origem_id: number | null;
+    titulo: string | null;
+    descricao: string | null;
+    imagem_url: string | null;
+    cor: string | null;
+    ordem: number | null;
+  };
+  const { data: novo, error: erroInsert } = await supabase
+    .from("cards" as never)
+    .insert({ ...origem, titulo: `${(origem.titulo ?? "Card").replace(/\s*\(cópia\)$/, "")} (cópia)` } as never)
+    .select("id")
+    .single();
+  if (erroInsert) throw erroInsert;
+  return (novo as unknown as { id: number }).id;
 }

@@ -46,6 +46,14 @@ interface Questao {
 type UiQuestionType = "multipla" | "verdadeiro_falso" | "fill_blank" | "essay";
 type DbQuestionType = "multipla" | "verdadeiro_falso" | "fill_blank" | "dissertativa";
 type Alternative = { id: string; texto: string; isCorrect: boolean };
+/**
+ * A alternativa como ela e GRAVADA em `questoes.alternativas` (JSONB) --
+ * `isCorrect` da UI vira `correta` aqui. Declarada como `type` (nao
+ * `interface`) de proposito: alias de objeto ganha index signature implicita
+ * e por isso e atribuivel a `Json`; interface nao ganha, e o insert volta a
+ * nao casar sobrecarga.
+ */
+type AlternativaPersistida = { id: string; texto: string; correta: boolean };
 
 const tiposQuestao: Array<{ value: UiQuestionType; label: string }> = [
   { value: "multipla", label: "Multipla escolha" },
@@ -315,7 +323,11 @@ export default function QuestionsManager() {
       }
     }
 
-    let alternativasPayload: Record<string, unknown>[] | null = null;
+    // A coluna `questoes.alternativas` e JSONB, e o tipo gerado da
+    // Supabase a declara como `Json`. `Record<string, unknown>` NAO e
+    // atribuivel a `Json` (por causa do `unknown`), e era so por isso que
+    // o insert/update nao casava nenhuma das sobrecargas.
+    let alternativasPayload: AlternativaPersistida[] | null = null;
     let respostaCorreta = formData.resposta_correta.trim();
     const scoreParsed = parseOptionalPositiveScore(formData.nota_estabelecida);
     if (!scoreParsed.isValid) {

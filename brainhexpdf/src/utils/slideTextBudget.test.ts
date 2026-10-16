@@ -74,7 +74,12 @@ test('corta cada campo livre no seu proprio limite', () => {
 
 test('preserva os campos que nao sao de texto livre', () => {
   const original = slide({
-    slideNumber: 7,
+    // `id` no lugar do `slideNumber` que estava aqui: `slideNumber` nao existe
+    // em `SlideData` (nem em lugar nenhum do src), entao a assercao provava
+    // pass-through de um campo inventado -- passava porque o sanitizador
+    // espalha chaves desconhecidas. `id` e campo obrigatorio de verdade, e
+    // perde-lo quebraria a montagem do deck.
+    id: 'slide-7',
     title: 'Escalonamento',
     interactiveType: 'quiz',
     characterGuide: { name: 'Amina', title: 'Estrategista', tone: 'resoluto' },
@@ -83,7 +88,7 @@ test('preserva os campos que nao sao de texto livre', () => {
 
   const [resultado] = sanitizeSlideTextBudget([original]);
 
-  assert.equal(resultado.slideNumber, 7);
+  assert.equal(resultado.id, 'slide-7');
   assert.equal(resultado.title, 'Escalonamento');
   assert.equal(resultado.interactiveType, 'quiz');
   assert.equal(resultado.characterGuide?.name, 'Amina');

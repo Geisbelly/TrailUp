@@ -1,5 +1,6 @@
 import { RankingPodium } from "@/components/ranking/RankingPodium";
 import { ProfileEmblem } from "@/components/ProfileEmblem";
+import { SocialProfileModal } from "@/components/social/SocialProfileModal";
 import {
   SectionGuideButton,
   type SectionGuideScrollable,
@@ -41,14 +42,27 @@ const filters: { key: Filter; label: string }[] = [
 
 export default function RankDetalheScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
+  return <RankDetalhe rankId={Number(id)} />;
+}
+
+/**
+ * Categoria aberta do ranking. `embutido`: dentro do Ranking da web em tela
+ * larga (#346), ao lado das categorias — sem a barra de voltar, porque as
+ * categorias continuam visíveis na coluna da esquerda. Embutido, o aluno
+ * clicado (pódio ou lista) abre o perfil público; a própria linha leva ao Perfil.
+ */
+export function RankDetalhe({ rankId, embutido = false }: { rankId: number; embutido?: boolean }) {
   const router = useRouter();
   const { ranking, carregando, reloadRanking } = useConquistaRank();
   const { usuario } = useUsuario();
   const profile = usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome;
   const palette = getProfileShellPalette(profile);
-  const rank = ranking?.ranks.find((item) => item.info.rank_id === Number(id));
+  const rank = ranking?.ranks.find((item) => item.info.rank_id === rankId);
   const [filter, setFilter] = useState<Filter>("geral");
   const [total, setTotal] = useState<number | null>(null);
+  const [perfilAberto, setPerfilAberto] = useState<string | null>(null);
+  const abrirAluno = (idAluno: string) =>
+    idAluno === usuario?.id ? router.push("/perfil") : setPerfilAberto(idAluno);
   const ids = useMemo(
     () => (rank?.posicoes ?? []).map((row) => row.id_aluno),
     [rank?.posicoes],
@@ -79,6 +93,12 @@ export default function RankDetalheScreen() {
             : !ownProfile || profiles[row.id_aluno]?.key !== ownProfile),
       ),
     [cutoff.visiveis, filter, profiles, ownProfile],
+  );
+  // Tela larga (#346, protótipo v4): na classificação geral, os três primeiros já
+  // estão no pódio, então a tabela começa no 4º.
+  const linhasTabela = useMemo(
+    () => (embutido && filter === "geral" ? filtered.filter((row) => !row.posicao || row.posicao > 3) : filtered),
+    [embutido, filter, filtered],
   );
   const notice = descreverCorte(cutoff, total);
   const listRef = useRef<FlatList<RankPosicao> | null>(null);
@@ -152,8 +172,9 @@ export default function RankDetalheScreen() {
         : "Pontos";
   return (
     <View style={[s.screen, { backgroundColor: palette.background }]}>
-      <Stack.Screen options={{ headerShown: false }} />
+      {!embutido ? <Stack.Screen options={{ headerShown: false }} /> : null}
       <SafeAreaView style={s.screen} edges={["top", "left", "right"]}>
+        {!embutido ? (
         <View style={[s.topbar, { borderBottomColor: palette.border }]}>
           <Pressable
             onPress={() => router.back()}
@@ -179,6 +200,7 @@ export default function RankDetalheScreen() {
             scrollOffsetRef={scrollOffsetRef}
           />
         </View>
+        ) : null}
         {!rank ? (
           carregando ? (
             <ActivityIndicator color={palette.accent} style={s.empty} />
@@ -191,7 +213,7 @@ export default function RankDetalheScreen() {
           <>
             <FlatList
               ref={listRef}
-              data={profilesLoading && filter !== "geral" ? [] : filtered}
+              data={profilesLoading && filter !== "geral" ? [] : linhasTabela}
               keyExtractor={(row) => `${row.rank_id}-${row.id_aluno}`}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={s.listContent}
@@ -226,9 +248,11 @@ export default function RankDetalheScreen() {
                         style={StyleSheet.absoluteFill}
                       />
                     </View>
-                    <View style={s.heading}>
+                    {/* Embutido na tela larga (#346, protótipo v4): "CATEGORIA" e os filtros como pílulas ao lado do título. */}
+                    <View style={[s.heading, embutido && s.headingLargo]}>
+                    <View style={embutido ? s.headingTextos : null}>
                       <Text style={[s.eyebrow, { color: palette.accent }]}>
-                        SALA DE HONRA
+                        {embutido ? "CATEGORIA" : "SALA DE HONRA"}
                       </Text>
                       <Text style={[s.title, { color: palette.text }]}>
                         {rank.info.nome_rank}
@@ -241,6 +265,31 @@ export default function RankDetalheScreen() {
                         </Text>
                       ) : null}
                     </View>
+                    {embutido ? (
+                      <View style={s.pilulas}>
+                        {filters.map((item) => {
+                          const ativo = filter === item.key;
+                          return (
+                            <Pressable
+                              key={item.key}
+                              accessibilityRole="tab"
+                              accessibilityState={{ selected: ativo }}
+                              onPress={() => setFilter(item.key)}
+                              style={[
+                                s.pilula,
+                                {
+                                  borderColor: ativo ? palette.accent : palette.border,
+                                  backgroundColor: ativo ? palette.accent : palette.surface,
+                                },
+                              ]}
+                            >
+                              <Text style={[s.pilulaTexto, { color: ativo ? palette.background : palette.textMuted }]}>{item.label}</Text>
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    ) : null}
+                    </View>
                     <RankingPodium
                       rows={rank.posicoes}
                       criterion={rank.info.criterio}
@@ -248,16 +297,23 @@ export default function RankDetalheScreen() {
                       userId={usuario?.id}
                       profiles={profiles}
                       photos={photos}
+                      onPressAluno={embutido ? abrirAluno : undefined}
                     />
+                    {embutido ? (
+                      <Text style={[s.notaPodio, { color: palette.textSubtle }]}>
+                        Os três primeiros lugares seguem a classificação geral desta categoria. Empates mantêm a mesma posição.
+                      </Text>
+                    ) : null}
                   </View>
                   <View
                     ref={filtersRef}
                     collapsable={false}
                     style={s.filtersSection}
                   >
-                    <Text style={[s.sectionTitle, { color: palette.text }]}>
-                      Classificação
+                    <Text style={[s.sectionTitle, embutido && s.sectionTitleLargo, { color: embutido ? palette.accent : palette.text }]}>
+                      {embutido ? "CLASSIFICAÇÃO" : "Classificação"}
                     </Text>
+                    {embutido ? null : (
                     <View
                       style={[s.filters, { borderBottomColor: palette.border }]}
                     >
@@ -293,14 +349,17 @@ export default function RankDetalheScreen() {
                         </Pressable>
                       ))}
                     </View>
-                    <View style={s.listHeading}>
+                    )}
+                    <View style={[s.listHeading, embutido && s.listHeadingLargo]}>
+                      {embutido ? <Text style={[s.columnLabel, s.colunaPosicao, { color: palette.textSubtle }]}>#</Text> : null}
                       <Text
-                        style={[s.columnLabel, { color: palette.textSubtle }]}
+                        style={[s.columnLabel, embutido && s.colunaAluno, { color: palette.textSubtle }]}
                       >
                         ALUNO
                       </Text>
+                      {embutido ? <Text style={[s.columnLabel, s.colunaPerfil, { color: palette.textSubtle }]}>PERFIL</Text> : null}
                       <Text
-                        style={[s.columnLabel, { color: palette.textSubtle }]}
+                        style={[s.columnLabel, embutido && s.colunaValor, { color: palette.textSubtle }]}
                       >
                         {scoreLabel.toUpperCase()}
                       </Text>
@@ -311,13 +370,22 @@ export default function RankDetalheScreen() {
               renderItem={({ item }) => {
                 const me = item.id_aluno === usuario?.id;
                 const personProfile = profiles[item.id_aluno];
+                const Linha = embutido ? Pressable : View;
                 return (
-                  <View
+                  <Linha
+                    {...(embutido
+                      ? {
+                          onPress: () => abrirAluno(item.id_aluno),
+                          accessibilityRole: "button" as const,
+                          accessibilityLabel: me ? "Ir para o seu perfil" : `Ver perfil de ${item.nome_aluno}`,
+                        }
+                      : null)}
                     style={[
                       s.row,
+                      embutido && s.rowLarga,
                       {
                         borderBottomColor: palette.border,
-                        backgroundColor: me ? palette.surfaceElevated : palette.surface,
+                        backgroundColor: me ? palette.surfaceElevated : embutido ? "transparent" : palette.surface,
                         borderLeftColor: me ? palette.accent : "transparent",
                       },
                     ]}
@@ -330,16 +398,32 @@ export default function RankDetalheScreen() {
                     >
                       {item.posicao ? `${item.posicao}º` : "--"}
                     </Text>
-                    <ProfileEmblem profile={personProfile?.key} toneProfile={profile} size={52} />
+                    <ProfileEmblem profile={personProfile?.key} toneProfile={profile} size={embutido ? 32 : 52} />
                     <View style={s.student}>
                       <Text style={[s.studentName, { color: palette.text }]}>
                         {item.nome_aluno}
                         {me ? " (Você)" : ""}
                       </Text>
-                      <Text style={[s.profile, { color: palette.textMuted }]}>
-                        {personProfile?.label ?? "Perfil não definido"}
-                      </Text>
+                      {embutido ? null : (
+                        <Text style={[s.profile, { color: palette.textMuted }]}>
+                          {personProfile?.label ?? "Perfil não definido"}
+                        </Text>
+                      )}
                     </View>
+                    {embutido ? (
+                      // Coluna de perfil do protótipo: ponto na cor do perfil e o nome.
+                      <View style={s.colunaPerfilLinha}>
+                        {personProfile?.key ? (
+                          <View style={[s.pontoPerfil, { backgroundColor: getProfileShellPalette(personProfile.key).accent }]} />
+                        ) : null}
+                        <Text
+                          numberOfLines={1}
+                          style={[s.profile, s.perfilLargo, { color: palette.textMuted }, !personProfile?.label && s.semPerfil]}
+                        >
+                          {personProfile?.label ?? "Perfil não definido"}
+                        </Text>
+                      </View>
+                    ) : null}
                     <Text
                       style={[
                         s.score,
@@ -348,11 +432,12 @@ export default function RankDetalheScreen() {
                     >
                       {formatRankScore(item.pontuacao, rank.info.criterio)}
                     </Text>
-                  </View>
+                  </Linha>
                 );
               }}
               ListEmptyComponent={
-                profilesLoading && filter !== "geral" ? (
+                // Todos os alunos já estão no pódio: a tabela fica vazia sem aviso.
+                linhasTabela.length === 0 && filtered.length > 0 ? null : profilesLoading && filter !== "geral" ? (
                   <ActivityIndicator color={palette.accent} style={s.empty} />
                 ) : (
                   <Text style={[s.empty, { color: palette.textMuted }]}>
@@ -368,7 +453,8 @@ export default function RankDetalheScreen() {
                 ) : null
               }
             />
-            {cutoff.minhaLinha ? (
+            {/* Embutido no Ranking de tela larga, a posição fica no card da coluna da esquerda. */}
+            {cutoff.minhaLinha && !embutido ? (
               <View
                 ref={myRef}
                 collapsable={false}
@@ -403,6 +489,16 @@ export default function RankDetalheScreen() {
             ) : null}
           </>
         )}
+        {embutido && classeId ? (
+          <SocialProfileModal
+            visible={perfilAberto !== null}
+            alunoId={perfilAberto}
+            classeId={classeId}
+            accent={palette.accent}
+            centralizado
+            onClose={() => setPerfilAberto(null)}
+          />
+        ) : null}
       </SafeAreaView>
     </View>
   );
@@ -425,6 +521,11 @@ const s = StyleSheet.create({
   scenery: { ...StyleSheet.absoluteFillObject },
   sceneryImage: { width: "100%", height: "100%", opacity: 0.4 },
   heading: { paddingTop: 24, gap: 7 },
+  headingLargo: { flexDirection: "row", alignItems: "flex-start", gap: 16 },
+  headingTextos: { flex: 1, minWidth: 0, gap: 7 },
+  pilulas: { flexDirection: "row", gap: 6, paddingTop: 14 },
+  pilula: { borderRadius: 999, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 7 },
+  pilulaTexto: { fontFamily: FontFamily.interMedium, fontSize: 12.5, fontWeight: "700" },
   eyebrow: { fontSize: 10, fontWeight: "700" },
   title: { fontFamily: FontFamily.inikaBold, fontSize: 27, lineHeight: 34 },
   subtitle: { fontSize: 14, lineHeight: 21 },
@@ -450,6 +551,19 @@ const s = StyleSheet.create({
     paddingBottom: 10,
   },
   columnLabel: { fontSize: 12, fontWeight: "700" },
+  // Tabela da tela larga (protótipo v4): colunas # · ALUNO · PERFIL · valor e linhas compactas.
+  notaPodio: { fontFamily: FontFamily.interMedium, fontSize: 12, textAlign: "center", paddingHorizontal: 20, paddingTop: 10 },
+  sectionTitleLargo: { fontFamily: FontFamily.interMedium, fontSize: 12, fontWeight: "700", letterSpacing: 1.2, marginTop: 18, marginBottom: 0 },
+  listHeadingLargo: { justifyContent: "flex-start", gap: 8, paddingTop: 12, paddingHorizontal: 15 },
+  colunaPosicao: { minWidth: 28 },
+  colunaAluno: { flex: 1, marginLeft: 40 },
+  colunaPerfil: { width: 170 },
+  colunaValor: { width: 76, textAlign: "right" },
+  rowLarga: { minHeight: 52, paddingVertical: 8, borderBottomWidth: 1 },
+  colunaPerfilLinha: { width: 170, flexDirection: "row", alignItems: "center", gap: 8 },
+  pontoPerfil: { width: 8, height: 8, borderRadius: 4 },
+  perfilLargo: { marginTop: 0, flexShrink: 1 },
+  semPerfil: { fontStyle: "italic" },
   row: {
     flexDirection: "row",
     alignItems: "center",

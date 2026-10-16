@@ -56,6 +56,9 @@
   --console-bronze: 22 33% 46%;
   --console-bronze-light: 33 53% 55%;
   --console-bronze-text: 26 54% 67%;
+  /* --warning com a luminosidade elevada para texto: sobre o próprio fundo
+     tingido (.16) o --warning dá 6,6:1; com 64% passa de 7:1. */
+  --console-warning-text: 42 70% 64%;
 }
 
 .console-shell :is(h1, h2, h3, h4),

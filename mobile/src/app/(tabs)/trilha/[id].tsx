@@ -1,3 +1,5 @@
+import { referenciaDeAtividade } from "@/utils/referenciaDeEvento";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { progressoCanonicoTopico, topicoConcluidoNaTela } from '@/utils/topicoProgress';
 import { useFocusEffect, useIsFocused, useNavigation } from "@react-navigation/native";
@@ -19,7 +21,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { ActivityCompletePayload, ActivityRenderer } from "@/components/ActivityRenderer";
+import { ActivityCompletePayload, ActivityRenderer, normalizeActivityType } from "@/components/ActivityRenderer";
 import CardSemDados from "@/components/CardSemDados";
 import { ContentRenderer } from "@/components/ContentRenderer";
 import { BagEditorModal } from "@/components/bag/BagEditorModal";
@@ -27,6 +29,8 @@ import { HallBackground, OrnamentDivider } from "@/components/HallTheme";
 import { IABattleHeaderChip } from "@/components/ia/IABattleHeaderChip";
 import { IAHeaderTimer } from "@/components/ia/IAHeaderTimer";
 import { IAMentorPanel } from "@/components/ia/IAMentorPanel";
+import { CabecalhoTopicoDesktop, type EstadoBlocoTopico } from "@/components/web/CabecalhoTopicoDesktop";
+import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { LoadingState } from "@/components/LoadingState";
 import { TopicoIntroSummary } from "@/components/TopicoIntroSummary";
 import {
@@ -176,7 +180,11 @@ export default function TrilhaConteudoScreen() {
     personalizedTopics,
     ensureTopicoPersonalizado,
     perfil,
+    grafo,
+    mapTheme,
   } = useTrilha();
+  // Web em tela larga (#346, protótipo v4 04-topico): cabeçalho próprio e coluna de leitura.
+  const desktop = useDesktopWeb();
 
   const { setLoading } = useLoading();
   const { usuario } = useUsuario();
@@ -852,14 +860,15 @@ export default function TrilhaConteudoScreen() {
     showDialog,
   });
 
-  useEffect(() => {
+  // Cronômetro e guia: no celular ficam no cabeçalho de navegação; na tela larga,
+  // no CabecalhoTopicoDesktop.
+  const renderAcoesCabecalho = useCallback(() => {
     const titulo = String(topico?.nome ?? "Detalhes");
     const totalBlocos = progressoVisual.total;
     const concluidos = progressoVisual.concluidos;
     const capabilities = getBrainHexProfileCapabilities(perfil);
 
-    navigation.setOptions({
-      headerRight: () => (
+    return (
         <View style={styles.headerRightActions}>
           <View ref={timerGuideTargetRef} collapsable={false}>
             <IAHeaderTimer
@@ -888,15 +897,13 @@ export default function TrilhaConteudoScreen() {
             targetRefs={guideTargetRefs}
           />
         </View>
-      ),
-    });
+    );
   }, [
     currentOverlayItemKey,
     currentOverlayTimerFeature,
     guideTargetRefs,
     handleOverlayTimerTimeout,
     isOverlayTimerActive,
-    navigation,
     perfil,
     personalizedTopic,
     progressoVisual.concluidos,
@@ -905,6 +912,52 @@ export default function TrilhaConteudoScreen() {
     topicoId,
     usuario?.perfis,
   ]);
+
+  useEffect(() => {
+    navigation.setOptions({ headerRight: renderAcoesCabecalho });
+  }, [navigation, renderAcoesCabecalho]);
+
+  // Estado de cada bloco para os pontos do cabeçalho da tela larga.
+  const estadosBlocos = useMemo<EstadoBlocoTopico[]>(
+    () =>
+      displayedBlocks.map((bloco, i) => {
+        if (i === index) return "atual";
+        const feito =
+          bloco.kind === "conteudo"
+            ? isConteudoConcluido(bloco.conteudo, conteudosVistosLocal)
+            : isAtividadeConcluida(bloco.atividade, atividadesResolvidasLocal);
+        return feito ? "feito" : "pendente";
+      }),
+    [atividadesResolvidasLocal, conteudosVistosLocal, displayedBlocks, index]
+  );
+  const chaveBatalha =
+    atualBlock?.kind === "atividade" && atualBlock.vinculadoConteudoId != null
+      ? buildIAItemKey("content", Number(atualBlock.vinculadoConteudoId))
+      : currentOverlayItemKey;
+  // Na tela larga o confronto fica aberto numa coluna à direita (protótipo v4), só
+  // para os perfis com batalha e nos blocos que contam para ela.
+  const lateralBatalha =
+    desktop && !mostrarResumo && isCurrentStudyBlockTrackable && topicoId != null && getBrainHexProfileCapabilities(perfil).hasBattle;
+  // Conteúdo na tela larga (protótipo v4): texto direto sobre o fundo, sem o card.
+  // Atividades seguem em card.
+  const leituraLarga = desktop && atualBlock?.kind === "conteudo";
+  // Atividade na tela larga: card próprio com o rótulo em linha ("ATIVIDADE — MÚLTIPLA ESCOLHA").
+  const atividadeLarga = desktop && atualBlock?.kind === "atividade";
+  const rotuloAtividade =
+    atualBlock?.kind === "atividade"
+      ? // Mesma normalização que escolhe o componente da atividade (ActivityRenderer).
+        ({
+          quiz: "Múltipla escolha",
+          questao: "Múltipla escolha",
+          true_false: "Verdadeiro ou falso",
+          fill_blank: "Completar",
+          essay: "Dissertativa",
+          video: "Vídeo",
+          texto: "Leitura",
+        } as Record<string, string>)[normalizeActivityType(atualBlock.atividade.tipo)] ?? null
+      : null;
+  const numeroTopico = grafo?.nodes?.find((n) => String(n.id) === String(topicoId))?.sequence ?? null;
+  const regiaoTopico = topicoId != null ? mapTheme?.countries?.[String(topicoId)]?.countryName ?? null : null;
 
   const blocoLabel = atualBlock
     ? atualBlock.kind === "conteudo"
@@ -1300,16 +1353,18 @@ export default function TrilhaConteudoScreen() {
           ? "atividade_acertada"
           : "atividade_errada";
 
-        const temReferenciaAtividadeValida =
-          !isPersonalizedLocal &&
-          Number.isInteger(atividadeId) &&
-          Number(atividadeId) > 0;
-        const eventoReferencia = temReferenciaAtividadeValida
-          ? `atividade:${atividadeId}`
-          : `topico:${topicoId}`;
-        const eventoTipo = temReferenciaAtividadeValida
-          ? eventoTipoBase
-          : `topico_${eventoTipoBase}`;
+        // `item:<topico>:<chave>` no caminho personalizado, em vez de
+        // `topico:<id>`: a referencia passa a identificar a ATIVIDADE, que e' a
+        // granularidade em que a dedup do servidor precisa agir. Com a
+        // referencia no topico, ou nao dedupava, ou quatro acertos pagariam um.
+        // Ver issue #186 e a migracao 20261003_01.
+        const { tipo: eventoTipo, referencia: eventoReferencia } = referenciaDeAtividade({
+          tipoBase: eventoTipoBase,
+          atividadeId,
+          topicoId,
+          itemKey: activityItemKey,
+          personalizada: isPersonalizedLocal,
+        });
 
         try {
           await registrarEvento(eventoTipo, eventoReferencia, valorEvento);
@@ -1563,6 +1618,20 @@ export default function TrilhaConteudoScreen() {
         <HallBackground palette={profilePalette} />
       </View>
 
+      {desktop ? (
+        <CabecalhoTopicoDesktop
+          palette={profilePalette}
+          regiao={regiaoTopico}
+          numero={numeroTopico}
+          titulo={String(topico.nome ?? "Tópico")}
+          blocos={estadosBlocos}
+          atual={!mostrarResumo && atualBlock ? index + 1 : 0}
+          aviso={personalizacaoCarregando ? "Atualizando conteúdo personalizado..." : null}
+          acoes={renderAcoesCabecalho()}
+          onVoltar={() => router.push("/(tabs)")}
+        />
+      ) : null}
+
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
@@ -1576,9 +1645,12 @@ export default function TrilhaConteudoScreen() {
           // pra preencher a tela toda. 56 ainda da folga suficiente pro
           // avatar flutuante do mentor (IAMentorPanel) sem sobrar espaco.
           { paddingBottom: 56 },
+          desktop && styles.colunaLeituraDesktop,
+          lateralBatalha && styles.colunaLeituraComLateralDesktop,
         ]}
       >
-        <View style={styles.header}>
+        {/* Na tela larga o progresso fica nos pontos do cabeçalho. */}
+        <View style={[styles.header, desktop && { display: "none" }]}>
           <View ref={progressGuideTargetRef} collapsable={false} style={styles.headerTopMeta}>
             {progressoPercurso.total > 0 ? (
               <>
@@ -1613,6 +1685,8 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
           </View>
         </View>
 
+        <View style={lateralBatalha ? styles.colunasDesktop : styles.colunaUnica}>
+        <View style={lateralBatalha ? styles.colunaPrincipalDesktop : styles.colunaUnica}>
         {mostrarResumo && index === -1 && (
           <>
             <View style={[styles.ornamentWrap, { opacity: 0.6 }]}>
@@ -1665,8 +1739,22 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
                 backgroundColor: profilePalette.surfaceElevated,
                 borderColor: profilePalette.border,
               },
+              leituraLarga && styles.cardLeituraDesktop,
+              atividadeLarga && [styles.cardAtividadeDesktop, { backgroundColor: profilePalette.surface }],
             ]}
           >
+            {atividadeLarga ? (
+              <Text style={[styles.rotuloAtividadeDesktop, { color: profilePalette.accent }]}>
+                {["Atividade", rotuloAtividade].filter(Boolean).join(" — ").toUpperCase()}
+              </Text>
+            ) : leituraLarga ? (
+              <View style={styles.rotuloLeituraDesktop}>
+                <MaterialCommunityIcons name="book-open-page-variant-outline" size={15} color={profilePalette.accent} />
+                <Text style={[styles.rotuloLeituraDesktopTexto, { color: profilePalette.textMuted }]}>
+                  {[blocoLabel, formatConteudoTipo(atualBlock.conteudo.tipo)].filter(Boolean).join(" — ").toUpperCase()}
+                </Text>
+              </View>
+            ) : (
             <View
               style={[
                 styles.cardHeader,
@@ -1696,11 +1784,13 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
                 Bloco {index + 1} / {total}
               </Text>
             </View>
+            )}
 
             <Text
               style={[
                 styles.cardTitle,
                 conteudoComFocoEmArquivo && styles.cardTitleFileFocus,
+                leituraLarga && styles.cardTitleLeituraDesktop,
                 { color: profilePalette.text },
               ]}
             >
@@ -1711,7 +1801,7 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
                 : atualBlock.atividade.titulo ?? "Atividade"}
             </Text>
 
-            {atualBlock.kind === "conteudo" && formatConteudoTipo(atualBlock.conteudo.tipo) ? (
+            {atualBlock.kind === "conteudo" && !leituraLarga && formatConteudoTipo(atualBlock.conteudo.tipo) ? (
               <Text
                 style={[
                   styles.cardType,
@@ -1732,7 +1822,11 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
                   onDeckProgressEvent={handleDeckProgressEvent}
                 />
                 <Pressable
-                  style={[styles.secondaryButton, { borderColor: profilePalette.accent, marginTop: 14 }]}
+                  style={[
+                    styles.secondaryButton,
+                    { borderColor: profilePalette.accent, marginTop: 14 },
+                    leituraLarga && [styles.botaoBagDesktop, { borderColor: profilePalette.borderStrong }],
+                  ]}
                   onPress={() => {
                     setBagContentId(normalizeBagContentId(atualBlock.conteudo.id));
                     setBagEditorOpen(true);
@@ -1740,7 +1834,15 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
                   accessibilityRole="button"
                   accessibilityLabel="Adicionar anotação, resumo ou card à Bag"
                 >
-                  <Text style={[styles.secondaryButtonText, { color: profilePalette.accent }]}>＋ Guardar na Bag</Text>
+                  <Text
+                    style={[
+                      styles.secondaryButtonText,
+                      { color: profilePalette.accent },
+                      leituraLarga && [styles.botaoBagDesktopTexto, { color: profilePalette.text }],
+                    ]}
+                  >
+                    ＋ Guardar na Bag
+                  </Text>
                 </Pressable>
               </>
             ) : (
@@ -1763,6 +1865,13 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
             )}
           </View>
         ) : null}
+        </View>
+        {lateralBatalha ? (
+          <View ref={battleGuideTargetRef} collapsable={false} style={styles.lateralBatalhaDesktop}>
+            <IABattleHeaderChip variante="painel" topicoId={topicoId} itemKey={chaveBatalha} />
+          </View>
+        ) : null}
+        </View>
       </ScrollView>
 
       <View
@@ -1774,15 +1883,17 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
             paddingTop: 12,
             paddingBottom: 8,
           },
+          desktop && styles.footerDesktop,
         ]}
       >
-        <View style={styles.footerRow}>
+        <View style={[styles.footerRow, desktop && styles.footerRowDesktop]}>
           {index === -1 ? (
             <>
               <Pressable
                 hitSlop={12}
                 style={[
                   styles.button,
+                  desktop && styles.botaoPrincipalDesktop,
                   {
                     backgroundColor: profilePalette.accent,
                     borderColor: profilePalette.borderStrong,
@@ -1819,6 +1930,7 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
                   hitSlop={12}
                   style={[
                     styles.secondaryButton,
+                  desktop && styles.botaoSecundarioDesktop,
                     {
                       backgroundColor: profilePalette.surfaceElevated,
                       borderColor: profilePalette.border,
@@ -1843,6 +1955,7 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
                 hitSlop={12}
                 style={[
                   styles.secondaryButton,
+                  desktop && styles.botaoSecundarioDesktop,
                   {
                     backgroundColor: profilePalette.surfaceElevated,
                     borderColor: profilePalette.border,
@@ -1861,6 +1974,7 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
                 hitSlop={12}
                 style={[
                   styles.button,
+                  desktop && styles.botaoPrincipalDesktop,
                   {
                     backgroundColor: profilePalette.accent,
                     borderColor: profilePalette.borderStrong,
@@ -1917,7 +2031,7 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
       />
 
       {/* ── Chip de batalha flutuante ── */}
-      {!mostrarResumo && isCurrentStudyBlockTrackable && topicoId ? (
+      {!desktop && !mostrarResumo && isCurrentStudyBlockTrackable && topicoId ? (
         <View
           ref={battleGuideTargetRef}
           collapsable={false}
@@ -1925,9 +2039,7 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
         >
           <IABattleHeaderChip
             topicoId={topicoId}
-            itemKey={atualBlock?.kind === 'atividade' && atualBlock.vinculadoConteudoId != null
-              ? buildIAItemKey('content', Number(atualBlock.vinculadoConteudoId))
-              : currentOverlayItemKey}
+            itemKey={chaveBatalha}
           />
         </View>
       ) : null}

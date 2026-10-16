@@ -3,6 +3,7 @@ import React from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { useUsuario } from '@/context/SessaoContext'
 import { questionActivityScope } from '@/utils/questionAnswerVisibility'
+import { activityRendererKey, normalizeActivityType } from '@/utils/activityType'
 
 import QuestionActivity from './QuestionActivity'
 import TextoActivity from './TextoActivity'
@@ -30,83 +31,7 @@ type Props = {
   reviewMode?: boolean;
 };
 
-function normalizeActivityType(value: unknown) {
-  const tipo = String(value ?? '').trim().toLowerCase();
-
-  if (!tipo) return "quiz";
-
-  if (
-    [
-      "dissertativa",
-      "aberta",
-      "texto_livre",
-      "ensaio",
-      "essay",
-      "questao_aberta",
-      "questao aberta",
-      "open",
-      "open_ended",
-      "open-ended",
-      "open_text",
-      "open text",
-    ].includes(tipo)
-  ) {
-    return "essay";
-  }
-
-  if (
-    [
-      'true_false',
-      'true or false',
-      'true_or_false',
-      'truefalse',
-      'verdadeiro_falso',
-      'verdadeiro ou falso',
-      'verdadeiro/falso',
-      'booleano',
-    ].includes(tipo)
-  ) {
-    return 'true_false';
-  }
-
-  if (
-    [
-      'fill_blank',
-      'fili_blank',
-      'fill in the blank',
-      'fill-in-the-blank',
-      'fillblank',
-      'completar_lacuna',
-      'completar lacuna',
-      'lacuna',
-    ].includes(tipo)
-  ) {
-    return 'fill_blank';
-  }
-
-  if (
-    [
-      "multipla_escolha",
-      "multipla escolha",
-      "multiple_choice",
-      "multi_select",
-      "multiselect",
-      "checkbox",
-      "marcar",
-      "escolha",
-      "pergunta",
-      "questao_objetiva",
-      "questao objetiva",
-      "objetiva",
-      "quiz",
-      "questao",
-    ].includes(tipo)
-  ) {
-    return "quiz";
-  }
-
-  return tipo;
-}
+export { normalizeActivityType } from '@/utils/activityType';
 
 export function ActivityRenderer(props: Props) {
   const { usuario } = useUsuario();
@@ -141,17 +66,13 @@ function ActivityRendererContent({
     String(atividade?.status ?? '').toLowerCase().includes('concl') ||
     Number(atividade?.percentual_concluido ?? 0) >= 100;
 
-  const registry: Record<string, React.ComponentType<any>> = {
-    questao: QuestionActivity,
-    quiz: QuestionActivity,
-    true_false: QuestionActivity,
-    fill_blank: QuestionActivity,
-    essay: QuestionActivity,
+  const componentes: Record<string, React.ComponentType<any>> = {
+    question: QuestionActivity,
     video: VideoActivity,
     texto: TextoActivity,
   };
-
-  const Component = registry[tipo] ?? (hasQuestoes ? QuestionActivity : undefined);
+  const chave = activityRendererKey(tipo, hasQuestoes);
+  const Component = chave ? componentes[chave] : undefined;
 
   if (atividadeConcluida && !localReviewMode) {
     const acertosPct = Number(atividade?.acertos_percentual ?? 0);

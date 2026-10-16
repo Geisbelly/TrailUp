@@ -6,14 +6,19 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { Image, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { useDesktopWeb } from '@/hooks/useDesktopWeb';
 
 export default function Entrada() {
   const router = useRouter();
+  // Web em tela larga (#346, protótipo v4, 00-entrada.html): a frase no meio da cena, maior.
+  const desktop = useDesktopWeb();
   return (
     <View style={styles.screen}>
-      <Image source={publicScenery} style={StyleSheet.absoluteFill} resizeMode="cover" accessible={false} />
+      {/* Na web a imagem com só absoluteFill não estica: cobria metade da tela. */}
+      <Image source={publicScenery} style={[StyleSheet.absoluteFill, Platform.OS === 'web' && styles.cenaWeb]} resizeMode="cover" accessible={false} />
       <LinearGradient colors={['rgba(23,14,43,0.08)', 'rgba(23,14,43,0.3)', Design.ink]} locations={[0, 0.45, 0.82]} style={StyleSheet.absoluteFill} pointerEvents="none" />
       <SafeAreaView style={styles.safe}>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -21,9 +26,11 @@ export default function Entrada() {
             <Image source={designStar} style={styles.mark} resizeMode="contain" accessible={false} />
             <Text style={styles.name}>{app.name}</Text>
           </View>
-          <View style={styles.scene} />
+          <View style={[styles.scene, desktop && styles.sceneLarga]}>
+            {desktop ? <Text style={[styles.title, styles.titleLargo]}>Sua próxima conquista começa aqui.</Text> : null}
+          </View>
           <View style={styles.actions}>
-            <Text style={styles.title}>Sua próxima conquista começa aqui.</Text>
+            {desktop ? null : <Text style={styles.title}>Sua próxima conquista começa aqui.</Text>}
             <TouchableOpacity
               style={styles.primary}
               onPress={() => router.replace('/(auth)/tela')}
@@ -40,7 +47,10 @@ export default function Entrada() {
               accessibilityLabel="Criar conta"
             >
               <MaterialCommunityIcons name="account-plus-outline" size={20} color={Design.primary} />
-              <Text style={styles.secondaryText}>Criar conta</Text>
+              <Text style={styles.secondaryText}>
+                Criar conta
+                {desktop ? <Text style={styles.dica}> (abre o site do TrailUp)</Text> : null}
+              </Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -57,6 +67,10 @@ const styles = StyleSheet.create({
   mark: { width: 40, height: 40 },
   name: { fontFamily: FontFamily.inikaBold, fontSize: 38, color: Design.text, fontWeight: '700', letterSpacing: 0 },
   scene: { flex: 1, minHeight: 260 },
+  cenaWeb: { width: '100%', height: '100%' },
+  sceneLarga: { justifyContent: 'center', alignItems: 'center' },
+  titleLargo: { fontSize: 30, lineHeight: 38, fontWeight: '700', maxWidth: 420, marginBottom: 0, textShadowColor: 'rgba(0,0,0,0.6)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 12 },
+  dica: { fontSize: 11, fontWeight: '500', opacity: 0.65 },
   actions: { width: '100%', gap: 12 },
   title: { fontFamily: FontFamily.inikaBold, color: Design.text, fontSize: 25, lineHeight: 33, textAlign: 'center', marginBottom: 12 },
   primary: { minHeight: 56, padding: 16, borderRadius: Design.radius, backgroundColor: Design.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 },
