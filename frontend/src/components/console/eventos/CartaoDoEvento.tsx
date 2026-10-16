@@ -14,6 +14,7 @@ export function CartaoDoEvento({
   onAbrir,
   onEncerrar,
   onExcluir,
+  onVerResultado,
 }: {
   evento: Evento;
   topicoNome?: string;
@@ -21,6 +22,7 @@ export function CartaoDoEvento({
   onAbrir: () => void;
   onEncerrar: () => void;
   onExcluir: () => void;
+  onVerResultado: () => void;
 }) {
   const rascunho = evento.status === "rascunho";
   return (
@@ -95,10 +97,10 @@ export function CartaoDoEvento({
           </span>
         )}
         {evento.status === "encerrado" && (
-          <span className="inline-flex items-center gap-1 text-[11.5px] text-muted-foreground">
-            <Medal className="h-3 w-3" aria-hidden="true" />
-            Resultado e medalhas: em breve
-          </span>
+          <Button size="sm" variant="outline" className="rounded-full" onClick={onVerResultado}>
+            <Medal className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+            Ver resultado
+          </Button>
         )}
       </div>
     </li>

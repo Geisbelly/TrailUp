@@ -14,11 +14,18 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native
 import { Redirect, Stack, usePathname, useSegments, type Href } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useState } from "react";
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
 
-export const unstable_settings = {
+// A âncora "(tabs)" garante, no celular, que o "voltar" de um link profundo caia
+// nas abas. Na web ela montava a área logada DUAS vezes (#505): "/" existe em
+// (auth) e em (tabs); abrindo em "/", a pilha nascia com a âncora (tabs) embaixo
+// de (auth), e o <Redirect href="/(tabs)"> do VerificacaoDeRota empilhava um
+// segundo (tabs) por cima — o primeiro ficava montado e escondido, buscando
+// dados e contando telemetria em dobro. Na web o "voltar" é o histórico do
+// navegador, então a âncora não faz falta.
+export const unstable_settings = Platform.OS === "web" ? {} : {
   anchor: "(tabs)",
 };
 

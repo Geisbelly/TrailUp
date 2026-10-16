@@ -4,6 +4,7 @@ import { useIA } from '@/context/IAContext';
 import { useUsuario } from '@/context/SessaoContext';
 import { useTrilha } from '@/context/TrilhaContext';
 import { useContentBossVisual } from '@/hooks/useContentBossVisual';
+import { useDesktopWeb } from '@/hooks/useDesktopWeb';
 import { bossVisuals } from '@/constants/bossVisuals';
 import { getProfileShellPalette } from '@/utils/profileShellTheme';
 
@@ -15,6 +16,8 @@ export function BossVictoryModal() {
     && classeAtual?.topicos.some((t) => t.id === v.state.topicoId));
   const state = victory?.state;
   const teacherArt = useContentBossVisual(state?.topicoId, state?.itemKey, state?.enemy.contentId);
+  // Web em tela larga (#346, protótipo v4): cartão mais estreito e o botão em pílula no centro.
+  const desktop = useDesktopWeb();
   if (!victory || !state) return null;
   const palette = getProfileShellPalette(perfil);
   const artUrl = state.enemy.visual?.avatarUrl ?? state.enemy.avatarUrl;
@@ -23,14 +26,14 @@ export function BossVictoryModal() {
   return (
     <Modal visible transparent animationType="fade" onRequestClose={close}>
       <View style={styles.backdrop}>
-        <View accessibilityViewIsModal style={[styles.card, { backgroundColor: palette.surfaceElevated, borderColor: palette.accent }]}>
+        <View accessibilityViewIsModal style={[styles.card, desktop && styles.cardLargo, { backgroundColor: palette.surfaceElevated, borderColor: palette.accent }]}>
           <ScrollView contentContainerStyle={styles.content} bounces={false}>
             <Text accessibilityRole="header" style={[styles.title, { color: palette.text }]}>Parabéns!</Text>
             <Text style={[styles.subtitle, { color: palette.accentStrong }]}>Você derrotou o boss!</Text>
             <Image source={artwork} resizeMode="contain" style={styles.art} accessibilityLabel={`Ilustração de ${state.enemy.name}`} />
             <Text style={[styles.name, { color: palette.text }]}>{state.enemy.name}</Text>
             <Text style={[styles.message, { color: palette.textMuted }]}>{victory.message}</Text>
-            <Pressable accessibilityRole="button" onPress={close} style={[styles.button, { backgroundColor: palette.accent }]}>
+            <Pressable accessibilityRole="button" onPress={close} style={[styles.button, desktop && styles.buttonLargo, { backgroundColor: palette.accent }]}>
               <Text style={[styles.buttonText, { color: palette.background }]}>Continuar jornada</Text>
             </Pressable>
           </ScrollView>
@@ -51,4 +54,6 @@ const styles = StyleSheet.create({
   message: { fontSize: 16, lineHeight: 24, textAlign: 'center' },
   button: { alignSelf: 'stretch', padding: 16, borderRadius: 16, marginTop: 8 },
   buttonText: { fontWeight: '700', fontSize: 16, textAlign: 'center' },
+  cardLargo: { maxWidth: 400, borderRadius: 22 },
+  buttonLargo: { alignSelf: 'center', paddingVertical: 12, paddingHorizontal: 32, borderRadius: 999 },
 });
