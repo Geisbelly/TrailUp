@@ -25,6 +25,7 @@ export function ProfessorApprovalSection() {
   const { user } = useAuth();
   const [processing, setProcessing] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState<string | null>(null);
+  const [ultima, setUltima] = useState<{ nome: string; liberado_em: string } | null>(null);
 
   const loadPending = useCallback(async () => {
     setIsLoading(true);
@@ -59,6 +60,20 @@ export function ProfessorApprovalSection() {
   useEffect(() => {
     loadPending();
   }, [loadPending]);
+
+  // "Última aprovação" do estado vazio. Opcional: se a função não existe ainda ou ninguém tem data
+  // (liberados antes da coluna liberado_em), a frase simplesmente não aparece.
+  useEffect(() => {
+    let ativo = true;
+    supabase.rpc("aprovacoes_ultima" as never).then(({ data, error }) => {
+      const lista = data as unknown as { nome: string; liberado_em: string }[] | null;
+      const linha = Array.isArray(lista) && lista.length > 0 ? lista[0] : null;
+      if (ativo && !error && linha && linha.nome && linha.liberado_em) setUltima(linha);
+    });
+    return () => {
+      ativo = false;
+    };
+  }, []);
 
   const approve = async (professorId: string) => {
     setProcessing(professorId);
@@ -119,6 +134,11 @@ export function ProfessorApprovalSection() {
           </span>
           <h3 className="text-[22px] font-bold">Nenhum professor aguardando aprovação</h3>
           <p className="max-w-[440px] text-sm leading-relaxed text-muted-foreground">Novos cadastros aparecem aqui quando alguém se inscrever.</p>
+          {ultima && (
+            <p className="text-[12.5px] text-muted-foreground">
+              Última aprovação: {ultima.nome}, em {dataCurta(ultima.liberado_em)}.
+            </p>
+          )}
         </div>
       ) : (
         <>
