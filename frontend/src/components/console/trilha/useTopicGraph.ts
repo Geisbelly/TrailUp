@@ -16,6 +16,7 @@ export function useTopicGraph(
 ) {
   const [selectedEdge, setSelectedEdge] = useState<{ from: number; to: number; type: ConnectorType } | null>(null);
   const [hasPendingChanges, setHasPendingChanges] = useState(false);
+  const [conflitoPendente, setConflitoPendente] = useState<{ fromId: number; toId: number; type: ConnectorType; mensagem: string } | null>(null);
   const resetPendingChanges = useCallback(() => setHasPendingChanges(false), []);
   const [positions, setPositions] = useState<Record<number, { x: number; y: number }>>({});
   const [canvasOffset, setCanvasOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -35,11 +36,26 @@ export function useTopicGraph(
     const avaliacao = avaliarLigacao(topicos, fromId, toId, type);
     if (avaliacao.resultado === "ignorar") return;
     if (avaliacao.resultado === "turmas_diferentes") { onInvalidLink?.(avaliacao.from, avaliacao.to); return; }
-    if (avaliacao.resultado === "conflito" && !window.confirm(avaliacao.mensagem)) return;
+    if (avaliacao.resultado === "conflito") {
+      // Quem decide é o professor, num diálogo na tela (ConfirmarLigacao); nada muda até ele confirmar.
+      setConflitoPendente({ fromId, toId, type, mensagem: avaliacao.mensagem });
+      return;
+    }
+    efetivarLigacao(fromId, toId, type);
+  };
 
+  const efetivarLigacao = (fromId: number, toId: number, type: ConnectorType) => {
     setTopicos((prev) => aplicarLigacao(prev, fromId, toId, type));
     setHasPendingChanges(true);
   };
+
+  const confirmarConflito = () => {
+    if (!conflitoPendente) return;
+    efetivarLigacao(conflitoPendente.fromId, conflitoPendente.toId, conflitoPendente.type);
+    setConflitoPendente(null);
+  };
+
+  const cancelarConflito = () => setConflitoPendente(null);
 
   const removeLink = (fromId: number, toId: number, type: ConnectorType) => {
     setTopicos((prev) => removerLigacao(prev, fromId, toId, type));
@@ -277,6 +293,9 @@ export function useTopicGraph(
     NODE_WIDTH,
     NODE_HEIGHT,
     connectNodes,
+    conflitoPendente,
+    confirmarConflito,
+    cancelarConflito,
     removeLink,
     handleNodePointerDown,
     handleNodePointerMove,
