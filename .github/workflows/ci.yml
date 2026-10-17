@@ -160,7 +160,11 @@ jobs:
           node-version: '22'
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          # Fixado, nao `latest`: com `--frozen-lockfile` abaixo, uma mudanca
+          # de formato do lock num bun futuro derrubaria este job sem ninguem
+          # ter mexido em codigo. Esta e a versao que gerou o `bun.lock`.
+          # Ao subir, rode `bun install` e commite o lock junto.
+          bun-version: 1.4.3
       # `--frozen-lockfile` e o que a gente quer: o job falha se o lock nao
       # casar com o package.json, em vez de resolver sozinho e esconder a
       # divergencia. Ficou fora por um tempo porque `bun.lock` estava
