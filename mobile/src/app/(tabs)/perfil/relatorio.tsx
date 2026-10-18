@@ -32,6 +32,8 @@ import { useTrilha } from "@/context/TrilhaContext";
 import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { registrarAlvoTour } from "@/utils/tourTargets";
+import { RelatorioDesktop } from "@/components/web/RelatorioDesktop";
+import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 
 // Verifique se o caminho da imagem está correto
 const appLogoSource = require("@/assets/images/trailup-brand-logo.png");
@@ -54,6 +56,7 @@ export default function RelatorioDadosScreen() {
   const { usuario } = useUsuario();
   const { classes } = useTrilha();
   const { eventos, conquistas, ranking, posicoesDoAluno } = useConquistaRank();
+  const desktop = useDesktopWeb();
   
   const [logoBase64, setLogoBase64] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView | null>(null);
@@ -442,6 +445,22 @@ export default function RelatorioDadosScreen() {
       console.error(err);
     }
   };
+
+  // Web em tela larga (#346, protótipo v4): página própria, PDF pela impressão do navegador e erro visível.
+  if (desktop) {
+    const posicoes = (posicoesDoAluno ?? []).map((p) => Number(p.posicao)).filter((n) => Number.isFinite(n) && n > 0);
+    return (
+      <RelatorioDesktop
+        html={htmlRelatorio}
+        nome={usuario?.nome ?? "Aluno"}
+        totalEventos={resumoEventos.length}
+        melhorPosicao={posicoes.length ? Math.min(...posicoes) : null}
+        palette={palette}
+        resumoRef={reportSummaryGuideRef}
+        botaoRef={reportButtonGuideRef}
+      />
+    );
+  }
 
   const ProgressBar = ({ progress }: { progress: number }) => (
     <View style={[styles.progressTrack, { backgroundColor: palette.progressTrack }]}>

@@ -9,6 +9,7 @@ import { X, Loader2, Home, LogIn } from "lucide-react";
 import { AuthBrand, AuthScenery } from "@/components/auth/AuthScenery";
 
 import { AlunoSignupWizard } from "@/components/auth/AlunoSignupWizard";
+import { montarMedidaDoPerfil } from "@/features/signup/medidaDoPerfil";
 import { ProfessorSignupForm } from "@/components/auth/ProfessorSignupForm";
 
 type Status = "loading" | "ready" | "error";
@@ -163,6 +164,30 @@ export default function EmailConfirm() {
         .eq("id", session.user.id);
 
       if (perfilAtivoError) throw perfilAtivoError;
+
+      // A MEDIDA do perfil, nao so' o resultado: ordem declarada, confianca e
+      // os motivos por tras dela. E' o prior que a fase 3 da issue #1 vai
+      // comparar com o comportamento do aluno no app.
+      //
+      // Falhar aqui NAO derruba o cadastro: o perfil ja' foi salvo e a conta
+      // existe. Mas tambem nao some em silencio — some em silencio foi
+      // exatamente o problema que o #295 corrigiu no mobile.
+      try {
+        const medida = montarMedidaDoPerfil({
+          alunoId: session.user.id,
+          ordenacao: payload.ordenacao,
+          afinidade: payload.brainhexPercent,
+          confianca: payload.confiancaDoPerfil,
+          concordancia: payload.concordanciaDoPerfil,
+          qualidade: payload.qualidadeDaResposta,
+        });
+        const { error: medidaError } = await supabase
+          .from("aluno_perfil_medida" as never)
+          .insert(medida as never);
+        if (medidaError) throw medidaError;
+      } catch (erro) {
+        console.warn("[cadastro] medida do perfil nao foi gravada:", erro);
+      }
 
       localStorage.removeItem(`${STORAGE_PREFIX}${sessionEmail.toLowerCase()}`);
       toast.success("Cadastro de aluno concluído!");

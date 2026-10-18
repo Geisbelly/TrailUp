@@ -1,4 +1,6 @@
 import { HallBackground, OrnamentDivider } from "@/components/HallTheme";
+import { BotaoAuth, CabecaPainelAuth, CampoAuth, COR_AUTH, DivisorAuth, IconeGoogle, MolduraAuthDesktop } from "@/components/web/AuthDesktop";
+import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { app } from "@/constants/definicoes";
 import { useDialog } from "@/context/DialogContext";
 import { useLoading } from "@/context/LoadingContext";
@@ -13,6 +15,7 @@ import {
   KeyboardAvoidingView,
   Linking,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -29,6 +32,7 @@ export default function Login() {
   const router = useRouter();
   const { setLoading } = useLoading();
   const { showDialog } = useDialog();
+  const desktop = useDesktopWeb();
 
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
@@ -92,9 +96,12 @@ export default function Login() {
       setLoading(true);
       await autenticarComGoogle();
     } catch (error: unknown) {
+      const authMessage = getAuthErrorMessage(error);
+      const errorType = error instanceof Error ? error.name : "UnknownError";
+      console.warn(`[Login] Falha no Google OAuth (${errorType}).`);
       showDialog({
         title: "Não foi possível entrar",
-        description: getAuthErrorMessage(error),
+        description: authMessage,
         tone: "error",
       });
     } finally {
@@ -102,6 +109,51 @@ export default function Login() {
       setLoading(false);
     }
   };
+
+  // Web em tela larga (#346, protótipo v4, 01-login.html): a frase à esquerda e o cartão do formulário à direita.
+  if (desktop) {
+    return (
+      <MolduraAuthDesktop
+        titulo="Sua próxima conquista começa aqui."
+        texto="Entre para continuar sua trilha. Ela se adapta ao seu jeito de aprender."
+      >
+        <CabecaPainelAuth titulo="Acesse sua conta" apoio="Continue de onde você parou" />
+        <CampoAuth
+          rotulo="E-mail"
+          icone="mail"
+          placeholder="voce@escola.com"
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="email-address"
+        />
+        <CampoAuth
+          rotulo="Senha"
+          icone="lock"
+          senha
+          placeholder="Sua senha"
+          value={senha}
+          onChangeText={setSenha}
+          onSubmitEditing={() => void handleLogin()}
+        />
+        <View style={styles.esqueciLinha}>
+          <Pressable accessibilityRole="link" onPress={() => router.push("/(auth)/recuperarSenha")}>
+            <Text style={styles.esqueciTexto}>Esqueci minha senha</Text>
+          </Pressable>
+        </View>
+        <BotaoAuth rotulo={carregando ? "Entrando..." : "Entrar"} onPress={() => void handleLogin()} desativado={!dadosValidos} carregando={carregando} />
+        <DivisorAuth />
+        <BotaoAuth secundario rotulo="Continuar com Google" icone={<IconeGoogle />} onPress={() => void handleGoogleLogin()} desativado={carregando} />
+        <Text style={styles.rodapeLargo}>
+          Não tem uma conta?{" "}
+          <Text style={styles.rodapeLink} accessibilityRole="link" onPress={() => Linking.openURL(app.siteCadastro)}>
+            Cadastre-se ↗
+          </Text>
+        </Text>
+      </MolduraAuthDesktop>
+    );
+  }
 
   return (
     <View style={[styles.outerContainer, { backgroundColor: AUTH_PALETTE.background }]}>
@@ -230,6 +282,10 @@ export default function Login() {
 }
 
 const styles = StyleSheet.create({
+  esqueciLinha: { alignItems: "flex-end", marginTop: -6, marginBottom: 18 },
+  esqueciTexto: { fontSize: 13, fontWeight: "500", color: COR_AUTH.link },
+  rodapeLargo: { textAlign: "center", fontSize: 14, color: COR_AUTH.textoMuted, marginTop: 20 },
+  rodapeLink: { color: COR_AUTH.link, fontWeight: "600" },
   outerContainer: {
     flex: 1,
   },

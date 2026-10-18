@@ -450,9 +450,12 @@ function MaterialTabContent({
   const partes = getMaterialPartes(material);
   const [activeIndex, setActiveIndex] = useState(0);
 
+  // Volta à primeira parte quando o tipo ou o arquivo do material muda. A URL é
+  // calculada fora da lista de dependências porque o lint não analisa chamada de função ali.
+  const urlDoMaterial = materialUrl(material);
   useEffect(() => {
     setActiveIndex(0);
-  }, [tipo, materialUrl(material)]);
+  }, [tipo, urlDoMaterial]);
 
   const safeIndex = Math.min(activeIndex, partes.length - 1);
   const activeParte = partes[safeIndex];

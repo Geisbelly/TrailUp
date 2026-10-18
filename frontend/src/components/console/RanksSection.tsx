@@ -1,29 +1,29 @@
 import { useEffect, useMemo, useState } from "react";
+import { Check, ChevronRight, Clock, Pencil, Plus, Sparkles, Trash2, Trophy, X } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Trophy, Medal, Crown, Award } from "lucide-react";
-import { toast } from "sonner";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { selectView } from "@/lib/supabaseViews";
 import { useAuth } from "@/hooks/useAuth";
+import type { BrainHexProfileKey } from "@/features/signup/brainhex";
+import { COR_DO_PERFIL, NOME_DO_PERFIL } from "./dashboard/perfilCores";
+import { iniciais } from "./meusdados/conta";
+import {
+  CRITERIOS,
+  POR_PAGINA,
+  criterioValido,
+  formatarPontos,
+  perfisDominantes,
+  podio,
+  rotuloDoCriterio,
+  type CriterioChave,
+  type Posicao,
+} from "./rankings/rankings";
 
 interface RankTipo {
   id: number;
@@ -39,20 +39,26 @@ interface Rank {
   periodo: string | null;
 }
 
-interface RankPosicao {
-  id: string;
-  rank_id: number;
-  aluno_id: string;
-  aluno_nome: string;
-  posicao: number | null;
-  pontuacao: number | null;
-  medalha: string | null;
-}
-
 interface Classe {
   id: number;
   descricao: string | null;
 }
+
+const ICONE_CRITERIO: Record<CriterioChave, LucideIcon> = { pontuacao: Sparkles, tempo: Clock, acertos: Check };
+
+const rotuloCampo = "text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground";
+const campo = "mt-2 rounded-[14px] bg-background";
+const card = "overflow-hidden rounded-[20px] border bg-card";
+const botaoRedondo = "flex h-7 w-7 flex-none items-center justify-center rounded-full bg-background text-muted-foreground hover:text-foreground";
+const FORM_TIPO_VAZIO = { nome: "", descricao: "", criterio: "pontuacao" as CriterioChave };
+const FORM_RANK_VAZIO = { tipo_id: "", classe_id: "", periodo: "" };
+
+/** Pastilhas do pódio: prata e bronze do protótipo; o 1º usa a cor primária do console. */
+const PODIO = {
+  1: { avatar: "h-[68px] w-[68px] bg-primary text-primary-foreground text-[17px] shadow-[0_0_30px_hsl(var(--primary)/.5)]", base: "h-[120px] border-primary bg-primary/20 text-[40px] text-foreground", nome: "text-[15px] font-bold" },
+  2: { avatar: "h-14 w-14 bg-[#8593a2] text-[#1b1120] text-sm", base: "h-[86px] bg-muted text-[28px] text-foreground/80", nome: "text-[13.5px] font-semibold" },
+  3: { avatar: "h-14 w-14 bg-[#8a6a48] text-[#1b1120] text-sm", base: "h-16 border-[#4a3a26] bg-[#2e2419] text-2xl text-[#d3ad83]", nome: "text-[13.5px] font-semibold" },
+} as const;
 
 export default function RanksSection() {
   const { user } = useAuth();
@@ -60,34 +66,36 @@ export default function RanksSection() {
 
   const [tipos, setTipos] = useState<RankTipo[]>([]);
   const [ranks, setRanks] = useState<Rank[]>([]);
-  const [posicoes, setPosicoes] = useState<RankPosicao[]>([]);
+  const [posicoes, setPosicoes] = useState<Posicao[]>([]);
+  const [perfis, setPerfis] = useState<Map<string, BrainHexProfileKey>>(new Map());
   const [classes, setClasses] = useState<Classe[]>([]);
   const [selectedRank, setSelectedRank] = useState<Rank | null>(null);
-  const [isTipoDialogOpen, setIsTipoDialogOpen] = useState(false);
-  const [isRankDialogOpen, setIsRankDialogOpen] = useState(false);
-  const [editingTipo, setEditingTipo] = useState<RankTipo | null>(null);
-  const [editingRank, setEditingRank] = useState<Rank | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [tipoFormData, setTipoFormData] = useState({ nome: "", descricao: "", criterio: "pontuacao" });
-  const [rankFormData, setRankFormData] = useState({ tipo_id: "", classe_id: "", periodo: "" });
+  const [verTodas, setVerTodas] = useState(false);
+
+  // Formulários inline (protótipo): `null` = fechado, objeto = aberto (editando se tiver id).
+  const [tipoForm, setTipoForm] = useState<{ id?: number } | null>(null);
+  const [tipoFormData, setTipoFormData] = useState(FORM_TIPO_VAZIO);
+  const [rankForm, setRankForm] = useState<{ id?: number } | null>(null);
+  const [rankFormData, setRankFormData] = useState(FORM_RANK_VAZIO);
+  const [excluirTipo, setExcluirTipo] = useState<number | null>(null);
+  const [excluirRank, setExcluirRank] = useState<number | null>(null);
 
   const loadData = async () => {
     if (!professorId) return;
     setIsLoading(true);
     try {
-      const [{ data: tiposData, error: tiposError }, { data: classesData, error: classesError }] =
-        await Promise.all([
-          supabase.from("rank_tipo").select("id, nome, descricao, criterio").order("created_at", { ascending: false }),
-          supabase.from("classe").select("id, descricao").eq("professor_id", professorId),
-        ]);
+      const [{ data: tiposData, error: tiposError }, { data: classesData, error: classesError }] = await Promise.all([
+        supabase.from("rank_tipo").select("id, nome, descricao, criterio").order("created_at", { ascending: false }),
+        supabase.from("classe").select("id, descricao").eq("professor_id", professorId),
+      ]);
 
       if (tiposError) throw tiposError;
       if (classesError) throw classesError;
 
       const classIds = (classesData ?? []).map((c) => c.id);
-      const orClause =
-        classIds.length > 0 ? `classe_id.in.(${classIds.join(",")}),classe_id.is.null` : "classe_id.is.null";
+      const orClause = classIds.length > 0 ? `classe_id.in.(${classIds.join(",")}),classe_id.is.null` : "classe_id.is.null";
 
       const { data: ranksData, error: ranksError } = await supabase
         .from("ranks")
@@ -99,14 +107,11 @@ export default function RanksSection() {
 
       setTipos((tiposData as RankTipo[]) ?? []);
       setClasses((classesData as Classe[]) ?? []);
-      setRanks((ranksData as Rank[]) ?? []);
-
-      if (ranksData && ranksData.length > 0) {
-        setSelectedRank(ranksData[0] as Rank);
-      } else {
-        setSelectedRank(null);
-        setPosicoes([]);
-      }
+      const lista = (ranksData as Rank[]) ?? [];
+      setRanks(lista);
+      // Mantém o ranking aberto depois de salvar/excluir outro; só cai no primeiro se o atual sumiu.
+      setSelectedRank((atual) => lista.find((r) => r.id === atual?.id) ?? lista[0] ?? null);
+      if (lista.length === 0) setPosicoes([]);
     } catch (error) {
       console.error("Erro ao carregar rankings:", error);
       toast.error("Nao foi possivel carregar rankings.");
@@ -119,26 +124,37 @@ export default function RanksSection() {
     try {
       // vw_rank_posicoes_por_classe calcula posicao/pontuacao/medalha em tempo real
       // a partir de ranks + eventos_aluno + classe_aluno; nao existe tabela rank_posicoes.
-      const { data, error } = await supabase
-        .from("vw_rank_posicoes_por_classe")
-        .select("rank_id, id_aluno, nome_aluno, posicao, pontuacao, medalha")
+      const { data, error } = await selectView("vw_rank_posicoes_por_classe", "rank_id, id_aluno, nome_aluno, posicao, pontuacao")
         .eq("rank_id", rankId)
         .order("posicao", { ascending: true });
 
       if (error) throw error;
 
-      const mapped =
-        data?.map((p) => ({
-          id: p.id_aluno,
-          rank_id: p.rank_id,
-          aluno_id: p.id_aluno,
-          posicao: p.posicao,
-          pontuacao: p.pontuacao,
-          medalha: p.medalha,
-          aluno_nome: p.nome_aluno ?? "",
-        })) ?? [];
-
+      const linhas = (data ?? []) as { id_aluno: string; nome_aluno: string | null; posicao: number | null; pontuacao: number | null }[];
+      const mapped: Posicao[] = linhas.map((p) => ({
+        aluno_id: p.id_aluno,
+        aluno_nome: p.nome_aluno ?? "",
+        posicao: p.posicao,
+        pontuacao: p.pontuacao,
+      }));
       setPosicoes(mapped);
+      setVerTodas(false);
+
+      // Perfil dominante é enfeite da tabela: se falhar, a coluna só fica vazia.
+      const ids = mapped.map((m) => m.aluno_id).filter(Boolean);
+      if (ids.length === 0) {
+        setPerfis(new Map());
+        return;
+      }
+      const { data: perfilData } = await supabase
+        .from("aluno_perfil")
+        .select("aluno_id, afinidade, perfil:perfil_id ( nome )")
+        .in("aluno_id", ids);
+      setPerfis(
+        perfisDominantes(
+          (perfilData ?? []) as unknown as { aluno_id: string | null; afinidade: number | null; perfil: { nome: string } | null }[],
+        ),
+      );
     } catch (error) {
       console.error("Erro ao carregar posicoes:", error);
       toast.error("Nao foi possivel carregar as posicoes.");
@@ -151,52 +167,32 @@ export default function RanksSection() {
   }, [professorId]);
 
   useEffect(() => {
-    if (selectedRank) {
-      loadPosicoes(selectedRank.id);
-    }
+    if (selectedRank) loadPosicoes(selectedRank.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedRank?.id]);
 
+  const abrirTipo = (tipo?: RankTipo) => {
+    setTipoFormData(
+      tipo ? { nome: tipo.nome, descricao: tipo.descricao || "", criterio: criterioValido(tipo.criterio) } : FORM_TIPO_VAZIO,
+    );
+    setTipoForm({ id: tipo?.id });
+  };
+
   const handleSubmitTipo = async () => {
-    if (!tipoFormData.nome) {
+    if (!tipoFormData.nome.trim()) {
       toast.error("Preencha o nome do tipo de ranking");
       return;
     }
-
     setIsSaving(true);
     try {
-      if (editingTipo) {
-        const { error } = await supabase
-          .from("rank_tipo")
-          .update({
-            nome: tipoFormData.nome,
-            descricao: tipoFormData.descricao,
-            criterio: tipoFormData.criterio,
-          })
-          .eq("id", editingTipo.id);
-
-        if (error) throw error;
-        toast.success("Tipo de ranking atualizado!");
-      } else {
-        const { data, error } = await supabase
-          .from("rank_tipo")
-          .insert({
-            nome: tipoFormData.nome,
-            descricao: tipoFormData.descricao,
-            criterio: tipoFormData.criterio,
-          })
-          .select("id, nome, descricao, criterio")
-          .single();
-
-        if (error) throw error;
-        setTipos((prev) => [...prev, data as RankTipo]);
-        toast.success("Tipo de ranking criado!");
-      }
-
+      const payload = { nome: tipoFormData.nome, descricao: tipoFormData.descricao, criterio: tipoFormData.criterio };
+      const { error } = tipoForm?.id
+        ? await supabase.from("rank_tipo").update(payload).eq("id", tipoForm.id)
+        : await supabase.from("rank_tipo").insert(payload);
+      if (error) throw error;
+      toast.success(tipoForm?.id ? "Tipo de ranking atualizado!" : "Tipo de ranking criado!");
       await loadData();
-      setIsTipoDialogOpen(false);
-      setEditingTipo(null);
-      setTipoFormData({ nome: "", descricao: "", criterio: "pontuacao" });
+      setTipoForm(null);
     } catch (error) {
       console.error("Erro ao salvar tipo de ranking:", error);
       toast.error("Não foi possível salvar o tipo de ranking.");
@@ -205,17 +201,12 @@ export default function RanksSection() {
     }
   };
 
-  const handleEditTipo = (tipo: RankTipo) => {
-    setEditingTipo(tipo);
-    setTipoFormData({ nome: tipo.nome, descricao: tipo.descricao || "", criterio: tipo.criterio || "pontuacao" });
-    setIsTipoDialogOpen(true);
-  };
-
   const handleDeleteTipo = async (id: number) => {
     try {
       const { error } = await supabase.from("rank_tipo").delete().eq("id", id);
       if (error) throw error;
       setTipos((prev) => prev.filter((t) => t.id !== id));
+      setExcluirTipo(null);
       toast.success("Tipo de ranking excluido!");
     } catch (error) {
       console.error("Erro ao excluir tipo:", error);
@@ -223,62 +214,40 @@ export default function RanksSection() {
     }
   };
 
+  const abrirRank = (rank?: Rank) => {
+    setRankFormData(
+      rank
+        ? { tipo_id: rank.tipo_id.toString(), classe_id: rank.classe_id?.toString() || "", periodo: rank.periodo || "" }
+        : FORM_RANK_VAZIO,
+    );
+    setRankForm({ id: rank?.id });
+  };
+
   const handleSubmitRank = async () => {
-    if (!rankFormData.tipo_id || !rankFormData.periodo) {
+    if (!rankFormData.tipo_id || !rankFormData.periodo.trim()) {
       toast.error("Preencha o tipo e período");
       return;
     }
-
     setIsSaving(true);
     try {
-      if (editingRank) {
-        const { error } = await supabase
-          .from("ranks")
-          .update({
-            tipo_id: parseInt(rankFormData.tipo_id, 10),
-            classe_id: rankFormData.classe_id ? parseInt(rankFormData.classe_id, 10) : null,
-            periodo: rankFormData.periodo,
-          })
-          .eq("id", editingRank.id);
-
-        if (error) throw error;
-        toast.success("Ranking atualizado!");
-      } else {
-        const { data, error } = await supabase
-          .from("ranks")
-          .insert({
-            tipo_id: parseInt(rankFormData.tipo_id, 10),
-            classe_id: rankFormData.classe_id ? parseInt(rankFormData.classe_id, 10) : null,
-            periodo: rankFormData.periodo,
-          })
-          .select("id, tipo_id, classe_id, periodo")
-          .single();
-
-        if (error) throw error;
-        setRanks((prev) => [...prev, data as Rank]);
-        toast.success("Ranking criado!");
-      }
-
+      const payload = {
+        tipo_id: parseInt(rankFormData.tipo_id, 10),
+        classe_id: rankFormData.classe_id ? parseInt(rankFormData.classe_id, 10) : null,
+        periodo: rankFormData.periodo,
+      };
+      const { error } = rankForm?.id
+        ? await supabase.from("ranks").update(payload).eq("id", rankForm.id)
+        : await supabase.from("ranks").insert(payload);
+      if (error) throw error;
+      toast.success(rankForm?.id ? "Ranking atualizado!" : "Ranking criado!");
       await loadData();
-      setIsRankDialogOpen(false);
-      setEditingRank(null);
-      setRankFormData({ tipo_id: "", classe_id: "", periodo: "" });
+      setRankForm(null);
     } catch (error) {
       console.error("Erro ao salvar ranking:", error);
       toast.error("Não foi possível salvar o ranking.");
     } finally {
       setIsSaving(false);
     }
-  };
-
-  const handleEditRank = (rank: Rank) => {
-    setEditingRank(rank);
-    setRankFormData({
-      tipo_id: rank.tipo_id.toString(),
-      classe_id: rank.classe_id?.toString() || "",
-      periodo: rank.periodo || "",
-    });
-    setIsRankDialogOpen(true);
   };
 
   const handleDeleteRank = async (id: number) => {
@@ -290,6 +259,7 @@ export default function RanksSection() {
         setSelectedRank(null);
         setPosicoes([]);
       }
+      setExcluirRank(null);
       toast.success("Ranking excluido!");
     } catch (error) {
       console.error("Erro ao excluir ranking:", error);
@@ -297,163 +267,195 @@ export default function RanksSection() {
     }
   };
 
-  const getTipoName = (tipoId: number) => tipos.find((t) => t.id === tipoId)?.nome || "Desconhecido";
-  const getClassName = (classeId: number | null) => {
-    if (!classeId) return "Geral";
-    return classes.find((c) => c.id === classeId)?.descricao || "Classe não encontrada";
-  };
+  const tipoDe = (tipoId: number) => tipos.find((t) => t.id === tipoId);
+  const nomeDoTipo = (tipoId: number) => tipoDe(tipoId)?.nome || "Desconhecido";
+  const nomeDaClasse = (classeId: number | null) =>
+    classeId ? classes.find((c) => c.id === classeId)?.descricao || "Classe não encontrada" : "Geral";
+  const titulo = (rank: Rank) => `${nomeDoTipo(rank.tipo_id)} · ${nomeDaClasse(rank.classe_id)}`;
 
-  const getMedalIcon = (medalha: string | null) => {
-    switch (medalha) {
-      case "ouro":
-        return <Crown className="h-4 w-4 text-yellow-500" />;
-      case "prata":
-        return <Medal className="h-4 w-4 text-gray-400" />;
-      case "bronze":
-        return <Award className="h-4 w-4 text-amber-600" />;
-      default:
-        return null;
-    }
-  };
+  const rankPosicoes = useMemo(() => (selectedRank ? posicoes : []), [posicoes, selectedRank]);
+  const resto = rankPosicoes.slice(3);
+  const restoVisivel = verTodas ? resto : resto.slice(0, POR_PAGINA);
 
-  const rankPosicoes = useMemo(
-    () => (selectedRank ? posicoes.filter((p) => p.rank_id === selectedRank.id) : []),
-    [posicoes, selectedRank]
+  const confirmacao = (texto: string, detalhe: string, rotuloBotao: string, onCancelar: () => void, onConfirmar: () => void) => (
+    <div role="alertdialog" aria-label={texto} className="rounded-[14px] border border-destructive/50 bg-destructive/15 px-[17px] py-[15px]">
+      <p className="text-[13.5px] font-bold">{texto}</p>
+      <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{detalhe}</p>
+      <div className="mt-3 flex justify-end gap-2.5">
+        <Button variant="outline" size="sm" className="rounded-full border-destructive/50" onClick={onCancelar}>
+          Cancelar
+        </Button>
+        <Button variant="destructive" size="sm" className="rounded-full font-bold" onClick={onConfirmar}>
+          <Trash2 className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+          {rotuloBotao}
+        </Button>
+      </div>
+    </div>
   );
+
+  const cabecalho = (titulo: string, sub: string, acao: React.ReactNode) => (
+    <div className="flex flex-wrap items-center gap-3.5 px-[22px] pb-4 pt-5">
+      <div>
+        <h3 className="text-lg font-bold">{titulo}</h3>
+        <p className="mt-1 text-xs text-muted-foreground">{sub}</p>
+      </div>
+      <div className="ml-auto">{acao}</div>
+    </div>
+  );
+
+  const painelForm = (titulo: string, fechar: () => void, corpo: React.ReactNode, salvar: () => void, rotuloSalvar: string) => (
+    <div className="mx-[22px] mb-[18px] rounded-2xl border border-primary bg-muted px-5 py-[18px]">
+      <div className="flex items-center gap-3">
+        <h4 className="text-[14.5px] font-bold">{titulo}</h4>
+        <button type="button" onClick={fechar} aria-label="Fechar formulário" className={`${botaoRedondo} ml-auto`}>
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <div className="mt-3.5 space-y-3">{corpo}</div>
+      <div className="mt-[18px] flex justify-end gap-2.5">
+        <Button variant="outline" className="rounded-full" onClick={fechar}>
+          Cancelar
+        </Button>
+        <Button className="rounded-full font-bold" onClick={salvar} disabled={isSaving}>
+          {isSaving ? "Salvando…" : rotuloSalvar}
+        </Button>
+      </div>
+    </div>
+  );
+
+  const selecionado = selectedRank;
+  const criterioSelecionado = selecionado ? rotuloDoCriterio(tipoDe(selecionado.tipo_id)?.criterio) : "";
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">Gerenciamento de Rankings</h2>
-        <p className="text-muted-foreground">Configure tipos de ranking e acompanhe as posições dos alunos</p>
+        <h2 className="text-[32px] font-bold leading-tight">Rankings</h2>
+        <p className="mt-2 text-[14.5px] text-muted-foreground">Configure os critérios de classificação e acompanhe as posições dos alunos.</p>
       </div>
 
-      <Card>
-        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
-          <div>
-            <CardTitle className="text-lg">Tipos de Ranking</CardTitle>
-            <CardDescription>Configure os critérios de classificação</CardDescription>
-          </div>
-          <Dialog
-            open={isTipoDialogOpen}
-            onOpenChange={(open) => {
-              setIsTipoDialogOpen(open);
-              if (!open) {
-                setEditingTipo(null);
-                setTipoFormData({ nome: "", descricao: "", criterio: "pontuacao" });
-              }
-            }}
-          >
-            <DialogTrigger asChild>
-              <Button size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                Novo Tipo
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{editingTipo ? "Editar" : "Novo"} Tipo de Ranking</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label>Nome *</Label>
-                  <Input
-                    value={tipoFormData.nome}
-                    onChange={(e) => setTipoFormData({ ...tipoFormData, nome: e.target.value })}
-                    placeholder="Ex: Pontuação Geral"
-                  />
-                </div>
-                <div>
-                  <Label>Descrição</Label>
-                  <Textarea
-                    value={tipoFormData.descricao}
-                    onChange={(e) => setTipoFormData({ ...tipoFormData, descricao: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label>Critério</Label>
-                  <Select
-                    value={tipoFormData.criterio}
-                    onValueChange={(v) => setTipoFormData({ ...tipoFormData, criterio: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pontuacao">Pontuação</SelectItem>
-                      <SelectItem value="tempo">Tempo</SelectItem>
-                      <SelectItem value="acertos">Acertos</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button onClick={handleSubmitTipo} className="w-full" disabled={isSaving}>
-                  Salvar
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <p className="text-sm text-muted-foreground">Carregando tipos...</p>
-          ) : (
-            <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-              {tipos.map((tipo) => (
-                <div key={tipo.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
-                    <p className="font-medium text-sm">{tipo.nome}</p>
-                    <p className="text-xs text-muted-foreground capitalize">{tipo.criterio}</p>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="sm" onClick={() => handleEditTipo(tipo)}>
-                      <Pencil className="h-3 w-3" />
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleDeleteTipo(tipo.id)}>
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <div className="grid items-start gap-5 [grid-template-columns:repeat(auto-fit,minmax(360px,1fr))]">
+        <div className="flex flex-col gap-5">
+          <section className={card}>
+            {cabecalho(
+              "Tipos de ranking",
+              "O critério define como as posições são calculadas",
+              <Button className="rounded-full font-bold" onClick={() => abrirTipo()}>
+                <Plus className="mr-2 h-3.5 w-3.5" aria-hidden="true" />
+                Novo tipo
+              </Button>,
+            )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
-            <div>
-              <CardTitle className="text-lg">Rankings Ativos</CardTitle>
-              <CardDescription>Clique para ver posições</CardDescription>
-            </div>
-            <Dialog
-              open={isRankDialogOpen}
-              onOpenChange={(open) => {
-                setIsRankDialogOpen(open);
-                if (!open) {
-                  setEditingRank(null);
-                  setRankFormData({ tipo_id: "", classe_id: "", periodo: "" });
-                }
-              }}
-            >
-              <DialogTrigger asChild>
-                <Button size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Novo Ranking
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>{editingRank ? "Editar" : "Novo"} Ranking</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
+            {tipoForm &&
+              painelForm(
+                tipoForm.id ? "Editar tipo de ranking" : "Novo tipo de ranking",
+                () => setTipoForm(null),
+                <>
                   <div>
-                    <Label>Tipo *</Label>
-                    <Select
-                      value={rankFormData.tipo_id}
-                      onValueChange={(v) => setRankFormData({ ...rankFormData, tipo_id: v })}
-                    >
-                      <SelectTrigger>
+                    <Label htmlFor="tipo-nome" className={rotuloCampo}>Nome *</Label>
+                    <Input id="tipo-nome" className={campo} value={tipoFormData.nome} onChange={(e) => setTipoFormData({ ...tipoFormData, nome: e.target.value })} placeholder="Ex: Maratona de XP" />
+                  </div>
+                  <div>
+                    <Label htmlFor="tipo-desc" className={rotuloCampo}>Descrição</Label>
+                    <Textarea id="tipo-desc" rows={2} className={campo} value={tipoFormData.descricao} onChange={(e) => setTipoFormData({ ...tipoFormData, descricao: e.target.value })} placeholder="Ex.: soma de XP conquistado nas atividades do bimestre" />
+                  </div>
+                  <div role="radiogroup" aria-label="Critério">
+                    <span className={rotuloCampo}>Critério</span>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {CRITERIOS.map(({ chave, rotulo }) => {
+                        const Icone = ICONE_CRITERIO[chave];
+                        const ativo = tipoFormData.criterio === chave;
+                        return (
+                          <button
+                            key={chave}
+                            type="button"
+                            role="radio"
+                            aria-checked={ativo}
+                            onClick={() => setTipoFormData({ ...tipoFormData, criterio: chave })}
+                            className={`flex items-center gap-2 rounded-full border px-3.5 py-2 text-[12.5px] font-semibold ${
+                              ativo ? "border-primary bg-primary/20 text-foreground" : "border-border text-muted-foreground hover:text-foreground"
+                            }`}
+                          >
+                            <Icone className="h-3.5 w-3.5" aria-hidden="true" />
+                            {rotulo}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>,
+                handleSubmitTipo,
+                tipoForm.id ? "Salvar tipo" : "Criar tipo",
+              )}
+
+            <div className="flex flex-col gap-2.5 px-[22px] pb-[22px]">
+              {isLoading && tipos.length === 0 ? (
+                [0, 1, 2].map((i) => <div key={i} className="h-[72px] animate-pulse rounded-2xl bg-muted" />)
+              ) : tipos.length === 0 ? (
+                <p className="py-6 text-center text-sm text-muted-foreground">Nenhum tipo de ranking ainda. Crie o primeiro em “Novo tipo”.</p>
+              ) : (
+                tipos.map((tipo) => {
+                  const crit = criterioValido(tipo.criterio);
+                  const Icone = ICONE_CRITERIO[crit];
+                  const usando = ranks.filter((r) => r.tipo_id === tipo.id).length;
+                  if (excluirTipo === tipo.id) {
+                    return (
+                      <div key={tipo.id}>
+                        {confirmacao(
+                          `Excluir o tipo “${tipo.nome}”?`,
+                          usando > 0
+                            ? `${usando} ${usando === 1 ? "ranking usa" : "rankings usam"} este tipo.`
+                            : "Nenhum ranking usa este tipo.",
+                          "Excluir tipo",
+                          () => setExcluirTipo(null),
+                          () => handleDeleteTipo(tipo.id),
+                        )}
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={tipo.id} className="flex items-center gap-3.5 rounded-[14px] bg-muted px-4 py-3.5">
+                      <span aria-hidden="true" className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-primary/20 text-primary">
+                        <Icone className="h-[15px] w-[15px]" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold">{tipo.nome}</p>
+                        {tipo.descricao && <p className="mt-0.5 truncate text-[11.5px] text-muted-foreground">{tipo.descricao}</p>}
+                      </div>
+                      <span className="whitespace-nowrap rounded-full bg-primary/15 px-3 py-1 text-[10.5px] font-bold capitalize text-primary">{rotuloDoCriterio(tipo.criterio)}</span>
+                      <div className="flex gap-1.5">
+                        <button type="button" className={botaoRedondo} onClick={() => abrirTipo(tipo)} aria-label={`Editar ${tipo.nome}`}>
+                          <Pencil className="h-[13px] w-[13px]" />
+                        </button>
+                        <button type="button" className={`${botaoRedondo} text-destructive hover:text-destructive`} onClick={() => setExcluirTipo(tipo.id)} aria-label={`Excluir ${tipo.nome}`}>
+                          <Trash2 className="h-[13px] w-[13px]" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </section>
+
+          <section className={card}>
+            {cabecalho(
+              "Rankings ativos",
+              "Clique para ver as posições",
+              <Button variant="outline" className="rounded-full font-semibold" onClick={() => abrirRank()} disabled={tipos.length === 0}>
+                <Plus className="mr-2 h-3.5 w-3.5 text-primary" aria-hidden="true" />
+                Novo ranking
+              </Button>,
+            )}
+
+            {rankForm &&
+              painelForm(
+                rankForm.id ? "Editar ranking" : "Novo ranking",
+                () => setRankForm(null),
+                <>
+                  <div>
+                    <Label className={rotuloCampo}>Tipo *</Label>
+                    <Select value={rankFormData.tipo_id} onValueChange={(v) => setRankFormData({ ...rankFormData, tipo_id: v })}>
+                      <SelectTrigger className={campo}>
                         <SelectValue placeholder="Selecione" />
                       </SelectTrigger>
                       <SelectContent>
@@ -466,15 +468,16 @@ export default function RanksSection() {
                     </Select>
                   </div>
                   <div>
-                    <Label>Classe (opcional)</Label>
+                    <Label className={rotuloCampo}>Turma (opcional)</Label>
                     <Select
-                      value={rankFormData.classe_id}
-                      onValueChange={(v) => setRankFormData({ ...rankFormData, classe_id: v })}
+                      value={rankFormData.classe_id || "geral"}
+                      onValueChange={(v) => setRankFormData({ ...rankFormData, classe_id: v === "geral" ? "" : v })}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className={campo}>
                         <SelectValue placeholder="Geral" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="geral">Geral</SelectItem>
                         {classes.map((c) => (
                           <SelectItem key={c.id} value={c.id.toString()}>
                             {c.descricao}
@@ -484,120 +487,159 @@ export default function RanksSection() {
                     </Select>
                   </div>
                   <div>
-                    <Label>Período *</Label>
-                    <Input
-                      value={rankFormData.periodo}
-                      onChange={(e) => setRankFormData({ ...rankFormData, periodo: e.target.value })}
-                      placeholder="Ex: 2025.1"
-                    />
+                    <Label htmlFor="rank-periodo" className={rotuloCampo}>Período *</Label>
+                    <Input id="rank-periodo" className={campo} value={rankFormData.periodo} onChange={(e) => setRankFormData({ ...rankFormData, periodo: e.target.value })} placeholder="Ex: 2026/1" />
                   </div>
-                  <Button onClick={handleSubmitRank} className="w-full" disabled={isSaving}>
-                    Salvar
-                  </Button>
+                </>,
+                handleSubmitRank,
+                rankForm.id ? "Salvar ranking" : "Criar ranking",
+              )}
+
+            <div className="flex flex-col gap-2.5 px-[22px] pb-[22px]">
+              {isLoading && ranks.length === 0 ? (
+                [0, 1].map((i) => <div key={i} className="h-[62px] animate-pulse rounded-2xl bg-muted" />)
+              ) : ranks.length === 0 ? (
+                <div className="space-y-3 rounded-xl border-2 border-dashed border-border py-10 text-center">
+                  <Trophy className="mx-auto h-10 w-10 text-muted-foreground/40" aria-hidden="true" />
+                  <div>
+                    <p className="text-sm font-semibold">Nenhum ranking criado ainda</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Crie um ranking para acompanhar as posições dos alunos.</p>
+                  </div>
                 </div>
-              </DialogContent>
-            </Dialog>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <p className="text-sm text-muted-foreground">Carregando rankings...</p>
-            ) : ranks.length === 0 ? (
-              <div className="text-center py-10 border-2 border-dashed border-border rounded-xl bg-card/50 space-y-3">
-                <Trophy className="w-10 h-10 mx-auto text-muted-foreground/40" />
-                <div>
-                  <p className="text-foreground font-semibold text-sm">Nenhum ranking criado ainda</p>
-                  <p className="text-muted-foreground text-xs mt-1">Crie um ranking para acompanhar as posições dos alunos.</p>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {ranks.map((rank) => (
-                  <div
-                    key={rank.id}
-                    className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-colors ${
-                      selectedRank?.id === rank.id ? "bg-primary/10 border-primary" : "hover:bg-muted"
-                    }`}
-                    onClick={() => setSelectedRank(rank)}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Trophy className="h-5 w-5 text-primary" />
-                      <div>
-                        <p className="font-medium text-sm">{getTipoName(rank.tipo_id)}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {getClassName(rank.classe_id)} | {rank.periodo}
-                        </p>
+              ) : (
+                ranks.map((rank) => {
+                  if (excluirRank === rank.id) {
+                    return (
+                      <div key={rank.id}>
+                        {confirmacao(
+                          `Excluir o ranking “${titulo(rank)}”?`,
+                          "As posições deste ranking deixam de ser exibidas. Os eventos dos alunos não são alterados.",
+                          "Excluir ranking",
+                          () => setExcluirRank(null),
+                          () => handleDeleteRank(rank.id),
+                        )}
+                      </div>
+                    );
+                  }
+                  const ativo = selecionado?.id === rank.id;
+                  return (
+                    <div
+                      key={rank.id}
+                      className={`flex items-center gap-3 rounded-[14px] border px-4 py-3.5 ${ativo ? "border-primary bg-primary/10" : "border-transparent bg-muted hover:border-border"}`}
+                    >
+                      <button type="button" onClick={() => setSelectedRank(rank)} aria-pressed={ativo} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                        <div className="min-w-0 flex-1">
+                          <p className={`truncate text-sm font-bold ${ativo ? "text-primary" : ""}`}>{titulo(rank)}</p>
+                          <p className="mt-1 text-[11.5px] text-muted-foreground">{rank.periodo || "Sem período"}</p>
+                        </div>
+                        <ChevronRight className={`h-[17px] w-[17px] flex-none ${ativo ? "text-primary" : "text-muted-foreground"}`} aria-hidden="true" />
+                      </button>
+                      <div className="flex gap-1.5">
+                        <button type="button" className={botaoRedondo} onClick={() => abrirRank(rank)} aria-label={`Editar ${titulo(rank)}`}>
+                          <Pencil className="h-[13px] w-[13px]" />
+                        </button>
+                        <button type="button" className={`${botaoRedondo} text-destructive hover:text-destructive`} onClick={() => setExcluirRank(rank.id)} aria-label={`Excluir ${titulo(rank)}`}>
+                          <Trash2 className="h-[13px] w-[13px]" />
+                        </button>
                       </div>
                     </div>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEditRank(rank);
-                        }}
-                      >
-                        <Pencil className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteRank(rank.id);
-                        }}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  );
+                })
+              )}
+            </div>
+          </section>
+        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Trophy className="h-5 w-5" />
-              {selectedRank ? `${getTipoName(selectedRank.tipo_id)} - ${selectedRank.periodo}` : "Selecione um ranking"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {selectedRank ? (
-              rankPosicoes.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12">#</TableHead>
-                      <TableHead>Aluno</TableHead>
-                      <TableHead className="text-right">Pontos</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {rankPosicoes.map((pos) => (
-                      <TableRow key={pos.id}>
-                        <TableCell className="font-medium">
-                          <div className="flex items-center gap-2">
-                            {getMedalIcon(pos.medalha)}
-                            {pos.posicao}
-                          </div>
-                        </TableCell>
-                        <TableCell>{pos.aluno_nome}</TableCell>
-                        <TableCell className="text-right font-mono">{pos.pontuacao}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+        <section className="overflow-hidden rounded-[20px] border border-primary bg-card" aria-live="polite">
+          {selecionado ? (
+            <>
+              <div className="flex flex-wrap items-center gap-3 border-b bg-muted px-6 py-5">
+                <div className="min-w-0">
+                  <p className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-primary">Posições · critério {criterioSelecionado}</p>
+                  <h3 className="mt-1.5 text-[22px] font-bold">{titulo(selecionado)}</h3>
+                </div>
+                {selecionado.periodo && (
+                  <span className="ml-auto whitespace-nowrap rounded-full border bg-background px-3.5 py-1.5 text-[11.5px] text-muted-foreground">{selecionado.periodo}</span>
+                )}
+              </div>
+
+              {rankPosicoes.length === 0 ? (
+                <p className="px-6 py-12 text-center text-sm text-muted-foreground">Nenhuma posição registrada neste ranking ainda.</p>
               ) : (
-                <p className="text-center text-muted-foreground py-8">Nenhuma posição registrada</p>
-              )
-            ) : (
-              <p className="text-center text-muted-foreground py-8">Selecione um ranking para ver as posições</p>
-            )}
-          </CardContent>
-        </Card>
+                <>
+                  <ol className="grid items-end gap-3 px-6 pb-6 pt-8 [grid-template-columns:1fr_1.15fr_1fr]">
+                    {podio(rankPosicoes).map(({ lugar, aluno }) => {
+                      if (!aluno) return <li key={lugar} aria-hidden="true" />;
+                      const estilo = PODIO[lugar];
+                      return (
+                        <li key={lugar} className="flex flex-col items-center gap-2">
+                          <span aria-hidden="true" className={`flex items-center justify-center rounded-full font-extrabold ${estilo.avatar}`}>
+                            {iniciais(aluno.aluno_nome)}
+                          </span>
+                          <span className={`text-center ${estilo.nome}`}>{aluno.aluno_nome || "Sem nome"}</span>
+                          <span className="text-xs text-muted-foreground">{formatarPontos(aluno.pontuacao)} pts</span>
+                          <span className={`flex w-full items-center justify-center rounded-t-[14px] border font-display font-bold ${estilo.base}`}>
+                            <span className="sr-only">Posição </span>
+                            {lugar}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ol>
+
+                  {resto.length > 0 && (
+                    <table className="w-full text-left">
+                      <thead>
+                        <tr className="bg-muted text-[10.5px] uppercase tracking-[0.08em] text-muted-foreground">
+                          <th className="w-14 px-6 py-[11px] font-semibold">#</th>
+                          <th className="py-[11px] font-semibold">Aluno</th>
+                          <th className="py-[11px] font-semibold">Perfil</th>
+                          <th className="px-6 py-[11px] text-right font-semibold">Pontos</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {restoVisivel.map((pos, i) => {
+                          const perfil = perfis.get(pos.aluno_id);
+                          return (
+                            <tr key={pos.aluno_id} className="border-t">
+                              <td className="px-6 py-[13px] text-sm font-bold text-muted-foreground">{pos.posicao ?? i + 4}</td>
+                              <td className="py-[13px] pr-2 text-[13.5px] font-semibold">{pos.aluno_nome || "Sem nome"}</td>
+                              <td className="py-[13px] pr-2">
+                                {perfil && (
+                                  <span className="flex items-center gap-2 text-[11.5px] text-muted-foreground">
+                                    <span aria-hidden="true" className="h-[11px] w-[11px] rounded-full" style={{ background: COR_DO_PERFIL[perfil].marca }} />
+                                    {NOME_DO_PERFIL[perfil]}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-6 py-[13px] text-right text-[13.5px] font-bold">{formatarPontos(pos.pontuacao)}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+
+                  <div className="flex items-center gap-3 border-t px-6 py-[15px] text-[11.5px] text-muted-foreground">
+                    <span>
+                      {Math.min(3 + restoVisivel.length, rankPosicoes.length)} de {rankPosicoes.length} alunos
+                    </span>
+                    {resto.length > POR_PAGINA && (
+                      <Button variant="outline" size="sm" className="ml-auto rounded-full" onClick={() => setVerTodas((v) => !v)}>
+                        {verTodas ? "Ver menos" : "Ver todas as posições"}
+                      </Button>
+                    )}
+                  </div>
+                </>
+              )}
+            </>
+          ) : (
+            <div className="px-6 py-16 text-center">
+              <Trophy className="mx-auto h-10 w-10 text-muted-foreground/40" aria-hidden="true" />
+              <p className="mt-3 text-sm text-muted-foreground">Selecione um ranking para ver as posições.</p>
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );

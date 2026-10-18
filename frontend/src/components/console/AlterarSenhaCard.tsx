@@ -4,7 +4,6 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -13,6 +12,9 @@ import {
   mensagemDeErroDeSenha,
   validarNovaSenha,
 } from "@/features/auth/passwordPolicy";
+import { forcaDaSenha } from "./meusdados/conta";
+
+const NIVEL_COR = ["", "bg-destructive", "bg-warning", "bg-success", "bg-success"];
 
 /**
  * Troca de senha do professor logado.
@@ -75,21 +77,24 @@ export default function AlterarSenhaCard() {
     }
   };
 
+  const forca = forcaDaSenha(novaSenha);
+
   const campo = (
     id: string,
     label: string,
     valor: string,
     onChange: (v: string) => void,
     autoComplete: string,
+    medidor = false,
   ) => (
     <div className="space-y-2">
-      <Label htmlFor={id}>{label}</Label>
+      <Label htmlFor={id} className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{label}</Label>
       <div className="relative">
         <Input
           id={id}
           type={mostrar ? "text" : "password"}
           autoComplete={autoComplete}
-          className="pr-10"
+          className="rounded-[14px] bg-muted pr-10"
           value={valor}
           onChange={(e) => onChange(e.target.value)}
         />
@@ -102,37 +107,43 @@ export default function AlterarSenhaCard() {
           {mostrar ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
         </button>
       </div>
+      {medidor && valor && (
+        <div className="flex items-center gap-1.5" aria-live="polite">
+          {[1, 2, 3, 4].map((n) => (
+            <span key={n} className={`h-[5px] flex-1 rounded-full ${forca.nivel >= n ? NIVEL_COR[forca.nivel] : "bg-border"}`} />
+          ))}
+          <span className="ml-1 whitespace-nowrap text-[10.5px] font-bold text-muted-foreground">{forca.rotulo}</span>
+        </div>
+      )}
     </div>
   );
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <KeyRound className="h-4 w-4 text-primary" />
-          <CardTitle>Alterar senha</CardTitle>
-        </div>
-        <CardDescription>
-          Confirme a senha atual e escolha uma nova, com pelo menos {SENHA_MINIMA} caracteres.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4 max-w-md" noValidate>
-          {erro && (
-            <Alert variant="destructive">
-              <AlertDescription>{erro}</AlertDescription>
-            </Alert>
-          )}
+    <section className="rounded-[20px] border bg-card p-6">
+      <div className="flex items-center gap-[11px]">
+        <span aria-hidden="true" className="flex h-7 w-7 flex-none items-center justify-center rounded-full border border-primary bg-primary/15">
+          <KeyRound className="h-3.5 w-3.5 text-primary" />
+        </span>
+        <h3 className="text-lg font-bold">Alterar senha</h3>
+      </div>
+      <p className="mt-2 text-[12.5px] text-muted-foreground">
+        Confirme a senha atual e escolha uma nova, com pelo menos {SENHA_MINIMA} caracteres.
+      </p>
+      <form onSubmit={handleSubmit} className="mt-4 space-y-3.5" noValidate>
+        {erro && (
+          <Alert variant="destructive">
+            <AlertDescription>{erro}</AlertDescription>
+          </Alert>
+        )}
 
-          {campo("senha-atual", "Senha atual", senhaAtual, setSenhaAtual, "current-password")}
-          {campo("nova-senha", "Nova senha", novaSenha, setNovaSenha, "new-password")}
-          {campo("confirmar-senha", "Confirmar nova senha", confirmacao, setConfirmacao, "new-password")}
+        {campo("senha-atual", "Senha atual", senhaAtual, setSenhaAtual, "current-password")}
+        {campo("nova-senha", "Nova senha", novaSenha, setNovaSenha, "new-password", true)}
+        {campo("confirmar-senha", "Confirmar nova senha", confirmacao, setConfirmacao, "new-password")}
 
-          <Button type="submit" disabled={salvando}>
-            {salvando ? "Salvando..." : "Alterar senha"}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+        <Button type="submit" variant="outline" disabled={salvando} className="w-full rounded-full border-primary bg-primary/15 font-bold text-primary hover:bg-primary/25">
+          {salvando ? "Salvando..." : "Alterar senha"}
+        </Button>
+      </form>
+    </section>
   );
 }

@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useMemo } from "react";
+import React, { createContext, useContext, useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Svg, { Circle, Line, Path, Polygon, Rect, Text as SvgText } from "react-native-svg";
 import tinycolor from "tinycolor2";
@@ -12,6 +12,12 @@ import { formatStudyMinutes as formatMinutes } from '@/utils/studyTimeFormat';
 import { buildProfileShellPaletteFromAccent } from "@/utils/profileShellTheme";
 
 const CHART_W = 280;
+
+// Web em tela larga (#346, protótipo v4, 08-perfil-hub.html): seções em cartões,
+// números numa linha só e o chip do estilo no canto do destaque. Só o Perfil de
+// tela larga liga; no app nativo e na web estreita fica tudo como antes.
+const MetricasLargas = createContext(false);
+const useMetricasLargas = () => useContext(MetricasLargas);
 
 type ThemePalette = {
   accent: string;
@@ -64,8 +70,21 @@ function buildPalette(baseColor: string): ThemePalette {
   return { accent: shell.accent, heroTop: shell.surface, heroBottom: shell.background, border: shell.border, soft: shell.accentSoft, card: shell.background, cardAlt: shell.surface, muted: shell.textMuted, text: shell.text };
 }
 
-function SurfaceCard({ children, palette, targetRef }: { children: React.ReactNode; palette: ThemePalette; targetRef?: React.RefObject<View | null> }) {
-  return <View ref={targetRef} collapsable={false} style={[s.surfaceCard, { backgroundColor: palette.card, borderColor: palette.border }]}>{children}</View>;
+function SurfaceCard({ children, palette, targetRef, meia }: { children: React.ReactNode; palette: ThemePalette; targetRef?: React.RefObject<View | null>; meia?: boolean }) {
+  const larga = useMetricasLargas();
+  return (
+    <View
+      ref={targetRef}
+      collapsable={false}
+      style={
+        larga
+          ? [s.cartaoLargo, meia && s.meiaLarga, { backgroundColor: palette.cardAlt, borderColor: palette.border }]
+          : [s.surfaceCard, { backgroundColor: palette.card, borderColor: palette.border }]
+      }
+    >
+      {children}
+    </View>
+  );
 }
 
 function SectionTitle({
@@ -79,15 +98,17 @@ function SectionTitle({
   icon?: keyof typeof MaterialCommunityIcons.glyphMap;
   palette: ThemePalette;
 }) {
+  // Tela larga (protótipo v4): título sem serifa e sem o ícone redondo.
+  const larga = useMetricasLargas();
   return (
     <View style={s.sectionTitleWrap}>
       <View style={s.sectionTitleRow}>
-        {icon ? (
+        {icon && !larga ? (
           <View style={[s.sectionIconWrap, { backgroundColor: palette.soft }]}>
             <MaterialCommunityIcons name={icon} size={16} color={palette.accent} />
           </View>
         ) : null}
-        <Text style={[s.sectionTitle, { color: palette.text }]}>{title}</Text>
+        <Text style={[s.sectionTitle, larga && s.sectionTitleLargo, { color: palette.text }]}>{title}</Text>
       </View>
       {subtitle ? <Text style={[s.sectionSubtitle, { color: palette.muted }]}>{subtitle}</Text> : null}
     </View>
@@ -103,8 +124,9 @@ function DashboardThemeBadge({
   accent: string;
   badge: DashboardProps["themeBadge"];
 }) {
+  const larga = useMetricasLargas();
   return (
-    <View style={[s.modeChipInline, { borderColor: palette.border, backgroundColor: palette.soft }]}>
+    <View style={[s.modeChipInline, larga && s.chipNoCanto, { borderColor: palette.border, backgroundColor: palette.soft }]}>
       <MaterialCommunityIcons name={badge.icon} size={15} color={accent} />
       <Text style={[s.modeChipText, { color: palette.text }]}>{badge.label}</Text>
     </View>
@@ -128,13 +150,14 @@ function StatTile({
   accent: string;
   targetRef?: React.RefObject<View | null>;
 }) {
+  const larga = useMetricasLargas();
   return (
-    <View ref={targetRef} collapsable={false} style={[s.statTile, { backgroundColor: palette.cardAlt, borderColor: palette.border }]}>
+    <View ref={targetRef} collapsable={false} style={[s.statTile, larga && s.statTileLargo, { backgroundColor: palette.cardAlt, borderColor: palette.border }]}>
       <View style={[s.statIconWrap, { backgroundColor: tinycolor(accent).setAlpha(0.18).toRgbString() }]}>
         <MaterialCommunityIcons name={icon} size={18} color={accent} />
       </View>
       <Text style={[s.statLabel, { color: palette.muted }]}>{label}</Text>
-      <Text style={[s.statValue, { color: palette.text }]}>{value}</Text>
+      <Text style={[s.statValue, larga && s.statValueLargo, { color: palette.text }]}>{value}</Text>
       {helper ? <Text style={[s.statHelper, { color: palette.muted }]}>{helper}</Text> : null}
     </View>
   );
@@ -170,6 +193,7 @@ function ProgressLine({
 }
 
 function AnalysisPanel({ vm, palette, accent, targetRef }: { vm: ProfileMetricsViewModel; palette: ThemePalette; accent: string; targetRef?: React.RefObject<View | null> }) {
+  const larga = useMetricasLargas();
   const hasAnalysisDetail =
     vm.analysisSignals.length > 0 ||
     vm.analysisInsights.length > 0 ||
@@ -232,9 +256,9 @@ function AnalysisPanel({ vm, palette, accent, targetRef }: { vm: ProfileMetricsV
         </View>
       ) : null}
       {hasAnalysisDetail ? (
-        <View style={s.analysisStack}>
+        <View style={[s.analysisStack, larga && s.analysisLinha]}>
           {vm.analysisInsights.length ? (
-            <View style={[s.analysisBox, { backgroundColor: palette.cardAlt, borderColor: palette.border }]}>
+            <View style={[s.analysisBox, larga && s.analysisBoxLargo, { backgroundColor: palette.cardAlt, borderColor: palette.border }]}>
               <Text style={[s.analysisBoxTitle, { color: palette.text }]}>Leituras da IA</Text>
               {vm.analysisInsights.map((item) => (
                 <Text key={item} style={[s.analysisBoxItem, { color: palette.muted }]}>
@@ -244,7 +268,7 @@ function AnalysisPanel({ vm, palette, accent, targetRef }: { vm: ProfileMetricsV
             </View>
           ) : null}
           {vm.analysisRecommendations.length ? (
-            <View style={[s.analysisBox, { backgroundColor: palette.cardAlt, borderColor: palette.border }]}>
+            <View style={[s.analysisBox, larga && s.analysisBoxLargo, { backgroundColor: palette.cardAlt, borderColor: palette.border }]}>
               <Text style={[s.analysisBoxTitle, { color: palette.text }]}>Ajustes aplicados</Text>
               {vm.analysisRecommendations.map((item) => (
                 <Text key={item} style={[s.analysisBoxItem, { color: palette.muted }]}>
@@ -257,6 +281,7 @@ function AnalysisPanel({ vm, palette, accent, targetRef }: { vm: ProfileMetricsV
             <View
               style={[
                 s.analysisBox,
+                larga && s.analysisBoxLargo,
                 {
                   backgroundColor: tinycolor(accent).setAlpha(0.08).toRgbString(),
                   borderColor: tinycolor(accent).setAlpha(0.22).toRgbString(),
@@ -465,16 +490,20 @@ function RadarChart({
   palette: ThemePalette;
   glowStyle?: "neon" | "plain";
 }) {
+  // Tela larga (protótipo v4): cada eixo com o valor ao lado ("Precisão 81"), em letra maior e sem serifa.
+  const larga = useMetricasLargas();
   const N = axes.length;
   if (N < 3) return null;
   const SIZE = 300;
-  const cx = SIZE / 2;
+  // Com o valor junto do rótulo, os eixos dos lados precisam de mais espaço na horizontal.
+  const LARGURA = larga ? 400 : SIZE;
+  const cx = LARGURA / 2;
   const cy = SIZE / 2;
   const R = 84;
   const allZero = axes.every((a) => a.value === 0);
 
   return (
-    <Svg width={SIZE} height={SIZE}>
+    <Svg width={LARGURA} height={SIZE}>
       {/* Grid rings */}
       {[0.25, 0.5, 0.75, 1].map((frac) => (
         <Polygon
@@ -566,10 +595,11 @@ function RadarChart({
             x={lx}
             y={ly + 4}
             textAnchor={anchor}
-            fontSize={10}
-            fill={palette.muted}
+            fontSize={larga ? 12 : 10}
+            fontFamily={larga ? FontFamily.interMedium : undefined}
+            fill={larga ? palette.text : palette.muted}
           >
-            {a.label}
+            {larga ? `${a.label} ${Math.round(Math.max(0, Math.min(100, a.value)))}` : a.label}
           </SvgText>
         );
       })}
@@ -971,6 +1001,7 @@ function MelhorTempoSection({ vm, palette, accent, targetRef }: { vm: ProfileMet
 }
 
 function ArenaDashboard({ profile, vm, palette, accent, themeBadge, guideRefs }: DashboardProps) {
+  const larga = useMetricasLargas();
   const copy =
     profile === "conqueror"
       ? {
@@ -995,14 +1026,14 @@ function ArenaDashboard({ profile, vm, palette, accent, themeBadge, guideRefs }:
 
   return (
     <View style={s.dashboard}>
-      <LinearGradient colors={[palette.heroTop, palette.heroBottom]} style={[s.heroCard, { borderColor: palette.border }]}>
+      <LinearGradient colors={[palette.heroTop, palette.heroBottom]} style={[s.heroCard, larga && s.heroLargo, { borderColor: palette.border }]}>
         <DashboardThemeBadge palette={palette} accent={accent} badge={themeBadge} />
-        <Text style={[s.heroEyebrow, { color: palette.muted }]}>{copy.eyebrow}</Text>
+        <Text style={[s.heroEyebrow, larga && s.eyebrowLargo, { color: larga ? accent : palette.muted }]}>{copy.eyebrow}</Text>
         <Text style={[s.heroTitle, { color: palette.text }]}>{copy.title}</Text>
         <Text style={[s.heroSubtitle, { color: palette.muted }]}>
           {vm.materiaNome ? `Classe atual: ${vm.materiaNome}. ${copy.subtitle}` : copy.subtitle}
         </Text>
-        <View style={s.statGrid}>
+        <View style={[s.statGrid, larga && s.statGridLargo]}>
           <StatTile targetRef={guideRef(guideRefs, "arena-precision")} icon="crosshairs-gps" label="Precisão" value={formatPercent(vm.acertos)} helper="desempenho nas respostas" palette={palette} accent={accent} />
           <StatTile targetRef={guideRef(guideRefs, "arena-position")} icon="trophy-outline" label="Posição" value={vm.melhorPosicao?.posicao ? `#${vm.melhorPosicao.posicao}` : "Sem rank"} helper="melhor marca na classe" palette={palette} accent={accent} />
           <StatTile
@@ -1031,8 +1062,11 @@ function ArenaDashboard({ profile, vm, palette, accent, themeBadge, guideRefs }:
           <TempoEstudoSection vm={vm} palette={palette} accent={accent} targetRef={guideRef(guideRefs, "study-time-detail")} />
           <BossSection vm={vm} palette={palette} accent={accent} targetRef={guideRef(guideRefs, "boss")} />
           <MelhorTempoSection vm={vm} palette={palette} accent={accent} targetRef={guideRef(guideRefs, "best-time")} />
-          <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "arena-status")}>
+          {/* Tela larga, como no protótipo: Status e Inteligência de combate lado a lado, sem Próximo movimento nem Pulso da semana. */}
+          <View style={larga ? s.parLargo : s.fragmento}>
+          <SurfaceCard meia palette={palette} targetRef={guideRef(guideRefs, "arena-status")}>
             <SectionTitle title={copy.mission} subtitle="Visão rápida da campanha atual." icon="sword-cross" palette={palette} />
+            {larga ? null : (
             <View style={s.tripleRow}>
               <View style={[s.kpiPill, { backgroundColor: palette.cardAlt, borderColor: palette.border }]}>
                 <Text style={[s.kpiLabel, { color: palette.muted }]}>Concluídos</Text>
@@ -1047,10 +1081,12 @@ function ArenaDashboard({ profile, vm, palette, accent, themeBadge, guideRefs }:
                 <Text style={[s.kpiValue, { color: palette.text }]}>{vm.totalConquistas}</Text>
               </View>
             </View>
+            )}
             <ProgressLine label="Tópicos dominados" current={vm.concluidos} total={vm.totalTopicos} accent={accent} palette={palette} />
             <ProgressLine label="Conteúdos explorados" current={vm.conteudosConcluidos} total={vm.totalConteudos} accent={accent} palette={palette} />
             <ProgressLine label="Atividades concluídas" current={vm.atividadesConcluidas} total={vm.totalAtividades} accent={accent} palette={palette} />
           </SurfaceCard>
+          {larga ? null : (
           <SurfaceCard palette={palette}>
             <SectionTitle title="Próximo movimento" subtitle="O que mais aproxima você da próxima vitória." icon="lightning-bolt" palette={palette} />
             <Text style={[s.storyHeadline, { color: palette.text }]}>{vm.proximoMarco}</Text>
@@ -1058,7 +1094,8 @@ function ArenaDashboard({ profile, vm, palette, accent, themeBadge, guideRefs }:
               Último registro em {formatLastEvent(vm.ultimoEvento)}. Continue alimentando a campanha para reforçar sua presença no ranking.
             </Text>
           </SurfaceCard>
-          <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "arena-radar")}>
+          )}
+          <SurfaceCard meia palette={palette} targetRef={guideRef(guideRefs, "arena-radar")}>
             <SectionTitle title="Inteligência de combate" subtitle="Visão tática do desempenho nos 5 eixos." icon="radar" palette={palette} />
             <View style={s.chartCenter}>
               <RadarChart
@@ -1075,12 +1112,15 @@ function ArenaDashboard({ profile, vm, palette, accent, themeBadge, guideRefs }:
               />
             </View>
           </SurfaceCard>
+          </View>
+          {larga ? null : (
           <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "arena-week")}>
             <SectionTitle title="Pulso da semana" subtitle="Atividade registrada nos últimos 7 dias." icon="chart-bar" palette={palette} />
             <View style={s.chartCenter}>
               <WeeklyBars data={vm.semanaDiaria} accent={accent} palette={palette} />
             </View>
           </SurfaceCard>
+          )}
           {vm.hasSessionMetrics && (
             <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "arena-live")}>
               <SectionTitle title="Operação em tempo real" subtitle="Eficiência e intensidade da última sessão de estudo." icon="timer-outline" palette={palette} />
@@ -1100,6 +1140,7 @@ function ArenaDashboard({ profile, vm, palette, accent, themeBadge, guideRefs }:
 }
 
 function GoalsDashboard({ vm, palette, accent, themeBadge, guideRefs }: DashboardProps) {
+  const larga = useMetricasLargas();
   const checkpoints = [
     { label: "Meta da trilha", done: vm.progresso >= 100, helper: `${formatPercent(vm.progresso)} concluído` },
     { label: "Meta de conteúdo", done: vm.totalConteudos > 0 && vm.conteudosConcluidos >= vm.totalConteudos, helper: `${vm.conteudosConcluidos}/${vm.totalConteudos} concluídos` },
@@ -1109,14 +1150,14 @@ function GoalsDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dashboar
 
   return (
     <View style={s.dashboard}>
-      <LinearGradient colors={[palette.heroTop, palette.heroBottom]} style={[s.heroCard, { borderColor: palette.border }]}>
+      <LinearGradient colors={[palette.heroTop, palette.heroBottom]} style={[s.heroCard, larga && s.heroLargo, { borderColor: palette.border }]}>
         <DashboardThemeBadge palette={palette} accent={accent} badge={themeBadge} />
-        <Text style={[s.heroEyebrow, { color: palette.muted }]}>CENTRO DE METAS</Text>
+        <Text style={[s.heroEyebrow, larga && s.eyebrowLargo, { color: larga ? accent : palette.muted }]}>CENTRO DE METAS</Text>
         <Text style={[s.heroTitle, { color: palette.text }]}>Seu avanço em marcos visíveis</Text>
         <Text style={[s.heroSubtitle, { color: palette.muted }]}>
           {vm.materiaNome ? `Classe atual: ${vm.materiaNome}. O foco aqui é transformar estudo em metas claras.` : "O foco aqui é transformar estudo em metas claras, mensuráveis e motivadoras."}
         </Text>
-        <View style={s.statGrid}>
+        <View style={[s.statGrid, larga && s.statGridLargo]}>
           <StatTile targetRef={guideRef(guideRefs, "goals-main")} icon="target" label="Meta principal" value={formatPercent(vm.progresso)} helper="progresso da trilha" palette={palette} accent={accent} />
           <StatTile targetRef={guideRef(guideRefs, "goals-achievements")} icon="check-decagram-outline" label="Conquistas" value={String(vm.totalConquistas)} helper="recompensas desbloqueadas" palette={palette} accent={accent} />
           <StatTile targetRef={guideRef(guideRefs, "goals-invested-time")} icon="clock-outline" label="Tempo investido" value={formatMinutes(vm.tempo)} helper={`${formatMinutes(vm.tempoMedio)} por atividade`} palette={palette} accent={accent} />
@@ -1202,18 +1243,19 @@ function GoalsDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dashboar
 }
 
 function MysteryDashboard({ vm, palette, accent, themeBadge, guideRefs }: DashboardProps) {
+  const larga = useMetricasLargas();
   return (
     <View style={s.dashboard}>
-      <LinearGradient colors={[palette.heroTop, palette.heroBottom]} style={[s.heroCard, { borderColor: palette.border }]}>
+      <LinearGradient colors={[palette.heroTop, palette.heroBottom]} style={[s.heroCard, larga && s.heroLargo, { borderColor: palette.border }]}>
         <DashboardThemeBadge palette={palette} accent={accent} badge={themeBadge} />
-        <Text style={[s.heroEyebrow, { color: palette.muted }]}>DOSSIÊ DE EXPLORAÇÃO</Text>
+        <Text style={[s.heroEyebrow, larga && s.eyebrowLargo, { color: larga ? accent : palette.muted }]}>DOSSIÊ DE EXPLORAÇÃO</Text>
         <Text style={[s.heroTitle, { color: palette.text }]}>Cada métrica vira uma pista da jornada</Text>
         <Text style={[s.heroSubtitle, { color: palette.muted }]}>
           {vm.materiaNome
             ? `Classe atual: ${vm.materiaNome}. O painel mostra o quanto do território acadêmico você já descobriu.`
             : "O painel mostra o quanto do território acadêmico você já descobriu e o que ainda está oculto."}
         </Text>
-        <View style={s.statGrid}>
+        <View style={[s.statGrid, larga && s.statGridLargo]}>
           <StatTile targetRef={guideRef(guideRefs, "mystery-revealed")} icon="compass-outline" label="Mapa revelado" value={formatPercent(vm.taxaExploracao)} helper={`${vm.topicosDescobertos}/${vm.totalTopicos} tópicos vistos`} palette={palette} accent={accent} />
           <StatTile targetRef={guideRef(guideRefs, "mystery-content")} icon="book-open-page-variant-outline" label="Arquivos lidos" value={String(vm.conteudosConcluidos)} helper={`${vm.totalConteudos} no total`} palette={palette} accent={accent} />
           <StatTile targetRef={guideRef(guideRefs, "mystery-challenges")} icon="help-circle-outline" label="Desafios resolvidos" value={String(vm.atividadesConcluidas)} helper={`${vm.totalAtividades} registrados`} palette={palette} accent={accent} />
@@ -1281,18 +1323,19 @@ function MysteryDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dashbo
 }
 
 function AnalyticsDashboard({ vm, palette, accent, themeBadge, guideRefs }: DashboardProps) {
+  const larga = useMetricasLargas();
   return (
     <View style={s.dashboard}>
-      <LinearGradient colors={[palette.heroTop, palette.heroBottom]} style={[s.heroCard, { borderColor: palette.border }]}>
+      <LinearGradient colors={[palette.heroTop, palette.heroBottom]} style={[s.heroCard, larga && s.heroLargo, { borderColor: palette.border }]}>
         <DashboardThemeBadge palette={palette} accent={accent} badge={themeBadge} />
-        <Text style={[s.heroEyebrow, { color: palette.muted }]}>PAINEL ANALÍTICO</Text>
+        <Text style={[s.heroEyebrow, larga && s.eyebrowLargo, { color: larga ? accent : palette.muted }]}>PAINEL ANALÍTICO</Text>
         <Text style={[s.heroTitle, { color: palette.text }]}>Sua evolução em leitura operacional</Text>
         <Text style={[s.heroSubtitle, { color: palette.muted }]}>
           {vm.materiaNome
             ? `Classe atual: ${vm.materiaNome}. Este modo organiza tudo com foco em clareza e comparação.`
             : "Este modo organiza tudo com foco em clareza, leitura rápida e acompanhamento consistente."}
         </Text>
-        <View style={s.statGrid}>
+        <View style={[s.statGrid, larga && s.statGridLargo]}>
           <StatTile targetRef={guideRef(guideRefs, "analytics-progress")} icon="chart-donut" label="Progresso" value={formatPercent(vm.progresso)} helper={`${vm.concluidos}/${vm.totalTopicos} tópicos`} palette={palette} accent={accent} />
           <StatTile targetRef={guideRef(guideRefs, "analytics-accuracy")} icon="target" label="Acertos" value={formatPercent(vm.acertos)} helper="média da turma atual" palette={palette} accent={accent} />
           <StatTile targetRef={guideRef(guideRefs, "analytics-time")} icon="clock-outline" label="Tempo de estudo" value={formatMinutes(vm.tempo)} helper={`${formatMinutes(vm.tempoMedio)} por atividade`} palette={palette} accent={accent} />
@@ -1395,18 +1438,19 @@ function AnalyticsDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dash
 }
 
 function SquadDashboard({ vm, palette, accent, themeBadge, guideRefs }: DashboardProps) {
+  const larga = useMetricasLargas();
   return (
     <View style={s.dashboard}>
-      <LinearGradient colors={[palette.heroTop, palette.heroBottom]} style={[s.heroCard, { borderColor: palette.border }]}>
+      <LinearGradient colors={[palette.heroTop, palette.heroBottom]} style={[s.heroCard, larga && s.heroLargo, { borderColor: palette.border }]}>
         <DashboardThemeBadge palette={palette} accent={accent} badge={themeBadge} />
-        <Text style={[s.heroEyebrow, { color: palette.muted }]}>SALA DO SQUAD</Text>
+        <Text style={[s.heroEyebrow, larga && s.eyebrowLargo, { color: larga ? accent : palette.muted }]}>SALA DO SQUAD</Text>
         <Text style={[s.heroTitle, { color: palette.text }]}>Seu ritmo visto como presença e energia</Text>
         <Text style={[s.heroSubtitle, { color: palette.muted }]}>
           {vm.materiaNome
             ? `Classe atual: ${vm.materiaNome}. O foco é mostrar como você aparece, participa e cresce ao longo da trilha.`
             : "O foco é mostrar como você aparece, participa e cresce ao longo da trilha."}
         </Text>
-        <View style={s.statGrid}>
+        <View style={[s.statGrid, larga && s.statGridLargo]}>
           <StatTile targetRef={guideRef(guideRefs, "squad-presence-hero")} icon="account-group-outline" label="Presença" value={`${vm.diasAtivos} dias`} helper={vm.presencaResumo} palette={palette} accent={accent} />
           <StatTile targetRef={guideRef(guideRefs, "squad-ranking")} icon="podium" label="Ranking" value={vm.melhorPosicao?.posicao ? `#${vm.melhorPosicao.posicao}` : "Sem posição"} helper="melhor colocação" palette={palette} accent={accent} />
           <StatTile targetRef={guideRef(guideRefs, "squad-achievements")} icon="trophy-outline" label="Conquistas" value={String(vm.totalConquistas)} helper="emblemas e marcos" palette={palette} accent={accent} />
@@ -1476,11 +1520,14 @@ export function ProfileMetricsViews({
   theme,
   vm,
   guideRefs,
+  larga = false,
 }: {
   profile: BrainHexProfile;
   theme: MetricsThemeResolved;
   vm: ProfileMetricsViewModel;
   guideRefs: ProfileMetricsGuideRefs;
+  /** Web em tela larga (#346): cartões e a disposição do protótipo v4. */
+  larga?: boolean;
 }) {
   const hexConfig = getBrainHexConfig(profile);
   const accent = buildProfileShellPaletteFromAccent(hexConfig.color).accent;
@@ -1488,7 +1535,8 @@ export function ProfileMetricsViews({
   const themeOption = getMetricsThemeOption(theme);
 
   return (
-    <View style={s.wrapper}>
+    <MetricasLargas.Provider value={larga}>
+    <View style={[s.wrapper, larga && s.wrapperLargo]}>
       {theme === "arena" ? (
         <ArenaDashboard
           profile={profile}
@@ -1541,11 +1589,24 @@ export function ProfileMetricsViews({
         />
       )}
     </View>
+    </MetricasLargas.Provider>
   );
 }
 
 const s = StyleSheet.create({
   wrapper: { gap: 12 },
+  wrapperLargo: { marginTop: 16 },
+  fragmento: { gap: 14 },
+  cartaoLargo: { borderRadius: 16, borderWidth: 1, paddingVertical: 20, paddingHorizontal: 22 },
+  meiaLarga: { flex: 1, minWidth: 0 },
+  parLargo: { flexDirection: "row", gap: 16, alignItems: "stretch" },
+  eyebrowLargo: { fontWeight: "700", letterSpacing: 1.5 },
+  heroLargo: { borderRadius: 16, borderWidth: 1, paddingHorizontal: 22, paddingVertical: 22 },
+  chipNoCanto: { position: "absolute", top: 18, right: 18, marginBottom: 0, zIndex: 1 },
+  statGridLargo: { flexWrap: "nowrap", justifyContent: "flex-start", gap: 12 },
+  statTileLargo: { width: undefined, flex: 1, minWidth: 0, marginBottom: 0 },
+  analysisLinha: { flexDirection: "row", alignItems: "stretch" },
+  analysisBoxLargo: { flex: 1, minWidth: 0 },
   dashboard: { gap: 14 },
   modeChip: {
     alignSelf: "flex-start",
@@ -1578,12 +1639,14 @@ const s = StyleSheet.create({
   statIconWrap: { width: 34, height: 34, borderRadius: 6, alignItems: "center", justifyContent: "center", marginBottom: 10 },
   statLabel: { fontFamily: FontFamily.interMedium, fontSize: 12, marginBottom: 4 },
   statValue: { fontFamily: FontFamily.inikaBold, fontSize: 20, marginBottom: 4 },
+  statValueLargo: { fontFamily: FontFamily.interMedium, fontWeight: "700", fontSize: 24 },
   statHelper: { fontFamily: FontFamily.interMedium, fontSize: 11, lineHeight: 16 },
   surfaceCard: { paddingVertical: 20, paddingHorizontal: 4, borderBottomWidth: 1 },
   sectionTitleWrap: { marginBottom: 14 },
   sectionTitleRow: { flexDirection: "row", alignItems: "center", marginBottom: 6 },
   sectionIconWrap: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", marginRight: 10 },
   sectionTitle: { fontFamily: FontFamily.inikaBold, fontSize: 16 },
+  sectionTitleLargo: { fontFamily: FontFamily.interMedium, fontWeight: "700" },
   sectionSubtitle: { fontFamily: FontFamily.interMedium, fontSize: 12, lineHeight: 18 },
   tripleRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
   doubleRow: { flexDirection: "row", gap: 10, marginBottom: 12 },

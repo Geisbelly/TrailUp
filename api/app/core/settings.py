@@ -168,7 +168,15 @@ class Settings(BaseSettings):
     # completo de brainhex_api_wait_timeout_sec.
     brainhex_api_regenerate_timeout_sec: int = 120
 
+    # "deepface" e o nome historico da HEURISTICA por regra (ver a nota no
+    # topo de linear_analysis_pipeline.py). "local_vision" e o unico que de
+    # fato olha para a imagem — FER+ em onnxruntime, em emotion_vision.py.
+    # O default fica na heuristica de proposito: trocar para "local_vision"
+    # passa a tratar dado biometrico, e so deve acontecer DEPOIS que o termo
+    # de consentimento novo tiver chegado aos alunos.
     emotion_model_provider: str = "deepface"
+    emotion_vision_model_path: str = "/opt/models/emotion-ferplus-8.onnx"
+    emotion_vision_detector_path: str = "/opt/models/face_detection_yunet_2023mar.onnx"
     reading_model_provider: str = "isolation_forest"
     interaction_model_provider: str = "hidden_markov_model"
     performance_model_provider: str = "deep_knowledge_tracing"

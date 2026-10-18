@@ -4,10 +4,15 @@ Aplicativo do aluno (Expo + React Native) no ecossistema TrailUp.
 
 ## Papel no sistema
 - Autenticacao do aluno no Supabase.
+
 - Consumo da trilha, conteudos, atividades e personalizacao.
 - Persistencia de progresso (`topico_aluno`, `conteudo_aluno`, `atividade_aluno`).
 - Envio de telemetria para `ApiTraiUp`.
 - Renderizacao de materiais multimidia (markdown, audio, video, pdf, docx, pptx).
+
+## Login Google
+- Em development/standalone builds, o callback nativo usa o `scheme` configurado em `app.json` e o caminho `auth/callback`.
+- No Expo Go, `expo-auth-session` deriva o callback do runtime (`exp://...`); o provedor Supabase precisa permitir o URI correspondente. Validar o retorno em development builds Android e iOS antes de considerar o login concluído.
 
 ## Estado atual (2026-04-19)
 - Ranking deve ser consumido pela view `vw_rank_posicoes_por_classe`.
@@ -48,6 +53,13 @@ npm run ios
 npm run web
 npm run lint
 ```
+Os testes são registrados em `testes/*.txt`, com um caminho por linha. Ao criar
+um teste, adicione-o ao manifesto do grupo adequado; não junte grupos que
+precisam de isolamento. `npm test` executa o grupo principal. Os grupos
+`test:social-chat`, `test:class-selection`, `test:engagement`, `test:presence`
+e `test:trail-resume` rodam separadamente. A guarda
+`src/utils/testesRegistrados.test.ts` falha quando um teste fica sem grupo,
+aparece em mais de um manifesto ou aponta para arquivo inexistente.
 
 ## Diagnostico rapido
 Erro repetido `TypeError: Network request failed` geralmente indica:

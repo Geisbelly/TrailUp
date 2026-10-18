@@ -70,8 +70,8 @@ import {
   PRESENTATION_SCHEMA_VERSION,
   buildPresentationVersionMetadata,
   getRenderGitCommit,
-  versionStoragePath,
 } from "./src/constants/pipelineVersions";
+import { versionStoragePath } from "./src/constants/generationStorage";
 
 export {
   CONTENT_ENRICHMENT_PROVIDER,

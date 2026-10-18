@@ -213,6 +213,22 @@ const THEME_LABELS = {
   squad: "Squad",
 } as const;
 
+// "Abrir agora" (#346): o tutorial só confere o armazenamento uma vez por sessão,
+// então quem o reinicia e quer vê-lo já avisa por aqui.
+const ouvintesTutorialAgora = new Set<() => void>();
+
+/** Pede que o tutorial abra já, do primeiro passo, sem esperar o app recarregar. */
+export function pedirTutorialAgora() {
+  ouvintesTutorialAgora.forEach((ouvinte) => ouvinte());
+}
+
+export function ouvirPedidoDeTutorial(ouvinte: () => void) {
+  ouvintesTutorialAgora.add(ouvinte);
+  return () => {
+    ouvintesTutorialAgora.delete(ouvinte);
+  };
+}
+
 export function buildFirstAccessTourStorageKey(userId: string) {
   return `@trailup/tutorial-inicial-v${FIRST_ACCESS_TOUR_VERSION}/${userId}`;
 }

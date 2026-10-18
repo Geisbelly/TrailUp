@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TrailUp — Relatório de Dados (Conqueror)</title>
+<style>
+  :root{
+    --bg:#0b1328; --surface:#121e3f; --elevated:#192a57;
+    --border:#28428a; --border-strong:#4d6fcb;
+    --text:#f3f4f7; --text-muted:rgba(243,244,247,.82); --text-subtle:rgba(243,244,247,.62);
+    --accent:#6f90eb; --danger:#e15b64; --danger-soft:rgba(225,91,100,.12);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  .title-font{font-family:Georgia,"Times New Roman",serif}
+  /* Estrutura identica ao console-shell do professor (ConsoleShell.tsx / page-surfaces.css) */
+  .console-shell{display:grid;grid-template-columns:212px minmax(0,1fr);grid-template-rows:68px minmax(0,1fr);height:100vh;overflow:hidden}
+  .console-topbar{grid-column:1/-1;display:flex;align-items:center;gap:28px;padding:12px 24px;background:var(--surface);border-bottom:1px solid var(--border);min-width:0}
+  .journey-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text);font-size:20px}
+  .journey-brand img{width:32px;height:32px}
+  .journey-brand span{font-family:Georgia,serif;font-weight:700}
+  .console-workspace-name{color:var(--text-subtle);font-size:12px}
+  .console-account{margin-left:auto;display:flex;align-items:center;gap:10px;min-width:0}
+  .console-account img.avatar{width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--accent)}
+  .console-account-copy{display:grid;gap:2px}
+  .console-account-copy strong{font-size:13px;font-weight:600}
+  .console-account-copy span{font-size:11px;color:var(--text-subtle)}
+  .console-icon-button{display:grid;place-items:center;width:40px;height:40px;border-radius:6px;color:var(--text-muted);background:none;border:none;cursor:pointer;flex:none}
+  .console-icon-button:hover{color:var(--text);background:var(--elevated)}
+  .console-icon-button img{width:20px;height:20px}
+  .console-icon-button svg{width:18px;height:18px}
+  .console-navigation{padding:20px 12px;display:flex;flex-direction:column;gap:6px;border-right:1px solid var(--border);background:rgba(0,0,0,.15);overflow-y:auto}
+  .console-navigation a{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:6px;border:1px solid transparent;color:var(--text-muted);font-size:13px;text-decoration:none}
+  .console-navigation a svg{flex:none;width:18px;height:18px}
+  .console-navigation a:hover{color:var(--text);background:rgba(255,255,255,.06)}
+  .console-navigation a[aria-current="page"]{color:var(--text);background:rgba(111,144,235,.13);border-color:var(--border-strong)}
+  .console-navigation a[aria-current="page"] svg{color:var(--accent)}
+  .console-navigation .nb{margin-left:auto;background:var(--accent);color:var(--bg);font-size:10px;font-weight:800;padding:1px 6px;border-radius:100px}
+  .console-main{grid-column:2;grid-row:2;overflow-y:auto;position:relative}
+
+  .layout{display:flex;flex-wrap:wrap;justify-content:center;gap:48px;padding:28px 40px 60px}
+  .report{width:100%;max-width:520px}
+  .tag{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-subtle);margin-bottom:14px}
+  .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:0 0 4px}
+  h1{font-family:Georgia,serif;font-size:28px;margin:0 0 20px}
+
+  .info-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px}
+  .info-card h2{font-size:15px;margin:0 0 12px}
+  .item{display:flex;gap:10px;align-items:flex-start;margin-bottom:12px}
+  .item svg{width:16px;height:16px;color:var(--accent);flex-shrink:0;margin-top:2px}
+  .item span{font-size:13px;color:var(--text-muted);line-height:1.5}
+
+  .action-card{margin-top:20px;background:var(--elevated);border:1px solid var(--border-strong);border-radius:14px;padding:22px;text-align:center}
+  .action-card p{font-size:13px;color:var(--text-muted);margin:0 0 16px;line-height:1.5}
+  .btn{width:100%;height:52px;border-radius:6px;background:var(--accent);color:#0b1328;font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;border:none}
+  .btn svg{width:18px;height:18px}
+
+  .error-box{margin-top:16px;background:var(--danger-soft);border:1px solid var(--danger);border-radius:10px;padding:16px;display:flex;gap:12px;align-items:flex-start;text-align:left}
+  .error-box svg{width:20px;height:20px;color:var(--danger);flex-shrink:0;margin-top:1px}
+  .error-box strong{font-size:14px;display:block;margin-bottom:3px}
+  .error-box p{font-size:13px;color:var(--text-muted);margin:0 0 10px;line-height:1.45}
+  .retry-btn{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--danger);cursor:pointer}
+  .retry-btn svg{width:14px;height:14px}
+  .diagram-label{position:absolute;font-size:10px;background:var(--danger);color:#fff;padding:3px 8px;border-radius:4px;font-weight:700;top:-11px;left:16px}
+
+  .preview{width:280px;flex-shrink:0}
+  .preview h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);margin:0 0 14px}
+  .doc-mock{background:#fff;color:#1a1a1a;border-radius:8px;padding:22px 20px;box-shadow:0 18px 40px rgba(0,0,0,.4);transform:rotate(1.5deg)}
+  .doc-mock .dm-head{font-family:Georgia,serif;font-size:14px;font-weight:700;border-bottom:2px solid #1a1a1a;padding-bottom:8px;margin-bottom:10px}
+  .doc-mock .dm-line{height:6px;background:#e3e3e3;border-radius:2px;margin-bottom:7px}
+  .doc-mock .dm-line.short{width:60%}
+  .doc-mock .dm-chip{display:inline-block;font-size:9px;background:#eef1fb;color:#2a4bb0;padding:2px 6px;border-radius:4px;margin-top:8px;margin-right:4px}
+
+  /* barras de rolagem no tema (revisão 03): finas, na cor da borda do perfil, sem a barra cinza do sistema */
+  *{scrollbar-width:thin;scrollbar-color:var(--border-strong,#4d6fcb) transparent}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--border-strong,#4d6fcb);border-radius:999px;border:3px solid transparent;background-clip:padding-box}
+  ::-webkit-scrollbar-thumb:hover{background:var(--accent,#6f90eb);background-clip:padding-box;border:3px solid transparent}
+  ::-webkit-scrollbar-corner{background:transparent}
+</style>
+</head>
+<body>
+<div class="console-shell">
+  <header class="console-topbar">
+    <a class="journey-brand" href="03-trilha.html"><img src="assets/trailup-brand-logo.png" alt="" /><span>TrailUp</span></a>
+    <span class="console-workspace-name">Área do aluno</span>
+    <div class="console-account">
+      <a href="08-perfil-hub.html" title="Meu perfil" aria-label="Meu perfil" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit">
+        <img class="avatar" src="assets/rosto-conqueror.png" alt="" />
+        <div class="console-account-copy"><strong>Amina T.</strong><span>Conqueror</span></div>
+      </a>
+      <button class="console-icon-button" title="Minha Bag"><img src="assets/object-bag.png" alt="" /></button>
+      <a class="console-icon-button" href="00-entrada.html" title="Sair" aria-label="Sair"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg></a>
+    </div>
+  </header>
+  <nav class="console-navigation" aria-label="Seções da área do aluno">
+    <a href="03-trilha.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 20l-5.5 2V6L9 4l6 2 5.5-2v16L15 22l-6-2z"/><path d="M9 4v16M15 6v16"/></svg>Trilha</a>
+    <a href="07-notificacoes.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Notificações<span class="nb">2</span></a>
+    <a href="06-social.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Social</a>
+    <a href="12-loja.html" aria-label="Loja, saldo de 38 moedas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 9l1.5-5h15L21 9"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/><path d="M5 12v8h14v-8"/><path d="M10 20v-5h4v5"/></svg>Loja<span class="nav-coins" style="margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;color:var(--text-subtle)">38<img src="assets/coin-conqueror.png" alt="" style="width:16px;height:16px;object-fit:contain" /></span></a>
+    <a href="05-ranking.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 21h16M6 21V10M12 21V3M18 21v-7"/></svg>Ranking</a>
+    <a href="08-perfil-hub.html" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0 1 16 0v1"/></svg>Perfil</a>
+  </nav>
+  <main class="console-main">
+<div class="layout">
+<div class="report">
+  <div class="tag">Relatório de dados — estado de erro explícito (issue #28)</div>
+  <div class="eyebrow">Perfil</div>
+  <h1 class="title-font">Relatório dos seus dados</h1>
+
+  <div class="info-card">
+    <h2 class="title-font">O que entra no relatório</h2>
+    <div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg><span>Eventos de estudo e pontuação registrados durante suas sessões</span></div>
+    <div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg><span>Suas posições em rankings da turma</span></div>
+    <div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg><span>Conquistas desbloqueadas e seu progresso</span></div>
+  </div>
+
+  <div class="action-card" style="position:relative">
+    <p>Gere um PDF com tudo isso pra guardar ou compartilhar quando quiser.</p>
+    <button class="btn" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V2H6.5A2.5 2.5 0 0 0 4 4.5z"/></svg>
+      Gerar e compartilhar o PDF
+    </button>
+
+    <div class="error-box" style="position:relative">
+      <span class="diagram-label">Novo — hoje falha em silêncio</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <div>
+        <strong>Não foi possível gerar o relatório agora</strong>
+        <p>Isso pode acontecer por instabilidade momentânea. Tente novamente — se persistir, procure seu professor ou a coordenação.</p>
+        <span class="retry-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg>
+          Tentar novamente
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="preview">
+  <h3>Prévia do PDF</h3>
+  <div class="doc-mock">
+    <div class="dm-head">Relatório TrailUp — Amina T.</div>
+    <div class="dm-line"></div>
+    <div class="dm-line"></div>
+    <div class="dm-line short"></div>
+    <div class="dm-line" style="margin-top:14px"></div>
+    <div class="dm-line"></div>
+    <div class="dm-line short"></div>
+    <span class="dm-chip">42 eventos</span><span class="dm-chip">12º no rank</span>
+  </div>
+</div>
+</div>
+  </main>
+</div>
+</body>
+</html>

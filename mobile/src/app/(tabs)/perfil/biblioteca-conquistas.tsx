@@ -14,6 +14,8 @@ import tinycolor from "tinycolor2";
 
 import CardSemDados from "@/components/CardSemDados";
 import ConquistaModal from "@/components/ConquistaModal";
+import { BibliotecaDesktop } from "@/components/web/BibliotecaDesktop";
+import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { getAchievementArtwork } from "@/constants/achievementImages";
 import { JourneySymbol } from "@/components/JourneySymbol";
 import { HallBackground, OrnamentDivider } from "@/components/HallTheme";
@@ -44,6 +46,7 @@ export default function BibliotecaConquistasScreen() {
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<Conquista | null>(null);
   const summaryGuideRef = useRef<View | null>(null);
+  const desktop = useDesktopWeb();
 
   const perfil = (normalizeBrainHexProfile(usuario?.perfilAtivo) ??
     normalizeBrainHexProfile(usuario?.perfis?.[0]?.nome) ??
@@ -201,6 +204,36 @@ export default function BibliotecaConquistasScreen() {
 
   // Alvos do tutorial inicial: as refs ja existiam para o guia de pagina.
   useEffect(() => registrarAlvoTour("conquistas_resumo", summaryGuideRef), [summaryGuideRef]);
+
+  const detalhe = (
+    <ConquistaModal
+      visible={!!selected}
+      onClose={() => setSelected(null)}
+      title={selected?.nome ?? "Conquista"}
+      category={selected?.categoria ?? ""}
+      description={selected?.descricao ?? "Detalhes da conquista."}
+      date={selected?.data_conquista}
+      profile={perfil}
+      color={shellPalette.accent}
+      imageSource={getAchievementArtwork(selected)}
+    />
+  );
+
+  // Web em tela larga (#346, protótipo v4): números, filtros e a grade, com o mesmo detalhe.
+  if (desktop) {
+    return (
+      <>
+        <BibliotecaDesktop
+          itens={itens}
+          carregando={loading}
+          palette={shellPalette}
+          resumoRef={summaryGuideRef}
+          onAbrir={setSelected}
+        />
+        {detalhe}
+      </>
+    );
+  }
 
   return (
     <View style={[styles.screen, { backgroundColor: shellPalette.background }]}>
@@ -437,17 +470,7 @@ export default function BibliotecaConquistasScreen() {
         )}
       </ScrollView>
 
-      <ConquistaModal
-        visible={!!selected}
-        onClose={() => setSelected(null)}
-        title={selected?.nome ?? "Conquista"}
-        category={selected?.categoria ?? ""}
-        description={selected?.descricao ?? "Detalhes da conquista."}
-        date={selected?.data_conquista}
-        profile={perfil}
-        color={shellPalette.accent}
-        imageSource={getAchievementArtwork(selected)}
-      />
+      {detalhe}
     </View>
   );
 }

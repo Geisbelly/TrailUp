@@ -9,6 +9,8 @@ import { BagEditorModal } from "./BagEditorModal";
 import { BagItemCard } from "./BagItemCard";
 import { BagStoreItem } from "./BagStoreItem";
 import { JourneyHeading } from "@/components/JourneyHeading";
+import { useDialog } from "@/context/DialogContext";
+import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
 type Props = {
@@ -32,6 +34,9 @@ export function BagModal({ visible, classeId, topicId, contentId, profile, onClo
   const [error, setError] = useState<string | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<BagItem | null>(null);
+  // Web em tela larga (#346): janela de 960×640 no centro, itens em grade de 3 colunas.
+  const desktop = useDesktopWeb();
+  const { showConfirm } = useDialog();
 
   const filter = useMemo<BagFilter>(() => ({ origin, type, classId: classeId, topicId, search }), [classeId, origin, search, topicId, type]);
   const selectOrigin = (next: BagItemOrigin | null) => { setOrigin(next); setType(null); };
@@ -56,26 +61,27 @@ export function BagModal({ visible, classeId, topicId, contentId, profile, onClo
     await load(true);
   };
 
-  const remove = (item: BagItem) => Alert.alert(
-    "Excluir item",
-    "Este item será removido da sua Bag.",
-    [
-      { text: "Cancelar", style: "cancel" },
-      {
-        text: "Excluir",
-        style: "destructive",
-        onPress: async () => {
-          try { await deleteBagItem(item.sourceId); await load(true); }
-          catch (err) { setError(err instanceof Error ? err.message : "Não foi possível excluir o item."); }
-        },
-      },
-    ],
-  );
+  const excluir = async (item: BagItem) => {
+    try { await deleteBagItem(item.sourceId); await load(true); }
+    catch (err) { setError(err instanceof Error ? err.message : "Não foi possível excluir o item."); }
+  };
+  // Na web o Alert do react-native não abre nada; na tela larga a confirmação é o diálogo do app.
+  const remove = (item: BagItem) => desktop
+    ? showConfirm({ title: "Excluir item", description: "Este item será removido da sua Bag.", confirmLabel: "Excluir", confirmVariant: "danger", onConfirm: () => excluir(item) })
+    : Alert.alert(
+      "Excluir item",
+      "Este item será removido da sua Bag.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        { text: "Excluir", style: "destructive", onPress: () => excluir(item) },
+      ],
+    );
+  const celula = (key: string, elemento: React.ReactElement) => desktop ? <View key={key} style={styles.celula}>{elemento}</View> : elemento;
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} animationType={desktop ? "fade" : "slide"} transparent={desktop} onRequestClose={onClose}>
       <SafeAreaProvider>
-      <SafeAreaView style={[styles.screen, { backgroundColor: palette.background }]}>
+      <Moldura desktop={desktop} background={palette.background} border={palette.borderStrong}>
         <JourneyHeading title="Bag" eyebrow="SEU INVENTÁRIO" section="bag" palette={palette} right={<Pressable accessibilityRole="button" accessibilityLabel="Fechar Bag" onPress={onClose} style={[styles.close, { borderColor: palette.border }]}><MaterialCommunityIcons name="close" size={22} color="#ffffff" /></Pressable>} />
         <View style={styles.tabs}>
           <Pressable onPress={() => selectOrigin(null)} style={[styles.tab, { borderBottomColor: origin === null ? palette.accent : "transparent" }]}><Text style={[styles.tabText, { color: origin === null ? palette.accent : palette.inactive }]}>Todos</Text></Pressable>
@@ -88,17 +94,31 @@ export function BagModal({ visible, classeId, topicId, contentId, profile, onClo
           <Pressable onPress={() => setType(null)} style={[styles.filter, { borderColor: type === null ? palette.accent : palette.border }]}><Text style={{ color: type === null ? palette.accent : palette.text }}>Todos</Text></Pressable>
           {bagTypeFilterOptions(origin).map((value) => <Pressable key={value} onPress={() => setType(value)} style={[styles.filter, { borderColor: type === value ? palette.accent : palette.border }]}><Text style={{ color: type === value ? palette.accent : palette.text }}>{value === "anotacao" ? "Anotações" : value === "resumo" ? "Resumos" : "Cards"}</Text></Pressable>)}
         </ScrollView> : null}
-        {loading ? <ActivityIndicator color={palette.accent} style={styles.loader} /> : error ? <View style={styles.empty}><MaterialCommunityIcons name="alert-circle-outline" size={40} color={palette.accent} /><Text style={[styles.emptyTitle, { color: palette.text }]}>Não foi possível carregar</Text><Text style={[styles.emptyText, { color: palette.inactive }]}>{error}</Text><Pressable onPress={() => void load()} style={[styles.retry, { backgroundColor: palette.accent }]}><Text style={styles.retryText}>Tentar novamente</Text></Pressable></View> : <ScrollView contentContainerStyle={styles.list} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void load(true)} tintColor={palette.accent} />}>
-          {items.length ? items.map((item) => item.origin === "loja" ? <BagStoreItem key={item.id} item={item} profile={profile} muted={palette.inactive} surface={palette.surface} border={palette.border} /> : <BagItemCard key={item.id} item={item} accent={palette.accent} muted={palette.inactive} surface={palette.surface} border={palette.border} onEdit={(selected) => { setEditing(selected); setEditorOpen(true); }} onDelete={remove} onShare={onShare} />) : <View style={styles.empty}><MaterialCommunityIcons name={origin === "loja" ? "shopping-outline" : origin === "plataforma" ? "creation-outline" : "bag-personal-outline"} size={52} color={palette.accent} /><Text style={[styles.emptyTitle, { color: palette.text }]}>{origin === "loja" ? "Nenhuma compra encontrada" : origin === "plataforma" ? "Nenhum material gerado" : "Sua Bag está vazia"}</Text><Text style={[styles.emptyText, { color: palette.inactive }]}>{origin === "loja" ? "Os itens comprados na loja aparecerão aqui." : origin === "plataforma" ? "Os materiais personalizados aparecerão aqui." : "Os itens salvos e comprados aparecerão aqui."}</Text></View>}
+        {loading ? <ActivityIndicator color={palette.accent} style={styles.loader} /> : error ? <View style={styles.empty}><MaterialCommunityIcons name="alert-circle-outline" size={40} color={palette.accent} /><Text style={[styles.emptyTitle, { color: palette.text }]}>Não foi possível carregar</Text><Text style={[styles.emptyText, { color: palette.inactive }]}>{error}</Text><Pressable onPress={() => void load()} style={[styles.retry, { backgroundColor: palette.accent }]}><Text style={styles.retryText}>Tentar novamente</Text></Pressable></View> : <ScrollView contentContainerStyle={[styles.list, desktop && items.length ? styles.grade : null]} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void load(true)} tintColor={palette.accent} />}>
+          {items.length ? items.map((item) => celula(item.id, item.origin === "loja" ? <BagStoreItem key={item.id} item={item} profile={profile} muted={palette.inactive} surface={palette.surface} border={palette.border} /> : <BagItemCard key={item.id} item={item} accent={palette.accent} muted={palette.inactive} surface={palette.surface} border={palette.border} onEdit={(selected) => { setEditing(selected); setEditorOpen(true); }} onDelete={remove} onShare={onShare} />)) : <View style={styles.empty}><MaterialCommunityIcons name={origin === "loja" ? "shopping-outline" : origin === "plataforma" ? "creation-outline" : "bag-personal-outline"} size={52} color={palette.accent} /><Text style={[styles.emptyTitle, { color: palette.text }]}>{origin === "loja" ? "Nenhuma compra encontrada" : origin === "plataforma" ? "Nenhum material gerado" : "Sua Bag está vazia"}</Text><Text style={[styles.emptyText, { color: palette.inactive }]}>{origin === "loja" ? "Os itens comprados na loja aparecerão aqui." : origin === "plataforma" ? "Os materiais personalizados aparecerão aqui." : "Os itens salvos e comprados aparecerão aqui."}</Text></View>}
         </ScrollView>}
         {isBagClassReady(classeId) && origin !== "loja" && origin !== "plataforma" ? <View style={[styles.bottomBar, { borderTopColor: palette.border, backgroundColor: palette.background }]}><Pressable accessibilityRole="button" accessibilityLabel="Criar item na Bag" onPress={() => { setEditing(null); setEditorOpen(true); }} style={[styles.fab, { backgroundColor: palette.accent }]}><MaterialCommunityIcons name="plus" size={22} color={palette.background} /><Text style={[styles.fabText, { color: palette.background }]}>Novo item</Text></Pressable></View> : null}
         <BagEditorModal visible={editorOpen} initialItem={editing} context={{ classId: classeId, topicId, contentId }} accent={palette.accent} surface={palette.surfaceElevated} muted={palette.inactive} onClose={() => setEditorOpen(false)} onSave={save} />
-      </SafeAreaView>
+      </Moldura>
       </SafeAreaProvider>
     </Modal>
   );
 }
 
+/** No celular, a tela inteira (como sempre); na tela larga, uma janela no centro sobre o fundo escurecido. */
+function Moldura({ desktop, background, border, children }: { desktop: boolean; background: string; border: string; children: React.ReactNode }) {
+  if (!desktop) return <SafeAreaView style={[styles.screen, { backgroundColor: background }]}>{children}</SafeAreaView>;
+  return (
+    <View style={styles.fundo}>
+      <View style={[styles.janela, { backgroundColor: background, borderColor: border }]}>{children}</View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  fundo: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, backgroundColor: "rgba(0,0,0,.66)" },
+  janela: { width: 960, maxWidth: "100%", height: 640, maxHeight: "100%", borderRadius: 22, borderWidth: 1, overflow: "hidden" },
+  grade: { flexDirection: "row", flexWrap: "wrap", alignContent: "flex-start", gap: 12 },
+  celula: { width: "32%" },
   screen: { flex: 1 }, close: { width: 44, height: 44, borderRadius: 6, borderWidth: 1, alignItems: "center", justifyContent: "center" }, tabs: { flexDirection: "row", paddingHorizontal: 20 }, tab: { flex: 1, alignItems: "center", paddingVertical: 16, borderBottomWidth: 2 }, tabText: { fontSize: 13, fontWeight: "700" }, search: { margin: 20, marginBottom: 14, borderWidth: 1, borderRadius: 6, minHeight: 46, flexDirection: "row", alignItems: "center", paddingHorizontal: 12, gap: 8 }, searchInput: { flex: 1, fontSize: 15 }, filters: { paddingHorizontal: 20, gap: 8, paddingBottom: 10 }, filter: { borderWidth: 1, borderRadius: 6, paddingHorizontal: 14, paddingVertical: 10 }, loader: { flex: 1 }, list: { padding: 20, paddingBottom: 24, flexGrow: 1 }, empty: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, gap: 12 }, emptyTitle: { fontSize: 20, fontWeight: "700", textAlign: "center" }, emptyText: { fontSize: 14, lineHeight: 21, textAlign: "center" }, retry: { marginTop: 8, borderRadius: 6, paddingHorizontal: 18, paddingVertical: 11 }, retryText: { color: "#fff", fontWeight: "800" }, bottomBar: { borderTopWidth: 1, paddingHorizontal: 20, paddingVertical: 12 }, fab: { borderRadius: 6, minHeight: 48, paddingHorizontal: 16, paddingVertical: 13, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7 }, fabText: { fontWeight: "800" },
 });

@@ -460,9 +460,9 @@ export function useTopicCrud({
   };
 
   const handleDeleteTopic = async (id: number) => {
-    const confirmDelete = window.confirm("Remover este tópico? Isso apagará dependências.");
-    if (!confirmDelete) return false;
-
+    // Sem confirmação aqui: quem chama (TopicsManager) já confirmou no diálogo
+    // ConfirmarExcluirTopico, com o nome do tópico digitado. Um window.confirm a mais
+    // pedia a mesma coisa duas vezes, em janelas diferentes.
     // primeiro remove referencias de next/depende em outros topicos
     try {
       const { data: topics, error: fetchErr } = await supabase

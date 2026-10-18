@@ -1,16 +1,23 @@
 import { useEffect, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { GraduationCap, LayoutDashboard, LogOut, Route, Settings, ShieldCheck, Sparkles, Trophy } from "lucide-react";
+import { Award, CalendarDays, ClipboardCheck, Flag, GraduationCap, LayoutDashboard, LogOut, Route, Settings, ShieldCheck, Sparkles, Trophy } from "lucide-react";
+import { Swords } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DESIGN_ART } from "@/lib/design-art";
 import { CONSOLE_SECTIONS, consolePathForView, type ConsoleView } from "@/pages/consoleSections";
+import Escriba from "./escriba/Escriba";
 
 const navigation = {
   dashboard: { label: "Visão geral", icon: LayoutDashboard },
   trilha: { label: "Trilhas", icon: Route },
+  missoes: { label: "Missões", icon: Flag },
+  conquistas: { label: "Conquistas", icon: Award },
+  notas: { label: "Notas", icon: ClipboardCheck },
+  eventos: { label: "Eventos", icon: CalendarDays },
   classes: { label: "Turmas", icon: GraduationCap },
   personalizacoes: { label: "Personalizações", icon: Sparkles },
   ranks: { label: "Rankings", icon: Trophy },
+  batalhas: { label: "Rank de batalhas", icon: Swords },
   profile: { label: "Meus dados", icon: Settings },
   aprovacoes: { label: "Aprovações", icon: ShieldCheck },
 };
@@ -58,6 +65,8 @@ export default function ConsoleShell({ view, name, institution, isOwner, onSignO
         })}
       </nav>
       <main className="console-main" aria-label={navigation[view].label}>{children}</main>
+      {/* O Escriba acompanha as 6 telas de trabalho; Aprovações é administração, não turma. */}
+      {view !== "aprovacoes" && <Escriba />}
     </div>
   );
 }

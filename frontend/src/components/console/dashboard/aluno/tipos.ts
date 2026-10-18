@@ -18,6 +18,9 @@ export interface Aluno {
   temNota: boolean;
   porcentagemConcluida: number;
   tempoGastoMin: number;
+  /** Presenca (soma de `dwell_sec`). `null` quando nao ha telemetria — que e
+   *  diferente de zero: zero seria "abriu e nao ficou". */
+  tempoPresencaMin: number | null;
   acertosPercentual: number;
   /** classe_aluno.acertosPercentual veio preenchido (acertosPercentual vira 0 quando é nulo). */
   temAcertos: boolean;

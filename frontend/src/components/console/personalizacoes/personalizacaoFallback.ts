@@ -204,6 +204,40 @@ export function resolvePublicStorageUrl(
   return `${base}/storage/v1/object/public/${bucketName}/${encodedPath}`;
 }
 
+/**
+ * Porte 1:1 de `build_material_url` (api/app/services/storage.py).
+ *
+ * Material do bucket `conteudo_aluno` aponta para o gateway `storage-redirect`:
+ * depois da migracao para o R2 o arquivo novo so' existe la', e a URL publica
+ * do Storage da' 404 (ver CLAUDE.md, "`storage.objects` nao diz mais se um
+ * material existe"). O gateway serve do R2 e cai no Supabase quando o objeto
+ * ainda nao foi copiado, entao vale para material antigo e novo.
+ *
+ * Outros buckets (fonte do professor) ficam com a URL publica direta — o
+ * gateway so' conhece caminhos de `vw_material_storage_paths`.
+ */
+export function resolveMaterialUrl(
+  baseUrl: string | null | undefined,
+  bucket: string | null | undefined,
+  path: string | null | undefined
+): string | null {
+  const base = String(baseUrl ?? "").trim().replace(/\/+$/, "");
+  const [bucketName, rawPath] = normalizeBucketAndPath(bucket ?? null, path ?? null);
+  if (!base || !bucketName || !rawPath) return null;
+  if (rawPath.startsWith("http://") || rawPath.startsWith("https://")) return rawPath;
+  if (bucketName !== FALLBACK_BUCKET) return resolvePublicStorageUrl(base, bucketName, rawPath);
+  // Os caminhos gerados usam so' [A-Za-z0-9/_.-], que `encodeURIComponent`
+  // preserva; a URL sai identica a do Python, a do microservice e a da
+  // migracao 20260829_02.
+  const encoded = rawPath
+    .split("/")
+    .filter(Boolean)
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+  if (!encoded) return null;
+  return `${base}/functions/v1/storage-redirect?path=${encoded}`;
+}
+
 function resolvePublicAssetFields(
   supabaseUrl: string,
   arquivoUrl: unknown,
@@ -226,7 +260,7 @@ function resolvePublicAssetFields(
   let resolvedUrl = isHttpUrl ? rawUrl : null;
   let resolvedStoragePath = rawStoragePath ?? pathCandidate;
   if (pathCandidate && bucket) {
-    const publicUrl = resolvePublicStorageUrl(supabaseUrl, bucket, pathCandidate);
+    const publicUrl = resolveMaterialUrl(supabaseUrl, bucket, pathCandidate);
     if (publicUrl) {
       resolvedUrl = publicUrl;
       resolvedStoragePath = pathCandidate;
@@ -429,4 +463,80 @@ export function extractProfileKeyFromRecord(record: {
     plano.perfil_dominante;
 
   return normalizeProfileKey(perfil);
+}
+
+/**
+ * Porte de `ConteudoClasseRepository.listar_alunos_classe_com_perfil_dominante`
+ * + a contagem que `personalizacao.py` faz em cima dela.
+ *
+ * O console mostrava 0 aluno(s) por perfil sempre que caia' no fallback. O
+ * motivo registrado era RLS nao confirmada em `aluno_perfil`/`perfil` —
+ * confirmada agora na producao, e permite o que precisamos:
+ *
+ *   classe_aluno  -> classe_aluno_posse_sel .... classe_id IN app_classes_do_professor()
+ *   aluno_perfil  -> aluno_perfil_posse_sel .... aluno_id  IN app_alunos_do_professor()
+ *   perfil        -> perfil_posse_sel ......... true
+ *
+ * Tres detalhes do SQL original que mudam o resultado e por isso sao copiados
+ * em vez de reinventados:
+ *
+ * 1. dominante = maior `afinidade` com NULLS LAST — nulo perde de qualquer
+ *    numero, inclusive de zero;
+ * 2. empate desempata por `p.nome ASC`, nao pela ordem de chegada;
+ * 3. aluno SEM nenhuma linha em `aluno_perfil` conta como **mastermind**, nao
+ *    e' descartado (`str(row.get("perfil_nome") or "mastermind")`). Conta como
+ *    aluno da turma de um jeito ou de outro.
+ */
+export type LinhaAlunoPerfil = {
+  aluno_id: string;
+  afinidade: number | null;
+  perfil_nome: string | null;
+};
+
+const APELIDOS_DE_PERFIL: Record<string, string> = {
+  socialiser: "socializer",
+};
+
+/** Espelha `_normalize_profile_key`: minuscula, apelido, e vazio vira mastermind. */
+export function normalizarChaveDePerfil(valor: string | null | undefined): string {
+  const normalizado = normalizeProfileName(valor);
+  return APELIDOS_DE_PERFIL[normalizado] ?? (normalizado || "mastermind");
+}
+
+export function contarAlunosPorPerfilDominante(
+  alunosDaTurma: readonly string[],
+  linhas: readonly LinhaAlunoPerfil[]
+): Record<string, number> {
+  const daTurma = new Set(alunosDaTurma);
+  const melhorPorAluno = new Map<string, { afinidade: number | null; nome: string }>();
+
+  for (const linha of linhas) {
+    if (!daTurma.has(linha.aluno_id)) continue;
+    const nome = normalizeProfileName(linha.perfil_nome);
+    if (!nome) continue;
+    const atual = melhorPorAluno.get(linha.aluno_id);
+    if (atual === undefined || venceu(linha.afinidade, nome, atual)) {
+      melhorPorAluno.set(linha.aluno_id, { afinidade: linha.afinidade, nome });
+    }
+  }
+
+  const contagem: Record<string, number> = {};
+  for (const aluno of daTurma) {
+    // Sem linha de perfil, o SQL devolve NULL e o Python troca por mastermind.
+    const chave = normalizarChaveDePerfil(melhorPorAluno.get(aluno)?.nome ?? null);
+    contagem[chave] = (contagem[chave] ?? 0) + 1;
+  }
+  return contagem;
+}
+
+/** `ORDER BY afinidade DESC NULLS LAST, nome ASC` aplicado a um par. */
+function venceu(
+  afinidade: number | null,
+  nome: string,
+  atual: { afinidade: number | null; nome: string }
+): boolean {
+  const a = afinidade ?? Number.NEGATIVE_INFINITY;
+  const b = atual.afinidade ?? Number.NEGATIVE_INFINITY;
+  if (a !== b) return a > b;
+  return nome < atual.nome;
 }

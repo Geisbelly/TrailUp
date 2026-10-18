@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TrailUp — Tópico (Conqueror)</title>
+<style>
+  :root{
+    --bg:#0b1328; --surface:#121e3f; --elevated:#192a57;
+    --border:#28428a; --border-strong:#4d6fcb;
+    --text:#f3f4f7; --text-muted:rgba(243,244,247,.82); --text-subtle:rgba(243,244,247,.62);
+    --accent:#6f90eb; --accent-strong:#1942b2; --accent-soft:rgba(111,144,235,.18);
+    --success:#3fbf6b; --success-soft:rgba(63,191,107,.14);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  .title-font{font-family:Georgia,"Times New Roman",serif}
+  .screen{min-height:100vh;display:flex;flex-direction:column}
+  header{display:flex;align-items:center;gap:14px;padding:14px 24px;border-bottom:1px solid var(--border);background:var(--surface)}
+  .back{width:36px;height:36px;border-radius:8px;background:var(--elevated);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;color:inherit;text-decoration:none}
+  .back svg{width:18px;height:18px;color:var(--text-muted)}
+  .head-copy{flex:1;min-width:0}
+  .head-copy .tname{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin:0 0 2px}
+  .head-copy h1{font-size:17px;margin:0;font-weight:700}
+  .step-progress{display:flex;align-items:center;gap:6px;flex-shrink:0}
+  .step-dot{width:8px;height:8px;border-radius:50%;background:var(--border)}
+  .step-dot.done{background:var(--success)}
+  .step-dot.current{background:var(--accent);width:20px;border-radius:100px}
+  .step-count{font-size:12px;color:var(--text-subtle);margin-left:6px;white-space:nowrap}
+
+  .body-grid{flex:1;width:100%;max-width:1180px;margin:0 auto;padding:32px 24px 120px;display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:32px;align-items:start}
+  main{min-width:0}
+  .done-btn{margin-top:14px;display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border-radius:100px;border:1px solid var(--border-strong);background:none;color:var(--text);font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+  .done-btn[disabled]{opacity:.6;cursor:default}
+  .done-btn svg{width:15px;height:15px}
+  .act-btn{margin-top:14px;padding:10px 18px;border-radius:100px;border:0;background:var(--accent);color:#0b1328;font:inherit;font-size:13.5px;font-weight:700;cursor:pointer}
+  .act-btn[disabled]{opacity:.55;cursor:default}
+  /* Modo batalha (revisão 04 #1) — paleta do boss, não do perfil */
+  .battle{position:sticky;top:24px;border-radius:18px;padding:18px;border:1px solid var(--b-primary);background:linear-gradient(170deg,color-mix(in srgb,var(--b-primary) 22%,var(--b-secondary)),var(--b-secondary) 70%);color:var(--b-text);box-shadow:0 18px 40px rgba(0,0,0,.4)}
+  .b-top{display:flex;align-items:center;gap:8px}
+  .b-top svg{width:18px;height:18px;color:var(--b-primary)}
+  .b-top strong{flex:1;color:var(--b-accent);font-size:14px}
+  .b-ghost{background:none;border:1px solid rgba(255,255,255,.25);color:var(--b-accent);border-radius:100px;padding:5px 12px;font:inherit;font-size:12px;font-weight:600;cursor:pointer}
+  .b-hero{display:flex;flex-direction:column;align-items:center;text-align:center;margin:12px 0 6px;position:relative}
+  .b-hero img{width:160px;height:160px;object-fit:contain;filter:drop-shadow(0 0 22px color-mix(in srgb,var(--b-primary) 70%,transparent));transition:filter .3s,transform .15s}
+  .b-hero img.hit{transform:translateX(-6px) rotate(-3deg)}
+  .b-hero img.dead{filter:grayscale(1) brightness(.5)}
+  .b-hero h3{font-family:Georgia,serif;font-size:19px;margin:8px 0 6px}
+  .b-chips{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+  .b-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:100px;font-size:11.5px;font-weight:700;background:rgba(0,0,0,.3);color:var(--b-accent)}
+  .b-chip svg{width:13px;height:13px}
+  .dmg{position:absolute;top:40px;left:50%;font-family:Georgia,serif;font-size:28px;font-weight:700;color:#fff;text-shadow:0 0 12px var(--b-hp);animation:float 1s ease-out forwards;pointer-events:none}
+  @keyframes float{from{opacity:1;transform:translate(-50%,0)}to{opacity:0;transform:translate(-50%,-50px)}}
+  .b-bar{margin-top:12px}
+  .b-bar .h{display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:5px}
+  .b-bar .t{height:10px;border-radius:999px;background:rgba(0,0,0,.35);overflow:hidden}
+  .b-bar .t i{display:block;height:100%;border-radius:999px;transition:width .4s}
+  .b-how{margin:14px 0 0;padding:10px 12px;border-radius:12px;background:rgba(0,0,0,.25);font-size:12.5px;list-style:none}
+  .b-how li{display:flex;justify-content:space-between;padding:3px 0}
+  .b-how b{color:var(--b-accent)}
+  .b-help{margin:12px 0 0;font-size:12.5px;opacity:.85;line-height:1.45}
+  .side-card{position:sticky;top:24px;border-radius:18px;padding:18px;border:1px solid var(--border);background:var(--surface)}
+  .side-card h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);margin:0 0 10px}
+  .side-card p{margin:0;font-size:13.5px;line-height:1.5;color:var(--text-muted)}
+  .b-off{display:inline-flex;align-items:center;gap:6px;margin-left:12px;padding:5px 12px;border-radius:100px;border:1px solid var(--border-strong);font-size:12px;color:var(--text-muted)}
+  .b-off button{background:none;border:0;color:var(--accent);font:inherit;font-weight:700;cursor:pointer;padding:0}
+  .v-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);display:grid;place-items:center;z-index:60}
+  .v-modal{width:380px;text-align:center;padding:26px;border-radius:20px;background:var(--surface);border:1px solid #34d399;box-shadow:0 0 50px rgba(52,211,153,.25)}
+  .v-modal img{width:130px;height:130px;object-fit:contain;filter:grayscale(1) brightness(.55)}
+  .v-modal h2{font-family:Georgia,serif;font-size:26px;margin:8px 0 4px;color:#34d399}
+  .v-modal p{margin:0 0 18px;color:var(--text-muted)}
+  .v-modal a{display:inline-flex;padding:11px 22px;border-radius:100px;background:#34d399;color:#06281a;font-weight:700;text-decoration:none}
+  .preview{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:40;display:flex;align-items:center;gap:10px;padding:6px 8px 6px 14px;border-radius:100px;background:var(--bg);border:1px solid var(--border);font-size:12px;color:var(--text-muted)}
+  .preview select{background:var(--accent);color:var(--bg);border:0;border-radius:100px;padding:6px 10px;font-weight:600;font-family:inherit}
+
+  .block-label{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+  .block-label svg{width:16px;height:16px;color:var(--accent)}
+  .block-label span{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle)}
+
+  .prose{font-size:16px;line-height:1.7;color:var(--text)}
+  .prose h2{font-family:Georgia,serif;font-size:21px;margin:0 0 12px}
+  .prose p{margin:0 0 16px;color:var(--text-muted)}
+  .prose .callout{background:var(--accent-soft);border-left:3px solid var(--accent);padding:12px 16px;border-radius:6px;font-size:14px;color:var(--text)}
+
+  .audio-card{margin:28px 0;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;display:flex;align-items:center;gap:14px}
+  .play-btn{width:44px;height:44px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer}
+  .play-btn svg{width:18px;height:18px;color:#0b1328}
+  .audio-body{flex:1}
+  .audio-title{font-size:13px;font-weight:600;margin-bottom:8px}
+  .audio-track{height:5px;border-radius:100px;background:rgba(255,255,255,.1);position:relative}
+  .audio-track .fill{position:absolute;left:0;top:0;bottom:0;width:38%;background:var(--accent);border-radius:100px}
+  .audio-time{display:flex;justify-content:space-between;font-size:11px;color:var(--text-subtle);margin-top:6px}
+  .audio-speed{font-size:12px;color:var(--text-muted);background:var(--elevated);border-radius:100px;padding:6px 10px;flex-shrink:0}
+
+  .activity-card{margin-top:32px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px 22px 20px}
+  .activity-card .tag{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:8px}
+  .activity-card h3{font-size:16px;line-height:1.5;margin:0 0 18px;font-weight:600}
+  .option{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:10px;border:1px solid var(--border);margin-bottom:10px;cursor:pointer}
+  .option .bullet{width:22px;height:22px;border-radius:50%;border:2px solid var(--border-strong);flex-shrink:0}
+  .option.correct{border-color:var(--success);background:var(--success-soft)}
+  .option.correct .bullet{background:var(--success);border-color:var(--success);position:relative}
+  .option.correct .bullet::after{content:"";position:absolute;inset:0;background:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%230b1328%22 stroke-width=%223%22%3E%3Cpath d=%22M20 6 9 17l-5-5%22/%3E%3C/svg%3E') center/60% no-repeat}
+  .feedback{margin-top:16px;display:flex;gap:10px;align-items:flex-start;background:var(--success-soft);border:1px solid var(--success);border-radius:10px;padding:12px 14px}
+  .feedback svg{width:18px;height:18px;color:var(--success);flex-shrink:0;margin-top:1px}
+  .feedback strong{font-size:14px}
+  .feedback p{margin:2px 0 0;font-size:13px;color:var(--text-muted)}
+
+  .bottom-bar{position:fixed;left:0;right:0;bottom:0;background:linear-gradient(to top, var(--bg) 60%, transparent);padding:20px 24px 24px;display:flex;justify-content:center}
+  .next-btn{width:100%;max-width:400px;height:52px;border-radius:6px;background:var(--accent);color:#0b1328;font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;text-decoration:none;box-sizing:border-box}
+  .tag-fixed{position:fixed;bottom:82px;left:16px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-subtle);z-index:3;background:rgba(11,19,40,.7);padding:4px 10px;border-radius:100px}
+
+  /* barras de rolagem no tema (revisão 03): finas, na cor da borda do perfil, sem a barra cinza do sistema */
+  *{scrollbar-width:thin;scrollbar-color:var(--border-strong,#4d6fcb) transparent}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--border-strong,#4d6fcb);border-radius:999px;border:3px solid transparent;background-clip:padding-box}
+  ::-webkit-scrollbar-thumb:hover{background:var(--accent,#6f90eb);background-clip:padding-box;border:3px solid transparent}
+  ::-webkit-scrollbar-corner{background:transparent}
+  /* revisão 04 #8: partes do tópico e atividades de texto e vídeo */
+  .step-dot{border:0;padding:0;cursor:pointer}
+  .step-dot.done{cursor:default}
+  .step-dot:not(.done):not(.current){background:var(--border-strong)}
+  .step-dot:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+  .part[hidden]{display:none}
+  .at-title{font-family:Georgia,serif;font-size:24px;margin:0 0 10px}
+  .at-desc{font-size:15px;line-height:1.65;color:var(--text-muted);margin:0 0 20px}
+  .media-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:14px}
+  .doc{border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--bg)}
+  .doc-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;border-bottom:1px solid var(--border);background:var(--elevated)}
+  .doc.small .doc-bar{border-bottom:0}
+  .doc-kind{display:inline-flex;align-items:center;gap:6px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);font-weight:700}
+  .doc-kind svg{width:15px;height:15px}
+  .doc-bar strong{font-size:13px;font-weight:600}
+  .doc-bar .seg,.doc-bar .doc-open{margin-left:auto}
+  .seg{display:inline-flex;border:1px solid var(--border-strong);border-radius:999px;overflow:hidden}
+  .seg button{background:none;border:0;color:var(--text-muted);font:inherit;font-size:12px;padding:6px 12px;cursor:pointer}
+  .seg button.on{background:var(--accent);color:#0b1328;font-weight:700}
+  .doc-view{height:300px;overflow:auto;padding:18px;display:flex;flex-direction:column;align-items:center;gap:14px;background:#0a1124}
+  .page{width:min(100%,420px);aspect-ratio:1/1.3;flex:none;background:#f5f1e6;color:#2b2618;border-radius:4px;padding:24px 26px;box-shadow:0 6px 20px rgba(0,0,0,.4);font-family:Georgia,serif;font-size:12.5px;line-height:1.6}
+  .page h4{margin:0 0 10px;font-size:15px}
+  .page p{margin:0 0 8px}
+  .page .pn{display:block;text-align:right;font-size:10px;color:#8a7f66;margin-top:8px}
+  .doc-view.err{height:auto;padding:28px;color:#fca5a5;font-size:13px;text-align:center;background:rgba(225,91,100,.08)}
+  .doc-foot{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-top:1px solid var(--border);font-size:12px;color:var(--text-subtle)}
+  .pg-nav{display:inline-flex;align-items:center;gap:8px}
+  .pg-nav button{width:26px;height:26px;border-radius:50%;border:1px solid var(--border-strong);background:none;color:var(--text);cursor:pointer;font-size:13px}
+  .pg-nav button[disabled]{opacity:.35;cursor:default}
+  .doc-open{font-size:12.5px;font-weight:700;color:var(--accent);text-decoration:none}
+  .img-block{margin:0;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--bg)}
+  .img-block svg{display:block;width:100%;height:auto;max-height:220px;padding:14px 0}
+  .img-block figcaption{padding:9px 12px;font-size:12px;color:var(--text-subtle);border-top:1px solid var(--border)}
+  .player{position:relative;aspect-ratio:16/9;border-radius:16px;overflow:hidden;background:#000;border:1px solid var(--border)}
+  .player>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.75}
+  .pl-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.45),transparent 30%,transparent 60%,rgba(0,0,0,.7))}
+  .pl-title{position:absolute;top:14px;left:16px;font-weight:700;font-size:14px;text-shadow:0 1px 4px #000}
+  .pl-big{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:68px;height:68px;border-radius:50%;border:0;background:rgba(111,144,235,.92);color:#0b1328;display:grid;place-items:center;cursor:pointer;box-shadow:0 0 30px rgba(111,144,235,.5)}
+  .pl-big svg{width:30px;height:30px;margin-left:4px}
+  .player.playing .pl-big{display:none}
+  .pl-done{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:999px;background:rgba(18,30,63,.92);border:1px solid #34d399;color:#34d399;font-weight:700;font-size:14px}
+  .pl-done[hidden]{display:none}
+  .pl-done svg{width:18px;height:18px}
+  .pl-ctrl{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;gap:12px;padding:10px 14px;font-size:12px;color:#e5e9f5}
+  .pl-ctrl button{background:none;border:0;color:#fff;cursor:pointer;padding:0;display:grid}
+  .pl-ctrl button svg{width:18px;height:18px}
+  .pl-track{flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,.25);overflow:hidden}
+  .pl-track i{display:block;height:100%;width:0;background:var(--accent)}
+  .pl-fs{width:17px;height:17px}
+</style>
+</head>
+<body>
+<div class="screen">
+  <header>
+    <a class="back" href="03-trilha.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></a>
+    <div class="head-copy">
+      <p class="tname">Fronteiras do Império</p>
+      <h1>3. Equações do 1º grau</h1>
+    </div>
+    <div class="step-progress">
+      <button class="step-dot done" disabled aria-label="Parte 1: conteúdo concluído"></button>
+      <button class="step-dot done" disabled aria-label="Parte 2: conteúdo concluído"></button>
+      <button class="step-dot current" data-part-go="3" aria-label="Parte 3: Avançando sobre o desconhecido"></button>
+      <button class="step-dot" data-part-go="4" aria-label="Parte 4: atividade de leitura"></button>
+      <button class="step-dot" data-part-go="5" aria-label="Parte 5: atividade de vídeo"></button>
+      <span class="step-count" id="stepCount">3 de 5</span>
+    </div>
+    <span id="offChip"></span>
+  </header>
+
+  <div class="body-grid">
+  <main>
+  <section class="part" data-part="3">
+    <div class="block-label">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V2H6.5A2.5 2.5 0 0 0 4 4.5z"/></svg>
+      <span>Material personalizado — perfil Conqueror</span>
+    </div>
+    <div class="prose">
+      <h2 class="title-font">Avançando sobre o desconhecido</h2>
+      <p>Toda equação do 1º grau é um território a ser conquistado: de um lado, o que você já sabe; do outro, o "x" que ainda não foi tomado. Seu trabalho é isolar esse território — mover tudo o que não é "x" pro outro lado do sinal de igual, sempre em par (o que faz de um lado, faz do outro).</p>
+      <div class="callout">Estratégia: pense em cada equação como uma fronteira a ser avançada passo a passo — não tente vencer tudo de uma vez.</div>
+    </div>
+
+    <div class="audio-card">
+      <div class="play-btn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
+      <div class="audio-body">
+        <div class="audio-title">Ouvir narrado — Avançando sobre o desconhecido</div>
+        <div class="audio-track"><div class="fill"></div></div>
+        <div class="audio-time"><span>1:42</span><span>4:30</span></div>
+      </div>
+      <div class="audio-speed">1.0×</div>
+    </div>
+    <button class="done-btn" id="doneContent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg>Marcar conteúdo como concluído</button>
+    <button class="done-btn" id="addBag" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>Adicionar à Bag</button>
+
+    <div class="activity-card">
+      <div class="tag">Atividade — múltipla escolha</div>
+      <h3>Na equação 3x + 7 = 22, qual é o valor de x?</h3>
+      <div class="option"><div class="bullet"></div> x = 3</div>
+      <div class="option correct"><div class="bullet"></div> x = 5</div>
+      <div class="option"><div class="bullet"></div> x = 7</div>
+      <div class="option"><div class="bullet"></div> x = 15</div>
+      <div class="feedback">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+        <div><strong>Conquistado!</strong><p>3x = 22 − 7 → 3x = 15 → x = 5. Você isolou o "x" corretamente.</p></div>
+      </div>
+      <button class="act-btn" id="doneActivity">Concluir atividade</button>
+    </div>
+  </section>
+  <section class="part" data-part="4" hidden>
+    <div class="block-label">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>
+      <span>Atividade — leitura</span>
+    </div>
+    <h2 class="at-title title-font">Diário de campanha: a balança das equações</h2>
+    <p class="at-desc">Leia o relato do capitão e anote, no seu diário, os três movimentos que ele fez para descobrir quantos soldados havia em cada tropa.</p>
+    <div class="media-card">
+      <div class="doc" id="pdf">
+        <div class="doc-bar"><span class="doc-kind"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>Leitura do PDF</span><strong>Diário de campanha.pdf</strong>
+          <div class="seg"><button class="on" data-modo="pagina">Modo página</button><button data-modo="rolagem">Modo rolagem</button></div></div>
+        <div class="doc-view" id="pdfView"></div>
+        <div class="doc-foot"><span id="pdfPg"></span><a class="doc-open" href="#" data-open-file>Abrir arquivo</a></div>
+      </div>
+      <figure class="img-block">
+        <svg viewBox="0 0 360 170" role="img" aria-label="Balança em equilíbrio: 3 tropas e 7 soldados de um lado, 22 soldados do outro">
+          <rect x="174" y="40" width="12" height="110" rx="4" fill="#4d6fcb"/><rect x="130" y="148" width="100" height="12" rx="6" fill="#4d6fcb"/>
+          <rect x="40" y="36" width="280" height="8" rx="4" fill="#9fb4f2"/><circle cx="180" cy="40" r="10" fill="#e8c766"/>
+          <path d="M70 44 50 96h80L110 44M290 44l-20 52h80l-20-52" fill="none" stroke="#9fb4f2" stroke-width="2"/>
+          <path d="M44 96h92a46 18 0 0 1-92 0zM264 96h92a46 18 0 0 1-92 0z" fill="#192a57" stroke="#6f90eb"/>
+          <g font-family="Georgia,serif" font-size="15" fill="#f3f4f7" text-anchor="middle"><text x="90" y="88">x x x + 7</text><text x="310" y="88">22</text><text x="180" y="20" font-size="12" fill="#e8c766">=</text></g>
+        </svg>
+        <figcaption>Balança em equilíbrio · o que sai de um prato sai do outro.</figcaption>
+      </figure>
+    </div>
+    <button class="act-btn" data-done-act="4">Concluir atividade</button>
+  </section>
+
+  <section class="part" data-part="5" hidden>
+    <div class="player" id="player">
+      <img src="assets/world-conqueror.webp" alt="" />
+      <div class="pl-shade"></div>
+      <span class="pl-title">Isolando o x em 3 movimentos</span>
+      <button class="pl-big" data-play aria-label="Reproduzir vídeo"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+      <div class="pl-done" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg>Vídeo assistido</div>
+      <div class="pl-ctrl"><button data-play aria-label="Reproduzir ou pausar"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button><span id="plTime">0:00 / 3:12</span><div class="pl-track"><i id="plFill"></i></div><span>1.0×</span><svg class="pl-fs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg></div>
+    </div>
+    <div class="block-label" style="margin-top:18px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="15" height="14" rx="2"/><path d="M17 10l5-3v10l-5-3z"/></svg>
+      <span>Atividade — vídeo</span>
+    </div>
+    <h2 class="at-title title-font" style="font-size:20px">Isolando o x em 3 movimentos</h2>
+    <p class="at-desc">Assista à Amina resolvendo 5x − 4 = 21 e pause em cada movimento para tentar antes dela.</p>
+    <div class="media-card">
+      <div class="doc small"><div class="doc-bar"><span class="doc-kind"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8"/></svg>Documento</span><strong>Roteiro do vídeo.docx</strong><a class="doc-open" href="#" data-open-file>Abrir arquivo</a></div></div>
+    </div>
+    <button class="act-btn" data-done-act="5">Concluir atividade</button>
+  </section>
+  </main>
+  <aside id="side" aria-live="polite"></aside>
+  </div>
+
+  <div class="bottom-bar">
+    <a class="next-btn" href="03-trilha.html">Continuar
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </a>
+  </div>
+</div>
+<div class="preview"><span>Pré-visualização de estado:</span><select id="stateSel" aria-label="Estado da tela"></select></div>
+<div id="vmodal"></div>
+<script src="assets/celebracoes.js"></script>
+<script src="assets/mentor.js"></script>
+<script>
+/* Modo batalha — mecânica do app: 16 de dano por conteúdo concluído, 24 por atividade concluída
+   (api/app/services/behavioral_personalization.py); textos de IABattlePanel e BossVictoryModal. */
+const BOSS={nome:'Guardião das Equações',tipo:'Boss arcano',img:'boss-12',pal:{primary:'#a78bfa',secondary:'#1e1b4b',accent:'#fef08a',hp:'#f97316',shield:'#60a5fa',text:'#f8fafc'}};
+const HP_MAX=4*16+3*24, SH_MAX=20; // 4 conteúdos e 3 atividades em Equações do 1º grau
+const STATES=[['on','Em batalha'],['low','Boss quase derrotado'],['dead','Boss derrotado'],['off','Batalha desativada'],['none','Sem batalha (perfil sem sinal Survivor)'],['paused','Batalha suspensa (ansiedade)'],['conquista','Conquista desbloqueada'],['mentor','Guia aberto'],['mentor-mudo','Guia silenciado'],['bag','Bag aberta'],['bag-novo','Editor: novo item'],['texto','Atividade de texto'],['video','Atividade de vídeo'],['video-fim','Vídeo assistido'],['anexo-erro','Anexo com erro']];
+let st, hp, sh, secs, doneC, doneA, timer, part=3, doneP={4:false,5:false}, pdfModo='pagina', pdfPg=1, pdfErro=false, plT=0, plTimer;
+const $=id=>document.getElementById(id);
+const ic={sword:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14.5 17.5 3 6V3h3l11.5 11.5"/><path d="M13 19l6-6M16 16l4 4M19 21l2-2"/><path d="M9.5 17.5 21 6V3h-3L6.5 14.5"/><path d="M11 19l-6-6M8 16l-4 4M5 21l-2-2"/></svg>',
+  sand:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h12M6 22h12M7 2v4l5 6-5 6v4M17 2v4l-5 6 5 6v4"/></svg>',
+  king:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 18h18l-2-10-4 4-3-6-3 6-4-4z"/></svg>'};
+const fmt=x=>String(Math.floor(x/60)).padStart(2,'0')+':'+String(x%60).padStart(2,'0');
+const bar=(l,v,m,c)=>`<div class="b-bar"><div class="h"><span>${l}</span><span>${Math.round(v)} / ${m}</span></div><div class="t"><i style="width:${m?v/m*100:0}%;background:${c}"></i></div></div>`;
+function set(v){
+  Mentor.reset();
+  if(window.Bag)Bag.fechar();
+  if(v==='bag'||v==='bag-novo'){const m=v;set('on');$('stateSel').value=m;const go=()=>window.Bag?(m==='bag'?Bag.abrir():Bag.novo({topico:'Equações do 1º grau',conteudo:'Avançando sobre o desconhecido'})):setTimeout(go,30);go();return}
+  if(v==='mentor'||v==='mentor-mudo'){const m=v;set('on');$('stateSel').value=m;m==='mentor'?Mentor.abrir():Mentor.silenciar();return}
+  if(['texto','video','video-fim','anexo-erro'].includes(v)){const m=v;set('on');$('stateSel').value=m;if(m==='anexo-erro')pdfErro=true;irParte(m==='texto'||m==='anexo-erro'?4:5);if(m==='video-fim')tocar(true);return}
+  st=v; clearInterval(timer); clearInterval(plTimer); plTimer=null; plT=0; {const pl=$('player');pl.classList.remove('playing');$('plFill').style.width='0';$('plTime').textContent='0:00 / 3:12';pl.querySelector('.pl-done').hidden=true} doneP={4:false,5:false}; pdfModo='pagina'; pdfPg=1; pdfErro=false; irParte(3,true); sh=SH_MAX; hp=HP_MAX-2*16; secs=12*60+40; doneC=false; doneA=false; $('vmodal').innerHTML='';
+  if(v==='low'){hp=8;sh=0}
+  if(v==='dead'){hp=0;sh=0}
+  render();
+  if(v==='dead')vitoria();
+  if(v==='conquista'){st='on';render();Celebrar.conquista({titulo:'Fronteira Avançada',descricao:'Complete 2 tópicos seguidos sem errar nenhuma questão de atividade.',data:'hoje',categoria:'Desempenho',img:'assets/object-trophy.png'});$('stateSel').value='conquista'}
+  if(v==='on'||v==='low')timer=setInterval(()=>{secs=Math.max(0,secs-1);const t=$('bclock');if(t)t.textContent=fmt(secs)},1000);
+}
+function vitoria(){
+  $('vmodal').innerHTML=`<div class="v-bg"><div class="v-modal" role="dialog" aria-modal="true" aria-labelledby="vt"><img src="assets/${BOSS.img}.png" alt="" /><h2 id="vt">Parabéns!</h2><p>Você derrotou o boss!</p><a href="03-trilha.html">Continuar jornada</a></div></div>`;
+}
+function render(){
+  $('stateSel').innerHTML=STATES.map(([k,l])=>`<option value="${k}" ${st===k?'selected':''}>${l}</option>`).join('');
+  const P=BOSS.pal, side=$('side'), dead=hp<=0;
+  $('offChip').innerHTML=st==='off'?'<span class="b-off">Modo batalha desligado · <button data-on>Ligar</button></span>':'';
+  $('doneContent').disabled=doneC; $('doneContent').lastChild.nodeValue=doneC?'Conteúdo concluído':'Marcar conteúdo como concluído';
+  $('doneActivity').disabled=doneA; $('doneActivity').textContent=doneA?'Atividade concluída':'Concluir atividade';
+  document.querySelectorAll('[data-done-act]').forEach(b=>{const k=b.dataset.doneAct;b.disabled=doneP[k];b.textContent=doneP[k]?'Atividade concluída':'Concluir atividade'});
+  if(st==='none'||st==='off'){side.removeAttribute('style');side.innerHTML=`<div class="side-card"><h3>Seu progresso no tópico</h3><p><b>3 de 5</b> partes · 4 conteúdos e 3 atividades.</p>${st==='none'?'<p style="margin-top:10px">Este tópico não tem batalha para o seu perfil.</p>':''}</div>`;return}
+  if(st==='paused'){side.removeAttribute('style');side.innerHTML=`<div class="side-card"><h3>Modo batalha</h3><p>A batalha foi pausada para você estudar no seu ritmo.</p></div>`;return}
+  side.style.cssText=`--b-primary:${P.primary};--b-secondary:${P.secondary};--b-accent:${P.accent};--b-hp:${P.hp};--b-text:${P.text}`;
+  side.innerHTML=`<section class="battle" aria-label="Modo batalha">
+    <div class="b-top">${dead?ic.king:ic.sword}<strong>Modo batalha</strong><button class="b-ghost" data-off>Desativar</button></div>
+    <div class="b-hero" id="bhero"><img class="${dead?'dead':''}" src="assets/${BOSS.img}.png" alt="${BOSS.nome}" /><h3>${BOSS.nome}</h3>
+      <div class="b-chips"><span class="b-chip">${BOSS.tipo}</span>${dead?'':`<span class="b-chip">${ic.sand}Encontro termina em <span id="bclock">${fmt(secs)}</span></span>`}</div></div>
+    ${bar('Escudo',sh,SH_MAX,P.shield)}${bar('HP',hp,HP_MAX,dead?'#34d399':P.hp)}
+    <ul class="b-how"><li><span>Concluir um conteúdo</span><b>−16 HP</b></li><li><span>Concluir uma atividade</span><b>−24 HP</b></li></ul>
+    <p class="b-help">${dead?'Inimigo derrotado neste conteúdo.':'Avance no tópico para reduzir a vida do inimigo.'}</p>
+  </section>`;
+}
+/* partes do tópico (revisão 04 #8): 3 = conteúdo + múltipla escolha, 4 = TextoActivity, 5 = VideoActivity */
+const PAGINAS=[
+  ['Diário do capitão','No terceiro dia de marcha, o batedor voltou com um recado: três tropas iguais e mais sete soldados avulsos somavam vinte e dois homens no acampamento inimigo.'],
+  ['Primeiro movimento','Mandei tirar os sete avulsos dos dois pratos da balança. De um lado ficaram as três tropas; do outro, quinze soldados. A balança continuou em equilíbrio.'],
+  ['Segundo movimento','Três tropas iguais pesando quinze: dividi os quinze em três grupos. Cada tropa tinha cinco soldados. 3x = 15, logo x = 5.'],
+  ['Terceiro movimento','Conferi: três tropas de cinco são quinze, mais sete, vinte e dois. O território estava tomado. Anote os três movimentos no seu diário.'],
+];
+function pdfHTML(){
+  const view=$('pdfView'), pg=$('pdfPg'); if(!view)return;
+  if(pdfErro){view.className='doc-view err';view.innerHTML='Não foi possível abrir este arquivo para visualização nativa.';pg.innerHTML='';return}
+  view.className='doc-view';
+  const pag=(i)=>`<div class="page"><h4>${PAGINAS[i][0]}</h4><p>${PAGINAS[i][1]}</p><span class="pn">${i+1}</span></div>`;
+  view.innerHTML=pdfModo==='pagina'?pag(pdfPg-1):PAGINAS.map((_,i)=>pag(i)).join('');
+  pg.innerHTML=pdfModo==='pagina'?`<span class="pg-nav"><button data-pg="-1" ${pdfPg===1?'disabled':''} aria-label="Página anterior">‹</button>Página ${pdfPg} de 4<button data-pg="1" ${pdfPg===4?'disabled':''} aria-label="Próxima página">›</button></span>`:'4 páginas · rolagem contínua';
+  document.querySelectorAll('[data-modo]').forEach(b=>b.classList.toggle('on',b.dataset.modo===pdfModo));
+}
+function irParte(n,silencioso){
+  part=n;
+  document.querySelectorAll('.part').forEach(s=>s.hidden=+s.dataset.part!==n);
+  document.querySelectorAll('[data-part-go]').forEach(d=>{d.classList.toggle('current',+d.dataset.partGo===n);d.classList.toggle('done',+d.dataset.partGo!==n&&(+d.dataset.partGo===3?doneA:doneP[d.dataset.partGo]));d.disabled=false});
+  $('stepCount').textContent=n+' de 5';
+  if(n===4)pdfHTML();
+  if(!silencioso)document.querySelector('main').scrollIntoView({block:'start'});
+}
+const mmss=t=>Math.floor(t/60)+':'+String(Math.floor(t%60)).padStart(2,'0');
+function tocar(fim){
+  const pl=$('player'),D=192;
+  const pinta=()=>{$('plFill').style.width=(plT/D*100)+'%';$('plTime').textContent=mmss(plT)+' / 3:12';pl.querySelector('.pl-done').hidden=plT<D;pl.classList.toggle('playing',!!plTimer&&plT<D)};
+  if(fim){clearInterval(plTimer);plTimer=null;plT=D;pinta();return}
+  if(plTimer){clearInterval(plTimer);plTimer=null;pinta();return}
+  if(plT>=D)plT=0;
+  plTimer=setInterval(()=>{plT=Math.min(D,plT+8);if(plT>=D){clearInterval(plTimer);plTimer=null}pinta()},250);pinta();
+}
+function hit(d){
+  if(!(st==='on'||st==='low')){render();return}
+  let r=d; const a=Math.min(sh,r); sh-=a; r-=a; hp=Math.max(0,hp-r);
+  render();
+  const h=$('bhero'); if(h){h.insertAdjacentHTML('beforeend',`<span class="dmg">−${d}</span>`);const im=h.querySelector('img');im.classList.add('hit');setTimeout(()=>im.classList.remove('hit'),150)}
+  if(hp<=0){clearInterval(timer);setTimeout(vitoria,700)}
+}
+document.addEventListener('click',e=>{
+  const q=x=>e.target.closest(x);
+  if(q('#addBag')){Bag.novo({topico:'Equações do 1º grau',conteudo:'Avançando sobre o desconhecido'});return}
+  if(q('#doneContent')&&!doneC){doneC=true;hit(16);return}
+  if(q('#doneActivity')&&!doneA){doneA=true;hit(24);return}
+  if(q('[data-done-act]')){const k=q('[data-done-act]').dataset.doneAct;if(!doneP[k]){doneP[k]=true;hit(24)}return}
+  if(q('[data-part-go]')){const n=+q('[data-part-go]').dataset.partGo;const m={3:'on',4:'texto',5:'video'}[n];if(n!==3)$('stateSel').value=m;irParte(n);return}
+  if(q('[data-modo]')){pdfModo=q('[data-modo]').dataset.modo;pdfPg=1;pdfHTML();return}
+  if(q('[data-pg]')){pdfPg=Math.min(4,Math.max(1,pdfPg+ +q('[data-pg]').dataset.pg));pdfHTML();return}
+  if(q('[data-play]')){tocar();return}
+  if(q('[data-open-file]')){e.preventDefault();return}
+  if(q('[data-off]')){set('off');return}
+  if(q('[data-on]')){set('on');return}
+  if(e.target.classList.contains('v-bg')){$('vmodal').innerHTML='';return}
+});
+$('stateSel').addEventListener('change',e=>{history.replaceState(null,'',location.pathname+'?estado='+e.target.value);set(e.target.value)});
+set(new URLSearchParams(location.search).get('estado')||'on');
+</script>
+<script src="assets/bag.js"></script>
+<script src="assets/tour.js"></script>
+</body>
+</html>

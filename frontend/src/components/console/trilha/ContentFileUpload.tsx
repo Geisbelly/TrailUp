@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { contarReferencias } from "./classDeletion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -113,7 +114,11 @@ export function ContentFileUpload({
 
   const removeExisting = (pathOrUrl: string) => {
     if (isStoragePath(pathOrUrl)) {
-      void supabase.storage.from("conteudos").remove([pathOrUrl]).catch(console.error);
+      // Turma duplicada aponta para o mesmo arquivo: só apaga do Storage se
+      // nenhum OUTRO conteúdo usa o caminho (o próprio conta 1).
+      void contarReferencias([pathOrUrl])
+        .then((refs) => ((refs.get(pathOrUrl) ?? 0) <= 1 ? supabase.storage.from("conteudos").remove([pathOrUrl]) : undefined))
+        .catch(console.error);
     }
     if (pathOrUrl === value) {
       onChange("");

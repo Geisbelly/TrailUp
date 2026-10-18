@@ -1,11 +1,14 @@
 import { Stack } from "expo-router";
 
 import { useUsuario } from "@/context/SessaoContext";
+import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 
 export default function PerfilStack() {
   const { usuario } = useUsuario();
+  // Na web em tela larga (#346) as Configurações têm título próprio no painel.
+  const desktop = useDesktopWeb();
   const palette = getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null);
 
   return (
@@ -31,7 +34,7 @@ export default function PerfilStack() {
       />
       <Stack.Screen
         name="settings"
-        options={{ title: "CONFIGURAÇÕES GERAIS" }}
+        options={{ title: "CONFIGURAÇÕES GERAIS", headerShown: !desktop }}
       />
       <Stack.Screen
         name="coleta-dados"
@@ -55,13 +58,17 @@ export default function PerfilStack() {
         name="resetar-senha"
         options={{ title: "REDEFINIR SENHA" }}
       />
+      {/* Só existe na web em tela larga (#346); lá o título está na própria página. */}
+      <Stack.Screen name="loja" options={{ title: "LOJA", headerShown: false }} />
       <Stack.Screen
         name="relatorio"
-        options={{ title: "RELATÓRIO DO USUÁRIO" }}
+        // Na web em tela larga (#346) o título está na própria página.
+        options={{ title: "RELATÓRIO DO USUÁRIO", headerShown: !desktop }}
       />
       <Stack.Screen
         name="biblioteca-conquistas"
-        options={{ title: "BIBLIOTECA DE CONQUISTAS" }}
+        // Na web em tela larga (#346) o título está na própria página.
+        options={{ title: "BIBLIOTECA DE CONQUISTAS", headerShown: !desktop }}
       />
     </Stack>
   );

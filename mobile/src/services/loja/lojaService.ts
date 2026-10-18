@@ -1,6 +1,8 @@
 import { normalizeBrainHexProfile, type BrainHexProfile } from "@/constants/brainHexProfiles";
 import { supabase } from "@/database/supabase";
 import { normalizeStoreItem, type StoreItem, type StoreProfileTheme, type StoreSection, type StoreSnapshot } from "@/services/loja/storeModel";
+import { limitesDaTurma, montarExtrato, type LinhaRazao } from "@/services/loja/extratoModel";
+import { ACOES_QUE_RENDEM, resolverGanhoMoedas } from "@/services/loja/ganhoMoedasModel";
 import { purchaseErrorMessage } from "@/services/loja/storeTheme";
 
 export type { StoreItem, StoreProfileTheme, StoreSection, StoreSnapshot } from "@/services/loja/storeModel";
@@ -49,4 +51,50 @@ export async function comprarItem(itemCode: string, classeId: number) {
 
 export function profileThemeKey(profileName?: string | null): BrainHexProfile | "default" {
   return normalizeBrainHexProfile(profileName) ?? "default";
+}
+
+/** Quanto cada ação rende em moedas nesta turma (global, com a sobreposição da turma). */
+export async function carregarGanhoMoedas(classeId: number) {
+  const tipos = ACOES_QUE_RENDEM.map((a) => a.tipo);
+  const [globais, daTurma] = await Promise.all([
+    supabase.from("eventos_pontuacao").select("tipo,moedas").in("tipo", tipos),
+    supabase.from("eventos_pontuacao_classe").select("tipo,moedas").eq("classe_id", classeId).in("tipo", tipos),
+  ]);
+  if (globais.error) throw globais.error;
+  if (daTurma.error) throw daTurma.error;
+  return resolverGanhoMoedas(globais.data ?? [], daTurma.data ?? []);
+}
+
+/**
+ * Últimas linhas do razão de moedas do aluno (a policy só devolve as dele).
+ * `nomes`: código do item → nome, do catálogo já carregado.
+ */
+export async function carregarExtrato(alunoId: string, nomes: ReadonlyMap<string, string>, limite = 10) {
+  const razao = await supabase
+    .from("moedas_ledger")
+    .select("id,delta,motivo,evento_tipo,compra_id,criado_em")
+    .eq("aluno_id", alunoId)
+    .order("criado_em", { ascending: false })
+    .limit(limite);
+  if (razao.error) throw razao.error;
+  const linhas = (razao.data ?? []) as LinhaRazao[];
+  const compraIds = linhas.map((l) => l.compra_id).filter((id): id is number => id != null);
+  const itemDaCompra = new Map<number, string>();
+  if (compraIds.length) {
+    const compras = await supabase.from("loja_compras").select("id,item_codigo").in("id", compraIds);
+    if (!compras.error)
+      for (const c of compras.data ?? []) itemDaCompra.set(Number(c.id), nomes.get(String(c.item_codigo)) ?? String(c.item_codigo));
+  }
+  return montarExtrato(linhas, itemDaCompra, new Date());
+}
+
+/** Tetos da Loja definidos pelo professor para a turma (`loja_config_classe`). */
+export async function carregarLimitesTurma(classeId: number) {
+  const { data, error } = await supabase
+    .from("loja_config_classe")
+    .select("prazo_max_dias_total,prazo_max_por_ativ,retry_max_por_topico")
+    .eq("classe_id", classeId)
+    .maybeSingle();
+  if (error) throw error;
+  return limitesDaTurma(data);
 }

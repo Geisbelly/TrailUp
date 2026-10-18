@@ -18,6 +18,11 @@ describe("consolePathForView", () => {
     expect(consolePathForView("classes")).toBe("/console/turmas");
     expect(consolePathForView("personalizacoes")).toBe("/console/personalizacoes");
     expect(consolePathForView("ranks")).toBe("/console/ranks");
+    expect(consolePathForView("batalhas")).toBe("/console/rank-de-batalhas");
+    expect(consolePathForView("missoes")).toBe("/console/missoes");
+    expect(consolePathForView("conquistas")).toBe("/console/conquistas");
+    expect(consolePathForView("notas")).toBe("/console/notas");
+    expect(consolePathForView("eventos")).toBe("/console/eventos");
     expect(consolePathForView("profile")).toBe("/console/meus-dados");
     expect(consolePathForView("aprovacoes")).toBe("/console/aprovacoes");
   });
@@ -34,6 +39,11 @@ describe("consoleViewFromPathname", () => {
     expect(consoleViewFromPathname("/console/turmas")).toBe("classes");
     expect(consoleViewFromPathname("/console/personalizacoes")).toBe("personalizacoes");
     expect(consoleViewFromPathname("/console/ranks")).toBe("ranks");
+    expect(consoleViewFromPathname("/console/rank-de-batalhas")).toBe("batalhas");
+    expect(consoleViewFromPathname("/console/missoes")).toBe("missoes");
+    expect(consoleViewFromPathname("/console/conquistas")).toBe("conquistas");
+    expect(consoleViewFromPathname("/console/notas")).toBe("notas");
+    expect(consoleViewFromPathname("/console/eventos")).toBe("eventos");
     expect(consoleViewFromPathname("/console/meus-dados")).toBe("profile");
     expect(consoleViewFromPathname("/console/aprovacoes")).toBe("aprovacoes");
   });

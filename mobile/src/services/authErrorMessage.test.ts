@@ -9,6 +9,13 @@ test('maps Google OAuth cancellation to a clear message', () => {
   );
 });
 
+test('maps a missing native OAuth scheme to an actionable message', () => {
+  assert.equal(
+    getAuthErrorMessage(new Error('Scheme do aplicativo não configurado para autenticação Google.')),
+    'Não foi possível iniciar o login. Atualize o app e tente novamente.',
+  );
+});
+
 test('keeps unknown OAuth failures generic', () => {
   assert.equal(
     getAuthErrorMessage(new Error('provider denied access')),

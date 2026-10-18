@@ -7,8 +7,10 @@ import { useUsuario } from "@/context/SessaoContext";
 import { supabase } from "@/database/supabase";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { useEmbutidoConfiguracoes } from "@/context/EmbutidoConfiguracoesContext";
 
 export default function ExcluirContaScreen() {
+  const embutido = useEmbutidoConfiguracoes();
   const { usuario } = useUsuario();
   const [motivo, setMotivo] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -30,7 +32,7 @@ export default function ExcluirContaScreen() {
       const alunoId = data.user?.id ?? null;
 
       try {
-        const { error: rpcError } = await supabase.rpc("fn_enviar_contato_sendgrid", {
+        const { error: rpcError } = await supabase.rpc("fn_enviar_contato", {
           p_nome: email || alunoId || "Usuário",
           p_email: email,
           p_assunto: "Solicitação de exclusão de conta",
@@ -40,10 +42,10 @@ export default function ExcluirContaScreen() {
         });
 
         if (rpcError) {
-          console.warn("Erro RPC fn_enviar_contato_sendgrid:", rpcError);
+          console.warn("Erro RPC fn_enviar_contato:", rpcError);
         }
       } catch (err) {
-        console.warn("Falha ao acionar fn_enviar_contato_sendgrid:", err);
+        console.warn("Falha ao acionar fn_enviar_contato:", err);
       }
 
       try {
@@ -91,7 +93,7 @@ export default function ExcluirContaScreen() {
       style={styles.container}
       contentContainerStyle={styles.content}
     >
-      <Text style={[styles.title, { color: palette.text }]}>Solicitar exclusão da conta</Text>
+      {embutido ? null : <Text style={[styles.title, { color: palette.text }]}>Solicitar exclusão da conta</Text>}
       <Text style={[styles.subtitle, { color: palette.textMuted }]}>
         Informe o motivo e confirmaremos a exclusão dos seus dados. Você receberá um e-mail
         para prosseguir.

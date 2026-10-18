@@ -1,0 +1,10 @@
+src/utils/trailResume.test.ts
+src/utils/questionAnswerVisibility.test.ts
+src/components/QuestionActivity.visibility.test.tsx
+src/components/ia/BossVictoryModal.test.tsx
+src/utils/studyContext.test.ts
+src/utils/studyClock.test.ts
+src/services/studyTime.test.ts
+src/utils/battleRuntime.test.ts
+src/context/IAContext.battle.test.tsx
+src/components/perfil/profileMetricsViewModel.test.ts

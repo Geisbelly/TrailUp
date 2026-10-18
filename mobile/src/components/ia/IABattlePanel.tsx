@@ -14,7 +14,8 @@ type BattlePanelScope = Extract<IAFeatureSelectorScope, { scope: "topic" | "item
 
 type Props = {
   scope: BattlePanelScope;
-  surface?: "inline" | "overlay";
+  /** "lateral": cartão da coluna do Tópico na web em tela larga (#346, protótipo v4). */
+  surface?: "inline" | "overlay" | "lateral";
 };
 
 function formatCountdown(totalSeconds: number) {
@@ -218,6 +219,115 @@ export function IABattlePanel({ scope, surface = "inline" }: Props) {
     ? "Leia este conteúdo e acerte atividades vinculadas para reduzir a vida do boss."
     : "Avance no tópico para reduzir a vida do inimigo.";
 
+  if (surface === "lateral") {
+    const dano = resolvedBattle.battle.damage;
+    const linhasDano = [
+      { rotulo: "Concluir um conteúdo", valor: dano?.contentComplete },
+      { rotulo: "Acertar uma atividade", valor: dano?.activityCorrect },
+      { rotulo: "Concluir uma atividade", valor: dano?.activityComplete },
+    ].filter((linha): linha is { rotulo: string; valor: number } => Number(linha.valor) > 0);
+    const duracao = resolvedBattle.battle.timing?.encounterDurationSec ?? null;
+    const tempo =
+      secondsLeft != null
+        ? `Encontro termina em ${formatCountdown(secondsLeft)}`
+        : duracao
+        ? `Encontro de ${formatCountdown(duracao)}`
+        : null;
+    return (
+      <View
+        style={[
+          styles.card,
+          styles.cardLateral,
+          { borderColor: `${palette.primaryColor}66`, backgroundColor: palette.secondaryColor },
+        ]}
+      >
+        {backgroundUrl ? <Image source={{ uri: backgroundUrl }} style={styles.backgroundLayer} /> : null}
+
+        <View style={styles.headerRow}>
+          <View style={styles.titleRow}>
+            <MaterialCommunityIcons
+              name={defeated ? "shield-check" : "sword-cross"}
+              size={18}
+              color={defeated ? "#34d399" : palette.primaryColor}
+            />
+            <Text style={[styles.tituloLateral, { color: palette.accentColor }]}>
+              {defeated ? "Boss derrotado" : "Modo batalha"}
+            </Text>
+          </View>
+          <Pressable
+            style={[styles.ghostButton, { borderColor: `${palette.accentColor}33`, backgroundColor: `${palette.secondaryColor}99` }]}
+            onPress={() => void setUserFeaturePreference("battle_mode", false)}
+            accessibilityRole="button"
+          >
+            <Text style={[styles.ghostButtonText, { color: palette.accentColor }]}>Desativar</Text>
+          </Pressable>
+        </View>
+
+        {/* Derrotado: a arte fica apagada, como no protótipo v4. */}
+        <View style={[styles.arteLateral, defeated && styles.arteDerrotada]}>
+          {teacherBoss || artUrl ? (
+            <Image
+              source={teacherBoss ?? { uri: artUrl! }}
+              style={styles.avatarImage}
+              resizeMode="contain"
+              accessibilityLabel={enemy.name}
+            />
+          ) : (
+            <MaterialCommunityIcons
+              name={defeated ? "chess-king" : "skull-outline"}
+              size={72}
+              color={palette.accentColor}
+            />
+          )}
+          {frameUrl ? <Image source={{ uri: frameUrl }} style={styles.frameLayer} resizeMode="stretch" /> : null}
+        </View>
+
+        <Text style={[styles.nomeLateral, { color: palette.textColor }]}>{enemy.name}</Text>
+        <View style={styles.fichasLateral}>
+          {enemy.archetype ? (
+            <View style={[styles.fichaLateral, { backgroundColor: `${palette.primaryColor}22` }]}>
+              <Text style={[styles.fichaLateralTexto, { color: palette.accentColor }]}>{enemy.archetype}</Text>
+            </View>
+          ) : null}
+          {tempo ? (
+            <View style={[styles.fichaLateral, { backgroundColor: `${palette.primaryColor}22` }]}>
+              <MaterialCommunityIcons name="timer-sand" size={13} color={palette.accentColor} />
+              <Text style={[styles.fichaLateralTexto, { color: palette.accentColor }]}>{tempo}</Text>
+            </View>
+          ) : null}
+        </View>
+
+        <ProgressBar
+          label="Escudo"
+          value={effectiveState.currentShield}
+          maxValue={Math.max(0, Number(enemy.shieldMax ?? 0))}
+          color={palette.shieldColor}
+          textColor={palette.textColor}
+        />
+        <ProgressBar
+          label="HP"
+          value={effectiveState.currentHp}
+          maxValue={enemy.hpMax}
+          color={defeated ? "#34d399" : palette.hpColor}
+          textColor={palette.textColor}
+        />
+
+        {linhasDano.length > 0 ? (
+          <View style={styles.tabelaDano}>
+            {linhasDano.map((linha) => (
+              <View key={linha.rotulo} style={styles.linhaDano}>
+                <Text style={[styles.linhaDanoRotulo, { color: palette.textColor }]}>{linha.rotulo}</Text>
+                <Text style={[styles.linhaDanoValor, { color: palette.accentColor }]}>−{linha.valor} HP</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
+        <Text style={[styles.helperText, { color: `${palette.textColor}DD` }]}>{helperText}</Text>
+      </View>
+    );
+  }
+
   return (
     <View
       style={[
@@ -355,6 +465,69 @@ const styles = StyleSheet.create({
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 12 },
     elevation: 8,
+  },
+  cardLateral: {
+    marginTop: 12,
+    padding: 18,
+    borderRadius: 16,
+    gap: 12,
+  },
+  tituloLateral: {
+    fontFamily: FontFamily.interMedium,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  arteLateral: {
+    alignSelf: "center",
+    width: 160,
+    height: 160,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  arteDerrotada: { opacity: 0.35 },
+  nomeLateral: {
+    fontFamily: FontFamily.inikaBold,
+    fontSize: 20,
+    textAlign: "center",
+  },
+  fichasLateral: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 8,
+  },
+  fichaLateral: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+  },
+  fichaLateralTexto: {
+    fontFamily: FontFamily.interMedium,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  tabelaDano: {
+    gap: 6,
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: "rgba(0,0,0,0.22)",
+  },
+  linhaDano: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  linhaDanoRotulo: {
+    fontFamily: FontFamily.interMedium,
+    fontSize: 13,
+  },
+  linhaDanoValor: {
+    fontFamily: FontFamily.interMedium,
+    fontSize: 13,
+    fontWeight: "700",
   },
   backgroundLayer: {
     position: "absolute",

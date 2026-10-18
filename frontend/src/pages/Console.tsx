@@ -19,6 +19,11 @@ const TopicsManager = lazy(() => import("@/components/console/trilha/TopicsManag
 const ProfileSection = lazy(() => import("@/components/console/ProfileSection"));
 const DashboardSection = lazy(() => import("@/components/console/DashboardSection"));
 const RanksSection = lazy(() => import("@/components/console/RanksSection"));
+const MissoesSection = lazy(() => import("@/components/console/missoes/MissoesSection"));
+const ConquistasSection = lazy(() => import("@/components/console/conquistas/ConquistasSection"));
+const BatalhasSection = lazy(() => import("@/components/console/batalhas/BatalhasSection"));
+const NotasSection = lazy(() => import("@/components/console/notas/NotasSection"));
+const EventosSection = lazy(() => import("@/components/console/eventos/EventosSection"));
 const ClassManagementSection = lazy(() => import("@/components/console/ClassManagementSection"));
 const PersonalizacoesSection = lazy(() => import("@/components/console/personalizacoes/PersonalizacoesSection"));
 const ProfessorApprovalSection = lazy(() =>
@@ -49,6 +54,7 @@ export default function Console() {
     disciplina: string | null;
     descricao: string | null;
     geracaoAutomatica: boolean;
+    criadoEm: string | null;
   } | null>(null);
   const [isLoadingProfessor, setIsLoadingProfessor] = useState(false);
   // A URL e a unica fonte da verdade da aba ativa (ver consoleSections.ts):
@@ -65,7 +71,7 @@ export default function Console() {
       try {
         const { data, error } = await supabase
           .from("professor")
-          .select("id, nome, descricao, instituicao, disciplina, geracao_automatica")
+          .select("id, nome, descricao, instituicao, disciplina, geracao_automatica, created_at")
           .eq("id", user.id)
           .maybeSingle();
 
@@ -79,6 +85,7 @@ export default function Console() {
           disciplina: data?.disciplina ?? user.user_metadata?.disciplina ?? "",
           descricao: data?.descricao ?? user.user_metadata?.descricao ?? "",
           geracaoAutomatica: data?.geracao_automatica ?? true,
+          criadoEm: data?.created_at ?? user.created_at ?? null,
         });
       } catch (err) {
         console.error("Erro ao carregar dados do professor:", err);
@@ -92,6 +99,7 @@ export default function Console() {
             disciplina: user.user_metadata?.disciplina || "",
             descricao: user.user_metadata?.descricao || "",
             geracaoAutomatica: true,
+            criadoEm: user.created_at ?? null,
           });
         }
       } finally {
@@ -115,8 +123,8 @@ export default function Console() {
     navigate("/login");
   };
 
-  const handleProfileUpdate = async (updatedData: ProfessorUpdateData) => {
-    if (!professorData?.id) return;
+  const handleProfileUpdate = async (updatedData: ProfessorUpdateData): Promise<boolean> => {
+    if (!professorData?.id) return false;
     try {
       const { error } = await supabase
         .from("professor")
@@ -144,9 +152,11 @@ export default function Console() {
           : prev
       );
       toast.success("Dados atualizados com sucesso!");
+      return true;
     } catch (err) {
       console.error("Erro ao atualizar dados do professor:", err);
       toast.error("Nao foi possivel salvar os dados.");
+      return false;
     }
   };
 
@@ -182,6 +192,16 @@ export default function Console() {
                 <DashboardSection />
               ) : view === "ranks" ? (
                 <RanksSection />
+              ) : view === "batalhas" ? (
+                <BatalhasSection professorId={professorData?.id} />
+              ) : view === "missoes" ? (
+                <MissoesSection professorId={professorData?.id} />
+              ) : view === "conquistas" ? (
+                <ConquistasSection professorId={professorData?.id} />
+              ) : view === "notas" ? (
+                <NotasSection professorId={professorData?.id} />
+              ) : view === "eventos" ? (
+                <EventosSection professorId={professorData?.id} />
               ) : view === "personalizacoes" ? (
                 <PersonalizacoesSection professorId={professorData?.id} />
               ) : view === "aprovacoes" ? (

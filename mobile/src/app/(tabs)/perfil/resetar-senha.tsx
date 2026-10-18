@@ -7,8 +7,10 @@ import { useUsuario } from "@/context/SessaoContext";
 import { supabase } from "@/database/supabase";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { useEmbutidoConfiguracoes } from "@/context/EmbutidoConfiguracoesContext";
 
 export default function ResetarSenhaScreen() {
+  const embutido = useEmbutidoConfiguracoes();
   const { usuario } = useUsuario();
   const { showDialog } = useDialog();
   const [confirmVisible, setConfirmVisible] = useState(false);
@@ -54,7 +56,7 @@ export default function ResetarSenhaScreen() {
       style={styles.container}
       contentContainerStyle={styles.content}
     >
-      <Text style={[styles.title, { color: palette.text }]}>Redefinir senha</Text>
+      {embutido ? null : <Text style={[styles.title, { color: palette.text }]}>Redefinir senha</Text>}
       <Text style={[styles.subtitle, { color: palette.textMuted }]}>
         Enviaremos um e-mail com as instruções para redefinir sua senha. Verifique sua caixa
         de entrada e siga o link recebido.
