@@ -1,6 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 import { normalizeOptionalPositiveScore } from "@/lib/question-score";
 import { deleteContentCascade } from "./classDeletion";
+import { formatoDaQuestao, tipoDaQuestaoDoFormato } from "./formatoDaQuestao";
+import type { FormatoDaQuestao, TipoDaQuestao } from "./formatoDaQuestao";
 import type { Atividade, AtividadeConteudo, CardItem, Conteudo, Materia, Classe, Topico, Questao } from "./types";
 
 // ===== Fetchers =======================================================
@@ -319,28 +321,18 @@ export async function deleteCard(id: number) {
   if (error) throw error;
 }
 
-type NormalizedActivityType = "quiz" | "true_false" | "fill_blank" | "essay";
-type NormalizedQuestionType = "multipla" | "verdadeiro_falso" | "fill_blank" | "dissertativa";
+// Estes dois eram uma cópia byte a byte de `formatoDaQuestao`/`tipoDaQuestaoDoFormato`.
+// A cópia é o que deixou o `GenerateTrailDialog` gravar tipo cru por anos sem ninguém notar:
+// corrigir uma não corrigia a outra. Agora há uma fonte só.
+type NormalizedActivityType = FormatoDaQuestao;
+type NormalizedQuestionType = TipoDaQuestao;
 
 function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
 
-function normalizeActivityType(value: string | null | undefined): NormalizedActivityType {
-  const raw = (value || "").trim().toLowerCase();
-  if (raw === "quiz" || raw === "multipla" || raw === "multipla_escolha") return "quiz";
-  if (raw === "true_false" || raw === "verdadeiro_falso" || raw === "vf") return "true_false";
-  if (raw === "fill_blank" || raw === "lacuna" || raw === "completar") return "fill_blank";
-  if (raw === "essay" || raw === "dissertativa" || raw === "questao" || raw === "texto") return "essay";
-  return "essay";
-}
-
-function questionTypeFromActivityType(type: NormalizedActivityType): NormalizedQuestionType {
-  if (type === "quiz") return "multipla";
-  if (type === "true_false") return "verdadeiro_falso";
-  if (type === "fill_blank") return "fill_blank";
-  return "dissertativa";
-}
+const normalizeActivityType = formatoDaQuestao;
+const questionTypeFromActivityType = tipoDaQuestaoDoFormato;
 
 function normalizeAlternatives(
   questionType: NormalizedQuestionType,
