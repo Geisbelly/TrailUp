@@ -18,6 +18,7 @@ import {
   type FormularioDeEvento,
   type PayloadDoEvento,
 } from "./evento";
+import type { MissaoDisponivel } from "./eventosApi";
 
 const rotulo = "text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground";
 const campo = "mt-2 rounded-[14px] bg-background";
@@ -32,6 +33,7 @@ export function FormularioDoEvento({
   editando,
   somenteTexto,
   topicos,
+  missoesDisponiveis,
   salvando,
   erroDoServidor,
   onSalvar,
@@ -41,21 +43,24 @@ export function FormularioDoEvento({
   editando: boolean;
   somenteTexto: boolean;
   topicos: { id: number; nome: string | null }[];
+  missoesDisponiveis: MissaoDisponivel[];
   salvando: boolean;
   erroDoServidor: string | null;
-  onSalvar: (payload: PayloadDoEvento) => void;
+  onSalvar: (payload: PayloadDoEvento, missoes: number[]) => void;
   onCancelar: () => void;
 }) {
   const [form, setForm] = useState(inicial);
   const [erros, setErros] = useState<ErrosDoEvento>({});
   const alterar = (parcial: Partial<FormularioDeEvento>) => setForm((f) => ({ ...f, ...parcial }));
+  const alternarMissao = (id: number, ligada: boolean) =>
+    alterar({ missoesIds: ligada ? [...form.missoesIds, id] : form.missoesIds.filter((m) => m !== id) });
   const alternarPeca = (chave: ChaveDePeca, ligada: boolean) =>
     alterar({ pecas: ligada ? [...form.pecas, chave] : form.pecas.filter((c) => c !== chave) });
 
   const salvar = () => {
     const r = validarEvento(form);
     setErros(r.erros ?? {});
-    if (r.ok) onSalvar(r.payload);
+    if (r.ok) onSalvar(r.payload, r.missoes);
   };
   const travado = somenteTexto || salvando;
 
@@ -123,6 +128,28 @@ export function FormularioDoEvento({
             </div>
             {erros.pecas && <p className="mt-1 text-xs text-destructive">{erros.pecas}</p>}
           </fieldset>
+
+          {form.pecas.includes("missoes") && (
+            <fieldset disabled={travado} className="rounded-[14px] border bg-background p-4">
+              <legend className={rotulo}>Missões do evento *</legend>
+              {missoesDisponiveis.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Esta turma ainda não tem missões. Crie as missões na tela Missões e volte aqui.</p>
+              ) : (
+                <ul className="max-h-48 space-y-1.5 overflow-y-auto">
+                  {missoesDisponiveis.map((m) => (
+                    <li key={m.id}>
+                      <label className="flex cursor-pointer items-center gap-3 text-sm">
+                        <Checkbox checked={form.missoesIds.includes(m.id)} onCheckedChange={(v) => alternarMissao(m.id, v === true)} />
+                        <span className="min-w-0 flex-1 truncate">{m.titulo}</span>
+                        <span className="truncate text-[11.5px] text-muted-foreground">{m.topicoNome}</span>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {erros.missoes && <p className="mt-2 text-xs text-destructive">{erros.missoes}</p>}
+            </fieldset>
+          )}
 
           <div className="rounded-[14px] border bg-background p-4">
             <div className="flex items-center justify-between gap-3">

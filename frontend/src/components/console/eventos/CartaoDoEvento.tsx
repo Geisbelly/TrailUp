@@ -1,4 +1,4 @@
-import { CalendarDays, Lock, Medal, Pencil, PlayCircle, StopCircle, Trash2 } from "lucide-react";
+import { Activity, CalendarDays, Lock, Medal, Pencil, PlayCircle, StopCircle, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SeloDeStatus } from "../comum/PaginaDoConsole";
 import { rotuloDaJanela, rotuloDasPecas, rotuloDoStatus, situacaoDoEvento } from "./evento";
@@ -15,6 +15,7 @@ export function CartaoDoEvento({
   onEncerrar,
   onExcluir,
   onVerResultado,
+  onVerDurante,
 }: {
   evento: Evento;
   topicoNome?: string;
@@ -23,6 +24,7 @@ export function CartaoDoEvento({
   onEncerrar: () => void;
   onExcluir: () => void;
   onVerResultado: () => void;
+  onVerDurante: () => void;
 }) {
   const rascunho = evento.status === "rascunho";
   return (
@@ -75,6 +77,7 @@ export function CartaoDoEvento({
 
       <p className="mt-3 text-[12.5px] text-muted-foreground">
         <span className="font-semibold text-foreground">Inclui:</span> {rotuloDasPecas(evento.pecas)}
+        {evento.missoes.length > 0 && ` · ${evento.missoes.length === 1 ? "1 missão ligada" : `${evento.missoes.length} missões ligadas`}`}
       </p>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -82,6 +85,12 @@ export function CartaoDoEvento({
           <Button size="sm" className="rounded-full font-bold" onClick={onAbrir}>
             <PlayCircle className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
             Abrir evento
+          </Button>
+        )}
+        {evento.status === "aberto" && (
+          <Button size="sm" variant="outline" className="rounded-full" onClick={onVerDurante}>
+            <Activity className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+            Ver andamento
           </Button>
         )}
         {evento.status === "aberto" && (

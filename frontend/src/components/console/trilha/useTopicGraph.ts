@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, useCallback } from "react";
 import type { Topico } from "./types";
 import { centralizar, enquadrar } from "./mapa";
+import { aplicarLigacao, avaliarLigacao, removerLigacao } from "./ligacoes";
 
 type ConnectorType = "next" | "depende";
 
@@ -15,6 +16,7 @@ export function useTopicGraph(
 ) {
   const [selectedEdge, setSelectedEdge] = useState<{ from: number; to: number; type: ConnectorType } | null>(null);
   const [hasPendingChanges, setHasPendingChanges] = useState(false);
+  const [conflitoPendente, setConflitoPendente] = useState<{ fromId: number; toId: number; type: ConnectorType; mensagem: string } | null>(null);
   const resetPendingChanges = useCallback(() => setHasPendingChanges(false), []);
   const [positions, setPositions] = useState<Record<number, { x: number; y: number }>>({});
   const [canvasOffset, setCanvasOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -31,35 +33,32 @@ export function useTopicGraph(
 
   // ── Graph mutations ──────────────────────────────────────────────────────
   const connectNodes = (fromId: number, toId: number, type: ConnectorType) => {
-    if (fromId === toId) return;
-    const from = topicos.find((t) => t.id === fromId);
-    const to = topicos.find((t) => t.id === toId);
-    if (!from || !to) return;
-    if (from.classe_id !== to.classe_id) { onInvalidLink?.(from, to); return; }
-
-    if (type === "depende" && from.depende.includes(toId)) {
-      if (!window.confirm("Conflito: já depende do alvo. Remover dependência inversa?")) return;
+    const avaliacao = avaliarLigacao(topicos, fromId, toId, type);
+    if (avaliacao.resultado === "ignorar") return;
+    if (avaliacao.resultado === "turmas_diferentes") { onInvalidLink?.(avaliacao.from, avaliacao.to); return; }
+    if (avaliacao.resultado === "conflito") {
+      // Quem decide é o professor, num diálogo na tela (ConfirmarLigacao); nada muda até ele confirmar.
+      setConflitoPendente({ fromId, toId, type, mensagem: avaliacao.mensagem });
+      return;
     }
-    if (type === "next" && to.next.includes(fromId)) {
-      if (!window.confirm("Conflito: alvo já marcado como próximo do atual. Remover vínculo inverso?")) return;
-    }
+    efetivarLigacao(fromId, toId, type);
+  };
 
-    setTopicos((prev) => prev.map((t) => {
-      if (type === "next" && t.id === fromId) return { ...t, next: t.next.includes(toId) ? t.next : [...t.next, toId], depende: t.depende.filter((d) => d !== toId) };
-      if (type === "next" && t.id === toId) return { ...t, next: t.next.filter((n) => n !== fromId) };
-      if (type === "depende" && t.id === toId) return { ...t, depende: t.depende.includes(fromId) ? t.depende : [...t.depende, fromId], next: t.next.filter((n) => n !== fromId) };
-      if (type === "depende" && t.id === fromId) return { ...t, depende: t.depende.filter((d) => d !== toId) };
-      return t;
-    }));
+  const efetivarLigacao = (fromId: number, toId: number, type: ConnectorType) => {
+    setTopicos((prev) => aplicarLigacao(prev, fromId, toId, type));
     setHasPendingChanges(true);
   };
 
+  const confirmarConflito = () => {
+    if (!conflitoPendente) return;
+    efetivarLigacao(conflitoPendente.fromId, conflitoPendente.toId, conflitoPendente.type);
+    setConflitoPendente(null);
+  };
+
+  const cancelarConflito = () => setConflitoPendente(null);
+
   const removeLink = (fromId: number, toId: number, type: ConnectorType) => {
-    setTopicos((prev) => prev.map((t) => {
-      if (type === "next" && t.id === fromId) return { ...t, next: t.next.filter((n) => n !== toId) };
-      if (type === "depende" && t.id === toId) return { ...t, depende: t.depende.filter((n) => n !== fromId) };
-      return t;
-    }));
+    setTopicos((prev) => removerLigacao(prev, fromId, toId, type));
     setHasPendingChanges(true);
   };
 
@@ -294,6 +293,9 @@ export function useTopicGraph(
     NODE_WIDTH,
     NODE_HEIGHT,
     connectNodes,
+    conflitoPendente,
+    confirmarConflito,
+    cancelarConflito,
     removeLink,
     handleNodePointerDown,
     handleNodePointerMove,

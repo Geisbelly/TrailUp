@@ -2,9 +2,10 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Check, Loader2, Trash2, UserCheck } from "lucide-react";
+import { AlertTriangle, Check, Loader2, Trash2, UserCheck } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import { iniciais } from "./meusdados/conta";
-import { DIAS_URGENTE, dataCurta, diasAguardando, resumoProfessor, rotuloEspera } from "./aprovacoes/aprovacoes";
+import { DIAS_URGENTE, dataCurta, diasAguardando, emailDeOutraInstituicao, resumoProfessor, rotuloEspera } from "./aprovacoes/aprovacoes";
 
 type PendingProfessor = {
   id: string;
@@ -13,24 +14,38 @@ type PendingProfessor = {
   disciplina: string | null;
   descricao: string | null;
   created_at: string;
+  /** Vem da função aprovacoes_pendentes(); null quando só a tabela pôde ser lida. */
+  email?: string | null;
 };
 
 export function ProfessorApprovalSection() {
   const [professors, setProfessors] = useState<PendingProfessor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const { user } = useAuth();
   const [processing, setProcessing] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState<string | null>(null);
+  const [ultima, setUltima] = useState<{ nome: string; liberado_em: string } | null>(null);
 
   const loadPending = useCallback(async () => {
     setIsLoading(true);
     setLoadError(false);
-    // Ordem do mais antigo para o mais novo: quem espera há mais tempo aparece primeiro.
-    const { data, error } = await supabase
-      .from("professor")
-      .select("id, nome, instituicao, disciplina, descricao, created_at")
-      .eq("liberado", false)
-      .order("created_at", { ascending: true });
+    // Preferência: a função do banco, que traz o e-mail (auth.users) e só responde ao dono.
+    // Se ela ainda não existe (migration não aplicada) ou falha, cai na leitura da tabela,
+    // sem e-mail — a fila continua funcionando em vez de quebrar.
+    const viaFuncao = await supabase.rpc("aprovacoes_pendentes" as never);
+    let data = (viaFuncao.data ?? null) as PendingProfessor[] | null;
+    let error: unknown = viaFuncao.error;
+    if (viaFuncao.error) {
+      // Ordem do mais antigo para o mais novo: quem espera há mais tempo aparece primeiro.
+      const resp = await supabase
+        .from("professor")
+        .select("id, nome, instituicao, disciplina, descricao, created_at")
+        .eq("liberado", false)
+        .order("created_at", { ascending: true });
+      data = resp.data as PendingProfessor[] | null;
+      error = resp.error;
+    }
 
     if (error) {
       // Erro não pode virar "nenhum pendente": o dono acharia que a fila está vazia.
@@ -45,6 +60,20 @@ export function ProfessorApprovalSection() {
   useEffect(() => {
     loadPending();
   }, [loadPending]);
+
+  // "Última aprovação" do estado vazio. Opcional: se a função não existe ainda ou ninguém tem data
+  // (liberados antes da coluna liberado_em), a frase simplesmente não aparece.
+  useEffect(() => {
+    let ativo = true;
+    supabase.rpc("aprovacoes_ultima" as never).then(({ data, error }) => {
+      const lista = data as unknown as { nome: string; liberado_em: string }[] | null;
+      const linha = Array.isArray(lista) && lista.length > 0 ? lista[0] : null;
+      if (ativo && !error && linha && linha.nome && linha.liberado_em) setUltima(linha);
+    });
+    return () => {
+      ativo = false;
+    };
+  }, []);
 
   const approve = async (professorId: string) => {
     setProcessing(professorId);
@@ -105,6 +134,11 @@ export function ProfessorApprovalSection() {
           </span>
           <h3 className="text-[22px] font-bold">Nenhum professor aguardando aprovação</h3>
           <p className="max-w-[440px] text-sm leading-relaxed text-muted-foreground">Novos cadastros aparecem aqui quando alguém se inscrever.</p>
+          {ultima && (
+            <p className="text-[12.5px] text-muted-foreground">
+              Última aprovação: {ultima.nome}, em {dataCurta(ultima.liberado_em)}.
+            </p>
+          )}
         </div>
       ) : (
         <>
@@ -134,7 +168,15 @@ export function ProfessorApprovalSection() {
                     <div className="min-w-0 flex-1">
                       <h3 className="truncate text-[16.5px] font-bold">{prof.nome}</h3>
                       <p className="mt-1.5 text-[12.5px] text-muted-foreground">{resumoProfessor(prof.instituicao, prof.disciplina)}</p>
-                      <p className="mt-1 text-[11.5px] text-muted-foreground">cadastro em {dataCurta(prof.created_at)}</p>
+                      <p className="mt-1 text-[11.5px] text-muted-foreground">
+                        {prof.email ? `${prof.email} · ` : ""}cadastro em {dataCurta(prof.created_at)}
+                      </p>
+                      {emailDeOutraInstituicao(prof.email, user?.email) && (
+                        <p className="mt-1.5 flex items-center gap-1.5 text-[11.5px] text-warning">
+                          <AlertTriangle className="h-3 w-3 flex-none" aria-hidden="true" />
+                          E-mail de instituição diferente da sua.
+                        </p>
+                      )}
                     </div>
                     <span
                       className={`whitespace-nowrap rounded-full px-3 py-[5px] text-[10.5px] font-bold ${
