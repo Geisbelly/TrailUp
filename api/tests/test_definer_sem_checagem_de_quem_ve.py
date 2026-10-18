@@ -63,7 +63,9 @@ def test_revoga_as_tres_sem_cliente() -> None:
 def test_revoga_de_anon_tambem() -> None:
     sql = _render(INTERVALO)
     for nome in REVOGADAS:
-        linha = next(l for l in sql.splitlines() if f"REVOKE ALL ON FUNCTION public.{nome}" in l)
+        linha = next(
+            texto for texto in sql.splitlines() if f"REVOKE ALL ON FUNCTION public.{nome}" in texto
+        )
         assert "anon" in linha and "authenticated" in linha
 
 
