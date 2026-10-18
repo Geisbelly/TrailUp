@@ -9,6 +9,7 @@ src/context/metricas/acumuladorLote.test.ts
 src/context/metricas/batchRotation.test.ts
 src/context/metricas/cicloSessao.test.ts
 src/hooks/trilha/sessionRegistrationPlan.test.ts
+src/hooks/trilha/persistirIntervalo.test.ts
 src/hooks/trilha/topicScreenBlock.test.ts
 src/hooks/trilha/usePersonalizedFlow.test.ts
 src/models/Topico.canonicalProgress.test.ts
