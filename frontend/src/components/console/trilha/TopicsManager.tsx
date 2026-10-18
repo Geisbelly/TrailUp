@@ -36,6 +36,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { TopicEditDrawer } from "./TopicEditDrawer";
 import { CartaoDoTopico } from "./CartaoDoTopico";
 import { GenerateTrailDialog } from "./GenerateTrailDialog";
+import { ConfirmarLigacao } from "./ConfirmarLigacao";
 import { ConfirmarDuplicarTopico, ConfirmarExcluirTopico } from "./ConfirmarTopico";
 import { numeroNaSequencia, resumoDaTurma } from "./mapa";
 import { ClassManagerDialog } from "./ClassManagerDialog";
@@ -171,6 +172,9 @@ export default function TopicsManager() {
     NODE_WIDTH,
     NODE_HEIGHT,
     removeLink,
+    conflitoPendente,
+    confirmarConflito,
+    cancelarConflito,
     handleNodePointerDown,
     handleNodePointerMove,
     handleNodePointerUp,
@@ -1250,6 +1254,7 @@ export default function TopicsManager() {
           }}
         />
       )}
+      <ConfirmarLigacao mensagem={conflitoPendente?.mensagem ?? null} onConfirmar={confirmarConflito} onCancelar={cancelarConflito} />
       <ConfirmarDuplicarTopico
         nome={topicoParaDuplicar?.nome ?? ""}
         aberto={topicoParaDuplicar !== null}

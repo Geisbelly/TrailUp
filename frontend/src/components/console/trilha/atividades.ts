@@ -1,9 +1,8 @@
-const ROTULOS: Record<string, string> = {
-  quiz: "Múltipla escolha",
+import { ehTipoDeAtividade, ROTULO_DO_TIPO } from "./tiposDeAtividade";
+
+// Tipos antigos que ainda existem em atividades já gravadas e não fazem parte da lista atual.
+const ROTULOS_LEGADOS: Record<string, string> = {
   questao: "Múltipla escolha",
-  true_false: "Verdadeiro/Falso",
-  fill_blank: "Completar",
-  essay: "Dissertação",
   video: "Vídeo",
   texto: "Texto",
 };
@@ -11,7 +10,8 @@ const ROTULOS: Record<string, string> = {
 /** Rótulo legível do tipo da atividade; tipo desconhecido ou vazio não quebra a lista. */
 export function rotuloDoTipoDeAtividade(tipo: string | null | undefined): string {
   if (!tipo) return "Atividade";
-  return ROTULOS[tipo] ?? "Atividade";
+  if (ehTipoDeAtividade(tipo)) return ROTULO_DO_TIPO[tipo];
+  return ROTULOS_LEGADOS[tipo] ?? "Atividade";
 }
 
 /** "entrega 12/10/2026" ou null (sem prazo / data inválida). */

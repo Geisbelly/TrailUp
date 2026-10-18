@@ -20,6 +20,7 @@ export const DESCRICAO_MAX = 1000;
 export const RECOMPENSA_MAX = 300;
 export const PONTOS_MAX = 10000;
 export const MOEDAS_MAX = 10000;
+export const MISSOES_MAX = 20;
 export const GUILDA_MIN = 2;
 export const GUILDA_MAX = 20;
 
@@ -32,6 +33,8 @@ export type FormularioDeEvento = {
   /** Id do tópico em texto, ou vazio para o evento valer para a turma toda. */
   topicoId: string;
   pecas: ChaveDePeca[];
+  /** Ids das missões ligadas ao evento (peça "Missões"). */
+  missoesIds: number[];
   modalidadeGuilda: boolean;
   guildaTamanhoMax: string;
   pontos: string;
@@ -48,6 +51,7 @@ export const FORMULARIO_DE_EVENTO_VAZIO: FormularioDeEvento = {
   fim: "",
   topicoId: "",
   pecas: [],
+  missoesIds: [],
   modalidadeGuilda: false,
   guildaTamanhoMax: "",
   pontos: "0",
@@ -74,11 +78,11 @@ export type PayloadDoEvento = {
 };
 
 export type ErrosDoEvento = Partial<
-  Record<"titulo" | "descricao" | "inicio" | "fim" | "pecas" | "guildaTamanhoMax" | "pontos" | "moedas" | "recompensa", string>
+  Record<"titulo" | "descricao" | "inicio" | "fim" | "pecas" | "missoes" | "guildaTamanhoMax" | "pontos" | "moedas" | "recompensa", string>
 >;
 
 // Duas chaves exclusivas: strictNullChecks está desligado no projeto.
-export type ResultadoDoEvento = { ok: boolean; payload: PayloadDoEvento | null; erros: ErrosDoEvento | null };
+export type ResultadoDoEvento = { ok: boolean; payload: PayloadDoEvento | null; /** Missões ligadas (vazio se a peça não está marcada). */ missoes: number[]; erros: ErrosDoEvento | null };
 
 const inteiro = (texto: string) => {
   const t = texto.trim().replace(",", ".");
@@ -104,6 +108,9 @@ export function validarEvento(form: FormularioDeEvento): ResultadoDoEvento {
 
   const pecas = PECAS_DO_EVENTO.map((p) => p.chave).filter((c) => form.pecas.includes(c));
   if (pecas.length === 0) erros.pecas = "Escolha pelo menos uma peça para o evento.";
+  const missoes = pecas.includes("missoes") ? [...new Set(form.missoesIds)] : [];
+  if (pecas.includes("missoes") && missoes.length === 0) erros.missoes = "Escolha as missões do evento, ou desmarque a peça Missões.";
+  if (missoes.length > MISSOES_MAX) erros.missoes = `No máximo ${MISSOES_MAX} missões por evento.`;
 
   let guildaTamanhoMax: number | null = null;
   if (form.modalidadeGuilda) {
@@ -121,12 +128,13 @@ export function validarEvento(form: FormularioDeEvento): ResultadoDoEvento {
   const recompensa = form.recompensa.trim();
   if (recompensa.length > RECOMPENSA_MAX) erros.recompensa = `No máximo ${RECOMPENSA_MAX} caracteres.`;
 
-  if (Object.keys(erros).length > 0) return { ok: false, payload: null, erros };
+  if (Object.keys(erros).length > 0) return { ok: false, payload: null, missoes: [], erros };
 
   const topico = Number(form.topicoId);
   return {
     ok: true,
     erros: null,
+    missoes,
     payload: {
       topico_id: form.topicoId && Number.isInteger(topico) && topico > 0 ? topico : null,
       titulo,
