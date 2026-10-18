@@ -67,9 +67,12 @@ depends_on = None
 
 # (nome, assinatura)
 SEM_CLIENTE = (
-    ("fn_nota_90_10", "uuid, bigint"),
-    ("fn_trilha_by_classe", "uuid, bigint"),
-    ("social_sao_colegas", "uuid, uuid"),
+    ("fn_nota_90_10", "uuid, bigint"),          # nota de qualquer aluno
+    ("fn_trilha_by_classe", "uuid, bigint"),    # trilha e status; alem disso, quebrada
+    ("social_sao_colegas", "uuid, uuid"),       # dois alunos quaisquer dividem turma?
+    ("guilda_e_colega", "uuid, bigint"),        # aluno X esta na turma Y?
+    ("fn_arena_placar", "uuid"),                # ids e acertos de todo participante
+    ("fn_arena_equipes", "uuid"),               # idem, agregado por equipe
 )
 
 PRESENCA_COM_GUARDA = """
@@ -101,10 +104,45 @@ $function$
 """
 
 
+TURMA_COM_GUARDA = """
+CREATE OR REPLACE FUNCTION public.social_presenca_turma(p_classe_id bigint)
+RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path TO 'public', 'pg_temp' AS $function$
+  SELECT CASE
+    WHEN p_classe_id IS NULL
+      OR NOT EXISTS (SELECT 1 FROM public.app_minhas_classes() AS m(id) WHERE m.id = p_classe_id)
+      THEN '[]'::jsonb
+    ELSE COALESCE((
+      SELECT jsonb_agg(jsonb_build_object('aluno_id', ca.aluno_id, 'online', EXISTS (
+               SELECT 1 FROM public.aluno_sessoes_app s
+                WHERE s.aluno_id = ca.aluno_id
+                  AND s.encerrada_em IS NULL
+                  AND s.atualizado_em > now() - interval '3 minutes')))
+        FROM public.classe_aluno ca WHERE ca.classe_id = p_classe_id), '[]'::jsonb)
+  END;
+$function$
+"""
+
+TURMA_SEM_GUARDA = """
+CREATE OR REPLACE FUNCTION public.social_presenca_turma(p_classe_id bigint)
+RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path TO 'public', 'pg_temp' AS $function$
+  SELECT COALESCE((
+    SELECT jsonb_agg(jsonb_build_object('aluno_id', ca.aluno_id, 'online', EXISTS (
+             SELECT 1 FROM public.aluno_sessoes_app s
+              WHERE s.aluno_id = ca.aluno_id
+                AND s.encerrada_em IS NULL
+                AND s.atualizado_em > now() - interval '3 minutes')))
+      FROM public.classe_aluno ca WHERE ca.classe_id = p_classe_id), '[]'::jsonb);
+$function$
+"""
+
+
 def upgrade() -> None:
     for nome, args in SEM_CLIENTE:
         op.execute(f"REVOKE ALL ON FUNCTION public.{nome}({args}) FROM PUBLIC, anon, authenticated")
     op.execute(PRESENCA_COM_GUARDA)
+    op.execute(TURMA_COM_GUARDA)
 
 
 def downgrade() -> None:
@@ -113,3 +151,4 @@ def downgrade() -> None:
     for nome, args in SEM_CLIENTE:
         op.execute(f"GRANT EXECUTE ON FUNCTION public.{nome}({args}) TO authenticated")
     op.execute(PRESENCA_SEM_GUARDA)
+    op.execute(TURMA_SEM_GUARDA)

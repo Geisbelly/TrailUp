@@ -30,7 +30,14 @@ API_ROOT = Path(__file__).resolve().parents[1]
 
 INTERVALO = "20261018_03:20261018_04"
 
-REVOGADAS = ("fn_nota_90_10", "fn_trilha_by_classe", "social_sao_colegas")
+REVOGADAS = (
+    "fn_nota_90_10",
+    "fn_trilha_by_classe",
+    "social_sao_colegas",
+    "guilda_e_colega",
+    "fn_arena_placar",
+    "fn_arena_equipes",
+)
 
 
 def _render(intervalo: str, *, downgrade: bool = False) -> str:
@@ -81,3 +88,31 @@ def test_downgrade_devolve_grant_e_funcao_sem_guarda() -> None:
         assert f"GRANT EXECUTE ON FUNCTION public.{nome}" in sql
     assert "CREATE OR REPLACE FUNCTION public.social_presenca_aluno" in sql
     assert "app_pode_ver_aluno" not in sql
+
+
+def test_presenca_da_turma_tambem_ganha_a_guarda() -> None:
+    """`social_presenca_turma(classe_id)` devolvia a lista de alunos de
+    QUALQUER turma. `classe_id` e bigint sequencial: iterar 1..N colhe o
+    cadastro inteiro da plataforma. O mobile a chama (`carregarSocial`), entao
+    ela ganha predicado em vez de perder o EXECUTE."""
+    sql = _render(INTERVALO)
+    assert "REVOKE ALL ON FUNCTION public.social_presenca_turma" not in sql
+    assert "CREATE OR REPLACE FUNCTION public.social_presenca_turma" in sql
+    trecho = sql.split("CREATE OR REPLACE FUNCTION public.social_presenca_turma")[1]
+    assert "app_minhas_classes" in trecho
+    assert trecho.index("app_minhas_classes") < trecho.index("classe_aluno")
+
+
+def test_turma_alheia_devolve_lista_vazia_e_nao_erro() -> None:
+    """O cliente faz `Array.isArray(data) ? data : []` e monta um Map. Lista
+    vazia degrada para 'todos offline'; uma excecao quebraria a tela social."""
+    sql = _render(INTERVALO)
+    trecho = sql.split("CREATE OR REPLACE FUNCTION public.social_presenca_turma")[1]
+    assert "'[]'::jsonb" in trecho
+    assert "RAISE" not in trecho.split("$function$")[1]
+
+
+def test_downgrade_devolve_a_presenca_da_turma_sem_guarda() -> None:
+    sql = _render("20261018_04:20261018_03", downgrade=True)
+    trecho = sql.split("CREATE OR REPLACE FUNCTION public.social_presenca_turma")[1]
+    assert "app_minhas_classes" not in trecho.split("$function$")[1]
