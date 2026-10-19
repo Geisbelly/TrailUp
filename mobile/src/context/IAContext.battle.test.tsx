@@ -8,6 +8,14 @@ const mockModule = (path: string, exports: unknown) => {
 };
 mockModule('@/context/SessaoContext', { useUsuario: () => ({ usuario: { id: 'aluno', perfilAtivo: 'conqueror', perfis: [{ nome: 'conqueror', afinidade: 100 }] } }) });
 mockModule('@/constants/profileImages', { getBrainHexGuideName: () => 'Guia' });
+// `react-native` precisa entrar no cache ANTES do require de `./IAContext`:
+// o esbuild do tsx nao transforma a sintaxe Flow de `node_modules/react-native`
+// ("Unexpected typeof"), e carregar o modulo de verdade derruba o arquivo
+// inteiro antes do primeiro teste. O provider so usa `AppState`, e so para
+// assinar a mudanca de foreground -- que nao existe num render de servidor.
+mockModule('react-native', {
+  AppState: { currentState: 'active', addEventListener: () => ({ remove: () => undefined }) },
+});
 mockModule('@react-native-async-storage/async-storage', { __esModule: true, default: { getItem: async () => null, setItem: async () => undefined } });
 mockModule('@/utils/trilhaCheckpoint', { clearTrilhaCheckpoint: async () => undefined });
 const { IAProvider, useIA } = require('./IAContext') as typeof import('./IAContext');
