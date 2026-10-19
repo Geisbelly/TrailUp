@@ -31,7 +31,7 @@ from app.db import migrations
 
 API_ROOT = Path(__file__).resolve().parents[1]
 
-INTERVALO = "20261019_02:20261019_10"
+INTERVALO = "20261018_01:20261018_02"
 
 FUNCOES = ("fn_questao_gabarito_em_texto", "fn_questao_associacao_em_ordem")
 
@@ -76,6 +76,6 @@ def test_o_resto_do_corpo_nao_muda() -> None:
 
 
 def test_downgrade_devolve_as_guardas_furadas() -> None:
-    sql = _render("20261019_10:20261019_02", downgrade=True)
+    sql = _render("20261018_02:20261018_01", downgrade=True)
     assert "IF v_resp = '' OR jsonb_typeof(p_alts) <> 'array'" in sql
     assert "IF p_alts IS NULL" not in sql

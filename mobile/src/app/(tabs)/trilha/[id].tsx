@@ -44,7 +44,7 @@ import type { DeckProgressEvent } from "@/utils/deckProgressMessage";
 import { useConquistaRank } from "@/context/ConquistaRankContext";
 import { useDialog } from "@/context/DialogContext";
 import { useIA } from "@/context/IAContext";
-import { composicaoDeBlocos } from "@/utils/vidaDoBoss";
+import { composicaoDeBlocos, composicaoPorConteudo } from "@/utils/vidaDoBoss";
 import { useLoading } from "@/context/LoadingContext";
 import { useMetricas } from "@/context/MetricasContext";
 import { useUsuario } from "@/context/SessaoContext";
@@ -415,7 +415,11 @@ export default function TrilhaConteudoScreen() {
   // personalizado, e e a mesma lista que decide a conclusao do topico.
   useEffect(() => {
     if (topicoId == null) return;
-    registrarComposicaoDoTopico(topicoId, composicaoDeBlocos(blocks));
+    registrarComposicaoDoTopico(
+      topicoId,
+      composicaoDeBlocos(blocks),
+      composicaoPorConteudo(blocks)
+    );
   }, [blocks, registrarComposicaoDoTopico, topicoId]);
 
   const [conteudosVistosLocal, setConteudosVistosLocal] = useState<Set<number>>(new Set());
@@ -889,7 +893,6 @@ export default function TrilhaConteudoScreen() {
               elapsedStartAtMs={moduleSessionStartedAtRef.current}
               active={isOverlayTimerActive}
               onTimeoutAction={handleOverlayTimerTimeout}
-              atividadeId={atualBlock?.kind === "atividade" ? Number(atualBlock.atividade.id) : null}
             />
           </View>
           <ModuleHeaderGuideButton
@@ -910,7 +913,6 @@ export default function TrilhaConteudoScreen() {
         </View>
     );
   }, [
-    atualBlock,
     currentOverlayItemKey,
     currentOverlayTimerFeature,
     guideTargetRefs,
@@ -1861,7 +1863,6 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
               <ActivityRenderer
                 atividade={atualBlock.atividade}
                 topicoId={topicoId ?? topico?.id ?? null}
-                classeId={classeAtual?.classe_id ?? topico?.classe_id ?? null}
                 onComplete={handleAtividadeComplete}
                 initialQuestionIndex={currentActivityQuestionIndex}
                 onQuestionIndexChange={(questionIndex) => {

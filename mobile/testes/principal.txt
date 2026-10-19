@@ -13,6 +13,7 @@ src/hooks/trilha/persistirIntervalo.test.ts
 src/utils/vidaDoBoss.test.ts
 src/hooks/trilha/topicScreenBlock.test.ts
 src/hooks/trilha/usePersonalizedFlow.test.ts
+src/hooks/trilha/studyIntervalPersistence.test.ts
 src/models/Topico.canonicalProgress.test.ts
 src/services/apiBaseUrl.core.test.ts
 src/services/authErrorMessage.test.ts
@@ -101,18 +102,14 @@ src/utils/subtelasConfiguracao.test.ts
 src/utils/resumoColeta.test.ts
 src/utils/destaqueConquistas.test.ts
 src/utils/painelTopicoTrilha.test.ts
-src/components/web/TrilhaDesktop.navegacao.test.tsx
-src/components/web/MapaPaisesDesktop.clique.test.tsx
 src/utils/gradeMapaTrilha.test.ts
 src/utils/mapaPaises.test.ts
 src/services/loja/ganhoMoedasModel.test.ts
 src/utils/compraLoja.test.ts
 src/services/loja/extratoModel.test.ts
-src/services/loja/usoItem.test.ts
 src/utils/tourTelaLarga.test.ts
 src/utils/rolagemTematica.test.ts
 src/utils/minhaPosicaoRank.test.ts
 src/utils/gruposNotificacao.test.ts
 src/utils/activityType.test.ts
 src/utils/realtimeDeleteObservavel.test.ts
-src/hooks/trilha/studyIntervalPersistence.test.ts
