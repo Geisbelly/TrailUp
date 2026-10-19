@@ -44,6 +44,7 @@ import type { DeckProgressEvent } from "@/utils/deckProgressMessage";
 import { useConquistaRank } from "@/context/ConquistaRankContext";
 import { useDialog } from "@/context/DialogContext";
 import { useIA } from "@/context/IAContext";
+import { composicaoDeBlocos } from "@/utils/vidaDoBoss";
 import { useLoading } from "@/context/LoadingContext";
 import { useMetricas } from "@/context/MetricasContext";
 import { useUsuario } from "@/context/SessaoContext";
@@ -193,6 +194,7 @@ export default function TrilhaConteudoScreen() {
   const {
     registerTopicPayload,
     setActiveTopic,
+    registrarComposicaoDoTopico,
     emitSignal,
   } = useIA();
   const {
@@ -407,6 +409,14 @@ export default function TrilhaConteudoScreen() {
   const blocks = useMemo(() => {
     return buildBlocksForTopico(conteudos, atividades, modo);
   }, [atividades, conteudos, modo]);
+
+  // O boss do topico e dimensionado pelo percurso (`vidaDoBoss.ts`). Quem sabe
+  // o tamanho do percurso e esta tela: `blocks` ja une material do professor e
+  // personalizado, e e a mesma lista que decide a conclusao do topico.
+  useEffect(() => {
+    if (topicoId == null) return;
+    registrarComposicaoDoTopico(topicoId, composicaoDeBlocos(blocks));
+  }, [blocks, registrarComposicaoDoTopico, topicoId]);
 
   const [conteudosVistosLocal, setConteudosVistosLocal] = useState<Set<number>>(new Set());
   const [atividadesResolvidasLocal, setAtividadesResolvidasLocal] = useState<
