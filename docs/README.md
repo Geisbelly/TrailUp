@@ -16,6 +16,11 @@ e reúne a documentação que antes vivia dentro de cada repositório.
 Documentação que não pertence a um único serviço:
 
 - **[`tcc/`](./tcc/)** — documento do TCC (versão única).
+  Material de origem do Drive (proposta, UX, TCC 1, monografia) em
+  [`tcc/fontes-drive/`](./tcc/fontes-drive/).
+- **[`segundo-cerebro/`](./segundo-cerebro/)** — vault Obsidian do TCC
+  (arquitetura, timeline, glossário, inventário do Drive, incidentes, bots).
+- **[`sprint/`](./sprint/)** — planejamento e relatórios semanais da sprint.
 - **[`ecossistema/`](./ecossistema/)** — fluxo completo do ecossistema, com a
   versão detalhada e as perspectivas resumidas por serviço.
 - **[Mapa da coleta de métricas](./architecture/coleta-de-metricas.md)** — o

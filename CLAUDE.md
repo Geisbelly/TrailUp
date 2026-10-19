@@ -511,6 +511,47 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
   (`ON CONFLICT (col) WHERE col IS NOT NULL`). Sem ele o Postgres não casa o
   índice e levanta "no unique or exclusion constraint matching".
 
+## Fontes de contexto (fora do código)
+
+Antes de supor algo sobre o produto, o TCC ou o histórico, consulte:
+
+- **Segundo cérebro do TCC** — [`docs/segundo-cerebro/`](docs/segundo-cerebro/README.md)
+  (vault Obsidian; abra a pasta como vault para os `[[links]]` funcionarem):
+  `00-Home` (MOC) · `01-Arquitetura` (mapa do monorepo e deploys) ·
+  `02-Timeline` · `03-Glossario` · `04-Drive` (inventário + IDs do Drive) ·
+  `05-PRs-Repos` (repos, syncs, análises de PR) · `06-Monografia` (plano de
+  capítulos) · `07-Parceiros` (papéis dos bots) · `08-Infra-Supabase` ·
+  `09-Testes-Reflect` (Reflect só contra Docker local) · `10-Incidentes`
+  (console vazio de 01/10 e drift de migrations).
+  O vault **Segundo Cérebro Reuniões** é outra base e não entra no repo.
+- **Documentos do TCC** — capítulos consolidados em [`docs/tcc/`](docs/tcc/README.md);
+  cópias em texto dos originais do Drive (proposta, UX, TCC 1, monografia,
+  relatório técnico) em [`docs/tcc/fontes-drive/`](docs/tcc/fontes-drive/README.md).
+  O Drive é a fonte de verdade desses textos.
+- **Google Drive:**
+  [documentação TrailUp (raiz: TCC 1, TCC 2)](https://drive.google.com/drive/folders/1-hMe8qKLGvPTtDZ-b0HlvbSRwQhtZtug) ·
+  [Segundo Cérebro](https://drive.google.com/drive/folders/1RiqTibVR9MTl9aYKAWs6g7dM1gSUcNqc) ·
+  [espelho do vault (Segundo-Cerebro-TCC-TrailUp)](https://drive.google.com/drive/folders/1WNbaeGg2VS3p8BfCtGlnf_XW29jUZIxW).
+- **Sprint** — planejamento e relatórios em [`docs/sprint/`](docs/sprint/); os
+  relatórios semanais publicados ficam em
+  `https://geisbelly.github.io/TrailUp/sprint/relatorio-semanal-AAAA-Www.html`
+  (ex.: [W42](https://geisbelly.github.io/TrailUp/sprint/relatorio-semanal-2026-W42.html)),
+  com `-apresentacao.html` e `.pdf` ao lado.
+- **Supabase:** projeto **TraiUp**, ref `xrebtkmdewolzmpsdwgh` (plano Free,
+  sem PITR nem backup diário baixável). Chaves e `DATABASE_URL` só no `.env`
+  — nunca em doc, commit ou chat.
+- **Repositórios:** `BitStudioLabs/trail-up` é o canônico (PRs aqui).
+  [`Geisbelly/TrailUp`](https://github.com/Geisbelly/TrailUp) é o espelho
+  (sync da `main`, CI badge e GitHub Pages dos relatórios) — não abrir trabalho lá.
+- **Deploys:** web em `https://trailup.vercel.app` (não usar como alvo de
+  regressão do console); API em Dokploy (VPS); local via `npm run docker:up`
+  (`:8080` / `:8000` / `:3000`).
+- **Mais docs do repo:** [`docs/README.md`](docs/README.md) (índice),
+  [`docs/MANUAL.md`](docs/MANUAL.md),
+  [coleta de métricas](docs/architecture/coleta-de-metricas.md),
+  [schema não versionado](docs/architecture/schema-nao-versionado.md),
+  [`docs/rag/`](docs/rag/) e `graphify-out/` (abaixo).
+
 ## Pontos de entrada (código)
 
 - Grafo IA: `api/app/agent/graph/builder.py`, `routing.py`, `nodes/`.
