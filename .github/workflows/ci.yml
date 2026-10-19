@@ -160,15 +160,18 @@ jobs:
           node-version: '22'
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
-      # Sem `--frozen-lockfile` de proposito, por ora: `bun.lock` esta
-      # DESATUALIZADO — `d3` e `@types/d3` estao no package.json (e `d3` e
-      # usado por src/components/VisualKnowledgeGraph.tsx) mas nao constam do
-      # lock. Com `--frozen-lockfile` este job nasceria vermelho. Regenerar o
-      # lock precisa do bun na mao de quem commita; quando isso acontecer,
-      # troque por `bun install --frozen-lockfile`, que e o que a gente quer.
+          # Fixado, nao `latest`: com `--frozen-lockfile` abaixo, uma mudanca
+          # de formato do lock num bun futuro derrubaria este job sem ninguem
+          # ter mexido em codigo. Esta e a versao que gerou o `bun.lock`.
+          # Ao subir, rode `bun install` e commite o lock junto.
+          bun-version: 1.4.3
+      # `--frozen-lockfile` e o que a gente quer: o job falha se o lock nao
+      # casar com o package.json, em vez de resolver sozinho e esconder a
+      # divergencia. Ficou fora por um tempo porque `bun.lock` estava
+      # DESATUALIZADO (`d3` e `@types/d3` no package.json, ausentes do lock) e
+      # o job nasceria vermelho. O lock foi regenerado com bun 1.4.3.
       - name: Instala dependencias
-        run: bun install
+        run: bun install --frozen-lockfile
       - name: Type-check (tsc)
         run: bun run lint
       - name: Testes
