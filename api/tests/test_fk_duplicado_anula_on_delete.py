@@ -28,7 +28,7 @@ from app.db import migrations
 
 API_ROOT = Path(__file__).resolve().parents[1]
 
-INTERVALO = "20261013_01:20261014_01"
+INTERVALO = "20261017_10:20261018_02"
 
 # (constraint sombra, constraint que fica)
 PARES = (
@@ -85,7 +85,7 @@ def test_nao_mexe_nos_duplicados_de_mesma_semantica() -> None:
 
 
 def test_downgrade_recria_a_sombra_como_ela_era() -> None:
-    sql = _render("20261014_01:20261013_01", downgrade=True)
+    sql = _render("20261018_02:20261017_10", downgrade=True)
     for sombra, _mantido in PARES:
         assert f'ADD CONSTRAINT "{sombra}"' in sql, f"{sombra} nao voltaria"
     # Sem ON DELETE: e exatamente isso que fazia o bloqueio.

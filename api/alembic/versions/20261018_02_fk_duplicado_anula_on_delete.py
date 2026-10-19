@@ -39,15 +39,15 @@ por escrita (`conteudo_personalizado` -> alunos/conteudos/topicos). Isso e
 performance, e cai na #331, que decidiu esperar dado real antes de varrer.
 Nao mexo neles aqui para esta migracao continuar sendo so correcao.
 
-Revision ID: 20261014_01
-Revises: 20261013_01
+Revision ID: 20261018_02
+Revises: 20261017_10
 Create Date: 2026-10-14
 """
 
 from alembic import op
 
-revision = "20261014_01"
-down_revision = "20261013_01"
+revision = "20261018_02"
+down_revision = "20261017_10"
 branch_labels = None
 depends_on = None
 
