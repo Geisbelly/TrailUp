@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { normalizeGuildMessages } from "./guildChatModel";
+import { mensagemEhMinha, normalizeGuildMessages } from "./guildChatModel";
 
 describe("modelo do chat da guilda", () => {
   it("normaliza texto e compartilhamentos de desafios e questões", () => {
@@ -18,5 +18,19 @@ describe("modelo do chat da guilda", () => {
   it("rejeita compartilhamento sem referência válida", () => {
     const messages = normalizeGuildMessages([{ id: "m1", guilda_id: "g1", autor_id: "a1", tipo: "desafio", conteudo: {} }]);
     assert.equal(messages[0].share, null);
+  });
+});
+
+describe("mensagemEhMinha", () => {
+  it("compara pelo uuid do autor, não pela string \"me\"", () => {
+    const minha = { authorId: "11111111-1111-1111-1111-111111111111" };
+    const outra = { authorId: "22222222-2222-2222-2222-222222222222" };
+    assert.equal(mensagemEhMinha(minha, "11111111-1111-1111-1111-111111111111"), true);
+    assert.equal(mensagemEhMinha(outra, "11111111-1111-1111-1111-111111111111"), false);
+    // Sem sessão carregada, não reivindica mensagem de ninguém.
+    assert.equal(mensagemEhMinha(minha, null), false);
+    // E o literal antigo não vale mais nada.
+    assert.equal(mensagemEhMinha({ authorId: "me" }, null), false);
+    assert.equal(mensagemEhMinha({ authorId: "me" }, "me"), true, "comparação é por igualdade, sem caso especial");
   });
 });

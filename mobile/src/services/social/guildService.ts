@@ -8,6 +8,19 @@ async function action(name: string, params: Record<string, unknown>) {
   return data as Record<string, unknown>;
 }
 
+/**
+ * O uuid do aluno logado. Necessário em dois lugares do chat da guilda, e os dois estavam
+ * sem ele: o teste de "esta mensagem é minha" comparava `autor_id` com a string literal
+ * `"me"` — e `guilda_chat_listar` devolve `m.autor_id`, um uuid, então o teste NUNCA era
+ * verdadeiro e nenhuma mensagem própria recebia o balão certo. E o seletor de parceiro da
+ * dupla precisa tirar o próprio aluno da lista, porque `guilda_desafio_criar` recusa
+ * `p_aliado = auth.uid()`.
+ */
+export async function alunoAtual(): Promise<string | null> {
+  const { data } = await supabase.auth.getSession();
+  return data.session?.user?.id ?? null;
+}
+
 export async function carregarGuildas(classeId: number): Promise<Guild[]> {
   const { data, error } = await supabase.rpc("guilda_listar", { p_classe_id: classeId });
   if (error) throw error;

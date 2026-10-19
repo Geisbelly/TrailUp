@@ -35,3 +35,18 @@ export function normalizeGuildMessages(rows: unknown): GuildMessage[] {
     }];
   });
 }
+
+/**
+ * A mensagem é de quem está lendo?
+ *
+ * Era `message.authorId === "me"` dentro do componente, e **nunca era verdadeiro**:
+ * `guilda_chat_listar` devolve `m.autor_id`, um uuid, não a string `"me"`. O efeito era
+ * silencioso — nenhuma mensagem própria recebia o balão nem a cor de "minha", e no desktop
+ * tudo aparecia alinhado como se fosse de outra pessoa.
+ *
+ * `meuId` nulo (sessão ainda carregando, ou sem sessão) devolve `false`: na dúvida, não
+ * reivindica a mensagem de ninguém.
+ */
+export function mensagemEhMinha(message: Pick<GuildMessage, "authorId">, meuId: string | null): boolean {
+  return Boolean(meuId) && message.authorId === meuId;
+}
