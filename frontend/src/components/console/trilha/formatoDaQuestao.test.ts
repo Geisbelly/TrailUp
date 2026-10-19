@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatoDaQuestao } from "./formatoDaQuestao";
+import { formatoDaQuestao, tipoDaQuestaoDoFormato } from "./formatoDaQuestao";
 
 describe("formatoDaQuestao", () => {
   it.each([
@@ -29,5 +29,25 @@ describe("formatoDaQuestao", () => {
     expect(formatoDaQuestao(null)).toBe("essay");
     expect(formatoDaQuestao(undefined)).toBe("essay");
     expect(formatoDaQuestao("missao")).toBe("essay");
+  });
+});
+
+describe("tipoDaQuestaoDoFormato", () => {
+  it.each([
+    ["quiz", "multipla"],
+    ["true_false", "verdadeiro_falso"],
+    ["fill_blank", "fill_blank"],
+    ["essay", "dissertativa"],
+  ] as const)("%s → %s", (formato, esperado) => {
+    expect(tipoDaQuestaoDoFormato(formato)).toBe(esperado);
+  });
+
+  it("o par de funções leva tipo cru da IA ao vocabulário de cada coluna", () => {
+    // Esta é a correção: o `GenerateTrailDialog` gravava o literal cru nas DUAS colunas.
+    // `notas_fila()` compara `atividades.tipo = 'essay'` em SQL puro, sem normalizador,
+    // então "dissertativa" saía da fila de correção do professor sem erro nenhum.
+    const formato = formatoDaQuestao("dissertativa");
+    expect(formato).toBe("essay");
+    expect(tipoDaQuestaoDoFormato(formato)).toBe("dissertativa");
   });
 });

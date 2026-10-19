@@ -19,6 +19,7 @@ type Step = "configurar" | "processando" | "resultado" | "revisar" | "ajustar" |
 const PASSOS = ["Configurar", "Gerar", "Processando", "Resultado", "Revisar", "Ajustar"] as const;
 // Qual rótulo do indicador cada tela acende (o "Gerar" é o instante do envio das fontes).
 const PASSO_ATIVO: Record<Step, number> = { configurar: 0, processando: 2, resultado: 3, revisar: 4, ajustar: 5, aplicando: 4 };
+import { formatoDaQuestao, tipoDaQuestaoDoFormato } from "./formatoDaQuestao";
 import type { AiAtividade, AiTopico, MediaType } from "./proposta";
 import { contagemDaProposta, removerDaProposta, semAtividades, substituirNaProposta } from "./proposta";
 
@@ -291,10 +292,16 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
         await insertCards(cardRows);
 
         const createActivity = async (a: AiAtividade, contentId: number) => {
-          const { data, error } = await supabase.from("atividades").insert({ topico_id: topicId, titulo: a.titulo, descricao: "", tipo: a.tipo }).select("id").single();
+          // `AiAtividade.tipo` é string livre: o que o modelo devolver. Gravar o literal cru
+          // quebrava duas coisas — `notas_fila()` procura `tipo = 'essay'` em SQL, sem
+          // normalizador, então uma dissertação devolvida como "dissertativa" nunca chegava à
+          // fila de correção; e `questoes.tipo` recebia o vocabulário de `atividades.tipo`.
+          // A outra rota de IA (`salvarSugestoesDaIa`) já normalizava; esta não.
+          const formato = formatoDaQuestao(a.tipo);
+          const { data, error } = await supabase.from("atividades").insert({ topico_id: topicId, titulo: a.titulo, descricao: "", tipo: formato }).select("id").single();
           if (error) throw error;
           const atividadeId = (data as { id: number }).id;
-          await supabase.from("questoes").insert({ atividade_id: atividadeId, enunciado: a.enunciado, tipo: a.tipo, alternativas: a.alternativas ?? null, resposta_correta: a.resposta_correta });
+          await supabase.from("questoes").insert({ atividade_id: atividadeId, enunciado: a.enunciado, tipo: tipoDaQuestaoDoFormato(formato), alternativas: a.alternativas ?? null, resposta_correta: a.resposta_correta });
           await supabase.from("atividade_conteudos").insert({ atividade_id: atividadeId, conteudo_id: contentId });
         };
         for (let i = 0; i < (t.conteudos ?? []).length; i += 1) {
