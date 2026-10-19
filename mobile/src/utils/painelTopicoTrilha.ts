@@ -2,6 +2,8 @@
 // v4, `03-trilha.html`). Função pura: recebe o nó do grafo (já com o estado de
 // bloqueio calculado) e o tópico da classe, e devolve o que o painel mostra.
 
+import type { Href } from "expo-router";
+
 type No = { id: string; titulo: string; locked: boolean; completed: boolean; sequence: number };
 type Topico = {
   id: number;
@@ -86,8 +88,8 @@ export function topicoInicial(nos: readonly No[], atualId: string | null | undef
 }
 
 /** Rota do tópico: a mesma do botão do painel e das vistas do celular. */
-export function rotaDoTopico(id: string): string {
-  return `/(tabs)/trilha/${encodeURIComponent(id)}`;
+export function rotaDoTopico(id: string): Href {
+  return `/(tabs)/trilha/${encodeURIComponent(id)}` as Href;
 }
 
 /**

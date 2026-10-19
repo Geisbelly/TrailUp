@@ -34,9 +34,13 @@ const hashMapa = (a: number, b: number) => {
 };
 
 export function layoutMapa(total: number, largura: number, altura: number): LayoutMapa {
-  const cols = MAPA_COLUNAS;
+  // Turma com menos de 4 tópicos: uma coluna por tópico. Com 4 fixas, uma turma
+  // de 1 tópico virava um país e três "terras sem nome" escuras, e o mapa
+  // parecia quebrado (e as terras vazias não respondiam ao clique).
+  const cols = Math.min(MAPA_COLUNAS, Math.max(1, total));
   const rows = Math.max(1, Math.ceil(total / cols));
-  const faixa = Math.max(140, Math.min(228, (altura - MAPA_TOPO - MAPA_BASE) / rows));
+  // Numa fileira só, o país pode crescer mais (até 320 px) para ocupar o quadro.
+  const faixa = Math.max(140, Math.min(rows === 1 ? 320 : 228, (altura - MAPA_TOPO - MAPA_BASE) / rows));
   const W = Math.max(largura, Math.ceil((cols * MAPA_COL_MIN) / (1 - 2 * MAPA_LADO)));
   const x0 = W * MAPA_LADO;
   const cw = (W * (1 - 2 * MAPA_LADO)) / cols;
@@ -107,6 +111,15 @@ export function caminhoCelula(L: LayoutMapa, c: number, r: number): string {
     ...V(c, r).reverse(),
   ];
   return "M" + pts.map((p) => `${f(p[0])} ${f(p[1])}`).join(" L") + " Z";
+}
+
+/**
+ * Onda do mar (um paralelo) atravessando o mapa na altura y. O "S" do SVG pede
+ * quatro números (controle e ponto final); com só dois, o navegador descartava
+ * o path inteiro e registrava erro no console.
+ */
+export function ondaMar(y: number, w: number, largura: number): string {
+  return `M0 ${f(y)} C${f(largura * 0.25)} ${f(y + w)},${f(largura * 0.5)} ${f(y - w)},${f(largura * 0.75)} ${f(y + w)} S${f(largura * 0.95)} ${f(y - w)},${f(largura)} ${f(y)}`;
 }
 
 /** Trecho da estrada entre duas capitais; na virada de fileira a curva fica dentro do país. */
