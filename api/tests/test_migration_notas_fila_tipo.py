@@ -6,7 +6,7 @@ from tests.test_migrations import _offline_alembic_config
 
 def _upgrade_sql() -> str:
     output = StringIO()
-    migrations.command.upgrade(_offline_alembic_config(output), "20261019_12:20261019_13", sql=True)
+    migrations.command.upgrade(_offline_alembic_config(output), "20261018_04:20261018_05", sql=True)
     return output.getvalue()
 
 
@@ -50,7 +50,7 @@ def test_mantem_a_checagem_de_posse_e_a_exposicao() -> None:
 
 def test_downgrade_volta_ao_filtro_literal() -> None:
     output = StringIO()
-    migrations.command.downgrade(_offline_alembic_config(output), "20261019_13:20261019_12", sql=True)
+    migrations.command.downgrade(_offline_alembic_config(output), "20261018_05:20261018_04", sql=True)
     sql = output.getvalue()
 
     assert "AND a.tipo = 'essay'" in sql

@@ -202,3 +202,59 @@ export function composicaoDeBlocos(blocos: readonly BlocoDoPercurso[]): Composic
   }
   return { conteudos, atividades, questoes };
 }
+
+/**
+ * Forma minima de um bloco com o vinculo conteudo-atividade.
+ *
+ * `vinculadoConteudoId` e o que `groupAtividadesByConteudo` ja resolve: a
+ * atividade pendurada num conteudo. E tambem o que decide para qual boss o
+ * dano vai -- `resolveBattleScopeFromSignal` manda `activity_correct` com
+ * `meta.contentId` para o boss daquele conteudo, nao para o do topico.
+ */
+export type BlocoComVinculo = BlocoDoPercurso & {
+  conteudo?: { id?: unknown } | null;
+  vinculadoConteudoId?: number | null;
+};
+
+/** A chave de item do boss de conteudo, igual a `buildIAItemKey('content', id)`. */
+export function chaveDeConteudo(conteudoId: number | string): string {
+  return `content:${conteudoId}`;
+}
+
+/**
+ * O percurso de CADA conteudo, para dimensionar o boss de conteudo.
+ *
+ * O boss de conteudo recebe dano de dois lugares, e so desses dois: o
+ * `content_complete` do proprio conteudo, e as atividades penduradas nele. Por
+ * isso cada entrada nasce com `conteudos: 1` e soma apenas as atividades
+ * vinculadas -- contar o topico inteiro aqui daria a cada conteudo um boss do
+ * tamanho do tópico, que nenhum deles consegue derrubar sozinho.
+ *
+ * Conteudo sem atividade vinculada fica com um unico evento de dano possivel.
+ * O boss dele morre quando o conteudo e concluido, e e o unico desfecho
+ * possivel: com um evento so, qualquer vida acima dele seria invencivel.
+ */
+export function composicaoPorConteudo(
+  blocos: readonly BlocoComVinculo[]
+): Record<string, ComposicaoDoTopico> {
+  const porConteudo: Record<string, ComposicaoDoTopico> = {};
+
+  for (const bloco of blocos) {
+    if (bloco?.kind !== 'conteudo') continue;
+    const id = Number(bloco.conteudo?.id);
+    if (!Number.isFinite(id)) continue;
+    porConteudo[chaveDeConteudo(id)] = { conteudos: 1, atividades: 0, questoes: 0 };
+  }
+
+  for (const bloco of blocos) {
+    if (bloco?.kind !== 'atividade') continue;
+    const vinculo = Number(bloco.vinculadoConteudoId);
+    if (!Number.isFinite(vinculo)) continue;
+    const entrada = porConteudo[chaveDeConteudo(vinculo)];
+    if (!entrada) continue;
+    entrada.atividades += 1;
+    entrada.questoes += Array.isArray(bloco.atividade?.questoes) ? bloco.atividade!.questoes!.length : 0;
+  }
+
+  return porConteudo;
+}

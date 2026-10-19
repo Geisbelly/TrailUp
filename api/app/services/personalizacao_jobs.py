@@ -43,6 +43,7 @@ from app.services.media_generation_jobs import (
     persistir_parte_em_materiais,
     processar_job_media_generation_once,
 )
+from app.services.missao_diaria_texto import JOB_KIND_MISSAO_DIARIA, processar_job_missao_diaria
 from app.services.personalizacao import (
     _build_profile_editorial_context,
     _materialize_and_upload_media_assets,
@@ -2061,6 +2062,35 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
                     job_id=str(job["id"]),
                     status="failed",
                     last_error=str(exc),
+                )
+        return True
+
+    if job["kind"] == JOB_KIND_MISSAO_DIARIA:
+        # Fase 6: reescreve o texto da missao diaria da coorte. A missao ja existe com o texto
+        # do molde (fase 5b); qualquer falha aqui deixa o molde, nunca o aluno sem missao.
+        async with session_factory() as session:
+            repo = PersonalizacaoJobsRepository(session)
+            try:
+                resultado = await processar_job_missao_diaria(
+                    session=session,
+                    settings=app.state.settings,
+                    job=job,
+                )
+                await repo.finalize_job(
+                    job_id=str(job["id"]),
+                    status=resultado.status,
+                    last_error=resultado.last_error(),
+                )
+            except Exception as exc:
+                logger.exception(
+                    "Falha ao reescrever o texto da missao diaria; fica o molde",
+                    extra={"job_id": str(job.get("id")), "classe_id": job.get("classe_id")},
+                )
+                await session.rollback()
+                await repo.finalize_job(
+                    job_id=str(job["id"]),
+                    status="failed",
+                    last_error=f"texto do molde mantido: {_compact_exception_text(exc)}",
                 )
         return True
 

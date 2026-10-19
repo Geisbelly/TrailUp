@@ -1,17 +1,24 @@
 import type { BrainHexProfileKey } from "@/features/signup/brainhex";
 import { PERFIS_EM_ORDEM } from "../dashboard/perfilCores";
 
-// `percentual` existe no banco (é o `rank_tipo` 1, "Percentual Concluído") e o mobile já o
-// trata como percentual. Faltando aqui, `criterioValido` o jogava no fallback e o console
-// rotulava aquele ranking como "pontuação" — professor e aluno liam coisas diferentes do
-// mesmo ranking. O vocabulário é fechado: o mobile compara contra estes literais.
-export type CriterioChave = "pontuacao" | "tempo" | "acertos" | "percentual";
+/**
+ * Esta lista TEM de espelhar o `CASE rt.criterio` de `vw_rank_posicoes_por_classe_todas`.
+ * A view termina em `ELSE 0`, que não é erro: critério fora do CASE ranqueia a turma inteira
+ * em zero, em silêncio — a mesma armadilha do PR #540.
+ *
+ * `percentual` existe no banco (é o `rank_tipo` 1, "Percentual Concluído") e o mobile já o
+ * trata como percentual. `acertos` era oferecido aqui e não existia no CASE (todo ranking de
+ * acertos mostrava zero para todos). Os dois ramos entraram na view em `20261021_06`, junto
+ * com `ranqueada`. O vocabulário é fechado: o mobile compara contra estes literais.
+ */
+export type CriterioChave = "pontuacao" | "tempo" | "acertos" | "percentual" | "ranqueada";
 
 export const CRITERIOS: { chave: CriterioChave; rotulo: string }[] = [
   { chave: "pontuacao", rotulo: "Pontuação" },
   { chave: "tempo", rotulo: "Tempo" },
   { chave: "acertos", rotulo: "Acertos" },
   { chave: "percentual", rotulo: "Percentual" },
+  { chave: "ranqueada", rotulo: "Ranqueada" },
 ];
 
 /** Critério vindo do banco é texto livre: o que não for conhecido cai em "pontuacao". */

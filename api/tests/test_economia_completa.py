@@ -59,7 +59,12 @@ def concedido(
 def test_a_cabeca_nova_continua_a_cadeia() -> None:
     scripts = ScriptDirectory.from_config(_config())
     heads = scripts.get_heads()
-    assert heads == ["20261020_06"]
+    # O que importa aqui e' head UNICA e a cadeia de economia intacta -- nao que ela seja a
+    # ponta. Fixar `heads == ["20261020_06"]` quebrava para quem encadeasse depois, e foi o
+    # que aconteceu quando `20261021_01` (fase 1 dos modos) entrou em cima.
+    assert len(heads) == 1, f"a cadeia tem de ter head unica: {heads}"
+    na_cadeia = {r.revision for r in scripts.iterate_revisions(heads[0], "base")}
+    assert "20261020_06" in na_cadeia, "a cadeia de economia saiu do caminho da head"
     quantidade = scripts.get_revision("20261020_06")
     assert quantidade is not None and quantidade.down_revision == "20261020_05"
     aprovacao = scripts.get_revision("20261020_05")
@@ -72,11 +77,11 @@ def test_a_cabeca_nova_continua_a_cadeia() -> None:
     meio = scripts.get_revision("20261020_02")
     assert meio is not None and meio.down_revision == "20261020_01"
     base = scripts.get_revision("20261020_01")
-    assert base is not None and base.down_revision == "20261019_13"
+    assert base is not None and base.down_revision == "20261019_03"
 
 
 def test_o_professor_deixa_de_escrever_configuracao_direto() -> None:
-    sql = _sql("20261019_13", "20261020_01")
+    sql = _sql("20261019_03", "20261020_01")
     assert "REVOKE INSERT, UPDATE, DELETE ON public.loja_config_classe FROM authenticated" in sql
     assert "REVOKE INSERT, UPDATE, DELETE ON public.eventos_pontuacao_classe FROM authenticated" in sql
     assert "REVOKE INSERT, UPDATE, DELETE ON public.loja_dotacao FROM authenticated" in sql
@@ -153,7 +158,7 @@ def test_meta_e_extrato_e_consistencia_sao_fechados() -> None:
 
 
 def test_anonimo_nao_le_a_auditoria_e_o_dev_nao_ganha_escrita() -> None:
-    sql = _sql("20261019_13", "20261020_03")
+    sql = _sql("20261019_03", "20261020_03")
     assert "CREATE POLICY economia_auditoria_sel_dev" in sql
     assert "FOR SELECT TO authenticated" in sql
     assert "INSERT INTO public.economia_auditoria" not in sql.split("CREATE OR REPLACE FUNCTION public.economia_auditar")[0]
@@ -184,7 +189,7 @@ def test_o_downgrade_restaura_o_que_as_migrations_substituiram() -> None:
     assert "DROP TABLE" not in ponta
     assert "DROP INDEX IF EXISTS public.eventos_aluno_meta_unico" not in ponta
     assert "DELETE FROM public.moedas_ledger" not in ponta
-    base = _sql_down("20261020_01", "20261019_13")
+    base = _sql_down("20261020_01", "20261019_03")
     assert "CHECK (efeito IN ('prazo_extra', 'segunda_chance', 'dica', 'troca_formato'))" in base
     assert "'tempo_extra'" in base
     assert "NOT EXISTS" in base and "item_codigo = 'tempo_extra'" in base

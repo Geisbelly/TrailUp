@@ -57,15 +57,15 @@ primeira vez que entram no versionamento (ver
 `docs/architecture/schema-nao-versionado.md`). Os corpos abaixo sao os de
 producao, com a guarda corrigida e nada mais.
 
-Revision ID: 20261019_10
-Revises: 20261019_02
+Revision ID: 20261018_02
+Revises: 20261018_01
 Create Date: 2026-10-18
 """
 
 from alembic import op
 
-revision = "20261019_10"
-down_revision = "20261019_02"
+revision = "20261018_02"
+down_revision = "20261018_01"
 branch_labels = None
 depends_on = None
 

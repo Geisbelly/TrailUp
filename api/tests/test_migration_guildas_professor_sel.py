@@ -6,7 +6,7 @@ from tests.test_migrations import _offline_alembic_config
 
 def _upgrade_sql() -> str:
     output = StringIO()
-    migrations.command.upgrade(_offline_alembic_config(output), "20261017_10:20261018_01", sql=True)
+    migrations.command.upgrade(_offline_alembic_config(output), "20261019_02:20261019_03", sql=True)
     return output.getvalue()
 
 

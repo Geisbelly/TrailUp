@@ -30,7 +30,7 @@ from app.db import migrations
 
 API_ROOT = Path(__file__).resolve().parents[1]
 
-INTERVALO = "20261019_10:20261019_11"
+INTERVALO = "20261018_02:20261018_03"
 
 COLUNAS = ("classe_id", "aluno_id")
 
@@ -69,7 +69,7 @@ def test_a_guarda_vem_antes_do_alter() -> None:
 
 
 def test_downgrade_devolve_o_nullable() -> None:
-    sql = _render("20261019_11:20261019_10", downgrade=True)
+    sql = _render("20261018_03:20261018_02", downgrade=True)
     for coluna in COLUNAS:
         assert f"ALTER COLUMN {coluna}" in sql
     assert "DROP NOT NULL" in sql

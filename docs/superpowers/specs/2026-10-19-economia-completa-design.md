@@ -5,7 +5,7 @@
 (`moedas_ledger`, `loja_itens`, `loja_comprar`, `eventos_pontuacao_classe`, moedas na
 aprovação em `avaliar_entrega`).
 **Não aplica nada no banco ao vivo.** São migrations Alembic `20261020_01` … `20261020_06`,
-encadeadas depois de `20261019_13` (main já com o PR #153, uma cabeça só).
+encadeadas depois de `20261019_03` (fim da pilha B, #541; a pilha A, #530..#536, vem antes).
 
 ---
 

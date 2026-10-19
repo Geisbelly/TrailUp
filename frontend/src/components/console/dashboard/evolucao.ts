@@ -110,6 +110,8 @@ const TITULO_DO_JOB: Record<string, string> = {
   "full-sync": "Material de toda a turma sincronizado",
 };
 
+const KINDS_FORA_DO_MATERIAL = new Set(["missao_diaria"]);
+
 /**
  * Eventos datados com fonte no banco, sem leitura interpretativa: jobs de
  * personalização concluídos e tópicos criados. Jobs do mesmo tipo e tópico no
@@ -120,6 +122,8 @@ export function mudancasRelevantes(jobs: JobDePersonalizacao[], topicos: TopicoC
   const agrupados = new Map<string, { data: string; kind: string; topico: number | null; vezes: number }>();
   for (const j of jobs) {
     if (!j.finished_at || j.finished_at.slice(0, 10) < desde) continue;
+    // Texto da missao diaria (fase 6) roda todo dia e nao e mudanca de material.
+    if (KINDS_FORA_DO_MATERIAL.has(j.kind)) continue;
     const data = j.finished_at.slice(0, 10);
     const chave = `${data}|${j.kind}|${j.topico_id ?? ""}`;
     const atual = agrupados.get(chave) ?? { data, kind: j.kind, topico: j.topico_id, vezes: 0 };

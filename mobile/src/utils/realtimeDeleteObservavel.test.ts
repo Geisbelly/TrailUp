@@ -11,7 +11,7 @@ import { join } from 'node:path';
  * Com `REPLICA IDENTITY DEFAULT` (o padrao), o old record de um DELETE carrega
  * so a chave primaria. Um filtro por `aluno_id` nao tem o que casar.
  *
- * `20261018_10` liga `REPLICA IDENTITY FULL` nas tabelas em que essa perda e
+ * `20261018_01` liga `REPLICA IDENTITY FULL` nas tabelas em que essa perda e
  * observavel. Este teste existe para que a proxima assinatura seja uma
  * DECISAO: tabela nova aqui obriga a dizer se o DELETE dela precisa chegar.
  */
@@ -78,7 +78,7 @@ function lerAssinaturas(): Assinatura[] {
 const DELETE_CHEGA: Record<string, { como: string; porque: string }> = {
   // Filtra pela propria PK: o old record do DELETE ja carrega classe_id.
   classe_mapa_tema: { como: 'filtro e a PK', porque: 'PK = classe_id' },
-  // REPLICA IDENTITY FULL em 20261018_10.
+  // REPLICA IDENTITY FULL em 20261018_01.
   classe_aluno: { como: 'FULL', porque: 'matricula removida tem de sumir da tela do aluno' },
   notificacoes: { como: 'FULL', porque: 'notificacao apagada nao pode ficar na caixa' },
   eventos_aluno: { como: 'FULL', porque: 'trg_eventos_aluno_after_iud trata DELETE' },

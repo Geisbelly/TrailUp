@@ -236,6 +236,10 @@ export async function listPersonalizacaoJobs(
   let query: any = client
     .from("personalizacao_jobs")
     .select(JOB_COLUMNS)
+    // A fila tambem carrega o texto da missao diaria (fase 6), um job por coorte por dia.
+    // Nao e material: sem este filtro eles empurrariam os jobs de material para fora do
+    // `limit` do painel da trilha.
+    .neq("kind", "missao_diaria")
     .order("created_at", { ascending: false })
     .limit(params.limit ?? 20);
 

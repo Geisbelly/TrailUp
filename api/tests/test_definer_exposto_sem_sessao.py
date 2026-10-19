@@ -85,7 +85,7 @@ def _migracoes() -> list[tuple[str, str]]:
     """Cada migracao, cortada antes de `def downgrade`.
 
     O que esta no downgrade e a REVERSAO, nao o estado que fica. Sem o corte,
-    o `GRANT` que `20261019_12` usa para desfazer suas proprias revogacoes era
+    o `GRANT` que `20261018_04` usa para desfazer suas proprias revogacoes era
     lido como se fosse o estado final -- e a funcao revogada continuava
     aparecendo como exposta.
     """
@@ -123,7 +123,7 @@ def _expostas() -> set[str]:
     """Funcoes que TERMINAM com EXECUTE para authenticated/anon.
 
     GRANT e REVOKE sao somados na ordem das migracoes: revogar depois tira a
-    funcao da conta, que e o que `20261019_12` faz com seis delas.
+    funcao da conta, que e o que `20261018_04` faz com seis delas.
     """
     estado: dict[str, bool] = {}
     for _, texto in _migracoes():
