@@ -8,7 +8,7 @@ import { HexagonoTopico } from "@/components/web/HexagonoTopico";
 import { guardianFaceImages } from "@/constants/profileImages";
 import { normalizeBrainHexProfile } from "@/constants/brainHexProfiles";
 import { FontFamily } from "@/styles/GlobalStyle";
-import { caminhoCelula, layoutMapa, MAPA_TOPO, trechoEstrada } from "@/utils/mapaPaises";
+import { caminhoCelula, layoutMapa, MAPA_TOPO, ondaMar, trechoEstrada } from "@/utils/mapaPaises";
 import type { EstadoTopico } from "@/utils/painelTopicoTrilha";
 import type { ProfileShellPalette } from "@/utils/profileShellTheme";
 
@@ -111,7 +111,7 @@ export function MapaPaisesDesktop({
               return (
                 <Path
                   key={`p${i}`}
-                  d={`M0 ${y} C${L.largura * 0.25} ${y + w},${L.largura * 0.5} ${y - w},${L.largura * 0.75} ${y + w} S${L.largura} ${y}`}
+                  d={ondaMar(y, w, L.largura)}
                   fill="none"
                   stroke={palette.borderStrong}
                   strokeOpacity={0.14}
@@ -139,7 +139,9 @@ export function MapaPaisesDesktop({
               const t = topicoNa(c, r);
               const d = caminhoCelula(L, c, r);
               return (
-                <G key={`c${c}-${r}`}>
+                // O país inteiro responde ao clique, não só o hexágono com o nome:
+                // o aluno clica no território e esperava abrir o tópico.
+                <G key={`c${c}-${r}`} onPress={t ? () => onSelecionar(t.id) : undefined}>
                   <Path d={d} fill={t ? cores.pais[t.estado].fill : cores.semNome} stroke={cores.bg} strokeWidth={3} strokeLinejoin="round" />
                   {t?.estado === "locked" ? <Path d={d} fill={`url(#hachura-${uid})`} opacity={0.5} /> : null}
                 </G>
@@ -164,6 +166,7 @@ export function MapaPaisesDesktop({
                   strokeDasharray={estilo.dash && !sel ? estilo.dash : undefined}
                   strokeLinejoin="round"
                   transform={`translate(${cx} ${cy}) scale(0.96)`}
+                  pointerEvents="none"
                 />
               );
             })}
@@ -175,6 +178,7 @@ export function MapaPaisesDesktop({
                 stroke={cores.bgA55}
                 strokeWidth={16}
                 strokeLinecap="round"
+                pointerEvents="none"
               />
             ) : null}
             {L.nos.slice(0, -1).map((n, i) => {

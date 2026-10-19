@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { caminhoCelula, caminhoHexagono, layoutMapa, MAPA_BASE, MAPA_TOPO, trechoEstrada } from "./mapaPaises";
+import { caminhoCelula, caminhoHexagono, layoutMapa, MAPA_BASE, MAPA_TOPO, ondaMar, trechoEstrada } from "./mapaPaises";
 
 test("8 tópicos viram 4 colunas × 2 fileiras, em serpentina", () => {
   const L = layoutMapa(8, 1000, 600);
@@ -49,4 +49,28 @@ test("estrada e hexágono geram paths válidos", () => {
   const hex = caminhoHexagono(50, 50, 46, 9);
   assert.equal((hex.match(/Q/g) || []).length, 6);
   assert.ok(hex.endsWith("Z"));
+});
+
+test("turma com menos de 4 tópicos: uma coluna por tópico, sem terra vazia", () => {
+  // A turma real de teste tem 1 tópico: antes eram 4 colunas, 1 país e 3 terras escuras sem clique.
+  for (const total of [1, 2, 3]) {
+    const L = layoutMapa(total, 900, 640);
+    assert.equal(L.cols, total);
+    assert.equal(L.rows, 1);
+    assert.equal(L.celulas.length, total, "toda célula tem um tópico");
+  }
+  assert.equal(layoutMapa(5, 900, 640).cols, 4);
+});
+
+test("numa fileira só o país cresce até 320 px para ocupar o quadro", () => {
+  assert.equal(layoutMapa(1, 900, 2000).faixa, 320);
+  assert.equal(layoutMapa(2, 900, 400).faixa, 400 - MAPA_TOPO - MAPA_BASE);
+});
+
+test("onda do mar é um path SVG válido (S com quatro números)", () => {
+  const d = ondaMar(100, 8, 900);
+  const s = d.slice(d.indexOf("S") + 1).trim().split(/[ ,]+/).map(Number);
+  assert.equal(s.length, 4);
+  assert.ok(s.every(Number.isFinite));
+  assert.match(d, /^M0 100\.0 C/);
 });

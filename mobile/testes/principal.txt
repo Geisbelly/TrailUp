@@ -101,6 +101,8 @@ src/utils/subtelasConfiguracao.test.ts
 src/utils/resumoColeta.test.ts
 src/utils/destaqueConquistas.test.ts
 src/utils/painelTopicoTrilha.test.ts
+src/components/web/TrilhaDesktop.navegacao.test.tsx
+src/components/web/MapaPaisesDesktop.clique.test.tsx
 src/utils/gradeMapaTrilha.test.ts
 src/utils/mapaPaises.test.ts
 src/services/loja/ganhoMoedasModel.test.ts

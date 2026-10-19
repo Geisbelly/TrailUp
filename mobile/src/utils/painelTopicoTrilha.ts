@@ -2,6 +2,8 @@
 // v4, `03-trilha.html`). Função pura: recebe o nó do grafo (já com o estado de
 // bloqueio calculado) e o tópico da classe, e devolve o que o painel mostra.
 
+import type { Href } from "expo-router";
+
 type No = { id: string; titulo: string; locked: boolean; completed: boolean; sequence: number };
 type Topico = {
   id: number;
@@ -83,4 +85,19 @@ export function topicoInicial(nos: readonly No[], atualId: string | null | undef
   if (atualId != null && ordenados.some((n) => String(n.id) === String(atualId))) return String(atualId);
   const proximo = ordenados.find((n) => !n.locked && !n.completed);
   return proximo ? String(proximo.id) : ordenados[0] ? String(ordenados[0].id) : null;
+}
+
+/** Rota do tópico: a mesma do botão do painel e das vistas do celular. */
+export function rotaDoTopico(id: string): Href {
+  return `/(tabs)/trilha/${encodeURIComponent(id)}` as Href;
+}
+
+/**
+ * Clique num nó do tabuleiro (mapa, árvore ou lista) na tela larga. O nó
+ * liberado abre o tópico, como no celular; o bloqueado só fica selecionado, e o
+ * painel ao lado explica o que falta. Antes todo clique só trocava a seleção do
+ * painel, e para o aluno parecia que o nó não abria.
+ */
+export function aoClicarNo(no: Pick<No, "locked"> | undefined): "abrir" | "selecionar" {
+  return no && !no.locked ? "abrir" : "selecionar";
 }
