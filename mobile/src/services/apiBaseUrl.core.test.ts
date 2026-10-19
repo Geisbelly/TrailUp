@@ -5,6 +5,7 @@ import {
   isNetworkRequestFailedError,
   metroHostBaseUrl,
   montarCandidatos,
+  proxyMesmaOrigem,
 } from "./apiBaseUrl.core";
 
 const API = "https://api.trailup.exemplo";
@@ -111,4 +112,26 @@ test("isNetworkRequestFailedError reconhece as variantes que importam", () => {
     assert.ok(isNetworkRequestFailedError(new Error(m)), m);
   }
   assert.ok(!isNetworkRequestFailedError(new Error("401 Unauthorized")));
+});
+
+test("web publicado em https usa primeiro o proxy /trailup-api da propria origem", () => {
+  const lista = candidatos({
+    dev: false,
+    plataforma: "web",
+    envValue: API,
+    origemWeb: "https://trailup.vercel.app",
+  });
+  assert.deepEqual(lista, ["https://trailup.vercel.app/trailup-api", API]);
+});
+
+test("proxy same-origin nao entra em dev, nativo, http ou localhost", () => {
+  assert.equal(proxyMesmaOrigem("https://trailup.vercel.app", "web", true), null);
+  assert.equal(proxyMesmaOrigem("https://trailup.vercel.app", "android", false), null);
+  assert.equal(proxyMesmaOrigem("http://trailup.vercel.app", "web", false), null);
+  assert.equal(proxyMesmaOrigem("https://localhost:8081", "web", false), null);
+  assert.equal(proxyMesmaOrigem(null, "web", false), null);
+  assert.deepEqual(
+    candidatos({ dev: false, plataforma: "android", envValue: API, origemWeb: "https://trailup.vercel.app" }),
+    [API],
+  );
 });
