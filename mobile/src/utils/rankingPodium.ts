@@ -32,6 +32,7 @@ export function rotuloDoCriterio(criterion: string | null | undefined): string {
   if (criterion === "tempo") return "Tempo";
   if (criterion === "percentual") return "Progresso";
   if (criterion === "acertos") return "Acertos";
+  if (criterion === "missoes") return "Missões";
   return "Pontos";
 }
 

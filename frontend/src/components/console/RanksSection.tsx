@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronRight, Clock, Pencil, Percent, Plus, Sparkles, Trash2, Trophy, X } from "lucide-react";
+import { Check, ChevronRight, Clock, Pencil, Percent, Plus, Sparkles, Trash2, Trophy, Flag, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -48,6 +48,7 @@ const ICONE_CRITERIO: Record<CriterioChave, LucideIcon> = {
   acertos: Check,
   percentual: Percent,
   ranqueada: Trophy,
+  missoes: Flag,
 };
 
 const rotuloCampo = "text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground";

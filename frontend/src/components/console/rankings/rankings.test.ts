@@ -32,7 +32,7 @@ describe("critério", () => {
   // termina em `ELSE 0`: critério fora do CASE ranqueia a turma inteira em zero, em silêncio.
   // Os cinco entraram na view em `20261021_06` — medido antes: ranking de `acertos` mostrava
   // zero para todos, e `percentual` era reescrito para `pontuacao` ao abrir a edição.
-  it.each(["pontuacao", "tempo", "acertos", "percentual", "ranqueada"])(
+  it.each(["pontuacao", "tempo", "acertos", "percentual", "ranqueada", "missoes"])(
     "%s é expressável e não é reescrito",
     (chave) => {
       expect(CRITERIOS.map((c) => c.chave)).toContain(chave);

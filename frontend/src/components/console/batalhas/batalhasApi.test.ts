@@ -15,8 +15,8 @@ describe("mapearDuelo", () => {
       equipes: [{ equipe: 1, pontos: 5, integrantes: 2 }, { equipe: "2", pontos: null, integrantes: 2 }],
     });
     expect(d).toMatchObject({
-      id: "d1", titulo: "", formato: "guilda", modo: "velocidade", resultado: "vitoria", vencedorEquipe: 2,
-      guildaNome: "Lobos", rivalNome: null, aceitaram: 4,
+      id: "d1", titulo: "", formato: "guilda", modo: "velocidade", dificuldade: "normal", consequencia: "ranqueada",
+      resultado: "vitoria", vencedorEquipe: 2, guildaNome: "Lobos", rivalNome: null, aceitaram: 4,
     });
     expect(d.equipes).toEqual([{ equipe: 1, pontos: 5, integrantes: 2 }, { equipe: 2, pontos: 0, integrantes: 2 }]);
   });
