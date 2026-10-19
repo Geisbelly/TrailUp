@@ -64,15 +64,15 @@ sentido quanto matricula sem turma, e todo gravador ja o preenche.
 Verificado em transacao revertida: com as duas constraints, o INSERT venenoso
 volta 23502.
 
-Revision ID: 20261018_03
-Revises: 20261018_02
+Revision ID: 20261019_11
+Revises: 20261019_10
 Create Date: 2026-10-18
 """
 
 from alembic import op
 
-revision = "20261018_03"
-down_revision = "20261018_02"
+revision = "20261019_11"
+down_revision = "20261019_10"
 branch_labels = None
 depends_on = None
 
