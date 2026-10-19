@@ -1,4 +1,5 @@
 import { useUsuario } from "@/context/SessaoContext";
+import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { FontFamily } from "@/styles/GlobalStyle";
 import {
   isDocumentUrl,
@@ -230,12 +231,16 @@ export function MarkdownBlock({ payload }: Props) {
   const currentPage = pages[pageIndex] ?? "";
   const totalPages = pages.length;
 
-  const mdStyles = useMemo(() => ({
+  // Web em tela larga (#346, protótipo v4 04-topico): leitura em 16,5 px com entrelinha
+  // folgada, o texto na cor principal e a citação num painel.
+  const desktop = useDesktopWeb();
+  const mdStyles = useMemo(() => {
+    const corpo = desktop ? { fontSize: 16.5, lineHeight: 28 } : { fontSize: 15, lineHeight: 24 };
+    return {
     body: {
       color: palette.text,
       fontFamily: FontFamily.interMedium,
-      fontSize: 15,
-      lineHeight: 24,
+      ...corpo,
     },
     heading1: {
       color: palette.text,
@@ -259,10 +264,9 @@ export function MarkdownBlock({ payload }: Props) {
       marginBottom: 4,
     },
     paragraph: {
-      color: palette.textMuted,
-      fontSize: 15,
-      lineHeight: 24,
-      marginBottom: 10,
+      color: desktop ? palette.text : palette.textMuted,
+      ...corpo,
+      marginBottom: desktop ? 14 : 10,
     },
     code_inline: {
       backgroundColor: palette.surface,
@@ -282,14 +286,15 @@ export function MarkdownBlock({ payload }: Props) {
       borderLeftColor: palette.accent,
       paddingLeft: 12,
       color: palette.textMuted,
+      ...(desktop ? { backgroundColor: palette.surface, paddingVertical: 10, borderRadius: 8 } : null),
     },
     bullet_list_icon: {
       color: palette.accent,
     },
     list_item: {
-      color: palette.textMuted,
-      fontSize: 15,
-      lineHeight: 22,
+      color: desktop ? palette.text : palette.textMuted,
+      fontSize: corpo.fontSize,
+      lineHeight: desktop ? 28 : 22,
     },
     link: {
       color: palette.accent,
@@ -320,7 +325,8 @@ export function MarkdownBlock({ payload }: Props) {
       minWidth: 96,
       maxWidth: 260,
     },
-  }), [palette]);
+    };
+  }, [palette, desktop]);
 
   if (carregando) {
     return (

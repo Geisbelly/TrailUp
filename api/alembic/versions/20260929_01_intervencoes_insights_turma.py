@@ -21,14 +21,19 @@ professor — o aluno nao le. O professor le e atualiza so as das classes dele
 (`app_classes_do_professor()`); quem insere e a API, fora do RLS.
 
 Revision ID: 20260929_01
-Revises: 20260922_06
+Revises: 20260927_02
 Create Date: 2026-09-29
+
+Nasceu irma da "20260923_01" e da "20260930_01", as tres saindo da
+"20260922_06". A cadeia linear do espelho coloca o trecho do Geisbelly
+(23 -> 27) antes deste: quem ja esta em "20260927_02" aplica daqui para
+a frente, sem reexecutar o que ja rodou.
 """
 
 from alembic import op
 
 revision = "20260929_01"
-down_revision = "20260922_06"
+down_revision = "20260927_02"
 branch_labels = None
 depends_on = None
 

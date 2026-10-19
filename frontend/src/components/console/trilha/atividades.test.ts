@@ -6,6 +6,13 @@ describe("rotuloDoTipoDeAtividade", () => {
     expect(rotuloDoTipoDeAtividade("quiz")).toBe("Múltipla escolha");
     expect(rotuloDoTipoDeAtividade("essay")).toBe("Dissertação");
   });
+  it("missão tem rótulo próprio", () => {
+    expect(rotuloDoTipoDeAtividade("missao")).toBe("Missão");
+  });
+  it("tipos legados continuam legíveis", () => {
+    expect(rotuloDoTipoDeAtividade("questao")).toBe("Múltipla escolha");
+    expect(rotuloDoTipoDeAtividade("video")).toBe("Vídeo");
+  });
   it("desconhecido ou vazio vira 'Atividade'", () => {
     expect(rotuloDoTipoDeAtividade("xyz")).toBe("Atividade");
     expect(rotuloDoTipoDeAtividade(null)).toBe("Atividade");
