@@ -1,4 +1,5 @@
-import { lazy, Suspense } from "react";
+import { Suspense } from "react";
+import { lazyWithReload } from "@/lib/chunkReload";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -15,22 +16,22 @@ import { MATERIAL_ROUTE_PATH } from "./components/console/personalizacoes/materi
 // no bundle inicial — a home/landing nao precisa pagar o peso do console
 // (recharts, editor de trilha etc.) so pra alguem ver o "Comece sua Jornada".
 // Ver issue #29: bundle unico de 1,67 MB / 465 kB gzip antes desta mudanca.
-const Index = lazy(() => import("./pages/Index"));
-const CadastroAluno = lazy(() => import("./pages/CadastroAluno"));
-const CadastroProfessor = lazy(() => import("./pages/CadastroProfessor"));
-const Login = lazy(() => import("./pages/Login"));
-const EsqueciSenha = lazy(() => import("./pages/EsqueciSenha"));
-const RedefinirSenha = lazy(() => import("./pages/RedefinirSenha"));
-const Console = lazy(() => import("./pages/Console"));
-const Blog = lazy(() => import("./pages/Blog"));
-const BlogPost = lazy(() => import("./pages/BlogPost"));
-const Sobre = lazy(() => import("./pages/Sobre"));
-const Contato = lazy(() => import("./pages/Contato"));
-const Privacidade = lazy(() => import("./pages/Privacidade"));
-const Termos = lazy(() => import("./pages/Termos"));
-const NotFound = lazy(() => import("./pages/NotFound"));
-const AuthConfirm = lazy(() => import("./pages/EmailConfirm"));
-const Download = lazy(() => import("./pages/Download"));
+const Index = lazyWithReload(() => import("./pages/Index"));
+const CadastroAluno = lazyWithReload(() => import("./pages/CadastroAluno"));
+const CadastroProfessor = lazyWithReload(() => import("./pages/CadastroProfessor"));
+const Login = lazyWithReload(() => import("./pages/Login"));
+const EsqueciSenha = lazyWithReload(() => import("./pages/EsqueciSenha"));
+const RedefinirSenha = lazyWithReload(() => import("./pages/RedefinirSenha"));
+const Console = lazyWithReload(() => import("./pages/Console"));
+const Blog = lazyWithReload(() => import("./pages/Blog"));
+const BlogPost = lazyWithReload(() => import("./pages/BlogPost"));
+const Sobre = lazyWithReload(() => import("./pages/Sobre"));
+const Contato = lazyWithReload(() => import("./pages/Contato"));
+const Privacidade = lazyWithReload(() => import("./pages/Privacidade"));
+const Termos = lazyWithReload(() => import("./pages/Termos"));
+const NotFound = lazyWithReload(() => import("./pages/NotFound"));
+const AuthConfirm = lazyWithReload(() => import("./pages/EmailConfirm"));
+const Download = lazyWithReload(() => import("./pages/Download"));
 
 function RouteFallback() {
   return (
