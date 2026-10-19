@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { FORMATOS, FORMATOS_SEM_PARCEIRO, consequenciaValida, dificuldadeValida, resumoDosEixos, rotuloDaRegra } from "./eixosDoDesafio";
+import { FORMATOS, pedeParceiro, consequenciaValida, dificuldadeValida, resumoDosEixos, rotuloDaRegra } from "./eixosDoDesafio";
 
 assert.equal(consequenciaValida(null), "ranqueada");
 assert.equal(dificuldadeValida("dificil"), "dificil");
@@ -13,14 +13,13 @@ console.log("eixosDoDesafio.test.ts ok");
 // Fase 10: o seletor só pode oferecer formato que a RPC aceita sem parâmetro extra.
 // `guilda_desafio_criar` RECUSA `dupla` sem `p_aliado` (`guilda_desafio_aliado_obrigatorio`),
 // então oferecê-la antes do seletor de parceiro daria erro na cara do aluno.
-assert.deepEqual(
-  FORMATOS_SEM_PARCEIRO.map((f) => f.chave),
-  ["solo", "guilda", "turma"],
-);
-assert.equal(
-  FORMATOS.filter((f) => f.pedeAliado).map((f) => f.chave).join(","),
-  "dupla",
-);
+// Só `dupla` pede parceiro — e é `pedeParceiro` que decide quando o seletor mostra a lista
+// e quando trava o botão, porque `guilda_desafio_criar` recusa dupla sem `p_aliado`.
+assert.equal(pedeParceiro("dupla"), true);
+for (const chave of ["solo", "guilda", "turma"] as const) {
+  assert.equal(pedeParceiro(chave), false, `${chave} não deveria pedir parceiro`);
+}
+assert.equal(FORMATOS.length, 4);
 // Todo formato tem rótulo e ajuda — o seletor mostra os dois.
 for (const f of FORMATOS) {
   assert.ok(f.rotulo.trim().length > 0, `${f.chave} sem rótulo`);
