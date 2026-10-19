@@ -38,6 +38,18 @@ export async function compartilharNaGuilda(guildaId: string, tipo: GuildShareKin
 export async function responderQuestaoGuilda(mensagemId: string, resposta: string) {
   return action("guilda_chat_questao_responder", { p_mensagem_id: mensagemId, p_resposta: resposta });
 }
-export async function criarDesafioGuilda(guildaId: string, modo: "todos" | "velocidade" | "precisao" | "duelo" | "duplo" = "todos", quantidade = 3) {
-  return action("guilda_desafio_criar", { p_guilda_id: guildaId, p_modo: modo, p_quantidade: quantidade });
+export async function criarDesafioGuilda(
+  guildaId: string,
+  modo: "todos" | "velocidade" | "precisao" | "duelo" | "duplo" = "todos",
+  quantidade = 3,
+  dificuldade: "normal" | "dificil" = "normal",
+  consequencia: "treino" | "ranqueada" | "evento" = "ranqueada",
+) {
+  return action("guilda_desafio_criar", {
+    p_guilda_id: guildaId,
+    p_modo: modo,
+    p_quantidade: quantidade,
+    p_dificuldade: dificuldade,
+    p_consequencia: consequencia,
+  });
 }

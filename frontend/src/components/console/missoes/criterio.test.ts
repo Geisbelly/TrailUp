@@ -79,5 +79,7 @@ describe("rotuloDoCriterio", () => {
     expect(rotuloDoCriterio("texto")).toBe("Sem critério");
     expect(rotuloDoCriterio({})).toBe("Sem critério");
     expect(rotuloDoCriterio({ metrica: "evento_medalha" })).toBe("evento_medalha");
+    expect(rotuloDoCriterio({ metrica: "minutos_no_dia", minutos: 10 })).toBe("Minutos no dia: 10");
+    expect(rotuloDoCriterio({ metrica: "eventos_no_dia", minimo: 2, evento: "atividade_concluida" })).toBe("2 atividades no dia");
   });
 });
