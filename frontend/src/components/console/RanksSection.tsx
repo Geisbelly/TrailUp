@@ -254,7 +254,7 @@ export default function RanksSection() {
     </div>
   );
 
-  const cabecalho = (titulo: string, sub: string, acao: React.ReactNode) => (
+  const cabecalho = (titulo: string, sub: string, acao?: React.ReactNode) => (
     <div className="flex flex-wrap items-center gap-3.5 px-[22px] pb-4 pt-5">
       <div>
         <h3 className="text-lg font-bold">{titulo}</h3>
