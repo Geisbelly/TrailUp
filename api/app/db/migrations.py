@@ -65,6 +65,13 @@ def trava_de_migracao(connection) -> Iterator[bool]:
     connection.execute(
         text("SELECT pg_advisory_lock(:chave)"), {"chave": MIGRATION_ADVISORY_LOCK_KEY}
     )
+    # O `execute` acima abre a transacao da conexao (autobegin do SQLAlchemy 2).
+    # Deixada aberta, o Alembic ve `in_transaction()` e NAO abre a dele -- entao
+    # ninguem da COMMIT e o fechamento da conexao desfaz todas as migracoes. O
+    # log dizia "Running upgrade ..." e o `alembic_version` nao mudava, tanto no
+    # `alembic upgrade` manual quanto na subida da API. O lock e de SESSAO:
+    # sobrevive ao COMMIT, que so encerra a transacao do SELECT.
+    _encerra_transacao_da_trava(connection)
     logger.info("Migracoes: advisory lock %s adquirido.", MIGRATION_ADVISORY_LOCK_KEY)
     try:
         yield True
@@ -74,10 +81,17 @@ def trava_de_migracao(connection) -> Iterator[bool]:
                 text("SELECT pg_advisory_unlock(:chave)"),
                 {"chave": MIGRATION_ADVISORY_LOCK_KEY},
             )
+            _encerra_transacao_da_trava(connection)
         except Exception:  # pragma: no cover - conexao ja morta solta o lock sozinha
             logger.warning(
                 "Migracoes: falha ao soltar o advisory lock; o fim da sessao o solta."
             )
+
+
+def _encerra_transacao_da_trava(connection) -> None:
+    """COMMIT da transacao que o SELECT da trava abriu, se houver uma."""
+    if connection.in_transaction():
+        connection.commit()
 
 
 def upgrade_database_to_head(database_url: str | None = None) -> None:
