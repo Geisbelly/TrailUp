@@ -23,7 +23,7 @@ src/services/loja/storeTheme.test.ts
 src/services/notificacoesDb.test.ts
 src/services/personalizacao/TrailupApiProvider.loading.test.ts
 src/services/progressoOutbox.test.ts
-src/services/progressoTrilha.canonicalProgress.test.ts
+src/utils/visitaDoTopico.test.ts
 src/services/pushNotifications.test.ts
 src/services/rankMetadata.test.ts
 src/services/social/guildModel.test.ts
