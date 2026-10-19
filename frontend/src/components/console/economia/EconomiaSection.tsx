@@ -12,25 +12,39 @@ import {
   carregarConfig,
   carregarExtrato,
   carregarItens,
+  carregarLimites,
   carregarMetas,
   carregarUsos,
   carregarValores,
   salvarConfig,
   salvarDotacao,
   salvarEscopo,
+  salvarLimiteUso,
   salvarMeta,
   salvarPreco,
   salvarValor,
   type AlunoDaTurma,
   type ConfigDaTurma,
+  type EscopoDeLimite,
   type ItemDaLoja,
+  type LimiteDeUso,
   type LinhaExtrato,
   type Meta,
   type PrecoDaTurma,
   type Uso,
   type ValorDeEvento,
 } from "./economiaApi";
-import { faixaValida, filtrarExtrato, numeroOuNulo } from "./economiaRegras";
+import {
+  SITUACOES_DE_USO,
+  descreverPadrao,
+  faixaValida,
+  filtrarExtrato,
+  limiteDoTexto,
+  numeroOuNulo,
+  textoDoLimite,
+  type CampoDeLimite,
+  type LimitesDeUso,
+} from "./economiaRegras";
 
 type Aba = "valores" | "prazos" | "loja" | "metas" | "historico";
 
@@ -279,13 +293,15 @@ function AbaLoja({ classeId }: { classeId: number }) {
   const [itens, setItens] = useState<ItemDaLoja[]>([]);
   const [precos, setPrecos] = useState<PrecoDaTurma[]>([]);
   const [dotacao, setDotacao] = useState<{ item_codigo: string; quantidade: number }[]>([]);
+  const [limites, setLimites] = useState<LimiteDeUso[]>([]);
   const [erro, setErro] = useState("");
   const carregar = useCallback(async () => {
     try {
-      const dados = await carregarItens(classeId);
+      const [dados, regras] = await Promise.all([carregarItens(classeId), carregarLimites(classeId)]);
       setItens(dados.itens);
       setPrecos(dados.precos);
       setDotacao(dados.dotacao);
+      setLimites(regras);
       setErro("");
     } catch (e) {
       setErro((e as Error).message);
@@ -296,31 +312,37 @@ function AbaLoja({ classeId }: { classeId: number }) {
   if (!itens.length && !erro) return <Loader2 className="mx-auto my-10 h-6 w-6 animate-spin text-primary" />;
   return (
     <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">Preço vazio herda o global. Estoque vazio é ilimitado. A dotação é o que todo aluno recebe antes de gastar moeda.</p>
+      <p className="text-sm text-muted-foreground">Preço vazio herda o global. Estoque vazio é ilimitado. A dotação é o que todo aluno recebe antes de gastar moeda. O aluno pode ter várias unidades do mesmo item; cada uso gasta uma.</p>
       {itens.map((item) => (
-        <ItemLoja key={item.codigo} classeId={classeId} item={item} preco={precos.find((p) => p.item_codigo === item.codigo)} quantidade={dotacao.find((d) => d.item_codigo === item.codigo)?.quantidade ?? 0} onSalvou={() => void carregar()} />
+        <ItemLoja key={item.codigo} classeId={classeId} item={item} preco={precos.find((p) => p.item_codigo === item.codigo)} quantidade={dotacao.find((d) => d.item_codigo === item.codigo)?.quantidade ?? 0} limites={limites.filter((l) => l.item_codigo === item.codigo)} onSalvou={() => void carregar()} />
       ))}
     </div>
   );
 }
 
-function ItemLoja({ classeId, item, preco, quantidade, onSalvou }: { classeId: number; item: ItemDaLoja; preco?: PrecoDaTurma; quantidade: number; onSalvou: () => void }) {
+function ItemLoja({ classeId, item, preco, quantidade, limites, onSalvou }: { classeId: number; item: ItemDaLoja; preco?: PrecoDaTurma; quantidade: number; limites: LimiteDeUso[]; onSalvou: () => void }) {
   const [precoTexto, setPrecoTexto] = useState(preco?.preco_base == null ? "" : String(preco.preco_base));
   const [estoque, setEstoque] = useState(preco?.estoque == null ? "" : String(preco.estoque));
   const [limite, setLimite] = useState(preco?.uso_max_por_aluno == null ? "" : String(preco.uso_max_por_aluno));
   const [dotacaoTexto, setDotacaoTexto] = useState(String(quantidade));
   const [ativo, setAtivo] = useState(preco?.ativo !== false);
+  const [fator, setFator] = useState(preco?.preco_fator == null ? "" : String(preco.preco_fator));
   const salvar = async () => {
     const p = numeroOuNulo(precoTexto);
     const e = numeroOuNulo(estoque);
     const u = numeroOuNulo(limite);
     const d = numeroOuNulo(dotacaoTexto);
-    if ([p, e, u, d].some((n) => Number.isNaN(n)) || (d !== null && d < 0)) {
+    const f = numeroOuNulo(fator);
+    if ([p, e, u, d, f].some((n) => Number.isNaN(n)) || (d !== null && d < 0)) {
       toast.error("Use números vazios para herdar, ou zero só onde estoque e limite aceitam.");
       return;
     }
+    if (f !== null && (f < 1 || f > 5)) {
+      toast.error("O aumento por compra vai de 1 (preço fixo) a 5.");
+      return;
+    }
     try {
-      await salvarPreco(classeId, item.codigo, p, e, u, ativo);
+      await salvarPreco(classeId, item.codigo, p, e, u, ativo, f);
       if (d !== null) await salvarDotacao(classeId, item.codigo, d);
       toast.success(`${item.nome} atualizado.`);
       onSalvou();
@@ -342,6 +364,9 @@ function ItemLoja({ classeId, item, preco, quantidade, onSalvou }: { classeId: n
         <label className="text-sm">Compras por aluno
           <Input aria-label={`Limite de ${item.nome}`} value={limite} onChange={(ev) => setLimite(ev.target.value)} placeholder="sem limite" className="mt-1 w-28" />
         </label>
+        <label className="text-sm" title="Cada unidade comprada multiplica o preço da próxima. 1 deixa o preço fixo.">Aumento por compra
+          <Input aria-label={`Aumento por compra de ${item.nome}`} value={fator} onChange={(ev) => setFator(ev.target.value)} placeholder={`×${item.preco_fator ?? 1}`} className="mt-1 w-24" />
+        </label>
         <label className="text-sm">Dotação
           <Input aria-label={`Dotação de ${item.nome}`} value={dotacaoTexto} onChange={(ev) => setDotacaoTexto(ev.target.value)} className="mt-1 w-24" />
         </label>
@@ -350,8 +375,92 @@ function ItemLoja({ classeId, item, preco, quantidade, onSalvou }: { classeId: n
         </label>
         <Button type="button" className="rounded-full" onClick={() => void salvar()}>Salvar</Button>
       </div>
+      <LimitesDoItem classeId={classeId} item={item} limites={limites} onSalvou={onSalvou} />
     </Caixa>
   );
+}
+
+const VAZIO: LimitesDeUso = { por_atividade: null, por_questao: null, por_topico: null, por_dia: null, por_semana: null, por_turma: null };
+
+const NOME_DO_ESCOPO: Record<EscopoDeLimite, string> = { classe: "Turma", topico: "Tópico", atividade: "Atividade" };
+
+function LimitesDoItem({ classeId, item, limites, onSalvou }: { classeId: number; item: ItemDaLoja; limites: LimiteDeUso[]; onSalvou: () => void }) {
+  const [escopo, setEscopo] = useState<EscopoDeLimite>("classe");
+  const [alvo, setAlvo] = useState("");
+  const atual = limites.find((l) => l.escopo === escopo && (escopo === "classe" || String(l.alvo_id) === alvo.trim()));
+  const [textos, setTextos] = useState<Record<CampoDeLimite, string>>(() => paraTextos(atual));
+  useEffect(() => { setTextos(paraTextos(atual)); }, [atual]);
+  const salvar = async () => {
+    const alvoId = escopo === "classe" ? null : Number(alvo);
+    if (escopo !== "classe" && (!Number.isInteger(alvoId) || (alvoId ?? 0) <= 0)) {
+      toast.error(`Informe o id ${escopo === "topico" ? "do tópico" : "da atividade"} desta turma.`);
+      return;
+    }
+    const valores = { ...VAZIO };
+    for (const s of SITUACOES_DE_USO) {
+      const v = limiteDoTexto(textos[s.campo]);
+      if (Number.isNaN(v)) {
+        toast.error("Limite é um número de 0 a 100, \"sem limite\", ou vazio para herdar.");
+        return;
+      }
+      valores[s.campo] = v;
+    }
+    try {
+      await salvarLimiteUso(classeId, escopo, alvoId, item.codigo, valores);
+      toast.success(`Limites de uso de ${item.nome} salvos.`);
+      onSalvou();
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+  return (
+    <details className="mt-3 rounded-[14px] border p-3">
+      <summary className="cursor-pointer text-sm font-semibold">Limites de uso</summary>
+      <p className="my-2 text-xs text-muted-foreground">
+        Quantas unidades o aluno pode gastar em cada situação. A atividade sobrepõe o tópico, que sobrepõe a turma. Vazio herda; 0 bloqueia; “sem limite” libera.
+      </p>
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="text-sm">Onde
+          <select aria-label={`Escopo do limite de ${item.nome}`} value={escopo} onChange={(e) => setEscopo(e.target.value as EscopoDeLimite)} className="mt-1 block h-10 rounded-md border bg-background px-2">
+            <option value="classe">Turma inteira</option>
+            <option value="topico">Um tópico</option>
+            <option value="atividade">Uma atividade</option>
+          </select>
+        </label>
+        {escopo !== "classe" ? (
+          <label className="text-sm">Id {escopo === "topico" ? "do tópico" : "da atividade"}
+            <Input aria-label={`Alvo do limite de ${item.nome}`} value={alvo} onChange={(e) => setAlvo(e.target.value)} className="mt-1 w-28" />
+          </label>
+        ) : null}
+        {SITUACOES_DE_USO.map((s) => (
+          <label key={s.campo} className="text-sm">{s.rotulo}
+            <Input
+              aria-label={`${s.rotulo} de ${item.nome}`}
+              value={textos[s.campo]}
+              onChange={(e) => setTextos({ ...textos, [s.campo]: e.target.value })}
+              placeholder={escopo === "classe" ? descreverPadrao(item.codigo, s.campo) : "herda"}
+              className="mt-1 w-24"
+            />
+          </label>
+        ))}
+        <Button type="button" variant="outline" className="rounded-full" onClick={() => void salvar()}>Salvar limites</Button>
+      </div>
+      {limites.length > 0 ? (
+        <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
+          {limites.map((l) => (
+            <li key={`${l.escopo}-${l.alvo_id}`}>
+              {NOME_DO_ESCOPO[l.escopo]}{l.escopo === "classe" ? "" : ` ${l.alvo_id}`}:{" "}
+              {SITUACOES_DE_USO.filter((s) => l[s.campo] !== null).map((s) => `${s.rotulo.toLowerCase()} ${textoDoLimite(l[s.campo])}`).join(" · ")}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </details>
+  );
+}
+
+function paraTextos(l?: LimiteDeUso): Record<CampoDeLimite, string> {
+  return Object.fromEntries(SITUACOES_DE_USO.map((s) => [s.campo, textoDoLimite(l?.[s.campo])])) as Record<CampoDeLimite, string>;
 }
 
 function AbaMetas({ classeId }: { classeId: number }) {

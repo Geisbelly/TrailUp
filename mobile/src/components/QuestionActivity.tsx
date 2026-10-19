@@ -1498,7 +1498,7 @@ export default function QuestionActivity({
             if (!alunoId || !classeId || gastandoCompra) return;
             setGastandoCompra(true);
             setAvisoCompra(null);
-            void gastarSegundaChance(classeId, Number(atividade?.id))
+            void gastarSegundaChance(classeId, Number(atividade?.id), Number(questao?.id) || undefined)
               .then((resposta) => {
                 if (!resposta.ok) {
                   setAvisoCompra(mensagemDeUso(resposta.erro));

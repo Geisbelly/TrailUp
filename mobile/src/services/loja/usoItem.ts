@@ -51,13 +51,19 @@ const MENSAGEM: Record<string, string> = {
   extensao_desligada: "O professor desligou esta extensão.",
   teto_da_atividade: "A extensão passaria do máximo desta atividade.",
   teto_da_turma: "A extensão passaria do máximo da turma.",
-  limite_de_uso: "Você já usou o máximo deste item nesta atividade.",
+  limite_por_atividade: "Você chegou no limite de usos deste item nesta atividade.",
+  limite_por_questao: "Você chegou no limite de usos deste item nesta questão.",
+  limite_por_topico: "Você chegou no limite de usos deste item neste tópico.",
+  limite_por_dia: "Você chegou no limite de usos deste item hoje.",
+  limite_por_semana: "Você chegou no limite de usos deste item nesta semana.",
+  limite_por_turma: "Você chegou no limite de usos deste item na turma.",
+  sem_unidade: "Você não tem este item na Bag. Compre na loja.",
+  ja_liberada: "A dica desta questão já foi liberada.",
   ja_consumida: "Este item já foi usado.",
   estornada: "Esta compra foi estornada.",
   compra_nao_encontrada: "Compra não encontrada.",
   alvo_invalido: "Escolha a atividade em que o item será usado.",
   alvo_de_outra_turma: "Esta atividade não é desta turma.",
-  teto_do_topico: "Este tópico já chegou no máximo de novas tentativas.",
   cooldown_24h: "A nova tentativa só libera 24 horas depois da anterior.",
   revise_o_material: "Revise o material do tópico antes de responder de novo.",
   sem_questao_elegivel: "Não há questão elegível para uma nova tentativa.",
@@ -90,21 +96,6 @@ export function rotuloDeTempoExtra(minutos: number): string | null {
 }
 
 const EFEITOS_NA_ATIVIDADE = new Set(["prazo_extra", "tempo_extra", "segunda_chance"]);
-
-export type CompraUsavel = { id: number; codigo: string; nome: string };
-
-export function comprasUsaveisNaAtividade(
-  compras: readonly { id: number; item_codigo: string; status: string }[],
-  nomes: ReadonlyMap<string, string>,
-): CompraUsavel[] {
-  return compras
-    .filter((c) => c.status === "ativa" && EFEITOS_NA_ATIVIDADE.has(c.item_codigo))
-    .map((c) => ({
-      id: Number(c.id),
-      codigo: c.item_codigo,
-      nome: nomes.get(c.item_codigo) ?? ROTULO_PADRAO[c.item_codigo] ?? c.item_codigo,
-    }));
-}
 
 const ROTULO_PADRAO: Record<string, string> = {
   prazo_extra: "Mais prazo",
@@ -147,4 +138,63 @@ export function lerRespostaDeUso(data: unknown): RespostaDeUso {
     minutos: typeof r.minutos === "number" ? r.minutos : undefined,
     efeito: typeof r.efeito === "string" ? r.efeito : undefined,
   };
+}
+
+export type LinhaInventario = { item: string; ativos: number; usados: number; estornados: number };
+
+function inteiro(v: unknown): number {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0;
+}
+
+export function lerInventario(data: unknown): LinhaInventario[] {
+  if (!Array.isArray(data)) return [];
+  return data.map((r: Record<string, unknown>) => ({
+    item: String(r.item_codigo ?? ""),
+    ativos: inteiro(r.ativos),
+    usados: inteiro(r.usados),
+    estornados: inteiro(r.estornados),
+  }));
+}
+
+export type ItemUsavel = { codigo: string; nome: string; ativos: number };
+
+/** Um botão por TIPO de item (não por compra): cada uso gasta uma unidade, a mais antiga. */
+export function itensUsaveisNaAtividade(inventario: readonly LinhaInventario[], nomes: ReadonlyMap<string, string>): ItemUsavel[] {
+  return inventario
+    .filter((l) => l.ativos > 0 && EFEITOS_NA_ATIVIDADE.has(l.item))
+    .map((l) => ({ codigo: l.item, nome: nomes.get(l.item) ?? ROTULO_PADRAO[l.item] ?? l.item, ativos: l.ativos }));
+}
+
+export type PermissaoDeUso = {
+  ativos: number;
+  /** Usos que cabem agora: o menor entre o que tem na Bag e o que sobra no limite. */
+  restantes: number;
+  bloqueio: string | null;
+  limite: number | null;
+  usados: number;
+};
+
+export function lerPermissao(data: unknown): PermissaoDeUso {
+  if (!data || typeof data !== "object") return { ativos: 0, restantes: 0, bloqueio: "resposta_invalida", limite: null, usados: 0 };
+  const r = data as Record<string, unknown>;
+  if (typeof r.erro === "string") return { ativos: 0, restantes: 0, bloqueio: r.erro, limite: null, usados: 0 };
+  return {
+    ativos: inteiro(r.ativos),
+    restantes: inteiro(r.restantes),
+    bloqueio: typeof r.bloqueio === "string" ? r.bloqueio : null,
+    limite: typeof r.limite === "number" ? r.limite : null,
+    usados: inteiro(r.usados),
+  };
+}
+
+/** Texto e estado do botão "usar": quanto ainda dá para usar aqui, ou por que não dá. */
+export function botaoDeUso(item: Pick<ItemUsavel, "nome" | "ativos">, permissao: PermissaoDeUso | null) {
+  const naBag = item.ativos === 1 ? "1 na Bag" : `${item.ativos} na Bag`;
+  if (!permissao) return { texto: `Usar ${item.nome}`, detalhe: naBag, habilitado: false, motivo: null as string | null };
+  if (permissao.bloqueio || permissao.restantes <= 0) {
+    return { texto: `Usar ${item.nome}`, detalhe: naBag, habilitado: false, motivo: mensagemDeUso(permissao.bloqueio ?? "sem_unidade") };
+  }
+  const aqui = permissao.restantes === 1 ? "pode usar 1 aqui" : `pode usar ${permissao.restantes} aqui`;
+  return { texto: `Usar ${item.nome}`, detalhe: `${naBag} · ${aqui}`, habilitado: true, motivo: null as string | null };
 }

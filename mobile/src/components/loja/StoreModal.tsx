@@ -1,10 +1,13 @@
 import { JourneyHeading } from "@/components/JourneyHeading";
+import { SeletorQuantidade } from "@/components/loja/SeletorQuantidade";
 import { StoreItemIcon } from "@/components/loja/StoreItemIcon";
 import { UtilityIcon } from "@/components/UtilityIcon";
 import { filtrarExtrato, type FiltroDeExtrato, type Movimento } from "@/services/loja/extratoModel";
 import type { StoreItem, StoreSnapshot } from "@/services/loja/lojaService";
 import { comprarItem, carregarExtrato, carregarLoja } from "@/services/loja/lojaService";
+import { emPosse, maxQuantidade } from "@/services/loja/storeModel";
 import { FontFamily } from "@/styles/GlobalStyle";
+import { avisoCompraFeita, limitarQuantidade, precosDoPedido, textoNaBag } from "@/utils/compraLoja";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -85,15 +88,15 @@ export function StoreModal({
     };
   }, [visible, load]);
 
-  async function buy(item: StoreItem) {
+  async function buy(item: StoreItem, quantidade: number) {
     if (item.state !== "available" || purchaseLock.current) return;
     purchaseLock.current = true;
     setBuying(item.id);
     setError(null);
     setNotice(null);
     try {
-      await comprarItem(item.id, classeId);
-      setNotice(`${item.name} adquirido.`);
+      await comprarItem(item.id, classeId, quantidade);
+      setNotice(avisoCompraFeita(item, quantidade));
       await load();
     } catch (caught) {
       setError(
@@ -210,7 +213,7 @@ export function StoreModal({
                   palette={palette}
                   buying={buying === item.id}
                   busy={!!buying || loading}
-                  onBuy={() => void buy(item)}
+                  onBuy={(quantidade) => void buy(item, quantidade)}
                 />
               ))
             ) : !error ? (
@@ -260,12 +263,17 @@ export function StoreCard({
   palette: ReturnType<typeof getProfileShellPalette>;
   buying: boolean;
   busy: boolean;
-  onBuy: () => void;
+  onBuy: (quantidade: number) => void;
 }) {
+  const [quantidade, setQuantidade] = useState(1);
+  const maximo = Math.max(1, maxQuantidade(item));
+  const qtd = limitarQuantidade(item, quantidade);
+  const total = precosDoPedido(item, qtd).reduce((a, b) => a + b, 0);
+  const naBag = textoNaBag(emPosse(item));
   const disabled = item.state !== "available" || busy;
   const status =
-    item.state === "owned"
-      ? "Adquirido"
+    item.state === "limit"
+      ? "Limite atingido"
       : item.state === "unavailable"
         ? "Indisponível"
         : item.state === "blocked"
@@ -296,6 +304,9 @@ export function StoreCard({
           </Text>
         </View>
       </View>
+      {naBag ? (
+        <Text style={[s.free, { color: palette.textMuted }]}>{naBag}</Text>
+      ) : null}
       {item.metadata.gratisRestantes ? (
         <Text style={[s.free, { color: palette.accent }]}>
           Disponíveis gratuitamente: {String(item.metadata.gratisRestantes)}
@@ -303,7 +314,7 @@ export function StoreCard({
       ) : null}
       <View style={[s.actionRow, { borderTopColor: palette.border }]}>
         <View style={s.priceRow}>
-          {item.price > 0 ? (
+          {total > 0 ? (
             <UtilityIcon
               kind="coin"
               profile={palette.profile}
@@ -313,15 +324,26 @@ export function StoreCard({
             />
           ) : null}
           <Text style={[s.price, { color: palette.text }]}>
-            {item.price > 0 ? item.price : "Grátis"}
+            {total > 0 ? total : "Grátis"}
           </Text>
         </View>
+        {item.state === "available" && maximo > 1 ? (
+          <SeletorQuantidade
+            valor={qtd}
+            maximo={maximo}
+            desabilitado={busy}
+            cor={palette.text}
+            corApagada={palette.textMuted}
+            nome={item.name}
+            onMudar={(n) => setQuantidade(limitarQuantidade(item, n))}
+          />
+        ) : null}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`${status ?? "Comprar"} ${item.name}`}
+          accessibilityLabel={`${status ?? (qtd > 1 ? `Comprar ${qtd}` : "Comprar")} ${item.name}`}
           accessibilityState={{ disabled, busy: buying }}
           disabled={disabled}
-          onPress={onBuy}
+          onPress={() => onBuy(qtd)}
           style={[
             s.buy,
             {
@@ -338,7 +360,7 @@ export function StoreCard({
             <>
               <MaterialCommunityIcons
                 name={
-                  item.state === "owned"
+                  item.state === "limit"
                     ? "check"
                     : item.state === "blocked"
                       ? "lock-outline"
@@ -353,7 +375,7 @@ export function StoreCard({
                   { color: disabled ? palette.textMuted : palette.background },
                 ]}
               >
-                {status ?? "Comprar"}
+                {status ?? (qtd > 1 ? `Comprar ${qtd}` : "Comprar")}
               </Text>
             </>
           )}

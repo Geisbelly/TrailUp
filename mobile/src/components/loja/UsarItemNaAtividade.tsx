@@ -1,13 +1,14 @@
 import { SeloDePrazo } from "@/components/SeloDePrazo";
 import { supabase } from "@/database/supabase";
+import { carregarInventario, usarItem, usosPermitidos } from "@/services/loja/lojaService";
 import {
-  avisarEfeitoNaAtividade,
-  comprasUsaveisNaAtividade,
-  lerRespostaDeUso,
+  botaoDeUso,
+  itensUsaveisNaAtividade,
   mensagemDeUso,
   prazoVisivel,
   rotuloDeTempoExtra,
-  type CompraUsavel,
+  type ItemUsavel,
+  type PermissaoDeUso,
 } from "@/services/loja/usoItem";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
@@ -20,10 +21,11 @@ type Props = {
   onSegundaChance?: () => void;
 };
 
-function chaveDoPedido() {
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
-
+/**
+ * Itens da Bag que valem nesta atividade. Um botão por tipo de item: cada uso
+ * gasta uma unidade (a mais antiga). O botão diz quantas ainda dá para usar
+ * aqui; quando um limite do professor segura, fica desligado com o motivo.
+ */
 export function UsarItemNaAtividade({
   alunoId,
   classeId,
@@ -31,21 +33,17 @@ export function UsarItemNaAtividade({
   dataEntrega,
   onSegundaChance,
 }: Props) {
-  const [compras, setCompras] = useState<CompraUsavel[]>([]);
+  const [itens, setItens] = useState<ItemUsavel[]>([]);
+  const [permissoes, setPermissoes] = useState<Record<string, PermissaoDeUso>>({});
   const [prazoEfetivo, setPrazoEfetivo] = useState<string | null>(null);
   const [minutos, setMinutos] = useState(0);
   const [aviso, setAviso] = useState<string | null>(null);
-  const [usando, setUsando] = useState<number | null>(null);
+  const [usando, setUsando] = useState<string | null>(null);
   const trava = useRef(false);
 
   const carregar = useCallback(async () => {
-    const [comprasRes, prazoRes, tempoRes, nomesRes] = await Promise.all([
-      supabase
-        .from("loja_compras")
-        .select("id,item_codigo,status")
-        .eq("aluno_id", alunoId)
-        .eq("classe_id", classeId)
-        .eq("status", "ativa"),
+    const [inventario, prazoRes, tempoRes, nomesRes] = await Promise.all([
+      carregarInventario(classeId),
       supabase
         .from("atividade_prazo_aluno")
         .select("prazo_efetivo")
@@ -60,43 +58,36 @@ export function UsarItemNaAtividade({
         .maybeSingle(),
       supabase.from("loja_itens").select("codigo,nome"),
     ]);
-    if (comprasRes.error) throw comprasRes.error;
     const nomes = new Map<string, string>();
     for (const item of nomesRes.data ?? []) nomes.set(String(item.codigo), String(item.nome));
-    setCompras(
-      comprasUsaveisNaAtividade(comprasRes.data ?? [], nomes).filter((c) => c.codigo !== "segunda_chance"),
-    );
+    // A segunda chance é gasta na própria questão (QuestionActivity), não aqui.
+    const usaveis = itensUsaveisNaAtividade(inventario, nomes).filter((i) => i.codigo !== "segunda_chance");
+    const lidas = await Promise.all(usaveis.map((i) => usosPermitidos(classeId, i.codigo, "atividade", atividadeId)));
+    setItens(usaveis);
+    setPermissoes(Object.fromEntries(usaveis.map((i, n) => [i.codigo, lidas[n]])));
     setPrazoEfetivo((prazoRes.data?.prazo_efetivo as string | null) ?? null);
     setMinutos(Number(tempoRes.data?.minutos_extras ?? 0));
   }, [alunoId, atividadeId, classeId]);
 
   useEffect(() => {
-    void carregar().catch(() => setCompras([]));
+    void carregar().catch(() => setItens([]));
   }, [carregar]);
 
-  async function usar(compra: CompraUsavel) {
+  async function usar(item: ItemUsavel) {
     if (trava.current) return;
     trava.current = true;
-    setUsando(compra.id);
+    setUsando(item.codigo);
     setAviso(null);
     try {
-      const { data, error } = await supabase.rpc("loja_usar", {
-        p_compra_id: compra.id,
-        p_alvo_tipo: "atividade",
-        p_alvo_id: atividadeId,
-        p_idempotency_key: chaveDoPedido(),
-        p_parametro: null,
-      });
-      if (error) throw error;
-      const resposta = lerRespostaDeUso(data);
+      const resposta = await usarItem(classeId, item.codigo, "atividade", atividadeId);
       if (!resposta.ok) {
         setAviso(mensagemDeUso(resposta.erro));
+        await carregar();
         return;
       }
       if (resposta.prazoEfetivo) setPrazoEfetivo(resposta.prazoEfetivo);
-      if (resposta.ok) avisarEfeitoNaAtividade();
       if (resposta.efeito === "segunda_chance") onSegundaChance?.();
-      setAviso(`${compra.nome} usado nesta atividade.`);
+      setAviso(`${item.nome} usado nesta atividade.`);
       await carregar();
     } catch (caught) {
       setAviso(caught instanceof Error ? caught.message : "Não foi possível usar o item.");
@@ -108,28 +99,35 @@ export function UsarItemNaAtividade({
 
   const prazo = prazoVisivel(dataEntrega, prazoEfetivo);
   const tempo = rotuloDeTempoExtra(minutos);
-  if (!prazo && !tempo && compras.length === 0 && !aviso) return null;
+  if (!prazo && !tempo && itens.length === 0 && !aviso) return null;
 
   return (
     <View style={s.caixa}>
       <SeloDePrazo dataEntrega={prazo} />
       {tempo ? <Text style={s.tempo}>{tempo}</Text> : null}
-      {compras.map((compra) => (
-        <Pressable
-          key={compra.id}
-          accessibilityRole="button"
-          accessibilityLabel={`Usar ${compra.nome}`}
-          disabled={usando != null}
-          onPress={() => void usar(compra)}
-          style={s.botao}
-        >
-          {usando === compra.id ? (
-            <ActivityIndicator color="#e8e8e8" />
-          ) : (
-            <Text style={s.botaoTexto}>Usar {compra.nome}</Text>
-          )}
-        </Pressable>
-      ))}
+      {itens.map((item) => {
+        const botao = botaoDeUso(item, permissoes[item.codigo] ?? null);
+        const desligado = usando != null || !botao.habilitado;
+        return (
+          <View key={item.codigo} style={s.linha}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`${botao.texto}. ${botao.motivo ?? botao.detalhe}`}
+              accessibilityState={{ disabled: desligado, busy: usando === item.codigo }}
+              disabled={desligado}
+              onPress={() => void usar(item)}
+              style={[s.botao, !botao.habilitado && s.botaoDesligado]}
+            >
+              {usando === item.codigo ? (
+                <ActivityIndicator color="#e8e8e8" />
+              ) : (
+                <Text style={[s.botaoTexto, !botao.habilitado && s.textoDesligado]}>{botao.texto}</Text>
+              )}
+            </Pressable>
+            <Text style={s.detalhe}>{botao.motivo ?? botao.detalhe}</Text>
+          </View>
+        );
+      })}
       {aviso ? (
         <Text accessibilityLiveRegion="polite" style={s.aviso}>
           {aviso}
@@ -142,6 +140,7 @@ export function UsarItemNaAtividade({
 const s = StyleSheet.create({
   caixa: { gap: 8, marginHorizontal: 16, marginTop: 8, marginBottom: 4 },
   tempo: { color: "#C9CED6", fontSize: 13, fontWeight: "600" },
+  linha: { gap: 4 },
   botao: {
     alignSelf: "flex-start",
     borderRadius: 999,
@@ -150,6 +149,9 @@ const s = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
+  botaoDesligado: { opacity: 0.55 },
   botaoTexto: { color: "#e8e8e8", fontSize: 13, fontWeight: "700" },
+  textoDesligado: { color: "#9AA1AD" },
+  detalhe: { color: "#9AA1AD", fontSize: 12 },
   aviso: { color: "#C9CED6", fontSize: 13 },
 });

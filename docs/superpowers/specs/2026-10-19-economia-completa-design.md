@@ -4,7 +4,7 @@
 **Base:** o desenho de 12/09 (`2026-09-12-loja-de-moedas-design.md`) e o que já está no banco
 (`moedas_ledger`, `loja_itens`, `loja_comprar`, `eventos_pontuacao_classe`, moedas na
 aprovação em `avaliar_entrega`).
-**Não aplica nada no banco ao vivo.** São migrations Alembic `20261020_01` … `20261020_03`,
+**Não aplica nada no banco ao vivo.** São migrations Alembic `20261020_01` … `20261020_06`,
 encadeadas depois de `20261019_13` (main já com o PR #153, uma cabeça só).
 
 ---
@@ -141,6 +141,101 @@ estorna: o efeito acadêmico já aconteceu.
   (`minutos_cortados` = pedido do item menos o que coube no máximo de um uso).
   A soma concedida fica em `atividade_tempo_aluno` e entra no cronômetro da
   atividade.
+
+### 6. Várias unidades do mesmo item e limite de uso por situação (`20261020_06`)
+
+Pedido da dona do projeto: "o user deve poder comprar várias do mesmo item, mas
+ter controle de quantos usar dependendo do tipo e da situação".
+
+**Compra.** Cada unidade continua sendo uma linha de `loja_compras` (posse
+individual, com estorno próprio). O que muda:
+
+- `loja_comprar(..., p_quantidade DEFAULT 1)` compra de 1 a 20 unidades num
+  pedido (`quantidade_invalida` fora disso). Comprar de novo, um por vez, também
+  funciona: ter o item na Bag não bloqueia mais a vitrine.
+- Tudo ou nada: limite de compras, estoque e saldo são conferidos para o pedido
+  inteiro **antes** de gravar. A recusa diz quantas ainda cabem (`restantes`)
+  e, no saldo, o total (`preco`) e o preço de cada unidade (`precos`).
+- A dotação grátis entra primeiro; o resto paga.
+- Uma linha, um lançamento no razão e uma linha de auditoria **por unidade**
+  (`depois.unidade`, `depois.saldo`). A chave do pedido fica na unidade 1; as
+  outras usam `chave#n` e todas guardam `lote_chave`. Repetir a chave devolve
+  o lote inteiro sem debitar de novo.
+- Mesmas travas de antes, na mesma ordem (par turma/item para estoque, depois a
+  carteira do aluno). Dois pedidos simultâneos nunca deixam o saldo negativo.
+- `uso_max_por_aluno` (rótulo "Compras por aluno") continua sendo o máximo de
+  unidades **compradas**; estornada não conta; vazio = sem limite.
+- `troca_formato` com alvo na compra (efeito imediato) só aceita 1 unidade.
+
+**Aumento de preço por compra.** Vira opção da turma:
+`loja_preco_classe.preco_fator` (1 a 5). Vazio herda o fator do catálogo
+(`loja_itens.preco_fator`, o comportamento de hoje: prazo 10 → 20, tempo
+8 → 16 → 32); **1 desliga o aumento**. Escolhemos manter o padrão atual para
+não mudar o preço de nenhuma turma sem o professor pedir. Preço da unidade n:
+`ceil(base × fator^(compradas antes))`.
+
+**Uso.** Cada uso gasta exatamente uma unidade: `loja_usar_item(item, turma,
+alvo_tipo, alvo_id, chave, parametro)` pega a unidade ativa **mais antiga**
+(FIFO) e delega a `loja_usar`. Sem unidade: `sem_unidade`. A chave de
+idempotência continua valendo (repetir não gasta outra).
+
+O professor limita quantas unidades de cada **tipo** de item o aluno pode gastar
+em cada **situação**, em `loja_limite_uso`:
+
+| Situação | Conta usos do mesmo item… |
+|---|---|
+| `por_atividade` | na atividade |
+| `por_questao` | na questão (responder novamente mirando a questão, dica) |
+| `por_topico` | no tópico |
+| `por_dia` / `por_semana` | no dia / semana corrente (America/Sao_Paulo) |
+| `por_turma` | na turma, no total |
+
+Camadas, da mais específica para a mais geral: atividade → tópico → turma →
+padrão. Em cada camada: vazio herda, **0 bloqueia**, **-1 = sem limite**. Os
+tetos antigos de `economia_config_escopo` (`uso_max_prazo`, `uso_max_tempo`,
+`uso_max_retry`) e `retry_max_por_topico` continuam valendo como camada
+intermediária, então nada configurado antes muda de sentido.
+
+Padrões por tipo (quando ninguém configurou nada):
+
+| Item | Padrão |
+|---|---|
+| `prazo_extra` | 1 por atividade |
+| `tempo_extra` | 3 por atividade (os minutos ainda param no teto) |
+| `segunda_chance` | 1 por questão e `retry_max_por_topico` (1) por tópico |
+| `dica` | 1 por questão |
+| `troca_formato` | sem limite |
+
+Os limites somam-se aos tetos que já existiam (mínimo/máximo de um uso, tetos
+de dias/minutos na atividade e na turma, 24 h e revisão do material na segunda
+chance). A recusa nomeia o limite: `limite_por_questao`, `limite_por_atividade`,
+`limite_por_topico`, `limite_por_dia`, `limite_por_semana`, `limite_por_turma`
+(nessa ordem de checagem), com `limite` e `usados`. Os códigos antigos
+`limite_de_uso` e `teto_do_topico` saem.
+
+`loja_usos_permitidos(turma, item, alvo_tipo, alvo_id)` responde à tela, sem
+gastar nada: `ativos` (na Bag), `restantes` (o menor entre Bag e limite),
+`bloqueio`, `limite`, `usados` e os limites efetivos. `loja_inventario(turma)`
+devolve, por item, `ativos`, `usados` e `estornados`. `loja_catalogo` ganha
+`preco_fator`, `limite_compras`, `compradas`, `compras_restantes` e `em_posse`.
+
+**Estorno** continua por unidade: só a não usada, devolve o que ela custou.
+
+**Escrita.** `economia_salvar_limite_uso` (professor da turma; confere que o
+tópico/atividade é da turma; todos os campos vazios apagam a regra) e
+`economia_salvar_preco_classe(..., p_preco_fator)`. As duas auditam
+(`config_limite_uso`, `config_preco`). `loja_limite_uso` é só leitura para o
+cliente (aluno e professor da turma); escrita só pela RPC.
+
+**Telas.** No console (`/console/economia` → Loja), cada item ganha "Aumento por
+compra" e um bloco "Limites de uso" com turma inteira, um tópico ou uma
+atividade. No app, a vitrine tem seletor de quantidade (até o que ainda cabe),
+mostra quantos estão na Bag e o total do pedido; o botão "usar" na atividade é
+um por tipo de item, mostra quantos usos ainda cabem ali e fica desligado com o
+motivo quando um limite segura.
+
+**Downgrade** (`06 → 05`) restaura as funções de `02`/`03` e mantém tabelas,
+colunas e dados (inclusive `loja_limite_uso`).
 
 ## Segurança
 

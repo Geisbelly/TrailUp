@@ -614,6 +614,14 @@ def test_mais_prazo_respeita_minmax_e_os_tetos(m):
         assert rep["repetido"] is True and rep["dias"] == 1
         assert rpc(al, "loja_usar", p_compra_id=m["prazo_c1"], p_alvo_tipo="atividade", p_alvo_id=m["at1"],
                    p_idempotency_key=chave())["erro"] == "ja_consumida"
+        # padrão: 1 mais prazo por atividade
+        r = rpc(al, "loja_usar", p_compra_id=m["prazo_c2"], p_alvo_tipo="atividade", p_alvo_id=m["at1"], p_idempotency_key=chave())
+        assert r["erro"] == "limite_por_atividade" and r["limite"] == 1 and r["usados"] == 1
+    with como(m["profA"]) as p:  # a turma libera: o que segura agora são os tetos de dias
+        assert rpc(p, "economia_salvar_limite_uso", p_classe_id=m["classeA"], p_escopo="classe", p_alvo_id=None,
+                   p_item="prazo_extra", p_por_atividade=-1, p_por_questao=None, p_por_topico=None,
+                   p_por_dia=None, p_por_semana=None, p_por_turma=None) == {"ok": True}
+    with como(a1) as al:
         r = rpc(al, "loja_usar", p_compra_id=m["prazo_c2"], p_alvo_tipo="atividade", p_alvo_id=m["at1"], p_idempotency_key=chave())
         assert r["ok"] and r["dias"] == 1
         pz = linhas(al, "SELECT dias_extras, prazo_efetivo FROM public.atividade_prazo_aluno WHERE atividade_id = %(a)s",
@@ -716,7 +724,7 @@ def test_segunda_chance_so_quando_elegivel(m):
         assert r["ok"] and r["efeito"] == "segunda_chance"
         c2 = rpc(al, "loja_comprar", p_item="segunda_chance", p_classe_id=m["classeA"], p_idempotency_key=chave())
         r = rpc(al, "loja_usar", p_compra_id=c2["compra_id"], p_alvo_tipo="atividade", p_alvo_id=m["at3"], p_idempotency_key=chave())
-        assert r["erro"] == "teto_do_topico"  # 1 por tópico
+        assert r["erro"] == "limite_por_topico" and r["limite"] == 1  # 1 por tópico (retry_max_por_topico)
         m["retry_ativo"] = c2["compra_id"]
 
 
