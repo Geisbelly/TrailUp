@@ -252,7 +252,7 @@ def test_endpoint_recusa_classe_de_outro_professor(client, api_professor) -> Non
 
 def test_migration_insights_renderiza_colunas_e_rls_do_professor() -> None:
     output = StringIO()
-    migrations.command.upgrade(_offline_alembic_config(output), "20260922_06:20260929_01", sql=True)
+    migrations.command.upgrade(_offline_alembic_config(output), "20260927_02:20260929_01", sql=True)
     rendered = output.getvalue()
 
     for coluna in ("classe_id", "escopo", "natureza", "texto", "base", "motivo_descarte", "geracao_id"):
@@ -278,7 +278,7 @@ def test_migration_insights_renderiza_colunas_e_rls_do_professor() -> None:
 
 def test_migration_insights_downgrade_devolve_policy_do_aluno() -> None:
     output = StringIO()
-    migrations.command.downgrade(_offline_alembic_config(output), "20260929_01:20260922_06", sql=True)
+    migrations.command.downgrade(_offline_alembic_config(output), "20260929_01:20260927_02", sql=True)
     rendered = output.getvalue()
 
     assert rendered.index("DELETE FROM public.intervencoes WHERE aluno_id IS NULL") < rendered.index(
