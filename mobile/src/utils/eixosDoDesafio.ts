@@ -12,12 +12,21 @@ export type RegraLegada = Regra | "duelo" | "duplo";
 export type Dificuldade = "normal" | "dificil";
 export type Consequencia = "treino" | "ranqueada" | "evento";
 
-export const FORMATOS: { chave: Formato; rotulo: string }[] = [
-  { chave: "solo", rotulo: "Solo" },
-  { chave: "dupla", rotulo: "Dupla" },
-  { chave: "guilda", rotulo: "Guilda" },
-  { chave: "turma", rotulo: "Turma" },
+/**
+ * `pedeAliado` não é enfeite: `guilda_desafio_criar` **recusa** `dupla` sem `p_aliado`
+ * (`guilda_desafio_aliado_obrigatorio`, `20261021_11`), porque dupla sem parceiro seria solo
+ * com outro nome. Enquanto não houver seletor de parceiro, o seletor de formato filtra por
+ * este campo em vez de esconder a opção por acidente.
+ */
+export const FORMATOS: { chave: Formato; rotulo: string; ajuda: string; pedeAliado?: true }[] = [
+  { chave: "solo", rotulo: "Solo", ajuda: "Só você contra o material." },
+  { chave: "dupla", rotulo: "Dupla", ajuda: "Você e um colega.", pedeAliado: true },
+  { chave: "guilda", rotulo: "Guilda", ajuda: "Todos os membros da guilda." },
+  { chave: "turma", rotulo: "Turma", ajuda: "A turma inteira junto." },
 ];
+
+/** Os formatos que o seletor pode oferecer hoje — ver `pedeAliado`. */
+export const FORMATOS_SEM_PARCEIRO = FORMATOS.filter((f) => !f.pedeAliado);
 
 export const REGRAS: { chave: Regra; rotulo: string; ajuda: string }[] = [
   { chave: "todos", rotulo: "Todos respondem", ajuda: "Cada um responde; conta o conjunto." },

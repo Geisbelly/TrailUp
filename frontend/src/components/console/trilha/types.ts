@@ -94,6 +94,8 @@ export interface Questao {
   resposta_correta: string | null;
   nota_estabelecida?: number | null;
   midia_url?: string | null;
+  /** `facil | media | dificil`, ou `null` para "não marcada" — ver dificuldadeDaQuestao.ts. */
+  dificuldade?: string | null;
 }
 
 export interface CardItem {

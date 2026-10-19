@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from "react";
+import { NIVEIS_DA_QUESTAO, SEM_NIVEL, nivelParaOFormulario } from "./dificuldadeDaQuestao";
 import { BossVisualPicker } from './BossVisualPicker';
 import type { Dispatch, SetStateAction } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -120,8 +121,8 @@ type TopicEditDrawerProps = {
   
   // Questões
   questions: Questao[];
-  questionForm: { id: number; atividade_id: string; enunciado: string; tipo: string; resposta_correta: string; nota_estabelecida: string; midia_url: string };
-  setQuestionForm: Dispatch<SetStateAction<{ id: number; atividade_id: string; enunciado: string; tipo: string; resposta_correta: string; nota_estabelecida: string; midia_url: string }>>;
+  questionForm: { id: number; atividade_id: string; enunciado: string; tipo: string; resposta_correta: string; nota_estabelecida: string; midia_url: string; dificuldade: string };
+  setQuestionForm: Dispatch<SetStateAction<{ id: number; atividade_id: string; enunciado: string; tipo: string; resposta_correta: string; nota_estabelecida: string; midia_url: string; dificuldade: string }>>;
   questionOptions: string[];
   setQuestionOptions: Dispatch<SetStateAction<string[]>>;
   addNewActivityOption: () => void;
@@ -637,6 +638,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
           tipo: resolvedType,
           resposta_correta: q.resposta_correta || "",
           nota_estabelecida: scoreToInputString(q.nota_estabelecida),
+          dificuldade: nivelParaOFormulario(q.dificuldade),
           midia_url: q.midia_url || "",
         });
         
@@ -659,6 +661,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
           tipo: defaultType,
           resposta_correta: "",
           nota_estabelecida: "",
+          dificuldade: SEM_NIVEL,
           midia_url: "",
         });
         
@@ -1321,6 +1324,25 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                         />
                                     </div>
                                 )}
+
+                                <div>
+                                  <Label className={darkLabelClass}>
+                                    Dificuldade{" "}
+                                    <span className="normal-case font-normal text-muted-foreground">
+                                      (opcional — o desafio difícil prefere as marcadas)
+                                    </span>
+                                  </Label>
+                                  <select
+                                    value={questionForm.dificuldade ?? SEM_NIVEL}
+                                    onChange={e => setQuestionForm({ ...questionForm, dificuldade: e.target.value })}
+                                    className={`${darkInputClass} w-full`}
+                                  >
+                                    <option value={SEM_NIVEL}>Não marcada</option>
+                                    {NIVEIS_DA_QUESTAO.map(({ chave, rotulo }) => (
+                                      <option key={chave} value={chave}>{rotulo}</option>
+                                    ))}
+                                  </select>
+                                </div>
 
                                 <div>
                                   <Label className={darkLabelClass}>Nota da Questão</Label>
