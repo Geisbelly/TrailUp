@@ -101,16 +101,28 @@ estorna: o efeito acadêmico já aconteceu.
   `economia_config_escopo.moedas_aprovacao` da atividade, senão do tópico,
   senão `metadata.moedas`. O corte de 60% e a idempotência
   `atividade_aprovada` / `atividade:<id>` não mudam.
-- Conclusão: se o professor definiu `moedas_conclusao` no escopo, o gatilho em
-  `atividade_aluno` credita uma vez (`atividade_conclusao_config`). Não
-  substitui o ganho global de `eventos_pontuacao`.
-- Meta: `economia_avaliar_metas` (o aluno chama; o gatilho de moeda também
-  chama, com trava de reentrada). Critérios: `atividades_concluidas`,
-  `nota_minima` (percentual, no escopo atividade), `acertos`, `presencas`.
+- Conclusão (desde `20261020_05`): marcar a atividade como concluída é do
+  próprio aluno, então **não paga moeda**. A moeda de conclusão sai em
+  `avaliar_entrega`, quando o professor aprova (nota >= 60% da máxima): o
+  valor é `moedas_conclusao` da atividade, senão do tópico, senão o valor do
+  evento `atividade_concluida` (da turma ou global). Uma vez por aluno e
+  atividade (`atividade_conclusao_config` / `atividade:<id>`); quem já
+  recebeu pelo evento antigo não recebe de novo; reprovar depois não estorna.
+  O evento `atividade_concluida` continua dando pontos (rank), sem moeda.
+- Aprovação registrada: `atividade_aprovacao` guarda a última avaliação do
+  professor por aluno e atividade (nota, máxima, aprovada). Só
+  `avaliar_entrega` escreve; o aluno lê a dele e o professor a da turma.
+- Meta: `economia_avaliar_metas` (o aluno chama; o gatilho de moeda e
+  `avaliar_entrega` também chamam, com trava de reentrada que é solta no fim).
+  Critérios: `atividades_concluidas` (conta **só atividades aprovadas** pelo
+  professor, em `atividade_aprovacao`), `nota_minima` (percentual da última
+  nota do professor, no escopo atividade), `acertos`, `presencas`.
   Moedas vão ao razão com `evento_tipo = 'meta_atingida'` e
   `referencia = 'meta:<id>'`. Pontos vão a `eventos_aluno` como tipo
   **creditado** `meta_atingida` (o aluno não consegue inserir esse tipo; o
   gatilho de pontuação não reescreve o valor).
+- Crédito dado antes de `20261020_05` não é recalculado; aprovação anterior a
+  ela não paga conclusão retroativa.
 
 ### 5. Histórico e auditoria
 
