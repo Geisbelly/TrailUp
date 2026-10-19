@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { lazyWithReload } from "@/lib/chunkReload";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import ConsoleShell from "@/components/console/ConsoleShell";
 import { toast } from "sonner";
@@ -15,18 +16,18 @@ import {
 // Uma aba por vez fica visivel (ver `view` abaixo), entao cada secao vira o
 // proprio chunk — a mais pesada, o Dashboard, carrega o recharts inteiro e
 // nao deveria pesar em quem so abre a Trilha ou o Perfil (issue #29).
-const TopicsManager = lazy(() => import("@/components/console/trilha/TopicsManager"));
-const ProfileSection = lazy(() => import("@/components/console/ProfileSection"));
-const DashboardSection = lazy(() => import("@/components/console/DashboardSection"));
-const RanksSection = lazy(() => import("@/components/console/RanksSection"));
-const MissoesSection = lazy(() => import("@/components/console/missoes/MissoesSection"));
-const ConquistasSection = lazy(() => import("@/components/console/conquistas/ConquistasSection"));
-const BatalhasSection = lazy(() => import("@/components/console/batalhas/BatalhasSection"));
-const NotasSection = lazy(() => import("@/components/console/notas/NotasSection"));
-const EventosSection = lazy(() => import("@/components/console/eventos/EventosSection"));
-const ClassManagementSection = lazy(() => import("@/components/console/ClassManagementSection"));
-const PersonalizacoesSection = lazy(() => import("@/components/console/personalizacoes/PersonalizacoesSection"));
-const ProfessorApprovalSection = lazy(() =>
+const TopicsManager = lazyWithReload(() => import("@/components/console/trilha/TopicsManager"));
+const ProfileSection = lazyWithReload(() => import("@/components/console/ProfileSection"));
+const DashboardSection = lazyWithReload(() => import("@/components/console/DashboardSection"));
+const RanksSection = lazyWithReload(() => import("@/components/console/RanksSection"));
+const MissoesSection = lazyWithReload(() => import("@/components/console/missoes/MissoesSection"));
+const ConquistasSection = lazyWithReload(() => import("@/components/console/conquistas/ConquistasSection"));
+const BatalhasSection = lazyWithReload(() => import("@/components/console/batalhas/BatalhasSection"));
+const NotasSection = lazyWithReload(() => import("@/components/console/notas/NotasSection"));
+const EventosSection = lazyWithReload(() => import("@/components/console/eventos/EventosSection"));
+const ClassManagementSection = lazyWithReload(() => import("@/components/console/ClassManagementSection"));
+const PersonalizacoesSection = lazyWithReload(() => import("@/components/console/personalizacoes/PersonalizacoesSection"));
+const ProfessorApprovalSection = lazyWithReload(() =>
   import("@/components/console/ProfessorApprovalSection").then((m) => ({ default: m.ProfessorApprovalSection }))
 );
 
