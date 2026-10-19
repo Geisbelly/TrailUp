@@ -272,6 +272,7 @@ export function useTopicCrud({
     resposta_correta: string;
     nota_estabelecida?: number | string | null;
     midia_url?: string;
+    dificuldade?: string | null;
   }, questionOptions: string[]) => {
     if (!questionForm.enunciado || !questionForm.atividade_id) {
       toast.error("Informe enunciado e selecione a atividade.");
@@ -298,6 +299,7 @@ export function useTopicCrud({
         resposta_correta: normalized.resposta,
         nota_estabelecida: scoreParsed.value,
         midia_url: questionForm.midia_url || null,
+        dificuldade: questionForm.dificuldade ?? null,
       });
       toast.success("Questão salva!");
       return id;
