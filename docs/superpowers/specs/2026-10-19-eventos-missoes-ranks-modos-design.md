@@ -351,6 +351,9 @@ Cada fase é mesclável sozinha e não quebra a anterior.
    A arena continua funcionando porque os defaults preservam o comportamento
    medido. `desafio_dificuldade_min` fica de fora: depende da decisão sobre
    marcação de dificuldade em `questoes`. **Feita** — `20261021_01`.
+   (Essa decisão foi tomada e implementada na **fase 9**: coluna explícita, e a chave passou
+   a existir como *preferência*. Esta linha ficava dizendo "fica de fora" muito depois de a
+   peça existir.)
 2. **`missoes` + `missao_aluno`**, com RLS e policy **no mesmo commit** (regra do
    CLAUDE.md: tabela nasce com RLS ligada e, sem policy, invisível). Migração de
    `atividades.tipo='missao'`. Console lê e escreve missão de professor.
@@ -497,6 +500,44 @@ Cada fase é mesclável sozinha e não quebra a anterior.
    > não existe. Uma guarda a partir de `created_at` do desafio puniria quem abre e responde
    > depois, que é o uso normal.
 
+9. **`questoes.dificuldade`.** `20261021_10`.
+
+   > "Questões difíceis" era a única das quatro definições de difícil sem nada atrás: a
+   > seleção do desafio é `ORDER BY random()` e `questoes` não tinha como dizer que uma
+   > questão é difícil. Tempo, tentativas e aposta já estavam entregues (preset da fase 1,
+   > cobrança da fase 8, fator da fase 4).
+   >
+   > **Coluna explícita, e foi a medição que decidiu** entre ela e o *proxy* que este
+   > documento propunha (a questão que a turma mais errou, por `questao_aluno`): a base tem
+   > **1 questão e 2 respostas**. E o problema do proxy não é a base estar vazia hoje — ele
+   > **nunca** classifica questão nova, porque questão recém-criada não tem resposta nenhuma,
+   > e é exatamente aí que o professor quer marcar. Proxy refina marcação; não substitui.
+   >
+   > `NULL` é "não marcada" e é o default de propósito: `'media'` afirmaria uma dificuldade
+   > que ninguém informou.
+   >
+   > **Preferência, não filtro — a decisão que mais importa.** O nome
+   > `desafio_dificuldade_min` sugere filtro, e filtro não serve: com a base de hoje, todo
+   > desafio difícil levantaria `guilda_sem_questoes_liberadas` e o modo ficaria inutilizável
+   > até alguém anotar o banco inteiro — **em silêncio**, porque o erro fala de liberação, não
+   > de dificuldade. Então a dificuldade entra como ordem: nível pedido (ou acima) primeiro,
+   > embaralhado entre si; o resto completa. Medido: com 2 difíceis no banco, as duas são
+   > sempre escolhidas; com `min = media`, nenhuma fácil entra; sem anotação nenhuma, o
+   > difícil ainda cria.
+   >
+   > O peso do **não marcado é o meio, não zero** — mandá-lo para o fim faria o difícil de um
+   > banco sem anotação preferir justamente as fáceis marcadas.
+   >
+   > E o `LIMIT 30` teve de sair do caminho, **só no difícil**: antes da ordenação ele faria a
+   > preferência olhar 30 questões arbitrárias. Sem ele, `fn_questao_liberada` roda para a
+   > turma inteira, então o ramo novo vale apenas para `dificil` — o normal não muda nem em
+   > comportamento nem em custo.
+   >
+   > No cliente, `nivelParaOBanco("") === null` é o ponto crítico: o formulário manda `""`
+   > para "não marcada" e `''` **viola o CHECK** (medido). **Ordem de deploy:** a migração
+   > tem de ser aplicada antes de o frontend subir — o PostgREST recusa coluna desconhecida
+   > na escrita, e no intervalo o console não salvaria questão nenhuma.
+
 10. **O eixo de composição passa a existir.** `20261021_11`.
 
    > A fase 1 abriu o CHECK para `solo | dupla | guilda | turma` e este documento listou
@@ -583,12 +624,16 @@ Cada fase é mesclável sozinha e não quebra a anterior.
   versão por classe. A fase 4 não a tocou (abrir o CHECK dela seria superfície
   sem efeito), mas quem ligar preço por turma vai topar nela, e aí o CHECK volta
   a importar.
-- **O preset difícil não existe sem questão marcada como difícil.**
-  `desafio_dificuldade_min` pressupõe uma marcação de dificuldade em `questoes`,
-  que **não existe hoje** (as colunas são enunciado, tipo, alternativas,
-  resposta_correta, midia_url, nota_estabelecida). Ou a fase 1 acrescenta essa
-  marcação, ou "questão mais difícil" começa como proxy (ex.: a questão que a
-  turma mais errou, por `questao_aluno`) — que é medível e não pede coluna nova.
+- ~~**O preset difícil não existe sem questão marcada como difícil.**~~
+  **Resolvido na fase 9** (`20261021_10`): `questoes.dificuldade`, com `NULL` para "não
+  marcada". O proxy proposto aqui (a questão que a turma mais errou, por `questao_aluno`) foi
+  descartado por medição — a base tem 1 questão e 2 respostas, e o proxy **nunca** classifica
+  questão nova, que é justamente quando o professor quer marcar.
+
+  O limite que **sobra** é outro, e é o de adoção: enquanto o banco não for anotado, o modo
+  difícil escolhe como antes. Por desenho — a dificuldade é preferência, não filtro, senão o
+  modo ficaria inutilizável até o último professor marcar a última questão. Então "difícil"
+  melhora conforme marcam, e não existe um momento em que ele "liga".
 - **Custo da LLM cai, mas não é zero.** Sete perfis × N turmas por dia. Com 50
   turmas são 350 chamadas/dia. Vale medir antes de ligar a fase 6 para todas as
   turmas.
