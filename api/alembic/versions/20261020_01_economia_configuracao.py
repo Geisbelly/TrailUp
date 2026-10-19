@@ -251,7 +251,7 @@ CREATE TABLE IF NOT EXISTS public.economia_auditoria (
 );
 
 COMMENT ON TABLE public.economia_auditoria IS
-  'Trilha append-only das operações econômicas e das mudanças de configuração. SELECT só para plataforma_dev.';
+  'Trilha append-only das operações econômicas e das mudanças de configuração. A leitura é do painel admin da API; o cliente não tem GRANT.';
 
 CREATE INDEX IF NOT EXISTS economia_auditoria_quando_idx
   ON public.economia_auditoria (ocorrido_em DESC);
@@ -259,7 +259,6 @@ CREATE INDEX IF NOT EXISTS economia_auditoria_quando_idx
 ALTER TABLE public.economia_auditoria ENABLE ROW LEVEL SECURITY;
 
 REVOKE ALL ON public.economia_auditoria FROM PUBLIC, anon, authenticated;
-GRANT SELECT ON public.economia_auditoria TO authenticated;
 
 DROP POLICY IF EXISTS economia_auditoria_sel_dev ON public.economia_auditoria;
 CREATE POLICY economia_auditoria_sel_dev ON public.economia_auditoria
@@ -336,3 +335,11 @@ def downgrade() -> None:
         """
     )
     op.execute("DELETE FROM public.loja_itens WHERE codigo = 'tempo_extra';")
+    op.execute(
+        """
+        ALTER TABLE public.loja_itens DROP CONSTRAINT IF EXISTS loja_itens_efeito_check;
+        ALTER TABLE public.loja_itens
+          ADD CONSTRAINT loja_itens_efeito_check
+          CHECK (efeito IN ('prazo_extra', 'segunda_chance', 'dica', 'troca_formato'));
+        """
+    )

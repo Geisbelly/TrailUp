@@ -1725,6 +1725,7 @@ export default function PersonalizedTopicView({
             elapsedStartAtMs={moduleSessionStartedAtRef.current}
             active={Boolean(currentTimerFeature)}
             onTimeoutAction={handleTimerTimeout}
+            atividadeId={currentStep.kind === "activity" ? currentStep.atividadeId : null}
           />
         </View>
       ) : null}

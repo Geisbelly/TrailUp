@@ -285,7 +285,7 @@ def _dashboard_html(data: AdminDashboardData, admin: AdminContext) -> str:
         <div class="logo">🎮</div>
         <div>
           <h1>Painel Admin · TrailUp</h1>
-          <p>Autenticado como <strong>{admin.username}</strong> · Gerenciamento de professores e alunos</p>
+          <p>Autenticado como <strong>{admin.username}</strong> · Gerenciamento de professores e alunos · <a href="/admin/economia">Auditoria da economia</a></p>
         </div>
         <div class="spacer"></div>
         <div class="stats">

@@ -9,7 +9,6 @@ import { useTurmasDoProfessor } from "../comum/useTurmasDoProfessor";
 import {
   arquivarMeta,
   carregarAlunos,
-  carregarAuditoria,
   carregarConfig,
   carregarExtrato,
   carregarItens,
@@ -25,8 +24,6 @@ import {
   type AlunoDaTurma,
   type ConfigDaTurma,
   type ItemDaLoja,
-  type LinhaDeAuditoria,
-  type LinhaDeConsistencia,
   type LinhaExtrato,
   type Meta,
   type PrecoDaTurma,
@@ -35,7 +32,7 @@ import {
 } from "./economiaApi";
 import { faixaValida, filtrarExtrato, numeroOuNulo } from "./economiaRegras";
 
-type Aba = "valores" | "prazos" | "loja" | "metas" | "historico" | "auditoria";
+type Aba = "valores" | "prazos" | "loja" | "metas" | "historico";
 
 const ABAS: { id: Aba; rotulo: string }[] = [
   { id: "valores", rotulo: "Valores" },
@@ -43,7 +40,6 @@ const ABAS: { id: Aba; rotulo: string }[] = [
   { id: "loja", rotulo: "Loja" },
   { id: "metas", rotulo: "Metas" },
   { id: "historico", rotulo: "Histórico" },
-  { id: "auditoria", rotulo: "Auditoria" },
 ];
 
 const FILTROS = [
@@ -105,7 +101,6 @@ export default function EconomiaSection({ professorId }: { professorId?: string 
           {aba === "loja" && <AbaLoja classeId={turmaId} />}
           {aba === "metas" && <AbaMetas classeId={turmaId} />}
           {aba === "historico" && <AbaHistorico classeId={turmaId} />}
-          {aba === "auditoria" && <AbaAuditoria />}
         </div>
       )}
     </div>
@@ -514,52 +509,3 @@ function AbaHistorico({ classeId }: { classeId: number }) {
   );
 }
 
-function AbaAuditoria() {
-  const [linhas, setLinhas] = useState<LinhaDeAuditoria[]>([]);
-  const [consistencia, setConsistencia] = useState<LinhaDeConsistencia[]>([]);
-  const [erro, setErro] = useState("");
-  const [carregou, setCarregou] = useState(false);
-  useEffect(() => {
-    void carregarAuditoria()
-      .then((r) => { setLinhas(r.linhas); setConsistencia(r.consistencia); })
-      .catch((e) => setErro((e as Error).message))
-      .finally(() => setCarregou(true));
-  }, []);
-  if (!carregou) return <Loader2 className="mx-auto my-10 h-6 w-6 animate-spin text-primary" />;
-  if (erro) {
-    return (
-      <Caixa>
-        <h3 className="font-semibold">Auditoria da plataforma</h3>
-        <p className="mt-2 text-sm text-muted-foreground">A consulta é só de quem está em plataforma_dev. Incluir alguém é um INSERT feito pelo dono do banco, não por esta tela. Detalhe: {erro}</p>
-      </Caixa>
-    );
-  }
-  return (
-    <div className="space-y-3">
-      <Caixa>
-        <h3 className="font-semibold">Consistência</h3>
-        <p className="mb-2 text-sm text-muted-foreground">Saldo é a soma do razão. Aqui só aparecem carteiras que não fecham com as compras.</p>
-        {consistencia.length === 0 ? <p className="text-sm">Nenhuma divergência.</p> : (
-          <ul className="space-y-1 text-sm">
-            {consistencia.map((c) => (
-              <li key={c.aluno_id}>{c.aluno_id}: saldo {c.saldo}, compras sem débito {c.compras_sem_debito}, estornos sem crédito {c.estornos_sem_credito}</li>
-            ))}
-          </ul>
-        )}
-      </Caixa>
-      <Caixa>
-        <h3 className="mb-2 font-semibold">Trilha</h3>
-        {linhas.length === 0 ? <p className="text-sm text-muted-foreground">Nenhuma operação registrada.</p> : (
-          <ul className="space-y-3 text-sm">
-            {linhas.map((l) => (
-              <li key={l.id}>
-                <p className="font-semibold">{l.operacao} · {l.entidade} {l.entidade_id ?? ""}</p>
-                <p className="text-muted-foreground">{new Date(l.ocorrido_em).toLocaleString("pt-BR")}</p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Caixa>
-    </div>
-  );
-}

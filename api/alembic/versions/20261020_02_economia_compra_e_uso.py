@@ -11,6 +11,9 @@ Revises: 20261020_01
 Create Date: 2026-10-19
 """
 
+import importlib.util
+from pathlib import Path
+
 from alembic import op
 
 revision = "20261020_02"
@@ -41,7 +44,7 @@ CREATE TABLE IF NOT EXISTS public.atividade_tempo_aluno (
 );
 
 COMMENT ON TABLE public.atividade_tempo_aluno IS
-  'Minutos extras concedidos por uso de tempo_extra. O cronômetro que trava a atividade não faz parte deste corte.';
+  'Minutos concedidos por tempo_extra. O que o teto cortou do pedido fica em loja_uso_log.resultado.minutos_cortados.';
 
 CREATE TABLE IF NOT EXISTS public.loja_dica_liberada (
   aluno_id    uuid   NOT NULL REFERENCES public.alunos(id) ON DELETE CASCADE,
@@ -722,7 +725,11 @@ BEGIN
     DO UPDATE SET minutos_extras = EXCLUDED.minutos_extras, atualizado_em = now();
 
     v_resultado := jsonb_build_object(
-      'ok', true, 'efeito', 'tempo_extra', 'minutos', v_concedido,
+      'ok', true, 'efeito', 'tempo_extra',
+      'minutos', v_concedido,
+      'minutos_pedidos', v_pedido,
+      'minutos_cortados', GREATEST(v_pedido - v_concedido, 0),
+      'minutos_na_atividade', v_minutos + v_concedido,
       'compra_id', v_compra.id
     );
 
@@ -930,10 +937,23 @@ def upgrade() -> None:
     op.execute("NOTIFY pgrst, 'reload schema';")
 
 
+def _constante(arquivo: str, nome: str) -> str:
+    caminho = Path(__file__).with_name(arquivo)
+    spec = importlib.util.spec_from_file_location(f"trailup_{caminho.stem}", caminho)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"não achei {arquivo} para restaurar o downgrade")
+    modulo = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modulo)
+    return str(getattr(modulo, nome))
+
+
 def downgrade() -> None:
     op.execute("DROP FUNCTION IF EXISTS public.loja_estornar(bigint, text);")
     op.execute("DROP FUNCTION IF EXISTS public.loja_usar(bigint, text, bigint, text, text);")
     op.execute("DROP FUNCTION IF EXISTS public.economia_config_efetiva(bigint, bigint);")
+    op.execute("DROP FUNCTION IF EXISTS public.loja_catalogo(bigint);")
+    op.execute(_constante("20260912_04_loja_compra.py", "CATALOGO"))
+    op.execute(_constante("20260912_05_segunda_chance.py", "COMPRAR_V2"))
     op.execute("DROP TRIGGER IF EXISTS trg_atividade_aplica_prazo_comprado ON public.atividades;")
     op.execute("DROP FUNCTION IF EXISTS public.fn_atividade_aplica_prazo_comprado();")
     op.execute("DROP TABLE IF EXISTS public.loja_uso_log;")

@@ -4,10 +4,11 @@ import test from "node:test";
 import {
   comprasUsaveisNaAtividade,
   concedido,
-  lerRespostaDeUso,
   mensagemDeUso,
+  podeResponderComCompra,
   prazoVisivel,
   rotuloDeTempoExtra,
+  lerRespostaDeUso,
 } from "./usoItem";
 
 test("o uso aperta o pedido e recusa o que estoura o teto", () => {
@@ -36,6 +37,15 @@ test("só item ativo de prazo, tempo ou nova tentativa entra na atividade", () =
   assert.deepEqual(lista.map((c) => c.id), [1, 4]);
   assert.equal(lista[0].nome, "Mais um dia");
   assert.equal(lista[1].nome, "Responder novamente");
+});
+
+test("a segunda chance comprada só aparece quando a tentativa livre acabou e a resposta segue oculta", () => {
+  const base = { jaTentou: true, viuResposta: false, respostasVisiveis: false, semTentativaLivre: true, reabrindo: false };
+  assert.equal(podeResponderComCompra(base), true);
+  assert.equal(podeResponderComCompra({ ...base, semTentativaLivre: false }), false);
+  assert.equal(podeResponderComCompra({ ...base, viuResposta: true }), false);
+  assert.equal(podeResponderComCompra({ ...base, respostasVisiveis: true }), false);
+  assert.match(mensagemDeUso("sem_token"), /loja/);
 });
 
 test("a resposta do banco vira prazo ou mensagem", () => {

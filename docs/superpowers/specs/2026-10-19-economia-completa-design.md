@@ -119,13 +119,16 @@ estorna: o efeito acadêmico já aconteceu.
   e recusa aluno de outra turma.
 - `loja_compras` continua sendo o log de compra. `loja_uso_log` é o log de uso.
 - `economia_auditoria` é append-only: quem, quando, operação, antes, depois.
-  `SELECT` só para `app_e_dev()` (`plataforma_dev`). Ninguém grava pelo
-  cliente. A tabela nasce vazia: incluir um dev é `INSERT` feito pelo
-  `service_role` / dono do banco, de propósito, para não semear e-mail nenhum
-  nesta migration.
-- `economia_consistencia()` (também só dev) devolve saldo negativo, compra
-  paga sem débito correspondente e estorno sem crédito. O saldo em si não tem
+  Ninguém grava pelo cliente, e `authenticated` não tem `SELECT`. A leitura
+  é o painel `/admin/economia` da API, com o mesmo login básico do admin.
+- `economia_consistencia()` devolve saldo negativo, compra paga sem débito
+  correspondente e estorno sem crédito. Também não é concedida ao cliente:
+  o painel da API chama a função com o papel do banco. O saldo em si não tem
   coluna para divergir: a checagem é "o razão fecha com as posses".
+- Uso de tempo grava os minutos concedidos e os minutos cortados
+  (`minutos_cortados` = pedido do item menos o que coube no máximo de um uso).
+  A soma concedida fica em `atividade_tempo_aluno` e entra no cronômetro da
+  atividade.
 
 ## Segurança
 
@@ -139,8 +142,8 @@ policy do razão sozinha esconderia os alunos. A função confere
 
 ## Fora deste corte
 
-- A fila de aprovação por compra (o teto do professor substitui, como no
-  desenho de setembro).
+- Não há fila de aprovação de compra. O teto do professor e o saldo decidem
+  na hora.
 - Gerar o texto da dica (isso é IA). A RPC só registra que a dica foi liberada.
-- Um cronômetro que trave a atividade ao acabar o tempo. O que fica gravado, e
-  visível na trilha e no console, é o minuto extra concedido.
+- O cronômetro de perfil não trava a atividade por conta própria. Os minutos
+  comprados somam na contagem que já existia.

@@ -889,6 +889,7 @@ export default function TrilhaConteudoScreen() {
               elapsedStartAtMs={moduleSessionStartedAtRef.current}
               active={isOverlayTimerActive}
               onTimeoutAction={handleOverlayTimerTimeout}
+              atividadeId={atualBlock?.kind === "atividade" ? Number(atualBlock.atividade.id) : null}
             />
           </View>
           <ModuleHeaderGuideButton
@@ -909,6 +910,7 @@ export default function TrilhaConteudoScreen() {
         </View>
     );
   }, [
+    atualBlock,
     currentOverlayItemKey,
     currentOverlayTimerFeature,
     guideTargetRefs,

@@ -12,6 +12,8 @@ import { normalizeContentBlock } from '@/utils/contentBlocks';
 import { getProfileShellPalette } from '@/utils/profileShellTheme';
 import { canShowQuestionAnswer, getQuestionPreviousAnswer, hasQuestionAttempt } from '@/utils/questionAnswerVisibility';
 import { QuestaoAluno } from '@/models/QuestaoAluno';
+import { gastarSegundaChance } from '@/services/loja/lojaService';
+import { mensagemDeUso, podeResponderComCompra } from '@/services/loja/usoItem';
 import { EssayValidationResult, validateEssayAnswerWithAi } from '@/utils/essayValidation';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -26,6 +28,8 @@ type Props = {
   reviewMode?: boolean;
   /** Incrementa quando o aluno gasta uma segunda chance comprada. */
   novaTentativa?: number;
+  alunoId?: string | null;
+  classeId?: number | null;
   onComplete?: (result?: {
     correto?: boolean;
     acertosPercentual?: number;
@@ -419,6 +423,8 @@ export default function QuestionActivity({
   timedOut = false,
   reviewMode = false,
   novaTentativa = 0,
+  alunoId = null,
+  classeId = null,
 }: Props) {
   const questoes = useMemo(() => (Array.isArray(atividade?.questoes) ? atividade.questoes : []), [atividade?.questoes]);
   const [questaoIndex, setQuestaoIndex] = useState(() => Math.min(Math.max(0, initialQuestionIndex), Math.max(0, questoes.length - 1)));
@@ -525,6 +531,8 @@ export default function QuestionActivity({
   const [mostrarResposta, setMostrarResposta] = useQuestionFlag(questaoIndex);
   const [validandoIA, setValidandoIA] = useState(false);
   const [, setFeedbackIA] = useState<Record<number, EssayValidationResult | null>>({});
+  const [avisoCompra, setAvisoCompra] = useState<string | null>(null);
+  const [gastandoCompra, setGastandoCompra] = useState(false);
   const [modalVisivel, setModalVisivel] = useState(false);
   const [modalInfo, setModalInfo] = useState<{ titulo: string; descricao: string; pontos?: number; acerto?: boolean }>({
     titulo: '',
@@ -1452,7 +1460,7 @@ export default function QuestionActivity({
       {stas[questaoIndex] && isPensante && !respostasVisiveis && (
         <Text style={{ marginTop: 6, color: profilePalette.textSubtle, fontFamily: FontFamily.interMedium }}>
           {restaApenasUmaOpcao
-            ? 'Gabarito oculto. Resta uma única alternativa, então não há nova tentativa: use o botao abaixo para ver sua resposta e o correto.'
+            ? 'Gabarito oculto. Resta uma única alternativa. Sem ver a resposta, uma segunda chance comprada reabre a questão.'
             : 'Gabarito oculto. Use o botao abaixo para ver sua resposta e o correto ou tente novamente (50% dos pontos).'}
         </Text>
       )}
@@ -1472,10 +1480,62 @@ export default function QuestionActivity({
       {jaTemTentativa && isPensante && !respostasVisiveis && (
         <Text style={{ marginTop: 10, color: profilePalette.textSubtle, fontFamily: FontFamily.interMedium }}>
           {restaApenasUmaOpcao
-            ? 'Modo pensante: resta uma única alternativa, então não há nova tentativa. Clique para ver sua resposta e o gabarito.'
+            ? 'Modo pensante: resta uma única alternativa. Sem ver a resposta, use a segunda chance comprada para responder de novo.'
             : 'Modo pensante: clique para ver sua resposta e o gabarito ou tente novamente (vale metade da pontuação).'}
         </Text>
       )}
+
+      {podeResponderComCompra({
+        jaTentou: jaTemTentativa,
+        viuResposta: viuRespostaAntes,
+        respostasVisiveis,
+        semTentativaLivre: restaApenasUmaOpcao,
+        reabrindo: reResponder,
+      }) && (
+        <TouchableOpacity
+          disabled={gastandoCompra || !alunoId || !classeId}
+          onPress={() => {
+            if (!alunoId || !classeId || gastandoCompra) return;
+            setGastandoCompra(true);
+            setAvisoCompra(null);
+            void gastarSegundaChance(classeId, Number(atividade?.id))
+              .then((resposta) => {
+                if (!resposta.ok) {
+                  setAvisoCompra(mensagemDeUso(resposta.erro));
+                  return;
+                }
+                setSelecionados((prev) => ({ ...prev, [questaoIndex]: null }));
+                setRespostasTexto((prev) => ({ ...prev, [questaoIndex]: '' }));
+                setStas((prev) => ({ ...prev, [questaoIndex]: null }));
+                setConfirmados((prev) => ({ ...prev, [questaoIndex]: false }));
+                setTimeoutLocked((prev) => ({ ...prev, [questaoIndex]: false }));
+                setReResponder(true);
+                setMostrarResposta(false);
+              })
+              .finally(() => setGastandoCompra(false));
+          }}
+          style={{
+            marginTop: 12,
+            padding: 10,
+            alignSelf: 'flex-start',
+            borderRadius: 8,
+            borderWidth: 1,
+            borderColor: profilePalette.accent,
+            backgroundColor: profilePalette.accentMuted,
+          }}
+          accessibilityRole="button"
+        >
+          <Text style={{ color: profilePalette.accent, fontWeight: '700' }}>
+            {gastandoCompra ? 'Usando a segunda chance…' : 'Responder novamente'}
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      {avisoCompra ? (
+        <Text accessibilityLiveRegion="polite" style={{ marginTop: 8, color: profilePalette.textSubtle }}>
+          {avisoCompra}
+        </Text>
+      ) : null}
 
       {(respondidaAntes || confirmados[questaoIndex]) && !respostasVisiveis && !viuRespostaAntes && !restaApenasUmaOpcao && (
         <TouchableOpacity

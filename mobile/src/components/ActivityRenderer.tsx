@@ -154,6 +154,8 @@ function ActivityRendererContent({
         timedOut={timedOut}
         reviewMode={localReviewMode}
         novaTentativa={novaTentativa}
+        alunoId={alunoId}
+        classeId={classeId}
       />
     </View>
   );

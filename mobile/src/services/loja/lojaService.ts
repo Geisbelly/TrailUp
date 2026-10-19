@@ -2,6 +2,7 @@ import { normalizeBrainHexProfile, type BrainHexProfile } from "@/constants/brai
 import { supabase } from "@/database/supabase";
 import { normalizeStoreItem, type StoreItem, type StoreProfileTheme, type StoreSection, type StoreSnapshot } from "@/services/loja/storeModel";
 import { limitesDaTurma, montarExtrato, type LinhaRazao } from "@/services/loja/extratoModel";
+import { avisarEfeitoNaAtividade, lerRespostaDeUso, type RespostaDeUso } from "@/services/loja/usoItem";
 import { ACOES_QUE_RENDEM, resolverGanhoMoedas } from "@/services/loja/ganhoMoedasModel";
 import { purchaseErrorMessage } from "@/services/loja/storeTheme";
 
@@ -86,6 +87,32 @@ export async function carregarExtrato(alunoId: string, nomes: ReadonlyMap<string
       for (const c of compras.data ?? []) itemDaCompra.set(Number(c.id), nomes.get(String(c.item_codigo)) ?? String(c.item_codigo));
   }
   return montarExtrato(linhas, itemDaCompra, new Date());
+}
+
+/** Gasta a segunda chance ativa mais antiga nesta atividade. Sem posse, não reabre a questão. */
+export async function gastarSegundaChance(classeId: number, atividadeId: number): Promise<RespostaDeUso> {
+  const compras = await supabase
+    .from("loja_compras")
+    .select("id")
+    .eq("classe_id", classeId)
+    .eq("item_codigo", "segunda_chance")
+    .eq("status", "ativa")
+    .order("id", { ascending: true })
+    .limit(1);
+  if (compras.error) return { ok: false, erro: "resposta_invalida" };
+  const compraId = Number(compras.data?.[0]?.id ?? 0);
+  if (!compraId) return { ok: false, erro: "sem_token" };
+  const { data, error } = await supabase.rpc("loja_usar", {
+    p_compra_id: compraId,
+    p_alvo_tipo: "atividade",
+    p_alvo_id: atividadeId,
+    p_idempotency_key: requestId(),
+    p_parametro: null,
+  });
+  if (error) return { ok: false, erro: "resposta_invalida" };
+  const resposta = lerRespostaDeUso(data);
+  if (resposta.ok) avisarEfeitoNaAtividade();
+  return resposta;
 }
 
 /** Tetos da Loja definidos pelo professor para a turma (`loja_config_classe`). */

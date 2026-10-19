@@ -1,6 +1,7 @@
 import { SeloDePrazo } from "@/components/SeloDePrazo";
 import { supabase } from "@/database/supabase";
 import {
+  avisarEfeitoNaAtividade,
   comprasUsaveisNaAtividade,
   lerRespostaDeUso,
   mensagemDeUso,
@@ -62,7 +63,9 @@ export function UsarItemNaAtividade({
     if (comprasRes.error) throw comprasRes.error;
     const nomes = new Map<string, string>();
     for (const item of nomesRes.data ?? []) nomes.set(String(item.codigo), String(item.nome));
-    setCompras(comprasUsaveisNaAtividade(comprasRes.data ?? [], nomes));
+    setCompras(
+      comprasUsaveisNaAtividade(comprasRes.data ?? [], nomes).filter((c) => c.codigo !== "segunda_chance"),
+    );
     setPrazoEfetivo((prazoRes.data?.prazo_efetivo as string | null) ?? null);
     setMinutos(Number(tempoRes.data?.minutos_extras ?? 0));
   }, [alunoId, atividadeId, classeId]);
@@ -91,6 +94,7 @@ export function UsarItemNaAtividade({
         return;
       }
       if (resposta.prazoEfetivo) setPrazoEfetivo(resposta.prazoEfetivo);
+      if (resposta.ok) avisarEfeitoNaAtividade();
       if (resposta.efeito === "segunda_chance") onSegundaChance?.();
       setAviso(`${compra.nome} usado nesta atividade.`);
       await carregar();

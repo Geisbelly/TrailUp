@@ -196,18 +196,6 @@ export async function estornar(compraId: number, motivo: string) {
   await chamar("loja_estornar", { p_compra_id: compraId, p_motivo: motivo });
 }
 
-export type LinhaDeAuditoria = { id: number; ocorrido_em: string; operacao: string; entidade: string; entidade_id: string | null; antes: unknown; depois: unknown };
-export type LinhaDeConsistencia = { aluno_id: string; saldo: number; saldo_negativo: boolean; compras_sem_debito: number; estornos_sem_credito: number };
-
-export async function carregarAuditoria(): Promise<{ linhas: LinhaDeAuditoria[]; consistencia: LinhaDeConsistencia[] }> {
-  const [audit, consistencia] = await Promise.all([
-    ler<LinhaDeAuditoria[]>(db.from("economia_auditoria").select("id, ocorrido_em, operacao, entidade, entidade_id, antes, depois").order("ocorrido_em", { ascending: false }).limit(40)),
-    db.rpc("economia_consistencia", {}),
-  ]);
-  if (consistencia.error) throw new Error(consistencia.error.message);
-  return { linhas: audit ?? [], consistencia: (consistencia.data ?? []) as LinhaDeConsistencia[] };
-}
-
 export async function salvarEscopo(classeId: number, escopo: "topico" | "atividade", alvoId: number, moedasConclusao: number | null, moedasAprovacao: number | null, prazoMin: number | null, prazoMax: number | null) {
   await chamar("economia_salvar_escopo", {
     p_classe_id: classeId,

@@ -6,6 +6,8 @@
  */
 
 import { useIA } from "@/context/IAContext";
+import { supabase } from "@/database/supabase";
+import { ouvirEfeitoNaAtividade } from "@/services/loja/usoItem";
 import { useUsuario } from "@/context/SessaoContext";
 import {
   IAFeatureKey,
@@ -33,6 +35,7 @@ type Props = {
   active?: boolean;
   onTimeoutAction?: (action: IATimerTimeoutAction | null) => void;
   compact?: boolean;
+  atividadeId?: number | null;
 };
 
 function pickTimerFeatureOrder(preferredTimerFeature?: TimerFeature | null): TimerFeature[] {
@@ -55,6 +58,7 @@ export function IAHeaderTimer({
   active = true,
   onTimeoutAction,
   compact = false,
+  atividadeId = null,
 }: Props) {
   const { resolveFeature, emitSignal } = useIA();
   // O foco é lido AQUI, e não recebido por prop, porque é este componente que
@@ -98,9 +102,38 @@ export function IAHeaderTimer({
   }, [active, hasTimerSignal, itemScope, resolveFeature, timerFeatureOrder, topicScope]);
 
   // ── Timer state ─────────────────────────────────────────────────────────────
-  const duration = timerSelection?.resolved.timer?.durationSec ?? 0;
+  const durationBase = timerSelection?.resolved.timer?.durationSec ?? 0;
   const warningAt = timerSelection?.resolved.timer?.warningAtSec ?? null;
   const isElapsedMode = timerSelection?.featureKey === "reading_timer";
+  const [minutosExtras, setMinutosExtras] = useState(0);
+  useEffect(() => {
+    let ativo = true;
+    const carregar = () => {
+      if (!atividadeId || !usuario?.id || isElapsedMode) {
+        if (ativo) setMinutosExtras(0);
+        return;
+      }
+      void supabase
+        .from("atividade_tempo_aluno")
+        .select("minutos_extras")
+        .eq("aluno_id", usuario.id)
+        .eq("atividade_id", atividadeId)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (ativo) setMinutosExtras(Number(data?.minutos_extras ?? 0));
+        })
+        .catch(() => {
+          if (ativo) setMinutosExtras(0);
+        });
+    };
+    carregar();
+    const parar = ouvirEfeitoNaAtividade(carregar);
+    return () => {
+      ativo = false;
+      parar();
+    };
+  }, [atividadeId, isElapsedMode, usuario?.id]);
+  const duration = durationBase + (isElapsedMode ? 0 : Math.max(0, minutosExtras) * 60);
   const [secondsLeft, setSecondsLeft] = useState(duration);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const warningSentRef = useRef(false);

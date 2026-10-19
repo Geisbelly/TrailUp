@@ -80,7 +80,7 @@ def test_o_professor_deixa_de_escrever_configuracao_direto() -> None:
     assert "CREATE TABLE IF NOT EXISTS public.plataforma_dev" in sql
     assert "REVOKE ALL ON public.economia_auditoria FROM PUBLIC, anon, authenticated" in sql
     assert "USING (public.app_e_dev())" in sql
-    assert "GRANT SELECT ON public.economia_auditoria TO authenticated" in sql
+    assert "GRANT SELECT ON public.economia_auditoria TO authenticated" not in sql
     assert "'tempo_extra'" in sql
     assert "prazo_extensao_min_dias <= prazo_extensao_max_dias" in sql
 
@@ -110,6 +110,7 @@ def test_o_uso_respeita_minimo_maximo_e_os_dois_tetos() -> None:
     assert "REVOKE ALL ON public.atividade_prazo_aluno FROM anon, authenticated" in sql
     assert "ja_usado" in sql
     assert "preco_pago, 'estorno'" in sql
+    assert "'minutos_cortados', GREATEST(v_pedido - v_concedido, 0)" in sql
 
 
 def test_a_conta_do_prazo_recusa_o_que_nao_cabe() -> None:
@@ -134,6 +135,7 @@ def test_meta_e_extrato_e_consistencia_sao_fechados() -> None:
     assert "app_e_dev" in sql
     assert "42501" in sql
     assert "CREATE OR REPLACE FUNCTION public.economia_consistencia" in sql
+    assert "GRANT EXECUTE ON FUNCTION public.economia_consistencia() TO authenticated" not in sql
     assert "saldo_negativo" in sql
     assert "compras_sem_debito" in sql
     assert "estornos_sem_credito" in sql
@@ -150,3 +152,22 @@ def test_anonimo_nao_le_a_auditoria_e_o_dev_nao_ganha_escrita() -> None:
     assert "FOR SELECT TO authenticated" in sql
     assert "INSERT INTO public.economia_auditoria" not in sql.split("CREATE OR REPLACE FUNCTION public.economia_auditar")[0]
     assert "GRANT INSERT" not in sql or "GRANT INSERT ON public.economia_auditoria" not in sql
+
+
+def _sql_down(de: str, ate: str) -> str:
+    output = StringIO()
+    migrations.command.downgrade(_config(output), f"{de}:{ate}", sql=True)
+    return output.getvalue()
+
+
+def test_o_downgrade_restaura_o_que_as_migrations_substituiram() -> None:
+    meio = _sql_down("20261020_02", "20261020_01")
+    assert "CREATE OR REPLACE FUNCTION public.loja_comprar" in meio
+    assert "CREATE FUNCTION public.loja_catalogo" in meio or "CREATE OR REPLACE FUNCTION public.loja_catalogo" in meio
+    ponta = _sql_down("20261020_03", "20261020_02")
+    assert "CREATE OR REPLACE FUNCTION public.fn_evento_creditado" in ponta
+    assert "starts_with(lower(p_tipo), 'meta_atingida')" not in ponta
+    assert "CREATE OR REPLACE FUNCTION public.fn_eventos_aluno_paga_moeda" in ponta
+    assert "CREATE OR REPLACE FUNCTION public.avaliar_entrega" in ponta
+    base = _sql_down("20261020_01", "20261019_13")
+    assert "CHECK (efeito IN ('prazo_extra', 'segunda_chance', 'dica', 'troca_formato'))" in base

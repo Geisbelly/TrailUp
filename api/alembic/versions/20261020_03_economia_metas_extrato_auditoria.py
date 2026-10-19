@@ -3,13 +3,17 @@
 O razão continua sendo a única fonte de saldo. Meta e conclusão configurada
 entram por ele, com o mesmo índice único do ganho. O extrato que o aluno e o
 professor leem é uma função: a policy já recorta, e a função ainda recusa
-aluno de outra turma. A auditoria e a checagem de consistência só respondem
-para quem está em `plataforma_dev`.
+aluno de outra turma. A leitura da trilha de auditoria e a checagem de
+consistência ficam no painel admin da API. O cliente autenticado não executa
+`economia_consistencia` nem lê `economia_auditoria`.
 
 Revision ID: 20261020_03
 Revises: 20261020_02
 Create Date: 2026-10-19
 """
+
+import importlib.util
+from pathlib import Path
 
 from alembic import op
 
@@ -896,10 +900,7 @@ SECURITY DEFINER
 SET search_path TO 'public', 'pg_temp'
 AS $fn$
 BEGIN
-  IF NOT public.app_e_dev() THEN
-    RAISE EXCEPTION 'sem permissao' USING ERRCODE = '42501';
-  END IF;
-
+  -- Sem JWT e sem GRANT para authenticated: só o papel do banco, pela API.
   RETURN QUERY
   SELECT
     a.id,
@@ -950,8 +951,7 @@ BEGIN
 END;
 $fn$;
 
-REVOKE ALL ON FUNCTION public.economia_consistencia() FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.economia_consistencia() TO authenticated;
+REVOKE ALL ON FUNCTION public.economia_consistencia() FROM PUBLIC, anon, authenticated;
 """
 
 
@@ -964,6 +964,16 @@ def upgrade() -> None:
     op.execute(ESCOPO_E_META)
     op.execute(EXTRATO)
     op.execute("NOTIFY pgrst, 'reload schema';")
+
+
+def _modulo(arquivo: str):
+    caminho = Path(__file__).with_name(arquivo)
+    spec = importlib.util.spec_from_file_location(f"trailup_{caminho.stem}", caminho)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"não achei {arquivo} para restaurar o downgrade")
+    modulo = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modulo)
+    return modulo
 
 
 def downgrade() -> None:
@@ -991,3 +1001,7 @@ def downgrade() -> None:
     op.execute("DROP FUNCTION IF EXISTS public.economia_avaliar_metas(bigint);")
     op.execute("DROP FUNCTION IF EXISTS public.economia_avaliar_metas_de(uuid, bigint);")
     op.execute("DROP INDEX IF EXISTS public.eventos_aluno_meta_unico;")
+    creditado = _modulo("20261016_03_nota_professor_evento_creditado.py")
+    op.execute(creditado._funcao(creditado.PREFIXOS_DEPOIS))
+    op.execute(_modulo("20260912_02_ganho_de_moedas.py").GATILHO)
+    op.execute(_modulo("20261017_07_avaliar_entrega_moedas.py").SQL)

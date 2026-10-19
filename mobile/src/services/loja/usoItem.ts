@@ -34,6 +34,18 @@ export function concedido(
   return { ok: true, valor };
 }
 
+const ouvintesDeEfeito = new Set<() => void>();
+
+/** O cronômetro da atividade relê os minutos gravados depois de um uso. */
+export function avisarEfeitoNaAtividade() {
+  for (const ouvinte of ouvintesDeEfeito) ouvinte();
+}
+
+export function ouvirEfeitoNaAtividade(ouvinte: () => void) {
+  ouvintesDeEfeito.add(ouvinte);
+  return () => ouvintesDeEfeito.delete(ouvinte);
+}
+
 const MENSAGEM: Record<string, string> = {
   saldo_insuficiente: "Saldo insuficiente.",
   extensao_desligada: "O professor desligou esta extensão.",
@@ -49,6 +61,7 @@ const MENSAGEM: Record<string, string> = {
   cooldown_24h: "A nova tentativa só libera 24 horas depois da anterior.",
   revise_o_material: "Revise o material do tópico antes de responder de novo.",
   sem_questao_elegivel: "Não há questão elegível para uma nova tentativa.",
+  sem_token: "Para responder de novo, compre uma segunda chance na loja.",
   sem_sessao: "Sua sessão expirou. Entre de novo.",
   chave_ausente: "Não foi possível identificar o pedido. Tente de novo.",
   fora_da_turma: "Você não está nesta turma.",
@@ -106,6 +119,23 @@ export type RespostaDeUso = {
   minutos?: number;
   efeito?: string;
 };
+
+/** Segunda chance comprada só reabre a questão quando a tentativa livre acabou e o gabarito segue oculto. */
+export function podeResponderComCompra(estado: {
+  jaTentou: boolean;
+  viuResposta: boolean;
+  respostasVisiveis: boolean;
+  semTentativaLivre: boolean;
+  reabrindo: boolean;
+}): boolean {
+  return (
+    estado.jaTentou &&
+    estado.semTentativaLivre &&
+    !estado.viuResposta &&
+    !estado.respostasVisiveis &&
+    !estado.reabrindo
+  );
+}
 
 export function lerRespostaDeUso(data: unknown): RespostaDeUso {
   if (!data || typeof data !== "object") return { ok: false, erro: "resposta_invalida" };
