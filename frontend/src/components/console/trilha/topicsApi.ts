@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { nivelParaOBanco } from "./dificuldadeDaQuestao";
 import { normalizeOptionalPositiveScore } from "@/lib/question-score";
 import { deleteContentCascade } from "./classDeletion";
 import { formatoDaQuestao, tipoDaQuestaoDoFormato } from "./formatoDaQuestao";
@@ -88,11 +89,16 @@ export async function fetchCards(topicId: number) {
 export async function fetchQuestions(atividadeId: number) {
   const { data, error } = await supabase
     .from("questoes")
-    .select("id, atividade_id, enunciado, tipo, alternativas, resposta_correta, nota_estabelecida, midia_url")
+    // `dificuldade` entra em `20261021_10`. Enquanto a migração não for aplicada, o
+    // `types.ts` gerado não a conhece e o construtor tipado recusa a coluna — mesmo cast que
+    // a fase 2 usou para `missoes`. Some quando os tipos forem regerados.
+    .select(
+      "id, atividade_id, enunciado, tipo, alternativas, resposta_correta, nota_estabelecida, midia_url, dificuldade" as never,
+    )
     .eq("atividade_id", atividadeId)
     .order("created_at", { ascending: true });
   if (error) throw error;
-  return (data as Questao[]) ?? [];
+  return (data as unknown as Questao[]) ?? [];
 }
 
 // ===== Mutations ======================================================
@@ -228,6 +234,7 @@ export async function saveQuestion(params: {
   resposta_correta?: string | null;
   nota_estabelecida?: number | null;
   midia_url?: string | null;
+  dificuldade?: string | null;
 }) {
   if (params.id) {
     const { error } = await supabase
@@ -239,6 +246,9 @@ export async function saveQuestion(params: {
         resposta_correta: params.resposta_correta ?? null,
         nota_estabelecida: normalizeOptionalPositiveScore(params.nota_estabelecida),
         midia_url: params.midia_url ?? null,
+        // `nivelParaOBanco` porque o formulário manda "" para "não marcada", e `''` viola
+        // `questoes_dificuldade_check` (NULL ou um dos três níveis).
+        dificuldade: nivelParaOBanco(params.dificuldade),
       })
       .eq("id", params.id);
     if (error) throw error;
@@ -254,6 +264,7 @@ export async function saveQuestion(params: {
       resposta_correta: params.resposta_correta ?? null,
       nota_estabelecida: normalizeOptionalPositiveScore(params.nota_estabelecida),
       midia_url: params.midia_url ?? null,
+      dificuldade: nivelParaOBanco(params.dificuldade),
     })
     .select("id")
     .single();

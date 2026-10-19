@@ -137,7 +137,7 @@ checagem é no banco, no mesmo lugar que recalcula o valor.
 | --- | --- | --- |
 | Eventos | `eventos_classe` + `_missoes` + `_resultado` + `_resultado_guilda`, `fn_evento_classe_apurar`, 4 RPCs | nada estrutural |
 | Competição em grupo | `eventos_classe.modalidade_guilda` + `guilda_evento_snapshot` | nada |
-| Batalhas | `guilda_desafios` + `_questoes` + `_respostas` + `desafio_participantes`, 7 RPCs `arena_*` | eixo de consequência |
+| Batalhas | `guilda_desafios` + `_questoes` + `_respostas` + `desafio_participantes`, 7 RPCs `arena_*` | eixo de consequência **e o fim do jogo** — ver fase 8 |
 | Solo / dupla / guilda | `guilda_desafios.formato` | `turma` |
 | Rápido / difícil | `guilda_desafios.modo` | `dificuldade` |
 | Ranks | `ranks`, `rank_tipo`, `vw_rank_posicoes_por_classe` | linha de `rank_tipo` para ranqueada |
@@ -461,6 +461,41 @@ Cada fase é mesclável sozinha e não quebra a anterior.
    > No cliente: painel **Missões do dia** e eixos nas batalhas no console,
    > critério **Missões** nos rankings; seletor dos três eixos ao criar desafio
    > no chat da guilda e cartão **Missões do dia** no Social, no mobile.
+
+8. **O desafio fecha e paga.** `20261021_09`.
+
+   > **Esta fase não existia neste plano, e a falta dela deixava as fases 1 e 4 sem
+   > efeito nenhum.** O mapa acima dizia "Batalhas: nada estrutural"; a medição no banco
+   > mostra que o fluxo vivo é
+   > `guilda_desafio_criar` → mensagem no chat → **nada**. Três juntas abertas:
+   >
+   > - **`guilda_desafio_criar` não registrava ninguém em `desafio_participantes`.** Como
+   >   `fn_arena_placar` lê essa tabela, o placar de todo desafio do caminho vivo era vazio —
+   >   e `arena_professor_resumo` (fase 7) mostrava `aceitaram: 0` e `equipes: []` para todos.
+   > - **`guilda_desafio_responder` não é chamada por cliente nenhum** e não gravava `tempo_ms`
+   >   nem tentativa. Sem `tempo_ms`, `modo = 'velocidade'` não desempata: `t1*n2 <> t2*n1`
+   >   com tudo em zero é falso, e o desafio sai `empate`.
+   > - **`arena_encerrar` é a única função que fecha e paga** (varrido com
+   >   `pg_get_functiondef` sobre as 12 funções que mencionam `guilda_desafio`), e dos sete
+   >   `arena_*` os clientes chamam só `arena_professor_resumo`.
+   >
+   > A fase registra os participantes na criação, cobra `desafio_tentativas_*` de verdade
+   > (coluna `tentativas` nova, porque a chave única é `(desafio, questao, aluno)` e o
+   > `ON CONFLICT` sobrescrevia a resposta), e torna o fechamento alcançável: o miolo sai
+   > para `fn_desafio_encerrar` **sem** checagem de `auth.uid()` — medido: durante o cron
+   > `auth.uid()` é `NULL`, então a checagem de participante abortaria toda varredura.
+   > `arena_encerrar` mantém a checagem e delega.
+   >
+   > Dois gatilhos de fechamento, e os dois são necessários: a última resposta fecha, e
+   > `fn_desafio_varrer_abandonados` (cron, `*/5`) fecha o que passou de
+   > `desafio_encerra_apos_min`. Só o automático não basta — ele exige que **todos** tenham
+   > respondido, então um participante que desiste deixaria os outros sem pagamento para
+   > sempre.
+   >
+   > **O limite de TEMPO continua do cliente, de propósito:** para o banco julgar
+   > `desafio_tempo_seg_*` ele precisaria saber quando a questão foi ABERTA, e esse registro
+   > não existe. Uma guarda a partir de `created_at` do desafio puniria quem abre e responde
+   > depois, que é o uso normal.
 
 ## Decisões que são fáceis de errar
 

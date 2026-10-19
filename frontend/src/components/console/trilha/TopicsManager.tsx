@@ -54,6 +54,7 @@ import {
   summarizePersonalizacaoJobs,
   type PersonalizacaoJobStatus,
 } from "./personalizacaoJobsApi";
+import { SEM_NIVEL } from "./dificuldadeDaQuestao";
 import { parseOptionalPositiveScore } from "@/lib/question-score";
 import { deleteActivityCascade } from "@/components/console/trilha/classDeletion";
 
@@ -119,6 +120,7 @@ export default function TopicsManager() {
     resposta_correta: "",
     nota_estabelecida: "",
     midia_url: "",
+    dificuldade: SEM_NIVEL,
   });
   const [questionOptions, setQuestionOptions] = useState<string[]>([""]);
   const [selectedActivityId, setSelectedActivityId] = useState<string>("");
@@ -674,6 +676,7 @@ export default function TopicsManager() {
         resposta_correta: "",
         nota_estabelecida: "",
         midia_url: "",
+        dificuldade: SEM_NIVEL,
       });
       setQuestionOptions([""]);
     }
