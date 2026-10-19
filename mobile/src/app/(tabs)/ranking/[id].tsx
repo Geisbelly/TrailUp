@@ -16,7 +16,7 @@ import type { RankPosicao } from "@/models/RankPosicao";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { aplicarCorteDoRank, descreverCorte } from "@/utils/rankCorte";
-import { formatRankScore } from "@/utils/rankingPodium";
+import { formatRankScore, rotuloDoCriterio } from "@/utils/rankingPodium";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
@@ -164,12 +164,7 @@ export function RankDetalhe({ rankId, embutido = false }: { rankId: number; embu
     };
   }, [classeId]);
 
-  const scoreLabel =
-    rank?.info.criterio === "tempo"
-      ? "Tempo"
-      : rank?.info.criterio === "percentual"
-        ? "Progresso"
-        : "Pontos";
+  const scoreLabel = rotuloDoCriterio(rank?.info.criterio);
   return (
     <View style={[s.screen, { backgroundColor: palette.background }]}>
       {!embutido ? <Stack.Screen options={{ headerShown: false }} /> : null}

@@ -59,7 +59,12 @@ def concedido(
 def test_a_cabeca_nova_continua_a_cadeia() -> None:
     scripts = ScriptDirectory.from_config(_config())
     heads = scripts.get_heads()
-    assert heads == ["20261020_06"]
+    # O que importa aqui e' head UNICA e a cadeia de economia intacta -- nao que ela seja a
+    # ponta. Fixar `heads == ["20261020_06"]` quebrava para quem encadeasse depois, e foi o
+    # que aconteceu quando `20261021_01` (fase 1 dos modos) entrou em cima.
+    assert len(heads) == 1, f"a cadeia tem de ter head unica: {heads}"
+    na_cadeia = {r.revision for r in scripts.iterate_revisions(heads[0], "base")}
+    assert "20261020_06" in na_cadeia, "a cadeia de economia saiu do caminho da head"
     quantidade = scripts.get_revision("20261020_06")
     assert quantidade is not None and quantidade.down_revision == "20261020_05"
     aprovacao = scripts.get_revision("20261020_05")

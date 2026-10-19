@@ -14,7 +14,7 @@ vi.mock("@/integrations/supabase/client", () => ({
       const record = { table, ops: [] as Array<[string, unknown[]]> };
       sb.calls.push(record);
       const builder: Record<string, unknown> = {};
-      for (const op of ["select", "order", "limit", "eq", "in"]) {
+      for (const op of ["select", "order", "limit", "eq", "neq", "in"]) {
         builder[op] = (...args: unknown[]) => {
           record.ops.push([op, args]);
           return builder;
@@ -53,6 +53,12 @@ describe("listPersonalizacaoJobs", () => {
     expect(opsOf()).toContainEqual(["eq", ["classe_id", 54]]);
     expect(opsOf()).toContainEqual(["order", ["created_at", { ascending: false }]]);
     expect(opsOf()).toContainEqual(["limit", [6]]);
+  });
+
+  it("deixa de fora o job do texto da missao diaria, que nao e material", async () => {
+    await listPersonalizacaoJobs({ classeId: 54, limit: 6 });
+
+    expect(opsOf()).toContainEqual(["neq", ["kind", "missao_diaria"]]);
   });
 
   it("nao aplica filtro de status quando a lista vem vazia", async () => {

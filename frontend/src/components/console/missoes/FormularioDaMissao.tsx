@@ -5,10 +5,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { OBJETIVO_MAX, TITULO_MAX, validarMissao, type ErrosDaMissao, type FormularioDeMissao, type PayloadDaMissao } from "./missao";
+import { METRICAS, definicaoDaMetrica } from "./criterio";
+import { OBJETIVO_MAX, TITULO_MAX, validarMissao, type ErrosDaMissao, type FormularioDeMissao, type PayloadDaAtividade, type PayloadDaMissao } from "./missao";
 
 const rotulo = "text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground";
 const campo = "mt-2 rounded-[14px] bg-background";
+
+/** Os dois caminhos de `missoes`: ver o cabeçalho de `missao.ts`. */
+const CAMINHOS = [
+  { chave: "entrega" as const, titulo: "Entrega", ajuda: "O aluno entrega e você corrige." },
+  { chave: "meta" as const, titulo: "Meta", ajuda: "O app fecha sozinho quando o aluno atinge." },
+];
 
 /** "Nova missão" / "Editar missão". Quem monta usa `key` para remontar a cada abertura (o estado inicia de `inicial`). */
 export function FormularioDaMissao({
@@ -25,7 +32,7 @@ export function FormularioDaMissao({
   topicos: { id: number; nome: string | null }[];
   salvando: boolean;
   erroDoServidor: string | null;
-  onSalvar: (payload: PayloadDaMissao) => void;
+  onSalvar: (missao: PayloadDaMissao, atividade: PayloadDaAtividade | null) => void;
   onCancelar: () => void;
 }) {
   const [form, setForm] = useState(inicial);
@@ -35,7 +42,7 @@ export function FormularioDaMissao({
   const salvar = () => {
     const r = validarMissao(form);
     setErros(r.erros ?? {});
-    if (r.ok) onSalvar(r.payload!);
+    if (r.ok) onSalvar(r.missao!, r.atividade);
   };
 
   return (
@@ -59,37 +66,103 @@ export function FormularioDaMissao({
             {erros.objetivo && <p className="mt-1 text-xs text-destructive">{erros.objetivo}</p>}
           </div>
 
-          <div>
-            <span className={rotulo}>Tópico *</span>
-            <Select value={form.topicoId} onValueChange={(v) => alterar({ topicoId: v })} disabled={editando}>
-              <SelectTrigger className={campo} aria-label="Tópico"><SelectValue placeholder="Escolha o tópico" /></SelectTrigger>
-              <SelectContent>
-                {topicos.map((t) => <SelectItem key={t.id} value={String(t.id)}>{t.nome || `Tópico ${t.id}`}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            {editando && <p className="mt-1 text-[11.5px] text-muted-foreground">O tópico não muda depois de criada. Para mover, duplique a missão.</p>}
-            {erros.topicoId && <p className="mt-1 text-xs text-destructive">{erros.topicoId}</p>}
+          <div role="radiogroup" aria-label="Como a missão é concluída">
+            <span className={rotulo}>Como ela é concluída *</span>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {CAMINHOS.map(({ chave, titulo, ajuda }) => {
+                const ativo = form.caminho === chave;
+                return (
+                  <button
+                    key={chave}
+                    type="button"
+                    role="radio"
+                    aria-checked={ativo}
+                    disabled={editando}
+                    onClick={() => alterar({ caminho: chave })}
+                    className={`flex-1 min-w-[180px] rounded-[14px] border px-4 py-3 text-left ${
+                      ativo ? "border-primary bg-primary/15" : "border-border hover:border-primary/50"
+                    } ${editando ? "opacity-60" : ""}`}
+                  >
+                    <span className="block text-[13px] font-bold">{titulo}</span>
+                    <span className="mt-0.5 block text-[11.5px] text-muted-foreground">{ajuda}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {editando && (
+              <p className="mt-1 text-[11.5px] text-muted-foreground">
+                Isso não muda depois de criada — a de entrega tem uma atividade atrás dela. Para trocar, crie outra.
+              </p>
+            )}
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <Label htmlFor="mis-prazo" className={rotulo}>Prazo (opcional)</Label>
-              <Input id="mis-prazo" type="datetime-local" className={campo} value={form.prazo} onChange={(e) => alterar({ prazo: e.target.value })} aria-invalid={!!erros.prazo} />
-              {erros.prazo && <p className="mt-1 text-xs text-destructive">{erros.prazo}</p>}
-            </div>
-            <div>
-              <Label htmlFor="mis-pontos" className={rotulo}>Pontuação máxima *</Label>
-              <Input id="mis-pontos" inputMode="numeric" className={campo} value={form.pontos} onChange={(e) => alterar({ pontos: e.target.value })} aria-invalid={!!erros.pontos} />
-              {erros.pontos && <p className="mt-1 text-xs text-destructive">{erros.pontos}</p>}
-            </div>
-          </div>
+          {form.caminho === "entrega" ? (
+            <>
+              <div>
+                <span className={rotulo}>Tópico *</span>
+                <Select value={form.topicoId} onValueChange={(v) => alterar({ topicoId: v })} disabled={editando}>
+                  <SelectTrigger className={campo} aria-label="Tópico"><SelectValue placeholder="Escolha o tópico" /></SelectTrigger>
+                  <SelectContent>
+                    {topicos.map((t) => <SelectItem key={t.id} value={String(t.id)}>{t.nome || `Tópico ${t.id}`}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                {editando && <p className="mt-1 text-[11.5px] text-muted-foreground">O tópico não muda depois de criada. Para mover, duplique a missão.</p>}
+                {erros.topicoId && <p className="mt-1 text-xs text-destructive">{erros.topicoId}</p>}
+              </div>
 
-          <div className="max-w-[240px]">
-            <Label htmlFor="mis-moedas" className={rotulo}>Moedas ao ser aprovada (opcional)</Label>
-            <Input id="mis-moedas" inputMode="numeric" className={campo} value={form.moedas} onChange={(e) => alterar({ moedas: e.target.value })} aria-invalid={!!erros.moedas} />
-            <p className="mt-1 text-[11.5px] text-muted-foreground">O aluno recebe as moedas só depois que você aprovar a entrega (nota de pelo menos 60%).</p>
-            {erros.moedas && <p className="mt-1 text-xs text-destructive">{erros.moedas}</p>}
-          </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <Label htmlFor="mis-prazo" className={rotulo}>Prazo (opcional)</Label>
+                  <Input id="mis-prazo" type="datetime-local" className={campo} value={form.prazo} onChange={(e) => alterar({ prazo: e.target.value })} aria-invalid={!!erros.prazo} />
+                  {erros.prazo && <p className="mt-1 text-xs text-destructive">{erros.prazo}</p>}
+                </div>
+                <div>
+                  <Label htmlFor="mis-pontos" className={rotulo}>Nota máxima *</Label>
+                  <Input id="mis-pontos" inputMode="numeric" className={campo} value={form.pontos} onChange={(e) => alterar({ pontos: e.target.value })} aria-invalid={!!erros.pontos} />
+                  <p className="mt-1 text-[11.5px] text-muted-foreground">É a nota da entrega, não os pontos do ranking.</p>
+                  {erros.pontos && <p className="mt-1 text-xs text-destructive">{erros.pontos}</p>}
+                </div>
+              </div>
+
+              <div className="max-w-[240px]">
+                <Label htmlFor="mis-moedas" className={rotulo}>Moedas ao ser aprovada (opcional)</Label>
+                <Input id="mis-moedas" inputMode="numeric" className={campo} value={form.moedas} onChange={(e) => alterar({ moedas: e.target.value })} aria-invalid={!!erros.moedas} />
+                <p className="mt-1 text-[11.5px] text-muted-foreground">O aluno recebe as moedas só depois que você aprovar a entrega (nota de pelo menos 60%).</p>
+                {erros.moedas && <p className="mt-1 text-xs text-destructive">{erros.moedas}</p>}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <span className={rotulo}>O que ela mede *</span>
+                  <Select value={form.metrica} onValueChange={(v) => alterar({ metrica: v })}>
+                    <SelectTrigger className={campo} aria-label="O que ela mede"><SelectValue placeholder="Escolha a medida" /></SelectTrigger>
+                    <SelectContent>
+                      {METRICAS.map((m) => <SelectItem key={m.chave} value={m.chave}>{m.rotulo}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  {definicaoDaMetrica(form.metrica) && (
+                    <p className="mt-1 text-[11.5px] text-muted-foreground">{definicaoDaMetrica(form.metrica)!.ajuda}</p>
+                  )}
+                  {erros.metrica && <p className="mt-1 text-xs text-destructive">{erros.metrica}</p>}
+                </div>
+                <div>
+                  <Label htmlFor="mis-alvo" className={rotulo}>
+                    Alvo *{definicaoDaMetrica(form.metrica) ? ` (${definicaoDaMetrica(form.metrica)!.unidade})` : ""}
+                  </Label>
+                  <Input id="mis-alvo" inputMode="numeric" className={campo} value={form.alvo} onChange={(e) => alterar({ alvo: e.target.value })} aria-invalid={!!erros.alvo} />
+                  {erros.alvo && <p className="mt-1 text-xs text-destructive">{erros.alvo}</p>}
+                </div>
+              </div>
+
+              <div className="max-w-[240px]">
+                <Label htmlFor="mis-prazo-meta" className={rotulo}>Prazo (opcional)</Label>
+                <Input id="mis-prazo-meta" type="datetime-local" className={campo} value={form.prazo} onChange={(e) => alterar({ prazo: e.target.value })} aria-invalid={!!erros.prazo} />
+                {erros.prazo && <p className="mt-1 text-xs text-destructive">{erros.prazo}</p>}
+              </div>
+            </>
+          )}
         </div>
 
         {erroDoServidor && <p role="alert" className="text-sm text-destructive">{erroDoServidor}</p>}

@@ -18,20 +18,39 @@ import { CabecalhoDePagina, EstadoVazioDaPagina, ErroDaPagina } from "../comum/P
 import { useTurmasDoProfessor } from "../comum/useTurmasDoProfessor";
 import { CartaoDaMissao } from "./CartaoDaMissao";
 import { FormularioDaMissao } from "./FormularioDaMissao";
-import { FORMULARIO_DE_MISSAO_VAZIO, prazoParaCampo, type FormularioDeMissao, type PayloadDaMissao } from "./missao";
+import { FORMULARIO_DE_MISSAO_VAZIO, prazoParaCampo, type FormularioDeMissao, type PayloadDaAtividade, type PayloadDaMissao } from "./missao";
+import { CHAVE_DO_ALVO, definicaoDaMetrica } from "./criterio";
 import { duplicarMissao, excluirMissao, listarMissoes, salvarMissao, type Missao } from "./missoesApi";
 
 type FormAberto = { inicial: FormularioDeMissao; editando: Missao | null; chave: number };
 type Acao = { tipo: "duplicar" | "excluir"; missao: Missao };
 
 const formularioDe = (m: Missao): FormularioDeMissao => ({
+  caminho: m.caminho,
   titulo: m.titulo,
   objetivo: m.objetivo,
-  topicoId: String(m.topicoId),
+  topicoId: m.topicoId == null ? "" : String(m.topicoId),
   prazo: prazoParaCampo(m.prazo),
-  pontos: String(m.pontos),
+  pontos: m.pontos > 0 ? String(m.pontos) : "",
   moedas: m.moedas > 0 ? String(m.moedas) : "",
+  // O critério já está em `missoes`; o formulário o reabre pela métrica e pelo alvo.
+  metrica: metricaDoCriterio(m.criterio),
+  alvo: alvoDoCriterio(m.criterio),
 });
+
+function metricaDoCriterio(criterio: unknown): string {
+  const c = criterio && typeof criterio === "object" ? (criterio as Record<string, unknown>) : null;
+  const metrica = String(c?.metrica ?? "");
+  return definicaoDaMetrica(metrica) ? metrica : "";
+}
+
+function alvoDoCriterio(criterio: unknown): string {
+  const c = criterio && typeof criterio === "object" ? (criterio as Record<string, unknown>) : null;
+  const def = definicaoDaMetrica(String(c?.metrica ?? ""));
+  if (!def || !c) return "";
+  const v = c[CHAVE_DO_ALVO[def.chave]];
+  return v == null ? "" : String(v);
+}
 
 const mensagem = (e: unknown, padrao: string) => (e as { message?: string })?.message?.trim() || padrao;
 
@@ -69,14 +88,20 @@ export default function MissoesSection({ professorId }: { professorId?: string }
     setForm({ inicial: FORMULARIO_DE_MISSAO_VAZIO, editando: null, chave: Date.now() });
   };
 
-  const salvar = async (payload: PayloadDaMissao) => {
+  const salvar = async (missao: PayloadDaMissao, atividade: PayloadDaAtividade | null) => {
     if (!turmaId) return;
     setSalvando(true);
     setErroDoServidor(null);
     try {
-      await salvarMissao(payload, form?.editando?.id);
+      await salvarMissao(turmaId, missao, atividade, form?.editando?.id, form?.editando?.atividadeId);
       setForm(null);
-      toast.success(form?.editando ? "Missão atualizada." : "Missão criada. Monte os itens no editor do tópico.");
+      toast.success(
+        form?.editando
+          ? "Missão atualizada."
+          : atividade
+            ? "Missão criada. Monte os itens no editor do tópico."
+            : "Missão criada. O app fecha sozinho quando o aluno atingir o alvo.",
+      );
       await carregar(turmaId);
     } catch (e) {
       setErroDoServidor(mensagem(e, "Não foi possível salvar a missão."));
@@ -89,8 +114,8 @@ export default function MissoesSection({ professorId }: { professorId?: string }
     if (!acao || !turmaId) return;
     setExecutando(true);
     try {
-      if (acao.tipo === "duplicar") await duplicarMissao(acao.missao.id);
-      else await excluirMissao(acao.missao.id);
+      if (acao.tipo === "duplicar") await duplicarMissao(acao.missao);
+      else await excluirMissao(acao.missao.id, acao.missao.atividadeId);
       toast.success(acao.tipo === "duplicar" ? "Missão duplicada." : "Missão excluída.");
       setAcao(null);
       await carregar(turmaId);
@@ -106,7 +131,7 @@ export default function MissoesSection({ professorId }: { professorId?: string }
     <div>
       <CabecalhoDePagina
         titulo="Missões"
-        subtitulo="Objetivos avaliativos com prazo e pontuação."
+        subtitulo="Entregas que você corrige, ou metas que o app fecha sozinho."
         acao={
           estado === "ok" && turmaId ? (
             <Button className="rounded-full font-bold" onClick={abrirNova} disabled={topicos.length === 0}>
@@ -160,7 +185,7 @@ export default function MissoesSection({ professorId }: { professorId?: string }
       )}
 
       {form && (
-        <FormularioDaMissao key={form.chave} inicial={form.inicial} editando={form.editando !== null} topicos={topicos} salvando={salvando} erroDoServidor={erroDoServidor} onSalvar={(p) => void salvar(p)} onCancelar={() => setForm(null)} />
+        <FormularioDaMissao key={form.chave} inicial={form.inicial} editando={form.editando !== null} topicos={topicos} salvando={salvando} erroDoServidor={erroDoServidor} onSalvar={(m, a) => void salvar(m, a)} onCancelar={() => setForm(null)} />
       )}
 
       <AlertDialog open={acao !== null} onOpenChange={(v) => !v && !executando && setAcao(null)}>

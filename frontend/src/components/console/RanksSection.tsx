@@ -42,7 +42,13 @@ interface Classe {
   descricao: string | null;
 }
 
-const ICONE_CRITERIO: Record<CriterioChave, LucideIcon> = { pontuacao: Sparkles, tempo: Clock, acertos: Check, percentual: Percent };
+const ICONE_CRITERIO: Record<CriterioChave, LucideIcon> = {
+  pontuacao: Sparkles,
+  tempo: Clock,
+  acertos: Check,
+  percentual: Percent,
+  ranqueada: Trophy,
+};
 
 const rotuloCampo = "text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground";
 const campo = "mt-2 rounded-[14px] bg-background";
