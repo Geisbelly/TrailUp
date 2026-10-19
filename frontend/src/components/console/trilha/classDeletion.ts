@@ -207,6 +207,7 @@ export async function deleteClassTrail(classeId: number) {
   await tryDeleteIn("conteudo_aluno", "conteudo_id", conteudoIds);
   await tryDeleteIn("atividade_aluno", "atividade_id", atividadeIds);
   await tryDeleteIn("questao_aluno", "questao_id", questionIds);
+  await tryDeleteIn("questao_aluno", "atividade_id", atividadeIds);
   await tryDeleteIn("materiais_gerados", "conteudo_id", conteudoIds);
   await tryDeleteIn("conteudo_personalizado", "conteudo_id", conteudoIds);
   await tryDeleteIn("conteudo_personalizado", "topico_id", topicIds);
@@ -220,6 +221,11 @@ export async function deleteClassTrail(classeId: number) {
   // mochila para o DELETE final em `topicos`/`conteudos` estourar 409.
   await tryDeleteIn("bag_itens", "topico_id", topicIds);
   await tryDeleteIn("bag_itens", "conteudo_id", conteudoIds);
+
+  // Mesmo ponteiro, mesmo bloqueio: apagar o topico apaga as atividades dele,
+  // e `classe_aluno."ultimaAtividade"` barra o DELETE igual. So nao apareceu
+  // ainda porque a base de alunos esta vazia.
+  await limparUltimaAtividade(atividadeIds);
 
   if (atividadeIds.length > 0) {
     const { error: e1 } = await supabase.from("questoes").delete().in("atividade_id", atividadeIds);
@@ -301,6 +307,87 @@ export async function deleteContentCascade(conteudoId: number) {
  * deleteClassTrail, so que para 1 topico em vez do lote da classe inteira. Antes
  * tentava DELETE direto em `topicos` e batia em 409 de FK sempre que o topico
  * tinha qualquer conteudo/atividade cadastrado. */
+/**
+ * `classe_aluno."ultimaAtividade"` aponta para a atividade e NAO e limpo
+ * sozinho quando ela sai.
+ *
+ * A coluna tem DOIS foreign keys para `atividades(id)`: o novo
+ * (`classe_aluno_ultimaatividade_fkey`) com `ON DELETE SET NULL`, e um antigo
+ * (`classe_aluno_ultimaAtividade_fkey`) sem `ON DELETE` nenhum. O Postgres
+ * aplica os dois, e o restritivo ganha -- o SET NULL nunca chega a rodar, e o
+ * DELETE da atividade volta 23503. Ver a migracao `20261014_01`, que derruba a
+ * sombra.
+ *
+ * Enquanto a sombra existir em producao, limpar o ponteiro aqui e o que faz a
+ * exclusao funcionar. Depois que ela cair, esta funcao vira redundante e
+ * inofensiva -- o UPDATE simplesmente nao acha linha. Por isso ela nao bloqueia
+ * em erro: o professor pode UPDATE em `classe_aluno` das classes dele
+ * (`classe_aluno_posse_upd`), e se a RLS mudar, o DELETE abaixo e quem reclama,
+ * com a mensagem certa.
+ */
+async function limparUltimaAtividade(atividadeIds: number[]) {
+  if (atividadeIds.length === 0) return;
+
+  try {
+    // Cliente tipado, nao o shim `dynamicSupabase`: `classe_aluno` esta nos
+    // tipos gerados, e o shim so declara `delete`.
+    const { error } = await supabase
+      .from("classe_aluno")
+      .update({ ultimaAtividade: null })
+      .in("ultimaAtividade", atividadeIds);
+    if (error) {
+      console.warn("[ClassDeletion] Falha opcional ao limpar classe_aluno.ultimaAtividade:", error);
+    }
+  } catch (error) {
+    console.warn("[ClassDeletion] Falha opcional ao limpar classe_aluno.ultimaAtividade:", error);
+  }
+}
+
+/**
+ * Remove UMA atividade e tudo que depende dela.
+ *
+ * `deleteActivity` (topicsApi) e um DELETE direto em `atividades`, e por isso
+ * nunca funcionou para nenhuma atividade que o professor veja na tela: toda
+ * atividade listada esta vinculada a um conteudo, e `atividade_conteudos` e
+ * `questao_aluno` referenciam `atividades` com NO ACTION. O DELETE voltava
+ * 23503 antes de tocar em qualquer coisa.
+ *
+ * Mesma ordem de `deleteTopicCascade`, so que para 1 atividade: primeiro o que
+ * aponta para as questoes, depois as questoes, depois o que aponta para a
+ * atividade, e so entao ela.
+ */
+export async function deleteActivityCascade(atividadeId: number) {
+  const { data: questionRows, error: questionErr } = await supabase
+    .from("questoes")
+    .select("id")
+    .eq("atividade_id", atividadeId);
+  if (questionErr) throw questionErr;
+  const questionIds = (questionRows ?? []).map((row: IdRow) => row.id);
+
+  await limparUltimaAtividade([atividadeId]);
+  await tryDeleteEq("atividade_aluno", "atividade_id", atividadeId);
+  await tryDeleteIn("questao_aluno", "questao_id", questionIds);
+  // `questao_aluno` referencia atividade E questao. A linha cuja questao ja
+  // saiu some pelo cascade de `questao_id`, mas a que tiver so `atividade_id`
+  // ficaria -- e e ela que bloqueia o DELETE no fim.
+  await tryDeleteEq("questao_aluno", "atividade_id", atividadeId);
+
+  const { error: questoesErr } = await supabase
+    .from("questoes")
+    .delete()
+    .eq("atividade_id", atividadeId);
+  if (questoesErr) throw questoesErr;
+
+  const { error: vinculosErr } = await supabase
+    .from("atividade_conteudos")
+    .delete()
+    .eq("atividade_id", atividadeId);
+  if (vinculosErr) throw vinculosErr;
+
+  const { error } = await supabase.from("atividades").delete().eq("id", atividadeId);
+  if (error) throw error;
+}
+
 export async function deleteTopicCascade(topicoId: number) {
   const { conteudoIds, atividadeIds, questionIds } = await fetchTopicDependencyIds(topicoId);
 
@@ -317,8 +404,13 @@ export async function deleteTopicCascade(topicoId: number) {
   await tryDeleteIn("cards_personalizados", "conteudo_id", conteudoIds);
   await tryDeleteIn("atividade_aluno", "atividade_id", atividadeIds);
   await tryDeleteIn("questao_aluno", "questao_id", questionIds);
+  await tryDeleteIn("questao_aluno", "atividade_id", atividadeIds);
   await tryDeleteEq("bag_itens", "topico_id", topicoId);
   await tryDeleteIn("bag_itens", "conteudo_id", conteudoIds);
+  // Mesmo ponteiro, mesmo bloqueio que em `deleteActivityCascade`: apagar o
+  // topico apaga as atividades dele, e `classe_aluno."ultimaAtividade"` barra
+  // o DELETE igual.
+  await limparUltimaAtividade(atividadeIds);
 
   if (atividadeIds.length > 0) {
     const { error: e1 } = await supabase.from("questoes").delete().in("atividade_id", atividadeIds);
