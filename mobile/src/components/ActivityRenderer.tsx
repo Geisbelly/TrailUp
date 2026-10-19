@@ -5,6 +5,7 @@ import { useUsuario } from '@/context/SessaoContext'
 import { questionActivityScope } from '@/utils/questionAnswerVisibility'
 import { activityRendererKey, normalizeActivityType } from '@/utils/activityType'
 
+import { UsarItemNaAtividade } from '@/components/loja/UsarItemNaAtividade'
 import QuestionActivity from './QuestionActivity'
 import TextoActivity from './TextoActivity'
 import VideoActivity from './VideoActivity'
@@ -29,6 +30,7 @@ type Props = {
   onQuestionIndexChange?: (questionIndex: number) => void;
   timedOut?: boolean;
   reviewMode?: boolean;
+  classeId?: number | null;
 };
 
 export { normalizeActivityType } from '@/utils/activityType';
@@ -37,7 +39,7 @@ export function ActivityRenderer(props: Props) {
   const { usuario } = useUsuario();
   if (!props.atividade) return null;
   const scope = questionActivityScope(props.atividade, usuario?.id, usuario?.perfilAtivo, props.topicoId);
-  return <ActivityRendererContent key={scope} {...props} />;
+  return <ActivityRendererContent key={scope} {...props} alunoId={usuario?.id ?? null} />;
 }
 
 function ActivityRendererContent({
@@ -48,9 +50,27 @@ function ActivityRendererContent({
   onQuestionIndexChange,
   timedOut = false,
   reviewMode = false,
-}: Props) {
+  classeId = null,
+  alunoId = null,
+}: Props & { alunoId?: string | null }) {
   const [localReviewMode, setLocalReviewMode] = React.useState(reviewMode);
+  const [retryLiberada, setRetryLiberada] = React.useState(false);
+  const [novaTentativa, setNovaTentativa] = React.useState(0);
   const userChoseReviewRef = React.useRef(false);
+  const painelDeItens = alunoId && classeId && atividade?.id ? (
+    <UsarItemNaAtividade
+      alunoId={alunoId}
+      classeId={classeId}
+      atividadeId={Number(atividade.id)}
+      dataEntrega={atividade.data_entrega ?? null}
+      onSegundaChance={() => {
+        setRetryLiberada(true);
+        setLocalReviewMode(false);
+        userChoseReviewRef.current = false;
+        setNovaTentativa((n) => n + 1);
+      }}
+    />
+  ) : null;
 
   React.useEffect(() => {
     if (!userChoseReviewRef.current) {
@@ -74,11 +94,13 @@ function ActivityRendererContent({
   const chave = activityRendererKey(tipo, hasQuestoes);
   const Component = chave ? componentes[chave] : undefined;
 
-  if (atividadeConcluida && !localReviewMode) {
+  if (atividadeConcluida && !localReviewMode && !retryLiberada) {
     const acertosPct = Number(atividade?.acertos_percentual ?? 0);
     const temAcertos = Number.isFinite(acertosPct) && acertosPct > 0;
 
     return (
+      <View>
+        {painelDeItens}
       <View style={summaryStyles.container}>
         <View style={summaryStyles.iconRow}>
           <Text style={summaryStyles.checkmark}>✓</Text>
@@ -108,6 +130,7 @@ function ActivityRendererContent({
           </Pressable>
         </View>
       </View>
+      </View>
     );
   }
 
@@ -120,15 +143,21 @@ function ActivityRendererContent({
   }
 
   return (
-    <Component
-      atividade={atividade}
-      onComplete={onComplete}
-      topicoId={topicoId}
-      initialQuestionIndex={initialQuestionIndex}
-      onQuestionIndexChange={onQuestionIndexChange}
-      timedOut={timedOut}
-      reviewMode={localReviewMode}
-    />
+    <View>
+      {painelDeItens}
+      <Component
+        atividade={atividade}
+        onComplete={onComplete}
+        topicoId={topicoId}
+        initialQuestionIndex={initialQuestionIndex}
+        onQuestionIndexChange={onQuestionIndexChange}
+        timedOut={timedOut}
+        reviewMode={localReviewMode}
+        novaTentativa={novaTentativa}
+        alunoId={alunoId}
+        classeId={classeId}
+      />
+    </View>
   );
 }
 

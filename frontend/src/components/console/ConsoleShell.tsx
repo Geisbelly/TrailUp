@@ -1,6 +1,6 @@
 import { useEffect, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Award, CalendarDays, ClipboardCheck, Flag, GraduationCap, LayoutDashboard, LogOut, Route, Settings, ShieldCheck, Sparkles, Trophy } from "lucide-react";
+import { Award, CalendarDays, ClipboardCheck, Coins, Flag, GraduationCap, LayoutDashboard, LogOut, Route, Settings, ShieldCheck, Sparkles, Trophy } from "lucide-react";
 import { Swords } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DESIGN_ART } from "@/lib/design-art";
@@ -14,6 +14,7 @@ const navigation = {
   conquistas: { label: "Conquistas", icon: Award },
   notas: { label: "Notas", icon: ClipboardCheck },
   eventos: { label: "Eventos", icon: CalendarDays },
+  economia: { label: "Economia", icon: Coins },
   classes: { label: "Turmas", icon: GraduationCap },
   personalizacoes: { label: "Personalizações", icon: Sparkles },
   ranks: { label: "Rankings", icon: Trophy },

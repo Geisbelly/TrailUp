@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.admin import router as admin_router
+from app.api.economia_admin import router as economia_admin_router
 from app.api.health import router as health_router
 from app.api.v1.admin import router as admin_api_router
 from app.api.v1.emocoes import router as emocoes_router
@@ -22,5 +23,6 @@ v1_router.include_router(personalizacao_router)
 v1_router.include_router(telemetria_router)
 
 api_router.include_router(admin_router)
+api_router.include_router(economia_admin_router)
 api_router.include_router(health_router)
 api_router.include_router(v1_router)

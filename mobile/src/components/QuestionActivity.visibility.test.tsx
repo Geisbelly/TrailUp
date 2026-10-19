@@ -22,6 +22,8 @@ mockModule('@/utils/profileShellTheme', { getProfileShellPalette: () => ({}) });
 mockModule('@/hooks/useDesktopWeb', { useDesktopWeb: () => false });
 mockModule('@/models/QuestaoAluno', { QuestaoAluno: {} });
 mockModule('@/utils/essayValidation', { validateEssayAnswerWithAi: async () => ({}) });
+// A segunda chance comprada fala com o Supabase. Este teste só olha o HTML.
+mockModule('@/services/loja/lojaService', { gastarSegundaChance: async () => ({ ok: false }) });
 const { default: QuestionActivity } = require('./QuestionActivity');
 const question = { id: 2, enunciado: 'Qual alternativa?', alternativas: ['Alpha', 'Beta'], resposta_correta: 'Beta' };
 

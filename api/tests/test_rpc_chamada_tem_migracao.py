@@ -16,8 +16,9 @@ chamada pelo app sem migracao que a crie entra vermelha.
 
 ## O parser precisa ver TODAS as chamadas
 
-Tres servicos embrulham a chamada e passam o nome por variavel
-(`socialService.socialAction`, `guildService.action`, `notificacoesDb.chamar`).
+Quatro servicos embrulham a chamada e passam o nome por variavel
+(`socialService.socialAction`, `guildService.action`, `notificacoesDb.chamar`,
+`economiaApi.chamar`).
 Um parser que olhasse so `.rpc("nome")` perderia 27 RPCs e daria a impressao
 de cobertura. Por isso:
 
@@ -42,6 +43,7 @@ WRAPPERS = {
     "mobile/src/services/social/socialService.ts": "socialAction",
     "mobile/src/services/social/guildService.ts": "action",
     "mobile/src/services/notificacoesDb.ts": "chamar",
+    "frontend/src/components/console/economia/economiaApi.ts": "chamar",
 }
 
 # RPCs que o app chama e que NENHUMA migracao cria. Entrada aqui e divida

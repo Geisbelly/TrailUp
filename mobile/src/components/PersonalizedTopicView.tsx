@@ -1613,6 +1613,7 @@ export default function PersonalizedTopicView({
                   <ActivityRenderer
                     atividade={currentStep.activity}
                     topicoId={topico?.id}
+                    classeId={Number(topico?.classe_id ?? 0) || null}
                     onComplete={handleUnifiedActivityComplete}
                     initialQuestionIndex={currentQuestionIndex}
                     onQuestionIndexChange={(questionIndex) => {
@@ -1724,6 +1725,7 @@ export default function PersonalizedTopicView({
             elapsedStartAtMs={moduleSessionStartedAtRef.current}
             active={Boolean(currentTimerFeature)}
             onTimeoutAction={handleTimerTimeout}
+            atividadeId={currentStep.kind === "activity" ? currentStep.atividadeId : null}
           />
         </View>
       ) : null}
