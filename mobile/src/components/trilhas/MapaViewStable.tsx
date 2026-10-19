@@ -247,6 +247,17 @@ export function TrilhaMapaHeroStable({
     [nodes],
   );
   const [lockedNode, setLockedNode] = useState<MapNode | null>(null);
+  const abrirNo = (node: MapNode) => {
+    if (onSelecionarTopico) {
+      onSelecionarTopico(node.id);
+      return;
+    }
+    if (node.locked) {
+      setLockedNode(node);
+      return;
+    }
+    router.push(`/(tabs)/trilha/${encodeURIComponent(node.id)}`);
+  };
   const prerequisiteTitles = useMemo(() => {
     const titles = new Map(grafo.nodes.map((node) => [String(node.id), node.titulo]));
     const result = new Map<string, string[]>();
@@ -458,6 +469,8 @@ export function TrilhaMapaHeroStable({
                     stroke={stroke}
                     strokeWidth={node.current ? 3 : 2}
                     opacity={node.locked ? 0.7 : 1}
+                    // O território também abre o tópico, não só o cartão com o nome.
+                    onPress={() => abrirNo(node)}
                   />
                 );
               })}
@@ -525,19 +538,7 @@ export function TrilhaMapaHeroStable({
                   key={node.id}
                   ref={nodeIndex === 0 ? tourTargetRef : undefined}
                   collapsable={false}
-                  onPress={() => {
-                    if (onSelecionarTopico) {
-                      onSelecionarTopico(node.id);
-                      return;
-                    }
-                    if (node.locked) {
-                      setLockedNode(node);
-                      return;
-                    }
-                    router.push(
-                      `/(tabs)/trilha/${encodeURIComponent(node.id)}`,
-                    );
-                  }}
+                  onPress={() => abrirNo(node)}
                   style={[
                     styles.nodePlate,
                     {
