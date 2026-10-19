@@ -13,6 +13,7 @@ src/hooks/trilha/persistirIntervalo.test.ts
 src/utils/vidaDoBoss.test.ts
 src/hooks/trilha/topicScreenBlock.test.ts
 src/hooks/trilha/usePersonalizedFlow.test.ts
+src/hooks/trilha/studyIntervalPersistence.test.ts
 src/models/Topico.canonicalProgress.test.ts
 src/services/apiBaseUrl.core.test.ts
 src/services/authErrorMessage.test.ts
@@ -115,4 +116,3 @@ src/utils/minhaPosicaoRank.test.ts
 src/utils/gruposNotificacao.test.ts
 src/utils/activityType.test.ts
 src/utils/realtimeDeleteObservavel.test.ts
-src/hooks/trilha/studyIntervalPersistence.test.ts
