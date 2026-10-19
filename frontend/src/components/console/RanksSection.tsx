@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronRight, Clock, Pencil, Plus, Sparkles, Trash2, Trophy, X } from "lucide-react";
+import { Check, ChevronRight, Clock, Pencil, Percent, Plus, Sparkles, Trash2, Trophy, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { selectView } from "@/lib/supabaseViews";
@@ -14,7 +13,6 @@ import type { BrainHexProfileKey } from "@/features/signup/brainhex";
 import { COR_DO_PERFIL, NOME_DO_PERFIL } from "./dashboard/perfilCores";
 import { iniciais } from "./meusdados/conta";
 import {
-  CRITERIOS,
   POR_PAGINA,
   criterioValido,
   formatarPontos,
@@ -44,13 +42,12 @@ interface Classe {
   descricao: string | null;
 }
 
-const ICONE_CRITERIO: Record<CriterioChave, LucideIcon> = { pontuacao: Sparkles, tempo: Clock, acertos: Check };
+const ICONE_CRITERIO: Record<CriterioChave, LucideIcon> = { pontuacao: Sparkles, tempo: Clock, acertos: Check, percentual: Percent };
 
 const rotuloCampo = "text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground";
 const campo = "mt-2 rounded-[14px] bg-background";
 const card = "overflow-hidden rounded-[20px] border bg-card";
 const botaoRedondo = "flex h-7 w-7 flex-none items-center justify-center rounded-full bg-background text-muted-foreground hover:text-foreground";
-const FORM_TIPO_VAZIO = { nome: "", descricao: "", criterio: "pontuacao" as CriterioChave };
 const FORM_RANK_VAZIO = { tipo_id: "", classe_id: "", periodo: "" };
 
 /** Pastilhas do pódio: prata e bronze do protótipo; o 1º usa a cor primária do console. */
@@ -75,11 +72,8 @@ export default function RanksSection() {
   const [verTodas, setVerTodas] = useState(false);
 
   // Formulários inline (protótipo): `null` = fechado, objeto = aberto (editando se tiver id).
-  const [tipoForm, setTipoForm] = useState<{ id?: number } | null>(null);
-  const [tipoFormData, setTipoFormData] = useState(FORM_TIPO_VAZIO);
   const [rankForm, setRankForm] = useState<{ id?: number } | null>(null);
   const [rankFormData, setRankFormData] = useState(FORM_RANK_VAZIO);
-  const [excluirTipo, setExcluirTipo] = useState<number | null>(null);
   const [excluirRank, setExcluirRank] = useState<number | null>(null);
 
   const loadData = async () => {
@@ -171,48 +165,15 @@ export default function RanksSection() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedRank?.id]);
 
-  const abrirTipo = (tipo?: RankTipo) => {
-    setTipoFormData(
-      tipo ? { nome: tipo.nome, descricao: tipo.descricao || "", criterio: criterioValido(tipo.criterio) } : FORM_TIPO_VAZIO,
-    );
-    setTipoForm({ id: tipo?.id });
-  };
-
-  const handleSubmitTipo = async () => {
-    if (!tipoFormData.nome.trim()) {
-      toast.error("Preencha o nome do tipo de ranking");
-      return;
-    }
-    setIsSaving(true);
-    try {
-      const payload = { nome: tipoFormData.nome, descricao: tipoFormData.descricao, criterio: tipoFormData.criterio };
-      const { error } = tipoForm?.id
-        ? await supabase.from("rank_tipo").update(payload).eq("id", tipoForm.id)
-        : await supabase.from("rank_tipo").insert(payload);
-      if (error) throw error;
-      toast.success(tipoForm?.id ? "Tipo de ranking atualizado!" : "Tipo de ranking criado!");
-      await loadData();
-      setTipoForm(null);
-    } catch (error) {
-      console.error("Erro ao salvar tipo de ranking:", error);
-      toast.error("Não foi possível salvar o tipo de ranking.");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleDeleteTipo = async (id: number) => {
-    try {
-      const { error } = await supabase.from("rank_tipo").delete().eq("id", id);
-      if (error) throw error;
-      setTipos((prev) => prev.filter((t) => t.id !== id));
-      setExcluirTipo(null);
-      toast.success("Tipo de ranking excluido!");
-    } catch (error) {
-      console.error("Erro ao excluir tipo:", error);
-      toast.error("Não foi possível excluir o tipo.");
-    }
-  };
+  // Criar/editar/excluir TIPO de ranking saiu daqui. `rank_tipo` é catálogo global da
+  // plataforma: não tem coluna de posse, e `criterio` é um conjunto fechado que o mobile
+  // compara contra literais (`tempo`, `percentual`, …). A RLS reflete isso — a tabela só tem
+  // policy de SELECT, então o INSERT levantava 42501 e o UPDATE/DELETE afetavam zero linhas
+  // em silêncio, enquanto a tela dizia "Tipo de ranking excluido!" e tirava a linha do estado
+  // local. Nunca funcionou em produção.
+  //
+  // O que o professor configura de verdade é o RANK por turma (`ranks`), que tem CRUD
+  // completo escopado por `app_classes_do_professor()` e segue aqui embaixo.
 
   const abrirRank = (rank?: Rank) => {
     setRankFormData(
@@ -293,7 +254,7 @@ export default function RanksSection() {
     </div>
   );
 
-  const cabecalho = (titulo: string, sub: string, acao: React.ReactNode) => (
+  const cabecalho = (titulo: string, sub: string, acao?: React.ReactNode) => (
     <div className="flex flex-wrap items-center gap-3.5 px-[22px] pb-4 pt-5">
       <div>
         <h3 className="text-lg font-bold">{titulo}</h3>
@@ -338,80 +299,19 @@ export default function RanksSection() {
           <section className={card}>
             {cabecalho(
               "Tipos de ranking",
-              "O critério define como as posições são calculadas",
-              <Button className="rounded-full font-bold" onClick={() => abrirTipo()}>
-                <Plus className="mr-2 h-3.5 w-3.5" aria-hidden="true" />
-                Novo tipo
-              </Button>,
+              "Catálogo da plataforma — o critério define como as posições são calculadas",
             )}
-
-            {tipoForm &&
-              painelForm(
-                tipoForm.id ? "Editar tipo de ranking" : "Novo tipo de ranking",
-                () => setTipoForm(null),
-                <>
-                  <div>
-                    <Label htmlFor="tipo-nome" className={rotuloCampo}>Nome *</Label>
-                    <Input id="tipo-nome" className={campo} value={tipoFormData.nome} onChange={(e) => setTipoFormData({ ...tipoFormData, nome: e.target.value })} placeholder="Ex: Maratona de XP" />
-                  </div>
-                  <div>
-                    <Label htmlFor="tipo-desc" className={rotuloCampo}>Descrição</Label>
-                    <Textarea id="tipo-desc" rows={2} className={campo} value={tipoFormData.descricao} onChange={(e) => setTipoFormData({ ...tipoFormData, descricao: e.target.value })} placeholder="Ex.: soma de XP conquistado nas atividades do bimestre" />
-                  </div>
-                  <div role="radiogroup" aria-label="Critério">
-                    <span className={rotuloCampo}>Critério</span>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {CRITERIOS.map(({ chave, rotulo }) => {
-                        const Icone = ICONE_CRITERIO[chave];
-                        const ativo = tipoFormData.criterio === chave;
-                        return (
-                          <button
-                            key={chave}
-                            type="button"
-                            role="radio"
-                            aria-checked={ativo}
-                            onClick={() => setTipoFormData({ ...tipoFormData, criterio: chave })}
-                            className={`flex items-center gap-2 rounded-full border px-3.5 py-2 text-[12.5px] font-semibold ${
-                              ativo ? "border-primary bg-primary/20 text-foreground" : "border-border text-muted-foreground hover:text-foreground"
-                            }`}
-                          >
-                            <Icone className="h-3.5 w-3.5" aria-hidden="true" />
-                            {rotulo}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </>,
-                handleSubmitTipo,
-                tipoForm.id ? "Salvar tipo" : "Criar tipo",
-              )}
 
             <div className="flex flex-col gap-2.5 px-[22px] pb-[22px]">
               {isLoading && tipos.length === 0 ? (
                 [0, 1, 2].map((i) => <div key={i} className="h-[72px] animate-pulse rounded-2xl bg-muted" />)
               ) : tipos.length === 0 ? (
-                <p className="py-6 text-center text-sm text-muted-foreground">Nenhum tipo de ranking ainda. Crie o primeiro em “Novo tipo”.</p>
+                <p className="py-6 text-center text-sm text-muted-foreground">Nenhum tipo de ranking cadastrado na plataforma.</p>
               ) : (
                 tipos.map((tipo) => {
                   const crit = criterioValido(tipo.criterio);
                   const Icone = ICONE_CRITERIO[crit];
                   const usando = ranks.filter((r) => r.tipo_id === tipo.id).length;
-                  if (excluirTipo === tipo.id) {
-                    return (
-                      <div key={tipo.id}>
-                        {confirmacao(
-                          `Excluir o tipo “${tipo.nome}”?`,
-                          usando > 0
-                            ? `${usando} ${usando === 1 ? "ranking usa" : "rankings usam"} este tipo.`
-                            : "Nenhum ranking usa este tipo.",
-                          "Excluir tipo",
-                          () => setExcluirTipo(null),
-                          () => handleDeleteTipo(tipo.id),
-                        )}
-                      </div>
-                    );
-                  }
                   return (
                     <div key={tipo.id} className="flex items-center gap-3.5 rounded-[14px] bg-muted px-4 py-3.5">
                       <span aria-hidden="true" className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-primary/20 text-primary">
@@ -422,14 +322,9 @@ export default function RanksSection() {
                         {tipo.descricao && <p className="mt-0.5 truncate text-[11.5px] text-muted-foreground">{tipo.descricao}</p>}
                       </div>
                       <span className="whitespace-nowrap rounded-full bg-primary/15 px-3 py-1 text-[10.5px] font-bold capitalize text-primary">{rotuloDoCriterio(tipo.criterio)}</span>
-                      <div className="flex gap-1.5">
-                        <button type="button" className={botaoRedondo} onClick={() => abrirTipo(tipo)} aria-label={`Editar ${tipo.nome}`}>
-                          <Pencil className="h-[13px] w-[13px]" />
-                        </button>
-                        <button type="button" className={`${botaoRedondo} text-destructive hover:text-destructive`} onClick={() => setExcluirTipo(tipo.id)} aria-label={`Excluir ${tipo.nome}`}>
-                          <Trash2 className="h-[13px] w-[13px]" />
-                        </button>
-                      </div>
+                      <span className="whitespace-nowrap text-[10.5px] font-semibold text-muted-foreground">
+                        {usando === 0 ? "sem ranking" : `${usando} ${usando === 1 ? "ranking" : "rankings"}`}
+                      </span>
                     </div>
                   );
                 })
