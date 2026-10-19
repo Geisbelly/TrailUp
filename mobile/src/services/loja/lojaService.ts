@@ -2,26 +2,23 @@ import { normalizeBrainHexProfile, type BrainHexProfile } from "@/constants/brai
 import { supabase } from "@/database/supabase";
 import { normalizeStoreItem, type StoreItem, type StoreProfileTheme, type StoreSection, type StoreSnapshot } from "@/services/loja/storeModel";
 import { limitesDaTurma, montarExtrato, type LinhaRazao } from "@/services/loja/extratoModel";
-import { avisarEfeitoNaAtividade, lerRespostaDeUso, type RespostaDeUso } from "@/services/loja/usoItem";
+import { avisarEfeitoNaAtividade, lerInventario, lerPermissao, lerRespostaDeUso, type LinhaInventario, type PermissaoDeUso, type RespostaDeUso } from "@/services/loja/usoItem";
 import { ACOES_QUE_RENDEM, resolverGanhoMoedas } from "@/services/loja/ganhoMoedasModel";
 import { purchaseErrorMessage } from "@/services/loja/storeTheme";
 
 export type { StoreItem, StoreProfileTheme, StoreSection, StoreSnapshot } from "@/services/loja/storeModel";
 const fallbackTheme: StoreProfileTheme = { iconKey: "storefront-outline", themeKey: "default", chestKey: "treasure-chest", accentColor: null, version: 1 };
-type RawItem = Omit<StoreItem, "state"> & { gate_met?: boolean; owned?: boolean; active?: boolean };
+type RawItem = Omit<StoreItem, "state"> & { gate_met?: boolean; active?: boolean };
 
 function requestId() { return String(Date.now()) + "-" + Math.random().toString(36).slice(2); }
 
 export async function carregarLoja(alunoId: string, classeId: number, profileName?: string | null, section?: StoreSection): Promise<StoreSnapshot> {
-  const [itemsResult, balanceResult, ownedResult] = await Promise.all([
+  const [itemsResult, balanceResult] = await Promise.all([
     supabase.rpc("loja_catalogo", { p_classe_id: classeId }),
     supabase.rpc("loja_saldo"),
-    supabase.from("loja_compras").select("item_codigo").eq("aluno_id", alunoId).neq("status", "estornada"),
   ]);
   if (itemsResult.error) throw itemsResult.error;
   if (balanceResult.error) throw balanceResult.error;
-  if (ownedResult.error) throw ownedResult.error;
-  const owned = new Set((ownedResult.data ?? []).map((row) => String(row.item_codigo)));
   const rawItems = ((itemsResult.data ?? []) as unknown as Record<string, unknown>[]).map((item) => ({
     id: String(item.codigo ?? ""),
     slug: String(item.codigo ?? ""),
@@ -32,9 +29,15 @@ export async function carregarLoja(alunoId: string, classeId: number, profileNam
     price: Number(item.preco ?? 0),
     currency: String(item.currency ?? "coins"),
     gate: null,
-    metadata: { efeito: item.efeito, gratisRestantes: item.gratis_restantes },
+    metadata: {
+      efeito: item.efeito,
+      gratisRestantes: item.gratis_restantes,
+      emPosse: item.em_posse ?? 0,
+      comprasRestantes: item.compras_restantes ?? null,
+      estoqueRestante: item.estoque_restante ?? null,
+      precoFator: item.preco_fator ?? 1,
+    },
     gate_met: item.gate_met as boolean | undefined,
-    owned: owned.has(String(item.codigo)),
     active: item.disponivel as boolean | undefined,
   })) as RawItem[];
   const items = rawItems.filter((item) => !section || section === "itens" || section === "informacoes").map((item) => normalizeStoreItem(item));
@@ -42,12 +45,53 @@ export async function carregarLoja(alunoId: string, classeId: number, profileNam
   return { theme, balance: Number(balanceResult.data ?? 0), currency: "coins", items };
 }
 
-export async function comprarItem(itemCode: string, classeId: number) {
-  const { data, error } = await supabase.rpc("loja_comprar", { p_item: itemCode, p_classe_id: classeId, p_idempotency_key: requestId() });
+/** Compra `quantidade` unidades num pedido só: tudo ou nada, uma chave para o pedido inteiro. */
+export async function comprarItem(itemCode: string, classeId: number, quantidade = 1) {
+  const { data, error } = await supabase.rpc("loja_comprar", {
+    p_item: itemCode,
+    p_classe_id: classeId,
+    p_idempotency_key: requestId(),
+    p_quantidade: quantidade,
+  });
   if (error) throw error;
   const businessError = purchaseErrorMessage(data);
   if (businessError) throw new Error(businessError);
-  return data as { ok: boolean; compra_id?: number; saldo?: number; preco?: number; erro?: string };
+  return data as { ok: boolean; compra_id?: number; compra_ids?: number[]; quantidade?: number; saldo?: number; preco?: number; erro?: string };
+}
+
+/** Unidades do aluno na turma, por item: ativas, usadas e estornadas. */
+export async function carregarInventario(classeId: number): Promise<LinhaInventario[]> {
+  const { data, error } = await supabase.rpc("loja_inventario", { p_classe_id: classeId });
+  if (error) throw error;
+  return lerInventario(data);
+}
+
+/** Quantos usos deste item ainda cabem nesta atividade/questão, e o limite que segura quando não cabe. */
+export async function usosPermitidos(classeId: number, item: string, alvoTipo: "atividade" | "questao", alvoId: number): Promise<PermissaoDeUso> {
+  const { data, error } = await supabase.rpc("loja_usos_permitidos", {
+    p_classe_id: classeId,
+    p_item: item,
+    p_alvo_tipo: alvoTipo,
+    p_alvo_id: alvoId,
+  });
+  if (error) return { ativos: 0, restantes: 0, bloqueio: "resposta_invalida", limite: null, usados: 0 };
+  return lerPermissao(data);
+}
+
+/** Gasta UMA unidade (a mais antiga) do item. O banco escolhe a unidade e confere os limites. */
+export async function usarItem(classeId: number, item: string, alvoTipo: "atividade" | "questao", alvoId: number, parametro: Record<string, unknown> | null = null): Promise<RespostaDeUso> {
+  const { data, error } = await supabase.rpc("loja_usar_item", {
+    p_item: item,
+    p_classe_id: classeId,
+    p_alvo_tipo: alvoTipo,
+    p_alvo_id: alvoId,
+    p_idempotency_key: requestId(),
+    p_parametro: parametro,
+  });
+  if (error) return { ok: false, erro: "resposta_invalida" };
+  const resposta = lerRespostaDeUso(data);
+  if (resposta.ok) avisarEfeitoNaAtividade();
+  return resposta;
 }
 
 export function profileThemeKey(profileName?: string | null): BrainHexProfile | "default" {
@@ -89,30 +133,15 @@ export async function carregarExtrato(alunoId: string, nomes: ReadonlyMap<string
   return montarExtrato(linhas, itemDaCompra, new Date());
 }
 
-/** Gasta a segunda chance ativa mais antiga nesta atividade. Sem posse, não reabre a questão. */
-export async function gastarSegundaChance(classeId: number, atividadeId: number): Promise<RespostaDeUso> {
-  const compras = await supabase
-    .from("loja_compras")
-    .select("id")
-    .eq("classe_id", classeId)
-    .eq("item_codigo", "segunda_chance")
-    .eq("status", "ativa")
-    .order("id", { ascending: true })
-    .limit(1);
-  if (compras.error) return { ok: false, erro: "resposta_invalida" };
-  const compraId = Number(compras.data?.[0]?.id ?? 0);
-  if (!compraId) return { ok: false, erro: "sem_token" };
-  const { data, error } = await supabase.rpc("loja_usar", {
-    p_compra_id: compraId,
-    p_alvo_tipo: "atividade",
-    p_alvo_id: atividadeId,
-    p_idempotency_key: requestId(),
-    p_parametro: null,
-  });
-  if (error) return { ok: false, erro: "resposta_invalida" };
-  const resposta = lerRespostaDeUso(data);
-  if (resposta.ok) avisarEfeitoNaAtividade();
-  return resposta;
+/**
+ * Gasta a segunda chance mais antiga. Com `questaoId`, mira a questão (o limite por questão vale);
+ * sem, o banco escolhe a questão elegível da atividade. Sem unidade, não reabre a questão.
+ */
+export async function gastarSegundaChance(classeId: number, atividadeId: number, questaoId?: number): Promise<RespostaDeUso> {
+  const resposta = questaoId
+    ? await usarItem(classeId, "segunda_chance", "questao", questaoId)
+    : await usarItem(classeId, "segunda_chance", "atividade", atividadeId);
+  return resposta.erro === "sem_unidade" ? { ...resposta, erro: "sem_token" } : resposta;
 }
 
 /** Tetos da Loja definidos pelo professor para a turma (`loja_config_classe`). */

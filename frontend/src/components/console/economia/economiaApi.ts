@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { mensagemDeErro } from "./economiaRegras";
+import { mensagemDeErro, type LimitesDeUso } from "./economiaRegras";
 
 type Resposta = { ok?: boolean; erro?: string; id?: number; devolvido?: number };
 
@@ -50,8 +50,8 @@ export const CONFIG_PADRAO: ConfigDaTurma = {
   itens_desligados: [],
 };
 
-export type ItemDaLoja = { codigo: string; nome: string; efeito: string; preco_base: number; ordem: number };
-export type PrecoDaTurma = { item_codigo: string; preco_base: number | null; estoque: number | null; uso_max_por_aluno: number | null; ativo: boolean | null };
+export type ItemDaLoja = { codigo: string; nome: string; efeito: string; preco_base: number; preco_fator: number; ordem: number };
+export type PrecoDaTurma = { item_codigo: string; preco_base: number | null; estoque: number | null; uso_max_por_aluno: number | null; ativo: boolean | null; preco_fator: number | null };
 export type ValorDeEvento = { tipo: string; pontos: number; moedas: number; descricao: string | null; pontosTurma: number | null; moedasTurma: number | null };
 export type Meta = {
   id: number;
@@ -74,6 +74,8 @@ export type LinhaExtrato = {
   compra_id: number | null;
 };
 export type Uso = { id: number; aluno_id: string; item_codigo: string; efeito: string; alvo_id: number | null; criado_em: string };
+export type EscopoDeLimite = "classe" | "topico" | "atividade";
+export type LimiteDeUso = LimitesDeUso & { escopo: EscopoDeLimite; alvo_id: number; item_codigo: string };
 export type AlunoDaTurma = { id: string; nome: string };
 
 async function ler<T>(consulta: Consulta): Promise<T> {
@@ -106,14 +108,14 @@ export async function salvarConfig(classeId: number, config: ConfigDaTurma) {
 
 export async function carregarItens(classeId: number) {
   const [itens, precos, dotacao] = await Promise.all([
-    ler<ItemDaLoja[]>(db.from("loja_itens").select("codigo, nome, efeito, preco_base, ordem").order("ordem")),
-    ler<PrecoDaTurma[]>(db.from("loja_preco_classe").select("item_codigo, preco_base, estoque, uso_max_por_aluno, ativo").eq("classe_id", classeId)),
+    ler<ItemDaLoja[]>(db.from("loja_itens").select("codigo, nome, efeito, preco_base, preco_fator, ordem").order("ordem")),
+    ler<PrecoDaTurma[]>(db.from("loja_preco_classe").select("item_codigo, preco_base, estoque, uso_max_por_aluno, ativo, preco_fator").eq("classe_id", classeId)),
     ler<{ item_codigo: string; quantidade: number }[]>(db.from("loja_dotacao").select("item_codigo, quantidade").eq("classe_id", classeId)),
   ]);
   return { itens: itens ?? [], precos: precos ?? [], dotacao: dotacao ?? [] };
 }
 
-export async function salvarPreco(classeId: number, item: string, preco: number | null, estoque: number | null, usoMax: number | null, ativo: boolean | null) {
+export async function salvarPreco(classeId: number, item: string, preco: number | null, estoque: number | null, usoMax: number | null, ativo: boolean | null, fator: number | null = null) {
   await chamar("economia_salvar_preco_classe", {
     p_classe_id: classeId,
     p_item: item,
@@ -121,6 +123,29 @@ export async function salvarPreco(classeId: number, item: string, preco: number 
     p_estoque: estoque,
     p_uso_max_por_aluno: usoMax,
     p_ativo: ativo,
+    p_preco_fator: fator,
+  });
+}
+
+const COLUNAS_DE_LIMITE = "escopo, alvo_id, item_codigo, por_atividade, por_questao, por_topico, por_dia, por_semana, por_turma";
+
+export async function carregarLimites(classeId: number): Promise<LimiteDeUso[]> {
+  return (await ler<LimiteDeUso[]>(db.from("loja_limite_uso").select(COLUNAS_DE_LIMITE).eq("classe_id", classeId).order("item_codigo"))) ?? [];
+}
+
+/** Tudo nulo apaga a regra daquele escopo (volta a herdar). */
+export async function salvarLimiteUso(classeId: number, escopo: EscopoDeLimite, alvoId: number | null, item: string, limites: LimitesDeUso) {
+  await chamar("economia_salvar_limite_uso", {
+    p_classe_id: classeId,
+    p_escopo: escopo,
+    p_alvo_id: escopo === "classe" ? null : alvoId,
+    p_item: item,
+    p_por_atividade: limites.por_atividade,
+    p_por_questao: limites.por_questao,
+    p_por_topico: limites.por_topico,
+    p_por_dia: limites.por_dia,
+    p_por_semana: limites.por_semana,
+    p_por_turma: limites.por_turma,
   });
 }
 

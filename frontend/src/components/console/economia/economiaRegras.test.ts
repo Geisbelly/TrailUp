@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { concedido, faixaValida, filtrarExtrato, mensagemDeErro, numeroOuNulo } from "./economiaRegras";
+import { concedido, descreverPadrao, faixaValida, filtrarExtrato, limiteDoTexto, mensagemDeErro, numeroOuNulo, precoDaUnidade, textoDoLimite } from "./economiaRegras";
 
 describe("faixa de prazo e tempo", () => {
   it("aceita mínimo dentro do máximo e máximo dentro do teto", () => {
@@ -47,5 +47,37 @@ describe("extrato e erros", () => {
     expect(numeroOuNulo("")).toBeNull();
     expect(numeroOuNulo(" 4 ")).toBe(4);
     expect(Number.isNaN(numeroOuNulo("abc"))).toBe(true);
+  });
+});
+
+describe("várias unidades e limite de uso", () => {
+  it("vazio herda, 0 bloqueia, sem limite vira -1 e fora da faixa é inválido", () => {
+    expect(limiteDoTexto("")).toBeNull();
+    expect(limiteDoTexto("0")).toBe(0);
+    expect(limiteDoTexto("3")).toBe(3);
+    expect(limiteDoTexto("sem limite")).toBe(-1);
+    expect(limiteDoTexto("-")).toBe(-1);
+    expect(Number.isNaN(limiteDoTexto("101"))).toBe(true);
+    expect(Number.isNaN(limiteDoTexto("1.5"))).toBe(true);
+    expect(textoDoLimite(-1)).toBe("sem limite");
+    expect(textoDoLimite(null)).toBe("");
+  });
+
+  it("mostra o padrão de cada tipo de item", () => {
+    expect(descreverPadrao("prazo_extra", "por_atividade")).toBe("1");
+    expect(descreverPadrao("segunda_chance", "por_questao")).toBe("1");
+    expect(descreverPadrao("tempo_extra", "por_atividade")).toBe("3");
+    expect(descreverPadrao("prazo_extra", "por_dia")).toBe("sem limite");
+  });
+
+  it("aumento por compra: fator 1 mantém o preço", () => {
+    expect([0, 1, 2].map((n) => precoDaUnidade(8, 2, n))).toEqual([8, 16, 32]);
+    expect([0, 1, 2].map((n) => precoDaUnidade(10, 1, n))).toEqual([10, 10, 10]);
+  });
+
+  it("nomeia o limite que segurou o uso", () => {
+    expect(mensagemDeErro("limite_por_questao")).toMatch(/questão/);
+    expect(mensagemDeErro("limite_por_dia")).toMatch(/hoje/);
+    expect(mensagemDeErro("sem_unidade")).toMatch(/mochila/);
   });
 });

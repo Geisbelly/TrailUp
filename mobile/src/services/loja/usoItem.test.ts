@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  comprasUsaveisNaAtividade,
+  botaoDeUso,
+  itensUsaveisNaAtividade,
+  lerInventario,
+  lerPermissao,
   concedido,
   mensagemDeUso,
   podeResponderComCompra,
@@ -23,20 +26,34 @@ test("o prazo visto é o efetivo; sem ele, a data da turma", () => {
   assert.equal(prazoVisivel("  ", "  "), null);
 });
 
-test("só item ativo de prazo, tempo ou nova tentativa entra na atividade", () => {
+test("um botão por tipo de item com unidade ativa de prazo, tempo ou nova tentativa", () => {
   const nomes = new Map([["prazo_extra", "Mais um dia"]]);
-  const lista = comprasUsaveisNaAtividade(
-    [
-      { id: 1, item_codigo: "prazo_extra", status: "ativa" },
-      { id: 2, item_codigo: "tempo_extra", status: "consumida" },
-      { id: 3, item_codigo: "dica", status: "ativa" },
-      { id: 4, item_codigo: "segunda_chance", status: "ativa" },
-    ],
-    nomes,
-  );
-  assert.deepEqual(lista.map((c) => c.id), [1, 4]);
-  assert.equal(lista[0].nome, "Mais um dia");
-  assert.equal(lista[1].nome, "Responder novamente");
+  const inventario = lerInventario([
+    { item_codigo: "prazo_extra", ativos: 3, usados: 1, estornados: 0 },
+    { item_codigo: "tempo_extra", ativos: 0, usados: 2, estornados: 1 },
+    { item_codigo: "dica", ativos: 4, usados: 0, estornados: 0 },
+    { item_codigo: "segunda_chance", ativos: 1, usados: 0, estornados: 0 },
+  ]);
+  const lista = itensUsaveisNaAtividade(inventario, nomes);
+  assert.deepEqual(lista, [
+    { codigo: "prazo_extra", nome: "Mais um dia", ativos: 3 },
+    { codigo: "segunda_chance", nome: "Responder novamente", ativos: 1 },
+  ]);
+  assert.deepEqual(lerInventario(null), []);
+});
+
+test("o botão de usar mostra quanto ainda cabe aqui ou o limite que segurou", () => {
+  const item = { nome: "Mais prazo", ativos: 3 };
+  const livre = botaoDeUso(item, lerPermissao({ ativos: 3, restantes: 1, bloqueio: null, limite: 1, usados: 0 }));
+  assert.equal(livre.habilitado, true);
+  assert.equal(livre.detalhe, "3 na Bag · pode usar 1 aqui");
+  const preso = botaoDeUso(item, lerPermissao({ ativos: 3, restantes: 0, bloqueio: "limite_por_atividade", limite: 1, usados: 1 }));
+  assert.equal(preso.habilitado, false);
+  assert.match(preso.motivo ?? "", /atividade/);
+  assert.match(botaoDeUso(item, lerPermissao({ ativos: 2, restantes: 0, bloqueio: "limite_por_dia" })).motivo ?? "", /hoje/);
+  assert.match(botaoDeUso(item, lerPermissao({ erro: "fora_da_turma" })).motivo ?? "", /turma/);
+  assert.equal(botaoDeUso(item, null).habilitado, false);
+  assert.match(mensagemDeUso("sem_unidade"), /Bag/);
 });
 
 test("a segunda chance comprada só aparece quando a tentativa livre acabou e a resposta segue oculta", () => {

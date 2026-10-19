@@ -1,17 +1,20 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import React from "react";
+import React, { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
+import { SeletorQuantidade } from "@/components/loja/SeletorQuantidade";
 import { StoreItemIcon } from "@/components/loja/StoreItemIcon";
 import { UtilityIcon } from "@/components/UtilityIcon";
 import type { StoreItem } from "@/services/loja/lojaService";
+import { emPosse, maxQuantidade } from "@/services/loja/storeModel";
 import { FontFamily } from "@/styles/GlobalStyle";
-import { estadoCompra, gratisRestantes } from "@/utils/compraLoja";
+import { estadoCompra, gratisRestantes, limitarQuantidade, textoNaBag } from "@/utils/compraLoja";
 import type { ProfileShellPalette } from "@/utils/profileShellTheme";
 
 const NOTA_ESTADO: Partial<Record<StoreItem["state"], string>> = {
   unavailable: "Seu professor desligou este item nesta turma.",
   blocked: "Libera depois que você revisar o material do tópico.",
+  limit: "Você já comprou o máximo deste item nesta turma, ou o estoque acabou.",
 };
 
 /**
@@ -36,9 +39,13 @@ export function CartaoItemLoja({
   ocupado: boolean;
   aviso?: string | null;
   erro?: string | null;
-  onComprar: () => void;
+  onComprar: (quantidade: number) => void;
 }) {
-  const estado = estadoCompra(item, saldo);
+  const [quantidade, setQuantidade] = useState(1);
+  const qtd = limitarQuantidade(item, quantidade);
+  const maximo = Math.max(1, maxQuantidade(item));
+  const naBag = textoNaBag(emPosse(item));
+  const estado = estadoCompra(item, saldo, qtd);
   const gratis = gratisRestantes(item);
   const desabilitado = !estado.habilitado || ocupado;
   const nota = NOTA_ESTADO[item.state];
@@ -53,13 +60,20 @@ export function CartaoItemLoja({
         </View>
       </View>
 
-      {gratis > 0 ? (
+      {gratis > 0 || naBag ? (
         <View style={s.chips}>
-          <View style={[s.chip, { backgroundColor: palette.accentMuted }]}>
-            <Text style={[s.chipTexto, { color: palette.accent }]}>
-              {gratis === 1 ? "1 grátis restante" : `${gratis} grátis restantes`}
-            </Text>
-          </View>
+          {gratis > 0 ? (
+            <View style={[s.chip, { backgroundColor: palette.accentMuted }]}>
+              <Text style={[s.chipTexto, { color: palette.accent }]}>
+                {gratis === 1 ? "1 grátis restante" : `${gratis} grátis restantes`}
+              </Text>
+            </View>
+          ) : null}
+          {naBag ? (
+            <View style={[s.chip, { backgroundColor: palette.surfaceElevated }]}>
+              <Text style={[s.chipTexto, { color: palette.textMuted }]}>{naBag}</Text>
+            </View>
+          ) : null}
         </View>
       ) : null}
 
@@ -90,10 +104,21 @@ export function CartaoItemLoja({
           ) : (
             <>
               <UtilityIcon kind="coin" profile={palette.profile} size={20} height={24} />
-              <Text style={[s.valor, { color: palette.text }]}>{item.price}</Text>
+              <Text style={[s.valor, { color: palette.text }]}>{estado.custo}</Text>
             </>
           )}
         </View>
+        {item.state === "available" && maximo > 1 ? (
+          <SeletorQuantidade
+            valor={qtd}
+            maximo={maximo}
+            desabilitado={ocupado}
+            cor={palette.text}
+            corApagada={palette.textMuted}
+            nome={item.name}
+            onMudar={(n) => setQuantidade(limitarQuantidade(item, n))}
+          />
+        ) : null}
         <View style={s.acao}>
           {/* Quem pode pagar não vê barra (mesma gramática da biblioteca de conquistas). */}
           {estado.falta > 0 && item.state === "available" ? (
@@ -106,7 +131,7 @@ export function CartaoItemLoja({
             accessibilityLabel={`${estado.rotulo}: ${item.name}`}
             accessibilityState={{ disabled: desabilitado, busy: comprando }}
             disabled={desabilitado}
-            onPress={onComprar}
+            onPress={() => onComprar(qtd)}
             style={({ hovered }: { hovered?: boolean; pressed: boolean }) => [
               s.botao,
               desabilitado

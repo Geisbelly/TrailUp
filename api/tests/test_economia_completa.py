@@ -59,7 +59,9 @@ def concedido(
 def test_a_cabeca_nova_continua_a_cadeia() -> None:
     scripts = ScriptDirectory.from_config(_config())
     heads = scripts.get_heads()
-    assert heads == ["20261020_05"]
+    assert heads == ["20261020_06"]
+    quantidade = scripts.get_revision("20261020_06")
+    assert quantidade is not None and quantidade.down_revision == "20261020_05"
     aprovacao = scripts.get_revision("20261020_05")
     assert aprovacao is not None and aprovacao.down_revision == "20261020_04"
     correcao = scripts.get_revision("20261020_04")
@@ -258,3 +260,54 @@ def test_downgrade_da_aprovacao_preserva_os_dados() -> None:
     assert "CREATE OR REPLACE FUNCTION public.economia_avaliar_metas_de" in sql
     assert "e.tipo = 'nota_professor'" in sql  # volta o METAS de 20261020_04
     assert "DROP TABLE" not in sql and "DELETE FROM" not in sql and "TRUNCATE" not in sql
+
+
+def test_varias_unidades_e_limite_de_uso_por_situacao() -> None:
+    """20261020_06: comprar várias do mesmo item e limitar o uso por situação."""
+    sql = _sql("20261020_05", "20261020_06")
+    comprar = sql.split("CREATE FUNCTION public.loja_comprar(")[1].split("$fn$;")[0]
+    # quantidade, tudo ou nada, uma linha por unidade, lote idempotente
+    assert "p_quantidade      integer DEFAULT 1" in comprar
+    assert "quantidade_invalida" in comprar
+    assert "lote_chave = p_idempotency_key" in comprar
+    assert "FOR i IN 1..p_quantidade LOOP" in comprar
+    assert comprar.index("saldo_insuficiente") < comprar.index("INSERT INTO public.loja_compras")
+    assert "v_compradas + v_qtd_paga > v_preco_turma.uso_max_por_aluno" in comprar
+    assert "COALESCE(v_vendidas, 0) + v_qtd_paga > v_preco_turma.estoque" in comprar
+    assert "COALESCE(v_preco_turma.preco_fator, v_item.preco_fator, 1)" in comprar
+    catalogo = sql.split("CREATE FUNCTION public.loja_catalogo(")[1].split("$fn$;")[0]
+    assert "WHERE p_classe_id IN (SELECT public.app_minhas_classes())" in catalogo  # só a própria turma
+    assert comprar.index("pg_advisory_xact_lock(\n    hashtextextended('estoque:'") < comprar.index(
+        "pg_advisory_xact_lock(hashtextextended(v_aluno::text, 0))"
+    )
+    # uso: FIFO, limite por situação com o motivo, e o log com a situação
+    item = sql.split("CREATE OR REPLACE FUNCTION public.loja_usar_item(")[1].split("$fn$;")[0]
+    assert "ORDER BY criado_em, id" in item and "sem_unidade" in item
+    for motivo in ("limite_por_questao", "limite_por_atividade", "limite_por_topico",
+                   "limite_por_dia", "limite_por_semana", "limite_por_turma"):
+        assert f"'{motivo}'" in sql
+    usar = sql.split("CREATE OR REPLACE FUNCTION public.loja_usar(")[1].split("$fn$;")[0]
+    assert "limite_de_uso" not in usar and "teto_do_topico" not in usar
+    assert usar.count("public.fn_loja_checa_limite(") == 3  # atividade, dica, troca de formato
+    assert "v_atividade, v_topico, v_questao);" in usar
+    assert "America/Sao_Paulo" in sql
+    # tabela nova só se lê; quem escreve é a RPC auditada
+    assert "CREATE TABLE IF NOT EXISTS public.loja_limite_uso" in sql
+    assert "ALTER TABLE public.loja_limite_uso ENABLE ROW LEVEL SECURITY" in sql
+    assert "REVOKE ALL ON public.loja_limite_uso FROM PUBLIC, anon, authenticated" in sql
+    assert "'config_limite_uso'" in sql
+    for fn in ("fn_loja_limites", "fn_loja_checa_limite"):
+        assert f"REVOKE ALL ON FUNCTION public.{fn}(" in sql
+    for fn in ("loja_usar_item", "loja_usos_permitidos", "loja_inventario", "loja_comprar"):
+        assert f"GRANT EXECUTE ON FUNCTION public.{fn}(" in sql
+
+
+def test_downgrade_da_quantidade_preserva_dados() -> None:
+    sql = _sql_down("20261020_06", "20261020_05")
+    assert "DROP FUNCTION IF EXISTS public.loja_usar_item" in sql
+    assert "CREATE OR REPLACE FUNCTION public.loja_comprar(" in sql
+    assert "GRANT EXECUTE ON FUNCTION public.loja_comprar(text, bigint, text, text, bigint, text) TO authenticated" in sql
+    assert "CREATE OR REPLACE FUNCTION public.economia_salvar_preco_classe(" in sql
+    assert "limite_de_uso" in sql  # volta o loja_usar de 20261020_02
+    assert "DROP TABLE" not in sql and "DROP COLUMN" not in sql and "DELETE FROM public.loja_limite_uso" not in sql
+    assert "DELETE FROM public.loja_compras" not in sql and "DELETE FROM public.loja_uso_log" not in sql
