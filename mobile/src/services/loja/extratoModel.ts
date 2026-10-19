@@ -12,12 +12,22 @@ export type LinhaRazao = {
   criado_em: string;
 };
 
-export type Movimento = { id: number; valor: number; descricao: string; quando: string };
+export type Movimento = { id: number; valor: number; descricao: string; quando: string; motivo: string };
+
+export type FiltroDeExtrato = "todos" | "evento" | "compra" | "estorno" | "concessao" | "dotacao";
+
+export function filtrarExtrato<T extends { motivo: string }>(linhas: readonly T[], filtro: FiltroDeExtrato): T[] {
+  if (filtro === "todos") return [...linhas];
+  return linhas.filter((l) => l.motivo === filtro);
+}
 
 const EVENTO: Record<string, string> = {
   conteudo_concluido: "Conteúdo concluído",
   atividade_concluida: "Atividade concluída",
   atividade_acertada: "Acerto",
+  atividade_aprovada: "Atividade aprovada",
+  atividade_conclusao_config: "Conclusão da atividade",
+  meta_atingida: "Meta alcançada",
 };
 const MOTIVO: Record<string, string> = {
   dotacao: "Dotação da turma",
@@ -50,11 +60,20 @@ export function montarExtrato(linhas: readonly LinhaRazao[], itemDaCompra: Reado
       const item = l.compra_id != null ? itemDaCompra.get(l.compra_id) : undefined;
       descricao = item ? `Compra · ${item}` : "Compra";
     } else descricao = MOTIVO[l.motivo] ?? l.motivo;
-    return { id: l.id, valor: Number(l.delta) || 0, descricao, quando: formatarQuando(l.criado_em, agora) };
+    return { id: l.id, valor: Number(l.delta) || 0, descricao, quando: formatarQuando(l.criado_em, agora), motivo: l.motivo };
   });
 }
 
-export type LimitesTurma = { prazoDiasTotal: number; prazoPorAtividade: number; segundaChancePorTopico: number };
+export type LimitesTurma = {
+  prazoDiasTotal: number;
+  prazoPorAtividade: number;
+  segundaChancePorTopico: number;
+  prazoMinDias: number;
+  prazoMaxDias: number;
+  tempoMinMinutos: number;
+  tempoMaxMinutos: number;
+  tempoPorAtividade: number;
+};
 
 /** Sem linha em `loja_config_classe`, valem os padrões da tabela (2, 2 e 1). */
 export function limitesDaTurma(linha: Partial<Record<string, unknown>> | null | undefined): LimitesTurma {
@@ -63,5 +82,10 @@ export function limitesDaTurma(linha: Partial<Record<string, unknown>> | null | 
     prazoDiasTotal: n(linha?.prazo_max_dias_total, 2),
     prazoPorAtividade: n(linha?.prazo_max_por_ativ, 2),
     segundaChancePorTopico: n(linha?.retry_max_por_topico, 1),
+    prazoMinDias: n(linha?.prazo_extensao_min_dias, 1),
+    prazoMaxDias: n(linha?.prazo_extensao_max_dias, 1),
+    tempoMinMinutos: n(linha?.tempo_extra_min_minutos, 5),
+    tempoMaxMinutos: n(linha?.tempo_extra_max_minutos, 15),
+    tempoPorAtividade: n(linha?.tempo_max_por_ativ, 30),
   };
 }

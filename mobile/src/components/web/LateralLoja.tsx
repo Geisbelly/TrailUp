@@ -4,12 +4,19 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { BagModal } from "@/components/bag/BagModal";
 import { UtilityIcon } from "@/components/UtilityIcon";
 import { listBagItems } from "@/services/bag/bagService";
-import type { LimitesTurma, Movimento } from "@/services/loja/extratoModel";
+import { filtrarExtrato, type FiltroDeExtrato, type LimitesTurma, type Movimento } from "@/services/loja/extratoModel";
 import { carregarExtrato, carregarLimitesTurma } from "@/services/loja/lojaService";
 import { FontFamily } from "@/styles/GlobalStyle";
 import type { ProfileShellPalette } from "@/utils/profileShellTheme";
 
 const ENTRADA = "#62db9b";
+
+const FILTROS: { id: FiltroDeExtrato; rotulo: string }[] = [
+  { id: "todos", rotulo: "Tudo" },
+  { id: "evento", rotulo: "Ganhos" },
+  { id: "compra", rotulo: "Compras" },
+  { id: "estorno", rotulo: "Estornos" },
+];
 
 /**
  * Coluna lateral da Loja na web em tela larga (#346, protótipo v4, 12-loja.md
@@ -37,6 +44,7 @@ export function LateralLoja({
   const [limites, setLimites] = useState<LimitesTurma | null>(null);
   const [extrato, setExtrato] = useState<Movimento[] | null>(null);
   const [extratoCompleto, setExtratoCompleto] = useState(false);
+  const [filtro, setFiltro] = useState<FiltroDeExtrato>("todos");
   const [bagAberta, setBagAberta] = useState(false);
 
   useEffect(() => {
@@ -61,7 +69,8 @@ export function LateralLoja({
   }, [alunoId, classeId, nomesItens, versao]);
 
   const titulo = (texto: string) => <Text style={[s.titulo, { color: palette.textSubtle }]}>{texto}</Text>;
-  const linhasExtrato = extratoCompleto ? extrato ?? [] : (extrato ?? []).slice(0, 6);
+  const linhasFiltradas = filtrarExtrato(extrato ?? [], filtro);
+  const linhasExtrato = extratoCompleto ? linhasFiltradas : linhasFiltradas.slice(0, 6);
 
   return (
     <View style={[s.coluna, { backgroundColor: palette.surface, borderColor: palette.border }]}>
@@ -97,6 +106,10 @@ export function LateralLoja({
             </Text>
             <Text style={[s.pequeno, { color: palette.textSubtle }]}>
               Até {limites.prazoPorAtividade} {limites.prazoPorAtividade === 1 ? "dia" : "dias"} por atividade
+              {" · "}cada uso entre {limites.prazoMinDias} e {limites.prazoMaxDias} {limites.prazoMaxDias === 1 ? "dia" : "dias"}
+            </Text>
+            <Text style={[s.texto, { color: palette.text }]}>
+              <Text style={s.negrito}>Mais tempo:</Text> {limites.tempoMinMinutos}–{limites.tempoMaxMinutos} min por uso, até {limites.tempoPorAtividade} min na atividade
             </Text>
             <Text style={[s.texto, { color: palette.text }]}>
               <Text style={s.negrito}>Segunda chance:</Text> até {limites.segundaChancePorTopico} por tópico
@@ -108,7 +121,14 @@ export function LateralLoja({
 
       <View style={[s.bloco, s.separado, { borderTopColor: palette.border }]}>
         {titulo("EXTRATO")}
-        {extrato === null ? null : extrato.length ? (
+        <View style={s.filtros}>
+          {FILTROS.map((opcao) => (
+            <Pressable key={opcao.id} accessibilityRole="button" onPress={() => setFiltro(opcao.id)}>
+              <Text style={[s.pequeno, { color: filtro === opcao.id ? palette.accent : palette.textSubtle }]}>{opcao.rotulo}</Text>
+            </Pressable>
+          ))}
+        </View>
+        {extrato === null ? null : linhasFiltradas.length ? (
           linhasExtrato.map((m) => (
             <View key={m.id} style={s.linha}>
               <Text style={[s.valor, { color: m.valor > 0 ? ENTRADA : palette.textMuted }]}>
@@ -121,7 +141,7 @@ export function LateralLoja({
         ) : (
           <Text style={[s.texto, { color: palette.textMuted }]}>Nenhuma moeda ganha ou gasta ainda.</Text>
         )}
-        {(extrato?.length ?? 0) > 6 ? (
+        {linhasFiltradas.length > 6 ? (
           <Pressable accessibilityRole="button" onPress={() => setExtratoCompleto((v) => !v)}>
             <Text style={[s.link, { color: palette.accent }]}>{extratoCompleto ? "Ver menos" : "Ver extrato completo"}</Text>
           </Pressable>
@@ -136,6 +156,7 @@ export function LateralLoja({
 const s = StyleSheet.create({
   coluna: { borderRadius: 16, borderWidth: 1, paddingVertical: 22, paddingHorizontal: 20, gap: 18 },
   bloco: { gap: 10 },
+  filtros: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   separado: { borderTopWidth: 1, paddingTop: 18 },
   titulo: { fontFamily: FontFamily.interMedium, fontSize: 12, fontWeight: "700", letterSpacing: 1 },
   linha: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 32 },

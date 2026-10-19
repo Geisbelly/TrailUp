@@ -24,6 +24,8 @@ type Props = {
   onQuestionIndexChange?: (questionIndex: number) => void;
   timedOut?: boolean;
   reviewMode?: boolean;
+  /** Incrementa quando o aluno gasta uma segunda chance comprada. */
+  novaTentativa?: number;
   onComplete?: (result?: {
     correto?: boolean;
     acertosPercentual?: number;
@@ -416,6 +418,7 @@ export default function QuestionActivity({
   onQuestionIndexChange,
   timedOut = false,
   reviewMode = false,
+  novaTentativa = 0,
 }: Props) {
   const questoes = useMemo(() => (Array.isArray(atividade?.questoes) ? atividade.questoes : []), [atividade?.questoes]);
   const [questaoIndex, setQuestaoIndex] = useState(() => Math.min(Math.max(0, initialQuestionIndex), Math.max(0, questoes.length - 1)));
@@ -529,6 +532,19 @@ export default function QuestionActivity({
     pontos: 0,
     acerto: false,
   });
+
+  const indiceDaTentativa = useRef(questaoIndex);
+  const tentativaAplicada = useRef(0);
+  indiceDaTentativa.current = questaoIndex;
+  useEffect(() => {
+    if (!novaTentativa || tentativaAplicada.current === novaTentativa) return;
+    tentativaAplicada.current = novaTentativa;
+    const indice = indiceDaTentativa.current;
+    setReResponder(true);
+    setMostrarResposta(false);
+    setConfirmados((prev) => ({ ...prev, [indice]: false }));
+    setTimeoutLocked((prev) => ({ ...prev, [indice]: false }));
+  }, [novaTentativa, setMostrarResposta, setReResponder]);
 
   useEffect(() => {
     const maxIndex = Math.max(0, questoes.length - 1);

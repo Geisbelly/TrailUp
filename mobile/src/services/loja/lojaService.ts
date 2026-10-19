@@ -92,7 +92,7 @@ export async function carregarExtrato(alunoId: string, nomes: ReadonlyMap<string
 export async function carregarLimitesTurma(classeId: number) {
   const { data, error } = await supabase
     .from("loja_config_classe")
-    .select("prazo_max_dias_total,prazo_max_por_ativ,retry_max_por_topico")
+    .select("prazo_max_dias_total,prazo_max_por_ativ,retry_max_por_topico,prazo_extensao_min_dias,prazo_extensao_max_dias,tempo_extra_min_minutos,tempo_extra_max_minutos,tempo_max_por_ativ")
     .eq("classe_id", classeId)
     .maybeSingle();
   if (error) throw error;

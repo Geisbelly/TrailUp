@@ -1613,6 +1613,7 @@ export default function PersonalizedTopicView({
                   <ActivityRenderer
                     atividade={currentStep.activity}
                     topicoId={topico?.id}
+                    classeId={Number(topico?.classe_id ?? 0) || null}
                     onComplete={handleUnifiedActivityComplete}
                     initialQuestionIndex={currentQuestionIndex}
                     onQuestionIndexChange={(questionIndex) => {

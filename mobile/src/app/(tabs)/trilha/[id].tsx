@@ -1859,6 +1859,7 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
               <ActivityRenderer
                 atividade={atualBlock.atividade}
                 topicoId={topicoId ?? topico?.id ?? null}
+                classeId={classeAtual?.classe_id ?? topico?.classe_id ?? null}
                 onComplete={handleAtividadeComplete}
                 initialQuestionIndex={currentActivityQuestionIndex}
                 onQuestionIndexChange={(questionIndex) => {

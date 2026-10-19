@@ -24,8 +24,12 @@ export default function ActivityScreen({ route }: ActivityScreenProps) {
     <View style={{ flex: 1 }}>
       {/* Acima do renderer, e nao dentro de cada tipo de atividade: um lugar so
           vale para texto, questao e o que vier depois. */}
-      <SeloDePrazo dataEntrega={atividade.data_entrega} />
-      <ActivityRenderer atividade={atividade} topicoId={topico?.id} />
+      {!(topico.classe_id > 0) ? <SeloDePrazo dataEntrega={atividade.data_entrega} /> : null}
+      <ActivityRenderer
+        atividade={atividade}
+        topicoId={topico?.id}
+        classeId={topico.classe_id > 0 ? topico.classe_id : null}
+      />
     </View>
   )
 }

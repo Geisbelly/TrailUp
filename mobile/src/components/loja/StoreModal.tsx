@@ -1,8 +1,9 @@
 import { JourneyHeading } from "@/components/JourneyHeading";
 import { StoreItemIcon } from "@/components/loja/StoreItemIcon";
 import { UtilityIcon } from "@/components/UtilityIcon";
+import { filtrarExtrato, type FiltroDeExtrato, type Movimento } from "@/services/loja/extratoModel";
 import type { StoreItem, StoreSnapshot } from "@/services/loja/lojaService";
-import { comprarItem, carregarLoja } from "@/services/loja/lojaService";
+import { comprarItem, carregarExtrato, carregarLoja } from "@/services/loja/lojaService";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -18,6 +19,13 @@ import {
   View,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+
+const FILTROS_EXTRATO: { id: FiltroDeExtrato; rotulo: string }[] = [
+  { id: "todos", rotulo: "Tudo" },
+  { id: "evento", rotulo: "Ganhos" },
+  { id: "compra", rotulo: "Compras" },
+  { id: "estorno", rotulo: "Estornos" },
+];
 
 type Props = {
   visible: boolean;
@@ -39,6 +47,8 @@ export function StoreModal({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [buying, setBuying] = useState<string | null>(null);
+  const [movimentos, setMovimentos] = useState<Movimento[] | null>(null);
+  const [filtro, setFiltro] = useState<FiltroDeExtrato>("todos");
   const purchaseLock = useRef(false);
   const request = useRef(0);
   const palette = getProfileShellPalette(profileName);
@@ -49,6 +59,9 @@ export function StoreModal({
     try {
       const data = await carregarLoja(alunoId, classeId, profileName);
       if (current === request.current) setSnapshot(data);
+      const nomes = new Map(data.items.map((item) => [item.id, item.name]));
+      const extrato = await carregarExtrato(alunoId, nomes, 30).catch(() => [] as Movimento[]);
+      if (current === request.current) setMovimentos(extrato);
     } catch (caught) {
       if (current === request.current)
         setError(
@@ -205,6 +218,29 @@ export function StoreModal({
                 Nenhum item disponível no momento.
               </Text>
             ) : null}
+            <Text style={[s.sectionTitle, { color: palette.text }]}>Histórico</Text>
+            <View style={s.filters}>
+              {FILTROS_EXTRATO.map((opcao) => (
+                <Pressable key={opcao.id} accessibilityRole="button" onPress={() => setFiltro(opcao.id)}>
+                  <Text style={[s.filterText, { color: filtro === opcao.id ? palette.accent : palette.textMuted }]}>
+                    {opcao.rotulo}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+            {filtrarExtrato(movimentos ?? [], filtro).length ? (
+              filtrarExtrato(movimentos ?? [], filtro).map((movimento) => (
+                <View key={movimento.id} style={s.movement}>
+                  <Text style={[s.movementValue, { color: movimento.valor > 0 ? "#62db9b" : palette.textMuted }]}>
+                    {movimento.valor > 0 ? `+${movimento.valor}` : `−${Math.abs(movimento.valor)}`}
+                  </Text>
+                  <Text style={[s.movementText, { color: palette.text }]} numberOfLines={1}>{movimento.descricao}</Text>
+                  <Text style={[s.filterText, { color: palette.textMuted }]}>{movimento.quando}</Text>
+                </View>
+              ))
+            ) : (
+              <Text style={[s.empty, { color: palette.textMuted }]}>Nenhuma movimentação neste filtro.</Text>
+            )}
           </ScrollView>
         </SafeAreaView>
       </SafeAreaProvider>
@@ -398,4 +434,9 @@ const s = StyleSheet.create({
   },
   feedbackText: { flex: 1, fontSize: 13, lineHeight: 20 },
   empty: { textAlign: "center", marginVertical: 40 },
+  filters: { flexDirection: "row", flexWrap: "wrap", gap: 14 },
+  filterText: { fontSize: 12, fontWeight: "700" },
+  movement: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 28 },
+  movementValue: { fontSize: 13, fontWeight: "700", minWidth: 36 },
+  movementText: { flex: 1, fontSize: 13 },
 });

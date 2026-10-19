@@ -25,6 +25,7 @@ const ConquistasSection = lazyWithReload(() => import("@/components/console/conq
 const BatalhasSection = lazyWithReload(() => import("@/components/console/batalhas/BatalhasSection"));
 const NotasSection = lazyWithReload(() => import("@/components/console/notas/NotasSection"));
 const EventosSection = lazyWithReload(() => import("@/components/console/eventos/EventosSection"));
+const EconomiaSection = lazyWithReload(() => import("@/components/console/economia/EconomiaSection"));
 const ClassManagementSection = lazyWithReload(() => import("@/components/console/ClassManagementSection"));
 const PersonalizacoesSection = lazyWithReload(() => import("@/components/console/personalizacoes/PersonalizacoesSection"));
 const ProfessorApprovalSection = lazyWithReload(() =>
@@ -203,6 +204,8 @@ export default function Console() {
                 <NotasSection professorId={professorData?.id} />
               ) : view === "eventos" ? (
                 <EventosSection professorId={professorData?.id} />
+              ) : view === "economia" ? (
+                <EconomiaSection />
               ) : view === "personalizacoes" ? (
                 <PersonalizacoesSection professorId={professorData?.id} />
               ) : view === "aprovacoes" ? (
