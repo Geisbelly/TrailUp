@@ -257,7 +257,7 @@ function AbaPrazos({ classeId }: { classeId: number }) {
       </Caixa>
       <Caixa>
         <h3 className="mb-1 text-lg font-semibold">Por tópico</h3>
-        <p className="mb-3 text-sm text-muted-foreground">Moedas a mais na conclusão ou na aprovação deste tópico. Vazio herda e não cria um segundo crédito.</p>
+        <p className="mb-3 text-sm text-muted-foreground">Moedas a mais na conclusão ou na aprovação deste tópico. As duas só saem quando você aprova a entrega (nota de 60% ou mais): o aluno marcar como concluída não paga moeda. Vazio herda e não cria um segundo crédito.</p>
         <div className="flex flex-wrap items-end gap-3">
           <label className="text-sm">Id do tópico
             <Input aria-label="Id do tópico" value={topicoId} onChange={(e) => setTopicoId(e.target.value)} className="mt-1 w-32" />

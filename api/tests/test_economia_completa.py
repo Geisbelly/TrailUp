@@ -59,7 +59,11 @@ def concedido(
 def test_a_cabeca_nova_continua_a_cadeia() -> None:
     scripts = ScriptDirectory.from_config(_config())
     heads = scripts.get_heads()
-    assert heads == ["20261020_03"]
+    assert heads == ["20261020_05"]
+    aprovacao = scripts.get_revision("20261020_05")
+    assert aprovacao is not None and aprovacao.down_revision == "20261020_04"
+    correcao = scripts.get_revision("20261020_04")
+    assert correcao is not None and correcao.down_revision == "20261020_03"
     atual = scripts.get_revision("20261020_03")
     assert atual is not None
     assert atual.down_revision == "20261020_02"
@@ -192,3 +196,65 @@ def test_o_downgrade_restaura_o_que_as_migrations_substituiram() -> None:
     assert "DELETE FROM public.loja_compras" not in base
     assert "DELETE FROM public.moedas_ledger" not in base
     assert "DELETE FROM public.eventos_aluno" not in base
+
+
+def test_correcoes_do_ponta_a_ponta() -> None:
+    """20261020_04: o que o e2e contra banco real achou (ver test_e2e_economia_banco)."""
+    sql = _sql("20261020_03", "20261020_04")
+    # prazo comprado entra no prazo que o atraso julga
+    assert "CREATE OR REPLACE FUNCTION public.fn_prazo_efetivo" in sql
+    assert "LEFT JOIN public.atividade_prazo_aluno p" in sql
+    # meta de nota mínima só com a nota do professor (evento creditado)
+    assert "e.tipo = 'nota_professor'" in sql
+    assert "aa.pontuacao_obtida" not in sql
+    # ganho exige matrícula na turma que paga
+    assert sql.count("FROM public.classe_aluno ca") >= 3
+    # excluir a turma não trava no log de uso nem na dica
+    assert sql.count("REFERENCES public.loja_compras(id) ON DELETE CASCADE") == 2
+
+
+def test_downgrade_das_correcoes_volta_ao_estado_anterior() -> None:
+    sql = _sql_down("20261020_04", "20261020_03")
+    assert "SELECT a.data_entrega" in sql and "atividade_prazo_aluno p" not in sql
+    assert "aa.pontuacao_obtida" in sql  # volta o METAS de 20261020_03
+    assert "ON DELETE CASCADE" not in sql
+    assert "DELETE FROM" not in sql and "DROP TABLE" not in sql
+
+
+def test_conclusao_so_paga_com_aprovacao_do_professor() -> None:
+    """20261020_05: concluir é autodeclarado; a moeda sai em avaliar_entrega."""
+    sql = _sql("20261020_04", "20261020_05")
+    # concluir sozinho não paga mais
+    assert "DROP TRIGGER IF EXISTS trg_atividade_aluno_moedas_conclusao" in sql
+    assert "CREATE TRIGGER trg_atividade_aluno_moedas_conclusao" not in sql
+    assert "IF NEW.tipo <> 'atividade_concluida' THEN" in sql
+    # aprovação vira registro do professor, que o cliente só lê
+    assert "CREATE TABLE IF NOT EXISTS public.atividade_aprovacao" in sql
+    assert "ALTER TABLE public.atividade_aprovacao ENABLE ROW LEVEL SECURITY" in sql
+    assert "REVOKE ALL ON public.atividade_aprovacao FROM PUBLIC, anon, authenticated" in sql
+    assert "GRANT SELECT ON public.atividade_aprovacao TO authenticated" in sql
+    assert "GRANT INSERT" not in sql and "GRANT UPDATE" not in sql
+    assert "CREATE POLICY atividade_aprovacao_sel" in sql
+    # avaliar_entrega paga a conclusão uma vez, só se aprovou e com matrícula
+    avaliar = sql.split("CREATE OR REPLACE FUNCTION public.avaliar_entrega")[1].split("$function$;")[0]
+    assert "v_aprovada := p_nota >= v_max * 0.6" in avaliar
+    assert "'atividade_conclusao_config'" in avaliar
+    assert "l.evento_tipo = 'atividade_concluida'" in avaliar  # quem já recebeu não recebe de novo
+    assert "FROM public.classe_aluno ca" in avaliar
+    assert avaliar.index("INSERT INTO public.atividade_aprovacao") < avaliar.index("INSERT INTO public.eventos_aluno")
+    # metas: só aprovada conta; nota mínima é a última nota do professor; trava solta
+    metas = sql.split("CREATE OR REPLACE FUNCTION public.economia_avaliar_metas_de")[1].split("$fn$;")[0]
+    assert "FROM public.atividade_aprovacao ap" in metas and "ap.aprovada" in metas
+    assert "a.status" not in metas and "aa.status" not in metas
+    assert "set_config('trailup.avaliando_meta', '0', true)" in metas
+    assert "FROM public.classe_aluno ca" in metas
+
+
+def test_downgrade_da_aprovacao_preserva_os_dados() -> None:
+    sql = _sql_down("20261020_05", "20261020_04")
+    assert "CREATE TRIGGER trg_atividade_aluno_moedas_conclusao" in sql
+    assert "CREATE OR REPLACE FUNCTION public.avaliar_entrega" in sql
+    assert "CREATE OR REPLACE FUNCTION public.fn_eventos_aluno_paga_moeda" in sql
+    assert "CREATE OR REPLACE FUNCTION public.economia_avaliar_metas_de" in sql
+    assert "e.tipo = 'nota_professor'" in sql  # volta o METAS de 20261020_04
+    assert "DROP TABLE" not in sql and "DELETE FROM" not in sql and "TRUNCATE" not in sql
