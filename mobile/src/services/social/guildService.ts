@@ -40,10 +40,14 @@ export async function responderQuestaoGuilda(mensagemId: string, resposta: strin
 }
 export async function criarDesafioGuilda(
   guildaId: string,
-  modo: "todos" | "velocidade" | "precisao" | "duelo" | "duplo" = "todos",
+  // `duelo`/`duplo` saíram: `guilda_desafios_modo_check` nunca os aceitou, então pedi-los
+  // estourava 23514 no INSERT. A RPC passou a recusá-los antes, em `20261021_11`.
+  modo: "todos" | "velocidade" | "precisao" = "todos",
   quantidade = 3,
   dificuldade: "normal" | "dificil" = "normal",
   consequencia: "treino" | "ranqueada" | "evento" = "ranqueada",
+  formato: "solo" | "dupla" | "guilda" | "turma" = "guilda",
+  aliado: string | null = null,
 ) {
   return action("guilda_desafio_criar", {
     p_guilda_id: guildaId,
@@ -51,5 +55,8 @@ export async function criarDesafioGuilda(
     p_quantidade: quantidade,
     p_dificuldade: dificuldade,
     p_consequencia: consequencia,
+    p_formato: formato,
+    // A RPC recusa aliado em formato que não o usa, então não se manda "por garantia".
+    ...(formato === "dupla" && aliado ? { p_aliado: aliado } : {}),
   });
 }

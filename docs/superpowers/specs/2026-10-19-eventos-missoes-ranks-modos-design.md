@@ -138,7 +138,7 @@ checagem é no banco, no mesmo lugar que recalcula o valor.
 | Eventos | `eventos_classe` + `_missoes` + `_resultado` + `_resultado_guilda`, `fn_evento_classe_apurar`, 4 RPCs | nada estrutural |
 | Competição em grupo | `eventos_classe.modalidade_guilda` + `guilda_evento_snapshot` | nada |
 | Batalhas | `guilda_desafios` + `_questoes` + `_respostas` + `desafio_participantes`, 7 RPCs `arena_*` | eixo de consequência **e o fim do jogo** — ver fase 8 |
-| Solo / dupla / guilda | `guilda_desafios.formato` | `turma` |
+| Solo / dupla / guilda | `guilda_desafios.formato` | `turma` **e quem CRIA cada formato** — ver fase 10 |
 | Rápido / difícil | `guilda_desafios.modo` | `dificuldade` |
 | Ranks | `ranks`, `rank_tipo`, `vw_rank_posicoes_por_classe` | linha de `rank_tipo` para ranqueada |
 | Ranqueada | — | `consequencia = 'ranqueada'` + rank próprio |
@@ -496,6 +496,39 @@ Cada fase é mesclável sozinha e não quebra a anterior.
    > `desafio_tempo_seg_*` ele precisaria saber quando a questão foi ABERTA, e esse registro
    > não existe. Uma guarda a partir de `created_at` do desafio puniria quem abre e responde
    > depois, que é o uso normal.
+
+10. **O eixo de composição passa a existir.** `20261021_11`.
+
+   > A fase 1 abriu o CHECK para `solo | dupla | guilda | turma` e este documento listou
+   > `turma` como a lacuna. Medido depois: **nenhum dos quatro era escolhível.**
+   > `guilda_desafio_criar` gravava `formato = 'guilda'` fixo, e `arena_desafio_criar` — a
+   > única RPC que recebia `p_formato` — recusa `'turma'` e não é chamada por cliente nenhum.
+   > (Para ser preciso: **não havia seletor de formato**; `FORMATOS` existe em
+   > `eixosDoDesafio.ts` e nunca foi renderizado. Eixo não entregue, não bug silencioso.)
+   >
+   > Três coisas que a implementação revelou:
+   >
+   > - **`guilda_id` tem de ser NULL fora do formato guilda.**
+   >   `guilda_desafios_guilda_do_formato` é `(formato = 'guilda') = (guilda_id IS NOT NULL)`,
+   >   e o reflexo de gravar `p_guilda_id` sempre viola o CHECK. O desafio não-guilda nasce
+   >   sem guilda, e ela fica sendo só o lugar de onde ele foi anunciado — coerente com o que
+   >   a fase 1 registrou sobre `turma`.
+   > - **Cooperativo passou a ser "não existe equipe 2"**, não `formato = 'guilda' AND rival
+   >   IS NULL`. Com os quatro formatos existindo, solo/dupla/turma cairiam no ramo
+   >   competitivo, onde `v_jog2 = 0` dá `sem_adversario`: **ninguém venceria nunca.** E o
+   >   predicado antigo nunca foi um teste de "sem adversário" — o duelo solo da arena tem
+   >   equipe 2 e rival nulo; ele só funcionava porque o formato estava preso a `guilda`.
+   > - **A RPC aceitava `modo` que a tabela recusa.** `guilda_desafios_modo_check` permite
+   >   três valores; a validação da fase 7 permitia cinco (`duelo`, `duplo`). Pedir `duelo`
+   >   passava e estourava `23514` no INSERT, longe da causa. A lista da RPC passa a ser a da
+   >   tabela.
+   >
+   > `dupla` **exige** `p_aliado` (sem ele seria solo com outro nome) e o aliado entra
+   > `'aceito'`, não `'convidado'`: não existe fluxo de aceite no caminho vivo
+   > (`arena_convite_responder` não é chamada por ninguém), e com `'convidado'` o fechamento
+   > automático da fase 8 — que conta só `aceito` — fecharia a dupla sem o parceiro. Enquanto
+   > não houver seletor de parceiro, o seletor do mobile filtra `dupla` por um campo
+   > explícito (`pedeAliado`) em vez de escondê-la por acidente.
 
 ## Decisões que são fáceis de errar
 
