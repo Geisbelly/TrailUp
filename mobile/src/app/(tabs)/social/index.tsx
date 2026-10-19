@@ -122,7 +122,7 @@ export default function SocialScreen() {
     if (succeeded) setChatPerson({ ...person, status: "candidate" });
   }
 
-  // Na tela larga a lista é uma grade de duas colunas; no celular o cartão segue sem invólucro.
+  // Na tela larga a lista é uma grade de três colunas; no celular o cartão segue sem invólucro.
   const Envolve: React.ElementType = desktop ? View : React.Fragment;
   const celula = (chave: string, cartao: React.ReactElement) => (desktop ? <View key={chave} style={styles.celula}>{cartao}</View> : cartao);
 
@@ -211,7 +211,8 @@ const styles = StyleSheet.create({
   colunas: { flexDirection: "row", gap: 20, alignItems: "flex-start" },
   principal: { flex: 1, minWidth: 0 },
   grade: { flexDirection: "row", flexWrap: "wrap" },
-  celula: { width: "49%", minWidth: 320 },
+  // Três colunas, como no protótipo v4 (cartão compacto do SocialPersonCard).
+  celula: { width: "32%", minWidth: 240 },
   header: { marginBottom: 16 },
   subtitle: { fontFamily: FontFamily.interMedium, fontSize: 14, lineHeight: 21, marginTop: 12 },
   tabs: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 16 },

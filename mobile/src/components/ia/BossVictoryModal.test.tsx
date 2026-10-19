@@ -22,6 +22,7 @@ mockModule('react-native', {
 mockModule('@/context/IAContext', { useIA: () => ({ pendingBattleVictories: pending, dismissBattleVictory: (id: string) => { closed = id; pending = []; } }) });
 mockModule('@/context/SessaoContext', { useUsuario: () => ({ usuario: { id: 'aluno' } }) });
 mockModule('@/context/TrilhaContext', { useTrilha: () => ({ perfil: 'conqueror', classeAtual: { topicos: [{ id: classTopic }] } }) });
+mockModule('@/hooks/useDesktopWeb', { useDesktopWeb: () => false });
 mockModule('@/hooks/useContentBossVisual', { useContentBossVisual: (topic: number, key: string, content: number) => topic === 131 && key === 'content:192' && content === 192 ? 'teacher-boss.png' : null });
 mockModule('@/constants/bossVisuals', { bossVisuals: { 'boss-01': 'fallback.png' } });
 mockModule('@/utils/profileShellTheme', { getProfileShellPalette: () => ({}) });

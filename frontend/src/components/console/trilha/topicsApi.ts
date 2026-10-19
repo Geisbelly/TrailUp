@@ -176,7 +176,11 @@ export async function saveActivity(params: {
   descricao: string;
   tipo?: string | null;
   data_entrega?: string | null;
+  /** Só é gravada quando informada: `undefined` NÃO apaga a pontuação que a atividade já tem. */
+  pontuacao_maxima?: number | null;
 }) {
+  // Atividade sem pontuação informada não mexe na coluna (editar o título não pode zerá-la).
+  const pontuacao = params.pontuacao_maxima === undefined ? {} : { pontuacao_maxima: params.pontuacao_maxima };
   if (params.id) {
     const { error } = await supabase
       .from("atividades")
@@ -185,6 +189,7 @@ export async function saveActivity(params: {
         descricao: params.descricao,
         tipo: params.tipo || null,
         data_entrega: params.data_entrega || null,
+        ...pontuacao,
       })
       .eq("id", params.id);
     if (error) throw error;
@@ -199,6 +204,7 @@ export async function saveActivity(params: {
       descricao: params.descricao,
       tipo: params.tipo || null,
       data_entrega: params.data_entrega || null,
+      ...pontuacao,
     })
     .select("id")
     .single();

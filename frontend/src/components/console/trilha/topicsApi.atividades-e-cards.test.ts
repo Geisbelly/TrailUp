@@ -71,6 +71,25 @@ describe("saveActivity", () => {
     expect(sb.chamadas[0].payload).not.toHaveProperty("topico_id");
   });
 
+  it("grava pontuacao_maxima quando informada (missão), no insert e no update", async () => {
+    await saveActivity({ topico_id: 4, titulo: "M", descricao: "", tipo: "missao", pontuacao_maxima: 50 });
+    await saveActivity({ id: 9, topico_id: 4, titulo: "M", descricao: "", tipo: "missao", pontuacao_maxima: 30 });
+    expect(sb.chamadas[0].payload).toMatchObject({ tipo: "missao", pontuacao_maxima: 50 });
+    expect(sb.chamadas[1].payload).toMatchObject({ pontuacao_maxima: 30 });
+  });
+
+  it("sem pontuacao_maxima informada, NÃO manda a coluna (editar o título não zera a pontuação)", async () => {
+    await saveActivity({ id: 9, topico_id: 4, titulo: "novo título", descricao: "" });
+    await saveActivity({ topico_id: 4, titulo: "x", descricao: "" });
+    expect(sb.chamadas[0].payload).not.toHaveProperty("pontuacao_maxima");
+    expect(sb.chamadas[1].payload).not.toHaveProperty("pontuacao_maxima");
+  });
+
+  it("pontuacao_maxima null limpa a coluna de propósito", async () => {
+    await saveActivity({ id: 9, topico_id: 4, titulo: "x", descricao: "", pontuacao_maxima: null });
+    expect(sb.chamadas[0].payload).toMatchObject({ pontuacao_maxima: null });
+  });
+
   it("propaga o erro do banco", async () => {
     sb.erro = new Error("rls");
     await expect(saveActivity({ topico_id: 4, titulo: "x", descricao: "" })).rejects.toThrow("rls");

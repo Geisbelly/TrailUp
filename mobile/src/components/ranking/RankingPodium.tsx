@@ -2,6 +2,7 @@ import { FramedProfileImage } from "@/components/FramedProfileImage";
 import { JourneySymbol } from "@/components/JourneySymbol";
 import { ProfileEmblem } from "@/components/ProfileEmblem";
 import { UtilityIcon } from "@/components/UtilityIcon";
+import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { FontFamily } from "@/styles/GlobalStyle";
 import type { ProfileShellPalette } from "@/utils/profileShellTheme";
 import type { RankingProfileMeta } from "@/utils/rankingProfiles";
@@ -35,6 +36,8 @@ export function RankingPodium({
   photos,
   onPressAluno,
 }: Props) {
+  // Web em tela larga (#346, protótipo v4 05-ranking): pilares retos de alturas diferentes.
+  const desktop = useDesktopWeb();
   const leaders = selectPodium(rows);
   if (!leaders.length)
     return (
@@ -50,7 +53,7 @@ export function RankingPodium({
   const columns = first.length === 3 ? [first[1], first[0], first[2]] : first;
   return (
     <View style={s.root}>
-      <View style={s.stage}>
+      <View style={[s.stage, desktop && s.stageLargo]}>
         {columns.map((row) => {
           const position = row.posicao!;
           const winner = position === 1;
@@ -67,7 +70,7 @@ export function RankingPodium({
               style={[
                 s.column,
                 {
-                  paddingBottom: position === 1 ? 30 : position === 2 ? 12 : 0,
+                  paddingBottom: desktop ? 0 : position === 1 ? 30 : position === 2 ? 12 : 0,
                 },
               ]}
               accessible
@@ -112,10 +115,27 @@ export function RankingPodium({
               <Text style={[s.name, { color: palette.text }]}>
                 {row.nome_aluno}
               </Text>
-              <Text style={[s.score, { color }]}>
+              <Text style={[s.score, desktop && s.scoreLargo, { color: desktop ? palette.textMuted : color }]}>
                 {formatRankScore(row.pontuacao, criterion)}
               </Text>
-              <ProfileEmblem profile={profile} toneProfile={palette.profile} size={44} />
+              <ProfileEmblem profile={profile} toneProfile={palette.profile} size={desktop ? 28 : 44} />
+              {desktop ? (
+                <View
+                  style={[
+                    s.pilar,
+                    {
+                      height: ALTURA_PILAR[position] ?? ALTURA_PILAR[3],
+                      backgroundColor: winner ? palette.surfaceElevated : palette.surface,
+                      borderColor: palette.borderStrong,
+                    },
+                  ]}
+                >
+                  <Text style={[s.place, s.placeLargo, { color }]}>
+                    {position}
+                    <Text style={s.ordinal}>º</Text>
+                  </Text>
+                </View>
+              ) : (
               <View style={s.pedestal}>
                 <Svg
                   width="100%"
@@ -147,6 +167,7 @@ export function RankingPodium({
                   <Text style={s.ordinal}>º</Text>
                 </Text>
               </View>
+              )}
             </Coluna>
           );
         })}
@@ -171,6 +192,9 @@ export function RankingPodium({
     </View>
   );
 }
+
+// Altura de cada pilar na tela larga (1º mais alto), como no protótipo.
+const ALTURA_PILAR: Record<number, number> = { 1: 120, 2: 90, 3: 70 };
 
 const s = StyleSheet.create({
   root: { paddingTop: 28, paddingBottom: 12 },
@@ -222,6 +246,18 @@ const s = StyleSheet.create({
     fontSize: 27,
   },
   ordinal: { fontSize: 15 },
+  stageLargo: { gap: 12, paddingHorizontal: 24 },
+  scoreLargo: { fontSize: 13, fontWeight: "600", marginTop: 2, marginBottom: 8 },
+  pilar: {
+    marginTop: 10,
+    width: "100%",
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    alignItems: "center",
+  },
+  placeLargo: { position: "relative", top: 0, marginTop: 14, fontSize: 32 },
   tie: {
     flexDirection: "row",
     gap: 12,

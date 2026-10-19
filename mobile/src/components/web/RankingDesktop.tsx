@@ -37,6 +37,8 @@ export function RankingDesktop() {
   const rankAberto = ranks.find((r) => r.info.rank_id === idAberto);
   const criterio = rankAberto?.info.criterio ?? null;
   const resumo = resumirMinhaPosicao(rankAberto?.posicoes ?? [], usuario?.id, criterio);
+  // Turma sem ranking: o aviso vai num cartão à direita, como o estado "Vazio" do protótipo v4.
+  const semRanking = !carregando && !ranks.length;
 
   return (
     <View style={[s.tela, { backgroundColor: palette.background }]}>
@@ -85,9 +87,6 @@ export function RankingDesktop() {
         </View>
 
         {carregando && !ranks.length ? <ActivityIndicator color={palette.accent} style={s.vazio} /> : null}
-        {!carregando && !ranks.length ? (
-          <Text style={[s.vazio, { color: palette.textMuted }]}>Nenhum ranking disponível nesta turma.</Text>
-        ) : null}
 
         {/* Sua posição: sai do rodapé da tabela e fica aqui, sempre visível enquanto a classificação rola. */}
         {rankAberto && resumo.minha ? (
@@ -121,9 +120,17 @@ export function RankingDesktop() {
       </View>
 
       {/* A categoria aberta fica num cartão, como no protótipo v4. */}
-      <View style={[s.direita, { borderColor: palette.border, backgroundColor: palette.background }]}>
-        {idAberto !== null ? <RankDetalhe key={idAberto} rankId={idAberto} embutido /> : null}
-      </View>
+      {semRanking ? (
+        <View style={[s.direita, s.cartaoVazio, { borderColor: palette.border, backgroundColor: palette.surface }]}>
+          <UtilityIcon kind="medal" size={52} height={58} />
+          <Text style={[s.vazioTitulo, { color: palette.text }]}>Nenhum ranking ainda</Text>
+          <Text style={[s.vazioTexto, { color: palette.textMuted }]}>Nenhum ranking disponível nesta turma.</Text>
+        </View>
+      ) : (
+        <View style={[s.direita, { borderColor: palette.border, backgroundColor: palette.background }]}>
+          {idAberto !== null ? <RankDetalhe key={idAberto} rankId={idAberto} embutido /> : null}
+        </View>
+      )}
     </View>
   );
 }
@@ -140,6 +147,9 @@ const s = StyleSheet.create({
   nomeCategoria: { fontFamily: FontFamily.inikaBold, fontSize: 15.5 },
   descricao: { fontFamily: FontFamily.interMedium, fontSize: 12, marginTop: 1 },
   vazio: { marginTop: 24 },
+  cartaoVazio: { flex: 1, alignSelf: "flex-start", alignItems: "center", gap: 10, paddingVertical: 40, paddingHorizontal: 24 },
+  vazioTitulo: { fontFamily: FontFamily.interMedium, fontSize: 17, fontWeight: "700", marginTop: 6 },
+  vazioTexto: { fontFamily: FontFamily.interMedium, fontSize: 14, textAlign: "center" },
   voce: { fontFamily: FontFamily.interMedium, fontSize: 11.5, marginTop: 2 },
   direita: { flex: 1, minWidth: 0, marginTop: 24, marginRight: 24, marginBottom: 24, borderRadius: 20, borderWidth: 1, overflow: "hidden" },
   // Logo abaixo das categorias, como no protótipo (antes ficava presa ao pé da coluna).

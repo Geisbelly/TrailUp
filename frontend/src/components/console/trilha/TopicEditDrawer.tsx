@@ -33,6 +33,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { formatFileSize } from "@/lib/utils";
 import { fonteDoTopico } from "./fonteDoTopico";
+import { formatoDaQuestao } from "./formatoDaQuestao";
 import { prazoDaAtividade, rotuloDoTipoDeAtividade } from "./atividades";
 import { duplicateActivity, duplicateCard } from "./topicsApi";
 import {
@@ -620,21 +621,12 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
     }
   }, [contents.length, setIsCreating, setContentForm]);
 
-  const normalizeQuestionTypeToActivityType = (tipo: string | null | undefined) => {
-    const raw = (tipo || "").trim().toLowerCase();
-    if (raw === "quiz" || raw === "multipla" || raw === "multipla_escolha") return "quiz";
-    if (raw === "true_false" || raw === "verdadeiro_falso" || raw === "vf") return "true_false";
-    if (raw === "fill_blank" || raw === "lacuna" || raw === "completar") return "fill_blank";
-    if (raw === "essay" || raw === "dissertativa" || raw === "questao" || raw === "texto") return "essay";
-    return "essay";
-  };
-
   // Efeito para carregar questão existente ao selecionar atividade
   useEffect(() => {
     if (selectedActivityId) {
       if (questions.length > 0) {
         const q = questions[0];
-        const resolvedType = normalizeQuestionTypeToActivityType(q.tipo || activityForm.tipo || "quiz");
+        const resolvedType = formatoDaQuestao(q.tipo || activityForm.tipo || "quiz");
         setQuestionForm({
           id: q.id,
           atividade_id: q.atividade_id.toString(),
@@ -656,7 +648,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
         }
         setQuestionOptions(opts.length ? opts : [""]);
       } else {
-        const defaultType = normalizeQuestionTypeToActivityType(activityForm.tipo || "quiz");
+        const defaultType = formatoDaQuestao(activityForm.tipo || "quiz");
         setQuestionForm({
           id: 0,
           atividade_id: selectedActivityId,
