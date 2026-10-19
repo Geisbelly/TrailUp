@@ -66,6 +66,7 @@ import {
 } from '@/utils/personalization';
 import { inferModoApresentacao } from '@/utils/presentationOrder';
 import { resolveActiveBrainHexProfile } from '@/utils/brainHex';
+import { houveVisita, payloadDeVisitaDoTopico } from '@/utils/visitaDoTopico';
 import { buildSupabasePublicStorageUrl, looksLikeStorageObjectPath } from '@/utils/supabaseStorage';
 import {
   clampPercent,
@@ -1925,35 +1926,26 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
   ) => {
     if (!classeAtual || !usuario) return
 
-    // O tempo nao e mais gravado daqui (vem da telemetria, por trigger), mas
-    // continua sendo a CONDICAO: sem tempo decorrido nao houve visita a
-    // registrar, e um upsert por evento vazio so gera escrita a toa.
-    const tempoNormalizado = Math.max(0, Number(tempoGastoMin ?? 0))
-    if (!Number.isFinite(tempoNormalizado) || tempoNormalizado <= 0) return
+    // O tempo nao e gravado daqui (e derivado no banco), mas continua sendo a
+    // CONDICAO: sem tempo decorrido nao houve visita a registrar.
+    if (!houveVisita(tempoGastoMin)) return
 
     try {
       const topico = classeAtual.topicos.find((t) => t.id === topicoId)
       if (!topico) throw new Error('Topico nao encontrado')
 
+      // O payload mora em `visitaDoTopico.ts` para poder ser testado: o que
+      // NAO pode estar nele (`status`, `percentual_concluido`,
+      // `tempo_gasto_min`) e a regra que ja foi quebrada por quatro
+      // gravadores diferentes.
       const { error } = await supabase
         .from('topico_aluno')
         .upsert(
-          {
-            aluno_id: usuario.id,
-            topico_id: topicoId,
-            // Sem `status` nem `percentual_concluido`: sao derivados no banco
-            // pelo trigger de progresso. Mandar o valor local aqui gravava por
-            // cima da conta certa com o que a memoria do app tivesse no
-            // momento -- e este caminho dispara a cada registro de tempo, o
-            // que fazia o percentual correto durar segundos.
-            //
-            // O `status` que estava aqui tambem era ternario morto: os dois
-            // ramos devolviam 'em andamento', entao um topico com 0% era
-            // marcado como iniciado so por ter tido tempo contabilizado.
-            ultima_atividade: topico.ultima_atividade ?? null,
-            ultima_visualizacao: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
+          payloadDeVisitaDoTopico({
+            alunoId: usuario.id,
+            topicoId,
+            ultimaAtividade: topico.ultima_atividade ?? null,
+          }),
           {
             onConflict: 'aluno_id,topico_id',
           }
