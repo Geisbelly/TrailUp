@@ -16,6 +16,16 @@ describe("podio", () => {
 
 describe("critério", () => {
   it("desconhecido vira pontuação", () => expect(criterioValido("xyz")).toBe("pontuacao"));
+  // `percentual` é o `rank_tipo` 1 do banco ("Percentual Concluído") e o mobile já o trata
+  // como percentual. Faltando no vocabulário do console, caía no fallback e o mesmo ranking
+  // aparecia como "pontuação" para o professor e como percentual para o aluno.
+  it("percentual é reconhecido, não cai no fallback", () => {
+    expect(criterioValido("percentual")).toBe("percentual");
+    expect(rotuloDoCriterio("percentual")).toBe("percentual");
+  });
+  it("os critérios do banco todos se reconhecem", () => {
+    for (const c of ["percentual", "pontuacao", "tempo"]) expect(criterioValido(c)).toBe(c);
+  });
   it("rótulo em minúsculas", () => expect(rotuloDoCriterio("tempo")).toBe("tempo"));
 });
 

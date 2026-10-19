@@ -1,12 +1,17 @@
 import type { BrainHexProfileKey } from "@/features/signup/brainhex";
 import { PERFIS_EM_ORDEM } from "../dashboard/perfilCores";
 
-export type CriterioChave = "pontuacao" | "tempo" | "acertos";
+// `percentual` existe no banco (é o `rank_tipo` 1, "Percentual Concluído") e o mobile já o
+// trata como percentual. Faltando aqui, `criterioValido` o jogava no fallback e o console
+// rotulava aquele ranking como "pontuação" — professor e aluno liam coisas diferentes do
+// mesmo ranking. O vocabulário é fechado: o mobile compara contra estes literais.
+export type CriterioChave = "pontuacao" | "tempo" | "acertos" | "percentual";
 
 export const CRITERIOS: { chave: CriterioChave; rotulo: string }[] = [
   { chave: "pontuacao", rotulo: "Pontuação" },
   { chave: "tempo", rotulo: "Tempo" },
   { chave: "acertos", rotulo: "Acertos" },
+  { chave: "percentual", rotulo: "Percentual" },
 ];
 
 /** Critério vindo do banco é texto livre: o que não for conhecido cai em "pontuacao". */
