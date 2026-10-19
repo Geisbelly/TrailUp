@@ -27,12 +27,22 @@ class _ConexaoFalsa:
         self.dialect = _Dialeto(dialeto)
         self.chamadas: list[tuple[str, dict[str, Any]]] = []
         self._falhar_no_unlock = falhar_no_unlock
+        self.em_transacao = False
+        self.commits = 0
 
     def execute(self, clausula: Any, parametros: dict[str, Any] | None = None) -> None:
         sql = str(clausula)
         if self._falhar_no_unlock and "unlock" in sql:
             raise RuntimeError("conexao morreu")
         self.chamadas.append((sql, parametros or {}))
+        self.em_transacao = True  # autobegin do SQLAlchemy 2
+
+    def in_transaction(self) -> bool:
+        return self.em_transacao
+
+    def commit(self) -> None:
+        self.em_transacao = False
+        self.commits += 1
 
     def sqls(self) -> list[str]:
         return [sql for sql, _ in self.chamadas]
@@ -107,3 +117,54 @@ def test_env_py_usa_a_trava_no_caminho_online() -> None:
     # offline nao disputa banco: so imprime SQL
     offline = texto[texto.index("def run_migrations_offline") : texto.index("def run_migrations_online")]
     assert "trava_de_migracao" not in offline
+
+
+def test_a_trava_nao_deixa_transacao_aberta_para_o_alembic() -> None:
+    # Transacao aberta pela trava faz o Alembic pular a dele e ninguem commitar.
+    conexao = _ConexaoFalsa()
+    with migrations.trava_de_migracao(conexao):
+        assert conexao.in_transaction() is False
+    assert conexao.in_transaction() is False
+    assert conexao.commits == 2
+
+
+def test_migracao_sob_a_trava_fica_gravada_de_verdade(tmp_path) -> None:
+    """Reproduz o rollback silencioso com SQLAlchemy e Alembic de verdade.
+
+    O SQLite faz o papel do banco; a conexao embrulhada so troca o SQL da trava
+    (que nao existe fora do Postgres) por um SELECT, que dispara o mesmo
+    autobegin. O resto e o caminho do env.py: trava, `begin_transaction`, DDL,
+    fechar a conexao. Antes da correcao a tabela e o `alembic_version` sumiam.
+    """
+    from alembic.migration import MigrationContext
+    from alembic.operations import Operations
+    from sqlalchemy import Column, Integer, create_engine, inspect, text
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'trava.db'}")
+
+    class _ComoPostgres:
+        dialect = _Dialeto("postgresql")
+
+        def __init__(self, conexao) -> None:
+            self._c = conexao
+
+        def execute(self, clausula: Any, parametros: dict[str, Any] | None = None) -> None:
+            self._c.execute(text("SELECT 1"))
+
+        def in_transaction(self) -> bool:
+            return self._c.in_transaction()
+
+        def commit(self) -> None:
+            self._c.commit()
+
+    with engine.connect() as conexao:
+        with migrations.trava_de_migracao(_ComoPostgres(conexao)):
+            contexto = MigrationContext.configure(connection=conexao)
+            with contexto.begin_transaction():
+                Operations(contexto).create_table("sonda_da_trava", Column("id", Integer, primary_key=True))
+                conexao.execute(text("CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32))"))
+                conexao.execute(text("INSERT INTO alembic_version VALUES ('sonda')"))
+
+    with engine.connect() as nova:
+        assert "sonda_da_trava" in inspect(nova).get_table_names()
+        assert nova.execute(text("SELECT version_num FROM alembic_version")).scalar() == "sonda"
