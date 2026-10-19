@@ -77,11 +77,54 @@ Então a derrota ranqueada não precisa de schema novo: é uma linha em
 `trg_eventos_aluno_valor_do_banco` propaga como qualquer outro tipo. O fator de
 atraso nem se aplica, porque ele só roda `IF COALESCE(NEW.valor,0) > 0`.
 
+> **Correção, feita na fase 4.** Três coisas no parágrafo acima não funcionam
+> como escritas.
+>
+> **a) `eventos_pontuacao` TEM `CHECK (pontos >= 0)`.** Este documento conferiu
+> que `eventos_aluno.valor` não tem (verdade) e concluiu que a tabela de
+> **preços** também não. O INSERT da derrota falharia na própria migração. O
+> CHECK não foi derrubado — ele é o que impede um dígito errado numa linha de
+> preço virar pontuação negativa para todo mundo (só `service_role` escreve ali;
+> o cliente tem SELECT e nada mais, verificado). A coluna `penalidade` marca
+> quem pode ser negativo, e o CHECK vira `pontos >= 0 OR penalidade`: as outras
+> 18 linhas seguem protegidas.
+>
+> **b) O nome é `desafio_derrota`, não `ranqueada_derrota`** — a família
+> existente é `desafio_vencido` / `desafio_empate` / `desafio_participou`, e o
+> valor sai de `fn_pontos_do_evento(tipo)` por nome de tipo.
+>
+> **c) O fator de dificuldade não pode vir no INSERT.**
+> `trg_eventos_aluno_valor_do_banco` descarta o `valor` do cliente e o recalcula
+> por `fn_pontos_do_evento(tipo)`, então a aposta seria descartada uma linha
+> depois; e um tipo de evento por dificuldade multiplicaria a tabela de preços
+> por cada eixo novo. Virou `fn_fator_de_aposta(referencia)`, irmã de
+> `fn_fator_de_atraso`, aplicada no mesmo lugar — **com a guarda em `<> 0` e não
+> `> 0`**, senão nunca alcançaria a derrota, que é o único valor negativo do
+> sistema (com `> 0` a dificuldade dobraria o prêmio e deixaria o risco igual).
+
 **O perigo é uma inconsistência que já existe:** `fn_evento_classe_apurar` soma
 `GREATEST(ea.valor, 0)`. Logo uma derrota **reduz o rank da turma mas não reduz
 a pontuação dentro de um evento**. Isso não é bug hoje (não há valor negativo),
 mas passa a ser no instante em que a aposta existir. Decidir qual das duas está
 certa é parte da fase 4, e a decisão tem de ser a mesma nos dois lugares.
+
+> **Decisão, tomada na fase 4: unificado em `sum(valor)` — a derrota desconta
+> nos DOIS.** O `GREATEST` nunca foi uma posição sobre economia; foi escrito
+> quando valor negativo não existia. O que torna isso viável sem a espiral é o
+> piso do parágrafo seguinte, que este documento já previa.
+>
+> **E tirar o `GREATEST` não bastou, o que só a execução mostrou:**
+> `eventos_classe_resultado` e `eventos_classe_resultado_guilda` têm cada uma
+> `CHECK (pontos >= 0)` na coluna de **destino**. A primeira apuração com uma
+> derrota abortava inteira com `23514` — o evento não fecha, ninguém recebe
+> medalha, e o erro aparece longe da causa. Os dois CHECKs saíram. São diferentes
+> do de `eventos_pontuacao` (que ficou, marcado por `penalidade`): lá a linha é
+> preço escrito à mão, aqui a coluna é resultado de um `sum()` que passa a poder
+> ser negativo por desenho. Placar negativo é menos grave que apuração que não
+> roda.
+>
+> `participou` continua `COUNT(ea.id) > 0` (jogar conta como participar mesmo
+> perdendo) e `destaque` continua exigindo `pontos > 0`.
 
 Aposta também pede teto: sem piso, uma sequência de derrotas leva o aluno a
 pontuação negativa e ao fim da lista — o que é desmotivador justamente para quem
@@ -316,10 +359,42 @@ Cada fase é mesclável sozinha e não quebra a anterior.
    fazer conquista **e** missão chamarem a mesma função. Fase de maior risco —
    ver limites.
 4. **Pontuação e aposta.** Linhas novas em `eventos_pontuacao` (incluindo
-   `ranqueada_derrota` com `pontos` negativo); `ranqueada` passa a escrever em
-   `eventos_aluno`; piso em `app_config`; **a divergência
-   `sum(valor)` × `GREATEST(valor,0)` é resolvida nos dois lugares no mesmo
-   commit**; `rank_tipo` ganha os tipos e o mobile/console ganham o `criterio`.
+   `desafio_derrota` com `pontos` negativo); `ranqueada` passa a escrever em
+   `eventos_aluno` e `treino` passa a não escrever nada; piso em `app_config`;
+   **a divergência `sum(valor)` × `GREATEST(valor,0)` é resolvida nos dois
+   lugares no mesmo commit**; `rank_tipo` ganha os tipos e o mobile/console
+   ganham o `criterio`. **Feita** — `20261021_06` (+ as correções da seção
+   "Aposta", acima, e as duas abaixo).
+
+   > **O `ELSE 0` da view do rank ranqueia a turma inteira em zero, em
+   > silêncio.** `vw_rank_posicoes_por_classe_todas` tem
+   > `CASE rt.criterio WHEN 'percentual' / 'pontuacao' / 'tempo' ELSE 0`, e
+   > `ELSE 0` não é erro. Duas consequências medidas em produção, as duas da
+   > família do PR #540:
+   >
+   > - o console oferecia `acertos` e ele **não existia no CASE** — todo ranking
+   >   de acertos sempre mostrou zero para todos. A coluna existe
+   >   (`classe_aluno."acertosPercentual"`) e a view já faz join em
+   >   `classe_aluno`, então o ramo é uma linha: consertou-se o cálculo em vez de
+   >   tirar a opção;
+   > - `percentual` existia no CASE e tem linha na tabela, mas não existia no
+   >   console: `criterioValido` reescrevia o critério para `pontuacao` ao abrir
+   >   a edição.
+   >
+   > Corolário para quem acrescentar critério: **o ramo do CASE e a lista do
+   > cliente são o mesmo commit.** O mobile entra na conta — `formatRankScore`
+   > trata `percentual` e `acertos` como porcentagem, e `ranqueada` como número
+   > que pode ser **negativo**.
+
+   > **O console mentia nas escritas de `rank_tipo`.** `20260826_09` a
+   > classificou como "referência sem dono: qualquer autenticado lê, ninguém
+   > escreve pelo app". Medido com papel simulado: `SELECT` devolve 3 linhas,
+   > `INSERT` dá `42501`, e **`UPDATE` e `DELETE` afetam 0 linhas sem erro
+   > nenhum** — que é o pior caso, porque o console exibia "Tipo de ranking
+   > atualizado!" / "excluido!" com o banco intacto (o delete até sumia da tela e
+   > voltava no próximo `loadData`). `.select()` nos três handlers transforma a
+   > mentira em erro visível. A escrita **não** foi aberta ao cliente: isso
+   > contradiria uma decisão registrada. Tipo novo nasce em migração.
 5a. **A missão passa a ser avaliada.** O laço de `missoes` entra no gatilho, reusando os
    mesmos agregados, com guarda de recursão por sinal de sessão e `EXCEPTION` próprio.
    **Esta fase não existia neste plano** — a 3 dizia "a fase seguinte percorre `missoes`" e a
@@ -366,7 +441,26 @@ Cada fase é mesclável sozinha e não quebra a anterior.
    do dashboard (não são material). **Feita** — `20261021_07`.
 
 7. **Mobile e console.** Telas de missão diária, seletor de modo nos três eixos,
-   rank de missão, painel do professor.
+   rank de missão, painel do professor. **Feita** — `20261021_08` (#555).
+
+   > **O que o banco precisou para a tela existir.** A UI sozinha não bastava:
+   > - `guilda_desafio_criar` passou a receber `consequencia` e `dificuldade` —
+   >   sem isso o seletor do mobile gravaria só o default;
+   > - `fn_desafio_params_efetivos` devolve tempo, tentativas e fator de aposta
+   >   do preset, porque as chaves de `app_config` são privadas (fase 1). **Só
+   >   outra função a chama**: sem `EXECUTE` para `anon`/`authenticated` (o
+   >   portão do #534 pegou isso);
+   > - `arena_professor_resumo` devolve os eixos de cada batalha, senão o
+   >   console não tem o que mostrar;
+   > - critério `missoes` (constância: missões cumpridas por turma) entra no
+   >   `CASE` da view **e** em `rank_tipo` no mesmo commit — a lição do `ELSE 0`
+   >   da fase 4;
+   > - `missoes_diarias_resumo(classe, dia)` alimenta o painel do professor com
+   >   quantos alunos de cada perfil cumpriram cada missão do dia.
+   >
+   > No cliente: painel **Missões do dia** e eixos nas batalhas no console,
+   > critério **Missões** nos rankings; seletor dos três eixos ao criar desafio
+   > no chat da guilda e cartão **Missões do dia** no Social, no mobile.
 
 ## Decisões que são fáceis de errar
 
@@ -408,6 +502,19 @@ Cada fase é mesclável sozinha e não quebra a anterior.
   longo prazo; com pontos acumulados, perder é dano permanente, e o aluno
   racional **para de jogar ranqueada** depois de abrir vantagem. O piso ameniza,
   não resolve. Se a aposta virar central, é o argumento mais forte para Elo.
+- **O piso é do acumulado da turma, não da janela do evento.** Achado ao
+  implementar a fase 4: `ranqueada_piso_pontos` impede o **acumulado** do aluno
+  naquela turma de descer do piso, e é isso que o rank mostra. Dentro de um
+  evento (que é uma janela de tempo) a soma **pode** ficar negativa — foi medido:
+  perdedor com `-3`. Isso é coerente (o placar daquele evento é outro placar),
+  mas não é o mesmo invariante, e quem for mexer no piso precisa saber qual dos
+  dois está protegendo.
+- **`eventos_pontuacao_classe.pontos` é coluna morta.** Existe, tem o mesmo
+  `CHECK (pontos >= 0)`, e **nunca é lida**: `fn_pontos_do_evento(text)` não tem
+  sobrecarga por classe — só `fn_moedas_do_evento(tipo, classe)` consulta a
+  versão por classe. A fase 4 não a tocou (abrir o CHECK dela seria superfície
+  sem efeito), mas quem ligar preço por turma vai topar nela, e aí o CHECK volta
+  a importar.
 - **O preset difícil não existe sem questão marcada como difícil.**
   `desafio_dificuldade_min` pressupõe uma marcação de dificuldade em `questoes`,
   que **não existe hoje** (as colunas são enunciado, tipo, alternativas,
