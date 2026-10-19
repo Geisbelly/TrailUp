@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/integrations/supabase/client', () => ({ supabase: {
   rpc: mocks.rpc, from: mocks.from, storage: { from: mocks.remove },
 } }));
-import { deleteClassTrail, deleteClasseCascade, referenciasPorCaminho, removeClassStudent } from './classDeletion';
+import { deleteActivityCascade, deleteClassTrail, deleteClasseCascade, deleteTopicCascade, referenciasPorCaminho, removeClassStudent } from './classDeletion';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -157,4 +157,119 @@ it('propaga erro real da remoção de matrícula', async () => {
 it('não anuncia remoção quando RLS não permitiu apagar nenhuma matrícula', async () => {
   mocks.result = { data: [], error: null };
   await expect(removeClassStudent(32, 'student')).rejects.toThrow('sem permissão');
+});
+
+
+// --- exclusao de UMA atividade -------------------------------------------
+//
+// `deleteActivity` (topicsApi) e um DELETE direto em `atividades` e nunca
+// funcionou para nenhuma atividade visivel na tela: toda atividade listada
+// esta vinculada a um conteudo, e `atividade_conteudos` referencia
+// `atividades` com NO ACTION. O console tambem nao tinha botao nenhum. Estes
+// testes fixam a ordem que faz o DELETE passar.
+
+const ops: string[] = [];
+
+function makeActivitySupabaseMock(deleteErrors: Record<string, unknown> = {}) {
+  return (table: string) => ({
+    select: () => ({
+      eq: () => {
+        ops.push(`select:${table}`);
+        if (table === 'questoes') return Promise.resolve({ data: [{ id: 901 }, { id: 902 }], error: null });
+        return Promise.resolve({ data: [], error: null });
+      },
+    }),
+    update: (patch: Record<string, unknown>) => ({
+      in: (coluna: string) => {
+        ops.push(`update:${table}:${coluna}=${JSON.stringify(patch)}`);
+        return Promise.resolve({ error: null });
+      },
+    }),
+    delete: () => ({
+      eq: (coluna: string) => {
+        ops.push(`delete:${table}:${coluna}`);
+        return Promise.resolve({ error: deleteErrors[table] ?? null });
+      },
+      in: (coluna: string) => {
+        ops.push(`delete:${table}:${coluna}`);
+        return Promise.resolve({ error: deleteErrors[table] ?? null });
+      },
+    }),
+  });
+}
+
+it('tira o vinculo com o conteudo ANTES de apagar a atividade', async () => {
+  ops.length = 0;
+  mocks.from.mockImplementation(makeActivitySupabaseMock());
+
+  await deleteActivityCascade(55);
+
+  const vinculo = ops.indexOf('delete:atividade_conteudos:atividade_id');
+  const atividade = ops.indexOf('delete:atividades:id');
+  expect(vinculo).toBeGreaterThanOrEqual(0);
+  expect(atividade).toBeGreaterThan(vinculo);
+});
+
+it('limpa classe_aluno.ultimaAtividade, que tem FK sem ON DELETE', async () => {
+  ops.length = 0;
+  mocks.from.mockImplementation(makeActivitySupabaseMock());
+
+  await deleteActivityCascade(55);
+
+  const limpeza = ops.indexOf('update:classe_aluno:ultimaAtividade={"ultimaAtividade":null}');
+  const atividade = ops.indexOf('delete:atividades:id');
+  expect(limpeza).toBeGreaterThanOrEqual(0);
+  expect(atividade).toBeGreaterThan(limpeza);
+});
+
+it('limpa questao_aluno pelos dois caminhos: questao_id e atividade_id', async () => {
+  ops.length = 0;
+  mocks.from.mockImplementation(makeActivitySupabaseMock());
+
+  await deleteActivityCascade(55);
+
+  expect(ops).toContain('delete:questao_aluno:questao_id');
+  expect(ops).toContain('delete:questao_aluno:atividade_id');
+});
+
+it('apaga as questoes antes da atividade', async () => {
+  ops.length = 0;
+  mocks.from.mockImplementation(makeActivitySupabaseMock());
+
+  await deleteActivityCascade(55);
+
+  expect(ops.indexOf('delete:questoes:atividade_id')).toBeLessThan(ops.indexOf('delete:atividades:id'));
+});
+
+it('erro no DELETE final sobe, em vez de dizer que excluiu', async () => {
+  ops.length = 0;
+  mocks.from.mockImplementation(makeActivitySupabaseMock({ atividades: { code: '23503' } }));
+
+  await expect(deleteActivityCascade(55)).rejects.toMatchObject({ code: '23503' });
+});
+
+it('apagar o topico tambem limpa ultimaAtividade — mesmo FK, mesmo bloqueio', async () => {
+  ops.length = 0;
+  mocks.from.mockImplementation((table: string) => {
+    const base = makeActivitySupabaseMock()(table);
+    return {
+      ...base,
+      select: () => ({
+        eq: () => {
+          ops.push(`select:${table}`);
+          if (table === 'atividades') return Promise.resolve({ data: [{ id: 55 }], error: null });
+          if (table === 'conteudos') return Promise.resolve({ data: [], error: null });
+          return Promise.resolve({ data: [], error: null });
+        },
+        in: () => {
+          ops.push(`select:${table}`);
+          return Promise.resolve({ data: [{ id: 901 }], error: null });
+        },
+      }),
+    };
+  });
+
+  await deleteTopicCascade(10);
+
+  expect(ops).toContain('update:classe_aluno:ultimaAtividade={"ultimaAtividade":null}');
 });
