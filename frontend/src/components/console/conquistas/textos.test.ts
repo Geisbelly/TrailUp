@@ -30,8 +30,9 @@ describe("textoDeAlternar", () => {
     expect(corpo).toContain("ainda não respeita");
   });
 
-  it("o texto padrão reflete a flag do módulo (hoje desligada)", () => {
-    expect(textoDeAlternar(c).corpo).toContain("ainda não respeita");
+  it("o texto padrão reflete a flag do módulo (hoje ligada: o gatilho respeita `ativa`)", () => {
+    expect(textoDeAlternar(c).corpo).toContain("deixa de ser avaliada");
+    expect(textoDeAlternar(c).corpo).not.toContain("ainda não respeita");
   });
 
   it("sem ninguém que tenha ganhado, diz isso", () => {
