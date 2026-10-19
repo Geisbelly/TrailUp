@@ -119,12 +119,14 @@ export function IAHeaderTimer({
         .eq("aluno_id", usuario.id)
         .eq("atividade_id", atividadeId)
         .maybeSingle()
-        .then(({ data }) => {
-          if (ativo) setMinutosExtras(Number(data?.minutos_extras ?? 0));
-        })
-        .catch(() => {
-          if (ativo) setMinutosExtras(0);
-        });
+        .then(
+          ({ data }) => {
+            if (ativo) setMinutosExtras(Number(data?.minutos_extras ?? 0));
+          },
+          () => {
+            if (ativo) setMinutosExtras(0);
+          },
+        );
     };
     carregar();
     const parar = ouvirEfeitoNaAtividade(carregar);

@@ -810,7 +810,8 @@ DECLARE
   v_classe bigint;
 BEGIN
   SELECT classe_id INTO v_classe FROM public.economia_meta WHERE id = p_id;
-  IF v_classe IS NULL OR v_classe NOT IN (SELECT public.app_classes_do_professor()) THEN
+  IF auth.uid() IS NULL OR v_classe IS NULL
+     OR v_classe NOT IN (SELECT public.app_classes_do_professor()) THEN
     RETURN jsonb_build_object('ok', false, 'erro', 'sem_permissao');
   END IF;
   UPDATE public.economia_meta SET ativa = false, atualizado_em = now() WHERE id = p_id;
