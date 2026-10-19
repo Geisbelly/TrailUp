@@ -52,3 +52,13 @@ test("o painel abre onde o aluno parou; senão no próximo liberado", () => {
   assert.equal(topicoInicial([no("5", 1, { locked: true })], null), "5");
   assert.equal(topicoInicial([], null), null);
 });
+
+test("clique num nó na tela larga: liberado abre, bloqueado só seleciona", async () => {
+  const { aoClicarNo, rotaDoTopico } = await import("./painelTopicoTrilha");
+  assert.equal(aoClicarNo(NOS[0]), "abrir");
+  assert.equal(aoClicarNo(NOS[1]), "abrir");
+  assert.equal(aoClicarNo(NOS[2]), "selecionar");
+  assert.equal(aoClicarNo(undefined), "selecionar");
+  assert.equal(rotaDoTopico("170"), "/(tabs)/trilha/170");
+  assert.equal(rotaDoTopico("a b"), "/(tabs)/trilha/a%20b");
+});

@@ -84,3 +84,18 @@ export function topicoInicial(nos: readonly No[], atualId: string | null | undef
   const proximo = ordenados.find((n) => !n.locked && !n.completed);
   return proximo ? String(proximo.id) : ordenados[0] ? String(ordenados[0].id) : null;
 }
+
+/** Rota do tópico: a mesma do botão do painel e das vistas do celular. */
+export function rotaDoTopico(id: string): string {
+  return `/(tabs)/trilha/${encodeURIComponent(id)}`;
+}
+
+/**
+ * Clique num nó do tabuleiro (mapa, árvore ou lista) na tela larga. O nó
+ * liberado abre o tópico, como no celular; o bloqueado só fica selecionado, e o
+ * painel ao lado explica o que falta. Antes todo clique só trocava a seleção do
+ * painel, e para o aluno parecia que o nó não abria.
+ */
+export function aoClicarNo(no: Pick<No, "locked"> | undefined): "abrir" | "selecionar" {
+  return no && !no.locked ? "abrir" : "selecionar";
+}
