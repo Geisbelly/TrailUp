@@ -12,6 +12,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, rmSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { renomearScriptsPorConteudo } from "./aluno-web-hash.mjs";
 
 const frontendDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const mobileDir = resolve(frontendDir, "..", "mobile");
@@ -84,5 +85,11 @@ run("npx", ["expo", "export", "--platform", "web", "--output-dir", outDir, "--cl
 if (!existsSync(resolve(outDir, "index.html"))) {
   console.error("[aluno-web] export terminou sem dist/aluno/index.html");
   process.exit(1);
+}
+// O Expo da o mesmo nome ao entry-<hash>.js mesmo quando o conteudo muda (o
+// hash sai antes do mapa das rotas async). Com cache imutavel, o navegador
+// misturava o entry antigo com o __common novo: "Requiring unknown module".
+for (const { de, para } of renomearScriptsPorConteudo(outDir)) {
+  console.log(`[aluno-web] ${de} -> ${para} (hash pelo conteudo)`);
 }
 console.log(`[aluno-web] app do aluno pronto em dist/aluno (${BASE_URL}).`);
