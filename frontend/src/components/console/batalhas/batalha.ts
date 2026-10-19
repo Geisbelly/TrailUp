@@ -7,8 +7,10 @@ export type LinhaDoRanking = { guildaId: string; nome: string; vitorias: number;
 export type Duelo = {
   id: string;
   titulo: string;
-  formato: "guilda" | "dupla" | "solo";
-  modo: "todos" | "velocidade" | "precisao";
+  formato: "guilda" | "dupla" | "solo" | "turma";
+  modo: "todos" | "velocidade" | "precisao" | "duelo" | "duplo";
+  dificuldade: "normal" | "dificil";
+  consequencia: "treino" | "ranqueada" | "evento";
   status: "aberto" | "encerrado";
   resultado: "vitoria" | "empate" | "sem_adversario" | null;
   vencedorEquipe: 1 | 2 | null;
@@ -44,8 +46,14 @@ export function posicoes(linhas: LinhaDoRanking[]): { linha: LinhaDoRanking; pos
   });
 }
 
-export const ROTULO_DO_MODO = { todos: "Todos respondem", velocidade: "Velocidade", precisao: "Precisão" } as const;
-export const ROTULO_DO_FORMATO = { guilda: "Guilda", dupla: "Dupla", solo: "Solo" } as const;
+export const ROTULO_DO_MODO = {
+  todos: "Todos respondem",
+  velocidade: "Velocidade",
+  precisao: "Precisão",
+  duelo: "Duelo",
+  duplo: "Duplo",
+} as const;
+export const ROTULO_DO_FORMATO = { guilda: "Guilda", dupla: "Dupla", solo: "Solo", turma: "Turma" } as const;
 
 export function rotuloDoDesfecho(d: Pick<Duelo, "status" | "resultado" | "vencedorEquipe" | "guildaNome" | "rivalNome">): string {
   if (d.status === "aberto") return "Em andamento";
@@ -62,5 +70,8 @@ export function rotuloDoDesfecho(d: Pick<Duelo, "status" | "resultado" | "venced
 export function tituloDoDuelo(d: Pick<Duelo, "titulo" | "formato" | "guildaNome" | "rivalNome">): string {
   if (d.titulo?.trim()) return d.titulo.trim();
   if (d.formato === "guilda" && d.guildaNome) return d.rivalNome ? `${d.guildaNome} × ${d.rivalNome}` : `Desafio de ${d.guildaNome}`;
-  return d.formato === "dupla" ? "Duelo em dupla" : d.formato === "solo" ? "Duelo solo" : "Duelo";
+  if (d.formato === "dupla") return "Duelo em dupla";
+  if (d.formato === "solo") return "Duelo solo";
+  if (d.formato === "turma") return "Desafio da turma";
+  return "Duelo";
 }

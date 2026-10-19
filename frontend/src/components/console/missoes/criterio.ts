@@ -113,6 +113,17 @@ export function rotuloDoCriterio(criterio: unknown): string {
   const c = criterio as Record<string, unknown>;
   const metrica = String(c.metrica ?? "");
   if (metrica === "atividade_especifica") return "Concluir a atividade";
+  // Métricas de delta da fase 5b — o formulário do professor não as oferece, mas a diária usa.
+  if (metrica === "minutos_no_dia") {
+    const n = c.minutos;
+    return n == null ? "Minutos no dia" : `Minutos no dia: ${n}`;
+  }
+  if (metrica === "eventos_no_dia") {
+    const n = c.minimo;
+    const ev = String(c.evento ?? "");
+    const oQue = ev.includes("atividade") ? "atividades" : ev.includes("conteudo") ? "conteúdos" : "ações";
+    return n == null ? `Eventos no dia (${oQue})` : `${n} ${oQue} no dia`;
+  }
   const def = definicaoDaMetrica(metrica);
   if (!def) return metrica || "Sem critério";
   const alvo = c[CHAVE_DO_ALVO[def.chave]];

@@ -21,6 +21,8 @@ import { FormularioDaMissao } from "./FormularioDaMissao";
 import { FORMULARIO_DE_MISSAO_VAZIO, prazoParaCampo, type FormularioDeMissao, type PayloadDaAtividade, type PayloadDaMissao } from "./missao";
 import { CHAVE_DO_ALVO, definicaoDaMetrica } from "./criterio";
 import { duplicarMissao, excluirMissao, listarMissoes, salvarMissao, type Missao } from "./missoesApi";
+import { lerMissoesDiarias, type ResumoDasMissoesDiarias } from "./missoesDiariasApi";
+import { PainelMissoesDiarias } from "./PainelMissoesDiarias";
 
 type FormAberto = { inicial: FormularioDeMissao; editando: Missao | null; chave: number };
 type Acao = { tipo: "duplicar" | "excluir"; missao: Missao };
@@ -65,9 +67,14 @@ export default function MissoesSection({ professorId }: { professorId?: string }
   const [erroDoServidor, setErroDoServidor] = useState<string | null>(null);
   const [acao, setAcao] = useState<Acao | null>(null);
   const [executando, setExecutando] = useState(false);
+  const [resumoDiario, setResumoDiario] = useState<ResumoDasMissoesDiarias | null>(null);
+  const [estadoDiario, setEstadoDiario] = useState<"carregando" | "ok" | "erro">("carregando");
+  const [erroDiario, setErroDiario] = useState("");
+
 
   const carregar = useCallback(async (id: number) => {
     setEstado("carregando");
+    setEstadoDiario("carregando");
     try {
       const [lista, t] = await Promise.all([listarMissoes(id), supabase.from("topicos").select("id, nome").eq("classe_id", id).order("ordem")]);
       setMissoes(lista);
@@ -76,6 +83,14 @@ export default function MissoesSection({ professorId }: { professorId?: string }
     } catch (e) {
       setDetalhe(mensagem(e, "erro desconhecido"));
       setEstado("erro");
+    }
+    try {
+      setResumoDiario(await lerMissoesDiarias(id));
+      setEstadoDiario("ok");
+      setErroDiario("");
+    } catch (e) {
+      setErroDiario(mensagem(e, "erro desconhecido"));
+      setEstadoDiario("erro");
     }
   }, []);
 
@@ -158,6 +173,13 @@ export default function MissoesSection({ professorId }: { professorId?: string }
               <SelectContent>{turmas.map((t) => <SelectItem key={t.id} value={String(t.id)}>{t.descricao || `Turma ${t.id}`}</SelectItem>)}</SelectContent>
             </Select>
           )}
+
+          <PainelMissoesDiarias
+            dados={resumoDiario}
+            carregando={estadoDiario === "carregando"}
+            erro={estadoDiario === "erro" ? erroDiario : null}
+            onTentar={() => turmaId && void carregar(turmaId)}
+          />
 
           {estado === "carregando" && <div role="status" aria-label="Carregando missões" className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}
           {estado === "erro" && <ErroDaPagina titulo="Não foi possível carregar as missões" detalhe={detalhe} onTentarNovamente={() => void carregar(turmaId)} />}

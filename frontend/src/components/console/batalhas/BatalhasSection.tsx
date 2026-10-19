@@ -3,7 +3,8 @@ import { Loader2, Swords } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CabecalhoDePagina, EstadoVazioDaPagina, ErroDaPagina, SeloDeStatus } from "../comum/PaginaDoConsole";
 import { useTurmasDoProfessor } from "../comum/useTurmasDoProfessor";
-import { aproveitamento, posicoes, ROTULO_DO_FORMATO, ROTULO_DO_MODO, rotuloDoDesfecho, tituloDoDuelo } from "./batalha";
+import { resumoDosEixos } from "../eixos/eixos";
+import { aproveitamento, posicoes, rotuloDoDesfecho, tituloDoDuelo } from "./batalha";
 import { lerBatalhas, type ResumoDasBatalhas } from "./batalhasApi";
 
 const rotulo = "text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground";
@@ -93,7 +94,7 @@ export default function BatalhasSection({ professorId }: { professorId?: string 
                         <SeloDeStatus tom={d.status === "aberto" ? "ativo" : "neutro"}>{rotuloDoDesfecho(d)}</SeloDeStatus>
                       </div>
                       <p className="mt-1 text-[12.5px] text-muted-foreground">
-                        {ROTULO_DO_FORMATO[d.formato]} · {ROTULO_DO_MODO[d.modo]} · {d.aceitaram} {d.aceitaram === 1 ? "participante" : "participantes"} · {dataCurta(d.criadoEm)}
+                        {resumoDosEixos(d)} · {d.aceitaram} {d.aceitaram === 1 ? "participante" : "participantes"} · {dataCurta(d.criadoEm)}
                         {d.equipes.length > 0 && ` · ${d.equipes.map((e) => `${e.pontos} pts`).join(" × ")}`}
                       </p>
                     </li>

@@ -6,6 +6,7 @@ import { SocialPersonCard } from "@/components/social/SocialPersonCard";
 import { SocialProfileModal } from "@/components/social/SocialProfileModal";
 import { PrivateChatModal } from "@/components/social/PrivateChatModal";
 import { GuildSection } from "@/components/social/GuildSection";
+import { MissoesDoDia } from "@/components/missoes/MissoesDoDia";
 import type { GuildShareOption } from "@/components/social/GuildChatModal";
 import { StoreLauncher } from "@/components/loja/StoreLauncher";
 import { SocialLateralDesktop } from "@/components/web/SocialLateralDesktop";
@@ -173,6 +174,17 @@ export default function SocialScreen() {
           </View>
           <Envolve {...(desktop ? { style: styles.colunas } : {})}>
           <Envolve {...(desktop ? { style: styles.principal } : {})}>
+          {activeClasseId > 0 ? (
+            <MissoesDoDia
+              classeId={activeClasseId}
+              perfil={profile}
+              accent={palette.accent}
+              textColor={palette.text}
+              mutedColor={palette.textMuted}
+              surfaceColor={palette.surfaceElevated}
+              borderColor={palette.border}
+            />
+          ) : null}
           {loading && !social ? <ActivityIndicator color={palette.accent} style={styles.loader} /> : error ? (
             <View style={styles.empty}>
               <MaterialCommunityIcons name="alert-circle-outline" size={42} color={Color.colorWhite} />

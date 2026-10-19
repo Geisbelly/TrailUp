@@ -9,9 +9,9 @@ import { PERFIS_EM_ORDEM } from "../dashboard/perfilCores";
  * `percentual` existe no banco (é o `rank_tipo` 1, "Percentual Concluído") e o mobile já o
  * trata como percentual. `acertos` era oferecido aqui e não existia no CASE (todo ranking de
  * acertos mostrava zero para todos). Os dois ramos entraram na view em `20261021_06`, junto
- * com `ranqueada`. O vocabulário é fechado: o mobile compara contra estes literais.
+ * com `ranqueada`; `missoes` entra na fase 7 (`20261021_08`). O vocabulário é fechado: o mobile compara contra estes literais.
  */
-export type CriterioChave = "pontuacao" | "tempo" | "acertos" | "percentual" | "ranqueada";
+export type CriterioChave = "pontuacao" | "tempo" | "acertos" | "percentual" | "ranqueada" | "missoes";
 
 export const CRITERIOS: { chave: CriterioChave; rotulo: string }[] = [
   { chave: "pontuacao", rotulo: "Pontuação" },
@@ -19,6 +19,7 @@ export const CRITERIOS: { chave: CriterioChave; rotulo: string }[] = [
   { chave: "acertos", rotulo: "Acertos" },
   { chave: "percentual", rotulo: "Percentual" },
   { chave: "ranqueada", rotulo: "Ranqueada" },
+  { chave: "missoes", rotulo: "Missões" },
 ];
 
 /** Critério vindo do banco é texto livre: o que não for conhecido cai em "pontuacao". */
