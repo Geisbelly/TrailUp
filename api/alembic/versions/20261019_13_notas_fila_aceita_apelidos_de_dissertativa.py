@@ -24,7 +24,7 @@ propósito, e o teste `test_migration_notas_fila_tipo.py` trava essa diferença.
 
 Forma do predicado: `lower(coalesce(nullif(btrim(a.tipo), ''), 'essay')) IN (...)`. O `coalesce`
 garante valor não-nulo antes do `IN`, então não há três-valores vazando para o JOIN como
-desconhecido — a armadilha que `20261018_02` corrigiu nas questões. O `nullif(btrim(...), '')`
+desconhecido — a armadilha que `20261019_10` corrigiu nas questões. O `nullif(btrim(...), '')`
 põe vazio e só-espaços no mesmo caminho do NULL, porque `formatoDaQuestao('')` também dá
 dissertação; a primeira versão deste predicado tratava só o NULL e deixava o vazio de fora, o que
 contrariava esta mesma docstring. (`tipo` é `text` nullable, conferido em produção; não é enum,
@@ -36,15 +36,15 @@ contra as duas formas do predicado antes de escrever isto.
 
 O resto da função é idêntico à de `20261016_04`.
 
-Revision ID: 20261018_05
-Revises: 20261018_04
+Revision ID: 20261019_13
+Revises: 20261019_12
 Create Date: 2026-10-18
 """
 
 from alembic import op
 
-revision = "20261018_05"
-down_revision = "20261018_04"
+revision = "20261019_13"
+down_revision = "20261019_12"
 branch_labels = None
 depends_on = None
 
