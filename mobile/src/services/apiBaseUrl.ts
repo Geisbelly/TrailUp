@@ -74,5 +74,9 @@ export function resolveApiBaseCandidates(
     metroHostUri: dev ? metroHostUri() : null,
     dev,
     aoFicarSemApi: avisarApiNaoConfigurada,
+    origemWeb:
+      Platform.OS === "web" && typeof window !== "undefined"
+        ? window.location?.origin ?? null
+        : null,
   });
 }

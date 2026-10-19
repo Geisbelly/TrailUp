@@ -56,6 +56,13 @@ if (Platform.OS !== 'web') {
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL as string
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY as string
 
+// Na web o app do aluno divide a origem (e o localStorage) com o site do
+// professor: trailup.vercel.app/aluno e trailup.vercel.app/console. Com a chave
+// padrao do supabase-js os dois liam e apagavam a MESMA sessao - entrar como
+// aluno derrubava o professor no outro separador, e vice-versa. No nativo a
+// chave continua a padrao, para nao deslogar quem ja usa o app.
+const AUTH_STORAGE_KEY_SUFFIX = Platform.OS === 'web' ? '-aluno' : ''
+
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
    
   console.warn('Supabase env missing: set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY')
@@ -76,6 +83,7 @@ export const supabase = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
     persistSession: true,
     flowType: 'pkce',
     detectSessionInUrl,
+    storageKey: getAuthStorageKey() ?? undefined,
   },
 })
 
@@ -159,7 +167,7 @@ function extractProjectRef(supabaseUrl: string | undefined) {
 function getAuthStorageKey() {
   const ref = extractProjectRef(SUPABASE_URL)
   if (!ref) return null
-  return `sb-${ref}-auth-token`
+  return `sb-${ref}-auth-token${AUTH_STORAGE_KEY_SUFFIX}`
 }
 
 /**

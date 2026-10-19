@@ -43,11 +43,22 @@ function getGoogleRedirectUri() {
   );
 }
 
+/**
+ * Volta do Google para o proprio app web. Publicado em trailup.vercel.app/aluno
+ * (experiments.baseUrl), voltar so para a origem cairia no site do professor.
+ */
+function getWebOAuthRedirect() {
+  const baseUrl = String(
+    (Constants.expoConfig?.experiments as { baseUrl?: string } | undefined)?.baseUrl ?? ''
+  ).replace(/\/+$/, '');
+  return `${window.location.origin}${baseUrl}/`;
+}
+
 export async function autenticarComGoogle() {
   if (Platform.OS === 'web') {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo: getWebOAuthRedirect() },
     });
 
     if (error) throw error;

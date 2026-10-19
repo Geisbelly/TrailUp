@@ -316,6 +316,14 @@ export default function Login() {
             >
               Cadastre-se aqui
             </Link>
+            <span className="text-muted-foreground"> ou </span>
+            {/* <a> e nao <Link>: /aluno e o app do aluno (Expo web), fora do router do site. */}
+            <a
+              href="/aluno/"
+              className="text-primary hover:underline font-medium"
+            >
+              entre na área do aluno
+            </a>
           </div>
         </CardContent>
       </Card>

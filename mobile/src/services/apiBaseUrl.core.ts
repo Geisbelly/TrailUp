@@ -62,12 +62,34 @@ export type EntradaCandidatos = {
   dev: boolean;
   /** Chamado quando um build instalado fica sem nenhuma URL para tentar. */
   aoFicarSemApi?: () => void;
+  /**
+   * Origem da pagina (`window.location.origin`) no build web publicado. Com
+   * ela, o app do aluno em trailup.vercel.app/aluno usa o mesmo proxy
+   * `/trailup-api` do site (rewrite do `frontend/vercel.json`), sem depender
+   * de CORS da API para essa origem.
+   */
+  origemWeb?: string | null;
 };
 
+/** Proxy same-origin da Vercel, so para build web de producao em https. */
+export function proxyMesmaOrigem(origemWeb: unknown, plataforma: PlataformaApi, dev: boolean) {
+  if (dev || plataforma !== "web" || typeof origemWeb !== "string" || !origemWeb) return null;
+  try {
+    const parsed = new URL(origemWeb);
+    if (parsed.protocol !== "https:") return null;
+    if (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1") return null;
+    return `${parsed.origin}/trailup-api`;
+  } catch {
+    return null;
+  }
+}
+
 export function montarCandidatos(entrada: EntradaCandidatos): string[] {
-  const { envValue, plataforma, metroHostUri, dev, aoFicarSemApi } = entrada;
+  const { envValue, plataforma, metroHostUri, dev, aoFicarSemApi, origemWeb } = entrada;
   const candidates: string[] = [];
   const normalizedEnv = normalizeBaseUrl(String(envValue ?? ""));
+
+  addCandidate(candidates, proxyMesmaOrigem(origemWeb, plataforma, dev));
 
   // Os dois palpites locais — IP do Metro e host do emulador — valem SO em
   // desenvolvimento. Num build instalado eles nao existem: `10.0.2.2` e o host

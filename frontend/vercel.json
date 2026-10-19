@@ -1,11 +1,20 @@
 {
+  "buildCommand": "npm run build:vercel",
   "rewrites": [
     {
       "source": "/trailup-api/:path*",
       "destination": "https://trailup-frontend-8nw9al-e68946-87-99-146-75.traefik.me/:path*"
     },
     {
-      "source": "/((?!assets/).*)",
+      "source": "/aluno",
+      "destination": "/aluno/index.html"
+    },
+    {
+      "source": "/aluno/((?!_expo/|assets/).*)",
+      "destination": "/aluno/index.html"
+    },
+    {
+      "source": "/((?!assets/|aluno/).*)",
       "destination": "/index.html"
     }
   ],
@@ -17,7 +26,13 @@
       ]
     },
     {
-      "source": "/((?!assets/).*)",
+      "source": "/aluno/(_expo|assets)/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/((?!assets/|aluno/_expo/|aluno/assets/).*)",
       "headers": [
         { "key": "Cache-Control", "value": "no-cache" }
       ]
