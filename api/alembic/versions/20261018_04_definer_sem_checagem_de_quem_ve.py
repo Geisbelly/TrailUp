@@ -65,7 +65,8 @@ branch_labels = None
 depends_on = None
 
 
-# (nome, assinatura)
+# Por que cada uma perde o EXECUTE. Os REVOKE abaixo sao literais; esta
+# tupla fica como registro da decisao, nao como fonte do SQL.
 SEM_CLIENTE = (
     ("fn_nota_90_10", "uuid, bigint"),          # nota de qualquer aluno
     ("fn_trilha_by_classe", "uuid, bigint"),    # trilha e status; alem disso, quebrada
@@ -139,8 +140,15 @@ $function$
 
 
 def upgrade() -> None:
-    for nome, args in SEM_CLIENTE:
-        op.execute(f"REVOKE ALL ON FUNCTION public.{nome}({args}) FROM PUBLIC, anon, authenticated")
+    # Literal, nao gerado em laco: `test_definer_exposto_sem_sessao.py` le o
+    # TEXTO das migracoes para saber quem termina exposto. REVOKE montado com
+    # f-string fica invisivel para ele -- e para quem der grep.
+    op.execute("REVOKE ALL ON FUNCTION public.fn_nota_90_10(uuid, bigint) FROM PUBLIC, anon, authenticated")
+    op.execute("REVOKE ALL ON FUNCTION public.fn_trilha_by_classe(uuid, bigint) FROM PUBLIC, anon, authenticated")
+    op.execute("REVOKE ALL ON FUNCTION public.social_sao_colegas(uuid, uuid) FROM PUBLIC, anon, authenticated")
+    op.execute("REVOKE ALL ON FUNCTION public.guilda_e_colega(uuid, bigint) FROM PUBLIC, anon, authenticated")
+    op.execute("REVOKE ALL ON FUNCTION public.fn_arena_placar(uuid) FROM PUBLIC, anon, authenticated")
+    op.execute("REVOKE ALL ON FUNCTION public.fn_arena_equipes(uuid) FROM PUBLIC, anon, authenticated")
     op.execute(PRESENCA_COM_GUARDA)
     op.execute(TURMA_COM_GUARDA)
 
@@ -148,7 +156,11 @@ def upgrade() -> None:
 def downgrade() -> None:
     # Devolve o acesso e a funcao sem guarda. Reverter traz o vazamento de
     # volta -- e a unica forma honesta de desfazer.
-    for nome, args in SEM_CLIENTE:
-        op.execute(f"GRANT EXECUTE ON FUNCTION public.{nome}({args}) TO authenticated")
+    op.execute("GRANT EXECUTE ON FUNCTION public.fn_nota_90_10(uuid, bigint) TO authenticated")
+    op.execute("GRANT EXECUTE ON FUNCTION public.fn_trilha_by_classe(uuid, bigint) TO authenticated")
+    op.execute("GRANT EXECUTE ON FUNCTION public.social_sao_colegas(uuid, uuid) TO authenticated")
+    op.execute("GRANT EXECUTE ON FUNCTION public.guilda_e_colega(uuid, bigint) TO authenticated")
+    op.execute("GRANT EXECUTE ON FUNCTION public.fn_arena_placar(uuid) TO authenticated")
+    op.execute("GRANT EXECUTE ON FUNCTION public.fn_arena_equipes(uuid) TO authenticated")
     op.execute(PRESENCA_SEM_GUARDA)
     op.execute(TURMA_SEM_GUARDA)
