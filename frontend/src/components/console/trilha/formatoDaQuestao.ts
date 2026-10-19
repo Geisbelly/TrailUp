@@ -14,3 +14,15 @@ export function formatoDaQuestao(tipo: string | null | undefined): FormatoDaQues
   // dissertativa/questao/texto e qualquer tipo desconhecido (inclui 'missao', que não é um formato de questão)
   return "essay";
 }
+
+/** Vocabulário de `questoes.tipo` para o mesmo formato. As duas colunas guardam o
+ *  formato em palavras diferentes, então quem grava as duas precisa converter — não
+ *  repetir o literal de `atividades.tipo` em `questoes.tipo`. */
+export type TipoDaQuestao = "multipla" | "verdadeiro_falso" | "fill_blank" | "dissertativa";
+
+export function tipoDaQuestaoDoFormato(formato: FormatoDaQuestao): TipoDaQuestao {
+  if (formato === "quiz") return "multipla";
+  if (formato === "true_false") return "verdadeiro_falso";
+  if (formato === "fill_blank") return "fill_blank";
+  return "dissertativa";
+}
