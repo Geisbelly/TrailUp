@@ -13,6 +13,7 @@ export const CONSOLE_SECTIONS = [
   { view: "conquistas", slug: "conquistas" },
   { view: "notas", slug: "notas" },
   { view: "eventos", slug: "eventos" },
+  { view: "economia", slug: "economia" },
   { view: "classes", slug: "turmas" },
   { view: "personalizacoes", slug: "personalizacoes" },
   { view: "ranks", slug: "ranks" },

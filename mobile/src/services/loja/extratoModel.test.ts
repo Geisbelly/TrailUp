@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { formatarQuando, limitesDaTurma, montarExtrato } from "./extratoModel";
+import { filtrarExtrato, formatarQuando, limitesDaTurma, montarExtrato } from "./extratoModel";
 
 const AGORA = new Date(2026, 9, 11, 20, 0);
 
@@ -30,7 +30,43 @@ test("cada motivo do razão vira uma descrição", () => {
   ]);
 });
 
+test("filtro do extrato separa compra de ganho", () => {
+  const linhas = montarExtrato(
+    [
+      { id: 1, delta: 3, motivo: "evento", evento_tipo: "atividade_concluida", compra_id: null, criado_em: AGORA.toISOString() },
+      { id: 2, delta: -5, motivo: "compra", evento_tipo: null, compra_id: 9, criado_em: AGORA.toISOString() },
+    ],
+    new Map([[9, "Dica"]]),
+    AGORA,
+  );
+  assert.deepEqual(filtrarExtrato(linhas, "compra").map((m) => m.id), [2]);
+  assert.equal(filtrarExtrato(linhas, "todos").length, 2);
+});
+
 test("limites: sem linha da turma valem os padrões da tabela", () => {
-  assert.deepEqual(limitesDaTurma(null), { prazoDiasTotal: 2, prazoPorAtividade: 2, segundaChancePorTopico: 1 });
+  assert.deepEqual(limitesDaTurma(null), {
+    prazoDiasTotal: 2,
+    prazoPorAtividade: 2,
+    segundaChancePorTopico: 1,
+    prazoMinDias: 1,
+    prazoMaxDias: 1,
+    tempoMinMinutos: 5,
+    tempoMaxMinutos: 15,
+    tempoPorAtividade: 30,
+  });
   assert.equal(limitesDaTurma({ prazo_max_dias_total: 4 }).prazoDiasTotal, 4);
+  assert.equal(limitesDaTurma({ prazo_extensao_max_dias: 3 }).prazoMaxDias, 3);
+});
+
+test("extrato nomeia aprovação, conclusão configurada e meta", () => {
+  const linhas = [
+    { id: 1, delta: 4, motivo: "evento", evento_tipo: "atividade_aprovada", compra_id: null, criado_em: AGORA.toISOString() },
+    { id: 2, delta: 2, motivo: "evento", evento_tipo: "atividade_conclusao_config", compra_id: null, criado_em: AGORA.toISOString() },
+    { id: 3, delta: 6, motivo: "evento", evento_tipo: "meta_atingida", compra_id: null, criado_em: AGORA.toISOString() },
+  ];
+  assert.deepEqual(montarExtrato(linhas, new Map(), AGORA).map((m) => m.descricao), [
+    "Atividade aprovada",
+    "Conclusão da atividade",
+    "Meta alcançada",
+  ]);
 });

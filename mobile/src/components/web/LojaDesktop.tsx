@@ -74,28 +74,28 @@ export function LojaDesktop() {
     }, [carregar]),
   );
 
-  const pedirCompra = (item: StoreItem) => {
+  const pedirCompra = (item: StoreItem, quantidade: number) => {
     if (!loja) return;
-    const texto = textoConfirmacao(item, loja.balance);
+    const texto = textoConfirmacao(item, loja.balance, quantidade);
     showConfirm({
       title: texto.titulo,
       description: texto.descricao,
       tone: "info",
       confirmLabel: texto.confirmar,
-      onConfirm: () => comprar(item),
+      onConfirm: () => comprar(item, quantidade),
     });
   };
 
   // Mesma trava de compra do modal do app: uma compra por vez.
-  async function comprar(item: StoreItem) {
+  async function comprar(item: StoreItem, quantidade: number) {
     if (!classeId || item.state !== "available" || trava.current) return;
     trava.current = true;
     setComprando(item.id);
     setAviso(null);
     setErroCompra(null);
     try {
-      await comprarItem(item.id, classeId);
-      setAviso({ id: item.id, texto: avisoCompraFeita(item) });
+      await comprarItem(item.id, classeId, quantidade);
+      setAviso({ id: item.id, texto: avisoCompraFeita(item, quantidade) });
       await carregar();
     } catch (caught) {
       setErroCompra({ id: item.id, texto: caught instanceof Error ? caught.message : "Não foi possível concluir a compra." });
@@ -175,7 +175,7 @@ export function LojaDesktop() {
                 ocupado={!!comprando || carregando}
                 aviso={aviso?.id === item.id ? aviso.texto : null}
                 erro={erroCompra?.id === item.id ? erroCompra.texto : null}
-                onComprar={() => pedirCompra(item)}
+                onComprar={(quantidade) => pedirCompra(item, quantidade)}
               />
             </View>
           ))}

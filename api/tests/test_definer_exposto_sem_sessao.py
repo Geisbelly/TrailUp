@@ -78,12 +78,6 @@ SEM_SESSAO_POR_DECISAO: dict[str, str] = {
         "Mesma delegacao de `aprovacoes_pendentes`: `app_e_dono()` antes de "
         "qualquer leitura, e so o dono do sistema passa."
     ),
-    "loja_catalogo": (
-        "Catalogo da loja por turma: codigo, nome, preco e disponibilidade dos "
-        "itens. Nao traz dado de aluno nenhum, e `gratis_restantes` e agregado "
-        "da turma. Nao confere a turma do chamador -- se um dia o catalogo "
-        "passar a expor algo por aluno, isto aqui deixa de valer."
-    ),
 }
 
 

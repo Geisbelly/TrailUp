@@ -42,6 +42,7 @@ WRAPPERS = {
     "mobile/src/services/social/socialService.ts": "socialAction",
     "mobile/src/services/social/guildService.ts": "action",
     "mobile/src/services/notificacoesDb.ts": "chamar",
+    "frontend/src/components/console/economia/economiaApi.ts": "chamar",
 }
 
 # RPCs que o app chama e que NENHUMA migracao cria. Entrada aqui e divida

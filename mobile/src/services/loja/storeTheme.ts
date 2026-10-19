@@ -27,10 +27,17 @@ export function storeIconKind(effect: string | null | undefined): StoreIconKind 
 
 export function purchaseErrorMessage(result: unknown): string | null {
   if (!result || typeof result !== "object") return "Não foi possível concluir a compra.";
-  const response = result as { ok?: unknown; erro?: unknown };
+  const response = result as { ok?: unknown; erro?: unknown; restantes?: unknown };
   if (response.ok === true) return null;
+  const restantes = typeof response.restantes === "number" ? response.restantes : null;
   switch (response.erro) {
-    case "saldo_insuficiente": return "Saldo insuficiente para este item.";
+    case "saldo_insuficiente": return "Saldo insuficiente para esta quantidade.";
+    case "limite_de_compras":
+      return restantes ? `Você só pode comprar mais ${restantes} deste item.` : "Você já comprou o máximo deste item nesta turma.";
+    case "estoque_esgotado":
+      return restantes ? `Só restam ${restantes} no estoque da turma.` : "O estoque deste item acabou.";
+    case "quantidade_invalida": return "Escolha de 1 a 20 unidades.";
+    case "item_desligado_na_turma": return "Seu professor desligou este item nesta turma.";
     case "item_indisponivel": return "Este item não está disponível nesta turma.";
     case "sem_sessao": return "Sua sessão expirou. Entre novamente para comprar.";
     case "idempotencia": return "Esta compra já está sendo processada.";

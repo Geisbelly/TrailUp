@@ -1,9 +1,13 @@
 import { JourneyHeading } from "@/components/JourneyHeading";
+import { SeletorQuantidade } from "@/components/loja/SeletorQuantidade";
 import { StoreItemIcon } from "@/components/loja/StoreItemIcon";
 import { UtilityIcon } from "@/components/UtilityIcon";
+import { filtrarExtrato, type FiltroDeExtrato, type Movimento } from "@/services/loja/extratoModel";
 import type { StoreItem, StoreSnapshot } from "@/services/loja/lojaService";
-import { comprarItem, carregarLoja } from "@/services/loja/lojaService";
+import { comprarItem, carregarExtrato, carregarLoja } from "@/services/loja/lojaService";
+import { emPosse, maxQuantidade } from "@/services/loja/storeModel";
 import { FontFamily } from "@/styles/GlobalStyle";
+import { avisoCompraFeita, limitarQuantidade, precosDoPedido, textoNaBag } from "@/utils/compraLoja";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -18,6 +22,13 @@ import {
   View,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+
+const FILTROS_EXTRATO: { id: FiltroDeExtrato; rotulo: string }[] = [
+  { id: "todos", rotulo: "Tudo" },
+  { id: "evento", rotulo: "Ganhos" },
+  { id: "compra", rotulo: "Compras" },
+  { id: "estorno", rotulo: "Estornos" },
+];
 
 type Props = {
   visible: boolean;
@@ -39,6 +50,8 @@ export function StoreModal({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [buying, setBuying] = useState<string | null>(null);
+  const [movimentos, setMovimentos] = useState<Movimento[] | null>(null);
+  const [filtro, setFiltro] = useState<FiltroDeExtrato>("todos");
   const purchaseLock = useRef(false);
   const request = useRef(0);
   const palette = getProfileShellPalette(profileName);
@@ -49,6 +62,9 @@ export function StoreModal({
     try {
       const data = await carregarLoja(alunoId, classeId, profileName);
       if (current === request.current) setSnapshot(data);
+      const nomes = new Map(data.items.map((item) => [item.id, item.name]));
+      const extrato = await carregarExtrato(alunoId, nomes, 30).catch(() => [] as Movimento[]);
+      if (current === request.current) setMovimentos(extrato);
     } catch (caught) {
       if (current === request.current)
         setError(
@@ -72,15 +88,15 @@ export function StoreModal({
     };
   }, [visible, load]);
 
-  async function buy(item: StoreItem) {
+  async function buy(item: StoreItem, quantidade: number) {
     if (item.state !== "available" || purchaseLock.current) return;
     purchaseLock.current = true;
     setBuying(item.id);
     setError(null);
     setNotice(null);
     try {
-      await comprarItem(item.id, classeId);
-      setNotice(`${item.name} adquirido.`);
+      await comprarItem(item.id, classeId, quantidade);
+      setNotice(avisoCompraFeita(item, quantidade));
       await load();
     } catch (caught) {
       setError(
@@ -197,7 +213,7 @@ export function StoreModal({
                   palette={palette}
                   buying={buying === item.id}
                   busy={!!buying || loading}
-                  onBuy={() => void buy(item)}
+                  onBuy={(quantidade) => void buy(item, quantidade)}
                 />
               ))
             ) : !error ? (
@@ -205,6 +221,29 @@ export function StoreModal({
                 Nenhum item disponível no momento.
               </Text>
             ) : null}
+            <Text style={[s.sectionTitle, { color: palette.text }]}>Histórico</Text>
+            <View style={s.filters}>
+              {FILTROS_EXTRATO.map((opcao) => (
+                <Pressable key={opcao.id} accessibilityRole="button" onPress={() => setFiltro(opcao.id)}>
+                  <Text style={[s.filterText, { color: filtro === opcao.id ? palette.accent : palette.textMuted }]}>
+                    {opcao.rotulo}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+            {filtrarExtrato(movimentos ?? [], filtro).length ? (
+              filtrarExtrato(movimentos ?? [], filtro).map((movimento) => (
+                <View key={movimento.id} style={s.movement}>
+                  <Text style={[s.movementValue, { color: movimento.valor > 0 ? "#62db9b" : palette.textMuted }]}>
+                    {movimento.valor > 0 ? `+${movimento.valor}` : `−${Math.abs(movimento.valor)}`}
+                  </Text>
+                  <Text style={[s.movementText, { color: palette.text }]} numberOfLines={1}>{movimento.descricao}</Text>
+                  <Text style={[s.filterText, { color: palette.textMuted }]}>{movimento.quando}</Text>
+                </View>
+              ))
+            ) : (
+              <Text style={[s.empty, { color: palette.textMuted }]}>Nenhuma movimentação neste filtro.</Text>
+            )}
           </ScrollView>
         </SafeAreaView>
       </SafeAreaProvider>
@@ -224,12 +263,17 @@ export function StoreCard({
   palette: ReturnType<typeof getProfileShellPalette>;
   buying: boolean;
   busy: boolean;
-  onBuy: () => void;
+  onBuy: (quantidade: number) => void;
 }) {
+  const [quantidade, setQuantidade] = useState(1);
+  const maximo = Math.max(1, maxQuantidade(item));
+  const qtd = limitarQuantidade(item, quantidade);
+  const total = precosDoPedido(item, qtd).reduce((a, b) => a + b, 0);
+  const naBag = textoNaBag(emPosse(item));
   const disabled = item.state !== "available" || busy;
   const status =
-    item.state === "owned"
-      ? "Adquirido"
+    item.state === "limit"
+      ? "Limite atingido"
       : item.state === "unavailable"
         ? "Indisponível"
         : item.state === "blocked"
@@ -260,6 +304,9 @@ export function StoreCard({
           </Text>
         </View>
       </View>
+      {naBag ? (
+        <Text style={[s.free, { color: palette.textMuted }]}>{naBag}</Text>
+      ) : null}
       {item.metadata.gratisRestantes ? (
         <Text style={[s.free, { color: palette.accent }]}>
           Disponíveis gratuitamente: {String(item.metadata.gratisRestantes)}
@@ -267,7 +314,7 @@ export function StoreCard({
       ) : null}
       <View style={[s.actionRow, { borderTopColor: palette.border }]}>
         <View style={s.priceRow}>
-          {item.price > 0 ? (
+          {total > 0 ? (
             <UtilityIcon
               kind="coin"
               profile={palette.profile}
@@ -277,15 +324,26 @@ export function StoreCard({
             />
           ) : null}
           <Text style={[s.price, { color: palette.text }]}>
-            {item.price > 0 ? item.price : "Grátis"}
+            {total > 0 ? total : "Grátis"}
           </Text>
         </View>
+        {item.state === "available" && maximo > 1 ? (
+          <SeletorQuantidade
+            valor={qtd}
+            maximo={maximo}
+            desabilitado={busy}
+            cor={palette.text}
+            corApagada={palette.textMuted}
+            nome={item.name}
+            onMudar={(n) => setQuantidade(limitarQuantidade(item, n))}
+          />
+        ) : null}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`${status ?? "Comprar"} ${item.name}`}
+          accessibilityLabel={`${status ?? (qtd > 1 ? `Comprar ${qtd}` : "Comprar")} ${item.name}`}
           accessibilityState={{ disabled, busy: buying }}
           disabled={disabled}
-          onPress={onBuy}
+          onPress={() => onBuy(qtd)}
           style={[
             s.buy,
             {
@@ -302,7 +360,7 @@ export function StoreCard({
             <>
               <MaterialCommunityIcons
                 name={
-                  item.state === "owned"
+                  item.state === "limit"
                     ? "check"
                     : item.state === "blocked"
                       ? "lock-outline"
@@ -317,7 +375,7 @@ export function StoreCard({
                   { color: disabled ? palette.textMuted : palette.background },
                 ]}
               >
-                {status ?? "Comprar"}
+                {status ?? (qtd > 1 ? `Comprar ${qtd}` : "Comprar")}
               </Text>
             </>
           )}
@@ -398,4 +456,9 @@ const s = StyleSheet.create({
   },
   feedbackText: { flex: 1, fontSize: 13, lineHeight: 20 },
   empty: { textAlign: "center", marginVertical: 40 },
+  filters: { flexDirection: "row", flexWrap: "wrap", gap: 14 },
+  filterText: { fontSize: 12, fontWeight: "700" },
+  movement: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 28 },
+  movementValue: { fontSize: 13, fontWeight: "700", minWidth: 36 },
+  movementText: { flex: 1, fontSize: 13 },
 });

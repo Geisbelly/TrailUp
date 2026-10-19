@@ -893,6 +893,7 @@ export default function TrilhaConteudoScreen() {
               elapsedStartAtMs={moduleSessionStartedAtRef.current}
               active={isOverlayTimerActive}
               onTimeoutAction={handleOverlayTimerTimeout}
+              atividadeId={atualBlock?.kind === "atividade" ? Number(atualBlock.atividade.id) : null}
             />
           </View>
           <ModuleHeaderGuideButton
@@ -913,6 +914,7 @@ export default function TrilhaConteudoScreen() {
         </View>
     );
   }, [
+    atualBlock,
     currentOverlayItemKey,
     currentOverlayTimerFeature,
     guideTargetRefs,
@@ -1863,6 +1865,7 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
               <ActivityRenderer
                 atividade={atualBlock.atividade}
                 topicoId={topicoId ?? topico?.id ?? null}
+                classeId={classeAtual?.classe_id ?? topico?.classe_id ?? null}
                 onComplete={handleAtividadeComplete}
                 initialQuestionIndex={currentActivityQuestionIndex}
                 onQuestionIndexChange={(questionIndex) => {
