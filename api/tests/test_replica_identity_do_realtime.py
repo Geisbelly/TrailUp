@@ -28,7 +28,7 @@ from app.db import migrations
 
 API_ROOT = Path(__file__).resolve().parents[1]
 
-INTERVALO = "20261017_10:20261018_01"
+INTERVALO = "20261018_01:20261018_10"
 
 DEVEM_ENTRAR = ("classe_aluno", "notificacoes", "eventos_aluno")
 
@@ -77,7 +77,7 @@ def test_classe_mapa_tema_nao_precisa() -> None:
 
 
 def test_downgrade_devolve_default() -> None:
-    sql = _render("20261018_01:20261017_10", downgrade=True)
+    sql = _render("20261018_10:20261018_01", downgrade=True)
     for tabela in DEVEM_ENTRAR:
         assert f"ALTER TABLE public.{tabela} REPLICA IDENTITY DEFAULT" in sql
     assert "REPLICA IDENTITY FULL" not in sql

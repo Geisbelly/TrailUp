@@ -28,7 +28,7 @@ from app.db import migrations
 
 API_ROOT = Path(__file__).resolve().parents[1]
 
-INTERVALO = "20261018_03:20261018_04"
+INTERVALO = "20261019_11:20261019_12"
 
 REVOGADAS = (
     "fn_nota_90_10",
@@ -85,7 +85,7 @@ def test_a_guarda_vem_antes_de_ler_a_sessao() -> None:
 
 
 def test_downgrade_devolve_grant_e_funcao_sem_guarda() -> None:
-    sql = _render("20261018_04:20261018_03", downgrade=True)
+    sql = _render("20261019_12:20261019_11", downgrade=True)
     for nome in REVOGADAS:
         assert f"GRANT EXECUTE ON FUNCTION public.{nome}" in sql
     assert "CREATE OR REPLACE FUNCTION public.social_presenca_aluno" in sql
@@ -115,6 +115,6 @@ def test_turma_alheia_devolve_lista_vazia_e_nao_erro() -> None:
 
 
 def test_downgrade_devolve_a_presenca_da_turma_sem_guarda() -> None:
-    sql = _render("20261018_04:20261018_03", downgrade=True)
+    sql = _render("20261019_12:20261019_11", downgrade=True)
     trecho = sql.split("CREATE OR REPLACE FUNCTION public.social_presenca_turma")[1]
     assert "app_minhas_classes" not in trecho.split("$function$")[1]
