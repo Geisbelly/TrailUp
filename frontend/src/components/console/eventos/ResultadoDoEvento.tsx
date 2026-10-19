@@ -73,7 +73,7 @@ export function ResultadoDoEventoDialog({ evento, onFechar }: { evento: Evento; 
                     </li>
                   ))}
                 </ul>
-                <p className="mt-2 text-[11.5px] text-muted-foreground">A medalha ainda não é entregue ao aluno automaticamente; esta lista mostra quem a merece.</p>
+                <p className="mt-2 text-[11.5px] text-muted-foreground">A medalha de destaque (e a de participação, quando o evento a concede) é entregue aos alunos na biblioteca de conquistas quando o evento é encerrado.</p>
               </section>
             )}
 
