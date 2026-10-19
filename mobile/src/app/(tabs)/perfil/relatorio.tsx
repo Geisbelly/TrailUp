@@ -39,7 +39,8 @@ import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 const appLogoSource = require("@/assets/images/trailup-brand-logo.png");
 
 function formatRankValue(valor: number, criterio: string | null | undefined) {
-  if (criterio === "percentual") {
+  // `acertos` também é porcentagem — ver CRITERIOS_EM_PORCENTAGEM em rankingPodium.ts.
+  if (criterio === "percentual" || criterio === "acertos") {
     return `${Math.round(valor)}%`;
   }
   if (criterio === "tempo") {

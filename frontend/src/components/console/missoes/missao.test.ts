@@ -1,34 +1,48 @@
 import { describe, expect, it } from "vitest";
-import { FORMULARIO_DE_MISSAO_VAZIO, percentualDeEntrega, prazoParaCampo, resumoDeEntregas, rotuloDoPrazo, validarMissao, type FormularioDeMissao } from "./missao";
+import { FORMULARIO_DE_MISSAO_VAZIO, comCriterioDaAtividade, percentualDeEntrega, prazoParaCampo, resumoDeEntregas, rotuloDoPrazo, validarMissao, type FormularioDeMissao } from "./missao";
 
 const base = (extra: Partial<FormularioDeMissao> = {}): FormularioDeMissao => ({
+  caminho: "entrega",
   titulo: "Cinemática em movimento",
   objetivo: "Prever e comparar tempos de queda.",
   topicoId: "12",
   prazo: "",
   moedas: "",
   pontos: "50",
+  metrica: "",
+  alvo: "",
   ...extra,
 });
+
+/** Caminho `meta`: não pede tópico nem nota — era a limitação que `missoes` removeu. */
+const meta = (extra: Partial<FormularioDeMissao> = {}): FormularioDeMissao =>
+  base({ caminho: "meta", topicoId: "", pontos: "", metrica: "minutos_totais", alvo: "30", ...extra });
 
 describe("validarMissao", () => {
   it("monta um payload de atividade com tipo 'missao', objetivo na descrição e pontuação máxima", () => {
     const r = validarMissao(base({ titulo: "  Missão  Um ", objetivo: " alvo " }));
     expect(r.ok).toBe(true);
-    expect(r.payload).toEqual({ topico_id: 12, titulo: "Missão  Um", descricao: "alvo", tipo: "missao", data_entrega: null, pontuacao_maxima: 50, moedas: 0 });
+    expect(r.atividade).toEqual({ topico_id: 12, titulo: "Missão  Um", descricao: "alvo", tipo: "missao", data_entrega: null, pontuacao_maxima: 50, moedas: 0 });
+    // O critério de `entrega` só pode ser montado depois do INSERT da atividade.
+    expect(r.missao).toEqual({
+      escopo: "turma", origem: "professor", titulo: "Missão  Um", descricao: "alvo",
+      recompensa_tipo: "missao_concluida", janela_fim: null, criterio: null,
+    });
     expect(r.erros).toBeNull();
   });
 
   it("prazo preenchido vira ISO; inválido é erro", () => {
     const ok = validarMissao(base({ prazo: "2026-10-20T23:59" }));
-    expect(ok.payload!.data_entrega).toBe(new Date("2026-10-20T23:59").toISOString());
+    expect(ok.atividade!.data_entrega).toBe(new Date("2026-10-20T23:59").toISOString());
+    expect(ok.missao!.janela_fim).toBe(new Date("2026-10-20T23:59").toISOString());
     expect(validarMissao(base({ prazo: "ontem" })).erros!.prazo).toBeTruthy();
   });
 
   it("título, objetivo, tópico e pontos são obrigatórios", () => {
     const r = validarMissao(FORMULARIO_DE_MISSAO_VAZIO);
     expect(r.ok).toBe(false);
-    expect(r.payload).toBeNull();
+    expect(r.missao).toBeNull();
+    expect(r.atividade).toBeNull();
     expect(Object.keys(r.erros!).sort()).toEqual(["objetivo", "pontos", "titulo", "topicoId"]);
   });
 
@@ -75,11 +89,59 @@ describe("entregas", () => {
 
 describe("moedas", () => {
   it("vazio é nenhuma; inteiro de 0 a 1000 passa", () => {
-    expect(validarMissao(base()).payload.moedas).toBe(0);
-    expect(validarMissao(base({ moedas: "25" })).payload.moedas).toBe(25);
+    expect(validarMissao(base()).atividade.moedas).toBe(0);
+    expect(validarMissao(base({ moedas: "25" })).atividade.moedas).toBe(25);
     expect(validarMissao(base({ moedas: "1000" })).ok).toBe(true);
   });
   it("rejeita negativo, decimal, texto e acima do teto", () => {
     for (const m of ["-1", "2,5", "abc", "1001"]) expect(validarMissao(base({ moedas: m })).erros.moedas).toBeTruthy();
+  });
+});
+
+describe("caminho meta", () => {
+  it("não cria atividade e grava o critério com a chave que o avaliador lê", () => {
+    const r = validarMissao(meta({ metrica: "minutos_totais", alvo: "45" }));
+    expect(r.ok).toBe(true);
+    expect(r.atividade).toBeNull();
+    expect(r.missao!.criterio).toEqual({ metrica: "minutos_totais", minutos: 45 });
+  });
+
+  it("não pede tópico nem nota — `missoes` não tem `topico_id`", () => {
+    const r = validarMissao(meta({ topicoId: "", pontos: "" }));
+    expect(r.ok).toBe(true);
+    expect(r.erros).toBeNull();
+  });
+
+  it("métrica e alvo são obrigatórios", () => {
+    const r = validarMissao(meta({ metrica: "", alvo: "" }));
+    expect(Object.keys(r.erros!).sort()).toEqual(["alvo", "metrica"]);
+  });
+
+  it("métrica fora da lista do professor é recusada", () => {
+    // O banco aceita as 12; esta tela oferece 6. `evento_medalha` é das que ficam fora.
+    expect(validarMissao(meta({ metrica: "evento_medalha" })).erros!.metrica).toBeTruthy();
+  });
+
+  it("alvo respeita o teto da métrica", () => {
+    expect(validarMissao(meta({ metrica: "acertos_percentual", alvo: "101" })).erros!.alvo).toBeTruthy();
+    expect(validarMissao(meta({ metrica: "acertos_percentual", alvo: "100" })).ok).toBe(true);
+    expect(validarMissao(meta({ metrica: "dias_seguidos", alvo: "366" })).erros!.alvo).toBeTruthy();
+  });
+
+  it("alvo zero, negativo, decimal e texto são recusados", () => {
+    for (const a of ["0", "-3", "1,5", "abc", ""]) {
+      expect(validarMissao(meta({ alvo: a })).erros!.alvo).toBeTruthy();
+    }
+  });
+});
+
+describe("comCriterioDaAtividade", () => {
+  it("completa o critério de entrega depois do INSERT", () => {
+    const r = validarMissao(base());
+    expect(r.missao!.criterio).toBeNull();
+    const pronta = comCriterioDaAtividade(r.missao!, 77);
+    expect(pronta.criterio).toEqual({ metrica: "atividade_especifica", atividade_id: 77 });
+    // Não muda mais nada.
+    expect({ ...pronta, criterio: null }).toEqual(r.missao);
   });
 });

@@ -38,9 +38,8 @@ migrar por cima dele.
    python carregar_schema.py postgresql://postgres:e2elocal@localhost:55432/postgres ddl.json seed.json
    # auth.jwt() precisa de superusuário: se reclamar, rode o bloco AUTH_JWT
    # como supabase_admin (docker exec ... psql -U supabase_admin).
-   # a revisão em que o banco de origem está (SELECT version_num FROM alembic_version).
-   # O banco do Lab está em 20261017_10; a cadeia do espelho sobe dali passando
-   # por 20261018_01 ... 20261019_13 até a economia.
+   # a revisão de produção (SELECT version_num FROM alembic_version; hoje
+   # 20261017_10). O upgrade passa pelas pilhas A e B antes da economia.
    psql ... -c "INSERT INTO alembic_version VALUES ('20261017_10')"
    ```
 

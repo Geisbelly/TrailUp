@@ -52,15 +52,15 @@ Conferido com a versao nova: colega online devolve `online: true` (o app segue
 funcionando), estranho online devolve `online: false, visivel: false`, e o
 cliente le `Boolean(data?.online)` -- o campo extra e inocuo.
 
-Revision ID: 20261019_12
-Revises: 20261019_11
+Revision ID: 20261018_04
+Revises: 20261018_03
 Create Date: 2026-10-18
 """
 
 from alembic import op
 
-revision = "20261019_12"
-down_revision = "20261019_11"
+revision = "20261018_04"
+down_revision = "20261018_03"
 branch_labels = None
 depends_on = None
 

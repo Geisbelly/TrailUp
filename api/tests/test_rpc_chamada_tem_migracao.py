@@ -16,9 +16,8 @@ chamada pelo app sem migracao que a crie entra vermelha.
 
 ## O parser precisa ver TODAS as chamadas
 
-Quatro servicos embrulham a chamada e passam o nome por variavel
-(`socialService.socialAction`, `guildService.action`, `notificacoesDb.chamar`,
-`economiaApi.chamar`).
+Tres servicos embrulham a chamada e passam o nome por variavel
+(`socialService.socialAction`, `guildService.action`, `notificacoesDb.chamar`).
 Um parser que olhasse so `.rpc("nome")` perderia 27 RPCs e daria a impressao
 de cobertura. Por isso:
 

@@ -81,6 +81,7 @@ describe("mudancasRelevantes", () => {
       { kind: "class_theme_sync", topico_id: null, finished_at: "2026-09-05T13:25:34+00:00" },
       { kind: "full_sync", topico_id: null, finished_at: "2026-07-01T10:00:00+00:00" },
       { kind: "kind_novo", topico_id: null, finished_at: null },
+      { kind: "missao_diaria", topico_id: null, finished_at: "2026-09-24T03:06:00+00:00" },
     ];
     expect(mudancasRelevantes(jobs, topicos, "2026-09-01")).toEqual([
       { data: "2026-09-25", etiqueta: "Estrutura", titulo: "Tópico criado na trilha", detalhe: "Aula 2" },

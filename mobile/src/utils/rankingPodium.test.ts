@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { selectPodium, formatRankScore } from "./rankingPodium";
+import { selectPodium, formatRankScore, rotuloDoCriterio } from "./rankingPodium";
 
 test("podium uses official positions, never a personal row outside the leaders", () => {
   const rows = [
@@ -57,6 +57,22 @@ test("score formatting respects the actual criterion and unavailable values", ()
   assert.equal(formatRankScore(null, "pontuacao"), "--");
   assert.equal(formatRankScore(NaN, "tempo"), "--");
   assert.equal(formatRankScore(0, "pontuacao"), "0");
+  // `acertos` é porcentagem e ficava de fora: a view só passou a calculá-lo em
+  // `20261021_06` (antes caía no `ELSE 0`), então 77% aparecia como "77".
+  assert.equal(formatRankScore(77, "acertos"), "77%");
+  // `ranqueada` é pontuação de verdade, e pode ser NEGATIVA: a derrota da arena desconta.
+  assert.equal(formatRankScore(-3, "ranqueada"), "-3");
+  assert.equal(formatRankScore(15, "ranqueada"), "15");
+});
+
+test("criterion label covers every criterion the view computes", () => {
+  assert.equal(rotuloDoCriterio("tempo"), "Tempo");
+  assert.equal(rotuloDoCriterio("percentual"), "Progresso");
+  assert.equal(rotuloDoCriterio("acertos"), "Acertos");
+  assert.equal(rotuloDoCriterio("pontuacao"), "Pontos");
+  // `ranqueada` é pontuação, então o padrão já serve.
+  assert.equal(rotuloDoCriterio("ranqueada"), "Pontos");
+  assert.equal(rotuloDoCriterio(null), "Pontos");
 });
 
 test("podium belongs to rank detail, while the entry remains category navigation", () => {

@@ -10,14 +10,14 @@ Nada aqui credita moeda nem aplica item. São as tabelas. As funções vêm em
 `20261020_02` e `20261020_03`.
 
 Revision ID: 20261020_01
-Revises: 20261019_13
+Revises: 20261019_03
 Create Date: 2026-10-19
 """
 
 from alembic import op
 
 revision = "20261020_01"
-down_revision = "20261019_13"
+down_revision = "20261019_03"
 branch_labels = None
 depends_on = None
 

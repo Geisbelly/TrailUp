@@ -6,14 +6,24 @@ cada guilda do ranking de um evento encerrado. Só que `guildas` nunca foi abert
 ao cliente — verificado ao vivo em 2026-10-18:
 
 - `relrowsecurity = true` e **nenhuma** policy em `pg_policies`;
-- nenhum GRANT para `anon`/`authenticated` (ACL só `postgres` e `service_role`).
+- GRANTs: `authenticated` tem **SELECT**, `anon` não tem nada.
 
-Então não é nem o "fecha em silêncio" da lista vazia: como `authenticated`, o
-`SELECT` dá `42501 permission denied for table guildas`. `listarResultado` lança,
-e `traduzirErroDeEvento` transforma isso em "Você não tem permissão para isso
-nesta turma." — o professor dono do evento não vê o resultado de nenhum evento
-com modalidade de guilda. Hoje passa despercebido porque ainda não há guilda no
-banco.
+Com GRANT e sem policy, o `SELECT` devolve **0 linhas sem erro** — é o "fecha em
+silêncio" que o CLAUDE.md descreve, não um 42501. Medido como `authenticated` em
+produção: a consulta retorna vazio e não levanta exceção.
+
+Consequência em `listarResultado`: `nomeDaGuilda` nasce vazio e **toda** guilda do
+ranking cai no fallback `"Guilda"`. O professor vê o painel, com todas as guildas
+com o mesmo nome — não um erro de permissão. Hoje passa despercebido porque ainda
+não há guilda no banco, mas `eventos_classe` acabou de ser criada
+(`20261017_01`), então vale no primeiro evento em modalidade guilda.
+
+> Uma versão anterior desta docstring afirmava que não havia GRANT e que o erro
+> era `42501`. Era leitura errada da ACL: `information_schema.role_table_grants`
+> e `has_table_privilege('authenticated', ...)` mostram o SELECT, e a simulação
+> de papel confirma que o retorno é vazio, não exceção. O `REVOKE ALL` abaixo
+> continua valendo (normaliza `anon` para zero e deixa `authenticated` só com
+> SELECT), mas não é ele que conserta o sintoma — é a policy.
 
 Escopo: só o professor dono da turma (`app_classes_do_professor()`), o mesmo
 predicado de `eventos_classe_resultado_guilda_professor_sel` (`20261017_03`),
@@ -26,15 +36,15 @@ delas é só por RPC; nenhum cliente as lê direto.
 Só leitura: nenhuma policy de escrita, então criar/editar guilda continua sendo
 só pelas funções do banco.
 
-Revision ID: 20261018_01
-Revises: 20261017_10
+Revision ID: 20261019_03
+Revises: 20261019_02
 Create Date: 2026-10-18
 """
 
 from alembic import op
 
-revision = "20261018_01"
-down_revision = "20261017_10"
+revision = "20261019_03"
+down_revision = "20261019_02"
 branch_labels = None
 depends_on = None
 
