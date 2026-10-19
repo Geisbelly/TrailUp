@@ -764,6 +764,9 @@ AS $fn$
     CASE WHEN b.pc_limite IS NULL THEN NULL ELSE GREATEST(0, b.pc_limite - b.ja_compradas) END AS compras_restantes,
     b.ativas AS em_posse
   FROM base b
+  -- Só quem é da turma (aluno ou professor) vê o catálogo dela: agora ele
+  -- traz contagens do próprio chamador, e a turma vem do parâmetro.
+  WHERE p_classe_id IN (SELECT public.app_minhas_classes())
   ORDER BY b.ordem;
 $fn$;
 

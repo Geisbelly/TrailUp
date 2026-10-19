@@ -275,6 +275,8 @@ def test_varias_unidades_e_limite_de_uso_por_situacao() -> None:
     assert "v_compradas + v_qtd_paga > v_preco_turma.uso_max_por_aluno" in comprar
     assert "COALESCE(v_vendidas, 0) + v_qtd_paga > v_preco_turma.estoque" in comprar
     assert "COALESCE(v_preco_turma.preco_fator, v_item.preco_fator, 1)" in comprar
+    catalogo = sql.split("CREATE FUNCTION public.loja_catalogo(")[1].split("$fn$;")[0]
+    assert "WHERE p_classe_id IN (SELECT public.app_minhas_classes())" in catalogo  # só a própria turma
     assert comprar.index("pg_advisory_xact_lock(\n    hashtextextended('estoque:'") < comprar.index(
         "pg_advisory_xact_lock(hashtextextended(v_aluno::text, 0))"
     )

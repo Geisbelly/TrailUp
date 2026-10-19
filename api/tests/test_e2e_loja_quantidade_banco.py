@@ -337,6 +337,7 @@ def test_limites_so_o_professor_da_turma_escreve(q):
         assert "prazo_extra" not in meus  # só o próprio
     with como(q["alunoZ"]) as fora:
         assert linhas(fora, "SELECT * FROM public.loja_limite_uso WHERE classe_id = %(c)s", {"c": C}) == []
+        assert linhas(fora, "SELECT * FROM public.loja_catalogo(%(c)s)", {"c": C}) == []  # catálogo só da turma
         assert rpc(fora, "loja_usos_permitidos", p_classe_id=C, p_item="dica", p_alvo_tipo="questao",
                    p_alvo_id=q["q1"])["erro"] == "fora_da_turma"
         assert usar(fora, C, "dica", "questao", q["q1"])["erro"] == "sem_unidade"
