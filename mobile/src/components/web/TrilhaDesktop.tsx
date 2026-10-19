@@ -1,5 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
+import { router } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Image, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
@@ -17,7 +18,7 @@ import { useTrilha } from "@/context/TrilhaContext";
 import { useTrailResumeTopic } from "@/hooks/useTrailResume";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getBrainHexProfileCapabilities } from "@/utils/brainHexCapabilities";
-import { estadoDoTopico, montarPainelTopico, topicoInicial } from "@/utils/painelTopicoTrilha";
+import { aoClicarNo, estadoDoTopico, montarPainelTopico, rotaDoTopico, topicoInicial } from "@/utils/painelTopicoTrilha";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { calcularProgressoTrilha } from "@/utils/progressoTrilha";
 import { registrarAlvoTour } from "@/utils/tourTargets";
@@ -60,6 +61,12 @@ export function TrilhaDesktop({ chatGuideTargetRef }: { chatGuideTargetRef?: Rea
   const idPainel =
     selecionado !== null && nos.some((n) => String(n.id) === selecionado) ? selecionado : topicoInicial(nos, atualId);
   const noPainel = nos.find((n) => String(n.id) === idPainel);
+  // Clique num nó do mapa, da árvore ou da lista: seleciona no painel e, se o
+  // tópico estiver liberado, já abre. A lista do painel continua só selecionando.
+  const clicarNo = (id: string) => {
+    setSelecionado(id);
+    if (aoClicarNo(nos.find((n) => String(n.id) === String(id))) === "abrir") router.push(rotaDoTopico(String(id)));
+  };
   const topicoDe = (id: string) => classeAtual?.topicos.find((t) => String(t.id) === String(id));
   const painel = noPainel ? montarPainelTopico(noPainel, topicoDe(noPainel.id), atualId, nos, grafo.edges) : null;
   const todos = [...nos]
@@ -197,13 +204,13 @@ export function TrilhaDesktop({ chatGuideTargetRef }: { chatGuideTargetRef?: Rea
                 selecionado={idPainel}
                 perfil={perfil}
                 palette={palette}
-                onSelecionar={setSelecionado}
+                onSelecionar={clicarNo}
               />
             </View>
           )}
-          {quadro && visual === "arvore" && <TrilhaArvoreSimple currentTopicId={atualId} onSelecionarTopico={setSelecionado} quadro={quadro} />}
+          {quadro && visual === "arvore" && <TrilhaArvoreSimple currentTopicId={atualId} onSelecionarTopico={clicarNo} quadro={quadro} />}
           {quadro && visual === "lista" && (
-            <TrilhaLinearList currentTopicId={atualId} tourTargetRef={jornadaRef} onSelecionarTopico={setSelecionado} quadro={quadro} />
+            <TrilhaLinearList currentTopicId={atualId} tourTargetRef={jornadaRef} onSelecionarTopico={clicarNo} quadro={quadro} />
           )}
         </View>
       </View>

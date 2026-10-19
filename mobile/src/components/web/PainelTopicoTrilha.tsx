@@ -5,7 +5,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { HexagonoTopico } from "@/components/web/HexagonoTopico";
 import { FontFamily } from "@/styles/GlobalStyle";
-import type { EstadoTopico, PainelTopico } from "@/utils/painelTopicoTrilha";
+import { rotaDoTopico, type EstadoTopico, type PainelTopico } from "@/utils/painelTopicoTrilha";
 import type { ProfileShellPalette } from "@/utils/profileShellTheme";
 import { FONTE_TITULO_TRILHA } from "@/components/web/fonteCinzel";
 
@@ -172,7 +172,7 @@ export function PainelTopicoTrilha({
         <View style={[s.pe, { borderTopColor: palette.border }]}>
           <Pressable
             accessibilityRole="button"
-            onPress={() => router.push(`/(tabs)/trilha/${encodeURIComponent(painel.id)}`)}
+            onPress={() => router.push(rotaDoTopico(painel.id))}
             style={({ hovered }: { hovered?: boolean; pressed: boolean }) => [
               s.botao,
               painel.estado === "done"
