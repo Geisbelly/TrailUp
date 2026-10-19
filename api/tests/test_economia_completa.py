@@ -163,11 +163,32 @@ def _sql_down(de: str, ate: str) -> str:
 def test_o_downgrade_restaura_o_que_as_migrations_substituiram() -> None:
     meio = _sql_down("20261020_02", "20261020_01")
     assert "CREATE OR REPLACE FUNCTION public.loja_comprar" in meio
-    assert "CREATE FUNCTION public.loja_catalogo" in meio or "CREATE OR REPLACE FUNCTION public.loja_catalogo" in meio
+    assert "CREATE OR REPLACE FUNCTION public.loja_catalogo" in meio
+    assert "GRANT EXECUTE ON FUNCTION" in meio and "loja_comprar" in meio
+    assert "DROP TABLE" not in meio
+    assert "DELETE FROM public.moedas_ledger" not in meio
+    assert "DELETE FROM public.loja_compras" not in meio
     ponta = _sql_down("20261020_03", "20261020_02")
     assert "CREATE OR REPLACE FUNCTION public.fn_evento_creditado" in ponta
     assert "starts_with(lower(p_tipo), 'meta_atingida')" not in ponta
+    assert "CREATE OR REPLACE FUNCTION public.fn_moedas_do_evento" in ponta
     assert "CREATE OR REPLACE FUNCTION public.fn_eventos_aluno_paga_moeda" in ponta
     assert "CREATE OR REPLACE FUNCTION public.avaliar_entrega" in ponta
+    assert "atividade_aprovada" in ponta
+    assert "DROP TABLE" not in ponta
+    assert "DROP INDEX IF EXISTS public.eventos_aluno_meta_unico" not in ponta
+    assert "DELETE FROM public.moedas_ledger" not in ponta
     base = _sql_down("20261020_01", "20261019_13")
     assert "CHECK (efeito IN ('prazo_extra', 'segunda_chance', 'dica', 'troca_formato'))" in base
+    assert "'tempo_extra'" in base
+    assert "NOT EXISTS" in base and "item_codigo = 'tempo_extra'" in base
+    assert "loja_preco_classe" in base
+    assert "loja_dotacao" in base
+    assert "foreign_key_violation" in base
+    assert "DROP TABLE" not in base
+    assert "DROP COLUMN" not in base
+    assert "DELETE FROM public.loja_preco_classe" not in base
+    assert "DELETE FROM public.loja_dotacao" not in base
+    assert "DELETE FROM public.loja_compras" not in base
+    assert "DELETE FROM public.moedas_ledger" not in base
+    assert "DELETE FROM public.eventos_aluno" not in base

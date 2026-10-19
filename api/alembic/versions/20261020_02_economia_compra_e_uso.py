@@ -948,15 +948,11 @@ def _constante(arquivo: str, nome: str) -> str:
 
 
 def downgrade() -> None:
-    op.execute("DROP FUNCTION IF EXISTS public.loja_estornar(bigint, text);")
-    op.execute("DROP FUNCTION IF EXISTS public.loja_usar(bigint, text, bigint, text, text);")
-    op.execute("DROP FUNCTION IF EXISTS public.economia_config_efetiva(bigint, bigint);")
+    # Devolve catálogo e compra ao corpo anterior a esta migration.
+    # Não derruba prazo, tempo, dica nem log de uso: isso é dado do aluno.
+    # loja_usar e o gatilho do prazo continuam, senão o que já foi concedido
+    # deixa de valer no dia em que a atividade ganha data.
     op.execute("DROP FUNCTION IF EXISTS public.loja_catalogo(bigint);")
     op.execute(_constante("20260912_04_loja_compra.py", "CATALOGO"))
     op.execute(_constante("20260912_05_segunda_chance.py", "COMPRAR_V2"))
-    op.execute("DROP TRIGGER IF EXISTS trg_atividade_aplica_prazo_comprado ON public.atividades;")
-    op.execute("DROP FUNCTION IF EXISTS public.fn_atividade_aplica_prazo_comprado();")
-    op.execute("DROP TABLE IF EXISTS public.loja_uso_log;")
-    op.execute("DROP TABLE IF EXISTS public.loja_dica_liberada;")
-    op.execute("DROP TABLE IF EXISTS public.atividade_tempo_aluno;")
-    op.execute("DROP TABLE IF EXISTS public.atividade_prazo_aluno;")
+    op.execute("NOTIFY pgrst, 'reload schema';")

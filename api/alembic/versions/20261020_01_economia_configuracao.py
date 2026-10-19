@@ -311,35 +311,51 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    # A escrita direta volta. Tabelas, colunas, auditoria, meta, preço e
+    # escopo ficam: o upgrade usa IF NOT EXISTS / ON CONFLICT e reencontra
+    # o que o professor e o aluno já gravaram.
     op.execute("GRANT INSERT, UPDATE, DELETE ON public.eventos_pontuacao_classe TO authenticated;")
     op.execute("GRANT INSERT, UPDATE, DELETE ON public.loja_dotacao TO authenticated;")
     op.execute("GRANT INSERT, UPDATE, DELETE ON public.loja_config_classe TO authenticated;")
-    op.execute("DROP FUNCTION IF EXISTS public.economia_auditar(text, text, text, bigint, uuid, jsonb, jsonb);")
-    op.execute("DROP TABLE IF EXISTS public.economia_auditoria;")
-    op.execute("DROP FUNCTION IF EXISTS public.app_e_dev();")
-    op.execute("DROP TABLE IF EXISTS public.plataforma_dev;")
-    op.execute("DROP TABLE IF EXISTS public.economia_meta;")
-    op.execute("DROP TABLE IF EXISTS public.economia_config_escopo;")
-    op.execute("DROP TABLE IF EXISTS public.loja_preco_classe;")
     op.execute(
         """
-        ALTER TABLE public.loja_config_classe
-          DROP CONSTRAINT IF EXISTS loja_config_prazo_extensao_faixa,
-          DROP CONSTRAINT IF EXISTS loja_config_tempo_extensao_faixa,
-          DROP CONSTRAINT IF EXISTS loja_config_tempo_teto,
-          DROP COLUMN IF EXISTS prazo_extensao_min_dias,
-          DROP COLUMN IF EXISTS prazo_extensao_max_dias,
-          DROP COLUMN IF EXISTS tempo_extra_min_minutos,
-          DROP COLUMN IF EXISTS tempo_extra_max_minutos,
-          DROP COLUMN IF EXISTS tempo_max_por_ativ;
+        DO $$
+        BEGIN
+          -- Só sai do catálogo se ninguém comprou, a turma não tem preço
+          -- próprio e não há dotação. Qualquer uma dessas linhas é dado:
+          -- apagar o item (ou deixar a FK estourar) reverteria este downgrade
+          -- inteiro, inclusive o check de efeito.
+          IF NOT EXISTS (
+            SELECT 1 FROM public.loja_compras WHERE item_codigo = 'tempo_extra'
+          ) AND NOT EXISTS (
+            SELECT 1 FROM public.loja_preco_classe WHERE item_codigo = 'tempo_extra'
+          ) AND NOT EXISTS (
+            SELECT 1 FROM public.loja_dotacao WHERE item_codigo = 'tempo_extra'
+          ) THEN
+            DELETE FROM public.loja_itens WHERE codigo = 'tempo_extra';
+          END IF;
+        EXCEPTION
+          WHEN foreign_key_violation THEN
+            NULL;
+        END $$;
         """
     )
-    op.execute("DELETE FROM public.loja_itens WHERE codigo = 'tempo_extra';")
+    op.execute("ALTER TABLE public.loja_itens DROP CONSTRAINT IF EXISTS loja_itens_efeito_check;")
     op.execute(
         """
-        ALTER TABLE public.loja_itens DROP CONSTRAINT IF EXISTS loja_itens_efeito_check;
-        ALTER TABLE public.loja_itens
-          ADD CONSTRAINT loja_itens_efeito_check
-          CHECK (efeito IN ('prazo_extra', 'segunda_chance', 'dica', 'troca_formato'));
+        DO $$
+        BEGIN
+          IF EXISTS (SELECT 1 FROM public.loja_itens WHERE efeito = 'tempo_extra') THEN
+            ALTER TABLE public.loja_itens
+              ADD CONSTRAINT loja_itens_efeito_check
+              CHECK (efeito IN (
+                'prazo_extra', 'segunda_chance', 'dica', 'troca_formato', 'tempo_extra'
+              ));
+          ELSE
+            ALTER TABLE public.loja_itens
+              ADD CONSTRAINT loja_itens_efeito_check
+              CHECK (efeito IN ('prazo_extra', 'segunda_chance', 'dica', 'troca_formato'));
+          END IF;
+        END $$;
         """
     )

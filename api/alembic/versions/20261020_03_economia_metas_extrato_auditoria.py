@@ -977,30 +977,10 @@ def _modulo(arquivo: str):
 
 
 def downgrade() -> None:
-    op.execute("DROP FUNCTION IF EXISTS public.economia_consistencia();")
-    op.execute(
-        "DROP FUNCTION IF EXISTS public.economia_extrato(uuid, text, timestamptz, timestamptz, integer, integer);"
-    )
-    op.execute("DROP FUNCTION IF EXISTS public.economia_arquivar_meta(bigint);")
-    op.execute(
-        "DROP FUNCTION IF EXISTS public.economia_salvar_meta(bigint, bigint, text, bigint, text, text, numeric, numeric, numeric);"
-    )
-    op.execute(
-        "DROP FUNCTION IF EXISTS public.economia_salvar_escopo(bigint, text, bigint, numeric, numeric, numeric, integer, integer, integer, integer, integer, integer, integer, integer, integer);"
-    )
-    op.execute("DROP FUNCTION IF EXISTS public.economia_salvar_valores_evento(bigint, text, numeric, numeric);")
-    op.execute("DROP FUNCTION IF EXISTS public.economia_salvar_dotacao(bigint, text, integer);")
-    op.execute(
-        "DROP FUNCTION IF EXISTS public.economia_salvar_preco_classe(bigint, text, numeric, integer, integer, boolean);"
-    )
-    op.execute(
-        "DROP FUNCTION IF EXISTS public.economia_salvar_config_classe(bigint, integer, integer, integer, integer, integer, integer, integer, integer, text[]);"
-    )
-    op.execute("DROP TRIGGER IF EXISTS trg_atividade_aluno_moedas_conclusao ON public.atividade_aluno;")
-    op.execute("DROP FUNCTION IF EXISTS public.fn_atividade_aluno_moedas_conclusao();")
-    op.execute("DROP FUNCTION IF EXISTS public.economia_avaliar_metas(bigint);")
-    op.execute("DROP FUNCTION IF EXISTS public.economia_avaliar_metas_de(uuid, bigint);")
-    op.execute("DROP INDEX IF EXISTS public.eventos_aluno_meta_unico;")
+    # Só o que esta migration substituiu. Meta, extrato, conclusão configurada
+    # e o índice de meta_atingida ficam: apagá-los perderia crédito já dado
+    # e a configuração que o professor gravou. Não há UPDATE em eventos_aluno:
+    # o ponto de meta já gravado continua no valor que foi concedido.
     creditado = _modulo("20261016_03_nota_professor_evento_creditado.py")
     op.execute(creditado._funcao(creditado.PREFIXOS_DEPOIS))
     op.execute(_modulo("20260912_02_ganho_de_moedas.py").GATILHO)

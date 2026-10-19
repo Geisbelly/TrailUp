@@ -140,6 +140,15 @@ prazo, tempo, dica e auditoria continua revogada para `anon` e
 policy do razão sozinha esconderia os alunos. A função confere
 `auth.uid()`, `app_alunos_do_professor()` ou `app_e_dev()` antes de ler.
 
+O downgrade devolve `loja_comprar`, `loja_catalogo`, o crédito de evento e
+`avaliar_entrega` ao corpo anterior. Não apaga razão, compra, prazo, tempo,
+meta, preço, escopo, dotação nem auditoria. `tempo_extra` só sai do catálogo
+se ninguém comprou, a turma não gravou preço e não há dotação. Se qualquer
+uma dessas linhas existir — ou se outra chave estrangeira segurar o item — o
+check de efeito continua aceitando `tempo_extra`, para o downgrade não abortar
+e levar o resto junto. Ponto de meta já creditado também fica: o downgrade não
+reescreve `eventos_aluno`.
+
 ## Fora deste corte
 
 - Não há fila de aprovação de compra. O teto do professor e o saldo decidem
