@@ -187,6 +187,33 @@ Em ordem de desbloqueio, não de tamanho. Cada uma é mesclável sozinha.
    vê só o período aberto.
 6. **Janela de formação de guilda no console.** As seis RPCs sem chamador, começando por medir
    o comportamento default de `guilda_criar` sem config.
+   **Feita** — #569, com `20261021_17` (depois da `_16` do #568). Medido: sem linha em
+   `guilda_config_turma`, `guilda_janela_aberta` devolve true, então a formação fica **sempre
+   aberta**, com tamanho 10. A janela barra criar, entrar, convidar e aceitar convite; sair e
+   dissolver não passam por ela. O console ganhou a aba Guildas:
+   - estado da janela (aberta, agendada, fechada, sempre aberta) pelo relógio do banco;
+   - tamanho máximo e as datas de abrir e fechar (em Brasília), com "Fechar agora" e
+     "Abrir sem prazo";
+   - tamanho abaixo de uma guilda existente é recusado, com o mínimo permitido na tela;
+   - as guildas ativas com os membros, e editar nome e descrição.
+
+   Decidido pela Geisbelly (2026-10-20), aplicado no mesmo PR:
+   1. Sair e dissolver **não** respeitam a janela fechada. Fica como está.
+   2. Tamanho abaixo do número de membros de uma guilda: **bloqueia.**
+      `guilda_configurar_turma` recusa com `guilda_tamanho_abaixo_dos_membros` (22023, mínimo no
+      HINT), travando as guildas antes de contar. Antes ela só baixava o limite.
+   3. "Fechar agora" **não** cancela convites pendentes. Fica como está; eles só não podem ser
+      aceitos com a janela fechada.
+   4. O aluno **vê** a janela no app: estado e datas em Brasília na tela de guildas, por
+      `guilda_janela_da_turma` (só janela e tamanho, só para colega da turma). Nada expunha as
+      datas ao aluno antes. `guilda_janela_fechada` virou texto amigável, com as datas.
+
+   Como `guilda_config_turma` não tem policy nem GRANT e `guilda_listar` só responde a colega
+   de turma, a leitura é uma RPC nova: `guilda_formacao_da_turma`, só para o professor.
+   Correção do levantamento: `guilda_congelar_composicao` **tem** chamador, porque
+   `evento_classe_abrir` a chama ao abrir um evento de guilda. `guilda_classe_atual` é
+   auxiliar de `guilda_criar`, e `guilda_cancelar_convite` é do aluno (mobile). Nenhuma das três
+   é do console.
 
 ## Decisões que não são minhas
 
@@ -199,8 +226,9 @@ Em ordem de desbloqueio, não de tamanho. Cada uma é mesclável sozinha.
    fase 1 deste plano; a segunda o console já usa).
 3. ~~**Rotação de período do ranking** — por bimestre, por mês, manual pelo professor?~~
    Decidido (2026-10-20): manual, o professor abre o período novo (fase 5).
-4. Herdadas do spec anterior: **Elo versus escada acumulada**, e **medir o custo da LLM** da
-   fase 6 antes de ligá-la para todas as turmas.
+4. Herdadas do spec anterior: ~~**Elo versus escada acumulada**~~ — decidido (2026-10-20):
+   **Elo**, em PR próprio depois do #569. Segue aberto **medir o custo da LLM** da fase 6 antes
+   de ligá-la para todas as turmas.
 
 ## O que não entra
 

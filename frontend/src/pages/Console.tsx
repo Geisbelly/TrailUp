@@ -23,6 +23,7 @@ const RanksSection = lazyWithReload(() => import("@/components/console/RanksSect
 const MissoesSection = lazyWithReload(() => import("@/components/console/missoes/MissoesSection"));
 const ConquistasSection = lazyWithReload(() => import("@/components/console/conquistas/ConquistasSection"));
 const BatalhasSection = lazyWithReload(() => import("@/components/console/batalhas/BatalhasSection"));
+const GuildasSection = lazyWithReload(() => import("@/components/console/guildas/GuildasSection"));
 const NotasSection = lazyWithReload(() => import("@/components/console/notas/NotasSection"));
 const EventosSection = lazyWithReload(() => import("@/components/console/eventos/EventosSection"));
 const EconomiaSection = lazyWithReload(() => import("@/components/console/economia/EconomiaSection"));
@@ -196,6 +197,8 @@ export default function Console() {
                 <RanksSection />
               ) : view === "batalhas" ? (
                 <BatalhasSection professorId={professorData?.id} />
+              ) : view === "guildas" ? (
+                <GuildasSection professorId={professorData?.id} />
               ) : view === "missoes" ? (
                 <MissoesSection professorId={professorData?.id} />
               ) : view === "conquistas" ? (

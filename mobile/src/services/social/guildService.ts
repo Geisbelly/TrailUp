@@ -1,5 +1,6 @@
 import { supabase } from "@/database/supabase";
 import { normalizeGuilds, type Guild } from "./guildModel";
+import { normalizeJanela, type JanelaDaFormacao } from "./guildWindowModel";
 import { normalizeGuildMessages, type GuildMessage, type GuildShareKind } from "./guildChatModel";
 import { normalizeDesafio } from "./desafioModel";
 
@@ -26,6 +27,20 @@ export async function carregarGuildas(classeId: number): Promise<Guild[]> {
   const { data, error } = await supabase.rpc("guilda_listar", { p_classe_id: classeId });
   if (error) throw error;
   return normalizeGuilds(data);
+}
+/**
+ * A janela de formação da turma (`guilda_janela_da_turma`, `20261021_17`). Banco sem a função ainda
+ * (PGRST202) ou qualquer outra falha devolve null: a tela de guildas continua funcionando sem o aviso,
+ * e o banco segue barrando o que estiver fora da janela.
+ */
+export async function carregarJanelaDaFormacao(classeId: number): Promise<JanelaDaFormacao | null> {
+  if (!(classeId > 0)) return null;
+  const { data, error } = await supabase.rpc("guilda_janela_da_turma", { p_classe_id: classeId });
+  if (error) {
+    console.warn("[Guildas] Janela de formação indisponível:", error.message);
+    return null;
+  }
+  return normalizeJanela(data);
 }
 export const criarGuilda = (classeId: number, nome: string, descricao?: string, emblema?: string, logoUrl?: string, modoPerfil: "misto" | "perfil" = "misto", perfilAlvo?: string) => action("guilda_criar", { p_classe_id: classeId, p_nome: nome, p_descricao: descricao ?? null, p_emblema: emblema ?? "constellation", p_logo_url: logoUrl ?? null, p_modo_perfil: modoPerfil, p_perfil_alvo: perfilAlvo ?? null });
 export const atualizarGuilda = (guildaId: string, nome: string, descricao?: string, emblema?: string, logoUrl?: string, modoPerfil: "misto" | "perfil" = "misto", perfilAlvo?: string) => action("guilda_atualizar_config", { p_guilda_id: guildaId, p_nome: nome, p_descricao: descricao ?? null, p_emblema: emblema ?? null, p_logo_url: logoUrl ?? null, p_modo_perfil: modoPerfil, p_perfil_alvo: perfilAlvo ?? null });

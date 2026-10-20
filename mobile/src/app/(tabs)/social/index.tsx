@@ -17,7 +17,7 @@ import { useUsuario } from "@/context/SessaoContext";
 import { useTrilha } from "@/context/TrilhaContext";
 import { Classe } from "@/models/Classe";
 import { aceitarConvite, bloquear, carregarSocial, desbloquear, desfazerAmizade, enviarConvite, recusarConvite } from "@/services/social/socialService";
-import { carregarGuildas } from "@/services/social/guildService";
+import { carregarGuildas, carregarJanelaDaFormacao } from "@/services/social/guildService";
 import { peopleForSocialSection, type SocialPeopleSection, type SocialPerson } from "@/services/social/socialModel";
 import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
@@ -54,6 +54,7 @@ export default function SocialScreen() {
   const [error, setError] = useState<string | null>(null);
   const [storeVisible, setStoreVisible] = useState(false);
   const [guilds, setGuilds] = useState<Awaited<ReturnType<typeof carregarGuildas>>>([]);
+  const [janela, setJanela] = useState<Awaited<ReturnType<typeof carregarJanelaDaFormacao>>>(null);
   const [selectedPerson, setSelectedPerson] = useState<SocialPerson | null>(null);
   const [chatPerson, setChatPerson] = useState<SocialPerson | null>(null);
   const shareOptions = useMemo<GuildShareOption[]>(() => {
@@ -84,12 +85,13 @@ export default function SocialScreen() {
     if (!autenticado || !usuario?.id) {
       setSocial(null);
       setGuilds([]);
+      setJanela(null);
       setLoading(false);
       return;
     }
     setLoading(true);
     setError(null);
-    try { const [nextSocial, nextGuilds] = await Promise.all([activeClasseId > 0 ? carregarSocial(activeClasseId) : carregarSocial(), carregarGuildas(activeClasseId)]); setSocial(nextSocial); setGuilds(nextGuilds); }
+    try { const [nextSocial, nextGuilds, nextJanela] = await Promise.all([activeClasseId > 0 ? carregarSocial(activeClasseId) : carregarSocial(), carregarGuildas(activeClasseId), carregarJanelaDaFormacao(activeClasseId)]); setSocial(nextSocial); setGuilds(nextGuilds); setJanela(nextJanela); }
     catch (caught) { console.warn("[Social] Falha ao carregar:", caught); setError(errorMessage(caught)); }
     finally { setLoading(false); }
   }, [activeClasseId, autenticado, usuario?.id]);
@@ -203,7 +205,7 @@ export default function SocialScreen() {
               <Pressable onPress={() => void load()} style={[styles.retry, { backgroundColor: palette.accent }]}><Text style={[styles.retryText, { color: palette.background }]}>Tentar novamente</Text></Pressable>
             </View>
           ) : section === "guilds" ? (
-            <GuildSection guilds={guilds} people={social ? [...social.friends, ...social.incoming, ...social.outgoing, ...social.candidates] : []} classeId={activeClasseId} accent={palette.accent} profile={profile} shareOptions={shareOptions} onReload={load} />
+            <GuildSection guilds={guilds} janela={janela} people={social ? [...social.friends, ...social.incoming, ...social.outgoing, ...social.candidates] : []} classeId={activeClasseId} accent={palette.accent} profile={profile} shareOptions={shareOptions} onReload={load} />
           ) : people.length === 0 ? (
             <View style={styles.empty}>
               <JourneySymbol section="social" size={64} />

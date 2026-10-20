@@ -18,6 +18,7 @@ export const CONSOLE_SECTIONS = [
   { view: "personalizacoes", slug: "personalizacoes" },
   { view: "ranks", slug: "ranks" },
   { view: "batalhas", slug: "rank-de-batalhas" },
+  { view: "guildas", slug: "guildas" },
   { view: "profile", slug: "meus-dados" },
   { view: "aprovacoes", slug: "aprovacoes" },
 ] as const;
